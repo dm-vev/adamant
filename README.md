@@ -59,7 +59,7 @@ These rules follow from that:
 | Features and structures | 🟢 | Configured features and nearly all structures; see [World generation](#world-generation) |
 | Mob AI | 🟢 | Java's goal and brain AI drives every mob species; mobs ride and steer mobs |
 | Redstone | 🟢 | Component timing matched against BDS captures |
-| Blocks and items | 🟡 | Most mechanics ported; some registered states are still placeholders |
+| Blocks and items | 🟢 | All vanilla blocks but five Education Edition ones; some behaviour is incomplete |
 | Commands | 🟢 | Java 26.3 command system with selectors, `execute` and scoreboards |
 | Persistence | ✅ | Native LevelDB worlds, BDS NBT, background chunk saving |
 | Natural spawning and ecology | 🟡 | Spawn tables and patrols in place; the full spawn cycle is still being verified |
@@ -112,6 +112,8 @@ These rules follow from that:
 - **Other blocks:** conduits, cauldrons, powder snow and freezing, pointed dripstone, amethyst and dripleaves, lightning rods, suspicious sand and gravel, scaffolding, plant and crop growth.
 - **Structure tools:** structure blocks, jigsaws and Bedrock `.mcstructure` templates.
 - **Fluids and ticks:** Java fluid identity, and scheduled block and fluid ticks saved as native BDS records.
+- **Fluid currents:** water and lava currents carry mobs, items and experience orbs as Java's `EntityFluidInteraction` does; items and orbs float up in water.
+- **Light:** Java's light engine rules (dampening, sky sources and face occlusion from the Java 26.3 block data); block edits relight the world incrementally, so torches stop mobs spawning and frosted ice and snow melt by the light around them.
 
 ### Items, crafting and loot
 
@@ -142,12 +144,11 @@ These rules follow from that:
 
 Parity work is ongoing. These are the main known differences from vanilla:
 
-- Some registered block states are still `unknownBlock` placeholders, and some implemented blocks have incomplete behaviour.
+- Five Education Edition blocks (the chalkboard and the chemistry tables) are not implemented, and states vanilla never produces, such as invalid facings and Education bits, load as placeholders. Some implemented blocks still have incomplete behaviour.
 - The full natural-spawning cycle and long-run mob ecology have not been verified end to end.
-- The skeleton horse trap is simplified, and converting mobs do not yet keep their passengers.
-- Lighting is not always recomputed after block edits, items sink in water, and magma blocks do not burn mobs.
-- The warden's sonic boom is reduced by Protection.
-- How some features render on a real Bedrock client, such as the resource-pack knowledge book, is unverified.
+- The light engine treats two partial faces as open even where together they cover a whole face, as stairs against stairs can; Java's light engine shuts light out there.
+- The ender dragon's fireball sound and the boss bar's sky fog are not sent; Bedrock has no matching sound name or protocol field.
+- How some features render on a real Bedrock client, such as the resource-pack knowledge book and the dragon's death beams, is unverified.
 
 Each claim of parity in this repository is backed by a recorded check; see [`docs/verification.md`](docs/verification.md).
 

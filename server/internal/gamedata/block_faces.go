@@ -37,12 +37,15 @@ type GenerationShape struct {
 	CollisionFull       bool
 	CollisionEmpty      bool
 	Replaceable         bool
-	ConnectionException bool // Block.isExceptionForConnection
-	SignalSource        bool // BlockState.isSignalSource
-	RedstoneConductor   bool // sampled with EmptyBlockGetter; inspect conductor predicate owner for contextual semantics
-	FireCanBurn         bool // FireBlock.canBurn for this state, including WATERLOGGED
-	SolidRender         bool // BlockState.isSolidRender, distinct from collision fullness
-	OutlineFull         bool // Block.isShapeFullBlock(BlockState.getShape), distinct from collision fullness
+	ConnectionException bool  // Block.isExceptionForConnection
+	SignalSource        bool  // BlockState.isSignalSource
+	RedstoneConductor   bool  // sampled with EmptyBlockGetter; inspect conductor predicate owner for contextual semantics
+	FireCanBurn         bool  // FireBlock.canBurn for this state, including WATERLOGGED
+	SolidRender         bool  // BlockState.isSolidRender, distinct from collision fullness
+	OutlineFull         bool  // Block.isShapeFullBlock(BlockState.getShape), distinct from collision fullness
+	LightEmission       uint8 // BlockState.getLightEmission
+	LightDampening      uint8 // BlockState.getLightDampening
+	LightEmptyShape     bool  // LightEngine.isEmptyShape: the shape takes no part in light occlusion
 }
 
 func generationBlockIndex(name string) (int, error) {
@@ -90,8 +93,10 @@ func generationShape(block, stateIndex int) GenerationShape {
 		CollisionFull: mask&(1<<18) != 0, CollisionEmpty: mask&(1<<19) != 0, Replaceable: mask&(1<<20) != 0,
 		ConnectionException: mask&(1<<21) != 0, SignalSource: mask&(1<<22) != 0,
 		RedstoneConductor: mask&(1<<23) != 0, FireCanBurn: mask&(1<<24) != 0,
-		SolidRender: mask&(1<<25) != 0,
-		OutlineFull: mask&(1<<26) != 0,
+		SolidRender:   mask&(1<<25) != 0,
+		OutlineFull:   mask&(1<<26) != 0,
+		LightEmission: uint8(mask >> 33 & 15), LightDampening: uint8(mask >> 37 & 15),
+		LightEmptyShape: mask&(1<<41) != 0,
 	}
 }
 

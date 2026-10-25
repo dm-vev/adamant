@@ -6,7 +6,7 @@ import "github.com/df-mc/dragonfly/server/block/cube"
 // If one is found, a node is added for it to the node queue.
 func (a *lightArea) insertBlockLightNodes(queue *lightQueue) {
 	a.iterSubChunks(a.anyLightBlocks, func(pos cube.Pos) {
-		if level := a.highest(pos, a.br.LightBlock); level > 0 {
+		if level := a.props(pos).Emission; level > 0 {
 			queue.push(node(pos, level, BlockLight))
 		}
 	})
@@ -16,7 +16,7 @@ func (a *lightArea) insertBlockLightNodes(queue *lightQueue) {
 func (a *lightArea) anyLightBlocks(sub *SubChunk) bool {
 	for _, layer := range sub.storages {
 		for _, id := range layer.palette.values {
-			if a.br.LightBlock(id) != 0 {
+			if a.cell(0, id, a.br.AirRuntimeID()).Emission != 0 || a.br.LightBlock(id) != 0 {
 				return true
 			}
 		}
@@ -24,33 +24,72 @@ func (a *lightArea) anyLightBlocks(sub *SubChunk) bool {
 	return false
 }
 
-// insertSkyLightNodes iterates over the chunk and inserts a light node anywhere at the highest block in the
-// chunk. In addition, any skylight above those nodes will be set to 15.
+// insertSkyLightNodes fills every column of the chunk with full skylight
+// from its lowest sky source up, as ChunkSkyLightSources finds it, and
+// inserts nodes for the sources whose light spreads into the column itself
+// or into neighbouring columns with lower sources.
 func (a *lightArea) insertSkyLightNodes(queue *lightQueue) {
-	a.iterHeightmap(func(x, z int, height, highestNeighbour, highestY, _ int) {
-		pos := cube.Pos{x, height, z}
-		if height <= a.r.Max() {
-			// Only set light if we're not at the top of the world. The light
-			// spreads sideways from here into neighbouring columns that are
-			// higher, so a node is needed for it, as above it.
-			if height < highestNeighbour {
-				queue.push(node(pos, 15, SkyLight))
-			} else {
+	c := a.c[0]
+	highestY := c.Range().Min()
+	for index := range c.sub {
+		if !c.sub[index].Empty() {
+			highestY = int(c.SubY(int16(index))) + 15
+		}
+	}
+	var sources [256]int
+	for x := 0; x < 16; x++ {
+		for z := 0; z < 16; z++ {
+			sources[x<<4|z] = a.skySource(a.baseX+x, a.baseZ+z, highestY)
+		}
+	}
+	for x := 0; x < 16; x++ {
+		for z := 0; z < 16; z++ {
+			source := sources[x<<4|z]
+			highestNeighbour := source
+			for _, n := range [4][2]int{{x - 1, z}, {x + 1, z}, {x, z - 1}, {x, z + 1}} {
+				if n[0] >= 0 && n[0] < 16 && n[1] >= 0 && n[1] < 16 {
+					highestNeighbour = max(highestNeighbour, sources[n[0]<<4|n[1]])
+				}
+			}
+			for y := source; y <= highestY; y++ {
+				pos := cube.Pos{a.baseX + x, y, a.baseZ + z}
+				// The lowest source lights what lies below it, and sources
+				// next to lower columns light those.
+				if y == source || y < highestNeighbour {
+					queue.push(node(pos, 15, SkyLight))
+					continue
+				}
 				a.setLight(pos, SkyLight, 15)
 			}
 		}
-		for y := pos[1]; y < highestY; y++ {
-			// We can do a bit of an optimisation here: We don't need to insert nodes if the neighbours are
-			// lower than the current one, on the same Y level, or one level higher, because light in
-			// this column can't spread below that anyway.
-			if pos[1]++; pos[1] < highestNeighbour {
-				queue.push(node(pos, 15, SkyLight))
-				continue
-			}
-			// Fill the rest with full skylight.
-			a.setLight(pos, SkyLight, 15)
+	}
+}
+
+// skySource ports ChunkSkyLightSources: the lowest Y of the column at x, z
+// that skylight reaches undimmed. Skylight falls from above the highest
+// block until it meets a block that dampens it or a face that occludes it.
+func (a *lightArea) skySource(x, z, highestY int) int {
+	above := a.air
+	for y := min(highestY, a.r.Max()); y >= a.r.Min(); y-- {
+		below := a.props(cube.Pos{x, y, z})
+		if skyEdgeOccluded(above, below) {
+			return y + 1
 		}
-	})
+		above = below
+	}
+	return a.r.Min()
+}
+
+// skyEdgeOccluded ports ChunkSkyLightSources.isEdgeOccluded.
+func skyEdgeOccluded(top, bottom LightProperties) bool {
+	return bottom.Dampening != 0 || facesOcclude(top, bottom, cube.FaceDown)
+}
+
+// facesOcclude ports LightEngine.shapeOccludes for light going from a cell
+// to its neighbour on the face passed: the face of the first and the
+// opposite face of the second block it if either is full.
+func facesOcclude(from, to LightProperties, face cube.Face) bool {
+	return from.Occlusion&(1<<face) != 0 || to.Occlusion&(1<<face.Opposite()) != 0
 }
 
 // insertLightSpreadingNodes inserts light nodes into the node queue passed which, when propagated, will
@@ -59,13 +98,15 @@ func (a *lightArea) insertLightSpreadingNodes(queue *lightQueue, lt light) {
 	a.iterEdges(a.nodesNeeded(lt), func(pa, pb cube.Pos) {
 		la, lb := a.light(pa, lt), a.light(pb, lt)
 		if la == lb || la-1 == lb || lb-1 == la {
-			// No chance for this to spread. Don't check for the highest filtering blocks on the side.
+			// No chance for this to spread.
 			return
 		}
-		if filter := a.highest(pb, a.br.FilteringBlock) + 1; la > filter && la-filter > lb {
-			queue.push(node(pb, la-filter, lt))
-		} else if filter = a.highest(pa, a.br.FilteringBlock) + 1; lb > filter && lb-filter > la {
-			queue.push(node(pa, lb-filter, lt))
+		if la > lb {
+			if level, ok := a.entered(pa, pb, cube.FaceWest, la); ok && level > lb {
+				queue.push(node(pb, level, lt))
+			}
+		} else if level, ok := a.entered(pb, pa, cube.FaceEast, lb); ok && level > la {
+			queue.push(node(pa, level, lt))
 		}
 	})
 }
@@ -84,6 +125,43 @@ func (a *lightArea) nodesNeeded(lt light) func(sa, sb *SubChunk) bool {
 	}
 }
 
+// entered returns the light of the level passed after it entered to from
+// from, as LightEngine.propagateIncrease: it loses max(1, dampening) of the
+// block entered, and cannot pass faces that occlude it. face is the face of
+// from that to lies on, or is derived from the positions if it is not one
+// they lie on.
+func (a *lightArea) entered(from, to cube.Pos, face cube.Face, level uint8) (uint8, bool) {
+	if from.Side(face) != to {
+		face = faceTowards(from, to)
+	}
+	toProps := a.props(to)
+	opacity := max(1, toProps.Dampening)
+	if level <= opacity {
+		return 0, false
+	}
+	if facesOcclude(a.props(from), toProps, face) {
+		return 0, false
+	}
+	return level - opacity, true
+}
+
+// faceTowards returns the face of from that the neighbouring to lies on.
+func faceTowards(from, to cube.Pos) cube.Face {
+	switch {
+	case to[1] < from[1]:
+		return cube.FaceDown
+	case to[1] > from[1]:
+		return cube.FaceUp
+	case to[2] < from[2]:
+		return cube.FaceNorth
+	case to[2] > from[2]:
+		return cube.FaceSouth
+	case to[0] < from[0]:
+		return cube.FaceWest
+	}
+	return cube.FaceEast
+}
+
 // propagate spreads the next light node in the node queue passed through the lightArea a. propagate adds the neighbours
 // of the node to the queue for as long as it is able to spread.
 func (a *lightArea) propagate(queue *lightQueue) {
@@ -95,24 +173,40 @@ func (a *lightArea) propagate(queue *lightQueue) {
 		return
 	}
 	a.setLight(n.pos, n.lt, n.level)
-
-	x, y, z := n.pos[0], n.pos[1], n.pos[2]
-	a.propagateNeighbour(queue, n.lt, n.level, x+1, y, z)
-	a.propagateNeighbour(queue, n.lt, n.level, x-1, y, z)
-	a.propagateNeighbour(queue, n.lt, n.level, x, y+1, z)
-	a.propagateNeighbour(queue, n.lt, n.level, x, y-1, z)
-	a.propagateNeighbour(queue, n.lt, n.level, x, y, z+1)
-	a.propagateNeighbour(queue, n.lt, n.level, x, y, z-1)
+	a.spreadFrom(queue, n.pos, n.lt, n.level)
 }
 
-func (a *lightArea) propagateNeighbour(queue *lightQueue, lt light, level uint8, x, y, z int) {
-	if y < a.r.Min() || y > a.r.Max() || x < a.baseX || z < a.baseZ || x >= a.baseX+a.w*16 || z >= a.baseZ+a.w*16 {
+// spreadFrom queues the neighbours of pos that the light of the level passed
+// lights brighter than they are.
+func (a *lightArea) spreadFrom(queue *lightQueue, pos cube.Pos, lt light, level uint8) {
+	if level <= 1 {
 		return
 	}
-	pos := cube.Pos{x, y, z}
-	filter := a.highest(pos, a.br.FilteringBlock) + 1
-	if level > filter && a.light(pos, lt) < level-filter {
-		queue.push(node(pos, level-filter, lt))
+	var from LightProperties
+	fromRead := false
+	for _, face := range cube.Faces() {
+		to := pos.Side(face)
+		if !a.inside(to) {
+			continue
+		}
+		// Light loses at least a level entering a block, so a block lit as
+		// bright already needs nothing read of it.
+		current := a.light(to, lt)
+		if current >= level-1 {
+			continue
+		}
+		toProps := a.props(to)
+		opacity := max(1, toProps.Dampening)
+		if level <= opacity || current >= level-opacity {
+			continue
+		}
+		if !fromRead {
+			from, fromRead = a.props(pos), true
+		}
+		if facesOcclude(from, toProps, face) {
+			continue
+		}
+		queue.push(node(to, level-opacity, lt))
 	}
 }
 

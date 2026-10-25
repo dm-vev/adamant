@@ -51,3 +51,28 @@ func StateToRuntimeID(name string, properties map[string]any) (runtimeID uint32,
 	}
 	return DefaultBlockRegistry.StateToRuntimeID(name, properties)
 }
+
+// LightProperties are what Java's light engine reads of the blocks in a cell.
+type LightProperties struct {
+	// Emission is the light the blocks emit, BlockState.getLightEmission.
+	Emission uint8
+	// Dampening is BlockState.getLightDampening: light entering the cell
+	// loses max(1, Dampening) levels, and skylight only falls through cells
+	// that do not dampen it.
+	Dampening uint8
+	// Occlusion holds a bit, by cube.Face, for every face whose occlusion
+	// shape is full. It is zero for shapes LightEngine.isEmptyShape leaves
+	// out of occlusion.
+	Occlusion uint8
+}
+
+// LightRegistry is implemented by block registries that know the light
+// properties of a cell from its Java block state. state is the Java state
+// stored for the cell, or zero to derive it from the runtime IDs of its
+// foreground and background blocks.
+type LightRegistry interface {
+	LightProperties(state, fg, bg uint32) LightProperties
+	// DryLightProperties returns the light properties of every runtime ID
+	// with no background block, indexed by runtime ID.
+	DryLightProperties() []LightProperties
+}

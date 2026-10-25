@@ -5,28 +5,24 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-// cellLight is how the blocks at a position affect light: the light they
-// emit, how much they filter and whether the foreground blocks skylight.
-type cellLight struct {
-	emit, filter uint8
-	blocker      bool
-}
-
-// cellLightAt returns how the blocks of the column c at pos affect light.
-func (w *World) cellLightAt(c *Column, pos cube.Pos) cellLight {
+// cellLightAt returns the light properties of the blocks of the column c at
+// pos, as the light engine reads them.
+func (w *World) cellLightAt(c *Column, pos cube.Pos) chunk.LightProperties {
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
-	br := w.conf.Blocks
 	fg, bg := c.Block(x, y, z, 0), c.Block(x, y, z, 1)
-	return cellLight{
-		emit:    max(br.LightBlock(fg), br.LightBlock(bg)),
-		filter:  max(br.FilteringBlock(fg), br.FilteringBlock(bg)),
-		blocker: br.FilteringBlock(fg) == 15,
+	if lr, ok := w.conf.Blocks.(chunk.LightRegistry); ok {
+		return lr.LightProperties(0, fg, bg)
+	}
+	br := w.conf.Blocks
+	return chunk.LightProperties{
+		Emission:  max(br.LightBlock(fg), br.LightBlock(bg)),
+		Dampening: max(br.FilteringBlock(fg), br.FilteringBlock(bg)),
 	}
 }
 
 // relightIfChanged queues the light around pos to be updated if the blocks
 // there now affect light differently than before.
-func (w *World) relightIfChanged(c *Column, pos cube.Pos, before cellLight) {
+func (w *World) relightIfChanged(c *Column, pos cube.Pos, before chunk.LightProperties) {
 	if w.cellLightAt(c, pos) == before {
 		return
 	}

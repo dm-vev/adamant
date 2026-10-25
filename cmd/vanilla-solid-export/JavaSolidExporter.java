@@ -81,6 +81,11 @@ public final class JavaSolidExporter {
                 if (fireCanBurn(fireCanBurn, fire, state)) mask |= 1 << 24;
                 if (state.isSolidRender()) mask |= 1 << 25;
                 if (Block.isShapeFullBlock(state.getShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO))) mask |= 1 << 26;
+                // LightEngine inputs: emission, dampening and whether the shape
+                // takes part in occlusion (LightEngine.isEmptyShape).
+                mask |= (long)state.getLightEmission() << 33;
+                mask |= (long)state.getLightDampening() << 37;
+                if (!state.canOcclude() || !state.useShapeForLightOcclusion()) mask |= 1L << 41;
                 if (firstMask == -1) firstMask = mask;
                 else if (mask != firstMask) facesVary = true;
                 faces.add(new FaceRow(properties(state), mask));

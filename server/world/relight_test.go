@@ -121,3 +121,70 @@ func TestLightFollowsBuiltStructures(t *testing.T) {
 		}
 	})
 }
+
+// TestLightFollowsJavaRules checks light follows Java's light engine: water
+// and leaves dim skylight a level a block, a roof of bottom slabs shuts it
+// out with the faces it occludes, and glass lets it through undimmed.
+func TestLightFollowsJavaRules(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -48; x <= 48; x += 16 {
+			for z := -48; z <= 48; z += 16 {
+				tx.Block(cube.Pos{x, 64, z})
+			}
+		}
+		for x := -6; x <= 6; x++ {
+			for z := -6; z <= 6; z++ {
+				tx.SetBlock(cube.Pos{x, 59, z}, block.Stone{}, nil)
+			}
+		}
+		// A pool five blocks deep, walled in.
+		for x := -2; x <= 2; x++ {
+			for z := -2; z <= 2; z++ {
+				for y := 60; y <= 64; y++ {
+					if x == -2 || x == 2 || z == -2 || z == 2 {
+						tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+					} else {
+						tx.SetLiquid(cube.Pos{x, y, z}, block.Water{Depth: 8, Still: true})
+					}
+				}
+			}
+		}
+		checkFreshLight(t, tx, "filling the pool", cube.Pos{0, 62, 0})
+		for y, want := range map[int]uint8{65: 15, 64: 14, 62: 12, 60: 10} {
+			if got := tx.SkyLight(cube.Pos{0, y, 0}); got != want {
+				t.Fatalf("skylight at depth %d of a pool = %d, want %d", 65-y, got, want)
+			}
+		}
+
+		// A closed room roofed with bottom slabs.
+		room := cube.Pos{20, 60, 20}
+		for x := -2; x <= 2; x++ {
+			for z := -2; z <= 2; z++ {
+				tx.SetBlock(room.Add(cube.Pos{x, -1, z}), block.Stone{}, nil)
+				tx.SetBlock(room.Add(cube.Pos{x, 3, z}), block.Slab{Block: block.Planks{Wood: block.OakWood()}}, nil)
+				for y := 0; y < 3; y++ {
+					if x == -2 || x == 2 || z == -2 || z == 2 {
+						tx.SetBlock(room.Add(cube.Pos{x, y, z}), block.Stone{}, nil)
+					}
+				}
+			}
+		}
+		checkFreshLight(t, tx, "roofing the room with slabs", room)
+		if got := tx.SkyLight(room); got != 0 {
+			t.Fatalf("skylight under a roof of bottom slabs = %d, want 0", got)
+		}
+		tx.SetBlock(room.Add(cube.Pos{0, 3, 0}), block.Glass{}, nil)
+		checkFreshLight(t, tx, "glazing the roof", room)
+		if got := tx.SkyLight(room); got != 15 {
+			t.Fatalf("skylight under glass = %d, want 15", got)
+		}
+		tx.SetBlock(room.Add(cube.Pos{0, 3, 0}), block.Leaves{Persistent: true}, nil)
+		checkFreshLight(t, tx, "covering it with leaves", room)
+		// The leaves dim it a level, and every block below them one more.
+		if got := tx.SkyLight(room); got != 11 {
+			t.Fatalf("skylight three blocks under leaves = %d, want 11", got)
+		}
+	})
+}

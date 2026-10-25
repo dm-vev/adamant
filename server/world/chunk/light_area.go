@@ -12,6 +12,10 @@ import (
 // lightArea represents a square area of N*N chunks. It is used for light calculation specifically.
 type lightArea struct {
 	br           BlockRegistry
+	lr           LightRegistry
+	dry          []LightProperties
+	airRID       uint32
+	air          LightProperties
 	baseX, baseZ int
 	c            []*Chunk
 	w            int
@@ -86,7 +90,7 @@ func LightArea(c []*Chunk, baseX, baseZ int) *lightArea {
 	if len(c) != w*w {
 		panic("area must have a square chunk area")
 	}
-	return &lightArea{
+	a := &lightArea{
 		br:    c[0].br,
 		c:     c,
 		w:     w,
@@ -94,6 +98,13 @@ func LightArea(c []*Chunk, baseX, baseZ int) *lightArea {
 		baseZ: baseZ << 4,
 		r:     c[0].r,
 	}
+	a.lr, _ = a.br.(LightRegistry)
+	if a.lr != nil {
+		a.dry = a.lr.DryLightProperties()
+	}
+	a.airRID = a.br.AirRuntimeID()
+	a.air = a.cell(0, a.airRID, a.airRID)
+	return a
 }
 
 // Fill executes the light 'filling' stage, where the lightArea is filled with light coming only from the
@@ -190,24 +201,6 @@ func (a *lightArea) iterEdges(filter func(a, b *SubChunk) bool, f func(a, b cube
 	}
 }
 
-// iterHeightmap iterates over the height map of the lightArea and calls the function f with the height map value, the
-// height map value of the highest neighbour and the Y value of the highest non-empty SubChunk.
-func (a *lightArea) iterHeightmap(f func(x, z int, height, highestNeighbour, highestY, lowestY int)) {
-	m, highestY := a.c[0].HeightMap(), a.c[0].Range().Min()
-	lowestY := highestY
-	for index := range a.c[0].sub {
-		if a.c[0].sub[index].Empty() {
-			continue
-		}
-		highestY = int(a.c[0].SubY(int16(index))) + 15
-	}
-	for x := uint8(0); x < 16; x++ {
-		for z := uint8(0); z < 16; z++ {
-			f(int(x)+a.baseX, int(z)+a.baseZ, int(m.At(x, z)), int(m.HighestNeighbour(x, z)), highestY, lowestY)
-		}
-	}
-}
-
 // iterSubChunk iterates over the coordinates of a SubChunk (0-15 on all axes) and calls the function f for each of
 // those coordinates.
 func (a *lightArea) iterSubChunk(f func(x, y, z int)) {
@@ -220,23 +213,32 @@ func (a *lightArea) iterSubChunk(f func(x, y, z int)) {
 	}
 }
 
-// highest looks up through the blocks at first and second layer at the cube.Pos passed, calls the lightBlocking
-// function for each runtime ID, and returns the highest value.
-func (a *lightArea) highest(pos cube.Pos, lightBlocking func(rid uint32) uint8) uint8 {
+// props returns the light properties of the blocks at pos.
+func (a *lightArea) props(pos cube.Pos) LightProperties {
 	x, y, z, sub := uint8(pos[0]&0xf), uint8(pos[1]&0xf), uint8(pos[2]&0xf), a.sub(pos)
-	storages, l := sub.storages, len(sub.storages)
-
-	switch l {
+	switch len(sub.storages) {
 	case 0:
-		return 0
+		return a.air
 	case 1:
-		return lightBlocking(storages[0].At(x, y, z))
+		return a.cell(0, sub.storages[0].At(x, y, z), a.airRID)
 	default:
-		level := lightBlocking(storages[0].At(x, y, z))
-		if v := lightBlocking(storages[1].At(x, y, z)); v > level {
-			return v
-		}
-		return level
+		return a.cell(0, sub.storages[0].At(x, y, z), sub.storages[1].At(x, y, z))
+	}
+}
+
+// cell returns the light properties of a cell with the blocks passed, from
+// the LightRegistry if the registry is one, or else from the light values of
+// the blocks.
+func (a *lightArea) cell(state, fg, bg uint32) LightProperties {
+	if state == 0 && bg == a.airRID && fg < uint32(len(a.dry)) {
+		return a.dry[fg]
+	}
+	if a.lr != nil {
+		return a.lr.LightProperties(state, fg, bg)
+	}
+	return LightProperties{
+		Emission:  max(a.br.LightBlock(fg), a.br.LightBlock(bg)),
+		Dampening: max(a.br.FilteringBlock(fg), a.br.FilteringBlock(bg)),
 	}
 }
 
@@ -296,13 +298,20 @@ func (a *lightArea) chunkIndex(x, z int) int {
 // must lie in the centre chunk of the lightArea.
 func (a *lightArea) Relight(changed []cube.Pos) {
 	a.relight(changed, BlockLight, func(pos cube.Pos) uint8 {
-		return a.highest(pos, a.br.LightBlock)
+		return a.props(pos).Emission
 	})
 	heights := make(map[[2]int]int, 1)
 	height := func(x, z int) int {
 		h, ok := heights[[2]int{x, z}]
 		if !ok {
-			h = int(a.chunk(cube.Pos{x, 0, z}).highestLightBlocker(uint8(x&0xf), uint8(z&0xf), true))
+			c := a.chunk(cube.Pos{x, 0, z})
+			highestY := c.Range().Min()
+			for index := range c.sub {
+				if !c.sub[index].Empty() {
+					highestY = int(c.SubY(int16(index))) + 15
+				}
+			}
+			h = a.skySource(x, z, highestY)
 			heights[[2]int{x, z}] = h
 		}
 		return h
@@ -369,14 +378,7 @@ func (a *lightArea) relight(changed []cube.Pos, lt light, source func(pos cube.P
 	}
 	for !refill.empty() {
 		n, _ := refill.pop()
-		level := a.light(n.pos, lt)
-		x, y, z := n.pos[0], n.pos[1], n.pos[2]
-		a.propagateNeighbour(spread, lt, level, x+1, y, z)
-		a.propagateNeighbour(spread, lt, level, x-1, y, z)
-		a.propagateNeighbour(spread, lt, level, x, y+1, z)
-		a.propagateNeighbour(spread, lt, level, x, y-1, z)
-		a.propagateNeighbour(spread, lt, level, x, y, z+1)
-		a.propagateNeighbour(spread, lt, level, x, y, z-1)
+		a.spreadFrom(spread, n.pos, lt, a.light(n.pos, lt))
 	}
 	for !spread.empty() {
 		a.propagate(spread)

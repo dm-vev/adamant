@@ -120,6 +120,8 @@ type BasicBlockRegistry struct {
 	// dryJavaStateIDs holds, by primary runtime ID, the canonical Java state ID
 	// plus one of the layer pair with an air liquid layer; zero is unresolved.
 	dryJavaStateIDs atomic.Pointer[[]atomic.Uint32]
+	// light caches the light properties of cells for the light engine.
+	light blockLightCache
 	// states holds the encoded state of every runtime ID once finalized, for
 	// RuntimeIDToStateView.
 	states []encodedState
