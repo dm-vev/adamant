@@ -136,17 +136,19 @@ func (i *ItemBehaviour) move(e *Ent, tx *world.Tx, mc *MovementComputer) *Moveme
 	ticks := int64(e.Age() / (time.Second / 20))
 	if !mc.OnGround() || vel[0]*vel[0]+vel[2]*vel[2] > float64(float32(1e-5)) || (ticks+int64(e.H().UUID()[15]))%4 == 0 {
 		dPos, vel = mc.CheckCollision(tx, e, pos, vel)
-		airDrag := float32(1 - i.conf.Drag)
+		// The drag and friction are those of the native ItemActor, which
+		// the client simulates in step with the server.
+		airDrag := 1 - i.conf.Drag
 		groundFriction := airDrag
 		if mc.OnGround() {
 			below := cube.PosFromVec3(pos.Add(dPos).Sub(mgl64.Vec3{0, float64(float32(.999999))}))
-			friction := float32(.6)
+			friction := .6
 			if f, ok := tx.Block(below).(interface{ Friction() float64 }); ok {
-				friction = float32(f.Friction())
+				friction = f.Friction()
 			}
 			groundFriction *= friction
 		}
-		vel = mgl64.Vec3{vel[0] * float64(groundFriction), vel[1] * float64(airDrag), vel[2] * float64(groundFriction)}
+		vel = mgl64.Vec3{vel[0] * groundFriction, vel[1] * airDrag, vel[2] * groundFriction}
 		if mc.OnGround() && vel[1] < 0 {
 			vel[1] *= -.5
 		}
