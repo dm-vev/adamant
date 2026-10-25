@@ -586,7 +586,9 @@ func (s *modernSurface) underBiomeSurface(b string, x, y, z, gx, gz int, ceiling
 		return "stone"
 	case "windswept_hills":
 		if surface >= 1 { return "stone" }
-	case "beach", "snowy_beach", "warm_ocean":
+	case "beach", "snowy_beach", "warm_ocean", "desert":
+		// SurfaceRuleData shares its sand and sandstone rule between the
+		// floor and the blocks under it.
 		if ceiling { return "sandstone" }
 		return "sand"
 	case "dripstone_caves":

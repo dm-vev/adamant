@@ -57,7 +57,9 @@ func (p minePiece) Place(clip structure.Bounds, env structure.ProcessorEnvironme
 		for y := int32(2); y <= 2; y++ {
 			for x := int32(0); x <= 2; x++ {
 				for z := int32(0); z <= corridorLength; z++ {
-					if random.NextFloat() < 0.8 {
+					// generateMaybeBox places unless the draw exceeds the
+					// probability.
+					if !(random.NextFloat() > 0.8) {
 						wx, wy, wz := mineLocal(p, x, y, z)
 						put(wx, wy, wz, "cave_air", nil)
 					}
@@ -68,7 +70,9 @@ func (p minePiece) Place(clip structure.Bounds, env structure.ProcessorEnvironme
 			for y := int32(0); y <= 1; y++ {
 				for x := int32(0); x <= 2; x++ {
 					for z := int32(0); z <= corridorLength; z++ {
-						if random.NextFloat() < 0.6 {
+						// The cobwebs of spider corridors have to be inside:
+						// generateMaybeBox with hasToBeInside set.
+						if !(random.NextFloat() > 0.6) && mineInterior(p, clip, env, journal, x, y, z) {
 							wx, wy, wz := mineLocal(p, x, y, z)
 							put(wx, wy, wz, "cobweb", nil)
 						}

@@ -42,7 +42,11 @@ func FrequencyApplies(seed int64, salt, sourceX, sourceZ int32, probability floa
 		r := vanilla.NewLegacyRandom(largeFeatureSeed(seed,sourceX,sourceZ,10387320))
 		return r.NextFloat() < probability
 	case FrequencyLegacyType3:
-		r := vanilla.NewLegacyRandom(seed + int64(sourceX)*341873128712 + int64(sourceZ)*132897987541)
+		// legacyProbabilityReducerWithDouble seeds with setLargeFeatureSeed,
+		// not the salted large feature seed of the other methods.
+		r := vanilla.NewLegacyRandom(seed)
+		xScale, zScale := r.NextLong(), r.NextLong()
+		r = vanilla.NewLegacyRandom(int64(sourceX)*xScale ^ int64(sourceZ)*zScale ^ seed)
 		return r.NextDouble() < float64(probability)
 	default:
 		return false

@@ -3,7 +3,7 @@ package overworld
 import (
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 
@@ -12,8 +12,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
@@ -87,23 +87,6 @@ type modernStructureBuilder func(modernStructureBuildInput) (modernStructureStar
 
 var modernStructureBuilders = map[string]modernStructureBuilder{
 	"jigsaw": buildModernJigsawStructure,
-}
-
-var structureRegistryOrder = []string{
-	"abandoned_camp_dappled_forest", "mineshaft", "igloo", "abandoned_camp_old_growth_birch_forest",
-	"abandoned_camp_meadow", "ruined_portal_desert", "abandoned_camp_forest", "ancient_city",
-	"abandoned_camp_pale_garden", "swamp_hut", "fortress", "stronghold", "ruined_portal_ocean",
-	"shipwreck", "ocean_ruin_warm", "abandoned_camp_taiga", "shipwreck_beached",
-	"abandoned_camp_swamp", "ruined_portal_swamp", "abandoned_camp_snowy_taiga",
-	"ruined_portal_jungle", "nether_fossil", "abandoned_camp_cherry_grove", "desert_pyramid",
-	"mineshaft_mesa", "abandoned_camp_old_growth_spruce_taiga", "monument", "end_city", "mansion",
-	"village_desert", "village_plains", "ruined_portal_nether", "abandoned_camp_bamboo_jungle",
-	"abandoned_camp_flower_forest", "village_snowy", "abandoned_camp_wooded_badlands",
-	"bastion_remnant", "ocean_ruin_cold", "pillager_outpost", "buried_treasure",
-	"abandoned_camp_windswept_forest", "ruined_portal", "jungle_pyramid", "trial_chambers",
-	"abandoned_camp_birch_forest", "village_taiga", "village_savanna", "ruined_portal_mountain",
-	"abandoned_camp_sparse_jungle", "trail_ruins", "abandoned_camp_savanna",
-	"abandoned_camp_old_growth_pine_taiga",
 }
 
 var decorationStepOrdinals = map[string]int{
@@ -181,20 +164,18 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 	return s
 }
 
+// loadStructureSteps groups the structures by decoration step in the order of
+// their registry, which the index of each within its step seeds placement
+// with. A server loads the registry from the vanilla data pack, sorted by
+// identifier.
 func (s *modernStructures) loadStructureSteps() {
 	names, err := gamedata.ResourceNames("structure")
 	if err != nil {
 		panic(err)
 	}
-	available := make(map[string]struct{}, len(names))
+	names = slices.Clone(names)
+	slices.Sort(names)
 	for _, name := range names {
-		available[name] = struct{}{}
-	}
-	for _, name := range structureRegistryOrder {
-		if _, ok := available[name]; !ok {
-			panic("overworld: missing structure registry entry " + name)
-		}
-		delete(available, name)
 		config, err := gamedata.LoadJSON("structure", name)
 		if err != nil {
 			panic(err)
@@ -206,14 +187,6 @@ func (s *modernStructures) loadStructureSteps() {
 		}
 		index := int32(len(s.structureSteps[step]))
 		s.structureSteps[step] = append(s.structureSteps[step], modernStructureStepEntry{name: "minecraft:" + name, index: index})
-	}
-	if len(available) != 0 {
-		missing := make([]string, 0, len(available))
-		for name := range available {
-			missing = append(missing, name)
-		}
-		sort.Strings(missing)
-		panic(fmt.Sprintf("overworld: structure registry order omitted entries %v", missing))
 	}
 }
 
@@ -557,21 +530,35 @@ func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range
 
 func (c *modernStructureContext) catsSpawnAsBlackAt(x, y, z int32) bool {
 	for _, start := range c.starts {
-		if start.name != "minecraft:swamp_hut" { continue }
+		if start.name != "minecraft:swamp_hut" {
+			continue
+		}
 		state := c.pieceStates.lookup(start.key)
 		if state != nil {
 			state.mu.Lock()
-			if err := state.prepare(start); err != nil { state.mu.Unlock(); panic(err) }
+			if err := state.prepare(start); err != nil {
+				state.mu.Unlock()
+				panic(err)
+			}
 		}
 		found := false
 		for index, piece := range start.pieces {
 			var flags *structure.StructurePieceState
-			if state != nil { flags = &state.pieces[index] }
+			if state != nil {
+				flags = &state.pieces[index]
+			}
 			box := mutableStructurePieceBounds(piece, flags)
-			if x >= box.Min[0] && x <= box.Max[0] && y >= box.Min[1] && y <= box.Max[1] && z >= box.Min[2] && z <= box.Max[2] { found = true; break }
+			if x >= box.Min[0] && x <= box.Max[0] && y >= box.Min[1] && y <= box.Max[1] && z >= box.Min[2] && z <= box.Max[2] {
+				found = true
+				break
+			}
 		}
-		if state != nil { state.mu.Unlock() }
-		if found { return true }
+		if state != nil {
+			state.mu.Unlock()
+		}
+		if found {
+			return true
+		}
 	}
 	return false
 }
