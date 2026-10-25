@@ -24,6 +24,7 @@ tools/
 dragonfly
 app-linux
 *.test
+__pycache__/
 server_run.err
 server_run.log
 temp.txt

@@ -1,0 +1,354 @@
+{
+  "reference": "unmodified Windows BDS",
+  "binary_sha256": "76d547f82e02c18d0986c30b47132c9cc4171d0f2df1c00649e50ff35788b321",
+  "complete": true,
+  "scenarios": [
+    {
+      "side_source": "redstone_block",
+      "rear": 15,
+      "powered": true
+    },
+    {
+      "side_source": "wire",
+      "rear": 15,
+      "powered": true
+    },
+    {
+      "side_source": "torch",
+      "rear": 15,
+      "powered": true
+    },
+    {
+      "side_source": "repeater",
+      "rear": 15,
+      "powered": false
+    },
+    {
+      "side_source": "comparator",
+      "rear": 15,
+      "powered": false
+    },
+    {
+      "side_source": "parallel_repeater",
+      "rear": 15,
+      "powered": true
+    }
+  ],
+  "commands": [
+    {
+      "command": "tickingarea add -16 0 -16 16 100 16 redstone_audit true",
+      "response": [
+        "[2026-10-25 11:26:11:861 ERROR] ================ TRANSPORT TYPE ERROR  ===================",
+        "[2026-10-25 11:26:11:861 ERROR] Your current connection type is not set to NetherNet. In this release, NetherNet is the only supported transport type.",
+        "[2026-10-25 11:26:11:861 ERROR] Players will not be able to connect to your game without NetherNet.",
+        "[2026-10-25 11:26:11:861 ERROR]",
+        "[2026-10-25 11:26:11:861 ERROR] To switch, set 'transport=nethernet' in server.properties.",
+        "[2026-10-25 11:26:11:861 ERROR]",
+        "[2026-10-25 11:26:11:861 ERROR] For more information, please reference the included bedrock_server_how_to.html file.",
+        "[2026-10-25 11:26:11:861 ERROR] =======================================================",
+        "[2026-10-25 11:26:11:861 WARN] ================ ALLOW LIST WARNING ===================",
+        "[2026-10-25 11:26:11:861 WARN] Allow list is enabled but contains no entries.",
+        "[2026-10-25 11:26:11:861 WARN] Use allowlist add <playername> for you and your friends so that they can access the server, or modify allowlist.json manually.",
+        "[2026-10-25 11:26:11:861 WARN]",
+        "Alternatively, the allow list can be turned off by typing allowlist off or manually toggled in the server.properties file.",
+        "[2026-10-25 11:26:11:861 WARN] =======================================================",
+        "[2026-10-25 11:26:11:861 INFO] ================ TELEMETRY MESSAGE ===================",
+        "[2026-10-25 11:26:11:861 INFO] Server Telemetry is currently not enabled.",
+        "[2026-10-25 11:26:11:861 INFO] Enabling this telemetry helps us improve the game.",
+        "[2026-10-25 11:26:11:861 INFO]",
+        "[2026-10-25 11:26:11:861 INFO] To enable this feature, add the line 'emit-server-telemetry=true'",
+        "[2026-10-25 11:26:11:861 INFO] to the server.properties file in the handheld/src-server directory",
+        "[2026-10-25 11:26:11:861 INFO] ======================================================",
+        "[2026-10-25 11:26:12:129 INFO] Added ticking area from -16, 0, -16 to 31, 0, 31 marked for preload.",
+        "1/10 ticking areas in use."
+      ]
+    },
+    {
+      "command": "gamerule randomtickspeed 0",
+      "response": [
+        "[2026-10-25 11:26:12:179 INFO] Game rule randomtickspeed has been updated to 0"
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:26:12:323 ERROR] 0 blocks filled"
+      ]
+    },
+    {
+      "command": "fill -2 64 -2 2 64 3 stone",
+      "response": [
+        "[2026-10-25 11:26:12:436 INFO] 30 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 unpowered_repeater [\"minecraft:cardinal_direction\"=\"west\"]",
+      "response": [
+        "[2026-10-25 11:26:12:564 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:12:690 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:13:381 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 powered_repeater",
+      "response": [
+        "[2026-10-25 11:26:14:101 INFO] Successfully found the block at 0,65,0."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 unpowered_repeater",
+      "response": [
+        "[2026-10-25 11:26:14:214 ERROR] The block at 0,65,0 is Powered Repeater (expected: Unpowered Repeater)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:26:14:340 INFO] 33 blocks filled"
+      ]
+    },
+    {
+      "command": "fill -2 64 -2 2 64 3 stone",
+      "response": [
+        "[2026-10-25 11:26:14:484 INFO] 30 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 unpowered_repeater [\"minecraft:cardinal_direction\"=\"west\"]",
+      "response": [
+        "[2026-10-25 11:26:14:613 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_wire",
+      "response": [
+        "[2026-10-25 11:26:14:741 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 2 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:14:850 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:15:570 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 powered_repeater",
+      "response": [
+        "[2026-10-25 11:26:16:260 INFO] Successfully found the block at 0,65,0."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 unpowered_repeater",
+      "response": [
+        "[2026-10-25 11:26:16:404 ERROR] The block at 0,65,0 is Powered Repeater (expected: Unpowered Repeater)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:26:16:518 INFO] 34 blocks filled"
+      ]
+    },
+    {
+      "command": "fill -2 64 -2 2 64 3 stone",
+      "response": [
+        "[2026-10-25 11:26:16:661 INFO] 30 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 unpowered_repeater [\"minecraft:cardinal_direction\"=\"west\"]",
+      "response": [
+        "[2026-10-25 11:26:16:789 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_torch [\"torch_facing_direction\"=\"top\"]",
+      "response": [
+        "[2026-10-25 11:26:16:902 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:17:623 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 powered_repeater",
+      "response": [
+        "[2026-10-25 11:26:18:306 INFO] Successfully found the block at 0,65,0."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 unpowered_repeater",
+      "response": [
+        "[2026-10-25 11:26:18:450 ERROR] The block at 0,65,0 is Powered Repeater (expected: Unpowered Repeater)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:26:18:576 INFO] 33 blocks filled"
+      ]
+    },
+    {
+      "command": "fill -2 64 -2 2 64 3 stone",
+      "response": [
+        "[2026-10-25 11:26:18:689 INFO] 30 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 unpowered_repeater [\"minecraft:cardinal_direction\"=\"west\"]",
+      "response": [
+        "[2026-10-25 11:26:18:816 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 unpowered_repeater [\"minecraft:cardinal_direction\"=\"south\"]",
+      "response": [
+        "[2026-10-25 11:26:18:943 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 2 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:19:072 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:19:776 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 powered_repeater",
+      "response": [
+        "[2026-10-25 11:26:20:481 ERROR] The block at 0,65,0 is Unpowered Repeater (expected: Powered Repeater)."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 unpowered_repeater",
+      "response": [
+        "[2026-10-25 11:26:20:627 INFO] Successfully found the block at 0,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:26:20:756 INFO] 34 blocks filled"
+      ]
+    },
+    {
+      "command": "fill -2 64 -2 2 64 3 stone",
+      "response": [
+        "[2026-10-25 11:26:20:866 INFO] 30 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 unpowered_repeater [\"minecraft:cardinal_direction\"=\"west\"]",
+      "response": [
+        "[2026-10-25 11:26:20:993 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 unpowered_comparator [\"minecraft:cardinal_direction\"=\"south\"]",
+      "response": [
+        "[2026-10-25 11:26:21:137 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 2 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:21:264 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:21:951 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 powered_repeater",
+      "response": [
+        "[2026-10-25 11:26:22:646 ERROR] The block at 0,65,0 is Unpowered Repeater (expected: Powered Repeater)."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 unpowered_repeater",
+      "response": [
+        "[2026-10-25 11:26:22:774 INFO] Successfully found the block at 0,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:26:22:897 INFO] 34 blocks filled"
+      ]
+    },
+    {
+      "command": "fill -2 64 -2 2 64 3 stone",
+      "response": [
+        "[2026-10-25 11:26:23:042 INFO] 30 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 unpowered_repeater [\"minecraft:cardinal_direction\"=\"west\"]",
+      "response": [
+        "[2026-10-25 11:26:23:167 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 unpowered_repeater [\"minecraft:cardinal_direction\"=\"west\"]",
+      "response": [
+        "[2026-10-25 11:26:23:278 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:23:420 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:26:24:120 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 powered_repeater",
+      "response": [
+        "[2026-10-25 11:26:24:825 INFO] Successfully found the block at 0,65,0."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 unpowered_repeater",
+      "response": [
+        "[2026-10-25 11:26:24:936 ERROR] The block at 0,65,0 is Powered Repeater (expected: Unpowered Repeater)."
+      ]
+    }
+  ],
+  "log_directory": "C:\\Users\\Andrey\\AppData\\Local\\Temp\\adamant-redstone-bds-nh8q08zn",
+  "build_log": [
+    "[2026-10-25 11:26:09:649 INFO] Version: 1.26.51.1",
+    "[2026-10-25 11:26:09:649 INFO] Build ID: 51061361"
+  ]
+}
