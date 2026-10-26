@@ -43,7 +43,7 @@ func (b BoneMeal) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 		if result := bm.BoneMeal(pos, tx); result != BoneMealResultNone {
 			ctx.SubtractFromCount(1)
 			tx.AddParticle(pos.Vec3(), particle.BoneMeal{Area: result == BoneMealResultArea})
-			tx.EmitGameEvent(world.GameEventItemInteractFinish, user.Position(), world.GameEventContext{Source: user})
+			boneMealVibration(tx, user)
 			return true
 		}
 	}
@@ -54,10 +54,18 @@ func (b BoneMeal) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 	if w, ok := tx.Block(beside).(waterPlantGrower); ok && w.GrowWaterPlants(beside, face, tx) {
 		ctx.SubtractFromCount(1)
 		tx.AddParticle(beside.Vec3(), particle.BoneMeal{})
-		tx.EmitGameEvent(world.GameEventItemInteractFinish, user.Position(), world.GameEventContext{Source: user})
+		boneMealVibration(tx, user)
 		return true
 	}
 	return false
+}
+
+// boneMealVibration ports ItemStack.causeUseVibration for a player using
+// bone meal; dispensers cause none.
+func boneMealVibration(tx *world.Tx, user User) {
+	if user != nil {
+		tx.EmitGameEvent(world.GameEventItemInteractFinish, user.Position(), world.GameEventContext{Source: user})
+	}
 }
 
 // EncodeItem ...

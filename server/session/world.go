@@ -1277,6 +1277,8 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType = packet.SoundEventConduitAttack
 	case sound.ComposterEmpty:
 		pk.SoundType = packet.SoundEventComposterEmpty
+	case sound.BottleFill:
+		pk.SoundType = packet.SoundEventBottleFill
 	case sound.ComposterFill:
 		pk.SoundType = packet.SoundEventComposterFill
 	case sound.ComposterFillLayer:

@@ -79,11 +79,23 @@ func entityBoxClear(tx *world.Tx, box cube.BBox) bool {
 	return true
 }
 
+// povFluid is the ClipContext.Fluid mode of a view ray.
+type povFluid uint8
+
+const (
+	// povNoFluid passes through liquids.
+	povNoFluid povFluid = iota
+	// povSourceFluid stops at liquid sources only.
+	povSourceFluid
+	// povAnyFluid stops at any liquid.
+	povAnyFluid
+)
+
 // povHit ports Item.getPlayerPOVHitResult with ClipContext.Block.OUTLINE:
-// the point where the user's view first meets a block outline or, with
-// fluids, a liquid surface within its block interaction range of 4.5, or
-// 5 in creative mode.
-func povHit(tx *world.Tx, user User, fluids bool) (mgl64.Vec3, cube.Pos, bool) {
+// the point where the user's view first meets a block outline or a liquid
+// surface the fluid mode stops at, within its block interaction range of
+// 4.5, or 5 in creative mode.
+func povHit(tx *world.Tx, user User, fluids povFluid) (mgl64.Vec3, cube.Pos, cube.Face, bool) {
 	reach := 4.5
 	if g, ok := user.(interface{ GameMode() world.GameMode }); ok && g.GameMode().CreativeInventory() {
 		reach = 5
@@ -94,15 +106,16 @@ func povHit(tx *world.Tx, user User, fluids bool) (mgl64.Vec3, cube.Pos, bool) {
 	}
 	end := eye.Add(user.Rotation().Vec3().Mul(reach))
 	var (
-		hit    mgl64.Vec3
-		hitPos cube.Pos
-		found  bool
+		hit     mgl64.Vec3
+		hitPos  cube.Pos
+		hitFace cube.Face
+		found   bool
 	)
 	trace.TraverseBlocks(eye, end, func(pos cube.Pos) bool {
 		if r, ok := trace.BlockIntercept(pos, tx, tx.Block(pos), eye, end, trace.RayShape); ok {
-			hit, hitPos, found = r.Position(), pos, true
+			hit, hitPos, hitFace, found = r.Position(), pos, r.Face(), true
 		}
-		if l, ok := tx.Liquid(pos); ok && fluids {
+		if l, ok := tx.Liquid(pos); ok && (fluids == povAnyFluid || fluids == povSourceFluid && l.LiquidDepth() == 8 && !l.LiquidFalling()) {
 			height := float64(l.LiquidDepth()) / 9
 			if above, ok := tx.Liquid(pos.Side(cube.FaceUp)); ok && above.LiquidType() == l.LiquidType() {
 				height = 1
@@ -110,12 +123,12 @@ func povHit(tx *world.Tx, user User, fluids bool) (mgl64.Vec3, cube.Pos, bool) {
 				height = 8.0 / 9
 			}
 			if r, ok := trace.BBoxIntercept(cube.Box(0, 0, 0, 1, height, 1).Translate(pos.Vec3()), eye, end); ok && (!found || r.Position().Sub(eye).Len() < hit.Sub(eye).Len()) {
-				hit, hitPos, found = r.Position(), pos, true
+				hit, hitPos, hitFace, found = r.Position(), pos, r.Face(), true
 			}
 		}
 		return !found
 	})
-	return hit, hitPos, found
+	return hit, hitPos, hitFace, found
 }
 
 // stackSpawnOpts applies what EntityType.createDefaultStackConfig takes from

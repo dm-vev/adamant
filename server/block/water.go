@@ -6,7 +6,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 )
@@ -43,14 +42,6 @@ func (w Water) EntityInside(_ cube.Pos, _ *world.Tx, e world.Entity) {
 	if flammable, ok := e.(flammableEntity); ok {
 		flammable.Extinguish()
 	}
-}
-
-// FillBottle ...
-func (w Water) FillBottle() (world.Block, item.Stack, bool) {
-	if w.Depth == 8 {
-		return w, item.NewStack(item.Potion{Type: potion.Water()}, 1), true
-	}
-	return nil, item.Stack{}, false
 }
 
 // LiquidDepth returns the depth of the water.

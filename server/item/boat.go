@@ -187,7 +187,7 @@ func placeBoat(_ cube.Pos, _ cube.Face, tx *world.Tx, user User, ctx *UseContext
 		slog.Default().Info("boat: missing entity factory", "name", name, "world", tx.World().Name())
 		return false
 	}
-	hit, _, ok := povHit(tx, user, true)
+	hit, _, _, ok := povHit(tx, user, povAnyFluid)
 	if !ok {
 		return false
 	}

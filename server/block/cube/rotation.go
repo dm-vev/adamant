@@ -94,8 +94,14 @@ func (r Rotation) Vec3() mgl64.Vec3 {
 // as described above.
 func (r Rotation) fix() Rotation {
 	signYaw, signPitch := math.Copysign(180, r[0]), math.Copysign(90, r[1])
+	pitch := r[1]
+	if pitch < -90 || pitch > 90 {
+		// Only a pitch out of range overflows: looking straight down at 90
+		// must not become looking straight up.
+		pitch = math.Mod(r[1]+signPitch, 180) - signPitch
+	}
 	return Rotation{
 		math.Mod(r[0]+signYaw, 360) - signYaw,
-		math.Mod(r[1]+signPitch, 180) - signPitch,
+		pitch,
 	}
 }

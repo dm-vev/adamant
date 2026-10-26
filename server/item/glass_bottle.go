@@ -2,6 +2,7 @@ package item
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -44,7 +45,27 @@ func (g GlassBottle) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *wor
 			return true
 		}
 	}
-	return false
+	return g.fillWithWater(tx, user, pos, ctx)
+}
+
+// fillWithWater fills the bottle from the water source the user looks at,
+// as BottleItem.use does past any dragon's breath.
+func (g GlassBottle) fillWithWater(tx *world.Tx, user User, pos cube.Pos, ctx *UseContext) bool {
+	if user != nil {
+		var ok bool
+		if _, pos, _, ok = povHit(tx, user, povSourceFluid); !ok {
+			return false
+		}
+	}
+	// A dispenser fills the bottle from a water source in front of it.
+	if l, ok := tx.Liquid(pos); !ok || l.LiquidType() != "water" || l.LiquidDepth() != 8 || l.LiquidFalling() {
+		return false
+	}
+	tx.PlaySound(pos.Vec3Centre(), sound.BottleFill{})
+	tx.EmitGameEvent(world.GameEventFluidPickup, pos.Vec3Centre(), world.GameEventContext{Source: user})
+	ctx.SubtractFromCount(1)
+	ctx.NewItem = NewStack(Potion{Type: potion.Water()}, 1)
+	return true
 }
 
 // Use fills the bottle with the dragon's breath of a cloud of it within two
@@ -61,7 +82,7 @@ func (g GlassBottle) Use(tx *world.Tx, user User, ctx *UseContext) bool {
 		ctx.NewItem = NewStack(DragonBreath{}, 1)
 		return true
 	}
-	return false
+	return g.fillWithWater(tx, user, cube.Pos{}, ctx)
 }
 
 // EncodeItem ...

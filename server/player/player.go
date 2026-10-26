@@ -2173,6 +2173,11 @@ func (p *Player) UseItem() {
 	case item.Usable:
 		useCtx := p.useContext()
 		if !usable.Use(p.tx, p, useCtx) {
+			// An item used in no other way may still be consumed, as a milk
+			// bucket that is not pouring anything.
+			if consumable, ok := it.(item.Consumable); ok && p.canConsume(consumable) {
+				p.startItemUse(i)
+			}
 			return
 		}
 		if _, ok := it.(item.FishingRod); ok {

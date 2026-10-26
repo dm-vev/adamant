@@ -31,6 +31,9 @@ type EquipItem struct {
 	sound
 }
 
+// BottleFill is a sound played when a glass bottle is filled with water.
+type BottleFill struct{ sound }
+
 // BucketFill is a sound played when a bucket is filled using a liquid source block from the world.
 type BucketFill struct {
 	// Liquid is the liquid that the bucket is filled up with.

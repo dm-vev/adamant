@@ -11,6 +11,13 @@ import (
 
 // init registers all blocks implemented by Dragonfly.
 func init() {
+	world.RegisterBlockDestroyer(func(tx *world.Tx, pos cube.Pos, drops bool) {
+		if b := tx.Block(pos); drops {
+			breakBlock(b, pos, tx)
+		} else {
+			breakBlockNoDrops(b, pos, tx)
+		}
+	})
 	world.RegisterBlock(Air{})
 	registerAll(allStrawBeds())
 	for mode := CommandBlockImpulse; mode <= CommandBlockChain; mode++ {

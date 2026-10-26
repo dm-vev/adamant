@@ -2,7 +2,6 @@ package item
 
 import (
 	"maps"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -46,43 +45,61 @@ func (b MobBucket) EntityID() string { return b.Entity }
 // BucketEntityData returns the mob data encoded in the bucket.
 func (b MobBucket) BucketEntityData() map[string]any { return maps.Clone(b.Data) }
 
-// UseOnBlock empties the bucket, places its fluid when applicable, and spawns its entity.
-func (b MobBucket) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+// UseOnBlock uses the bucket on what the user looks at, as Use.
+func (b MobBucket) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
+	if user == nil {
+		return b.empty(tx, nil, ctx, pos, cube.FaceUp, false)
+	}
+	return b.Use(tx, user, ctx)
+}
+
+// Use ports MobBucketItem: the bucket empties its water, if it holds any,
+// like a water bucket on the block the user looks at, and the mob spawns at
+// the position BucketItem.use places at, standing on its floor.
+func (b MobBucket) Use(tx *world.Tx, user User, ctx *UseContext) bool {
+	_, pos, face, ok := povHit(tx, user, povNoFluid)
+	if !ok {
+		return false
+	}
+	return b.empty(tx, user, ctx, pos, face, true)
+}
+
+// empty empties the bucket at the block looked at or, for a dispenser
+// without a hit, at the block it faces, and spawns its mob.
+func (b MobBucket) empty(tx *world.Tx, user User, ctx *UseContext, pos cube.Pos, face cube.Face, hit bool) bool {
 	factory := tx.World().EntityRegistry().Config().NewFromBucket
 	if factory == nil {
 		return false
 	}
-	target := pos.Side(face)
 	var liquid world.Liquid
 	if mobBucketHasWater(b.Entity) {
-		waterBlock, ok := tx.World().BlockRegistry().BlockByName("minecraft:water", nil)
+		waterBlock, ok := tx.World().BlockRegistry().BlockByName("minecraft:water", map[string]any{"liquid_depth": int32(0)})
 		if !ok {
 			return false
 		}
-		water, ok := waterBlock.(world.Liquid)
-		if !ok {
+		if liquid, ok = waterBlock.(world.Liquid); !ok {
 			return false
-		}
-		liquid = water.WithDepth(8, false)
-		if bl := tx.Block(target); !canDisplace(bl, liquid) && !replaceableWith(bl, liquid) {
-			target = target.Side(face)
-			bl = tx.Block(target)
-			if !canDisplace(bl, liquid) && !replaceableWith(bl, liquid) {
-				return false
-			}
 		}
 	}
-	spawnPos := target.Vec3Middle()
-	opts := world.EntitySpawnOpts{Position: spawnPos}
-	handle := factory(opts, b.EntityID(), b.Data)
-	if handle == nil {
+	emptySound := sound.Custom{Name: mobBucketEmptySound(b.Entity), Volume: 1, Pitch: 1}
+	at := pos
+	if hit {
+		var ok bool
+		if at, ok = emptyBucketAt(tx, user, liquid, emptySound, pos, face); !ok {
+			return false
+		}
+	} else if !emptyContents(tx, nil, liquid, emptySound, pos, false, pos, face) {
 		return false
 	}
-	if liquid != nil {
-		tx.SetLiquid(target, liquid)
+	spawnPos := mgl64.Vec3{float64(at[0]) + 0.5, float64(at[1]), float64(at[2]) + 0.5}
+	opts := world.EntitySpawnOpts{Position: spawnPos}
+	if user != nil {
+		opts = stackSpawnOpts(user, opts)
 	}
-	tx.AddEntity(handle)
-	tx.PlaySound(spawnPos, sound.Custom{Name: mobBucketEmptySound(b.Entity), Volume: 1, Pitch: 1})
+	if handle := factory(opts, b.EntityID(), b.Data); handle != nil {
+		tx.AddEntity(handle)
+		tx.EmitGameEvent(world.GameEventEntityPlace, at.Vec3Centre(), world.GameEventContext{Source: user})
+	}
 	ctx.NewItem = NewStack(Bucket{}, 1)
 	ctx.NewItemSurvivalOnly = true
 	ctx.SubtractFromCount(1)
@@ -111,29 +128,9 @@ func mobBucketEmptySound(entity string) string {
 	}
 }
 
-// FishBucket is a mob bucket that can also be eaten as food.
+// FishBucket is the mob bucket of a fish. Like every mob bucket it cannot be
+// eaten: Java's fish buckets have no food or consumable component.
 type FishBucket struct{ MobBucket }
-
-// ConsumeDuration returns the normal item eating duration.
-func (FishBucket) ConsumeDuration() time.Duration { return DefaultConsumeDuration }
-
-// AlwaysConsumable reports whether the bucket can be eaten while hunger is full.
-func (FishBucket) AlwaysConsumable() bool { return false }
-
-// Consume applies the contained fish's food effects and returns an empty bucket.
-func (b FishBucket) Consume(tx *world.Tx, c Consumer) Stack {
-	switch b.Entity {
-	case "minecraft:cod":
-		(Cod{}).Consume(tx, c)
-	case "minecraft:pufferfish":
-		(Pufferfish{}).Consume(tx, c)
-	case "minecraft:salmon":
-		(Salmon{}).Consume(tx, c)
-	case "minecraft:tropical_fish":
-		(TropicalFish{}).Consume(tx, c)
-	}
-	return NewStack(Bucket{}, 1)
-}
 
 // EncodeNBT stores the bucket entity data.
 func (b FishBucket) EncodeNBT() map[string]any { return b.MobBucket.EncodeNBT() }

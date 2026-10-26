@@ -6,6 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -149,27 +150,142 @@ func (b Bucket) UseOnEntity(target world.Entity, tx *world.Tx, _ User, ctx *UseC
 	return true
 }
 
-// UseOnBlock handles the bucket filling and emptying logic.
-func (b Bucket) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+// UseOnBlock uses the bucket as BucketItem.use does, on what the user looks
+// at, or places the block of a powder snow bucket as SolidBucketItem.useOn.
+func (b Bucket) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
+	if solid, ok := b.Content.Solid(); ok {
+		return b.placeSolid(pos, face, solid, tx, ctx)
+	}
+	if user == nil {
+		return b.dispense(pos, tx, ctx)
+	}
+	return b.Use(tx, user, ctx)
+}
+
+// dispense ports the bucket behaviours of a dispenser at the block it faces:
+// a filled bucket empties there as DispensibleContainerItem.emptyContents
+// without a hit, an empty one picks up what is there.
+func (b Bucket) dispense(pos cube.Pos, tx *world.Tx, ctx *UseContext) bool {
 	if b.Content.milk {
 		return false
 	}
 	if b.Empty() {
-		return b.fillFrom(pos, tx, ctx)
+		return b.fillFrom(pos, tx, nil, ctx)
 	}
-	if solid, ok := b.Content.Solid(); ok {
-		return b.placeSolid(pos, face, solid, tx, ctx)
-	}
-	liq := b.Content.liquid.WithDepth(8, false)
-	if !b.placeLiquid(pos, liq, tx) && !b.placeLiquid(pos.Side(face), liq, tx) {
+	if !emptyContents(tx, nil, b.Content.liquid, nil, pos, false, pos, cube.FaceUp) {
 		return false
 	}
+	ctx.NewItem = NewStack(Bucket{}, 1)
+	ctx.SubtractFromCount(1)
+	return true
+}
 
-	tx.PlaySound(pos.Vec3Centre(), sound.BucketEmpty{Liquid: b.Content.liquid})
+// Use ports BucketItem.use: an empty bucket picks up the liquid source or
+// block the user looks at, and a filled one empties its liquid beside the
+// block looked at, or into it if it holds water.
+func (b Bucket) Use(tx *world.Tx, user User, ctx *UseContext) bool {
+	if b.Content.milk || b.Content.solid != nil {
+		return false
+	}
+	fluids := povNoFluid
+	if b.Empty() {
+		fluids = povSourceFluid
+	}
+	_, pos, face, ok := povHit(tx, user, fluids)
+	if !ok {
+		return false
+	}
+	if b.Empty() {
+		return b.fillFrom(pos, tx, user, ctx)
+	}
+	if _, ok := emptyBucketAt(tx, user, b.Content.liquid, nil, pos, face); !ok {
+		return false
+	}
 	ctx.NewItem = NewStack(Bucket{}, 1)
 	ctx.NewItemSurvivalOnly = true
 	ctx.SubtractFromCount(1)
 	return true
+}
+
+// emptyBucketAt runs the emptying part of BucketItem.use for a liquid: it is
+// placed into the block looked at if that takes water, and beside it
+// otherwise. It returns the position BucketItem.use places at, where mob
+// buckets spawn their mob, and whether the bucket emptied.
+func emptyBucketAt(tx *world.Tx, user User, liq world.Liquid, emptySound world.Sound, pos cube.Pos, face cube.Face) (cube.Pos, bool) {
+	place := pos.Side(face)
+	if liq != nil && liq.LiquidType() == "water" && waterContainer(tx.Block(pos)) {
+		place = pos
+	}
+	return place, emptyContents(tx, user, liq, emptySound, place, true, pos, face)
+}
+
+// waterContainer reports if a block is a LiquidBlockContainer: one water can
+// be put into, such as a block that may be waterlogged.
+func waterContainer(b world.Block) bool {
+	_, ok := b.(world.LiquidDisplacer)
+	return ok
+}
+
+// emptyContents ports BucketItem.emptyContents: the liquid goes into the
+// position if it is air, a block the liquid replaces, or a block water may
+// be put into, unless the user sneaks with a hit to place beside; otherwise
+// it is tried beside the block looked at. Water evaporates where the
+// dimension evaporates it, and a replaced block breaks with its drops.
+func emptyContents(tx *world.Tx, user User, liq world.Liquid, emptySound world.Sound, pos cube.Pos, hit bool, hitPos cube.Pos, face cube.Face) bool {
+	if liq == nil {
+		playBucketEmpty(tx, user, liq, emptySound, pos)
+		return true
+	}
+	if pos.OutOfBounds(tx.Range()) {
+		return false
+	}
+	b := tx.Block(pos)
+	mayReplace := replaceableWith(b, liq)
+	_, existing := tx.Liquid(pos)
+	water := liq.LiquidType() == "water"
+	container := water && canDisplace(b, liq) && !existing
+	sneaking := false
+	if s, ok := user.(interface{ Sneaking() bool }); ok {
+		sneaking = s.Sneaking()
+	}
+	isAir := isAirBlock(b)
+	if isAir || (mayReplace || container) && (!sneaking || !hit) {
+		source := liq.WithDepth(8, false)
+		switch {
+		case water && tx.World().Dimension().WaterEvaporates():
+			tx.PlaySound(pos.Vec3Centre(), sound.FireExtinguish{})
+			for range 8 {
+				tx.AddParticle(pos.Vec3(), particle.Evaporate{})
+			}
+		case container:
+			tx.SetLiquid(pos, source)
+			playBucketEmpty(tx, user, liq, emptySound, pos)
+		default:
+			if _, isLiquid := b.(world.Liquid); mayReplace && !isLiquid && !isAir {
+				tx.DestroyBlock(pos, true)
+			}
+			tx.SetLiquid(pos, source)
+			playBucketEmpty(tx, user, liq, emptySound, pos)
+		}
+		return true
+	}
+	return hit && emptyContents(tx, user, liq, emptySound, hitPos.Side(face), false, hitPos, face)
+}
+
+// isAirBlock reports if a block is air.
+func isAirBlock(b world.Block) bool {
+	name, _ := b.EncodeBlock()
+	return name == "minecraft:air"
+}
+
+// playBucketEmpty ports BucketItem.playEmptySound with its fluid_place game
+// event; a mob bucket plays its own sound instead.
+func playBucketEmpty(tx *world.Tx, user User, liq world.Liquid, emptySound world.Sound, pos cube.Pos) {
+	if emptySound == nil {
+		emptySound = sound.BucketEmpty{Liquid: liq}
+	}
+	tx.PlaySound(pos.Vec3Centre(), emptySound)
+	tx.EmitGameEvent(world.GameEventFluidPlace, pos.Vec3Centre(), world.GameEventContext{Source: user})
 }
 
 // placeSolid ports SolidBucketItem: the block is placed like a block item, in
@@ -189,44 +305,26 @@ func (b Bucket) placeSolid(pos cube.Pos, face cube.Face, solid world.Block, tx *
 	return true
 }
 
-func (b Bucket) placeLiquid(pos cube.Pos, liq world.Liquid, tx *world.Tx) bool {
-	block := tx.Block(pos)
-	if receiver, ok := block.(interface {
-		ReceiveLiquid(cube.Pos, *world.Tx, world.Liquid) bool
-	}); ok && receiver.ReceiveLiquid(pos, tx, liq) {
-		return true
-	}
-	if canDisplace(block, liq) || replaceableWith(block, liq) {
-		tx.SetLiquid(pos, liq)
-		return true
-	}
-	return false
-}
-
-// fillFrom fills a bucket from the liquid at the position passed in the world. If there is no liquid or if
-// the liquid is no source, fillFrom returns false.
-func (b Bucket) fillFrom(pos cube.Pos, tx *world.Tx, ctx *UseContext) bool {
+// fillFrom ports the BucketPickup half of BucketItem.use: a liquid source,
+// the water of a waterlogged block or a block like powder snow is taken into
+// the bucket, with its pickup sound and a fluid_pickup game event.
+func (b Bucket) fillFrom(pos cube.Pos, tx *world.Tx, user User, ctx *UseContext) bool {
+	var content BucketContent
 	if pickup, ok := tx.Block(pos).(interface{ BucketPickup() bool }); ok && pickup.BucketPickup() {
-		content := SolidBucketContent(tx.Block(pos))
+		content = SolidBucketContent(tx.Block(pos))
 		tx.SetBlock(pos, nil, nil)
 		tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "bucket.fill." + content.String(), ExtraData: -1})
-		ctx.NewItem = NewStack(Bucket{Content: content}, 1)
-		ctx.NewItemSurvivalOnly = true
-		ctx.SubtractFromCount(1)
-		return true
+	} else {
+		liquid, ok := tx.Liquid(pos)
+		if !ok || liquid.LiquidDepth() != 8 || liquid.LiquidFalling() {
+			return false
+		}
+		content = LiquidBucketContent(liquid)
+		tx.SetLiquid(pos, nil)
+		tx.PlaySound(pos.Vec3Centre(), sound.BucketFill{Liquid: liquid})
 	}
-	liquid, ok := tx.Liquid(pos)
-	if !ok {
-		return false
-	}
-	if liquid.LiquidDepth() != 8 || liquid.LiquidFalling() {
-		// Only allow picking up liquid source blocks.
-		return false
-	}
-	tx.SetLiquid(pos, nil)
-	tx.PlaySound(pos.Vec3Centre(), sound.BucketFill{Liquid: liquid})
-
-	ctx.NewItem = NewStack(Bucket{Content: LiquidBucketContent(liquid)}, 1)
+	tx.EmitGameEvent(world.GameEventFluidPickup, pos.Vec3Centre(), world.GameEventContext{Source: user})
+	ctx.NewItem = NewStack(Bucket{Content: content}, 1)
 	ctx.NewItemSurvivalOnly = true
 	ctx.SubtractFromCount(1)
 	return true

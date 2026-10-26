@@ -22,6 +22,12 @@ Compared for all items: `max_stack_size`, `max_damage`, `enchantable`, `composta
 
 Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_block`, `test_instance_block`.
 
+## Engine fixes found on the way
+
+- A pitch of exactly 90° (looking straight down) wrapped to −90°, so view vectors pointed straight up; only pitches out of range now wrap.
+- `Tx.DestroyBlock` ports `Level.destroyBlock` for items, which cannot reach the block package.
+- A usable item whose use does nothing, such as a milk bucket, is consumed instead of doing nothing.
+
 ## Item classes
 
 | Class | Items | Status |
@@ -31,10 +37,10 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | BannerItem | 16 | |
 | BoatItem | 22 | Ported `use`: the boat goes where the player's view first meets a block outline or liquid surface (it went to a block centre beside the clicked face), faces as the player does (the yaw was negated), is refused when the player is inside an entity or the boat would collide, and also places from a click into the air, as onto water. Custom names apply |
 | BoneMealItem | 1 | Ported `useOn` and `growWaterPlant`: on a sturdy face beside water, seagrass, and in warm oceans corals, grow around. The blocks follow `BonemealableBlock`: weeping, twisting and cave vines, kelp (it stopped at age 25 and grew from the clicked block), pale hanging moss and moss carpet (whose placement now computes its sides and topper as `MossyCarpetBlock`), mangrove leaves, netherrack, rooted dirt, seagrass and dry grass took no bone meal; flowers and sugar cane, which are no bonemealables in Java, did |
-| BottleItem | 1 | |
+| BottleItem | 1 | Ported `use`: past dragon's breath, the bottle fills from the water source the player's view meets (`Fluid.SOURCE_ONLY`), also from a click into the air or through water onto the floor, with the bottle fill sound and a `fluid_pickup` game event; flowing water no longer fills it. Dispensers fill from a water source in front |
 | BowItem, CrossbowItem, TridentItem, MaceItem, ShieldItem | 5 | combat: skipped |
-| BrushItem | 1 | |
-| BucketItem, SolidBucketItem, MobBucketItem | 11 | |
+| BrushItem | 1 | Matches: 200-tick use, a stroke every 10 ticks from the fifth, durability only on completed brushing |
+| BucketItem, SolidBucketItem, MobBucketItem | 11 | Ported `use` and `emptyContents`: the view ray picks the target (sources only for an empty bucket, none for a filled one), water goes into a block that takes it or beside the block looked at, never into a replaced plant, which now breaks with its drops; sneaking places beside; water evaporates in the Nether; `fluid_place`/`fluid_pickup` game events. Mob buckets empty their water (they never did: the water lookup failed) and spawn the mob standing on the placed block's floor with the stack's name, playing only their own sound; fish buckets can no longer be eaten. Dispensers empty and fill as `DispensibleContainerItem` |
 | BundleItem | 17 | |
 | CompassItem | 1 | |
 | CushionItem | 16 | |
