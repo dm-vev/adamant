@@ -20,3 +20,20 @@ func (tx *Tx) DestroyBlock(pos cube.Pos, drops bool) {
 	}
 	blockDestroyer(tx, pos, drops)
 }
+
+// firePlacer places fire as flint and steel and fire charges do. The block
+// package registers it.
+var firePlacer func(tx *Tx, pos cube.Pos) bool
+
+// RegisterFirePlacer sets the function PlaceFire places fire with.
+func RegisterFirePlacer(f func(tx *Tx, pos cube.Pos) bool) {
+	firePlacer = f
+}
+
+// PlaceFire ports BaseFireBlock.canBePlacedAt and getState for flint and
+// steel and fire charges: fire, or soul fire on soul fire base blocks, goes
+// into air where it survives or completes a Nether portal frame. It reports
+// if the fire was placed.
+func (tx *Tx) PlaceFire(pos cube.Pos) bool {
+	return firePlacer != nil && firePlacer(tx, pos)
+}

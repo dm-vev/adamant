@@ -16,7 +16,7 @@ type endCrystalSupport interface {
 
 // UseOnBlock places a crystal above obsidian or bedrock. Only the immediately
 // adjacent block must be air; the two-block-high entity box must be unoccupied.
-func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	support, ok := tx.Block(pos).(endCrystalSupport)
 	if !ok || !support.SupportsEndCrystal() {
 		return false
@@ -44,8 +44,12 @@ func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.
 	if create == nil {
 		return false
 	}
-	opts := world.EntitySpawnOpts{Position: above.Vec3Middle()}
+	// EndCrystalItem.useOn: the crystal stands on the floor of the block above.
+	opts := world.EntitySpawnOpts{Position: mgl64.Vec3{float64(above[0]) + 0.5, float64(above[1]), float64(above[2]) + 0.5}}
 	tx.AddEntity(create(opts, false))
+	if user != nil {
+		tx.EmitGameEvent(world.GameEventEntityPlace, above.Vec3(), world.GameEventContext{Source: user})
+	}
 	if fight := tx.DragonFight(); fight != nil {
 		fight.TryRespawn(tx)
 	}

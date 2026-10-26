@@ -11,6 +11,7 @@ import (
 
 // init registers all blocks implemented by Dragonfly.
 func init() {
+	world.RegisterFirePlacer(placeItemFire)
 	world.RegisterBlockDestroyer(func(tx *world.Tx, pos cube.Pos, drops bool) {
 		if b := tx.Block(pos); drops {
 			breakBlock(b, pos, tx)

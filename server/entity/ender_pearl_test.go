@@ -9,16 +9,20 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// TestEnderPearlFallDamageSetting follows ThrownEnderpearl.onHit: a player
+// owner is teleported to where the pearl was when its tick began and takes
+// 5 fall damage unless fall damage is off; other owners take none.
 func TestEnderPearlFallDamageSetting(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
 	mustDo(t, w, func(tx *world.Tx) {
-		target := enderPearlResult{pos: mgl64.Vec3{1, 2, 3}}
+		target := enderPearlResult{pos: mgl64.Vec3{9, 9, 9}}
 		for _, enabled := range []bool{false, true} {
 			w.SetFallDamage(enabled)
-			owner := tx.AddEntity(world.EntitySpawnOpts{}.New(enderPearlOwnerType{}, enderPearlOwnerConfig{})).(*enderPearlOwner)
+			owner := tx.AddEntity(world.EntitySpawnOpts{}.New(enderPearlOwnerType{player: true}, enderPearlOwnerConfig{})).(*enderPearlOwner)
 			pearl := tx.AddEntity(NewEnderPearl(world.EntitySpawnOpts{}, owner)).(*Ent)
+			pearl.Behaviour().(*ProjectileBehaviour).oldPos = mgl64.Vec3{1, 2, 3}
 			teleport(pearl, tx, target)
 
 			want := 0.0
@@ -28,8 +32,8 @@ func TestEnderPearlFallDamageSetting(t *testing.T) {
 			if owner.state.damage != want {
 				t.Fatalf("FallDamage(%v) pearl damage = %v, want %v", enabled, owner.state.damage, want)
 			}
-			if owner.Position() != target.pos {
-				t.Fatalf("FallDamage(%v) owner position = %v, want %v", enabled, owner.Position(), target.pos)
+			if owner.Position() != (mgl64.Vec3{1, 2, 3}) {
+				t.Fatalf("FallDamage(%v) owner position = %v, want 1 2 3", enabled, owner.Position())
 			}
 			if enabled {
 				if _, ok := owner.state.source.(FallDamageSource); !ok {
@@ -50,12 +54,17 @@ type enderPearlOwnerConfig struct{}
 
 func (enderPearlOwnerConfig) Apply(data *world.EntityData) { data.Data = new(enderPearlOwnerState) }
 
-type enderPearlOwnerType struct{}
+type enderPearlOwnerType struct{ player bool }
 
 func (enderPearlOwnerType) Open(_ *world.Tx, h *world.EntityHandle, data *world.EntityData) world.Entity {
 	return &enderPearlOwner{h: h, data: data, state: data.Data.(*enderPearlOwnerState)}
 }
-func (enderPearlOwnerType) EncodeEntity() string                        { return "test:ender_pearl_owner" }
+func (t enderPearlOwnerType) EncodeEntity() string {
+	if t.player {
+		return "minecraft:player"
+	}
+	return "test:ender_pearl_owner"
+}
 func (enderPearlOwnerType) BBox(world.Entity) cube.BBox                 { return cube.BBox{} }
 func (enderPearlOwnerType) DecodeNBT(map[string]any, *world.EntityData) {}
 func (enderPearlOwnerType) EncodeNBT(*world.EntityData) map[string]any  { return nil }

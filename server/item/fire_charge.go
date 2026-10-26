@@ -5,8 +5,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
-	"time"
 )
 
 // FireCharge is an item that can be used to place fire when used on a block, or shot from a dispenser to create a small
@@ -24,14 +22,17 @@ func (f FireCharge) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *w
 		ctx.SubtractFromCount(1)
 		tx.PlaySound(pos.Vec3Centre(), sound.FireCharge{})
 		return true
-	} else if s := pos.Side(face); tx.Block(s) == air() {
-		ctx.SubtractFromCount(1)
-		tx.PlaySound(s.Vec3Centre(), sound.FireCharge{})
-
-		flame := fire()
-		tx.SetBlock(s, flame, nil)
-		tx.ScheduleBlockUpdate(s, flame, time.Duration(30+rand.IntN(10))*time.Second/20)
-		return true
 	}
-	return false
+	// FireChargeItem.useOn: otherwise fire goes beside the clicked face where
+	// BaseFireBlock.canBePlacedAt allows it.
+	s := pos.Side(face)
+	if !tx.PlaceFire(s) {
+		return false
+	}
+	tx.PlaySound(s.Vec3Centre(), sound.FireCharge{})
+	if user != nil {
+		tx.EmitGameEvent(world.GameEventBlockPlace, s.Vec3Centre(), world.GameEventContext{Source: user})
+	}
+	ctx.SubtractFromCount(1)
+	return true
 }

@@ -286,6 +286,33 @@ func (f Fire) Start(tx *world.Tx, pos cube.Pos) {
 	}
 }
 
+// placeItemFire ports BaseFireBlock.canBePlacedAt and getState for flint and
+// steel and fire charges: the position must be air, and the fire, soul fire
+// on soul sand or soul soil, must survive there, on a sturdy floor or beside
+// a block that burns, or complete a Nether portal frame.
+func placeItemFire(tx *world.Tx, pos cube.Pos) bool {
+	if _, air := tx.Block(pos).(Air); !air {
+		return false
+	}
+	below := pos.Side(cube.FaceDown)
+	f := Fire{Type: NormalFire()}
+	survives := tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) || neighboursFlammable(pos, tx)
+	switch tx.Block(below).(type) {
+	case SoulSand, SoulSoil:
+		f.Type, survives = SoulFire(), true
+	}
+	if !survives {
+		p, ok := portal.NetherPortalFromPos(tx, pos)
+		if !ok || !p.Framed() {
+			return false
+		}
+	}
+	tx.SetBlock(pos, f, nil)
+	tx.ScheduleBlockUpdate(pos, f, time.Duration(30+rand.IntN(10))*time.Second/20)
+	portal.TryActivateNetherPortal(tx, pos)
+	return true
+}
+
 // Place ...
 func (Fire) Place(pos cube.Pos, w *world.World) bool {
 	w.Do(func(tx *world.Tx) {

@@ -58,6 +58,8 @@ func (EnderEye) Use(tx *world.Tx, user User, ctx *UseContext) bool {
 	// Java spawns the eye at the user's mid-height (getY(0.5)).
 	pos := user.Position().Add(mgl64.Vec3{0, .9})
 	tx.AddEntity(create(world.EntitySpawnOpts{Position: pos}, loc.Position.Vec3()))
+	tx.EmitGameEvent(world.GameEventProjectileShoot, pos, world.GameEventContext{Source: user})
+	// Bedrock has no ender_eye.launch sound and plays the throw sound.
 	tx.PlaySound(pos, sound.ItemThrow{})
 	if creative, ok := user.(interface{ GameMode() world.GameMode }); !ok || !creative.GameMode().CreativeInventory() {
 		ctx.SubtractFromCount(1)

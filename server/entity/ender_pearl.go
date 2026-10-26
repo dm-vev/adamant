@@ -35,30 +35,44 @@ type teleporter interface {
 	Living
 }
 
-// teleport teleports the owner of an Ent to a trace.Result's position.
-func teleport(e *Ent, tx *world.Tx, target trace.Result) {
+// teleport ports ThrownEnderpearl.onHit: the owner, if alive, in the same
+// world and not sleeping, is teleported to where the pearl was when the tick
+// began, so not into the block hit, and takes 5 ender pearl damage, a fall;
+// a player owner may leave an endermite behind 5% of the time where monsters
+// spawn.
+func teleport(e *Ent, tx *world.Tx, _ trace.Result) {
 	behaviour := e.Behaviour().(*ProjectileBehaviour)
 	if behaviour.PortalTravel() {
 		return
 	}
 	owner, _ := behaviour.Owner().Entity(tx)
-	if owner == nil {
+	user, ok := owner.(teleporter)
+	if !ok || user.Dead() {
 		return
 	}
-	uuid := e.H().UUID()
-	hash := fnv.New64a()
-	_, _ = hash.Write(uuid[:])
-	random := vanilla.NewLegacyRandom(int64(hash.Sum64()))
-	if random.NextFloat() < .05 {
-		tx.AddEntity(NewEndermite(world.EntitySpawnOpts{Position: target.Position(), SpawnReason: "ender_pearl"}))
-	}
-	if user, ok := owner.(teleporter); ok {
-		tx.PlaySound(user.Position(), sound.Teleport{})
-		user.Teleport(target.Position())
-		if tx.World().FallDamage() {
-			user.Hurt(5, FallDamageSource{})
+	if s, ok := owner.(interface{ Sleeping() (cube.Pos, bool) }); ok {
+		if _, sleeping := s.Sleeping(); sleeping {
+			return
 		}
 	}
+	dest := behaviour.oldPos
+	if isPlayerEntity(owner) {
+		uuid := e.H().UUID()
+		hash := fnv.New64a()
+		_, _ = hash.Write(uuid[:])
+		random := vanilla.NewLegacyRandom(int64(hash.Sum64()))
+		if random.NextFloat() < .05 && tx.World().GameRuleBool("spawn_monsters") && tx.World().Difficulty() != world.DifficultyPeaceful {
+			tx.AddEntity(NewEndermite(world.EntitySpawnOpts{Position: owner.Position(), Rotation: owner.Rotation(), SpawnReason: "ender_pearl"}))
+		}
+	}
+	user.Teleport(dest)
+	if f, ok := owner.(interface{ ResetFallDistance() }); ok {
+		f.ResetFallDistance()
+	}
+	if isPlayerEntity(owner) && tx.World().FallDamage() {
+		user.Hurt(5, FallDamageSource{})
+	}
+	tx.PlaySound(dest, sound.Teleport{})
 }
 
 // EnderPearlType is a world.EntityType implementation for EnderPearl.

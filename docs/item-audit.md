@@ -25,7 +25,7 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 ## Engine fixes found on the way
 
 - A pitch of exactly 90° (looking straight down) wrapped to −90°, so view vectors pointed straight up; only pitches out of range now wrap.
-- `Tx.DestroyBlock` ports `Level.destroyBlock` for items, which cannot reach the block package.
+- `Tx.DestroyBlock` ports `Level.destroyBlock` and `Tx.PlaceFire` ports `BaseFireBlock.canBePlacedAt` for items, which cannot reach the block package.
 - A usable item whose use does nothing, such as a milk bucket, is consumed instead of doing nothing.
 
 ## Item classes
@@ -48,15 +48,15 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | DoubleHighBlockItem | 29 | |
 | DyeItem | 16 | Ported `interactLivingEntity` and `tryApplyToSign`: sheep take a dye only alive, unsheared and of another colour, with the dye sound and an update to viewers; signs and hanging signs only when not waxed and the facing side has text, with the dye sound and a `block_change` game event |
 | EggItem, SnowballItem | 4 | Ported `spawnProjectileFromRotation` for every thrown item (also ender pearls, bottles o' enchanting and splash and lingering potions): 0.1 below the eyes, Java's uncertainty spread and the thrower's movement; bottles o' enchanting fly at 0.7 (0.6) and potions use Java's −20° pitch offset instead of an approximation. Snowballs deal 3 to blazes. Eggs hatch as `ThrownEgg` |
-| EmptyMapItem, MapItem | 18 | |
-| EndCrystalItem | 1 | |
-| EnderEyeItem | 1 | |
-| EnderpearlItem | 1 | |
-| ExperienceBottleItem | 1 | |
-| FireChargeItem | 1 | |
+| EmptyMapItem, MapItem | 18 | Matches: a map centred on the player at scale 0 with the cartography sound; maps keep Java's colours and native persistence |
+| EndCrystalItem | 1 | Ported `useOn`: the crystal stands on the floor of the block above (it floated half a block up), with an `entity_place` game event; obsidian or bedrock, an air block above and no entity in the two blocks |
+| EnderEyeItem | 1 | Matches: frames take eyes and complete portals, eyes fly to the nearest `eye_of_ender_located` structure within 100 chunks from mid-height; now with a `projectile_shoot` game event. Bedrock has no launch sound and plays the throw |
+| EnderpearlItem | 1 | Ported `ThrownEnderpearl.onHit`: the owner arrives where the pearl was when its tick began, not at the hit point inside the block, only when alive and not asleep; only player owners take the 5 fall damage and may leave an endermite, 5% of the time where monsters spawn outside Peaceful, at their own position |
+| ExperienceBottleItem | 1 | Experience is `3 + nextInt(5) + nextInt(5)`, not uniform over 3–11 |
+| FireChargeItem | 1 | Ported with flint and steel: lights what it lights, otherwise places fire beside the clicked face only where `BaseFireBlock.canBePlacedAt` allows (a sturdy floor, a neighbour that burns or a Nether portal frame; it placed fire in any air), soul fire on soul sand and soil, with a `block_place` game event |
 | FireworkRocketItem | 1 | |
 | FishingRodItem | 1 | |
-| FlintAndSteelItem | 1 | |
+| FlintAndSteelItem | 1 | As fire charges, and a use that does nothing costs no durability |
 | FoodOnAStickItem | 2 | |
 | GameMasterBlockItem | 7 | |
 | GlowInkSacItem, InkSacItem | 2 | As dye: not on waxed signs or empty sides, with their sounds and a `block_change` game event |

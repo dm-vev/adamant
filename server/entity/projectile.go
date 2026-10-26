@@ -137,6 +137,9 @@ type ProjectileBehaviour struct {
 
 	collisionPos cube.Pos
 	collided     bool
+	// oldPos is the position the projectile had when its last tick began,
+	// Entity.oldPosition.
+	oldPos mgl64.Vec3
 
 	collidedEntities []*world.EntityHandle
 	portalTravel     bool
@@ -193,6 +196,7 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	vel := e.Velocity()
 	startPos := e.Position()
+	lt.oldPos = startPos
 	m, result := lt.tickMovement(e, tx)
 	e.data.Pos, e.data.Vel, e.data.Rot = m.pos, m.vel, m.rot
 	lt.collisionPos, lt.collided, lt.ageCollided = cube.Pos{}, false, 0
