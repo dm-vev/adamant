@@ -2104,7 +2104,7 @@ func (w *World) Save() {
 	if w == nil {
 		return
 	}
-	<-w.exec(w.save(w.saveChunk))
+	<-w.exec(w.save(nil))
 	w.finishSave()
 }
 
@@ -2114,7 +2114,7 @@ func (w *World) Save() {
 // the disk.
 func (tx *Tx) SaveWorld() {
 	w := tx.World()
-	w.save(w.saveChunk)(tx)
+	w.save(nil)(tx)
 	if !w.conf.ReadOnly {
 		w.savePositionTracking()
 	}
@@ -2147,14 +2147,20 @@ func (w *World) savePositionTracking() {
 }
 
 // save saves all loaded chunks to the World's provider.
+// save returns a transaction doing f for every loaded chunk, or saveChunks
+// if f is nil, and saving the rest of the world.
 func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 	return func(tx *Tx) {
 		if w.conf.ReadOnly {
 			return
 		}
 		w.conf.Log.Debug("Saving chunks in memory to disk...")
-		for pos, c := range w.chunks {
-			f(tx, pos, c)
+		if f == nil {
+			w.saveChunks(tx)
+		} else {
+			for pos, c := range w.chunks {
+				f(tx, pos, c)
+			}
 		}
 		w.conf.Log.Debug("Updating level.dat values...")
 		w.conf.Provider.SaveSettings(w.set)
@@ -2173,6 +2179,57 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 	w.persistChunk(tx, pos, c, true)
 }
 
+// saveChunks saves every loaded chunk as saveChunk does. Compacting and
+// copying the blocks of each chunk only touch that chunk, so they are done
+// on all cores while the owner waits; the entities and block entities are
+// then encoded and handed to the saver on the owner.
+func (w *World) saveChunks(tx *Tx) {
+	type persisted struct {
+		pos ChunkPos
+		c   *Column
+		col *chunk.Column
+	}
+	var columns []persisted
+	for pos, c := range w.chunks {
+		if !c.Ready() {
+			continue
+		}
+		w.finishGeneration(tx, c)
+		if !c.modified && len(c.Entities) == 0 {
+			continue
+		}
+		columns = append(columns, persisted{pos: pos, c: c})
+	}
+	clones := make([]*chunk.Chunk, len(columns))
+	parallel.For(len(columns), 4, func(i int) {
+		c := columns[i].c
+		c.compact()
+		if w.saver != nil {
+			clones[i] = c.Chunk.Clone()
+		}
+	})
+	for i, p := range columns {
+		col := w.columnTo(p.c, p.pos)
+		if w.saver == nil {
+			w.writeColumn(p.pos, col)
+			continue
+		}
+		col.Chunk = clones[i]
+		col.PostProcessing = clonePostProcessing(col.PostProcessing)
+		w.saver.store(p.pos, col)
+	}
+}
+
+// compact compacts the palettes of the column unless no block changed since
+// it was last compacted.
+func (c *Column) compact() {
+	if c.compactedVersion == c.blockVersion {
+		return
+	}
+	c.Compact()
+	c.compactedVersion = c.blockVersion
+}
+
 // persistChunk saves the column at pos. A live column stays loaded and keeps
 // changing, so the background saver gets a copy of its blocks; a closing
 // column is handed over as it is.
@@ -2189,7 +2246,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	if w.conf.ReadOnly || !c.modified && len(c.Entities) == 0 {
 		return
 	}
-	c.Compact()
+	c.compact()
 	col := w.columnTo(c, pos)
 	if w.saver == nil {
 		w.writeColumn(pos, col)
@@ -3153,6 +3210,9 @@ type Column struct {
 	// come from one clock for every world, so a version is never reused, not
 	// even by a later column at the same position or in another world.
 	blockVersion uint64
+	// compactedVersion is the block version the column was last compacted
+	// at: compacting it again before a block changes would change nothing.
+	compactedVersion uint64
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
 	generation GenerationResult
