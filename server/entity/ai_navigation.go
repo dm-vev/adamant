@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -315,7 +316,15 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 	if listens {
 		l.onPathfindingStart(m)
 	}
-	path := findPath(m, eval, targets, float32(maxPathLength), reachRange, visited)
+	path, prefetched := m.AI.pre.path.takePath(m, eval, targets, maxPathLength, reachRange, visited)
+	if listens || !prefetched {
+		path = findPath(m, eval, targets, float32(maxPathLength), reachRange, visited)
+	} else if verifyPrefetch {
+		if live := findPath(m, eval, targets, float32(maxPathLength), reachRange, visited); !pathsIdentical(live, path) {
+			panic(fmt.Sprintf("prefetched path %v differs from %v", path, live))
+		}
+		verifiedPaths++
+	}
 	if listens {
 		l.onPathfindingDone(m)
 	}
@@ -700,7 +709,7 @@ func (n *PathNavigation) ShouldRecomputePath(m *Mob, pos cube.Pos) bool {
 // surfacePosition ports GroundPathNavigation.findSurfacePosition: a target
 // in the air drops to the ground below it, and one inside blocks rises to
 // the top of them.
-func surfacePosition(tx *world.Tx, pos cube.Pos) cube.Pos {
+func surfacePosition(tx pathWorld, pos cube.Pos) cube.Pos {
 	r := tx.Range()
 	if isAir(pathBlockAt(tx, pos)) {
 		column := pos.Side(cube.FaceDown)

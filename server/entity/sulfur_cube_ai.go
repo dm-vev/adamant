@@ -216,7 +216,7 @@ func (b *SulfurCubeBehaviour) customServerAiStep(m *Mob) {
 	// Mob.getPickupReach reaches a block further sideways, and the items
 	// whose boxes touch that reach are picked up.
 	box := m.BBox().GrowVec3(mgl64.Vec3{1, 0, 1})
-	for e := range m.tx.EntitiesWithin(box.Grow(1)) {
+	for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
 		stack, ok := pickableItem(e)
 		if !ok || !sulfurCubeSwallowable(stack) || !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
 			continue
@@ -392,7 +392,7 @@ func (g *sulfurCubeSearchForItemsGoal) CanUse(m *Mob) bool {
 	var nearest world.Entity
 	best := math.MaxFloat64
 	box := m.BBox().Grow(8)
-	for e := range m.tx.EntitiesWithin(box.Grow(1)) {
+	for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
 		stack, ok := pickableItem(e)
 		if !ok || !sulfurCubeSwallowable(stack) || !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
 			continue

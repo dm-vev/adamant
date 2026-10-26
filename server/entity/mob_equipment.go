@@ -189,7 +189,7 @@ func pickUpLoot(m *Mob, h equipmentHolder, wants func(item.Stack) bool, preferre
 		return
 	}
 	box := m.BBox().GrowVec3(mgl64.Vec3{1, 0, 1})
-	for e := range m.tx.EntitiesWithin(box.Grow(1)) {
+	for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
 		stack, ok := pickableItem(e)
 		if !ok || !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) || wants != nil && !wants(stack) {
 			continue
@@ -345,7 +345,7 @@ func (b *hostileState) afterAiStep(m *Mob) {
 			return
 		}
 		box := m.BBox().GrowVec3(mgl64.Vec3{1, 0, 1})
-		for e := range m.tx.EntitiesWithin(box.Grow(1)) {
+		for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
 			if stack, ok := pickableItem(e); ok && ominousBanner(stack) && e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
 				raiderPickUpItem(m, e)
 			}

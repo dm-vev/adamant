@@ -76,10 +76,19 @@ func (tx *Tx) BlockStateID(pos cube.Pos) (uint32, error) {
 // javaBlockStateID returns zero for native-only states without inventing a
 // canonical identity. Native capability adapters may handle these separately.
 func (tx *Tx) javaBlockStateID(pos cube.Pos) uint32 {
-	registry := tx.World().conf.Blocks
-	state := NativeState{Block: registry.AirRuntimeID(), Liquid: registry.AirRuntimeID()}
+	var c *Column
 	if !pos.OutOfBounds(tx.Range()) {
-		c := tx.chunk(chunkPosFromBlockPos(pos))
+		c = tx.chunk(chunkPosFromBlockPos(pos))
+	}
+	return tx.World().javaStateIDInColumn(c, pos)
+}
+
+// javaStateIDInColumn returns the canonical source state of the block at pos
+// in the column c holding it, or of air if c is nil.
+func (w *World) javaStateIDInColumn(c *Column, pos cube.Pos) uint32 {
+	registry := w.conf.Blocks
+	state := NativeState{Block: registry.AirRuntimeID(), Liquid: registry.AirRuntimeID()}
+	if c != nil {
 		state = NativeStateAt(c.Chunk, uint8(pos[0]&15), int16(pos[1]), uint8(pos[2]&15))
 	}
 	id := state.StateID

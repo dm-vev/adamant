@@ -25,7 +25,7 @@ func (g *obtainRaidLeaderBannerGoal) CanUse(m *Mob) bool {
 	kept := map[*world.EntityHandle]int64{}
 	fr := m.AI.FollowRange
 	box := m.BBox().GrowVec3([3]float64{fr, 8, fr})
-	for e := range m.tx.EntitiesWithin(box) {
+	for e := range m.tx.EntitiesOfTypesWithin(box, itemEntityTypes) {
 		stack, ok := pickableItem(e)
 		if !ok || !ominousBanner(stack) {
 			continue

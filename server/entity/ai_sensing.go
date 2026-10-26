@@ -205,6 +205,7 @@ func (t entityTypes) is(e world.Entity) bool {
 
 var (
 	playerTypes           = entityTypes{"minecraft:player"}
+	itemEntityTypes       = entityTypes{"minecraft:item"}
 	villagerTypes         = entityTypes{"minecraft:villager", "minecraft:villager_v2", "minecraft:wandering_trader"}
 	raiderTypes           = entityTypes{"minecraft:evoker", "minecraft:vindicator", "minecraft:pillager", "minecraft:ravager", "minecraft:witch"}
 	abstractSkeletonTypes = entityTypes{"minecraft:skeleton", "minecraft:stray", "minecraft:wither_skeleton", "minecraft:bogged", "minecraft:parched"}

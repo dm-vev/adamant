@@ -313,3 +313,42 @@ func TestPathTypeCacheFollowsBlockChanges(t *testing.T) {
 		}
 	})
 }
+
+// TestPrefetchedPathsMatchFindingThem ticks zombies hunting villagers and
+// iron golems around obstacles with verifyPrefetch on, so every prefetched
+// path is checked against finding the path in the tick.
+func TestPrefetchedPathsMatchFindingThem(t *testing.T) {
+	verifyPrefetch, verifiedPaths = true, 0
+	defer func() { verifyPrefetch = false }()
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
+	defer w.Close()
+	w.SetDifficulty(world.DifficultyHard)
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -40; x < 40; x++ {
+			for z := -40; z < 40; z++ {
+				tx.SetBlock(cube.Pos{x, 63, z}, block.Grass{}, nil)
+				if x%6 == 0 && z%4 != 0 {
+					tx.SetBlock(cube.Pos{x, 64, z}, block.WoodFence{Wood: block.OakWood()}, nil)
+				} else if (x+z)%9 == 0 {
+					tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
+				}
+			}
+		}
+		for x := -36; x < 36; x += 6 {
+			for z := -36; z < 36; z += 6 {
+				tx.AddEntity(NewZombie(world.EntitySpawnOpts{Position: mgl64.Vec3{float64(x) + 1.5, 64, float64(z) + .5}}))
+				tx.AddEntity(NewVillager(world.EntitySpawnOpts{Position: mgl64.Vec3{float64(x) + 3.5, 64, float64(z) + 2.5}}))
+			}
+		}
+		for i := 0; i < 12; i++ {
+			tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{float64(i*6 - 36), 70, 3}}.New(blockFlipperType{}, blockFlipperConfig{}))
+		}
+	})
+	for range 300 {
+		w.AdvanceTick()
+	}
+	t.Logf("verified %d prefetched paths", verifiedPaths)
+	if verifiedPaths < 50 {
+		t.Fatalf("only %d prefetched paths were used", verifiedPaths)
+	}
+}

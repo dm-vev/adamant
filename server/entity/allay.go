@@ -270,7 +270,7 @@ func (b *AllayBehaviour) afterAiStep(m *Mob) {
 	a := m.Self.(*Allay)
 	if b.canPickUpLoot() && !b.dead && !mobGriefingDisabled(m.tx) {
 		box := m.BBox().Grow(1)
-		for e := range m.tx.EntitiesWithin(box.Grow(1)) {
+		for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
 			stack, ok := pickableItem(e)
 			if !ok || !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) || !b.wantsToPickUp(m.tx, stack) {
 				continue

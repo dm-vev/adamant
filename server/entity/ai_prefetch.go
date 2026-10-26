@@ -26,8 +26,8 @@ var _ world.Prefetcher = (*Ent)(nil)
 // as well and panic if the two differ, counting the checks in
 // verifiedFluids and verifiedCollisions. Tests set it.
 var (
-	verifyPrefetch                     bool
-	verifiedFluids, verifiedCollisions int
+	verifyPrefetch                                  bool
+	verifiedFluids, verifiedCollisions, verifiedPaths int
 )
 
 // prefetchColumns is the most columns a prefetched result depends on.
@@ -79,6 +79,7 @@ type mobPrefetch struct {
 	fluidCols columnVersions
 
 	collisions collisionPrefetch
+	path       pathPrefetch
 }
 
 // collisionPrefetch holds the collision boxes of the blocks from lo up to hi,
@@ -124,6 +125,8 @@ func (ai *MobAI) prefetch(e *Ent, self world.Entity, v *world.ReadView) {
 	area := cube.Box(box.Min()[0]-horizontal, box.Min()[1]-down, box.Min()[2]-horizontal, box.Max()[0]+horizontal, box.Max()[1]+up, box.Max()[2]+horizontal)
 	v.Reset()
 	p.collisions.read(v, area)
+
+	ai.prefetchPath(e, self, v)
 }
 
 // fluidReadRange returns the blocks measureFluids may read for box: those
@@ -214,4 +217,193 @@ func (p *mobPrefetch) prefetchedFluids(tx *world.Tx, box cube.BBox) (fluidContac
 		return fluidContact{}, false
 	}
 	return p.fluid, true
+}
+
+// meleeAttackGoal returns the goal itself, also through goals embedding it.
+func (g *MeleeAttackGoal) meleeAttackGoal() *MeleeAttackGoal { return g }
+
+// pathPrefetch is a path found in the parallel phase for a request the mob
+// was expected to make in its tick, with everything the path depends on.
+// takePath hands it out only for exactly that request, from the same
+// state, while the columns the search read keep their block versions.
+type pathPrefetch struct {
+	ok            bool
+	tick          int64
+	path          *mobPath
+	target        cube.Pos
+	reach         int
+	maxPathLength float64
+	visited       int
+	pos           mgl64.Vec3
+	box           cube.BBox
+	onGround      bool
+	inWater       bool
+	step          float64
+	maxFall       int
+	config        walkNodeConfig
+	maluses       map[PathType]float64
+	cols          []world.ChunkPos
+	versions      []uint64
+}
+
+// walkNodeConfig is the configuration of a walkNodeEvaluator a path depends
+// on.
+type walkNodeConfig struct {
+	canPassDoors, canOpenDoors, canFloat, canWalkOverFences, amphibious, prefersShallow, frog, fly bool
+}
+
+func (w *walkNodeEvaluator) config() walkNodeConfig {
+	return walkNodeConfig{w.canPassDoors, w.canOpenDoors, w.canFloat, w.canWalkOverFences, w.amphibious, w.prefersShallow, w.frog, w.fly}
+}
+
+// prefetchPath finds, on a worker, the path the melee attack goal of the
+// mob is expected to ask for this tick: when it checks whether it can start
+// or recalculates its path to its target. Only walking mobs whose paths
+// depend on nothing but blocks and their own state are covered.
+func (ai *MobAI) prefetchPath(e *Ent, self world.Entity, v *world.ReadView) {
+	p := &ai.pre.path
+	p.ok, p.path = false, nil
+	n := &ai.nav
+	if n.vehicle != nil || n.wallClimber || n.swim != nil || n.amphibious || n.eval.fly || n.eval.amphibious || n.eval.frog || n.eval.blocked != nil || ai.target == nil {
+		return
+	}
+	if _, listens := e.Behaviour().(mobPathfindingListener); listens {
+		return
+	}
+	var (
+		melee   *MeleeAttackGoal
+		wrapped *wrappedGoal
+	)
+	for _, w := range ai.Goals.goals {
+		if g, ok := w.goal.(interface{ meleeAttackGoal() *MeleeAttackGoal }); ok {
+			melee, wrapped = g.meleeAttackGoal(), w
+			break
+		}
+	}
+	if melee == nil {
+		return
+	}
+	targetPos, ok := v.EntityPosition(ai.target)
+	if !ok {
+		return
+	}
+	tick := v.World().CurrentTick()
+	if wrapped.running {
+		// MeleeAttackGoal.tick paths again once its delay runs out and the
+		// target moved a block from where it was pathed to, which it may
+		// still do this tick before the mob ticks.
+		// It also paths again at random, which only needs finding a path
+		// once the old one ran out, as next to the target, where paths are
+		// short.
+		vel, _ := v.EntityVelocity(ai.target)
+		reach := 1 - (math.Hypot(vel[0], vel[2])*2 + .05)
+		moving := melee.pathedTarget == (mgl64.Vec3{}) || reach <= 0 || targetPos.Sub(melee.pathedTarget).LenSqr() >= reach*reach
+		if melee.ticksUntilNextPathRecalc > 1 || !moving && n.path != nil && !n.path.Done() {
+			return
+		}
+	} else {
+		// The goals start on every other tick of the mob, and canUse paths
+		// at most once in 20 ticks, if no running goal holds its flags.
+		next := ai.tickCount + 1
+		full := (next+int(e.H().UniqueID()&0x7fffffff))%2 == 0 || next <= 1
+		if !full || melee.hasLastCanUseCheck && tick-melee.lastCanUseCheck < 20 || wrapped.goal.Flags()&ai.Goals.disabled != 0 || !ai.Goals.canReplaceAll(wrapped) {
+			return
+		}
+	}
+	target := cube.PosFromVec3(targetPos)
+	if _, ok := v.BlockLoaded(target); !ok {
+		return
+	}
+	if !n.CanPathToTargetsBelowSurface {
+		target = surfacePosition(v, target)
+	}
+	if n.path != nil && !n.path.Done() && n.targetPos != nil && *n.targetPos == target {
+		// createPath keeps following the path it has.
+		return
+	}
+	l, living := self.(Living)
+	if !living {
+		return
+	}
+	m := &Mob{Ent: e, AI: ai, Self: self}
+	maxFall := 3 + max(int(l.Health()-l.MaxHealth()*.33)-(3-difficultyID(v.World().Difficulty()))*4, 0)
+	visited := int(float64(n.maxVisitedNodes) * n.maxVisitedNodesMultiplier)
+	maxPathLength := n.maxPathLength(m)
+
+	v.Reset()
+	v.Track()
+	ev := n.eval
+	ev.pw, ev.maxFall = v, maxFall
+	path := findPath(m, &ev, []cube.Pos{target}, float32(maxPathLength), 0, visited)
+	if v.Missed() {
+		return
+	}
+	p.cols = append(p.cols[:0], v.Tracked()...)
+	p.versions = p.versions[:0]
+	for _, pos := range p.cols {
+		ver, ok := v.ColumnBlockVersion(pos)
+		if !ok {
+			return
+		}
+		p.versions = append(p.versions, ver)
+	}
+	p.ok, p.tick, p.path, p.target, p.reach, p.maxPathLength, p.visited = true, tick, path, target, 0, maxPathLength, visited
+	p.pos, p.box, p.onGround, p.inWater, p.step, p.maxFall = e.data.Pos, m.BBox(), ai.onGround, ai.waterHeight > 0, ai.StepHeight, maxFall
+	p.config = n.eval.config()
+	clear(p.maluses)
+	if p.maluses == nil {
+		p.maluses = make(map[PathType]float64, len(ai.maluses))
+	}
+	for t, malus := range ai.maluses {
+		p.maluses[t] = malus
+	}
+}
+
+// takePath returns the prefetched path if the request and everything it
+// depends on match what it was found for, consuming it.
+func (p *pathPrefetch) takePath(m *Mob, eval nodeEvaluator, targets []cube.Pos, maxPathLength float64, reach, visited int) (*mobPath, bool) {
+	if !p.ok {
+		return nil, false
+	}
+	p.ok = false
+	n := &m.AI.nav
+	if eval != nodeEvaluator(&n.eval) || len(targets) != 1 || targets[0] != p.target || reach != p.reach || maxPathLength != p.maxPathLength ||
+		visited != p.visited || p.tick != m.tx.CurrentTick() || m.data.Pos != p.pos || m.BBox() != p.box || m.AI.onGround != p.onGround ||
+		m.InWater() != p.inWater || m.AI.StepHeight != p.step || n.eval.config() != p.config || n.eval.blocked != nil || len(m.AI.maluses) != len(p.maluses) {
+		return nil, false
+	}
+	for t, malus := range m.AI.maluses {
+		if prefetched, ok := p.maluses[t]; !ok || prefetched != malus {
+			return nil, false
+		}
+	}
+	if m.maxFallDistance() != p.maxFall {
+		return nil, false
+	}
+	for i, pos := range p.cols {
+		if ver, ok := m.tx.ColumnBlockVersion(pos); !ok || ver != p.versions[i] {
+			return nil, false
+		}
+	}
+	path := p.path
+	p.path = nil
+	return path, true
+}
+
+// pathsIdentical reports whether two paths have the same nodes, with the
+// same types, costs and distances, and the same target.
+func pathsIdentical(a, b *mobPath) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if len(a.nodes) != len(b.nodes) || a.target != b.target || a.reached != b.reached || a.distToTarget != b.distToTarget || a.next != b.next {
+		return false
+	}
+	for i, n := range a.nodes {
+		o := b.nodes[i]
+		if n.x != o.x || n.y != o.y || n.z != o.z || n.typ != o.typ || n.costMalus != o.costMalus || n.walkedDistance != o.walkedDistance || n.g != o.g || n.closed != o.closed {
+			return false
+		}
+	}
+	return true
 }

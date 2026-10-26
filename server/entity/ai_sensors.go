@@ -275,7 +275,7 @@ func (s nearestItemSensor) doTick(m *Mob, b *Brain) {
 	box := m.BBox().GrowVec3(mgl64.Vec3{32, 16, 32})
 	var best world.Entity
 	bestDist := 0.0
-	for e := range m.tx.EntitiesWithin(box) {
+	for e := range m.tx.EntitiesOfTypesWithin(box, itemEntityTypes) {
 		stack, ok := pickableItem(e)
 		if !ok || !s.wants(m, stack) || m.DistanceToSqr(e) >= 32*32 || !m.HasLineOfSight(e) {
 			continue

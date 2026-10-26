@@ -1,7 +1,12 @@
 package world
 
 import (
+	"fmt"
+	"slices"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // ReadView reads the blocks of a world from any goroutine while the world's
@@ -19,6 +24,9 @@ type ReadView struct {
 	lastPos ChunkPos
 	last    *Column
 	missed  bool
+	// tracking makes the view list the columns it reads in tracked.
+	tracking bool
+	tracked  []ChunkPos
 }
 
 // NewReadView returns a view of the world of tx for a parallel phase tx's
@@ -27,10 +35,50 @@ func (tx *Tx) NewReadView() *ReadView {
 	return &ReadView{w: tx.World()}
 }
 
-// Reset clears the missed state of the view, as before reading for another
-// caller.
+// Reset clears the missed state of the view and stops tracking, as before
+// reading for another caller.
 func (v *ReadView) Reset() {
-	v.missed = false
+	v.missed, v.tracking, v.tracked = false, false, v.tracked[:0]
+}
+
+// Track makes the view list the columns it reads from now on, as Tracked
+// returns them, so that a result read through it can be checked against
+// their block versions later.
+func (v *ReadView) Track() {
+	v.tracking, v.tracked = true, v.tracked[:0]
+	if v.last != nil {
+		v.tracked = append(v.tracked, v.lastPos)
+	}
+}
+
+// Tracked returns the columns read since Track. The slice is reused by the
+// view.
+func (v *ReadView) Tracked() []ChunkPos {
+	return v.tracked
+}
+
+// World returns the world the view reads, for its settings: its blocks and
+// entities must be read through the view.
+func (v *ReadView) World() *World {
+	return v.w
+}
+
+// EntityVelocity returns the velocity of the entity of h if it is in the
+// world of the view.
+func (v *ReadView) EntityVelocity(h *EntityHandle) (mgl64.Vec3, bool) {
+	if h == nil || h.state == nil || h.w != v.w {
+		return mgl64.Vec3{}, false
+	}
+	return h.data.Vel, true
+}
+
+// EntityPosition returns the position of the entity of h if it is in the
+// world of the view.
+func (v *ReadView) EntityPosition(h *EntityHandle) (mgl64.Vec3, bool) {
+	if h == nil || h.state == nil || h.w != v.w {
+		return mgl64.Vec3{}, false
+	}
+	return h.data.Pos, true
 }
 
 // Missed reports whether a read since the last Reset needed a column the
@@ -50,6 +98,9 @@ func (v *ReadView) column(pos ChunkPos) *Column {
 		return nil
 	}
 	v.lastPos, v.last = pos, c
+	if v.tracking && !slices.Contains(v.tracked, pos) {
+		v.tracked = append(v.tracked, pos)
+	}
 	return c
 }
 
@@ -76,6 +127,35 @@ func (v *ReadView) Block(pos cube.Pos) Block {
 		v.missed = true
 	}
 	return v.w.conf.Blocks.BlockByRuntimeIDOrAir(rid)
+}
+
+// BlockLoaded returns the block at pos, as Tx.BlockLoaded does for a settled
+// column. A column that is not loaded misses rather than reading as air, as
+// a result read from it would not notice the column loading later.
+func (v *ReadView) BlockLoaded(pos cube.Pos) (Block, bool) {
+	if pos.OutOfBounds(v.w.ra) {
+		return v.w.conf.Blocks.Air(), false
+	}
+	if v.column(chunkPosFromBlockPos(pos)) == nil {
+		return v.w.conf.Blocks.Air(), false
+	}
+	return v.Block(pos), true
+}
+
+// BlockStateID returns the canonical source state of the block at pos, as
+// Tx.BlockStateID does for a settled column.
+func (v *ReadView) BlockStateID(pos cube.Pos) (uint32, error) {
+	var c *Column
+	if !pos.OutOfBounds(v.w.ra) {
+		if c = v.column(chunkPosFromBlockPos(pos)); c == nil {
+			return 0, fmt.Errorf("column of %v is not readable", pos)
+		}
+	}
+	id := v.w.javaStateIDInColumn(c, pos)
+	if _, ok := gamedata.BlockStateName(id); !ok {
+		return 0, fmt.Errorf("Java block state at %v has no canonical source identity", pos)
+	}
+	return id, nil
 }
 
 // Liquid returns the liquid at pos in any layer, as Tx.Liquid does for a

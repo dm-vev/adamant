@@ -78,7 +78,7 @@ func (s *piglinState) afterAiStep(m *Mob) {
 		return
 	}
 	box := m.BBox().GrowVec3(mgl64.Vec3{1, 0, 1})
-	for e := range m.tx.EntitiesWithin(box.Grow(1)) {
+	for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
 		stack, ok := pickableItem(e)
 		if !ok || !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) || !s.wantsToPickUp(m, stack) {
 			continue

@@ -198,7 +198,7 @@ func forBlocksIn(box cube.BBox, f func(cube.Pos) bool) {
 // force overrides: a block is solid when its collision bounds average at
 // least 0.7291666 blocks per axis or are at least a block tall. Redstone
 // diodes also support hanging entities.
-func legacySolid(tx *world.Tx, b world.Block, pos cube.Pos) bool {
+func legacySolid(tx world.BlockSource, b world.Block, pos cube.Pos) bool {
 	switch b.(type) {
 	case block.RedstoneRepeater, block.RedstoneComparator:
 		return true

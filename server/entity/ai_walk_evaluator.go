@@ -32,7 +32,12 @@ type walkNodeEvaluator struct {
 	// The maluses an amphibious evaluator changes while it finds a path.
 	oldMaluses map[PathType]float64
 
-	m                                      *Mob
+	m *Mob
+	// pw is what the evaluator reads the world through, the transaction
+	// of m unless a parallel phase set a read view before prepare.
+	pw pathWorld
+	// maxFall is Mob.getMaxFallDistance for the path being found.
+	maxFall                                int
 	nodes                                  map[int64]*pathNodeData
 	types                                  map[int64]PathType
 	collisions                             map[cube.BBox]bool
@@ -49,6 +54,9 @@ func direction2D(i int) int { return [4]int{2, 3, 0, 1}[i] }
 
 func (w *walkNodeEvaluator) prepare(m *Mob) {
 	w.m = m
+	if w.pw == nil {
+		w.pw, w.maxFall = m.tx, m.maxFallDistance()
+	}
 	if w.amphibious {
 		// AmphibiousNodeEvaluator.prepare: swimming costs nothing, walking
 		// costs and the water's edge too.
@@ -80,7 +88,7 @@ func (w *walkNodeEvaluator) done() {
 			}
 		}
 	}
-	w.m, w.nodes, w.types, w.collisions = nil, nil, nil, nil
+	w.m, w.pw, w.nodes, w.types, w.collisions = nil, nil, nil, nil, nil
 }
 
 func (w *walkNodeEvaluator) node(x, y, z int) *pathNodeData {
@@ -96,10 +104,24 @@ func (w *walkNodeEvaluator) node(x, y, z int) *pathNodeData {
 // blockAt returns the block at a position, or air if its chunk isn't
 // loaded, as a PathNavigationRegion holds no unloaded chunks.
 func (w *walkNodeEvaluator) blockAt(pos cube.Pos) world.Block {
-	return pathBlockAt(w.m.tx, pos)
+	return pathBlockAt(w.pw, pos)
 }
 
-func pathBlockAt(tx *world.Tx, pos cube.Pos) world.Block {
+// pathWorld is what finding a path reads of a world: a transaction, or the
+// read view of a world in the parallel phase before entities tick.
+type pathWorld interface {
+	blockReader
+	Range() cube.Range
+	BlockLoaded(pos cube.Pos) (world.Block, bool)
+	BlockStateID(pos cube.Pos) (uint32, error)
+}
+
+var (
+	_ pathWorld = (*world.Tx)(nil)
+	_ pathWorld = (*world.ReadView)(nil)
+)
+
+func pathBlockAt(tx pathWorld, pos cube.Pos) world.Block {
 	if pos.OutOfBounds(tx.Range()) {
 		return block.Air{}
 	}
@@ -127,7 +149,7 @@ func (w *walkNodeEvaluator) start() *pathNodeData {
 	startY := int(math.Floor(pos[1]))
 	switch {
 	case w.canFloat && m.InWater():
-		for pathWater(m.tx, cube.Pos{x, startY, z}) {
+		for pathWater(w.pw, cube.Pos{x, startY, z}) {
 			startY++
 		}
 		startY--
@@ -135,11 +157,11 @@ func (w *walkNodeEvaluator) start() *pathNodeData {
 		startY = int(math.Floor(pos[1] + .5))
 	default:
 		y := int(math.Floor(pos[1] + 1))
-		for y > m.tx.Range().Min() {
+		for y > w.pw.Range().Min() {
 			startY = y
 			y--
 			below := cube.Pos{x, y, z}
-			if b := w.blockAt(below); !isAir(b) && !pathfindableLand(m.tx, below, b) {
+			if b := w.blockAt(below); !isAir(b) && !pathfindableLand(w.pw, below, b) {
 				break
 			}
 		}
@@ -281,15 +303,15 @@ func (w *walkNodeEvaluator) canReachWithoutCollision(to *pathNodeData) bool {
 
 // floorLevel ports WalkNodeEvaluator.getFloorLevel.
 func (w *walkNodeEvaluator) floorLevel(pos cube.Pos) float64 {
-	if (w.canFloat || w.amphibious) && pathWater(w.m.tx, pos) {
+	if (w.canFloat || w.amphibious) && pathWater(w.pw, pos) {
 		return float64(pos.Y()) + .5
 	}
-	return pathFloorLevel(w.m.tx, pos)
+	return pathFloorLevel(w.pw, pos)
 }
 
 // pathFloorLevel returns the height of the floor of a position: the top of
 // the collision shape of the block below.
-func pathFloorLevel(tx *world.Tx, pos cube.Pos) float64 {
+func pathFloorLevel(tx pathWorld, pos cube.Pos) float64 {
 	below := pos.Side(cube.FaceDown)
 	top, ok := collisionTop(tx, below, pathBlockAt(tx, below))
 	if !ok {
@@ -299,7 +321,7 @@ func pathFloorLevel(tx *world.Tx, pos cube.Pos) float64 {
 }
 
 // collisionTop returns the top of the collision shape of a block.
-func collisionTop(tx *world.Tx, pos cube.Pos, b world.Block) (float64, bool) {
+func collisionTop(tx pathWorld, pos cube.Pos, b world.Block) (float64, bool) {
 	boxes := b.Model().BBox(pos, tx)
 	if len(boxes) == 0 {
 		return 0, false
@@ -383,7 +405,7 @@ func (w *walkNodeEvaluator) tryJumpOn(x, y, z, jumpSize int, nodeHeight float64,
 }
 
 func (w *walkNodeEvaluator) firstNonWaterBelow(x, y, z int, best *pathNodeData) *pathNodeData {
-	for y--; y > w.m.tx.Range().Min(); y-- {
+	for y--; y > w.pw.Range().Min(); y-- {
 		t := w.cachedPathType(x, y, z)
 		if t != PathWater {
 			return best
@@ -394,8 +416,8 @@ func (w *walkNodeEvaluator) firstNonWaterBelow(x, y, z int, best *pathNodeData) 
 }
 
 func (w *walkNodeEvaluator) firstGroundNodeBelow(x, y, z int) *pathNodeData {
-	maxFall := w.m.maxFallDistance()
-	for current := y - 1; current >= w.m.tx.Range().Min(); current-- {
+	maxFall := w.maxFall
+	for current := y - 1; current >= w.pw.Range().Min(); current-- {
 		if y-current > maxFall {
 			return w.blockedNode(x, current, z)
 		}
@@ -416,13 +438,13 @@ func (w *walkNodeEvaluator) hasCollisions(box cube.BBox) bool {
 	if c, ok := w.collisions[box]; ok {
 		return c
 	}
-	c := !boxFree(w.m.tx, box)
+	c := !boxFree(w.pw, box)
 	w.collisions[box] = c
 	return c
 }
 
 // boxFree reports if no block collides with a box.
-func boxFree(tx *world.Tx, box cube.BBox) bool {
+func boxFree(tx pathWorld, box cube.BBox) bool {
 	minX, minY, minZ := int(math.Floor(box.Min()[0])), int(math.Floor(box.Min()[1]))-1, int(math.Floor(box.Min()[2]))
 	maxX, maxY, maxZ := int(math.Floor(box.Max()[0])), int(math.Floor(box.Max()[1])), int(math.Floor(box.Max()[2]))
 	for x := minX; x <= maxX; x++ {
@@ -467,7 +489,7 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 				if t == PathDoorOpen && !w.canPassDoors {
 					t = PathBlocked
 				}
-				if t == PathRail && pathTypeStatic(w.m.tx, mobPos) != PathRail && pathTypeStatic(w.m.tx, mobPos.Side(cube.FaceDown)) != PathRail {
+				if t == PathRail && pathTypeStatic(w.pw, mobPos) != PathRail && pathTypeStatic(w.pw, mobPos.Side(cube.FaceDown)) != PathRail {
 					t = PathUnpassableRail
 				}
 				if !types[t] {
@@ -527,11 +549,11 @@ func (w *walkNodeEvaluator) blockType(pos cube.Pos) PathType {
 	if w.frog && blockInTag(w.blockAt(pos.Side(cube.FaceDown)), "frog_prefer_jump_to") {
 		return PathOpen
 	}
-	if !w.amphibious || pathTypeFromState(w.m.tx, pos) != PathWater {
-		return pathTypeStatic(w.m.tx, pos)
+	if !w.amphibious || pathTypeFromState(w.pw, pos) != PathWater {
+		return pathTypeStatic(w.pw, pos)
 	}
 	for _, f := range cube.Faces() {
-		if pathTypeFromState(w.m.tx, pos.Side(f)) == PathBlocked {
+		if pathTypeFromState(w.pw, pos.Side(f)) == PathBlocked {
 			return PathWaterBorder
 		}
 	}
@@ -550,7 +572,7 @@ func (w *walkNodeEvaluator) pathType(m *Mob, pos cube.Pos) PathType {
 // pathTypeStatic ports WalkNodeEvaluator.getPathTypeStatic: the type of a
 // block, where an open block above a floor is walkable unless the floor or
 // a neighbour is dangerous.
-func pathTypeStatic(tx *world.Tx, pos cube.Pos) PathType {
+func pathTypeStatic(tx pathWorld, pos cube.Pos) PathType {
 	t := pathTypeFromState(tx, pos)
 	if t != PathOpen || pos.Y() < tx.Range().Min()+1 {
 		return t
@@ -569,7 +591,7 @@ func pathTypeStatic(tx *world.Tx, pos cube.Pos) PathType {
 }
 
 // checkNeighbourBlocks ports WalkNodeEvaluator.checkNeighbourBlocks.
-func checkNeighbourBlocks(tx *world.Tx, pos cube.Pos, t PathType) PathType {
+func checkNeighbourBlocks(tx pathWorld, pos cube.Pos, t PathType) PathType {
 	for dx := -1; dx <= 1; dx++ {
 		for dy := -1; dy <= 1; dy++ {
 			for dz := -1; dz <= 1; dz++ {
@@ -597,10 +619,17 @@ func checkNeighbourBlocks(tx *world.Tx, pos cube.Pos, t PathType) PathType {
 var pathTypesByState sync.Map
 
 // pathTypeFromState ports WalkNodeEvaluator.getPathTypeFromState, reading
-// the type through the world's PathTypeCache.
-func pathTypeFromState(tx *world.Tx, pos cube.Pos) PathType {
-	if pos.OutOfBounds(tx.Range()) {
+// the type through the world's PathTypeCache when read through a
+// transaction.
+func pathTypeFromState(pw pathWorld, pos cube.Pos) PathType {
+	if pos.OutOfBounds(pw.Range()) {
 		return PathOpen
+	}
+	tx, owner := pw.(*world.Tx)
+	if !owner {
+		// The cache belongs to the goroutine owning the world.
+		t, _ := computePathTypeFromState(pw, pos)
+		return t
 	}
 	cache := worldPathTypeCache(tx.World())
 	chunk := world.ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}
@@ -669,7 +698,7 @@ func (c *pathTypeCache) put(pos cube.Pos, version uint64, t PathType) {
 
 // computePathTypeFromState computes what pathTypeFromState returns for a
 // block and reports whether its column was ready to be read.
-func computePathTypeFromState(tx *world.Tx, pos cube.Pos) (PathType, bool) {
+func computePathTypeFromState(tx pathWorld, pos cube.Pos) (PathType, bool) {
 	b, ok := tx.BlockLoaded(pos)
 	if !ok {
 		return PathOpen, false
@@ -692,7 +721,7 @@ func computePathTypeFromState(tx *world.Tx, pos cube.Pos) (PathType, bool) {
 	return t, true
 }
 
-func computePathType(tx *world.Tx, pos cube.Pos, b world.Block, id uint32) PathType {
+func computePathType(tx pathWorld, pos cube.Pos, b world.Block, id uint32) PathType {
 	name, props := "", map[string]any(nil)
 	if id != 0 {
 		name, props, _ = gamedata.BlockStateFromID(id)
@@ -759,7 +788,7 @@ func computePathType(tx *world.Tx, pos cube.Pos, b world.Block, id uint32) PathT
 
 // pathfindableLand reports if a land mob may walk through a block, as
 // BlockState.isPathfindable(PathComputationType.LAND).
-func pathfindableLand(tx *world.Tx, pos cube.Pos, b world.Block) bool {
+func pathfindableLand(tx pathWorld, pos cube.Pos, b world.Block) bool {
 	state, err := world.CanonicalStateOf(b)
 	if err != nil {
 		return len(b.Model().BBox(pos, tx)) == 0
@@ -774,7 +803,7 @@ func pathfindableLand(tx *world.Tx, pos cube.Pos, b world.Block) bool {
 // pathfindableLandState ports the isPathfindable overrides of the blocks of
 // Java for land: the blocks a mob never paths through although they don't
 // fill their block, and the default of blocks without a full collision box.
-func pathfindableLandState(tx *world.Tx, pos cube.Pos, b world.Block, name string, props map[string]any, tagged func(string) bool) bool {
+func pathfindableLandState(tx pathWorld, pos cube.Pos, b world.Block, name string, props map[string]any, tagged func(string) bool) bool {
 	switch {
 	case tagged("minecraft:doors") || tagged("minecraft:fence_gates") || tagged("minecraft:trapdoors"):
 		return props["open"] == true
@@ -805,7 +834,7 @@ func pathfindableLandState(tx *world.Tx, pos cube.Pos, b world.Block, name strin
 }
 
 // fullCollisionCube reports if the collision shape of a block fills it.
-func fullCollisionCube(tx *world.Tx, pos cube.Pos, b world.Block) bool {
+func fullCollisionCube(tx world.BlockSource, pos cube.Pos, b world.Block) bool {
 	boxes := b.Model().BBox(pos, tx)
 	if len(boxes) != 1 {
 		return false
@@ -821,7 +850,7 @@ func isAir(b world.Block) bool {
 }
 
 // pathWater reports if a position holds water.
-func pathWater(tx *world.Tx, pos cube.Pos) bool {
+func pathWater(tx pathWorld, pos cube.Pos) bool {
 	l, ok := tx.Liquid(pos)
 	return ok && l.LiquidType() == "water"
 }
