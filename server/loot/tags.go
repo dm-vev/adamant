@@ -13,7 +13,8 @@ type itemTag struct {
 }
 
 func loadItemTags() (map[string]map[string]struct{}, error) {
-	return loadTags("item", nil, nil)
+	orderedItemTags = make(map[string][]string)
+	return loadTags("item", nil, orderedItemTags)
 }
 
 func loadEnchantmentTags() (map[string]map[string]struct{}, map[string]struct{}, error) {

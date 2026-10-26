@@ -51,6 +51,10 @@ type entry struct {
 	Conditions []condition  `json:"conditions"`
 	Functions  []modifier   `json:"functions"`
 	Modifier   modifierList `json:"modifier"`
+	// Items is the item tag of a tag entry, and Expand reports whether it
+	// is one entry for each of its items rather than one for all of them.
+	Items  string `json:"items"`
+	Expand bool   `json:"expand"`
 }
 
 func (e *entry) UnmarshalJSON(b []byte) error {
@@ -317,6 +321,9 @@ func (c *condition) UnmarshalJSON(b []byte) error {
 
 var tables map[string]table
 var itemTags map[string]map[string]struct{}
+
+// orderedItemTags lists the items of each item tag in the order of the tag.
+var orderedItemTags map[string][]string
 var enchantmentTags map[string]map[string]struct{}
 var registeredEnchantments map[string]struct{}
 
@@ -1007,9 +1014,10 @@ func testEntityPredicate(x condition, c *Context) (bool, error) {
 				return false, fmt.Errorf("entity type predicate requires entity type context")
 			}
 			if strings.HasPrefix(name, "#") {
-				return false, fmt.Errorf("entity type tag predicate %q requires entity registry tag support", name)
-			}
-			if normalize(actual) != normalize(name) {
+				if in, err := gamedata.EntityTypeTagContains(name[1:], normalize(actual)); err != nil || !in {
+					return false, err
+				}
+			} else if normalize(actual) != normalize(name) {
 				return false, nil
 			}
 		default:
@@ -1078,6 +1086,20 @@ func choose(es []entry, c *Context) ([]entry, error) {
 		if w == 0 {
 			continue
 		}
+		if e.Type == "minecraft:tag" && e.Expand {
+			// TagEntry.expand: each item of the tag is an entry of the
+			// weight of the tag entry.
+			members, err := e.tagMembers()
+			if err != nil {
+				return nil, err
+			}
+			for _, id := range members {
+				opts = append(opts, e.itemOfTag(id))
+				weights = append(weights, w)
+				total += w
+			}
+			continue
+		}
 		opts = append(opts, e)
 		weights = append(weights, w)
 		total += w
@@ -1107,6 +1129,17 @@ func expand(e entry, c *Context) ([]entry, error) {
 		return []entry{e}, nil
 	case "minecraft:empty":
 		return nil, nil
+	case "minecraft:tag":
+		// A tag entry not expanded yields one of each item of the tag.
+		members, err := e.tagMembers()
+		if err != nil {
+			return nil, err
+		}
+		out := make([]entry, 0, len(members))
+		for _, id := range members {
+			out = append(out, e.itemOfTag(id))
+		}
+		return out, nil
 	case "minecraft:loot_table":
 		var nested table
 		if e.Inline != nil {
@@ -1194,6 +1227,28 @@ func expand(e entry, c *Context) ([]entry, error) {
 		return nil, fmt.Errorf("unsupported loot entry type %q", e.Type)
 	}
 }
+
+// tagMembers returns the items of the item tag of a tag entry in the order
+// of the tag.
+func (e entry) tagMembers() ([]string, error) {
+	tag := e.Items
+	if tag == "" {
+		tag = e.Name
+	}
+	members, ok := orderedItemTags[normalize(strings.TrimPrefix(tag, "#"))]
+	if !ok {
+		return nil, fmt.Errorf("tag loot entry references missing item tag %q", tag)
+	}
+	return members, nil
+}
+
+// itemOfTag returns the item entry a tag entry is for one item of its tag,
+// with the functions of the tag entry.
+func (e entry) itemOfTag(id string) entry {
+	e.Type, e.Name, e.Items, e.Expand = "minecraft:item", id, "", false
+	return e
+}
+
 func makeStack(e entry, c *Context) (item.Stack, error) {
 	id := e.Name
 	if id == "" {

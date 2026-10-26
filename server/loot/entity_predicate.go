@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -93,7 +94,7 @@ func matchEntityKey(e world.Entity, key string, want any, c *Context) (bool, err
 			return false, fmt.Errorf("invalid entity type predicate %T", want)
 		}
 		if strings.HasPrefix(name, "#") {
-			return false, fmt.Errorf("entity type tag predicate %q requires entity tags", name)
+			return gamedata.EntityTypeTagContains(name[1:], JavaEntityID(e))
 		}
 		return JavaEntityID(e) == normalize(name), nil
 	case "minecraft:flags", "flags":

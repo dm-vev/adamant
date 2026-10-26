@@ -2,6 +2,7 @@ package loot
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
@@ -28,6 +29,45 @@ func TestEntityPredicateRequiresMatchingContextAndProperties(t *testing.T) {
 	}
 	if ok, err := testCondition(condition{Type: "minecraft:entity_properties", Entity: "this", Predicate: map[string]any{}}, &Context{}); err != nil || ok {
 		t.Fatalf("missing entity predicate context = %t, %v; want false", ok, err)
+	}
+}
+
+// lootEntity is an entity a loot predicate reads the Java type of.
+type lootEntity struct {
+	world.Entity
+	id string
+}
+
+func (e lootEntity) JavaEntityID() string { return e.id }
+
+// TestEntityTypeTagPredicate checks a predicate naming an entity type tag,
+// as the creeper's music disc pool names #minecraft:skeletons for its
+// attacker, matches the types in the tag, both for a live attacker and one
+// described by its type, rather than failing.
+func TestEntityTypeTagPredicate(t *testing.T) {
+	predicate := condition{Type: "minecraft:entity_properties", Entity: "attacker", Predicate: map[string]any{
+		"minecraft:entity_type": "#minecraft:skeletons",
+	}}
+	for id, want := range map[string]bool{"minecraft:skeleton": true, "minecraft:stray": true, "minecraft:bogged": true, "minecraft:zombie": false, "minecraft:creeper": false} {
+		if ok, err := testCondition(predicate, &Context{SourceEntity: lootEntity{id: id}}); err != nil || ok != want {
+			t.Errorf("attacker %s = %t, %v; want %t", id, ok, err, want)
+		}
+		if ok, err := testCondition(predicate, &Context{SourceEntityType: id}); err != nil || ok != want {
+			t.Errorf("attacker of type %s = %t, %v; want %t", id, ok, err, want)
+		}
+	}
+	r := vanilla.NewXoroshiroRandom(1)
+	drops, err := Generate("minecraft:entities/creeper", 0, Context{Random: &r, ThisEntity: lootEntity{id: "minecraft:creeper"}, SourceEntity: lootEntity{id: "minecraft:skeleton"}})
+	if err != nil {
+		t.Fatalf("creeper killed by a skeleton: %v", err)
+	}
+	disc := false
+	for _, s := range drops {
+		name, _ := s.Item().EncodeItem()
+		disc = disc || strings.HasPrefix(name, "minecraft:music_disc")
+	}
+	if !disc {
+		t.Errorf("creeper killed by a skeleton dropped %v, want a music disc", drops)
 	}
 }
 
