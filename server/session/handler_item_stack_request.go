@@ -100,6 +100,10 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 		case *protocol.BeaconPaymentStackRequestAction:
 			err = h.handleBeaconPayment(a, s, tx)
 		case *protocol.CraftRecipeStackRequestAction:
+			if s.merchantTradeOpen() {
+				err = h.handleMerchantCraft(a, s, tx, c)
+				break
+			}
 			if s.containerOpened.Load() {
 				var special bool
 				switch tx.Block(*s.openedPos.Load()).(type) {
@@ -194,12 +198,7 @@ func (h *ItemStackRequestHandler) handleMerchantTrade(from, to protocol.StackReq
 
 	originals := s.inv.Slots()
 	remaining := append([]item.Stack(nil), originals...)
-	baseCount := offer.Input.Count()
-	demandProduct := int32(baseCount) * int32(offer.Demand)
-	demandPrice := int(math.Floor(float64(float32(demandProduct) * offer.PriceMultiplier)))
-	price := baseCount + max(0, demandPrice) + offer.SpecialPrice
-	price = min(max(price, 1), offer.Input.MaxCount())
-	inputA := offer.Input.Grow(price - baseCount)
+	inputA := merchantCostA(offer)
 	for _, cost := range [2]item.Stack{inputA, offer.SecondaryInput} {
 		if cost.Empty() {
 			continue

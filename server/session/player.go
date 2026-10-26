@@ -397,6 +397,14 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 		if id == protocol.ContainerLevelEntity {
 			return s.openedWindow.Load(), true
 		}
+		if s.merchantTradeOpen() {
+			switch id {
+			case protocol.ContainerTradeIngredientOne, protocol.ContainerTradeIngredientTwo,
+				protocol.ContainerTradeTwoIngredientOne, protocol.ContainerTradeTwoIngredientTwo:
+				// The trade screen's inputs are UI inventory slots 4 and 5.
+				return s.ui, true
+			}
+		}
 		if s.openedEntity.Load() != nil {
 			return nil, false
 		}

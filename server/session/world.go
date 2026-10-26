@@ -1869,22 +1869,33 @@ func serializeMerchantOffers(offers []entity.MerchantOffer) ([]byte, error) {
 		if offer.RewardXP {
 			rewardXP = 1
 		}
+		// The client shows buyA as priced and names the offer by netId, the
+		// recipe network ID its trade request carries.
 		recipes[i] = map[string]any{
-			"buyA":            item.WriteNBT(offer.Input, true),
-			"buyB":            item.WriteNBT(offer.SecondaryInput, true),
-			"sell":            item.WriteNBT(offer.Output, true),
-			"uses":            int32(offer.Uses),
-			"maxUses":         int32(offer.MaxUses),
-			"rewardExp":       rewardXP,
-			"tier":            int32(offer.Tier),
-			"traderExp":       int32(offer.XP),
-			"priceMultiplier": offer.PriceMultiplier,
-			"demand":          int32(offer.Demand),
-			"specialPrice":    int32(offer.SpecialPrice),
+			"netId":            int32(i + 1),
+			"buyA":             item.WriteNBT(merchantCostA(offer), true),
+			"buyB":             item.WriteNBT(offer.SecondaryInput, true),
+			"buyCountA":        int32(offer.Input.Count()),
+			"buyCountB":        int32(offer.SecondaryInput.Count()),
+			"sell":             item.WriteNBT(offer.Output, true),
+			"uses":             int32(offer.Uses),
+			"maxUses":          int32(offer.MaxUses),
+			"rewardExp":        rewardXP,
+			"tier":             int32(offer.Tier),
+			"traderExp":        int32(offer.XP),
+			"priceMultiplierA": offer.PriceMultiplier,
+			"priceMultiplierB": float32(0),
+			"demand":           int32(offer.Demand),
 		}
 	}
+	// The experience a villager needs for each level, as
+	// VillagerData.NEXT_LEVEL_XP_THRESHOLDS.
+	tiers := []any{
+		map[string]any{"0": int32(0)}, map[string]any{"1": int32(10)}, map[string]any{"2": int32(70)},
+		map[string]any{"3": int32(150)}, map[string]any{"4": int32(250)},
+	}
 	var buf bytes.Buffer
-	if err := nbt.NewEncoderWithEncoding(&buf, nbt.NetworkLittleEndian).Encode(map[string]any{"Recipes": recipes}); err != nil {
+	if err := nbt.NewEncoderWithEncoding(&buf, nbt.NetworkLittleEndian).Encode(map[string]any{"Recipes": recipes, "TierExpRequirements": tiers}); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
