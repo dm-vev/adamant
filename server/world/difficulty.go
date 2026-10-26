@@ -8,8 +8,9 @@ type Difficulty interface {
 	// FoodRegenerates specifies if players' food levels should automatically
 	// regenerate with this difficulty.
 	FoodRegenerates() bool
-	// StarvationHealthLimit specifies the amount of health at which a player
-	// will no longer receive damage from starvation.
+	// StarvationHealthLimit specifies the health at or below which a player
+	// no longer receives damage from starvation, as FoodData.tick: 10 unless
+	// the difficulty is Normal (1) or Hard (none).
 	StarvationHealthLimit() float64
 	// FireSpreadIncrease returns a number that increases the rate at which fire
 	// spreads.
@@ -91,7 +92,7 @@ func (reg *difficultyRegistry) LookupID(diff Difficulty) (int, bool) {
 type difficultyPeaceful struct{}
 
 func (difficultyPeaceful) FoodRegenerates() bool          { return true }
-func (difficultyPeaceful) StarvationHealthLimit() float64 { return 20 }
+func (difficultyPeaceful) StarvationHealthLimit() float64 { return 10 }
 func (difficultyPeaceful) FireSpreadIncrease() int        { return 0 }
 
 // difficultyEasy difficulty has mobs deal less damage to players than normal
@@ -103,11 +104,11 @@ func (difficultyEasy) StarvationHealthLimit() float64 { return 10 }
 func (difficultyEasy) FireSpreadIncrease() int        { return 7 }
 
 // difficultyNormal difficulty has mobs that deal normal damage to players.
-// Starvation will occur until the player is down to a single heart.
+// Starvation will occur until the player is down to half a heart.
 type difficultyNormal struct{}
 
 func (difficultyNormal) FoodRegenerates() bool          { return false }
-func (difficultyNormal) StarvationHealthLimit() float64 { return 2 }
+func (difficultyNormal) StarvationHealthLimit() float64 { return 1 }
 func (difficultyNormal) FireSpreadIncrease() int        { return 14 }
 
 // difficultyHard difficulty has mobs that deal above average damage to

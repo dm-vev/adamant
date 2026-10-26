@@ -85,6 +85,12 @@ type playerData struct {
 	sleepPos      cube.Pos
 	timeSinceRest int32
 
+	// tickCount is Entity.tickCount, the ticks the player has existed in
+	// this session.
+	tickCount int64
+	// sentFood is the food state last sent to the client.
+	sentFood hungerSnapshot
+
 	usingSince               time.Time
 	usingTicks               int64
 	usingStack               item.Stack
@@ -1047,8 +1053,8 @@ func (p *Player) Saturate(food int, saturation float64) {
 
 // sendFood sends the current food properties to the client.
 func (p *Player) sendFood() {
-	state := p.hunger.snapshot()
-	p.session().SendFood(state.foodLevel, state.saturationLevel, state.exhaustionLevel)
+	p.sentFood = p.hunger.snapshot()
+	p.session().SendFood(p.sentFood.foodLevel, p.sentFood.saturationLevel, p.sentFood.exhaustionLevel)
 }
 
 // AddEffect adds an entity.Effect to the Player. If the effect is instant, it is applied to the Player
@@ -1092,33 +1098,15 @@ func (*Player) BeaconAffected() bool {
 	return true
 }
 
-// Exhaust exhausts the player by the amount of points passed if the player is in survival mode. If the total
-// exhaustion level exceeds 4, a saturation point, or food point, if saturation is 0, will be subtracted.
+// Exhaust adds the points passed to the player's exhaustion unless it is in
+// creative or spectator mode, as Player.causeFoodExhaustion. Each tick in
+// which the exhaustion exceeds 4, a point of saturation, or of food if
+// saturation is 0, is lost.
 func (p *Player) Exhaust(points float64) {
-	if !p.GameMode().AllowsTakingDamage() || p.tx.World().Difficulty().FoodRegenerates() {
+	if !p.GameMode().AllowsTakingDamage() {
 		return
 	}
-	before := p.hunger.Food()
 	p.hunger.exhaust(points)
-	if after := p.hunger.Food(); before != after {
-		// Temporarily set the food level back so that it hasn't yet changed once the event is handled.
-		p.hunger.SetFood(before)
-
-		ctx := NewEventContext(p.tx, p)
-		if p.Handler().HandleFoodLoss(ctx, before, &after); ctx.Cancelled() {
-			// Reset the exhaustion level if the event was cancelled. Because if
-			// we cancel this, and at some point we stop cancelling it, the
-			// first food point will be lost more quickly than expected.
-			p.hunger.resetExhaustion()
-			return
-		}
-		p.hunger.SetFood(after)
-		if before >= 7 && after <= 6 {
-			// The client will stop sprinting by itself too, but we force it just to be sure.
-			p.StopSprinting()
-		}
-	}
-	p.sendFood()
 }
 
 // Dead checks if the player is considered dead. True is returned if the health of the player is equal to or
@@ -3318,11 +3306,60 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	p.emitMovementGameEvents(deltaPos)
 	p.updateFallState(deltaPos.Y())
 
-	if p.Swimming() {
-		p.Exhaust(0.01 * horizontalVel.Len())
-	} else if p.Sprinting() {
-		p.Exhaust(0.1 * horizontalVel.Len())
+	p.checkMovementStatistics(deltaPos)
+}
+
+// checkMovementStatistics ports the exhaustion of
+// ServerPlayer.checkMovementStatistics: 0.01 per metre swimming, under water
+// or wading, 0.1 per metre sprinting on the ground and none otherwise.
+func (p *Player) checkMovementStatistics(delta mgl64.Vec3) {
+	if p.Riding() != nil || delta == (mgl64.Vec3{}) {
+		return
 	}
+	full := float32(math.Round(float64(float32(delta.Len()) * 100)))
+	horizontal := float32(math.Round(float64(float32(math.Hypot(delta[0], delta[2])) * 100)))
+	switch {
+	case p.Swimming() || p.insideOfWater():
+		p.Exhaust(float64(0.01 * full * 0.01))
+	case p.touchingWater():
+		p.Exhaust(float64(0.01 * horizontal * 0.01))
+	case p.onClimbable():
+	case p.onGround && p.Sprinting():
+		p.Exhaust(float64(0.1 * horizontal * 0.01))
+	}
+}
+
+// onClimbable ports LivingEntity.onClimbable: the player is in a climbable
+// block, or an open trapdoor above a ladder facing the same way.
+func (p *Player) onClimbable() bool {
+	if p.GameMode() == world.GameModeSpectator {
+		return false
+	}
+	pos := cube.PosFromVec3(p.Position())
+	b, loaded := p.tx.BlockLoaded(pos)
+	if !loaded {
+		return false
+	}
+	state, err := world.CanonicalStateOf(b)
+	if err != nil {
+		return false
+	}
+	name := strings.TrimPrefix(state.Name, "minecraft:")
+	if p.Gliding() && bedStateTag(name, "minecraft:can_glide_through") {
+		return false
+	}
+	if bedStateTag(name, "minecraft:climbable") {
+		return true
+	}
+	if !strings.HasSuffix(name, "_trapdoor") || state.Properties["open"] != "true" {
+		return false
+	}
+	below, loaded := p.tx.BlockLoaded(pos.Side(cube.FaceDown))
+	if !loaded {
+		return false
+	}
+	ladder, err := world.CanonicalStateOf(below)
+	return err == nil && strings.TrimPrefix(ladder.Name, "minecraft:") == "ladder" && ladder.Properties["facing"] == state.Properties["facing"]
 }
 
 // Displace moves the player by a server-authoritative relative delta, clipped against block collision boxes.
@@ -3642,6 +3679,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.bindTx(tx)
 	p.wardenSpawnTracker.Tick()
 	p.itemUseTick = current
+	p.tickCount++
 	if p.Dead() {
 		p.ReleaseShoulderParrots()
 		p.cancelItemUse()
@@ -4120,51 +4158,63 @@ func (p *Player) tickAirSupply() {
 	}
 }
 
-// tickFood ticks food related functionality, such as the depletion of the food bar and regeneration if it
-// is full enough.
+// tickFood ports ServerPlayer.tickRegeneration and FoodData.tick: in
+// Peaceful the player heals and refills its food bar, exhaustion drains
+// saturation and food, a full food bar heals the player and an empty one
+// starves it.
 func (p *Player) tickFood() {
-	state := p.hunger.tickState()
-	naturalRegeneration := p.tx.World().GameRuleBool("natural_health_regeneration")
-	foodRegenerates := p.tx.World().Difficulty().FoodRegenerates() && naturalRegeneration
-	if naturalRegeneration && state.foodTick%10 == 0 && (state.canQuicklyRegenerate || foodRegenerates) {
-		if foodRegenerates {
-			p.AddFood(1)
+	w := p.tx.World()
+	naturalRegeneration := w.GameRuleBool("natural_health_regeneration")
+	difficulty := w.Difficulty()
+	peaceful := difficulty == world.DifficultyPeaceful
+	if peaceful && naturalRegeneration {
+		if p.tickCount%20 == 0 {
+			if p.Health() < p.MaxHealth() {
+				p.Heal(1, entity.FoodHealingSource{})
+			}
+			p.hunger.regeneratePeaceful()
 		}
-		if state.foodTick%20 == 0 {
-			p.regenerate(true)
-		}
-	}
-	if state.foodTick == 1 {
-		if naturalRegeneration && state.canRegenerate {
-			p.regenerate(!foodRegenerates)
-		} else if state.starving {
-			p.starve()
+		if p.tickCount%10 == 0 && p.hunger.Food() < 20 {
+			p.hunger.AddFood(1)
 		}
 	}
 
-	if !state.canSprint {
+	if before, lose := p.hunger.drainExhaustion(peaceful); lose {
+		after := before - 1
+		ctx := NewEventContext(p.tx, p)
+		if p.Handler().HandleFoodLoss(ctx, before, &after); !ctx.Cancelled() {
+			p.hunger.SetFood(after)
+		}
+	}
+
+	state := p.hunger.snapshot()
+	hurt := p.Health() > 0 && p.Health() < p.MaxHealth()
+	switch {
+	case naturalRegeneration && state.saturationLevel > 0 && hurt && state.foodLevel >= 20:
+		if p.hunger.advanceTimer(10) {
+			spent := min(state.saturationLevel, 6)
+			p.Heal(spent/6, entity.FoodHealingSource{QuickRegeneration: true})
+			p.hunger.exhaust(spent)
+		}
+	case naturalRegeneration && state.foodLevel >= 18 && hurt:
+		if p.hunger.advanceTimer(80) {
+			p.Heal(1, entity.FoodHealingSource{})
+			p.hunger.exhaust(6)
+		}
+	case state.foodLevel <= 0:
+		if p.hunger.advanceTimer(80) && p.Health() > difficulty.StarvationHealthLimit() {
+			p.Hurt(1, StarvationDamageSource{})
+		}
+	default:
+		p.hunger.resetTimer()
+	}
+
+	if !p.hunger.canSprint() {
 		p.StopSprinting()
 	}
-}
-
-// regenerate attempts to regenerate half a heart of health, typically caused by a full food bar.
-func (p *Player) regenerate(exhaust bool) {
-	if p.Health() == p.MaxHealth() {
-		return
-	}
-	regenerated := p.Heal(1, entity.FoodHealingSource{QuickRegeneration: exhaust})
-	if exhaust && regenerated > 0 {
-		p.Exhaust(6)
-	}
-}
-
-// starve deals starvation damage to the player if the difficult allows it. In peaceful mode, no damage will
-// ever be dealt. In easy mode, damage will only be dealt if the player has more than 10 health. In normal
-// mode, damage will only be dealt if the player has more than 2 health and in hard mode, damage will always
-// be dealt.
-func (p *Player) starve() {
-	if p.Health() > p.tx.World().Difficulty().StarvationHealthLimit() {
-		p.Hurt(1, StarvationDamageSource{})
+	if sent := p.hunger.snapshot(); sent.foodLevel != p.sentFood.foodLevel || sent.saturationLevel != p.sentFood.saturationLevel || sent.exhaustionLevel != p.sentFood.exhaustionLevel {
+		p.sentFood = sent
+		p.session().SendFood(sent.foodLevel, sent.saturationLevel, sent.exhaustionLevel)
 	}
 }
 

@@ -6,13 +6,16 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 )
 
-// hungerManager handles the changes in hunger, exhaustion and saturation of a player.
+// hungerManager holds the food level, saturation, exhaustion and timer of a
+// player, as Java's FoodData does.
 type hungerManager struct {
 	mu              sync.RWMutex
 	foodLevel       int
 	saturationLevel float64
 	exhaustionLevel float64
-	foodTick        int
+	// foodTick is FoodData.tickTimer, counting ticks towards the next
+	// regeneration or starvation step.
+	foodTick int
 }
 
 type hungerSnapshot struct {
@@ -22,18 +25,10 @@ type hungerSnapshot struct {
 	foodTick        int
 }
 
-type hungerTickState struct {
-	foodTick             int
-	canQuicklyRegenerate bool
-	canRegenerate        bool
-	starving             bool
-	canSprint            bool
-}
-
 // newHungerManager returns a new hunger manager with the default values for food level, saturation level and
 // exhaustion level.
 func newHungerManager() *hungerManager {
-	return &hungerManager{foodLevel: 20, saturationLevel: 5, foodTick: 1}
+	return &hungerManager{foodLevel: 20, saturationLevel: 5}
 }
 
 // Food returns the current food level of a player. The level returned is guaranteed to always be between 0
@@ -85,25 +80,6 @@ func (m *hungerManager) snapshot() hungerSnapshot {
 	}
 }
 
-// tickState advances the food tick counter and returns the pre-advance state.
-func (m *hungerManager) tickState() hungerTickState {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	state := hungerTickState{
-		foodTick:             m.foodTick,
-		canQuicklyRegenerate: m.foodLevel == 20 && m.saturationLevel > 0,
-		canRegenerate:        m.foodLevel >= 18,
-		starving:             m.foodLevel == 0,
-		canSprint:            m.foodLevel > 6,
-	}
-	m.foodTick++
-	if m.foodTick > 80 {
-		m.foodTick = 1
-	}
-	return state
-}
-
 // Reset resets the hunger manager to its default values, identical to those set when creating a new manager
 // using newHungerManager.
 func (m *hungerManager) Reset() {
@@ -113,31 +89,67 @@ func (m *hungerManager) Reset() {
 	m.foodLevel = 20
 	m.saturationLevel = 5
 	m.exhaustionLevel = 0
-	m.foodTick = 1
+	m.foodTick = 0
 }
 
-// ResetExhaustion resets the player's exhaustion level to 0. It prevents the
-// player's food level from decreasing immediately after cancelling food loss.
-func (m *hungerManager) resetExhaustion() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.exhaustionLevel = 0
-	// Preserve saturation so cancelling food loss doesn't silently nerf regen.
-	m.foodTick = 1
-}
-
-// exhaust exhausts the player by the amount of points passed. If the total exhaustion level exceeds 4, a
-// saturation point, or food point, if saturation is 0, will be subtracted.
+// exhaust ports FoodData.addExhaustion: exhaustion builds up to at most 40
+// and is only turned into lost saturation or food by drainExhaustion.
 func (m *hungerManager) exhaust(points float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.exhaustionLevel += points
-	for m.exhaustionLevel >= 4 {
-		// Maximum exhaustion value is 4, so keep removing one saturation point until the exhaustion level
-		// is below 4.
-		m.exhaustionLevel -= 4
-		m.desaturate()
+	m.exhaustionLevel = min(m.exhaustionLevel+points, 40)
+}
+
+// drainExhaustion runs the first step of FoodData.tick: above 4 exhaustion, 4
+// is removed and a point of saturation is lost, or, without saturation and
+// outside Peaceful, a point of food. It returns the food level and whether
+// that point of food is to be lost; the caller removes it.
+func (m *hungerManager) drainExhaustion(peaceful bool) (food int, loseFood bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.exhaustionLevel <= 4 {
+		return m.foodLevel, false
+	}
+	m.exhaustionLevel -= 4
+	if m.saturationLevel > 0 {
+		m.saturationLevel = max(m.saturationLevel-1, 0)
+		return m.foodLevel, false
+	}
+	return m.foodLevel, !peaceful && m.foodLevel > 0
+}
+
+// advanceTimer counts one tick of the food timer and reports, resetting the
+// timer, once it reaches interval.
+func (m *hungerManager) advanceTimer(interval int) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.foodTick++; m.foodTick >= interval {
+		m.foodTick = 0
+		return true
+	}
+	return false
+}
+
+// resetTimer sets the food timer back to zero.
+func (m *hungerManager) resetTimer() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.foodTick = 0
+}
+
+// regeneratePeaceful applies the saturation half of
+// ServerPlayer.tickRegeneration: saturation grows by one up to 20, even past
+// the food level.
+func (m *hungerManager) regeneratePeaceful() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.saturationLevel < 20 {
+		m.saturationLevel++
 	}
 }
 
@@ -151,42 +163,9 @@ func (m *hungerManager) saturate(food int, saturation float64) {
 	m.saturationLevel = max(min(m.saturationLevel+saturation, float64(m.foodLevel)), 0)
 }
 
-// desaturate removes one saturation point from the player. If the saturation level of the player is already
-// 0, a point will be subtracted from the food level instead. If that level, too, is already 0, nothing will
-// happen.
-func (m *hungerManager) desaturate() {
-	if m.saturationLevel <= 0 && m.foodLevel != 0 {
-		m.foodLevel--
-	} else if m.saturationLevel > 0 {
-		m.saturationLevel = max(m.saturationLevel-1, 0)
-	}
-}
-
-// canQuicklyRegenerate checks if the player can quickly regenerate. The function returns true if Food() returns 20
-// and the player still has saturation left.
-// The rate of regeneration is 1/0.5 seconds.
-func (m *hungerManager) canQuicklyRegenerate() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	return m.foodLevel == 20 && m.saturationLevel > 0
-}
-
-// canRegenerate checks if the player with the amount of food levels in the hunger manager can regenerate.
-// The function returns true if Food() returns either 18-20.
-// The rate of regeneration is 1/4 seconds.
-func (m *hungerManager) canRegenerate() bool {
-	return m.Food() >= 18
-}
-
 // canSprint returns true if the food level of the player is 7 or higher.
 func (m *hungerManager) canSprint() bool {
 	return m.Food() > 6
-}
-
-// starving checks if the player is currently considered to be starving. True is returned if Food() returns 0.
-func (m *hungerManager) starving() bool {
-	return m.Food() == 0
 }
 
 // StarvationDamageSource is the world.DamageSource passed when a player is
