@@ -124,10 +124,15 @@ These rules follow from that:
   - smithing transforms
   - crafter crafting
   - the `limited_crafting` game rule
+- Java's smelting, blasting, smoking and campfire recipes and cooking fuels, generated from the 26.3 data; furnaces follow `AbstractFurnaceBlockEntity`, including cooking progress that cools down without fuel and experience counted per recipe.
 - Java loot tables resolved onto Bedrock items, with independent loot random streams that survive restarts.
 - The 26.3 enchantment set with Java's selection rules, plus Trial Chambers effects and potions.
 - Spears and other Java 26.x combat items.
 - Maps with native persistence, scaling and locking.
+
+### Survival
+
+- Hunger follows Java's `FoodData`: exhaustion drains one point of saturation or food a tick, saturation heals by the amount spent, Peaceful refills health, food and saturation, and walking, sprinting and swimming cost what `ServerPlayer.checkMovementStatistics` charges.
 
 ### Worlds and rules
 
