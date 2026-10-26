@@ -693,6 +693,14 @@ type DamageSource interface {
 	IgnoreTotem() bool
 }
 
+// EntityDamageSource is a damage source that exposes its responsible entity.
+// Block destruction callbacks can use it to inspect the player's held tool
+// without depending on a concrete entity package.
+type EntityDamageSource interface {
+	DamageSource
+	SourceEntity() Entity
+}
+
 // ArmourEffectivenessReducer exposes a multiplier that scales how much armour reduces
 // incoming damage for a specific world.DamageSource.
 type ArmourEffectivenessReducer interface {

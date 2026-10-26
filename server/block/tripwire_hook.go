@@ -1,6 +1,8 @@
 package block
 
 import (
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -47,6 +49,18 @@ func (t TripwireHook) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 		breakBlock(t, pos, tx)
 		return
 	}
+}
+
+// Placed runs the hook's initial line scan. Ordinary neighbour notifications
+// only validate its support; a command removing string does not rescan a line.
+func (t TripwireHook) Placed(pos cube.Pos, tx *world.Tx, previous world.Block) {
+	if _, same := previous.(TripwireHook); !same {
+		updateTripwireLine(pos, t, tx)
+	}
+}
+
+// ScheduledTick is the ten-tick recheck requested by a changed string.
+func (t TripwireHook) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	updateTripwireLine(pos, t, tx)
 }
 

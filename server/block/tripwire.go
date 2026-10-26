@@ -9,11 +9,12 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-const maxTripwireLength = 40
+// Forty strings put the opposite hook at distance 41.
+const maxTripwireDistance = 41
 
 // Tripwire is a string block that can activate tripwire hooks.
 type Tripwire struct {
-	carpet
+	empty
 	transparent
 	replaceable
 	sourceWaterDisplacer
@@ -33,6 +34,36 @@ func (t Tripwire) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, simpleDrops(item.NewStack(item.String{}, 1)))
 }
 
+// PlayerWillDestroy updates the source while the string still exists. Native
+// shears clear its powered bit; other tools set it. Both request the hook's
+// delayed recheck, so the removed string later detaches the remaining line.
+func (t Tripwire) PlayerWillDestroy(pos cube.Pos, tx *world.Tx, source world.DamageSource) {
+	shears := false
+	if damage, ok := source.(world.EntityDamageSource); ok {
+		if carrier, ok := damage.SourceEntity().(item.Carrier); ok {
+			main, _ := carrier.HeldItems()
+			_, shears = main.Item().(item.Shears)
+		}
+	}
+	t.Powered = !shears
+	tx.SetBlock(pos, t, nil)
+	updateTripwireFrom(pos, tx)
+}
+
+// Placed follows TripWireBlock::onPlace's default permutation, followed by
+// connection/source updates. Same-identifier property edits retain their state.
+func (t Tripwire) Placed(pos cube.Pos, tx *world.Tx, previous world.Block) {
+	if _, same := previous.(Tripwire); same {
+		return
+	}
+	initial := Tripwire{Suspended: true}
+	if t != initial {
+		tx.SetBlock(pos, initial, &world.SetOpts{DisableBlockUpdates: true})
+	}
+	updateTripwireConnections(pos, tx)
+	updateTripwireFrom(pos, tx)
+}
+
 // UseOnBlock places string as BDS does, always with suspended_bit set,
 // whether or not a block supports it.
 func (t Tripwire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
@@ -50,7 +81,6 @@ func (t Tripwire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 // NeighbourUpdateTick ...
 func (t Tripwire) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	updateTripwireConnections(pos, tx)
-	updateTripwireFrom(pos, tx)
 }
 
 // EntityInside ...
@@ -102,25 +132,38 @@ func (t Tripwire) updatePowered(pos cube.Pos, tx *world.Tx) {
 }
 
 func tripwirePowered(pos cube.Pos, tx *world.Tx) bool {
-	box := cube.Box(float64(pos[0]), float64(pos[1]), float64(pos[2]), float64(pos[0]+1), float64(pos[1]+1), float64(pos[2]+1))
-	for range tx.EntitiesWithin(box) {
+	t, ok := tx.Block(pos).(Tripwire)
+	if !ok {
+		return false
+	}
+	var box cube.BBox
+	if !t.Suspended {
+		box = cube.Box(0, 0, 0, 1, 3.0/32, 1)
+	} else if t.Attached {
+		box = cube.Box(0, 1.0/16, 0, 1, 5.0/32, 1)
+	} else {
+		box = cube.Box(0, 0, 0, 1, 0.5, 1)
+	}
+	for range redstoneEntitiesInBox(tx, box.Translate(pos.Vec3()), false) {
 		return true
 	}
 	return false
 }
 
 func updateTripwireFrom(pos cube.Pos, tx *world.Tx) {
-	for _, dir := range cube.Directions() {
+	// The native callback searches south and west; calculateState updates
+	// both end hooks and all intervening strings.
+	for _, dir := range []cube.Direction{cube.South, cube.West} {
 		cur := pos
-		for range maxTripwireLength {
+		for distance := 1; distance <= maxTripwireDistance; distance++ {
 			cur = cur.Side(dir.Face())
-			b := tx.Block(cur)
+			b, _ := tx.BlockLoaded(cur)
 			if _, ok := b.(Tripwire); ok {
 				continue
 			}
 			hook, ok := b.(TripwireHook)
 			if ok && hook.Facing == dir.Opposite() {
-				updateTripwireLine(cur, hook, tx)
+				updateTripwireLineChanged(cur, hook, tx, distance)
 			}
 			break
 		}
@@ -154,32 +197,58 @@ func updateTripwireConnections(pos cube.Pos, tx *world.Tx) {
 }
 
 func updateTripwireLine(pos cube.Pos, hook TripwireHook, tx *world.Tx) {
+	updateTripwireLineChanged(pos, hook, tx, -1)
+}
+
+func updateTripwireLineChanged(pos cube.Pos, hook TripwireHook, tx *world.Tx, changedIndex int) {
 	facing := hook.Facing
 	attached := false
+	continuous := true
 	powered := false
-	wirePositions := make([]cube.Pos, 0, maxTripwireLength)
+	wirePositions := make([]cube.Pos, 0, maxTripwireDistance)
+	var otherPos cube.Pos
+	var otherHook TripwireHook
+	foundOther := false
 
 	cur := pos
-	for range maxTripwireLength {
+	for distance := 1; distance <= maxTripwireDistance; distance++ {
 		cur = cur.Side(facing.Face())
-		b := tx.Block(cur)
+		b, _ := tx.BlockLoaded(cur)
 		if tw, ok := b.(Tripwire); ok {
 			wirePositions = append(wirePositions, cur)
-			if tw.Powered {
+			if tw.Powered && !tw.Disarmed {
 				powered = true
+			}
+			if distance == changedIndex {
+				continuous = continuous && !tw.Disarmed
+				tx.ScheduleBlockUpdate(pos, hook, gameTicks(10))
 			}
 			continue
 		}
-		if other, ok := b.(TripwireHook); ok && other.Facing == facing.Opposite() {
-			attached = true
-			updateHookState(cur, other, attached, powered, tx)
+		if other, ok := b.(TripwireHook); ok {
+			if other.Facing == facing.Opposite() {
+				attached = distance >= 2 && continuous
+				otherPos, otherHook, foundOther = cur, other, true
+			}
+			break
 		}
-		break
+		// Native calculateState continues over holes to update the opposite
+		// hook and surviving strings when a later source update rescans.
+		continuous = false
 	}
 	if !attached {
 		powered = false
 	}
+	if foundOther {
+		updateHookState(otherPos, otherHook, attached, powered, tx)
+		// Native uses the starting hook's previous flags for both sounds.
+		emitTripwireHookSound(otherPos, tx, hook, attached, powered)
+	}
+	emitTripwireHookSound(pos, tx, hook, attached, powered)
 	updateHookState(pos, hook, attached, powered, tx)
+	if hook.Attached == attached || !foundOther {
+		return
+	}
 	for _, wirePos := range wirePositions {
 		updateTripwireConnections(wirePos, tx)
 		tw := tx.Block(wirePos).(Tripwire)
