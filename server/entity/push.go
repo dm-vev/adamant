@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/rand/v2"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -18,24 +20,58 @@ func (CrammingDamageSource) Fire() bool                { return false }
 func (CrammingDamageSource) IgnoreTotem() bool         { return false }
 
 // TickEntityCollisions ports LivingEntity.pushEntities for every living
-// entity in the world: each pushes the pushable entities overlapping its
+// entity whose chunk ticks: each pushes the pushable entities overlapping its
 // bounding box apart, and takes cramming damage when too many are packed
 // together. Players push mobs but are not moved server-side, as the Bedrock
 // client resolves its own collisions.
+//
+// Pushing only changes velocities, so the entities overlapping each one are
+// found on all cores from the boxes at the start of the pass, then applied
+// one entity after another in tick order.
 func TickEntityCollisions(tx *world.Tx) {
 	maxCramming := tx.World().GameRuleInt("max_entity_cramming")
-	for e := range tx.Entities() {
-		l, ok := e.(Living)
-		if !ok || !pushable(e) {
+	var (
+		entities []pushEntry
+		cells    = make(map[world.ChunkPos][]int32)
+	)
+	for e := range tx.TickingEntities() {
+		if _, ok := e.(Living); !ok || !pushable(e) {
 			continue
 		}
-		box := e.H().Type().BBox(e).Translate(e.Position())
-		var others []world.Entity
-		for other := range tx.EntitiesWithin(box.Grow(2)) {
-			if other.H() == e.H() || !pushable(other) {
-				continue
+		pos := e.Position()
+		index := int32(len(entities))
+		entities = append(entities, pushEntry{e: e, pos: pos, box: e.H().Type().BBox(e).Translate(pos)})
+		cell := pushCell(pos)
+		cells[cell] = append(cells[cell], index)
+	}
+	if len(entities) < 2 {
+		return
+	}
+	parallel.For(len(entities), 32, func(i int) {
+		entry := &entities[i]
+		near := entry.box.Grow(2)
+		low, high := pushCell(near.Min()), pushCell(near.Max())
+		for x := low[0]; x <= high[0]; x++ {
+			for z := low[1]; z <= high[1]; z++ {
+				for _, j := range cells[world.ChunkPos{x, z}] {
+					other := &entities[j]
+					if int(j) != i && near.Vec3Within(other.pos) && other.box.IntersectsWith(entry.box) {
+						entry.overlapping = append(entry.overlapping, j)
+					}
+				}
 			}
-			if other.H().Type().BBox(other).Translate(other.Position()).IntersectsWith(box) {
+		}
+	})
+	var others []world.Entity
+	for i := range entities {
+		entry := &entities[i]
+		if len(entry.overlapping) == 0 || !pushable(entry.e) {
+			continue
+		}
+		others = others[:0]
+		for _, j := range entry.overlapping {
+			// Cramming earlier in the pass may have killed the other entity.
+			if other := entities[j].e; pushable(other) {
 				others = append(others, other)
 			}
 		}
@@ -50,13 +86,27 @@ func TickEntityCollisions(tx *world.Tx) {
 				}
 			}
 			if count > maxCramming-1 {
-				l.Hurt(6, CrammingDamageSource{})
+				entry.e.(Living).Hurt(6, CrammingDamageSource{})
 			}
 		}
 		for _, other := range others {
-			pushApart(tx, e, other)
+			pushApart(tx, entry.e, other)
 		}
 	}
+}
+
+// pushEntry is a pushable entity with its position and box at the start of
+// TickEntityCollisions and the entries whose boxes overlap its own.
+type pushEntry struct {
+	e           world.Entity
+	pos         mgl64.Vec3
+	box         cube.BBox
+	overlapping []int32
+}
+
+// pushCell returns the chunk TickEntityCollisions files a position under.
+func pushCell(pos mgl64.Vec3) world.ChunkPos {
+	return world.ChunkPos{int32(math.Floor(pos[0])) >> 4, int32(math.Floor(pos[2])) >> 4}
 }
 
 // pushable ports Entity.isPushable: living entities that are alive, not

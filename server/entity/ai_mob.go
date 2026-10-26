@@ -26,6 +26,10 @@ type MobAI struct {
 	// Goals and Targets are the goal and target selectors of the mob.
 	Goals, Targets GoalSelector
 
+	// movement is reused for the Movement each tick returns: it is sent
+	// and released within the tick that made it.
+	movement Movement
+
 	// MovementSpeed, FollowRange, StepHeight, JumpStrength and Gravity are
 	// the attributes of the mob its movement reads. Tick fills in Java's
 	// defaults for those left zero.

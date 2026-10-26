@@ -32,6 +32,9 @@ func measureFluids(tx *world.Tx, box cube.BBox, current bool) (c fluidContact) {
 	box = box.Grow(-.001)
 	minX, minY, minZ := int(math.Floor(box.Min()[0])), int(math.Floor(box.Min()[1])), int(math.Floor(box.Min()[2]))
 	maxX, maxY, maxZ := int(math.Ceil(box.Max()[0]))-1, int(math.Ceil(box.Max()[1]))-1, int(math.Ceil(box.Max()[2]))-1
+	if !tx.MayContainLiquid(cube.Pos{minX, minY, minZ}, cube.Pos{maxX, maxY, maxZ}) {
+		return c
+	}
 	for x := minX; x <= maxX; x++ {
 		for y := minY; y <= maxY; y++ {
 			for z := minZ; z <= maxZ; z++ {

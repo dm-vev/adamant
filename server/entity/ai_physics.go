@@ -836,11 +836,13 @@ func liquidHeight(tx *world.Tx, pos cube.Pos, l world.Liquid) float64 {
 func newMobMovement(m *Mob, prevPos, prevVel mgl64.Vec3, prevRot cube.Rotation, prevHead float64) *Movement {
 	tx := m.tx
 	viewers := tx.Viewers(prevPos)
-	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: m.Self,
+	mv := &m.AI.movement
+	*mv = Movement{v: viewers, releaseTx: tx, e: m.Self,
 		pos: m.data.Pos, vel: m.data.Vel, dpos: m.data.Pos.Sub(prevPos), dvel: m.data.Vel.Sub(prevVel),
 		rot: m.data.Rot, onGround: m.AI.onGround,
 		rotChanged: rotationChanged(m.data.Rot, prevRot) || math.Abs(m.AI.headYaw-prevHead) > .01,
 	}
+	return mv
 }
 
 // riderMovement places a riding mob on its vehicle.

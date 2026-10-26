@@ -158,7 +158,7 @@ func (i *ItemBehaviour) move(e *Ent, tx *world.Tx, mc *MovementComputer) *Moveme
 	vel = measureFluids(tx, bbox.Translate(pos), true).push(tx, vel)
 
 	viewers := tx.Viewers(e.data.Pos)
-	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
+	return &Movement{v: viewers, releaseTx: tx, e: e,
 		pos: pos, vel: vel, dpos: dPos, dvel: vel.Sub(velBefore), rot: e.data.Rot, onGround: mc.OnGround()}
 }
 

@@ -167,7 +167,7 @@ func (b *FishingHookBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	e.data.Vel = vel.Mul(0.92)
 	viewers := tx.Viewers(prev)
-	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
+	return &Movement{v: viewers, releaseTx: tx, e: e,
 		pos: e.data.Pos, vel: e.data.Vel, dpos: dPos, dvel: e.data.Vel.Sub(prevVel), rot: e.data.Rot, onGround: b.mc.OnGround()}
 }
 

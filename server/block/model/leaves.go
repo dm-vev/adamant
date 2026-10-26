@@ -11,7 +11,7 @@ type Leaves struct{}
 
 // BBox returns a physics.BBox that spans a full block.
 func (Leaves) BBox(cube.Pos, world.BlockSource) []cube.BBox {
-	return []cube.BBox{full}
+	return fullBoxes
 }
 
 // FaceSolid always returns false.

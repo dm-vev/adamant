@@ -233,7 +233,20 @@ func (e *EntityHandle) Entity(tx *Tx) (Entity, bool) {
 	if e == nil || e.w != tx.World() {
 		return nil, false
 	}
-	return e.t.Open(tx, e, &e.data), true
+	if s := e.state; s != nil {
+		// The world keeps one opened entity for the handle: reuse it rather
+		// than opening another view on every call, provided it rebinds to
+		// tx.
+		if ent := s.entity(tx, e); s.binds {
+			return ent, true
+		}
+	}
+	return e.open(tx), true
+}
+
+// open opens a new view of the handle's entity bound to tx.
+func (e *EntityHandle) open(tx *Tx) Entity {
+	return e.t.Open(tx, e, &e.data)
 }
 
 // WorldEntity returns the entity the world keeps for the handle while it is
@@ -287,10 +300,10 @@ func (e *EntityHandle) WorldlessEntity(tx *Tx) Entity {
 
 // mustEntity calls Entity but panics if the worlds do not match.
 func (e *EntityHandle) mustEntity(tx *Tx) Entity {
-	if ent, ok := e.Entity(tx); ok {
-		return ent
+	if e == nil || e.w != tx.World() {
+		panic("can't load entity with Tx of different world")
 	}
-	panic("can't load entity with Tx of different world")
+	return e.open(tx)
 }
 
 // UUID returns the identifier of the EntityHandle.

@@ -135,6 +135,13 @@ func (tx *Tx) Liquid(pos cube.Pos) (Liquid, bool) {
 	return tx.liquid(pos)
 }
 
+// MayContainLiquid reports whether any block from lo to hi, inclusive, may
+// hold a liquid. It is false only if none can, so a false result spares
+// asking Liquid of every block. Like Liquid, it loads the chunks.
+func (tx *Tx) MayContainLiquid(lo, hi cube.Pos) bool {
+	return tx.mayContainLiquid(lo, hi)
+}
+
 // SetLiquid sets a Liquid at a specific position in the World. Unlike
 // SetBlock, SetLiquid will not necessarily overwrite any existing blocks. It
 // will instead be in the same position as a block currently there, unless
@@ -345,6 +352,14 @@ func (tx *Tx) EntitiesWithin(box cube.BBox) iter.Seq[Entity] {
 // Entities returns an iterator that yields all entities in the World.
 func (tx *Tx) Entities() iter.Seq[Entity] {
 	return tx.World().allEntities(tx)
+}
+
+// TickingEntities returns an iterator that yields the entities whose chunks
+// tick this tick, in the order the world ticks them: those in the chunks
+// players view, or every chunk of a synchronous world, once the chunks
+// around them are generated.
+func (tx *Tx) TickingEntities() iter.Seq[Entity] {
+	return tx.World().tickingEntities(tx)
 }
 
 // Players returns an iterator that yields all player entities in the World.

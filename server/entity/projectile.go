@@ -438,7 +438,7 @@ func (lt *ProjectileBehaviour) tickMovement(e *Ent, tx *world.Tx) (*Movement, tr
 			end = hit.Position()
 		}
 	}
-	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e, pos: end, vel: vel, dpos: end.Sub(pos), dvel: vel.Sub(velBefore), rot: rot}, hit
+	return &Movement{v: viewers, releaseTx: tx, e: e, pos: end, vel: vel, dpos: end.Sub(pos), dvel: vel.Sub(velBefore), rot: rot}, hit
 }
 
 // applyInertia ports AbstractHurtingProjectile.applyInertia: the projectile

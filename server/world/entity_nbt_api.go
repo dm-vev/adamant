@@ -35,7 +35,7 @@ func (h *EntityHandle) MergeNBT(tx *Tx, patch map[string]any) error {
 	if state := h.state; state != nil {
 		// Entity.Close is a removal operation for most entity types, so replace
 		// the cached view without closing it.
-		state.ent = nil
+		state.ent, state.binds, state.binder = nil, false, nil
 		state.isTicker, state.tickerChecked, state.ticker = false, false, nil
 	}
 	return nil

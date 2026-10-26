@@ -234,6 +234,10 @@ type entityState struct {
 	isTicker      bool
 	tickerChecked bool
 	ticker        TickerEntity
+	// binds records whether ent rebinds to each transaction it is used in,
+	// so that it may be handed out again instead of a fresh view.
+	binds  bool
+	binder interface{ BindTransaction(*Tx) }
 }
 
 func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
@@ -242,6 +246,7 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 	}
 	if s.ent == nil {
 		s.ent = handle.mustEntity(tx)
+		s.binder, s.binds = s.ent.(interface{ BindTransaction(*Tx) })
 	}
 	if !s.tickerChecked {
 		if ticker, ok := s.ent.(TickerEntity); ok {
@@ -253,8 +258,8 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 		}
 		s.tickerChecked = true
 	}
-	if binder, ok := s.ent.(interface{ BindTransaction(*Tx) }); ok {
-		binder.BindTransaction(tx)
+	if s.binds {
+		s.binder.BindTransaction(tx)
 	}
 	return s.ent
 }
@@ -1043,6 +1048,14 @@ func (tx *Tx) liquid(pos cube.Pos) (Liquid, bool) {
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
 
 	id := c.Block(x, y, z, 0)
+	if !w.conf.Blocks.LiquidBlock(id) {
+		// Most blocks hold no liquid: only look the layers up as blocks if
+		// the registry says one is a liquid.
+		id = c.Block(x, y, z, 1)
+		if !w.conf.Blocks.LiquidBlock(id) {
+			return nil, false
+		}
+	}
 	b, ok := w.conf.Blocks.BlockByRuntimeID(id)
 	if !ok {
 		w.conf.Log.Error("Liquid: no block with runtime ID", "ID", id)
@@ -1060,6 +1073,36 @@ func (tx *Tx) liquid(pos cube.Pos) (Liquid, bool) {
 	}
 	liq, ok := b.(Liquid)
 	return liq, ok
+}
+
+// mayContainLiquid reports whether a block from lo to hi, inclusive, may
+// hold a liquid: it is false only if none of the sub chunks the range
+// touches has a liquid in the palette of any of its layers.
+func (tx *Tx) mayContainLiquid(lo, hi cube.Pos) bool {
+	w := tx.World()
+	r := w.Range()
+	minY, maxY := max(lo[1], r[0]), min(hi[1], r[1])
+	if minY > maxY {
+		return false
+	}
+	low, high := chunkPosFromBlockPos(lo), chunkPosFromBlockPos(hi)
+	for cx := low[0]; cx <= high[0]; cx++ {
+		for cz := low[1]; cz <= high[1]; cz++ {
+			c := tx.chunk(ChunkPos{cx, cz})
+			subs := c.Sub()
+			for i := c.SubIndex(int16(minY)); i <= c.SubIndex(int16(maxY)); i++ {
+				for _, layer := range subs[i].Layers() {
+					palette := layer.Palette()
+					for j := range palette.Len() {
+						if w.conf.Blocks.LiquidBlock(palette.Value(uint16(j))) {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // setLiquid sets a Liquid at a specific position in the World. Unlike
@@ -1464,22 +1507,48 @@ func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 		for x := minPos[0]; x <= maxPos[0]; x++ {
 			for z := minPos[1]; z <= maxPos[1]; z++ {
 				c, ok := w.chunks[ChunkPos{x, z}]
-				if !ok {
+				if !ok || len(c.Entities) == 0 {
 					// The chunk wasn't loaded, so there are no entities here.
 					continue
 				}
-				for _, handle := range slices.Clone(c.Entities) {
+				more := c.iterateEntities(func(handle *EntityHandle) bool {
 					if !box.Vec3Within(handle.data.Pos) {
-						continue
+						return true
 					}
-					state := w.entities[handle]
+					// An entity removed while the column is walked has no
+					// state any more.
+					state := handle.state
 					if state == nil {
-						continue
+						return true
 					}
-					if !yield(state.entity(tx, handle)) {
-						return
-					}
+					return yield(state.entity(tx, handle))
+				})
+				if !more {
+					return
 				}
+			}
+		}
+	}
+}
+
+// tickingEntities yields the entities of the columns tickEntities ticks
+// actively, in its order.
+func (w *World) tickingEntities(tx *Tx) iter.Seq[Entity] {
+	return func(yield func(Entity) bool) {
+		for _, ref := range w.entityColumns {
+			col := ref.col
+			if col == nil || len(col.Entities) == 0 || !col.Ready() || (!w.conf.Synchronous && len(col.viewers) == 0) || !w.entityTickingReady(ref.pos) {
+				continue
+			}
+			more := col.iterateEntities(func(handle *EntityHandle) bool {
+				state := handle.state
+				if state == nil {
+					return true
+				}
+				return yield(state.entity(tx, handle))
+			})
+			if !more {
+				return
 			}
 		}
 	}
@@ -1488,7 +1557,17 @@ func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 // allEntities returns an iterator that yields all entities in the World.
 func (w *World) allEntities(tx *Tx) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
-		for handle, state := range maps.Clone(w.entities) {
+		// The handles are listed first, so entities may join or leave the
+		// world while they are walked.
+		handles := make([]*EntityHandle, 0, len(w.entities))
+		for handle := range w.entities {
+			handles = append(handles, handle)
+		}
+		for _, handle := range handles {
+			state := handle.state
+			if state == nil || handle.w != w {
+				continue
+			}
 			if ent := state.entity(tx, handle); ent != nil {
 				if !yield(ent) {
 					return
@@ -2931,8 +3010,12 @@ type Column struct {
 	postProcessing [][]uint16
 
 	*chunk.Chunk
-	Entities                        []*EntityHandle
-	entityIndices                   map[*EntityHandle]int
+	Entities      []*EntityHandle
+	entityIndices map[*EntityHandle]int
+	// entityIterators counts the iterations over Entities in progress. While
+	// it is positive, changes copy the slice first, so iterations walk the
+	// list as it was when they began without copying it themselves.
+	entityIterators                 int
 	BlockEntities                   map[cube.Pos]Block
 	missingBlockStates              map[cube.Pos]pendingMissingBlockState
 	randomTickSubChunksDirty        bool
@@ -3046,8 +3129,30 @@ func (c *Column) addEntity(handle *EntityHandle) {
 	if c.entityIndices == nil {
 		c.entityIndices = make(map[*EntityHandle]int, 4)
 	}
+	c.detachIteratedEntities()
 	c.entityIndices[handle] = len(c.Entities)
 	c.Entities = append(c.Entities, handle)
+}
+
+// detachIteratedEntities gives the column a copy of its entity list before
+// a change while iterations walk the list.
+func (c *Column) detachIteratedEntities() {
+	if c.entityIterators > 0 {
+		c.Entities = slices.Clone(c.Entities)
+	}
+}
+
+// iterateEntities calls f for each entity in the column as it was when the
+// iteration began, until f returns false. It reports whether f never did.
+func (c *Column) iterateEntities(f func(handle *EntityHandle) bool) bool {
+	c.entityIterators++
+	defer func() { c.entityIterators-- }()
+	for _, handle := range c.Entities {
+		if !f(handle) {
+			return false
+		}
+	}
+	return true
 }
 
 // removeEntity removes an entity handle from the column in O(1).
@@ -3060,6 +3165,7 @@ func (c *Column) removeEntity(handle *EntityHandle) bool {
 		return false
 	}
 
+	c.detachIteratedEntities()
 	last := len(c.Entities) - 1
 	lastHandle := c.Entities[last]
 	c.Entities[index] = lastHandle
@@ -3078,8 +3184,12 @@ func (c *Column) removeEntity(handle *EntityHandle) bool {
 
 // resetEntities drops entity references and indices from the column.
 func (c *Column) resetEntities() {
-	clear(c.Entities)
-	c.Entities = c.Entities[:0]
+	if c.entityIterators > 0 {
+		c.Entities = nil
+	} else {
+		clear(c.Entities)
+		c.Entities = c.Entities[:0]
+	}
 	if len(c.entityIndices) > 0 {
 		clear(c.entityIndices)
 	}

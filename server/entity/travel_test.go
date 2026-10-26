@@ -141,10 +141,10 @@ func TestEntTravelsThroughPortalOnTick(t *testing.T) {
 		buildActivePortal(tx, targetPortal)
 	})
 
-	releasedViewers := false
+	movement := &Movement{}
 	handle := world.EntitySpawnOpts{Position: sourcePortal.Vec3Middle().Sub(mgl64.Vec3{1})}.New(testMovingEntType{}, testMoveConfig{
-		delta:   mgl64.Vec3{1},
-		release: func() { releasedViewers = true },
+		delta:    mgl64.Vec3{1},
+		movement: movement,
 	})
 	mustDo(t, overworld, func(tx *world.Tx) {
 		e := tx.AddEntity(handle)
@@ -154,7 +154,7 @@ func TestEntTravelsThroughPortalOnTick(t *testing.T) {
 		}
 		ticker.Tick(tx, 1)
 	})
-	if !releasedViewers {
+	if movement.releaseTx != nil {
 		t.Fatal("terminal portal travel did not release movement viewers")
 	}
 
@@ -806,25 +806,27 @@ func (r *entitySpawnRecorder) HandleEntitySpawn(_ *world.Tx, e world.Entity) {
 }
 
 type testMoveConfig struct {
-	delta   mgl64.Vec3
-	release func()
+	delta    mgl64.Vec3
+	movement *Movement
 }
 
 func (c testMoveConfig) Apply(data *world.EntityData) {
-	data.Data = &testMoveBehaviour{BaseBehaviour: NewBaseBehaviour(), delta: c.delta, release: c.release}
+	data.Data = &testMoveBehaviour{BaseBehaviour: NewBaseBehaviour(), delta: c.delta, movement: c.movement}
 }
 
 type testMoveBehaviour struct {
 	BaseBehaviour
 
-	delta   mgl64.Vec3
-	release func()
+	delta    mgl64.Vec3
+	movement *Movement
 }
 
-func (b *testMoveBehaviour) Tick(e *Ent, _ *world.Tx) *Movement {
+func (b *testMoveBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	e.data.Pos = e.data.Pos.Add(b.delta)
-	if b.release != nil {
-		return &Movement{release: b.release}
+	if b.movement != nil {
+		// The world must hand the movement's viewers back, clearing it.
+		b.movement.releaseTx = tx
+		return b.movement
 	}
 	return nil
 }

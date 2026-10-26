@@ -663,7 +663,7 @@ func (b *BoatBehaviour) newMovement(e *Ent, tx *world.Tx, prevPos, prevVel mgl64
 	viewers := tx.Viewers(prevPos)
 	return &Movement{
 		v:          viewers,
-		release:    func() { tx.ReleaseViewers(viewers) },
+		releaseTx:  tx,
 		e:          e,
 		pos:        e.data.Pos,
 		vel:        e.data.Vel,

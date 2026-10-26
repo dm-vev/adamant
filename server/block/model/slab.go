@@ -17,13 +17,18 @@ type Slab struct {
 // depending on the Double and Top fields.
 func (s Slab) BBox(cube.Pos, world.BlockSource) []cube.BBox {
 	if s.Double {
-		return []cube.BBox{full}
+		return fullBoxes
 	}
 	if s.Top {
-		return []cube.BBox{cube.Box(0, 0.5, 0, 1, 1, 1)}
+		return topSlabBoxes
 	}
-	return []cube.BBox{cube.Box(0, 0, 0, 1, 0.5, 1)}
+	return bottomSlabBoxes
 }
+
+var (
+	topSlabBoxes    = []cube.BBox{cube.Box(0, 0.5, 0, 1, 1, 1)}
+	bottomSlabBoxes = []cube.BBox{cube.Box(0, 0, 0, 1, 0.5, 1)}
+)
 
 // FaceSolid returns true if the Slab is double, or if the face is cube.FaceUp when the Top field is true, or if the
 // face is cube.FaceDown when the Top field is false.

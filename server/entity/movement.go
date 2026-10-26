@@ -37,8 +37,9 @@ var blockBBoxPool = sync.Pool{
 // resulting position and velocity can be obtained by calling Position and Velocity. These can be sent to viewers by
 // calling Send.
 type Movement struct {
-	v                    []world.Viewer
-	release              func()
+	v []world.Viewer
+	// releaseTx hands v back to the viewer pool of its world once sent.
+	releaseTx            *world.Tx
 	e                    world.Entity
 	pos, vel, dpos, dvel mgl64.Vec3
 	rot                  cube.Rotation
@@ -71,9 +72,9 @@ func (m *Movement) apply(e *Ent) *Movement {
 }
 
 func (m *Movement) releaseViewers() {
-	if m.release != nil {
-		m.release()
-		m.release = nil
+	if m.releaseTx != nil {
+		m.releaseTx.ReleaseViewers(m.v)
+		m.releaseTx, m.v = nil, nil
 	}
 }
 
@@ -105,7 +106,7 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 			} else if positioner, ok := vehicle.(passengerPositioner); ok {
 				passenger, _ := e.H().Entity(tx)
 				next := positioner.PassengerPosition(passenger)
-				return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
+				return &Movement{v: viewers, releaseTx: tx, e: e,
 					pos: next, dpos: next.Sub(pos), dvel: vel.Mul(-1), rot: rot, rotChanged: rotationChanged(rot, prevRot)}
 			}
 		} else {
@@ -125,7 +126,7 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 		vel[1] *= 1 - c.Drag
 	}
 
-	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
+	return &Movement{v: viewers, releaseTx: tx, e: e,
 		pos: pos.Add(dPos), vel: vel, dpos: dPos, dvel: vel.Sub(velBefore),
 		rot: rot, onGround: c.onGround, rotChanged: rotationChanged(rot, prevRot),
 	}
