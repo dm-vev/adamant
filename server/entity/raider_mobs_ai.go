@@ -47,8 +47,8 @@ func registerEvokerGoals(m *Mob, b *hostileState) {
 	registerRaiderGoals(m)
 	ai.Goals.Add(0, NewFloatGoal(m))
 	ai.Goals.Add(1, &evokerCastingSpellGoal{goalFlags{GoalMove | GoalLook}})
-	ai.Goals.Add(2, NewAvoidEntityGoal(isPlayerEntity, 8, .6, 1))
-	ai.Goals.Add(3, NewAvoidEntityGoal(entityIs("minecraft:creaking"), 8, .6, 1))
+	ai.Goals.Add(2, NewAvoidEntityTypesGoal(playerTypes, 8, .6, 1))
+	ai.Goals.Add(3, NewAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, .6, 1))
 	ai.Goals.Add(4, &evokerSummonSpellGoal{spellUseGoal{castWarmup: 20, castingTime: 100, castingInterval: 340, prepareSound: "entity.evoker.prepare_summon", spell: spellSummonVex}})
 	ai.Goals.Add(5, &spellUseGoal{castWarmup: 20, castingTime: 40, castingInterval: 100, prepareSound: "entity.evoker.prepare_attack", spell: spellFangs, perform: evokerFangsSpell})
 	ai.Goals.Add(6, &evokerWololoSpellGoal{spellUseGoal{castWarmup: 40, castingTime: 60, castingInterval: 140, prepareSound: "entity.evoker.prepare_wololo", spell: spellWololo}})
@@ -63,10 +63,10 @@ func registerEvokerGoals(m *Mob, b *hostileState) {
 	players := NewNearestAttackableTargetGoal(nil, true)
 	players.unseenMemoryTicks = 300
 	ai.Targets.Add(2, players)
-	villagers := NewNearestAttackableTargetGoal(isVillagerEntity, false)
+	villagers := NewNearestAttackableTypesGoal(villagerTypes, false)
 	villagers.unseenMemoryTicks = 300
 	ai.Targets.Add(3, villagers)
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), false))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, false))
 }
 
 // evokerCastingSpellGoal ports Evoker.EvokerCastingSpellGoal: an evoker
@@ -481,10 +481,10 @@ func registerRavagerGoals(m *Mob, b *hostileState) {
 	ai.Goals.Add(10, lookMob)
 	ai.Targets.Add(2, raiderHurtByTarget())
 	ai.Targets.Add(3, NewNearestAttackableTargetGoal(nil, true))
-	villagers := NewNearestAttackableTargetGoal(isVillagerEntity, true)
+	villagers := NewNearestAttackableTypesGoal(villagerTypes, true)
 	villagers.Selector = func(_ *Mob, target world.Entity) bool { return !mobIsBaby(target) }
 	ai.Targets.Add(4, villagers)
-	ai.Targets.Add(4, NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), true))
+	ai.Targets.Add(4, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
 }
 
 // immobile ports Ravager.isImmobile: a ravager stands still while it bites,

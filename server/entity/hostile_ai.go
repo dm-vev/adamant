@@ -114,17 +114,17 @@ func registerSkeletonGoals(m *Mob, b *hostileState) {
 	ai := m.AI
 	ai.Goals.Add(2, &RestrictSunGoal{})
 	ai.Goals.Add(3, NewFleeSunGoal(1))
-	ai.Goals.Add(3, NewAvoidEntityGoal(entityIs("minecraft:wolf"), 6, 1, 1.2))
+	ai.Goals.Add(3, NewAvoidEntityTypesGoal(entityTypes{"minecraft:wolf"}, 6, 1, 1.2))
 	ai.Goals.Add(5, NewWaterAvoidingRandomStrollGoal(1))
 	ai.Goals.Add(6, NewLookAtPlayerGoal(8))
 	ai.Goals.Add(6, NewRandomLookAroundGoal())
 	if b.kind == "minecraft:wither_skeleton" {
-		ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:piglin", "minecraft:piglin_brute"), true))
+		ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:piglin", "minecraft:piglin_brute"}, true))
 	}
 	ai.Targets.Add(1, NewHurtByTargetGoal())
 	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), true))
-	turtles := NewNearestAttackableTargetGoal(entityIs("minecraft:turtle"), true)
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
 	turtles.Selector = func(m *Mob, target world.Entity) bool {
 		baby, ok := target.(interface{ Baby() bool })
 		return ok && baby.Baby() && !pathWater(m.tx, cube.PosFromVec3(target.Position()))
@@ -237,9 +237,9 @@ func registerZombieGoals(m *Mob, b *hostileState) {
 	hurt.AlertOthers, hurt.AlertIgnore = true, entityIs("minecraft:zombified_piglin")
 	ai.Targets.Add(1, hurt)
 	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:villager", "minecraft:wandering_trader"), false))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), true))
-	turtles := NewNearestAttackableTargetGoal(entityIs("minecraft:turtle"), true)
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:villager", "minecraft:wandering_trader"}, false))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
 	turtles.Selector = func(m *Mob, target world.Entity) bool {
 		baby, ok := target.(interface{ Baby() bool })
 		return ok && baby.Baby() && !pathWater(m.tx, cube.PosFromVec3(target.Position()))

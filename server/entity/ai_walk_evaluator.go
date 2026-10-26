@@ -596,31 +596,100 @@ func checkNeighbourBlocks(tx *world.Tx, pos cube.Pos, t PathType) PathType {
 // as the PathTypeCache of a ServerLevel caches them by position.
 var pathTypesByState sync.Map
 
-// pathTypeFromState ports WalkNodeEvaluator.getPathTypeFromState.
+// pathTypeFromState ports WalkNodeEvaluator.getPathTypeFromState, reading
+// the type through the world's PathTypeCache.
 func pathTypeFromState(tx *world.Tx, pos cube.Pos) PathType {
 	if pos.OutOfBounds(tx.Range()) {
 		return PathOpen
 	}
+	cache := worldPathTypeCache(tx.World())
+	chunk := world.ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}
+	version, loaded := tx.ColumnBlockVersion(chunk)
+	if !loaded {
+		return PathOpen
+	}
+	if t, ok := cache.get(pos, version); ok {
+		return t
+	}
+	t, ready := computePathTypeFromState(tx, pos)
+	if ready {
+		// A column still generating changes without a new version.
+		cache.put(pos, version, t)
+	}
+	return t
+}
+
+// pathTypeCache ports PathTypeCache, which a ServerLevel keeps to look the
+// path types of blocks up by position. An entry holds the block version of
+// the column of its block, standing in for Java invalidating the position
+// when its block changes.
+type pathTypeCache struct {
+	entries [4096]pathTypeCacheEntry
+}
+
+type pathTypeCacheEntry struct {
+	pos     cube.Pos
+	version uint64
+	t       PathType
+}
+
+// pathTypeCaches holds the pathTypeCache of each world, used only by the
+// goroutine owning the world.
+var pathTypeCaches sync.Map
+
+// worldPathTypeCache returns the pathTypeCache of w.
+func worldPathTypeCache(w *world.World) *pathTypeCache {
+	if c, ok := pathTypeCaches.Load(w); ok {
+		return c.(*pathTypeCache)
+	}
+	c, _ := pathTypeCaches.LoadOrStore(w, &pathTypeCache{})
+	return c.(*pathTypeCache)
+}
+
+// index ports PathTypeCache.index: HashCommon.mix of BlockPos.asLong.
+func (c *pathTypeCache) index(pos cube.Pos) int {
+	key := (int64(pos[0])&0x3ffffff)<<38 | (int64(pos[2])&0x3ffffff)<<12 | int64(pos[1])&0xfff
+	h := uint64(key) * 0x9e3779b97f4a7c15
+	h ^= h >> 32
+	h ^= h >> 16
+	return int(h & 4095)
+}
+
+func (c *pathTypeCache) get(pos cube.Pos, version uint64) (PathType, bool) {
+	e := &c.entries[c.index(pos)]
+	if e.version == version && e.pos == pos && version != 0 {
+		return e.t, true
+	}
+	return 0, false
+}
+
+func (c *pathTypeCache) put(pos cube.Pos, version uint64, t PathType) {
+	c.entries[c.index(pos)] = pathTypeCacheEntry{pos: pos, version: version, t: t}
+}
+
+// computePathTypeFromState computes what pathTypeFromState returns for a
+// block and reports whether its column was ready to be read.
+func computePathTypeFromState(tx *world.Tx, pos cube.Pos) (PathType, bool) {
 	b, ok := tx.BlockLoaded(pos)
 	if !ok {
-		return PathOpen
+		return PathOpen, false
 	}
 	if _, air := b.(block.Air); air {
 		if _, wet := tx.Liquid(pos); !wet {
-			return PathOpen
+			return PathOpen, true
 		}
 	}
 	id, err := tx.BlockStateID(pos)
 	if err == nil && id != 0 {
 		if t, ok := pathTypesByState.Load(id); ok {
-			return t.(PathType)
+			return t.(PathType), true
 		}
 	}
 	t := computePathType(tx, pos, b, id)
 	if err == nil && id != 0 {
 		pathTypesByState.Store(id, t)
 	}
-	return t
+	return t, true
 }
 
 func computePathType(tx *world.Tx, pos cube.Pos, b world.Block, id uint32) PathType {

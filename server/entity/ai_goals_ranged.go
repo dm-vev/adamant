@@ -165,7 +165,9 @@ func rangedAttackUncertainty(m *Mob) float64 {
 // Java's AvoidEntityGoal.
 type AvoidEntityGoal struct {
 	goalFlags
-	IsType      func(world.Entity) bool
+	IsType func(world.Entity) bool
+	// Types, if set, holds every type IsType may select.
+	Types       entityTypes
 	Predicate   func(world.Entity) bool
 	MaxDist     float64
 	WalkSpeed   float64
@@ -181,6 +183,14 @@ func NewAvoidEntityGoal(isType func(world.Entity) bool, maxDist, walkSpeed, spri
 	return &AvoidEntityGoal{goalFlags: goalFlags{GoalMove}, IsType: isType, MaxDist: maxDist, WalkSpeed: walkSpeed, SprintSpeed: sprintSpeed}
 }
 
+// NewAvoidEntityTypesGoal returns an AvoidEntityGoal for the entities of
+// types within maxDist blocks.
+func NewAvoidEntityTypesGoal(types entityTypes, maxDist, walkSpeed, sprintSpeed float64) *AvoidEntityGoal {
+	g := NewAvoidEntityGoal(types.is, maxDist, walkSpeed, sprintSpeed)
+	g.Types = types
+	return g
+}
+
 func (g *AvoidEntityGoal) CanUse(m *Mob) bool {
 	c := forCombat()
 	c.rangeLimit = g.MaxDist
@@ -190,7 +200,11 @@ func (g *AvoidEntityGoal) CanUse(m *Mob) bool {
 	box := m.BBox().GrowVec3(mgl64.Vec3{g.MaxDist, 3, g.MaxDist})
 	var avoid world.Entity
 	bestDist := -1.0
-	for e := range m.tx.EntitiesWithin(box) {
+	candidates := m.tx.EntitiesWithin(box)
+	if len(g.Types) > 0 {
+		candidates = m.tx.EntitiesOfTypesWithin(box, g.Types)
+	}
+	for e := range candidates {
 		if !g.IsType(e) || !c.test(m, e) {
 			continue
 		}

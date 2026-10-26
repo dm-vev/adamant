@@ -507,7 +507,9 @@ func (g *targetGoal) canReach(m *Mob, target world.Entity) bool {
 type NearestAttackableTargetGoal struct {
 	targetGoal
 	// IsType selects the entities targeted, players if nil.
-	IsType         func(world.Entity) bool
+	IsType func(world.Entity) bool
+	// Types, if set, holds every type IsType may select.
+	Types          entityTypes
 	RandomInterval int
 	Selector       func(m *Mob, target world.Entity) bool
 
@@ -518,6 +520,14 @@ type NearestAttackableTargetGoal struct {
 // entities isType selects, or players if it is nil.
 func NewNearestAttackableTargetGoal(isType func(world.Entity) bool, mustSee bool) *NearestAttackableTargetGoal {
 	return &NearestAttackableTargetGoal{targetGoal: newTargetGoal(mustSee, false), IsType: isType, RandomInterval: reducedTickDelay(10)}
+}
+
+// NewNearestAttackableTypesGoal returns a NearestAttackableTargetGoal for the
+// entities of types.
+func NewNearestAttackableTypesGoal(types entityTypes, mustSee bool) *NearestAttackableTargetGoal {
+	g := NewNearestAttackableTargetGoal(types.is, mustSee)
+	g.Types = types
+	return g
 }
 
 func (g *NearestAttackableTargetGoal) conditions(m *Mob) targeting {
@@ -537,7 +547,12 @@ func (g *NearestAttackableTargetGoal) CanUse(m *Mob) bool {
 		found = nearestPlayer(m, g.conditions(m))
 	} else {
 		r := g.followDistance(m)
-		found = nearestOfTypes(m, g.conditions(m), m.BBox().GrowVec3(mgl64.Vec3{r, r, r}), g.IsType)
+		box := m.BBox().GrowVec3(mgl64.Vec3{r, r, r})
+		if len(g.Types) > 0 {
+			found = nearestOfEntityTypes(m, g.conditions(m), box, g.Types, g.IsType)
+		} else {
+			found = nearestOfTypes(m, g.conditions(m), box, g.IsType)
+		}
 	}
 	if found == nil {
 		return false

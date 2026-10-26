@@ -272,7 +272,7 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 
 // blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of
 // what blocks need to have their BBox returned.
-func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
+func blockBBoxsAround(tx blockReader, box cube.BBox) []cube.BBox {
 	grown := box.Grow(0.25)
 	min, max := grown.Min(), grown.Max()
 	minX, minY, minZ := int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))
@@ -318,6 +318,19 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 	}
 	return blockBBoxs
 }
+
+// blockReader reads blocks and liquids: a world transaction, or the read
+// view of a world during a parallel phase of its owner.
+type blockReader interface {
+	world.BlockSource
+	Liquid(pos cube.Pos) (world.Liquid, bool)
+	MayContainLiquid(lo, hi cube.Pos) bool
+}
+
+var (
+	_ blockReader = (*world.Tx)(nil)
+	_ blockReader = (*world.ReadView)(nil)
+)
 
 // entityBBoxPool caches scratch slices used while expanding collision boxes around an entity during movement
 // resolution when checking collisions with other living entities.

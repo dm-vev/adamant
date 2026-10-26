@@ -27,7 +27,7 @@ type fluidContact struct {
 // measureFluids ports EntityFluidInteraction.update for an entity with the
 // bounding box box. The currents are only summed if current is set, as for
 // entities that Entity.isPushedByFluid.
-func measureFluids(tx *world.Tx, box cube.BBox, current bool) (c fluidContact) {
+func measureFluids(tx blockReader, box cube.BBox, current bool) (c fluidContact) {
 	entityY := box.Min()[1]
 	box = box.Grow(-.001)
 	minX, minY, minZ := int(math.Floor(box.Min()[0])), int(math.Floor(box.Min()[1])), int(math.Floor(box.Min()[2]))
@@ -104,7 +104,7 @@ func (c fluidCurrent) apply(vel mgl64.Vec3, scale float64) mgl64.Vec3 {
 
 // fluidFlow ports FlowingFluid.getFlow: the direction the liquid l at pos
 // flows in, pulled down where it falls along a wall.
-func fluidFlow(tx *world.Tx, pos cube.Pos, l world.Liquid) mgl64.Vec3 {
+func fluidFlow(tx blockReader, pos cube.Pos, l world.Liquid) mgl64.Vec3 {
 	own := liquidOwnHeight(l)
 	var flowX, flowZ float64
 	for _, face := range cube.HorizontalFaces() {
@@ -161,7 +161,7 @@ func liquidOwnHeight(l world.Liquid) float32 {
 }
 
 // liquidSolidFace ports FlowingFluid.isSolidFace for a horizontal face.
-func liquidSolidFace(tx *world.Tx, pos cube.Pos, face cube.Face, l world.Liquid) bool {
+func liquidSolidFace(tx blockReader, pos cube.Pos, face cube.Face, l world.Liquid) bool {
 	if other, ok := tx.Liquid(pos); ok && other.LiquidType() == l.LiquidType() {
 		return false
 	}

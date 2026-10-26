@@ -71,3 +71,19 @@ func TestForNestedDoesNotDeadlock(t *testing.T) {
 		t.Fatalf("nested loops ran %d items, want %d", sum.Load(), 64*64)
 	}
 }
+
+// TestForWorkersHandsOutDistinctWorkers checks no two workers of a loop run
+// with the same index at once and every index is below Workers.
+func TestForWorkersHandsOutDistinctWorkers(t *testing.T) {
+	busy := make([]atomic.Int32, Workers())
+	ForWorkers(10000, 4, func(worker, _ int) {
+		if worker < 0 || worker >= len(busy) {
+			t.Errorf("worker %d out of range", worker)
+			return
+		}
+		if busy[worker].Add(1) != 1 {
+			t.Errorf("worker %d ran twice at once", worker)
+		}
+		busy[worker].Add(-1)
+	})
+}

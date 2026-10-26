@@ -42,6 +42,13 @@ func Workers() int {
 // f must not wait for the caller's world: the caller does not run its world
 // until For returns.
 func For(n, grain int, f func(i int)) {
+	ForWorkers(n, grain, func(_, i int) { f(i) })
+}
+
+// ForWorkers is For, passing f the index of the worker running it as well:
+// a number below Workers that no other worker of the loop has at the same
+// time, for indexing per-worker state.
+func ForWorkers(n, grain int, f func(worker, i int)) {
 	if n <= 0 {
 		return
 	}
@@ -49,7 +56,7 @@ func For(n, grain int, f func(i int)) {
 	workers := min(Workers(), (n+grain-1)/grain)
 	if workers <= 1 {
 		for i := range n {
-			f(i)
+			f(0, i)
 		}
 		return
 	}
@@ -58,7 +65,7 @@ func For(n, grain int, f func(i int)) {
 		failed   atomic.Pointer[Panic]
 		finished sync.WaitGroup
 	)
-	work := func() {
+	work := func(worker int) {
 		defer finished.Done()
 		defer func() {
 			if r := recover(); r != nil {
@@ -72,15 +79,15 @@ func For(n, grain int, f func(i int)) {
 				return
 			}
 			for i := lo; i < min(hi, n); i++ {
-				f(i)
+				f(worker, i)
 			}
 		}
 	}
 	finished.Add(workers)
-	for range workers - 1 {
-		go work()
+	for worker := 1; worker < workers; worker++ {
+		go work(worker)
 	}
-	work()
+	work(0)
 	finished.Wait()
 	if p := failed.Load(); p != nil {
 		panic(p)

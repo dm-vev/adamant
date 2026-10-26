@@ -29,6 +29,11 @@ type MobAI struct {
 	// movement is reused for the Movement each tick returns: it is sent
 	// and released within the tick that made it.
 	movement Movement
+	// mob is reused for the Mob of the entity and self it was first made
+	// for.
+	mob Mob
+	// pre holds what the parallel phase before the tick read for the mob.
+	pre mobPrefetch
 
 	// MovementSpeed, FollowRange, StepHeight, JumpStrength and Gravity are
 	// the attributes of the mob its movement reads. Tick fills in Java's
@@ -135,6 +140,14 @@ type Mob struct {
 
 // Mob returns the mob with the AI passed as the entity self of e.
 func (ai *MobAI) Mob(e *Ent, self world.Entity) *Mob {
+	if ai.mob.Ent == nil {
+		ai.mob = Mob{Ent: e, AI: ai, Self: self}
+	}
+	if ai.mob.Ent == e && ai.mob.Self == self {
+		// The mob each tick works on is kept: callers compare Self by
+		// identity, so another self gets a Mob of its own.
+		return &ai.mob
+	}
 	return &Mob{Ent: e, AI: ai, Self: self}
 }
 

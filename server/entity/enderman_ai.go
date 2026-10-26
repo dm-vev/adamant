@@ -40,7 +40,7 @@ func (s *speciesState) registerEndermanGoals(m *Mob) {
 	ai.Goals.Add(11, &endermanTakeBlockGoal{})
 	ai.Targets.Add(1, &endermanLookForPlayerGoal{NearestAttackableTargetGoal: NewNearestAttackableTargetGoal(nil, false)})
 	ai.Targets.Add(2, NewHurtByTargetGoal())
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:endermite"), true))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:endermite"}, true))
 	ai.Targets.Add(4, &resetUniversalAngerTargetGoal{lastHurtByPlayer: -1})
 }
 

@@ -451,7 +451,7 @@ func registerPillagerGoals(m *Mob, b *hostileState) {
 	ai := m.AI
 	registerRaiderGoals(m)
 	ai.Goals.Add(0, NewFloatGoal(m))
-	ai.Goals.Add(1, NewAvoidEntityGoal(entityIs("minecraft:creaking"), 8, 1, 1.2))
+	ai.Goals.Add(1, NewAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, 1, 1.2))
 	ai.Goals.Add(2, &holdGroundAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, hostileRadiusSqr: 100})
 	ai.Goals.Add(3, &rangedCrossbowAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, speedModifier: 1, attackRadiusSqr: 64})
 	ai.Goals.Add(8, NewRandomStrollGoal(.6))
@@ -463,8 +463,8 @@ func registerPillagerGoals(m *Mob, b *hostileState) {
 	ai.Goals.Add(10, lookMob)
 	ai.Targets.Add(1, raiderHurtByTarget())
 	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(isVillagerEntity, false))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), true))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(villagerTypes, false))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
 }
 
 // isMobEntity reports if an entity is a mob, as Java's Mob class: a living
@@ -633,7 +633,7 @@ func registerVindicatorGoals(m *Mob, b *hostileState) {
 	ai := m.AI
 	registerRaiderGoals(m)
 	ai.Goals.Add(0, NewFloatGoal(m))
-	ai.Goals.Add(1, NewAvoidEntityGoal(entityIs("minecraft:creaking"), 8, 1, 1.2))
+	ai.Goals.Add(1, NewAvoidEntityTypesGoal(entityTypes{"minecraft:creaking"}, 8, 1, 1.2))
 	breakDoor := NewBreakDoorGoal(func(d world.Difficulty) bool {
 		return d == world.DifficultyNormal || d == world.DifficultyHard
 	})
@@ -643,8 +643,8 @@ func registerVindicatorGoals(m *Mob, b *hostileState) {
 	ai.Goals.Add(5, NewMeleeAttackGoal(1, false))
 	ai.Targets.Add(1, raiderHurtByTarget())
 	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(isVillagerEntity, true))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), true))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(villagerTypes, true))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
 	johnny := NewNearestAttackableTargetGoal(func(e world.Entity) bool { _, ok := e.(Living); return ok }, true)
 	johnny.RandomInterval = 0
 	johnny.mustReach = true

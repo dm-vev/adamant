@@ -172,6 +172,8 @@ type World struct {
 	dragonArena       *Loader
 	javaHeightmapTags [2]map[uint32]bool
 
+	scratchPrefetch      []prefetchItem
+	scratchViews         []ReadView
 	scratchRandom        []cube.Pos
 	scratchBlockEntities []cube.Pos
 	scratchLoaderAreas   []loaderActiveArea
@@ -569,6 +571,7 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 			if !ok {
 				if col.CanonicalizeMissingBlockState(blockPos, 0) {
 					col.modified = true
+					col.blockVersion = blockVersionClock.Add(1)
 					delete(col.missingBlockStates, blockPos)
 				}
 				continue
@@ -627,6 +630,7 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 		}
 		if candidate.column.CanonicalizeMissingBlockState(candidate.pos, 0) {
 			candidate.column.modified = true
+			candidate.column.blockVersion = blockVersionClock.Add(1)
 			delete(candidate.column.missingBlockStates, candidate.pos)
 		}
 	}
@@ -805,6 +809,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	if _, pending := c.missingBlockStates[pos]; pending && c.CanonicalizeMissingBlockState(pos, 0) {
 		delete(c.missingBlockStates, pos)
 	}
+	c.blockVersion = blockVersionClock.Add(1)
 	c.invalidateRandomTickSubChunks()
 	c.invalidateSubChunkHeightMaps()
 	c.invalidateNetworkSubChunkPayloads()
@@ -894,6 +899,7 @@ func (tx *Tx) setBlockEntity(pos cube.Pos, b Block) {
 	}
 	b = w.replacePositionTrackingBlock(pos, c.BlockEntities[pos], b)
 	c.BlockEntities[pos] = b
+	c.blockVersion = blockVersionClock.Add(1)
 	// Chunk and sub-chunk responses cache encoded block entities.
 	c.invalidateBlockEntityPayloads()
 	c.modified = true
@@ -1044,7 +1050,12 @@ func (tx *Tx) liquid(pos cube.Pos) (Liquid, bool) {
 		// Fast way out.
 		return nil, false
 	}
-	c := tx.chunk(chunkPosFromBlockPos(pos))
+	return w.liquidInColumn(tx.chunk(chunkPosFromBlockPos(pos)), pos)
+}
+
+// liquidInColumn returns the liquid at pos in any layer of the column c
+// holding it.
+func (w *World) liquidInColumn(c *Column, pos cube.Pos) (Liquid, bool) {
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
 
 	id := c.Block(x, y, z, 0)
@@ -1088,16 +1099,25 @@ func (tx *Tx) mayContainLiquid(lo, hi cube.Pos) bool {
 	low, high := chunkPosFromBlockPos(lo), chunkPosFromBlockPos(hi)
 	for cx := low[0]; cx <= high[0]; cx++ {
 		for cz := low[1]; cz <= high[1]; cz++ {
-			c := tx.chunk(ChunkPos{cx, cz})
-			subs := c.Sub()
-			for i := c.SubIndex(int16(minY)); i <= c.SubIndex(int16(maxY)); i++ {
-				for _, layer := range subs[i].Layers() {
-					palette := layer.Palette()
-					for j := range palette.Len() {
-						if w.conf.Blocks.LiquidBlock(palette.Value(uint16(j))) {
-							return true
-						}
-					}
+			if w.subChunksMayContainLiquid(tx.chunk(ChunkPos{cx, cz}), minY, maxY) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// subChunksMayContainLiquid reports whether a palette of a layer of the sub
+// chunks of c from minY to maxY, both within the world's range, holds a
+// liquid.
+func (w *World) subChunksMayContainLiquid(c *Column, minY, maxY int) bool {
+	subs := c.Sub()
+	for i := c.SubIndex(int16(minY)); i <= c.SubIndex(int16(maxY)); i++ {
+		for _, layer := range subs[i].Layers() {
+			palette := layer.Palette()
+			for j := range palette.Len() {
+				if w.conf.Blocks.LiquidBlock(palette.Value(uint16(j))) {
+					return true
 				}
 			}
 		}
@@ -1517,6 +1537,36 @@ func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 					}
 					// An entity removed while the column is walked has no
 					// state any more.
+					state := handle.state
+					if state == nil {
+						return true
+					}
+					return yield(state.entity(tx, handle))
+				})
+				if !more {
+					return
+				}
+			}
+		}
+	}
+}
+
+// entitiesOfTypesWithin yields the entities entitiesWithin yields for box
+// whose type encodes to one of types, in the same order, without opening
+// the others.
+func (w *World) entitiesOfTypesWithin(tx *Tx, box cube.BBox, types []string) iter.Seq[Entity] {
+	return func(yield func(Entity) bool) {
+		minPos, maxPos := chunkPosFromVec3(box.Min()), chunkPosFromVec3(box.Max())
+		for x := minPos[0]; x <= maxPos[0]; x++ {
+			for z := minPos[1]; z <= maxPos[1]; z++ {
+				c, ok := w.chunks[ChunkPos{x, z}]
+				if !ok || len(c.Entities) == 0 {
+					continue
+				}
+				more := c.iterateEntities(func(handle *EntityHandle) bool {
+					if !box.Vec3Within(handle.data.Pos) || !slices.Contains(types, handle.t.EncodeEntity()) {
+						return true
+					}
 					state := handle.state
 					if state == nil {
 						return true
@@ -3002,6 +3052,10 @@ type Column struct {
 	// settled is set once the column is ready, lit, indexed and its
 	// generation result consumed, so reads need no more setup.
 	settled bool
+	// blockVersion changes whenever a block of the column changes. Versions
+	// come from one clock for every world, so a version is never reused, not
+	// even by a later column at the same position or in another world.
+	blockVersion uint64
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
 	generation GenerationResult
@@ -3115,6 +3169,7 @@ var viewerSlicePool = sync.Pool{
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
 func newColumn(c *chunk.Chunk) *Column {
 	return &Column{
+		blockVersion:             blockVersionClock.Add(1),
 		Chunk:                    c,
 		BlockEntities:            map[cube.Pos]Block{},
 		randomTickSubChunksDirty: true,
@@ -3122,6 +3177,16 @@ func newColumn(c *chunk.Chunk) *Column {
 		readyCh:                  make(chan struct{}),
 		viewers:                  make(map[Viewer]struct{}),
 	}
+}
+
+// blockVersionClock hands out the block versions of columns.
+var blockVersionClock atomic.Uint64
+
+// SetBlock sets the runtime ID of a block of the column and gives the column
+// a new block version.
+func (c *Column) SetBlock(x uint8, y int16, z uint8, layer uint8, rid uint32) {
+	c.blockVersion = blockVersionClock.Add(1)
+	c.Chunk.SetBlock(x, y, z, layer, rid)
 }
 
 // addEntity appends an entity handle to the column and tracks its slot for O(1) removal.

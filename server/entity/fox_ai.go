@@ -53,7 +53,7 @@ func (s *foxState) registerGoals(m *Mob) {
 	s.panic.Causes = func(src world.DamageSource) bool { return !s.defending && panicCause(src) }
 	ai.Goals.Add(2, s.panic)
 	ai.Goals.Add(3, foxBreedGoal{NewBreedGoal(1)})
-	players := NewAvoidEntityGoal(isPlayerEntity, 16, 1.6, 1.4)
+	players := NewAvoidEntityTypesGoal(playerTypes, 16, 1.6, 1.4)
 	players.Predicate = func(e world.Entity) bool { return !discrete(e) && !s.trusts(e) && !s.defending }
 	ai.Goals.Add(4, players)
 	wolves := NewAvoidEntityGoal(func(e world.Entity) bool { return e.H().Type() == WolfType }, 8, 1.6, 1.4)
@@ -94,7 +94,7 @@ func (s *foxState) registerGoals(m *Mob) {
 	land := NewNearestAttackableTargetGoal(func(e world.Entity) bool {
 		return e.H().Type() == ChickenType || e.H().Type() == RabbitType
 	}, false)
-	turtles := NewNearestAttackableTargetGoal(isTurtle, false)
+	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, false)
 	turtles.Selector = turtleBabyOnLand
 	fish := NewNearestAttackableTargetGoal(func(e world.Entity) bool {
 		switch e.H().Type().EncodeEntity() {

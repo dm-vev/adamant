@@ -37,7 +37,7 @@ func (b *WitchBehaviour) aiTick(e *Ent, tx *world.Tx) *Movement {
 func (b *WitchBehaviour) registerGoals(m *Mob) {
 	ai := m.AI
 	registerRaiderGoals(m)
-	heal := &nearestHealableRaiderTargetGoal{NearestAttackableTargetGoal: NewNearestAttackableTargetGoal(isRaiderEntity, true)}
+	heal := &nearestHealableRaiderTargetGoal{NearestAttackableTargetGoal: NewNearestAttackableTypesGoal(raiderTypes, true)}
 	heal.Selector = func(m *Mob, target world.Entity) bool {
 		return witchOf(m).activeRaid(m) != nil && target.H().Type() != WitchType
 	}

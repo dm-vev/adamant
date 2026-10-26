@@ -2,6 +2,7 @@ package entity
 
 import (
 	"math"
+	"slices"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
@@ -184,6 +185,36 @@ func nearestPlayer(m *Mob, c targeting) world.Entity {
 func nearestOfTypes(m *Mob, c targeting, box cube.BBox, isType func(world.Entity) bool) world.Entity {
 	return nearestTarget(m, c, func(yield func(world.Entity) bool) {
 		for e := range m.tx.EntitiesWithin(box) {
+			if isType(e) && !yield(e) {
+				return
+			}
+		}
+	})
+}
+
+// entityTypes is a set of entity type names. Its is method selects the
+// entities of those types; goals given the set itself also let the world
+// skip entities of other types before opening them, as Java's
+// getEntitiesOfClass visits only the class asked for.
+type entityTypes []string
+
+// is reports whether e has one of the types of the set.
+func (t entityTypes) is(e world.Entity) bool {
+	return slices.Contains(t, e.H().Type().EncodeEntity())
+}
+
+var (
+	playerTypes           = entityTypes{"minecraft:player"}
+	villagerTypes         = entityTypes{"minecraft:villager", "minecraft:villager_v2", "minecraft:wandering_trader"}
+	raiderTypes           = entityTypes{"minecraft:evoker", "minecraft:vindicator", "minecraft:pillager", "minecraft:ravager", "minecraft:witch"}
+	abstractSkeletonTypes = entityTypes{"minecraft:skeleton", "minecraft:stray", "minecraft:wither_skeleton", "minecraft:bogged", "minecraft:parched"}
+)
+
+// nearestOfEntityTypes is nearestOfTypes for the entities of a set of
+// types, visiting only those.
+func nearestOfEntityTypes(m *Mob, c targeting, box cube.BBox, types entityTypes, isType func(world.Entity) bool) world.Entity {
+	return nearestTarget(m, c, func(yield func(world.Entity) bool) {
+		for e := range m.tx.EntitiesOfTypesWithin(box, types) {
 			if isType(e) && !yield(e) {
 				return
 			}

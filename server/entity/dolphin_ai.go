@@ -91,7 +91,7 @@ func (b *oceanWildlifeBehaviour) registerDolphinGoals(m *Mob) {
 		}
 		return false
 	}})
-	ai.Goals.Add(9, NewAvoidEntityGoal(entityIs("minecraft:guardian", "minecraft:elder_guardian"), 8, 1, 1))
+	ai.Goals.Add(9, NewAvoidEntityTypesGoal(entityTypes{"minecraft:guardian", "minecraft:elder_guardian"}, 8, 1, 1))
 	hurt := NewHurtByTargetGoal()
 	hurt.IgnoreDamageFrom = entityIs("minecraft:guardian", "minecraft:elder_guardian")
 	hurt.AlertOthers = true

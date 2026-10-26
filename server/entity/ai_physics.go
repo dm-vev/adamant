@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"math"
 	"slices"
 
@@ -683,7 +684,16 @@ func (ai *MobAI) collide(m *Mob, movement mgl64.Vec3) mgl64.Vec3 {
 		// LivingEntity.getMaxUpStep: a mob a player steers steps up a block.
 		step = math.Max(step, 1)
 	}
-	colliders := blockBBoxsAround(m.tx, box.Extend(movement).Extend(mgl64.Vec3{0, step}))
+	area := box.Extend(movement).Extend(mgl64.Vec3{0, step})
+	colliders, ok := ai.pre.collisions.boxesAround(m.tx, area)
+	if !ok {
+		colliders = blockBBoxsAround(m.tx, area)
+	} else if verifyPrefetch {
+		if live := blockBBoxsAround(m.tx, area); !slices.Equal(live, colliders) {
+			panic(fmt.Sprintf("prefetched collisions %v differ from %v for %v", colliders, live, area))
+		}
+		verifiedCollisions++
+	}
 	if _, ok := m.Behaviour().(mobFluidStander); ok {
 		colliders = fluidSurfaces(m, box.Extend(movement).Extend(mgl64.Vec3{0, step}), colliders)
 	}
@@ -813,7 +823,16 @@ func (ai *MobAI) updateFluids(m *Mob) {
 	if p, ok := m.Behaviour().(mobFluidPusher); ok {
 		pushed = p.pushedByFluid(m)
 	}
-	c := measureFluids(m.tx, m.BBox(), pushed)
+	box := m.BBox()
+	c, ok := ai.pre.prefetchedFluids(m.tx, box)
+	if !ok {
+		c = measureFluids(m.tx, box, pushed)
+	} else if verifyPrefetch {
+		if live := measureFluids(m.tx, box, true); live != c {
+			panic(fmt.Sprintf("prefetched fluids %+v differ from %+v for %v", c, live, box))
+		}
+		verifiedFluids++
+	}
 	ai.waterHeight, ai.lavaHeight = c.waterHeight, c.lavaHeight
 	if pushed {
 		m.data.Vel = c.push(m.tx, m.data.Vel)
@@ -822,7 +841,7 @@ func (ai *MobAI) updateFluids(m *Mob) {
 
 // liquidHeight ports FlowingFluid.getHeight: a liquid under the same liquid
 // fills its block, others amount/9 of it.
-func liquidHeight(tx *world.Tx, pos cube.Pos, l world.Liquid) float64 {
+func liquidHeight(tx blockReader, pos cube.Pos, l world.Liquid) float64 {
 	if above, ok := tx.Liquid(pos.Side(cube.FaceUp)); ok && above.LiquidType() == l.LiquidType() {
 		return 1
 	}

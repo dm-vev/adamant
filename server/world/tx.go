@@ -108,6 +108,17 @@ func (tx *Tx) ChunkState(pos ChunkPos) (loaded bool, ready bool) {
 	return true, c.Ready()
 }
 
+// ColumnBlockVersion returns the block version of the loaded column at pos,
+// which changes whenever one of its blocks does, and false if the column is
+// not loaded. It does not load the column.
+func (tx *Tx) ColumnBlockVersion(pos ChunkPos) (uint64, bool) {
+	c, ok := tx.World().chunks[pos]
+	if !ok {
+		return 0, false
+	}
+	return c.blockVersion, true
+}
+
 // SetBlockEntity updates block entity data without notifying viewers, updating
 // neighbouring blocks or invalidating redstone. The chunk is marked modified.
 // It falls back to SetBlock if b has no block entity data or its state differs.
@@ -352,6 +363,14 @@ func (tx *Tx) EntitiesWithin(box cube.BBox) iter.Seq[Entity] {
 // Entities returns an iterator that yields all entities in the World.
 func (tx *Tx) Entities() iter.Seq[Entity] {
 	return tx.World().allEntities(tx)
+}
+
+// EntitiesOfTypesWithin returns an iterator that yields the entities
+// EntitiesWithin yields for box whose type encodes to one of types, in the
+// same order. It skips the others without opening them, as Java's
+// getEntitiesOfClass only visits entities of the class asked for.
+func (tx *Tx) EntitiesOfTypesWithin(box cube.BBox, types []string) iter.Seq[Entity] {
+	return tx.World().entitiesOfTypesWithin(tx, box, types)
 }
 
 // TickingEntities returns an iterator that yields the entities whose chunks

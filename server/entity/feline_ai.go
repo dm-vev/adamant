@@ -54,7 +54,7 @@ func (b *CatBehaviour) registerGoals(m *Mob) {
 	stroll.Probability = 1.0000001e-5
 	ai.Goals.Add(11, stroll)
 	ai.Goals.Add(12, NewLookAtPlayerGoal(10))
-	ai.Goals.Add(4, felineAvoidPlayersGoal{NewAvoidEntityGoal(isPlayerEntity, 16, .8, 1.33), func() bool { return !b.tamed }})
+	ai.Goals.Add(4, felineAvoidPlayersGoal{NewAvoidEntityTypesGoal(playerTypes, 16, .8, 1.33), func() bool { return !b.tamed }})
 	ai.Targets.Add(1, newNonTameRandomTargetGoal(isRabbit, false, nil))
 	ai.Targets.Add(1, newNonTameRandomTargetGoal(isTurtle, false, turtleBabyOnLand))
 }
@@ -75,9 +75,9 @@ func (b *ocelotBehaviour) registerGoals(m *Mob) {
 	stroll.Probability = 1.0000001e-5
 	ai.Goals.Add(10, stroll)
 	ai.Goals.Add(11, NewLookAtPlayerGoal(10))
-	ai.Goals.Add(4, felineAvoidPlayersGoal{NewAvoidEntityGoal(isPlayerEntity, 16, .8, 1.33), func() bool { return !b.trusting }})
+	ai.Goals.Add(4, felineAvoidPlayersGoal{NewAvoidEntityTypesGoal(playerTypes, 16, .8, 1.33), func() bool { return !b.trusting }})
 	ai.Targets.Add(1, NewNearestAttackableTargetGoal(func(e world.Entity) bool { return e.H().Type() == ChickenType }, false))
-	turtles := NewNearestAttackableTargetGoal(isTurtle, false)
+	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, false)
 	turtles.Selector = turtleBabyOnLand
 	ai.Targets.Add(1, turtles)
 }

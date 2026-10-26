@@ -38,10 +38,9 @@ func (b *RabbitBehaviour) registerGoals(m *Mob) {
 	ai.Goals.Add(1, rabbitPanicGoal{b.panic, b})
 	ai.Goals.Add(2, NewBreedGoal(.8))
 	ai.Goals.Add(3, NewTemptGoal(1, rabbitFood, false))
-	isWolf := func(e world.Entity) bool { return e.H().Type().EncodeEntity() == "minecraft:wolf" }
 	isMonster := func(e world.Entity) bool { return monsterClass[e.H().Type().EncodeEntity()] }
-	ai.Goals.Add(4, rabbitAvoidEntityGoal{NewAvoidEntityGoal(isPlayerEntity, 8, 2.2, 2.2), b})
-	ai.Goals.Add(4, rabbitAvoidEntityGoal{NewAvoidEntityGoal(isWolf, 10, 2.2, 2.2), b})
+	ai.Goals.Add(4, rabbitAvoidEntityGoal{NewAvoidEntityTypesGoal(playerTypes, 8, 2.2, 2.2), b})
+	ai.Goals.Add(4, rabbitAvoidEntityGoal{NewAvoidEntityTypesGoal(entityTypes{"minecraft:wolf"}, 10, 2.2, 2.2), b})
 	ai.Goals.Add(4, rabbitAvoidEntityGoal{NewAvoidEntityGoal(isMonster, 4, 2.2, 2.2), b})
 	ai.Goals.Add(5, &raidGardenGoal{goalFlags: goalFlags{GoalMove | GoalJump}, rabbit: b})
 	ai.Goals.Add(6, NewWaterAvoidingRandomStrollGoal(.6))
@@ -51,8 +50,8 @@ func (b *RabbitBehaviour) registerGoals(m *Mob) {
 		hurt := NewHurtByTargetGoal()
 		hurt.AlertOthers = true
 		ai.Targets.Add(1, hurt)
-		ai.Targets.Add(2, NewNearestAttackableTargetGoal(isPlayerEntity, true))
-		ai.Targets.Add(2, NewNearestAttackableTargetGoal(isWolf, true))
+		ai.Targets.Add(2, NewNearestAttackableTypesGoal(playerTypes, true))
+		ai.Targets.Add(2, NewNearestAttackableTypesGoal(entityTypes{"minecraft:wolf"}, true))
 	}
 }
 

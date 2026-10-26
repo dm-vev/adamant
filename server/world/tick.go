@@ -4,11 +4,14 @@ import (
 	"cmp"
 	"math"
 	"math/rand/v2"
+	"runtime/debug"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -508,6 +511,7 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 	const sleepMaintenanceInterval = 40 // ~2 seconds between maintenance passes for sleeping chunks.
 
 	w := tx.World()
+	t.prefetchEntities(tx)
 
 	lazyMaintenance := tick%sleepMaintenanceInterval == 0
 
@@ -528,6 +532,66 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 		}
 		t.tickEntityColumn(tx, tick, ref.pos, col, false)
 	}
+}
+
+// prefetchMinimum is the fewest entities the parallel phase before the
+// entity ticks runs for: below it, spreading the work costs more than it
+// saves.
+const prefetchMinimum = 64
+
+// prefetchEntities runs the parallel phase before the entities tick: each
+// entity about to tick actively that implements Prefetcher reads part of
+// what its tick will read, on all cores, while nothing writes to the world.
+// The entities are opened on the owner first, as opening binds them to tx.
+func (t ticker) prefetchEntities(tx *Tx) {
+	w := tx.World()
+	items := w.scratchPrefetch[:0]
+	for _, ref := range w.entityColumns {
+		col := ref.col
+		if col == nil || len(col.Entities) == 0 || !col.Ready() || (!w.conf.Synchronous && len(col.viewers) == 0) || !w.entityTickingReady(ref.pos) {
+			continue
+		}
+		for _, handle := range col.Entities {
+			state := handle.state
+			if state == nil {
+				continue
+			}
+			if p, ok := state.entity(tx, handle).(Prefetcher); ok {
+				items = append(items, prefetchItem{e: state.ent, p: p})
+			}
+		}
+	}
+	if len(items) >= prefetchMinimum {
+		views := w.scratchViews[:0]
+		for range parallel.Workers() {
+			views = append(views, ReadView{w: w})
+		}
+		var failed atomic.Pointer[parallel.Panic]
+		parallel.ForWorkers(len(items), 16, func(worker, i int) {
+			v := &views[worker]
+			v.Reset()
+			defer func() {
+				// Prefetching only spares the tick work: an entity whose
+				// prefetch fails reads everything in its tick instead.
+				if r := recover(); r != nil {
+					failed.CompareAndSwap(nil, &parallel.Panic{Value: r, Stack: debug.Stack()})
+				}
+			}()
+			items[i].p.Prefetch(items[i].e, v)
+		})
+		if p := failed.Load(); p != nil {
+			w.conf.Log.Error("prefetch entity: panic", "panic", p.Value, "stack", string(p.Stack))
+		}
+		w.scratchViews = views[:0]
+	}
+	clear(items)
+	w.scratchPrefetch = items[:0]
+}
+
+// prefetchItem is an entity prefetching in the parallel phase.
+type prefetchItem struct {
+	e Entity
+	p Prefetcher
 }
 
 func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, active bool) {

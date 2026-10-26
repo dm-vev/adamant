@@ -107,10 +107,10 @@ func (b *oceanBehaviour) registerDrownedGoals(m *Mob) {
 	players := NewNearestAttackableTargetGoal(nil, true)
 	players.Selector = func(m *Mob, target world.Entity) bool { return drownedOkTarget(m, target) }
 	ai.Targets.Add(2, players)
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(isVillagerEntity, false))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), true))
-	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:axolotl"), true))
-	turtles := NewNearestAttackableTargetGoal(entityIs("minecraft:turtle"), true)
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(villagerTypes, false))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true))
+	ai.Targets.Add(3, NewNearestAttackableTypesGoal(entityTypes{"minecraft:axolotl"}, true))
+	turtles := NewNearestAttackableTypesGoal(entityTypes{"minecraft:turtle"}, true)
 	turtles.Selector = func(m *Mob, target world.Entity) bool { return mobIsBaby(target) && !entityInWater(m.tx, target) }
 	ai.Targets.Add(5, turtles)
 }

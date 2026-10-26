@@ -169,8 +169,8 @@ func (s *speciesState) registerGoals(m *Mob) {
 	case creeperSpecies:
 		ai.Goals.Add(1, NewFloatGoal(m))
 		ai.Goals.Add(2, &swellGoal{goalFlags: goalFlags{GoalMove}})
-		ai.Goals.Add(3, NewAvoidEntityGoal(entityIs("minecraft:ocelot"), 6, 1, 1.2))
-		ai.Goals.Add(3, NewAvoidEntityGoal(entityIs("minecraft:cat"), 6, 1, 1.2))
+		ai.Goals.Add(3, NewAvoidEntityTypesGoal(entityTypes{"minecraft:ocelot"}, 6, 1, 1.2))
+		ai.Goals.Add(3, NewAvoidEntityTypesGoal(entityTypes{"minecraft:cat"}, 6, 1, 1.2))
 		ai.Goals.Add(4, NewMeleeAttackGoal(1, false))
 		ai.Goals.Add(5, NewWaterAvoidingRandomStrollGoal(.8))
 		ai.Goals.Add(6, NewLookAtPlayerGoal(8))
@@ -184,7 +184,7 @@ func (s *speciesState) registerGoals(m *Mob) {
 	case spiderSpecies, caveSpiderSpecies:
 		ai.nav.wallClimber = true
 		ai.Goals.Add(1, NewFloatGoal(m))
-		armadillos := NewAvoidEntityGoal(entityIs("minecraft:armadillo"), 6, 1, 1.2)
+		armadillos := NewAvoidEntityTypesGoal(entityTypes{"minecraft:armadillo"}, 6, 1, 1.2)
 		armadillos.Predicate = func(e world.Entity) bool {
 			scared, ok := e.(interface{ Scared() bool })
 			return !ok || !scared.Scared()
@@ -197,7 +197,7 @@ func (s *speciesState) registerGoals(m *Mob) {
 		ai.Goals.Add(6, NewRandomLookAroundGoal())
 		ai.Targets.Add(1, NewHurtByTargetGoal())
 		ai.Targets.Add(2, &spiderTargetGoal{NewNearestAttackableTargetGoal(nil, true)})
-		ai.Targets.Add(3, &spiderTargetGoal{NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), true)})
+		ai.Targets.Add(3, &spiderTargetGoal{NewNearestAttackableTypesGoal(entityTypes{"minecraft:iron_golem"}, true)})
 	case silverfishSpecies:
 		if s.friends == nil {
 			s.friends = &silverfishWakeUpFriendsGoal{}

@@ -51,7 +51,7 @@ func (b *WolfBehaviour) registerGoals(m *Mob) {
 		return false
 	}, false, nil))
 	ai.Targets.Add(6, newNonTameRandomTargetGoal(func(e world.Entity) bool { return e.H().Type() == TurtleType }, false, turtleBabyOnLand))
-	ai.Targets.Add(7, NewNearestAttackableTargetGoal(isAbstractSkeleton, false))
+	ai.Targets.Add(7, NewNearestAttackableTypesGoal(abstractSkeletonTypes, false))
 	ai.Targets.Add(8, &resetUniversalAngerTargetGoal{lastHurtByPlayer: -1, alertSameType: true})
 }
 
