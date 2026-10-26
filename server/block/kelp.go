@@ -19,26 +19,6 @@ type Kelp struct {
 	Age int
 }
 
-// BoneMeal ...
-func (k Kelp) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
-	for y := pos.Y(); y <= tx.Range()[1]; y++ {
-		currentPos := cube.Pos{pos.X(), y, pos.Z()}
-		block := tx.Block(currentPos)
-		if kelp, ok := block.(Kelp); ok {
-			if kelp.Age == 25 {
-				break
-			}
-			continue
-		}
-		if water, ok := block.(Water); ok && water.Depth == 8 {
-			tx.SetBlock(currentPos, Kelp{Age: k.Age + 1}, nil)
-			return item.BoneMealResultSmall
-		}
-		break
-	}
-	return item.BoneMealResultNone
-}
-
 // BreakInfo ...
 func (k Kelp) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(k))

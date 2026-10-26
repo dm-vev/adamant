@@ -1,7 +1,6 @@
 package item
 
 import (
-	"math"
 	"math/rand/v2"
 	"time"
 
@@ -108,7 +107,7 @@ func chorusRandomTeleport(tx *world.Tx, e chorusTeleporter, x, y, z float64) boo
 		}
 		dest := mgl64.Vec3{x, y, z}
 		box := e.H().Type().BBox(e).Translate(dest)
-		if !chorusBoxFree(tx, box) {
+		if !noCollision(tx, box, e.H()) || containsAnyLiquid(tx, box) {
 			return false
 		}
 		e.Teleport(dest)
@@ -125,39 +124,6 @@ func chorusTeleportOnto(b world.Block) bool {
 	}
 	in, _ := gamedata.BlockTagContains("minecraft:entities_can_teleport_to", state.Name)
 	return in
-}
-
-// chorusBoxFree ports Level.noCollision and containsAnyLiquid for a box: no
-// block, boat or shulker collides with it and no liquid is inside it.
-func chorusBoxFree(tx *world.Tx, box cube.BBox) bool {
-	for x := int(math.Floor(box.Min()[0])); x < int(math.Ceil(box.Max()[0])); x++ {
-		for y := int(math.Floor(box.Min()[1])) - 1; y < int(math.Ceil(box.Max()[1])); y++ {
-			for z := int(math.Floor(box.Min()[2])); z < int(math.Ceil(box.Max()[2])); z++ {
-				pos := cube.Pos{x, y, z}
-				b, ok := tx.BlockLoaded(pos)
-				if !ok {
-					return false
-				}
-				for _, bb := range b.Model().BBox(pos, tx) {
-					if bb.Translate(pos.Vec3()).IntersectsWith(box) {
-						return false
-					}
-				}
-				if _, liquid := tx.Liquid(pos); liquid && y >= int(math.Floor(box.Min()[1])) {
-					return false
-				}
-			}
-		}
-	}
-	for e := range tx.EntitiesWithin(box) {
-		switch e.H().Type().EncodeEntity() {
-		case "minecraft:boat", "minecraft:chest_boat", "minecraft:shulker":
-			if e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 // EncodeItem ...

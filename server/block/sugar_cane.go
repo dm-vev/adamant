@@ -63,22 +63,6 @@ func (c SugarCane) RandomTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	tx.SetBlock(pos, c, nil)
 }
 
-// BoneMeal ...
-func (c SugarCane) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
-	for _, ok := tx.Block(pos.Side(cube.FaceDown)).(SugarCane); ok; _, ok = tx.Block(pos.Side(cube.FaceDown)).(SugarCane) {
-		pos = pos.Side(cube.FaceDown)
-	}
-	if c.canGrowHere(pos.Side(cube.FaceDown), tx, false) {
-		for y := 1; y < 3; y++ {
-			if _, ok := tx.Block(pos.Add(cube.Pos{0, y})).(Air); ok {
-				tx.SetBlock(pos.Add(cube.Pos{0, y}), SugarCane{}, nil)
-			}
-		}
-		return item.BoneMealResultSmall
-	}
-	return item.BoneMealResultNone
-}
-
 // canGrowHere implements logic to check if sugar cane can live/grow here.
 func (c SugarCane) canGrowHere(pos cube.Pos, tx *world.Tx, recursive bool) bool {
 	if _, ok := tx.Block(pos.Side(cube.FaceDown)).(SugarCane); ok && recursive {

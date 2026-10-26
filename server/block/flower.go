@@ -1,7 +1,6 @@
 package block
 
 import (
-	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -30,35 +29,6 @@ func (f Flower) EntityInside(_ cube.Pos, _ *world.Tx, e world.Entity) {
 			living.AddEffect(effect.New(effect.Wither, 1, 2*time.Second))
 		}
 	}
-}
-
-// BoneMeal ...
-func (f Flower) BoneMeal(pos cube.Pos, tx *world.Tx) (result item.BoneMealResult) {
-	result = item.BoneMealResultNone
-	if f.Type == WitherRose() {
-		return
-	}
-
-	for i := 0; i < 8; i++ {
-		p := pos.Add(cube.Pos{rand.IntN(7) - 3, rand.IntN(3) - 1, rand.IntN(7) - 3})
-		if _, ok := tx.Block(p).(Air); !ok {
-			continue
-		}
-		if _, ok := tx.Block(p.Side(cube.FaceDown)).(Grass); !ok {
-			continue
-		}
-		flowerType := f.Type
-		if rand.Float64() < 0.1 {
-			if f.Type == Dandelion() {
-				flowerType = Poppy()
-			} else if f.Type == Poppy() {
-				flowerType = Dandelion()
-			}
-		}
-		tx.SetBlock(p, Flower{Type: flowerType}, nil)
-		result = item.BoneMealResultArea
-	}
-	return
 }
 
 // NeighbourUpdateTick ...

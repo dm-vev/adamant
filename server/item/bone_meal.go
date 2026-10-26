@@ -29,18 +29,32 @@ type BoneMealAffected interface {
 	BoneMeal(pos cube.Pos, tx *world.Tx) BoneMealResult
 }
 
-// UseOnBlock ...
-func (b BoneMeal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
-	if bm, ok := tx.Block(pos).(BoneMealAffected); ok {
-		result := bm.BoneMeal(pos, tx)
-		if result == BoneMealResultNone {
-			return false
-		}
+// waterPlantGrower is a block, water, that bone meal used on the sturdy
+// face next to it grows seagrass and corals in.
+type waterPlantGrower interface {
+	GrowWaterPlants(pos cube.Pos, face cube.Face, tx *world.Tx) bool
+}
 
+// UseOnBlock ports BoneMealItem.useOn: the clicked block grows if it takes
+// bone meal, and otherwise, if the clicked face is sturdy, water beside it
+// grows seagrass and corals. Either way one bone meal is used up.
+func (b BoneMeal) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
+	if bm, ok := tx.Block(pos).(BoneMealAffected); ok {
+		if result := bm.BoneMeal(pos, tx); result != BoneMealResultNone {
+			ctx.SubtractFromCount(1)
+			tx.AddParticle(pos.Vec3(), particle.BoneMeal{Area: result == BoneMealResultArea})
+			tx.EmitGameEvent(world.GameEventItemInteractFinish, user.Position(), world.GameEventContext{Source: user})
+			return true
+		}
+	}
+	if !tx.Block(pos).Model().FaceSolid(pos, face, tx) {
+		return false
+	}
+	beside := pos.Side(face)
+	if w, ok := tx.Block(beside).(waterPlantGrower); ok && w.GrowWaterPlants(beside, face, tx) {
 		ctx.SubtractFromCount(1)
-		tx.AddParticle(pos.Vec3(), particle.BoneMeal{
-			Area: result == BoneMealResultArea,
-		})
+		tx.AddParticle(beside.Vec3(), particle.BoneMeal{})
+		tx.EmitGameEvent(world.GameEventItemInteractFinish, user.Position(), world.GameEventContext{Source: user})
 		return true
 	}
 	return false

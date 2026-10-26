@@ -26,11 +26,11 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 
 | Class | Items | Status |
 |---|---:|---|
-| ArmorStandItem | 1 | |
-| ArrowItem, TippedArrowItem, SpectralArrowItem | 3 | |
+| ArmorStandItem | 1 | Ported `useOn`: no placement on the bottom face, the stand stands on the floor of the placed block (it floated half a block up), the box must be clear of blocks and entities, yaw rounds to 45° facing the player (it was negated), and the stack's custom name is applied as `createDefaultStackConfig` |
+| ArrowItem, TippedArrowItem, SpectralArrowItem | 3 | combat: skipped |
 | BannerItem | 16 | |
-| BoatItem | 22 | |
-| BoneMealItem | 1 | |
+| BoatItem | 22 | Ported `use`: the boat goes where the player's view first meets a block outline or liquid surface (it went to a block centre beside the clicked face), faces as the player does (the yaw was negated), is refused when the player is inside an entity or the boat would collide, and also places from a click into the air, as onto water. Custom names apply |
+| BoneMealItem | 1 | Ported `useOn` and `growWaterPlant`: on a sturdy face beside water, seagrass, and in warm oceans corals, grow around. The blocks follow `BonemealableBlock`: weeping, twisting and cave vines, kelp (it stopped at age 25 and grew from the clicked block), pale hanging moss and moss carpet (whose placement now computes its sides and topper as `MossyCarpetBlock`), mangrove leaves, netherrack, rooted dirt, seagrass and dry grass took no bone meal; flowers and sugar cane, which are no bonemealables in Java, did |
 | BottleItem | 1 | |
 | BowItem, CrossbowItem, TridentItem, MaceItem, ShieldItem | 5 | combat: skipped |
 | BrushItem | 1 | |

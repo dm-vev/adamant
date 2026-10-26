@@ -136,6 +136,11 @@ func (b Boat) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.T
 	return placeBoat(pos, face, tx, user, ctx, b.Variant, create, "boat")
 }
 
+// Use places a boat on what the player looks at, such as water.
+func (b Boat) Use(tx *world.Tx, user User, ctx *UseContext) bool {
+	return placeBoat(cube.Pos{}, cube.FaceUp, tx, user, ctx, b.Variant, tx.World().EntityRegistry().Config().Boat, "boat")
+}
+
 // EncodeItem returns the item ID for the boat variant.
 func (b Boat) EncodeItem() (string, int16) {
 	return b.Variant.boatItemName(), 0
@@ -158,6 +163,11 @@ func (b ChestBoat) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wo
 	return placeBoat(pos, face, tx, user, ctx, b.Variant, create, "chest_boat")
 }
 
+// Use places a chest boat on what the player looks at, such as water.
+func (b ChestBoat) Use(tx *world.Tx, user User, ctx *UseContext) bool {
+	return placeBoat(cube.Pos{}, cube.FaceUp, tx, user, ctx, b.Variant, tx.World().EntityRegistry().Config().ChestBoat, "chest_boat")
+}
+
 // EncodeItem returns the item ID for the chest boat variant.
 func (b ChestBoat) EncodeItem() (string, int16) {
 	return b.Variant.chestBoatItemName(), 0
@@ -168,38 +178,37 @@ func (ChestBoat) MaxCount() int {
 	return 1
 }
 
-func placeBoat(pos cube.Pos, face cube.Face, tx *world.Tx, user User, ctx *UseContext, variant BoatVariant, create func(world.EntitySpawnOpts, int) *world.EntityHandle, name string) bool {
-	if face == cube.FaceDown {
-		return false
-	}
+// placeBoat ports BoatItem.use: the boat is put where the player's view
+// first meets a block or a liquid surface, facing as the player does, unless
+// the player is inside an entity it could pick instead or the boat would
+// collide with something.
+func placeBoat(_ cube.Pos, _ cube.Face, tx *world.Tx, user User, ctx *UseContext, variant BoatVariant, create func(world.EntitySpawnOpts, int) *world.EntityHandle, name string) bool {
 	if create == nil {
 		slog.Default().Info("boat: missing entity factory", "name", name, "world", tx.World().Name())
 		return false
 	}
-
-	placePos := pos.Side(face)
-	if face == cube.FaceUp {
-		if liquid, ok := tx.Liquid(pos); ok && liquid.LiquidType() == "water" {
-			placePos = pos
-		}
+	hit, _, ok := povHit(tx, user, true)
+	if !ok {
+		return false
 	}
-	if _, liquid := tx.Liquid(placePos); !liquid {
-		blockName, _ := tx.Block(placePos).EncodeBlock()
-		if blockName != "minecraft:air" {
+	eye := user.Position()
+	if e, ok := user.(interface{ EyeHeight() float64 }); ok {
+		eye[1] += e.EyeHeight()
+	}
+	reachBox := cube.Box(-0.3, 0, -0.3, 0.3, 1.8, 0.3).Translate(user.Position()).Extend(user.Rotation().Vec3().Mul(5)).Grow(1)
+	for e := range tx.EntitiesWithin(reachBox) {
+		if e.H() == user.H() {
+			continue
+		}
+		if e.H().Type().BBox(e).Translate(e.Position()).Vec3Within(eye) {
 			return false
 		}
 	}
-
-	spawn := placePos.Vec3Middle()
-	if liquid, ok := tx.Liquid(placePos); ok && liquid.LiquidType() == "water" {
-		spawn[1] += 0.375
-	} else {
-		spawn[1] += 0.5
+	// AbstractBoat is 1.375 wide and 0.5625 high.
+	if !noCollision(tx, cube.Box(-0.6875, 0, -0.6875, 0.6875, 0.5625, 0.6875).Translate(hit), nil) {
+		return false
 	}
-	rot := user.Rotation().Neg()
-	rot = cube.Rotation{rot.Yaw(), 0}
-
-	opts := world.EntitySpawnOpts{Position: spawn, Rotation: rot}
+	opts := stackSpawnOpts(user, world.EntitySpawnOpts{Position: hit, Rotation: cube.Rotation{user.Rotation().Yaw(), 0}})
 	tx.AddEntity(create(opts, variant.Int()))
 	ctx.SubtractFromCount(1)
 	return true
