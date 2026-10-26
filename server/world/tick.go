@@ -190,9 +190,9 @@ func (t ticker) tick(tx *Tx) {
 		tryAdvanceDay = w.set.RequiredSleepTicks <= 0
 	}
 	w.set.Unlock()
-	// Both Java registries share the same game-time clock, even though the
-	// block queue drains before the fluid queue.
-	w.scheduledBlockTicks.currentTick = tick
+	// Native block queues advance mCurrentTick only in tickPendingTicks.
+	// Entity/player callbacks before that pass still schedule against the
+	// previous queue tick, independently of the world's current event clock.
 	w.scheduledFluidTicks.currentTick = tick
 	t.tickInhabitedTime(w, loaders)
 	t.promoteGeneration(tx, loaders)
@@ -407,13 +407,10 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 			if !w.blockTickingReady(ref.pos, c) {
 				continue
 			}
-			blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
+			blockEntities = appendShuffledBlockEntities(blockEntities, c.tickerBlockEntityPositions(), w.r)
 			w.tickPrecipitation(tx, ref.pos)
 		}
-		for _, pos := range blockEntities {
-			tb := tx.chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
-			tb.Tick(tick, pos, tx)
-		}
+		tickBlockEntityRefs(tx, tick, blockEntities)
 		w.scratchLoaderAreas = areas[:0]
 		w.scratchRandom = randomBlocks[:0]
 		w.scratchBlockEntities = blockEntities[:0]
@@ -430,7 +427,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		if !w.blockTickingReady(ref.pos, c) {
 			continue
 		}
-		blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
+		blockEntities = appendShuffledBlockEntities(blockEntities, c.tickerBlockEntityPositions(), w.r)
 		w.tickPrecipitation(tx, ref.pos)
 
 		cx, cz := int(ref.pos[0]<<4), int(ref.pos[1]<<4)
@@ -466,14 +463,38 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 			rb.RandomTick(pos, tx, w.r)
 		}
 	}
-	for _, pos := range blockEntities {
-		tb := tx.chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
-		tb.Tick(tick, pos, tx)
-	}
+	tickBlockEntityRefs(tx, tick, blockEntities)
 
 	w.scratchLoaderAreas = areas[:0]
 	w.scratchRandom = randomBlocks[:0]
 	w.scratchBlockEntities = blockEntities[:0]
+}
+
+// LevelChunk::tickBlockEntities (client 0x32cb7a3..0x32cb839) makes a copy of
+// the actor vector, then performs a forward Fisher-Yates shuffle using a raw
+// unsigned 32-bit random value modulo i+1. Each chunk is shuffled separately.
+func appendShuffledBlockEntities[T any](dst, positions []T, r *rand.Rand) []T {
+	start := len(dst)
+	dst = append(dst, positions...)
+	for i := 1; i < len(positions); i++ {
+		j := int(r.Uint32() % uint32(i+1))
+		dst[start+i], dst[start+j] = dst[start+j], dst[start+i]
+	}
+	return dst
+}
+
+func tickBlockEntityRefs(tx *Tx, tick int64, refs []blockEntityTickRef) {
+	for _, ref := range refs {
+		c := tx.chunk(chunkPosFromBlockPos(ref.pos))
+		// Native storage rechecks the saved actor component pointer after the
+		// shuffle. An actor replaced during an earlier callback waits a tick.
+		if c.tickerBlockEntityVersions[ref.pos] != ref.version {
+			continue
+		}
+		if tb, ok := c.BlockEntities[ref.pos].(TickerBlock); ok {
+			tb.Tick(tick, ref.pos, tx)
+		}
+	}
 }
 
 func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {

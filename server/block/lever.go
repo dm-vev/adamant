@@ -67,10 +67,16 @@ func (l Lever) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 	return placed(ctx)
 }
 
-func (l Lever) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
+func (l Lever) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, user item.User, _ *item.UseContext) bool {
 	l.Powered = !l.Powered
 	tx.SetBlock(pos, l, nil)
 	playRedstoneSwitchSound(pos, tx, l, l.Powered)
+	source, _ := user.(world.Entity)
+	event := world.GameEventBlockDeactivate
+	if l.Powered {
+		event = world.GameEventBlockActivate
+	}
+	tx.EmitGameEvent(event, pos.Vec3Centre(), world.GameEventContext{Source: source, AffectedState: l})
 	return true
 }
 

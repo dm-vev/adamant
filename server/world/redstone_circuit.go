@@ -46,9 +46,9 @@ type RedstoneCircuitStrength interface {
 // the block's component setup callback.
 type RedstoneCircuitDirection interface{ CircuitDirection() cube.Face }
 
-// RedstoneCircuitAnalogInput samples block-actor analog inputs once per game
-// tick, after circuit evaluation. ComparatorCapacitor consumes the preceding
-// actor sample; direct electrical inputs are cached on the circuit step.
+// RedstoneCircuitAnalogInput samples analog inputs once per circuit interval,
+// in the chunk's block-actor pass. ComparatorCapacitor consumes
+// the preceding actor sample; direct electrical inputs are cached on the circuit step.
 type RedstoneCircuitAnalogInput interface {
 	SampleAnalogInput(pos cube.Pos, tx *Tx) RedstoneCircuitState
 }
@@ -143,13 +143,6 @@ func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publi
 
 func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 	e.activateProducers()
-	defer func() {
-		for pos, state := range e.circuits {
-			if actor, ok := state.(RedstoneCircuitAnalogInput); ok {
-				e.circuits[pos] = actor.SampleAnalogInput(pos, tx)
-			}
-		}
-	}()
 	for pos, power := range e.circuitPowerOutputs {
 		delete(e.circuitPowerOutputs, pos)
 		b, loaded := tx.BlockLoaded(pos)
@@ -352,6 +345,15 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 			}
 			e.circuitOutputCauses[pos] = e.circuitCauses[pos]
 		}
+	}
+}
+
+// SampleAnalogInput runs the component's block-actor input read at its position
+// in the chunk tick order, rather than sampling all comparators after all actors.
+func (r RedstoneTransaction) SampleAnalogInput(pos cube.Pos) {
+	e := r.tx.World().redstone
+	if actor, ok := e.circuits[pos].(RedstoneCircuitAnalogInput); ok {
+		e.circuits[pos] = actor.SampleAnalogInput(pos, r.tx)
 	}
 }
 

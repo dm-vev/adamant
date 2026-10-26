@@ -39,13 +39,19 @@ func (b Button) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 }
 
 // Activate ...
-func (b Button) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
+func (b Button) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, user item.User, _ *item.UseContext) bool {
+	source, _ := user.(world.Entity)
+	return b.press(pos, tx, source)
+}
+
+func (b Button) press(pos cube.Pos, tx *world.Tx, source world.Entity) bool {
 	if b.Pressed {
 		return false
 	}
 	b.Pressed = true
 	tx.SetBlock(pos, b, nil)
 	playRedstoneSwitchSound(pos, tx, b, true)
+	tx.EmitGameEvent(world.GameEventBlockActivate, pos.Vec3Centre(), world.GameEventContext{Source: source})
 	tx.ScheduleBlockUpdate(pos, b, gameTicks(b.Type.pressTicks()))
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
@@ -71,6 +77,7 @@ func (b Button) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	b.Pressed = false
 	tx.SetBlock(pos, b, nil)
 	playRedstoneSwitchSound(pos, tx, b, false)
+	tx.EmitGameEvent(world.GameEventBlockDeactivate, pos.Vec3Centre(), world.GameEventContext{})
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
 }
@@ -79,8 +86,10 @@ func (b Button) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 // overlaps an unpressed wooden button. The entering entity need not itself
 // be the activating projectile.
 func (b Button) EntityInside(pos cube.Pos, tx *world.Tx, _ world.Entity) {
-	if !b.Pressed && b.Type.pressTicks() == 30 && b.hasActivatingProjectile(pos, tx) {
-		b.Activate(pos, b.Facing, tx, nil, nil)
+	if !b.Pressed && b.Type.pressTicks() == 30 {
+		if projectile, ok := b.activatingProjectile(pos, tx); ok {
+			b.press(pos, tx, projectile)
+		}
 	}
 }
 
@@ -103,6 +112,11 @@ func buttonActivatingProjectile(e world.Entity) bool {
 }
 
 func (b Button) hasActivatingProjectile(pos cube.Pos, tx *world.Tx) bool {
+	_, ok := b.activatingProjectile(pos, tx)
+	return ok
+}
+
+func (b Button) activatingProjectile(pos cube.Pos, tx *world.Tx) (world.Entity, bool) {
 	box := b.projectileBox().Translate(pos.Vec3())
 	// EntitiesWithin filters origins, not bounding boxes. Expand the query
 	// for arrow/trident dimensions, then test their actual boxes. This query
@@ -118,10 +132,10 @@ func (b Button) hasActivatingProjectile(pos cube.Pos, tx *world.Tx) bool {
 		if lo[0] <= otherHi[0] && hi[0] >= otherLo[0] &&
 			lo[1] <= otherHi[1] && hi[1] >= otherLo[1] &&
 			lo[2] <= otherHi[2] && hi[2] >= otherLo[2] {
-			return true
+			return e, true
 		}
 	}
-	return false
+	return nil, false
 }
 
 // projectileBox is the fixed query/collision outline used by the native

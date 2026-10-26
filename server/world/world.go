@@ -162,7 +162,7 @@ type World struct {
 	javaHeightmapTags [2]map[uint32]bool
 
 	scratchRandom        []cube.Pos
-	scratchBlockEntities []cube.Pos
+	scratchBlockEntities []blockEntityTickRef
 	scratchLoaderAreas   []loaderActiveArea
 	scratchFocus         []ChunkPos
 	// saver writes saved columns in the background; it is nil for
@@ -635,8 +635,7 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 		// stored NBT yet. We add it here and update the block.
 		nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), map[string]any{}, w.conf.Blocks).(Block)
 		nbtB = restoreJavaBlockActor(c.Chunk, pos, nbtB)
-		c.BlockEntities[pos] = nbtB
-		c.invalidateTickerBlockEntities()
+		c.updateBlockEntity(pos, nbtB)
 		c.invalidateBlockEntityPayloads()
 		for v := range c.viewers {
 			v.ViewBlockUpdate(pos, nbtB, 0)
@@ -759,8 +758,8 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
 	c := tx.chunk(chunkPosFromBlockPos(pos))
 
-	oldLight := w.cellLightProperties(c, pos)
 	rid := w.conf.Blocks.BlockRuntimeID(b)
+	oldLight := w.cellLightProperties(c, pos)
 	redstoneAfterRelevant := isRedstoneRelevant(b)
 	needOldBlock := !opts.DisableRedstoneUpdates || !redstoneAfterRelevant
 
@@ -795,12 +794,10 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	c.invalidateSubChunkHeightMaps()
 	c.invalidateNetworkSubChunkPayloads()
 	if w.conf.Blocks.NBTBlock(rid) {
-		c.BlockEntities[pos] = b
-		c.invalidateTickerBlockEntities()
+		c.updateBlockEntity(pos, b)
 		c.invalidateBlockEntityPayloads()
 	} else {
-		delete(c.BlockEntities, pos)
-		c.invalidateTickerBlockEntities()
+		c.updateBlockEntity(pos, nil)
 		c.invalidateBlockEntityPayloads()
 	}
 
@@ -837,10 +834,10 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 			})
 		}
 	}
-	w.queueLightChange(c, pos, oldLight)
 	if redstoneAfterRelevant || (needOldBlock && isRedstoneRelevant(oldBlock)) {
 		w.redstone.forget(pos)
 	}
+	w.queueLightChange(c, pos, oldLight)
 	w.redstone.replaceCircuit(pos, oldBlock, b, opts.circuitPublication)
 
 	if !opts.disableViewUpdates {
@@ -879,7 +876,7 @@ func (tx *Tx) setBlockEntity(pos cube.Pos, b Block) {
 		return
 	}
 	b = w.replacePositionTrackingBlock(pos, c.BlockEntities[pos], b)
-	c.BlockEntities[pos] = b
+	c.updateBlockEntity(pos, b)
 	// Chunk and sub-chunk responses cache encoded block entities.
 	c.invalidateBlockEntityPayloads()
 	c.modified = true
@@ -919,12 +916,12 @@ func (tx *Tx) setBiome(pos cube.Pos, b Biome) {
 // method operates on a per-chunk basis, setting all blocks within a single
 // chunk part of the Structure before moving on to the next chunk.
 func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
-	if width <= 0 || height <= 0 || length <= 0 {
-		return
-	}
 	w := tx.World()
 	dim := s.Dimensions()
 	width, height, length := dim[0], dim[1], dim[2]
+	if width <= 0 || height <= 0 || length <= 0 {
+		return
+	}
 	maxX, maxY, maxZ := pos[0]+width, pos[1]+height, pos[2]+length
 	f := func(x, y, z int) Block {
 		return tx.block(cube.Pos{pos[0] + x, pos[1] + y, pos[2] + z})
@@ -966,11 +963,11 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 						for localZ := 0; localZ < 16; localZ++ {
 							zOffset := baseZ + localZ
 							if zOffset < pos[2] || zOffset >= maxZ {
-							lightPos := cube.Pos{xOffset, yOffset, zOffset}
-							oldLight := w.cellLightProperties(c, lightPos)
 								continue
 							}
 							b, liq := s.At(xOffset-pos[0], yOffset-pos[1], zOffset-pos[2], f)
+							lightPos := cube.Pos{xOffset, yOffset, zOffset}
+							oldLight := w.cellLightProperties(c, lightPos)
 							if b != nil {
 								nbtPos := cube.Pos{xOffset, yOffset, zOffset}
 								oldRID := sub.Block(uint8(xOffset), uint8(yOffset), uint8(zOffset), 0)
@@ -991,23 +988,21 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 								c.invalidateNetworkSubChunkPayloads()
 
 								if w.conf.Blocks.NBTBlock(rid) {
-									c.BlockEntities[nbtPos] = b
-									c.invalidateTickerBlockEntities()
+									c.updateBlockEntity(nbtPos, b)
 									c.invalidateBlockEntityPayloads()
 								} else {
-									delete(c.BlockEntities, nbtPos)
-									c.invalidateTickerBlockEntities()
+									c.updateBlockEntity(nbtPos, nil)
 									c.invalidateBlockEntityPayloads()
 								}
 								w.updatePOI(nbtPos, b)
 								w.redstone.replaceCircuit(nbtPos, oldBlock, b, false)
 							}
-							w.queueLightChange(c, lightPos, oldLight)
 							if liq != nil {
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 1, w.conf.Blocks.BlockRuntimeID(liq))
 							} else if len(sub.Layers()) > 1 {
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 1, w.conf.Blocks.AirRuntimeID())
 							}
+							w.queueLightChange(c, lightPos, oldLight)
 						}
 					}
 				}
@@ -1065,13 +1060,13 @@ func (tx *Tx) liquid(pos cube.Pos) (Liquid, bool) {
 func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 	w := tx.World()
 	if pos.OutOfBounds(w.Range()) {
-	oldLight := w.cellLightProperties(c, pos)
-	defer func() { w.queueLightChange(c, pos, oldLight) }()
 		// Fast way out.
 		return
 	}
 	chunkPos := chunkPosFromBlockPos(pos)
 	c := tx.chunk(chunkPos)
+	oldLight := w.cellLightProperties(c, pos)
+	defer func() { w.queueLightChange(c, pos, oldLight) }()
 	if b == nil {
 		w.removeLiquids(c, pos)
 		tx.doBlockUpdatesAround(pos)
@@ -1171,12 +1166,12 @@ func (tx *Tx) additionalLiquid(pos cube.Pos) (Liquid, bool) {
 }
 
 // light returns the light level at the position passed. This is the highest of
-	w.flushLightChanges()
 // the sky and block light. The light value returned is a value in the range
 // 0-15, where 0 means there is no light present, whereas 15 means the block is
 // fully lit.
 func (tx *Tx) light(pos cube.Pos) uint8 {
 	w := tx.World()
+	w.flushLightChanges()
 	if pos[1] < w.ra[0] {
 		// Fast way out.
 		return 0
@@ -2886,7 +2881,9 @@ type Column struct {
 	randomTickSubChunksDirty        bool
 	cachedRandomTickSubChunkIndices []int
 	tickerBlockEntitiesDirty        bool
-	cachedTickerBlockEntities       []cube.Pos
+	cachedTickerBlockEntities       []blockEntityTickRef
+	tickerBlockEntityVersions       map[cube.Pos]uint64
+	nextTickerBlockEntityVersion    uint64
 	subChunkHeightMaps              map[int16]cachedSubChunkHeightMap
 	networkBiomePayload             cachedBlockEntityPayload
 	networkSubChunkPayloads         map[int16]cachedBlockEntityPayload
@@ -3037,8 +3034,35 @@ func (c *Column) invalidateRandomTickSubChunks() {
 	c.randomTickSubChunksDirty = true
 }
 
-func (c *Column) invalidateTickerBlockEntities() {
-	c.tickerBlockEntitiesDirty = true
+// updateBlockEntity preserves actor insertion order across ordinary state/NBT
+// updates. Native storage appends actors and erases them without swapping the
+// last entry into the hole; its tick pass shuffles a copy of this vector.
+func (c *Column) updateBlockEntity(pos cube.Pos, b Block) {
+	old := c.BlockEntities[pos]
+	_, wasTicker := old.(TickerBlock)
+	_, isTicker := b.(TickerBlock)
+	if wasTicker || isTicker {
+		c.tickerBlockEntityPositions()
+		oldKind, newKind := uint64(0), uint64(0)
+		if old != nil {
+			oldKind, _ = old.Hash()
+		}
+		if b != nil {
+			newKind, _ = b.Hash()
+		}
+		if wasTicker && (!isTicker || oldKind != newKind) {
+			c.cachedTickerBlockEntities = slices.DeleteFunc(c.cachedTickerBlockEntities, func(ref blockEntityTickRef) bool { return ref.pos == pos })
+			delete(c.tickerBlockEntityVersions, pos)
+		}
+		if isTicker && (!wasTicker || oldKind != newKind) {
+			c.cachedTickerBlockEntities = append(c.cachedTickerBlockEntities, c.newTickerBlockEntityRef(pos))
+		}
+	}
+	if b == nil {
+		delete(c.BlockEntities, pos)
+	} else {
+		c.BlockEntities[pos] = b
+	}
 }
 
 func (c *Column) invalidateSubChunkHeightMaps() {
@@ -3192,16 +3216,33 @@ func (c *Column) randomTickSubChunkIndices(br BlockRegistry) []int {
 	return c.cachedRandomTickSubChunkIndices
 }
 
-func (c *Column) tickerBlockEntityPositions() []cube.Pos {
+type blockEntityTickRef struct {
+	pos     cube.Pos
+	version uint64
+}
+
+func (c *Column) newTickerBlockEntityRef(pos cube.Pos) blockEntityTickRef {
+	if c.tickerBlockEntityVersions == nil {
+		c.tickerBlockEntityVersions = make(map[cube.Pos]uint64)
+	}
+	c.nextTickerBlockEntityVersion++
+	c.tickerBlockEntityVersions[pos] = c.nextTickerBlockEntityVersion
+	return blockEntityTickRef{pos: pos, version: c.nextTickerBlockEntityVersion}
+}
+
+func (c *Column) tickerBlockEntityPositions() []blockEntityTickRef {
 	if !c.tickerBlockEntitiesDirty {
 		return c.cachedTickerBlockEntities
 	}
 	positions := c.cachedTickerBlockEntities[:0]
 	for pos, block := range c.BlockEntities {
 		if _, ok := block.(TickerBlock); ok {
-			positions = append(positions, pos)
+			positions = append(positions, c.newTickerBlockEntityRef(pos))
 		}
 	}
+	// Generated columns may supply only a map. Ordinary placement and decoded
+	// actor lists use updateBlockEntity and retain their explicit insertion order.
+	slices.SortFunc(positions, func(a, b blockEntityTickRef) int { return compareBlockPos(a.pos, b.pos) })
 	c.cachedTickerBlockEntities = positions
 	c.tickerBlockEntitiesDirty = false
 	return c.cachedTickerBlockEntities
@@ -3514,6 +3555,6 @@ func (w *World) decodeBlockEntities(c *Column, entities []chunk.BlockEntity) {
 		if tracked, ok := decoded.(PositionTrackingBlock); ok && tracked.TrackingHandle() != 0 {
 			decoded = tracked.WithTrackingHandle(w.TrackPosition(be.Pos, tracked.TrackingHandle()))
 		}
-		c.BlockEntities[be.Pos] = decoded
+		c.updateBlockEntity(be.Pos, decoded)
 	}
 }

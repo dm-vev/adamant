@@ -72,6 +72,14 @@ func (RedstoneComparator) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand
 	}
 }
 
+// Tick samples the rear block in the chunk's shuffled actor pass. The native
+// actor samples only before the next circuit evaluation (every other game tick).
+func (RedstoneComparator) Tick(tick int64, pos cube.Pos, tx *world.Tx) {
+	if tick&1 != 0 {
+		tx.Redstone().SampleAnalogInput(pos)
+	}
+}
+
 // RedstonePower returns the comparator output through its front face.
 func (c RedstoneComparator) RedstonePower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
 	if face == c.circuitFacing(pos, tx).Opposite() {
