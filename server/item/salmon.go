@@ -20,14 +20,6 @@ func (s Salmon) Consume(_ *world.Tx, c Consumer) Stack {
 	return Stack{}
 }
 
-// SmeltInfo ...
-func (s Salmon) SmeltInfo() SmeltInfo {
-	if s.Cooked {
-		return SmeltInfo{}
-	}
-	return newFoodSmeltInfo(NewStack(Salmon{Cooked: true}, 1), 0.35)
-}
-
 // EncodeItem ...
 func (s Salmon) EncodeItem() (name string, meta int16) {
 	if s.Cooked {

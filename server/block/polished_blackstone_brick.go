@@ -1,7 +1,5 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/item"
-
 // PolishedBlackstoneBrick are a brick variant of polished blackstone and can spawn in bastion remnants and ruined portals.
 type PolishedBlackstoneBrick struct {
 	solid
@@ -14,14 +12,6 @@ type PolishedBlackstoneBrick struct {
 // BreakInfo ...
 func (b PolishedBlackstoneBrick) BreakInfo() BreakInfo {
 	return newBreakInfo(1.5, pickaxeHarvestable, pickaxeEffective, oneOf(b)).withBlastResistance(6)
-}
-
-// SmeltInfo ...
-func (b PolishedBlackstoneBrick) SmeltInfo() item.SmeltInfo {
-	if b.Cracked {
-		return item.SmeltInfo{}
-	}
-	return newSmeltInfo(item.NewStack(PolishedBlackstoneBrick{Cracked: true}, 1), 0.1)
 }
 
 // EncodeItem ...

@@ -20,14 +20,6 @@ func (p Porkchop) Consume(_ *world.Tx, c Consumer) Stack {
 	return Stack{}
 }
 
-// SmeltInfo ...
-func (p Porkchop) SmeltInfo() SmeltInfo {
-	if p.Cooked {
-		return SmeltInfo{}
-	}
-	return newFoodSmeltInfo(NewStack(Porkchop{Cooked: true}, 1), 0.35)
-}
-
 // EncodeItem ...
 func (p Porkchop) EncodeItem() (name string, meta int16) {
 	if p.Cooked {

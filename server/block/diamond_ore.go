@@ -20,11 +20,6 @@ func (d DiamondOre) BreakInfo() BreakInfo {
 	}, pickaxeEffective, oreDrops(item.Diamond{}, d)).withXPDropRange(3, 7).withBlastResistance(3)
 }
 
-// SmeltInfo ...
-func (DiamondOre) SmeltInfo() item.SmeltInfo {
-	return newOreSmeltInfo(item.NewStack(item.Diamond{}, 1), 1)
-}
-
 // EncodeItem ...
 func (d DiamondOre) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + d.Type.Prefix() + "diamond_ore", 0

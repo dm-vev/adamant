@@ -1,8 +1,6 @@
 package block
 
 import (
-	"time"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -42,14 +40,6 @@ func (h HangingSign) MaxCount() int {
 // FlammabilityInfo returns the flammability properties of the hanging sign.
 func (h HangingSign) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(0, 0, true)
-}
-
-// FuelInfo returns the furnace fuel properties of the hanging sign.
-func (h HangingSign) FuelInfo() item.FuelInfo {
-	if !h.Wood.Flammable() {
-		return item.FuelInfo{}
-	}
-	return newFuelInfo(time.Second * 10)
 }
 
 // EncodeItem encodes the hanging sign item name.

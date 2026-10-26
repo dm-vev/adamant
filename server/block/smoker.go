@@ -1,14 +1,13 @@
 package block
 
 import (
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
-	"time"
 )
 
 // Smoker is a type of furnace that cooks food items, similar to a furnace, but twice as fast. It also serves as a
@@ -40,9 +39,7 @@ func (s Smoker) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	if s.Lit && rand.Float64() <= 0.016 { // Every three or so seconds.
 		tx.PlaySound(pos.Vec3Centre(), sound.SmokerCrackle{})
 	}
-	lit, inventoryChanged := s.tickSmelting(time.Second*5, s.Lit, func(i item.SmeltInfo) bool {
-		return i.Food
-	})
+	lit, inventoryChanged := s.tickSmelting(item.Smoking, true)
 	if inventoryChanged {
 		notifyComparatorUpdate(pos, tx)
 	}
@@ -86,13 +83,9 @@ func (s Smoker) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 
 // BreakInfo ...
 func (s Smoker) BreakInfo() BreakInfo {
-	xp := 0
-	if s.smelter != nil {
-		xp = s.Experience()
-	}
-	return newBreakInfo(3.5, alwaysHarvestable, pickaxeEffective, oneOf(Smoker{})).withXPDropRange(xp, xp).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
-		for _, i := range s.Inventory(tx, pos).Clear() {
-			dropItem(tx, i, pos.Vec3())
+	return newBreakInfo(3.5, alwaysHarvestable, pickaxeEffective, oneOf(Smoker{})).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
+		if s.smelter != nil {
+			s.broken(pos, tx)
 		}
 	})
 }
@@ -117,16 +110,11 @@ func (s Smoker) EncodeNBT() map[string]any {
 
 // DecodeNBT ...
 func (s Smoker) DecodeNBT(data map[string]any) any {
-	remaining, maximum, cook := smelterActorDurations(data)
-	xp := smelterStoredXP(data)
 	lit := s.Lit
-
 	//noinspection GoAssignmentToReceiver
 	s = NewSmoker(s.Facing)
 	s.Lit = lit
-	s.setExperience(xp)
-	s.setDurations(remaining, maximum, cook)
-	nbtconv.InvFromNBT(s.inventory, nbtconv.Slice(data, "Items"), data)
+	decodeSmelter(s.smelter, data)
 	return s
 }
 

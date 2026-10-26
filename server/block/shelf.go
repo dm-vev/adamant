@@ -2,7 +2,6 @@ package block
 
 import (
 	"math"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
@@ -412,14 +411,6 @@ func (s Shelf) FlammabilityInfo() FlammabilityInfo {
 		return newFlammabilityInfo(0, 0, false)
 	}
 	return newFlammabilityInfo(30, 20, true)
-}
-
-// FuelInfo ...
-func (s Shelf) FuelInfo() item.FuelInfo {
-	if !s.Material.Flammable() {
-		return item.FuelInfo{}
-	}
-	return newFuelInfo(time.Second * 15)
 }
 
 // EncodeItem ...

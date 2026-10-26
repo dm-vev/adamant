@@ -19,11 +19,6 @@ type Kelp struct {
 	Age int
 }
 
-// SmeltInfo ...
-func (k Kelp) SmeltInfo() item.SmeltInfo {
-	return newFoodSmeltInfo(item.NewStack(item.DriedKelp{}, 1), 0.1)
-}
-
 // BoneMeal ...
 func (k Kelp) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
 	for y := pos.Y(); y <= tx.Range()[1]; y++ {

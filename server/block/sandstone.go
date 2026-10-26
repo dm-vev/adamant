@@ -1,7 +1,6 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -48,14 +47,6 @@ func (s Sandstone) EncodeBlock() (string, map[string]any) {
 		return "minecraft:" + prefix + "red_sandstone", nil
 	}
 	return "minecraft:" + prefix + "sandstone", nil
-}
-
-// SmeltInfo ...
-func (s Sandstone) SmeltInfo() item.SmeltInfo {
-	if s.Type == NormalSandstone() {
-		return newSmeltInfo(item.NewStack(Sandstone{Red: s.Red, Type: SmoothSandstone()}, 1), 0.1)
-	}
-	return item.SmeltInfo{}
 }
 
 // allSandstones returns a list of all sandstone block variants.

@@ -5,7 +5,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"time"
 )
 
 // Log is a naturally occurring block found in trees, primarily used to create planks. It comes in six
@@ -40,19 +39,6 @@ func (l Log) BreakInfo() BreakInfo {
 		return breakInfo.withBlastResistance(0.4)
 	}
 	return breakInfo
-}
-
-// SmeltInfo ...
-func (Log) SmeltInfo() item.SmeltInfo {
-	return newSmeltInfo(item.NewStack(item.Charcoal{}, 1), 0.15)
-}
-
-// FuelInfo ...
-func (l Log) FuelInfo() item.FuelInfo {
-	if !l.Wood.Flammable() {
-		return item.FuelInfo{}
-	}
-	return newFuelInfo(time.Second * 15)
 }
 
 // UseOnBlock handles the rotational placing of logs.

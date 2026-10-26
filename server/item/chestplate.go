@@ -65,19 +65,6 @@ func (c Chestplate) DurabilityInfo() DurabilityInfo {
 	}
 }
 
-// SmeltInfo ...
-func (c Chestplate) SmeltInfo() SmeltInfo {
-	switch c.Tier.(type) {
-	case ArmourTierIron, ArmourTierChain:
-		return newOreSmeltInfo(NewStack(IronNugget{}, 1), 0.1)
-	case ArmourTierGold:
-		return newOreSmeltInfo(NewStack(GoldNugget{}, 1), 0.1)
-	case ArmourTierCopper:
-		return newOreSmeltInfo(NewStack(CopperNugget{}, 1), 0.1)
-	}
-	return SmeltInfo{}
-}
-
 // RepairableBy ...
 func (c Chestplate) RepairableBy(i Stack) bool {
 	return armourTierRepairable(c.Tier)(i)

@@ -1,10 +1,5 @@
 package block
 
-import (
-	"github.com/df-mc/dragonfly/server/item"
-	"time"
-)
-
 // Coal is a precious mineral block made from 9 coal.
 type Coal struct {
 	solid
@@ -19,11 +14,6 @@ func (c Coal) BreakInfo() BreakInfo {
 // FlammabilityInfo ...
 func (Coal) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(5, 5, false)
-}
-
-// FuelInfo ...
-func (Coal) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 800)
 }
 
 // EncodeItem ...

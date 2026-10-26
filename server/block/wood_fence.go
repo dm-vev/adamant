@@ -1,8 +1,6 @@
 package block
 
 import (
-	"time"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
@@ -173,14 +171,6 @@ func (w WoodFence) FlammabilityInfo() FlammabilityInfo {
 		return newFlammabilityInfo(0, 0, false)
 	}
 	return newFlammabilityInfo(5, 20, true)
-}
-
-// FuelInfo ...
-func (w WoodFence) FuelInfo() item.FuelInfo {
-	if !w.Wood.Flammable() {
-		return item.FuelInfo{}
-	}
-	return newFuelInfo(time.Second * 15)
 }
 
 // EncodeBlock ...

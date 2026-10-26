@@ -2,7 +2,6 @@ package block
 
 import (
 	"github.com/df-mc/dragonfly/server/item"
-	"time"
 )
 
 // Bookshelf is a decorative block that primarily serves to enhance enchanting with an enchanting table.
@@ -19,11 +18,6 @@ func (b Bookshelf) BreakInfo() BreakInfo {
 // FlammabilityInfo ...
 func (Bookshelf) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(30, 20, true)
-}
-
-// FuelInfo ...
-func (Bookshelf) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // EncodeItem ...

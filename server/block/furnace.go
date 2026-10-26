@@ -1,14 +1,13 @@
 package block
 
 import (
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
-	"time"
 )
 
 // Furnace is a utility block used for the smelting of blocks and items.
@@ -39,9 +38,7 @@ func (f Furnace) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	if f.Lit && rand.Float64() <= 0.016 { // Every three or so seconds.
 		tx.PlaySound(pos.Vec3Centre(), sound.FurnaceCrackle{})
 	}
-	lit, inventoryChanged := f.tickSmelting(time.Second*10, f.Lit, func(item.SmeltInfo) bool {
-		return true
-	})
+	lit, inventoryChanged := f.tickSmelting(item.Smelting, false)
 	if inventoryChanged {
 		notifyComparatorUpdate(pos, tx)
 	}
@@ -85,13 +82,9 @@ func (f Furnace) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *worl
 
 // BreakInfo ...
 func (f Furnace) BreakInfo() BreakInfo {
-	xp := 0
-	if f.smelter != nil {
-		xp = f.Experience()
-	}
-	return newBreakInfo(3.5, alwaysHarvestable, pickaxeEffective, oneOf(Furnace{})).withXPDropRange(xp, xp).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
-		for _, i := range f.Inventory(tx, pos).Clear() {
-			dropItem(tx, i, pos.Vec3())
+	return newBreakInfo(3.5, alwaysHarvestable, pickaxeEffective, oneOf(Furnace{})).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
+		if f.smelter != nil {
+			f.broken(pos, tx)
 		}
 	})
 }
@@ -116,16 +109,11 @@ func (f Furnace) EncodeNBT() map[string]any {
 
 // DecodeNBT ...
 func (f Furnace) DecodeNBT(data map[string]any) any {
-	remaining, maximum, cook := smelterActorDurations(data)
-	xp := smelterStoredXP(data)
 	lit := f.Lit
-
 	//noinspection GoAssignmentToReceiver
 	f = NewFurnace(f.Facing)
 	f.Lit = lit
-	f.setExperience(xp)
-	f.setDurations(remaining, maximum, cook)
-	nbtconv.InvFromNBT(f.inventory, nbtconv.Slice(data, "Items"), data)
+	decodeSmelter(f.smelter, data)
 	return f
 }
 

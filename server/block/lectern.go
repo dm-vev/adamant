@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
@@ -34,11 +33,6 @@ type Lectern struct {
 // Model ...
 func (Lectern) Model() world.BlockModel {
 	return model.Lectern{}
-}
-
-// FuelInfo ...
-func (Lectern) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // SideClosed ...

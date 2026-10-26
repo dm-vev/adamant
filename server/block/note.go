@@ -1,8 +1,6 @@
 package block
 
 import (
-	"time"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
@@ -109,10 +107,6 @@ func (n Note) canPlay(pos cube.Pos, tx *world.Tx) bool {
 
 func (n Note) BreakInfo() BreakInfo {
 	return newBreakInfo(0.8, alwaysHarvestable, axeEffective, oneOf(Note{}))
-}
-
-func (Note) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 func (n Note) EncodeItem() (name string, meta int16) {

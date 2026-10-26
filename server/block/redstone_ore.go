@@ -114,11 +114,6 @@ func (r RedstoneOre) BreakInfo() BreakInfo {
 	}, pickaxeEffective, discreteDrops(RedstoneWire{}, RedstoneOre{Type: r.Type}, 4, 5, 8)).withXPDropRange(1, 5).withBlastResistance(3)
 }
 
-// SmeltInfo ...
-func (RedstoneOre) SmeltInfo() item.SmeltInfo {
-	return newOreSmeltInfo(item.NewStack(RedstoneWire{}, 1), 0.7)
-}
-
 // EncodeItem ...
 func (r RedstoneOre) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + r.Type.Prefix() + "redstone_ore", 0

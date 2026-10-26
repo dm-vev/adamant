@@ -1,7 +1,6 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -18,14 +17,6 @@ type NetherBricks struct {
 // BreakInfo ...
 func (n NetherBricks) BreakInfo() BreakInfo {
 	return newBreakInfo(2, pickaxeHarvestable, pickaxeEffective, oneOf(n)).withBlastResistance(6)
-}
-
-// SmeltInfo ...
-func (n NetherBricks) SmeltInfo() item.SmeltInfo {
-	if n.Type == NormalNetherBricks() {
-		return newSmeltInfo(item.NewStack(NetherBricks{Type: CrackedNetherBricks()}, 1), 0.1)
-	}
-	return item.SmeltInfo{}
 }
 
 // EncodeItem ...

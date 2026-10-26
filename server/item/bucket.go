@@ -108,14 +108,6 @@ func (b Bucket) Empty() bool {
 	return b.Content.liquid == nil && b.Content.solid == nil && !b.Content.milk
 }
 
-// FuelInfo ...
-func (b Bucket) FuelInfo() FuelInfo {
-	if liq := b.Content.liquid; liq != nil && liq.LiquidType() == "lava" {
-		return newFuelInfo(time.Second * 1000).WithResidue(NewStack(Bucket{}, 1))
-	}
-	return FuelInfo{}
-}
-
 // UseOnEntity captures a bucketable entity into its filled bucket item.
 func (b Bucket) UseOnEntity(target world.Entity, tx *world.Tx, _ User, ctx *UseContext) bool {
 	if b.Empty() {

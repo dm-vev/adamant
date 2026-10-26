@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"image/color"
-	"time"
 )
 
 // Sign is a non-solid block that can display text on the front and back of the block.
@@ -59,14 +58,6 @@ func (s Sign) MaxCount() int {
 // FlammabilityInfo ...
 func (s Sign) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(0, 0, true)
-}
-
-// FuelInfo ...
-func (s Sign) FuelInfo() item.FuelInfo {
-	if !s.Wood.Flammable() {
-		return item.FuelInfo{}
-	}
-	return newFuelInfo(time.Second * 10)
 }
 
 // EncodeItem ...

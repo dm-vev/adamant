@@ -5,7 +5,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"time"
 )
 
 // BambooBlock is a rotatable flammable block made from bamboo.
@@ -27,11 +26,6 @@ func (BambooBlock) FlammabilityInfo() FlammabilityInfo {
 // BreakInfo ...
 func (b BambooBlock) BreakInfo() BreakInfo {
 	return newBreakInfo(2.0, alwaysHarvestable, axeEffective, oneOf(b))
-}
-
-// FuelInfo ...
-func (BambooBlock) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // UseOnBlock ...

@@ -81,19 +81,6 @@ func (l Leggings) FireProof() bool {
 	return netherite
 }
 
-// SmeltInfo ...
-func (l Leggings) SmeltInfo() SmeltInfo {
-	switch l.Tier.(type) {
-	case ArmourTierIron, ArmourTierChain:
-		return newOreSmeltInfo(NewStack(IronNugget{}, 1), 0.1)
-	case ArmourTierGold:
-		return newOreSmeltInfo(NewStack(GoldNugget{}, 1), 0.1)
-	case ArmourTierCopper:
-		return newOreSmeltInfo(NewStack(CopperNugget{}, 1), 0.1)
-	}
-	return SmeltInfo{}
-}
-
 // WithTrim ...
 func (l Leggings) WithTrim(trim ArmourTrim) world.Item {
 	l.Trim = trim

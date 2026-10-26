@@ -1,116 +1,124 @@
 package block
 
 import (
+	"math"
+	"math/rand/v2"
+	"slices"
+	"sync"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
-	"math"
-	"math/rand/v2"
-	"sync"
-	"time"
 )
 
 // smelter is a struct that may be embedded by blocks that can smelt blocks and items, such as blast furnaces, furnaces,
-// and smokers.
+// and smokers. It ports AbstractFurnaceBlockEntity.
 type smelter struct {
 	mu sync.Mutex
 
 	viewers   map[ContainerViewer]struct{}
 	inventory *inventory.Inventory
 
-	remainingDuration time.Duration
-	cookDuration      time.Duration
-	maxDuration       time.Duration
-	experience        int
+	// litTime is the ticks the burning fuel has left and litDuration the
+	// ticks it burns in all.
+	litTime, litDuration int
+	// cookingTimer counts the ticks the input has cooked and
+	// cookingTotalTime the ticks it takes, 0 until the input's recipe is
+	// looked up.
+	cookingTimer, cookingTotalTime int
+	// recipesUsed counts the recipes cooked since a player last took from
+	// the result slot.
+	recipesUsed map[string]int
+	// storedXP is experience kept by actors that only stored BDS's
+	// StoredXPInt.
+	storedXP int
 }
 
 // newSmelter initialises a new smelter with the given remaining, maximum, and cook durations and XP, and returns it.
 func newSmelter() *smelter {
-	s := &smelter{viewers: make(map[ContainerViewer]struct{})}
-	s.inventory = inventory.New(3, func(slot int, _, item item.Stack) {
+	s := &smelter{viewers: make(map[ContainerViewer]struct{}), recipesUsed: make(map[string]int)}
+	s.inventory = inventory.New(3, func(slot int, before, after item.Stack) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		if slot == 0 && (after.Empty() || before.Empty() || !before.Comparable(after)) {
+			// AbstractFurnaceBlockEntity.setItem starts cooking a different
+			// input from the beginning.
+			s.cookingTimer, s.cookingTotalTime = 0, 0
+		}
 		for viewer := range s.viewers {
-			viewer.ViewSlotChange(slot, item)
+			viewer.ViewSlotChange(slot, after)
 		}
 	})
 	return s
 }
 
-// InsertItem ...
-func (s *smelter) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
-	for sourceSlot, sourceStack := range h.inventory.Slots() {
-		var slot int
+// smelterFuelSlot reports if a stack may be put in a smelter's fuel slot, as
+// AbstractFurnaceBlockEntity.canPlaceItem: fuel, or an empty bucket while
+// the slot holds none.
+func smelterFuelSlot(stack, fuel item.Stack) bool {
+	if item.CookingBurnTime(stack.Item(), false) > 0 {
+		return true
+	}
+	b, ok := stack.Item().(item.Bucket)
+	if !ok || !b.Empty() {
+		return false
+	}
+	held, ok := fuel.Item().(item.Bucket)
+	return !ok || !held.Empty()
+}
 
+// InsertItem inserts an item from a hopper as the furnace's
+// WorldlyContainer accepts it: a hopper above fills the input slot and one
+// at the side the fuel slot.
+func (s *smelter) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
+	slot := 1
+	if h.Facing == cube.FaceDown {
+		slot = 0
+	}
+	for sourceSlot, sourceStack := range h.inventory.Slots() {
 		if sourceStack.Empty() {
 			continue
 		}
-
-		if h.Facing != cube.FaceDown {
-			slot = 1
-		} else {
-			slot = 0
-		}
-
-		stack := sourceStack.Grow(-sourceStack.Count() + 1)
-		it, _ := s.Inventory(tx, pos).Item(slot)
-		if slot == 1 {
-			if fuel, ok := sourceStack.Item().(item.Fuel); !ok || fuel.FuelInfo().Duration == 0 {
-				// The item is not fuel.
-				continue
-			}
-		}
-		if !sourceStack.Comparable(it) {
-			// The items are not the same.
+		it, _ := s.inventory.Item(slot)
+		if slot == 1 && !smelterFuelSlot(sourceStack, it) {
 			continue
 		}
-		if it.Count() == it.MaxCount() {
-			// The item has the maximum count that the stack is able to hold.
+		if !it.Empty() && (!sourceStack.Comparable(it) || it.Count() >= it.MaxCount()) {
 			continue
 		}
+		stack := sourceStack.Grow(1 - sourceStack.Count())
 		if !it.Empty() {
 			stack = it.Grow(1)
 		}
-
-		_ = s.Inventory(tx, pos).SetItem(slot, stack)
+		_ = s.inventory.SetItem(slot, stack)
 		_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
 		notifyComparatorUpdate(pos, tx)
 		return true
 	}
-
 	return false
 }
 
-// ExtractItem ...
+// ExtractItem lets a hopper below take from the result slot, then from the
+// fuel slot if it holds a bucket, as AbstractFurnaceBlockEntity's
+// SLOTS_FOR_DOWN and canTakeItemThroughFace.
 func (s *smelter) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
-	for sourceSlot, sourceStack := range s.inventory.Slots() {
-		if sourceStack.Empty() {
+	for _, slot := range []int{2, 1} {
+		stack, _ := s.inventory.Item(slot)
+		if stack.Empty() {
 			continue
 		}
-
-		if sourceSlot == 0 {
+		if _, bucket := stack.Item().(item.Bucket); slot == 1 && !bucket {
 			continue
 		}
-
-		if sourceSlot == 1 {
-			fuel, ok := sourceStack.Item().(item.Fuel)
-			if ok && fuel.FuelInfo().Duration.Seconds() != 0 {
-				continue
-			}
-		}
-
-		_, err := h.inventory.AddItem(sourceStack.Grow(-sourceStack.Count() + 1))
-		if err != nil {
-			// The hopper is full.
+		if _, err := h.inventory.AddItem(stack.Grow(1 - stack.Count())); err != nil {
 			continue
 		}
-
-		_ = s.Inventory(tx, pos).SetItem(sourceSlot, sourceStack.Grow(-1))
+		_ = s.inventory.SetItem(slot, stack.Grow(-1))
 		notifyComparatorUpdate(pos, tx)
 		return true
 	}
-
 	return false
 }
 
@@ -118,22 +126,52 @@ func (s *smelter) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 func (s *smelter) Durations() (remaining time.Duration, max time.Duration, cook time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.remainingDuration, s.maxDuration, s.cookDuration
+	const tick = time.Millisecond * 50
+	return time.Duration(s.litTime) * tick, time.Duration(s.litDuration) * tick, time.Duration(s.cookingTimer) * tick
 }
 
-// Experience returns the collected experience of the smelter.
+// Experience returns the experience the recipes the smelter cooked are worth
+// at least, without the chance of a further point for each fraction.
 func (s *smelter) Experience() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.experience
+	xp := s.storedXP
+	for id, n := range s.recipesUsed {
+		if r, ok := item.CookingRecipeByID(id); ok {
+			xp += int(math.Floor(float64(float32(n) * r.Experience)))
+		}
+	}
+	return xp
 }
 
-// ResetExperience resets the collected experience of the smelter, and returns the amount of experience that was reset.
+// ResetExperience returns the experience the recipes the smelter cooked are
+// worth and forgets them, as
+// AbstractFurnaceBlockEntity.getRecipesToAwardAndPopExperience: each recipe
+// gives its experience times the times it was cooked, rounded down, and a
+// further point with the chance of the fraction left.
 func (s *smelter) ResetExperience() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	xp := s.experience
-	s.experience = 0
+	xp := s.storedXP
+	ids := make([]string, 0, len(s.recipesUsed))
+	for id := range s.recipesUsed {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+	for _, id := range ids {
+		r, ok := item.CookingRecipeByID(id)
+		if !ok {
+			continue
+		}
+		amount := float32(s.recipesUsed[id]) * r.Experience
+		whole := float32(math.Floor(float64(amount)))
+		xp += int(whole)
+		if frac := amount - whole; frac != 0 && rand.Float32() < frac {
+			xp++
+		}
+	}
+	s.storedXP = 0
+	clear(s.recipesUsed)
 	return xp
 }
 
@@ -161,134 +199,157 @@ func (s *smelter) RemoveViewer(v ContainerViewer, _ *world.Tx, _ cube.Pos) {
 	delete(s.viewers, v)
 }
 
-// setExperience sets the collected experience of the smelter to the given value.
-func (s *smelter) setExperience(xp int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.experience = xp
-}
-
 // setDurations sets the remaining, maximum, and cook durations of the smelter to the given values.
 func (s *smelter) setDurations(remaining, max, cook time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.remainingDuration, s.maxDuration, s.cookDuration = remaining, max, cook
+	s.litTime, s.litDuration, s.cookingTimer = int(remaining.Milliseconds()/50), int(max.Milliseconds()/50), int(cook.Milliseconds()/50)
 }
 
-// tickSmelting ticks the smelter, ensuring the necessary items exist in the furnace, and then processing all inputted
-// items for the necessary duration.
-func (s *smelter) tickSmelting(requirement time.Duration, lit bool, supported func(item.SmeltInfo) bool) (bool, bool) {
+// smelterTotalCookTime ports AbstractFurnaceBlockEntity.getTotalCookTime:
+// the recipe's cooking time divided by the furnace's speed multiplier, 2 in
+// the fast smokers and blast furnaces.
+func smelterTotalCookTime(r item.CookingRecipe, fast bool) int {
+	if fast {
+		return (r.CookingTime + 1) / 2
+	}
+	return r.CookingTime
+}
+
+// tickSmelting ports AbstractFurnaceBlockEntity.serverTick for a furnace
+// cooking recipes of the kind passed. It returns whether the furnace is lit
+// and whether its inventory changed.
+func (s *smelter) tickSmelting(kind item.CookingKind, fast bool) (bool, bool) {
 	s.mu.Lock()
-	inventoryChanged := false
-
-	// First keep track of our past durations, since if any of them change, we need to be able to tell they did and then
-	// update the viewers on the change.
-	prevCookDuration := s.cookDuration
-	prevRemainingDuration := s.remainingDuration
-	prevMaxDuration := s.maxDuration
-
-	// Now get each item in the smelter. We don't need to validate errors here since we know the bounds of the smelter.
+	prevCook, prevLit, prevDuration := s.cookingTimer, s.litTime, s.litDuration
 	input, _ := s.inventory.Item(0)
 	fuel, _ := s.inventory.Item(1)
-	product, _ := s.inventory.Item(2)
+	result, _ := s.inventory.Item(2)
 
-	// Initialise some default smelt info, and update it if we can smelt the item.
-	var inputInfo item.SmeltInfo
-	if i, ok := input.Item().(item.Smeltable); ok && supported(i.SmeltInfo()) {
-		inputInfo = i.SmeltInfo()
+	changed := false
+	isLit := false
+	if s.litTime > 0 {
+		s.litTime--
+		isLit = s.litTime > 0
 	}
-
-	// Initialise some default fuel info, and update it if it can be used as fuel.
-	var fuelInfo item.FuelInfo
-	if f, ok := fuel.Item().(item.Fuel); ok {
-		fuelInfo = f.FuelInfo()
-		if fuelInfo.Residue.Empty() {
-			// If we don't have a custom residue set, then we just decrement the fuel by one.
-			fuelInfo.Residue = fuel.Grow(-1)
+	var sets []func()
+	switch {
+	case isLit || !fuel.Empty() && !input.Empty():
+		if input.Empty() {
+			s.cookingTimer = 0
+			break
 		}
-	}
-
-	// Now we need to ensure that we can actually smelt the item. We need to ensure that we have at least one input,
-	// the input's product is compatible with the product already in the product slot, the product slot is not full,
-	// and that we have enough fuel to smelt the item. If all of these conditions are met, then we update the remaining
-	// duration and cook duration and create residue.
-	canSmelt := input.Count() > 0 && (inputInfo.Product.Comparable(product)) && !inputInfo.Product.Empty() && product.Count() < product.MaxCount()
-	if s.remainingDuration <= 0 && canSmelt && fuelInfo.Duration > 0 && fuel.Count() > 0 {
-		s.remainingDuration, s.maxDuration, lit = fuelInfo.Duration, fuelInfo.Duration, true
-		inventoryChanged = true
-		defer s.inventory.SetItem(1, fuelInfo.Residue)
-	}
-
-	// Now we need to process a single stage of fuel loss. First, ensure that we have enough remaining duration.
-	if s.remainingDuration > 0 {
-		// Decrement a tick from the remaining fuel duration.
-		s.remainingDuration -= time.Millisecond * 50
-
-		// If we have a valid smeltable item, process a single stage of smelting.
-		switch {
-		case canSmelt:
-			// Increase the cook duration by a tick.
-			s.cookDuration += time.Millisecond * 50
-
-			// Check if we've cooked enough to match the requirement.
-			if s.cookDuration >= requirement {
-				// We can now create the product and reduce the input by one.
-				inventoryChanged = true
-				defer s.inventory.SetItem(0, input.Grow(-1))
-				defer s.inventory.SetItem(2, item.NewStack(inputInfo.Product.Item(), product.Count()+inputInfo.Product.Count()))
-
-				// Calculate the amount of experience to grant. Round the experience down to the nearest integer.
-				// The remaining XP is a chance to be granted an additional experience point.
-				xp := inputInfo.Experience * float64(inputInfo.Product.Count())
-				earned := math.Floor(inputInfo.Experience)
-				if chance := xp - earned; chance > 0 && rand.Float64() < chance {
-					earned++
+		recipe, ok := item.CookingRecipeFor(kind, input.Item())
+		if !ok {
+			break
+		}
+		if s.cookingTotalTime == 0 {
+			s.cookingTotalTime = smelterTotalCookTime(recipe, fast)
+		}
+		if !smelterCanBurn(result, recipe.Product) {
+			s.cookingTimer = 0
+			break
+		}
+		if !isLit {
+			burn := item.CookingBurnTime(fuel.Item(), fast)
+			s.litTime, s.litDuration = burn, burn
+			if burn > 0 {
+				remaining := fuel.Grow(-1)
+				if residue, ok := item.CookingFuelRemainder(fuel.Item()); ok {
+					// The remainder replaces fuel used up and is dropped
+					// otherwise.
+					if remaining.Empty() {
+						remaining = residue
+					}
 				}
-
-				// Decrease the cook duration by the requirement, and update the smelter's stored experience.
-				s.cookDuration -= requirement
-				s.experience += int(earned)
+				sets = append(sets, func() { _ = s.inventory.SetItem(1, remaining) })
+				fuel = remaining
+				isLit, changed = true, true
 			}
-		case s.remainingDuration == 0:
-			// We've run out of fuel, so we need to reset the max duration too.
-			s.maxDuration = 0
-		default:
-			// We still have some remaining fuel, but the input isn't smeltable, so we reset the cook duration.
-			s.cookDuration = 0
 		}
-	} else {
-		// We don't have any more remaining duration, so we need to reset the max duration and put out the furnace.
-		s.maxDuration, lit = 0, false
+		if !isLit {
+			s.cookingTimer = 0
+			break
+		}
+		if s.cookingTimer++; s.cookingTimer >= s.cookingTotalTime {
+			s.cookingTimer = 0
+			s.cookingTotalTime = smelterTotalCookTime(recipe, fast)
+			if result.Empty() {
+				result = recipe.Product
+			} else {
+				result = result.Grow(recipe.Product.Count())
+			}
+			sets = append(sets, func() { _ = s.inventory.SetItem(2, result) })
+			if sponge, ok := input.Item().(Sponge); ok && sponge.Wet {
+				if b, ok := fuel.Item().(item.Bucket); ok && b.Empty() {
+					sets = append(sets, func() {
+						_ = s.inventory.SetItem(1, item.NewStack(item.Bucket{Content: item.LiquidBucketContent(Water{Depth: 8, Still: true})}, 1))
+					})
+				}
+			}
+			remaining := input.Grow(-1)
+			sets = append(sets, func() { _ = s.inventory.SetItem(0, remaining) })
+			s.recipesUsed[recipe.ID]++
+			changed = true
+		}
+	case s.cookingTimer > 0:
+		if s.cookingTotalTime == 0 {
+			s.cookingTotalTime = 200
+			if recipe, ok := item.CookingRecipeFor(kind, input.Item()); ok {
+				s.cookingTotalTime = smelterTotalCookTime(recipe, fast)
+			}
+		}
+		s.cookingTimer = max(min(s.cookingTimer-2, s.cookingTotalTime), 0)
 	}
-
-	// Expected gameplay logic is that cook progress does not linger once the fuel is out.
-	// The previous decrement-based decay kept partial progress alive and let smelting resume too far ahead.
-	// Resetting here keeps client-visible progress and smelting results aligned with canonical rules.
-	if s.cookDuration > 0 && !lit {
-		s.cookDuration = 0
+	if !isLit {
+		s.litDuration = 0
 	}
-
-	prevBurnDurationTicks := smelterBurnDurationTicks(prevRemainingDuration, prevMaxDuration, requirement)
-	burnDurationTicks := smelterBurnDurationTicks(s.remainingDuration, s.maxDuration, requirement)
-	prevBurnDuration := time.Duration(prevBurnDurationTicks) * time.Millisecond * 50
-	burnDuration := time.Duration(burnDurationTicks) * time.Millisecond * 50
-	prevMaxBurnDuration := time.Duration(0)
-	maxBurnDuration := time.Duration(0)
-	if prevMaxDuration > 0 {
-		prevMaxBurnDuration = requirement
-	}
-	if s.maxDuration > 0 {
-		maxBurnDuration = requirement
-	}
-
-	// Update the viewers on the new durations using UI-scaled fuel progress.
-	// Previously we sent full fuel ticks, which made client bars disagree with the chunk NBT values.
+	cook, lit, duration := s.cookingTimer, s.litTime, s.litDuration
+	viewers := make([]ContainerViewer, 0, len(s.viewers))
 	for v := range s.viewers {
-		v.ViewFurnaceUpdate(prevCookDuration, s.cookDuration, prevBurnDuration, burnDuration, prevMaxBurnDuration, maxBurnDuration)
+		viewers = append(viewers, v)
 	}
-
 	s.mu.Unlock()
-	return lit, inventoryChanged
+
+	for _, set := range sets {
+		set()
+	}
+	if prevCook != cook || prevLit != lit || prevDuration != duration {
+		const tick = time.Millisecond * 50
+		requirement := 200
+		if fast {
+			requirement = 100
+		}
+		prevBurn, burn := smelterBurnDurationTicks(prevLit, prevDuration, requirement), smelterBurnDurationTicks(lit, duration, requirement)
+		prevMax, maxBurn := 0, 0
+		if prevDuration > 0 {
+			prevMax = requirement
+		}
+		if duration > 0 {
+			maxBurn = requirement
+		}
+		// Viewers are sent the fuel left scaled to the cooking time, as the
+		// client draws the flame against it.
+		for _, v := range viewers {
+			v.ViewFurnaceUpdate(time.Duration(prevCook)*tick, time.Duration(cook)*tick, time.Duration(prevBurn)*tick, time.Duration(burn)*tick, time.Duration(prevMax)*tick, time.Duration(maxBurn)*tick)
+		}
+	}
+	return isLit, changed
+}
+
+// smelterCanBurn ports AbstractFurnaceBlockEntity.canBurn: the result slot
+// is empty or holds the same item with room for another product.
+func smelterCanBurn(result, product item.Stack) bool {
+	if product.Empty() {
+		return false
+	}
+	if result.Empty() {
+		return true
+	}
+	if !result.Comparable(product) {
+		return false
+	}
+	return result.Count()+product.Count() <= min(64, product.MaxCount())
 }
 
 // smelterStoredXP reads the experience a furnace, blast furnace or smoker
@@ -303,4 +364,15 @@ func smelterStoredXP(data map[string]any) int {
 	}
 	xp, _ := data["StoredXpInt"].(int16)
 	return int(xp)
+}
+
+// broken drops the contents of a removed smelter and the experience of the
+// recipes it cooked, as AbstractFurnaceBlockEntity.preRemoveSideEffects.
+func (s *smelter) broken(pos cube.Pos, tx *world.Tx) {
+	for _, i := range s.inventory.Clear() {
+		dropItem(tx, i, pos.Vec3())
+	}
+	for _, orb := range tx.World().EntityRegistry().Config().ExperienceOrbs(pos.Vec3Centre(), s.ResetExperience()) {
+		tx.AddEntity(orb)
+	}
 }

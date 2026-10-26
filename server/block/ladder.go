@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"time"
 )
 
 // Ladder is a wooden block used for climbing walls either vertically or horizontally. They can be placed only on
@@ -71,11 +70,6 @@ func (l Ladder) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 // BreakInfo ...
 func (l Ladder) BreakInfo() BreakInfo {
 	return newBreakInfo(0.4, alwaysHarvestable, axeEffective, oneOf(l))
-}
-
-// FuelInfo ...
-func (Ladder) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // EncodeItem ...

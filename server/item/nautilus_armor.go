@@ -27,20 +27,6 @@ func (a NautilusArmor) EncodeItem() (string, int16) {
 	return "minecraft:" + name + "_nautilus_armor", 0
 }
 
-// SmeltInfo reports the material nugget recovered from smelting this armour.
-func (a NautilusArmor) SmeltInfo() SmeltInfo {
-	switch a.Material {
-	case NautilusArmorCopper:
-		return newOreSmeltInfo(NewStack(CopperNugget{}, 1), 0.1)
-	case NautilusArmorIron:
-		return newOreSmeltInfo(NewStack(IronNugget{}, 1), 0.1)
-	case NautilusArmorGold:
-		return newOreSmeltInfo(NewStack(GoldNugget{}, 1), 0.1)
-	default:
-		return SmeltInfo{}
-	}
-}
-
 // DefencePoints returns the body-armour protection for this material.
 func (a NautilusArmor) DefencePoints() float64 {
 	return [...]float64{4, 5, 7, 11, 19}[min(a.Material, NautilusArmorNetherite)]

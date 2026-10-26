@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
-	"time"
 )
 
 // WoodTrapdoor is a block that can be used as an openable 1x1 barrier.
@@ -89,14 +88,6 @@ func (t WoodTrapdoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, aft
 // BreakInfo ...
 func (t WoodTrapdoor) BreakInfo() BreakInfo {
 	return newBreakInfo(3, alwaysHarvestable, axeEffective, oneOf(t))
-}
-
-// FuelInfo ...
-func (t WoodTrapdoor) FuelInfo() item.FuelInfo {
-	if !t.Wood.Flammable() {
-		return item.FuelInfo{}
-	}
-	return newFuelInfo(time.Second * 15)
 }
 
 // SideClosed ...

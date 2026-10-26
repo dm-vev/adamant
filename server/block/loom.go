@@ -5,7 +5,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"time"
 )
 
 // Loom is a block used to apply patterns on banners. It is also used as a shepherd's job site block that is found in
@@ -16,11 +15,6 @@ type Loom struct {
 
 	// Facing is the direction the loom is facing.
 	Facing cube.Direction
-}
-
-// FuelInfo ...
-func (Loom) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // BreakInfo ...

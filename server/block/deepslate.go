@@ -26,14 +26,6 @@ func (d Deepslate) BreakInfo() BreakInfo {
 	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(d)).withBlastResistance(6)
 }
 
-// SmeltInfo ...
-func (d Deepslate) SmeltInfo() item.SmeltInfo {
-	if d.Type == CobbledDeepslate() {
-		return newSmeltInfo(item.NewStack(Deepslate{}, 1), 0.1)
-	}
-	return item.SmeltInfo{}
-}
-
 // UseOnBlock ...
 func (d Deepslate) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) (used bool) {
 	pos, face, used = firstReplaceable(tx, pos, face, d)

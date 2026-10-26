@@ -1,10 +1,5 @@
 package block
 
-import (
-	"github.com/df-mc/dragonfly/server/item"
-	"time"
-)
-
 // BambooMosaic is a decorative bamboo plank variant.
 type BambooMosaic struct {
 	solid
@@ -24,11 +19,6 @@ func (b BambooMosaic) BreakInfo() BreakInfo {
 // RepairsWoodTools ...
 func (BambooMosaic) RepairsWoodTools() bool {
 	return true
-}
-
-// FuelInfo ...
-func (BambooMosaic) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // EncodeItem ...

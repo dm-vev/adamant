@@ -1,9 +1,7 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"time"
 )
 
 // Planks are common blocks used in crafting recipes. They are made by crafting logs into planks.
@@ -32,14 +30,6 @@ func (p Planks) BreakInfo() BreakInfo {
 // RepairsWoodTools ...
 func (p Planks) RepairsWoodTools() bool {
 	return true
-}
-
-// FuelInfo ...
-func (p Planks) FuelInfo() item.FuelInfo {
-	if !p.Wood.Flammable() {
-		return item.FuelInfo{}
-	}
-	return newFuelInfo(time.Second * 15)
 }
 
 // EncodeItem ...

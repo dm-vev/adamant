@@ -1,8 +1,6 @@
 package block
 
 import (
-	"time"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
@@ -80,17 +78,6 @@ func (s Slab) FlammabilityInfo() FlammabilityInfo {
 		return flammable.FlammabilityInfo()
 	}
 	return newFlammabilityInfo(0, 0, false)
-}
-
-// FuelInfo ...
-func (s Slab) FuelInfo() item.FuelInfo {
-	if _, ok := s.Block.(Wool); ok {
-		return item.FuelInfo{Duration: 50 * 50 * time.Millisecond}
-	}
-	if fuel, ok := s.Block.(item.Fuel); ok {
-		return fuel.FuelInfo()
-	}
-	return item.FuelInfo{}
 }
 
 // CanDisplace ...

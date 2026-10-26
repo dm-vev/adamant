@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
-	"time"
 )
 
 // Jukebox is a block used to play music discs.
@@ -68,11 +67,6 @@ func (j Jukebox) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 	tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscEnd{})
 	updateJukeboxDancers(tx, pos, false)
 	return true
-}
-
-// FuelInfo ...
-func (j Jukebox) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // BreakInfo ...

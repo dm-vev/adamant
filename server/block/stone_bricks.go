@@ -1,7 +1,6 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -18,14 +17,6 @@ type StoneBricks struct {
 // BreakInfo ...
 func (s StoneBricks) BreakInfo() BreakInfo {
 	return newBreakInfo(1.5, pickaxeHarvestable, pickaxeEffective, oneOf(s)).withBlastResistance(6)
-}
-
-// SmeltInfo ...
-func (s StoneBricks) SmeltInfo() item.SmeltInfo {
-	if s.Type == NormalStoneBricks() {
-		return newSmeltInfo(item.NewStack(StoneBricks{Type: CrackedStoneBricks()}, 1), 0.1)
-	}
-	return item.SmeltInfo{}
 }
 
 // EncodeItem ...

@@ -1,14 +1,13 @@
 package block
 
 import (
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
-	"time"
 )
 
 // BlastFurnace is a block that smelts ores, raw metals, iron and gold armour and tools, similar to a furnace, but at
@@ -40,9 +39,7 @@ func (b BlastFurnace) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	if b.Lit && rand.Float64() <= 0.016 { // Every three or so seconds.
 		tx.PlaySound(pos.Vec3Centre(), sound.BlastFurnaceCrackle{})
 	}
-	lit, inventoryChanged := b.tickSmelting(time.Second*5, b.Lit, func(i item.SmeltInfo) bool {
-		return i.Ores
-	})
+	lit, inventoryChanged := b.tickSmelting(item.Blasting, true)
 	if inventoryChanged {
 		notifyComparatorUpdate(pos, tx)
 	}
@@ -86,13 +83,9 @@ func (b BlastFurnace) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 
 // BreakInfo ...
 func (b BlastFurnace) BreakInfo() BreakInfo {
-	xp := 0
-	if b.smelter != nil {
-		xp = b.Experience()
-	}
-	return newBreakInfo(3.5, alwaysHarvestable, pickaxeEffective, oneOf(BlastFurnace{})).withXPDropRange(xp, xp).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
-		for _, i := range b.Inventory(tx, pos).Clear() {
-			dropItem(tx, i, pos.Vec3())
+	return newBreakInfo(3.5, alwaysHarvestable, pickaxeEffective, oneOf(BlastFurnace{})).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
+		if b.smelter != nil {
+			b.broken(pos, tx)
 		}
 	})
 }
@@ -117,16 +110,11 @@ func (b BlastFurnace) EncodeNBT() map[string]any {
 
 // DecodeNBT ...
 func (b BlastFurnace) DecodeNBT(data map[string]any) any {
-	remaining, maximum, cook := smelterActorDurations(data)
-	xp := smelterStoredXP(data)
 	lit := b.Lit
-
 	//noinspection GoAssignmentToReceiver
 	b = NewBlastFurnace(b.Facing)
 	b.Lit = lit
-	b.setExperience(xp)
-	b.setDurations(remaining, maximum, cook)
-	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"), data)
+	decodeSmelter(b.smelter, data)
 	return b
 }
 

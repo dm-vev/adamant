@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -301,11 +300,6 @@ func (c Chest) dropContents(pos cube.Pos, tx *world.Tx, owner chestBlock) {
 	for _, stack := range c.Inventory(tx, pos).Clear() {
 		dropItem(tx, stack, pos.Vec3Centre())
 	}
-}
-
-// FuelInfo ...
-func (Chest) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // FlammabilityInfo ...

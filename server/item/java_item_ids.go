@@ -28,6 +28,7 @@ var javaItemAliases = map[string]string{
 	"minecraft:magma_block":                  "minecraft:magma",
 	"minecraft:map":                          "minecraft:empty_map",
 	"minecraft:melon":                        "minecraft:melon_block",
+	"minecraft:nether_brick":                 "minecraft:netherbrick",
 	"minecraft:nether_bricks":                "minecraft:nether_brick",
 	"minecraft:nether_quartz_ore":            "minecraft:quartz_ore",
 	"minecraft:note_block":                   "minecraft:noteblock",

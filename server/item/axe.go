@@ -5,7 +5,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"time"
 )
 
 // Axe is a tool generally used for mining wood-like blocks. It may also be used to break some plant-like
@@ -54,27 +53,6 @@ func (a Axe) DurabilityInfo() DurabilityInfo {
 		AttackDurability: 2,
 		BreakDurability:  1,
 	}
-}
-
-// SmeltInfo ...
-func (a Axe) SmeltInfo() SmeltInfo {
-	switch a.Tier {
-	case ToolTierIron:
-		return newOreSmeltInfo(NewStack(IronNugget{}, 1), 0.1)
-	case ToolTierGold:
-		return newOreSmeltInfo(NewStack(GoldNugget{}, 1), 0.1)
-	case ToolTierCopper:
-		return newOreSmeltInfo(NewStack(CopperNugget{}, 1), 0.1)
-	}
-	return SmeltInfo{}
-}
-
-// FuelInfo ...
-func (a Axe) FuelInfo() FuelInfo {
-	if a.Tier == ToolTierWood {
-		return newFuelInfo(time.Second * 10)
-	}
-	return FuelInfo{}
 }
 
 // AttackDamage ...

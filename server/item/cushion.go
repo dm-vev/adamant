@@ -2,7 +2,6 @@ package item
 
 import (
 	"math"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -22,9 +21,6 @@ func (Cushion) MaxCount() int { return 16 }
 func (c Cushion) EncodeItem() (string, int16) {
 	return "minecraft:" + c.Colour.String() + "_cushion", 0
 }
-
-// FuelInfo returns the 50-tick wool-slab fuel value.
-func (Cushion) FuelInfo() FuelInfo { return newFuelInfo(50 * time.Millisecond * 50) }
 
 // UseOnBlock places the cushion on the top of a supported block.
 func (c Cushion) UseOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {

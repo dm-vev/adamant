@@ -1,8 +1,6 @@
 package block
 
 import (
-	"time"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -27,11 +25,6 @@ func (c CartographyTable) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u it
 		return true
 	}
 	return false
-}
-
-// FuelInfo ...
-func (CartographyTable) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // EncodeItem ...

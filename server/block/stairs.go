@@ -121,14 +121,6 @@ func (s Stairs) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(0, 0, false)
 }
 
-// FuelInfo ...
-func (s Stairs) FuelInfo() item.FuelInfo {
-	if fuel, ok := s.Block.(item.Fuel); ok {
-		return fuel.FuelInfo()
-	}
-	return item.FuelInfo{}
-}
-
 // EncodeItem ...
 func (s Stairs) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + encodeStairsBlock(s.Block) + "_stairs", 0

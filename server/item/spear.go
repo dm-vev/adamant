@@ -1,7 +1,6 @@
 package item
 
 import (
-	"time"
 
 	"github.com/df-mc/dragonfly/server/item/category"
 )
@@ -89,14 +88,6 @@ func (s Spear) RepairableBy(i Stack) bool { return toolTierRepairable(s.Tier)(i)
 
 // FireProof reports whether the spear is made from netherite.
 func (s Spear) FireProof() bool { return s.Tier == ToolTierNetherite }
-
-// FuelInfo returns the wood spear's furnace fuel value.
-func (s Spear) FuelInfo() FuelInfo {
-	if s.Tier == ToolTierWood {
-		return newFuelInfo(time.Second * 10)
-	}
-	return FuelInfo{}
-}
 
 // EncodeItem returns the Bedrock registry item name.
 func (s Spear) EncodeItem() (string, int16) { return "minecraft:" + s.Tier.Name + "_spear", 0 }

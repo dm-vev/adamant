@@ -1,7 +1,6 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -20,11 +19,6 @@ func (n Netherrack) SoilFor(block world.Block) bool {
 // BreakInfo ...
 func (n Netherrack) BreakInfo() BreakInfo {
 	return newBreakInfo(0.4, pickaxeHarvestable, pickaxeEffective, oneOf(n))
-}
-
-// SmeltInfo ...
-func (Netherrack) SmeltInfo() item.SmeltInfo {
-	return newSmeltInfo(item.NewStack(item.NetherBrick{}, 1), 0.1)
 }
 
 // EncodeItem ...

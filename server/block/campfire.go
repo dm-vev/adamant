@@ -128,8 +128,8 @@ func (c Campfire) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User,
 		return true
 	}
 
-	rawFood, ok := held.Item().(item.Smeltable)
-	if !ok || !rawFood.SmeltInfo().Food {
+	recipe, ok := item.CookingRecipeFor(item.CampfireCooking, held.Item())
+	if !ok {
 		return false
 	}
 
@@ -141,7 +141,7 @@ func (c Campfire) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User,
 		if it.Item.Empty() {
 			c.Items[i] = CampfireItem{
 				Item: held.Grow(-held.Count() + 1),
-				Time: time.Second * 30,
+				Time: time.Duration(recipe.CookingTime) * time.Millisecond * 50,
 			}
 
 			ctx.SubtractFromCount(1)
@@ -172,7 +172,21 @@ func (c Campfire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 // Tick is called to cook the items within the campfire.
 func (c Campfire) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	if c.Extinguished {
-		// Extinguished, do nothing.
+		// CampfireBlockEntity.cooldownTick: food on an unlit campfire loses
+		// two ticks of cooking a tick.
+		updated := false
+		for i, it := range c.Items {
+			recipe, ok := item.CookingRecipeFor(item.CampfireCooking, it.Item.Item())
+			if it.Item.Empty() || !ok {
+				continue
+			}
+			if full := time.Duration(recipe.CookingTime) * time.Millisecond * 50; it.Time < full {
+				c.Items[i].Time, updated = min(it.Time+time.Millisecond*100, full), true
+			}
+		}
+		if updated {
+			tx.SetBlock(pos, c, nil)
+		}
 		return
 	}
 	if rand.Float64() <= 0.016 { // Every three or so seconds.
@@ -191,8 +205,8 @@ func (c Campfire) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 			continue
 		}
 
-		if food, ok := it.Item.Item().(item.Smeltable); ok {
-			dropItem(tx, food.SmeltInfo().Product, pos.Vec3Middle())
+		if recipe, ok := item.CookingRecipeFor(item.CampfireCooking, it.Item.Item()); ok {
+			dropItem(tx, recipe.Product, pos.Vec3Middle())
 		}
 		c.Items[i].Item = item.Stack{}
 	}

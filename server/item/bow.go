@@ -24,11 +24,6 @@ func (Bow) DurabilityInfo() DurabilityInfo {
 	}
 }
 
-// FuelInfo ...
-func (Bow) FuelInfo() FuelInfo {
-	return newFuelInfo(time.Second * 10)
-}
-
 // Release ...
 func (Bow) Release(releaser Releaser, tx *world.Tx, ctx *UseContext, duration time.Duration) {
 	creative := releaser.GameMode().CreativeInventory()

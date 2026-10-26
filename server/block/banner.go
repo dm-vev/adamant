@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"time"
 )
 
 // Banner is a tall decorative block that can be customised.
@@ -40,11 +39,6 @@ func (Banner) MaxCount() int {
 // BreakInfo ...
 func (b Banner) BreakInfo() BreakInfo {
 	return newBreakInfo(1, alwaysHarvestable, axeEffective, oneOf(b))
-}
-
-// FuelInfo ...
-func (Banner) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
 }
 
 // UseOnBlock ...

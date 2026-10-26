@@ -3,7 +3,6 @@ package block
 import (
 	"math"
 	"math/rand/v2"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
@@ -26,11 +25,6 @@ var (
 	_ item.BoneMealAffected = Bamboo{}
 	_ Flammable             = Bamboo{}
 )
-
-// FuelInfo ...
-func (Bamboo) FuelInfo() item.FuelInfo {
-	return newFuelInfo(2500 * time.Millisecond)
-}
 
 // EncodeItem ...
 func (Bamboo) EncodeItem() (name string, meta int16) {

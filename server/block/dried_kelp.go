@@ -1,10 +1,5 @@
 package block
 
-import (
-	"github.com/df-mc/dragonfly/server/item"
-	"time"
-)
-
 // DriedKelp is a block primarily used as fuel in furnaces.
 type DriedKelp struct {
 	solid
@@ -18,11 +13,6 @@ func (d DriedKelp) BreakInfo() BreakInfo {
 // FlammabilityInfo ...
 func (DriedKelp) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(30, 5, false)
-}
-
-// FuelInfo ...
-func (DriedKelp) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 200)
 }
 
 // CompostChance ...

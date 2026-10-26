@@ -488,7 +488,9 @@ func (h *ItemStackRequestHandler) handleSwap(a *protocol.SwapStackRequestAction,
 func (h *ItemStackRequestHandler) collectRewards(s *Session, inv *inventory.Inventory, slot int, tx *world.Tx, c Controllable) {
 	if inv == s.openedWindow.Load() && s.containerOpened.Load() && slot == inv.Size()-1 {
 		if f, ok := tx.Block(*s.openedPos.Load()).(smelter); ok {
-			for _, o := range entity.NewExperienceOrbs(entity.EyePosition(c), f.ResetExperience()) {
+			// AbstractFurnaceBlockEntity.awardUsedRecipesAndPopExperience
+			// spawns the orbs at the player's feet.
+			for _, o := range entity.NewExperienceOrbs(c.Position(), f.ResetExperience()) {
 				tx.AddEntity(o)
 			}
 		}

@@ -213,11 +213,6 @@ func (Crossbow) DurabilityInfo() DurabilityInfo {
 	}
 }
 
-// FuelInfo ...
-func (Crossbow) FuelInfo() FuelInfo {
-	return newFuelInfo(time.Second * 15)
-}
-
 // EnchantmentValue ...
 func (Crossbow) EnchantmentValue() int {
 	return 1

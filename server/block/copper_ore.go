@@ -20,11 +20,6 @@ func (c CopperOre) BreakInfo() BreakInfo {
 	}, pickaxeEffective, multiOreDrops(item.RawCopper{}, c, 2, 5)).withBlastResistance(3)
 }
 
-// SmeltInfo ...
-func (CopperOre) SmeltInfo() item.SmeltInfo {
-	return newOreSmeltInfo(item.NewStack(item.CopperIngot{}, 1), 0.7)
-}
-
 // EncodeItem ...
 func (c CopperOre) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + c.Type.Prefix() + "copper_ore", 0

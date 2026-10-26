@@ -66,11 +66,6 @@ func (c Composter) Model() world.BlockModel {
 	return model.Composter{Level: c.Level}
 }
 
-// FuelInfo ...
-func (c Composter) FuelInfo() item.FuelInfo {
-	return newFuelInfo(time.Second * 15)
-}
-
 // FlammabilityInfo ...
 func (c Composter) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(5, 20, true)

@@ -1,7 +1,5 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/item"
-
 // DeepslateTiles are a tiled variant of deepslate and can spawn in ancient cities.
 type DeepslateTiles struct {
 	solid
@@ -14,14 +12,6 @@ type DeepslateTiles struct {
 // BreakInfo ...
 func (d DeepslateTiles) BreakInfo() BreakInfo {
 	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(d)).withBlastResistance(6)
-}
-
-// SmeltInfo ...
-func (d DeepslateTiles) SmeltInfo() item.SmeltInfo {
-	if d.Cracked {
-		return item.SmeltInfo{}
-	}
-	return newSmeltInfo(item.NewStack(DeepslateTiles{Cracked: true}, 1), 0.1)
 }
 
 // EncodeItem ...

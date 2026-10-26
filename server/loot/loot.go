@@ -1390,11 +1390,11 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 			if err != nil {
 				return item.Stack{}, err
 			}
-			smeltable, ok := base.Item().(item.Smeltable)
-			if !ok || smeltable.SmeltInfo().Product.Empty() {
+			recipe, ok := item.CookingRecipeFor(item.Smelting, base.Item())
+			if !ok {
 				break
 			}
-			result, err := item.StackToStructureNBT(item.NewStack(smeltable.SmeltInfo().Product.Item(), max(count, 1)))
+			result, err := item.StackToStructureNBT(item.NewStack(recipe.Product.Item(), max(count, 1)))
 			if err != nil {
 				return item.Stack{}, err
 			}

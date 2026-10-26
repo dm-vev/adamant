@@ -20,14 +20,6 @@ func (m Mutton) Consume(_ *world.Tx, c Consumer) Stack {
 	return Stack{}
 }
 
-// SmeltInfo ...
-func (m Mutton) SmeltInfo() SmeltInfo {
-	if m.Cooked {
-		return SmeltInfo{}
-	}
-	return newFoodSmeltInfo(NewStack(Mutton{Cooked: true}, 1), 0.35)
-}
-
 // EncodeItem ...
 func (m Mutton) EncodeItem() (name string, meta int16) {
 	if m.Cooked {

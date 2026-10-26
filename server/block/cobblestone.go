@@ -1,7 +1,5 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/item"
-
 // Cobblestone is a common block, obtained from mining stone.
 type Cobblestone struct {
 	solid
@@ -15,11 +13,6 @@ type Cobblestone struct {
 // BreakInfo ...
 func (c Cobblestone) BreakInfo() BreakInfo {
 	return newBreakInfo(2, pickaxeHarvestable, pickaxeEffective, oneOf(c)).withBlastResistance(6)
-}
-
-// SmeltInfo ...
-func (Cobblestone) SmeltInfo() item.SmeltInfo {
-	return newSmeltInfo(item.NewStack(Stone{}, 1), 0.1)
 }
 
 // RepairsStoneTools ...
