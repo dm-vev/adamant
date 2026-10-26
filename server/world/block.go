@@ -34,6 +34,12 @@ type ProjectileCollider interface {
 	ProjectileBBox(pos cube.Pos, src BlockSource, projectile Entity) []cube.BBox
 }
 
+// RainObstructor supplies precipitation obstruction independently of solid
+// faces, as the native BlockPrecipitationInteractionsComponent does.
+type RainObstructor interface {
+	ObstructsRain() bool
+}
+
 // MissingStateReconstructor reconstructs derived block properties that were absent from a decoded disk state.
 // It must preserve all properties not listed in missing and must not cause chunk loads.
 type MissingStateReconstructor interface {

@@ -24,6 +24,9 @@ type Leaves struct {
 	ShouldUpdate bool
 }
 
+// ObstructsRain follows the native precipitation component for foliage.
+func (Leaves) ObstructsRain() bool { return true }
+
 // UseOnBlock makes leaves persistent when they are placed so that they don't decay.
 func (l Leaves) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) (used bool) {
 	pos, _, used = firstReplaceable(tx, pos, face, l)

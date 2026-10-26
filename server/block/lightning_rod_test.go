@@ -1,7 +1,9 @@
 package block
 
 import (
+	"encoding/json"
 	"math/rand/v2"
+	"os"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -9,12 +11,44 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+func TestLightningRodBodyMatchesInspectedClient(t *testing.T) {
+	data, err := os.ReadFile("testdata/bedrock_1_26_51_lightning_methods.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var native struct {
+		Complete bool
+		Bounds   [][6]float64 `json:"visual_bounds_by_facing"`
+		Vtables  map[string]map[string]string
+	}
+	if err := json.Unmarshal(data, &native); err != nil {
+		t.Fatal(err)
+	}
+	if !native.Complete || len(native.Bounds) != 6 || native.Vtables["CopperLightningRodBlock"]["0x50"] != "0x3459fe0" {
+		t.Fatal("incomplete native shape inspection")
+	}
+	for _, b := range allLightningRods() {
+		r := b.(LightningRod)
+		bounds := native.Bounds[r.Facing]
+		want := cube.Box(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5])
+		got := r.Model().BBox(cube.Pos{}, nil)
+		if len(got) != 1 || got[0] != want {
+			t.Errorf("rod %+v: bounds=%v, native=%v", r, got, want)
+		}
+	}
+}
+
 func TestStruckLightningRodPulsesItsSupport(t *testing.T) {
 	w := newMultifaceTestWorld(t)
 	rod, support := cube.Pos{0, 65, 0}, cube.Pos{0, 64, 0}
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(support, Stone{}, nil)
 		tx.SetBlock(rod, LightningRod{Facing: cube.FaceUp, Oxidation: WeatheredOxidation()}, nil)
+	})
+	// Let setup register the producer before striking. A hit before registration
+	// has a visible pulse but no circuit strength in native Bedrock.
+	w.AdvanceTick()
+	<-w.Exec(func(tx *world.Tx) {
 		tx.Block(rod).(LightningRod).Strike(rod, tx)
 		if r := tx.Block(rod).(LightningRod); !r.Powered {
 			t.Fatal("struck rod is not powered")

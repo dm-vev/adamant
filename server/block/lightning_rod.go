@@ -13,8 +13,8 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// LightningRod redirects lightning striking within 128 blocks onto itself
-// when it is the highest block of its column, and emits a redstone pulse when
+// LightningRod redirects nearby lightning from the native 64-block cylinder
+// when it is exposed to rain, and emits a redstone pulse when
 // struck. It oxidises like other copper blocks.
 type LightningRod struct {
 	transparent
@@ -22,7 +22,7 @@ type LightningRod struct {
 
 	// Facing is the direction the rod points, away from its support.
 	Facing cube.Face
-	// Powered is set for eight ticks after lightning struck the rod.
+	// Powered is set for eight ticks after the latest lightning hit.
 	Powered bool
 	// Oxidation is the current oxidation level of the rod.
 	Oxidation OxidationType
@@ -54,21 +54,47 @@ func (r LightningRod) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 	return placed(ctx)
 }
 
-// Strike ports LightningRodBlock.onLightningStrike: the rod powers for eight
-// ticks and sparks along its axis.
+// Strike follows CopperLightningRodBlock.onLightningHit: an unwaxed rod loses
+// one oxidation stage, and each hit restarts its eight-tick pulse.
 func (r LightningRod) Strike(pos cube.Pos, tx *world.Tx) {
+	tx.CancelBlockUpdate(pos, r)
+	if !r.Waxed {
+		if previous, ok := r.Oxidation.Decrease(); ok {
+			r.Oxidation = previous
+		}
+	}
 	r.Powered = true
-	tx.SetBlock(pos, r, nil)
+	// Native copper replacement holds the circuit lock, retaining the producer
+	// across an oxidation identifier change before setting its active strength.
+	tx.Redstone().SetProducerBlock(pos, r)
+	tx.Redstone().SetProducerStrength(pos, 15)
 	tx.ScheduleBlockUpdate(pos, r, 8*time.Second/20)
-	tx.AddParticle(pos.Vec3Centre(), particle.ElectricSpark{Data: int32(r.Facing.Axis())})
+	// The native hit callback emits event 2033 at the integer block position
+	// with zero data for every facing.
+	tx.AddParticle(pos.Vec3(), particle.ElectricSpark{})
 }
 
 // ScheduledTick ends the pulse of a struck rod.
 func (r LightningRod) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	// Expiry clears component strength even if another operation already
+	// cleared the visible bit; the native callback does not gate on that bit.
+	r.Powered = false
+	tx.SetBlock(pos, r, nil)
+	tx.Redstone().SetProducerStrength(pos, 0)
+}
+
+// RedstoneProducerPower initializes the circuit component from the permutation.
+func (r LightningRod) RedstoneProducerPower() int {
 	if r.Powered {
-		r.Powered = false
-		tx.SetBlock(pos, r, nil)
+		return 15
 	}
+	return 0
+}
+
+// RedstoneProducerOutput supplies the strength stored by the circuit component.
+func (r LightningRod) RedstoneProducerOutput(power int) world.Block {
+	r.Powered = power != 0
+	return r
 }
 
 // RedstonePower ports ownSignal: a struck rod powers every side.

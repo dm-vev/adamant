@@ -24,13 +24,13 @@ func TestLightningOnRodPowersItAndCleansCopper(t *testing.T) {
 			}
 		}
 		tx.SetBlock(rod, block.LightningRod{Facing: cube.FaceUp, Oxidation: block.OxidisedOxidation()}, nil)
-		tx.AddEntity(entity.NewLightning(world.EntitySpawnOpts{Position: rod.Side(cube.FaceUp).Vec3Middle()}))
+		tx.AddEntity(entity.NewLightning(world.EntitySpawnOpts{Position: rod.Vec3()}))
 	})
 	w.AdvanceTick()
 	<-w.Exec(func(tx *world.Tx) {
 		r := tx.Block(rod).(block.LightningRod)
-		if !r.Powered || r.Oxidation != block.UnoxidisedOxidation() {
-			t.Fatalf("struck rod = %#v, want powered and unoxidised", r)
+		if !r.Powered || r.Oxidation == block.OxidisedOxidation() {
+			t.Fatalf("struck rod = %#v, want powered and less oxidised", r)
 		}
 		cleaned := 0
 		for x := -1; x <= 1; x++ {

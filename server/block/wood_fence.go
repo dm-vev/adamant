@@ -157,6 +157,9 @@ type WoodFence struct {
 	WestConnection  bool
 }
 
+// ObstructsRain follows the native precipitation component despite open faces.
+func (WoodFence) ObstructsRain() bool { return true }
+
 // BreakInfo ...
 func (w WoodFence) BreakInfo() BreakInfo {
 	return newBreakInfo(2, alwaysHarvestable, axeEffective, oneOf(w)).withBlastResistance(3)
