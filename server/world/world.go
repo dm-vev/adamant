@@ -109,6 +109,7 @@ type World struct {
 	// from this map after some time of not being used.
 	chunks        map[ChunkPos]*Column
 	chunkRequests map[ChunkPos][]chunkCallback
+	lightChanges  map[cube.Pos]struct{}
 
 	// entities holds a map of entities currently loaded and metadata associated
 	// with them, such as the last chunk position they were located in and a
@@ -599,7 +600,9 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 		rid := w.conf.Blocks.BlockRuntimeID(updated)
 		oldRID := candidate.column.Block(uint8(candidate.pos[0]), int16(candidate.pos[1]), uint8(candidate.pos[2]), 0)
 		if oldRID != rid {
+			oldLight := w.cellLightProperties(candidate.column, candidate.pos)
 			candidate.column.SetBlock(uint8(candidate.pos[0]), int16(candidate.pos[1]), uint8(candidate.pos[2]), 0, rid)
+			w.queueLightChange(candidate.column, candidate.pos, oldLight)
 			candidate.column.invalidateRandomTickSubChunks()
 			candidate.column.invalidateSubChunkHeightMaps()
 			candidate.column.invalidateNetworkSubChunkPayloads()
@@ -756,6 +759,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
 	c := tx.chunk(chunkPosFromBlockPos(pos))
 
+	oldLight := w.cellLightProperties(c, pos)
 	rid := w.conf.Blocks.BlockRuntimeID(b)
 	redstoneAfterRelevant := isRedstoneRelevant(b)
 	needOldBlock := !opts.DisableRedstoneUpdates || !redstoneAfterRelevant
@@ -833,6 +837,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 			})
 		}
 	}
+	w.queueLightChange(c, pos, oldLight)
 	if redstoneAfterRelevant || (needOldBlock && isRedstoneRelevant(oldBlock)) {
 		w.redstone.forget(pos)
 	}
@@ -914,6 +919,9 @@ func (tx *Tx) setBiome(pos cube.Pos, b Biome) {
 // method operates on a per-chunk basis, setting all blocks within a single
 // chunk part of the Structure before moving on to the next chunk.
 func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
+	if width <= 0 || height <= 0 || length <= 0 {
+		return
+	}
 	w := tx.World()
 	dim := s.Dimensions()
 	width, height, length := dim[0], dim[1], dim[2]
@@ -926,8 +934,8 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 	// in memory at a time while not needing to acquire a new chunk lock for
 	// every block. This also allows us not to send block updates, but instead
 	// send a single chunk update once.
-	for chunkX := pos[0] >> 4; chunkX <= maxX>>4; chunkX++ {
-		for chunkZ := pos[2] >> 4; chunkZ <= maxZ>>4; chunkZ++ {
+	for chunkX := pos[0] >> 4; chunkX <= (maxX-1)>>4; chunkX++ {
+		for chunkZ := pos[2] >> 4; chunkZ <= (maxZ-1)>>4; chunkZ++ {
 			chunkPos := ChunkPos{int32(chunkX), int32(chunkZ)}
 			c := tx.chunk(chunkPos)
 
@@ -958,6 +966,8 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 						for localZ := 0; localZ < 16; localZ++ {
 							zOffset := baseZ + localZ
 							if zOffset < pos[2] || zOffset >= maxZ {
+							lightPos := cube.Pos{xOffset, yOffset, zOffset}
+							oldLight := w.cellLightProperties(c, lightPos)
 								continue
 							}
 							b, liq := s.At(xOffset-pos[0], yOffset-pos[1], zOffset-pos[2], f)
@@ -992,6 +1002,7 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 								w.updatePOI(nbtPos, b)
 								w.redstone.replaceCircuit(nbtPos, oldBlock, b, false)
 							}
+							w.queueLightChange(c, lightPos, oldLight)
 							if liq != nil {
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 1, w.conf.Blocks.BlockRuntimeID(liq))
 							} else if len(sub.Layers()) > 1 {
@@ -1054,6 +1065,8 @@ func (tx *Tx) liquid(pos cube.Pos) (Liquid, bool) {
 func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 	w := tx.World()
 	if pos.OutOfBounds(w.Range()) {
+	oldLight := w.cellLightProperties(c, pos)
+	defer func() { w.queueLightChange(c, pos, oldLight) }()
 		// Fast way out.
 		return
 	}
@@ -1158,6 +1171,7 @@ func (tx *Tx) additionalLiquid(pos cube.Pos) (Liquid, bool) {
 }
 
 // light returns the light level at the position passed. This is the highest of
+	w.flushLightChanges()
 // the sky and block light. The light value returned is a value in the range
 // 0-15, where 0 means there is no light present, whereas 15 means the block is
 // fully lit.
@@ -1192,7 +1206,9 @@ func (tx *Tx) skyLight(pos cube.Pos) uint8 {
 		// Above the rest of the world, so full skylight.
 		return 15
 	}
-	return tx.chunk(chunkPosFromBlockPos(pos)).SkyLight(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
+	c := tx.chunk(chunkPosFromBlockPos(pos))
+	w.flushLightChanges()
+	return c.SkyLight(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
 }
 
 // Time returns the current time of the world. The time is incremented every

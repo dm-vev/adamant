@@ -10,8 +10,9 @@ import (
 )
 
 // TestDaylightDetectorMeasuresSkyOnUpdateTicks checks the detector follows
-// Java: it is placed unpowered, measures the sky only on every 20th game
-// tick, outputs full power at noon and none at midnight, and inverted it
+// Bedrock: it is placed unpowered, measures the sky on the day clock's multiples
+// of twenty independently of the elapsed game clock, outputs full power at
+// noon and none at midnight, and inverted it
 // outputs what the night sky leaves dark.
 func TestDaylightDetectorMeasuresSkyOnUpdateTicks(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
@@ -26,11 +27,13 @@ func TestDaylightDetectorMeasuresSkyOnUpdateTicks(t *testing.T) {
 		if detector.Signal != 0 {
 			t.Fatalf("placed detector signal = %d, want 0", detector.Signal)
 		}
-		detector.Tick(19, pos, tx)
-		if got := tx.Block(pos).(DaylightDetector).Signal; got != 0 {
-			t.Fatalf("signal after tick 19 = %d, want 0 until the next 20th tick", got)
-		}
+		w.SetTime(6019)
 		detector.Tick(20, pos, tx)
+		if got := tx.Block(pos).(DaylightDetector).Signal; got != 0 {
+			t.Fatalf("signal at day time 6019 = %d, want 0 until the next sample", got)
+		}
+		w.SetTime(6020)
+		detector.Tick(19, pos, tx)
 		if got := tx.Block(pos).(DaylightDetector).Signal; got != 15 {
 			t.Fatalf("noon signal = %d, want 15", got)
 		}

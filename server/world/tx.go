@@ -448,6 +448,9 @@ func (tx *Tx) CurrentTick() int64 {
 
 // close finishes the Tx, causing any following call on the Tx to panic.
 func (tx *Tx) close() {
+	if !tx.closed {
+		tx.w.flushLightChanges()
+	}
 	tx.closed = true
 }
 

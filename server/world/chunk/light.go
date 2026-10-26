@@ -30,15 +30,21 @@ func (a *lightArea) insertSkyLightNodes(queue *lightQueue) {
 	a.iterHeightmap(func(x, z int, height, highestNeighbour, highestY, lowestY int) {
 		pos := cube.Pos{x, height, z}
 		if height <= a.r.Max() {
-			// Only set light if we're not at the top of the world.
-			a.setLight(pos, SkyLight, 15)
-
+			needsPropagation := height < highestNeighbour
 			if pos[1] > lowestY {
 				if level := a.highest(pos.Sub(cube.Pos{0, 1}), a.br.FilteringBlock); level != 15 && level != 0 {
 					// If we hit a block like water or leaves (something that diffuses but does not block light), we
 					// need a node above this block regardless of the neighbours.
-					queue.push(node(pos, 15, SkyLight))
+					needsPropagation = true
 				}
+			}
+			if needsPropagation {
+				// propagate ignores nodes already at their requested level. Do
+				// not prefill this one: it must light the block below and sideways
+				// beneath a neighbouring roof, including the bottom air layer.
+				queue.push(node(pos, 15, SkyLight))
+			} else {
+				a.setLight(pos, SkyLight, 15)
 			}
 		}
 		for y := pos[1]; y < highestY; y++ {
@@ -64,9 +70,9 @@ func (a *lightArea) insertLightSpreadingNodes(queue *lightQueue, lt light) {
 			// No chance for this to spread. Don't check for the highest filtering blocks on the side.
 			return
 		}
-		if filter := a.highest(pb, a.br.FilteringBlock) + 1; la > filter && la-filter > lb {
+		if filter := max(a.highest(pb, a.br.FilteringBlock), 1); la > filter && la-filter > lb {
 			queue.push(node(pb, la-filter, lt))
-		} else if filter = a.highest(pa, a.br.FilteringBlock) + 1; lb > filter && lb-filter > la {
+		} else if filter = max(a.highest(pa, a.br.FilteringBlock), 1); lb > filter && lb-filter > la {
 			queue.push(node(pa, lb-filter, lt))
 		}
 	})
@@ -112,7 +118,7 @@ func (a *lightArea) propagateNeighbour(queue *lightQueue, lt light, level uint8,
 		return
 	}
 	pos := cube.Pos{x, y, z}
-	filter := a.highest(pos, a.br.FilteringBlock) + 1
+	filter := max(a.highest(pos, a.br.FilteringBlock), 1)
 	if level > filter && a.light(pos, lt) < level-filter {
 		queue.push(node(pos, level-filter, lt))
 	}

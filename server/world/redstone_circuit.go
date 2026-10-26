@@ -98,6 +98,7 @@ type RedstoneCircuitPostPublisher interface {
 }
 
 func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publication bool) {
+	e.replaceProducer(pos, before, after)
 	e.circuitTraversal.replace(pos, after)
 	component, ok := after.(RedstoneCircuitComponent)
 	if !ok {
@@ -141,6 +142,7 @@ func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publi
 }
 
 func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
+	e.activateProducers()
 	defer func() {
 		for pos, state := range e.circuits {
 			if actor, ok := state.(RedstoneCircuitAnalogInput); ok {

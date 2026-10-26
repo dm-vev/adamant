@@ -4,19 +4,18 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
 // daylightUpdateTicks is how often, in game ticks, a daylight detector
-// measures the sky: DaylightDetectorBlock.tickEntity runs on every 20th tick.
+// measures the sky, using Level's day clock rather than elapsed game ticks.
 const daylightUpdateTicks = 20
 
 // DaylightDetector is a sensor that outputs power based on the current daylight level.
 type DaylightDetector struct {
-	carpet
 	transparent
 	sourceWaterDisplacer
 
@@ -24,13 +23,18 @@ type DaylightDetector struct {
 	Signal   int
 }
 
+// Model uses the native constructor's body bounds, rather than carpet height.
+func (DaylightDetector) Model() world.BlockModel { return model.DaylightDetector{} }
+
+// ObstructsRain follows the native precipitation component for both variants.
+func (DaylightDetector) ObstructsRain() bool { return true }
+
 // BreakInfo ...
 func (d DaylightDetector) BreakInfo() BreakInfo {
 	return newBreakInfo(0.2, alwaysHarvestable, nothingEffective, oneOf(d))
 }
 
-// UseOnBlock places the detector unpowered: like Java's default state, it
-// only measures the sky on its next update tick.
+// UseOnBlock places the detector unpowered until its next block actor sample.
 func (d DaylightDetector) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, d)
 	if !used {
@@ -41,18 +45,20 @@ func (d DaylightDetector) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3,
 	return placed(ctx)
 }
 
-// Activate inverts the detector and measures the sky at once, as
-// DaylightDetectorBlock.useWithoutItem does.
+// Activate follows the native interaction: publish the complementary state,
+// then immediately sample the sky through the new variant's callback.
 func (d DaylightDetector) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
 	d.Inverted = !d.Inverted
-	tx.SetBlock(pos, d, nil)
+	d.Signal = 15 - d.Signal
+	tx.Redstone().SetProducerBlock(pos, d)
 	d.updateSignal(pos, tx)
 	return true
 }
 
-// Tick measures the sky on every 20th game tick.
-func (d DaylightDetector) Tick(currentTick int64, pos cube.Pos, tx *world.Tx) {
-	if currentTick%daylightUpdateTicks == 0 {
+// Tick follows DaylightDetectorBlockActor::tick (client 0x4abfe70). Freezing
+// the day clock on a nonmultiple of twenty also freezes detector sampling.
+func (d DaylightDetector) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
+	if int32(tx.World().Time())%daylightUpdateTicks == 0 {
 		d.updateSignal(pos, tx)
 	}
 }
@@ -93,19 +99,29 @@ func (d DaylightDetector) EncodeBlock() (string, map[string]any) {
 }
 
 func (d DaylightDetector) updateSignal(pos cube.Pos, tx *world.Tx) {
-	if signal := d.daylightSignal(pos, tx); signal != d.Signal {
+	signal := d.daylightSignal(pos, tx)
+	if signal != d.Signal {
 		d.Signal = signal
 		tx.SetBlock(pos, d, nil)
 		tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	}
+	// Native updateSignalStrength looks up the active scene graph even if
+	// the block property is unchanged. Pending setup components are separate.
+	tx.Redstone().SetProducerStrength(pos, signal)
 }
 
-// daylightSignal ports DaylightDetectorBlock.updateSignalStrength: the sky
-// brightness, scaled by the cosine of the sun angle eased a fifth of the way
-// towards the nearest noon, or inverted.
+func (d DaylightDetector) RedstoneProducerPower() int                   { return d.Signal }
+func (d DaylightDetector) RedstoneProducerOutput(power int) world.Block { d.Signal = power; return d }
+
+// daylightSignal follows DaylightDetectorBlock::updateSignalStrength
+// (client 0x977f7c0), including the no-skylight dimension gate.
 func (d DaylightDetector) daylightSignal(pos cube.Pos, tx *world.Tx) int {
-	target := int(tx.SkyLight(pos)) - tx.SkyDarken()
-	sunAngle := tx.SunAngle() * float32(math.Pi/180)
+	if tx.World().Dimension() != world.Overworld {
+		return 0
+	}
+	angle := bedrockDaylightAngle(tx.World().Time(), tx.World().TimeCycle())
+	target := int(tx.SkyLight(pos)) - bedrockDaylightDarken(angle, tx.Raining(), tx.Thundering())
+	sunAngle := float32(angle*float32(math.Pi)) * 2
 	if d.Inverted {
 		target = 15 - target
 	} else if target > 0 {
@@ -114,9 +130,60 @@ func (d DaylightDetector) daylightSignal(pos cube.Pos, tx *world.Tx) int {
 			offset = float32(math.Pi * 2)
 		}
 		sunAngle += (offset - sunAngle) * 0.2
-		target = int(math.Floor(float64(float32(target)*vanilla.Cos(float64(sunAngle)) + 0.5)))
+		target = int(math.Round(float64(float32(target) * bedrockDaylightCos(sunAngle))))
 	}
 	return min(max(target, 0), 15)
+}
+
+// These calculations are separate from the world's Java 26.3 environment
+// attributes: Bedrock's dimension and detector still use a 65536-entry table
+// with binary32 index arithmetic and the older celestial-angle easing.
+var bedrockDaylightSines = func() (table [65536]float32) {
+	for i := range table {
+		table[i] = float32(math.Sin(float64(i) * (math.Pi * 2 / 65536)))
+	}
+	return
+}()
+
+func bedrockDaylightCos(angle float32) float32 {
+	index := float32(angle * 10430.378)
+	return bedrockDaylightSines[uint16(int32(index+16384))]
+}
+
+// Dimension::getTimeOfDay, client 0x23122e0. The server tick supplies partial=1
+// when the day clock advances, and zero when frozen. Native captures at the
+// 12040 darkening boundary distinguish both paths.
+func bedrockDaylightAngle(time int, advancing bool) float32 {
+	partial := float32(0)
+	if advancing {
+		partial = 1
+	}
+	angle := (float32(int32(time)%24000)+partial)/24000 - .25
+	if angle < 0 {
+		angle++
+	}
+	if angle > 1 {
+		angle--
+	}
+	eased := float32(bedrockDaylightCos(angle*float32(math.Pi)) + 1)
+	eased = eased*-.5 + 1
+	return angle + (eased-angle)/3
+}
+
+// Dimension::tick's cached sky darkening (0x230b0de..0x230b205) differs
+// from its render brightness getter. Current world weather exposes only
+// inactive/full-strength rain and thunder; fog and partial levels are absent.
+func bedrockDaylightDarken(angle float32, rain, thunder bool) int {
+	cosine := bedrockDaylightCos(float32(angle*float32(math.Pi)) * 2)
+	darkness := float32(1) - (float32(cosine*2) + .5)
+	brightness := float32(1) - min(max(darkness, 0), 1)
+	if rain {
+		brightness *= 1 - float32(5)/16
+	}
+	if thunder {
+		brightness *= 1 - float32(5)/16
+	}
+	return int(float32(1-brightness) * 11)
 }
 
 func allDaylightDetectors() (detectors []world.Block) {

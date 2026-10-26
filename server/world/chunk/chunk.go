@@ -380,15 +380,16 @@ func (chunk *Chunk) SkyLight(x uint8, y int16, z uint8) uint8 {
 // highest block that completely blocks any light from going through. If none is found, the value returned is
 // the minimum height.
 func (chunk *Chunk) HighestLightBlocker(x, z uint8) int16 {
-	return chunk.highestLightBlocker(x, z, false)
+	return chunk.highestLightBlocker(x, z, false, false)
 }
 
 // highestLightBlocker iterates from the highest non-empty sub chunk downwards
 // to find the Y value of the highest block that completely blocks any light
 // from going through. If none is found, the value returned is the minimum
 // height. If addOne is true, one is added to the Y returned if a block was
-// found.
-func (chunk *Chunk) highestLightBlocker(x, z uint8, addOne bool) int16 {
+// found. includeDiffusers also considers partially filtering blocks, as required
+// by the skylight height map; HighestLightBlocker retains its opaque-only query.
+func (chunk *Chunk) highestLightBlocker(x, z uint8, includeDiffusers, addOne bool) int16 {
 	var plus int16
 	if addOne {
 		plus++
@@ -396,7 +397,8 @@ func (chunk *Chunk) highestLightBlocker(x, z uint8, addOne bool) int16 {
 	for index := int16(len(chunk.sub) - 1); index >= 0; index-- {
 		if sub := chunk.sub[index]; !sub.Empty() {
 			for y := 15; y >= 0; y-- {
-				if chunk.br.FilteringBlock(sub.storages[0].At(x, uint8(y), z)) == 15 {
+				filter := chunk.br.FilteringBlock(sub.storages[0].At(x, uint8(y), z))
+				if filter == 15 || (includeDiffusers && filter != 0) {
 					return int16(y) | chunk.SubY(index) + plus
 				}
 			}
@@ -426,7 +428,7 @@ func (chunk *Chunk) HeightMap() HeightMap {
 	if chunk.recalculateHeightMap {
 		for x := uint8(0); x < 16; x++ {
 			for z := uint8(0); z < 16; z++ {
-				chunk.heightMap.Set(x, z, chunk.highestLightBlocker(x, z, true))
+				chunk.heightMap.Set(x, z, chunk.highestLightBlocker(x, z, true, true))
 			}
 		}
 		chunk.recalculateHeightMap = false
