@@ -28,6 +28,13 @@ type CopperGolemStatue struct {
 	Waxed bool
 }
 
+// ComparatorOutput follows CopperGolemStatueBlock::getComparatorSignal: the
+// actor pose is clamped to 0..14, then increased by one. The four normal poses
+// therefore output 1..4, independently of oxidation and waxing.
+func (c CopperGolemStatue) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	return uint8(min(int(c.Pose.Uint8()), 14) + 1)
+}
+
 // BreakInfo ...
 func (c CopperGolemStatue) BreakInfo() BreakInfo {
 	return newBreakInfo(3, alwaysHarvestable, pickaxeEffective, oneOf(c)).withBlastResistance(6)

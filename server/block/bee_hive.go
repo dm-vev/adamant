@@ -33,6 +33,11 @@ type Beehive struct {
 // BeeNest is the naturally generated counterpart of Beehive.
 type BeeNest struct{ Beehive }
 
+// ComparatorOutput is the native honey_level block state for both hive types.
+func (h Beehive) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	return uint8(min(max(h.HoneyLevel, 0), 5))
+}
+
 func (h Beehive) Model() world.BlockModel     { return model.Solid{} }
 func (h Beehive) EncodeItem() (string, int16) { return "minecraft:beehive", 0 }
 func (h Beehive) EncodeBlock() (string, map[string]any) {

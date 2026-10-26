@@ -153,21 +153,21 @@ func (j Jukebox) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
 		return 6
 	case sound.DiscMellohi().Uint8():
 		return 7
-	case sound.DiscStal().Uint8():
+	case sound.DiscStal().Uint8(), sound.DiscBounce().Uint8():
 		return 8
-	case sound.DiscStrad().Uint8():
+	case sound.DiscStrad().Uint8(), sound.DiscLavaChicken().Uint8():
 		return 9
-	case sound.DiscWard().Uint8():
+	case sound.DiscWard().Uint8(), sound.DiscTears().Uint8():
 		return 10
-	case sound.Disc11().Uint8():
+	case sound.Disc11().Uint8(), sound.DiscCreatorMusicBox().Uint8():
 		return 11
-	case sound.DiscWait().Uint8():
+	case sound.DiscWait().Uint8(), sound.DiscCreator().Uint8():
 		return 12
-	case sound.DiscPigstep().Uint8():
+	case sound.DiscPigstep().Uint8(), sound.DiscPrecipice().Uint8():
 		return 13
-	case sound.DiscOtherside().Uint8():
+	case sound.DiscOtherside().Uint8(), sound.DiscRelic().Uint8():
 		return 14
-	case sound.Disc5().Uint8(), sound.DiscRelic().Uint8():
+	case sound.Disc5().Uint8():
 		return 15
 	}
 	return 0

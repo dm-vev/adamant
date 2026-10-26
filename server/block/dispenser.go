@@ -53,6 +53,9 @@ func NewDispenser() Dispenser {
 	}
 }
 
+// ContainerSize returns the nine slots exposed by the native dispenser.
+func (Dispenser) ContainerSize() int { return 9 }
+
 func (d Dispenser) Inventory(tx *world.Tx, pos cube.Pos) *inventory.Inventory {
 	return d.generateLoot(tx, pos).inventory
 }

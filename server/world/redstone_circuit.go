@@ -55,6 +55,8 @@ type RedstoneCircuitAnalogInput interface {
 
 // redstoneCircuitPublicationRefresher distinguishes a capacitor publishing its
 // own state from an external identifier replacement that reruns native setup.
+// External identifier replacement also discards the old capacitor's pending
+// publication. RefreshPublished preserves that capacitor's transient state.
 // Other components retain their ordinary Refresh behavior on publication.
 type redstoneCircuitPublicationRefresher interface {
 	RefreshPublished(before, after Block) RedstoneCircuitState
@@ -113,10 +115,16 @@ func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publi
 		beforeName, _ := before.EncodeBlock()
 		afterName, _ := after.EncodeBlock()
 		if beforeName != afterName {
-			if state, ok := e.circuits[pos].(redstoneCircuitPublicationRefresher); publication && ok {
+			state, reinitialises := e.circuits[pos].(redstoneCircuitPublicationRefresher)
+			if publication && reinitialises {
 				e.circuits[pos] = state.RefreshPublished(before, after)
 			} else {
 				e.circuits[pos] = e.circuits[pos].Refresh(before, after)
+				if reinitialises {
+					delete(e.circuitOutputs, pos)
+					delete(e.circuitPowerOutputs, pos)
+					delete(e.circuitOutputCauses, pos)
+				}
 			}
 		}
 		return

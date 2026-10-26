@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
 	"math/rand/v2"
 	"strconv"
 	"time"
@@ -291,32 +290,6 @@ func (c Campfire) EncodeBlock() (name string, properties map[string]any) {
 		"minecraft:cardinal_direction": c.Facing.String(),
 		"extinguished":                 c.Extinguished,
 	}
-}
-
-// ComparatorOutput returns the redstone signal output for a comparator.
-func (c Campfire) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
-	filled := 0
-	fraction := 0.0
-	for _, v := range c.Items {
-		if v.Item.Empty() {
-			continue
-		}
-		filled++
-		maxCount := v.Item.MaxCount()
-		if maxCount <= 0 {
-			maxCount = 1
-		}
-		fraction += float64(v.Item.Count()) / float64(maxCount)
-	}
-	if filled == 0 {
-		return 0
-	}
-	fraction /= float64(len(c.Items))
-	signal := int(math.Floor(fraction*14.0)) + 1
-	if signal > 15 {
-		signal = 15
-	}
-	return uint8(signal)
 }
 
 // allCampfires ...

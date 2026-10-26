@@ -125,7 +125,8 @@ func acceptsBookshelfBook(stack item.Stack) bool {
 	return false
 }
 
-// ComparatorOutput exposes the slot most recently interacted with, as in Java.
+// ComparatorOutput exposes the slot most recently interacted with, even after
+// that slot has been emptied.
 func (b ChiseledBookshelf) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
 	if b.LastInteractedSlot < 0 || b.LastInteractedSlot >= len(b.Items) { return 0 }
 	return uint8(b.LastInteractedSlot + 1)

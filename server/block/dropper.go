@@ -48,6 +48,9 @@ func NewDropper() Dropper {
 	}
 }
 
+// ContainerSize returns the nine slots exposed by the native dropper.
+func (Dropper) ContainerSize() int { return 9 }
+
 // Inventory returns the dropper's nine-slot inventory.
 func (d Dropper) Inventory(*world.Tx, cube.Pos) *inventory.Inventory { return d.inventory }
 

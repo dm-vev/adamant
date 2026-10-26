@@ -168,13 +168,13 @@ func comparatorTargetOutput(input, side int, subtract bool) uint8 {
 func (c RedstoneComparator) analogInputPower(pos cube.Pos, tx *world.Tx) (uint8, bool) {
 	inputFace := c.Facing.Face()
 	inputPos := pos.Side(inputFace)
-	if output, ok := comparatorOverride(tx, inputPos); ok {
+	if output, ok := comparatorOverride(tx, inputPos, inputFace); ok {
 		return output, true
 	}
 	// Bedrock's block actor installs a readable analog rear override even
 	// when the intervening conductor has a direct strength of 15.
 	if b, loaded := tx.BlockLoaded(inputPos); loaded && world.RedstoneFullPowerConductor(inputPos, b, tx) {
-		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace)); ok {
+		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace), inputFace); ok {
 			return output, true
 		}
 	}
@@ -185,10 +185,16 @@ type comparatorOutputer interface {
 	ComparatorOutput(tx *world.Tx, pos cube.Pos) uint8
 }
 
-func comparatorOverride(tx *world.Tx, pos cube.Pos) (uint8, bool) {
+func comparatorOverride(tx *world.Tx, pos cube.Pos, face cube.Face) (uint8, bool) {
 	b, loaded := tx.BlockLoaded(pos)
 	if !loaded {
 		return 0, false
+	}
+	// ItemFrameBlock::getComparatorSignal accepts only the queried native
+	// facing. ItemFrame.Facing points toward its support, the opposite of the
+	// native facing property. Other analog providers ignore the queried face.
+	if frame, ok := b.(ItemFrame); ok && frame.Facing.Opposite() != face {
+		return 0, true
 	}
 	if out, ok := b.(comparatorOutputer); ok {
 		return out.ComparatorOutput(tx, pos), true
@@ -203,12 +209,19 @@ func comparatorSignalFromInventory(inv *inventory.Inventory) uint8 {
 	if inv == nil {
 		return 0
 	}
-	slots := inv.Slots()
+	return comparatorSignalFromStacks(inv.Slots())
+}
+
+// comparatorSignalFromStacks follows Container::getRedstoneSignalFromContainer
+// (client 0x26aefc0). Its per-stack ratios, accumulator, average and final
+// multiplication all use binary32 arithmetic before flooring and adding the
+// nonempty bonus. It is also used by the decorated pot's one-slot container.
+func comparatorSignalFromStacks(slots []item.Stack) uint8 {
 	if len(slots) == 0 {
 		return 0
 	}
 	filled := 0
-	fraction := 0.0
+	var fraction float32
 	for _, it := range slots {
 		if it.Empty() {
 			continue
@@ -218,13 +231,13 @@ func comparatorSignalFromInventory(inv *inventory.Inventory) uint8 {
 		if maxCount <= 0 {
 			maxCount = 1
 		}
-		fraction += float64(it.Count()) / float64(maxCount)
+		fraction += float32(it.Count()) / float32(maxCount)
 	}
 	if filled == 0 {
 		return 0
 	}
-	fraction /= float64(len(slots))
-	signal := int(math.Floor(fraction*14.0)) + 1
+	fraction /= float32(len(slots))
+	signal := int(math.Floor(float64(fraction*14))) + 1
 	if signal > 15 {
 		signal = 15
 	}

@@ -95,12 +95,9 @@ func (c Cauldron) LightEmissionLevel() uint8 {
 	return 0
 }
 
-// ComparatorOutput ports getAnalogOutputSignal: a third of the cauldron per
-// signal level, three for lava.
+// ComparatorOutput follows Bedrock's six fill levels: each pair produces one
+// signal level. Lava uses the same fill-level formula as water and powder snow.
 func (c Cauldron) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
-	if c.lava() {
-		return 3
-	}
 	return uint8((c.FillLevel + 1) / 2)
 }
 
