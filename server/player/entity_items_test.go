@@ -189,3 +189,33 @@ func TestFishBucketSpawnsFishInWater(t *testing.T) {
 		}
 	})
 }
+
+// TestCushionPlacementFollowsJava follows CushionItem.useOn: the cushion
+// faces the player's nearest cardinal direction, and inside a cauldron it
+// rests on the cauldron's floor, found on its collision shape.
+func TestCushionPlacementFollowsJava(t *testing.T) {
+	w := entityItemWorld(t)
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(cube.Pos{8, 63, 8}, block.Cauldron{}, nil)
+		start := mgl64.Vec3{8.5, 64.5, 9.6}
+		p := tx.AddEntity(world.EntitySpawnOpts{Position: start}.New(Type, Config{Position: start, Rotation: cube.Rotation{100, 70}, GameMode: world.GameModeSurvival})).(*Player)
+		p.SetHeldItems(item.NewStack(item.Cushion{Colour: item.ColourRed()}, 1), item.Stack{})
+		// The click lands on the floor inside the cauldron, a quarter block up.
+		p.UseItemOnBlock(cube.Pos{8, 63, 8}, cube.FaceUp, mgl64.Vec3{0.5, 0.25, 0.5})
+		var cushion world.Entity
+		for e := range tx.Entities() {
+			if e.H().Type().EncodeEntity() == "minecraft:cushion" {
+				cushion = e
+			}
+		}
+		if cushion == nil {
+			t.Fatal("no cushion placed in the cauldron")
+		}
+		if y := cushion.Position()[1]; math.Abs(y-63.25) > 1e-6 {
+			t.Fatalf("cushion at y %v, want on the cauldron floor at 63.25", y)
+		}
+		if yaw := cushion.Rotation().Yaw(); yaw != 90 {
+			t.Fatalf("cushion faces %v, want 90 for a player facing 100", yaw)
+		}
+	})
+}

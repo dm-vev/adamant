@@ -174,6 +174,10 @@ func (h Beehive) AddBeeOccupant(n map[string]any) (world.Block, bool) {
 	return h, true
 }
 func (h Beehive) IsFull() bool { return len(h.Occupants) >= maxBeehiveOccupants }
+
+// HasBees reports if bees occupy the hive, which makes it weigh as much as a
+// full bundle, as BundleContents.BEEHIVE_WEIGHT.
+func (h Beehive) HasBees() bool { return len(h.Occupants) > 0 }
 func (h BeeNest) AddBeeOccupant(n map[string]any) (world.Block, bool) {
 	hive, ok := h.Beehive.AddBeeOccupant(n)
 	if !ok {

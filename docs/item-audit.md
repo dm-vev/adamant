@@ -41,9 +41,9 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | BowItem, CrossbowItem, TridentItem, MaceItem, ShieldItem | 5 | combat: skipped |
 | BrushItem | 1 | Matches: 200-tick use, a stroke every 10 ticks from the fifth, durability only on completed brushing |
 | BucketItem, SolidBucketItem, MobBucketItem | 11 | Ported `use` and `emptyContents`: the view ray picks the target (sources only for an empty bucket, none for a filled one), water goes into a block that takes it or beside the block looked at, never into a replaced plant, which now breaks with its drops; sneaking places beside; water evaporates in the Nether; `fluid_place`/`fluid_pickup` game events. Mob buckets empty their water (they never did: the water lookup failed) and spawn the mob standing on the placed block's floor with the stack's name, playing only their own sound; fish buckets can no longer be eaten. Dispensers empty and fill as `DispensibleContainerItem` |
-| BundleItem | 17 | |
-| CompassItem | 1 | |
-| CushionItem | 16 | |
+| BundleItem | 17 | Ported `BundleContents` weights: shulker boxes no longer fit (`canFitInsideContainerItems`), a hive with bees fills the bundle; using a bundle throws out the whole selected stack (`removeOne`), not one item. The Bedrock bundle screen stays client-driven |
+| CompassItem | 1 | Matches through Bedrock's position tracking: lodestones link compasses, a missing lodestone reports its target as not found |
+| CushionItem | 16 | Ported `useOn` and `Cushion.canBePlacedAt`/`wouldSurviveAt`: an anchor within 1/64 below, covered only when every block in the box suffocates (any overlap refused before), not buried; cauldrons, hoppers and composters are clicked on their collision shape; the cushion faces the nearest cardinal direction and takes the stack's name |
 | DiscFragmentItem | 1 | |
 | DoubleHighBlockItem | 29 | |
 | DyeItem | 16 | |

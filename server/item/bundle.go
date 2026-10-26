@@ -3,6 +3,7 @@ package item
 import (
 	"math"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/world"
@@ -19,6 +20,7 @@ type Bundle struct {
 
 // MaxCount returns the Java bundle stack limit.
 func (Bundle) MaxCount() int { return 1 }
+
 // Requirements returns the items required to use the bundle.
 func (Bundle) Requirements() []Stack { return nil }
 
@@ -34,7 +36,7 @@ func (b Bundle) UseTick(tx *world.Tx, user User, stack Stack, ticks int) Stack {
 	if !ok {
 		return stack
 	}
-	updated, removed, ok := b.RemoveSelected(stack)
+	updated, removed, ok := b.removeOne(stack)
 	if !ok || dropper.Drop(removed) == 0 {
 		return stack
 	}
@@ -143,6 +145,19 @@ func (b Bundle) Insert(bundle, incoming Stack, count int) (Stack, Stack) {
 	return b.WithContents(bundle, contents), incoming.Grow(-toAdd)
 }
 
+// removeOne ports BundleContents.Mutable.removeOne: the whole selected stack,
+// or the first if none is selected, leaves the bundle.
+func (b Bundle) removeOne(bundle Stack) (Stack, Stack, bool) {
+	contents := b.Contents(bundle)
+	if contents.Selected >= 0 && contents.Selected < len(contents.Items) {
+		return b.RemoveSelectedCount(bundle, contents.Items[contents.Selected].Count())
+	}
+	if len(contents.Items) == 0 {
+		return bundle, Stack{}, false
+	}
+	return b.RemoveFirstCount(bundle, contents.Items[0].Count())
+}
+
 func (b Bundle) RemoveSelected(bundle Stack) (Stack, Stack, bool) {
 	return b.RemoveFirstCount(bundle, 1)
 }
@@ -200,14 +215,28 @@ func (b Bundle) Select(bundle Stack, offset int) Stack {
 	return b.WithContents(bundle, contents)
 }
 
+// itemWeight ports BundleContents.getWeight: a nested bundle weighs 1/16 more
+// than its contents, a hive with bees fills the bundle, and other items weigh
+// one over their stack size. Items that cannot fit inside container items,
+// shulker boxes, weigh nothing so none fit.
 func (b Bundle) itemWeight(stack Stack) float64 {
-	if stack.Empty() {
+	if stack.Empty() || !canFitInsideContainerItems(stack.Item()) {
 		return 0
 	}
 	if nested, ok := stack.Item().(Bundle); ok {
 		return 1.0/16 + nested.Weight(stack)
 	}
+	if hive, ok := stack.Item().(interface{ HasBees() bool }); ok && hive.HasBees() {
+		return 1
+	}
 	return 1 / float64(stack.MaxCount())
+}
+
+// canFitInsideContainerItems ports Item.canFitInsideContainerItems: every
+// item but shulker boxes, as BlockItem decides.
+func canFitInsideContainerItems(it world.Item) bool {
+	name, _ := it.EncodeItem()
+	return !strings.HasSuffix(name, "shulker_box")
 }
 
 // EncodeNBT preserves nested item stacks across save/load.

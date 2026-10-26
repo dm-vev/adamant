@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -44,7 +43,7 @@ func (c CushionBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.Ne
 func (c CushionBehaviourConfig) New() *CushionBehaviour { return &CushionBehaviour{stationary: StationaryBehaviourConfig{}.New(), color: min(c.Color, 15)} }
 type CushionBehaviour struct { stationary *StationaryBehaviour; color uint8; passenger *world.EntityHandle }
 func (b *CushionBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if !cushionHasSupport(cushionType{}.BBox(e).Translate(e.Position()),tx) {
+	if !item.CushionWouldSurviveAt(tx, cushionType{}.BBox(e).Translate(e.Position())) {
 		b.DismountAll(e,tx)
 		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position:e.Position()},item.NewStack(item.Cushion{Colour:item.Colours()[int(b.color)]},1)))
 		_ = e.CloseIn(tx)
@@ -57,15 +56,6 @@ func (b *CushionBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	return b.stationary.Tick(e,tx)
-}
-func cushionHasSupport(box cube.BBox,tx *world.Tx) bool {
-	anchor:=cube.Box(box.Min().X(),box.Min().Y()-0.125,box.Min().Z(),box.Max().X(),box.Min().Y(),box.Max().Z())
-	minPos,maxPos:=anchor.Min(),anchor.Max()
-	for x:=int(math.Floor(minPos[0]));x<=int(math.Floor(maxPos[0]));x++ { for y:=int(math.Floor(minPos[1]));y<=int(math.Floor(maxPos[1]));y++ { for z:=int(math.Floor(minPos[2]));z<=int(math.Floor(maxPos[2]));z++ {
-		pos:=cube.Pos{x,y,z}
-		for _,support:=range tx.Block(pos).Model().BBox(pos,tx) { if support.Translate(pos.Vec3()).IntersectsWith(anchor) { return true } }
-	} } }
-	return false
 }
 func (b *CushionBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 	if b.passenger == nil { return }
