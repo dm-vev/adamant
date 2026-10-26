@@ -5,7 +5,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"iter"
 	"time"
 )
 
@@ -29,6 +28,14 @@ type AreaEffectCloudBehaviourConfig struct {
 	// ReapplicationDelay specifies the delay with which the effects from the
 	// cloud can be re-applied to users.
 	ReapplicationDelay time.Duration
+	// WaitTime is how long the cloud waits after it spawns before it
+	// spreads effects and its duration starts.
+	WaitTime time.Duration
+	// Effects are applied besides those of Potion, as the effects a creeper
+	// leaves when it explodes.
+	Effects []effect.Effect
+	// DurationScale scales the duration of lasting effects. Zero means 1.
+	DurationScale float64
 	// Owner is the entity the cloud came from, if any, as the ender dragon
 	// whose breath may be bottled.
 	Owner *world.EntityHandle
@@ -49,10 +56,13 @@ func (conf AreaEffectCloudBehaviourConfig) New() *AreaEffectCloudBehaviour {
 	if conf.Duration == 0 {
 		conf.Duration = time.Second * 30
 	}
-	stationary := StationaryBehaviourConfig{ExistenceDuration: conf.Duration}
+	if conf.DurationScale == 0 {
+		conf.DurationScale = 1
+	}
+	conf.Effects = append([]effect.Effect(nil), conf.Effects...)
 	return &AreaEffectCloudBehaviour{
 		conf:       conf,
-		stationary: stationary.New(),
+		stationary: StationaryBehaviourConfig{}.New(),
 		duration:   conf.Duration,
 		radius:     conf.Radius,
 		targets:    make(map[*world.EntityHandle]time.Duration),
@@ -104,119 +114,101 @@ func (a *AreaEffectCloudBehaviour) Particle() int32 {
 
 // Effects returns the effects the area effect cloud provides.
 func (a *AreaEffectCloudBehaviour) Effects() []effect.Effect {
-	return a.conf.Potion.Effects()
+	return append(a.conf.Potion.Effects(), a.conf.Effects...)
 }
 
-// Tick ...
+// Tick ports AreaEffectCloud.serverTick: after its wait time the cloud
+// shrinks or grows every tick, ends once its duration has passed, and every
+// five ticks gives its effects to the living entities in reach.
 func (a *AreaEffectCloudBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	a.stationary.Tick(e, tx)
-	if a.stationary.close || e.Age() < time.Second/2 {
-		// The cloud lives for at least half a second before it may begin
-		// spreading effects and growing/shrinking.
+	if a.stationary.close {
+		return nil
+	}
+	if e.Age()-a.conf.WaitTime >= a.duration {
+		a.stationary.close = true
+		return nil
+	}
+	if e.Age() < a.conf.WaitTime {
 		return nil
 	}
 
 	pos := e.Position()
-	if a.subtractTickRadius() {
-		viewers := tx.Viewers(pos)
-		// Update radius/colour changes using the pooled viewer buffer so frequent cloud pulses do not flood the
-		// allocator during large fights.
-		for _, v := range viewers {
-			v.ViewEntityState(e)
+	if a.conf.RadiusTickGrowth != 0 {
+		if a.radius += a.conf.RadiusTickGrowth; a.radius < 0.5 {
+			a.stationary.close = true
+			return nil
 		}
-		tx.ReleaseViewers(viewers)
+		a.viewState(e, tx)
 	}
 
 	if (e.Age()/(time.Second/20))%5 != 0 {
-		// AreaEffectCloud.serverTick: effects every five ticks.
 		return nil
 	}
-
 	for target, expiration := range a.targets {
 		if e.Age() >= expiration {
 			delete(a.targets, target)
 		}
 	}
-	if a.applyEffects(pos, e, a.filter(tx.EntitiesWithin(e.H().Type().BBox(e).Translate(pos)))) {
-		viewers := tx.Viewers(pos)
-		// Releasing the borrowed viewer slice after broadcasting ensures the sync.Pool stays populated even
-		// when multiple clouds update simultaneously.
-		for _, v := range viewers {
-			v.ViewEntityState(e)
-		}
-		tx.ReleaseViewers(viewers)
+	if a.applyEffects(pos, e, tx) {
+		a.viewState(e, tx)
 	}
 	return nil
 }
 
-func (a *AreaEffectCloudBehaviour) filter(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
-	return func(yield func(world.Entity) bool) {
-		for e := range seq {
-			_, target := a.targets[e.H()]
-			_, living := e.(Living)
-			if !living || target {
-				continue
-			}
-			if !yield(e) {
-				return
-			}
-		}
+// viewState shows viewers the cloud's new radius.
+func (a *AreaEffectCloudBehaviour) viewState(e *Ent, tx *world.Tx) {
+	viewers := tx.Viewers(e.Position())
+	for _, v := range viewers {
+		v.ViewEntityState(e)
 	}
+	tx.ReleaseViewers(viewers)
 }
 
-// applyEffects applies the effects of an area effect cloud at pos to all
-// entities passed if they were within the radius and don't have an active
-// cooldown period.
-func (a *AreaEffectCloudBehaviour) applyEffects(pos mgl64.Vec3, ent *Ent, entities iter.Seq[world.Entity]) bool {
+// applyEffects gives the cloud's effects to the living entities whose box
+// meets the cloud's and whose position lies within its radius, unless they
+// were given them within the reapplication delay. Instant effects apply at
+// half strength. It reports if the cloud changed.
+func (a *AreaEffectCloudBehaviour) applyEffects(pos mgl64.Vec3, ent *Ent, tx *world.Tx) bool {
+	effects := a.Effects()
+	if len(effects) == 0 {
+		clear(a.targets)
+		return false
+	}
+	box := ent.H().Type().BBox(ent).Translate(pos)
 	var update bool
-	for e := range entities {
+	// EntitiesWithin goes by position, so the search reaches 4 blocks
+	// further for the boxes of large mobs.
+	for e := range tx.EntitiesWithin(box.Grow(4)) {
+		l, living := e.(Living)
+		if _, target := a.targets[e.H()]; !living || target || !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
+			continue
+		}
 		delta := e.Position().Sub(pos)
-		delta[1] = 0
-		if delta.Len() <= a.radius {
-			l := e.(Living)
-			for _, eff := range a.Effects() {
-				if lasting, ok := eff.Type().(effect.LastingType); ok {
-					l.AddEffect(effect.New(lasting, eff.Level(), eff.Duration()/4))
-					continue
-				}
-				// Instantaneous effects apply at half strength.
-				l.AddEffect(effect.NewInstantWithPotency(eff.Type(), eff.Level(), 0.5))
+		if delta[0]*delta[0]+delta[2]*delta[2] > a.radius*a.radius {
+			continue
+		}
+		a.targets[e.H()] = ent.Age() + a.conf.ReapplicationDelay
+		for _, eff := range effects {
+			if lasting, ok := eff.Type().(effect.LastingType); ok {
+				l.AddEffect(effect.New(lasting, eff.Level(), time.Duration(float64(eff.Duration())*a.conf.DurationScale)))
+				continue
 			}
-
-			a.targets[e.H()] = ent.Age() + a.conf.ReapplicationDelay
-			a.subtractUseDuration()
-			a.subtractUseRadius()
-
-			update = true
+			l.AddEffect(effect.NewInstantWithPotency(eff.Type(), eff.Level(), 0.5))
+		}
+		update = true
+		if a.conf.RadiusUseGrowth != 0 {
+			if a.radius += a.conf.RadiusUseGrowth; a.radius < 0.5 {
+				a.stationary.close = true
+				return true
+			}
+		}
+		if a.conf.DurationUseGrowth != 0 {
+			if a.duration += a.conf.DurationUseGrowth; a.duration <= 0 {
+				a.stationary.close = true
+				return true
+			}
 		}
 	}
 	return update
-}
-
-// subtractTickRadius grows the cloud's radius by the radiusTickGrowth value. If the
-// radius goes under 1/2, it will close the entity.
-func (a *AreaEffectCloudBehaviour) subtractTickRadius() bool {
-	a.radius += a.conf.RadiusTickGrowth
-	if a.radius < 0.5 {
-		a.stationary.close = true
-	}
-	return a.conf.RadiusTickGrowth != 0
-}
-
-// subtractUseDuration grows duration by the durationUseGrowth factor. If duration
-// goes under zero, it will close the entity.
-func (a *AreaEffectCloudBehaviour) subtractUseDuration() {
-	a.duration += a.conf.DurationUseGrowth
-	if a.duration <= 0 {
-		a.stationary.close = true
-	}
-}
-
-// subtractUseRadius grows radius by the radiusUseGrowth factor. If radius goes
-// under 1/2, it will close the entity.
-func (a *AreaEffectCloudBehaviour) subtractUseRadius() {
-	a.radius += a.conf.RadiusUseGrowth
-	if a.radius <= 0.5 {
-		a.stationary.close = true
-	}
 }

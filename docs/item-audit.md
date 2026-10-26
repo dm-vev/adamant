@@ -70,11 +70,11 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | NameTagItem | 1 | Matches |
 | PlaceOnWaterBlockItem | 2 | Ported: lily pads and frogspawn go above the water source the player looks at, also from a click into the air; they need a source below (flowing water counted), and lily pads also sit on ice and frosted ice |
 | PlayerHeadItem | 1 | block placement: covered by the block audit |
-| PotionItem, SplashPotionItem, LingeringPotionItem | 3 | done: water on convertible_to_mud makes mud; throws at -20 pitch, 0.5 power; splash scales by box distance and drops effects of 20 ticks or less; clouds apply every 5 ticks with a 1 s reapplication delay and half-strength instant effects |
+| PotionItem, SplashPotionItem, LingeringPotionItem | 3 | done: water on convertible_to_mud makes mud; throws at -20 pitch, 0.5 power; splash scales by box distance and drops effects of 20 ticks or less; clouds (only of potions with effects) form at the hit entity's feet, wait 10 ticks, reach mobs whose box meets them, apply every 5 ticks with a 1 s reapplication delay, a quarter of lasting durations and half-strength instant effects; exploding creepers leave a cloud of their effects |
 | ScaffoldingBlockItem | 1 | done: placement context ported with the block |
 | ShearsItem | 1 | done: trims growing plant tips to max age first; wears on instant-break blocks except fire |
 | SmithingTemplateItem | 19 | done: plain material; behaviour lives in the smithing recipes |
-| SpawnEggItem | 88 | done: spawns in a clicked block without collision or beside the face, dropped by getYOffset; air use spawns in a liquid source; peaceful refuses notInPeaceful types; own-type clicks spawn offspring (breeding offspring, Age -24000 or IsBaby), zombie loot pickup and fox trust; dispensers spawn in front. The ambient sound on spawn is not played |
+| SpawnEggItem | 88 | done: spawns in a clicked block without collision or beside the face, dropped by getYOffset; air use spawns in a liquid source; peaceful refuses notInPeaceful types; own-type clicks spawn offspring (breeding offspring, Age -24000 or IsBaby), zombie loot pickup and fox trust; dispensers spawn in front; the mob plays its ambient sound on spawn |
 | SpyglassItem | 1 | Bedrock: the client zooms and plays the sounds |
 | StandingAndWallBlockItem | 33 | block placement: covered by the block audit |
 | WindChargeItem | 1 | combat projectile: behaviour only |

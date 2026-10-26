@@ -7,6 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -155,6 +156,10 @@ func (s SpawnEgg) spawn(tx *world.Tx, user User, spawnPos cube.Pos, reason strin
 		if t, ok := e.(interface{ Teleport(mgl64.Vec3) }); ok {
 			t.Teleport(pos)
 		}
+	}
+	if _, mob := e.(interface{ MaxHealth() float64 }); mob {
+		// Mob.playAmbientSound right after the spawn.
+		tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "ambient", EntityType: world.BedrockEntityIdentifier(s.Entity), ExtraData: -1})
 	}
 	return e
 }

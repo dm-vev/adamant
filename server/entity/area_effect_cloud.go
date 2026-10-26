@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
@@ -11,20 +12,44 @@ import (
 	"time"
 )
 
-// NewAreaEffectCloud creates a new area effect cloud entity and returns it.
+// NewAreaEffectCloud creates the cloud of a lingering potion and returns it.
 func NewAreaEffectCloud(opts world.EntitySpawnOpts, p potion.Potion) *world.EntityHandle {
-	config := areaEffectCloudConf
-	config.Potion = p
-	return opts.New(AreaEffectCloudType, config)
+	return newLingeringCloud(opts, p, nil)
 }
 
-// areaEffectCloudConf is the cloud ThrownLingeringPotion.onHitAsPotion
-// leaves: radius 3 shrinking by 0.5 a use and 3/600 a tick, effects again
+// newLingeringCloud returns the cloud ThrownLingeringPotion.onHitAsPotion
+// leaves: radius 3 shrinking by 0.5 a use and 3/600 a tick for 600 ticks
+// after a wait of 10, a quarter of the potion's durations, effects again
 // after AreaEffectCloud's reapplication delay of 20 ticks.
-var areaEffectCloudConf = AreaEffectCloudBehaviourConfig{
-	RadiusUseGrowth:    -0.5,
-	RadiusTickGrowth:   -0.005,
-	ReapplicationDelay: time.Second,
+func newLingeringCloud(opts world.EntitySpawnOpts, p potion.Potion, owner *world.EntityHandle) *world.EntityHandle {
+	return opts.New(AreaEffectCloudType, AreaEffectCloudBehaviourConfig{
+		Potion:             p,
+		Radius:             3,
+		RadiusUseGrowth:    -0.5,
+		RadiusTickGrowth:   -3.0 / 600,
+		Duration:           30 * time.Second,
+		ReapplicationDelay: time.Second,
+		WaitTime:           time.Second / 2,
+		DurationScale:      0.25,
+		Owner:              owner,
+	})
+}
+
+// newCreeperCloud returns the cloud Creeper.spawnLingeringCloud leaves of
+// the effects of an exploding creeper: radius 2.5 shrinking by 0.5 a use
+// and 2.5/300 a tick for 300 ticks after a wait of 10, a quarter of the
+// effects' durations.
+func newCreeperCloud(pos mgl64.Vec3, effects []effect.Effect) *world.EntityHandle {
+	return world.EntitySpawnOpts{Position: pos}.New(AreaEffectCloudType, AreaEffectCloudBehaviourConfig{
+		Radius:             2.5,
+		RadiusUseGrowth:    -0.5,
+		RadiusTickGrowth:   -2.5 / 300,
+		Duration:           15 * time.Second,
+		ReapplicationDelay: time.Second,
+		WaitTime:           time.Second / 2,
+		DurationScale:      0.25,
+		Effects:            effects,
+	})
 }
 
 // NewAreaEffectCloudWith ...
@@ -37,6 +62,8 @@ func NewAreaEffectCloudWith(opts world.EntitySpawnOpts, t potion.Potion, duratio
 		Duration:           duration,
 		DurationUseGrowth:  durationOnUse,
 		ReapplicationDelay: reapplicationDelay,
+		WaitTime:           time.Second / 2,
+		DurationScale:      0.25,
 	}
 	return opts.New(AreaEffectCloudType, config)
 }
@@ -57,7 +84,25 @@ func (areaEffectCloudType) BBox(e world.Entity) cube.BBox {
 }
 
 func (areaEffectCloudType) DecodeNBT(m map[string]any, data *world.EntityData) {
+	// AreaEffectCloud.readAdditionalSaveData: a wait of 20 ticks unless
+	// saved; clouds saved before the scale was kept had a quarter.
+	wait, scale := time.Second, 0.25
+	if _, ok := m["WaitTime"]; ok {
+		wait = nbtconv.TickDuration[int32](m, "WaitTime")
+	}
+	if _, ok := m["PotionDurationScale"]; ok {
+		scale = float64(nbtconv.Float32(m, "PotionDurationScale"))
+	}
+	var effects []effect.Effect
+	for _, raw := range nbtconv.Slice(m, "mobEffects") {
+		if e, ok := decodeEffectEntry(raw); ok {
+			effects = append(effects, e)
+		}
+	}
 	data.Data = AreaEffectCloudBehaviourConfig{
+		WaitTime:           wait,
+		DurationScale:      scale,
+		Effects:            effects,
 		Potion:             potion.From(nbtconv.Int32(m, "PotionId")),
 		Radius:             float64(nbtconv.Float32(m, "Radius")),
 		RadiusUseGrowth:    float64(nbtconv.Float32(m, "RadiusOnUse")),
@@ -72,13 +117,24 @@ func (areaEffectCloudType) DecodeNBT(m map[string]any, data *world.EntityData) {
 func (areaEffectCloudType) EncodeNBT(data *world.EntityData) map[string]any {
 	a := data.Data.(*AreaEffectCloudBehaviour)
 	m := map[string]any{
-		"PotionId":           int32(a.conf.Potion.Uint8()),
-		"ReapplicationDelay": durationToTicks(a.conf.ReapplicationDelay),
-		"RadiusPerTick":      float32(a.conf.RadiusTickGrowth),
-		"RadiusOnUse":        float32(a.conf.RadiusUseGrowth),
-		"DurationOnUse":      durationToTicks(a.conf.DurationUseGrowth),
-		"Radius":             float32(a.radius),
-		"Duration":           durationToTicks(a.duration),
+		"PotionId":            int32(a.conf.Potion.Uint8()),
+		"ReapplicationDelay":  durationToTicks(a.conf.ReapplicationDelay),
+		"RadiusPerTick":       float32(a.conf.RadiusTickGrowth),
+		"RadiusOnUse":         float32(a.conf.RadiusUseGrowth),
+		"DurationOnUse":       durationToTicks(a.conf.DurationUseGrowth),
+		"Radius":              float32(a.radius),
+		"Duration":            durationToTicks(a.duration),
+		"WaitTime":            durationToTicks(a.conf.WaitTime),
+		"PotionDurationScale": float32(a.conf.DurationScale),
+	}
+	if len(a.conf.Effects) > 0 {
+		list := make([]any, 0, len(a.conf.Effects))
+		for _, e := range a.conf.Effects {
+			if entry, ok := encodeEffectEntry(e); ok {
+				list = append(list, entry)
+			}
+		}
+		m["mobEffects"] = list
 	}
 	if a.conf.Particle != 0 {
 		m["ParticleId"] = a.conf.Particle
@@ -100,6 +156,8 @@ func newDragonBreathCloud(pos mgl64.Vec3, owner *world.EntityHandle, radius floa
 		RadiusTickGrowth:   radiusPerTick,
 		Duration:           time.Duration(ticks) * time.Second / 20,
 		ReapplicationDelay: time.Second,
+		WaitTime:           time.Second,
+		DurationScale:      0.25,
 		Owner:              owner,
 		Particle:           packet.ParticleTypeDragonBreath,
 	})

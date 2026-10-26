@@ -98,8 +98,14 @@ func potionSplash(durMul float64, pot potion.Potion, linger bool) func(e *Ent, t
 			}
 			splashWater(e, tx, box)
 		}
-		if linger {
-			tx.AddEntity(NewAreaEffectCloud(world.EntitySpawnOpts{Position: pos}, pot))
+		if linger && len(effects) > 0 {
+			// ThrownLingeringPotion.onHitAsPotion: the cloud forms where the
+			// potion was, or at the feet of the entity it hit.
+			at := pos
+			if r, ok := res.(trace.EntityResult); ok {
+				at = r.Entity().Position()
+			}
+			tx.AddEntity(newLingeringCloud(world.EntitySpawnOpts{Position: at}, pot, e.ProjectileOwner()))
 		}
 	}
 }

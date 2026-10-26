@@ -118,6 +118,10 @@ func (s *speciesState) tickSwell(e *Ent, tx *world.Tx) bool {
 		power = 6
 	}
 	(block.ExplosionConfig{SpawnFire: false, NoBlockDamage: mobGriefingDisabled(tx)}).Explode(tx, world.NewEntityExplosionSource(m, power))
+	// Creeper.spawnLingeringCloud.
+	if effects := s.effects.Effects(); len(effects) > 0 {
+		tx.AddEntity(newCreeperCloud(e.Position(), effects))
+	}
 	m.kill()
 	return true
 }
