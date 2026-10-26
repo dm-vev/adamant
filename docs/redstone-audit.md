@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **paused at the user's request on 2026-10-26; audit incomplete**.
+Status: **paused on 2026-10-26 at the user's request; audit incomplete**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -12,16 +12,29 @@ Unmodified Windows BDS 1.26.51.1 supplies additional world-level observations.
 The repository's Java gameplay baseline does not override the requested
 Bedrock reference for this audit.
 
-The current effort estimate is approximately **55%** of the full audit. This is
+The current effort estimate is approximately **60%** of the full audit. This is
 a planning estimate, not a percentage of proven equivalence or a count of closed
-matrix rows. Every row below retains its outstanding work. The current fixes
-are grouped for publication by capture tooling, comparators/analog outputs,
-switches, pressure plates and tripwire.
+matrix rows. Every row below retains its outstanding work. The published checkpoint
+includes capture tooling, comparators/analog outputs, switches, pressure plates,
+tripwire, daylight/live lighting, lightning rods and the tested sculk paths.
+The implementation and native regression evidence are committed on `dev`.
 
-The next investigation is daylight detectors and lightning rods. The daylight
-capture script has collected 16 native time/frozen-time scenarios across all
-three dimensions, but those observations have not yet been replayed against the
-kernel or used to fix production behavior. That area remains open.
+Daylight sampling, the tested full-day weather outputs and body geometry have
+now been corrected against native evidence. Live roof changes, source removal
+and producer registration have also been checked. Lightning-rod pulses,
+retriggers, early producer registration and tested support conduction now match
+100 native traces. Rod search geometry/ordering/eligibility now also matches
+executed client functions with supplied world inputs. Broader lighting and
+lightning lifecycle remain open. A further 26 original-BDS horse-trap cases
+exercise the shared selector in real terrain and exposed precipitation-shape
+and trap-integration differences, now corrected.
+
+The sculk/player-use comparison has additionally corrected missing lever/button
+vibrations, the calibrated sensor's disabled output face, comparator analog
+sampling cadence, per-chunk block-actor shuffling and the block queue's clock
+before its pass. The tested 120 complete player-use/heap traces and 130 executed
+client shuffle cases match. This does not close the sensor or circuit ordering
+coverage rows.
 
 ## Reproducible evidence
 
@@ -63,6 +76,17 @@ Python process. No game binary or extracted machine code is stored here.
 | Frame directional analog read | `0x66bf730` | Native facing check before actor/rotation read; 792 settled cases cover both frame types, four comparator directions, direct/conducted input, empty and rotations 0..7 |
 | Switch geometry and projectile-operated buttons | `0x3193120` / `0x3195570` / `0x3194b00` | Arrow/trident collision and contact queries, fixed facing boxes and 20/30-tick constants; 196 source states, 480 output/conduction cases and 180 actual-arrow traces |
 | Tripwire player destruction and hook sounds | `0x4035320` / `0x4038b70` | Disassembled pre-removal tool branches and sound/publication ordering; 58 actual player-cut traces and 230 native sound packets replayed |
+| Daylight detector clock, signal and interaction | `0x4abfe70` / `0x977f7c0` / `0x977f250` | Inspected actor/variant/dimension gates, 16 native dimension/time traces, 28,800 full-day/weather source samples and 12 accepted player interactions |
+| Daylight environment and body | `0x23122e0`, `0x230b0de..0x230b205`, constructor `0x977eacd..0x977eaf2` | Inspected binary32 celestial-angle/darkening instructions and constructor bounds; no native world callbacks or runtime sine-table initialization executed |
+| Lightning rod hit, expiry and producer setup | `0x345a720`, `0x3459c30`, `0x3459110`, `0x3459360` | Inspected oxidation decrement, tick cancellation/rescheduling and active producer lookup; 100 actual-bolt BDS traces compare visible state, direct dust and support-conducted dust |
+| Lightning hit position and rod geometry | `0x95966b0`, `0x32c8f33`, `0x3459fe0` | Inspected floored hit coordinates, integer natural rod spawn and six facing bounds; height-boundary traces and all 96 registered rod states checked |
+| Rod attraction geometry, order and selection | `0x5502750`, `0x32f9750`, `0x2d9d600`, `0x32cbd00` | Actual paletted-cylinder arithmetic, group filter, distance sort and selection executed with synthetic world callbacks: 670 selection cases and 120 direct sort/heap cases |
+| Trap selector dispatch and precipitation obstruction | `0xcca2418`, `0x32dcbf0` | Inspected shared selector call and precipitation-component scan; 26 original-BDS trap cases check bolt position and rod pulse occurrence through actual horse/player AI |
+| Block-actor insertion, removal, shuffle and identity guard | `0x32c0a60`, `0x32c2dd0`, `0x32cb470` | Inspected stable insertion/removal and saved-component recheck; the original shuffle loop executes in 130 supplied-RNG cases, including all 24 four-actor permutations |
+| Comparator analog sampling gate | `0x4ab6956..0x4ab697b` | Native dimension-counter comparison permits one sample per two game ticks; 44 read-only owned-BDS checkpoints independently observe the sampled rear value and electrical strength |
+| Sculk activation, cooldown and calibrated output | `0x4ae91e0`, `0x81b51d0`, `0x81b3ae0`, `0x3198700` | Disassembled phase durations, strength and disabled input-side output; 36 actual player lever-use traces test both sensor types, inclusive range boundaries, both input parities and on/off frequencies |
+| Calibrated filtering and vibration obstruction | `0x3198ac0`, `0x2dc1ea0`, `0x25d84a0` | Inspected input query, frequency/phase gates and six offset clip rays; 24 controlled-input and 48 material traces compare both accepted player lever uses, sensor phases and every output-wire frame |
+| Button vibration and block queue clock | `0x319294a`, `0x31954ad`, `0x2d8e026`, `0x2d8e890` | Inspected press/release event dispatch and queue-local due-time arithmetic; eight actual-player button/sensor traces reproduce the 19/29-tick observed expiry and subsequent vibration pulses |
 
 The evaluator fixture is
 `server/block/testdata/bedrock_1_26_51_redstone_evaluators.json`. Component buffers
@@ -134,8 +158,9 @@ matrix or every analog block's signal calculation.
 Comparators now participate in the world's common two-game-tick circuit
 cache/evaluate phase and publish their output in the following chunk pass.
 The old neighbor-triggered private two-tick timer sampled and propagated
-pulses at different times. Analog values are sampled once per game tick,
-separately from direct electrical input, after circuit evaluation. The first
+pulses at different times. Analog values are sampled once per two game ticks,
+separately from direct electrical input, in the shuffled chunk actor pass
+before the next circuit evaluation. The first
 electrical cache also waits for the initial actor sample, following
 `mHasAnalogBeenSet`. Reading the current analog block directly in the
 electrical cache would activate some initial states and pulses one circuit
@@ -712,6 +737,291 @@ drops interacting with surviving strings, support destruction, cancellation,
 packet/viewer publication ordering beyond sounds and native reload still require
 separate scenarios. Hook vibration/game-event parity is also still open.
 
+### Daylight sampling, weather and body geometry
+
+The native detector actor tests the signed 32-bit **day clock** for divisibility
+by twenty. The kernel previously tested elapsed simulation ticks. A day clock
+frozen at 6001 therefore still made the kernel resample, while BDS retained the
+authored signal indefinitely. Frozen time zero/6000 samples every simulation
+tick in BDS. The corrected actor follows that clock, including time commands.
+The native `hasSkylight` gate also forces both variants to zero in Nether/End;
+the kernel previously let the inverted detector produce power there.
+
+The detector now has dedicated Bedrock angle/darkening helpers. They preserve
+binary32 lookup-index, easing and multiplication steps from the inspected
+client rather than using Java 26.3's environment-attribute timeline. The native
+tick path supplies an interpolation fraction of one while time advances and
+zero while frozen; captures around time 12040 distinguish these paths. The
+world's general Java sun angle, sleeping and raw-brightness APIs are unchanged.
+Rain and thunder use the inspected multiplicative 5/16 reductions of daylight
+before integer darkening. The current world supports boolean full-strength
+weather, so partial weather levels and fog are not implemented by these helpers.
+
+`bedrock_1_26_51_daylight.json` records 16 setups, each containing 48 cells and
+60 frames: all three dimensions, both variants, initial strengths zero/fifteen,
+clear/glass/stone/leaves covers and frozen/advancing time. The replay compares
+all **46,080 source frames and adjacent wire frames**, preserving the independent
+SDK simulation-clock parity and day clock. The SDK's `getSkyLightLevel` is
+already darkened (four under open sky at midnight); its values are not injected
+into the kernel's raw light storage.
+
+`bedrock_1_26_51_daylight_cycle.json` contains another 18 native segments:
+every eligible time 0,20,...,23980 in clear/rain/thunder, both variants and four
+covers, for **28,800 source samples**. Actual world lighting and the detector
+getter match all source values, plus the native SDK's darkened sky observations.
+The generator supplies the authored static floors/roofs before light filling;
+this deliberately isolates the detector from the separate live-lighting gap
+below. No measured light or expected signal is substituted into world storage.
+
+Those static roofs exposed two initial-lighting defects: the light height map
+ignored partially filtering blocks such as leaves, and a required propagation
+node was prefilled to strength fifteen, causing the queue to skip it. Air at the
+bottom edge of a roof consequently received one level too little light. The
+height map now includes diffusers while `HighestLightBlocker` retains its
+opaque-only contract; required source nodes propagate before being marked lit.
+The native roof matrices pass with these corrections.
+
+The native constructor writes a full-width body of height **3/8**. The kernel
+used carpet's **1/16** height. All 32 registered detector states now use the
+inspected native bounds. `redstone_native_daylight_probe.py` records the image,
+instruction-span hashes, numeric constants and constructor bounds in
+`bedrock_1_26_51_daylight_methods.json`. This is inspection evidence, not native
+callback execution. The runtime-initialized client sine table was not extracted;
+the helper's generated mathematical table is checked indirectly by the native
+integer outputs, not claimed bit-identical to all native table entries.
+
+`bedrock_1_26_51_daylight_use.json` adds 12 accepted native player inversions
+at frozen time 6001, both starting variants, strengths 0/7/15 and both actual
+input parities. Inversion publishes the complementary state and then immediately
+calls the new variant's signal update, even though actor sampling is frozen.
+The replay applies the activation callback at the recorded SDK before/after
+sample boundary and compares every source frame and the event result. This does
+not yet validate the kernel's full network/player interaction pipeline or its
+intermediate viewer publications.
+
+The initially missing live relighting path is addressed by the next batch below.
+Other open cases include additional weather transition levels/fog, arbitrary-time
+interactions, full face/conduction and support matrices, sound/game events,
+replacement/load/unload/restart and lightning-rod timing/conduction. This row
+is not complete.
+
+### Live lighting and producer registration
+
+`bedrock_1_26_51_daylight_roofs.json` records 24 native live-world traces,
+80 frames each, with normal/inverted sensors and adjacent dust: add/remove a
+five-by-five stone/glass/leaves roof at X=4/15/16/-1 and both setup parities.
+Both the positive and negative chunk edges are exercised. All **3,840 detector,
+wire and sky samples** now match, without prelit terrain or injected light.
+
+World block/liquid/native-state/structure mutations now queue cells whose
+filtering or emission changed. A light query or the transaction boundary removes
+dependent old light and floods from surviving neighbours/current emitters. The
+two channels are updated on the owner in ready terrain only; changes do not
+generate neighbouring chunks. Changed columns invalidate their cached network
+payloads. A no-load regression checks immediate reads after both `SetBlock` and
+`BuildStructure`. That test also exposed an existing exclusive-bound error in
+the structure chunk loops: a one-cell structure at (15,64,15) loaded three
+untouched adjacent chunks. The loops now end at the last occupied cell.
+
+`bedrock_1_26_51_live_light.json` adds 16 sealed-corridor traces, 72 frames each,
+with one/two glowstone sources, independent removal/reinsertion and clearing both
+sources. Air, glass, leaves and an opaque wall are tested at both input parities.
+The replay compares transmitted block light and absence of skylight at every
+frame. The SDK's opaque-source brightness getter is not equated with stored
+intrinsic source light. Native leaves transmit 14 from a neighbouring strength-15
+source: the kernel incorrectly subtracted `filter+1`. Both initial spreading
+and live updates now use `max(filter,1)`.
+
+Live roof traces then exposed a producer-registration error, separate from light:
+an initially zero detector installed before an even circuit step powered dust
+two ticks too early. `DaylightDetectorBlock::updateSignalStrength` looks up the
+active component map at `0x977fae5..0x977fb26`; it does not update pending setup
+objects. The block actor must repeat this lookup even if its visible signal
+property is unchanged. The engine now retains separate active/pending producer
+strengths and applies registration after actor callbacks each game tick, before
+the shared capacitor evaluation. Fresh setup values remain independently visible
+to the source graph.
+
+This lifecycle was checked by **ten native heap checkpoints** in
+`bedrock_1_26_51_daylight_components.json`, using two starting signals and both
+setup parities. Immediately after setup the new producer is pending. On the
+first following tick the block is 15 while its active producer can still be zero;
+on the second tick both are 15. On identifier replacement the old component
+remains marked removed until collection. Read-only access targets only the
+temporary child BDS. An owned Script API callback holds after each marker; map
+descriptors are verified before/after reading. No process memory writes,
+injection, suspension or existing world are used. The kernel replay compares
+visible signal, component strength and active/pending status at every checkpoint.
+
+The daylight interaction's native circuit-lock guard (`0x977f3a6`, `0x977f5ba`)
+retains the producer while switching block identifiers. It now has an explicit
+transaction operation instead of ordinary replacement setup. The 12 native
+player-use traces were recaptured with adjacent dust and now check wire strength
+and publication timing as well as the block/event result.
+
+An additional even-step initialization matrix in
+`bedrock_1_26_51_daylight_initial.json` replays all 48 initial cells in all three
+dimensions (2,880 further source frames). Its driver first requires a sentinel
+detector to change from strength one to the expected noon output in each of the
+12 native chunks. Terrain availability alone did not prove actor ticking: an
+earlier startup capture contained partially promoted chunks and failed the
+synchronous-world replay. That observation is retained in
+`.tmp/daylight-phase-native.json` / `.tmp/daylight-initial-all-dimensions-go.log`;
+it is not used to invent sensor-specific startup delays. Fresh chunk promotion
+remains a separate lifecycle audit item. The retained matrix explicitly targets
+already ticking chunks.
+
+Open lighting scope includes other filters and liquid states, previously
+unavailable neighbours/load/unload/restart, large edits and broader timing,
+performance and viewer behavior. These traces do not close the entire lighting
+engine or the audit's persistence/graph rows. The following batch addresses
+lightning-rod pulses without closing their entire lifecycle.
+
+### Lightning-rod pulses and real bolt integration
+
+`redstone_bds_lightning_probe.py` drives actual `minecraft:lightning_bolt`
+entities in an isolated original BDS. The retained
+`bedrock_1_26_51_lightning.json` contains **100 scenarios / 3,600 frames**,
+each comparing the rod permutation, adjacent dust and a separate dust output
+through the solid support. It records actual bolt IDs/positions and controls
+both setup parities. Cases include all six facings, all eight material/wax
+variants pointing up, retriggers after three ticks on every facing, additional
+seven/eight/nine-tick retriggers, setup-frame/next-frame strikes for every
+material, and integer strike heights at/above the rod on every facing.
+
+The client hit callbacks cancel an existing queued expiry before scheduling
+eight ticks from the latest hit. The kernel previously kept the first queued
+tick, truncating a retriggered pulse. An unwaxed native rod loses exactly one
+oxidation stage per hit; the former entity handler cleared all stages and could
+leave an expiry queued for the old block identifier. Oxidation now belongs to
+the rod hit callback, expiry uses the resulting identifier, and the producer is
+retained across replacement under the equivalent native circuit guard.
+
+Visible `powered_bit` and circuit strength are separate native state. A bolt
+spawned in the setup frame can set the bit while its active-map strength lookup
+misses the not-yet-registered producer. Both dust outputs then remain zero for
+the whole visible pulse. The same strike one frame later produces output.
+The kernel now uses the producer state rather than reading the bit as strength;
+the replay preserves these zero-output traces instead of rejecting them as
+failed positive controls. Every trace requires a real bolt, and the established
+late direct-hit controls require powered dust.
+
+`LightningBolt::normalTick` invokes the hit callback at `floor(position)`;
+subtracting an epsilon changed the target at integer Y. Natural native rod
+strikes use the rod's integer position, not the block above. Copper cleaning
+starts below the bolt or on the struck rod's opposite-facing support. It may
+invoke another rod's hit callback, including when the bolt is just above that
+rod. Those callbacks now power/retrigger rods rather than treating them only as
+an oxidation-state mutation. The height-boundary traces exercise this actual
+entity path, not a direct call to `LightningRod.Strike`.
+
+`redstone_native_lightning_probe.py` retains inspected span hashes, virtual
+dispatch entries and six facing bounds in
+`bedrock_1_26_51_lightning_methods.json`. The existing EndRod model already
+matches those bounds for all 96 registered rod states. The hit event is corrected
+from a centered, axis-dependent spark to native event 2033 at the integer block
+position with payload zero. Event evidence here is instruction inspection;
+network packet capture and client rendering remain unverified.
+
+The initial 38-case matrix reproduced 18 failures before the fix (12 retrigger
+and six oxidation/expiry cases). All expanded 100 traces now match, including
+the separate direct/support dust timelines. This is **not** complete lightning
+equivalence: remaining work includes powered authored/reloaded states, replacement
+and chunk/restart behavior, copper-neighbour/random-walk matrices, projectile
+hits, fire/damage/visual-only behavior and events. The following search batch
+addresses the attraction algorithm; native-world climate/exposure and lifecycle
+still require further verification.
+
+### Natural lightning attraction: cylinder and candidate selection
+
+`redstone_native_lightning_search_probe.py` executes the original client bodies
+for the one-bit paletted cylinder query (`0x5502750`), lightning-rod group filter
+(`0x32f9750`), candidate distance sort (`0x2d9d600`) and
+`LevelChunk::findExposedLightningRod` (`0x32cbd00`). It maps these unmodified
+bodies at their image-relative addresses in an isolated Python process, with
+the image hash checked. Palette snapshots, chunk enumeration/height, rain and
+effective biome temperatures are **supplied callbacks**. Byte movement uses the
+host C runtime; native comparisons, partitioning, heap and selection execute
+unchanged. This is component/control-flow evidence, not a BDS natural-storm
+capture, native climate/exposure implementation or actual chunk promotion.
+
+`bedrock_1_26_51_lightning_search.json` retains 670 cases: 405 cylinder boundary
+inputs, 216 material/eligibility/fallback combinations, a clear-weather case
+and 48 multi-candidate cases with 2/8/32/33/64/129 candidates. The native
+selector always requests radius 64 and vertical half-height 64. Both boundaries
+are inclusive, with horizontal squared distance at most 4096; accepted candidates
+are ordered by full three-dimensional squared distance. The kernel formerly
+used a radius-128 sphere. It also selected the nearest POI **before** checking
+exposure, so one covered nearest rod prevented a farther eligible rod from
+attracting the bolt. It now filters the loaded cylinder and walks candidates
+until exposure, precipitation and the native binary32 temperature threshold
+allow one. Actual loaded block identifiers are checked against all eight rod
+identifiers; stale indexed positions do not load terrain.
+
+Gather order follows loaded chunk X, chunk Z, subchunk Y and packed X/Z/Y
+order. Equal-distance ordering cannot be replaced by lexicographic position
+or a different unstable sort: the inspected MSVC sort performs different tie
+rotations above its 32-element insertion-sort threshold. Its median selection,
+partition rotations and heap fallback are reproduced. The fixture adds 120
+direct calls to the native sorter: 0..2048 entries, sorted/reversed/equal/mixed
+and full-width unsigned keys, both ordinary budgets and a forced heap budget.
+The replay compares **every candidate and distance**, not only the selected
+rod, and every tag in the direct-sort outputs. All match.
+
+The world replay supplies climate through registered test biomes. Its altitude
+adapter reproduces the effective temperature provided to the native callback;
+it does not establish equivalence of the world's temperature getter. Native
+chunk/precipitation callbacks likewise supply the intended exposure/availability.
+An additional internal regression covers an unloaded rod still present in the
+POI index and proves that querying it neither selects it nor loads its chunk.
+Before the correction, 432 of the 670 selection replays fail. The next batch
+adds real-terrain observations; the synthetic callback coverage is not presented
+as a complete precipitation, temperature or chunk-lifecycle implementation.
+
+### Shared rod selector in original BDS terrain and skeleton traps
+
+The inspected `SkeletonHorseTrapGoal::tick` calls the same selector at
+`0xcca2418` that natural chunk weather calls at `0x32c8f2e`. This provides a
+controlled, known search origin without waiting for random thunder. The
+`redstone_bds_lightning_search_probe.py` pack places blocks, creates an actual
+trap horse and lets a regular loopback player activate its native AI. **The
+pack never spawns a lightning entity.** Native spawn events record its result.
+Rain enables selection while preventing unrelated random thunder bolts. A
+fresh-server clear-weather control runs first after 160 settling ticks; setting
+clear after rain without settling initially retained native rain fade and was
+not treated as a settled clear-weather observation.
+
+`bedrock_1_26_51_lightning_traps.json` retains **26 completed native traps**,
+each with exactly one observed bolt, the source horse position, actual block
+permutations and rod samples. Cases cover no rods, one exposed rod, a covered
+nearest/farther exposed pair, horizontal offsets 64 and 65, glass, leaves, both
+daylight variants, carpet, slab, all 13 wooden fence types and nether-brick fence.
+The kernel replay triggers its own actual trap AI with a player, then checks
+the resulting bolt position and rod pulse occurrence. This does not assert
+exact per-tick trap animation, entity movement, networking or pulse publication;
+the separate 100 direct-bolt traces cover the tested pulse timelines.
+
+The trap's visual bolt previously bypassed attraction completely. It now uses
+the shared `Tx.RedirectLightning` operation, while natural weather continues
+to use the same search helper. Original-BDS terrain also exposed why checking
+only solid model faces was insufficient: fences, daylight detectors and leaves
+obstruct rain. `LevelChunk::getTopRainBlockPos` consults the native precipitation
+component; behavior values one/two obstruct it independently of physical faces.
+The explicit `RainObstructor` property now provides this behavior for those
+types, and the lightning exposure scan uses only loaded terrain. All 26 bolt
+positions and pulse-presence results match, including every tested fence type.
+BDS retains redundant legacy properties such as `wood_type` and `color` beside
+split identifiers; the fixture adapter matches every canonical kernel property
+and allows only extra native aliases in the input.
+
+Remaining work includes actual random-storm scheduling/sampling, broader native
+climate/rain-height and precipitation-component coverage for other occluders,
+rain transition levels, uniform/fluid-layer and broader palette/lifecycle cases,
+chunk promotion/replacement/restart, copper cleaning, projectile hits, visual-only
+damage/fire/events and the wider lightning lifecycle. Other block types still
+use the existing face-based fallback and are not claimed to have complete native
+precipitation semantics.
+
 ### Repeater side locking
 
 Adamant treated every nonzero direct side input as a lock. The client capacitor
@@ -727,6 +1037,117 @@ and results; `TestRepeaterSideLockMatchesNativeCapture` reproduced the three
 incorrect locks before the fix and now passes all six cases. Locking an already
 powered repeater and mid-pulse locking/unlocking are undergoing world-trace
 verification below.
+
+### Sculk vibrations and block-actor ordering
+
+`scripts/redstone_bds_sculk_probe.py` uses an actual loopback player to operate
+a native lever; it never injects a vibration or directly activates a sensor.
+The 36 retained scenarios use both sensor types, distances 1/4/7/8/9/15/16/17,
+both requested interaction parities and four additional on/off toggles. Both
+actual accepted input parities occur. All three dust outputs, the comparator
+identifier/lit bit and the sensor phase/strength are compared every game tick.
+Normal sensors accept distance 8 but reject 9; calibrated sensors accept 16
+but reject 17. Active phases last 30/10 ticks and both cooldowns last 10 ticks.
+Lever activation supplies comparator frequency 10; deactivation supplies 9.
+
+The kernel's lever callback previously generated no game event, so the actual
+player interaction produced no sensor response. It now emits the corresponding
+block-activate/deactivate event with the player and affected lever state. A
+north-facing calibrated sensor previously disabled its north output; native
+setup at `0x3198700` instead disables the south input side. The output guard
+now follows the opposite facing, matching the existing input-side filter.
+
+The remaining apparent two-tick comparator discrepancy was not a fixed delay.
+`LevelChunk::tickBlockEntities` copies its insertion-order actor vector and
+shuffles that copy every game tick using a forward Fisher-Yates loop with
+unsigned 32-bit draw modulo `i+1` (`0x32cb7a6..0x32cb839`). Native actor storage
+appends at insertion and preserves surviving order when erasing. The kernel
+previously rebuilt a cached Go-map order when actor data changed, and sampled
+all comparators after all other actors on every tick. It now preserves actor
+membership order, shuffles each chunk separately every tick, and runs the
+comparator in that actor pass only on its sampling interval. Decoded persisted
+actor lists retain their input order. Generation still supplies a map whose
+initial fallback order is sorted; native generation/load order and global
+random-stream equivalence remain unproven. Cross-chunk snapshot/callback order,
+the complete native actor roster and random-block-tick interleaving also remain
+outside this component proof.
+
+The native pass also rechecks the saved actor component pointer before each
+callback (`0x32cb952..0x32cb985`). A replacement at the same position must not
+run the new actor through the old snapshot. Versioned kernel actor references
+now skip removed/replaced actors while preserving ordinary data updates;
+replacement actors enter the next pass. Removal, replacement and data-update
+regressions exercise this distinction without changing the native baseline.
+
+`scripts/redstone_native_actor_order_probe.py` executes the untouched client
+shuffle instructions in isolated Python, with an authored ABI wrapper and
+supplied RNG draws. All 130 cases match, including all 24 four-actor orders,
+large 128/257-actor vectors, high-bit random draws, draw consumption and whole
+record movement. This component probe does not execute a native world.
+
+`scripts/redstone_bds_sculk_component_probe.py` additionally reads its own
+unmodified BDS at 44 Script API checkpoints. The callback briefly holds its
+own work; Python reads component maps without injection, suspension or writes
+and checks their descriptors before/after. Two arrival samples already contain
+frequency 10; two still contain 0 and remain unchanged through the next tick,
+then become 10 on the following sampling tick. This confirms the sampling gate
+and both possible actor orders independently of downstream output timing.
+
+The 36 original black-box traces do not record BDS's random stream. Their
+replay therefore enumerates only the two possible actor orders at each
+vibration arrival, requiring one coherent replay to match the entire recorded
+trace exactly. It does not allow per-frame timing tolerances. The additional
+four heap traces instead use the independently observed analog value to select
+the arrival order before replay, with no choice search. Their complete sensor,
+comparator and dust traces also match.
+
+The environment capture adds 24 calibrated-input cases with four facings and
+stable producer strengths 0/9/10/15 behind the sensor, plus front-side controls.
+A native daylight detector frozen at day time 6001 supplies each input; the
+pack checks its actual power before operating the lever. Zero accepts both
+uses, 9 accepts only deactivation, 10 accepts only activation, and 15 rejects
+both. A producer on the front side does not select frequency. Every sensor and
+wire frame matches, including all four rotations of the disabled output side.
+
+Another 48 cases cover both sensors with every registered wool colour and
+eight controls: air, stone, glass, white/red carpet, moss carpet, a snow layer
+and oak leaves. In this straight, four-block path, all sixteen wool blocks
+occlude the vibration; the eight controls transmit it. This matches the kernel
+without changing the obstruction logic. It does not prove diagonal/corner rays,
+partial shapes at other ray heights, source-block dampening or entity events.
+
+Eight additional actual-player traces expose the same missing event on buttons.
+`ButtonBlock::buttonPressed` posts block activation with its activating actor;
+`_buttonUnpressed` posts deactivation without an actor. Both kernel paths now
+emit those events. Wooden projectile activation carries the detected projectile
+as its source, following the inspected call path; broader projectile/vibration
+integration remains open. No event is added when an already pressed button
+rejects another use or an embedded projectile keeps it held.
+
+These combined source/sensor traces also expose the block queue clock being
+advanced before the entity pass. Native `_addToNextTickQueue` adds delay to
+queue `mCurrentTick` at `+0x8`; `tickPendingTicks` updates that field when its
+own pass starts. Advancing the kernel block queue at the start of the whole
+world tick made a player action before that pass expire one tick late. The
+player activation now uses the last processed block queue clock through
+`Tx.WithBlockInteraction`, while contacts and lightning retain the current
+simulation clock. Applying the previous clock globally also changed those
+already captured paths and was rejected by their regressions. The replay
+invokes real player use from an entity-pass controller, preserving the
+separate current event clock and input queue clock. It changes neither the scheduled delay nor the
+recorded release frame to make the test pass. Wooden/stone button expiry is
+observed at click+29/+19 in these captures; vibration arrival is click+4.
+The shorter calibrated cycle also hears wooden release at click+33, while
+stone release occurs during cooldown and is ignored. Fluid queue phase,
+per-chunk queue lifetime, item placement and complete session/network action
+scheduling remain open.
+
+Still open: other event sources/frequencies and filter strengths, all strong/
+weak output/material paths, fractional positions, broader occlusion and
+listener selection/rejection, waterlogging, resonators, shriekers, producer
+startup, phase replacement and native save/load/unload behavior.
+The existing Java-derived listener/actor persistence is not treated as proof
+of Bedrock equivalence. None of the 22 audit areas is declared complete here.
 
 ### Repeater pulse pipeline and shared circuit clock
 
@@ -1047,7 +1468,7 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 
 | Area | Current status / next evidence required |
 |---|---|
-| Circuit cadence and ordering | Shared clock and capacitor cache/evaluation traversal installed; native registration, bucket growth and chunk vectors verified in 26 heap/world cases. Open: complete publication traversal, other groups, startup/restart, first placement, simultaneous changes, priorities, sound and native unload/reload ordering |
+| Circuit cadence and ordering | Shared clock and capacitor traversal installed; registration/bucket growth/chunk vectors verified in 26 heap/world cases. Per-chunk actor shuffle matches 130 executed client cases; actor identity rechecks and insertion order corrected. Open: complete publication traversal, native load/generation order and shared RNG stream, other groups, startup/restart, simultaneous changes, priorities and sound |
 | Source/consumer/conductor graph | 480 switch output/conduction cases match tested direct and one-stone-block paths. Open: broader weak/strong activation, other sources/materials, face filtering, nonconductors, attenuation, removal and independent circuits |
 | Redstone wire | Transport phases and 48 basic network traces verified. Open: horizontal shape, directional output, native vertical/material matrices, other component connections, feedback, cancellation and reload |
 | Repeaters | Side-source filter, pulse pipeline and delay setup corrected; fixed/random evaluator traces and 96 world timing/lock/train/delay traces match. Open: powered placement, native load/pulse persistence, source graph and cross-chunk ordering |
@@ -1057,8 +1478,8 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Pistons and sticky pistons | Nonadjacent power bug fixed. Open all direction/source combinations, conduction, timing, short pulses, push/pull limits, adhesion, block actors and moving entities |
 | Levers and buttons | 196 source states, 480 direct/conducted output cases, 180 actual-arrow traces and 66 real player-use/retrigger traces match. Missing wooden-button activation/holding, projectile collision/contact phase and switch sound events corrected; six native click packets verify three sources. Open: trident world capture, multiple entities/boundaries, broader support/materials, full sound material/mount matrix, replacement and reload |
 | Pressure plates and tripwire | Plate conversion/query fixes verified in 302 native traces and five executed scalar methods. Tripwire initialization, contact bounds, 40-string limit, disarming/recheck and neighbour callback scope corrected; 140 contact + 80 line traces match. Artificial carpet collision removed against an executed native getter. Another 58 actual player-cut traces and 230 hook sound packets match after adding the destruction callback and native sound ordering. Open: player modes/actor states, complete boundary/transition/contact integration, previously powered/disarmed cutting, gaps/crossings/support/materials, broader sound/game events and persistence |
-| Daylight detectors and lightning rods | Open: analog calculation, inverted mode, dimension/weather/time changes, pulse timing and conduction |
-| Sculk sensors/calibrated sensors/shriekers | Open: detection/activation/cooldown phases, frequency filtering, output, waterlogging, paired events and persistence |
+| Daylight detectors and lightning rods | Detector clock, environment, initial/live roof lighting, body and producer registration corrected; 48,960 dimension/initialization source frames, 28,800 weather samples, 24 live roof traces, 16 source-removal/overlap traces, ten producer heap checkpoints and 12 player inversions with wire timing match. Rod hit/expiry/retrigger/oxidation/producer and tested support output match 100 real-bolt traces; 96 rod shapes match inspected bounds. Attraction geometry/order/selection matches 670 executed client cases with synthetic world inputs plus 120 native sort/heap cases; 26 actual BDS traps verify shared selector integration, bolt positions and pulse occurrence through tested rain occluders. Open: other lighting filters/liquid states and lifecycle, partial weather/fog, wider detector face/conduction/support/events/persistence; random weather scheduling, broader precipitation/climate/occluders, copper/projectile/interaction/events and lifecycle |
+| Sculk sensors/calibrated sensors/shriekers | Missing lever/button events and calibrated disabled-output face corrected. Radius/phases/strengths, selected filters in four facings, all 16 wool colours and eight material controls match 120 complete traces (four include heap readback). Open: other event/filter/occlusion/output paths, waterlogging, resonance, shriekers, fractional positions, startup, network action phase and persistence |
 | Lamps and copper bulbs | Lamp source/consumer phase corrected in observer/wire matrices. Bulb comparator output verified lit/unlit for all eight variants. Open: broader lamp retrigger/cancellation/load cases, bulb toggle timing/interaction and persistence |
 | Doors/trapdoors/fence gates | Open: direct/conducted input, upper/lower halves, manual changes while powered, transition events and all materials |
 | Powered/detector/activator rails | Open: scan range, slopes, branching, entity activation, analog outputs and minecart effects |
@@ -1356,3 +1777,208 @@ it can be marked verified. No row is complete merely because its Go tests pass.
   user's worlds or configuration. All three dimensions opened; console `stop`
   closed the server and `go run` exited with code zero. No launcher change was
   needed. Log: `.tmp/go-run-publish-smoke.log`.
+
+- Resuming the daylight audit added 48 dimension/time replays, 18 full-day
+  weather segments, 12 player inversions and the constructor-bounds check.
+  Temporarily restoring the original detector and two chunk-lighting sources
+  reproduces 69 failing subcases (48 time/dimension, 18 full-day, three player
+  cases), plus the old body mismatch, in 3.135 s. The diagnostic restores all
+  working bytes in `finally`. Log: `.tmp/daylight-original-baseline.log`.
+  The final targeted daylight run passes in 3.662 s:
+  `.tmp/daylight-final-targeted.log`. Native roots are
+  `adamant-redstone-bds-9ay5ffn2`, `adamant-redstone-bds-xkg59cc6` and
+  `adamant-redstone-bds-ijmwvcai`; each fixture retains its full reference path.
+- After the daylight and initial-lighting changes, `go test ./...` passes with
+  the same two known exclusions and `-count=1 -timeout=240s`: block 32.157 s,
+  entity 81.419 s, player 10.060 s, session 5.713 s, world 14.639 s and Overworld
+  generation 100.159 s. No additional exclusions were added. `go build ./...`,
+  Python compilation and diff checks also pass. Logs:
+  `.tmp/redstone-daylight-full.log` and `.tmp/redstone-daylight-build.log`.
+  The detector/body/initial-fill corrections are uncommitted; no new publication
+  was requested after resuming. At this checkpoint live mutation relighting
+  was still unresolved; its subsequent investigation is recorded below.
+
+- Live roof traces initially fail in 20/24 cases (2.737 s): roof light was stale
+  and newly sampled sources could power wires prematurely. After relighting and
+  separate producer state, all 24 match. Disabling only the refresh step in a
+  diagnostic then reproduces 32 failures across the final roof/corridor matrices
+  (16 opaque/leaves roofs and all 16 corridor cases; 2.786 s). The diagnostic
+  restores source bytes in `finally`. Logs: `.tmp/daylight-roof-before.log` and
+  `.tmp/live-light-no-refresh-before.log`.
+- The expanded targeted run passes (4.391 s), including the 17 dimension/initial
+  setups, weather, player/wire, 24 roof and 16 corridor traces, ten native heap
+  checkpoints, body geometry and no-neighbour-loading checks. Log:
+  `.tmp/daylight-initial-ready-go.log`. New native roots are
+  `adamant-redstone-bds-6kiawk5p` (roofs), `adamant-redstone-bds-d3ns6ix3`
+  (source overlap), `adamant-redstone-bds-j6plw95u` (player/wire),
+  `adamant-redstone-bds-6vshkdne` (heap) and `adamant-redstone-bds-21h_gpah`
+  (ticking-controlled initialization).
+- The first broad run after live relighting passes block (47.419 s), world
+  (15.560 s), player (11.427 s), session (5.906 s) and Overworld generation
+  (88.117 s), but entity fails `TestCamelCalvesFollowAdults` and
+  `TestEndFightNativeLifecycleAndMCDBRestart` (209.180 s). Three isolated repeats
+  of each subsequently pass (143.394 s). Logs:
+  `.tmp/redstone-live-light-full.log` and `.tmp/live-light-entity-rechecks.log`.
+- The subsequent full run, still using only the same two known exclusions,
+  passes block (56.749 s), world (18.194 s), player (11.309 s), session (5.879 s)
+  and generation (124.809 s), but entity fails `TestFishSwimAround` and
+  `TestWitchThrowsPotionsAtPlayers` (242.066 s). Five isolated repeats of each
+  then pass (11.035 s). Both full runs remain failures; no AI failure was
+  silently excluded. Logs: `.tmp/redstone-live-light-final-full.log` and
+  `.tmp/live-light-fish-witch-rechecks.log`. The readiness-controlled initial
+  matrix was added afterward and is covered by the targeted run above.
+- The small loaded-chunk source-replacement benchmark (ten iterations) measures
+  1.181 ms and 588,026 allocated bytes per placement/query/removal/query pair on
+  the local i7-12700H. It does not establish performance for large edits.
+  Log: `.tmp/live-light-benchmark.log`.
+- Final build, Python compilation and diff checks pass. The explicit
+  ticking-readiness guard in the added initialization replay also passes
+  (2.662 s). Logs: `.tmp/redstone-live-light-final-build.log` and
+  `.tmp/daylight-initial-readiness-check.log`. The broad-run AI failures above
+  remain unresolved as broad-run failures; the isolated repeats do not turn
+  either full run into a pass. All changes in this batch remain uncommitted.
+
+- The initial 38 real-bolt traces fail in 18 cases before the lightning fixes
+  (twelve retriggers and six oxidation/expiry cases; entity package 3.576 s).
+  Log: `.tmp/lightning-before.log`. The final expanded capture is complete:
+  100 scenarios, 3,600 source frames and both direct/support wire outputs, from
+  `adamant-redstone-bds-ehwnxtfc`, BDS 1.26.51.1 build 51061361. The first expanded
+  replay passes (4.776 s), log `.tmp/lightning-expanded-go.log`.
+- After the rod event adjustment, selected entity redstone/lightning tests pass
+  three repetitions (20.626 s), log `.tmp/lightning-entity-redstone.log`. Block
+  (56.056 s), world (13.080 s) and session (3.412 s) packages pass with the same
+  two known exclusions `TestBlockActorDataNBTBytes` and
+  `TestWeakExecDoesNotBlockOwnerWhenQueueFull`; no additional exclusions were
+  added. Log: `.tmp/lightning-packages.log`. `go build ./...` passes, log
+  `.tmp/lightning-build.log`. A subsequent inspection correction makes queued
+  rod expiry clear producer strength even when its visible bit is already
+  false; its final targeted replay/build results are recorded separately.
+  This package selection is not a new complete-suite pass: the earlier broad
+  AI failures above remain recorded. This batch is uncommitted.
+- The final expiry callback correction passes the targeted rod/body/actual-bolt
+  replay (block 2.738 s, entity 3.936 s) and `go build ./...`. Logs:
+  `.tmp/lightning-final-targeted.log` and `.tmp/lightning-final-build.log`.
+  Both new Python probes compile and `git diff --check` passes. No commit or
+  push was made. The 22-area coverage matrix remains open.
+
+- Rod search initially fails 432/670 selection cases (world package 5.852 s),
+  log `.tmp/lightning-search-before.log`. Cylinder geometry, every candidate
+  ordering entry, all 120 native direct-sort/heap cases and the 670 world
+  selection cases then pass (6.134 s). The unloaded-index regression passes
+  in the subsequent targeted run (6.595 s). Logs:
+  `.tmp/lightning-search-order-go.log` and
+  `.tmp/lightning-search-final-targeted.log`.
+- Original-BDS trap capture finishes all 26 cases in native root
+  `adamant-redstone-bds-swdwb8ki` with exactly one actual bolt per case.
+  The earlier 12-case settled capture is `adamant-redstone-bds-yu5sji01`.
+  Thunder was replaced by rain after an uncontrolled extra native bolt
+  invalidated the first diagnostic; no such incomplete capture is used as
+  the retained fixture. An intermediate replay exposed the remaining leaf
+  obstruction failure (entity package 4.532 s), log
+  `.tmp/lightning-trap-after.log`. After the explicit property, all 26 actual
+  trap cases, 100 direct-bolt cases, the existing horse-trap integration check,
+  670 selection/cylinder cases, 120 sort cases and unloaded-index check pass
+  (entity 9.202 s, world 5.851 s), log
+  `.tmp/lightning-search-trap-targeted.log`.
+- The broad run with the same two known exclusions passes block (83.652 s),
+  world (24.824 s), player (15.374 s), session (7.911 s), Overworld generation
+  (179.041 s) and the other reported packages. Entity fails the goat subcase
+  of `TestAnimalsPanicWhenHurt`, then the four-minute package limit expires
+  while entering `TestTamedHorsesBreed` fixture generation (247.565 s).
+  Log: `.tmp/lightning-search-full.log`. Five isolated goat repeats pass
+  (15.477 s); three complete horse-breeding repeats pass (19.259 s), logs
+  `.tmp/lightning-search-goat-recheck.log` and
+  `.tmp/lightning-search-breeding-recheck.log`. The broad run remains a failure;
+  no new exclusions or claim of unrelatedness is inferred from isolated passes.
+- Final block/world/session packages pass with only the same two exclusions
+  (71.008 / 18.450 / 3.595 s), log
+  `.tmp/lightning-search-final-packages.log`. Selected entity lightning,
+  trap/button/plate/tripwire checks pass three repetitions (57.586 s), log
+  `.tmp/lightning-search-final-entity.log`. `go build ./...` passes, log
+  `.tmp/lightning-search-final-build.log`. The subsequently expanded inspected
+  method hashes preserve the shape replay, log
+  `.tmp/lightning-search-final-metadata.log`. Python compilation and diff
+  checks pass. No commit or push was made; the full audit remains incomplete.
+
+- Initial actual-player sculk replay fails all four cases because lever use
+  emits no vibration, log `.tmp/sculk-use-before.log`. After the lever event
+  and calibrated output-face corrections, the expanded 36-case replay still
+  fails eight comparator-output traces (player package 4.285 s), log
+  `.tmp/sculk-expanded-before.log`. No dust/comparator assertion was removed
+  to hide those failures.
+- Original-BDS component capture completes four cases and 44 held-callback
+  read-only checkpoints in `adamant-redstone-bds-lssldlz5`. The 36 unheld
+  traces are from `adamant-redstone-bds-ohb2qi22`. After sampling cadence and
+  actor-pass changes, all 40 complete traces pass (4.755 s), log
+  `.tmp/sculk-order-replay.log`. The 36-trace replay accounts explicitly for
+  unrecorded native actor random order; the four heap-based replays choose
+  their order from the observed native analog sample before replay.
+- Original client shuffle execution completes 130 cases, including all 24
+  four-actor permutations. After adding saved-actor identity protection, its
+  exact replay and three removal/replacement/data-update regressions pass
+  together with the viewerless actor regression and all 40 sculk traces
+  (world 2.547 s, player 4.894 s), log
+  `.tmp/sculk-actor-final-targeted.log`. Native execution is repeated after
+  explicit arena cleanup and again completes 130 cases, log
+  `.tmp/actor-order-native-final.log`.
+- Before the final actor-identity guard, block/world/player/session packages
+  pass with the same two historical exclusions (51.847 / 19.040 / 11.516 /
+  3.366 s), log `.tmp/sculk-order-packages.log`. Final `go build ./...`,
+  compilation of the three new Python probes and diff checks pass, log
+  `.tmp/sculk-actor-build.log`. Results of the broader final run are recorded
+  separately below; these package results alone do not close the audit.
+- The final broad `go test ./...` run passes with only the same historical
+  exclusions `TestBlockActorDataNBTBytes` and
+  `TestWeakExecDoesNotBlockOwnerWhenQueueFull`, a 300-second per-package limit
+  and one repetition. Block passes in 67.798 s, entity in 303.267 s (reported
+  package time includes initialization), player in 14.518 s, session in
+  6.447 s, world in 22.295 s and Overworld generation in 147.778 s. Log:
+  `.tmp/sculk-actor-full.log`. This is a successful selected broad run; it
+  does not erase the earlier recorded failures or prove either excluded test.
+  No commit/push was made, and the 22-area audit remains incomplete.
+
+- The environment probe completes 24 filter, 48 obstruction and eight button
+  cases: 18,670 additional per-tick source/sensor/wire frames. Native roots are
+  `adamant-redstone-bds-tlmgdvaf`, `adamant-redstone-bds-nmtf9hfx` and
+  `adamant-redstone-bds-iac7nru_`, respectively. Filter replay passes (3.761 s),
+  log `.tmp/sculk-filter-before.log`; the material paths also match without
+  an obstruction change.
+- Initial button/sensor replay fails all eight cases because no vibration is
+  emitted (2.293 s), log `.tmp/sculk-buttons-before.log`. Adding events reaches
+  the exact native activation frame but exposes one-tick-late button expiry
+  in all eight cases (3.117 s), log `.tmp/sculk-buttons-events.log`. Moving input
+  into the entity pass alone still fails because the queue clock was advanced
+  before that pass (6.264 s), log `.tmp/sculk-environment-after-events.log`.
+  After the queue-local clock correction, all 120 full sculk traces pass
+  together (8.423 s), log `.tmp/sculk-environment-block-clock.log`.
+- The first pre-publication broad run with that global clock change fails
+  `TestButtonProjectileSignalsMatchNativeCapture`,
+  `TestPressurePlatesMatchNativeCapture`, `TestTripwireContactsMatchNativeCapture`,
+  `TestArrowButtonSignalsMatchNativeCapture` and
+  `TestLightningRodsMatchNativeCapture`. Logs:
+  `.tmp/redstone-publish-final-tests.log` (block 61.492 s, entity 279.801 s).
+  The player cases pass (18.564 s); that is insufficient to accept a global
+  scheduler change. The correction retains the current simulation clock for
+  contacts/bolts and scopes the last processed clock to actual player block
+  activation. The targeted switch/projectile/plate/tripwire/bolt and all sculk
+  replays then pass (block 11.243 s, entity 4.602 s, player 6.571 s), log
+  `.tmp/redstone-input-phase-targeted.log`. The final broad rerun is recorded
+  below; no newly failing test was excluded.
+- After scoping the input clock, the final selected broad run passes block
+  (70.892 s), player (18.691 s), session (6.135 s), world (20.615 s), Overworld
+  generation (139.870 s) and the other reported packages. Entity reaches the
+  five-minute package limit while
+  `TestWanderingTradersSpawnAtTheVillageBellWithLlamas` has been running for
+  four seconds (reported entity package time 306.018 s). Log:
+  `.tmp/redstone-publish-input-phase-full.log`. The broad run remains a failure;
+  no additional exclusions were introduced and the timeout is not treated as
+  proof of an unrelated failure. Its isolated trader recheck passes (10.288 s),
+  log `.tmp/redstone-publish-trader-recheck.log`.
+- The final selected entity arrow/button, lightning/rod/trap, plate and
+  tripwire replays pass (6.909 s), log
+  `.tmp/redstone-publish-final-entity-native.log`. Final `go build ./...` passes,
+  log `.tmp/redstone-publish-input-phase-build.log`. All fifteen added Python
+  probes compile and diff checks pass. Fixture provenance descriptions were
+  clarified to include actual button uses; every recorded native trace is
+  unchanged. The checkpoint is committed on `dev`, with the full audit paused
+  and the planning estimate at approximately 60%.

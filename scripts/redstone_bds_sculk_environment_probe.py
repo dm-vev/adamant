@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture calibrated input filtering and vibration obstruction via real lever use."""
+"""Capture filtering, obstruction and button vibrations via real player use."""
 
 import argparse
 import itertools
@@ -99,5 +99,5 @@ if __name__ == "__main__":
     driver.SCRIPT = SCRIPT
     driver.capture_player_use(args, cases(args.suite))
     output = json.loads(args.output.read_text(encoding="utf-8"))
-    output["reference"] = "unmodified Windows BDS; real accepted lever uses; stable native filter producers and per-tick vibration/circuit readback"
+    output["reference"] = "unmodified Windows BDS; real accepted player uses; per-tick source/sensor/wire readback"
     args.output.write_text(json.dumps(output, separators=(",", ":"))+"\n", encoding="utf-8")
