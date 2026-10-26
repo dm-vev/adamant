@@ -88,8 +88,8 @@ def arguments():
     return parser.parse_args()
 
 
-def capture(args, script, expected_count):
-    reference = Reference(args.binary.resolve(), args.assets.resolve(), args.port, script=script)
+def capture(args, script, expected_count, structures=None):
+    reference = Reference(args.binary.resolve(), args.assets.resolve(), args.port, script=script, structures=structures)
     with args.binary.open("rb") as stream:
         binary_hash = hashlib.file_digest(stream, "sha256").hexdigest()
     output = {"reference": "unmodified Windows BDS, stable Script API readback", "binary_sha256": binary_hash,
