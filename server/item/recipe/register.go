@@ -46,10 +46,12 @@ func Register(recipe Recipe) {
 	recipes = append(recipes, recipe)
 
 	_, ok := recipe.(PotionContainerChange)
-	p, okTwo := recipe.(Potion)
+	_, okTwo := recipe.(Potion)
 
-	if okTwo {
-		stack := p.Input()[1].(item.Stack)
+	if ok || okTwo {
+		// Both potion recipes and container changes name their reagent
+		// second, and both make it a brewing reagent.
+		stack := recipe.Input()[1].(item.Stack)
 		name, _ := stack.Item().EncodeItem()
 		reagent[name] = stack
 	}

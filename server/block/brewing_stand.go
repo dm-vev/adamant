@@ -113,9 +113,9 @@ func (b BrewingStand) DecodeNBT(data map[string]any) any {
 	b = NewBrewingStand()
 	// Preserve block state bits to match the stored runtime ID after decoding NBT.
 	b.LeftSlot, b.MiddleSlot, b.RightSlot = leftSlot, middleSlot, rightSlot
+	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"), data)
 	b.setDuration(brew)
 	b.setFuel(fuel, maxFuel)
-	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"), data)
 	return b
 }
 

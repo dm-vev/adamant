@@ -1,27 +1,44 @@
 package block
 
 import (
+	"sync"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
-	"sync"
-	"time"
 )
 
-// brewer is a struct that may be embedded by blocks that can brew potions, such as brewing stands.
+// brewer is a struct that may be embedded by blocks that can brew potions, such as brewing stands. It ports
+// BrewingStandBlockEntity on Bedrock's slots: 0 holds the ingredient, 1 to 3 the potions and 4 the fuel.
 type brewer struct {
 	mu sync.Mutex
 
 	viewers   map[ContainerViewer]struct{}
 	inventory *inventory.Inventory
 
-	duration   time.Duration
+	// brewTime counts down the ticks left of the brew.
+	brewTime int
+	// fuelAmount is the brews the burning blaze powder has left and
+	// fuelTotal the brews it gave.
 	fuelAmount int32
 	fuelTotal  int32
+	// ingredient is the item the brew started with; changing it stops the
+	// brew.
+	ingredient world.Item
 }
+
+const (
+	// brewingTicks is how long a brew takes, BrewingStandBlockEntity's 400
+	// ticks at the default speed.
+	brewingTicks = 400
+	// brewingFuelUses is the brews a blaze powder gives,
+	// cooking/brewing_default_uses.
+	brewingFuelUses = 20
+)
 
 // newBrewer creates a new initialised brewer. The inventory is properly initialised.
 func newBrewer() *brewer {
@@ -36,84 +53,78 @@ func newBrewer() *brewer {
 	return b
 }
 
-// InsertItem ...
-func (b *brewer) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
-	for sourceSlot, sourceStack := range h.inventory.Slots() {
-		var slot int
-
-		if sourceStack.Empty() {
-			continue
-		}
-
-		if h.Facing == cube.FaceDown {
-			if !recipe.ValidBrewingReagent(sourceStack.Item()) {
-				// This item is not a valid brewing reagent.
-				continue
-			}
-			slot = 0
-		} else if _, ok := sourceStack.Item().(item.BlazePowder); ok {
-			slot = 4
-		} else {
-			_, okPotion := sourceStack.Item().(item.Potion)
-			_, okSplash := sourceStack.Item().(item.SplashPotion)
-			_, okLingering := sourceStack.Item().(item.LingeringPotion)
-			_, okBottle := sourceStack.Item().(item.GlassBottle)
-			if !okPotion && !okSplash && !okLingering && !okBottle {
-				continue
-			}
-			for brewingSlot, brewingStack := range b.inventory.Slots() {
-				if brewingSlot == 0 || brewingSlot == 4 {
-					continue
-				}
-				if brewingStack.Count() == brewingStack.MaxCount() || !brewingStack.Comparable(sourceStack) {
-					continue
-				}
-
-				slot = brewingSlot
-				break
-			}
-			// Could not find an empty slot
-			if slot == 0 {
-				continue
-			}
-		}
-
-		stack := sourceStack.Grow(-sourceStack.Count() + 1)
-		it, _ := b.Inventory(tx, pos).Item(slot)
-
-		if !sourceStack.Comparable(it) {
-			// The items are not the same.
-			continue
-		}
-		if it.Count() == it.MaxCount() {
-			// The item has the maximum count that the stack is able to hold.
-			continue
-		}
-		if !it.Empty() {
-			stack = it.Grow(1)
-		}
-
-		_ = b.Inventory(tx, pos).SetItem(slot, stack)
-		_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
-		notifyComparatorUpdate(pos, tx)
+// brewingPotionInput reports if a stack goes in a potion slot, as
+// PotionIngredient.isPotionInput: a potion, splash or lingering potion or a
+// glass bottle.
+func brewingPotionInput(s item.Stack) bool {
+	switch s.Item().(type) {
+	case item.Potion, item.SplashPotion, item.LingeringPotion, item.GlassBottle:
 		return true
-
 	}
 	return false
 }
 
-// ExtractItem ...
+// brewingCanPlace ports BrewingStandBlockEntity.canPlaceItem for a slot.
+func (b *brewer) brewingCanPlace(slot int, s item.Stack) bool {
+	switch slot {
+	case 4:
+		_, ok := s.Item().(item.BlazePowder)
+		return ok
+	case 0:
+		return recipe.ValidBrewingReagent(s.Item())
+	}
+	held, _ := b.inventory.Item(slot)
+	return brewingPotionInput(s) && held.Empty()
+}
+
+// InsertItem inserts an item from a hopper as the brewing stand's
+// WorldlyContainer accepts it: a hopper above fills the ingredient slot, one
+// at the side the first empty potion slot or the fuel slot.
+func (b *brewer) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
+	slots := []int{1, 2, 3, 4}
+	if h.Facing == cube.FaceDown {
+		slots = []int{0}
+	}
+	for sourceSlot, sourceStack := range h.inventory.Slots() {
+		if sourceStack.Empty() {
+			continue
+		}
+		for _, slot := range slots {
+			if !b.brewingCanPlace(slot, sourceStack) {
+				continue
+			}
+			it, _ := b.inventory.Item(slot)
+			if !it.Empty() && (!sourceStack.Comparable(it) || it.Count() >= it.MaxCount()) {
+				continue
+			}
+			stack := sourceStack.Grow(1 - sourceStack.Count())
+			if !it.Empty() {
+				stack = it.Grow(1)
+			}
+			_ = b.inventory.SetItem(slot, stack)
+			_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
+			notifyComparatorUpdate(pos, tx)
+			return true
+		}
+	}
+	return false
+}
+
+// ExtractItem lets a hopper below take the potions, then a glass bottle from
+// the ingredient slot, as SLOTS_FOR_DOWN and canTakeItemThroughFace.
 func (b *brewer) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
-	for sourceSlot, sourceStack := range b.inventory.Slots() {
-		if sourceStack.Empty() || sourceSlot == 0 || sourceSlot == 4 {
+	for _, slot := range []int{1, 2, 3, 0} {
+		stack, _ := b.inventory.Item(slot)
+		if stack.Empty() {
 			continue
 		}
-		_, err := h.inventory.AddItem(sourceStack.Grow(-sourceStack.Count() + 1))
-		if err != nil {
-			// The hopper is full.
+		if _, bottle := stack.Item().(item.GlassBottle); slot == 0 && !bottle {
 			continue
 		}
-		_ = b.Inventory(tx, pos).SetItem(sourceSlot, sourceStack.Grow(-1))
+		if _, err := h.inventory.AddItem(stack.Grow(1 - stack.Count())); err != nil {
+			continue
+		}
+		_ = b.inventory.SetItem(slot, stack.Grow(-1))
 		notifyComparatorUpdate(pos, tx)
 		return true
 	}
@@ -124,7 +135,7 @@ func (b *brewer) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 func (b *brewer) Duration() time.Duration {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	return b.duration
+	return time.Duration(b.brewTime) * time.Millisecond * 50
 }
 
 // Fuel returns the fuel and maximum fuel of the brewer.
@@ -154,11 +165,15 @@ func (b *brewer) RemoveViewer(v ContainerViewer, _ *world.Tx, _ cube.Pos) {
 	delete(b.viewers, v)
 }
 
-// setDuration sets the brew duration of the brewer to the given duration.
+// setDuration sets the brew duration of the brewer to the given duration. A
+// brew loaded with its ingredient continues with that ingredient.
 func (b *brewer) setDuration(duration time.Duration) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.duration = duration
+	b.brewTime = int(duration.Milliseconds() / 50)
+	if ingredient, _ := b.inventory.Item(0); b.brewTime > 0 && !ingredient.Empty() {
+		b.ingredient = ingredient.Item()
+	}
 }
 
 // setFuel sets the fuel of the brewer to the given fuel and maximum fuel.
@@ -168,89 +183,109 @@ func (b *brewer) setFuel(fuel, maxFuel int32) {
 	b.fuelAmount, b.fuelTotal = fuel, maxFuel
 }
 
-// tickBrewing ticks the brewer, ensuring the necessary items exist in the brewer, and then processing all inputted
-// items for the necessary duration.
+// brewingResults returns what the ingredient brews each potion slot into,
+// and whether any of them brews, as BrewingStandBlockEntity.isBrewable.
+func brewingResults(block string, potions [3]item.Stack, ingredient item.Stack) (out [3]item.Stack, brewable bool) {
+	out = potions
+	if ingredient.Empty() || !recipe.ValidBrewingReagent(ingredient.Item()) {
+		return out, false
+	}
+	for i, p := range potions {
+		if p.Empty() {
+			continue
+		}
+		if result, ok := recipe.Perform(block, p.Item(), ingredient.Item()); ok {
+			out[i], brewable = result[0], true
+		}
+	}
+	return out, brewable
+}
+
+func sameItem(a, b world.Item) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	nameA, metaA := a.EncodeItem()
+	nameB, metaB := b.EncodeItem()
+	return nameA == nameB && metaA == metaB
+}
+
+// tickBrewing ports BrewingStandBlockEntity.serverTick: blaze powder is
+// burned for 20 brews once the fuel is out, a brew takes one of them as it
+// starts and 400 ticks to finish, and it stops if nothing can be brewed any
+// more or the ingredient is changed. It returns whether the inventory
+// changed.
 func (b *brewer) tickBrewing(block string, pos cube.Pos, tx *world.Tx) bool {
 	b.mu.Lock()
-	inventoryChanged := false
-
-	// Get each item in the brewer. We don't need to validate errors here since we know the bounds of the brewer.
-	left, _ := b.inventory.Item(1)
-	middle, _ := b.inventory.Item(2)
-	right, _ := b.inventory.Item(3)
-
-	// Keep track of our past durations, since if any of them change, we need to be able to tell they did and then
-	// update the viewers on the change.
-	prevDuration := b.duration
-	prevFuelAmount := b.fuelAmount
-	prevFuelTotal := b.fuelTotal
-
-	// If we need fuel, try and burn some.
-	fuel, _ := b.inventory.Item(4)
-
-	if _, ok := fuel.Item().(item.BlazePowder); ok && b.fuelAmount <= 0 {
-		inventoryChanged = true
-		defer b.inventory.SetItem(4, fuel.Grow(-1))
-		b.fuelAmount, b.fuelTotal = 20, 20
-	}
-
-	// Now get the ingredient item.
+	prevBrew, prevFuel, prevTotal := b.brewTime, b.fuelAmount, b.fuelTotal
 	ingredient, _ := b.inventory.Item(0)
+	fuel, _ := b.inventory.Item(4)
+	var potions [3]item.Stack
+	for i := range potions {
+		potions[i], _ = b.inventory.Item(i + 1)
+	}
 
-	// Check each input and see if it is affected by the ingredient.
-	leftOutput, leftAffected := recipe.Perform(block, left.Item(), ingredient.Item())
-	middleOutput, middleAffected := recipe.Perform(block, middle.Item(), ingredient.Item())
-	rightOutput, rightAffected := recipe.Perform(block, right.Item(), ingredient.Item())
+	changed := false
+	var sets []func()
+	if _, ok := fuel.Item().(item.BlazePowder); ok && b.fuelAmount <= 0 {
+		b.fuelAmount, b.fuelTotal = brewingFuelUses, brewingFuelUses
+		remaining := fuel.Grow(-1)
+		sets = append(sets, func() { _ = b.inventory.SetItem(4, remaining) })
+		changed = true
+	}
 
-	// Ensure that we have enough fuel to continue.
-	if b.fuelAmount > 0 {
-		// Now make sure that we have at least one potion that is affected by the ingredient.
-		if leftAffected || middleAffected || rightAffected {
-			// Tick our duration. If we have no brew duration, set it to the default of twenty seconds.
-			if b.duration == 0 {
-				b.duration = time.Second * 20
+	results, brewable := brewingResults(block, potions, ingredient)
+	brewed := false
+	switch {
+	case b.brewTime > 0:
+		b.brewTime--
+		if b.brewTime == 0 && brewable {
+			brewed, changed = true, true
+			for i, r := range results {
+				sets = append(sets, func() { _ = b.inventory.SetItem(i+1, r) })
 			}
-			b.duration -= time.Millisecond * 50
-
-			// If we have no duration, we are done.
-			if b.duration <= 0 {
-				// Create the output items.
-				if leftAffected {
-					inventoryChanged = true
-					defer b.inventory.SetItem(1, leftOutput[0])
+			remaining := ingredient.Grow(-1)
+			if remainder, ok := brewingRemainder(ingredient.Item()); ok {
+				if remaining.Empty() {
+					remaining = remainder
+				} else {
+					sets = append(sets, func() { dropItem(tx, remainder, pos.Vec3()) })
 				}
-				if middleAffected {
-					inventoryChanged = true
-					defer b.inventory.SetItem(2, middleOutput[0])
-				}
-				if rightAffected {
-					inventoryChanged = true
-					defer b.inventory.SetItem(3, rightOutput[0])
-				}
-
-				// Reduce the ingredient by one.
-				inventoryChanged = true
-				defer b.inventory.SetItem(0, ingredient.Grow(-1))
-				tx.PlaySound(pos.Vec3Centre(), sound.PotionBrewed{})
-
-				// Decrement the fuel, and reset the duration.
-				b.fuelAmount--
-				b.duration = 0
 			}
-		} else {
-			// None of the potions are affected by the ingredient, so reset the duration.
-			b.duration = 0
+			sets = append(sets, func() { _ = b.inventory.SetItem(0, remaining) })
+		} else if !brewable || !sameItem(ingredient.Item(), b.ingredient) {
+			b.brewTime = 0
 		}
-	} else {
-		// We don't have enough fuel, so reset our progress.
-		b.duration, b.fuelAmount, b.fuelTotal = 0, 0, 0
+	case brewable && b.fuelAmount > 0:
+		b.fuelAmount--
+		b.brewTime = brewingTicks
+		b.ingredient = ingredient.Item()
 	}
-
-	// Update the viewers on the new durations.
+	brew, fuelAmount, fuelTotal := b.brewTime, b.fuelAmount, b.fuelTotal
+	viewers := make([]ContainerViewer, 0, len(b.viewers))
 	for v := range b.viewers {
-		v.ViewBrewingUpdate(prevDuration, b.duration, prevFuelAmount, b.fuelAmount, prevFuelTotal, b.fuelTotal)
+		viewers = append(viewers, v)
 	}
-
 	b.mu.Unlock()
-	return inventoryChanged
+
+	for _, set := range sets {
+		set()
+	}
+	if brewed {
+		tx.PlaySound(pos.Vec3Centre(), sound.PotionBrewed{})
+	}
+	const tick = time.Millisecond * 50
+	for _, v := range viewers {
+		v.ViewBrewingUpdate(time.Duration(prevBrew)*tick, time.Duration(brew)*tick, prevFuel, fuelAmount, prevTotal, fuelTotal)
+	}
+	return changed
+}
+
+// brewingRemainder returns what an ingredient leaves once brewed, its
+// crafting remainder: a glass bottle for dragon's breath.
+func brewingRemainder(it world.Item) (item.Stack, bool) {
+	if _, ok := it.(item.DragonBreath); ok {
+		return item.NewStack(item.GlassBottle{}, 1), true
+	}
+	return item.Stack{}, false
 }
