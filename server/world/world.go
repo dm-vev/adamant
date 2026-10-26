@@ -111,7 +111,12 @@ type World struct {
 
 	// chunks holds a cache of chunks currently loaded. These chunks are cleared
 	// from this map after some time of not being used.
-	chunks        map[ChunkPos]*Column
+	chunks map[ChunkPos]*Column
+	// lastChunk caches the settled column most recently read at
+	// lastChunkPos, as ServerChunkCache keeps its last chunks. It is cleared
+	// whenever the column at a position is replaced or removed.
+	lastChunkPos  ChunkPos
+	lastChunk     *Column
 	chunkRequests map[ChunkPos][]chunkCallback
 
 	// entities holds a map of entities currently loaded and metadata associated
@@ -2160,6 +2165,9 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		_ = e.Close()
 	}
 	c.resetEntities()
+	if w.lastChunkPos == pos {
+		w.lastChunk = nil
+	}
 	if _, ok := w.chunks[pos]; ok {
 		delete(w.chunks, pos)
 		delete(w.pendingLight, pos)
@@ -2371,11 +2379,19 @@ func (w *World) loadedChunk(pos ChunkPos) (*Column, bool) {
 // calculated before they are returned.
 func (tx *Tx) chunk(pos ChunkPos) *Column {
 	w := tx.World()
+	if w.lastChunk != nil && w.lastChunkPos == pos {
+		return w.lastChunk
+	}
 	c, ok := w.chunks[pos]
+	if ok && c.settled {
+		w.lastChunkPos, w.lastChunk = pos, c
+		return c
+	}
 	if ok {
 		w.waitColumnReady(pos, c)
 		c.ensureLight(w, pos)
 		w.finishChunkRequest(tx, pos, c)
+		c.settled = c.Ready() && c.poisIndexed && c.circuitsIndexed
 		return c
 	}
 	c, err := w.loadChunk(pos)
@@ -2434,6 +2450,9 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			w.chunkCount.Add(1)
 		}
 		w.chunks[pos] = col
+		if w.lastChunkPos == pos {
+			w.lastChunk = nil
+		}
 		w.indexPOIChunk(pos, col)
 		w.indexCircuitChunk(pos, col)
 		w.reconcileMissingBlockStates(pos)
@@ -2476,6 +2495,9 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			w.chunkCount.Add(1)
 		}
 		w.chunks[pos] = col
+		if w.lastChunkPos == pos {
+			w.lastChunk = nil
+		}
 
 		// Schedule asynchronous generation.
 		// generateChunkAsync is shutdown-safe and will mark ready if closing.
@@ -2494,6 +2516,9 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			w.chunkCount.Add(1)
 		}
 		w.chunks[pos] = col
+		if w.lastChunkPos == pos {
+			w.lastChunk = nil
+		}
 		return col, err
 	}
 }
@@ -2895,6 +2920,9 @@ type Column struct {
 	// circuitsIndexed records installation of transient circuit components
 	// from this column's stored or generated block permutations.
 	circuitsIndexed bool
+	// settled is set once the column is ready, lit, indexed and its
+	// generation result consumed, so reads need no more setup.
+	settled bool
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
 	generation GenerationResult
@@ -3513,8 +3541,10 @@ func (w *World) finishGeneration(tx *Tx, c *Column) {
 	for _, e := range result.Entities {
 		tx.AddEntity(e)
 	}
-	if spawn := w.conf.Entities.Config().SpawnOriginalMobs; result.SpawnOriginalMobs && spawn != nil {
-		spawn(tx, result.pos)
+	if result.SpawnOriginalMobs {
+		if spawn := w.conf.Entities.Config().SpawnOriginalMobs; spawn != nil {
+			spawn(tx, result.pos)
+		}
 	}
 }
 

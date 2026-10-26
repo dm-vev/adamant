@@ -23,7 +23,7 @@ func (tx *Tx) DragonFight() DragonFightController {
 }
 
 func (w *World) loadDragonFight() error {
-	factory := w.conf.Entities.conf.DragonFight
+	factory := w.conf.Entities.Config().DragonFight
 	if w.Dimension() != End || factory == nil {
 		return nil
 	}

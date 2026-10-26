@@ -537,7 +537,7 @@ func (s summonCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 
 // summonVehicle spawns the minecarts, boats and rafts Java's summon accepts
 // besides mobs, or returns nil for other identifiers.
-func summonVehicle(conf world.EntityRegistryConfig, id string, opts world.EntitySpawnOpts) *world.EntityHandle {
+func summonVehicle(conf *world.EntityRegistryConfig, id string, opts world.EntitySpawnOpts) *world.EntityHandle {
 	minecarts := map[string]func(world.EntitySpawnOpts) *world.EntityHandle{
 		"minecraft:minecart":        conf.Minecart,
 		"minecraft:chest_minecart":  conf.MinecartChest,

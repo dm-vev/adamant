@@ -214,7 +214,7 @@ func (w weather) tickLightning(tx *Tx) {
 // With a chance scaled by the local difficulty the strike instead spawns a
 // skeleton trap horse under a harmless bolt.
 func (w weather) strikeLightning(tx *Tx, c ChunkPos) {
-	conf := w.w.conf.Entities.conf
+	conf := w.w.conf.Entities.Config()
 	if conf.Lightning == nil {
 		return
 	}

@@ -735,7 +735,7 @@ type HealingSource interface {
 // EntityRegistry is a mapping that EntityTypes may be registered to. It is used
 // for loading entities from disk in a World's Provider.
 type EntityRegistry struct {
-	conf EntityRegistryConfig
+	conf *EntityRegistryConfig
 	ent  map[string]EntityType
 }
 
@@ -859,12 +859,15 @@ func (conf EntityRegistryConfig) New(ent []EntityType) EntityRegistry {
 		}
 		m[name] = e
 	}
-	return EntityRegistry{conf: conf, ent: m}
+	return EntityRegistry{conf: &conf, ent: m}
 }
 
 // Config returns the EntityRegistryConfig that was used to create the
 // EntityRegistry.
-func (reg EntityRegistry) Config() EntityRegistryConfig {
+func (reg EntityRegistry) Config() *EntityRegistryConfig {
+	if reg.conf == nil {
+		return &EntityRegistryConfig{}
+	}
 	return reg.conf
 }
 
