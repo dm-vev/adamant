@@ -190,6 +190,7 @@ func (a *lightArea) propagate(queue *levelQueue) {
 		return
 	}
 	a.setLight(n.pos, n.lt, n.level)
+	a.changed |= 1 << a.chunkIndex((n.pos[0]-a.baseX)>>4, (n.pos[2]-a.baseZ)>>4)
 	a.spreadFrom(queue, n.pos, n.lt, n.level)
 }
 

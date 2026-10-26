@@ -20,6 +20,8 @@ type lightArea struct {
 	c            []*Chunk
 	w            int
 	r            cube.Range
+	// changed has bit i set once propagation changed light in c[i].
+	changed uint16
 }
 
 // lightQueue is a FIFO ring buffer used during light propagation.
@@ -165,8 +167,10 @@ func (a *lightArea) Fill() {
 
 // Spread executes the light 'spreading' stage, where the lightArea has light spread from every Chunk into the
 // neighbouring chunks. The neighbouring chunks must have passed the light 'filling' stage before this
-// function is called for an lightArea that includes them.
-func (a *lightArea) Spread() {
+// function is called for an lightArea that includes them. Spread returns the chunks whose light it changed as a
+// mask: bit i is set if it changed the light of the chunk at index i of those the lightArea was made of.
+func (a *lightArea) Spread() uint16 {
+	a.changed = 0
 	queue := newLevelQueue()
 	a.insertLightSpreadingNodes(queue, BlockLight)
 	a.insertLightSpreadingNodes(queue, SkyLight)
@@ -174,6 +178,7 @@ func (a *lightArea) Spread() {
 	for !queue.empty() {
 		a.propagate(queue)
 	}
+	return a.changed
 }
 
 // light returns the light at a cube.Pos with the light type l.

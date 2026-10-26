@@ -42,3 +42,12 @@ func (tx *Tx) FreshLight(pos cube.Pos) func(cube.Pos) (sky, block uint8) {
 		return c.SkyLight(uint8(p[0]&15), int16(p[1]), uint8(p[2]&15)), c.SubChunk(int16(p[1])).BlockLight(uint8(p[0]&15), uint8(p[1]&15), uint8(p[2]&15))
 	}
 }
+
+// ReadyChunk returns the chunk of the loaded column at pos for tests.
+func (tx *Tx) ReadyChunk(pos ChunkPos) *chunk.Chunk {
+	c, ok := tx.World().chunks[pos]
+	if !ok {
+		return nil
+	}
+	return c.Chunk
+}

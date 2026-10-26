@@ -26,7 +26,7 @@ var _ world.Prefetcher = (*Ent)(nil)
 // as well and panic if the two differ, counting the checks in
 // verifiedFluids and verifiedCollisions. Tests set it.
 var (
-	verifyPrefetch                                  bool
+	verifyPrefetch                                    bool
 	verifiedFluids, verifiedCollisions, verifiedPaths int
 )
 

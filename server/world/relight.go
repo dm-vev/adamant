@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -39,6 +40,7 @@ func (w *World) relightIfChanged(c *Column, pos cube.Pos, before chunk.LightProp
 // last was. Changes are relit together per chunk, so that many blocks
 // changed at once, as a floor being laid, are relit in one go.
 func (w *World) flushLight() {
+	w.flushSpreads()
 	if len(w.pendingLight) == 0 {
 		return
 	}
@@ -132,7 +134,11 @@ func (w *World) relightChunks(changed []ChunkPos) {
 			}
 		}
 	}
-	spread := make(map[ChunkPos]struct{}, len(refill)*2)
+	type fill struct {
+		pos ChunkPos
+		c   *chunk.Chunk
+	}
+	fills := make([]fill, 0, len(refill))
 	for pos := range refill {
 		// Filling the chunk takes in every change pending in it.
 		delete(w.pendingLight, pos)
@@ -140,10 +146,17 @@ func (w *World) relightChunks(changed []ChunkPos) {
 		if !ok || !col.lightReady.Load() {
 			continue
 		}
-		chunk.LightArea([]*chunk.Chunk{col.Chunk}, int(pos[0]), int(pos[1])).Fill()
+		fills = append(fills, fill{pos: pos, c: col.Chunk})
+	}
+	// Each chunk is filled on its own, so they are filled on all cores.
+	parallel.For(len(fills), 1, func(i int) {
+		chunk.LightArea([]*chunk.Chunk{fills[i].c}, int(fills[i].pos[0]), int(fills[i].pos[1])).Fill()
+	})
+	spread := make(map[ChunkPos]struct{}, len(fills)*2)
+	for _, f := range fills {
 		for x := int32(-1); x <= 1; x++ {
 			for z := int32(-1); z <= 1; z++ {
-				spread[ChunkPos{pos[0] + x, pos[1] + z}] = struct{}{}
+				spread[ChunkPos{f.pos[0] + x, f.pos[1] + z}] = struct{}{}
 			}
 		}
 	}
@@ -152,6 +165,7 @@ func (w *World) relightChunks(changed []ChunkPos) {
 			w.spreadLight(pos)
 		}
 	}
+	w.flushSpreads()
 }
 
 // LightBlockedInto ports LightEngine.getLightBlockInto for light passing

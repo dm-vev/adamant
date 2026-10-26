@@ -15,6 +15,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/parallel"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -46,6 +47,10 @@ type World struct {
 	// pendingLight holds, per chunk, the positions whose blocks changed in
 	// how they affect light since the light was last brought up to date.
 	pendingLight map[ChunkPos][]cube.Pos
+	// pendingSpreads holds, in the order they became possible, the chunks
+	// whose light is to be spread into the chunks around them, all of which
+	// were lit: flushLight spreads them together.
+	pendingSpreads []pendingSpread
 
 	queue         chan transaction
 	queueClosing  chan struct{}
@@ -2956,9 +2961,18 @@ func (w *World) calculateLight(centre ChunkPos) {
 	}
 }
 
-// spreadLight spreads the light from the chunk passed at the position passed
-// to all neighbours if each of them is loaded.
+// spreadLight queues the light of the chunk at pos to be spread into all its
+// neighbours if each of them is generated and lit. The spread is done with
+// the others queued before light is next read.
 func (w *World) spreadLight(pos ChunkPos) {
+	if chunks, ok := w.spreadArea(pos); ok {
+		w.pendingSpreads = append(w.pendingSpreads, pendingSpread{pos: pos, chunks: chunks})
+	}
+}
+
+// spreadArea returns the chunks around pos, pos in the middle, if they are
+// all generated and lit so that the light of pos can be spread into them.
+func (w *World) spreadArea(pos ChunkPos) ([]*chunk.Chunk, bool) {
 	c := make([]*chunk.Chunk, 0, 9)
 	for z := int32(-1); z <= 1; z++ {
 		for x := int32(-1); x <= 1; x++ {
@@ -2966,18 +2980,101 @@ func (w *World) spreadLight(pos ChunkPos) {
 			neighbour, ok := w.chunks[neighbourPos]
 			if !ok {
 				// Not all surrounding chunks existed: Stop spreading light.
-				return
+				return nil, false
 			}
 			if !neighbour.Ready() || !neighbour.lightReady.Load() {
 				// The neighbour chunk hasn't finished generating yet or its light hasn't been initialised
 				// yet. We'll spread the light once all chunks involved are ready.
-				return
+				return nil, false
 			}
 			c = append(c, neighbour.Chunk)
 		}
 	}
-	// All chunks surrounding the current one are present, so we can spread.
-	chunk.LightArea(c, int(pos[0])-1, int(pos[1])-1).Spread()
+	return c, true
+}
+
+// pendingSpread is the spread of the light of the chunk at pos into the
+// chunks around it, chunks holding all nine.
+type pendingSpread struct {
+	pos    ChunkPos
+	chunks []*chunk.Chunk
+}
+
+// flushSpreads does the pending light spreads and spreads again where they
+// changed light, until spreading changes nothing: spreading only raises
+// light, so the light ends up the same whatever order the chunks became
+// ready in. In each round, spreads whose middle chunks lie at the same
+// coordinates modulo 3 share no chunk, so each such class is spread on all
+// cores while the owner waits.
+func (w *World) flushSpreads() {
+	if len(w.pendingSpreads) == 0 {
+		return
+	}
+	queued := make(map[ChunkPos]struct{}, len(w.pendingSpreads))
+	for _, sp := range w.pendingSpreads {
+		if w.spreadStillLoaded(sp) {
+			queued[sp.pos] = struct{}{}
+		}
+	}
+	w.pendingSpreads = nil
+	changed := make(map[ChunkPos]struct{})
+	for round := 0; len(queued) > 0; round++ {
+		if round == maxSpreadRounds {
+			w.conf.Log.Debug("light spreading did not settle", "rounds", round, "areas", len(queued))
+			break
+		}
+		var classes [9][]pendingSpread
+		for pos := range queued {
+			if chunks, ok := w.spreadArea(pos); ok {
+				class := (pos[0]%3+3)%3*3 + (pos[1]%3+3)%3
+				classes[class] = append(classes[class], pendingSpread{pos: pos, chunks: chunks})
+			}
+		}
+		clear(queued)
+		clear(changed)
+		for _, spreads := range classes {
+			masks := make([]uint16, len(spreads))
+			parallel.For(len(spreads), 1, func(i int) {
+				sp := spreads[i]
+				masks[i] = chunk.LightArea(sp.chunks, int(sp.pos[0])-1, int(sp.pos[1])-1).Spread()
+			})
+			for i, sp := range spreads {
+				for bit := range 9 {
+					if masks[i]&(1<<bit) != 0 {
+						changed[ChunkPos{sp.pos[0] + int32(bit%3) - 1, sp.pos[1] + int32(bit/3) - 1}] = struct{}{}
+					}
+				}
+			}
+		}
+		// Light that changed in a chunk may spread on into the chunks
+		// around it through the areas holding it.
+		for pos := range changed {
+			for x := int32(-1); x <= 1; x++ {
+				for z := int32(-1); z <= 1; z++ {
+					queued[ChunkPos{pos[0] + x, pos[1] + z}] = struct{}{}
+				}
+			}
+		}
+	}
+}
+
+// maxSpreadRounds bounds the rounds of flushSpreads. Light settles within a
+// few, as it only ever rises and reaches at most 15 blocks.
+const maxSpreadRounds = 32
+
+// spreadStillLoaded reports whether the chunks of a pending spread are all
+// still the loaded ones at their positions.
+func (w *World) spreadStillLoaded(sp pendingSpread) bool {
+	i := 0
+	for z := int32(-1); z <= 1; z++ {
+		for x := int32(-1); x <= 1; x++ {
+			if col, ok := w.chunks[ChunkPos{sp.pos[0] + x, sp.pos[1] + z}]; !ok || col.Chunk != sp.chunks[i] {
+				return false
+			}
+			i++
+		}
+	}
+	return true
 }
 
 // autoSave runs until the world is running, saving and removing chunks that
