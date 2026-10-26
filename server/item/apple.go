@@ -15,11 +15,6 @@ func (a Apple) Consume(_ *world.Tx, c Consumer) Stack {
 	return Stack{}
 }
 
-// CompostChance ...
-func (Apple) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (a Apple) EncodeItem() (name string, meta int16) {
 	return "minecraft:apple", 0

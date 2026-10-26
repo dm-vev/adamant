@@ -43,9 +43,6 @@ func (g GoldenDandelion) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(g))
 }
 
-// CompostChance ...
-func (GoldenDandelion) CompostChance() float64 { return 0.65 }
-
 // EncodeItem ...
 func (GoldenDandelion) EncodeItem() (string, int16) { return "minecraft:golden_dandelion", 0 }
 
@@ -90,9 +87,6 @@ func (m BrownMushroom) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(m))
 }
 
-// CompostChance ...
-func (BrownMushroom) CompostChance() float64 { return 0.65 }
-
 // EncodeItem ...
 func (BrownMushroom) EncodeItem() (string, int16) { return "minecraft:brown_mushroom", 0 }
 
@@ -134,9 +128,6 @@ func (RedMushroom) FlammabilityInfo() FlammabilityInfo {
 func (m RedMushroom) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(m))
 }
-
-// CompostChance ...
-func (RedMushroom) CompostChance() float64 { return 0.65 }
 
 // EncodeItem ...
 func (RedMushroom) EncodeItem() (string, int16) { return "minecraft:red_mushroom", 0 }
@@ -181,9 +172,6 @@ func (a Azalea) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(a))
 }
 
-// CompostChance ...
-func (Azalea) CompostChance() float64 { return 0.65 }
-
 // EncodeItem ...
 func (Azalea) EncodeItem() (string, int16) { return "minecraft:azalea", 0 }
 
@@ -226,9 +214,6 @@ func (FloweringAzalea) FlammabilityInfo() FlammabilityInfo {
 func (a FloweringAzalea) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(a))
 }
-
-// CompostChance ...
-func (FloweringAzalea) CompostChance() float64 { return 0.65 }
 
 // EncodeItem ...
 func (FloweringAzalea) EncodeItem() (string, int16) { return "minecraft:flowering_azalea", 0 }

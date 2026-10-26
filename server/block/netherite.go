@@ -31,3 +31,7 @@ func (Netherite) EncodeItem() (name string, meta int16) {
 func (Netherite) EncodeBlock() (string, map[string]any) {
 	return "minecraft:netherite_block", nil
 }
+
+// FireProof reports that the item survives fire and lava, as its
+// damage_resistant component for is_fire.
+func (Netherite) FireProof() bool { return true }

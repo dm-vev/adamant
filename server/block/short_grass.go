@@ -37,11 +37,6 @@ func (g ShortGrass) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
 	return item.BoneMealResultNone
 }
 
-// CompostChance ...
-func (g ShortGrass) CompostChance() float64 {
-	return 0.65
-}
-
 // NeighbourUpdateTick ...
 func (g ShortGrass) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	if !supportsVegetation(g, tx.Block(pos.Side(cube.FaceDown))) {

@@ -21,7 +21,7 @@ func (f FlintAndSteel) MaxCount() int {
 // DurabilityInfo ...
 func (f FlintAndSteel) DurabilityInfo() DurabilityInfo {
 	return DurabilityInfo{
-		MaxDurability: 65,
+		MaxDurability: 64,
 		BrokenItem:    simpleItem(Stack{}),
 	}
 }

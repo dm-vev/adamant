@@ -13,13 +13,21 @@ type absorption struct {
 	nopLasting
 }
 
-// Start ...
+// Start tops the entity's absorption up to four points a level, as
+// AbsorptionMobEffect.onEffectStarted.
 func (absorption) Start(e world.Entity, lvl int) {
 	if i, ok := e.(interface {
+		Absorption() float64
 		SetAbsorption(health float64)
 	}); ok {
-		i.SetAbsorption(4 * float64(lvl))
+		i.SetAbsorption(max(i.Absorption(), 4*float64(lvl)))
 	}
+}
+
+// Restart tops the absorption up when the effect is added again but the
+// existing one is kept, as LivingEntity.addEffect starts every effect added.
+func (a absorption) Restart(e world.Entity, lvl int) {
+	a.Start(e, lvl)
 }
 
 // End ...

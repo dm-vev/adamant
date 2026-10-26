@@ -70,6 +70,11 @@ func (c Cake) BreakInfo() BreakInfo {
 	return newBreakInfo(0.5, neverHarvestable, nothingEffective, simpleDrops())
 }
 
+// MaxCount returns 1: cakes do not stack.
+func (c Cake) MaxCount() int {
+	return 1
+}
+
 // EncodeItem ...
 func (c Cake) EncodeItem() (name string, meta int16) {
 	return "minecraft:cake", 0

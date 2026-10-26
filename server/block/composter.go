@@ -109,12 +109,14 @@ func (c Composter) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User
 
 // Fill fills up the composter.
 func (c Composter) fill(it item.Stack, pos cube.Pos, tx *world.Tx) bool {
-	compostable, ok := it.Item().(item.Compostable)
+	chance, ok := item.CompostChance(it.Item())
 	if !ok {
 		return false
 	}
 	tx.AddParticle(pos.Vec3(), particle.BoneMeal{})
-	if rand.Float64() > compostable.CompostChance() {
+	// ContextIntProviders.compostable: an empty composter always takes a
+	// layer, a filling one with the item's chance.
+	if c.Level > 0 && rand.IntN(100) >= chance {
 		tx.PlaySound(pos.Vec3(), sound.ComposterFill{})
 		return true
 	}

@@ -36,9 +36,6 @@ func (m ShelfMushroom) BreakInfo() BreakInfo {
 	})
 }
 
-// CompostChance ...
-func (ShelfMushroom) CompostChance() float64 { return 0.65 }
-
 // UseOnBlock ports ShelfMushroomBlock.getStateForPlacement: the mushroom grows
 // away from the first horizontal block it can attach to, in order of the
 // directions the user looks.

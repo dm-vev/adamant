@@ -26,11 +26,6 @@ type Vines struct {
 	WestDirection bool
 }
 
-// CompostChance ...
-func (Vines) CompostChance() float64 {
-	return 0.5
-}
-
 // SideClosed ...
 func (Vines) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 	return false

@@ -47,11 +47,6 @@ func (ChorusPlant) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(60, 100, false)
 }
 
-// CompostChance ...
-func (ChorusPlant) CompostChance() float64 {
-	return 0.65
-}
-
 // UseOnBlock ...
 func (c ChorusPlant) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, c)

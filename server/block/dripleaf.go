@@ -73,9 +73,6 @@ func (BigDripleaf) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(60, 100, false)
 }
 
-// CompostChance ...
-func (BigDripleaf) CompostChance() float64 { return 0.65 }
-
 // UseOnBlock ports BigDripleafBlock.getStateForPlacement: a leaf placed on
 // another dripleaf takes its facing, otherwise it faces the placer.
 func (d BigDripleaf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
@@ -332,9 +329,6 @@ func (d SmallDripleaf) BreakInfo() BreakInfo {
 func (SmallDripleaf) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(60, 100, false)
 }
-
-// CompostChance ...
-func (SmallDripleaf) CompostChance() float64 { return 0.3 }
 
 // smallDripleafSurvives ports SmallDripleafBlock.canSurvive for the lower
 // half: clay or moss below, or soil below with a water source at the plant.

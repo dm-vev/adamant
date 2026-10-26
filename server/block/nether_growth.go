@@ -91,11 +91,6 @@ func (r CrimsonRoots) BreakInfo() BreakInfo {
 	}, nothingEffective, oneOf(r))
 }
 
-// CompostChance ...
-func (CrimsonRoots) CompostChance() float64 {
-	return 0.5
-}
-
 // EncodeItem ...
 func (CrimsonRoots) EncodeItem() (name string, meta int16) {
 	return "minecraft:crimson_roots", 0
@@ -149,11 +144,6 @@ func (r WarpedRoots) BreakInfo() BreakInfo {
 	return newBreakInfo(0, func(t item.Tool) bool {
 		return t.ToolType() == item.TypeShears
 	}, nothingEffective, oneOf(r))
-}
-
-// CompostChance ...
-func (WarpedRoots) CompostChance() float64 {
-	return 0.5
 }
 
 // EncodeItem ...

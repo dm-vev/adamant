@@ -13,11 +13,6 @@ func (PumpkinPie) Consume(_ *world.Tx, c Consumer) Stack {
 	return Stack{}
 }
 
-// CompostChance ...
-func (PumpkinPie) CompostChance() float64 {
-	return 1
-}
-
 // EncodeItem ...
 func (PumpkinPie) EncodeItem() (name string, meta int16) {
 	return "minecraft:pumpkin_pie", 0

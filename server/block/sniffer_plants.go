@@ -28,9 +28,6 @@ func (t Torchflower) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(t))
 }
 
-// CompostChance ...
-func (Torchflower) CompostChance() float64 { return 0.85 }
-
 // UseOnBlock places the flower on soil.
 func (t Torchflower) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, t)
@@ -98,9 +95,6 @@ func (TorchflowerCrop) HasLiquidDrops() bool { return true }
 func (c TorchflowerCrop) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(TorchflowerCrop{}))
 }
-
-// CompostChance ...
-func (TorchflowerCrop) CompostChance() float64 { return 0.3 }
 
 // UseOnBlock plants the seeds on farmland.
 func (c TorchflowerCrop) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
@@ -191,9 +185,6 @@ func (c PitcherCrop) BreakInfo() BreakInfo {
 		return []item.Stack{item.NewStack(PitcherCrop{}, 1)}
 	})
 }
-
-// CompostChance ...
-func (PitcherCrop) CompostChance() float64 { return 0.3 }
 
 // UseOnBlock plants the pod on farmland.
 func (c PitcherCrop) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
@@ -346,9 +337,6 @@ func (PitcherPlant) FlammabilityInfo() FlammabilityInfo {
 func (p PitcherPlant) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(PitcherPlant{}))
 }
-
-// CompostChance ...
-func (PitcherPlant) CompostChance() float64 { return 0.85 }
 
 // UseOnBlock places both halves on soil.
 func (p PitcherPlant) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {

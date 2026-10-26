@@ -19,11 +19,6 @@ func (LilyPad) HasLiquidDrops() bool {
 	return true
 }
 
-// CompostChance ...
-func (LilyPad) CompostChance() float64 {
-	return 0.65
-}
-
 // EntityInside ports LilyPadBlock.entityInside: boats break lily pads they
 // run into.
 func (l LilyPad) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {

@@ -153,11 +153,6 @@ func (SeaPickle) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(15, 100, true)
 }
 
-// CompostChance ...
-func (SeaPickle) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (SeaPickle) EncodeItem() (name string, meta int16) {
 	return "minecraft:sea_pickle", 0

@@ -59,14 +59,6 @@ func (d DoubleTallGrass) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, grassDrops(d))
 }
 
-// CompostChance ...
-func (d DoubleTallGrass) CompostChance() float64 {
-	if d.Type == FernDoubleTallGrass() {
-		return 0.65
-	}
-	return 0.5
-}
-
 // EncodeItem ...
 func (d DoubleTallGrass) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + d.Type.String(), 0

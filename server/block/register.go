@@ -650,6 +650,11 @@ func init() {
 	world.RegisterItem(RawCopper{})
 	world.RegisterItem(RawGold{})
 	world.RegisterItem(RawIron{})
+	world.RegisterItem(SuspiciousSand{})
+	world.RegisterItem(SuspiciousGravel{})
+	for mode := CommandBlockImpulse; mode <= CommandBlockChain; mode++ {
+		world.RegisterItem(CommandBlock{Mode: mode})
+	}
 	world.RegisterItem(ReinforcedDeepslate{})
 	world.RegisterItem(RedMushroom{})
 	world.RegisterItem(ResinBricks{Chiseled: true})

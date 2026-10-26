@@ -50,11 +50,6 @@ func (s WheatSeeds) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, cropSeedDrops(s, item.Wheat{}, s.Growth))
 }
 
-// CompostChance ...
-func (WheatSeeds) CompostChance() float64 {
-	return 0.3
-}
-
 // EncodeItem ...
 func (s WheatSeeds) EncodeItem() (name string, meta int16) {
 	return "minecraft:wheat_seeds", 0

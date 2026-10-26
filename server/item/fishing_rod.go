@@ -13,7 +13,7 @@ func (FishingRod) MaxCount() int {
 // DurabilityInfo ...
 func (FishingRod) DurabilityInfo() DurabilityInfo {
 	return DurabilityInfo{
-		MaxDurability: 65,
+		MaxDurability: 64,
 		BrokenItem:    simpleItem(Stack{}),
 	}
 }

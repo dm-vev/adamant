@@ -41,7 +41,7 @@ type CommandBlock struct {
 }
 
 // EncodeItem encodes command blocks as items. They are unobtainable in survival but available in creative.
-func (b CommandBlock) EncodeItem() (string, int16) { return b.name(), int16(b.Mode) }
+func (b CommandBlock) EncodeItem() (string, int16) { return b.name(), 0 }
 func (b CommandBlock) name() string {
 	switch b.Mode {
 	case CommandBlockRepeat:

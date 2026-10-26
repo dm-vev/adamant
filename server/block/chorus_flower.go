@@ -180,11 +180,6 @@ func (ChorusFlower) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(60, 100, false)
 }
 
-// CompostChance ...
-func (ChorusFlower) CompostChance() float64 {
-	return 0.65
-}
-
 // UseOnBlock ...
 func (c ChorusFlower) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	c.Age = 0

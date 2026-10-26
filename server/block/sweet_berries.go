@@ -36,11 +36,6 @@ func (SweetBerries) Consume(_ *world.Tx, c item.Consumer) item.Stack {
 	return item.Stack{}
 }
 
-// CompostChance ...
-func (SweetBerries) CompostChance() float64 {
-	return 0.3
-}
-
 // UseOnBlock ...
 func (s SweetBerries) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, s)

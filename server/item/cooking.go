@@ -136,3 +136,28 @@ func CookingFuelRemainder(it world.Item) (Stack, bool) {
 	}
 	return Stack{}, false
 }
+
+var (
+	compostOnce sync.Once
+	compostable map[cookingItemKey]int
+)
+
+// CompostChance returns the chance in percent that the item adds a layer to
+// a composter that is not empty, as its compostable component resolves, and
+// whether it can be composted at all. An empty composter always takes a
+// layer.
+func CompostChance(it world.Item) (int, bool) {
+	if it == nil {
+		return 0, false
+	}
+	compostOnce.Do(func() {
+		compostable = make(map[cookingItemKey]int, len(javaCompostable))
+		for id, chance := range javaCompostable {
+			if it, ok := javaItem(id); ok {
+				compostable[cookingItem(it)] = chance
+			}
+		}
+	})
+	chance, ok := compostable[cookingItem(it)]
+	return chance, ok
+}

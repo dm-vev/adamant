@@ -49,11 +49,6 @@ func (SporeBlossom) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(15, 100, true)
 }
 
-// CompostChance ...
-func (SporeBlossom) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (s SporeBlossom) EncodeItem() (name string, meta int16) {
 	return "minecraft:spore_blossom", 0

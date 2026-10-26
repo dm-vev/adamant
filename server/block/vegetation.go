@@ -72,9 +72,6 @@ func (r RedShrub) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(r))
 }
 
-// CompostChance ...
-func (RedShrub) CompostChance() float64 { return 0.3 }
-
 // EncodeItem ...
 func (RedShrub) EncodeItem() (name string, meta int16) {
 	return "minecraft:red_shrub", 0

@@ -358,11 +358,6 @@ func (f Fungus) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(f))
 }
 
-// CompostChance ...
-func (Fungus) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (f Fungus) EncodeItem() (name string, meta int16) {
 	if f.Warped {

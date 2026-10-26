@@ -87,11 +87,6 @@ func (g Grass) BreakInfo() BreakInfo {
 	return newBreakInfo(0.6, alwaysHarvestable, shovelEffective, silkTouchOneOf(Dirt{}, g))
 }
 
-// CompostChance ...
-func (Grass) CompostChance() float64 {
-	return 0.3
-}
-
 // EncodeItem ...
 func (Grass) EncodeItem() (name string, meta int16) {
 	return "minecraft:grass_block", 0

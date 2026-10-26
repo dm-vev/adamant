@@ -208,7 +208,7 @@ func (Crossbow) MaxCount() int {
 // DurabilityInfo ...
 func (Crossbow) DurabilityInfo() DurabilityInfo {
 	return DurabilityInfo{
-		MaxDurability: 464,
+		MaxDurability: 465,
 		BrokenItem:    simpleItem(Stack{}),
 	}
 }

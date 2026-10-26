@@ -119,11 +119,6 @@ func (f Flower) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(f))
 }
 
-// CompostChance ...
-func (Flower) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (f Flower) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + f.Type.String(), 0

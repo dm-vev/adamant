@@ -248,11 +248,6 @@ func (b FireflyBush) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(b))
 }
 
-// CompostChance ...
-func (FireflyBush) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (FireflyBush) EncodeItem() (name string, meta int16) {
 	return "minecraft:firefly_bush", 0
@@ -307,11 +302,6 @@ func (b Bush) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(b))
 }
 
-// CompostChance ...
-func (Bush) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (Bush) EncodeItem() (name string, meta int16) {
 	return "minecraft:bush", 0
@@ -357,11 +347,6 @@ func (CactusFlower) HasLiquidDrops() bool {
 // BreakInfo ...
 func (c CactusFlower) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(c))
-}
-
-// CompostChance ...
-func (CactusFlower) CompostChance() float64 {
-	return 0.65
 }
 
 // EncodeItem ...
@@ -416,11 +401,6 @@ func (h HangingRoots) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(h))
 }
 
-// CompostChance ...
-func (HangingRoots) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (HangingRoots) EncodeItem() (name string, meta int16) {
 	return "minecraft:hanging_roots", 0
@@ -451,11 +431,6 @@ func (g ShortDryGrass) BreakInfo() BreakInfo {
 		}
 		return nil
 	})
-}
-
-// CompostChance ...
-func (ShortDryGrass) CompostChance() float64 {
-	return 0.65
 }
 
 // NeighbourUpdateTick ...
@@ -510,11 +485,6 @@ func (g TallDryGrass) BreakInfo() BreakInfo {
 		}
 		return nil
 	})
-}
-
-// CompostChance ...
-func (TallDryGrass) CompostChance() float64 {
-	return 0.65
 }
 
 // NeighbourUpdateTick ...
@@ -605,11 +575,6 @@ func (LeafLitter) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(30, 100, true)
 }
 
-// CompostChance ...
-func (LeafLitter) CompostChance() float64 {
-	return 0.3
-}
-
 // EncodeItem ...
 func (LeafLitter) EncodeItem() (name string, meta int16) {
 	return "minecraft:leaf_litter", 0
@@ -674,11 +639,6 @@ func (w Wildflowers) BreakInfo() BreakInfo {
 // FlammabilityInfo ...
 func (Wildflowers) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(30, 100, true)
-}
-
-// CompostChance ...
-func (Wildflowers) CompostChance() float64 {
-	return 0.3
 }
 
 // EncodeItem ...
@@ -748,11 +708,6 @@ func (p PaleHangingMoss) BreakInfo() BreakInfo {
 // FlammabilityInfo ...
 func (PaleHangingMoss) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(30, 60, true)
-}
-
-// CompostChance ...
-func (PaleHangingMoss) CompostChance() float64 {
-	return 0.65
 }
 
 // EncodeItem ...

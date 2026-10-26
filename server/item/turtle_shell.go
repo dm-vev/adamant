@@ -15,7 +15,7 @@ func (TurtleShell) Use(_ *world.Tx, _ User, ctx *UseContext) bool {
 // DurabilityInfo ...
 func (TurtleShell) DurabilityInfo() DurabilityInfo {
 	return DurabilityInfo{
-		MaxDurability: 276,
+		MaxDurability: 275,
 		BrokenItem:    simpleItem(Stack{}),
 	}
 }

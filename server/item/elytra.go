@@ -14,7 +14,7 @@ func (Elytra) Use(_ *world.Tx, _ User, ctx *UseContext) bool {
 // DurabilityInfo ...
 func (Elytra) DurabilityInfo() DurabilityInfo {
 	return DurabilityInfo{
-		MaxDurability: 433,
+		MaxDurability: 432,
 		Persistent:    true,
 		BrokenItem:    simpleItem(Stack{}),
 	}

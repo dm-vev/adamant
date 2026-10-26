@@ -114,11 +114,6 @@ func (m PaleMossCarpet) BreakInfo() BreakInfo {
 	return newBreakInfo(0.1, alwaysHarvestable, nothingEffective, oneOf(m))
 }
 
-// CompostChance ...
-func (PaleMossCarpet) CompostChance() float64 {
-	return 0.3
-}
-
 // EncodeItem ...
 func (PaleMossCarpet) EncodeItem() (name string, meta int16) {
 	return "minecraft:pale_moss_carpet", 0

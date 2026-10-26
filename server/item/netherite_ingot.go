@@ -24,3 +24,7 @@ func (NetheriteIngot) MaterialColour() string {
 func (NetheriteIngot) PayableForBeacon() bool {
 	return true
 }
+
+// FireProof reports that the item survives fire and lava, as its
+// damage_resistant component for is_fire.
+func (NetheriteIngot) FireProof() bool { return true }

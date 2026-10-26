@@ -25,3 +25,7 @@ func (AncientDebris) EncodeItem() (name string, meta int16) {
 func (AncientDebris) EncodeBlock() (string, map[string]any) {
 	return "minecraft:ancient_debris", nil
 }
+
+// FireProof reports that the item survives fire and lava, as its
+// damage_resistant component for is_fire.
+func (AncientDebris) FireProof() bool { return true }

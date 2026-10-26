@@ -35,11 +35,6 @@ func (g Fern) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
 	return item.BoneMealResultNone
 }
 
-// CompostChance ...
-func (g Fern) CompostChance() float64 {
-	return 0.3
-}
-
 // NeighbourUpdateTick ...
 func (g Fern) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	if !supportsVegetation(g, tx.Block(pos.Side(cube.FaceDown))) {

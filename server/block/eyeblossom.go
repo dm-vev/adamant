@@ -145,11 +145,6 @@ func (e Eyeblossom) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(e))
 }
 
-// CompostChance ...
-func (Eyeblossom) CompostChance() float64 {
-	return 0.65
-}
-
 // EncodeItem ...
 func (e Eyeblossom) EncodeItem() (name string, meta int16) {
 	if e.Open {

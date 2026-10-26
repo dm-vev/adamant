@@ -137,11 +137,6 @@ func leavesDrops(l Leaves, tool item.Tool, enchantments []item.Enchantment, tx *
 	return drops
 }
 
-// CompostChance ...
-func (Leaves) CompostChance() float64 {
-	return 0.3
-}
-
 // EncodeItem ...
 func (l Leaves) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + l.Type.String(), 0

@@ -78,11 +78,6 @@ func (p PinkPetals) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(30, 100, true)
 }
 
-// CompostChance ...
-func (PinkPetals) CompostChance() float64 {
-	return 0.3
-}
-
 // EncodeItem ...
 func (PinkPetals) EncodeItem() (name string, meta int16) {
 	return "minecraft:pink_petals", 0

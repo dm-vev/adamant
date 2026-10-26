@@ -19,7 +19,7 @@ func (Bow) MaxCount() int {
 // DurabilityInfo ...
 func (Bow) DurabilityInfo() DurabilityInfo {
 	return DurabilityInfo{
-		MaxDurability: 385,
+		MaxDurability: 384,
 		BrokenItem:    simpleItem(Stack{}),
 	}
 }

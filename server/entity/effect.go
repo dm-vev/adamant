@@ -171,6 +171,10 @@ type effectAction struct {
 	startLevel   int
 	end          effect.LastingType
 	endLevel     int
+	// restarted is an effect kept as it was that LivingEntity.addEffect
+	// still starts again at the level added.
+	restarted      effect.LastingType
+	restartedLevel int
 }
 
 func (m *EffectManager) validateEffect(e effect.Effect) {
@@ -211,7 +215,7 @@ func (m *EffectManager) addLocked(e effect.Effect) (effect.Effect, effectAction)
 		return e, effectAction{start: t, startLevel: e.Level()}
 	}
 	if existing.Level() > e.Level() || (existing.Level() == e.Level() && ((existing.Duration() > e.Duration() && !e.Infinite()) || existing.Infinite())) {
-		return existing, effectAction{}
+		return existing, effectAction{restarted: t, restartedLevel: e.Level()}
 	}
 	m.effects[typ] = e
 	return e, effectAction{
@@ -249,5 +253,8 @@ func (m *EffectManager) applyAction(entity Living, action effectAction) {
 	}
 	if action.start != nil {
 		action.start.Start(entity, action.startLevel)
+	}
+	if r, ok := action.restarted.(interface{ Restart(world.Entity, int) }); ok {
+		r.Restart(entity, action.restartedLevel)
 	}
 }

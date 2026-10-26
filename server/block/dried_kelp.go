@@ -15,11 +15,6 @@ func (DriedKelp) FlammabilityInfo() FlammabilityInfo {
 	return newFlammabilityInfo(30, 5, false)
 }
 
-// CompostChance ...
-func (DriedKelp) CompostChance() float64 {
-	return 0.5
-}
-
 // EncodeItem ...
 func (DriedKelp) EncodeItem() (name string, meta int16) {
 	return "minecraft:dried_kelp_block", 0
