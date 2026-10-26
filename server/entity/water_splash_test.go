@@ -47,3 +47,28 @@ func TestWaterSplashHurtsExtinguishesAndRehydrates(t *testing.T) {
 		}
 	})
 }
+
+// TestSplashPotionScalesByBoxDistance follows ThrownSplashPotion.onHitAsPotion:
+// the effect scales by the distance between the potion's box and the
+// entity's, so a cow 4.4 blocks from the impact, its side 3.825 blocks from
+// the potion, still gets (1-3.825/4)*3600 ticks of Strength, while one 5
+// blocks away is out of reach.
+func TestSplashPotionScalesByBoxDistance(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+	<-w.Exec(func(tx *world.Tx) {
+		at := mgl64.Vec3{0.5, 100, 0.5}
+		near := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{4.4, 0, 0})})).(*Cow)
+		far := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{0, 0, 5})})).(*Cow)
+		thrower := tx.AddEntity(NewZombie(world.EntitySpawnOpts{Position: at.Add(mgl64.Vec3{20, 0, 0})}))
+		splash := tx.AddEntity(NewSplashPotion(world.EntitySpawnOpts{Position: at}, potion.Strength(), thrower)).(*Ent)
+		potionSplash(1, potion.Strength(), false)(splash, tx, nil)
+
+		if effects := near.Effects(); len(effects) != 1 || effects[0].Duration() < 157*time.Second/20 || effects[0].Duration() > 158*time.Second/20 {
+			t.Fatalf("cow 4.4 blocks away got %v, want about 158 ticks of Strength", effects)
+		}
+		if effects := far.Effects(); len(effects) != 0 {
+			t.Fatalf("cow 5 blocks away got %v", effects)
+		}
+	})
+}

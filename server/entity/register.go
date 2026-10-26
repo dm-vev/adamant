@@ -158,6 +158,7 @@ var conf = world.EntityRegistryConfig{
 	RaidSpawner:        NewRaidSpawner,
 	StartRiding:        StartRiding,
 	SpawnMob:           spawnMob,
+	SpawnEggOffspring:  spawnEggOffspring,
 	NaturalSpawnTick:   NaturalSpawnTick,
 	SpawnMobFromNBT:    spawnMobFromNBT,
 	ExperienceOrbs:     NewExperienceOrbs,

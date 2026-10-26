@@ -34,7 +34,7 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 |---|---:|---|
 | ArmorStandItem | 1 | Ported `useOn`: no placement on the bottom face, the stand stands on the floor of the placed block (it floated half a block up), the box must be clear of blocks and entities, yaw rounds to 45° facing the player (it was negated), and the stack's custom name is applied as `createDefaultStackConfig` |
 | ArrowItem, TippedArrowItem, SpectralArrowItem | 3 | combat: skipped |
-| BannerItem | 16 | |
+| BannerItem | 16 | block placement: covered by the block audit |
 | BoatItem | 22 | Ported `use`: the boat goes where the player's view first meets a block outline or liquid surface (it went to a block centre beside the clicked face), faces as the player does (the yaw was negated), is refused when the player is inside an entity or the boat would collide, and also places from a click into the air, as onto water. Custom names apply |
 | BoneMealItem | 1 | Ported `useOn` and `growWaterPlant`: on a sturdy face beside water, seagrass, and in warm oceans corals, grow around. The blocks follow `BonemealableBlock`: weeping, twisting and cave vines, kelp (it stopped at age 25 and grew from the clicked block), pale hanging moss and moss carpet (whose placement now computes its sides and topper as `MossyCarpetBlock`), mangrove leaves, netherrack, rooted dirt, seagrass and dry grass took no bone meal; flowers and sugar cane, which are no bonemealables in Java, did |
 | BottleItem | 1 | Ported `use`: past dragon's breath, the bottle fills from the water source the player's view meets (`Fluid.SOURCE_ONLY`), also from a click into the air or through water onto the floor, with the bottle fill sound and a `fluid_pickup` game event; flowing water no longer fills it. Dispensers fill from a water source in front |
@@ -45,7 +45,7 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | CompassItem | 1 | Matches through Bedrock's position tracking: lodestones link compasses, a missing lodestone reports its target as not found |
 | CushionItem | 16 | Ported `useOn` and `Cushion.canBePlacedAt`/`wouldSurviveAt`: an anchor within 1/64 below, covered only when every block in the box suffocates (any overlap refused before), not buried; cauldrons, hoppers and composters are clicked on their collision shape; the cushion faces the nearest cardinal direction and takes the stack's name |
 | DiscFragmentItem | 1 | Tooltip only |
-| DoubleHighBlockItem | 29 | |
+| DoubleHighBlockItem | 29 | block placement: covered by the block audit |
 | DyeItem | 16 | Ported `interactLivingEntity` and `tryApplyToSign`: sheep take a dye only alive, unsheared and of another colour, with the dye sound and an update to viewers; signs and hanging signs only when not waxed and the facing side has text, with the dye sound and a `block_change` game event |
 | EggItem, SnowballItem | 4 | Ported `spawnProjectileFromRotation` for every thrown item (also ender pearls, bottles o' enchanting and splash and lingering potions): 0.1 below the eyes, Java's uncertainty spread and the thrower's movement; bottles o' enchanting fly at 0.7 (0.6) and potions use Java's −20° pitch offset instead of an approximation. Snowballs deal 3 to blazes. Eggs hatch as `ThrownEgg` |
 | EmptyMapItem, MapItem | 18 | Matches: a map centred on the player at scale 0 with the cartography sound; maps keep Java's colours and native persistence |
@@ -61,7 +61,7 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | GameMasterBlockItem | 7 | Command, structure and jigsaw blocks are placed only by operators in creative mode, as `canUseGameMasterBlocks`; command blocks face the placer as BDS places them (they always faced down). Structure blocks keep BDS's Save default rather than Java's Load |
 | GlowInkSacItem, InkSacItem | 2 | As dye: not on waxed signs or empty sides, with their sounds and a `block_change` game event |
 | HangingEntityItem, ItemFrameItem | 3 | Paintings pick a fitting variant on a horizontal face, now with an `entity_place` game event. Item frames are Bedrock blocks, not entities |
-| HangingSignItem | 13 | |
+| HangingSignItem | 13 | block placement: covered by the block audit |
 | HoneycombItem | 1 | Waxes copper and signs with the wax-on event and a `block_change` game event |
 | InstrumentItem | 1 | Goat horns play with their 7 s cooldown and now emit `instrument_play`, so sculk sensors and wardens hear them |
 | KnowledgeBookItem | 1 | Unlocks its recipes through Bedrock's recipe unlocking |
@@ -69,13 +69,13 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | MinecartItem | 6 | Carts start 1/16 above the rail, half a block higher on slopes (they started half a block too high), with the stack's name and an `entity_place` game event |
 | NameTagItem | 1 | Matches |
 | PlaceOnWaterBlockItem | 2 | Ported: lily pads and frogspawn go above the water source the player looks at, also from a click into the air; they need a source below (flowing water counted), and lily pads also sit on ice and frosted ice |
-| PlayerHeadItem | 1 | |
-| PotionItem, SplashPotionItem, LingeringPotionItem | 3 | |
-| ScaffoldingBlockItem | 1 | |
-| ShearsItem | 1 | |
-| SmithingTemplateItem | 19 | |
-| SpawnEggItem | 88 | |
-| SpyglassItem | 1 | |
-| StandingAndWallBlockItem | 33 | |
+| PlayerHeadItem | 1 | block placement: covered by the block audit |
+| PotionItem, SplashPotionItem, LingeringPotionItem | 3 | done: water on convertible_to_mud makes mud; throws at -20 pitch, 0.5 power; splash scales by box distance and drops effects of 20 ticks or less; clouds apply every 5 ticks with a 1 s reapplication delay and half-strength instant effects |
+| ScaffoldingBlockItem | 1 | done: placement context ported with the block |
+| ShearsItem | 1 | done: trims growing plant tips to max age first; wears on instant-break blocks except fire |
+| SmithingTemplateItem | 19 | done: plain material; behaviour lives in the smithing recipes |
+| SpawnEggItem | 88 | done: spawns in a clicked block without collision or beside the face, dropped by getYOffset; air use spawns in a liquid source; peaceful refuses notInPeaceful types; own-type clicks spawn offspring (breeding offspring, Age -24000 or IsBaby), zombie loot pickup and fox trust; dispensers spawn in front. The ambient sound on spawn is not played |
+| SpyglassItem | 1 | Bedrock: the client zooms and plays the sounds |
+| StandingAndWallBlockItem | 33 | block placement: covered by the block audit |
 | WindChargeItem | 1 | combat projectile: behaviour only |
-| WritableBookItem, WrittenBookItem | 2 | |
+| WritableBookItem, WrittenBookItem | 2 | Bedrock: the client edits books; the server keeps the protocol's 50 pages of 256 bytes |

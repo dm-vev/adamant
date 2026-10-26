@@ -289,3 +289,38 @@ func waterPlantSurvives(tx *world.Tx, pos cube.Pos, b world.Block) bool {
 	}
 	return under.Model().FaceSolid(below, cube.FaceUp, tx)
 }
+
+// shearGrowingPlantTip ports ShearsItem.useOn on a GrowingPlantHeadBlock:
+// the tip of the plant, the last block in the direction it grows, stops
+// growing by taking the maximum age of 25. It reports if it did.
+func shearGrowingPlantTip(pos cube.Pos, tx *world.Tx, grow cube.Face, age func(world.Block) (int, bool), withAge func(int) world.Block) bool {
+	a, ok := age(tx.Block(pos))
+	if !ok || a >= 25 {
+		return false
+	}
+	if _, more := age(tx.Block(pos.Side(grow))); more {
+		return false
+	}
+	tx.SetBlock(pos, withAge(25), nil)
+	return true
+}
+
+// ShearTip stops the weeping vines growing.
+func (v WeepingVines) ShearTip(pos cube.Pos, tx *world.Tx) bool {
+	return shearGrowingPlantTip(pos, tx, cube.FaceDown, func(b world.Block) (int, bool) { w, ok := b.(WeepingVines); return w.Age, ok }, func(a int) world.Block { v.Age = a; return v })
+}
+
+// ShearTip stops the twisting vines growing.
+func (v TwistingVines) ShearTip(pos cube.Pos, tx *world.Tx) bool {
+	return shearGrowingPlantTip(pos, tx, cube.FaceUp, func(b world.Block) (int, bool) { w, ok := b.(TwistingVines); return w.Age, ok }, func(a int) world.Block { v.Age = a; return v })
+}
+
+// ShearTip stops the cave vines growing.
+func (v CaveVines) ShearTip(pos cube.Pos, tx *world.Tx) bool {
+	return shearGrowingPlantTip(pos, tx, cube.FaceDown, func(b world.Block) (int, bool) { w, ok := b.(CaveVines); return w.Age, ok }, func(a int) world.Block { v.Age = a; return v })
+}
+
+// ShearTip stops the kelp growing.
+func (k Kelp) ShearTip(pos cube.Pos, tx *world.Tx) bool {
+	return shearGrowingPlantTip(pos, tx, cube.FaceUp, func(b world.Block) (int, bool) { w, ok := b.(Kelp); return w.Age, ok }, func(a int) world.Block { k.Age = a; return k })
+}

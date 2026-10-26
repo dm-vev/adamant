@@ -2,7 +2,6 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
@@ -16,19 +15,16 @@ import (
 func NewAreaEffectCloud(opts world.EntitySpawnOpts, p potion.Potion) *world.EntityHandle {
 	config := areaEffectCloudConf
 	config.Potion = p
-	for _, e := range p.Effects() {
-		if _, ok := e.Type().(effect.LastingType); !ok {
-			config.ReapplicationDelay = 0
-			break
-		}
-	}
 	return opts.New(AreaEffectCloudType, config)
 }
 
+// areaEffectCloudConf is the cloud ThrownLingeringPotion.onHitAsPotion
+// leaves: radius 3 shrinking by 0.5 a use and 3/600 a tick, effects again
+// after AreaEffectCloud's reapplication delay of 20 ticks.
 var areaEffectCloudConf = AreaEffectCloudBehaviourConfig{
 	RadiusUseGrowth:    -0.5,
 	RadiusTickGrowth:   -0.005,
-	ReapplicationDelay: time.Second * 2,
+	ReapplicationDelay: time.Second,
 }
 
 // NewAreaEffectCloudWith ...

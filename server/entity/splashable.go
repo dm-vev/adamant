@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
@@ -33,21 +35,27 @@ func potionSplash(durMul float64, pot potion.Potion, linger bool) func(e *Ent, t
 		box := e.H().Type().BBox(e).Translate(pos)
 
 		if len(effects) > 0 {
-			for otherE := range filterLiving(tx.EntitiesWithin(box.GrowVec3(mgl64.Vec3{8.25, 4.25, 8.25}))) {
-				otherPos := otherE.Position()
-				if !otherE.H().Type().BBox(otherE).Translate(otherPos).IntersectsWith(box.GrowVec3(mgl64.Vec3{4.125, 2.125, 4.125})) {
+			// ThrownSplashPotion.onHitAsPotion: entities within the potion's
+			// box grown by 4, 2 and 4 are affected by how far their box,
+			// grown by the projectile margin, lies from it.
+			hitBox := box
+			if res != nil {
+				hitBox = box.Translate(res.Position().Sub(pos))
+			}
+			margin := max(0, min(0.3, (e.Age().Seconds()*20-2)/20))
+			// EntitiesWithin goes by position, so the search reaches 4 blocks
+			// further for the boxes of large mobs.
+			area := hitBox.GrowVec3(mgl64.Vec3{4, 2, 4})
+			for otherE := range filterLiving(tx.EntitiesWithin(area.Grow(4))) {
+				otherBox := otherE.H().Type().BBox(otherE).Translate(otherE.Position())
+				if !otherBox.IntersectsWith(area) {
 					continue
 				}
-
-				dist := otherPos.Sub(pos).Len()
-				if dist > 4 {
+				dist := boxDistanceSqr(hitBox, otherBox.Grow(margin))
+				if dist >= 16 {
 					continue
 				}
-
-				f := 1 - dist/4
-				if entityResult, ok := res.(trace.EntityResult); ok && entityResult.Entity().H() == otherE.H() {
-					f = 1
-				}
+				f := 1 - math.Sqrt(dist)/4
 
 				splashed := otherE.(Living)
 				for _, eff := range effects {
@@ -55,12 +63,13 @@ func potionSplash(durMul float64, pot potion.Potion, linger bool) func(e *Ent, t
 						splashed.AddEffect(effect.NewInstantWithPotency(eff.Type(), eff.Level(), f))
 						continue
 					}
-
-					dur := time.Duration(float64(eff.Duration()) * durMul * f)
-					if dur < time.Second {
+					// (int)(scale * duration * durationScale + 0.5) ticks,
+					// dropped if it would end within 20 ticks.
+					ticks := int(f*float64(eff.Duration()/(time.Second/20))*durMul + 0.5)
+					if ticks <= 20 {
 						continue
 					}
-					splashed.AddEffect(effect.New(eff.Type().(effect.LastingType), eff.Level(), dur))
+					splashed.AddEffect(effect.New(eff.Type().(effect.LastingType), eff.Level(), time.Duration(ticks)*time.Second/20))
 				}
 			}
 		} else if pot == potion.Water() {
@@ -126,4 +135,13 @@ func splashWater(e *Ent, tx *world.Tx, box cube.BBox) {
 			burning.Extinguish()
 		}
 	}
+}
+
+// boxDistanceSqr ports AABB.distanceToSqr: the squared distance between two
+// boxes, zero where they overlap.
+func boxDistanceSqr(a, b cube.BBox) float64 {
+	dx := max(a.Min()[0]-b.Max()[0], b.Min()[0]-a.Max()[0], 0)
+	dy := max(a.Min()[1]-b.Max()[1], b.Min()[1]-a.Max()[1], 0)
+	dz := max(a.Min()[2]-b.Max()[2], b.Min()[2]-a.Max()[2], 0)
+	return dx*dx + dy*dy + dz*dz
 }

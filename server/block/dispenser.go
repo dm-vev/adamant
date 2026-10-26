@@ -261,15 +261,16 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		} else {
 			tx.AddEntity(create(world.EntitySpawnOpts{Position: pos.Side(d.Facing).Vec3Middle()}, 4*time.Second, nil))
 		}
-	case item.SpawnEgg, item.Harness:
-		behavior := held.(interface {
-			UseOnEntity(world.Entity, *world.Tx, item.User, *item.UseContext) bool
-		})
+	case item.SpawnEgg:
+		if !held.Dispense(tx, pos, d.Facing) {
+			return
+		}
+	case item.Harness:
 		front := pos.Side(d.Facing)
 		box := cube.Box(float64(front.X()), float64(front.Y()), float64(front.Z()), float64(front.X()+1), float64(front.Y()+1), float64(front.Z()+1))
 		for entity := range tx.EntitiesWithin(box) {
 			ctx := &item.UseContext{}
-			if behavior.UseOnEntity(entity, tx, nil, ctx) {
+			if held.UseOnEntity(entity, tx, nil, ctx) {
 				left := stack.Damage(ctx.Damage).Grow(-ctx.CountSub)
 				if !ctx.NewItem.Empty() {
 					if left.Empty() {

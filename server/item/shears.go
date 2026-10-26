@@ -12,6 +12,17 @@ type Shears struct{}
 
 // UseOnBlock ...
 func (s Shears) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
+	if tip, ok := tx.Block(pos).(interface {
+		ShearTip(cube.Pos, *world.Tx) bool
+	}); ok && tip.ShearTip(pos, tx) {
+		// ShearsItem.useOn: the tip of a growing plant stops growing.
+		tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "block.growing_plant.crop", Volume: 1, Pitch: 1})
+		if user != nil {
+			tx.EmitGameEvent(world.GameEventBlockChange, pos.Vec3Centre(), world.GameEventContext{Source: user, AffectedState: tx.Block(pos)})
+		}
+		ctx.DamageItem(1)
+		return true
+	}
 	direction := face
 	if face == cube.FaceUp || face == cube.FaceDown {
 		direction = user.Rotation().Direction().Opposite().Face()

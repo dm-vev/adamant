@@ -2,6 +2,7 @@ package player
 
 import (
 	"math"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -239,6 +240,120 @@ func TestLilyPadPlacesOnWaterAndIce(t *testing.T) {
 		p.UseItemOnBlock(cube.Pos{9, 62, 8}, cube.FaceUp, mgl64.Vec3{0.5, 1, 0.5})
 		if _, ok := tx.Block(cube.Pos{9, 63, 8}).(block.LilyPad); !ok {
 			t.Fatalf("no lily pad on ice: %v", tx.Block(cube.Pos{9, 63, 8}))
+		}
+	})
+}
+
+// TestSpawnEggsFollowJava follows SpawnEggItem: a mob spawns in a clicked
+// block without collision or beside the face, dropped onto a slab it moved
+// up from; monsters need a difficulty above peaceful; an egg of the clicked
+// mob's own type spawns its baby; dispensers spawn in front.
+func TestSpawnEggsFollowJava(t *testing.T) {
+	w := entityItemWorld(t)
+	w.SetDifficulty(world.DifficultyNormal)
+	mobs := func(tx *world.Tx, id string) (out []world.Entity) {
+		for e := range tx.Entities() {
+			if e.H().Type().EncodeEntity() == id {
+				out = append(out, e)
+			}
+		}
+		return out
+	}
+	babies := func(es []world.Entity) (n int) {
+		for _, e := range es {
+			if e.(interface{ Baby() bool }).Baby() {
+				n++
+			}
+		}
+		return n
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(cube.Pos{8, 63, 8}, block.Stone{}, nil)
+		tx.SetBlock(cube.Pos{10, 63, 8}, block.Grass{}, nil)
+		tx.SetBlock(cube.Pos{10, 64, 8}, block.ShortGrass{}, nil)
+		tx.SetBlock(cube.Pos{12, 63, 8}, block.Slab{Block: block.Stone{}}, nil)
+		start := mgl64.Vec3{10.5, 64, 11.5}
+		p := tx.AddEntity(world.EntitySpawnOpts{Position: start}.New(Type, Config{Position: start, GameMode: world.GameModeSurvival})).(*Player)
+		p.SetHeldItems(item.NewStack(item.SpawnEgg{Entity: "minecraft:cow"}, 8), item.Stack{})
+
+		cowAt := func(want mgl64.Vec3) bool {
+			for _, c := range mobs(tx, "minecraft:cow") {
+				if c.Position() == want {
+					return true
+				}
+			}
+			return false
+		}
+		p.UseItemOnBlock(cube.Pos{8, 63, 8}, cube.FaceUp, mgl64.Vec3{0.5, 1, 0.5})
+		if !cowAt(mgl64.Vec3{8.5, 64, 8.5}) {
+			t.Fatal("no cow on the stone")
+		}
+		p.UseItemOnBlock(cube.Pos{10, 64, 8}, cube.FaceUp, mgl64.Vec3{0.5, 0.5, 0.5})
+		if !cowAt(mgl64.Vec3{10.5, 64, 8.5}) {
+			t.Fatal("cow did not spawn inside the short grass")
+		}
+		p.UseItemOnBlock(cube.Pos{12, 63, 8}, cube.FaceUp, mgl64.Vec3{0.5, 0.5, 0.5})
+		if !cowAt(mgl64.Vec3{12.5, 63.5, 8.5}) {
+			t.Fatal("cow did not drop onto the slab")
+		}
+		cows := mobs(tx, "minecraft:cow")
+		if held, _ := p.HeldItems(); held.Count() != 5 {
+			t.Fatalf("%v eggs left, want 5", held.Count())
+		}
+
+		// The cow's own egg gives a calf; a pig egg does nothing to it.
+		p.SetHeldItems(item.NewStack(item.SpawnEgg{Entity: "minecraft:pig"}, 1), item.Stack{})
+		cow := cows[0]
+		p.UseItemOnEntity(cow)
+		if len(mobs(tx, "minecraft:pig")) != 0 {
+			t.Fatal("a pig egg made offspring of a cow")
+		}
+		p.SetHeldItems(item.NewStack(item.SpawnEgg{Entity: "minecraft:cow"}, 1), item.Stack{})
+		p.UseItemOnEntity(cow)
+		if cows = mobs(tx, "minecraft:cow"); len(cows) != 4 || babies(cows) != 1 {
+			t.Fatalf("no calf from the cow's own egg: %v", cows)
+		}
+
+		zombie := tx.AddEntity(entity.NewZombie(world.EntitySpawnOpts{Position: mgl64.Vec3{14.5, 64, 8.5}}))
+		skeleton := tx.AddEntity(entity.NewSkeleton(world.EntitySpawnOpts{Position: mgl64.Vec3{14.5, 64, 10.5}}))
+		villager := tx.AddEntity(entity.NewVillager(world.EntitySpawnOpts{Position: mgl64.Vec3{16.5, 64, 8.5}}))
+		p.SetHeldItems(item.NewStack(item.SpawnEgg{Entity: "minecraft:zombie"}, 1), item.Stack{})
+		p.UseItemOnEntity(zombie)
+		if zs := mobs(tx, "minecraft:zombie"); len(zs) != 2 || babies(zs) != 1 {
+			t.Fatalf("no baby zombie: %v", zs)
+		}
+		p.SetHeldItems(item.NewStack(item.SpawnEgg{Entity: "minecraft:skeleton"}, 1), item.Stack{})
+		p.UseItemOnEntity(skeleton)
+		if len(mobs(tx, "minecraft:skeleton")) != 1 {
+			t.Fatal("a skeleton egg made a skeleton baby")
+		}
+		if held, _ := p.HeldItems(); held.Count() != 1 {
+			t.Fatal("a failed skeleton offspring used the egg")
+		}
+		p.SetHeldItems(item.NewStack(item.SpawnEgg{Entity: "minecraft:villager"}, 1), item.Stack{})
+		p.UseItemOnEntity(villager)
+		if vs := mobs(tx, "minecraft:villager"); len(vs) != 2 || babies(vs) != 1 {
+			t.Fatalf("no baby villager: %v", vs)
+		}
+
+		w.SetDifficulty(world.DifficultyPeaceful)
+		p.SetHeldItems(item.NewStack(item.SpawnEgg{Entity: "minecraft:creeper"}, 1), item.Stack{})
+		p.UseItemOnBlock(cube.Pos{8, 63, 8}, cube.FaceUp, mgl64.Vec3{0.5, 1, 0.5})
+		if len(mobs(tx, "minecraft:creeper")) != 0 {
+			t.Fatal("a creeper spawned in peaceful")
+		}
+
+		d := block.NewDispenser()
+		d.Facing = cube.FaceNorth
+		tx.SetBlock(cube.Pos{20, 64, 8}, d, nil)
+		inv := tx.Block(cube.Pos{20, 64, 8}).(block.Dispenser).Inventory(tx, cube.Pos{20, 64, 8})
+		_ = inv.SetItem(0, item.NewStack(item.SpawnEgg{Entity: "minecraft:sheep"}, 2))
+		tx.Block(cube.Pos{20, 64, 8}).(block.Dispenser).ScheduledTick(cube.Pos{20, 64, 8}, tx, rand.New(rand.NewPCG(1, 2)))
+		if sheep := mobs(tx, "minecraft:sheep"); len(sheep) != 1 || sheep[0].Position() != (mgl64.Vec3{20.5, 64, 7.5}) {
+			t.Fatalf("dispensed sheep: %v", sheep)
+		}
+		if s, _ := inv.Item(0); s.Count() != 1 {
+			t.Fatalf("dispenser holds %v eggs, want 1", s.Count())
 		}
 	})
 }

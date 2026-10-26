@@ -747,6 +747,10 @@ type EntityRegistryConfig struct {
 	// SpawnMob creates a concrete registered living mob for a Java entity ID.
 	// It returns nil for an ID without an implementation.
 	SpawnMob func(id string, opts EntitySpawnOpts) *EntityHandle
+	// SpawnEggOffspring spawns a baby of parent at its position, as
+	// SpawnEggItem.spawnOffspringFromSpawnEgg. spawner may be nil. It returns
+	// nil if the mob has no baby.
+	SpawnEggOffspring func(tx *Tx, parent Entity, spawner Entity) *EntityHandle
 	// SpawnMobFromNBT creates a concrete mob and applies its species codec
 	// before the handle is published in a world.
 	SpawnMobFromNBT func(id string, opts EntitySpawnOpts, data map[string]any) *EntityHandle

@@ -44,3 +44,33 @@ func TestFlintAndSteelPlacesFireAsJava(t *testing.T) {
 		}
 	})
 }
+
+// TestShearsFollowJava follows ShearsItem: shearing the tip of weeping
+// vines stops them at age 25, and breaking short grass wears the shears.
+func TestShearsFollowJava(t *testing.T) {
+	w := entityItemWorld(t)
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(cube.Pos{8, 70, 8}, block.Netherrack{}, nil)
+		tx.SetBlock(cube.Pos{8, 69, 8}, block.WeepingVines{Age: 3}, nil)
+		tx.SetBlock(cube.Pos{8, 68, 8}, block.WeepingVines{Age: 4}, nil)
+		tx.SetBlock(cube.Pos{10, 63, 8}, block.Grass{}, nil)
+		tx.SetBlock(cube.Pos{10, 64, 8}, block.ShortGrass{}, nil)
+		start := mgl64.Vec3{9.5, 66, 9.5}
+		p := tx.AddEntity(world.EntitySpawnOpts{Position: start}.New(Type, Config{Position: start, GameMode: world.GameModeSurvival})).(*Player)
+		p.SetHeldItems(item.NewStack(item.Shears{}, 1), item.Stack{})
+		p.UseItemOnBlock(cube.Pos{8, 69, 8}, cube.FaceSouth, mgl64.Vec3{0.5, 0.5, 1})
+		if v := tx.Block(cube.Pos{8, 69, 8}).(block.WeepingVines); v.Age != 3 {
+			t.Fatalf("shears changed the vines above the tip to age %v", v.Age)
+		}
+		p.UseItemOnBlock(cube.Pos{8, 68, 8}, cube.FaceSouth, mgl64.Vec3{0.5, 0.5, 1})
+		if v := tx.Block(cube.Pos{8, 68, 8}).(block.WeepingVines); v.Age != 25 {
+			t.Fatalf("sheared tip age %v, want 25", v.Age)
+		}
+		held, _ := p.HeldItems()
+		before := held.Durability()
+		p.BreakBlock(cube.Pos{10, 64, 8})
+		if held, _ := p.HeldItems(); held.Durability() != before-1 {
+			t.Fatalf("shears durability %v after cutting grass, want %v", held.Durability(), before-1)
+		}
+	})
+}

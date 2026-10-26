@@ -3067,8 +3067,10 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 
 	p.Exhaust(0.005)
 	// Only blocks that naturally break instantly (zero hardness) cost no durability; a block made to break
-	// within one tick by a fast tool or status effects still consumes durability.
-	if block.BreaksInstantly(b) {
+	// within one tick by a fast tool or status effects still consumes durability. Shears wear down on
+	// everything but fire, as ShearsItem.mineBlock.
+	_, shears := held.Item().(item.Shears)
+	if _, fire := b.(block.Fire); shears && fire || !shears && block.BreaksInstantly(b) {
 		return
 	}
 	if durable, ok := held.Item().(item.Durable); ok {

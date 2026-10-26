@@ -127,8 +127,8 @@ func (a *AreaEffectCloudBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		tx.ReleaseViewers(viewers)
 	}
 
-	if (e.Age()/(time.Second/20))%10 != 0 {
-		// Area effect clouds only trigger updates every ten ticks.
+	if (e.Age()/(time.Second/20))%5 != 0 {
+		// AreaEffectCloud.serverTick: effects every five ticks.
 		return nil
 	}
 
@@ -179,7 +179,8 @@ func (a *AreaEffectCloudBehaviour) applyEffects(pos mgl64.Vec3, ent *Ent, entiti
 					l.AddEffect(effect.New(lasting, eff.Level(), eff.Duration()/4))
 					continue
 				}
-				l.AddEffect(eff)
+				// Instantaneous effects apply at half strength.
+				l.AddEffect(effect.NewInstantWithPotency(eff.Type(), eff.Level(), 0.5))
 			}
 
 			a.targets[e.H()] = ent.Age() + a.conf.ReapplicationDelay

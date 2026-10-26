@@ -17,6 +17,7 @@ var bedrockSoundNames = map[string]string{
 	"block.chiseled_bookshelf.pickup":           "pickup.chiseled_bookshelf",
 	"block.chiseled_bookshelf.pickup.enchanted": "pickup_enchanted.chiseled_bookshelf",
 	"block.dried_ghast.transition":              "block.dried_ghast.state_change",
+	"block.growing_plant.crop":                  "",
 	"block.pumpkin.carve":                       "pumpkin.carve",
 	"block.sculk_sensor.clicking":               "power.on.sculk_sensor",
 	"block.sculk_sensor.clicking_stop":          "power.off.sculk_sensor",
