@@ -27,7 +27,7 @@ func (e Egg) Use(tx *world.Tx, user User, ctx *UseContext) bool {
 	if e.Variant == EggTemperate && config.Egg == nil {
 		return false
 	}
-	opts := world.EntitySpawnOpts{Position: eyePosition(user), Velocity: user.Rotation().Vec3().Mul(1.5)}
+	opts := throwOpts(user, 0, 1.5, 1)
 	if e.Variant == EggTemperate {
 		tx.AddEntity(config.Egg(opts, user))
 	} else {

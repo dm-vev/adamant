@@ -41,7 +41,10 @@ type ProjectileBehaviourConfig struct {
 	// damageCalculator calculates the final damage of the projectile. If nil,
 	// Damage is multiplied by the projectile's velocity.
 	damageCalculator func(baseDamage, velocity float64, critical bool, powerLevel int) float64
-	powerLevel       int
+	// targetDamage, if set, is the fixed damage the projectile deals to the
+	// target hit, as thrown items such as snowballs deal.
+	targetDamage func(target world.Entity) float64
+	powerLevel   int
 	// Potion is the potion effect that is applied to an entity when the
 	// projectile hits it.
 	Potion potion.Potion
@@ -353,7 +356,9 @@ func (lt *ProjectileBehaviour) hitEntity(l Living, e *Ent, vel mgl64.Vec3, part 
 	owner := lt.owner(tx)
 	src := ProjectileDamageSource{Projectile: e, Owner: owner}
 	var dmg float64
-	if lt.conf.damageCalculator == nil {
+	if lt.conf.targetDamage != nil {
+		dmg = lt.conf.targetDamage(l)
+	} else if lt.conf.damageCalculator == nil {
 		dmg = math.Ceil(lt.conf.Damage * vel.Len())
 		if lt.conf.Critical {
 			dmg += rand.Float64() * dmg / 2

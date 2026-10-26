@@ -16,8 +16,15 @@ func NewSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHa
 }
 
 var snowballConf = ProjectileBehaviourConfig{
-	Gravity:       0.03,
-	Drag:          0.01,
+	Gravity: 0.03,
+	Drag:    0.01,
+	// Snowball.onHitEntity: blazes take 3 damage, others none.
+	targetDamage: func(target world.Entity) float64 {
+		if target.H().Type().EncodeEntity() == "minecraft:blaze" {
+			return 3
+		}
+		return 0
+	},
 	Particle:      particle.SnowballPoof{},
 	ParticleCount: 6,
 }

@@ -46,3 +46,20 @@ func TestProjectilesBreakPotsPerGamerules(t *testing.T) {
 		}
 	})
 }
+
+// TestSnowballHurtsBlazes follows Snowball.onHitEntity: a blaze hit by a
+// snowball takes 3 damage, other mobs none.
+func TestSnowballHurtsBlazes(t *testing.T) {
+	w := world.Config{Synchronous: true, Entities: DefaultRegistry}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *world.Tx) {
+		blaze := tx.AddEntity(NewBlaze(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 70, 0.5}}))
+		cow := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{4.5, 70, 0.5}}))
+		if got := snowballConf.targetDamage(blaze); got != 3 {
+			t.Fatalf("snowball deals %v to a blaze, want 3", got)
+		}
+		if got := snowballConf.targetDamage(cow); got != 0 {
+			t.Fatalf("snowball deals %v to a cow, want 0", got)
+		}
+	})
+}

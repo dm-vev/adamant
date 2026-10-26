@@ -12,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -213,7 +214,7 @@ func (s *Sheep) Shear(_ *world.Tx) item.Stack {
 
 // Interact feeds the sheep wheat to breed it or let a lamb grow up faster,
 // or dyes its fleece.
-func (s *Sheep) Interact(_ *world.Tx, user item.User, ctx *item.UseContext) bool {
+func (s *Sheep) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	if user == nil || ctx == nil {
 		return false
 	}
@@ -221,10 +222,16 @@ func (s *Sheep) Interact(_ *world.Tx, user item.User, ctx *item.UseContext) bool
 		return true
 	}
 	held, _ := user.HeldItems()
-	if dye, ok := held.Item().(item.Dye); ok {
-		s.behaviour().color = sheepColor(dye.Colour.String())
-		ctx.SubtractFromCount(1)
-		return true
+	// DyeItem.interactLivingEntity: a living sheep with fleece takes a dye of
+	// another colour.
+	if dye, ok := held.Item().(item.Dye); ok && !s.Dead() && !s.behaviour().sheared {
+		if color := sheepColor(dye.Colour.String()); color != s.behaviour().color {
+			s.behaviour().color = color
+			viewBreederState(s)
+			tx.PlaySound(s.Position(), sound.Custom{Name: "item.dye.use", Volume: 1, Pitch: 1})
+			ctx.SubtractFromCount(1)
+			return true
+		}
 	}
 	return false
 }

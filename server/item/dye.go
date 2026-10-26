@@ -3,6 +3,7 @@ package item
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -17,6 +18,8 @@ func (d Dye) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, u
 	if dy, ok := tx.Block(pos).(dyeable); ok {
 		if res, ok := dy.Dye(pos, user.Position(), d.Colour); ok {
 			tx.SetBlock(pos, res, nil)
+			tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "item.dye.use", Volume: 1, Pitch: 1})
+			tx.EmitGameEvent(world.GameEventBlockChange, pos.Vec3Centre(), world.GameEventContext{Source: user, AffectedState: res})
 			ctx.SubtractFromCount(1)
 			return true
 		}

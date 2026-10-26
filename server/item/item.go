@@ -3,6 +3,8 @@ package item
 import (
 	"encoding/binary"
 	"image/color"
+	"math"
+	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -325,4 +327,31 @@ func boolByte(b bool) uint8 {
 		return 1
 	}
 	return 0
+}
+
+// throwOpts ports Projectile.spawnProjectileFromRotation for an item the user
+// throws: the projectile starts 0.1 below the user's eyes, as
+// ThrowableItemProjectile does, and flies where the user looks with its
+// pitch raised by yOffset, at pow, spread by Java's triangular uncertainty
+// and carried by the user's movement, its vertical part only off the ground.
+func throwOpts(user User, yOffset, pow, uncertainty float64) world.EntitySpawnOpts {
+	pos := eyePosition(user).Sub(mgl64.Vec3{0, 0.1})
+	yaw, pitch := mgl64.DegToRad(user.Rotation().Yaw()), mgl64.DegToRad(user.Rotation().Pitch())
+	d := mgl64.Vec3{
+		-math.Sin(yaw) * math.Cos(pitch),
+		-math.Sin(pitch + mgl64.DegToRad(yOffset)),
+		math.Cos(yaw) * math.Cos(pitch),
+	}
+	spread := 0.0172275 * uncertainty
+	triangle := func() float64 { return spread * (rand.Float64() - rand.Float64()) }
+	vel := d.Normalize().Add(mgl64.Vec3{triangle(), triangle(), triangle()}).Mul(pow)
+	rot := cube.Rotation{mgl64.RadToDeg(math.Atan2(vel[0], vel[2])), mgl64.RadToDeg(math.Atan2(vel[1], math.Hypot(vel[0], vel[2])))}
+	if m, ok := user.(interface{ Velocity() mgl64.Vec3 }); ok {
+		movement := m.Velocity()
+		if g, ok := user.(interface{ OnGround() bool }); ok && g.OnGround() {
+			movement[1] = 0
+		}
+		vel = vel.Add(movement)
+	}
+	return world.EntitySpawnOpts{Position: pos, Velocity: vel, Rotation: rot}
 }

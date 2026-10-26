@@ -44,10 +44,10 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | BundleItem | 17 | Ported `BundleContents` weights: shulker boxes no longer fit (`canFitInsideContainerItems`), a hive with bees fills the bundle; using a bundle throws out the whole selected stack (`removeOne`), not one item. The Bedrock bundle screen stays client-driven |
 | CompassItem | 1 | Matches through Bedrock's position tracking: lodestones link compasses, a missing lodestone reports its target as not found |
 | CushionItem | 16 | Ported `useOn` and `Cushion.canBePlacedAt`/`wouldSurviveAt`: an anchor within 1/64 below, covered only when every block in the box suffocates (any overlap refused before), not buried; cauldrons, hoppers and composters are clicked on their collision shape; the cushion faces the nearest cardinal direction and takes the stack's name |
-| DiscFragmentItem | 1 | |
+| DiscFragmentItem | 1 | Tooltip only |
 | DoubleHighBlockItem | 29 | |
-| DyeItem | 16 | |
-| EggItem, SnowballItem | 4 | |
+| DyeItem | 16 | Ported `interactLivingEntity` and `tryApplyToSign`: sheep take a dye only alive, unsheared and of another colour, with the dye sound and an update to viewers; signs and hanging signs only when not waxed and the facing side has text, with the dye sound and a `block_change` game event |
+| EggItem, SnowballItem | 4 | Ported `spawnProjectileFromRotation` for every thrown item (also ender pearls, bottles o' enchanting and splash and lingering potions): 0.1 below the eyes, Java's uncertainty spread and the thrower's movement; bottles o' enchanting fly at 0.7 (0.6) and potions use Java's −20° pitch offset instead of an approximation. Snowballs deal 3 to blazes. Eggs hatch as `ThrownEgg` |
 | EmptyMapItem, MapItem | 18 | |
 | EndCrystalItem | 1 | |
 | EnderEyeItem | 1 | |
@@ -59,10 +59,10 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | FlintAndSteelItem | 1 | |
 | FoodOnAStickItem | 2 | |
 | GameMasterBlockItem | 7 | |
-| GlowInkSacItem, InkSacItem | 2 | |
+| GlowInkSacItem, InkSacItem | 2 | As dye: not on waxed signs or empty sides, with their sounds and a `block_change` game event |
 | HangingEntityItem, ItemFrameItem | 3 | |
 | HangingSignItem | 13 | |
-| HoneycombItem | 1 | |
+| HoneycombItem | 1 | Waxes copper and signs with the wax-on event and a `block_change` game event |
 | InstrumentItem | 1 | |
 | KnowledgeBookItem | 1 | |
 | LeadItem | 1 | |

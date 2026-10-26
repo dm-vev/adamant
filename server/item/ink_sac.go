@@ -3,6 +3,7 @@ package item
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -19,6 +20,12 @@ func (i InkSac) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx
 	if in, ok := tx.Block(pos).(inkable); ok {
 		if res, ok := in.Ink(pos, user.Position(), i.Glowing); ok {
 			tx.SetBlock(pos, res, nil)
+			name := "item.ink_sac.use"
+			if i.Glowing {
+				name = "item.glow_ink_sac.use"
+			}
+			tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: name, Volume: 1, Pitch: 1})
+			tx.EmitGameEvent(world.GameEventBlockChange, pos.Vec3Centre(), world.GameEventContext{Source: user, AffectedState: res})
 			ctx.SubtractFromCount(1)
 			return true
 		}

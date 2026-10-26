@@ -52,36 +52,29 @@ func (h HangingSign) BreakInfo() BreakInfo {
 	return newBreakInfo(1, alwaysHarvestable, axeEffective, oneOf(HangingSign{Wood: h.Wood}))
 }
 
-// Dye dyes the HangingSign, changing its base colour to that of the colour passed.
+// Dye dyes the side the user faces, as DyeItem.tryApplyToSign.
 func (h HangingSign) Dye(pos cube.Pos, userPos mgl64.Vec3, c item.Colour) (world.Block, bool) {
-	if h.EditingFrontSide(pos, userPos) {
-		if h.Front.BaseColour == c.SignRGBA() {
-			return h, false
+	ok := applyToSignText(&h.Front, &h.Back, h.EditingFrontSide(pos, userPos), h.Waxed, func(t *SignText) bool {
+		if t.BaseColour == c.SignRGBA() {
+			return false
 		}
-		h.Front.BaseColour = c.SignRGBA()
-	} else {
-		if h.Back.BaseColour == c.SignRGBA() {
-			return h, false
-		}
-		h.Back.BaseColour = c.SignRGBA()
-	}
-	return h, true
+		t.BaseColour = c.SignRGBA()
+		return true
+	})
+	return h, ok
 }
 
-// Ink inks the sign either glowing or non-glowing.
+// Ink inks the side the user faces glowing or plain, as GlowInkSacItem and
+// InkSacItem do.
 func (h HangingSign) Ink(pos cube.Pos, userPos mgl64.Vec3, glowing bool) (world.Block, bool) {
-	if h.EditingFrontSide(pos, userPos) {
-		if h.Front.Glowing == glowing {
-			return h, false
+	ok := applyToSignText(&h.Front, &h.Back, h.EditingFrontSide(pos, userPos), h.Waxed, func(t *SignText) bool {
+		if t.Glowing == glowing {
+			return false
 		}
-		h.Front.Glowing = glowing
-	} else {
-		if h.Back.Glowing == glowing {
-			return h, false
-		}
-		h.Back.Glowing = glowing
-	}
-	return h, true
+		t.Glowing = glowing
+		return true
+	})
+	return h, ok
 }
 
 // Wax waxes a sign to prevent it from further editing.

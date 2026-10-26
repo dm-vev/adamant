@@ -70,36 +70,29 @@ func (s Sign) BreakInfo() BreakInfo {
 	return newBreakInfo(1, alwaysHarvestable, axeEffective, oneOf(Sign{Wood: s.Wood}))
 }
 
-// Dye dyes the Sign, changing its base colour to that of the colour passed.
+// Dye dyes the side the user faces, as DyeItem.tryApplyToSign.
 func (s Sign) Dye(pos cube.Pos, userPos mgl64.Vec3, c item.Colour) (world.Block, bool) {
-	if s.EditingFrontSide(pos, userPos) {
-		if s.Front.BaseColour == c.SignRGBA() {
-			return s, false
+	ok := applyToSignText(&s.Front, &s.Back, s.EditingFrontSide(pos, userPos), s.Waxed, func(t *SignText) bool {
+		if t.BaseColour == c.SignRGBA() {
+			return false
 		}
-		s.Front.BaseColour = c.SignRGBA()
-	} else {
-		if s.Back.BaseColour == c.SignRGBA() {
-			return s, false
-		}
-		s.Back.BaseColour = c.SignRGBA()
-	}
-	return s, true
+		t.BaseColour = c.SignRGBA()
+		return true
+	})
+	return s, ok
 }
 
-// Ink inks the sign either glowing or non-glowing.
+// Ink inks the side the user faces glowing or plain, as GlowInkSacItem and
+// InkSacItem do.
 func (s Sign) Ink(pos cube.Pos, userPos mgl64.Vec3, glowing bool) (world.Block, bool) {
-	if s.EditingFrontSide(pos, userPos) {
-		if s.Front.Glowing == glowing {
-			return s, false
+	ok := applyToSignText(&s.Front, &s.Back, s.EditingFrontSide(pos, userPos), s.Waxed, func(t *SignText) bool {
+		if t.Glowing == glowing {
+			return false
 		}
-		s.Front.Glowing = glowing
-	} else {
-		if s.Back.Glowing == glowing {
-			return s, false
-		}
-		s.Back.Glowing = glowing
-	}
-	return s, true
+		t.Glowing = glowing
+		return true
+	})
+	return s, ok
 }
 
 // Wax waxes a sign to prevent it from further editing.
@@ -245,4 +238,15 @@ func allSigns() (signs []world.Block) {
 		}
 	}
 	return
+}
+
+// applyToSignText ports the SignApplicator path of SignBlock.useItemOn for
+// dye and ink: nothing applies to a waxed sign or to a side without text
+// (SignText.hasMessage), and apply reports if it changed the side.
+func applyToSignText(front, back *SignText, frontSide, waxed bool, apply func(*SignText) bool) bool {
+	text := back
+	if frontSide {
+		text = front
+	}
+	return !waxed && text.Text != "" && apply(text)
 }
