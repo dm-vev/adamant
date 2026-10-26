@@ -1,6 +1,9 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/world"
+import (
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
+)
 
 // FishingRod is a tool used to fish items and entities out of water.
 type FishingRod struct{}
@@ -18,23 +21,20 @@ func (FishingRod) DurabilityInfo() DurabilityInfo {
 	}
 }
 
-// Use toggles fishing: If the user is already fishing the hook is reeled in, otherwise a hook is cast.
+// Use ports FishingRodItem.use: a cast hook is retrieved, wearing the rod
+// down by what FishingHook.retrieve returns, otherwise a hook is cast.
 func (FishingRod) Use(tx *world.Tx, user User, ctx *UseContext) bool {
 	fisher, ok := user.(FishingUser)
 	if !ok {
 		return false
 	}
-
 	if fisher.IsFishing() {
-		if fisher.StopFishing(tx, true) {
-			ctx.DamageItem(1)
-		}
+		ctx.DamageItem(fisher.StopFishing(tx, true))
 		return true
 	}
-
 	main, _ := user.HeldItems()
 	if fisher.StartFishing(tx, main) {
-		ctx.DamageItem(1)
+		tx.PlaySound(user.Position(), sound.ItemThrow{})
 		return true
 	}
 	return false

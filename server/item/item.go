@@ -243,8 +243,8 @@ type FishingUser interface {
 	// StartFishing attempts to spawn and cast a fishing hook using the provided rod stack.
 	StartFishing(tx *world.Tx, rod Stack) bool
 	// StopFishing stops fishing for this user. If reel is true, the user actively reeled in the hook.
-	// The returned bool indicates if the fishing rod should take durability damage.
-	StopFishing(tx *world.Tx, reel bool) bool
+	// It returns the durability the fishing rod loses.
+	StopFishing(tx *world.Tx, reel bool) int
 }
 
 // Carrier represents an entity that is able to carry an item.

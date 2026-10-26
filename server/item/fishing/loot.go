@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
+	"github.com/df-mc/dragonfly/server/world"
 )
 
 // Loot returns source fishing-table output. The lure level affects hook wait
@@ -20,28 +21,46 @@ func Loot(luckLevel, _ int) (item.Stack, error) {
 func LootJava(luckLevel int, openWater bool, seed int64) (item.Stack, error) {
 	random := vanilla.NewXoroshiroRandom(seed)
 	stacks, err := loot.Generate("minecraft:gameplay/fishing", seed, loot.Context{
-		Random: &random,
-		Luck: float64(luckLevel),
+		Random:    &random,
+		Luck:      float64(luckLevel),
 		OpenWater: openWater,
-		Entity: "minecraft:fishing_hook",
+		Entity:    "minecraft:fishing_hook",
 	})
-	if err != nil { return item.Stack{}, err }
-	if len(stacks) == 0 { return item.Stack{}, nil }
-	if len(stacks) != 1 { return item.Stack{}, fmt.Errorf("fishing table generated %d stacks, expected exactly one", len(stacks)) }
+	if err != nil {
+		return item.Stack{}, err
+	}
+	if len(stacks) == 0 {
+		return item.Stack{}, nil
+	}
+	if len(stacks) != 1 {
+		return item.Stack{}, fmt.Errorf("fishing table generated %d stacks, expected exactly one", len(stacks))
+	}
 	return stacks[0], nil
 }
 
 // LootWithRandom evaluates the source table using the sequence stream owned by
 // the world that contains the fishing hook.
-func LootWithRandom(luckLevel int, openWater bool, random *vanilla.Random) (item.Stack, error) {
+// The hook is the loot's this entity and the rod its tool, as
+// FishingHook.retrieve passes them.
+func LootWithRandom(luckLevel int, openWater bool, random *vanilla.Random, hook world.Entity, rod item.Stack) (item.Stack, error) {
 	stacks, err := loot.Generate("minecraft:gameplay/fishing", 0, loot.Context{
-		Random: random,
-		Luck: float64(luckLevel),
-		OpenWater: openWater,
-		Entity: "minecraft:fishing_hook",
+		Random:     random,
+		Luck:       float64(luckLevel),
+		OpenWater:  openWater,
+		Entity:     "minecraft:fishing_hook",
+		ThisEntity: hook,
+		Tool:       rod.Item(),
+		ToolStack:  rod,
+		Origin:     hook.Position(),
 	})
-	if err != nil { return item.Stack{}, err }
-	if len(stacks) == 0 { return item.Stack{}, nil }
-	if len(stacks) != 1 { return item.Stack{}, fmt.Errorf("fishing table generated %d stacks, expected exactly one", len(stacks)) }
+	if err != nil {
+		return item.Stack{}, err
+	}
+	if len(stacks) == 0 {
+		return item.Stack{}, nil
+	}
+	if len(stacks) != 1 {
+		return item.Stack{}, fmt.Errorf("fishing table generated %d stacks, expected exactly one", len(stacks))
+	}
 	return stacks[0], nil
 }

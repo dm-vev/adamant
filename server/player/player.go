@@ -2049,63 +2049,50 @@ func (p *Player) StartFishing(tx *world.Tx, rod item.Stack) bool {
 	if create == nil {
 		return false
 	}
-	pos := p.Position().Add(mgl64.Vec3{0, p.EyeHeight(), 0})
-	velocity := p.Rotation().Vec3().Mul(1.5)
+	// FishingHook(Player, ...): the hook starts 0.3 to the side of the eyes
+	// and flies where the player looks at about 0.6, the vertical part of
+	// its direction clamped to five times the horizontal.
+	yaw, pitch := mgl64.DegToRad(p.Rotation().Yaw()), mgl64.DegToRad(p.Rotation().Pitch())
+	yCos, ySin := math.Cos(-yaw-math.Pi), math.Sin(-yaw-math.Pi)
+	xCos, xSin := -math.Cos(-pitch), math.Sin(-pitch)
+	pos := mgl64.Vec3{p.Position()[0] - ySin*0.3, p.Position()[1] + p.EyeHeight(), p.Position()[2] - yCos*0.3}
+	dir := mgl64.Vec3{-ySin, max(min(-(xSin/xCos), 5), -5), -yCos}
+	dist := dir.Len()
+	triangle := func() float64 { return 0.5 + 0.0103365*(rand.Float64()-rand.Float64()) }
+	velocity := mgl64.Vec3{dir[0] * (0.6/dist + triangle()), dir[1] * (0.6/dist + triangle()), dir[2] * (0.6/dist + triangle())}
 	handle := create(world.EntitySpawnOpts{Position: pos, Velocity: velocity}, p, rod)
 	tx.AddEntity(handle)
 	p.fishingHook = handle
 	return true
 }
 
-// StopFishing stops fishing for the player and optionally reels in the hook.
-func (p *Player) StopFishing(tx *world.Tx, reel bool) bool {
+// StopFishing stops fishing for the player and optionally reels in the
+// hook, as FishingHook.retrieve. It returns the durability the rod loses.
+func (p *Player) StopFishing(tx *world.Tx, reel bool) int {
 	if p.fishingHook == nil {
-		return false
+		return 0
 	}
 	handle := p.fishingHook
 	p.fishingHook = nil
 	ent, ok := handle.Entity(tx)
 	if !ok {
 		_ = handle.Close()
-		return false
+		return 0
 	}
 	hook, ok := ent.(*entity.Ent)
 	if !ok {
 		_ = ent.Close()
-		return false
+		return 0
 	}
 	behaviour, ok := hook.Behaviour().(*entity.FishingHookBehaviour)
-	if !ok {
-		_ = hook.Close()
-		return false
+	if !ok || !reel {
+		_ = hook.CloseIn(tx)
+		return 0
 	}
-	damage := false
-	if reel {
-		loot, xp, pulled, reelErr := behaviour.Reel(hook, tx)
-		if reelErr != nil {
-			p.session().LogError("failed to resolve Java fishing loot", "err", reelErr)
-		}
-		hookPos := hook.Position()
-		if !loot.Empty() {
-			dropPos := hookPos
-			dropPos[1] = behaviour.SurfaceHeight(tx, cube.PosFromVec3(hookPos))
-			motion := behaviour.PullVelocity(p, dropPos)
-			tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: dropPos, Velocity: motion}, loot))
-			if xp > 0 {
-				for _, orb := range entity.NewExperienceOrbs(dropPos, xp) {
-					tx.AddEntity(orb)
-				}
-			}
-			damage = true
-		}
-		if pulled != nil {
-			if setter, ok := pulled.(interface{ SetVelocity(mgl64.Vec3) }); ok {
-				setter.SetVelocity(behaviour.PullVelocity(p, hookPos))
-				damage = true
-			}
-		}
+	damage, err := behaviour.Retrieve(hook, tx)
+	if err != nil {
+		p.session().LogError("failed to resolve Java fishing loot", "err", err)
 	}
-	_ = hook.Close()
 	return damage
 }
 

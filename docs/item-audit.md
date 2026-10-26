@@ -54,8 +54,8 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | EnderpearlItem | 1 | Ported `ThrownEnderpearl.onHit`: the owner arrives where the pearl was when its tick began, not at the hit point inside the block, only when alive and not asleep; only player owners take the 5 fall damage and may leave an endermite, 5% of the time where monsters spawn outside Peaceful, at their own position |
 | ExperienceBottleItem | 1 | Experience is `3 + nextInt(5) + nextInt(5)`, not uniform over 3–11 |
 | FireChargeItem | 1 | Ported with flint and steel: lights what it lights, otherwise places fire beside the clicked face only where `BaseFireBlock.canBePlacedAt` allows (a sturdy floor, a neighbour that burns or a Nether portal frame; it placed fire in any air), soul fire on soul sand and soil, with a `block_place` game event |
-| FireworkRocketItem | 1 | |
-| FishingRodItem | 1 | |
+| FireworkRocketItem | 1 | Ported `useOn`/`use`: a gliding player clicking a block boosts instead of launching; the rocket starts 0.15 off the clicked face rising at 0.05 with Java's drift; its lifetime is `10 × (flight + 1) + nextInt(6) + nextInt(7)` ticks. Boosting stays client-driven, as Bedrock does it |
+| FishingRodItem | 1 | Ported with `FishingHook`: the hook leaves 0.3 beside the eyes at Java's launch speed, flies until it hooks a mob or item or lands in water, then bobs on the surface; fish are lured for 100–600 ticks less 100 a Lure level (rain speeds, covered sky slows), approach for 20–80 and nibble for 20–40; open water is checked over Java's 5×5×4 layers; the hook goes when the owner stops holding a rod or is 32 blocks away. Retrieving pulls hooked entities, lands the catch towards the player with 1–6 experience at the player and wears the rod by 5, 3, 1 or 2; casting no longer costs durability. Catches never landed before: the loot context lacked the hook, so the open-water predicate failed |
 | FlintAndSteelItem | 1 | As fire charges, and a use that does nothing costs no durability |
 | FoodOnAStickItem | 2 | |
 | GameMasterBlockItem | 7 | |

@@ -37,11 +37,17 @@ func (f Firework) Use(tx *world.Tx, user User, ctx *UseContext) bool {
 	return true
 }
 
-// UseOnBlock ...
-func (f Firework) UseOnBlock(pos cube.Pos, _ cube.Face, clickPos mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
-	fpos := pos.Vec3().Add(clickPos)
+// UseOnBlock ports FireworkRocketItem.useOn: a gliding player boosts
+// instead, otherwise the rocket starts just off the clicked face, rising at
+// 0.05 with a slight sideways drift.
+func (f Firework) UseOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
+	if g, ok := user.(interface{ Gliding() bool }); ok && g.Gliding() {
+		return f.Use(tx, user, ctx)
+	}
+	fpos := pos.Vec3().Add(clickPos).Add(cube.Pos{}.Side(face).Vec3().Mul(0.15))
 	create := tx.World().EntityRegistry().Config().Firework
-	opts := world.EntitySpawnOpts{Position: fpos, Rotation: cube.Rotation{rand.Float64() * 360, 90}}
+	triangle := func() float64 { return 0.002297 * (rand.Float64() - rand.Float64()) }
+	opts := world.EntitySpawnOpts{Position: fpos, Rotation: cube.Rotation{rand.Float64() * 360, 90}, Velocity: mgl64.Vec3{triangle(), 0.05, triangle()}}
 	tx.AddEntity(create(opts, f, user, 1.15, 0.04, false))
 	tx.PlaySound(fpos, sound.FireworkLaunch{})
 
@@ -88,7 +94,9 @@ func (f Firework) DecodeNBT(data map[string]any) any {
 
 // RandomisedDuration returns the randomised flight duration of the firework.
 func (f Firework) RandomisedDuration() time.Duration {
-	return f.Duration + time.Duration(rand.IntN(int(time.Millisecond*600)))
+	// FireworkRocketEntity: 10 ticks a flight level, plus nextInt(6) +
+	// nextInt(7) ticks.
+	return f.Duration + time.Duration(rand.IntN(6)+rand.IntN(7))*time.Second/20
 }
 
 // OffHand ...
