@@ -190,9 +190,10 @@ func (t ticker) tick(tx *Tx) {
 		tryAdvanceDay = w.set.RequiredSleepTicks <= 0
 	}
 	w.set.Unlock()
-	// Native block queues advance mCurrentTick only in tickPendingTicks.
-	// Entity/player callbacks before that pass still schedule against the
-	// previous queue tick, independently of the world's current event clock.
+	// Contact and other simulation callbacks use this tick's queue clock.
+	// Player block interactions retain the last processed queue clock through
+	// Tx.WithBlockInteraction, before the next scheduled block pass.
+	w.scheduledBlockTicks.currentTick = tick
 	w.scheduledFluidTicks.currentTick = tick
 	t.tickInhabitedTime(w, loaders)
 	t.promoteGeneration(tx, loaders)
@@ -780,6 +781,7 @@ type scheduledTickQueue struct {
 	processing     bool
 	fluid          bool
 	currentTick    int64
+	processedTick  int64
 	nextOrder      int64
 }
 
@@ -859,6 +861,7 @@ func newScheduledTickQueueForKind(tick int64, fluid bool) *scheduledTickQueue {
 	return &scheduledTickQueue{
 		scheduledTicks: make(map[scheduledTickIndex]int64),
 		currentTick:    tick,
+		processedTick:  tick,
 		fluid:          fluid,
 	}
 }
@@ -867,6 +870,7 @@ func newScheduledTickQueueForKind(tick int64, fluid bool) *scheduledTickQueue {
 // then dispatches the collected batch. Fluid ticks run after the block queue.
 func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 	queue.currentTick = tick
+	queue.processedTick = tick
 	if len(queue.chunks) == 0 {
 		return
 	}

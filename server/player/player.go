@@ -2481,11 +2481,13 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 	if hitDependent || !p.Sneaking() || i.Empty() {
 		useCtx := p.useContext()
 		activated := false
-		if hitDependent {
-			activated = hitAct.ActivateAt(pos, face, clickPos, p.tx, p, useCtx)
-		} else if act, ok := b.(block.Activatable); ok {
-			activated = act.Activate(pos, face, p.tx, p, useCtx)
-		}
+		p.tx.WithBlockInteraction(func() {
+			if hitDependent {
+				activated = hitAct.ActivateAt(pos, face, clickPos, p.tx, p, useCtx)
+			} else if act, ok := b.(block.Activatable); ok {
+				activated = act.Activate(pos, face, p.tx, p, useCtx)
+			}
+		})
 		if activated {
 			p.SwingArm()
 			if useCtx.ReplaceHeldItem && !useCtx.NewItem.Empty() {

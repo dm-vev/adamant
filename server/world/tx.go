@@ -164,6 +164,19 @@ func (tx *Tx) ScheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
 	tx.World().scheduleBlockUpdate(pos, b, delay)
 }
 
+// WithBlockInteraction runs a player block activation with the last processed
+// block queue clock. Native player input precedes the chunk's queue pass,
+// whereas contact and lightning callbacks use the current simulation clock.
+// The event clock is unchanged, and the ordinary queue clock is restored even
+// if the activation panics. Nested activations share the same input clock.
+func (tx *Tx) WithBlockInteraction(activate func()) {
+	queue := tx.World().scheduledBlockTicks
+	clock := queue.currentTick
+	queue.currentTick = queue.processedTick
+	defer func() { queue.currentTick = clock }()
+	activate()
+}
+
 // HasScheduledBlockUpdate reports whether an update of the type of b is
 // pending at the position passed.
 func (tx *Tx) HasScheduledBlockUpdate(pos cube.Pos, b Block) bool {
