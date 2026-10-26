@@ -12,9 +12,9 @@ import (
 type Minecart struct{}
 
 // UseOnBlock places a minecart on a rail.
-func (Minecart) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+func (Minecart) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	create := tx.World().EntityRegistry().Config().Minecart
-	return spawnMinecartOnRail(pos, tx, ctx, create, "minecart")
+	return spawnMinecartOnRail(pos, tx, user, ctx, create, "minecart")
 }
 
 // EncodeItem returns the minecart item ID.
@@ -27,9 +27,9 @@ func (Minecart) MaxCount() int { return 1 }
 type MinecartChest struct{}
 
 // UseOnBlock places a chest minecart on a rail.
-func (MinecartChest) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+func (MinecartChest) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	create := tx.World().EntityRegistry().Config().MinecartChest
-	return spawnMinecartOnRail(pos, tx, ctx, create, "chest_minecart")
+	return spawnMinecartOnRail(pos, tx, user, ctx, create, "chest_minecart")
 }
 
 // EncodeItem returns the chest minecart item ID.
@@ -42,9 +42,9 @@ func (MinecartChest) MaxCount() int { return 1 }
 type MinecartHopper struct{}
 
 // UseOnBlock places a hopper minecart on a rail.
-func (MinecartHopper) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+func (MinecartHopper) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	create := tx.World().EntityRegistry().Config().MinecartHopper
-	return spawnMinecartOnRail(pos, tx, ctx, create, "hopper_minecart")
+	return spawnMinecartOnRail(pos, tx, user, ctx, create, "hopper_minecart")
 }
 
 // EncodeItem returns the hopper minecart item ID.
@@ -57,9 +57,9 @@ func (MinecartHopper) MaxCount() int { return 1 }
 type MinecartTNT struct{}
 
 // UseOnBlock places a TNT minecart on a rail.
-func (MinecartTNT) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+func (MinecartTNT) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	create := tx.World().EntityRegistry().Config().MinecartTNT
-	return spawnMinecartOnRail(pos, tx, ctx, create, "tnt_minecart")
+	return spawnMinecartOnRail(pos, tx, user, ctx, create, "tnt_minecart")
 }
 
 // EncodeItem returns the TNT minecart item ID.
@@ -72,9 +72,9 @@ func (MinecartTNT) MaxCount() int { return 1 }
 type MinecartCommandBlock struct{}
 
 // UseOnBlock places a command block minecart on a rail.
-func (MinecartCommandBlock) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+func (MinecartCommandBlock) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	create := tx.World().EntityRegistry().Config().MinecartCommandBlock
-	return spawnMinecartOnRail(pos, tx, ctx, create, "command_block_minecart")
+	return spawnMinecartOnRail(pos, tx, user, ctx, create, "command_block_minecart")
 }
 
 // EncodeItem returns the command block minecart item ID.
@@ -83,7 +83,9 @@ func (MinecartCommandBlock) EncodeItem() (string, int16) { return "minecraft:com
 // MaxCount returns the max stack size.
 func (MinecartCommandBlock) MaxCount() int { return 1 }
 
-func spawnMinecartOnRail(pos cube.Pos, tx *world.Tx, ctx *UseContext, create func(world.EntitySpawnOpts) *world.EntityHandle, name string) bool {
+// spawnMinecartOnRail ports MinecartItem.useOn: the cart is put on the rail,
+// 1/16 above it, half a block higher on a slope, with the stack's name.
+func spawnMinecartOnRail(pos cube.Pos, tx *world.Tx, user User, ctx *UseContext, create func(world.EntitySpawnOpts) *world.EntityHandle, name string) bool {
 	ascending, ok := railInfo(tx.Block(pos))
 	if !ok {
 		return false
@@ -92,13 +94,18 @@ func spawnMinecartOnRail(pos cube.Pos, tx *world.Tx, ctx *UseContext, create fun
 		slog.Default().Info("minecart: missing entity factory", "name", name, "world", tx.World().Name())
 		return false
 	}
-	spawn := pos.Vec3Middle()
-	spawn[1] += 0.0625
+	spawn := mgl64.Vec3{float64(pos[0]) + 0.5, float64(pos[1]) + 0.0625, float64(pos[2]) + 0.5}
 	if ascending {
 		spawn[1] += 0.5
 	}
 	opts := world.EntitySpawnOpts{Position: spawn}
+	if user != nil {
+		opts = stackSpawnOpts(user, opts)
+	}
 	tx.AddEntity(create(opts))
+	if user != nil {
+		tx.EmitGameEvent(world.GameEventEntityPlace, pos.Vec3Centre(), world.GameEventContext{Source: user, AffectedState: tx.Block(pos.Side(cube.FaceDown))})
+	}
 	ctx.SubtractFromCount(1)
 	return true
 }

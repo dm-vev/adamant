@@ -140,7 +140,8 @@ func (b StructureBlock) Hash() (uint64, uint64) {
 // opens with.
 func (b StructureBlock) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, ok := firstReplaceable(tx, pos, face, b)
-	if !ok {
+	if !ok || user != nil && !canUseGameMasterBlocks(user) {
+		// GameMasterBlockItem: only operators in creative mode place it.
 		return false
 	}
 	place(tx, pos, NewStructureBlock(StructureBlockSave), user, ctx)

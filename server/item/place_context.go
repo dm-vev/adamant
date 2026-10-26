@@ -152,3 +152,15 @@ func wrapDegrees(a float32) float32 {
 	}
 	return a
 }
+
+// LookAt ports Item.getPlayerPOVHitResult for blocks placed on what the
+// user looks at: the block, or with sourceFluids the liquid source, the
+// user's view first meets, and the face it meets.
+func LookAt(tx *world.Tx, user User, sourceFluids bool) (cube.Pos, cube.Face, bool) {
+	fluids := povNoFluid
+	if sourceFluids {
+		fluids = povSourceFluid
+	}
+	_, pos, face, ok := povHit(tx, user, fluids)
+	return pos, face, ok
+}

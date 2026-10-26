@@ -66,7 +66,8 @@ func (j Jigsaw) Hash() (uint64, uint64) {
 // up or down.
 func (j Jigsaw) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, ok := firstReplaceable(tx, pos, face, j)
-	if !ok {
+	if !ok || user != nil && !canUseGameMasterBlocks(user) {
+		// GameMasterBlockItem: only operators in creative mode place it.
 		return false
 	}
 	rotation := 0

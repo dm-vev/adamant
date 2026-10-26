@@ -409,9 +409,13 @@ func (b *FishingHookBehaviour) loot(e *Ent, tx *world.Tx, owner world.Entity) (i
 	if l, ok := owner.(interface{ Luck() float64 }); ok {
 		luck += int(l.Luck())
 	}
-	rod, _ := owner.(interface{ HeldItems() (item.Stack, item.Stack) }).HeldItems()
+	rod, _ := owner.(interface {
+		HeldItems() (item.Stack, item.Stack)
+	}).HeldItems()
 	if _, ok := rod.Item().(item.FishingRod); !ok {
-		_, rod = owner.(interface{ HeldItems() (item.Stack, item.Stack) }).HeldItems()
+		_, rod = owner.(interface {
+			HeldItems() (item.Stack, item.Stack)
+		}).HeldItems()
 	}
 	return fishing.LootWithRandom(luck, b.openWater, tx.LootRandomSequence(sequence, 0), e, rod)
 }

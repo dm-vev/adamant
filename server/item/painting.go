@@ -12,7 +12,7 @@ type Painting struct{}
 
 // UseOnBlock ports HangingEntityItem.useOn: paintings hang only on the
 // horizontal sides of blocks, in the block in front of the clicked face.
-func (Painting) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+func (Painting) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	if face == cube.FaceUp || face == cube.FaceDown {
 		return false
 	}
@@ -24,8 +24,11 @@ func (Painting) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 	if h == nil {
 		return false
 	}
-	tx.AddEntity(h)
+	placed := tx.AddEntity(h)
 	tx.PlaySound(pos.Side(face).Vec3Centre(), sound.HangingPlace{})
+	if user != nil {
+		tx.EmitGameEvent(world.GameEventEntityPlace, placed.Position(), world.GameEventContext{Source: user})
+	}
 	ctx.SubtractFromCount(1)
 	return true
 }

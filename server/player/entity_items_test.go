@@ -219,3 +219,26 @@ func TestCushionPlacementFollowsJava(t *testing.T) {
 		}
 	})
 }
+
+// TestLilyPadPlacesOnWaterAndIce follows PlaceOnWaterBlockItem and
+// LilyPadBlock.mayPlaceOn: the pad goes above the water source looked at,
+// and on ice.
+func TestLilyPadPlacesOnWaterAndIce(t *testing.T) {
+	bucketTestPlayer(t, world.Overworld, func(tx *world.Tx, p *Player) {
+		tx.SetBlock(cube.Pos{8, 62, 8}, block.Water{Still: true, Depth: 8}, nil)
+		// Standing off to the south and looking down at the water north.
+		p.Teleport(mgl64.Vec3{8.5, 63, 10.5})
+		p.Move(mgl64.Vec3{}, 180, -45)
+		p.SetHeldItems(item.NewStack(block.LilyPad{}, 2), item.Stack{})
+		p.UseItem()
+		if _, ok := tx.Block(cube.Pos{8, 63, 8}).(block.LilyPad); !ok {
+			t.Fatalf("no lily pad on the water: %v", tx.Block(cube.Pos{8, 63, 8}))
+		}
+		tx.SetBlock(cube.Pos{9, 62, 8}, block.Ice{}, nil)
+		p.Teleport(mgl64.Vec3{9.5, 63, 10.5})
+		p.UseItemOnBlock(cube.Pos{9, 62, 8}, cube.FaceUp, mgl64.Vec3{0.5, 1, 0.5})
+		if _, ok := tx.Block(cube.Pos{9, 63, 8}).(block.LilyPad); !ok {
+			t.Fatalf("no lily pad on ice: %v", tx.Block(cube.Pos{9, 63, 8}))
+		}
+	})
+}

@@ -5,6 +5,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -112,8 +113,11 @@ func TieLeashedEntities(pos cube.Pos, tx *world.Tx, user world.Entity) bool {
 	if user == nil || user.H() == nil {
 		return false
 	}
+	// LeadItem.bindPlayerMobs: the mobs the player leads within a 32 block
+	// cube around the fence, Leashable.leashableInArea.
+	centre := pos.Vec3Centre()
 	var mobs []*Ent
-	for candidate := range tx.EntitiesWithin(cube.Box(-7, -7, -7, 7, 7, 7).Translate(pos.Vec3())) {
+	for candidate := range tx.EntitiesWithin(cube.Box(-16, -16, -16, 16, 16, 16).Translate(centre)) {
 		if e, ok := candidate.(interface{ LeashEnt() *Ent }); ok && e.LeashEnt().HolderLeashID() == user.H().UniqueID() {
 			mobs = append(mobs, e.LeashEnt())
 		}
@@ -121,13 +125,41 @@ func TieLeashedEntities(pos cube.Pos, tx *world.Tx, user world.Entity) bool {
 	if len(mobs) == 0 {
 		return false
 	}
-	opts := world.EntitySpawnOpts{Position: pos.Vec3().Add(mgl64.Vec3{.5, .375, .5})}
-	handle := NewLeashKnot(opts, pos)
-	tx.AddEntity(handle)
-	for _, e := range mobs {
-		e.setLeashHolder(handle.UniqueID())
-		e.refreshLeashMetadata(tx)
+	var knot *world.EntityHandle
+	existing := false
+	for candidate := range tx.EntitiesWithin(cube.Box(-1, -1, -1, 1, 1, 1).Translate(pos.Vec3())) {
+		if k, ok := candidate.(*LeashKnot); ok && k.Behaviour().(leashKnotBehaviour).pos == pos {
+			knot, existing = k.H(), true
+			break
+		}
 	}
+	if knot == nil {
+		knot = NewLeashKnot(world.EntitySpawnOpts{}, pos)
+		tx.AddEntity(knot)
+	}
+	knotCentre := pos.Vec3().Add(mgl64.Vec3{.5, .375 + .25, .5})
+	leashed := false
+	for _, e := range mobs {
+		// Leashable.canHaveALeashAttachedTo: within the 12 block snap
+		// distance between box centres.
+		box := e.H().Type().BBox(e).Translate(e.Position())
+		if box.Min().Add(box.Max()).Mul(0.5).Sub(knotCentre).Len() > 12 {
+			continue
+		}
+		e.setLeashHolder(knot.UniqueID())
+		e.refreshLeashMetadata(tx)
+		leashed = true
+	}
+	if !leashed {
+		if !existing {
+			if k, ok := knot.Entity(tx); ok {
+				_ = k.(*LeashKnot).CloseIn(tx)
+			}
+		}
+		return false
+	}
+	tx.PlaySound(knotCentre, sound.Custom{Name: "leashknot.place", Volume: 1, Pitch: 1})
+	tx.EmitGameEvent(world.GameEventBlockAttach, centre, world.GameEventContext{Source: user})
 	return true
 }
 

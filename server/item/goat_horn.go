@@ -28,6 +28,8 @@ func (GoatHorn) Cooldown() time.Duration {
 // Use ...
 func (g GoatHorn) Use(tx *world.Tx, user User, _ *UseContext) bool {
 	tx.PlaySound(user.Position(), sound.GoatHorn{Horn: g.Type})
+	// InstrumentItem.play: sculk sensors and wardens hear the horn.
+	tx.EmitGameEvent(world.GameEventInstrumentPlay, user.Position(), world.GameEventContext{Source: user})
 	user.H().DoAfter(time.Second, g.releaseItem)
 	return true
 }

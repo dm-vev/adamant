@@ -27,22 +27,41 @@ func (FrogSpawn) BreakInfo() BreakInfo {
 // the block below holds water, a fluid in #supports_frogspawn, and pos
 // itself holds no fluid.
 func FrogSpawnSupported(tx *world.Tx, pos cube.Pos) bool {
-	below, ok := tx.Liquid(pos.Side(cube.FaceDown))
-	if !ok || below.LiquidType() != "water" {
+	// FrogspawnBlock.mayPlaceOn: a water source, supports_frogspawn, below
+	// and no fluid in the block itself.
+	if !waterSourceAt(tx, pos.Side(cube.FaceDown)) {
 		return false
 	}
 	_, liquid := tx.Liquid(pos)
 	return !liquid
 }
 
-// UseOnBlock places frogspawn on the surface of water like a lily pad.
-func (f FrogSpawn) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
-	pos, _, used := firstReplaceable(tx, pos, face, f)
-	if !used || !FrogSpawnSupported(tx, pos) {
+// placeOnWater ports PlaceOnWaterBlockItem: the block goes above the water
+// source the user looks at, wherever the user clicked.
+func placeOnWater(tx *world.Tx, user item.User, ctx *item.UseContext, b world.Block, supported func(*world.Tx, cube.Pos) bool) bool {
+	if user == nil {
 		return false
 	}
-	place(tx, pos, f, user, ctx)
+	at, _, ok := item.LookAt(tx, user, true)
+	if !ok {
+		return false
+	}
+	pos, _, used := firstReplaceable(tx, at.Side(cube.FaceUp), cube.FaceUp, b)
+	if !used || pos != at.Side(cube.FaceUp) || !supported(tx, pos) {
+		return false
+	}
+	place(tx, pos, b, user, ctx)
 	return placed(ctx)
+}
+
+// UseOnBlock places frogspawn on the water the user looks at.
+func (f FrogSpawn) UseOnBlock(_ cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return placeOnWater(tx, user, ctx, f, FrogSpawnSupported)
+}
+
+// Use places frogspawn on the water the user looks at.
+func (f FrogSpawn) Use(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return placeOnWater(tx, user, ctx, f, FrogSpawnSupported)
 }
 
 // Placed schedules the hatching 3600 to 11999 ticks later.

@@ -84,3 +84,35 @@ func countLeashDrops(tx *world.Tx) int {
 	}
 	return count
 }
+
+// TestTyingLeadsReusesTheKnot follows LeadItem.bindPlayerMobs: tying more
+// mobs to a fence uses the knot already there, and mobs led from farther
+// than 16 blocks are not gathered.
+func TestTyingLeadsReusesTheKnot(t *testing.T) {
+	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *world.Tx) {
+		fencePos := cube.Pos{0, 64, 0}
+		tx.SetBlock(fencePos, block.WoodFence{}, nil)
+		holder := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 64, .5}}))
+		for i, x := range []float64{4.5, 6.5, 30.5} {
+			cow := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{x, 64, .5}})).(*Cow)
+			cow.AttachLeash(holder, tx)
+			if i < 2 && !TieLeashedEntities(fencePos, tx, holder) {
+				t.Fatalf("could not tie cow %d", i)
+			}
+		}
+		knots := 0
+		for e := range tx.Entities() {
+			if _, ok := e.(*LeashKnot); ok {
+				knots++
+			}
+		}
+		if knots != 1 {
+			t.Fatalf("%d knots on one fence, want 1", knots)
+		}
+		if TieLeashedEntities(fencePos, tx, holder) {
+			t.Fatal("tied a cow led from 30 blocks away")
+		}
+	})
+}

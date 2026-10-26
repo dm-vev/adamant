@@ -57,18 +57,18 @@ Items Java has and Bedrock does not: `debug_stick`, `furnace_minecart`, `test_bl
 | FireworkRocketItem | 1 | Ported `useOn`/`use`: a gliding player clicking a block boosts instead of launching; the rocket starts 0.15 off the clicked face rising at 0.05 with Java's drift; its lifetime is `10 × (flight + 1) + nextInt(6) + nextInt(7)` ticks. Boosting stays client-driven, as Bedrock does it |
 | FishingRodItem | 1 | Ported with `FishingHook`: the hook leaves 0.3 beside the eyes at Java's launch speed, flies until it hooks a mob or item or lands in water, then bobs on the surface; fish are lured for 100–600 ticks less 100 a Lure level (rain speeds, covered sky slows), approach for 20–80 and nibble for 20–40; open water is checked over Java's 5×5×4 layers; the hook goes when the owner stops holding a rod or is 32 blocks away. Retrieving pulls hooked entities, lands the catch towards the player with 1–6 experience at the player and wears the rod by 5, 3, 1 or 2; casting no longer costs durability. Catches never landed before: the loot context lacked the hook, so the open-water predicate failed |
 | FlintAndSteelItem | 1 | As fire charges, and a use that does nothing costs no durability |
-| FoodOnAStickItem | 2 | |
-| GameMasterBlockItem | 7 | |
+| FoodOnAStickItem | 2 | Matches: boosts the pig or strider ridden for 7 or 1 durability and leaves a fishing rod when broken |
+| GameMasterBlockItem | 7 | Command, structure and jigsaw blocks are placed only by operators in creative mode, as `canUseGameMasterBlocks`; command blocks face the placer as BDS places them (they always faced down). Structure blocks keep BDS's Save default rather than Java's Load |
 | GlowInkSacItem, InkSacItem | 2 | As dye: not on waxed signs or empty sides, with their sounds and a `block_change` game event |
-| HangingEntityItem, ItemFrameItem | 3 | |
+| HangingEntityItem, ItemFrameItem | 3 | Paintings pick a fitting variant on a horizontal face, now with an `entity_place` game event. Item frames are Bedrock blocks, not entities |
 | HangingSignItem | 13 | |
 | HoneycombItem | 1 | Waxes copper and signs with the wax-on event and a `block_change` game event |
-| InstrumentItem | 1 | |
-| KnowledgeBookItem | 1 | |
-| LeadItem | 1 | |
-| MinecartItem | 6 | |
-| NameTagItem | 1 | |
-| PlaceOnWaterBlockItem | 2 | |
+| InstrumentItem | 1 | Goat horns play with their 7 s cooldown and now emit `instrument_play`, so sculk sensors and wardens hear them |
+| KnowledgeBookItem | 1 | Unlocks its recipes through Bedrock's recipe unlocking |
+| LeadItem | 1 | Ported `bindPlayerMobs`: gathers the mobs the player leads within a 32 block cube around the fence (±7 before), reuses the fence's knot instead of adding another, ties only mobs within the 12 block snap distance, with the knot sound and a `block_attach` game event |
+| MinecartItem | 6 | Carts start 1/16 above the rail, half a block higher on slopes (they started half a block too high), with the stack's name and an `entity_place` game event |
+| NameTagItem | 1 | Matches |
+| PlaceOnWaterBlockItem | 2 | Ported: lily pads and frogspawn go above the water source the player looks at, also from a click into the air; they need a source below (flowing water counted), and lily pads also sit on ice and frosted ice |
 | PlayerHeadItem | 1 | |
 | PotionItem, SplashPotionItem, LingeringPotionItem | 3 | |
 | ScaffoldingBlockItem | 1 | |

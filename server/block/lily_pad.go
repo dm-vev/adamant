@@ -30,22 +30,33 @@ func (l LilyPad) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
 
 // NeighbourUpdateTick ...
 func (l LilyPad) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if liq, ok := tx.Liquid(pos.Side(cube.FaceDown)); !ok || liq.LiquidType() != "water" || liq.LiquidDepth() < 8 {
+	if !lilyPadSupported(tx, pos) {
 		breakBlock(l, pos, tx)
 	}
 }
 
-// UseOnBlock ...
-func (l LilyPad) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
-	pos, _, used := firstReplaceable(tx, pos, face, l)
-	if !used {
+// lilyPadSupported ports LilyPadBlock.mayPlaceOn: a water source or ice or
+// frosted ice below, supports_lily_pad, and no fluid in the block itself.
+func lilyPadSupported(tx *world.Tx, pos cube.Pos) bool {
+	below := pos.Side(cube.FaceDown)
+	_, ice := tx.Block(below).(Ice)
+	_, frosted := tx.Block(below).(FrostedIce)
+	if !waterSourceAt(tx, below) && !ice && !frosted {
 		return false
 	}
-	if liq, ok := tx.Liquid(pos.Side(cube.FaceDown)); !ok || liq.LiquidType() != "water" || liq.LiquidDepth() < 8 {
-		return false
-	}
-	place(tx, pos, l, user, ctx)
-	return placed(ctx)
+	_, liquid := tx.Liquid(pos)
+	return !liquid
+}
+
+// UseOnBlock places the lily pad on the water the user looks at, as
+// PlaceOnWaterBlockItem.
+func (l LilyPad) UseOnBlock(_ cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return placeOnWater(tx, user, ctx, l, lilyPadSupported)
+}
+
+// Use places the lily pad on the water the user looks at.
+func (l LilyPad) Use(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return placeOnWater(tx, user, ctx, l, lilyPadSupported)
 }
 
 // BreakInfo ...
