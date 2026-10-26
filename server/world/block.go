@@ -26,6 +26,14 @@ type Block interface {
 	Model() BlockModel
 }
 
+// ProjectileCollider supplies entity-specific block collision boxes for a
+// projectile. Boxes are relative to the block position. A nil slice means
+// that this block does not collide with that projectile. Ordinary entity
+// collision continues to use Block.Model().BBox.
+type ProjectileCollider interface {
+	ProjectileBBox(pos cube.Pos, src BlockSource, projectile Entity) []cube.BBox
+}
+
 // MissingStateReconstructor reconstructs derived block properties that were absent from a decoded disk state.
 // It must preserve all properties not listed in missing and must not cause chunk loads.
 type MissingStateReconstructor interface {

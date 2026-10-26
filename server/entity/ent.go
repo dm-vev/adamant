@@ -349,6 +349,7 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 		e.data.Vel = mgl64.Vec3{}
 	}
 
+	checkButtonContactsBeforeMovement(tx, e.living())
 	m := e.Behaviour().Tick(e, tx)
 	if e.handle.Closed() {
 		// The behaviour removed the entity, as an item merging into another

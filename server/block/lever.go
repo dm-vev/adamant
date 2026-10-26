@@ -4,7 +4,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -71,11 +70,7 @@ func (l Lever) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 func (l Lever) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
 	l.Powered = !l.Powered
 	tx.SetBlock(pos, l, nil)
-	if l.Powered {
-		tx.PlaySound(pos.Vec3Centre(), sound.PowerOn{})
-	} else {
-		tx.PlaySound(pos.Vec3Centre(), sound.PowerOff{})
-	}
+	playRedstoneSwitchSound(pos, tx, l, l.Powered)
 	return true
 }
 

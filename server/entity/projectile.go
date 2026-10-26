@@ -263,7 +263,11 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 // tickAttached performs the attached logic for a projectile. It checks if the
 // projectile is still attached to a block and if it can be picked up.
 func (lt *ProjectileBehaviour) tickAttached(e *Ent, tx *world.Tx) bool {
-	boxes := tx.Block(lt.collisionPos).Model().BBox(lt.collisionPos, tx)
+	b := tx.Block(lt.collisionPos)
+	boxes := b.Model().BBox(lt.collisionPos, tx)
+	if collider, ok := b.(world.ProjectileCollider); ok {
+		boxes = collider.ProjectileBBox(lt.collisionPos, tx, e)
+	}
 	box := e.H().Type().BBox(e).Translate(e.Position())
 
 	for _, bb := range boxes {
@@ -411,7 +415,7 @@ func (lt *ProjectileBehaviour) tickMovement(e *Ent, tx *world.Tx) (*Movement, tr
 		ok  bool
 	)
 	if !mgl64.FloatEqual(end.Sub(pos).LenSqr(), 0) {
-		if hit, ok = trace.Perform(pos, end, tx, e.H().Type().BBox(e).Grow(1.0), lt.ignores(e), trace.RayShape); ok {
+		if hit, ok = trace.PerformProjectile(pos, end, tx, e.H().Type().BBox(e).Grow(1.0), lt.ignores(e), e); ok {
 			if _, ok := hit.(trace.BlockResult); ok {
 				// Undo the gravity because the velocity as a result of gravity
 				// at the point of collision should be 0.

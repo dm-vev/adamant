@@ -24,12 +24,28 @@ type EntityFilter func(iter.Seq[world.Entity]) iter.Seq[world.Entity]
 // ray. The physics.BBox that's passed is used for checking if any entity within the bounding box collided
 // with the ray. The shape selects physical or ray-specific block geometry.
 func Perform(start, end mgl64.Vec3, tx *world.Tx, box cube.BBox, filter EntityFilter, shape Shape) (hit Result, ok bool) {
+	return perform(start, end, tx, box, filter, shape, nil)
+}
+
+// PerformProjectile uses a block's entity-specific projectile geometry when
+// available and its ordinary ray geometry otherwise.
+func PerformProjectile(start, end mgl64.Vec3, tx *world.Tx, box cube.BBox, filter EntityFilter, projectile world.Entity) (hit Result, ok bool) {
+	return perform(start, end, tx, box, filter, RayShape, projectile)
+}
+
+func perform(start, end mgl64.Vec3, tx *world.Tx, box cube.BBox, filter EntityFilter, shape Shape, projectile world.Entity) (hit Result, ok bool) {
 	// Check if there's any blocks that we may collide with.
 	TraverseBlocks(start, end, func(pos cube.Pos) (cont bool) {
 		b := tx.Block(pos)
 
 		// Check if we collide with the block's model.
-		if result, ok := BlockIntercept(pos, tx, b, start, end, shape); ok {
+		result, intersects := BlockResult{}, false
+		if collider, custom := b.(world.ProjectileCollider); projectile != nil && custom {
+			result, intersects = blockBoxesIntercept(pos, collider.ProjectileBBox(pos, tx, projectile), start, end)
+		} else {
+			result, intersects = BlockIntercept(pos, tx, b, start, end, shape)
+		}
+		if intersects {
 			hit = result
 			end = hit.Position()
 			return false
