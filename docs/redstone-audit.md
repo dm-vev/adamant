@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **paused at the user's request on 2026-10-25; audit incomplete**.
+Status: **paused at the user's request on 2026-10-26; audit incomplete**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -11,6 +11,17 @@ image SHA-256 is
 Unmodified Windows BDS 1.26.51.1 supplies additional world-level observations.
 The repository's Java gameplay baseline does not override the requested
 Bedrock reference for this audit.
+
+The current effort estimate is approximately **55%** of the full audit. This is
+a planning estimate, not a percentage of proven equivalence or a count of closed
+matrix rows. Every row below retains its outstanding work. The current fixes
+are grouped for publication by capture tooling, comparators/analog outputs,
+switches, pressure plates and tripwire.
+
+The next investigation is daylight detectors and lightning rods. The daylight
+capture script has collected 16 native time/frozen-time scenarios across all
+three dimensions, but those observations have not yet been replayed against the
+kernel or used to fix production behavior. That area remains open.
 
 ## Reproducible evidence
 
@@ -44,6 +55,14 @@ Python process. No game binary or extracted machine code is stored here.
 | `ComparatorCapacitor::addSource` / `updateDependencies` / `cacheValues` | `0x66d8420` / `0x66d8510` / `0x66d87e0` | Rear/direct versus side source filtering and separate cache/evaluate phases; 48 settled side-source scenarios |
 | `ComparatorBlockActor::tick` / `ComparatorBlock::_installCircuit` | `0x4ab6900` / `0x8e16860` | Rear analog override, initialization and block-actor sampling; 30 settled rear-priority cases and 60 exact timing traces |
 | `ComparatorBlock::use` / `_refreshOutputState` | `0x8e15360` / `0x8e15e90` | Direct configured-mode update at `0x8e15781`, strength-zero-crossing publication, independent variant/lit properties; 32 exact mode/property/replacement traces |
+| Scalar analog outputs | `BeehiveBlock` `0x2a5d9f0`, `CopperBulbBlock` `0x6eb96d0`, `CauldronBlock` `0x8e02350`, `CopperGolemStatueBlock` `0x6ebcea0` | Disassembled signal getters and 77 settled world scenarios across honey, bulbs, cauldrons, cake, composter, anchor, portal frame and default statues |
+| Campfire analog virtual dispatch | vtable `0xe86f390`, slots `+0x2d0` / `+0x2d8` | Both point to constant-zero `BlockType` methods at `0x76c20`; actual client instructions executed with image/function hash checks |
+| Container fullness / decorated-pot getter | `0x26aefc0` / `0x9782170` | Native initialization, per-stack maxima, binary32 accumulation and flooring; 81 settled container cases and nine hopper-filled pot cases |
+| Lectern/book and record outputs | `0x34547d0` / `0x66c3c80` | Native two-page-spread arithmetic and record-component signal; 165 lectern and 46 jukebox cases, including all 22 registered records playing/paused |
+| Chiseled bookshelf comparator memory | `0x8e0d660` | Native actor's one-based last-interacted slot; 56 authored persistence states and 48 actual hopper-transfer cases with two barrel controls |
+| Frame directional analog read | `0x66bf730` | Native facing check before actor/rotation read; 792 settled cases cover both frame types, four comparator directions, direct/conducted input, empty and rotations 0..7 |
+| Switch geometry and projectile-operated buttons | `0x3193120` / `0x3195570` / `0x3194b00` | Arrow/trident collision and contact queries, fixed facing boxes and 20/30-tick constants; 196 source states, 480 output/conduction cases and 180 actual-arrow traces |
+| Tripwire player destruction and hook sounds | `0x4035320` / `0x4038b70` | Disassembled pre-removal tool branches and sound/publication ordering; 58 actual player-cut traces and 230 native sound packets replayed |
 
 The evaluator fixture is
 `server/block/testdata/bedrock_1_26_51_redstone_evaluators.json`. Component buffers
@@ -193,6 +212,505 @@ These captures verify that internal identifier transitions preserve configured
 direction, unlike explicit replacements. Full player-packet timing,
 pending-publication edits in larger graphs, native persistence, the complete
 source/material graph and all analog-output blocks remain open.
+
+### Comparator replacement while a result is pending
+
+The new publication matrix changes the source first, then edits the comparator
+one or two game ticks later. It covers rising/falling input, both absolute
+edge parities, and six methods: no edit, a mode property, a facing property,
+an identifier replacement, removal, or removal followed by placement. All
+48 traces retain every sampled comparator permutation and wire signal.
+
+Four identifier-replacement cases failed before the fix. A previously evaluated
+result remained queued after the old capacitor was recreated. On a rising edge
+it lit the new comparator too early; on a falling edge it removed the signal
+one circuit step too early. External identifier replacements now discard
+pending block/strength publication and its pending cause for components with
+explicit reinitialization semantics. Their own publication still preserves
+the capacitor. The policy applies to comparators and torches; the new native
+publication matrix specifically covers comparators, and the existing torch,
+repeater and observer regressions also pass. This does not establish every
+component's replacement semantics or larger simultaneous-edit graphs.
+
+### Scalar analog block outputs
+
+`redstone_bds_analog_blocks_probe.py` captures 77 native permutations: both
+hive types at honey levels 0..5, all eight copper-bulb variants lit/unlit,
+water/lava/powder-snow cauldrons at fill 0..6, seven cake levels, candle cake,
+nine composter levels, five anchor charges, both portal-frame eye states and
+four waxed statue variants at their default pose. Each capture has 16 frames;
+the regression checks the final eight, leaving general transition timing to
+separate traces. Twenty-six cases failed in the unchanged analog code.
+
+- Hive/nest output is the honey level. Both were missing and returned zero.
+- A lit copper bulb outputs 15 independently of oxidation and waxing; an
+  unlit bulb outputs zero. The comparator override was missing.
+- Cauldron output is `(fill_level + 1) / 2` for all three liquids. The old
+  special case returned 3 for every nonempty lava state. Four partial lava
+  permutations were wrong; these registered states can be selected by commands.
+- Copper-golem statues were missing their analog output. Client getter
+  `0x6ebcea0` reads `SerializedActorBlockActor::mPose`, clamps 0..14 and adds
+  one. Normal poses therefore supply 1..4. The world capture verifies the
+  default pose's signal 1 for four waxed oxidation variants; nondefault pose
+  world interaction/persistence still require captures.
+
+Campfire had the opposite problem: it invented an inventory-fullness signal.
+The actual client `CampfireBlock` vtable at `0xe86f390` points both analog
+support and signal slots to constant-zero `BlockType` methods at `0x76c20`.
+`redstone_native_analog_probe.py` verifies the image/vtable/function hashes and
+executes those original call-free methods. Campfire's analog override is
+removed. Twenty Go configurations cover both fire types, lit/extinguished
+state and zero to four occupied cooking slots. This is an executed-method
+dispatch check, not a native world capture with a player cooking food.
+
+The new fixtures are `bedrock_1_26_51_comparator_publication.json`,
+`bedrock_1_26_51_analog_blocks.json` and
+`bedrock_1_26_51_analog_dispatch.json`. Later sections cover initial container,
+pot, book, record and frame outputs. Sensor frequencies, command success
+counts, shelf variants and broader native save/load remain open.
+
+### Inventory fullness and decorated pots
+
+`Container::getRedstoneSignalFromContainer` at `0x26aefc0` first calls
+`initializeContainerContents` (vtable slot `+0x140`). It then sums each occupied
+stack's count divided by its item-specific maximum, divides by the number of
+slots, multiplies by 14, floors, and adds one if anything is present. The
+ratios, accumulator and final arithmetic use SSE binary32 operations. The
+inspected main-body span has size `0x1c6`, SHA-256
+`14e324bfc06de68b2bdd04028311322eb3851758dea25d899859af669b891f34`;
+the multiplier at `0xe7be570` is 14.0. Adamant now uses a shared binary32
+implementation for ordinary inventories and the pot's single stack. This
+precision change follows the disassembly; no separate floating-point boundary
+failure is claimed for the registered 64/16/1-stack items in this matrix.
+
+Decorated pots had no comparator override, despite native getter `0x9782170`
+delegating to that one-slot container calculation. Their getter now initializes
+pending loot through the existing pot path and computes the stack signal.
+Dispenser and dropper had inventories and viewer methods but lacked
+`ContainerSize`, so they failed the complete `Container` interface used by
+`comparatorOverride`. Both now expose their nine slots. The regression fills
+their actual inventories through the narrower inventory-reading interface,
+independently of the missing-method bug, rather than accidentally leaving
+those test inventories empty. Twenty-four nonempty cases across these three
+block types failed before the fixes and now pass.
+
+The ordinary matrix has 81 native cases: chest, trapped chest, barrel, hopper,
+dispenser, dropper, furnace, brewing stand and a paired 54-slot double chest,
+each under nine content patterns. Stone, egg and wooden sword exercise stack
+maxima 64, 16 and 1; patterns include empty, single items, partial/half/full
+stone stacks, mixtures and a signal-boundary neighborhood. Actual native
+inventories, including per-item maxima, are read back and checked unchanged
+during the trace. Source preparation precedes comparator placement by eight
+ticks; the Go replay checks the final eight of 16 sampled frames.
+
+The brewing stand has an explicit empty fuel slot. Diagnostics found that BDS
+consumes invalid stone in fuel slot 4 one item per game tick while its fuel
+charge remains zero. That is an evolving inventory, rather than a scalar
+rounding failure; it is not used as a supposedly stable reference. The
+`full_stone` brewing pattern therefore fills the other four slots, not all
+five. Fuel-charge/recipe transitions and a fully stocked charged brewing
+stand remain separate open cases.
+
+The stable Script API does not expose the pot inventory, and `/replaceitem`
+does not populate it. Failed/partial attempts are not accepted fixtures. The
+nine valid pot cases instead transfer the actual items through native hoppers:
+the pot is the only outlet, the intake is empty, hopper contents are read
+until empty, and item drops invalidate the capture. The input counts follow
+that conservation check, explicitly labelled in `input_mode`; they are not
+claimed to be direct pot inventory readback. All nine cases finish, including
+a nonstackable sword (signal 15), 17 stone (4), 32 stone (8) and 64 stone (15).
+The Go replay sets these final pot contents and checks settled comparator
+output; it does not replay or establish the kernel's hopper transfer timeline.
+
+Fixtures are `bedrock_1_26_51_inventory_signal.json` and
+`bedrock_1_26_51_pot_signal.json`, with corresponding scripts and the shared
+`TestInventorySignalsMatchNativeCapture` replay. Shulker/copper-chest variants,
+blocked lids and openers, loot-backed native worlds, other container-specific
+initialization, inventory transition timing, chunk boundaries and persistence
+remain open; this is not a claim of complete container or hopper parity.
+
+### Books, music discs and bookshelf memory
+
+`LecternBlock::getComparatorSignal` at `0x34547d0` reads the stored spread
+index at actor offset `+0x288` and total written-page count at `+0x28c`.
+For a nonempty book with fewer than four pages it returns 15. Otherwise it
+computes `floor(float32(page) / float32(totalPages / 2 - 1) * 14) + 1`;
+integer division happens before the binary32 calculation. The constants
+at `0xe7be570` and `0xe5e9578` are 14.0 and -1.0. An empty lectern returns zero.
+Adamant previously used the Java-style individual-page denominator and
+returned one for a short book. Both the short-book result and the spread
+calculation are corrected. `Lectern.Page` now documents the native spread
+index, which is already the stored and packet-facing value.
+
+The 165 lectern cases cover empty and zero-page books, both writable and
+written books, lengths 1/2/3/4/5/6/7/8/15/16/49/50 and every valid spread
+at those lengths. Inputs are explicitly authored `.mcstructure` persistence
+states, loaded by the original BDS structure loader. Native inventory readback
+verifies the item and written-page count. This is **not** a player page-turn
+or insertion trace: pulse duration/retrigger, packet validation, malformed
+actor values, total-page memory after external edits and broader save/load
+remain open.
+
+`JukeboxBlock::getComparatorSignal` at `0x66c3c80` reads the record component's
+signal at `+0x3c`; it does not test playback state. The 46 native cases cover
+all 22 registered records and empty, each playing or explicitly paused through
+the native record-player API. Relic's signal is 14, not Adamant's former 15.
+Creator, Creator Music Box, Precipice, Tears, Lava Chicken and Bounce now
+return 12/11/13/10/9/8 rather than zero. Fourteen jukebox and 142 lectern cases
+failed before the corrections; all 267 cases in the combined matrix pass now.
+The replay compares the last eight of 16 native frames. It makes no claim
+about playback completion, sound/dancer state or insertion/ejection timing.
+
+The remaining 56 cases exercise `ChiseledBookshelfBlock::getComparatorSignal`
+at `0x8e0d660`: it returns the actor's one-based last-interacted slot at
+`+0x2a0`, regardless of occupancy. All four facings, empty/full occupancy and
+last-slot values 0..6 match the existing kernel behavior. These inputs also
+use authored persistence states; they do not establish player hit mapping.
+
+A second capture uses actual native hoppers, rather than directly setting
+final bookshelf contents: 48 combinations of four shelf facings, insertion
+from above/extraction from below, and one to six books. Native hopper counts,
+shelf occupancy and comparator output are recorded for 128 ticks. Two barrel
+controls verify both transfer paths are working. The kernel replays actual
+hopper transfers and matches the final 16 frames in all 50 cases. In
+particular, extracting every book leaves signal equal to the last slot
+removed, rather than resetting it to zero. Individual transfer phases,
+horizontal hopper faces, non-book filters, player interactions and reload
+remain separate open cases.
+
+The reproducible scripts are `redstone_bds_book_record_probe.py` and
+`redstone_bds_bookshelf_hopper_probe.py`. `redstone_audit_structure.py`
+encodes only authored little-endian NBT; no game assets or binary code are
+embedded. The reference harness writes these structures into its fresh
+temporary development pack, never the asset junction. Fixtures are
+`bedrock_1_26_51_book_record_signal.json` (267 cases, 4,272 frames) and
+`bedrock_1_26_51_bookshelf_hopper.json` (50 cases, 6,400 frames).
+
+### Frame direction and comparator reads
+
+`ItemFrameBlock::getComparatorSignal` at `0x66bf730` compares the queried
+direction with the native `facing_direction` before reading the actor. With
+an item present, it divides the actor's degree rotation by the binary32
+constant 45.0 at `0xe82f930`, truncates, clamps the upper value to 14 and adds
+one. In the normal rotation range, outputs are 1..8; an empty frame gives zero.
+Adamant already computed the ordinary rotation values, but discarded the
+queried direction and supplied the signal from every side. The comparator's
+analog read now passes its input direction to both direct and through-block
+queries and filters frame output by the corresponding native facing. Kernel
+`ItemFrame.Facing` points toward the support, opposite to the native property.
+
+The initial west-reading matrix reproduced 160 failures among 198 cases
+before the direction fix. The expanded native fixture then covers all four
+horizontal comparator directions: 792 cases, both normal/glowing frames,
+all six frame facings behind a stone conductor, five supported facings for
+direct reads, empty frames and ordinary item rotations 0..7. The remaining
+direct facing is deliberately omitted: it would require using the comparator
+itself as the frame's support. The corresponding valid stone-backed facing
+is included and supplies 1..8. Every sampled frame is checked still present,
+so missing support cannot masquerade as a zero-signal result.
+
+All 792 cases match in the final eight of 16 frames. Inputs use authored
+persisted frame actors, loaded by the unmodified native structure loader;
+individual player rotations/removal, map-specific rotation steps, non-stone
+supports/conductors, malformed actor rotations, transitions and reload remain
+open. The script is `redstone_bds_frame_signal_probe.py`, and the retained
+fixture is `bedrock_1_26_51_frame_signal.json` (12,672 native frames). Four
+successive batches share one fresh reference world to keep the active area
+within the native ticking-area limit; each batch has controlled setup parity.
+
+### Switch outputs and projectile-operated buttons
+
+The source-state matrix covers all 15 registered button materials in six
+mounting directions, pressed/unpressed, plus the eight lever orientations
+on/off: 196 native cases. Script API producer readback identifies output
+strength, all six connected faces and the strongly powered support face.
+The kernel matches every one of the 80 sampled source/wire frames per case,
+including initially pressed command permutations remaining pressed. These
+are explicit permutation inputs, not player click/release traces.
+
+Another 480 cases cover wood/stone buttons and all lever orientations,
+six output directions, on/off and direct versus one-stone-block conduction.
+The last eight of 24 frames match for the switch, conductor and lamp. A
+direct lamp can itself serve as the mounting support; the native capture
+checks the source remains present. Strong conduction goes into the support,
+while direct output reaches all six faces. Three batches share one fresh
+reference world, with controlled even setup parity.
+
+Projectile activation was missing entirely from `Button`: it had no
+`EntityInside` callback, released unconditionally, and its empty physical
+model made arrows pass through the button into its support. Client method
+`ButtonBlock::getCollisionShape` (`0x3193120`) explicitly permits only arrow
+and thrown-trident actor types, then reads six fixed facing boxes. The shape
+is independent of pressed depth. Ordinary entities and other projectiles
+have no such collision. `ButtonBlock::entityInside` (`0x3195570`) scans on
+an unpressed wooden button; `_checkPressed` (`0x3194b00`) queries both arrow
+and trident actors in that fixed box, presses on contact, rechecks after
+30 ticks while a projectile remains, and releases on a later check when
+none remain. `buttonPressed` selects 20 ticks for stone and 30 for wood.
+
+The kernel now supplies those entity-specific projectile collision boxes
+without adding ordinary physical collision. Projectile traces and attachment
+checks use them, so arrows stop and remain at the button face. Wooden buttons
+scan actual arrow/trident bounding boxes, including a touching face, keep
+their signal while a projectile remains, and release at the next scheduled
+check after removal. Querying only entity origins would miss resting arrows;
+the local search is expanded and then tests each body's actual bounds.
+
+The initial 48 native arrow traces exposed another phase error during real
+kernel-arrow integration: post-movement contact pressed a button one game
+tick too early. Native snapshots show the arrow already stopped at the
+button before its pressed bit changes. Button contact for arrows/tridents
+now runs before projectile movement, with its former post-movement callback
+omitted. Other inside-block effects keep their existing phase. No arbitrary
+extra tick was added to the native 20/30-tick durations.
+
+The expanded capture has 180 cases: all 15 button materials, six mounts and
+both absolute spawn parities. The original BDS simulates actual shot arrows;
+their positions, velocities and AABBs are read back. Arrows are removed 45
+ticks after spawning. All 13 wooden materials activate and hold, then release
+at a later recheck; stone and polished blackstone remain off. Each case
+retains all 100 source/wire frames. Restoring the original button code
+reproduced 156 failing wooden cases in each replay layer. The working file
+was restored unconditionally after that baseline run.
+
+One replay supplies the recorded native body poses, evaluating contact in
+the world entity phase between interval snapshots. A separate replay uses
+real kernel arrows from the recorded spawn positions/velocities. Both match
+all 180 redstone traces. The latter also verifies that every arrow, including
+stone-button controls, remains attached to the actual button and agrees on
+the native collision-axis coordinate. This establishes the tested button
+behavior and impact plane, not full numeric parity of projectile flight.
+
+`redstone_native_button_probe.py` verifies the complete client image hash,
+reads the actual six floating-point box tables, and records the inspected
+collision/query actor constants and both press/recheck delay constants.
+It records disassembly-span hashes; it does **not** execute these methods.
+The geometry regression covers all button materials, both pressed states,
+all six faces, arrows/tridents and excluded snowball/item controls.
+
+Fixtures are `bedrock_1_26_51_switch_states.json` (196 cases, 15,680 frames),
+`bedrock_1_26_51_switch_faces.json` (480 cases, 11,520 frames),
+`bedrock_1_26_51_button_projectiles.json` (180 cases, 18,000 frames) and
+`bedrock_1_26_51_button_geometry.json` (inspected client data). Their scripts
+are `redstone_bds_switch_state_probe.py`, `redstone_bds_switch_faces_probe.py`
+and `redstone_bds_button_projectile_probe.py`.
+
+### Player-operated switches and click packets
+
+The loopback packet client in `scripts/redstone_client` now completes the
+native loading-screen acknowledgement and sends one authenticated input per
+client tick. `redstone_bds_switch_use_probe.py` drives actual native player
+interactions: all 15 button materials, all six mounts for wood/stone, all eight
+lever orientations, and both single/repeated use. All 66 traces match the
+kernel's source state and adjacent wire at every snapshot. Accepted before/after
+interaction events and an actual powered permutation are required positive
+controls. Both actual input parities occur; network arrival is observed rather
+than assumed from the requested parity. Inputs are aligned by independently
+recorded absolute game time, not the SDK's deferred event tick label.
+
+An earlier experimental client sent an extra authenticated input for each
+click. That advanced its simulation clock and shifted later native release
+samples by one tick. This capture is excluded; the retained capture uses only
+the regular input cadence. No button timer was changed to compensate for a
+measurement error. `bedrock_1_26_51_switch_use.json` retains the 66 final traces.
+
+Native sound packets revealed a separate implementation defect: buttons were
+silent and levers used generic power events. Both use `button.click_on` and
+`button.click_off`, with the resulting block state's signed network hash in
+ExtraData and the block centre as position. Button press/release and lever use
+now send those events. `redstone_bds_switch_sound_probe.py` retains six native
+packets from stone/wood buttons and a toggled lever; the regression compares
+names, hashes, entity type and positions. The before-fix check fails for all
+three sources. Repeated use of a pressed button does not produce an extra click.
+
+`Reference(local_client=True)` explicitly opts a fresh temporary reference into
+an offline creative profile for the credential-free loopback client. The normal
+reference profile is unchanged. Client commands are local stdin JSON, and block
+hashes come from native SDK permutations rather than kernel runtime IDs.
+
+Broader support/material checks, projectile boundary/multiple-entity combinations,
+rotation/replacement, unload/reload, and the full sound material/mount matrix
+remain open. The inspected projectile query/collision paths include tridents,
+but stable Script API refuses to summon that entity; an attempted capture was
+rejected and is not a fixture. Native world interaction for tridents remains open.
+
+### Pressure-plate states, entity queries and weighted output
+
+Ordinary Bedrock plates encode the pressed state as `redstone_signal=1` and
+produce electrical strength 15 only for that data value. The previous kernel
+stored 15 in the block property and returned the property unchanged as power.
+The native scalar methods at `0x9952600` and `0x9952610` were executed for
+inputs -1..16; the weighted identity method and both 20/10-game-tick recheck
+methods were also executed. All five methods are retained with client hashes
+in `bedrock_1_26_51_pressure_plate_methods.json`. Ordinary plate publication and
+power now follow those conversions, including zero output for other data values.
+
+Entity detection previously used origins inside a full-width, half-block-high
+box. This missed dropped items resting exactly on its lower boundary and counted
+bodies outside the native contact outline. The inspected sensitive box is
+[1/16, 0, 1/16] to [15/16, 1/4, 15/16]; the query now tests actual entity AABBs.
+Wood and weighted plates accept objects but exclude experience orbs explicitly.
+Stone and polished-blackstone plates query the native Mob category; kernel
+living entities and armour stands qualify, whereas arrows and dropped items do
+not. The earlier implementation excluded only dropped items from stone plates.
+Weighted strength uses the native binary32 ratio, multiply by 15 and ceiling,
+with caps 15 and 150 entities for light and heavy plates.
+
+The two native BlockSource overloads also differ at chunk edges: the typed
+actor query at `0x2d850b0` scans the sensitive box's chunk range directly;
+the untyped query at `0x2d845f0` expands that range by two blocks before scanning.
+An armour stand overlapping a stone plate from the neighbouring chunk is
+therefore ignored in the retained native case, despite its overlapping AABB.
+The kernel now preserves that selection rather than applying an arbitrary
+origin expansion. Reads scan already available entities and do not load chunks.
+The replay keeps actual native coordinates so a chunk-edge observation cannot
+be silently moved to the centre of a chunk.
+
+`redstone_bds_pressure_plate_probe.py` records 302 cases / 24,160 frames:
+all 17 materials against pigs, armour stands, items, arrows and experience orbs
+at both input parities; 52 light/heavy weight cases from 2 to 151 armour stands;
+and 80 horizontal-edge/elevated-body controls for wood, stone and both weighted
+plates. Every sampled source state and adjacent wire value matches. Native
+body positions and AABBs are replayed using stand-ins to isolate plate queries
+and scheduled release from independent kernel AI, movement and item merging.
+Captured entity counts and positive activation controls are checked; a reference
+that merely spawns bodies without ticking plates cannot satisfy the capture.
+
+This does not close the entire plate/tripwire area. Player game modes,
+sneaking/other excluded actor states, additional actor types, exact touching
+boundaries, explicit negative/cross-chunk matrices, count-changing weighted
+transitions, native sound packets, support materials, replacement/load and
+real kernel entity contact integration still need dedicated evidence. Tripwire
+and hooks are covered separately below; their remaining cases stay open.
+
+### Tripwire contact, hook scans and command removal
+
+Tripwire previously queried entity origins in an entire block cube and used a
+carpet collision model. Native contact instead queries actual body bounds
+against `getVisualShape`: a non-suspended string spans Y=0..3/32; a suspended,
+attached string spans 1/16..5/32; a suspended, unattached string spans 0..1/2.
+The object-query chunk range is the same untyped BlockSource overload described
+for plates. A shared private helper now applies that range and actual AABB
+intersection to both components. Unlike plates, experience orbs do trigger
+tripwire; the native traces explicitly retain this distinction.
+
+`TripWireBlock::onPlace` starts from the default permutation and sets
+`suspended_bit=true`. Requested `/setblock` disarmed/suspended flags do not
+survive initial placement, while a later same-identifier permutation edit does.
+The kernel now performs that initialization through the placement callback.
+Initial connection/source scans run for both strings and hooks. Contact capture
+therefore records placement first, then explicitly edits the existing string at
+a known tick and confirms the requested properties were actually applied.
+The earlier experimental command-only disarmed setup was rejected as evidence
+of a disarmed string: native placement had reset the property.
+
+Native `_updateSource` scans south and west up to distance 41; one hook scan
+updates both ends. `calculateState` considers hook distances 2..41, allowing
+40 strings. The old kernel stopped at distance 40 and rejected that valid maximum.
+The scan now continues across gaps to find and update the opposite hook while
+marking the line discontinuous. String attachment is published only when the
+starting hook's attachment changes and an opposite hook was found, following
+the inspected native callback rather than reconciling arbitrary edited bits.
+
+Disarmed string can have `powered_bit=true` without powering hooks. A source
+change at that index temporarily detaches the line and schedules the originating
+hook's ten-game-tick recheck. That recheck can reattach a continuous disarmed
+line without making it electrically active. The kernel previously ignored
+disarming and did not implement the hook recheck. Native string holding/release
+also uses ten-tick checks. Both delay immediates are retained in the client
+geometry/constant fixture.
+
+Ordinary neighbouring-block notifications update connections/support; they do
+not rescan the whole line. In all 80 native command-removal cases, removing
+string with `setblock ... air` leaves the existing hook attachment bits set.
+The kernel previously detached the line through its broad neighbour callback.
+Source callbacks, hook placement and pending rechecks now drive line calculation.
+Player cutting uses a separate preprocessing callback; its capture and port
+are described below. Command removal does not invoke that player callback.
+
+The tripwire collision virtual slot at vtable `0xe8b4960 + 0x20` points to the
+constant-empty getter at `0xe1d20`. Its actual relocation-free instructions were
+executed and returned six zero bounds. The kernel's artificial 1/16-block carpet
+collision is removed; a regression checks every registered string permutation.
+`redstone_native_tripwire_probe.py` records the image/method hashes, executed
+collision result, inspected visual tables, scan limits and tick immediates. It
+does not execute the entity/line callbacks in a fabricated world.
+
+`bedrock_1_26_51_tripwire_contacts.json` contains 140 cases / 11,200 frames:
+connected, explicitly disarmed and unhooked strings, both suspended properties,
+five native actors, both input parities, six selected body heights and four
+horizontal overlap controls. Every string property, both hook states and the
+output wire are replayed. Recorded native body poses/AABBs isolate component
+queries from the independent kernel movement integrator.
+`bedrock_1_26_51_tripwire_lines.json` adds 80 cases / 5,120 frames covering all
+four directions, 1/2/39/40/41 strings, disarmed/unarmed command removal and both
+parities. Every sampled string permutation, hook and output matches. Scripts are
+`redstone_bds_tripwire_probe.py` and `redstone_bds_tripwire_line_probe.py`.
+
+Open tripwire work includes previously powered/disarmed player-cutting states,
+support removal,
+rotations/replacement during pending checks, explicit gaps followed by later
+source changes, crossings, full weak/strong input/output/material matrices,
+additional actor states/game modes, real kernel movement/contact phase, exact
+touching boundaries, other sound/state combinations and save/unload/reload behavior.
+
+### Actual player cutting and hook sound packets
+
+Native `TripWireBlock::playerWillDestroy` at `0x4035320` changes the string while
+it still exists and calls `_updateSource`. Ordinary tools set its powered bit;
+shears clear that bit. Shears do **not** set `disarmed_bit` in this callback.
+This distinction matters: a previously ordinary line remains attached until
+the hook's delayed recheck, whereas a disarmed source update can detach it
+immediately. The player then removes the string. The kernel previously had no
+player-destruction callback, so a cut by hand emitted no pulse and neither tool
+requested the later detachment.
+
+`Tripwire.PlayerWillDestroy` now ports that preprocessing. The optional
+`world.EntityDamageSource` interface exposes the responsible entity without
+requiring blocks to import the entity package. `entity.AttackDamageSource`
+implements it, allowing the callback to inspect the actual player's main hand.
+The existing player break path already invokes the callback before removal.
+No new method is required of other existing DamageSource implementations.
+
+`redstone_bds_tripwire_break_probe.py` drives actual authenticated block actions
+from the loopback client and records native before/after break events, held
+items, game mode, block positions, absolute game time and interval snapshots.
+A use-item break transaction alone was ignored by BDS and is excluded. A further
+experimental client omitted aborting mining: its surviving mining state broke
+a later scenario's newly placed string before the requested action. That capture
+is rejected. The retained client sends start/predicted-destroy actions in one
+normal input tick and aborts mining on the next tick. A native event before the
+request, at another position, with the wrong tool/mode, or without an actual
+air block afterward cannot pass the capture controls.
+
+The retained `bedrock_1_26_51_tripwire_break.json` contains 58 cases / 3,568
+frames: creative and survival, hand and shears, 1/3/40/41 strings, end/middle
+cuts, all four directions, and both actual input parities. The 41-string cases
+are an unattached length-limit control. Tile drops and mob spawning are disabled
+in the isolated reference to keep incidental item actors out of this component
+comparison. The kernel replay uses actual `Player.BreakBlock` and inventory,
+not a manually injected hook state, and checks every sampled string permutation,
+both hooks and the conducted output wire. Real player replay runs in Overworld:
+using End with the full entity registry allowed its independent dragon-fight
+portal initialization to overwrite the test layout and was corrected in the
+harness before using the result as evidence.
+
+The same native packet capture revealed missing hook sounds. Native `_emitState`
+at `0x4038b70` prioritizes power transitions over attachment transitions and emits
+`power.on`, `power.off`, `attach` or `detach` at (x+0.5,y+0.1,z+0.5). ExtraData is
+the network hash of the block currently at the sound position. `calculateState`
+publishes the opposite hook first, sounds that hook then its own, and only then
+publishes its own state. Thus one sound uses the new permutation and the other
+uses the old permutation. Both transition comparisons use the starting hook's
+previous flags. The kernel now preserves this ordering and payload selection.
+All 230 retained native hook packets match in sequence for event name, position,
+state hash and entity type, in addition to the complete world-state replay.
+
+This covers the recorded ordinary-line cuts with tile drops disabled. Cutting
+already powered/disarmed strings, cutting with other live inputs, ordinary item
+drops interacting with surviving strings, support destruction, cancellation,
+packet/viewer publication ordering beyond sounds and native reload still require
+separate scenarios. Hook vibration/game-event parity is also still open.
 
 ### Repeater side locking
 
@@ -530,25 +1048,25 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Area | Current status / next evidence required |
 |---|---|
 | Circuit cadence and ordering | Shared clock and capacitor cache/evaluation traversal installed; native registration, bucket growth and chunk vectors verified in 26 heap/world cases. Open: complete publication traversal, other groups, startup/restart, first placement, simultaneous changes, priorities, sound and native unload/reload ordering |
-| Source/consumer/conductor graph | Open: weak/strong activation, one-solid-block transfer, face filtering, nonconductors, attenuation, removal and independent circuits |
+| Source/consumer/conductor graph | 480 switch output/conduction cases match tested direct and one-stone-block paths. Open: broader weak/strong activation, other sources/materials, face filtering, nonconductors, attenuation, removal and independent circuits |
 | Redstone wire | Transport phases and 48 basic network traces verified. Open: horizontal shape, directional output, native vertical/material matrices, other component connections, feedback, cancellation and reload |
 | Repeaters | Side-source filter, pulse pipeline and delay setup corrected; fixed/random evaluator traces and 96 world timing/lock/train/delay traces match. Open: powered placement, native load/pulse persistence, source graph and cross-chunk ordering |
-| Comparators | Arithmetic, independent lit/variant state, side-source filter, tested rear analog precedence, configured mode/direction and shared clock corrected; 8,704 arithmetic cases, 78 settled source/priority cases, 60 pulse traces, 32 mode traces and 40 rotation traces match. Open: complete source/material graph, all analog blocks, broader interaction/property/publication lifecycle, output-change events and block actor persistence |
+| Comparators | Arithmetic, independent lit/variant state, side-source filter, tested rear analog precedence, configured mode/direction, pending replacement output and shared clock corrected; 8,704 arithmetic cases, 78 settled source/priority cases, 60 pulse traces, 32 mode traces, 40 rotation traces and 48 publication-edit traces match. Open: complete source/material graph, all analog blocks, broader interaction/property/publication lifecycle, output-change events and block actor persistence |
 | Redstone torches | Native counter, shared clock and registration traversal installed; 34 one-torch traces, 36 ascending networks, 62 common-support traces, 60 placement traces, 24 rotation/replacement traces, 60 settled face/conduction cases and 3,776 algorithm cases match. Immediate placement inversion and premature direction refresh fixed. Open: broader player interactions, full source/material/attenuation graph, replacement registration order in larger graphs, dependency lifecycle, native sound/publication order, restart/unload/reload and broader cancellation |
 | Observers | 38 face/phase/retrigger traces, 28 output traces, 12 lifecycle traces and 18 movement callback windows match. Open: notification-only changes, larger chains, powered placement/load, unload/reload and complete piston timing |
 | Pistons and sticky pistons | Nonadjacent power bug fixed. Open all direction/source combinations, conduction, timing, short pulses, push/pull limits, adhesion, block actors and moving entities |
-| Levers and buttons | Open: mounting faces, weak/strong output, press/release duration, repeated activation, arrows/projectiles, support and reload |
-| Pressure plates and tripwire | Open: entity filters, weighting, update interval, release, hook scans, disarming and support |
+| Levers and buttons | 196 source states, 480 direct/conducted output cases, 180 actual-arrow traces and 66 real player-use/retrigger traces match. Missing wooden-button activation/holding, projectile collision/contact phase and switch sound events corrected; six native click packets verify three sources. Open: trident world capture, multiple entities/boundaries, broader support/materials, full sound material/mount matrix, replacement and reload |
+| Pressure plates and tripwire | Plate conversion/query fixes verified in 302 native traces and five executed scalar methods. Tripwire initialization, contact bounds, 40-string limit, disarming/recheck and neighbour callback scope corrected; 140 contact + 80 line traces match. Artificial carpet collision removed against an executed native getter. Another 58 actual player-cut traces and 230 hook sound packets match after adding the destruction callback and native sound ordering. Open: player modes/actor states, complete boundary/transition/contact integration, previously powered/disarmed cutting, gaps/crossings/support/materials, broader sound/game events and persistence |
 | Daylight detectors and lightning rods | Open: analog calculation, inverted mode, dimension/weather/time changes, pulse timing and conduction |
 | Sculk sensors/calibrated sensors/shriekers | Open: detection/activation/cooldown phases, frequency filtering, output, waterlogging, paired events and persistence |
-| Lamps and copper bulbs | Lamp source/consumer phase corrected in observer/wire matrices. Open: broader retrigger/cancellation/load cases. Copper-bulb toggle, comparator output and persistence remain open |
+| Lamps and copper bulbs | Lamp source/consumer phase corrected in observer/wire matrices. Bulb comparator output verified lit/unlit for all eight variants. Open: broader lamp retrigger/cancellation/load cases, bulb toggle timing/interaction and persistence |
 | Doors/trapdoors/fence gates | Open: direct/conducted input, upper/lower halves, manual changes while powered, transition events and all materials |
 | Powered/detector/activator rails | Open: scan range, slopes, branching, entity activation, analog outputs and minecart effects |
-| Dispensers/droppers/crafters | Open: edge detection, delay/retrigger, source direction, inventory side effects, craft scheduling and block actors |
-| Hoppers | Open: lock input faces/conduction, cooldown and item-transfer ordering, minecart interactions and reload |
+| Dispensers/droppers/crafters | Dispenser/dropper nine-slot container contract corrected and settled comparator fullness verified. Open: edge detection, delay/retrigger, source direction, inventory side effects, craft scheduling and block actors |
+| Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Open: lock input faces/conduction, individual cooldown/transfer ordering, all other containers and sides, minecart interactions and reload |
 | TNT/note blocks/bells | Open: triggering edge, conducted sources, scheduled action, payload and repeated input |
 | Command/structure blocks | Open: trigger/cycle timing, modes, conditionals, powered-state persistence and cross-chunk execution |
-| Analog-output blocks | Open: containers/trapped chests, furnaces/campfires, cake/candle cake, cauldrons, composters, bookshelves, jukeboxes, lecterns, item frames, anchors, portal frames, skulls and creaking hearts |
+| Analog-output blocks | 77 settled scalar cases, 81 inventory cases and nine pot cases verify the tested paths; campfire's unsupported override removed. Another 267 book/record/shelf states, 50 hopper-transfer results and 792 frame cases match; lectern spread arithmetic, seven disc values and directional frame reads corrected. Open: broader transitions/through-block reads/materials, additional container variants/init/loot, player book/shelf/frame interactions, jukebox lifecycle, lectern pulse/packet validation, frame maps/support variants, nondefault statue world poses, shelves, sensors, command output and creaking hearts |
 | Persistence and lifecycle | Open: pending ticks/phase memory, state replacement at the same position, chunk unload/reload, world teardown and viewer updates |
 | Event cancellation and scheduling safety | Open: cancelled mutations/actions versus native baseline, bounded work, no accidental chunk loads, loops and simultaneous multi-component changes |
 
@@ -681,11 +1199,160 @@ it can be marked verified. No row is complete merely because its Go tests pass.
   passed. Log: `.tmp/redstone-go-test-comparator-lifecycle.log`. This is a
   passing run with explicit exclusions, not an unqualified all-tests pass;
   the earlier failures remain part of the history above.
-- Overall redstone parity has **not** yet been established. Further gameplay
-  changes are paused; completed work is being committed and published at the
-  user's request. The coverage matrix above is the resume checklist.
+- Overall redstone parity has **not** yet been established. Work was paused
+  and published at the user's request on 2026-10-25, then resumed on 2026-10-26.
+  The coverage matrix above remains the full audit checklist.
 - Before publication, the committed server was launched with `go run .` in
   an isolated temporary worktree. A loopback RakNet listener used an ephemeral
   port, world/player saving and resource building were disabled, and the
   console `stop` command closed the server with exit code zero. Existing worlds
   and server configuration were not used. Log: `.tmp/go-run-server-smoke.log`.
+- On resuming, four pending-publication failures were reproduced and fixed;
+  the targeted comparator/torch/repeater/observer run passed (8.643 s).
+  The scalar analog matrix then reproduced 26 failures; after the analog
+  corrections, targeted scalar/comparator/torch checks passed (10.286 s).
+  The block/world suite with the same two exclusions then passed after also
+  removing the unsupported campfire override (11.324 s / 10.245 s).
+  `go build ./...` and `git diff --check` also passed after these changes.
+  Logs: `.tmp/comparator-publication-before.log`,
+  `.tmp/comparator-publication-after.log`, `.tmp/analog-blocks-before.log`,
+  `.tmp/analog-blocks-after.log`, `.tmp/redstone-analog-publication-block-world.log`.
+- The subsequent inventory/pot replay passes all 90 cases (targeted combined
+  inventory/scalar/comparator run 5.174 s). The baseline with populated
+  inventories reproduced 24 nonempty failures in dispenser/dropper/pot;
+  log `.tmp/inventory-signal-filled-before.log`, followed by
+  `.tmp/inventory-signal-after.log`. The wider run then passed every package
+  with the same two known exclusions and `-count=1 -timeout=240s`: block
+  13.794 s, world 13.137 s, server 18.378 s, entity 70.314 s and Overworld
+  generation 80.690 s. Build/diff checks passed as well. Logs:
+  `.tmp/redstone-go-test-inventory.log` and `.tmp/redstone-inventory-build.log`.
+- The book/record baseline reproduced 156 failures (14 jukebox, 142 lectern)
+  in 3.752 s; all 267 combined cases pass after the fixes. The targeted
+  book/record/inventory/scalar/bookshelf run passed (4.511 s), followed by
+  the 50 settled bookshelf/barrel hopper cases (2.841 s). Block/world then
+  passed with the same two explicit exclusions (17.096 s / 11.302 s), and
+  `go build ./...`, Python compilation and diff checks passed. Logs:
+  `.tmp/book-record-before.log`, `.tmp/book-record-after.log`,
+  `.tmp/bookshelf-hopper-go.log`, `.tmp/redstone-book-record-block-world.log`
+  and `.tmp/redstone-book-record-build.log`. Reference world logs are
+  `adamant-redstone-bds-dt5lelj9` and `adamant-redstone-bds-u45kib1a` in the
+  temporary directory; full paths and BDS hashes are in each fixture.
+- The initial 198-frame-case replay reproduced 160 incorrect directional
+  reads before the fix (3.311 s). After passing the query direction, combined
+  frame/book/inventory/scalar/comparator checks passed (7.520 s). The expanded
+  four-direction frame matrix then passed all 792 cases (6.064 s). Block/world
+  passed afterward with the same two explicit exclusions (21.435 s / 11.505 s),
+  as did `go build ./...`, Python compilation and diff checks. Logs:
+  `.tmp/frame-signal-before.log`, `.tmp/frame-signal-after.log`,
+  `.tmp/frame-signal-cardinal-go.log`, `.tmp/redstone-frames-block-world.log`
+  and `.tmp/redstone-frames-build.log`. The final native reference log is
+  `adamant-redstone-bds-nag1vr7w`; the fixture retains its full temporary path.
+- Switch source states pass all 196 full 80-frame traces (3.608 s), and the
+  output/conduction replay covers 480 cases. The initial 48 projectile cases
+  pass with recorded native body poses (2.682 s). Real-arrow integration
+  first reproduced 24 one-tick-early contact failures (2.698 s); moving
+  button contact before projectile movement fixes those traces (3.213 s).
+  Logs: `.tmp/switch-state-go.log`, `.tmp/button-projectile-phased-go.log`,
+  `.tmp/arrow-button-integration.log`, `.tmp/arrow-button-integration-phased.log`.
+- The final expanded projectile fixture covers all 15 materials in 180
+  cases. Temporarily restoring the original button code reproduces 156
+  failures in each replay layer; the diagnostic backs up the working file,
+  reads the baseline from Git, and restores the fix in `finally`.
+  Log: `.tmp/button-projectile-original-expanded-before.log`. The final
+  combined source/geometry/projectile/impact-plane/stair-ray checks pass
+  (block 8.180 s, entity 2.758 s). Log:
+  `.tmp/redstone-switch-projectile-targeted.log`.
+- After the button/contact/trace changes, `go test ./...` passed every
+  package with the same two known exclusions and `-count=1 -timeout=240s`:
+  block 26.684 s, world 14.008 s, server 23.198 s, entity 78.629 s and Overworld
+  generation 99.261 s. Build, Python compilation and diff checks passed.
+  Logs: `.tmp/redstone-go-test-switch-projectiles.log` and
+  `.tmp/redstone-switch-projectiles-build.log`. The three native world logs
+  are `adamant-redstone-bds-wax18vqd`, `adamant-redstone-bds-ruki29rw` and
+  `adamant-redstone-bds-ggfn007p`; fixtures record their full temporary paths.
+
+- Real player-use replay passes all 66 cases (2.941 s). The sound baseline
+  fails for all three sources (2.651 s); sound packet replay passes (2.575 s).
+  Logs: `.tmp/switch-use-clock-go.log`, `.tmp/switch-sound-before.log` and
+  `.tmp/switch-sound-go.log`. Reference roots are
+  `adamant-redstone-bds-3bpfhgoo` and `adamant-redstone-bds-_11v3sve`.
+- The following full `go test ./...` run with the same two known exclusions
+  passed block (26.139 s), world (14.204 s), session (5.370 s) and the other
+  packages except entity: `TestOcelotsHuntChickens` failed its random hunt
+  assertion. Five isolated repeats passed afterward. The full run remains
+  a failure; no extra exclusion was added. Logs:
+  `.tmp/redstone-go-test-switch-use.log` and `.tmp/switch-use-ocelot-recheck.log`.
+
+- The initial 170-case plate replay reproduced 120 failing cases (3.569 s).
+  Correcting binary publication/power, actor selection and AABB queries passes
+  those cases (3.430 s). The expanded replay exposed a typed native query's
+  chunk-edge restriction; retaining native coordinates and matching the
+  disassembled chunk ranges passes all 302 traces plus executed scalar methods
+  (5.730 s). Logs: `.tmp/pressure-plate-before.log`,
+  `.tmp/pressure-plate-after.log` and `.tmp/pressure-plate-expanded-go.log`.
+  The final native reference root is `adamant-redstone-bds-1rf4o8a2`.
+
+- After the plate fixes, the block/world/entity/session run passed block
+  (50.422 s), world (19.792 s) and session (3.362 s), but entity failed
+  `TestAnimalsPanicWhenHurt/minecraft:sniffer` (122.034 s). Five isolated
+  sniffer repeats subsequently passed. Both broad-run failures remain recorded;
+  no random-behavior test was silently excluded. `go build ./...`, Python
+  compilation and diff checks passed. Logs:
+  `.tmp/redstone-pressure-plate-packages.log`,
+  `.tmp/pressure-plate-sniffer-recheck.log` and
+  `.tmp/redstone-pressure-plate-build.log`.
+
+- Restoring original tripwire/hook sources reproduces 186 failing cases across
+  the final 220 native traces (5.029 s); the diagnostic restores the working
+  files in `finally`. The initial replay with only 60 contacts exposed property
+  initialization and item/orb-origin failures; a later expanded line replay
+  also corrected an erroneous direction mapping in the test harness before
+  using it as evidence. Logs: `.tmp/tripwire-original-before.log` and
+  `.tmp/tripwire-contacts-before.log`.
+- The 140-contact/80-line replays, prior plate cases and existing tripwire
+  checks then pass in the broader block/world/session run with the same two
+  known exclusions: block 40.860 s, world 13.041 s, session 3.366 s.
+  `go build ./...` and Python compilation passed. Logs:
+  `.tmp/redstone-tripwire-packages.log` and `.tmp/redstone-tripwire-build.log`.
+  Native roots are `adamant-redstone-bds-hpu03d83` and
+  `adamant-redstone-bds-nznhdez9`; fixture metadata retains full paths.
+- Executing the native empty collision getter then reproduced the artificial
+  carpet collision in the unchanged model (2.870 s). Log:
+  `.tmp/tripwire-collision-before.log`. This was a further production change
+  after the package run above; subsequent targeted verification is recorded
+  separately rather than retroactively claiming that run covered it.
+
+- After removing the carpet collision, targeted block/entity checks passed
+  (9.357 s / 3.313 s), including all 220 tripwire traces, the executed collision
+  regression across all registered permutations, plate native regressions,
+  actual arrow/button flight, stair-ray interception, item landing and insider
+  paths. Log: `.tmp/tripwire-final-targeted.log`. Final build, Python compilation
+  and diff checks passed; build log `.tmp/redstone-tripwire-final-build.log`.
+
+- The real-player cutting baseline reproduced 46 failing cases out of 58
+  (3.289 s). After adding the before-removal tool callback, all 58 pass
+  (3.568 s). The sound check then reproduced zero kernel hook events versus
+  230 native packets (3.491 s); after preserving native publication/sound order,
+  the complete world-state and sound sequence replay passes (4.319 s).
+  Logs: `.tmp/tripwire-break-expanded-before.log`, `.tmp/tripwire-break-after.log`,
+  `.tmp/tripwire-sound-before.log`, `.tmp/tripwire-break-sounds-after.log`.
+  Final native root: `adamant-redstone-bds-dhbahg82`. The client probe also retains
+  inspected spans for `playerWillDestroy` and `_emitState` with image/span hashes;
+  these callbacks were observed through BDS rather than executed in synthetic
+  memory.
+
+- After the cutting callback and hook sound changes, `go test ./...` passes
+  every package with the same two explicitly known exclusions and
+  `-count=1 -timeout=240s`: block 29.806 s, entity 73.128 s, player 7.470 s,
+  session 3.226 s, world 13.181 s and Overworld generation 82.173 s.
+  The ocelot/sniffer tests were not additionally excluded. Build, Python
+  compilation and diff checks also pass. Logs:
+  `.tmp/redstone-player-cut-full.log` and `.tmp/redstone-player-cut-build.log`.
+
+- Before the 2026-10-26 publication, `go run .` was launched from the root of
+  a separate worktree at `b9e5f6f9`, containing all current production changes.
+  Its temporary configuration used loopback RakNet on an ephemeral port,
+  disabled world/player saving and resource building, and did not access the
+  user's worlds or configuration. All three dimensions opened; console `stop`
+  closed the server and `go run` exited with code zero. No launcher change was
+  needed. Log: `.tmp/go-run-publish-smoke.log`.
