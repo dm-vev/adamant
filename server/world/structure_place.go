@@ -113,6 +113,11 @@ func (tx *Tx) PlaceStructure(t *StructureTemplate, pos cube.Pos, p StructurePlac
 	if t.size[0] < 1 || t.size[1] < 1 || t.size[2] < 1 || !hasBlocks && (p.IgnoreEntities || len(t.entities) == 0) {
 		return false
 	}
+	if tx.region != nil {
+		// A structure may span the columns of other regions.
+		tx.deferToOwner(func(tx *Tx) { tx.PlaceStructure(t, pos, p) })
+		return true
+	}
 	w := tx.World()
 	seed := p.Seed
 	if seed == 0 {

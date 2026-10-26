@@ -189,9 +189,11 @@ func (p *Player) broadcastDeathMessage(src world.DamageSource) {
 		return
 	}
 	t, args := deathMessage(p.Name(), cube.PosFromVec3(p.Position()), src, p.tx)
-	for e := range p.tx.Players() {
-		if other, ok := e.(*Player); ok {
-			other.Messaget(t, args...)
+	p.tx.WholeWorld(func(tx *world.Tx) {
+		for e := range tx.Players() {
+			if other, ok := e.(*Player); ok {
+				other.Messaget(t, args...)
+			}
 		}
-	}
+	})
 }

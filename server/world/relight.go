@@ -40,6 +40,11 @@ func (w *World) relightIfChanged(c *Column, pos cube.Pos, before chunk.LightProp
 // last was. Changes are relit together per chunk, so that many blocks
 // changed at once, as a floor being laid, are relit in one go.
 func (w *World) flushLight() {
+	if w.inRegionPhase() {
+		// Light spreads across the columns of regions: the owner brings it
+		// up to date after the phase, and regions read it as it was.
+		return
+	}
 	w.flushSpreads()
 	if len(w.pendingLight) == 0 {
 		return

@@ -771,6 +771,7 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 		GeneratorProfile:    srv.conf.GeneratorProfile,
 		GeneratorWorkers:    srv.conf.GeneratorWorkers,
 		GeneratorQueueSize:  srv.conf.GeneratorQueueSize,
+		Regions:             srv.conf.Regions,
 		RandomTickSpeed:     srv.conf.RandomTickSpeed,
 		ReadOnly:            srv.conf.ReadOnlyWorld,
 		SaveInterval:        srv.conf.SaveInterval,

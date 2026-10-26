@@ -15,11 +15,7 @@ func (tx *Tx) JavaMotionBlockingHeight(x, z int, noLeaves bool) int {
 		cacheIndex = 1
 	}
 	w := tx.World()
-	cache := w.javaHeightmapTags[cacheIndex]
-	if cache == nil {
-		cache = make(map[uint32]bool)
-		w.javaHeightmapTags[cacheIndex] = cache
-	}
+	cache := &w.javaHeightmapTags[cacheIndex]
 	rng := tx.Range()
 	column := tx.chunk(ChunkPos{int32(x >> 4), int32(z >> 4)})
 	registry := tx.World().BlockRegistry()
@@ -33,7 +29,7 @@ func (tx *Tx) JavaMotionBlockingHeight(x, z int, noLeaves bool) int {
 			if registry.LiquidBlock(rid) {
 				return y + 1
 			}
-			matches, known := cache[rid]
+			matches, known := cache.load(rid)
 			if !known {
 				state, err := CanonicalState(registry, NativeState{Block: rid, Liquid: air})
 				if err != nil {
@@ -43,7 +39,7 @@ func (tx *Tx) JavaMotionBlockingHeight(x, z int, noLeaves bool) int {
 				if err != nil {
 					panic(err)
 				}
-				cache[rid] = matches
+				cache.store(rid, matches)
 			}
 			if matches {
 				return y + 1

@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -106,7 +108,12 @@ func (ai *MobAI) checkDespawn(m *Mob) bool {
 		}
 	}
 	if nearest < 0 {
-		return false
+		if !m.tx.PlayersElsewhere() {
+			return false
+		}
+		// The nearest player is in another region, further than any
+		// despawn distance.
+		nearest = math.MaxFloat64
 	}
 	far := despawnDistance(id)
 	if !persistent && nearest > far*far && mobRemoveWhenFarAway(m, id, nearest) {

@@ -223,7 +223,7 @@ func (t ticker) tick(tx *Tx) {
 		if w.dragonFight != nil {
 			w.dragonFight.Tick(tx)
 		}
-		t.tickEntities(tx, tick)
+		t.tickEntities(tx, tick, loaders)
 		if collide := w.EntityRegistry().Config().EntityCollisions; collide != nil {
 			collide(tx)
 		}
@@ -507,13 +507,37 @@ func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {
 // currently interact with. This mirrors the behaviour of the vanilla server simulation distance and greatly
 // reduces per-tick iteration costs on large worlds while still keeping important counters such as entity age and
 // fire timers consistent.
-func (t ticker) tickEntities(tx *Tx, tick int64) {
+func (t ticker) tickEntities(tx *Tx, tick int64, loaders []*Loader) {
 	const sleepMaintenanceInterval = 40 // ~2 seconds between maintenance passes for sleeping chunks.
 
 	w := tx.World()
 	t.prefetchEntities(tx)
 
 	lazyMaintenance := tick%sleepMaintenanceInterval == 0
+
+	if w.conf.Regions {
+		// The columns ticking actively tick in regions, those sleeping on the
+		// owner afterwards.
+		active := w.scratchRegionRefs[:0]
+		for _, ref := range w.entityColumns {
+			if col := ref.col; col != nil && len(col.Entities) > 0 && col.Ready() && (w.conf.Synchronous || len(col.viewers) > 0) {
+				active = append(active, ref)
+			}
+		}
+		ticked := t.tickRegions(tx, tick, active, loaders)
+		clear(active)
+		w.scratchRegionRefs = active[:0]
+		if ticked {
+			if lazyMaintenance {
+				for _, ref := range slices.Clone(w.entityColumns) {
+					if col := ref.col; col != nil && len(col.Entities) > 0 && col.Ready() && !w.conf.Synchronous && len(col.viewers) == 0 {
+						t.tickEntityColumn(tx, tick, ref.pos, col, false)
+					}
+				}
+			}
+			return
+		}
+	}
 
 	// We iterate over the cached entity column list to partition entity handles. The references keep track of the
 	// originating column so that we can update viewer lists or perform removals without having to search for the
@@ -563,8 +587,9 @@ func (t ticker) prefetchEntities(tx *Tx) {
 	}
 	if len(items) >= prefetchMinimum {
 		views := w.scratchViews[:0]
-		for range parallel.Workers() {
-			views = append(views, ReadView{w: w})
+		w.growWorkerLocals()
+		for worker := range parallel.Workers() {
+			views = append(views, ReadView{w: w, locals: w.workerLocals[worker]})
 		}
 		var failed atomic.Pointer[parallel.Panic]
 		parallel.ForWorkers(len(items), 16, func(worker, i int) {
@@ -607,13 +632,12 @@ func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, 
 
 func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref entityChunkRef, active bool) {
 	w := tx.World()
-	state := w.entities[handle]
+	state := handle.state
 	if state == nil {
 		// The entity left the world earlier this tick, as an item merged
 		// into another one does, while its column was being ticked.
 		return
 	}
-	handle.state = state
 	if state.lastProcessedTick == tick {
 		return
 	}
@@ -621,8 +645,8 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	// Java ticks the vehicle before its passengers. Marking first also stops
 	// malformed cyclic saved links from recursing indefinitely.
 	if active && handle.data.Riding != nil {
-		vehicle := handle.data.Riding
-		if vehicleState, loaded := w.entities[vehicle]; loaded {
+		if vehicle := handle.data.Riding; tx.entityInWorld(vehicle) {
+			vehicleState := vehicle.state
 			vehicleRef := entityChunkRef{pos: vehicleState.pos, col: w.chunks[vehicleState.pos], waiting: !w.entityTickingReady(vehicleState.pos)}
 			t.tickEntityHandle(tx, tick, vehicle, vehicleRef, true)
 		}
@@ -643,8 +667,9 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		}
 	}
 	if state.pos != chunkPos {
-		entity = w.moveEntityChunk(tx, handle, state, chunkPos, ref)
-		if c := w.chunks[chunkPos]; c == nil || !c.Ready() {
+		var moved bool
+		entity, moved = w.moveEntityChunk(tx, handle, state, chunkPos, ref)
+		if c := w.chunks[chunkPos]; !moved || c == nil || !c.Ready() {
 			// As in Java, an entity in a chunk that is not loaded yet, like a
 			// player teleported into ungenerated terrain, waits for it.
 			return
@@ -732,7 +757,26 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 // that is its listed chunk, to chunkPos and shows or hides it to the viewers
 // that gain or lose it. It returns the entity if it had to open it. The new
 // chunk is loaded or queued for generation without waiting for it.
-func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState, chunkPos ChunkPos, ref entityChunkRef) Entity {
+//
+// In a region phase, an entity moving to a chunk the region does not own or
+// that is not loaded is moved by the owner after the phase instead, and
+// moveEntityChunk reports it did not move it.
+func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState, chunkPos ChunkPos, ref entityChunkRef) (Entity, bool) {
+	if r := tx.region; r != nil {
+		tx.lockShared()
+		defer tx.unlockShared()
+		if _, ok := r.loaded(w, chunkPos); !ok {
+			r.deferred = append(r.deferred, func(tx *Tx) {
+				if handle.state != state || handle.w != w {
+					return
+				}
+				if now := chunkPosFromVec3(handle.data.Pos); now != state.pos {
+					w.moveEntityChunk(tx, handle, state, now, entityChunkRef{pos: state.pos, col: w.chunks[state.pos]})
+				}
+			})
+			return nil, false
+		}
+	}
 	oldPos := state.pos
 	state.pos = chunkPos
 
@@ -771,7 +815,7 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 	}
 
 	if len(viewers) == 0 && len(newChunk.viewers) == 0 {
-		return nil
+		return nil, true
 	}
 	// Entity handles lazily open their backing implementation. The opened
 	// entity is returned so the caller reuses the same pointer.
@@ -786,7 +830,7 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 			showEntity(ent, v)
 		}
 	}
-	return ent
+	return ent, true
 }
 
 // randUint4 is a structure used to generate random uint4s.

@@ -10,9 +10,20 @@ import (
 // runtime state rather than a generation-seed stream or persisted world data.
 func (tx *Tx) RegionRandom() *vanilla.Random {
 	w := tx.World()
+	tx.lockShared()
+	defer tx.unlockShared()
 	if !w.javaRandomReady {
 		w.javaRandom = vanilla.NewLegacyRandom(w.r.Int64())
 		w.javaRandomReady = true
+	}
+	if r := tx.region; r != nil {
+		// Regions draw at once: each draws from a stream of its own, seeded
+		// from the world's.
+		if r.javaRandom == nil {
+			random := vanilla.NewLegacyRandom(w.javaRandom.NextLong())
+			r.javaRandom = &random
+		}
+		return r.javaRandom
 	}
 	return &w.javaRandom
 }
@@ -21,21 +32,31 @@ func (tx *Tx) RegionRandom() *vanilla.Random {
 // transaction-bound implementation. UUID and Bedrock UniqueID are separate keys.
 func (tx *Tx) EntityByUUID(id uuid.UUID) (Entity, bool) {
 	w := tx.World()
+	tx.lockShared()
 	handle, ok := w.entitiesByUUID[id]
+	if ok && tx.region != nil {
+		ok = tx.region.ownsEntity(w, handle)
+	}
+	tx.unlockShared()
 	if !ok {
 		return nil, false
 	}
-	return w.entities[handle].entity(tx, handle), true
+	return handle.state.entity(tx, handle), true
 }
 
 // EntityByUniqueID resolves a loaded entity by its persisted Bedrock actor ID.
 func (tx *Tx) EntityByUniqueID(id int64) (Entity, bool) {
 	w := tx.World()
+	tx.lockShared()
 	handle, ok := w.entitiesByUniqueID[id]
+	if ok && tx.region != nil {
+		ok = tx.region.ownsEntity(w, handle)
+	}
+	tx.unlockShared()
 	if !ok {
 		return nil, false
 	}
-	return w.entities[handle].entity(tx, handle), true
+	return handle.state.entity(tx, handle), true
 }
 
 // CreakingActive evaluates vanilla 26.3's gameplay/creaking_active attribute.

@@ -55,6 +55,8 @@ type Raid struct {
 // RaidLeader returns the captain of a wave of the raid, if it has one in the
 // world, as Raid.getLeader.
 func (tx *Tx) RaidLeader(r *Raid, wave int) (Entity, bool) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	if r == nil {
 		return nil, false
 	}
@@ -68,6 +70,8 @@ func (tx *Tx) RaidLeader(r *Raid, wave int) (Entity, bool) {
 // SetRaidLeader makes a raider the captain of a wave of the raid, as
 // Raid.setLeader. The caller gives it the ominous banner.
 func (tx *Tx) SetRaidLeader(r *Raid, wave int, e Entity) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	if r == nil || e == nil {
 		return
 	}
@@ -117,6 +121,8 @@ func (r *Raid) Contains(e Entity) bool {
 
 // RaidAt returns the nearest active raid whose 96-block village radius contains pos.
 func (tx *Tx) RaidAt(pos cube.Pos) *Raid {
+	tx.lockShared()
+	defer tx.unlockShared()
 	var found *Raid
 	best := int64(1<<63 - 1)
 	for _, raid := range tx.World().raids {
@@ -137,6 +143,8 @@ func (tx *Tx) RaidAt(pos cube.Pos) *Raid {
 
 // RaidForRaider returns the active raid to which e belongs.
 func (tx *Tx) RaidForRaider(e Entity) *Raid {
+	tx.lockShared()
+	defer tx.unlockShared()
 	if e == nil {
 		return nil
 	}
@@ -149,6 +157,8 @@ func (tx *Tx) RaidForRaider(e Entity) *Raid {
 
 // RegisterRaider adds a newly published raid member to its raid.
 func (tx *Tx) RegisterRaider(raidID int64, e Entity) bool {
+	tx.lockShared()
+	defer tx.unlockShared()
 	r := tx.World().raids[raidID]
 	if r == nil || !r.Active() || e == nil {
 		return false
@@ -167,6 +177,8 @@ func (tx *Tx) RegisterRaider(raidID int64, e Entity) bool {
 
 // RaiderDied removes a dead or removed raider from its registered raid.
 func (tx *Tx) RaiderDied(e Entity) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	if e == nil {
 		return
 	}
@@ -198,6 +210,8 @@ func (tx *Tx) RaiderDied(e Entity) {
 	}
 }
 func (tx *Tx) RaiderKilled(raider, killer Entity) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	if killer == nil || killer.H().Type().EncodeEntity() != "minecraft:player" || raider == nil {
 		return
 	}
@@ -217,6 +231,8 @@ func (tx *Tx) RaiderKilled(raider, killer Entity) {
 
 // TryApplyBadOmen reports whether Bad Omen may transition to Raid Omen at pos.
 func (tx *Tx) TryApplyBadOmen(player Entity, pos cube.Pos, amplifier int) bool {
+	tx.lockShared()
+	defer tx.unlockShared()
 	if !tx.World().GameRuleBool("raids") || player == nil || amplifier < 0 || amplifier >= 5 || tx.World().Difficulty() == DifficultyPeaceful || !tx.IsVillage(pos) {
 		return false
 	}
@@ -229,6 +245,8 @@ func (tx *Tx) TryApplyBadOmen(player Entity, pos cube.Pos, amplifier int) bool {
 
 // TryApplyRaidOmen starts or extends a raid at the saved Raid Omen position.
 func (tx *Tx) TryApplyRaidOmen(player Entity) bool {
+	tx.lockShared()
+	defer tx.unlockShared()
 	if player == nil || tx.World().Difficulty() == DifficultyPeaceful || !tx.World().GameRuleBool("raids") {
 		return false
 	}

@@ -30,6 +30,11 @@ func (w *World) ForcedChunks() []ChunkPos {
 // ForceChunk keeps a chunk loaded and included in simulation until unforced.
 // It must be called on the world's transaction goroutine.
 func (tx *Tx) ForceChunk(pos ChunkPos, force bool) error {
+	if tx.region != nil {
+		// Forcing a chunk loads it.
+		tx.deferToOwner(func(tx *Tx) { _ = tx.ForceChunk(pos, force) })
+		return nil
+	}
 	w := tx.World()
 	w.loadForcedChunks()
 	w.forcedChunksMu.Lock()
@@ -180,7 +185,7 @@ func ChunkPosition(pos cube.Pos) ChunkPos { return chunkPosFromBlockPos(pos) }
 
 // ResendChunk sends the current chunk contents to all viewers of the chunk.
 func (tx *Tx) ResendChunk(pos ChunkPos) {
-	if c, ok := tx.World().loadedChunk(pos); ok {
+	if c, ok := tx.lightReadyColumn(pos); ok {
 		for viewer := range c.viewers {
 			viewer.ViewChunk(pos, tx.World().Dimension(), c)
 		}

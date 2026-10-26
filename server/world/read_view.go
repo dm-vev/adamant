@@ -27,12 +27,15 @@ type ReadView struct {
 	// tracking makes the view list the columns it reads in tracked.
 	tracking bool
 	tracked  []ChunkPos
+	// locals are the values Local keeps for the worker using the view.
+	locals    map[any]any
+	lastLocal lastLocal
 }
 
 // NewReadView returns a view of the world of tx for a parallel phase tx's
 // owner runs. Each goroutine must use its own view.
 func (tx *Tx) NewReadView() *ReadView {
-	return &ReadView{w: tx.World()}
+	return &ReadView{w: tx.World(), locals: make(map[any]any)}
 }
 
 // Reset clears the missed state of the view and stops tracking, as before

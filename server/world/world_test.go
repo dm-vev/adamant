@@ -907,7 +907,11 @@ func (e *testEntity) Rotation() cube.Rotation {
 	return e.data.Rot
 }
 
-func (e *testEntity) Tick(*Tx, int64) {
+func (e *testEntity) Tick(tx *Tx, _ int64) {
+	if config, ok := e.data.Data.(regionProbeConfig); ok {
+		config.tick(tx, e)
+		return
+	}
 	if config, ok := e.data.Data.(slowTickerConfig); ok {
 		config.ticks.Add(1)
 		time.Sleep(config.delay)

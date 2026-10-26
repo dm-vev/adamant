@@ -625,22 +625,32 @@ func pathTypeFromState(pw pathWorld, pos cube.Pos) PathType {
 	if pos.OutOfBounds(pw.Range()) {
 		return PathOpen
 	}
-	tx, owner := pw.(*world.Tx)
-	if !owner {
-		// The cache belongs to the goroutine owning the world.
+	chunk := world.ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}
+	var (
+		cache   *pathTypeCache
+		version uint64
+		loaded  bool
+	)
+	switch pw := pw.(type) {
+	case *world.Tx:
+		cache = pw.Local(pathTypeCacheKey{}, newPathTypeCache).(*pathTypeCache)
+		version, loaded = pw.ColumnBlockVersion(chunk)
+	case *world.ReadView:
+		// Each worker of the phase before the entities tick keeps a cache
+		// of its own.
+		cache = pw.Local(pathTypeCacheKey{}, newPathTypeCache).(*pathTypeCache)
+		version, loaded = pw.ColumnBlockVersion(chunk)
+	default:
 		t, _ := computePathTypeFromState(pw, pos)
 		return t
 	}
-	cache := worldPathTypeCache(tx.World())
-	chunk := world.ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}
-	version, loaded := tx.ColumnBlockVersion(chunk)
 	if !loaded {
 		return PathOpen
 	}
 	if t, ok := cache.get(pos, version); ok {
 		return t
 	}
-	t, ready := computePathTypeFromState(tx, pos)
+	t, ready := computePathTypeFromState(pw, pos)
 	if ready {
 		// A column still generating changes without a new version.
 		cache.put(pos, version, t)
@@ -662,18 +672,12 @@ type pathTypeCacheEntry struct {
 	t       PathType
 }
 
-// pathTypeCaches holds the pathTypeCache of each world, used only by the
-// goroutine owning the world.
-var pathTypeCaches sync.Map
+// pathTypeCacheKey is the key of the pathTypeCache of a world in Tx.Local
+// and ReadView.Local: the world owner keeps one, as does each worker of the
+// parallel phases of the world.
+type pathTypeCacheKey struct{}
 
-// worldPathTypeCache returns the pathTypeCache of w.
-func worldPathTypeCache(w *world.World) *pathTypeCache {
-	if c, ok := pathTypeCaches.Load(w); ok {
-		return c.(*pathTypeCache)
-	}
-	c, _ := pathTypeCaches.LoadOrStore(w, &pathTypeCache{})
-	return c.(*pathTypeCache)
-}
+func newPathTypeCache() any { return &pathTypeCache{} }
 
 // index ports PathTypeCache.index: HashCommon.mix of BlockPos.asLong.
 func (c *pathTypeCache) index(pos cube.Pos) int {

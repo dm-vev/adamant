@@ -91,7 +91,7 @@ func BenchmarkTickEntities20000Active(b *testing.B) {
 	b.ResetTimer()
 	<-w.Exec(func(tx *Tx) {
 		for i := 0; i < b.N; i++ {
-			tk.tickEntities(tx, int64(i+1))
+			tk.tickEntities(tx, int64(i+1), nil)
 		}
 	})
 	b.StopTimer()

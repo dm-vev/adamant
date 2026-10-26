@@ -27,7 +27,8 @@ func (tx *Tx) PlayGlobalSound(pos mgl64.Vec3, s Sound) {
 			}
 		}
 	}
-	playFar(tx)
+	// Every player of the world hears it, those of other regions too.
+	tx.deferToOwner(playFar)
 	w.set.Lock()
 	others := make([]*World, 0, len(w.set.worlds))
 	for other := range w.set.worlds {

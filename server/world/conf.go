@@ -119,6 +119,14 @@ type Config struct {
 	// AdvanceTick are not safe to call concurrently, including from delayed
 	// item or death callbacks.
 	Synchronous bool
+	// Regions lets the entities of parts of the World far apart, as around
+	// players far from each other, tick at the same time on goroutines of
+	// their own. The Handler of the World is still called by one goroutine
+	// at a time, but the handlers of its entities, such as those of players,
+	// may then be called from several goroutines at once, each for a
+	// different part of the World. A Synchronous World ticks its regions one
+	// after another.
+	Regions bool
 }
 
 // New creates a new World using the Config conf. The World returned will start
@@ -235,6 +243,8 @@ func (conf Config) New() *World {
 		viewers:             make(map[*Loader]Viewer),
 		chunks:              make(map[ChunkPos]*Column),
 		chunkRequests:       make(map[ChunkPos][]chunkCallback),
+		unsettled:           make(map[ChunkPos]*Column),
+		workerLocals:        []map[any]any{make(map[any]any)},
 		queueClosing:        make(chan struct{}),
 		queueWake:           make(chan struct{}, 1),
 		closeStarted:        make(chan struct{}),

@@ -29,14 +29,35 @@ func (tx *Tx) LootRandomSequence(sequence string, seed int64) *vanilla.Random {
 	if sequence == "" {
 		panic("world.Tx.LootRandomSequence: empty sequence ID")
 	}
-	if tx.w.lootSequences == nil {
-		tx.w.lootSequences = make(map[string]*vanilla.Random)
+	tx.lockShared()
+	defer tx.unlockShared()
+	if r := tx.region; r != nil {
+		// Regions roll at once: each rolls from a stream of its own for the
+		// sequence, seeded from the world's.
+		if random := r.lootSequences[sequence]; random != nil {
+			return random
+		}
+		world := tx.w.lootSequence(sequence)
+		random := vanilla.NewLegacyRandom(world.NextLong())
+		if r.lootSequences == nil {
+			r.lootSequences = make(map[string]*vanilla.Random)
+		}
+		r.lootSequences[sequence] = &random
+		return &random
 	}
-	if r := tx.w.lootSequences[sequence]; r != nil {
+	return tx.w.lootSequence(sequence)
+}
+
+// lootSequence returns the stream of the world for a loot-table sequence.
+func (w *World) lootSequence(sequence string) *vanilla.Random {
+	if w.lootSequences == nil {
+		w.lootSequences = make(map[string]*vanilla.Random)
+	}
+	if r := w.lootSequences[sequence]; r != nil {
 		return r
 	}
-	r := vanilla.NewRandomSequence(tx.w.Seed(), sequence)
-	tx.w.lootSequences[sequence] = &r
+	r := vanilla.NewRandomSequence(w.Seed(), sequence)
+	w.lootSequences[sequence] = &r
 	return &r
 }
 

@@ -44,6 +44,8 @@ func MapDecorationTypeFromJava(name string) (byte, bool) {
 // marked with the decoration. ok is false if no structure was found, which
 // is always the case in worlds whose generator places no structures.
 func (tx *Tx) CreateExplorationMap(origin cube.Pos, destination string, decoration byte, zoom uint8, searchRadius int, skipKnown bool) (data MapData, ok bool, err error) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	w := tx.World()
 	destination = strings.TrimPrefix(destination, "#")
 	if skipKnown {

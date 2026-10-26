@@ -294,8 +294,8 @@ func (tx *Tx) EmitGameEvent(event GameEvent, position mgl64.Vec3, context GameEv
 	minY, maxY := (sourcePos.Y()-radius)>>4, (sourcePos.Y()+radius)>>4
 	for x := (sourcePos.X() - radius) >> 4; x <= (sourcePos.X()+radius)>>4; x++ {
 		for z := (sourcePos.Z() - radius) >> 4; z <= (sourcePos.Z()+radius)>>4; z++ {
-			col := w.chunks[ChunkPos{int32(x), int32(z)}]
-			if col == nil || !col.Ready() {
+			col, ok := tx.readyColumn(ChunkPos{int32(x), int32(z)})
+			if !ok {
 				continue
 			}
 			for listenerPos, actor := range col.BlockEntities {
@@ -395,7 +395,7 @@ func (w *World) scheduleEntityVibrations(tx *Tx, event GameEvent, position mgl64
 // A forced event may queue while another vibration is still travelling.
 func (tx *Tx) ForceScheduleVibration(listenerPos cube.Pos, event GameEvent, context GameEventContext, origin mgl64.Vec3) {
 	w := tx.World()
-	actor, loaded := w.blockLoaded(listenerPos)
+	actor, loaded := tx.blockLoaded(listenerPos)
 	if !loaded {
 		return
 	}
@@ -540,11 +540,28 @@ func (w *World) tickVibration(tx *Tx, pos cube.Pos, destination mgl64.Vec3, user
 
 func (w *World) sendVibrationParticle(tx *Tx, user VibrationUser, origin, destination mgl64.Vec3, travel int) bool {
 	viewers := viewerSlicePool.Get().([]Viewer)[:0]
-	w.viewerMu.Lock()
-	for _, viewer := range w.viewers {
-		viewers = append(viewers, viewer)
+	if tx.region != nil {
+		// The viewers of other regions are not the region's to ask: those
+		// near enough view the columns around origin.
+		lo, hi := chunkPosFromVec3(origin.Sub(mgl64.Vec3{33, 0, 33})), chunkPosFromVec3(origin.Add(mgl64.Vec3{33, 0, 33}))
+		for x := lo[0]; x <= hi[0]; x++ {
+			for z := lo[1]; z <= hi[1]; z++ {
+				if c, ok := tx.loadedColumn(ChunkPos{x, z}); ok {
+					for viewer := range c.viewers {
+						if !slices.Contains(viewers, viewer) {
+							viewers = append(viewers, viewer)
+						}
+					}
+				}
+			}
+		}
+	} else {
+		w.viewerMu.Lock()
+		for _, viewer := range w.viewers {
+			viewers = append(viewers, viewer)
+		}
+		w.viewerMu.Unlock()
 	}
-	w.viewerMu.Unlock()
 	defer w.releaseViewers(viewers)
 	var particle Particle
 	for _, viewer := range viewers {
@@ -570,7 +587,7 @@ func (w *World) sendVibrationParticle(tx *Tx, user VibrationUser, origin, destin
 }
 
 func persistVibrationData(tx *Tx, pos cube.Pos) {
-	if col := tx.World().chunks[chunkPosFromBlockPos(pos)]; col != nil {
+	if col, ok := tx.loadedColumn(chunkPosFromBlockPos(pos)); ok {
 		if actor, ok := col.BlockEntities[pos]; ok {
 			tx.SetBlockEntity(pos, actor)
 		}
@@ -675,7 +692,7 @@ func (w *World) gameEventBlockFlags(block Block) uint8 {
 		return 0
 	}
 	rid := w.conf.Blocks.BlockRuntimeID(block)
-	if flags, ok := w.gameEventBlocks[rid]; ok {
+	if flags, ok := w.gameEventBlocks.load(rid); ok {
 		return flags
 	}
 	name, _, _ := w.conf.Blocks.RuntimeIDToState(rid)
@@ -683,10 +700,7 @@ func (w *World) gameEventBlockFlags(block Block) uint8 {
 		name = state.Name
 	}
 	flags := gameEventTags().blocks[name]
-	if w.gameEventBlocks == nil {
-		w.gameEventBlocks = make(map[uint32]uint8)
-	}
-	w.gameEventBlocks[rid] = flags
+	w.gameEventBlocks.store(rid, flags)
 	return flags
 }
 
@@ -695,7 +709,7 @@ func vibrationOccluded(tx *Tx, origin, destination mgl64.Vec3) bool {
 	to := cube.PosFromVec3(destination).Vec3Centre()
 	const epsilon = float64(float32(1e-5))
 	for _, offset := range [...]mgl64.Vec3{{0, -epsilon, 0}, {0, epsilon, 0}, {0, 0, -epsilon}, {0, 0, epsilon}, {-epsilon, 0, 0}, {epsilon, 0, 0}} {
-		if !vibrationRayOccluded(tx.World(), from.Add(offset), to) {
+		if !vibrationRayOccluded(tx, from.Add(offset), to) {
 			return false
 		}
 	}
@@ -704,7 +718,8 @@ func vibrationOccluded(tx *Tx, origin, destination mgl64.Vec3) bool {
 
 // vibrationRayOccluded uses BlockGetter.traverseBlocks' endpoint expansion and
 // tie order; the generic trace traversal normalises the ray and is not equivalent.
-func vibrationRayOccluded(w *World, from, to mgl64.Vec3) bool {
+func vibrationRayOccluded(tx *Tx, from, to mgl64.Vec3) bool {
+	w := tx.World()
 	if from == to {
 		return false
 	}
@@ -730,7 +745,7 @@ func vibrationRayOccluded(w *World, from, to mgl64.Vec3) bool {
 		next[axis] = delta[axis] * fraction
 	}
 	for {
-		if block, loaded := w.blockLoaded(pos); loaded && w.gameEventBlockFlags(block)&vibrationOccluding != 0 {
+		if block, loaded := tx.blockLoaded(pos); loaded && w.gameEventBlockFlags(block)&vibrationOccluding != 0 {
 			return true
 		}
 		if next[0] > 1 && next[1] > 1 && next[2] > 1 {

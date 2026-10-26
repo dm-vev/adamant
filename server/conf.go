@@ -116,6 +116,10 @@ type Config struct {
 	// proportional to the worker count will be chosen automatically. Raise
 	// GeneratorWorkers if the logs report a sustained backlog.
 	GeneratorQueueSize int
+	// Regions lets the entities of parts of a world far apart, such as
+	// around players far from each other, tick at the same time on all
+	// cores. See world.Config.Regions.
+	Regions bool
 	// OverworldSeed is the seed for a new world in all dimensions. Existing
 	// provider metadata takes precedence. Zero is a valid, deterministic seed.
 	OverworldSeed int64
@@ -416,6 +420,11 @@ type UserConfig struct {
 		// worker before a backlog warning is logged. Set to 0 to use an
 		// automatically chosen size.
 		GeneratorQueueSize int
+		// Regions ticks the mobs around players far from each other at the
+		// same time on all cores. Plugins must then expect the handlers of
+		// players and other entities to be called from several goroutines
+		// at once.
+		Regions bool
 		// DisableOverworld disables the overworld dimension entirely. Nether and End portals can still be activated,
 		// but will not teleport entities to the overworld while it is disabled.
 		DisableOverworld bool
@@ -521,6 +530,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		GeneratorProfile:        generatorProfile,
 		GeneratorWorkers:        uc.World.GeneratorWorkers,
 		GeneratorQueueSize:      uc.World.GeneratorQueueSize,
+		Regions:                 uc.World.Regions,
 		DisableOverworld:        uc.World.DisableOverworld,
 		DisableNether:           uc.World.DisableNether,
 		DisableEnd:              uc.World.DisableEnd,

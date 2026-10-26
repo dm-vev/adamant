@@ -230,7 +230,7 @@ func (e *EntityHandle) Type() EntityType {
 // A non-nil Entity is returned only if the entity's world matches the world of
 // the Tx. If they do not match, false is returned.
 func (e *EntityHandle) Entity(tx *Tx) (Entity, bool) {
-	if e == nil || e.w != tx.World() {
+	if !e.inWorldOf(tx) {
 		return nil, false
 	}
 	if s := e.state; s != nil {
@@ -244,6 +244,19 @@ func (e *EntityHandle) Entity(tx *Tx) (Entity, bool) {
 	return e.open(tx), true
 }
 
+// inWorldOf reports whether the handle's entity is in the world of tx, and
+// in a region phase in a column of the region of tx: the entities of other
+// regions are not found.
+func (e *EntityHandle) inWorldOf(tx *Tx) bool {
+	if e == nil {
+		return false
+	}
+	if tx.region != nil {
+		return tx.entityInWorld(e)
+	}
+	return e.w == tx.World()
+}
+
 // open opens a new view of the handle's entity bound to tx.
 func (e *EntityHandle) open(tx *Tx) Entity {
 	return e.t.Open(tx, e, &e.data)
@@ -253,7 +266,7 @@ func (e *EntityHandle) open(tx *Tx) Entity {
 // in the world of tx, the same value its ticks run on. Unlike Entity, it does
 // not open a new view of the handle once the world has one.
 func (e *EntityHandle) WorldEntity(tx *Tx) (Entity, bool) {
-	if e == nil || e.w != tx.World() {
+	if !e.inWorldOf(tx) {
 		return nil, false
 	}
 	if e.state == nil {

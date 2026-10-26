@@ -85,6 +85,8 @@ func (w *World) FindNearestBiome(name string, origin cube.Pos) (cube.Pos, bool, 
 
 // FindNearestPOIByType returns the closest loaded POI of the requested Java type.
 func (tx *Tx) FindNearestPOIByType(origin cube.Pos, name string, radius int) (cube.Pos, POI, bool) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	if !strings.Contains(name, ":") {
 		name = "minecraft:" + name
 	}

@@ -16,6 +16,10 @@ type Tx struct {
 	w        *World
 	closed   bool
 	deferred []scheduledTransaction
+	// region is the region the transaction ticks the entities of in a
+	// region phase, or nil for a transaction of the world owner.
+	region    *region
+	lastLocal lastLocal
 }
 
 // Context is a cancellable event scope passed to Handler events. It embeds the
@@ -91,7 +95,7 @@ func (tx *Tx) ChunkLoaded(pos ChunkPos) bool {
 // ChunkReadySignal returns a channel that is closed once the chunk at the given position finishes generation. The
 // second return value is false if the chunk is not currently tracked by the world.
 func (tx *Tx) ChunkReadySignal(pos ChunkPos) (<-chan struct{}, bool) {
-	c, ok := tx.w.chunks[pos]
+	c, ok := tx.loadedColumn(pos)
 	if !ok {
 		return nil, false
 	}
@@ -101,9 +105,13 @@ func (tx *Tx) ChunkReadySignal(pos ChunkPos) (<-chan struct{}, bool) {
 // ChunkState reports whether a chunk at the given position is currently tracked by the world and whether it has
 // finished generation. The second value is only meaningful if the first is true.
 func (tx *Tx) ChunkState(pos ChunkPos) (loaded bool, ready bool) {
-	c, ok := tx.w.chunks[pos]
+	c, ok := tx.loadedColumn(pos)
 	if !ok {
 		return false, false
+	}
+	if tx.region != nil {
+		// A region reads settled columns only.
+		return true, c.settled
 	}
 	return true, c.Ready()
 }
@@ -112,7 +120,7 @@ func (tx *Tx) ChunkState(pos ChunkPos) (loaded bool, ready bool) {
 // which changes whenever one of its blocks does, and false if the column is
 // not loaded. It does not load the column.
 func (tx *Tx) ColumnBlockVersion(pos ChunkPos) (uint64, bool) {
-	c, ok := tx.World().chunks[pos]
+	c, ok := tx.loadedColumn(pos)
 	if !ok {
 		return 0, false
 	}
@@ -136,7 +144,7 @@ func (tx *Tx) Block(pos cube.Pos) Block {
 // BlockLoaded returns the block at the position passed if the chunk containing it is already loaded. It returns false
 // without loading or generating the chunk when the block is unavailable.
 func (tx *Tx) BlockLoaded(pos cube.Pos) (Block, bool) {
-	return tx.World().blockLoaded(pos)
+	return tx.blockLoaded(pos)
 }
 
 // Liquid attempts to return a Liquid block at the position passed. This
@@ -179,6 +187,12 @@ func (tx *Tx) BuildStructure(pos cube.Pos, s Structure) {
 // will happen. Liquids are stored in the separate fluid queue.
 // Tick identity is type- and position-specific; the first pending tick is kept.
 func (tx *Tx) ScheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
+	if r := tx.region; r != nil && !r.owns(tx.w, chunkPosFromBlockPos(pos)) {
+		tx.deferToOwner(func(tx *Tx) { tx.ScheduleBlockUpdate(pos, b, delay) })
+		return
+	}
+	tx.lockShared()
+	defer tx.unlockShared()
 	tx.World().scheduleBlockUpdate(pos, b, delay)
 }
 
@@ -186,6 +200,8 @@ func (tx *Tx) ScheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
 // pending at the position passed.
 func (tx *Tx) HasScheduledBlockUpdate(pos cube.Pos, b Block) bool {
 	w := tx.World()
+	tx.lockShared()
+	defer tx.unlockShared()
 	if _, ok := b.(Liquid); ok {
 		_, pending := w.scheduledFluidTicks.scheduledTicks[scheduledTickIndex{pos: pos, typeName: scheduledFluidTickType(b.(Liquid))}]
 		return pending
@@ -198,7 +214,13 @@ func (tx *Tx) HasScheduledBlockUpdate(pos cube.Pos, b Block) bool {
 // update collected for this tick that has not yet run. Native observer removal
 // uses this to keep a replacement observer from inheriting the old pulse.
 func (tx *Tx) CancelBlockUpdate(pos cube.Pos, b Block) {
+	if r := tx.region; r != nil && !r.owns(tx.w, chunkPosFromBlockPos(pos)) {
+		tx.deferToOwner(func(tx *Tx) { tx.CancelBlockUpdate(pos, b) })
+		return
+	}
 	w := tx.World()
+	tx.lockShared()
+	defer tx.unlockShared()
 	queue := w.scheduledBlockTicks
 	typeName := scheduledTickType(w.conf.Blocks, b)
 	if liquid, ok := b.(Liquid); ok {
@@ -314,13 +336,13 @@ func (tx *Tx) Thundering() bool {
 // AddParticle spawns a Particle at a given position in the World. Viewers that
 // are viewing the chunk will be shown the particle.
 func (tx *Tx) AddParticle(pos mgl64.Vec3, p Particle) {
-	tx.World().addParticle(pos, p)
+	tx.World().addParticle(tx, pos, p)
 }
 
 // PlayEntityAnimation plays an animation on an entity in the World. The animation is played for all viewers
 // of the entity.
 func (tx *Tx) PlayEntityAnimation(e Entity, a EntityAnimation) {
-	viewers := tx.World().viewersOf(e.Position())
+	viewers := tx.World().viewersOf(tx, e.Position())
 	// We deliberately iterate using the pooled slice returned by viewersOf and hand it back afterwards. Animation
 	// fan-out happens frequently (movement, swings, etc.), so minimising transient allocations has a noticeable
 	// impact on GC pauses during crowded gameplay sessions.
@@ -389,7 +411,7 @@ func (tx *Tx) Players() iter.Seq[Entity] {
 // Viewers returns all viewers viewing the position passed. The returned slice is pooled and must be released
 // by calling ReleaseViewers once it is no longer needed.
 func (tx *Tx) Viewers(pos mgl64.Vec3) []Viewer {
-	return tx.World().viewersOf(pos)
+	return tx.World().viewersOf(tx, pos)
 }
 
 // Sleepers returns an iterator that yields all sleeping entities currently added to the World.
@@ -408,6 +430,11 @@ func (tx *Tx) Sleepers() iter.Seq[Sleeper] {
 
 // BroadcastSleepingIndicator broadcasts a sleeping indicator to all sleepers in the world.
 func (tx *Tx) BroadcastSleepingIndicator() {
+	if tx.region != nil {
+		// Every sleeper of the world counts.
+		tx.deferToOwner(func(tx *Tx) { tx.BroadcastSleepingIndicator() })
+		return
+	}
 	sleepers := make([]Sleeper, 0)
 	sleeping := 0
 
@@ -430,6 +457,10 @@ func (tx *Tx) BroadcastSleepingIndicator() {
 // BroadcastSleepingReminder broadcasts a sleeping reminder message to all sleepers in the world, excluding the sleeper
 // passed.
 func (tx *Tx) BroadcastSleepingReminder(sleeper Sleeper) {
+	if tx.region != nil {
+		tx.deferToOwner(func(tx *Tx) { tx.BroadcastSleepingReminder(sleeper) })
+		return
+	}
 	pending := make([]Sleeper, 0)
 
 	for s := range tx.Sleepers() {

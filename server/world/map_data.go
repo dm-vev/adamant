@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
@@ -67,8 +68,12 @@ type mapFrameProvider interface {
 // ForEachMapFrame visits map-bearing block entities in currently loaded chunks.
 func (tx *Tx) ForEachMapFrame(fn func(cube.Pos, MapFrameInfo)) {
 	if fn == nil { return }
-	for _, column := range tx.w.chunks {
+	for chunkPos, column := range tx.w.chunks {
 		if !column.Ready() { continue }
+		if r := tx.region; r != nil && (!column.settled || !r.owns(tx.w, chunkPos)) {
+			// A region only visits the frames of its own columns.
+			continue
+		}
 		for pos, block := range column.BlockEntities {
 			frame, ok := block.(mapFrameProvider)
 			if !ok { continue }
@@ -213,6 +218,8 @@ func (w *World) CreateMap(pos cube.Pos, scale uint8) (MapData, error) {
 
 // CreateMap allocates and persists a map from within an existing world transaction.
 func (tx *Tx) CreateMap(pos cube.Pos, scale uint8) (MapData, error) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	w := tx.World()
 	if w == nil || w.conf.Provider == nil { return MapData{}, ErrMapDataUnavailable }
 	if scale > 4 { return MapData{}, fmt.Errorf("%w: scale %d exceeds Java maximum 4", ErrInvalidMapData, scale) }
@@ -279,6 +286,8 @@ func (w *World) CloneMap(id int64) (MapData, error) {
 }
 // ScaleMap creates a new map at the next coarser scale within a world transaction.
 func (tx *Tx) ScaleMap(id int64) (MapData, error) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	source, err := tx.World().MapData(id)
 	if err != nil {
 		return MapData{}, err
@@ -300,6 +309,8 @@ func (tx *Tx) ScaleMap(id int64) (MapData, error) {
 
 // LockMap stores a locked, independent copy within a world transaction.
 func (tx *Tx) LockMap(id int64) (MapData, error) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	w := tx.World()
 	data, err := w.MapData(id)
 	if err != nil {
@@ -322,6 +333,8 @@ func (w *World) AddMapDecoration(id int64, decoration MapDecoration) error {
 
 // AddMapDecoration adds a fixed icon to an existing map inside a world transaction.
 func (tx *Tx) AddMapDecoration(id int64, decoration MapDecoration) error {
+	tx.lockShared()
+	defer tx.unlockShared()
 	data, err := tx.World().MapData(id)
 	if err != nil { return err }
 	return addMapDecoration(tx.World(), data, decoration)
@@ -341,6 +354,8 @@ func addMapDecoration(w *World, data MapData, decoration MapDecoration) error {
 
 // AddMapDecorationAt persists a Java map icon and its native key at an absolute target position.
 func (tx *Tx) AddMapDecorationAt(id int64, typ, rotation byte, keyType int32, target cube.Pos, label string) error {
+	tx.lockShared()
+	defer tx.unlockShared()
 	data, err := tx.World().MapData(id)
 	if err != nil { return err }
 	factor := 1 << data.Scale
@@ -370,6 +385,8 @@ func (w *World) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 // UpdateMap explores the Java map renderer's current player-centered scan stripe.
 func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 	w := tx.World()
+	tx.lockShared()
+	defer tx.unlockShared()
 	data, err := w.MapData(id)
 	if err != nil { return MapData{}, err }
 	if data.Locked || !data.Tracking { return data, nil }
@@ -395,6 +412,11 @@ func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 			ditherBlack := distanceSquared > (radius-2)*(radius-2)
 			sampleX := (int(data.CenterX)/factor + imgX - 64) * factor
 			sampleZ := (int(data.CenterZ)/factor + imgZ - 64) * factor
+			if !tx.mapSampleReadable(sampleX, sampleZ, factor) {
+				// A region leaves pixels of columns it does not own as they
+				// are.
+				continue
+			}
 			pixel, averageHeight, err := sampleMapPixelShaded(tx, sampleX, sampleZ, factor, imgX, imgZ, previousHeight)
 			if err != nil { return MapData{}, err }
 			previousHeight = averageHeight
@@ -426,6 +448,8 @@ func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 }
 // RenderMapBiomePreview applies Java's WATER_ON_MAP_OUTLINES preview to a new explorer map.
 func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
+	tx.lockShared()
+	defer tx.unlockShared()
 	w := tx.World()
 	data, err := w.MapData(id)
 	if err != nil { return MapData{}, err }
@@ -437,8 +461,7 @@ func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
 		for x := range 128 {
 			worldX := (int(data.CenterX)/factor + x - 64) * factor
 			worldZ := (int(data.CenterZ)/factor + z - 64) * factor
-			biome := tx.Biome(cube.Pos{worldX, 63, worldZ})
-			watery[z*128+x] = biomeWateryMapOutline(biome.String())
+			watery[z*128+x] = biomeWateryMapOutline(tx.previewBiome(cube.Pos{worldX, 63, worldZ}))
 		}
 	}
 	changed := false
@@ -619,3 +642,35 @@ func mapBlockIntProperty(properties map[string]any, key string) (int, bool) {
 }
 
 func blockName(b Block) string { name, _ := b.EncodeBlock(); return name }
+
+// mapSampleReadable reports whether the blocks a map pixel is drawn from,
+// factor by factor blocks from x and z, may be read: in a region phase, only
+// if the region owns their settled columns.
+func (tx *Tx) mapSampleReadable(x, z, factor int) bool {
+	if tx.region == nil {
+		return true
+	}
+	lo, hi := chunkPosFromBlockPos(cube.Pos{x, 0, z}), chunkPosFromBlockPos(cube.Pos{x + factor - 1, 0, z + factor - 1})
+	for cx := lo[0]; cx <= hi[0]; cx++ {
+		for cz := lo[1]; cz <= hi[1]; cz++ {
+			if tx.region.column(tx.w, ChunkPos{cx, cz}) == nil {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// previewBiome returns the name of the biome at pos for a biome preview map.
+// A region reads the biomes of columns it does not own from the generator
+// instead, as Java always does, or none if the generator cannot tell.
+func (tx *Tx) previewBiome(pos cube.Pos) string {
+	if tx.region == nil || tx.region.column(tx.w, chunkPosFromBlockPos(pos)) != nil {
+		return tx.Biome(pos).String()
+	}
+	provider, ok := tx.w.conf.Generator.(JavaBiomeAtProvider)
+	if !ok {
+		return ""
+	}
+	return strings.TrimPrefix(provider.JavaBiomeAt(int32(pos[0]), int32(pos[1]), int32(pos[2])), "minecraft:")
+}
