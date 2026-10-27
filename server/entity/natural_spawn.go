@@ -64,6 +64,32 @@ type spawnState struct {
 	lastCharge    float64
 	lastValid     bool
 	fortressEnemy []world.NaturalSpawnEntry
+	// grid holds the indices of the players in cells of playerCell blocks,
+	// so that the players near a position are found among few.
+	grid map[[2]int32][]int
+}
+
+// playerCell is the size of the cells of spawnState.grid: the 128 blocks
+// within which players count for spawning, so that every player that near
+// a position is in its cell or one beside it.
+const playerCell = 128
+
+// playerCellOf returns the cell of the grid holding x and z.
+func playerCellOf(x, z float64) [2]int32 {
+	return [2]int32{int32(math.Floor(x / playerCell)), int32(math.Floor(z / playerCell))}
+}
+
+// playersAround calls f with the index of each player in the cell of x and
+// z or a cell beside it.
+func (s *spawnState) playersAround(x, z float64, f func(i int)) {
+	c := playerCellOf(x, z)
+	for dx := int32(-1); dx <= 1; dx++ {
+		for dz := int32(-1); dz <= 1; dz++ {
+			for _, i := range s.grid[[2]int32{c[0] + dx, c[1] + dz}] {
+				f(i)
+			}
+		}
+	}
 }
 
 // spawnNaturally ports ServerChunkCache.tickChunks for natural spawning: each
@@ -138,7 +164,11 @@ func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
 // count towards the caps of their categories, near which players they are,
 // and the spawn potential of the mobs with spawn costs.
 func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnState {
-	s := &spawnState{tx: tx, players: players, chunkCount: chunkCount, near: map[world.ChunkPos][]int{}, playerCounts: make([][8]int, len(players))}
+	s := &spawnState{tx: tx, players: players, chunkCount: chunkCount, near: map[world.ChunkPos][]int{}, playerCounts: make([][8]int, len(players)), grid: map[[2]int32][]int{}}
+	for i, p := range players {
+		c := playerCellOf(p.Position()[0], p.Position()[2])
+		s.grid[c] = append(s.grid[c], i)
+	}
 	for e := range tx.Entities() {
 		id := loot.JavaEntityID(e)
 		category, ok := mobCategories[id]
@@ -154,7 +184,9 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 		if !tx.ChunkLoaded(chunk) {
 			continue
 		}
-		if cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(tx.Biome(pos)))[id]; ok {
+		if !world.HasJavaSpawnCost(id) {
+			// No biome gives the mob a spawn cost.
+		} else if cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(tx.Biome(pos)))[id]; ok {
 			s.charges = append(s.charges, pointCharge{pos: pos, charge: cost.Charge})
 		}
 		if isMob {
@@ -173,12 +205,13 @@ func (s *spawnState) playersNear(pos world.ChunkPos) []int {
 	}
 	var near []int
 	x, z := float64(pos[0])*16+8, float64(pos[1])*16+8
-	for i, p := range s.players {
+	s.playersAround(x, z, func(i int) {
+		p := s.players[i]
 		dx, dz := x-p.Position()[0], z-p.Position()[2]
-		if dx*dx+dz*dz < 16384 {
+		if dx*dx+dz*dz < playerCell*playerCell {
 			near = append(near, i)
 		}
-	}
+	})
 	s.near[pos] = near
 	return near
 }
@@ -210,6 +243,10 @@ func (s *spawnState) canSpawnLocal(c naturalSpawnCategory, pos world.ChunkPos) b
 // it adds little enough to the spawn potential.
 func (s *spawnState) canSpawn(id string, pos cube.Pos) bool {
 	s.lastPos, s.lastType, s.lastValid = pos, id, true
+	if !world.HasJavaSpawnCost(id) {
+		s.lastCharge = 0
+		return true
+	}
 	cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(s.tx.Biome(pos)))[id]
 	if !ok {
 		s.lastCharge = 0
@@ -239,6 +276,8 @@ func (s *spawnState) afterSpawn(id string, pos cube.Pos) {
 	charge := 0.
 	if s.lastValid && pos == s.lastPos && id == s.lastType {
 		charge = s.lastCharge
+	} else if !world.HasJavaSpawnCost(id) {
+		// No biome gives the mob a spawn cost.
 	} else if cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(s.tx.Biome(pos)))[id]; ok {
 		charge = cost.Charge
 	}
@@ -347,6 +386,16 @@ func sampleSpawnCount(e world.NaturalSpawnEntry, r *vanilla.Random) int {
 // that is not spectating.
 func (s *spawnState) nearestPlayerDistSqr(pos mgl64.Vec3) (float64, bool) {
 	best, found := 0., false
+	s.playersAround(pos[0], pos[2], func(i int) {
+		if d := s.players[i].Position().Sub(pos).LenSqr(); !found || d < best {
+			best, found = d, true
+		}
+	})
+	if found && best < playerCell*playerCell {
+		// Every player outside the cells around is further than a cell.
+		return best, true
+	}
+	best, found = 0., false
 	for _, p := range s.players {
 		if d := p.Position().Sub(pos).LenSqr(); !found || d < best {
 			best, found = d, true

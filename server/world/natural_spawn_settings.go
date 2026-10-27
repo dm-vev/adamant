@@ -33,9 +33,19 @@ var (
 	javaSpawnSettingsOnce sync.Once
 	javaSpawnSettings     map[string][]NaturalSpawnEntry
 	javaSpawnCosts        map[string]map[string]NaturalSpawnCost
+	javaSpawnCostTypes    map[string]struct{}
 	javaBiomeFloats       map[string]map[string]float32
 	javaSpawnSettingsErr  error
 )
+
+// HasJavaSpawnCost reports whether a mob of the entity type passed has a
+// spawn cost in any biome, so that callers skip finding the biome of mobs
+// that have none anywhere, as most have.
+func HasJavaSpawnCost(id string) bool {
+	javaSpawnSettingsOnce.Do(loadJavaBiomeSpawnSettings)
+	_, ok := javaSpawnCostTypes[id]
+	return ok
+}
 
 // JavaBiomeSpawnCosts returns the spawn costs of the biome named, keyed by
 // entity type.
@@ -79,6 +89,7 @@ func loadJavaBiomeSpawnSettings() {
 	}
 	javaSpawnSettings = make(map[string][]NaturalSpawnEntry, len(files))
 	javaSpawnCosts = make(map[string]map[string]NaturalSpawnCost, len(files))
+	javaSpawnCostTypes = make(map[string]struct{})
 	javaBiomeFloats = make(map[string]map[string]float32, len(files))
 	for _, name := range files {
 		data, err := gamedata.Assets().ReadFile(name)
@@ -133,6 +144,9 @@ func loadJavaBiomeSpawnSettings() {
 				costs[id] = NaturalSpawnCost{Charge: c.Charge, EnergyBudget: c.EnergyBudget}
 			}
 			javaSpawnCosts[biome] = costs
+			for id := range costs {
+				javaSpawnCostTypes[id] = struct{}{}
+			}
 		}
 	}
 }

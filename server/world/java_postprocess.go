@@ -101,6 +101,14 @@ func (w *World) entityTickingReady(pos ChunkPos) bool {
 	if w.conf.Synchronous {
 		return true
 	}
+	c := w.chunks[pos]
+	if c == nil {
+		return false
+	}
+	if c.tickingEpoch == w.chunkEpoch+1 {
+		// The chunks around were all ready, and none left since.
+		return true
+	}
 	for dx := range int32(5) {
 		for dz := range int32(5) {
 			col := w.chunks[ChunkPos{pos[0] + dx - 2, pos[1] + dz - 2}]
@@ -108,6 +116,10 @@ func (w *World) entityTickingReady(pos ChunkPos) bool {
 				return false
 			}
 		}
+	}
+	if !w.inRegionPhase() {
+		// The workers of a region phase may ask of one column at once.
+		c.tickingEpoch = w.chunkEpoch + 1
 	}
 	return true
 }

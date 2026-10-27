@@ -127,7 +127,11 @@ type World struct {
 	// unsettled holds the columns in chunks that were not settled yet when
 	// last seen, so that a region phase may settle them first.
 	unsettled map[ChunkPos]*Column
-	regions   regionState
+	// chunkEpoch changes whenever a column leaves chunks or is replaced in
+	// it, telling columns that remembered being entity ticking to check
+	// again.
+	chunkEpoch uint64
+	regions    regionState
 	// workerLocals holds the values Tx.Local and ReadView.Local keep for the
 	// world owner, first, and the other workers of parallel phases.
 	workerLocals []map[any]any
@@ -734,7 +738,31 @@ func (tx *Tx) highestLightBlocker(x, z int) int {
 // and z The y value of the highest block is returned, or 0 if no blocks were
 // present in the column.
 func (tx *Tx) highestBlock(x, z int) int {
-	return int(tx.chunk(ChunkPos{int32(x >> 4), int32(z >> 4)}).HighestBlock(uint8(x), uint8(z)))
+	return int(tx.chunk(ChunkPos{int32(x >> 4), int32(z >> 4)}).highestBlock(uint8(x), uint8(z)))
+}
+
+// surfaceHeights caches the highest block in each x and z of a column, as
+// Java keeps the WORLD_SURFACE height map of a chunk rather than scanning
+// it, which mobs spawning naturally ask of every chunk every tick. An entry
+// holds the block version of the column it was found at, plus one.
+type surfaceHeights struct {
+	y   [256]int16
+	ver [256]uint64
+}
+
+// highestBlock returns what HighestBlock returns for x and z, from the
+// cache while no block of the column changed.
+func (c *Column) highestBlock(x, z uint8) int16 {
+	if c.surface == nil {
+		c.surface = &surfaceHeights{}
+	}
+	i := int(x&15)<<4 | int(z&15)
+	if c.surface.ver[i] == c.blockVersion+1 {
+		return c.surface.y[i]
+	}
+	y := c.HighestBlock(x&15, z&15)
+	c.surface.y[i], c.surface.ver[i] = y, c.blockVersion+1
+	return y
 }
 
 // highestObstructingBlock returns the highest block in the World at a given x
@@ -2489,6 +2517,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		delete(w.chunks, pos)
 		delete(w.pendingLight, pos)
 		w.chunkCount.Add(-1)
+		w.chunkEpoch++
 	}
 }
 
@@ -2776,6 +2805,8 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		col.fillLight(pos)
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
+		} else {
+			w.chunkEpoch++
 		}
 		w.chunks[pos] = col
 		w.markUnsettled(pos, col)
@@ -2822,6 +2853,8 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		col := newColumn(chunk.New(w.conf.Blocks, w.Range()))
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
+		} else {
+			w.chunkEpoch++
 		}
 		w.chunks[pos] = col
 		w.markUnsettled(pos, col)
@@ -2844,6 +2877,8 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// Keep the placeholder column tracked so callers don't mutate an untracked chunk on errors.
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
+		} else {
+			w.chunkEpoch++
 		}
 		w.chunks[pos] = col
 		w.markUnsettled(pos, col)
@@ -3365,6 +3400,11 @@ type Column struct {
 	// compactedVersion is the block version the column was last compacted
 	// at: compacting it again before a block changes would change nothing.
 	compactedVersion uint64
+	// surface caches the highest blocks of the column.
+	surface *surfaceHeights
+	// tickingEpoch is the chunkEpoch of the world, plus one, when the
+	// chunks within two of the column were last all found ready.
+	tickingEpoch uint64
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
 	generation GenerationResult
