@@ -715,64 +715,6 @@ func (w *World) gameEventBlockFlags(block Block) uint8 {
 	return flags
 }
 
-func vibrationOccluded(tx *Tx, origin, destination mgl64.Vec3) bool {
-	from := vibrationCellPosition(origin).Vec3Centre()
-	to := vibrationCellPosition(destination).Vec3Centre()
-	const epsilon = float64(float32(1e-5))
-	for _, offset := range [...]mgl64.Vec3{{0, -epsilon, 0}, {0, epsilon, 0}, {0, 0, -epsilon}, {0, 0, epsilon}, {-epsilon, 0, 0}, {epsilon, 0, 0}} {
-		if !vibrationRayOccluded(tx.World(), from.Add(offset), to) {
-			return false
-		}
-	}
-	return true
-}
-
-// vibrationRayOccluded uses BlockGetter.traverseBlocks' endpoint expansion and
-// tie order; the generic trace traversal normalises the ray and is not equivalent.
-func vibrationRayOccluded(w *World, from, to mgl64.Vec3) bool {
-	if from == to {
-		return false
-	}
-	start, end := from.Add(to.Sub(from).Mul(-1e-7)), to.Add(from.Sub(to).Mul(-1e-7))
-	pos := cube.PosFromVec3(start)
-	direction := end.Sub(start)
-	var steps cube.Pos
-	var delta, next mgl64.Vec3
-	for axis := range 3 {
-		delta[axis] = math.MaxFloat64
-		if direction[axis] > 0 {
-			steps[axis] = 1
-		} else if direction[axis] < 0 {
-			steps[axis] = -1
-		}
-		if steps[axis] != 0 {
-			delta[axis] = float64(steps[axis]) / direction[axis]
-		}
-		fraction := start[axis] - math.Floor(start[axis])
-		if steps[axis] > 0 {
-			fraction = 1 - fraction
-		}
-		next[axis] = delta[axis] * fraction
-	}
-	for {
-		if block, loaded := w.blockLoaded(pos); loaded && w.gameEventBlockFlags(block)&vibrationOccluding != 0 {
-			return true
-		}
-		if next[0] > 1 && next[1] > 1 && next[2] > 1 {
-			return false
-		}
-		axis := 2
-		if next[0] < next[1] {
-			if next[0] < next[2] {
-				axis = 0
-			}
-		} else if next[1] < next[2] {
-			axis = 1
-		}
-		pos[axis] += steps[axis]
-		next[axis] += delta[axis]
-	}
-}
 func encodeSelector(s VibrationSelector) map[string]any {
 	m := map[string]any{"tick": int64(-1)}
 	if s.HasCandidate {
