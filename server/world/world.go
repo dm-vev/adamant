@@ -201,6 +201,8 @@ type World struct {
 	scratchRegionRefs    []columnRef
 	scratchViews         []ReadView
 	scratchRandom        []cube.Pos
+	scratchRandomScan    []randomTickScan
+	scratchRandomFound   [][]cube.Pos
 	scratchBlockEntities []cube.Pos
 	scratchLoaderAreas   []loaderActiveArea
 	scratchFocus         []ChunkPos

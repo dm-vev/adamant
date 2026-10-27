@@ -3,7 +3,6 @@ package world
 import (
 	"cmp"
 	"math"
-	"math/rand/v2"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -361,10 +360,7 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 // every loaded chunk because they have no background loaders.
 func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	w := tx.World()
-	var (
-		r = int32(w.tickRange())
-		g randUint4
-	)
+	r := int32(w.tickRange())
 	if r == 0 && len(w.forcedChunks) == 0 {
 		// NOP if the simulation distance is 0 and no forced chunks exist.
 		return
@@ -439,9 +435,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		return
 	}
 
-	minSubY := tx.Range().Min() >> 4
-	blocks := w.conf.Blocks
-
+	scan := w.scratchRandomScan[:0]
 	for _, ref := range columns {
 		if !w.conf.Synchronous && !columnWithinAreas(ref.pos, areas) {
 			continue
@@ -452,34 +446,13 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		}
 		blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
 		w.tickPrecipitation(tx, ref.pos)
-
-		cx, cz := int(ref.pos[0]<<4), int(ref.pos[1]<<4)
-		subChunks := c.Sub()
-		randomSubIndices := c.randomTickSubChunkIndices(w.conf.Blocks)
-		if len(randomSubIndices) == 0 {
-			continue
-		}
-
-		// We generate up to j random positions for every sub chunk that may contain random-tickable blocks.
-		for j := 0; j < randomTickSpeed; j++ {
-			x, y, z := g.uint4(w.r), g.uint4(w.r), g.uint4(w.r)
-
-			for _, subIndex := range randomSubIndices {
-				sub := subChunks[subIndex]
-				// Generally we would want to make sure the block has its block entities, but provided blocks
-				// with block entities are generally ticked already, we are safe to assume that blocks
-				// implementing the RandomTicker don't rely on additional block entity data.
-				if rid := sub.Layers()[0].At(x, y, z); blocks.RandomTickBlock(rid) {
-					subY := (subIndex + minSubY) << 4
-					randomBlocks = append(randomBlocks, cube.Pos{cx + int(x), subY + int(y), cz + int(z)})
-
-					// Only generate new coordinates if a tickable block was actually found. If not, we can just re-use
-					// the coordinates for the next sub chunk.
-					x, y, z = g.uint4(w.r), g.uint4(w.r), g.uint4(w.r)
-				}
-			}
+		if indices := c.randomTickSubChunkIndices(w.conf.Blocks); len(indices) != 0 {
+			scan = append(scan, randomTickScan{pos: ref.pos, sub: c.Sub(), indices: indices})
 		}
 	}
+	randomBlocks = w.findRandomTicks(randomBlocks, scan, randomTickSpeed, w.r.Uint64())
+	clear(scan)
+	w.scratchRandomScan = scan[:0]
 
 	for _, pos := range randomBlocks {
 		if rb, ok := tx.Block(pos).(RandomTicker); ok {
@@ -494,6 +467,80 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	w.scratchLoaderAreas = areas[:0]
 	w.scratchRandom = randomBlocks[:0]
 	w.scratchBlockEntities = blockEntities[:0]
+}
+
+// randomTickScan is a column whose blocks tick randomly this tick: its sub
+// chunks and the indices of those that may hold blocks that do.
+type randomTickScan struct {
+	pos     ChunkPos
+	sub     []*chunk.SubChunk
+	indices []int
+}
+
+// randomTickBatch is how many columns a worker scans for blocks that tick
+// randomly at once.
+const randomTickBatch = 16
+
+// findRandomTicks appends to positions those of the blocks of the columns
+// passed that tick randomly this tick, in the order of the columns. As
+// Java's ServerLevel.tickChunk, each column picks speed positions in each of
+// its sub chunks that may hold such blocks, here from a random stream of its
+// own seeded by seed and its position, so that the columns are scanned on
+// all cores. Like Java, it keeps a position for the sub chunks above until
+// it finds a block that ticks.
+func (w *World) findRandomTicks(positions []cube.Pos, scan []randomTickScan, speed int, seed uint64) []cube.Pos {
+	batches := (len(scan) + randomTickBatch - 1) / randomTickBatch
+	found := w.scratchRandomFound
+	for len(found) < batches {
+		found = append(found, nil)
+	}
+	blocks, minSubY := w.conf.Blocks, w.Range().Min()>>4
+	parallel.For(batches, 1, func(b int) {
+		batch := found[b][:0]
+		for _, s := range scan[b*randomTickBatch : min((b+1)*randomTickBatch, len(scan))] {
+			g := randomTickStream{state: seed ^ uint64(uint32(s.pos[0]))<<32 ^ uint64(uint32(s.pos[1]))}
+			cx, cz := int(s.pos[0])<<4, int(s.pos[1])<<4
+			for range speed {
+				x, y, z := g.uint4(), g.uint4(), g.uint4()
+				for _, subIndex := range s.indices {
+					// Blocks with block entities tick through them, so
+					// random tickers are read without theirs.
+					if rid := s.sub[subIndex].Layers()[0].At(x, y, z); blocks.RandomTickBlock(rid) {
+						batch = append(batch, cube.Pos{cx + int(x), (subIndex+minSubY)<<4 + int(y), cz + int(z)})
+						x, y, z = g.uint4(), g.uint4(), g.uint4()
+					}
+				}
+			}
+		}
+		found[b] = batch
+	})
+	for b := range batches {
+		positions = append(positions, found[b]...)
+	}
+	w.scratchRandomFound = found
+	return positions
+}
+
+// randomTickStream is a SplitMix64 stream of the random positions a column
+// picks for random ticks.
+type randomTickStream struct {
+	state, bits uint64
+	n           uint8
+}
+
+// uint4 returns a random number below 16.
+func (g *randomTickStream) uint4() uint8 {
+	if g.n == 0 {
+		g.state += 0x9e3779b97f4a7c15
+		z := g.state
+		z = (z ^ z>>30) * 0xbf58476d1ce4e5b9
+		z = (z ^ z>>27) * 0x94d049bb133111eb
+		g.bits, g.n = z^z>>31, 16
+	}
+	v := uint8(g.bits & 15)
+	g.bits >>= 4
+	g.n--
+	return v
 }
 
 func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {
@@ -893,25 +940,6 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 		}
 	}
 	return ent, true
-}
-
-// randUint4 is a structure used to generate random uint4s.
-type randUint4 struct {
-	x uint64
-	n uint8
-}
-
-// uint4 returns a random uint4.
-func (g *randUint4) uint4(r *rand.Rand) uint8 {
-	if g.n == 0 {
-		g.x = r.Uint64()
-		g.n = 16
-	}
-	val := g.x & 0b1111
-
-	g.x >>= 4
-	g.n--
-	return uint8(val)
 }
 
 // scheduledTickQueue stores one Java tick registry's scheduled updates.
