@@ -132,6 +132,18 @@ func (t ticker) tick(tx *Tx) {
 	w := tx.World()
 	defer w.flushLight()
 	defer w.releaseViewers(viewers)
+	for _, v := range viewers {
+		if b, ok := v.(BatchViewer); ok {
+			b.BeginBatch()
+		}
+	}
+	defer func() {
+		for _, v := range viewers {
+			if b, ok := v.(BatchViewer); ok {
+				b.EndBatch()
+			}
+		}
+	}()
 	w.focusGeneration(loaders)
 	w.updateEntityTickingAreas(loaders)
 	w.loadForcedChunks()

@@ -79,6 +79,17 @@ type Viewer interface {
 	ViewEntityWake(e Entity)
 }
 
+// BatchViewer is a Viewer that may hold what it is shown while its world
+// ticks and pass it on at once when the tick ends, as Java flushes the
+// connection of a player once a tick rather than with every packet.
+type BatchViewer interface {
+	Viewer
+	// BeginBatch is called before the world of the viewer ticks.
+	BeginBatch()
+	// EndBatch is called once the tick ended.
+	EndBatch()
+}
+
 // NopViewer is a Viewer implementation that does not implement any behaviour. It may be embedded by other structs to
 // prevent having to implement all of Viewer's methods.
 type NopViewer struct{}

@@ -139,27 +139,85 @@ func TestSessionPacketQueueConcurrentProducers(t *testing.T) {
 	}
 }
 
-func TestSessionPacketQueueRefillWithFullChannel(t *testing.T) {
-	s := &Session{packets: make(chan packet.Packet, 1)}
-	s.writePacket(&packet.Text{Message: "first"})
-	<-s.packets
-	// A producer wins the lock after the consumer freed a slot, filling the
-	// channel and then creating an overflow before the consumer can refill it.
-	second, third := &packet.Text{Message: "second"}, &packet.Text{Message: "third"}
-	s.writePacket(second)
-	s.writePacket(third)
-	done := make(chan struct{})
-	go func() {
-		s.refillPackets()
-		close(done)
-	}()
-	waitQueueSignal(t, done, "refill with a full channel to return")
-	if got := <-s.packets; got != second {
-		t.Fatalf("packet = %v, want %v", got, second)
+// TestSessionPacketsHeldDuringBatch checks the packets queued between
+// BeginBatch and EndBatch reach the connection only once the batch ends, in
+// order after those queued before and before those queued after.
+func TestSessionPacketsHeldDuringBatch(t *testing.T) {
+	c := newQueueTestConn()
+	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(c)
+	t.Cleanup(s.CloseConnection)
+	close(c.release)
+
+	text := func(i int) *packet.Text { return &packet.Text{Message: strconv.Itoa(i)} }
+	next := 0
+	expect := func(upTo int) {
+		t.Helper()
+		timeout := time.NewTimer(5 * time.Second)
+		defer timeout.Stop()
+		for next < upTo {
+			select {
+			case raw := <-c.written:
+				pk, ok := raw.(*packet.Text)
+				if !ok {
+					continue
+				}
+				if pk.Message != strconv.Itoa(next) {
+					t.Fatalf("packet %q written, want %d", pk.Message, next)
+				}
+				next++
+			case <-timeout.C:
+				t.Fatalf("written %d of %d packets", next, upTo)
+			}
+		}
 	}
-	s.refillPackets()
-	if got := <-s.packets; got != third {
-		t.Fatalf("packet = %v, want %v", got, third)
+
+	s.writePacket(text(0))
+	expect(1)
+	s.BeginBatch()
+	const held = 600
+	for i := 1; i <= held; i++ {
+		s.writePacket(text(i))
+	}
+	select {
+	case pk := <-c.written:
+		t.Fatalf("packet %v written while held", pk)
+	case <-time.After(50 * time.Millisecond):
+	}
+	s.EndBatch()
+	s.writePacket(text(held + 1))
+	expect(held + 2)
+
+	// A batch begun twice ends with its second end.
+	s.BeginBatch()
+	s.BeginBatch()
+	s.writePacket(text(held + 2))
+	s.EndBatch()
+	select {
+	case pk := <-c.written:
+		t.Fatalf("packet %v written before the outer batch ended", pk)
+	case <-time.After(50 * time.Millisecond):
+	}
+	s.EndBatch()
+	expect(held + 3)
+}
+
+// TestSessionHeldPacketsBounded checks packets held during a batch count
+// towards the backlog that closes a connection that cannot keep up.
+func TestSessionHeldPacketsBounded(t *testing.T) {
+	c := newQueueTestConn()
+	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(c)
+	t.Cleanup(s.CloseConnection)
+
+	s.BeginBatch()
+	for range maxQueuedPackets + 1 {
+		s.writePacket(&packet.SetActorMotion{EntityRuntimeID: 2})
+	}
+	waitQueueSignal(t, c.closed, "overloaded connection to close")
+	s.EndBatch()
+	s.packetsMu.Lock()
+	defer s.packetsMu.Unlock()
+	if len(s.packets) != 0 || len(s.pendingPackets) != 0 || len(s.heldPackets) != 0 {
+		t.Fatal("closed session retained queued packets")
 	}
 }
 

@@ -46,11 +46,14 @@ type Session struct {
 	bossBarIDs    map[string]int64
 	nextBossBarID int64
 	packets       chan packet.Packet
-	// packetsMu protects the overflow FIFO. The channel holds the first packets;
-	// bursts spill into pendingPackets without blocking the world owner.
+	// packetsMu protects the overflow FIFO and the packets held. The channel
+	// holds the first packets; bursts spill into pendingPackets without
+	// blocking the world owner. While the world of the session ticks, packets
+	// are held in heldPackets and handed to the writer at once afterwards.
 	packetsMu      sync.Mutex
 	pendingPackets []packet.Packet
-	pendingHead    int
+	holdPackets    int
+	heldPackets    []packet.Packet
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
