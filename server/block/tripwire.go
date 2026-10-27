@@ -242,9 +242,9 @@ func updateTripwireLineChanged(pos cube.Pos, hook TripwireHook, tx *world.Tx, ch
 	if foundOther {
 		updateHookState(otherPos, otherHook, attached, powered, tx)
 		// Native uses the starting hook's previous flags for both sounds.
-		emitTripwireHookSound(otherPos, tx, hook, attached, powered)
+		emitTripwireHookState(otherPos, tx, hook, attached, powered)
 	}
-	emitTripwireHookSound(pos, tx, hook, attached, powered)
+	emitTripwireHookState(pos, tx, hook, attached, powered)
 	updateHookState(pos, hook, attached, powered, tx)
 	if hook.Attached == attached || !foundOther {
 		return

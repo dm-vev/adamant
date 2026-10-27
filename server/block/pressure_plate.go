@@ -56,12 +56,12 @@ func (p PressurePlate) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) 
 	if p.Signal == 1 && !p.Type.weighted() {
 		return
 	}
-	p.updateSignal(pos, tx)
+	p.updateSignal(pos, tx, e)
 }
 
 // ScheduledTick ...
 func (p PressurePlate) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	p.updateSignal(pos, tx)
+	p.updateSignal(pos, tx, nil)
 }
 
 func (p PressurePlate) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
@@ -91,7 +91,7 @@ func (p PressurePlate) EncodeBlock() (string, map[string]any) {
 	return "minecraft:" + p.Type.blockName(), map[string]any{"redstone_signal": int32(p.Signal)}
 }
 
-func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx) {
+func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx, source world.Entity) {
 	newSignal := p.signalForEntities(pos, tx)
 	if newSignal == p.Signal {
 		if newSignal > 0 {
@@ -99,8 +99,19 @@ func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx) {
 		}
 		return
 	}
+	wasPowered := p.Signal > 0
 	p.Signal = newSignal
 	tx.SetBlock(pos, p, nil)
+	// Native checkPressed posts only on a zero/nonzero transition. Changes
+	// between two positive weighted strengths do not create another vibration.
+	if wasPowered != (newSignal > 0) {
+		playPressurePlateSound(pos, tx, p, newSignal > 0)
+		event := world.GameEventBlockDeactivate
+		if newSignal > 0 {
+			event = world.GameEventBlockActivate
+		}
+		tx.EmitGameEvent(event, pos.Vec3Centre(), world.GameEventContext{Source: source})
+	}
 	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	if newSignal > 0 {
 		tx.ScheduleBlockUpdate(pos, p, gameTicks(p.Type.pressedTicks()))
