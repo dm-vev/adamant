@@ -127,11 +127,7 @@ func (*sessionList) runtimeID(s, to *Session) uint64 {
 		to.entities[runtimeID] = s.ent
 		return runtimeID
 	}
-	runtimeID := uint64(selfEntityRuntimeID)
-	if s != to {
-		to.currentEntityRuntimeID++
-		runtimeID = to.currentEntityRuntimeID
-	}
+	runtimeID := to.runtimeIDOf(s.ent)
 	to.entityRuntimeIDs[s.ent] = runtimeID
 	to.entities[runtimeID] = s.ent
 	return runtimeID

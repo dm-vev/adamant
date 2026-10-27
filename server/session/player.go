@@ -41,6 +41,7 @@ func (s *Session) StopShowingEntity(e world.Entity) {
 	_, ok := s.hiddenEntities[e.H().UUID()]
 	if !ok {
 		s.hiddenEntities[e.H().UUID()] = struct{}{}
+		s.hidesEntities.Store(true)
 	}
 	s.entityMutex.Unlock()
 
@@ -55,6 +56,7 @@ func (s *Session) StartShowingEntity(e world.Entity) {
 	_, ok := s.hiddenEntities[e.H().UUID()]
 	if ok {
 		delete(s.hiddenEntities, e.H().UUID())
+		s.hidesEntities.Store(len(s.hiddenEntities) > 0)
 	}
 	s.entityMutex.Unlock()
 
@@ -562,7 +564,7 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 		}
 		return
 	}
-	entityRuntimeID := s.entityRuntimeID(e)
+	entityRuntimeID := s.handleRuntimeID(e.H())
 	if entityRuntimeID == 0 {
 		return
 	}

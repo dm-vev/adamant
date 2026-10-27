@@ -67,6 +67,9 @@ type EntityHandle struct {
 	closed       chan struct{}
 	worldChanged chan struct{}
 	closeOnce    sync.Once
+	// runtimeID is the number the handle is known by on the network, handed
+	// out the first time it is asked for.
+	runtimeID atomic.Uint64
 
 	data           EntityData
 	spawnReason    string
@@ -328,6 +331,21 @@ func (e *EntityHandle) UUID() uuid.UUID {
 // It is distinct from a session's entity runtime ID.
 func (e *EntityHandle) UniqueID() int64 {
 	return int64(binary.LittleEndian.Uint64(e.id[8:]))
+}
+
+// runtimeIDs counts the runtime IDs handed out.
+var runtimeIDs atomic.Uint64
+
+// RuntimeID returns the number the EntityHandle is known by on the network,
+// the same for every viewer and never handed out again, as BDS numbers the
+// actors of a level.
+func (e *EntityHandle) RuntimeID() uint64 {
+	if id := e.runtimeID.Load(); id != 0 {
+		return id
+	}
+	// Runtime IDs start at 2: a session knows its own player by 1.
+	e.runtimeID.CompareAndSwap(0, runtimeIDs.Add(1)+1)
+	return e.runtimeID.Load()
 }
 
 // Closed reports whether the EntityHandle has been closed.

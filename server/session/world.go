@@ -43,6 +43,9 @@ type OffsetEntity interface {
 
 // entityHidden checks if a world.Entity is being explicitly hidden from the Session.
 func (s *Session) entityHidden(e world.Entity) bool {
+	if !s.hidesEntities.Load() {
+		return false
+	}
 	s.entityMutex.RLock()
 	_, ok := s.hiddenEntities[e.H().UUID()]
 	s.entityMutex.RUnlock()
@@ -68,8 +71,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			s.entities[id] = e.H()
 		}
 	} else {
-		s.currentEntityRuntimeID += 1
-		runtimeID = s.currentEntityRuntimeID
+		runtimeID = s.runtimeIDOf(e.H())
 		s.entityRuntimeIDs[e.H()] = runtimeID
 		s.entities[runtimeID] = e.H()
 	}
@@ -2200,12 +2202,25 @@ func (s *Session) entityLinks(e world.Entity) []protocol.EntityLink {
 	return out
 }
 
-// entityRuntimeID returns the runtime ID of the entity passed.
-// noinspection GoCommentLeadingSpace
+// entityRuntimeID returns the runtime ID of the entity passed, whether or not
+// it is shown to the session: the client leaves out what packets say of an
+// actor it does not know.
 func (s *Session) entityRuntimeID(e world.Entity) uint64 {
-	return s.handleRuntimeID(e.H())
+	return s.runtimeIDOf(e.H())
 }
 
+// runtimeIDOf returns the runtime ID the session knows the entity of the
+// handle passed by: selfEntityRuntimeID for its own player, the runtime ID of
+// the handle for any other.
+func (s *Session) runtimeIDOf(h *world.EntityHandle) uint64 {
+	if h == s.ent {
+		return selfEntityRuntimeID
+	}
+	return h.RuntimeID()
+}
+
+// handleRuntimeID returns the runtime ID of the entity of the handle passed
+// if it is shown to the session, or 0 if it is not.
 func (s *Session) handleRuntimeID(e *world.EntityHandle) uint64 {
 	s.entityMutex.RLock()
 	defer s.entityMutex.RUnlock()

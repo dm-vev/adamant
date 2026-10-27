@@ -22,9 +22,8 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 	existing := testSession("existing")
 	joining := testSession("joining")
 	l.s = []*Session{existing}
-	existing.currentEntityRuntimeID = 2
-	existing.entityRuntimeIDs[joining.ent] = 2
-	existing.entities[2] = joining.ent
+	existing.entityRuntimeIDs[joining.ent] = joining.ent.RuntimeID()
+	existing.entities[joining.ent.RuntimeID()] = joining.ent
 
 	existing.entityMutex.Lock()
 	addDone := make(chan struct{})
@@ -101,14 +100,13 @@ func waitDone(t *testing.T, done <-chan struct{}) {
 func testSession(name string) *Session {
 	handle := entity.NewText(name, mgl64.Vec3{})
 	return &Session{
-		conn:                   testConn{identity: login.IdentityData{Identity: uuid.NewString(), DisplayName: name}},
-		conf:                   Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
-		packets:                make(chan packet.Packet, 8),
-		closeBackground:        make(chan struct{}),
-		ent:                    handle,
-		currentEntityRuntimeID: selfEntityRuntimeID,
-		entityRuntimeIDs:       map[*world.EntityHandle]uint64{handle: selfEntityRuntimeID},
-		entities:               map[uint64]*world.EntityHandle{selfEntityRuntimeID: handle},
+		conn:             testConn{identity: login.IdentityData{Identity: uuid.NewString(), DisplayName: name}},
+		conf:             Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
+		packets:          make(chan packet.Packet, 8),
+		closeBackground:  make(chan struct{}),
+		ent:              handle,
+		entityRuntimeIDs: map[*world.EntityHandle]uint64{handle: selfEntityRuntimeID},
+		entities:         map[uint64]*world.EntityHandle{selfEntityRuntimeID: handle},
 	}
 }
 

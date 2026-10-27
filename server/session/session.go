@@ -77,13 +77,13 @@ type Session struct {
 	teleportPos atomic.Pointer[mgl64.Vec3]
 
 	entityMutex sync.RWMutex
-	// currentEntityRuntimeID holds the runtime ID assigned to the last entity. It is incremented for every
-	// entity spawned to the session.
-	currentEntityRuntimeID uint64
 	// entityRuntimeIDs holds the runtime IDs of entities shown to the session.
 	entityRuntimeIDs map[*world.EntityHandle]uint64
 	entities         map[uint64]*world.EntityHandle
 	hiddenEntities   map[uuid.UUID]struct{}
+	// hidesEntities is set while hiddenEntities holds any entity, so that
+	// showing entities does not take entityMutex to find none hidden.
+	hidesEntities atomic.Bool
 	// deathAnimations records ordinary mobs whose death event lets the client
 	// finish the animation and remove the actor itself. Protected by entityMutex.
 	deathAnimations map[uint64]struct{}
@@ -238,27 +238,26 @@ func (conf Config) New(conn Conn) *Session {
 
 	s := &Session{}
 	*s = Session{
-		conf:                   conf,
-		openChunkTransactions:  make([]map[uint64]struct{}, 0, 8),
-		closeBackground:        make(chan struct{}),
-		handlers:               map[uint32]packetHandler{},
-		packets:                make(chan packet.Packet, 256),
-		entityRuntimeIDs:       map[*world.EntityHandle]uint64{},
-		entities:               map[uint64]*world.EntityHandle{},
-		hiddenEntities:         map[uuid.UUID]struct{}{},
-		blobs:                  map[uint64][]byte{},
-		maxChunkRadius:         int32(maxChunkRadius),
-		emoteChatMuted:         conf.EmoteChatMuted,
-		conn:                   conn,
-		currentEntityRuntimeID: 1,
-		recipes:                make(map[uint32]recipe.Recipe),
-		javaRecipeIDs:          make(map[string][]string),
-		hudUpdates:             make(map[hud.Element]bool),
-		hiddenHud:              make(map[hud.Element]struct{}),
-		debugShapes:            make(map[int]debug.Shape),
-		debugShapeUpdates:      make([]debugShapeUpdate, 0, 256),
-		abilityResendDelay:     defaultAbilityResendDelay,
-		lastActivity:           atomic.Int64{},
+		conf:                  conf,
+		openChunkTransactions: make([]map[uint64]struct{}, 0, 8),
+		closeBackground:       make(chan struct{}),
+		handlers:              map[uint32]packetHandler{},
+		packets:               make(chan packet.Packet, 256),
+		entityRuntimeIDs:      map[*world.EntityHandle]uint64{},
+		entities:              map[uint64]*world.EntityHandle{},
+		hiddenEntities:        map[uuid.UUID]struct{}{},
+		blobs:                 map[uint64][]byte{},
+		maxChunkRadius:        int32(maxChunkRadius),
+		emoteChatMuted:        conf.EmoteChatMuted,
+		conn:                  conn,
+		recipes:               make(map[uint32]recipe.Recipe),
+		javaRecipeIDs:         make(map[string][]string),
+		hudUpdates:            make(map[hud.Element]bool),
+		hiddenHud:             make(map[hud.Element]struct{}),
+		debugShapes:           make(map[int]debug.Shape),
+		debugShapeUpdates:     make([]debugShapeUpdate, 0, 256),
+		abilityResendDelay:    defaultAbilityResendDelay,
+		lastActivity:          atomic.Int64{},
 	}
 	s.lastActivity.Store(time.Now().UnixNano())
 	s.viewLayer = world.NewViewLayer(s)
