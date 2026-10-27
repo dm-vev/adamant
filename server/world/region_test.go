@@ -18,8 +18,8 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// TestRegionGroups checks columns join a region when their cells touch or a
-// loader views both, and stay apart otherwise.
+// TestRegionGroups checks columns join a region when their cells touch, and
+// stay apart otherwise.
 func TestRegionGroups(t *testing.T) {
 	sorted := func(groups [][]world.ChunkPos) [][]world.ChunkPos {
 		for _, g := range groups {
@@ -35,21 +35,19 @@ func TestRegionGroups(t *testing.T) {
 	cases := []struct {
 		name    string
 		columns []world.ChunkPos
-		loaders map[world.ChunkPos]int
 		want    int
 	}{
-		{"one cell", []world.ChunkPos{{0, 0}, {15, 15}}, nil, 1},
-		{"touching cells", []world.ChunkPos{{0, 0}, {16, 0}}, nil, 1},
-		{"diagonal cells", []world.ChunkPos{{15, 15}, {16, 16}}, nil, 1},
-		{"negative cells", []world.ChunkPos{{-1, -1}, {0, 0}}, nil, 1},
-		{"cell apart", []world.ChunkPos{{0, 0}, {32, 0}}, nil, 2},
-		{"cells apart", []world.ChunkPos{{0, 0}, {64, 64}, {-64, 0}}, nil, 3},
-		{"loader views both", []world.ChunkPos{{0, 0}, {40, 0}}, map[world.ChunkPos]int{{20, 0}: 8}, 1},
-		{"loader views one", []world.ChunkPos{{0, 0}, {80, 0}}, map[world.ChunkPos]int{{0, 0}: 12}, 2},
-		{"chain", []world.ChunkPos{{0, 0}, {16, 0}, {32, 0}, {48, 0}}, nil, 1},
+		{"one cell", []world.ChunkPos{{0, 0}, {15, 15}}, 1},
+		{"touching cells", []world.ChunkPos{{0, 0}, {16, 0}}, 1},
+		{"diagonal cells", []world.ChunkPos{{15, 15}, {16, 16}}, 1},
+		{"negative cells", []world.ChunkPos{{-1, -1}, {0, 0}}, 1},
+		{"cell apart", []world.ChunkPos{{0, 0}, {32, 0}}, 2},
+		{"cells apart", []world.ChunkPos{{0, 0}, {64, 64}, {-64, 0}}, 3},
+		{"cells beside, as entities 300 blocks apart", []world.ChunkPos{{0, 0}, {19, 0}}, 1},
+		{"chain", []world.ChunkPos{{0, 0}, {16, 0}, {32, 0}, {48, 0}}, 1},
 	}
 	for _, c := range cases {
-		groups := sorted(world.RegionGroups(c.columns, c.loaders))
+		groups := sorted(world.RegionGroups(c.columns))
 		if len(groups) != c.want {
 			t.Errorf("%s: %d regions %v, want %d", c.name, len(groups), groups, c.want)
 		}
@@ -70,8 +68,7 @@ var regionCentres = []cube.Pos{{0, 0, 0}, {1024, 0, 0}, {0, 0, 1024}, {1024, 0, 
 // TestRegionsTickWithoutRaces ticks areas far apart full of mobs, players,
 // projectiles, explosions, villages and farms in regions at once, for the
 // race detector to find any state two regions share without a lock, and
-// fails if a tick does not finish in time, as a deadlock would. Viewers of
-// each area check they are never called by two goroutines at once.
+// fails if a tick does not finish in time, as a deadlock would.
 func TestRegionsTickWithoutRaces(t *testing.T) {
 	ticks := 300
 	if testing.Short() {
@@ -84,12 +81,12 @@ func TestRegionsTickWithoutRaces(t *testing.T) {
 	defer w.Close()
 	w.SetDifficulty(world.DifficultyHard)
 
-	viewers := make([]*exclusiveViewer, len(regionCentres))
+	viewers := make([]*countingViewer, len(regionCentres))
 	var players []*world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
 		for i, c := range regionCentres {
 			// The loaders make the columns around the centres tick actively.
-			viewers[i] = &exclusiveViewer{}
+			viewers[i] = &countingViewer{}
 			l := world.NewLoader(4, w, viewers[i])
 			l.Move(tx, c.Vec3Centre())
 			l.Load(tx, 128)
@@ -130,9 +127,6 @@ func TestRegionsTickWithoutRaces(t *testing.T) {
 		t.Errorf("%d region phases in %d ticks, want one a tick at least", phases, ticks)
 	}
 	for i, v := range viewers {
-		if n := v.overlaps.Load(); n > 0 {
-			t.Errorf("viewer of area %d called by two goroutines at once %d times", i, n)
-		}
 		if v.calls.Load() == 0 {
 			t.Errorf("viewer of area %d was never shown anything", i)
 		}
@@ -237,46 +231,38 @@ func (regionTestGenerator) GenerateChunk(_ world.ChunkPos, c *chunk.Chunk, _ wor
 
 func (regionTestGenerator) DefaultSpawn(world.Dimension) cube.Pos { return cube.Pos{0, 64, 0} }
 
-// exclusiveViewer counts the calls made to it and those made while another
-// was still running.
-type exclusiveViewer struct {
+// countingViewer counts the calls made to it. Regions may call it at once.
+type countingViewer struct {
 	world.NopViewer
-	running, calls, overlaps atomic.Int64
+	calls atomic.Int64
 }
 
-func (v *exclusiveViewer) enter() func() {
+func (v *countingViewer) enter() func() {
 	v.calls.Add(1)
-	if v.running.Add(1) > 1 {
-		v.overlaps.Add(1)
-	}
-	// Linger, so that overlapping calls have a chance to meet.
-	for range 50 {
-		_ = v.running.Load()
-	}
-	return func() { v.running.Add(-1) }
+	return func() {}
 }
 
-func (v *exclusiveViewer) ViewEntity(world.Entity)       { defer v.enter()() }
-func (v *exclusiveViewer) HideEntity(world.Entity)       { defer v.enter()() }
-func (v *exclusiveViewer) ViewEntityState(world.Entity)  { defer v.enter()() }
-func (v *exclusiveViewer) ViewEntityItems(world.Entity)  { defer v.enter()() }
-func (v *exclusiveViewer) ViewEntityArmour(world.Entity) { defer v.enter()() }
-func (v *exclusiveViewer) ViewEntityMovement(world.Entity, mgl64.Vec3, cube.Rotation, bool) {
+func (v *countingViewer) ViewEntity(world.Entity)       { defer v.enter()() }
+func (v *countingViewer) HideEntity(world.Entity)       { defer v.enter()() }
+func (v *countingViewer) ViewEntityState(world.Entity)  { defer v.enter()() }
+func (v *countingViewer) ViewEntityItems(world.Entity)  { defer v.enter()() }
+func (v *countingViewer) ViewEntityArmour(world.Entity) { defer v.enter()() }
+func (v *countingViewer) ViewEntityMovement(world.Entity, mgl64.Vec3, cube.Rotation, bool) {
 	defer v.enter()()
 }
-func (v *exclusiveViewer) ViewEntityVelocity(world.Entity, mgl64.Vec3) { defer v.enter()() }
-func (v *exclusiveViewer) ViewEntityAction(world.Entity, world.EntityAction) {
+func (v *countingViewer) ViewEntityVelocity(world.Entity, mgl64.Vec3) { defer v.enter()() }
+func (v *countingViewer) ViewEntityAction(world.Entity, world.EntityAction) {
 	defer v.enter()()
 }
-func (v *exclusiveViewer) ViewEntityAnimation(world.Entity, world.EntityAnimation) {
+func (v *countingViewer) ViewEntityAnimation(world.Entity, world.EntityAnimation) {
 	defer v.enter()()
 }
-func (v *exclusiveViewer) ViewParticle(mgl64.Vec3, world.Particle) { defer v.enter()() }
-func (v *exclusiveViewer) ViewSound(mgl64.Vec3, world.Sound)       { defer v.enter()() }
-func (v *exclusiveViewer) ViewBlockUpdate(cube.Pos, world.Block, int) {
+func (v *countingViewer) ViewParticle(mgl64.Vec3, world.Particle) { defer v.enter()() }
+func (v *countingViewer) ViewSound(mgl64.Vec3, world.Sound)       { defer v.enter()() }
+func (v *countingViewer) ViewBlockUpdate(cube.Pos, world.Block, int) {
 	defer v.enter()()
 }
-func (v *exclusiveViewer) ViewBlockAction(cube.Pos, world.BlockAction) { defer v.enter()() }
+func (v *countingViewer) ViewBlockAction(cube.Pos, world.BlockAction) { defer v.enter()() }
 
 // TestRegionMonstersDespawnFarFromPlayersOfOtherRegions checks monsters in
 // a region without players leave the world when the only player is in

@@ -211,6 +211,13 @@ type World struct {
 	entityColumns     []columnRef
 	entityColumnIndex map[ChunkPos]int
 
+	// entityTickingStamp changes every tick. The columns whose entities
+	// tick this tick hold it, plus one.
+	entityTickingStamp uint64
+	// entityTickingSeen holds the areas whose columns were stamped this
+	// tick, so that loaders standing together stamp theirs once.
+	entityTickingSeen map[loaderActiveArea]struct{}
+
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
 
@@ -1732,7 +1739,7 @@ func (w *World) tickingEntities(tx *Tx) iter.Seq[Entity] {
 		}
 		for _, ref := range refs {
 			col := ref.col
-			if col == nil || len(col.Entities) == 0 || !col.Ready() || (!w.conf.Synchronous && len(col.viewers) == 0) || !w.entityTickingReady(ref.pos) {
+			if col == nil || len(col.Entities) == 0 || !col.Ready() || !w.entitiesTick(col) || !w.entityTickingReady(ref.pos) {
 				continue
 			}
 			more := col.iterateEntities(func(handle *EntityHandle) bool {
@@ -3460,6 +3467,9 @@ type Column struct {
 	// tickingEpoch is the chunkEpoch of the world, plus one, when the
 	// chunks within two of the column were last all found ready.
 	tickingEpoch uint64
+	// entityTickingStamp is the entityTickingStamp of the world, plus one,
+	// of the last tick the entities of the column ticked in.
+	entityTickingStamp uint64
 	// fillingLight is set on a column read from the provider whose light is
 	// filled on another goroutine. Closing it waits for that, rather than
 	// dropping the entities read with it as it drops those of a column still

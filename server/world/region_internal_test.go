@@ -180,7 +180,7 @@ func TestRegionOwnersNeverMeet(t *testing.T) {
 		for range 1 + layout%12 {
 			refs = append(refs, columnRef{pos: ChunkPos{next(160), next(160)}})
 		}
-		groups := regionsOf(refs, nil)
+		groups := regionsOf(refs)
 		cells := map[regionCellPos]*region{}
 		regions := make([]*region, len(groups))
 		for i, g := range groups {

@@ -56,19 +56,15 @@ func (tx *Tx) ReadyChunk(pos ChunkPos) *chunk.Chunk {
 func (w *World) RegionPhases() int64 { return w.regions.phases.Load() }
 
 // RegionGroups exposes regionsOf to world_test: it groups the columns at
-// the chunk positions passed into regions, given loaders at the positions
-// and radii passed, and returns the positions of each region.
-func RegionGroups(columns []ChunkPos, loaders map[ChunkPos]int) [][]ChunkPos {
+// the chunk positions passed into regions and returns the positions of each
+// region.
+func RegionGroups(columns []ChunkPos) [][]ChunkPos {
 	refs := make([]columnRef, len(columns))
 	for i, pos := range columns {
 		refs[i] = columnRef{pos: pos}
 	}
-	var ls []*Loader
-	for pos, r := range loaders {
-		ls = append(ls, &Loader{pos: pos, r: r})
-	}
 	var out [][]ChunkPos
-	for _, group := range regionsOf(refs, ls) {
+	for _, group := range regionsOf(refs) {
 		var positions []ChunkPos
 		for _, ref := range group {
 			positions = append(positions, ref.pos)

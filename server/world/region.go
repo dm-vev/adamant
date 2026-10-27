@@ -19,14 +19,15 @@ import (
 //
 // The columns whose entities tick actively are grouped by cells of
 // regionCell chunks. Cells next to each other, diagonally included, join one
-// region, and so do the cells any loader views, so that the columns of two
-// regions lie more than regionCell chunks apart and no viewer is shown
-// anything by two regions. A region owns the columns within regionReach
-// chunks of its cells: the columns two regions own never meet, and a region
-// only reads and writes the columns it owns. The entities in them are the
-// region's: other regions do not find them. An entity of a region looking
-// further than regionReach chunks away, which none does in vanilla, finds
-// nothing there.
+// region, so that the columns of two regions lie more than regionCell chunks
+// apart. A viewer viewing columns of several regions, as a player far from
+// others with a large view distance does, may be shown things by them at
+// once: viewers must allow it, as sessions do. A region owns the columns
+// within regionReach chunks of its cells: the columns two regions own never
+// meet, and a region only reads and writes the columns it owns. The entities
+// in them are the region's: other regions do not find them. An entity of a
+// region looking further than regionReach chunks away, which none does in
+// vanilla, finds nothing there.
 //
 // During the phase the chunk map does not change. A region reads the owned
 // columns that are loaded and settled and air in the others; it never
@@ -241,9 +242,8 @@ func (r *region) ownsEntity(w *World, handle *EntityHandle) bool {
 }
 
 // regionsOf groups the columns ticking actively passed, kept in the order
-// passed, into regions far enough apart to tick at once. The loaders passed
-// join the cells they view.
-func regionsOf(refs []columnRef, loaders []*Loader) [][]columnRef {
+// passed, into regions far enough apart to tick at once.
+func regionsOf(refs []columnRef) [][]columnRef {
 	cells := make(map[regionCellPos]int, len(refs)/4+1)
 	var order []regionCellPos
 	for _, ref := range refs {
@@ -278,29 +278,6 @@ func regionsOf(refs []columnRef, loaders []*Loader) [][]columnRef {
 			}
 		}
 	}
-	for _, l := range loaders {
-		// The loader views the columns within its radius: the cells owning
-		// any of them join.
-		l.mu.RLock()
-		pos, radius := l.pos, int32(l.r)
-		l.mu.RUnlock()
-		first := -1
-		lo := regionCellOf(ChunkPos{pos[0] - radius - regionReach, pos[1] - radius - regionReach})
-		hi := regionCellOf(ChunkPos{pos[0] + radius + regionReach, pos[1] + radius + regionReach})
-		for x := lo[0]; x <= hi[0]; x++ {
-			for z := lo[1]; z <= hi[1]; z++ {
-				j, ok := cells[regionCellPos{x, z}]
-				if !ok {
-					continue
-				}
-				if first < 0 {
-					first = j
-				} else {
-					union(first, j)
-				}
-			}
-		}
-	}
 	groups := make(map[int]int)
 	var out [][]columnRef
 	for _, ref := range refs {
@@ -320,8 +297,8 @@ func regionsOf(refs []columnRef, loaders []*Loader) [][]columnRef {
 // actively, region after region at once if they make more than one region,
 // and reports whether they did. The owner then does what the regions left
 // to it, region after region.
-func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef, loaders []*Loader) bool {
-	groups := regionsOf(refs, loaders)
+func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef) bool {
+	groups := regionsOf(refs)
 	if len(groups) < 2 {
 		return false
 	}

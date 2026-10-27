@@ -133,6 +133,7 @@ func (t ticker) tick(tx *Tx) {
 	defer w.flushLight()
 	defer w.releaseViewers(viewers)
 	w.focusGeneration(loaders)
+	w.updateEntityTickingAreas(loaders)
 	w.loadForcedChunks()
 	for pos := range w.forcedChunks {
 		w.loadForcedChunk(pos)
@@ -225,7 +226,7 @@ func (t ticker) tick(tx *Tx) {
 		if w.dragonFight != nil {
 			w.dragonFight.Tick(tx)
 		}
-		t.tickEntities(tx, tick, loaders)
+		t.tickEntities(tx, tick)
 		if collide := w.EntityRegistry().Config().EntityCollisions; collide != nil {
 			collide(tx)
 		}
@@ -500,16 +501,72 @@ func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {
 	return false
 }
 
+// updateEntityTickingAreas stamps the columns whose entities tick this
+// tick: those within the simulation distance of the world of one of the
+// loaders passed, as Java ticks the entities of the chunks within the
+// simulation distance of players, and those forced to load. The entities of
+// a column loaded later tick from the next tick on.
+func (w *World) updateEntityTickingAreas(loaders []*Loader) {
+	w.entityTickingStamp++
+	if w.entityTickingSeen == nil {
+		w.entityTickingSeen = make(map[loaderActiveArea]struct{})
+	}
+	clear(w.entityTickingSeen)
+	r := int32(w.tickRange())
+	for _, loader := range loaders {
+		w.stampEntityTicking(loader.activeArea(r))
+	}
+	w.forcedChunksMu.RLock()
+	for pos := range w.forcedChunks {
+		w.stampEntityTicking(loaderActiveArea{pos: pos})
+	}
+	w.forcedChunksMu.RUnlock()
+}
+
+// stampEntityTicking stamps the loaded columns within area.
+func (w *World) stampEntityTicking(area loaderActiveArea) {
+	if _, ok := w.entityTickingSeen[area]; ok {
+		return
+	}
+	w.entityTickingSeen[area] = struct{}{}
+	for dx := -area.radius; dx <= area.radius; dx++ {
+		for dz := -area.radius; dz <= area.radius; dz++ {
+			if int64(dx)*int64(dx)+int64(dz)*int64(dz) > area.radiusSq {
+				continue
+			}
+			if c, ok := w.chunks[ChunkPos{area.pos[0] + dx, area.pos[1] + dz}]; ok {
+				c.entityTickingStamp = w.entityTickingStamp + 1
+			}
+		}
+	}
+}
+
+// entitiesTick reports whether the entities of col tick this tick. Those
+// of every column of a synchronous world do.
+func (w *World) entitiesTick(col *Column) bool {
+	return w.conf.Synchronous || col.entityTickingStamp == w.entityTickingStamp+1
+}
+
+// entitiesTickAt reports whether the entities of the chunk at pos tick this
+// tick.
+func (w *World) entitiesTickAt(pos ChunkPos) bool {
+	if w.conf.Synchronous {
+		return true
+	}
+	c, ok := w.chunks[pos]
+	return ok && w.entitiesTick(c)
+}
+
 // tickEntities ticks all entities in the world, making sure they are still located in the correct chunks and
 // updating where necessary.
 //
-// The implementation purposefully separates entities into "active" (chunks with at least one viewer) and
-// "sleeping" (chunks currently unseen) cohorts. Only the active cohort is processed every tick. Sleeping
+// The implementation purposefully separates entities into "active" (chunks within the simulation distance of a
+// loader) and "sleeping" (chunks further away) cohorts. Only the active cohort is processed every tick. Sleeping
 // chunks are serviced on a coarse cadence to avoid spending CPU time on areas of the world that no player can
 // currently interact with. This mirrors the behaviour of the vanilla server simulation distance and greatly
 // reduces per-tick iteration costs on large worlds while still keeping important counters such as entity age and
 // fire timers consistent.
-func (t ticker) tickEntities(tx *Tx, tick int64, loaders []*Loader) {
+func (t ticker) tickEntities(tx *Tx, tick int64) {
 	const sleepMaintenanceInterval = 40 // ~2 seconds between maintenance passes for sleeping chunks.
 
 	w := tx.World()
@@ -522,17 +579,17 @@ func (t ticker) tickEntities(tx *Tx, tick int64, loaders []*Loader) {
 		// owner afterwards.
 		active := w.scratchRegionRefs[:0]
 		for _, ref := range w.entityColumns {
-			if col := ref.col; col != nil && len(col.Entities) > 0 && col.Ready() && (w.conf.Synchronous || len(col.viewers) > 0) {
+			if col := ref.col; col != nil && len(col.Entities) > 0 && col.Ready() && w.entitiesTick(col) {
 				active = append(active, ref)
 			}
 		}
-		ticked := t.tickRegions(tx, tick, active, loaders)
+		ticked := t.tickRegions(tx, tick, active)
 		clear(active)
 		w.scratchRegionRefs = active[:0]
 		if ticked {
 			if lazyMaintenance {
 				for _, ref := range slices.Clone(w.entityColumns) {
-					if col := ref.col; col != nil && len(col.Entities) > 0 && col.Ready() && !w.conf.Synchronous && len(col.viewers) == 0 {
+					if col := ref.col; col != nil && len(col.Entities) > 0 && col.Ready() && !w.entitiesTick(col) {
 						t.tickEntityColumn(tx, tick, ref.pos, col, false)
 					}
 				}
@@ -549,7 +606,7 @@ func (t ticker) tickEntities(tx *Tx, tick int64, loaders []*Loader) {
 		if col == nil || len(col.Entities) == 0 || !col.Ready() {
 			continue
 		}
-		if w.conf.Synchronous || len(col.viewers) > 0 {
+		if w.entitiesTick(col) {
 			t.tickEntityColumn(tx, tick, ref.pos, col, true)
 			continue
 		}
@@ -574,7 +631,7 @@ func (t ticker) prefetchEntities(tx *Tx) {
 	items := w.scratchPrefetch[:0]
 	for _, ref := range w.entityColumns {
 		col := ref.col
-		if col == nil || len(col.Entities) == 0 || !col.Ready() || (!w.conf.Synchronous && len(col.viewers) == 0) || !w.entityTickingReady(ref.pos) {
+		if col == nil || len(col.Entities) == 0 || !col.Ready() || !w.entitiesTick(col) || !w.entityTickingReady(ref.pos) {
 			continue
 		}
 		for _, handle := range col.Entities {

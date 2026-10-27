@@ -817,6 +817,45 @@ func TestEntityCrossingIntoLaterColumnTicksOnce(t *testing.T) {
 	}
 }
 
+// TestEntitiesTickWithinSimulationDistance checks the entities of a world
+// ticking on its own tick only within the simulation distance of a loader,
+// as Java ticks those within the simulation distance of players, while those
+// further away in chunks the loader views keep still.
+func TestEntitiesTickWithinSimulationDistance(t *testing.T) {
+	w := Config{RandomTickSpeed: -1, Entities: (EntityRegistryConfig{}).New([]EntityType{testEntityType{}})}.New()
+	defer w.Close()
+	w.set.Lock()
+	w.set.TickRange = 3
+	w.set.Unlock()
+
+	var near, far atomic.Int64
+	loader := NewLoader(12, w, NopViewer{})
+	<-w.Exec(func(tx *Tx) {
+		loader.Move(tx, mgl64.Vec3{8, 4, 8})
+		loader.Load(tx, 1000)
+		tx.AddEntity(EntitySpawnOpts{Position: mgl64.Vec3{8, 4, 8}}.New(testEntityType{}, slowTickerConfig{ticks: &near}))
+		tx.AddEntity(EntitySpawnOpts{Position: mgl64.Vec3{6*16 + 8, 4, 8}}.New(testEntityType{}, slowTickerConfig{ticks: &far}))
+	})
+	deadline := time.Now().Add(20 * time.Second)
+	for near.Load() < 40 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if n := near.Load(); n < 40 {
+		t.Fatalf("entity within the simulation distance ticked %d times, want at least 40", n)
+	}
+	if n := far.Load(); n != 0 {
+		t.Errorf("entity 6 chunks away with a simulation distance of 3 ticked %d times, want 0", n)
+	}
+	<-w.Exec(func(tx *Tx) {
+		if tx.EntityTicking(ChunkPos{6, 0}) {
+			t.Error("chunk 6 away is entity ticking with a simulation distance of 3")
+		}
+		if !tx.EntityTicking(ChunkPos{0, 0}) {
+			t.Error("chunk of the loader is not entity ticking")
+		}
+	})
+}
+
 func TestSynchronousAdvanceTickTicksViewerlessBlockEntities(t *testing.T) {
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
