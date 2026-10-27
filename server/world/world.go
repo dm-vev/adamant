@@ -1786,12 +1786,21 @@ func (w *World) tickingEntities(tx *Tx) iter.Seq[Entity] {
 
 // allEntities returns an iterator that yields all entities in the World.
 func (w *World) allEntities(tx *Tx) iter.Seq[Entity] {
+	return w.entitiesOfType(tx, nil)
+}
+
+// entitiesOfType returns an iterator that yields the entities in the World
+// whose type match returns true for, or all of them if match is nil.
+func (w *World) entitiesOfType(tx *Tx, match func(EntityType) bool) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
 		// The handles are listed first, so entities may join or leave the
 		// world while they are walked.
 		tx.lockShared()
 		handles := make([]*EntityHandle, 0, len(w.entities))
 		for handle := range w.entities {
+			if match != nil && !match(handle.t) {
+				continue
+			}
 			if r := tx.region; r == nil || r.ownsEntity(w, handle) {
 				handles = append(handles, handle)
 			}

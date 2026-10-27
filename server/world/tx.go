@@ -392,6 +392,13 @@ func (tx *Tx) Entities() iter.Seq[Entity] {
 	return tx.World().allEntities(tx)
 }
 
+// EntitiesOfType returns an iterator that yields the entities in the World
+// whose type match returns true for. Unlike Entities, it does not make the
+// others part of the transaction, which spares going through every one.
+func (tx *Tx) EntitiesOfType(match func(EntityType) bool) iter.Seq[Entity] {
+	return tx.World().entitiesOfType(tx, match)
+}
+
 // EntitiesOfTypesWithin returns an iterator that yields the entities
 // EntitiesWithin yields for box whose type encodes to one of types, in the
 // same order. It skips the others without opening them, as Java's

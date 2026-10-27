@@ -1,8 +1,10 @@
 package entity
 
 import (
+	"cmp"
 	"math"
 	"slices"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -105,22 +107,12 @@ func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
 			trackers = append(trackers, p)
 		}
 	}
-	spawnable := map[world.ChunkPos]struct{}{}
-	// Players in one chunk add the same chunks: each chunk adds them once.
-	added := map[world.ChunkPos]struct{}{}
-	for _, p := range trackers {
-		cx, cz := int32(math.Floor(p.Position()[0]))>>4, int32(math.Floor(p.Position()[2]))>>4
-		if _, ok := added[world.ChunkPos{cx, cz}]; ok {
-			continue
-		}
-		added[world.ChunkPos{cx, cz}] = struct{}{}
-		for dx := int32(-8); dx <= 8; dx++ {
-			for dz := int32(-8); dz <= 8; dz++ {
-				spawnable[world.ChunkPos{cx + dx, cz + dz}] = struct{}{}
-			}
-		}
+	trackerRuns := chunkRunsAround(trackers, 8)
+	chunkCount := 0
+	for _, run := range trackerRuns {
+		chunkCount += int(run.z1-run.z0) + 1
 	}
-	state := newSpawnState(tx, players, len(spawnable))
+	state := newSpawnState(tx, players, chunkCount)
 	w := tx.World()
 	// ServerChunkCache.spawnEnemies follows the spawn_monsters rule alone:
 	// on peaceful the spawn rules of each kind turn monsters away, and
@@ -134,18 +126,14 @@ func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
 			categories = append(categories, c)
 		}
 	}
-	chunks := make([]world.ChunkPos, 0, len(spawnable))
-	for pos := range spawnable {
-		if tx.ChunkLoaded(pos) && len(state.playersNear(pos)) > 0 {
-			chunks = append(chunks, pos)
-		}
+	// A chunk with a player within 128 blocks of its centre is within eight
+	// chunks of the player, so the chunks around the players spawning hold
+	// every chunk the trackers' do that may spawn mobs.
+	runs := trackerRuns
+	if len(trackers) != len(players) {
+		runs = chunkRunsAround(players, 8)
 	}
-	slices.SortFunc(chunks, func(a, b world.ChunkPos) int {
-		if a[0] != b[0] {
-			return int(a[0] - b[0])
-		}
-		return int(a[1] - b[1])
-	})
+	chunks := state.spawningChunks(runs)
 	// Util.shuffle.
 	for i := len(chunks); i > 1; i-- {
 		j := int(r.NextInt(int32(i)))
@@ -154,16 +142,134 @@ func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
 	if len(categories) == 0 {
 		return
 	}
-	for _, pos := range chunks {
-		if !tx.EntityTicking(pos) {
-			continue
-		}
+	for _, chunk := range chunks {
 		for _, c := range categories {
-			if state.canSpawnLocal(c, pos) {
-				state.spawnCategoryForChunk(c, pos, r)
+			if state.canSpawnLocal(c, chunk.near) {
+				state.spawnCategoryForChunk(c, chunk.pos, r)
 			}
 		}
 	}
+}
+
+// chunkRun is a run of chunks in the column of chunk X x, from chunk Z z0
+// to z1.
+type chunkRun struct{ x, z0, z1 int32 }
+
+// chunkOf returns the chunk holding the entity passed.
+func chunkOf(e world.Entity) world.ChunkPos {
+	pos := e.Position()
+	return world.ChunkPos{int32(math.Floor(pos[0])) >> 4, int32(math.Floor(pos[2])) >> 4}
+}
+
+// chunkRunsAround returns the chunks within r chunks of the chunks of the
+// entities passed, as runs that do not overlap, in order of X and then Z.
+func chunkRunsAround(entities []world.Entity, r int32) []chunkRun {
+	centres := make([]world.ChunkPos, 0, len(entities))
+	for _, e := range entities {
+		centres = append(centres, chunkOf(e))
+	}
+	slices.SortFunc(centres, compareChunks)
+	centres = slices.Compact(centres)
+	runs := make([]chunkRun, 0, len(centres)*int(2*r+1))
+	for _, c := range centres {
+		for x := c[0] - r; x <= c[0]+r; x++ {
+			runs = append(runs, chunkRun{x: x, z0: c[1] - r, z1: c[1] + r})
+		}
+	}
+	slices.SortFunc(runs, func(a, b chunkRun) int {
+		return cmp.Or(cmp.Compare(a.x, b.x), cmp.Compare(a.z0, b.z0))
+	})
+	merged := runs[:0]
+	for _, run := range runs {
+		if n := len(merged); n > 0 && merged[n-1].x == run.x && run.z0 <= merged[n-1].z1+1 {
+			merged[n-1].z1 = max(merged[n-1].z1, run.z1)
+			continue
+		}
+		merged = append(merged, run)
+	}
+	return merged
+}
+
+// compareChunks orders chunks by X and then Z.
+func compareChunks(a, b world.ChunkPos) int {
+	return cmp.Or(cmp.Compare(a[0], b[0]), cmp.Compare(a[1], b[1]))
+}
+
+// spawnChunk is a chunk mobs may spawn in and the indices of the players
+// near it.
+type spawnChunk struct {
+	pos  world.ChunkPos
+	near []int
+}
+
+// spawningChunks ports ChunkMap.collectSpawningChunks with the check of
+// ServerLevel.canSpawnEntitiesInChunk: the entity-ticking chunks of the runs
+// passed with players near, in the order of the runs. The players near each
+// are found among those within eight chunks of it, which are swept along
+// the runs.
+func (s *spawnState) spawningChunks(runs []chunkRun) []spawnChunk {
+	n := len(s.players)
+	chunkX, chunkZ := make([]int32, n), make([]int32, n)
+	posX, posZ := make([]float64, n), make([]float64, n)
+	byX := make([]int, n)
+	for i, p := range s.players {
+		c, pos := chunkOf(p), p.Position()
+		chunkX[i], chunkZ[i], posX[i], posZ[i], byX[i] = c[0], c[1], pos[0], pos[2], i
+	}
+	slices.SortStableFunc(byX, func(a, b int) int { return cmp.Compare(chunkX[a], chunkX[b]) })
+	var (
+		chunks []spawnChunk
+		// ends holds the end of the players of each chunk in near.
+		ends, near []int
+		// column holds the players within eight chunk columns of the run,
+		// by chunk Z.
+		column     []int
+		columnX    int32
+		start, end int
+	)
+	for k, run := range runs {
+		if k == 0 || run.x != columnX {
+			columnX = run.x
+			for end < n && chunkX[byX[end]] <= columnX+8 {
+				end++
+			}
+			for start < end && chunkX[byX[start]] < columnX-8 {
+				start++
+			}
+			column = append(column[:0], byX[start:end]...)
+			slices.SortStableFunc(column, func(a, b int) int { return cmp.Compare(chunkZ[a], chunkZ[b]) })
+		}
+		lo, hi := 0, 0
+		for z := run.z0; z <= run.z1; z++ {
+			for hi < len(column) && chunkZ[column[hi]] <= z+8 {
+				hi++
+			}
+			for lo < hi && chunkZ[column[lo]] < z-8 {
+				lo++
+			}
+			first := len(near)
+			x, zz := float64(run.x)*16+8, float64(z)*16+8
+			for _, i := range column[lo:hi] {
+				if dx, dz := x-posX[i], zz-posZ[i]; dx*dx+dz*dz < playerCell*playerCell {
+					near = append(near, i)
+				}
+			}
+			if len(near) == first {
+				continue
+			}
+			if pos := (world.ChunkPos{run.x, z}); s.tx.EntityTicking(pos) {
+				chunks = append(chunks, spawnChunk{pos: pos})
+				ends = append(ends, len(near))
+				continue
+			}
+			near = near[:first]
+		}
+	}
+	first := 0
+	for i := range chunks {
+		chunks[i].near, first = near[first:ends[i]:ends[i]], ends[i]
+	}
+	return chunks
 }
 
 // newSpawnState ports NaturalSpawner.createState: the mobs that may despawn
@@ -175,7 +281,7 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 		c := playerCellOf(p.Position()[0], p.Position()[2])
 		s.grid[c] = append(s.grid[c], i)
 	}
-	for e := range tx.Entities() {
+	for e := range tx.EntitiesOfType(countsTowardsCaps) {
 		id := loot.JavaEntityID(e)
 		category, ok := mobCategories[id]
 		if !ok {
@@ -192,7 +298,7 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 		}
 		if !world.HasJavaSpawnCost(id) {
 			// No biome gives the mob a spawn cost.
-		} else if cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(tx.Biome(pos)))[id]; ok {
+		} else if cost, ok := biomeSpawnsOf(tx.Biome(pos)).costs[id]; ok {
 			s.charges = append(s.charges, pointCharge{pos: pos, charge: cost.Charge})
 		}
 		if isMob {
@@ -201,6 +307,13 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 		s.counts[category]++
 	}
 	return s
+}
+
+// countsTowardsCaps reports whether the entities of a type are mobs of a
+// spawning category, which may count towards its caps.
+func countsTowardsCaps(t world.EntityType) bool {
+	_, ok := mobCategories[loot.JavaEntityTypeID(t.EncodeEntity())]
+	return ok
 }
 
 // playersNear ports ChunkMap.getPlayersCloseForSpawning: the players within
@@ -234,10 +347,11 @@ func (s *spawnState) canSpawnGlobal(c naturalSpawnCategory) bool {
 	return s.counts[c] < maxInstancesPerChunk(c)*s.chunkCount/spawnCategoryMagicNumber
 }
 
-// canSpawnLocal ports LocalMobCapCalculator.canSpawn: a player near the chunk
-// has room left for a mob of the category.
-func (s *spawnState) canSpawnLocal(c naturalSpawnCategory, pos world.ChunkPos) bool {
-	for _, i := range s.playersNear(pos) {
+// canSpawnLocal ports LocalMobCapCalculator.canSpawn: a player near the chunk,
+// of those whose indices are passed, has room left for a mob of the
+// category.
+func (s *spawnState) canSpawnLocal(c naturalSpawnCategory, near []int) bool {
+	for _, i := range near {
 		if s.playerCounts[i][c] < maxInstancesPerChunk(c) {
 			return true
 		}
@@ -253,7 +367,7 @@ func (s *spawnState) canSpawn(id string, pos cube.Pos) bool {
 		s.lastCharge = 0
 		return true
 	}
-	cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(s.tx.Biome(pos)))[id]
+	cost, ok := biomeSpawnsOf(s.tx.Biome(pos)).costs[id]
 	if !ok {
 		s.lastCharge = 0
 		return true
@@ -284,7 +398,7 @@ func (s *spawnState) afterSpawn(id string, pos cube.Pos) {
 		charge = s.lastCharge
 	} else if !world.HasJavaSpawnCost(id) {
 		// No biome gives the mob a spawn cost.
-	} else if cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(s.tx.Biome(pos)))[id]; ok {
+	} else if cost, ok := biomeSpawnsOf(s.tx.Biome(pos)).costs[id]; ok {
 		charge = cost.Charge
 	}
 	// A mob without a spawn cost adds a charge of zero, which still keeps
@@ -511,18 +625,46 @@ func (s *spawnState) mobsAt(c naturalSpawnCategory, pos cube.Pos) []world.Natura
 			return override.spawns
 		}
 	}
-	rows, err := world.JavaBiomeNaturalSpawns(world.JavaBiomeName(tx.Biome(pos)))
-	if err != nil {
-		return nil
-	}
-	name := spawnCategoryName(c)
-	out := make([]world.NaturalSpawnEntry, 0, len(rows))
-	for _, e := range rows {
-		if e.Category == name {
-			out = append(out, e)
+	return biomeSpawnsOf(tx.Biome(pos)).spawns[c]
+}
+
+// biomeSpawns holds the natural spawns of a biome by category and its spawn
+// costs by entity type.
+type biomeSpawns struct {
+	spawns [8][]world.NaturalSpawnEntry
+	costs  map[string]world.NaturalSpawnCost
+}
+
+// biomeSpawnCache holds the biomeSpawns of the biomes by their IDs, as the
+// spawns of a biome are asked of positions in every chunk every tick.
+var biomeSpawnCache [512]atomic.Pointer[biomeSpawns]
+
+// biomeSpawnsOf returns the natural spawns and spawn costs of the biome
+// passed. The spawns returned must not be changed.
+func biomeSpawnsOf(b world.Biome) *biomeSpawns {
+	id := b.EncodeBiome()
+	cached := id >= 0 && id < len(biomeSpawnCache)
+	if cached {
+		if spawns := biomeSpawnCache[id].Load(); spawns != nil {
+			return spawns
 		}
 	}
-	return out
+	name := world.JavaBiomeName(b)
+	spawns := &biomeSpawns{costs: world.JavaBiomeSpawnCosts(name)}
+	if rows, err := world.JavaBiomeNaturalSpawns(name); err == nil {
+		for c := range spawns.spawns {
+			category := spawnCategoryName(naturalSpawnCategory(c))
+			for _, e := range rows {
+				if e.Category == category {
+					spawns.spawns[c] = append(spawns.spawns[c], e)
+				}
+			}
+		}
+	}
+	if cached {
+		biomeSpawnCache[id].Store(spawns)
+	}
+	return spawns
 }
 
 // validSpawnPositionForType ports NaturalSpawner.isValidSpawnPostitionForType.

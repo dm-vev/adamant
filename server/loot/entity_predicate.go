@@ -48,7 +48,13 @@ func JavaEntityID(e world.Entity) string {
 	if typed, ok := e.(interface{ JavaEntityID() string }); ok {
 		return typed.JavaEntityID()
 	}
-	id := e.H().Type().EncodeEntity()
+	return JavaEntityTypeID(e.H().Type().EncodeEntity())
+}
+
+// JavaEntityTypeID returns the Java entity type identifier of the entities
+// of the Bedrock type identifier passed whose Java type does not depend on
+// their state.
+func JavaEntityTypeID(id string) string {
 	if java, ok := bedrockToJavaEntity[id]; ok {
 		return java
 	}
