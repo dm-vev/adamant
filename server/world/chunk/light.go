@@ -1,6 +1,8 @@
 package chunk
 
 import (
+	"encoding/binary"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
@@ -138,32 +140,49 @@ func (a *lightArea) insertLightSpreadingNodes(queue *levelQueue, lt light) {
 				if !addX && !addZ {
 					continue
 				}
-				lxa, lxb, lza, lzb := lightOf(sxa), lightOf(sxb), lightOf(sza), lightOf(szb)
-				// The order of these loops allows us to take care of block spreading over both the X and Z axis by
-				// just swapping around the axes.
-				for addV := 0; addV < 16; addV++ {
-					for y := 0; y < 16; y++ {
-						if addX {
-							a.spreadAcross(queue, lt, nibble(lxa, 0, y, addV), nibble(lxb, 15, y, addV), xa.Add(cube.Pos{0, y, addV}), xb.Add(cube.Pos{0, y, addV}))
-						}
-						if addZ {
-							a.spreadAcross(queue, lt, nibble(lza, addV, y, 0), nibble(lzb, addV, y, 15), za.Add(cube.Pos{addV, y}), zb.Add(cube.Pos{addV, y}))
-						}
-					}
+				// The light of the blocks at local x 0, and so of those at x
+				// 15, of a sub chunk is 128 bytes in a row, a word of 16
+				// blocks up for each z; that of the blocks at local z 0 or 15
+				// is a word for each x, 128 bytes apart.
+				if addX {
+					a.spreadAcrossEdge(queue, lt, lightOf(sxa), lightOf(sxb), 0, 15*128, 8, xa, xb, cube.Pos{0, 0, 1})
+				}
+				if addZ {
+					a.spreadAcrossEdge(queue, lt, lightOf(sza), lightOf(szb), 0, 15*8, 128, za, zb, cube.Pos{1, 0, 0})
 				}
 			}
 		}
 	}
 }
 
-// nibble returns the light at the local x, y and z of the light of a sub
-// chunk, or 0 if it has none.
-func nibble(light []uint8, x, y, z int) uint8 {
+// spreadAcrossEdge queues the nodes for light spreading across the edge
+// between the sub chunks with the light la and lb, of which pa and pb are
+// the bottom blocks of the first line up the edge on either side, the other
+// lines following along step. The light of line v of either side is the word
+// at offset plus v times stride of its light. Light only spreads where it
+// differs, so lines with the same light on both sides are skipped whole.
+func (a *lightArea) spreadAcrossEdge(queue *levelQueue, lt light, la, lb []uint8, offsetA, offsetB, stride int, pa, pb, step cube.Pos) {
+	for v := range 16 {
+		wa, wb := lightWord(la, offsetA+v*stride), lightWord(lb, offsetB+v*stride)
+		if wa == wb {
+			continue
+		}
+		along := cube.Pos{step[0] * v, 0, step[2] * v}
+		for y := range 16 {
+			if na, nb := uint8(wa>>(y<<2))&0xf, uint8(wb>>(y<<2))&0xf; na != nb {
+				a.spreadAcross(queue, lt, na, nb, pa.Add(along).Add(cube.Pos{0, y}), pb.Add(along).Add(cube.Pos{0, y}))
+			}
+		}
+	}
+}
+
+// lightWord returns the 16 nibbles of light at offset in light, the first in
+// the lowest bits, or 0 if the light has none.
+func lightWord(light []uint8, offset int) uint64 {
 	if len(light) == 0 {
 		return 0
 	}
-	index := x<<8 | z<<4 | y
-	return (light[index>>1] >> ((index & 1) << 2)) & 0xf
+	return binary.LittleEndian.Uint64(light[offset : offset+8])
 }
 
 // spreadAcross queues a node for the light of la at pa entering pb, which
