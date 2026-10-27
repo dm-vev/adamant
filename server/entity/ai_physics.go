@@ -168,7 +168,7 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 // resetNoActionTimeNearPlayers resets the no action time of the mob while a
 // player is within 32 blocks, as Mob.checkDespawn does.
 func (ai *MobAI) resetNoActionTimeNearPlayers(m *Mob) {
-	for p := range m.tx.Players() {
+	for p := range m.tx.PlayersNear(m.data.Pos, 32) {
 		if spectator(p) {
 			continue
 		}

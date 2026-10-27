@@ -304,8 +304,10 @@ func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef) bool {
 	}
 	w := tx.World()
 	// Regions read settled columns only: the owner completes the columns
-	// that became ready first.
+	// that became ready first. It also builds the grid of players, which
+	// regions find players near them by.
 	w.settleReadyColumns(tx)
+	w.playersByCell(tx)
 	regions := make([]*region, len(groups))
 	cells := make(map[regionCellPos]*region, len(groups)*2)
 	for i, refs := range groups {
@@ -317,7 +319,7 @@ func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef) bool {
 		}
 	}
 	w.regions.cells = cells
-	for handle := range w.players {
+	for _, handle := range w.playerList {
 		s := handle.state
 		if s == nil {
 			continue

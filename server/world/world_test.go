@@ -3,6 +3,7 @@ package world
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -852,6 +853,56 @@ func TestEntitiesTickWithinSimulationDistance(t *testing.T) {
 		}
 		if !tx.EntityTicking(ChunkPos{0, 0}) {
 			t.Error("chunk of the loader is not entity ticking")
+		}
+	})
+}
+
+// listedPlayerType is a test entity the world takes for a player.
+type listedPlayerType struct{ testEntityType }
+
+func (listedPlayerType) EncodeEntity() string { return "minecraft:player" }
+
+// TestPlayersFoundInTheOrderAdded checks Tx.Players finds the players in the
+// order they were added, as Java's ServerLevel lists them, skips players
+// leaving while they are walked, and lists a player added again last.
+func TestPlayersFoundInTheOrderAdded(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	defer w.Close()
+
+	handles := make([]*EntityHandle, 5)
+	for i := range handles {
+		handles[i] = EntitySpawnOpts{Position: mgl64.Vec3{float64(i), 4, 0}}.New(listedPlayerType{}, boundaryTickerConfig{ticks: new(int)})
+	}
+	found := func(tx *Tx) []*EntityHandle {
+		var out []*EntityHandle
+		for p := range tx.Players() {
+			out = append(out, p.H())
+		}
+		return out
+	}
+	<-w.Exec(func(tx *Tx) {
+		for _, h := range handles {
+			tx.AddEntity(h)
+		}
+		if got := found(tx); !slices.Equal(got, handles) {
+			t.Fatalf("players found in order %v, want %v", got, handles)
+		}
+
+		var walked []*EntityHandle
+		for p := range tx.Players() {
+			walked = append(walked, p.H())
+			if p.H() == handles[0] {
+				ent, _ := handles[2].Entity(tx)
+				tx.RemoveEntity(ent)
+			}
+		}
+		if want := []*EntityHandle{handles[0], handles[1], handles[3], handles[4]}; !slices.Equal(walked, want) {
+			t.Fatalf("walking players while one left found %v, want %v", walked, want)
+		}
+
+		tx.AddEntity(handles[2])
+		if want := []*EntityHandle{handles[0], handles[1], handles[3], handles[4], handles[2]}; !slices.Equal(found(tx), want) {
+			t.Fatalf("player added again found at %v, want last in %v", found(tx), want)
 		}
 	})
 }

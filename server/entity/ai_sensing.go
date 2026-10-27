@@ -171,13 +171,12 @@ func nearestTarget(m *Mob, c targeting, candidates func(yield func(world.Entity)
 // nearestPlayer returns the nearest player that meets the conditions, as
 // Level.getNearestPlayer.
 func nearestPlayer(m *Mob, c targeting) world.Entity {
-	return nearestTarget(m, c, func(yield func(world.Entity) bool) {
-		for p := range m.tx.Players() {
-			if !yield(p) {
-				return
-			}
-		}
-	})
+	players := m.tx.Players()
+	if c.rangeLimit > 0 {
+		// The range of the conditions is never more than max(rangeLimit, 2).
+		players = m.tx.PlayersNear(m.data.Pos, max(c.rangeLimit, 2))
+	}
+	return nearestTarget(m, c, players)
 }
 
 // nearestOfTypes returns the nearest entity within a box of an entity type

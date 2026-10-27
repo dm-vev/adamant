@@ -1194,7 +1194,7 @@ func finishDying(p *Player) {
 		// the movement itself yet, though.
 		pos, _, _, _, _ := p.spawnLocation()
 
-		p.data.Pos = pos.Vec3()
+		p.setPosition(pos.Vec3())
 	}
 }
 
@@ -1621,7 +1621,7 @@ func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
 
 	tx.World().SetRequiredSleepDuration(time.Millisecond * 5050)
 
-	p.data.Pos = pos.Vec3Middle().Add(mgl64.Vec3{0, height + 0.125})
+	p.setPosition(pos.Vec3Middle().Add(mgl64.Vec3{0, height + 0.125}))
 	tx.SetBlock(pos, b, nil)
 	p.sleeping = true
 	p.timeSinceRest = 0
@@ -3221,9 +3221,16 @@ func (p *Player) teleport(pos mgl64.Vec3) {
 		v.ViewEntityTeleport(p, pos)
 	}
 	releaseBorrowedViewers(p.tx, viewers, release)
-	p.data.Pos = pos
+	p.setPosition(pos)
 	p.data.Vel = mgl64.Vec3{}
 	p.ResetFallDistance()
+}
+
+// setPosition sets the position of the player and tells its world, so that
+// mobs finding the players near them find it there.
+func (p *Player) setPosition(pos mgl64.Vec3) {
+	p.data.Pos = pos
+	p.tx.PlayerMoved()
 }
 
 // Move moves the player from one position to another in the world, by adding the delta passed to the current
@@ -3262,7 +3269,7 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	}
 	releaseBorrowedViewers(p.tx, viewers, release)
 
-	p.data.Pos = res
+	p.setPosition(res)
 	p.data.Rot = resRot
 	if deltaPos.Len() <= 3 {
 		// Only update velocity if the player is not moving too fast to prevent potential OOMs.

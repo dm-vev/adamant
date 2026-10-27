@@ -118,7 +118,7 @@ func (s temptingSensor) doTick(m *Mob, b *Brain) {
 	}
 	var best world.Entity
 	bestDist := 0.0
-	for p := range m.tx.Players() {
+	for p := range m.tx.PlayersNear(m.data.Pos, max(c.rangeLimit, 2)) {
 		if spectator(p) || !c.test(m, p) || ridingOn(m.tx, p, m.H()) {
 			continue
 		}
@@ -226,7 +226,7 @@ func (playerSensor) doTick(m *Mob, b *Brain) {
 		dist float64
 	}
 	var players []found
-	for p := range m.tx.Players() {
+	for p := range m.tx.PlayersNear(m.data.Pos, r) {
 		if spectator(p) || !entityAlive(p) {
 			continue
 		}

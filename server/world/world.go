@@ -148,7 +148,15 @@ type World struct {
 	entities map[*EntityHandle]*entityState
 	// players holds the handles in entities that are players, so that
 	// finding the players does not walk every entity.
-	players            map[*EntityHandle]struct{}
+	players map[*EntityHandle]struct{}
+	// playerList holds the handles in players in the order they were added,
+	// as Java's ServerLevel lists its players. It is replaced rather than
+	// changed, so that a reader may keep it while players come and go.
+	playerList []*EntityHandle
+	// playerMoves counts the players coming, leaving and moving, so that
+	// playerGrid is built again once they did.
+	playerMoves        atomic.Uint64
+	playerGrid         playerGrid
 	entitiesByUUID     map[uuid.UUID]*EntityHandle
 	entitiesByUniqueID map[int64]*EntityHandle
 	pendingRiders      map[uuid.UUID][]*EntityHandle
@@ -1640,7 +1648,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	}
 	w.removePendingRider(handle)
 	delete(w.entities, handle)
-	delete(w.players, handle)
+	w.untrackPlayer(handle)
 	delete(w.entitiesByUUID, handle.id)
 	delete(w.entitiesByUniqueID, handle.UniqueID())
 	w.entityCount.Add(-1)
@@ -1788,10 +1796,13 @@ func (w *World) allPlayers(tx *Tx) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
 		// A snapshot of the players, as yielding may add or remove some.
 		tx.lockShared()
-		handles := make([]*EntityHandle, 0, len(w.players))
-		for handle := range w.players {
-			if r := tx.region; r == nil || r.ownsEntity(w, handle) {
-				handles = append(handles, handle)
+		handles := w.playerList
+		if r := tx.region; r != nil {
+			handles = make([]*EntityHandle, 0, len(w.playerList))
+			for _, handle := range w.playerList {
+				if r.ownsEntity(w, handle) {
+					handles = append(handles, handle)
+				}
 			}
 		}
 		tx.unlockShared()
@@ -1811,9 +1822,23 @@ func (w *World) allPlayers(tx *Tx) iter.Seq[Entity] {
 
 // trackPlayer records a handle just put in entities if it is a player.
 func (w *World) trackPlayer(handle *EntityHandle) {
-	if handle.t.EncodeEntity() == "minecraft:player" {
-		w.players[handle] = struct{}{}
+	if _, ok := w.players[handle]; ok || handle.t.EncodeEntity() != "minecraft:player" {
+		return
 	}
+	w.players[handle] = struct{}{}
+	w.playerList = append(slices.Clip(w.playerList), handle)
+	w.playerMoves.Add(1)
+}
+
+// untrackPlayer forgets a handle leaving entities if it is a player.
+func (w *World) untrackPlayer(handle *EntityHandle) {
+	if _, ok := w.players[handle]; !ok {
+		return
+	}
+	delete(w.players, handle)
+	i := slices.Index(w.playerList, handle)
+	w.playerList = slices.Concat(w.playerList[:i], w.playerList[i+1:])
+	w.playerMoves.Add(1)
 }
 
 // Spawn returns the spawn of the world. Every new player will by default spawn
@@ -2469,7 +2494,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			if _, ok := w.entities[e]; ok {
 				w.removePendingRider(e)
 				delete(w.entities, e)
-				delete(w.players, e)
+				w.untrackPlayer(e)
 				delete(w.entitiesByUUID, e.id)
 				delete(w.entitiesByUniqueID, e.UniqueID())
 				w.entityCount.Add(-1)
@@ -2513,7 +2538,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		if _, ok := w.entities[e]; ok {
 			w.removePendingRider(e)
 			delete(w.entities, e)
-			delete(w.players, e)
+			w.untrackPlayer(e)
 			delete(w.entitiesByUUID, e.id)
 			delete(w.entitiesByUniqueID, e.UniqueID())
 			w.entityCount.Add(-1)

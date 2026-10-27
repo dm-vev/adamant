@@ -177,7 +177,7 @@ func (g *animalGoals) own(goal animalGoal) {
 // updateNoActionTime ports the part of Mob.checkDespawn that resets
 // noActionTime while a player is within 32 blocks.
 func (g *animalGoals) updateNoActionTime(e *Ent, tx *world.Tx) {
-	for p := range tx.Players() {
+	for p := range tx.PlayersNear(e.Position(), 32) {
 		if p.Position().Sub(e.Position()).LenSqr() < 32*32 {
 			g.noActionTime = 0
 			return
@@ -293,7 +293,7 @@ func (g *temptGoal) follow(e *Ent, tx *world.Tx, nav *Navigator, p world.Entity,
 func temptingPlayer(e *Ent, tx *world.Tx, tempting func(item.Stack) bool) world.Entity {
 	var nearest world.Entity
 	best := math.MaxFloat64
-	for p := range tx.Players() {
+	for p := range tx.PlayersNear(e.Position(), max(temptRange, 2)) {
 		if !targetablePlayer(p) {
 			continue
 		}
@@ -464,7 +464,7 @@ func (g *lookGoal) stop() { g.player, g.ticks = nil, 0 }
 func lookTargetPlayer(e *Ent, tx *world.Tx, distance float64) world.Entity {
 	var nearest world.Entity
 	best := math.MaxFloat64
-	for p := range tx.Players() {
+	for p := range tx.PlayersNear(e.Position(), max(distance, 2)) {
 		if !targetablePlayer(p) {
 			continue
 		}

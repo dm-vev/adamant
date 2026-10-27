@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"iter"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/loot"
@@ -74,6 +75,9 @@ func despawnDistance(id string) float64 {
 // leaves of its own accord.
 const noDespawnDistance = 32
 
+// despawnSearch is the furthest despawn distance.
+const despawnSearch = 128
+
 // mobDespawner is implemented by the behaviours of mobs that override
 // Mob.removeWhenFarAway or requiresCustomPersistence.
 type mobDespawner interface {
@@ -99,13 +103,22 @@ func (ai *MobAI) checkDespawn(m *Mob) bool {
 		persistent = true
 	}
 	nearest := -1.0
-	for p := range m.tx.Players() {
-		if spectator(p) {
-			continue
+	nearer := func(players iter.Seq[world.Entity]) {
+		for p := range players {
+			if spectator(p) {
+				continue
+			}
+			if d := p.Position().Sub(m.data.Pos).LenSqr(); nearest < 0 || d < nearest {
+				nearest = d
+			}
 		}
-		if d := p.Position().Sub(m.data.Pos).LenSqr(); nearest < 0 || d < nearest {
-			nearest = d
-		}
+	}
+	// A player within the furthest despawn distance is the nearest of all
+	// once found among those near: look further only if none is.
+	nearer(m.tx.PlayersNear(m.data.Pos, despawnSearch))
+	if nearest < 0 || nearest > despawnSearch*despawnSearch {
+		nearest = -1
+		nearer(m.tx.Players())
 	}
 	if nearest < 0 {
 		if !m.tx.PlayersElsewhere() {
