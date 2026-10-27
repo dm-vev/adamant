@@ -652,16 +652,21 @@ func oceanNearestTarget(tx *world.Tx, p mgl64.Vec3, r float64) world.Entity {
 			}
 		}
 	}
-	for player := range tx.Players() {
+	for player := range tx.PlayersNear(p, r) {
 		choose(player)
 	}
-	for candidate := range tx.Entities() {
+	box := cube.Box(p[0]-r, p[1]-r, p[2]-r, p[0]+r, p[1]+r, p[2]+r)
+	for candidate := range tx.EntitiesOfTypesWithin(box, axolotlTypes) {
 		if _, ok := candidate.(*Axolotl); ok {
 			choose(candidate)
 		}
 	}
 	return best
 }
+
+// axolotlTypes holds the type of axolotls, which zombie nautili target.
+var axolotlTypes = []string{AxolotlType.EncodeEntity()}
+
 func (m *oceanMob) FinalizeSpawn(reason string, random *vanilla.Random) {
 	b := m.b()
 	if b.kind == oceanZombieNautilus {
