@@ -75,6 +75,22 @@ type RedstoneCircuitInputChange interface {
 	CircuitInputChange() (oldPower, newPower int)
 }
 
+// RedstoneCircuitConsumer exposes a consumer's evaluated scene strength to its
+// block actor. Unlike a capacitor, it supplies no electrical output to neighbours.
+type RedstoneCircuitConsumer interface {
+	CircuitConsumerStrength() int
+}
+
+// ConsumerPower reads the scene component, independently of the actor's visible
+// state. The actor observes a circuit evaluation on its next tick.
+func (r RedstoneTransaction) ConsumerPower(pos cube.Pos) (int, bool) {
+	consumer, ok := r.tx.World().redstone.circuits[pos].(RedstoneCircuitConsumer)
+	if !ok {
+		return 0, false
+	}
+	return ClampRedstonePower(consumer.CircuitConsumerStrength()), true
+}
+
 // RedstoneCircuitHalfPulse publishes after ordinary components in the same
 // chunk pass, as CircuitSystem::updateBlocks does for torch half-pulses.
 type RedstoneCircuitHalfPulse interface{ CircuitHalfPulse() bool }

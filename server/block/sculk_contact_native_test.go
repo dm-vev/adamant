@@ -437,12 +437,38 @@ func compareSculkContactNativeBlock(t *testing.T, tx *world.Tx, tick int64, pos 
 	}
 	for name, want := range expected.States {
 		got := states[name]
+		if name == "facing_direction" && got == nil {
+			switch chest := tx.Block(pos).(type) {
+			case Chest:
+				got = int32(chest.Facing.Face())
+			case EnderChest:
+				got = int32(chest.Facing.Face())
+			}
+		}
+		// These captures retain the legacy inactive aliases next to their
+		// modern properties. Validate only the observed inactive projections;
+		// other phases require independent alias evidence.
+		if name == "powered_bit" && got == nil {
+			if sensor, ok := tx.Block(pos).(SculkSensor); ok && sensor.Phase == SculkSensorInactive {
+				got = false
+			}
+		}
+		if name == "active" && got == nil {
+			if heart, ok := tx.Block(pos).(CreakingHeart); ok && heart.State == CreakingHeartUprooted {
+				got = false
+			}
+		}
 		// Script API exposes the sensor's legacy direction alias alongside
 		// cardinal_direction. The native palette projection retains the latter;
 		// check the alias against the same actual facing instead of dropping it.
 		if name == "direction" && got == nil {
-			if sensor, ok := tx.Block(pos).(CalibratedSculkSensor); ok {
-				got = int32(horizontalDirection(sensor.Facing))
+			switch b := tx.Block(pos).(type) {
+			case CalibratedSculkSensor:
+				got = int32(horizontalDirection(b.Facing))
+			case RedstoneRepeater:
+				got = int32(horizontalDirection(b.Facing))
+			case RedstoneComparator:
+				got = int32(horizontalDirection(b.Facing))
 			}
 		}
 		if name == "stone_type" && got == nil && id == "minecraft:stone" {

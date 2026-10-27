@@ -1065,9 +1065,9 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.FenceGateClose:
 		pk.SoundType, pk.ExtraData = packet.SoundEventFenceGateClose, int32(networkBlockID(s.br, so.Block))
 	case sound.PistonIn:
-		pk.SoundType = packet.SoundEventPistonIn
+		pk.SoundType, pk.EntityType = packet.SoundEventPistonIn, ""
 	case sound.PistonOut:
-		pk.SoundType = packet.SoundEventPistonOut
+		pk.SoundType, pk.EntityType = packet.SoundEventPistonOut, ""
 	case sound.Deny:
 		pk.SoundType = packet.SoundEventDeny
 	case sound.BlockPlace:
@@ -1975,6 +1975,8 @@ func (s *Session) ViewCrafterTriggered(triggered bool) {
 func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	switch t := a.(type) {
+	case block.MovingBlockUpdateAction:
+		s.enqueueBlockActorUpdate(pos, t.MovingBlock.PistonPos, clientActorNBT(t.MovingBlock.EncodeNBT(), pos))
 	case world.PositionTrackingUpdateAction:
 		s.writePacket(&packet.PositionTrackingDBServerBroadcast{
 			BroadcastAction: packet.PositionTrackingDBBroadcastActionUpdate,

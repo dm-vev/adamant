@@ -88,12 +88,15 @@ def arguments():
     return parser.parse_args()
 
 
-def capture(args, script, expected_count, structures=None):
-    reference = Reference(args.binary.resolve(), args.assets.resolve(), args.port, script=script, structures=structures)
+def capture(args, script, expected_count, structures=None, entity_definitions=None):
+    reference = Reference(args.binary.resolve(), args.assets.resolve(), args.port, script=script, structures=structures,
+                          local_client=getattr(args, "offline_reference", False), entity_definitions=entity_definitions)
     with args.binary.open("rb") as stream:
         binary_hash = hashlib.file_digest(stream, "sha256").hexdigest()
     output = {"reference": "unmodified Windows BDS, stable Script API readback", "binary_sha256": binary_hash,
               "complete": False, "sample_phase": "before scripted source changes in system.runInterval", "scenarios": []}
+    if getattr(args, "offline_reference", False):
+        output["offline_reference"] = True
     try:
         while True:
             lines = reference.until(lambda line: "ADAMANT_TIMING " in line, timeout=45)

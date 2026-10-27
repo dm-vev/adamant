@@ -71,7 +71,9 @@ func TestPistonFacing(t *testing.T) {
 	}
 }
 
-func TestPistonLifecycle(t *testing.T) {
+// This test isolates moving-block restoration. Native input and actor timing
+// are checked separately against the complete per-tick BDS fixtures.
+func TestPistonMovingBlockRestoration(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -83,7 +85,10 @@ func TestPistonLifecycle(t *testing.T) {
 		tx.SetBlock(pos, piston, nil)
 		tx.SetBlock(blockPos, Stone{}, nil)
 		tx.SetBlock(sourcePos, RedstoneBlock{}, nil)
-		piston.RedstonePowerActionUpdate(pos, tx, world.RedstoneUpdate{})
+		piston.Powered = true
+		if !piston.doMove(pos, tx, true) {
+			t.Fatal("could not start push")
+		}
 		got, ok := tx.Block(pos).(Piston)
 		if !ok || !got.Moving || !got.Extending || !got.Powered {
 			t.Fatalf("powered piston = %#v, want extending and powered", tx.Block(pos))
@@ -108,7 +113,10 @@ func TestPistonLifecycle(t *testing.T) {
 		if !ok {
 			t.Fatalf("piston = %#v", tx.Block(pos))
 		}
-		piston.RedstonePowerActionUpdate(pos, tx, world.RedstoneUpdate{})
+		piston.Powered = false
+		if !piston.doMove(pos, tx, false) {
+			t.Fatal("could not start pull")
+		}
 		piston = tx.Block(pos).(Piston)
 		if !piston.Moving || piston.Extending || piston.Powered {
 			t.Fatalf("retracting piston = %#v", piston)
@@ -250,13 +258,21 @@ func TestBlockedPistonWantsToExtend(t *testing.T) {
 		tx.SetBlock(pos, Piston{Facing: cube.FaceEast}, nil)
 		tx.SetBlock(pos.Side(cube.FaceEast), Obsidian{}, nil)
 		tx.SetBlock(source, RedstoneBlock{}, nil)
-		tx.Block(pos).(Piston).RedstonePowerActionUpdate(pos, tx, world.RedstoneUpdate{})
+	})
+	for range 4 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
 		got := tx.Block(pos).(Piston)
 		if got.Moving || got.State != pistonStateRetracted || got.NewState != pistonStateExtending {
 			t.Fatalf("blocked piston State/NewState = %d/%d moving %v, want 0/1 still", got.State, got.NewState, got.Moving)
 		}
 		tx.SetBlock(source, Air{}, nil)
-		tx.Block(pos).(Piston).RedstonePowerActionUpdate(pos, tx, world.RedstoneUpdate{})
+	})
+	for range 4 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
 		if got := tx.Block(pos).(Piston); got.NewState != pistonStateRetracted {
 			t.Fatalf("unpowered blocked piston NewState = %d, want 0", got.NewState)
 		}

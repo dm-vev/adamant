@@ -49,6 +49,8 @@ const (
 	GameEventBlockOpen                   GameEvent = "minecraft:block_open"
 	GameEventBlockActivate               GameEvent = "minecraft:block_activate"
 	GameEventBlockAttach                 GameEvent = "minecraft:block_attach"
+	GameEventPistonContract              GameEvent = "minecraft:piston_contract"
+	GameEventPistonExtend                GameEvent = "minecraft:piston_extend"
 	GameEventPrimeFuse                   GameEvent = "minecraft:prime_fuse"
 	GameEventNoteBlockPlay               GameEvent = "minecraft:note_block_play"
 	GameEventBlockChange                 GameEvent = "minecraft:block_change"
@@ -234,9 +236,9 @@ func GameEventFrequency(event GameEvent) int {
 		return 7
 	case GameEventDrink, GameEventEat:
 		return 8
-	case GameEventContainerClose, GameEventBlockClose, GameEventBlockDeactivate, GameEventBlockDetach:
+	case GameEventContainerClose, GameEventBlockClose, GameEventBlockDeactivate, GameEventBlockDetach, GameEventPistonContract:
 		return 9
-	case GameEventContainerOpen, GameEventBlockOpen, GameEventBlockActivate, GameEventBlockAttach, GameEventPrimeFuse, GameEventNoteBlockPlay:
+	case GameEventContainerOpen, GameEventBlockOpen, GameEventBlockActivate, GameEventBlockAttach, GameEventPrimeFuse, GameEventNoteBlockPlay, GameEventPistonExtend:
 		return 10
 	case GameEventBlockChange:
 		return 11
@@ -646,6 +648,11 @@ var gameEventTags = sync.OnceValue(func() struct {
 			tags.events[GameEvent(name)] |= tag.flag
 		}
 	}
+	// Bedrock gives piston transitions their own names. They use the
+	// corresponding block-transition listener categories, absent from the
+	// Java event-tag source used to initialize the common event set.
+	tags.events[GameEventPistonContract] = tags.events[GameEventBlockDeactivate]
+	tags.events[GameEventPistonExtend] = tags.events[GameEventBlockActivate]
 	for _, tag := range [...]struct {
 		name string
 		flag uint8

@@ -18,12 +18,13 @@ import (
 )
 
 type command struct {
-	Action    string
-	Block     protocol.BlockPos
-	Face      int32
-	Hit       *mgl32.Vec3
-	Feet      *mgl32.Vec3
-	RuntimeID *uint32 `json:"runtime_id"`
+	Action     string
+	Block      protocol.BlockPos
+	Face       int32
+	Hit        *mgl32.Vec3
+	Feet       *mgl32.Vec3
+	RuntimeID  *uint32 `json:"runtime_id"`
+	BreakTicks int     `json:"break_ticks"`
 }
 
 func emit(v any) { b, _ := json.Marshal(v); fmt.Println(string(b)) }
@@ -84,6 +85,8 @@ func main() {
 	var held protocol.ItemInstance
 	blocks := map[protocol.BlockPos]uint32{}
 	var stopMining *protocol.PlayerBlockAction
+	var mining *protocol.UseItemTransactionData
+	var miningTicks, queuedBreakTicks int
 	send := func(use *protocol.UseItemTransactionData) {
 		tick++
 		p := &packet.PlayerAuthInput{InputData: protocol.NewInputFlags(packet.InputFlagCount), Position: pos, Tick: tick, Pitch: 40, Yaw: 180, HeadYaw: 180, InteractPitch: 40, InteractYaw: 180, InputMode: packet.InputModeMouse, InteractionModel: packet.InteractionModelCrosshair, CameraOrientation: mgl32.Vec3{0, 0, 1}}
@@ -94,6 +97,24 @@ func main() {
 			p.BlockActions = protocol.Option([]protocol.PlayerBlockAction{*stopMining})
 			stopMining = nil
 		}
+		if mining != nil {
+			direction := mgl32.Vec3{float32(mining.BlockPosition[0]), float32(mining.BlockPosition[1]), float32(mining.BlockPosition[2])}.Add(mining.ClickedPosition).Sub(pos).Normalize()
+			p.Pitch = float32(-math.Asin(float64(direction[1])) * 180 / math.Pi)
+			p.Yaw = float32(-math.Atan2(float64(direction[0]), float64(direction[2])) * 180 / math.Pi)
+			p.InteractPitch, p.InteractYaw, p.HeadYaw, p.CameraOrientation = p.Pitch, p.Yaw, p.Yaw, direction
+			miningTicks--
+			action := int32(protocol.PlayerActionContinueDestroyBlock)
+			if miningTicks <= 0 {
+				action = protocol.PlayerActionPredictDestroyBlock
+				stopMining = &protocol.PlayerBlockAction{Action: protocol.PlayerActionAbortBreak, BlockPos: mining.BlockPosition, Face: mining.BlockFace}
+			}
+			p.InputData.Set(packet.InputFlagPerformBlockActions)
+			p.BlockActions = protocol.Option([]protocol.PlayerBlockAction{{Action: action, BlockPos: mining.BlockPosition, Face: mining.BlockFace}})
+			if miningTicks <= 0 {
+				mining = nil
+			}
+		}
+
 		if teleported {
 			p.InputData.Set(packet.InputFlagHandledTeleport)
 			teleported = false
@@ -115,8 +136,15 @@ func main() {
 				// The native server uses authenticated block actions for
 				// instant mining; a use-item break transaction is ignored.
 				p.InputData.Set(packet.InputFlagPerformBlockActions)
-				p.BlockActions = protocol.Option([]protocol.PlayerBlockAction{{Action: protocol.PlayerActionStartBreak, BlockPos: use.BlockPosition, Face: use.BlockFace}, {Action: protocol.PlayerActionPredictDestroyBlock, BlockPos: use.BlockPosition, Face: use.BlockFace}})
-				stopMining = &protocol.PlayerBlockAction{Action: protocol.PlayerActionAbortBreak, BlockPos: use.BlockPosition, Face: use.BlockFace}
+				actions := []protocol.PlayerBlockAction{{Action: protocol.PlayerActionStartBreak, BlockPos: use.BlockPosition, Face: use.BlockFace}}
+				if queuedBreakTicks > 0 {
+					mining, miningTicks = use, queuedBreakTicks
+				} else {
+					actions = append(actions, protocol.PlayerBlockAction{Action: protocol.PlayerActionPredictDestroyBlock, BlockPos: use.BlockPosition, Face: use.BlockFace})
+					stopMining = &protocol.PlayerBlockAction{Action: protocol.PlayerActionAbortBreak, BlockPos: use.BlockPosition, Face: use.BlockFace}
+				}
+				queuedBreakTicks = 0
+				p.BlockActions = protocol.Option(actions)
 			}
 		}
 		if err := conn.WritePacket(&packet.MovePlayer{EntityRuntimeID: conn.GameData().EntityRuntimeID, Position: pos, Pitch: p.Pitch, Yaw: p.Yaw, HeadYaw: p.Yaw, OnGround: true, Tick: tick}); err != nil {
@@ -150,6 +178,7 @@ func main() {
 		use := &protocol.UseItemTransactionData{ActionType: protocol.UseItemActionClickBlock, TriggerType: protocol.TriggerTypePlayerInput, BlockPosition: c.Block, BlockFace: c.Face, Position: pos, ClickedPosition: hit, BlockRuntimeID: rid, HeldItem: held, ClientPrediction: protocol.ClientPredictionSuccess}
 		if c.Action == "break" {
 			use.ActionType = protocol.UseItemActionBreakBlock
+			queuedBreakTicks = c.BreakTicks
 		}
 		if c.Action == "legacy" {
 			if err := conn.WritePacket(&packet.InventoryTransaction{TransactionData: use}); err != nil {
@@ -186,6 +215,8 @@ func main() {
 				if x.Layer == 0 {
 					blocks[x.Position] = x.NewBlockRuntimeID
 				}
+			case *packet.BlockActorData:
+				emit(map[string]any{"block_actor": x, "received_at_ms": time.Now().UnixMilli()})
 			case *packet.MovePlayer:
 				if x.EntityRuntimeID == conn.GameData().EntityRuntimeID {
 					pos = x.Position
@@ -200,7 +231,7 @@ func main() {
 					_ = conn.WritePacket(&packet.NetworkStackLatency{Timestamp: x.Timestamp})
 				}
 			case *packet.LevelSoundEvent:
-				emit(map[string]any{"sound": x})
+				emit(map[string]any{"sound": x, "received_at_ms": time.Now().UnixMilli()})
 			case *packet.LevelEvent:
 				emit(map[string]any{"level_event": x})
 			case *packet.Disconnect:
@@ -221,7 +252,7 @@ func main() {
 			if c.Action != "click" && c.Action != "legacy" && c.Action != "break" {
 				panic("unknown audit action")
 			}
-			if pending != nil || queuedUse != nil {
+			if pending != nil || queuedUse != nil || mining != nil {
 				panic("audit action still waiting for teleport/block data")
 			}
 			pending = &c

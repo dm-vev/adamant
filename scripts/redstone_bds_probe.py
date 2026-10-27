@@ -20,7 +20,7 @@ import uuid
 
 
 class Reference:
-    def __init__(self, binary, assets, port, script=None, structures=None, local_client=False):
+    def __init__(self, binary, assets, port, script=None, structures=None, local_client=False, entity_definitions=None):
         self.root = Path(tempfile.mkdtemp(prefix="adamant-redstone-bds-"))
         shutil.copyfile(binary, self.root / "bedrock_server.exe")
         for name in ("behavior_packs", "resource_packs", "definitions", "data", "world_templates"):
@@ -76,6 +76,12 @@ class Reference:
                 target = pack / "structures" / (name + ".mcstructure")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(contents)
+            for name, definition in (entity_definitions or {}).items():
+                if not name or not name.replace("_", "").isalnum():
+                    raise ValueError("invalid audit entity definition name")
+                target = pack / "entities" / (name + ".json")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps(definition), encoding="utf-8")
             level = self.root / "worlds" / "redstone-reference"
             level.mkdir(parents=True)
             (level / "world_behavior_packs.json").write_text(

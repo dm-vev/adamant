@@ -34,6 +34,13 @@ type DecoratedPotWobbleAction struct {
 	Success bool
 }
 
+// MovingBlockUpdateAction publishes a moving actor after its first native tick.
+// The session sends the parent piston and block changes before this actor data.
+type MovingBlockUpdateAction struct {
+	action
+	MovingBlock MovingBlock
+}
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}
