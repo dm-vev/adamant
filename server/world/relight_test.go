@@ -92,6 +92,38 @@ func TestLightFollowsBlockChanges(t *testing.T) {
 	})
 }
 
+// TestLightFollowsChangesAcrossManyChunks changes blocks in chunks spanning
+// more than one area is relit in, some of them next to each other, and
+// checks the light around each matches the light computed from scratch.
+func TestLightFollowsChangesAcrossManyChunks(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -192; x <= 192; x += 16 {
+			for z := -48; z <= 48; z += 16 {
+				tx.Block(cube.Pos{x, 64, z})
+			}
+		}
+		var changed []cube.Pos
+		for i := range 24 {
+			pos := cube.Pos{-170 + i*15, 66 + i%4, i%3*9 - 9}
+			tx.SetBlock(pos, block.Glowstone{}, nil)
+			tx.SetBlock(pos.Add(cube.Pos{1, 1, 0}), block.Stone{}, nil)
+			tx.SetBlock(pos.Add(cube.Pos{0, 2, 0}), block.Stone{}, nil)
+			changed = append(changed, pos)
+		}
+		for _, pos := range changed {
+			checkFreshLight(t, tx, "placing glowstone and stone", pos)
+		}
+		for i := 0; i < len(changed); i += 2 {
+			tx.SetBlock(changed[i], nil, nil)
+		}
+		for _, pos := range changed {
+			checkFreshLight(t, tx, "breaking every other glowstone", pos)
+		}
+	})
+}
+
 // relightTestStructure is a 20x5x20 slab of glowstone with a hollow centre.
 type relightTestStructure struct{}
 

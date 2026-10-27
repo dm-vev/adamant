@@ -54,9 +54,31 @@ func (w *World) flushLight() {
 	if len(pending) > 1 && w.relightTogether(pending) {
 		return
 	}
+	// The changes of each chunk are relit in an area of it and the chunks
+	// around it. Areas of chunks at the same coordinates modulo 3 share no
+	// chunk, so each such class is relit on all cores while the owner
+	// waits, as flushSpreads spreads.
+	var classes [9][]pendingRelight
 	for centre, changed := range pending {
-		w.relight(centre, changed)
+		if relight, ok := w.relightArea(centre, changed); ok {
+			class := (centre[0]%3+3)%3*3 + (centre[1]%3+3)%3
+			classes[class] = append(classes[class], relight)
+		}
 	}
+	for _, relights := range classes {
+		parallel.For(len(relights), 1, func(i int) {
+			r := relights[i]
+			chunk.LightArea(r.chunks, int(r.base[0]), int(r.base[1])).Relight(r.changed)
+		})
+	}
+}
+
+// pendingRelight holds the changes of a chunk and the chunks of the area
+// they are relit in, from the chunk at base.
+type pendingRelight struct {
+	chunks  []*chunk.Chunk
+	base    ChunkPos
+	changed []cube.Pos
 }
 
 // maxRelightArea is the most chunks across the changes of several chunks
@@ -99,32 +121,27 @@ func (w *World) relightTogether(pending map[ChunkPos][]cube.Pos) bool {
 	return true
 }
 
-// relight updates the light around positions in the chunk at centre whose
-// blocks changed in the light they emit or filter. Light crosses into
-// neighbouring chunks if they are lit; otherwise it is spread to them once
-// they are, by spreadLight.
-func (w *World) relight(centre ChunkPos, changed []cube.Pos) {
+// relightArea returns the area to relight the changes at positions in the
+// chunk at centre in, whose blocks changed in the light they emit or filter,
+// or false if the light of the chunk is yet to be filled from its blocks.
+// Light crosses into neighbouring chunks if they are lit; otherwise it is
+// spread to them once they are, by spreadLight.
+func (w *World) relightArea(centre ChunkPos, changed []cube.Pos) (pendingRelight, bool) {
 	col, ok := w.chunks[centre]
 	if !ok || !col.lightReady.Load() {
-		// The light of the chunk is yet to be filled from its blocks.
-		return
+		return pendingRelight{}, false
 	}
 	area := make([]*chunk.Chunk, 0, 9)
-	for z := int32(-1); z <= 1 && area != nil; z++ {
+	for z := int32(-1); z <= 1; z++ {
 		for x := int32(-1); x <= 1; x++ {
 			neighbour, ok := w.chunks[ChunkPos{centre[0] + x, centre[1] + z}]
 			if !ok || !neighbour.Ready() || !neighbour.lightReady.Load() {
-				area = nil
-				break
+				return pendingRelight{chunks: []*chunk.Chunk{col.Chunk}, base: centre, changed: changed}, true
 			}
 			area = append(area, neighbour.Chunk)
 		}
 	}
-	if area == nil {
-		chunk.LightArea([]*chunk.Chunk{col.Chunk}, int(centre[0]), int(centre[1])).Relight(changed)
-		return
-	}
-	chunk.LightArea(area, int(centre[0])-1, int(centre[1])-1).Relight(changed)
+	return pendingRelight{chunks: area, base: ChunkPos{centre[0] - 1, centre[1] - 1}, changed: changed}, true
 }
 
 // relightChunks recomputes the light of the chunks passed after many of
