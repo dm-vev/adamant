@@ -62,6 +62,13 @@ wool seams, solid/partial non-wool controls and positive/negative coordinates
 up to one million blocks. This corrects false reception through a blocked seam
 at large coordinates and the tested same-cell/intersection boundary behavior.
 
+The resumed piston audit replaces immediate neighbour-driven movement with a
+scene consumer sampled on the shared circuit clock and actor-owned transition
+requests. Initial native comparisons cover direct and weak/strong conducted
+inputs, short and repeated pulses, linear push limits and a filled movable chest.
+The checked-in evidence and remaining piston work are recorded at the end of
+this report and included in this paused checkpoint.
+
 ## Reproducible evidence
 
 `scripts/redstone_native_probe.py` reads the local client PE, verifies the
@@ -87,6 +94,9 @@ Python process. No game binary or extracted machine code is stored here.
 | `Dimension::Dimension` / `tickRedstone` | `0x23039a0` / `0x230ade0` | Circuit tick rate and initial counter are both 2; evaluation resets and advances the counter |
 | `LevelChunk::tickImpl` | `0x32c79d0` | Calls `CircuitSystem::updateBlocks` at `0x32cabe9`, separately from dimension evaluation |
 | `PistonConsumer::addSource` | `0x66d8ee0` | Disassembled source-direction filtering; world captures below |
+| `PistonBlock::setupRedstoneComponent` / `ConsumerComponent::evaluate` | `0x6eb32f0` / `0x66d8900` | Scene consumer setup, extended-state strength seed and shared source evaluation |
+| `PistonBlockActor::tick` / `_spawnMovingBlocks` | `0x4ae13d0` / `0x4ae3330` | Actor transition requests, half-step progress, endpoint completion and positional sorting |
+| Positional sort called by `_spawnMovingBlocks` | `0x4af9d70` (call at `0x4ae33e0`) | Original full sort body executes with at most twelve supplied positions; nearest PDB label is unrelated |
 | `CircuitSystem::evaluate` / `evaluateComponents` | `0x66d63e0` / `0x66d6790` | Disassembly identifies cached-input and component evaluation passes; integration audit pending |
 | `CircuitSceneGraph::add` / `update` | `0x66ce1f0` / `0x66ce960` | BlockPos hash, pending-add traversal, persistent chunk entries and component-vector construction; 26 native heap/world captures |
 | Native BlockPos map rehash helper | `0x1cc1ec0` | Disassembled bucket growth and list splicing; pending tables grow 8/64/512 and active-chunk tables 8/64 in the native stress fixture |
@@ -1777,7 +1787,7 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Comparators | Arithmetic, independent lit/variant state, side-source filter, tested rear analog precedence, configured mode/direction, pending replacement output and shared clock corrected; 8,704 arithmetic cases, 78 settled source/priority cases, 60 pulse traces, 32 mode traces, 40 rotation traces and 48 publication-edit traces match. Open: complete source/material graph, all analog blocks, broader interaction/property/publication lifecycle, output-change events and block actor persistence |
 | Redstone torches | Native counter, shared clock and registration traversal installed; 34 one-torch traces, 36 ascending networks, 62 common-support traces, 60 placement traces, 24 rotation/replacement traces, 60 settled face/conduction cases and 3,776 algorithm cases match. Immediate placement inversion and premature direction refresh fixed. Open: broader player interactions, full source/material/attenuation graph, replacement registration order in larger graphs, dependency lifecycle, native sound/publication order, restart/unload/reload and broader cancellation |
 | Observers | 38 face/phase/retrigger traces, 28 output traces, 12 lifecycle traces and 18 movement callback windows match. Open: notification-only changes, larger chains, powered placement/load, unload/reload and complete piston timing |
-| Pistons and sticky pistons | Nonadjacent power bug fixed. Open all direction/source combinations, conduction, timing, short pulses, push/pull limits, adhesion, block actors and moving entities |
+| Pistons and sticky pistons | Scene consumer and actor transition phases replace immediate neighbour movement. 432 direct/weak input and pulse traces, 576 retrigger traces, 144 strong conducted-input traces, 96 linear limit/obsidian/filled-chest traces and 528 adhesive branch traces match. Native positional spawn sorting is executed in 334 component cases. Eight actor/consumer heap traces expose and correct premature serialized NewState. Another 96 vibration traces, sixteen actual packet traces and 384 interruption traces verify the scoped event, publication and orphan restoration changes below. Open: broader source/registration/property/load lifecycle, additional adhesive/support/notification/material contexts, other block actors and inventories, drops, partial geometry, moving entities, sounds/events/packets and persistence |
 | Levers and buttons | 196 source states, 480 direct/conducted output cases, 180 actual-arrow traces and 66 real player-use/retrigger traces match. Missing wooden-button activation/holding, projectile collision/contact phase and switch sound events corrected; six native click packets verify three sources. Fifteen adjacent-sensor traces expose and correct button event-before-producer strength ordering. Open: trident world capture, multiple entities/boundaries, broader support/materials, full sound material/mount matrix, producer startup, replacement and reload |
 | Pressure plates and tripwire | Plate conversion/query fixes verified in 302 native traces and five executed scalar methods. Tripwire initialization, contact bounds, 40-string limit, disarming/recheck and neighbour callback scope corrected; 140 contact + 80 line traces match. Artificial carpet collision removed against an executed native getter. Another 58 actual player-cut traces and 230 hook sound packets match. Missing plate/hook vibrations corrected against 68 all-type plate and 20 hook contact/sensor traces; 64 executed hook-helper cases verify event priority, actor absence, sound order and visible-state hash. Seventeen additional settled all-material traces and 34 actual player-client packets verify added plate click sounds and tested adjacent calibrated-input ordering. Hook producer setup, supported rotations and replacements now match 136 additional full traces. Sixteen actual-player hook placements expose and remove the duplicate line scan; sixteen native attachment packets are compared separately from cleanup sounds. Open: player modes/actor states, complete boundary/transition/contact integration, broader producer startup/load/order, previously powered/disarmed cutting, gaps/crossings/support/materials, wider audio/lifecycle events and persistence |
 | Daylight detectors and lightning rods | Detector clock, environment, initial/live roof lighting, body and producer registration corrected; 48,960 dimension/initialization source frames, 28,800 weather samples, 24 live roof traces, 16 source-removal/overlap traces, ten producer heap checkpoints and 12 player inversions with wire timing match. Rod hit/expiry/retrigger/oxidation/producer and tested support output match 100 real-bolt traces; 96 rod shapes match inspected bounds. Attraction geometry/order/selection matches 670 executed client cases with synthetic world inputs plus 120 native sort/heap cases; 26 actual BDS traps verify shared selector integration, bolt positions and pulse occurrence through tested rain occluders. Open: other lighting filters/liquid states and lifecycle, partial weather/fog, wider detector face/conduction/support/events/persistence; random weather scheduling, broader precipitation/climate/occluders, copper/projectile/interaction/events and lifecycle |
@@ -2621,3 +2631,797 @@ claim is included in this checkpoint. Resume with piston power directions,
 short pulses and movement timing against original-BDS observations, then
 continue the remaining matrix. Private local player/permission files and
 `tmplog.txt` are excluded from the commits.
+
+## Resumed piston investigation: 2026-10-27
+
+The user reactivated the full audit and explicitly requested continued work
+until they ask to stop. No commit or publication is authorized by this
+continuation. The previous pause above is historical; all 22 coverage rows
+remain incomplete.
+
+`PistonBlock::setupRedstoneComponent` creates a `PistonConsumer`, seeds it at
+strength fifteen only when both actor state fields are extended, and configures
+the excluded source direction. `PistonConsumer` inherits the inspected
+`ConsumerComponent::evaluate`; movement reads that evaluated strength on the
+actor clock. Immediate neighbour-driven movement in Adamant skipped these
+separate circuit/actor phases.
+
+`scripts/redstone_bds_piston_timing_probe.py` drives original BDS with stable
+Script API readback. It clears the complete tested movement volume, including
+downward paths, controls absolute input parity, records before changes, reads
+the native piston state/moving flag/attached positions, and retains every
+observed payload/source/conductor permutation. The larger layouts use isolated
+32-block cells and a 100-chunk ticking area. Filled-chest observations also
+retain each nonempty inventory slot.
+
+- The canonical timing fixture has 432 cases / 43,200 frames from
+  `adamant-redstone-bds-x51zd2_o`, log `.tmp/piston-timing-all.log`. It combines
+  288 direction/direct-versus-weak-conducted cases and 144 pulse cases with
+  widths 1/2/3/4/8/16, both piston kinds, all six facings and both parities.
+  A redstone block beyond stone is a weak-input control, not a strong source.
+  The first complete attempt incorrectly required that control to move and
+  was rejected; the canonical capture applies the movement control only to
+  the direct back input. An earlier smoke attempt also rejected unavailable
+  legacy Script API properties; the retained captures use `state` and
+  `isMoving`, with explicit type checks.
+- Before the timing fix, 264 of those 432 replays fail (block 5.080 s), log
+  `.tmp/piston-timing-before.log`. After the consumer/actor change all 432
+  pass (block 6.163 s), log `.tmp/piston-timing-first.log`.
+- The retrigger fixture has 576 cases / 80,640 frames from
+  `adamant-redstone-bds-v6s_v88h`, log `.tmp/piston-retrigger-native.log`.
+  Widths 1/2/4/16 and gaps 0/1/2/3/4/8 include a source removed and restored
+  in the same script pass. All requested transitions are retained, including
+  two changes sharing one tick.
+- The strong-input fixture has 144 cases / 14,400 frames from
+  `adamant-redstone-bds-6qq73337`, log `.tmp/piston-strong-native.log`. A lever
+  mounted on each tested stone supplies actual strong conducted input; its
+  orientation and visible powered state are compared, not inferred.
+- The blocks fixture has 96 cases / 9,600 frames from
+  `adamant-redstone-bds-1y_mlhjc`, log `.tmp/piston-blocks-native.log`.
+  Twelve versus thirteen stone blocks, obsidian and a chest containing seven
+  diamonds are tested in all six directions, both phases and both piston kinds.
+  The valid first replay fails 24 cases solely on attached-list order (block
+  3.114 s), log `.tmp/piston-blocks-first.log`; its other block, timing and
+  inventory observations match. The SDK's chest `facing_direction` alias is
+  checked against the chest's actual cardinal facing.
+- Native `_spawnMovingBlocks` sorts attached positions by movement projection
+  before spawning. The complete original sort body now executes in
+  `scripts/redstone_native_piston_sort_probe.py` with the host supplying only
+  byte movement. Its 334 cases include equal-projection ties, sizes zero
+  through twelve, negative/large coordinates and signed-int32 wrap boundaries.
+  The fixture records the original image and function hashes. This establishes
+  the sort for supplied discovery orders; it does not establish native branch
+  discovery order. The production path now sorts and spawns in this order.
+
+At the tested long-pulse edge, phase zero starts visible movement at +4 GT and
+finishes at +6; phase one starts at +3 and finishes at +5. A one-GT input in
+phase zero is ignored, while the phase-one input completes a normal move.
+Retraction removes an ordinary head at movement start. These observations do
+not imply that every source, placement phase or registration state has the
+same latency.
+
+The former immediate-action piston unit test now explicitly isolates moving-
+block restoration; full input timing is tested by the independent BDS fixtures.
+The observer movement-callback replay initializes its artificial piston scene
+as already extended, matching the native arrival it intentionally isolates.
+It no longer creates an unpowered retracted scene component before invoking
+the completion callback.
+
+After the first ordering correction, selected piston/observer, redstone,
+comparator/torch, sculk/vibration and tripwire/producer checks pass (block
+35.526 / world 3.029 / player 11.853 / entity 3.270 s), log
+`.tmp/piston-final-targeted.log`. After replacing the linear reversal with the
+inspected stable positional sort, all selected piston tests, all 1,248 BDS
+traces and all 334 executed-sort cases pass (block 10.579 s), log
+`.tmp/piston-all-final.log`. The following broad run passes with only the same
+two historical exclusions `TestBlockActorDataNBTBytes` and
+`TestWeakExecDoesNotBlockOwnerWhenQueueFull`, one repetition and a 600-second
+package timeout (block 66.118 / entity 215.678 / player 21.064 / session 5.885 /
+world 18.633 / Overworld generation 86.430 s), log `.tmp/piston-full.log`.
+`go build ./...` also passes, log `.tmp/piston-build.log`. These results precede
+the next adhesion replay, whose failures or fixes require their own validation.
+Earlier intermittent AI/dragon failures remain documented above; a successful
+broad run does not establish their causes.
+
+Remaining piston work includes adhesive branches and their discovery/tie
+order, other source families and registration/rotation, startup/load, sound
+and vibration/network events, moving block actors beyond the tested chest,
+partial geometry, entity displacement and full movement persistence. Adhesion
+world captures are the next independent comparison, not a claim of coverage
+from the linear cases above.
+
+### Adhesive branch comparison in the resumed investigation
+
+The original-BDS adhesion capture adds 240 cases / 24,000 frames in
+`adamant-redstone-bds-347bndn3`, log
+`.tmp/piston-adhesion-native-offline.log`. Two earlier launches time out waiting
+for Minecraft services, before simulation starts; they are rejected. The accepted
+run opts into the existing isolated loopback/offline reference configuration.
+Its fixture explicitly records `offline_reference: true`. It has no player,
+and no production server configuration is changed.
+
+Crosses of stone, slime, honey or obsidian around a slime/honey centre and
+multi-level adhesive chains are exercised for both piston kinds, all six
+directions and both input phases. Every authored branch and its destination
+is sampled; startup controls verify that the branch layout is actually present.
+The pre-fix replay fails 192 of 240 cases (block 4.526 s), log
+`.tmp/piston-adhesion-before.log`: mixed slime/honey branches incorrectly move,
+deeper branches are omitted, and equal-projection attachment ordering differs.
+
+The inspected complete `PistonBlockActor::_attachedBlockWalker` at
+`0x4ae4510` uses depth-first discovery, excludes the incoming edge from an
+adhesive branch, and filters distinct adhesive types except when pushing
+directly along movement. Its neighbour table at `0xe8f7430` converts to
+Up/Down/South/North/East/West in physical block coordinates. The production
+calculator now follows this traversal, then runs the independently executed
+native positional sort. The previous line-splicing/one-pass branch algorithm
+is removed. All piston checks, including the 240 new cases, pass (block
+16.995 s), log `.tmp/piston-adhesion-first.log`; after removing the unused
+old algorithm, selected integration checks also pass (block 37.326 / world
+2.750 / player 11.430 / entity 3.331 s), log
+`.tmp/piston-adhesion-targeted.log`.
+
+The expanded comparison adds 288 cases / 28,800 frames for loops, backwards
+branches, mixed-material forward pushes, obstructed branch destinations and
+branched 12/13-block limits. Its complete original-BDS capture comes from
+`adamant-redstone-bds-0yuzfn7i`, log
+`.tmp/piston-adhesion-extended-native-fixed.log`. An initial generated script
+had an extra brace, failed before collecting scenarios and is rejected; the
+corrected script passes `node --check` before recapture. All 288 extended cases
+pass without another production change (block 5.460 s), log
+`.tmp/piston-adhesion-extended-first.log`.
+
+The following broad run uses the same two historical exclusions and fails
+only `TestFoxesPickSweetBerries` in entity (219.193 s). Block 74.550 / world
+19.948 / player 22.218 / session 6.184 / Overworld generation 91.561 s pass.
+Log: `.tmp/piston-adhesion-full.log`. The logged portal spawn/teleport panics
+come from the explicit panic-recovery tests; they are not the failing assertion.
+The build passes, log `.tmp/piston-adhesion-build.log`. Forty isolated fox
+repetitions fail ten times (20.160 s), log `.tmp/piston-fox-recheck.log`.
+The clean `55002a7a` baseline previously failed seven times in forty identical
+fox repetitions, as recorded above. No additional exclusion or AI change is
+made; these observations do not establish the cause of the intermittent test.
+
+### Native piston actor and consumer checkpoints
+
+`scripts/redstone_bds_piston_actor_probe.py` reads only its owned original BDS
+child process. A unique 96-byte client tick prefix locates BDS tick RVA
+`0x4872840`; the tick slot at offset `0x20` identifies the native tick-component
+vtable at `0xa83fd80`. The position accessor is separately checked to return
+`this-0x38`. An initial lookup treated tick as slot zero and failed all actor
+lookups; that capture is rejected. No offsets are accepted from that failed
+lookup.
+
+A separate unique client consumer-evaluator prefix locates BDS evaluator RVA
+`0x4bd7e60`. The component type getter at vtable offset `0xd0` is checked against
+the inspected piston getter, locating consumer vtable `0xa8514a0`. Heap objects
+must match the expected positions, component type `0x20001`, live identity and
+unique actor/consumer pair. During each checkpoint the Script API callback holds
+its own work for 400 ms. Reads must finish before that recorded deadline; actor
+bytes are reread to detect any concurrent change. There is no injection,
+suspension or process write.
+
+The accepted combined fixture comes from `adamant-redstone-bds-xfohttwo`, log
+`.tmp/piston-actor-consumer-native.log`. It retains eight 90-GT scenarios, both
+input parities, both piston kinds and blocked/unblocked payloads, with 33
+checkpoints / 264 actor-and-consumer observations. The fixture records both
+original image hashes and the locator prefix hashes. Native movement/blocked
+controls and both zero/fifteen consumer strengths are checked per scenario.
+An earlier actor-only complete capture in `adamant-redstone-bds-cdpk4phv` was
+used to establish the actor field reads; the canonical combined capture adds
+the independently identified scene consumer.
+
+The valid pre-fix replay fails all eight cases (block 2.642 s), log
+`.tmp/piston-actor-before.log`. Progress, last progress, visible state, attached
+positions, block permutations and consumer strengths match, but the serialized
+`NewState` changes one GT before native in twelve observations. Circuit-to-actor
+handoff now uses transient runtime fields. It does not publish a prospective
+NBT state before the native movement attempt; a blocked attempt still publishes
+the native extending `NewState` while retaining retracted `State`.
+
+After that correction all piston checks pass (block 15.236 s), log
+`.tmp/piston-actor-after.log`: 1,776 world timing/geometry/inventory traces,
+334 executed sort cases and the eight combined actor traces. This verifies
+the compared serialized fields, not native packet emission count/order or all
+movement persistence. The next broad run and build include this actor change;
+the build passes (`.tmp/piston-actor-build.log`) but the broad run fails only
+`TestHappyGhastsFloatAround` (entity 236.973 s), whose height is
+64.9993931179464 against its 65-block threshold. Block 78.006 / world 20.182 /
+player 22.711 / session 6.187 / Overworld generation 96.732 s pass. Log:
+`.tmp/piston-actor-full.log`. Forty isolated repeats reproduce six happy-ghast
+failures (23.656 s), log `.tmp/piston-happy-ghast-recheck.log`. An earlier
+redstone checkpoint already recorded this exact test failing at height
+64.960066, as retained above. No AI assertion is changed or additionally skipped,
+and these observations do not establish its cause.
+
+### Piston vibration and packet publication
+
+The client global-event initializer at `0x25f1dd0`/`0x25f1de1` assigns IDs
+37/38 to the globals used by piston contraction/extension; the name table
+initialization at `0x25d24a0` through `0x25d2555` identifies
+`piston_contract`/`piston_extend`. The complete frequency getter at
+`0x25d7c70` executes with those event IDs and returns **9**/**10**. It indexes
+the table at `0xe829988` by **ID minus one**. An initial hand-indexed check
+missed that subtraction and an overstrict capture control rejected the run;
+no fixture from that rejected attempt is used.
+
+The canonical vibration capture has 96 cases / 17,280 frames from
+`adamant-redstone-bds-206aq5e8`, log
+`.tmp/piston-vibration-native-frequency.log`. Calibrated listeners separately
+accept frequency nine or ten; extension and retraction are sixty GT apart,
+so their arrivals are independent. Native controls verify the stable filter,
+extension-only reception before power-off, contraction reception afterward,
+and silence for an obsidian-blocked piston. All six facings, both piston kinds
+and both input parities are included.
+
+The isolated Go listener replay initially omitted the surrounding 3x3 columns
+that BDS's ticking area had loaded. Its candidate therefore reached zero travel
+but remained pending under `RequiresAdjacentChunksToBeTicking`. Those initial
+replays are not used as production failure evidence. After matching the loaded
+area, the valid replay with the two event emissions absent fails 48 cases
+(block 3.911 s), log `.tmp/piston-vibration-before-valid.log`. Restoring the
+native-named contraction/extension emissions, with frequencies nine/ten, makes
+all 96 sensor traces and the actor checkpoints pass together (block 3.943 s),
+log `.tmp/piston-vibration-after-valid.log`.
+
+Events and sound follow the actor's previous-state transition, one actor pass
+after visible movement starts, rather than the move-construction callback.
+The native load body sets previous state from `NewState`; the runtime now does
+the same on decode. The retained heap fixture additionally compares previous
+state. Sound uses the integer block position inspected in the native body.
+Piston-specific event names inherit the common block-transition listener
+categories; dedicated native warden/shrieker integration remains outside these
+sensor captures and still requires verification.
+
+`scripts/redstone_bds_piston_packet_probe.py` adds an actual loopback client
+after its owned reference world is ready. It retains eight nearby concurrent
+piston traces, eight native sound packets and 32 block-actor packets from
+`adamant-redstone-bds-8d6cxvca`, log `.tmp/piston-packets-native.log`. Of the
+32 actor packets, 24 are `PistonArm`; eight are `MovingBlock`, including duplicate
+sticky-retraction payloads retained without deduplication. The helper logs
+block-actor packets in addition to the existing sound packets.
+
+The real session replay initially fails all eight scenarios (session 2.611 s),
+log `.tmp/piston-packets-before.log`: unblocked sound packets use `":"` instead
+of native empty entity type, and blocked pistons repeatedly publish `NewState`
+requests that BDS keeps server-side. Blocked requests and their cancellation
+now update saved actor state without broadcasting an animation. Actual start
+and finish retain their client publications. The session's piston sound mapping
+now uses native empty entity type.
+
+After these changes, selected piston/observer, redstone/comparator/torch,
+sculk/vibration, tripwire/producer and native sound tests pass (block 42.289 /
+world 3.074 / player 12.530 / entity 3.537 / session 1.896 s), log
+`.tmp/piston-packets-targeted.log`. The packet comparison checks complete
+PistonArm sequences per position and all sound fields through the real session
+publication path. It does not yet assert cross-position packet ordering or the
+MovingBlock duplicate/first-publication timing; those retained packets are the
+next comparison. These results do not supersede the failed broad runs above.
+
+
+### Moving-block first publication and occupied destinations
+
+Timestamped packet capture `adamant-redstone-bds-9ivudnaf` retains the wall
+clock beside both Script API frames and packets (`.tmp/piston-packets-clock.json`).
+The parent starts at relative GT+4, the moving actor and sound arrive around
+GT+5, and completion is observed at GT+6. Wall clocks supplement the actor
+observations; client input ticks are not treated as native simulation time.
+A six-direction capture (`adamant-redstone-bds-qr_cvl01`,
+`.tmp/piston-packets-directions.json`) independently retains 48 cases, 48 sounds,
+and 232 actor packets. Its reused positions include 40 parent cleanup packets;
+these are retained, not deduplicated into fictitious fresh-world sequences.
+Every direction reproduces one extension notification for a single block and
+two identical sticky-retraction notifications on the following actor pass.
+
+The actual native moving-actor tick at client RVA `0x4ade460` increments its
+counter and tests the dirty bit before calling `fireBlockEntityChanged`.
+The unique original-client instruction prefix independently locates BDS tick
+`0x486f9d0`, tick-component vtable `0xa83fab0`, with its checked position
+accessor. Owned-heap captures `adamant-redstone-bds-6e5zyh8h` and
+`adamant-redstone-bds-segpqfin` observe counter 0 / flags 3 immediately after
+creation, then counter 1 / flags 2 one GT later. The observed main-component
+dirty callback is BDS RVA `0x75fb0`, a return instruction. The two retraction
+packets therefore do not imply two moving-actor ticks. An initial capture's
+control compared Python tuples against lists and was rejected; the corrected
+complete captures, not that failed control, supply these observations.
+
+The session replay was extended to compare MovingBlock payloads/counts and
+first-publication delay. It fails before the change (session 2.484 s), log
+`.tmp/piston-moving-packets-before.log`: data is sent on creation rather than
+one GT later, and a sticky pull loses its duplicate notification. Nested block
+states are compared after a network-NBT round trip: nil and empty Go maps have
+the same empty-compound wire representation, unlike their JSON representations.
+No native duplicate or payload field is discarded.
+
+A three-block chain capture (`adamant-redstone-bds-1em08d01`) adds eight cases /
+800 frames, eight sounds, and 48 actor packets. It is checked in as
+`bedrock_1_26_51_piston_packets_chain.json`. Its two inner destination cells
+receive two identical extension compounds each; the previously empty far cell
+receives one. The sticky pull into the former head also receives two. A second
+owned-heap chain capture (`adamant-redstone-bds-ukqt_dt0`,
+`.tmp/piston-moving-actor-chain.json`) observes all twelve extending actors with
+counter 0 / flags 3, then all twelve with counter 1 / flags 2. Two retracting
+actors follow the same counter/flag sequence. Repeated packets still do not
+mean repeated actor ticks. The exact native notification ownership mechanism
+beyond these observed occupied-destination cases remains an open detail.
+
+The initial Go chain replay loaded only one viewed column, missing packets
+beyond X=15; that replay is rejected as production evidence. Loading the actual
+viewed area leaves four genuine failing movement cases (session 2.561 s), log
+`.tmp/piston-moving-chain-before-valid.log`: missing inner-cell duplicates.
+The runtime now delays moving-actor publication to its first tick and retains
+the additional notification for a destination occupied before movement starts.
+Destination occupancy is captured before source clearing. The packet queue
+retains those notifications separately from the coalesced block replacement,
+orders a pending parent before its moving actor, respects the block batch limit,
+and discards stale actor notifications when a newer block replacement arrives.
+Replacement of an already queued position is allowed even at the backlog limit;
+leftover older entries no longer overwrite updates enqueued during a flush.
+
+Both native packet fixtures and three backlog/actor-publication checks pass
+(session 2.743 s), log `.tmp/piston-moving-packets-after.log`. They verify the
+compared packet fields/counts, parent dependency, one-GT publication delay and
+stale replacement behavior, not full native ordering between unrelated actors,
+notification ownership for every replaceable/liquid destination, reload or
+orphan recovery, or piston/entity collision equivalence. All audit rows remain
+open. The broader post-change verification is recorded below when it finishes.
+
+
+### Piston removal during movement
+
+`scripts/redstone_bds_piston_interruption_probe.py` records 384 original-BDS
+cases / 38,400 complete frames from `adamant-redstone-bds-b5js06cl`, log
+`.tmp/piston-interruption-native.log`. Both piston kinds, all six facings,
+both input parities, extension/retraction, the first/second observed moving
+frame, removal/replacement with stone, and three stone blocks/a chest with
+seven diamonds are independent axes. Interruption is triggered by the observed
+native actor state, not an assumed number of ticks after the source changes.
+The fixture retains each action's tick and pre-action actor, both power edges,
+all four front cells and every nonempty chest slot. Controls check that the
+replacement persists and the expected motion was actually reached.
+
+The pre-fix replay fails 288 cases (block 4.639 s), log
+`.tmp/piston-interruption-before.log`: moving blocks remain permanently after
+the parent disappears, including inaccessible moving chests. The normal-piston
+retraction cases provide controls without a moving payload. Native
+MovingBlockActor::tick (`0x4ade460`, especially `0x4ade5d0..0x4ade715`) checks
+the referenced piston block/actor and restores the carried block when absent.
+Its final wrapped-block virtual call is slot `0x1b0`, independently identified
+as `BlockType::movedByPiston`; it is shared with ordinary movement completion.
+
+MovingBlock now checks its parent on every actor tick and restores itself when
+the parent is absent. Restoration reuses the normal completion path, decodes
+the carried actor through the world's registry at its new coordinates, and
+calls movedByPiston. Both restoration paths preserve the filled chest contents.
+All piston, observer and moving-actor checks pass together (block 18.721 /
+session 1.857 s), log `.tmp/piston-interruption-after.log`. The first attempted
+build after extracting the shared helper exposed a still-used maps import;
+restoring that import fixed the compile error before the successful run.
+The 384 world comparisons include full geometry and inventory readback, not
+network ordering during an interruption or actual player destruction/drop
+behavior. Those remain open.
+
+Before this orphan-restoration change, the moving-publication targeted run also
+passed (block 41.157 / world 2.578 / player 10.688 / entity 2.645 / session
+1.098 s), log `.tmp/piston-moving-targeted.log`, and `go build ./...` passed
+(`.tmp/piston-moving-build.log`). A new broad run follows the restoration change;
+its final outcome is appended after completion.
+
+
+The broad post-interruption run, with only the two previously documented
+exclusions, fails `TestEndFightNativeLifecycleAndMCDBRestart` (entity 213.951 s):
+its first-kill egg is air after MCDB restart, followed by a locked LevelDB file
+cleanup error. Block 81.186 / world 19.486 / player 21.441 / session 5.960 /
+Overworld generation 89.887 s pass. Log: `.tmp/piston-interruption-full.log`.
+An isolated repeat passes (entity 27.849 s), log
+`.tmp/piston-end-fight-recheck.log`. This does not identify the cause or turn
+the failed broad run into a pass. No dragon/AI/persistence assertion or
+implementation was changed to hide it, and there are no new exclusions.
+
+
+### Native movable-component classification
+
+The inspected walker calls the original-client movable-component accessor at
+`0x9ab2410`, then reads MovementType and StickyType bytes. The independently
+identified native enums are PushPull=0, Push=1, Popped=2, Immovable=3, and
+None=0/Same=1 for adhesion. A small owned-BDS Script API check confirms that
+`minecraft:movable` exposes these actual classifications. The generated native
+component lookup replaces incomplete manually maintained lists.
+
+`scripts/redstone_bds_piston_movability_probe.py` records all 1,477 native block
+types from `adamant-redstone-bds-340dz2pg`, log
+`.tmp/piston-movability-native-valid.log`. Five immediately transform when placed
+(bubble column, fire, soul fire and the two flowing liquid IDs); their requested
+states and resulting IDs are retained without assigning the replacement's
+component to the requested type. The other 1,472 components classify 1,083 types
+as PushPull, seventeen as Push, 331 as Popped and 41 as Immovable. Exactly honey
+and slime have Same adhesion. The first attempt stopped at bubble-column
+survival and is rejected as a complete export.
+
+All 1,472 readable names have registered counterparts. The genuine component
+replay fails 344 types before the change (block 2.535 s), log
+`.tmp/piston-movability-before.log`: 31 missing immovable classifications,
+308 missing popped classifications and five incorrectly popped types. The
+fixture itself is retained, and
+`scripts/redstone_generate_piston_movability.py` validates its binary hash,
+counts, domain values and unique names before generating
+`server/block/piston_movable_native.go`. The generated source records the input
+fixture hash. This evidence is component data at default states; it does not by
+itself prove every state, runtime actor gate or full world behavior.
+
+An attempted broader permutation export is retained as an explicitly incomplete
+probe outside the canonical fixtures. Its initial host-array iteration failed;
+serialized domain arrays fix that. Legacy property values can be invalid for a
+particular renamed type, so rejected changes are recorded. The later original
+BDS run stopped after 72 types without a complete result. None of those partial
+runs is accepted as all-state equivalence evidence. The exact reason for that
+native process exit has not been established.
+
+Twenty material choices add 480 original-BDS world traces / 48,000 frames,
+including fifteen immovable types, heavy core/two glazed colors, stone and a
+filled chest. The canonical supported capture is
+`adamant-redstone-bds-b8n6e1qn`, log `.tmp/piston-materials-native-supported.log`.
+Each grindstone has its actual standing support, and all large-cell footprints
+are checked loaded, not merely two opposite corners. Earlier captures/replays
+with incompletely loaded interiors, unsupported grindstones or chest-only
+inventory assumptions are rejected as production evidence. Supported replay
+also validates the inactive sculk/heart and ender-chest legacy aliases against
+actual runtime fields rather than ignoring those native fields.
+
+The corrected pre-fix replay fails 396 movement cases (block 5.419 s), log
+`.tmp/piston-materials-before-final.log`, with no unmapped payload or alias.
+After the classification table, the component comparison passes and exactly
+36 sticky heavy-core/glazed cases still fail (block 5.595 s), log
+`.tmp/piston-movability-after-defaults.log`. These expose the missing Push-only
+rule. The walker now accepts a forced forward Push block but excludes it from
+sticky pull and side adhesion. All piston/observer/moving-actor checks then pass
+(block 21.086 / session 1.775 s), log `.tmp/piston-materials-after.log`.
+
+A separate 288-case / 28,800-frame capture compares the three Push-only materials
+on slime/honey side crosses and directly ahead of them, with all directions,
+both piston kinds and both input parities. It comes from
+`adamant-redstone-bds-zhrwhzd5`, log `.tmp/piston-push-only-native.log`, fixture
+`bedrock_1_26_51_piston_push_only.json`. The subsequent replay and side-adhesion
+regression are recorded after completion below. Broader popped-block drops,
+all-state/runtime actor gates, liquid destinations and support lifecycles remain
+open, alongside the other audit rows.
+
+
+With only the new side-Push exclusion temporarily absent, the 288-case adhesive
+replay fails exactly 144 cross cases (block 4.625 s), log
+`.tmp/piston-push-only-before.log`. The forward-push controls pass. The production
+rule was restored after that process completed. All selected piston/observer,
+redstone/comparator/torch, sculk/vibration, tripwire/producer and native sound
+checks then pass (block 47.940 / world 2.482 / player 11.089 / entity 2.573 /
+session 1.096 s), log `.tmp/piston-push-only-targeted.log`. These include the 288
+new native traces and the earlier complete piston fixtures. No broad run after
+the movability changes has yet superseded the documented End-fight failure.
+
+
+### Moving a piston as payload
+
+The native walker additionally checks a piston actor's movable flag, independent
+of its PushPull component classification. A piston is movable only in retracted
+State=0; this is also the isMovable field saved by the native actor. The runtime
+previously used only a block-name immovable list and could push an extended
+piston while detaching its collision head.
+
+`--suite piston_payload` adds 96 original-BDS traces / 9,600 frames from
+`adamant-redstone-bds-mp7t5k59`, log `.tmp/piston-payload-native.log`. Both driver
+and payload piston kinds, both target power states, all driver directions and
+both source parities are retained. The target points perpendicular to the
+driver, with independently authored rear power, so its head does not itself
+obstruct the driver. At GT+30 a native control independently verifies that the
+target reached its requested extended/retracted state. Every frame retains the
+target's original/pushed actor states and attached positions, its old/new head
+cells, independent power and all driver movement cells.
+
+The genuine pre-fix replay fails exactly 48 extended-payload cases (block
+3.119 s), log `.tmp/piston-payload-before.log`; all 48 retracted controls pass.
+There are no unmapped payloads. The immovable predicate now honors the live
+piston State in addition to native component data. The post-change result is
+recorded after the running verification completes. This covers settled target
+states, not every handoff during target animation or arbitrary saved movable
+flags on other actor types.
+
+
+After the live piston-state gate, all piston/observer/moving-actor tests pass
+(block 24.568 / session 1.820 s), log
+`.tmp/piston-payload-after.log`. The 48 extended payloads are blocked and the
+48 retracted controls move without losing their actors. A new broad run after
+the material/Push/runtime-state changes is in progress and will be recorded
+separately; the older broad failures above remain part of the audit evidence.
+
+
+The broad run after native movability/Push/live-piston-state changes fails only
+`TestAnimalsPanicWhenHurt/minecraft:camel` (entity 209.230 s): maximum panic
+movement is 0.130 blocks/tick against the test's 0.252 threshold. Block 82.185 /
+world 17.419 / player 20.207 / session 3.988 / Overworld generation 85.839 s pass.
+Log: `.tmp/piston-payload-full.log`. The command retains only the two historical
+exclusions; no camel/AI assertion or implementation was changed. An isolated
+repeat is running to characterize this failure; its outcome will be appended
+without treating it as a replacement for the failed broad run.
+
+
+Twenty isolated camel panic repeats reproduce one failure (entity 11.800 s),
+log `.tmp/piston-camel-panic-recheck.log`: 0.240 blocks/tick against the same
+0.252 threshold. This characterizes variability without establishing its cause
+or superseding the broad result. No additional test exclusion is introduced.
+
+
+### Supported fragile payloads and a movable candle control
+
+The new `popped` suite independently places a payload before extension and
+inserts one ahead of the settled extended head ten GT after power-on. The
+native script verifies that the head is extended at insertion, retains the
+pre-insertion destination and exact inserted permutation, then records
+retraction. Four horizontal directions, both piston kinds, both source parities
+and seven payloads produce 112 traces / 11,200 frames. Six payload types are
+Popped; candle is an explicit PushPull control, already identified by the native
+component export. The native rule `dotiledrops=false` is matched by the replay's
+`block_drops=false`; these traces compare blocks/actors, not dropped items.
+
+An initial capture incorrectly required every extension destination to become
+air. It rejected the candle control because BDS moves candles. The corrected
+probe retains the actual pre-insertion block instead of assuming a classification.
+A subsequent replay exposed an authored unknown-facing torch without appropriate
+kernel support and missing repeater/comparator legacy aliases. These are not used
+as production failure evidence. The canonical capture authors a top-facing torch
+with floor support and compares both diode direction aliases against their real
+facing. It comes from `adamant-redstone-bds-hvjc66iu`, log
+`.tmp/piston-popped-native-supported.log`.
+
+`go build ./...` passes after the movability/live-piston changes, log
+`.tmp/piston-payload-build.log`. The supported fragile replay and its next
+correction are recorded below when verified. The source and destination supports
+are authored in both worlds; dropped-item behavior and other support/placement
+contexts remain open.
+
+
+The corrected supported pre-fix replay fails exactly 48 sticky Popped-payload
+cases (block 3.266 s), log `.tmp/piston-popped-before-valid.log`. There are no
+unmapped payloads or unvalidated legacy aliases. The six fragile block types
+are deleted at retraction, while BDS leaves them in front of the contracted
+piston. Normal-piston controls and the candle PushPull control pass.
+The initial alias helper used shortened diode type names and failed to compile;
+those were corrected to the actual RedstoneRepeater/RedstoneComparator types
+before the valid replay. That compile failure is not production evidence.
+
+The walker now excludes a Popped root payload from a sticky pull, alongside
+Push-only payloads. This matches the native initial incoming edge at
+`0x4ae46f5..0x4ae4705`; it does not suppress destruction when an adhesive branch
+actually forces a fragile block forward. The new targeted verification is
+running; its completed outcome will be appended separately.
+
+
+After the root-Popped correction, selected piston/observer, redstone/comparator/
+torch, sculk/vibration, tripwire/producer and native sound tests pass (block
+49.539 / world 2.892 / player 11.582 / entity 3.299 / session 1.818 s), log
+`.tmp/piston-popped-targeted.log`. All 112 supported fragile/candle traces are
+included. This run does not verify their dropped items; a separate original-BDS
+capture enables tile drops and records first-observed item identity/counts
+without treating item fall/despawn as a second spawn.
+
+
+### Popped drop identities, quantities and first-observed ticks
+
+The separate `popped_drops` suite enables native tile drops, retaining each
+first-observed item entity ID, stack identity/count, position and tick. Counts
+are cumulative by distinct native entity, so falling or despawning is not
+misreported as another spawn. Each batch clears prior items and positive
+controls reject pre-input drops or a missing fragile drop. Candle remains a
+no-drop PushPull control. All 112 cases / 11,200 frames are retained from
+`adamant-redstone-bds-xkw7bqdn`, log `.tmp/piston-popped-drops-native.log`, fixture
+`bedrock_1_26_51_piston_popped_drops.json`. The same controls were independently
+checked against the retained capture before its replay.
+
+Native redstone wire, repeater, comparator, torch, lever and stone button each
+produce one corresponding item in all sixteen cases for that type; candles
+produce none. The real kernel drop factory is observed with inert test bodies
+rather than replacing the block logic. Both block transitions and cumulative
+stack identities/counts match every native sample, including the observed
+first-appearance frame (block 3.300 s), log `.tmp/piston-popped-drops-first.log`.
+This verifies the retained deterministic stack/drop clocks. It does not compare
+item motion, pickup, merging, random loot tables, dropped NBT or client spawn
+packet timing, and no such equivalence is claimed.
+
+
+### Same-transaction piston removal completion
+
+A further inspected native path refines the earlier next-frame interruption
+observations: PistonBlockActor::onRemoved at `0x4ae4f80` normalizes NewState to
+the endpoint, then calls `_spawnBlocks` (`0x4ae3930`) on the server. The native
+restoration completes inside the replacement transaction, before the next actor
+tick. The earlier 384-frame-series test observed only the next GT and therefore
+could not distinguish that from the orphan-tick fallback.
+
+The interruption probe now additionally records the complete block/actor/front
+snapshot immediately after the command returns. The canonical fixture is
+refreshed from `adamant-redstone-bds-qidnf35c`, log
+`.tmp/piston-interruption-native-immediate.log`, with all 384 controls and
+38,400 ordinary frames plus 384 immediate observations. BDS restores carried
+stone/chests immediately, preserving all inventory contents, while the detached
+extended head is still present until its neighbour update. No immediate-head
+removal is invented.
+
+With only the tick fallback in place, the stronger replay fails 288 immediate
+cases (block 4.732 s), log `.tmp/piston-interruption-immediate-before.log`.
+Piston now implements the existing block-removal lifecycle callback and restores
+its carried blocks in native movement order before replacement completes.
+Normal completion shares that restoration helper. MovingBlock retains its
+independent orphan fallback for missing-parent actors. Same-piston permutation
+updates retain the current lifecycle; different-family and additional authored
+replacement/rotation cases remain open. Verification is running and its result
+will be appended separately.
+
+
+The immediate-removal replay and all piston/observer/moving-actor checks pass
+(block 26.097 / session 1.833 s), log
+`.tmp/piston-interruption-immediate-after.log`. Immediate chest inventories,
+base replacement, delayed head cleanup and subsequent complete frames are
+included. Source changes remain uncommitted while the audit continues.
+
+
+### Head loss, survival notification and queued recheck
+
+Client `PistonBlock::canSurvive` at `0x6eb36f0` accepts its normal/sticky head
+identifier, retraction, or zero-fraction animation progress no greater than
+binary32 0.0001 (constant at `0xe75d7c4`). The progress expression observes
+LastProgress, not the newly advanced Progress. `neighborChanged` at `0x6eb3940`
+checks only a change at the extending face and queues one GT when survival
+fails. `PistonBlock::tick` at `0x2a4d6e0` rechecks survival before destroying the
+base; the queued call can therefore become harmless if the head is restored.
+
+The interruption probe's head target adds 384 cases / 38,400 frames and 384
+immediate observations. Normal-piston retraction without a head is an explicit
+negative control. The native outcome depends on the interruption phase: all 96
+second-frame extension removals destroy the base; first-frame extension cases
+retain it. A stone replacing the collision head is also cleared when a normal
+piston later retracts. Retraction tolerates a removed moving payload rather than
+inventing a surviving carried block.
+
+The initial head replay compared an unrecorded Attached field against an empty
+slice and is rejected. The probe now records native attached positions in every
+ordinary and immediate actor snapshot, and the test rejects missing observations.
+Both base and head captures are refreshed completely: base
+`adamant-redstone-bds-xu47z6xz`, log `.tmp/piston-interruption-native-attached.log`;
+head `adamant-redstone-bds-8moc6p1n`, log
+`.tmp/piston-head-removal-native-attached.log`. The corrected pre-fix replay
+passes base interruption and fails 120 head cases (block 7.928 s), log
+`.tmp/piston-head-removal-before-valid.log`: 96 missing base destructions and
+24 uncleared foreign-stone normal retractions. No missing native attached data
+is treated as a production mismatch.
+
+Piston now samples survival during the existing synchronous notification hook,
+queues a one-GT update when invalid and rechecks on that queued tick. Retraction
+clears the head cell except for its own active moving block. The old unconditional
+post-completion two-GT electrical poll is removed: movement already polls its
+scene consumer every actor tick, and a stray completion tick would wrongly
+interpret a tolerated first-frame head loss as a later structural check.
+The first combined replay of these changes is running; its result follows.
+
+
+All piston/observer/moving-actor checks pass after the head-survival and
+retraction-clear changes (block 43.287 / session 1.841 s), log
+`.tmp/piston-head-removal-first.log`. This includes the 768 refreshed base/head
+interruption traces with full attached-block observations and all earlier
+complete piston fixtures. A broad run after these lifecycle changes is still in
+progress. Actual player destruction is captured separately from command-based
+head/base replacement.
+
+
+The broad run after same-transaction completion and head-survival/clearing
+changes passes with exactly the two previously documented exclusions:
+block 141.115 / entity 299.687 / player 29.704 / session 4.955 / world 25.607 /
+Overworld generation 153.673 s. Log: `.tmp/piston-head-removal-full.log`.
+This run overlapped independent reference-server captures and is slower than
+earlier broad runs; it is not used as a performance benchmark. The historical
+failed broad runs remain documented, and no new exclusions were added.
+
+### Actual player destruction of piston bases and heads
+
+The player probe captures 24 creative and 24 survival cases, covering both
+piston families, all six directions and both base/head targets. These use real
+client PlayerAuthInput destruction actions, native before/after player events,
+absolute clocks, complete subsequent block/actor snapshots and actual client
+LevelEvent destruction particles. Creative capture: `adamant-redstone-bds-ugfq7_ml`;
+survival capture: `adamant-redstone-bds-h8trayb9`. Fixtures retain all received
+level events; replay checks type 2001 positions, block hashes and ordering.
+
+The initial instant survival request was rejected by BDS, so it is not evidence
+of a survival destruction result. The client driver now holds mining for twenty
+input ticks, with ContinueDestroyBlock actions before PredictDestroyBlock and
+an abort on the next input. An intermediate helper build had an int/int32
+action mismatch and was corrected before the accepted capture. All 24 final
+survival cases have an accepted native player-break result. The creative
+fixture's level events were recovered from that same capture's retained raw
+client log; the probe now writes them directly on reproduction.
+
+Client PistonArmBlock::playerWillDestroy at `0x6eb2230` removes any normal or
+sticky piston at the head's rear position for a creative player, emitting the
+base's destruction event before removing it. The normal player path then
+destroys the head. Survival does not take this branch: its head is destroyed
+first and the base is removed by the queued survival check. The original replay
+passes all 24 survival cases (player 3.140 s) but fails twelve creative head
+cases on particle order (player 3.053 s); logs:
+`.tmp/piston-player-break-survival-before.log` and
+`.tmp/piston-player-break-creative-before.log`.
+
+PistonHead now implements the existing player pre-destruction callback for the
+creative branch. All 48 real-player replays pass (player 3.833 s), log
+`.tmp/piston-player-break-after.log`. Generic block-destruction game-event
+ordering remains separately open: this particle result does not establish
+that broader player lifecycle ordering matches the client.
+
+### Head survival, direction and state-dependent queued cleanup
+
+PistonArmBlock::canSurvive at `0x6eb0740` requires a piston actor at the rear
+position, matching facing, and either State 1 or State/NewState 2/2. It accepts
+either normal or sticky base regardless of the head identifier. The inspected
+neighborChanged (`0x2a496f0`) queues a one-GT recheck only when invalid;
+queued tick (`0x6eb06b0`) rechecks and silently clears an invalid head.
+
+The original-BDS head probe adds 720 cases / 72,000 complete frames, including
+both piston families, six directions, both setup parities, retracted/expanded
+and both observed extension/retraction frames, adjacent notifications, head
+family/facing edits, live base rotation and same-transaction head repair.
+Before/after injection snapshots include full actor attached positions.
+Capture: `adamant-redstone-bds-q57e43_a`, log
+`.tmp/piston-head-survival-native.log`.
+
+The old deferred head check fails 168 cases: 72 opposite-family heads,
+48 head repairs, 24 ordinary notifications and 24 facing edits (block 7.783 s),
+log `.tmp/piston-head-survival-before.log`. Head survival now follows the native
+state/facing gates and samples invalidity synchronously before its queued
+recheck. All 720 traces pass (block 7.975 s), log
+`.tmp/piston-head-survival-after-first.log`. Combined piston, observer, moving
+actor, queue and player replay checks pass (block 49.240 / player 3.945 /
+session 2.729 s), log `.tmp/piston-head-survival-targeted.log`.
+
+### Paused checkpoint and next piston entity work
+
+At the user's request, audit work stops here on 2026-10-27. The effort estimate
+remains approximately 60%; no coverage-matrix row is declared complete.
+The completed piston fixes above and their passing regression traces are saved
+separately from the following unfinished comparison.
+
+The entity probe adds two passive, gravity-free behavior-pack bodies, with
+explicit half-block collision boxes, pushable/piston-pushable flags, no AI,
+and collision enabled/disabled controls. The fixture retains their complete
+definitions. They isolate the original BDS piston/movement paths; these bodies
+do not establish compatibility for vanilla mob AI or all entity types.
+
+An exploratory 32-case capture (`adamant-redstone-bds-midup5_b`, retained locally
+in `.tmp/piston-entity-smoke.json`) covers upward/east pushes with empty heads,
+stone, honey and slime payloads. Native head contact moves the body by the
+intersection depth rather than a fixed half block; carried-block contact has
+a different observed phase. Slime also supplies a velocity impulse, so its
+subsequent motion requires separate entity-physics evidence. No piston entity
+production fix or passing replay is claimed at this checkpoint.
+
+The checked-in displacement fixture has 576 cases / 57,600 complete frames:
+both piston families, six directions, both input parities, empty/stone/honey
+payloads, two body distances, collision controls and pre-extension/pre-retraction
+spawns. Capture: `adamant-redstone-bds-viktm4vx`, log
+`.tmp/piston-entity-displacement-native.log`. The reference capture is complete,
+but no Go replay has been implemented yet. Slime is deliberately kept outside
+this displacement-only fixture because its native velocity/free-flight path is
+not yet reproduced. Next: implement the controlled body replay, inspect client
+`PistonBlockActor::_moveCollidedEntitiesHelper` (`0x4ae3e00`),
+`moveEntityLastProgress` (`0x4adde80`) and MovingBlockActor contact shapes
+(`0x4add8b0`), and correct verified displacement/phase differences. Real player,
+mob, dropped-item, honey carrying, slime velocity and obstruction cases remain
+open.
+
+The experimental all-permutation movability probe is also retained as unfinished
+tooling. Its latest local capture stopped after 72 block types with an
+unestablished cause; it is not used as proof that every state was checked.
+The canonical default-type movability fixture and its 1,472 readable native
+classifications remain the evidence for the generated table.
+
+Checkpoint validation: the final `go build ./...` passes, log
+`.tmp/piston-paused-build.log`; all thirteen added/updated Python capture and
+generation scripts compile. `git diff --check` passes. The latest scoped tests
+are the passing block/player/session run recorded above. The latest broad run
+predates the final creative/head-survival changes and passes with exactly the
+two historical exclusions already documented; no newer broad pass is claimed.
