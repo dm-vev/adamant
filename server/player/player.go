@@ -3942,26 +3942,24 @@ func (p *Player) tickCarriedMapStack(stack item.Stack, current int64, seen *[64]
 		}
 	}
 }
-func (p *Player) tickMapFrames(current int64) {
-	if current%5 != 0 {
-		return
+
+// updatesMapFrames reports whether the player updates the map frames of
+// its world for the players: the living player with the lowest UUID does.
+func (p *Player) updatesMapFrames() bool {
+	for e := range p.tx.Players() {
+		if other, ok := e.(*Player); ok && !other.Dead() {
+			otherID, ownID := other.UUID(), p.UUID()
+			if bytes.Compare(otherID[:], ownID[:]) < 0 {
+				return false
+			}
+		}
 	}
-	for entity := range p.tx.Entities() {
-		carrier, ok := entity.(interface {
-			UUID() uuid.UUID
-			Inventory() *inventory.Inventory
-			HeldItems() (item.Stack, item.Stack)
-		})
-		if !ok {
-			continue
-		}
-		if dead, ok := entity.(interface{ Dead() bool }); ok && dead.Dead() {
-			continue
-		}
-		otherID, ownID := carrier.UUID(), p.UUID()
-		if bytes.Compare(otherID[:], ownID[:]) < 0 {
-			return
-		}
+	return true
+}
+
+func (p *Player) tickMapFrames(current int64) {
+	if current%5 != 0 || !p.updatesMapFrames() {
+		return
 	}
 	p.tx.ForEachMapFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
 		mapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID)
