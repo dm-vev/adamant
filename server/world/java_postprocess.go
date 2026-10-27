@@ -76,7 +76,7 @@ func (w *World) generationPending(pos ChunkPos, col *Column) bool {
 
 func (w *World) generationNeighbourhoodReady(pos ChunkPos) bool {
 	c := w.chunks[pos]
-	if c != nil && c.blockTickingEpoch == w.chunkEpoch+1 {
+	if c != nil && c.blockTickingNeighbours {
 		// The chunks around were all ready, and none left since.
 		return true
 	}
@@ -90,7 +90,7 @@ func (w *World) generationNeighbourhoodReady(pos ChunkPos) bool {
 	}
 	if !w.inRegionPhase() {
 		// The workers of a region phase may ask of one column at once.
-		c.blockTickingEpoch = w.chunkEpoch + 1
+		c.blockTickingNeighbours = true
 	}
 	return true
 }
@@ -111,10 +111,16 @@ func (w *World) entityTickingReady(pos ChunkPos) bool {
 		return true
 	}
 	c := w.chunks[pos]
-	if c == nil {
-		return false
+	return c != nil && w.columnEntityTickingReady(pos, c)
+}
+
+// columnEntityTickingReady is entityTickingReady for the loaded column c at
+// pos.
+func (w *World) columnEntityTickingReady(pos ChunkPos, c *Column) bool {
+	if w.conf.Synchronous {
+		return true
 	}
-	if c.tickingEpoch == w.chunkEpoch+1 {
+	if c.entityTickingNeighbours {
 		// The chunks around were all ready, and none left since.
 		return true
 	}
@@ -128,7 +134,7 @@ func (w *World) entityTickingReady(pos ChunkPos) bool {
 	}
 	if !w.inRegionPhase() {
 		// The workers of a region phase may ask of one column at once.
-		c.tickingEpoch = w.chunkEpoch + 1
+		c.entityTickingNeighbours = true
 	}
 	return true
 }

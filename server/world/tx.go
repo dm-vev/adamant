@@ -269,7 +269,12 @@ func (tx *Tx) BlockLight(pos cube.Pos) uint8 {
 // as Java's ServerLevel.canSpawnEntitiesInChunk asks of a chunk mobs spawn
 // in.
 func (tx *Tx) EntityTicking(pos ChunkPos) bool {
-	return tx.ChunkLoaded(pos) && tx.World().entitiesTickAt(pos) && tx.World().entityTickingReady(pos)
+	c, ok := tx.loadedColumn(pos)
+	if !ok || tx.region == nil && !c.Ready() || tx.region != nil && !c.settled {
+		return false
+	}
+	w := tx.World()
+	return w.entitiesTick(c) && w.columnEntityTickingReady(pos, c)
 }
 
 // SkyLight returns the skylight level at the position passed. This light level

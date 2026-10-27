@@ -130,11 +130,7 @@ type World struct {
 	// unsettled holds the columns in chunks that were not settled yet when
 	// last seen, so that a region phase may settle them first.
 	unsettled map[ChunkPos]*Column
-	// chunkEpoch changes whenever a column leaves chunks or is replaced in
-	// it, telling columns that remembered being entity ticking to check
-	// again.
-	chunkEpoch uint64
-	regions    regionState
+	regions   regionState
 	// workerLocals holds the values Tx.Local and ReadView.Local keep for the
 	// world owner, first, and the other workers of parallel phases.
 	workerLocals []map[any]any
@@ -2579,7 +2575,25 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		delete(w.chunks, pos)
 		delete(w.pendingLight, pos)
 		w.chunkCount.Add(-1)
-		w.chunkEpoch++
+		w.columnLeft(pos)
+	}
+}
+
+// columnLeft is called once the column at pos left or was replaced. It tells
+// the columns within two chunks of it that the chunks around them may no
+// longer all be ready.
+func (w *World) columnLeft(pos ChunkPos) {
+	for dx := int32(-2); dx <= 2; dx++ {
+		for dz := int32(-2); dz <= 2; dz++ {
+			p := ChunkPos{pos[0] + dx, pos[1] + dz}
+			near := dx >= -1 && dx <= 1 && dz >= -1 && dz <= 1
+			if c, ok := w.chunks[p]; ok {
+				c.entityTickingNeighbours = false
+				if near {
+					c.blockTickingNeighbours = false
+				}
+			}
+		}
 	}
 }
 
@@ -2874,7 +2888,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
 		} else {
-			w.chunkEpoch++
+			w.columnLeft(pos)
 		}
 		w.chunks[pos] = col
 		w.markUnsettled(pos, col)
@@ -2924,7 +2938,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
 		} else {
-			w.chunkEpoch++
+			w.columnLeft(pos)
 		}
 		w.chunks[pos] = col
 		w.markUnsettled(pos, col)
@@ -2948,7 +2962,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
 		} else {
-			w.chunkEpoch++
+			w.columnLeft(pos)
 		}
 		w.chunks[pos] = col
 		w.markUnsettled(pos, col)
@@ -3513,11 +3527,11 @@ type Column struct {
 	compactedVersion uint64
 	// surface caches the highest blocks of the column.
 	surface *surfaceHeights
-	// tickingEpoch and blockTickingEpoch are the chunkEpoch of the world,
-	// plus one, when the chunks within two and within one of the column
-	// were last all found ready.
-	tickingEpoch      uint64
-	blockTickingEpoch uint64
+	// entityTickingNeighbours and blockTickingNeighbours are set once the
+	// chunks within two and within one of the column were all found ready,
+	// until one of them leaves.
+	entityTickingNeighbours bool
+	blockTickingNeighbours  bool
 	// entityTickingStamp is the entityTickingStamp of the world, plus one,
 	// of the last tick the entities of the column ticked in.
 	entityTickingStamp uint64

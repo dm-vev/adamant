@@ -560,16 +560,6 @@ func (w *World) entitiesTick(col *Column) bool {
 	return w.conf.Synchronous || col.entityTickingStamp == w.entityTickingStamp+1
 }
 
-// entitiesTickAt reports whether the entities of the chunk at pos tick this
-// tick.
-func (w *World) entitiesTickAt(pos ChunkPos) bool {
-	if w.conf.Synchronous {
-		return true
-	}
-	c, ok := w.chunks[pos]
-	return ok && w.entitiesTick(c)
-}
-
 // tickEntities ticks all entities in the world, making sure they are still located in the correct chunks and
 // updating where necessary.
 //
