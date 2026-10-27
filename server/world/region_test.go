@@ -70,6 +70,26 @@ var regionCentres = []cube.Pos{{0, 0, 0}, {1024, 0, 0}, {0, 0, 1024}, {1024, 0, 
 // race detector to find any state two regions share without a lock, and
 // fails if a tick does not finish in time, as a deadlock would.
 func TestRegionsTickWithoutRaces(t *testing.T) {
+	tickAreasWithoutRaces(t, regionCentres, 1)
+}
+
+// TestCrowdedRegionsTickWithoutRaces ticks such areas side by side on three
+// by three cells, which make one region ticking its cells in phases, the
+// areas straddling the borders of cells, for the race detector to find any
+// state the cells of a phase share without a lock.
+func TestCrowdedRegionsTickWithoutRaces(t *testing.T) {
+	var centres []cube.Pos
+	for x := range 3 {
+		for z := range 3 {
+			centres = append(centres, cube.Pos{x * 256, 0, z * 256})
+		}
+	}
+	tickAreasWithoutRaces(t, centres, 4)
+}
+
+// tickAreasWithoutRaces fills areas around the centres passed and ticks
+// them in regions, wanting the phases passed at least a tick.
+func tickAreasWithoutRaces(t *testing.T, regionCentres []cube.Pos, phasesPerTick int) {
 	ticks := 300
 	if testing.Short() {
 		ticks = 80
@@ -123,8 +143,8 @@ func TestRegionsTickWithoutRaces(t *testing.T) {
 		t.Fatalf("ticks stopped after %d of %d: deadlock", ticked.Load(), ticks)
 	}
 
-	if phases := w.RegionPhases(); phases < int64(ticks) {
-		t.Errorf("%d region phases in %d ticks, want one a tick at least", phases, ticks)
+	if phases := w.RegionPhases(); phases < int64(ticks*phasesPerTick) {
+		t.Errorf("%d region phases in %d ticks, want %d a tick at least", phases, ticks, phasesPerTick)
 	}
 	for i, v := range viewers {
 		if v.calls.Load() == 0 {

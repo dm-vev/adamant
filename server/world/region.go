@@ -2,7 +2,9 @@ package world
 
 import (
 	"maps"
+	"runtime"
 	"runtime/debug"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -20,14 +22,17 @@ import (
 // The columns whose entities tick actively are grouped by cells of
 // regionCell chunks. Cells next to each other, diagonally included, join one
 // region, so that the columns of two regions lie more than regionCell chunks
-// apart. A viewer viewing columns of several regions, as a player far from
-// others with a large view distance does, may be shown things by them at
-// once: viewers must allow it, as sessions do. A region owns the columns
-// within regionReach chunks of its cells: the columns two regions own never
-// meet, and a region only reads and writes the columns it owns. The entities
-// in them are the region's: other regions do not find them. An entity of a
-// region looking further than regionReach chunks away, which none does in
-// vanilla, finds nothing there.
+// apart. A crowded region may instead tick its cells in up to four phases
+// one after another, the cells of one colour of a checkerboard of two by two
+// cells in each: they are never next to each other either, and each is a
+// region of its own during its phase. A viewer viewing columns of several
+// regions, as a player far from others with a large view distance does, may
+// be shown things by them at once: viewers must allow it, as sessions do. A
+// region owns the columns within regionReach chunks of its cells: the
+// columns two regions own never meet, and a region only reads and writes the
+// columns it owns. The entities in them are the region's: other regions do
+// not find them. An entity of a region looking further than regionReach
+// chunks away, which none does in vanilla, finds nothing there.
 //
 // During the phase the chunk map does not change. A region reads the owned
 // columns that are loaded and settled and air in the others; it never
@@ -294,20 +299,32 @@ func regionsOf(refs []columnRef) [][]columnRef {
 }
 
 // tickRegions ticks the entities of the columns passed, which tick
-// actively, region after region at once if they make more than one region,
-// and reports whether they did. The owner then does what the regions left
-// to it, region after region.
+// actively, in regions ticking at once, and reports whether it did, which
+// it does only if some regions tick at once. The regions tick in phases one
+// after another; the owner does what the regions of a phase left to it,
+// region after region, before the next phase.
 func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef) bool {
-	groups := regionsOf(refs)
-	if len(groups) < 2 {
+	phases := regionPhasesOf(refs, runtime.GOMAXPROCS(0))
+	if !slices.ContainsFunc(phases, func(regions [][]columnRef) bool { return len(regions) > 1 }) {
 		return false
 	}
 	w := tx.World()
 	// Regions read settled columns only: the owner completes the columns
-	// that became ready first. It also builds the grid of players, which
-	// regions find players near them by.
+	// that became ready first.
 	w.settleReadyColumns(tx)
-	w.playersByCell(tx)
+	for _, groups := range phases {
+		// Regions find players near them by the grid of players, which the
+		// owner builds again if what it did after the last phase moved any.
+		w.playersByCell(tx)
+		t.tickRegionPhase(tx, tick, groups)
+	}
+	return true
+}
+
+// tickRegionPhase ticks the entities of the regions passed at once, and
+// then does what they left to the owner, region after region.
+func (t ticker) tickRegionPhase(tx *Tx, tick int64, groups [][]columnRef) {
+	w := tx.World()
 	regions := make([]*region, len(groups))
 	cells := make(map[regionCellPos]*region, len(groups)*2)
 	for i, refs := range groups {
@@ -370,7 +387,123 @@ func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef) bool {
 		}
 		tx.deferred = append(tx.deferred, r.tx.deferred...)
 	}
+}
+
+// regionPhasesOf groups the columns ticking actively passed into regions
+// ticking at once, in phases ticking one after another, so that the tick
+// takes as little time as it may with the workers passed.
+//
+// The regions regionsOf makes may tick in any phase. A region of more than
+// one cell may instead be split into its cells, which then tick in the
+// phase of their colour on a checkerboard of two by two cells: cells of one
+// colour are never next to each other, so that the columns they own never
+// meet. Splitting lets a crowded part of a world tick on several workers,
+// but puts the cells of a region in up to four phases, which costs more than
+// it gains if other regions keep the workers busy. Each choice is weighed by
+// the entities of the regions of each phase: a phase lasts as long as its
+// region with the most entities, or as its entities shared by the workers.
+func regionPhasesOf(refs []columnRef, workers int) [][][]columnRef {
+	groups := regionsOf(refs)
+	entities := func(refs []columnRef) int {
+		n := 0
+		for _, ref := range refs {
+			if ref.col != nil {
+				n += len(ref.col.Entities)
+			}
+		}
+		return n
+	}
+	heaviest, multi := -1, false
+	for i, g := range groups {
+		if !oneCell(g) {
+			multi = true
+			if heaviest < 0 || entities(g) > entities(groups[heaviest]) {
+				heaviest = i
+			}
+		}
+	}
+	plan := func(split func(i int) bool) ([][][]columnRef, int) {
+		var phases [4][][]columnRef
+		var longest, total [4]int
+		add := func(p int, refs []columnRef) {
+			n := entities(refs)
+			phases[p] = append(phases[p], refs)
+			longest[p], total[p] = max(longest[p], n), total[p]+n
+		}
+		var whole [][]columnRef
+		for i, g := range groups {
+			if !split(i) {
+				whole = append(whole, g)
+				continue
+			}
+			for _, cell := range cellsOf(g) {
+				c := regionCellOf(cell[0].pos)
+				add(int(c[0]&1)|int(c[1]&1)<<1, cell)
+			}
+		}
+		// The regions left whole go, the largest first, where they lengthen
+		// the phases least.
+		slices.SortStableFunc(whole, func(a, b []columnRef) int { return entities(b) - entities(a) })
+		cost := func(longest, total int) int { return max(longest, (total+workers-1)/workers) }
+		for _, g := range whole {
+			n, best, bestGrowth := entities(g), 0, -1
+			for p := range phases {
+				if growth := cost(max(longest[p], n), total[p]+n) - cost(longest[p], total[p]); bestGrowth < 0 || growth < bestGrowth {
+					best, bestGrowth = p, growth
+				}
+			}
+			add(best, g)
+		}
+		var out [][][]columnRef
+		took := 0
+		for p, regions := range phases {
+			if len(regions) > 0 {
+				out = append(out, regions)
+				took += cost(longest[p], total[p])
+			}
+		}
+		return out, took
+	}
+	best, took := plan(func(int) bool { return false })
+	if !multi {
+		return best
+	}
+	for _, split := range []func(i int) bool{
+		func(i int) bool { return i == heaviest },
+		func(i int) bool { return !oneCell(groups[i]) },
+	} {
+		if phases, t := plan(split); t < took {
+			best, took = phases, t
+		}
+	}
+	return best
+}
+
+// oneCell reports whether the columns passed lie in one cell.
+func oneCell(refs []columnRef) bool {
+	for _, ref := range refs[1:] {
+		if regionCellOf(ref.pos) != regionCellOf(refs[0].pos) {
+			return false
+		}
+	}
 	return true
+}
+
+// cellsOf groups the columns passed by cell, kept in the order passed.
+func cellsOf(refs []columnRef) [][]columnRef {
+	index := make(map[regionCellPos]int)
+	var out [][]columnRef
+	for _, ref := range refs {
+		c := regionCellOf(ref.pos)
+		i, ok := index[c]
+		if !ok {
+			i = len(out)
+			index[c] = i
+			out = append(out, nil)
+		}
+		out[i] = append(out[i], ref)
+	}
+	return out
 }
 
 // settleReadyColumns completes the columns that became ready since they

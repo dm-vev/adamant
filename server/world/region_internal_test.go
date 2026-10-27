@@ -1,6 +1,7 @@
 package world
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -228,4 +229,98 @@ func (w *World) regionOwnerAmong(pos ChunkPos, r *region) bool {
 		}
 	}
 	return false
+}
+
+// TestRegionPhasesSplitCrowdedRegions checks a crowded region ticks its
+// cells in phases in which no two regions own columns that meet, and that
+// regions are split only where it shortens the tick.
+func TestRegionPhasesSplitCrowdedRegions(t *testing.T) {
+	ref := func(cx, cz int32, entities int) columnRef {
+		pos := ChunkPos{cx*regionCell + 3, cz*regionCell + 5}
+		return columnRef{pos: pos, col: &Column{Entities: make([]*EntityHandle, entities)}}
+	}
+	check := func(name string, refs []columnRef, phases [][][]columnRef) {
+		t.Helper()
+		seen := map[ChunkPos]int{}
+		for _, regions := range phases {
+			for i, a := range regions {
+				for _, ref := range a {
+					seen[ref.pos]++
+				}
+				for _, b := range regions[i+1:] {
+					for _, ra := range a {
+						for _, rb := range b {
+							ca, cb := regionCellOf(ra.pos), regionCellOf(rb.pos)
+							if max(abs32(ca[0]-cb[0]), abs32(ca[1]-cb[1])) < 2 {
+								t.Fatalf("%s: regions of one phase hold cells %v and %v next to each other", name, ca, cb)
+							}
+						}
+					}
+				}
+			}
+		}
+		for _, ref := range refs {
+			if seen[ref.pos] != 1 {
+				t.Fatalf("%s: column %v in %d regions, want 1", name, ref.pos, seen[ref.pos])
+			}
+		}
+	}
+	regions := func(phases [][][]columnRef) []int {
+		var out []int
+		for _, regions := range phases {
+			out = append(out, len(regions))
+		}
+		return out
+	}
+
+	var crowd []columnRef
+	for x := range int32(3) {
+		for z := range int32(3) {
+			crowd = append(crowd, ref(x, z, 100))
+		}
+	}
+	phases := regionPhasesOf(crowd, 16)
+	check("crowd", crowd, phases)
+	if got := regions(phases); len(got) != 4 || !slices.Equal(slices.Sorted(slices.Values(got)), []int{1, 2, 2, 4}) {
+		t.Errorf("crowd of 3 by 3 cells ticks in regions %v by phase, want 4, 2, 2 and 1", got)
+	}
+
+	pair := []columnRef{ref(0, 0, 100), ref(1, 0, 100)}
+	phases = regionPhasesOf(pair, 16)
+	check("pair", pair, phases)
+	if got := regions(phases); !slices.Equal(got, []int{1}) {
+		t.Errorf("two cells side by side tick in regions %v by phase, want one region", got)
+	}
+
+	apart := []columnRef{ref(0, 0, 100), ref(5, 0, 80), ref(0, 5, 60)}
+	phases = regionPhasesOf(apart, 16)
+	check("apart", apart, phases)
+	if got := regions(phases); !slices.Equal(got, []int{3}) {
+		t.Errorf("regions far apart tick in regions %v by phase, want 3 in one phase", got)
+	}
+
+	// The cells of a crowd split, a region far away ticks along with a
+	// phase rather than in one of its own.
+	mixed := append(slices.Clone(crowd), ref(10, 10, 100))
+	phases = regionPhasesOf(mixed, 16)
+	check("mixed", mixed, phases)
+	if got := regions(phases); len(got) != 4 {
+		t.Errorf("crowd and a region far away tick in regions %v by phase, want four phases", got)
+	}
+
+	// A region far away with more entities than the crowd keeps the crowd
+	// whole: splitting it would leave the workers waiting.
+	heavy := append(slices.Clone(crowd), ref(10, 10, 5000))
+	phases = regionPhasesOf(heavy, 16)
+	check("heavy", heavy, phases)
+	if got := regions(phases); !slices.Equal(got, []int{2}) {
+		t.Errorf("crowd beside a heavier region ticks in regions %v by phase, want both whole in one phase", got)
+	}
+}
+
+func abs32(v int32) int32 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
