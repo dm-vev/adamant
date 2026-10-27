@@ -86,8 +86,6 @@ func (s SuspiciousSand) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) { s.f
 func (s SuspiciousGravel) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) { s.fall(s, pos, tx) }
 func (s SuspiciousSand) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) { s.tick(pos, tx) }
 func (s SuspiciousGravel) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) { s.tick(pos, tx) }
-func (s SuspiciousSand) Tick(_ int64, pos cube.Pos, tx *world.Tx) { s.tick(pos, tx) }
-func (s SuspiciousGravel) Tick(_ int64, pos cube.Pos, tx *world.Tx) { s.tick(pos, tx) }
 
 func (s SuspiciousSand) EncodeNBT() map[string]any {
 	return encodeBrushableNBT("minecraft:suspicious_sand", s.LootTable, s.LootTableSeed, s.Item, s.brushCount, s.HitDirection, s.HasHitDirection)

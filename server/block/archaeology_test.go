@@ -66,3 +66,42 @@ func TestSuspiciousBlocksAdvanceBrushProgress(t *testing.T) {
 		})
 	}
 }
+
+// TestSuspiciousBlocksResetThroughScheduledTicks checks suspicious blocks
+// do not tick every tick, as BrushableBlockEntity has no ticker, and that
+// brushing left off still resets through the scheduled ticks of
+// BrushableBlock, as checkReset does.
+func TestSuspiciousBlocksResetThroughScheduledTicks(t *testing.T) {
+	for _, b := range []world.Block{SuspiciousSand{}, SuspiciousGravel{}} {
+		if _, ok := b.(world.TickerBlock); ok {
+			t.Errorf("%T ticks every tick", b)
+		}
+	}
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+	pos := cube.Pos{0, 10, 0}
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(pos.Side(cube.FaceDown), Stone{}, nil)
+		tx.SetBlock(pos, SuspiciousGravel{}, nil)
+		for range 3 {
+			brushable := tx.Block(pos).(interface {
+				BrushAt(cube.Pos, cube.Face, *world.Tx, item.User, item.Stack) (bool, error)
+			})
+			if _, err := brushable.BrushAt(pos, cube.FaceNorth, tx, nil, item.Stack{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+	for range 80 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		got, ok := tx.Block(pos).(SuspiciousGravel)
+		if !ok {
+			t.Fatalf("block after brushing left off is %T", tx.Block(pos))
+		}
+		if got.brushCount != 0 || got.Dusted != 0 || got.HasHitDirection {
+			t.Fatalf("brushing left off for 80 ticks not reset: %+v", got)
+		}
+	})
+}
