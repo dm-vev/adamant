@@ -110,22 +110,76 @@ func facesOcclude(from, to LightProperties, face cube.Face) bool {
 }
 
 // insertLightSpreadingNodes inserts light nodes into the node queue passed which, when propagated, will
-// spread into the neighbouring chunks.
+// spread into the neighbouring chunks. It walks the edges between the chunks of the lightArea sub chunk by sub
+// chunk, skipping a 16x16 sheet of an edge if nothing can spread over it, and reads the light of both sides
+// straight from the sub chunks.
 func (a *lightArea) insertLightSpreadingNodes(queue *levelQueue, lt light) {
-	a.iterEdges(a.nodesNeeded(lt), func(pa, pb cube.Pos) {
-		la, lb := a.light(pa, lt), a.light(pb, lt)
-		if la == lb || la-1 == lb || lb-1 == la {
-			// No chance for this to spread.
-			return
+	needed := a.nodesNeeded(lt)
+	_, sky := lt.(skyLight)
+	lightOf := func(sub *SubChunk) []uint8 {
+		if sky {
+			return sub.skyLight
 		}
-		if la > lb {
-			if level, ok := a.entered(pa, pb, cube.FaceWest, la); ok && level > lb {
-				queue.push(node(pb, level, lt))
+		return sub.blockLight
+	}
+	minY, maxY := a.r[0]>>4, a.r[1]>>4
+	for cu := 1; cu < a.w; cu++ {
+		u := cu << 4
+		for cv := 0; cv < a.w; cv++ {
+			v := cv << 4
+			for cy := minY; cy < maxY; cy++ {
+				baseY := cy << 4
+				// xa is at local x 0 of its sub chunk and xb, west of it, at local x 15 of its own; za and zb
+				// are at local z 0 and 15 the same way.
+				xa, za := cube.Pos{a.baseX + u, baseY, a.baseZ + v}, cube.Pos{a.baseX + v, baseY, a.baseZ + u}
+				xb, zb := xa.Side(cube.FaceWest), za.Side(cube.FaceNorth)
+				sxa, sxb, sza, szb := a.sub(xa), a.sub(xb), a.sub(za), a.sub(zb)
+				addX, addZ := needed(sxa, sxb), needed(sza, szb)
+				if !addX && !addZ {
+					continue
+				}
+				lxa, lxb, lza, lzb := lightOf(sxa), lightOf(sxb), lightOf(sza), lightOf(szb)
+				// The order of these loops allows us to take care of block spreading over both the X and Z axis by
+				// just swapping around the axes.
+				for addV := 0; addV < 16; addV++ {
+					for y := 0; y < 16; y++ {
+						if addX {
+							a.spreadAcross(queue, lt, nibble(lxa, 0, y, addV), nibble(lxb, 15, y, addV), xa.Add(cube.Pos{0, y, addV}), xb.Add(cube.Pos{0, y, addV}))
+						}
+						if addZ {
+							a.spreadAcross(queue, lt, nibble(lza, addV, y, 0), nibble(lzb, addV, y, 15), za.Add(cube.Pos{addV, y}), zb.Add(cube.Pos{addV, y}))
+						}
+					}
+				}
 			}
-		} else if level, ok := a.entered(pb, pa, cube.FaceEast, lb); ok && level > la {
-			queue.push(node(pa, level, lt))
 		}
-	})
+	}
+}
+
+// nibble returns the light at the local x, y and z of the light of a sub
+// chunk, or 0 if it has none.
+func nibble(light []uint8, x, y, z int) uint8 {
+	if len(light) == 0 {
+		return 0
+	}
+	index := x<<8 | z<<4 | y
+	return (light[index>>1] >> ((index & 1) << 2)) & 0xf
+}
+
+// spreadAcross queues a node for the light of la at pa entering pb, which
+// has lb, or of lb entering pa, if either is bright enough to spread over.
+func (a *lightArea) spreadAcross(queue *levelQueue, lt light, la, lb uint8, pa, pb cube.Pos) {
+	if la == lb || la-1 == lb || lb-1 == la {
+		// No chance for this to spread.
+		return
+	}
+	if la > lb {
+		if level, ok := a.entered(pa, pb, cube.FaceWest, la); ok && level > lb {
+			queue.push(node(pb, level, lt))
+		}
+	} else if level, ok := a.entered(pb, pa, cube.FaceEast, lb); ok && level > la {
+		queue.push(node(pa, level, lt))
+	}
 }
 
 // nodesNeeded checks if any light nodes of a specific light type are needed between two neighbouring SubChunks when

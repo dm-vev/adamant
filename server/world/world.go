@@ -506,23 +506,35 @@ func (w *World) handleTransactions() {
 	for {
 		select {
 		case tx := <-w.queue:
-			tx.Run(w)
+			w.runTransaction(tx)
 			continue
 		default:
 		}
 		if tx, ok := w.nextOverflowTransaction(); ok {
-			tx.Run(w)
+			w.runTransaction(tx)
 			w.scheduling.Done()
 			continue
 		}
 		select {
 		case tx := <-w.queue:
-			tx.Run(w)
+			w.runTransaction(tx)
 		case <-w.queueWake:
 		case <-w.queueClosing:
 			w.queueing.Done()
 			return
 		}
+	}
+}
+
+// runTransaction runs tx and then spreads the light of the chunks that
+// became complete during it, as chunks finishing generation do. Light
+// readers bring it up to date anyway, but spreading it here, between ticks,
+// keeps a tick from first spreading the light of every chunk generated
+// since the last one, as Java lights chunks off its main thread.
+func (w *World) runTransaction(tx transaction) {
+	tx.Run(w)
+	if len(w.pendingSpreads) > 0 {
+		w.flushSpreads()
 	}
 }
 

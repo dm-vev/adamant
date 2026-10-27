@@ -163,6 +163,9 @@ func (a *lightArea) Fill() {
 	for !queue.empty() {
 		a.propagate(queue)
 	}
+	for _, c := range a.c {
+		shareUniformLight(c)
+	}
 }
 
 // Spread executes the light 'spreading' stage, where the lightArea has light spread from every Chunk into the
@@ -178,7 +181,43 @@ func (a *lightArea) Spread() uint16 {
 	for !queue.empty() {
 		a.propagate(queue)
 	}
+	for i, c := range a.c {
+		if a.changed&(1<<i) != 0 {
+			shareUniformLight(c)
+		}
+	}
 	return a.changed
+}
+
+// shareUniformLight makes the sub chunks of c whose light is the same in
+// every block, none or full skylight, use the light slices all such sub
+// chunks share. The light stays the same, but spreading then skips the
+// edges between sub chunks sharing a slice, along which nothing can spread.
+func shareUniformLight(c *Chunk) {
+	for _, sub := range c.sub {
+		sub.skyLight = sharedLight(sub.skyLight, true)
+		// Block light is copied on write only from the empty slice.
+		sub.blockLight = sharedLight(sub.blockLight, false)
+	}
+}
+
+// sharedLight returns the shared slice holding the same light as l, if
+// there is one, or l.
+func sharedLight(l []uint8, full bool) []uint8 {
+	if len(l) != len(noLight) {
+		return l
+	}
+	switch &l[0] {
+	case noLightPtr, fullLightPtr:
+		return l
+	}
+	if bytes.Equal(l, noLight) {
+		return noLight
+	}
+	if full && bytes.Equal(l, fullLight) {
+		return fullLight
+	}
+	return l
 }
 
 // light returns the light at a cube.Pos with the light type l.
@@ -206,44 +245,6 @@ func (a *lightArea) iterSubChunks(filter func(sub *SubChunk) bool, f func(pos cu
 				a.iterSubChunk(func(x, y, z int) {
 					f(cube.Pos{x + baseX, y + baseY, z + baseZ})
 				})
-			}
-		}
-	}
-}
-
-// iterEdges iterates over all chunk edges within the lightArea and calls the function f with the cube.Pos at either
-// side of the edge.
-func (a *lightArea) iterEdges(filter func(a, b *SubChunk) bool, f func(a, b cube.Pos)) {
-	minY, maxY := a.r[0]>>4, a.r[1]>>4
-	// First iterate over chunk X, Y and Z, so we can filter out a complete 16x16 sheet of blocks if the
-	// filter function returns false.
-	for cu := 1; cu < a.w; cu++ {
-		u := cu << 4
-		for cv := 0; cv < a.w; cv++ {
-			v := cv << 4
-			for cy := minY; cy < maxY; cy++ {
-				baseY := cy << 4
-
-				xa, za := cube.Pos{a.baseX + u, baseY, a.baseZ + v}, cube.Pos{a.baseX + v, baseY, a.baseZ + u}
-				xb, zb := xa.Side(cube.FaceWest), za.Side(cube.FaceNorth)
-
-				addX, addZ := filter(a.sub(xa), a.sub(xb)), filter(a.sub(za), a.sub(zb))
-				if !addX && !addZ {
-					continue
-				}
-				// The order of these loops allows us to take care of block spreading over both the X and Z axis by
-				// just swapping around the axes.
-				for addV := 0; addV < 16; addV++ {
-					for y := 0; y < 16; y++ {
-						// Finally, iterate over the 16x16 sheet and actually do the per-block checks.
-						if addX {
-							f(xa.Add(cube.Pos{0, y, addV}), xb.Add(cube.Pos{0, y, addV}))
-						}
-						if addZ {
-							f(za.Add(cube.Pos{addV, y}), zb.Add(cube.Pos{addV, y}))
-						}
-					}
-				}
 			}
 		}
 	}
@@ -402,6 +403,9 @@ func (a *lightArea) Relight(changed []cube.Pos) {
 		}
 	}
 	a.relight(skyChanged, SkyLight, sky)
+	for _, c := range a.c {
+		shareUniformLight(c)
+	}
 }
 
 // relight removes the light of type lt from the positions changed and the
