@@ -69,6 +69,25 @@ class LocalClient:
     def send(self, action):
         if self.process.poll() is not None:
             raise RuntimeError("audit client stopped: " + "\n".join(self.log[-12:]))
+        if "held_count" in action:
+            deadline = time.monotonic() + 5
+            while True:
+                held = None
+                for line in reversed(self.log):
+                    try:
+                        record = json.loads(line)
+                    except (ValueError, TypeError):
+                        continue
+                    if "held" in record:
+                        held = record["held"]["Stack"]
+                        break
+                if held and held["Count"] == action["held_count"] and held["NetworkID"] == action["held_network_id"]:
+                    break
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("client did not receive the expected held stack: " + str(held))
+                if self.process.poll() is not None:
+                    raise RuntimeError("audit client stopped while waiting for its held stack")
+                time.sleep(.02)
         self.process.stdin.write(json.dumps(action) + "\n")
         self.process.stdin.flush()
 

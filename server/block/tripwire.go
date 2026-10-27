@@ -239,13 +239,19 @@ func updateTripwireLineChanged(pos cube.Pos, hook TripwireHook, tx *world.Tx, ch
 	if !attached {
 		powered = false
 	}
+	strength := 0
+	if powered {
+		strength = 15
+	}
 	if foundOther {
 		updateHookState(otherPos, otherHook, attached, powered, tx)
+		tx.Redstone().SetProducerStrength(otherPos, strength)
 		// Native uses the starting hook's previous flags for both sounds.
 		emitTripwireHookState(otherPos, tx, hook, attached, powered)
 	}
 	emitTripwireHookState(pos, tx, hook, attached, powered)
 	updateHookState(pos, hook, attached, powered, tx)
+	tx.Redstone().SetProducerStrength(pos, strength)
 	if hook.Attached == attached || !foundOther {
 		return
 	}

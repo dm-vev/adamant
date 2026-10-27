@@ -24,8 +24,12 @@ const cases=CASES,emit=x=>console.warn("ADAMANT_TIMING "+JSON.stringify(x));
 let d,load=0,start=0,batch=0,cells=[];
 const cmd=x=>d.runCommand(x),get=p=>d.getBlock({x:p[0],y:p[1],z:p[2]});
 const read=p=>{const b=get(p);return {id:b.typeId,states:b.permutation.getAllStates(),power:b.getRedstonePower()};};
-const set=(p,id,direction)=>cmd(`setblock ${p.join(" ")} ${id} ${direction===undefined?"":'["direction"='+direction+']'}`);
-const apply=(c,actions)=>{for(const a of actions)set(a.pos,a.block,a.direction);c.changes.push({tick:system.currentTick,kind:"edit",actions});};
+const set=(p,id,direction,attached,powered)=>{
+ const states=[];
+ for(const [key,value] of [["direction",direction],["attached_bit",attached],["powered_bit",powered]])if(value!==undefined)states.push(JSON.stringify(key)+"="+JSON.stringify(value));
+ cmd(`setblock ${p.join(" ")} ${id} ${states.length?'['+states.join(',')+']':''}`);
+};
+const apply=(c,actions)=>{for(const a of actions)set(a.pos,a.block,a.direction,a.attached,a.powered);c.changes.push({tick:system.currentTick,kind:"edit",actions});};
 const h=system.runInterval(()=>{try{
  if(!d){d=world.getDimension("overworld");load=system.currentTick;cmd("tickingarea add 0 0 0 143 100 175 audit true");cmd("gamerule randomtickspeed 0");cmd("gamerule domobspawning false");cmd("gamerule dotiledrops false");cmd("gamerule dodaylightcycle false");cmd("time set 6001");cmd("weather clear 100000");return;}
  if(!start){
@@ -36,13 +40,15 @@ const h=system.runInterval(()=>{try{
    cmd(`fill ${x-3} 64 ${z-2} ${x+9} 64 ${z+3} stone`);
    for(let y=65;y<=68;y++)cmd(`fill ${x-3} ${y} ${z-2} ${x+9} ${y} ${z+3} air`);
    const left=[x,65,z],right=[x+2,65,z],source=[x+1,65,z],left_support=[x-1,65,z],right_support=[x+3,65,z],sensor=[x+5,65,z],input=[x+5,65,z+1],output=[x+6,65,z],wire=[x-2,65,z],right_wire=[x+4,65,z];
+   const direct_wire=scenario.permutations?[x,65,z-1]:undefined;
+   if(direct_wire){set([x,65,z+1],"stone");set(direct_wire,"redstone_wire");}
    set(left_support,"stone");set(right_support,"stone");set(left,"tripwire_hook",3);
    if(scenario.mode!=="add_right")set(right,"tripwire_hook",1);
    if(scenario.mode!=="complete_string")set(source,"trip_wire");
    set(wire,"redstone_wire");set(right_wire,"redstone_wire");set(output,"redstone_wire");
    cmd(`setblock ${input.join(" ")} daylight_detector ["redstone_signal"=${scenario.filter}]`);
    cmd(`setblock ${sensor.join(" ")} calibrated_sculk_sensor ["minecraft:cardinal_direction"="north"]`);
-   cells.push({scenario,x,z,left,right,source,left_support,right_support,sensor,input,output,wire,right_wire,entities:[],samples:[],changes:[]});
+   cells.push({scenario,x,z,left,right,source,left_support,right_support,sensor,input,output,wire,right_wire,direct_wire,entities:[],samples:[],changes:[]});
   }start=system.currentTick;return;
  }
  const t=system.currentTick-start;
@@ -50,7 +56,7 @@ const h=system.runInterval(()=>{try{
   const q=c.scenario;
   c.entities=c.entities.filter(e=>e.isValid);
   const entities=c.entities.map(e=>({id:e.typeId,entity_id:e.id,position:e.location,aabb:e.getAABB()}));
-  c.samples.push({tick:system.currentTick,left:read(c.left),right:read(c.right),source:read(c.source),left_support:read(c.left_support),right_support:read(c.right_support),sensor:read(c.sensor),input:read(c.input),output:read(c.output),wire:read(c.wire),right_wire:read(c.right_wire),entities});
+  c.samples.push({tick:system.currentTick,left:read(c.left),right:read(c.right),source:read(c.source),left_support:read(c.left_support),right_support:read(c.right_support),sensor:read(c.sensor),input:read(c.input),output:read(c.output),wire:read(c.wire),right_wire:read(c.right_wire),direct_wire:c.direct_wire?read(c.direct_wire):undefined,entities});
   if(t===40&&q.powered)c.entities.push(d.spawnEntity("minecraft:armor_stand",{x:c.source[0]+.5,y:65.02,z:c.z+.5}));
   if(t===70&&q.mode!=="complete_string"&&q.mode!=="add_right"&&q.powered&&(!read(c.left).states.powered_bit||!read(c.right).states.powered_bit))throw new Error("powered lifecycle positive control failed");
   const edge=80+q.phase;
@@ -66,6 +72,14 @@ const h=system.runInterval(()=>{try{
     case "replace_left":actions=[{pos:c.left,block:"stone"}];break;
     case "complete_string":actions=[{pos:c.source,block:"trip_wire"}];break;
     case "add_right":actions=[{pos:c.right,block:"tripwire_hook",direction:1}];break;
+    case "replace_on":actions=[{pos:c.left,block:"air"},{pos:c.left,block:"tripwire_hook",direction:3,attached:true,powered:true}];break;
+    case "replace_off":actions=[{pos:c.left,block:"air"},{pos:c.left,block:"tripwire_hook",direction:3,attached:false,powered:false}];break;
+    case "rotate_supported":actions=[{pos:c.left,block:"tripwire_hook",direction:2}];break;
+    case "rotate_on":actions=[{pos:c.left,block:"tripwire_hook",direction:2,attached:true,powered:true}];break;
+    case "edit_on":actions=[{pos:c.left,block:"tripwire_hook",direction:3,attached:true,powered:true}];break;
+    case "edit_off":actions=[{pos:c.left,block:"tripwire_hook",direction:3,attached:true,powered:false}];break;
+    case "edit_detached":actions=[{pos:c.left,block:"tripwire_hook",direction:3,attached:false,powered:true}];break;
+    case "edit_idle":actions=[{pos:c.left,block:"tripwire_hook",direction:3,attached:false,powered:false}];break;
    }apply(c,actions);
   }
   if(t===edge+35){

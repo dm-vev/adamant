@@ -10,6 +10,14 @@ type RedstoneCircuitProducer interface {
 	RedstoneProducerOutput(power int) Block
 }
 
+// The scene component retains the output configuration captured during setup,
+// including its direction. A same-identifier permutation edit does not recreate
+// it; visible rotation and powered flags can therefore disagree with its output.
+type redstoneProducer struct {
+	power  int
+	output RedstoneCircuitProducer
+}
+
 func (e *redstoneEngine) replaceProducer(pos cube.Pos, before, after Block) {
 	p, ok := after.(RedstoneCircuitProducer)
 	if !ok {
@@ -29,9 +37,9 @@ func (e *redstoneEngine) replaceProducer(pos cube.Pos, before, after Block) {
 	}
 	delete(e.producers, pos)
 	if e.pendingProducers == nil {
-		e.pendingProducers = make(map[cube.Pos]int)
+		e.pendingProducers = make(map[cube.Pos]redstoneProducer)
 	}
-	e.pendingProducers[pos] = ClampRedstonePower(p.RedstoneProducerPower())
+	e.pendingProducers[pos] = redstoneProducer{power: ClampRedstonePower(p.RedstoneProducerPower()), output: p}
 }
 
 func (e *redstoneEngine) activateProducers() {
@@ -39,10 +47,10 @@ func (e *redstoneEngine) activateProducers() {
 		return
 	}
 	if e.producers == nil {
-		e.producers = make(map[cube.Pos]int)
+		e.producers = make(map[cube.Pos]redstoneProducer)
 	}
-	for p, power := range e.pendingProducers {
-		e.producers[p] = power
+	for p, state := range e.pendingProducers {
+		e.producers[p] = state
 		delete(e.pendingProducers, p)
 	}
 }
@@ -56,10 +64,11 @@ func (r RedstoneTransaction) SetProducerStrength(pos cube.Pos, power int) {
 		return
 	}
 	power = ClampRedstonePower(power)
-	if before == power {
+	if before.power == power {
 		return
 	}
-	e.producers[pos] = power
+	before.power = power
+	e.producers[pos] = before
 	b, loaded := r.tx.BlockLoaded(pos)
 	if loaded {
 		e.invalidateAroundBlockChange(pos, b, b, RedstoneUpdateCauseScheduledTick, r.tx.Range())
@@ -68,14 +77,26 @@ func (r RedstoneTransaction) SetProducerStrength(pos cube.Pos, power int) {
 
 func (e *redstoneEngine) producerOutput(pos cube.Pos, b Block) Block {
 	if producer, ok := b.(RedstoneCircuitProducer); ok {
-		return producer.RedstoneProducerOutput(e.producerPower(pos))
+		return e.producerBlock(pos, producer)
 	}
 	return b
 }
 
 func (e *redstoneEngine) producerPower(pos cube.Pos) int {
-	if power, active := e.producers[pos]; active {
-		return power
+	return e.producerState(pos).power
+}
+
+func (e *redstoneEngine) producerBlock(pos cube.Pos, fallback RedstoneCircuitProducer) Block {
+	state := e.producerState(pos)
+	if state.output != nil {
+		fallback = state.output
+	}
+	return fallback.RedstoneProducerOutput(state.power)
+}
+
+func (e *redstoneEngine) producerState(pos cube.Pos) redstoneProducer {
+	if state, active := e.producers[pos]; active {
+		return state
 	}
 	return e.pendingProducers[pos]
 }
@@ -93,7 +114,7 @@ func (r RedstoneTransaction) ProducerStrength(pos cube.Pos) (power int, active b
 // Ordinary identifier replacements still run normal producer setup.
 func (r RedstoneTransaction) SetProducerBlock(pos cube.Pos, b Block) {
 	e := r.tx.World().redstone
-	power, active := e.producers[pos]
+	state, active := e.producers[pos]
 	initial, pending := e.pendingProducers[pos]
 	r.tx.SetBlock(pos, b, nil)
 	if _, ok := b.(RedstoneCircuitProducer); !ok {
@@ -101,9 +122,9 @@ func (r RedstoneTransaction) SetProducerBlock(pos cube.Pos, b Block) {
 	}
 	if active {
 		if e.producers == nil {
-			e.producers = make(map[cube.Pos]int)
+			e.producers = make(map[cube.Pos]redstoneProducer)
 		}
-		e.producers[pos] = power
+		e.producers[pos] = state
 		delete(e.pendingProducers, pos)
 	} else if pending {
 		e.pendingProducers[pos] = initial

@@ -49,6 +49,7 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 		Scenarios []struct {
 			Scenario struct {
 				Block, Entity string
+				Label         string
 				Mode          string
 				Powered       bool
 				Filter, Phase int
@@ -62,7 +63,12 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 			LeftSupport                         *cube.Pos `json:"left_support"`
 			RightSupport                        *cube.Pos `json:"right_support"`
 			RightWire                           *cube.Pos `json:"right_wire"`
-			Changes                             []struct {
+			DirectWire                          *cube.Pos `json:"direct_wire"`
+			Barriers                            []struct {
+				Pos   cube.Pos
+				Block nativeTripwireBlock
+			}
+			Changes []struct {
 				Tick    int64
 				Kind    string
 				Count   int
@@ -70,6 +76,8 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 					Pos       cube.Pos
 					Block     string
 					Direction int
+					Attached  *bool
+					Powered   *bool
 				}
 			}
 			Samples []struct {
@@ -82,6 +90,7 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 				LeftSupport                         *sculkContactNativeBlock `json:"left_support"`
 				RightSupport                        *sculkContactNativeBlock `json:"right_support"`
 				RightWire                           *sculkContactNativeBlock `json:"right_wire"`
+				DirectWire                          *sculkContactNativeBlock `json:"direct_wire"`
 				Entities                            []struct {
 					ID       string
 					EntityID string `json:"entity_id"`
@@ -106,9 +115,16 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 	}
 	for traceIndex, trace := range native.Scenarios {
 		c := trace.Scenario
-		t.Run(fmt.Sprintf("%s/%s/%s/powered%t/filter%d/phase%d", c.Block, c.Entity, c.Mode, c.Powered, c.Filter, c.Phase), func(t *testing.T) {
+		testName := fmt.Sprintf("%s/%s/%s/powered%t/filter%d/phase%d", c.Block, c.Entity, c.Mode, c.Powered, c.Filter, c.Phase)
+		if c.Label != "" {
+			testName += "/" + c.Label
+		}
+		t.Run(testName, func(t *testing.T) {
 			if contextCapture && (trace.NearSensor == nil || trace.NearOutput == nil || trace.Comparator == nil || c.CaptureFrom != 60) {
 				t.Fatal("missing adjacent plate/frequency context")
+			}
+			if name == "bedrock_1_26_51_hook_permutations.json" && trace.DirectWire == nil {
+				t.Fatal("missing direct hook output probe")
 			}
 			expectedSamples := 210
 			if c.Mode != "" {
@@ -148,6 +164,21 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 						tx.SetBlock(cube.Pos{x, 64, z}, Stone{}, nil)
 					}
 				}
+				if trace.Barriers != nil {
+					for x := trace.X - 6; x <= trace.X+6; x++ {
+						for z := trace.Z - 6; z <= trace.Z+6; z++ {
+							tx.SetBlock(cube.Pos{x, 64, z}, Stone{}, nil)
+						}
+					}
+					for _, barrier := range trace.Barriers {
+						b, ok := w.BlockRegistry().BlockByName(barrier.Block.ID, nil)
+						if !ok {
+							t.Fatalf("unmapped native obstruction %s", barrier.Block.ID)
+						}
+						tx.SetBlock(barrier.Pos, b, nil)
+						compareSculkContactNativeBlock(t, tx, trace.Samples[0].Tick, barrier.Pos, barrier.Block)
+					}
+				}
 				if tripwire {
 					tx.SetBlock(left.Side(cube.FaceWest), Stone{}, nil)
 					tx.SetBlock(right.Side(cube.FaceEast), Stone{}, nil)
@@ -173,6 +204,10 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 				tx.SetBlock(trace.Wire, RedstoneWire{}, nil)
 				if trace.RightWire != nil {
 					tx.SetBlock(*trace.RightWire, RedstoneWire{}, nil)
+				}
+				if trace.DirectWire != nil {
+					tx.SetBlock(left.Side(cube.FaceSouth), Stone{}, nil)
+					tx.SetBlock(*trace.DirectWire, RedstoneWire{}, nil)
 				}
 				tx.SetBlock(trace.Output, RedstoneWire{}, nil)
 				tx.SetBlock(trace.Input, DaylightDetector{Signal: c.Filter}, nil)
@@ -250,6 +285,12 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 						} {
 							compareSculkContactNativeBlock(t, tx, sample.Tick, part.pos, part.state.nativeTripwireBlock)
 						}
+						if trace.DirectWire != nil {
+							if sample.DirectWire == nil {
+								t.Fatal("missing direct hook output observation")
+							}
+							compareSculkContactNativeBlock(t, tx, sample.Tick, *trace.DirectWire, sample.DirectWire.nativeTripwireBlock)
+						}
 						for _, change := range trace.Changes {
 							if change.Tick != sample.Tick {
 								continue
@@ -270,7 +311,7 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 									if !ok {
 										t.Fatal("unmapped hook direction")
 									}
-									b = TripwireHook{Facing: facing}
+									b = TripwireHook{Facing: facing, Attached: action.Attached != nil && *action.Attached, Powered: action.Powered != nil && *action.Powered}
 								default:
 									t.Fatal("unmapped native lifecycle edit")
 								}
@@ -407,6 +448,14 @@ func compareSculkContactNativeBlock(t *testing.T, tx *world.Tx, tick int64, pos 
 		if name == "stone_type" && got == nil && id == "minecraft:stone" {
 			if _, ok := tx.Block(pos).(Stone); ok {
 				got = "stone"
+			}
+		}
+		if name == "color" && got == nil {
+			switch b := tx.Block(pos).(type) {
+			case Wool:
+				got = b.Colour.String()
+			case Carpet:
+				got = b.Colour.String()
 			}
 		}
 		switch v := want.(type) {

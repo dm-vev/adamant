@@ -71,7 +71,7 @@ const h=system.runInterval(()=>{try{
 '''
 
 
-def capture_player_use(args, cases, require_parities=True):
+def capture_player_use(args, cases, require_parities=True, sound_prefixes=("button.click_",)):
     output = {"complete": False, "reference": "unmodified Windows BDS; native player interaction events and per-tick state readback",
               "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(), "scenarios": []}
     reference = Reference(args.binary.resolve(), args.assets.resolve(), args.port,
@@ -111,7 +111,7 @@ def capture_player_use(args, cases, require_parities=True):
                     value = json.loads(line)
                 except (ValueError, TypeError):
                     continue
-                if "sound" in value and value["sound"]["SoundType"].startswith("button.click_"):
+                if "sound" in value and value["sound"]["SoundType"].startswith(sound_prefixes):
                     output["sounds"].append(value["sound"])
         output["log_directory"] = str(reference.root)
         output["build_log"] = [s for s in reference.log if "Version:" in s or "Build ID:" in s]

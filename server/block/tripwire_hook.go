@@ -38,7 +38,6 @@ func (t TripwireHook) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 	}
 	t.Facing = face.Direction()
 	place(tx, pos, t, user, ctx)
-	updateTripwireLine(pos, t, tx)
 	return placed(ctx)
 }
 
@@ -55,6 +54,12 @@ func (t TripwireHook) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // only validate its support; a command removing string does not rescan a line.
 func (t TripwireHook) Placed(pos cube.Pos, tx *world.Tx, previous world.Block) {
 	if _, same := previous.(TripwireHook); !same {
+		// Native setup clears the authored powered bit before calculateState
+		// reads its previous flags and selects sounds/vibrations.
+		if t.Powered {
+			t.Powered = false
+			tx.SetBlock(pos, t, nil)
+		}
 		updateTripwireLine(pos, t, tx)
 	}
 }
@@ -69,6 +74,16 @@ func (t TripwireHook) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
 		return 15
 	}
 	return 0
+}
+
+// RedstoneProducerPower matches native setupRedstoneComponent, which always
+// seeds a hook's pending producer at zero. calculateState can only update an
+// already registered producer, even when the visible hook is powered.
+func (TripwireHook) RedstoneProducerPower() int { return 0 }
+
+func (t TripwireHook) RedstoneProducerOutput(power int) world.Block {
+	t.Powered = power != 0
+	return t
 }
 
 func (t TripwireHook) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
