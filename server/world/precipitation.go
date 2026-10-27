@@ -103,8 +103,9 @@ func (tx *Tx) coldEnoughToSnow(pos cube.Pos) bool {
 
 // blockLight returns the block light level at pos.
 func (tx *Tx) blockLight(pos cube.Pos) uint8 {
-	tx.World().flushLight()
-	c, ok := tx.World().loadedChunk(chunkPosFromBlockPos(pos))
+	chunkPos := chunkPosFromBlockPos(pos)
+	c, ok := tx.World().loadedChunk(chunkPos)
+	tx.World().flushLightAt(chunkPos, c)
 	if !ok || pos.OutOfBounds(tx.Range()) {
 		return 0
 	}

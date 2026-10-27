@@ -594,7 +594,13 @@ func (w *World) stampEntityTicking(area loaderActiveArea) {
 			if int64(dx)*int64(dx)+int64(dz)*int64(dz) > area.radiusSq {
 				continue
 			}
-			if c, ok := w.chunks[ChunkPos{area.pos[0] + dx, area.pos[1] + dz}]; ok {
+			pos := ChunkPos{area.pos[0] + dx, area.pos[1] + dz}
+			if c, ok := w.chunks[pos]; ok {
+				if c.entityTickingStamp < w.entityTickingStamp && len(w.deferredSpreads) != 0 {
+					// The column comes to tick: the light deferred around
+					// it is spread before it is read.
+					w.undeferSpreadsNear(pos)
+				}
 				c.entityTickingStamp = w.entityTickingStamp + 1
 			}
 		}

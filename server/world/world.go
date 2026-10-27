@@ -51,6 +51,10 @@ type World struct {
 	// whose light is to be spread into the chunks around them, all of which
 	// were lit: flushLight spreads them together.
 	pendingSpreads []pendingSpread
+	// deferredSpreads holds, by the chunk in their middle, the spreads of
+	// light far from every column whose entities tick, which wait until a
+	// column near them comes to tick or light near them is read.
+	deferredSpreads map[ChunkPos]pendingSpread
 
 	queue         chan transaction
 	queueClosing  chan struct{}
@@ -1380,9 +1384,9 @@ func (tx *Tx) additionalLiquid(pos cube.Pos) (Liquid, bool) {
 // fully lit.
 func (tx *Tx) light(pos cube.Pos) uint8 {
 	w := tx.World()
-	w.flushLight()
 	if pos[1] < w.ra[0] {
 		// Fast way out.
+		w.flushLight()
 		return 0
 	}
 	if !hasSkyLight(w.conf.Dim) {
@@ -1391,9 +1395,12 @@ func (tx *Tx) light(pos cube.Pos) uint8 {
 	}
 	if pos[1] > w.ra[1] {
 		// Above the rest of the world, so full skylight.
+		w.flushLight()
 		return 15
 	}
-	c, ok := w.loadedChunk(chunkPosFromBlockPos(pos))
+	chunkPos := chunkPosFromBlockPos(pos)
+	c, ok := w.loadedChunk(chunkPos)
+	w.flushLightAt(chunkPos, c)
 	if !ok {
 		return 0
 	}
@@ -1406,16 +1413,20 @@ func (tx *Tx) light(pos cube.Pos) uint8 {
 // light is present.
 func (tx *Tx) skyLight(pos cube.Pos) uint8 {
 	w := tx.World()
-	w.flushLight()
 	if pos[1] < w.ra[0] || !hasSkyLight(w.conf.Dim) {
 		// Fast way out.
+		w.flushLight()
 		return 0
 	}
 	if pos[1] > w.ra[1] {
 		// Above the rest of the world, so full skylight.
+		w.flushLight()
 		return 15
 	}
-	return tx.chunk(chunkPosFromBlockPos(pos)).SkyLight(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
+	chunkPos := chunkPosFromBlockPos(pos)
+	c := tx.chunk(chunkPos)
+	w.flushLightAt(chunkPos, c)
+	return c.SkyLight(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
 }
 
 // Time returns the current time of the world. The time is incremented every
@@ -2592,7 +2603,8 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 
 // columnLeft is called once the column at pos left or was replaced. It tells
 // the columns within two chunks of it that the chunks around them may no
-// longer all be ready.
+// longer all be ready, and drops the light spreads deferred into it: the
+// columns around spread their light into it again once it is lit.
 func (w *World) columnLeft(pos ChunkPos) {
 	for dx := int32(-2); dx <= 2; dx++ {
 		for dz := int32(-2); dz <= 2; dz++ {
@@ -2603,6 +2615,9 @@ func (w *World) columnLeft(pos ChunkPos) {
 				if near {
 					c.blockTickingNeighbours = false
 				}
+			}
+			if near && len(w.deferredSpreads) != 0 {
+				delete(w.deferredSpreads, p)
 			}
 		}
 	}
@@ -3374,10 +3389,43 @@ func (w *World) spreadArea(pos ChunkPos) ([]*chunk.Chunk, bool) {
 }
 
 // pendingSpread is the spread of the light of the chunk at pos into the
-// chunks around it, chunks holding all nine.
+// chunks around it, chunks holding all nine. A spread no longer deferred is
+// done even if far from the columns ticking.
 type pendingSpread struct {
 	pos    ChunkPos
 	chunks []*chunk.Chunk
+	forced bool
+}
+
+// spreadFar reports whether the spread of the light around the chunk at pos
+// may wait: no column within three chunks of it ticks its entities. Light is
+// only read where things tick, so it is spread around a chunk once a column
+// near it comes to tick, or light near it is read, as Java lights chunks off
+// its main thread. Bedrock clients light chunks themselves.
+func (w *World) spreadFar(pos ChunkPos) bool {
+	for dx := int32(-3); dx <= 3; dx++ {
+		for dz := int32(-3); dz <= 3; dz++ {
+			if c, ok := w.chunks[ChunkPos{pos[0] + dx, pos[1] + dz}]; ok && w.entitiesTick(c) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// undeferSpreadsNear queues the spreads of light deferred around the chunks
+// within three chunks of pos to be done with the others.
+func (w *World) undeferSpreadsNear(pos ChunkPos) {
+	for dx := int32(-3); dx <= 3; dx++ {
+		for dz := int32(-3); dz <= 3; dz++ {
+			p := ChunkPos{pos[0] + dx, pos[1] + dz}
+			if sp, ok := w.deferredSpreads[p]; ok {
+				sp.forced = true
+				w.pendingSpreads = append(w.pendingSpreads, sp)
+				delete(w.deferredSpreads, p)
+			}
+		}
+	}
 }
 
 // flushSpreads does the pending light spreads and spreads again where they
@@ -3392,9 +3440,17 @@ func (w *World) flushSpreads() {
 	}
 	queued := make(map[ChunkPos]struct{}, len(w.pendingSpreads))
 	for _, sp := range w.pendingSpreads {
-		if w.spreadStillLoaded(sp) {
-			queued[sp.pos] = struct{}{}
+		if !w.spreadStillLoaded(sp) {
+			continue
 		}
+		if !sp.forced && w.spreadFar(sp.pos) {
+			if w.deferredSpreads == nil {
+				w.deferredSpreads = make(map[ChunkPos]pendingSpread)
+			}
+			w.deferredSpreads[sp.pos] = sp
+			continue
+		}
+		queued[sp.pos] = struct{}{}
 	}
 	w.pendingSpreads = nil
 	changed := make(map[ChunkPos]struct{})
@@ -3406,6 +3462,8 @@ func (w *World) flushSpreads() {
 		var classes [9][]pendingSpread
 		for pos := range queued {
 			if chunks, ok := w.spreadArea(pos); ok {
+				// A spread deferred around pos is done with this one.
+				delete(w.deferredSpreads, pos)
 				class := (pos[0]%3+3)%3*3 + (pos[1]%3+3)%3
 				classes[class] = append(classes[class], pendingSpread{pos: pos, chunks: chunks})
 			}

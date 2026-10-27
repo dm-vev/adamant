@@ -81,6 +81,17 @@ type pendingRelight struct {
 	changed []cube.Pos
 }
 
+// flushLightAt brings the light up to date for reading it in the column c,
+// which may be nil, at pos, as flushLight does, first spreading the light
+// deferred around it unless its entities tick, near which light is never
+// deferred.
+func (w *World) flushLightAt(pos ChunkPos, c *Column) {
+	if len(w.deferredSpreads) != 0 && (c == nil || !w.entitiesTick(c)) && !w.inRegionPhase() {
+		w.undeferSpreadsNear(pos)
+	}
+	w.flushLight()
+}
+
 // maxRelightArea is the most chunks across the changes of several chunks
 // may span to be relit as one area.
 const maxRelightArea = 8
