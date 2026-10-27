@@ -106,8 +106,14 @@ func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
 		}
 	}
 	spawnable := map[world.ChunkPos]struct{}{}
+	// Players in one chunk add the same chunks: each chunk adds them once.
+	added := map[world.ChunkPos]struct{}{}
 	for _, p := range trackers {
 		cx, cz := int32(math.Floor(p.Position()[0]))>>4, int32(math.Floor(p.Position()[2]))>>4
+		if _, ok := added[world.ChunkPos{cx, cz}]; ok {
+			continue
+		}
+		added[world.ChunkPos{cx, cz}] = struct{}{}
 		for dx := int32(-8); dx <= 8; dx++ {
 			for dz := int32(-8); dz <= 8; dz++ {
 				spawnable[world.ChunkPos{cx + dx, cz + dz}] = struct{}{}
