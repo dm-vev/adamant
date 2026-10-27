@@ -106,6 +106,16 @@ func (storage *PalettedStorage) StateID(x, y, z byte) uint32 {
 	return storage.javaStateIDs[storage.paletteIndex(x&15, y&15, z&15)]
 }
 
+// valueAndStateID returns what At and StateID return at a position, looking
+// up its palette index once.
+func (storage *PalettedStorage) valueAndStateID(x, y, z byte) (uint32, uint32) {
+	index := storage.paletteIndex(x&15, y&15, z&15)
+	if len(storage.javaStateIDs) == 0 {
+		return storage.palette.Value(index), 0
+	}
+	return storage.palette.Value(index), storage.javaStateIDs[index]
+}
+
 // SetJavaStateID attaches source metadata to the current native state without changing it.
 func (storage *PalettedStorage) SetJavaStateID(x, y, z byte, id uint32) {
 	x, y, z = x&15, y&15, z&15

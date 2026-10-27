@@ -204,6 +204,22 @@ func (chunk *Chunk) Block(x uint8, y int16, z uint8, layer uint8) uint32 {
 	return sub.storages[layer].At(x, uint8(y), z)
 }
 
+// Native returns what Block returns for both layers and what StateID
+// returns at a given x, y and z, finding the sub chunk and the first layer's
+// palette index once.
+func (chunk *Chunk) Native(x uint8, y int16, z uint8) (block, liquid, stateID uint32) {
+	sub := chunk.sub[chunk.SubIndex(y)]
+	switch len(sub.storages) {
+	case 0:
+		return chunk.air, chunk.air, 0
+	case 1:
+		block, stateID = sub.storages[0].valueAndStateID(x, uint8(y), z)
+		return block, chunk.air, stateID
+	}
+	block, stateID = sub.storages[0].valueAndStateID(x, uint8(y), z)
+	return block, sub.storages[1].At(x, uint8(y), z), stateID
+}
+
 // StateID returns the source Java state ID for the primary block cell, or zero when absent.
 func (chunk *Chunk) StateID(x uint8, y int16, z uint8) uint32 {
 	sub := chunk.sub[chunk.SubIndex(y)]
@@ -418,6 +434,37 @@ func (chunk *Chunk) HighestBlock(x, z uint8) int16 {
 		}
 	}
 	return int16(chunk.r[0])
+}
+
+// HighestBlocks sets heights[x<<4|z] to what HighestBlock returns for x and
+// z, for every x and z of the chunk, walking each sub chunk once.
+func (chunk *Chunk) HighestBlocks(heights *[256]int16) {
+	var found [256]bool
+	left := len(heights)
+	for index := int16(len(chunk.sub) - 1); index >= 0 && left > 0; index-- {
+		sub := chunk.sub[index]
+		if sub.Empty() {
+			continue
+		}
+		storage, subY := sub.storages[0], chunk.SubY(index)
+		for i := range heights {
+			if found[i] {
+				continue
+			}
+			for y := 15; y >= 0; y-- {
+				if storage.At(uint8(i>>4), uint8(y), uint8(i)) != chunk.air {
+					heights[i], found[i] = int16(y)|subY, true
+					left--
+					break
+				}
+			}
+		}
+	}
+	for i := range heights {
+		if !found[i] {
+			heights[i] = int16(chunk.r[0])
+		}
+	}
 }
 
 // HeightMap returns the height map of the chunk. If the chunk is edited, the height map will be recalculated on the

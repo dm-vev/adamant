@@ -766,22 +766,23 @@ func (tx *Tx) highestBlock(x, z int) int {
 // height map with every block set; changing blocks otherwise drops it.
 type surfaceHeights struct {
 	y     [256]int16
-	known [256]bool
+	stale [256]bool
 }
 
 // highestBlock returns what HighestBlock returns for x and z, from the
-// cache once found.
+// cache, which the first call fills for the whole column at once.
 func (c *Column) highestBlock(x, z uint8) int16 {
-	if c.surface == nil {
-		c.surface = &surfaceHeights{}
+	s := c.surface
+	if s == nil {
+		s = &surfaceHeights{}
+		c.HighestBlocks(&s.y)
+		c.surface = s
 	}
 	i := int(x&15)<<4 | int(z&15)
-	if c.surface.known[i] {
-		return c.surface.y[i]
+	if s.stale[i] {
+		s.y[i], s.stale[i] = c.HighestBlock(x&15, z&15), false
 	}
-	y := c.HighestBlock(x&15, z&15)
-	c.surface.y[i], c.surface.known[i] = y, true
-	return y
+	return s.y[i]
 }
 
 // surfaceBlockSet updates the highest block cached for x and z once the
@@ -792,14 +793,14 @@ func (c *Column) surfaceBlockSet(x uint8, y int16, z uint8, rid uint32) {
 		return
 	}
 	i := int(x&15)<<4 | int(z&15)
-	if !s.known[i] {
+	if s.stale[i] {
 		return
 	}
 	if air := rid == c.BlockRegistry().AirRuntimeID(); !air && y > s.y[i] {
 		s.y[i] = y
 	} else if air && y == s.y[i] {
 		// The highest block was removed: find the next one when asked.
-		s.known[i] = false
+		s.stale[i] = true
 	}
 }
 

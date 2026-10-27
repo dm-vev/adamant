@@ -53,7 +53,8 @@ func (state NativeState) CanonicalID(registry chunk.BlockRegistry) uint32 {
 
 // NativeStateAt reads both native layers and their retained source identity.
 func NativeStateAt(c *chunk.Chunk, x uint8, y int16, z uint8) NativeState {
-	return NativeState{Block: c.Block(x, y, z, 0), Liquid: c.Block(x, y, z, 1), StateID: c.StateID(x, y, z)}
+	b, liquid, id := c.Native(x, y, z)
+	return NativeState{Block: b, Liquid: liquid, StateID: id}
 }
 
 // SetNativeState publishes both layers before attaching their source identity.
