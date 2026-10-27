@@ -86,6 +86,7 @@ type World struct {
 	stepTicks          atomic.Int64
 	sprintTicks        atomic.Int64
 	tickRate           atomic.Uint64
+	tickTimes          tickTimes
 	forcedChunksMu     sync.RWMutex
 	forcedChunks       map[ChunkPos]struct{}
 	forcedChunksLoaded bool

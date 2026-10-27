@@ -126,6 +126,8 @@ func (w *World) AdvanceTick() {
 // tick performs a tick on the World and updates the time, weather, blocks and
 // entities that require updates.
 func (t ticker) tick(tx *Tx) {
+	start := time.Now()
+	defer func() { tx.World().tickTimes.record(time.Since(start)) }()
 	viewers, loaders := tx.World().allViewers()
 	w := tx.World()
 	defer w.flushLight()

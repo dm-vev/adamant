@@ -2,7 +2,9 @@ package builtin
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
@@ -104,13 +106,34 @@ func registerWorldTickCommands(srv serverAdapter) {
 	cmd.Register(newCommand("fillbiome", nil, fillBiomeCommand{worldOpCommand: guard}, fillBiomeReplaceCommand{fillBiomeCommand: fillBiomeCommand{worldOpCommand: guard}}))
 }
 
+// Run ports TickCommand.tickQuery: the state of the world's ticking, the
+// average time its last ticks took against the time a tick may take, and
+// percentiles of those times.
 func (tickQueryCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	w := tx.World()
-	state := "running"
-	if w.Frozen() {
-		state = "frozen"
+	average, samples := w.TickTimes()
+	target := time.Duration(float64(time.Second) / w.TickRate())
+	millis := func(d time.Duration) string { return fmt.Sprintf("%.1f", float64(d)/float64(time.Millisecond)) }
+	switch {
+	case w.Sprinting():
+		o.Print("The game is sprinting")
+		o.Printf("Target tick rate: %.1f per second (ignored, reference only).\nAverage time per tick: %sms", w.TickRate(), millis(average))
+	default:
+		switch {
+		case w.Frozen():
+			o.Print("The game is frozen")
+		case target < average:
+			o.Print("The game is running, but can't keep up with the target tick rate")
+		default:
+			o.Print("The game is running normally")
+		}
+		o.Printf("Target tick rate: %.1f per second.\nAverage time per tick: %sms (Target: %sms)", w.TickRate(), millis(average), millis(target))
 	}
-	o.Printf("Tick rate: %.1f TPS (target: %.1f); %s.", w.TPS(), w.TickRate(), state)
+	if len(samples) == 0 {
+		return
+	}
+	slices.Sort(samples)
+	o.Printf("Percentiles: P50: %sms P95: %sms P99: %sms. Sample: %d", millis(samples[len(samples)/2]), millis(samples[len(samples)*95/100]), millis(samples[len(samples)*99/100]), len(samples))
 }
 func (c tickRateCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if err := tx.World().SetTickRate(c.Value); err != nil {
