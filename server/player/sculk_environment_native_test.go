@@ -26,6 +26,10 @@ func TestSculkButtonVibrationsMatchBDS(t *testing.T) {
 	testSculkNativeEnvironment(t, "bedrock_1_26_51_sculk_buttons.json", 8)
 }
 
+func TestSculkAdjacentSwitchFilteringMatchesBDS(t *testing.T) {
+	testSculkNativeEnvironment(t, "bedrock_1_26_51_sculk_adjacent.json", 15)
+}
+
 func testSculkNativeEnvironment(t *testing.T, name string, count int) {
 	t.Helper()
 	data, err := os.ReadFile("../block/testdata/" + name)
@@ -38,8 +42,9 @@ func testSculkNativeEnvironment(t *testing.T, name string, count int) {
 			Scenario struct {
 				Sensor, Facing, Barrier, Source string
 				Filter                          *int
-				FilterFront                     bool `json:"filter_front"`
-				RequestPhase                    int  `json:"request_phase"`
+				FilterFront                     bool      `json:"filter_front"`
+				RequestPhase                    int       `json:"request_phase"`
+				SensorPos                       *cube.Pos `json:"sensor_pos"`
 			}
 			Input   *cube.Pos
 			Wires   []cube.Pos
@@ -90,6 +95,9 @@ func testSculkNativeEnvironment(t *testing.T, name string, count int) {
 			applied := 0
 			const y = 65
 			sensor, source := cube.Pos{4, y, 0}, cube.Pos{0, y, 0}
+			if c.SensorPos != nil {
+				sensor = *c.SensorPos
+			}
 			<-w.Exec(func(tx *world.Tx) {
 				for x := -32; x <= 48; x += 16 {
 					for z := -32; z <= 32; z += 16 {

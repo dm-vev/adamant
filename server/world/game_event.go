@@ -277,7 +277,7 @@ func (tx *Tx) EmitGameEvent(event GameEvent, position mgl64.Vec3, context GameEv
 	vibrationsFiltered := context.Spectator || context.DampensVibrations ||
 		(context.Sneaking && isSneakingIgnored(event)) ||
 		w.gameEventBlockFlags(context.AffectedState)&vibrationDampening != 0
-	sourcePos := cube.PosFromVec3(position)
+	sourcePos := vibrationCellPosition(position)
 	type handlerInfo struct {
 		pos      cube.Pos
 		handler  GameEventHandler
@@ -332,16 +332,15 @@ func (tx *Tx) EmitGameEvent(event GameEvent, position mgl64.Vec3, context GameEv
 					continue
 				}
 				listenerPoint := listenerPos.Vec3Centre()
-				distanceSquared := position.Sub(listenerPoint).LenSqr()
 				listenerRadius := user.VibrationRadius()
-				if listenerRadius < 0 || distanceSquared > float64(listenerRadius)*float64(listenerRadius) {
+				if !vibrationInRange(position, listenerPoint, listenerRadius) {
 					continue
 				}
 				if !user.CanReceiveVibration(tx, listenerPos, sourcePos, event, context) ||
 					vibrationOccluded(tx, position, listenerPoint) {
 					continue
 				}
-				info := makeVibrationInfo(tx, event, position, float32(math.Sqrt(distanceSquared)), context)
+				info := makeVibrationInfo(tx, event, position, vibrationDistance(position, listenerPoint), context)
 				if data.Selector.AddCandidate(info, w.CurrentTick()) {
 					tx.SetBlockEntity(listenerPos, actor)
 				}
@@ -378,15 +377,14 @@ func (w *World) scheduleEntityVibrations(tx *Tx, event GameEvent, position mgl64
 			continue
 		}
 		point := listener.VibrationListenerPosition()
-		distanceSquared := position.Sub(point).LenSqr()
 		radius := user.VibrationRadius()
-		if radius < 0 || distanceSquared > float64(radius)*float64(radius) {
+		if !vibrationInRange(position, point, radius) {
 			continue
 		}
-		if !user.CanReceiveVibration(tx, cube.PosFromVec3(point), sourcePos, event, context) || vibrationOccluded(tx, position, point) {
+		if !user.CanReceiveVibration(tx, vibrationCellPosition(point), sourcePos, event, context) || vibrationOccluded(tx, position, point) {
 			continue
 		}
-		data.Selector.AddCandidate(makeVibrationInfo(tx, event, position, float32(math.Sqrt(distanceSquared)), context), w.CurrentTick())
+		data.Selector.AddCandidate(makeVibrationInfo(tx, event, position, vibrationDistance(position, point), context), w.CurrentTick())
 	}
 }
 
@@ -410,7 +408,7 @@ func (tx *Tx) ForceScheduleVibration(listenerPos cube.Pos, event GameEvent, cont
 		data = listener.VibrationData()
 		tx.SetBlockEntity(listenerPos, actor)
 	}
-	distance := float32(origin.Sub(listenerPos.Vec3Centre()).Len())
+	distance := vibrationDistance(origin, listenerPos.Vec3Centre())
 	if data.Selector.AddCandidate(makeVibrationInfo(tx, event, origin, distance, context), w.CurrentTick()) {
 		tx.SetBlockEntity(listenerPos, actor)
 	}
@@ -479,7 +477,7 @@ func (w *World) TickEntityVibrationSystem(tx *Tx, l EntityVibrationListener) {
 		return
 	}
 	point := l.VibrationListenerPosition()
-	w.tickVibration(tx, cube.PosFromVec3(point), point, user, data, false)
+	w.tickVibration(tx, vibrationCellPosition(point), point, user, data, false)
 }
 
 // tickVibration ticks the vibrations of a listener at pos that they travel
@@ -528,8 +526,8 @@ func (w *World) tickVibration(tx *Tx, pos cube.Pos, destination mgl64.Vec3, user
 		}
 		if changed {
 			info := data.Current
-			eventPos := cube.PosFromVec3(info.Position)
-			user.ReceiveVibration(tx, pos, eventPos, info, float32(blockDistance(eventPos, pos)))
+			eventPos := vibrationCellPosition(info.Position)
+			user.ReceiveVibration(tx, pos, eventPos, info, info.Distance)
 			data.Current, data.HasCurrent = VibrationInfo{}, false
 		}
 	}
@@ -580,6 +578,33 @@ func persistVibrationData(tx *Tx, pos cube.Pos) {
 func blockDistance(a, b cube.Pos) float64 {
 	dx, dy, dz := int64(a.X()-b.X()), int64(a.Y()-b.Y()), int64(a.Z()-b.Z())
 	return math.Sqrt(float64(dx*dx + dy*dy + dz*dz))
+}
+
+// vibrationDistance matches Bedrock's VibrationSelector::addCandidate: first
+// floor the event/listener positions to cells, then truncate their Euclidean
+// distance to an integer. This same stored distance controls selection, travel
+// time and sensor strength; reception must not recompute an unrounded distance.
+func vibrationDistance(origin, listener mgl64.Vec3) float32 {
+	return float32(int64(blockDistance(vibrationCellPosition(origin), vibrationCellPosition(listener))))
+}
+
+func vibrationCellPosition(position mgl64.Vec3) cube.Pos {
+	return cube.PosFromVec3(mgl64.Vec3{float64(float32(position[0])), float64(float32(position[1])), float64(float32(position[2]))})
+}
+
+// vibrationInRange uses GameEventDispatcher::post's separate range gate. Native
+// positions and arithmetic are binary32, and the squared distance is truncated
+// before comparison against the listener's radius and the dispatch limit 256.
+func vibrationInRange(origin, listener mgl64.Vec3, radius int) bool {
+	dx := float32(origin[0]) - float32(listener[0])
+	dy := float32(origin[1]) - float32(listener[1])
+	dz := float32(origin[2]) - float32(listener[2])
+	squared := float32(dx*dx + dy*dy)
+	squared += dz * dz
+	if radius < 0 || !(squared < 257) {
+		return false
+	}
+	return int(squared) <= radius*radius
 }
 
 const (
@@ -691,8 +716,8 @@ func (w *World) gameEventBlockFlags(block Block) uint8 {
 }
 
 func vibrationOccluded(tx *Tx, origin, destination mgl64.Vec3) bool {
-	from := cube.PosFromVec3(origin).Vec3Centre()
-	to := cube.PosFromVec3(destination).Vec3Centre()
+	from := vibrationCellPosition(origin).Vec3Centre()
+	to := vibrationCellPosition(destination).Vec3Centre()
 	const epsilon = float64(float32(1e-5))
 	for _, offset := range [...]mgl64.Vec3{{0, -epsilon, 0}, {0, epsilon, 0}, {0, 0, -epsilon}, {0, 0, epsilon}, {-epsilon, 0, 0}, {epsilon, 0, 0}} {
 		if !vibrationRayOccluded(tx.World(), from.Add(offset), to) {

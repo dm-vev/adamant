@@ -52,6 +52,9 @@ func (b Button) press(pos cube.Pos, tx *world.Tx, source world.Entity) bool {
 	tx.SetBlock(pos, b, nil)
 	playRedstoneSwitchSound(pos, tx, b, true)
 	tx.EmitGameEvent(world.GameEventBlockActivate, pos.Vec3Centre(), world.GameEventContext{Source: source})
+	// Native buttonPressed dispatches the vibration while its active circuit
+	// producer still has the old strength, then updates that producer.
+	tx.Redstone().SetProducerStrength(pos, 15)
 	tx.ScheduleBlockUpdate(pos, b, gameTicks(b.Type.pressTicks()))
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
@@ -78,6 +81,7 @@ func (b Button) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	tx.SetBlock(pos, b, nil)
 	playRedstoneSwitchSound(pos, tx, b, false)
 	tx.EmitGameEvent(world.GameEventBlockDeactivate, pos.Vec3Centre(), world.GameEventContext{})
+	tx.Redstone().SetProducerStrength(pos, 0)
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
 }
@@ -163,6 +167,20 @@ func (b Button) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
 		return 15
 	}
 	return 0
+}
+
+// RedstoneProducerPower initializes the scene-graph producer from the button
+// permutation. Later presses/releases update its strength after their event.
+func (b Button) RedstoneProducerPower() int {
+	if b.Pressed {
+		return 15
+	}
+	return 0
+}
+
+func (b Button) RedstoneProducerOutput(power int) world.Block {
+	b.Pressed = power != 0
+	return b
 }
 
 func (b Button) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {

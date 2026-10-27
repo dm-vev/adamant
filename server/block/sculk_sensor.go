@@ -160,7 +160,7 @@ func (s SculkSensor) receiveVibration(tx *world.Tx, pos cube.Pos, info world.Vib
 		s.data = newSculkSensorData()
 	}
 	s.data.lastVibrationFrequency = world.GameEventFrequency(info.Event)
-	s.data.power = max(1, 15-int(math.Floor(15*float64(distance)/float64(radius))))
+	s.data.power = max(1, 15-int(math.Floor(float64(distance/float32(radius)*15))))
 	switch block := state.(type) {
 	case SculkSensor:
 		block.data = s.data

@@ -14,7 +14,14 @@ COLOURS = ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink",
 
 
 def cases(suite):
-    if suite == "buttons":
+    if suite == "adjacent":
+        result = [{"sensor": "calibrated_sculk_sensor", "facing": facing,
+                   "source": source, "sensor_pos": [1,65,0]}
+                  for facing, source in itertools.product(("north", "south", "west", "east"),
+                                                          ("", "wooden_button", "stone_button"))]
+        result += [{"sensor": "sculk_sensor", "facing": "north", "source": source,
+                    "sensor_pos": [1,65,0]} for source in ("", "wooden_button", "stone_button")]
+    elif suite == "buttons":
         result = [{"sensor": sensor, "facing": "north", "source": source}
                   for sensor, source, _ in itertools.product(("sculk_sensor", "calibrated_sculk_sensor"),
                                                             ("wooden_button", "stone_button"), (0, 1))]
@@ -40,7 +47,8 @@ let d,load=0,ready=false,running=false,index=0,current=null,lastSample=0;
 const cmd=x=>d.runCommand(x),get=p=>d.getBlock({x:p[0],y:p[1],z:p[2]});
 const read=p=>{const b=get(p);return {id:b.typeId,states:b.permutation.getAllStates(),power:b.getRedstonePower()};};
 const add=(a,b)=>a.map((v,i)=>v+b[i]),neg=a=>a.map(v=>-v);
-const directions={north:[0,0,-1],south:[0,0,1],west:[-1,0,0],east:[1,0,0]},sensor=[4,65,0],source=[0,65,0];
+const directions={north:[0,0,-1],south:[0,0,1],west:[-1,0,0],east:[1,0,0]},source=[0,65,0];
+let sensor=[4,65,0];
 const request=()=>{emit({action:{action:"click",block:source,face:1,hit:[.5,.05,.5],feet:[.5,65,2.5]},block_state:read(source)});current.request_tick=system.currentTick;current.requested++;};
 system.afterEvents.scriptEventReceive.subscribe(e=>{if(e.id==="audit:start")running=true;});
 world.beforeEvents.playerInteractWithBlock.subscribe(e=>{
@@ -57,16 +65,16 @@ const h=system.runInterval(()=>{try{
   if(!ready){cmd("fill -4 64 -4 10 64 4 stone");cmd("setworldspawn 0 65 2");ready=true;emit({ready:true});}
  }else if(system.currentTick-load>240)throw new Error("load timeout");return;}
  if(!current){
-  const c=cases[index],p=world.getAllPlayers().find(p=>p.name==="RedstoneAudit");if(!p)throw new Error("missing audit player");p.teleport({x:.5,y:65,z:2.5});
+  const c=cases[index],p=world.getAllPlayers().find(p=>p.name==="RedstoneAudit");if(!p)throw new Error("missing audit player");p.teleport({x:.5,y:65,z:2.5});sensor=c.sensor_pos??[4,65,0];
   cmd("fill -4 65 -4 10 69 4 air");cmd("fill -4 64 -4 10 64 4 stone");
   if(c.source)cmd(`setblock 0 65 0 ${c.source} ["facing_direction"=1]`);
   else cmd('setblock 0 65 0 lever ["lever_direction"="up_north_south"]');
   const input=c.filter===undefined?null:add(sensor,c.filter_front?directions[c.facing]:neg(directions[c.facing]));
-  const wires=Object.values(directions).map(v=>add(sensor,v)).filter(p=>!input||p.some((v,i)=>v!==input[i]));
+  const wires=Object.values(directions).map(v=>add(sensor,v)).filter(p=>(!input||p.some((v,i)=>v!==input[i]))&&p.some((v,i)=>v!==source[i]));
   for(const p of wires)cmd(`setblock ${p.join(" ")} redstone_wire`);
   if(input)cmd(`setblock ${input.join(" ")} daylight_detector ["redstone_signal"=${c.filter}]`);
   if(c.barrier&&c.barrier!=="air")cmd(`setblock 2 65 0 ${c.barrier}`);
-  cmd(`setblock 4 65 0 ${c.sensor} ${c.sensor==="calibrated_sculk_sensor"?'["minecraft:cardinal_direction"="'+c.facing+'"]':""}`);
+  cmd(`setblock ${sensor.join(" ")} ${c.sensor} ${c.sensor==="calibrated_sculk_sensor"?'["minecraft:cardinal_direction"="'+c.facing+'"]':""}`);
   current={scenario:c,input,wires,setup_tick:system.currentTick,changes:[],results:[],samples:[],request_tick:0,requested:0};return;
  }
  const c=current.scenario;
@@ -93,7 +101,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("binary", "assets", "output"):
         parser.add_argument("--"+name, type=Path, required=True)
-    parser.add_argument("--suite", choices=("filters", "occlusion", "buttons"), required=True)
+    parser.add_argument("--suite", choices=("filters", "occlusion", "buttons", "adjacent"), required=True)
     parser.add_argument("--port", type=int, default=30867)
     args = parser.parse_args()
     driver.SCRIPT = SCRIPT

@@ -74,8 +74,8 @@ func TestVibrationReloadWaitsForLoadedNeighbours(t *testing.T) {
 	received := 0
 	user := &vibrationTestUser{receive: func(tx *Tx, info VibrationInfo, distance float32) {
 		received++
-		if distance != 3 {
-			t.Errorf("receiving distance = %v, want block-position distance 3", distance)
+		if distance != data.Current.Distance {
+			t.Errorf("receiving distance = %v, want stored distance %v", distance, data.Current.Distance)
 		}
 		if _, ok := info.SourceEntity(tx); ok {
 			t.Error("removed projectile resolved as a loaded entity")
