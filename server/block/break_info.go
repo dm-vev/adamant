@@ -429,6 +429,9 @@ func cropSeedDrops(seed, crop world.Item, growth int) func(item.Tool, []item.Enc
 // the block as items.
 func breakBlock(b world.Block, pos cube.Pos, tx *world.Tx) {
 	breakBlockNoDrops(b, pos, tx)
+	if !tx.World().GameRuleBool("block_drops") {
+		return
+	}
 	if breakable, ok := b.(Breakable); ok {
 		for _, drop := range breakable.BreakInfo().Drops(item.ToolNone{}, nil) {
 			dropItem(tx, drop, pos.Vec3Centre())
