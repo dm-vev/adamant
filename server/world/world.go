@@ -114,6 +114,9 @@ type World struct {
 	running      sync.WaitGroup
 
 	generatorRunning sync.WaitGroup
+	// lightFills bounds how many columns read from the provider have their
+	// light filled at once.
+	lightFills chan struct{}
 
 	// chunks holds a cache of chunks currently loaded. These chunks are cleared
 	// from this map after some time of not being used.
@@ -2435,6 +2438,9 @@ func clonePostProcessing(sections [][]uint16) [][]uint16 {
 // Afterwards, scheduled updates from that chunk are removed and all entities
 // in it are closed.
 func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
+	if c.fillingLight {
+		c.waitReady()
+	}
 	w.finishGeneration(tx, c)
 	// An entity moved by a teleport stays listed in its old chunk until its
 	// next tick. It moves to the chunk it is in now rather than closing with
@@ -2800,9 +2806,15 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 
 	switch {
 	case err == nil:
-		// Case 1: Column successfully loaded from persistent storage.
-		col := w.columnFrom(column, pos)
-		col.fillLight(pos)
+		// Case 1: Column successfully loaded from persistent storage. A
+		// world ticking on its own goroutine fills its light on another and
+		// publishes it once it did, as it does a column generated.
+		async := !w.conf.Synchronous
+		col := w.columnFrom(column, pos, !async)
+		col.fillingLight = async
+		if !async {
+			col.fillLight(pos)
+		}
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
 		} else {
@@ -2844,7 +2856,9 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		if len(col.Entities) > 0 {
 			w.addEntityColumn(pos, col)
 		}
-
+		if async {
+			w.fillLightAsync(pos, col)
+		}
 		return col, nil
 
 	case errors.Is(err, leveldb.ErrNotFound):
@@ -2992,6 +3006,47 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 			callback(tx, c)
 		})
 	}
+}
+
+// fillLightAsync fills the light of a column just read from the provider on
+// a goroutine of its own, marks it ready and then publishes it on the world
+// owner, as a generated column is: until then, readers of its blocks wait
+// for it. Filling the light of a column takes about as long as reading it,
+// and players crossing terrain they saw before read many columns a tick.
+func (w *World) fillLightAsync(pos ChunkPos, col *Column) {
+	w.scheduleMu.Lock()
+	if w.closed.Load() {
+		w.scheduleMu.Unlock()
+		col.fillLight(pos)
+		col.markReady()
+		return
+	}
+	w.generatorRunning.Add(1)
+	w.scheduleMu.Unlock()
+	go func() {
+		defer w.generatorRunning.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				w.conf.Log.Error("fill chunk light: panic", "error", fmt.Sprint(r), "X", pos[0], "Z", pos[1])
+			}
+			col.markReady()
+			if w.closed.Load() {
+				return
+			}
+			w.Do(func(tx *Tx) {
+				if w.chunks[pos] != col {
+					// The column closed meanwhile.
+					return
+				}
+				col.ensureLight(w, pos)
+				w.reconcileMissingBlockStates(pos)
+				w.finishChunkRequest(tx, pos, col)
+			})
+		}()
+		w.lightFills <- struct{}{}
+		defer func() { <-w.lightFills }()
+		col.fillLight(pos)
+	}()
 }
 
 // generateChunkAsync schedules an asynchronous chunk generation task for the given position.
@@ -3405,6 +3460,11 @@ type Column struct {
 	// tickingEpoch is the chunkEpoch of the world, plus one, when the
 	// chunks within two of the column were last all found ready.
 	tickingEpoch uint64
+	// fillingLight is set on a column read from the provider whose light is
+	// filled on another goroutine. Closing it waits for that, rather than
+	// dropping the entities read with it as it drops those of a column still
+	// generating.
+	fillingLight bool
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
 	generation GenerationResult
@@ -3934,8 +3994,8 @@ func (w *World) nativeScheduledTickState(col *Column, tick chunk.ScheduledTick) 
 }
 
 // columnFrom converts a chunk.Column to a Column after reading it from a
-// provider.
-func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
+// provider. The Column is marked ready if ready is set.
+func (w *World) columnFrom(c *chunk.Column, pos ChunkPos, ready bool) *Column {
 	col := newColumn(c.Chunk)
 	col.InhabitedTime = c.InhabitedTime
 	col.postProcessing = c.PostProcessing
@@ -4017,7 +4077,9 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 	}
 	w.scheduledBlockTicks.add(blockTicks)
 	w.scheduledFluidTicks.add(fluidTicks)
-	col.markReady()
+	if ready {
+		col.markReady()
+	}
 	return col
 }
 

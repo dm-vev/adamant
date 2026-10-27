@@ -244,6 +244,7 @@ func (conf Config) New() *World {
 		chunks:              make(map[ChunkPos]*Column),
 		chunkRequests:       make(map[ChunkPos][]chunkCallback),
 		unsettled:           make(map[ChunkPos]*Column),
+		lightFills:          make(chan struct{}, runtime.NumCPU()),
 		workerLocals:        []map[any]any{make(map[any]any)},
 		queueClosing:        make(chan struct{}),
 		queueWake:           make(chan struct{}, 1),
