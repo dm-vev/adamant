@@ -1,6 +1,7 @@
 package world
 
 import (
+	"math/rand/v2"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -32,6 +33,58 @@ func TestHighestBlockFollowsBlockChanges(t *testing.T) {
 		if got := tx.HighestBlock(4, 5); got != bottom {
 			t.Fatalf("highest block of the column beside %d, want %d", got, bottom)
 		}
+	})
+}
+
+// pillarStructure is a structure of the block passed, two blocks wide and
+// long and as high as height.
+type pillarStructure struct {
+	height int
+	b      Block
+}
+
+func (s pillarStructure) Dimensions() [3]int { return [3]int{2, s.height, 2} }
+func (s pillarStructure) At(int, int, int, func(int, int, int) Block) (Block, Liquid) {
+	return s.b, nil
+}
+
+// TestHighestBlockMatchesScanningAsBlocksChange sets and removes blocks at
+// random in a few columns and builds a structure over them, checking the
+// highest blocks found against scanning the columns.
+func TestHighestBlockMatchesScanningAsBlocksChange(t *testing.T) {
+	w := Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+	<-w.Exec(func(tx *Tx) {
+		stone, ok := w.conf.Blocks.BlockByName("minecraft:stone", nil)
+		if !ok {
+			t.Fatal("stone is not registered")
+		}
+		rng := rand.New(rand.NewPCG(1, 2))
+		bottom := tx.Range()[0]
+		col := tx.chunk(ChunkPos{})
+		check := func(step int) {
+			t.Helper()
+			for x := range 4 {
+				for z := range 4 {
+					if got, want := tx.HighestBlock(x, z), int(col.Chunk.HighestBlock(uint8(x), uint8(z))); got != want {
+						t.Fatalf("step %d: highest block of %v %v found %d, scanning finds %d", step, x, z, got, want)
+					}
+				}
+			}
+		}
+		for step := range 3000 {
+			pos := cube.Pos{rng.IntN(4), bottom + rng.IntN(40), rng.IntN(4)}
+			if rng.IntN(2) == 0 {
+				tx.SetBlock(pos, stone, nil)
+			} else {
+				tx.SetBlock(pos, nil, nil)
+			}
+			if step%7 == 0 {
+				check(step)
+			}
+		}
+		tx.BuildStructure(cube.Pos{1, bottom + 50, 1}, pillarStructure{height: 10, b: stone})
+		check(-1)
 	})
 }
 

@@ -761,26 +761,46 @@ func (tx *Tx) highestBlock(x, z int) int {
 
 // surfaceHeights caches the highest block in each x and z of a column, as
 // Java keeps the WORLD_SURFACE height map of a chunk rather than scanning
-// it, which mobs spawning naturally ask of every chunk every tick. An entry
-// holds the block version of the column it was found at, plus one.
+// it, which mobs spawning naturally ask of every chunk every tick. Setting a
+// block through Column.SetBlock keeps it up to date, as Java updates the
+// height map with every block set; changing blocks otherwise drops it.
 type surfaceHeights struct {
-	y   [256]int16
-	ver [256]uint64
+	y     [256]int16
+	known [256]bool
 }
 
 // highestBlock returns what HighestBlock returns for x and z, from the
-// cache while no block of the column changed.
+// cache once found.
 func (c *Column) highestBlock(x, z uint8) int16 {
 	if c.surface == nil {
 		c.surface = &surfaceHeights{}
 	}
 	i := int(x&15)<<4 | int(z&15)
-	if c.surface.ver[i] == c.blockVersion+1 {
+	if c.surface.known[i] {
 		return c.surface.y[i]
 	}
 	y := c.HighestBlock(x&15, z&15)
-	c.surface.y[i], c.surface.ver[i] = y, c.blockVersion+1
+	c.surface.y[i], c.surface.known[i] = y, true
 	return y
+}
+
+// surfaceBlockSet updates the highest block cached for x and z once the
+// block at x, y and z of the first layer was set to the runtime ID passed.
+func (c *Column) surfaceBlockSet(x uint8, y int16, z uint8, rid uint32) {
+	s := c.surface
+	if s == nil {
+		return
+	}
+	i := int(x&15)<<4 | int(z&15)
+	if !s.known[i] {
+		return
+	}
+	if air := rid == c.BlockRegistry().AirRuntimeID(); !air && y > s.y[i] {
+		s.y[i] = y
+	} else if air && y == s.y[i] {
+		// The highest block was removed: find the next one when asked.
+		s.known[i] = false
+	}
 }
 
 // highestObstructingBlock returns the highest block in the World at a given x
@@ -892,6 +912,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		c.SetBlock(x, y, z, 0, rid)
 	} else {
 		SetNativeState(c.Chunk, x, y, z, *opts.nativeState)
+		c.surfaceBlockSet(x, y, z, opts.nativeState.Block)
 	}
 	if _, pending := c.missingBlockStates[pos]; pending && c.CanonicalizeMissingBlockState(pos, 0) {
 		delete(c.missingBlockStates, pos)
@@ -1134,6 +1155,8 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 				}
 			}
 			c.SetBlock(0, 0, 0, 0, c.Block(0, 0, 0, 0)) // Make sure the heightmap is recalculated.
+			// The structure set its blocks past SetBlock.
+			c.surface = nil
 			c.modified = true
 			touched = append(touched, chunkPos)
 
@@ -3631,6 +3654,9 @@ var blockVersionClock atomic.Uint64
 func (c *Column) SetBlock(x uint8, y int16, z uint8, layer uint8, rid uint32) {
 	c.blockVersion = blockVersionClock.Add(1)
 	c.Chunk.SetBlock(x, y, z, layer, rid)
+	if layer == 0 {
+		c.surfaceBlockSet(x, y, z, rid)
+	}
 }
 
 // addEntity appends an entity handle to the column and tracks its slot for O(1) removal.
