@@ -89,7 +89,8 @@ func TestHighestBlockMatchesScanningAsBlocksChange(t *testing.T) {
 }
 
 // TestEntityTickingStopsWhenANeighbourCloses checks a chunk remembered as
-// entity ticking stops being so once a chunk within two of it closes.
+// entity ticking stops being so once a chunk within two of it closes, and
+// one remembered as ticking its blocks once a chunk within one closes.
 func TestEntityTickingStopsWhenANeighbourCloses(t *testing.T) {
 	w := Config{RandomTickSpeed: -1, Provider: NopProvider{}}.New()
 	defer w.Close()
@@ -106,6 +107,16 @@ func TestEntityTickingStopsWhenANeighbourCloses(t *testing.T) {
 		w.closeChunk(tx, corner, w.chunks[corner])
 		if w.entityTickingReady(ChunkPos{}) {
 			t.Fatal("chunk still entity ticking after a chunk within two closed")
+		}
+
+		// Blocks tick once the chunks within one are ready, until one closes.
+		if !w.generationNeighbourhoodReady(ChunkPos{}) || !w.generationNeighbourhoodReady(ChunkPos{}) {
+			t.Fatal("blocks of a chunk with every chunk within one loaded do not tick")
+		}
+		beside := ChunkPos{1, 1}
+		w.closeChunk(tx, beside, w.chunks[beside])
+		if w.generationNeighbourhoodReady(ChunkPos{}) {
+			t.Fatal("blocks of a chunk still tick after a chunk within one closed")
 		}
 	})
 }

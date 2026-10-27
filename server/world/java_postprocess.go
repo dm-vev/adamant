@@ -75,6 +75,11 @@ func (w *World) generationPending(pos ChunkPos, col *Column) bool {
 }
 
 func (w *World) generationNeighbourhoodReady(pos ChunkPos) bool {
+	c := w.chunks[pos]
+	if c != nil && c.blockTickingEpoch == w.chunkEpoch+1 {
+		// The chunks around were all ready, and none left since.
+		return true
+	}
 	for dx := range 3 {
 		for dz := range 3 {
 			col := w.chunks[ChunkPos{pos[0] + int32(dx) - 1, pos[1] + int32(dz) - 1}]
@@ -82,6 +87,10 @@ func (w *World) generationNeighbourhoodReady(pos ChunkPos) bool {
 				return false
 			}
 		}
+	}
+	if !w.inRegionPhase() {
+		// The workers of a region phase may ask of one column at once.
+		c.blockTickingEpoch = w.chunkEpoch + 1
 	}
 	return true
 }

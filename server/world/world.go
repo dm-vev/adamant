@@ -3512,9 +3512,11 @@ type Column struct {
 	compactedVersion uint64
 	// surface caches the highest blocks of the column.
 	surface *surfaceHeights
-	// tickingEpoch is the chunkEpoch of the world, plus one, when the
-	// chunks within two of the column were last all found ready.
-	tickingEpoch uint64
+	// tickingEpoch and blockTickingEpoch are the chunkEpoch of the world,
+	// plus one, when the chunks within two and within one of the column
+	// were last all found ready.
+	tickingEpoch      uint64
+	blockTickingEpoch uint64
 	// entityTickingStamp is the entityTickingStamp of the world, plus one,
 	// of the last tick the entities of the column ticked in.
 	entityTickingStamp uint64
