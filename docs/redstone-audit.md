@@ -18,9 +18,11 @@ matrix rows. Every row below retains its outstanding work. The published checkpo
 includes capture tooling, comparators/analog outputs, switches, pressure plates,
 tripwire, daylight/live lighting, lightning rods and the tested sculk paths.
 The distance/selection, range, button event/producer, plate/hook vibration and
-plate sound changes are included in the current `dev` checkpoint. The unfinished
-hook lifecycle investigation is retained separately as an opt-in diagnostic;
-its mismatches are not presented as fixed.
+plate sound changes are included in the published `dev` checkpoint. The resumed
+hook producer fixes below are committed in `ff0c9154`; the vibration obstruction
+fixes are committed in `0b106d01`. The former opt-in lifecycle
+diagnostic is now an ordinary regression test; all 72 retained lifecycle and
+64 additional permutation traces match after the fixes.
 
 Daylight sampling, the tested full-day weather outputs and body geometry have
 now been corrected against native evidence. Live roof changes, source removal
@@ -43,6 +45,22 @@ verify the new plate/hook vibration paths. Seventeen plate/context traces with
 34 actual client sound packets also verify their sound events and tested
 adjacent-input ordering. This does not close the sensor or
 circuit ordering coverage rows.
+
+The resumed hook lifecycle comparison separates scene-component strength and
+setup direction from visible hook state. It corrects the zero-strength pending
+producer, active-map-only updates, event ordering during explicitly powered
+placement, and output direction retained across same-identifier rotation.
+Another 216 native button/rod rotation and replacement traces independently
+check the shared producer configuration change. These are controlled command
+states, not actual player rotations or lightning hits.
+
+The vibration obstruction path now uses the inspected native binary32 offset
+and clip traversal rather than Java's endpoint-expanded traversal. The full
+native clip, wool predicate and ray/AABB body execute with supplied air/wool
+cells. Another 168 original-BDS contact traces independently check diagonal
+wool seams, solid/partial non-wool controls and positive/negative coordinates
+up to one million blocks. This corrects false reception through a blocked seam
+at large coordinates and the tested same-cell/intersection boundary behavior.
 
 ## Reproducible evidence
 
@@ -99,6 +117,8 @@ Python process. No game binary or extracted machine code is stored here.
 | Button event/producer ordering | `0x319294a`, `0x3192b27`, `0x31954ad`, `0x31954f4`, `0x8bba9f0` | Inspected explicit event-before-active-producer update; 15 actual-player adjacent lever/button traces cover all four calibrated orientations plus normal-sensor controls, including every source/sensor/wire frame |
 | Plate contact events and hook sound/event dispatch | `0x2a50be7..0x2a50bf1`, `0x2a50e50`, `0x4038b70` | Inspected zero/nonzero plate transition gate and source actor argument; 68 plate and 20 hook original-BDS contact traces compare all 18,480 source/sensor/wire frames. The full original hook `_emitState` executes in 64 flag/visible-state/position cases with supplied world callbacks |
 | Plate sound and adjacent calibrated input | `0x2a50d0e`, `0x2a50d27`, `0x2a50d95`, `0x2a50e50` | Inspected resulting-state hash, Y+0.1 sound point and sound-before-event call order; seventeen original-BDS context traces and 34 actual player-client packets verify every plate material and observed adjacent filter strength/frequency behavior |
+| Hook setup, calculation and producer direction | `0x4039490`, `0x4035830`, `0x3454bd0`, `0x66d7700` | Inspected powered-bit reset, zero producer setup, active-map strength setters and stored component direction; 72 lifecycle and 64 permutation BDS traces compare 32,640 full frames. Another 216 native button/rod rotation/replacement traces compare 19,440 frames through old/new support lamps |
+| Vibration offsets, clip traversal and ray/AABB intersection | `0x25d892c..0x25d8ae0`, `0x2d8aaa0`, `0x25f12d0`, `0x2d95aa0` | Inspected 0.001 binary32 offset; complete original clip/predicate and ray/AABB bodies execute with supplied world/unit-wool shapes: 208 obstruction cases, 133 cell traversals and 202 direct intersections. Another 168 actual BDS source/sensor/wire traces retain 35,280 frames |
 
 The evaluator fixture is
 `server/block/testdata/bedrock_1_26_51_redstone_evaluators.json`. Component buffers
@@ -685,11 +705,87 @@ parities. Every sampled string permutation, hook and output matches. Scripts are
 `redstone_bds_tripwire_probe.py` and `redstone_bds_tripwire_line_probe.py`.
 
 Open tripwire work includes previously powered/disarmed player-cutting states,
-support removal,
-rotations/replacement during pending checks, explicit gaps followed by later
+additional support materials and loss timing, more player hook-placement/contact
+paths, rotations/replacement during pending checks, explicit gaps followed by later
 source changes, crossings, full weak/strong input/output/material matrices,
 additional actor states/game modes, real kernel movement/contact phase, exact
 touching boundaries, other sound/state combinations and save/unload/reload behavior.
+
+### Hook producer setup, replacement and permutation edits
+
+`TripWireHookBlock::setupRedstoneComponent` at `0x4039490` first clears the
+visible powered bit, creates a producer using the setup direction, and sets its
+strength to zero. In `calculateState` at `0x4035830`, the opposite hook's block is
+published before its active producer strength and sound/event dispatch. The
+starting hook emits its sound/event before publishing its own block and active
+strength. Both producer lookups use the active map; a newly pending component
+does not receive the update. These setters still matter when the visible flags
+have not changed. The previous kernel read hook electrical power directly from
+the visible bit and omitted both active-component updates.
+
+Hooks now implement `RedstoneCircuitProducer`, seed zero, and update active
+strength at the two native publication points. Fresh placement clears the
+authored powered bit before calculating the line, preserving the native event
+selection. This also avoids a false release vibration when an explicitly powered
+hook is placed into an idle line, and restores the actual activation vibration
+when it is placed into an occupied line.
+
+The native component additionally keeps its original direction across a
+same-identifier permutation edit. Rotating the visible hook north while keeping
+valid south support can leave the original west support electrically powered.
+Producer state now stores its setup output configuration alongside strength;
+weak/strong queries use that configuration. An ordinary air/identifier replacement
+creates a new configuration. The circuit-lock path used by daylight inversion
+and lightning-rod oxidation retains the existing configuration and strength.
+
+The following original-BDS fixtures read every observed frame before scripted
+changes, preserving actual actor identities/poses for contact-driven lines:
+
+| Fixture | Cases / frames | Coverage |
+|---|---|---|
+| `bedrock_1_26_51_hook_lifecycle.json` | 72 / 17,280 | Hook/string/support removal, unsupported rotation, stone replacement, repair, missing-string completion and adding a hook; idle/occupied lines, filters 9/10 and both parities |
+| `bedrock_1_26_51_hook_permutations.json` | 64 / 15,360 | Explicit powered/attached placement, same-ID flag edits, supported rotation, repair and later string removal; direct wire independently observes rotated output |
+| `bedrock_1_26_51_producer_rotation.json` | 216 / 19,440 | Stone/wooden buttons and rods, six initial faces, selected same/opposite/orthogonal rotations, both edit parities, with/without air replacement and final reset; old/new support lamps observe independent conduction |
+
+The lifecycle capture was repeated with disabled tile drops and an asserted
+absence of native item actors. The rotation capture checks that every source
+retains its commanded powered flag and lights its old support lamp before the
+edit; the replay also rejects a fixture lacking that lit-lamp control. It is a
+command-state/configuration test, not a player-use or lightning-lifecycle test.
+The original 72-case replay failed 32 cases before the producer fix. The new
+64-case replay then exposed twelve additional event/direction mismatches, all
+corrected. The lifecycle tests now run normally without an opt-in variable.
+The full pressure-plate/tripwire matrix still retains the open work listed above.
+
+### Actual player hook placement
+
+`bedrock_1_26_51_hook_placement.json` adds sixteen accepted real-player placements
+and 665 per-tick line snapshots: four horizontal directions, creative/survival,
+and continuous/gapped three-string lines. Before-interaction and after-placement
+events confirm the held hook, target block and accepted input. Replay uses real
+`Player.UseItemOnBlock` at the recorded before/after-sample input phase and checks
+every hook/string permutation. The player stands outside string contact bounds.
+
+The first replay matches the visible states but emits 32 attachment packets
+against sixteen native packets. `TripwireHook.UseOnBlock` calculated the line
+again after `place` had already invoked `Placed`. Its second call used the
+original hook flags, generating another pair of attachment sounds/events. Native
+`onPlace` at `0x4037f70` calls setup and then calculates once at `0x4037fb9`.
+The explicit duplicate scan is removed; `Placed` owns this calculation.
+
+The native fixture retains all 24 hook sound packets. The placement replay
+compares the sixteen attachment packets, including exact order, point and visible
+state hash. Eight detach packets from clearing the preceding native circuit are
+retained as capture context; each Go scenario uses a fresh world and does not
+replay that cleanup. This does not replace the existing full 230-packet cutting
+comparison or claim untested removal sound paths.
+
+The placement driver waits for the client to receive the actual held stack,
+and equips it with the native inventory command. The clicked support is end
+stone, whose Script API state has no legacy stone alias to hash. Early attempts
+that sent an empty held stack, or timed out waiting for the Script API inventory
+write to reach the client, produced no accepted placements and were rejected.
+The final fixture comes only from the complete sixteen-case capture.
 
 ### Actual player cutting and hook sound packets
 
@@ -1296,6 +1392,65 @@ startup, phase replacement and native save/load/unload behavior.
 The existing Java-derived listener/actor persistence is not treated as proof
 of Bedrock equivalence. None of the 22 audit areas is declared complete here.
 
+### Native vibration obstruction and coordinate precision
+
+The old ray path expanded its endpoints by `1e-7` and accumulated double-precision
+boundary fractions, following the Java baseline. Its six source offsets were
+`0.00001`. The client uses a **0.001** binary32 offset, read from `0xe69fdc0`,
+and floors/centres both positions before casting the whole calculation to
+binary32. At sufficiently large coordinates an offset rounds back to the
+original coordinate. The old kernel retained a double-precision displacement
+and could therefore hear a vibration that BDS rejects at a diagonal wool seam.
+
+`BlockSource::clip` at `0x2d8aaa0` recomputes the next boundary fraction from
+the current binary32 point after every step; ties choose Z, then Y, then X.
+It does not expand the endpoints and stops after at most 200 transitions.
+Precision-induced repeated cells near the world boundary are retained in the
+executed-client fixture, including their native termination. The wool predicate
+at `0x25f12d0` reads the block type's `0x134` flag byte, bit `0x10`.
+
+The ray/AABB body at `0x2d95aa0` checks face intersections rather than treating
+every visited cell as a hit. It uses binary32 relative coordinates, an inclusive
+segment/face test and a squared parallel threshold of binary32 `1e-7`. A short
+segment entirely inside one wool cube crosses no face and returns no hit. The
+kernel's unconditional tagged-cell hit incorrectly blocked that case. The new
+`vibration_ray.go` ports the tested traversal and boolean unit-cube intersection,
+with the native arithmetic rounding and bound; it queries only already loaded
+blocks. Default vibration-occluding blocks are the full wool cubes.
+
+`scripts/redstone_native_vibration_occlusion_probe.py` executes the untouched
+complete clip, predicate and ray/AABB instruction bodies. Block lookup and unit
+wool geometry are supplied callbacks; border lookup reports an ordinary interior
+cell, no actor/liquid is supplied and compiler cookie validation is bypassed.
+The vibration centring/offset arithmetic is inspected/transcribed, not executed
+as a fabricated complete listener. The fixture records image/function hashes
+and that distinction explicitly; no extracted instructions are stored here.
+`bedrock_1_26_51_vibration_occlusion.json` contains 208 obstruction cases,
+133 complete cell sequences and 202 direct unit-cube intersections, including
+near-parallel thresholds, short/inside/tangent rays, negative positions, exact
+integer endpoints, distant coordinates and the 200-step limit. The high-coordinate
+unit shapes in this component fixture are supplied models; native world geometry
+at those extreme positions is not claimed as tested by the fixture.
+
+`scripts/redstone_bds_sculk_occlusion_geometry_probe.py` independently runs the
+original BDS with 168 cases and 35,280 source/listener/input/wire frames. Native
+armour stands operate stone plates, while calibrated sensors accept only
+frequency 10. Their actual identities/poses/AABBs are retained for the contact
+replay. Cases cover four diagonal directions, anchors 0 / 128 / 256 / -257 /
+1,000,000 / -1,000,000 and seven masks: open, either side of a seam, both sides,
+central wool, stone and carpet. Open/stone/carpet cases must hear; central wool
+must block; each source and its fixed filter have independent positive controls.
+The captured barriers are checked unchanged. The kernel replay also validates
+the SDK's redundant wool/carpet colour alias against the actual block colour.
+
+After fixing that harness alias, the pre-fix replay fails eight large-coordinate
+seam cases: the kernel activates with strength 11 while the native listener stays
+idle. The initial executed-client comparison additionally exposes endpoint,
+traversal, short-inside and bounded-work differences. The final replay checks
+the full recorded frames and all supplied native component cases. Broader dynamic
+world occlusion, fractional actor-source integration, custom models, waterlogging,
+resonance, shriekers and persistence remain open.
+
 ### Repeater pulse pipeline and shared circuit clock
 
 The old scheduled-tick callback re-read the rear input when its delay elapsed.
@@ -1624,9 +1779,9 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Observers | 38 face/phase/retrigger traces, 28 output traces, 12 lifecycle traces and 18 movement callback windows match. Open: notification-only changes, larger chains, powered placement/load, unload/reload and complete piston timing |
 | Pistons and sticky pistons | Nonadjacent power bug fixed. Open all direction/source combinations, conduction, timing, short pulses, push/pull limits, adhesion, block actors and moving entities |
 | Levers and buttons | 196 source states, 480 direct/conducted output cases, 180 actual-arrow traces and 66 real player-use/retrigger traces match. Missing wooden-button activation/holding, projectile collision/contact phase and switch sound events corrected; six native click packets verify three sources. Fifteen adjacent-sensor traces expose and correct button event-before-producer strength ordering. Open: trident world capture, multiple entities/boundaries, broader support/materials, full sound material/mount matrix, producer startup, replacement and reload |
-| Pressure plates and tripwire | Plate conversion/query fixes verified in 302 native traces and five executed scalar methods. Tripwire initialization, contact bounds, 40-string limit, disarming/recheck and neighbour callback scope corrected; 140 contact + 80 line traces match. Artificial carpet collision removed against an executed native getter. Another 58 actual player-cut traces and 230 hook sound packets match. Missing plate/hook vibrations corrected against 68 all-type plate and 20 hook contact/sensor traces; 64 executed hook-helper cases verify event priority, actor absence, sound order and visible-state hash. Seventeen additional settled all-material traces and 34 actual player-client packets verify added plate click sounds and tested adjacent calibrated-input ordering. Open: player modes/actor states, complete boundary/transition/contact integration, broader producer startup/load/order, previously powered/disarmed cutting, gaps/crossings/support/materials, wider audio/lifecycle events and persistence |
+| Pressure plates and tripwire | Plate conversion/query fixes verified in 302 native traces and five executed scalar methods. Tripwire initialization, contact bounds, 40-string limit, disarming/recheck and neighbour callback scope corrected; 140 contact + 80 line traces match. Artificial carpet collision removed against an executed native getter. Another 58 actual player-cut traces and 230 hook sound packets match. Missing plate/hook vibrations corrected against 68 all-type plate and 20 hook contact/sensor traces; 64 executed hook-helper cases verify event priority, actor absence, sound order and visible-state hash. Seventeen additional settled all-material traces and 34 actual player-client packets verify added plate click sounds and tested adjacent calibrated-input ordering. Hook producer setup, supported rotations and replacements now match 136 additional full traces. Sixteen actual-player hook placements expose and remove the duplicate line scan; sixteen native attachment packets are compared separately from cleanup sounds. Open: player modes/actor states, complete boundary/transition/contact integration, broader producer startup/load/order, previously powered/disarmed cutting, gaps/crossings/support/materials, wider audio/lifecycle events and persistence |
 | Daylight detectors and lightning rods | Detector clock, environment, initial/live roof lighting, body and producer registration corrected; 48,960 dimension/initialization source frames, 28,800 weather samples, 24 live roof traces, 16 source-removal/overlap traces, ten producer heap checkpoints and 12 player inversions with wire timing match. Rod hit/expiry/retrigger/oxidation/producer and tested support output match 100 real-bolt traces; 96 rod shapes match inspected bounds. Attraction geometry/order/selection matches 670 executed client cases with synthetic world inputs plus 120 native sort/heap cases; 26 actual BDS traps verify shared selector integration, bolt positions and pulse occurrence through tested rain occluders. Open: other lighting filters/liquid states and lifecycle, partial weather/fog, wider detector face/conduction/support/events/persistence; random weather scheduling, broader precipitation/climate/occluders, copper/projectile/interaction/events and lifecycle |
-| Sculk sensors/calibrated sensors/shriekers | Missing lever/button/plate/hook events, calibrated disabled-output face, integer distance/selection/reception, binary32 range/cell conversion and button event/producer ordering corrected. 264 controlled traces (four include heap readback) cover tested phases/strengths, diagonal positions, adjacent switches and plates, all plate types, hook contacts, filters in four facings, all 16 wool colours and eight material controls. Original client selector/strength/range gates execute in 80/110/92 cases and hook sound/event dispatch in 64 cases. Open: other event/filter/occlusion/output paths, fractional entity-source integration, waterlogging, resonance, shriekers, startup, network action phase and persistence |
+| Sculk sensors/calibrated sensors/shriekers | Missing lever/button/plate/hook events, calibrated disabled-output face, integer distance/selection/reception, binary32 range/cell conversion and button event/producer ordering corrected. 568 controlled traces (four include heap readback) cover tested phases/strengths, diagonal positions, adjacent switches and plates, all plate types, hook contacts, filters in four facings, all 16 wool colours and eight material controls. Original client selector/strength/range gates execute in 80/110/92 cases and hook sound/event dispatch in 64 cases. Native binary32 ray offsets, traversal and unit-cube intersections replace the Java obstruction path; 208 executed obstruction cases, 133 full cell sequences, 202 direct intersections and 168 additional BDS seam/material/coordinate traces match. Open: other event/filter/occlusion/output paths, fractional entity-source integration, waterlogging, resonance, shriekers, startup, network action phase and persistence |
 | Lamps and copper bulbs | Lamp source/consumer phase corrected in observer/wire matrices. Bulb comparator output verified lit/unlit for all eight variants. Open: broader lamp retrigger/cancellation/load cases, bulb toggle timing/interaction and persistence |
 | Doors/trapdoors/fence gates | Open: direct/conducted input, upper/lower halves, manual changes while powered, transition events and all materials |
 | Powered/detector/activator rails | Open: scan range, slopes, branching, entity activation, analog outputs and minecart effects |
@@ -2304,3 +2459,165 @@ Final checkpoint validation:
 
 The personal files `banned-players.json`, `ops.json` and `tmplog.txt` are excluded
 from the checkpoint. The full audit is paused pending the user's continuation.
+
+## Resumed hook producer and placement investigation: 2026-10-27
+
+The user resumed the original full-audit goal. The following changes are
+uncommitted; all 22 matrix rows still retain outstanding work. The former
+72-case lifecycle diagnostic is now an unconditional regression test in
+`tripwire_lifecycle_native_test.go`. Its previous opt-in instructions above are
+historical checkpoint information, not the current invocation requirement.
+
+- Inspected client hook setup/calculation and stored producer direction.
+  Adding the zero-initialized hook producer and native active-map setters makes
+  the original 72 lifecycle traces pass. The combined initial lifecycle/contact/
+  hook-helper check passes (block 6.798 s), log
+  `.tmp/hook-producer-first.log`.
+- Repeated all 72 lifecycle cases with the native item-absence control under
+  `doTileDrops=false`. The canonical fixture now comes from
+  `adamant-redstone-bds-dg03jr7w`, log `.tmp/hook-lifecycle-recapture.log`.
+  All 17,280 frames are retained.
+- Captured 64 additional hook permutation cases / 15,360 frames in
+  `adamant-redstone-bds-5tlp0og6`, log `.tmp/hook-permutations-native.log`.
+  The first replay exposes twelve event/direction mismatches (block 8.446 s),
+  log `.tmp/hook-permutations-before.log`. Clearing the authored powered bit
+  before line calculation and retaining setup direction corrects them.
+- Captured 216 shared producer rotation/replacement cases / 19,440 frames.
+  The canonical fixture comes from `adamant-redstone-bds-fjfindnj`, log
+  `.tmp/producer-rotation-controlled.log`, with a native powered/lit-lamp
+  positive control for every case. An earlier strengthened attempt failed that
+  pre-edit control and was rejected; it supplies no retained fixture. The
+  initial complete rotation fixture also replayed successfully (block 5.042 s),
+  log `.tmp/producer-rotation-replay.log`. The canonical capture is validated by
+  the broad and final targeted runs below.
+- The lifecycle, permutation and existing selected redstone integration checks
+  pass after the producer configuration change (block 27.275 / world 9.281 /
+  player 16.332 / entity 15.055 s), log
+  `.tmp/hook-producer-configuration-targeted.log`.
+- The selected broad `go test ./...` run uses only the same historical
+  exclusions `TestBlockActorDataNBTBytes` and
+  `TestWeakExecDoesNotBlockOwnerWhenQueueFull`, one repetition and a 600-second
+  package timeout. Block passes in 72.812 / world 23.118 / player 24.803 /
+  session 4.554 / Overworld generation 120.582 s. Entity fails in 295.689 s:
+  `TestEndFightNativeLifecycleAndMCDBRestart` loses the first-kill egg and has a
+  Windows DB cleanup sharing error; `TestFishSwimAround` leaves the pool at
+  Y 64.01579437105211; `TestFoxesPickSweetBerries` does not harvest;
+  `TestVillagersRunFromZombies` does not panic. Log:
+  `.tmp/hook-producer-full.log`. The broad run remains a failure. No additional
+  test is excluded, and these observations do not establish their causes.
+- A clean detached worktree at the unchanged published `55002a7a` reproduces
+  seven fox failures in forty repetitions (29.658 s), log
+  `.tmp/producer-baseline-fox.log`. The earlier fish/villager baseline evidence
+  remains recorded above. Three dragon lifecycle repeats on that clean
+  checkpoint pass (117.249 s), log `.tmp/producer-baseline-dragon.log`; three
+  current-tree repeats also pass (104.742 s), log
+  `.tmp/hook-producer-dragon-recheck.log`. These passes do not prove that the
+  failed broad-run egg/cleanup behavior is unrelated to this batch. Its cause
+  remains unresolved. The clean comparison worktree was removed after its
+  processes completed. No AI, dragon, persistence implementation or test was
+  changed to obtain these results.
+- Captured sixteen accepted actual-player hook placements / 665 frames in
+  `adamant-redstone-bds-fsoljiwv`, log `.tmp/hook-placement-native.log`.
+  The first Go replay matches block state but sends 32 attachment packets
+  instead of sixteen (player 4.175 s), log `.tmp/hook-placement-before.log`.
+  Removing the explicit second scan from `TripwireHook.UseOnBlock` corrects
+  the duplicate sound/event path. `Placed` retains the native single scan.
+- Final selected hook/player-placement/cutting, sculk/vibration, producer
+  rotation, plate/switch/button/arrow/rod/trap checks pass (block 29.981 /
+  world 7.588 / player 16.582 / entity 16.166 s), log
+  `.tmp/hook-producer-final-targeted.log`. This includes all 352 command-driven
+  producer cases, all sixteen real-player placement traces, the sixteen
+  attachment packets and the existing 230 cutting sound packets.
+- Final `go build ./...` passes, log `.tmp/hook-producer-final-build.log`.
+  The six added/changed Python probe/client files compile and diff checks pass.
+  The final targeted run and build include the single-scan player fix; the
+  failed broad run predates that final player-only change.
+
+Next work includes powered/disarmed player placement and cutting, remaining
+support/contact boundaries and materials, crossing/gapped lines under later
+source changes, load/unload/persistence and the other open rows. These fixes
+do not establish full native circuit or redstone equivalence. No new commit or
+push was made during the continuation.
+
+## Resumed vibration obstruction investigation: 2026-10-27
+
+The original full audit remains active and incomplete. The obstruction change
+is uncommitted, as are the preceding hook/producer changes. All 22 matrix rows
+still retain their listed outstanding work.
+
+- Inspected `VibrationListener::handleGameEvent` endpoint centring and six-offset
+  clip calls, the complete native clip traversal, the wool predicate and the
+  ray/AABB constructor. The actual offset constant is binary32 **0.001**, not
+  the previous Java-derived **0.00001**. The ray/AABB parallel cutoff is squared
+  binary32 `1e-7`.
+- The original-BDS obstruction capture completes 168 cases / 35,280 frames in
+  `adamant-redstone-bds-xd5pz4tr`, log
+  `.tmp/sculk-occlusion-geometry-native.log`. Its canonical fixture is
+  `server/block/testdata/bedrock_1_26_51_sculk_occlusion_geometry.json`.
+  The first Go harness run fails the SDK's redundant `color` alias. That alias
+  is now checked against the actual wool/carpet colour; it is not discarded.
+  The valid pre-fix replay then fails eight million-coordinate seam cases
+  (block 8.546 s), log `.tmp/sculk-occlusion-geometry-before-valid.log`.
+- The initial executed-client fixture has 148 obstruction cases and 133 raw
+  traversals. Before the algorithm change, thirteen obstruction cases and
+  112 cell sequences differ (world 2.380 s), log
+  `.tmp/vibration-occlusion-before.log`. This includes repeated-cell/endpoint
+  behavior and a short ray entirely within wool, in addition to large-coordinate
+  false reception. The native 200-step limit is preserved, not replaced with an
+  assumed acyclic or endpoint-expanded traversal.
+- The final client fixture expands to 208 obstruction cases, 133 cell sequences
+  and 202 direct unit-cube intersections. It is generated by
+  `scripts/redstone_native_vibration_occlusion_probe.py` and retained at
+  `server/world/testdata/bedrock_1_26_51_vibration_occlusion.json`. The complete
+  original clip, wool predicate and ray/AABB bodies execute with supplied world
+  and unit-shape callbacks. The inspected vibration offset span is explicitly
+  marked unexecuted in its function metadata. These component cases do not
+  imply complete native-world or complete listener execution.
+- After porting the binary32 offsets, current-point traversal and unit-cube
+  face tests, the BDS frames and initial expanded component comparison pass
+  together (world 2.446 / block 8.218 s), log
+  `.tmp/sculk-occlusion-after-first.log`. After adding the direct-intersection
+  boundary controls, all selected sculk/vibration/warden/allay, plate/switch/
+  button/arrow/rod/trap, hook placement/cutting and producer-rotation checks pass
+  (world 6.858 / block 26.483 / player 12.275 / entity 14.703 s), log
+  `.tmp/sculk-occlusion-targeted.log`.
+- The final selected broad `go test ./...` run passes with only the same two
+  historical exclusions `TestBlockActorDataNBTBytes` and
+  `TestWeakExecDoesNotBlockOwnerWhenQueueFull`, one repetition and a 600-second
+  package timeout. Block 58.033 / entity 247.117 / player 19.999 / session 5.514 /
+  world 17.707 / Overworld generation 85.384 s. Log:
+  `.tmp/sculk-occlusion-full.log`. This successful run does not erase earlier
+  failed broad runs or establish the causes of their intermittent AI/egg/DB
+  failures, whose evidence and baseline comparisons remain recorded above.
+- Final `go build ./...` passes, log `.tmp/sculk-occlusion-build.log`. Both new
+  Python probes compile and `git diff --check` passes. No Go source was edited
+  while those final checks were running. No commit or push was made.
+
+The new ray code reads already loaded cells and caps each ray at 200 transitions.
+Broader source/context filtering, fractional actor integration, dynamic occluder
+changes, native-world geometry at extreme coordinates, liquid/resonance/shrieker
+paths, persistence and the other redstone areas remain open.
+
+## Paused checkpoint: 2026-10-27
+
+The user requested a pause until tomorrow and authorized commits and publication
+to `dev`. The completed changes are split into:
+
+- `ff0c9154` — hook lifecycle, scene producer configuration, native command and
+  actual-player placement fixtures, and their capture/replay tools.
+- `0b106d01` — native vibration obstruction, binary32 traversal/intersection
+  behavior, and the executed-client and original-BDS fixtures.
+- A separate documentation commit records the evidence, limitations and pause.
+
+The last targeted tests, broad test run with the two explicitly recorded
+historical exclusions, and `go build ./...` passed as detailed above. No source
+change followed those checks. Earlier intermittent failures remain documented;
+the successful final run does not establish their causes.
+
+The effort estimate remains **approximately 60%**, not measured compatibility.
+All 22 coverage rows retain outstanding work. Piston client disassembly and
+existing code were inspected next, but no piston fix, capture or equivalence
+claim is included in this checkpoint. Resume with piston power directions,
+short pulses and movement timing against original-BDS observations, then
+continue the remaining matrix. Private local player/permission files and
+`tmplog.txt` are excluded from the commits.
