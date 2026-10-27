@@ -27,8 +27,10 @@ func main() {
 		panic(err)
 	}
 	go func() {
-		log.Println("pprof on :6060")
-		_ = http.ListenAndServe(":6060", nil)
+		// Profiles show what the process holds: serve them to this machine
+		// alone.
+		log.Println("pprof on localhost:6060")
+		_ = http.ListenAndServe("localhost:6060", nil)
 	}()
 
 	srv := conf.New()
