@@ -37,7 +37,7 @@ func (uc UserConfig) listenerFunc(conf Config) (Listener, error) {
 		cfg.ErrorLog = conf.Log.With("net origin", "gophertunnel")
 	}
 	if uc.Network.Transport == "" || uc.Network.Transport == "nethernet" {
-		return uc.netherNetListener(conf, cfg)
+		return uc.netherNetListener(conf)
 	}
 	l, err := cfg.Listen("raknet", uc.Network.Address)
 	if err != nil {

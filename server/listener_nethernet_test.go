@@ -8,6 +8,9 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
+	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/session"
+	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
@@ -91,46 +96,56 @@ func TestServerIdentityRejectsInvalidExistingKeyWithoutReplacingIt(t *testing.T)
 	}
 }
 
-// TestNetherNetCarriesGophertunnelSession joins a gophertunnel listener
-// over package nethernet with the gophertunnel dialer: network settings,
-// login, resource packs, start game and spawn all go over the data
-// channel, with Minecraft encryption off.
-func TestNetherNetCarriesGophertunnelSession(t *testing.T) {
-	network := netherNet{cfg: nethernet.ListenConfig{AllowAnonymous: true}}
-	l, err := minecraft.ListenConfig{AuthenticationDisabled: true}.ListenNetwork(network, "127.0.0.1:0")
+// anonymousNetwork dials gophertunnel clients over the NetherNet dialer
+// without an identity.
+type anonymousNetwork struct{}
+
+func (anonymousNetwork) DialContext(ctx context.Context, address string) (net.Conn, error) {
+	c, err := nethernet.Dialer{}.DialContext(ctx, address)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (anonymousNetwork) PingContext(context.Context, string) ([]byte, error) {
+	return nil, errors.New("no ping")
+}
+
+func (anonymousNetwork) Listen(string) (minecraft.NetworkListener, error) {
+	return nil, errors.New("no listen")
+}
+
+// TestNetherNetListenerServesSessions runs a gophertunnel client through
+// the listener the server makes for NetherNet: it is accepted as a
+// session connection, spawned, and disconnected with a message.
+func TestNetherNetListenerServesSessions(t *testing.T) {
+	uc := DefaultConfig()
+	uc.Network.Address = "127.0.0.1:0"
+	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer l.Close()
-	served := make(chan error, 1)
-	texts := make(chan string, 1)
+	addr := l.(netherNetListener).Addr().String()
+	accepted := make(chan session.Conn, 1)
 	go func() {
 		c, err := l.Accept()
 		if err != nil {
-			served <- err
 			return
 		}
-		conn := c.(*minecraft.Conn)
-		defer conn.Close()
-		if err := conn.StartGame(minecraft.GameData{WorldName: "nethernet"}); err != nil {
-			served <- err
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := c.StartGameContext(ctx, minecraft.GameData{EntityRuntimeID: 1, EntityUniqueID: 1}); err != nil {
+			t.Errorf("start game: %v", err)
 			return
 		}
-		served <- nil
-		for {
-			pk, err := conn.ReadPacket()
-			if err != nil {
-				return
-			}
-			if text, ok := pk.(*packet.Text); ok {
-				texts <- text.Message
-				return
-			}
-		}
+		accepted <- c
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	conn, err := minecraft.Dialer{IdentityData: login.IdentityData{DisplayName: "Bot"}}.DialContextNetwork(ctx, network, l.Addr().String())
+	conn, err := minecraft.Dialer{IdentityData: login.IdentityData{DisplayName: "Bot"}}.DialContextNetwork(ctx, anonymousNetwork{}, addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,32 +153,37 @@ func TestNetherNetCarriesGophertunnelSession(t *testing.T) {
 	if err := conn.DoSpawnContext(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if err := <-served; err != nil {
-		t.Fatal(err)
-	}
-	if got := conn.GameData().WorldName; got != "nethernet" {
-		t.Fatalf("world name %q", got)
-	}
-	if err := conn.WritePacket(&packet.Text{TextType: packet.TextTypeChat, Message: "hello"}); err != nil {
-		t.Fatal(err)
-	}
+	var srv session.Conn
 	select {
-	case got := <-texts:
-		if got != "hello" {
-			t.Fatalf("server read %q", got)
-		}
+	case srv = <-accepted:
 	case <-ctx.Done():
-		t.Fatal("server read no text")
+		t.Fatal("server did not spawn the client")
+	}
+	if got := conn.GameData().WorldName; got != "Adamant" {
+		t.Fatalf("world name %q, want the server name", got)
+	}
+	if err := l.Disconnect(srv, "bye"); err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	for {
+		if _, err := conn.ReadPacket(); err != nil {
+			var d minecraft.DisconnectError
+			if !errors.As(err, &d) || string(d) != "bye" {
+				t.Fatalf("read after the disconnect: %v", err)
+			}
+			return
+		}
 	}
 }
 
-func TestParsePong(t *testing.T) {
-	s, ok := parsePong([]byte("MCPE;Adamant;975;1.26.52;3;20;123;world;Survival;0;19132;19132;0;0;"))
-	want := nethernet.Status{ServerName: "Adamant", Protocol: 975, Version: "1.26.52", PlayerCount: 3, MaxPlayerCount: 20, LevelName: "world"}
-	if !ok || s != want {
-		t.Fatalf("parsed %+v, %v", s, ok)
+func TestBatchCompression(t *testing.T) {
+	if _, ok := batchCompression(packet.NopCompression).(bedrock.None); !ok {
+		t.Fatal("no compression asked for, yet batches are compressed")
 	}
-	if _, ok := parsePong([]byte("MCPE;broken")); ok {
-		t.Fatal("parsed a short pong")
+	for _, c := range []packet.Compression{nil, packet.FlateCompression, packet.SnappyCompression} {
+		if got := batchCompression(c); got != (bedrock.Flate{Level: 1}) {
+			t.Fatalf("%T: compression %#v", c, got)
+		}
 	}
 }

@@ -1,0 +1,467 @@
+package netconn
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/sandertv/gophertunnel/minecraft"
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/sandertv/gophertunnel/minecraft/resource"
+	"github.com/sandertv/gophertunnel/minecraft/service"
+	"github.com/sandertv/gophertunnel/minecraft/text"
+)
+
+const (
+	// loginTimeout bounds the login of a client, resource packs included.
+	loginTimeout = time.Minute
+	// statusInterval paces the updates of the status clients look up.
+	statusInterval = 4 * time.Second
+	// packChunkSize is the size of the chunks of a resource pack sent.
+	packChunkSize = 128 << 10
+)
+
+// Config configures a Listener.
+type Config struct {
+	// Log receives what goes wrong with connections. Nil discards it.
+	Log *slog.Logger
+	// MaximumPlayers bounds the players connected. Zero means no bound.
+	MaximumPlayers int
+	// StatusProvider gives the status of the server clients look up.
+	StatusProvider minecraft.ServerStatusProvider
+	// AuthenticationDisabled lets clients join without Xbox Live.
+	AuthenticationDisabled bool
+	// ResourcePacks are offered to every client; TexturePacksRequired makes
+	// clients take them.
+	ResourcePacks        []*resource.Pack
+	TexturePacksRequired bool
+	// Allow decides whether a client that logged in may join, and the
+	// message of a refusal.
+	Allow func(addr net.Addr, identity login.IdentityData, client login.ClientData) (string, bool)
+	// Batches configures the batches of every connection: Compression is
+	// announced to clients, Threshold and Incompressible decide which
+	// batches are compressed. Zero values mean flate at level 1, a
+	// threshold of 256 bytes and movement sent as it is.
+	Batches     bedrock.Config
+	Compression bedrock.Compression
+}
+
+// Listener accepts the clients of a nethernet.Listener and logs them in.
+// A client logs in on a goroutine of its own, which ends once Accept can
+// return it.
+type Listener struct {
+	cfg      Config
+	batches  bedrock.Config
+	nn       *nethernet.Listener
+	verifier *oidc.IDTokenVerifier
+	incoming chan *Conn
+	players  atomic.Int32
+	done     chan struct{}
+	once     sync.Once
+	wg       sync.WaitGroup
+}
+
+// Listen listens for clients on address with the transport configured by
+// nn.
+func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, error) {
+	if cfg.Log == nil {
+		cfg.Log = slog.New(slog.DiscardHandler)
+	}
+	if cfg.StatusProvider == nil {
+		cfg.StatusProvider = minecraft.NewStatusProvider("Minecraft Server", "")
+	}
+	if cfg.Compression == nil {
+		cfg.Compression = bedrock.Flate{Level: 1}
+	}
+	l := &Listener{cfg: cfg, batches: cfg.Batches, incoming: make(chan *Conn), done: make(chan struct{})}
+	if l.batches.Incompressible == nil {
+		l.batches.Incompressible = movement
+	}
+	if !cfg.AuthenticationDisabled {
+		var err error
+		if l.verifier, err = verifier(); err != nil {
+			return nil, fmt.Errorf("netconn: verifier of Xbox Live logins: %w", err)
+		}
+	}
+	var err error
+	if l.nn, err = nn.Listen(address); err != nil {
+		return nil, err
+	}
+	l.updateStatus()
+	l.wg.Add(2)
+	go l.accept()
+	go l.refreshStatus()
+	return l, nil
+}
+
+// verifier returns the verifier of the tokens of Xbox Live logins.
+func verifier() (*oidc.IDTokenVerifier, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	discovery, err := service.Discover(ctx, service.ApplicationTypeMinecraftPE, protocol.CurrentVersion)
+	if err != nil {
+		return nil, err
+	}
+	env := new(service.AuthorizationEnvironment)
+	if err := discovery.Environment(env); err != nil {
+		return nil, err
+	}
+	return env.VerifierContext(ctx)
+}
+
+// movement reports the packets of movement, which compress too little to
+// be worth the CPU.
+func movement(id uint32) bool {
+	switch id {
+	case packet.IDMoveActorAbsolute, packet.IDMovePlayer, packet.IDSetActorMotion, packet.IDMoveActorDelta:
+		return true
+	}
+	return false
+}
+
+// Accept returns the next client that logged in.
+func (l *Listener) Accept() (*Conn, error) {
+	select {
+	case c := <-l.incoming:
+		return c, nil
+	case <-l.done:
+		return nil, net.ErrClosed
+	}
+}
+
+// Disconnect disconnects a client with a message; an empty message hides
+// the screen of the disconnection.
+func (l *Listener) Disconnect(c *Conn, message string) error {
+	_ = c.WritePacket(&packet.Disconnect{HideDisconnectionScreen: message == "", Message: message})
+	_ = c.Flush()
+	return c.Close()
+}
+
+// Addr returns the address of the transport.
+func (l *Listener) Addr() net.Addr { return l.nn.Addr() }
+
+// Close stops accepting clients and closes the transport.
+func (l *Listener) Close() error {
+	l.once.Do(func() {
+		close(l.done)
+		_ = l.nn.Close()
+		l.wg.Wait()
+	})
+	return nil
+}
+
+func (l *Listener) accept() {
+	defer l.wg.Done()
+	for {
+		nn, err := l.nn.AcceptConn()
+		if err != nil {
+			return
+		}
+		go l.login(nn)
+	}
+}
+
+func (l *Listener) refreshStatus() {
+	defer l.wg.Done()
+	t := time.NewTicker(statusInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+			l.updateStatus()
+		case <-l.done:
+			return
+		}
+	}
+}
+
+func (l *Listener) status() minecraft.ServerStatus {
+	s := l.cfg.StatusProvider.ServerStatus(int(l.players.Load()), l.cfg.MaximumPlayers)
+	if s.MaxPlayers == 0 {
+		s.MaxPlayers = s.PlayerCount + 1
+	}
+	return s
+}
+
+func (l *Listener) updateStatus() {
+	s := l.status()
+	l.nn.SetStatus(nethernet.Status{
+		ServerName:     s.ServerName,
+		Protocol:       protocol.CurrentProtocol,
+		Version:        protocol.CurrentVersion,
+		LevelName:      s.ServerSubName,
+		PlayerCount:    s.PlayerCount,
+		MaxPlayerCount: s.MaxPlayers,
+		GameType:       1,
+	})
+}
+
+// left counts a client out.
+func (l *Listener) left() {
+	l.players.Add(-1)
+	l.updateStatus()
+}
+
+// login logs a client in and queues it for Accept.
+func (l *Listener) login(nn *nethernet.Conn) {
+	c := newConn(l, nn)
+	if max := l.cfg.MaximumPlayers; max != 0 && int(l.players.Load()) >= max {
+		_ = c.WritePacket(&packet.PlayStatus{Status: packet.PlayStatusLoginFailedServerFull})
+		_ = c.Flush()
+		_ = nn.Close()
+		return
+	}
+	l.players.Add(1)
+	l.updateStatus()
+	_ = nn.SetReadDeadline(time.Now().Add(loginTimeout))
+	if err := c.login(); err != nil {
+		var closed DisconnectError
+		if !errors.As(err, &closed) && !errors.Is(err, net.ErrClosed) {
+			l.cfg.Log.Debug("login failed", "raddr", nn.RemoteAddr(), "err", err)
+		}
+		_ = c.Close()
+		return
+	}
+	_ = nn.SetReadDeadline(time.Time{})
+	select {
+	case l.incoming <- c:
+	case <-l.done:
+		_ = c.Close()
+	}
+}
+
+// login runs the login of a client: network settings, the login request,
+// the resource packs.
+func (c *Conn) login() error {
+	pk, err := c.read(packet.IDRequestNetworkSettings)
+	if err != nil {
+		return err
+	}
+	if proto := pk.(*packet.RequestNetworkSettings).ClientProtocol; proto != protocol.CurrentProtocol {
+		status := packet.PlayStatusLoginFailedClient
+		if proto > protocol.CurrentProtocol {
+			status = packet.PlayStatusLoginFailedServer
+		}
+		_ = c.WritePacket(&packet.PlayStatus{Status: status})
+		_ = c.Flush()
+		return fmt.Errorf("netconn: client speaks protocol %d, not %d", proto, protocol.CurrentProtocol)
+	}
+	threshold := c.l.batches.Threshold
+	if threshold == 0 {
+		threshold = 256
+	}
+	_ = c.WritePacket(&packet.NetworkSettings{
+		CompressionThreshold: uint16(threshold),
+		CompressionAlgorithm: c.l.cfg.Compression.Algorithm(),
+	})
+	if err := c.Flush(); err != nil {
+		return err
+	}
+	c.b.EnableCompression(c.l.cfg.Compression)
+
+	if pk, err = c.read(packet.IDLogin); err != nil {
+		return err
+	}
+	if err := c.authenticate(pk.(*packet.Login)); err != nil {
+		_ = c.Flush()
+		return err
+	}
+	// NetherNet encrypts the connection itself: no handshake follows.
+	_ = c.WritePacket(&packet.PlayStatus{Status: packet.PlayStatusLoginSuccess})
+	_ = c.WritePacket(c.l.packsInfo())
+	if err := c.Flush(); err != nil {
+		return err
+	}
+	return c.sendPacks()
+}
+
+// authenticate checks the login request: the Xbox Live chain if the server
+// asks for it, the key the transport proved, and the server's own rules.
+func (c *Conn) authenticate(pk *packet.Login) error {
+	var (
+		auth login.AuthResult
+		err  error
+	)
+	if c.identity, c.client, auth, err = login.Parse(pk.ConnectionRequest, c.l.verifier); err != nil {
+		return fmt.Errorf("netconn: parse login request: %w", err)
+	}
+	if !auth.XBOXLiveAuthenticated && !c.l.cfg.AuthenticationDisabled {
+		_ = c.WritePacket(&packet.Disconnect{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})
+		return errors.New("netconn: client is not logged in with Xbox Live")
+	}
+	if pub := c.nn.PublicKey(); pub != nil && !auth.PublicKey.Equal(pub) {
+		// The transport proved another key: a login replayed elsewhere.
+		_ = c.WritePacket(&packet.Disconnect{Reason: packet.DisconnectReasonNotAuthenticated})
+		return errors.New("netconn: login key is not the key of the transport identity")
+	}
+	if allow := c.l.cfg.Allow; allow != nil {
+		if reason, ok := allow(c.RemoteAddr(), c.identity, c.client); !ok {
+			_ = c.WritePacket(&packet.Disconnect{Reason: packet.DisconnectReasonKicked, Message: reason})
+			return DisconnectError("refused: " + reason)
+		}
+	}
+	return nil
+}
+
+// packsInfo returns the resource packs offered.
+func (l *Listener) packsInfo() *packet.ResourcePacksInfo {
+	pk := &packet.ResourcePacksInfo{TexturePackRequired: l.cfg.TexturePacksRequired}
+	for _, pack := range l.cfg.ResourcePacks {
+		info := protocol.TexturePackInfo{UUID: pack.UUID(), Version: pack.Version(), Size: uint64(pack.Len()), DownloadURL: pack.DownloadURL()}
+		if pack.Encrypted() {
+			info.ContentKey = pack.ContentKey()
+			info.ContentIdentity = pack.Manifest().Header.UUID.String()
+		}
+		pk.TexturePacks = append(pk.TexturePacks, info)
+	}
+	return pk
+}
+
+// sendPacks hands the client the resource packs it asks for, then the
+// stack of packs, until it completes the login.
+func (c *Conn) sendPacks() error {
+	var (
+		queue   []*resource.Pack
+		current *resource.Pack
+		offset  uint64
+	)
+	next := func() error {
+		if len(queue) == 0 {
+			return errors.New("netconn: no resource pack left to send")
+		}
+		current, offset, queue = queue[0], 0, queue[1:]
+		checksum := current.Checksum()
+		_ = c.WritePacket(&packet.ResourcePackDataInfo{
+			UUID:          current.UUID().String() + "_" + current.Version(),
+			DataChunkSize: packChunkSize,
+			ChunkCount:    uint32(current.DataChunkCount(packChunkSize)),
+			Size:          uint64(current.Len()),
+			Hash:          checksum[:],
+			PackType:      packType(current),
+		})
+		return c.Flush()
+	}
+	for {
+		pk, err := c.read(packet.IDResourcePackClientResponse, packet.IDClientCacheStatus, packet.IDResourcePackChunkRequest)
+		if err != nil {
+			return err
+		}
+		switch pk := pk.(type) {
+		case *packet.ClientCacheStatus:
+			c.cacheEnabled.Store(pk.Enabled)
+		case *packet.ResourcePackClientResponse:
+			switch pk.Response {
+			case packet.PackResponseRefused:
+				return DisconnectError("refused the resource packs")
+			case packet.PackResponseSendPacks:
+				if queue, err = c.l.packs(pk.PacksToDownload); err != nil {
+					return err
+				}
+				if err := next(); err != nil {
+					return err
+				}
+			case packet.PackResponseAllPacksDownloaded:
+				_ = c.WritePacket(c.l.packStack())
+				if err := c.Flush(); err != nil {
+					return err
+				}
+			case packet.PackResponseCompleted:
+				return nil
+			default:
+				return fmt.Errorf("netconn: unknown resource pack response %d", pk.Response)
+			}
+		case *packet.ResourcePackChunkRequest:
+			id, _, _ := strings.Cut(pk.UUID, "_")
+			if current == nil || current.UUID().String() != id || uint64(pk.ChunkIndex)*packChunkSize != offset {
+				return fmt.Errorf("netconn: unexpected request for chunk %d of resource pack %s", pk.ChunkIndex, pk.UUID)
+			}
+			data := make([]byte, packChunkSize)
+			n, err := current.ReadAt(data, int64(offset))
+			if err != nil && n == 0 {
+				return fmt.Errorf("netconn: read resource pack: %w", err)
+			}
+			_ = c.WritePacket(&packet.ResourcePackChunkData{UUID: pk.UUID, ChunkIndex: uint32(pk.ChunkIndex), DataOffset: offset, Data: data[:n]})
+			if err := c.Flush(); err != nil {
+				return err
+			}
+			if offset += uint64(n); offset >= uint64(current.Len()) && len(queue) > 0 {
+				if err := next(); err != nil {
+					return err
+				}
+			}
+		}
+	}
+}
+
+// packs returns the resource packs a client asks for by UUID, with or
+// without a version.
+func (l *Listener) packs(ids []string) ([]*resource.Pack, error) {
+	var out []*resource.Pack
+	for _, id := range ids {
+		uuid, version, _ := strings.Cut(id, "_")
+		found := false
+		for _, pack := range l.cfg.ResourcePacks {
+			if pack.UUID().String() == uuid && (version == "" || version == pack.Version()) {
+				out, found = append(out, pack), true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("netconn: client asks for unknown resource pack %s", id)
+		}
+	}
+	return out, nil
+}
+
+// packStack returns the stack of resource packs: the server's, then the
+// ones every client has, as gophertunnel lists them.
+func (l *Listener) packStack() *packet.ResourcePackStack {
+	pk := &packet.ResourcePackStack{BaseGameVersion: protocol.CurrentVersion, Experiments: []protocol.ExperimentData{{Name: "cameras", Enabled: true}}}
+	for _, pack := range l.cfg.ResourcePacks {
+		pk.TexturePacks = append(pk.TexturePacks, protocol.StackResourcePack{UUID: pack.UUID().String(), Version: pack.Version()})
+	}
+	for _, p := range builtinPacks {
+		pk.TexturePacks = append(pk.TexturePacks, protocol.StackResourcePack{UUID: p[0], Version: p[1]})
+	}
+	return pk
+}
+
+// builtinPacks are the resource packs every client has, by UUID and
+// version.
+var builtinPacks = [][2]string{
+	{"d34cfa4b-2ad1-453d-a0db-668b429a3ea0", "1.26.40"},
+	{"b41c2785-c512-4a49-af56-3a87afd47c57", "1.21.30"},
+	{"a4df0cb3-17be-4163-88d7-fcf7002b935d", "1.21.20"},
+	{"d19adffe-a2e1-4b02-8436-ca4583368c89", "1.21.10"},
+	{"85d5603d-2824-4b21-8044-34f441f4fce1", "1.21.0"},
+	{"e977cd13-0a11-4618-96fb-03dfe9c43608", "1.20.60"},
+	{"0674721c-a0aa-41a1-9ba8-1ed33ea3e7ed", "1.20.50"},
+	{"0fba4063-dba1-4281-9b89-ff9390653530", "1.0.0"},
+}
+
+// packType returns the type of a resource pack, as ResourcePackDataInfo
+// names it.
+func packType(pack *resource.Pack) byte {
+	switch {
+	case pack.HasWorldTemplate():
+		return packet.ResourcePackTypeWorldTemplate
+	case pack.HasTextures() && (pack.HasBehaviours() || pack.HasScripts()):
+		return packet.ResourcePackTypeAddon
+	case !pack.HasTextures() && (pack.HasBehaviours() || pack.HasScripts()):
+		return packet.ResourcePackTypeBehaviour
+	case pack.HasTextures():
+		return packet.ResourcePackTypeResources
+	}
+	return packet.ResourcePackTypeSkins
+}

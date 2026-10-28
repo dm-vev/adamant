@@ -128,7 +128,15 @@ func (s *Session) sendPackets() {
 				return
 			}
 		}
+		// What a tick showed goes out as one batch, when the tick ends
+		// rather than on a timer of the connection.
+		err := s.conn.Flush()
 		s.connWriteMu.Unlock()
+		if err != nil {
+			s.conf.Log.Debug("flush session packets: " + err.Error())
+			s.CloseConnection()
+			return
+		}
 	}
 }
 
