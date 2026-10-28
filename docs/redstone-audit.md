@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **paused at the user's request on 2026-10-28; audit incomplete**.
+Status: **active after the user's continuation on 2026-10-28; audit incomplete**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -3608,3 +3608,179 @@ root server entry point. The four Python capture scripts pass py_compile.
 These checks do not supersede the 292 known real-entity failures or the earlier
 intermittent villager failure. The production geometry changes are committed
 in `c51c1fd4`; the tested, runtime-unintegrated sweep primitive is in `d37b4d2d`.
+
+#### Resumed item physics, 2026-10-28
+
+The user reactivated the full goal. The previous turn published the requested
+checkpoint; that was progress, not completion of the audit. Work remains on the
+original 22-row matrix, with the overall effort estimate still approximately
+60%. The following changes remain uncommitted pending a new commit request.
+
+The item-escape input names in the earlier probe needed correction: BlockType
+`+0x164` bit 2 is **mPushesOutItems**, not mSolid. The word `solid_neighbours`
+in the fixture means that same item-escape flag on each neighbour. BlockType
+`+0x130` is **BlockProperty**, not Material; its bit 0 is Stair. The original
+function chooses 0.1 escape speed for stairs and 0.25 otherwise. These labels
+are now explicit in the capture metadata and the Go port. The expanded 1,600
+executed-client cases include partial/multiple shapes, nonintersecting controls,
+nonzero initial velocity and different height offsets; all result velocities,
+stuck bits and collision flags match.
+
+A read-only owned-BDS probe additionally reads all 1,477 registered native
+BlockType objects. It validates their runtime vptr, namespace, full name and
+raw name. There are 970 types with mPushesOutItems (including 97 stair types)
+and 507 without it. The generated item lookup uses these observed flags:
+piston heads and moving_block do not initiate item escape even though they
+have collision shapes. The fixture is
+`bedrock_1_26_51_entity_physics.json`, and the generator retains its digest.
+Unknown/custom names are not classified as observed vanilla types.
+
+ConfigureDepenetration is the original leaf body at `0x9027730`, identified
+through the ConfigureDepenetration system registered at `0x681b0e5`. It selects
+the original constant vectors at `0xe6d7d88` (1,1,1) and `0xe6d8608` (0,0,0).
+Stuck-item bit 3 selects ones; otherwise a nonempty one-way block list or bits
+0/2/4 selects zeros. Per-axis component minima and temporary overrides are
+then applied. Another 576 executed-client cases independently validate this
+policy, including every bit combination, both list states and different
+minima/overrides. ActorMoveSystem calls the sweep with Y, X, Z movements;
+UpdateDepenetration at `0x901c270` remembers consecutive penetrating moves.
+
+Dropped items now use the checked sweep and caller policy, item escape before
+gravity, consecutive-penetration state, and the native resting-item movement
+gate (age modulo four, on-ground and squared pre-gravity speed <= 0.0001).
+Entity piston pushes share the item's collision state and previous-progress
+block-source view. The item path filters collision shapes against its movement
+query; complete native shape-fetch caching, ordering and other actors' movement
+policies remain open. The 768 complete-world traces remain the integration
+gate; primitive matches do not close this work.
+
+Owned-BDS heap observations establish that a fresh item spawned inside stone
+already has penetration bit 1 set at age zero while its requested spawn origin
+is retained. Actor::_doInitialMove (`0x19f1030`) invokes move with a zero vector.
+The kernel seeds that collision state when opening the item for the first time.
+The refreshed heap capture uses exact ActorUniqueID component matches
+(`0x18f957af`), not coordinates alone. The four checkpoints are retained from
+`adamant-redstone-bds-q6egzkll`. Live state/body/component bytes are checked for
+stability, and native/script position agreement is recorded explicitly.
+
+Additional moving-item experiments exposed a phase distinction: a live actor
+may advance while a Script API snapshot still reports the preceding state.
+The earlier held-callback assumption alone is therefore insufficient evidence
+for moving entities. Failed five-entity captures are rejected; heap bits are
+compared only when age and position agree with the Script API frame. Immutable
+block flags and the matching fresh-stone checkpoints remain valid evidence.
+
+Item forces and positions now retain binary32 arithmetic. Native movement also
+preserves the actual AABB across ticks and derives position from its rounded
+centre. Reconstructing a fixed-size box from position loses asymmetric bound
+rounding, visible by the second air step. The separate stable Script API
+capture `bedrock_1_26_51_item_motion.json` from
+`adamant-redstone-bds-innpqga_` supplies three air and three landing steps.
+Those position/velocity/on-ground checks use exact equality with BDS. The old
+double-precision scalar expectations were replaced with these independent
+observations; the partial-hopper identity check now compares motion with an
+uncollected control item rather than asserting a double-precision trajectory.
+
+After spawn-state and binary32 corrections, the complete native entity replay
+has 116 failing cases instead of 292: 18 ordinary item, 74 obstructed item and
+24 ordinary armor-stand cases. Log `.tmp/piston-vanilla-after-native-float.log`
+(entity 20.176 s). This count predates the final persistent-AABB refinement;
+its complete replay is being checked separately. Item/shape/policy/sweep and
+existing item-interaction checks pass after that refinement (block 5.263 /
+entity 5.057 s), log `.tmp/piston-item-native-physical-box.log`.
+
+Next evidence targets include honey's side-slide eligibility, obstruction
+contact/carry ordering, the 24 armor-stand floor/carry failures, full native
+shape-fetch ordering/caching, and interactions outside these retained scenes.
+The client HoneyBlock::triggerSlidingDownEffects (`0x66ba110`) has direct callers
+at `0xc60095a`, `0xc600bda` and `0xc6010a5`; the current Go honey side-slide path
+still produces a -0.05 item velocity in cases where BDS reports -0.0392.
+
+The final persistent-box replay retains the same 116 failures, without changing
+the native fixture or its tolerances: entity 17.153 s, log
+`.tmp/piston-vanilla-after-persistent-box.log`. All 128 armor-stand obstruction
+traces still pass. The exact three air and three landing steps, fresh-stone
+spawn checkpoints, all item-interaction tests selected by the item name filter,
+1,600 escape cases, 1,477 flag entries, 576 policies, 2,072 sweep cases and the
+block piston shape/passive-body checks pass together (block 5.263 / entity
+5.057 s), log `.tmp/piston-item-native-physical-box.log`.
+
+The shared piston/observer/moving-block/queue/honey/pressure-plate/player/session
+checks also pass (block 40.084 / player 4.046 / session 2.814 s), log
+`.tmp/piston-item-shared-regressions.log`. The root server builds successfully
+as `.tmp/adamant-item-physics-check.exe`. These targeted results do not replace
+a new broad suite run, and the ordinary 116 failing entity traces remain.
+
+For the next honey comparison, the eligibility code at `0xc600968..0xc6009ce`
+checks actor-origin Y against block Y + 0.9375, downward velocity, and horizontal
+distance against half the stored body width plus binary32 0.43125
+(`0xe98a5cc`). The current Go fixed 0.4375 threshold omits the body width.
+This is inspected eligibility for the sliding-effects call; the matching
+velocity policy and full actor path must still be checked before porting it.
+
+#### Honey and armor-stand continuation, 2026-10-28
+
+The original honey-contact body at `0x63af270` is now executed independently
+with supplied contact vectors, actor origin, stored collision width, velocity
+and fall distance. Its 10,752 cases establish that every inside contact damps
+horizontal velocity by binary32 0.4 and clamps downward velocity to -0.12.
+The height/edge predicate controls fall-distance reset, not velocity damping.
+The original HoneyBlock::onStandOn body at `0x66ba420` supplies another 144
+cases: unless sneaking or moving upward at least 0.1, its horizontal factor
+is abs(vertical velocity) * 0.2 + 0.4. Both original bodies, including their
+binary32 arithmetic, are reproduced in the honey block implementation.
+
+The new `bedrock_1_26_51_honey_contact.json` retains those primitive results.
+The separate BDS Script API capture `bedrock_1_26_51_honey_entities.json`
+retains 124 real-entity scenes from `adamant-redstone-bds-54xrgo9_`: 60 side
+contacts per entity type and four top-landing scenes, each with twenty frames.
+These observations come from BDS, not from the Go implementation. All 62 item
+scenes and 60 of 62 armor-stand scenes pass. The two remaining top-landing
+armor-stand scenes first diverge on the second frame's horizontal friction.
+The current previous-on-ground/block-below sample sees honey even while the
+actor is airborne above it; native support/friction selection remains open.
+
+Armor stands now preserve their collision AABB and depenetration state across
+ordinary travel and piston displacement. Their movement uses observed mob
+travel ordering: move with existing velocity, then apply gravity 0.08 and
+vertical drag 0.02, with binary32 horizontal friction. Initial zero movement
+seeds collision state while preserving the spawn origin. These changes
+resolve the side-contact armor-stand traces; they do not close the outstanding
+piston carry or support/friction work.
+
+ScriptActor::getVelocity (`0xbd8ac30`) returns a separate last-travel component
+for these mob actors when present, rather than StateVector's next velocity.
+The real-entity comparison now projects the armor stand's last ordinary travel
+delta accordingly. A piston displacement is separate from that travel delta.
+This corrects the observation mapping without changing the native fixtures,
+position assertions or tolerances.
+
+The 768 retained piston scenes now have 108 failures: 10 ordinary items,
+24 ordinary armor stands and 74 obstructed items. This is down from 292 at
+the published checkpoint and 116 after the item-only corrections. Together
+with the two honey top-landing failures, 110 regression scenes remain open.
+They remain normal failing tests. Next work should establish native support
+selection for initial airborne stands, then contact/carry order and collision
+shape-fetch ordering for the remaining piston failures. All 22 original audit
+matrix rows remain open; these narrow results do not establish full parity.
+
+#### User-requested pause and publication, 2026-10-28
+
+The user requested that the current changes be committed and pushed before
+continuing tomorrow. Stop implementation at this checkpoint. The overall
+effort estimate remains approximately **60%** of the audit scope, not a measured
+vanilla compatibility percentage or a passing-test percentage. Preserve the
+known failures and the independent captures for the next session. The earlier
+full-suite run and intermittent villager failure have not been superseded by
+a new passing full-suite run.
+
+Checkpoint validation confirms the root server builds successfully as
+`.tmp/adamant-audit-pause-2026-10-28.exe`; the root entry point remains usable
+with `go run .`. All seven added/modified Python scripts pass py_compile, and
+`git diff --check` passes. The combined item/honey/sweep/depenetration and
+piston body/shape regression selection passes in the block package (6.933 s)
+and fails in the entity package (20.724 s) on the same 110 known scenes:
+two honey, 34 ordinary piston and 74 obstructed piston scenes. Log:
+`.tmp/audit-pause-2026-10-28-tests.log`. No new implementation changes were
+made after this validation. Private player/permission files and `tmplog.txt`
+are excluded from the commits.
