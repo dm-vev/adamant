@@ -22,6 +22,7 @@ type MovementComputer struct {
 	collidedHorizontally bool
 	collidedVertically   bool
 	CollideEntities      bool
+	blockSource          world.BlockSource
 }
 
 // blockBBoxPool caches scratch slices used while expanding collision boxes around an entity during movement
@@ -203,7 +204,11 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 	entityBBox := e.H().Type().BBox(e).Translate(pos)
 	var blocks []cube.BBox
 	if !c.NoBlockCollisions {
-		blocks = blockBBoxsAround(tx, entityBBox.Extend(vel))
+		source := c.blockSource
+		if source == nil {
+			source = tx
+		}
+		blocks = blockBBoxsAround(source, entityBBox.Extend(vel))
 	}
 	var entities []cube.BBox
 	if c.CollideEntities {
@@ -271,7 +276,7 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 
 // blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of
 // what blocks need to have their BBox returned.
-func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
+func blockBBoxsAround(source world.BlockSource, box cube.BBox) []cube.BBox {
 	grown := box.Grow(0.25)
 	min, max := grown.Min(), grown.Max()
 	minX, minY, minZ := int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))
@@ -286,7 +291,7 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 		for x := minX; x < maxX; x++ {
 			for z := minZ; z < maxZ; z++ {
 				pos := cube.Pos{x, y, z}
-				block := tx.Block(pos)
+				block := source.Block(pos)
 				// We deliberately avoid caching bounding boxes across different positions. Many
 				// block models (for example fences, walls, or trapdoors) inspect neighbouring
 				// blocks through the BlockSource passed to BBox in order to decide which collision
@@ -295,7 +300,7 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 				// BlockHash would leak the first configuration into subsequent checks within the
 				// same sweep. The extra allocations here are negligible compared to the correctness
 				// issues introduced by reusing the wrong shape.
-				boxes := block.Model().BBox(pos, tx)
+				boxes := block.Model().BBox(pos, source)
 				if len(boxes) == 0 {
 					continue
 				}

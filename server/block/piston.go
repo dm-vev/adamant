@@ -324,7 +324,13 @@ func (p Piston) spawnMovingBlocks(pistonPos cube.Pos, blocks []cube.Pos, dir cub
 		to := from.Side(dir)
 		b := tx.Block(from)
 		movingEntity := encodeNestedBlockEntity(from, b)
-		tx.SetBlock(to, MovingBlock{Moving: b, MovingEntity: movingEntity, PistonPos: pistonPos, Expanding: extending, repeatUpdate: occupied[i]}, nil)
+		mb := MovingBlock{Moving: b, MovingEntity: movingEntity, PistonPos: pistonPos, Expanding: extending, repeatUpdate: occupied[i]}
+		tx.SetBlock(to, mb, nil)
+		// Native _spawnMovingBlock invokes the new moving actor's contact
+		// callback before returning, separately from the following actor step.
+		motion := p
+		motion.startMove(extending, blocks)
+		motion.moveMovingBlockEntities(mb, to, dir, tx)
 		tx.SetBlock(from, nil, nil)
 	}
 	return true
@@ -357,58 +363,175 @@ func (p Piston) moveCollidedEntities(pos cube.Pos, tx *world.Tx) {
 	if step == 0 {
 		return
 	}
+	// Native normal-piston retraction does not move collided entities.
+	if !p.Extending && !p.Sticky {
+		return
+	}
 	pushDir := p.Facing
 	if !p.Extending {
 		pushDir = pushDir.Opposite()
 	}
-	moved := make(map[*world.EntityHandle]struct{}, 8)
 	for _, basePos := range p.Attached {
 		movingPos := basePos.Side(pushDir)
 		mb, ok := tx.Block(movingPos).(MovingBlock)
 		if !ok {
 			continue
 		}
-		for _, box := range movingBlockBoxes(mb, movingPos, p, pushDir, tx) {
-			p.moveEntitiesInBox(box, pushDir, step, tx, moved)
-		}
+		p.moveMovingBlockEntities(mb, movingPos, pushDir, tx)
 	}
-	armBox := cube.Box(0, 0, 0, 1, 1, 1).Translate(pos.Vec3()).Translate(faceOffset(pushDir, float64(p.Progress)))
-	p.moveEntitiesInBox(armBox, pushDir, step, tx, moved)
+	// The head follows the facing axis even when the push direction reverses.
+	armBox := cube.Box(0, 0, 0, 1, 1, 1).Translate(pos.Vec3()).Translate(faceOffset(p.Facing, float64(p.Progress)))
+	p.moveEntitiesInBox(armBox, p.Facing, tx, nil, p.movementSource(pos, tx))
 }
 
-func (p Piston) moveEntitiesInBox(box cube.BBox, dir cube.Face, distance float64, tx *world.Tx, moved map[*world.EntityHandle]struct{}) {
+func (p Piston) moveMovingBlockEntities(mb MovingBlock, pos cube.Pos, dir cube.Face, tx *world.Tx) {
+	var carried map[*world.EntityHandle]struct{}
+	source := p.movementSource(mb.PistonPos, tx)
+	if dir.Axis() != cube.Y {
+		old := p
+		old.Progress = old.LastProgress
+		for _, box := range movingBlockBoxes(mb, pos, old, dir, tx) {
+			lo, hi := box.Min(), box.Max()
+			lo[1], hi[1] = hi[1], float64(float32(hi[1])+float32(.05))
+			top := cube.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2])
+			for e := range tx.EntitiesWithin(top.Grow(1)) {
+				body := e.H().Type().BBox(e).Translate(e.Position())
+				point := e.Position()
+				if !body.IntersectsWith(top) || point[0] < lo[0] || point[0] > hi[0] || point[2] < lo[2] || point[2] > hi[2] {
+					continue
+				}
+				if pushEntityByPiston(e, dir, .5, source) {
+					if carried == nil {
+						carried = make(map[*world.EntityHandle]struct{})
+					}
+					carried[e.H()] = struct{}{}
+				}
+			}
+		}
+	}
+	for _, box := range movingBlockBoxes(mb, pos, p, dir, tx) {
+		p.moveEntitiesInBox(box, dir, tx, carried, source)
+	}
+}
+
+func (p Piston) moveEntitiesInBox(box cube.BBox, dir cube.Face, tx *world.Tx, excluded map[*world.EntityHandle]struct{}, source world.BlockSource) {
 	search := box.Grow(1)
 	for e := range tx.EntitiesWithin(search) {
-		if _, ok := moved[e.H()]; ok {
+		if _, carried := excluded[e.H()]; carried {
 			continue
 		}
-		if !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
+		body := e.H().Type().BBox(e).Translate(e.Position())
+		if !body.IntersectsWith(box) {
 			continue
 		}
-		if pushEntityByPiston(e, dir, distance) {
-			moved[e.H()] = struct{}{}
+		axis := 0
+		switch dir.Axis() {
+		case cube.Y:
+			axis = 1
+		case cube.Z:
+			axis = 2
+		}
+		direction := faceOffset(dir, 1)
+		var distance float32
+		if direction[axis] > 0 {
+			distance = float32(box.Max()[axis]) - float32(body.Min()[axis])
+		} else {
+			distance = float32(body.Max()[axis]) - float32(box.Min()[axis])
+		}
+		if distance > 0 {
+			pushEntityByPiston(e, dir, float64(distance), source)
 		}
 	}
 }
 
-func movingBlockBoxes(mb MovingBlock, pos cube.Pos, piston Piston, dir cube.Face, tx *world.Tx) []cube.BBox {
-	if mb.Moving == nil {
-		return nil
-	}
-	boxes := mb.Moving.Model().BBox(pos, tx)
-	if len(boxes) == 0 {
-		return nil
-	}
-	translated := make([]cube.BBox, 0, len(boxes))
-	offset := faceOffset(dir, float64(piston.Progress)).Sub(faceOffset(dir, 1))
-	for _, box := range boxes {
-		translated = append(translated, box.Translate(pos.Vec3()).Translate(offset))
-	}
-	return translated
+func movingBlockBoxes(mb MovingBlock, pos cube.Pos, piston Piston, _ cube.Face, tx *world.Tx) []cube.BBox {
+	return movingBlockContactBoxes(mb, pos, &piston, tx)
 }
 
-func pushEntityByPiston(e world.Entity, dir cube.Face, distance float64) bool {
+func movingBlockContactBoxes(mb MovingBlock, pos cube.Pos, piston *Piston, source world.BlockSource) []cube.BBox {
+	_, nested := mb.Moving.(MovingBlock)
+	if mb.Moving == nil || nested {
+		return []cube.BBox{pistonCollisionBox(cube.Box(0, 0, 0, 1, 1, 1), pos)}
+	}
+	// Native asks the wrapped block for its world collision AABB at floored
+	// positions for LastProgress and Progress, then encloses both shapes. It
+	// does not continuously translate the shape by fractional progress.
+	var bounds cube.BBox
+	found := false
+	progresses := [2]float32{}
+	if piston != nil {
+		progresses = [2]float32{piston.LastProgress, piston.Progress}
+	}
+	for _, progress := range progresses {
+		var offset mgl64.Vec3
+		if piston != nil {
+			if mb.Expanding {
+				progress -= 1
+			}
+			offset = faceOffset(piston.Facing, float64(progress))
+		}
+		var cell cube.Pos
+		for axis := range 3 {
+			cell[axis] = int(math.Floor(float64(float32(pos[axis]) + float32(offset[axis]))))
+		}
+		for _, box := range mb.Moving.Model().BBox(cell, source) {
+			box = pistonCollisionBox(box, cell)
+			if !found {
+				bounds, found = box, true
+				continue
+			}
+			lo, hi := bounds.Min(), bounds.Max()
+			for axis := range 3 {
+				lo[axis] = min(lo[axis], box.Min()[axis])
+				hi[axis] = max(hi[axis], box.Max()[axis])
+			}
+			bounds = cube.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2])
+		}
+	}
+	if !found {
+		return nil
+	}
+	return []cube.BBox{bounds}
+}
+
+// Native collision-shape getters add integer cell coordinates in binary32.
+func pistonCollisionBox(box cube.BBox, pos cube.Pos) cube.BBox {
+	lo, hi := box.Min(), box.Max()
+	for axis := range 3 {
+		lo[axis] = float64(float32(pos[axis]) + float32(lo[axis]))
+		hi[axis] = float64(float32(pos[axis]) + float32(hi[axis]))
+	}
+	return cube.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2])
+}
+
+// Native moveEntityLastProgress temporarily uses LastProgress while resolving
+// the actor move. Supply that view without changing the live actor or its clock.
+func (p Piston) movementSource(pos cube.Pos, tx *world.Tx) world.BlockSource {
+	p.Progress = p.LastProgress
+	return pistonMovementSource{tx: tx, pos: pos, piston: p}
+}
+
+type pistonMovementSource struct {
+	tx     *world.Tx
+	pos    cube.Pos
+	piston Piston
+}
+
+func (s pistonMovementSource) Block(pos cube.Pos) world.Block {
+	if pos == s.pos {
+		return s.piston
+	}
+	return s.tx.Block(pos)
+}
+
+func pushEntityByPiston(e world.Entity, dir cube.Face, distance float64, source world.BlockSource) bool {
 	delta := faceOffset(dir, distance)
+	if mover, ok := e.(interface {
+		MoveByPiston(mgl64.Vec3, world.BlockSource)
+	}); ok {
+		mover.MoveByPiston(delta, source)
+		return true
+	}
 	if mover, ok := e.(interface {
 		Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64)
 	}); ok {
@@ -575,6 +698,67 @@ type PistonHead struct {
 
 	Facing cube.Face
 	Sticky bool
+}
+
+// Model exposes the three native collision parts at the parent actor's
+// current animation position. A head without a piston actor has no collision.
+func (p PistonHead) Model() world.BlockModel { return pistonHeadModel{head: p} }
+
+type pistonHeadModel struct{ head PistonHead }
+
+func (m pistonHeadModel) BBox(pos cube.Pos, source world.BlockSource) []cube.BBox {
+	if source == nil {
+		return nil
+	}
+	back := pos.Side(m.head.Facing.Opposite())
+	p, ok := source.Block(back).(Piston)
+	if !ok {
+		return nil
+	}
+	progress := p.LastProgress + (p.Progress - p.LastProgress)
+	direction := faceOffset(m.head.Facing, 1)
+	var anchor mgl64.Vec3
+	for axis := range 3 {
+		anchor[axis] = float64(float32(back[axis]) + float32(direction[axis])*progress)
+	}
+	boxes := make([]cube.BBox, 0, 3)
+	for _, shape := range pistonHeadCollisionParts(m.head.Facing) {
+		lo, hi := shape.Min(), shape.Max()
+		for axis := range 3 {
+			lo[axis] = float64(float32(anchor[axis]) + float32(lo[axis]))
+			hi[axis] = float64(float32(anchor[axis]) + float32(hi[axis]))
+		}
+		if lo[0] < hi[0] && lo[1] < hi[1] && lo[2] < hi[2] {
+			boxes = append(boxes, cube.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]).Translate(pos.Vec3().Mul(-1)))
+		}
+	}
+	return boxes
+}
+
+func (pistonHeadModel) FaceSolid(cube.Pos, cube.Face, world.BlockSource) bool { return true }
+
+func pistonHeadCollisionParts(face cube.Face) [3]cube.BBox {
+	axis := 0
+	switch face.Axis() {
+	case cube.Y:
+		axis = 1
+	case cube.Z:
+		axis = 2
+	}
+	tailLo, tailHi := mgl64.Vec3{5.0 / 16, 5.0 / 16, 5.0 / 16}, mgl64.Vec3{11.0 / 16, 11.0 / 16, 11.0 / 16}
+	rodLo, rodHi := mgl64.Vec3{3.0 / 8, 3.0 / 8, 3.0 / 8}, mgl64.Vec3{5.0 / 8, 5.0 / 8, 5.0 / 8}
+	plateLo, plateHi := mgl64.Vec3{}, mgl64.Vec3{1, 1, 1}
+	rodLo[axis], rodHi[axis] = .25, .75
+	if faceOffset(face, 1)[axis] > 0 {
+		tailLo[axis], tailHi[axis], plateLo[axis] = -.25, .25, .75
+	} else {
+		tailLo[axis], tailHi[axis], plateHi[axis] = .75, 1.25, .25
+	}
+	return [3]cube.BBox{
+		cube.Box(tailLo[0], tailLo[1], tailLo[2], tailHi[0], tailHi[1], tailHi[2]),
+		cube.Box(rodLo[0], rodLo[1], rodLo[2], rodHi[0], rodHi[1], rodHi[2]),
+		cube.Box(plateLo[0], plateLo[1], plateLo[2], plateHi[0], plateHi[1], plateHi[2]),
+	}
 }
 
 // BreakInfo ...

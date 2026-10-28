@@ -76,10 +76,28 @@ func (m MovingBlock) restore(pos cube.Pos, tx *world.Tx) {
 
 // Model ...
 func (m MovingBlock) Model() world.BlockModel {
-	if m.Moving != nil {
-		return m.Moving.Model()
+	return movingBlockModel{moving: m}
+}
+
+type movingBlockModel struct{ moving MovingBlock }
+
+func (m movingBlockModel) BBox(pos cube.Pos, source world.BlockSource) []cube.BBox {
+	var piston *Piston
+	if p, ok := source.Block(m.moving.PistonPos).(Piston); ok {
+		piston = &p
 	}
-	return model.Empty{}
+	boxes := movingBlockContactBoxes(m.moving, pos, piston, source)
+	for i := range boxes {
+		boxes[i] = boxes[i].Translate(pos.Vec3().Mul(-1))
+	}
+	return boxes
+}
+
+func (m movingBlockModel) FaceSolid(pos cube.Pos, face cube.Face, source world.BlockSource) bool {
+	if m.moving.Moving != nil {
+		return m.moving.Moving.Model().FaceSolid(pos, face, source)
+	}
+	return model.Empty{}.FaceSolid(pos, face, source)
 }
 
 // EncodeBlock ...

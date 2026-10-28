@@ -175,6 +175,14 @@ func (e *Ent) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	e.tx.ReleaseViewers(viewers)
 }
 
+// MoveByPiston resolves the requested displacement against terrain. Piston
+// contact cannot move an entity through a wall beyond the moving block.
+func (e *Ent) MoveByPiston(delta mgl64.Vec3, source world.BlockSource) {
+	c := MovementComputer{blockSource: source}
+	delta, _ = c.CheckCollision(e.tx, e, e.Position(), delta)
+	e.Move(delta, 0, 0)
+}
+
 // Age returns the total time lived of this entity. It increases by
 // time.Second/20 for every time Tick is called.
 func (e *Ent) Age() time.Duration {
