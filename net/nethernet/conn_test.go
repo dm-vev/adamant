@@ -44,6 +44,10 @@ type vnet struct {
 	rng  *rand.Rand
 	loss float64
 	ends [2]*end
+	// batched sends DTLS datagrams in batches, as GSO does; batches counts
+	// the batches of more than one datagram.
+	batched bool
+	batches int
 }
 
 func mustCert(t *testing.T) dtls.Certificate {
@@ -84,7 +88,13 @@ func newVnet(t *testing.T, seed uint64, serverDTLSClient bool, setup func(descs 
 			certificate: certs[i],
 			clock:       func() time.Time { return n.now },
 			out:         func(b []byte, to netip.AddrPort) { n.carry(other, e.addr, to, b) },
+			outBatch: func(b []byte, size int, to netip.AddrPort) {
+				n.carryBatch(other, e.addr, to, b, size)
+			},
 		}, n.now)
+		if !n.batched {
+			e.c.outBatch = nil
+		}
 		e.c.onReady = func(*Conn) { e.ready = true }
 		e.c.SetReceiver(func(msg []byte) { e.received = append(e.received, msg) })
 	}
@@ -99,6 +109,20 @@ func (n *vnet) carry(to *end, from, dst netip.AddrPort, b []byte) {
 		to.lastRecord = bytes.Clone(b)
 	}
 	to.inbox = append(to.inbox, datagram{bytes.Clone(b), from})
+}
+
+// carryBatch checks a batch is what the kernel segments, then carries its
+// datagrams.
+func (n *vnet) carryBatch(to *end, from, dst netip.AddrPort, b []byte, size int) {
+	n.batches++
+	if count := (len(b) + size - 1) / size; count < 2 || count > maxBatchedDatagrams || len(b) > maxBatchedBytes {
+		n.t.Errorf("batch of %d bytes in datagrams of %d", len(b), size)
+	}
+	for len(b) > 0 {
+		k := min(size, len(b))
+		n.carry(to, from, dst, b[:k])
+		b = b[k:]
+	}
 }
 
 func (e *end) deadline() time.Time {
@@ -458,4 +482,32 @@ func TestConnMemory(t *testing.T) {
 		t.Fatalf("an open connection holds %d bytes", perConn)
 	}
 	runtime.KeepAlive(nets)
+}
+
+// TestConnBatched sends the datagrams of each event in batches, as GSO
+// does, over a lossy network.
+func TestConnBatched(t *testing.T) {
+	for seed := range uint64(3) {
+		t.Run(fmt.Sprint(seed), func(t *testing.T) {
+			n := newVnetBatched(t, seed)
+			n.loss = 0.05 * float64(seed)
+			n.open(t)
+			exchange(t, n, []int{1, 3000, 100000, 1 << 20})
+			if n.batches == 0 {
+				t.Fatal("no event sent more than one datagram at once")
+			}
+			t.Logf("%d batches", n.batches)
+		})
+	}
+}
+
+// newVnetBatched is newVnet with the datagrams of each event batched.
+func newVnetBatched(t *testing.T, seed uint64) *vnet {
+	n := newVnet(t, seed, seed%2 == 0, nil)
+	n.batched = true
+	for i, e := range n.ends {
+		other, from := n.ends[1-i], e.addr
+		e.c.outBatch = func(b []byte, size int, to netip.AddrPort) { n.carryBatch(other, from, to, b, size) }
+	}
+	return n
 }

@@ -3,6 +3,7 @@ package nethernet
 import (
 	"context"
 	"net"
+	"net/netip"
 )
 
 // socketBuffer is the kernel buffer asked for each socket, so that a burst
@@ -35,4 +36,13 @@ func listenUDP(address string, n int) ([]*net.UDPConn, error) {
 		socks = append(socks, s)
 	}
 	return socks, nil
+}
+
+// batchWriter returns the writer of batches of datagrams of a socket, nil
+// where they cannot go out several in a call.
+func batchWriter(s *net.UDPConn) func(b []byte, size int, to netip.AddrPort) {
+	if !segmentsSupported {
+		return nil
+	}
+	return func(b []byte, size int, to netip.AddrPort) { writeSegments(s, b, size, to) }
 }

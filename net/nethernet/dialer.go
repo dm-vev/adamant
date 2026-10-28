@@ -121,6 +121,7 @@ func (d Dialer) DialContext(ctx context.Context, address string) (*Conn, error) 
 		certificate: cert,
 		sendBuffer:  d.SendBuffer,
 		out:         func(b []byte, to netip.AddrPort) { _, _ = sock.WriteToUDPAddrPort(b, to) },
+		outBatch:    batchWriter(sock),
 		localAddr:   sock.LocalAddr(),
 	}, time.Now())
 	c.publicKey = pub

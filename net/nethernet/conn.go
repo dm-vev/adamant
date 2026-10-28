@@ -41,6 +41,10 @@ const (
 	lingerTimeout = 5 * time.Second
 	// defaultSendBuffer bounds the bytes queued on a connection.
 	defaultSendBuffer = 16 << 20
+	// maxBatchedDatagrams and maxBatchedBytes bound the datagrams sent in
+	// one call, as the kernel bounds a segmented send.
+	maxBatchedDatagrams = 64
+	maxBatchedBytes     = 65000
 )
 
 var (
@@ -80,8 +84,11 @@ type connConfig struct {
 	certificate dtls.Certificate
 	sendBuffer  int
 	// clock replaces time.Now and the timers of the connection in tests.
-	clock     func() time.Time
-	out       func(b []byte, to netip.AddrPort)
+	clock func() time.Time
+	out   func(b []byte, to netip.AddrPort)
+	// outBatch, if set, sends datagrams of size bytes back to back in b, the
+	// last maybe shorter, in one call.
+	outBatch  func(b []byte, size int, to netip.AddrPort)
 	localAddr net.Addr
 }
 
@@ -91,9 +98,17 @@ type connConfig struct {
 // message per Read and Write, and the packet transport methods gophertunnel
 // looks for. Its methods are safe for concurrent use.
 type Conn struct {
-	mu    sync.Mutex
-	clock func() time.Time
-	out   func(b []byte, to netip.AddrPort)
+	mu       sync.Mutex
+	clock    func() time.Time
+	out      func(b []byte, to netip.AddrPort)
+	outBatch func(b []byte, size int, to netip.AddrPort)
+	// batch gathers the DTLS datagrams of the event being handled, to go
+	// out in one call: batchSize bytes each but maybe the last.
+	batch      []byte
+	batchTo    netip.AddrPort
+	batchSize  int
+	batchCount int
+	batchShort bool
 
 	agent      *ice.Agent
 	dtls       *dtls.Conn
@@ -149,6 +164,7 @@ func newConn(cfg connConfig, now time.Time) *Conn {
 	c := &Conn{
 		clock:      cfg.clock,
 		out:        cfg.out,
+		outBatch:   cfg.outBatch,
 		dtlsClient: cfg.dtlsClient,
 		localAddr:  cfg.localAddr,
 		peerFP:     cfg.remote.fingerprints,
@@ -193,9 +209,47 @@ func (c *Conn) now() time.Time {
 }
 
 func (c *Conn) sendDTLS(b []byte) {
-	if c.remote.IsValid() {
-		c.out(b, c.remote)
+	if !c.remote.IsValid() {
+		return
 	}
+	if c.outBatch == nil {
+		c.out(b, c.remote)
+		return
+	}
+	if c.batchCount > 0 && (c.batchTo != c.remote || c.batchShort || len(b) > c.batchSize ||
+		len(c.batch)+len(b) > maxBatchedBytes || c.batchCount == maxBatchedDatagrams) {
+		c.flushBatch()
+	}
+	if c.batchCount == 0 {
+		c.batchTo, c.batchSize = c.remote, len(b)
+		if c.batch == nil {
+			c.batch = (*batchBuffers.Get().(*[]byte))[:0]
+		}
+	}
+	c.batch = append(c.batch, b...)
+	c.batchCount++
+	c.batchShort = len(b) < c.batchSize
+}
+
+// batchBuffers holds the buffers of batches between events.
+var batchBuffers = sync.Pool{New: func() any {
+	b := make([]byte, 0, maxBatchedBytes)
+	return &b
+}}
+
+// flushBatch sends the datagrams gathered.
+func (c *Conn) flushBatch() {
+	switch c.batchCount {
+	case 0:
+		return
+	case 1:
+		c.out(c.batch, c.batchTo)
+	default:
+		c.outBatch(c.batch, c.batchSize, c.batchTo)
+	}
+	b := c.batch[:0]
+	batchBuffers.Put(&b)
+	c.batch, c.batchCount, c.batchShort = nil, 0, false
 }
 
 func (c *Conn) sendSCTP(pkt []byte) {
@@ -461,6 +515,7 @@ func (c *Conn) dequeue() ([]byte, bool) {
 // release unlocks the connection and hands the messages received to the
 // receiver set with SetReceiver, in order: one goroutine at a time does.
 func (c *Conn) release() {
+	c.flushBatch()
 	if c.receiver == nil || c.delivering || len(c.pending) == 0 {
 		c.mu.Unlock()
 		return
@@ -724,6 +779,8 @@ func (c *Conn) finish() {
 		c.assoc.Abort()
 	}
 	c.dtls.Close()
+	// The socket may close with the connection.
+	c.flushBatch()
 	if c.timer != nil {
 		c.timer.Stop()
 	}

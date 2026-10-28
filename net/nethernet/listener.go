@@ -412,6 +412,7 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 		certificate: l.cert,
 		sendBuffer:  l.cfg.SendBuffer,
 		out:         func(b []byte, to netip.AddrPort) { _, _ = sock.WriteToUDPAddrPort(b, to) },
+		outBatch:    batchWriter(sock),
 		localAddr:   l.addr,
 	}, now)
 	c.publicKey = pub
