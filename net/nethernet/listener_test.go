@@ -12,6 +12,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"sync"
 	"testing"
@@ -300,5 +302,51 @@ func TestListenerClose(t *testing.T) {
 	_ = cli.SetReadDeadline(time.Now().Add(10 * time.Second))
 	if _, err := cli.ReadMessage(); !errors.Is(err, errPeerClosed) {
 		t.Fatalf("client read after the listener closed: %v", err)
+	}
+}
+
+// TestCandidates announces the address a client reached, the address it
+// asked for, which a server behind NAT is known by, and configured ones.
+func TestCandidates(t *testing.T) {
+	request := func(host string, local string) *http.Request {
+		r := httptest.NewRequest(http.MethodPost, "/v1/join/1", nil)
+		r.Host = host
+		if local != "" {
+			r = r.WithContext(context.WithValue(r.Context(), http.LocalAddrContextKey, net.TCPAddrFromAddrPort(mustAddr(local))))
+		}
+		return r
+	}
+	public := netip.MustParseAddr("198.51.100.7")
+	bound := listen(t, ListenConfig{Addresses: []netip.Addr{public}})
+	port := bound.port
+	got := bound.candidates(request("203.0.113.5:25565", ""))
+	want := []netip.AddrPort{
+		netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), port),
+		mustAddr("203.0.113.5:25565"),
+		netip.AddrPortFrom(public, port),
+	}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("bound listener announces %v, want %v", got, want)
+	}
+
+	all, err := ListenConfig{}.Listen(":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer all.Close()
+	got = all.candidates(request("[2001:db8::5]:19132", "192.0.2.1:19132"))
+	want = []netip.AddrPort{
+		netip.AddrPortFrom(netip.MustParseAddr("192.0.2.1"), all.port),
+		mustAddr("[2001:db8::5]:19132"),
+	}
+	if !all.ipv4 && fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("listener on every address announces %v, want %v", got, want)
+	}
+
+	// A socket bound to an IPv4 address cannot reach IPv6 peers. (Go
+	// listens on 0.0.0.0 with a dual-stack socket.)
+	got = bound.candidates(request("[2001:db8::5]:19132", ""))
+	if want := []netip.AddrPort{netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), port), netip.AddrPortFrom(public, port)}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("IPv4 listener announces %v, want %v", got, want)
 	}
 }
