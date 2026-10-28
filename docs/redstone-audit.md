@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **paused at the user's request on 2026-10-27; audit incomplete**.
+Status: **paused at the user's request on 2026-10-28; audit incomplete**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -3425,3 +3425,186 @@ generation scripts compile. `git diff --check` passes. The latest scoped tests
 are the passing block/player/session run recorded above. The latest broad run
 predates the final creative/head-survival changes and passes with exactly the
 two historical exclusions already documented; no newer broad pass is claimed.
+
+### Resumed piston/entity displacement comparison, 2026-10-28
+
+The worktree was rechecked at published checkpoint `06d34e78` before resuming.
+The 576-case native displacement capture contains another mechanism that the
+previous checkpoint had not separated: all 144 collision-enabled bodies spawned
+inside an already extended block acquire native escape motion/velocity. Those
+cases remain retained and open for a physics replay; they are not silently
+treated as stationary bodies. The direct passive replay covers the other 432
+complete traces (both collision settings for pre-extension spawns, collision
+disabled for pre-retraction spawns). It checks absolute ticks, piston state and
+attached positions, base/front/source permutations, entity position/velocity
+and full body AABB on every frame. Bodies have no gravity, AI or autonomous
+motion in these cases. No captured entity positions are injected during replay.
+
+Before production changes, 348 of those 432 traces fail (block 4.978 s), log
+`.tmp/piston-entity-displacement-before.log`: all 288 extension cases and sixty
+sticky retractions. The zero-motion controls remain useful negative cases.
+
+Inspection of `_moveCollidedEntities` (`0x4ae2bb0`), its helper (`0x4ae3e00`),
+MovingBlockActor::moveCollidedEntities (`0x4adc6a0`) and wrapped shape queries
+(`0x4add8b0`) distinguishes these paths:
+
+- Contact moves an entity by the binary32 overlap depth along the selected
+  axis, rather than a fixed half block. Different collision objects may act on
+  the same entity; there is no global once-per-piston-pass deduplication.
+- Normal-piston retraction performs no collided-entity movement. A sticky
+  piston's carried block moves bodies in the retraction direction, while the
+  head collision helper still pushes along the original facing direction.
+  The head's world box also follows facing, not the reversed pull vector.
+- Wrapped block shape queries floor binary32 positions at LastProgress and
+  Progress and enclose the resulting world AABBs. They do not continuously
+  translate each shape by fractional animation progress. This accounts for
+  the different first contact phase on positive/negative axes.
+- Bedrock honey collision has horizontal 1/16 insets and full height, as
+  established by the original BDS contact traces in all six directions. The
+  client's HoneyBlock::getCollisionShape at `0x66ba020` reads runtime AABB
+  bounds; those runtime constants were not recovered from static PE data.
+  No Java 15/16-height shape is substituted for the BDS observations.
+
+Piston contact processing now follows those paths. HoneyBlock's physical model
+uses the observed inset/full-height box. MovingBlock's ordinary physical model
+shares the native enclosed world shape; missing parents use the unshifted
+wrapped shape, and a missing/nested wrapped moving block uses the native unit
+box fallback. Existing face-support behavior is retained pending separate native
+support evidence; these shape fixes do not close that coverage.
+
+The first native displacements pass after the head/contact/honey corrections
+(block 5.292 s), log `.tmp/piston-entity-displacement-after-honey.log`.
+The additional executed-client probe runs the original full 0x505-byte wrapped
+shape function, with supplied parent/direction, wrapped AABB and floorf callbacks.
+It records both original query cells and both original world AABBs. The 1,152
+cases cover six faces, both movement directions, present/absent parents, four
+progress pairs, full/inset/partial authored shapes and positions at zero,
+positive/negative one million and near thirty million. Shapes supplied by this
+probe are explicit inputs, not evidence of a vanilla material's own shape.
+
+Both the piston contact bounds and ordinary MovingBlock physical boxes match
+the executed function, including binary32 coordinate rounding. The combined
+piston/observer/moving-block/queue/player/honey replay passes
+(block 35.358 / player 3.149 / session 1.946 s), log
+`.tmp/piston-entity-targeted.log`. A new broad run is in progress after these
+shared geometry changes. Real armor-stand/item contacts and slime velocity are
+being captured separately; no successful vanilla-entity replay is claimed yet.
+
+The new broad run finishes with one failed test, TestVillagersRunFromZombies
+(entity 209.882 s), log `.tmp/piston-entity-full.log`. Block 92.734 / player
+19.029 / session 3.810 / world 16.657 s pass. The two historical exclusions
+remain unchanged. Twenty isolated runs of the failing villager test yield one
+failure (entity 10.954 s), log `.tmp/piston-villager-panic-recheck.log`; this
+establishes intermittency on the current worktree, not its cause or a clean
+baseline result. Its assertions and implementation were not modified, and it
+was not added to the exclusion list. The recovered "teleport panic" log belongs
+to the existing panic-recovery test and is not an additional failed test.
+
+Original BDS now also supplies 512 real armor-stand/dropped-item traces on a
+stone floor (`adamant-redstone-bds-0mzrl5yg`), including slime, and 256 traces
+with a forward obstruction (`adamant-redstone-bds-wgm7fihv`). These are retained
+in the new vanilla-entity fixtures. Their replay uses the real entity types and
+ordinary tick/movement paths; no observed trajectory is injected. The first
+attempt lacked the Script API's stone_type alias projection and is rejected as
+a complete production before comparison. That alias is now checked against an
+actual nonsmooth Stone, and a corrected replay is running. Item escape motion,
+slime depenetration and obstruction clipping remain uncorrected at this point.
+
+#### Corrected vanilla fixture setup and further movement evidence
+
+The initial real-entity floor captures are superseded. Adhesive payloads also
+move a row of floor blocks, leaving stone one cell beyond the old four-block
+cleanup radius. Reusing that cell in a later batch could therefore alter the
+initial world and subsequent attached-block list. The affected before/after
+logs are not accepted as complete production comparisons.
+
+Vanilla cells now start at chunk offset eight, clear radius six, and explicitly
+validate all 338 cells in the two relevant height layers against the authored
+initial scene, including the surrounding air. All 64 interior chunks must be
+loaded before setup; an attempted refresh that observed an unloaded interior
+cell is rejected. Every replay requires those native setup controls.
+The canonical fixtures are refreshed completely: 512 ordinary cases from
+`adamant-redstone-bds-d2hse5pa` and 256 obstruction cases from
+`adamant-redstone-bds-9hrp_2a7`. The old raw captures remain in their original
+temporary roots for provenance.
+
+Client `_spawnMovingBlock` calls MovingBlockActor::moveCollidedEntities at
+`0x4ae0dfa`, immediately after creating each moving actor. This is separate
+from the next half-step contact pass. Its horizontal top-surface query is 0.05
+blocks high and carries eligible bodies by half a block, tracking them only
+within that moving actor's contact pass. That callback and carry path have
+been added. Entity piston moves now resolve against terrain instead of using
+the command-style unchecked Move path. All 128 armor-stand obstruction traces
+pass with those changes; the retained passive 432 cases still pass.
+
+Native moveEntityLastProgress (`0x4adde80`) temporarily resolves movement with
+Progress set to LastProgress. The kernel supplies that read view through a
+BlockSource override rather than changing the live actor/scene clock. This
+does not yet establish complete actor-movement/depenetration equivalence.
+
+The original client's head collision table builder (`0x6eb1020`) and complete
+addCollisionShapes body (`0x6eb0ac0`) now execute with supplied block-state,
+rear-actor and direction callbacks, thread-guard bookkeeping and the original
+AABB constructor. The six three-part tables and 192 complete world queries
+are retained in the shape fixture. They include missing-parent controls,
+both animation directions and binary32 collapse of shapes near thirty million.
+The head's physical model now matches those three moving collision parts,
+rather than a full cube. Parent absence produces no collision. The six tables,
+192 head queries, 1,152 moving shape queries and 432 passive displacement cases
+pass together (block 6.297 s), log
+`.tmp/piston-vanilla-clean-after-head-shapes.log`.
+
+The clean real-entity replay still fails 292 of 768 cases at this checkpoint:
+144 ordinary item, 124 obstructed item and 24 ordinary armor-stand cases.
+The latest previous-progress read-view attempt has not closed those cases;
+log `.tmp/piston-vanilla-clean-after-previous-progress.log` (entity 24.126 s).
+These remain ordinary failing regressions while the implementation continues,
+not skipped coverage or a claim of completed entity compatibility.
+
+A separate original-client probe now executes AABB::clipCollide (`0x3327d80`)
+and SweptMovement::computeMoveWithDepenetration (`0x82a4890`) with authored
+body boxes, movement spans, obstacle lists and explicit per-axis penetration
+limits. The 2,072 cases include ordered multi-move/multi-obstacle inputs,
+empty controls, touching/overlapping/separated boxes and large coordinates.
+The Go arithmetic port matches both full ClipCollideResult fields and full
+MoveResult fields (entity 2.710 s), log `.tmp/piston-native-sweep-after.log`.
+The initial port had eighty-one incorrect unused clipped-vector fields for
+separated boxes; its full sweep outputs already matched, and those fields are
+now corrected too. This primitive is not yet wired into ordinary entity physics:
+native caller flags, penetration limits and ItemActor::postNormalTick's
+Actor::pushOutOfBlocks path still need to be reproduced before integration.
+
+#### Paused checkpoint, 2026-10-28
+
+The user requested commits and publication before continuing tomorrow. The
+overall effort estimate remains approximately **60%**; none of the 22 coverage
+rows is closed by the narrow piston checks above. The ordinary real-entity
+regressions intentionally retain the 292 known mismatches. This checkpoint is
+unfinished audit work, not a passing full-suite or compatibility release.
+
+The new item-escape probe executes the original complete
+Actor::pushOutOfBlocks (`0x1a1e250`, 0x8bc bytes) with supplied world and actor
+inputs. Its 1,216 cases are preserved in
+`server/block/testdata/bedrock_1_26_51_piston_item_escape.json`. The native body
+chooses escape motion, depenetration bit 3 and status flag 48 (HasCollision).
+Neighbour solidity, material bits, shapes and height offset are explicit
+inputs; optional ECS components are absent. The fixture does not establish
+vanilla material flags or the caller's physics policy, and no Go escape port
+or runtime integration is claimed.
+
+Continue by inspecting the caller of computeMoveWithDepenetration around
+`0x82d4710` (calls at `0x82d4b2a` and `0x82d4b88`) and the item post-tick path
+at `0x3348110` (pushOutOfBlocks call at `0x334893a`). Establish the actual
+per-axis penetration limits and component flags before wiring the verified
+sweep arithmetic into entity physics. Then resolve the remaining ordinary
+armor-stand cases and item escape/obstruction cases against the retained clean
+native captures. Re-run relevant checks after integration; the earlier broad
+run predates the last movement changes and is not a passing current baseline.
+
+Final checkpoint validation reruns the passive displacement, moving/head shape
+and sweep arithmetic tests together: block 6.468 s and entity 1.056 s pass.
+`go build -o .tmp/adamant-audit-checkpoint.exe .` also succeeds, verifying the
+root server entry point. The four Python capture scripts pass py_compile.
+These checks do not supersede the 292 known real-entity failures or the earlier
+intermittent villager failure. The production geometry changes are committed
+in `c51c1fd4`; the tested, runtime-unintegrated sweep primitive is in `d37b4d2d`.
