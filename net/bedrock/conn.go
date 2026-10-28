@@ -55,8 +55,9 @@ func (cfg Config) withDefaults() Config {
 var errAlgorithm = errors.New("bedrock: batch names an unknown compression algorithm")
 
 // keptBuffer bounds the capacity of the buffers a Conn keeps between
-// batches.
-const keptBuffer = 1 << 20
+// batches: the batch of a tick fits, the rare large ones are not kept for
+// the life of the connection.
+const keptBuffer = 64 << 10
 
 // noneByte is the first byte of a batch sent as it is.
 const noneByte = byte(AlgorithmNone & 0xff)
