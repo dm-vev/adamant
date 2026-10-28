@@ -5,6 +5,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
+	"math"
 )
 
 // pistonClipResult follows the client ClipCollideResult. The penetration
@@ -121,6 +122,14 @@ func nativeDepenetrationLimits(bits uint8, oneWayBlocks bool, minimum mgl32.Vec3
 
 func (c *MovementComputer) checkNativeCollision(tx *world.Tx, e world.Entity, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
 	body := e.H().Type().BBox(e).Translate(pos)
+	query := body.Extend(vel)
+	lo, hi := query.Min(), query.Max()
+	// MoveCollisionSystem includes support below the requested sweep and a
+	// small overhead margin even for a purely horizontal move. Excluding a
+	// touching floor lets depenetration incorrectly resolve through it.
+	lo[1] = min(lo[1], float64(float32(body.Min()[1])+(-float32(.2)-float32(math.Abs(float64(float32(vel[1])))))))
+	hi[1] = max(hi[1], float64(float32(body.Max()[1])+float32(.08)))
+	query = cube.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2])
 	to32 := func(b cube.BBox) cube.BBox32 {
 		lo, hi := b.Min(), b.Max()
 		return cube.Box32(float32(lo[0]), float32(lo[1]), float32(lo[2]), float32(hi[0]), float32(hi[1]), float32(hi[2]))
@@ -131,10 +140,9 @@ func (c *MovementComputer) checkNativeCollision(tx *world.Tx, e world.Entity, po
 		if source == nil {
 			source = tx
 		}
-		boxes = blockBBoxsAround(source, body.Extend(vel))
+		boxes = nativeBlockBBoxsAround(source, query, tx.Range())
 	}
 	obstacles := make([]cube.BBox32, 0, len(boxes))
-	query := body.Extend(vel)
 	for _, box := range boxes {
 		if box.IntersectsWith(query) {
 			obstacles = append(obstacles, to32(box))
@@ -165,8 +173,11 @@ func (c *MovementComputer) checkNativeCollision(tx *world.Tx, e world.Entity, po
 			if c.nativeMobMovement {
 				next[axis] = float64(result.shape.Min()[axis])
 			} else {
-				// ItemActor's physical centre is 1/8 above its feet.
-				next[axis] -= .125
+				offset := float32(.125)
+				if entityType, ok := e.H().Type().(interface{ NetworkOffset() float64 }); ok {
+					offset = float32(entityType.NetworkOffset())
+				}
+				next[axis] = float64(centre - offset)
 			}
 		}
 		delta[axis] = next[axis] - pos[axis]
@@ -181,4 +192,32 @@ func (c *MovementComputer) checkNativeCollision(tx *world.Tx, e world.Entity, po
 		c.onGround = c.collidedVertically && requested[1] < 0
 	}
 	return delta, vel
+}
+
+// nativeBlockBBoxsAround follows BlockSource's collision fetch cell order and
+// binary32 bounds. Moving blocks may expose shapes one cell outside their
+// stored position, so the ordinary quarter-block movement margin is too small.
+func nativeBlockBBoxsAround(source world.BlockSource, query cube.BBox, bounds cube.Range) []cube.BBox {
+	lo, hi := query.Min(), query.Max()
+	var first, last cube.Pos
+	for axis := range 3 {
+		first[axis] = int(math.Floor(float64(float32(lo[axis]) - 1)))
+		last[axis] = int(math.Floor(float64(float32(hi[axis]) + 1)))
+	}
+	first[1], last[1] = max(first[1], bounds[0]), min(last[1], bounds[1])
+	var boxes []cube.BBox
+	for x := first[0]; x <= last[0]; x++ {
+		for z := first[2]; z <= last[2]; z++ {
+			for y := first[1]; y <= last[1]; y++ {
+				pos := cube.Pos{x, y, z}
+				for _, shape := range source.Block(pos).Model().BBox(pos, source) {
+					if boxes == nil {
+						boxes = blockBBoxPool.Get().([]cube.BBox)[:0]
+					}
+					boxes = append(boxes, shape.Translate(pos.Vec3()))
+				}
+			}
+		}
+	}
+	return boxes
 }

@@ -37,6 +37,10 @@ func (armourStandType) Open(tx *world.Tx, handle *world.EntityHandle, data *worl
 
 func (armourStandType) EncodeEntity() string { return "minecraft:armor_stand" }
 
+// TickAfterBlocks follows native ECS mob travel, which runs after dimension
+// block ticks.
+func (armourStandType) TickAfterBlocks() bool { return true }
+
 func (armourStandType) CollisionWidth() float64 { return .5 }
 func (armourStandType) BBox(e world.Entity) cube.BBox {
 	if ent, ok := e.(*Ent); ok {

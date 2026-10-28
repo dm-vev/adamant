@@ -381,7 +381,7 @@ func (p Piston) moveCollidedEntities(pos cube.Pos, tx *world.Tx) {
 	}
 	// The head follows the facing axis even when the push direction reverses.
 	armBox := cube.Box(0, 0, 0, 1, 1, 1).Translate(pos.Vec3()).Translate(faceOffset(p.Facing, float64(p.Progress)))
-	p.moveEntitiesInBox(armBox, p.Facing, tx, nil, p.movementSource(pos, tx))
+	p.moveEntitiesInBox(armBox, p.Facing, tx, nil, p.movementSource(pos, tx), false)
 }
 
 func (p Piston) moveMovingBlockEntities(mb MovingBlock, pos cube.Pos, dir cube.Face, tx *world.Tx) {
@@ -397,7 +397,9 @@ func (p Piston) moveMovingBlockEntities(mb MovingBlock, pos cube.Pos, dir cube.F
 			for e := range tx.EntitiesWithin(top.Grow(1)) {
 				body := e.H().Type().BBox(e).Translate(e.Position())
 				point := e.Position()
-				if !body.IntersectsWith(top) || point[0] < lo[0] || point[0] > hi[0] || point[2] < lo[2] || point[2] > hi[2] {
+				// Native checks the body's feet against the top surface. A
+				// tall actor intersecting the slab from the side is not a rider.
+				if !body.IntersectsWith(top) || body.Min()[1] < lo[1] || point[0] < lo[0] || point[0] > hi[0] || point[2] < lo[2] || point[2] > hi[2] {
 					continue
 				}
 				if pushEntityByPiston(e, dir, .5, source) {
@@ -409,17 +411,15 @@ func (p Piston) moveMovingBlockEntities(mb MovingBlock, pos cube.Pos, dir cube.F
 			}
 		}
 	}
+	_, slime := mb.Moving.(Slime)
 	for _, box := range movingBlockBoxes(mb, pos, p, dir, tx) {
-		p.moveEntitiesInBox(box, dir, tx, carried, source)
+		p.moveEntitiesInBox(box, dir, tx, carried, source, slime)
 	}
 }
 
-func (p Piston) moveEntitiesInBox(box cube.BBox, dir cube.Face, tx *world.Tx, excluded map[*world.EntityHandle]struct{}, source world.BlockSource) {
+func (p Piston) moveEntitiesInBox(box cube.BBox, dir cube.Face, tx *world.Tx, excluded map[*world.EntityHandle]struct{}, source world.BlockSource, slime bool) {
 	search := box.Grow(1)
 	for e := range tx.EntitiesWithin(search) {
-		if _, carried := excluded[e.H()]; carried {
-			continue
-		}
 		body := e.H().Type().BBox(e).Translate(e.Position())
 		if !body.IntersectsWith(box) {
 			continue
@@ -439,6 +439,14 @@ func (p Piston) moveEntitiesInBox(box cube.BBox, dir cube.Face, tx *world.Tx, ex
 			distance = float32(body.Max()[axis]) - float32(box.Min()[axis])
 		}
 		if distance > 0 {
+			// Native slime contact sets motion before checking whether this
+			// actor was already carried by the moving block's top surface.
+			if v, ok := e.(velocityEntity); ok && slime {
+				v.SetVelocity(direction)
+			}
+			if _, carried := excluded[e.H()]; carried {
+				continue
+			}
 			pushEntityByPiston(e, dir, float64(distance), source)
 		}
 	}

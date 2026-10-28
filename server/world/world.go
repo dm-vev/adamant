@@ -118,6 +118,7 @@ type World struct {
 	// iteration, which significantly reduces pressure on the garbage collector
 	// and CPU usage during the entity pipeline.
 	entities           map[*EntityHandle]*entityState
+	queuedEntityTicks  []*EntityHandle
 	entitiesByUUID     map[uuid.UUID]*EntityHandle
 	entitiesByUniqueID map[int64]*EntityHandle
 	pendingRiders      map[uuid.UUID][]*EntityHandle
@@ -211,6 +212,10 @@ type entityState struct {
 	ent               Entity
 	lastTick          int64
 	lastProcessedTick int64
+	lastPostBlockTick int64
+	// firstTickPending distinguishes the spawn-time processed marker from an
+	// actual entity tick. A block may explicitly admit a new actor this tick.
+	firstTickPending bool
 	// nextPassiveTick is the next scheduled tick at which the entity should receive
 	// maintenance updates such as ageing and fire decay while it is outside of the
 	// active simulation range.
@@ -220,9 +225,10 @@ type entityState struct {
 	isItem bool
 	// isTicker caches whether the entity implements TickerEntity so we can avoid
 	// repeating expensive type assertions in the hot tick path.
-	isTicker      bool
-	tickerChecked bool
-	ticker        TickerEntity
+	isTicker        bool
+	tickerChecked   bool
+	ticker          TickerEntity
+	postBlockTicker interface{ TickAfterBlockUpdates(*Tx, int64) }
 }
 
 func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
@@ -241,6 +247,7 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 			s.isTicker = false
 		}
 		s.tickerChecked = true
+		s.postBlockTicker, _ = s.ent.(interface{ TickAfterBlockUpdates(*Tx, int64) })
 	}
 	if binder, ok := s.ent.(interface{ BindTransaction(*Tx) }); ok {
 		binder.BindTransaction(tx)
@@ -1338,6 +1345,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 		pos:               pos,
 		lastTick:          currentTick,
 		lastProcessedTick: currentTick,
+		firstTickPending:  true,
 		isItem:            handle.t.EncodeEntity() == "minecraft:item",
 	}
 	if _, ok := w.entities[handle]; !ok {

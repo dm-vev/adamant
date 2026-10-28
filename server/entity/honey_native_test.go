@@ -41,7 +41,7 @@ func TestHoneyEntitiesMatchBDS(t *testing.T) {
 	if err := json.Unmarshal(data, &native); err != nil {
 		t.Fatal(err)
 	}
-	if !native.Complete || len(native.Scenarios) != 124 {
+	if !native.Complete || len(native.Scenarios) != 134 {
 		t.Fatal("incomplete original-BDS honey entities fixture")
 	}
 	for _, c := range native.Scenarios {

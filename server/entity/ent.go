@@ -188,8 +188,15 @@ func (e *Ent) MoveByPiston(delta mgl64.Vec3, source world.BlockSource) {
 	if c != nil {
 		previous := c.blockSource
 		c.blockSource = source
-		delta, _ = c.CheckCollision(e.tx, e, e.Position(), delta)
+		requested := delta
+		var clipped mgl64.Vec3
+		delta, clipped = c.CheckCollision(e.tx, e, e.Position(), delta)
 		c.blockSource = previous
+		for axis := range 3 {
+			if clipped[axis] != requested[axis] {
+				e.data.Vel[axis] = 0
+			}
+		}
 		e.Move(delta, 0, 0)
 		return
 	}

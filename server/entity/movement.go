@@ -139,7 +139,11 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 		mobFriction = .91
 		if c.onGround {
 			friction := float32(.6)
-			if f, ok := tx.Block(cube.PosFromVec3(pos).Side(cube.FaceDown)).(interface{ Friction() float64 }); ok {
+			// Native ground travel samples the block at AABB.minY - 0.1,
+			// including the initial on-ground state of an airborne actor.
+			feet := e.H().Type().BBox(e).Translate(pos).Min()[1]
+			below := cube.PosFromVec3(mgl64.Vec3{pos[0], float64(float32(feet) - float32(.1)), pos[2]})
+			if f, ok := tx.Block(below).(interface{ Friction() float64 }); ok {
 				friction = float32(f.Friction())
 			}
 			mobFriction *= friction

@@ -355,6 +355,37 @@ func (tx *Tx) EntitiesWithin(box cube.BBox) iter.Seq[Entity] {
 	return tx.World().entitiesWithin(tx, box)
 }
 
+// EntityChunk returns the chunk whose entity list currently owns e. Movement
+// within an entity tick may precede migration to a new chunk, so this can differ
+// from the chunk containing e.Position(). The bool is false for removed entities.
+func (tx *Tx) EntityChunk(e Entity) (ChunkPos, bool) {
+	state, ok := tx.World().entities[e.H()]
+	if !ok {
+		return ChunkPos{}, false
+	}
+	return state.pos, true
+}
+
+// QueueEntityTick lets an actor created by a block join this tick's entity
+// movement after block/circuit updates. It does not repeat an entity's normal
+// tick if it has already run, and removed actors are ignored. Call before the
+// post-block phase; ordinary entity spawning does not need this operation.
+func (tx *Tx) QueueEntityTick(e Entity) {
+	w := tx.World()
+	state := w.entities[e.H()]
+	if state == nil {
+		return
+	}
+	tick := w.CurrentTick()
+	if state.firstTickPending {
+		state.firstTickPending = false
+		state.lastProcessedTick = tick - 1
+	}
+	if state.lastProcessedTick != tick {
+		w.queuedEntityTicks = append(w.queuedEntityTicks, e.H())
+	}
+}
+
 // Entities returns an iterator that yields all entities in the World.
 func (tx *Tx) Entities() iter.Seq[Entity] {
 	return tx.World().allEntities(tx)

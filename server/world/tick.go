@@ -233,6 +233,8 @@ func (t ticker) tick(tx *Tx) {
 		t.tickBlocksRandomly(tx, loaders, tick)
 		t.performNeighbourUpdates(tx)
 		w.redstone.tick(tx, tick)
+		t.tickQueuedEntities(tx, tick)
+		t.tickEntitiesInPhase(tx, tick, true)
 	}
 	if w.sprintTicks.Load() > 0 {
 		w.sprintTicks.Add(-1)
@@ -526,6 +528,10 @@ func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {
 // reduces per-tick iteration costs on large worlds while still keeping important counters such as entity age and
 // fire timers consistent.
 func (t ticker) tickEntities(tx *Tx, tick int64) {
+	t.tickEntitiesInPhase(tx, tick, false)
+}
+
+func (t ticker) tickEntitiesInPhase(tx *Tx, tick int64, afterBlocks bool) {
 	const sleepMaintenanceInterval = 40 // ~2 seconds between maintenance passes for sleeping chunks.
 
 	w := tx.World()
@@ -541,20 +547,55 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 			continue
 		}
 		if w.conf.Synchronous || len(col.viewers) > 0 {
-			t.tickEntityColumn(tx, tick, ref.pos, col, true)
+			t.tickEntityColumn(tx, tick, ref.pos, col, true, afterBlocks)
 			continue
 		}
 		if !lazyMaintenance {
 			continue
 		}
-		t.tickEntityColumn(tx, tick, ref.pos, col, false)
+		t.tickEntityColumn(tx, tick, ref.pos, col, false, afterBlocks)
 	}
 }
 
-func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, active bool) {
+func (t ticker) tickQueuedEntities(tx *Tx, tick int64) {
+	w := tx.World()
+	queued := w.queuedEntityTicks
+	w.queuedEntityTicks = nil
+	for _, handle := range queued {
+		state := w.entities[handle]
+		if state == nil || state.lastProcessedTick == tick {
+			continue
+		}
+		col := w.chunks[state.pos]
+		if col == nil || !col.Ready() {
+			continue
+		}
+		active := w.conf.Synchronous || len(col.viewers) > 0
+		t.tickEntityHandle(tx, tick, handle, entityChunkRef{col: col, pos: state.pos, waiting: active && !w.entityTickingReady(state.pos)}, active)
+	}
+}
+
+func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, active, afterBlocks bool) {
 	ref := entityChunkRef{col: col, pos: pos, waiting: active && !tx.World().entityTickingReady(pos)}
 	for index := 0; index < len(col.Entities); {
 		handle := col.Entities[index]
+		phase, phased := handle.Type().(interface{ TickAfterBlocks() bool })
+		if (phased && phase.TickAfterBlocks()) != afterBlocks {
+			// Pre-block entities can sample the completed block/circuit phase
+			// without repeating their movement, ageing or normal entity tick.
+			if afterBlocks && active && !ref.waiting {
+				state := tx.World().entities[handle]
+				if state != nil && state.lastTick == tick && state.lastProcessedTick == tick && state.lastPostBlockTick != tick && state.postBlockTicker != nil {
+					state.lastPostBlockTick = tick
+					state.entity(tx, handle)
+					state.postBlockTicker.TickAfterBlockUpdates(tx, tick)
+				}
+			}
+			if index < len(col.Entities) && col.Entities[index] == handle {
+				index++
+			}
+			continue
+		}
 		t.tickEntityHandle(tx, tick, handle, ref, active)
 		if index < len(col.Entities) && col.Entities[index] == handle {
 			index++
@@ -574,6 +615,7 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	if state.lastProcessedTick == tick {
 		return
 	}
+	state.firstTickPending = false
 	state.lastProcessedTick = tick
 	// Java ticks the vehicle before its passengers. Marking first also stops
 	// malformed cyclic saved links from recursing indefinitely.

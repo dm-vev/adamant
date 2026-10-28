@@ -110,7 +110,7 @@ class Reference:
         result = []
         while time.monotonic() < deadline:
             if self.process.poll() is not None:
-                raise RuntimeError("BDS stopped: " + "\n".join(self.log[-15:]))
+                raise RuntimeError(f"BDS stopped (exit {self.process.returncode & 0xffffffff:#x}): " + "\n".join(self.log[-15:]))
             try:
                 line = self.lines.get(timeout=.1)
             except queue.Empty:

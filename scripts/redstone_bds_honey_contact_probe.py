@@ -44,6 +44,10 @@ if __name__=="__main__":
                 (-.0625,0,.03125,.0625,.125),(.25,2.875),(-.2,-.1,.1))]
     cases += [dict(entity=entity,axis=0,gap=-.5625 if entity=="minecraft:item" else -.6875,height=3.5,velocity_y=velocity)
               for entity,velocity in itertools.product(("minecraft:item","minecraft:armor_stand"),(-.2,.1))]
+    # Bracket the native AABB-bottom - 0.1 friction query independently of
+    # the landing collision. Initial upward motion keeps the first move clear.
+    cases += [dict(entity="minecraft:armor_stand",axis=0,gap=-.6875,height=height,velocity_y=velocity)
+              for height,velocity in itertools.product((3,3.0625,3.099,3.101,3.25),(-.2,.1))]
     reference=Reference(args.binary.resolve(),args.assets.resolve(),args.port,script=SCRIPT.replace("CASES",json.dumps(cases)),local_client=True)
     output=dict(complete=False,reference=__doc__,binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),scenarios=[])
     try:

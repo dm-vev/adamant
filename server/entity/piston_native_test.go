@@ -37,20 +37,28 @@ func TestPistonVanillaObstructionMatchesBDS(t *testing.T) {
 	testPistonVanillaEntitiesNative(t, "bedrock_1_26_51_piston_vanilla_obstruction.json", 256)
 }
 
+func TestPistonVanillaRidersMatchBDS(t *testing.T) {
+	testPistonVanillaEntitiesNative(t, "bedrock_1_26_51_piston_vanilla_riders.json", 768)
+}
+
 func testPistonVanillaEntitiesNative(t *testing.T, name string, count int) {
 	data, err := os.ReadFile("../block/testdata/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var native struct {
-		Complete  bool
-		Scenarios []struct {
+		Complete         bool
+		SceneSpacing     int    `json:"scene_spacing"`
+		SimulationBounds [4]int `json:"simulation_bounds"`
+		Scenarios        []struct {
 			Scenario struct {
 				Sticky, Obstruction bool
 				Facing, Phase       int
 				Payload, Motion     string
 				Entity              string
 				Distance            float64
+				Ride                bool
+				Lateral             float64
 			}
 			Base, Source cube.Pos
 			Front        []cube.Pos
@@ -89,13 +97,24 @@ func testPistonVanillaEntitiesNative(t *testing.T, name string, count int) {
 	if !native.Complete || len(native.Scenarios) != count {
 		t.Fatal("incomplete original-BDS vanilla entity fixture")
 	}
+	if name == "bedrock_1_26_51_piston_vanilla_riders.json" && (native.SceneSpacing != 32 || native.SimulationBounds != [4]int{-32, -32, 159, 159}) {
+		t.Fatal("rider scenes must be isolated and their complete motion force-loaded")
+	}
 	for _, trace := range native.Scenarios {
 		c := trace.Scenario
-		t.Run(fmt.Sprintf("sticky%t/face%d/phase%d/%s/distance%g/%s/%s", c.Sticky, c.Facing, c.Phase, c.Payload, c.Distance, c.Motion, c.Entity), func(t *testing.T) {
+		name := fmt.Sprintf("sticky%t/face%d/phase%d/%s/distance%g/%s/%s", c.Sticky, c.Facing, c.Phase, c.Payload, c.Distance, c.Motion, c.Entity)
+		if c.Ride {
+			name += fmt.Sprintf("/ride/lateral%g", c.Lateral)
+		}
+		t.Run(name, func(t *testing.T) {
 			if len(trace.Samples) != 100 || len(trace.Changes) != 2 || trace.Changes[0].Tick&1 != int64(c.Phase) || trace.Spawn.Tick == 0 {
 				t.Fatal("invalid original vanilla entity trace")
 			}
-			if trace.SetupControl.CheckedCells != 338 || trace.SetupControl.ClearRadius != 6 || trace.SetupControl.NonAir != trace.SetupControl.ExpectedNonAir {
+			radius := 6
+			if c.Ride {
+				radius = 14
+			}
+			if trace.SetupControl.CheckedCells != 2*(2*radius+1)*(2*radius+1) || trace.SetupControl.ClearRadius != radius || trace.SetupControl.NonAir != trace.SetupControl.ExpectedNonAir {
 				t.Fatal("missing native initial-environment validation")
 			}
 			settings := (world.NopProvider{}).Settings()

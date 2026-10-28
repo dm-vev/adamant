@@ -31,6 +31,7 @@ def entity_definition(collision):
 SCRIPT = r'''
 import {world,system,ItemStack} from "@minecraft/server";
 const emit=x=>console.warn("ADAMANT_TIMING "+JSON.stringify(x)),cases=CASES;
+const grid=cases[0].ride?{width:4,batch:16,spacing:32,bias:16}:{width:8,batch:64,spacing:16,bias:cases[0].entity?8:4};
 const delta=[[0,-1,0],[0,1,0],[0,0,-1],[0,0,1],[-1,0,0],[1,0,0]],nativeFace=[0,1,3,2,5,4];
 let d,load=0,start=0,offset=0,cells=[];
 const cmd=x=>d.runCommand(x),get=p=>d.getBlock({x:p[0],y:p[1],z:p[2]});
@@ -40,15 +41,19 @@ const read=p=>{const b=get(p);if(!b)throw new Error("unloaded entity cell "+JSON
 const actor=p=>{const a=get(p).getComponent("minecraft:piston");return a?{state:a.state,moving:a.isMoving,attached:a.getAttachedBlocksLocations()}:null;};
 const body=e=>{if(!e.isValid)throw new Error("native piston body disappeared");return {id:e.typeId,position:e.location,velocity:e.getVelocity(),aabb:e.getAABB(),on_ground:e.isOnGround};};
 const h=system.runInterval(()=>{try{
- if(!d){d=world.getDimension("overworld");load=system.currentTick;cmd("tickingarea add 0 0 0 127 100 127 audit true");cmd("gamerule randomtickspeed 0");cmd("gamerule domobspawning false");cmd("gamerule dotiledrops false");return;}
+ if(!d){d=world.getDimension("overworld");load=system.currentTick;
+  if(cases[0].ride){cmd("tickingarea add -32 0 -32 95 100 159 audit_west true");cmd("tickingarea add 96 0 -32 159 100 159 audit_east true");}
+  else cmd("tickingarea add 0 0 0 127 100 127 audit true");
+  cmd("gamerule randomtickspeed 0");cmd("gamerule domobspawning false");cmd("gamerule dotiledrops false");return;}
  if(!start){
   if(!get([0,65,0])||!get([127,65,127])){if(system.currentTick-load>240)throw new Error("load timeout");return;}
   const bias=cases[0].entity?8:4;
   for(let x=0;x<8;x++)for(let z=0;z<8;z++)if(!get([bias+x*16,65,bias+z*16])){if(system.currentTick-load>240)throw new Error("interior entity cell load timeout");return;}
+  if(cases[0].ride)for(let x=-32;x<160;x+=16)for(let z=-32;z<160;z+=16)if(!get([x,65,z])){if(system.currentTick-load>240)throw new Error("rider simulation margin load timeout");return;}
   if(system.currentTick&1)return;
   cells=[];
-  for(let i=0;i<64&&offset+i<cases.length;i++){
-   const scenario=cases[offset+i],bias=scenario.entity?8:4,radius=scenario.entity?6:4,base=[bias+(i%8)*16,65,bias+Math.floor(i/8)*16],source=side(base,scenario.facing^1),front=(scenario.obstruction?[1,2,3]:[1,2]).map(n=>side(base,scenario.facing,n));
+  for(let i=0;i<grid.batch&&offset+i<cases.length;i++){
+   const scenario=cases[offset+i],radius=scenario.ride?14:scenario.entity?6:4,base=[grid.bias+(i%grid.width)*grid.spacing,65,grid.bias+Math.floor(i/grid.width)*grid.spacing],source=side(base,scenario.facing^1),front=(scenario.obstruction?[1,2,3]:[1,2]).map(n=>side(base,scenario.facing,n));
    cmd(`fill ${base[0]-radius} 60 ${base[2]-radius} ${base[0]+radius} 70 ${base[2]+radius} air`);
    if(scenario.entity)cmd(`fill ${base[0]-4} 64 ${base[2]-4} ${base[0]+4} 64 ${base[2]+4} stone`);
    set(base,(scenario.sticky?"sticky_piston":"piston")+` ["facing_direction"=${nativeFace[scenario.facing]}]`);
@@ -104,7 +109,7 @@ if __name__ == "__main__":
     for name in ("binary", "assets", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--port", type=int, default=30878)
-    parser.add_argument("--suite", choices=("smoke", "displacement", "vanilla", "vanilla_obstruction", "all"), default="smoke")
+    parser.add_argument("--suite", choices=("smoke", "displacement", "vanilla", "vanilla_obstruction", "vanilla_riders", "all"), default="smoke")
     args = parser.parse_args()
     args.offline_reference = True
     cases = [dict(sticky=s, facing=f, phase=p, payload=b, distance=distance, collision=collision,
@@ -128,9 +133,19 @@ if __name__ == "__main__":
         if args.suite == "vanilla_obstruction":
             for case in cases:
                 case["obstruction"] = True
+    if args.suite == "vanilla_riders":
+        definitions = {}
+        cases = [dict(sticky=s, facing=f, phase=p, payload=b, distance=-1 if motion == "push" else 0,
+                      collision=True, motion=motion, ride=True, lateral=lateral, entity=entity)
+                 for s, f, p, b, motion, lateral, entity in itertools.product(
+                     (False, True), range(2, 6), (0, 1), ("stone", "honey_block", "slime"),
+                     ("push", "pull"), (0, .5, .75, 1), ("minecraft:armor_stand", "minecraft:item"))]
     # Definitions are also explicit data in the generated source, retained with
     # the fixture by the caller below without relying on temporary pack files.
     capture(args, SCRIPT.replace("CASES", json.dumps(cases)), len(cases), entity_definitions=definitions)
     output = json.loads(args.output.read_text(encoding="utf-8"))
     output["entity_definitions"] = definitions
+    if args.suite == "vanilla_riders":
+        output["scene_spacing"] = 32
+        output["simulation_bounds"] = [-32, -32, 159, 159]
     args.output.write_text(json.dumps(output, separators=(",", ":")) + "\n", encoding="utf-8")

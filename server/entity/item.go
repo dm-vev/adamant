@@ -63,6 +63,10 @@ func (t itemType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Ent
 
 func (itemType) EncodeEntity() string { return "minecraft:item" }
 
+// TickAfterBlocks includes ItemActor's post-normal-tick movement and escape
+// after block actors restore their completed piston payloads.
+func (itemType) TickAfterBlocks() bool { return true }
+
 // NetworkOffset is the native ItemActor height offset: half its 0.25-block
 // collision height. The client adds visual bobbing independently of this origin.
 func (itemType) NetworkOffset() float64 { return 0.125 }
