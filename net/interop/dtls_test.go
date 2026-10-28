@@ -136,12 +136,14 @@ func fingerprintCheck(want string) func([][]byte) error {
 func pionConfig(cert dtls.Certificate, peerFingerprint string, suite piondtls.CipherSuiteID, curve elliptic.Curve) *piondtls.Config {
 	check := fingerprintCheck(peerFingerprint)
 	return &piondtls.Config{
-		Certificates:         []tls.Certificate{{Certificate: cert.Chain, PrivateKey: cert.Key}},
-		CipherSuites:         []piondtls.CipherSuiteID{suite},
-		EllipticCurves:       []elliptic.Curve{curve},
-		ClientAuth:           piondtls.RequireAnyClientCert,
-		ExtendedMasterSecret: piondtls.RequireExtendedMasterSecret,
-		InsecureSkipVerify:   true,
+		Certificates:   []tls.Certificate{{Certificate: cert.Chain, PrivateKey: cert.Key}},
+		CipherSuites:   []piondtls.CipherSuiteID{suite},
+		EllipticCurves: []elliptic.Curve{curve},
+		// WebRTC peers always settle an SRTP profile, data channels or not.
+		SRTPProtectionProfiles: []piondtls.SRTPProtectionProfile{piondtls.SRTP_AEAD_AES_128_GCM, piondtls.SRTP_AES128_CM_HMAC_SHA1_80},
+		ClientAuth:             piondtls.RequireAnyClientCert,
+		ExtendedMasterSecret:   piondtls.RequireExtendedMasterSecret,
+		InsecureSkipVerify:     true,
 		VerifyPeerCertificate: func(raw [][]byte, _ [][]*x509.Certificate) error {
 			return check(raw)
 		},
@@ -197,6 +199,9 @@ func TestDTLSServerWithPionClient(t *testing.T) {
 					t.Fatalf("pion handshake: %v", err)
 				}
 				ours.waitEstablished(t)
+				if _, ok := pion.SelectedSRTPProtectionProfile(); !ok {
+					t.Fatal("no SRTP profile settled")
+				}
 				exchangeWithPion(t, ours, pion)
 			})
 		}
@@ -238,6 +243,9 @@ func TestDTLSClientWithPionServer(t *testing.T) {
 			}
 			defer pion.Close()
 			ours.waitEstablished(t)
+			if _, ok := pion.SelectedSRTPProtectionProfile(); !ok {
+				t.Fatal("no SRTP profile settled")
+			}
 			exchangeWithPion(t, ours, pion)
 		})
 	}

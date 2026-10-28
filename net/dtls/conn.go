@@ -16,6 +16,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -164,7 +165,9 @@ type Conn struct {
 	certRequested          bool
 	requestedSignatures    []uint16
 	extendedMaster         bool
-	master                 [48]byte
+	// srtpProfile is the SRTP protection profile settled on, if any.
+	srtpProfile uint16
+	master      [48]byte
 	// verifyLen is the length of the transcript a CertificateVerify signs.
 	verifyLen   int
 	cookieKey   [32]byte
@@ -230,7 +233,7 @@ func (c *Conn) Start(now time.Time) {
 		random:       c.clientRandom,
 		cipherSuites: suites,
 		compression:  []byte{0},
-		ext:          extensions{groups: supportedGroups, signatures: supportedSignatures},
+		ext:          extensions{groups: supportedGroups, signatures: supportedSignatures, srtpProfiles: srtpProfiles},
 	}
 	c.newFlight()
 	c.queueHandshake(0, typeClientHello, c.hello.marshal())
@@ -545,6 +548,13 @@ func (c *Conn) clientMessage(m *partial, now time.Time) error {
 		if c.suite = suiteByID(hello.cipherSuite); c.suite == nil || hello.compression != 0 {
 			return &AlertError{Description: alertIllegalParameter}
 		}
+		if p := hello.ext.srtpProfiles; len(p) > 1 || len(p) == 1 && !slices.Contains(srtpProfiles, p[0]) {
+			// The server takes one of the profiles offered, or none.
+			return &AlertError{Description: alertIllegalParameter}
+		}
+		if len(hello.ext.srtpProfiles) == 1 {
+			c.srtpProfile = hello.ext.srtpProfiles[0]
+		}
 		c.addTranscript(m.typ, m.seq, m.body)
 		c.serverRandom = hello.random
 		c.extendedMaster = hello.ext.extendedMasterSecret
@@ -785,6 +795,13 @@ func (c *Conn) handleClientHello(m *partial, now time.Time) error {
 	}
 	if len(hello.ext.pointFormats) > 0 {
 		reply.ext.pointFormats = []byte{0}
+	}
+	for _, p := range srtpProfiles {
+		if slices.Contains(hello.ext.srtpProfiles, p) {
+			reply.ext.srtpProfiles = []uint16{p}
+			c.srtpProfile = p
+			break
+		}
 	}
 	params := marshalECDHEParams(group, c.ecdhKey.PublicKey().Bytes())
 	signed := make([]byte, 0, 64+len(params))

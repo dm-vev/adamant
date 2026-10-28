@@ -27,6 +27,7 @@ const (
 	extSupportedGroups      = 10
 	extPointFormats         = 11
 	extSignatureAlgorithms  = 13
+	extUseSRTP              = 14
 	extExtendedMasterSecret = 23
 	extRenegotiationInfo    = 0xff01
 )
@@ -63,6 +64,19 @@ var supportedSignatures = []uint16{
 
 // supportedGroups lists the ECDHE groups in order of preference.
 var supportedGroups = []uint16{groupX25519, groupP256, groupP384}
+
+// SRTP protection profiles (RFC 5764 section 4.1.2).
+const (
+	srtpAES128CMSHA1_80 = 0x0001
+	srtpAES128CMSHA1_32 = 0x0002
+	srtpAEADAES128GCM   = 0x0007
+	srtpAEADAES256GCM   = 0x0008
+)
+
+// srtpProfiles lists the SRTP protection profiles offered and taken, in
+// order of preference. Data channels carry no SRTP, but pion and libwebrtc
+// fail a handshake that does not settle on a profile.
+var srtpProfiles = []uint16{srtpAEADAES128GCM, srtpAEADAES256GCM, srtpAES128CMSHA1_80, srtpAES128CMSHA1_32}
 
 // handshakeHeader is the header of a DTLS handshake message fragment.
 type handshakeHeader struct {
@@ -183,6 +197,8 @@ type extensions struct {
 	signatures           []uint16
 	extendedMasterSecret bool
 	renegotiationInfo    bool
+	// srtpProfiles holds the profiles of a use_srtp extension, if any.
+	srtpProfiles []uint16
 }
 
 func parseExtensions(b []byte) (extensions, bool) {
@@ -215,6 +231,14 @@ func parseExtensions(b []byte) (extensions, bool) {
 			e.signatures = sigs
 		case extExtendedMasterSecret:
 			e.extendedMasterSecret = true
+		case extUseSRTP:
+			profiles, ok := parseUint16s(d.vec16())
+			// The MKI is not used: SRTP never runs.
+			d.vec8()
+			if !ok || len(profiles) == 0 || !d.done() {
+				return e, false
+			}
+			e.srtpProfiles = profiles
 		case extRenegotiationInfo:
 			// Only an initial handshake happens: the renegotiated
 			// connection data must be empty.
@@ -282,6 +306,9 @@ func (m *clientHello) marshal() []byte {
 	ext = appendExtension(ext, extSignatureAlgorithms, appendUint16s(nil, m.ext.signatures))
 	ext = appendExtension(ext, extExtendedMasterSecret, nil)
 	ext = appendExtension(ext, extRenegotiationInfo, []byte{0})
+	if len(m.ext.srtpProfiles) > 0 {
+		ext = appendExtension(ext, extUseSRTP, appendVec8(appendUint16s(nil, m.ext.srtpProfiles), nil))
+	}
 	return appendVec16(b, ext)
 }
 
@@ -330,6 +357,9 @@ func (m *serverHello) marshal() []byte {
 	}
 	if len(m.ext.pointFormats) > 0 {
 		ext = appendExtension(ext, extPointFormats, appendVec8(nil, m.ext.pointFormats))
+	}
+	if len(m.ext.srtpProfiles) > 0 {
+		ext = appendExtension(ext, extUseSRTP, appendVec8(appendUint16s(nil, m.ext.srtpProfiles), nil))
 	}
 	if len(ext) > 0 {
 		b = appendVec16(b, ext)

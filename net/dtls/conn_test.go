@@ -298,3 +298,16 @@ func FuzzHandleDatagram(f *testing.F) {
 		}
 	})
 }
+
+// TestHandshakeSettlesSRTPProfile negotiates use_srtp: WebRTC peers fail
+// a handshake without a profile even when no SRTP runs.
+func TestHandshakeSettlesSRTPProfile(t *testing.T) {
+	client, server := pairConfigs(t)
+	n := newNetwork(t, 9, client, server)
+	n.start()
+	n.run(time.Minute, n.established)
+	c, s := n.ends[0].conn, n.ends[1].conn
+	if c.srtpProfile != srtpAEADAES128GCM || s.srtpProfile != srtpAEADAES128GCM {
+		t.Fatalf("profiles %#x and %#x", c.srtpProfile, s.srtpProfile)
+	}
+}
