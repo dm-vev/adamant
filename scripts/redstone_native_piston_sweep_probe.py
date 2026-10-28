@@ -23,12 +23,24 @@ from redstone_native_lightning_search_probe import BASE
 class NativePistonSweep(NativePistonShapes):
     def __init__(self, pe):
         super().__init__(pe)
-        for rva, size in ((0xE5C6380, 16), (0xE69DC98, 4), (0xE5E9578, 4), (0xE780AC0, 8), (0xE6258C8, 4)):
+        for rva, size in ((0xE5C6380, 16), (0xE69DC98, 4), (0xE5E9578, 4), (0xE780AC0, 8), (0xE6258C8, 4), (0xE6D7D88,12), (0xE6D8608,12)):
             self.map(rva, pe.read(rva, size))
         self.map(0x3327D80, pe.read(0x3327D80, 0x463), executable=True)
         self.map(0x82A4890, pe.read(0x82A4890, 0x334), executable=True)
+        self.map(0x9027730, pe.read(0x9027730, 0x7B), executable=True)
         self.clip = C.WINFUNCTYPE(C.c_void_p, *([C.c_void_p] * 4))(BASE + 0x3327D80)
         self.sweep = C.WINFUNCTYPE(C.c_void_p, *([C.c_void_p] * 5))(BASE + 0x82A4890)
+        self.configure = C.WINFUNCTYPE(None, *([C.c_void_p] * 3))(BASE + 0x9027730)
+
+    def policy(self, bits, one_way_blocks, minimum, override):
+        dep, request = C.create_string_buffer(56), C.create_string_buffer(152)
+        struct.pack_into("<I3f",dep,0,bits,*minimum)
+        struct.pack_into("<QQ",dep,16,0,24 if one_way_blocks else 0)
+        if override is not None:
+            struct.pack_into("<3f?",dep,40,*override,True)
+        self.configure(0,C.addressof(dep),C.addressof(request))
+        return dict(bits=bits,one_way_blocks=one_way_blocks,minimum=minimum,override=override,
+                    limits=struct.unpack_from("<3f",request,72))
 
     def run(self, case):
         # These buffers need live only until the original calls return.
@@ -60,7 +72,7 @@ if __name__ == "__main__":
     digest = hashlib.sha256(pe.data).hexdigest()
     if digest != "8bbe24d2cf7a3d7acdb3fc7f3f821a4f24518bdbe6a83ce3afd424ecfce988a5":
         raise RuntimeError("client differs from inspected image")
-    native, cases = NativePistonSweep(pe), []
+    native, cases, policies = NativePistonSweep(pe), [], []
     try:
         for anchor, size, face, gap, speed, limit in itertools.product(
                 ((0,0,0), (.5,65,.5), (1000000,65,-1000000)), ((1,1,1), (.25,.25,.25), (.5,1.975,.5)),
@@ -78,10 +90,13 @@ if __name__ == "__main__":
                 obstacles.append([*low, *[v+rng.choice((.25, .5, 1)) for v in low]])
             moves = [[rng.randrange(-4, 5)*.25 for _ in range(3)] for _ in range(rng.randrange(4))]
             cases.append(native.run(dict(body=[0,0,0,.5,1.975,.5], moves=moves, obstacles=obstacles, limits=[rng.choice((0,.25,1)) for _ in range(3)])))
+        for bits, one_way, minimum, override in itertools.product(range(32),(False,True),
+                ((0,0,0),(.25,.5,1.5),(2,.125,.75)),(None,(.25,1.5,.5),(2,.25,.125))):
+            policies.append(native.policy(bits,one_way,minimum,override))
     finally:
         native.close()
     args.output.write_text(json.dumps({"complete": True, "reference": __doc__, "client_sha256": digest,
         "functions": [{"rva": hex(rva), "size": size, "sha256": hashlib.sha256(pe.read(rva, size)).hexdigest()}
-                      for rva, size in ((0x3327D80,0x463),(0x82A4890,0x334))],
-        "scenarios": cases}, separators=(",", ":")) + "\n", encoding="utf-8")
+                      for rva, size in ((0x3327D80,0x463),(0x82A4890,0x334),(0x9027730,0x7B))],
+        "policies":policies,"scenarios": cases}, separators=(",", ":")) + "\n", encoding="utf-8")
     print(json.dumps({"complete": True, "cases": len(cases)}))

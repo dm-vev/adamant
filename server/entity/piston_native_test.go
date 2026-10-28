@@ -239,8 +239,14 @@ func comparePistonEntityNativeBlock(t *testing.T, tx *world.Tx, tick int64, pos 
 func comparePistonVanillaBody(t *testing.T, tick int64, e *Ent, want pistonEntityNativeBody) {
 	t.Helper()
 	box := e.H().Type().BBox(e).Translate(e.Position())
+	velocity := e.Velocity()
+	if b, ok := e.Behaviour().(*ArmourStandBehaviour); ok {
+		// ScriptActor::getVelocity (0xbd8ac30) returns component 0xf96968b0
+		// for mobs: the last travel delta, not StateVector's next velocity.
+		velocity = b.passive.mc.nativeLastDelta
+	}
 	for name, pair := range map[string][2]mgl64.Vec3{
-		"position": {e.Position(), want.Position.vec()}, "velocity": {e.Velocity(), want.Velocity.vec()},
+		"position": {e.Position(), want.Position.vec()}, "velocity": {velocity, want.Velocity.vec()},
 		"aabb centre": {box.Min().Add(box.Max()).Mul(.5), want.AABB.Center.vec()},
 		"aabb extent": {box.Max().Sub(box.Min()).Mul(.5), want.AABB.Extent.vec()},
 	} {

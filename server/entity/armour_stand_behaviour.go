@@ -38,10 +38,14 @@ func (conf ArmourStandBehaviourConfig) New() *ArmourStandBehaviour {
 		lastOnGround: true,
 	}
 	a.passive = PassiveBehaviourConfig{
-		Gravity: 0.04,
+		Gravity: 0.08,
 		Drag:    0.02,
 		Tick:    a.tick,
 	}.New()
+	a.passive.mc.nativeCollisions = true
+	a.passive.mc.nativeMobMovement = true
+	a.passive.mc.depenetrationBits = 1
+	a.passive.mc.onGround = true
 	return a
 }
 
@@ -53,7 +57,8 @@ type ArmourStandBehaviour struct {
 	hurt    time.Duration
 	armours *inventory.Armour
 
-	lastOnGround bool
+	lastOnGround         bool
+	collisionInitialised bool
 }
 
 // armourStandDropOffset returns the position offset at which an item should be dropped from an armour stand, based on

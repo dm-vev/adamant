@@ -23,6 +23,14 @@ type MovementComputer struct {
 	collidedVertically   bool
 	CollideEntities      bool
 	blockSource          world.BlockSource
+	nativeCollisions     bool
+	nativeMobMovement    bool
+	nativeLastDelta      mgl64.Vec3
+	depenetrationBits    uint8
+	skipMovement         bool
+	nativeBox            cube.BBox32
+	nativeBoxPosition    mgl64.Vec3
+	nativeBoxSet         bool
 }
 
 // blockBBoxPool caches scratch slices used while expanding collision boxes around an entity during movement
@@ -115,19 +123,62 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 	}
 
 	velBefore := vel
-	if c.DragAfterMovement {
-		vel[1] -= c.Gravity
+	if c.nativeCollisions {
+		for axis := range 3 {
+			vel[axis] = float64(float32(vel[axis]))
+		}
+	}
+	if c.skipMovement {
+		return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
+			pos: pos, vel: vel, rot: rot, onGround: c.onGround, rotChanged: rotationChanged(rot, prevRot)}
+	}
+	var mobFriction float32
+	if c.nativeMobMovement {
+		// Mob travel moves with the existing velocity. Friction is sampled
+		// from the previous on-ground state, before resolving that movement.
+		mobFriction = .91
+		if c.onGround {
+			friction := float32(.6)
+			if f, ok := tx.Block(cube.PosFromVec3(pos).Side(cube.FaceDown)).(interface{ Friction() float64 }); ok {
+				friction = float32(f.Friction())
+			}
+			mobFriction *= friction
+		}
+	} else if c.DragAfterMovement {
+		if c.nativeCollisions {
+			vel[1] = float64(float32(vel[1]) - float32(c.Gravity))
+		} else {
+			vel[1] -= c.Gravity
+		}
 	} else {
 		vel = c.applyHorizontalForces(tx, pos, c.applyVerticalForces(vel))
 	}
 	dPos, vel := c.CheckCollision(tx, e, pos, vel)
-	if c.DragAfterMovement {
+	if c.nativeMobMovement {
+		vel[0] = float64(float32(vel[0]) * mobFriction)
+		vel[2] = float64(float32(vel[2]) * mobFriction)
+		vel[1] = float64((float32(vel[1]) - float32(c.Gravity)) * (1 - float32(c.Drag)))
+	} else if c.DragAfterMovement {
 		vel = c.applyHorizontalForces(tx, pos.Add(dPos), vel)
-		vel[1] *= 1 - c.Drag
+		if c.nativeCollisions {
+			vel[1] = float64(float32(vel[1]) * (1 - float32(c.Drag)))
+		} else {
+			vel[1] *= 1 - c.Drag
+		}
+	}
+	next := pos.Add(dPos)
+	if c.nativeCollisions {
+		for axis := range 3 {
+			next[axis] = float64(float32(next[axis]))
+		}
+		dPos = next.Sub(pos)
+	}
+	if c.nativeMobMovement {
+		c.nativeLastDelta = dPos
 	}
 
 	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
-		pos: pos.Add(dPos), vel: vel, dpos: dPos, dvel: vel.Sub(velBefore),
+		pos: next, vel: vel, dpos: dPos, dvel: vel.Sub(velBefore),
 		rot: rot, onGround: c.onGround, rotChanged: rotationChanged(rot, prevRot),
 	}
 }
@@ -176,17 +227,33 @@ func (c *MovementComputer) applyVerticalForces(vel mgl64.Vec3) mgl64.Vec3 {
 // applyHorizontalForces applies friction to the velocity based on the Drag value, reducing it on the X and Z axes.
 func (c *MovementComputer) applyHorizontalForces(tx *world.Tx, pos, vel mgl64.Vec3) mgl64.Vec3 {
 	friction := 1 - c.Drag
+	if c.nativeCollisions {
+		friction = float64(1 - float32(c.Drag))
+	}
 	if c.onGround {
 		if f, ok := tx.Block(cube.PosFromVec3(pos).Side(cube.FaceDown)).(interface {
 			Friction() float64
 		}); ok {
-			friction *= f.Friction()
+			if c.nativeCollisions {
+				friction = float64(float32(friction) * float32(f.Friction()))
+			} else {
+				friction *= f.Friction()
+			}
 		} else {
-			friction *= 0.6
+			if c.nativeCollisions {
+				friction = float64(float32(friction) * float32(.6))
+			} else {
+				friction *= .6
+			}
 		}
 	}
-	vel[0] *= friction
-	vel[2] *= friction
+	if c.nativeCollisions {
+		vel[0] = float64(float32(vel[0]) * float32(friction))
+		vel[2] = float64(float32(vel[2]) * float32(friction))
+	} else {
+		vel[0] *= friction
+		vel[2] *= friction
+	}
 	return vel
 }
 
@@ -198,6 +265,9 @@ func (c *MovementComputer) CheckCollision(tx *world.Tx, e world.Entity, pos, vel
 }
 
 func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
+	if c.nativeCollisions {
+		return c.checkNativeCollision(tx, e, pos, vel)
+	}
 	deltaX, deltaY, deltaZ := vel[0], vel[1], vel[2]
 
 	// Entities only ever have a single bounding box.

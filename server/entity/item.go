@@ -48,7 +48,17 @@ var ItemType itemType
 type itemType struct{}
 
 func (t itemType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &Ent{tx: tx, handle: handle, data: data}
+	e := &Ent{tx: tx, handle: handle, data: data}
+	if behaviour, ok := data.Data.(*ItemBehaviour); ok && !behaviour.collisionInitialised {
+		behaviour.collisionInitialised = true
+		// The native initial zero move seeds penetration state while the
+		// spawn API preserves the requested item origin. OnGround starts set.
+		behaviour.passive.mc.CheckCollision(tx, e, data.Pos, mgl64.Vec3{})
+		behaviour.passive.mc.nativeBoxSet = false
+		behaviour.passive.mc.onGround = true
+		data.OnGround = true
+	}
+	return e
 }
 
 func (itemType) EncodeEntity() string { return "minecraft:item" }
@@ -56,7 +66,20 @@ func (itemType) EncodeEntity() string { return "minecraft:item" }
 // NetworkOffset is the native ItemActor height offset: half its 0.25-block
 // collision height. The client adds visual bobbing independently of this origin.
 func (itemType) NetworkOffset() float64 { return 0.125 }
-func (itemType) BBox(world.Entity) cube.BBox {
+
+// CollisionWidth returns the stored physical width, independently of rounding
+// of the translated AABB bounds at large world coordinates.
+func (itemType) CollisionWidth() float64 { return .25 }
+func (itemType) BBox(e world.Entity) cube.BBox {
+	if ent, ok := e.(*Ent); ok {
+		if b, ok := ent.data.Data.(*ItemBehaviour); ok {
+			c := b.passive.mc
+			if c.nativeBoxSet && ent.Position() == c.nativeBoxPosition {
+				lo, hi := c.nativeBox.Min(), c.nativeBox.Max()
+				return cube.Box(float64(lo[0]), float64(lo[1]), float64(lo[2]), float64(hi[0]), float64(hi[1]), float64(hi[2])).Translate(ent.Position().Mul(-1))
+			}
+		}
+	}
 	return cube.Box(-0.125, 0, -0.125, 0.125, 0.25, 0.125)
 }
 

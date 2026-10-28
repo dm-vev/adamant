@@ -62,3 +62,30 @@ func TestPistonSweepMatchesExecutedClient(t *testing.T) {
 		})
 	}
 }
+
+func TestDepenetrationLimitsMatchExecutedClient(t *testing.T) {
+	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_piston_sweep.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var native struct {
+		Complete bool
+		Policies []struct {
+			Bits            uint8
+			OneWayBlocks    bool `json:"one_way_blocks"`
+			Minimum, Limits mgl32.Vec3
+			Override        *mgl32.Vec3
+		}
+	}
+	if err := json.Unmarshal(data, &native); err != nil {
+		t.Fatal(err)
+	}
+	if !native.Complete || len(native.Policies) != 576 {
+		t.Fatal("incomplete original-client depenetration policy fixture")
+	}
+	for n, c := range native.Policies {
+		if got := nativeDepenetrationLimits(c.Bits, c.OneWayBlocks, c.Minimum, c.Override); got != c.Limits {
+			t.Errorf("case %d: limits=%v, native=%v", n, got, c.Limits)
+		}
+	}
+}

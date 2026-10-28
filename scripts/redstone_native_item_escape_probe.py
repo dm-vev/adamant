@@ -12,6 +12,7 @@ import ctypes as C
 import hashlib
 import itertools
 import json
+import random
 from pathlib import Path
 import struct
 
@@ -85,8 +86,8 @@ class NativeItemEscape(NativePistonShapes):
 
     def run(self, case):
         self.case, self.bits, self.status = case, {}, {}
-        self.put(self.current_type, 0x164, "B", 4 if case["solid"] else 0)
-        self.put(self.current_type, 0x130, "Q", case["material_bits"])
+        self.put(self.current_type, 0x164, "B", 4 if case["pushes_out_items"] else 0)
+        self.put(self.current_type, 0x130, "Q", case["block_properties"])
         self.put(self.body, 0, "6f", *case["body"])
         self.put(self.state_vector, 0, "9f", *case["point"], 0,0,0, *case["velocity"])
         point = (C.c_float * 3)(*case["point"])
@@ -111,15 +112,29 @@ if __name__ == "__main__":
                 ([], [[0,65,0,1,66,1]], [[0,65,0,.5,66,1],[.5,65,0,1,66,1]])):
             point = [fractional,65+fractional,fractional]
             body = [fractional-.125,65+fractional,fractional-.125,fractional+.125,65+fractional+.25,fractional+.125]
-            cases.append(native.run(dict(solid=True,solid_neighbours=neighbours,material_bits=material,
+            cases.append(native.run(dict(pushes_out_items=True,solid_neighbours=neighbours,block_properties=material,
                 point=point,body=body,velocity=[0,0,0],height_offset=.125,single_shape=[0,65,0,1,66,1],shapes=shapes)))
         for neighbours in range(64):
-            cases.append(native.run(dict(solid=False,solid_neighbours=neighbours,material_bits=0,point=[.5,65.25,.5],
+            cases.append(native.run(dict(pushes_out_items=False,solid_neighbours=neighbours,block_properties=0,point=[.5,65.25,.5],
                 body=[.375,65.25,.375,.625,65.5,.625],velocity=[.1,.2,.3],height_offset=.125,
                 single_shape=[0,65,0,1,66,1],shapes=[])))
+        rng = random.Random(2651028)
+        for _ in range(384):
+            point = [rng.choice((.125,.5,.875)),65+rng.choice((.125,.5,.875)),rng.choice((.125,.5,.875))]
+            x,y,z = point
+            body = [x-.125,y,z-.125,x+.125,y+.25,z+.125]
+            single = rng.choice(([0,65,0,1,66,1],[0,65,0,1,65.5,1],[.25,65,.25,.75,66,.75]))
+            shapes = rng.choice(([],[single],[[0,65,0,.5,65.5,1],[.5,65,0,1,66,1]],
+                [[0,65,0,1,65.25,1],[.25,65.5,.25,.75,65.75,.75],[0,65.9,0,1,66,1]]))
+            cases.append(native.run(dict(pushes_out_items=rng.choice((True,False)),solid_neighbours=rng.randrange(64),
+                block_properties=rng.choice((0,1)),point=point,body=body,velocity=[.15,-.02,.25],
+                height_offset=rng.choice((0,.125,.5)),single_shape=single,shapes=shapes)))
     finally:
         native.close()
     args.output.write_text(json.dumps({"complete":True,"reference":__doc__,"client_sha256":digest,
         "function":{"rva":"0x1a1e250","size":0x8BC,"sha256":hashlib.sha256(pe.read(0x1A1E250,0x8BC)).hexdigest()},
+        "inputs":{"pushes_out_items":"BlockType +0x164 bit 2 (not mSolid)",
+                  "solid_neighbours":"neighbour pushes_out_items bits, Down Up North South West East order",
+                  "block_properties":"BlockType +0x130; bit 0 is Stair, not Material"},
         "scenarios":cases},separators=(",",":"))+"\n",encoding="utf-8")
     print(json.dumps({"complete":True,"cases":len(cases)}))

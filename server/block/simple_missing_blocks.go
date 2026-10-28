@@ -32,32 +32,60 @@ func (HoneyBlock) EntityLand(_ cube.Pos, _ *world.Tx, e world.Entity, distance *
 	scaleFallDamage(e, distance, 0.2)
 }
 
+// EntityStepOn follows HoneyBlock::onStandOn separately from inside contacts.
+func (HoneyBlock) EntityStepOn(_ cube.Pos, _ *world.Tx, e world.Entity) {
+	if v, ok := e.(velocityEntity); ok {
+		sneaking := false
+		if s, ok := e.(interface{ Sneaking() bool }); ok {
+			sneaking = s.Sneaking()
+		}
+		v.SetVelocity(honeyStandVelocity(v.Velocity(), sneaking))
+	}
+}
+
+func honeyStandVelocity(velocity mgl64.Vec3, sneaking bool) mgl64.Vec3 {
+	if sneaking || float32(velocity[1]) >= float32(.1) {
+		return velocity
+	}
+	factor := float32(math.Abs(float64(float32(velocity[1]))))*float32(.2) + float32(.4)
+	velocity[0] = float64(float32(velocity[0]) * factor)
+	velocity[2] = float64(float32(velocity[2]) * factor)
+	return velocity
+}
+
 // EntityInside ...
 func (HoneyBlock) EntityInside(pos cube.Pos, _ *world.Tx, e world.Entity) {
 	v, ok := e.(velocityEntity)
 	if !ok {
 		return
 	}
-	velocity, sliding := honeySlideVelocity(pos, e.Position(), v.Velocity())
-	if !sliding {
-		return
+	origin := e.Position()
+	if offset, ok := e.H().Type().(interface{ NetworkOffset() float64 }); ok {
+		origin[1] += offset.NetworkOffset()
 	}
+	width := e.H().Type().BBox(e).Width()
+	if size, ok := e.H().Type().(interface{ CollisionWidth() float64 }); ok {
+		width = size.CollisionWidth()
+	}
+	velocity, resetFall := honeyContactVelocity(pos, origin, v.Velocity(), width)
 	v.SetVelocity(velocity)
-	if fall, ok := e.(interface{ ResetFallDistance() }); ok {
+	if fall, ok := e.(interface{ ResetFallDistance() }); ok && resetFall {
 		fall.ResetFallDistance()
 	}
 }
 
-func honeySlideVelocity(pos cube.Pos, entityPos, velocity mgl64.Vec3) (mgl64.Vec3, bool) {
-	if velocity[1] >= 0 || (math.Abs(entityPos[0]-float64(pos[0])-0.5) <= 0.4375 && math.Abs(entityPos[2]-float64(pos[2])-0.5) <= 0.4375) {
+// honeyContactVelocity follows the original client's honey-contact leaf at
+// 0x63af270. Edge eligibility controls fall-distance reset, not the damping.
+func honeyContactVelocity(pos cube.Pos, origin, velocity mgl64.Vec3, width float64) (mgl64.Vec3, bool) {
+	x, y, z := float32(velocity[0])*float32(.4), max(float32(velocity[1]), float32(-.12)), float32(velocity[2])*float32(.4)
+	velocity = mgl64.Vec3{float64(x), float64(y), float64(z)}
+	if float32(origin[1]) > float32(pos[1])+float32(.9375) || y >= 0 {
 		return velocity, false
 	}
-	if velocity[1] < -0.13 {
-		scale := -0.05 / velocity[1]
-		velocity[0], velocity[2] = velocity[0]*scale, velocity[2]*scale
-	}
-	velocity[1] = -0.05
-	return velocity, true
+	distance := float32(width)*float32(.5) + float32(.43125)
+	dx := float32(pos[0]) + float32(.5) - float32(origin[0])
+	dz := float32(pos[2]) + float32(.5) - float32(origin[2])
+	return velocity, float32(math.Abs(float64(dx))) > distance || float32(math.Abs(float64(dz))) > distance
 }
 
 // BreakInfo ...

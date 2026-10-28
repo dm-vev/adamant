@@ -56,6 +56,7 @@ func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBeha
 		Tick:              b.tick,
 	}.New()
 	b.passive.mc.DragAfterMovement = true
+	b.passive.mc.nativeCollisions = true
 	return b
 }
 
@@ -65,7 +66,8 @@ type ItemBehaviour struct {
 	passive *PassiveBehaviour
 	i       item.Stack
 
-	pickupDelay time.Duration
+	pickupDelay          time.Duration
+	collisionInitialised bool
 }
 
 // PortalTravelComputer returns the interdimensional travel state for the behaviour.
@@ -95,6 +97,12 @@ func (i *ItemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if i.burnsInHazard(e, tx, pos, blockPos) {
 		return nil
 	}
+	i.pushOutOfBlocks(e, tx)
+	// ItemActor checks its pre-gravity speed and native age after item escape.
+	// A resting item resolves movement every fourth age tick.
+	velocity := e.Velocity()
+	x, y, z := float32(velocity[0]), float32(velocity[1]), float32(velocity[2])
+	i.passive.mc.skipMovement = i.passive.mc.onGround && x*x+y*y+z*z <= float32(.0001) && int64(e.Age()/(time.Second/20))&3 != 0
 
 	bl, ok := tx.Block(blockPos).(block.Hopper)
 	if ok && !bl.Powered && bl.CollectCooldown <= 0 {
