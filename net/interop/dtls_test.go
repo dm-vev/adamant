@@ -113,6 +113,9 @@ func listenLoopback(t *testing.T) *net.UDPConn {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Bursts on loopback overflow the default buffer; the server's sockets
+	// are sized the same way.
+	_ = pc.SetReadBuffer(8 << 20)
 	t.Cleanup(func() { _ = pc.Close() })
 	return pc
 }
