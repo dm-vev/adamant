@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **active after the user's continuation on 2026-10-28; audit incomplete**.
+Status: **paused at the user's request on 2026-10-28; audit incomplete**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -12,7 +12,7 @@ Unmodified Windows BDS 1.26.51.1 supplies additional world-level observations.
 The repository's Java gameplay baseline does not override the requested
 Bedrock reference for this audit.
 
-The current effort estimate is approximately **60%** of the full audit. This is
+The current effort estimate is approximately **65%** of the full audit. This is
 a planning estimate, not a percentage of proven equivalence or a count of closed
 matrix rows. Every row below retains its outstanding work. The published checkpoint
 includes capture tooling, comparators/analog outputs, switches, pressure plates,
@@ -1794,9 +1794,9 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Sculk sensors/calibrated sensors/shriekers | Missing lever/button/plate/hook events, calibrated disabled-output face, integer distance/selection/reception, binary32 range/cell conversion and button event/producer ordering corrected. 568 controlled traces (four include heap readback) cover tested phases/strengths, diagonal positions, adjacent switches and plates, all plate types, hook contacts, filters in four facings, all 16 wool colours and eight material controls. Original client selector/strength/range gates execute in 80/110/92 cases and hook sound/event dispatch in 64 cases. Native binary32 ray offsets, traversal and unit-cube intersections replace the Java obstruction path; 208 executed obstruction cases, 133 full cell sequences, 202 direct intersections and 168 additional BDS seam/material/coordinate traces match. Open: other event/filter/occlusion/output paths, fractional entity-source integration, waterlogging, resonance, shriekers, startup, network action phase and persistence |
 | Lamps and copper bulbs | Lamp source/consumer phase corrected in observer/wire matrices. Bulb comparator output verified lit/unlit for all eight variants. Open: broader lamp retrigger/cancellation/load cases, bulb toggle timing/interaction and persistence |
 | Doors/trapdoors/fence gates | Open: direct/conducted input, upper/lower halves, manual changes while powered, transition events and all materials |
-| Powered/detector/activator rails | Open: scan range, slopes, branching, entity activation, analog outputs and minecart effects |
-| Dispensers/droppers/crafters | Dispenser/dropper nine-slot container contract corrected and settled comparator fullness verified. Open: edge detection, delay/retrigger, source direction, inventory side effects, craft scheduling and block actors |
-| Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Open: lock input faces/conduction, individual cooldown/transfer ordering, all other containers and sides, minecart interactions and reload |
+| Powered/detector/activator rails | Detector inventory strength, command-cart eligibility/container, typed body selection and producer state corrected against 87 settled/lifecycle and 32 source/wire/lamp timing cases; query geometry matches 324 executed client cases. Powered/activator cadence, configured axis, tested source overlap, straight/slope range, connection placement and zero-strength activator publication corrected against 256 BDS scenes. Cart height, binary32 motion, container drag and detector chunk ownership match 320 native motion scenes; stationary rider/TNT/hopper activator effects match 24 further scenes. Open: full source-list construction/order, loops, broader detector and producer lifecycle, multi-cart order, chunk persistence, cart curves/derailment/collisions, command-cart activation, broader moving-cart transfers and activation lifecycle |
+| Dispensers/droppers/crafters | Dispenser/dropper nine-slot container contract corrected and settled comparator fullness verified. Dispenser scene publication, four-tick scheduling, cart origin/lower-rail fallback and tested newborn actor phase corrected against 188 BDS scenes. Open: broader edge/delay/retrigger/source direction, dropper circuit cadence, other inventory side effects, craft scheduling, actor lifecycle and persistence |
+| Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Early lock publication corrected using the native scene consumer; 144 additional lock-pulse traces are retained. Tested hopper-cart collection and transfer effects match 48 further scenes. Open: broader lock graph/lifecycle, exact block-hopper transfer phases, cooldown/ordering, all other containers/sides, moving cart interactions and reload |
 | TNT/note blocks/bells | Open: triggering edge, conducted sources, scheduled action, payload and repeated input |
 | Command/structure blocks | Open: trigger/cycle timing, modes, conditionals, powered-state persistence and cross-chunk execution |
 | Analog-output blocks | 77 settled scalar cases, 81 inventory cases and nine pot cases verify the tested paths; campfire's unsupported override removed. Another 267 book/record/shelf states, 50 hopper-transfer results and 792 frame cases match; lectern spread arithmetic, seven disc values and directional frame reads corrected. Open: broader transitions/through-block reads/materials, additional container variants/init/loot, player book/shelf/frame interactions, jukebox lifecycle, lectern pulse/packet validation, frame maps/support variants, nondefault statue world poses, shelves, sensors, command output and creaking hearts |
@@ -3784,3 +3784,805 @@ two honey, 34 ordinary piston and 74 obstructed piston scenes. Log:
 `.tmp/audit-pause-2026-10-28-tests.log`. No new implementation changes were
 made after this validation. Private player/permission files and `tmplog.txt`
 are excluded from the commits.
+
+#### Resumed support and collision-fetch audit, 2026-10-28
+
+The user reactivated the goal and explicitly requested continued work until a
+new pause instruction. The preceding publication checkpoint is historical.
+No new commit or push is authorized by that continuation alone.
+
+Ten additional original-BDS honey scenes bracket the first-travel friction
+boundary at 0, 0.0625, 0.099, 0.101 and 0.25 blocks above honey, with both
+downward and upward initial motion. The complete 134-scene capture from
+`adamant-redstone-bds-nojwi96n` retains the earlier 124 scenes as well. Native
+horizontal damping changes between 0.099 and 0.101 even for initially airborne
+armor stands. The original ground-travel bodies (`0x66588d0`, `0x666cee0` and
+`0x666f530`) sample floor(AABB.minY - binary32 0.1), with position X/Z. The
+kernel now uses that sample instead of floor(position Y) - 1. All 134 honey
+scenes pass in the combined replay `.tmp/piston-after-honey-friction-boundary.log`.
+
+The original MovingBlockActor contact body also checks AABB.minY against the
+old top surface (`0x4adcb3d..0x4adcb46`); mere intersection of a tall actor with
+the top query slab does not establish a rider. That missing lower-bound check
+is now present. It alone did not resolve the remaining piston scenes.
+
+A temporary single-scene trace identified the actual support loss: a stand
+carried to Z=43.5 stood over the moving shape stored at Z=44. The ordinary
+quarter-block collision scan excluded that owner cell. On the next travel
+tick the stand fell into the moving floor and was incorrectly pushed sideways.
+The original BlockSource collision fetch expands integer query coverage by
+binary32 one on both sides and traverses X, Z, Y. A separate native entity
+collision collector now follows those bounds and that order, retaining the
+normal shape intersection filter. This resolves the earlier ordinary stand
+carry failures and reduces the 768-scene replay to 84 failures: eight slime
+armor-stand, two ordinary item and 74 obstructed item scenes. Log:
+`.tmp/piston-after-native-cell-fetch.log` (entity 18.555 s).
+
+The new `redstone_native_collision_fetch_probe.py` executes the entire original
+fetch traversal at `0x2d87730` with supplied loaded subchunks and empty shape
+callbacks. An explicit GetCollisionShapeInterface disables world borders.
+The 150 captured cases retain actual visited cells and order, including
+negative coordinates, dimension bounds and binary32 collapse near thirty
+million. They establish traversal, not geometry returned by arbitrary blocks
+or native actor shape-cache behavior. The initial synthetic upper subchunk
+allocation omitted the inclusive maximum-height cell and crashed; that probe
+input was corrected before accepting the complete capture.
+
+The original MoveCollisionSystem::fetchCollisionShapes body additionally
+preserves support below the sweep: at `0x31c31cc..0x31c31fc` it encloses
+AABB.minY + (-0.2 - abs(requested Y)) and AABB.maxY + 0.08. Keeping those
+shapes prevents a horizontal piston request from depenetrating an item down
+through a touching floor. This fixes the initial obstruction-frame positions;
+it exposed a later item-escape phase mismatch instead of closing the traces.
+Native auto-step/sneak envelopes and request shape-cache reuse remain open.
+
+Level::_subTick calls the dimension tick through Level vtable slot 0x390 at
+`0x1171981`, then tickEntitySystems through slot 0x398 at `0x11724de`. The Level
+constructor installs vtable `0xe7a7aa0`, whose slots resolve to tickEntities
+(`0x1177650`) and tickEntitySystems (`0x1177690`). The earlier mob-only phase
+change still left the item obstruction cases failing after payload restoration.
+Their BDS frames show item escape in the very tick the moving block becomes
+stone. Item movement/post-normal-tick processing must observe that restoration
+as well. The world now supports entity types requesting a post-block tick;
+armor stands and dropped items use it. Their existing loaded-chunk, sleeping,
+age and duplicate-tick bookkeeping remains in the same dispatcher.
+
+Moving slime now writes its native contact impulse separately from positional
+displacement, before the carried-actor exclusion. With support collection and
+both entity phases corrected, all 256 obstructed scenes and all 256 ordinary
+item scenes pass. Of the 768 piston scenes, eight armor-stand retraction/slime
+scenes still fail; all are positive original facing axes. All 134 honey scenes,
+item interactions, sweep/depenetration/cell traversal checks, the selected block
+piston checks and world tick checks pass in the same run (block 35.419 s,
+entity 22.153 s with those eight failures, world 1.747 s). Log:
+`.tmp/piston-after-item-post-block-phase.log`.
+
+A separate executed-client probe now retains 336 explicit fetched-candidate
+side-contact cases from the complete MovingBlockActor body (`0x4adc6a0`).
+It records requested movement and actual slime velocity writes; the supplied
+move callback does not apply or resolve movement. Candidate inclusion is an
+input, not evidence of native spatial selection. The raw fixture is
+`bedrock_1_26_51_piston_side_contact.json`. It includes zero-distance velocity
+reset and signed displacements for authored candidates outside the query.
+Those outside-query inputs must not be treated as valid complete-world scenes.
+The initial probe omitted the original half constant and crashed; only the
+complete corrected capture is retained. Native actor movement, collision-state
+updates and spatial selection remain to be reconciled for the eight failures.
+
+The remaining eight failures were resolved by propagating collision clipping
+back to the entity's stored velocity during a piston move. The previous code
+discarded that velocity result: a later blocked piston request left the slime
+impulse active for ordinary travel. Clearing each clipped axis fixes both the
+position and observed travel delta without special-casing slime, facing or
+armor stands. All 768 retained real-entity piston scenes, all 134 honey scenes
+and the selected existing item-interaction tests now pass together (entity
+19.235 s), log `.tmp/piston-after-push-velocity-clipping.log`. No native scene,
+position assertion or tolerance was removed or loosened.
+
+The first broad resumed `go test ./... -timeout 180s` run passes the block,
+world, player, session and other completed packages, but reaches the entity
+package timeout while starting TestPigsWanderWithoutCarrotsOnSticks. It also
+contains the eight piston failures because it predates the final velocity
+fix. That is an incomplete entity-suite run, not evidence of a pig failure or
+a passing overall baseline. Log `.tmp/redstone-resumed-full-suite.log`.
+The entity package is being rerun with a ten-minute allowance; shared packages
+are also being checked against the final velocity change.
+
+The next independent comparison expands to actual bodies riding on top of
+moving blocks, rather than the retained side-contact scenes. The new
+`vanilla_riders` capture suite authors push/pull spawn positions on the payload
+top, four lateral offsets, stone/honey/slime controls, both piston families,
+four horizontal facings and both setup parities for items and armor stands.
+Passing the earlier 768 scenes does not establish those interactions, other
+entity types, player movement, full auto-step or arbitrary redstone coverage.
+
+Final validation of the support/phase/velocity changes passes the complete
+entity package (223.195 s with a ten-minute allowance), plus complete block
+(86.953 s), world (14.600 s), player (19.338 s) and session (4.227 s) packages.
+Logs: `.tmp/redstone-resumed-entity-suite.log` and
+`.tmp/redstone-resumed-shared-suite.log`. The other packages had completed
+successfully in the preceding broad run. The root server builds successfully
+as `.tmp/adamant-redstone-resumed-check.exe`. These validations predate the new
+rider fixture/test; they do not establish that the rider scenes pass.
+
+The BDS rider capture is complete: 768 unique scenes / 76,800 frames from
+`adamant-redstone-bds-hmo2ex_k`, with all initial-environment controls checked.
+It is retained as `bedrock_1_26_51_piston_vanilla_riders.json` and replayed by
+the ordinary TestPistonVanillaRidersMatchBDS regression. Its first comparison
+is being checked separately. The executed contact fixture also now contains
+336 additional explicit top-candidate cases, bringing its total to 672. The
+top inputs specify a fetched candidate for the top query and no candidate for
+the side query. Container insertion/copy are supplied host operations, while
+eligibility, impulse selection, carried-ID exclusion and requested movement
+remain original client instructions. An intermediate callback exception run
+was rejected; callback failures now prevent accepting a capture.
+
+The first rider replay reported eight item/slime mismatches, but its world
+capture is not an isolated oracle. A traced item leaving the scene at
+Z=19.4376 hit the next scene's stone floor beginning at Z=20 in BDS; that
+foreign floor is absent from the single-scene Go replay. Thus its stop at
+Z=19.875 is explained by different terrain, not an established movement bug.
+The rejected capture remains only in `.tmp/bds-piston-vanilla-riders.json` for
+diagnosis. The new capture uses a four-by-four grid with 32-block spacing and
+radius-14 initial-environment checks (1,682 cells per scene), instead of an
+eight-by-eight grid with 16-block spacing. It preserves every authored rider
+scenario and all 100 frames; no failing scene is removed. Its corrected
+fixture is being captured and will replace the contaminated rider fixture
+only after complete capture validation. The original 768 side/obstruction
+scenes are unchanged.
+
+Initial inspection for the next rail audit identifies another open path:
+DetectorRailBlock::getComparatorSignal (`0x9783e50`) performs a typed minecart
+query and reads container-component output. The kernel DetectorRail currently
+has no comparator-signal implementation. Native comparator/contact queries
+also use horizontal inset 0.2, whereas detectorRailHasMinecart uses 0.125.
+These are inspection targets; no rail correction or world-level equivalence
+is claimed until its own native capture/replay has been completed.
+
+The isolated rider capture also needed a wider force-loaded simulation area.
+Its first 32-block-spaced version (`adamant-redstone-bds-087zmej5`) left two
+items crossing X=128: BDS then stopped ticking them outside the ticking area,
+whereas the synchronous Go replay kept simulating them. This is another
+environment mismatch, not a movement correction. Both rejected rider captures
+remain in `.tmp` only. The accepted capture is
+`adamant-redstone-bds-9hfkorv4`: 768 unique scenes, 76,800 frames, scene spacing
+32, and 1,682 initial-environment control cells per scene. Its two ticking areas
+cover [-32,-32] through [159,159], with all 144 chunks verified loaded; every
+observed body remains inside that area. The rider regression requires this
+simulation-bounds metadata. All original 768 side/obstruction scenes, all 768
+accepted rider scenes, all 134 honey scenes, collision-fetch traversal and the
+new settled rail-inventory check pass together (entity 33.948 s), log
+`.tmp/piston-riders-loaded-and-rail.log`.
+
+Detector-rail settled analog output is now captured independently in original
+BDS: `adamant-redstone-bds-4qy6ra0w`, 15 scenes, 32 frames each, retained as
+`bedrock_1_26_51_detector_rail_inventory.json`. Plain/TNT minecarts and an armor
+stand are controls. Chest/hopper minecarts cover empty inventories, single
+diamonds, full stacks, full inventories, stack-limit-16 ender pearls and
+unstackable shields. The new regression first failed because DetectorRail had
+no comparator-output provider. It now reads the first container minecart and
+reuses the native binary32 container-strength calculation. In BDS, a full
+diamond stack gives strength 1 in a 27-slot chest cart and 3 in a five-slot
+hopper cart; completely full carts give 15. A powered rail with a plain cart
+gives comparator strength 0. This regression compares settled output at the
+recorded native position; it does not validate minecart travel or update timing.
+
+Both native detector queries construct the same binary32 horizontal inset
+0.2 and vertical range [Y,Y+0.8], independently of rail powered state for the
+analog getter (`0x9783e50`; pressure query `0x9783660`). The kernel now shares
+that query box. Inspection of typed BlockSource::fetchEntities reveals that
+its final selection compares actor AABBs inclusively (`0x2d853c8..0x2d85447`),
+whereas World.EntitiesWithin filters actor positions. Edge selection is being
+captured separately before treating this path as reconciled.
+
+The boundary capture (`adamant-redstone-bds-70unox8k`) retains 34 settled
+plain/chest-cart scenes along a continuous rail at the detector's north/south
+edges. The analog getter and forced scheduled presence resample now match all
+49 inventory/boundary scenes together (entity 2.972 s), log
+`.tmp/detector-rail-boundary-replay.log`. Selection uses inclusive actor-body
+bounds, not actor origins. It also retains the native typed query's owner-chunk
+restriction: a cart at negative Z across this query's chunk boundary is not
+fetched, even when its body extends into the detector area. This is independently
+visible in original BDS and the inspected typed fetch's chunk loop.
+
+`redstone_native_detector_query_probe.py` additionally executes the entire
+original analog getter with an empty supplied typed-fetch result. All 324 query
+boxes and minecart-family filters are retained in
+`bedrock_1_26_51_detector_query.json` and match exactly in the block regression
+(2.848 s). Inputs cover negative coordinates, chunk edges, float32 precision
+boundaries and coordinates near 30 million. The callback records the original
+query only; it does not prove native spatial selection or container math.
+
+The new actual-cart timing capture is complete:
+`adamant-redstone-bds-_8ouijju`, 32 scenes / 3,200 full source/wire/lamp frames,
+both setup parities, plain/chest carts, dwell lengths 1,2,3,8,19,20,21,30.
+Native rail activation is observed one frame after spawn. The next presence
+check is 20 ticks after activation; a cart removed just after that check holds
+power until the following check. The kernel's separate minecart callback
+currently requests one-tick checks instead; its regression is being run before
+changing that path. No timing-equivalence claim is made yet.
+
+The timing regression reproduced mismatches in all 32 retained traces. The
+legacy MinecartBehaviour callback bypassed DetectorRail and requested one-tick
+resamples. It now delegates to the rail's ordinary contact path. That path
+ignores already-powered contacts, as native entityInside does, leaving the
+scheduled 20-tick presence check in control. All 81 settled/timing cases now
+pass together (entity 4.333 s), including every recorded wire and lamp frame.
+Log `.tmp/detector-rail-after-shared-contact.log`. This does not establish rail
+producer lifecycle, arbitrary cart motion, powered/activator rails or persistence.
+
+The boundary suite is expanded to 51 scenes, including command-block carts
+(`adamant-redstone-bds-cwkzgwwb`). The type filter previously omitted those
+carts. Native readback also exposes a one-slot command-cart inventory, missing
+from the kernel. A separate five-scene native capture
+(`adamant-redstone-bds-iitpiner`, `bedrock_1_26_51_command_cart_inventory.json`)
+records empty, one diamond, full diamond stack, ender-pearl stack and shield:
+their analog strengths are 0,1,15,15,15. Command carts now expose that one-slot
+inventory and preserve its contents in their existing Items NBT path; it is
+independent of command execution success. This is not proof of hopper/player
+inventory interaction or full command-cart behavior.
+
+Sixteen detector producer-lifecycle scenes from
+`adamant-redstone-bds-jsg1ljff` retain 1,280 source/direct-wire/support-lamp
+frames in `bedrock_1_26_51_detector_rail_lifecycle.json`. Eight same-identifier
+flag/shape edits reproduced immediate kernel signal changes absent in BDS.
+Native setup seeds producer strength from the initial flag; subsequent flag
+edits retain the circuit component, while an air replacement installs a new
+component. DetectorRail now uses the shared scene-producer state and updates
+only its active component on actual presence transitions, matching the
+inspected native setup/check bodies. All 119 inventory, boundary, actual-cart
+timing and producer-lifecycle scenes pass together, as does the existing
+command-cart NBT test (entity 4.164 s), log
+`.tmp/detector-rail-family-producer-after-fix.log`. A new one-slot Items
+round-trip check and full block/entity/world validation are running against
+these final changes. Multi-cart candidate order, more lifecycle/contact
+integration, travel, slopes and other rail types remain open.
+
+The next native rail capture (`adamant-redstone-bds-t8rjv81k`) contains 32
+straight powered/activator rail scenes, both axes/parities and lengths 1,8,9,16,
+with 80 frames each. Native input changes publish on the shared circuit clock:
+the even-phase changes first appear three frames later, odd-phase changes two
+frames later. At most nine connected rail blocks power from this adjacent
+source. Original BaseRailTransporter::evaluate (`0x66d8220`) and its original
+strength getter (`0x66d76d0`) also execute in 852 supplied-source cases, retained
+in `.tmp/native-rail-evaluator.json`. The evaluator selects the greatest
+remaining rail range among non-null sources whose strength exceeds the stored
+loss. These inputs do not establish graph construction; allowConnection and
+addSource (`0x66d7f80`, `0x66d7ff0`) are being inspected separately. No powered
+or activator rail correction is claimed yet.
+
+Final detector changes pass the complete block (136.464 s), entity (365.684 s)
+and world (18.203 s) packages with `-count=1 -timeout 10m`, including the new
+command-cart container NBT round trip. Log
+`.tmp/redstone-rail-shared-suite.log`. These runs precede the new powered-rail
+regressions and do not imply those scenes pass.
+
+Another 32 powered/activator input scenes from
+`adamant-redstone-bds-xtzb4305` check wire/repeater inputs, both axes/parities
+and lengths 1/9, recording input permutations as well as every rail state.
+The retained fixtures are `bedrock_1_26_51_powered_rail_straight.json` and
+`bedrock_1_26_51_powered_rail_input.json` (5,120 frames combined).
+Their ordinary regressions are being run against the existing kernel before
+changing rail publication. Native circuit evaluation at `0x66d6534` and
+`0x66d653e` runs two component groups; the rail evaluator reads live source
+strengths and evaluates after the producer/capacitor group. Source-list
+construction and the full rail topology remain separate audit obligations.
+
+Both ordinary powered-rail regressions reproduced publication mismatches
+against the existing neighbour-driven path. PoweredRail and ActivatorRail now
+own rail circuit state, sample after source evaluation and publish through the
+shared next-pass path. Immediate neighbour/scheduled callbacks only check
+support. The range scan now retains remaining range, including maximum choice
+when both authored height paths are possible, instead of discarding it into a
+boolean. All 64 direct/wire/repeater native scenes pass after this change
+(block 7.340 s), log `.tmp/powered-rail-circuit-first-replay.log`. These are
+straight-line cases; slope, crossing, mixed-rail, source-filter and lifecycle
+coverage remain open. Shared rail/minecart/piston regressions and the root
+build are running before proceeding to topology comparisons.
+
+The shared targeted run passes block (8.419 s), entity (45.908 s) and the
+world package selection (no matching tests), log
+`.tmp/rail-circuit-shared-regressions.log`. It includes all retained piston
+body/rider and honey scenes plus rail/minecart checks. The root server builds
+successfully as `.tmp/adamant-redstone-rail-check.exe`. The earlier complete
+world suite remains the world baseline; a no-matching-tests selection adds
+no world behavioral coverage.
+
+The 32-scene slope/crossing capture is now retained from
+`adamant-redstone-bds-pwzud_gl` as
+`bedrock_1_26_51_powered_rail_topology.json`. It includes both rail types,
+axes/parities, flat/rising/falling ten-rail runs and a powered perpendicular
+crossing, with authored supports and initial shape validation. Two earlier
+attempts were rejected because native placement flattened the upper end of
+the descending run; the corrected physical setup uses a flat upper endpoint
+and descending shapes on the remaining cells. No accepted failing trace is
+removed. The first Go replay passes 20 scenes and fails 12: rising runs power
+an extra tenth rail, and the Z-axis crossings propagate to perpendicular rails
+where BDS does not. X crossings differ in native behavior from Z crossings,
+despite the final visible center shape. Component direction and native source
+records are being read independently before assigning a root cause. Log
+`.tmp/powered-rail-topology-first-replay.log`.
+
+Read-only native heap checkpoints now independently expose the relevant rail
+components. `adamant-redstone-bds-f2cfvo0o` retains three checked snapshots of
+40 components, their configured direction, strength and complete source
+records in `bedrock_1_26_51_rail_components.json`. The reader accepts only its
+owned BDS child, validates the circuit map before/after each sample and uses
+the authored script callback's brief hold. An initial locator run omitted
+negative chunks; another lacked the required torch dependency ring. Neither
+failed run is accepted as evidence.
+
+The native X crossing's visible center shape is north/south but its component
+axis remains west/east. The Z crossing's center component is also west/east,
+so its north/south line is disconnected. Native onPlace resolves rail
+connections before setup (`0x2a56288`, `0x2a562db`). Kernel powered/activator
+placement now resolves those connections and refreshes the component through
+the existing explicit setup API. Later same-ID shape edits retain the
+configured axis. An initial attempt reused the older rail placement helper;
+the native shape controls exposed its incorrect straight/slope choices. The
+replacement follows the inspected straight-axis/elevation selection and
+connects adjacent rails. With configured-axis filtering, all crossings and
+descending/flat scenes pass; eight rising scenes remain due to source aliasing.
+No world API change was needed or retained.
+
+For a rising line, the original source records contain range 9 at the first
+rail and range 8 at the second, although that second rail also touches the
+source horizontally. BaseCircuitComponent::addSourceItem (`0x66d7850`)
+replaces an existing source-pointer/entry-face pair in full, including range.
+The complete original function's replacement branch additionally executes in
+216 cases, covering reduced/increased/equal ranges, all entry faces and four
+destination indices. These are retained alongside the 852 evaluator cases in
+`bedrock_1_26_51_rail_evaluator.json`. The synthetic opaque source identities
+do not execute allocation, graph traversal or source discovery.
+
+The kernel now avoids restarting range at nine for a horizontal source entry
+that is replaced by the same source through a connected, vertically fed rail.
+All 96 earlier straight/input/topology scenes pass after this change (block
+9.609 s), log `.tmp/powered-rail-after-source-alias.log`. The general native
+source-list construction, replacement traversal order, loops and conductor
+graphs remain open; this is the tested overlapping-source correction.
+
+Additional source-face captures retain 36 flat/short-slope scenes from
+`adamant-redstone-bds-w7_njldy` and 24 ten-rail lower-end slope scenes from
+`adamant-redstone-bds-2i62qwnf`. All six source faces, both axes and both slope
+signs are covered, with stone retained when removing a source that also
+supports a rail. Native lower-end side sources can legitimately power all ten
+cells when a second rail is fed vertically; the other tested source positions
+power nine. These controls prevent replacing the alias correction with a
+blanket nine-cell cap. Their ordinary regression replay is running.
+
+All 156 straight/input/topology/source-face scenes pass together (block
+15.495 s), log `.tmp/powered-rail-all-faces.log`. A separate eight-case curve
+control (`adamant-redstone-bds-czl6_36h`) caught a regression in the new placement
+code: updating every nearby rail straightened already connected ordinary
+curves. Placement now updates only selected, connectable neighbours and
+retains the ordinary curve choices. The expanded accepted capture is
+`adamant-redstone-bds-qrj0_og1`: sixteen scenes cover preserving all four
+existing corners and creating each corner beside a new powered/activator rail.
+All 172 power/placement scenes pass (block 16.063 s), log
+`.tmp/rail-placement-and-power-native.log`. Placement and power scanning also
+use loaded-block lookups; a chunk-edge invariant verifies that they do not
+load neighbouring chunks. The final targeted run passes in 13.673 s, log
+`.tmp/rail-complete-targeted.log`.
+
+Complete final placement/alias validation passes block (102.491 s), entity
+(229.535 s), world (14.659 s), player (18.334 s) and session (3.260 s) packages,
+with `-count=1 -timeout 10m`, log `.tmp/redstone-rail-final-shared-suite.log`.
+The root builds as `.tmp/adamant-redstone-rail-final-check.exe`. These checks
+precede the small activator publication change described next.
+
+Native allowConnection and its original direction/type getters now additionally
+execute in 3,456 cases: both rail families, all six owner/source/entry directions,
+rail/non-rail source types and both direct-input flags. The retained evaluator
+fixture has separate `connections`, `replacements` and evaluator sections.
+This verifies the connection predicate and unchanged direct flag; it does not
+execute the entire scene-graph builder or prove all kernel graph behavior.
+
+The twenty mixed-rail scenes (`adamant-redstone-bds-cmkses8z`) verify family
+barriers, ordinary rails and inactive/active detector sources inside a line.
+Thirty-two lifecycle scenes (`adamant-redstone-bds-e4npkr5k`) cover initially
+powered placement, same-ID flag/axis edits, air replacement, removal, repair
+and repowering at both input parities. Four activator cases failed: its native
+zero-strength callback flips the live rail flag, while positive strength forces
+it on (`0x860d6f5`, `0x860d715..0x860d847`). Thus a manually cleared flag can
+become set when power is removed. The kernel now applies this callback in
+RedstoneCircuitOutput at publication, using the current live flag.
+
+Another thirty-two native traces (`adamant-redstone-bds-ri2zen_x`) place flag
+edits zero through three ticks after input removal, including the interval
+between evaluation and publication. Both flag values, input parities and rail
+types are covered. All 256 powered/activator power, placement, mixed-family,
+lifecycle and publication traces now pass together (block 16.364 s), log
+`.tmp/rail-publication-coverage.log`. Full block/entity/world validation and
+the root build are running against the final activator change. Native cart
+motion and activator entity effects are the next independent comparison;
+the electronic trace coverage does not establish those paths.
+
+The final ordinary block regression including the publication-window cases
+passes in 16.364 s. Three-package full validation is still running against
+that final publication behavior. The next native motion capture authors 96
+actual-cart scenes: plain/chest/hopper carts, basic rails, powered rails on/off,
+detector rails, both flat axes and four initial velocities. Each eight-scene
+batch uses 128-block spacing, a 97-rail track with a five-wide checked floor,
+and a fully force-loaded 512-chunk domain. Body bounds are checked inside each
+isolated track. Spawn is delayed until the initial rail power has settled.
+No matching cart-motion result is claimed before capture validation/replay.
+
+
+### Resumed cart motion comparison (2026-10-28, active)
+
+Final activator publication validation passed block (104.365 s), entity
+(235.412 s) and world (14.155 s), log
+`.tmp/redstone-rail-publication-shared-suite.log`. The root built as
+`.tmp/adamant-redstone-rail-publication-check.exe`.
+
+The accepted flat motion capture is `adamant-redstone-bds-1h21toka`:
+96 scenes cover plain/chest/hopper carts, four rail modes (basic, powered
+on/off and detector), both axes and initial speeds 0, 0.1, -0.1 and 0.4.
+Another 160 scenes from `adamant-redstone-bds-t0t95hfw` cover single diamonds,
+full diamonds and full pearls in chest/hopper carts and empty TNT/command carts.
+Both producers use eight-scene batches, 128-block spacing, checked 97-rail
+tracks and five-wide floors in a checked, fully force-loaded 512-chunk area.
+The 120-frame traces include 40 quiet setup frames and 80 actual body frames.
+Both complete captures are retained as `minecart_motion_flat` and
+`minecart_motion_inventory` fixtures; no script teleports the moving bodies.
+
+The first regression harness compared container spawn velocity before applying
+the authored impulse, producing an invalid spawn failure. After correcting that
+harness ordering, the unchanged motion implementation failed all 96 scenes at
+the first physical tick (`.tmp/minecart-flat-motion-baseline.log`).
+
+Native StateVector positions address the actor centre; Script locations address
+its base, subtracting the binary32 0.35 height offset. The old implementation
+looked for rails at the base and could derail immediately after a native-style
+spawn. It also exposed the rail projection's centre height as the base height.
+The corrected cart code converts explicitly between these origins and supplies
+that offset consistently for spawn, movement and teleport packets for all five
+cart types. Native collision bounds and position arithmetic use binary32.
+Existing slope regression expectations now address the base instead of centre.
+
+Minecart::preNormalTick (`0x334b890`) applies its virtual natural slowdown before
+rail movement. Plain/TNT factors are 0.96 without a rider and 0.997 with one
+(`0x334c560`). Chest/hopper/command carts instead use
+`0.98f + (15 - containerSignal) * 0.001f` (`0x334d200`), giving empty carts
+0.995 and full carts 0.98. Rail projection, braking, direction changes and
+post-move acceleration now follow the inspected native helpers (`0x95e7df0`,
+`0x33db740`, `0x33dbac0`, `0x33dc070`), retaining binary32 operation ordering.
+Flat rail snapshots have OnGround=false; rail contact alone no longer sets it.
+
+The original ScriptActor::getVelocity (`0xbd8ac30`) selects last travel for
+plain carts and StateVector velocity for the other four tested types. The
+regression accounts for this accessor difference while comparing every body's
+position, velocity, AABB centre/extents and exact ground state. It also checks
+actual detector/powered rail state, without widening body tolerance (2e-5).
+
+Moving detector scenes exposed a further spatial-selection error at chunk
+boundaries. Native typed fetch uses the actor's owning chunk, which may still
+precede its new position during movement. Filtering by the position's chunk
+advanced those detector edges. The query now uses the owning entity list via
+Tx.EntityChunk. Attempts to move the contact phase instead were rejected by
+other cases; no special detector contact-phase override is retained.
+
+All 256 motion traces, native detector entity replays and the existing slope
+regressions pass together (entity 71.294 s), log
+`.tmp/minecart-motion-256-scenes.log`. Full block/entity/world/player/session
+validation is running. A separate native slope producer checks authored
+terrain/permutations before accepting motion; its first capture stopped on a
+power-state setup control and is not accepted as a complete fixture.
+Cart curves, derailment, rider input/collisions, activator effects and broader
+rail graph behavior remain open. None of these results closes the rail row or
+the full audit.
+
+
+The five-package motion validation passed block (100.710 s), world (14.751 s)
+and player (18.513 s), but failed in two existing tests: fox berry collection
+and exact NBT byte ordering. The new network test initially had a harness-only
+selector limited to falling-block AddActor packets; it now selects each cart's
+actual entity type. All eight entity types' spawn/move/teleport positions pass
+20 repeated network runs (session 3.771 s), log
+`.tmp/minecart-network-offset-20.log`.
+
+Both unrelated failures were independently reproduced on unchanged commit
+5ff95e72 in detached worktree `.tmp/redstone-check-baseline`: fox berry
+collection failed 18/60 repetitions; NBT byte comparison failed 10/60
+(`.tmp/redstone-unmodified-baseline-flakes.log`). NBT failures differ only in
+the order of the same two compound members. The main tree reproduced one fox
+failure in 20 and five NBT failures in 20. The full suite is therefore not
+reported green or silently filtered. No fox/NBT production change is included.
+The root builds as `.tmp/adamant-redstone-cart-motion-check.exe`.
+
+The first slope producer attempts additionally exposed native setup reuse:
+recreating a previously powered rail at the same position within one callback
+can retain a true flag even after its source is gone. The setup control rejects
+this unintended powered-off initial state. Reordering modes avoids that control
+failure, but combined captures later terminated in BDS after 32 scenes. These
+incomplete captures are not canonical evidence. Per-family fresh-process
+captures are in progress, and the general reference harness now reports native
+exit codes on early termination. Source graph/consumer reuse remains a separate
+open lifecycle case, not a motion workaround in production.
+
+
+The accepted native slope capture combines fresh-process runs
+`adamant-redstone-bds-33_5rgy3` and `adamant-redstone-bds-_whtsthd`.
+All 64 scenes retain 81-rail tracks, individually checked solid support columns,
+eight-block rises/falls, both axes and travel signs, plain/chest carts and
+basic/powered-on/powered-off/detector rails. The full authored environment is
+read back before spawning. Replay normalises only Script API's known
+`stone_type=stone` alias and checks every initial block against the capture;
+it does not discard terrain/permutation differences. Both position/velocity
+and AABB/ground comparisons remain unchanged. All 64 scenes pass (entity
+13.621 s), log `.tmp/minecart-slope-motion-replay.log`. Motion coverage is now
+320 complete native scenes. Per-family processes avoid the combined native
+capture termination; incomplete predecessors remain outside canonical evidence.
+
+### Activator cart effects and event phase (2026-10-28, active)
+
+`adamant-redstone-bds-9nin4ve0` supplies 24 complete 200-frame scenes:
+plain carts with/without a cow rider, TNT carts and hopper carts; steady-off,
+steady-on and repeatedly toggled activator rails at both input parities.
+An initially powered rail leaves the rider mounted in the first physical
+snapshot and ejects it in the second. A rail flag published at relative tick
+63 ejects the rider at 64. Native TNT carts explode at relative tick 122 for
+steady power and 144 for the repeated-toggle controls; repeated power does
+not restart their fuse. A hopper pulls its first item before the initial
+activation takes effect, then transfers every two ticks while enabled.
+
+The unchanged implementation failed twelve of these scenes: two premature
+initial ejections, four TNT carts that never ignited and six hopper transfer
+or initial-enable traces (`.tmp/activator-cart-effects-baseline.log`).
+
+World ticking now permits a pre-block entity to sample block/circuit state
+once after block updates, without repeating its normal tick, movement or age.
+The cart queues that rail event and applies it on its following normal tick,
+through the concrete cart behaviour. This retains the original movement and
+detector phases rather than moving all cart physics after the circuit.
+TNT activation now reaches its specialised behaviour, ignores repeated priming
+while already lit and explodes on the tick after its stored fuse reaches zero.
+Hopper activation now takes effect through the same event phase and its tested
+pull cadence is two ticks rather than nine. Broader push/collection and moving
+hopper behavior remains under separate investigation.
+
+All 24 effect traces and existing hopper/tick checks pass (entity 3.788 s,
+world 6.080 s), log `.tmp/activator-cart-effects-first-fix.log`. Rider scenes
+check rider counts/events, not equivalence of autonomous cow movement; all
+rider-free cart bodies retain full geometry/velocity/ground comparisons.
+The callback loop additionally handles removal without skipping the next
+entity and ignores frozen ticks. Its removal/freeze/step regression passes
+(world 2.658 s), log `.tmp/entity-post-block-phase.log`. Another complete
+five-package validation and root build are running against these changes.
+No complete rail-row or full-audit equivalence is claimed.
+
+
+Final activator shared validation passes block (101.243 s), world (14.022 s),
+player (18.685 s) and session (3.337 s). Entity validation (291.504 s) reports
+one failure in TestVillagersRunFromZombies; the same test fails 4/40 repetitions
+on unchanged 5ff95e72 (`.tmp/redstone-baseline-villager-repeat.log`). Earlier
+fox/NBT instability remains recorded above. No entity regression from the
+new native scenes is hidden by this unrelated AI failure. The root builds as
+`.tmp/adamant-redstone-cart-activator-check.exe`.
+
+The next independent hopper controls retain 24 original-BDS container scenes
+from `adamant-redstone-bds-731htgrq`: a source barrel above and destination
+barrel below are independently present/absent, with 0/32 initial cart items,
+basic rails and activator rails on/off. Native carts do not push into the
+barrel beneath them; above-container pulling remains independent of it.
+The old automatic push branch fails the positive destination controls.
+
+Another 24 item-collection scenes from `adamant-redstone-bds-36p7aaf7` cover
+3/64-item drops and initial cart contents of 0, 32, 319 and 320 items. Native
+carts collect the entire fitting stack, including on their initial powered
+activator tick. A cart with one free item of capacity collects one and leaves
+2/63; a full cart leaves the whole drop. Every native snapshot conserves the
+combined item count. Earlier 12-case collection controls from
+`adamant-redstone-bds-8c1g3gxu` were expanded rather than silently discarded.
+
+The kernel now removes automatic downward pushing, transfers the fitting
+portion of a dropped stack and updates a partial remainder in place through
+the existing item-count notification path. It retains the remaining entity's
+identity and lifetime rather than removing/recreating it. Existing unit tests
+that required the contradicted push/one-item collection behavior were rewritten
+as pull-capacity/conservation checks; the 48 native traces independently cover
+real world transfers. All 48 new transfer/collection traces, previous 24
+activator-effect traces and existing hopper tests pass (entity 4.937 s), log
+`.tmp/hopper-cart-native-transfer-fixed.log`. Native collection boundaries,
+actor order, moving-container interaction and hopper-block extraction remain
+open beyond these stationary controls.
+
+
+### Cart item/dispenser placement and newborn movement
+
+The item entry path still used a Java-like base-height offset and an additional
+slope bonus after the cart physics/network origin correction. Original client
+MinecartItem::_useOn (`0x24a05d0`, position construction
+`0x24a0797..0x24a07f1`) instead requests the binary32 block centre independently
+of rail shape. `redstone_native_minecart_placement_probe.py` executes those
+original instructions in 120 cases across all five relevant cart kinds and
+signed/large world coordinates. Supplied callbacks classify a rail, report no
+obstructing actors and record/reject the spawn request. This establishes
+request construction, not world actor creation, obstruction selection or ticks.
+
+The initial regression fails all 120 cases: height and, at large coordinates,
+rounding before adding 0.5 differ (`.tmp/minecart-item-placement-baseline.log`).
+Cart item placement now constructs the binary32 centre and converts it to the
+created type's base using its network offset before adding the worldless
+handle. It removes the unsupported slope bonus. All 120 requests pass across
+flat rails and all four ascending directions (item 2.810 s), log
+`.tmp/minecart-item-placement-fixed.log`. The complete client request fixture
+is retained; normal missing-factory/non-rail behavior remains outside this
+specific arithmetic probe.
+
+Actual dispenser captures now retain forty controlled on-track scenes
+(`adamant-redstone-bds-qcw3b_3k`): all five carts, four horizontal faces and
+flat/ascending tracks. Rails are placed from far to near after the dispenser;
+all nine rail permutations are verified/read back after settling, before item
+loading. Earlier `adamant-redstone-bds-5sbp5mw_` lacked this full direction
+control and is superseded for the full slope comparison. Spawn events and
+all 140 tick snapshots are retained. The observed flat positions are a further
+0.125 along the facing direction from the front cell's centre. Original
+MinecartItem::dispense (`0x24a0e70`) uses constants +0.125 (`0xe61e13c`) and
+-0.125 (`0xe8166d0`), independent of rail shape.
+
+Sixty additional native controls (`adamant-redstone-bds-si4brb9o`) cover no
+rail, a solid obstruction and a rail one block lower, for all five cart kinds
+and horizontal faces. No-rail/blocked scenes eject exactly one item; lower
+rails create exactly one cart. All initial inventory/outcome conservation
+controls pass before canonical copying. The kernel now supports the lower-rail
+case and uses the native binary32 centre plus facing offset, converted through
+the created cart type's network origin. The old extra slope-height bonus is
+removed. Native on-track power was applied at relative tick 60 and the first
+cart is observed at 67, already through its first movement in the same snapshot.
+
+The original DispenserBlock::_onRedstoneUpdate (`0x9786380`, queue request near
+`0x978654a`) schedules four game ticks after its scene callback. An immediate
+neighbour-driven callback published the kernel flag two ticks early in the
+tested scenes. A dispenser circuit consumer now caches after source evaluation,
+publishes in the following circuit pass and schedules on its rising edge.
+Publication merges the triggered flag into the live block, preserving the
+current facing and inventory.
+
+Forty additional native chunk-boundary scenes (`adamant-redstone-bds-0daef6lh`)
+cover plain/chest carts, all horizontal facings and offsets 0/1/7/14/15 within
+the source chunk. Forty-eight signed-coordinate scenes
+(`adamant-redstone-bds-afl7ydgg`, `adamant-redstone-bds-90sx_0hp`) cover anchors
+-17/-16/-1/0/15/16. A newly created cart moves in its birth tick in the same
+chunk or a later chunk. A north/west spawn entering an earlier signed chunk
+waits until the next tick; the behavior is retained at negative-to-zero chunk
+boundaries. This is a tested native scheduling observation, not an unsigned
+chunk-key assumption.
+
+Block-created carts meeting that condition join a post-circuit movement queue,
+before the existing after-block entity callbacks. Ordinary cart movement stays
+in its pre-block phase. A spawn-time processed marker is distinguished from an
+actual completed entity tick, so admitting a newborn actor does not rerun an
+actor that already ticked. Removed and duplicate queued actors are ignored.
+All 188 dispenser scenes compare trigger state, inventory, creation tick,
+physical position, velocity, body and item fallback each recorded tick.
+They pass together with the overlap controls below (entity 19.663 s, world
+1.847 s), log `.tmp/dispenser-cart-birth-marker.log`.
+
+The independent world regression queues two newborn actors, duplicates a queue
+entry, removes a third actor before processing and tries to queue an existing
+actor that already ran. It checks exactly one normal/post-block callback and
+50 ms of age per tick, including the following ordinary tick. This and the
+existing frozen/step/removal phase test pass ten repetitions (world 3.471 s),
+log `.tmp/entity-queued-birth-regression.log`.
+
+### Cart collisions from an existing overlap
+
+Seventy-two original-BDS scenes (`adamant-redstone-bds-90blb5sf`) exercise plain
+and chest carts starting outside or inside stone, glass and a dispenser, at
+four initial velocities. The old shared recovery path incorrectly displaced
+fast carts already intersecting a solid block. Cart movement now clips new
+contacts without unsolicited recovery from a pre-existing overlap. This is
+the kernel's collision policy; no literal native cart bitfield value is claimed.
+All 72 full-body/motion traces pass. The same correction allows carts returning
+down a slope to enter the dispenser block with the native trajectory, instead
+of being pushed backwards to its boundary. Wider cart/cart, rider and geometry
+coverage remains open.
+
+The six-package shared regression started before the user's brief pause was
+explicitly stopped and provides no full-suite pass claim. The resumed run
+passed entity (424.762 s), world/player/item (cached) and session (3.975 s),
+but block failed its old immediate falling-edge assertion. That unit now checks
+delayed publication and no additional item consumption; both dispenser/dropper
+unit groups pass (block 2.960 s). Exact per-frame cadence is checked against the
+native captures below. This is not yet a full shared-suite pass after the
+dropper change. Earlier unrelated AI/NBT instability remains documented above.
+
+### Dispenser/dropper pulse and input cadence
+
+Another 288 native traces (`adamant-redstone-bds-9su5nyb4`) cover both block
+types, all six source faces, direct redstone blocks or a one-stone-block path,
+both input parities, one/two/four-tick pulses and three repeated-pulse spacings.
+One-tick pulses may be missed at the unsampled parity. An accepted pulse still
+dispenses after the source goes low. Repeated accepted edges schedule separate
+actions in the tested intervals. The redstone-block/stone controls remain
+unpowered; this source does not supply the strong conducted input.
+
+The dispenser already matches all 144 of its traces after the earlier circuit
+change. The old dropper fails all 72 direct-input cases by publishing too early
+(`.tmp/dispenser-pulse-replay-baseline.log`). Its constructor in the client
+registers the same DispenserBlock::_onRedstoneUpdate callback at `0x9791b62`.
+The kernel now shares the circuit consumer and four-tick rising-edge queue
+between these blocks, preserving each live inventory/facing on publication.
+
+An additional 144 native source-registration traces
+(`adamant-redstone-bds-1n07kx11`) use supported stone buttons in all six facings,
+directly or through stone, at both parities, with 8/12-tick pulses and a repeated
+12-tick pulse. Each transition removes/recreates its source. All scenes require
+positive dispensing before acceptance, and every button permutation is retained.
+Merely editing button_pressed_bit on an existing native block does not update
+its producer; the earlier all-zero diagnostic is superseded and is not evidence
+of a working source. This capture tests registration, not actual player presses.
+All 432 source/pulse traces now match full trigger and inventory timing (entity
+20.052 s), log `.tmp/dispenser-pulse-replay-all-sources.log`. The old unit's
+overly precise startup-clock assertion still failed in that same run, then
+passed after separating its bounded-delay contract from these exact native
+cadence tests. Broader source graph/lifecycle, retrigger intervals and container
+actions remain open.
+
+### Dropper container rejection and sided insertion
+
+The next original-BDS capture (`adamant-redstone-bds-elprqonc`) contains 108
+container-action scenes. Ninety-six are retained for ordinary replay: all six
+dropper faces into empty/full/one-space-left barrels, chests, locked hoppers
+and furnaces, six empty brewing-stand rejection controls, and eighteen
+dispenser/barrel controls. Full source/target slot contents, flags, dropped
+items and all 128 tick snapshots are recorded. The initial source load and
+per-scene total item conservation are validated before copying.
+
+Twelve forced full/partial brewing inventories are excluded explicitly in the
+fixture metadata: assigning stacks of diamonds to potion/fuel slots produces
+invalid gameplay states that native brewing consumes independently of the
+dropper. The original 108-scene raw capture remains diagnostic evidence; the
+capture script now generates the 96 accepted scenes directly. This exclusion
+does not claim that the invalid-inventory brewing path matches.
+
+Previously a full destination fell through to world ejection and consumed the
+chosen source item. A rejecting destination now retains it in the dropper.
+Specialized containers apply their sided insertion rules to only that randomly
+selected item through the existing transfer contract. This fixes the tested
+furnace-side and brewing-stand diamond rejection cases. A missing destination
+still takes the ejection path, and the dispenser controls still eject instead
+of inserting into the barrel.
+
+The locked-hopper controls exposed another premature flag update: the kernel
+locked on the first tick while BDS published on the third. The inspected
+HopperBlock::_onRedstoneUpdate (`0x66baf90`) publishes toggle state without a
+scheduled dispense action. Hoppers now share the late container consumer but
+keep their own actor ticking and live cooldowns/inventory. All 96 container
+scenes pass together with the 432 dispenser/dropper pulse scenes, 188 cart
+dispense scenes and existing hopper-cart/activator controls (entity 41.279 s,
+block 2.708 s), log `.tmp/container-circuit-and-transfers.log`.
+
+Another 144 original-BDS hopper-lock traces (`adamant-redstone-bds-qz9qo4kp`)
+cover direct/stone-path inputs on all faces, both parities, short pulses and
+repeated edges. All retained item counts stay 64 as intended: no destination
+container is present. Their ordinary Go replay passes in the complete shared
+regression below.
+
+The last 30 native scenes (`adamant-redstone-bds-vrvuys5l`) additionally record
+actual hopper pushes into empty/full/partial barrels in all five legal output
+directions, with lock/unlock inputs at both parities. Immediate load readback
+and per-frame conservation pass. An empty destination receives items at
+relative ticks 42/50/58, then 80 after unlocking, in these controlled scenes.
+The first transfer follows the scripted load at 40 by two snapshots. These
+fixtures and their script are retained for the next audit step: no Go replay
+or transfer-phase correction is claimed for them yet. The distinction between
+block-actor phase, inventory publication and cooldown must be resolved from
+native evidence before changing that path.
+
+The user requested this paused checkpoint, commits and push. The full 22-row
+audit remains open; the approximately 65% estimate describes effort only.
+
+Final checkpoint verification: `go test ./server/entity ./server/block
+./server/world ./server/player ./server/session ./server/item` passes all six
+packages: entity 372.679 s, block 98.188 s, world 14.901 s, player 18.525 s,
+session 3.397 s and item 2.583 s. This includes the new 144 hopper-lock traces
+and all normal regressions, without filtering the previously unstable tests.
+Log: `.tmp/container-circuit-shared-suite.log`. This run proves the checked
+regressions at this checkpoint; it does not close the audit's outstanding rows.
+The root entry point also builds with `go build -o
+.tmp/adamant-container-audit-check.exe .`; `go run .` remains the server entry.
+Code checkpoints: `a7ae2f8` (piston contacts/entity phases), `d76fd761`
+(rails/carts) and `26048efd` (container signals/dispensing/transfers).
