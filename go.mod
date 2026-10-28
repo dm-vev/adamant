@@ -9,6 +9,7 @@ require (
 	github.com/df-mc/go-nethernet v1.0.24
 	github.com/df-mc/goleveldb v1.1.9
 	github.com/df-mc/worldupgrader v1.0.21
+	github.com/dm-vev/adamant/net v0.0.0
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml v1.9.5
@@ -62,3 +63,5 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
+
+replace github.com/dm-vev/adamant/net => ./net
