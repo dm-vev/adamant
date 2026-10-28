@@ -605,6 +605,16 @@ func (a *Association) queueControl(typ, flags byte, value []byte) {
 // Send queues a message on a stream. The message must not be empty: data
 // channels send empty messages as a single byte with an empty PPID.
 func (a *Association) Send(stream uint16, ppid uint32, data []byte, opts SendOptions, now time.Time) error {
+	return a.queueMessage(stream, ppid, data, opts, now, false)
+}
+
+// SendOwned is Send for a message the association keeps without copying
+// it: the caller must not change data afterwards.
+func (a *Association) SendOwned(stream uint16, ppid uint32, data []byte, opts SendOptions, now time.Time) error {
+	return a.queueMessage(stream, ppid, data, opts, now, true)
+}
+
+func (a *Association) queueMessage(stream uint16, ppid uint32, data []byte, opts SendOptions, now time.Time, owned bool) error {
 	if a.err != nil {
 		return a.err
 	}
@@ -620,7 +630,10 @@ func (a *Association) Send(stream uint16, ppid uint32, data []byte, opts SendOpt
 	if a.buffered+len(data) > a.cfg.SendBuffer {
 		return ErrBufferFull
 	}
-	m := &outMessage{stream: stream, ppid: ppid, opts: opts, data: bytes.Clone(data)}
+	if !owned {
+		data = bytes.Clone(data)
+	}
+	m := &outMessage{stream: stream, ppid: ppid, opts: opts, data: data}
 	if opts.Partial && opts.Lifetime > 0 {
 		m.expires = now.Add(opts.Lifetime)
 	}
