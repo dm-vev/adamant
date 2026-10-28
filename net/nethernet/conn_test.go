@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -432,4 +433,29 @@ func TestConnIgnoresUnprovenAddress(t *testing.T) {
 	if len(cli.received) != 1 {
 		t.Fatalf("client received %d messages; server sends to %v", len(cli.received), srv.c.RemoteAddr())
 	}
+}
+
+// TestConnMemory bounds the memory of an open connection: the plan of the
+// stack allows 100 KB, where pion took about 2 MB.
+func TestConnMemory(t *testing.T) {
+	const pairs = 50
+	nets := make([]*vnet, 0, pairs)
+	runtime.GC()
+	var before runtime.MemStats
+	runtime.ReadMemStats(&before)
+	for i := range pairs {
+		n := newVnet(t, uint64(i), true, nil)
+		n.open(t)
+		exchange(t, n, []int{100, 3000})
+		nets = append(nets, n)
+	}
+	runtime.GC()
+	var after runtime.MemStats
+	runtime.ReadMemStats(&after)
+	perConn := (int64(after.HeapAlloc) - int64(before.HeapAlloc)) / (2 * pairs)
+	t.Logf("%d bytes per open connection", perConn)
+	if perConn > 100<<10 {
+		t.Fatalf("an open connection holds %d bytes", perConn)
+	}
+	runtime.KeepAlive(nets)
 }
