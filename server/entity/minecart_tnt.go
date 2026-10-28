@@ -45,23 +45,21 @@ func (b *MinecartTNTBehaviour) Base() *MinecartBehaviour {
 // Tick ticks the TNT minecart behaviour.
 func (b *MinecartTNTBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	m := b.MinecartBehaviour.Tick(e, tx)
-	if b.fuse > 0 {
+	if b.fuse == 0 {
+		b.explode(e, tx, 0)
+		_ = e.CloseIn(tx)
+	} else if b.fuse > 0 {
 		if b.fuse%5 == 0 {
 			b.broadcastState(e, tx)
 		}
 		b.fuse--
-		if b.fuse <= 0 {
-			b.explode(e, tx, 0)
-			_ = e.CloseIn(tx)
-			return m
-		}
 	}
 	return m
 }
 
 // Activate primes the TNT minecart when powered.
 func (b *MinecartTNTBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
-	if !powered {
+	if !powered || b.fuse >= 0 {
 		return
 	}
 	b.prime(e, tx, 80)
@@ -74,7 +72,7 @@ func (b *MinecartTNTBehaviour) FuseTicks() int {
 
 // Ignited reports if the TNT minecart is ignited.
 func (b *MinecartTNTBehaviour) Ignited() bool {
-	return b.fuse > 0
+	return b.fuse >= 0
 }
 
 func (b *MinecartTNTBehaviour) prime(e *Ent, tx *world.Tx, fuse int) {
@@ -158,9 +156,8 @@ func (tntMinecartType) Open(tx *world.Tx, handle *world.EntityHandle, data *worl
 
 func (tntMinecartType) EncodeEntity() string { return "minecraft:tnt_minecart" }
 
-func (tntMinecartType) BBox(world.Entity) cube.BBox {
-	return cube.Box(-0.49, 0, -0.49, 0.49, 0.7, 0.49)
-}
+func (tntMinecartType) BBox(e world.Entity) cube.BBox { return minecartBBox(e) }
+func (tntMinecartType) NetworkOffset() float64        { return minecartNetworkOffset }
 
 func (tntMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := tntMinecartConf

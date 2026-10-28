@@ -45,6 +45,23 @@ func TestEntityNetworkPositionConsistentAcrossPackets(t *testing.T) {
 			return entity.NewFallingBlock(world.EntitySpawnOpts{Position: pos}, block.Sand{})
 		}},
 	}
+	registry := entity.DefaultRegistry.Config()
+	for _, cart := range []struct {
+		name  string
+		spawn func(world.EntitySpawnOpts) *world.EntityHandle
+	}{
+		{"minecart", registry.Minecart},
+		{"chest_minecart", registry.MinecartChest},
+		{"hopper_minecart", registry.MinecartHopper},
+		{"tnt_minecart", registry.MinecartTNT},
+		{"command_block_minecart", registry.MinecartCommandBlock},
+	} {
+		tests = append(tests, struct {
+			name   string
+			offset float64
+			spawn  func() *world.EntityHandle
+		}{cart.name, float64(float32(.35)), func() *world.EntityHandle { return cart.spawn(world.EntitySpawnOpts{Position: pos}) }})
+	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -210,7 +227,7 @@ func entityPacketPositions(t *testing.T, packets <-chan packet.Packet, entityTyp
 					spawn = pk.Position
 				}
 			case *packet.AddActor:
-				if entityType == "falling_block" {
+				if pk.EntityType == "minecraft:"+entityType {
 					spawn = pk.Position
 				}
 			case *packet.MovePlayer:

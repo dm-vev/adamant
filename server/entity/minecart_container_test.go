@@ -9,26 +9,25 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-func TestHopperMinecartPushPullAndCooldown(t *testing.T) {
+func TestHopperMinecartPullAndCooldown(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
 	<-w.Exec(func(tx *world.Tx) {
 		b := hopperMinecartConf.New()
-		below, above := cube.Pos{0, 0, 0}, cube.Pos{0, 2, 0}
-		destination, source := block.NewBarrel(), block.NewBarrel()
+		above := cube.Pos{0, 2, 0}
+		source := block.NewBarrel()
 		_ = b.inv.SetItem(0, item.NewStack(item.Diamond{}, 2))
 		_ = source.Inventory(tx, above).SetItem(0, item.NewStack(item.Coal{}, 2))
-		tx.SetBlock(below, destination, nil)
 		tx.SetBlock(above, source, nil)
 
-		if !b.push(below, tx) || !b.pull(above, tx) {
-			t.Fatal("hopper minecart did not push and pull")
+		if !b.pull(above, tx) {
+			t.Fatal("hopper minecart did not pull")
 		}
 		diamonds, _ := b.inv.Item(0)
 		coal, _ := tx.Block(above).(block.Barrel).Inventory(tx, above).Item(0)
-		if diamonds.Count() != 1 || coal.Count() != 1 || inventoryCount(b.inv.Items()) != 2 || inventoryCount(tx.Block(below).(block.Barrel).Inventory(tx, below).Items()) != 1 {
-			t.Fatalf("unexpected transfer counts: minecart=%v above=%v below=%v", b.inv.Items(), coal, tx.Block(below).(block.Barrel).Inventory(tx, below).Items())
+		if diamonds.Count() != 2 || coal.Count() != 1 || inventoryCount(b.inv.Items()) != 3 {
+			t.Fatalf("unexpected transfer counts: minecart=%v above=%v", b.inv.Items(), coal)
 		}
 
 		b.transferCooldown = 2
@@ -44,31 +43,31 @@ func TestHopperMinecartPushPullAndCooldown(t *testing.T) {
 	})
 }
 
-func TestHopperMinecartFailedPushDoesNotLoseItems(t *testing.T) {
+func TestFullHopperMinecartDoesNotLoseItemsOnFailedPull(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
 	<-w.Exec(func(tx *world.Tx) {
 		b := hopperMinecartConf.New()
 		pos := cube.Pos{0, 0, 0}
-		full := block.NewBarrel()
-		for slot := 0; slot < full.Inventory(tx, pos).Size(); slot++ {
-			_ = full.Inventory(tx, pos).SetItem(slot, item.NewStack(item.Coal{}, 64))
+		source := block.NewBarrel()
+		for slot := 0; slot < b.inv.Size(); slot++ {
+			_ = b.inv.SetItem(slot, item.NewStack(item.Coal{}, 64))
 		}
-		_ = b.inv.SetItem(0, item.NewStack(item.Diamond{}, 2))
-		tx.SetBlock(pos, full, nil)
+		_ = source.Inventory(tx, pos).SetItem(0, item.NewStack(item.Diamond{}, 2))
+		tx.SetBlock(pos, source, nil)
 
-		if b.push(pos, tx) {
-			t.Fatal("push succeeded into a full container")
+		if b.pull(pos, tx) {
+			t.Fatal("pull succeeded into a full cart")
 		}
-		stack, _ := b.inv.Item(0)
-		if stack.Count() != 2 || inventoryCount(tx.Block(pos).(block.Barrel).Inventory(tx, pos).Items()) != 27*64 {
-			t.Fatalf("items changed after failed push: source=%v", stack)
+		stack, _ := tx.Block(pos).(block.Barrel).Inventory(tx, pos).Item(0)
+		if stack.Count() != 2 || inventoryCount(b.inv.Items()) != 5*64 {
+			t.Fatalf("items changed after failed pull: source=%v", stack)
 		}
 	})
 }
 
-func TestHopperMinecartCollectsOneItemWithoutDuplication(t *testing.T) {
+func TestHopperMinecartCollectsStackWithoutDuplication(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -91,8 +90,8 @@ func TestHopperMinecartCollectsOneItemWithoutDuplication(t *testing.T) {
 				remaining += entity.(*Ent).Behaviour().(*ItemBehaviour).Item().Count()
 			}
 		}
-		if got := inventoryCount(behaviour.inv.Items()); got != 1 || remaining != 2 {
-			t.Fatalf("collected=%d remaining=%d, want 1 and 2", got, remaining)
+		if got := inventoryCount(behaviour.inv.Items()); got != 3 || remaining != 0 {
+			t.Fatalf("collected=%d remaining=%d, want 3 and 0", got, remaining)
 		}
 	})
 }
@@ -127,13 +126,13 @@ func TestHopperMinecartActivatorRail(t *testing.T) {
 		behaviour := entity.(*MinecartContainer).Behaviour().(*HopperMinecartBehaviour)
 
 		tx.SetBlock(pos, block.ActivatorRail{Powered: true}, nil)
-		behaviour.updateEnabled(entity.(*MinecartContainer).Ent, tx)
+		behaviour.Activate(entity.(*MinecartContainer).Ent, tx, true)
 		if behaviour.enabled {
 			t.Fatal("powered activator rail did not disable hopper minecart")
 		}
 
 		tx.SetBlock(pos, block.ActivatorRail{}, nil)
-		behaviour.updateEnabled(entity.(*MinecartContainer).Ent, tx)
+		behaviour.Activate(entity.(*MinecartContainer).Ent, tx, false)
 		if !behaviour.enabled {
 			t.Fatal("unpowered activator rail did not enable hopper minecart")
 		}

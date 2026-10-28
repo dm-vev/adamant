@@ -78,13 +78,15 @@ func (MinecartCommandBlock) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, 
 }
 
 // EncodeItem returns the command block minecart item ID.
-func (MinecartCommandBlock) EncodeItem() (string, int16) { return "minecraft:command_block_minecart", 0 }
+func (MinecartCommandBlock) EncodeItem() (string, int16) {
+	return "minecraft:command_block_minecart", 0
+}
 
 // MaxCount returns the max stack size.
 func (MinecartCommandBlock) MaxCount() int { return 1 }
 
 func spawnMinecartOnRail(pos cube.Pos, tx *world.Tx, ctx *UseContext, create func(world.EntitySpawnOpts) *world.EntityHandle, name string) bool {
-	ascending, ok := railInfo(tx.Block(pos))
+	_, ok := railInfo(tx.Block(pos))
 	if !ok {
 		return false
 	}
@@ -92,13 +94,19 @@ func spawnMinecartOnRail(pos cube.Pos, tx *world.Tx, ctx *UseContext, create fun
 		slog.Default().Info("minecart: missing entity factory", "name", name, "world", tx.World().Name())
 		return false
 	}
-	spawn := pos.Vec3Middle()
-	spawn[1] += 0.0625
-	if ascending {
-		spawn[1] += 0.5
+	// MinecartItem::_useOn requests the actor at the binary32 block centre,
+	// independently of rail shape (client 0x24a0797..0x24a07f1).
+	var spawn mgl64.Vec3
+	for axis := range 3 {
+		spawn[axis] = float64(float32(pos[axis]) + .5)
 	}
 	opts := world.EntitySpawnOpts{Position: spawn}
-	tx.AddEntity(create(opts))
+	handle := create(opts)
+	if origin, ok := handle.Type().(interface{ NetworkOffset() float64 }); ok {
+		spawn[1] = float64(float32(spawn[1]) - float32(origin.NetworkOffset()))
+		handle.SetPosition(spawn)
+	}
+	tx.AddEntity(handle)
 	ctx.SubtractFromCount(1)
 	return true
 }
