@@ -250,6 +250,9 @@ func (r *Reader) ByteSlice() []byte { return r.take(r.length()) }
 // Bytes reads the bytes left, sharing the data of the Reader.
 func (r *Reader) Bytes() []byte { return r.take(r.Len()) }
 
+// Next reads n bytes, sharing the data of the Reader.
+func (r *Reader) Next(n int) []byte { return r.take(n) }
+
 func (r *Reader) UUID() (v [16]byte) {
 	b := r.take(16)
 	if b == nil {
