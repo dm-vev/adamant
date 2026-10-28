@@ -74,7 +74,9 @@ func TestDispenserShootsFireChargeAndKeepsPoweredState(t *testing.T) {
 		stack, _ := got.inventory.Item(0)
 		spawned := 0
 		for e := range tx.Entities() {
-			if e.H().Type() == typ { spawned++ }
+			if e.H().Type() == typ {
+				spawned++
+			}
 		}
 		if !got.Triggered || stack.Count() != 1 || spawned != 1 {
 			t.Fatalf("triggered=%v stack=%v small fireballs=%d", got.Triggered, stack, spawned)
@@ -132,10 +134,22 @@ func TestDispenserFiresOncePerPoweredEdge(t *testing.T) {
 		}
 		tx.SetBlock(sourcePos, nil, nil)
 	})
+	// The native scene samples the falling edge and publishes it in the next
+	// circuit pass, rather than clearing the flag in the neighbour callback.
 	w.AdvanceTick()
 	<-w.Exec(func(tx *world.Tx) {
-		if tx.Block(pos).(Dispenser).Triggered {
-			t.Fatal("falling edge did not clear triggered state")
+		if !tx.Block(pos).(Dispenser).Triggered {
+			t.Fatal("falling edge bypassed the scene publication delay")
+		}
+	})
+	for range 2 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		got := tx.Block(pos).(Dispenser)
+		stack, _ := got.inventory.Item(0)
+		if got.Triggered || stack.Count() != 1 {
+			t.Fatalf("falling edge: triggered=%t stack=%v", got.Triggered, stack)
 		}
 	})
 }
@@ -297,10 +311,9 @@ func TestDispenserMinecarts(t *testing.T) {
 					for spawned := range tx.Entities() {
 						count++
 						e := spawned.(*dispenserTestEntity)
-						wantPos := mgl64.Vec3{1.5, 1.0625, 0.5}
-						if direction, _, _ := RailInfo(rail); direction.Ascending() {
-							wantPos[1] += 0.5
-						}
+						// This test type has no origin offset; its position records
+						// the native actor-centre request for both rail shapes.
+						wantPos := mgl64.Vec3{1.625, 1.5, 0.5}
 						if e.data.Data != tt.want || e.Position() != wantPos || e.data.Vel != (mgl64.Vec3{}) {
 							t.Fatalf("minecart=%v pos=%v velocity=%v", e.data.Data, e.Position(), e.data.Vel)
 						}

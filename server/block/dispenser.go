@@ -209,24 +209,45 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		}
 	case item.Minecart, item.MinecartChest, item.MinecartHopper, item.MinecartTNT, item.MinecartCommandBlock:
 		front := pos.Side(d.Facing)
-		if IsRail(tx.Block(front)) {
-			opts = world.EntitySpawnOpts{Position: front.Vec3Middle().Add(mgl64.Vec3{0, 0.0625, 0})}
-			direction, _, _ := RailInfo(tx.Block(front))
-			if direction.Ascending() {
-				opts.Position[1] += 0.5
+		railPos := front
+		if _, air := tx.Block(front).(Air); air {
+			railPos = front.Side(cube.FaceDown)
+		}
+		if IsRail(tx.Block(railPos)) {
+			// Native MinecartItem::dispense requests the rail-cell centre,
+			// offset 1/8 along the horizontal facing, for every rail shape.
+			var centre mgl64.Vec3
+			for axis := range 3 {
+				centre[axis] = float64(float32(railPos[axis]) + .5)
+				if axis != 1 {
+					centre[axis] = float64(float32(centre[axis]) + float32(direction[axis])*.125)
+				}
 			}
+			opts = world.EntitySpawnOpts{Position: centre}
 			conf := tx.World().EntityRegistry().Config()
+			var cart *world.EntityHandle
 			switch held.(type) {
 			case item.Minecart:
-				tx.AddEntity(conf.Minecart(opts))
+				cart = conf.Minecart(opts)
 			case item.MinecartChest:
-				tx.AddEntity(conf.MinecartChest(opts))
+				cart = conf.MinecartChest(opts)
 			case item.MinecartHopper:
-				tx.AddEntity(conf.MinecartHopper(opts))
+				cart = conf.MinecartHopper(opts)
 			case item.MinecartTNT:
-				tx.AddEntity(conf.MinecartTNT(opts))
+				cart = conf.MinecartTNT(opts)
 			case item.MinecartCommandBlock:
-				tx.AddEntity(conf.MinecartCommandBlock(opts))
+				cart = conf.MinecartCommandBlock(opts)
+			}
+			if origin, ok := cart.Type().(interface{ NetworkOffset() float64 }); ok {
+				centre[1] = float64(float32(centre[1]) - float32(origin.NetworkOffset()))
+				cart.SetPosition(centre)
+			}
+			spawned := tx.AddEntity(cart)
+			// Native chunk actor passes include a newly dispensed cart in the
+			// current or a later chunk, but defer a cart entering an earlier
+			// chunk until the next game tick. Coordinates are signed here.
+			if owner, ok := tx.EntityChunk(spawned); ok && owner[0] >= int32(pos[0]>>4) && owner[1] >= int32(pos[2]>>4) {
+				tx.QueueEntityTick(spawned)
 			}
 		} else {
 			d.eject(tx, opts, stack.Grow(1-stack.Count()))

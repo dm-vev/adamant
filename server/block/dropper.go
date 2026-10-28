@@ -152,13 +152,28 @@ func (d Dropper) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	stack, _ := d.inventory.Item(slot)
 	one := stack.Grow(1 - stack.Count())
 	frontPos := pos.Side(d.Facing)
-	if container, ok := tx.Block(frontPos).(Container); ok {
-		if _, err := container.Inventory(tx, frontPos).AddItem(one); err == nil {
+	front := tx.Block(frontPos)
+	if container, ok := front.(Container); ok {
+		accepted := false
+		if receiver, ok := front.(HopperInsertable); ok {
+			// Use the destination's sided slot rules, with only the randomly
+			// selected source item available. Do not let it choose another slot
+			// from the dropper if that item cannot be accepted.
+			transfer := Hopper{Facing: d.Facing, inventory: inventory.New(1, nil)}
+			_ = transfer.inventory.SetItem(0, one)
+			accepted = receiver.InsertItem(transfer, frontPos, tx)
+		} else {
+			_, err := container.Inventory(tx, frontPos).AddItem(one)
+			accepted = err == nil
+		}
+		if accepted {
 			_ = d.inventory.SetItem(slot, stack.Grow(-1))
 			notifyComparatorUpdate(pos, tx)
 			notifyComparatorUpdate(frontPos, tx)
-			return
 		}
+		// A container that is full or rejects the item retains it in the
+		// dropper. Only a missing container takes the world-ejection path.
+		return
 	}
 	direction := frontPos.Vec3Centre().Sub(pos.Vec3Centre())
 	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre().Add(direction.Mul(0.7)), Velocity: direction.Mul(0.2)}
