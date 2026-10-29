@@ -32,7 +32,7 @@ type fuzzConn struct {
 	closed   chan struct{}
 	once     sync.Once
 
-	mu       sync.Mutex
+	mu        sync.Mutex
 	unencoded string
 }
 
