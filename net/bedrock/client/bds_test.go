@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -40,7 +41,8 @@ var corpusCommands = []string{
 }
 
 // TestBDSCorpus joins the BDS whose signaling URL is BDS_ADDR, walks for
-// BDS_SECONDS (30 if unset) while it runs corpusCommands, and checks that
+// BDS_SECONDS (30 if unset) while it runs corpusCommands, or the commands
+// of the file BDS_COMMANDS, one a line, and checks that
 // every packet the server sends decodes with nothing left over and
 // encodes back to the same bytes. NBT compounds encode with their keys in
 // order: a server that writes them in another order, as gophertunnel does,
@@ -72,6 +74,19 @@ func TestBDSCorpus(t *testing.T) {
 		defer func() { _ = c.nn.SetReadDeadline(time.Now()) }()
 		pos := c.game.PlayerPosition
 		commands := corpusCommands
+		if f := os.Getenv("BDS_COMMANDS"); f != "" {
+			b, err := os.ReadFile(f)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			commands = nil
+			for _, line := range strings.Split(string(b), "\n") {
+				if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") {
+					commands = append(commands, line)
+				}
+			}
+		}
 		for tick := uint64(1); time.Now().Before(stop); tick++ {
 			time.Sleep(50 * time.Millisecond)
 			pos[0] += 0.2
