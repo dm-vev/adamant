@@ -28,14 +28,15 @@ func TestSendBatch(t *testing.T) {
 			peers[i], to[i] = p, p.LocalAddr().(*net.UDPAddr).AddrPort()
 		}
 		b := NewSendBatch()
+		g := &sendGroup{socks: []*net.UDPConn{sock}, count: []func(int, int){func(int, int) {}}}
 		single := bytes.Repeat([]byte{1}, 100)
 		segmented := append(bytes.Repeat([]byte{2}, 1000), bytes.Repeat([]byte{3}, 400)...)
 		last := []byte{4, 4, 4}
 		for round := range 2 {
-			b.add(sock, single, len(single), to[0])
-			b.add(sock, segmented[:1000], 500, to[1])
-			b.add(sock, segmented, 500, to[1])
-			b.add(sock, last, len(last), to[0])
+			b.add(g, single, len(single), 1, to[0])
+			b.add(g, segmented[:1000], 500, 2, to[1])
+			b.add(g, segmented, 500, 3, to[1])
+			b.add(g, last, len(last), 1, to[0])
 			b.Flush()
 			want := [2][][]byte{
 				{single, last},
@@ -91,5 +92,42 @@ func TestConnSendBatch(t *testing.T) {
 	}
 	if got := read(t, cli); string(got) != "alone" {
 		t.Fatalf("read %q", got)
+	}
+}
+
+// TestSendBatchOneSocket batches what connections on different sockets of
+// a listener send: it goes out on one socket, in one call, and reaches
+// every client.
+func TestSendBatchOneSocket(t *testing.T) {
+	if !sendBatchSupported {
+		t.Skip("a SendBatch sends each message on its own here")
+	}
+	l := listen(t, ListenConfig{Sockets: 4})
+	var clis, srvs []*Conn
+	for range 4 {
+		clis = append(clis, dial(t, newDialer(t), l))
+		srvs = append(srvs, accept(t, l))
+	}
+	b := NewSendBatch()
+	for i, srv := range srvs {
+		srv.SetSendBatch(b)
+		if err := srv.Send([]byte{byte(i)}); err != nil {
+			t.Fatal(err)
+		}
+		srv.SetSendBatch(nil)
+	}
+	if len(b.socks) != 1 || len(b.socks[0].msgs) < len(srvs) {
+		t.Fatalf("%d sockets batched, want what the 4 connections sent on one", len(b.socks))
+	}
+	b.Flush()
+	// The clients were accepted in another order than dialled: each reads
+	// what the connection of its peer sent.
+	seen := map[byte]bool{}
+	for _, c := range clis {
+		msg := read(t, c)
+		if len(msg) != 1 || seen[msg[0]] {
+			t.Fatalf("read %v", msg)
+		}
+		seen[msg[0]] = true
 	}
 }

@@ -90,10 +90,10 @@ type connConfig struct {
 	// outBatch, if set, sends datagrams of size bytes back to back in b, the
 	// last maybe shorter, in one call.
 	outBatch func(b []byte, size int, to netip.AddrPort)
-	// direct, if set, returns the socket datagrams to a peer go out on and
-	// the counter of what is sent on it, nil for a peer reached through the
-	// relay: what a SendBatch may gather.
-	direct    func(to netip.AddrPort) (*net.UDPConn, func(datagrams, n int))
+	// direct, if set, returns the sockets datagrams to a peer may go out
+	// on, nil for a peer reached through the relay: what a SendBatch may
+	// gather.
+	direct    func(to netip.AddrPort) *sendGroup
 	localAddr net.Addr
 }
 
@@ -107,7 +107,7 @@ type Conn struct {
 	clock    func() time.Time
 	out      func(b []byte, to netip.AddrPort)
 	outBatch func(b []byte, size int, to netip.AddrPort)
-	direct   func(to netip.AddrPort) (*net.UDPConn, func(datagrams, n int))
+	direct   func(to netip.AddrPort) *sendGroup
 	// sendBatch, if set, takes the datagrams of the connection rather than
 	// its socket: see SendBatch.
 	sendBatch *SendBatch
@@ -312,19 +312,17 @@ func (c *Conn) flushBatch() {
 	if c.batchCount == 0 {
 		return
 	}
-	var sock *net.UDPConn
-	var count func(int, int)
+	var group *sendGroup
 	if c.sendBatch != nil && c.direct != nil {
-		sock, count = c.direct(c.batchTo)
+		group = c.direct(c.batchTo)
 	}
 	switch {
-	case sock != nil:
+	case group != nil:
 		size := c.batchSize
 		if c.batchCount == 1 {
 			size = len(c.batch)
 		}
-		c.sendBatch.add(sock, c.batch, size, c.batchTo)
-		count(c.batchCount, len(c.batch))
+		c.sendBatch.add(group, c.batch, size, c.batchCount, c.batchTo)
 	case c.batchCount == 1:
 		c.out(c.batch, c.batchTo)
 	default:

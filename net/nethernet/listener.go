@@ -122,6 +122,9 @@ type Listener struct {
 	bound      netip.Addr
 	ipv4       bool
 	nextSock   atomic.Uint32
+	// group is the sockets a SendBatch sends on, made once.
+	groupOnce sync.Once
+	group     *sendGroup
 
 	ufragMu sync.RWMutex
 	ufrags  map[string]*Conn
@@ -481,7 +484,7 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 	}
 	sock := l.socks[int(l.nextSock.Add(1))%len(l.socks)]
 	out, outBatch := l.writers(sock)
-	direct := l.direct(sock)
+	direct := l.direct()
 	c := newConn(connConfig{
 		local:       local,
 		remote:      offer,
@@ -569,26 +572,33 @@ func (l *Listener) writers(sock *net.UDPConn) (out func([]byte, netip.AddrPort),
 }
 
 // direct returns what a connection gathers its datagrams for a SendBatch
-// with: sock and its counters for a peer reached without the relay, nil
-// for one reached through it, and nil itself where a SendBatch sends each
-// message on its own anyway.
-func (l *Listener) direct(sock *net.UDPConn) func(netip.AddrPort) (*net.UDPConn, func(int, int)) {
+// with: the sockets of the listener for a peer reached without the relay,
+// nil for one reached through it, and nil itself where a SendBatch sends
+// each message on its own anyway. A datagram goes out alike on any of the
+// sockets, which share the address of the listener.
+func (l *Listener) direct() func(netip.AddrPort) *sendGroup {
 	if !sendBatchSupported {
 		return nil
 	}
-	idx := l.socketIndex(sock)
-	sent, sentBytes := datagramsSent.At(idx), bytesSent.At(idx)
-	count := func(datagrams, n int) {
-		if sent != nil {
-			sent.Add(uint64(datagrams))
-			sentBytes.Add(uint64(n))
+	l.groupOnce.Do(func() {
+		g := &sendGroup{socks: l.socks}
+		for i := range l.socks {
+			sent, sentBytes := datagramsSent.At(i), bytesSent.At(i)
+			g.count = append(g.count, func(datagrams, n int) {
+				if sent != nil {
+					sent.Add(uint64(datagrams))
+					sentBytes.Add(uint64(n))
+				}
+			})
 		}
-	}
-	return func(to netip.AddrPort) (*net.UDPConn, func(int, int)) {
+		l.group = g
+	})
+	g := l.group
+	return func(to netip.AddrPort) *sendGroup {
 		if r := l.relay.Load(); r != nil && r.via(to) {
-			return nil, nil
+			return nil
 		}
-		return sock, count
+		return g
 	}
 }
 
