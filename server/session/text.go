@@ -12,6 +12,11 @@ import (
 
 // SendMessage ...
 func (s *Session) SendMessage(message string) {
+	if message == "" {
+		// Bedrock refuses a Text without a message; a space shows the
+		// empty line Java shows.
+		message = " "
+	}
 	s.writePacket(&packet.Text{
 		TextType: packet.TextTypeRaw,
 		Message:  message,

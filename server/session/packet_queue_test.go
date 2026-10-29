@@ -308,3 +308,13 @@ func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 		}
 	}
 }
+
+// TestEmptyMessageShowsAnEmptyLine sends an empty chat message, which
+// Bedrock refuses as it is: a space goes instead, as Java shows a line.
+func TestEmptyMessageShowsAnEmptyLine(t *testing.T) {
+	s := &Session{packets: make(chan queuedPacket, 1), closeBackground: make(chan struct{})}
+	s.SendMessage("")
+	if text, ok := (<-s.packets).(*packet.Text); !ok || text.Message != " " {
+		t.Fatalf("sent %+v, want a Text of one space", text)
+	}
+}
