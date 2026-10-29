@@ -24,5 +24,8 @@ type Optional[T any] struct {
 // Some returns an Optional holding v.
 func Some[T any](v T) Optional[T] { return Optional[T]{Set: true, Val: v} }
 
+// Value returns the value of the Optional and whether it is set.
+func (o Optional[T]) Value() (T, bool) { return o.Val, o.Set }
+
 // Color is a colour as red, green, blue and alpha bytes.
 type Color [4]uint8

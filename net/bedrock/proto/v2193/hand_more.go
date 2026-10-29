@@ -55,6 +55,9 @@ func readGameRule(r *wire.Reader, x *GameRule) {
 // InputFlags holds the IDs of the flags a PlayerAuthInput sets.
 type InputFlags []int32
 
+// Has reports whether the flag of an ID is set.
+func (x InputFlags) Has(id int) bool { return slices.Contains(x, int32(id)) }
+
 func writeInputFlags(w *wire.Writer, x *InputFlags, count int) {
 	w.Varuint32(uint32(len(*x)))
 	for _, id := range *x {
