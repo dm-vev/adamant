@@ -78,6 +78,10 @@ func (s *Session) ViewEntity(e world.Entity) {
 		s.entities[runtimeID] = e.H()
 	}
 	delete(s.deathAnimations, runtimeID)
+	if s.freshMoves == nil {
+		s.freshMoves = make(map[*world.EntityHandle]struct{})
+	}
+	s.freshMoves[e.H()] = struct{}{}
 	s.entityMutex.Unlock()
 
 	yaw, pitch := e.Rotation().Elem()
@@ -302,6 +306,7 @@ func (s *Session) HideEntity(e world.Entity) {
 		delete(s.entityRuntimeIDs, e.H())
 		delete(s.entities, id)
 		delete(s.deathAnimations, id)
+		delete(s.freshMoves, e.H())
 	}
 	s.entityMutex.Unlock()
 	if !ok {
@@ -336,6 +341,11 @@ func (s *Session) ViewEntityDisplacement(e world.Entity, pos mgl64.Vec3, rot cub
 }
 
 func (s *Session) viewEntityAbsoluteMovement(id uint64, e world.Entity, pos mgl64.Vec3, rot cube.Rotation, onGround, authoritative bool) {
+	s.writePacket(absoluteMove(id, e, pos, rot, onGround, authoritative))
+}
+
+// absoluteMove returns the MoveActorAbsolute of an entity at a position.
+func absoluteMove(id uint64, e world.Entity, pos mgl64.Vec3, rot cube.Rotation, onGround, authoritative bool) *v2193.MoveActorAbsolutePacket {
 	flags := byte(0)
 	if onGround {
 		flags |= packet.MoveFlagOnGround
@@ -343,12 +353,12 @@ func (s *Session) viewEntityAbsoluteMovement(id uint64, e world.Entity, pos mgl6
 	if authoritative {
 		flags |= packet.MoveFlagTeleport
 	}
-	s.writePacket(&v2193.MoveActorAbsolutePacket{
+	return &v2193.MoveActorAbsolutePacket{
 		EntityRuntimeID: id,
 		Position:        vec64To32(entityNetworkPosition(e, pos)),
 		Rotation:        vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), entityHeadYaw(e, rot.Yaw())}),
 		Flags:           flags,
-	})
+	}
 }
 
 // ViewEntityVelocity ...

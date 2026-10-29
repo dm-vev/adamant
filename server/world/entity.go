@@ -695,6 +695,10 @@ type EntityData struct {
 	// update known fields without discarding fields unknown to this server.
 	NativeNBT map[string]any
 
+	// Moves holds what the viewers of the entity were last shown of its
+	// movement.
+	Moves MoveTracker
+
 	Data any
 }
 

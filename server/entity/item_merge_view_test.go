@@ -23,8 +23,9 @@ func (r *viewRecorder) HideEntity(e world.Entity) { delete(r.shown, e.H()) }
 func (r *viewRecorder) ViewEntityMovement(e world.Entity, _ mgl64.Vec3, _ cube.Rotation, _ bool) {
 	r.check(e)
 }
-func (r *viewRecorder) ViewEntityVelocity(e world.Entity, _ mgl64.Vec3) { r.check(e) }
-func (r *viewRecorder) ViewEntityState(e world.Entity)                  { r.check(e) }
+func (r *viewRecorder) ViewEntityVelocity(e world.Entity, _ mgl64.Vec3)    { r.check(e) }
+func (r *viewRecorder) ViewEntityMove(e world.Entity, _ *world.EntityMove) { r.check(e) }
+func (r *viewRecorder) ViewEntityState(e world.Entity)                     { r.check(e) }
 
 func (r *viewRecorder) check(e world.Entity) {
 	if !r.shown[e.H()] {

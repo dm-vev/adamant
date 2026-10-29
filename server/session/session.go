@@ -92,6 +92,10 @@ type Session struct {
 	// deathAnimations records ordinary mobs whose death event lets the client
 	// finish the animation and remove the actor itself. Protected by entityMutex.
 	deathAnimations map[uint64]struct{}
+	// freshMoves holds the entities shown since the last move of theirs the
+	// session was shown: the client has them where they were when shown, so
+	// their next move carries all its parts. Protected by entityMutex.
+	freshMoves map[*world.EntityHandle]struct{}
 
 	// heldSlot points to the current hotbar slot index. It is stored in an atomic pointer so inventory callbacks can
 	// safely access the pointer while the session is still wiring up inventory state.

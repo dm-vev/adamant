@@ -48,8 +48,13 @@ type Movement struct {
 }
 
 // Send sends the Movement to any viewers watching the entity at the time of the movement. If the position/velocity
-// changes were negligible, nothing is sent.
+// changes were negligible, nothing is sent. The movement of an Ent goes as its world.MoveTracker shows it.
 func (m *Movement) Send() {
+	if tracked, ok := m.e.(moveTracked); ok {
+		m.sendTracked(tracked.moveTracker())
+		m.releaseViewers()
+		return
+	}
 	posChanged := !m.dpos.ApproxEqualThreshold(zeroVec3, epsilon)
 	velChanged := !m.dvel.ApproxEqualThreshold(zeroVec3, epsilon)
 
@@ -62,6 +67,27 @@ func (m *Movement) Send() {
 		}
 	}
 	m.releaseViewers()
+}
+
+// sendTracked shows the viewers the move a tracker makes of the movement,
+// with moves the ticks of interval apart: the same move to each of them, or
+// a teleport.
+func (m *Movement) sendTracked(t *world.MoveTracker, interval int) {
+	head := m.rot.Yaw()
+	if h, ok := m.e.(interface{ HeadYaw() float64 }); ok {
+		head = h.HeadYaw()
+	}
+	moving := !m.dpos.ApproxEqualThreshold(zeroVec3, epsilon) || m.rotChanged
+	move, teleport := t.Move(m.pos, m.rot, head, m.vel, m.onGround, moving, interval)
+	switch {
+	case teleport:
+		move = &world.EntityMove{Pos: m.pos, Rot: m.rot, HeadYaw: head, OnGround: m.onGround, Absolute: true}
+		fallthrough
+	case move != nil:
+		for _, v := range m.v {
+			v.ViewEntityMove(m.e, move)
+		}
+	}
 }
 
 // apply stores the result of the movement as the position, velocity and

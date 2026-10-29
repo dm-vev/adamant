@@ -270,7 +270,8 @@ func (v *countingViewer) ViewEntityArmour(world.Entity) { defer v.enter()() }
 func (v *countingViewer) ViewEntityMovement(world.Entity, mgl64.Vec3, cube.Rotation, bool) {
 	defer v.enter()()
 }
-func (v *countingViewer) ViewEntityVelocity(world.Entity, mgl64.Vec3) { defer v.enter()() }
+func (v *countingViewer) ViewEntityVelocity(world.Entity, mgl64.Vec3)    { defer v.enter()() }
+func (v *countingViewer) ViewEntityMove(world.Entity, *world.EntityMove) { defer v.enter()() }
 func (v *countingViewer) ViewEntityAction(world.Entity, world.EntityAction) {
 	defer v.enter()()
 }

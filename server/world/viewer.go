@@ -29,6 +29,9 @@ type Viewer interface {
 	// ViewEntityVelocity views the velocity of an Entity. It is called right before a call to
 	// ViewEntityMovement so that the Viewer may interpolate the movement itself.
 	ViewEntityVelocity(e Entity, vel mgl64.Vec3)
+	// ViewEntityMove views a move of an Entity that every viewer of it is shown alike on a tick: the
+	// parts of it that changed since they were last shown one, over a number of ticks.
+	ViewEntityMove(e Entity, m *EntityMove)
 	// ViewEntityTeleport views the teleportation of an Entity. The Entity is immediately moved to a different
 	// target position.
 	ViewEntityTeleport(e Entity, pos mgl64.Vec3)
@@ -103,6 +106,7 @@ func (NopViewer) ViewEntityGameMode(Entity)                                     
 func (NopViewer) ViewEntityMovement(Entity, mgl64.Vec3, cube.Rotation, bool)                 {}
 func (NopViewer) ViewEntityDisplacement(Entity, mgl64.Vec3, cube.Rotation, bool)             {}
 func (NopViewer) ViewEntityVelocity(Entity, mgl64.Vec3)                                      {}
+func (NopViewer) ViewEntityMove(Entity, *EntityMove)                                         {}
 func (NopViewer) ViewEntityTeleport(Entity, mgl64.Vec3)                                      {}
 func (NopViewer) ViewChunk(ChunkPos, Dimension, *Column)                                     {}
 func (NopViewer) ViewTime(int)                                                               {}

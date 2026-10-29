@@ -137,6 +137,7 @@ func (e *Ent) Teleport(pos mgl64.Vec3) {
 		v.ViewEntityTeleport(e, pos)
 	}
 	e.tx.ReleaseViewers(viewers)
+	e.movesShown(pos, e.data.Rot, e.data.Rot.Yaw())
 }
 
 // TeleportThroughGateway preserves ordinary entities' motion and rotation.
@@ -173,6 +174,7 @@ func (e *Ent) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		v.ViewEntityMovement(e, pos, rot, e.data.OnGround)
 	}
 	e.tx.ReleaseViewers(viewers)
+	e.movesShown(pos, rot, e.HeadYaw())
 }
 
 // Age returns the total time lived of this entity. It increases by
