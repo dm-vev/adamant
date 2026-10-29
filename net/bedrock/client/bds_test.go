@@ -16,9 +16,32 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
+// corpusCommands are run on BDS while the corpus is taken, for the packets
+// a walk alone does not bring: items, mobs, effects, weather, scores,
+// titles, the camera and more. BDS runs them for an operator with cheats
+// on.
+var corpusCommands = []string{
+	"gamemode creative", "give @s diamond_sword", "give @s shield", "give @s enchanted_book",
+	"give @s potion 1 5", "replaceitem entity @s slot.armor.head 0 diamond_helmet",
+	"summon zombie ~3 ~ ~3", "summon villager ~-3 ~ ~3", "summon armor_stand ~ ~ ~4",
+	"summon boat ~4 ~ ~", "summon xp_orb ~2 ~ ~", "summon lightning_bolt ~6 ~ ~6",
+	"effect @s speed 30 1", "effect @s night_vision 30", "time set night", "weather rain",
+	"weather thunder", "xp 100 @s", "title @s title Corpus", "title @s actionbar corpus",
+	"playsound random.levelup @s", "particle minecraft:heart_particle ~ ~1 ~",
+	"setblock ~1 ~ ~ chest", "setblock ~-1 ~ ~ oak_sign", "fill ~2 ~ ~2 ~4 ~2 ~4 glass",
+	"scoreboard objectives add corpus dummy Corpus", "scoreboard objectives setdisplay sidebar corpus",
+	"scoreboard players set @s corpus 7", "tp @s ~ ~3 ~", "camera @s fade time 0.1 0.1 0.1",
+	"camera @s set minecraft:free pos ~ ~5 ~", "camera @s clear", "hud @s hide hotbar", "hud @s reset",
+	"damage @s 2", "summon tnt ~5 ~ ~5", "kill @e[type=zombie]", "clear @s", "difficulty hard",
+	"gamerule dodaylightcycle false", "say corpus", `tellraw @s {"rawtext":[{"text":"corpus"}]}`,
+	"spawnpoint @s", "fog @s push minecraft:fog_crimson_forest corpus", "fog @s pop corpus",
+	"inputpermission set @s jump disabled", "inputpermission set @s jump enabled", "gamemode survival",
+}
+
 // TestBDSCorpus joins the BDS whose signaling URL is BDS_ADDR, walks for
-// BDS_SECONDS (30 if unset), and checks that every packet the server
-// sends decodes with nothing left over and encodes back to the same bytes.
+// BDS_SECONDS (30 if unset) while it runs corpusCommands, and checks that
+// every packet the server sends decodes with nothing left over and
+// encodes back to the same bytes.
 func TestBDSCorpus(t *testing.T) {
 	addr := os.Getenv("BDS_ADDR")
 	if addr == "" {
@@ -43,16 +66,25 @@ func TestBDSCorpus(t *testing.T) {
 		defer wg.Done()
 		// Walk: the server sends chunks, entities and blocks as the player
 		// goes.
+		defer func() { _ = c.nn.SetReadDeadline(time.Now()) }()
 		pos := c.game.PlayerPosition
+		commands := corpusCommands
 		for tick := uint64(1); time.Now().Before(stop); tick++ {
 			time.Sleep(50 * time.Millisecond)
 			pos[0] += 0.2
 			_ = c.WritePacket(&v2193.PlayerAuthInputPacket{Position: pos, Delta: [3]float32{0.2, 0, 0}, InputMode: 1, Tick: tick})
+			if tick%5 == 0 && len(commands) > 0 {
+				_ = c.WritePacket(&v2193.CommandRequestPacket{
+					CommandLine:   "/" + commands[0],
+					CommandOrigin: v2193.CommandOrigin{PlayerUniqueID: c.game.EntityUniqueID},
+					Version:       "latest",
+				})
+				commands = commands[1:]
+			}
 			if c.Flush() != nil {
 				return
 			}
 		}
-		_ = c.nn.SetReadDeadline(time.Now())
 	}()
 
 	type stat struct{ n, failed, changed int }
