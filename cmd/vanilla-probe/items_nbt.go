@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 type vanillaItem struct {
@@ -18,7 +18,7 @@ type vanillaItem struct {
 
 // encodeItemsNBT preserves the protocol entries' complete component payloads in
 // the map layout consumed by both Dragonfly vanilla item loaders.
-func encodeItemsNBT(entries []protocol.ItemEntry) ([]byte, error) {
+func encodeItemsNBT(entries []v2193.ItemEntry) ([]byte, error) {
 	items := make(map[string]vanillaItem, len(entries))
 	runtimeIDs := make(map[int16]string, len(entries))
 	for _, entry := range entries {

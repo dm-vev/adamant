@@ -297,26 +297,26 @@ func (*TextPacket) ID() uint32 { return 9 }
 
 // Types of text.
 const (
-	textRaw = iota
-	textChat
-	textTranslation
-	textPopup
-	textJukeboxPopup
-	textTip
-	textSystem
-	textWhisper
-	textAnnouncement
-	textObjectWhisper
-	textObject
-	textObjectAnnouncement
+	TextTypeRaw uint8 = iota
+	TextTypeChat
+	TextTypeTranslation
+	TextTypePopup
+	TextTypeJukeboxPopup
+	TextTypeTip
+	TextTypeSystem
+	TextTypeWhisper
+	TextTypeAnnouncement
+	TextTypeObjectWhisper
+	TextTypeObject
+	TextTypeObjectAnnouncement
 )
 
 // textCategory returns the category a type of text is sent as.
 func textCategory(t uint8) uint8 {
 	switch t {
-	case textRaw, textTip, textSystem, textObjectWhisper, textObjectAnnouncement, textObject:
+	case TextTypeRaw, TextTypeTip, TextTypeSystem, TextTypeObjectWhisper, TextTypeObjectAnnouncement, TextTypeObject:
 		return 0
-	case textChat, textWhisper, textAnnouncement:
+	case TextTypeChat, TextTypeWhisper, TextTypeAnnouncement:
 		return 1
 	}
 	return 2
@@ -327,12 +327,12 @@ func (p *TextPacket) Encode(w *wire.Writer) {
 	w.Uint8(textCategory(p.TextType))
 	w.Uint8(p.TextType)
 	switch p.TextType {
-	case textChat, textWhisper, textAnnouncement:
+	case TextTypeChat, TextTypeWhisper, TextTypeAnnouncement:
 		w.String(p.SourceName)
 		w.String(p.Message)
-	case textRaw, textTip, textSystem, textObject, textObjectWhisper, textObjectAnnouncement:
+	case TextTypeRaw, TextTypeTip, TextTypeSystem, TextTypeObject, TextTypeObjectWhisper, TextTypeObjectAnnouncement:
 		w.String(p.Message)
-	case textTranslation, textPopup, textJukeboxPopup:
+	case TextTypeTranslation, TextTypePopup, TextTypeJukeboxPopup:
 		w.String(p.Message)
 		w.Varuint32(uint32(len(p.Parameters)))
 		for _, s := range p.Parameters {
@@ -353,12 +353,12 @@ func (p *TextPacket) Decode(r *wire.Reader) {
 	r.Uint8()
 	p.TextType = r.Uint8()
 	switch p.TextType {
-	case textChat, textWhisper, textAnnouncement:
+	case TextTypeChat, TextTypeWhisper, TextTypeAnnouncement:
 		p.SourceName = r.String()
 		p.Message = r.String()
-	case textRaw, textTip, textSystem, textObject, textObjectWhisper, textObjectAnnouncement:
+	case TextTypeRaw, TextTypeTip, TextTypeSystem, TextTypeObject, TextTypeObjectWhisper, TextTypeObjectAnnouncement:
 		p.Message = r.String()
-	case textTranslation, textPopup, textJukeboxPopup:
+	case TextTypeTranslation, TextTypePopup, TextTypeJukeboxPopup:
 		p.Message = r.String()
 		n := r.Count(r.Len())
 		p.Parameters = make([]string, n)

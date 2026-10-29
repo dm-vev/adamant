@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -130,6 +131,16 @@ func (sv *services) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		claims := base64.RawURLEncoding.EncodeToString([]byte(`{"pmid":"9f1c2b3a-0000-4000-8000-000000000001"}`))
 		reply(map[string]any{"result": map[string]any{"authorizationHeader": "MCToken e30." + claims + ".c2ln", "validUntil": sv.now().Add(4 * time.Hour)}})
+	case "/api/v1.0/multiplayer/session/start":
+		var req struct{ PublicKey string }
+		_ = json.Unmarshal(body, &req)
+		der, err := base64.StdEncoding.DecodeString(req.PublicKey)
+		if _, perr := x509.ParsePKIXPublicKey(der); err != nil || perr != nil || !strings.HasPrefix(r.Header.Get("Authorization"), "MCToken e30.") {
+			http.Error(w, "bad multiplayer session", http.StatusBadRequest)
+			return
+		}
+		claims := base64.RawURLEncoding.EncodeToString([]byte(`{"cpk":"` + req.PublicKey + `"}`))
+		reply(map[string]any{"result": map[string]any{"signedToken": "e30." + claims + ".c2ln", "validUntil": sv.now().Add(time.Hour)}})
 	default:
 		http.NotFound(w, r)
 	}
@@ -202,6 +213,15 @@ func TestSignIn(t *testing.T) {
 	}
 	if mc.PlayerMessagingID != "9f1c2b3a-0000-4000-8000-000000000001" || !strings.HasPrefix(mc.Header, "MCToken ") {
 		t.Fatalf("MCToken %+v", mc)
+	}
+	client, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	mp, err := s.MultiplayerToken(ctx, &client.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, _ := x509.MarshalPKIXPublicKey(&client.PublicKey)
+	if claims, _ := base64.RawURLEncoding.DecodeString(strings.Split(mp, ".")[1]); !strings.Contains(string(claims), base64.StdEncoding.EncodeToString(der)) {
+		t.Fatalf("multiplayer token %q does not name the key of the client", mp)
 	}
 	x, err := s.XSTS(ctx, XboxLive)
 	if err != nil || x.Header() != "XBL3.0 x=uhs-xbl;token-/authorize" || x.Gamertag != "Host" {

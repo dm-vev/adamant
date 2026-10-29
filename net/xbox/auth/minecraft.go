@@ -2,9 +2,12 @@ package auth
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -115,4 +118,36 @@ func playerMessagingID(header string) (string, error) {
 		return "", errors.New("auth: MCToken without a player messaging ID")
 	}
 	return claims.PMID, nil
+}
+
+// MultiplayerToken returns a multiplayer token of the user bound to the
+// public key of a client: a JWT of the authorization service naming the
+// player, which servers of the game verify with the keys of the service,
+// and which the client logs in with, signing its client data with the key.
+func (s *Session) MultiplayerToken(ctx context.Context, pub *ecdsa.PublicKey) (string, error) {
+	der, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		return "", err
+	}
+	mc, err := s.MCToken(ctx)
+	if err != nil {
+		return "", err
+	}
+	var resp struct {
+		Result struct {
+			SignedToken string `json:"signedToken"`
+		} `json:"result"`
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.post(ctx, s.ep.Minecraft+"/api/v1.0/multiplayer/session/start", map[string]any{
+		// The key becomes the cpk claim of the token.
+		"publicKey": base64.StdEncoding.EncodeToString(der),
+	}, http.Header{"Authorization": {mc.Header}, "Accept": {"application/json"}}, false, &resp); err != nil {
+		return "", err
+	}
+	if strings.Count(resp.Result.SignedToken, ".") != 2 {
+		return "", errors.New("auth: multiplayer token is not a JWT")
+	}
+	return resp.Result.SignedToken, nil
 }

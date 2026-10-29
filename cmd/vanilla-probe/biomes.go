@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 type biomeIdentity struct {
@@ -21,7 +21,7 @@ type biomeIdentity struct {
 	Tags           []string `json:"tags"`
 }
 
-func biomeIdentities(pk *packet.BiomeDefinitionList) ([]biomeIdentity, error) {
+func biomeIdentities(pk *v2193.BiomeDefinitionListPacket) ([]biomeIdentity, error) {
 	biomes := make([]biomeIdentity, len(pk.BiomeDefinitions))
 	for i := range pk.BiomeDefinitions {
 		definition := &pk.BiomeDefinitions[i]

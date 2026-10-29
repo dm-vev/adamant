@@ -3,22 +3,22 @@ package main
 import (
 	"testing"
 
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestMatchesServerMessageLiteralAndJSON(t *testing.T) {
 	const expected = "ADAMANT_BLOCK_CATALOG_CAPTURE_COMPLETE"
 	for _, test := range []struct {
 		name string
-		text packet.Text
+		text v2193.TextPacket
 		want bool
 	}{
-		{"plain", packet.Text{TextType: packet.TextTypeSystem, Message: expected}, true},
-		{"BDS script", packet.Text{TextType: packet.TextTypeObject, Message: `{"rawtext":[{"text":"ADAMANT_BLOCK_CATALOG_CAPTURE_COMPLETE"}]}` + "\n"}, true},
-		{"multiple components", packet.Text{TextType: packet.TextTypeObject, Message: `{"rawtext":[{"text":"ADAMANT_BLOCK_CATALOG_"},{"text":"CAPTURE_COMPLETE"}]}`}, true},
-		{"substring", packet.Text{TextType: packet.TextTypeSystem, Message: "not " + expected}, false},
-		{"translated", packet.Text{TextType: packet.TextTypeObject, Message: `{"rawtext":[{"translate":"ADAMANT_BLOCK_CATALOG_CAPTURE_COMPLETE"}]}`}, false},
-		{"trailing object", packet.Text{TextType: packet.TextTypeObject, Message: `{"rawtext":[{"text":"ADAMANT_BLOCK_CATALOG_CAPTURE_COMPLETE"}]} {}`}, false},
+		{"plain", v2193.TextPacket{TextType: v2193.TextTypeSystem, Message: expected}, true},
+		{"BDS script", v2193.TextPacket{TextType: v2193.TextTypeObject, Message: `{"rawtext":[{"text":"ADAMANT_BLOCK_CATALOG_CAPTURE_COMPLETE"}]}` + "\n"}, true},
+		{"multiple components", v2193.TextPacket{TextType: v2193.TextTypeObject, Message: `{"rawtext":[{"text":"ADAMANT_BLOCK_CATALOG_"},{"text":"CAPTURE_COMPLETE"}]}`}, true},
+		{"substring", v2193.TextPacket{TextType: v2193.TextTypeSystem, Message: "not " + expected}, false},
+		{"translated", v2193.TextPacket{TextType: v2193.TextTypeObject, Message: `{"rawtext":[{"translate":"ADAMANT_BLOCK_CATALOG_CAPTURE_COMPLETE"}]}`}, false},
+		{"trailing object", v2193.TextPacket{TextType: v2193.TextTypeObject, Message: `{"rawtext":[{"text":"ADAMANT_BLOCK_CATALOG_CAPTURE_COMPLETE"}]} {}`}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := matchesServerMessage(&test.text, expected); got != test.want {

@@ -146,6 +146,14 @@ func TestParseXboxLive(t *testing.T) {
 	if s.fetches.Load() != 1 {
 		t.Fatalf("keys fetched %d times", s.fetches.Load())
 	}
+	// A client of an account logs in with the token issued for its key.
+	request, err := EncodeToken(signRS256(t, s.key, s.kid, s.claims(now, cpk)), DefaultClientData("127.0.0.1:19132", "Steve", "1.26.50"), client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l, err := Parse(context.Background(), request, keys, now); err != nil || !l.XboxLive || l.Identity != want {
+		t.Fatalf("login of EncodeToken %+v, %v", l, err)
+	}
 
 	other, _ := rsa.GenerateKey(rand.Reader, 2048)
 	ecKey, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)

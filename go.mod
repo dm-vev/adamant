@@ -6,14 +6,12 @@ require (
 	github.com/brentp/intintmap v0.0.0-20251106190759-56907b1f8479
 	github.com/c-bata/go-prompt v0.2.6
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/df-mc/go-nethernet v1.0.24
 	github.com/df-mc/goleveldb v1.1.9
 	github.com/df-mc/worldupgrader v1.0.21
 	github.com/dm-vev/adamant/net v0.0.0
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml v1.9.5
-	github.com/pion/webrtc/v4 v4.2.21-0.20260920133716-91bfc6c2039f
 	github.com/sandertv/go-raknet v1.15.2-0.20260705184311-0d1fd09e2cf6
 	github.com/sandertv/gophertunnel v1.62.0
 	github.com/segmentio/fasthash v1.0.3
@@ -27,6 +25,7 @@ require (
 require (
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
+	github.com/df-mc/go-nethernet v1.0.24 // indirect
 	github.com/df-mc/go-playfab/v2 v2.0.2 // indirect
 	github.com/df-mc/go-xsapi/v2 v2.0.3 // indirect
 	github.com/df-mc/jsonc v1.0.5 // indirect
@@ -53,6 +52,7 @@ require (
 	github.com/pion/stun/v4 v4.0.1 // indirect
 	github.com/pion/transport/v5 v5.0.1 // indirect
 	github.com/pion/turn/v5 v5.1.2 // indirect
+	github.com/pion/webrtc/v4 v4.2.21-0.20260920133716-91bfc6c2039f // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	golang.org/x/crypto v0.48.0 // indirect

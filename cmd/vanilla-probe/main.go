@@ -1,25 +1,21 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/df-mc/go-nethernet/endpoint"
-	"github.com/pion/webrtc/v4"
-	"github.com/sandertv/gophertunnel/minecraft"
-	"github.com/sandertv/gophertunnel/minecraft/auth"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/dm-vev/adamant/net/bedrock/client"
+	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/dm-vev/adamant/net/xbox/auth"
 )
 
 type itemIdentity struct {
@@ -60,52 +56,52 @@ func run() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	dialer := minecraft.Dialer{
-		IdentityData:               login.IdentityData{DisplayName: "VanillaProbe"},
-		DisconnectOnInvalidPackets: true,
-		ErrorLog:                   slog.Default(),
-	}
+
+	conf := client.Config{Identity: login.Identity{DisplayName: "VanillaProbe"}}
 	if *biomesPacket != "" {
-		dialer.ClientData.CompatibleWithClientSideChunkGen = true
-		dialer.ClientData.MaxViewDistance = 32
+		// The server sends the generation data of biomes only to clients
+		// that generate chunks themselves.
+		data := login.DefaultClientData(clientAddress(*address), "VanillaProbe", v2193.Version)
+		data.CompatibleWithClientSideChunkGen = true
+		data.MaxViewDistance = 32
+		conf.ClientData = &data
 	}
-	// Reference servers may run in a network namespace with only loopback.
-	settings := webrtc.SettingEngine{}
-	settings.SetIncludeLoopbackCandidate(true)
-	network := minecraft.NetherNet{Signaling: endpoint.NewClient()}
-	network.Dialer.API = webrtc.NewAPI(webrtc.WithSettingEngine(settings))
 	if *authenticate {
-		token, err := auth.RequestLiveTokenContext(ctx, os.Stderr)
+		dc, err := auth.Android.StartLogin(ctx)
 		if err != nil {
 			return fmt.Errorf("authenticate test account: %w", err)
 		}
-		dialer.TokenSource = auth.AndroidConfig.TokenSource(ctx, token)
-	} else if err := bindOfflineIdentity(&dialer, &network); err != nil {
-		return err
+		fmt.Fprintf(os.Stderr, "Sign the test account in at %s with the code %s\n", dc.VerificationURI, dc.UserCode)
+		account, err := dc.Wait(ctx)
+		if err != nil {
+			return fmt.Errorf("authenticate test account: %w", err)
+		}
+		conf.Token = account.MultiplayerToken
 	}
-	conn, err := dialer.DialContextNetwork(ctx, network, *address)
+	conn, err := client.Dial(ctx, *address, conf)
 	if err != nil {
 		return fmt.Errorf("NetherNet login: %w", err)
 	}
 	defer conn.Close()
-	if err := conn.DoSpawnContext(ctx); err != nil {
-		return fmt.Errorf("spawn: %w", err)
-	}
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
-	var biomePacket *packet.BiomeDefinitionList
+
+	var biomePacket *v2193.BiomeDefinitionListPacket
 	messageSeen := *waitMessage == ""
 	for biomePacket == nil || !messageSeen {
 		pk, err := conn.ReadPacket()
+		if _, ok := err.(*client.DecodeError); ok {
+			continue
+		}
 		if err != nil {
 			return fmt.Errorf("receive biome registry and server message %q: %w", *waitMessage, err)
 		}
 		switch pk := pk.(type) {
-		case *packet.BiomeDefinitionList:
+		case *v2193.BiomeDefinitionListPacket:
 			if biomePacket == nil {
 				biomePacket = pk
 			}
-		case *packet.Text:
+		case *v2193.TextPacket:
 			if matchesServerMessage(pk, *waitMessage) {
 				messageSeen = true
 			}
@@ -115,16 +111,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	data := conn.GameData()
-	items := make([]itemIdentity, 0, len(data.Items))
-	for _, entry := range data.Items {
+	registry := conn.Items()
+	items := make([]itemIdentity, 0, len(registry))
+	for _, entry := range registry {
 		items = append(items, itemIdentity{
 			Identifier: entry.Name, RuntimeID: entry.RuntimeID,
 			ComponentBased: entry.ComponentBased, Version: entry.Version,
 		})
 	}
 	if *itemsNBT != "" {
-		encoded, err := encodeItemsNBT(data.Items)
+		encoded, err := encodeItemsNBT(registry)
 		if err != nil {
 			return fmt.Errorf("encode item registry: %w", err)
 		}
@@ -133,25 +129,36 @@ func run() error {
 		}
 	}
 	if *biomesPacket != "" {
-		var buffer bytes.Buffer
-		biomePacket.Marshal(conn.Proto().NewWriter(&buffer, 0))
-		if err := writeNewFileAtomic(*biomesPacket, buffer.Bytes()); err != nil {
+		var w wire.Writer
+		biomePacket.Encode(&w)
+		if err := writeNewFileAtomic(*biomesPacket, w.B); err != nil {
 			return fmt.Errorf("write biome definitions: %w", err)
 		}
 	}
 	slices.SortFunc(items, func(a, b itemIdentity) int { return strings.Compare(a.Identifier, b.Identifier) })
+	game := conn.StartGame()
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(snapshot{
-		ProtocolVersion: int(conn.Proto().ID()), LibraryVersion: protocol.CurrentVersion,
-		WorldSeed: data.WorldSeed, Dimension: data.Dimension,
-		WorldGameMode: data.WorldGameMode, Difficulty: data.Difficulty, Items: items, Biomes: biomes,
+		ProtocolVersion: v2193.Protocol, LibraryVersion: v2193.Version,
+		WorldSeed: game.WorldSeed, Dimension: game.Dimension,
+		WorldGameMode: game.WorldGameMode, Difficulty: game.Difficulty, Items: items, Biomes: biomes,
 	})
 }
 
-func matchesServerMessage(text *packet.Text, expected string) bool {
+// clientAddress returns the host and port the client data names the
+// server by, as the client does when no client data is given.
+func clientAddress(address string) string {
+	if _, rest, ok := strings.Cut(address, "://"); ok {
+		host, _, _ := strings.Cut(rest, "/")
+		return host
+	}
+	return address
+}
+
+func matchesServerMessage(text *v2193.TextPacket, expected string) bool {
 	switch text.TextType {
-	case packet.TextTypeObject, packet.TextTypeObjectWhisper, packet.TextTypeObjectAnnouncement:
+	case v2193.TextTypeObject, v2193.TextTypeObjectWhisper, v2193.TextTypeObjectAnnouncement:
 		var message struct {
 			RawText []struct {
 				Text string `json:"text"`

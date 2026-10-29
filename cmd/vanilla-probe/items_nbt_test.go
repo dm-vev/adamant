@@ -4,12 +4,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 func TestEncodeItemsNBTRoundTrip(t *testing.T) {
-	entries := []protocol.ItemEntry{
+	entries := []v2193.ItemEntry{
 		{Name: "minecraft:negative_id", RuntimeID: -32768, Version: 1},
 		{Name: "minecraft:zero_id", RuntimeID: 0, ComponentBased: true, Version: 2, Data: map[string]any{
 			"components": map[string]any{
@@ -48,10 +48,10 @@ func TestEncodeItemsNBTRoundTrip(t *testing.T) {
 func TestEncodeItemsNBTRejectsDuplicates(t *testing.T) {
 	for _, test := range []struct {
 		name    string
-		entries []protocol.ItemEntry
+		entries []v2193.ItemEntry
 	}{
-		{name: "name", entries: []protocol.ItemEntry{{Name: "minecraft:stone", RuntimeID: 1}, {Name: "minecraft:stone", RuntimeID: 2}}},
-		{name: "runtime ID", entries: []protocol.ItemEntry{{Name: "minecraft:stone", RuntimeID: -1}, {Name: "minecraft:dirt", RuntimeID: -1}}},
+		{name: "name", entries: []v2193.ItemEntry{{Name: "minecraft:stone", RuntimeID: 1}, {Name: "minecraft:stone", RuntimeID: 2}}},
+		{name: "runtime ID", entries: []v2193.ItemEntry{{Name: "minecraft:stone", RuntimeID: -1}, {Name: "minecraft:dirt", RuntimeID: -1}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := encodeItemsNBT(test.entries); err == nil {

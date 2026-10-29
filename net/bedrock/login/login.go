@@ -218,11 +218,31 @@ func EncodeOffline(id Identity, data ClientData, key *ecdsa.PrivateKey, now time
 	if err != nil {
 		return nil, err
 	}
+	return encode(request{Certificate: `{"chain":[""]}`, AuthenticationType: selfSigned, Token: token}, data, key, pub)
+}
+
+// full is the authentication type of a token of the authorization service.
+const full = 0
+
+// EncodeToken returns the connection request of a client that logs in
+// with a multiplayer token the authorization service issued for the public
+// key of key, as a player of Xbox Live: the client data is signed with key.
+func EncodeToken(token string, data ClientData, key *ecdsa.PrivateKey) ([]byte, error) {
+	pub, err := MarshalPublicKey(&key.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+	return encode(request{Certificate: `{"chain":[""]}`, AuthenticationType: full, Token: token}, data, key, pub)
+}
+
+// encode returns the connection request of req with the client data
+// signed with key.
+func encode(req request, data ClientData, key *ecdsa.PrivateKey, pub string) ([]byte, error) {
 	clientData, err := sign(key, pub, data)
 	if err != nil {
 		return nil, err
 	}
-	head, err := json.Marshal(request{Certificate: `{"chain":[""]}`, AuthenticationType: selfSigned, Token: token})
+	head, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 // Package client joins Bedrock servers over NetherNet as the game does,
-// with the codecs of protocol 2193: it logs in offline, takes no resource
-// packs, spawns, and then reads and writes packets.
+// with the codecs of protocol 2193: it logs in offline or with a token of
+// an account, takes no resource packs, spawns, and then reads and writes
+// packets.
 package client
 
 import (
@@ -39,6 +40,10 @@ type Config struct {
 	Dialer nethernet.Dialer
 	// Batches configures the batches; compression follows the server.
 	Batches bedrock.Config
+	// Token, if set, returns the multiplayer token of an account issued
+	// for the public key of Key, which the client then logs in with as a
+	// player of Xbox Live instead of naming itself offline.
+	Token func(ctx context.Context, key *ecdsa.PublicKey) (string, error)
 }
 
 // Conn is a client spawned in a server.
@@ -49,6 +54,8 @@ type Conn struct {
 
 	// deferred holds the packets read during the spawn, read first.
 	deferred [][]byte
+	// items is the item registry the server sent during the spawn.
+	items []v2193.ItemEntry
 
 	writeMu sync.Mutex
 	w       wire.Writer
@@ -93,6 +100,23 @@ func Dial(ctx context.Context, address string, cfg Config) (*Conn, error) {
 	if cfg.ChunkRadius == 0 {
 		cfg.ChunkRadius = 8
 	}
+	var request []byte
+	if cfg.Token != nil {
+		token, err := cfg.Token(ctx, &cfg.Key.PublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("client: multiplayer token: %w", err)
+		}
+		if request, err = login.EncodeToken(token, data, cfg.Key); err != nil {
+			return nil, err
+		}
+		// The offer names the player with the same token.
+		cfg.Dialer.Token = token
+	} else {
+		var err error
+		if request, err = login.EncodeOffline(cfg.Identity, data, cfg.Key, time.Now()); err != nil {
+			return nil, err
+		}
+	}
 	cfg.Dialer.Key = cfg.Key
 	nn, err := cfg.Dialer.DialContext(ctx, address)
 	if err != nil {
@@ -101,7 +125,7 @@ func Dial(ctx context.Context, address string, cfg Config) (*Conn, error) {
 	c := &Conn{nn: nn, b: bedrock.NewConn(nn, cfg.Batches)}
 	// The context bounds the login: once done, reads fail.
 	stop := context.AfterFunc(ctx, func() { _ = nn.SetReadDeadline(time.Now()) })
-	err = c.join(cfg, data)
+	err = c.join(cfg, request)
 	if !stop() || err != nil {
 		_ = nn.Close()
 		if ctx.Err() != nil {
@@ -123,7 +147,7 @@ func serverAddress(address string) string {
 }
 
 // join logs in and spawns.
-func (c *Conn) join(cfg Config, data login.ClientData) error {
+func (c *Conn) join(cfg Config, request []byte) error {
 	if err := c.send(&v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol}); err != nil {
 		return err
 	}
@@ -142,10 +166,6 @@ func (c *Conn) join(cfg Config, data login.ClientData) error {
 		c.b.EnableCompression(bedrock.None{})
 	default:
 		return fmt.Errorf("client: compression %d is not supported", settings.CompressionAlgorithm)
-	}
-	request, err := login.EncodeOffline(cfg.Identity, data, cfg.Key, time.Now())
-	if err != nil {
-		return err
 	}
 	if err := c.send(&v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: request}); err != nil {
 		return err
@@ -179,6 +199,7 @@ func (c *Conn) join(cfg Config, data login.ClientData) error {
 		case *v2193.ResourcePackStackPacket:
 			err = c.send(&v2193.ResourcePackClientResponsePacket{Response: packsCompleted})
 		case *v2193.ItemRegistryPacket:
+			c.items = pk.Items
 			// Shields carry one more field, so their ID must be known.
 			for _, item := range pk.Items {
 				if item.Name == "minecraft:shield" {
@@ -254,6 +275,9 @@ func decode(raw []byte) (proto.Packet, error) {
 // StartGame returns the StartGame packet the server spawned the player
 // with.
 func (c *Conn) StartGame() *v2193.StartGamePacket { return &c.game }
+
+// Items returns the item registry the server sent during the spawn.
+func (c *Conn) Items() []v2193.ItemEntry { return c.items }
 
 // ReadPacket returns the next packet of the server. A *DecodeError leaves
 // the connection usable; a Disconnect ends it with a DisconnectError.
