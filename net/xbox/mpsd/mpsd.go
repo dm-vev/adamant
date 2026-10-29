@@ -32,6 +32,9 @@ const (
 	// connectionTypeJSONRPC is the connection type of a session joined
 	// through the JSON-RPC signaling.
 	connectionTypeJSONRPC = 7
+	// connectionTypeWebSocket is the connection type of a session joined
+	// through the signaling before JSON-RPC (WebSocketsWebRTCSignaling).
+	connectionTypeWebSocket = 3
 	// transportNetherNet is the transport layer of NetherNet.
 	transportNetherNet = 2
 	contractVersion    = "107"
@@ -72,6 +75,9 @@ type Config struct {
 	NetherNetID uint64
 	// PlayerMessagingID is the ID the signaling service knows the host by.
 	PlayerMessagingID string
+	// LegacySignaling announces the signaling protocol before JSON-RPC,
+	// whose peers name the host by its NetherNet ID alone.
+	LegacySignaling bool
 	// Endpoints are the services. Zero values mean DefaultEndpoints.
 	Endpoints Endpoints
 	// HTTPClient sends requests. Nil means http.DefaultClient.
@@ -113,7 +119,7 @@ var rotateGrace = 30 * time.Second
 
 // Publish creates the session of a game and its activity handle.
 func Publish(ctx context.Context, cfg Config, status Status) (*Host, error) {
-	if cfg.Token == nil || cfg.PlayerMessagingID == "" || cfg.NetherNetID == 0 {
+	if cfg.Token == nil || cfg.PlayerMessagingID == "" && !cfg.LegacySignaling || cfg.NetherNetID == 0 {
 		return nil, errors.New("mpsd: token, player messaging ID and NetherNet ID are needed")
 	}
 	if cfg.Endpoints.SessionDirectory == "" {
@@ -454,13 +460,7 @@ func (h *Host) write(ctx context.Context, create bool) error {
 				"MaxMemberCount":          status.MaxMemberCount,
 				"MemberCount":             status.MemberCount,
 				"OnlineCrossPlatformGame": true,
-				"SupportedConnections": []map[string]any{{
-					"ConnectionType": connectionTypeJSONRPC,
-					"HostIpAddress":  "",
-					"HostPort":       0,
-					"NetherNetId":    h.cfg.NetherNetID,
-					"PmsgId":         h.cfg.PlayerMessagingID,
-				}},
+				"SupportedConnections": []map[string]any{h.supportedConnection()},
 				"TitleId":        0,
 				"TransportLayer": transportNetherNet,
 				"levelId":        "level",
@@ -492,6 +492,21 @@ func (h *Host) write(ctx context.Context, create bool) error {
 		header.Set("If-None-Match", "*")
 	}
 	return h.request(ctx, http.MethodPut, h.urlOf(name), body, header, nil)
+}
+
+// supportedConnection returns the connection of the session that friends signal
+// the host through.
+func (h *Host) supportedConnection() map[string]any {
+	if h.cfg.LegacySignaling {
+		return map[string]any{"ConnectionType": connectionTypeWebSocket, "HostIpAddress": "", "HostPort": 0, "NetherNetId": h.cfg.NetherNetID}
+	}
+	return map[string]any{
+		"ConnectionType": connectionTypeJSONRPC,
+		"HostIpAddress":  "",
+		"HostPort":       0,
+		"NetherNetId":    h.cfg.NetherNetID,
+		"PmsgId":         h.cfg.PlayerMessagingID,
+	}
 }
 
 // activity creates the activity handle of the session, which shows it to

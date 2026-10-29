@@ -292,3 +292,32 @@ func TestNoncesAndRotation(t *testing.T) {
 		t.Fatalf("%d activity handles, want one a session", handles)
 	}
 }
+
+// TestPublishLegacySignaling announces the signaling before JSON-RPC: the
+// connection of the session names the NetherNet ID alone.
+func TestPublishLegacySignaling(t *testing.T) {
+	d := &directory{}
+	srv := httptest.NewServer(d)
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	h, err := Publish(ctx, Config{
+		Token:           func(context.Context) (string, string, error) { return "XBL3.0 x=1;token", "2535400000000001", nil },
+		NetherNetID:     99,
+		LegacySignaling: true,
+		Endpoints:       Endpoints{SessionDirectory: srv.URL, RTA: "ws" + strings.TrimPrefix(srv.URL, "http") + "/connect"},
+	}, Status{HostName: "Adamant"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close(ctx)
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, s := range d.sessions {
+		conns := s["properties"].(map[string]any)["custom"].(map[string]any)["SupportedConnections"].([]any)
+		c := conns[0].(map[string]any)
+		if c["ConnectionType"] != float64(connectionTypeWebSocket) || c["NetherNetId"] != float64(99) || c["PmsgId"] != nil {
+			t.Fatalf("connection %v", c)
+		}
+	}
+}

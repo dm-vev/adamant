@@ -220,3 +220,54 @@ func TestDialRefused(t *testing.T) {
 		t.Fatal("dialed with a token the service refuses")
 	}
 }
+
+// TestLegacy speaks the protocol before JSON-RPC with a service of a test:
+// the credentials come first, signals carry the network IDs of their
+// peers, and pings keep the connection.
+func TestLegacy(t *testing.T) {
+	got := make(chan legacyMessage, 4)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/signaling/42" || r.Header.Get("Authorization") != "MCToken t" {
+			http.Error(w, "bad", http.StatusUnauthorized)
+			return
+		}
+		ws, err := websocket.Upgrade(w, r)
+		if err != nil {
+			return
+		}
+		defer ws.Close()
+		creds, _ := json.Marshal(map[string]any{"TurnAuthServers": []map[string]any{{"Urls": []string{"turn:192.0.2.1:3478"}, "Username": "u", "Password": "p"}}})
+		_ = ws.WriteMessage(true, []byte(`{"Type":2,"From":"Server","Message":`+strconv.Quote(string(creds))+`}`))
+		_ = ws.WriteMessage(true, []byte(`{"Type":1,"From":"77","Message":"CONNECTREQUEST 5 v=0"}`))
+		for {
+			_, data, err := ws.ReadMessage()
+			if err != nil {
+				return
+			}
+			var m legacyMessage
+			_ = json.Unmarshal(data, &m)
+			got <- m
+		}
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	c, err := DialLegacy(ctx, Config{Token: "MCToken t", NetworkID: 42, URL: "ws" + strings.TrimPrefix(srv.URL, "http") + "/signaling/42"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if creds := c.Credentials(); len(creds) != 1 || creds[0].Username != "u" {
+		t.Fatalf("credentials %+v", creds)
+	}
+	s, err := c.ReadSignal()
+	if err != nil || s.Type != nethernet.SignalOffer || s.ConnectionID != 5 || s.NetworkID != "77" {
+		t.Fatalf("signal %+v, %v", s, err)
+	}
+	if err := c.WriteSignal(nethernet.Signal{Type: nethernet.SignalAnswer, ConnectionID: 5, Data: "v=0", NetworkID: "77"}); err != nil {
+		t.Fatal(err)
+	}
+	if m := <-got; m.Type != legacySignal || m.To != "77" || m.Message != "CONNECTRESPONSE 5 v=0" {
+		t.Fatalf("sent %+v", m)
+	}
+}

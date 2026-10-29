@@ -399,6 +399,10 @@ type UserConfig struct {
 		// invites each new friend to the server, so that players add the
 		// account and join.
 		AcceptFriends bool
+		// LegacySignaling has friends signal their joins over the protocol the
+		// game spoke before JSON-RPC, a fallback for when the service of the
+		// current one fails.
+		LegacySignaling bool
 	}
 	Server struct {
 		// Name is the name of the server as it shows up in the server list.

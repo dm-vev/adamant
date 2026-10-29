@@ -18,6 +18,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/turn"
 	"github.com/dm-vev/adamant/net/xbox/auth"
 	"github.com/dm-vev/adamant/net/xbox/mpsd"
@@ -32,7 +33,12 @@ const xboxUpdateInterval = 30 * time.Second
 // it signs the account in, serves the offers friends send over the
 // signaling service and keeps the session friends see the server by up to
 // date.
-func publishXbox(l *netconn.Listener, tokenFile string, acceptFriends bool, log *slog.Logger) {
+// xboxOptions are the options of the publishing on Xbox Live.
+type xboxOptions struct {
+	acceptFriends, legacySignaling bool
+}
+
+func publishXbox(l *netconn.Listener, tokenFile string, opts xboxOptions, log *slog.Logger) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -50,8 +56,26 @@ func publishXbox(l *netconn.Listener, tokenFile string, acceptFriends bool, log 
 	_, _ = rand.Read(b[:])
 	// A positive network ID, as the game makes them.
 	networkID := binary.BigEndian.Uint64(b[:])>>1 | 1
-	go serveXboxSignaling(ctx, l, s, networkID, log)
-	keepXboxSession(ctx, l, s, networkID, acceptFriends, log)
+	go serveXboxSignaling(ctx, l, s, networkID, opts.legacySignaling, log)
+	keepXboxSession(ctx, l, s, networkID, opts, log)
+}
+
+// xboxSignaling is a connection to the signaling service of either
+// protocol.
+type xboxSignaling interface {
+	nethernet.Signaling
+	Credentials() []signaling.ICEServer
+	Close() error
+	Err() error
+}
+
+// dialXboxSignaling connects to the signaling service over the protocol
+// asked for.
+func dialXboxSignaling(ctx context.Context, cfg signaling.Config, legacy bool) (xboxSignaling, error) {
+	if legacy {
+		return signaling.DialLegacy(ctx, cfg)
+	}
+	return signaling.Dial(ctx, cfg)
 }
 
 // xboxSession signs the account in from the token file, or with the device
@@ -123,7 +147,7 @@ func saveXboxToken(path string, snap auth.Snapshot) error {
 // serveXboxSignaling keeps a connection to the signaling service, over
 // which friends send their offers, until the context ends: it connects
 // again once a connection drops or its token nears expiry.
-func serveXboxSignaling(ctx context.Context, l *netconn.Listener, s *auth.Session, networkID uint64, log *slog.Logger) {
+func serveXboxSignaling(ctx context.Context, l *netconn.Listener, s *auth.Session, networkID uint64, legacy bool, log *slog.Logger) {
 	backoff := 5 * time.Second
 	for ctx.Err() == nil {
 		err := func() error {
@@ -131,7 +155,7 @@ func serveXboxSignaling(ctx context.Context, l *netconn.Listener, s *auth.Sessio
 			if err != nil {
 				return err
 			}
-			conn, err := signaling.Dial(ctx, signaling.Config{Token: mc.Header, NetworkID: networkID})
+			conn, err := dialXboxSignaling(ctx, signaling.Config{Token: mc.Header, NetworkID: networkID}, legacy)
 			if err != nil {
 				return err
 			}
@@ -181,7 +205,7 @@ func serveXboxSignaling(ctx context.Context, l *netconn.Listener, s *auth.Sessio
 // keepXboxSession publishes the session friends see the server by and
 // updates it with the status of the server until the context ends, when it
 // removes the session.
-func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, networkID uint64, acceptFriends bool, log *slog.Logger) {
+func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, networkID uint64, opts xboxOptions, log *slog.Logger) {
 	token := func(ctx context.Context) (string, string, error) {
 		x, err := s.XSTS(ctx, auth.XboxLive)
 		if err != nil {
@@ -195,7 +219,7 @@ func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, 
 		log:      log,
 	}
 	var notify func()
-	if acceptFriends {
+	if opts.acceptFriends {
 		notify = friends.notify
 		go friends.run(ctx)
 	}
@@ -215,7 +239,8 @@ func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, 
 		if host == nil {
 			mc, err := s.MCToken(ctx)
 			if err == nil {
-				host, err = mpsd.Publish(ctx, mpsd.Config{Token: token, NetherNetID: networkID, PlayerMessagingID: mc.PlayerMessagingID, FriendRequests: notify}, status)
+				host, err = mpsd.Publish(ctx, mpsd.Config{Token: token, NetherNetID: networkID, PlayerMessagingID: mc.PlayerMessagingID,
+					LegacySignaling: opts.legacySignaling, FriendRequests: notify}, status)
 			}
 			friends.host.Store(host)
 			if err != nil {
