@@ -23,7 +23,7 @@ const (
 )
 
 // handleEnchant handles the enchantment of an item using the CraftRecipe stack request action.
-func (h *ItemStackRequestHandler) handleEnchant(a *protocol.CraftRecipeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleEnchant(a *v2193.CraftRecipeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	// First ensure that the selected slot is not out of bounds.
 	if a.RecipeNetworkID > 2 {
 		return fmt.Errorf("invalid recipe network id: %d", a.RecipeNetworkID)
@@ -74,8 +74,8 @@ func (h *ItemStackRequestHandler) handleEnchant(a *protocol.CraftRecipeStackRequ
 
 		// Deduct the experience and Lapis Lazuli.
 		c.SetExperienceLevel(c.ExperienceLevel() - cost)
-		h.setItemInSlot(protocol.StackRequestSlotInfo{
-			Container: protocol.FullContainerName{ContainerID: protocol.ContainerEnchantingMaterial},
+		h.setItemInSlot(v2193.StackRequestSlotInfo{
+			Container: v2193.FullContainerName{ContainerID: protocol.ContainerEnchantingMaterial},
 			Slot:      enchantingLapisSlot,
 		}, lapis.Grow(-cost), s, tx)
 	}
@@ -85,8 +85,8 @@ func (h *ItemStackRequestHandler) handleEnchant(a *protocol.CraftRecipeStackRequ
 
 	// Clear the existing input item, and apply the new item into the crafting result slot of the UI. The client will
 	// automatically move the item into the input slot.
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerEnchantingInput},
+	h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerEnchantingInput},
 		Slot:      enchantingInputSlot,
 	}, item.Stack{}, s, tx)
 
@@ -104,13 +104,13 @@ func (s *Session) sendEnchantmentOptions(tx *world.Tx, c Controllable, pos cube.
 	}
 
 	// Build the protocol variant of the enchantment options.
-	options := make([]protocol.EnchantmentOption, 0, 3)
+	options := make([]v2193.EnchantmentOption, 0, 3)
 	for i := 0; i < 3; i++ {
 		// First build the enchantment instances for each selected enchantment.
-		enchants := make([]protocol.EnchantmentInstance, 0, len(selectedEnchants[i]))
+		enchants := make([]v2193.EnchantmentInstance, 0, len(selectedEnchants[i]))
 		for _, enchant := range selectedEnchants[i] {
 			id, _ := item.EnchantmentID(enchant.Type())
-			enchants = append(enchants, protocol.EnchantmentInstance{
+			enchants = append(enchants, v2193.EnchantmentInstance{
 				Type:  byte(id),
 				Level: byte(enchant.Level()),
 			})
@@ -119,19 +119,19 @@ func (s *Session) sendEnchantmentOptions(tx *world.Tx, c Controllable, pos cube.
 		// Then build the enchantment option. We can use the slot as the RecipeNetworkID, since the IDs seem to be unique
 		// to enchanting tables only. We also only need to set the middle index of Enchantments. The other two serve
 		// an unknown purpose and can cause various unexpected issues.
-		options = append(options, protocol.EnchantmentOption{
+		options = append(options, v2193.EnchantmentOption{
 			Name:            enchantNames[rand.IntN(len(enchantNames))],
 			Cost:            uint8(selectedCosts[i]),
 			RecipeNetworkID: uint32(i),
-			Enchantments: protocol.ItemEnchantments{
+			Enchantments: v2193.ItemEnchantments{
 				Slot:         int32(i),
-				Enchantments: [3][]protocol.EnchantmentInstance{1: enchants},
+				Enchantments: [3][]v2193.EnchantmentInstance{1: enchants},
 			},
 		})
 	}
 
 	// Send the enchantment options to the client.
-	s.writePacket(&v2193.PlayerEnchantOptionsPacket{Options: to[[]v2193.EnchantmentOption](options)})
+	s.writePacket(&v2193.PlayerEnchantOptionsPacket{Options: options})
 }
 
 // determineAvailableEnchantments returns a list of pseudo-random enchantments for the given item stack.

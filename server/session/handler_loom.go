@@ -2,9 +2,11 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -18,7 +20,7 @@ const (
 )
 
 // handleLoomCraft handles a CraftLoomRecipe stack request action made using a loom table.
-func (h *ItemStackRequestHandler) handleLoomCraft(a *protocol.CraftLoomRecipeStackRequestAction, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) handleLoomCraft(a *v2193.CraftLoomRecipeStackRequestAction, s *Session, tx *world.Tx) error {
 	// First check if there actually is a loom opened.
 	if _, ok := tx.Block(*s.openedPos.Load()).(block.Loom); !ok || !s.containerOpened.Load() {
 		return fmt.Errorf("no loom container opened")
@@ -29,8 +31,8 @@ func (h *ItemStackRequestHandler) handleLoomCraft(a *protocol.CraftLoomRecipeSta
 	}
 
 	// Next, check if the input slot has a valid banner item.
-	input, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerLoomInput},
+	input, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomInput},
 		Slot:      loomInputSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(input); err != nil {
@@ -48,8 +50,8 @@ func (h *ItemStackRequestHandler) handleLoomCraft(a *protocol.CraftLoomRecipeSta
 	}
 
 	// Do the same with the input dye.
-	dye, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerLoomDye},
+	dye, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomDye},
 		Slot:      loomDyeSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(dye); err != nil {
@@ -72,8 +74,8 @@ func (h *ItemStackRequestHandler) handleLoomCraft(a *protocol.CraftLoomRecipeSta
 
 	// Some banner patterns have equivalent banner pattern items that are required to craft the pattern. If the expected
 	// pattern has a pattern item, check if the player input the correct pattern item.
-	pattern, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerLoomMaterial},
+	pattern, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomMaterial},
 		Slot:      loomPatternSlot,
 	}, s, tx)
 	if !pattern.Empty() {
@@ -99,12 +101,12 @@ func (h *ItemStackRequestHandler) handleLoomCraft(a *protocol.CraftLoomRecipeSta
 		Type:   expectedPattern,
 		Colour: d.Colour,
 	})
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerLoomInput},
+	h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomInput},
 		Slot:      loomInputSlot,
 	}, input.Grow(-timesCrafted), s, tx)
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerLoomDye},
+	h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomDye},
 		Slot:      loomDyeSlot,
 	}, dye.Grow(-timesCrafted), s, tx)
 	// Only timesCrafted banners are consumed above, so only that many may be produced: input.WithItem keeps the count

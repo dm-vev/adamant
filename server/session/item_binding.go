@@ -5,10 +5,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
-func ensureBindingAllowsRemoval(stack item.Stack, from, to protocol.StackRequestSlotInfo, c Controllable) error {
+func ensureBindingAllowsRemoval(stack item.Stack, from, to v2193.StackRequestSlotInfo, c Controllable) error {
 	if stack.Empty() || c.GameMode().CreativeInventory() || from.Container.ContainerID != protocol.ContainerArmor {
 		return nil
 	}

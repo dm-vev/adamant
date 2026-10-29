@@ -13,12 +13,13 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 type stubConn struct{}
@@ -41,9 +42,9 @@ func (stubConn) Flush() error { return nil }
 
 func (stubConn) RemoteAddr() net.Addr { return &net.TCPAddr{} }
 
-func (stubConn) ReadPacket() (packet.Packet, error) { return nil, io.EOF }
+func (stubConn) ReadPacket() (proto.Packet, error) { return nil, io.EOF }
 
-func (stubConn) WritePacket(packet.Packet) error { return nil }
+func (stubConn) WritePacket(proto.Packet) error { return nil }
 
 func (stubConn) StartGameContext(context.Context, minecraft.GameData) error { return nil }
 
@@ -431,7 +432,7 @@ func TestPlayerDisplacementRejectsStaleAuthInput(t *testing.T) {
 		p.Displace(mgl64.Vec3{0.2})
 		displaced := p.Position()
 
-		pk := &packet.PlayerAuthInput{Position: mgl32.Vec3{float32(origin[0]), float32(origin[1] + Type.NetworkOffset()), float32(origin[2])}}
+		pk := &v2193.PlayerAuthInputPacket{Position: mgl32.Vec3{float32(origin[0]), float32(origin[1] + Type.NetworkOffset()), float32(origin[2])}}
 		if err := (session.PlayerAuthInputHandler{}).Handle(pk, sess, tx, p); err != nil {
 			t.Fatalf("handle stale auth input: %v", err)
 		}

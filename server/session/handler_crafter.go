@@ -6,15 +6,16 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // CrafterSlotToggleHandler validates and applies native Crafter slot-state requests.
 type CrafterSlotToggleHandler struct{}
 
-func (CrafterSlotToggleHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.PlayerToggleCrafterSlotRequest)
+func (CrafterSlotToggleHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.PlayerToggleCrafterSlotRequestPacket)
 	pos := cube.Pos{int(pk.PosX), int(pk.PosY), int(pk.PosZ)}
 	opened := s.openedPos.Load()
 	if !s.containerOpened.Load() || opened == nil || *opened != pos || s.openedContainerID.Load() != uint32(protocol.ContainerTypeCrafter) {

@@ -14,6 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -44,7 +45,7 @@ func TestResyncInventory(t *testing.T) {
 		br:      world.DefaultBlockRegistry,
 		inv:     inventory.New(36, nil),
 		offHand: inventory.New(1, nil),
-		packets: make(chan queuedPacket, 2),
+		packets: make(chan proto.Packet, 2),
 	}
 	s.ResyncInventory()
 
@@ -180,7 +181,7 @@ func abilityTestSession(t *testing.T, delay time.Duration) (*Session, *abilityTe
 	t.Helper()
 	s := &Session{
 		conn:               abilityTestConn{},
-		packets:            make(chan queuedPacket, 16),
+		packets:            make(chan proto.Packet, 16),
 		closeBackground:    make(chan struct{}),
 		abilityResendDelay: delay,
 	}
@@ -252,7 +253,7 @@ func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
 	s := &Session{
 		br:              world.DefaultBlockRegistry,
 		recipes:         make(map[uint32]recipe.Recipe),
-		packets:         make(chan queuedPacket, 1),
+		packets:         make(chan proto.Packet, 1),
 		closeBackground: make(chan struct{}),
 	}
 	s.sendRecipes()
@@ -281,10 +282,10 @@ func TestCraftingAcceptsUserDataShapelessRecipes(t *testing.T) {
 	}}
 	h := &ItemStackRequestHandler{}
 	const want = "times crafted must be at least 1"
-	if err := h.handleCraft(&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
+	if err := h.handleCraft(&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
 		t.Fatalf("normal craft error = %v, want %q", err, want)
 	}
-	if err := h.handleAutoCraft(&protocol.AutoCraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
+	if err := h.handleAutoCraft(&v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
 		t.Fatalf("auto craft error = %v, want %q", err, want)
 	}
 }
@@ -299,11 +300,11 @@ func TestMultiRecipeCraftsServerValidatedResult(t *testing.T) {
 
 	h := craftingTestHandler()
 	expected := item.NewStack(item.Bow{}, 1).WithDurability(49)
-	err := h.handleRequest(protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
-		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
-		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{multiResultItem(expected)}},
-		&protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset, item_id(first))}},
-		&protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset+1, item_id(second))}},
+	err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{multiResultItem(expected)}},
+		&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset, item_id(first))},
+		&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset+1, item_id(second))},
 	}}, s, nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -336,9 +337,9 @@ func TestUserDataShapelessPreservesServerSourceNBT(t *testing.T) {
 	s.recipes[1] = recipe.NewUserDataShapeless([]recipe.Item{item.NewStack(expectedBox, 1), dye}, item.NewStack(outputBox, 1), "crafting_table")
 
 	h := craftingTestHandler()
-	err := h.handleRequest(protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
-		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
-		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{{
+	err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{{
 			Identifier: "minecraft:blue_shulker_box",
 			Count:      1,
 			NBTData:    map[string]any{"CustomName": "injected"},
@@ -365,56 +366,56 @@ func TestMultiRecipeRejectsUntrustedConsumption(t *testing.T) {
 	tests := []struct {
 		name     string
 		id       string
-		result   protocol.StackRequestItem
+		result   v2193.StackRequestItem
 		input    []item.Stack
 		consumes []int
 	}{
 		{
 			name:     "unrelated payment",
 			id:       repairMultiRecipe,
-			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			result:   v2193.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
 			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1), item.NewStack(item.Apple{}, 1)},
 			consumes: []int{2},
 		},
 		{
 			name:     "one of two repair inputs",
 			id:       repairMultiRecipe,
-			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			result:   v2193.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
 			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1)},
 			consumes: []int{0},
 		},
 		{
 			name:     "retained valuable source",
 			id:       repairMultiRecipe,
-			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			result:   v2193.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
 			input:    []item.Stack{item.NewStack(item.Bow{}, 1).WithCustomName("valuable"), item.NewStack(item.Bow{}, 1), item.NewStack(item.Apple{}, 1)},
 			consumes: []int{1, 2},
 		},
 		{
 			name:     "duplicate slot",
 			id:       repairMultiRecipe,
-			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			result:   v2193.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
 			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1)},
 			consumes: []int{0, 0},
 		},
 		{
 			name:     "arbitrary grid item",
 			id:       repairMultiRecipe,
-			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			result:   v2193.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
 			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1), item.NewStack(item.Apple{}, 1)},
 			consumes: []int{0, 1, 2},
 		},
 		{
 			name:     "excessive output count",
 			id:       repairMultiRecipe,
-			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 2},
+			result:   v2193.StackRequestItem{Identifier: "minecraft:bow", Count: 2},
 			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1)},
 			consumes: []int{0, 1},
 		},
 		{
 			name:     "unrestricted UUID output",
 			id:       "00000000-0000-0000-0000-0000000000c8",
-			result:   protocol.StackRequestItem{Identifier: "minecraft:diamond", Count: 64},
+			result:   v2193.StackRequestItem{Identifier: "minecraft:diamond", Count: 64},
 			input:    []item.Stack{item.NewStack(item.Apple{}, 1)},
 			consumes: []int{0},
 		},
@@ -435,8 +436,8 @@ func TestMultiRecipeRejectsUntrustedConsumption(t *testing.T) {
 		for slot, stack := range input {
 			_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
 		}
-		req := multiCraftingRequest(s, fireworkMultiRecipe, protocol.StackRequestItem{Identifier: "minecraft:firework_rocket", Count: 3}, 0, 1)
-		req.Actions[2].(*protocol.ConsumeStackRequestAction).Count = 2
+		req := multiCraftingRequest(s, fireworkMultiRecipe, v2193.StackRequestItem{Identifier: "minecraft:firework_rocket", Count: 3}, 0, 1)
+		req.Actions[2].(*v2193.ConsumeStackRequestAction).Count = 2
 		err := craftingTestHandler().handleRequest(req, s, nil, nil)
 		requireRejectedCraft(t, s, err, input)
 	})
@@ -458,8 +459,8 @@ func TestUserDataShapelessRejectsExtraGridItem(t *testing.T) {
 	output.Type = block.BlueShulkerBox()
 	s.recipes[1] = recipe.NewUserDataShapeless([]recipe.Item{item.NewStack(box, 1), input[1]}, item.NewStack(output, 1), "crafting_table")
 
-	err := craftingTestHandler().handleRequest(protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
-		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+	err := craftingTestHandler().handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 	}}, s, nil, nil)
 	requireRejectedCraft(t, s, err, input)
 }
@@ -525,7 +526,7 @@ func TestMultiRecipeValidRepresentatives(t *testing.T) {
 		output := base
 		output.Patterns = []block.BannerPatternLayer{{Type: block.CreeperBannerPattern(), Colour: item.ColourRed()}}
 		_, meta := base.EncodeItem()
-		result := craftValidMulti(t, s, bannerAddPatternMultiRecipe, protocol.StackRequestItem{
+		result := craftValidMulti(t, s, bannerAddPatternMultiRecipe, v2193.StackRequestItem{
 			Identifier:    "minecraft:banner",
 			MetadataValue: uint32(meta),
 			Count:         1,
@@ -582,7 +583,7 @@ func TestBannerMultiRecipeRejectsForgedPatterns(t *testing.T) {
 		name   string
 		large  bool
 		input  []item.Stack
-		result protocol.StackRequestItem
+		result v2193.StackRequestItem
 	}{
 		{
 			name:   "illager source",
@@ -953,7 +954,7 @@ func craftingMapStack() item.Stack {
 	return item.NewStack(item.FilledMap{NativeID: 42, HasNativeID: true}, 1)
 }
 
-func craftValidMulti(t *testing.T, s *Session, id string, result protocol.StackRequestItem, input []item.Stack) item.Stack {
+func craftValidMulti(t *testing.T, s *Session, id string, result v2193.StackRequestItem, input []item.Stack) item.Stack {
 	t.Helper()
 	setCraftingInput(t, s, input)
 	consumes := nonEmptySlots(input)
@@ -964,21 +965,21 @@ func craftValidMulti(t *testing.T, s *Session, id string, result protocol.StackR
 	return crafted
 }
 
-func multiCraftingRequest(s *Session, id string, result protocol.StackRequestItem, consumes ...int) protocol.ItemStackRequest {
+func multiCraftingRequest(s *Session, id string, result v2193.StackRequestItem, consumes ...int) v2193.ItemStackRequest {
 	s.recipes[1] = recipe.NewMulti(uuid.MustParse(id))
-	actions := []protocol.StackRequestAction{
-		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
-		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{result}},
+	actions := []v2193.StackRequestAction{
+		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{result}},
 	}
 	for _, inputSlot := range consumes {
 		slot := int(s.craftingOffset()) + inputSlot
 		stack, _ := s.ui.Item(slot)
-		actions = append(actions, &protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{
+		actions = append(actions, &v2193.ConsumeStackRequestAction{
 			Count:  1,
 			Source: craftingSlot(slot, item_id(stack)),
-		}})
+		})
 	}
-	return protocol.ItemStackRequest{RequestID: -1, Actions: actions}
+	return v2193.ItemStackRequest{RequestID: -1, Actions: actions}
 }
 
 func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stack) {
@@ -1001,9 +1002,9 @@ func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stac
 	}
 }
 
-func multiResultItem(stack item.Stack) protocol.StackRequestItem {
+func multiResultItem(stack item.Stack) v2193.StackRequestItem {
 	name, meta := stack.Item().EncodeItem()
-	return protocol.StackRequestItem{
+	return v2193.StackRequestItem{
 		Identifier:    name,
 		MetadataValue: uint32(meta),
 		Count:         uint16(stack.Count()),
@@ -1037,7 +1038,7 @@ func craftingTestSession() *Session {
 		ui:              inventory.New(51, nil),
 		inv:             inventory.New(36, nil),
 		offHand:         inventory.New(1, nil),
-		packets:         make(chan queuedPacket, 4),
+		packets:         make(chan proto.Packet, 4),
 		closeBackground: make(chan struct{}),
 	}
 }
@@ -1055,9 +1056,9 @@ func craftingTestHandler() *ItemStackRequestHandler {
 	}
 }
 
-func craftingSlot(slot int, stackID int32) protocol.StackRequestSlotInfo {
-	return protocol.StackRequestSlotInfo{
-		Container:      protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+func craftingSlot(slot int, stackID int32) v2193.StackRequestSlotInfo {
+	return v2193.StackRequestSlotInfo{
+		Container:      v2193.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
 		Slot:           byte(slot),
 		StackNetworkID: stackID,
 	}
@@ -1081,18 +1082,18 @@ func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.recipes[1] = recipe.NewMulti(uuid.MustParse(mapLockingMultiRecipe))
-	consume := func(container byte, slot int) protocol.StackRequestAction {
+	consume := func(container byte, slot int) v2193.StackRequestAction {
 		stack, _ := s.ui.Item(slot)
-		return &protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{
+		return &v2193.ConsumeStackRequestAction{
 			Count: 1,
-			Source: protocol.StackRequestSlotInfo{
-				Container: protocol.FullContainerName{ContainerID: container}, Slot: byte(slot), StackNetworkID: item_id(stack),
+			Source: v2193.StackRequestSlotInfo{
+				Container: v2193.FullContainerName{ContainerID: container}, Slot: byte(slot), StackNetworkID: item_id(stack),
 			},
-		}}
+		}
 	}
-	req := protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
-		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
-		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{multiResultItem(craftingMapStack())}},
+	req := v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{multiResultItem(craftingMapStack())}},
 		consume(protocol.ContainerCartographyInput, cartographyInputSlot),
 		consume(protocol.ContainerCartographyAdditional, cartographyInputSlot+1),
 	}}

@@ -2,8 +2,10 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -11,7 +13,7 @@ import (
 const stonecutterInputSlot = 0x03
 
 // handleStonecutting handles a CraftRecipe stack request action made using a stonecutter.
-func (h *ItemStackRequestHandler) handleStonecutting(a *protocol.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) handleStonecutting(a *v2193.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
 	craft, ok := s.recipes[a.RecipeNetworkID]
 	if !ok {
 		return fmt.Errorf("recipe with network id %v does not exist", a.RecipeNetworkID)
@@ -29,8 +31,8 @@ func (h *ItemStackRequestHandler) handleStonecutting(a *protocol.CraftRecipeStac
 	}
 
 	expectedInputs := craft.Input()
-	input, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerStonecutterInput},
+	input, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerStonecutterInput},
 		Slot:      stonecutterInputSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(input); err != nil {
@@ -44,8 +46,8 @@ func (h *ItemStackRequestHandler) handleStonecutting(a *protocol.CraftRecipeStac
 	}
 
 	output := craft.Output()
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerStonecutterInput},
+	h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerStonecutterInput},
 		Slot:      stonecutterInputSlot,
 	}, input.Grow(-timesCrafted), s, tx)
 	return h.createResults(s, tx, repeatStacks(output, timesCrafted)...)

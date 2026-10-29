@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -53,7 +54,7 @@ func ClientGameRules(w *world.World) []protocol.GameRule {
 // equivalent.
 func (s *Session) ViewGameRule(name string, value any) {
 	if client, ok := clientGameRules[name]; ok {
-		s.sendGameRules([]protocol.GameRule{{Name: client, Value: clientGameRuleValue(value)}})
+		s.sendGameRules([]v2193.GameRule{{Name: client, Value: clientGameRuleValue(value)}})
 	}
 }
 

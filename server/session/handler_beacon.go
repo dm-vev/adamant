@@ -2,10 +2,12 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -14,9 +16,9 @@ const beaconInputSlot = 0x1b
 
 // handleBeaconPayment handles the selection of effects in a beacon and the removal of the item used to pay
 // for those effects.
-func (h *ItemStackRequestHandler) handleBeaconPayment(a *protocol.BeaconPaymentStackRequestAction, s *Session, tx *world.Tx) error {
-	slot := protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerBeaconPayment},
+func (h *ItemStackRequestHandler) handleBeaconPayment(a *v2193.BeaconPaymentStackRequestAction, s *Session, tx *world.Tx) error {
+	slot := v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerBeaconPayment},
 		Slot:      beaconInputSlot,
 	}
 	// First check if there actually is a beacon opened.

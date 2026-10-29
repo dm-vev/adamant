@@ -10,6 +10,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -102,7 +103,7 @@ func testSession(name string) *Session {
 	return &Session{
 		conn:             testConn{identity: login.IdentityData{Identity: uuid.NewString(), DisplayName: name}},
 		conf:             Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
-		packets:          make(chan queuedPacket, 8),
+		packets:          make(chan proto.Packet, 8),
 		closeBackground:  make(chan struct{}),
 		ent:              handle,
 		entityRuntimeIDs: map[*world.EntityHandle]uint64{handle: selfEntityRuntimeID},

@@ -26,6 +26,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
@@ -125,7 +126,7 @@ func (s *Session) SendPlayerSpawn(pos mgl64.Vec3) {
 func (s *Session) sendBiomes() {
 	definitions, stringList := world.BiomeDefinitions()
 	s.writePacket(&v2193.BiomeDefinitionListPacket{
-		BiomeDefinitions: to[[]v2193.BiomeDefinition](definitions),
+		BiomeDefinitions: definitions,
 		StringList:       stringList,
 	})
 }
@@ -176,15 +177,15 @@ func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) []string {
 
 // sendArmourTrimData sends the armour trim data.
 func (s *Session) sendArmourTrimData() {
-	var trimPatterns []protocol.TrimPattern
-	var trimMaterials []protocol.TrimMaterial
+	var trimPatterns []v2193.TrimPattern
+	var trimMaterials []v2193.TrimMaterial
 
 	for _, t := range item.SmithingTemplates() {
 		if t == item.TemplateNetheriteUpgrade() {
 			continue
 		}
 		name, _ := item.SmithingTemplate{Template: t}.EncodeItem()
-		trimPatterns = append(trimPatterns, protocol.TrimPattern{
+		trimPatterns = append(trimPatterns, v2193.TrimPattern{
 			ItemName:  name,
 			PatternID: t.String(),
 		})
@@ -194,7 +195,7 @@ func (s *Session) sendArmourTrimData() {
 		if material, ok := i.(item.ArmourTrimMaterial); ok {
 			name, _ := i.EncodeItem()
 
-			trimMaterials = append(trimMaterials, protocol.TrimMaterial{
+			trimMaterials = append(trimMaterials, v2193.TrimMaterial{
 				MaterialID: material.TrimMaterial(),
 				Colour:     material.MaterialColour(),
 				ItemName:   name,
@@ -202,7 +203,7 @@ func (s *Session) sendArmourTrimData() {
 		}
 	}
 
-	s.writePacket(&v2193.TrimDataPacket{Patterns: to[[]v2193.TrimPattern](trimPatterns), Materials: to[[]v2193.TrimMaterial](trimMaterials)})
+	s.writePacket(&v2193.TrimDataPacket{Patterns: trimPatterns, Materials: trimMaterials})
 }
 
 // ResyncInventory resends the main and off-hand inventories after an unfulfilled client prediction.
@@ -218,7 +219,7 @@ func (s *Session) sendInv(inv *inventory.Inventory, windowID uint32) {
 		Content:  make([]v2193.ItemInstance, 0, inv.Size()),
 	}
 	for _, i := range inv.Slots() {
-		pk.Content = append(pk.Content, toItemInstance(instanceFromItem(s.br, i)))
+		pk.Content = append(pk.Content, instanceFromItem(s.br, i))
 	}
 	s.writePacket(pk)
 }
@@ -228,7 +229,7 @@ func (s *Session) sendItem(item item.Stack, slot int, windowID uint32) {
 	s.writePacket(&v2193.InventorySlotPacket{
 		WindowID: windowID,
 		Slot:     uint32(slot),
-		NewItem:  toItemInstance(instanceFromItem(s.br, item)),
+		NewItem:  instanceFromItem(s.br, item),
 	})
 }
 
@@ -345,7 +346,7 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 func (s *Session) Disconnect(message string) {
 	if s != Nop {
 		s.connWriteMu.Lock()
-		_ = WriteTo(s.conn, &v2193.DisconnectPacket{
+		_ = s.conn.WritePacket(&v2193.DisconnectPacket{
 			HideDisconnectionScreen: message == "",
 			Message:                 message,
 		})
@@ -358,15 +359,13 @@ func (s *Session) Disconnect(message string) {
 func (s *Session) SendSpeed(speed float64) {
 	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Attributes: toAttributes([]protocol.Attribute{{
-			AttributeValue: protocol.AttributeValue{
-				Name:  "minecraft:movement",
-				Value: float32(speed),
-				Max:   math.MaxFloat32,
-			},
+		Attributes: []v2193.Attribute{{
+			Name:       "minecraft:movement",
+			Value:      float32(speed),
+			Max:        math.MaxFloat32,
 			DefaultMax: math.MaxFloat32,
 			Default:    0.1,
-		}}),
+		}},
 	})
 }
 
@@ -374,34 +373,28 @@ func (s *Session) SendSpeed(speed float64) {
 func (s *Session) SendFood(food int, saturation, exhaustion float64) {
 	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Attributes: toAttributes([]protocol.Attribute{
+		Attributes: []v2193.Attribute{
 			{
-				AttributeValue: protocol.AttributeValue{
-					Name:  "minecraft:player.hunger",
-					Value: float32(food),
-					Max:   20,
-				},
+				Name:       "minecraft:player.hunger",
+				Value:      float32(food),
+				Max:        20,
 				DefaultMax: 20,
 				Default:    20,
 			},
 			{
-				AttributeValue: protocol.AttributeValue{
-					Name:  "minecraft:player.saturation",
-					Value: float32(saturation),
-					Max:   20,
-				},
+				Name:       "minecraft:player.saturation",
+				Value:      float32(saturation),
+				Max:        20,
 				DefaultMax: 20,
 				Default:    20,
 			},
 			{
-				AttributeValue: protocol.AttributeValue{
-					Name:  "minecraft:player.exhaustion",
-					Value: float32(exhaustion),
-					Max:   5,
-				},
+				Name:       "minecraft:player.exhaustion",
+				Value:      float32(exhaustion),
+				Max:        5,
 				DefaultMax: 5,
 			},
-		}),
+		},
 	})
 }
 
@@ -617,7 +610,7 @@ func (s *Session) SendAbilities(c Controllable) {
 	s.abilities.Store(&data)
 	self := data
 	self.EntityUniqueID = selfEntityRuntimeID
-	s.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: toAbilityData(self)})
+	s.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: self})
 }
 
 // SendPermissions refreshes abilities for this player and the other clients
@@ -635,7 +628,7 @@ func (s *Session) SendPermissions(c Controllable) {
 
 // abilityData builds abilities without changing player state, so the same
 // permissions can be included in AddPlayer and updates for other clients.
-func (s *Session) abilityData(c Controllable, uniqueID int64) protocol.AbilityData {
+func (s *Session) abilityData(c Controllable, uniqueID int64) v2193.AbilityData {
 	mode, abilities := c.GameMode(), uint32(0)
 	if mode.AllowsFlying() {
 		abilities |= protocol.AbilityMayFly
@@ -663,11 +656,11 @@ func (s *Session) abilityData(c Controllable, uniqueID int64) protocol.AbilityDa
 		playerPermissions, commandPermissions = packet.PermissionLevelOperator, protocol.CommandPermissionLevelGameDirectors
 		abilities |= protocol.AbilityOperatorCommands | protocol.AbilityTeleport
 	}
-	return protocol.AbilityData{
+	return v2193.AbilityData{
 		EntityUniqueID:     uniqueID,
 		PlayerPermissions:  playerPermissions,
 		CommandPermissions: commandPermissions,
-		Layers: []protocol.AbilityLayer{
+		Layers: []v2193.AbilityLayer{
 			{
 				Type:             protocol.AbilityLayerTypeBase,
 				Abilities:        protocol.AbilityCount - 1,
@@ -684,22 +677,18 @@ func (s *Session) abilityData(c Controllable, uniqueID int64) protocol.AbilityDa
 func (s *Session) SendHealth(health, max, absorption float64) {
 	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Attributes: toAttributes([]protocol.Attribute{{
-			AttributeValue: protocol.AttributeValue{
-				Name:  "minecraft:health",
-				Value: float32(math.Ceil(health)),
-				Max:   float32(math.Ceil(max)),
-			},
+		Attributes: []v2193.Attribute{{
+			Name:       "minecraft:health",
+			Value:      float32(math.Ceil(health)),
+			Max:        float32(math.Ceil(max)),
 			DefaultMax: 20,
 			Default:    20,
 		}, {
-			AttributeValue: protocol.AttributeValue{
-				Name:  "minecraft:absorption",
-				Value: float32(math.Ceil(absorption)),
-				Max:   float32(math.MaxFloat32),
-			},
+			Name:       "minecraft:absorption",
+			Value:      float32(math.Ceil(absorption)),
+			Max:        float32(math.MaxFloat32),
 			DefaultMax: float32(math.MaxFloat32),
-		}}),
+		}},
 	})
 }
 
@@ -746,20 +735,20 @@ func (s *Session) SendEffectRemoval(e effect.Type) {
 
 // SendGameRules sends all the provided game rules to the player. Once sent, they will be immediately updated
 // on the client if they are valid.
-func (s *Session) sendGameRules(gameRules []protocol.GameRule) {
-	s.writePacket(&v2193.GameRulesChangedPacket{GameRules: to[[]v2193.GameRule](gameRules)})
+func (s *Session) sendGameRules(gameRules []v2193.GameRule) {
+	s.writePacket(&v2193.GameRulesChangedPacket{GameRules: gameRules})
 }
 
 // EnableCoordinates will either enable or disable coordinates for the player depending on the value given.
 func (s *Session) EnableCoordinates(enable bool) {
 	//noinspection SpellCheckingInspection
-	s.sendGameRules([]protocol.GameRule{{Name: "showcoordinates", Value: enable}})
+	s.sendGameRules([]v2193.GameRule{{Name: "showcoordinates", Value: enable}})
 }
 
 // EnableInstantRespawn will either enable or disable instant respawn for the player depending on the value given.
 func (s *Session) EnableInstantRespawn(enable bool) {
 	//noinspection SpellCheckingInspection
-	s.sendGameRules([]protocol.GameRule{{Name: "doimmediaterespawn", Value: enable}})
+	s.sendGameRules([]v2193.GameRule{{Name: "doimmediaterespawn", Value: enable}})
 }
 
 // HandleInventories starts handling the inventories of the Controllable entity of the session. It sends packets when
@@ -849,7 +838,7 @@ func (s *Session) broadcastOffHandFunc(c Controllable) inventory.SlotFunc {
 			i, _ := s.offHand.Item(0)
 			s.writePacket(&v2193.InventoryContentPacket{
 				WindowID: protocol.WindowIDOffHand,
-				Content:  toItemInstances([]protocol.ItemInstance{instanceFromItem(s.br, i)}),
+				Content:  []v2193.ItemInstance{instanceFromItem(s.br, i)},
 			})
 		}
 	}
@@ -906,7 +895,7 @@ func (s *Session) SendHeldSlot(slot int, c Controllable, force bool) {
 	mainHand, _ := c.HeldItems()
 	s.writePacket(&v2193.MobEquipmentPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		NewItem:         toItemInstance(instanceFromItem(s.br, mainHand)),
+		NewItem:         instanceFromItem(s.br, mainHand),
 		InventorySlot:   byte(slot),
 		HotBarSlot:      byte(slot),
 	})
@@ -955,24 +944,20 @@ func (s *Session) VerifySlot(slot int, expected item.Stack) error {
 func (s *Session) SendExperience(level int, progress float64) {
 	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Attributes: toAttributes([]protocol.Attribute{
+		Attributes: []v2193.Attribute{
 			{
-				AttributeValue: protocol.AttributeValue{
-					Name:  "minecraft:player.level",
-					Value: float32(level),
-					Max:   float32(math.MaxInt32),
-				},
+				Name:       "minecraft:player.level",
+				Value:      float32(level),
+				Max:        float32(math.MaxInt32),
 				DefaultMax: float32(math.MaxInt32),
 			},
 			{
-				AttributeValue: protocol.AttributeValue{
-					Name:  "minecraft:player.experience",
-					Value: float32(progress),
-					Max:   1,
-				},
+				Name:       "minecraft:player.experience",
+				Value:      float32(progress),
+				Max:        1,
 				DefaultMax: 1,
 			},
-		}),
+		},
 	})
 }
 
@@ -1103,14 +1088,14 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 		return
 	}
 
-	shapes := make([]protocol.PrimitiveShape, 0, len(updates))
+	shapes := make([]v2193.PrimitiveShape, 0, len(updates))
 	for _, update := range updates {
 		if update.shape == nil {
 			delete(s.debugShapes, update.id)
-			shapes = append(shapes, protocol.PrimitiveShape{
+			shapes = append(shapes, v2193.PrimitiveShape{
 				NetworkID:      uint64(update.id),
-				DimensionID:    protocol.Option(s.dimensionID(dim)),
-				ExtraShapeData: &protocol.LastShape{},
+				DimensionID:    proto.Some(s.dimensionID(dim)),
+				ExtraShapeData: &v2193.LastShape{},
 			})
 			continue
 		}
@@ -1120,7 +1105,7 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 	s.debugShapeUpdates = s.debugShapeUpdates[:0]
 	s.debugShapesMu.Unlock()
 
-	s.writePacket(&v2193.PrimitiveShapesPacket{Shapes: to[[]v2193.PrimitiveShape](shapes)})
+	s.writePacket(&v2193.PrimitiveShapesPacket{Shapes: shapes})
 }
 
 // LockInput applies an input lock to the player, disabling the specified input. If the lock is already
@@ -1202,59 +1187,59 @@ func (s *Session) shapeAttachedEntityRuntimeID(shape debug.Shape) uint64 {
 
 // debugShapeToProtocol converts a debug shape to its protocol representation. It also provides defaults
 // for some fields such as colour, scale and other per-shape properties.
-func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntityID uint64, networkID int) protocol.PrimitiveShape {
+func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntityID uint64, networkID int) v2193.PrimitiveShape {
 	dimID, _ := world.DimensionID(dim)
-	ps := protocol.PrimitiveShape{
+	ps := v2193.PrimitiveShape{
 		NetworkID:   uint64(networkID),
-		DimensionID: protocol.Option(int32(dimID)),
+		DimensionID: proto.Some(int32(dimID)),
 	}
 	if attachedEntityID > 0 {
-		ps.AttachedToEntityID = protocol.Option(int64(attachedEntityID))
+		ps.AttachedToEntityID = proto.Some(int64(attachedEntityID))
 	}
 	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
 	switch shape := shape.(type) {
 	case *debug.Arrow:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeArrow)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.ExtraShapeData = &protocol.ArrowShape{
-			ArrowEndLocation: protocol.Option(vec64To32(shape.EndPosition)),
-			ArrowHeadLength:  protocol.Option(valueOrDefault(float32(shape.HeadLength), 1)),
-			ArrowHeadRadius:  protocol.Option(valueOrDefault(float32(shape.HeadRadius), 0.5)),
-			Segments:         protocol.Option(valueOrDefault(uint8(shape.HeadSegments), 4)),
+		ps.Type = proto.Some(protocol.PrimitiveShapeArrow)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.ExtraShapeData = &v2193.ArrowShape{
+			ArrowEndLocation: proto.Some([3]float32(vec64To32(shape.EndPosition))),
+			ArrowHeadLength:  proto.Some(valueOrDefault(float32(shape.HeadLength), 1)),
+			ArrowHeadRadius:  proto.Some(valueOrDefault(float32(shape.HeadRadius), 0.5)),
+			Segments:         proto.Some(valueOrDefault(uint8(shape.HeadSegments), 4)),
 		}
 	case *debug.Box:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeBox)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
-		ps.ExtraShapeData = &protocol.BoxShape{BoxBound: valueOrDefault(vec64To32(shape.Bounds), mgl32.Vec3{1, 1, 1})}
+		ps.Type = proto.Some(protocol.PrimitiveShapeBox)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
+		ps.ExtraShapeData = &v2193.BoxShape{BoxBound: valueOrDefault(vec64To32(shape.Bounds), mgl32.Vec3{1, 1, 1})}
 	case *debug.Circle:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeCircle)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
-		ps.ExtraShapeData = &protocol.SphereShape{Segments: valueOrDefault(uint8(shape.Segments), 20)}
+		ps.Type = proto.Some(protocol.PrimitiveShapeCircle)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
+		ps.ExtraShapeData = &v2193.SphereShape{Segments: valueOrDefault(uint8(shape.Segments), 20)}
 	case *debug.Line:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeLine)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.ExtraShapeData = &protocol.LineShape{LineEndLocation: vec64To32(shape.EndPosition)}
+		ps.Type = proto.Some(protocol.PrimitiveShapeLine)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.ExtraShapeData = &v2193.LineShape{LineEndLocation: vec64To32(shape.EndPosition)}
 	case *debug.Sphere:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeSphere)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
-		ps.ExtraShapeData = &protocol.SphereShape{Segments: valueOrDefault(uint8(shape.Segments), 20)}
+		ps.Type = proto.Some(protocol.PrimitiveShapeSphere)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
+		ps.ExtraShapeData = &v2193.SphereShape{Segments: valueOrDefault(uint8(shape.Segments), 20)}
 	case *debug.Text:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeText)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
+		ps.Type = proto.Some(protocol.PrimitiveShapeText)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
 		if shape.LockRotation {
-			ps.Rotation = protocol.Option(vec64To32(shape.Rotation))
+			ps.Rotation = proto.Some([3]float32(vec64To32(shape.Rotation)))
 		}
-		textData := &protocol.TextShape{
+		textData := &v2193.TextShape{
 			Text:             shape.Text,
 			UseRotation:      shape.LockRotation,
 			DepthTest:        !shape.DisableDepthTest,
@@ -1263,52 +1248,52 @@ func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntity
 		}
 		switch {
 		case shape.HideBackground:
-			textData.BackgroundColour = protocol.Option(color.RGBA{})
+			textData.BackgroundColour = proto.Some(proto.Color{})
 		case shape.BackgroundColour != (color.RGBA{}):
-			textData.BackgroundColour = protocol.Option(shape.BackgroundColour)
+			textData.BackgroundColour = proto.Some(toColour(shape.BackgroundColour))
 		}
 		ps.ExtraShapeData = textData
 	case *debug.Cylinder:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeCylinder)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
+		ps.Type = proto.Some(protocol.PrimitiveShapeCylinder)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
 		base := valueOrDefault(shape.BaseRadius, mgl64.Vec2{1, 1})
 		top := valueOrDefault(shape.TopRadius, base)
-		ps.ExtraShapeData = &protocol.CylinderShape{
+		ps.ExtraShapeData = &v2193.CylinderShape{
 			RadiusX:     mgl32.Vec2{float32(base[0]), float32(top[0])},
 			RadiusZ:     mgl32.Vec2{float32(base[1]), float32(top[1])},
 			Height:      valueOrDefault(float32(shape.Height), 1),
 			NumSegments: valueOrDefault(uint8(shape.Segments), 20),
 		}
 	case *debug.Pyramid:
-		ps.Type = protocol.Option(protocol.PrimitiveShapePyramid)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
-		pyramid := &protocol.PyramidShape{
+		ps.Type = proto.Some(protocol.PrimitiveShapePyramid)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
+		pyramid := &v2193.PyramidShape{
 			Width:  valueOrDefault(float32(shape.Width), 1),
 			Height: valueOrDefault(float32(shape.Height), 1),
 		}
 		if shape.Depth != 0 {
-			pyramid.Depth = protocol.Option(float32(shape.Depth))
+			pyramid.Depth = proto.Some(float32(shape.Depth))
 		}
 		ps.ExtraShapeData = pyramid
 	case *debug.Ellipsoid:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeEllipsoid)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
-		ps.ExtraShapeData = &protocol.EllipsoidShape{
+		ps.Type = proto.Some(protocol.PrimitiveShapeEllipsoid)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
+		ps.ExtraShapeData = &v2193.EllipsoidShape{
 			Radii:           valueOrDefault(vec64To32(shape.Radii), mgl32.Vec3{1, 1, 1}),
 			SegmentsPerAxis: valueOrDefault(uint8(shape.SegmentsPerAxis), 20),
 		}
 	case *debug.Cone:
-		ps.Type = protocol.Option(protocol.PrimitiveShapeCone)
-		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
-		ps.Location = protocol.Option(vec64To32(shape.Position))
-		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
-		ps.ExtraShapeData = &protocol.ConeShape{
+		ps.Type = proto.Some(protocol.PrimitiveShapeCone)
+		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
+		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
+		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
+		ps.ExtraShapeData = &v2193.ConeShape{
 			Radii:       valueOrDefault(vec2To32(shape.Radii), mgl32.Vec2{1, 1}),
 			Height:      valueOrDefault(float32(shape.Height), 1),
 			NumSegments: valueOrDefault(uint8(shape.Segments), 20),
@@ -1330,9 +1315,9 @@ func valueOrDefault[T comparable](v, def T) T {
 }
 
 // stackFromItem converts an item.Stack to its network ItemStack representation.
-func stackFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemStack {
+func stackFromItem(br world.BlockRegistry, it item.Stack) v2193.ItemStack {
 	if it.Empty() {
-		return protocol.ItemStack{}
+		return v2193.ItemStack{}
 	}
 
 	var blockRuntimeID uint32
@@ -1342,11 +1327,9 @@ func stackFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemStack {
 
 	rid, meta, _ := world.ItemRuntimeID(it.Item())
 
-	return protocol.ItemStack{
-		ItemType: protocol.ItemType{
-			NetworkID:     rid,
-			MetadataValue: uint32(meta),
-		},
+	return v2193.ItemStack{
+		NetworkID:      rid,
+		MetadataValue:  uint32(meta),
 		Count:          uint16(it.Count()),
 		BlockRuntimeID: int32(blockRuntimeID),
 		NBTData:        item.WriteNBT(it, false),
@@ -1354,7 +1337,7 @@ func stackFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemStack {
 }
 
 // stackToItem converts a network ItemStack representation back to an item.Stack.
-func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack {
+func stackToItem(br world.BlockRegistry, it v2193.ItemStack) item.Stack {
 	t, ok := world.ItemByRuntimeID(it.NetworkID, int16(it.MetadataValue))
 	if !ok {
 		t = block.Air{}
@@ -1383,16 +1366,16 @@ func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack {
 }
 
 // instanceFromItem converts an item.Stack to its network ItemInstance representation.
-func instanceFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemInstance {
-	return protocol.ItemInstance{
+func instanceFromItem(br world.BlockRegistry, it item.Stack) v2193.ItemInstance {
+	return v2193.ItemInstance{
 		StackNetworkID: item_id(it),
 		Stack:          stackFromItem(br, it),
 	}
 }
 
 // stacksToRecipeStacks converts a list of item.Stacks to their protocol representation with damage stripped for recipes.
-func stacksToRecipeStacks(br world.BlockRegistry, inputs []item.Stack) []protocol.ItemStack {
-	items := make([]protocol.ItemStack, 0, len(inputs))
+func stacksToRecipeStacks(br world.BlockRegistry, inputs []item.Stack) []v2193.ItemStack {
+	items := make([]v2193.ItemStack, 0, len(inputs))
 	for _, i := range inputs {
 		items = append(items, deleteDamage(stackFromItem(br, i)))
 	}
@@ -1400,28 +1383,28 @@ func stacksToRecipeStacks(br world.BlockRegistry, inputs []item.Stack) []protoco
 }
 
 // stacksToIngredientItems converts a list of item.Stacks to recipe ingredient items used over the network.
-func stacksToIngredientItems(_ world.BlockRegistry, inputs []recipe.Item) []protocol.ItemDescriptorCount {
-	items := make([]protocol.ItemDescriptorCount, 0, len(inputs))
+func stacksToIngredientItems(_ world.BlockRegistry, inputs []recipe.Item) []v2193.ItemDescriptorCount {
+	items := make([]v2193.ItemDescriptorCount, 0, len(inputs))
 	for _, i := range inputs {
-		var d protocol.ItemDescriptor = &protocol.InvalidItemDescriptor{}
+		var d v2193.ItemDescriptor = &v2193.InvalidItemDescriptor{}
 		switch i := i.(type) {
 		case item.Stack:
 			if i.Empty() {
-				items = append(items, protocol.ItemDescriptorCount{Descriptor: &protocol.InvalidItemDescriptor{}})
+				items = append(items, v2193.ItemDescriptorCount{Descriptor: &v2193.InvalidItemDescriptor{}})
 				continue
 			}
 			name, meta := i.Item().EncodeItem()
 			if _, ok := i.Value("variants"); ok {
 				meta = math.MaxInt16 // Used to indicate that the item has multiple selectable variants.
 			}
-			d = &protocol.DefaultItemDescriptor{
+			d = &v2193.DefaultItemDescriptor{
 				Name:          name,
 				MetadataValue: int32(meta),
 			}
 		case recipe.ItemTag:
-			d = &protocol.ItemTagItemDescriptor{Tag: i.Tag()}
+			d = &v2193.ItemTagItemDescriptor{Tag: i.Tag()}
 		}
-		items = append(items, protocol.ItemDescriptorCount{
+		items = append(items, v2193.ItemDescriptorCount{
 			Descriptor: d,
 			Count:      int32(i.Count()),
 		})
@@ -1430,13 +1413,13 @@ func stacksToIngredientItems(_ world.BlockRegistry, inputs []recipe.Item) []prot
 }
 
 // deleteDamage strips the damage from a protocol item.
-func deleteDamage(st protocol.ItemStack) protocol.ItemStack {
+func deleteDamage(st v2193.ItemStack) v2193.ItemStack {
 	delete(st.NBTData, "Damage")
 	return st
 }
 
-// protocolToSkin converts protocol.Skin to skin.Skin.
-func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
+// protocolToSkin converts v2193.Skin to skin.Skin.
+func protocolToSkin(sk v2193.Skin) (s skin.Skin, err error) {
 	if sk.SkinID == "" {
 		return skin.Skin{}, fmt.Errorf("SkinID must not be an empty string")
 	}

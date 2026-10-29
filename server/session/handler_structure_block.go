@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -26,8 +27,8 @@ func canUseGameMasterBlocks(c Controllable) bool {
 type StructureBlockUpdateHandler struct{}
 
 // Handle ...
-func (StructureBlockUpdateHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.StructureBlockUpdate)
+func (StructureBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.StructureBlockUpdatePacket)
 	if !canUseGameMasterBlocks(c) {
 		return fmt.Errorf("only creative operators may edit structure blocks")
 	}
@@ -77,8 +78,8 @@ func (StructureBlockUpdateHandler) Handle(p packet.Packet, s *Session, tx *world
 type StructureTemplateDataRequestHandler struct{}
 
 // Handle ...
-func (StructureTemplateDataRequestHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.StructureTemplateDataRequest)
+func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.StructureTemplateDataRequestPacket)
 	if !canUseGameMasterBlocks(c) {
 		return fmt.Errorf("only creative operators may request structures")
 	}

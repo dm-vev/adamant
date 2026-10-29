@@ -133,8 +133,8 @@ func serve(t *testing.T, l *Listener) <-chan *Conn {
 			if err != nil {
 				return
 			}
-			if text, ok := pk.(*packet.Text); ok {
-				_ = c.WritePacket(&packet.Text{TextType: packet.TextTypeRaw, Message: "echo " + text.Message})
+			if text, ok := pk.(*v2193.TextPacket); ok {
+				_ = c.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "echo " + text.Message})
 				_ = c.Flush()
 			}
 		}
@@ -435,8 +435,8 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 					_ = c.Close()
 					return
 				}
-				_ = c.WritePacket(&packet.Text{TextType: packet.TextTypeRaw, Message: "first"})
-				_ = c.WriteProto(st)
+				_ = c.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "first"})
+				_ = c.WritePacket(st)
 				_ = c.Flush()
 			}()
 		}
@@ -472,9 +472,9 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 	}
 }
 
-// TestWriteProto writes a packet of the generated codecs, which a
-// gophertunnel client reads after the packets written before it.
-func TestWriteProto(t *testing.T) {
+// TestGophertunnelClientReads writes packets of the generated codecs,
+// which a gophertunnel client reads in the order they were written.
+func TestGophertunnelClientReads(t *testing.T) {
 	l := listen(t, Config{})
 	go func() {
 		c, err := l.Accept()
@@ -487,8 +487,8 @@ func TestWriteProto(t *testing.T) {
 			_ = c.Close()
 			return
 		}
-		_ = c.WritePacket(&packet.Text{TextType: packet.TextTypeRaw, Message: "first"})
-		_ = c.WriteProto(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "generated"})
+		_ = c.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "first"})
+		_ = c.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "generated"})
 		_ = c.Flush()
 	}()
 	d, n := client(t, "Bot", false)
@@ -581,9 +581,9 @@ func TestChatOverItsBucketIsDropped(t *testing.T) {
 				return
 			}
 			switch pk.(type) {
-			case *packet.Text:
+			case *v2193.TextPacket:
 				n++
-			case *packet.Emote:
+			case *v2193.EmotePacket:
 				texts <- n
 				return
 			}

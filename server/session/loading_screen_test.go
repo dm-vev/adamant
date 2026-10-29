@@ -3,7 +3,8 @@ package session
 import (
 	"testing"
 
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -24,7 +25,7 @@ func TestLoadingScreenAcknowledgementOrdering(t *testing.T) {
 			s.changingDimension.Store(true)
 			h := &ServerBoundLoadingScreenHandler{}
 			h.expectedID.Store(test.expected)
-			err := h.Handle(&packet.ServerBoundLoadingScreen{Type: packet.LoadingScreenTypeEnd, LoadingScreenID: protocol.Option(test.received)}, s, nil, nil)
+			err := h.Handle(&v2193.ServerBoundLoadingScreenPacket{Type: packet.LoadingScreenTypeEnd, LoadingScreenID: proto.Some(test.received)}, s, nil, nil)
 			if (err != nil) != test.invalid {
 				t.Fatalf("acknowledgement error = %v, invalid = %v", err, test.invalid)
 			}

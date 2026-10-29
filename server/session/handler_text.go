@@ -2,7 +2,10 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -10,8 +13,8 @@ import (
 type TextHandler struct{}
 
 // Handle ...
-func (TextHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, c Controllable) error {
-	pk := p.(*packet.Text)
+func (TextHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllable) error {
+	pk := p.(*v2193.TextPacket)
 
 	if pk.TextType != packet.TextTypeChat {
 		return fmt.Errorf("TextType should always be Chat (%v), but got %v", packet.TextTypeChat, pk.TextType)

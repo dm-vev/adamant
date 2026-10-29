@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -41,24 +42,24 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 
 		price := merchantCostA(offer)
 		_ = s.inv.SetItem(0, price)
-		place := &protocol.PlaceStackRequestAction{}
+		place := &v2193.PlaceStackRequestAction{}
 		place.Count = byte(price.Count())
-		place.Source = protocol.StackRequestSlotInfo{Container: protocol.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory}, Slot: 0, StackNetworkID: item_id(price)}
-		place.Destination = protocol.StackRequestSlotInfo{Container: protocol.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA}
-		if err := handler.handleRequest(protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{place}}, s, tx, user); err != nil {
+		place.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory}, Slot: 0, StackNetworkID: item_id(price)}
+		place.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA}
+		if err := handler.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{place}}, s, tx, user); err != nil {
 			t.Fatalf("placing the price in the trade input: %v", err)
 		}
 
 		input, _ := s.ui.Item(merchantInputSlotA)
-		consume := &protocol.ConsumeStackRequestAction{}
+		consume := &v2193.ConsumeStackRequestAction{}
 		consume.Count = byte(price.Count())
-		consume.Source = protocol.StackRequestSlotInfo{Container: protocol.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA, StackNetworkID: item_id(input)}
-		take := &protocol.PlaceStackRequestAction{}
+		consume.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA, StackNetworkID: item_id(input)}
+		take := &v2193.PlaceStackRequestAction{}
 		take.Count = byte(offer.Output.Count())
-		take.Source = protocol.StackRequestSlotInfo{Container: protocol.FullContainerName{ContainerID: protocol.ContainerCreatedOutput}, Slot: craftingResult, StackNetworkID: -3}
-		take.Destination = protocol.StackRequestSlotInfo{Container: protocol.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory}, Slot: 1}
-		if err := handler.handleRequest(protocol.ItemStackRequest{RequestID: -3, Actions: []protocol.StackRequestAction{
-			&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		take.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerCreatedOutput}, Slot: craftingResult, StackNetworkID: -3}
+		take.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory}, Slot: 1}
+		if err := handler.handleRequest(v2193.ItemStackRequest{RequestID: -3, Actions: []v2193.StackRequestAction{
+			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 			consume,
 			take,
 		}}, s, tx, user); err != nil {

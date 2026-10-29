@@ -5,7 +5,8 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 var (
@@ -86,7 +87,7 @@ func finaliseBiomeRegistry() {
 }
 
 // BiomeDefinitions returns the list of biome definitions along with the associated StringList.
-func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
+func BiomeDefinitions() ([]v2193.BiomeDefinition, []string) {
 	ensureBiomeRuntimeData()
 	biomeMu.RLock()
 	defer biomeMu.RUnlock()
@@ -107,7 +108,7 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 	}
 
 	// The order of biomes in this packet must be deterministic across server runs.
-	encodedBiomes := make([]protocol.BiomeDefinition, 0, len(biomeIDsSorted))
+	encodedBiomes := make([]v2193.BiomeDefinition, 0, len(biomeIDsSorted))
 	for _, id := range biomeIDsSorted {
 		b := biomes[id]
 		name := b.String()
@@ -128,7 +129,7 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 		}
 		water := b.WaterColour()
 
-		def := protocol.BiomeDefinition{
+		def := v2193.BiomeDefinition{
 			NameIndex:      int16(nameIndex),
 			BiomeID:        biomeID,
 			Temperature:    float32(b.Temperature()),
@@ -137,7 +138,7 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 			Scale:          float32(b.Scale()),
 			MapWaterColour: int32(uint32(water.A)<<24 | uint32(water.R)<<16 | uint32(water.G)<<8 | uint32(water.B)),
 			Rain:           b.HasPrecipitation(),
-			Tags:           protocol.Option[[]uint16](tagIndices),
+			Tags:           proto.Some(tagIndices),
 		}
 
 		encodedBiomes = append(encodedBiomes, def)

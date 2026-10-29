@@ -12,8 +12,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // staticPacket is a packet that is the same for every player, such as the
@@ -62,14 +60,14 @@ func recipesFor(br world.BlockRegistry) *recipeData {
 func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 	d := &recipeData{count: len(all), recipes: make(map[uint32]recipe.Recipe, len(all)), javaIDs: make(map[string][]string)}
 	var (
-		shapedRecipes            []protocol.ShapedRecipe
-		shapelessRecipes         []protocol.ShapelessRecipe
-		userDataShapelessRecipes []protocol.UserDataShapelessRecipe
-		multiRecipes             []protocol.MultiRecipe
-		smithingTransformRecipes []protocol.SmithingTransformRecipe
-		smithingTrimRecipes      []protocol.SmithingTrimRecipe
-		potionRecipes            []protocol.PotionRecipe
-		potionContainerChange    []protocol.PotionContainerChangeRecipe
+		shapedRecipes            []v2193.ShapedRecipe
+		shapelessRecipes         []v2193.ShapelessRecipe
+		userDataShapelessRecipes []v2193.UserDataShapelessRecipe
+		multiRecipes             []v2193.MultiRecipe
+		smithingTransformRecipes []v2193.SmithingTransformRecipe
+		smithingTrimRecipes      []v2193.SmithingTrimRecipe
+		potionRecipes            []v2193.PotionRecipe
+		potionContainerChange    []v2193.PotionContainerChangeRecipe
 	)
 
 	for index, i := range all {
@@ -78,7 +76,7 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 
 		switch i := i.(type) {
 		case recipe.Shapeless:
-			shapelessRecipes = append(shapelessRecipes, protocol.ShapelessRecipe{
+			shapelessRecipes = append(shapelessRecipes, v2193.ShapelessRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Priority:        int32(i.Priority()),
 				Input:           stacksToIngredientItems(br, i.Input()),
@@ -87,7 +85,7 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 				RecipeNetworkID: networkID,
 			})
 		case recipe.UserDataShapeless:
-			userDataShapelessRecipes = append(userDataShapelessRecipes, protocol.UserDataShapelessRecipe{ShapelessRecipe: protocol.ShapelessRecipe{
+			userDataShapelessRecipes = append(userDataShapelessRecipes, v2193.UserDataShapelessRecipe{ShapelessRecipe: v2193.ShapelessRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Priority:        int32(i.Priority()),
 				Input:           stacksToIngredientItems(br, i.Input()),
@@ -97,12 +95,12 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			}})
 		case recipe.Multi:
 			d.registerJavaMultiID(i)
-			multiRecipes = append(multiRecipes, protocol.MultiRecipe{
+			multiRecipes = append(multiRecipes, v2193.MultiRecipe{
 				UUID:            i.UUID(),
 				RecipeNetworkID: networkID,
 			})
 		case recipe.Shaped:
-			shapedRecipes = append(shapedRecipes, protocol.ShapedRecipe{
+			shapedRecipes = append(shapedRecipes, v2193.ShapedRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Priority:        int32(i.Priority()),
 				Width:           int32(i.Shape().Width()),
@@ -115,7 +113,7 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			})
 		case recipe.SmithingTransform:
 			input, output := stacksToIngredientItems(br, i.Input()), stacksToRecipeStacks(br, i.Output())
-			smithingTransformRecipes = append(smithingTransformRecipes, protocol.SmithingTransformRecipe{
+			smithingTransformRecipes = append(smithingTransformRecipes, v2193.SmithingTransformRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Base:            input[0],
 				Addition:        input[1],
@@ -126,7 +124,7 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			})
 		case recipe.SmithingTrim:
 			input := stacksToIngredientItems(br, i.Input())
-			smithingTrimRecipes = append(smithingTrimRecipes, protocol.SmithingTrimRecipe{
+			smithingTrimRecipes = append(smithingTrimRecipes, v2193.SmithingTrimRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Base:            input[0],
 				Addition:        input[1],
@@ -139,7 +137,7 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			reagentRuntimeID, reagentMeta, _ := world.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
 			outputRuntimeID, outputMeta, _ := world.ItemRuntimeID(i.Output()[0].Item())
 
-			potionRecipes = append(potionRecipes, protocol.PotionRecipe{
+			potionRecipes = append(potionRecipes, v2193.PotionRecipe{
 				InputPotionID:        inputRuntimeID,
 				InputPotionMetadata:  int32(inputMeta),
 				ReagentItemID:        reagentRuntimeID,
@@ -153,14 +151,14 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			reagentRuntimeID, _, _ := world.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
 			outputRuntimeID, _, _ := world.ItemRuntimeID(i.Output()[0].Item())
 
-			potionContainerChange = append(potionContainerChange, protocol.PotionContainerChangeRecipe{
+			potionContainerChange = append(potionContainerChange, v2193.PotionContainerChangeRecipe{
 				InputItemID:   inputRuntimeID,
 				ReagentItemID: reagentRuntimeID,
 				OutputItemID:  outputRuntimeID,
 			})
 		}
 	}
-	recipes := to[v2193.CraftingDataPacket](packet.CraftingData{
+	recipes := v2193.CraftingDataPacket{
 		ShapedRecipes:                shapedRecipes,
 		ShapelessRecipes:             shapelessRecipes,
 		MultiRecipes:                 multiRecipes,
@@ -170,7 +168,7 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 		PotionRecipes:                potionRecipes,
 		PotionContainerChangeRecipes: potionContainerChange,
 		ClearRecipes:                 true,
-	})
+	}
 	d.packet = &staticPacket{&recipes}
 	return d
 }
@@ -234,9 +232,9 @@ func creativePacket(br world.BlockRegistry) proto.Packet {
 // creativeContent returns the creative groups and the items in them as
 // protocol item stacks.
 func creativeContent(br world.BlockRegistry, groups []creative.Group, items []creative.Item) *v2193.CreativeContentPacket {
-	pk := &packet.CreativeContent{Groups: make([]protocol.CreativeGroup, 0, len(groups)), Items: make([]protocol.CreativeItem, 0, len(items))}
+	pk := &v2193.CreativeContentPacket{Groups: make([]v2193.CreativeGroup, 0, len(groups)), Items: make([]v2193.CreativeItem, 0, len(items))}
 	for _, group := range groups {
-		pk.Groups = append(pk.Groups, protocol.CreativeGroup{
+		pk.Groups = append(pk.Groups, v2193.CreativeGroup{
 			Category: group.Category.Uint8(),
 			Name:     group.Name,
 			Icon:     deleteDamage(stackFromItem(br, group.Icon)),
@@ -249,12 +247,11 @@ func creativeContent(br world.BlockRegistry, groups []creative.Group, items []cr
 		if group < 0 {
 			continue
 		}
-		pk.Items = append(pk.Items, protocol.CreativeItem{
+		pk.Items = append(pk.Items, v2193.CreativeItem{
 			CreativeItemNetworkID: uint32(index) + 1,
 			Item:                  deleteDamage(stackFromItem(br, i.Stack)),
 			GroupIndex:            uint32(group),
 		})
 	}
-	out := to[v2193.CreativeContentPacket](*pk)
-	return &out
+	return pk
 }

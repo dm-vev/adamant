@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -20,10 +21,10 @@ const (
 type PositionTrackingDBHandler struct{}
 
 // Handle responds with the tracked position, or marks the target as unavailable.
-func (*PositionTrackingDBHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk, ok := p.(*packet.PositionTrackingDBClientRequest)
+func (*PositionTrackingDBHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk, ok := p.(*v2193.PositionTrackingDBClientRequestPacket)
 	if !ok {
-		return fmt.Errorf("expected *packet.PositionTrackingDBClientRequest, got %T", p)
+		return fmt.Errorf("expected *v2193.PositionTrackingDBClientRequestPacket, got %T", p)
 	}
 	if pk.RequestAction != packet.PositionTrackingDBRequestActionQuery {
 		return fmt.Errorf("unknown position tracking request action %d", pk.RequestAction)

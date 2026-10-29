@@ -246,8 +246,8 @@ func (*packetConn) ChunkRadius() int                                           {
 func (*packetConn) Latency() time.Duration                                     { return 0 }
 func (*packetConn) Flush() error                                               { return nil }
 func (*packetConn) RemoteAddr() net.Addr                                       { return &net.TCPAddr{} }
-func (*packetConn) ReadPacket() (packet.Packet, error)                         { return nil, io.EOF }
-func (c *packetConn) WritePacket(pk packet.Packet) error                       { c.packets <- pk; return nil }
+func (*packetConn) ReadPacket() (proto.Packet, error)                          { return nil, io.EOF }
+func (c *packetConn) WritePacket(pk proto.Packet) error                        { c.packets <- pk; return nil }
 func (c *packetConn) WriteProto(pk proto.Packet) error                         { c.packets <- pk; return nil }
 func (*packetConn) StartGameContext(context.Context, minecraft.GameData) error { return nil }
 func (*packetConn) IdentityData() login.IdentityData {

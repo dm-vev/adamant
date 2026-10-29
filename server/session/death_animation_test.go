@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -114,7 +115,7 @@ func TestKilledMobSendsDeathWithoutImmediateRemoveActor(t *testing.T) {
 			t.Cleanup(func() { _ = w.Close() })
 			viewer := testSession("lethal-hit")
 			viewer.br = world.DefaultBlockRegistry
-			viewer.packets = make(chan queuedPacket, 1024)
+			viewer.packets = make(chan proto.Packet, 1024)
 			var loader *world.Loader
 			if err := w.Do(func(tx *world.Tx) {
 				tx.SetBlock(cube.Pos{8, 63, 8}, block.Stone{}, nil)

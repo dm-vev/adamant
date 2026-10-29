@@ -41,7 +41,7 @@ func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, col *world.
 }
 
 // ViewSubChunks ...
-func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.SubChunkOffset, tx *world.Tx) {
+func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChunkOffset, tx *world.Tx) {
 	if s.chunkLoader == nil {
 		// The chunk loader is initialised during Spawn, so return an empty response for early requests.
 		dim, _ := world.DimensionID(tx.World().Dimension())
@@ -59,12 +59,12 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 	}
 	r := tx.Range()
 
-	entries := make([]protocol.SubChunkEntry, 0, len(offsets))
+	entries := make([]v2193.SubChunkEntry, 0, len(offsets))
 	transaction := make(map[uint64]struct{})
 	for _, offset := range offsets {
 		ind := int16(centre.Y()) + int16(offset[1]) - int16(r[0])>>4
 		if ind < 0 || ind > int16(r.Height()>>4) {
-			entries = append(entries, protocol.SubChunkEntry{Result: protocol.SubChunkResultIndexOutOfBounds, Offset: offset})
+			entries = append(entries, v2193.SubChunkEntry{Result: protocol.SubChunkResultIndexOutOfBounds, Offset: offset})
 			continue
 		}
 		col, ok := s.chunkLoader.Chunk(world.ChunkPos{
@@ -72,7 +72,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 			centre.Z() + int32(offset[2]),
 		})
 		if !ok {
-			entries = append(entries, protocol.SubChunkEntry{Result: protocol.SubChunkResultChunkNotFound, Offset: offset})
+			entries = append(entries, v2193.SubChunkEntry{Result: protocol.SubChunkResultChunkNotFound, Offset: offset})
 			continue
 		}
 		entries = append(entries, s.subChunkEntry(offset, ind, col, transaction))
@@ -87,24 +87,24 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 		Dimension:       int32(dim),
 		Position:        protocol.SubChunkPos(centre),
 		CacheEnabled:    s.conn.ClientCacheEnabled(),
-		SubChunkEntries: toSubChunkEntries(entries),
+		SubChunkEntries: entries,
 	})
 }
 
-func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) protocol.SubChunkEntry {
+func (s *Session) subChunkEntry(offset v2193.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) v2193.SubChunkEntry {
 	subMapType, subMap := subChunkHeightMap(col, ind)
-	var subMapData protocol.Optional[protocol.HeightMap]
+	var subMapData proto.Optional[v2193.HeightMap]
 	if subMap != nil {
-		var heightMap protocol.HeightMap
+		var heightMap v2193.HeightMap
 		for z := range heightMap {
 			copy(heightMap[z][:], subMap[z*16:(z+1)*16])
 		}
-		subMapData = protocol.Option(heightMap)
+		subMapData = proto.Some(heightMap)
 	}
 
 	sub := col.Sub()[ind]
 	if sub.Empty() {
-		return protocol.SubChunkEntry{
+		return v2193.SubChunkEntry{
 			Result:              protocol.SubChunkResultSuccessAllAir,
 			HeightMapType:       subMapType,
 			HeightMapData:       subMapData,
@@ -116,9 +116,9 @@ func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *
 	serialisedSubChunk := networkSubChunkPayload(col, ind)
 	blockEntityPayload := subChunkBlockEntityPayload(col, ind)
 
-	entry := protocol.SubChunkEntry{
+	entry := v2193.SubChunkEntry{
 		Result:              protocol.SubChunkResultSuccess,
-		RawPayload:          protocol.Option(joinPayloads(serialisedSubChunk, blockEntityPayload)),
+		RawPayload:          proto.Some(joinPayloads(serialisedSubChunk, blockEntityPayload)),
 		HeightMapType:       subMapType,
 		HeightMapData:       subMapData,
 		RenderHeightMapType: subMapType,
@@ -128,8 +128,8 @@ func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *
 	if s.conn.ClientCacheEnabled() {
 		if hash := xxhash.Sum64(serialisedSubChunk); s.trackBlob(hash, serialisedSubChunk) {
 			transaction[hash] = struct{}{}
-			entry.BlobHash = protocol.Option(hash)
-			entry.RawPayload = protocol.Option(blockEntityPayload)
+			entry.BlobHash = proto.Some(hash)
+			entry.RawPayload = proto.Some(blockEntityPayload)
 		}
 	}
 	return entry

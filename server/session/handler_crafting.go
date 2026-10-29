@@ -5,16 +5,18 @@ import (
 	"maps"
 	"reflect"
 
+	"math"
+	"slices"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"math"
-	"slices"
-	"time"
 )
 
 const (
@@ -39,7 +41,7 @@ type multiCraft struct {
 	containers []byte
 	times      int
 	consumed   map[byte]int
-	result     *protocol.StackRequestItem
+	result     *v2193.StackRequestItem
 }
 
 const (
@@ -49,7 +51,7 @@ const (
 )
 
 // handleCraft handles the CraftRecipe request action.
-func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) handleCraft(a *v2193.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
 	craft, ok := s.recipes[a.RecipeNetworkID]
 	if !ok {
 		// Try dynamic recipes if no static recipe matches
@@ -135,8 +137,8 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 		return err
 	}
 	for _, removal := range removals {
-		if err := h.setItemInSlot(protocol.StackRequestSlotInfo{
-			Container: protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+		if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
+			Container: v2193.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
 			Slot:      byte(removal.slot),
 		}, removal.stack, s, tx); err != nil {
 			return err
@@ -181,7 +183,7 @@ func (h *ItemStackRequestHandler) beginMultiCraft(craft recipe.Multi, timesCraft
 	return nil
 }
 
-func (h *ItemStackRequestHandler) handleMultiConsume(a *protocol.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) handleMultiConsume(a *v2193.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
 	inputSlot := int(a.Source.Slot) - h.multiCraft.offset
 	if inputSlot < 0 || inputSlot >= len(h.multiCraft.input) {
 		return fmt.Errorf("multi recipe consumed slot outside the crafting grid")
@@ -213,7 +215,7 @@ func (h *ItemStackRequestHandler) handleMultiConsume(a *protocol.ConsumeStackReq
 	return nil
 }
 
-func (h *ItemStackRequestHandler) handleMultiResult(a *protocol.CraftResultsDeprecatedStackRequestAction, _ *Session, _ *world.Tx) error {
+func (h *ItemStackRequestHandler) handleMultiResult(a *v2193.CraftResultsDeprecatedStackRequestAction, _ *Session, _ *world.Tx) error {
 	craft := h.multiCraft
 	if craft.result != nil || int(a.TimesCrafted) != craft.times || len(a.ResultItems) != 1 {
 		return fmt.Errorf("multi recipe supplied invalid result metadata")
@@ -253,8 +255,8 @@ func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) err
 		if err != nil {
 			return err
 		}
-		if err := h.setItemInSlot(protocol.StackRequestSlotInfo{
-			Container: protocol.FullContainerName{ContainerID: craft.containers[int(slot)-craft.offset]},
+		if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
+			Container: v2193.FullContainerName{ContainerID: craft.containers[int(slot)-craft.offset]},
 			Slot:      slot,
 		}, has.Grow(-count), s, tx); err != nil {
 			return err
@@ -491,7 +493,7 @@ func repairedMultiResult(input []item.Stack) (item.Stack, error) {
 	return output.WithDurability(min(output.MaxDurability(), durability+output.MaxDurability()/20)), nil
 }
 
-func requestedMultiResultMatches(want item.Stack, got protocol.StackRequestItem) bool {
+func requestedMultiResultMatches(want item.Stack, got v2193.StackRequestItem) bool {
 	name, meta := want.Item().EncodeItem()
 	if got.Identifier != name || got.MetadataValue > math.MaxInt16 || int16(got.MetadataValue) != meta || int(got.Count) != want.Count() {
 		return false
@@ -682,7 +684,7 @@ func bannerPatternFromGrid(grid []item.Stack) (block.BannerPatternType, bool) {
 }
 
 // handleAutoCraft handles the AutoCraftRecipe request action.
-func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) handleAutoCraft(a *v2193.AutoCraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
 	craft, ok := s.recipes[a.RecipeNetworkID]
 	if !ok {
 		// Try dynamic recipes if no static recipe matches
@@ -753,8 +755,8 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 				consumedInputs = append(consumedInputs, has.Grow(removal-has.Count()))
 
 				has = has.Grow(-removal)
-				h.setItemInSlot(protocol.StackRequestSlotInfo{
-					Container: protocol.FullContainerName{ContainerID: id},
+				h.setItemInSlot(v2193.StackRequestSlotInfo{
+					Container: v2193.FullContainerName{ContainerID: id},
 					Slot:      byte(slot),
 				}, has, s, tx)
 				if remaining == 0 {
@@ -783,7 +785,7 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 }
 
 // handleCreativeCraft handles the CreativeCraft request action.
-func (h *ItemStackRequestHandler) handleCreativeCraft(a *protocol.CraftCreativeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleCreativeCraft(a *v2193.CraftCreativeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	if !c.GameMode().CreativeInventory() {
 		return fmt.Errorf("can only craft creative items in gamemode creative/spectator")
 	}
@@ -1005,8 +1007,8 @@ func (h *ItemStackRequestHandler) tryDynamicCraft(s *Session, tx *world.Tx, time
 				}
 				// Consume one item from this slot per craft
 				st := it.Grow(-1 * timesCrafted)
-				h.setItemInSlot(protocol.StackRequestSlotInfo{
-					Container: protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+				h.setItemInSlot(v2193.StackRequestSlotInfo{
+					Container: v2193.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
 					Slot:      byte(slot),
 				}, st, s, tx)
 			}

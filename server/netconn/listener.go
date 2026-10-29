@@ -19,10 +19,10 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	bedrocklogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/sandertv/gophertunnel/minecraft"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"github.com/sandertv/gophertunnel/minecraft/resource"
@@ -190,7 +190,7 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 func verifier() (*oidc.IDTokenVerifier, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	discovery, err := service.Discover(ctx, service.ApplicationTypeMinecraftPE, protocol.CurrentVersion)
+	discovery, err := service.Discover(ctx, service.ApplicationTypeMinecraftPE, v2193.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func (l *Listener) Accept() (*Conn, error) {
 // Disconnect disconnects a client with a message; an empty message hides
 // the screen of the disconnection.
 func (l *Listener) Disconnect(c *Conn, message string) error {
-	_ = c.WritePacket(&packet.Disconnect{HideDisconnectionScreen: message == "", Message: message})
+	_ = c.WritePacket(&v2193.DisconnectPacket{HideDisconnectionScreen: message == "", Message: message})
 	_ = c.Flush()
 	return c.Close()
 }
@@ -279,8 +279,8 @@ func (l *Listener) updateStatus() {
 	s := l.status()
 	l.nn.SetStatus(nethernet.Status{
 		ServerName:     s.ServerName,
-		Protocol:       protocol.CurrentProtocol,
-		Version:        protocol.CurrentVersion,
+		Protocol:       v2193.Protocol,
+		Version:        v2193.Version,
 		LevelName:      s.ServerSubName,
 		PlayerCount:    s.PlayerCount,
 		MaxPlayerCount: s.MaxPlayers,
@@ -298,7 +298,7 @@ func (l *Listener) left() {
 func (l *Listener) login(nn *nethernet.Conn) {
 	c := newConn(l, nn)
 	if max := l.cfg.MaximumPlayers; max != 0 && int(l.players.Load()) >= max {
-		_ = c.WritePacket(&packet.PlayStatus{Status: packet.PlayStatusLoginFailedServerFull})
+		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: packet.PlayStatusLoginFailedServerFull})
 		_ = c.Flush()
 		_ = nn.Close()
 		return
@@ -329,20 +329,20 @@ func (c *Conn) login() error {
 	if err != nil {
 		return err
 	}
-	if proto := pk.(*packet.RequestNetworkSettings).ClientProtocol; proto != protocol.CurrentProtocol {
+	if proto := pk.(*v2193.RequestNetworkSettingsPacket).ClientProtocol; proto != v2193.Protocol {
 		status := packet.PlayStatusLoginFailedClient
-		if proto > protocol.CurrentProtocol {
+		if proto > v2193.Protocol {
 			status = packet.PlayStatusLoginFailedServer
 		}
-		_ = c.WritePacket(&packet.PlayStatus{Status: status})
+		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: status})
 		_ = c.Flush()
-		return fmt.Errorf("netconn: client speaks protocol %d, not %d", proto, protocol.CurrentProtocol)
+		return fmt.Errorf("netconn: client speaks protocol %d, not %d", proto, v2193.Protocol)
 	}
 	threshold := c.l.batches.Threshold
 	if threshold == 0 {
 		threshold = 256
 	}
-	_ = c.WritePacket(&packet.NetworkSettings{
+	_ = c.WritePacket(&v2193.NetworkSettingsPacket{
 		CompressionThreshold: uint16(threshold),
 		CompressionAlgorithm: c.l.cfg.Compression.Algorithm(),
 	})
@@ -354,14 +354,14 @@ func (c *Conn) login() error {
 	if pk, err = c.read(packet.IDLogin); err != nil {
 		return err
 	}
-	if err := c.authenticate(pk.(*packet.Login)); err != nil {
+	if err := c.authenticate(pk.(*v2193.LoginPacket)); err != nil {
 		_ = c.Flush()
 		return err
 	}
 	if err := c.handshake(); err != nil {
 		return err
 	}
-	_ = c.WritePacket(&packet.PlayStatus{Status: packet.PlayStatusLoginSuccess})
+	_ = c.WritePacket(&v2193.PlayStatusPacket{Status: packet.PlayStatusLoginSuccess})
 	_ = c.WritePacket(c.l.packsInfo())
 	if err := c.Flush(); err != nil {
 		return err
@@ -379,7 +379,7 @@ func (c *Conn) handshake() error {
 	if err != nil {
 		return err
 	}
-	_ = c.WritePacket(&packet.ServerToClientHandshake{JWT: []byte(token)})
+	_ = c.WritePacket(&v2193.ServerToClientHandshakePacket{JWT: []byte(token)})
 	if err := c.Flush(); err != nil {
 		return err
 	}
@@ -389,7 +389,7 @@ func (c *Conn) handshake() error {
 
 // authenticate checks the login request: the Xbox Live chain if the server
 // asks for it, the key the transport proved, and the server's own rules.
-func (c *Conn) authenticate(pk *packet.Login) error {
+func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
 	var (
 		auth login.AuthResult
 		err  error
@@ -398,17 +398,17 @@ func (c *Conn) authenticate(pk *packet.Login) error {
 		return fmt.Errorf("netconn: parse login request: %w", err)
 	}
 	if !auth.XBOXLiveAuthenticated && !c.l.cfg.AuthenticationDisabled {
-		_ = c.WritePacket(&packet.Disconnect{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})
+		_ = c.WritePacket(&v2193.DisconnectPacket{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})
 		return errors.New("netconn: client is not logged in with Xbox Live")
 	}
 	if pub := c.nn.PublicKey(); pub != nil && !auth.PublicKey.Equal(pub) {
 		// The transport proved another key: a login replayed elsewhere.
-		_ = c.WritePacket(&packet.Disconnect{Reason: packet.DisconnectReasonNotAuthenticated})
+		_ = c.WritePacket(&v2193.DisconnectPacket{Reason: packet.DisconnectReasonNotAuthenticated})
 		return errors.New("netconn: login key is not the key of the transport identity")
 	}
 	if allow := c.l.cfg.Allow; allow != nil {
 		if reason, ok := allow(c.RemoteAddr(), c.identity, c.client); !ok {
-			_ = c.WritePacket(&packet.Disconnect{Reason: packet.DisconnectReasonKicked, Message: reason})
+			_ = c.WritePacket(&v2193.DisconnectPacket{Reason: packet.DisconnectReasonKicked, Message: reason})
 			return DisconnectError("refused: " + reason)
 		}
 	}
@@ -416,10 +416,10 @@ func (c *Conn) authenticate(pk *packet.Login) error {
 }
 
 // packsInfo returns the resource packs offered.
-func (l *Listener) packsInfo() *packet.ResourcePacksInfo {
-	pk := &packet.ResourcePacksInfo{TexturePackRequired: l.cfg.TexturePacksRequired}
+func (l *Listener) packsInfo() *v2193.ResourcePacksInfoPacket {
+	pk := &v2193.ResourcePacksInfoPacket{TexturePackRequired: l.cfg.TexturePacksRequired}
 	for _, pack := range l.cfg.ResourcePacks {
-		info := protocol.TexturePackInfo{UUID: pack.UUID(), Version: pack.Version(), Size: uint64(pack.Len()), DownloadURL: pack.DownloadURL()}
+		info := v2193.TexturePackInfo{UUID: pack.UUID(), Version: pack.Version(), Size: uint64(pack.Len()), DownloadURL: pack.DownloadURL()}
 		if pack.Encrypted() {
 			info.ContentKey = pack.ContentKey()
 			info.ContentIdentity = pack.Manifest().Header.UUID.String()
@@ -443,7 +443,7 @@ func (c *Conn) sendPacks() error {
 		}
 		current, offset, queue = queue[0], 0, queue[1:]
 		checksum := current.Checksum()
-		_ = c.WritePacket(&packet.ResourcePackDataInfo{
+		_ = c.WritePacket(&v2193.ResourcePackDataInfoPacket{
 			UUID:          current.UUID().String() + "_" + current.Version(),
 			DataChunkSize: packChunkSize,
 			ChunkCount:    uint32(current.DataChunkCount(packChunkSize)),
@@ -459,9 +459,9 @@ func (c *Conn) sendPacks() error {
 			return err
 		}
 		switch pk := pk.(type) {
-		case *packet.ClientCacheStatus:
+		case *v2193.ClientCacheStatusPacket:
 			c.cacheEnabled.Store(pk.Enabled)
-		case *packet.ResourcePackClientResponse:
+		case *v2193.ResourcePackClientResponsePacket:
 			switch pk.Response {
 			case packet.PackResponseRefused:
 				return DisconnectError("refused the resource packs")
@@ -482,9 +482,9 @@ func (c *Conn) sendPacks() error {
 			default:
 				return fmt.Errorf("netconn: unknown resource pack response %d", pk.Response)
 			}
-		case *packet.ResourcePackChunkRequest:
+		case *v2193.ResourcePackChunkRequestPacket:
 			id, _, _ := strings.Cut(pk.UUID, "_")
-			if current == nil || current.UUID().String() != id || uint64(pk.ChunkIndex)*packChunkSize != offset {
+			if pk.ChunkIndex < 0 || current == nil || current.UUID().String() != id || uint64(pk.ChunkIndex)*packChunkSize != offset {
 				return fmt.Errorf("netconn: unexpected request for chunk %d of resource pack %s", pk.ChunkIndex, pk.UUID)
 			}
 			data := make([]byte, packChunkSize)
@@ -492,7 +492,7 @@ func (c *Conn) sendPacks() error {
 			if err != nil && n == 0 {
 				return fmt.Errorf("netconn: read resource pack: %w", err)
 			}
-			_ = c.WritePacket(&packet.ResourcePackChunkData{UUID: pk.UUID, ChunkIndex: uint32(pk.ChunkIndex), DataOffset: offset, Data: data[:n]})
+			_ = c.WritePacket(&v2193.ResourcePackChunkDataPacket{UUID: pk.UUID, ChunkIndex: uint32(pk.ChunkIndex), DataOffset: offset, Data: data[:n]})
 			if err := c.Flush(); err != nil {
 				return err
 			}
@@ -527,13 +527,13 @@ func (l *Listener) packs(ids []string) ([]*resource.Pack, error) {
 
 // packStack returns the stack of resource packs: the server's, then the
 // ones every client has, as gophertunnel lists them.
-func (l *Listener) packStack() *packet.ResourcePackStack {
-	pk := &packet.ResourcePackStack{BaseGameVersion: protocol.CurrentVersion, Experiments: []protocol.ExperimentData{{Name: "cameras", Enabled: true}}}
+func (l *Listener) packStack() *v2193.ResourcePackStackPacket {
+	pk := &v2193.ResourcePackStackPacket{BaseGameVersion: v2193.Version, Experiments: []v2193.ExperimentData{{Name: "cameras", Enabled: true}}}
 	for _, pack := range l.cfg.ResourcePacks {
-		pk.TexturePacks = append(pk.TexturePacks, protocol.StackResourcePack{UUID: pack.UUID().String(), Version: pack.Version()})
+		pk.TexturePacks = append(pk.TexturePacks, v2193.StackResourcePack{UUID: pack.UUID().String(), Version: pack.Version()})
 	}
 	for _, p := range builtinPacks {
-		pk.TexturePacks = append(pk.TexturePacks, protocol.StackResourcePack{UUID: p[0], Version: p[1]})
+		pk.TexturePacks = append(pk.TexturePacks, v2193.StackResourcePack{UUID: p[0], Version: p[1]})
 	}
 	return pk
 }

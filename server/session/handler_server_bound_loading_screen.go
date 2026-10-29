@@ -2,9 +2,12 @@ package session
 
 import (
 	"fmt"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"sync/atomic"
+
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // ServerBoundLoadingScreenHandler handles loading screen updates from the clients. It is used to ensure that
@@ -15,8 +18,8 @@ type ServerBoundLoadingScreenHandler struct {
 }
 
 // Handle ...
-func (h *ServerBoundLoadingScreenHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, _ Controllable) error {
-	pk := p.(*packet.ServerBoundLoadingScreen)
+func (h *ServerBoundLoadingScreenHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Controllable) error {
+	pk := p.(*v2193.ServerBoundLoadingScreenPacket)
 	v, ok := pk.LoadingScreenID.Value()
 	expected := h.expectedID.Load()
 

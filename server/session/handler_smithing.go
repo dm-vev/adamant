@@ -2,9 +2,11 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -18,7 +20,7 @@ const (
 )
 
 // handleSmithing handles a CraftRecipe stack request action made using a smithing table.
-func (h *ItemStackRequestHandler) handleSmithing(a *protocol.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) handleSmithing(a *v2193.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
 	// First, check the recipe and ensure it is valid for the smithing table.
 	craft, ok := s.recipes[a.RecipeNetworkID]
 	if !ok {
@@ -35,8 +37,8 @@ func (h *ItemStackRequestHandler) handleSmithing(a *protocol.CraftRecipeStackReq
 
 	// Check if the input item and material item match what the recipe requires.
 	expectedInputs := craft.Input()
-	input, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerSmithingTableInput},
+	input, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableInput},
 		Slot:      smithingInputSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(input); err != nil {
@@ -45,8 +47,8 @@ func (h *ItemStackRequestHandler) handleSmithing(a *protocol.CraftRecipeStackReq
 	if !matchingStacks(input, expectedInputs[0]) {
 		return fmt.Errorf("input item is not the same as expected input")
 	}
-	material, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerSmithingTableMaterial},
+	material, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableMaterial},
 		Slot:      smithingMaterialSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(material); err != nil {
@@ -55,8 +57,8 @@ func (h *ItemStackRequestHandler) handleSmithing(a *protocol.CraftRecipeStackReq
 	if !matchingStacks(material, expectedInputs[1]) {
 		return fmt.Errorf("material item is not the same as expected material")
 	}
-	template, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerSmithingTableTemplate},
+	template, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableTemplate},
 		Slot:      smithingTemplateSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(template); err != nil {
@@ -67,16 +69,16 @@ func (h *ItemStackRequestHandler) handleSmithing(a *protocol.CraftRecipeStackReq
 	}
 
 	// Create the output using the input stack as reference and the recipe's output item type.
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerSmithingTableInput},
+	h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableInput},
 		Slot:      smithingInputSlot,
 	}, input.Grow(-1), s, tx)
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerSmithingTableMaterial},
+	h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableMaterial},
 		Slot:      smithingMaterialSlot,
 	}, material.Grow(-1), s, tx)
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerSmithingTableTemplate},
+	h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableTemplate},
 		Slot:      smithingTemplateSlot,
 	}, template.Grow(-1), s, tx)
 

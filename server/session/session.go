@@ -47,15 +47,15 @@ type Session struct {
 	bossBarMu     sync.Mutex
 	bossBarIDs    map[string]int64
 	nextBossBarID int64
-	packets       chan queuedPacket
+	packets       chan proto.Packet
 	// packetsMu protects the overflow FIFO and the packets held. The channel
 	// holds the first packets; bursts spill into pendingPackets without
 	// blocking the world owner. While the world of the session ticks, packets
 	// are held in heldPackets and handed to the writer at once afterwards.
 	packetsMu      sync.Mutex
-	pendingPackets []queuedPacket
+	pendingPackets []proto.Packet
 	holdPackets    int
-	heldPackets    []queuedPacket
+	heldPackets    []proto.Packet
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
@@ -64,10 +64,10 @@ type Session struct {
 	closing            atomic.Bool
 
 	// commandOrigin holds the last command origin so output can match request metadata.
-	commandOrigin atomic.Pointer[protocol.CommandOrigin]
+	commandOrigin atomic.Pointer[v2193.CommandOrigin]
 	commandsDirty atomic.Bool
 	// abilities is an immutable snapshot for clients joining the player list.
-	abilities atomic.Pointer[protocol.AbilityData]
+	abilities atomic.Pointer[v2193.AbilityData]
 
 	currentScoreboard atomic.Pointer[string]
 	currentLines      atomic.Pointer[[]string]
@@ -178,12 +178,12 @@ type Conn interface {
 	Flush() error
 	// RemoteAddr returns the remote network address.
 	RemoteAddr() net.Addr
-	// ReadPacket reads a packet.Packet from the Conn. An error is returned if a deadline was set that was
-	// exceeded or if the Conn was closed while awaiting a packet.
-	ReadPacket() (pk packet.Packet, err error)
-	// WritePacket writes a packet.Packet to the Conn. An error is returned if the Conn was closed before sending the
-	// packet.
-	WritePacket(pk packet.Packet) error
+	// ReadPacket reads a packet of the codecs of protocol 2193 from the Conn. An error is returned if a deadline
+	// was set that was exceeded or if the Conn was closed while awaiting a packet.
+	ReadPacket() (pk proto.Packet, err error)
+	// WritePacket writes a packet of the codecs of protocol 2193 to the Conn. An error is returned if the Conn was
+	// closed before sending the packet.
+	WritePacket(pk proto.Packet) error
 	// StartGameContext starts the game for the Conn with a context to cancel it.
 	StartGameContext(ctx context.Context, data minecraft.GameData) error
 }
@@ -234,7 +234,7 @@ func (conf Config) New(conn Conn) *Session {
 		r = maxChunkRadius
 	}
 	if r != requestedRadius {
-		_ = WriteTo(conn, &v2193.ChunkRadiusUpdatedPacket{ChunkRadius: int32(r)})
+		_ = conn.WritePacket(&v2193.ChunkRadiusUpdatedPacket{ChunkRadius: int32(r)})
 	}
 	if conf.Log == nil {
 		conf.Log = slog.Default()
@@ -247,7 +247,7 @@ func (conf Config) New(conn Conn) *Session {
 		openChunkTransactions: make([]map[uint64]struct{}, 0, 8),
 		closeBackground:       make(chan struct{}),
 		handlers:              map[uint32]packetHandler{},
-		packets:               make(chan queuedPacket, 256),
+		packets:               make(chan proto.Packet, 256),
 		entityRuntimeIDs:      map[*world.EntityHandle]uint64{},
 		entities:              map[uint64]*world.EntityHandle{},
 		hiddenEntities:        map[uuid.UUID]struct{}{},
@@ -276,7 +276,7 @@ func (conf Config) New(conn Conn) *Session {
 	var scoreboardLines []string
 	s.currentScoreboard.Store(&scoreboardName)
 	s.currentLines.Store(&scoreboardLines)
-	var origin protocol.CommandOrigin
+	var origin v2193.CommandOrigin
 	s.commandOrigin.Store(&origin)
 
 	if conf.BlockRegistry == nil {
@@ -681,7 +681,7 @@ func (s *Session) ChunkRadius() int32 {
 
 // handlePacket handles an incoming packet, processing it accordingly. If the packet had invalid data or was
 // otherwise not valid in its context, an error is returned.
-func (s *Session) handlePacket(pk packet.Packet, tx *world.Tx, c Controllable) (err error) {
+func (s *Session) handlePacket(pk proto.Packet, tx *world.Tx, c Controllable) (err error) {
 	s.lastActivity.Store(time.Now().UnixNano())
 	handler, ok := s.handlers[pk.ID()]
 	if !ok {

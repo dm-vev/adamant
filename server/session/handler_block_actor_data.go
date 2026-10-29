@@ -2,14 +2,16 @@ package session
 
 import (
 	"fmt"
+	"strings"
+	"unicode/utf8"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"strings"
-	"unicode/utf8"
 )
 
 // BlockActorDataHandler handles an incoming BlockActorData packet from the client, sent for some block entities like
@@ -17,8 +19,8 @@ import (
 type BlockActorDataHandler struct{}
 
 // Handle ...
-func (b BlockActorDataHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.BlockActorData)
+func (b BlockActorDataHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.BlockActorDataPacket)
 	if id, ok := pk.NBTData["id"]; ok {
 		pos := blockPosFromProtocol(pk.Position)
 		if !canReach(c, pos.Vec3Middle()) {
@@ -40,7 +42,7 @@ func (b BlockActorDataHandler) Handle(p packet.Packet, s *Session, tx *world.Tx,
 // handleJigsaw ports ServerGamePacketListenerImpl.handleSetJigsawBlock: the
 // jigsaw editor of an operator in creative mode sets the names, pool, final
 // state, joint and priorities of a jigsaw.
-func (b BlockActorDataHandler) handleJigsaw(pk *packet.BlockActorData, pos cube.Pos, s *Session, tx *world.Tx, c Controllable) error {
+func (b BlockActorDataHandler) handleJigsaw(pk *v2193.BlockActorDataPacket, pos cube.Pos, s *Session, tx *world.Tx, c Controllable) error {
 	if !canUseGameMasterBlocks(c) {
 		return fmt.Errorf("only creative operators may edit jigsaw blocks")
 	}
@@ -55,7 +57,7 @@ func (b BlockActorDataHandler) handleJigsaw(pk *packet.BlockActorData, pos cube.
 
 // handleSign handles the BlockActorData packet sent when editing a sign and validates the expected sign variant.
 func (b BlockActorDataHandler) handleSign(
-	pk *packet.BlockActorData,
+	pk *v2193.BlockActorDataPacket,
 	pos cube.Pos,
 	s *Session,
 	tx *world.Tx,

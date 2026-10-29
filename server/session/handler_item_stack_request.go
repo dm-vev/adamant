@@ -13,9 +13,9 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // ItemStackRequestHandler handles the ItemStackRequest packet. It handles the actions done within the
@@ -43,13 +43,13 @@ type responseChange struct {
 // changeInfo holds information on a slot change initiated by an item stack request. It holds both the new and the old
 // item information and is used for reverting and verifying.
 type changeInfo struct {
-	after  protocol.StackResponseSlotInfo
+	after  v2193.StackResponseSlotInfo
 	before item.Stack
 }
 
 // Handle ...
-func (h *ItemStackRequestHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.ItemStackRequest)
+func (h *ItemStackRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.ItemStackRequestPacket)
 	h.current = time.Now()
 
 	s.inTransaction.Store(true)
@@ -66,7 +66,7 @@ func (h *ItemStackRequestHandler) Handle(p packet.Packet, s *Session, tx *world.
 }
 
 // handleRequest resolves a single item stack request from the client.
-func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (err error) {
+func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (err error) {
 	h.currentRequest = req.RequestID
 	h.multiCraft = nil
 	defer func() {
@@ -83,25 +83,25 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 	for _, action := range req.Actions {
 		if h.multiCraft != nil {
 			switch action.(type) {
-			case *protocol.ConsumeStackRequestAction, *protocol.CraftResultsDeprecatedStackRequestAction:
+			case *v2193.ConsumeStackRequestAction, *v2193.CraftResultsDeprecatedStackRequestAction:
 			default:
 				return fmt.Errorf("multi recipe contains unexpected action %T", action)
 			}
 		}
 		switch a := action.(type) {
-		case *protocol.TakeStackRequestAction:
+		case *v2193.TakeStackRequestAction:
 			err = h.handleTake(a, s, tx, c)
-		case *protocol.PlaceStackRequestAction:
+		case *v2193.PlaceStackRequestAction:
 			err = h.handlePlace(a, s, tx, c)
-		case *protocol.SwapStackRequestAction:
+		case *v2193.SwapStackRequestAction:
 			err = h.handleSwap(a, s, tx, c)
-		case *protocol.DestroyStackRequestAction:
+		case *v2193.DestroyStackRequestAction:
 			err = h.handleDestroy(a, s, tx, c)
-		case *protocol.DropStackRequestAction:
+		case *v2193.DropStackRequestAction:
 			err = h.handleDrop(a, s, tx, c)
-		case *protocol.BeaconPaymentStackRequestAction:
+		case *v2193.BeaconPaymentStackRequestAction:
 			err = h.handleBeaconPayment(a, s, tx)
-		case *protocol.CraftRecipeStackRequestAction:
+		case *v2193.CraftRecipeStackRequestAction:
 			if s.merchantTradeOpen() {
 				err = h.handleMerchantCraft(a, s, tx, c)
 				break
@@ -122,25 +122,25 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 				}
 			}
 			err = h.handleCraft(a, s, tx)
-		case *protocol.AutoCraftRecipeStackRequestAction:
+		case *v2193.AutoCraftRecipeStackRequestAction:
 			err = h.handleAutoCraft(a, s, tx)
-		case *protocol.CraftRecipeOptionalStackRequestAction:
+		case *v2193.CraftRecipeOptionalStackRequestAction:
 			err = h.handleCraftRecipeOptional(a, s, req.FilterStrings, c, tx)
-		case *protocol.CraftLoomRecipeStackRequestAction:
+		case *v2193.CraftLoomRecipeStackRequestAction:
 			err = h.handleLoomCraft(a, s, tx)
-		case *protocol.CraftGrindstoneRecipeStackRequestAction:
+		case *v2193.CraftGrindstoneRecipeStackRequestAction:
 			err = h.handleGrindstoneCraft(s, tx, c)
-		case *protocol.CraftCreativeStackRequestAction:
+		case *v2193.CraftCreativeStackRequestAction:
 			err = h.handleCreativeCraft(a, s, tx, c)
-		case *protocol.MineBlockStackRequestAction:
+		case *v2193.MineBlockStackRequestAction:
 			err = h.handleMineBlock(a, s, tx)
-		case *protocol.CreateStackRequestAction:
+		case *v2193.CreateStackRequestAction:
 			err = h.handleCreate(a, s, tx)
-		case *protocol.ConsumeStackRequestAction:
+		case *v2193.ConsumeStackRequestAction:
 			if h.multiCraft != nil {
 				err = h.handleMultiConsume(a, s, tx)
 			}
-		case *protocol.CraftResultsDeprecatedStackRequestAction:
+		case *v2193.CraftResultsDeprecatedStackRequestAction:
 			if h.multiCraft != nil {
 				err = h.handleMultiResult(a, s, tx)
 			}
@@ -159,7 +159,7 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 }
 
 // handleTake handles a Take stack request action.
-func (h *ItemStackRequestHandler) handleTake(a *protocol.TakeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleTake(a *v2193.TakeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	switch a.Source.Container.ContainerID {
 	case protocol.ContainerTradeResultPreview, protocol.ContainerTradeTwoResultPreview:
 		return h.handleMerchantTrade(a.Source, a.Destination, a.Count, s, tx, c)
@@ -168,7 +168,7 @@ func (h *ItemStackRequestHandler) handleTake(a *protocol.TakeStackRequestAction,
 	}
 }
 
-func (h *ItemStackRequestHandler) handleMerchantTrade(from, to protocol.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
 	if !s.containerOpened.Load() || byte(s.openedContainerID.Load()) != protocol.ContainerTypeTrade {
 		return fmt.Errorf("no merchant window is open")
 	}
@@ -274,8 +274,8 @@ func (h *ItemStackRequestHandler) handleMerchantTrade(from, to protocol.StackReq
 		if originals[slot].Equal(after) {
 			continue
 		}
-		source := protocol.StackRequestSlotInfo{
-			Container: protocol.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory},
+		source := v2193.StackRequestSlotInfo{
+			Container: v2193.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory},
 			Slot:      uint8(slot),
 		}
 		if err := h.setItemInSlot(source, after, s, tx); err != nil {
@@ -302,12 +302,12 @@ func (h *ItemStackRequestHandler) handleMerchantTrade(from, to protocol.StackReq
 }
 
 // handlePlace handles a Place stack request action.
-func (h *ItemStackRequestHandler) handlePlace(a *protocol.PlaceStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handlePlace(a *v2193.PlaceStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	return h.handleTransfer(a.Source, a.Destination, a.Count, s, tx, c)
 }
 
 // handleTransfer handles the transferring of x count from a source slot to a destination slot.
-func (h *ItemStackRequestHandler) handleTransfer(from, to protocol.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleTransfer(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
 	if err := h.verifySlots(s, tx, from, to); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
@@ -366,7 +366,7 @@ func (h *ItemStackRequestHandler) handleTransfer(from, to protocol.StackRequestS
 	h.collectRewards(s, invA, int(from.Slot), tx, c)
 	return nil
 }
-func (h *ItemStackRequestHandler) handleBundleInsert(from, to protocol.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable, incoming, bundleStack item.Stack, bundle item.Bundle) error {
+func (h *ItemStackRequestHandler) handleBundleInsert(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable, incoming, bundleStack item.Stack, bundle item.Bundle) error {
 	updated, remaining := bundle.Insert(bundleStack, incoming, int(count))
 	if remaining.Count() == incoming.Count() {
 		return fmt.Errorf("item does not fit in bundle")
@@ -396,7 +396,7 @@ func (h *ItemStackRequestHandler) handleBundleInsert(from, to protocol.StackRequ
 	return nil
 }
 
-func (h *ItemStackRequestHandler) handleBundleExtract(from, to protocol.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable, bundleStack, destination item.Stack, bundle item.Bundle) error {
+func (h *ItemStackRequestHandler) handleBundleExtract(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable, bundleStack, destination item.Stack, bundle item.Bundle) error {
 	updated, extracted, ok := bundle.RemoveFirstCount(bundleStack, int(count))
 	if !ok {
 		return fmt.Errorf("bundle is empty")
@@ -436,7 +436,7 @@ func (h *ItemStackRequestHandler) handleBundleExtract(from, to protocol.StackReq
 }
 
 // handleSwap handles a Swap stack request action.
-func (h *ItemStackRequestHandler) handleSwap(a *protocol.SwapStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleSwap(a *v2193.SwapStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	if err := h.verifySlots(s, tx, a.Source, a.Destination); err != nil {
 		return fmt.Errorf("slot out of sync: %w", err)
 	}
@@ -499,7 +499,7 @@ func (h *ItemStackRequestHandler) collectRewards(s *Session, inv *inventory.Inve
 }
 
 // handleDestroy handles the destroying of an item by moving it into the creative inventory.
-func (h *ItemStackRequestHandler) handleDestroy(a *protocol.DestroyStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleDestroy(a *v2193.DestroyStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	if h.ignoreDestroy {
 		return nil
 	}
@@ -525,12 +525,12 @@ func (h *ItemStackRequestHandler) handleDestroy(a *protocol.DestroyStackRequestA
 
 // handleDrop handles the dropping of an item by moving it outside the inventory while having the
 // inventory opened.
-func (h *ItemStackRequestHandler) handleDrop(a *protocol.DropStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleDrop(a *v2193.DropStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	if err := h.verifySlot(a.Source, s, tx); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
 	i, _ := h.itemInSlot(a.Source, s, tx)
-	if err := ensureBindingAllowsRemoval(i, a.Source, protocol.StackRequestSlotInfo{}, c); err != nil {
+	if err := ensureBindingAllowsRemoval(i, a.Source, v2193.StackRequestSlotInfo{}, c); err != nil {
 		return err
 	}
 	if err := ensureUnlockedForInventoryRemoval(i, a.Source); err != nil {
@@ -557,9 +557,9 @@ func (h *ItemStackRequestHandler) handleDrop(a *protocol.DropStackRequestAction,
 
 // handleMineBlock handles the action associated with a block being mined by the player. This seems to be a workaround
 // by Mojang to deal with the durability changes client-side.
-func (h *ItemStackRequestHandler) handleMineBlock(a *protocol.MineBlockStackRequestAction, s *Session, tx *world.Tx) error {
-	slot := protocol.StackRequestSlotInfo{
-		Container:      protocol.FullContainerName{ContainerID: protocol.ContainerInventory},
+func (h *ItemStackRequestHandler) handleMineBlock(a *v2193.MineBlockStackRequestAction, s *Session, tx *world.Tx) error {
+	slot := v2193.StackRequestSlotInfo{
+		Container:      v2193.FullContainerName{ContainerID: protocol.ContainerInventory},
 		Slot:           byte(a.HotbarSlot),
 		StackNetworkID: a.StackNetworkID,
 	}
@@ -578,7 +578,7 @@ func (h *ItemStackRequestHandler) handleMineBlock(a *protocol.MineBlockStackRequ
 // handleCreate handles the CreateStackRequestAction sent by the client when a recipe outputs more than one item. It
 // contains a result slot, which should map to one of the output items. From there, the server should create the relevant
 // output as usual.
-func (h *ItemStackRequestHandler) handleCreate(a *protocol.CreateStackRequestAction, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) handleCreate(a *v2193.CreateStackRequestAction, s *Session, tx *world.Tx) error {
 	slot := int(a.ResultsSlot)
 	if slot < 0 || slot >= len(h.pendingResults) {
 		// ResultsSlot is client-controlled; reject out-of-range values to avoid panics.
@@ -591,8 +591,8 @@ func (h *ItemStackRequestHandler) handleCreate(a *protocol.CreateStackRequestAct
 	}
 	h.pendingResults[slot] = item.Stack{}
 
-	if err := h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerCreatedOutput},
+	if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerCreatedOutput},
 		Slot:      craftingResult,
 	}, res, s, tx); err != nil {
 		return err
@@ -601,7 +601,7 @@ func (h *ItemStackRequestHandler) handleCreate(a *protocol.CreateStackRequestAct
 }
 
 // defaultCreation represents the CreateStackRequestAction used for single-result crafts.
-var defaultCreation = &protocol.CreateStackRequestAction{}
+var defaultCreation = &v2193.CreateStackRequestAction{}
 
 // createResults creates a new craft result and adds it to the list of pending craft results.
 func (h *ItemStackRequestHandler) createResults(s *Session, tx *world.Tx, result ...item.Stack) error {
@@ -614,7 +614,7 @@ func (h *ItemStackRequestHandler) createResults(s *Session, tx *world.Tx, result
 }
 
 // verifySlots verifies a list of slots passed.
-func (h *ItemStackRequestHandler) verifySlots(s *Session, tx *world.Tx, slots ...protocol.StackRequestSlotInfo) error {
+func (h *ItemStackRequestHandler) verifySlots(s *Session, tx *world.Tx, slots ...v2193.StackRequestSlotInfo) error {
 	for _, slot := range slots {
 		if err := h.verifySlot(slot, s, tx); err != nil {
 			return err
@@ -624,7 +624,7 @@ func (h *ItemStackRequestHandler) verifySlots(s *Session, tx *world.Tx, slots ..
 }
 
 // verifySlot checks if the slot passed by the client is the same as that expected by the server.
-func (h *ItemStackRequestHandler) verifySlot(slot protocol.StackRequestSlotInfo, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) verifySlot(slot v2193.StackRequestSlotInfo, s *Session, tx *world.Tx) error {
 	if err := h.tryAcknowledgeChanges(s, tx, slot); err != nil {
 		return err
 	}
@@ -656,7 +656,7 @@ func (h *ItemStackRequestHandler) verifySlot(slot protocol.StackRequestSlotInfo,
 // resolveID resolves the stack network ID in the slot passed. If it is negative, it points to an earlier
 // request, in which case it will look it up in the changes of an earlier response to a request to find the
 // actual stack network ID in the slot. If it is positive, the ID will be returned again.
-func (h *ItemStackRequestHandler) resolveID(inv *inventory.Inventory, slot protocol.StackRequestSlotInfo) (int32, error) {
+func (h *ItemStackRequestHandler) resolveID(inv *inventory.Inventory, slot v2193.StackRequestSlotInfo) (int32, error) {
 	if slot.StackNetworkID >= 0 {
 		return slot.StackNetworkID, nil
 	}
@@ -678,7 +678,7 @@ func (h *ItemStackRequestHandler) resolveID(inv *inventory.Inventory, slot proto
 // tryAcknowledgeChanges iterates through all cached response changes and checks if the stack request slot
 // info passed from the client has the right stack network ID in any of the stored slots. If this is the case,
 // that entry is removed, so that the maps are cleaned up eventually.
-func (h *ItemStackRequestHandler) tryAcknowledgeChanges(s *Session, tx *world.Tx, slot protocol.StackRequestSlotInfo) error {
+func (h *ItemStackRequestHandler) tryAcknowledgeChanges(s *Session, tx *world.Tx, slot v2193.StackRequestSlotInfo) error {
 	inv, ok := s.invByID(int32(slot.Container.ContainerID), tx)
 	if !ok {
 		return fmt.Errorf("could not find container with id %v", slot.Container.ContainerID)
@@ -703,7 +703,7 @@ func (h *ItemStackRequestHandler) tryAcknowledgeChanges(s *Session, tx *world.Tx
 }
 
 // itemInSlot looks for the item in the slot as indicated by the slot info passed.
-func (h *ItemStackRequestHandler) itemInSlot(slot protocol.StackRequestSlotInfo, s *Session, tx *world.Tx) (item.Stack, error) {
+func (h *ItemStackRequestHandler) itemInSlot(slot v2193.StackRequestSlotInfo, s *Session, tx *world.Tx) (item.Stack, error) {
 	inv, ok := s.invByID(int32(slot.Container.ContainerID), tx)
 	if !ok {
 		return item.Stack{}, fmt.Errorf("unable to find container with ID %v", slot.Container.ContainerID)
@@ -722,7 +722,7 @@ func (h *ItemStackRequestHandler) itemInSlot(slot protocol.StackRequestSlotInfo,
 }
 
 // setItemInSlot sets an item stack in the slot of a container present in the slot info.
-func (h *ItemStackRequestHandler) setItemInSlot(slot protocol.StackRequestSlotInfo, i item.Stack, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) setItemInSlot(slot v2193.StackRequestSlotInfo, i item.Stack, s *Session, tx *world.Tx) error {
 	inv, ok := s.invByID(int32(slot.Container.ContainerID), tx)
 	if !ok {
 		return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
@@ -751,7 +751,7 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot protocol.StackRequestSlotIn
 		return err
 	}
 
-	respSlot := protocol.StackResponseSlotInfo{
+	respSlot := v2193.StackResponseSlotInfo{
 		Slot:                 slot.Slot,
 		HotbarSlot:           slot.Slot,
 		Count:                byte(i.Count()),
@@ -816,21 +816,21 @@ func (h *ItemStackRequestHandler) notifyContainerRedstone(s *Session, tx *world.
 
 // resolve resolves the request with the ID passed.
 func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
-	info := make([]protocol.StackResponseContainerInfo, 0, len(h.changes))
+	info := make([]v2193.StackResponseContainerInfo, 0, len(h.changes))
 	for container, slotInfo := range h.changes {
-		slots := make([]protocol.StackResponseSlotInfo, 0, len(slotInfo))
+		slots := make([]v2193.StackResponseSlotInfo, 0, len(slotInfo))
 		for _, slot := range slotInfo {
 			slots = append(slots, slot.after)
 		}
-		info = append(info, protocol.StackResponseContainerInfo{
-			Container: protocol.FullContainerName{ContainerID: container},
+		info = append(info, v2193.StackResponseContainerInfo{
+			Container: v2193.FullContainerName{ContainerID: container},
 			SlotInfo:  slots,
 		})
 	}
 	s.writePacket(&v2193.ItemStackResponsePacket{Responses: []v2193.ItemStackResponse{{
 		Status:        protocol.ItemStackResponseStatusOK,
 		RequestID:     id,
-		ContainerInfo: to[[]v2193.StackResponseContainerInfo](info),
+		ContainerInfo: info,
 	}}})
 
 	h.changes = map[byte]map[byte]changeInfo{}

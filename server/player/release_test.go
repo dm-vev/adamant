@@ -21,7 +21,6 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestReleaseItemResyncsOnlyWhenNothingWasConsumed(t *testing.T) {
@@ -108,7 +107,7 @@ func (cancelReleaseHandler) HandleItemRelease(ctx *Context, _ item.Stack, _ time
 
 type releaseTestConn struct {
 	mu      sync.Mutex
-	packets []any
+	packets []proto.Packet
 }
 
 func (*releaseTestConn) Close() error { return nil }
@@ -123,16 +122,10 @@ func (*releaseTestConn) ChunkRadius() int             { return 1 }
 func (*releaseTestConn) Latency() time.Duration       { return 0 }
 func (*releaseTestConn) Flush() error                 { return nil }
 func (*releaseTestConn) RemoteAddr() net.Addr         { return &net.TCPAddr{} }
-func (*releaseTestConn) ReadPacket() (packet.Packet, error) {
+func (*releaseTestConn) ReadPacket() (proto.Packet, error) {
 	return nil, io.EOF
 }
-func (c *releaseTestConn) WritePacket(pk packet.Packet) error { return c.add(pk) }
-
-// WriteProto takes the packets of the generated codecs, which the session
-// writes as they are.
-func (c *releaseTestConn) WriteProto(pk proto.Packet) error { return c.add(pk) }
-
-func (c *releaseTestConn) add(pk any) error {
+func (c *releaseTestConn) WritePacket(pk proto.Packet) error {
 	c.mu.Lock()
 	c.packets = append(c.packets, pk)
 	c.mu.Unlock()

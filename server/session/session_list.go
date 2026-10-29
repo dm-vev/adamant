@@ -88,7 +88,7 @@ func (l *sessionList) Lookup(id uuid.UUID) (*Session, bool) {
 
 // sendAbilities updates player-list permissions even for clients in another
 // dimension. The payload was built on the target player's world owner.
-func (l *sessionList) sendAbilities(from *Session, data protocol.AbilityData) {
+func (l *sessionList) sendAbilities(from *Session, data v2193.AbilityData) {
 	l.opMu.Lock()
 	defer l.opMu.Unlock()
 	l.mu.Lock()
@@ -96,7 +96,7 @@ func (l *sessionList) sendAbilities(from *Session, data protocol.AbilityData) {
 	l.mu.Unlock()
 	for _, other := range others {
 		if other != from {
-			other.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: toAbilityData(data)})
+			other.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: data})
 		}
 	}
 }
@@ -111,11 +111,11 @@ func (l *sessionList) sendSessionTo(s, to *Session) {
 			Username:       s.conn.IdentityData().DisplayName,
 			XUID:           s.conn.IdentityData().XUID,
 			BuildPlatform:  int32(protocol.DeviceUnknown),
-			Skin:           toSkin(skinToProtocol(s.joinSkin)),
+			Skin:           skinToProtocol(s.joinSkin),
 		}},
 	})
 	if data := s.abilities.Load(); data != nil && s != to {
-		to.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: toAbilityData(*data)})
+		to.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: *data})
 	}
 }
 
@@ -151,10 +151,10 @@ func (l *sessionList) unsendSessionFrom(s, from *Session) {
 }
 
 // skinToProtocol converts a skin to its protocol representation.
-func skinToProtocol(s skin.Skin) protocol.Skin {
-	var animations []protocol.SkinAnimation
+func skinToProtocol(s skin.Skin) v2193.Skin {
+	var animations []v2193.SkinAnimation
 	for _, animation := range s.Animations {
-		protocolAnim := protocol.SkinAnimation{
+		protocolAnim := v2193.SkinAnimation{
 			ImageWidth:  uint32(animation.Bounds().Max.X),
 			ImageHeight: uint32(animation.Bounds().Max.Y),
 			ImageData:   animation.Pix,
@@ -180,7 +180,7 @@ func skinToProtocol(s skin.Skin) protocol.Skin {
 	if len(model) == 0 {
 		model = []byte("{}")
 	}
-	return protocol.Skin{
+	return v2193.Skin{
 		PlayFabID:                 s.PlayFabID,
 		SkinID:                    uuid.New().String(),
 		SkinResourcePatch:         s.ModelConfig.Encode(),

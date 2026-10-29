@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -20,7 +21,7 @@ const (
 
 // handleCraftRecipeOptional handles the CraftRecipeOptional request action, sent when taking a result from an anvil
 // menu. It also contains information such as the new name of the item and the multi-recipe network ID.
-func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *protocol.CraftRecipeOptionalStackRequestAction, s *Session, filterStrings []string, co Controllable, tx *world.Tx) (err error) {
+func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *v2193.CraftRecipeOptionalStackRequestAction, s *Session, filterStrings []string, co Controllable, tx *world.Tx) (err error) {
 	// First check if there actually is an anvil opened.
 	if !s.containerOpened.Load() {
 		return fmt.Errorf("no anvil container opened")
@@ -42,8 +43,8 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *protocol.CraftRec
 		renameIndex = int(index)
 	}
 
-	input, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerAnvilInput},
+	input, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilInput},
 		Slot:      anvilInputSlot,
 	}, s, tx)
 	if err := ensureUnlockedForAnvil(input); err != nil {
@@ -52,8 +53,8 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *protocol.CraftRec
 	if input.Empty() {
 		return fmt.Errorf("no item in input input slot")
 	}
-	material, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
+	material, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
 		Slot:      anvilMaterialSlot,
 	}, s, tx)
 	if !material.Empty() {
@@ -165,18 +166,18 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *protocol.CraftRec
 		tx.PlaySound(pos.Vec3Centre(), sound.AnvilUse{})
 	}
 
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerAnvilInput},
+	h.setItemInSlot(v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilInput},
 		Slot:      anvilInputSlot,
 	}, item.Stack{}, s, tx)
 	if repairCount > 0 {
-		h.setItemInSlot(protocol.StackRequestSlotInfo{
-			Container: protocol.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
+		h.setItemInSlot(v2193.StackRequestSlotInfo{
+			Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
 			Slot:      anvilMaterialSlot,
 		}, material.Grow(-repairCount), s, tx)
 	} else {
-		h.setItemInSlot(protocol.StackRequestSlotInfo{
-			Container: protocol.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
+		h.setItemInSlot(v2193.StackRequestSlotInfo{
+			Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
 			Slot:      anvilMaterialSlot,
 		}, item.Stack{}, s, tx)
 	}

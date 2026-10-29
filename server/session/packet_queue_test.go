@@ -1,7 +1,6 @@
 package session
 
 import (
-	"bytes"
 	"io"
 	"log/slog"
 	"net"
@@ -10,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -24,9 +24,9 @@ func TestSessionPacketBurstPreservesOrder(t *testing.T) {
 	// Hold the writer while the world publishes more than the old 256-packet
 	// capacity plus its 64-overflow disconnect threshold, as in the client log.
 	const burst = 4096
-	want := make([]packet.Packet, 0, 2*burst)
+	want := make([]proto.Packet, 0, 2*burst)
 	for i := range burst {
-		pk := &packet.AddItemActor{EntityRuntimeID: uint64(i + 2)}
+		pk := &v2193.AddItemActorPacket{EntityRuntimeID: uint64(i + 2)}
 		want = append(want, pk)
 		s.writePacket(pk)
 	}
@@ -38,7 +38,7 @@ func TestSessionPacketBurstPreservesOrder(t *testing.T) {
 	// New movement must stay behind the already queued spawns as the writer
 	// drains the backlog. This also exercises compaction and FIFO handoff.
 	for i := range burst {
-		pk := &packet.MoveActorAbsolute{EntityRuntimeID: uint64(i + 2)}
+		pk := &v2193.MoveActorAbsolutePacket{EntityRuntimeID: uint64(i + 2)}
 		want = append(want, pk)
 		s.writePacket(pk)
 	}
@@ -48,7 +48,7 @@ func TestSessionPacketBurstPreservesOrder(t *testing.T) {
 		select {
 		case pk := <-c.written:
 			switch pk.(type) {
-			case *packet.AddItemActor, *packet.MoveActorAbsolute:
+			case *v2193.AddItemActorPacket, *v2193.MoveActorAbsolutePacket:
 				if pk != want[i] {
 					t.Fatalf("packet %d = %v, want %v", i, pk, want[i])
 				}
@@ -75,10 +75,10 @@ func TestSessionPacketBacklogBounded(t *testing.T) {
 	waitQueueSignal(t, c.started, "packet writer to start")
 
 	for range maxQueuedPackets + 1 {
-		s.writePacket(&packet.SetActorMotion{EntityRuntimeID: 2})
+		s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: 2})
 	}
 	waitQueueSignal(t, c.closed, "overloaded connection to close")
-	s.writePacket(&packet.Text{Message: "after close"})
+	s.writePacket(&v2193.TextPacket{Message: "after close"})
 	s.packetsMu.Lock()
 	defer s.packetsMu.Unlock()
 	if len(s.packets) != 0 || len(s.pendingPackets) != 0 {
@@ -111,7 +111,7 @@ func TestSessionPacketQueueConcurrentProducers(t *testing.T) {
 	for producer := range producers {
 		wg.Go(func() {
 			for i := range perProducer {
-				s.writePacket(&packet.Text{Message: strconv.Itoa(producer*perProducer + i)})
+				s.writePacket(&v2193.TextPacket{Message: strconv.Itoa(producer*perProducer + i)})
 			}
 		})
 	}
@@ -122,7 +122,7 @@ func TestSessionPacketQueueConcurrentProducers(t *testing.T) {
 	for received := 0; received < producers*perProducer; {
 		select {
 		case raw := <-c.written:
-			pk, ok := raw.(*packet.Text)
+			pk, ok := raw.(*v2193.TextPacket)
 			if !ok {
 				continue
 			}
@@ -151,7 +151,7 @@ func TestSessionPacketsHeldDuringBatch(t *testing.T) {
 	t.Cleanup(s.CloseConnection)
 	close(c.release)
 
-	text := func(i int) *packet.Text { return &packet.Text{Message: strconv.Itoa(i)} }
+	text := func(i int) *v2193.TextPacket { return &v2193.TextPacket{Message: strconv.Itoa(i)} }
 	next := 0
 	expect := func(upTo int) {
 		t.Helper()
@@ -160,7 +160,7 @@ func TestSessionPacketsHeldDuringBatch(t *testing.T) {
 		for next < upTo {
 			select {
 			case raw := <-c.written:
-				pk, ok := raw.(*packet.Text)
+				pk, ok := raw.(*v2193.TextPacket)
 				if !ok {
 					continue
 				}
@@ -213,7 +213,7 @@ func TestSessionHeldPacketsBounded(t *testing.T) {
 
 	s.BeginBatch()
 	for range maxQueuedPackets + 1 {
-		s.writePacket(&packet.SetActorMotion{EntityRuntimeID: 2})
+		s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: 2})
 	}
 	waitQueueSignal(t, c.closed, "overloaded connection to close")
 	s.EndBatch()
@@ -236,7 +236,7 @@ func waitQueueSignal(t *testing.T, signal <-chan struct{}, what string) {
 type queueTestConn struct {
 	benchmarkConn
 	started, release, closed chan struct{}
-	written                  chan packet.Packet
+	written                  chan proto.Packet
 	startOnce, closeOnce     sync.Once
 	writeErr                 error
 }
@@ -244,11 +244,11 @@ type queueTestConn struct {
 func newQueueTestConn() *queueTestConn {
 	return &queueTestConn{
 		started: make(chan struct{}), release: make(chan struct{}), closed: make(chan struct{}),
-		written: make(chan packet.Packet, maxQueuedPackets+16),
+		written: make(chan proto.Packet, maxQueuedPackets+16),
 	}
 }
 
-func (c *queueTestConn) WritePacket(pk packet.Packet) error {
+func (c *queueTestConn) WritePacket(pk proto.Packet) error {
 	c.startOnce.Do(func() { close(c.started) })
 	select {
 	case <-c.closed:
@@ -276,21 +276,21 @@ var _ Conn = (*queueTestConn)(nil)
 // marshalConn encodes each packet written to it, as a real connection does.
 type marshalConn struct{ *queueTestConn }
 
-func (c marshalConn) WritePacket(pk packet.Packet) error {
-	var buf bytes.Buffer
-	pk.Marshal(protocol.NewWriter(&buf, 0))
+func (c marshalConn) WritePacket(pk proto.Packet) error {
+	var w wire.Writer
+	pk.Encode(&w)
 	return c.queueTestConn.WritePacket(pk)
 }
 
-// TestSessionDropsPacketThatDoesNotEncode queues a Text without a message,
-// whose encoder panics, then a valid one: the first is dropped, the second
-// written, and the session goes on.
+// TestSessionDropsPacketThatDoesNotEncode queues a game rule of a value the
+// game has no type for, whose encoder panics, then a valid packet: the
+// first is dropped, the second written, and the session goes on.
 func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 	c := newQueueTestConn()
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(marshalConn{c})
 	t.Cleanup(s.CloseConnection)
-	s.writePacket(&packet.Text{TextType: packet.TextTypeRaw})
-	want := &packet.Text{TextType: packet.TextTypeRaw, Message: "after"}
+	s.writePacket(&v2193.GameRulesChangedPacket{GameRules: []v2193.GameRule{{Name: "rule", Value: struct{}{}}}})
+	want := &v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "after"}
 	s.writePacket(want)
 	close(c.release)
 	timer := time.NewTimer(5 * time.Second)
@@ -313,7 +313,7 @@ func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 // TestEmptyMessageShowsAnEmptyLine sends an empty chat message, which
 // Bedrock refuses as it is: a space goes instead, as Java shows a line.
 func TestEmptyMessageShowsAnEmptyLine(t *testing.T) {
-	s := &Session{packets: make(chan queuedPacket, 1), closeBackground: make(chan struct{})}
+	s := &Session{packets: make(chan proto.Packet, 1), closeBackground: make(chan struct{})}
 	s.SendMessage("")
 	if text, ok := (<-s.packets).(*v2193.TextPacket); !ok || text.Message != " " {
 		t.Fatalf("sent %+v, want a Text of one space", text)

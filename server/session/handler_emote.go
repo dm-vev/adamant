@@ -1,10 +1,12 @@
 package session
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/google/uuid"
 )
 
 // EmoteHandler handles the Emote packet.
@@ -13,8 +15,8 @@ type EmoteHandler struct {
 }
 
 // Handle ...
-func (h *EmoteHandler) Handle(p packet.Packet, _ *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.Emote)
+func (h *EmoteHandler) Handle(p proto.Packet, _ *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.EmotePacket)
 
 	if pk.EntityRuntimeID != selfEntityRuntimeID {
 		return errSelfRuntimeID

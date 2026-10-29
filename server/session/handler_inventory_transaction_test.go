@@ -27,7 +27,7 @@ func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			s := transactionTestSession(test.count)
 			c := transactionControllable{useItem: func() { test.useItem(s) }}
-			if err := new(InventoryTransactionHandler).handleUseItemTransaction(&protocol.UseItemTransactionData{ActionType: protocol.UseItemActionClickAir}, s, c); err != nil {
+			if err := new(InventoryTransactionHandler).handleUseItemTransaction(&v2193.UseItemTransactionData{ActionType: protocol.UseItemActionClickAir}, s, c); err != nil {
 				t.Fatal(err)
 			}
 			assertActionThenHeldSlot(t, s, test.wantCount)
@@ -48,7 +48,7 @@ func TestUseItemOnEntityTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 			s.writePacket(&v2193.TextPacket{Message: "cancelled use-on-entity"})
 			return false
 		}}
-		err := new(InventoryTransactionHandler).handleUseItemOnEntityTransaction(&protocol.UseItemOnEntityTransactionData{
+		err := new(InventoryTransactionHandler).handleUseItemOnEntityTransaction(&v2193.UseItemOnEntityTransactionData{
 			TargetEntityRuntimeID: 2,
 			ActionType:            protocol.UseItemOnEntityActionInteract,
 		}, s, tx, c)

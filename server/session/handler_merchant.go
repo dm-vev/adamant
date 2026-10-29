@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -59,7 +60,7 @@ func (s *Session) openedMerchant(tx *world.Tx) (world.Entity, entity.Merchant, e
 // put in the two input slots and the taking of the created output. The
 // inputs must satisfy the offer as MerchantOffer.satisfiedBy requires, the
 // first input slot paying the priced first cost and the second the second.
-func (h *ItemStackRequestHandler) handleMerchantCraft(a *protocol.CraftRecipeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleMerchantCraft(a *v2193.CraftRecipeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	target, merchant, err := s.openedMerchant(tx)
 	if err != nil {
 		return err
@@ -112,8 +113,8 @@ func (h *ItemStackRequestHandler) handleMerchantCraft(a *protocol.CraftRecipeSta
 		}
 	}
 	for slot, stack := range map[byte]item.Stack{merchantInputSlotA: inputA, merchantInputSlotB: inputB} {
-		if err := h.setItemInSlot(protocol.StackRequestSlotInfo{
-			Container: protocol.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne},
+		if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
+			Container: v2193.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne},
 			Slot:      slot,
 		}, stack, s, tx); err != nil {
 			return err

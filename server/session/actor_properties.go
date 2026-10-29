@@ -4,7 +4,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // actorProperty is an actor property as BDS declares it in SyncActorProperty.
@@ -114,25 +113,25 @@ func (s *Session) sendActorProperties(w *world.World) {
 
 // entityProperties returns the values of all properties of the type of an
 // entity.
-func entityProperties(e world.Entity) protocol.EntityProperties {
+func entityProperties(e world.Entity) v2193.EntityProperties {
 	props, ok := actorPropertyTypes[networkID(e.H().Type())]
 	if !ok {
-		return protocol.EntityProperties{}
+		return v2193.EntityProperties{}
 	}
 	values := make(map[string]any)
 	actorPropertyValues(e, values)
 	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
 		actorPropertyValues(beh.Behaviour(), values)
 	}
-	integers := make([]protocol.IntegerEntityProperty, len(props))
+	integers := make([]v2193.IntegerEntityProperty, len(props))
 	for i, p := range props {
 		v := p.def
 		if reported, ok := values[p.name]; ok {
 			v = p.value(reported)
 		}
-		integers[i] = protocol.IntegerEntityProperty{Index: uint32(i), Value: v}
+		integers[i] = v2193.IntegerEntityProperty{Index: uint32(i), Value: v}
 	}
-	return protocol.EntityProperties{IntegerProperties: integers}
+	return v2193.EntityProperties{IntegerProperties: integers}
 }
 
 type creakingState interface {

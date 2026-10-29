@@ -8,6 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -19,7 +20,7 @@ func TestTeleportAcknowledgementClearedForUnchangedMovement(t *testing.T) {
 	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
 	s.teleportPos.Store(&expected)
 	c := newUnchangedControllable()
-	pk := &packet.PlayerAuthInput{Position: vec64To32(entityNetworkPosition(c, expected))}
+	pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, expected))}
 
 	if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
 		t.Fatalf("handle movement: %v", err)
@@ -61,7 +62,7 @@ func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
 
 			s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
 			s.teleportPos.Store(&pos)
-			pk := &packet.PlayerAuthInput{Position: [3]float32{float32(math.NaN()), float32(math.Inf(1)), float32(math.Inf(-1))}}
+			pk := &v2193.PlayerAuthInputPacket{Position: [3]float32{float32(math.NaN()), float32(math.Inf(1)), float32(math.Inf(-1))}}
 			if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
 				t.Fatalf("handle movement: %v", err)
 			}
@@ -120,21 +121,17 @@ func TestFlightInputFlags(t *testing.T) {
 	}
 }
 
-func inputFlags(flag int) protocol.InputFlags {
-	flags := protocol.NewInputFlags(packet.InputFlagCount)
-	flags.Set(flag)
-	return flags
-}
+func inputFlags(flag int) v2193.InputFlags { return v2193.InputFlags{int32(flag)} }
 
 func newFlightTestSession() *Session {
 	return &Session{
 		conf:            Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
-		packets:         make(chan queuedPacket, 4),
+		packets:         make(chan proto.Packet, 4),
 		closeBackground: make(chan struct{}),
 	}
 }
 
-func assertFlightAbilities(t *testing.T, pk queuedPacket, mode world.GameMode, flying bool) {
+func assertFlightAbilities(t *testing.T, pk proto.Packet, mode world.GameMode, flying bool) {
 	t.Helper()
 	abilities, ok := pk.(*v2193.UpdateAbilitiesPacket)
 	if !ok {

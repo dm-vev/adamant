@@ -6,13 +6,16 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestBlockActorDataNBTBytes(t *testing.T) {
-	pk := &packet.BlockActorData{
+	pk := &v2193.BlockActorDataPacket{
 		Position: protocol.BlockPos{12, 64, -7},
 		NBTData:  block.EnchantingTable{}.EncodeNBT(),
 	}
@@ -45,7 +48,7 @@ func TestEndCrystalMetadataPacket(t *testing.T) {
 			t.Fatalf("legacy target metadata key %d is set", key)
 		}
 	}
-	if got := marshalPacketBytes(t, &packet.SetActorData{EntityRuntimeID: 1, EntityMetadata: m}); len(got) == 0 {
+	if got := marshalPacketBytes(t, &v2193.SetActorDataPacket{EntityRuntimeID: 1, EntityMetadata: v2193.Metadata(m)}); len(got) == 0 {
 		t.Fatal("empty SetActorData packet")
 	}
 
@@ -67,12 +70,16 @@ func (e endCrystalMetadataStub) BeamTarget() (mgl64.Vec3, bool) {
 	return e.target, e.hasTarget
 }
 
-func marshalPacketBytes(t *testing.T, pk packet.Packet) []byte {
+// encodePacket encodes the fields of a packet of the generated codecs.
+func encodePacket(pk interface{ Encode(*wire.Writer) }) []byte {
+	var w wire.Writer
+	pk.Encode(&w)
+	return w.B
+}
+
+func marshalPacketBytes(t *testing.T, pk proto.Packet) []byte {
 	t.Helper()
-	var buf bytes.Buffer
-	if err := (&packet.Header{PacketID: pk.ID()}).Write(&buf); err != nil {
-		t.Fatal(err)
-	}
-	pk.Marshal(protocol.NewWriter(&buf, 0))
-	return buf.Bytes()
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+	pk.Encode(&w)
+	return w.B
 }

@@ -7,6 +7,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -16,8 +18,8 @@ import (
 type PlayerAuthInputHandler struct{}
 
 // Handle ...
-func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.PlayerAuthInput)
+func (h PlayerAuthInputHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.PlayerAuthInputPacket)
 	if err := h.handleMovement(pk, s, tx, c); err != nil {
 		return err
 	}
@@ -25,7 +27,7 @@ func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 }
 
 // handleMovement handles the movement part of the packet.PlayerAuthInput.
-func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Session, tx *world.Tx, c Controllable) error {
+func (h PlayerAuthInputHandler) handleMovement(pk *v2193.PlayerAuthInputPacket, s *Session, tx *world.Tx, c Controllable) error {
 	yaw, pitch := c.Rotation().Elem()
 	pos := c.Position()
 	networkPos := entityNetworkPosition(c, pos)
@@ -80,7 +82,7 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 						input.SetVehicleInput(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
 					}
 					if jump, ok := ridden.(entity.VehicleJumpInput); ok {
-						jump.SetVehicleJumping(pk.InputData.Load(packet.InputFlagJumping) || pk.InputData.Load(packet.InputFlagJumpDown))
+						jump.SetVehicleJumping(pk.InputData.Has(packet.InputFlagJumping) || pk.InputData.Has(packet.InputFlagJumpDown))
 					}
 				}
 			}
@@ -106,8 +108,8 @@ func teleportAcknowledged(pos, expected mgl64.Vec3) bool {
 }
 
 // handleActions handles the actions with the world that are present in the PlayerAuthInput packet.
-func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Session, tx *world.Tx, c Controllable) error {
-	if pk.InputData.Load(packet.InputFlagPerformItemInteraction) {
+func (h PlayerAuthInputHandler) handleActions(pk *v2193.PlayerAuthInputPacket, s *Session, tx *world.Tx, c Controllable) error {
+	if pk.InputData.Has(packet.InputFlagPerformItemInteraction) {
 		data, ok := pk.ItemInteractionData.Value()
 		if !ok {
 			return fmt.Errorf("item interaction flag set without item interaction data")
@@ -116,7 +118,7 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 			return err
 		}
 	}
-	if pk.InputData.Load(packet.InputFlagPerformBlockActions) {
+	if pk.InputData.Has(packet.InputFlagPerformBlockActions) {
 		actions, ok := pk.BlockActions.Value()
 		if !ok {
 			return fmt.Errorf("block actions flag set without block actions")
@@ -127,7 +129,7 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 	}
 	h.handleInputFlags(pk.InputData, s, tx, c)
 
-	if pk.InputData.Load(packet.InputFlagPerformItemStackRequest) {
+	if pk.InputData.Has(packet.InputFlagPerformItemStackRequest) {
 		request, ok := pk.ItemStackRequest.Value()
 		if !ok {
 			return fmt.Errorf("item stack request flag set without item stack request")
@@ -147,50 +149,50 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 }
 
 // handleInputFlags handles the toggleable input flags set in a PlayerAuthInput packet.
-func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.InputFlags, s *Session, tx *world.Tx, c Controllable) {
+func (h PlayerAuthInputHandler) handleInputFlags(flags v2193.InputFlags, s *Session, tx *world.Tx, c Controllable) {
 	dashedByJump := h.tryDash(flags, tx, c)
 	jumpedByVehicle := !dashedByJump && h.tryRideJump(flags, tx, c)
 	dismountedByJump := !dashedByJump && !jumpedByVehicle && h.tryDismount(flags, tx, c)
-	if flags.Load(packet.InputFlagStartSprinting) {
+	if flags.Has(packet.InputFlagStartSprinting) {
 		c.StartSprinting()
 	}
-	if flags.Load(packet.InputFlagStopSprinting) {
+	if flags.Has(packet.InputFlagStopSprinting) {
 		c.StopSprinting()
 	}
-	if sneaking := flags.Load(packet.InputFlagSneaking); sneaking != c.Sneaking() {
+	if sneaking := flags.Has(packet.InputFlagSneaking); sneaking != c.Sneaking() {
 		if sneaking {
 			c.StartSneaking()
 		} else {
 			c.StopSneaking()
 		}
 	}
-	if flags.Load(packet.InputFlagStartSwimming) {
+	if flags.Has(packet.InputFlagStartSwimming) {
 		c.StartSwimming()
 	}
-	if flags.Load(packet.InputFlagStopSwimming) {
+	if flags.Has(packet.InputFlagStopSwimming) {
 		c.StopSwimming()
 	}
-	if flags.Load(packet.InputFlagStartGliding) {
+	if flags.Has(packet.InputFlagStartGliding) {
 		c.StartGliding()
 	}
-	if flags.Load(packet.InputFlagStopGliding) {
+	if flags.Has(packet.InputFlagStopGliding) {
 		c.StopGliding()
 	}
-	if flags.Load(packet.InputFlagStartJumping) && !dismountedByJump && !dashedByJump {
+	if flags.Has(packet.InputFlagStartJumping) && !dismountedByJump && !dashedByJump {
 		c.Jump()
 	}
-	if flags.Load(packet.InputFlagStartCrawling) {
+	if flags.Has(packet.InputFlagStartCrawling) {
 		c.StartCrawling()
 	}
-	if flags.Load(packet.InputFlagStopCrawling) {
+	if flags.Has(packet.InputFlagStopCrawling) {
 		c.StopCrawling()
 	}
-	if flags.Load(packet.InputFlagMissedSwing) {
+	if flags.Has(packet.InputFlagMissedSwing) {
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)
 		c.PunchAir()
 	}
-	if flags.Load(packet.InputFlagStartFlying) {
+	if flags.Has(packet.InputFlagStartFlying) {
 		if !c.GameMode().AllowsFlying() {
 			s.conf.Log.Debug("process packet: PlayerAuthInput: flying flag enabled while unable to fly")
 			s.SendAbilities(c)
@@ -198,7 +200,7 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.InputFlags, s *S
 			c.StartFlying()
 		}
 	}
-	if flags.Load(packet.InputFlagStopFlying) {
+	if flags.Has(packet.InputFlagStopFlying) {
 		if !c.GameMode().HasCollision() {
 			// Modes without collision fly permanently, so correct the client that tried to stop.
 			s.SendAbilities(c)
@@ -208,8 +210,8 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.InputFlags, s *S
 	}
 }
 
-func (h PlayerAuthInputHandler) tryRideJump(flags protocol.InputFlags, tx *world.Tx, c Controllable) bool {
-	if !flags.Load(packet.InputFlagStartJumping) {
+func (h PlayerAuthInputHandler) tryRideJump(flags v2193.InputFlags, tx *world.Tx, c Controllable) bool {
+	if !flags.Has(packet.InputFlagStartJumping) {
 		return false
 	}
 	rider, ok := c.(entity.Rider)
@@ -224,8 +226,8 @@ func (h PlayerAuthInputHandler) tryRideJump(flags protocol.InputFlags, tx *world
 	return ok && jumper.RideJump()
 }
 
-func (h PlayerAuthInputHandler) tryDash(flags protocol.InputFlags, tx *world.Tx, c Controllable) bool {
-	if !flags.Load(packet.InputFlagStartJumping) {
+func (h PlayerAuthInputHandler) tryDash(flags v2193.InputFlags, tx *world.Tx, c Controllable) bool {
+	if !flags.Has(packet.InputFlagStartJumping) {
 		return false
 	}
 	rider, ok := c.(entity.Rider)
@@ -246,8 +248,8 @@ func (h PlayerAuthInputHandler) tryDash(flags protocol.InputFlags, tx *world.Tx,
 	return ok && dashable.Dash(tx, c)
 }
 
-func (h PlayerAuthInputHandler) tryDismount(flags protocol.InputFlags, tx *world.Tx, c Controllable) bool {
-	if !flags.Load(packet.InputFlagStartSneaking) && !flags.Load(packet.InputFlagStartJumping) {
+func (h PlayerAuthInputHandler) tryDismount(flags v2193.InputFlags, tx *world.Tx, c Controllable) bool {
+	if !flags.Has(packet.InputFlagStartSneaking) && !flags.Has(packet.InputFlagStartJumping) {
 		return false
 	}
 	rider, ok := c.(entity.Rider)
@@ -267,11 +269,11 @@ func (h PlayerAuthInputHandler) tryDismount(flags protocol.InputFlags, tx *world
 			dismounted = true
 		}
 	}
-	return dismounted && flags.Load(packet.InputFlagStartJumping)
+	return dismounted && flags.Has(packet.InputFlagStartJumping)
 }
 
-// handleUseItemData handles the protocol.UseItemTransactionData found in a packet.PlayerAuthInput.
-func (h PlayerAuthInputHandler) handleUseItemData(data protocol.UseItemTransactionData, s *Session, c Controllable) error {
+// handleUseItemData handles the v2193.PlayerInventoryAction found in a PlayerAuthInput packet.
+func (h PlayerAuthInputHandler) handleUseItemData(data v2193.PlayerInventoryAction, s *Session, c Controllable) error {
 	s.swingingArm.Store(true)
 	defer s.swingingArm.Store(false)
 
@@ -292,8 +294,8 @@ func (h PlayerAuthInputHandler) handleUseItemData(data protocol.UseItemTransacti
 	return nil
 }
 
-// handleBlockActions handles a slice of protocol.PlayerBlockAction present in a PlayerAuthInput packet.
-func (h PlayerAuthInputHandler) handleBlockActions(a []protocol.PlayerBlockAction, s *Session, tx *world.Tx, c Controllable) error {
+// handleBlockActions handles a slice of v2193.PlayerBlockAction present in a PlayerAuthInput packet.
+func (h PlayerAuthInputHandler) handleBlockActions(a []v2193.PlayerBlockAction, s *Session, tx *world.Tx, c Controllable) error {
 	for _, action := range a {
 		if err := handlePlayerAction(action.Action, action.Face, action.BlockPos, selfEntityRuntimeID, s, c); err != nil {
 			return err

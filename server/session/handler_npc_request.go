@@ -6,6 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player/dialogue"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -20,8 +22,8 @@ type NPCRequestHandler struct {
 }
 
 // Handle ...
-func (h *NPCRequestHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.NPCRequest)
+func (h *NPCRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.NPCRequestPacket)
 	h.mu.Lock()
 	dialoguePtr := h.dialogue
 	entityRuntimeID := h.entityRuntimeID

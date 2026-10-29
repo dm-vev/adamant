@@ -127,17 +127,11 @@ func joinPermissionPlayer(t *testing.T, srv *Server, name string) (incoming, *pe
 type permissionTestConn struct {
 	*serverPanicConn
 	mu      sync.Mutex
-	packets []any
+	packets []proto.Packet
 	updates chan struct{}
 }
 
-func (c *permissionTestConn) WritePacket(pk packet.Packet) error { return c.add(pk) }
-
-// WriteProto takes the packets of the generated codecs, which the session
-// writes as they are.
-func (c *permissionTestConn) WriteProto(pk proto.Packet) error { return c.add(pk) }
-
-func (c *permissionTestConn) add(pk any) error {
+func (c *permissionTestConn) WritePacket(pk proto.Packet) error {
 	c.mu.Lock()
 	c.packets = append(c.packets, pk)
 	c.mu.Unlock()
@@ -152,13 +146,13 @@ func (c *permissionTestConn) mark() int {
 	defer c.mu.Unlock()
 	return len(c.packets)
 }
-func (c *permissionTestConn) wait(t *testing.T, after int, matches func(any) bool) any {
+func (c *permissionTestConn) wait(t *testing.T, after int, matches func(proto.Packet) bool) proto.Packet {
 	t.Helper()
 	timer := time.NewTimer(2 * time.Second)
 	defer timer.Stop()
 	for {
 		c.mu.Lock()
-		var found any
+		var found proto.Packet
 		for _, pk := range c.packets[after:] {
 			if matches(pk) {
 				found = pk
@@ -178,7 +172,7 @@ func (c *permissionTestConn) wait(t *testing.T, after int, matches func(any) boo
 }
 func (c *permissionTestConn) waitPermission(t *testing.T, after int, uniqueID int64, operator bool) v2193.AbilityData {
 	t.Helper()
-	pk := c.wait(t, after, func(pk any) bool {
+	pk := c.wait(t, after, func(pk proto.Packet) bool {
 		update, ok := pk.(*v2193.UpdateAbilitiesPacket)
 		if !ok || update.AbilityData.EntityUniqueID != uniqueID {
 			return false
@@ -202,7 +196,7 @@ func (c *permissionTestConn) waitPermission(t *testing.T, after int, uniqueID in
 }
 func (c *permissionTestConn) waitCommand(t *testing.T, after int, name string, allowed bool) {
 	t.Helper()
-	c.wait(t, after, func(pk any) bool {
+	c.wait(t, after, func(pk proto.Packet) bool {
 		commands, ok := pk.(*v2193.AvailableCommandsPacket)
 		if !ok {
 			return false

@@ -613,7 +613,7 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 	for i, e := range srv.customItems {
 		items[i] = v2193.ItemEntry(e)
 	}
-	_ = session.WriteTo(conn, &v2193.ItemRegistryPacket{Items: items})
+	_ = conn.WritePacket(&v2193.ItemRegistryPacket{Items: items})
 	srv.incoming <- srv.createPlayer(id, conn, d, w)
 }
 

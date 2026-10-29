@@ -2,8 +2,8 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // ClientCacheBlobStatusHandler handles the ClientCacheBlobStatus packet.
@@ -11,8 +11,8 @@ type ClientCacheBlobStatusHandler struct {
 }
 
 // Handle ...
-func (c *ClientCacheBlobStatusHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, _ Controllable) error {
-	pk := p.(*packet.ClientCacheBlobStatus)
+func (c *ClientCacheBlobStatusHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Controllable) error {
+	pk := p.(*v2193.ClientCacheBlobStatusPacket)
 
 	resp := &v2193.ClientCacheMissResponsePacket{Blobs: make([]v2193.CacheBlob, 0, len(pk.MissHashes))}
 

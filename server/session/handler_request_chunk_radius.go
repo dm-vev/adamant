@@ -2,16 +2,16 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // RequestChunkRadiusHandler handles the RequestChunkRadius packet.
 type RequestChunkRadiusHandler struct{}
 
 // Handle ...
-func (*RequestChunkRadiusHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, _ Controllable) error {
-	pk := p.(*packet.RequestChunkRadius)
+func (*RequestChunkRadiusHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, _ Controllable) error {
+	pk := p.(*v2193.RequestChunkRadiusPacket)
 
 	chunkRadius := pk.ChunkRadius
 	if chunkRadius < 0 {

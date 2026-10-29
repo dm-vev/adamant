@@ -6,7 +6,12 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/sandertv/gophertunnel/minecraft"
 )
 
@@ -60,10 +65,53 @@ func (l listener) Accept() (session.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return conn.(session.Conn), err
+	return rakConn{conn.(*minecraft.Conn)}, err
 }
 
 // Disconnect disconnects a connection from the Listener with a reason.
 func (l listener) Disconnect(conn session.Conn, reason string) error {
-	return l.Listener.Disconnect(conn.(*minecraft.Conn), reason)
+	return l.Listener.Disconnect(conn.(rakConn).Conn, reason)
+}
+
+// rakConn carries a session over a gophertunnel connection, which runs on
+// RakNet: gophertunnel logs the client in and batches packets, which go as
+// bytes coded with the codecs of protocol 2193, as over NetherNet.
+type rakConn struct {
+	*minecraft.Conn
+}
+
+// ReadPacket decodes the next packet of the client.
+func (c rakConn) ReadPacket() (proto.Packet, error) {
+	raw, err := c.Conn.ReadBytes()
+	if err != nil {
+		return nil, err
+	}
+	// A packet decoded shares the bytes it was decoded from, which
+	// gophertunnel may read the next batch into.
+	pk, err := netconn.DecodePacket(append([]byte(nil), raw...))
+	if err != nil {
+		// gophertunnel drops a client that sends a packet it cannot decode.
+		_ = c.Conn.Close()
+		return nil, err
+	}
+	return pk, nil
+}
+
+// WritePacket adds a packet to the batch gophertunnel sends next.
+func (c rakConn) WritePacket(pk proto.Packet) error {
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+	pk.Encode(&w)
+	_, err := c.Conn.Write(w.B)
+	return err
+}
+
+// StartGameContext starts the game of the client with gophertunnel, which
+// takes the shield ID of the items there; the codecs take it too.
+func (c rakConn) StartGameContext(ctx context.Context, data minecraft.GameData) error {
+	for _, item := range data.Items {
+		if item.Name == "minecraft:shield" {
+			v2193.SetShieldID(int32(item.RuntimeID))
+		}
+	}
+	return c.Conn.StartGameContext(ctx, data)
 }

@@ -2,8 +2,11 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -11,8 +14,8 @@ import (
 type BookEditHandler struct{}
 
 // Handle ...
-func (b BookEditHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, _ Controllable) error {
-	pk := p.(*packet.BookEdit)
+func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Controllable) error {
+	pk := p.(*v2193.BookEditPacket)
 
 	it, err := s.inv.Item(int(pk.InventorySlot))
 	if err != nil {

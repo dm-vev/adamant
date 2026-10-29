@@ -2,7 +2,10 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -10,8 +13,8 @@ import (
 type RespawnHandler struct{}
 
 // Handle ...
-func (*RespawnHandler) Handle(p packet.Packet, _ *Session, _ *world.Tx, c Controllable) error {
-	pk := p.(*packet.Respawn)
+func (*RespawnHandler) Handle(p proto.Packet, _ *Session, _ *world.Tx, c Controllable) error {
+	pk := p.(*v2193.RespawnPacket)
 	if pk.EntityRuntimeID != selfEntityRuntimeID {
 		return errSelfRuntimeID
 	}

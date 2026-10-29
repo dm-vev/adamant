@@ -13,10 +13,10 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func init() {
@@ -62,7 +62,7 @@ func BenchmarkSubChunkEntry(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				transaction := make(map[uint64]struct{}, 1)
-				_ = session.subChunkEntry(protocol.SubChunkOffset{}, ind, col, transaction)
+				_ = session.subChunkEntry(v2193.SubChunkOffset{}, ind, col, transaction)
 			}
 		})
 	}
@@ -223,8 +223,8 @@ func (benchmarkConn) ChunkRadius() int                                          
 func (benchmarkConn) Latency() time.Duration                                     { return 0 }
 func (benchmarkConn) Flush() error                                               { return nil }
 func (benchmarkConn) RemoteAddr() net.Addr                                       { return benchmarkAddr("") }
-func (benchmarkConn) ReadPacket() (packet.Packet, error)                         { return nil, io.EOF }
-func (benchmarkConn) WritePacket(packet.Packet) error                            { return nil }
+func (benchmarkConn) ReadPacket() (proto.Packet, error)                          { return nil, io.EOF }
+func (benchmarkConn) WritePacket(proto.Packet) error                             { return nil }
 func (benchmarkConn) StartGameContext(context.Context, minecraft.GameData) error { return nil }
 
 type benchmarkAddr string

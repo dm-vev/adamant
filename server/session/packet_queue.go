@@ -4,61 +4,20 @@ import (
 	"fmt"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/wire"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
-
-// queuedPacket is a packet the session sends: a packet.Packet of
-// gophertunnel, or a proto.Packet of the generated codecs of protocol 2193,
-// which a connection that implements protoWriter encodes itself.
-type queuedPacket interface {
-	ID() uint32
-}
-
-// protoWriter is a connection that writes packets of the generated codecs.
-type protoWriter interface {
-	WriteProto(pk proto.Packet) error
-}
-
-// protoPacket carries a packet of the generated codecs over a connection
-// that takes only gophertunnel's: its encoding goes as raw bytes.
-type protoPacket struct{ proto.Packet }
-
-func (p protoPacket) Marshal(io protocol.IO) {
-	var w wire.Writer
-	p.Encode(&w)
-	io.Bytes(&w.B)
-}
-
-// WriteTo writes a packet, gophertunnel's or one of the generated codecs of
-// protocol 2193, to a connection: the latter through WriteProto if the
-// connection has it, else through Marshal.
-func WriteTo(conn Conn, pk interface{ ID() uint32 }) error {
-	switch pk := pk.(type) {
-	case packet.Packet:
-		return conn.WritePacket(pk)
-	case proto.Packet:
-		if w, ok := conn.(protoWriter); ok {
-			return w.WriteProto(pk)
-		}
-		return conn.WritePacket(protoPacket{pk})
-	}
-	return nil
-}
 
 // writeQueued writes a packet taken from the queue to the connection. A
 // packet that does not encode, as a Text without a message, is a bug of
 // the server: it is dropped and logged rather than taking the server down
 // from this goroutine.
-func (s *Session) writeQueued(pk queuedPacket) (err error) {
+func (s *Session) writeQueued(pk proto.Packet) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			s.conf.Log.Error("drop session packet that does not encode", "packet", fmt.Sprintf("%T", pk), "panic", r)
 			err = nil
 		}
 	}()
-	return WriteTo(s.conn, pk)
+	return s.conn.WritePacket(pk)
 }
 
 // maxQueuedPackets bounds retained packets for a connection whose writer cannot
@@ -69,7 +28,7 @@ const maxQueuedPackets = 16 * 1024
 // writePacket queues a packet without waiting for encoding or network I/O on the
 // world owner. All accepted packets retain FIFO order, including during bursts.
 // Every packet in pendingPackets was queued after every packet in the channel.
-func (s *Session) writePacket(pk queuedPacket) {
+func (s *Session) writePacket(pk proto.Packet) {
 	if s == Nop {
 		return
 	}
@@ -150,7 +109,7 @@ func (s *Session) EndBatch() {
 }
 
 func (s *Session) sendPackets() {
-	var batch []queuedPacket
+	var batch []proto.Packet
 	for {
 		select {
 		case <-s.closeBackground:

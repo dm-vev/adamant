@@ -51,7 +51,7 @@ func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
 		t.Fatalf("spawn player: %v", err)
 	}
 
-	conn.packets <- &packet.Text{
+	conn.packets <- &v2193.TextPacket{
 		TextType:   packet.TextTypeChat,
 		SourceName: conn.identity.DisplayName,
 		Message:    "panic",
@@ -170,18 +170,18 @@ func (quitPanicHandler) HandleQuit(*Player) { panic("quit handler panic") }
 
 type packetPanicConn struct {
 	identity   login.IdentityData
-	packets    chan packet.Packet
+	packets    chan proto.Packet
 	readErrors chan error
 	closed     chan struct{}
 	once       sync.Once
 	writesMu   sync.Mutex
-	writes     []any
+	writes     []proto.Packet
 }
 
 func newPacketPanicConn() *packetPanicConn {
 	return &packetPanicConn{
 		identity:   login.IdentityData{Identity: uuid.NewString(), DisplayName: "panic-test", XUID: "panic-xuid"},
-		packets:    make(chan packet.Packet, 1),
+		packets:    make(chan proto.Packet, 1),
 		readErrors: make(chan error, 1),
 		closed:     make(chan struct{}),
 	}
@@ -200,7 +200,7 @@ func (*packetPanicConn) Latency() time.Duration             { return 0 }
 func (*packetPanicConn) Flush() error                       { return nil }
 func (*packetPanicConn) RemoteAddr() net.Addr               { return &net.TCPAddr{} }
 
-func (c *packetPanicConn) ReadPacket() (packet.Packet, error) {
+func (c *packetPanicConn) ReadPacket() (proto.Packet, error) {
 	select {
 	case pk := <-c.packets:
 		return pk, nil
@@ -238,13 +238,7 @@ func waitForSessionViewer(t *testing.T, w *world.World, pos mgl64.Vec3, sess *se
 	}
 }
 
-func (c *packetPanicConn) WritePacket(pk packet.Packet) error { return c.add(pk) }
-
-// WriteProto takes the packets of the generated codecs, which the session
-// writes as they are.
-func (c *packetPanicConn) WriteProto(pk proto.Packet) error { return c.add(pk) }
-
-func (c *packetPanicConn) add(pk any) error {
+func (c *packetPanicConn) WritePacket(pk proto.Packet) error {
 	c.writesMu.Lock()
 	c.writes = append(c.writes, pk)
 	c.writesMu.Unlock()

@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -18,7 +19,7 @@ func isPlayerInventoryContainer(id int32) bool {
 	}
 }
 
-func (s *Session) sameInventorySlot(a, b protocol.StackRequestSlotInfo, tx *world.Tx) bool {
+func (s *Session) sameInventorySlot(a, b v2193.StackRequestSlotInfo, tx *world.Tx) bool {
 	invA, okA := s.invByID(int32(a.Container.ContainerID), tx)
 	invB, okB := s.invByID(int32(b.Container.ContainerID), tx)
 	if !okA || !okB || invA != invB {
@@ -30,7 +31,7 @@ func (s *Session) sameInventorySlot(a, b protocol.StackRequestSlotInfo, tx *worl
 	return a.Slot == b.Slot
 }
 
-func ensureUnlockedForInventoryMove(stack item.Stack, from, to protocol.StackRequestSlotInfo, s *Session, tx *world.Tx) error {
+func ensureUnlockedForInventoryMove(stack item.Stack, from, to v2193.StackRequestSlotInfo, s *Session, tx *world.Tx) error {
 	if stack.Empty() || !isPlayerInventoryContainer(int32(from.Container.ContainerID)) {
 		return nil
 	}
@@ -47,7 +48,7 @@ func ensureUnlockedForInventoryMove(stack item.Stack, from, to protocol.StackReq
 	return nil
 }
 
-func ensureUnlockedForInventoryRemoval(stack item.Stack, from protocol.StackRequestSlotInfo) error {
+func ensureUnlockedForInventoryRemoval(stack item.Stack, from v2193.StackRequestSlotInfo) error {
 	if stack.Empty() || !isPlayerInventoryContainer(int32(from.Container.ContainerID)) || !stack.Locked() {
 		return nil
 	}

@@ -95,7 +95,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 				EntityUniqueID: s.entityUniqueID(e),
 				Username:       v.Name(),
 				BuildPlatform:  int32(protocol.DeviceUnknown),
-				Skin:           toSkin(skinToProtocol(v.Skin())),
+				Skin:           skinToProtocol(v.Skin()),
 			}}})
 		}
 
@@ -109,9 +109,9 @@ func (s *Session) ViewEntity(e world.Entity) {
 			UUID:            v.UUID(),
 			Username:        v.Name(),
 			Yaw:             float32(yaw),
-			EntityLinks:     toEntityLinks(links),
+			EntityLinks:     links,
 			BuildPlatform:   int32(protocol.DeviceUnknown),
-			AbilityData:     toAbilityData(s.abilityData(v, s.entityUniqueID(e))),
+			AbilityData:     s.abilityData(v, s.entityUniqueID(e)),
 		})
 		if !actualPlayer {
 			s.writePacket(&v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
@@ -131,7 +131,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			s.writePacket(&v2193.AddItemActorPacket{
 				EntityUniqueID:  s.entityUniqueID(e),
 				EntityRuntimeID: runtimeID,
-				Item:            toItemInstance(instanceFromItem(s.br, v.Behaviour().(*entity.ItemBehaviour).Item())),
+				Item:            instanceFromItem(s.br, v.Behaviour().(*entity.ItemBehaviour).Item()),
 				Position:        vec64To32(entityNetworkPosition(e, v.Position())),
 				Velocity:        vec64To32(v.Velocity()),
 				EntityMetadata:  toMetadata(metadata),
@@ -154,10 +154,10 @@ func (s *Session) ViewEntity(e world.Entity) {
 		EntityUniqueID:   s.entityUniqueID(e),
 		EntityRuntimeID:  runtimeID,
 		EntityType:       id,
-		Attributes:       toAttributeValues(mobAttributes(e)),
+		Attributes:       mobAttributes(e),
 		EntityMetadata:   toMetadata(metadata),
-		EntityProperties: toEntityProperties(entityProperties(e)),
-		EntityLinks:      toEntityLinks(links),
+		EntityProperties: entityProperties(e),
+		EntityLinks:      links,
 		Position:         vec64To32(entityNetworkPosition(e, e.Position())),
 		Velocity:         vec64To32(vel),
 		Pitch:            float32(pitch),
@@ -184,16 +184,16 @@ type mobHealth interface {
 
 // mobAttributes returns the attributes the dedicated server sends of a mob:
 // its health, its movement speed and the jump strength of horses.
-func mobAttributes(e world.Entity) []protocol.AttributeValue {
-	var attributes []protocol.AttributeValue
+func mobAttributes(e world.Entity) []v2193.AttributeValue {
+	var attributes []v2193.AttributeValue
 	if h, ok := e.(mobHealth); ok {
-		attributes = append(attributes, protocol.AttributeValue{Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth())})
+		attributes = append(attributes, v2193.AttributeValue{Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth())})
 	}
 	if s, ok := e.(interface{ Speed() float64 }); ok {
-		attributes = append(attributes, protocol.AttributeValue{Name: "minecraft:movement", Value: float32(s.Speed()), Max: math.MaxFloat32})
+		attributes = append(attributes, v2193.AttributeValue{Name: "minecraft:movement", Value: float32(s.Speed()), Max: math.MaxFloat32})
 	}
 	if j, ok := e.(interface{ JumpStrength() float64 }); ok {
-		attributes = append(attributes, protocol.AttributeValue{Name: "minecraft:horse.jump_strength", Value: float32(j.JumpStrength()), Max: math.MaxFloat32})
+		attributes = append(attributes, v2193.AttributeValue{Name: "minecraft:horse.jump_strength", Value: float32(j.JumpStrength()), Max: math.MaxFloat32})
 	}
 	return attributes
 }
@@ -392,12 +392,12 @@ func (s *Session) ViewTime(time int) {
 
 // ViewTimeCycle ...
 func (s *Session) ViewTimeCycle(doDayLightCycle bool) {
-	s.sendGameRules([]protocol.GameRule{{Name: "dodaylightcycle", Value: doDayLightCycle}})
+	s.sendGameRules([]v2193.GameRule{{Name: "dodaylightcycle", Value: doDayLightCycle}})
 }
 
 // ViewFallDamage controls whether fall damage is enabled for this viewer.
 func (s *Session) ViewFallDamage(enabled bool) {
-	s.sendGameRules([]protocol.GameRule{{Name: "falldamage", Value: enabled}})
+	s.sendGameRules([]v2193.GameRule{{Name: "falldamage", Value: enabled}})
 }
 
 // ViewEntityTeleport ...
@@ -462,12 +462,12 @@ func (s *Session) ViewEntityItems(e world.Entity) {
 	// Show the main hand item.
 	s.writePacket(&v2193.MobEquipmentPacket{
 		EntityRuntimeID: runtimeID,
-		NewItem:         toItemInstance(instanceFromItem(s.br, mainHand)),
+		NewItem:         instanceFromItem(s.br, mainHand),
 	})
 	// Show the off-hand item.
 	s.writePacket(&v2193.MobEquipmentPacket{
 		EntityRuntimeID: runtimeID,
-		NewItem:         toItemInstance(instanceFromItem(s.br, offHand)),
+		NewItem:         instanceFromItem(s.br, offHand),
 		WindowID:        protocol.WindowIDOffHand,
 	})
 }
@@ -511,11 +511,11 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 	// Show the entity's armour and body equipment.
 	s.writePacket(&v2193.MobArmourEquipmentPacket{
 		EntityRuntimeID: runtimeID,
-		Helmet:          toItemInstance(instanceFromItem(s.br, helm)),
-		Chestplate:      toItemInstance(instanceFromItem(s.br, chestplate)),
-		Leggings:        toItemInstance(instanceFromItem(s.br, leggings)),
-		Boots:           toItemInstance(instanceFromItem(s.br, boots)),
-		Body:            toItemInstance(instanceFromItem(s.br, body)),
+		Helmet:          instanceFromItem(s.br, helm),
+		Chestplate:      instanceFromItem(s.br, chestplate),
+		Leggings:        instanceFromItem(s.br, leggings),
+		Boots:           instanceFromItem(s.br, boots),
+		Body:            instanceFromItem(s.br, body),
 	})
 }
 
@@ -1647,7 +1647,7 @@ func (s *Session) ViewEntityState(e world.Entity) {
 	s.writePacket(&v2193.SetActorDataPacket{
 		EntityRuntimeID:  s.entityRuntimeID(e),
 		EntityMetadata:   toMetadata(s.entityMetadata(e)),
-		EntityProperties: toEntityProperties(entityProperties(e)),
+		EntityProperties: entityProperties(e),
 	})
 	if _, mount := e.(interface{ MountState() entity.MountState }); mount {
 		// Riders see the health of their mount, which feeding restores.
@@ -1962,7 +1962,7 @@ func (s *Session) ViewSlotChange(slot int, newItem item.Stack) {
 	s.writePacket(&v2193.InventorySlotPacket{
 		WindowID: s.openedWindowID.Load(),
 		Slot:     uint32(slot),
-		NewItem:  toItemInstance(instanceFromItem(s.br, newItem)),
+		NewItem:  instanceFromItem(s.br, newItem),
 	})
 }
 
@@ -2070,7 +2070,7 @@ func (s *Session) ViewSkin(e world.Entity) {
 	if v, ok := e.(Controllable); ok {
 		s.writePacket(&v2193.PlayerSkinPacket{
 			UUID: v.UUID(),
-			Skin: toSkin(skinToProtocol(v.Skin())),
+			Skin: skinToProtocol(v.Skin()),
 		})
 	}
 }
@@ -2157,7 +2157,7 @@ func (s *Session) closeWindow(clientRequested bool) bool {
 	return true
 }
 
-func (s *Session) entityLinks(e world.Entity) []protocol.EntityLink {
+func (s *Session) entityLinks(e world.Entity) []v2193.EntityLink {
 	var links []entity.Link
 	if linker, ok := e.(entity.Linker); ok {
 		links = append(links, linker.Links()...)
@@ -2175,7 +2175,7 @@ func (s *Session) entityLinks(e world.Entity) []protocol.EntityLink {
 	if len(links) == 0 {
 		return nil
 	}
-	out := make([]protocol.EntityLink, 0, len(links))
+	out := make([]v2193.EntityLink, 0, len(links))
 	for _, link := range links {
 		if link.Ridden == nil || link.Rider == nil {
 			continue
@@ -2192,7 +2192,7 @@ func (s *Session) entityLinks(e world.Entity) []protocol.EntityLink {
 		case entity.LinkPassenger:
 			linkType = byte(protocol.EntityLinkPassenger)
 		}
-		out = append(out, protocol.EntityLink{
+		out = append(out, v2193.EntityLink{
 			RiddenEntityUniqueID:   s.handleUniqueID(link.Ridden),
 			RiderEntityUniqueID:    s.handleUniqueID(link.Rider),
 			Type:                   linkType,

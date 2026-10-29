@@ -2,22 +2,24 @@ package session
 
 import (
 	"fmt"
+	"sync/atomic"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"sync/atomic"
 )
 
 // InventoryTransactionHandler handles the InventoryTransaction packet.
 type InventoryTransactionHandler struct{}
 
 // Handle ...
-func (h *InventoryTransactionHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) (err error) {
-	pk := p.(*packet.InventoryTransaction)
+func (h *InventoryTransactionHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) (err error) {
+	pk := p.(*v2193.InventoryTransactionPacket)
 
 	if len(pk.LegacySetItemSlots) > 2 {
 		return fmt.Errorf("too many slot sync requests in inventory transaction")
@@ -45,7 +47,7 @@ func (h *InventoryTransactionHandler) Handle(p packet.Packet, s *Session, tx *wo
 	}()
 
 	switch data := pk.TransactionData.(type) {
-	case *protocol.NormalTransactionData:
+	case *v2193.NormalTransactionData:
 		h.resendInventories(s)
 		// Always resend inventories with normal transactions. Most of the time we do not use these
 		// transactions, so we're best off making sure the client and server stay in sync.
@@ -53,21 +55,21 @@ func (h *InventoryTransactionHandler) Handle(p packet.Packet, s *Session, tx *wo
 			s.conf.Log.Debug("process packet: InventoryTransaction: verify Normal transaction actions: " + err.Error())
 		}
 		return
-	case *protocol.MismatchTransactionData:
+	case *v2193.MismatchTransactionData:
 		// Just resend the inventory and don't do anything.
 		h.resendInventories(s)
 		return
-	case *protocol.UseItemOnEntityTransactionData:
+	case *v2193.UseItemOnEntityTransactionData:
 		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.br, data.HeldItem.Stack), c); err != nil {
 			return
 		}
 		return h.handleUseItemOnEntityTransaction(data, s, tx, c)
-	case *protocol.UseItemTransactionData:
+	case *v2193.UseItemTransactionData:
 		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.br, data.HeldItem.Stack), c); err != nil {
 			return
 		}
 		return h.handleUseItemTransaction(data, s, c)
-	case *protocol.ReleaseItemTransactionData:
+	case *v2193.ReleaseItemTransactionData:
 		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.br, data.HeldItem.Stack), c); err != nil {
 			return
 		}
@@ -97,7 +99,7 @@ func (h *InventoryTransactionHandler) resendHeldSlot(s *Session) error {
 }
 
 // handleNormalTransaction ...
-func (h *InventoryTransactionHandler) handleNormalTransaction(pk *packet.InventoryTransaction, s *Session, c Controllable) error {
+func (h *InventoryTransactionHandler) handleNormalTransaction(pk *v2193.InventoryTransactionPacket, s *Session, c Controllable) error {
 	if len(pk.Actions) != 2 {
 		return fmt.Errorf("expected two actions for dropping an item, got %d", len(pk.Actions))
 	}
@@ -135,8 +137,8 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *packet.Invento
 	if !expected.Equal(actual) {
 		return fmt.Errorf("different item thrown than held in slot: %#v was thrown but held %#v", expected, actual)
 	}
-	if err := ensureUnlockedForInventoryRemoval(actual, protocol.StackRequestSlotInfo{
-		Container: protocol.FullContainerName{ContainerID: protocol.ContainerInventory},
+	if err := ensureUnlockedForInventoryRemoval(actual, v2193.StackRequestSlotInfo{
+		Container: v2193.FullContainerName{ContainerID: protocol.ContainerInventory},
 		Slot:      byte(slot),
 	}); err != nil {
 		return err
@@ -160,7 +162,7 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *packet.Invento
 }
 
 // handleUseItemOnEntityTransaction ...
-func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *protocol.UseItemOnEntityTransactionData, s *Session, tx *world.Tx, c Controllable) error {
+func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *v2193.UseItemOnEntityTransactionData, s *Session, tx *world.Tx, c Controllable) error {
 	s.swingingArm.Store(true)
 	defer s.swingingArm.Store(false)
 
@@ -192,7 +194,7 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *pro
 }
 
 // handleUseItemTransaction ...
-func (h *InventoryTransactionHandler) handleUseItemTransaction(data *protocol.UseItemTransactionData, s *Session, c Controllable) error {
+func (h *InventoryTransactionHandler) handleUseItemTransaction(data *v2193.UseItemTransactionData, s *Session, c Controllable) error {
 	pos := cube.Pos{int(data.BlockPosition[0]), int(data.BlockPosition[1]), int(data.BlockPosition[2])}
 	if data.ClientPrediction == protocol.ClientPredictionSuccess || data.ActionType == protocol.UseItemActionBreakBlock {
 		// Suppress echoing the swing animation only when the client has already predicted it locally.

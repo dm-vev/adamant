@@ -2,16 +2,16 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // ContainerCloseHandler handles the ContainerClose packet.
 type ContainerCloseHandler struct{}
 
 // Handle ...
-func (h *ContainerCloseHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.ContainerClose)
+func (h *ContainerCloseHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.ContainerClosePacket)
 
 	c.MoveItemsToInventory()
 

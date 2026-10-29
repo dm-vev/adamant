@@ -2,17 +2,19 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // MobEquipmentHandler handles the MobEquipment packet.
 type MobEquipmentHandler struct{}
 
 // Handle ...
-func (*MobEquipmentHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*packet.MobEquipment)
+func (*MobEquipmentHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	pk := p.(*v2193.MobEquipmentPacket)
 
 	if pk.EntityRuntimeID != selfEntityRuntimeID {
 		return errSelfRuntimeID

@@ -38,7 +38,7 @@ func (s *Session) SendCommandOutput(output *cmd.Output, l language.Tag) {
 	}
 
 	s.writePacket(&v2193.CommandOutputPacket{
-		CommandOrigin:  toCommandOrigin(s.commandOriginSnapshot()),
+		CommandOrigin:  s.commandOriginSnapshot(),
 		OutputType:     packet.CommandOutputTypeAllOutput,
 		SuccessCount:   uint32(output.MessageCount()),
 		OutputMessages: messages,
@@ -46,17 +46,17 @@ func (s *Session) SendCommandOutput(output *cmd.Output, l language.Tag) {
 }
 
 // setCommandOrigin records the latest command origin so command output can be correlated with the request.
-func (s *Session) setCommandOrigin(origin protocol.CommandOrigin) {
+func (s *Session) setCommandOrigin(origin v2193.CommandOrigin) {
 	copied := origin
 	s.commandOrigin.Store(&copied)
 }
 
 // commandOriginSnapshot returns the most recently stored command origin.
-func (s *Session) commandOriginSnapshot() protocol.CommandOrigin {
+func (s *Session) commandOriginSnapshot() v2193.CommandOrigin {
 	if origin := s.commandOrigin.Load(); origin != nil {
 		return *origin
 	}
-	return protocol.CommandOrigin{}
+	return v2193.CommandOrigin{}
 }
 
 type translation interface {

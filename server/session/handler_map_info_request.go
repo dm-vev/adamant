@@ -9,14 +9,13 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // MapInfoRequestHandler returns the persistent map texture and fixed decorations requested by a client.
 type MapInfoRequestHandler struct{}
 
-func (*MapInfoRequestHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	request := p.(*packet.MapInfoRequest)
+func (*MapInfoRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+	request := p.(*v2193.MapInfoRequestPacket)
 	data, err := tx.UpdateMap(request.MapID, cube.PosFromVec3(c.Position()))
 	if err != nil {
 		return fmt.Errorf("update map %d: %w", request.MapID, err)
@@ -50,23 +49,23 @@ func (s *Session) ViewMapData(data world.MapData) error {
 			pixels[i] = world.MapColourRGBA(packed)
 		}
 	}
-	decorations := make([]protocol.MapDecoration, len(data.Decorations))
+	decorations := make([]v2193.MapDecoration, len(data.Decorations))
 	for i, d := range data.Decorations {
-		decorations[i] = protocol.MapDecoration{Type: d.Type, Rotation: d.Rotation, X: byte(d.X), Y: byte(d.Z), Label: d.Label, Colour: color.RGBA{A: 0xff}}
+		decorations[i] = v2193.MapDecoration{Type: d.Type, Rotation: d.Rotation, X: byte(d.X), Y: byte(d.Z), Label: d.Label, Colour: toColour(color.RGBA{A: 0xff})}
 	}
-	trackedObjects := make([]protocol.MapTrackedObject, 0, len(data.TrackedObjects))
+	trackedObjects := make([]v2193.MapTrackedObject, 0, len(data.TrackedObjects))
 	for _, object := range data.TrackedObjects {
 		if object.Entity != nil {
 			if id := s.handleRuntimeID(object.Entity); id != 0 {
-				trackedObjects = append(trackedObjects, protocol.MapTrackedObject{
-					Type: protocol.MapObjectTypeEntity, EntityUniqueID: protocol.Option(s.handleUniqueID(object.Entity)),
+				trackedObjects = append(trackedObjects, v2193.MapTrackedObject{
+					Type: protocol.MapObjectTypeEntity, EntityUniqueID: proto.Some(s.handleUniqueID(object.Entity)),
 				})
 			}
 		} else if object.Block != nil {
 			pos := *object.Block
-			trackedObjects = append(trackedObjects, protocol.MapTrackedObject{
+			trackedObjects = append(trackedObjects, v2193.MapTrackedObject{
 				Type:          protocol.MapObjectTypeBlock,
-				BlockPosition: protocol.Option(protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}),
+				BlockPosition: proto.Some([3]int32{int32(pos[0]), int32(pos[1]), int32(pos[2])}),
 			})
 		}
 	}
@@ -75,9 +74,9 @@ func (s *Session) ViewMapData(data world.MapData) error {
 		Dimension:      byte(data.Dimension),
 		LockedMap:      data.Locked,
 		Origin:         protocol.BlockPos{int32(data.CenterX), 0, int32(data.CenterZ)},
-		TrackedObjects: proto.Some(to[[]v2193.MapTrackedObject](trackedObjects)),
+		TrackedObjects: proto.Some(trackedObjects),
 		Scale:          proto.Some(data.Scale),
-		Decorations:    proto.Some(to[[]v2193.MapDecoration](decorations)),
+		Decorations:    proto.Some(decorations),
 	}
 	if includeFull || includePatch {
 		x, y, width, height := 0, 0, 128, 128

@@ -2,15 +2,16 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // ServerBoundDiagnosticsHandler handles diagnostic updates from the client.
 type ServerBoundDiagnosticsHandler struct{}
 
 // Handle ...
-func (h *ServerBoundDiagnosticsHandler) Handle(p packet.Packet, _ *Session, _ *world.Tx, c Controllable) error {
-	pk := p.(*packet.ServerBoundDiagnostics)
+func (h *ServerBoundDiagnosticsHandler) Handle(p proto.Packet, _ *Session, _ *world.Tx, c Controllable) error {
+	pk := p.(*v2193.ServerBoundDiagnosticsPacket)
 	c.UpdateDiagnostics(Diagnostics{
 		AverageFramesPerSecond:        float64(pk.AverageFramesPerSecond),
 		AverageServerSimTickTime:      float64(pk.AverageServerSimTickTime),
