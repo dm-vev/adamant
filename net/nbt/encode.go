@@ -265,7 +265,7 @@ func (e *Encoder) writeStructValues(val reflect.Value) error {
 			// tag was '-', meaning we should skip it.
 			continue
 		}
-		if fieldType.Anonymous {
+		if fieldType.Anonymous && fieldValue.Kind() == reflect.Struct {
 			// The field was anonymous, so we write that in the same compound tag as this one.
 			if err := e.writeStructValues(fieldValue); err != nil {
 				return err

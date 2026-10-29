@@ -254,21 +254,15 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 		if err != nil {
 			return err
 		}
-		if err = d.checkRemaining(int(length), "ByteArray"); err != nil {
-			return err
-		}
-		if length < 0 {
-			return BufferOverrunError{Op: "ByteArray"}
-		}
-		b := make([]byte, length)
-		if _, err := d.r.Read(b); err != nil {
+		b, err := d.r.fixed(int64(length))
+		if err != nil {
 			return BufferOverrunError{Op: "ByteArray"}
 		}
 		value := reflect.New(reflect.ArrayOf(int(length), byteType)).Elem()
 		reflect.Copy(value, reflect.ValueOf(b))
 
 		switch {
-		case k == reflect.Array && val.Type().Elem().Kind() == reflect.Uint8:
+		case k == reflect.Array && val.Type().Elem() == byteType:
 			if val.Cap() != int(length) {
 				return InvalidArraySizeError{Off: d.r.off, Op: "ByteArray", GoLength: val.Cap(), NBTLength: int(length)}
 			}
@@ -287,7 +281,7 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 		reflect.Copy(value, reflect.ValueOf(s))
 
 		switch {
-		case k == reflect.Array && val.Type().Elem().Kind() == reflect.Int32:
+		case k == reflect.Array && val.Type().Elem() == int32Type:
 			if val.Cap() != len(s) {
 				return InvalidArraySizeError{Off: d.r.off, Op: "Int32Array", GoLength: val.Cap(), NBTLength: len(s)}
 			}
@@ -307,7 +301,7 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 		reflect.Copy(value, reflect.ValueOf(s))
 
 		switch {
-		case k == reflect.Array && val.Type().Elem().Kind() == reflect.Int64:
+		case k == reflect.Array && val.Type().Elem() == int64Type:
 			if val.Cap() != len(s) {
 				return InvalidArraySizeError{Off: d.r.off, Op: "Int64Array", GoLength: val.Cap(), NBTLength: len(s)}
 			}
@@ -318,6 +312,10 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 		val.Set(value)
 
 	case tagSlice:
+		// A list of lists reads no tag, which would bound the nesting.
+		if d.depth >= maximumNestingDepth {
+			return MaximumDepthReachedError{}
+		}
 		d.depth++
 		listTypeByte, err := d.r.ReadByte()
 		if err != nil {
@@ -348,15 +346,12 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 				val.Set(reflect.MakeSlice(sliceType, int(length), int(length)))
 				break
 			}
-			if err = d.checkRemaining(int(length), "ByteSlice"); err != nil {
-				return err
-			}
-			b := make([]byte, length)
-			if _, err := d.r.Read(b); err != nil {
+			b, err := d.r.fixed(int64(length))
+			if err != nil {
 				return BufferOverrunError{Op: "ByteSlice"}
 			}
 			switch {
-			case k == reflect.Slice && val.Type().Elem().Kind() == reflect.Uint8, isAny(val):
+			case k == reflect.Slice && val.Type().Elem() == byteType, isAny(val):
 				val.Set(reflect.ValueOf(b))
 			default:
 				return InvalidTypeError{Off: d.r.off, FieldType: val.Type().Elem(), Field: tagName, TagType: listType}
@@ -367,7 +362,7 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 				return BufferOverrunError{Op: "Int32Slice"}
 			}
 			switch {
-			case k == reflect.Slice && val.Type().Elem().Kind() == reflect.Int32, isAny(val):
+			case k == reflect.Slice && val.Type().Elem() == int32Type, isAny(val):
 				val.Set(reflect.ValueOf(b))
 			default:
 				return InvalidTypeError{Off: d.r.off, FieldType: val.Type().Elem(), Field: tagName, TagType: listType}
@@ -378,7 +373,7 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 				return BufferOverrunError{Op: "Int64Slice"}
 			}
 			switch {
-			case k == reflect.Slice && val.Type().Elem().Kind() == reflect.Int64, isAny(val):
+			case k == reflect.Slice && val.Type().Elem() == int64Type, isAny(val):
 				val.Set(reflect.ValueOf(b))
 			default:
 				return InvalidTypeError{Off: d.r.off, FieldType: val.Type().Elem(), Field: tagName, TagType: listType}
@@ -388,11 +383,15 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 			if err != nil {
 				return err
 			}
-			if length < 0 {
+			n, err := d.r.capacity(int64(length))
+			if err != nil {
 				return BufferOverrunError{Op: "Slice"}
 			}
-			v := reflect.MakeSlice(sliceType, int(length), int(length))
+			v := reflect.MakeSlice(sliceType, n, n)
 			for i := 0; i < int(length); i++ {
+				if i == v.Len() {
+					v = reflect.Append(v, reflect.Zero(sliceType.Elem()))
+				}
 				if err := d.unmarshalTag(v.Index(i), listType, ""); err != nil {
 					// An error occurred during the decoding of one of the elements of the TAG_List, meaning it
 					// either had an invalid type or the NBT was invalid.
@@ -403,8 +402,8 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 				}
 			}
 			val.Set(v)
-			d.depth--
 		}
+		d.depth--
 
 	case tagStruct:
 		d.depth++
@@ -464,6 +463,10 @@ func (d *Decoder) unmarshalTag(val reflect.Value, t tagType, tagName string) err
 			}
 
 			if valKind == reflect.Map {
+				if valType.Key() != stringType {
+					// Only a map keyed by strings holds the names of the tags.
+					return InvalidTypeError{Off: d.r.off, FieldType: valType, Field: tagName, TagType: t}
+				}
 				valType = valType.Elem()
 			}
 			m := reflect.MakeMap(reflect.MapOf(stringType, valType))
@@ -503,7 +506,7 @@ func (d *Decoder) populateFields(val reflect.Value, m map[string]reflect.Value) 
 		}
 		field := val.Field(i)
 		name := fieldType.Name
-		if fieldType.Anonymous {
+		if fieldType.Anonymous && field.Kind() == reflect.Struct {
 			// We got an anonymous struct field, so we decode that into the same level.
 			d.populateFields(field, m)
 			continue
@@ -543,13 +546,6 @@ func (d *Decoder) tag() (t tagType, tagName string, err error) {
 		tagName, err = d.Encoding.String(d.r)
 	}
 	return t, tagName, err
-}
-
-func (d *Decoder) checkRemaining(length int, op string) error {
-	if remaining, ok := d.r.Reader.(interface{ Len() int }); ok && length > remaining.Len() {
-		return BufferOverrunError{Op: op}
-	}
-	return nil
 }
 
 // isAny checks if a reflect.Value has the type `any` or `interface{}`.

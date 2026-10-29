@@ -37,5 +37,10 @@
 // (github.com/sandertv/gophertunnel), MIT licensed, Copyright (c) 2019
 // Sandertv: see LICENSE.gophertunnel. The server keeps its worlds,
 // items and structures in its format, which must stay byte for byte as
-// it was, so the codec is taken as it is rather than written again.
+// it was, so the codec is taken as it is rather than written again, but
+// for its decoder, which no longer trusts the data: a length allocates
+// no more than the data that follows it, lists nest no deeper than
+// compounds, a list of numbers leaves the depth as it found it, and a
+// value that cannot hold what the data has is an error rather than a
+// panic in reflect.
 package nbt
