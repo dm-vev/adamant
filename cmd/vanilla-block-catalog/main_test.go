@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 const completeCatalog = `ADAMANT_BLOCK_CATALOG {"event":"start","schema":2,"expectedTypes":1}

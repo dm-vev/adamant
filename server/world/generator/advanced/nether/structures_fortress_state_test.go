@@ -19,7 +19,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 type fortressStateSourcePiece struct {

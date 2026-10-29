@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 func TestDecodeSubChunk9PaletteWidthsAndNegativeY(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/worldupgrader/blockupgrader"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 type (

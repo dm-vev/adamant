@@ -11,7 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // subChunkRequests is set to true to enable the sub-chunk request system. This can (likely) cause unexpected issues,

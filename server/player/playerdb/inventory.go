@@ -2,9 +2,10 @@ package playerdb
 
 import (
 	"bytes"
+
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // InventoryData is a struct that contains all data of the player inventories.

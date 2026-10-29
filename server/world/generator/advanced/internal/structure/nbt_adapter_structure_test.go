@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 func TestStructureActorSourceBytesSurviveNativeSerialization(t *testing.T) {

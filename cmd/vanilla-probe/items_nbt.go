@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 type vanillaItem struct {

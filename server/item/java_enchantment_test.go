@@ -8,7 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/item"
 	_ "github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // Java source-only enchantments must survive native inventory NBT without

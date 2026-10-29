@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 func TestEncodeItemsNBTRoundTrip(t *testing.T) {

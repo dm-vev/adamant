@@ -3,7 +3,8 @@ package chunk
 import (
 	"bytes"
 	_ "embed"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // legacyBlockEntry represents a block entry used in versions prior to 1.13.

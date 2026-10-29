@@ -19,7 +19,7 @@ import (
 
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/opt"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 const sentinel = "ADAMANT_BLOCK_CATALOG "

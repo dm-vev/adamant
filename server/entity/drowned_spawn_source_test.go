@@ -12,8 +12,8 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
 type drownedSourceSpawnCase struct {

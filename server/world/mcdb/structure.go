@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/df-mc/goleveldb/leveldb"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // keyStructureTemplate prefixes the name of a structure template saved by a

@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // Source graphs remain immutable and may be evicted independently of their

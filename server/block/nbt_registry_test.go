@@ -7,7 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
+	"github.com/dm-vev/adamant/net/nbt"
 )
 
 func TestContainerNBTRoundTripUsesBlockRegistry(t *testing.T) {

@@ -21,8 +21,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/df-mc/goleveldb/leveldb/util"
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
 // DB implements a world provider for the Minecraft world format, which

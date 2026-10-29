@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
 func TestSpecialRecipeTypes(t *testing.T) {
@@ -60,4 +60,3 @@ func TestOutputItemDecodesRecipeNBT(t *testing.T) {
 		t.Fatalf("decoded output = %#v, want recipe data page", stack.Item())
 	}
 }
-
