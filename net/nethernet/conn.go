@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/netip"
@@ -768,6 +769,24 @@ func (c *Conn) abort(err error) {
 
 func (c *Conn) fail(err error) { c.shut(err, false) }
 
+// broken fails the connection after a panic in one of its layers, a bug
+// no peer may use to take the process down. The connection leaves the
+// routes of its listener in any case; it is closed for its user if its
+// lock is free, else its timeout closes it. Its layers may panic again as
+// they close, which is let go.
+func (c *Conn) broken(v any) {
+	defer func() { _ = recover() }()
+	if !c.mu.TryLock() {
+		if c.onClose != nil {
+			c.onClose(c)
+		}
+		return
+	}
+	defer c.mu.Unlock()
+	c.delivering = false
+	c.shut(fmt.Errorf("nethernet: panic handling the connection: %v", v), false)
+}
+
 // shut closes the connection for its user with err. A graceful close
 // lets SCTP deliver what was sent before the transport goes.
 func (c *Conn) shut(err error, graceful bool) {
@@ -877,6 +896,11 @@ func (c *Conn) schedule() {
 }
 
 func (c *Conn) fire() {
+	defer func() {
+		if v := recover(); v != nil {
+			c.broken(v)
+		}
+	}()
 	c.mu.Lock()
 	defer c.release()
 	c.armed = time.Time{}

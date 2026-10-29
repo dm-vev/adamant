@@ -154,8 +154,19 @@ func readConn(sock *net.UDPConn, c *Conn) {
 			}
 			continue
 		}
-		c.handleDatagram(buf[:n], netip.AddrPortFrom(from.Addr().Unmap(), from.Port()), time.Now())
+		handle(c, buf[:n], netip.AddrPortFrom(from.Addr().Unmap(), from.Port()))
 	}
+}
+
+// handle hands a datagram to a dialed connection, which a panic reading it
+// fails.
+func handle(c *Conn, b []byte, from netip.AddrPort) {
+	defer func() {
+		if v := recover(); v != nil {
+			c.broken(v)
+		}
+	}()
+	c.handleDatagram(b, from, time.Now())
 }
 
 // signalingURL returns the URL of the signaling of a server address.

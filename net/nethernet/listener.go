@@ -579,18 +579,26 @@ func (l *Listener) read(sock *net.UDPConn) {
 // dispatch hands a datagram to its connection: a check by the ICE username
 // it carries, anything else by the address it came from.
 func (l *Listener) dispatch(b []byte, from netip.AddrPort, msg *stun.Message) {
+	var c *Conn
+	defer func() {
+		// A panic reading a datagram fails the connection it was for, not
+		// the listener; one before a connection was found drops it.
+		if v := recover(); v != nil && c != nil {
+			c.broken(v)
+		}
+	}()
 	if len(b) >= 20 && b[0] < 2 && stun.Parse(b, msg) == nil && msg.Type == stun.BindingRequest {
 		user, _ := msg.Get(stun.AttrUsername)
 		local, _, _ := bytes.Cut(user, []byte{':'})
 		l.ufragMu.RLock()
-		c := l.ufrags[string(local)]
+		c = l.ufrags[string(local)]
 		l.ufragMu.RUnlock()
 		if c != nil && c.handleDatagram(b, from, time.Now()) {
 			l.bind(from, c)
 		}
 		return
 	}
-	if c := l.addrs.get(from); c != nil {
+	if c = l.addrs.get(from); c != nil {
 		c.handleDatagram(b, from, time.Now())
 	}
 }

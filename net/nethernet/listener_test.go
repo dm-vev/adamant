@@ -350,3 +350,32 @@ func TestCandidates(t *testing.T) {
 		t.Fatalf("IPv4 listener announces %v, want %v", got, want)
 	}
 }
+
+// TestPanicFailsOneConn panics in a layer above the transport as it takes
+// a message, on the goroutine that read the datagram: the connection fails,
+// and the listener goes on with others.
+func TestPanicFailsOneConn(t *testing.T) {
+	l := listen(t, ListenConfig{Sockets: 1})
+	cli := dial(t, newDialer(t), l)
+	srv := accept(t, l)
+	srv.SetReceiver(func([]byte) { panic("a bug of the layer above") })
+	if err := cli.Send([]byte("hello")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-srv.closed:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the connection whose layer panicked did not close")
+	}
+	if !strings.Contains(srv.Err().Error(), "panic") {
+		t.Fatalf("closed with %v", srv.Err())
+	}
+	other := dial(t, newDialer(t), l)
+	next := accept(t, l)
+	if err := other.Send([]byte("still here")); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, next); string(got) != "still here" {
+		t.Fatalf("read %q", got)
+	}
+}
