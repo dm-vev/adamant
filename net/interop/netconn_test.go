@@ -18,12 +18,12 @@ import (
 
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/resource"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"github.com/sandertv/gophertunnel/minecraft/resource"
 )
 
 // gtNetwork dials gophertunnel clients over our NetherNet dialer.
@@ -269,7 +269,7 @@ func TestNetconnResourcePacks(t *testing.T) {
 	for _, want := range packs {
 		found := false
 		for _, p := range got {
-			found = found || p.UUID() == want.UUID() && p.Checksum() == want.Checksum()
+			found = found || p.UUID().String() == want.UUID().String() && p.Checksum() == want.Checksum()
 		}
 		if !found {
 			t.Fatalf("pack %v missing or corrupt", want.UUID())
