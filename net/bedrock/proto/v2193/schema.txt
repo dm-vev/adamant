@@ -1,11 +1,28 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
-# 368 declarations, 25 of them manual.
+# 456 declarations, 27 of them manual.
 
 type CommandEnum
 	manual codec is not a method taking an IO
 
 type CommandOrigin
 	manual statement originStr := commandOriginToString(x.Origin)
+
+type PlayerInventoryAction
+	LegacyRequestID varint32
+	LegacySetItemSlots ?[]LegacySetItemSlot
+	Actions []InventoryAction
+	ActionType varint32 as uint32
+	TriggerType uint8 as uint32
+	BlockPosition blockpos
+	BlockFace uint8 as int32
+	HotBarSlot varint32
+	Hand uint8
+	HeldItem iteminstance
+	Position vec3
+	ClickedPosition vec3
+	BlockRuntimeID varuint32
+	ClientPrediction uint8
+	ClientCooldownState uint8
 
 type PlayerMovementSettings
 	RewindHistorySize varint32
@@ -849,7 +866,27 @@ packet 143 NetworkSettings
 	ClientThrottleScalar float32
 
 packet 144 PlayerAuthInput
-	manual call protocol.InputFlagList(io, &pk.InputData, InputFlagCount)
+	Pitch float32
+	Yaw float32
+	Position vec3
+	MoveVector vec2
+	HeadYaw float32
+	InputData inputflags(66)
+	InputMode varuint32
+	PlayMode varuint32
+	InteractionModel varint32
+	InteractPitch float32
+	InteractYaw float32
+	Tick varuint64
+	Delta vec3
+	ItemInteractionData ?PlayerInventoryAction
+	ItemStackRequest ?ItemStackRequest
+	BlockActions ?[]PlayerBlockAction
+	VehicleRotation ?vec2
+	ClientPredictedVehicle ?varint64
+	AnalogueMoveVector vec2
+	CameraOrientation vec3
+	RawMoveVector vec2
 
 packet 145 CreativeContent
 	Groups []CreativeGroup
@@ -1234,7 +1271,7 @@ packet 325 PlayerUpdateEntityOverrides
 
 packet 326 PlayerLocation
 	EntityUniqueID varint64
-	Type varuint32
+	Type varuint32 as int32
 	Type varint32
 	switch Type
 	case 0
@@ -1709,6 +1746,23 @@ type PlayerArmourDamageEntry
 	ArmourSlot varint32
 	Damage int16
 
+type LegacySetItemSlot
+	ContainerID uint8
+	Slots bytes
+
+type InventoryAction
+	SourceType varuint32
+	WindowID ?int8
+	SourceFlags ?varuint32
+	InventorySlot varuint32
+	OldItem iteminstance
+	NewItem iteminstance
+
+type PlayerBlockAction
+	Action varint32
+	BlockPos blockpos
+	Face varint32
+
 type EnchantmentOption
 	Cost uint8
 	Enchantments ItemEnchantments
@@ -1923,14 +1977,6 @@ type VoxelShapeNameEntry
 	Name string
 	ID uint16
 
-type IntegerEntityProperty
-	Index varuint32
-	Value varint32
-
-type FloatEntityProperty
-	Index varuint32
-	Value float32
-
 type AbilityLayer
 	Type uint16
 	Abilities uint32
@@ -1939,9 +1985,69 @@ type AbilityLayer
 	VerticalFlySpeed float32
 	WalkSpeed float32
 
-type ChainedSubcommandValue
-	Index varuint32
-	Value varuint32
+type AchievementAwardedEvent
+	AchievementID uint8
+
+type AgentCommandEvent
+	AgentResult varint32
+	DataValue varint32
+	Command string
+	DataKey string
+	Output string
+
+type AgentCreatedEvent
+
+type ArrowShape
+	ArrowEndLocation ?vec3
+	ArrowHeadLength ?float32
+	ArrowHeadRadius ?float32
+	Segments ?uint8
+
+type AttributeData
+	Type varuint32
+	switch Type
+	case 0
+		BoolValue bool
+		BoolOperation ?int32
+	case 1
+		FloatValue float32
+		FloatOperation ?int32
+		FloatConstraintMin ?float32
+		FloatConstraintMax ?float32
+	case 2
+		ColourValue int32
+		ColourOperation ?int32
+	default
+
+type AttributeModifier
+	ID string
+	Name string
+	Amount float32
+	Operation int32
+	Operand int32
+	Serializable bool
+
+type ItemDescriptorCount
+	manual statement id, _, ok := itemDescriptorType(x.Descriptor)
+
+type AutoCraftRecipeStackRequestAction
+	RecipeNetworkID varuint32
+	NumberOfCrafts uint8
+	Ingredients []ItemDescriptorCount
+
+type BeaconPaymentStackRequestAction
+	PrimaryEffect varint32
+	SecondaryEffect varint32
+
+type BellUsedEvent
+	ItemID int16
+
+type BiomeCappedSurface
+	FloorBlocks []int32
+	CeilingBlocks []int32
+	SeaBlock ?uint32
+	FoundationBlock ?uint32
+	BeachBlock ?uint32
 
 type BiomeChunkGeneration
 	Climate ?BiomeClimate
@@ -1956,95 +2062,16 @@ type BiomeChunkGeneration
 	SurfaceBuilder ?BiomeSurfaceBuilder
 	SubsurfaceBuilder ?BiomeSurfaceBuilder
 
-type CameraAimAssistPriorities
-	Entities []CameraAimAssistPriority
-	Blocks []CameraAimAssistPriority
-	BlockTags []CameraAimAssistPriority
-	EntityTypeFamilies []CameraAimAssistPriority
-	EntityDefault ?int32
-	BlockDefault ?int32
-
-type CameraAimAssistItemSettings
-	Item string
-	Category string
-
-type CameraEase
-	Type uint8
-	Duration float32
-
-type CameraFadeTimeData
-	FadeInDuration float32
-	WaitDuration float32
-	FadeOutDuration float32
-
-type CameraProgressOption
-	manual statement easingType := easingTypeToString(x.EaseType)
-
-type CameraRotationOption
-	manual statement easingType := easingTypeToString(x.EaseType)
-
-type CameraPresetAimAssist
-	Preset ?string
-	TargetMode ?int32
-	Angle ?vec2
-	Distance ?float32
-
-type RecipeUnlockRequirement
-	manual statement present := x.Context == RecipeUnlockContextNone
-
-type Waypoint
-	UpdateFlag uint32
-	Visible ?bool
-	WorldPosition ?WaypointWorldPosition
-	TexturePath ?string
-	IconSize ?vec2
-	Colour ?int32
-	ClientPositionAuthority ?bool
-	ActorUniqueID ?varint64
-
-type ItemEnchantments
-	manual statement for i := 0; i < 3; i++ {
-
-type SkinAnimation
-	ImageWidth uint32
-	ImageHeight uint32
-	ImageData bytes
-	AnimationType varuint32
-	FrameCount float32
-	ExpressionType varuint32
-
-type PersonaPiece
-	PieceID string
-	PieceType uint32
-	PackID uuid
-	Default bool
-	ProductID string
-
-type PersonaPieceTintColour
-	manual statement wireType := personaPieceTintWireType(x.PieceType)
-
-type HeightMap
-	manual statement for z := range x {
-
-type AttributeModifier
-	ID string
-	Name string
-	Amount float32
-	Operation int32
-	Operand int32
-	Serializable bool
-
-type VoxelCells
-	XSize uint8
-	YSize uint8
-	ZSize uint8
-	Storage []uint8
-
 type BiomeClimate
 	Temperature float32
 	Downfall float32
 	SnowAccumulationMin float32
 	SnowAccumulationMax float32
+
+type BiomeConditionalTransformation
+	WeightedBiomes []BiomeWeight
+	ConditionJSON int16
+	MinPassingNeighbours uint32
 
 type BiomeConsolidatedFeature
 	Scatter BiomeScatterParameter
@@ -2053,13 +2080,14 @@ type BiomeConsolidatedFeature
 	Pass int16
 	CanUseInternal bool
 
-type BiomeMountainParameters
-	SteepBlock int32
-	NorthSlopes bool
-	SouthSlopes bool
-	WestSlopes bool
-	EastSlopes bool
-	TopSlideEnabled bool
+type BiomeCoordinate
+	MinValueType varint32
+	MinValue int16
+	MaxValueType varint32
+	MaxValue int16
+	GridOffset uint32
+	GridStepSize uint32
+	Distribution varint32
 
 type BiomeElementData
 	NoiseFrequencyScale float32
@@ -2071,6 +2099,32 @@ type BiomeElementData
 	HeightMax int16
 	AdjustedMaterials BiomeSurfaceMaterial
 
+type BiomeMesaSurface
+	ClayMaterial uint32
+	HardClayMaterial uint32
+	BrycePillars bool
+	HasForest bool
+
+type BiomeMountainParameters
+	SteepBlock int32
+	NorthSlopes bool
+	SouthSlopes bool
+	WestSlopes bool
+	EastSlopes bool
+	TopSlideEnabled bool
+
+type BiomeMultiNoiseRules
+	Temperature float32
+	Humidity float32
+	Altitude float32
+	Weirdness float32
+	Weight float32
+
+type BiomeNoiseGradientSurface
+	NonReplaceableBlocks []uint32
+	GradientBlocks []NoiseBlockSpecifier
+	Noise NoiseDescriptor
+
 type BiomeOverworldRules
 	HillsTransformations []BiomeWeight
 	MutateTransformations []BiomeWeight
@@ -2080,18 +2134,6 @@ type BiomeOverworldRules
 	PostShoreEdgeTransformations []BiomeConditionalTransformation
 	ClimateTransformations []BiomeTemperatureWeight
 
-type BiomeMultiNoiseRules
-	Temperature float32
-	Humidity float32
-	Altitude float32
-	Weirdness float32
-	Weight float32
-
-type BiomeConditionalTransformation
-	WeightedBiomes []BiomeWeight
-	ConditionJSON int16
-	MinPassingNeighbours uint32
-
 type BiomeReplacementData
 	Biome int16
 	Dimension int16
@@ -2099,24 +2141,6 @@ type BiomeReplacementData
 	Amount float32
 	NoiseFrequencyScale float32
 	ReplacementIndex uint32
-
-type BiomeSurfaceBuilder
-	SurfaceMaterials ?BiomeSurfaceMaterial
-	HasDefaultOverworldSurface bool
-	HasSwampSurface bool
-	HasFrozenOceanSurface bool
-	HasEndSurface bool
-	MesaSurface ?BiomeMesaSurface
-	CappedSurface ?BiomeCappedSurface
-	NoiseGradientSurface ?BiomeNoiseGradientSurface
-
-type CameraAimAssistPriority
-	Identifier string
-	Priority int32
-
-type WaypointWorldPosition
-	Position vec3
-	DimensionID varint32
 
 type BiomeScatterParameter
 	Coordinates []BiomeCoordinate
@@ -2128,6 +2152,16 @@ type BiomeScatterParameter
 	IterationsType varint32
 	Iterations int16
 
+type BiomeSurfaceBuilder
+	SurfaceMaterials ?BiomeSurfaceMaterial
+	HasDefaultOverworldSurface bool
+	HasSwampSurface bool
+	HasFrozenOceanSurface bool
+	HasEndSurface bool
+	MesaSurface ?BiomeMesaSurface
+	CappedSurface ?BiomeCappedSurface
+	NoiseGradientSurface ?BiomeNoiseGradientSurface
+
 type BiomeSurfaceMaterial
 	TopBlock int32
 	MidBlock int32
@@ -2136,40 +2170,259 @@ type BiomeSurfaceMaterial
 	SeaBlock int32
 	SeaFloorDepth int32
 
-type BiomeWeight
-	Biome int16
-	Weight uint32
-
 type BiomeTemperatureWeight
 	Temperature varint32
 	Weight uint32
 
-type BiomeMesaSurface
-	ClayMaterial uint32
-	HardClayMaterial uint32
-	BrycePillars bool
-	HasForest bool
+type BiomeWeight
+	Biome int16
+	Weight uint32
 
-type BiomeCappedSurface
-	FloorBlocks []int32
-	CeilingBlocks []int32
-	SeaBlock ?uint32
-	FoundationBlock ?uint32
-	BeachBlock ?uint32
+type BossKilledEvent
+	BossEntityUniqueID varint64
+	PlayerPartySize varint32
+	InteractionEntityType varint32
 
-type BiomeNoiseGradientSurface
-	NonReplaceableBlocks []uint32
-	GradientBlocks []NoiseBlockSpecifier
-	Noise NoiseDescriptor
+type BoxShape
+	BoxBound vec3
 
-type BiomeCoordinate
-	MinValueType varint32
-	MinValue int16
-	MaxValueType varint32
-	MaxValue int16
-	GridOffset uint32
-	GridStepSize uint32
-	Distribution varint32
+type CameraAimAssistItemSettings
+	Item string
+	Category string
+
+type CameraAimAssistPriorities
+	Entities []CameraAimAssistPriority
+	Blocks []CameraAimAssistPriority
+	BlockTags []CameraAimAssistPriority
+	EntityTypeFamilies []CameraAimAssistPriority
+	EntityDefault ?int32
+	BlockDefault ?int32
+
+type CameraAimAssistPriority
+	Identifier string
+	Priority int32
+
+type CameraEase
+	Type uint8
+	Duration float32
+
+type CameraFadeTimeData
+	FadeInDuration float32
+	WaitDuration float32
+	FadeOutDuration float32
+
+type CameraPresetAimAssist
+	Preset ?string
+	TargetMode ?int32
+	Angle ?vec2
+	Distance ?float32
+
+type CameraProgressOption
+	manual statement easingType := easingTypeToString(x.EaseType)
+
+type CameraRotationOption
+	manual statement easingType := easingTypeToString(x.EaseType)
+
+type CarefulRestorationEvent
+
+type CauldronInteractEvent
+	BlockInteractionType uint8
+	ItemID int16
+
+type CauldronUsedEvent
+	Colour varuint32
+	PotionID int16
+	FillLevel int16
+
+type ChainedSubcommandValue
+	Index varuint32
+	Value varuint32
+
+type CodeBuilderRuntimeActionEvent
+	Action string
+
+type CodeBuilderScoreboardEvent
+	ObjectiveName string
+	Score varint32
+
+type CommandEnumContext
+	manual codec is not a method taking an IO
+
+type CommandOutputMessage
+	Message string
+	Success bool
+	Parameters []string
+
+type CommandOverload
+	Chaining bool
+	Parameters []CommandParameter
+
+type CommandParameter
+	Name string
+	Type uint32
+	Optional bool
+	Options uint8
+
+type ComposterInteractEvent
+	BlockInteractionType uint8
+	ItemID int16
+
+type ConeShape
+	Radii vec2
+	Height float32
+	NumSegments uint8
+
+type StackRequestSlotInfo
+	Container FullContainerName
+	Slot uint8
+	StackNetworkID int32
+
+type ConsumeStackRequestAction
+	Count uint8
+	Source StackRequestSlotInfo
+
+type CraftCreativeStackRequestAction
+	CreativeItemNetworkID varuint32
+	NumberOfCrafts uint8
+
+type CraftGrindstoneRecipeStackRequestAction
+	RecipeNetworkID int32 as uint32
+	NumberOfCrafts uint8
+	Cost varint32
+
+type CraftLoomRecipeStackRequestAction
+	Pattern string
+	TimesCrafted uint8
+
+type CraftNonImplementedStackRequestAction
+
+type CraftRecipeOptionalStackRequestAction
+	RecipeNetworkID varuint32
+	FilterStringIndex int32
+
+type CraftRecipeStackRequestAction
+	RecipeNetworkID varuint32
+	NumberOfCrafts uint8
+
+type CraftResultsDeprecatedStackRequestAction
+	ResultItems []stackrequestitem
+	TimesCrafted uint8
+
+type CreateStackRequestAction
+	ResultsSlot uint8
+
+type CylinderShape
+	RadiusX vec2
+	RadiusZ vec2
+	Height float32
+	NumSegments uint8
+
+type DefaultItemDescriptor
+	Name string
+	MetadataValue varint32
+
+type DestroyStackRequestAction
+	Count uint8
+	Source StackRequestSlotInfo
+
+type DropStackRequestAction
+	Count uint8
+	Source StackRequestSlotInfo
+	Randomly bool
+
+type EllipsoidShape
+	Radii vec3
+	SegmentsPerAxis uint8
+
+type EnchantmentInstance
+	Type uint8
+	Level uint8
+
+type EntityDefinitionTriggerEvent
+	EventName string
+
+type EntityInteractEvent
+	InteractedEntityID varint64
+	InteractionType uint8
+	InteractionEntityType varint32
+	EntityVariant varint32
+	EntityColour uint8
+
+type ExtractHoneyEvent
+
+type FishBucketedEvent
+
+type FloatEntityProperty
+	Index varuint32
+	Value float32
+
+type FloatRange
+	Min float32
+	Max float32
+
+type HeightMap
+	manual statement for z := range x {
+
+type IntegerEntityProperty
+	Index varuint32
+	Value varint32
+
+type InvalidItemDescriptor
+
+type ItemEnchantments
+	manual statement for i := 0; i < 3; i++ {
+
+type ItemTagItemDescriptor
+	Tag string
+
+type ItemUsedEvent
+	ItemID int16
+	ItemAux int32
+	UseMethod int32
+	UseCount int32
+
+type LabTableCombineStackRequestAction
+
+type LastShape
+
+type LineShape
+	LineEndLocation vec3
+
+type MaterialReducerOutput
+	NetworkID varint32
+	Count varint32
+
+type MineBlockStackRequestAction
+	HotbarSlot varint32
+	PredictedDurability varint32
+	StackNetworkID int32
+
+type MismatchTransactionData
+
+type MoLangItemDescriptor
+	Expression string
+	Version int16
+
+type MobBornEvent
+	EntityType varint32
+	Variant varint32
+	Colour uint8
+
+type MobKilledEvent
+	KillerEntityUniqueID varint64
+	VictimEntityUniqueID varint64
+	KillerEntityType varint32
+	EntityDamageCause varint32
+	VillagerTradeTier varint32
+	VillagerDisplayName string
+
+type MovementAnomalyEvent
+
+type MovementCorrectedEvent
+
+type NoiseAlignment
+	Type uint8
+	Value varuint32
 
 type NoiseBlockSpecifier
 	Noise string
@@ -2182,6 +2435,165 @@ type NoiseDescriptor
 	FirstOctave int32
 	Amplitudes []float32
 
-type FloatRange
-	Min float32
-	Max float32
+type NormalTransactionData
+
+type PackURL
+	UUIDVersion string
+	URL string
+
+type PatternRemovedEvent
+
+type PersonaPiece
+	PieceID string
+	PieceType uint32
+	PackID uuid
+	Default bool
+	ProductID string
+
+type PersonaPieceTintColour
+	manual statement wireType := personaPieceTintWireType(x.PieceType)
+
+type PetDiedEvent
+
+type PiglinBarterEvent
+	ItemID varint32
+	WasTargetingBarteringPlayer bool
+
+type PlaceStackRequestAction
+	Count uint8
+	Source StackRequestSlotInfo
+	Destination StackRequestSlotInfo
+
+type PlayerDiedEvent
+	AttackerEntityID varint32
+	AttackerVariant varint32
+	EntityDamageCause varint32
+	InRaid bool
+
+type PortalBuiltEvent
+	DimensionID varint32
+
+type PortalUsedEvent
+	FromDimensionID varint32
+	ToDimensionID varint32
+
+type PyramidShape
+	Width float32
+	Depth ?float32
+	Height float32
+
+type RaidUpdateEvent
+	CurrentRaidWave varint32
+	TotalRaidWaves varint32
+	WonRaid bool
+
+type RecipeUnlockRequirement
+	manual statement present := x.Context == RecipeUnlockContextNone
+
+type ReleaseItemTransactionData
+	ActionType varint32
+	HotBarSlot varint32
+	HeldItem iteminstance
+	HeadPosition vec3
+
+type SkinAnimation
+	ImageWidth uint32
+	ImageHeight uint32
+	ImageData bytes
+	AnimationType varuint32
+	FrameCount float32
+	ExpressionType varuint32
+
+type SlashCommandExecutedEvent
+	SuccessCount varint32
+	MessageCount varint32
+	CommandName string
+	OutputMessages string
+
+type SneakCloseToSculkSensorEvent
+
+type SphereShape
+	Segments uint8
+
+type StackResponseContainerInfo
+	Container FullContainerName
+	SlotInfo []StackResponseSlotInfo
+
+type StackResponseSlotInfo
+	manual statement var stackNetworkID Optional[int32]
+
+type StriderRiddenInLavaInOverworldEvent
+
+type SwapStackRequestAction
+	Source StackRequestSlotInfo
+	Destination StackRequestSlotInfo
+
+type TakeStackRequestAction
+	Count uint8
+	Source StackRequestSlotInfo
+	Destination StackRequestSlotInfo
+
+type TargetBlockHitEvent
+	RedstoneLevel varint32
+
+type TextShape
+	Text string
+	UseRotation bool
+	BackgroundColour ?argbbe
+	LineGapHeight float32
+	DepthTest bool
+	ShowBackface bool
+	ShowBackfaceText bool
+
+type UseItemOnEntityTransactionData
+	TargetEntityRuntimeID varuint64
+	ActionType varint32
+	HotBarSlot varint32
+	HeldItem iteminstance
+	Position vec3
+	ClickedPosition vec3
+
+type UseItemTransactionData
+	ActionType varint32 as uint32
+	TriggerType uint8 as uint32
+	BlockPosition blockpos
+	BlockFace uint8 as int32
+	HotBarSlot varint32
+	Hand uint8
+	HeldItem iteminstance
+	Position vec3
+	ClickedPosition vec3
+	BlockRuntimeID varuint32
+	ClientPrediction uint8
+	ClientCooldownState uint8
+
+type VoxelCells
+	XSize uint8
+	YSize uint8
+	ZSize uint8
+	Storage []uint8
+
+type WaxedOrUnwaxedCopperEvent
+	CopperBlockID varint32
+
+type Waypoint
+	UpdateFlag uint32
+	Visible ?bool
+	WorldPosition ?WaypointWorldPosition
+	TexturePath ?string
+	IconSize ?vec2
+	Colour ?int32
+	ClientPositionAuthority ?bool
+	ActorUniqueID ?varint64
+
+type WaypointWorldPosition
+	Position vec3
+	DimensionID varint32
+
+type transferStackRequestAction
+	Count uint8
+	Source StackRequestSlotInfo
+	Destination StackRequestSlotInfo
+
+type Unknown
+	Payload rest

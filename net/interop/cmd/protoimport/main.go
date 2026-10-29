@@ -55,6 +55,13 @@ var primitives = map[string]string{
 	"AbilityValue": "abilityvalue", "PackSetting": "packsetting", "ShapeData": "shapedata",
 }
 
+// goInteger maps the integer wire types to the Go types they decode to.
+var goInteger = map[string]string{
+	"uint8": "uint8", "int8": "int8", "uint16": "uint16", "int16": "int16", "uint32": "uint32",
+	"varuint32": "uint32", "int32": "int32", "int32be": "int32", "varint32": "int32",
+	"uint64": "uint64", "varuint64": "uint64", "int64": "int64", "varint64": "int64",
+}
+
 // countTypes maps the list helpers to the encoding of their count.
 var countTypes = map[string]string{
 	"Slice": "", "FuncSlice": "", "FuncIOSlice": "",
@@ -75,8 +82,11 @@ type importer struct {
 	owner  map[*ast.FuncDecl]*packages.Package
 	ioType *types.Interface
 	types  map[*types.TypeName]*decl
-	queue  []*types.TypeName
-	decls  []*decl
+	// writers holds the codecs imported from methods of Writer, nil for a
+	// method that has logic of its own.
+	writers map[string]*decl
+	queue   []*types.TypeName
+	decls   []*decl
 }
 
 func main() {
@@ -89,10 +99,11 @@ func main() {
 		log.Fatal(err)
 	}
 	im := &importer{
-		pkgs:  map[string]*packages.Package{},
-		funcs: map[*types.Func]*ast.FuncDecl{},
-		owner: map[*ast.FuncDecl]*packages.Package{},
-		types: map[*types.TypeName]*decl{},
+		pkgs:    map[string]*packages.Package{},
+		funcs:   map[*types.Func]*ast.FuncDecl{},
+		owner:   map[*ast.FuncDecl]*packages.Package{},
+		types:   map[*types.TypeName]*decl{},
+		writers: map[string]*decl{},
 	}
 	for _, p := range pkgs {
 		if len(p.Errors) > 0 {
@@ -112,6 +123,17 @@ func main() {
 	}
 	im.ioType = im.pkgs[protocolPath].Types.Scope().Lookup("IO").Type().Underlying().(*types.Interface)
 	im.packets()
+	// Every type with a codec: codecs written by hand dispatch to them.
+	for _, path := range []string{protocolPath, packetPath} {
+		scope := im.pkgs[path].Types.Scope()
+		for _, name := range scope.Names() {
+			if tn, ok := scope.Lookup(name).(*types.TypeName); ok {
+				if _, isPacket := im.packetID(tn); !isPacket {
+					im.ref(tn.Type())
+				}
+			}
+		}
+	}
 	for len(im.queue) > 0 {
 		tn := im.queue[0]
 		im.queue = im.queue[1:]
@@ -205,6 +227,52 @@ func (im *importer) method(tn *types.TypeName, name string) *ast.FuncDecl {
 		return nil
 	}
 	return im.funcs[fn]
+}
+
+// writerCodec imports the codec a method of gophertunnel's Writer gives a
+// special wire type, when it writes the fields of a struct in order; it
+// reports false for a codec with logic of its own.
+func (im *importer) writerCodec(method string, t types.Type) (string, bool) {
+	named, ok := types.Unalias(t).(*types.Named)
+	if !ok {
+		return "", false
+	}
+	if _, isStruct := named.Underlying().(*types.Struct); !isStruct {
+		return "", false
+	}
+	if d, ok := im.writers[method]; ok {
+		return method, d != nil
+	}
+	im.writers[method] = nil
+	writer, ok := im.pkgs[protocolPath].Types.Scope().Lookup("Writer").(*types.TypeName)
+	if !ok {
+		return "", false
+	}
+	obj, _, _ := types.LookupFieldOrMethod(types.NewPointer(writer.Type()), true, writer.Pkg(), method)
+	fn, ok := obj.(*types.Func)
+	if !ok || im.funcs[fn] == nil {
+		return "", false
+	}
+	fd := im.funcs[fn]
+	p := im.owner[fd]
+	var names []*ast.Ident
+	for _, f := range fd.Type.Params.List {
+		names = append(names, f.Names...)
+	}
+	if len(names) != 1 || len(fd.Recv.List[0].Names) != 1 {
+		return "", false
+	}
+	c := &ctx{im: im, pkg: p, fields: map[string]string{}, counts: map[types.Object]string{},
+		io: p.TypesInfo.Defs[fd.Recv.List[0].Names[0]], recv: p.TypesInfo.Defs[names[0]]}
+	if err := c.block(fd.Body.List, 0); err != nil {
+		return "", false
+	}
+	// The codec takes the name of the method: the type may have another of
+	// its own, as UseItemTransactionData has.
+	d := &decl{name: method, lines: c.lines}
+	im.writers[method] = d
+	im.decls = append(im.decls, d)
+	return method, true
 }
 
 // ref returns the schema name of a named type with a codec of its own,
@@ -518,8 +586,8 @@ func (c *ctx) ioMethod(call *ast.CallExpr) (string, bool) {
 }
 
 // ioFunc returns the wire type of a method value of the IO passed as a
-// function.
-func (c *ctx) ioFunc(e ast.Expr) (string, bool) {
+// function for values of type elem.
+func (c *ctx) ioFunc(e ast.Expr, elem types.Type) (string, bool) {
 	sel, ok := e.(*ast.SelectorExpr)
 	if !ok {
 		return "", false
@@ -529,7 +597,20 @@ func (c *ctx) ioFunc(e ast.Expr) (string, bool) {
 		return "", false
 	}
 	w, ok := primitives[sel.Sel.Name]
+	if ok && elem != nil {
+		if t, isCodec := c.im.writerCodec(sel.Sel.Name, elem); isCodec {
+			return t, true
+		}
+	}
 	return w, ok
+}
+
+// optionalElem returns the type an Optional pointer argument holds.
+func (c *ctx) optionalElem(e ast.Expr) types.Type {
+	if named, ok := types.Unalias(c.pointee(e)).(*types.Named); ok && named.TypeArgs().Len() == 1 {
+		return named.TypeArgs().At(0)
+	}
+	return nil
 }
 
 func (c *ctx) call(call *ast.CallExpr, depth int) error {
@@ -568,6 +649,9 @@ func (c *ctx) call(call *ast.CallExpr, depth int) error {
 		path, err := c.field(call.Args[0])
 		if err != nil {
 			return err
+		}
+		if t, ok := c.im.writerCodec(name, c.pointee(call.Args[0])); ok && primitives[name] != "" {
+			return c.put(depth, path, t)
 		}
 		return c.put(depth, path, w)
 	}
@@ -627,6 +711,17 @@ var helpers = map[string]bool{
 // IO and a pointer: inline when the pointer is the value itself, else a
 // field of the type it codes.
 func (c *ctx) codecFunc(fn *types.Func, call *ast.CallExpr, depth int) error {
+	if fn.Name() == "InputFlagList" && len(call.Args) == 3 {
+		path, err := c.field(call.Args[1])
+		if err != nil {
+			return err
+		}
+		size, err := c.expr(call.Args[2])
+		if err != nil {
+			return err
+		}
+		return c.put(depth, path, "inputflags("+size+")")
+	}
 	fd := c.im.funcs[fn]
 	if fd == nil || len(call.Args) != 2 {
 		return fmt.Errorf("call %s", firstLine(c.src(call)))
@@ -701,11 +796,11 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		}
 		return c.put(depth, path, "[]"+t)
 	case "FuncSlice", "FuncSliceUint32Length":
-		path, _, err := c.sliceField(args[1])
+		path, elem, err := c.sliceField(args[1])
 		if err != nil {
 			return err
 		}
-		w, ok := c.ioFunc(args[2])
+		w, ok := c.ioFunc(args[2], elem)
 		if !ok {
 			return fmt.Errorf("%s with %s", name, c.src(args[2]))
 		}
@@ -734,7 +829,7 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 			}
 		} else {
 			var ok bool
-			if t, ok = c.ioFunc(args[3]); !ok {
+			if t, ok = c.ioFunc(args[3], elem); !ok {
 				return fmt.Errorf("%s with %s", name, c.src(args[3]))
 			}
 		}
@@ -757,7 +852,7 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		if err != nil {
 			return err
 		}
-		w, ok := c.ioFunc(args[2])
+		w, ok := c.ioFunc(args[2], c.optionalElem(args[1]))
 		if !ok {
 			if w, ok = c.closureList(args[2]); !ok {
 				return fmt.Errorf("OptionalFunc with %s", c.src(args[2]))
@@ -783,9 +878,13 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		if err != nil {
 			return err
 		}
-		w, ok := c.ioFunc(args[1])
+		w, ok := c.ioFunc(args[1], nil)
 		if !ok {
 			return fmt.Errorf("IntegerFunc with %s", c.src(args[1]))
+		}
+		// The field keeps its own integer type, converted on the wire.
+		if b, ok := c.pointee(args[0]).Underlying().(*types.Basic); ok && b.Name() != goInteger[w] {
+			w += " as " + b.Name()
 		}
 		return c.put(depth, path, w)
 	}
@@ -809,6 +908,17 @@ func (c *ctx) closureList(e ast.Expr) (string, bool) {
 	fn := c.callee(call)
 	if fn == nil {
 		return "", false
+	}
+	if fn.Name() == "Marshal" && len(lit.Type.Params.List) == 1 {
+		// func(x *T) { x.Marshal(io) }: a value with a codec of its own.
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return "", false
+		}
+		if p, ok := c.pkg.TypesInfo.TypeOf(sel.X).(*types.Pointer); ok {
+			return c.im.ref(p.Elem())
+		}
+		return c.im.ref(c.pkg.TypesInfo.TypeOf(sel.X))
 	}
 	count, ok := countTypes[fn.Name()]
 	if !ok {
@@ -836,7 +946,13 @@ func (c *ctx) closureList(e ast.Expr) (string, bool) {
 	if len(call.Args) != 3 {
 		return "", false
 	}
-	w, ok := c.ioFunc(call.Args[2])
+	var elem types.Type
+	if p, ok := c.pkg.TypesInfo.TypeOf(call.Args[1]).(*types.Pointer); ok {
+		if sl, ok := p.Elem().Underlying().(*types.Slice); ok {
+			elem = sl.Elem()
+		}
+	}
+	w, ok := c.ioFunc(call.Args[2], elem)
 	if !ok {
 		return "", false
 	}

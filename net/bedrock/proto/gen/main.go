@@ -29,9 +29,12 @@ import (
 )
 
 type node struct {
-	kind  string // "field", "if", "else", "switch", "case", "default"
-	path  string
-	wire  string
+	kind string // "field", "if", "else", "switch", "case", "default"
+	path string
+	wire string
+	// as is the Go type of an integer field that differs from its wire
+	// type, converted on the wire.
+	as    string
 	expr  string
 	vals  []string
 	body  []*node
@@ -160,6 +163,9 @@ func parse(path string) (*schema, error) {
 			continue
 		default:
 			nd.kind, nd.path, nd.wire = "field", word, rest
+			if w, as, ok := strings.Cut(rest, " as "); ok {
+				nd.wire, nd.as = w, as
+			}
 		}
 		if top.last != nil && top.last.kind == "switch" && (word == "case" || word == "default") {
 			top.last.body = append(top.last.body, nd)
@@ -273,6 +279,16 @@ var special = map[string]string{
 	"eventtype": "Event", "eventordinal": "Event", "transactiondata": "InventoryTransactionData",
 	"playerinventoryaction": "UseItemTransactionData", "gamerule": "GameRule",
 	"abilityvalue": "AbilityValue", "packsetting": "PackSetting", "shapedata": "ShapeData",
+	"inputflags": "InputFlags",
+}
+
+// specialBase returns a special wire type without its arguments, as
+// inputflags(66) is inputflags.
+func specialBase(w string) string {
+	if i := strings.IndexByte(w, '('); i > 0 {
+		return w[:i]
+	}
+	return w
 }
 
 // complete reports whether a wire type has a codec.
@@ -287,8 +303,8 @@ func (s *schema) complete(w string, seen map[*decl]bool) bool {
 	if strings.HasPrefix(w, "nbt(") || strings.HasPrefix(w, "nbtlist(") || strings.HasPrefix(w, "bitset(") {
 		return s.hand[w]
 	}
-	if _, ok := special[w]; ok {
-		return s.hand[w]
+	if _, ok := special[specialBase(w)]; ok {
+		return s.hand[specialBase(w)]
 	}
 	d, ok := s.byName[w]
 	if !ok {
@@ -356,6 +372,9 @@ func (s *schema) fields(d *decl) ([]field, error) {
 			err = fmt.Errorf("%s.%s: %w", d.name, n.path, e)
 			return
 		}
+		if n.as != "" {
+			t = n.as
+		}
 		if isIdx {
 			i, e := strconv.Atoi(strings.TrimSuffix(idx, "]"))
 			if e != nil {
@@ -390,7 +409,7 @@ func (s *schema) goType(w string) (string, error) {
 	if t, ok := goTypes[w]; ok {
 		return t, nil
 	}
-	if t, ok := special[w]; ok {
+	if t, ok := special[specialBase(w)]; ok {
 		return t, nil
 	}
 	if _, ok := s.byName[w]; ok {
@@ -430,13 +449,12 @@ func (s *schema) generate(pkg string) ([]byte, error) {
 	g.p("\t\"github.com/dm-vev/adamant/net/bedrock/proto\"")
 	g.p("\t\"github.com/dm-vev/adamant/net/bedrock/wire\"")
 	g.p(")")
-	used := s.usedTypes()
 	var packets []*decl
 	for _, d := range s.decls {
 		if d.packet {
 			packets = append(packets, d)
 		}
-		if s.hand[d.name] || !d.packet && !used[d.name] {
+		if s.hand[d.name] || !d.packet && !s.declComplete(d, map[*decl]bool{}) {
 			continue
 		}
 		if err := g.decl(d); err != nil {
@@ -782,7 +800,7 @@ func (g *gen) value(w, v string, enc bool) error {
 		}
 		return nil
 	}
-	if t, ok := special[w]; ok {
+	if t, ok := special[specialBase(w)]; ok {
 		if enc {
 			g.p("write%s(w, &%s)", t, v)
 		} else {

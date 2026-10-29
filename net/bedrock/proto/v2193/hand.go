@@ -79,34 +79,42 @@ func readItemInstance(r *wire.Reader, x *ItemInstance) {
 	readUserData(r, s)
 }
 
-// writeUserData writes the extra data of an item: its NBT in the form of
-// worlds, the blocks it may be placed on and break, and for a shield its
-// blocking tick, all prefixed with their length. An empty stack has none.
+// writeUserData writes the user data of an item stack.
 func writeUserData(w *wire.Writer, x *ItemStack) {
-	if x.NetworkID == 0 {
-		w.Varuint32(0)
-		return
-	}
-	var data wire.Writer
-	if len(x.NBTData) > 0 {
-		data.Int16(-1)
-		data.Uint8(1)
-		if err := nbt.WriteEncoded(&data, x.NBTData, nbt.LittleEndian); err != nil {
-			panic(err)
-		}
-	} else {
-		data.Int16(0)
-	}
-	writeStrings16(&data, x.CanBePlacedOn)
-	writeStrings16(&data, x.CanBreak)
-	if x.NetworkID == shieldID.Load() {
-		data.Int64(x.BlockingTick)
-	}
-	w.ByteSlice(data.B)
+	writeItemData(w, x.NetworkID != 0, x.NetworkID == shieldID.Load(), x.NBTData, x.CanBePlacedOn, x.CanBreak, x.BlockingTick)
 }
 
 func readUserData(r *wire.Reader, x *ItemStack) {
-	x.NBTData, x.CanBePlacedOn, x.CanBreak, x.BlockingTick = nil, nil, nil, 0
+	x.NBTData, x.CanBePlacedOn, x.CanBreak, x.BlockingTick = readItemData(r, x.NetworkID == shieldID.Load())
+}
+
+// writeItemData writes the extra data of an item: its NBT in the form of
+// worlds, the blocks it may be placed on and break, and for a shield its
+// blocking tick, all prefixed with their length. An empty item has none.
+func writeItemData(w *wire.Writer, present, shield bool, data map[string]any, placeOn, canBreak []string, tick int64) {
+	if !present {
+		w.Varuint32(0)
+		return
+	}
+	var b wire.Writer
+	if len(data) > 0 {
+		b.Int16(-1)
+		b.Uint8(1)
+		if err := nbt.WriteEncoded(&b, data, nbt.LittleEndian); err != nil {
+			panic(err)
+		}
+	} else {
+		b.Int16(0)
+	}
+	writeStrings16(&b, placeOn)
+	writeStrings16(&b, canBreak)
+	if shield {
+		b.Int64(tick)
+	}
+	w.ByteSlice(b.B)
+}
+
+func readItemData(r *wire.Reader, shield bool) (data map[string]any, placeOn, canBreak []string, tick int64) {
 	b := r.ByteSlice()
 	if len(b) == 0 || r.Err() != nil {
 		return
@@ -126,16 +134,17 @@ func readUserData(r *wire.Reader, x *ItemStack) {
 			r.Fail(err)
 			return
 		}
-		x.NBTData = m
+		data = m
 	}
-	x.CanBePlacedOn = readStrings16(d)
-	x.CanBreak = readStrings16(d)
-	if x.NetworkID == shieldID.Load() {
-		x.BlockingTick = d.Int64()
+	placeOn = readStrings16(d)
+	canBreak = readStrings16(d)
+	if shield {
+		tick = d.Int64()
 	}
 	if d.Err() != nil {
 		r.Fail(d.Err())
 	}
+	return
 }
 
 // writeStrings16 writes strings prefixed with an int16 length, the list

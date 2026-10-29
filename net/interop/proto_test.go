@@ -16,6 +16,37 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
+// implementations lists values of the interfaces packets hold, so that
+// random packets carry each kind.
+var implementations = map[reflect.Type][]func() any{
+	reflect.TypeFor[protocol.ItemDescriptor](): {
+		func() any { return &protocol.InvalidItemDescriptor{} },
+		func() any { return &protocol.DefaultItemDescriptor{} },
+		func() any { return &protocol.MoLangItemDescriptor{} },
+		func() any { return &protocol.ItemTagItemDescriptor{} },
+	},
+	reflect.TypeFor[protocol.StackRequestAction](): {
+		func() any { return &protocol.TakeStackRequestAction{} },
+		func() any { return &protocol.PlaceStackRequestAction{} },
+		func() any { return &protocol.SwapStackRequestAction{} },
+		func() any { return &protocol.DropStackRequestAction{} },
+		func() any { return &protocol.DestroyStackRequestAction{} },
+		func() any { return &protocol.ConsumeStackRequestAction{} },
+		func() any { return &protocol.CreateStackRequestAction{} },
+		func() any { return &protocol.LabTableCombineStackRequestAction{} },
+		func() any { return &protocol.BeaconPaymentStackRequestAction{} },
+		func() any { return &protocol.MineBlockStackRequestAction{} },
+		func() any { return &protocol.CraftRecipeStackRequestAction{} },
+		func() any { return &protocol.AutoCraftRecipeStackRequestAction{} },
+		func() any { return &protocol.CraftCreativeStackRequestAction{} },
+		func() any { return &protocol.CraftRecipeOptionalStackRequestAction{} },
+		func() any { return &protocol.CraftGrindstoneRecipeStackRequestAction{} },
+		func() any { return &protocol.CraftLoomRecipeStackRequestAction{} },
+		func() any { return &protocol.CraftNonImplementedStackRequestAction{} },
+		func() any { return &protocol.CraftResultsDeprecatedStackRequestAction{} },
+	},
+}
+
 // fill sets a value to random contents: small numbers often, so that enum
 // branches are taken, short strings and lists, NBT of one key.
 func fill(rng *rand.Rand, v reflect.Value, depth int) {
@@ -23,6 +54,17 @@ func fill(rng *rand.Rand, v reflect.Value, depth int) {
 		v = reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem()
 	}
 	small := rng.IntN(2) == 0
+	if v.Type() == reflect.TypeFor[protocol.GameRule]() {
+		values := []any{nil, rng.IntN(2) == 0, uint32(rng.IntN(100)), float32(rng.IntN(100)) / 4}
+		v.Set(reflect.ValueOf(protocol.GameRule{Name: "rule", CanBeModifiedByPlayer: small, Value: values[rng.IntN(len(values))]}))
+		return
+	}
+	if impls, ok := implementations[v.Type()]; ok && depth < 6 {
+		x := reflect.ValueOf(impls[rng.IntN(len(impls))]())
+		fill(rng, x.Elem(), depth+1)
+		v.Set(x)
+		return
+	}
 	switch v.Kind() {
 	case reflect.Bool:
 		v.SetBool(rng.IntN(2) == 0)
@@ -198,11 +240,21 @@ func open(v reflect.Value) reflect.Value {
 // decoded from the same bytes, field by field by name.
 func same(ours, theirs reflect.Value, path string) error {
 	ours, theirs = open(ours), open(theirs)
-	if theirs.Kind() == reflect.Interface || theirs.Kind() == reflect.Pointer {
+	for theirs.Kind() == reflect.Interface || theirs.Kind() == reflect.Pointer {
 		if theirs.IsNil() {
 			return nil
 		}
 		theirs = theirs.Elem()
+	}
+	for ours.Kind() == reflect.Interface || ours.Kind() == reflect.Pointer {
+		if ours.IsNil() {
+			return fmt.Errorf("%s: nil, gophertunnel %v", path, theirs.Interface())
+		}
+		ours = ours.Elem()
+	}
+	if ours.Kind() == reflect.Slice && theirs.Kind() == reflect.Struct && theirs.Type().Name() == "InputFlags" {
+		// The flags of gophertunnel keep their IDs in an unexported list.
+		theirs = open(theirs.FieldByName("ids"))
 	}
 	switch ours.Kind() {
 	case reflect.Bool:
