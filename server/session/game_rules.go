@@ -3,7 +3,6 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // clientGameRules maps stored gamerules onto the Bedrock gamerule names the
@@ -40,11 +39,11 @@ var clientGameRules = map[string]string{
 
 // ClientGameRules returns the Bedrock client view of the world's gamerules,
 // used in the StartGame packet.
-func ClientGameRules(w *world.World) []protocol.GameRule {
-	rules := make([]protocol.GameRule, 0, len(clientGameRules))
+func ClientGameRules(w *world.World) []v2193.GameRule {
+	rules := make([]v2193.GameRule, 0, len(clientGameRules))
 	for name, client := range clientGameRules {
 		if v, ok := w.GameRule(name); ok {
-			rules = append(rules, protocol.GameRule{Name: client, Value: clientGameRuleValue(v)})
+			rules = append(rules, v2193.GameRule{Name: client, Value: clientGameRuleValue(v)})
 		}
 	}
 	return rules

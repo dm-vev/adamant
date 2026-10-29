@@ -11,14 +11,14 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 )
 
@@ -46,7 +46,7 @@ func (stubConn) ReadPacket() (proto.Packet, error) { return nil, io.EOF }
 
 func (stubConn) WritePacket(proto.Packet) error { return nil }
 
-func (stubConn) StartGameContext(context.Context, minecraft.GameData) error { return nil }
+func (stubConn) StartGameContext(context.Context, netconn.GameData) error { return nil }
 
 func TestRespawnFallsBackToDefaultDimension(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))

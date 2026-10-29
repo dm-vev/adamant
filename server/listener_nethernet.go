@@ -10,16 +10,25 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/df-mc/dragonfly/server/netconn"
+	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
+
+// listenerFunc returns the NetherNet listener of the server, the standard
+// listener used when UserConfig.Config() is called.
+func (uc UserConfig) listenerFunc(conf Config) (Listener, error) {
+	return uc.netherNetListener(conf)
+}
 
 func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 	identityFile := uc.Network.IdentityFile
@@ -34,6 +43,27 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 	if conf.Allower != nil {
 		allow = conf.Allower.Allow
 	}
+	listen := nethernet.ListenConfig{Key: key, AllowAnonymous: conf.AuthDisabled}
+	if uc.Network.EnableQuery {
+		// Server lists send query requests to the port of the game, which
+		// is the port of the NetherNet sockets.
+		local, err := netip.ParseAddrPort(uc.Network.Address)
+		if err != nil {
+			local = netip.AddrPortFrom(netip.IPv4Unspecified(), 19132)
+			if _, port, err := net.SplitHostPort(uc.Network.Address); err == nil {
+				if p, err := strconv.ParseUint(port, 10, 16); err == nil {
+					local = netip.AddrPortFrom(netip.IPv4Unspecified(), uint16(p))
+				}
+			}
+		}
+		responder, err := query.NewResponder(local, conf.Log)
+		if err != nil {
+			return nil, fmt.Errorf("create query responder: %w", err)
+		}
+		listen.Datagram = func(b []byte, from netip.AddrPort, reply func([]byte)) {
+			responder.Answer(b, from, reply)
+		}
+	}
 	l, err := netconn.Config{
 		Log:                    conf.Log,
 		MaximumPlayers:         conf.MaxPlayers,
@@ -43,7 +73,7 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 		TexturePacksRequired:   conf.ResourcesRequired,
 		Allow:                  allow,
 		Compression:            batchCompression(conf.Compression),
-	}.Listen(nethernet.ListenConfig{Key: key, AllowAnonymous: conf.AuthDisabled}, uc.Network.Address)
+	}.Listen(listen, uc.Network.Address)
 	if err != nil {
 		return nil, fmt.Errorf("create NetherNet listener: %w", err)
 	}

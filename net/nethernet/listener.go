@@ -81,6 +81,13 @@ type ListenConfig struct {
 	SendBuffer int
 	// TLSConfig makes the signaling HTTPS.
 	TLSConfig *tls.Config
+	// Datagram, if set, is given the datagrams of other protocols that
+	// arrive on the sockets: those whose first byte is of neither STUN nor
+	// DTLS, nor of anything else WebRTC multiplexes (RFC 7983), as the
+	// requests of the query protocol of server lists. Reply sends an
+	// answer back. It runs on the goroutine of the socket, so it must be
+	// quick, and neither b nor reply may be kept after it returns.
+	Datagram func(b []byte, from netip.AddrPort, reply func([]byte))
 }
 
 // Status is what a server tells clients that look it up before joining.
@@ -636,8 +643,23 @@ func (l *Listener) read(sock *net.UDPConn) {
 			}
 			continue
 		}
-		l.dispatch(buf[:n], netip.AddrPortFrom(from.Addr().Unmap(), from.Port()), &msg)
+		addr := netip.AddrPortFrom(from.Addr().Unmap(), from.Port())
+		// RFC 7983 leaves the first bytes from 192 on to others than WebRTC.
+		if l.cfg.Datagram != nil && n > 0 && buf[0] >= 192 {
+			l.datagram(sock, buf[:n], addr)
+			continue
+		}
+		l.dispatch(buf[:n], addr, &msg)
 	}
+}
+
+// datagram hands a datagram of another protocol to the Datagram of the
+// config. A panic there drops the datagram, not the socket.
+func (l *Listener) datagram(sock *net.UDPConn, b []byte, from netip.AddrPort) {
+	defer func() { _ = recover() }()
+	l.cfg.Datagram(b, from, func(answer []byte) {
+		_, _ = sock.WriteToUDPAddrPort(answer, from)
+	})
 }
 
 // dispatch hands a datagram to its connection: a check by the ICE username

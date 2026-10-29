@@ -9,10 +9,14 @@ import (
 	"strings"
 )
 
-// packetConn intercepts query requests and responds directly while delegating
-// all other traffic to the wrapped PacketConn.
+// writerTo sends the answers to query requests.
+type writerTo interface {
+	WriteTo(b []byte, addr net.Addr) (int, error)
+}
+
+// packetConn answers query requests, writing the answers to PacketConn.
 type packetConn struct {
-	net.PacketConn
+	PacketConn writerTo
 
 	log  Logger
 	host string
@@ -27,30 +31,14 @@ type Logger interface {
 	Debug(msg string, args ...any)
 }
 
-// ReadFrom inspects incoming datagrams and filters out query packets so that
-// they can be processed independently.
-func (c *packetConn) ReadFrom(p []byte) (int, net.Addr, error) {
-	for {
-		n, addr, err := c.PacketConn.ReadFrom(p)
-		if err != nil || n == 0 {
-			return n, addr, err
-		}
-		if c.handleQuery(p[:n], addr) {
-			continue
-		}
-		return n, addr, nil
-	}
-}
-
-// handleQuery recognises and processes query requests. Non-query traffic is
-// ignored so that it can proceed through the regular RakNet pipeline.
+// handleQuery recognises and processes query requests and reports whether
+// b was one.
 func (c *packetConn) handleQuery(b []byte, addr net.Addr) bool {
 	if len(b) < 7 || b[0] != queryVersion[0] || b[1] != queryVersion[1] {
 		return false
 	}
 	if !Enabled() {
-		// If query is disabled, ignore query packets without responding. Passing these packets through to RakNet
-		// provides no value and may cause noisy "unknown packet" logs in upstream listeners.
+		// If query is disabled, ignore query packets without responding.
 		return true
 	}
 	reqType := b[2]

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"net/netip"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -499,4 +500,31 @@ func parseShortPayload(payload []byte) (shortQueryInfo, error) {
 		return shortQueryInfo{}, errors.New("unexpected trailing data")
 	}
 	return info, nil
+}
+
+// TestResponderAnswers runs a query through a Responder as a listener
+// hands it datagrams: the handshake gives a token, the token gives the
+// statistics, and a datagram of another protocol is not taken.
+func TestResponderAnswers(t *testing.T) {
+	payloadCache.Store(nil)
+	RegisterProvider(func(host string, port int) Data { return Data{HostName: "Adamant", HostIP: host, HostPort: port} })
+	t.Cleanup(func() { RegisterProvider(nil); payloadCache.Store(nil) })
+	r, err := NewResponder(netip.MustParseAddrPort("127.0.0.1:19132"), nopLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	from := netip.MustParseAddrPort("10.0.0.1:5000")
+	var answers [][]byte
+	reply := func(b []byte) { answers = append(answers, append([]byte(nil), b...)) }
+	if r.Answer([]byte{0x16, 0xfe, 0xfd, 1, 2, 3, 4}, from, reply) {
+		t.Fatal("a DTLS record was taken for a query")
+	}
+	if !r.Answer([]byte{0xfe, 0xfd, queryTypeHandshake, 0, 0, 0, 7}, from, reply) || len(answers) != 1 || len(answers[0]) != 10 {
+		t.Fatalf("handshake answers %x", answers)
+	}
+	token := answers[0][5:9]
+	stat := append([]byte{0xfe, 0xfd, queryTypeInformation, 0, 0, 0, 8}, token...)
+	if !r.Answer(stat, from, reply) || len(answers) != 2 || !bytes.Contains(answers[1], []byte("Adamant")) {
+		t.Fatalf("statistics answers %q", answers)
+	}
 }

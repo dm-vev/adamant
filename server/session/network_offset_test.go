@@ -13,15 +13,15 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -239,17 +239,17 @@ type packetConn struct {
 	packets chan any
 }
 
-func (*packetConn) Close() error                                               { return nil }
-func (*packetConn) ClientData() login.ClientData                               { return login.ClientData{} }
-func (*packetConn) ClientCacheEnabled() bool                                   { return false }
-func (*packetConn) ChunkRadius() int                                           { return 1 }
-func (*packetConn) Latency() time.Duration                                     { return 0 }
-func (*packetConn) Flush() error                                               { return nil }
-func (*packetConn) RemoteAddr() net.Addr                                       { return &net.TCPAddr{} }
-func (*packetConn) ReadPacket() (proto.Packet, error)                          { return nil, io.EOF }
-func (c *packetConn) WritePacket(pk proto.Packet) error                        { c.packets <- pk; return nil }
-func (c *packetConn) WriteProto(pk proto.Packet) error                         { c.packets <- pk; return nil }
-func (*packetConn) StartGameContext(context.Context, minecraft.GameData) error { return nil }
+func (*packetConn) Close() error                                             { return nil }
+func (*packetConn) ClientData() login.ClientData                             { return login.ClientData{} }
+func (*packetConn) ClientCacheEnabled() bool                                 { return false }
+func (*packetConn) ChunkRadius() int                                         { return 1 }
+func (*packetConn) Latency() time.Duration                                   { return 0 }
+func (*packetConn) Flush() error                                             { return nil }
+func (*packetConn) RemoteAddr() net.Addr                                     { return &net.TCPAddr{} }
+func (*packetConn) ReadPacket() (proto.Packet, error)                        { return nil, io.EOF }
+func (c *packetConn) WritePacket(pk proto.Packet) error                      { c.packets <- pk; return nil }
+func (c *packetConn) WriteProto(pk proto.Packet) error                       { c.packets <- pk; return nil }
+func (*packetConn) StartGameContext(context.Context, netconn.GameData) error { return nil }
 func (*packetConn) IdentityData() login.IdentityData {
 	return login.IdentityData{Identity: uuid.NewString(), DisplayName: "viewer"}
 }

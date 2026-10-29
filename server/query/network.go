@@ -1,15 +1,12 @@
 package query
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"io"
 	"net"
-
-	"github.com/sandertv/go-raknet"
-	"github.com/sandertv/gophertunnel/minecraft"
-	"log/slog"
+	"net/netip"
+	"sync"
 )
 
 const (
@@ -25,90 +22,45 @@ var (
 	queryVersion        = [...]byte{0xfe, 0xfd}
 )
 
-// init replaces the default RakNet implementation so that the query specific
-// packet handling can be injected transparently.
-func init() {
-	minecraft.RegisterNetwork("raknet", func(l *slog.Logger) minecraft.Network {
-		return rakNetNetwork{log: l}
-	})
+// Responder answers the query requests that arrive on the UDP socket of
+// another protocol, from which the listener of that protocol hands it the
+// datagrams it does not take: query requests start with 0xfe, a byte no
+// protocol of WebRTC begins with.
+type Responder struct {
+	mu sync.Mutex
+	c  packetConn
 }
 
-// rakNetNetwork is a wrapper that installs a query-aware packet listener while
-// delegating all other behaviour to the standard RakNet implementation.
-type rakNetNetwork struct {
-	log *slog.Logger
-}
-
-// effectiveLogger returns a usable logger even if the caller did not configure one.
-func (r rakNetNetwork) effectiveLogger() *slog.Logger {
-	if r.log == nil {
-		return slog.Default()
-	}
-	return r.log
-}
-
-// DialContext forwards dial requests to the default RakNet dialer.
-func (r rakNetNetwork) DialContext(ctx context.Context, address string) (net.Conn, error) {
-	logger := r.effectiveLogger()
-	return raknet.Dialer{ErrorLog: logger.With("net origin", "raknet")}.DialContext(ctx, address)
-}
-
-// PingContext forwards ping requests to the default RakNet dialer.
-func (r rakNetNetwork) PingContext(ctx context.Context, address string) ([]byte, error) {
-	logger := r.effectiveLogger()
-	return raknet.Dialer{ErrorLog: logger.With("net origin", "raknet")}.PingContext(ctx, address)
-}
-
-// Listen wraps the standard RakNet listener so that query packets are
-// intercepted before they reach the upstream handler.
-func (r rakNetNetwork) Listen(address string) (minecraft.NetworkListener, error) {
-	logger := r.effectiveLogger()
-	lc := raknet.ListenConfig{
-		ErrorLog: logger.With("net origin", "raknet"),
-		UpstreamPacketListener: &packetListener{
-			log: logger.With("net origin", "raknet"),
-		},
-	}
-	return lc.Listen(address)
-}
-
-// packetListener produces query aware UDP connections for the RakNet listener.
-type packetListener struct {
-	log *slog.Logger
-}
-
-// ListenPacket implements the minecraft.PacketListener interface.
-func (l *packetListener) ListenPacket(network, address string) (net.PacketConn, error) {
-	conn, err := net.ListenPacket(network, address)
-	if err != nil {
-		return nil, err
-	}
-	local, _ := net.ResolveUDPAddr(network, conn.LocalAddr().String())
-	host := ""
-	if local != nil && local.IP != nil {
-		host = local.IP.String()
-		if host == "" || local.IP.IsUnspecified() {
-			host = "0.0.0.0"
-		}
-	}
-	port := 0
-	if local != nil {
-		port = local.Port
-	}
-
+// NewResponder returns a Responder for a socket bound to local, which the
+// answers name as the address of the server.
+func NewResponder(local netip.AddrPort, log Logger) (*Responder, error) {
 	token, err := newQueryToken()
 	if err != nil {
-		_ = conn.Close()
 		return nil, err
 	}
-	return &packetConn{
-		PacketConn: conn,
-		log:        l.log,
-		host:       host,
-		port:       port,
-		token:      token,
-		lastToken:  token,
-	}, nil
+	host := "0.0.0.0"
+	if a := local.Addr(); a.IsValid() && !a.IsUnspecified() {
+		host = a.Unmap().String()
+	}
+	return &Responder{c: packetConn{log: log, host: host, port: int(local.Port()), token: token, lastToken: token}}, nil
+}
+
+// Answer answers b if it is a query request, sending the answer with
+// reply, and reports whether it was one.
+func (r *Responder) Answer(b []byte, from netip.AddrPort, reply func([]byte)) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.c.PacketConn = replyWriter(reply)
+	defer func() { r.c.PacketConn = nil }()
+	return r.c.handleQuery(b, net.UDPAddrFromAddrPort(from))
+}
+
+// replyWriter sends what is written to it as the answer to a datagram.
+type replyWriter func([]byte)
+
+func (w replyWriter) WriteTo(b []byte, _ net.Addr) (int, error) {
+	w(b)
+	return len(b), nil
 }
 
 func newQueryToken() ([16]byte, error) {

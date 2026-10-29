@@ -494,3 +494,28 @@ func readItemDescriptorCount(r *wire.Reader, x *ItemDescriptorCount) {
 
 func (x *ItemDescriptorCount) Encode(w *wire.Writer) { writeItemDescriptorCount(w, x) }
 func (x *ItemDescriptorCount) Decode(r *wire.Reader) { readItemDescriptorCount(r, x) }
+
+// Versions of the data of an ItemEntry.
+const (
+	ItemEntryVersionLegacy int32 = iota
+	ItemEntryVersionDataDriven
+	ItemEntryVersionNone
+)
+
+// Generators of a world or a dimension.
+const (
+	GeneratorLegacy int32 = iota
+	GeneratorOverworld
+	GeneratorFlat
+	GeneratorNether
+	GeneratorEnd
+	GeneratorVoid
+)
+
+// Permission levels of a player.
+const (
+	PermissionLevelVisitor uint8 = iota
+	PermissionLevelMember
+	PermissionLevelOperator
+	PermissionLevelCustom
+)

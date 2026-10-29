@@ -15,13 +15,13 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -269,7 +269,7 @@ func (p *panicSaveProvider) Save(uuid.UUID, player.Config, *world.World) error {
 
 type serverPanicConn struct {
 	identity   login.IdentityData
-	started    chan minecraft.GameData
+	started    chan netconn.GameData
 	readErrors chan error
 	closed     chan struct{}
 	once       sync.Once
@@ -278,7 +278,7 @@ type serverPanicConn struct {
 func newServerPanicConn() *serverPanicConn {
 	return &serverPanicConn{
 		identity:   login.IdentityData{Identity: uuid.NewString(), DisplayName: "panic-test", XUID: "panic-xuid"},
-		started:    make(chan minecraft.GameData, 1),
+		started:    make(chan netconn.GameData, 1),
 		readErrors: make(chan error, 1),
 		closed:     make(chan struct{}),
 	}
@@ -307,7 +307,7 @@ func (c *serverPanicConn) ReadPacket() (proto.Packet, error) {
 	}
 }
 
-func (c *serverPanicConn) StartGameContext(_ context.Context, data minecraft.GameData) error {
+func (c *serverPanicConn) StartGameContext(_ context.Context, data netconn.GameData) error {
 	c.started <- data
 	return nil
 }

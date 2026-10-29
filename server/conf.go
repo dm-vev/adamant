@@ -16,12 +16,12 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/playerdb"
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"github.com/sandertv/gophertunnel/minecraft/resource"
 )
@@ -81,7 +81,7 @@ type Config struct {
 	// StatusProvider provides the server status shown to players in the server
 	// list. By default, StatusProvider will show the server name from the Name
 	// field and the current player count and maximum players.
-	StatusProvider minecraft.ServerStatusProvider
+	StatusProvider netconn.StatusProvider
 	// Compression is the packet compression used for connections accepted by
 	// the default listener. If nil, gophertunnel's default compression is used.
 	Compression packet.Compression
@@ -367,13 +367,14 @@ type UserConfig struct {
 		// Address is the address on which the server should listen. Players may
 		// connect to this address in order to join.
 		Address string
-		// Transport selects "nethernet" (modern Bedrock) or "raknet" for older/custom clients.
-		// An empty value selects NetherNet.
+		// Transport names the transport players join over: "nethernet", the
+		// only one, which an empty value also selects.
 		Transport string
 		// IdentityFile stores the NetherNet server's persistent P-384 identity key.
 		// An empty value uses "server-key.pem".
 		IdentityFile string
-		// EnableQuery controls whether Bedrock Query responses are enabled.
+		// EnableQuery controls whether Bedrock Query responses are enabled. Query
+		// requests arrive on the UDP port of the game, beside NetherNet.
 		// When disabled, query packets are ignored (no reply is sent).
 		EnableQuery bool
 		// QueryPlugins controls whether the query response should list plugins.
@@ -506,7 +507,10 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if transport == "" {
 		transport = "nethernet"
 	}
-	if transport != "nethernet" && transport != "raknet" {
+	if transport == "raknet" {
+		return Config{}, fmt.Errorf("network transport %q is no longer supported: players join over NetherNet", uc.Network.Transport)
+	}
+	if transport != "nethernet" {
 		return Config{}, fmt.Errorf("unknown network transport %q", uc.Network.Transport)
 	}
 	uc.Network.Transport = transport

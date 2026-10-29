@@ -13,12 +13,12 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 )
@@ -131,7 +131,7 @@ func (c *releaseTestConn) WritePacket(pk proto.Packet) error {
 	c.mu.Unlock()
 	return nil
 }
-func (*releaseTestConn) StartGameContext(context.Context, minecraft.GameData) error { return nil }
+func (*releaseTestConn) StartGameContext(context.Context, netconn.GameData) error { return nil }
 
 func (c *releaseTestConn) waitForMessage(t *testing.T, marker string) {
 	t.Helper()

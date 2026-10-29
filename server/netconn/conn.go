@@ -24,7 +24,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -295,7 +294,7 @@ const maxDeferred = 256
 // StartGameContext starts the game of the client: the world it spawns in,
 // the items of the server, and its spawn once it asked for a chunk radius.
 // It returns once the client is in the world.
-func (c *Conn) StartGameContext(ctx context.Context, data minecraft.GameData) error {
+func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 	if data.WorldName == "" {
 		data.WorldName = c.l.status().ServerName
 	}
@@ -308,14 +307,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data minecraft.GameData) er
 	}
 	c.runtimeID = data.EntityRuntimeID
 	if len(data.Dimensions) > 0 {
-		dimensions := make([]v2193.DimensionDefinition, len(data.Dimensions))
-		for i, d := range data.Dimensions {
-			dimensions[i] = v2193.DimensionDefinition{
-				Name: d.Name, MinimumY: d.MinimumY, HeightRange: d.HeightRange, Generator: d.Generator,
-				DimensionType: d.DimensionType, PackID: d.PackID, DefaultBiome: d.DefaultBiome,
-			}
-		}
-		_ = c.WritePacket(&v2193.DimensionDataPacket{Definitions: dimensions})
+		_ = c.WritePacket(&v2193.DimensionDataPacket{Definitions: data.Dimensions})
 	}
 	_ = c.WritePacket(&v2193.JigsawStructureDataPacket{StructureData: map[string]any{
 		"processors":     make([]map[string]any, 0),
@@ -325,11 +317,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data minecraft.GameData) er
 	}})
 	_ = c.WritePacket(&v2193.VoxelShapesPacket{})
 	_ = c.WritePacket(startGame(data))
-	items := make([]v2193.ItemEntry, len(data.Items))
-	for i, item := range data.Items {
-		items[i] = v2193.ItemEntry(item)
-	}
-	_ = c.WritePacket(&v2193.ItemRegistryPacket{Items: items})
+	_ = c.WritePacket(&v2193.ItemRegistryPacket{Items: data.Items})
 	if err := c.Flush(); err != nil {
 		return err
 	}
@@ -375,19 +363,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data minecraft.GameData) er
 
 // startGame returns the StartGame packet of the game data, filled as
 // gophertunnel fills it.
-func startGame(data minecraft.GameData) *v2193.StartGamePacket {
-	rules := make([]v2193.GameRule, len(data.GameRules))
-	for i, r := range data.GameRules {
-		rules[i] = v2193.GameRule(r)
-	}
-	blocks := make([]v2193.BlockEntry, len(data.CustomBlocks))
-	for i, b := range data.CustomBlocks {
-		blocks[i] = v2193.BlockEntry(b)
-	}
-	experiments := make([]v2193.ExperimentData, len(data.Experiments))
-	for i, e := range data.Experiments {
-		experiments[i] = v2193.ExperimentData(e)
-	}
+func startGame(data GameData) *v2193.StartGamePacket {
 	return &v2193.StartGamePacket{
 		Difficulty:                   data.Difficulty,
 		EntityUniqueID:               data.EntityUniqueID,
@@ -405,10 +381,10 @@ func startGame(data minecraft.GameData) *v2193.StartGamePacket {
 		PersonaDisabled:              data.PersonaDisabled,
 		CustomSkinsDisabled:          data.CustomSkinsDisabled,
 		EmoteChatMuted:               data.EmoteChatMuted,
-		GameRules:                    rules,
+		GameRules:                    data.GameRules,
 		Time:                         data.Time,
 		DayCycleLockTime:             data.DayCycleLockTime,
-		Blocks:                       blocks,
+		Blocks:                       data.CustomBlocks,
 		AchievementsDisabled:         true,
 		Generator:                    1,
 		EducationFeaturesEnabled:     true,
@@ -417,13 +393,13 @@ func startGame(data minecraft.GameData) *v2193.StartGamePacket {
 		CommandsEnabled:              true,
 		WorldName:                    data.WorldName,
 		LANBroadcastEnabled:          true,
-		PlayerMovementSettings:       v2193.PlayerMovementSettings(data.PlayerMovementSettings),
+		PlayerMovementSettings:       data.PlayerMovementSettings,
 		WorldGameMode:                data.WorldGameMode,
 		Hardcore:                     data.Hardcore,
 		XBLBroadcastMode:             data.XBLBroadcastMode,
 		ServerAuthoritativeInventory: data.ServerAuthoritativeInventory,
 		PlayerPermissions:            data.PlayerPermissions,
-		Experiments:                  experiments,
+		Experiments:                  data.Experiments,
 		ClientSideGeneration:         data.ClientSideGeneration,
 		ChatRestrictionLevel:         data.ChatRestrictionLevel,
 		DisablePlayerInteractions:    data.DisablePlayerInteractions,

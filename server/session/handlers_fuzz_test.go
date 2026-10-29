@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 )
 
@@ -44,7 +44,7 @@ func (*fuzzConn) ChunkRadius() int                   { return 1 }
 func (*fuzzConn) Latency() time.Duration             { return 0 }
 func (*fuzzConn) Flush() error                       { return nil }
 func (*fuzzConn) RemoteAddr() net.Addr               { return &net.UDPAddr{} }
-func (*fuzzConn) StartGameContext(context.Context, minecraft.GameData) error {
+func (*fuzzConn) StartGameContext(context.Context, netconn.GameData) error {
 	return nil
 }
 

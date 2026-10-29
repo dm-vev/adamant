@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -93,7 +93,7 @@ func (c permissionTestCommand) Allow(src cmd.Source) bool {
 }
 func (permissionTestCommand) Run(cmd.Source, *cmd.Output, *world.Tx) {}
 
-func joinPermissionPlayer(t *testing.T, srv *Server, name string) (incoming, *permissionTestConn, minecraft.GameData) {
+func joinPermissionPlayer(t *testing.T, srv *Server, name string) (incoming, *permissionTestConn, netconn.GameData) {
 	t.Helper()
 	conn := &permissionTestConn{serverPanicConn: newServerPanicConn(), updates: make(chan struct{}, 1)}
 	conn.identity.DisplayName = name

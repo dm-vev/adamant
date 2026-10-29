@@ -18,6 +18,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/internal/blockinternal"
 	"github.com/df-mc/dragonfly/server/internal/iteminternal"
+	"github.com/df-mc/dragonfly/server/netconn"
 	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
@@ -27,10 +28,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
 )
 
@@ -47,9 +45,9 @@ type Server struct {
 	dimensions       map[world.Dimension]*world.World
 	defaultDimension world.Dimension
 
-	customBlocks     []protocol.BlockEntry
-	customItems      []protocol.ItemEntry
-	customDimensions []protocol.DimensionDefinition
+	customBlocks     []v2193.BlockEntry
+	customItems      []v2193.ItemEntry
+	customDimensions []v2193.DimensionDefinition
 	whitelist        *Whitelist
 	operators        *operatorsList
 	bans             *banList
@@ -113,7 +111,7 @@ func (srv *Server) Listen() {
 		}
 	}
 
-	srv.conf.Log.Info("Dragonfly server started.", "mc-version", protocol.CurrentVersion, "go-version", info.GoVersion, "commit", revision)
+	srv.conf.Log.Info("Dragonfly server started.", "mc-version", v2193.Version, "go-version", info.GoVersion, "commit", revision)
 	srv.startListening()
 	go srv.wait()
 	go srv.idleTimeoutLoop()
@@ -472,11 +470,11 @@ func (srv *Server) startListening() {
 // at startup.
 func (srv *Server) makeBlockEntries() {
 	custom := slices.Collect(maps.Values(srv.conf.Blocks.CustomBlocks()))
-	srv.customBlocks = make([]protocol.BlockEntry, len(custom))
+	srv.customBlocks = make([]v2193.BlockEntry, len(custom))
 
 	for i, b := range custom {
 		name, _ := b.EncodeBlock()
-		srv.customBlocks[i] = protocol.BlockEntry{
+		srv.customBlocks[i] = v2193.BlockEntry{
 			Name:       name,
 			Properties: blockinternal.Components(name, b, 10000+int32(i)),
 		}
@@ -490,7 +488,7 @@ func (srv *Server) makeItemComponents() {
 	srv.customItems = itemEntries(srv.conf.Blocks, world.CustomItems())
 }
 
-func itemEntries(br world.BlockRegistry, custom []world.CustomItem) []protocol.ItemEntry {
+func itemEntries(br world.BlockRegistry, custom []world.CustomItem) []v2193.ItemEntry {
 	items := make([]world.CustomItem, 0, len(custom)+len(br.CustomBlocks()))
 	for _, it := range custom {
 		if _, blockItem := it.(world.CustomBlock); !blockItem {
@@ -503,7 +501,7 @@ func itemEntries(br world.BlockRegistry, custom []world.CustomItem) []protocol.I
 		}
 	}
 
-	entries := make([]protocol.ItemEntry, 0, len(items))
+	entries := make([]v2193.ItemEntry, 0, len(items))
 
 	for _, it := range items {
 		name, _ := it.EncodeItem()
@@ -512,11 +510,11 @@ func itemEntries(br world.BlockRegistry, custom []world.CustomItem) []protocol.I
 			continue
 		}
 		_, isCustomBlock := it.(world.CustomBlock)
-		var entryVersion int32 = protocol.ItemEntryVersionDataDriven
+		entryVersion := v2193.ItemEntryVersionDataDriven
 		if isCustomBlock {
-			entryVersion = protocol.ItemEntryVersionNone
+			entryVersion = v2193.ItemEntryVersionNone
 		}
-		entries = append(entries, protocol.ItemEntry{
+		entries = append(entries, v2193.ItemEntry{
 			Name:           name,
 			ComponentBased: !isCustomBlock,
 			RuntimeID:      int16(rid),
@@ -530,14 +528,14 @@ func itemEntries(br world.BlockRegistry, custom []world.CustomItem) []protocol.I
 // makeDimensionData initialises the server's custom dimensions list.
 func (srv *Server) makeDimensionData() {
 	dimensions := world.CustomDimensions()
-	srv.customDimensions = make([]protocol.DimensionDefinition, 0, len(dimensions))
+	srv.customDimensions = make([]v2193.DimensionDefinition, 0, len(dimensions))
 	for _, registration := range dimensions {
 		r := registration.Dimension.Range()
-		srv.customDimensions = append(srv.customDimensions, protocol.DimensionDefinition{
+		srv.customDimensions = append(srv.customDimensions, v2193.DimensionDefinition{
 			Name:          registration.Name,
 			MinimumY:      int32(r.Min()),
 			HeightRange:   int32(r.Height() + 1),
-			Generator:     protocol.GeneratorVoid,
+			Generator:     v2193.GeneratorVoid,
 			DimensionType: int32(registration.ID),
 		})
 	}
@@ -591,7 +589,7 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 
 	data.EmoteChatMuted = srv.conf.MuteEmoteChat
 	if srv.IsOperator(conn.IdentityData().DisplayName) {
-		data.PlayerPermissions = packet.PermissionLevelOperator
+		data.PlayerPermissions = v2193.PermissionLevelOperator
 	}
 
 	if handle, ok := srv.Player(id); ok {
@@ -651,32 +649,32 @@ func (srv *Server) waitForPlayerRemoval(id uuid.UUID, timeout time.Duration) boo
 	}
 }
 
-// defaultGameData returns a minecraft.GameData as sent for a new player. It
+// defaultGameData returns a netconn.GameData as sent for a new player. It
 // may later be modified if the player was saved in the player provider of the
 // server.
-func (srv *Server) defaultGameData() minecraft.GameData {
+func (srv *Server) defaultGameData() netconn.GameData {
 	mode := session.GameTypeFromMode(srv.world.DefaultGameMode())
 	difficulty, _ := world.DifficultyID(srv.world.Difficulty())
-	return minecraft.GameData{
+	return netconn.GameData{
 		// Entity runtime/unique ID for the player itself is always 1 in df.
 		EntityUniqueID:  1,
 		EntityRuntimeID: 1,
 
 		WorldName:       srv.conf.Name,
 		WorldSeed:       srv.world.Seed(),
-		BaseGameVersion: protocol.CurrentVersion,
+		BaseGameVersion: v2193.Version,
 
 		Time:       int64(srv.world.Time()),
 		Difficulty: int32(difficulty),
 
 		WorldGameMode:     mode,
 		PlayerGameMode:    mode,
-		PlayerPermissions: packet.PermissionLevelMember,
+		PlayerPermissions: v2193.PermissionLevelMember,
 		PlayerPosition:    vec64To32(srv.world.Spawn().Vec3Centre().Add(mgl64.Vec3{0, player.Type.NetworkOffset()})),
 
 		Items:        srv.itemEntries(),
 		CustomBlocks: srv.customBlocks,
-		GameRules: append([]protocol.GameRule{
+		GameRules: append([]v2193.GameRule{
 			{Name: "naturalregeneration", Value: false},
 			{Name: "locatorBar", Value: false},
 			{Name: "falldamage", Value: srv.world.FallDamage()},
@@ -686,7 +684,7 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 		// Like BDS, name blocks by network block hash so clients resolve every
 		// state by its contents instead of by its index in their own palette.
 		UseBlockNetworkIDHashes: true,
-		PlayerMovementSettings: protocol.PlayerMovementSettings{
+		PlayerMovementSettings: v2193.PlayerMovementSettings{
 			ServerAuthoritativeBlockBreaking: true,
 		},
 		Dimensions: srv.customDimensions,
@@ -832,11 +830,11 @@ func vec64To32(vec3 mgl64.Vec3) mgl32.Vec3 {
 
 // itemEntries loads a list of all custom item entries of the server, ready to
 // be sent in the StartGame packet.
-func (srv *Server) itemEntries() []protocol.ItemEntry {
-	entries := make([]protocol.ItemEntry, 0, len(vanillaItems))
+func (srv *Server) itemEntries() []v2193.ItemEntry {
+	entries := make([]v2193.ItemEntry, 0, len(vanillaItems))
 
 	for name, e := range vanillaItems {
-		entries = append(entries, protocol.ItemEntry{
+		entries = append(entries, v2193.ItemEntry{
 			Name:           name,
 			RuntimeID:      int16(e.RuntimeID),
 			ComponentBased: e.ComponentBased,

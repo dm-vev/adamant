@@ -4,10 +4,11 @@ go 1.26.0
 
 require (
 	github.com/coreos/go-oidc/v3 v3.17.0
+	github.com/df-mc/dragonfly v0.0.0
 	github.com/df-mc/go-nethernet v1.0.24
 	github.com/df-mc/go-xsapi/v2 v2.0.3
 	github.com/dm-vev/adamant/net v0.0.0
-	github.com/go-gl/mathgl v1.1.0
+	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/pion/dtls/v3 v3.1.9
 	github.com/pion/logging v0.2.4
@@ -18,8 +19,11 @@ require (
 )
 
 require (
+	github.com/coder/websocket v1.8.14 // indirect
+	github.com/df-mc/go-playfab/v2 v2.0.2 // indirect
+	github.com/df-mc/jsonc v1.0.5 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
-	github.com/klauspost/compress v1.18.1 // indirect
+	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/pion/datachannel v1.6.3 // indirect
 	github.com/pion/ice/v4 v4.4.4 // indirect
 	github.com/pion/interceptor v0.1.49 // indirect
@@ -32,10 +36,10 @@ require (
 	github.com/pion/stun/v4 v4.0.1 // indirect
 	github.com/pion/transport/v5 v5.0.1 // indirect
 	github.com/pion/turn/v5 v5.1.2 // indirect
+	github.com/sandertv/go-raknet v1.15.2-0.20260705184311-0d1fd09e2cf6 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
-	golang.org/x/image v0.21.0 // indirect
+	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
@@ -46,3 +50,5 @@ require (
 )
 
 replace github.com/dm-vev/adamant/net => ../
+
+replace github.com/df-mc/dragonfly => ../..

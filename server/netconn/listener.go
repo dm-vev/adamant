@@ -22,7 +22,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"github.com/sandertv/gophertunnel/minecraft/resource"
@@ -55,7 +54,7 @@ type Config struct {
 	// MaximumPlayers bounds the players connected. Zero means no bound.
 	MaximumPlayers int
 	// StatusProvider gives the status of the server clients look up.
-	StatusProvider minecraft.ServerStatusProvider
+	StatusProvider StatusProvider
 	// AuthenticationDisabled lets clients join without Xbox Live.
 	AuthenticationDisabled bool
 	// ResourcePacks are offered to every client; TexturePacksRequired makes
@@ -151,7 +150,7 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 		cfg.Log = slog.New(slog.DiscardHandler)
 	}
 	if cfg.StatusProvider == nil {
-		cfg.StatusProvider = minecraft.NewStatusProvider("Minecraft Server", "")
+		cfg.StatusProvider = NewStatusProvider("Minecraft Server", "")
 	}
 	if cfg.Compression == nil {
 		cfg.Compression = bedrock.Flate{Level: 1}
@@ -255,12 +254,12 @@ func (l *Listener) refreshStatus() {
 func (l *Listener) Serve(s nethernet.Signaling) error { return l.nn.Serve(s) }
 
 // ServerStatus returns the status the server shows clients.
-func (l *Listener) ServerStatus() minecraft.ServerStatus { return l.status() }
+func (l *Listener) ServerStatus() ServerStatus { return l.status() }
 
 // Closed is closed once the listener closed.
 func (l *Listener) Closed() <-chan struct{} { return l.done }
 
-func (l *Listener) status() minecraft.ServerStatus {
+func (l *Listener) status() ServerStatus {
 	s := l.cfg.StatusProvider.ServerStatus(int(l.players.Load()), l.cfg.MaximumPlayers)
 	if s.MaxPlayers == 0 {
 		s.MaxPlayers = s.PlayerCount + 1

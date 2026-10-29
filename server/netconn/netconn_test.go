@@ -1,8 +1,6 @@
 package netconn
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -13,9 +11,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math/big"
-	"net"
 	"strings"
 	"testing"
 	"time"
@@ -24,71 +20,12 @@ import (
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"github.com/sandertv/gophertunnel/minecraft/resource"
 )
-
-// network dials gophertunnel clients over our NetherNet dialer.
-type network struct{ d nethernet.Dialer }
-
-func (n network) DialContext(ctx context.Context, address string) (net.Conn, error) {
-	c, err := n.d.DialContext(ctx, address)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
-}
-
-func (network) PingContext(context.Context, string) ([]byte, error) {
-	return nil, errors.New("no ping")
-}
-
-func (network) Listen(string) (minecraft.NetworkListener, error) {
-	return nil, errors.New("no listen")
-}
-
-// boundProtocol makes the Login of gophertunnel carry the key of the
-// transport identity, as the game's Login does.
-type boundProtocol struct {
-	minecraft.Protocol
-	key *ecdsa.PrivateKey
-}
-
-func (p boundProtocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) []packet.Packet {
-	if l, ok := pk.(*packet.Login); ok {
-		l.ConnectionRequest = login.EncodeOffline(conn.IdentityData(), conn.ClientData(), p.key, false)
-	}
-	return []packet.Packet{pk}
-}
-
-// client returns a gophertunnel dialer and the network it dials over,
-// whose transport identity and Login carry one key unless unbound.
-func client(t *testing.T, name string, unbound bool) (minecraft.Dialer, network) {
-	t.Helper()
-	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	identity := login.IdentityData{DisplayName: name, Identity: uuid.NewString()}
-	request := login.EncodeOffline(identity, login.ClientData{}, key, false)
-	var cert struct{ Token string }
-	n := binary.LittleEndian.Uint32(request[:4])
-	if err := json.Unmarshal(request[4:4+n], &cert); err != nil {
-		t.Fatal(err)
-	}
-	d := minecraft.Dialer{IdentityData: identity}
-	if !unbound {
-		d.Protocol = boundProtocol{Protocol: minecraft.DefaultProtocol, key: key}
-	}
-	return d, network{nethernet.Dialer{Key: key, Token: cert.Token}}
-}
 
 func listen(t *testing.T, cfg Config) *Listener {
 	t.Helper()
@@ -101,14 +38,14 @@ func listen(t *testing.T, cfg Config) *Listener {
 	return l
 }
 
-func gameData() minecraft.GameData {
-	return minecraft.GameData{
+func gameData() GameData {
+	return GameData{
 		WorldName:       "netconn",
 		EntityUniqueID:  1,
 		EntityRuntimeID: 1,
 		PlayerPosition:  [3]float32{0, 64, 0},
-		BaseGameVersion: protocol.CurrentVersion,
-		Items:           []protocol.ItemEntry{{Name: "minecraft:shield", RuntimeID: 355}},
+		BaseGameVersion: v2193.Version,
+		Items:           []v2193.ItemEntry{{Name: "minecraft:shield", RuntimeID: 355}},
 	}
 }
 
@@ -142,98 +79,51 @@ func serve(t *testing.T, l *Listener) <-chan *Conn {
 	return spawned
 }
 
-func readText(t *testing.T, conn *minecraft.Conn) string {
-	t.Helper()
-	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-	for {
-		pk, err := conn.ReadPacket()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if text, ok := pk.(*packet.Text); ok {
-			return text.Message
-		}
-	}
-}
-
-// TestLoginAndSpawn logs a gophertunnel client in, spawns it and exchanges
-// packets over the connection afterwards.
-func TestLoginAndSpawn(t *testing.T) {
-	l := listen(t, Config{})
-	spawned := serve(t, l)
-	d, n := client(t, "Bot", false)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	conn, err := d.DialContextNetwork(ctx, n, l.Addr().String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-	if err := conn.DoSpawnContext(ctx); err != nil {
-		t.Fatal(err)
-	}
-	var srv *Conn
-	select {
-	case srv = <-spawned:
-	case <-ctx.Done():
-		t.Fatal("server did not spawn the client")
-	}
-	if got := conn.GameData().WorldName; got != "netconn" {
-		t.Fatalf("world name %q", got)
-	}
-	if srv.IdentityData().DisplayName != "Bot" || srv.ChunkRadius() < 1 {
-		t.Fatalf("server sees %q with chunk radius %d", srv.IdentityData().DisplayName, srv.ChunkRadius())
-	}
-	for _, msg := range []string{"hello", strings.Repeat("long ", 300)} {
-		if err := conn.WritePacket(&packet.Text{TextType: packet.TextTypeChat, SourceName: "Bot", Message: msg}); err != nil {
-			t.Fatal(err)
-		}
-		if got := readText(t, conn); got != "echo "+msg {
-			t.Fatalf("echo %q", got)
-		}
-	}
-	if err := l.Disconnect(srv, "bye"); err != nil {
-		t.Fatal(err)
-	}
-	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-	for {
-		_, err := conn.ReadPacket()
-		if err != nil {
-			if !strings.Contains(err.Error(), "bye") {
-				t.Fatalf("read after the disconnect: %v", err)
-			}
-			break
-		}
-	}
-}
-
 // TestLoginKeyMustMatchTransport refuses a Login whose key is not the one
 // the transport identity proved: a login replayed on another connection.
 func TestLoginKeyMustMatchTransport(t *testing.T) {
 	l := listen(t, Config{})
 	serve(t, l)
-	d, n := client(t, "Replay", true)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	conn, err := d.DialContextNetwork(ctx, n, l.Addr().String())
-	if err == nil {
-		_ = conn.Close()
-		t.Fatal("joined with a login key the transport did not prove")
+	b := rawClient(t, l)
+	writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
+	if raw, err := b.ReadPacket(); err != nil {
+		t.Fatal(err)
+	} else if h, _, _ := bedrock.ReadHeader(raw); h.ID != packet.IDNetworkSettings {
+		t.Fatalf("packet %d instead of NetworkSettings", h.ID)
 	}
-	var refused minecraft.DisconnectError
-	if !errors.As(err, &refused) {
-		t.Fatalf("dial failed without a disconnect: %v", err)
+	b.EnableCompression(bedrock.Flate{})
+	other, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	request, err := ourlogin.EncodeOffline(ourlogin.Identity{DisplayName: "Replay", Identity: uuid.NewString()},
+		ourlogin.DefaultClientData("127.0.0.1:19132", "Replay", v2193.Version), other, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeRaw(t, b, &v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: request})
+	for {
+		raw, err := b.ReadPacket()
+		if err != nil {
+			t.Fatalf("connection ended without a disconnect: %v", err)
+		}
+		h, _, _ := bedrock.ReadHeader(raw)
+		if h.ID == packet.IDDisconnect {
+			break
+		}
+		if h.ID == packet.IDPlayStatus || h.ID == packet.IDStartGame {
+			t.Fatalf("packet %d to a login the transport did not prove", h.ID)
+		}
 	}
 }
 
 // rawClient opens a NetherNet connection that speaks batches directly.
 func rawClient(t *testing.T, l *Listener) *bedrock.Conn {
 	t.Helper()
-	d, n := client(t, "Raw", false)
-	_ = d
+	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	nn, err := n.d.DialContext(ctx, l.Addr().String())
+	nn, err := nethernet.Dialer{Key: key}.DialContext(ctx, l.Addr().String())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,11 +132,11 @@ func rawClient(t *testing.T, l *Listener) *bedrock.Conn {
 	return bedrock.NewConn(nn, bedrock.Config{})
 }
 
-func writeRaw(t *testing.T, b *bedrock.Conn, pk packet.Packet) {
+func writeRaw(t *testing.T, b *bedrock.Conn, pk proto.Packet) {
 	t.Helper()
-	buf := bytes.NewBuffer(bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()}))
-	pk.Marshal(protocol.NewWriter(buf, 0))
-	if err := b.WritePacket(buf.Bytes()); err != nil {
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+	pk.Encode(&w)
+	if err := b.WritePacket(w.B); err != nil {
 		t.Fatal(err)
 	}
 	if err := b.Flush(); err != nil {
@@ -264,16 +154,20 @@ func readStatus(t *testing.T, b *bedrock.Conn) int32 {
 	if err != nil || h.ID != packet.IDPlayStatus {
 		t.Fatalf("packet %d, %v", h.ID, err)
 	}
-	var pk packet.PlayStatus
-	pk.Marshal(protocol.NewReader(bytes.NewBuffer(fields), 0, false))
+	var pk v2193.PlayStatusPacket
+	r := wire.NewReader(fields)
+	pk.Decode(r)
+	if r.Err() != nil {
+		t.Fatal(r.Err())
+	}
 	return pk.Status
 }
 
 func TestProtocolMismatch(t *testing.T) {
 	l := listen(t, Config{})
-	for proto, want := range map[int32]int32{1: packet.PlayStatusLoginFailedClient, protocol.CurrentProtocol + 1: packet.PlayStatusLoginFailedServer} {
+	for proto, want := range map[int32]int32{1: packet.PlayStatusLoginFailedClient, v2193.Protocol + 1: packet.PlayStatusLoginFailedServer} {
 		b := rawClient(t, l)
-		writeRaw(t, b, &packet.RequestNetworkSettings{ClientProtocol: proto})
+		writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: proto})
 		if got := readStatus(t, b); got != want {
 			t.Fatalf("protocol %d: status %d, want %d", proto, got, want)
 		}
@@ -283,10 +177,9 @@ func TestProtocolMismatch(t *testing.T) {
 func TestServerFull(t *testing.T) {
 	l := listen(t, Config{MaximumPlayers: 1})
 	serve(t, l)
-	d, n := client(t, "First", false)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	conn, err := d.DialContextNetwork(ctx, n, l.Addr().String())
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{Identity: ourlogin.Identity{DisplayName: "First"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,61 +187,6 @@ func TestServerFull(t *testing.T) {
 	b := rawClient(t, l)
 	if got := readStatus(t, b); got != packet.PlayStatusLoginFailedServerFull {
 		t.Fatalf("status %d for the second client", got)
-	}
-}
-
-// testPack returns a resource pack of size bytes of textures, more than a
-// chunk of packChunkSize.
-func testPack(t *testing.T, size int) *resource.Pack {
-	t.Helper()
-	var buf bytes.Buffer
-	z := zip.NewWriter(&buf)
-	manifest, _ := z.Create("manifest.json")
-	fmt.Fprintf(manifest, `{"format_version":2,"header":{"name":"test","description":"","uuid":%q,"version":[1,0,0],"min_engine_version":[1,20,0]},"modules":[{"type":"resources","uuid":%q,"version":[1,0,0]}]}`, uuid.NewString(), uuid.NewString())
-	texture, _ := z.Create("textures/blob.bin")
-	blob := make([]byte, size)
-	_, _ = rand.Read(blob)
-	_, _ = texture.Write(blob)
-	_ = z.Close()
-	pack, err := resource.Read(&buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return pack
-}
-
-// TestResourcePacks downloads two packs of several chunks each.
-func TestResourcePacks(t *testing.T) {
-	packs := []*resource.Pack{testPack(t, 300<<10), testPack(t, 10<<10)}
-	l := listen(t, Config{ResourcePacks: packs, TexturePacksRequired: true})
-	spawned := serve(t, l)
-	d, n := client(t, "Packs", false)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	conn, err := d.DialContextNetwork(ctx, n, l.Addr().String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-	got := conn.ResourcePacks()
-	if len(got) != len(packs) {
-		t.Fatalf("client has %d packs, want %d", len(got), len(packs))
-	}
-	for _, want := range packs {
-		found := false
-		for _, p := range got {
-			found = found || p.UUID() == want.UUID() && p.Checksum() == want.Checksum()
-		}
-		if !found {
-			t.Fatalf("pack %v missing or corrupt", want.UUID())
-		}
-	}
-	// The client is done once it dialed, the server once it read that the
-	// client spawned: closing before would fail the spawn after the test.
-	select {
-	case <-spawned:
-	case <-ctx.Done():
-		t.Fatal("server did not spawn the client")
 	}
 }
 
@@ -377,26 +215,28 @@ func TestOurClientJoins(t *testing.T) {
 	if srv.IdentityData().DisplayName != "Bot" || srv.ChunkRadius() != 8 {
 		t.Fatalf("server sees %q with chunk radius %d", srv.IdentityData().DisplayName, srv.ChunkRadius())
 	}
-	if err := conn.WritePacket(&v2193.TextPacket{TextType: 1, SourceName: "Bot", Message: "hello"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := conn.Flush(); err != nil {
-		t.Fatal(err)
-	}
 	go func() {
 		<-ctx.Done()
 		_ = conn.Close()
 	}()
-	for {
-		pk, err := conn.ReadPacket()
-		if err != nil {
+	for _, msg := range []string{"hello", strings.Repeat("long ", 300)} {
+		if err := conn.WritePacket(&v2193.TextPacket{TextType: 1, SourceName: "Bot", Message: msg}); err != nil {
 			t.Fatal(err)
 		}
-		if text, ok := pk.(*v2193.TextPacket); ok {
-			if text.Message != "echo hello" {
-				t.Fatalf("echo %q", text.Message)
+		if err := conn.Flush(); err != nil {
+			t.Fatal(err)
+		}
+		for {
+			pk, err := conn.ReadPacket()
+			if err != nil {
+				t.Fatal(err)
 			}
-			break
+			if text, ok := pk.(*v2193.TextPacket); ok {
+				if text.Message != "echo "+msg {
+					t.Fatalf("echo %q", text.Message)
+				}
+				break
+			}
 		}
 	}
 	if err := l.Disconnect(srv, "bye"); err != nil {
@@ -469,43 +309,6 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 	defer l.staticMu.Unlock()
 	if len(l.statics) != 1 {
 		t.Fatalf("%d static batches, want 1", len(l.statics))
-	}
-}
-
-// TestGophertunnelClientReads writes packets of the generated codecs,
-// which a gophertunnel client reads in the order they were written.
-func TestGophertunnelClientReads(t *testing.T) {
-	l := listen(t, Config{})
-	go func() {
-		c, err := l.Accept()
-		if err != nil {
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		if err := c.StartGameContext(ctx, gameData()); err != nil {
-			_ = c.Close()
-			return
-		}
-		_ = c.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "first"})
-		_ = c.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "generated"})
-		_ = c.Flush()
-	}()
-	d, n := client(t, "Bot", false)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	conn, err := d.DialContextNetwork(ctx, n, l.Addr().String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-	if err := conn.DoSpawnContext(ctx); err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"first", "generated"} {
-		if got := readText(t, conn); got != want {
-			t.Fatalf("read %q, want %q", got, want)
-		}
 	}
 }
 

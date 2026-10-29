@@ -15,6 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/form"
@@ -25,7 +26,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
@@ -185,7 +185,7 @@ type Conn interface {
 	// closed before sending the packet.
 	WritePacket(pk proto.Packet) error
 	// StartGameContext starts the game for the Conn with a context to cancel it.
-	StartGameContext(ctx context.Context, data minecraft.GameData) error
+	StartGameContext(ctx context.Context, data netconn.GameData) error
 }
 
 // Nop represents a no-operation session. It does not do anything when sending a packet to it.

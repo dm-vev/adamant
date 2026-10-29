@@ -379,3 +379,40 @@ func TestPanicFailsOneConn(t *testing.T) {
 		t.Fatalf("read %q", got)
 	}
 }
+
+// TestDatagram answers a datagram of another protocol on the port of the
+// connections, as the query protocol of server lists, and still lets a
+// client join beside it.
+func TestDatagram(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true, Datagram: func(b []byte, from netip.AddrPort, reply func([]byte)) {
+		if b[0] == 0xfe {
+			reply(append([]byte("answer:"), b...))
+		}
+		if b[0] == 0xff {
+			panic("a broken handler")
+		}
+	}})
+	sock, err := net.DialUDP("udp", nil, net.UDPAddrFromAddrPort(netip.MustParseAddrPort(l.Addr().String())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sock.Close()
+	_ = sock.SetReadDeadline(time.Now().Add(5 * time.Second))
+	for _, b := range [][]byte{{0xff}, {0xfe, 0xfd, 9}} {
+		if _, err := sock.Write(b); err != nil {
+			t.Fatal(err)
+		}
+	}
+	buf := make([]byte, 64)
+	n, err := sock.Read(buf)
+	if err != nil || string(buf[:n]) != "answer:\xfe\xfd\x09" {
+		t.Fatalf("answer %q, %v", buf[:n], err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	c, err := Dialer{}.DialContext(ctx, l.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = c.Close()
+}

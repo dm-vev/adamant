@@ -11,11 +11,11 @@ import (
 
 	_ "github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft"
+	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 )
 
@@ -215,17 +215,17 @@ type benchmarkConn struct {
 	cacheEnabled bool
 }
 
-func (benchmarkConn) Close() error                                               { return nil }
-func (benchmarkConn) IdentityData() login.IdentityData                           { return login.IdentityData{} }
-func (benchmarkConn) ClientData() login.ClientData                               { return login.ClientData{} }
-func (c benchmarkConn) ClientCacheEnabled() bool                                 { return c.cacheEnabled }
-func (benchmarkConn) ChunkRadius() int                                           { return 8 }
-func (benchmarkConn) Latency() time.Duration                                     { return 0 }
-func (benchmarkConn) Flush() error                                               { return nil }
-func (benchmarkConn) RemoteAddr() net.Addr                                       { return benchmarkAddr("") }
-func (benchmarkConn) ReadPacket() (proto.Packet, error)                          { return nil, io.EOF }
-func (benchmarkConn) WritePacket(proto.Packet) error                             { return nil }
-func (benchmarkConn) StartGameContext(context.Context, minecraft.GameData) error { return nil }
+func (benchmarkConn) Close() error                                             { return nil }
+func (benchmarkConn) IdentityData() login.IdentityData                         { return login.IdentityData{} }
+func (benchmarkConn) ClientData() login.ClientData                             { return login.ClientData{} }
+func (c benchmarkConn) ClientCacheEnabled() bool                               { return c.cacheEnabled }
+func (benchmarkConn) ChunkRadius() int                                         { return 8 }
+func (benchmarkConn) Latency() time.Duration                                   { return 0 }
+func (benchmarkConn) Flush() error                                             { return nil }
+func (benchmarkConn) RemoteAddr() net.Addr                                     { return benchmarkAddr("") }
+func (benchmarkConn) ReadPacket() (proto.Packet, error)                        { return nil, io.EOF }
+func (benchmarkConn) WritePacket(proto.Packet) error                           { return nil }
+func (benchmarkConn) StartGameContext(context.Context, netconn.GameData) error { return nil }
 
 type benchmarkAddr string
 

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestDefaultGameDataIncludesSharedFallDamageRule(t *testing.T) {
@@ -16,7 +16,7 @@ func TestDefaultGameDataIncludesSharedFallDamageRule(t *testing.T) {
 	defer nether.Close()
 
 	nether.SetFallDamage(false)
-	dimensions := []protocol.DimensionDefinition{{Name: "adamant:test"}}
+	dimensions := []v2193.DimensionDefinition{{Name: "adamant:test"}}
 	srv := &Server{world: overworld, customDimensions: dimensions}
 	data := srv.defaultGameData()
 
