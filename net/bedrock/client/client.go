@@ -169,10 +169,25 @@ func (c *Conn) join(cfg Config, data login.ClientData) error {
 			default:
 				return fmt.Errorf("client: login failed with status %d", pk.Status)
 			}
+		case *v2193.ServerToClientHandshakePacket:
+			// BDS asks for the handshake that turns encryption on over RakNet
+			// even over NetherNet, which encrypts the connection itself: the
+			// answer turns nothing on.
+			err = c.send(&v2193.ClientToServerHandshakePacket{})
 		case *v2193.ResourcePacksInfoPacket:
 			err = c.send(&v2193.ResourcePackClientResponsePacket{Response: allPacksDownloaded})
 		case *v2193.ResourcePackStackPacket:
 			err = c.send(&v2193.ResourcePackClientResponsePacket{Response: packsCompleted})
+		case *v2193.ItemRegistryPacket:
+			// Shields carry one more field, so their ID must be known.
+			for _, item := range pk.Items {
+				if item.Name == "minecraft:shield" {
+					v2193.SetShieldID(int32(item.RuntimeID))
+				}
+			}
+			if started {
+				c.deferred = append(c.deferred, raw)
+			}
 		case *v2193.StartGamePacket:
 			c.game, started = *pk, true
 			err = c.send(&v2193.RequestChunkRadiusPacket{ChunkRadius: cfg.ChunkRadius, MaxChunkRadius: uint8(min(cfg.ChunkRadius, 255))})

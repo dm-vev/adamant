@@ -141,6 +141,10 @@ func readItemData(r *wire.Reader, shield bool) (data map[string]any, placeOn, ca
 	if shield {
 		tick = d.Int64()
 	}
+	if d.Err() == nil && d.Len() != 0 {
+		// Bytes the codec would drop: a shield taken for another item.
+		d.Failf("v2193: %d bytes after the user data of an item", d.Len())
+	}
 	if d.Err() != nil {
 		r.Fail(d.Err())
 	}
