@@ -134,3 +134,27 @@ func TestBDSIdentityToken(t *testing.T) {
 		t.Fatalf("BDS fingerprint assertion: %v", err)
 	}
 }
+
+// FuzzSignaling reads hostile offers as the listener reads what a client
+// posts, before anything is known of it: the description, the identity in
+// it, the token in that and the assertion of its fingerprints. Any may be
+// refused; none may panic.
+func FuzzSignaling(f *testing.F) {
+	f.Add(bdsAnswer)
+	f.Add("v=0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\na=ice-ufrag:abcd\r\na=ice-pwd:0123456789012345678901\r\na=fingerprint:sha-256 AA:BB\r\na=setup:actpass\r\na=identity:e30=\r\na=candidate:1 1 udp 1 10.0.0.1 7551 typ host\r\n")
+	f.Fuzz(func(t *testing.T, offer string) {
+		d, err := parseDescription(offer)
+		if err != nil {
+			return
+		}
+		token, jws, err := decodeIdentity(d.identity)
+		if err != nil {
+			return
+		}
+		pub, err := tokenKey(token, time.Now())
+		if err != nil {
+			return
+		}
+		_ = verifyFingerprints(pub, jws, d.fingerprints)
+	})
+}
