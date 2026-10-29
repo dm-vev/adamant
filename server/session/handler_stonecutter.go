@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // stonecutterInputSlot is the slot index of the input item in the stonecutter.
@@ -32,7 +31,7 @@ func (h *ItemStackRequestHandler) handleStonecutting(a *v2193.CraftRecipeStackRe
 
 	expectedInputs := craft.Input()
 	input, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerStonecutterInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerStonecutterInput},
 		Slot:      stonecutterInputSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(input); err != nil {
@@ -47,7 +46,7 @@ func (h *ItemStackRequestHandler) handleStonecutting(a *v2193.CraftRecipeStackRe
 
 	output := craft.Output()
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerStonecutterInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerStonecutterInput},
 		Slot:      stonecutterInputSlot,
 	}, input.Grow(-timesCrafted), s, tx)
 	return h.createResults(s, tx, repeatStacks(output, timesCrafted)...)

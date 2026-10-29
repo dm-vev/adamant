@@ -7,7 +7,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 const (
@@ -32,7 +31,7 @@ func (h *ItemStackRequestHandler) handleLoomCraft(a *v2193.CraftLoomRecipeStackR
 
 	// Next, check if the input slot has a valid banner item.
 	input, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerLoomInput},
 		Slot:      loomInputSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(input); err != nil {
@@ -51,7 +50,7 @@ func (h *ItemStackRequestHandler) handleLoomCraft(a *v2193.CraftLoomRecipeStackR
 
 	// Do the same with the input dye.
 	dye, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomDye},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerLoomDye},
 		Slot:      loomDyeSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(dye); err != nil {
@@ -75,7 +74,7 @@ func (h *ItemStackRequestHandler) handleLoomCraft(a *v2193.CraftLoomRecipeStackR
 	// Some banner patterns have equivalent banner pattern items that are required to craft the pattern. If the expected
 	// pattern has a pattern item, check if the player input the correct pattern item.
 	pattern, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomMaterial},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerLoomMaterial},
 		Slot:      loomPatternSlot,
 	}, s, tx)
 	if !pattern.Empty() {
@@ -102,11 +101,11 @@ func (h *ItemStackRequestHandler) handleLoomCraft(a *v2193.CraftLoomRecipeStackR
 		Colour: d.Colour,
 	})
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerLoomInput},
 		Slot:      loomInputSlot,
 	}, input.Grow(-timesCrafted), s, tx)
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerLoomDye},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerLoomDye},
 		Slot:      loomDyeSlot,
 	}, dye.Grow(-timesCrafted), s, tx)
 	// Only timesCrafted banners are consumed above, so only that many may be produced: input.WithItem keeps the count

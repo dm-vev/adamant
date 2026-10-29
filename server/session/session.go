@@ -29,8 +29,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // Session handles incoming packets from connections and sends outgoing packets by providing a thin layer
@@ -334,7 +332,7 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	s.chunkLoader = world.NewLoader(int(chunkRadius), tx.World(), s)
 	s.chunkLoader.Move(tx, pos)
 	s.writePacket(&v2193.NetworkChunkPublisherUpdatePacket{
-		Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+		Position: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 		Radius:   uint32(chunkRadius) << 4,
 	})
 
@@ -347,10 +345,10 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	}
 	s.ViewEntityState(c)
 
-	s.sendInv(s.inv, protocol.WindowIDInventory)
-	s.sendInv(s.ui, protocol.WindowIDUI)
-	s.sendInv(s.offHand, protocol.WindowIDOffHand)
-	s.sendInv(s.armour.Inventory(), protocol.WindowIDArmour)
+	s.sendInv(s.inv, v2193.WindowIDInventory)
+	s.sendInv(s.ui, v2193.WindowIDUI)
+	s.sendInv(s.offHand, v2193.WindowIDOffHand)
+	s.sendInv(s.armour.Inventory(), v2193.WindowIDArmour)
 
 	chat.Global.Subscribe(c)
 	if !s.conf.JoinMessage.Zero() {
@@ -749,7 +747,7 @@ func (s *Session) sendChunks(tx *world.Tx, c Controllable) {
 	if s.lastChunkPos != chunkPos || worldSwitched {
 		s.lastChunkPos = chunkPos
 		s.writePacket(&v2193.NetworkChunkPublisherUpdatePacket{
-			Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+			Position: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 			Radius:   uint32(chunkRadius) << 4,
 		})
 	}
@@ -786,7 +784,7 @@ func (s *Session) handleWorldSwitch(w *world.World, tx *world.Tx, c Controllable
 // immediately.
 func (s *Session) changeDimension(dim int32, silent bool, c Controllable) {
 	s.changingDimension.Store(true)
-	h := s.handlers[packet.IDServerBoundLoadingScreen].(*ServerBoundLoadingScreenHandler)
+	h := s.handlers[v2193.IDServerBoundLoadingScreen].(*ServerBoundLoadingScreenHandler)
 	id := h.currentID.Add(1)
 	h.expectedID.Store(id)
 
@@ -796,13 +794,13 @@ func (s *Session) changeDimension(dim int32, silent bool, c Controllable) {
 		LoadingScreenID: proto.Some(id),
 	})
 	s.writePacket(&v2193.StopSoundPacket{StopAll: silent})
-	s.writePacket(&v2193.PlayStatusPacket{Status: packet.PlayStatusPlayerSpawn})
+	s.writePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusPlayerSpawn})
 
 	// As of v1.19.50, the dimension ack that is meant to be sent by the client is now sent by the server. The client
 	// still sends the ack, but after the server has sent it. Thanks to Mojang for another groundbreaking change.
 	s.writePacket(&v2193.PlayerActionPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		ActionType:      protocol.PlayerActionDimensionChangeDone,
+		ActionType:      v2193.PlayerActionDimensionChangeDone,
 	})
 }
 
@@ -838,46 +836,46 @@ func (s *Session) handlePacket(pk proto.Packet, tx *world.Tx, c Controllable) (e
 // registerHandlers registers all packet handlers found in the packetHandler package.
 func (s *Session) registerHandlers() {
 	s.handlers = map[uint32]packetHandler{
-		packet.IDActorEvent:                     nil,
-		packet.IDAdventureSettings:              nil, // Deprecated, the client still sends this though.
-		packet.IDAnimate:                        nil,
-		packet.IDAnvilDamage:                    nil,
-		packet.IDBlockActorData:                 &BlockActorDataHandler{},
-		packet.IDBlockPickRequest:               &BlockPickRequestHandler{},
-		packet.IDBookEdit:                       &BookEditHandler{},
-		packet.IDBossEvent:                      nil,
-		packet.IDClientCacheBlobStatus:          &ClientCacheBlobStatusHandler{},
-		packet.IDCommandRequest:                 &CommandRequestHandler{},
-		packet.IDCommandBlockUpdate:             &CommandBlockUpdateHandler{},
-		packet.IDContainerClose:                 &ContainerCloseHandler{},
-		packet.IDEmote:                          &EmoteHandler{},
-		packet.IDEmoteList:                      nil,
-		packet.IDFilterText:                     nil,
-		packet.IDInteract:                       &InteractHandler{},
-		packet.IDInventoryTransaction:           &InventoryTransactionHandler{},
-		packet.IDItemStackRequest:               &ItemStackRequestHandler{changes: map[byte]map[byte]changeInfo{}, responseChanges: map[int32]map[*inventory.Inventory]map[byte]responseChange{}},
-		packet.IDLecternUpdate:                  &LecternUpdateHandler{},
-		packet.IDMobEquipment:                   &MobEquipmentHandler{},
-		packet.IDModalFormResponse:              &ModalFormResponseHandler{forms: make(map[uint32]form.Form)},
-		packet.IDMovePlayer:                     nil,
-		packet.IDNPCRequest:                     &NPCRequestHandler{},
-		packet.IDPlayerAction:                   &PlayerActionHandler{},
-		packet.IDPlayerAuthInput:                &PlayerAuthInputHandler{},
-		packet.IDPlayerSkin:                     &PlayerSkinHandler{},
-		packet.IDMapInfoRequest:                 &MapInfoRequestHandler{},
-		packet.IDPlayerToggleCrafterSlotRequest: &CrafterSlotToggleHandler{},
-		packet.IDRequestAbility:                 &RequestAbilityHandler{},
-		packet.IDRequestChunkRadius:             &RequestChunkRadiusHandler{},
-		packet.IDRespawn:                        &RespawnHandler{},
-		packet.IDSetPlayerInventoryOptions:      nil,
-		packet.IDSubChunkRequest:                &SubChunkRequestHandler{},
-		packet.IDStructureBlockUpdate:           &StructureBlockUpdateHandler{},
-		packet.IDStructureTemplateDataRequest:   &StructureTemplateDataRequestHandler{},
-		packet.IDText:                           &TextHandler{},
-		packet.IDServerBoundLoadingScreen:       &ServerBoundLoadingScreenHandler{},
-		packet.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},
+		v2193.IDActorEvent:                     nil,
+		v2193.IDAdventureSettings:              nil, // Deprecated, the client still sends this though.
+		v2193.IDAnimate:                        nil,
+		v2193.IDAnvilDamage:                    nil,
+		v2193.IDBlockActorData:                 &BlockActorDataHandler{},
+		v2193.IDBlockPickRequest:               &BlockPickRequestHandler{},
+		v2193.IDBookEdit:                       &BookEditHandler{},
+		v2193.IDBossEvent:                      nil,
+		v2193.IDClientCacheBlobStatus:          &ClientCacheBlobStatusHandler{},
+		v2193.IDCommandRequest:                 &CommandRequestHandler{},
+		v2193.IDCommandBlockUpdate:             &CommandBlockUpdateHandler{},
+		v2193.IDContainerClose:                 &ContainerCloseHandler{},
+		v2193.IDEmote:                          &EmoteHandler{},
+		v2193.IDEmoteList:                      nil,
+		v2193.IDFilterText:                     nil,
+		v2193.IDInteract:                       &InteractHandler{},
+		v2193.IDInventoryTransaction:           &InventoryTransactionHandler{},
+		v2193.IDItemStackRequest:               &ItemStackRequestHandler{changes: map[byte]map[byte]changeInfo{}, responseChanges: map[int32]map[*inventory.Inventory]map[byte]responseChange{}},
+		v2193.IDLecternUpdate:                  &LecternUpdateHandler{},
+		v2193.IDMobEquipment:                   &MobEquipmentHandler{},
+		v2193.IDModalFormResponse:              &ModalFormResponseHandler{forms: make(map[uint32]form.Form)},
+		v2193.IDMovePlayer:                     nil,
+		v2193.IDNPCRequest:                     &NPCRequestHandler{},
+		v2193.IDPlayerAction:                   &PlayerActionHandler{},
+		v2193.IDPlayerAuthInput:                &PlayerAuthInputHandler{},
+		v2193.IDPlayerSkin:                     &PlayerSkinHandler{},
+		v2193.IDMapInfoRequest:                 &MapInfoRequestHandler{},
+		v2193.IDPlayerToggleCrafterSlotRequest: &CrafterSlotToggleHandler{},
+		v2193.IDRequestAbility:                 &RequestAbilityHandler{},
+		v2193.IDRequestChunkRadius:             &RequestChunkRadiusHandler{},
+		v2193.IDRespawn:                        &RespawnHandler{},
+		v2193.IDSetPlayerInventoryOptions:      nil,
+		v2193.IDSubChunkRequest:                &SubChunkRequestHandler{},
+		v2193.IDStructureBlockUpdate:           &StructureBlockUpdateHandler{},
+		v2193.IDStructureTemplateDataRequest:   &StructureTemplateDataRequestHandler{},
+		v2193.IDText:                           &TextHandler{},
+		v2193.IDServerBoundLoadingScreen:       &ServerBoundLoadingScreenHandler{},
+		v2193.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},
 	}
-	s.handlers[packet.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
+	s.handlers[v2193.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
 }
 
 // actorIdentifier represents the structure of an actor identifier sent over the network.

@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // beaconInputSlot is the slot index of the input item in the beacon.
@@ -18,7 +17,7 @@ const beaconInputSlot = 0x1b
 // for those effects.
 func (h *ItemStackRequestHandler) handleBeaconPayment(a *v2193.BeaconPaymentStackRequestAction, s *Session, tx *world.Tx) error {
 	slot := v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerBeaconPayment},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerBeaconPayment},
 		Slot:      beaconInputSlot,
 	}
 	// First check if there actually is a beacon opened.

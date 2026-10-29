@@ -25,7 +25,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // DisconnectError is returned by ReadPacket once the client disconnected,
@@ -218,10 +217,10 @@ var packetLimits = [...]struct {
 	ids        []uint32
 	rate, size float64
 }{
-	{[]uint32{packet.IDRequestNetworkSettings, packet.IDClientToServerHandshake}, 0.0013, 1},
-	{[]uint32{packet.IDText, packet.IDBookEdit}, 10, 50},
-	{[]uint32{packet.IDPlayerSkin}, 10, 50},
-	{[]uint32{packet.IDPositionTrackingDBClientRequest}, 20, 60},
+	{[]uint32{v2193.IDRequestNetworkSettings, v2193.IDClientToServerHandshake}, 0.0013, 1},
+	{[]uint32{v2193.IDText, v2193.IDBookEdit}, 10, 50},
+	{[]uint32{v2193.IDPlayerSkin}, 10, 50},
+	{[]uint32{v2193.IDPositionTrackingDBClientRequest}, 20, 60},
 }
 
 // limitGroup maps a packet ID to its group in packetLimits plus one, zero
@@ -342,7 +341,7 @@ func (c *Conn) read(ids ...uint32) (pk proto.Packet, err error) {
 		if err != nil {
 			return nil, err
 		}
-		if h.ID == packet.IDDisconnect {
+		if h.ID == v2193.IDDisconnect {
 			pk, err := DecodePacket(raw)
 			if err != nil {
 				return nil, err
@@ -402,7 +401,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 		_ = c.nn.SetReadDeadline(time.Time{})
 	}()
 	for {
-		pk, err := c.read(packet.IDRequestChunkRadius, packet.IDSetLocalPlayerAsInitialised)
+		pk, err := c.read(v2193.IDRequestChunkRadius, v2193.IDSetLocalPlayerAsInitialised)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -420,7 +419,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 			}
 			c.chunkRadius.Store(pk.ChunkRadius)
 			_ = c.WritePacket(&v2193.ChunkRadiusUpdatedPacket{ChunkRadius: radius})
-			_ = c.WritePacket(&v2193.PlayStatusPacket{Status: packet.PlayStatusPlayerSpawn})
+			_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusPlayerSpawn})
 			_ = c.WritePacket(&v2193.CreativeContentPacket{})
 			if err := c.Flush(); err != nil {
 				return err

@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // structureLimits are the largest sizes, and offsets in either direction, the
@@ -84,9 +83,9 @@ func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx
 		return fmt.Errorf("only creative operators may request structures")
 	}
 	var template *world.StructureTemplate
-	responseType := byte(packet.StructureTemplateResponseExport)
+	responseType := byte(v2193.StructureTemplateResponseExport)
 	switch pk.RequestType {
-	case packet.StructureTemplateRequestExportFromSave:
+	case v2193.StructureTemplateRequestExportFromSave:
 		pos := blockPosFromProtocol(pk.Position)
 		if !canReach(c, pos.Vec3Middle()) {
 			return fmt.Errorf("structure block at %v is not within reach", pos)
@@ -98,9 +97,9 @@ func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx
 			offset[axis] = min(max(int(pk.Settings.Offset[axis]), -limit), limit)
 		}
 		template = tx.CaptureStructure(pos.Add(offset), size, !pk.Settings.IgnoreEntities)
-	case packet.StructureTemplateRequestExportFromLoad, packet.StructureTemplateRequestQuerySavedStructure:
-		if pk.RequestType == packet.StructureTemplateRequestQuerySavedStructure {
-			responseType = packet.StructureTemplateResponseQuery
+	case v2193.StructureTemplateRequestExportFromLoad, v2193.StructureTemplateRequestQuerySavedStructure:
+		if pk.RequestType == v2193.StructureTemplateRequestQuerySavedStructure {
+			responseType = v2193.StructureTemplateResponseQuery
 		}
 		t, ok, err := tx.World().StructureTemplate(pk.StructureName)
 		if err != nil {

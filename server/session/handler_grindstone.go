@@ -10,7 +10,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 const (
@@ -32,7 +31,7 @@ func (h *ItemStackRequestHandler) handleGrindstoneCraft(s *Session, tx *world.Tx
 
 	// Next, get both input items and ensure they are comparable.
 	firstInput, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerGrindstoneInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerGrindstoneInput},
 		Slot:      grindstoneFirstInputSlot,
 	}, s, tx)
 	if !firstInput.Empty() {
@@ -41,7 +40,7 @@ func (h *ItemStackRequestHandler) handleGrindstoneCraft(s *Session, tx *world.Tx
 		}
 	}
 	secondInput, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerGrindstoneAdditional},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerGrindstoneAdditional},
 		Slot:      grindstoneSecondInputSlot,
 	}, s, tx)
 	if !secondInput.Empty() {
@@ -83,11 +82,11 @@ func (h *ItemStackRequestHandler) handleGrindstoneCraft(s *Session, tx *world.Tx
 	}
 
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerGrindstoneInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerGrindstoneInput},
 		Slot:      grindstoneFirstInputSlot,
 	}, item.Stack{}, s, tx)
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerGrindstoneAdditional},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerGrindstoneAdditional},
 		Slot:      grindstoneSecondInputSlot,
 	}, item.Stack{}, s, tx)
 	return h.createResults(s, tx, stripPossibleEnchantments(resultStack))

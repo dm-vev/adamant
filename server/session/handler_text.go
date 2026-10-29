@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // TextHandler handles the Text packet.
@@ -16,8 +15,8 @@ type TextHandler struct{}
 func (TextHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllable) error {
 	pk := p.(*v2193.TextPacket)
 
-	if pk.TextType != packet.TextTypeChat {
-		return fmt.Errorf("TextType should always be Chat (%v), but got %v", packet.TextTypeChat, pk.TextType)
+	if pk.TextType != v2193.TextTypeChat {
+		return fmt.Errorf("TextType should always be Chat (%v), but got %v", v2193.TextTypeChat, pk.TextType)
 	}
 	if pk.SourceName != s.conn.IdentityData().DisplayName {
 		return fmt.Errorf("SourceName must be equal to DisplayName")

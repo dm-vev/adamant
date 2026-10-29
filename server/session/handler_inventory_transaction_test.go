@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
@@ -27,7 +26,7 @@ func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			s := transactionTestSession(test.count)
 			c := transactionControllable{useItem: func() { test.useItem(s) }}
-			if err := new(InventoryTransactionHandler).handleUseItemTransaction(&v2193.UseItemTransactionData{ActionType: protocol.UseItemActionClickAir}, s, c); err != nil {
+			if err := new(InventoryTransactionHandler).handleUseItemTransaction(&v2193.UseItemTransactionData{ActionType: v2193.UseItemActionClickAir}, s, c); err != nil {
 				t.Fatal(err)
 			}
 			assertActionThenHeldSlot(t, s, test.wantCount)
@@ -50,7 +49,7 @@ func TestUseItemOnEntityTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 		}}
 		err := new(InventoryTransactionHandler).handleUseItemOnEntityTransaction(&v2193.UseItemOnEntityTransactionData{
 			TargetEntityRuntimeID: 2,
-			ActionType:            protocol.UseItemOnEntityActionInteract,
+			ActionType:            v2193.UseItemOnEntityActionInteract,
 		}, s, tx, c)
 		if err != nil {
 			t.Fatal(err)
@@ -79,7 +78,7 @@ func assertActionThenHeldSlot(t *testing.T, s *Session, wantCount uint16) {
 	if !ok {
 		t.Fatal("held slot was not resynced")
 	}
-	if slot.WindowID != protocol.WindowIDInventory || slot.Slot != 0 || slot.NewItem.Stack.Count != wantCount {
+	if slot.WindowID != v2193.WindowIDInventory || slot.Slot != 0 || slot.NewItem.Stack.Count != wantCount {
 		t.Fatalf("held slot = %+v, want inventory slot 0 with count %d", slot, wantCount)
 	}
 	if len(s.heldPackets) != 0 {

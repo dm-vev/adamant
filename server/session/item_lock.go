@@ -6,13 +6,12 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 func isPlayerInventoryContainer(id int32) bool {
 	switch id {
-	case protocol.ContainerHotBar, protocol.ContainerInventory, protocol.ContainerCombinedHotBarAndInventory,
-		protocol.ContainerOffhand, protocol.ContainerArmor, protocol.ContainerCursor:
+	case v2193.ContainerHotBar, v2193.ContainerInventory, v2193.ContainerCombinedHotBarAndInventory,
+		v2193.ContainerOffhand, v2193.ContainerArmor, v2193.ContainerCursor:
 		return true
 	default:
 		return false

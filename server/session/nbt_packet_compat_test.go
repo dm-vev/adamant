@@ -11,12 +11,11 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 func TestBlockActorDataNBTBytes(t *testing.T) {
 	pk := &v2193.BlockActorDataPacket{
-		Position: protocol.BlockPos{12, 64, -7},
+		Position: v2193.BlockPos{12, 64, -7},
 		NBTData:  block.EnchantingTable{}.EncodeNBT(),
 	}
 	got := marshalPacketBytes(t, pk)
@@ -30,20 +29,20 @@ func TestBlockActorDataNBTBytes(t *testing.T) {
 }
 
 func TestEndCrystalMetadataPacket(t *testing.T) {
-	m := protocol.NewEntityMetadata()
+	m := v2193.NewMetadata()
 	(&Session{}).addSpecificMetadata(endCrystalMetadataStub{
 		showBase:  true,
 		target:    mgl64.Vec3{12.9, 64.1, -7.1},
 		hasTarget: true,
 	}, m)
 
-	if got, want := m[protocol.EntityDataKeyBlockTarget], (protocol.BlockPos{12, 64, -8}); got != want {
+	if got, want := m[v2193.EntityDataKeyBlockTarget], (v2193.BlockPos{12, 64, -8}); got != want {
 		t.Fatalf("block target = %#v, want %#v", got, want)
 	}
-	if !m.Flag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShowBottom) {
+	if !m.Flag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagShowBottom) {
 		t.Fatal("show-bottom flag is not set")
 	}
-	for _, key := range []uint32{protocol.EntityDataKeyTargetA, protocol.EntityDataKeyTargetB, protocol.EntityDataKeyTargetC} {
+	for _, key := range []uint32{v2193.EntityDataKeyTargetA, v2193.EntityDataKeyTargetB, v2193.EntityDataKeyTargetC} {
 		if _, ok := m[key]; ok {
 			t.Fatalf("legacy target metadata key %d is set", key)
 		}
@@ -52,9 +51,9 @@ func TestEndCrystalMetadataPacket(t *testing.T) {
 		t.Fatal("empty SetActorData packet")
 	}
 
-	withoutTarget := protocol.NewEntityMetadata()
+	withoutTarget := v2193.NewMetadata()
 	(&Session{}).addSpecificMetadata(endCrystalMetadataStub{}, withoutTarget)
-	if _, ok := withoutTarget[protocol.EntityDataKeyBlockTarget]; ok {
+	if _, ok := withoutTarget[v2193.EntityDataKeyBlockTarget]; ok {
 		t.Fatal("nil beam target was encoded")
 	}
 }

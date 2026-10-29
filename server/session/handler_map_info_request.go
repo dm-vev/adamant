@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // MapInfoRequestHandler returns the persistent map texture and fixed decorations requested by a client.
@@ -58,13 +57,13 @@ func (s *Session) ViewMapData(data world.MapData) error {
 		if object.Entity != nil {
 			if id := s.handleRuntimeID(object.Entity); id != 0 {
 				trackedObjects = append(trackedObjects, v2193.MapTrackedObject{
-					Type: protocol.MapObjectTypeEntity, EntityUniqueID: proto.Some(s.handleUniqueID(object.Entity)),
+					Type: v2193.MapObjectTypeEntity, EntityUniqueID: proto.Some(s.handleUniqueID(object.Entity)),
 				})
 			}
 		} else if object.Block != nil {
 			pos := *object.Block
 			trackedObjects = append(trackedObjects, v2193.MapTrackedObject{
-				Type:          protocol.MapObjectTypeBlock,
+				Type:          v2193.MapObjectTypeBlock,
 				BlockPosition: proto.Some([3]int32{int32(pos[0]), int32(pos[1]), int32(pos[2])}),
 			})
 		}
@@ -73,7 +72,7 @@ func (s *Session) ViewMapData(data world.MapData) error {
 		MapID:          data.ID,
 		Dimension:      byte(data.Dimension),
 		LockedMap:      data.Locked,
-		Origin:         protocol.BlockPos{int32(data.CenterX), 0, int32(data.CenterZ)},
+		Origin:         v2193.BlockPos{int32(data.CenterX), 0, int32(data.CenterZ)},
 		TrackedObjects: proto.Some(trackedObjects),
 		Scale:          proto.Some(data.Scale),
 		Decorations:    proto.Some(decorations),

@@ -6,8 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/scoreboard"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
 )
 
@@ -19,7 +17,7 @@ func (s *Session) SendMessage(message string) {
 		message = " "
 	}
 	s.writePacket(&v2193.TextPacket{
-		TextType: packet.TextTypeRaw,
+		TextType: v2193.TextTypeRaw,
 		Message:  message,
 	})
 }
@@ -28,7 +26,7 @@ func (s *Session) SendMessage(message string) {
 func (s *Session) SendTranslation(t chat.Translation, l language.Tag, a []any) {
 	tr := t.F(a...)
 	s.writePacket(&v2193.TextPacket{
-		TextType:         packet.TextTypeTranslation,
+		TextType:         v2193.TextTypeTranslation,
 		NeedsTranslation: true,
 		Message:          tr.Resolve(l),
 		Parameters:       tr.Params(l),
@@ -38,7 +36,7 @@ func (s *Session) SendTranslation(t chat.Translation, l language.Tag, a []any) {
 // SendTip ...
 func (s *Session) SendTip(message string) {
 	s.writePacket(&v2193.TextPacket{
-		TextType: packet.TextTypeTip,
+		TextType: v2193.TextTypeTip,
 		Message:  message,
 	})
 }
@@ -46,7 +44,7 @@ func (s *Session) SendTip(message string) {
 // SendAnnouncement ...
 func (s *Session) SendAnnouncement(message string) {
 	s.writePacket(&v2193.TextPacket{
-		TextType: packet.TextTypeAnnouncement,
+		TextType: v2193.TextTypeAnnouncement,
 		Message:  message,
 	})
 }
@@ -54,7 +52,7 @@ func (s *Session) SendAnnouncement(message string) {
 // SendPopup ...
 func (s *Session) SendPopup(message string) {
 	s.writePacket(&v2193.TextPacket{
-		TextType: packet.TextTypePopup,
+		TextType: v2193.TextTypePopup,
 		Message:  message,
 	})
 }
@@ -62,7 +60,7 @@ func (s *Session) SendPopup(message string) {
 // SendJukeboxPopup ...
 func (s *Session) SendJukeboxPopup(message string) {
 	s.writePacket(&v2193.TextPacket{
-		TextType: packet.TextTypeJukeboxPopup,
+		TextType: v2193.TextTypeJukeboxPopup,
 		Message:  message,
 	})
 }
@@ -104,9 +102,9 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 			CriteriaName:  "dummy",
 		}
 		if sb.Descending() {
-			pk.SortOrder = packet.ScoreboardSortOrderDescending
+			pk.SortOrder = v2193.ScoreboardSortOrderDescending
 		} else {
-			pk.SortOrder = packet.ScoreboardSortOrderAscending
+			pk.SortOrder = v2193.ScoreboardSortOrderAscending
 		}
 		s.writePacket(pk)
 	} else {
@@ -114,7 +112,7 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 		pk := &v2193.SetScorePacket{}
 		for i := range currentLines {
 			pk.Entries = append(pk.Entries, v2193.ScoreboardEntry{
-				IdentityType:  protocol.ScoreboardIdentityRemove,
+				IdentityType:  v2193.ScoreboardIdentityRemove,
 				EntryID:       int64(i),
 				ObjectiveName: currentName,
 				Score:         int32(i),
@@ -135,7 +133,7 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 			EntryID:       int64(k),
 			ObjectiveName: name,
 			Score:         int32(k),
-			IdentityType:  protocol.ScoreboardIdentityFakePlayer,
+			IdentityType:  v2193.ScoreboardIdentityFakePlayer,
 			DisplayName:   line,
 		})
 	}
@@ -175,7 +173,7 @@ func (s *Session) SendBossBar(text string, colour uint8, healthPercentage float6
 func (s *Session) SendBossBarID(id, text string, colour uint8, healthPercentage float64) {
 	s.writePacket(&v2193.BossEventPacket{
 		BossEntityUniqueID: s.bossBarEntityID(id),
-		EventType:          packet.BossEventShow,
+		EventType:          v2193.BossEventShow,
 		BossBarTitle:       text,
 		HealthPercentage:   float32(healthPercentage),
 		Colour:             colour,
@@ -189,7 +187,7 @@ func (s *Session) RemoveBossBar() { s.RemoveBossBarID("default") }
 func (s *Session) RemoveBossBarID(id string) {
 	s.writePacket(&v2193.BossEventPacket{
 		BossEntityUniqueID: s.bossBarEntityID(id),
-		EventType:          packet.BossEventHide,
+		EventType:          v2193.BossEventHide,
 	})
 }
 
@@ -217,7 +215,7 @@ const tickLength = time.Second / 20
 // SetTitleDurations ...
 func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDuration time.Duration) {
 	s.writePacket(&v2193.SetTitlePacket{
-		ActionType:      packet.TitleActionSetDurations,
+		ActionType:      v2193.TitleActionSetDurations,
 		FadeInDuration:  int32(fadeInDuration / tickLength),
 		RemainDuration:  int32(remainDuration / tickLength),
 		FadeOutDuration: int32(fadeOutDuration / tickLength),
@@ -226,15 +224,15 @@ func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDurat
 
 // SendTitle ...
 func (s *Session) SendTitle(text string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: packet.TitleActionSetTitle, Text: text})
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetTitle, Text: text})
 }
 
 // SendSubtitle ...
 func (s *Session) SendSubtitle(text string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: packet.TitleActionSetSubtitle, Text: text})
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetSubtitle, Text: text})
 }
 
 // SendActionBarMessage ...
 func (s *Session) SendActionBarMessage(text string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: packet.TitleActionSetActionBar, Text: text})
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetActionBar, Text: text})
 }

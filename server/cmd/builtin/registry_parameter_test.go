@@ -62,7 +62,7 @@ func TestRegistryArgumentsMatchBDSMetadata(t *testing.T) {
 						continue
 					}
 					count++
-					if parameter.Type&(protocol.CommandArgValid|protocol.CommandArgEnum|protocol.CommandArgSoftEnum) != protocol.CommandArgValid|protocol.CommandArgEnum {
+					if parameter.Type&(v2193.CommandArgValid|v2193.CommandArgEnum|v2193.CommandArgSoftEnum) != v2193.CommandArgValid|v2193.CommandArgEnum {
 						t.Fatalf("%s.%s is not a native hard enum: %#x", tt.command, tt.parameter, parameter.Type)
 					}
 					enum := decoded.Enums[parameter.Type&0xfffff]

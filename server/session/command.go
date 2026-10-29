@@ -10,8 +10,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
 )
 
@@ -39,7 +37,7 @@ func (s *Session) SendCommandOutput(output *cmd.Output, l language.Tag) {
 
 	s.writePacket(&v2193.CommandOutputPacket{
 		CommandOrigin:  s.commandOriginSnapshot(),
-		OutputType:     packet.CommandOutputTypeAllOutput,
+		OutputType:     v2193.CommandOutputTypeAllOutput,
 		SuccessCount:   uint32(output.MessageCount()),
 		OutputMessages: messages,
 	})
@@ -125,9 +123,9 @@ func BuildAvailableCommands(
 						suffixIndices[suffix] = index
 						pk.Suffixes = append(pk.Suffixes, suffix)
 					}
-					t = protocol.CommandArgSuffixed | index
+					t = v2193.CommandArgSuffixed | index
 				} else {
-					t |= protocol.CommandArgValid
+					t |= v2193.CommandArgValid
 					if len(enum.Options) > 0 || enum.Type != "" {
 						dynamic := enum.Dynamic
 						if !dynamic {
@@ -142,7 +140,7 @@ func BuildAvailableCommands(
 								enumIndices[enum.Type] = index
 								enums = append(enums, enum)
 							}
-							t |= protocol.CommandArgEnum | index
+							t |= v2193.CommandArgEnum | index
 						} else {
 							index, ok := dynamicEnumIndices[enum.Type]
 							if !ok {
@@ -150,7 +148,7 @@ func BuildAvailableCommands(
 								dynamicEnumIndices[enum.Type] = index
 								dynamicEnums = append(dynamicEnums, enum)
 							}
-							t |= protocol.CommandArgSoftEnum | index
+							t |= v2193.CommandArgSoftEnum | index
 						}
 					}
 				}
@@ -166,7 +164,7 @@ func BuildAvailableCommands(
 			Name:            c.Name(),
 			Description:     commandDescription(c, src),
 			AliasesOffset:   aliasesIndex,
-			PermissionLevel: protocol.CommandPermissionLevelAny,
+			PermissionLevel: v2193.CommandPermissionLevelAny,
 			Overloads:       overloads,
 		})
 	}
@@ -247,22 +245,22 @@ type commandEnum struct {
 func valueToParamType(i cmd.ParamInfo, source cmd.Source) (t uint32, enum commandEnum) {
 	switch i.Value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		return protocol.CommandArgTypeInt, enum
+		return v2193.CommandArgTypeInt, enum
 	case float32, float64:
-		return protocol.CommandArgTypeFloat, enum
+		return v2193.CommandArgTypeFloat, enum
 	case string:
-		return protocol.CommandArgTypeString, enum
+		return v2193.CommandArgTypeString, enum
 	case cmd.Varargs:
-		return protocol.CommandArgTypeRawText, enum
+		return v2193.CommandArgTypeRawText, enum
 	case cmd.Target, []cmd.Target:
-		return protocol.CommandArgTypeTarget, enum
+		return v2193.CommandArgTypeTarget, enum
 	case bool:
 		return 0, commandEnum{
 			Type:    "Boolean",
 			Options: []string{"true", "false"},
 		}
 	case mgl64.Vec3:
-		return protocol.CommandArgTypePosition, enum
+		return v2193.CommandArgTypePosition, enum
 	case cmd.SubCommand:
 		return 0, commandEnum{
 			Type:    "SubCommand" + i.Name,
@@ -282,7 +280,7 @@ func valueToParamType(i cmd.ParamInfo, source cmd.Source) (t uint32, enum comman
 		}
 		return 0, ce
 	}
-	return protocol.CommandArgTypeRValue, enum
+	return v2193.CommandArgTypeRValue, enum
 }
 
 // resendCommands resends all commands that a Session has access to if the map of runnable commands passed does not
@@ -374,7 +372,7 @@ func (s *Session) resendEnums(
 		}
 
 		if _, dynamic := softEnums[name]; dynamic {
-			s.writePacket(&v2193.UpdateSoftEnumPacket{EnumType: name, Options: values, ActionType: packet.SoftEnumActionSet})
+			s.writePacket(&v2193.UpdateSoftEnumPacket{EnumType: name, Options: values, ActionType: v2193.SoftEnumActionSet})
 		} else {
 			softEnums[name] = struct{}{}
 			r = s.sendAvailableCommands(c, softEnums)

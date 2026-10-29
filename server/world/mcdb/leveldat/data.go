@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // Data holds a collection of data that specify a range of Settings of the
@@ -190,7 +190,7 @@ func (d *Data) FillDefault() {
 	d.GameType = 0
 	d.Generator = 2
 	d.HasBeenLoadedInCreative = false
-	d.InventoryVersion = protocol.CurrentVersion
+	d.InventoryVersion = v2193.CurrentVersion
 	d.LANBroadcast = true
 	d.LANBroadcastIntent = true
 	d.LastOpenedWithVersion = minimumCompatibleClientVersion
@@ -206,7 +206,7 @@ func (d *Data) FillDefault() {
 	d.MultiPlayerGameIntent = true
 	d.NaturalRegeneration = true
 	d.NetherScale = 8
-	d.NetworkVersion = protocol.CurrentProtocol
+	d.NetworkVersion = v2193.CurrentProtocol
 	d.PVP = true
 	d.Platform = 2
 	d.PlatformBroadcastIntent = 3

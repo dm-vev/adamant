@@ -19,11 +19,10 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestEntityNetworkPositionConsistentAcrossPackets(t *testing.T) {
@@ -174,7 +173,7 @@ func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
 					survivorID = pk.EntityRuntimeID
 				}
 			case *v2193.ActorEventPacket:
-				if pk.EventType == packet.ActorEventUpdateStackSize {
+				if pk.EventType == v2193.ActorEventUpdateStackSize {
 					updates++
 					updatedID = pk.EntityRuntimeID
 					if pk.EventData != 4 {
@@ -218,7 +217,7 @@ func entityPacketPositions(t *testing.T, packets <-chan any, entityType string) 
 			case *v2193.MovePlayerPacket:
 				teleport = pk.Position
 			case *v2193.MoveActorAbsolutePacket:
-				if pk.Flags&packet.MoveFlagTeleport != 0 {
+				if pk.Flags&v2193.MoveFlagTeleport != 0 {
 					teleport = pk.Position
 				} else {
 					move = pk.Position

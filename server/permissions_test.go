@@ -12,10 +12,8 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
@@ -32,7 +30,7 @@ func TestOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
 	cmd.Register(cmd.New(commandName, "Permission regression", nil, permissionTestCommand{srv: srv}))
 
 	alice, conn, data := joinPermissionPlayer(t, srv, "Alice")
-	if data.PlayerPermissions != packet.PermissionLevelOperator {
+	if data.PlayerPermissions != v2193.PermissionLevelOperator {
 		t.Errorf("StartGame permissions = %d, want operator", data.PlayerPermissions)
 	}
 	conn.waitPermission(t, 0, 1, true)
@@ -41,7 +39,7 @@ func TestOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
 	// A joining client must see the existing operator's permissions even
 	// before receiving the player's actor or loading its chunk.
 	_, observer, observerData := joinPermissionPlayer(t, srv, "Bob")
-	if observerData.PlayerPermissions != packet.PermissionLevelMember {
+	if observerData.PlayerPermissions != v2193.PermissionLevelMember {
 		t.Errorf("member StartGame permissions = %d", observerData.PlayerPermissions)
 	}
 	observer.waitPermission(t, 0, alice.p.handle.UniqueID(), true)
@@ -80,7 +78,7 @@ func TestOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	abilities := conn.waitPermission(t, before, 1, false)
-	if abilities.Layers[0].Values&protocol.AbilityMayFly == 0 {
+	if abilities.Layers[0].Values&v2193.AbilityMayFly == 0 {
 		t.Error("permission update lost creative flight")
 	}
 }
@@ -177,19 +175,19 @@ func (c *permissionTestConn) waitPermission(t *testing.T, after int, uniqueID in
 		if !ok || update.AbilityData.EntityUniqueID != uniqueID {
 			return false
 		}
-		return (update.AbilityData.PlayerPermissions == packet.PermissionLevelOperator) == operator
+		return (update.AbilityData.PlayerPermissions == v2193.PermissionLevelOperator) == operator
 	}).(*v2193.UpdateAbilitiesPacket)
 	data := pk.AbilityData
-	wantPlayer, wantCommand := byte(packet.PermissionLevelMember), byte(protocol.CommandPermissionLevelAny)
+	wantPlayer, wantCommand := byte(v2193.PermissionLevelMember), byte(v2193.CommandPermissionLevelAny)
 	wantFlags := uint32(0)
 	if operator {
-		wantPlayer, wantCommand = packet.PermissionLevelOperator, protocol.CommandPermissionLevelGameDirectors
-		wantFlags = protocol.AbilityOperatorCommands | protocol.AbilityTeleport
+		wantPlayer, wantCommand = v2193.PermissionLevelOperator, v2193.CommandPermissionLevelGameDirectors
+		wantFlags = v2193.AbilityOperatorCommands | v2193.AbilityTeleport
 	}
 	if data.PlayerPermissions != wantPlayer || data.CommandPermissions != wantCommand {
 		t.Errorf("permissions = %d/%d, want %d/%d", data.PlayerPermissions, data.CommandPermissions, wantPlayer, wantCommand)
 	}
-	if flags := data.Layers[0].Values & (protocol.AbilityOperatorCommands | protocol.AbilityTeleport); flags != wantFlags {
+	if flags := data.Layers[0].Values & (v2193.AbilityOperatorCommands | v2193.AbilityTeleport); flags != wantFlags {
 		t.Errorf("operator ability flags = %#x, want %#x", flags, wantFlags)
 	}
 	return data

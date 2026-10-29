@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestValidText(t *testing.T) {
@@ -42,7 +41,7 @@ func TestChatOverItsLengthIsDropped(t *testing.T) {
 	s := testSession("Talker")
 	c := &chatControllable{}
 	for _, msg := range []string{strings.Repeat("a", maxChatLength), strings.Repeat("b", maxChatLength+1), strings.Repeat("c", 1<<20), "bad \xff UTF-8"} {
-		pk := &v2193.TextPacket{TextType: packet.TextTypeChat, SourceName: "Talker", Message: msg}
+		pk := &v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Talker", Message: msg}
 		if err := (TextHandler{}).Handle(pk, s, nil, c); err != nil {
 			t.Fatal(err)
 		}

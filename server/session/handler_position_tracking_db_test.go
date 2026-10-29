@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestPositionTrackingDBHandlerMissingAndTracked(t *testing.T) {
@@ -31,11 +30,11 @@ func TestPositionTrackingDBHandlerMissingAndTracked(t *testing.T) {
 	})
 
 	missing := (s.testPacket()).(*v2193.PositionTrackingDBServerBroadcastPacket)
-	if missing.BroadcastAction != packet.PositionTrackingDBBroadcastActionNotFound || missing.Payload["status"] != byte(positionTrackingStatusMissing) {
+	if missing.BroadcastAction != v2193.PositionTrackingDBBroadcastActionNotFound || missing.Payload["status"] != byte(positionTrackingStatusMissing) {
 		t.Fatalf("missing response = %#v", missing)
 	}
 	tracked := (s.testPacket()).(*v2193.PositionTrackingDBServerBroadcastPacket)
-	if tracked.BroadcastAction != packet.PositionTrackingDBBroadcastActionUpdate || tracked.Payload["dim"] != int32(0) {
+	if tracked.BroadcastAction != v2193.PositionTrackingDBBroadcastActionUpdate || tracked.Payload["dim"] != int32(0) {
 		t.Fatalf("tracked response = %#v", tracked)
 	}
 	if got := tracked.Payload["pos"]; !equalPositionPayload(got, pos) {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 var errAdminUnavailable = errors.New("admin persistence unavailable")
@@ -187,7 +187,7 @@ func (srv *Server) SetIdleTimeout(minutes int) {
 	srv.idleTimeout.Store(int64(minutes))
 }
 func (srv *Server) IdleTimeout() int { return int(srv.idleTimeout.Load()) }
-func (srv *Server) Version() string  { return fmt.Sprintf("Dragonfly (%s)", protocol.CurrentVersion) }
+func (srv *Server) Version() string  { return fmt.Sprintf("Dragonfly (%s)", v2193.CurrentVersion) }
 func idleTimeoutExpired(lastActivity, now time.Time, timeout time.Duration) bool {
 	return timeout > 0 && !lastActivity.IsZero() && !lastActivity.Add(timeout).After(now)
 }

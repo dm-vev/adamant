@@ -11,7 +11,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestMobDeathAnimationSurvivesRemoval(t *testing.T) {
@@ -26,7 +25,7 @@ func TestMobDeathAnimationSurvivesRemoval(t *testing.T) {
 		viewer.HideEntity(e)
 		viewer.HideEntity(e)
 		pk, ok := (viewer.testPacket()).(*v2193.ActorEventPacket)
-		if !ok || pk.EventType != packet.ActorEventDeath || pk.EntityRuntimeID != 2 {
+		if !ok || pk.EventType != v2193.ActorEventDeath || pk.EntityRuntimeID != 2 {
 			t.Errorf("death packet = %#v, want actor 2 death event", pk)
 		}
 		if pk := viewer.testPacket(); pk != nil {
@@ -143,7 +142,7 @@ func TestKilledMobSendsDeathWithoutImmediateRemoveActor(t *testing.T) {
 			for len(viewer.heldPackets) > 0 {
 				switch pk := (viewer.testPacket()).(type) {
 				case *v2193.ActorEventPacket:
-					if pk.EntityRuntimeID == runtimeID && pk.EventType == packet.ActorEventDeath {
+					if pk.EntityRuntimeID == runtimeID && pk.EventType == v2193.ActorEventDeath {
 						deaths++
 					}
 				case *v2193.RemoveActorPacket:

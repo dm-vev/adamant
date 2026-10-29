@@ -7,7 +7,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 const (
@@ -38,7 +37,7 @@ func (h *ItemStackRequestHandler) handleSmithing(a *v2193.CraftRecipeStackReques
 	// Check if the input item and material item match what the recipe requires.
 	expectedInputs := craft.Input()
 	input, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerSmithingTableInput},
 		Slot:      smithingInputSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(input); err != nil {
@@ -48,7 +47,7 @@ func (h *ItemStackRequestHandler) handleSmithing(a *v2193.CraftRecipeStackReques
 		return fmt.Errorf("input item is not the same as expected input")
 	}
 	material, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableMaterial},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerSmithingTableMaterial},
 		Slot:      smithingMaterialSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(material); err != nil {
@@ -58,7 +57,7 @@ func (h *ItemStackRequestHandler) handleSmithing(a *v2193.CraftRecipeStackReques
 		return fmt.Errorf("material item is not the same as expected material")
 	}
 	template, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableTemplate},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerSmithingTableTemplate},
 		Slot:      smithingTemplateSlot,
 	}, s, tx)
 	if err := ensureUnlockedForCrafting(template); err != nil {
@@ -70,15 +69,15 @@ func (h *ItemStackRequestHandler) handleSmithing(a *v2193.CraftRecipeStackReques
 
 	// Create the output using the input stack as reference and the recipe's output item type.
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerSmithingTableInput},
 		Slot:      smithingInputSlot,
 	}, input.Grow(-1), s, tx)
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableMaterial},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerSmithingTableMaterial},
 		Slot:      smithingMaterialSlot,
 	}, material.Grow(-1), s, tx)
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerSmithingTableTemplate},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerSmithingTableTemplate},
 		Slot:      smithingTemplateSlot,
 	}, template.Grow(-1), s, tx)
 

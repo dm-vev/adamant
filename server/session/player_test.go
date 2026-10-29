@@ -17,8 +17,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestGameTypeFromMode(t *testing.T) {
@@ -26,9 +24,9 @@ func TestGameTypeFromMode(t *testing.T) {
 		mode world.GameMode
 		want int32
 	}{
-		"survival":  {world.GameModeSurvival, packet.GameTypeSurvival},
-		"creative":  {world.GameModeCreative, packet.GameTypeCreative},
-		"spectator": {world.GameModeSpectator, packet.GameTypeSpectator},
+		"survival":  {world.GameModeSurvival, v2193.GameTypeSurvival},
+		"creative":  {world.GameModeCreative, v2193.GameTypeCreative},
+		"spectator": {world.GameModeSpectator, v2193.GameTypeSpectator},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -48,7 +46,7 @@ func TestResyncInventory(t *testing.T) {
 	}
 	s.ResyncInventory()
 
-	for _, want := range []uint32{protocol.WindowIDInventory, protocol.WindowIDOffHand} {
+	for _, want := range []uint32{v2193.WindowIDInventory, v2193.WindowIDOffHand} {
 		pk := s.testPacket()
 		content, ok := pk.(*v2193.InventoryContentPacket)
 		if !ok {
@@ -75,8 +73,8 @@ func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
 	if !ok {
 		t.Fatalf("packet type = %T, want *v2193.SetPlayerGameTypePacket", pk)
 	}
-	if gameType.GameType != packet.GameTypeCreative {
-		t.Fatalf("game type = %d, want %d", gameType.GameType, packet.GameTypeCreative)
+	if gameType.GameType != v2193.GameTypeCreative {
+		t.Fatalf("game type = %d, want %d", gameType.GameType, v2193.GameTypeCreative)
 	}
 	if pk := s.testPacket(); pk != nil {
 		t.Fatalf("ability packet sent without delay: %T", pk)
@@ -90,7 +88,7 @@ func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
 	if !ok {
 		t.Fatalf("packet type = %T, want *v2193.UpdateAbilitiesPacket", pk)
 	}
-	want := uint32(protocol.AbilityMayFly | protocol.AbilityInvulnerable | protocol.AbilityInstantBuild | protocol.AbilityBuild | protocol.AbilityMine | protocol.AbilityDoorsAndSwitches | protocol.AbilityOpenContainers | protocol.AbilityAttackPlayers | protocol.AbilityAttackMobs)
+	want := uint32(v2193.AbilityMayFly | v2193.AbilityInvulnerable | v2193.AbilityInstantBuild | v2193.AbilityBuild | v2193.AbilityMine | v2193.AbilityDoorsAndSwitches | v2193.AbilityOpenContainers | v2193.AbilityAttackPlayers | v2193.AbilityAttackMobs)
 	if got := abilities.AbilityData.Layers[0].Values; got != want {
 		t.Fatalf("ability values = %b, want %b", got, want)
 	}
@@ -990,7 +988,7 @@ func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stac
 		t.Fatalf("rejected craft produced %v", result)
 	}
 	pk, ok := (s.testPacket()).(*v2193.ItemStackResponsePacket)
-	if !ok || len(pk.Responses) != 1 || pk.Responses[0].Status != protocol.ItemStackResponseStatusError {
+	if !ok || len(pk.Responses) != 1 || pk.Responses[0].Status != v2193.ItemStackResponseStatusError {
 		t.Fatalf("rejected craft response = %#v", pk)
 	}
 }
@@ -1050,7 +1048,7 @@ func craftingTestHandler() *ItemStackRequestHandler {
 
 func craftingSlot(slot int, stackID int32) v2193.StackRequestSlotInfo {
 	return v2193.StackRequestSlotInfo{
-		Container:      v2193.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+		Container:      v2193.FullContainerName{ContainerID: v2193.ContainerCraftingInput},
 		Slot:           byte(slot),
 		StackNetworkID: stackID,
 	}
@@ -1065,7 +1063,7 @@ func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
 	pos := cube.Pos{0, 64, 0}
 	s.containerOpened.Store(true)
 	s.openedPos.Store(&pos)
-	s.openedContainerID.Store(uint32(protocol.ContainerTypeCartography))
+	s.openedContainerID.Store(uint32(v2193.ContainerTypeCartography))
 	glass := item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)
 	if err := s.ui.SetItem(cartographyInputSlot, craftingMapStack()); err != nil {
 		t.Fatal(err)
@@ -1086,8 +1084,8 @@ func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
 	req := v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{multiResultItem(craftingMapStack())}},
-		consume(protocol.ContainerCartographyInput, cartographyInputSlot),
-		consume(protocol.ContainerCartographyAdditional, cartographyInputSlot+1),
+		consume(v2193.ContainerCartographyInput, cartographyInputSlot),
+		consume(v2193.ContainerCartographyAdditional, cartographyInputSlot+1),
 	}}
 	var craftErr error
 	if err := w.Do(func(tx *world.Tx) {

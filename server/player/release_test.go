@@ -18,9 +18,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 func TestReleaseItemResyncsOnlyWhenNothingWasConsumed(t *testing.T) {
@@ -83,10 +82,10 @@ func TestReleaseItemResyncsOnlyWhenNothingWasConsumed(t *testing.T) {
 			const marker = "release-item-test-marker"
 			s.SendMessage(marker)
 			conn.waitForMessage(t, marker)
-			if got := conn.inventoryContents(protocol.WindowIDInventory); got != test.wantInventoryContents {
+			if got := conn.inventoryContents(v2193.WindowIDInventory); got != test.wantInventoryContents {
 				t.Errorf("main inventory packets = %d, want %d", got, test.wantInventoryContents)
 			}
-			if got := conn.inventoryContents(protocol.WindowIDOffHand); got != test.wantOffHandContents {
+			if got := conn.inventoryContents(v2193.WindowIDOffHand); got != test.wantOffHandContents {
 				t.Errorf("off-hand inventory packets = %d, want %d", got, test.wantOffHandContents)
 			}
 			if test.wantArrowConsumed {

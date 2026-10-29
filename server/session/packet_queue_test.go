@@ -12,7 +12,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestSessionPacketBurstPreservesOrder(t *testing.T) {
@@ -290,7 +289,7 @@ func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(marshalConn{c})
 	t.Cleanup(s.CloseConnection)
 	s.writePacket(&v2193.GameRulesChangedPacket{GameRules: []v2193.GameRule{{Name: "rule", Value: struct{}{}}}})
-	want := &v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "after"}
+	want := &v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "after"}
 	s.writePacket(want)
 	close(c.release)
 	timer := time.NewTimer(5 * time.Second)

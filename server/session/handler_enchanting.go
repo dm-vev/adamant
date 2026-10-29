@@ -12,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 const (
@@ -75,7 +74,7 @@ func (h *ItemStackRequestHandler) handleEnchant(a *v2193.CraftRecipeStackRequest
 		// Deduct the experience and Lapis Lazuli.
 		c.SetExperienceLevel(c.ExperienceLevel() - cost)
 		h.setItemInSlot(v2193.StackRequestSlotInfo{
-			Container: v2193.FullContainerName{ContainerID: protocol.ContainerEnchantingMaterial},
+			Container: v2193.FullContainerName{ContainerID: v2193.ContainerEnchantingMaterial},
 			Slot:      enchantingLapisSlot,
 		}, lapis.Grow(-cost), s, tx)
 	}
@@ -86,7 +85,7 @@ func (h *ItemStackRequestHandler) handleEnchant(a *v2193.CraftRecipeStackRequest
 	// Clear the existing input item, and apply the new item into the crafting result slot of the UI. The client will
 	// automatically move the item into the input slot.
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerEnchantingInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerEnchantingInput},
 		Slot:      enchantingInputSlot,
 	}, item.Stack{}, s, tx)
 

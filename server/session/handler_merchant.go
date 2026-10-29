@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 const (
@@ -20,7 +19,7 @@ const (
 
 // merchantTradeOpen reports if the session has a trade screen open.
 func (s *Session) merchantTradeOpen() bool {
-	return s.containerOpened.Load() && byte(s.openedContainerID.Load()) == protocol.ContainerTypeTrade
+	return s.containerOpened.Load() && byte(s.openedContainerID.Load()) == v2193.ContainerTypeTrade
 }
 
 // merchantCostA returns the first input of an offer with its price applied,
@@ -114,7 +113,7 @@ func (h *ItemStackRequestHandler) handleMerchantCraft(a *v2193.CraftRecipeStackR
 	}
 	for slot, stack := range map[byte]item.Stack{merchantInputSlotA: inputA, merchantInputSlotB: inputB} {
 		if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
-			Container: v2193.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne},
+			Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoIngredientOne},
 			Slot:      slot,
 		}, stack, s, tx); err != nil {
 			return err

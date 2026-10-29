@@ -14,7 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	_ "github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 type audit struct {
@@ -107,8 +107,8 @@ func run(out io.Writer) error {
 	}
 
 	result := audit{
-		ProtocolVersion: protocol.CurrentProtocol,
-		GameVersion:     protocol.CurrentVersion,
+		ProtocolVersion: v2193.CurrentProtocol,
+		GameVersion:     v2193.CurrentVersion,
 		ParityVerified:  false,
 		RegistryCoverage: registryCoverage{
 			TotalBlockStates:       len(blocks),

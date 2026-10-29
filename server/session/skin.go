@@ -10,7 +10,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // A skin is what a client says it is: the functions below trust nothing in
@@ -73,11 +72,11 @@ func protocolToSkin(sk v2193.Skin) skin.Skin {
 // one the game does not know.
 func animationType(t int64) (skin.AnimationType, bool) {
 	switch t {
-	case protocol.SkinAnimationHead:
+	case v2193.SkinAnimationHead:
 		return skin.AnimationHead, true
-	case protocol.SkinAnimationBody32x32:
+	case v2193.SkinAnimationBody32x32:
 		return skin.AnimationBody32x32, true
-	case protocol.SkinAnimationBody128x128:
+	case v2193.SkinAnimationBody128x128:
 		return skin.AnimationBody128x128, true
 	}
 	return 0, false
@@ -110,11 +109,11 @@ func skinToProtocol(s skin.Skin) v2193.Skin {
 		}
 		switch animation.Type() {
 		case skin.AnimationHead:
-			protocolAnim.AnimationType = protocol.SkinAnimationHead
+			protocolAnim.AnimationType = v2193.SkinAnimationHead
 		case skin.AnimationBody32x32:
-			protocolAnim.AnimationType = protocol.SkinAnimationBody32x32
+			protocolAnim.AnimationType = v2193.SkinAnimationBody32x32
 		case skin.AnimationBody128x128:
-			protocolAnim.AnimationType = protocol.SkinAnimationBody128x128
+			protocolAnim.AnimationType = v2193.SkinAnimationBody128x128
 		}
 		animations = append(animations, protocolAnim)
 	}
@@ -152,7 +151,7 @@ func skinToProtocol(s skin.Skin) v2193.Skin {
 		Animations:                animations,
 		Trusted:                   true,
 		OverrideAppearance:        true,
-		GeometryDataEngineVersion: []byte(protocol.CurrentVersion),
+		GeometryDataEngineVersion: []byte(v2193.CurrentVersion),
 	}
 }
 
@@ -167,12 +166,12 @@ func fills(b image.Rectangle, pix []byte) bool {
 // session with a skin, for every session.
 func (s *Session) newListEntry(sk skin.Skin) *sharedPacket {
 	return &sharedPacket{Packet: &v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
-		ActionType:     protocol.PlayerListActionAdd,
+		ActionType:     v2193.PlayerListActionAdd,
 		UUID:           s.ent.UUID(),
 		EntityUniqueID: s.ent.UniqueID(),
 		Username:       s.conn.IdentityData().DisplayName,
 		XUID:           s.conn.IdentityData().XUID,
-		BuildPlatform:  int32(protocol.DeviceUnknown),
+		BuildPlatform:  int32(v2193.DeviceUnknown),
 		Skin:           skinToProtocol(sk),
 	}}}}
 }

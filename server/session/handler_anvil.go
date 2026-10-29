@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 const (
@@ -44,7 +43,7 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *v2193.CraftRecipe
 	}
 
 	input, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerAnvilInput},
 		Slot:      anvilInputSlot,
 	}, s, tx)
 	if err := ensureUnlockedForAnvil(input); err != nil {
@@ -54,7 +53,7 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *v2193.CraftRecipe
 		return fmt.Errorf("no item in input input slot")
 	}
 	material, _ := h.itemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerAnvilMaterial},
 		Slot:      anvilMaterialSlot,
 	}, s, tx)
 	if !material.Empty() {
@@ -170,17 +169,17 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *v2193.CraftRecipe
 	}
 
 	h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilInput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerAnvilInput},
 		Slot:      anvilInputSlot,
 	}, item.Stack{}, s, tx)
 	if repairCount > 0 {
 		h.setItemInSlot(v2193.StackRequestSlotInfo{
-			Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
+			Container: v2193.FullContainerName{ContainerID: v2193.ContainerAnvilMaterial},
 			Slot:      anvilMaterialSlot,
 		}, material.Grow(-repairCount), s, tx)
 	} else {
 		h.setItemInSlot(v2193.StackRequestSlotInfo{
-			Container: v2193.FullContainerName{ContainerID: protocol.ContainerAnvilMaterial},
+			Container: v2193.FullContainerName{ContainerID: v2193.ContainerAnvilMaterial},
 			Slot:      anvilMaterialSlot,
 		}, item.Stack{}, s, tx)
 	}

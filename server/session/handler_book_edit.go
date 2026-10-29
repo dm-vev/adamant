@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // BookEditHandler handles the BookEdit packet.
@@ -37,9 +36,9 @@ func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Contr
 
 	slot := int(pk.InventorySlot)
 	switch pk.ActionType {
-	case packet.BookActionReplacePage:
+	case v2193.BookActionReplacePage:
 		book = book.SetPage(page, pk.Text)
-	case packet.BookActionAddPage:
+	case v2193.BookActionAddPage:
 		if len(book.Pages) >= 50 {
 			return fmt.Errorf("unable to add page beyond 50")
 		}
@@ -51,14 +50,14 @@ func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Contr
 			return fmt.Errorf("unable to insert page at %v", pk.PageNumber)
 		}
 		book = book.InsertPage(page, pk.Text)
-	case packet.BookActionDeletePage:
+	case v2193.BookActionDeletePage:
 		if _, ok := book.Page(page); !ok {
 			// We break here instead of returning an error because the client can be a page or two ahead in the UI then
 			// the actual pages representation server side. The client still sends the deletion indexes.
 			break
 		}
 		book = book.DeletePage(page)
-	case packet.BookActionSwapPages:
+	case v2193.BookActionSwapPages:
 		if pk.SecondaryPageNumber >= 50 {
 			return fmt.Errorf("page number out of bounds")
 		}
@@ -71,7 +70,7 @@ func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Contr
 			break
 		}
 		book = book.SwapPages(page, int(pk.SecondaryPageNumber))
-	case packet.BookActionSign:
+	case v2193.BookActionSign:
 		if !validText(pk.Title, maxBookTitle) {
 			return fmt.Errorf("title must be UTF-8 of at most %d characters", maxBookTitle)
 		}

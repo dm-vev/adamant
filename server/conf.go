@@ -21,9 +21,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // Config contains options for starting a Minecraft server.
@@ -82,9 +82,9 @@ type Config struct {
 	// list. By default, StatusProvider will show the server name from the Name
 	// field and the current player count and maximum players.
 	StatusProvider netconn.StatusProvider
-	// Compression is the packet compression used for connections accepted by
-	// the default listener. If nil, gophertunnel's default compression is used.
-	Compression packet.Compression
+	// Compression compresses the batches of the connections the default
+	// listener accepts: bedrock.Flate (at level 1 if nil) or bedrock.None.
+	Compression bedrock.Compression
 	// PlayerProvider is the player.Provider used for storing and loading player
 	// data. If left as nil, player data will be newly created every time a
 	// player joins the server and no data will be stored.

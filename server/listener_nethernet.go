@@ -23,7 +23,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // listenerFunc returns the NetherNet listener of the server, the standard
@@ -130,14 +129,13 @@ func publishLAN(l *netconn.Listener, conf Config, addr string) *lan.Listener {
 	return ll
 }
 
-// batchCompression returns the compression of the batches of package
-// bedrock that stands for a compression of gophertunnel: flate at level 1
-// unless none was asked for.
-func batchCompression(c packet.Compression) bedrock.Compression {
-	if c != nil && c.EncodeCompression() == packet.CompressionAlgorithmNone {
-		return bedrock.None{}
+// batchCompression returns the compression of the batches: flate at level
+// 1 unless another was asked for.
+func batchCompression(c bedrock.Compression) bedrock.Compression {
+	if c == nil {
+		return bedrock.Flate{Level: 1}
 	}
-	return bedrock.Flate{Level: 1}
+	return c
 }
 
 // netherNetListener is a netconn.Listener as the server listens on it.

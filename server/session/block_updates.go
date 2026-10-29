@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // subChunkBlocksAt is the number of changes of a sub-chunk shown together
@@ -57,7 +56,7 @@ func (s *Session) ViewBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	s.writePacket(&v2193.UpdateBlockPacket{
 		Position:          blockPos(pos),
 		NewBlockRuntimeID: networkBlockID(s.br, b),
-		Flags:             packet.BlockUpdateNetwork,
+		Flags:             v2193.BlockUpdateNetwork,
 		Layer:             uint32(layer),
 	})
 	if data := s.blockActorUpdateNBT(pos, b); data != nil {
@@ -87,7 +86,7 @@ func blockUpdatePackets(br world.BlockRegistry, updates []world.BlockUpdate) *sh
 			shared.packets = append(shared.packets, &sharedPacket{Packet: &v2193.UpdateBlockPacket{
 				Position:          blockPos(u.Pos),
 				NewBlockRuntimeID: networkBlockID(br, u.Block),
-				Flags:             packet.BlockUpdateNetwork,
+				Flags:             v2193.BlockUpdateNetwork,
 				Layer:             uint32(u.Layer),
 			}})
 			continue
@@ -104,7 +103,7 @@ func blockUpdatePackets(br world.BlockRegistry, updates []world.BlockUpdate) *sh
 		entry := v2193.BlockChangeEntry{
 			BlockPos:       blockPos(u.Pos),
 			BlockRuntimeID: networkBlockID(br, u.Block),
-			Flags:          packet.BlockUpdateNetwork,
+			Flags:          v2193.BlockUpdateNetwork,
 			// BDS sends -1: the change syncs no entity.
 			SyncedUpdateEntityUniqueID: math.MaxUint64,
 		}

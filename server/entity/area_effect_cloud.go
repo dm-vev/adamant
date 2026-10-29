@@ -1,15 +1,16 @@
 package entity
 
 import (
+	"math"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"math"
-	"time"
 )
 
 // NewAreaEffectCloud creates the cloud of a lingering potion and returns it.
@@ -159,7 +160,7 @@ func newDragonBreathCloud(pos mgl64.Vec3, owner *world.EntityHandle, radius floa
 		WaitTime:           time.Second,
 		DurationScale:      0.25,
 		Owner:              owner,
-		Particle:           packet.ParticleTypeDragonBreath,
+		Particle:           v2193.ParticleTypeDragonBreath,
 	})
 }
 

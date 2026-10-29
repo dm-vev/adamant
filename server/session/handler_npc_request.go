@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // NPCRequestHandler handles the NPCRequest packet.
@@ -34,11 +33,11 @@ func (h *NPCRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c C
 	}
 	dialogue := *dialoguePtr
 	switch pk.RequestType {
-	case packet.NPCRequestActionExecuteAction:
+	case v2193.NPCRequestActionExecuteAction:
 		if err := dialogue.Submit(uint(pk.ActionType), c, tx); err != nil {
 			return fmt.Errorf("error submitting dialogue: %w", err)
 		}
-	case packet.NPCRequestActionExecuteClosingCommands:
+	case v2193.NPCRequestActionExecuteClosingCommands:
 		dialogue.Close(c, tx)
 		h.mu.Lock()
 		if h.dialogue == dialoguePtr {

@@ -29,8 +29,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // StopShowingEntity stops showing a world.Entity to the Session. It will be completely invisible until a call to
@@ -105,7 +103,7 @@ func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
 func (s *Session) SendRespawn(pos mgl64.Vec3, c Controllable) {
 	s.writePacket(&v2193.RespawnPacket{
 		Position:        vec64To32(entityNetworkPosition(c, pos)),
-		State:           packet.RespawnStateReadyToSpawn,
+		State:           v2193.RespawnStateReadyToSpawn,
 		EntityRuntimeID: selfEntityRuntimeID,
 	})
 }
@@ -113,11 +111,11 @@ func (s *Session) SendRespawn(pos mgl64.Vec3, c Controllable) {
 // SendPlayerSpawn updates the player's spawn point on the client-side. There is currently little reason
 // to do so other than to prevent the client-side "Respawn point set" message when sleeping in a bed.
 func (s *Session) SendPlayerSpawn(pos mgl64.Vec3) {
-	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	blockPos := v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	s.writePacket(&v2193.SetSpawnPositionPacket{
-		SpawnType:     packet.SpawnTypePlayer,
+		SpawnType:     v2193.SpawnTypePlayer,
 		Position:      blockPos,
-		Dimension:     packet.DimensionOverworld,
+		Dimension:     v2193.DimensionOverworld,
 		SpawnPosition: blockPos,
 	})
 }
@@ -142,13 +140,13 @@ func (s *Session) sendRecipes() {
 // UnlockRecipes sends newly unlocked Java recipes that have a corresponding
 // recipe in the current Bedrock crafting data. It returns the Java IDs accepted.
 func (s *Session) UnlockRecipes(javaIDs []string) []string {
-	return s.unlockRecipes(javaIDs, packet.UnlockedRecipesTypeNewlyUnlocked)
+	return s.unlockRecipes(javaIDs, v2193.UnlockedRecipesTypeNewlyUnlocked)
 }
 
 // SendInitiallyUnlockedRecipes sends persisted recipe unlocks after the player
 // has joined and the crafting data has been sent.
 func (s *Session) SendInitiallyUnlockedRecipes(javaIDs []string) {
-	_ = s.unlockRecipes(javaIDs, packet.UnlockedRecipesTypeInitiallyUnlocked)
+	_ = s.unlockRecipes(javaIDs, v2193.UnlockedRecipesTypeInitiallyUnlocked)
 }
 
 func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) []string {
@@ -208,8 +206,8 @@ func (s *Session) sendArmourTrimData() {
 
 // ResyncInventory resends the main and off-hand inventories after an unfulfilled client prediction.
 func (s *Session) ResyncInventory() {
-	s.sendInv(s.inv, protocol.WindowIDInventory)
-	s.sendInv(s.offHand, protocol.WindowIDOffHand)
+	s.sendInv(s.inv, v2193.WindowIDInventory)
+	s.sendInv(s.offHand, v2193.WindowIDOffHand)
 }
 
 // sendInv sends the inventory passed to the client with the window ID.
@@ -251,28 +249,28 @@ type smelter interface {
 // returned is true.
 func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 	switch id {
-	case protocol.ContainerCraftingInput, protocol.ContainerCreatedOutput, protocol.ContainerCursor:
+	case v2193.ContainerCraftingInput, v2193.ContainerCreatedOutput, v2193.ContainerCursor:
 		// UI inventory.
 		return s.ui, true
-	case protocol.ContainerHotBar, protocol.ContainerInventory, protocol.ContainerCombinedHotBarAndInventory:
+	case v2193.ContainerHotBar, v2193.ContainerInventory, v2193.ContainerCombinedHotBarAndInventory:
 		// Hotbar 'inventory', rest of inventory, inventory when container is opened.
 		return s.inv, true
-	case protocol.ContainerOffhand:
+	case v2193.ContainerOffhand:
 		return s.offHand, true
-	case protocol.ContainerArmor:
+	case v2193.ContainerArmor:
 		// Armour inventory.
 		return s.armour.Inventory(), true
 	default:
 		if !s.containerOpened.Load() {
 			return nil, false
 		}
-		if id == protocol.ContainerLevelEntity {
+		if id == v2193.ContainerLevelEntity {
 			return s.openedWindow.Load(), true
 		}
 		if s.merchantTradeOpen() {
 			switch id {
-			case protocol.ContainerTradeIngredientOne, protocol.ContainerTradeIngredientTwo,
-				protocol.ContainerTradeTwoIngredientOne, protocol.ContainerTradeTwoIngredientTwo:
+			case v2193.ContainerTradeIngredientOne, v2193.ContainerTradeIngredientTwo,
+				v2193.ContainerTradeTwoIngredientOne, v2193.ContainerTradeTwoIngredientTwo:
 				// The trade screen's inputs are UI inventory slots 4 and 5.
 				return s.ui, true
 			}
@@ -281,58 +279,58 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 			return nil, false
 		}
 		switch id {
-		case protocol.ContainerShulkerBox:
+		case v2193.ContainerShulkerBox:
 			if pos := s.openedPos.Load(); pos != nil {
 				if _, ok := tx.Block(*pos).(block.ShulkerBox); ok {
 					return s.openedWindow.Load(), true
 				}
 			}
-		case protocol.ContainerBarrel:
+		case v2193.ContainerBarrel:
 			if _, barrel := tx.Block(*s.openedPos.Load()).(block.Barrel); barrel {
 				return s.openedWindow.Load(), true
 			}
-		case protocol.ContainerBeaconPayment:
+		case v2193.ContainerBeaconPayment:
 			if _, beacon := tx.Block(*s.openedPos.Load()).(block.Beacon); beacon {
 				return s.ui, true
 			}
-		case protocol.ContainerBrewingStandInput, protocol.ContainerBrewingStandResult, protocol.ContainerBrewingStandFuel:
+		case v2193.ContainerBrewingStandInput, v2193.ContainerBrewingStandResult, v2193.ContainerBrewingStandFuel:
 			if _, brewingStand := tx.Block(*s.openedPos.Load()).(block.BrewingStand); brewingStand {
 				return s.openedWindow.Load(), true
 			}
-		case protocol.ContainerAnvilInput, protocol.ContainerAnvilMaterial:
+		case v2193.ContainerAnvilInput, v2193.ContainerAnvilMaterial:
 			if _, anvil := tx.Block(*s.openedPos.Load()).(block.Anvil); anvil {
 				return s.ui, true
 			}
-		case protocol.ContainerSmithingTableTemplate, protocol.ContainerSmithingTableInput, protocol.ContainerSmithingTableMaterial:
+		case v2193.ContainerSmithingTableTemplate, v2193.ContainerSmithingTableInput, v2193.ContainerSmithingTableMaterial:
 			if _, smithing := tx.Block(*s.openedPos.Load()).(block.SmithingTable); smithing {
 				return s.ui, true
 			}
-		case protocol.ContainerLoomInput, protocol.ContainerLoomDye, protocol.ContainerLoomMaterial:
+		case v2193.ContainerLoomInput, v2193.ContainerLoomDye, v2193.ContainerLoomMaterial:
 			if _, loom := tx.Block(*s.openedPos.Load()).(block.Loom); loom {
 				return s.ui, true
 			}
-		case protocol.ContainerCartographyInput, protocol.ContainerCartographyAdditional:
+		case v2193.ContainerCartographyInput, v2193.ContainerCartographyAdditional:
 			if _, ok := tx.Block(*s.openedPos.Load()).(block.CartographyTable); ok {
 				return s.ui, true
 			}
-		case protocol.ContainerStonecutterInput:
+		case v2193.ContainerStonecutterInput:
 			if _, ok := tx.Block(*s.openedPos.Load()).(block.Stonecutter); ok {
 				return s.ui, true
 			}
-		case protocol.ContainerGrindstoneInput, protocol.ContainerGrindstoneAdditional:
+		case v2193.ContainerGrindstoneInput, v2193.ContainerGrindstoneAdditional:
 			if _, ok := tx.Block(*s.openedPos.Load()).(block.Grindstone); ok {
 				return s.ui, true
 			}
-		case protocol.ContainerEnchantingInput, protocol.ContainerEnchantingMaterial:
+		case v2193.ContainerEnchantingInput, v2193.ContainerEnchantingMaterial:
 			if _, enchanting := tx.Block(*s.openedPos.Load()).(block.EnchantingTable); enchanting {
 				return s.ui, true
 			}
-		case protocol.ContainerCrafterLevelEntity:
+		case v2193.ContainerCrafterLevelEntity:
 			if _, crafter := tx.Block(*s.openedPos.Load()).(block.Crafter); crafter {
 				return s.openedWindow.Load(), true
 			}
-		case protocol.ContainerFurnaceIngredient, protocol.ContainerFurnaceFuel, protocol.ContainerFurnaceResult,
-			protocol.ContainerBlastFurnaceIngredient, protocol.ContainerSmokerIngredient:
+		case v2193.ContainerFurnaceIngredient, v2193.ContainerFurnaceFuel, v2193.ContainerFurnaceResult,
+			v2193.ContainerBlastFurnaceIngredient, v2193.ContainerSmokerIngredient:
 			if _, ok := tx.Block(*s.openedPos.Load()).(smelter); ok {
 				return s.openedWindow.Load(), true
 			}
@@ -419,7 +417,7 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 		return
 	}
 
-	h, ok := s.handlers[packet.IDNPCRequest].(*NPCRequestHandler)
+	h, ok := s.handlers[v2193.IDNPCRequest].(*NPCRequestHandler)
 	if !ok || h == nil {
 		if s.conf.Log != nil {
 			s.conf.Log.Error("SendDialogue: missing NPC request handler")
@@ -438,7 +436,7 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 	h.mu.Unlock()
 
 	metadata := s.parseEntityMetadata(e)
-	metadata[protocol.EntityDataKeyHasNPC] = uint8(1)
+	metadata[v2193.EntityDataKeyHasNPC] = uint8(1)
 
 	disp := d.Display()
 	disp.EntityOffset = disp.EntityOffset.Add(entityOffset(e))
@@ -448,7 +446,7 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 			s.conf.Log.Error("SendDialogue: failed to marshal dialogue display", "err", err)
 		}
 	} else {
-		metadata[protocol.EntityDataKeyNPCData] = string(display)
+		metadata[v2193.EntityDataKeyNPCData] = string(display)
 	}
 
 	s.writePacket(&v2193.SetActorDataPacket{
@@ -457,7 +455,7 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 	})
 	s.writePacket(&v2193.NPCDialoguePacket{
 		EntityUniqueID: uint64(s.entityUniqueID(e)),
-		ActionType:     packet.NPCDialogueActionOpen,
+		ActionType:     v2193.NPCDialogueActionOpen,
 		Dialogue:       d.Body(),
 		SceneName:      "default",
 		NPCName:        d.Title(),
@@ -469,7 +467,7 @@ func (s *Session) CloseDialogue() {
 	if s == Nop || s.handlers == nil {
 		return
 	}
-	h, ok := s.handlers[packet.IDNPCRequest].(*NPCRequestHandler)
+	h, ok := s.handlers[v2193.IDNPCRequest].(*NPCRequestHandler)
 	if !ok || h == nil {
 		if s.conf.Log != nil {
 			s.conf.Log.Error("CloseDialogue: missing NPC request handler")
@@ -489,7 +487,7 @@ func (s *Session) CloseDialogue() {
 
 	s.writePacket(&v2193.NPCDialoguePacket{
 		EntityUniqueID: entityUniqueID,
-		ActionType:     packet.NPCDialogueActionClose,
+		ActionType:     v2193.NPCDialogueActionClose,
 	})
 }
 
@@ -507,7 +505,7 @@ func (s *Session) SendForm(f form.Form) {
 		return
 	}
 
-	h, ok := s.handlers[packet.IDModalFormResponse].(*ModalFormResponseHandler)
+	h, ok := s.handlers[v2193.IDModalFormResponse].(*ModalFormResponseHandler)
 	if !ok || h == nil {
 		if s.conf.Log != nil {
 			s.conf.Log.Error("SendForm: missing modal form handler")
@@ -631,30 +629,30 @@ func (s *Session) SendPermissions(c Controllable) {
 func (s *Session) abilityData(c Controllable, uniqueID int64) v2193.AbilityData {
 	mode, abilities := c.GameMode(), uint32(0)
 	if mode.AllowsFlying() {
-		abilities |= protocol.AbilityMayFly
+		abilities |= v2193.AbilityMayFly
 		if c.Flying() {
-			abilities |= protocol.AbilityFlying
+			abilities |= v2193.AbilityFlying
 		}
 	}
 	if !mode.HasCollision() {
-		abilities |= protocol.AbilityNoClip
+		abilities |= v2193.AbilityNoClip
 	}
 	if !mode.AllowsTakingDamage() {
-		abilities |= protocol.AbilityInvulnerable
+		abilities |= v2193.AbilityInvulnerable
 	}
 	if mode.CreativeInventory() {
-		abilities |= protocol.AbilityInstantBuild
+		abilities |= v2193.AbilityInstantBuild
 	}
 	if mode.AllowsEditing() {
-		abilities |= protocol.AbilityBuild | protocol.AbilityMine
+		abilities |= v2193.AbilityBuild | v2193.AbilityMine
 	}
 	if mode.AllowsInteraction() {
-		abilities |= protocol.AbilityDoorsAndSwitches | protocol.AbilityOpenContainers | protocol.AbilityAttackPlayers | protocol.AbilityAttackMobs
+		abilities |= v2193.AbilityDoorsAndSwitches | v2193.AbilityOpenContainers | v2193.AbilityAttackPlayers | v2193.AbilityAttackMobs
 	}
-	playerPermissions, commandPermissions := byte(packet.PermissionLevelMember), byte(protocol.CommandPermissionLevelAny)
+	playerPermissions, commandPermissions := byte(v2193.PermissionLevelMember), byte(v2193.CommandPermissionLevelAny)
 	if s.conf.IsOperator != nil && s.conf.IsOperator(c.Name()) {
-		playerPermissions, commandPermissions = packet.PermissionLevelOperator, protocol.CommandPermissionLevelGameDirectors
-		abilities |= protocol.AbilityOperatorCommands | protocol.AbilityTeleport
+		playerPermissions, commandPermissions = v2193.PermissionLevelOperator, v2193.CommandPermissionLevelGameDirectors
+		abilities |= v2193.AbilityOperatorCommands | v2193.AbilityTeleport
 	}
 	return v2193.AbilityData{
 		EntityUniqueID:     uniqueID,
@@ -662,12 +660,12 @@ func (s *Session) abilityData(c Controllable, uniqueID int64) v2193.AbilityData 
 		CommandPermissions: commandPermissions,
 		Layers: []v2193.AbilityLayer{
 			{
-				Type:             protocol.AbilityLayerTypeBase,
-				Abilities:        protocol.AbilityCount - 1,
+				Type:             v2193.AbilityLayerTypeBase,
+				Abilities:        v2193.AbilityCount - 1,
 				Values:           abilities,
 				FlySpeed:         float32(c.FlightSpeed()),
 				VerticalFlySpeed: float32(c.VerticalFlightSpeed()),
-				WalkSpeed:        protocol.AbilityBaseWalkSpeed,
+				WalkSpeed:        v2193.AbilityBaseWalkSpeed,
 			},
 		},
 	}
@@ -694,13 +692,13 @@ func (s *Session) SendHealth(health, max, absorption float64) {
 
 // SendEffect sends an effect newly added to the player.
 func (s *Session) SendEffect(e effect.Effect) {
-	s.sendEffect(e, packet.MobEffectAdd)
+	s.sendEffect(e, v2193.MobEffectAdd)
 }
 
 // SendEffectModification sends an effect of the player that replaced one of
 // the same type, which BDS sends as a modification rather than a new effect.
 func (s *Session) SendEffectModification(e effect.Effect) {
-	s.sendEffect(e, packet.MobEffectModify)
+	s.sendEffect(e, v2193.MobEffectModify)
 }
 
 func (s *Session) sendEffect(e effect.Effect, op byte) {
@@ -728,7 +726,7 @@ func (s *Session) SendEffectRemoval(e effect.Type) {
 	}
 	s.writePacket(&v2193.MobEffectPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Operation:       packet.MobEffectRemove,
+		Operation:       v2193.MobEffectRemove,
 		EffectType:      int32(id),
 	})
 }
@@ -790,7 +788,7 @@ func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {
 			})
 		}
 		if !s.inTransaction.Load() {
-			s.sendItem(after, slot, protocol.WindowIDInventory)
+			s.sendItem(after, slot, v2193.WindowIDInventory)
 		}
 	}
 }
@@ -837,7 +835,7 @@ func (s *Session) broadcastOffHandFunc(c Controllable) inventory.SlotFunc {
 		if !s.inTransaction.Load() {
 			i, _ := s.offHand.Item(0)
 			s.writePacket(&v2193.InventoryContentPacket{
-				WindowID: protocol.WindowIDOffHand,
+				WindowID: v2193.WindowIDOffHand,
 				Content:  []v2193.ItemInstance{instanceFromItem(s.br, i)},
 			})
 		}
@@ -848,7 +846,7 @@ func (s *Session) broadcastArmourFunc(c Controllable) inventory.SlotFunc {
 	return func(slot int, before, after item.Stack) {
 		inTransaction := s.inTransaction.Load()
 		if !inTransaction {
-			s.sendItem(after, slot, protocol.WindowIDArmour)
+			s.sendItem(after, slot, v2193.WindowIDArmour)
 		}
 		if before.Comparable(after) && before.Empty() == after.Empty() {
 			// Only send armour if the item type actually changed.
@@ -883,7 +881,7 @@ func (s *Session) uiInventoryFunc(c Controllable) inventory.SlotFunc {
 				}
 			})
 		}
-		s.sendInv(s.ui, protocol.WindowIDUI)
+		s.sendInv(s.ui, v2193.WindowIDUI)
 	}
 }
 
@@ -932,7 +930,7 @@ func (s *Session) VerifySlot(slot int, expected item.Stack) error {
 	// The item the client claims to have must be identical to the one we have
 	// registered server-side.
 	if !clientSideItem.Equal(actual) {
-		s.sendItem(actual, slot, protocol.WindowIDInventory)
+		s.sendItem(actual, slot, v2193.WindowIDInventory)
 		// Only ever debug these as they are frequent and expected to happen
 		// whenever client and server get out of sync.
 		s.conf.Log.Debug("verify slot: client-side item was not equal to server-side item", "client-held", clientSideItem.String(), "server-held", actual.String())
@@ -965,7 +963,7 @@ func (s *Session) SendExperience(level int, progress float64) {
 func (s *Session) SendChargeItemComplete() {
 	s.writePacket(&v2193.ActorEventPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		EventType:       packet.ActorEventFinishedChargingItem,
+		EventType:       v2193.ActorEventFinishedChargingItem,
 	})
 }
 
@@ -1029,10 +1027,10 @@ func (s *Session) SendHudUpdates() {
 	s.hudMu.Unlock()
 
 	if len(show) > 0 {
-		s.writePacket(&v2193.SetHudPacket{Elements: show, Visibility: packet.HudVisibilityReset})
+		s.writePacket(&v2193.SetHudPacket{Elements: show, Visibility: v2193.HudVisibilityReset})
 	}
 	if len(hide) > 0 {
-		s.writePacket(&v2193.SetHudPacket{Elements: hide, Visibility: packet.HudVisibilityHide})
+		s.writePacket(&v2193.SetHudPacket{Elements: hide, Visibility: v2193.HudVisibilityHide})
 	}
 }
 
@@ -1199,7 +1197,7 @@ func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntity
 	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
 	switch shape := shape.(type) {
 	case *debug.Arrow:
-		ps.Type = proto.Some(protocol.PrimitiveShapeArrow)
+		ps.Type = proto.Some(v2193.PrimitiveShapeArrow)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.ExtraShapeData = &v2193.ArrowShape{
@@ -1209,30 +1207,30 @@ func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntity
 			Segments:         proto.Some(valueOrDefault(uint8(shape.HeadSegments), 4)),
 		}
 	case *debug.Box:
-		ps.Type = proto.Some(protocol.PrimitiveShapeBox)
+		ps.Type = proto.Some(v2193.PrimitiveShapeBox)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
 		ps.ExtraShapeData = &v2193.BoxShape{BoxBound: valueOrDefault(vec64To32(shape.Bounds), mgl32.Vec3{1, 1, 1})}
 	case *debug.Circle:
-		ps.Type = proto.Some(protocol.PrimitiveShapeCircle)
+		ps.Type = proto.Some(v2193.PrimitiveShapeCircle)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
 		ps.ExtraShapeData = &v2193.SphereShape{Segments: valueOrDefault(uint8(shape.Segments), 20)}
 	case *debug.Line:
-		ps.Type = proto.Some(protocol.PrimitiveShapeLine)
+		ps.Type = proto.Some(v2193.PrimitiveShapeLine)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.ExtraShapeData = &v2193.LineShape{LineEndLocation: vec64To32(shape.EndPosition)}
 	case *debug.Sphere:
-		ps.Type = proto.Some(protocol.PrimitiveShapeSphere)
+		ps.Type = proto.Some(v2193.PrimitiveShapeSphere)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
 		ps.ExtraShapeData = &v2193.SphereShape{Segments: valueOrDefault(uint8(shape.Segments), 20)}
 	case *debug.Text:
-		ps.Type = proto.Some(protocol.PrimitiveShapeText)
+		ps.Type = proto.Some(v2193.PrimitiveShapeText)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
@@ -1254,7 +1252,7 @@ func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntity
 		}
 		ps.ExtraShapeData = textData
 	case *debug.Cylinder:
-		ps.Type = proto.Some(protocol.PrimitiveShapeCylinder)
+		ps.Type = proto.Some(v2193.PrimitiveShapeCylinder)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
@@ -1267,7 +1265,7 @@ func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntity
 			NumSegments: valueOrDefault(uint8(shape.Segments), 20),
 		}
 	case *debug.Pyramid:
-		ps.Type = proto.Some(protocol.PrimitiveShapePyramid)
+		ps.Type = proto.Some(v2193.PrimitiveShapePyramid)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
@@ -1280,7 +1278,7 @@ func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntity
 		}
 		ps.ExtraShapeData = pyramid
 	case *debug.Ellipsoid:
-		ps.Type = proto.Some(protocol.PrimitiveShapeEllipsoid)
+		ps.Type = proto.Some(v2193.PrimitiveShapeEllipsoid)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
@@ -1289,7 +1287,7 @@ func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntity
 			SegmentsPerAxis: valueOrDefault(uint8(shape.SegmentsPerAxis), 20),
 		}
 	case *debug.Cone:
-		ps.Type = proto.Some(protocol.PrimitiveShapeCone)
+		ps.Type = proto.Some(v2193.PrimitiveShapeCone)
 		ps.Colour = proto.Some(toColour(valueOrDefault(shape.Colour, white)))
 		ps.Location = proto.Some([3]float32(vec64To32(shape.Position)))
 		ps.Scale = proto.Some(valueOrDefault(float32(shape.Scale), 1))
@@ -1421,15 +1419,15 @@ func deleteDamage(st v2193.ItemStack) v2193.ItemStack {
 // GameTypeFromMode returns the protocol game type ID for mode.
 func GameTypeFromMode(mode world.GameMode) int32 {
 	if mode.AllowsFlying() && mode.CreativeInventory() {
-		return packet.GameTypeCreative
+		return v2193.GameTypeCreative
 	}
 	if !mode.Visible() && !mode.HasCollision() {
-		return packet.GameTypeSpectator
+		return v2193.GameTypeSpectator
 	}
 	if !mode.AllowsEditing() {
-		return packet.GameTypeAdventure
+		return v2193.GameTypeAdventure
 	}
-	return packet.GameTypeSurvival
+	return v2193.GameTypeSurvival
 }
 
 // The following functions use the go:linkname directive in order to make sure the item.byID and item.toID

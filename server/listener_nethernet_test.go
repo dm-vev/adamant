@@ -25,10 +25,9 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestServerIdentityConcurrentCreationPreservesIdentity(t *testing.T) {
@@ -178,13 +177,11 @@ func TestNetherNetListenerServesSessions(t *testing.T) {
 }
 
 func TestBatchCompression(t *testing.T) {
-	if _, ok := batchCompression(packet.NopCompression).(bedrock.None); !ok {
+	if _, ok := batchCompression(bedrock.None{}).(bedrock.None); !ok {
 		t.Fatal("no compression asked for, yet batches are compressed")
 	}
-	for _, c := range []packet.Compression{nil, packet.FlateCompression, packet.SnappyCompression} {
-		if got := batchCompression(c); got != (bedrock.Flate{Level: 1}) {
-			t.Fatalf("%T: compression %#v", c, got)
-		}
+	if got := batchCompression(nil); got != (bedrock.Flate{Level: 1}) {
+		t.Fatalf("default compression %#v", got)
 	}
 }
 

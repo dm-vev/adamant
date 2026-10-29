@@ -110,15 +110,15 @@ func TestClientSkinTrustsNothing(t *testing.T) {
 	d.CapeImageWidth, d.CapeImageHeight, d.CapeData = 64, 32, base64.StdEncoding.EncodeToString(make([]byte, 64*32*4))
 	frame := base64.StdEncoding.EncodeToString(make([]byte, 32*64*4))
 	for range skin.MaxAnimations + 2 {
-		d.AnimatedImageData = append(d.AnimatedImageData, login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: protocol.SkinAnimationHead})
+		d.AnimatedImageData = append(d.AnimatedImageData, login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: v2193.SkinAnimationHead})
 	}
 	d.AnimatedImageData = append(d.AnimatedImageData[:0:0],
-		login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 32, Type: protocol.SkinAnimationHead},
-		login.SkinAnimation{Frames: 1e300, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: protocol.SkinAnimationHead},
+		login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 32, Type: v2193.SkinAnimationHead},
+		login.SkinAnimation{Frames: 1e300, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: v2193.SkinAnimationHead},
 		login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: 1 << 32},
 	)
 	for range skin.MaxAnimations + 2 {
-		d.AnimatedImageData = append(d.AnimatedImageData, login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: protocol.SkinAnimationHead})
+		d.AnimatedImageData = append(d.AnimatedImageData, login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: v2193.SkinAnimationHead})
 	}
 	s := ClientSkin(d)
 	if s.Cape.Bounds().Dx() != 64 || len(s.Cape.Pix) != 64*32*4 {
@@ -140,8 +140,8 @@ func TestPlayerSkinTrustsNothing(t *testing.T) {
 	}
 	animated := protocolToSkin(v2193.Skin{SkinImageWidth: 64, SkinImageHeight: 64, SkinData: make([]byte, 64*64*4), Animations: []v2193.SkinAnimation{
 		// The texture of an animation holds every frame.
-		{ImageWidth: 32, ImageHeight: 64, ImageData: make([]byte, 32*64*4), AnimationType: protocol.SkinAnimationHead, FrameCount: 2},
-		{ImageWidth: 32, ImageHeight: 32, ImageData: make([]byte, 32*64*4), AnimationType: protocol.SkinAnimationHead, FrameCount: 2},
+		{ImageWidth: 32, ImageHeight: 64, ImageData: make([]byte, 32*64*4), AnimationType: v2193.SkinAnimationHead, FrameCount: 2},
+		{ImageWidth: 32, ImageHeight: 32, ImageData: make([]byte, 32*64*4), AnimationType: v2193.SkinAnimationHead, FrameCount: 2},
 	}})
 	if len(animated.Animations) != 1 || animated.Animations[0].FrameCount != 2 {
 		t.Fatalf("animations %+v", animated.Animations)

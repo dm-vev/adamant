@@ -21,9 +21,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestStartGameUsesDefaultSpectatorProtocolGameType(t *testing.T) {
@@ -45,8 +45,8 @@ func TestStartGameUsesDefaultSpectatorProtocolGameType(t *testing.T) {
 		_ = inc.p.handle.Close()
 		srv.pwg.Done()
 	})
-	if data.PlayerGameMode != packet.GameTypeSpectator {
-		t.Fatalf("StartGame player game type = %d, want spectator %d", data.PlayerGameMode, packet.GameTypeSpectator)
+	if data.PlayerGameMode != v2193.GameTypeSpectator {
+		t.Fatalf("StartGame player game type = %d, want spectator %d", data.PlayerGameMode, v2193.GameTypeSpectator)
 	}
 }
 

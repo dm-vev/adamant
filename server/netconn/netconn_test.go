@@ -21,11 +21,10 @@ import (
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func listen(t *testing.T, cfg Config) *Listener {
@@ -72,7 +71,7 @@ func serve(t *testing.T, l *Listener) <-chan *Conn {
 				return
 			}
 			if text, ok := pk.(*v2193.TextPacket); ok {
-				_ = c.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "echo " + text.Message})
+				_ = c.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "echo " + text.Message})
 				_ = c.Flush()
 			}
 		}
@@ -89,7 +88,7 @@ func TestLoginKeyMustMatchTransport(t *testing.T) {
 	writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
 	if raw, err := b.ReadPacket(); err != nil {
 		t.Fatal(err)
-	} else if h, _, _ := bedrock.ReadHeader(raw); h.ID != packet.IDNetworkSettings {
+	} else if h, _, _ := bedrock.ReadHeader(raw); h.ID != v2193.IDNetworkSettings {
 		t.Fatalf("packet %d instead of NetworkSettings", h.ID)
 	}
 	b.EnableCompression(bedrock.Flate{})
@@ -106,10 +105,10 @@ func TestLoginKeyMustMatchTransport(t *testing.T) {
 			t.Fatalf("connection ended without a disconnect: %v", err)
 		}
 		h, _, _ := bedrock.ReadHeader(raw)
-		if h.ID == packet.IDDisconnect {
+		if h.ID == v2193.IDDisconnect {
 			break
 		}
-		if h.ID == packet.IDPlayStatus || h.ID == packet.IDStartGame {
+		if h.ID == v2193.IDPlayStatus || h.ID == v2193.IDStartGame {
 			t.Fatalf("packet %d to a login the transport did not prove", h.ID)
 		}
 	}
@@ -152,7 +151,7 @@ func readStatus(t *testing.T, b *bedrock.Conn) int32 {
 		t.Fatal(err)
 	}
 	h, fields, err := bedrock.ReadHeader(raw)
-	if err != nil || h.ID != packet.IDPlayStatus {
+	if err != nil || h.ID != v2193.IDPlayStatus {
 		t.Fatalf("packet %d, %v", h.ID, err)
 	}
 	var pk v2193.PlayStatusPacket
@@ -166,7 +165,7 @@ func readStatus(t *testing.T, b *bedrock.Conn) int32 {
 
 func TestProtocolMismatch(t *testing.T) {
 	l := listen(t, Config{})
-	for proto, want := range map[int32]int32{1: packet.PlayStatusLoginFailedClient, v2193.Protocol + 1: packet.PlayStatusLoginFailedServer} {
+	for proto, want := range map[int32]int32{1: v2193.PlayStatusLoginFailedClient, v2193.Protocol + 1: v2193.PlayStatusLoginFailedServer} {
 		b := rawClient(t, l)
 		writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: proto})
 		if got := readStatus(t, b); got != want {
@@ -186,7 +185,7 @@ func TestServerFull(t *testing.T) {
 	}
 	defer conn.Close()
 	b := rawClient(t, l)
-	if got := readStatus(t, b); got != packet.PlayStatusLoginFailedServerFull {
+	if got := readStatus(t, b); got != v2193.PlayStatusLoginFailedServerFull {
 		t.Fatalf("status %d for the second client", got)
 	}
 }
@@ -262,7 +261,7 @@ func (*staticText) StaticPacket() {}
 // it, from a batch encoded once.
 func TestStaticPacketsEncodeOnce(t *testing.T) {
 	l := listen(t, Config{})
-	st := &staticText{&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: strings.Repeat("static ", 100)}}
+	st := &staticText{&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: strings.Repeat("static ", 100)}}
 	go func() {
 		for {
 			c, err := l.Accept()
@@ -276,7 +275,7 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 					_ = c.Close()
 					return
 				}
-				_ = c.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "first"})
+				_ = c.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "first"})
 				_ = c.WritePacket(st)
 				_ = c.Flush()
 			}()
@@ -345,7 +344,7 @@ func TestFloodingClientIsCut(t *testing.T) {
 	defer conn.Close()
 	for range 100 {
 		for range 100 {
-			_ = conn.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeChat, SourceName: "Player", Message: "spam"})
+			_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Player", Message: "spam"})
 		}
 		if err := conn.Flush(); err != nil {
 			break
@@ -401,7 +400,7 @@ func TestChatOverItsBucketIsDropped(t *testing.T) {
 	}
 	defer conn.Close()
 	for range 100 {
-		_ = conn.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeChat, SourceName: "Player", Message: "spam"})
+		_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Player", Message: "spam"})
 	}
 	_ = conn.WritePacket(&v2193.EmotePacket{EntityRuntimeID: 1, EmoteID: "wave"})
 	if err := conn.Flush(); err != nil {
@@ -458,7 +457,7 @@ func TestHostileLoginRequests(t *testing.T) {
 // bound strings have by default: a skin the game makes can take that much.
 func TestLargeLoginDecodes(t *testing.T) {
 	req := make([]byte, 3<<20)
-	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: packet.IDLogin})}
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDLogin})}
 	(&v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: req}).Encode(&w)
 	pk, err := DecodePacket(w.B)
 	if err != nil {
@@ -504,7 +503,7 @@ func loginWith(t *testing.T, l *Listener, req []byte) error {
 		if err != nil {
 			return err
 		}
-		if h, _, _ := bedrock.ReadHeader(raw); h.ID == packet.IDServerToClientHandshake {
+		if h, _, _ := bedrock.ReadHeader(raw); h.ID == v2193.IDServerToClientHandshake {
 			return nil
 		}
 	}

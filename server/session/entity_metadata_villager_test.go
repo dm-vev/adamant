@@ -10,7 +10,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
@@ -37,7 +36,7 @@ func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
 	viewer.br = world.DefaultBlockRegistry
 	assertBaby := func(metadata v2193.Metadata, want bool) {
 		t.Helper()
-		if got := protocol.EntityMetadata(metadata).Flag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBaby); got != want {
+		if got := v2193.Metadata(metadata).Flag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagBaby); got != want {
 			t.Errorf("client Baby=%t, want %t", got, want)
 		}
 	}

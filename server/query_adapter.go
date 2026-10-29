@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // registerQueryServer exposes the Server instance to the Bedrock query listener.
@@ -54,7 +54,7 @@ func (srv *Server) buildQueryData(host string, port int) query.Data {
 		HostPort:         port,
 		Plugins:          pluginString,
 		PlayerNames:      playerNames,
-		Version:          protocol.CurrentVersion,
+		Version:          v2193.CurrentVersion,
 		GameID:           "MINECRAFTPE",
 		GameType:         defaultGameType(srv),
 		WhitelistEnabled: srv.WhitelistEnabled(),

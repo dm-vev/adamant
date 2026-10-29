@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 var sessions = new(sessionList)
@@ -139,7 +138,7 @@ func (l *sessionList) unsendSessionFrom(s, from *Session) {
 
 	from.writePacket(&v2193.PlayerListPacket{
 		Entries: []v2193.PlayerListEntry{{
-			ActionType: protocol.PlayerListActionRemove,
+			ActionType: v2193.PlayerListActionRemove,
 			UUID:       s.ent.UUID(),
 		}},
 	})

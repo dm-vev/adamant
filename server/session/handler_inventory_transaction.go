@@ -11,7 +11,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // InventoryTransactionHandler handles the InventoryTransaction packet.
@@ -34,12 +33,12 @@ func (h *InventoryTransactionHandler) Handle(p proto.Packet, s *Session, tx *wor
 				return
 			}
 			switch slot.ContainerID {
-			case protocol.ContainerOffhand:
-				s.sendInv(s.offHand, protocol.WindowIDOffHand)
-			case protocol.ContainerInventory:
+			case v2193.ContainerOffhand:
+				s.sendInv(s.offHand, v2193.WindowIDOffHand)
+			case v2193.ContainerInventory:
 				for _, slot := range slot.Slots {
 					if i, err := s.inv.Item(int(slot)); err == nil {
-						s.sendItem(i, int(slot), protocol.WindowIDInventory)
+						s.sendItem(i, int(slot), v2193.WindowIDInventory)
 					}
 				}
 			}
@@ -80,10 +79,10 @@ func (h *InventoryTransactionHandler) Handle(p proto.Packet, s *Session, tx *wor
 
 // resendInventories resends all inventories of the player.
 func (h *InventoryTransactionHandler) resendInventories(s *Session) {
-	s.sendInv(s.inv, protocol.WindowIDInventory)
-	s.sendInv(s.ui, protocol.WindowIDUI)
-	s.sendInv(s.offHand, protocol.WindowIDOffHand)
-	s.sendInv(s.armour.Inventory(), protocol.WindowIDArmour)
+	s.sendInv(s.inv, v2193.WindowIDInventory)
+	s.sendInv(s.ui, v2193.WindowIDUI)
+	s.sendInv(s.offHand, v2193.WindowIDOffHand)
+	s.sendInv(s.armour.Inventory(), v2193.WindowIDArmour)
 }
 
 // resendHeldSlot sends the authoritative stack after a client-predicted action.
@@ -94,7 +93,7 @@ func (h *InventoryTransactionHandler) resendHeldSlot(s *Session) error {
 	}
 	slot := int(atomic.LoadUint32(heldSlot))
 	it, _ := s.inv.Item(slot)
-	s.sendItem(it, slot, protocol.WindowIDInventory)
+	s.sendItem(it, slot, v2193.WindowIDInventory)
 	return nil
 }
 
@@ -112,12 +111,12 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *v2193.Inventor
 	for _, action := range pk.Actions {
 		windowID, hasWindowID := action.WindowID.Value()
 		switch {
-		case action.SourceType == protocol.InventoryActionSourceWorld && action.InventorySlot == 0:
+		case action.SourceType == v2193.InventoryActionSourceWorld && action.InventorySlot == 0:
 			if old := stackToItem(s.br, action.OldItem.Stack); !old.Empty() {
 				return fmt.Errorf("unexpected non-empty old item in transaction action: %#v", action.OldItem)
 			}
 			count = int(action.NewItem.Stack.Count)
-		case action.SourceType == protocol.InventoryActionSourceContainer && hasWindowID && windowID == protocol.WindowIDInventory:
+		case action.SourceType == v2193.InventoryActionSourceContainer && hasWindowID && windowID == v2193.WindowIDInventory:
 			if expected = stackToItem(s.br, action.OldItem.Stack); expected.Empty() {
 				return fmt.Errorf("unexpected empty old item in transaction action: %#v", action.OldItem)
 			}
@@ -138,7 +137,7 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *v2193.Inventor
 		return fmt.Errorf("different item thrown than held in slot: %#v was thrown but held %#v", expected, actual)
 	}
 	if err := ensureUnlockedForInventoryRemoval(actual, v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerInventory},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerInventory},
 		Slot:      byte(slot),
 	}); err != nil {
 		return err
@@ -183,9 +182,9 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *v21
 		return nil
 	}
 	switch data.ActionType {
-	case protocol.UseItemOnEntityActionInteract:
+	case v2193.UseItemOnEntityActionInteract:
 		c.UseItemOnEntity(e)
-	case protocol.UseItemOnEntityActionAttack:
+	case v2193.UseItemOnEntityActionAttack:
 		c.AttackEntity(e)
 	default:
 		return fmt.Errorf("unhandled UseItemOnEntity ActionType %v", data.ActionType)
@@ -196,22 +195,22 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *v21
 // handleUseItemTransaction ...
 func (h *InventoryTransactionHandler) handleUseItemTransaction(data *v2193.UseItemTransactionData, s *Session, c Controllable) error {
 	pos := cube.Pos{int(data.BlockPosition[0]), int(data.BlockPosition[1]), int(data.BlockPosition[2])}
-	if data.ClientPrediction == protocol.ClientPredictionSuccess || data.ActionType == protocol.UseItemActionBreakBlock {
+	if data.ClientPrediction == v2193.ClientPredictionSuccess || data.ActionType == v2193.UseItemActionBreakBlock {
 		// Suppress echoing the swing animation only when the client has already predicted it locally.
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)
 	}
 
 	switch data.ActionType {
-	case protocol.UseItemActionBreakBlock:
+	case v2193.UseItemActionBreakBlock:
 		c.BreakBlock(pos)
-	case protocol.UseItemActionClickBlock:
+	case v2193.UseItemActionClickBlock:
 		face, err := parseBlockFace(data.BlockFace)
 		if err != nil {
 			return err
 		}
 		c.UseItemOnBlock(pos, face, vec32To64(data.ClickedPosition))
-	case protocol.UseItemActionClickAir:
+	case v2193.UseItemActionClickAir:
 		c.UseItem()
 	default:
 		return fmt.Errorf("unhandled UseItem ActionType %v", data.ActionType)

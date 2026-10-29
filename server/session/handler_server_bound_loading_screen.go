@@ -7,7 +7,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // ServerBoundLoadingScreenHandler handles loading screen updates from the clients. It is used to ensure that
@@ -32,7 +31,7 @@ func (h *ServerBoundLoadingScreenHandler) Handle(p proto.Packet, s *Session, _ *
 		return nil
 	case v != expected:
 		return fmt.Errorf("expected loading screen ID %d, got %d", expected, v)
-	case pk.Type == packet.LoadingScreenTypeEnd:
+	case pk.Type == v2193.LoadingScreenTypeEnd:
 		s.changingDimension.Store(false)
 		h.expectedID.Store(0)
 	}

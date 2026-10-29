@@ -25,7 +25,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/turn"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 const (
@@ -300,7 +299,7 @@ func (l *Listener) login(nn *nethernet.Conn) {
 	loginsStarted.Inc()
 	if max := l.cfg.MaximumPlayers; max != 0 && int(l.players.Load()) >= max {
 		loginsFull.Inc()
-		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: packet.PlayStatusLoginFailedServerFull})
+		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedServerFull})
 		_ = c.Flush()
 		_ = nn.Close()
 		return
@@ -338,14 +337,14 @@ func (l *Listener) login(nn *nethernet.Conn) {
 // login runs the login of a client: network settings, the login request,
 // the resource packs.
 func (c *Conn) login() error {
-	pk, err := c.read(packet.IDRequestNetworkSettings)
+	pk, err := c.read(v2193.IDRequestNetworkSettings)
 	if err != nil {
 		return err
 	}
 	if proto := pk.(*v2193.RequestNetworkSettingsPacket).ClientProtocol; proto != v2193.Protocol {
-		status := packet.PlayStatusLoginFailedClient
+		status := v2193.PlayStatusLoginFailedClient
 		if proto > v2193.Protocol {
-			status = packet.PlayStatusLoginFailedServer
+			status = v2193.PlayStatusLoginFailedServer
 		}
 		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: status})
 		_ = c.Flush()
@@ -364,7 +363,7 @@ func (c *Conn) login() error {
 	}
 	c.b.EnableCompression(c.l.cfg.Compression)
 
-	if pk, err = c.read(packet.IDLogin); err != nil {
+	if pk, err = c.read(v2193.IDLogin); err != nil {
 		return err
 	}
 	if err := c.authenticate(pk.(*v2193.LoginPacket)); err != nil {
@@ -374,7 +373,7 @@ func (c *Conn) login() error {
 	if err := c.handshake(); err != nil {
 		return err
 	}
-	_ = c.WritePacket(&v2193.PlayStatusPacket{Status: packet.PlayStatusLoginSuccess})
+	_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginSuccess})
 	_ = c.WritePacket(c.l.packsInfo())
 	if err := c.Flush(); err != nil {
 		return err
@@ -396,7 +395,7 @@ func (c *Conn) handshake() error {
 	if err := c.Flush(); err != nil {
 		return err
 	}
-	_, err = c.read(packet.IDClientToServerHandshake)
+	_, err = c.read(v2193.IDClientToServerHandshake)
 	return err
 }
 
@@ -435,12 +434,12 @@ func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
 	}
 	if pub := c.nn.PublicKey(); pub != nil && !l.Key.Equal(pub) {
 		// The transport proved another key: a login replayed elsewhere.
-		_ = c.WritePacket(&v2193.DisconnectPacket{Reason: packet.DisconnectReasonNotAuthenticated})
+		_ = c.WritePacket(&v2193.DisconnectPacket{Reason: v2193.DisconnectReasonNotAuthenticated})
 		return errors.New("netconn: login key is not the key of the transport identity")
 	}
 	if allow := c.l.cfg.Allow; allow != nil {
 		if reason, ok := allow(c.RemoteAddr(), c.identity, c.client); !ok {
-			_ = c.WritePacket(&v2193.DisconnectPacket{Reason: packet.DisconnectReasonKicked, Message: reason})
+			_ = c.WritePacket(&v2193.DisconnectPacket{Reason: v2193.DisconnectReasonKicked, Message: reason})
 			return DisconnectError("refused: " + reason)
 		}
 	}
@@ -486,7 +485,7 @@ func (c *Conn) sendPacks() error {
 		return c.Flush()
 	}
 	for {
-		pk, err := c.read(packet.IDResourcePackClientResponse, packet.IDClientCacheStatus, packet.IDResourcePackChunkRequest)
+		pk, err := c.read(v2193.IDResourcePackClientResponse, v2193.IDClientCacheStatus, v2193.IDResourcePackChunkRequest)
 		if err != nil {
 			return err
 		}
@@ -495,21 +494,21 @@ func (c *Conn) sendPacks() error {
 			c.cacheEnabled.Store(pk.Enabled)
 		case *v2193.ResourcePackClientResponsePacket:
 			switch pk.Response {
-			case packet.PackResponseRefused:
+			case v2193.PackResponseRefused:
 				return DisconnectError("refused the resource packs")
-			case packet.PackResponseSendPacks:
+			case v2193.PackResponseSendPacks:
 				if queue, err = c.l.packs(pk.PacksToDownload); err != nil {
 					return err
 				}
 				if err := next(); err != nil {
 					return err
 				}
-			case packet.PackResponseAllPacksDownloaded:
+			case v2193.PackResponseAllPacksDownloaded:
 				_ = c.WritePacket(c.l.packStack())
 				if err := c.Flush(); err != nil {
 					return err
 				}
-			case packet.PackResponseCompleted:
+			case v2193.PackResponseCompleted:
 				return nil
 			default:
 				return fmt.Errorf("netconn: unknown resource pack response %d", pk.Response)
@@ -588,13 +587,13 @@ var builtinPacks = [][2]string{
 func packType(pack *resource.Pack) byte {
 	switch {
 	case pack.HasWorldTemplate():
-		return packet.ResourcePackTypeWorldTemplate
+		return v2193.ResourcePackTypeWorldTemplate
 	case pack.HasTextures() && (pack.HasBehaviours() || pack.HasScripts()):
-		return packet.ResourcePackTypeAddon
+		return v2193.ResourcePackTypeAddon
 	case !pack.HasTextures() && (pack.HasBehaviours() || pack.HasScripts()):
-		return packet.ResourcePackTypeBehaviour
+		return v2193.ResourcePackTypeBehaviour
 	case pack.HasTextures():
-		return packet.ResourcePackTypeResources
+		return v2193.ResourcePackTypeResources
 	}
-	return packet.ResourcePackTypeSkins
+	return v2193.ResourcePackTypeSkins
 }

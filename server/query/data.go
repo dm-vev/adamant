@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // Data summarises the information returned by the query responder. The
@@ -219,7 +219,7 @@ func (d *Data) applyDefaults() {
 		d.Engine = engineLabel
 	}
 	if d.Version == "" {
-		d.Version = protocol.CurrentVersion
+		d.Version = v2193.CurrentVersion
 	}
 	if d.GameType == "" {
 		d.GameType = "SMP"
@@ -281,7 +281,7 @@ func defaultData(host string, port int) Data {
 	data := Data{
 		HostName: "Minecraft Server",
 		Engine:   engineLabel,
-		Version:  protocol.CurrentVersion,
+		Version:  v2193.CurrentVersion,
 		HostIP:   canonicalHost(host),
 		HostPort: port,
 		GameType: "SMP",

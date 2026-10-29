@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // RespawnHandler handles the Respawn packet.
@@ -18,8 +17,8 @@ func (*RespawnHandler) Handle(p proto.Packet, _ *Session, _ *world.Tx, c Control
 	if pk.EntityRuntimeID != selfEntityRuntimeID {
 		return errSelfRuntimeID
 	}
-	if pk.State != packet.RespawnStateClientReadyToSpawn {
-		return fmt.Errorf("respawn state must always be %v, but got %v", packet.RespawnStateClientReadyToSpawn, pk.State)
+	if pk.State != v2193.RespawnStateClientReadyToSpawn {
+		return fmt.Errorf("respawn state must always be %v, but got %v", v2193.RespawnStateClientReadyToSpawn, pk.State)
 	}
 	c.Respawn()
 	return nil

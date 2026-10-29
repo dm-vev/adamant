@@ -8,7 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // itemArgument and blockArgument advertise the native registry enum types. Their
@@ -17,7 +17,7 @@ import (
 type itemArgument string
 
 func (itemArgument) Type() string                     { return "Item" }
-func (itemArgument) ParamOptions() byte               { return protocol.ParamOptionHasSemanticConstraint }
+func (itemArgument) ParamOptions() byte               { return v2193.ParamOptionHasSemanticConstraint }
 func (itemArgument) Constraints(option string) []byte { return registryAliasConstraints(option) }
 func (itemArgument) Parse(line *cmd.Line, value reflect.Value) error {
 	return parseRegistryArgument(line, value)
@@ -34,7 +34,7 @@ func (itemArgument) Options(cmd.Source) []string {
 type blockArgument string
 
 func (blockArgument) Type() string                     { return "Block" }
-func (blockArgument) ParamOptions() byte               { return protocol.ParamOptionHasSemanticConstraint }
+func (blockArgument) ParamOptions() byte               { return v2193.ParamOptionHasSemanticConstraint }
 func (blockArgument) Constraints(option string) []byte { return registryAliasConstraints(option) }
 func (blockArgument) Parse(line *cmd.Line, value reflect.Value) error {
 	return parseRegistryArgument(line, value)

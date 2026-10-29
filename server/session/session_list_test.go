@@ -16,7 +16,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 func TestSessionListConcurrentAddRemove(t *testing.T) {
@@ -72,7 +71,7 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 
 	first := packetOf(existing.testPacket()).(*v2193.PlayerListPacket)
 	second := packetOf(existing.testPacket()).(*v2193.PlayerListPacket)
-	if first.Entries[0].ActionType != protocol.PlayerListActionAdd || second.Entries[0].ActionType != protocol.PlayerListActionRemove {
+	if first.Entries[0].ActionType != v2193.PlayerListActionAdd || second.Entries[0].ActionType != v2193.PlayerListActionRemove {
 		t.Fatalf("player list updates out of order: %v then %v", first.Entries[0].ActionType, second.Entries[0].ActionType)
 	}
 }

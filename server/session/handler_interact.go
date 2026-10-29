@@ -6,11 +6,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-// InteractHandler handles the packet.Interact.
+// InteractHandler handles the Interact packet.
 type InteractHandler struct{}
 
 // Handle ...
@@ -19,7 +17,7 @@ func (h *InteractHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Con
 	pos := c.Position()
 
 	switch pk.ActionType {
-	case packet.InteractActionLeaveVehicle:
+	case v2193.InteractActionLeaveVehicle:
 		if pk.TargetEntityRuntimeID == selfEntityRuntimeID {
 			return errSelfRuntimeID
 		}
@@ -36,9 +34,9 @@ func (h *InteractHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Con
 		}); ok {
 			dismountable.Dismount(tx, c)
 		}
-	case packet.InteractActionMouseOverEntity:
+	case v2193.InteractActionMouseOverEntity:
 		// We don't need this action.
-	case packet.InteractActionOpenInventory:
+	case v2193.InteractActionOpenInventory:
 		if s.invOpened {
 			// When there is latency, this might end up being sent multiple times. If we send a ContainerOpen
 			// multiple times, the client crashes.
@@ -49,7 +47,7 @@ func (h *InteractHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Con
 			WindowID:                0,
 			ContainerType:           0xff,
 			ContainerEntityUniqueID: -1,
-			ContainerPosition: protocol.BlockPos{
+			ContainerPosition: v2193.BlockPos{
 				int32(pos[0]),
 				int32(pos[1]),
 				int32(pos[2]),

@@ -12,7 +12,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // subChunkRequests is set to true to enable the sub-chunk request system. This can (likely) cause unexpected issues,
@@ -47,7 +46,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 		dim, _ := world.DimensionID(tx.World().Dimension())
 		s.writePacket(&v2193.SubChunkPacket{
 			Dimension:       int32(dim),
-			Position:        protocol.SubChunkPos(centre),
+			Position:        v2193.SubChunkPos(centre),
 			CacheEnabled:    s.conn.ClientCacheEnabled(),
 			SubChunkEntries: nil,
 		})
@@ -64,7 +63,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 	for _, offset := range offsets {
 		ind := int16(centre.Y()) + int16(offset[1]) - int16(r[0])>>4
 		if ind < 0 || ind > int16(r.Height()>>4) {
-			entries = append(entries, v2193.SubChunkEntry{Result: protocol.SubChunkResultIndexOutOfBounds, Offset: offset})
+			entries = append(entries, v2193.SubChunkEntry{Result: v2193.SubChunkResultIndexOutOfBounds, Offset: offset})
 			continue
 		}
 		col, ok := s.chunkLoader.Chunk(world.ChunkPos{
@@ -72,7 +71,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 			centre.Z() + int32(offset[2]),
 		})
 		if !ok {
-			entries = append(entries, v2193.SubChunkEntry{Result: protocol.SubChunkResultChunkNotFound, Offset: offset})
+			entries = append(entries, v2193.SubChunkEntry{Result: v2193.SubChunkResultChunkNotFound, Offset: offset})
 			continue
 		}
 		entries = append(entries, s.subChunkEntry(offset, ind, col, transaction))
@@ -85,7 +84,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 	dim, _ := world.DimensionID(tx.World().Dimension())
 	s.writePacket(&v2193.SubChunkPacket{
 		Dimension:       int32(dim),
-		Position:        protocol.SubChunkPos(centre),
+		Position:        v2193.SubChunkPos(centre),
 		CacheEnabled:    s.conn.ClientCacheEnabled(),
 		SubChunkEntries: entries,
 	})
@@ -105,7 +104,7 @@ func (s *Session) subChunkEntry(offset v2193.SubChunkOffset, ind int16, col *wor
 	sub := col.Sub()[ind]
 	if sub.Empty() {
 		return v2193.SubChunkEntry{
-			Result:              protocol.SubChunkResultSuccessAllAir,
+			Result:              v2193.SubChunkResultSuccessAllAir,
 			HeightMapType:       subMapType,
 			HeightMapData:       subMapData,
 			RenderHeightMapType: subMapType,
@@ -117,7 +116,7 @@ func (s *Session) subChunkEntry(offset v2193.SubChunkOffset, ind int16, col *wor
 	blockEntityPayload := subChunkBlockEntityPayload(col, ind)
 
 	entry := v2193.SubChunkEntry{
-		Result:              protocol.SubChunkResultSuccess,
+		Result:              v2193.SubChunkResultSuccess,
 		RawPayload:          proto.Some(joinPayloads(serialisedSubChunk, blockEntityPayload)),
 		HeightMapType:       subMapType,
 		HeightMapData:       subMapData,
@@ -141,7 +140,7 @@ func subChunkHeightMap(col *world.Column, ind int16) (byte, []int8) {
 	}
 
 	chunkMap := col.HeightMap()
-	subMapType, subMap := byte(protocol.HeightMapDataHasData), make([]int8, 256)
+	subMapType, subMap := byte(v2193.HeightMapDataHasData), make([]int8, 256)
 	higher, lower := true, true
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
@@ -159,9 +158,9 @@ func subChunkHeightMap(col *world.Column, ind int16) (byte, []int8) {
 		}
 	}
 	if higher {
-		subMapType, subMap = protocol.HeightMapDataTooHigh, nil
+		subMapType, subMap = v2193.HeightMapDataTooHigh, nil
 	} else if lower {
-		subMapType, subMap = protocol.HeightMapDataTooLow, nil
+		subMapType, subMap = v2193.HeightMapDataTooLow, nil
 	}
 
 	col.CacheSubChunkHeightMap(ind, subMapType, subMap)
@@ -184,7 +183,7 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 			s.writePacket(&v2193.LevelChunkPacket{
 				Dimension:     s.dimensionID(dim),
 				SubChunkCount: 0,
-				Position:      protocol.ChunkPos(pos),
+				Position:      v2193.ChunkPos(pos),
 				SubChunkLimit: proto.Some(int32(c.HighestFilledSubChunk())),
 				BlobHashes:    []uint64{hash},
 				RawPayload:    []byte{0},
@@ -225,7 +224,7 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 
 	s.writePacket(&v2193.LevelChunkPacket{
 		Dimension:     s.dimensionID(dim),
-		Position:      protocol.ChunkPos{pos.X(), pos.Z()},
+		Position:      v2193.ChunkPos{pos.X(), pos.Z()},
 		SubChunkCount: count,
 		CacheEnabled:  true,
 		BlobHashes:    hashes,
@@ -240,7 +239,7 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col 
 		s.writePacket(&v2193.LevelChunkPacket{
 			Dimension:     s.dimensionID(dim),
 			SubChunkCount: 0,
-			Position:      protocol.ChunkPos(pos),
+			Position:      v2193.ChunkPos(pos),
 			SubChunkLimit: proto.Some(int32(c.HighestFilledSubChunk())),
 			RawPayload:    limitedChunkPayload(col),
 		})
@@ -249,7 +248,7 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col 
 
 	s.writePacket(&v2193.LevelChunkPacket{
 		Dimension:     s.dimensionID(dim),
-		Position:      protocol.ChunkPos{pos.X(), pos.Z()},
+		Position:      v2193.ChunkPos{pos.X(), pos.Z()},
 		SubChunkCount: uint32(len(c.Sub())),
 		RawPayload:    fullChunkPayload(col),
 	})

@@ -12,31 +12,31 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // parseEntityMetadata returns an entity metadata object with default values. It is equivalent to setting
 // all properties to their default values and disabling all flags.
-func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
+func (s *Session) parseEntityMetadata(e world.Entity) v2193.Metadata {
 	bb := e.H().Type().BBox(e)
-	m := protocol.NewEntityMetadata()
+	m := v2193.NewMetadata()
 
-	m[protocol.EntityDataKeyWidth] = float32(bb.Width())
-	m[protocol.EntityDataKeyHeight] = float32(bb.Height())
-	m[protocol.EntityDataKeyEffectColor] = int32(0)
-	m[protocol.EntityDataKeyEffectAmbience] = byte(0)
-	m[protocol.EntityDataKeyColorIndex] = byte(0)
+	m[v2193.EntityDataKeyWidth] = float32(bb.Width())
+	m[v2193.EntityDataKeyHeight] = float32(bb.Height())
+	m[v2193.EntityDataKeyEffectColor] = int32(0)
+	m[v2193.EntityDataKeyEffectAmbience] = byte(0)
+	m[v2193.EntityDataKeyColorIndex] = byte(0)
 
-	setActorFlag(m, protocol.EntityDataFlagHasGravity)
-	setActorFlag(m, protocol.EntityDataFlagClimb)
+	setActorFlag(m, v2193.EntityDataFlagHasGravity)
+	setActorFlag(m, v2193.EntityDataFlagClimb)
 	writeActorShape(e, networkID(e.H().Type()), m)
 	if g, ok := e.H().Type().(glint); ok && g.Glint() {
-		setActorFlag(m, protocol.EntityDataFlagEnchanted)
+		setActorFlag(m, v2193.EntityDataFlagEnchanted)
 	}
 	if e.H().Type() == entity.LingeringPotionType {
-		setActorFlag(m, protocol.EntityDataFlagLingering)
+		setActorFlag(m, v2193.EntityDataFlagLingering)
 	}
 	addAmbientSoundMetadata(e, m)
 	var seat world.RiderSeat
@@ -52,110 +52,110 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 	return m
 }
 
-func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
+func (s *Session) addSpecificMetadata(e any, m v2193.Metadata) {
 	if sheep, ok := e.(*entity.Sheep); ok {
-		m[protocol.EntityDataKeyColorIndex] = byte(sheep.WoolColor())
+		m[v2193.EntityDataKeyColorIndex] = byte(sheep.WoolColor())
 		if sheep.Sheared() {
-			setActorFlag(m, protocol.EntityDataFlagSheared)
+			setActorFlag(m, v2193.EntityDataFlagSheared)
 		}
 	}
 	if shulker, ok := e.(*entity.Shulker); ok {
 		// BDS uses Variant for shell colour and separate attachment metadata.
-		m[protocol.EntityDataKeyVariant] = int32(shulker.Color())
-		m[protocol.EntityDataKeyPeekID] = int32(shulker.Peek())
-		m[protocol.EntityDataKeyAttachFace] = byte(shulker.AttachFace())
-		m[protocol.EntityDataKeyAttached] = int16(1)
+		m[v2193.EntityDataKeyVariant] = int32(shulker.Color())
+		m[v2193.EntityDataKeyPeekID] = int32(shulker.Peek())
+		m[v2193.EntityDataKeyAttachFace] = byte(shulker.AttachFace())
+		m[v2193.EntityDataKeyAttached] = int16(1)
 		pos := cube.PosFromVec3(shulker.Position())
-		m[protocol.EntityDataKeyAttachedPosition] = protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+		m[v2193.EntityDataKeyAttachedPosition] = v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	}
 	if parrot, ok := e.(*entity.Parrot); ok {
-		m[protocol.EntityDataKeyVariant] = int32(parrot.Variant())
+		m[v2193.EntityDataKeyVariant] = int32(parrot.Variant())
 		if parrot.Tamed() {
-			setActorFlag(m, protocol.EntityDataFlagTamed)
+			setActorFlag(m, v2193.EntityDataFlagTamed)
 		}
 		if parrot.Party() {
-			setActorFlag(m, protocol.EntityDataFlagDancing)
+			setActorFlag(m, v2193.EntityDataFlagDancing)
 		}
 		if parrot.Sitting() {
-			setActorFlag(m, protocol.EntityDataFlagSitting)
+			setActorFlag(m, v2193.EntityDataFlagSitting)
 		}
 	}
 	if sn, ok := e.(sneaker); ok && sn.Sneaking() {
-		setActorFlag(m, protocol.EntityDataFlagSneaking)
+		setActorFlag(m, v2193.EntityDataFlagSneaking)
 		if b, ok := e.(blocker); ok {
 			if _, blocking := b.Blocking(); blocking {
-				m.SetFlag(protocol.EntityDataKeyFlagsTwo, protocol.EntityDataFlagBlocking&63)
+				m.SetFlag(v2193.EntityDataKeyFlagsTwo, v2193.EntityDataFlagBlocking&63)
 			}
 		}
 	}
 	if sp, ok := e.(sprinter); ok && sp.Sprinting() {
-		setActorFlag(m, protocol.EntityDataFlagSprinting)
+		setActorFlag(m, v2193.EntityDataFlagSprinting)
 	}
 	if sw, ok := e.(swimmer); ok && sw.Swimming() {
-		setActorFlag(m, protocol.EntityDataFlagSwimming)
+		setActorFlag(m, v2193.EntityDataFlagSwimming)
 	}
 	if cr, ok := e.(crawler); ok && cr.Crawling() {
-		m.SetFlag(protocol.EntityDataKeyFlagsTwo, protocol.EntityDataFlagCrawling&63)
+		m.SetFlag(v2193.EntityDataKeyFlagsTwo, v2193.EntityDataFlagCrawling&63)
 	}
 	if gl, ok := e.(glider); ok && gl.Gliding() {
-		setActorFlag(m, protocol.EntityDataFlagGliding)
+		setActorFlag(m, v2193.EntityDataFlagGliding)
 	}
 	if bb, ok := e.(baby); ok && bb.Baby() {
-		setActorFlag(m, protocol.EntityDataFlagBaby)
+		setActorFlag(m, v2193.EntityDataFlagBaby)
 	}
 	if l, ok := e.(interface{ InLove() bool }); ok && l.InLove() {
-		setActorFlag(m, protocol.EntityDataFlagInLove)
+		setActorFlag(m, v2193.EntityDataFlagInLove)
 	}
 	if b, ok := e.(breather); ok {
-		m[protocol.EntityDataKeyAirSupply] = int16(b.AirSupply().Milliseconds() / 50)
-		m[protocol.EntityDataKeyAirSupplyMax] = int16(b.MaxAirSupply().Milliseconds() / 50)
+		m[v2193.EntityDataKeyAirSupply] = int16(b.AirSupply().Milliseconds() / 50)
+		m[v2193.EntityDataKeyAirSupplyMax] = int16(b.MaxAirSupply().Milliseconds() / 50)
 		if b.Breathing() {
-			setActorFlag(m, protocol.EntityDataFlagBreathing)
+			setActorFlag(m, v2193.EntityDataFlagBreathing)
 		}
 	}
 	if i, ok := e.(invisible); ok {
 		if i.Invisible() {
-			setActorFlag(m, protocol.EntityDataFlagInvisible)
+			setActorFlag(m, v2193.EntityDataFlagInvisible)
 		}
 	} else if eff, ok := e.(effectBearer); ok && slices.ContainsFunc(eff.Effects(), func(ef effect.Effect) bool { return ef.Type() == effect.Invisibility }) {
-		setActorFlag(m, protocol.EntityDataFlagInvisible)
+		setActorFlag(m, v2193.EntityDataFlagInvisible)
 	}
 	if i, ok := e.(immobile); ok && i.Immobile() {
-		setActorFlag(m, protocol.EntityDataFlagNoAI)
+		setActorFlag(m, v2193.EntityDataFlagNoAI)
 	}
 	if o, ok := e.(onFire); ok && o.OnFireDuration() > 0 {
-		setActorFlag(m, protocol.EntityDataFlagOnFire)
+		setActorFlag(m, v2193.EntityDataFlagOnFire)
 	}
 	if f, ok := e.(interface{ FreezingStrength() float32 }); ok {
-		m[protocol.EntityDataKeyFreezingEffectStrength] = f.FreezingStrength()
+		m[v2193.EntityDataKeyFreezingEffectStrength] = f.FreezingStrength()
 	}
 	if sh, ok := e.(interface{ Shaking() bool }); ok && sh.Shaking() {
-		setActorFlag(m, protocol.EntityDataFlagShaking)
+		setActorFlag(m, v2193.EntityDataFlagShaking)
 	}
 	if r, ok := e.(interface{ RamAttacking() bool }); ok && r.RamAttacking() {
-		setActorFlag(m, protocol.EntityDataFlagRamAttack)
+		setActorFlag(m, v2193.EntityDataFlagRamAttack)
 	}
 	if w, ok := e.(interface {
 		WardenPose() (emerging, digging, roaring, sniffing, sonicBoom bool)
 		HeartbeatInterval() int32
 	}); ok {
 		emerging, digging, roaring, sniffing, sonicBoom := w.WardenPose()
-		for flag, set := range map[uint8]bool{protocol.EntityDataFlagEmerging: emerging, protocol.EntityDataFlagDigging: digging,
-			protocol.EntityDataFlagRoaring: roaring, protocol.EntityDataFlagSniffing: sniffing, protocol.EntityDataFlagSonicBoom: sonicBoom} {
+		for flag, set := range map[uint8]bool{v2193.EntityDataFlagEmerging: emerging, v2193.EntityDataFlagDigging: digging,
+			v2193.EntityDataFlagRoaring: roaring, v2193.EntityDataFlagSniffing: sniffing, v2193.EntityDataFlagSonicBoom: sonicBoom} {
 			if set {
 				setActorFlag(m, flag)
 			}
 		}
-		m[protocol.EntityDataKeyHeartbeatIntervalTicks] = w.HeartbeatInterval()
+		m[v2193.EntityDataKeyHeartbeatIntervalTicks] = w.HeartbeatInterval()
 		// LevelSoundEvent heartbeat.
-		m[protocol.EntityDataKeyHeartbeatSoundEvent] = int32(376)
+		m[v2193.EntityDataKeyHeartbeatSoundEvent] = int32(376)
 	}
 	if sh, ok := e.(interface{ Shooting() bool }); ok && sh.Shooting() {
 		// A breeze shooting faces its target to attack it from range.
-		setActorFlag(m, protocol.EntityDataFlagFacingTargetToRangeAttack)
+		setActorFlag(m, v2193.EntityDataFlagFacingTargetToRangeAttack)
 	}
 	if j, ok := e.(interface{ JumpGoalJumping() bool }); ok && j.JumpGoalJumping() {
-		setActorFlag(m, protocol.EntityDataFlagJumpGoal)
+		setActorFlag(m, v2193.EntityDataFlagJumpGoal)
 	}
 	if sn, ok := e.(interface{ SnifferState() string }); ok {
 		if flag, ok := snifferStateFlags[sn.SnifferState()]; ok {
@@ -163,126 +163,126 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		}
 	}
 	if p, ok := e.(interface{ PlayingDead() bool }); ok && p.PlayingDead() {
-		setActorFlag(m, protocol.EntityDataFlagPlayingDead)
+		setActorFlag(m, v2193.EntityDataFlagPlayingDead)
 	}
 	if c, ok := e.(interface{ Croaking() bool }); ok && c.Croaking() {
-		setActorFlag(m, protocol.EntityDataFlagCroaking)
+		setActorFlag(m, v2193.EntityDataFlagCroaking)
 	}
 	if c, ok := e.(interface{ EatingMob() bool }); ok && c.EatingMob() {
 		// Bedrock's EAT_MOB flag shows a frog's tongue.
-		setActorFlag(m, protocol.EntityDataFlagDigestMob)
+		setActorFlag(m, v2193.EntityDataFlagDigestMob)
 	}
 	if r, ok := e.(interface{ Resting() bool }); ok && r.Resting() {
 		// Bats hang upside down while resting.
-		setActorFlag(m, protocol.EntityDataFlagResting)
+		setActorFlag(m, v2193.EntityDataFlagResting)
 	}
 	if db, ok := e.(doorBreaker); ok && db.CanBreakDoors() {
-		setActorFlag(m, protocol.EntityDataFlagDoorBreaker)
+		setActorFlag(m, v2193.EntityDataFlagDoorBreaker)
 	}
 	if br, ok := e.(breakingObstruction); ok && br.BreakingObstruction() {
-		setActorFlag(m, protocol.EntityDataFlagBreakingObstruction)
+		setActorFlag(m, v2193.EntityDataFlagBreakingObstruction)
 	}
 	if ar, ok := e.(armsRaised); ok && ar.ArmsRaised() {
-		setActorFlag(m, protocol.EntityDataFlagCharging)
+		setActorFlag(m, v2193.EntityDataFlagCharging)
 	}
 	if u, ok := e.(using); ok && u.UsingItem() {
-		setActorFlag(m, protocol.EntityDataFlagUsingItem)
+		setActorFlag(m, v2193.EntityDataFlagUsingItem)
 	}
 	if sl, ok := e.(sleeper); ok {
 		if pos, ok := sl.Sleeping(); ok {
-			m[protocol.EntityDataKeyBedPosition] = protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+			m[v2193.EntityDataKeyBedPosition] = v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 
 			// For some reason there is no such flag in gophertunnel.
-			m.SetFlag(protocol.EntityDataKeyPlayerFlags, 1)
+			m.SetFlag(v2193.EntityDataKeyPlayerFlags, 1)
 		}
 	}
 	if c, ok := e.(arrow); ok && c.Critical() {
-		setActorFlag(m, protocol.EntityDataFlagCritical)
+		setActorFlag(m, v2193.EntityDataFlagCritical)
 	}
 	if g, ok := e.(gameMode); ok {
 		if g.GameMode().HasCollision() {
-			setActorFlag(m, protocol.EntityDataFlagHasCollision)
+			setActorFlag(m, v2193.EntityDataFlagHasCollision)
 		}
 	}
 	if o, ok := e.(orb); ok {
-		m[protocol.EntityDataKeyValue] = int32(o.Experience())
+		m[v2193.EntityDataKeyValue] = int32(o.Experience())
 	}
 	if f, ok := e.(firework); ok {
-		m[protocol.EntityDataKeyDisplayFirework] = item.WriteNBT(item.NewStack(f.Firework(), 1), false)
+		m[v2193.EntityDataKeyDisplayFirework] = item.WriteNBT(item.NewStack(f.Firework(), 1), false)
 		if o, ok := e.(owned); ok && f.Attached() && o.Owner() != nil {
-			m[protocol.EntityDataKeyCustomDisplay] = s.handleUniqueID(o.Owner())
+			m[v2193.EntityDataKeyCustomDisplay] = s.handleUniqueID(o.Owner())
 		}
 	} else if o, ok := e.(owned); ok && o.Owner() != nil {
-		m[protocol.EntityDataKeyOwner] = s.handleUniqueID(o.Owner())
+		m[v2193.EntityDataKeyOwner] = s.handleUniqueID(o.Owner())
 	}
 	if l, ok := e.(leashed); ok {
 		if id := l.HolderLeashID(); id != 0 {
 			if s.ent != nil && id == s.ent.UniqueID() {
 				id = int64(selfEntityRuntimeID)
 			}
-			m[protocol.EntityDataKeyLeashHolder] = id
+			m[v2193.EntityDataKeyLeashHolder] = id
 		}
 	}
 	if sc, ok := e.(scaled); ok {
-		m[protocol.EntityDataKeyScale] = float32(sc.Scale())
+		m[v2193.EntityDataKeyScale] = float32(sc.Scale())
 	}
 	if t, ok := e.(tnt); ok {
-		m[protocol.EntityDataKeyFuseTime] = int32(t.Fuse().Milliseconds() / 50)
-		setActorFlag(m, protocol.EntityDataFlagIgnited)
+		m[v2193.EntityDataKeyFuseTime] = int32(t.Fuse().Milliseconds() / 50)
+		setActorFlag(m, v2193.EntityDataFlagIgnited)
 	}
 	if i, ok := e.(igniteable); ok && i.Ignited() {
-		m[protocol.EntityDataKeyFuseTime] = int32(i.FuseTicks())
-		setActorFlag(m, protocol.EntityDataFlagIgnited)
+		m[v2193.EntityDataKeyFuseTime] = int32(i.FuseTicks())
+		setActorFlag(m, v2193.EntityDataFlagIgnited)
 	}
 	if p, ok := e.(interface{ Powered() bool }); ok && p.Powered() {
-		setActorFlag(m, protocol.EntityDataFlagPowered)
+		setActorFlag(m, v2193.EntityDataFlagPowered)
 	}
 	if c, ok := e.(interface{ WallClimbing() bool }); ok && c.WallClimbing() {
-		setActorFlag(m, protocol.EntityDataFlagWallClimbing)
+		setActorFlag(m, v2193.EntityDataFlagWallClimbing)
 	}
 	// A blaze charging its fireballs burns, as Blaze.isOnFire shows it.
 	if b, ok := e.(interface{ Burning() bool }); ok && b.Burning() {
-		setActorFlag(m, protocol.EntityDataFlagOnFire)
+		setActorFlag(m, v2193.EntityDataFlagOnFire)
 	}
 	if c, ok := e.(interface{ Charging() bool }); ok && c.Charging() {
-		setActorFlag(m, protocol.EntityDataFlagCharging)
+		setActorFlag(m, v2193.EntityDataFlagCharging)
 	}
 	if c, ok := e.(interface{ CrossbowCharged() bool }); ok && c.CrossbowCharged() {
-		setActorFlag(m, protocol.EntityDataFlagCharged)
+		setActorFlag(m, v2193.EntityDataFlagCharged)
 	}
 	if c, ok := e.(interface{ Celebrating() bool }); ok && c.Celebrating() {
-		setActorFlag(m, protocol.EntityDataFlagCelebrating)
+		setActorFlag(m, v2193.EntityDataFlagCelebrating)
 	}
 	if c, ok := e.(interface{ CelebratingSpecial() bool }); ok && c.CelebratingSpecial() {
-		setActorFlag(m, protocol.EntityDataFlagCelebratingSpecial)
+		setActorFlag(m, v2193.EntityDataFlagCelebratingSpecial)
 	}
 	if a, ok := e.(interface{ Admiring() bool }); ok && a.Admiring() {
-		setActorFlag(m, protocol.EntityDataFlagAdmiring)
+		setActorFlag(m, v2193.EntityDataFlagAdmiring)
 	}
 	if c, ok := e.(interface {
 		Casting() bool
 		SpellColour() [3]float64
 	}); ok && c.Casting() {
-		setActorFlag(m, protocol.EntityDataFlagCasting)
+		setActorFlag(m, v2193.EntityDataFlagCasting)
 		colour := c.SpellColour()
-		m[protocol.EntityDataKeyDataSpellCastingColor] = int32(-1<<24 | int32(colour[0]*255)<<16 | int32(colour[1]*255)<<8 | int32(colour[2]*255))
+		m[v2193.EntityDataKeyDataSpellCastingColor] = int32(-1<<24 | int32(colour[0]*255)<<16 | int32(colour[1]*255)<<8 | int32(colour[2]*255))
 	}
 	if g, ok := e.(interface{ BeamTargetHandle() *world.EntityHandle }); ok {
 		if h := g.BeamTargetHandle(); h != nil {
-			m[protocol.EntityDataKeyTarget] = s.handleUniqueID(h)
+			m[v2193.EntityDataKeyTarget] = s.handleUniqueID(h)
 		}
 	}
 	if g, ok := e.(interface{ ShootTargetHandle() *world.EntityHandle }); ok {
-		m[protocol.EntityDataKeyTarget] = int64(0)
+		m[v2193.EntityDataKeyTarget] = int64(0)
 		if h := g.ShootTargetHandle(); h != nil {
-			m[protocol.EntityDataKeyTarget] = s.handleUniqueID(h)
+			m[v2193.EntityDataKeyTarget] = s.handleUniqueID(h)
 		}
 	}
 	if f, ok := e.(interface{ TongueTargetHandle() *world.EntityHandle }); ok {
 		// The target is cleared once the tongue is back, as Frog.eraseTongueTarget.
-		m[protocol.EntityDataKeyTarget] = int64(0)
+		m[v2193.EntityDataKeyTarget] = int64(0)
 		if h := f.TongueTargetHandle(); h != nil {
-			m[protocol.EntityDataKeyTarget] = s.handleUniqueID(h)
+			m[v2193.EntityDataKeyTarget] = s.handleUniqueID(h)
 		}
 	}
 	if r, ok := e.(interface {
@@ -290,10 +290,10 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		Roaring() bool
 	}); ok {
 		if r.Stunned() {
-			setActorFlag(m, protocol.EntityDataFlagStunned)
+			setActorFlag(m, v2193.EntityDataFlagStunned)
 		}
 		if r.Roaring() {
-			setActorFlag(m, protocol.EntityDataFlagRoaring)
+			setActorFlag(m, v2193.EntityDataFlagRoaring)
 		}
 	}
 	if d, ok := e.(displayTile); ok {
@@ -301,42 +301,42 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		if b, ok := d.DisplayBlock(); ok {
 			display = int32(networkBlockID(s.br, b))
 		}
-		m[protocol.EntityDataKeyDisplayBlockState] = display
-		m[protocol.EntityDataKeyDisplayOffset] = int32(d.DisplayOffset())
-		m[protocol.EntityDataKeyCustomDisplay] = byte(boolByte(d.CustomDisplay()))
+		m[v2193.EntityDataKeyDisplayBlockState] = display
+		m[v2193.EntityDataKeyDisplayOffset] = int32(d.DisplayOffset())
+		m[v2193.EntityDataKeyCustomDisplay] = byte(boolByte(d.CustomDisplay()))
 	}
 	if c, ok := e.(containerMeta); ok {
 		// The dedicated server sends the container type as a byte.
-		m[protocol.EntityDataKeyContainerType] = byte(c.ContainerType())
-		m[protocol.EntityDataKeyContainerSize] = c.ContainerSize()
-		m[protocol.EntityDataKeyContainerStrengthModifier] = c.ContainerStrengthModifier()
+		m[v2193.EntityDataKeyContainerType] = byte(c.ContainerType())
+		m[v2193.EntityDataKeyContainerSize] = c.ContainerSize()
+		m[v2193.EntityDataKeyContainerStrengthModifier] = c.ContainerStrengthModifier()
 	}
 	if h, ok := e.(minecartDamage); ok {
-		m[protocol.EntityDataKeyHurt] = int32(h.RollingAmplitude())
-		m[protocol.EntityDataKeyHurtDirection] = int32(h.RollingDirection())
+		m[v2193.EntityDataKeyHurt] = int32(h.RollingAmplitude())
+		m[v2193.EntityDataKeyHurtDirection] = int32(h.RollingDirection())
 		// BDS sends the damage of a vehicle as an int.
-		m[protocol.EntityDataKeyStructuralIntegrity] = int32(h.Damage())
+		m[v2193.EntityDataKeyStructuralIntegrity] = int32(h.Damage())
 	}
 	if r, ok := e.(rowTime); ok {
-		m[protocol.EntityDataKeyRowTimeLeft] = r.RowTimeLeft()
-		m[protocol.EntityDataKeyRowTimeRight] = r.RowTimeRight()
+		m[v2193.EntityDataKeyRowTimeLeft] = r.RowTimeLeft()
+		m[v2193.EntityDataKeyRowTimeRight] = r.RowTimeRight()
 	}
 	if b, ok := e.(buoyantMeta); ok {
-		m[protocol.EntityDataKeyIsBuoyant] = byte(boolByte(b.Buoyant()))
+		m[v2193.EntityDataKeyIsBuoyant] = byte(boolByte(b.Buoyant()))
 		if data := b.BuoyancyData(); data != "" {
-			m[protocol.EntityDataKeyBuoyancyData] = data
+			m[v2193.EntityDataKeyBuoyancyData] = data
 		}
 	}
 	if c, ok := e.(controllingSeat); ok {
-		m[protocol.EntityDataKeyControllingSeatIndex] = byte(c.ControllingSeatIndex())
+		m[v2193.EntityDataKeyControllingSeatIndex] = byte(c.ControllingSeatIndex())
 	}
 	if t, ok := e.(interactText); ok {
 		if text := t.InteractText(); text != "" {
-			m[protocol.EntityDataKeyInteractText] = text
+			m[v2193.EntityDataKeyInteractText] = text
 		}
 	}
 	if r, ok := e.(rideTarget); ok {
-		m[protocol.EntityDataKeyCanRideTarget] = byte(boolByte(r.CanRideTarget()))
+		m[v2193.EntityDataKeyCanRideTarget] = byte(boolByte(r.CanRideTarget()))
 	}
 	if w, ok := e.(witherMeta); ok {
 		// The heads of a wither turn to their targets, and it glows blue
@@ -346,16 +346,16 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			if h != nil {
 				id = int64(s.handleRuntimeID(h))
 			}
-			m[[3]uint32{protocol.EntityDataKeyTargetA, protocol.EntityDataKeyTargetB, protocol.EntityDataKeyTargetC}[i]] = id
+			m[[3]uint32{v2193.EntityDataKeyTargetA, v2193.EntityDataKeyTargetB, v2193.EntityDataKeyTargetC}[i]] = id
 		}
-		m[protocol.EntityDataKeyInvulnerableTicks] = int32(w.InvulnerableTicks())
+		m[v2193.EntityDataKeyInvulnerableTicks] = int32(w.InvulnerableTicks())
 	}
 	if ec, ok := e.(endCrystalMeta); ok {
 		if ec.ShowBase() {
-			setActorFlag(m, protocol.EntityDataFlagShowBottom)
+			setActorFlag(m, v2193.EntityDataFlagShowBottom)
 		}
 		if target, ok := ec.BeamTarget(); ok {
-			m[protocol.EntityDataKeyBlockTarget] = protocol.BlockPos{
+			m[v2193.EntityDataKeyBlockTarget] = v2193.BlockPos{
 				int32(math.Floor(target[0])),
 				int32(math.Floor(target[1])),
 				int32(math.Floor(target[2])),
@@ -366,33 +366,33 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		writeNameTagMetadata(m, nameTag, alwaysShow)
 	}
 	if sc, ok := e.(scoreTag); ok {
-		m[protocol.EntityDataKeyScore] = sc.ScoreTag()
+		m[v2193.EntityDataKeyScore] = sc.ScoreTag()
 	}
 	if sl, ok := e.(sleeper); ok {
 		if pos, ok := sl.Sleeping(); ok {
-			m[protocol.EntityDataKeyBedPosition] = protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+			m[v2193.EntityDataKeyBedPosition] = v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 
 			// For some reason there is no such flag in gophertunnel.
-			m.SetFlag(protocol.EntityDataKeyPlayerFlags, 1)
+			m.SetFlag(v2193.EntityDataKeyPlayerFlags, 1)
 		}
 	}
 	if c, ok := e.(areaEffectCloud); ok {
-		m[protocol.EntityDataKeyDataRadius] = float32(c.Radius())
+		m[v2193.EntityDataKeyDataRadius] = float32(c.Radius())
 
 		// We purposely fill these in with invalid values to disable the client-sided shrinking of the cloud.
-		m[protocol.EntityDataKeyDataDuration] = int32(math.MaxInt32)
-		m[protocol.EntityDataKeyDataChangeOnPickup] = float32(math.SmallestNonzeroFloat32)
-		m[protocol.EntityDataKeyDataChangeRate] = float32(math.SmallestNonzeroFloat32)
+		m[v2193.EntityDataKeyDataDuration] = int32(math.MaxInt32)
+		m[v2193.EntityDataKeyDataChangeOnPickup] = float32(math.SmallestNonzeroFloat32)
+		m[v2193.EntityDataKeyDataChangeRate] = float32(math.SmallestNonzeroFloat32)
 		if p, ok := e.(interface{ Particle() int32 }); ok && p.Particle() != 0 {
-			m[protocol.EntityDataKeyDataParticle] = p.Particle()
+			m[v2193.EntityDataKeyDataParticle] = p.Particle()
 		}
 
 		colour, am := effect.ResultingColour(c.Effects())
-		m[protocol.EntityDataKeyEffectColor] = nbtconv.Int32FromRGBA(colour)
+		m[v2193.EntityDataKeyEffectColor] = nbtconv.Int32FromRGBA(colour)
 		if am {
-			m[protocol.EntityDataKeyEffectAmbience] = byte(1)
+			m[v2193.EntityDataKeyEffectAmbience] = byte(1)
 		} else {
-			m[protocol.EntityDataKeyEffectAmbience] = byte(0)
+			m[v2193.EntityDataKeyEffectAmbience] = byte(0)
 		}
 	}
 
@@ -400,15 +400,15 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		deathPos, deathDimension, died := l.DeathPosition()
 		if died {
 			dim, _ := world.DimensionID(deathDimension)
-			m[protocol.EntityDataKeyPlayerLastDeathPosition] = vec64To32(deathPos)
-			m[protocol.EntityDataKeyPlayerLastDeathDimension] = int32(dim)
+			m[v2193.EntityDataKeyPlayerLastDeathPosition] = vec64To32(deathPos)
+			m[v2193.EntityDataKeyPlayerLastDeathDimension] = int32(dim)
 		}
-		m[protocol.EntityDataKeyPlayerHasDied] = boolByte(died)
+		m[v2193.EntityDataKeyPlayerHasDied] = boolByte(died)
 	}
 	if p, ok := e.(splash); ok {
-		m[protocol.EntityDataKeyAuxValueData] = int16(p.Potion().Uint8())
+		m[v2193.EntityDataKeyAuxValueData] = int16(p.Potion().Uint8())
 		if tip := p.Potion().Uint8(); tip > 4 {
-			m[protocol.EntityDataKeyCustomDisplay] = tip + 1
+			m[v2193.EntityDataKeyCustomDisplay] = tip + 1
 		}
 	}
 	if eff, ok := e.(effectBearer); ok {
@@ -426,45 +426,45 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 				}
 			}
 		}
-		m[protocol.EntityDataKeyVisibleMobEffects] = packedEffects
+		m[v2193.EntityDataKeyVisibleMobEffects] = packedEffects
 	}
 	if v, ok := e.(variable); ok {
-		m[protocol.EntityDataKeyVariant] = v.Variant()
+		m[v2193.EntityDataKeyVariant] = v.Variant()
 	}
 	if mv, ok := e.(markVariable); ok {
-		m[protocol.EntityDataKeyMarkVariant] = mv.MarkVariant()
+		m[v2193.EntityDataKeyMarkVariant] = mv.MarkVariant()
 	}
 	if mount, ok := e.(interface{ MountState() entity.MountState }); ok {
 		addMountMetadata(mount.MountState(), m)
 	}
 	if iv, ok := e.(hurtDuration); ok {
-		m[protocol.EntityDataKeyHurt] = int32(iv.HurtDuration().Milliseconds() / 50)
+		m[v2193.EntityDataKeyHurt] = int32(iv.HurtDuration().Milliseconds() / 50)
 	}
 	if pi, ok := e.(armourStand); ok {
-		m[protocol.EntityDataKeyPoseIndex] = int32(pi.PoseIndex())
+		m[v2193.EntityDataKeyPoseIndex] = int32(pi.PoseIndex())
 	}
 }
 
 // addMountMetadata writes the flags and data Bedrock clients show of horses,
 // llamas and camels, as the dedicated server sends them.
-func addMountMetadata(s entity.MountState, m protocol.EntityMetadata) {
-	for flag, set := range map[uint8]bool{protocol.EntityDataFlagSaddled: s.Saddled, protocol.EntityDataFlagTamed: s.Tamed, protocol.EntityDataFlagChested: s.Chested, protocol.EntityDataFlagSitting: s.Sitting,
-		protocol.EntityDataFlagKeyboardControlled: s.Controlled, protocol.EntityDataFlagPowerJump: s.PowerJump, protocol.EntityDataFlagDash: s.Dash} {
+func addMountMetadata(s entity.MountState, m v2193.Metadata) {
+	for flag, set := range map[uint8]bool{v2193.EntityDataFlagSaddled: s.Saddled, v2193.EntityDataFlagTamed: s.Tamed, v2193.EntityDataFlagChested: s.Chested, v2193.EntityDataFlagSitting: s.Sitting,
+		v2193.EntityDataFlagKeyboardControlled: s.Controlled, v2193.EntityDataFlagPowerJump: s.PowerJump, v2193.EntityDataFlagDash: s.Dash} {
 		if set {
 			setActorFlag(m, flag)
 		}
 	}
 	if s.Rearing {
-		m[protocol.EntityDataKeyHorseFlags] = s.HorseFlags
+		m[v2193.EntityDataKeyHorseFlags] = s.HorseFlags
 	}
 	if s.ContainerSize > 0 {
-		m[protocol.EntityDataKeyContainerType] = byte(protocol.ContainerTypeHorse)
-		m[protocol.EntityDataKeyContainerSize] = s.ContainerSize
-		m[protocol.EntityDataKeyContainerStrengthModifier] = s.StrengthModifier
+		m[v2193.EntityDataKeyContainerType] = byte(v2193.ContainerTypeHorse)
+		m[v2193.EntityDataKeyContainerSize] = s.ContainerSize
+		m[v2193.EntityDataKeyContainerStrengthModifier] = s.StrengthModifier
 	}
 	if s.MaxStrength > 0 {
-		m[protocol.EntityDataKeyStrength] = s.Strength
-		m[protocol.EntityDataKeyStrengthMax] = s.MaxStrength
+		m[v2193.EntityDataKeyStrength] = s.Strength
+		m[v2193.EntityDataKeyStrengthMax] = s.MaxStrength
 	}
 }
 
@@ -484,21 +484,21 @@ func nameTagState(e any) (string, bool, bool) {
 }
 
 // writeNameTagMetadata writes a name tag and its related visibility properties to metadata.
-func writeNameTagMetadata(m protocol.EntityMetadata, nameTag string, alwaysShow bool) {
+func writeNameTagMetadata(m v2193.Metadata, nameTag string, alwaysShow bool) {
 	show := nameTag != ""
 	always := show && alwaysShow
 
-	m[protocol.EntityDataKeyName] = nameTag
-	m[protocol.EntityDataKeyAlwaysShowNameTag] = boolByte(always)
+	m[v2193.EntityDataKeyName] = nameTag
+	m[v2193.EntityDataKeyAlwaysShowNameTag] = boolByte(always)
 	if show {
-		setActorFlag(m, protocol.EntityDataFlagShowName)
+		setActorFlag(m, v2193.EntityDataFlagShowName)
 	} else {
-		m.UnsetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShowName)
+		m.UnsetFlag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagShowName)
 	}
 	if always {
-		setActorFlag(m, protocol.EntityDataFlagAlwaysShowName)
+		setActorFlag(m, v2193.EntityDataFlagAlwaysShowName)
 	} else {
-		m.UnsetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAlwaysShowName)
+		m.UnsetFlag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagAlwaysShowName)
 	}
 }
 
@@ -716,22 +716,22 @@ type rideTarget interface {
 // sends these keys for every entity and sets them on riders, never on
 // vehicles, and marks riding only through entity links. It leaves out the
 // seat position of an entity that has not sat anywhere yet.
-func writeSeatMetadata(m protocol.EntityMetadata, seat world.RiderSeat) {
+func writeSeatMetadata(m v2193.Metadata, seat world.RiderSeat) {
 	if seat.Position != (mgl64.Vec3{}) {
-		m[protocol.EntityDataKeySeatOffset] = vec64To32(seat.Position)
+		m[v2193.EntityDataKeySeatOffset] = vec64To32(seat.Position)
 	}
-	m[protocol.EntityDataKeySeatLockPassengerRotation] = byte(boolByte(seat.LockRotation))
-	m[protocol.EntityDataKeySeatLockPassengerRotationDegrees] = float32(seat.LockRotationDegrees)
-	m[protocol.EntityDataKeySeatRotationOffset] = byte(boolByte(seat.RotateRider))
-	m[protocol.EntityDataKeySeatRotationOffsetDegrees] = float32(seat.RotateRiderDegrees)
+	m[v2193.EntityDataKeySeatLockPassengerRotation] = byte(boolByte(seat.LockRotation))
+	m[v2193.EntityDataKeySeatLockPassengerRotationDegrees] = float32(seat.LockRotationDegrees)
+	m[v2193.EntityDataKeySeatRotationOffset] = byte(boolByte(seat.RotateRider))
+	m[v2193.EntityDataKeySeatRotationOffsetDegrees] = float32(seat.RotateRiderDegrees)
 }
 
 // snifferStateFlags holds the flag Bedrock shows for each state of a sniffer.
 var snifferStateFlags = map[string]uint8{
-	"feeling_happy": protocol.EntityDataFlagFeelingHappy,
-	"scenting":      protocol.EntityDataFlagScenting,
-	"sniffing":      protocol.EntityDataFlagSniffing,
-	"searching":     protocol.EntityDataFlagSearching,
-	"digging":       protocol.EntityDataFlagDigging,
-	"rising":        protocol.EntityDataFlagRising,
+	"feeling_happy": v2193.EntityDataFlagFeelingHappy,
+	"scenting":      v2193.EntityDataFlagScenting,
+	"sniffing":      v2193.EntityDataFlagSniffing,
+	"searching":     v2193.EntityDataFlagSearching,
+	"digging":       v2193.EntityDataFlagDigging,
+	"rising":        v2193.EntityDataFlagRising,
 }

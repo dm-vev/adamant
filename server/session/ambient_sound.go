@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // ambientSound is the minecraft:ambient_sound_interval of an actor: clients
@@ -73,7 +73,7 @@ func networkID(t world.EntityType) string {
 // addAmbientSoundMetadata writes the ambient sound and fall damage
 // multiplier clients use of an actor other than a player. A sleeping fox
 // makes its sleeping sound instead.
-func addAmbientSoundMetadata(e world.Entity, m protocol.EntityMetadata) {
+func addAmbientSoundMetadata(e world.Entity, m v2193.Metadata) {
 	id := networkID(e.H().Type())
 	if id == "minecraft:player" {
 		return
@@ -85,12 +85,12 @@ func addAmbientSoundMetadata(e world.Entity, m protocol.EntityMetadata) {
 	if s, ok := e.(interface{ Sleeping() bool }); ok && id == "minecraft:fox" && s.Sleeping() {
 		sound = ambientSound{8, 16, "sleep"}
 	}
-	m[protocol.EntityDataKeyAmbientSoundInterval] = sound.interval
-	m[protocol.EntityDataKeyAmbientSoundIntervalRange] = sound.spread
-	m[protocol.EntityDataKeyAmbientSoundEventName] = sound.event
+	m[v2193.EntityDataKeyAmbientSoundInterval] = sound.interval
+	m[v2193.EntityDataKeyAmbientSoundIntervalRange] = sound.spread
+	m[v2193.EntityDataKeyAmbientSoundEventName] = sound.event
 	multiplier := float32(1)
 	if noFallDamage[id] {
 		multiplier = 0
 	}
-	m[protocol.EntityDataKeyFallDamageMultiplier] = multiplier
+	m[v2193.EntityDataKeyFallDamageMultiplier] = multiplier
 }

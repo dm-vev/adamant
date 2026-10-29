@@ -11,8 +11,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestTeleportAcknowledgementClearedForUnchangedMovement(t *testing.T) {
@@ -136,7 +134,7 @@ func TestFlightInputFlags(t *testing.T) {
 			s := newFlightTestSession()
 			h := PlayerAuthInputHandler{}
 
-			h.handleInputFlags(inputFlags(packet.InputFlagStartFlying), s, nil, c)
+			h.handleInputFlags(inputFlags(v2193.InputFlagStartFlying), s, nil, c)
 			if c.flying != test.startFlying {
 				t.Fatalf("start flying = %v, want %v", c.flying, test.startFlying)
 			}
@@ -145,7 +143,7 @@ func TestFlightInputFlags(t *testing.T) {
 			}
 
 			c.flying = true
-			h.handleInputFlags(inputFlags(packet.InputFlagStopFlying), s, nil, c)
+			h.handleInputFlags(inputFlags(v2193.InputFlagStopFlying), s, nil, c)
 			if c.flying != !test.stopFlying {
 				t.Fatalf("stop flying = %v, want %v", c.flying, !test.stopFlying)
 			}
@@ -175,10 +173,10 @@ func assertFlightAbilities(t *testing.T, pk proto.Packet, mode world.GameMode, f
 		t.Fatalf("packet type = %T, want *v2193.UpdateAbilitiesPacket", pk)
 	}
 	values := abilities.AbilityData.Layers[0].Values
-	if got := values&protocol.AbilityFlying != 0; got != flying {
+	if got := values&v2193.AbilityFlying != 0; got != flying {
 		t.Fatalf("flying ability = %v, want %v", got, flying)
 	}
-	if got := values&protocol.AbilityNoClip != 0; got != !mode.HasCollision() {
+	if got := values&v2193.AbilityNoClip != 0; got != !mode.HasCollision() {
 		t.Fatalf("no-clip ability = %v, want %v", got, !mode.HasCollision())
 	}
 }

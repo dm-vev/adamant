@@ -9,7 +9,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // TestMerchantTradeFollowsTheTradeScreen plays the requests the Bedrock
@@ -35,7 +34,7 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 
 		s := craftingTestSession()
 		s.containerOpened.Store(true)
-		s.openedContainerID.Store(uint32(protocol.ContainerTypeTrade))
+		s.openedContainerID.Store(uint32(v2193.ContainerTypeTrade))
 		s.openedEntity.Store(v.H())
 		handler := craftingTestHandler()
 		user := merchantTestUser{mode: world.GameModeSurvival, handle: entity.NewItem(world.EntitySpawnOpts{}, item.NewStack(item.Emerald{}, 1))}
@@ -44,8 +43,8 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 		_ = s.inv.SetItem(0, price)
 		place := &v2193.PlaceStackRequestAction{}
 		place.Count = byte(price.Count())
-		place.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory}, Slot: 0, StackNetworkID: item_id(price)}
-		place.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA}
+		place.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCombinedHotBarAndInventory}, Slot: 0, StackNetworkID: item_id(price)}
+		place.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA}
 		if err := handler.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{place}}, s, tx, user); err != nil {
 			t.Fatalf("placing the price in the trade input: %v", err)
 		}
@@ -53,11 +52,11 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 		input, _ := s.ui.Item(merchantInputSlotA)
 		consume := &v2193.ConsumeStackRequestAction{}
 		consume.Count = byte(price.Count())
-		consume.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA, StackNetworkID: item_id(input)}
+		consume.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA, StackNetworkID: item_id(input)}
 		take := &v2193.PlaceStackRequestAction{}
 		take.Count = byte(offer.Output.Count())
-		take.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerCreatedOutput}, Slot: craftingResult, StackNetworkID: -3}
-		take.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory}, Slot: 1}
+		take.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCreatedOutput}, Slot: craftingResult, StackNetworkID: -3}
+		take.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCombinedHotBarAndInventory}, Slot: 1}
 		if err := handler.handleRequest(v2193.ItemStackRequest{RequestID: -3, Actions: []v2193.StackRequestAction{
 			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 			consume,

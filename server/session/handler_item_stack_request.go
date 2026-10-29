@@ -15,7 +15,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // ItemStackRequestHandler handles the ItemStackRequest packet. It handles the actions done within the
@@ -161,7 +160,7 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 // handleTake handles a Take stack request action.
 func (h *ItemStackRequestHandler) handleTake(a *v2193.TakeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	switch a.Source.Container.ContainerID {
-	case protocol.ContainerTradeResultPreview, protocol.ContainerTradeTwoResultPreview:
+	case v2193.ContainerTradeResultPreview, v2193.ContainerTradeTwoResultPreview:
 		return h.handleMerchantTrade(a.Source, a.Destination, a.Count, s, tx, c)
 	default:
 		return h.handleTransfer(a.Source, a.Destination, a.Count, s, tx, c)
@@ -169,7 +168,7 @@ func (h *ItemStackRequestHandler) handleTake(a *v2193.TakeStackRequestAction, s 
 }
 
 func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
-	if !s.containerOpened.Load() || byte(s.openedContainerID.Load()) != protocol.ContainerTypeTrade {
+	if !s.containerOpened.Load() || byte(s.openedContainerID.Load()) != v2193.ContainerTypeTrade {
 		return fmt.Errorf("no merchant window is open")
 	}
 	handle := s.openedEntity.Load()
@@ -275,7 +274,7 @@ func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackReques
 			continue
 		}
 		source := v2193.StackRequestSlotInfo{
-			Container: v2193.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory},
+			Container: v2193.FullContainerName{ContainerID: v2193.ContainerCombinedHotBarAndInventory},
 			Slot:      uint8(slot),
 		}
 		if err := h.setItemInSlot(source, after, s, tx); err != nil {
@@ -559,7 +558,7 @@ func (h *ItemStackRequestHandler) handleDrop(a *v2193.DropStackRequestAction, s 
 // by Mojang to deal with the durability changes client-side.
 func (h *ItemStackRequestHandler) handleMineBlock(a *v2193.MineBlockStackRequestAction, s *Session, tx *world.Tx) error {
 	slot := v2193.StackRequestSlotInfo{
-		Container:      v2193.FullContainerName{ContainerID: protocol.ContainerInventory},
+		Container:      v2193.FullContainerName{ContainerID: v2193.ContainerInventory},
 		Slot:           byte(a.HotbarSlot),
 		StackNetworkID: a.StackNetworkID,
 	}
@@ -592,7 +591,7 @@ func (h *ItemStackRequestHandler) handleCreate(a *v2193.CreateStackRequestAction
 	h.pendingResults[slot] = item.Stack{}
 
 	if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: protocol.ContainerCreatedOutput},
+		Container: v2193.FullContainerName{ContainerID: v2193.ContainerCreatedOutput},
 		Slot:      craftingResult,
 	}, res, s, tx); err != nil {
 		return err
@@ -828,7 +827,7 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 		})
 	}
 	s.writePacket(&v2193.ItemStackResponsePacket{Responses: []v2193.ItemStackResponse{{
-		Status:        protocol.ItemStackResponseStatusOK,
+		Status:        v2193.ItemStackResponseStatusOK,
 		RequestID:     id,
 		ContainerInfo: info,
 	}}})
@@ -841,7 +840,7 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 func (h *ItemStackRequestHandler) reject(id int32, s *Session, tx *world.Tx) {
 	s.writePacket(&v2193.ItemStackResponsePacket{
 		Responses: []v2193.ItemStackResponse{{
-			Status:    protocol.ItemStackResponseStatusError,
+			Status:    v2193.ItemStackResponseStatusError,
 			RequestID: id,
 		}},
 	})

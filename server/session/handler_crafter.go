@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // CrafterSlotToggleHandler validates and applies native Crafter slot-state requests.
@@ -18,7 +17,7 @@ func (CrafterSlotToggleHandler) Handle(p proto.Packet, s *Session, tx *world.Tx,
 	pk := p.(*v2193.PlayerToggleCrafterSlotRequestPacket)
 	pos := cube.Pos{int(pk.PosX), int(pk.PosY), int(pk.PosZ)}
 	opened := s.openedPos.Load()
-	if !s.containerOpened.Load() || opened == nil || *opened != pos || s.openedContainerID.Load() != uint32(protocol.ContainerTypeCrafter) {
+	if !s.containerOpened.Load() || opened == nil || *opened != pos || s.openedContainerID.Load() != uint32(v2193.ContainerTypeCrafter) {
 		return fmt.Errorf("no matching Crafter container opened")
 	}
 	if pk.Slot >= 9 || !canReach(c, pos.Vec3Middle()) {

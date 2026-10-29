@@ -3,13 +3,13 @@ package chunk
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/worldupgrader/blockupgrader"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 type (
@@ -267,7 +267,7 @@ type networkEncoding struct{}
 func (networkEncoding) network() byte { return 1 }
 func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, pe paletteEncoding) {
 	if p.size != 0 {
-		_ = protocol.WriteVarint32(buf, int32(p.Len()))
+		_ = writeVarint32(buf, int32(p.Len()))
 	}
 	if _, ok := pe.(biomePaletteEncoding); ok && BiomeIDToRuntimeID != nil {
 		for _, val := range p.values {
@@ -275,25 +275,25 @@ func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, pe paletteEn
 			if !found {
 				rid = 0
 			}
-			_ = protocol.WriteVarint32(buf, int32(rid))
+			_ = writeVarint32(buf, int32(rid))
 		}
 		return
 	}
 	if br, ok := blockPaletteRegistry(pe); ok {
 		for _, val := range p.values {
 			hash, _ := br.RuntimeIDToHash(val)
-			_ = protocol.WriteVarint32(buf, int32(hash))
+			_ = writeVarint32(buf, int32(hash))
 		}
 		return
 	}
 	for _, val := range p.values {
-		_ = protocol.WriteVarint32(buf, int32(val))
+		_ = writeVarint32(buf, int32(val))
 	}
 }
 func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, pe paletteEncoding) (*Palette, error) {
 	var paletteCount int32 = 1
 	if blockSize != 0 {
-		if err := protocol.Varint32(buf, &paletteCount); err != nil {
+		if err := readVarint32(buf, &paletteCount); err != nil {
 			return nil, fmt.Errorf("error reading palette entry count: %w", err)
 		}
 		if paletteCount <= 0 {
@@ -304,7 +304,7 @@ func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, p
 	br, blocks := blockPaletteRegistry(pe)
 	values, temp := make([]uint32, paletteCount), int32(0)
 	for i := range paletteCount {
-		if err := protocol.Varint32(buf, &temp); err != nil {
+		if err := readVarint32(buf, &temp); err != nil {
 			return nil, fmt.Errorf("error decoding palette entry: %w", err)
 		}
 		val := uint32(temp)
@@ -337,4 +337,37 @@ func blockPaletteRegistry(pe paletteEncoding) (BlockRegistry, bool) {
 		return pe.Blocks, pe.Blocks != nil
 	}
 	return nil, false
+}
+
+// writeVarint32 writes v as the zigzag varint of the network.
+func writeVarint32(buf *bytes.Buffer, v int32) error {
+	u := uint32(v) << 1
+	if v < 0 {
+		u = ^u
+	}
+	for u >= 0x80 {
+		buf.WriteByte(byte(u) | 0x80)
+		u >>= 7
+	}
+	return buf.WriteByte(byte(u))
+}
+
+// readVarint32 reads a zigzag varint of the network into x.
+func readVarint32(buf *bytes.Buffer, x *int32) error {
+	var u uint32
+	for i := uint(0); i < 35; i += 7 {
+		b, err := buf.ReadByte()
+		if err != nil {
+			return err
+		}
+		u |= uint32(b&0x7f) << i
+		if b&0x80 == 0 {
+			*x = int32(u >> 1)
+			if u&1 != 0 {
+				*x = ^*x
+			}
+			return nil
+		}
+	}
+	return errors.New("varint overflows a 32-bit integer")
 }

@@ -17,10 +17,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
@@ -52,7 +51,7 @@ func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
 	}
 
 	conn.packets <- &v2193.TextPacket{
-		TextType:   packet.TextTypeChat,
+		TextType:   v2193.TextTypeChat,
 		SourceName: conn.identity.DisplayName,
 		Message:    "panic",
 		XUID:       conn.identity.XUID,

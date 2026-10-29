@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 const (
@@ -26,16 +25,16 @@ func (*PositionTrackingDBHandler) Handle(p proto.Packet, s *Session, tx *world.T
 	if !ok {
 		return fmt.Errorf("expected *v2193.PositionTrackingDBClientRequestPacket, got %T", p)
 	}
-	if pk.RequestAction != packet.PositionTrackingDBRequestActionQuery {
+	if pk.RequestAction != v2193.PositionTrackingDBRequestActionQuery {
 		return fmt.Errorf("unknown position tracking request action %d", pk.RequestAction)
 	}
 	pos, dim, found := cube.Pos{}, 0, false
 	if holdsTrackingCompass(c, pk.TrackingID) {
 		pos, dim, found = tx.World().TrackedPosition(pk.TrackingID)
 	}
-	action, status := byte(packet.PositionTrackingDBBroadcastActionUpdate), byte(positionTrackingStatusTracked)
+	action, status := byte(v2193.PositionTrackingDBBroadcastActionUpdate), byte(positionTrackingStatusTracked)
 	if !found {
-		action, status = packet.PositionTrackingDBBroadcastActionNotFound, positionTrackingStatusMissing
+		action, status = v2193.PositionTrackingDBBroadcastActionNotFound, positionTrackingStatusMissing
 	}
 	s.writePacket(&v2193.PositionTrackingDBServerBroadcastPacket{
 		BroadcastAction: action,

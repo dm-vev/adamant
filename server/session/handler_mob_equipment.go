@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // MobEquipmentHandler handles the MobEquipment packet.
@@ -20,10 +19,10 @@ func (*MobEquipmentHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c C
 		return errSelfRuntimeID
 	}
 	switch pk.WindowID {
-	case protocol.WindowIDOffHand:
+	case v2193.WindowIDOffHand:
 		// This window ID is expected, but we don't handle it.
 		return nil
-	case protocol.WindowIDInventory:
+	case v2193.WindowIDInventory:
 		return s.VerifyAndSetHeldSlot(int(pk.InventorySlot), stackToItem(s.br, pk.NewItem.Stack), c)
 	default:
 		return fmt.Errorf("only main inventory should be involved in slot change, got window ID %v", pk.WindowID)

@@ -10,7 +10,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 type shulkerMetadataViewer struct {
@@ -47,11 +46,11 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 		// Captured BDS 1.26.52.3 keys and wire types: Variant int32,
 		// Peek int32, face byte, Attached int16, attachment BlockPos.
 		for key, want := range map[uint32]any{
-			protocol.EntityDataKeyVariant:          int32(colour),
-			protocol.EntityDataKeyPeekID:           int32(peek),
-			protocol.EntityDataKeyAttachFace:       byte(face),
-			protocol.EntityDataKeyAttached:         int16(1),
-			protocol.EntityDataKeyAttachedPosition: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+			v2193.EntityDataKeyVariant:          int32(colour),
+			v2193.EntityDataKeyPeekID:           int32(peek),
+			v2193.EntityDataKeyAttachFace:       byte(face),
+			v2193.EntityDataKeyAttached:         int16(1),
+			v2193.EntityDataKeyAttachedPosition: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 		} {
 			if got := m[key]; got != want {
 				t.Errorf("shulker at %v metadata %d = %v (%T), want %v (%T)", pos, key, got, got, want, want)

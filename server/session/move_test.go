@@ -11,7 +11,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // movingEntity is an entity a test moves.
@@ -90,7 +89,7 @@ func TestAbsoluteMoveIsEncodedOnce(t *testing.T) {
 	pa.Encode(&w)
 	var got v2193.MoveActorAbsolutePacket
 	got.Decode(wire.NewReader(w.B))
-	if got.EntityRuntimeID != own.ent.RuntimeID() || got.Flags != packet.MoveFlagOnGround || got.Position[1] != 64 || got.Rotation[1] != 90 {
+	if got.EntityRuntimeID != own.ent.RuntimeID() || got.Flags != v2193.MoveFlagOnGround || got.Position[1] != 64 || got.Rotation[1] != 90 {
 		t.Fatalf("viewer shown %+v", got)
 	}
 	if self := (own.testPacket()).(*v2193.MoveActorAbsolutePacket); self.EntityRuntimeID != selfEntityRuntimeID {

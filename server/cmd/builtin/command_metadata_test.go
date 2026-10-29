@@ -10,6 +10,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -60,7 +61,7 @@ func TestBuiltinCommandRegistryKeepsNativeHelpLocal(t *testing.T) {
 		}
 	}
 	mode := commands["gamemode"].Overloads[0].Parameters[0]
-	if mode.Type&(protocol.CommandArgValid|protocol.CommandArgEnum) != protocol.CommandArgValid|protocol.CommandArgEnum {
+	if mode.Type&(v2193.CommandArgValid|v2193.CommandArgEnum) != v2193.CommandArgValid|v2193.CommandArgEnum {
 		t.Fatalf("gamemode argument is not a hard enum: %#x", mode.Type)
 	}
 	var choices []string

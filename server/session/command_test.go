@@ -132,7 +132,7 @@ func TestAvailableCommandsStableWireRegistry(t *testing.T) {
 		params := alpha.Overloads[0].Parameters
 		for _, param := range params[:3] {
 			index := param.Type & 0xfffff
-			if param.Type&(protocol.CommandArgValid|protocol.CommandArgEnum) != protocol.CommandArgValid|protocol.CommandArgEnum || int(index) >= len(decoded.Enums) {
+			if param.Type&(v2193.CommandArgValid|v2193.CommandArgEnum) != v2193.CommandArgValid|v2193.CommandArgEnum || int(index) >= len(decoded.Enums) {
 				t.Fatalf("invalid enum reference for %s: %#x", param.Name, param.Type)
 			}
 		}
@@ -140,11 +140,11 @@ func TestAvailableCommandsStableWireRegistry(t *testing.T) {
 		if len(choices.ValueIndices) != 260 || decoded.EnumValues[choices.ValueIndices[259]] != "choice259" {
 			t.Fatal("large enum lost completion values")
 		}
-		if params[3].Type&protocol.CommandArgSuffixed == 0 || decoded.Suffixes[params[3].Type&0xfffff] != "s" {
+		if params[3].Type&v2193.CommandArgSuffixed == 0 || decoded.Suffixes[params[3].Type&0xfffff] != "s" {
 			t.Fatal("integer suffix was not preserved")
 		}
 		soft := decoded.Commands[1].Overloads[0].Parameters[0]
-		if soft.Type&(protocol.CommandArgValid|protocol.CommandArgSoftEnum) != protocol.CommandArgValid|protocol.CommandArgSoftEnum || !slices.Equal(decoded.DynamicEnums[soft.Type&0xfffff].Values, []string{"one", "two"}) {
+		if soft.Type&(v2193.CommandArgValid|v2193.CommandArgSoftEnum) != v2193.CommandArgValid|v2193.CommandArgSoftEnum || !slices.Equal(decoded.DynamicEnums[soft.Type&0xfffff].Values, []string{"one", "two"}) {
 			t.Fatal("soft enum was not preserved")
 		}
 	}

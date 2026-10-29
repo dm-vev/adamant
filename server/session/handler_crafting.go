@@ -16,7 +16,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 const (
@@ -138,7 +137,7 @@ func (h *ItemStackRequestHandler) handleCraft(a *v2193.CraftRecipeStackRequestAc
 	}
 	for _, removal := range removals {
 		if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
-			Container: v2193.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+			Container: v2193.FullContainerName{ContainerID: v2193.ContainerCraftingInput},
 			Slot:      byte(removal.slot),
 		}, removal.stack, s, tx); err != nil {
 			return err
@@ -157,7 +156,7 @@ func (h *ItemStackRequestHandler) beginMultiCraft(craft recipe.Multi, timesCraft
 	if h.multiCraft != nil {
 		return fmt.Errorf("another multi recipe is already being crafted")
 	}
-	if s.openedContainerID.Load() == uint32(protocol.ContainerTypeCartography) {
+	if s.openedContainerID.Load() == uint32(v2193.ContainerTypeCartography) {
 		switch craft.UUID().String() {
 		case mapCloningCartographyMultiRecipe, mapExtendingCartographyMultiRecipe, mapLockingMultiRecipe:
 		default:
@@ -168,7 +167,7 @@ func (h *ItemStackRequestHandler) beginMultiCraft(craft recipe.Multi, timesCraft
 			input[slot], _ = s.ui.Item(cartographyInputSlot + slot)
 		}
 		h.multiCraft = &multiCraft{recipe: craft, input: input, offset: cartographyInputSlot,
-			containers: []byte{protocol.ContainerCartographyInput, protocol.ContainerCartographyAdditional},
+			containers: []byte{v2193.ContainerCartographyInput, v2193.ContainerCartographyAdditional},
 			times:      timesCrafted, consumed: make(map[byte]int)}
 		return nil
 	}
@@ -177,7 +176,7 @@ func (h *ItemStackRequestHandler) beginMultiCraft(craft recipe.Multi, timesCraft
 	containers := make([]byte, size)
 	for slot := uint32(0); slot < size; slot++ {
 		input[slot], _ = s.ui.Item(int(offset + slot))
-		containers[slot] = protocol.ContainerCraftingInput
+		containers[slot] = v2193.ContainerCraftingInput
 	}
 	h.multiCraft = &multiCraft{recipe: craft, input: input, offset: int(offset), containers: containers, times: timesCrafted, consumed: make(map[byte]int)}
 	return nil
@@ -730,8 +729,8 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *v2193.AutoCraftRecipeStackR
 		var lockedErr error
 
 		for id, inv := range map[byte]*inventory.Inventory{
-			protocol.ContainerCraftingInput:              s.ui,
-			protocol.ContainerCombinedHotBarAndInventory: s.inv,
+			v2193.ContainerCraftingInput:              s.ui,
+			v2193.ContainerCombinedHotBarAndInventory: s.inv,
 		} {
 			for slot, has := range inv.Slots() {
 				if has.Empty() {
@@ -1008,7 +1007,7 @@ func (h *ItemStackRequestHandler) tryDynamicCraft(s *Session, tx *world.Tx, time
 				// Consume one item from this slot per craft
 				st := it.Grow(-1 * timesCrafted)
 				h.setItemInSlot(v2193.StackRequestSlotInfo{
-					Container: v2193.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+					Container: v2193.FullContainerName{ContainerID: v2193.ContainerCraftingInput},
 					Slot:      byte(slot),
 				}, st, s, tx)
 			}

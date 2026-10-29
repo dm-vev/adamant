@@ -15,7 +15,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestMeleeHitStopsUpdatingRemovedTarget(t *testing.T) {
@@ -87,7 +86,7 @@ func TestMeleeHitStopsUpdatingRemovedTarget(t *testing.T) {
 						if pk.EntityRuntimeID == 0 {
 							t.Error("animation targets runtime ID zero")
 						}
-						if pk.ActionType == packet.AnimateActionCriticalHit {
+						if pk.ActionType == v2193.AnimateActionCriticalHit {
 							criticals++
 						}
 					case *v2193.SetActorDataPacket:
@@ -95,7 +94,7 @@ func TestMeleeHitStopsUpdatingRemovedTarget(t *testing.T) {
 							t.Error("metadata targets runtime ID zero")
 						}
 					case *v2193.ActorEventPacket:
-						if pk.EventType == packet.ActorEventDeath {
+						if pk.EventType == v2193.ActorEventDeath {
 							deaths++
 						}
 					}
