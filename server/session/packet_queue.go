@@ -1,6 +1,8 @@
 package session
 
 import (
+	"fmt"
+
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -29,8 +31,17 @@ func (p protoPacket) Marshal(io protocol.IO) {
 	io.Bytes(&w.B)
 }
 
-// writeQueued writes a packet taken from the queue to the connection.
-func (s *Session) writeQueued(pk queuedPacket) error {
+// writeQueued writes a packet taken from the queue to the connection. A
+// packet that does not encode, as a Text without a message, is a bug of
+// the server: it is dropped and logged rather than taking the server down
+// from this goroutine.
+func (s *Session) writeQueued(pk queuedPacket) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.conf.Log.Error("drop session packet that does not encode", "packet", fmt.Sprintf("%T", pk), "panic", r)
+			err = nil
+		}
+	}()
 	switch pk := pk.(type) {
 	case packet.Packet:
 		return s.conn.WritePacket(pk)

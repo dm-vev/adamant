@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bytes"
 	"io"
 	"log/slog"
 	"net"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -269,3 +271,40 @@ func (c *queueTestConn) Close() error {
 }
 
 var _ Conn = (*queueTestConn)(nil)
+
+// marshalConn encodes each packet written to it, as a real connection does.
+type marshalConn struct{ *queueTestConn }
+
+func (c marshalConn) WritePacket(pk packet.Packet) error {
+	var buf bytes.Buffer
+	pk.Marshal(protocol.NewWriter(&buf, 0))
+	return c.queueTestConn.WritePacket(pk)
+}
+
+// TestSessionDropsPacketThatDoesNotEncode queues a Text without a message,
+// whose encoder panics, then a valid one: the first is dropped, the second
+// written, and the session goes on.
+func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
+	c := newQueueTestConn()
+	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(marshalConn{c})
+	t.Cleanup(s.CloseConnection)
+	s.writePacket(&packet.Text{TextType: packet.TextTypeRaw})
+	want := &packet.Text{TextType: packet.TextTypeRaw, Message: "after"}
+	s.writePacket(want)
+	close(c.release)
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case pk := <-c.written:
+			if pk == want {
+				if s.closing.Load() {
+					t.Fatal("the session closed over a packet that did not encode")
+				}
+				return
+			}
+		case <-timer.C:
+			t.Fatal("the packet after the one that did not encode was not written")
+		}
+	}
+}
