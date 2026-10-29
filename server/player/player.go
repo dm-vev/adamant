@@ -78,6 +78,10 @@ type playerData struct {
 
 	sneaking, sprinting, swimming, gliding, crawling, flying,
 	invisible, immobile, onGround, usingItem bool
+	// moved marks a player whose viewers are yet to be shown where it moved,
+	// which they are with the next tick, and movedByServer one that the
+	// server moved, whose own client is shown the move too.
+	moved, movedByServer bool
 
 	blockingDelayTicks int64
 
@@ -3233,6 +3237,33 @@ func (p *Player) setPosition(pos mgl64.Vec3) {
 	p.tx.PlayerMoved()
 }
 
+// showMove shows the viewers of the player where it moved since the last tick, if that changed what they see:
+// one absolute move, encoded once for all of them. Its own session is shown it only if the server moved it.
+func (p *Player) showMove() {
+	if !p.moved {
+		return
+	}
+	byServer := p.movedByServer
+	p.moved, p.movedByServer = false, false
+	pos, rot := p.Position(), p.Rotation()
+	move, teleport := p.data.Moves.Move(pos, rot, rot.Yaw(), mgl64.Vec3{}, p.OnGround(), true, 0)
+	visible := move != nil || teleport
+	if !visible && !byServer {
+		return
+	}
+	shown := &world.EntityMove{Pos: pos, Rot: rot, OnGround: p.OnGround(), Absolute: true}
+	viewers, release := p.viewers()
+	for _, v := range viewers {
+		// Its own client is shown only where the server put it, the other
+		// viewers only a move they can see.
+		if self := v == world.Viewer(p.session()); self && !byServer || !self && !visible {
+			continue
+		}
+		v.ViewEntityMove(p, shown)
+	}
+	releaseBorrowedViewers(p.tx, viewers, release)
+}
+
 // Move moves the player from one position to another in the world, by adding the delta passed to the current
 // position of the player.
 // Move also rotates the player, adding deltaYaw and deltaPitch to the respective values.
@@ -3263,13 +3294,13 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		}
 		return
 	}
-	viewers, release := p.viewers()
-	// Every viewer is shown the same move, encoded once for all of them.
-	move := &world.EntityMove{Pos: res, Rot: resRot, OnGround: p.OnGround(), Absolute: true}
-	for _, v := range viewers {
-		v.ViewEntityMove(p, move)
+	// The viewers are shown the move with the next tick, as Java's
+	// ServerEntity shows that of a player, so that the moves of a crowd go
+	// out in one batch a tick rather than in one for every move.
+	p.moved = true
+	if !p.session().ClientMoving() {
+		p.movedByServer = true
 	}
-	releaseBorrowedViewers(p.tx, viewers, release)
 
 	p.setPosition(res)
 	p.data.Rot = resRot
@@ -3680,6 +3711,7 @@ func (p *Player) Latency() time.Duration {
 // Tick ticks the entity, performing actions such as checking if the player is still breaking a block.
 func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.bindTx(tx)
+	p.showMove()
 	p.wardenSpawnTracker.Tick()
 	p.itemUseTick = current
 	p.tickCount++

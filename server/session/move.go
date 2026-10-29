@@ -87,6 +87,12 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 	}
 }
 
+// ClientMoving reports whether the session is applying a move its client
+// made, which the client is not shown again.
+func (s *Session) ClientMoving() bool {
+	return s != Nop && s.moving.Load()
+}
+
 // takeFreshMove reports whether the entity of a handle was shown since the
 // last move of it the session was shown, and notes it moved.
 func (s *Session) takeFreshMove(h *world.EntityHandle) bool {

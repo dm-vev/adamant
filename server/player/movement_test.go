@@ -248,8 +248,9 @@ func (v *moveViewer) ViewEntityMove(_ world.Entity, m *world.EntityMove) {
 	v.moves = append(v.moves, m)
 }
 
-// TestPlayerMoveIsSharedByViewers moves a player: every viewer is shown the
-// same move, its position, for the move to be encoded once for all of them.
+// TestPlayerMoveIsSharedByViewers moves a player: its viewers are shown the
+// move with the next tick, the same position for all of them, to be encoded
+// once, and nothing for a tick it does not move or a move too small to show.
 func TestPlayerMoveIsSharedByViewers(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
@@ -268,14 +269,54 @@ func TestPlayerMoveIsSharedByViewers(t *testing.T) {
 		}
 	})
 	w.AdvanceTick()
+	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
 		p := tx.AddEntity(world.EntitySpawnOpts{Position: pos}.New(Type, Config{Position: pos, GameMode: world.GameModeSurvival, Health: 20, MaxHealth: 20})).(*Player)
-		p.Move(mgl64.Vec3{0.2, 0, 0}, 0, 0)
+		h = p.H()
+		p.Move(mgl64.Vec3{0, 0, 0.1}, 0, 0)
 	})
-	if len(a.moves) != 1 || len(b.moves) != 1 {
-		t.Fatalf("viewers shown %d and %d moves, want one each", len(a.moves), len(b.moves))
+	// The player lands and its viewers are shown it standing.
+	for range 5 {
+		w.AdvanceTick()
 	}
-	if m := a.moves[0]; m != b.moves[0] || !m.Absolute || m.Pos != pos.Add(mgl64.Vec3{0.2, 0, 0}) {
+	a.moves, b.moves = nil, nil
+	var moved mgl64.Vec3
+	move := func(delta mgl64.Vec3) {
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := h.Entity(tx)
+			e.(*Player).Move(delta, 0, 0)
+			moved = e.Position()
+		})
+	}
+	move(mgl64.Vec3{0.1, 0, 0})
+	move(mgl64.Vec3{0.1, 0, 0})
+	if len(a.moves) != 0 {
+		t.Fatal("a move shown before the tick")
+	}
+	w.AdvanceTick()
+	if len(a.moves) != 1 || len(b.moves) != 1 {
+		t.Fatalf("viewers shown %d and %d moves in a tick, want one each", len(a.moves), len(b.moves))
+	}
+	if m := a.moves[0]; m != b.moves[0] || !m.Absolute || m.Pos != moved {
 		t.Fatalf("moves %+v and %+v, want the same position for both", m, b.moves[0])
+	}
+	// Standing still, it is shown no move too small to see.
+	still := func() {
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := h.Entity(tx)
+			e.(*Player).SetVelocity(mgl64.Vec3{})
+		})
+	}
+	still()
+	for range 5 {
+		w.AdvanceTick()
+	}
+	a.moves = nil
+	move(mgl64.Vec3{1e-6, 0, 0})
+	still()
+	w.AdvanceTick()
+	w.AdvanceTick()
+	if len(a.moves) != 0 {
+		t.Fatalf("%d moves shown, want none for a move one could not see", len(a.moves))
 	}
 }
