@@ -73,37 +73,40 @@ func TestBatchesFromGophertunnel(t *testing.T) {
 	}
 }
 
-// TestBatchesToGophertunnel has gophertunnel's decoder read what we write.
+// TestBatchesToGophertunnel has gophertunnel's decoder read what we write,
+// with the fixed Huffman codes and with compress/flate.
 func TestBatchesToGophertunnel(t *testing.T) {
-	m := &messages{}
-	conn := bedrock.NewConn(m, bedrock.Config{})
-	dec := packet.NewDecoder(m)
-	_ = conn.WritePacket([]byte{0x8f, 0x01, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0})
-	_ = conn.Flush()
-	got, err := dec.Decode()
-	if err != nil || len(got) != 1 || got[0][0] != 0x8f {
-		t.Fatalf("decoded %v, %v", got, err)
-	}
-	conn.EnableCompression(bedrock.Flate{Level: 6})
-	dec.EnableCompression(packet.FlateCompression, 1<<24)
-	want := gophertunnelPackets()
-	for _, p := range want {
-		_ = conn.WritePacket(p)
-	}
-	_ = conn.Flush()
-	_ = conn.WritePacket(want[0])
-	_ = conn.Flush()
-	var all [][]byte
-	for len(all) < 4 {
+	for _, comp := range []bedrock.Flate{{FixedBelow: 1 << 20}, {Level: 6, FixedBelow: -1}} {
+		m := &messages{}
+		conn := bedrock.NewConn(m, bedrock.Config{})
+		dec := packet.NewDecoder(m)
+		_ = conn.WritePacket([]byte{0x8f, 0x01, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0})
+		_ = conn.Flush()
 		got, err := dec.Decode()
-		if err != nil {
-			t.Fatal(err)
+		if err != nil || len(got) != 1 || got[0][0] != 0x8f {
+			t.Fatalf("decoded %v, %v", got, err)
 		}
-		all = append(all, got...)
-	}
-	for i, w := range append(want, want[0]) {
-		if !bytes.Equal(all[i], w) {
-			t.Fatalf("packet %d: %d bytes, want %d", i, len(all[i]), len(w))
+		conn.EnableCompression(comp)
+		dec.EnableCompression(packet.FlateCompression, 1<<24)
+		want := gophertunnelPackets()
+		for _, p := range want {
+			_ = conn.WritePacket(p)
+		}
+		_ = conn.Flush()
+		_ = conn.WritePacket(want[0])
+		_ = conn.Flush()
+		var all [][]byte
+		for len(all) < 4 {
+			got, err := dec.Decode()
+			if err != nil {
+				t.Fatalf("%+v: %v", comp, err)
+			}
+			all = append(all, got...)
+		}
+		for i, w := range append(want, want[0]) {
+			if !bytes.Equal(all[i], w) {
+				t.Fatalf("%+v: packet %d: %d bytes, want %d", comp, i, len(all[i]), len(w))
+			}
 		}
 	}
 }

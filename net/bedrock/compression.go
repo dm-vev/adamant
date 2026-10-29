@@ -40,12 +40,22 @@ func (None) Decompress(dst, src []byte, limit int) ([]byte, error) {
 	return append(dst, src...), nil
 }
 
-// Flate compresses batches with raw DEFLATE (RFC 1951) of package
-// compress/flate at Level; the zero value uses level 1, which keeps most of
-// the gain of level 6 at a fraction of its cost.
+// Flate compresses batches with raw DEFLATE (RFC 1951). A batch shorter
+// than FixedBelow goes in one block of the fixed Huffman codes, which takes
+// a fraction of the time compress/flate spends building code tables for
+// the small batches of every tick, at about a tenth more bytes; a longer
+// one goes through compress/flate at Level. The zero value uses level 1,
+// which keeps most of the gain of level 6 at a fraction of its cost, and
+// the fixed codes below 16 KiB.
 type Flate struct {
 	Level int
+	// FixedBelow is the length below which batches take the fixed codes:
+	// zero means 16 KiB, a negative value none.
+	FixedBelow int
 }
+
+// defaultFixedBelow is the FixedBelow of the zero Flate.
+const defaultFixedBelow = 16 << 10
 
 // Algorithm returns AlgorithmFlate.
 func (Flate) Algorithm() uint16 { return AlgorithmFlate }
@@ -65,6 +75,13 @@ func (f Flate) level() int {
 
 // Compress appends src compressed to dst.
 func (f Flate) Compress(dst, src []byte) ([]byte, error) {
+	fixedBelow := f.FixedBelow
+	if fixedBelow == 0 {
+		fixedBelow = defaultFixedBelow
+	}
+	if len(src) < fixedBelow {
+		return fixedDeflate(dst, src), nil
+	}
 	level := f.level()
 	buf := bytes.NewBuffer(dst)
 	w, _ := flateWriters[level].Get().(*flate.Writer)
