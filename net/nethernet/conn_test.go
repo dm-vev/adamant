@@ -430,6 +430,24 @@ func TestConnReadDeadline(t *testing.T) {
 	if _, err := c.ReadMessage(); !errors.Is(err, os.ErrDeadlineExceeded) {
 		t.Fatalf("read past the deadline: %v", err)
 	}
+	// A deadline set while a read waits ends the read: so a context ends a
+	// login.
+	_ = c.SetReadDeadline(time.Time{})
+	done := make(chan error, 1)
+	go func() {
+		_, err := c.ReadMessage()
+		done <- err
+	}()
+	time.Sleep(10 * time.Millisecond)
+	_ = c.SetReadDeadline(time.Now())
+	select {
+	case err := <-done:
+		if !errors.Is(err, os.ErrDeadlineExceeded) {
+			t.Fatalf("waiting read ended with %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a deadline set while the read waited did not end it")
+	}
 	_ = c.SetReadDeadline(time.Time{})
 	_ = c.Close()
 	if _, err := c.ReadMessage(); !errors.Is(err, net.ErrClosed) {

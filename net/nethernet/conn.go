@@ -555,7 +555,15 @@ func (c *Conn) SetReceiver(recv func(msg []byte)) {
 // ReadMessage returns the next message received. Messages received before
 // the connection closed are returned before the error.
 func (c *Conn) ReadMessage() ([]byte, error) {
-	var expired <-chan time.Time
+	var (
+		timer *time.Timer
+		armed time.Time
+	)
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	}()
 	for {
 		c.mu.Lock()
 		msg, ok := c.dequeue()
@@ -566,16 +574,23 @@ func (c *Conn) ReadMessage() ([]byte, error) {
 			return msg, nil
 		case err != nil:
 			return nil, err
-		case expired == nil && !deadline.IsZero():
-			t := time.NewTimer(time.Until(deadline))
-			defer t.Stop()
-			expired = t.C
+		case !deadline.IsZero() && !time.Now().Before(deadline):
+			return nil, os.ErrDeadlineExceeded
 		}
+		var expired <-chan time.Time
+		if !deadline.IsZero() {
+			if timer == nil {
+				timer = time.NewTimer(time.Until(deadline))
+			} else if !deadline.Equal(armed) {
+				timer.Reset(time.Until(deadline))
+			}
+			armed, expired = deadline, timer.C
+		}
+		// A new deadline wakes the read through readable too.
 		select {
 		case <-c.readable:
 		case <-c.closed:
 		case <-expired:
-			return nil, os.ErrDeadlineExceeded
 		}
 	}
 }
@@ -709,11 +724,16 @@ func (c *Conn) LocalAddr() net.Addr { return c.localAddr }
 // SetDeadline sets the read deadline: writes never block.
 func (c *Conn) SetDeadline(t time.Time) error { return c.SetReadDeadline(t) }
 
-// SetReadDeadline sets the deadline of ReadMessage calls started after it.
+// SetReadDeadline sets the deadline of ReadMessage calls, a call blocked
+// in it included: a deadline past ends it.
 func (c *Conn) SetReadDeadline(t time.Time) error {
 	c.mu.Lock()
 	c.readDeadline = t
 	c.mu.Unlock()
+	select {
+	case c.readable <- struct{}{}:
+	default:
+	}
 	return nil
 }
 
