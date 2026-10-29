@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -144,4 +145,39 @@ func FuzzConnRead(f *testing.F) {
 			}
 		}
 	})
+}
+
+// TestLengthPastTheData reads a frame whose length asks for the largest
+// packet, of which a few bytes come: it costs the memory of those bytes,
+// not of the length, as many such connections would run the server out of
+// memory otherwise.
+func TestLengthPastTheData(t *testing.T) {
+	for _, threshold := range []int{-1, 0} {
+		frame := appendVarInt(nil, MaxPacket)
+		if threshold >= 0 {
+			// A compressed frame claiming the largest packet in 3 bytes
+			// of zlib.
+			body := append(appendVarInt(nil, MaxPacket), 0x78, 0x9c, 0x03)
+			frame = append(appendVarInt(nil, int32(len(body))), body...)
+		} else {
+			frame = append(frame, 1, 2, 3)
+		}
+		var before, after runtime.MemStats
+		runtime.GC()
+		runtime.ReadMemStats(&before)
+		a, p := net.Pipe()
+		c := NewConn(a)
+		c.SetCompression(threshold)
+		go func() {
+			_, _ = p.Write(frame)
+			_ = p.Close()
+		}()
+		if _, _, err := c.ReadPacket(); err == nil {
+			t.Fatal("a frame past its data was read")
+		}
+		runtime.ReadMemStats(&after)
+		if n := after.TotalAlloc - before.TotalAlloc; n > 512<<10 {
+			t.Fatalf("threshold %d: %d bytes allocated for a frame of %d", threshold, n, len(frame))
+		}
+	}
 }

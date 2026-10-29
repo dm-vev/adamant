@@ -88,8 +88,8 @@ func (c *Conn) ReadPacket() (int32, []byte, error) {
 	if size <= 0 || size > MaxPacket {
 		return 0, nil, errFrame
 	}
-	frame := make([]byte, size)
-	if _, err := io.ReadFull(c.r, frame); err != nil {
+	frame, err := readAll(c.r, int(size))
+	if err != nil {
 		return 0, nil, err
 	}
 	c.writeMu.Lock()
@@ -113,8 +113,7 @@ func (c *Conn) ReadPacket() (int32, []byte, error) {
 			if err != nil {
 				return 0, nil, errFrame
 			}
-			frame = make([]byte, dataLength)
-			if _, err := io.ReadFull(z, frame); err != nil {
+			if frame, err = readAll(z, int(dataLength)); err != nil {
 				return 0, nil, errFrame
 			}
 			if n, _ := z.Read(make([]byte, 1)); n != 0 {
@@ -128,6 +127,27 @@ func (c *Conn) ReadPacket() (int32, []byte, error) {
 		return 0, nil, errFrame
 	}
 	return id, frame[len(frame)-r.Len():], nil
+}
+
+// readAll reads n bytes of r. It grows what it read as the bytes come
+// rather than allocate n at once, so that a length no data follows costs
+// the memory of the data alone.
+func readAll(r io.Reader, n int) ([]byte, error) {
+	const step = 16 << 10
+	if n <= step {
+		b := make([]byte, n)
+		_, err := io.ReadFull(r, b)
+		return b, err
+	}
+	var buf bytes.Buffer
+	buf.Grow(step)
+	if _, err := io.CopyN(&buf, r, int64(n)); err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // WritePacket writes a packet of an ID and its fields.

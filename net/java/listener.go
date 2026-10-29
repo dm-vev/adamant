@@ -52,9 +52,15 @@ type Listener struct {
 	ln     net.Listener
 	status func() Status
 	logins chan *Login
-	done   chan struct{}
-	once   sync.Once
+	// handshakes holds a slot for each connection in its handshake.
+	handshakes chan struct{}
+	done       chan struct{}
+	once       sync.Once
 }
+
+// maxHandshakes bounds the connections in their handshake at once, so that
+// connections that send little hold no more than that.
+const maxHandshakes = 1024
 
 // Listen listens on a TCP address; status gives the status asked for.
 func Listen(addr string, status func() Status) (*Listener, error) {
@@ -62,7 +68,7 @@ func Listen(addr string, status func() Status) (*Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := &Listener{ln: ln, status: status, logins: make(chan *Login, 16), done: make(chan struct{})}
+	l := &Listener{ln: ln, status: status, logins: make(chan *Login, 16), handshakes: make(chan struct{}, maxHandshakes), done: make(chan struct{})}
 	go l.serve()
 	return l, nil
 }
@@ -96,7 +102,15 @@ func (l *Listener) serve() {
 			_ = l.Close()
 			return
 		}
-		go l.handle(c)
+		select {
+		case l.handshakes <- struct{}{}:
+			go func() {
+				defer func() { <-l.handshakes }()
+				l.handle(c)
+			}()
+		default:
+			_ = c.Close()
+		}
 	}
 }
 
