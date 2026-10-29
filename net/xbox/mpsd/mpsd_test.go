@@ -24,6 +24,9 @@ type directory struct {
 	sessions map[string]map[string]any
 	handles  []map[string]any
 	puts     []http.Header
+	// members are the XUIDs of the members a GET of a session returns
+	// besides the host.
+	members []string
 }
 
 func (d *directory) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -64,13 +67,19 @@ func (d *directory) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	body, _ := io.ReadAll(r.Body)
 	var v map[string]any
-	if json.Unmarshal(body, &v) != nil {
+	if r.Method != http.MethodGet && json.Unmarshal(body, &v) != nil {
 		http.Error(w, "json", http.StatusBadRequest)
 		return
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	switch {
+	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/serviceconfigs/"):
+		members := map[string]any{"0": map[string]any{"constants": map[string]any{"system": map[string]any{"xuid": "2535400000000001"}}}}
+		for i, x := range d.members {
+			members[fmt.Sprint(i+1)] = map[string]any{"constants": map[string]any{"system": map[string]any{"xuid": x}}}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"members": members})
 	case r.Method == http.MethodPost && r.URL.Path == "/handles":
 		d.handles = append(d.handles, v)
 		w.WriteHeader(http.StatusCreated)
@@ -178,5 +187,108 @@ func TestSubscribed(t *testing.T) {
 		if _, err := subscribed([]byte(msg)); err == nil {
 			t.Fatalf("%s: no error", msg)
 		}
+	}
+}
+
+// TestNoncesAndRotation hands each member that joins a nonce once the
+// real-time activity tells of a change, takes the next friend request
+// notification to the callback, and replaces the session when it nears
+// the members it takes, closing the old one after the grace.
+func TestNoncesAndRotation(t *testing.T) {
+	rotateGrace = 50 * time.Millisecond
+	d := &directory{members: []string{"2535400000000002", "2535400000000003"}}
+	srv := httptest.NewServer(d)
+	defer srv.Close()
+	requests := make(chan struct{}, 1)
+	cfg := Config{
+		Token:             func(context.Context) (string, string, error) { return "XBL3.0 x=1;token", "2535400000000001", nil },
+		NetherNetID:       1234567,
+		PlayerMessagingID: "pmid-1",
+		Endpoints:         Endpoints{SessionDirectory: srv.URL, RTA: "ws" + strings.TrimPrefix(srv.URL, "http") + "/connect"},
+		FriendRequests:    func() { requests <- struct{}{} },
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	h, err := Publish(ctx, cfg, Status{HostName: "Adamant"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close(ctx)
+	push := func(event string) {
+		d.mu.Lock()
+		ws := d.rta
+		d.mu.Unlock()
+		if err := ws.WriteMessage(true, []byte(event)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	nonces := func(name string) map[string]any {
+		d.mu.Lock()
+		defer d.mu.Unlock()
+		for path, s := range d.sessions {
+			if strings.HasSuffix(path, name) {
+				n, _ := s["properties"].(map[string]any)["custom"].(map[string]any)["nonces"].(map[string]any)
+				return n
+			}
+		}
+		return nil
+	}
+	push(`[3,7,{"ncid":"1","shoulderTaps":[]}]`)
+	for len(nonces(h.Name())) != 2 {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("nonces %v", nonces(h.Name()))
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	for x, n := range nonces(h.Name()) {
+		if s, ok := n.(string); !ok || len(s) != 16 || x == "2535400000000001" {
+			t.Fatalf("nonce %v of %s", n, x)
+		}
+	}
+	push(`[3,8,{"NotificationType":"IncomingFriendRequestCountChanged"}]`)
+	select {
+	case <-requests:
+	case <-ctx.Done():
+		t.Fatal("friend request notification not handed over")
+	}
+
+	first := h.Name()
+	d.mu.Lock()
+	for i := len(d.members); i < rotateMembers; i++ {
+		d.members = append(d.members, fmt.Sprintf("25354000000001%02d", i))
+	}
+	d.mu.Unlock()
+	push(`[3,7,{"ncid":"2"}]`)
+	for h.Name() == first {
+		select {
+		case <-ctx.Done():
+			t.Fatal("the session was not rotated")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	closed := func() bool {
+		d.mu.Lock()
+		defer d.mu.Unlock()
+		for path, s := range d.sessions {
+			if strings.HasSuffix(path, first) {
+				c, _ := s["properties"].(map[string]any)["system"].(map[string]any)["closed"].(bool)
+				return c
+			}
+		}
+		return false
+	}
+	for !closed() {
+		select {
+		case <-ctx.Done():
+			t.Fatal("the old session was not closed")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	d.mu.Lock()
+	handles := len(d.handles)
+	d.mu.Unlock()
+	if handles != 2 {
+		t.Fatalf("%d activity handles, want one a session", handles)
 	}
 }

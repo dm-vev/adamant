@@ -79,6 +79,10 @@ type Config struct {
 	// Dial opens the real-time activity WebSocket. Nil means
 	// websocket.Dial.
 	Dial func(ctx context.Context, url string, header http.Header) (*websocket.Conn, error)
+	// FriendRequests, if set, is called when the count of the friend
+	// requests the account received changed, as the real-time activity
+	// tells.
+	FriendRequests func()
 }
 
 // Host is a published game.
@@ -91,7 +95,21 @@ type Host struct {
 	connection string
 	status     Status
 	closed     bool
+	// nonces holds the nonce of each member joining the session, which the
+	// game of the member waits for in the properties of the session.
+	nonces map[string]string
+	// changes is signalled when the session changed; one goroutine at a
+	// time handles the changes.
+	changes chan struct{}
 }
+
+// rotateMembers is the count of members past which the session is replaced
+// by a new one: the template takes 30, and the members of a session stay
+// in it for as long as it lives. rotateGrace is how long the old session
+// stays open for members joining it meanwhile.
+const rotateMembers = 28
+
+var rotateGrace = 30 * time.Second
 
 // Publish creates the session of a game and its activity handle.
 func Publish(ctx context.Context, cfg Config, status Status) (*Host, error) {
@@ -104,7 +122,7 @@ func Publish(ctx context.Context, cfg Config, status Status) (*Host, error) {
 	if cfg.Endpoints.RTA == "" {
 		cfg.Endpoints.RTA = DefaultEndpoints.RTA
 	}
-	h := &Host{cfg: cfg, name: strings.ToUpper(newUUID()), status: status}
+	h := &Host{cfg: cfg, name: strings.ToUpper(newUUID()), status: status, nonces: make(map[string]string), changes: make(chan struct{}, 1)}
 	if err := h.connect(ctx); err != nil {
 		return nil, err
 	}
@@ -116,11 +134,16 @@ func Publish(ctx context.Context, cfg Config, status Status) (*Host, error) {
 		h.closeRTA()
 		return nil, err
 	}
+	go h.handleChanges()
 	return h, nil
 }
 
 // Name returns the name of the session.
-func (h *Host) Name() string { return h.name }
+func (h *Host) Name() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.name
+}
 
 // Update tells friends a new status of the game, and brings the member of
 // the host back to life over a new real-time activity connection if the
@@ -142,6 +165,9 @@ func (h *Host) Update(ctx context.Context, status Status) error {
 // real-time activity connection.
 func (h *Host) Close(ctx context.Context) error {
 	h.mu.Lock()
+	if !h.closed {
+		close(h.changes)
+	}
 	h.closed = true
 	h.mu.Unlock()
 	err := h.request(ctx, http.MethodPut, h.sessionURL(), map[string]any{"members": map[string]any{"me": nil}}, nil, nil)
@@ -181,6 +207,11 @@ func (h *Host) connect(ctx context.Context) error {
 		return fmt.Errorf("mpsd: real-time activity: %w", err)
 	}
 	ws.SetReadLimit(64 << 10)
+	_, xuid, err := h.cfg.Token(ctx)
+	if err != nil {
+		_ = ws.Close()
+		return err
+	}
 	sub, _ := json.Marshal([]any{1, 1, connectionsURI})
 	if err := ws.WriteMessage(true, sub); err != nil {
 		_ = ws.Close()
@@ -203,6 +234,14 @@ func (h *Host) connect(ctx context.Context) error {
 		}
 	}
 	_ = ws.SetReadDeadline(time.Time{})
+	if h.cfg.FriendRequests != nil {
+		// The friends of the account, whose requests it may take.
+		friends, _ := json.Marshal([]any{1, 2, "https://social.xboxlive.com/users/xuid(" + xuid + ")/friends"})
+		if err := ws.WriteMessage(true, friends); err != nil {
+			_ = ws.Close()
+			return err
+		}
+	}
 	h.mu.Lock()
 	if h.rta != nil {
 		_ = h.rta.Close()
@@ -240,7 +279,8 @@ func subscribed(data []byte) (string, error) {
 // which the next Update connects again.
 func (h *Host) watch(ws *websocket.Conn) {
 	for {
-		if _, _, err := ws.ReadMessage(); err != nil {
+		_, data, err := ws.ReadMessage()
+		if err != nil {
 			h.mu.Lock()
 			if h.rta == ws {
 				h.rta = nil
@@ -248,11 +288,142 @@ func (h *Host) watch(ws *websocket.Conn) {
 			h.mu.Unlock()
 			return
 		}
+		h.event(data)
 	}
 }
 
+// event handles an event of the real-time activity: [3, subscription,
+// data]. A change of the session comes with an ncid, a change of the
+// friend requests with its notification type.
+func (h *Host) event(data []byte) {
+	var msg []json.RawMessage
+	var typ int
+	if json.Unmarshal(data, &msg) != nil || len(msg) < 3 || json.Unmarshal(msg[0], &typ) != nil || typ != 3 {
+		return
+	}
+	var ev struct {
+		NCID             string `json:"ncid"`
+		NotificationType string `json:"NotificationType"`
+	}
+	if json.Unmarshal(msg[2], &ev) != nil {
+		return
+	}
+	if ev.NotificationType == "IncomingFriendRequestCountChanged" && h.cfg.FriendRequests != nil {
+		go h.cfg.FriendRequests()
+	}
+	if ev.NCID != "" {
+		h.mu.Lock()
+		if !h.closed {
+			select {
+			case h.changes <- struct{}{}:
+			default:
+			}
+		}
+		h.mu.Unlock()
+	}
+}
+
+// handleChanges hands each member that joined the session a nonce, which
+// its game waits for before it joins, and replaces the session by a new one
+// once it nears the count of members it takes.
+func (h *Host) handleChanges() {
+	for range h.changes {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		_ = h.updateNonces(ctx)
+		cancel()
+	}
+}
+
+// updateNonces reads the members of the session and writes the session
+// again if one has no nonce yet or one left.
+func (h *Host) updateNonces(ctx context.Context) error {
+	_, xuid, err := h.cfg.Token(ctx)
+	if err != nil {
+		return err
+	}
+	h.mu.Lock()
+	name := h.name
+	h.mu.Unlock()
+	var session struct {
+		Members map[string]struct {
+			Constants struct {
+				System struct {
+					XUID string `json:"xuid"`
+				} `json:"system"`
+			} `json:"constants"`
+		} `json:"members"`
+	}
+	if err := h.request(ctx, http.MethodGet, h.urlOf(name), nil, nil, &session); err != nil {
+		return err
+	}
+	members := make(map[string]bool, len(session.Members))
+	for _, m := range session.Members {
+		if x := m.Constants.System.XUID; x != "" && x != xuid && len(x) <= 20 {
+			members[x] = true
+		}
+	}
+	h.mu.Lock()
+	changed := false
+	for x := range h.nonces {
+		if !members[x] {
+			delete(h.nonces, x)
+			changed = true
+		}
+	}
+	for x := range members {
+		if _, ok := h.nonces[x]; !ok {
+			var b [8]byte
+			_, _ = rand.Read(b[:])
+			h.nonces[x] = hex.EncodeToString(b[:])
+			changed = true
+		}
+	}
+	h.mu.Unlock()
+	if changed {
+		if err := h.write(ctx, false); err != nil {
+			return err
+		}
+	}
+	if len(session.Members) >= rotateMembers {
+		return h.rotate(ctx)
+	}
+	return nil
+}
+
+// rotate replaces the session by a new one, for the session has as many
+// members as it takes, and closes the old one once members joining it had
+// the time to.
+func (h *Host) rotate(ctx context.Context) error {
+	h.mu.Lock()
+	old := h.name
+	h.name = strings.ToUpper(newUUID())
+	h.nonces = make(map[string]string)
+	h.mu.Unlock()
+	if err := h.write(ctx, true); err != nil {
+		return err
+	}
+	if err := h.activity(ctx); err != nil {
+		return err
+	}
+	time.AfterFunc(rotateGrace, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = h.request(ctx, http.MethodPut, h.urlOf(old), map[string]any{
+			"properties": map[string]any{"system": map[string]any{"closed": true}},
+		}, nil, nil)
+	})
+	return nil
+}
+
 func (h *Host) sessionURL() string {
-	return h.cfg.Endpoints.SessionDirectory + "/serviceconfigs/" + ServiceConfigID + "/sessionTemplates/" + TemplateName + "/sessions/" + h.name
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.urlOf(h.name)
+}
+
+// urlOf returns the URL of the session of a name.
+func (h *Host) urlOf(name string) string {
+	return h.cfg.Endpoints.SessionDirectory + "/serviceconfigs/" + ServiceConfigID + "/sessionTemplates/" + TemplateName + "/sessions/" + name
 }
 
 // write puts the session: its properties and the member of the host.
@@ -262,7 +433,11 @@ func (h *Host) write(ctx context.Context, create bool) error {
 		return err
 	}
 	h.mu.Lock()
-	status, connection := h.status, h.connection
+	status, connection, name := h.status, h.connection, h.name
+	nonces := make(map[string]string, len(h.nonces))
+	for x, n := range h.nonces {
+		nonces[x] = n
+	}
 	h.mu.Unlock()
 	mode := status.GameMode
 	if mode == "" {
@@ -298,6 +473,7 @@ func (h *Host) write(ctx context.Context, create bool) error {
 				"version":        status.Version,
 				"isEditorWorld":  false,
 				"isHardcore":     false,
+				"nonces":         nonces,
 			},
 		},
 		"members": map[string]any{
@@ -315,21 +491,24 @@ func (h *Host) write(ctx context.Context, create bool) error {
 	if create {
 		header.Set("If-None-Match", "*")
 	}
-	return h.request(ctx, http.MethodPut, h.sessionURL(), body, header, nil)
+	return h.request(ctx, http.MethodPut, h.urlOf(name), body, header, nil)
 }
 
 // activity creates the activity handle of the session, which shows it to
 // friends.
 func (h *Host) activity(ctx context.Context) error {
 	return h.request(ctx, http.MethodPost, h.cfg.Endpoints.SessionDirectory+"/handles", map[string]any{
-		"version": 1,
-		"type":    "activity",
-		"sessionRef": map[string]any{
-			"scid":         ServiceConfigID,
-			"templateName": TemplateName,
-			"name":         h.name,
-		},
+		"version":    1,
+		"type":       "activity",
+		"sessionRef": h.Ref(),
 	}, nil, nil)
+}
+
+// Ref returns the reference of the session, as handles name it.
+func (h *Host) Ref() map[string]any {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return map[string]any{"scid": ServiceConfigID, "templateName": TemplateName, "name": h.name}
 }
 
 // request sends a JSON request to the session directory.
@@ -338,11 +517,15 @@ func (h *Host) request(ctx context.Context, method, url string, body any, header
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(body)
-	if err != nil {
-		return err
+	var r io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		r = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(ctx, method, url, r)
 	if err != nil {
 		return err
 	}

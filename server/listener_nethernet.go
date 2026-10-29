@@ -85,7 +85,7 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 		if tokenFile == "" {
 			tokenFile = "xbox-token.json"
 		}
-		go publishXbox(l, tokenFile, conf.Log)
+		go publishXbox(l, tokenFile, uc.Xbox.AcceptFriends, conf.Log)
 	}
 	if uc.Network.LAN {
 		publishLAN(l, conf, "")

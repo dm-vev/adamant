@@ -395,6 +395,10 @@ type UserConfig struct {
 		// TokenFile keeps the sign-in of the account across restarts. It holds
 		// secrets. An empty value uses "xbox-token.json".
 		TokenFile string
+		// AcceptFriends takes the friend requests the account receives and
+		// invites each new friend to the server, so that players add the
+		// account and join.
+		AcceptFriends bool
 	}
 	Server struct {
 		// Name is the name of the server as it shows up in the server list.
@@ -647,6 +651,7 @@ func DefaultConfig() UserConfig {
 	c.Network.Transport = "nethernet"
 	c.Network.IdentityFile = "server-key.pem"
 	c.Xbox.TokenFile = "xbox-token.json"
+	c.Xbox.AcceptFriends = true
 	c.Network.EnableQuery = false
 	c.Network.QueryPlugins = false
 	c.Server.Name = "Dragonfly Server"

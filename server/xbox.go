@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/netconn"
@@ -21,6 +22,7 @@ import (
 	"github.com/dm-vev/adamant/net/xbox/auth"
 	"github.com/dm-vev/adamant/net/xbox/mpsd"
 	"github.com/dm-vev/adamant/net/xbox/signaling"
+	"github.com/dm-vev/adamant/net/xbox/social"
 )
 
 // xboxUpdateInterval paces the updates of the session friends see.
@@ -30,7 +32,7 @@ const xboxUpdateInterval = 30 * time.Second
 // it signs the account in, serves the offers friends send over the
 // signaling service and keeps the session friends see the server by up to
 // date.
-func publishXbox(l *netconn.Listener, tokenFile string, log *slog.Logger) {
+func publishXbox(l *netconn.Listener, tokenFile string, acceptFriends bool, log *slog.Logger) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -49,7 +51,7 @@ func publishXbox(l *netconn.Listener, tokenFile string, log *slog.Logger) {
 	// A positive network ID, as the game makes them.
 	networkID := binary.BigEndian.Uint64(b[:])>>1 | 1
 	go serveXboxSignaling(ctx, l, s, networkID, log)
-	keepXboxSession(ctx, l, s, networkID, log)
+	keepXboxSession(ctx, l, s, networkID, acceptFriends, log)
 }
 
 // xboxSession signs the account in from the token file, or with the device
@@ -179,13 +181,23 @@ func serveXboxSignaling(ctx context.Context, l *netconn.Listener, s *auth.Sessio
 // keepXboxSession publishes the session friends see the server by and
 // updates it with the status of the server until the context ends, when it
 // removes the session.
-func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, networkID uint64, log *slog.Logger) {
+func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, networkID uint64, acceptFriends bool, log *slog.Logger) {
 	token := func(ctx context.Context) (string, string, error) {
 		x, err := s.XSTS(ctx, auth.XboxLive)
 		if err != nil {
 			return "", "", err
 		}
 		return x.Header(), x.XUID, nil
+	}
+	friends := &xboxFriends{
+		client:   social.Client{Token: func(ctx context.Context) (string, error) { h, _, err := token(ctx); return h, err }},
+		requests: make(chan struct{}, 1),
+		log:      log,
+	}
+	var notify func()
+	if acceptFriends {
+		notify = friends.notify
+		go friends.run(ctx)
 	}
 	var host *mpsd.Host
 	t := time.NewTicker(xboxUpdateInterval)
@@ -203,8 +215,9 @@ func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, 
 		if host == nil {
 			mc, err := s.MCToken(ctx)
 			if err == nil {
-				host, err = mpsd.Publish(ctx, mpsd.Config{Token: token, NetherNetID: networkID, PlayerMessagingID: mc.PlayerMessagingID}, status)
+				host, err = mpsd.Publish(ctx, mpsd.Config{Token: token, NetherNetID: networkID, PlayerMessagingID: mc.PlayerMessagingID, FriendRequests: notify}, status)
 			}
+			friends.host.Store(host)
 			if err != nil {
 				if ctx.Err() == nil {
 					log.Warn("Publishing on Xbox Live failed.", "err", err)
@@ -218,6 +231,7 @@ func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, 
 			_ = host.Close(closeCtx)
 			cancel()
 			host = nil
+			friends.host.Store(nil)
 		}
 		select {
 		case <-ctx.Done():
@@ -261,4 +275,83 @@ func relayServer(ctx context.Context, servers []signaling.ICEServer) (turn.Confi
 		}
 	}
 	return turn.Config{}, false
+}
+
+// xboxFriends takes the friend requests of the account and invites the new
+// friends to the session of the server.
+type xboxFriends struct {
+	client   social.Client
+	host     atomic.Pointer[mpsd.Host]
+	requests chan struct{}
+	log      *slog.Logger
+}
+
+// friendCheckInterval paces the checks for friend requests the real-time
+// activity did not tell of.
+const friendCheckInterval = 5 * time.Minute
+
+// notify asks for the friend requests to be taken.
+func (f *xboxFriends) notify() {
+	select {
+	case f.requests <- struct{}{}:
+	default:
+	}
+}
+
+// run takes the friend requests when told of them and every few minutes
+// until the context ends, waiting as long as the service asks after it
+// refused for too many.
+func (f *xboxFriends) run(ctx context.Context) {
+	t := time.NewTicker(friendCheckInterval)
+	defer t.Stop()
+	f.notify()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		case <-f.requests:
+		}
+		if wait := f.accept(ctx); wait > 0 {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(wait):
+				f.notify()
+			}
+		}
+	}
+}
+
+// accept adds the people who sent a friend request as friends and invites
+// them. It returns how long to wait if the service refused for too many.
+func (f *xboxFriends) accept(ctx context.Context) time.Duration {
+	people, err := f.client.FriendRequests(ctx)
+	if err != nil {
+		if ctx.Err() == nil {
+			f.log.Debug("Reading the friend requests on Xbox Live failed.", "err", err)
+		}
+		return 0
+	}
+	for _, p := range people {
+		friend, err := f.client.AddFriend(ctx, p.XUID)
+		var limited *social.RateLimited
+		if errors.As(err, &limited) {
+			return limited.After
+		}
+		if err != nil {
+			f.log.Debug("Adding a friend on Xbox Live failed.", "gamertag", p.Gamertag, "err", err)
+			continue
+		}
+		if !friend {
+			continue
+		}
+		f.log.Info("Added a friend on Xbox Live.", "gamertag", p.Gamertag)
+		if host := f.host.Load(); host != nil {
+			if err := f.client.Invite(ctx, p.XUID, host.Ref()); err != nil {
+				f.log.Debug("Inviting a friend failed.", "gamertag", p.Gamertag, "err", err)
+			}
+		}
+	}
+	return 0
 }
