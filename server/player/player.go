@@ -295,6 +295,11 @@ func (p *Player) SetSkin(skin skin.Skin) {
 		return
 	}
 	p.skin = skin
+	if s := p.session(); s != session.Nop {
+		// Every session lists the player, and sees its skin from there.
+		s.ShowSkin(skin)
+		return
+	}
 	viewers, release := p.viewers()
 	// viewer() returns a pooled slice sourced from the world; recycling it after the broadcast keeps rapid skin
 	// changes (e.g. via plugins) from allocating new memory every time.

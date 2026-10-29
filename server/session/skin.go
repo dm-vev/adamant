@@ -162,3 +162,41 @@ func fills(b image.Rectangle, pix []byte) bool {
 	w, h := b.Dx(), b.Dy()
 	return w >= 0 && h >= 0 && (w == 0 || h <= math.MaxInt/4/w) && w*h*4 == len(pix)
 }
+
+// newListEntry returns the PlayerList packet adding the player of the
+// session with a skin, for every session.
+func (s *Session) newListEntry(sk skin.Skin) *sharedPacket {
+	return &sharedPacket{Packet: &v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
+		ActionType:     protocol.PlayerListActionAdd,
+		UUID:           s.ent.UUID(),
+		EntityUniqueID: s.ent.UniqueID(),
+		Username:       s.conn.IdentityData().DisplayName,
+		XUID:           s.conn.IdentityData().XUID,
+		BuildPlatform:  int32(protocol.DeviceUnknown),
+		Skin:           skinToProtocol(sk),
+	}}}}
+}
+
+// playerListEntry returns the PlayerList packet adding the player of the
+// session, made with an empty skin for a session that never set one.
+func (s *Session) playerListEntry() *sharedPacket {
+	if p := s.listEntry.Load(); p != nil {
+		return p
+	}
+	s.listEntry.CompareAndSwap(nil, s.newListEntry(skin.Skin{}))
+	return s.listEntry.Load()
+}
+
+// ShowSkin shows every session the new skin of the player of the session,
+// whether it sees the player or only lists it, with one PlayerSkin encoded
+// once, and lists the player with it for sessions that join later.
+func (s *Session) ShowSkin(sk skin.Skin) {
+	if s == Nop {
+		return
+	}
+	s.listEntry.Store(s.newListEntry(sk))
+	pk := &sharedPacket{Packet: &v2193.PlayerSkinPacket{UUID: s.ent.UUID(), Skin: skinToProtocol(sk)}}
+	for _, other := range sessions.all() {
+		other.writePacket(pk)
+	}
+}

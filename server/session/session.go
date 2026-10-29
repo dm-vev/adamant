@@ -99,10 +99,10 @@ type Session struct {
 	inv, offHand, enderChest, ui *inventory.Inventory
 	armour                       *inventory.Armour
 
-	// joinSkin is the first skin that the player joined with. It is sent on
-	// spawn for the player list, but otherwise updated immediately when the
-	// player is viewed.
-	joinSkin skin.Skin
+	// listEntry is the PlayerList packet adding the player of the session
+	// with its current skin, encoded once for every session it goes to, as
+	// the skin goes nowhere else when another player sees the player.
+	listEntry atomic.Pointer[sharedPacket]
 
 	breakingPos cube.Pos
 
@@ -298,7 +298,7 @@ func (s *Session) SetHandle(handle *world.EntityHandle, skin skin.Skin) {
 	s.entityRuntimeIDs[handle] = selfEntityRuntimeID
 	s.entities[selfEntityRuntimeID] = handle
 
-	s.joinSkin = skin
+	s.listEntry.Store(s.newListEntry(skin))
 	sessions.Add(s)
 }
 

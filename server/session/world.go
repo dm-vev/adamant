@@ -118,9 +118,9 @@ func (s *Session) ViewEntity(e world.Entity) {
 				ActionType: protocol.PlayerListActionRemove,
 				UUID:       v.UUID(),
 			}}})
-		} else {
-			s.ViewSkin(e)
 		}
+		// The skin of a player of a session is in the player list already, as
+		// BDS has it: AddPlayer goes without a PlayerSkin.
 		return
 	case *entity.Painting:
 		s.viewPainting(v)

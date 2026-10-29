@@ -101,21 +101,17 @@ func (l *sessionList) sendAbilities(from *Session, data v2193.AbilityData) {
 }
 
 func (l *sessionList) sendSessionTo(s, to *Session) {
-
-	to.writePacket(&v2193.PlayerListPacket{
-		Entries: []v2193.PlayerListEntry{{
-			ActionType:     protocol.PlayerListActionAdd,
-			UUID:           s.ent.UUID(),
-			EntityUniqueID: s.ent.UniqueID(),
-			Username:       s.conn.IdentityData().DisplayName,
-			XUID:           s.conn.IdentityData().XUID,
-			BuildPlatform:  int32(protocol.DeviceUnknown),
-			Skin:           skinToProtocol(s.joinSkin),
-		}},
-	})
+	to.writePacket(s.playerListEntry())
 	if data := s.abilities.Load(); data != nil && s != to {
 		to.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: *data})
 	}
+}
+
+// all returns the sessions of the list.
+func (l *sessionList) all() []*Session {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.s)
 }
 
 func (*sessionList) runtimeID(s, to *Session) uint64 {

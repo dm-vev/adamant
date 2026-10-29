@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -69,8 +70,8 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 		t.Fatalf("session list contains removed session: %v", remaining)
 	}
 
-	first := (<-existing.packets).(*v2193.PlayerListPacket)
-	second := (<-existing.packets).(*v2193.PlayerListPacket)
+	first := packetOf(<-existing.packets).(*v2193.PlayerListPacket)
+	second := packetOf(<-existing.packets).(*v2193.PlayerListPacket)
 	if first.Entries[0].ActionType != protocol.PlayerListActionAdd || second.Entries[0].ActionType != protocol.PlayerListActionRemove {
 		t.Fatalf("player list updates out of order: %v then %v", first.Entries[0].ActionType, second.Entries[0].ActionType)
 	}
@@ -117,3 +118,70 @@ type testConn struct {
 }
 
 func (c testConn) IdentityData() login.IdentityData { return c.identity }
+
+// packetOf returns the packet a session was given, unwrapping one shared
+// with other sessions.
+func packetOf(pk proto.Packet) proto.Packet {
+	if s, ok := pk.(*sharedPacket); ok {
+		return s.Packet
+	}
+	return pk
+}
+
+// TestPlayerListEntryIsShared adds a session to a list: every other session
+// is given the same PlayerList packet of it, encoded once, and the new one
+// the entries of the others.
+func TestPlayerListEntryIsShared(t *testing.T) {
+	l := new(sessionList)
+	a, b, c := testSession("a"), testSession("b"), testSession("c")
+	sk := skin.New(64, 64)
+	sk.PlayFabID = "c-skin"
+	c.listEntry.Store(c.newListEntry(sk))
+	l.s = []*Session{a, b}
+	l.Add(c)
+	pa, pb := <-a.packets, <-b.packets
+	if pa != pb || pa != proto.Packet(c.listEntry.Load()) {
+		t.Fatal("the sessions were not given the same entry of the new session")
+	}
+	if e := packetOf(pa).(*v2193.PlayerListPacket).Entries[0]; e.UUID != c.ent.UUID() || e.Skin.PlayFabID != "c-skin" {
+		t.Fatalf("entry %+v", e)
+	}
+	seen := map[uuid.UUID]bool{}
+	for range 3 {
+		seen[packetOf(<-c.packets).(*v2193.PlayerListPacket).Entries[0].UUID] = true
+	}
+	if !seen[a.ent.UUID()] || !seen[b.ent.UUID()] || !seen[c.ent.UUID()] {
+		t.Fatalf("the new session listed %v", seen)
+	}
+}
+
+// TestShowSkinReachesEverySession changes the skin of a player: every
+// session is given one PlayerSkin of it, whether it sees the player or
+// not, and sessions that join later list the player with the new skin.
+func TestShowSkinReachesEverySession(t *testing.T) {
+	a, b, c := testSession("a"), testSession("b"), testSession("c")
+	sessions.mu.Lock()
+	old := sessions.s
+	sessions.s = []*Session{a, b, c}
+	sessions.mu.Unlock()
+	t.Cleanup(func() {
+		sessions.mu.Lock()
+		sessions.s = old
+		sessions.mu.Unlock()
+	})
+	sk := skin.New(64, 64)
+	sk.PlayFabID = "new-skin"
+	a.ShowSkin(sk)
+	first := <-a.packets
+	for _, s := range []*Session{b, c} {
+		if pk := <-s.packets; pk != first {
+			t.Fatal("the sessions were not given the same PlayerSkin")
+		}
+	}
+	if pk, ok := packetOf(first).(*v2193.PlayerSkinPacket); !ok || pk.UUID != a.ent.UUID() || pk.Skin.PlayFabID != "new-skin" {
+		t.Fatalf("skin packet %+v", packetOf(first))
+	}
+	if e := a.playerListEntry().Packet.(*v2193.PlayerListPacket).Entries[0]; e.Skin.PlayFabID != "new-skin" {
+		t.Fatalf("later sessions would list the player with %q", e.Skin.PlayFabID)
+	}
+}
