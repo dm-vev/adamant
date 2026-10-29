@@ -891,6 +891,12 @@ func tierToSoundEvent(tier item.ArmourTier) string {
 
 // playSound plays a world.Sound at a position, disabling relative volume if set to true.
 func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool) {
+	s.soundPackets(pos, t, disableRelative, s.writePacket)
+}
+
+// soundPackets hands out the packets that play a sound at a position, the
+// same for every viewer.
+func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bool, out func(proto.Packet)) {
 	pk := &v2193.LevelSoundEventPacket{
 		Position:              vec64To32(pos),
 		EntityType:            ":",
@@ -927,7 +933,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType = packet.SoundEventNote
 		pk.ExtraData = (so.Instrument.Int32() << 8) | int32(so.Pitch)
 	case sound.DoorCrash:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundZombieDoorCrash,
 			Position:  vec64To32(pos),
 		})
@@ -937,13 +943,13 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.Thunder:
 		pk.SoundType, pk.EntityType = packet.SoundEventThunder, "minecraft:lightning_bolt"
 	case sound.Click:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundClick,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.SignWaxed:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventWaxOn,
 			Position:  vec64To32(pos),
 		})
@@ -951,19 +957,19 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.WaxedSignFailedInteraction:
 		pk.SoundType = packet.SoundEventWaxedSignInteractFail
 	case sound.WaxRemoved:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventWaxOff,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.CopperScraped:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventScrape,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.Pop:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundInfinityArrowPickup,
 			Position:  vec64To32(pos),
 		})
@@ -971,49 +977,49 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.Teleport:
 		pk.SoundType = packet.SoundEventTeleport
 	case sound.ItemAdd:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundAddItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ItemFrameRemove:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundItemFrameRemoveItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ItemFrameRotate:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundItemFrameRotateItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.HangingPlace:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundItemFramePlace,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.HangingBreak:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundItemFrameBreak,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.GhastWarning:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundGhastWarning,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.GhastShoot:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundGhastFireball,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.TNT:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundFuse,
 			Position:  vec64To32(pos),
 		})
@@ -1110,19 +1116,19 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.BlockPlace:
 		pk.SoundType, pk.ExtraData = packet.SoundEventPlace, int32(networkBlockID(s.br, so.Block))
 	case sound.AnvilLand:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundAnvilLand,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.AnvilUse:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundAnvilUsed,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.AnvilBreak:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundAnvilBroken,
 			Position:  vec64To32(pos),
 		})
@@ -1249,7 +1255,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.LevelUp:
 		pk.SoundType, pk.ExtraData = packet.SoundEventLevelUp, 0x10000000
 	case sound.Experience:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundExperienceOrbPickup,
 			Position:  vec64To32(pos),
 		})
@@ -1305,7 +1311,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.MusicDiscEnd:
 		pk.SoundType = packet.SoundEventRecordNull
 	case sound.FireCharge:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundBlazeFireball,
 			Position:  vec64To32(pos),
 		})
@@ -1329,7 +1335,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.LecternBookPlace:
 		pk.SoundType = packet.SoundEventLecternBookPlace
 	case sound.Totem:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundTotemUsed,
 			Position:  vec64To32(pos),
 		})
@@ -1339,7 +1345,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.ShulkerBoxOpen:
 		pk.SoundType = packet.SoundEventShulkerBoxOpen
 	case sound.DecoratedPotInserted:
-		s.writePacket(&v2193.PlaySoundPacket{
+		out(&v2193.PlaySoundPacket{
 			SoundName: "block.decorated_pot.insert",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1353,7 +1359,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		if !ok {
 			return
 		}
-		s.writePacket(&v2193.PlaySoundPacket{
+		out(&v2193.PlaySoundPacket{
 			SoundName: name,
 			Position:  vec64To32(pos),
 			Volume:    float32(so.Volume),
@@ -1361,7 +1367,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		})
 		return
 	case sound.LightningExplode:
-		s.writePacket(&v2193.PlaySoundPacket{
+		out(&v2193.PlaySoundPacket{
 			SoundName: "ambient.weather.lightning.impact",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1369,7 +1375,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		})
 		return
 	case sound.LightningThunder:
-		s.writePacket(&v2193.PlaySoundPacket{
+		out(&v2193.PlaySoundPacket{
 			SoundName: "ambient.weather.thunder",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1377,31 +1383,31 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		})
 		return
 	case sound.ArmourStandHit:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundArmorStandHit,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandBreak:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundArmorStandBreak,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandPlace:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundArmorStandPlace,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandLand:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundArmorStandLand,
 			Position:  vec64To32(pos),
 		})
 		return
 	}
-	s.writePacket(pk)
+	out(pk)
 }
 
 // PlaySound plays a world.Sound to the client. The volume is not dependent on the distance to the source if it is a
@@ -1714,15 +1720,47 @@ func (s *Session) entityMetadata(e world.Entity) protocol.EntityMetadata {
 
 // ViewEntityAnimation ...
 func (s *Session) ViewEntityAnimation(e world.Entity, a world.EntityAnimation) {
-	s.writePacket(&v2193.AnimateEntityPacket{
-		Animation:     a.Name(),
-		NextState:     a.NextState(),
-		StopCondition: a.StopCondition(),
-		Controller:    a.Controller(),
-		EntityRuntimeIDs: []uint64{
-			s.entityRuntimeID(e),
-		},
-	})
+	s.writePacket(animationPacket(s.entityRuntimeID(e), a))
+}
+
+// animationPacket returns the packet that plays an animation on the entity
+// of a runtime ID.
+func animationPacket(id uint64, a world.EntityAnimation) *v2193.AnimateEntityPacket {
+	return &v2193.AnimateEntityPacket{
+		Animation:        a.Name(),
+		NextState:        a.NextState(),
+		StopCondition:    a.StopCondition(),
+		Controller:       a.Controller(),
+		EntityRuntimeIDs: []uint64{id},
+	}
+}
+
+// ViewSoundShared ...
+func (s *Session) ViewSoundShared(pos mgl64.Vec3, t world.Sound, b *world.Broadcast) {
+	s.writeBroadcast(b, func(out func(proto.Packet)) { s.soundPackets(pos, t, false, out) })
+}
+
+// ViewEntityAnimationShared ...
+func (s *Session) ViewEntityAnimationShared(e world.Entity, a world.EntityAnimation, b *world.Broadcast) {
+	if e.H() == s.ent {
+		// The player of the session knows itself by another runtime ID.
+		s.ViewEntityAnimation(e, a)
+		return
+	}
+	s.writeBroadcast(b, func(out func(proto.Packet)) { out(animationPacket(e.H().RuntimeID(), a)) })
+}
+
+// writeBroadcast writes the packets of a broadcast: those the first viewer
+// made, encoded once for all, or makes them with build.
+func (s *Session) writeBroadcast(b *world.Broadcast, build func(out func(proto.Packet))) {
+	pks, ok := b.Load().([]*sharedPacket)
+	if !ok {
+		build(func(pk proto.Packet) { pks = append(pks, &sharedPacket{Packet: pk}) })
+		b.Store(pks)
+	}
+	for _, pk := range pks {
+		s.writePacket(pk)
+	}
 }
 
 // OpenBlockContainer ...

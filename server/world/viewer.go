@@ -85,6 +85,27 @@ type Viewer interface {
 	ViewEntityWake(e Entity)
 }
 
+// Broadcast is what the viewers of one event share of it: the first viewer
+// that is shown the event the same way as the others keeps what it made of
+// it there, so that the rest send those bytes rather than encode them
+// again. It is used on the goroutine of the world alone.
+type Broadcast struct{ v any }
+
+// Load returns what a viewer kept, or nil.
+func (b *Broadcast) Load() any { return b.v }
+
+// Store keeps v for the other viewers.
+func (b *Broadcast) Store(v any) { b.v = v }
+
+// SharedViewer is a Viewer shown sounds and animations through a Broadcast
+// that the viewers of each share.
+type SharedViewer interface {
+	// ViewSoundShared views a sound played at a position.
+	ViewSoundShared(pos mgl64.Vec3, s Sound, b *Broadcast)
+	// ViewEntityAnimationShared views an animation an entity plays.
+	ViewEntityAnimationShared(e Entity, a EntityAnimation, b *Broadcast)
+}
+
 // BatchViewer is a Viewer that may hold what it is shown while its world
 // ticks and pass it on at once when the tick ends, as Java flushes the
 // connection of a player once a tick rather than with every packet.

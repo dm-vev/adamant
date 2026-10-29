@@ -351,8 +351,13 @@ func (tx *Tx) PlayEntityAnimation(e Entity, a EntityAnimation) {
 	// We deliberately iterate using the pooled slice returned by viewersOf and hand it back afterwards. Animation
 	// fan-out happens frequently (movement, swings, etc.), so minimising transient allocations has a noticeable
 	// impact on GC pauses during crowded gameplay sessions.
+	var b Broadcast
 	for _, viewer := range viewers {
-		viewer.ViewEntityAnimation(e, a)
+		if sv, ok := viewer.(SharedViewer); ok {
+			sv.ViewEntityAnimationShared(e, a, &b)
+		} else {
+			viewer.ViewEntityAnimation(e, a)
+		}
 	}
 	tx.World().releaseViewers(viewers)
 }

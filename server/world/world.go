@@ -1527,8 +1527,13 @@ func (w *World) playSound(tx *Tx, pos mgl64.Vec3, s Sound) {
 	}
 	s.Play(w, pos)
 	viewers := w.viewersOf(tx, pos)
+	var b Broadcast
 	for _, viewer := range viewers {
-		viewer.ViewSound(pos, s)
+		if sv, ok := viewer.(SharedViewer); ok {
+			sv.ViewSoundShared(pos, s, &b)
+		} else {
+			viewer.ViewSound(pos, s)
+		}
 	}
 	w.releaseViewers(viewers)
 }
