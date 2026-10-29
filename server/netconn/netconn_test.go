@@ -650,6 +650,25 @@ func TestHostileLoginRequests(t *testing.T) {
 	}
 }
 
+// TestLargeLoginDecodes decodes a Login of a connection request past the
+// bound strings have by default: a skin the game makes can take that much.
+func TestLargeLoginDecodes(t *testing.T) {
+	req := make([]byte, 3<<20)
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: packet.IDLogin})}
+	(&v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: req}).Encode(&w)
+	pk, err := DecodePacket(w.B)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l := pk.(*v2193.LoginPacket); len(l.ConnectionRequest) != len(req) {
+		t.Fatalf("connection request of %d bytes", len(l.ConnectionRequest))
+	}
+	// A length past the packet is still refused.
+	if _, err := DecodePacket(w.B[:len(w.B)-1]); err == nil {
+		t.Fatal("decoded a connection request past the end of its packet")
+	}
+}
+
 // loginWith sends a Login of a connection request and returns the error
 // that ends the connection, nil if the server went on with the login.
 func loginWith(t *testing.T, l *Listener, req []byte) error {

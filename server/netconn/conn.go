@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -209,8 +210,13 @@ type errUnknownPacket uint32
 func (e errUnknownPacket) Error() string { return fmt.Sprintf("netconn: unknown packet %d", uint32(e)) }
 
 // maxList bounds the elements of a list a client sends, as gophertunnel
-// bounds them for a server.
-const maxList = 1024
+// bounds them for a server. A string or a byte slice takes the bytes of
+// its packet and no more, so the packet alone bounds it: a login carries a
+// skin of any size the game makes.
+const (
+	maxList   = 1024
+	maxString = math.MaxInt32
+)
 
 // DecodePacket decodes a packet a client sent, header first, with the
 // codecs of protocol 2193 and the limits a server keeps against a client.
@@ -230,7 +236,7 @@ func DecodePacket(raw []byte) (pk proto.Packet, err error) {
 		}
 	}()
 	r := wire.NewReader(fields)
-	r.MaxList = maxList
+	r.MaxList, r.MaxString = maxList, maxString
 	pk.Decode(r)
 	if err := r.Err(); err != nil {
 		return nil, fmt.Errorf("netconn: decode %T: %w", pk, err)
