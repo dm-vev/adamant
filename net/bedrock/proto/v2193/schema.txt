@@ -1,0 +1,1835 @@
+# Bedrock protocol, imported by protoimport from gophertunnel.
+# 334 declarations, 42 of them manual.
+
+packet 1 Login
+	ClientProtocol int32be
+	ConnectionRequest bytes
+
+packet 2 PlayStatus
+	Status int32be
+
+packet 3 ServerToClientHandshake
+	JWT bytes
+
+packet 4 ClientToServerHandshake
+	manual codec is not a method taking an IO
+
+packet 5 Disconnect
+	Reason varint32
+	HideDisconnectionScreen bool
+	if !HideDisconnectionScreen
+		Message string
+		FilteredMessage string
+
+packet 6 ResourcePacksInfo
+	TexturePackRequired bool
+	HasAddons bool
+	HasScripts bool
+	ForceDisableVibrantVisuals bool
+	WorldTemplateUUID uuid
+	WorldTemplateVersion string
+	TexturePacks []TexturePackInfo
+
+packet 7 ResourcePackStack
+	TexturePackRequired bool
+	TexturePacks []StackResourcePack
+	BaseGameVersion string
+	Experiments []ExperimentData count uint32
+	ExperimentsPreviouslyToggled bool
+	IncludeEditorPacks bool
+
+packet 8 ResourcePackClientResponse
+	manual statement name, ok := resourcePackResponseToString(pk.Response)
+
+packet 9 Text
+	manual statement var categoryType uint8
+
+packet 10 SetTime
+	Time varint32
+
+packet 11 StartGame
+	manual helper PlayerMoveSettings
+
+packet 12 AddPlayer
+	UUID uuid
+	Username string
+	EntityRuntimeID varuint64
+	PlatformChatID string
+	Position vec3
+	Velocity vec3
+	Pitch float32
+	Yaw float32
+	HeadYaw float32
+	HeldItem iteminstance
+	GameType varint32
+	EntityMetadata metadata
+	EntityProperties EntityProperties
+	AbilityData AbilityData
+	EntityLinks []EntityLink
+	DeviceID string
+	BuildPlatform int32
+
+packet 13 AddActor
+	EntityUniqueID varint64
+	EntityRuntimeID varuint64
+	EntityType string
+	Position vec3
+	Velocity vec3
+	Pitch float32
+	Yaw float32
+	HeadYaw float32
+	BodyYaw float32
+	Attributes []AttributeValue
+	EntityMetadata metadata
+	EntityProperties EntityProperties
+	EntityLinks []EntityLink
+
+packet 14 RemoveActor
+	EntityUniqueID varint64
+
+packet 15 AddItemActor
+	EntityUniqueID varint64
+	EntityRuntimeID varuint64
+	Item iteminstance
+	Position vec3
+	Velocity vec3
+	EntityMetadata metadata
+	FromFishing bool
+
+packet 16 ServerPlayerPostMovePosition
+	Position vec3
+
+packet 17 TakeItemActor
+	ItemEntityRuntimeID varuint64
+	TakerEntityRuntimeID varuint64
+
+packet 18 MoveActorAbsolute
+	manual value pk.Rotation[0]
+
+packet 19 MovePlayer
+	EntityRuntimeID varuint64
+	Position vec3
+	Pitch float32
+	Yaw float32
+	HeadYaw float32
+	Mode uint8
+	OnGround bool
+	RiddenEntityRuntimeID varuint64
+	TeleportData ?TeleportData
+	Tick varuint64
+
+packet 21 UpdateBlock
+	Position blockpos
+	NewBlockRuntimeID varuint32
+	Flags varuint32
+	Layer varuint32
+
+packet 22 AddPainting
+	EntityUniqueID varint64
+	EntityRuntimeID varuint64
+	Position vec3
+	Direction varint32
+	Title string
+
+packet 25 LevelEvent
+	EventType varint32
+	Position vec3
+	EventData varint32
+
+packet 26 BlockEvent
+	Position blockpos
+	EventType varint32
+	EventData varint32
+
+packet 27 ActorEvent
+	EntityRuntimeID varuint64
+	EventType uint8
+	EventData varint32
+	FireAtPosition ?vec3
+
+packet 28 MobEffect
+	EntityRuntimeID varuint64
+	Operation uint8
+	EffectType varint32
+	Amplifier varint32
+	Particles bool
+	Duration varint32
+	Tick varuint64
+	Ambient bool
+
+packet 29 UpdateAttributes
+	EntityRuntimeID varuint64
+	Attributes []Attribute
+	Tick varuint64
+
+packet 30 InventoryTransaction
+	manual statement hasLegacy := pk.LegacyRequestID < -1 && (pk.LegacyRequestID&1) == 0
+
+packet 31 MobEquipment
+	EntityRuntimeID varuint64
+	NewItem iteminstance
+	InventorySlot uint8
+	HotBarSlot uint8
+	WindowID uint8
+
+packet 32 MobArmourEquipment
+	EntityRuntimeID varuint64
+	Helmet iteminstance
+	Chestplate iteminstance
+	Leggings iteminstance
+	Boots iteminstance
+	Body iteminstance
+
+packet 33 Interact
+	ActionType uint8
+	TargetEntityRuntimeID varuint64
+	Position ?vec3
+
+packet 34 BlockPickRequest
+	Position blockpos
+	AddBlockNBT bool
+	HotBarSlot uint8
+
+packet 35 ActorPickRequest
+	EntityUniqueID int64
+	HotBarSlot uint8
+	WithData bool
+
+packet 36 PlayerAction
+	EntityRuntimeID varuint64
+	ActionType varint32
+	BlockPosition blockpos
+	ResultPosition blockpos
+	BlockFace varint32
+
+packet 38 HurtArmour
+	Cause varint32
+	Damage varint32
+	ArmourSlots varuint64
+
+packet 39 SetActorData
+	EntityRuntimeID varuint64
+	EntityMetadata metadata
+	EntityProperties EntityProperties
+	Tick varuint64
+
+packet 40 SetActorMotion
+	EntityRuntimeID varuint64
+	Velocity vec3
+	Tick varuint64
+
+packet 41 SetActorLink
+	EntityLink EntityLink
+
+packet 42 SetHealth
+	Health varint32
+
+packet 43 SetSpawnPosition
+	SpawnType varint32
+	Position blockpos
+	Dimension varint32
+	SpawnPosition blockpos
+
+packet 44 Animate
+	manual statement var swingSource protocol.Optional[string]
+
+packet 45 Respawn
+	Position vec3
+	State uint8
+	EntityRuntimeID varuint64
+
+packet 46 ContainerOpen
+	WindowID uint8
+	ContainerType uint8
+	ContainerPosition blockpos
+	ContainerEntityUniqueID varint64
+
+packet 47 ContainerClose
+	WindowID uint8
+	ContainerType uint8
+	ServerSide bool
+
+packet 48 PlayerHotBar
+	SelectedHotBarSlot varuint32
+	WindowID uint8
+	SelectHotBarSlot bool
+
+packet 49 InventoryContent
+	WindowID varuint32
+	Content []iteminstance
+	Container FullContainerName
+	StorageItem iteminstance
+
+packet 50 InventorySlot
+	WindowID varuint32
+	Slot varuint32
+	Container ?FullContainerName
+	StorageItem ?iteminstance
+	NewItem iteminstance
+
+packet 51 ContainerSetData
+	WindowID uint8
+	Key varint32
+	Value varint32
+
+packet 52 CraftingData
+	ShapedRecipes []ShapedRecipe
+	ShapelessRecipes []ShapelessRecipe
+	MultiRecipes []MultiRecipe
+	UserDataShapelessRecipes []UserDataShapelessRecipe
+	ShapelessChemistryRecipes []ShapelessChemistryRecipe
+	ShapedChemistryRecipes []ShapedChemistryRecipe
+	SmithingTransformRecipes []SmithingTransformRecipe
+	SmithingTrimRecipes []SmithingTrimRecipe
+	PotionRecipes []PotionRecipe
+	PotionContainerChangeRecipes []PotionContainerChangeRecipe
+	MaterialReducers []materialreducer
+	ClearRecipes bool
+
+packet 54 GUIDataPickItem
+	ItemName string
+	ItemEffects string
+	HotBarSlot int32
+
+packet 55 AdventureSettings
+	Flags varuint32
+	CommandPermissionLevel varuint32
+	ActionPermissions varuint32
+	PermissionLevel varuint32
+	CustomStoredPermissions varuint32
+	PlayerUniqueID int64
+
+packet 56 BlockActorData
+	Position blockpos
+	NBTData nbt
+
+packet 58 LevelChunk
+	Position chunkpos
+	Dimension varint32
+	SubChunkCount varuint32
+	SubChunkLimit ?varint32
+	CacheEnabled bool
+	BlobHashes []uint64
+	RawPayload bytes
+
+packet 59 SetCommandsEnabled
+	Enabled bool
+
+packet 60 SetDifficulty
+	Difficulty varuint32
+
+packet 61 ChangeDimension
+	Dimension varint32
+	Position vec3
+	Respawn bool
+	LoadingScreenID ?uint32
+
+packet 62 SetPlayerGameType
+	GameType varint32
+
+packet 63 PlayerList
+	Entries []PlayerListEntry
+
+packet 64 SimpleEvent
+	EventType uint16
+
+packet 65 Event
+	manual Event written as eventtype and eventordinal
+
+packet 66 SpawnExperienceOrb
+	Position vec3
+	ExperienceAmount varint32
+
+packet 67 ClientBoundMapItemData
+	manual OptionalFunc with func(x *[]int64) { 	protocol.FuncSlice(io, x, io.Varint64) }
+
+packet 68 MapInfoRequest
+	MapID varint64
+	ClientPixels []PixelRequest count uint32
+
+packet 69 RequestChunkRadius
+	ChunkRadius varint32
+	MaxChunkRadius uint8
+
+packet 70 ChunkRadiusUpdated
+	ChunkRadius varint32
+
+packet 72 GameRulesChanged
+	GameRules []gamerule
+
+packet 73 Camera
+	CameraEntityUniqueID varint64
+	TargetPlayerUniqueID varint64
+
+packet 74 BossEvent
+	BossEntityUniqueID varint64
+	EventType uint8
+	BossBarTitle string
+	FilteredBossBarTitle string
+	HealthPercentage float32
+	Colour uint8
+	Overlay uint8
+
+packet 75 ShowCredits
+	PlayerRuntimeID varuint64
+	StatusType varint32
+
+packet 76 AvailableCommands
+	manual helper FuncIOSlice
+
+packet 77 CommandRequest
+	manual helper CommandOriginData
+
+packet 78 CommandBlockUpdate
+	Block bool
+	if Block
+		Position blockpos
+		Mode varuint32
+		NeedsRedstone bool
+		Conditional bool
+	else
+		MinecartEntityRuntimeID varuint64
+	Command string
+	LastOutput string
+	Name string
+	FilteredName string
+	ShouldTrackOutput bool
+	TickDelay uint32
+	ExecuteOnFirstTick bool
+
+packet 79 CommandOutput
+	manual helper CommandOriginData
+
+packet 80 UpdateTrade
+	WindowID uint8
+	WindowType uint8
+	Size varint32
+	TradeTier varint32
+	VillagerUniqueID varint64
+	EntityUniqueID varint64
+	DisplayName string
+	NewTradeUI bool
+	DemandBasedPrices bool
+	SerialisedOffers rest
+
+packet 81 UpdateEquip
+	WindowID uint8
+	WindowType uint8
+	Size varint32
+	EntityUniqueID varint64
+	SerialisedInventoryData rest
+
+packet 82 ResourcePackDataInfo
+	UUID string
+	DataChunkSize uint32
+	ChunkCount uint32
+	Size uint64
+	Hash bytes
+	Premium bool
+	PackType uint8
+
+packet 83 ResourcePackChunkData
+	UUID string
+	ChunkIndex uint32
+	DataOffset uint64
+	Data bytes
+
+packet 84 ResourcePackChunkRequest
+	UUID string
+	ChunkIndex int32
+
+packet 85 Transfer
+	Address string
+	Port uint16
+	ReloadWorld bool
+	GatheringJoinInfo ?GatheringJoinInfo
+
+packet 86 PlaySound
+	SoundName string
+	Position soundpos
+	Volume float32
+	Pitch float32
+	LoopCount varint32
+	BypassListenerRangeCheck bool
+	Handle ?uint64
+	PlaybackPositionSeconds ?float32
+
+packet 87 StopSound
+	SoundName string
+	StopAll bool
+	StopMusicLegacy bool
+
+packet 88 SetTitle
+	ActionType varint32
+	Text string
+	FadeInDuration varint32
+	RemainDuration varint32
+	FadeOutDuration varint32
+	XUID string
+	PlatformOnlineID string
+	FilteredMessage string
+
+packet 89 AddBehaviourTree
+	BehaviourTree string
+
+packet 90 StructureBlockUpdate
+	Position blockpos
+	StructureName string
+	FilteredStructureName string
+	DataField string
+	IncludePlayers bool
+	ShowBoundingBox bool
+	StructureBlockType varint32
+	Settings StructureSettings
+	RedstoneSaveMode uint8
+	ShouldTrigger bool
+	Waterlogged bool
+
+packet 91 ShowStoreOffer
+	OfferID uuid
+	Type uint8
+
+packet 92 PurchaseReceipt
+	Receipts []string
+
+packet 93 PlayerSkin
+	UUID uuid
+	Skin Skin
+	NewSkinName string
+	OldSkinName string
+
+packet 94 SubClientLogin
+	ConnectionRequest bytes
+
+packet 95 AutomationClientConnect
+	ServerURI string
+
+packet 96 SetLastHurtBy
+	EntityType varint32
+
+packet 97 BookEdit
+	InventorySlot varint32
+	ActionType varuint32
+	switch ActionType
+	case 0, 1
+		PageNumber varint32
+		Text string
+		PhotoName string
+	case 2
+		PageNumber varint32
+	case 3
+		PageNumber varint32
+		SecondaryPageNumber varint32
+	case 4
+		Title string
+		Author string
+		XUID string
+	default
+
+packet 98 NPCRequest
+	EntityRuntimeID varuint64
+	RequestType uint8
+	CommandString string
+	ActionType uint8
+	SceneName string
+
+packet 99 PhotoTransfer
+	PhotoName string
+	PhotoData bytes
+	BookID string
+	PhotoType uint8
+	SourceType uint8
+	OwnerEntityUniqueID int64
+	NewPhotoName string
+
+packet 100 ModalFormRequest
+	FormID varuint32
+	FormData bytes
+
+packet 101 ModalFormResponse
+	FormID varuint32
+	ResponseData ?bytes
+	CancelReason ?uint8
+
+packet 102 ServerSettingsRequest
+	manual codec is not a method taking an IO
+
+packet 103 ServerSettingsResponse
+	FormID varuint32
+	FormData bytes
+
+packet 104 ShowProfile
+	XUID string
+
+packet 105 SetDefaultGameType
+	GameType varint32
+
+packet 106 RemoveObjective
+	ObjectiveName string
+
+packet 107 SetDisplayObjective
+	DisplaySlot string
+	ObjectiveName string
+	DisplayName string
+	CriteriaName string
+	SortOrder varint32
+
+packet 108 SetScore
+	Entries []ScoreboardEntry
+
+packet 109 LabTable
+	ActionType uint8
+	Position blockpos
+	ReactionType uint8
+
+packet 110 UpdateBlockSynced
+	Position blockpos
+	NewBlockRuntimeID varuint32
+	Flags varuint32
+	Layer varuint32
+	EntityUniqueID varuint64
+	TransitionType varuint64
+
+packet 111 MoveActorDelta
+	EntityRuntimeID varuint64
+	PositionX ?float32
+	PositionY ?float32
+	PositionZ ?float32
+	RotationX ?bytefloat
+	RotationY ?bytefloat
+	RotationYHead ?bytefloat
+	OnGround bool
+	ForceMove bool
+	ForceMoveLocalEntity bool
+	ForceCompletion bool
+	Ticks varuint64
+
+packet 112 SetScoreboardIdentity
+	ActionType uint8
+	Entries []ScoreboardIdentityEntry
+
+packet 113 SetLocalPlayerAsInitialised
+	EntityRuntimeID varuint64
+
+packet 114 UpdateSoftEnum
+	EnumType string
+	Options []string
+	ActionType uint8
+
+packet 115 NetworkStackLatency
+	Timestamp int64
+	NeedsResponse bool
+
+packet 117 ScriptCustomEvent
+	EventName string
+	EventData bytes
+
+packet 118 SpawnParticleEffect
+	Dimension uint8
+	EntityUniqueID varint64
+	Position vec3
+	ParticleName string
+	MoLangVariables ?bytes
+
+packet 119 AvailableActorIdentifiers
+	SerialisedEntityIdentifiers rest
+
+packet 121 NetworkChunkPublisherUpdate
+	manual statement count := uint32(len(pk.SavedChunks))
+
+packet 122 BiomeDefinitionList
+	BiomeDefinitions []BiomeDefinition
+	StringList []string
+
+packet 123 LevelSoundEvent
+	SoundType string
+	Position vec3
+	ExtraData varint32
+	EntityType string
+	BabyMob bool
+	DisableRelativeVolume bool
+	EntityUniqueID int64
+	FireAtPosition ?vec3
+
+packet 124 LevelEventGeneric
+	EventID varint32
+	SerialisedEventData rest
+
+packet 125 LecternUpdate
+	Page uint8
+	PageCount uint8
+	Position blockpos
+
+packet 129 ClientCacheStatus
+	Enabled bool
+
+packet 130 OnScreenTextureAnimation
+	AnimationType uint32
+
+packet 131 MapCreateLockedCopy
+	OriginalMapID varint64
+	NewMapID varint64
+
+packet 132 StructureTemplateDataRequest
+	StructureName string
+	Position blockpos
+	Settings StructureSettings
+	RequestType uint8
+
+packet 133 StructureTemplateDataResponse
+	StructureName string
+	Success bool
+	if Success
+		StructureTemplate nbt
+	ResponseType uint8
+
+packet 135 ClientCacheBlobStatus
+	MissHashes []uint64
+	HitHashes []uint64
+
+packet 136 ClientCacheMissResponse
+	Blobs []CacheBlob
+
+packet 137 EducationSettings
+	CodeBuilderDefaultURI string
+	CodeBuilderTitle string
+	CanResizeCodeBuilder bool
+	DisableLegacyTitleBar bool
+	PostProcessFilter string
+	ScreenshotBorderPath string
+	CanModifyBlocks ?bool
+	OverrideURI ?string
+	HasQuiz bool
+	ExternalLinkSettings ?EducationExternalLinkSettings
+
+packet 138 Emote
+	EntityRuntimeID varuint64
+	EmoteID string
+	EmoteLength varuint32
+	XUID string
+	PlatformID string
+	Flags uint8
+
+packet 139 MultiPlayerSettings
+	ActionType varint32
+
+packet 140 SettingsCommand
+	CommandLine string
+	SuppressOutput bool
+
+packet 141 AnvilDamage
+	AnvilPosition blockpos
+
+packet 142 CompletedUsingItem
+	UsedItemID int16
+	UseMethod int32
+
+packet 143 NetworkSettings
+	CompressionThreshold uint16
+	CompressionAlgorithm uint16
+	ClientThrottle bool
+	ClientThrottleThreshold uint8
+	ClientThrottleScalar float32
+
+packet 144 PlayerAuthInput
+	manual helper InputFlagList
+
+packet 145 CreativeContent
+	Groups []CreativeGroup
+	Items []CreativeItem
+
+packet 146 PlayerEnchantOptions
+	Options []EnchantmentOption
+
+packet 147 ItemStackRequest
+	Requests []ItemStackRequest
+
+packet 148 ItemStackResponse
+	Responses []ItemStackResponse
+
+packet 149 PlayerArmourDamage
+	List []PlayerArmourDamageEntry
+
+packet 150 CodeBuilder
+	URL string
+	ShouldOpenCodeBuilder bool
+
+packet 151 UpdatePlayerGameType
+	GameType varint32
+	PlayerUniqueID varint64
+	Tick varuint64
+
+packet 152 EmoteList
+	PlayerRuntimeID varuint64
+	EmotePieces []uuid
+
+packet 153 PositionTrackingDBServerBroadcast
+	BroadcastAction uint8
+	TrackingID varint32
+	Payload nbt
+
+packet 154 PositionTrackingDBClientRequest
+	RequestAction uint8
+	TrackingID varint32
+
+packet 155 DebugInfo
+	PlayerUniqueID varint64
+	Data bytes
+
+packet 156 PacketViolationWarning
+	Type varint32
+	Severity varint32
+	PacketID varint32
+	ViolationContext string
+
+packet 157 MotionPredictionHints
+	EntityRuntimeID varuint64
+	Velocity vec3
+	OnGround bool
+
+packet 158 AnimateEntity
+	Animation string
+	NextState string
+	StopCondition string
+	StopConditionVersion int32
+	Controller string
+	BlendOutTime float32
+	EntityRuntimeIDs []varuint64
+
+packet 159 CameraShake
+	Intensity float32
+	Duration float32
+	Type uint8
+	Action uint8
+
+packet 160 PlayerFog
+	Stack []string
+
+packet 161 CorrectPlayerMovePrediction
+	PredictionType uint8
+	Position vec3
+	Delta vec3
+	Rotation vec2
+	VehicleAngularVelocity ?float32
+	OnGround bool
+	Tick varuint64
+
+packet 162 ItemRegistry
+	Items []ItemEntry
+
+packet 163 FilterText
+	Text string
+	FromServer bool
+
+packet 164 ClientBoundDebugRenderer
+	manual statement typStr := clientBoundDebugRenderToString(pk.Type)
+
+packet 165 SyncActorProperty
+	PropertyData nbt
+
+packet 166 AddVolumeEntity
+	manual value pk.Bounds[0]
+
+packet 167 RemoveVolumeEntity
+	EntityRuntimeID varuint32
+	Dimension varint32
+
+packet 168 SimulationType
+	SimulationType uint8
+
+packet 169 NPCDialogue
+	EntityUniqueID uint64
+	ActionType varint32
+	Dialogue string
+	SceneName string
+	NPCName string
+	ActionJSON string
+
+packet 170 EducationResourceURI
+	Resource EducationSharedResourceURI
+
+packet 171 CreatePhoto
+	EntityUniqueID int64
+	PhotoName string
+	ItemName string
+
+packet 172 UpdateSubChunkBlocks
+	Position blockpos
+	Blocks []BlockChangeEntry
+	Extra []BlockChangeEntry
+
+packet 173 PhotoInfoRequest
+	PhotoID varint64
+
+packet 174 SubChunk
+	CacheEnabled bool
+	Dimension varint32
+	Position subchunkpos
+	SubChunkEntries []SubChunkEntry
+
+packet 175 SubChunkRequest
+	Dimension varint32
+	Offsets []SubChunkOffset
+	Position subchunkpos
+
+packet 176 ClientStartItemCooldown
+	Category string
+	Duration varint32
+
+packet 177 ScriptMessage
+	Identifier string
+	Data bytes
+
+packet 178 CodeBuilderSource
+	Operation uint8
+	Category uint8
+	CodeStatus uint8
+
+packet 179 TickingAreasLoadStatus
+	Preload bool
+
+packet 180 DimensionData
+	Definitions []DimensionDefinition
+
+packet 181 AgentAction
+	Identifier string
+	Action int32
+	Response bytes
+
+packet 182 ChangeMobProperty
+	EntityUniqueID varint64
+	Property string
+	BoolValue bool
+	StringValue string
+	IntValue varint32
+	FloatValue float32
+
+packet 183 LessonProgress
+	Action varint32
+	Score varint32
+	Identifier string
+
+packet 184 RequestAbility
+	Ability varint32
+	Value abilityvalue
+
+packet 185 RequestPermissions
+	EntityUniqueID int64
+	PermissionLevel varint32
+	RequestedPermissions uint16
+
+packet 186 ToastRequest
+	Title string
+	Message string
+
+packet 187 UpdateAbilities
+	AbilityData AbilityData
+
+packet 188 UpdateAdventureSettings
+	NoPvM bool
+	NoMvP bool
+	ImmutableWorld bool
+	ShowNameTags bool
+	AutoJump bool
+
+packet 189 DeathInfo
+	Cause string
+	Messages []string
+
+packet 190 EditorNetwork
+	RouteToManager bool
+	Payload nbt
+
+packet 191 FeatureRegistry
+	Features []GenerationFeature
+
+packet 192 ServerStats
+	ServerTime float32
+	NetworkTime float32
+
+packet 193 RequestNetworkSettings
+	ClientProtocol int32be
+
+packet 194 GameTestRequest
+	MaxTestsPerBatch varint32
+	Repetitions varint32
+	Rotation uint8
+	StopOnError bool
+	Position blockpos
+	TestsPerRow varint32
+	Name string
+
+packet 195 GameTestResults
+	Succeeded bool
+	Error string
+	Name string
+
+packet 196 UpdateClientInputLocks
+	Locks varuint32
+
+packet 197 ClientCheatAbility
+	AbilityData AbilityData
+
+packet 198 CameraPresets
+	Presets []CameraPreset
+
+packet 199 UnlockedRecipes
+	UnlockType uint32
+	Recipes []string
+
+packet 300 CameraInstruction
+	Set ?CameraInstructionSet
+	Clear ?bool
+	Fade ?CameraInstructionFade
+	Target ?CameraInstructionTarget
+	RemoveTarget ?bool
+	FieldOfView ?CameraInstructionFieldOfView
+	Spline ?CameraSplineInstruction
+	AttachToEntity ?int64
+	DetachFromEntity ?bool
+
+packet 302 TrimData
+	Patterns []TrimPattern
+	Materials []TrimMaterial
+
+packet 303 OpenSign
+	Position blockpos
+	FrontSide bool
+
+packet 304 AgentAnimation
+	Animation uint8
+	EntityRuntimeID varuint64
+
+packet 305 RefreshEntitlements
+	manual codec is not a method taking an IO
+
+packet 306 PlayerToggleCrafterSlotRequest
+	PosX int32
+	PosY int32
+	PosZ int32
+	Slot uint8
+	Disabled bool
+
+packet 307 SetPlayerInventoryOptions
+	LeftInventoryTab varint32
+	RightInventoryTab varint32
+	Filtering bool
+	InventoryLayout varint32
+	CraftingLayout varint32
+
+packet 308 SetHud
+	Elements []varint32
+	Visibility varint32
+
+packet 309 AwardAchievement
+	AchievementID int32
+
+packet 310 ClientBoundCloseForm
+	manual codec is not a method taking an IO
+
+packet 312 ServerBoundLoadingScreen
+	Type varint32
+	LoadingScreenID ?uint32
+
+packet 313 JigsawStructureData
+	StructureData nbt
+
+packet 314 CurrentStructureFeature
+	CurrentFeature string
+
+packet 315 ServerBoundDiagnostics
+	AverageFramesPerSecond float32
+	AverageServerSimTickTime float32
+	AverageClientSimTickTime float32
+	AverageBeginFrameTime float32
+	AverageInputTime float32
+	AverageRenderTime float32
+	AverageEndFrameTime float32
+	AverageRemainderTimePercent float32
+	AverageUnaccountedTimePercent float32
+	MemoryCategoryValues []MemoryCategoryCounter
+	EntityDiagnostics []EntityDiagnosticTimingInfo
+	SystemDiagnostics []SystemDiagnosticTimingInfo
+	SystemCategories []SystemCategory
+	WhiskerScopes []WhiskerScopeDataSummary
+
+packet 316 CameraAimAssist
+	Preset string
+	Angle vec2
+	Distance float32
+	TargetMode uint8
+	Action uint8
+	ShowDebugRender bool
+
+packet 317 ContainerRegistryCleanup
+	RemovedContainers []FullContainerName
+
+packet 318 MovementEffect
+	EntityRuntimeID varuint64
+	Type varint32
+	Duration varint32
+	Tick varuint64
+
+packet 320 CameraAimAssistPresets
+	Categories []CameraAimAssistCategory
+	Presets []CameraAimAssistPreset
+	Operation uint8
+
+packet 321 ClientCameraAimAssist
+	PresetID string
+	Action uint8
+	AllowAimAssist bool
+
+packet 322 ClientMovementPredictionSync
+	ActorFlags bitset(131)
+	BoundingBoxScale float32
+	BoundingBoxWidth float32
+	BoundingBoxHeight float32
+	MovementSpeed float32
+	UnderwaterMovementSpeed float32
+	LavaMovementSpeed float32
+	JumpStrength float32
+	Health float32
+	Hunger float32
+	FrictionModifier float32
+	Bounciness float32
+	AirDragModifier float32
+	EntityUniqueID varint64
+	Flying bool
+
+packet 323 UpdateClientOptions
+	GraphicsMode ?uint8
+	FilterProfanity ?bool
+
+packet 324 PlayerVideoCapture
+	Action uint8
+	if Action == 1
+		FrameRate int32
+		FilePrefix string
+
+packet 325 PlayerUpdateEntityOverrides
+	manual statement names := [...]string{"clearoverrides", "removeoverride", "setintoverride", "setfloatoverride"}
+
+packet 326 PlayerLocation
+	manual Type written as varuint32 and varint32
+
+packet 327 ClientBoundControlSchemeSet
+	ControlScheme uint8
+
+packet 328 PrimitiveShapes
+	Shapes []PrimitiveShape
+
+packet 329 ServerBoundPackSettingChange
+	PackID uuid
+	PackSetting packsetting
+
+packet 330 ClientBoundDataStore
+	Updates []DataStoreChangeEntry
+
+packet 331 GraphicsOverrideParameter
+	Values []ParameterKeyframeValue
+	FloatValue ?float32
+	Vec3Value ?vec3
+	BiomeIdentifier string
+	PlayerIdentifier ?string
+	ParameterType uint8
+	Reset bool
+
+packet 332 ServerBoundDataStore
+	Update DataStoreUpdate
+
+packet 333 ClientBoundDataDrivenUIShowScreen
+	ScreenID string
+	FormID uint32
+	DataInstanceID ?uint32
+
+packet 334 ClientBoundDataDrivenUICloseScreen
+	FormID ?uint32
+
+packet 335 ClientBoundDataDrivenUIReload
+	manual codec is not a method taking an IO
+
+packet 336 ClientBoundTextureShift
+	ActionID uint8
+	CollectionName string
+	FromStep string
+	ToStep string
+	AllSteps []string
+	CurrentLengthTicks varuint64
+	TotalLengthTicks varuint64
+	Enabled bool
+
+packet 337 VoxelShapes
+	Shapes []VoxelShape
+	NameMap []VoxelShapeNameEntry
+	CustomShapeCount uint16
+
+packet 338 CameraSpline
+	Splines []CameraSplineDefinition
+
+packet 339 CameraAimAssistActorPriority
+	PriorityData []CameraAimAssistActorPriorityData
+
+packet 340 ResourcePacksReadyForValidation
+	manual codec is not a method taking an IO
+
+packet 341 LocatorBar
+	Waypoints []LocatorBarWaypoint
+
+packet 342 PartyChanged
+	PartyInfo ?PartyInfo
+
+packet 343 ServerBoundDataDrivenScreenClosed
+	FormID uint32
+	CloseReason string
+
+packet 344 SyncWorldClocks
+	PayloadType varuint32
+	switch PayloadType
+	case 0
+		SyncStates []SyncWorldClockStateData
+	case 1
+		Clocks []WorldClockData
+	case 2
+		AddClockID varuint64
+		AddTimeMarkers []TimeMarkerData
+	case 3
+		RemoveClockID varuint64
+		RemoveTimeMarkerIDs []varuint64
+	default
+
+packet 345 ClientBoundAttributeLayerSync
+	PayloadType varuint32
+	switch PayloadType
+	case 0
+		Layers []AttributeLayerData
+	case 1
+		LayerName string
+		DimensionID varint32
+		Settings AttributeLayerSettings
+	case 2
+		LayerName string
+		DimensionID varint32
+		EnvironmentAttributes []EnvironmentAttributeData
+	case 3
+		LayerName string
+		DimensionID varint32
+		RemoveAttributeNames []string
+	default
+
+packet 346 ServerStoreInfo
+	StoreInfo ?StoreEntryPointInfo
+
+packet 347 ServerPresenceInfo
+	PresenceInfo ?PresenceInfo
+
+packet 348 ClientboundUpdateSoundData
+	ServerSoundHandle uint64
+	Stop SoundDataUpdate
+	SetVolume SoundDataUpdate
+	SetPitch SoundDataUpdate
+	Fade SoundDataUpdate
+	SeekTo SoundDataUpdate
+	Pause SoundDataUpdate
+	Resume SoundDataUpdate
+
+packet 349 SendPartyDestinationCookie
+	Cookie string
+	Intent string
+	DestinationName string
+
+packet 350 PartyDestinationCookieResponse
+	Cookie string
+	Accepted bool
+
+packet 351 SetPlayerFurnaceOptions
+	FurnaceType uint8
+	FurnaceOptions FurnaceOptions
+
+packet 352 RecordStarted
+	Position blockpos
+	Handle uint64
+
+type AttributeValue
+	Name string
+	Min float32
+	Value float32
+	Max float32
+
+type EntityProperties
+	IntegerProperties []IntegerEntityProperty
+	FloatProperties []FloatEntityProperty
+
+type EntityLink
+	RiddenEntityUniqueID varint64
+	RiderEntityUniqueID varint64
+	Type uint8
+	Immediate bool
+	RiderInitiated bool
+	VehicleAngularVelocity float32
+
+type AbilityData
+	EntityUniqueID int64
+	PlayerPermissions uint8
+	CommandPermissions uint8
+	Layers []AbilityLayer
+
+type BiomeDefinition
+	manual OptionalFunc with func(s *[]uint16) { 	FuncSlice(r, s, r.Uint16) }
+
+type CameraAimAssistActorPriorityData
+	PresetIndex int32
+	CategoryIndex int32
+	ActorIndex int32
+	Priority int32
+
+type CameraAimAssistCategory
+	Name string
+	Priorities CameraAimAssistPriorities
+
+type CameraAimAssistPreset
+	Identifier string
+	BlockExclusions []string
+	EntityExclusions []string
+	BlockTagExclusions []string
+	EntityTypeFamilyExclusions []string
+	LiquidTargets []string
+	ItemSettings []CameraAimAssistItemSettings
+	DefaultItemSettings ?string
+	HandSettings ?string
+
+type CameraInstructionSet
+	Preset uint32
+	Ease ?CameraEase
+	Position ?vec3
+	Rotation ?vec2
+	Facing ?vec3
+	ViewOffset ?vec2
+	EntityOffset ?vec3
+	Default ?bool
+	IgnoreStartingValuesComponent bool
+
+type CameraInstructionFade
+	TimeData ?CameraFadeTimeData
+	Colour ?rgb
+
+type CameraInstructionTarget
+	CenterOffset ?vec3
+	EntityUniqueID int64
+
+type CameraInstructionFieldOfView
+	manual statement easingType := easingTypeToString(x.EaseType)
+
+type CameraSplineInstruction
+	TotalTime float32
+	SplineType ?uint8
+	Curve []vec3
+	ProgressKeyFrames []CameraProgressOption
+	RotationOptions []CameraRotationOption
+	SplineIdentifier ?string
+	LoadFromJson ?bool
+
+type CameraPreset
+	Name string
+	Parent string
+	PosX ?float32
+	PosY ?float32
+	PosZ ?float32
+	RotX ?float32
+	RotY ?float32
+	RotationSpeed ?float32
+	SnapToTarget ?bool
+	HorizontalRotationLimit ?vec2
+	VerticalRotationLimit ?vec2
+	ContinueTargeting ?bool
+	TrackingRadius ?float32
+	ViewOffset ?vec2
+	EntityOffset ?vec3
+	Radius ?float32
+	MinYawLimit ?float32
+	MaxYawLimit ?float32
+	AudioListener ?uint8
+	PlayerEffects ?bool
+	AimAssist ?CameraPresetAimAssist
+	ControlScheme ?uint8
+	ApplyInheritedStartingRotation bool
+	StartingRotation ?vec2
+
+type CameraSplineDefinition
+	Name string
+	TotalTime float32
+	SplineType ?string
+	ControlPoints []vec3
+	ProgressKeyFrames []CameraProgressOption
+	RotationKeyFrames []CameraRotationOption
+
+type AttributeLayerData
+	Name string
+	NoiseName ?string
+	DimensionID varint32
+	Settings AttributeLayerSettings
+	EnvironmentAttributes []EnvironmentAttributeData
+
+type AttributeLayerSettings
+	Priority int32
+	FloatWeight float32
+	Enabled bool
+	TransitionsPaused bool
+
+type EnvironmentAttributeData
+	manual statement easingType := easingTypeToString(x.EaseType)
+
+type DataStoreChangeEntry
+	manual nested field x.Change.DataStoreName
+
+type CacheBlob
+	Hash uint64
+	Payload bytes
+
+type SoundDataUpdate
+	Type varuint32
+	switch Type
+	case 0, 5, 6
+	case 1
+		Volume float32
+	case 2
+		Pitch float32
+	case 3
+		Duration float32
+		TargetVolume float32
+	case 4
+		Seconds float32
+	default
+
+type FullContainerName
+	ContainerID uint8
+	DynamicContainerID ?uint32
+
+type ShapedRecipe
+	manual helper marshalShaped
+
+type ShapelessRecipe
+	manual helper marshalShapeless
+
+type MultiRecipe
+	UUID uuid
+	RecipeNetworkID varuint32
+
+type UserDataShapelessRecipe
+	manual helper marshalShapeless
+
+type ShapelessChemistryRecipe
+	manual helper marshalShapeless
+
+type ShapedChemistryRecipe
+	manual helper marshalShaped
+
+type SmithingTransformRecipe
+	RecipeID string
+	Template itemdescriptorcount
+	Base itemdescriptorcount
+	Addition itemdescriptorcount
+	Result itemstack
+	Block string
+	RecipeNetworkID varuint32
+
+type SmithingTrimRecipe
+	RecipeID string
+	Template itemdescriptorcount
+	Base itemdescriptorcount
+	Addition itemdescriptorcount
+	Block string
+	RecipeNetworkID varuint32
+
+type PotionRecipe
+	InputPotionID varint32
+	InputPotionMetadata varint32
+	ReagentItemID varint32
+	ReagentItemMetadata varint32
+	OutputPotionID varint32
+	OutputPotionMetadata varint32
+
+type PotionContainerChangeRecipe
+	InputItemID varint32
+	ReagentItemID varint32
+	OutputItemID varint32
+
+type CreativeGroup
+	Category uint8
+	Name string
+	Icon itemstack
+
+type CreativeItem
+	CreativeItemNetworkID varuint32
+	Item itemstack
+	GroupIndex varuint32
+
+type DimensionDefinition
+	Name string
+	MinimumY varint32
+	HeightRange varint32
+	Generator varint32
+	DimensionType varint32
+	PackID uuid
+	DefaultBiome string
+
+type EducationSharedResourceURI
+	ButtonName string
+	LinkURI string
+
+type EducationExternalLinkSettings
+	URL string
+	DisplayName string
+
+type GenerationFeature
+	Name string
+	JSON bytes
+
+type ParameterKeyframeValue
+	Time float32
+	Value vec3
+
+type ItemEntry
+	Name string
+	RuntimeID int16
+	ComponentBased bool
+	Version varint32
+	Data nbt
+
+type ItemStackRequest
+	RequestID varint32
+	Actions []stackrequestaction
+	FilterStrings []string
+	FilterCause int32
+
+type ItemStackResponse
+	manual statement var containerInfo Optional[[]StackResponseContainerInfo]
+
+type LocatorBarWaypoint
+	GroupHandle uuid
+	Waypoint Waypoint
+	Action uint8
+
+type PixelRequest
+	Colour rgba
+	Index uint16
+
+type TeleportData
+	TeleportCause int32
+	TeleportSourceEntityType int32
+
+type PartyInfo
+	PartyID string
+	PartyLeader bool
+
+type PlayerArmourDamageEntry
+	ArmourSlot varint32
+	Damage int16
+
+type EnchantmentOption
+	Cost uint8
+	Enchantments ItemEnchantments
+	Name string
+	RecipeNetworkID varuint32
+
+type PlayerListEntry
+	manual helper playerListAction
+
+type Skin
+	manual if with a statement: err := x.validate()
+
+type PrimitiveShape
+	NetworkID varuint64
+	Type ?uint8
+	Location ?vec3
+	Scale ?float32
+	Rotation ?vec3
+	TotalTimeLeft ?float32
+	MaxRenderDistance ?float32
+	Colour ?argbbe
+	DimensionID ?varint32
+	AttachedToEntityID ?varint64
+	ExtraShapeData shapedata
+
+type StackResourcePack
+	UUID string
+	Version string
+	SubPackName string
+
+type ExperimentData
+	Name string
+	Enabled bool
+
+type TexturePackInfo
+	UUID uuid
+	Version string
+	Size uint64
+	ContentKey string
+	SubPackName string
+	ContentIdentity string
+	HasScripts bool
+	AddonPack bool
+	RTXEnabled bool
+	DownloadURL string
+
+type DataStoreUpdate
+	DataStoreName string
+	Property string
+	Path string
+	ControlType varuint32
+	switch ControlType
+	case 0
+		DoubleValue float64
+	case 1
+		BoolValue bool
+	case 2
+		StringValue string
+	default
+	PropertyUpdateCount uint32
+	PathUpdateCount uint32
+
+type MemoryCategoryCounter
+	Category uint8
+	Bytes uint64
+
+type EntityDiagnosticTimingInfo
+	DisplayName string
+	Entity string
+	DurationNanos uint64
+	PercentOfTotal uint8
+	Position vec3
+	Dimension string
+
+type SystemDiagnosticTimingInfo
+	DisplayName string
+	SystemIndex uint64
+	DurationNanos uint64
+	PercentOfTotal uint8
+
+type SystemCategory
+	CategoryName string
+	SystemIndex uint64
+
+type WhiskerScopeDataSummary
+	Label string
+	Indentation string
+	TotalHighCostNS uint64
+	TotalMidCostNS uint64
+	TotalLowCostNS uint64
+
+type PresenceInfo
+	RichPresenceID ?string
+
+type StoreEntryPointInfo
+	StoreID string
+	StoreName string
+
+type FurnaceOptions
+	LeftFurnaceTab varint32
+	Filtering bool
+	Layout varint32
+
+type ScoreboardEntry
+	manual statement variant := uint32(x.IdentityType)
+
+type ScoreboardIdentityEntry
+	EntryID varint64
+	EntityUniqueID ?varint64
+
+type StructureSettings
+	PaletteName string
+	IgnoreEntities bool
+	IgnoreBlocks bool
+	AllowNonTickingChunks bool
+	Size blockpos
+	Offset blockpos
+	LastEditingPlayerUniqueID varint64
+	Rotation uint8
+	Mirror uint8
+	AnimationMode uint8
+	AnimationDuration float32
+	Integrity float32
+	Seed uint32
+	Pivot vec3
+
+type SubChunkEntry
+	Offset SubChunkOffset
+	Result uint8
+	RawPayload ?bytes
+	HeightMapType uint8
+	HeightMapData ?HeightMap
+	RenderHeightMapType uint8
+	RenderHeightMapData ?HeightMap
+	BlobHash ?uint64
+
+type SubChunkOffset
+	manual value x[0]
+
+type SyncWorldClockStateData
+	ClockID varuint64
+	Time varint32
+	Paused bool
+
+type WorldClockData
+	ID varuint64
+	Name string
+	Time varint32
+	Paused bool
+	TimeMarkers []TimeMarkerData
+
+type TimeMarkerData
+	ID varuint64
+	Name string
+	Time varint32
+	Period ?int32
+
+type GatheringJoinInfo
+	ExperienceID uuid
+	ExperienceName string
+	ExperienceWorldID ?uuid
+	ExperienceWorldName ?string
+	CreatorID string
+	TargetID ?uuid
+	ScenarioID ?string
+	ServerID ?string
+
+type TrimPattern
+	ItemName string
+	PatternID string
+
+type TrimMaterial
+	MaterialID string
+	Colour string
+	ItemName string
+
+type Attribute
+	Min float32
+	Max float32
+	Value float32
+	DefaultMin float32
+	DefaultMax float32
+	Default float32
+	Name string
+	Modifiers []AttributeModifier
+
+type BlockChangeEntry
+	BlockPos blockpos
+	BlockRuntimeID varuint32
+	Flags varuint32
+	SyncedUpdateEntityUniqueID varuint64
+	SyncedUpdateType varuint32
+
+type VoxelShape
+	Cells VoxelCells
+	XCoordinates []float32
+	YCoordinates []float32
+	ZCoordinates []float32
+
+type VoxelShapeNameEntry
+	Name string
+	ID uint16
+
+type IntegerEntityProperty
+	Index varuint32
+	Value varint32
+
+type FloatEntityProperty
+	Index varuint32
+	Value float32
+
+type AbilityLayer
+	Type uint16
+	Abilities uint32
+	Values uint32
+	FlySpeed float32
+	VerticalFlySpeed float32
+	WalkSpeed float32
+
+type CameraAimAssistPriorities
+	Entities []CameraAimAssistPriority
+	Blocks []CameraAimAssistPriority
+	BlockTags []CameraAimAssistPriority
+	EntityTypeFamilies []CameraAimAssistPriority
+	EntityDefault ?int32
+	BlockDefault ?int32
+
+type CameraAimAssistItemSettings
+	Item string
+	Category string
+
+type CameraEase
+	Type uint8
+	Duration float32
+
+type CameraFadeTimeData
+	FadeInDuration float32
+	WaitDuration float32
+	FadeOutDuration float32
+
+type CameraProgressOption
+	manual statement easingType := easingTypeToString(x.EaseType)
+
+type CameraRotationOption
+	manual statement easingType := easingTypeToString(x.EaseType)
+
+type CameraPresetAimAssist
+	Preset ?string
+	TargetMode ?int32
+	Angle ?vec2
+	Distance ?float32
+
+type Waypoint
+	UpdateFlag uint32
+	Visible ?bool
+	WorldPosition ?WaypointWorldPosition
+	TexturePath ?string
+	IconSize ?vec2
+	Colour ?int32
+	ClientPositionAuthority ?bool
+	ActorUniqueID ?varint64
+
+type ItemEnchantments
+	manual statement for i := 0; i < 3; i++ {
+
+type SkinAnimation
+	ImageWidth uint32
+	ImageHeight uint32
+	ImageData bytes
+	AnimationType varuint32
+	FrameCount float32
+	ExpressionType varuint32
+
+type PersonaPiece
+	PieceID string
+	PieceType uint32
+	PackID uuid
+	Default bool
+	ProductID string
+
+type PersonaPieceTintColour
+	manual statement wireType := personaPieceTintWireType(x.PieceType)
+
+type HeightMap
+	manual statement for z := range x {
+
+type AttributeModifier
+	ID string
+	Name string
+	Amount float32
+	Operation int32
+	Operand int32
+	Serializable bool
+
+type VoxelCells
+	XSize uint8
+	YSize uint8
+	ZSize uint8
+	Storage []uint8
+
+type CameraAimAssistPriority
+	Identifier string
+	Priority int32
+
+type WaypointWorldPosition
+	Position vec3
+	DimensionID varint32

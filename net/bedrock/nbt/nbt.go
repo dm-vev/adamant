@@ -52,6 +52,26 @@ func Write(w *wire.Writer, v map[string]any) error {
 	return writeCompound(w, v, 0)
 }
 
+// WriteList writes a list as the root tag of NBT, with an empty name.
+func WriteList(w *wire.Writer, l []any) error {
+	w.Uint8(tagList)
+	w.String("")
+	return writeList(w, l, 0)
+}
+
+// ReadList reads NBT whose root tag is a list.
+func ReadList(r *wire.Reader) ([]any, error) {
+	if t := r.Uint8(); t != tagList {
+		if r.Err() != nil {
+			return nil, r.Err()
+		}
+		return nil, fmt.Errorf("nbt: root tag %d is not a list", t)
+	}
+	_ = readString(r)
+	l, _ := readPayload(r, tagList, 0).([]any)
+	return l, r.Err()
+}
+
 // Read reads NBT whose root tag is a compound.
 func Read(r *wire.Reader) (map[string]any, error) {
 	if t := r.Uint8(); t != tagCompound {
