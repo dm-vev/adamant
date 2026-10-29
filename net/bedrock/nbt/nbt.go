@@ -78,7 +78,7 @@ func Read(r *wire.Reader) (map[string]any, error) { return ReadEncoded(r, Networ
 // WriteEncoded writes a compound as the root tag of NBT in an encoding.
 func WriteEncoded(w *wire.Writer, v map[string]any, e Encoding) error {
 	w.Uint8(tagCompound)
-	e.writeString(w, "")
+	_ = e.writeString(w, "")
 	return e.writeCompound(w, v, 0)
 }
 
@@ -99,7 +99,7 @@ func ReadEncoded(r *wire.Reader, e Encoding) (map[string]any, error) {
 // name.
 func WriteList(w *wire.Writer, l []any) error {
 	w.Uint8(tagList)
-	Network.writeString(w, "")
+	_ = Network.writeString(w, "")
 	return Network.writeList(w, l, 0)
 }
 
@@ -146,13 +146,22 @@ func (e Encoding) readLong(r *wire.Reader) int64 {
 	return r.Int64()
 }
 
-func (e Encoding) writeString(w *wire.Writer, s string) {
+// errLongString is returned for a string longer than the game reads.
+var errLongString = fmt.Errorf("nbt: string over %d bytes", maxString)
+
+// writeString writes a string, and fails for one longer than the game
+// reads, whose length the little-endian encoding could not even hold.
+func (e Encoding) writeString(w *wire.Writer, s string) error {
+	if len(s) > maxString {
+		return errLongString
+	}
 	if e == Network {
 		w.Varuint32(uint32(len(s)))
 	} else {
-		w.Int16(int16(uint16(len(s))))
+		w.Int16(int16(len(s)))
 	}
 	w.Bytes([]byte(s))
+	return nil
 }
 
 func (e Encoding) readString(r *wire.Reader) string {
@@ -246,7 +255,9 @@ func (e Encoding) writeCompound(w *wire.Writer, m map[string]any, depth int) err
 			return fmt.Errorf("nbt: %q holds a %T", k, m[k])
 		}
 		w.Uint8(t)
-		e.writeString(w, k)
+		if err := e.writeString(w, k); err != nil {
+			return err
+		}
 		if err := e.writePayload(w, t, m[k], depth); err != nil {
 			return err
 		}
@@ -274,7 +285,7 @@ func (e Encoding) writePayload(w *wire.Writer, t byte, v any, depth int) error {
 	case float64:
 		w.Float64(v)
 	case string:
-		e.writeString(w, v)
+		return e.writeString(w, v)
 	case []any:
 		return e.writeList(w, v, depth)
 	case map[string]any:
@@ -311,7 +322,7 @@ func (e Encoding) writeValue(w *wire.Writer, t byte, v reflect.Value, depth int)
 	case tagDouble:
 		w.Float64(v.Float())
 	case tagString:
-		e.writeString(w, v.String())
+		return e.writeString(w, v.String())
 	case tagByteArray:
 		e.writeInt(w, int32(v.Len()))
 		for i := range v.Len() {
@@ -392,7 +403,9 @@ func (e Encoding) writeMapValue(w *wire.Writer, v reflect.Value, depth int) erro
 			return fmt.Errorf("nbt: %q holds a %T", k, x.Interface())
 		}
 		w.Uint8(t)
-		e.writeString(w, k)
+		if err := e.writeString(w, k); err != nil {
+			return err
+		}
 		if err := e.writePayload(w, t, x.Interface(), depth); err != nil {
 			return err
 		}

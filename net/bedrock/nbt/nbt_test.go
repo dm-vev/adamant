@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/dm-vev/adamant/net/bedrock/wire"
@@ -194,5 +195,34 @@ func TestArrayBound(t *testing.T) {
 	w.Uint8(tagEnd)
 	if _, err := Read(wire.NewReader(w.B)); !errors.Is(err, wire.ErrTooLong) {
 		t.Fatalf("read an array of %d: %v", maxArray+1, err)
+	}
+}
+
+// TestLongStrings writes strings as long as the game reads and longer: a
+// longer one fails rather than going with a length that wrapped around in
+// the 16 bits little-endian NBT gives it, which corrupted what followed.
+func TestLongStrings(t *testing.T) {
+	long, longer := strings.Repeat("a", 32767), strings.Repeat("a", 32768)
+	for _, e := range []Encoding{Network, LittleEndian} {
+		var w wire.Writer
+		if err := WriteEncoded(&w, map[string]any{"s": long, long: int32(1)}, e); err != nil {
+			t.Fatalf("encoding %d: %v", e, err)
+		}
+		m, err := ReadEncoded(wire.NewReader(w.B), e)
+		if err != nil || m["s"] != long || m[long] != int32(1) {
+			t.Fatalf("encoding %d: read back %v", e, err)
+		}
+		for name, v := range map[string]map[string]any{
+			"value":      {"s": longer},
+			"key":        {longer: int32(1)},
+			"in a list":  {"l": []any{longer}},
+			"in strings": {"l": []string{longer}},
+			"of 65536":   {"s": strings.Repeat("a", 65536)},
+		} {
+			var w wire.Writer
+			if err := WriteEncoded(&w, v, e); err == nil {
+				t.Errorf("encoding %d: a string %s past the bound was written", e, name)
+			}
+		}
 	}
 }
