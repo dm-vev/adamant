@@ -321,7 +321,7 @@ func testPack(t *testing.T, size int) *resource.Pack {
 func TestResourcePacks(t *testing.T) {
 	packs := []*resource.Pack{testPack(t, 300<<10), testPack(t, 10<<10)}
 	l := listen(t, Config{ResourcePacks: packs, TexturePacksRequired: true})
-	serve(t, l)
+	spawned := serve(t, l)
 	d, n := client(t, "Packs", false)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -342,6 +342,13 @@ func TestResourcePacks(t *testing.T) {
 		if !found {
 			t.Fatalf("pack %v missing or corrupt", want.UUID())
 		}
+	}
+	// The client is done once it dialed, the server once it read that the
+	// client spawned: closing before would fail the spawn after the test.
+	select {
+	case <-spawned:
+	case <-ctx.Done():
+		t.Fatal("server did not spawn the client")
 	}
 }
 
