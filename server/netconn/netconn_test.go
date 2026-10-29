@@ -17,6 +17,9 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/net/bedrock"
+	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
+	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -332,6 +335,66 @@ func TestResourcePacks(t *testing.T) {
 		}
 		if !found {
 			t.Fatalf("pack %v missing or corrupt", want.UUID())
+		}
+	}
+}
+
+// TestOurClientJoins logs in and spawns with the client of the net module,
+// which codes packets with the generated codecs, and exchanges packets
+// after.
+func TestOurClientJoins(t *testing.T) {
+	l := listen(t, Config{})
+	spawned := serve(t, l)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{Identity: ourlogin.Identity{DisplayName: "Bot"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	var srv *Conn
+	select {
+	case srv = <-spawned:
+	case <-ctx.Done():
+		t.Fatal("server did not spawn the client")
+	}
+	if got := conn.StartGame().WorldName; got != "netconn" {
+		t.Fatalf("world name %q", got)
+	}
+	if srv.IdentityData().DisplayName != "Bot" || srv.ChunkRadius() != 8 {
+		t.Fatalf("server sees %q with chunk radius %d", srv.IdentityData().DisplayName, srv.ChunkRadius())
+	}
+	if err := conn.WritePacket(&v2193.TextPacket{TextType: 1, SourceName: "Bot", Message: "hello"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		<-ctx.Done()
+		_ = conn.Close()
+	}()
+	for {
+		pk, err := conn.ReadPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if text, ok := pk.(*v2193.TextPacket); ok {
+			if text.Message != "echo hello" {
+				t.Fatalf("echo %q", text.Message)
+			}
+			break
+		}
+	}
+	if err := l.Disconnect(srv, "bye"); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := conn.ReadPacket(); err != nil {
+			if !errors.Is(err, ourclient.DisconnectError("bye")) {
+				t.Fatalf("read after the disconnect: %v", err)
+			}
+			break
 		}
 	}
 }
