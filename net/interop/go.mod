@@ -13,6 +13,7 @@ require (
 	github.com/pion/dtls/v3 v3.1.9
 	github.com/pion/logging v0.2.4
 	github.com/pion/sctp v1.11.3
+	github.com/pion/turn/v5 v5.1.2
 	github.com/pion/webrtc/v4 v4.2.21-0.20260920133716-91bfc6c2039f
 	github.com/sandertv/gophertunnel v1.62.0
 	golang.org/x/tools v0.41.0
@@ -36,7 +37,6 @@ require (
 	github.com/pion/srtp/v3 v3.1.0 // indirect
 	github.com/pion/stun/v4 v4.0.1 // indirect
 	github.com/pion/transport/v5 v5.0.1 // indirect
-	github.com/pion/turn/v5 v5.1.2 // indirect
 	github.com/sandertv/go-raknet v1.15.2-0.20260705184311-0d1fd09e2cf6 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
