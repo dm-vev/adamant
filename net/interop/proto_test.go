@@ -45,6 +45,13 @@ var implementations = map[reflect.Type][]func() any{
 		func() any { return &protocol.CraftNonImplementedStackRequestAction{} },
 		func() any { return &protocol.CraftResultsDeprecatedStackRequestAction{} },
 	},
+	reflect.TypeFor[protocol.InventoryTransactionData](): {
+		func() any { return &protocol.NormalTransactionData{} },
+		func() any { return &protocol.MismatchTransactionData{} },
+		func() any { return &protocol.UseItemTransactionData{} },
+		func() any { return &protocol.UseItemOnEntityTransactionData{} },
+		func() any { return &protocol.ReleaseItemTransactionData{} },
+	},
 }
 
 // fill sets a value to random contents: small numbers often, so that enum
@@ -128,6 +135,9 @@ func fill(rng *rand.Rand, v reflect.Value, depth int) {
 		for i := range v.NumField() {
 			fill(rng, v.Field(i), depth+1)
 		}
+		if skin, ok := v.Addr().Interface().(*protocol.Skin); ok {
+			sizeImages(rng, skin)
+		}
 	case reflect.Pointer:
 		if depth > 5 {
 			return
@@ -135,6 +145,24 @@ func fill(rng *rand.Rand, v reflect.Value, depth int) {
 		p := reflect.New(v.Type().Elem())
 		fill(rng, p.Elem(), depth+1)
 		v.Set(p)
+	}
+}
+
+// sizeImages gives the images of a skin the sizes their dimensions call
+// for, which gophertunnel checks.
+func sizeImages(rng *rand.Rand, skin *protocol.Skin) {
+	image := func(width, height *uint32, data *[]byte) {
+		*width, *height = uint32(rng.IntN(3)), uint32(rng.IntN(3))
+		*data = make([]byte, *width**height*4)
+		for i := range *data {
+			(*data)[i] = byte(rng.IntN(256))
+		}
+	}
+	image(&skin.SkinImageWidth, &skin.SkinImageHeight, &skin.SkinData)
+	image(&skin.CapeImageWidth, &skin.CapeImageHeight, &skin.CapeData)
+	for i := range skin.Animations {
+		a := &skin.Animations[i]
+		image(&a.ImageWidth, &a.ImageHeight, &a.ImageData)
 	}
 }
 
@@ -177,6 +205,7 @@ func TestGeneratedCodecsMatchGophertunnel(t *testing.T) {
 		for try := 0; try < 200 && tested < 30; try++ {
 			pk := pool[id]()
 			fill(rng, reflect.ValueOf(pk).Elem(), 0)
+			canonical(pk)
 			b, ok := marshal(pk)
 			if !ok {
 				continue
@@ -186,6 +215,7 @@ func TestGeneratedCodecsMatchGophertunnel(t *testing.T) {
 				// gophertunnel writes values its reader refuses.
 				continue
 			}
+			fixup(back, pk)
 			tested++
 			ours := v2193.New(id)
 			r := wire.NewReader(b)
@@ -215,6 +245,43 @@ func TestGeneratedCodecsMatchGophertunnel(t *testing.T) {
 		}
 	}
 	t.Logf("%d packets: %d with codecs checked, %d raw, %d untested", len(ids), codecs, raw, untested)
+}
+
+// canonical brings the fields of a packet that the wire holds in fewer
+// bits than gophertunnel into the values the wire can hold.
+func canonical(pk packet.Packet) {
+	switch pk := pk.(type) {
+	case *packet.PlayerList:
+		// The action goes as a variant, which decides, and again as a byte.
+		for i := range pk.Entries {
+			pk.Entries[i].ActionType &= 1
+		}
+	case *packet.ClientboundUpdateSoundData:
+		// Seven updates, each of seven types, are rarely all valid.
+		for _, u := range []*protocol.SoundDataUpdate{&pk.Stop, &pk.SetVolume, &pk.SetPitch, &pk.Fade, &pk.SeekTo, &pk.Pause, &pk.Resume} {
+			u.Type %= 7
+		}
+	case *packet.CraftingData:
+		// The input of a material reducer goes as one varint: the network
+		// ID in the high 16 bits, the metadata in the low 15.
+		for i := range pk.MaterialReducers {
+			in := &pk.MaterialReducers[i].InputItem
+			in.NetworkID = int32(int16(in.NetworkID))
+			in.MetadataValue &= 0x7fff
+		}
+	}
+}
+
+// fixup corrects what gophertunnel decodes wrongly from the value it
+// encoded.
+func fixup(back, pk packet.Packet) {
+	if back, ok := back.(*packet.CraftingData); ok {
+		// gophertunnel shifts the network ID of a material reducer input
+		// left instead of right.
+		for i := range back.MaterialReducers {
+			back.MaterialReducers[i].InputItem.NetworkID = pk.(*packet.CraftingData).MaterialReducers[i].InputItem.NetworkID
+		}
+	}
 }
 
 // unmarshal decodes a packet with gophertunnel.

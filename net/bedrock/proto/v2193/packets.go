@@ -1074,17 +1074,6 @@ func (p *UpdateAttributesPacket) Decode(r *wire.Reader) {
 	p.Tick = r.Varuint64()
 }
 
-// InventoryTransactionPacket has no codec yet (statement hasLegacy := pk.LegacyRequestID < -1 && (pk.LegacyRequestID&1) == 0): its fields stay bytes.
-type InventoryTransactionPacket struct {
-	Fields []byte
-}
-
-func (*InventoryTransactionPacket) ID() uint32              { return 30 }
-func (p *InventoryTransactionPacket) Encode(w *wire.Writer) { w.Bytes(p.Fields) }
-func (p *InventoryTransactionPacket) Decode(r *wire.Reader) {
-	p.Fields = append([]byte(nil), r.Bytes()...)
-}
-
 type MobEquipmentPacket struct {
 	EntityRuntimeID uint64
 	NewItem         ItemInstance
@@ -1530,14 +1519,173 @@ func (p *ContainerSetDataPacket) Decode(r *wire.Reader) {
 	p.Value = r.Varint32()
 }
 
-// CraftingDataPacket has no codec yet (it holds a value without a codec): its fields stay bytes.
 type CraftingDataPacket struct {
-	Fields []byte
+	ShapedRecipes                []ShapedRecipe
+	ShapelessRecipes             []ShapelessRecipe
+	MultiRecipes                 []MultiRecipe
+	UserDataShapelessRecipes     []UserDataShapelessRecipe
+	ShapelessChemistryRecipes    []ShapelessChemistryRecipe
+	ShapedChemistryRecipes       []ShapedChemistryRecipe
+	SmithingTransformRecipes     []SmithingTransformRecipe
+	SmithingTrimRecipes          []SmithingTrimRecipe
+	PotionRecipes                []PotionRecipe
+	PotionContainerChangeRecipes []PotionContainerChangeRecipe
+	MaterialReducers             []MaterialReducer
+	ClearRecipes                 bool
 }
 
-func (*CraftingDataPacket) ID() uint32              { return 52 }
-func (p *CraftingDataPacket) Encode(w *wire.Writer) { w.Bytes(p.Fields) }
-func (p *CraftingDataPacket) Decode(r *wire.Reader) { p.Fields = append([]byte(nil), r.Bytes()...) }
+func (*CraftingDataPacket) ID() uint32 { return 52 }
+
+func (p *CraftingDataPacket) Encode(w *wire.Writer) {
+	w.Varuint32(uint32(len(p.ShapedRecipes)))
+	for v40 := range p.ShapedRecipes {
+		p.ShapedRecipes[v40].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.ShapelessRecipes)))
+	for v41 := range p.ShapelessRecipes {
+		p.ShapelessRecipes[v41].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.MultiRecipes)))
+	for v42 := range p.MultiRecipes {
+		p.MultiRecipes[v42].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.UserDataShapelessRecipes)))
+	for v43 := range p.UserDataShapelessRecipes {
+		p.UserDataShapelessRecipes[v43].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.ShapelessChemistryRecipes)))
+	for v44 := range p.ShapelessChemistryRecipes {
+		p.ShapelessChemistryRecipes[v44].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.ShapedChemistryRecipes)))
+	for v45 := range p.ShapedChemistryRecipes {
+		p.ShapedChemistryRecipes[v45].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.SmithingTransformRecipes)))
+	for v46 := range p.SmithingTransformRecipes {
+		p.SmithingTransformRecipes[v46].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.SmithingTrimRecipes)))
+	for v47 := range p.SmithingTrimRecipes {
+		p.SmithingTrimRecipes[v47].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.PotionRecipes)))
+	for v48 := range p.PotionRecipes {
+		p.PotionRecipes[v48].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.PotionContainerChangeRecipes)))
+	for v49 := range p.PotionContainerChangeRecipes {
+		p.PotionContainerChangeRecipes[v49].Encode(w)
+	}
+	w.Varuint32(uint32(len(p.MaterialReducers)))
+	for v50 := range p.MaterialReducers {
+		writeMaterialReducer(w, &p.MaterialReducers[v50])
+	}
+	w.Bool(p.ClearRecipes)
+}
+
+func (p *CraftingDataPacket) Decode(r *wire.Reader) {
+	v52 := int(r.Varuint32())
+	if v52 < 0 || v52 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.ShapedRecipes = make([]ShapedRecipe, v52)
+	for v51 := range p.ShapedRecipes {
+		p.ShapedRecipes[v51].Decode(r)
+	}
+	v54 := int(r.Varuint32())
+	if v54 < 0 || v54 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.ShapelessRecipes = make([]ShapelessRecipe, v54)
+	for v53 := range p.ShapelessRecipes {
+		p.ShapelessRecipes[v53].Decode(r)
+	}
+	v56 := int(r.Varuint32())
+	if v56 < 0 || v56 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.MultiRecipes = make([]MultiRecipe, v56)
+	for v55 := range p.MultiRecipes {
+		p.MultiRecipes[v55].Decode(r)
+	}
+	v58 := int(r.Varuint32())
+	if v58 < 0 || v58 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.UserDataShapelessRecipes = make([]UserDataShapelessRecipe, v58)
+	for v57 := range p.UserDataShapelessRecipes {
+		p.UserDataShapelessRecipes[v57].Decode(r)
+	}
+	v60 := int(r.Varuint32())
+	if v60 < 0 || v60 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.ShapelessChemistryRecipes = make([]ShapelessChemistryRecipe, v60)
+	for v59 := range p.ShapelessChemistryRecipes {
+		p.ShapelessChemistryRecipes[v59].Decode(r)
+	}
+	v62 := int(r.Varuint32())
+	if v62 < 0 || v62 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.ShapedChemistryRecipes = make([]ShapedChemistryRecipe, v62)
+	for v61 := range p.ShapedChemistryRecipes {
+		p.ShapedChemistryRecipes[v61].Decode(r)
+	}
+	v64 := int(r.Varuint32())
+	if v64 < 0 || v64 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.SmithingTransformRecipes = make([]SmithingTransformRecipe, v64)
+	for v63 := range p.SmithingTransformRecipes {
+		p.SmithingTransformRecipes[v63].Decode(r)
+	}
+	v66 := int(r.Varuint32())
+	if v66 < 0 || v66 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.SmithingTrimRecipes = make([]SmithingTrimRecipe, v66)
+	for v65 := range p.SmithingTrimRecipes {
+		p.SmithingTrimRecipes[v65].Decode(r)
+	}
+	v68 := int(r.Varuint32())
+	if v68 < 0 || v68 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.PotionRecipes = make([]PotionRecipe, v68)
+	for v67 := range p.PotionRecipes {
+		p.PotionRecipes[v67].Decode(r)
+	}
+	v70 := int(r.Varuint32())
+	if v70 < 0 || v70 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.PotionContainerChangeRecipes = make([]PotionContainerChangeRecipe, v70)
+	for v69 := range p.PotionContainerChangeRecipes {
+		p.PotionContainerChangeRecipes[v69].Decode(r)
+	}
+	v72 := int(r.Varuint32())
+	if v72 < 0 || v72 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.MaterialReducers = make([]MaterialReducer, v72)
+	for v71 := range p.MaterialReducers {
+		readMaterialReducer(r, &p.MaterialReducers[v71])
+	}
+	p.ClearRecipes = r.Bool()
+}
 
 type GUIDataPickItemPacket struct {
 	ItemName    string
@@ -1627,8 +1775,8 @@ func (p *LevelChunkPacket) Encode(w *wire.Writer) {
 	}
 	w.Bool(p.CacheEnabled)
 	w.Varuint32(uint32(len(p.BlobHashes)))
-	for v40 := range p.BlobHashes {
-		w.Uint64(p.BlobHashes[v40])
+	for v73 := range p.BlobHashes {
+		w.Uint64(p.BlobHashes[v73])
 	}
 	w.ByteSlice(p.RawPayload)
 }
@@ -1642,14 +1790,14 @@ func (p *LevelChunkPacket) Decode(r *wire.Reader) {
 		p.SubChunkLimit.Val = r.Varint32()
 	}
 	p.CacheEnabled = r.Bool()
-	v42 := int(r.Varuint32())
-	if v42 < 0 || v42 > r.Len() {
+	v75 := int(r.Varuint32())
+	if v75 < 0 || v75 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.BlobHashes = make([]uint64, v42)
-	for v41 := range p.BlobHashes {
-		p.BlobHashes[v41] = r.Uint64()
+	p.BlobHashes = make([]uint64, v75)
+	for v74 := range p.BlobHashes {
+		p.BlobHashes[v74] = r.Uint64()
 	}
 	p.RawPayload = r.ByteSlice()
 }
@@ -1725,14 +1873,30 @@ func (p *SetPlayerGameTypePacket) Decode(r *wire.Reader) {
 	p.GameType = r.Varint32()
 }
 
-// PlayerListPacket has no codec yet (it holds a value without a codec): its fields stay bytes.
 type PlayerListPacket struct {
-	Fields []byte
+	Entries []PlayerListEntry
 }
 
-func (*PlayerListPacket) ID() uint32              { return 63 }
-func (p *PlayerListPacket) Encode(w *wire.Writer) { w.Bytes(p.Fields) }
-func (p *PlayerListPacket) Decode(r *wire.Reader) { p.Fields = append([]byte(nil), r.Bytes()...) }
+func (*PlayerListPacket) ID() uint32 { return 63 }
+
+func (p *PlayerListPacket) Encode(w *wire.Writer) {
+	w.Varuint32(uint32(len(p.Entries)))
+	for v76 := range p.Entries {
+		p.Entries[v76].Encode(w)
+	}
+}
+
+func (p *PlayerListPacket) Decode(r *wire.Reader) {
+	v78 := int(r.Varuint32())
+	if v78 < 0 || v78 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.Entries = make([]PlayerListEntry, v78)
+	for v77 := range p.Entries {
+		p.Entries[v77].Decode(r)
+	}
+}
 
 type SimpleEventPacket struct {
 	EventType uint16
@@ -1800,8 +1964,8 @@ func (p *ClientBoundMapItemDataPacket) Encode(w *wire.Writer) {
 	w.Bool(p.MapsIncludedIn.Set)
 	if p.MapsIncludedIn.Set {
 		w.Varuint32(uint32(len(p.MapsIncludedIn.Val)))
-		for v43 := range p.MapsIncludedIn.Val {
-			w.Varint64(p.MapsIncludedIn.Val[v43])
+		for v79 := range p.MapsIncludedIn.Val {
+			w.Varint64(p.MapsIncludedIn.Val[v79])
 		}
 	}
 	w.Bool(p.Scale.Set)
@@ -1811,15 +1975,15 @@ func (p *ClientBoundMapItemDataPacket) Encode(w *wire.Writer) {
 	w.Bool(p.TrackedObjects.Set)
 	if p.TrackedObjects.Set {
 		w.Varuint32(uint32(len(p.TrackedObjects.Val)))
-		for v44 := range p.TrackedObjects.Val {
-			p.TrackedObjects.Val[v44].Encode(w)
+		for v80 := range p.TrackedObjects.Val {
+			p.TrackedObjects.Val[v80].Encode(w)
 		}
 	}
 	w.Bool(p.Decorations.Set)
 	if p.Decorations.Set {
 		w.Varuint32(uint32(len(p.Decorations.Val)))
-		for v45 := range p.Decorations.Val {
-			p.Decorations.Val[v45].Encode(w)
+		for v81 := range p.Decorations.Val {
+			p.Decorations.Val[v81].Encode(w)
 		}
 	}
 	w.Bool(p.Width.Set)
@@ -1841,8 +2005,8 @@ func (p *ClientBoundMapItemDataPacket) Encode(w *wire.Writer) {
 	w.Bool(p.Pixels.Set)
 	if p.Pixels.Set {
 		w.Varuint32(uint32(len(p.Pixels.Val)))
-		for v46 := range p.Pixels.Val {
-			proto.WriteARGBBE(w, &p.Pixels.Val[v46])
+		for v82 := range p.Pixels.Val {
+			proto.WriteARGBBE(w, &p.Pixels.Val[v82])
 		}
 	}
 }
@@ -1854,14 +2018,14 @@ func (p *ClientBoundMapItemDataPacket) Decode(r *wire.Reader) {
 	proto.ReadBlockPos(r, &p.Origin)
 	p.MapsIncludedIn.Set = r.Bool()
 	if p.MapsIncludedIn.Set {
-		v48 := int(r.Varuint32())
-		if v48 < 0 || v48 > r.Len() {
+		v84 := int(r.Varuint32())
+		if v84 < 0 || v84 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.MapsIncludedIn.Val = make([]int64, v48)
-		for v47 := range p.MapsIncludedIn.Val {
-			p.MapsIncludedIn.Val[v47] = r.Varint64()
+		p.MapsIncludedIn.Val = make([]int64, v84)
+		for v83 := range p.MapsIncludedIn.Val {
+			p.MapsIncludedIn.Val[v83] = r.Varint64()
 		}
 	}
 	p.Scale.Set = r.Bool()
@@ -1870,26 +2034,26 @@ func (p *ClientBoundMapItemDataPacket) Decode(r *wire.Reader) {
 	}
 	p.TrackedObjects.Set = r.Bool()
 	if p.TrackedObjects.Set {
-		v50 := int(r.Varuint32())
-		if v50 < 0 || v50 > r.Len() {
+		v86 := int(r.Varuint32())
+		if v86 < 0 || v86 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.TrackedObjects.Val = make([]MapTrackedObject, v50)
-		for v49 := range p.TrackedObjects.Val {
-			p.TrackedObjects.Val[v49].Decode(r)
+		p.TrackedObjects.Val = make([]MapTrackedObject, v86)
+		for v85 := range p.TrackedObjects.Val {
+			p.TrackedObjects.Val[v85].Decode(r)
 		}
 	}
 	p.Decorations.Set = r.Bool()
 	if p.Decorations.Set {
-		v52 := int(r.Varuint32())
-		if v52 < 0 || v52 > r.Len() {
+		v88 := int(r.Varuint32())
+		if v88 < 0 || v88 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.Decorations.Val = make([]MapDecoration, v52)
-		for v51 := range p.Decorations.Val {
-			p.Decorations.Val[v51].Decode(r)
+		p.Decorations.Val = make([]MapDecoration, v88)
+		for v87 := range p.Decorations.Val {
+			p.Decorations.Val[v87].Decode(r)
 		}
 	}
 	p.Width.Set = r.Bool()
@@ -1910,14 +2074,14 @@ func (p *ClientBoundMapItemDataPacket) Decode(r *wire.Reader) {
 	}
 	p.Pixels.Set = r.Bool()
 	if p.Pixels.Set {
-		v54 := int(r.Varuint32())
-		if v54 < 0 || v54 > r.Len() {
+		v90 := int(r.Varuint32())
+		if v90 < 0 || v90 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.Pixels.Val = make([]proto.Color, v54)
-		for v53 := range p.Pixels.Val {
-			proto.ReadARGBBE(r, &p.Pixels.Val[v53])
+		p.Pixels.Val = make([]proto.Color, v90)
+		for v89 := range p.Pixels.Val {
+			proto.ReadARGBBE(r, &p.Pixels.Val[v89])
 		}
 	}
 }
@@ -1932,21 +2096,21 @@ func (*MapInfoRequestPacket) ID() uint32 { return 68 }
 func (p *MapInfoRequestPacket) Encode(w *wire.Writer) {
 	w.Varint64(p.MapID)
 	w.Uint32(uint32(len(p.ClientPixels)))
-	for v55 := range p.ClientPixels {
-		p.ClientPixels[v55].Encode(w)
+	for v91 := range p.ClientPixels {
+		p.ClientPixels[v91].Encode(w)
 	}
 }
 
 func (p *MapInfoRequestPacket) Decode(r *wire.Reader) {
 	p.MapID = r.Varint64()
-	v57 := int(r.Uint32())
-	if v57 < 0 || v57 > r.Len() {
+	v93 := int(r.Uint32())
+	if v93 < 0 || v93 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.ClientPixels = make([]PixelRequest, v57)
-	for v56 := range p.ClientPixels {
-		p.ClientPixels[v56].Decode(r)
+	p.ClientPixels = make([]PixelRequest, v93)
+	for v92 := range p.ClientPixels {
+		p.ClientPixels[v92].Decode(r)
 	}
 }
 
@@ -1989,20 +2153,20 @@ func (*GameRulesChangedPacket) ID() uint32 { return 72 }
 
 func (p *GameRulesChangedPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.GameRules)))
-	for v58 := range p.GameRules {
-		writeGameRule(w, &p.GameRules[v58])
+	for v94 := range p.GameRules {
+		writeGameRule(w, &p.GameRules[v94])
 	}
 }
 
 func (p *GameRulesChangedPacket) Decode(r *wire.Reader) {
-	v60 := int(r.Varuint32())
-	if v60 < 0 || v60 > r.Len() {
+	v96 := int(r.Varuint32())
+	if v96 < 0 || v96 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.GameRules = make([]GameRule, v60)
-	for v59 := range p.GameRules {
-		readGameRule(r, &p.GameRules[v59])
+	p.GameRules = make([]GameRule, v96)
+	for v95 := range p.GameRules {
+		readGameRule(r, &p.GameRules[v95])
 	}
 }
 
@@ -2510,31 +2674,45 @@ func (*PurchaseReceiptPacket) ID() uint32 { return 92 }
 
 func (p *PurchaseReceiptPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Receipts)))
-	for v61 := range p.Receipts {
-		w.String(p.Receipts[v61])
+	for v97 := range p.Receipts {
+		w.String(p.Receipts[v97])
 	}
 }
 
 func (p *PurchaseReceiptPacket) Decode(r *wire.Reader) {
-	v63 := int(r.Varuint32())
-	if v63 < 0 || v63 > r.Len() {
+	v99 := int(r.Varuint32())
+	if v99 < 0 || v99 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Receipts = make([]string, v63)
-	for v62 := range p.Receipts {
-		p.Receipts[v62] = r.String()
+	p.Receipts = make([]string, v99)
+	for v98 := range p.Receipts {
+		p.Receipts[v98] = r.String()
 	}
 }
 
-// PlayerSkinPacket has no codec yet (it holds a value without a codec): its fields stay bytes.
 type PlayerSkinPacket struct {
-	Fields []byte
+	UUID        [16]byte
+	Skin        Skin
+	NewSkinName string
+	OldSkinName string
 }
 
-func (*PlayerSkinPacket) ID() uint32              { return 93 }
-func (p *PlayerSkinPacket) Encode(w *wire.Writer) { w.Bytes(p.Fields) }
-func (p *PlayerSkinPacket) Decode(r *wire.Reader) { p.Fields = append([]byte(nil), r.Bytes()...) }
+func (*PlayerSkinPacket) ID() uint32 { return 93 }
+
+func (p *PlayerSkinPacket) Encode(w *wire.Writer) {
+	proto.WriteUUID(w, &p.UUID)
+	p.Skin.Encode(w)
+	w.String(p.NewSkinName)
+	w.String(p.OldSkinName)
+}
+
+func (p *PlayerSkinPacket) Decode(r *wire.Reader) {
+	proto.ReadUUID(r, &p.UUID)
+	p.Skin.Decode(r)
+	p.NewSkinName = r.String()
+	p.OldSkinName = r.String()
+}
 
 type SubClientLoginPacket struct {
 	ConnectionRequest []byte
@@ -2837,14 +3015,30 @@ func (p *SetDisplayObjectivePacket) Decode(r *wire.Reader) {
 	p.SortOrder = r.Varint32()
 }
 
-// SetScorePacket has no codec yet (it holds a value without a codec): its fields stay bytes.
 type SetScorePacket struct {
-	Fields []byte
+	Entries []ScoreboardEntry
 }
 
-func (*SetScorePacket) ID() uint32              { return 108 }
-func (p *SetScorePacket) Encode(w *wire.Writer) { w.Bytes(p.Fields) }
-func (p *SetScorePacket) Decode(r *wire.Reader) { p.Fields = append([]byte(nil), r.Bytes()...) }
+func (*SetScorePacket) ID() uint32 { return 108 }
+
+func (p *SetScorePacket) Encode(w *wire.Writer) {
+	w.Varuint32(uint32(len(p.Entries)))
+	for v100 := range p.Entries {
+		p.Entries[v100].Encode(w)
+	}
+}
+
+func (p *SetScorePacket) Decode(r *wire.Reader) {
+	v102 := int(r.Varuint32())
+	if v102 < 0 || v102 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.Entries = make([]ScoreboardEntry, v102)
+	for v101 := range p.Entries {
+		p.Entries[v101].Decode(r)
+	}
+}
 
 type LabTablePacket struct {
 	ActionType   uint8
@@ -2988,21 +3182,21 @@ func (*SetScoreboardIdentityPacket) ID() uint32 { return 112 }
 func (p *SetScoreboardIdentityPacket) Encode(w *wire.Writer) {
 	w.Uint8(p.ActionType)
 	w.Varuint32(uint32(len(p.Entries)))
-	for v64 := range p.Entries {
-		p.Entries[v64].Encode(w)
+	for v103 := range p.Entries {
+		p.Entries[v103].Encode(w)
 	}
 }
 
 func (p *SetScoreboardIdentityPacket) Decode(r *wire.Reader) {
 	p.ActionType = r.Uint8()
-	v66 := int(r.Varuint32())
-	if v66 < 0 || v66 > r.Len() {
+	v105 := int(r.Varuint32())
+	if v105 < 0 || v105 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Entries = make([]ScoreboardIdentityEntry, v66)
-	for v65 := range p.Entries {
-		p.Entries[v65].Decode(r)
+	p.Entries = make([]ScoreboardIdentityEntry, v105)
+	for v104 := range p.Entries {
+		p.Entries[v104].Decode(r)
 	}
 }
 
@@ -3031,22 +3225,22 @@ func (*UpdateSoftEnumPacket) ID() uint32 { return 114 }
 func (p *UpdateSoftEnumPacket) Encode(w *wire.Writer) {
 	w.String(p.EnumType)
 	w.Varuint32(uint32(len(p.Options)))
-	for v67 := range p.Options {
-		w.String(p.Options[v67])
+	for v106 := range p.Options {
+		w.String(p.Options[v106])
 	}
 	w.Uint8(p.ActionType)
 }
 
 func (p *UpdateSoftEnumPacket) Decode(r *wire.Reader) {
 	p.EnumType = r.String()
-	v69 := int(r.Varuint32())
-	if v69 < 0 || v69 > r.Len() {
+	v108 := int(r.Varuint32())
+	if v108 < 0 || v108 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Options = make([]string, v69)
-	for v68 := range p.Options {
-		p.Options[v68] = r.String()
+	p.Options = make([]string, v108)
+	for v107 := range p.Options {
+		p.Options[v107] = r.String()
 	}
 	p.ActionType = r.Uint8()
 }
@@ -3143,22 +3337,22 @@ func (p *NetworkChunkPublisherUpdatePacket) Encode(w *wire.Writer) {
 	proto.WriteBlockPos(w, &p.Position)
 	w.Varuint32(p.Radius)
 	w.Uint32(uint32(len(p.SavedChunks)))
-	for v70 := range p.SavedChunks {
-		proto.WriteChunkPos(w, &p.SavedChunks[v70])
+	for v109 := range p.SavedChunks {
+		proto.WriteChunkPos(w, &p.SavedChunks[v109])
 	}
 }
 
 func (p *NetworkChunkPublisherUpdatePacket) Decode(r *wire.Reader) {
 	proto.ReadBlockPos(r, &p.Position)
 	p.Radius = r.Varuint32()
-	v72 := int(r.Uint32())
-	if v72 < 0 || v72 > r.Len() {
+	v111 := int(r.Uint32())
+	if v111 < 0 || v111 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.SavedChunks = make([][2]int32, v72)
-	for v71 := range p.SavedChunks {
-		proto.ReadChunkPos(r, &p.SavedChunks[v71])
+	p.SavedChunks = make([][2]int32, v111)
+	for v110 := range p.SavedChunks {
+		proto.ReadChunkPos(r, &p.SavedChunks[v110])
 	}
 }
 
@@ -3171,33 +3365,33 @@ func (*BiomeDefinitionListPacket) ID() uint32 { return 122 }
 
 func (p *BiomeDefinitionListPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.BiomeDefinitions)))
-	for v73 := range p.BiomeDefinitions {
-		p.BiomeDefinitions[v73].Encode(w)
+	for v112 := range p.BiomeDefinitions {
+		p.BiomeDefinitions[v112].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.StringList)))
-	for v74 := range p.StringList {
-		w.String(p.StringList[v74])
+	for v113 := range p.StringList {
+		w.String(p.StringList[v113])
 	}
 }
 
 func (p *BiomeDefinitionListPacket) Decode(r *wire.Reader) {
-	v76 := int(r.Varuint32())
-	if v76 < 0 || v76 > r.Len() {
+	v115 := int(r.Varuint32())
+	if v115 < 0 || v115 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.BiomeDefinitions = make([]BiomeDefinition, v76)
-	for v75 := range p.BiomeDefinitions {
-		p.BiomeDefinitions[v75].Decode(r)
+	p.BiomeDefinitions = make([]BiomeDefinition, v115)
+	for v114 := range p.BiomeDefinitions {
+		p.BiomeDefinitions[v114].Decode(r)
 	}
-	v78 := int(r.Varuint32())
-	if v78 < 0 || v78 > r.Len() {
+	v117 := int(r.Varuint32())
+	if v117 < 0 || v117 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.StringList = make([]string, v78)
-	for v77 := range p.StringList {
-		p.StringList[v77] = r.String()
+	p.StringList = make([]string, v117)
+	for v116 := range p.StringList {
+		p.StringList[v116] = r.String()
 	}
 }
 
@@ -3383,33 +3577,33 @@ func (*ClientCacheBlobStatusPacket) ID() uint32 { return 135 }
 
 func (p *ClientCacheBlobStatusPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.MissHashes)))
-	for v79 := range p.MissHashes {
-		w.Uint64(p.MissHashes[v79])
+	for v118 := range p.MissHashes {
+		w.Uint64(p.MissHashes[v118])
 	}
 	w.Varuint32(uint32(len(p.HitHashes)))
-	for v80 := range p.HitHashes {
-		w.Uint64(p.HitHashes[v80])
+	for v119 := range p.HitHashes {
+		w.Uint64(p.HitHashes[v119])
 	}
 }
 
 func (p *ClientCacheBlobStatusPacket) Decode(r *wire.Reader) {
-	v82 := int(r.Varuint32())
-	if v82 < 0 || v82 > r.Len() {
+	v121 := int(r.Varuint32())
+	if v121 < 0 || v121 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.MissHashes = make([]uint64, v82)
-	for v81 := range p.MissHashes {
-		p.MissHashes[v81] = r.Uint64()
+	p.MissHashes = make([]uint64, v121)
+	for v120 := range p.MissHashes {
+		p.MissHashes[v120] = r.Uint64()
 	}
-	v84 := int(r.Varuint32())
-	if v84 < 0 || v84 > r.Len() {
+	v123 := int(r.Varuint32())
+	if v123 < 0 || v123 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.HitHashes = make([]uint64, v84)
-	for v83 := range p.HitHashes {
-		p.HitHashes[v83] = r.Uint64()
+	p.HitHashes = make([]uint64, v123)
+	for v122 := range p.HitHashes {
+		p.HitHashes[v122] = r.Uint64()
 	}
 }
 
@@ -3421,20 +3615,20 @@ func (*ClientCacheMissResponsePacket) ID() uint32 { return 136 }
 
 func (p *ClientCacheMissResponsePacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Blobs)))
-	for v85 := range p.Blobs {
-		p.Blobs[v85].Encode(w)
+	for v124 := range p.Blobs {
+		p.Blobs[v124].Encode(w)
 	}
 }
 
 func (p *ClientCacheMissResponsePacket) Decode(r *wire.Reader) {
-	v87 := int(r.Varuint32())
-	if v87 < 0 || v87 > r.Len() {
+	v126 := int(r.Varuint32())
+	if v126 < 0 || v126 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Blobs = make([]CacheBlob, v87)
-	for v86 := range p.Blobs {
-		p.Blobs[v86].Decode(r)
+	p.Blobs = make([]CacheBlob, v126)
+	for v125 := range p.Blobs {
+		p.Blobs[v125].Decode(r)
 	}
 }
 
@@ -3665,8 +3859,8 @@ func (p *PlayerAuthInputPacket) Encode(w *wire.Writer) {
 	w.Bool(p.BlockActions.Set)
 	if p.BlockActions.Set {
 		w.Varuint32(uint32(len(p.BlockActions.Val)))
-		for v88 := range p.BlockActions.Val {
-			p.BlockActions.Val[v88].Encode(w)
+		for v127 := range p.BlockActions.Val {
+			p.BlockActions.Val[v127].Encode(w)
 		}
 	}
 	w.Bool(p.VehicleRotation.Set)
@@ -3706,14 +3900,14 @@ func (p *PlayerAuthInputPacket) Decode(r *wire.Reader) {
 	}
 	p.BlockActions.Set = r.Bool()
 	if p.BlockActions.Set {
-		v90 := int(r.Varuint32())
-		if v90 < 0 || v90 > r.Len() {
+		v129 := int(r.Varuint32())
+		if v129 < 0 || v129 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.BlockActions.Val = make([]PlayerBlockAction, v90)
-		for v89 := range p.BlockActions.Val {
-			p.BlockActions.Val[v89].Decode(r)
+		p.BlockActions.Val = make([]PlayerBlockAction, v129)
+		for v128 := range p.BlockActions.Val {
+			p.BlockActions.Val[v128].Decode(r)
 		}
 	}
 	p.VehicleRotation.Set = r.Bool()
@@ -3738,33 +3932,33 @@ func (*CreativeContentPacket) ID() uint32 { return 145 }
 
 func (p *CreativeContentPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Groups)))
-	for v91 := range p.Groups {
-		p.Groups[v91].Encode(w)
+	for v130 := range p.Groups {
+		p.Groups[v130].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.Items)))
-	for v92 := range p.Items {
-		p.Items[v92].Encode(w)
+	for v131 := range p.Items {
+		p.Items[v131].Encode(w)
 	}
 }
 
 func (p *CreativeContentPacket) Decode(r *wire.Reader) {
-	v94 := int(r.Varuint32())
-	if v94 < 0 || v94 > r.Len() {
+	v133 := int(r.Varuint32())
+	if v133 < 0 || v133 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Groups = make([]CreativeGroup, v94)
-	for v93 := range p.Groups {
-		p.Groups[v93].Decode(r)
+	p.Groups = make([]CreativeGroup, v133)
+	for v132 := range p.Groups {
+		p.Groups[v132].Decode(r)
 	}
-	v96 := int(r.Varuint32())
-	if v96 < 0 || v96 > r.Len() {
+	v135 := int(r.Varuint32())
+	if v135 < 0 || v135 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Items = make([]CreativeItem, v96)
-	for v95 := range p.Items {
-		p.Items[v95].Decode(r)
+	p.Items = make([]CreativeItem, v135)
+	for v134 := range p.Items {
+		p.Items[v134].Decode(r)
 	}
 }
 
@@ -3787,20 +3981,20 @@ func (*ItemStackRequestPacket) ID() uint32 { return 147 }
 
 func (p *ItemStackRequestPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Requests)))
-	for v97 := range p.Requests {
-		p.Requests[v97].Encode(w)
+	for v136 := range p.Requests {
+		p.Requests[v136].Encode(w)
 	}
 }
 
 func (p *ItemStackRequestPacket) Decode(r *wire.Reader) {
-	v99 := int(r.Varuint32())
-	if v99 < 0 || v99 > r.Len() {
+	v138 := int(r.Varuint32())
+	if v138 < 0 || v138 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Requests = make([]ItemStackRequest, v99)
-	for v98 := range p.Requests {
-		p.Requests[v98].Decode(r)
+	p.Requests = make([]ItemStackRequest, v138)
+	for v137 := range p.Requests {
+		p.Requests[v137].Decode(r)
 	}
 }
 
@@ -3823,20 +4017,20 @@ func (*PlayerArmourDamagePacket) ID() uint32 { return 149 }
 
 func (p *PlayerArmourDamagePacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.List)))
-	for v100 := range p.List {
-		p.List[v100].Encode(w)
+	for v139 := range p.List {
+		p.List[v139].Encode(w)
 	}
 }
 
 func (p *PlayerArmourDamagePacket) Decode(r *wire.Reader) {
-	v102 := int(r.Varuint32())
-	if v102 < 0 || v102 > r.Len() {
+	v141 := int(r.Varuint32())
+	if v141 < 0 || v141 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.List = make([]PlayerArmourDamageEntry, v102)
-	for v101 := range p.List {
-		p.List[v101].Decode(r)
+	p.List = make([]PlayerArmourDamageEntry, v141)
+	for v140 := range p.List {
+		p.List[v140].Decode(r)
 	}
 }
 
@@ -3887,21 +4081,21 @@ func (*EmoteListPacket) ID() uint32 { return 152 }
 func (p *EmoteListPacket) Encode(w *wire.Writer) {
 	w.Varuint64(p.PlayerRuntimeID)
 	w.Varuint32(uint32(len(p.EmotePieces)))
-	for v103 := range p.EmotePieces {
-		proto.WriteUUID(w, &p.EmotePieces[v103])
+	for v142 := range p.EmotePieces {
+		proto.WriteUUID(w, &p.EmotePieces[v142])
 	}
 }
 
 func (p *EmoteListPacket) Decode(r *wire.Reader) {
 	p.PlayerRuntimeID = r.Varuint64()
-	v105 := int(r.Varuint32())
-	if v105 < 0 || v105 > r.Len() {
+	v144 := int(r.Varuint32())
+	if v144 < 0 || v144 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.EmotePieces = make([][16]byte, v105)
-	for v104 := range p.EmotePieces {
-		proto.ReadUUID(r, &p.EmotePieces[v104])
+	p.EmotePieces = make([][16]byte, v144)
+	for v143 := range p.EmotePieces {
+		proto.ReadUUID(r, &p.EmotePieces[v143])
 	}
 }
 
@@ -4022,8 +4216,8 @@ func (p *AnimateEntityPacket) Encode(w *wire.Writer) {
 	w.String(p.Controller)
 	w.Float32(p.BlendOutTime)
 	w.Varuint32(uint32(len(p.EntityRuntimeIDs)))
-	for v106 := range p.EntityRuntimeIDs {
-		w.Varuint64(p.EntityRuntimeIDs[v106])
+	for v145 := range p.EntityRuntimeIDs {
+		w.Varuint64(p.EntityRuntimeIDs[v145])
 	}
 }
 
@@ -4034,14 +4228,14 @@ func (p *AnimateEntityPacket) Decode(r *wire.Reader) {
 	p.StopConditionVersion = r.Int32()
 	p.Controller = r.String()
 	p.BlendOutTime = r.Float32()
-	v108 := int(r.Varuint32())
-	if v108 < 0 || v108 > r.Len() {
+	v147 := int(r.Varuint32())
+	if v147 < 0 || v147 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.EntityRuntimeIDs = make([]uint64, v108)
-	for v107 := range p.EntityRuntimeIDs {
-		p.EntityRuntimeIDs[v107] = r.Varuint64()
+	p.EntityRuntimeIDs = make([]uint64, v147)
+	for v146 := range p.EntityRuntimeIDs {
+		p.EntityRuntimeIDs[v146] = r.Varuint64()
 	}
 }
 
@@ -4076,20 +4270,20 @@ func (*PlayerFogPacket) ID() uint32 { return 160 }
 
 func (p *PlayerFogPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Stack)))
-	for v109 := range p.Stack {
-		w.String(p.Stack[v109])
+	for v148 := range p.Stack {
+		w.String(p.Stack[v148])
 	}
 }
 
 func (p *PlayerFogPacket) Decode(r *wire.Reader) {
-	v111 := int(r.Varuint32())
-	if v111 < 0 || v111 > r.Len() {
+	v150 := int(r.Varuint32())
+	if v150 < 0 || v150 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Stack = make([]string, v111)
-	for v110 := range p.Stack {
-		p.Stack[v110] = r.String()
+	p.Stack = make([]string, v150)
+	for v149 := range p.Stack {
+		p.Stack[v149] = r.String()
 	}
 }
 
@@ -4139,20 +4333,20 @@ func (*ItemRegistryPacket) ID() uint32 { return 162 }
 
 func (p *ItemRegistryPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Items)))
-	for v112 := range p.Items {
-		p.Items[v112].Encode(w)
+	for v151 := range p.Items {
+		p.Items[v151].Encode(w)
 	}
 }
 
 func (p *ItemRegistryPacket) Decode(r *wire.Reader) {
-	v114 := int(r.Varuint32())
-	if v114 < 0 || v114 > r.Len() {
+	v153 := int(r.Varuint32())
+	if v153 < 0 || v153 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Items = make([]ItemEntry, v114)
-	for v113 := range p.Items {
-		p.Items[v113].Decode(r)
+	p.Items = make([]ItemEntry, v153)
+	for v152 := range p.Items {
+		p.Items[v152].Decode(r)
 	}
 }
 
@@ -4337,34 +4531,34 @@ func (*UpdateSubChunkBlocksPacket) ID() uint32 { return 172 }
 func (p *UpdateSubChunkBlocksPacket) Encode(w *wire.Writer) {
 	proto.WriteBlockPos(w, &p.Position)
 	w.Varuint32(uint32(len(p.Blocks)))
-	for v115 := range p.Blocks {
-		p.Blocks[v115].Encode(w)
+	for v154 := range p.Blocks {
+		p.Blocks[v154].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.Extra)))
-	for v116 := range p.Extra {
-		p.Extra[v116].Encode(w)
+	for v155 := range p.Extra {
+		p.Extra[v155].Encode(w)
 	}
 }
 
 func (p *UpdateSubChunkBlocksPacket) Decode(r *wire.Reader) {
 	proto.ReadBlockPos(r, &p.Position)
-	v118 := int(r.Varuint32())
-	if v118 < 0 || v118 > r.Len() {
+	v157 := int(r.Varuint32())
+	if v157 < 0 || v157 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Blocks = make([]BlockChangeEntry, v118)
-	for v117 := range p.Blocks {
-		p.Blocks[v117].Decode(r)
+	p.Blocks = make([]BlockChangeEntry, v157)
+	for v156 := range p.Blocks {
+		p.Blocks[v156].Decode(r)
 	}
-	v120 := int(r.Varuint32())
-	if v120 < 0 || v120 > r.Len() {
+	v159 := int(r.Varuint32())
+	if v159 < 0 || v159 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Extra = make([]BlockChangeEntry, v120)
-	for v119 := range p.Extra {
-		p.Extra[v119].Decode(r)
+	p.Extra = make([]BlockChangeEntry, v159)
+	for v158 := range p.Extra {
+		p.Extra[v158].Decode(r)
 	}
 }
 
@@ -4396,8 +4590,8 @@ func (p *SubChunkPacket) Encode(w *wire.Writer) {
 	w.Varint32(p.Dimension)
 	proto.WriteSubChunkPos(w, &p.Position)
 	w.Varuint32(uint32(len(p.SubChunkEntries)))
-	for v121 := range p.SubChunkEntries {
-		p.SubChunkEntries[v121].Encode(w)
+	for v160 := range p.SubChunkEntries {
+		p.SubChunkEntries[v160].Encode(w)
 	}
 }
 
@@ -4405,14 +4599,14 @@ func (p *SubChunkPacket) Decode(r *wire.Reader) {
 	p.CacheEnabled = r.Bool()
 	p.Dimension = r.Varint32()
 	proto.ReadSubChunkPos(r, &p.Position)
-	v123 := int(r.Varuint32())
-	if v123 < 0 || v123 > r.Len() {
+	v162 := int(r.Varuint32())
+	if v162 < 0 || v162 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.SubChunkEntries = make([]SubChunkEntry, v123)
-	for v122 := range p.SubChunkEntries {
-		p.SubChunkEntries[v122].Decode(r)
+	p.SubChunkEntries = make([]SubChunkEntry, v162)
+	for v161 := range p.SubChunkEntries {
+		p.SubChunkEntries[v161].Decode(r)
 	}
 }
 
@@ -4427,22 +4621,22 @@ func (*SubChunkRequestPacket) ID() uint32 { return 175 }
 func (p *SubChunkRequestPacket) Encode(w *wire.Writer) {
 	w.Varint32(p.Dimension)
 	w.Varuint32(uint32(len(p.Offsets)))
-	for v124 := range p.Offsets {
-		p.Offsets[v124].Encode(w)
+	for v163 := range p.Offsets {
+		p.Offsets[v163].Encode(w)
 	}
 	proto.WriteSubChunkPos(w, &p.Position)
 }
 
 func (p *SubChunkRequestPacket) Decode(r *wire.Reader) {
 	p.Dimension = r.Varint32()
-	v126 := int(r.Varuint32())
-	if v126 < 0 || v126 > r.Len() {
+	v165 := int(r.Varuint32())
+	if v165 < 0 || v165 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Offsets = make([]SubChunkOffset, v126)
-	for v125 := range p.Offsets {
-		p.Offsets[v125].Decode(r)
+	p.Offsets = make([]SubChunkOffset, v165)
+	for v164 := range p.Offsets {
+		p.Offsets[v164].Decode(r)
 	}
 	proto.ReadSubChunkPos(r, &p.Position)
 }
@@ -4523,20 +4717,20 @@ func (*DimensionDataPacket) ID() uint32 { return 180 }
 
 func (p *DimensionDataPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Definitions)))
-	for v127 := range p.Definitions {
-		p.Definitions[v127].Encode(w)
+	for v166 := range p.Definitions {
+		p.Definitions[v166].Encode(w)
 	}
 }
 
 func (p *DimensionDataPacket) Decode(r *wire.Reader) {
-	v129 := int(r.Varuint32())
-	if v129 < 0 || v129 > r.Len() {
+	v168 := int(r.Varuint32())
+	if v168 < 0 || v168 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Definitions = make([]DimensionDefinition, v129)
-	for v128 := range p.Definitions {
-		p.Definitions[v128].Decode(r)
+	p.Definitions = make([]DimensionDefinition, v168)
+	for v167 := range p.Definitions {
+		p.Definitions[v167].Decode(r)
 	}
 }
 
@@ -4705,21 +4899,21 @@ func (*DeathInfoPacket) ID() uint32 { return 189 }
 func (p *DeathInfoPacket) Encode(w *wire.Writer) {
 	w.String(p.Cause)
 	w.Varuint32(uint32(len(p.Messages)))
-	for v130 := range p.Messages {
-		w.String(p.Messages[v130])
+	for v169 := range p.Messages {
+		w.String(p.Messages[v169])
 	}
 }
 
 func (p *DeathInfoPacket) Decode(r *wire.Reader) {
 	p.Cause = r.String()
-	v132 := int(r.Varuint32())
-	if v132 < 0 || v132 > r.Len() {
+	v171 := int(r.Varuint32())
+	if v171 < 0 || v171 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Messages = make([]string, v132)
-	for v131 := range p.Messages {
-		p.Messages[v131] = r.String()
+	p.Messages = make([]string, v171)
+	for v170 := range p.Messages {
+		p.Messages[v170] = r.String()
 	}
 }
 
@@ -4748,20 +4942,20 @@ func (*FeatureRegistryPacket) ID() uint32 { return 191 }
 
 func (p *FeatureRegistryPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Features)))
-	for v133 := range p.Features {
-		p.Features[v133].Encode(w)
+	for v172 := range p.Features {
+		p.Features[v172].Encode(w)
 	}
 }
 
 func (p *FeatureRegistryPacket) Decode(r *wire.Reader) {
-	v135 := int(r.Varuint32())
-	if v135 < 0 || v135 > r.Len() {
+	v174 := int(r.Varuint32())
+	if v174 < 0 || v174 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Features = make([]GenerationFeature, v135)
-	for v134 := range p.Features {
-		p.Features[v134].Decode(r)
+	p.Features = make([]GenerationFeature, v174)
+	for v173 := range p.Features {
+		p.Features[v173].Decode(r)
 	}
 }
 
@@ -4884,20 +5078,20 @@ func (*CameraPresetsPacket) ID() uint32 { return 198 }
 
 func (p *CameraPresetsPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Presets)))
-	for v136 := range p.Presets {
-		p.Presets[v136].Encode(w)
+	for v175 := range p.Presets {
+		p.Presets[v175].Encode(w)
 	}
 }
 
 func (p *CameraPresetsPacket) Decode(r *wire.Reader) {
-	v138 := int(r.Varuint32())
-	if v138 < 0 || v138 > r.Len() {
+	v177 := int(r.Varuint32())
+	if v177 < 0 || v177 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Presets = make([]CameraPreset, v138)
-	for v137 := range p.Presets {
-		p.Presets[v137].Decode(r)
+	p.Presets = make([]CameraPreset, v177)
+	for v176 := range p.Presets {
+		p.Presets[v176].Decode(r)
 	}
 }
 
@@ -4911,21 +5105,21 @@ func (*UnlockedRecipesPacket) ID() uint32 { return 199 }
 func (p *UnlockedRecipesPacket) Encode(w *wire.Writer) {
 	w.Uint32(p.UnlockType)
 	w.Varuint32(uint32(len(p.Recipes)))
-	for v139 := range p.Recipes {
-		w.String(p.Recipes[v139])
+	for v178 := range p.Recipes {
+		w.String(p.Recipes[v178])
 	}
 }
 
 func (p *UnlockedRecipesPacket) Decode(r *wire.Reader) {
 	p.UnlockType = r.Uint32()
-	v141 := int(r.Varuint32())
-	if v141 < 0 || v141 > r.Len() {
+	v180 := int(r.Varuint32())
+	if v180 < 0 || v180 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Recipes = make([]string, v141)
-	for v140 := range p.Recipes {
-		p.Recipes[v140] = r.String()
+	p.Recipes = make([]string, v180)
+	for v179 := range p.Recipes {
+		p.Recipes[v179] = r.String()
 	}
 }
 
@@ -4949,33 +5143,33 @@ func (*TrimDataPacket) ID() uint32 { return 302 }
 
 func (p *TrimDataPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Patterns)))
-	for v142 := range p.Patterns {
-		p.Patterns[v142].Encode(w)
+	for v181 := range p.Patterns {
+		p.Patterns[v181].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.Materials)))
-	for v143 := range p.Materials {
-		p.Materials[v143].Encode(w)
+	for v182 := range p.Materials {
+		p.Materials[v182].Encode(w)
 	}
 }
 
 func (p *TrimDataPacket) Decode(r *wire.Reader) {
-	v145 := int(r.Varuint32())
-	if v145 < 0 || v145 > r.Len() {
+	v184 := int(r.Varuint32())
+	if v184 < 0 || v184 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Patterns = make([]TrimPattern, v145)
-	for v144 := range p.Patterns {
-		p.Patterns[v144].Decode(r)
+	p.Patterns = make([]TrimPattern, v184)
+	for v183 := range p.Patterns {
+		p.Patterns[v183].Decode(r)
 	}
-	v147 := int(r.Varuint32())
-	if v147 < 0 || v147 > r.Len() {
+	v186 := int(r.Varuint32())
+	if v186 < 0 || v186 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Materials = make([]TrimMaterial, v147)
-	for v146 := range p.Materials {
-		p.Materials[v146].Decode(r)
+	p.Materials = make([]TrimMaterial, v186)
+	for v185 := range p.Materials {
+		p.Materials[v185].Decode(r)
 	}
 }
 
@@ -5085,21 +5279,21 @@ func (*SetHudPacket) ID() uint32 { return 308 }
 
 func (p *SetHudPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Elements)))
-	for v148 := range p.Elements {
-		w.Varint32(p.Elements[v148])
+	for v187 := range p.Elements {
+		w.Varint32(p.Elements[v187])
 	}
 	w.Varint32(p.Visibility)
 }
 
 func (p *SetHudPacket) Decode(r *wire.Reader) {
-	v150 := int(r.Varuint32())
-	if v150 < 0 || v150 > r.Len() {
+	v189 := int(r.Varuint32())
+	if v189 < 0 || v189 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Elements = make([]int32, v150)
-	for v149 := range p.Elements {
-		p.Elements[v149] = r.Varint32()
+	p.Elements = make([]int32, v189)
+	for v188 := range p.Elements {
+		p.Elements[v188] = r.Varint32()
 	}
 	p.Visibility = r.Varint32()
 }
@@ -5210,24 +5404,24 @@ func (p *ServerBoundDiagnosticsPacket) Encode(w *wire.Writer) {
 	w.Float32(p.AverageRemainderTimePercent)
 	w.Float32(p.AverageUnaccountedTimePercent)
 	w.Varuint32(uint32(len(p.MemoryCategoryValues)))
-	for v151 := range p.MemoryCategoryValues {
-		p.MemoryCategoryValues[v151].Encode(w)
+	for v190 := range p.MemoryCategoryValues {
+		p.MemoryCategoryValues[v190].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.EntityDiagnostics)))
-	for v152 := range p.EntityDiagnostics {
-		p.EntityDiagnostics[v152].Encode(w)
+	for v191 := range p.EntityDiagnostics {
+		p.EntityDiagnostics[v191].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.SystemDiagnostics)))
-	for v153 := range p.SystemDiagnostics {
-		p.SystemDiagnostics[v153].Encode(w)
+	for v192 := range p.SystemDiagnostics {
+		p.SystemDiagnostics[v192].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.SystemCategories)))
-	for v154 := range p.SystemCategories {
-		p.SystemCategories[v154].Encode(w)
+	for v193 := range p.SystemCategories {
+		p.SystemCategories[v193].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.WhiskerScopes)))
-	for v155 := range p.WhiskerScopes {
-		p.WhiskerScopes[v155].Encode(w)
+	for v194 := range p.WhiskerScopes {
+		p.WhiskerScopes[v194].Encode(w)
 	}
 }
 
@@ -5241,50 +5435,50 @@ func (p *ServerBoundDiagnosticsPacket) Decode(r *wire.Reader) {
 	p.AverageEndFrameTime = r.Float32()
 	p.AverageRemainderTimePercent = r.Float32()
 	p.AverageUnaccountedTimePercent = r.Float32()
-	v157 := int(r.Varuint32())
-	if v157 < 0 || v157 > r.Len() {
+	v196 := int(r.Varuint32())
+	if v196 < 0 || v196 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.MemoryCategoryValues = make([]MemoryCategoryCounter, v157)
-	for v156 := range p.MemoryCategoryValues {
-		p.MemoryCategoryValues[v156].Decode(r)
+	p.MemoryCategoryValues = make([]MemoryCategoryCounter, v196)
+	for v195 := range p.MemoryCategoryValues {
+		p.MemoryCategoryValues[v195].Decode(r)
 	}
-	v159 := int(r.Varuint32())
-	if v159 < 0 || v159 > r.Len() {
+	v198 := int(r.Varuint32())
+	if v198 < 0 || v198 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.EntityDiagnostics = make([]EntityDiagnosticTimingInfo, v159)
-	for v158 := range p.EntityDiagnostics {
-		p.EntityDiagnostics[v158].Decode(r)
+	p.EntityDiagnostics = make([]EntityDiagnosticTimingInfo, v198)
+	for v197 := range p.EntityDiagnostics {
+		p.EntityDiagnostics[v197].Decode(r)
 	}
-	v161 := int(r.Varuint32())
-	if v161 < 0 || v161 > r.Len() {
+	v200 := int(r.Varuint32())
+	if v200 < 0 || v200 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.SystemDiagnostics = make([]SystemDiagnosticTimingInfo, v161)
-	for v160 := range p.SystemDiagnostics {
-		p.SystemDiagnostics[v160].Decode(r)
+	p.SystemDiagnostics = make([]SystemDiagnosticTimingInfo, v200)
+	for v199 := range p.SystemDiagnostics {
+		p.SystemDiagnostics[v199].Decode(r)
 	}
-	v163 := int(r.Varuint32())
-	if v163 < 0 || v163 > r.Len() {
+	v202 := int(r.Varuint32())
+	if v202 < 0 || v202 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.SystemCategories = make([]SystemCategory, v163)
-	for v162 := range p.SystemCategories {
-		p.SystemCategories[v162].Decode(r)
+	p.SystemCategories = make([]SystemCategory, v202)
+	for v201 := range p.SystemCategories {
+		p.SystemCategories[v201].Decode(r)
 	}
-	v165 := int(r.Varuint32())
-	if v165 < 0 || v165 > r.Len() {
+	v204 := int(r.Varuint32())
+	if v204 < 0 || v204 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.WhiskerScopes = make([]WhiskerScopeDataSummary, v165)
-	for v164 := range p.WhiskerScopes {
-		p.WhiskerScopes[v164].Decode(r)
+	p.WhiskerScopes = make([]WhiskerScopeDataSummary, v204)
+	for v203 := range p.WhiskerScopes {
+		p.WhiskerScopes[v203].Decode(r)
 	}
 }
 
@@ -5325,20 +5519,20 @@ func (*ContainerRegistryCleanupPacket) ID() uint32 { return 317 }
 
 func (p *ContainerRegistryCleanupPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.RemovedContainers)))
-	for v166 := range p.RemovedContainers {
-		p.RemovedContainers[v166].Encode(w)
+	for v205 := range p.RemovedContainers {
+		p.RemovedContainers[v205].Encode(w)
 	}
 }
 
 func (p *ContainerRegistryCleanupPacket) Decode(r *wire.Reader) {
-	v168 := int(r.Varuint32())
-	if v168 < 0 || v168 > r.Len() {
+	v207 := int(r.Varuint32())
+	if v207 < 0 || v207 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.RemovedContainers = make([]FullContainerName, v168)
-	for v167 := range p.RemovedContainers {
-		p.RemovedContainers[v167].Decode(r)
+	p.RemovedContainers = make([]FullContainerName, v207)
+	for v206 := range p.RemovedContainers {
+		p.RemovedContainers[v206].Decode(r)
 	}
 }
 
@@ -5375,34 +5569,34 @@ func (*CameraAimAssistPresetsPacket) ID() uint32 { return 320 }
 
 func (p *CameraAimAssistPresetsPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Categories)))
-	for v169 := range p.Categories {
-		p.Categories[v169].Encode(w)
+	for v208 := range p.Categories {
+		p.Categories[v208].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.Presets)))
-	for v170 := range p.Presets {
-		p.Presets[v170].Encode(w)
+	for v209 := range p.Presets {
+		p.Presets[v209].Encode(w)
 	}
 	w.Uint8(p.Operation)
 }
 
 func (p *CameraAimAssistPresetsPacket) Decode(r *wire.Reader) {
-	v172 := int(r.Varuint32())
-	if v172 < 0 || v172 > r.Len() {
+	v211 := int(r.Varuint32())
+	if v211 < 0 || v211 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Categories = make([]CameraAimAssistCategory, v172)
-	for v171 := range p.Categories {
-		p.Categories[v171].Decode(r)
+	p.Categories = make([]CameraAimAssistCategory, v211)
+	for v210 := range p.Categories {
+		p.Categories[v210].Decode(r)
 	}
-	v174 := int(r.Varuint32())
-	if v174 < 0 || v174 > r.Len() {
+	v213 := int(r.Varuint32())
+	if v213 < 0 || v213 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Presets = make([]CameraAimAssistPreset, v174)
-	for v173 := range p.Presets {
-		p.Presets[v173].Decode(r)
+	p.Presets = make([]CameraAimAssistPreset, v213)
+	for v212 := range p.Presets {
+		p.Presets[v212].Decode(r)
 	}
 	p.Operation = r.Uint8()
 }
@@ -5593,8 +5787,8 @@ func (*GraphicsOverrideParameterPacket) ID() uint32 { return 331 }
 
 func (p *GraphicsOverrideParameterPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Values)))
-	for v175 := range p.Values {
-		p.Values[v175].Encode(w)
+	for v214 := range p.Values {
+		p.Values[v214].Encode(w)
 	}
 	w.Bool(p.FloatValue.Set)
 	if p.FloatValue.Set {
@@ -5614,14 +5808,14 @@ func (p *GraphicsOverrideParameterPacket) Encode(w *wire.Writer) {
 }
 
 func (p *GraphicsOverrideParameterPacket) Decode(r *wire.Reader) {
-	v177 := int(r.Varuint32())
-	if v177 < 0 || v177 > r.Len() {
+	v216 := int(r.Varuint32())
+	if v216 < 0 || v216 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Values = make([]ParameterKeyframeValue, v177)
-	for v176 := range p.Values {
-		p.Values[v176].Decode(r)
+	p.Values = make([]ParameterKeyframeValue, v216)
+	for v215 := range p.Values {
+		p.Values[v215].Decode(r)
 	}
 	p.FloatValue.Set = r.Bool()
 	if p.FloatValue.Set {
@@ -5730,8 +5924,8 @@ func (p *ClientBoundTextureShiftPacket) Encode(w *wire.Writer) {
 	w.String(p.FromStep)
 	w.String(p.ToStep)
 	w.Varuint32(uint32(len(p.AllSteps)))
-	for v178 := range p.AllSteps {
-		w.String(p.AllSteps[v178])
+	for v217 := range p.AllSteps {
+		w.String(p.AllSteps[v217])
 	}
 	w.Varuint64(p.CurrentLengthTicks)
 	w.Varuint64(p.TotalLengthTicks)
@@ -5743,14 +5937,14 @@ func (p *ClientBoundTextureShiftPacket) Decode(r *wire.Reader) {
 	p.CollectionName = r.String()
 	p.FromStep = r.String()
 	p.ToStep = r.String()
-	v180 := int(r.Varuint32())
-	if v180 < 0 || v180 > r.Len() {
+	v219 := int(r.Varuint32())
+	if v219 < 0 || v219 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.AllSteps = make([]string, v180)
-	for v179 := range p.AllSteps {
-		p.AllSteps[v179] = r.String()
+	p.AllSteps = make([]string, v219)
+	for v218 := range p.AllSteps {
+		p.AllSteps[v218] = r.String()
 	}
 	p.CurrentLengthTicks = r.Varuint64()
 	p.TotalLengthTicks = r.Varuint64()
@@ -5767,34 +5961,34 @@ func (*VoxelShapesPacket) ID() uint32 { return 337 }
 
 func (p *VoxelShapesPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Shapes)))
-	for v181 := range p.Shapes {
-		p.Shapes[v181].Encode(w)
+	for v220 := range p.Shapes {
+		p.Shapes[v220].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.NameMap)))
-	for v182 := range p.NameMap {
-		p.NameMap[v182].Encode(w)
+	for v221 := range p.NameMap {
+		p.NameMap[v221].Encode(w)
 	}
 	w.Uint16(p.CustomShapeCount)
 }
 
 func (p *VoxelShapesPacket) Decode(r *wire.Reader) {
-	v184 := int(r.Varuint32())
-	if v184 < 0 || v184 > r.Len() {
+	v223 := int(r.Varuint32())
+	if v223 < 0 || v223 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Shapes = make([]VoxelShape, v184)
-	for v183 := range p.Shapes {
-		p.Shapes[v183].Decode(r)
+	p.Shapes = make([]VoxelShape, v223)
+	for v222 := range p.Shapes {
+		p.Shapes[v222].Decode(r)
 	}
-	v186 := int(r.Varuint32())
-	if v186 < 0 || v186 > r.Len() {
+	v225 := int(r.Varuint32())
+	if v225 < 0 || v225 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.NameMap = make([]VoxelShapeNameEntry, v186)
-	for v185 := range p.NameMap {
-		p.NameMap[v185].Decode(r)
+	p.NameMap = make([]VoxelShapeNameEntry, v225)
+	for v224 := range p.NameMap {
+		p.NameMap[v224].Decode(r)
 	}
 	p.CustomShapeCount = r.Uint16()
 }
@@ -5816,20 +6010,20 @@ func (*CameraAimAssistActorPriorityPacket) ID() uint32 { return 339 }
 
 func (p *CameraAimAssistActorPriorityPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.PriorityData)))
-	for v187 := range p.PriorityData {
-		p.PriorityData[v187].Encode(w)
+	for v226 := range p.PriorityData {
+		p.PriorityData[v226].Encode(w)
 	}
 }
 
 func (p *CameraAimAssistActorPriorityPacket) Decode(r *wire.Reader) {
-	v189 := int(r.Varuint32())
-	if v189 < 0 || v189 > r.Len() {
+	v228 := int(r.Varuint32())
+	if v228 < 0 || v228 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.PriorityData = make([]CameraAimAssistActorPriorityData, v189)
-	for v188 := range p.PriorityData {
-		p.PriorityData[v188].Decode(r)
+	p.PriorityData = make([]CameraAimAssistActorPriorityData, v228)
+	for v227 := range p.PriorityData {
+		p.PriorityData[v227].Decode(r)
 	}
 }
 
@@ -5852,20 +6046,20 @@ func (*LocatorBarPacket) ID() uint32 { return 341 }
 
 func (p *LocatorBarPacket) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Waypoints)))
-	for v190 := range p.Waypoints {
-		p.Waypoints[v190].Encode(w)
+	for v229 := range p.Waypoints {
+		p.Waypoints[v229].Encode(w)
 	}
 }
 
 func (p *LocatorBarPacket) Decode(r *wire.Reader) {
-	v192 := int(r.Varuint32())
-	if v192 < 0 || v192 > r.Len() {
+	v231 := int(r.Varuint32())
+	if v231 < 0 || v231 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Waypoints = make([]LocatorBarWaypoint, v192)
-	for v191 := range p.Waypoints {
-		p.Waypoints[v191].Decode(r)
+	p.Waypoints = make([]LocatorBarWaypoint, v231)
+	for v230 := range p.Waypoints {
+		p.Waypoints[v230].Decode(r)
 	}
 }
 
@@ -5923,25 +6117,25 @@ func (p *SyncWorldClocksPacket) Encode(w *wire.Writer) {
 	switch p.PayloadType {
 	case 0:
 		w.Varuint32(uint32(len(p.SyncStates)))
-		for v193 := range p.SyncStates {
-			p.SyncStates[v193].Encode(w)
+		for v232 := range p.SyncStates {
+			p.SyncStates[v232].Encode(w)
 		}
 	case 1:
 		w.Varuint32(uint32(len(p.Clocks)))
-		for v194 := range p.Clocks {
-			p.Clocks[v194].Encode(w)
+		for v233 := range p.Clocks {
+			p.Clocks[v233].Encode(w)
 		}
 	case 2:
 		w.Varuint64(p.AddClockID)
 		w.Varuint32(uint32(len(p.AddTimeMarkers)))
-		for v195 := range p.AddTimeMarkers {
-			p.AddTimeMarkers[v195].Encode(w)
+		for v234 := range p.AddTimeMarkers {
+			p.AddTimeMarkers[v234].Encode(w)
 		}
 	case 3:
 		w.Varuint64(p.RemoveClockID)
 		w.Varuint32(uint32(len(p.RemoveTimeMarkerIDs)))
-		for v196 := range p.RemoveTimeMarkerIDs {
-			w.Varuint64(p.RemoveTimeMarkerIDs[v196])
+		for v235 := range p.RemoveTimeMarkerIDs {
+			w.Varuint64(p.RemoveTimeMarkerIDs[v235])
 		}
 	default:
 	}
@@ -5951,46 +6145,46 @@ func (p *SyncWorldClocksPacket) Decode(r *wire.Reader) {
 	p.PayloadType = r.Varuint32()
 	switch p.PayloadType {
 	case 0:
-		v198 := int(r.Varuint32())
-		if v198 < 0 || v198 > r.Len() {
+		v237 := int(r.Varuint32())
+		if v237 < 0 || v237 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.SyncStates = make([]SyncWorldClockStateData, v198)
-		for v197 := range p.SyncStates {
-			p.SyncStates[v197].Decode(r)
+		p.SyncStates = make([]SyncWorldClockStateData, v237)
+		for v236 := range p.SyncStates {
+			p.SyncStates[v236].Decode(r)
 		}
 	case 1:
-		v200 := int(r.Varuint32())
-		if v200 < 0 || v200 > r.Len() {
+		v239 := int(r.Varuint32())
+		if v239 < 0 || v239 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.Clocks = make([]WorldClockData, v200)
-		for v199 := range p.Clocks {
-			p.Clocks[v199].Decode(r)
+		p.Clocks = make([]WorldClockData, v239)
+		for v238 := range p.Clocks {
+			p.Clocks[v238].Decode(r)
 		}
 	case 2:
 		p.AddClockID = r.Varuint64()
-		v202 := int(r.Varuint32())
-		if v202 < 0 || v202 > r.Len() {
+		v241 := int(r.Varuint32())
+		if v241 < 0 || v241 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.AddTimeMarkers = make([]TimeMarkerData, v202)
-		for v201 := range p.AddTimeMarkers {
-			p.AddTimeMarkers[v201].Decode(r)
+		p.AddTimeMarkers = make([]TimeMarkerData, v241)
+		for v240 := range p.AddTimeMarkers {
+			p.AddTimeMarkers[v240].Decode(r)
 		}
 	case 3:
 		p.RemoveClockID = r.Varuint64()
-		v204 := int(r.Varuint32())
-		if v204 < 0 || v204 > r.Len() {
+		v243 := int(r.Varuint32())
+		if v243 < 0 || v243 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.RemoveTimeMarkerIDs = make([]uint64, v204)
-		for v203 := range p.RemoveTimeMarkerIDs {
-			p.RemoveTimeMarkerIDs[v203] = r.Varuint64()
+		p.RemoveTimeMarkerIDs = make([]uint64, v243)
+		for v242 := range p.RemoveTimeMarkerIDs {
+			p.RemoveTimeMarkerIDs[v242] = r.Varuint64()
 		}
 	default:
 	}
@@ -6181,33 +6375,33 @@ type EntityProperties struct {
 
 func (p *EntityProperties) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.IntegerProperties)))
-	for v205 := range p.IntegerProperties {
-		p.IntegerProperties[v205].Encode(w)
+	for v244 := range p.IntegerProperties {
+		p.IntegerProperties[v244].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.FloatProperties)))
-	for v206 := range p.FloatProperties {
-		p.FloatProperties[v206].Encode(w)
+	for v245 := range p.FloatProperties {
+		p.FloatProperties[v245].Encode(w)
 	}
 }
 
 func (p *EntityProperties) Decode(r *wire.Reader) {
-	v208 := int(r.Varuint32())
-	if v208 < 0 || v208 > r.Len() {
+	v247 := int(r.Varuint32())
+	if v247 < 0 || v247 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.IntegerProperties = make([]IntegerEntityProperty, v208)
-	for v207 := range p.IntegerProperties {
-		p.IntegerProperties[v207].Decode(r)
+	p.IntegerProperties = make([]IntegerEntityProperty, v247)
+	for v246 := range p.IntegerProperties {
+		p.IntegerProperties[v246].Decode(r)
 	}
-	v210 := int(r.Varuint32())
-	if v210 < 0 || v210 > r.Len() {
+	v249 := int(r.Varuint32())
+	if v249 < 0 || v249 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.FloatProperties = make([]FloatEntityProperty, v210)
-	for v209 := range p.FloatProperties {
-		p.FloatProperties[v209].Decode(r)
+	p.FloatProperties = make([]FloatEntityProperty, v249)
+	for v248 := range p.FloatProperties {
+		p.FloatProperties[v248].Decode(r)
 	}
 }
 
@@ -6250,8 +6444,8 @@ func (p *AbilityData) Encode(w *wire.Writer) {
 	w.Uint8(p.PlayerPermissions)
 	w.Uint8(p.CommandPermissions)
 	w.Varuint32(uint32(len(p.Layers)))
-	for v211 := range p.Layers {
-		p.Layers[v211].Encode(w)
+	for v250 := range p.Layers {
+		p.Layers[v250].Encode(w)
 	}
 }
 
@@ -6259,14 +6453,14 @@ func (p *AbilityData) Decode(r *wire.Reader) {
 	p.EntityUniqueID = r.Int64()
 	p.PlayerPermissions = r.Uint8()
 	p.CommandPermissions = r.Uint8()
-	v213 := int(r.Varuint32())
-	if v213 < 0 || v213 > r.Len() {
+	v252 := int(r.Varuint32())
+	if v252 < 0 || v252 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Layers = make([]AbilityLayer, v213)
-	for v212 := range p.Layers {
-		p.Layers[v212].Decode(r)
+	p.Layers = make([]AbilityLayer, v252)
+	for v251 := range p.Layers {
+		p.Layers[v251].Decode(r)
 	}
 }
 
@@ -6278,21 +6472,21 @@ type ChainedSubcommand struct {
 func (p *ChainedSubcommand) Encode(w *wire.Writer) {
 	w.String(p.Name)
 	w.Varuint32(uint32(len(p.Values)))
-	for v214 := range p.Values {
-		p.Values[v214].Encode(w)
+	for v253 := range p.Values {
+		p.Values[v253].Encode(w)
 	}
 }
 
 func (p *ChainedSubcommand) Decode(r *wire.Reader) {
 	p.Name = r.String()
-	v216 := int(r.Varuint32())
-	if v216 < 0 || v216 > r.Len() {
+	v255 := int(r.Varuint32())
+	if v255 < 0 || v255 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Values = make([]ChainedSubcommandValue, v216)
-	for v215 := range p.Values {
-		p.Values[v215].Decode(r)
+	p.Values = make([]ChainedSubcommandValue, v255)
+	for v254 := range p.Values {
+		p.Values[v254].Decode(r)
 	}
 }
 
@@ -6304,21 +6498,21 @@ type DynamicEnum struct {
 func (p *DynamicEnum) Encode(w *wire.Writer) {
 	w.String(p.Type)
 	w.Varuint32(uint32(len(p.Values)))
-	for v217 := range p.Values {
-		w.String(p.Values[v217])
+	for v256 := range p.Values {
+		w.String(p.Values[v256])
 	}
 }
 
 func (p *DynamicEnum) Decode(r *wire.Reader) {
 	p.Type = r.String()
-	v219 := int(r.Varuint32())
-	if v219 < 0 || v219 > r.Len() {
+	v258 := int(r.Varuint32())
+	if v258 < 0 || v258 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Values = make([]string, v219)
-	for v218 := range p.Values {
-		p.Values[v218] = r.String()
+	p.Values = make([]string, v258)
+	for v257 := range p.Values {
+		p.Values[v257] = r.String()
 	}
 }
 
@@ -6367,8 +6561,8 @@ func (p *BiomeDefinition) Encode(w *wire.Writer) {
 	w.Bool(p.Tags.Set)
 	if p.Tags.Set {
 		w.Varuint32(uint32(len(p.Tags.Val)))
-		for v220 := range p.Tags.Val {
-			w.Uint16(p.Tags.Val[v220])
+		for v259 := range p.Tags.Val {
+			w.Uint16(p.Tags.Val[v259])
 		}
 	}
 	w.Bool(p.ChunkGeneration.Set)
@@ -6389,14 +6583,14 @@ func (p *BiomeDefinition) Decode(r *wire.Reader) {
 	p.Rain = r.Bool()
 	p.Tags.Set = r.Bool()
 	if p.Tags.Set {
-		v222 := int(r.Varuint32())
-		if v222 < 0 || v222 > r.Len() {
+		v261 := int(r.Varuint32())
+		if v261 < 0 || v261 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.Tags.Val = make([]uint16, v222)
-		for v221 := range p.Tags.Val {
-			p.Tags.Val[v221] = r.Uint16()
+		p.Tags.Val = make([]uint16, v261)
+		for v260 := range p.Tags.Val {
+			p.Tags.Val[v260] = r.Uint16()
 		}
 	}
 	p.ChunkGeneration.Set = r.Bool()
@@ -6456,28 +6650,28 @@ type CameraAimAssistPreset struct {
 func (p *CameraAimAssistPreset) Encode(w *wire.Writer) {
 	w.String(p.Identifier)
 	w.Varuint32(uint32(len(p.BlockExclusions)))
-	for v223 := range p.BlockExclusions {
-		w.String(p.BlockExclusions[v223])
+	for v262 := range p.BlockExclusions {
+		w.String(p.BlockExclusions[v262])
 	}
 	w.Varuint32(uint32(len(p.EntityExclusions)))
-	for v224 := range p.EntityExclusions {
-		w.String(p.EntityExclusions[v224])
+	for v263 := range p.EntityExclusions {
+		w.String(p.EntityExclusions[v263])
 	}
 	w.Varuint32(uint32(len(p.BlockTagExclusions)))
-	for v225 := range p.BlockTagExclusions {
-		w.String(p.BlockTagExclusions[v225])
+	for v264 := range p.BlockTagExclusions {
+		w.String(p.BlockTagExclusions[v264])
 	}
 	w.Varuint32(uint32(len(p.EntityTypeFamilyExclusions)))
-	for v226 := range p.EntityTypeFamilyExclusions {
-		w.String(p.EntityTypeFamilyExclusions[v226])
+	for v265 := range p.EntityTypeFamilyExclusions {
+		w.String(p.EntityTypeFamilyExclusions[v265])
 	}
 	w.Varuint32(uint32(len(p.LiquidTargets)))
-	for v227 := range p.LiquidTargets {
-		w.String(p.LiquidTargets[v227])
+	for v266 := range p.LiquidTargets {
+		w.String(p.LiquidTargets[v266])
 	}
 	w.Varuint32(uint32(len(p.ItemSettings)))
-	for v228 := range p.ItemSettings {
-		p.ItemSettings[v228].Encode(w)
+	for v267 := range p.ItemSettings {
+		p.ItemSettings[v267].Encode(w)
 	}
 	w.Bool(p.DefaultItemSettings.Set)
 	if p.DefaultItemSettings.Set {
@@ -6491,59 +6685,59 @@ func (p *CameraAimAssistPreset) Encode(w *wire.Writer) {
 
 func (p *CameraAimAssistPreset) Decode(r *wire.Reader) {
 	p.Identifier = r.String()
-	v230 := int(r.Varuint32())
-	if v230 < 0 || v230 > r.Len() {
+	v269 := int(r.Varuint32())
+	if v269 < 0 || v269 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.BlockExclusions = make([]string, v230)
-	for v229 := range p.BlockExclusions {
-		p.BlockExclusions[v229] = r.String()
+	p.BlockExclusions = make([]string, v269)
+	for v268 := range p.BlockExclusions {
+		p.BlockExclusions[v268] = r.String()
 	}
-	v232 := int(r.Varuint32())
-	if v232 < 0 || v232 > r.Len() {
+	v271 := int(r.Varuint32())
+	if v271 < 0 || v271 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.EntityExclusions = make([]string, v232)
-	for v231 := range p.EntityExclusions {
-		p.EntityExclusions[v231] = r.String()
+	p.EntityExclusions = make([]string, v271)
+	for v270 := range p.EntityExclusions {
+		p.EntityExclusions[v270] = r.String()
 	}
-	v234 := int(r.Varuint32())
-	if v234 < 0 || v234 > r.Len() {
+	v273 := int(r.Varuint32())
+	if v273 < 0 || v273 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.BlockTagExclusions = make([]string, v234)
-	for v233 := range p.BlockTagExclusions {
-		p.BlockTagExclusions[v233] = r.String()
+	p.BlockTagExclusions = make([]string, v273)
+	for v272 := range p.BlockTagExclusions {
+		p.BlockTagExclusions[v272] = r.String()
 	}
-	v236 := int(r.Varuint32())
-	if v236 < 0 || v236 > r.Len() {
+	v275 := int(r.Varuint32())
+	if v275 < 0 || v275 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.EntityTypeFamilyExclusions = make([]string, v236)
-	for v235 := range p.EntityTypeFamilyExclusions {
-		p.EntityTypeFamilyExclusions[v235] = r.String()
+	p.EntityTypeFamilyExclusions = make([]string, v275)
+	for v274 := range p.EntityTypeFamilyExclusions {
+		p.EntityTypeFamilyExclusions[v274] = r.String()
 	}
-	v238 := int(r.Varuint32())
-	if v238 < 0 || v238 > r.Len() {
+	v277 := int(r.Varuint32())
+	if v277 < 0 || v277 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.LiquidTargets = make([]string, v238)
-	for v237 := range p.LiquidTargets {
-		p.LiquidTargets[v237] = r.String()
+	p.LiquidTargets = make([]string, v277)
+	for v276 := range p.LiquidTargets {
+		p.LiquidTargets[v276] = r.String()
 	}
-	v240 := int(r.Varuint32())
-	if v240 < 0 || v240 > r.Len() {
+	v279 := int(r.Varuint32())
+	if v279 < 0 || v279 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.ItemSettings = make([]CameraAimAssistItemSettings, v240)
-	for v239 := range p.ItemSettings {
-		p.ItemSettings[v239].Decode(r)
+	p.ItemSettings = make([]CameraAimAssistItemSettings, v279)
+	for v278 := range p.ItemSettings {
+		p.ItemSettings[v278].Decode(r)
 	}
 	p.DefaultItemSettings.Set = r.Bool()
 	if p.DefaultItemSettings.Set {
@@ -7045,6 +7239,137 @@ func (p *FullContainerName) Decode(r *wire.Reader) {
 	}
 }
 
+type ShapedRecipe struct {
+	RecipeID          string
+	Width             int32
+	Height            int32
+	Input             []ItemDescriptorCount
+	Output            []ItemStack
+	UUID              [16]byte
+	Block             string
+	Priority          int32
+	AssumeSymmetry    bool
+	UnlockRequirement proto.Optional[RecipeUnlockRequirement]
+	RecipeNetworkID   uint32
+}
+
+func (p *ShapedRecipe) Encode(w *wire.Writer) {
+	w.String(p.RecipeID)
+	w.Varint32(p.Width)
+	w.Varint32(p.Height)
+	w.Varuint32(uint32(len(p.Input)))
+	for v280 := range p.Input {
+		writeItemDescriptorCount(w, &p.Input[v280])
+	}
+	w.Varuint32(uint32(len(p.Output)))
+	for v281 := range p.Output {
+		writeItemStack(w, &p.Output[v281])
+	}
+	proto.WriteUUID(w, &p.UUID)
+	w.String(p.Block)
+	w.Varint32(p.Priority)
+	w.Bool(p.AssumeSymmetry)
+	w.Bool(p.UnlockRequirement.Set)
+	if p.UnlockRequirement.Set {
+		p.UnlockRequirement.Val.Encode(w)
+	}
+	w.Varuint32(p.RecipeNetworkID)
+}
+
+func (p *ShapedRecipe) Decode(r *wire.Reader) {
+	p.RecipeID = r.String()
+	p.Width = r.Varint32()
+	p.Height = r.Varint32()
+	v283 := int(r.Varuint32())
+	if v283 < 0 || v283 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.Input = make([]ItemDescriptorCount, v283)
+	for v282 := range p.Input {
+		readItemDescriptorCount(r, &p.Input[v282])
+	}
+	v285 := int(r.Varuint32())
+	if v285 < 0 || v285 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.Output = make([]ItemStack, v285)
+	for v284 := range p.Output {
+		readItemStack(r, &p.Output[v284])
+	}
+	proto.ReadUUID(r, &p.UUID)
+	p.Block = r.String()
+	p.Priority = r.Varint32()
+	p.AssumeSymmetry = r.Bool()
+	p.UnlockRequirement.Set = r.Bool()
+	if p.UnlockRequirement.Set {
+		p.UnlockRequirement.Val.Decode(r)
+	}
+	p.RecipeNetworkID = r.Varuint32()
+}
+
+type ShapelessRecipe struct {
+	RecipeID          string
+	Input             []ItemDescriptorCount
+	Output            []ItemStack
+	UUID              [16]byte
+	Block             string
+	Priority          int32
+	UnlockRequirement proto.Optional[RecipeUnlockRequirement]
+	RecipeNetworkID   uint32
+}
+
+func (p *ShapelessRecipe) Encode(w *wire.Writer) {
+	w.String(p.RecipeID)
+	w.Varuint32(uint32(len(p.Input)))
+	for v286 := range p.Input {
+		writeItemDescriptorCount(w, &p.Input[v286])
+	}
+	w.Varuint32(uint32(len(p.Output)))
+	for v287 := range p.Output {
+		writeItemStack(w, &p.Output[v287])
+	}
+	proto.WriteUUID(w, &p.UUID)
+	w.String(p.Block)
+	w.Varint32(p.Priority)
+	w.Bool(p.UnlockRequirement.Set)
+	if p.UnlockRequirement.Set {
+		p.UnlockRequirement.Val.Encode(w)
+	}
+	w.Varuint32(p.RecipeNetworkID)
+}
+
+func (p *ShapelessRecipe) Decode(r *wire.Reader) {
+	p.RecipeID = r.String()
+	v289 := int(r.Varuint32())
+	if v289 < 0 || v289 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.Input = make([]ItemDescriptorCount, v289)
+	for v288 := range p.Input {
+		readItemDescriptorCount(r, &p.Input[v288])
+	}
+	v291 := int(r.Varuint32())
+	if v291 < 0 || v291 > r.Len() {
+		r.Fail(wire.ErrShort)
+		return
+	}
+	p.Output = make([]ItemStack, v291)
+	for v290 := range p.Output {
+		readItemStack(r, &p.Output[v290])
+	}
+	proto.ReadUUID(r, &p.UUID)
+	p.Block = r.String()
+	p.Priority = r.Varint32()
+	p.UnlockRequirement.Set = r.Bool()
+	if p.UnlockRequirement.Set {
+		p.UnlockRequirement.Val.Decode(r)
+	}
+	p.RecipeNetworkID = r.Varuint32()
+}
+
 type MultiRecipe struct {
 	UUID            [16]byte
 	RecipeNetworkID uint32
@@ -7058,6 +7383,42 @@ func (p *MultiRecipe) Encode(w *wire.Writer) {
 func (p *MultiRecipe) Decode(r *wire.Reader) {
 	proto.ReadUUID(r, &p.UUID)
 	p.RecipeNetworkID = r.Varuint32()
+}
+
+type UserDataShapelessRecipe struct {
+	ShapelessRecipe ShapelessRecipe
+}
+
+func (p *UserDataShapelessRecipe) Encode(w *wire.Writer) {
+	p.ShapelessRecipe.Encode(w)
+}
+
+func (p *UserDataShapelessRecipe) Decode(r *wire.Reader) {
+	p.ShapelessRecipe.Decode(r)
+}
+
+type ShapelessChemistryRecipe struct {
+	ShapelessRecipe ShapelessRecipe
+}
+
+func (p *ShapelessChemistryRecipe) Encode(w *wire.Writer) {
+	p.ShapelessRecipe.Encode(w)
+}
+
+func (p *ShapelessChemistryRecipe) Decode(r *wire.Reader) {
+	p.ShapelessRecipe.Decode(r)
+}
+
+type ShapedChemistryRecipe struct {
+	ShapedRecipe ShapedRecipe
+}
+
+func (p *ShapedChemistryRecipe) Encode(w *wire.Writer) {
+	p.ShapedRecipe.Encode(w)
+}
+
+func (p *ShapedChemistryRecipe) Decode(r *wire.Reader) {
+	p.ShapedRecipe.Decode(r)
 }
 
 type SmithingTransformRecipe struct {
@@ -7322,35 +7683,35 @@ type ItemStackRequest struct {
 func (p *ItemStackRequest) Encode(w *wire.Writer) {
 	w.Varint32(p.RequestID)
 	w.Varuint32(uint32(len(p.Actions)))
-	for v241 := range p.Actions {
-		writeStackRequestAction(w, &p.Actions[v241])
+	for v292 := range p.Actions {
+		writeStackRequestAction(w, &p.Actions[v292])
 	}
 	w.Varuint32(uint32(len(p.FilterStrings)))
-	for v242 := range p.FilterStrings {
-		w.String(p.FilterStrings[v242])
+	for v293 := range p.FilterStrings {
+		w.String(p.FilterStrings[v293])
 	}
 	w.Int32(p.FilterCause)
 }
 
 func (p *ItemStackRequest) Decode(r *wire.Reader) {
 	p.RequestID = r.Varint32()
-	v244 := int(r.Varuint32())
-	if v244 < 0 || v244 > r.Len() {
+	v295 := int(r.Varuint32())
+	if v295 < 0 || v295 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Actions = make([]StackRequestAction, v244)
-	for v243 := range p.Actions {
-		readStackRequestAction(r, &p.Actions[v243])
+	p.Actions = make([]StackRequestAction, v295)
+	for v294 := range p.Actions {
+		readStackRequestAction(r, &p.Actions[v294])
 	}
-	v246 := int(r.Varuint32())
-	if v246 < 0 || v246 > r.Len() {
+	v297 := int(r.Varuint32())
+	if v297 < 0 || v297 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.FilterStrings = make([]string, v246)
-	for v245 := range p.FilterStrings {
-		p.FilterStrings[v245] = r.String()
+	p.FilterStrings = make([]string, v297)
+	for v296 := range p.FilterStrings {
+		p.FilterStrings[v296] = r.String()
 	}
 	p.FilterCause = r.Int32()
 }
@@ -8004,8 +8365,8 @@ func (p *WorldClockData) Encode(w *wire.Writer) {
 	w.Varint32(p.Time)
 	w.Bool(p.Paused)
 	w.Varuint32(uint32(len(p.TimeMarkers)))
-	for v247 := range p.TimeMarkers {
-		p.TimeMarkers[v247].Encode(w)
+	for v298 := range p.TimeMarkers {
+		p.TimeMarkers[v298].Encode(w)
 	}
 }
 
@@ -8014,14 +8375,14 @@ func (p *WorldClockData) Decode(r *wire.Reader) {
 	p.Name = r.String()
 	p.Time = r.Varint32()
 	p.Paused = r.Bool()
-	v249 := int(r.Varuint32())
-	if v249 < 0 || v249 > r.Len() {
+	v300 := int(r.Varuint32())
+	if v300 < 0 || v300 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.TimeMarkers = make([]TimeMarkerData, v249)
-	for v248 := range p.TimeMarkers {
-		p.TimeMarkers[v248].Decode(r)
+	p.TimeMarkers = make([]TimeMarkerData, v300)
+	for v299 := range p.TimeMarkers {
+		p.TimeMarkers[v299].Decode(r)
 	}
 }
 
@@ -8168,8 +8529,8 @@ func (p *Attribute) Encode(w *wire.Writer) {
 	w.Float32(p.Default)
 	w.String(p.Name)
 	w.Varuint32(uint32(len(p.Modifiers)))
-	for v250 := range p.Modifiers {
-		p.Modifiers[v250].Encode(w)
+	for v301 := range p.Modifiers {
+		p.Modifiers[v301].Encode(w)
 	}
 }
 
@@ -8181,14 +8542,14 @@ func (p *Attribute) Decode(r *wire.Reader) {
 	p.DefaultMax = r.Float32()
 	p.Default = r.Float32()
 	p.Name = r.String()
-	v252 := int(r.Varuint32())
-	if v252 < 0 || v252 > r.Len() {
+	v303 := int(r.Varuint32())
+	if v303 < 0 || v303 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Modifiers = make([]AttributeModifier, v252)
-	for v251 := range p.Modifiers {
-		p.Modifiers[v251].Decode(r)
+	p.Modifiers = make([]AttributeModifier, v303)
+	for v302 := range p.Modifiers {
+		p.Modifiers[v302].Decode(r)
 	}
 }
 
@@ -8226,47 +8587,47 @@ type VoxelShape struct {
 func (p *VoxelShape) Encode(w *wire.Writer) {
 	p.Cells.Encode(w)
 	w.Varuint32(uint32(len(p.XCoordinates)))
-	for v253 := range p.XCoordinates {
-		w.Float32(p.XCoordinates[v253])
+	for v304 := range p.XCoordinates {
+		w.Float32(p.XCoordinates[v304])
 	}
 	w.Varuint32(uint32(len(p.YCoordinates)))
-	for v254 := range p.YCoordinates {
-		w.Float32(p.YCoordinates[v254])
+	for v305 := range p.YCoordinates {
+		w.Float32(p.YCoordinates[v305])
 	}
 	w.Varuint32(uint32(len(p.ZCoordinates)))
-	for v255 := range p.ZCoordinates {
-		w.Float32(p.ZCoordinates[v255])
+	for v306 := range p.ZCoordinates {
+		w.Float32(p.ZCoordinates[v306])
 	}
 }
 
 func (p *VoxelShape) Decode(r *wire.Reader) {
 	p.Cells.Decode(r)
-	v257 := int(r.Varuint32())
-	if v257 < 0 || v257 > r.Len() {
+	v308 := int(r.Varuint32())
+	if v308 < 0 || v308 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.XCoordinates = make([]float32, v257)
-	for v256 := range p.XCoordinates {
-		p.XCoordinates[v256] = r.Float32()
+	p.XCoordinates = make([]float32, v308)
+	for v307 := range p.XCoordinates {
+		p.XCoordinates[v307] = r.Float32()
 	}
-	v259 := int(r.Varuint32())
-	if v259 < 0 || v259 > r.Len() {
+	v310 := int(r.Varuint32())
+	if v310 < 0 || v310 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.YCoordinates = make([]float32, v259)
-	for v258 := range p.YCoordinates {
-		p.YCoordinates[v258] = r.Float32()
+	p.YCoordinates = make([]float32, v310)
+	for v309 := range p.YCoordinates {
+		p.YCoordinates[v309] = r.Float32()
 	}
-	v261 := int(r.Varuint32())
-	if v261 < 0 || v261 > r.Len() {
+	v312 := int(r.Varuint32())
+	if v312 < 0 || v312 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.ZCoordinates = make([]float32, v261)
-	for v260 := range p.ZCoordinates {
-		p.ZCoordinates[v260] = r.Float32()
+	p.ZCoordinates = make([]float32, v312)
+	for v311 := range p.ZCoordinates {
+		p.ZCoordinates[v311] = r.Float32()
 	}
 }
 
@@ -8517,22 +8878,22 @@ func (p *AutoCraftRecipeStackRequestAction) Encode(w *wire.Writer) {
 	w.Varuint32(p.RecipeNetworkID)
 	w.Uint8(p.NumberOfCrafts)
 	w.Varuint32(uint32(len(p.Ingredients)))
-	for v262 := range p.Ingredients {
-		p.Ingredients[v262].Encode(w)
+	for v313 := range p.Ingredients {
+		p.Ingredients[v313].Encode(w)
 	}
 }
 
 func (p *AutoCraftRecipeStackRequestAction) Decode(r *wire.Reader) {
 	p.RecipeNetworkID = r.Varuint32()
 	p.NumberOfCrafts = r.Uint8()
-	v264 := int(r.Varuint32())
-	if v264 < 0 || v264 > r.Len() {
+	v315 := int(r.Varuint32())
+	if v315 < 0 || v315 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Ingredients = make([]ItemDescriptorCount, v264)
-	for v263 := range p.Ingredients {
-		p.Ingredients[v263].Decode(r)
+	p.Ingredients = make([]ItemDescriptorCount, v315)
+	for v314 := range p.Ingredients {
+		p.Ingredients[v314].Decode(r)
 	}
 }
 
@@ -8573,12 +8934,12 @@ type BiomeCappedSurface struct {
 
 func (p *BiomeCappedSurface) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.FloorBlocks)))
-	for v265 := range p.FloorBlocks {
-		w.Int32(p.FloorBlocks[v265])
+	for v316 := range p.FloorBlocks {
+		w.Int32(p.FloorBlocks[v316])
 	}
 	w.Varuint32(uint32(len(p.CeilingBlocks)))
-	for v266 := range p.CeilingBlocks {
-		w.Int32(p.CeilingBlocks[v266])
+	for v317 := range p.CeilingBlocks {
+		w.Int32(p.CeilingBlocks[v317])
 	}
 	w.Bool(p.SeaBlock.Set)
 	if p.SeaBlock.Set {
@@ -8595,23 +8956,23 @@ func (p *BiomeCappedSurface) Encode(w *wire.Writer) {
 }
 
 func (p *BiomeCappedSurface) Decode(r *wire.Reader) {
-	v268 := int(r.Varuint32())
-	if v268 < 0 || v268 > r.Len() {
+	v319 := int(r.Varuint32())
+	if v319 < 0 || v319 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.FloorBlocks = make([]int32, v268)
-	for v267 := range p.FloorBlocks {
-		p.FloorBlocks[v267] = r.Int32()
+	p.FloorBlocks = make([]int32, v319)
+	for v318 := range p.FloorBlocks {
+		p.FloorBlocks[v318] = r.Int32()
 	}
-	v270 := int(r.Varuint32())
-	if v270 < 0 || v270 > r.Len() {
+	v321 := int(r.Varuint32())
+	if v321 < 0 || v321 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.CeilingBlocks = make([]int32, v270)
-	for v269 := range p.CeilingBlocks {
-		p.CeilingBlocks[v269] = r.Int32()
+	p.CeilingBlocks = make([]int32, v321)
+	for v320 := range p.CeilingBlocks {
+		p.CeilingBlocks[v320] = r.Int32()
 	}
 	p.SeaBlock.Set = r.Bool()
 	if p.SeaBlock.Set {
@@ -8649,8 +9010,8 @@ func (p *BiomeChunkGeneration) Encode(w *wire.Writer) {
 	w.Bool(p.ConsolidatedFeatures.Set)
 	if p.ConsolidatedFeatures.Set {
 		w.Varuint32(uint32(len(p.ConsolidatedFeatures.Val)))
-		for v271 := range p.ConsolidatedFeatures.Val {
-			p.ConsolidatedFeatures.Val[v271].Encode(w)
+		for v322 := range p.ConsolidatedFeatures.Val {
+			p.ConsolidatedFeatures.Val[v322].Encode(w)
 		}
 	}
 	w.Bool(p.MountainParameters.Set)
@@ -8660,8 +9021,8 @@ func (p *BiomeChunkGeneration) Encode(w *wire.Writer) {
 	w.Bool(p.SurfaceMaterialAdjustments.Set)
 	if p.SurfaceMaterialAdjustments.Set {
 		w.Varuint32(uint32(len(p.SurfaceMaterialAdjustments.Val)))
-		for v272 := range p.SurfaceMaterialAdjustments.Val {
-			p.SurfaceMaterialAdjustments.Val[v272].Encode(w)
+		for v323 := range p.SurfaceMaterialAdjustments.Val {
+			p.SurfaceMaterialAdjustments.Val[v323].Encode(w)
 		}
 	}
 	w.Bool(p.OverworldRules.Set)
@@ -8675,15 +9036,15 @@ func (p *BiomeChunkGeneration) Encode(w *wire.Writer) {
 	w.Bool(p.LegacyRules.Set)
 	if p.LegacyRules.Set {
 		w.Varuint32(uint32(len(p.LegacyRules.Val)))
-		for v273 := range p.LegacyRules.Val {
-			p.LegacyRules.Val[v273].Encode(w)
+		for v324 := range p.LegacyRules.Val {
+			p.LegacyRules.Val[v324].Encode(w)
 		}
 	}
 	w.Bool(p.ReplacementsData.Set)
 	if p.ReplacementsData.Set {
 		w.Varuint32(uint32(len(p.ReplacementsData.Val)))
-		for v274 := range p.ReplacementsData.Val {
-			p.ReplacementsData.Val[v274].Encode(w)
+		for v325 := range p.ReplacementsData.Val {
+			p.ReplacementsData.Val[v325].Encode(w)
 		}
 	}
 	w.Bool(p.VillageType.Set)
@@ -8707,14 +9068,14 @@ func (p *BiomeChunkGeneration) Decode(r *wire.Reader) {
 	}
 	p.ConsolidatedFeatures.Set = r.Bool()
 	if p.ConsolidatedFeatures.Set {
-		v276 := int(r.Varuint32())
-		if v276 < 0 || v276 > r.Len() {
+		v327 := int(r.Varuint32())
+		if v327 < 0 || v327 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.ConsolidatedFeatures.Val = make([]BiomeConsolidatedFeature, v276)
-		for v275 := range p.ConsolidatedFeatures.Val {
-			p.ConsolidatedFeatures.Val[v275].Decode(r)
+		p.ConsolidatedFeatures.Val = make([]BiomeConsolidatedFeature, v327)
+		for v326 := range p.ConsolidatedFeatures.Val {
+			p.ConsolidatedFeatures.Val[v326].Decode(r)
 		}
 	}
 	p.MountainParameters.Set = r.Bool()
@@ -8723,14 +9084,14 @@ func (p *BiomeChunkGeneration) Decode(r *wire.Reader) {
 	}
 	p.SurfaceMaterialAdjustments.Set = r.Bool()
 	if p.SurfaceMaterialAdjustments.Set {
-		v278 := int(r.Varuint32())
-		if v278 < 0 || v278 > r.Len() {
+		v329 := int(r.Varuint32())
+		if v329 < 0 || v329 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.SurfaceMaterialAdjustments.Val = make([]BiomeElementData, v278)
-		for v277 := range p.SurfaceMaterialAdjustments.Val {
-			p.SurfaceMaterialAdjustments.Val[v277].Decode(r)
+		p.SurfaceMaterialAdjustments.Val = make([]BiomeElementData, v329)
+		for v328 := range p.SurfaceMaterialAdjustments.Val {
+			p.SurfaceMaterialAdjustments.Val[v328].Decode(r)
 		}
 	}
 	p.OverworldRules.Set = r.Bool()
@@ -8743,26 +9104,26 @@ func (p *BiomeChunkGeneration) Decode(r *wire.Reader) {
 	}
 	p.LegacyRules.Set = r.Bool()
 	if p.LegacyRules.Set {
-		v280 := int(r.Varuint32())
-		if v280 < 0 || v280 > r.Len() {
+		v331 := int(r.Varuint32())
+		if v331 < 0 || v331 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.LegacyRules.Val = make([]BiomeConditionalTransformation, v280)
-		for v279 := range p.LegacyRules.Val {
-			p.LegacyRules.Val[v279].Decode(r)
+		p.LegacyRules.Val = make([]BiomeConditionalTransformation, v331)
+		for v330 := range p.LegacyRules.Val {
+			p.LegacyRules.Val[v330].Decode(r)
 		}
 	}
 	p.ReplacementsData.Set = r.Bool()
 	if p.ReplacementsData.Set {
-		v282 := int(r.Varuint32())
-		if v282 < 0 || v282 > r.Len() {
+		v333 := int(r.Varuint32())
+		if v333 < 0 || v333 > r.Len() {
 			r.Fail(wire.ErrShort)
 			return
 		}
-		p.ReplacementsData.Val = make([]BiomeReplacementData, v282)
-		for v281 := range p.ReplacementsData.Val {
-			p.ReplacementsData.Val[v281].Decode(r)
+		p.ReplacementsData.Val = make([]BiomeReplacementData, v333)
+		for v332 := range p.ReplacementsData.Val {
+			p.ReplacementsData.Val[v332].Decode(r)
 		}
 	}
 	p.VillageType.Set = r.Bool()
@@ -8808,22 +9169,22 @@ type BiomeConditionalTransformation struct {
 
 func (p *BiomeConditionalTransformation) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.WeightedBiomes)))
-	for v283 := range p.WeightedBiomes {
-		p.WeightedBiomes[v283].Encode(w)
+	for v334 := range p.WeightedBiomes {
+		p.WeightedBiomes[v334].Encode(w)
 	}
 	w.Int16(p.ConditionJSON)
 	w.Uint32(p.MinPassingNeighbours)
 }
 
 func (p *BiomeConditionalTransformation) Decode(r *wire.Reader) {
-	v285 := int(r.Varuint32())
-	if v285 < 0 || v285 > r.Len() {
+	v336 := int(r.Varuint32())
+	if v336 < 0 || v336 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.WeightedBiomes = make([]BiomeWeight, v285)
-	for v284 := range p.WeightedBiomes {
-		p.WeightedBiomes[v284].Decode(r)
+	p.WeightedBiomes = make([]BiomeWeight, v336)
+	for v335 := range p.WeightedBiomes {
+		p.WeightedBiomes[v335].Decode(r)
 	}
 	p.ConditionJSON = r.Int16()
 	p.MinPassingNeighbours = r.Uint32()
@@ -8996,34 +9357,34 @@ type BiomeNoiseGradientSurface struct {
 
 func (p *BiomeNoiseGradientSurface) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.NonReplaceableBlocks)))
-	for v286 := range p.NonReplaceableBlocks {
-		w.Uint32(p.NonReplaceableBlocks[v286])
+	for v337 := range p.NonReplaceableBlocks {
+		w.Uint32(p.NonReplaceableBlocks[v337])
 	}
 	w.Varuint32(uint32(len(p.GradientBlocks)))
-	for v287 := range p.GradientBlocks {
-		p.GradientBlocks[v287].Encode(w)
+	for v338 := range p.GradientBlocks {
+		p.GradientBlocks[v338].Encode(w)
 	}
 	p.Noise.Encode(w)
 }
 
 func (p *BiomeNoiseGradientSurface) Decode(r *wire.Reader) {
-	v289 := int(r.Varuint32())
-	if v289 < 0 || v289 > r.Len() {
+	v340 := int(r.Varuint32())
+	if v340 < 0 || v340 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.NonReplaceableBlocks = make([]uint32, v289)
-	for v288 := range p.NonReplaceableBlocks {
-		p.NonReplaceableBlocks[v288] = r.Uint32()
+	p.NonReplaceableBlocks = make([]uint32, v340)
+	for v339 := range p.NonReplaceableBlocks {
+		p.NonReplaceableBlocks[v339] = r.Uint32()
 	}
-	v291 := int(r.Varuint32())
-	if v291 < 0 || v291 > r.Len() {
+	v342 := int(r.Varuint32())
+	if v342 < 0 || v342 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.GradientBlocks = make([]NoiseBlockSpecifier, v291)
-	for v290 := range p.GradientBlocks {
-		p.GradientBlocks[v290].Decode(r)
+	p.GradientBlocks = make([]NoiseBlockSpecifier, v342)
+	for v341 := range p.GradientBlocks {
+		p.GradientBlocks[v341].Decode(r)
 	}
 	p.Noise.Decode(r)
 }
@@ -9040,98 +9401,98 @@ type BiomeOverworldRules struct {
 
 func (p *BiomeOverworldRules) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.HillsTransformations)))
-	for v292 := range p.HillsTransformations {
-		p.HillsTransformations[v292].Encode(w)
+	for v343 := range p.HillsTransformations {
+		p.HillsTransformations[v343].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.MutateTransformations)))
-	for v293 := range p.MutateTransformations {
-		p.MutateTransformations[v293].Encode(w)
+	for v344 := range p.MutateTransformations {
+		p.MutateTransformations[v344].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.RiverTransformations)))
-	for v294 := range p.RiverTransformations {
-		p.RiverTransformations[v294].Encode(w)
+	for v345 := range p.RiverTransformations {
+		p.RiverTransformations[v345].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.ShoreTransformations)))
-	for v295 := range p.ShoreTransformations {
-		p.ShoreTransformations[v295].Encode(w)
+	for v346 := range p.ShoreTransformations {
+		p.ShoreTransformations[v346].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.PreHillsEdgeTransformations)))
-	for v296 := range p.PreHillsEdgeTransformations {
-		p.PreHillsEdgeTransformations[v296].Encode(w)
+	for v347 := range p.PreHillsEdgeTransformations {
+		p.PreHillsEdgeTransformations[v347].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.PostShoreEdgeTransformations)))
-	for v297 := range p.PostShoreEdgeTransformations {
-		p.PostShoreEdgeTransformations[v297].Encode(w)
+	for v348 := range p.PostShoreEdgeTransformations {
+		p.PostShoreEdgeTransformations[v348].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.ClimateTransformations)))
-	for v298 := range p.ClimateTransformations {
-		p.ClimateTransformations[v298].Encode(w)
+	for v349 := range p.ClimateTransformations {
+		p.ClimateTransformations[v349].Encode(w)
 	}
 }
 
 func (p *BiomeOverworldRules) Decode(r *wire.Reader) {
-	v300 := int(r.Varuint32())
-	if v300 < 0 || v300 > r.Len() {
+	v351 := int(r.Varuint32())
+	if v351 < 0 || v351 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.HillsTransformations = make([]BiomeWeight, v300)
-	for v299 := range p.HillsTransformations {
-		p.HillsTransformations[v299].Decode(r)
+	p.HillsTransformations = make([]BiomeWeight, v351)
+	for v350 := range p.HillsTransformations {
+		p.HillsTransformations[v350].Decode(r)
 	}
-	v302 := int(r.Varuint32())
-	if v302 < 0 || v302 > r.Len() {
+	v353 := int(r.Varuint32())
+	if v353 < 0 || v353 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.MutateTransformations = make([]BiomeWeight, v302)
-	for v301 := range p.MutateTransformations {
-		p.MutateTransformations[v301].Decode(r)
+	p.MutateTransformations = make([]BiomeWeight, v353)
+	for v352 := range p.MutateTransformations {
+		p.MutateTransformations[v352].Decode(r)
 	}
-	v304 := int(r.Varuint32())
-	if v304 < 0 || v304 > r.Len() {
+	v355 := int(r.Varuint32())
+	if v355 < 0 || v355 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.RiverTransformations = make([]BiomeWeight, v304)
-	for v303 := range p.RiverTransformations {
-		p.RiverTransformations[v303].Decode(r)
+	p.RiverTransformations = make([]BiomeWeight, v355)
+	for v354 := range p.RiverTransformations {
+		p.RiverTransformations[v354].Decode(r)
 	}
-	v306 := int(r.Varuint32())
-	if v306 < 0 || v306 > r.Len() {
+	v357 := int(r.Varuint32())
+	if v357 < 0 || v357 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.ShoreTransformations = make([]BiomeWeight, v306)
-	for v305 := range p.ShoreTransformations {
-		p.ShoreTransformations[v305].Decode(r)
+	p.ShoreTransformations = make([]BiomeWeight, v357)
+	for v356 := range p.ShoreTransformations {
+		p.ShoreTransformations[v356].Decode(r)
 	}
-	v308 := int(r.Varuint32())
-	if v308 < 0 || v308 > r.Len() {
+	v359 := int(r.Varuint32())
+	if v359 < 0 || v359 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.PreHillsEdgeTransformations = make([]BiomeConditionalTransformation, v308)
-	for v307 := range p.PreHillsEdgeTransformations {
-		p.PreHillsEdgeTransformations[v307].Decode(r)
+	p.PreHillsEdgeTransformations = make([]BiomeConditionalTransformation, v359)
+	for v358 := range p.PreHillsEdgeTransformations {
+		p.PreHillsEdgeTransformations[v358].Decode(r)
 	}
-	v310 := int(r.Varuint32())
-	if v310 < 0 || v310 > r.Len() {
+	v361 := int(r.Varuint32())
+	if v361 < 0 || v361 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.PostShoreEdgeTransformations = make([]BiomeConditionalTransformation, v310)
-	for v309 := range p.PostShoreEdgeTransformations {
-		p.PostShoreEdgeTransformations[v309].Decode(r)
+	p.PostShoreEdgeTransformations = make([]BiomeConditionalTransformation, v361)
+	for v360 := range p.PostShoreEdgeTransformations {
+		p.PostShoreEdgeTransformations[v360].Decode(r)
 	}
-	v312 := int(r.Varuint32())
-	if v312 < 0 || v312 > r.Len() {
+	v363 := int(r.Varuint32())
+	if v363 < 0 || v363 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.ClimateTransformations = make([]BiomeTemperatureWeight, v312)
-	for v311 := range p.ClimateTransformations {
-		p.ClimateTransformations[v311].Decode(r)
+	p.ClimateTransformations = make([]BiomeTemperatureWeight, v363)
+	for v362 := range p.ClimateTransformations {
+		p.ClimateTransformations[v362].Decode(r)
 	}
 }
 
@@ -9148,8 +9509,8 @@ func (p *BiomeReplacementData) Encode(w *wire.Writer) {
 	w.Int16(p.Biome)
 	w.Int16(p.Dimension)
 	w.Varuint32(uint32(len(p.TargetBiomes)))
-	for v313 := range p.TargetBiomes {
-		w.Int16(p.TargetBiomes[v313])
+	for v364 := range p.TargetBiomes {
+		w.Int16(p.TargetBiomes[v364])
 	}
 	w.Float32(p.Amount)
 	w.Float32(p.NoiseFrequencyScale)
@@ -9159,14 +9520,14 @@ func (p *BiomeReplacementData) Encode(w *wire.Writer) {
 func (p *BiomeReplacementData) Decode(r *wire.Reader) {
 	p.Biome = r.Int16()
 	p.Dimension = r.Int16()
-	v315 := int(r.Varuint32())
-	if v315 < 0 || v315 > r.Len() {
+	v366 := int(r.Varuint32())
+	if v366 < 0 || v366 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.TargetBiomes = make([]int16, v315)
-	for v314 := range p.TargetBiomes {
-		p.TargetBiomes[v314] = r.Int16()
+	p.TargetBiomes = make([]int16, v366)
+	for v365 := range p.TargetBiomes {
+		p.TargetBiomes[v365] = r.Int16()
 	}
 	p.Amount = r.Float32()
 	p.NoiseFrequencyScale = r.Float32()
@@ -9186,8 +9547,8 @@ type BiomeScatterParameter struct {
 
 func (p *BiomeScatterParameter) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Coordinates)))
-	for v316 := range p.Coordinates {
-		p.Coordinates[v316].Encode(w)
+	for v367 := range p.Coordinates {
+		p.Coordinates[v367].Encode(w)
 	}
 	w.Varint32(p.EvaluationOrder)
 	w.Varint32(p.ChancePercentType)
@@ -9199,14 +9560,14 @@ func (p *BiomeScatterParameter) Encode(w *wire.Writer) {
 }
 
 func (p *BiomeScatterParameter) Decode(r *wire.Reader) {
-	v318 := int(r.Varuint32())
-	if v318 < 0 || v318 > r.Len() {
+	v369 := int(r.Varuint32())
+	if v369 < 0 || v369 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Coordinates = make([]BiomeCoordinate, v318)
-	for v317 := range p.Coordinates {
-		p.Coordinates[v317].Decode(r)
+	p.Coordinates = make([]BiomeCoordinate, v369)
+	for v368 := range p.Coordinates {
+		p.Coordinates[v368].Decode(r)
 	}
 	p.EvaluationOrder = r.Varint32()
 	p.ChancePercentType = r.Varint32()
@@ -9387,20 +9748,20 @@ type CameraAimAssistPriorities struct {
 
 func (p *CameraAimAssistPriorities) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.Entities)))
-	for v319 := range p.Entities {
-		p.Entities[v319].Encode(w)
+	for v370 := range p.Entities {
+		p.Entities[v370].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.Blocks)))
-	for v320 := range p.Blocks {
-		p.Blocks[v320].Encode(w)
+	for v371 := range p.Blocks {
+		p.Blocks[v371].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.BlockTags)))
-	for v321 := range p.BlockTags {
-		p.BlockTags[v321].Encode(w)
+	for v372 := range p.BlockTags {
+		p.BlockTags[v372].Encode(w)
 	}
 	w.Varuint32(uint32(len(p.EntityTypeFamilies)))
-	for v322 := range p.EntityTypeFamilies {
-		p.EntityTypeFamilies[v322].Encode(w)
+	for v373 := range p.EntityTypeFamilies {
+		p.EntityTypeFamilies[v373].Encode(w)
 	}
 	w.Bool(p.EntityDefault.Set)
 	if p.EntityDefault.Set {
@@ -9413,41 +9774,41 @@ func (p *CameraAimAssistPriorities) Encode(w *wire.Writer) {
 }
 
 func (p *CameraAimAssistPriorities) Decode(r *wire.Reader) {
-	v324 := int(r.Varuint32())
-	if v324 < 0 || v324 > r.Len() {
+	v375 := int(r.Varuint32())
+	if v375 < 0 || v375 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Entities = make([]CameraAimAssistPriority, v324)
-	for v323 := range p.Entities {
-		p.Entities[v323].Decode(r)
+	p.Entities = make([]CameraAimAssistPriority, v375)
+	for v374 := range p.Entities {
+		p.Entities[v374].Decode(r)
 	}
-	v326 := int(r.Varuint32())
-	if v326 < 0 || v326 > r.Len() {
+	v377 := int(r.Varuint32())
+	if v377 < 0 || v377 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Blocks = make([]CameraAimAssistPriority, v326)
-	for v325 := range p.Blocks {
-		p.Blocks[v325].Decode(r)
+	p.Blocks = make([]CameraAimAssistPriority, v377)
+	for v376 := range p.Blocks {
+		p.Blocks[v376].Decode(r)
 	}
-	v328 := int(r.Varuint32())
-	if v328 < 0 || v328 > r.Len() {
+	v379 := int(r.Varuint32())
+	if v379 < 0 || v379 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.BlockTags = make([]CameraAimAssistPriority, v328)
-	for v327 := range p.BlockTags {
-		p.BlockTags[v327].Decode(r)
+	p.BlockTags = make([]CameraAimAssistPriority, v379)
+	for v378 := range p.BlockTags {
+		p.BlockTags[v378].Decode(r)
 	}
-	v330 := int(r.Varuint32())
-	if v330 < 0 || v330 > r.Len() {
+	v381 := int(r.Varuint32())
+	if v381 < 0 || v381 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.EntityTypeFamilies = make([]CameraAimAssistPriority, v330)
-	for v329 := range p.EntityTypeFamilies {
-		p.EntityTypeFamilies[v329].Decode(r)
+	p.EntityTypeFamilies = make([]CameraAimAssistPriority, v381)
+	for v380 := range p.EntityTypeFamilies {
+		p.EntityTypeFamilies[v380].Decode(r)
 	}
 	p.EntityDefault.Set = r.Bool()
 	if p.EntityDefault.Set {
@@ -9646,22 +10007,22 @@ func (p *CommandOutputMessage) Encode(w *wire.Writer) {
 	w.String(p.Message)
 	w.Bool(p.Success)
 	w.Varuint32(uint32(len(p.Parameters)))
-	for v331 := range p.Parameters {
-		w.String(p.Parameters[v331])
+	for v382 := range p.Parameters {
+		w.String(p.Parameters[v382])
 	}
 }
 
 func (p *CommandOutputMessage) Decode(r *wire.Reader) {
 	p.Message = r.String()
 	p.Success = r.Bool()
-	v333 := int(r.Varuint32())
-	if v333 < 0 || v333 > r.Len() {
+	v384 := int(r.Varuint32())
+	if v384 < 0 || v384 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Parameters = make([]string, v333)
-	for v332 := range p.Parameters {
-		p.Parameters[v332] = r.String()
+	p.Parameters = make([]string, v384)
+	for v383 := range p.Parameters {
+		p.Parameters[v383] = r.String()
 	}
 }
 
@@ -9673,21 +10034,21 @@ type CommandOverload struct {
 func (p *CommandOverload) Encode(w *wire.Writer) {
 	w.Bool(p.Chaining)
 	w.Varuint32(uint32(len(p.Parameters)))
-	for v334 := range p.Parameters {
-		p.Parameters[v334].Encode(w)
+	for v385 := range p.Parameters {
+		p.Parameters[v385].Encode(w)
 	}
 }
 
 func (p *CommandOverload) Decode(r *wire.Reader) {
 	p.Chaining = r.Bool()
-	v336 := int(r.Varuint32())
-	if v336 < 0 || v336 > r.Len() {
+	v387 := int(r.Varuint32())
+	if v387 < 0 || v387 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Parameters = make([]CommandParameter, v336)
-	for v335 := range p.Parameters {
-		p.Parameters[v335].Decode(r)
+	p.Parameters = make([]CommandParameter, v387)
+	for v386 := range p.Parameters {
+		p.Parameters[v386].Decode(r)
 	}
 }
 
@@ -9872,21 +10233,21 @@ type CraftResultsDeprecatedStackRequestAction struct {
 
 func (p *CraftResultsDeprecatedStackRequestAction) Encode(w *wire.Writer) {
 	w.Varuint32(uint32(len(p.ResultItems)))
-	for v337 := range p.ResultItems {
-		writeStackRequestItem(w, &p.ResultItems[v337])
+	for v388 := range p.ResultItems {
+		writeStackRequestItem(w, &p.ResultItems[v388])
 	}
 	w.Uint8(p.TimesCrafted)
 }
 
 func (p *CraftResultsDeprecatedStackRequestAction) Decode(r *wire.Reader) {
-	v339 := int(r.Varuint32())
-	if v339 < 0 || v339 > r.Len() {
+	v390 := int(r.Varuint32())
+	if v390 < 0 || v390 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.ResultItems = make([]StackRequestItem, v339)
-	for v338 := range p.ResultItems {
-		readStackRequestItem(r, &p.ResultItems[v338])
+	p.ResultItems = make([]StackRequestItem, v390)
+	for v389 := range p.ResultItems {
+		readStackRequestItem(r, &p.ResultItems[v389])
 	}
 	p.TimesCrafted = r.Uint8()
 }
@@ -10339,22 +10700,22 @@ func (p *NoiseDescriptor) Encode(w *wire.Writer) {
 	w.String(p.Name)
 	w.Int32(p.FirstOctave)
 	w.Varuint32(uint32(len(p.Amplitudes)))
-	for v340 := range p.Amplitudes {
-		w.Float32(p.Amplitudes[v340])
+	for v391 := range p.Amplitudes {
+		w.Float32(p.Amplitudes[v391])
 	}
 }
 
 func (p *NoiseDescriptor) Decode(r *wire.Reader) {
 	p.Name = r.String()
 	p.FirstOctave = r.Int32()
-	v342 := int(r.Varuint32())
-	if v342 < 0 || v342 > r.Len() {
+	v393 := int(r.Varuint32())
+	if v393 < 0 || v393 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Amplitudes = make([]float32, v342)
-	for v341 := range p.Amplitudes {
-		p.Amplitudes[v341] = r.Float32()
+	p.Amplitudes = make([]float32, v393)
+	for v392 := range p.Amplitudes {
+		p.Amplitudes[v392] = r.Float32()
 	}
 }
 
@@ -10811,8 +11172,8 @@ func (p *VoxelCells) Encode(w *wire.Writer) {
 	w.Uint8(p.YSize)
 	w.Uint8(p.ZSize)
 	w.Varuint32(uint32(len(p.Storage)))
-	for v343 := range p.Storage {
-		w.Uint8(p.Storage[v343])
+	for v394 := range p.Storage {
+		w.Uint8(p.Storage[v394])
 	}
 }
 
@@ -10820,14 +11181,14 @@ func (p *VoxelCells) Decode(r *wire.Reader) {
 	p.XSize = r.Uint8()
 	p.YSize = r.Uint8()
 	p.ZSize = r.Uint8()
-	v345 := int(r.Varuint32())
-	if v345 < 0 || v345 > r.Len() {
+	v396 := int(r.Varuint32())
+	if v396 < 0 || v396 > r.Len() {
 		r.Fail(wire.ErrShort)
 		return
 	}
-	p.Storage = make([]uint8, v345)
-	for v344 := range p.Storage {
-		p.Storage[v344] = r.Uint8()
+	p.Storage = make([]uint8, v396)
+	for v395 := range p.Storage {
+		p.Storage[v395] = r.Uint8()
 	}
 }
 
@@ -11446,7 +11807,7 @@ func New(id uint32) proto.Packet {
 // fields as bytes.
 func Raw(id uint32) bool {
 	switch id {
-	case 30, 44, 52, 63, 65, 76, 77, 79, 93, 108, 146, 148, 164, 184, 300, 322, 325, 328, 329, 330, 338, 345:
+	case 44, 65, 76, 77, 79, 146, 148, 164, 184, 300, 322, 325, 328, 329, 330, 338, 345:
 		return true
 	}
 	return false
