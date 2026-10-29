@@ -10,8 +10,8 @@ import (
 	"unsafe"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
