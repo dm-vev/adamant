@@ -6,9 +6,96 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
+
+func TestBellRepeatedUsesRetainSoundAndAnimationThroughBacklog(t *testing.T) {
+	s := testSession("bell-use-backlog")
+	s.br = world.DefaultBlockRegistry
+	s.packets = make(chan packet.Packet, 2048)
+	for i := 0; i < 400; i++ {
+		s.enqueueBlockUpdate(cube.Pos{i, 70, 0}, block.Stone{}, 0)
+	}
+	pos := cube.Pos{4, 65, 4}
+	bell := (block.Bell{Attach: block.StandingBellAttachment(), Facing: cube.South, Powered: true}).DecodeNBT(map[string]any{"Ringing": uint8(1), "Ticks": int32(0), "Direction": int32(0)}).(block.Bell)
+	for range 2 {
+		s.ViewBlockUpdate(pos, bell, 0)
+		s.ViewSound(pos.Vec3(), sound.BellRing{AfterBlock: true})
+		bell.Powered = !bell.Powered
+	}
+	// A subsequent rejected use confirms that same latest permutation. It
+	// must not erase effects or animation still waiting behind the backlog.
+	bell.Powered = !bell.Powered
+	s.ViewBlockAction(pos, block.BellUseRejectedAction{Bell: bell})
+	state, actors, sounds := false, 0, 0
+	for len(s.blockUpdates) > 0 {
+		s.flushBlockUpdates()
+		for len(s.packets) > 0 {
+			switch p := (<-s.packets).(type) {
+			case *packet.UpdateBlock:
+				if p.Position == (protocol.BlockPos{4, 65, 4}) {
+					if p.Flags != 3 || p.NewBlockRuntimeID != networkBlockID(s.br, bell) {
+						t.Fatal("bell confirmation lost the latest state")
+					}
+					state = true
+				}
+			case *packet.BlockActorData:
+				if p.Position == (protocol.BlockPos{4, 65, 4}) {
+					if !state || p.NBTData["Ringing"] != uint8(1) || p.NBTData["Ticks"] != int32(0) {
+						t.Fatal("bell animation lost its state/animation origin")
+					}
+					actors++
+				}
+			case *packet.LevelSoundEvent:
+				if !state || actors != 1 || p.SoundType != packet.SoundEventBell {
+					t.Fatal("bell sound preceded its state/actor publication")
+				}
+				sounds++
+			}
+		}
+	}
+	if !state || actors != 1 || sounds != 2 {
+		t.Fatalf("pending bell effects: state=%t actors=%d sounds=%d, want true/1/2", state, actors, sounds)
+	}
+}
+
+func TestBellActorPairSurvivesBlockBacklog(t *testing.T) {
+	s := testSession("bell-backlog")
+	s.br = world.DefaultBlockRegistry
+	s.packets = make(chan packet.Packet, 2048)
+	for i := 0; i < 400; i++ {
+		s.enqueueBlockUpdate(cube.Pos{i, 70, 0}, block.Stone{}, 0)
+	}
+	pos := cube.Pos{4, 65, 4}
+	bell := (block.Bell{Attach: block.StandingBellAttachment(), Facing: cube.South, Powered: true}).DecodeNBT(map[string]any{"Ringing": uint8(1), "Ticks": int32(0), "Direction": int32(0)}).(block.Bell)
+	s.enqueueBlockUpdate(pos, bell, 0)
+	s.enqueueBellRingUpdate(pos, bell)
+	var flags []uint32
+	actors := 0
+	for len(s.blockUpdates) > 0 {
+		s.flushBlockUpdates()
+		for len(s.packets) > 0 {
+			switch p := (<-s.packets).(type) {
+			case *packet.UpdateBlock:
+				if p.Position == (protocol.BlockPos{4, 65, 4}) {
+					flags = append(flags, p.Flags)
+				}
+			case *packet.BlockActorData:
+				if p.Position == (protocol.BlockPos{4, 65, 4}) {
+					if len(flags) != 2 || p.NBTData["Ticks"] != int32(0) || p.NBTData["Ringing"] != uint8(1) {
+						t.Fatal("bell actor preceded its state pair or lost animation origin")
+					}
+					actors++
+				}
+			}
+		}
+	}
+	if len(flags) != 2 || flags[0] != 3 || flags[1] != 1 || actors != 2 {
+		t.Fatalf("bell backlog updates=%v, actors=%d", flags, actors)
+	}
+}
 
 func TestMovingActorWaitsForParentThroughBlockBacklog(t *testing.T) {
 	s := testSession("moving-backlog")

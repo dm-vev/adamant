@@ -192,6 +192,15 @@ func testPistonNativePackets(t *testing.T, file string, actorCount int) {
 					t.Errorf("MovingBlock %v updates=%v, native %v", pos, gotActors[pos], expected)
 				}
 				for j, actor := range gotActors[pos] {
+					// A same-chunk actor snapshot excludes the newly spawned
+					// MovingBlock until the next pass. Across a chunk boundary,
+					// eligibility depends on which chunk is visited first. The
+					// packet fixture has no native game-tick timestamps and cannot
+					// establish a blanket one-GT delay for those destinations.
+					// The owned-BDS chunk-visit trace records that order separately.
+					if pos[0]>>4 != c.Base[0]>>4 || pos[2]>>4 != c.Base[2]>>4 {
+						continue
+					}
 					state := float64(1)
 					if actor["expanding"] == float64(0) {
 						state = 3

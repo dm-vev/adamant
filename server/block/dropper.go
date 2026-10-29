@@ -124,29 +124,9 @@ func (d Dropper) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after wo
 func (d Dropper) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	// The scheduled dispense is retained even if the signal falls before it
 	// runs, matching the source block's rising-edge scheduling.
-	slot, count := -1, 0
-	for i := range 9 {
-		stack, _ := d.inventory.Item(i)
-		if !stack.Empty() {
-			count++
-		}
-	}
-	if count == 0 {
-		return
-	}
-	pick := r.IntN(count)
-	for i := range 9 {
-		stack, _ := d.inventory.Item(i)
-		if stack.Empty() {
-			continue
-		}
-		if pick == 0 {
-			slot = i
-			break
-		}
-		pick--
-	}
+	slot := randomContainerSlot(d.inventory, tx.RandomUint32)
 	if slot < 0 {
+		playContainerSound(pos.Vec3(), tx, "block.click.fail")
 		return
 	}
 	stack, _ := d.inventory.Item(slot)
@@ -154,6 +134,12 @@ func (d Dropper) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	frontPos := pos.Side(d.Facing)
 	front := tx.Block(frontPos)
 	if container, ok := front.(Container); ok {
+		// Native dispenseFrom selects once before pushOutItems; the latter
+		// performs its own reservoir walk when it finds a container. The
+		// outer candidate is used only by the world-ejection fallback.
+		slot = randomContainerSlot(d.inventory, tx.RandomUint32)
+		stack, _ = d.inventory.Item(slot)
+		one = stack.Grow(1 - stack.Count())
 		accepted := false
 		if receiver, ok := front.(HopperInsertable); ok {
 			// Use the destination's sided slot rules, with only the randomly
@@ -163,7 +149,7 @@ func (d Dropper) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 			_ = transfer.inventory.SetItem(0, one)
 			accepted = receiver.InsertItem(transfer, frontPos, tx)
 		} else {
-			_, err := container.Inventory(tx, frontPos).AddItem(one)
+			_, err := container.Inventory(tx, frontPos).AddItemInSlotOrder(one)
 			accepted = err == nil
 		}
 		if accepted {
@@ -175,9 +161,9 @@ func (d Dropper) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		// dropper. Only a missing container takes the world-ejection path.
 		return
 	}
-	direction := frontPos.Vec3Centre().Sub(pos.Vec3Centre())
-	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre().Add(direction.Mul(0.7)), Velocity: direction.Mul(0.2)}
-	tx.AddEntity(tx.World().EntityRegistry().Config().Item(opts, one))
+	ejectContainerItem(pos, d.Facing, tx, one)
+	playItemEjectionEffects(pos, d.Facing, tx)
+	playContainerSound(pos.Vec3(), tx, "block.click")
 	_ = d.inventory.SetItem(slot, stack.Grow(-1))
 	notifyComparatorUpdate(pos, tx)
 }

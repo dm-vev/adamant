@@ -31,8 +31,6 @@ type Hopper struct {
 	// TransferCooldown counts the native two-game-tick transfer steps. A
 	// successful transfer sets four steps, giving an eight-game-tick interval.
 	TransferCooldown int64
-	// CollectCooldown is the duration in ticks until the hopper can collect items again.
-	CollectCooldown int64
 
 	inventory *inventory.Inventory
 	viewerMu  *sync.RWMutex
@@ -65,8 +63,8 @@ func NewHopper() Hopper {
 func (Hopper) ContainerSize() int { return 5 }
 
 // Model ...
-func (Hopper) Model() world.BlockModel {
-	return model.Hopper{}
+func (h Hopper) Model() world.BlockModel {
+	return model.Hopper{Facing: h.Facing}
 }
 
 // SideClosed ...
@@ -151,14 +149,9 @@ func (h Hopper) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 
 // Tick ...
 func (h Hopper) Tick(tick int64, pos cube.Pos, tx *world.Tx) {
-	if h.CollectCooldown > 0 {
-		h.CollectCooldown--
-		tx.SetBlockEntity(pos, h)
-	}
 	// HopperBlockActor::_tick (client 0x4acb450) ignores an unchanged
 	// Level::getCurrentTick value. Native heap traces show that clock advancing
 	// on even game ticks, including while an idle hopper waits for an item.
-	// Keep the separate item-actor collection timer in its existing GT units.
 	if tick&1 != 0 {
 		return
 	}
@@ -201,6 +194,9 @@ func (h Hopper) tickTransfer(tick int64, pos cube.Pos, tx *world.Tx, remaining i
 	if !h.Powered {
 		inserted := h.insertItem(pos, tx)
 		extracted := h.extractItem(pos, tx)
+		if !extracted {
+			extracted = h.collectItem(pos, tx)
+		}
 		if inserted || extracted {
 			h.TransferCooldown = 4
 			tx.SetBlock(pos, h, nil)
@@ -279,10 +275,11 @@ func (h Hopper) insertItem(pos cube.Pos, tx *world.Tx) bool {
 				continue
 			}
 
-			_, err := inv.AddItem(sourceStack.Grow(-sourceStack.Count() + 1))
+			_, err := inv.AddItemInSlotOrder(sourceStack.Grow(-sourceStack.Count() + 1))
 			if err != nil {
-				// The destination is full.
-				return false
+				// This type may be blocked while a later source stack still
+				// fits. Native _pushOutItems continues its source-slot scan.
+				continue
 			}
 
 			_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
@@ -334,7 +331,7 @@ func (h Hopper) extractItem(pos cube.Pos, tx *world.Tx) bool {
 				continue
 			}
 
-			_, err := h.inventory.AddItem(stack.Grow(-stack.Count() + 1))
+			_, err := h.inventory.AddItemInSlotOrder(stack.Grow(-stack.Count() + 1))
 			if err != nil {
 				// The hopper is full.
 				continue
@@ -347,6 +344,78 @@ func (h Hopper) extractItem(pos cube.Pos, tx *world.Tx) bool {
 		}
 	}
 	return false
+}
+
+// hopperPickupBox constructs the original block-hopper world query. The caller
+// in the client first adds one to Y, then _tryAddItemsFromPos lowers its minimum.
+func hopperPickupBox(pos cube.Pos) cube.BBox {
+	x, y, z := float32(pos[0]), float32(pos[1])+1, float32(pos[2])
+	return cube.Box(float64(x), float64(y-.375), float64(z), float64(x+1), float64(y+1), float64(z+1))
+}
+
+func (h Hopper) collectItem(pos cube.Pos, tx *world.Tx) bool {
+	above, loaded := tx.BlockLoaded(pos.Side(cube.FaceUp))
+	if !loaded {
+		return false
+	}
+	// Hopper::_tryPullInItemsFromWorld checks isContainerBlock, not solidity.
+	// Ender chests are native containers even though automation cannot open them.
+	if hopperBlocksWorldPickup(above) {
+		return false
+	}
+	query := hopperPickupBox(pos)
+	lo, hi := query.Min(), query.Max()
+	first, last := cube.PosFromVec3(lo), cube.PosFromVec3(hi)
+	// BlockSource::fetchEntities visits only the chunks touched by the query,
+	// then tests actor bounds. An overlapping item owned by a neighbouring chunk
+	// is excluded. EntitiesWithin itself tests origins, so widen that prefilter.
+	for e := range tx.EntitiesWithin(query.Grow(1)) {
+		owner, ok := tx.EntityChunk(e)
+		if !ok || int(owner[0]) < first[0]>>4 || int(owner[0]) > last[0]>>4 || int(owner[1]) < first[2]>>4 || int(owner[1]) > last[2]>>4 {
+			continue
+		}
+		collector, ok := e.(interface {
+			CollectItemInto(*world.Tx, *inventory.Inventory) int
+		})
+		if !ok {
+			continue
+		}
+		body := e.H().Type().BBox(e).Translate(e.Position())
+		if hopperPickupIntersects(query, body) && collector.CollectItemInto(tx, h.inventory) > 0 {
+			notifyComparatorUpdate(pos, tx)
+			return true
+		}
+	}
+	return false
+}
+
+func hopperBlocksWorldPickup(above world.Block) bool {
+	if _, ok := above.(Container); ok {
+		return true
+	}
+	_, ok := above.(EnderChest)
+	return ok
+}
+
+// hopperPickupIntersects mirrors the relative-space shrink and inclusive body
+// test in Hopper::_tryAddItemsFromPos. Generic BBox intersection uses a
+// different epsilon and arithmetic order.
+func hopperPickupIntersects(query, body cube.BBox) bool {
+	lo, hi := query.Min(), query.Max()
+	bodyLo, bodyHi := body.Min(), body.Max()
+	for axis := range 3 {
+		origin := float32(lo[axis])
+		low, high := float32(.0001), float32(hi[axis])-origin-float32(.0001)
+		if low > high {
+			low = (float32(hi[axis]) - origin) * .5
+			high = low
+		}
+		a, b := float32(bodyLo[axis])-origin, float32(bodyHi[axis])-origin
+		if min(a, b) > high || max(a, b) < low {
+			return false
+		}
+	}
+	return true
 }
 
 // EncodeItem ...

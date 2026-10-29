@@ -49,6 +49,12 @@ type PunchBlock struct {
 // BlockForceField is a particle that shows up as a block that turns invisible from an opaque black colour.
 type BlockForceField struct{ particle }
 
+// DispenserSmoke is the directional puff emitted by ordinary item ejection.
+type DispenserSmoke struct {
+	particle
+	Face cube.Face
+}
+
 // BoneMeal is a particle that shows up on bone meal usage.
 type BoneMeal struct {
 	particle

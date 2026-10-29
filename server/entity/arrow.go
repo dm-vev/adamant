@@ -81,6 +81,11 @@ func (t arrowType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.En
 }
 
 func (arrowType) EncodeEntity() string { return "minecraft:arrow" }
+
+// TickAfterBlocks follows native arrow collision callbacks: a bell hit starts
+// at Ticks zero after that GT's block-actor animation pass has already run.
+func (arrowType) TickAfterBlocks() bool { return true }
+
 func (arrowType) BBox(world.Entity) cube.BBox {
 	return cube.Box(-0.125, 0, -0.125, 0.125, 0.25, 0.125)
 }

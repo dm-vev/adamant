@@ -92,11 +92,9 @@ type Config struct {
 	RandomTickSpeed int
 	// RandSource is the rand.Source used for generation of random numbers in a
 	// World, such as when selecting blocks to tick or when deciding where to
-	// strike lightning. If set to nil, RandSource defaults to a `rand.PCG`
-	// source seeded with `time.Now().UnixNano()`. PCG is significantly faster
-	// than `rand.ChaCha8` on 64-bit systems at the expense of poorer
-	// statistical distribution, which is acceptable here.
-	// See https://go.dev/blog/chacha8rand.
+	// strike lightning. If nil, it uses Bedrock's MT19937 raw stream seeded
+	// from the low 32 bits of the resolved world seed. An explicitly supplied
+	// source retains Go's rand.Source semantics.
 	RandSource rand.Source
 	// Entities is an EntityRegistry with all Entity types registered that may
 	// be added to the World.
@@ -206,12 +204,11 @@ func (conf Config) New() *World {
 		panic(fmt.Errorf("load generation state: %w", err))
 	}
 
-	if conf.RandSource == nil {
-		t := uint64(time.Now().UnixNano())
-		conf.RandSource = rand.NewPCG(t, t)
-	}
 	s := conf.Provider.Settings()
 	conf.Seed = s.ResolveSeed(conf.Seed)
+	if conf.RandSource == nil {
+		conf.RandSource = newLevelRandomSource(uint32(conf.Seed))
+	}
 	s.Lock()
 	settingsLocked := true
 	defer func() {

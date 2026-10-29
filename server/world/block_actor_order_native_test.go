@@ -92,6 +92,47 @@ type actorIdentityRandom struct{}
 
 func (actorIdentityRandom) Uint64() uint64 { return 0x8000000100000000 }
 
+type chunkActorOrderSource struct{ index int }
+
+func (r *chunkActorOrderSource) Uint64() uint64 {
+	words := [...]uint32{0x80000000, 0x80000001, 0x80000001}
+	i := r.index
+	r.index++
+	if i >= len(words) {
+		return 0x8000000100000008
+	}
+	return uint64(words[i])<<32 | 8
+}
+
+func TestChunkActorCallbacksPrecedeTheNextChunkShuffle(t *testing.T) {
+	// LevelChunk::tickImpl calls tickBlockEntities at 0x32cab8f before
+	// returning to its caller. The next chunk's shuffle must therefore see
+	// RNG draws consumed by this chunk's actors. randomTickSpeed zero also
+	// disables precipitation, leaving two actor words and one shuffle word.
+	source := &chunkActorOrderSource{}
+	settings := (NopProvider{}).Settings()
+	settings.WeatherCycle = false
+	w := Config{Synchronous: true, RandomTickSpeed: -1, RandSource: source, Provider: NopProvider{Set: settings}}.New()
+	defer w.Close()
+	var order []string
+	var draws []uint32
+	a, b, c := &actorIdentityTicker{}, &actorIdentityTicker{}, &actorIdentityTicker{}
+	a.callback = func(tx *Tx) { order = append(order, "a"); draws = append(draws, tx.RandomUint32(), tx.RandomUint32()) }
+	b.callback = func(*Tx) { order = append(order, "b") }
+	c.callback = func(*Tx) { order = append(order, "c") }
+	<-w.Exec(func(tx *Tx) {
+		tx.chunk(ChunkPos{0, 0}).updateBlockEntity(cube.Pos{0, 4, 0}, a)
+		later := tx.chunk(ChunkPos{1, 0})
+		later.updateBlockEntity(cube.Pos{16, 4, 0}, b)
+		later.updateBlockEntity(cube.Pos{17, 4, 0}, c)
+		source.index = 0
+	})
+	w.AdvanceTick()
+	if fmt.Sprint(order) != "[a b c]" || fmt.Sprint(draws) != "[2147483648 2147483649]" || source.index != 3 {
+		t.Fatalf("chunk actor sequence=%v raw draws=%v words consumed=%d", order, draws, source.index)
+	}
+}
+
 func TestBlockActorReplacementDuringTickWaitsUntilNextTick(t *testing.T) {
 	for _, change := range []string{"remove", "replace", "update-data"} {
 		t.Run(change, func(t *testing.T) {
@@ -130,6 +171,44 @@ func TestBlockActorReplacementDuringTickWaitsUntilNextTick(t *testing.T) {
 			}
 			if replacement.ticks != wantReplacement {
 				t.Fatalf("next tick: replacement=%d, want %d", replacement.ticks, wantReplacement)
+			}
+		})
+	}
+}
+
+func TestNewBlockActorEligibilityFollowsChunkVisitOrder(t *testing.T) {
+	// Native storage appends a newly placed actor immediately (client
+	// 0x32c11ac..0x32c11f1), while tickBlockEntities copies only the chunk
+	// currently being visited. A destination chunk still ahead in this pass
+	// can therefore tick a new actor; a chunk already visited must wait.
+	for _, later := range []bool{false, true} {
+		t.Run(fmt.Sprint("destination_later_", later), func(t *testing.T) {
+			w := Config{Synchronous: true, RandomTickSpeed: -1, RandSource: actorIdentityRandom{}}.New()
+			defer w.Close()
+			first, born := &actorIdentityTicker{}, &actorIdentityTicker{}
+			origin, destination := ChunkPos{1, 0}, ChunkPos{0, 0}
+			if later {
+				origin, destination = destination, origin
+			}
+			<-w.Exec(func(tx *Tx) {
+				target := tx.chunk(destination)
+				first.callback = func(*Tx) {
+					first.callback = nil
+					target.updateBlockEntity(cube.Pos{int(destination[0]) * 16, 4, 0}, born)
+				}
+				tx.chunk(origin).updateBlockEntity(cube.Pos{int(origin[0]) * 16, 4, 0}, first)
+			})
+			w.AdvanceTick()
+			want := 0
+			if later {
+				want = 1
+			}
+			if born.ticks != want {
+				t.Fatalf("creation tick: actor ticks=%d, want %d", born.ticks, want)
+			}
+			w.AdvanceTick()
+			if born.ticks != want+1 {
+				t.Fatalf("following tick: actor ticks=%d, want %d", born.ticks, want+1)
 			}
 		})
 	}

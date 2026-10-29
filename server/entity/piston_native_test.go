@@ -243,6 +243,17 @@ func comparePistonEntityNativeBlock(t *testing.T, tx *world.Tx, tick int64, pos 
 				got = "stone"
 			}
 		}
+		// The SDK retains this legacy selector on both resolved TNT types.
+		// The owned TNT state/packet corpus independently verifies that wire
+		// permutations contain only explode_bit, with the name selecting type.
+		if key == "allow_underwater_bit" && got == nil {
+			switch tx.Block(pos).(type) {
+			case block.TNT:
+				got = false
+			case block.UnderwaterTNT:
+				got = true
+			}
+		}
 		switch value := got.(type) {
 		case int32:
 			got = float64(value)

@@ -75,6 +75,12 @@ type RedstoneCircuitInputChange interface {
 	CircuitInputChange() (oldPower, newPower int)
 }
 
+// RedstoneCircuitActorOutput marks a consumer update that changes only its
+// actor, without replacing a block permutation or notifying its neighbours.
+type RedstoneCircuitActorOutput interface {
+	CircuitActorOutput() bool
+}
+
 // RedstoneCircuitConsumer exposes a consumer's evaluated scene strength to its
 // block actor. Unlike a capacitor, it supplies no electrical output to neighbours.
 type RedstoneCircuitConsumer interface {
@@ -232,8 +238,13 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 		update := d.redstoneUpdate(pos, b, oldPower, newPower, tick)
 		update.After = output
 		if e.redstoneUpdateAllowed(tx, update) {
-			tx.SetBlock(pos, output, &SetOpts{DisableRedstoneUpdates: true, circuitPublication: true})
-			e.invalidateAroundWith(pos, d.propagatedFrom(pos), tx.Range())
+			actor, actorOnly := e.circuits[pos].(RedstoneCircuitActorOutput)
+			if actorOnly && actor.CircuitActorOutput() {
+				tx.SetBlockEntity(pos, output)
+			} else {
+				tx.SetBlock(pos, output, &SetOpts{DisableRedstoneUpdates: true, circuitPublication: true})
+				e.invalidateAroundWith(pos, d.propagatedFrom(pos), tx.Range())
+			}
 			if state, ok := e.circuits[pos].(RedstoneCircuitPostPublisher); ok {
 				state.CircuitPublished(pos, tx, b, output)
 			}

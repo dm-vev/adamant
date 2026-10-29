@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -130,7 +131,6 @@ func (c Crafter) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.
 	powered := power > 0
 	if powered == c.Triggered { return c, false }
 	c.Triggered = powered
-	if !powered { c.Crafting = false; c.CraftingTicksRemaining = 0 }
 	c.NotifyTriggered()
 	return c, true
 }
@@ -182,22 +182,41 @@ func (c Crafter) craft(pos cube.Pos, tx *world.Tx) {
 		}
 	}
 	if !match || output.Empty() {
+		playCrafterSound(pos, tx, "crafter.fail")
 		return
 	}
 	c.Crafting = true
 	c.CraftingTicksRemaining = 6
 	front := pos.Side(c.Facing)
-	remaining := c.insertResult(tx, front, output)
-	if !remaining.Empty() { c.eject(pos, tx, remaining) }
+	outputs := []item.Stack{output}
 	for slot := range 9 {
 		if rest := crafterRemainder(input[slot]); !rest.Empty() {
-			remaining := c.insertResult(tx, front, rest)
-			if !remaining.Empty() { c.eject(pos, tx, remaining) }
+			for i := range outputs {
+				outputs[i], rest = outputs[i].AddStack(rest)
+				if rest.Empty() { break }
+			}
+			if !rest.Empty() { outputs = append(outputs, rest) }
 		}
+	}
+	ejected := false
+	for _, result := range outputs {
+		if remaining := c.insertResult(tx, front, result); !remaining.Empty() { c.eject(pos, tx, remaining); ejected = true }
+	}
+	if ejected { playCrafterSound(pos, tx, "crafter.craft") }
+	for slot := range 9 {
 		if !input[slot].Empty() { _ = c.inventory.SetItem(slot, input[slot].Grow(-1)) }
 	}
 	notifyComparatorUpdate(pos, tx)
 	tx.SetBlock(pos, c, nil)
+}
+
+// BDS sends one craft event only when output reaches the world. A failed
+// recipe sends fail; fully inserted output is silent. Both identify the live
+// pre-animation permutation and originate at the integer block position.
+func playCrafterSound(pos cube.Pos, tx *world.Tx, name string) {
+	registry := tx.World().BlockRegistry()
+	hash, _ := registry.RuntimeIDToHash(registry.BlockRuntimeID(tx.Block(pos)))
+	tx.PlaySound(pos.Vec3(), sound.NativeEvent{SoundType: name, ExtraData: int32(hash), EntityUniqueID: -1})
 }
 
 func matchCrafterShaped(r recipe.Recipe, input []item.Stack) (item.Stack, bool) {
@@ -292,16 +311,25 @@ func crafterRemainder(stack item.Stack) item.Stack {
 
 func (c Crafter) insertResult(tx *world.Tx, destPos cube.Pos, stack item.Stack) item.Stack {
 	if target, ok := tx.Block(destPos).(Container); ok {
+		// Native crafter output uses the dropper's sided, ascending-slot
+		// insertion helper once per item. Special containers must retain
+		// their slot filters and balancing rather than receive raw AddItem.
+		if receiver, ok := target.(HopperInsertable); ok {
+			transfer := Hopper{Facing: c.Facing, inventory: inventory.New(1, nil)}
+			_ = transfer.inventory.SetItem(0, stack)
+			for !stack.Empty() && receiver.InsertItem(transfer, destPos, tx) {
+				stack, _ = transfer.inventory.Item(0)
+			}
+			return stack
+		}
 		inv := target.Inventory(tx, destPos)
-		added, _ := inv.AddItem(stack)
+		added, _ := inv.AddItemInSlotOrder(stack)
 		if added > 0 { notifyComparatorUpdate(destPos, tx); stack = stack.Grow(-added) }
 	}
 	return stack
 }
 func (c Crafter) eject(pos cube.Pos, tx *world.Tx, stack item.Stack) {
-	dir := pos.Side(c.Facing).Vec3Centre().Sub(pos.Vec3Centre())
-	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre().Add(dir.Mul(.7)), Velocity: dir.Mul(.2)}
-	tx.AddEntity(tx.World().EntityRegistry().Config().Item(opts, stack))
+	ejectContainerItem(pos, c.Facing, tx, stack)
 }
 
 // InsertItem receives one item from a hopper into an enabled, least-filled matching crafter slot.
@@ -389,9 +417,9 @@ func crafterOrientation(front, top cube.Face) string {
 	}
 	return "north_up"
 }
-// EncodeNBT encodes the Crafter block actor as BDS does, its disabled slots
-// as a bit mask. Triggering and crafting are block states; the remaining
-// crafting ticks are kept so a crafter saved mid-craft finishes.
+// EncodeNBT encodes the Crafter block actor with its disabled-slot bit mask.
+// Triggering and crafting are block states. The native animation countdown is
+// transient and is not restored when an actor is loaded during crafting.
 func (c Crafter) EncodeNBT() map[string]any {
 	if c.inventory == nil {
 		facing, top, triggered, crafting, disabled, name := c.Facing, c.Top, c.Triggered, c.Crafting, c.DisabledSlots, c.CustomName
@@ -400,7 +428,6 @@ func (c Crafter) EncodeNBT() map[string]any {
 	}
 	m := map[string]any{
 		"id": "Crafter", "Items": nbtconv.InvToNBT(c.inventory), "disabled_slots": int16(c.DisabledSlots),
-		"adamant:java": map[string]any{"crafting_ticks_remaining": c.CraftingTicksRemaining},
 	}
 	if c.CustomName != "" {
 		m["CustomName"] = c.CustomName
@@ -415,7 +442,6 @@ func (c Crafter) DecodeNBT(data map[string]any) any {
 	facing, top, triggered, crafting := c.Facing, c.Top, c.Triggered, c.Crafting
 	c = NewCrafter()
 	c.Facing, c.Top, c.Triggered, c.Crafting = facing, top, triggered, crafting
-	c.CraftingTicksRemaining = nbtconv.Int32(javaActorState(data), "crafting_ticks_remaining")
 	c.CustomName = nbtconv.String(data, "CustomName")
 	nbtconv.InvFromNBT(c.inventory, nbtconv.Slice(data, "Items"), data)
 	if _, ok := data["disabled_slots"].(int16); ok {

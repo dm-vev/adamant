@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -57,6 +58,7 @@ func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBeha
 	}.New()
 	b.passive.mc.DragAfterMovement = true
 	b.passive.mc.nativeCollisions = true
+	b.passive.mc.nativeItemMovement = true
 	return b
 }
 
@@ -78,6 +80,14 @@ func (i *ItemBehaviour) PortalTravelComputer() *PortalTravelComputer {
 // Item returns the item.Stack held by the entity.
 func (i *ItemBehaviour) Item() item.Stack {
 	return i.i
+}
+
+// SetItemPickupDelay changes how long an item must wait before collection.
+// It has no effect on other entity behaviours. Zero allows immediate pickup.
+func (e *Ent) SetItemPickupDelay(delay time.Duration) {
+	if i, ok := e.Behaviour().(*ItemBehaviour); ok {
+		i.pickupDelay = max(0, delay)
+	}
 }
 
 // Tick moves the entity, checks if it should be picked up by a nearby collector
@@ -104,22 +114,26 @@ func (i *ItemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	x, y, z := float32(velocity[0]), float32(velocity[1]), float32(velocity[2])
 	i.passive.mc.skipMovement = i.passive.mc.onGround && x*x+y*y+z*z <= float32(.0001) && int64(e.Age()/(time.Second/20))&3 != 0
 
-	bl, ok := tx.Block(blockPos).(block.Hopper)
-	if ok && !bl.Powered && bl.CollectCooldown <= 0 {
-		addedCount, _ := bl.Inventory(tx, blockPos).AddItem(i.i)
-		if addedCount == 0 {
-			return i.passive.Tick(e, tx)
-		}
-		bl.CollectCooldown = 8
-		tx.SetBlock(blockPos, bl, nil)
-		if addedCount == i.i.Count() {
-			_ = e.CloseIn(tx)
-			return nil
-		}
-		i.setCount(e, i.i.Count()-addedCount, tx)
-		return i.passive.Tick(e, tx)
-	}
 	return i.passive.Tick(e, tx)
+}
+
+// CollectItemInto transfers this dropped stack into an automated container.
+// Partial collection keeps the actor and its movement state intact.
+func (e *Ent) CollectItemInto(tx *world.Tx, inv *inventory.Inventory) int {
+	i, ok := e.Behaviour().(*ItemBehaviour)
+	if !ok || e.H().Closed() {
+		return 0
+	}
+	n, _ := inv.AddItemInSlotOrder(i.i)
+	if n == 0 {
+		return 0
+	}
+	if n == i.i.Count() {
+		_ = e.CloseIn(tx)
+	} else {
+		i.setCount(e, i.i.Count()-n, tx)
+	}
+	return n
 }
 
 // Explode reacts to explosions. The item entity is destroyed, unless the item
@@ -149,7 +163,7 @@ func (i *ItemBehaviour) tick(e *Ent, tx *world.Tx) {
 	if i.pickupDelay == 0 {
 		i.checkNearby(e, tx)
 	} else if i.pickupDelay < math.MaxInt16*(time.Second/20) {
-		i.pickupDelay -= time.Second / 20
+		i.pickupDelay = max(0, i.pickupDelay-time.Second/20)
 	}
 }
 

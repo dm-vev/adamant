@@ -22,6 +22,7 @@ function setup(){
   cmd(`fill ${base[0]-8} 63 ${base[2]-8} ${base[0]+8} 70 ${base[2]+8} air`);
   cmd(`fill ${base[0]-8} 64 ${base[2]-8} ${base[0]+8} 64 ${base[2]+8} bedrock`);
   set(base,'hopper ["facing_direction"=2]');
+  if(scenario.above)set([base[0],base[1]+1,base[2]],scenario.above);
   if(destination)set(destination,"barrel");
   const source=[base[0]+1,65,base[2]];if(scenario.locked)set(source,"redstone_block");
   cells.push({scenario,base,destination,source,setup_tick:system.currentTick,changes:[{tick:system.currentTick,kind:"setup"}],samples:[],spawns:[]});
@@ -38,11 +39,14 @@ const h=system.runInterval(()=>{try{
  const t=system.currentTick-start;
  for(const c of cells){
   const drops=d.getEntities({type:"minecraft:item",location:{x:c.base[0]+.5,y:65.5,z:c.base[2]+.5},maxDistance:12});
-  c.samples.push({tick:system.currentTick,block:read(c.base),items:slots(c.base),destination:c.destination?read(c.destination):null,destination_items:c.destination?slots(c.destination):null,drops:drops.map(body)});
+  c.samples.push({tick:system.currentTick,block:read(c.base),items:slots(c.base),cover:c.scenario.above?read([c.base[0],c.base[1]+1,c.base[2]]):null,destination:c.destination?read(c.destination):null,destination_items:c.destination?slots(c.destination):null,drops:drops.map(body)});
   if(t===40){
    if(read(c.base).states.toggle_bit!==c.scenario.locked)throw new Error("hopper lock control failed");
    const h=inv(c.base);let n=c.scenario.initial;
-   for(let i=0;i<h.size;i++){if(n){const take=Math.min(n,64);h.setItem(i,new ItemStack("minecraft:diamond",take));n-=take;}}
+   for(let i=0;i<h.size;i++){
+    if(c.scenario.initial_slots){const s=c.scenario.initial_slots[i];if(s)h.setItem(i,new ItemStack(s.id,s.count));}
+    else if(n){const take=Math.min(n,64);h.setItem(i,new ItemStack("minecraft:diamond",take));n-=take;}
+   }
    if(n)throw new Error("invalid hopper initial count");c.load_control=slots(c.base);
   }
   if(t===40||(c.scenario.second&&t===44)){
@@ -50,8 +54,12 @@ const h=system.runInterval(()=>{try{
    const e=d.spawnItem(new ItemStack(id,n),{x:c.base[0]+.5+c.scenario.dx,y:c.base[1]+c.scenario.dy,z:c.base[2]+.5});
    c.spawns.push({tick:system.currentTick,body:body(e)});c.changes.push({tick:system.currentTick,kind:"spawn",id,count:n});
   }
+  for(const s of c.scenario.extra??[]){if(t===s.time){
+   const e=d.spawnItem(new ItemStack(s.id,s.count),{x:c.base[0]+.5+c.scenario.dx,y:c.base[1]+c.scenario.dy,z:c.base[2]+.5});
+   c.spawns.push({tick:system.currentTick,body:body(e)});c.changes.push({tick:system.currentTick,kind:"spawn",id:s.id,count:s.count});
+  }}
  }
- if(t===120){for(const c of cells){if(c.spawns.length!==(c.scenario.second?2:1))throw new Error("missing native item spawn");emit(c);}
+ if(t===120){for(const c of cells){if(c.spawns.length!==1+(c.scenario.second?1:0)+(c.scenario.extra?.length??0))throw new Error("missing native item spawn");emit(c);}
   offset+=cells.length;if(offset===cases.length){emit({complete:true,count:offset});system.clearRun(h);}else setup();
  }
 }catch(e){emit({error:String(e),stack:e.stack});system.clearRun(h);}},1);

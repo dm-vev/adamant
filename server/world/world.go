@@ -37,6 +37,7 @@ type loaderActiveArea struct {
 	pos      ChunkPos
 	radius   int32
 	radiusSq int64
+	square   bool
 }
 
 type World struct {
@@ -128,11 +129,14 @@ type World struct {
 	chunkCount  atomic.Int64
 	entityCount atomic.Int64
 
-	r               *rand.Rand
-	lootSequences   map[string]*vanilla.Random
-	javaRandom      vanilla.Random
-	javaRandomReady bool
-	gameEventBlocks map[uint32]uint8
+	r                      *rand.Rand
+	nativeGaussianFloat    nativeGaussianFloatState
+	blockTickingPass       bool
+	pendingBlockTickChunks map[ChunkPos]struct{}
+	lootSequences          map[string]*vanilla.Random
+	javaRandom             vanilla.Random
+	javaRandomReady        bool
+	gameEventBlocks        map[uint32]uint8
 
 	// weatherRand is used for out-of-band weather changes to avoid racing the
 	// main world RNG, which is owned by the tick loop.
@@ -177,8 +181,9 @@ type World struct {
 	entityColumns     []columnRef
 	entityColumnIndex map[ChunkPos]int
 
-	viewerMu sync.Mutex
-	viewers  map[*Loader]Viewer
+	viewerMu      sync.Mutex
+	viewers       map[*Loader]Viewer
+	viewerLoaders []*Loader
 
 	generatorQueue *generationQueue
 	// generatorQueueSaturation counts how often more chunk generation tasks
@@ -225,10 +230,12 @@ type entityState struct {
 	isItem bool
 	// isTicker caches whether the entity implements TickerEntity so we can avoid
 	// repeating expensive type assertions in the hot tick path.
-	isTicker        bool
-	tickerChecked   bool
-	ticker          TickerEntity
-	postBlockTicker interface{ TickAfterBlockUpdates(*Tx, int64) }
+	isTicker         bool
+	tickerChecked    bool
+	ticker           TickerEntity
+	postBlockTicker  interface{ TickAfterBlockUpdates(*Tx, int64) }
+	preBlockTicker   interface{ TickBeforeBlockUpdates(*Tx, int64) }
+	lastPreBlockTick int64
 }
 
 func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
@@ -248,6 +255,7 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 		}
 		s.tickerChecked = true
 		s.postBlockTicker, _ = s.ent.(interface{ TickAfterBlockUpdates(*Tx, int64) })
+		s.preBlockTicker, _ = s.ent.(interface{ TickBeforeBlockUpdates(*Tx, int64) })
 	}
 	if binder, ok := s.ent.(interface{ BindTransaction(*Tx) }); ok {
 		binder.BindTransaction(tx)
@@ -1105,6 +1113,9 @@ func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 
 	tx.doBlockUpdatesAround(pos)
 	w.redstone.invalidateAround(pos, pos, RedstoneUpdateCauseBlockUpdate, w.Range())
+	if handler, ok := b.(LiquidPlacementHandler); ok {
+		handler.LiquidPlaced(pos, tx)
+	}
 }
 
 // removeLiquids removes any liquid blocks that may be present at a specific
@@ -1827,13 +1838,21 @@ func (tx *Tx) doBlockUpdatesAround(pos cube.Pos) {
 }
 
 func (tx *Tx) updateNeighbour(pos, changedNeighbour cube.Pos) {
+	deferred := true
 	if b, loaded := tx.BlockLoaded(pos); loaded {
 		if listener, ok := b.(NeighbourChangeListener); ok {
 			listener.NeighbourChanged(pos, changedNeighbour, tx)
-			return
+			deferred = false
+		}
+		if liquid, ok := tx.additionalLiquid(pos); ok {
+			if listener, ok := liquid.(NeighbourChangeListener); ok {
+				listener.NeighbourChanged(pos, changedNeighbour, tx)
+			}
 		}
 	}
-	tx.World().updateNeighbour(pos, changedNeighbour)
+	if deferred {
+		tx.World().updateNeighbour(pos, changedNeighbour)
+	}
 }
 
 // neighbourUpdate represents a position that needs to be updated because of a
@@ -2233,9 +2252,9 @@ func (w *World) allViewers() ([]Viewer, []*Loader) {
 		viewers = viewers[:0]
 	}
 	loaders := make([]*Loader, 0, len(w.viewers))
-	for k, v := range w.viewers {
-		viewers = append(viewers, v)
-		loaders = append(loaders, k)
+	for _, loader := range w.viewerLoaders {
+		viewers = append(viewers, w.viewers[loader])
+		loaders = append(loaders, loader)
 	}
 	return viewers, loaders
 }
@@ -2244,7 +2263,17 @@ func (w *World) allViewers() ([]Viewer, []*Loader) {
 // viewer isn't viewing any chunks.
 func (w *World) addWorldViewer(l *Loader) {
 	w.viewerMu.Lock()
+	if _, exists := w.viewers[l]; !exists {
+		w.viewerLoaders = append(w.viewerLoaders, l)
+	}
 	w.viewers[l] = l.viewer
+	w.viewerMu.Unlock()
+}
+
+func (w *World) removeWorldViewer(l *Loader) {
+	w.viewerMu.Lock()
+	delete(w.viewers, l)
+	w.viewerLoaders = slices.DeleteFunc(w.viewerLoaders, func(loader *Loader) bool { return loader == l })
 	w.viewerMu.Unlock()
 }
 
@@ -2868,6 +2897,9 @@ type pendingMissingBlockState struct {
 type Column struct {
 	modified      bool
 	InhabitedTime uint64
+	// Native LevelChunk::mSnowRandomValue is independent of the level RNG
+	// and initialized from a fixed constant by the chunk constructor.
+	snowRandomValue uint32
 	// poisIndexed is set once the POIs of the column were indexed after it
 	// became ready. Block writes keep them current from then on.
 	poisIndexed bool
@@ -2986,6 +3018,7 @@ var viewerSlicePool = sync.Pool{
 func newColumn(c *chunk.Chunk) *Column {
 	return &Column{
 		Chunk:                    c,
+		snowRandomValue:          0x283ae83,
 		BlockEntities:            map[cube.Pos]Block{},
 		randomTickSubChunksDirty: true,
 		tickerBlockEntitiesDirty: true,
@@ -3047,9 +3080,11 @@ func (c *Column) invalidateRandomTickSubChunks() {
 // last entry into the hole; its tick pass shuffles a copy of this vector.
 func (c *Column) updateBlockEntity(pos cube.Pos, b Block) {
 	old := c.BlockEntities[pos]
-	_, wasTicker := old.(TickerBlock)
-	_, isTicker := b.(TickerBlock)
-	if wasTicker || isTicker {
+	// Native storage shuffles every block actor, including actors whose
+	// virtual tick does no work. Filtering out barrels/droppers here changes
+	// the shared RNG stream even though they need no Go Tick callback.
+	hadActor, hasActor := old != nil, b != nil
+	if hadActor || hasActor {
 		c.tickerBlockEntityPositions()
 		oldKind, newKind := uint64(0), uint64(0)
 		if old != nil {
@@ -3058,11 +3093,11 @@ func (c *Column) updateBlockEntity(pos cube.Pos, b Block) {
 		if b != nil {
 			newKind, _ = b.Hash()
 		}
-		if wasTicker && (!isTicker || oldKind != newKind) {
+		if hadActor && (!hasActor || oldKind != newKind) {
 			c.cachedTickerBlockEntities = slices.DeleteFunc(c.cachedTickerBlockEntities, func(ref blockEntityTickRef) bool { return ref.pos == pos })
 			delete(c.tickerBlockEntityVersions, pos)
 		}
-		if isTicker && (!wasTicker || oldKind != newKind) {
+		if hasActor && (!hadActor || oldKind != newKind) {
 			c.cachedTickerBlockEntities = append(c.cachedTickerBlockEntities, c.newTickerBlockEntityRef(pos))
 		}
 	}
@@ -3243,10 +3278,8 @@ func (c *Column) tickerBlockEntityPositions() []blockEntityTickRef {
 		return c.cachedTickerBlockEntities
 	}
 	positions := c.cachedTickerBlockEntities[:0]
-	for pos, block := range c.BlockEntities {
-		if _, ok := block.(TickerBlock); ok {
-			positions = append(positions, c.newTickerBlockEntityRef(pos))
-		}
+	for pos := range c.BlockEntities {
+		positions = append(positions, c.newTickerBlockEntityRef(pos))
 	}
 	// Generated columns may supply only a map. Ordinary placement and decoded
 	// actor lists use updateBlockEntity and retain their explicit insertion order.

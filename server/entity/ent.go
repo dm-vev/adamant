@@ -356,6 +356,15 @@ func (e *Ent) Attack(attacker world.Entity, tx *world.Tx) {
 	}
 }
 
+// TickBeforeBlockUpdates preserves native arrow normal-tick button contacts
+// before ProjectileSystem's later movement/collision pass.
+func (e *Ent) TickBeforeBlockUpdates(tx *world.Tx, _ int64) {
+	if _, arrow := e.handle.Type().(arrowType); arrow {
+		e.bindTx(tx)
+		checkButtonContactsBeforeMovement(tx, e.living())
+	}
+}
+
 // Tick ticks Ent, progressing its lifetime and closing the entity if it is
 // in the void.
 func (e *Ent) Tick(tx *world.Tx, current int64) {

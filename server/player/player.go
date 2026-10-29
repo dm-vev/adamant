@@ -2498,6 +2498,9 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 			p.addNewItem(useCtx)
 			return
 		}
+		if bell, ok := b.(block.Bell); ok {
+			p.session().ViewBlockAction(pos, block.BellUseRejectedAction{Bell: bell})
+		}
 	}
 	if i.Empty() {
 		return

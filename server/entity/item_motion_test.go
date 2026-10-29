@@ -161,7 +161,9 @@ type partialItemCollector struct{ world.Entity }
 func (partialItemCollector) Collect(item.Stack) (int, bool) { return 2, true }
 
 func TestPartialHopperCollectionKeepsItemActor(t *testing.T) {
-	w := world.Config{Synchronous: true}.New()
+	settings := (world.NopProvider{}).Settings()
+	settings.CurrentTick = 1 // World.New reaches the even transfer step at 2.
+	w := world.Config{Synchronous: true, Provider: world.NopProvider{Set: settings}}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	if err := w.Do(func(tx *world.Tx) {
 		pos := cube.Pos{4, 0, 4}
@@ -174,6 +176,11 @@ func TestPartialHopperCollectionKeepsItemActor(t *testing.T) {
 		tx.SetBlock(pos, hopper, nil)
 		e := tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{4.25, 1.1, 4.3}}, item.NewStack(item.Diamond{}, 5))).(*Ent)
 		control := tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, item.NewStack(item.Stick{}, 1))).(*Ent)
+		if tx.CurrentTick() != 2 {
+			t.Fatal("expected an even hopper transfer step")
+		}
+		// Pickup belongs to the block actor, before the item movement phase.
+		hopper.Tick(tx.CurrentTick(), pos, tx)
 		e.Tick(tx, 0)
 		control.Tick(tx, 0)
 		if e.H().Closed() || e.Behaviour().(*ItemBehaviour).Item().Count() != 3 || e.Position() != control.Position() || e.Velocity() != control.Velocity() {

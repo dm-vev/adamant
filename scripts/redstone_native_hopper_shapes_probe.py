@@ -21,13 +21,14 @@ from redstone_native_lightning_search_probe import BASE
 class NativeHopperShapes(NativePistonShapes):
     def __init__(self, pe):
         super().__init__(pe)
-        self.spans = ((0x66BB380,0x4A1),(0x66BB870,0x286),(0x2060EB0,0x672),(0x2062B80,0x137))
+        self.spans = ((0x66BB380,0x4A1),(0x66BB870,0x286),(0x2060EB0,0x672),(0x2062B80,0x137),(0x318C730,0x1FA))
         for rva,size in self.spans:
             self.map(rva,pe.read(rva,size),executable=True)
         for rva,size in ((0xE997410,64),(0xE978F10,16),(0xE99DA00,64),
                          (0xE61E140,4),(0xE86B850,4),(0xE7FC130,4),
                          (0xE5C6370,4),(0xE6022D0,4),(0xE7D84F8,4),
-                         (0xE75D7C4,4),(0xE7F8A18,4)):
+                         (0xE75D7C4,4),(0xE7F8A18,4),(0xE86B80C,12),
+                         (0xE7F8A70,4),(0xE61E13C,4)):
             self.map(rva,pe.read(rva,size))
         self.vector_buffers = {}
         def append_box(vector, data):
@@ -104,6 +105,13 @@ class NativeHopperShapes(NativePistonShapes):
             raise RuntimeError('unexpected original hopper empty-query result')
         return dict(position=position,entity=entity,above_container=above_container,queries=self.queries)
 
+    def brewing_shapes(self,position):
+        original=self.shape_function
+        try:
+            self.shape_function=C.WINFUNCTYPE(None,*([C.c_void_p]*6))(BASE+0x318C730)
+            return self.shapes(0,position)
+        finally:self.shape_function=original
+
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
@@ -117,7 +125,9 @@ if __name__=='__main__':
             range(6),(0,-17,1000000,-1000000,16777215,-29999999,29999999),(0,65,319))]
         queries=[native.query([x,y,x],entity,above) for x,y,entity,above in itertools.product(
             (0.,-17.,1000000.,16777215.,-29999999.),(65.,65.5), (False,True),(False,True))]
+        brewing=[native.brewing_shapes([anchor,y,anchor]) for anchor,y in itertools.product(
+            (0,-17,1000000,-1000000,16777215,-29999999,29999999),(0,65,319))]
         spans=[dict(rva=hex(rva),size=size,sha256=hashlib.sha256(pe.read(rva,size)).hexdigest()) for rva,size in native.spans]
     finally:native.close()
-    args.output.write_text(json.dumps(dict(complete=True,client_sha256=digest,functions=spans,shapes=shapes,queries=queries),separators=(',',':'))+'\n',encoding='utf-8')
-    print(json.dumps(dict(shapes=len(shapes),queries=len(queries),output=str(args.output))))
+    args.output.write_text(json.dumps(dict(complete=True,client_sha256=digest,functions=spans,shapes=shapes,queries=queries,brewing_shapes=brewing),separators=(',',':'))+'\n',encoding='utf-8')
+    print(json.dumps(dict(shapes=len(shapes),queries=len(queries),brewing_shapes=len(brewing),output=str(args.output))))

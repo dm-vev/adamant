@@ -99,7 +99,11 @@ type BarrelOpen struct{ sound }
 type BarrelClose struct{ sound }
 
 // BellRing is played when a bell is rung.
-type BellRing struct{ sound }
+type BellRing struct {
+	sound
+	// AfterBlock retains native player use's state/actor-before-sound order.
+	AfterBlock bool
+}
 
 // Deny is a sound played when a block is placed or broken above a 'Deny' block from Education edition.
 type Deny struct{ sound }

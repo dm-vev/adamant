@@ -32,8 +32,8 @@ func bellNBT(w *world.World, pos cube.Pos) (nbt map[string]any) {
 func TestBellTicksCountLikeBDS(t *testing.T) {
 	w, pos := bellTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
-		if !tx.Block(pos).(block.Bell).Ring(pos, tx, cube.FaceEast) {
-			t.Fatal("bell did not ring from the east")
+		if !tx.Block(pos).(block.Bell).Ring(pos, tx, cube.FaceSouth) {
+			t.Fatal("standing bell did not ring along its north/south axis")
 		}
 	})
 	for tick := 1; tick < 25; tick++ {
@@ -58,14 +58,15 @@ func TestBellTicksCountLikeBDS(t *testing.T) {
 	}
 }
 
-// TestBellRingsWhenPowered checks BellBlock.neighborChanged: power starting
-// rings the bell towards its facing, which BDS stores as the Bedrock
-// direction, and power stopping only clears the powered state.
+// TestBellRingsWhenPowered checks actor-sampled rising edges and the native
+// toggle state, which is retained across a falling edge and flipped on retrigger.
 func TestBellRingsWhenPowered(t *testing.T) {
 	w, pos := bellTestWorld(t)
 	source := pos.Side(cube.FaceEast)
 	<-w.Exec(func(tx *world.Tx) { tx.SetBlock(source, block.RedstoneBlock{}, nil) })
-	w.AdvanceTick()
+	for range 4 {
+		w.AdvanceTick()
+	}
 	<-w.Exec(func(tx *world.Tx) {
 		bell := tx.Block(pos).(block.Bell)
 		nbt := bell.EncodeNBT()
@@ -77,11 +78,23 @@ func TestBellRingsWhenPowered(t *testing.T) {
 		w.AdvanceTick()
 	}
 	<-w.Exec(func(tx *world.Tx) { tx.SetBlock(source, block.Air{}, nil) })
-	w.AdvanceTick()
+	for range 4 {
+		w.AdvanceTick()
+	}
 	<-w.Exec(func(tx *world.Tx) {
 		bell := tx.Block(pos).(block.Bell)
-		if bell.Powered || bell.EncodeNBT()["Ringing"] != uint8(0) {
-			t.Fatalf("unpowered bell: Powered %v Ringing %v, want false and 0", bell.Powered, bell.EncodeNBT()["Ringing"])
+		if !bell.Powered || bell.EncodeNBT()["Ringing"] != uint8(0) {
+			t.Fatalf("released bell: toggle %v Ringing %v, want true and 0", bell.Powered, bell.EncodeNBT()["Ringing"])
+		}
+	})
+	<-w.Exec(func(tx *world.Tx) { tx.SetBlock(source, block.RedstoneBlock{}, nil) })
+	for range 4 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		bell := tx.Block(pos).(block.Bell)
+		if bell.Powered || bell.EncodeNBT()["Ringing"] != uint8(1) {
+			t.Fatal("retrigger did not flip toggle and restart ringing")
 		}
 	})
 }

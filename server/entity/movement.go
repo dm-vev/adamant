@@ -25,6 +25,7 @@ type MovementComputer struct {
 	blockSource          world.BlockSource
 	nativeCollisions     bool
 	nativeMobMovement    bool
+	nativeItemMovement   bool
 	nativeLastDelta      mgl64.Vec3
 	depenetrationBits    uint8
 	skipMovement         bool
@@ -234,7 +235,10 @@ func (c *MovementComputer) applyHorizontalForces(tx *world.Tx, pos, vel mgl64.Ve
 	if c.nativeCollisions {
 		friction = float64(1 - float32(c.Drag))
 	}
-	if c.onGround {
+	// ItemActor::postNormalTick also applies block friction after a vertical
+	// collision whose resulting Y velocity is nonpositive. This includes a
+	// ceiling hit with zero Y velocity while the actor is not on the ground.
+	if c.onGround || c.nativeItemMovement && c.collidedVertically && vel[1] <= 0 {
 		if f, ok := tx.Block(cube.PosFromVec3(pos).Side(cube.FaceDown)).(interface {
 			Friction() float64
 		}); ok {

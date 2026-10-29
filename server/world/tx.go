@@ -118,7 +118,20 @@ func (tx *Tx) SetBlockEntity(pos cube.Pos, b Block) {
 // RandomUint32 draws from the world's simulation RNG, shared with block-actor
 // scheduling. Use it when a block's native algorithm consumes raw random words.
 func (tx *Tx) RandomUint32() uint32 {
-	return tx.World().r.Uint32()
+	return tx.World().randomUint32()
+}
+
+// RandomFloat32 consumes one raw simulation word using Core::Random's
+// binary32 conversion. It may round a word near uint32's maximum to one.
+func (tx *Tx) RandomFloat32() float32 {
+	return nativeRandomFloat32(tx.World().randomUint32())
+}
+
+// RandomGaussianFloat32 draws from the native cached binary32 Gaussian stream.
+// It shares raw simulation words with RandomUint32 and RandomFloat32.
+func (tx *Tx) RandomGaussianFloat32() float32 {
+	w := tx.World()
+	return w.nativeGaussianFloat.next(w.randomUint32)
 }
 
 // Block reads a block from the position passed. If a chunk is not yet loaded
@@ -384,6 +397,11 @@ func (tx *Tx) QueueEntityTick(e Entity) {
 	}
 	tick := w.CurrentTick()
 	if state.firstTickPending {
+		if state.isItem && w.blockTickingPass {
+			if _, pending := w.pendingBlockTickChunks[state.pos]; !pending {
+				return
+			}
+		}
 		state.firstTickPending = false
 		state.lastProcessedTick = tick - 1
 	}

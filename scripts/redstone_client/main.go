@@ -23,6 +23,7 @@ type command struct {
 	Face       int32
 	Hit        *mgl32.Vec3
 	Feet       *mgl32.Vec3
+	Rotation   *mgl32.Vec2
 	RuntimeID  *uint32 `json:"runtime_id"`
 	BreakTicks int     `json:"break_ticks"`
 }
@@ -87,9 +88,10 @@ func main() {
 	var stopMining *protocol.PlayerBlockAction
 	var mining *protocol.UseItemTransactionData
 	var miningTicks, queuedBreakTicks int
+	lookYaw, lookPitch := float32(180), float32(40)
 	send := func(use *protocol.UseItemTransactionData) {
 		tick++
-		p := &packet.PlayerAuthInput{InputData: protocol.NewInputFlags(packet.InputFlagCount), Position: pos, Tick: tick, Pitch: 40, Yaw: 180, HeadYaw: 180, InteractPitch: 40, InteractYaw: 180, InputMode: packet.InputModeMouse, InteractionModel: packet.InteractionModelCrosshair, CameraOrientation: mgl32.Vec3{0, 0, 1}}
+		p := &packet.PlayerAuthInput{InputData: protocol.NewInputFlags(packet.InputFlagCount), Position: pos, Tick: tick, Pitch: lookPitch, Yaw: lookYaw, HeadYaw: lookYaw, InteractPitch: lookPitch, InteractYaw: lookYaw, InputMode: packet.InputModeMouse, InteractionModel: packet.InteractionModelCrosshair, CameraOrientation: mgl32.Vec3{0, 0, 1}}
 		p.InputData.Set(packet.InputFlagClientAckServerData)
 		p.InputData.Set(packet.InputFlagInternalUpdate)
 		if stopMining != nil {
@@ -215,8 +217,16 @@ func main() {
 				if x.Layer == 0 {
 					blocks[x.Position] = x.NewBlockRuntimeID
 				}
+				emit(map[string]any{"block_update": x, "received_at_ms": time.Now().UnixMilli()})
+			case *packet.UpdateSubChunkBlocks:
+				for _, entry := range x.Blocks {
+					blocks[entry.BlockPos] = entry.BlockRuntimeID
+				}
+				emit(map[string]any{"subchunk_update": x, "received_at_ms": time.Now().UnixMilli()})
 			case *packet.BlockActorData:
 				emit(map[string]any{"block_actor": x, "received_at_ms": time.Now().UnixMilli()})
+			case *packet.BlockEvent:
+				emit(map[string]any{"block_event": x, "received_at_ms": time.Now().UnixMilli()})
 			case *packet.MovePlayer:
 				if x.EntityRuntimeID == conn.GameData().EntityRuntimeID {
 					pos = x.Position
@@ -248,6 +258,14 @@ func main() {
 		case c, ok := <-commands:
 			if !ok || c.Action == "stop" {
 				return
+			}
+			if c.Action == "look" {
+				if c.Rotation == nil {
+					panic("audit look action requires yaw and pitch")
+				}
+				lookYaw, lookPitch = c.Rotation[0], c.Rotation[1]
+				emit(map[string]any{"look": c.Rotation, "tick": tick})
+				continue
 			}
 			if c.Action != "click" && c.Action != "legacy" && c.Action != "break" {
 				panic("unknown audit action")

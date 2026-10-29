@@ -211,10 +211,20 @@ func nativeBlockBBoxsAround(source world.BlockSource, query cube.BBox, bounds cu
 			for y := first[1]; y <= last[1]; y++ {
 				pos := cube.Pos{x, y, z}
 				for _, shape := range source.Block(pos).Model().BBox(pos, source) {
+					lo, hi := shape.Min(), shape.Max()
+					valid := true
+					for axis := range 3 {
+						lo[axis] = float64(float32(pos[axis]) + float32(lo[axis]))
+						hi[axis] = float64(float32(pos[axis]) + float32(hi[axis]))
+						valid = valid && lo[axis] < hi[axis]
+					}
+					if !valid {
+						continue
+					}
 					if boxes == nil {
 						boxes = blockBBoxPool.Get().([]cube.BBox)[:0]
 					}
-					boxes = append(boxes, shape.Translate(pos.Vec3()))
+					boxes = append(boxes, cube.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]))
 				}
 			}
 		}

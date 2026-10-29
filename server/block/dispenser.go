@@ -141,29 +141,9 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	// Java schedules the tick on the rising edge and does not cancel it when
 	// power falls again before the scheduled tick runs.
 	d = d.generateLoot(tx, pos)
-	slot, count := -1, 0
-	for i := range 9 {
-		stack, _ := d.inventory.Item(i)
-		if !stack.Empty() {
-			count++
-		}
-	}
-	if count == 0 {
-		return
-	}
-	pick := r.IntN(count)
-	for i := range 9 {
-		stack, _ := d.inventory.Item(i)
-		if stack.Empty() {
-			continue
-		}
-		if pick == 0 {
-			slot = i
-			break
-		}
-		pick--
-	}
+	slot := randomContainerSlot(d.inventory, tx.RandomUint32)
 	if slot < 0 {
+		playContainerSound(pos.Vec3(), tx, "block.click.fail")
 		return
 	}
 	stack, _ := d.inventory.Item(slot)
@@ -189,7 +169,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 			opts.Velocity = direction.Mul(0.1)
 			tx.AddEntity(tx.World().EntityRegistry().Config().Boat(opts, held.Variant.Int()))
 		} else {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		}
 	case item.ChestBoat:
 		front := pos.Side(d.Facing)
@@ -205,7 +185,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 			opts.Velocity = direction.Mul(0.1)
 			tx.AddEntity(tx.World().EntityRegistry().Config().ChestBoat(opts, held.Variant.Int()))
 		} else {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		}
 	case item.Minecart, item.MinecartChest, item.MinecartHopper, item.MinecartTNT, item.MinecartCommandBlock:
 		front := pos.Side(d.Facing)
@@ -250,7 +230,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 				tx.QueueEntityTick(spawned)
 			}
 		} else {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		}
 	case item.FireCharge:
 		tx.AddEntity(tx.World().EntityRegistry().Config().SmallFireball(opts, nil))
@@ -274,14 +254,14 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
 		create := tx.World().EntityRegistry().Config().ArmourStand
 		if create == nil {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		} else {
 			tx.AddEntity(create(opts))
 		}
 	case TNT:
 		create := tx.World().EntityRegistry().Config().TNT
 		if create == nil {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		} else {
 			tx.AddEntity(create(world.EntitySpawnOpts{Position: pos.Side(d.Facing).Vec3Middle()}, 4*time.Second, nil))
 		}
@@ -299,7 +279,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 					if left.Empty() {
 						left = ctx.NewItem
 					} else {
-						d.eject(tx, opts, ctx.NewItem)
+						d.eject(tx, pos, ctx.NewItem)
 					}
 				}
 				_ = d.inventory.SetItem(slot, left)
@@ -307,7 +287,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 				return
 			}
 		}
-		d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		d.eject(tx, pos, stack.Grow(1-stack.Count()))
 	case item.Bucket, item.MobBucket, item.FishBucket, item.BoneMeal, item.FlintAndSteel, item.GlassBottle:
 		behavior := held.(interface {
 			UseOnBlock(cube.Pos, cube.Face, mgl64.Vec3, *world.Tx, item.User, *item.UseContext) bool
@@ -319,24 +299,24 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 				if left.Empty() {
 					left = ctx.NewItem
 				} else {
-					d.eject(tx, opts, ctx.NewItem)
+					d.eject(tx, pos, ctx.NewItem)
 				}
 			}
 			_ = d.inventory.SetItem(slot, left)
 			notifyComparatorUpdate(pos, tx)
 			return
 		}
-		d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		d.eject(tx, pos, stack.Grow(1-stack.Count()))
 	default:
-		d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		d.eject(tx, pos, stack.Grow(1-stack.Count()))
 	}
 	_ = d.inventory.SetItem(slot, stack.Grow(-1))
 	notifyComparatorUpdate(pos, tx)
 }
 
-func (Dispenser) eject(tx *world.Tx, opts world.EntitySpawnOpts, stack item.Stack) {
-	opts.Velocity = opts.Velocity.Mul(0.2 / 1.1)
-	tx.AddEntity(tx.World().EntityRegistry().Config().Item(opts, stack))
+func (d Dispenser) eject(tx *world.Tx, pos cube.Pos, stack item.Stack) {
+	ejectContainerItem(pos, d.Facing, tx, stack)
+	playItemEjectionEffects(pos, d.Facing, tx)
 }
 
 func (Dispenser) EncodeItem() (string, int16) { return "minecraft:dispenser", 0 }

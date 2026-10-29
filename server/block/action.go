@@ -41,6 +41,20 @@ type MovingBlockUpdateAction struct {
 	MovingBlock MovingBlock
 }
 
+// BellRingAction retains the native redstone ring's repeated block/actor
+// notification. Its actor snapshot starts animation at Ticks zero.
+type BellRingAction struct {
+	action
+	Bell Bell
+}
+
+// BellUseRejectedAction confirms an unchanged bell permutation to the player
+// whose interaction was rejected by the native attachment/direction gate.
+type BellUseRejectedAction struct {
+	action
+	Bell Bell
+}
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}

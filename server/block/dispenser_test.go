@@ -1,7 +1,9 @@
 package block
 
 import (
+	"encoding/json"
 	"math/rand/v2"
+	"os"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -9,6 +11,71 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// Exercise fallback factories with independent executed-client velocity and
+// origin controls. The first two words select the sole stack and construct
+// the actor; the fixture supplies the subsequent speed/Gaussian stream.
+func newDispenserFallbackTestWorld(t *testing.T, entities world.EntityRegistry) (*world.World, world.EntitySpawnOpts) {
+	t.Helper()
+	data, err := os.ReadFile("testdata/bedrock_1_26_51_ejection_velocities.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var native struct {
+		Complete  bool
+		Scenarios []struct {
+			Seed   uint32
+			Face   int
+			Frames []struct {
+				Words    []uint32
+				Velocity [3]float32
+			}
+		}
+		Origins []struct {
+			Position    cube.Pos
+			Orientation int
+			Origin      [3]float32
+		}
+	}
+	if err := json.Unmarshal(data, &native); err != nil {
+		t.Fatal(err)
+	}
+	if !native.Complete {
+		t.Fatal("incomplete native ejection corpus")
+	}
+	source := &ejectionNativeWords{active: true}
+	var want world.EntitySpawnOpts
+	velocityFound, originFound := false, false
+	for _, c := range native.Scenarios {
+		if c.Seed == 1 && c.Face == int(cube.FaceEast) {
+			if len(c.Frames) != 40 {
+				t.Fatal("missing native fallback velocity")
+			}
+			source.words = append([]uint32{0, 0}, c.Frames[0].Words...)
+			for i, x := range c.Frames[0].Velocity {
+				want.Velocity[i] = float64(x)
+			}
+			velocityFound = true
+		}
+	}
+	for _, c := range native.Origins {
+		if c.Position == (cube.Pos{0, 70, 0}) && c.Orientation == 9 {
+			for i, x := range c.Origin {
+				want.Position[i] = float64(x)
+			}
+			originFound = true
+		}
+	}
+	if !velocityFound || !originFound {
+		t.Fatal("missing native eastward fallback controls")
+	}
+	t.Cleanup(func() {
+		if source.used != len(source.words) {
+			t.Errorf("fallback consumed %d native words, want %d", source.used, len(source.words))
+		}
+	})
+	return world.Config{Synchronous: true, Entities: entities, RandSource: source}.New(), want
+}
 
 type dispenserTestEntityType struct{}
 type dispenserTestEntityConfig struct{ variant int }
@@ -162,16 +229,16 @@ func TestDispenserEjectsUnsupportedItem(t *testing.T) {
 	d := NewDispenser()
 	d.Facing, d.Triggered = cube.FaceEast, true
 	_ = d.inventory.SetItem(0, item.NewStack(item.Diamond{}, 1))
-	w := world.Config{Synchronous: true, Entities: entities}.New()
+	w, want := newDispenserFallbackTestWorld(t, entities)
 	defer w.Close()
-	pos := cube.Pos{0, 1, 0}
+	pos := cube.Pos{0, 70, 0}
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(pos, d, nil)
 		d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
 		count := 0
 		for entity := range tx.Entities() {
 			count++
-			if velocity := entity.(*dispenserTestEntity).data.Vel; velocity[0] <= 0 || velocity[1] != 0 || velocity[2] != 0 {
+			if velocity := entity.(*dispenserTestEntity).data.Vel; velocity != want.Velocity || entity.Position() != want.Position {
 				t.Fatalf("unexpected velocity %v", velocity)
 			}
 		}
@@ -249,15 +316,15 @@ func TestDispenserEjectsBoatWithoutWater(t *testing.T) {
 	d := NewDispenser()
 	d.Facing, d.Triggered = cube.FaceEast, true
 	_ = d.inventory.SetItem(0, item.NewStack(item.Boat{Variant: item.BoatVariantOak}, 1))
-	w := world.Config{Synchronous: true, Entities: entities}.New()
+	w, want := newDispenserFallbackTestWorld(t, entities)
 	defer w.Close()
-	pos := cube.Pos{0, 1, 0}
+	pos := cube.Pos{0, 70, 0}
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(pos, d, nil)
 		d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
 		for spawned := range tx.Entities() {
 			e := spawned.(*dispenserTestEntity)
-			if e.data.Data != -1 || e.data.Vel != (mgl64.Vec3{0.2, 0, 0}) {
+			if e.data.Data != -1 || e.data.Vel != want.Velocity || e.Position() != want.Position {
 				t.Fatalf("boat did not use item fallback: variant=%v velocity=%v", e.data.Data, e.data.Vel)
 			}
 			return
@@ -338,16 +405,16 @@ func TestDispenserMinecartsFallbackWithoutRail(t *testing.T) {
 		d := NewDispenser()
 		d.Facing, d.Triggered = cube.FaceEast, true
 		_ = d.inventory.SetItem(0, item.NewStack(it, 1))
-		w := world.Config{Synchronous: true, Entities: entities}.New()
+		w, want := newDispenserFallbackTestWorld(t, entities)
 		<-w.Exec(func(tx *world.Tx) {
-			pos := cube.Pos{0, 1, 0}
+			pos := cube.Pos{0, 70, 0}
 			tx.SetBlock(pos, d, nil)
 			d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
 			count := 0
 			for spawned := range tx.Entities() {
 				count++
 				e := spawned.(*dispenserTestEntity)
-				if e.data.Data != -1 || e.data.Vel != (mgl64.Vec3{0.2, 0, 0}) {
+				if e.data.Data != -1 || e.data.Vel != want.Velocity || e.Position() != want.Position {
 					t.Fatalf("minecart did not use item fallback: item=%T variant=%v velocity=%v", it, e.data.Data, e.data.Vel)
 				}
 			}

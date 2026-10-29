@@ -65,7 +65,9 @@ func (b *brewer) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 				if brewingSlot == 0 || brewingSlot == 4 {
 					continue
 				}
-				if brewingStack.Count() == brewingStack.MaxCount() || !brewingStack.Comparable(sourceStack) {
+				// Native canPushInItem accepts a potion/bottle slot only while
+				// empty, even when the item itself can stack (glass bottles).
+				if !brewingStack.Empty() {
 					continue
 				}
 
@@ -108,7 +110,7 @@ func (b *brewer) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 		if sourceStack.Empty() || sourceSlot == 0 || sourceSlot == 4 {
 			continue
 		}
-		_, err := h.inventory.AddItem(sourceStack.Grow(-sourceStack.Count() + 1))
+		_, err := h.inventory.AddItemInSlotOrder(sourceStack.Grow(-sourceStack.Count() + 1))
 		if err != nil {
 			// The hopper is full.
 			continue

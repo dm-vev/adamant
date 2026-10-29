@@ -20,13 +20,19 @@ type hopperNativeItemBody struct {
 }
 
 func TestHopperItemCollectionMatchesBDS(t *testing.T) {
-	// This capture currently exposes unresolved pickup timing and hopper-shape
-	// differences. Keep it reproducible while the user-requested audit is paused;
-	// remove this diagnostic gate once all 98 native scenes match.
-	if os.Getenv("ADAMANT_REDSTONE_PICKUP_AUDIT") != "1" {
-		t.Skip("unfinished native pickup comparison; set ADAMANT_REDSTONE_PICKUP_AUDIT=1 to reproduce known differences (docs/redstone-audit.md)")
-	}
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_hopper_items.json")
+	replayHopperItemsBDS(t, "bedrock_1_26_51_hopper_items.json", 98)
+}
+
+func TestHopperItemSlotAndActorOrderMatchesBDS(t *testing.T) {
+	replayHopperItemsBDS(t, "bedrock_1_26_51_hopper_item_order.json", 8)
+}
+
+func TestHopperItemCollectionWithCoverMatchesBDS(t *testing.T) {
+	replayHopperItemsBDS(t, "bedrock_1_26_51_hopper_item_covers.json", 36)
+}
+
+func replayHopperItemsBDS(t *testing.T, filename string, count int) {
+	data, err := os.ReadFile("../block/testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +46,10 @@ func TestHopperItemCollectionMatchesBDS(t *testing.T) {
 			Scenario struct {
 				Initial, Count              int
 				Profile                     string
+				Above                       string
 				Destination, Locked, Second bool
+				InitialSlots                []*nativeSlot `json:"initial_slots"`
+				Extra                       []struct{ Time int }
 			}
 			Base, Source cube.Pos
 			Destination  *cube.Pos
@@ -53,6 +62,7 @@ func TestHopperItemCollectionMatchesBDS(t *testing.T) {
 			Samples []struct {
 				Tick             int64
 				Block            pistonEntityNativeBlock
+				Cover            *pistonEntityNativeBlock
 				Destination      *pistonEntityNativeBlock
 				Items            []*nativeSlot
 				DestinationItems []*nativeSlot `json:"destination_items"`
@@ -63,16 +73,47 @@ func TestHopperItemCollectionMatchesBDS(t *testing.T) {
 	if err := json.Unmarshal(data, &native); err != nil {
 		t.Fatal(err)
 	}
-	if !native.Complete || len(native.Scenarios) != 98 {
+	if !native.Complete || len(native.Scenarios) != count {
 		t.Fatal("incomplete native hopper/item capture")
 	}
 	for _, trace := range native.Scenarios {
 		c := trace.Scenario
 		t.Run(fmt.Sprintf("%s/initial%d/drop%d/destination%t/locked%t/second%t", c.Profile, c.Initial, c.Count, c.Destination, c.Locked, c.Second), func(t *testing.T) {
+			for i := range trace.Samples {
+				cover := trace.Samples[i].Cover
+				if cover == nil {
+					if c.Above != "" {
+						t.Fatal("missing native cover control")
+					}
+					continue
+				}
+				if cardinal, ok := cover.States["minecraft:cardinal_direction"].(string); ok {
+					faces := map[string]int{"north": 2, "south": 3, "west": 4, "east": 5}
+					if face, ok := cover.States["facing_direction"].(float64); ok {
+						if int(face) != faces[cardinal] {
+							t.Fatal("native cover facing aliases disagree")
+						}
+						delete(cover.States, "facing_direction")
+					}
+					if cover.ID == "minecraft:lectern" {
+						if cardinal != "south" || cover.States["direction"] != float64(0) {
+							t.Fatal("unexpected native lectern direction aliases")
+						}
+						delete(cover.States, "direction")
+					}
+				}
+				if cover.ID == "minecraft:white_shulker_box" {
+					if cover.States["color"] != "white" {
+						t.Fatal("native shulker colour alias disagrees with ID")
+					}
+					delete(cover.States, "color")
+				}
+			}
 			wantSpawns := 1
 			if c.Second {
 				wantSpawns++
 			}
+			wantSpawns += len(c.Extra)
 			if len(trace.Samples) != 120 || len(trace.Spawns) != wantSpawns || len(trace.LoadControl) != 5 || trace.Spawns[0].Tick != trace.SetupTick+40 {
 				t.Fatal("invalid native hopper/item controls")
 			}
@@ -95,6 +136,9 @@ func TestHopperItemCollectionMatchesBDS(t *testing.T) {
 				h := block.NewHopper()
 				h.Facing = cube.FaceNorth
 				tx.SetBlock(trace.Base, h, nil)
+				if c.Above != "" {
+					tx.SetBlock(trace.Base.Side(cube.FaceUp), hopperItemCover(t, c.Above), nil)
+				}
 				if trace.Destination != nil {
 					tx.SetBlock(*trace.Destination, block.NewBarrel(), nil)
 				}
@@ -110,6 +154,9 @@ func TestHopperItemCollectionMatchesBDS(t *testing.T) {
 						t.Fatal("native hopper/item clock mismatch")
 					}
 					comparePistonEntityNativeBlock(t, tx, frame.Tick, trace.Base, frame.Block)
+					if frame.Cover != nil {
+						comparePistonEntityNativeBlock(t, tx, frame.Tick, trace.Base.Side(cube.FaceUp), *frame.Cover)
+					}
 					compareInv := func(pos cube.Pos, want []*nativeSlot) {
 						slots := tx.Block(pos).(block.Container).Inventory(tx, pos).Slots()
 						if len(slots) != len(want) {
@@ -163,6 +210,22 @@ func TestHopperItemCollectionMatchesBDS(t *testing.T) {
 					if frame.Tick == trace.SetupTick+40 {
 						inv := tx.Block(trace.Base).(block.Container).Inventory(tx, trace.Base)
 						left := c.Initial
+						if c.InitialSlots != nil {
+							if len(c.InitialSlots) != inv.Size() {
+								t.Fatal("invalid native initial slot count")
+							}
+							for slot, stack := range c.InitialSlots {
+								if stack != nil {
+									it, ok := world.ItemByName(stack.ID, 0)
+									if !ok {
+										t.Fatal("unknown native initial slot item")
+									}
+									if err := inv.SetItem(slot, item.NewStack(it, stack.Count)); err != nil {
+										t.Fatal(err)
+									}
+								}
+							}
+						}
 						for i := 0; i < inv.Size() && left > 0; i++ {
 							n := min(left, 64)
 							if err := inv.SetItem(i, item.NewStack(item.Diamond{}, n)); err != nil {
@@ -196,5 +259,61 @@ func TestHopperItemCollectionMatchesBDS(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func hopperItemCover(t *testing.T, name string) world.Block {
+	t.Helper()
+	switch name {
+	case "minecraft:stone":
+		return block.Stone{}
+	case "minecraft:glass":
+		return block.Glass{}
+	case "minecraft:chest":
+		b := block.NewChest()
+		b.Facing = cube.North
+		return b
+	case "minecraft:ender_chest":
+		b := block.NewEnderChest()
+		b.Facing = cube.North
+		return b
+	case "minecraft:barrel":
+		return block.NewBarrel()
+	case "minecraft:furnace":
+		return block.NewFurnace(cube.South)
+	case "minecraft:blast_furnace":
+		return block.NewBlastFurnace(cube.South)
+	case "minecraft:smoker":
+		return block.NewSmoker(cube.South)
+	case "minecraft:brewing_stand":
+		return block.NewBrewingStand()
+	case "minecraft:dispenser":
+		return block.NewDispenser()
+	case "minecraft:dropper":
+		return block.NewDropper()
+	case "minecraft:crafter":
+		b := block.NewCrafter()
+		b.Facing = cube.FaceDown
+		b.Top = cube.FaceEast
+		return b
+	case "minecraft:shulker_box":
+		b := block.NewShulkerBox()
+		b.Type = block.WhiteShulkerBox()
+		return b
+	case "minecraft:chiseled_bookshelf":
+		b := block.NewChiseledBookshelf()
+		b.Facing = cube.South
+		return b
+	case "minecraft:composter":
+		return block.Composter{}
+	case "minecraft:decorated_pot":
+		return block.DecoratedPot{Facing: cube.South}
+	case "minecraft:jukebox":
+		return block.Jukebox{}
+	case "minecraft:lectern":
+		return block.Lectern{Facing: cube.South}
+	default:
+		t.Fatalf("unknown native hopper cover %s", name)
+		return nil
 	}
 }

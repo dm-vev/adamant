@@ -24,13 +24,15 @@ type Bell struct {
 	Attach BellAttachment
 	// Facing represents the horizontal direction of the Bell.
 	Facing cube.Direction
-	// Powered is true while the Bell receives redstone power. It rings when
-	// power starts.
+	// Powered is the native toggle_bit, flipped by each accepted
+	// ring. Input power history belongs to the actor and circuit separately.
 	Powered bool
 
-	ringing       bool
-	ticks         int
-	ringDirection cube.Face
+	ringing         bool
+	ticks           int
+	ringDirection   cube.Face
+	redstonePowered bool
+	ringUpdate      bool
 }
 
 // BreakInfo ...
@@ -39,13 +41,24 @@ func (b Bell) BreakInfo() BreakInfo {
 }
 
 // Activate ...
-func (b Bell) Activate(pos cube.Pos, face cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
-	return b.Ring(pos, tx, face)
+func (b Bell) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, user item.User, _ *item.UseContext) bool {
+	// BellBlock::use selects the player's horizontal look direction, not
+	// the clicked face, before applying the attachment's direction gate.
+	return b.Ring(pos, tx, user.Rotation().Direction().Opposite().Face())
 }
 
 // ProjectileHit ...
-func (b Bell) ProjectileHit(pos cube.Pos, tx *world.Tx, _ world.Entity, face cube.Face) {
-	b.Ring(pos, tx, face)
+func (b Bell) ProjectileHit(pos cube.Pos, tx *world.Tx, projectile world.Entity, _ cube.Face) {
+	// BellBlock::onProjectileHit excludes wind charges, whose activating
+	// attack has a separate path. Other hits ring along the bell's facing,
+	// without the player-use axis gate or the projectile's impact face.
+	if projectile != nil {
+		switch projectile.H().Type().EncodeEntity() {
+		case "minecraft:wind_charge_projectile", "minecraft:breeze_wind_charge", "minecraft:breeze_wind_charge_projectile":
+			return
+		}
+	}
+	b.ring(pos, tx, b.Facing.Face(), false)
 }
 
 // Ring starts or refreshes the Bell ring state in the direction of face.
@@ -53,16 +66,31 @@ func (b Bell) Ring(pos cube.Pos, tx *world.Tx, face cube.Face) bool {
 	if !b.canRing(face) {
 		return false
 	}
-	b.ring(pos, tx, face)
+	b.ring(pos, tx, face, false)
 	return true
 }
 
 // ring ports BellBlock.attemptToRing: the bell swings towards face.
-func (b Bell) ring(pos cube.Pos, tx *world.Tx, face cube.Face) {
+func (b Bell) ring(pos cube.Pos, tx *world.Tx, face cube.Face, redstone bool) {
+	b.ringUpdate = redstone
+	b.Powered = !b.Powered
 	b.ringing, b.ticks = true, 0
 	b.ringDirection = face
+	if redstone {
+		tx.PlaySound(pos.Vec3(), sound.BellRing{})
+	}
 	tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
-	tx.PlaySound(pos.Vec3Centre(), sound.BellRing{})
+	if redstone {
+		viewers := tx.Viewers(pos.Vec3())
+		for _, viewer := range viewers {
+			viewer.ViewBlockAction(pos, BellRingAction{Bell: b})
+		}
+		tx.ReleaseViewers(viewers)
+	} else {
+		// Native player use sends the changed state and one actor snapshot
+		// before its sound, unlike the actor-pass redstone notification pair.
+		tx.PlaySound(pos.Vec3(), sound.BellRing{AfterBlock: true})
+	}
 	// BellBlockEntity.updateEntities: the mobs within 32 blocks remember
 	// hearing the bell.
 	centre := pos.Vec3Centre()
@@ -109,8 +137,8 @@ func (b Bell) UseOnBlock(
 }
 
 // NeighbourUpdateTick drops a Bell that lost its support and, as
-// BellBlock.neighborChanged, rings it towards its facing when redstone power
-// starts.
+// BellBlock.neighborChanged, updates its attachment. The actor samples its
+// native scene consumer when deciding whether to ring.
 func (b Bell) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	switch b.Attach {
 	case StandingBellAttachment():
@@ -146,26 +174,31 @@ func (b Bell) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 			return
 		}
 	}
-	if powered := redstonePowered(pos, tx); powered != b.Powered {
-		b.Powered = powered
-		if powered {
-			b.ring(pos, tx, b.Facing.Face())
-			return
-		}
-		tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
-	}
 }
 
 // Tick advances the Ticks count of the Bell as BDS does: two a tick while
 // ringing until it reaches 50 and the bell stops, one a tick while still,
 // wrapping at 50.
-func (b Bell) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
+func (b Bell) Tick(current int64, pos cube.Pos, tx *world.Tx) {
+	b.ringUpdate = false
 	if b.ringing {
 		if b.ticks += 2; b.ticks >= bellRingTicks {
 			b.ringing, b.ticks = false, 0
 		}
 	} else if b.ticks++; b.ticks >= bellRingTicks {
 		b.ticks = 0
+	}
+	// BellBlockActor::tick advances animation every GT, but tests consumer
+	// strength only on the dimension-counter gate (0x2db850e..0x2db851a).
+	if current&1 == 0 {
+		power, _ := tx.Redstone().ConsumerPower(pos)
+		powered := power > 0
+		wasPowered := b.redstonePowered
+		b.redstonePowered = powered
+		if powered && !wasPowered {
+			b.ring(pos, tx, b.Facing.Face(), true)
+			return
+		}
 	}
 	tx.SetBlockEntity(pos, b)
 }
@@ -202,6 +235,8 @@ func (b Bell) EncodeNBT() map[string]any {
 
 // DecodeNBT ...
 func (b Bell) DecodeNBT(data map[string]any) any {
+	b.redstonePowered = false
+	b.ringUpdate = false
 	b.ringing = nbtconv.Bool(data, "Ringing")
 	b.ticks = int(nbtconv.Int32(data, "Ticks"))
 	b.ringDirection = cube.Face(255)
@@ -211,13 +246,34 @@ func (b Bell) DecodeNBT(data map[string]any) any {
 	return b
 }
 
+// UpdateNBT leaves the two redstone-ring actor snapshots to BellRingAction.
+// This also keeps their order if a viewer flushes the ordinary state update
+// before receiving that action. Chunk/save encoding still uses EncodeNBT.
+func (b Bell) UpdateNBT() map[string]any {
+	if b.ringUpdate {
+		return nil
+	}
+	return b.EncodeNBT()
+}
+
 // SideClosed ...
 func (Bell) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 	return false
 }
 
 func (b Bell) canRing(face cube.Face) bool {
-	return face.Axis() != cube.Y && face.Axis() != b.Facing.Face().Axis()
+	if face.Axis() == cube.Y {
+		return false
+	}
+	switch b.Attach {
+	case StandingBellAttachment():
+		return face.Axis() == b.Facing.Face().Axis()
+	case HangingBellAttachment():
+		return true
+	case SideBellAttachment(), MultipleBellAttachment():
+		return face.Axis() != b.Facing.Face().Axis()
+	}
+	return false
 }
 
 // ringDirectionID returns the Direction the bell last swung towards as the

@@ -100,7 +100,7 @@ func (s *smelter) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 			}
 		}
 
-		_, err := h.inventory.AddItem(sourceStack.Grow(-sourceStack.Count() + 1))
+		_, err := h.inventory.AddItemInSlotOrder(sourceStack.Grow(-sourceStack.Count() + 1))
 		if err != nil {
 			// The hopper is full.
 			continue

@@ -20,7 +20,7 @@ import uuid
 
 
 class Reference:
-    def __init__(self, binary, assets, port, script=None, structures=None, local_client=False, entity_definitions=None):
+    def __init__(self, binary, assets, port, script=None, structures=None, local_client=False, entity_definitions=None, seed=1):
         self.root = Path(tempfile.mkdtemp(prefix="adamant-redstone-bds-"))
         shutil.copyfile(binary, self.root / "bedrock_server.exe")
         for name in ("behavior_packs", "resource_packs", "definitions", "data", "world_templates"):
@@ -37,7 +37,7 @@ class Reference:
         settings = {"server-name": "RedstoneReference", "online-mode": "true", "allow-cheats": "true",
                     "default-player-permission-level": "operator", "transport": "raknet", "server-ip": "127.0.0.1",
                     "server-port": str(port), "server-portv6": str(port + 1), "view-distance": "4", "tick-distance": "4",
-                    "max-threads": "2", "level-name": "redstone-reference", "level-seed": "1", "level-type": "FLAT",
+                    "max-threads": "2", "level-name": "redstone-reference", "level-seed": str(seed), "level-type": "FLAT",
                     "content-log-file-enabled": "true", "pause-when-empty-seconds": "0",
                     "allow-list": "true", "enable-lan-visibility": "false"}
         if local_client:
