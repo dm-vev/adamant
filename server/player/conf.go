@@ -114,6 +114,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		fireTicks:           conf.FireTicks,
 		fallDistance:        conf.FallDistance,
 		raidOmenPosition:    raidOmenPos,
+		unlockedRecipes:     unlockedRecipes,
 		shoulderLeft:        cfg.ShoulderLeft,
 		shoulderRight:       cfg.ShoulderRight,
 		javaState:           world.CloneNativeEntityNBT(conf.JavaState),
