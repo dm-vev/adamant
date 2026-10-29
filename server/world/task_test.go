@@ -210,9 +210,16 @@ func TestWeakExecDoesNotBlockOwnerWhenQueueFull(t *testing.T) {
 	})
 	<-entered
 
-	// Fill the queue to capacity while the owner is busy.
-	for i := 0; i < cap(w.queue); i++ {
-		w.queue <- normalTransaction{c: make(chan struct{}), f: func(tx *Tx) {}}
+	// Fill the queue to capacity while the owner is busy. The tick loop and
+	// the auto-save queue transactions of their own meanwhile, so the queue
+	// is filled until it takes no more rather than with a count of sends,
+	// which would block once one of theirs took a place.
+	for full := false; !full; {
+		select {
+		case w.queue <- normalTransaction{c: make(chan struct{}), f: func(tx *Tx) {}}:
+		default:
+			full = true
+		}
 	}
 
 	// Entity task whose weak transaction ends up in World.weakExec with the
