@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
-	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
@@ -148,55 +147,4 @@ func (l *sessionList) unsendSessionFrom(s, from *Session) {
 			UUID:       s.ent.UUID(),
 		}},
 	})
-}
-
-// skinToProtocol converts a skin to its protocol representation.
-func skinToProtocol(s skin.Skin) v2193.Skin {
-	var animations []v2193.SkinAnimation
-	for _, animation := range s.Animations {
-		protocolAnim := v2193.SkinAnimation{
-			ImageWidth:  uint32(animation.Bounds().Max.X),
-			ImageHeight: uint32(animation.Bounds().Max.Y),
-			ImageData:   animation.Pix,
-			FrameCount:  float32(animation.FrameCount),
-		}
-		switch animation.Type() {
-		case skin.AnimationHead:
-			protocolAnim.AnimationType = protocol.SkinAnimationHead
-		case skin.AnimationBody32x32:
-			protocolAnim.AnimationType = protocol.SkinAnimationBody32x32
-		case skin.AnimationBody128x128:
-			protocolAnim.AnimationType = protocol.SkinAnimationBody128x128
-		}
-		protocolAnim.ExpressionType = uint32(animation.AnimationExpression)
-		animations = append(animations, protocolAnim)
-	}
-
-	fullID := s.FullID
-	if fullID == "" {
-		fullID = uuid.New().String()
-	}
-	model := s.Model
-	if len(model) == 0 {
-		model = []byte("{}")
-	}
-	return v2193.Skin{
-		PlayFabID:                 s.PlayFabID,
-		SkinID:                    uuid.New().String(),
-		SkinResourcePatch:         s.ModelConfig.Encode(),
-		SkinImageWidth:            uint32(s.Bounds().Max.X),
-		SkinImageHeight:           uint32(s.Bounds().Max.Y),
-		SkinData:                  s.Pix,
-		CapeImageWidth:            uint32(s.Cape.Bounds().Max.X),
-		CapeImageHeight:           uint32(s.Cape.Bounds().Max.Y),
-		CapeData:                  s.Cape.Pix,
-		SkinGeometry:              model,
-		PersonaSkin:               s.Persona,
-		CapeID:                    uuid.New().String(),
-		FullID:                    fullID,
-		Animations:                animations,
-		Trusted:                   true,
-		OverrideAppearance:        true,
-		GeometryDataEngineVersion: []byte(protocol.CurrentVersion),
-	}
 }

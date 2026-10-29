@@ -5,14 +5,13 @@ import (
 	"image/color"
 )
 
-// Cape represents the cape that a skin may additionally have. A skin is of a fixed size (always 32x64 bytes)
-// and may be either empty or of that size.
+// Cape represents the cape that a skin may additionally have. A cape of the game is 64x32 pixels; a cape
+// may be empty.
 type Cape struct {
 	w, h int
 
 	// Pix holds the colour data of the cape in an RGBA byte array, similarly to the way that the pixels of
-	// a Skin are stored.
-	// The size of Pix is always 32 * 64 * 4 bytes.
+	// a Skin are stored: width * height * 4 bytes.
 	Pix []uint8
 }
 
@@ -34,8 +33,7 @@ func (c Cape) ColorModel() color.Model {
 	return color.RGBAModel
 }
 
-// Bounds returns the bounds of the cape, which is always 32x64 or 0x0, depending on if the cape has any data
-// in it.
+// Bounds returns the bounds of the cape, 0x0 for an empty cape.
 func (c Cape) Bounds() image.Rectangle {
 	return image.Rectangle{
 		Max: image.Point{X: c.w, Y: c.h},

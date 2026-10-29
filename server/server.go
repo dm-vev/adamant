@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	_ "embed"
-	"encoding/base64"
 	"fmt"
 	"iter"
 	"maps"
@@ -22,7 +21,6 @@ import (
 	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -32,7 +30,6 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
 )
@@ -750,7 +747,7 @@ func (srv *Server) createPlayer(id uuid.UUID, conn session.Conn, conf player.Con
 	conf.XUID = conn.IdentityData().XUID
 	conf.UUID = id
 	conf.Locale, _ = language.Parse(strings.Replace(conn.ClientData().LanguageCode, "_", "-", 1))
-	conf.Skin = srv.parseSkin(conn.ClientData())
+	conf.Skin = session.ClientSkin(conn.ClientData())
 	conf.Session = s
 
 	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id}.New(player.Type, conf)
@@ -826,44 +823,6 @@ func (srv *Server) registerWorld(dim world.Dimension, w *world.World) {
 		return
 	}
 	srv.dimensions[dim] = w
-}
-
-// parseSkin parses a skin from the login.ClientData and returns it.
-func (srv *Server) parseSkin(data login.ClientData) skin.Skin {
-	// Gophertunnel guarantees the following values are valid data and are of
-	// the correct size.
-	skinResourcePatch, _ := base64.StdEncoding.DecodeString(data.SkinResourcePatch)
-
-	playerSkin := skin.New(data.SkinImageWidth, data.SkinImageHeight)
-	playerSkin.Persona = data.PersonaSkin
-	playerSkin.Pix, _ = base64.StdEncoding.DecodeString(data.SkinData)
-	playerSkin.Model, _ = base64.StdEncoding.DecodeString(data.SkinGeometry)
-	playerSkin.ModelConfig, _ = skin.DecodeModelConfig(skinResourcePatch)
-	playerSkin.PlayFabID = data.PlayFabID
-	playerSkin.FullID = data.SkinID
-
-	playerSkin.Cape = skin.NewCape(data.CapeImageWidth, data.CapeImageHeight)
-	playerSkin.Cape.Pix, _ = base64.StdEncoding.DecodeString(data.CapeData)
-
-	for _, animation := range data.AnimatedImageData {
-		var t skin.AnimationType
-		switch animation.Type {
-		case protocol.SkinAnimationHead:
-			t = skin.AnimationHead
-		case protocol.SkinAnimationBody32x32:
-			t = skin.AnimationBody32x32
-		case protocol.SkinAnimationBody128x128:
-			t = skin.AnimationBody128x128
-		}
-
-		anim := skin.NewAnimation(animation.ImageWidth, animation.ImageHeight, animation.AnimationExpression, t)
-		anim.FrameCount = int(animation.Frames)
-		anim.Pix, _ = base64.StdEncoding.DecodeString(animation.Image)
-
-		playerSkin.Animations = append(playerSkin.Animations, anim)
-	}
-
-	return playerSkin
 }
 
 // vec64To32 converts a mgl64.Vec3 to a mgl32.Vec3.

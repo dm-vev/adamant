@@ -26,6 +26,9 @@ func validSkinSize(width, height int) bool {
 	}
 }
 
+// validCapeSize reports a cape of up to 256x256 pixels. The capes of the
+// game are 64x32; BDS passes capes of any size on.
 func validCapeSize(width, height int) bool {
-	return width == 32 && height == 64
+	n, ok := pixelBufferSize(width, height)
+	return ok && n/bytesPerPixel <= maxCapePixels
 }
