@@ -100,6 +100,16 @@ type Session struct {
 	// hidesEntities is set while hiddenEntities holds any entity, so that
 	// showing entities does not take entityMutex to find none hidden.
 	hidesEntities atomic.Bool
+	// farEntities holds the entities the world shows the session that are
+	// farther from its player than their range, hidesFar is set while it
+	// holds any, and viewPos is where the player was last tick: see
+	// trackingRange. interestTick counts the ticks to the next check, and
+	// interestShown and interestFar are the buffers of a check.
+	farEntities                map[*world.EntityHandle]struct{}
+	hidesFar                   atomic.Bool
+	viewPos                    atomic.Pointer[mgl64.Vec3]
+	interestTick               int
+	interestShown, interestFar []*world.EntityHandle
 	// deathAnimations records ordinary mobs whose death event lets the client
 	// finish the animation and remove the actor itself. Protected by entityMutex.
 	deathAnimations map[uint64]struct{}
@@ -644,6 +654,7 @@ func (s *Session) Control(tx *world.Tx, e world.Entity) {
 	}
 	s.commandState.update(s, c)
 	s.updateCongestion(tx)
+	s.updateInterest(tx, c.Position())
 	s.sendChunks(tx, c)
 }
 

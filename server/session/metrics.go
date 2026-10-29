@@ -26,6 +26,8 @@ var (
 		"Moves of entities kept back from congested clients.")
 	cosmeticsDropped = metrics.Default.Counter("adamant_session_cosmetics_dropped_total",
 		"Sounds, particles and animations dropped for congested clients.")
+	entitiesOutOfRange = metrics.Default.Counter("adamant_session_entities_out_of_range_total",
+		"Entities a session kept unseen for being farther from its player than their range.")
 	staleShown = metrics.Default.Counter("adamant_session_stale_entities_shown_total",
 		"Entities shown where they are once the congestion of a client cleared.")
 )

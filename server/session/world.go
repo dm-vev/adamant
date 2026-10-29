@@ -41,13 +41,18 @@ type OffsetEntity interface {
 	NetworkOffset() float64
 }
 
-// entityHidden checks if a world.Entity is being explicitly hidden from the Session.
+// entityHidden checks if a world.Entity is being explicitly hidden from the
+// Session, or kept unseen for being farther from its player than its range.
 func (s *Session) entityHidden(e world.Entity) bool {
-	if !s.hidesEntities.Load() {
+	hidden, far := s.hidesEntities.Load(), s.hidesFar.Load()
+	if !hidden && !far {
 		return false
 	}
 	s.entityMutex.RLock()
 	_, ok := s.hiddenEntities[e.H().UUID()]
+	if !ok && far {
+		_, ok = s.farEntities[e.H()]
+	}
 	s.entityMutex.RUnlock()
 	return ok
 }
@@ -58,7 +63,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		s.ViewEntityState(e)
 		return
 	}
-	if s.entityHidden(e) {
+	if s.entityHidden(e) || s.outOfRange(e) {
 		return
 	}
 	var runtimeID uint64
@@ -292,6 +297,7 @@ func (s *Session) ViewEntityGameMode(e world.Entity) {
 
 // HideEntity ...
 func (s *Session) HideEntity(e world.Entity) {
+	s.forgetFar(e.H())
 	s.entityMutex.Lock()
 	id, ok := s.entityRuntimeIDs[e.H()]
 	_, finishingDeath := s.deathAnimations[id]
