@@ -33,6 +33,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/dm-vev/adamant/net/java"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
 	"github.com/dm-vev/adamant/net/proxy"
@@ -372,5 +373,59 @@ func TestNetherNetListenerServesHTTPS(t *testing.T) {
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK || resp.TLS != nil {
 		t.Fatalf("HTTP signaling answered %s", resp.Status)
+	}
+}
+
+// TestNetherNetListenerShowsToJava lists the server for a client of Java
+// Edition with its name and players, as one of Bedrock Edition, and tells
+// one that joins where to join.
+func TestNetherNetListenerShowsToJava(t *testing.T) {
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := probe.Addr().String()
+	_ = probe.Close()
+	uc := DefaultConfig()
+	uc.Network.Address = "127.0.0.1:0"
+	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	uc.Java.Address = addr
+	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, MaxPlayers: 20, StatusProvider: statusProvider{name: "Adamant"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	status, _, err := java.QueryStatus(addr, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var st struct {
+		Version struct {
+			Name     string
+			Protocol int32
+		}
+		Players     struct{ Online, Max int }
+		Description struct{ Text string }
+	}
+	if err := json.Unmarshal(status, &st); err != nil || st.Description.Text != "Adamant" || st.Version.Protocol != -1 ||
+		!strings.HasPrefix(st.Version.Name, "Bedrock ") || st.Players.Max != 20 {
+		t.Fatalf("status %s: %v", status, err)
+	}
+
+	nc, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer nc.Close()
+	_ = nc.SetDeadline(time.Now().Add(5 * time.Second))
+	c := java.NewConn(nc)
+	hs := java.AppendVarInt(nil, 774)
+	hs = java.AppendString(hs, "localhost")
+	hs = append(hs, 0x63, 0xdd, 2)
+	_ = c.WritePacket(0x00, hs)
+	_ = c.WritePacket(0x00, append(java.AppendString(nil, "Steve"), make([]byte, 16)...))
+	id, fields, err := c.ReadPacket()
+	if err != nil || id != 0x00 || !strings.Contains(java.NewReader(fields).String(), "Bedrock Edition") {
+		t.Fatalf("login answered %#x %q, %v", id, fields, err)
 	}
 }

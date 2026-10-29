@@ -438,6 +438,18 @@ type UserConfig struct {
 		// likes, so it must stay as secret as a password.
 		Secret string
 	}
+	// Java holds what clients of Java Edition see of the server, which they
+	// cannot join yet: the server shows in their server list as one of
+	// Bedrock Edition, with its name and players, and a client that joins
+	// anyway is told where to join instead.
+	Java struct {
+		// Address is the TCP address clients of Java Edition find the server
+		// at, such as ":25565". An empty value leaves them out.
+		Address string
+		// Message is what a client of Java Edition that joins is told. An
+		// empty value tells it the server is one of Bedrock Edition.
+		Message string
+	}
 	Server struct {
 		// Name is the name of the server as it shows up in the server list.
 		Name string
