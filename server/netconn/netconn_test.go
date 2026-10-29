@@ -341,13 +341,13 @@ func TestResourcePacks(t *testing.T) {
 
 // TestOurClientJoins logs in and spawns with the client of the net module,
 // which codes packets with the generated codecs, and exchanges packets
-// after.
+// after. It dials a signaling URL, which the client data must not name.
 func TestOurClientJoins(t *testing.T) {
 	l := listen(t, Config{})
 	spawned := serve(t, l)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{Identity: ourlogin.Identity{DisplayName: "Bot"}})
+	conn, err := ourclient.Dial(ctx, "http://"+l.Addr().String(), ourclient.Config{Identity: ourlogin.Identity{DisplayName: "Bot"}})
 	if err != nil {
 		t.Fatal(err)
 	}

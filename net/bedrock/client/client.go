@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -85,7 +86,7 @@ func Dial(ctx context.Context, address string, cfg Config) (*Conn, error) {
 	if cfg.Identity.Identity == "" {
 		cfg.Identity.Identity = login.NewUUID()
 	}
-	data := login.DefaultClientData(address, cfg.Identity.DisplayName, v2193.Version)
+	data := login.DefaultClientData(serverAddress(address), cfg.Identity.DisplayName, v2193.Version)
 	if cfg.ClientData != nil {
 		data = *cfg.ClientData
 	}
@@ -109,6 +110,16 @@ func Dial(ctx context.Context, address string, cfg Config) (*Conn, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+// serverAddress returns the host and port of an address, as the game
+// names the server it joins in its client data: a signaling URL would not
+// pass for one.
+func serverAddress(address string) string {
+	if u, err := url.Parse(address); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return address
 }
 
 // join logs in and spawns.
