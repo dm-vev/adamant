@@ -22,7 +22,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -268,7 +268,7 @@ func (p *panicSaveProvider) Save(uuid.UUID, player.Config, *world.World) error {
 }
 
 type serverPanicConn struct {
-	identity   login.IdentityData
+	identity   login.Identity
 	started    chan netconn.GameData
 	readErrors chan error
 	closed     chan struct{}
@@ -277,7 +277,7 @@ type serverPanicConn struct {
 
 func newServerPanicConn() *serverPanicConn {
 	return &serverPanicConn{
-		identity:   login.IdentityData{Identity: uuid.NewString(), DisplayName: "panic-test", XUID: "panic-xuid"},
+		identity:   login.Identity{Identity: uuid.NewString(), DisplayName: "panic-test", XUID: "panic-xuid"},
 		started:    make(chan netconn.GameData, 1),
 		readErrors: make(chan error, 1),
 		closed:     make(chan struct{}),
@@ -289,7 +289,7 @@ func (c *serverPanicConn) Close() error {
 	return nil
 }
 
-func (c *serverPanicConn) IdentityData() login.IdentityData { return c.identity }
+func (c *serverPanicConn) IdentityData() login.Identity { return c.identity }
 func (*serverPanicConn) ClientData() login.ClientData       { return login.ClientData{} }
 func (*serverPanicConn) ClientCacheEnabled() bool           { return false }
 func (*serverPanicConn) ChunkRadius() int                   { return 1 }

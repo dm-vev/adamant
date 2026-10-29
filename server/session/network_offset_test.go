@@ -22,7 +22,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -250,6 +250,6 @@ func (*packetConn) ReadPacket() (proto.Packet, error)                        { r
 func (c *packetConn) WritePacket(pk proto.Packet) error                      { c.packets <- pk; return nil }
 func (c *packetConn) WriteProto(pk proto.Packet) error                       { c.packets <- pk; return nil }
 func (*packetConn) StartGameContext(context.Context, netconn.GameData) error { return nil }
-func (*packetConn) IdentityData() login.IdentityData {
-	return login.IdentityData{Identity: uuid.NewString(), DisplayName: "viewer"}
+func (*packetConn) IdentityData() login.Identity {
+	return login.Identity{Identity: uuid.NewString(), DisplayName: "viewer"}
 }

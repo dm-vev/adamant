@@ -4,7 +4,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 // whitelistOperatorsAllower composes a Whitelist with an ops list so that operators bypass whitelist enforcement.
@@ -16,7 +16,7 @@ type whitelistOperatorsAllower struct {
 	operators *operatorsList
 }
 
-func (a whitelistOperatorsAllower) Allow(addr net.Addr, d login.IdentityData, c login.ClientData) (string, bool) {
+func (a whitelistOperatorsAllower) Allow(addr net.Addr, d login.Identity, c login.ClientData) (string, bool) {
 	if a.whitelist == nil {
 		return "", true
 	}

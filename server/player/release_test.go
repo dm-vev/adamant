@@ -20,7 +20,7 @@ import (
 	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 func TestReleaseItemResyncsOnlyWhenNothingWasConsumed(t *testing.T) {
@@ -112,8 +112,8 @@ type releaseTestConn struct {
 
 func (*releaseTestConn) Close() error { return nil }
 
-func (*releaseTestConn) IdentityData() login.IdentityData {
-	return login.IdentityData{Identity: uuid.NewString(), DisplayName: "Test"}
+func (*releaseTestConn) IdentityData() login.Identity {
+	return login.Identity{Identity: uuid.NewString(), DisplayName: "Test"}
 }
 
 func (*releaseTestConn) ClientData() login.ClientData { return login.ClientData{} }

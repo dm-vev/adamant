@@ -21,14 +21,14 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 // fuzzConn is the connection of a client whose packets a fuzz test hands
 // to the session itself. It encodes what the session writes, as a real
 // connection does, and keeps the first packet that did not encode.
 type fuzzConn struct {
-	identity login.IdentityData
+	identity login.Identity
 	closed   chan struct{}
 	once     sync.Once
 
@@ -37,7 +37,7 @@ type fuzzConn struct {
 }
 
 func (c *fuzzConn) Close() error                     { c.once.Do(func() { close(c.closed) }); return nil }
-func (c *fuzzConn) IdentityData() login.IdentityData { return c.identity }
+func (c *fuzzConn) IdentityData() login.Identity { return c.identity }
 func (*fuzzConn) ClientData() login.ClientData       { return login.ClientData{} }
 func (*fuzzConn) ClientCacheEnabled() bool           { return true }
 func (*fuzzConn) ChunkRadius() int                   { return 1 }
@@ -80,7 +80,7 @@ func FuzzHandlePacket(f *testing.F) {
 	log := slog.New(slog.DiscardHandler)
 	w := world.Config{Log: log}.New()
 	f.Cleanup(func() { _ = w.Close() })
-	conn := &fuzzConn{identity: login.IdentityData{Identity: uuid.NewString(), DisplayName: "Fuzz", XUID: "2535400000000001"}, closed: make(chan struct{})}
+	conn := &fuzzConn{identity: login.Identity{Identity: uuid.NewString(), DisplayName: "Fuzz", XUID: "2535400000000001"}, closed: make(chan struct{})}
 	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(conn)
 	f.Cleanup(sess.CloseConnection)
 	spawn := func() *world.EntityHandle {

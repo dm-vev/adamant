@@ -16,7 +16,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 func TestSessionListConcurrentAddRemove(t *testing.T) {
@@ -102,7 +102,7 @@ func waitDone(t *testing.T, done <-chan struct{}) {
 func testSession(name string) *Session {
 	handle := entity.NewText(name, mgl64.Vec3{})
 	return &Session{
-		conn:             testConn{identity: login.IdentityData{Identity: uuid.NewString(), DisplayName: name}},
+		conn:             testConn{identity: login.Identity{Identity: uuid.NewString(), DisplayName: name}},
 		conf:             Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
 		holdPackets:      1,
 		ent:              handle,
@@ -128,10 +128,10 @@ func (s *Session) testPacket() proto.Packet {
 
 type testConn struct {
 	Conn
-	identity login.IdentityData
+	identity login.Identity
 }
 
-func (c testConn) IdentityData() login.IdentityData { return c.identity }
+func (c testConn) IdentityData() login.Identity { return c.identity }
 
 // packetOf returns the packet a session was given, unwrapping one shared
 // with other sessions.

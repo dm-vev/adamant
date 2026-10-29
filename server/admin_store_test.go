@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 func TestOperatorChangesPermissionAndPersist(t *testing.T) {
@@ -67,12 +67,12 @@ func TestBansRejectPlayerAndIPAtLogin(t *testing.T) {
 		{name: "ALICE", addr: &net.TCPAddr{IP: net.IPv4(192, 0, 2, 1)}},
 		{name: "Bob", addr: &net.TCPAddr{IP: net.IPv4(192, 0, 2, 8)}},
 	} {
-		message, ok := allow.Allow(tc.addr, login.IdentityData{DisplayName: tc.name}, login.ClientData{})
+		message, ok := allow.Allow(tc.addr, login.Identity{DisplayName: tc.name}, login.ClientData{})
 		if ok || message == "" {
 			t.Errorf("Allow(%s, %v) = %q, %t; want ban rejection", tc.name, tc.addr, message, ok)
 		}
 	}
-	if message, ok := allow.Allow(&net.TCPAddr{IP: net.IPv4(192, 0, 2, 9)}, login.IdentityData{DisplayName: "Bob"}, login.ClientData{}); !ok || message != "" {
+	if message, ok := allow.Allow(&net.TCPAddr{IP: net.IPv4(192, 0, 2, 9)}, login.Identity{DisplayName: "Bob"}, login.ClientData{}); !ok || message != "" {
 		t.Fatalf("unbanned login = %q, %t; want allowed", message, ok)
 	}
 }

@@ -62,32 +62,37 @@ type ClientData struct {
 	LanguageCode                     string
 	MaxViewDistance                  int
 	MemoryTier                       int
-	OverrideSkin                     bool
-	PartyID                          string `json:"PartyId"`
-	PartyLeader                      bool   `json:"IsPartyLeader"`
-	PersonaPieces                    []PersonaPiece
-	PersonaSkin                      bool
-	PieceTintColours                 []PieceTintColour `json:"PieceTintColors"`
-	PlatformOfflineID                string            `json:"PlatformOfflineId"`
-	PlatformOnlineID                 string            `json:"PlatformOnlineId"`
-	PlatformType                     int
-	PlayFabID                        string `json:"PlayFabId"`
-	PremiumSkin                      bool
-	ProfileHash                      string
-	SelfSignedID                     string `json:"SelfSignedId"`
-	ServerAddress                    string
-	SkinAnimationData                string
-	SkinColour                       string `json:"SkinColor"`
-	SkinData                         string
-	SkinGeometry                     string `json:"SkinGeometryData"`
-	SkinGeometryVersion              string `json:"SkinGeometryDataEngineVersion"`
-	SkinID                           string `json:"SkinId"`
-	SkinImageHeight                  int
-	SkinImageWidth                   int
-	SkinResourcePatch                string
-	ThirdPartyName                   string
-	TrustedSkin                      bool
-	UIProfile                        int
+	// Nonce is the nonce the host of an Xbox Live session handed the
+	// member, which a client joining from the session sends back.
+	Nonce               string `json:",omitempty"`
+	OverrideSkin        bool
+	PartyID             string `json:"PartyId"`
+	PartyLeader         bool   `json:"IsPartyLeader"`
+	PersonaPieces       []PersonaPiece
+	PersonaSkin         bool
+	PieceTintColours    []PieceTintColour `json:"PieceTintColors"`
+	PlatformOfflineID   string            `json:"PlatformOfflineId"`
+	PlatformOnlineID    string            `json:"PlatformOnlineId"`
+	PlatformType        int
+	PlatformUserID      string `json:"PlatformUserId,omitempty"`
+	PlayFabID           string `json:"PlayFabId"`
+	PremiumSkin         bool
+	ProfileHash         string
+	SelfSignedID        string `json:"SelfSignedId"`
+	ServerAddress       string
+	SkinAnimationData   string
+	SkinColour          string `json:"SkinColor"`
+	SkinData            string
+	SkinGeometry        string `json:"SkinGeometryData"`
+	SkinGeometryVersion string `json:"SkinGeometryDataEngineVersion"`
+	SkinID              string `json:"SkinId"`
+	SkinImageHeight     int
+	SkinImageWidth      int
+	SkinResourcePatch   string
+	ThirdPartyName      string
+	ThirdPartyNameOnly  *bool `json:",omitempty"`
+	TrustedSkin         bool
+	UIProfile           int
 }
 
 // SkinAnimation is an animated layer of a skin.

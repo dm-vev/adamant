@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 type banEntry struct {
@@ -201,7 +201,7 @@ type adminAllower struct {
 	operators *operatorsList
 }
 
-func (a adminAllower) Allow(addr net.Addr, d login.IdentityData, c login.ClientData) (string, bool) {
+func (a adminAllower) Allow(addr net.Addr, d login.Identity, c login.ClientData) (string, bool) {
 	addrString := ""
 	if addr != nil {
 		addrString = addr.String()

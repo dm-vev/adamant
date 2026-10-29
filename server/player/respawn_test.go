@@ -19,15 +19,15 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 type stubConn struct{}
 
 func (stubConn) Close() error { return nil }
 
-func (stubConn) IdentityData() login.IdentityData {
-	return login.IdentityData{Identity: uuid.NewString(), DisplayName: "Test"}
+func (stubConn) IdentityData() login.Identity {
+	return login.Identity{Identity: uuid.NewString(), DisplayName: "Test"}
 }
 
 func (stubConn) ClientData() login.ClientData { return login.ClientData{} }

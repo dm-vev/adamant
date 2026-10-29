@@ -22,7 +22,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -41,7 +41,7 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load NetherNet identity: %w", err)
 	}
-	var allow func(net.Addr, login.IdentityData, login.ClientData) (string, bool)
+	var allow func(net.Addr, login.Identity, login.ClientData) (string, bool)
 	if conf.Allower != nil {
 		allow = conf.Allower.Allow
 	}
@@ -73,6 +73,7 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 		AuthenticationDisabled: conf.AuthDisabled,
 		ResourcePacks:          conf.Resources,
 		TexturePacksRequired:   conf.ResourcesRequired,
+		Validate:               validateLogin,
 		Allow:                  allow,
 		Compression:            batchCompression(conf.Compression),
 	}.Listen(listen, uc.Network.Address)

@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/pelletier/go-toml"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 var (
@@ -112,7 +112,7 @@ func (w *Whitelist) Reload() error {
 
 // Allow implements the Allower interface, allowing players to join only if the whitelist is enabled and contains their
 // name.
-func (w *Whitelist) Allow(_ net.Addr, d login.IdentityData, _ login.ClientData) (string, bool) {
+func (w *Whitelist) Allow(_ net.Addr, d login.Identity, _ login.ClientData) (string, bool) {
 	if w == nil {
 		return "", true
 	}

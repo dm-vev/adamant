@@ -24,7 +24,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -41,7 +41,7 @@ type Conn struct {
 	nn *nethernet.Conn
 	b  *bedrock.Conn
 
-	identity     login.IdentityData
+	identity     login.Identity
 	client       login.ClientData
 	cacheEnabled atomic.Bool
 	chunkRadius  atomic.Int32
@@ -89,7 +89,7 @@ func (c *Conn) Stats() Stats {
 }
 
 // IdentityData returns the identity the client logged in with.
-func (c *Conn) IdentityData() login.IdentityData { return c.identity }
+func (c *Conn) IdentityData() login.Identity { return c.identity }
 
 // ClientData returns the client data of the login: skin, locale and such.
 func (c *Conn) ClientData() login.ClientData { return c.client }

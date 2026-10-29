@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 func TestWhitelistOperatorsBypass(t *testing.T) {
@@ -33,13 +33,13 @@ func TestWhitelistOperatorsBypass(t *testing.T) {
 
 	allower := whitelistOperatorsAllower{whitelist: wl, operators: ops}
 
-	if msg, ok := allower.Allow(nil, login.IdentityData{DisplayName: "Alice"}, login.ClientData{}); !ok {
+	if msg, ok := allower.Allow(nil, login.Identity{DisplayName: "Alice"}, login.ClientData{}); !ok {
 		t.Fatalf("expected operator to bypass whitelist, got reject message %q", msg)
 	}
-	if msg, ok := allower.Allow(nil, login.IdentityData{DisplayName: "bob"}, login.ClientData{}); !ok {
+	if msg, ok := allower.Allow(nil, login.Identity{DisplayName: "bob"}, login.ClientData{}); !ok {
 		t.Fatalf("expected whitelisted player to be allowed, got reject message %q", msg)
 	}
-	if msg, ok := allower.Allow(nil, login.IdentityData{DisplayName: "charlie"}, login.ClientData{}); ok {
+	if msg, ok := allower.Allow(nil, login.Identity{DisplayName: "charlie"}, login.ClientData{}); ok {
 		t.Fatalf("expected non-whitelisted player to be rejected, got %q", msg)
 	}
 }
@@ -68,7 +68,7 @@ func TestWhitelistOperatorsEmptyNameRejects(t *testing.T) {
 	}
 
 	allower := whitelistOperatorsAllower{whitelist: wl, operators: ops}
-	if msg, ok := allower.Allow(nil, login.IdentityData{DisplayName: ""}, login.ClientData{}); ok {
+	if msg, ok := allower.Allow(nil, login.Identity{DisplayName: ""}, login.ClientData{}); ok {
 		t.Fatalf("expected empty name to be rejected, got %q", msg)
 	}
 }

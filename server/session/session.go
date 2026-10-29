@@ -29,7 +29,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -176,8 +176,8 @@ type debugShapeUpdate struct {
 // information on the identity of the Session.
 type Conn interface {
 	io.Closer
-	// IdentityData returns the login.IdentityData of a Conn. It contains the UUID, XUID and username of the connection.
-	IdentityData() login.IdentityData
+	// IdentityData returns the login.Identity of a Conn. It contains the UUID, XUID and username of the connection.
+	IdentityData() login.Identity
 	// ClientData returns the login.ClientData of a Conn. This includes less sensitive data of the player like its skin,
 	// language code and other non-essential information.
 	ClientData() login.ClientData

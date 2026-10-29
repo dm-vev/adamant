@@ -25,7 +25,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/turn"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -62,9 +61,13 @@ type Config struct {
 	// clients take them.
 	ResourcePacks        []*resource.Pack
 	TexturePacksRequired bool
+	// Validate checks the identity and the client data of a client that
+	// logged in, before Allow: the rules of the server for names, skins and
+	// the rest. Nil takes them as they are.
+	Validate func(identity bedrocklogin.Identity, client bedrocklogin.ClientData) error
 	// Allow decides whether a client that logged in may join, and the
 	// message of a refusal.
-	Allow func(addr net.Addr, identity login.IdentityData, client login.ClientData) (string, bool)
+	Allow func(addr net.Addr, identity bedrocklogin.Identity, client bedrocklogin.ClientData) (string, bool)
 	// Batches configures the batches of every connection: Compression is
 	// announced to clients, Threshold and Incompressible decide which
 	// batches are compressed, the rates bound what a client sends. Zero
@@ -400,8 +403,8 @@ func (c *Conn) handshake() error {
 // authenticate checks the login request: the Xbox Live token if the server
 // asks for it, the key the transport proved, and the server's own rules.
 // The request is read by package login of the net module, which trusts
-// none of it; the identity and the client data then pass the rules of
-// gophertunnel's types, which the server holds them in.
+// none of it; the identity and the client data then pass the rules of the
+// server, Validate.
 func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
 	ctx, cancel := context.WithTimeout(context.Background(), keysTimeout)
 	defer cancel()
@@ -409,7 +412,7 @@ func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
 	if err != nil {
 		return fmt.Errorf("netconn: parse login request: %w", err)
 	}
-	c.identity = login.IdentityData{
+	c.identity = bedrocklogin.Identity{
 		XUID:           l.Identity.XUID,
 		Identity:       l.Identity.Identity,
 		DisplayName:    l.Identity.DisplayName,
@@ -417,15 +420,14 @@ func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
 		PlayFabID:      l.Identity.PlayFabID,
 		PlayFabTitleID: l.Identity.PlayFabTitleID,
 	}
-	if err := c.identity.Validate(); err != nil {
-		return fmt.Errorf("netconn: validate identity data: %w", err)
-	}
 	if err := json.Unmarshal(l.ClientDataJSON, &c.client); err != nil {
 		return fmt.Errorf("netconn: client data: %w", err)
 	}
 	c.client.ServerAddress = l.ClientData.ServerAddress
-	if err := c.client.Validate(); err != nil {
-		return fmt.Errorf("netconn: validate client data: %w", err)
+	if validate := c.l.cfg.Validate; validate != nil {
+		if err := validate(c.identity, c.client); err != nil {
+			return fmt.Errorf("netconn: validate login: %w", err)
+		}
 	}
 	if !l.XboxLive && !c.l.cfg.AuthenticationDisabled {
 		_ = c.WritePacket(&v2193.DisconnectPacket{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})

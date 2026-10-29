@@ -19,7 +19,7 @@ import (
 	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -169,7 +169,7 @@ type quitPanicHandler struct{ NopHandler }
 func (quitPanicHandler) HandleQuit(*Player) { panic("quit handler panic") }
 
 type packetPanicConn struct {
-	identity   login.IdentityData
+	identity   login.Identity
 	packets    chan proto.Packet
 	readErrors chan error
 	closed     chan struct{}
@@ -180,7 +180,7 @@ type packetPanicConn struct {
 
 func newPacketPanicConn() *packetPanicConn {
 	return &packetPanicConn{
-		identity:   login.IdentityData{Identity: uuid.NewString(), DisplayName: "panic-test", XUID: "panic-xuid"},
+		identity:   login.Identity{Identity: uuid.NewString(), DisplayName: "panic-test", XUID: "panic-xuid"},
 		packets:    make(chan proto.Packet, 1),
 		readErrors: make(chan error, 1),
 		closed:     make(chan struct{}),
@@ -192,7 +192,7 @@ func (c *packetPanicConn) Close() error {
 	return nil
 }
 
-func (c *packetPanicConn) IdentityData() login.IdentityData { return c.identity }
+func (c *packetPanicConn) IdentityData() login.Identity { return c.identity }
 func (*packetPanicConn) ClientData() login.ClientData       { return login.ClientData{} }
 func (*packetPanicConn) ClientCacheEnabled() bool           { return false }
 func (*packetPanicConn) ChunkRadius() int                   { return 1 }
