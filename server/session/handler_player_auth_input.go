@@ -47,7 +47,7 @@ func (h PlayerAuthInputHandler) handleMovement(pk *v2193.PlayerAuthInputPacket, 
 
 	pk.Position = entityBasePosition(c, pk.Position)
 
-	newPos := vec32To64(pk.Position)
+	newPos := clampToWorld(vec32To64(pk.Position))
 	deltaPos, deltaYaw, deltaPitch := newPos.Sub(pos), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch
 
 	if expected := s.teleportPos.Load(); expected != nil {
@@ -94,11 +94,46 @@ func (h PlayerAuthInputHandler) handleMovement(pk *v2193.PlayerAuthInputPacket, 
 		return nil
 	}
 
+	if movedTooQuickly(c, deltaPos) {
+		// As Java does, a move no player makes in a tick puts the client back
+		// where the server has it, rather than taking it anywhere.
+		s.conf.Log.Debug("process packet: PlayerAuthInput: moved too quickly", "delta", fmt.Sprint(deltaPos))
+		s.ViewEntityTeleport(c, pos)
+		return nil
+	}
+
 	// Mark client-originated movement so we don't echo it back to the same client.
 	s.moving.Store(true)
 	c.Move(deltaPos, deltaYaw, deltaPitch)
 	s.moving.Store(false)
 	return nil
+}
+
+// clampToWorld clamps a position a client sends to the bounds of a world,
+// as Java clamps it: 30 million blocks out horizontally, 20 million
+// vertically.
+func clampToWorld(p mgl64.Vec3) mgl64.Vec3 {
+	const horizontal, vertical = 3e7, 2e7
+	return mgl64.Vec3{
+		max(-horizontal, min(p[0], horizontal)),
+		max(-vertical, min(p[1], vertical)),
+		max(-horizontal, min(p[2], horizontal)),
+	}
+}
+
+// movedTooQuickly reports a move farther than a player goes in a tick, as
+// Java judges it: by more than 10 blocks, or 17 gliding, beyond what the
+// velocity of the player covers.
+func movedTooQuickly(c Controllable, delta mgl64.Vec3) bool {
+	limit := 100.0
+	if c.Gliding() {
+		limit = 300
+	}
+	var vel float64
+	if v, ok := c.(interface{ Velocity() mgl64.Vec3 }); ok {
+		vel = v.Velocity().LenSqr()
+	}
+	return delta.LenSqr()-vel > limit
 }
 
 func teleportAcknowledged(pos, expected mgl64.Vec3) bool {

@@ -4404,13 +4404,19 @@ func (p *Player) checkEntitySteppers() {
 }
 
 // checkOnGround checks if the player is currently considered to be on the ground.
+// maxGroundProbe bounds the descent checkOnGround probes below a player:
+// more than the 3.92 blocks a player falls at most in a tick.
+const maxGroundProbe = 8.0
+
 func (p *Player) checkOnGround(deltaPos mgl64.Vec3) bool {
 	if p.GameMode() == world.GameModeSpectator {
 		return false
 	}
 	// Probe straight down (0.05 plus this tick's descent) instead of along the
 	// whole movement, so a block the player falls past at its side is not ground.
-	box := Type.BBox(p).Translate(p.Position()).Extend(mgl64.Vec3{0, -0.05}).Extend(mgl64.Vec3{0, math.Min(deltaPos[1], 0)})
+	// The descent is bound: a move of any length must not make the probe, a
+	// loop over blocks, run long.
+	box := Type.BBox(p).Translate(p.Position()).Extend(mgl64.Vec3{0, -0.05}).Extend(mgl64.Vec3{0, max(math.Min(deltaPos[1], 0), -maxGroundProbe)})
 	b := box.Grow(1)
 	epsilon := mgl64.Vec3{mgl64.Epsilon, mgl64.Epsilon, mgl64.Epsilon}
 	low, high := cube.PosFromVec3(b.Min().Add(epsilon)), cube.PosFromVec3(b.Max().Sub(epsilon))

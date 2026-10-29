@@ -81,6 +81,44 @@ func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
 	}
 }
 
+// TestMoveTooFarIsRefused moves a client farther than a player goes in a
+// tick, as far as a float32 goes: the move is refused, and the client put
+// back, rather than taking the player there, which froze its world as it
+// looked for ground along the whole way.
+func TestMoveTooFarIsRefused(t *testing.T) {
+	start := mgl64.Vec3{0.5, 64, 0.5}
+	for name, to := range map[string]mgl64.Vec3{
+		"far below": {0.5, -1e37, 0.5},
+		"far out":   {3e38, 64, 0.5},
+		"11 blocks": {11.5, 64, 0.5},
+	} {
+		c := newUnchangedControllable()
+		c.position = start
+		moved := false
+		c.move = func(mgl64.Vec3) { moved = true }
+		s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
+		pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, to))}
+		if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if moved {
+			t.Errorf("%s: the player moved", name)
+		}
+	}
+	c := newUnchangedControllable()
+	c.position = start
+	var delta mgl64.Vec3
+	c.move = func(d mgl64.Vec3) { delta = d }
+	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
+	pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, start.Add(mgl64.Vec3{5, 0, 0})))}
+	if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil || math.Abs(delta[0]-5) > 1e-3 {
+		t.Fatalf("a move of 5 blocks: %v, moved by %v", err, delta)
+	}
+	if got := clampToWorld(mgl64.Vec3{-1e30, 1e30, 5}); got != (mgl64.Vec3{-3e7, 2e7, 5}) {
+		t.Fatalf("clamped to %v", got)
+	}
+}
+
 func TestFlightInputFlags(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -200,6 +238,7 @@ func (c *unchangedControllable) Move(delta mgl64.Vec3, _, _ float64) {
 	panic("Move called for unchanged movement")
 }
 func (c *unchangedControllable) Sleeping() (cube.Pos, bool) { return cube.Pos{}, c.sleeping }
+func (*unchangedControllable) Gliding() bool                { return false }
 
 type offsetTestType struct{}
 
