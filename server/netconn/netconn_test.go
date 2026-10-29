@@ -614,6 +614,79 @@ func TestChatOverItsBucketIsDropped(t *testing.T) {
 	}
 }
 
+// TestHostileLoginRequests sends connection requests a client may forge:
+// each fails the login of that client alone, and the server logs others
+// in after them.
+func TestHostileLoginRequests(t *testing.T) {
+	l := listen(t, Config{})
+	spawned := serve(t, l)
+	head := []byte(`{"Certificate":"{\"chain\":[\"\"]}","AuthenticationType":2,"Token":"x"}`)
+	part := func(b []byte, n uint32, data []byte) []byte {
+		return append(binary.LittleEndian.AppendUint32(b, n), data...)
+	}
+	for name, req := range map[string][]byte{
+		// gophertunnel's login.Parse panics on a negative length.
+		"negative client data length": part(part(nil, uint32(len(head)), head), 0xffffffff, nil),
+		"client data past the end":    part(part(nil, uint32(len(head)), head), 1<<20, []byte("x")),
+		"negative certificate length": part(nil, 0x80000000, head),
+		"empty":                       nil,
+		"garbage":                     []byte("\x05\x00\x00\x00{}{}{"),
+	} {
+		if err := loginWith(t, l, req); err == nil {
+			t.Fatalf("%s: logged in", name)
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
+	if err != nil {
+		t.Fatalf("dial after the hostile logins: %v", err)
+	}
+	defer conn.Close()
+	select {
+	case <-spawned:
+	case <-ctx.Done():
+		t.Fatal("server did not spawn the client after the hostile logins")
+	}
+}
+
+// loginWith sends a Login of a connection request and returns the error
+// that ends the connection, nil if the server went on with the login.
+func loginWith(t *testing.T, l *Listener, req []byte) error {
+	t.Helper()
+	key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	nn, err := nethernet.Dialer{Key: key}.DialContext(ctx, l.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer nn.Close()
+	_ = nn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	b := bedrock.NewConn(nn, bedrock.Config{})
+	send := func(pk proto.Packet) {
+		w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+		pk.Encode(&w)
+		_ = b.WritePacket(w.B)
+		_ = b.Flush()
+	}
+	send(&v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
+	if _, err := b.ReadPacket(); err != nil {
+		t.Fatal(err)
+	}
+	b.EnableCompression(bedrock.Flate{})
+	send(&v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: req})
+	for {
+		raw, err := b.ReadPacket()
+		if err != nil {
+			return err
+		}
+		if h, _, _ := bedrock.ReadHeader(raw); h.ID == packet.IDServerToClientHandshake {
+			return nil
+		}
+	}
+}
+
 // TestHandshakeAsBDS logs in packet by packet: as BDS does, the server
 // asks for the handshake after the login, with a salt signed by the key it
 // names, and goes on once the client answers.

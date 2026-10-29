@@ -304,6 +304,14 @@ func (l *Listener) login(nn *nethernet.Conn) {
 		return
 	}
 	l.players.Add(1)
+	defer func() {
+		// A panic is a bug of the login, which no client may use to take
+		// the server down: the client is dropped.
+		if v := recover(); v != nil {
+			l.cfg.Log.Error("login panicked", "raddr", nn.RemoteAddr(), "panic", v)
+			_ = c.Close()
+		}
+	}()
 	l.updateStatus()
 	_ = nn.SetReadDeadline(time.Now().Add(loginTimeout))
 	if err := c.login(); err != nil {
