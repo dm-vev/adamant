@@ -24,6 +24,9 @@ func (CommandBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.Tx
 	if !canUseGameMasterBlocks(c) {
 		return fmt.Errorf("only creative operators may edit command blocks")
 	}
+	if len(pk.Command) > maxNBTString || len(pk.Name) > maxNBTString || len(pk.LastOutput) > maxNBTString {
+		return fmt.Errorf("command block text over %d bytes", maxNBTString)
+	}
 	if !pk.Block {
 		handle, ok := s.entityFromRuntimeID(pk.MinecartEntityRuntimeID)
 		if !ok {

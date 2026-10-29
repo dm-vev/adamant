@@ -18,6 +18,9 @@ func (h *CommandRequestHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, 
 		return fmt.Errorf("command request packet must never have the internal field set to true")
 	}
 
+	if len(pk.CommandLine) > maxNBTString {
+		return fmt.Errorf("command line over %d bytes", maxNBTString)
+	}
 	s.setCommandOrigin(pk.CommandOrigin)
 	c.ExecuteCommand(pk.CommandLine)
 	return nil

@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -14,7 +15,7 @@ import (
 type BookEditHandler struct{}
 
 // Handle ...
-func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Controllable) error {
+func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllable) error {
 	pk := p.(*v2193.BookEditPacket)
 
 	it, err := s.inv.Item(int(pk.InventorySlot))
@@ -30,8 +31,8 @@ func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Contr
 	if page >= 50 || page < 0 {
 		return fmt.Errorf("page number %v is out of bounds", pk.PageNumber)
 	}
-	if len(pk.Text) > 256 {
-		return fmt.Errorf("text can not be longer than 256 bytes")
+	if len(pk.Text) > 256 || !utf8.ValidString(pk.Text) {
+		return fmt.Errorf("text must be UTF-8 of at most 256 bytes")
 	}
 
 	slot := int(pk.InventorySlot)
@@ -71,7 +72,11 @@ func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Contr
 		}
 		book = book.SwapPages(page, int(pk.SecondaryPageNumber))
 	case packet.BookActionSign:
-		_ = s.inv.SetItem(slot, it.WithItem(item.WrittenBook{Title: pk.Title, Author: pk.Author, Pages: book.Pages, Generation: item.OriginalGeneration()}))
+		if !validText(pk.Title, maxBookTitle) {
+			return fmt.Errorf("title must be UTF-8 of at most %d characters", maxBookTitle)
+		}
+		// The author is the player who signs, whoever the client names.
+		_ = s.inv.SetItem(slot, it.WithItem(item.WrittenBook{Title: pk.Title, Author: c.Name(), Pages: book.Pages, Generation: item.OriginalGeneration()}))
 		return nil
 	}
 	_ = s.inv.SetItem(slot, it.WithItem(book))

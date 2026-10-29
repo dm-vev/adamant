@@ -25,6 +25,10 @@ func (TextHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllabl
 	if pk.XUID != s.conn.IdentityData().XUID {
 		return fmt.Errorf("XUID must be equal to player's XUID")
 	}
+	if !validText(pk.Message, maxChatLength) {
+		// As BDS does, a message too long to pass on is dropped.
+		return nil
+	}
 	c.Chat(pk.Message)
 	return nil
 }
