@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -74,7 +75,7 @@ func (s *Session) flushBlockUpdates() {
 	var leftover map[blockUpdateKey]blockUpdateData
 	for key, update := range updates {
 		if sent < maxBlockUpdatesPerTick {
-			s.writePacket(&packet.UpdateBlock{
+			s.writePacket(&v2193.UpdateBlockPacket{
 				Position:          update.pos,
 				NewBlockRuntimeID: update.runtimeID,
 				Flags:             packet.BlockUpdateNetwork,

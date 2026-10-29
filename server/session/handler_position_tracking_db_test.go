@@ -16,7 +16,7 @@ func TestPositionTrackingDBHandlerMissingAndTracked(t *testing.T) {
 	pos := cube.Pos{4, 65, 6}
 	handle := w.TrackPosition(pos, 0)
 	c := trackingControllable{inv: inventory.New(36, nil)}
-	s := &Session{packets: make(chan packet.Packet, 2), closeBackground: make(chan struct{})}
+	s := &Session{packets: make(chan queuedPacket, 2), closeBackground: make(chan struct{})}
 	h := &PositionTrackingDBHandler{}
 
 	w.Do(func(tx *world.Tx) {

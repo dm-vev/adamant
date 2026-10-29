@@ -18,6 +18,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -341,7 +342,7 @@ func (s *Session) viewEntityAbsoluteMovement(id uint64, e world.Entity, pos mgl6
 	if authoritative {
 		flags |= packet.MoveFlagTeleport
 	}
-	s.writePacket(&packet.MoveActorAbsolute{
+	s.writePacket(&v2193.MoveActorAbsolutePacket{
 		EntityRuntimeID: id,
 		Position:        vec64To32(entityNetworkPosition(e, pos)),
 		Rotation:        vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), entityHeadYaw(e, rot.Yaw())}),
@@ -354,7 +355,7 @@ func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 	if s.entityHidden(e) {
 		return
 	}
-	s.writePacket(&packet.SetActorMotion{
+	s.writePacket(&v2193.SetActorMotionPacket{
 		EntityRuntimeID: s.entityRuntimeID(e),
 		Velocity:        vec64To32(velocity),
 	})
@@ -410,7 +411,7 @@ func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 		s.teleportPos.Store(&position)
 	}
 
-	s.writePacket(&packet.SetActorMotion{EntityRuntimeID: id})
+	s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: id})
 	if _, ok := e.(Controllable); ok {
 		s.writePacket(&packet.MovePlayer{
 			EntityRuntimeID: id,
@@ -425,7 +426,7 @@ func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 		})
 		return
 	}
-	s.writePacket(&packet.MoveActorAbsolute{
+	s.writePacket(&v2193.MoveActorAbsolutePacket{
 		EntityRuntimeID: id,
 		Position:        vec64To32(entityNetworkPosition(e, position)),
 		Rotation:        vec64To32(mgl64.Vec3{pitch, yaw, yaw}),

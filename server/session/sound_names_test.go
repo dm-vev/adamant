@@ -14,7 +14,7 @@ import (
 )
 
 func TestJavaSoundsPlayTheirBedrockDefinitions(t *testing.T) {
-	conn := &packetConn{packets: make(chan packet.Packet, 64)}
+	conn := &packetConn{packets: make(chan any, 64)}
 	viewer := session.Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil)), MaxChunkRadius: 1}.New(conn)
 	t.Cleanup(viewer.CloseConnection)
 	for _, name := range []string{

@@ -113,7 +113,7 @@ func TestKilledMobSendsDeathWithoutImmediateRemoveActor(t *testing.T) {
 			t.Cleanup(func() { _ = w.Close() })
 			viewer := testSession("lethal-hit")
 			viewer.br = world.DefaultBlockRegistry
-			viewer.packets = make(chan packet.Packet, 1024)
+			viewer.packets = make(chan queuedPacket, 1024)
 			var loader *world.Loader
 			if err := w.Do(func(tx *world.Tx) {
 				tx.SetBlock(cube.Pos{8, 63, 8}, block.Stone{}, nil)

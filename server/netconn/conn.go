@@ -18,6 +18,9 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -56,6 +59,8 @@ type Conn struct {
 	// w encodes packets into buf for the shield ID wShield.
 	w       *protocol.Writer
 	wShield int32
+	// pw encodes the packets of the generated codecs.
+	pw wire.Writer
 
 	closeOnce sync.Once
 }
@@ -111,6 +116,20 @@ func (c *Conn) WritePacket(pk packet.Packet) error {
 	if c.buf.Cap() > keptBuffer {
 		// Large packets are rare: the buffer is not kept for them.
 		c.buf = bytes.Buffer{}
+	}
+	return err
+}
+
+// WriteProto adds a packet of the generated codecs to the batch sent at the
+// next Flush.
+func (c *Conn) WriteProto(pk proto.Packet) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	c.pw.B = bedrock.AppendHeader(c.pw.B[:0], bedrock.Header{ID: pk.ID()})
+	pk.Encode(&c.pw)
+	err := c.b.WritePacket(c.pw.B)
+	if cap(c.pw.B) > keptBuffer {
+		c.pw.B = nil
 	}
 	return err
 }
@@ -224,6 +243,8 @@ func (c *Conn) StartGameContext(ctx context.Context, data minecraft.GameData) er
 	for _, item := range data.Items {
 		if item.Name == "minecraft:shield" {
 			c.shieldID.Store(int32(item.RuntimeID))
+			// Items of the generated codecs find the shield by a process-wide ID.
+			v2193.SetShieldID(int32(item.RuntimeID))
 		}
 	}
 	c.runtimeID = data.EntityRuntimeID

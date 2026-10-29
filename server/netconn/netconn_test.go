@@ -458,3 +458,40 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 		t.Fatalf("%d static batches, want 1", len(l.statics))
 	}
 }
+
+// TestWriteProto writes a packet of the generated codecs, which a
+// gophertunnel client reads after the packets written before it.
+func TestWriteProto(t *testing.T) {
+	l := listen(t, Config{})
+	go func() {
+		c, err := l.Accept()
+		if err != nil {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := c.StartGameContext(ctx, gameData()); err != nil {
+			_ = c.Close()
+			return
+		}
+		_ = c.WritePacket(&packet.Text{TextType: packet.TextTypeRaw, Message: "first"})
+		_ = c.WriteProto(&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: "generated"})
+		_ = c.Flush()
+	}()
+	d, n := client(t, "Bot", false)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := d.DialContextNetwork(ctx, n, l.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if err := conn.DoSpawnContext(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"first", "generated"} {
+		if got := readText(t, conn); got != want {
+			t.Fatalf("read %q, want %q", got, want)
+		}
+	}
+}

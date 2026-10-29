@@ -102,7 +102,7 @@ func testSession(name string) *Session {
 	return &Session{
 		conn:             testConn{identity: login.IdentityData{Identity: uuid.NewString(), DisplayName: name}},
 		conf:             Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
-		packets:          make(chan packet.Packet, 8),
+		packets:          make(chan queuedPacket, 8),
 		closeBackground:  make(chan struct{}),
 		ent:              handle,
 		entityRuntimeIDs: map[*world.EntityHandle]uint64{handle: selfEntityRuntimeID},

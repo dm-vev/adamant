@@ -43,7 +43,7 @@ func TestResyncInventory(t *testing.T) {
 		br:      world.DefaultBlockRegistry,
 		inv:     inventory.New(36, nil),
 		offHand: inventory.New(1, nil),
-		packets: make(chan packet.Packet, 2),
+		packets: make(chan queuedPacket, 2),
 	}
 	s.ResyncInventory()
 
@@ -179,7 +179,7 @@ func abilityTestSession(t *testing.T, delay time.Duration) (*Session, *abilityTe
 	t.Helper()
 	s := &Session{
 		conn:               abilityTestConn{},
-		packets:            make(chan packet.Packet, 16),
+		packets:            make(chan queuedPacket, 16),
 		closeBackground:    make(chan struct{}),
 		abilityResendDelay: delay,
 	}
@@ -251,7 +251,7 @@ func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
 	s := &Session{
 		br:              world.DefaultBlockRegistry,
 		recipes:         make(map[uint32]recipe.Recipe),
-		packets:         make(chan packet.Packet, 1),
+		packets:         make(chan queuedPacket, 1),
 		closeBackground: make(chan struct{}),
 	}
 	s.sendRecipes()
@@ -1036,7 +1036,7 @@ func craftingTestSession() *Session {
 		ui:              inventory.New(51, nil),
 		inv:             inventory.New(36, nil),
 		offHand:         inventory.New(1, nil),
-		packets:         make(chan packet.Packet, 4),
+		packets:         make(chan queuedPacket, 4),
 		closeBackground: make(chan struct{}),
 	}
 }

@@ -45,15 +45,15 @@ type Session struct {
 	bossBarMu     sync.Mutex
 	bossBarIDs    map[string]int64
 	nextBossBarID int64
-	packets       chan packet.Packet
+	packets       chan queuedPacket
 	// packetsMu protects the overflow FIFO and the packets held. The channel
 	// holds the first packets; bursts spill into pendingPackets without
 	// blocking the world owner. While the world of the session ticks, packets
 	// are held in heldPackets and handed to the writer at once afterwards.
 	packetsMu      sync.Mutex
-	pendingPackets []packet.Packet
+	pendingPackets []queuedPacket
 	holdPackets    int
-	heldPackets    []packet.Packet
+	heldPackets    []queuedPacket
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
@@ -245,7 +245,7 @@ func (conf Config) New(conn Conn) *Session {
 		openChunkTransactions: make([]map[uint64]struct{}, 0, 8),
 		closeBackground:       make(chan struct{}),
 		handlers:              map[uint32]packetHandler{},
-		packets:               make(chan packet.Packet, 256),
+		packets:               make(chan queuedPacket, 256),
 		entityRuntimeIDs:      map[*world.EntityHandle]uint64{},
 		entities:              map[uint64]*world.EntityHandle{},
 		hiddenEntities:        map[uuid.UUID]struct{}{},

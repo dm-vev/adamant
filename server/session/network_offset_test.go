@@ -16,6 +16,8 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -48,7 +50,7 @@ func TestEntityNetworkPositionConsistentAcrossPackets(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			conn := &packetConn{packets: make(chan packet.Packet, 64)}
+			conn := &packetConn{packets: make(chan any, 64)}
 			viewer := session.Config{
 				Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
 				MaxChunkRadius: 1,
@@ -89,7 +91,7 @@ func TestDroppedItemNetworkHeightAboveSurface(t *testing.T) {
 		{name: "top slab", floor: block.Slab{Block: block.Stone{}, Top: true}, surface: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			conn := &packetConn{packets: make(chan packet.Packet, 64)}
+			conn := &packetConn{packets: make(chan any, 64)}
 			viewer := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1}.New(conn)
 			t.Cleanup(viewer.CloseConnection)
 			w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
@@ -127,7 +129,7 @@ func TestDroppedItemNetworkHeightAboveSurface(t *testing.T) {
 }
 
 func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
-	conn := &packetConn{packets: make(chan packet.Packet, 1024)}
+	conn := &packetConn{packets: make(chan any, 1024)}
 	viewer := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1}.New(conn)
 	t.Cleanup(viewer.CloseConnection)
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
@@ -193,7 +195,7 @@ func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
 	}
 }
 
-func entityPacketPositions(t *testing.T, packets <-chan packet.Packet, entityType string) (spawn, move, teleport mgl32.Vec3) {
+func entityPacketPositions(t *testing.T, packets <-chan any, entityType string) (spawn, move, teleport mgl32.Vec3) {
 	t.Helper()
 	timer := time.NewTimer(time.Second)
 	defer timer.Stop()
@@ -215,7 +217,7 @@ func entityPacketPositions(t *testing.T, packets <-chan packet.Packet, entityTyp
 				}
 			case *packet.MovePlayer:
 				teleport = pk.Position
-			case *packet.MoveActorAbsolute:
+			case *v2193.MoveActorAbsolutePacket:
 				if pk.Flags&packet.MoveFlagTeleport != 0 {
 					teleport = pk.Position
 				} else {
@@ -231,8 +233,10 @@ func entityPacketPositions(t *testing.T, packets <-chan packet.Packet, entityTyp
 	}
 }
 
+// packetConn passes on the packets written to it, gophertunnel's and those
+// of the generated codecs.
 type packetConn struct {
-	packets chan packet.Packet
+	packets chan any
 }
 
 func (*packetConn) Close() error                                               { return nil }
@@ -244,6 +248,7 @@ func (*packetConn) Flush() error                                               {
 func (*packetConn) RemoteAddr() net.Addr                                       { return &net.TCPAddr{} }
 func (*packetConn) ReadPacket() (packet.Packet, error)                         { return nil, io.EOF }
 func (c *packetConn) WritePacket(pk packet.Packet) error                       { c.packets <- pk; return nil }
+func (c *packetConn) WriteProto(pk proto.Packet) error                         { c.packets <- pk; return nil }
 func (*packetConn) StartGameContext(context.Context, minecraft.GameData) error { return nil }
 func (*packetConn) IdentityData() login.IdentityData {
 	return login.IdentityData{Identity: uuid.NewString(), DisplayName: "viewer"}

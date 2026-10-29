@@ -101,7 +101,7 @@ func TestFlightInputFlags(t *testing.T) {
 				t.Fatalf("start flying = %v, want %v", c.flying, test.startFlying)
 			}
 			if !test.mode.AllowsFlying() {
-				assertFlightAbilities(t, <-s.packets, test.mode, false)
+				assertFlightAbilities(t, (<-s.packets).(packet.Packet), test.mode, false)
 			}
 
 			c.flying = true
@@ -113,7 +113,7 @@ func TestFlightInputFlags(t *testing.T) {
 				for range 2 {
 					<-s.packets
 				}
-				assertFlightAbilities(t, <-s.packets, test.mode, true)
+				assertFlightAbilities(t, (<-s.packets).(packet.Packet), test.mode, true)
 			}
 		})
 	}
@@ -128,7 +128,7 @@ func inputFlags(flag int) protocol.InputFlags {
 func newFlightTestSession() *Session {
 	return &Session{
 		conf:            Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
-		packets:         make(chan packet.Packet, 4),
+		packets:         make(chan queuedPacket, 4),
 		closeBackground: make(chan struct{}),
 	}
 }
