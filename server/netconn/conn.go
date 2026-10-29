@@ -10,6 +10,7 @@ package netconn
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -53,6 +54,8 @@ type Conn struct {
 	// deferred holds packets read during the login and the spawn that the
 	// session reads first.
 	deferred [][]byte
+	// limits holds the buckets of packetLimits, used by the reader alone.
+	limits [len(packetLimits)]limitBucket
 
 	writeMu sync.Mutex
 	buf     bytes.Buffer
@@ -140,9 +143,13 @@ const keptBuffer = 64 << 10
 // Flush sends the packets written since the last flush as one batch.
 func (c *Conn) Flush() error { return c.b.Flush() }
 
-// ReadPacket returns the next packet of the client.
+// ReadPacket returns the next packet of the client. A packet over the
+// bucket of its kind is dropped.
 func (c *Conn) ReadPacket() (packet.Packet, error) {
 	raw, err := c.next()
+	for err == nil && c.overLimit(raw) {
+		raw, err = c.next()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -156,6 +163,61 @@ func (c *Conn) ReadPacket() (packet.Packet, error) {
 		return nil, DisconnectError(d.Message)
 	}
 	return pk, nil
+}
+
+// packetLimits are the buckets BDS keeps for packets a client has no need
+// to send often (packetlimitconfig.json of BDS 1.26.52): each packet fills
+// the bucket of its group by one, which drains at rate a second; a packet
+// that would overfill it is dropped.
+var packetLimits = [...]struct {
+	ids        []uint32
+	rate, size float64
+}{
+	{[]uint32{packet.IDRequestNetworkSettings, packet.IDClientToServerHandshake}, 0.0013, 1},
+	{[]uint32{packet.IDText, packet.IDBookEdit}, 10, 50},
+	{[]uint32{packet.IDPlayerSkin}, 10, 50},
+	{[]uint32{packet.IDPositionTrackingDBClientRequest}, 20, 60},
+}
+
+// limitGroup maps a packet ID to its group in packetLimits plus one, zero
+// for none.
+var limitGroup = func() (m [1024]uint8) {
+	for i, l := range packetLimits {
+		for _, id := range l.ids {
+			m[id] = uint8(i + 1)
+		}
+	}
+	return m
+}()
+
+// limitBucket is the level of the bucket of a group.
+type limitBucket struct {
+	level float64
+	last  time.Time
+}
+
+// overLimit reports a packet that would overfill the bucket of its group,
+// filling it otherwise.
+func (c *Conn) overLimit(raw []byte) bool {
+	id, n := binary.Uvarint(raw)
+	if n <= 0 {
+		return false
+	}
+	g := limitGroup[id&0x3ff]
+	if g == 0 {
+		return false
+	}
+	l, b := &packetLimits[g-1], &c.limits[g-1]
+	now := time.Now()
+	if !b.last.IsZero() {
+		b.level = max(0, b.level-now.Sub(b.last).Seconds()*l.rate)
+	}
+	b.last = now
+	if b.level+1 > l.size {
+		return true
+	}
+	b.level++
+	return false
 }
 
 // next returns the next packet as read, the deferred ones first.

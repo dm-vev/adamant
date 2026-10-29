@@ -543,3 +543,60 @@ func TestFloodingClientIsCut(t *testing.T) {
 		t.Fatal("the flood was not cut off")
 	}
 }
+
+// TestChatOverItsBucketIsDropped reads 100 Text packets sent at once: as
+// BDS does, the server takes the 50 their bucket holds and drops the rest,
+// and reads the packets of other kinds after them.
+func TestChatOverItsBucketIsDropped(t *testing.T) {
+	l := listen(t, Config{})
+	texts := make(chan int, 1)
+	go func() {
+		c, err := l.Accept()
+		if err != nil {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := c.StartGameContext(ctx, gameData()); err != nil {
+			_ = c.Close()
+			return
+		}
+		n := 0
+		for {
+			pk, err := c.ReadPacket()
+			if err != nil {
+				return
+			}
+			switch pk.(type) {
+			case *packet.Text:
+				n++
+			case *packet.Emote:
+				texts <- n
+				return
+			}
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	for range 100 {
+		_ = conn.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeChat, SourceName: "Player", Message: "spam"})
+	}
+	_ = conn.WritePacket(&v2193.EmotePacket{EntityRuntimeID: 1, EmoteID: "wave"})
+	if err := conn.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case n := <-texts:
+		// The bucket drains 10 a second while the packets go.
+		if n < 50 || n > 55 {
+			t.Fatalf("read %d of 100 Text packets, want 50", n)
+		}
+	case <-ctx.Done():
+		t.Fatal("the server did not read past the chat")
+	}
+}
