@@ -7,10 +7,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha512"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net"
 	"strings"
 	"testing"
@@ -19,7 +23,9 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -598,5 +604,89 @@ func TestChatOverItsBucketIsDropped(t *testing.T) {
 		}
 	case <-ctx.Done():
 		t.Fatal("the server did not read past the chat")
+	}
+}
+
+// TestHandshakeAsBDS logs in packet by packet: as BDS does, the server
+// asks for the handshake after the login, with a salt signed by the key it
+// names, and goes on once the client answers.
+func TestHandshakeAsBDS(t *testing.T) {
+	l := listen(t, Config{})
+	serve(t, l)
+	key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	nn, err := nethernet.Dialer{Key: key}.DialContext(ctx, l.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer nn.Close()
+	_ = nn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	b := bedrock.NewConn(nn, bedrock.Config{})
+	send := func(pk proto.Packet) {
+		w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+		pk.Encode(&w)
+		if err := b.WritePacket(w.B); err != nil {
+			t.Fatal(err)
+		}
+		if err := b.Flush(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	next := func() proto.Packet {
+		raw, err := b.ReadPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		h, body, _ := bedrock.ReadHeader(raw)
+		pk := v2193.New(h.ID)
+		r := wire.NewReader(body)
+		pk.Decode(r)
+		if r.Err() != nil {
+			t.Fatalf("decode %T: %v", pk, r.Err())
+		}
+		return pk
+	}
+	send(&v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
+	if _, ok := next().(*v2193.NetworkSettingsPacket); !ok {
+		t.Fatal("no NetworkSettings")
+	}
+	b.EnableCompression(bedrock.Flate{})
+	req, err := ourlogin.EncodeOffline(ourlogin.Identity{DisplayName: "Bot", Identity: ourlogin.NewUUID()},
+		ourlogin.DefaultClientData(l.Addr().String(), "Bot", v2193.Version), key, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	send(&v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: req})
+	pk := next()
+	hs, ok := pk.(*v2193.ServerToClientHandshakePacket)
+	if !ok {
+		t.Fatalf("%T after the login, want ServerToClientHandshake", pk)
+	}
+	parts := strings.Split(string(hs.JWT), ".")
+	if len(parts) != 3 {
+		t.Fatalf("token %q", hs.JWT)
+	}
+	header, _ := base64.RawURLEncoding.DecodeString(parts[0])
+	var h struct{ Alg, X5U string }
+	_ = json.Unmarshal(header, &h)
+	der, _ := base64.StdEncoding.DecodeString(h.X5U)
+	pub, err := x509.ParsePKIXPublicKey(der)
+	server, isKey := pub.(*ecdsa.PublicKey)
+	sig, _ := base64.RawURLEncoding.DecodeString(parts[2])
+	sum := sha512.Sum384([]byte(parts[0] + "." + parts[1]))
+	if h.Alg != "ES384" || err != nil || !isKey || len(sig) != 96 ||
+		!ecdsa.Verify(server, sum[:], new(big.Int).SetBytes(sig[:48]), new(big.Int).SetBytes(sig[48:])) {
+		t.Fatalf("token not signed by the key it names: header %s", header)
+	}
+	payload, _ := base64.RawURLEncoding.DecodeString(parts[1])
+	var claims struct{ Salt string }
+	_ = json.Unmarshal(payload, &claims)
+	if salt, err := base64.RawStdEncoding.DecodeString(claims.Salt); err != nil || len(salt) != 16 {
+		t.Fatalf("salt %q", claims.Salt)
+	}
+	send(&v2193.ClientToServerHandshakePacket{})
+	if ps, ok := next().(*v2193.PlayStatusPacket); !ok || ps.Status != 0 {
+		t.Fatalf("no login success after the handshake")
 	}
 }

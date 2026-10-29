@@ -88,3 +88,16 @@ func TestNewUUID(t *testing.T) {
 		t.Fatalf("UUID %s", u)
 	}
 }
+
+func TestHandshakeToken(t *testing.T) {
+	key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	token, err := HandshakeToken(key, []byte{1, 2, 3, 4, 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claims struct{ Salt string }
+	verify(t, &key.PublicKey, token, &claims)
+	if claims.Salt != "AQIDBAU" {
+		t.Fatalf("salt %q", claims.Salt)
+	}
+}

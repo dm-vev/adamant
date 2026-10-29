@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,6 +18,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/dm-vev/adamant/net/bedrock"
+	bedrocklogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -84,6 +88,10 @@ type Listener struct {
 
 	staticMu sync.Mutex
 	statics  map[staticKey][]byte
+
+	// key signs the salt of the handshake: the key of the server identity,
+	// or one made for the listener.
+	key *ecdsa.PrivateKey
 }
 
 // Static is a packet that is the same for every connection, such as the
@@ -154,6 +162,12 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	}
 	if l.batches.ByteRate == 0 {
 		l.batches.ByteRate, l.batches.ByteBurst = defaultByteRate, defaultByteBurst
+	}
+	if l.key = nn.Key; l.key == nil {
+		var err error
+		if l.key, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader); err != nil {
+			return nil, err
+		}
 	}
 	if !cfg.AuthenticationDisabled {
 		var err error
@@ -344,13 +358,33 @@ func (c *Conn) login() error {
 		_ = c.Flush()
 		return err
 	}
-	// NetherNet encrypts the connection itself: no handshake follows.
+	if err := c.handshake(); err != nil {
+		return err
+	}
 	_ = c.WritePacket(&packet.PlayStatus{Status: packet.PlayStatusLoginSuccess})
 	_ = c.WritePacket(c.l.packsInfo())
 	if err := c.Flush(); err != nil {
 		return err
 	}
 	return c.sendPacks()
+}
+
+// handshake asks for the handshake that turns encryption on over RakNet,
+// as BDS does over NetherNet too, where the connection is encrypted
+// already: neither end turns anything on.
+func (c *Conn) handshake() error {
+	salt := make([]byte, 16)
+	_, _ = rand.Read(salt)
+	token, err := bedrocklogin.HandshakeToken(c.l.key, salt)
+	if err != nil {
+		return err
+	}
+	_ = c.WritePacket(&packet.ServerToClientHandshake{JWT: []byte(token)})
+	if err := c.Flush(); err != nil {
+		return err
+	}
+	_, err = c.read(packet.IDClientToServerHandshake)
+	return err
 }
 
 // authenticate checks the login request: the Xbox Live chain if the server

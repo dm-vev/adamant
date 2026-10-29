@@ -229,6 +229,19 @@ func EncodeOffline(id Identity, data ClientData, key *ecdsa.PrivateKey, now time
 	return append(b, clientData...), nil
 }
 
+// HandshakeToken returns the token of a ServerToClientHandshake: a salt
+// signed by the key of the server, which the client takes, with the key,
+// to derive the key that encrypts the connection.
+func HandshakeToken(key *ecdsa.PrivateKey, salt []byte) (string, error) {
+	pub, err := MarshalPublicKey(&key.PublicKey)
+	if err != nil {
+		return "", err
+	}
+	return sign(key, pub, struct {
+		Salt string `json:"salt"`
+	}{base64.RawStdEncoding.EncodeToString(salt)})
+}
+
 // MarshalPublicKey encodes a public key as the login does: base64 of its
 // DER SubjectPublicKeyInfo.
 func MarshalPublicKey(key *ecdsa.PublicKey) (string, error) {
