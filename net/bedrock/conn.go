@@ -123,6 +123,30 @@ func (c *Conn) WritePacket(packet []byte) error {
 	return nil
 }
 
+// EncodeBatch returns a batch of packets as a Conn compressing with comp
+// sends it, for SendBatch to send on many connections.
+func EncodeBatch(comp Compression, packets ...[]byte) ([]byte, error) {
+	var body []byte
+	for _, p := range packets {
+		body = AppendPacket(body, p)
+	}
+	return comp.Compress([]byte{byte(comp.Algorithm())}, body)
+}
+
+// SendBatch sends a batch made by EncodeBatch with the compression of the
+// Conn, after the packets gathered so far. The batch is not kept.
+func (c *Conn) SendBatch(msg []byte) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	if c.alg == nil || len(msg) == 0 || msg[0] != byte(c.alg.Algorithm()) && msg[0] != noneByte {
+		return errors.New("bedrock: batch of another compression")
+	}
+	if err := c.flush(); err != nil {
+		return err
+	}
+	return c.transport.Send(msg)
+}
+
 // Flush sends the packets gathered as one batch.
 func (c *Conn) Flush() error {
 	c.writeMu.Lock()

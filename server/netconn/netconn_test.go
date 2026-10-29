@@ -398,3 +398,63 @@ func TestOurClientJoins(t *testing.T) {
 		}
 	}
 }
+
+// staticText is a Text the same for every connection.
+type staticText struct{ packet.Packet }
+
+func (*staticText) StaticPacket() {}
+
+// TestStaticPacketsEncodeOnce sends one Static to two clients: both read
+// it, from a batch encoded once.
+func TestStaticPacketsEncodeOnce(t *testing.T) {
+	l := listen(t, Config{})
+	st := &staticText{&packet.Text{TextType: packet.TextTypeRaw, Message: strings.Repeat("static ", 100)}}
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				defer cancel()
+				if err := c.StartGameContext(ctx, gameData()); err != nil {
+					_ = c.Close()
+					return
+				}
+				_ = c.WritePacket(&packet.Text{TextType: packet.TextTypeRaw, Message: "first"})
+				_ = c.WritePacket(st)
+				_ = c.Flush()
+			}()
+		}
+	}()
+	for range 2 {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+		var got []string
+		for len(got) < 2 {
+			pk, err := conn.ReadPacket()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if text, ok := pk.(*v2193.TextPacket); ok {
+				got = append(got, text.Message)
+			}
+		}
+		stop()
+		cancel()
+		_ = conn.Close()
+		if got[0] != "first" || got[1] != st.Packet.(*packet.Text).Message {
+			t.Fatalf("read %q", got)
+		}
+	}
+	l.staticMu.Lock()
+	defer l.staticMu.Unlock()
+	if len(l.statics) != 1 {
+		t.Fatalf("%d static batches, want 1", len(l.statics))
+	}
+}

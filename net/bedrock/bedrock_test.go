@@ -220,3 +220,34 @@ func FuzzReadBatch(f *testing.F) {
 		t.Fatal(fmt.Sprint("read more packets than the limit allows"))
 	})
 }
+
+// TestSendBatch sends a batch encoded once, after the packets gathered
+// before it, on two connections.
+func TestSendBatch(t *testing.T) {
+	recipes := packet(52, bytes.Repeat([]byte("recipe "), 2000))
+	msg, err := EncodeBatch(Flate{Level: 9, FixedBelow: -1}, recipes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		a, b := pipes()
+		ca, cb := NewConn(a, Config{}), NewConn(b, Config{})
+		ca.EnableCompression(Flate{})
+		cb.EnableCompression(Flate{})
+		if err := ca.SendBatch([]byte{1, 0}); err == nil {
+			t.Fatal("sent a batch of another compression")
+		}
+		before, after := packet(9, []byte("before")), packet(9, []byte("after"))
+		_ = ca.WritePacket(before)
+		if err := ca.SendBatch(msg); err != nil {
+			t.Fatal(err)
+		}
+		_ = ca.WritePacket(after)
+		_ = ca.Flush()
+		for _, want := range [][]byte{before, recipes, after} {
+			if p, err := cb.ReadPacket(); err != nil || !bytes.Equal(p, want) {
+				t.Fatalf("read %d bytes, %v; want %d", len(p), err, len(want))
+			}
+		}
+	}
+}

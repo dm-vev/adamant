@@ -1,6 +1,8 @@
 package netconn
 
 import (
+	"bytes"
+	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
@@ -70,6 +72,56 @@ type Listener struct {
 	done     chan struct{}
 	once     sync.Once
 	wg       sync.WaitGroup
+
+	staticMu sync.Mutex
+	statics  map[staticKey][]byte
+}
+
+// Static is a packet that is the same for every connection, such as the
+// recipes or the creative inventory. Its batch is encoded and compressed
+// once and kept, by the identity of the packet, as long as the listener
+// lives: a Static must not change after it is written.
+type Static interface {
+	packet.Packet
+	// StaticPacket marks the packet; it does nothing.
+	StaticPacket()
+}
+
+// staticKey names the batch of a Static encoded with a shield ID, which
+// the items in it depend on.
+type staticKey struct {
+	pk     Static
+	shield int32
+}
+
+// staticCompression compresses the batches of Statics: compressed once,
+// they take the best level.
+var staticCompression = bedrock.Flate{Level: flate.BestCompression, FixedBelow: -1}
+
+// static returns the batch of a Static, encoding it the first time.
+func (l *Listener) static(pk Static, shield int32) ([]byte, error) {
+	l.staticMu.Lock()
+	defer l.staticMu.Unlock()
+	key := staticKey{pk, shield}
+	if msg, ok := l.statics[key]; ok {
+		return msg, nil
+	}
+	var buf bytes.Buffer
+	buf.Write(bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()}))
+	pk.Marshal(protocol.NewWriter(&buf, shield))
+	comp := l.cfg.Compression
+	if _, ok := comp.(bedrock.Flate); ok {
+		comp = staticCompression
+	}
+	msg, err := bedrock.EncodeBatch(comp, buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	if l.statics == nil {
+		l.statics = make(map[staticKey][]byte)
+	}
+	l.statics[key] = msg
+	return msg, nil
 }
 
 // Listen listens for clients on address with the transport configured by

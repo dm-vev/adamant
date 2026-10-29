@@ -87,8 +87,16 @@ func (c *Conn) Latency() time.Duration { return c.nn.Latency() }
 // RemoteAddr returns the address of the client.
 func (c *Conn) RemoteAddr() net.Addr { return c.nn.RemoteAddr() }
 
-// WritePacket adds a packet to the batch sent at the next Flush.
+// WritePacket adds a packet to the batch sent at the next Flush. A Static
+// goes in a batch of its own, encoded once for every connection.
 func (c *Conn) WritePacket(pk packet.Packet) error {
+	if st, ok := pk.(Static); ok {
+		msg, err := c.l.static(st, c.shieldID.Load())
+		if err != nil {
+			return err
+		}
+		return c.b.SendBatch(msg)
+	}
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	c.buf.Reset()
