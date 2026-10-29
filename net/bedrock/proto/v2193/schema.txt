@@ -1,11 +1,15 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
-# 456 declarations, 27 of them manual.
+# 455 declarations, 17 of them manual.
 
 type CommandEnum
-	manual codec is not a method taking an IO
+	Type string
+	ValueIndices []uint32
 
 type CommandOrigin
-	manual statement originStr := commandOriginToString(x.Origin)
+	Origin enum(commandOrigin) as uint32
+	UUID uuid
+	RequestID string
+	PlayerUniqueID int64
 
 type PlayerInventoryAction
 	LegacyRequestID varint32
@@ -531,7 +535,11 @@ packet 78 CommandBlockUpdate
 	ExecuteOnFirstTick bool
 
 packet 79 CommandOutput
-	manual statement outputTypeStr := commandOutputTypeToString(pk.OutputType)
+	CommandOrigin CommandOrigin
+	OutputType enum(commandOutputType) as uint8
+	SuccessCount uint32
+	OutputMessages []CommandOutputMessage
+	DataSet ?string
 
 packet 80 UpdateTrade
 	WindowID uint8
@@ -976,7 +984,15 @@ packet 163 FilterText
 	FromServer bool
 
 packet 164 ClientBoundDebugRenderer
-	manual statement typStr := clientBoundDebugRenderToString(pk.Type)
+	Type enum(clientBoundDebugRender) as uint32
+	if Type == 1
+		Text string
+		Position vec3
+		Red float32
+		Green float32
+		Blue float32
+		Alpha float32
+		Duration uint64
 
 packet 165 SyncActorProperty
 	PropertyData nbt
@@ -1443,7 +1459,13 @@ type ChainedSubcommand
 	Values []ChainedSubcommandValue
 
 type Command
-	manual statement permissionStr := commandPermissionToString(c.PermissionLevel)
+	Name string
+	Description string
+	Flags uint16
+	PermissionLevel enum(commandPermission) as uint8
+	AliasesOffset uint32
+	ChainedSubcommandOffsets []uint32
+	Overloads []CommandOverload
 
 type DynamicEnum
 	Type string
@@ -1508,7 +1530,10 @@ type CameraInstructionTarget
 	EntityUniqueID int64
 
 type CameraInstructionFieldOfView
-	manual statement easingType := easingTypeToString(x.EaseType)
+	FieldOfView float32
+	EaseTime float32
+	EaseType enum(easingType) as int32
+	Clear bool
 
 type CameraSplineInstruction
 	TotalTime float32
@@ -1567,7 +1592,16 @@ type AttributeLayerSettings
 	TransitionsPaused bool
 
 type EnvironmentAttributeData
-	manual statement easingType := easingTypeToString(x.EaseType)
+	AttributeName string
+	FromAttribute ?AttributeData
+	Attribute AttributeData
+	ToAttribute ?AttributeData
+	CurrentTransitionTicks uint32
+	TotalTransitionTicks uint32
+	EaseType enum(easingType) as int32
+	LocalTransitionTicks uint32
+	NoiseTransition bool
+	NoiseAlignment NoiseAlignment
 
 type DataStoreChangeEntry
 	manual nested field x.Change.DataStoreName
@@ -1603,6 +1637,11 @@ type SoundDataUpdate
 	case 4
 		Seconds float32
 	default
+
+type CommandOutputMessage
+	Message string
+	Success bool
+	Parameters []string
 
 type FullContainerName
 	ContainerID uint8
@@ -2218,10 +2257,14 @@ type CameraPresetAimAssist
 	Distance ?float32
 
 type CameraProgressOption
-	manual statement easingType := easingTypeToString(x.EaseType)
+	Value float32
+	Time float32
+	EaseType enum(easingType) as int32
 
 type CameraRotationOption
-	manual statement easingType := easingTypeToString(x.EaseType)
+	Value vec3
+	Time float32
+	EaseType enum(easingType) as int32
 
 type CarefulRestorationEvent
 
@@ -2244,14 +2287,6 @@ type CodeBuilderRuntimeActionEvent
 type CodeBuilderScoreboardEvent
 	ObjectiveName string
 	Score varint32
-
-type CommandEnumContext
-	manual codec is not a method taking an IO
-
-type CommandOutputMessage
-	Message string
-	Success bool
-	Parameters []string
 
 type CommandOverload
 	Chaining bool
@@ -2597,3 +2632,75 @@ type transferStackRequestAction
 
 type Unknown
 	Payload rest
+
+enum clientBoundDebugRender
+	0 cleardebugmarkers
+	1 adddebugmarkercube
+
+enum commandOrigin
+	0 player
+	1 commandblock
+	2 minecartcommandblock
+	3 devconsole
+	4 test
+	5 automationplayer
+	6 clientautomation
+	7 dedicatedserver
+	8 entity
+	9 virtual
+	10 gameargument
+	11 entityserver
+	12 precompiled
+	13 gamedirectorentityserver
+	14 scripting
+	15 executecontext
+
+enum commandOutputType
+	0 none
+	1 lastoutput
+	2 silent
+	3 alloutput
+	4 dataset
+
+enum commandPermission
+	0 any
+	1 gamedirectors
+	2 admin
+	3 host
+	4 owner
+	5 internal
+
+enum easingType
+	0 linear
+	1 spring
+	2 in_quad
+	3 out_quad
+	4 in_out_quad
+	5 in_cubic
+	6 out_cubic
+	7 in_out_cubic
+	8 in_quart
+	9 out_quart
+	10 in_out_quart
+	11 in_quint
+	12 out_quint
+	13 in_out_quint
+	14 in_sine
+	15 out_sine
+	16 in_out_sine
+	17 in_expo
+	18 out_expo
+	19 in_out_expo
+	20 in_circ
+	21 out_circ
+	22 in_out_circ
+	26 in_back
+	27 out_back
+	28 in_out_back
+	29 in_elastic
+	30 out_elastic
+	31 in_out_elastic
+	23 in_bounce
+	24 out_bounce
+	25 in_out_bounce
+	32 inverse_lerp

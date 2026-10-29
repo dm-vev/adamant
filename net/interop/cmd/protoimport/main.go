@@ -76,6 +76,13 @@ type decl struct {
 	manual string
 }
 
+// enum is an enum whose values go as names.
+type enum struct {
+	name string
+	// values and names hold each value, in decimal, and its name.
+	values, names []string
+}
+
 type importer struct {
 	pkgs   map[string]*packages.Package
 	funcs  map[*types.Func]*ast.FuncDecl
@@ -87,6 +94,9 @@ type importer struct {
 	writers map[string]*decl
 	queue   []*types.TypeName
 	decls   []*decl
+	enums   map[string]*enum
+	// enumList holds the enums in the order of their import.
+	enumList []*enum
 }
 
 func main() {
@@ -104,6 +114,7 @@ func main() {
 		owner:   map[*ast.FuncDecl]*packages.Package{},
 		types:   map[*types.TypeName]*decl{},
 		writers: map[string]*decl{},
+		enums:   map[string]*enum{},
 	}
 	for _, p := range pkgs {
 		if len(p.Errors) > 0 {
@@ -162,6 +173,12 @@ func main() {
 		}
 		for _, l := range d.lines {
 			b.WriteString("\t" + l + "\n")
+		}
+	}
+	for _, e := range im.enumList {
+		fmt.Fprintf(&b, "\nenum %s\n", e.name)
+		for i, v := range e.values {
+			fmt.Fprintf(&b, "\t%s %s\n", v, e.names[i])
 		}
 	}
 	if *out == "" {
@@ -283,7 +300,7 @@ func (im *importer) ref(t types.Type) (string, bool) {
 		return "", false
 	}
 	tn := named.Obj()
-	if im.method(tn, "Marshal") == nil {
+	if fd := im.method(tn, "Marshal"); fd == nil || fd.Type.Params.NumFields() != 1 {
 		return "", false
 	}
 	if _, ok := im.types[tn]; !ok {
@@ -313,7 +330,9 @@ func (im *importer) translate(fd *ast.FuncDecl) ([]string, string) {
 	case fd.Recv != nil && len(fd.Recv.List[0].Names) == 1 && len(names) == 1:
 		c.recv = p.TypesInfo.Defs[fd.Recv.List[0].Names[0]]
 		c.io = p.TypesInfo.Defs[names[0]]
-	case fd.Recv == nil && len(names) == 2:
+	case len(names) == 2 && (fd.Recv == nil || !usesRecv(p, fd)):
+		// A function, or a method of a context its body does not use,
+		// taking the IO and the value.
 		c.io = p.TypesInfo.Defs[names[0]]
 		c.recv = p.TypesInfo.Defs[names[1]]
 	}
@@ -330,6 +349,78 @@ func (im *importer) translate(fd *ast.FuncDecl) ([]string, string) {
 	return c.lines, ""
 }
 
+// usesRecv reports whether the body of a method uses its receiver.
+func usesRecv(p *packages.Package, fd *ast.FuncDecl) bool {
+	if len(fd.Recv.List[0].Names) == 0 {
+		return false
+	}
+	recv := p.TypesInfo.Defs[fd.Recv.List[0].Names[0]]
+	used := false
+	ast.Inspect(fd.Body, func(n ast.Node) bool {
+		if id, ok := n.(*ast.Ident); ok && recv != nil && p.TypesInfo.Uses[id] == recv {
+			used = true
+		}
+		return !used
+	})
+	return used
+}
+
+// enum imports the names a function fToString gives the values of an
+// enum: one switch, each case returning a name.
+func (im *importer) enum(fn *types.Func) (*enum, bool) {
+	name := strings.TrimSuffix(fn.Name(), "ToString")
+	if e, ok := im.enums[name]; ok {
+		return e, true
+	}
+	fd := im.funcs[fn]
+	if fd == nil || len(fd.Body.List) == 0 {
+		return nil, false
+	}
+	sw, ok := fd.Body.List[0].(*ast.SwitchStmt)
+	if !ok {
+		return nil, false
+	}
+	p := im.owner[fd]
+	e := &enum{name: name}
+	seen := map[string]bool{}
+	for _, st := range sw.Body.List {
+		cc := st.(*ast.CaseClause)
+		if cc.List == nil {
+			// The default names values without a name.
+			continue
+		}
+		if len(cc.Body) != 1 {
+			return nil, false
+		}
+		ret, ok := cc.Body[0].(*ast.ReturnStmt)
+		if !ok || len(ret.Results) != 1 {
+			return nil, false
+		}
+		s := p.TypesInfo.Types[ret.Results[0]].Value
+		if s == nil || s.Kind() != constant.String || seen["name "+constant.StringVal(s)] {
+			return nil, false
+		}
+		seen["name "+constant.StringVal(s)] = true
+		for _, v := range cc.List {
+			tv := p.TypesInfo.Types[v].Value
+			if tv == nil || tv.Kind() != constant.Int || seen[tv.ExactString()] {
+				return nil, false
+			}
+			seen[tv.ExactString()] = true
+			e.values = append(e.values, tv.ExactString())
+			e.names = append(e.names, constant.StringVal(s))
+		}
+	}
+	im.enums[name] = e
+	im.enumList = append(im.enumList, e)
+	return e, true
+}
+
+// enumLocal is a local holding the name of the value of a field.
+type enumLocal struct {
+	path, enum, goType string
+}
+
 // ctx translates one codec.
 type ctx struct {
 	im     *importer
@@ -341,6 +432,7 @@ type ctx struct {
 	// counts maps the locals that hold the length of a list to the wire
 	// type they are written as.
 	counts map[types.Object]string
+	enums  map[types.Object]enumLocal
 }
 
 func (c *ctx) emit(depth int, s string) {
@@ -357,6 +449,9 @@ func (c *ctx) block(stmts []ast.Stmt, depth int) error {
 	for i := 0; i < len(stmts); i++ {
 		s := stmts[i]
 		if as, ok := s.(*ast.AssignStmt); ok && as.Tok == token.DEFINE {
+			if c.enumLocal(as) {
+				continue
+			}
 			// n := T(len(x.F)) written as io.M(&n): the count of a list
 			// read and written with SliceOfLen.
 			if obj, wire, ok := c.countLocal(as, stmts[i+1:]); ok {
@@ -373,6 +468,56 @@ func (c *ctx) block(stmts []ast.Stmt, depth int) error {
 		}
 	}
 	return nil
+}
+
+// enumLocal recognises s := fToString(x.F): the field goes as the name of
+// its value, which io.String(&s) writes later.
+func (c *ctx) enumLocal(as *ast.AssignStmt) bool {
+	if len(as.Lhs) != 1 || len(as.Rhs) != 1 {
+		return false
+	}
+	id, ok := as.Lhs[0].(*ast.Ident)
+	if !ok {
+		return false
+	}
+	call, ok := as.Rhs[0].(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		return false
+	}
+	fn := c.callee(call)
+	if fn == nil || !strings.HasSuffix(fn.Name(), "ToString") {
+		return false
+	}
+	path, err := c.path(call.Args[0])
+	if err != nil {
+		return false
+	}
+	b, ok := c.pkg.TypesInfo.TypeOf(call.Args[0]).Underlying().(*types.Basic)
+	if !ok || b.Info()&types.IsInteger == 0 {
+		return false
+	}
+	e, ok := c.im.enum(fn)
+	if !ok {
+		return false
+	}
+	if c.enums == nil {
+		c.enums = map[types.Object]enumLocal{}
+	}
+	c.enums[c.pkg.TypesInfo.Defs[id]] = enumLocal{path: path, enum: e.name, goType: types.Typ[b.Kind()].Name()}
+	return true
+}
+
+// enumArg returns the enum local an argument &s points to.
+func (c *ctx) enumArg(e ast.Expr) (enumLocal, bool) {
+	if u, ok := e.(*ast.UnaryExpr); ok && u.Op == token.AND {
+		e = u.X
+	}
+	id, ok := e.(*ast.Ident)
+	if !ok {
+		return enumLocal{}, false
+	}
+	l, ok := c.enums[c.pkg.TypesInfo.Uses[id]]
+	return l, ok
 }
 
 // countLocal recognises a local holding the length of a list that the next
@@ -642,6 +787,9 @@ func (c *ctx) call(call *ast.CallExpr, depth int) error {
 			}
 			return c.put(depth, path, "bitset("+size+")")
 		}
+		if l, ok := c.enumArg(call.Args[0]); ok && name == "String" {
+			return c.put(depth, l.path, "enum("+l.enum+") as "+l.goType)
+		}
 		w, ok := primitives[name]
 		if !ok {
 			return fmt.Errorf("IO method %s", name)
@@ -658,6 +806,12 @@ func (c *ctx) call(call *ast.CallExpr, depth int) error {
 	fn := c.callee(call)
 	if fn == nil {
 		return fmt.Errorf("call %s", c.src(call))
+	}
+	if n := len(call.Args); n > 0 && strings.HasSuffix(fn.Name(), "FromString") {
+		if _, ok := c.enumArg(call.Args[n-1]); ok {
+			// The name read back into the field, which its enum codes.
+			return nil
+		}
 	}
 	if fn.Pkg() != nil && fn.Pkg().Path() == protocolPath && fn.Type().(*types.Signature).Recv() == nil {
 		if _, ok := countTypes[fn.Name()]; ok || helpers[fn.Name()] {

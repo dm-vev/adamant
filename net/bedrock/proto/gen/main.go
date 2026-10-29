@@ -6,8 +6,9 @@
 // one line per field read and written, "Name wiretype", with if, else,
 // switch and case lines around them. A declaration marked manual has no
 // codec yet: a packet becomes raw, its bytes kept as they are, and so does
-// every packet that holds a manual type, until the schema names a codec
-// written by hand in its "hand" line.
+// every packet that holds a manual type, until a codec is written by hand
+// in the package. An "enum name" declaration lists "value name" lines: a
+// field of wire type "enum(name) as T" goes as the name of its value.
 package main
 
 import (
@@ -51,8 +52,17 @@ type decl struct {
 	raw bool
 }
 
+// enum is an enum whose values go as names.
+type enum struct {
+	name          string
+	values, names []string
+}
+
 type schema struct {
 	decls []*decl
+	enums map[string]*enum
+	// enumList holds the enums in the order of the schema.
+	enumList []*enum
 	// byName holds the types by name; packets are never field types.
 	byName map[string]*decl
 	// hand holds the wire types and declarations written by hand.
@@ -94,8 +104,9 @@ func parse(path string) (*schema, error) {
 		return nil, err
 	}
 	defer f.Close()
-	s := &schema{byName: map[string]*decl{}, hand: map[string]bool{}}
+	s := &schema{byName: map[string]*decl{}, hand: map[string]bool{}, enums: map[string]*enum{}}
 	var cur *decl
+	var curEnum *enum
 	// stack holds the bodies open at each depth.
 	type frame struct {
 		list *[]*node
@@ -113,6 +124,7 @@ func parse(path string) (*schema, error) {
 		text := strings.TrimSpace(line)
 		if depth == 0 {
 			fields := strings.Fields(text)
+			curEnum = nil
 			switch fields[0] {
 			case "hand":
 				for _, h := range fields[1:] {
@@ -127,6 +139,15 @@ func parse(path string) (*schema, error) {
 				cur = &decl{packet: true, id: id, name: fields[2]}
 			case "type":
 				cur = &decl{name: fields[1]}
+			case "enum":
+				if len(fields) != 2 || s.enums[fields[1]] != nil {
+					return nil, fmt.Errorf("line %d: %q", n, text)
+				}
+				curEnum = &enum{name: fields[1]}
+				s.enums[curEnum.name] = curEnum
+				s.enumList = append(s.enumList, curEnum)
+				cur = nil
+				continue
 			default:
 				return nil, fmt.Errorf("line %d: %q", n, text)
 			}
@@ -135,6 +156,15 @@ func parse(path string) (*schema, error) {
 				s.byName[cur.name] = cur
 			}
 			stack = []frame{{list: &cur.body}}
+			continue
+		}
+		if curEnum != nil && depth == 1 {
+			v, name, ok := strings.Cut(text, " ")
+			if _, err := strconv.ParseInt(v, 10, 64); err != nil || !ok {
+				return nil, fmt.Errorf("line %d: %q", n, text)
+			}
+			curEnum.values = append(curEnum.values, v)
+			curEnum.names = append(curEnum.names, name)
 			continue
 		}
 		if cur == nil || depth > len(stack) {
@@ -282,6 +312,16 @@ var special = map[string]string{
 	"inputflags": "InputFlags",
 }
 
+// enumOf returns the enum of a wire type enum(name).
+func (s *schema) enumOf(w string) (*enum, bool) {
+	name, ok := strings.CutPrefix(w, "enum(")
+	if !ok || !strings.HasSuffix(name, ")") {
+		return nil, false
+	}
+	e, ok := s.enums[strings.TrimSuffix(name, ")")]
+	return e, ok
+}
+
 // specialBase returns a special wire type without its arguments, as
 // inputflags(66) is inputflags.
 func specialBase(w string) string {
@@ -298,6 +338,9 @@ func (s *schema) complete(w string, seen map[*decl]bool) bool {
 		return s.complete(elem, seen)
 	}
 	if _, ok := goTypes[w]; ok {
+		return true
+	}
+	if _, ok := s.enumOf(w); ok {
 		return true
 	}
 	if strings.HasPrefix(w, "nbt(") || strings.HasPrefix(w, "nbtlist(") || strings.HasPrefix(w, "bitset(") {
@@ -367,13 +410,16 @@ func (s *schema) fields(d *decl) ([]field, error) {
 			return
 		}
 		name, idx, isIdx := strings.Cut(n.path, "[")
-		t, e := s.goType(n.wire)
-		if e != nil {
-			err = fmt.Errorf("%s.%s: %w", d.name, n.path, e)
-			return
-		}
-		if n.as != "" {
-			t = n.as
+		t := n.as
+		if _, isEnum := s.enumOf(n.wire); !isEnum || t == "" {
+			var e error
+			if t, e = s.goType(n.wire); e != nil {
+				err = fmt.Errorf("%s.%s: %w", d.name, n.path, e)
+				return
+			}
+			if n.as != "" {
+				t = n.as
+			}
 		}
 		if isIdx {
 			i, e := strconv.Atoi(strings.TrimSuffix(idx, "]"))
@@ -461,6 +507,9 @@ func (s *schema) generate(pkg string) ([]byte, error) {
 			return nil, err
 		}
 	}
+	for _, e := range s.enumList {
+		g.enum(e, pkg)
+	}
 	g.p("")
 	g.p("// New returns an empty packet of an ID, or nil for an unknown ID.")
 	g.p("func New(id uint32) proto.Packet {")
@@ -496,6 +545,34 @@ func (s *schema) generate(pkg string) ([]byte, error) {
 		return g.b.Bytes(), fmt.Errorf("format: %w", err)
 	}
 	return src, nil
+}
+
+// enum writes the functions that map the values of an enum to their names
+// and back.
+func (g *gen) enum(e *enum, pkg string) {
+	g.p("")
+	g.p("// %sName returns the name a value of %s goes as.", e.name, e.name)
+	g.p("func %sName(v int64) string {", e.name)
+	g.p("switch v {")
+	for i, v := range e.values {
+		g.p("case %s:", v)
+		g.p("return %q", e.names[i])
+	}
+	g.p("}")
+	g.p("panic(%q)", pkg+": "+e.name+" value without a name")
+	g.p("}")
+	g.p("")
+	g.p("// %sValue returns the value of %s a name stands for.", e.name, e.name)
+	g.p("func %sValue(r *wire.Reader, name string) int64 {", e.name)
+	g.p("switch name {")
+	for i, v := range e.values {
+		g.p("case %q:", e.names[i])
+		g.p("return %s", v)
+	}
+	g.p("}")
+	g.p("r.Failf(%q, name)", pkg+": unknown "+e.name+" %q")
+	g.p("return 0")
+	g.p("}")
 }
 
 // usedTypes returns the types complete packets use.
@@ -597,6 +674,17 @@ func (g *gen) body(nodes []*node, enc bool) error {
 			v := "p." + n.path
 			if strings.HasPrefix(n.path, "self") {
 				v = "p" + strings.TrimPrefix(n.path, "self")
+			}
+			if e, ok := g.s.enumOf(n.wire); ok {
+				if n.as == "" {
+					return fmt.Errorf("%s.%s: enum without a Go type", g.d.name, n.path)
+				}
+				if enc {
+					g.p("w.String(%sName(int64(%s)))", e.name, v)
+				} else {
+					g.p("%s = %s(%sValue(r, r.String()))", v, n.as, e.name)
+				}
+				continue
 			}
 			if conv, ok := g.conversion(n); ok {
 				// A field written again as another integer type.
