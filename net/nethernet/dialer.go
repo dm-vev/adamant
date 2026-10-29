@@ -50,6 +50,66 @@ func (d Dialer) DialContext(ctx context.Context, address string) (*Conn, error) 
 	if err != nil {
 		return nil, err
 	}
+	// An answer without candidates: try the address of the signaling.
+	var fallback netip.AddrPort
+	if a, err := netip.ParseAddr(target.Hostname()); err == nil {
+		if p, err := strconv.ParseUint(target.Port(), 10, 16); err == nil {
+			fallback = netip.AddrPortFrom(a.Unmap(), uint16(p))
+		}
+	}
+	signal := func(ctx context.Context, offer string) (string, error) { return d.signal(ctx, target, offer) }
+	return d.dial(ctx, signal, routedAddr(ctx, target), fallback)
+}
+
+// DialSignaling connects to the server of a network over a signaling
+// service: it sends its offer there and reads the signals of s until the
+// answer arrives, so s serves one dial at a time. It returns once the
+// channels are open.
+func (d Dialer) DialSignaling(ctx context.Context, s Signaling, networkID string) (*Conn, error) {
+	signal := func(ctx context.Context, offer string) (string, error) {
+		var b [8]byte
+		_, _ = rand.Read(b[:])
+		id := binary.BigEndian.Uint64(b[:])
+		if err := s.WriteSignal(Signal{Type: SignalOffer, ConnectionID: id, Data: offer, NetworkID: networkID}); err != nil {
+			return "", err
+		}
+		type result struct {
+			answer string
+			err    error
+		}
+		done := make(chan result, 1)
+		go func() {
+			for {
+				sig, err := s.ReadSignal()
+				switch {
+				case err != nil:
+					done <- result{err: err}
+					return
+				case sig.ConnectionID != id || sig.NetworkID != networkID:
+				case sig.Type == SignalAnswer:
+					done <- result{answer: sig.Data}
+					return
+				case sig.Type == SignalError:
+					done <- result{err: fmt.Errorf("nethernet: offer refused with error %s", sig.Data)}
+					return
+				}
+			}
+		}()
+		select {
+		case r := <-done:
+			return r.answer, r.err
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+	return d.dial(ctx, signal, netip.Addr{}, netip.AddrPort{})
+}
+
+// dial opens a connection whose offer signal sends, announcing host as the
+// address of its candidate if valid, and checking fallback if the answer
+// carries no candidates.
+func (d Dialer) dial(ctx context.Context, signal func(ctx context.Context, offer string) (string, error), host netip.Addr, fallback netip.AddrPort) (*Conn, error) {
+	var err error
 	cert := d.Certificate
 	if len(cert.Chain) == 0 {
 		if cert, err = dtls.GenerateCertificate(); err != nil {
@@ -85,10 +145,10 @@ func (d Dialer) DialContext(ctx context.Context, address string) (*Conn, error) 
 		return nil, err
 	}
 	_ = sock.SetReadBuffer(socketBuffer)
-	if a := routedAddr(ctx, target); a.IsValid() {
-		local.candidates = []netip.AddrPort{netip.AddrPortFrom(a, sock.LocalAddr().(*net.UDPAddr).AddrPort().Port())}
+	if host.IsValid() {
+		local.candidates = []netip.AddrPort{netip.AddrPortFrom(host, sock.LocalAddr().(*net.UDPAddr).AddrPort().Port())}
 	}
-	answer, err := d.signal(ctx, target, encodeDescription(local))
+	answer, err := signal(ctx, encodeDescription(local))
 	if err != nil {
 		_ = sock.Close()
 		return nil, err
@@ -103,13 +163,8 @@ func (d Dialer) DialContext(ctx context.Context, address string) (*Conn, error) 
 		_ = sock.Close()
 		return nil, err
 	}
-	if len(remote.candidates) == 0 {
-		// An answer without candidates: try the address of the signaling.
-		if a, err := netip.ParseAddr(target.Hostname()); err == nil {
-			if p, err := strconv.ParseUint(target.Port(), 10, 16); err == nil {
-				remote.candidates = []netip.AddrPort{netip.AddrPortFrom(a.Unmap(), uint16(p))}
-			}
-		}
+	if len(remote.candidates) == 0 && fallback.IsValid() {
+		remote.candidates = []netip.AddrPort{fallback}
 	}
 
 	c := newConn(connConfig{

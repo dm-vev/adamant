@@ -304,28 +304,62 @@ func (l *Listener) serveOffer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "SDP offer too large", http.StatusRequestEntityTooLarge)
 		return
 	}
-	now := time.Now()
-	offer, err := parseDescription(string(body))
-	if err != nil {
-		signalError(w, codeFailedToSetRemoteDescription)
-		return
-	}
-	pub, err := l.verifyIdentity(offer, now)
-	if err != nil {
-		signalError(w, codeIdentityNotAllowed)
-		return
-	}
-	answer, err := l.open(offer, pub, l.candidates(r), now)
+	answer, code, err := l.answer(string(body), l.candidates(r), time.Now())
 	switch {
 	case errors.Is(err, errBusy) || errors.Is(err, net.ErrClosed):
 		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 		return
 	case err != nil:
-		signalError(w, codeFailedToCreateAnswer)
+		signalError(w, code)
 		return
 	}
 	w.Header().Set("Content-Type", "application/sdp")
 	_, _ = io.WriteString(w, answer)
+}
+
+// answer makes the connection an offer asks for, announcing the candidates
+// passed, and returns its answer, or the code of the error the offer is
+// answered with.
+func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, now time.Time) (answer string, code int, err error) {
+	offer, err := parseDescription(offerSDP)
+	if err != nil {
+		return "", codeFailedToSetRemoteDescription, err
+	}
+	pub, err := l.verifyIdentity(offer, now)
+	if err != nil {
+		return "", codeIdentityNotAllowed, err
+	}
+	if answer, err = l.open(offer, pub, candidates, now); err != nil {
+		return "", codeFailedToCreateAnswer, err
+	}
+	return answer, 0, nil
+}
+
+// Serve answers the offers that arrive over a signaling service until it
+// ends, and returns the error it ended with. Each offer is answered with
+// the candidates of the server, as one over HTTP is, which clients of Xbox
+// Live take as well; candidates the clients trickle are left unused, as the
+// server learns their addresses from their checks.
+func (l *Listener) Serve(s Signaling) error {
+	for {
+		sig, err := s.ReadSignal()
+		if err != nil {
+			return err
+		}
+		if sig.Type != SignalOffer {
+			continue
+		}
+		reply := Signal{Type: SignalAnswer, ConnectionID: sig.ConnectionID, NetworkID: sig.NetworkID}
+		answer, code, err := l.answer(sig.Data, l.serviceCandidates(), time.Now())
+		if err != nil {
+			reply.Type, reply.Data = SignalError, strconv.Itoa(code)
+		} else {
+			reply.Data = answer
+		}
+		if err := s.WriteSignal(reply); err != nil {
+			return err
+		}
+	}
 }
 
 // signalError answers an offer with an error code, as BDS does.
@@ -457,15 +491,7 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 // behind NAT, and the configured ones.
 func (l *Listener) candidates(r *http.Request) []netip.AddrPort {
 	var out []netip.AddrPort
-	add := func(a netip.Addr, port uint16) {
-		a = a.Unmap()
-		if !a.IsValid() || a.IsUnspecified() || a.Zone() != "" || l.ipv4 && !a.Is4() {
-			return
-		}
-		if ap := netip.AddrPortFrom(a, port); !slices.Contains(out, ap) {
-			out = append(out, ap)
-		}
-	}
+	add := l.adder(&out)
 	if !l.bound.IsUnspecified() {
 		add(l.bound, l.port)
 	} else if la, ok := r.Context().Value(http.LocalAddrContextKey).(*net.TCPAddr); ok {
@@ -485,16 +511,54 @@ func (l *Listener) candidates(r *http.Request) []netip.AddrPort {
 		add(a, l.port)
 	}
 	if len(out) == 0 {
-		addrs, _ := net.InterfaceAddrs()
-		for _, ia := range addrs {
-			if n, ok := ia.(*net.IPNet); ok {
-				if a, ok := netip.AddrFromSlice(n.IP); ok && !a.IsLinkLocalUnicast() {
-					add(a, l.port)
-				}
+		l.addInterfaces(add)
+	}
+	return out
+}
+
+// serviceCandidates returns the addresses announced in answers to offers
+// that came over a signaling service, which says nothing of the address a
+// client reaches the server at: the address the sockets are bound to, or
+// those of the interfaces, and the configured ones.
+func (l *Listener) serviceCandidates() []netip.AddrPort {
+	var out []netip.AddrPort
+	add := l.adder(&out)
+	if !l.bound.IsUnspecified() {
+		add(l.bound, l.port)
+	} else {
+		l.addInterfaces(add)
+	}
+	for _, a := range l.cfg.Addresses {
+		add(a, l.port)
+	}
+	return out
+}
+
+// adder returns a function adding an address a client may reach the server
+// at to out, once.
+func (l *Listener) adder(out *[]netip.AddrPort) func(a netip.Addr, port uint16) {
+	return func(a netip.Addr, port uint16) {
+		a = a.Unmap()
+		if !a.IsValid() || a.IsUnspecified() || a.Zone() != "" || l.ipv4 && !a.Is4() {
+			return
+		}
+		if ap := netip.AddrPortFrom(a, port); !slices.Contains(*out, ap) {
+			*out = append(*out, ap)
+		}
+	}
+}
+
+// addInterfaces adds the addresses of the interfaces, but for link-local
+// ones, with the port of the listener.
+func (l *Listener) addInterfaces(add func(a netip.Addr, port uint16)) {
+	addrs, _ := net.InterfaceAddrs()
+	for _, ia := range addrs {
+		if n, ok := ia.(*net.IPNet); ok {
+			if a, ok := netip.AddrFromSlice(n.IP); ok && !a.IsLinkLocalUnicast() {
+				add(a, l.port)
 			}
 		}
 	}
-	return out
 }
 
 // ready queues a connection whose channels opened for Accept. It is called
