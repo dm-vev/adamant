@@ -529,3 +529,34 @@ func newVnetBatched(t *testing.T, seed uint64) *vnet {
 	}
 	return n
 }
+
+// TestConnOnClose tells of the close once, after the messages a receiver
+// was handed, and at once to a closer set after the close.
+func TestConnOnClose(t *testing.T) {
+	n := newVnet(t, 12, true, nil)
+	srv := n.ends[server]
+	n.open(t)
+	var events []string
+	srv.c.SetReceiver(func(msg []byte) { events = append(events, "msg") })
+	srv.c.OnClose(func(err error) { events = append(events, "closed") })
+	if err := n.ends[client].c.Send([]byte{1}); err != nil {
+		t.Fatal(err)
+	}
+	n.run(time.Second, func() bool { return len(events) == 1 })
+	_ = n.ends[client].c.Close()
+	n.run(5*time.Second, func() bool { return len(events) == 2 })
+	_ = srv.c.Close()
+	if len(events) != 2 || events[0] != "msg" || events[1] != "closed" {
+		t.Fatalf("events %v", events)
+	}
+	late := make(chan error, 1)
+	srv.c.OnClose(func(err error) { late <- err })
+	select {
+	case err := <-late:
+		if err == nil {
+			t.Fatal("closed without a reason")
+		}
+	default:
+		t.Fatal("a closer set after the close was not called at once")
+	}
+}

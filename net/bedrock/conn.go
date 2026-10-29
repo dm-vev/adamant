@@ -105,6 +105,8 @@ type Conn struct {
 	readMu  sync.Mutex
 	readAlg Compression
 	pending [][]byte
+	// split holds the packets of the batch HandleBatch reads.
+	split [][]byte
 	// packets and bytes meter what the peer sends against the rates.
 	inPackets, inBytes bucket
 
@@ -246,6 +248,49 @@ func (c *Conn) ReadPacket() ([]byte, error) {
 		c.pending = nil
 	}
 	return p, nil
+}
+
+// HandleBatch reads a batch the transport handed over other than through
+// ReadMessage, as it does to a receiver of its messages, and calls f with
+// each packet of it in order, which is f's to keep. It keeps the limits
+// and the rates of ReadPacket. An error of f stops it and is returned.
+func (c *Conn) HandleBatch(msg []byte, f func(packet []byte) error) error {
+	c.readMu.Lock()
+	defer c.readMu.Unlock()
+	body, err := c.decode(msg)
+	if err != nil {
+		return err
+	}
+	split := c.split[:0]
+	defer func() {
+		clear(split)
+		c.split = split[:0]
+	}()
+	if err := Packets(body, c.cfg.MaxPackets, func(p []byte) error {
+		split = append(split, p[:len(p):len(p)])
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.meter(len(split), len(body)); err != nil {
+		return err
+	}
+	for _, p := range split {
+		if err := f(p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TakePending returns the packets of the batches ReadPacket read that it
+// did not return yet, which are the caller's to keep.
+func (c *Conn) TakePending() [][]byte {
+	c.readMu.Lock()
+	defer c.readMu.Unlock()
+	p := c.pending
+	c.pending = nil
+	return p
 }
 
 // meter takes a batch of n packets and size bytes from the rates.

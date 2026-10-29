@@ -70,6 +70,8 @@ type EntityHandle struct {
 	// runtimeID is the number the handle is known by on the network, handed
 	// out the first time it is asked for.
 	runtimeID atomic.Uint64
+	// controller controls the entity of a player from outside the world.
+	controller atomic.Pointer[Controller]
 
 	data           EntityData
 	spawnReason    string
@@ -80,6 +82,27 @@ type EntityHandle struct {
 	pendingVehicle uuid.UUID
 
 	// TODO Handler? Handle world change here?
+}
+
+// Controller controls the entity of a player from outside the world, as
+// the client of the player does. The world the entity is in has it act at
+// the start of each tick, before anything of the tick moves, so that what
+// it does goes out with what the tick shows rather than in a transaction
+// of its own for each thing it does.
+type Controller interface {
+	// Control has the controller act on e, its entity, in a tick of the
+	// world e is in.
+	Control(tx *Tx, e Entity)
+}
+
+// SetController makes c control the entity of e, a player, from the next
+// tick of its world on. Nil stops it.
+func (e *EntityHandle) SetController(c Controller) {
+	if c == nil {
+		e.controller.Store(nil)
+		return
+	}
+	e.controller.Store(&c)
 }
 
 // EntitySpawnOpts holds spawning related options for entities created.

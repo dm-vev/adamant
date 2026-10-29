@@ -139,6 +139,10 @@ type Conn struct {
 	receiver   func(msg []byte)
 	delivering bool
 	pending    [][]byte
+	// closer is called once, with err, after the connection closed;
+	// notified is set once it was.
+	closer   func(err error)
+	notified bool
 	// queue holds the messages waiting for ReadMessage from head on, and
 	// queued their bytes; readable is signalled when one is queued.
 	queue    [][]byte
@@ -517,22 +521,48 @@ func (c *Conn) dequeue() ([]byte, bool) {
 // receiver set with SetReceiver, in order: one goroutine at a time does.
 func (c *Conn) release() {
 	c.flushBatch()
-	if c.receiver == nil || c.delivering || len(c.pending) == 0 {
+	if c.delivering {
+		// The goroutine delivering hands these over, and tells of the close.
 		c.mu.Unlock()
 		return
 	}
-	c.delivering = true
-	for len(c.pending) > 0 {
-		batch, recv := c.pending, c.receiver
-		c.pending = nil
-		c.mu.Unlock()
-		for _, msg := range batch {
-			recv(msg)
+	if c.receiver != nil && len(c.pending) > 0 {
+		c.delivering = true
+		for len(c.pending) > 0 {
+			batch, recv := c.pending, c.receiver
+			c.pending = nil
+			c.mu.Unlock()
+			for _, msg := range batch {
+				recv(msg)
+			}
+			c.mu.Lock()
 		}
-		c.mu.Lock()
+		c.delivering = false
 	}
-	c.delivering = false
+	closer, err := c.closeNotice()
 	c.mu.Unlock()
+	if closer != nil {
+		closer(err)
+	}
+}
+
+// closeNotice returns the closer to call and why, once the connection
+// closed and not before.
+func (c *Conn) closeNotice() (func(error), error) {
+	if c.err == nil || c.closer == nil || c.notified {
+		return nil, nil
+	}
+	c.notified = true
+	return c.closer, c.err
+}
+
+// OnClose has f called once the connection closed, with why, on the
+// goroutine that closed it, after the messages handed to a receiver
+// before; at once if it is closed. f must not block.
+func (c *Conn) OnClose(f func(err error)) {
+	c.mu.Lock()
+	c.closer, c.notified = f, false
+	c.release()
 }
 
 // SetReceiver makes the connection hand each message to recv, in order, on
@@ -782,9 +812,13 @@ func (c *Conn) broken(v any) {
 		}
 		return
 	}
-	defer c.mu.Unlock()
 	c.delivering = false
 	c.shut(fmt.Errorf("nethernet: panic handling the connection: %v", v), false)
+	closer, err := c.closeNotice()
+	c.mu.Unlock()
+	if closer != nil {
+		closer(err)
+	}
 }
 
 // shut closes the connection for its user with err. A graceful close

@@ -1242,3 +1242,51 @@ func TestWorldTicksTwentyTimesPerSecondWhenTicksTakeTime(t *testing.T) {
 		t.Fatalf("TPS reads %.2f, want 20", tps)
 	}
 }
+
+// recordingController records the entities it controlled and, once told,
+// takes its player out of the world.
+type recordingController struct {
+	controlled []Entity
+	leave      bool
+}
+
+func (c *recordingController) Control(tx *Tx, e Entity) {
+	c.controlled = append(c.controlled, e)
+	if c.leave {
+		tx.RemoveEntity(e)
+	}
+}
+
+// TestControllersActEachTick has the controller of a player act once at
+// the start of every tick of its world, before entities tick, until it is
+// cleared or its player leaves.
+func TestControllersActEachTick(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	defer w.Close()
+	ticks := new(int)
+	h := EntitySpawnOpts{Position: mgl64.Vec3{0, 4, 0}}.New(listedPlayerType{}, boundaryTickerConfig{ticks: ticks})
+	other := EntitySpawnOpts{Position: mgl64.Vec3{1, 4, 0}}.New(listedPlayerType{}, boundaryTickerConfig{ticks: new(int)})
+	c := &recordingController{}
+	h.SetController(c)
+	<-w.Exec(func(tx *Tx) {
+		tx.AddEntity(h)
+		tx.AddEntity(other)
+	})
+	w.AdvanceTick()
+	w.AdvanceTick()
+	if len(c.controlled) != 2 || c.controlled[0].H() != h {
+		t.Fatalf("controlled %d times, want 2", len(c.controlled))
+	}
+	h.SetController(nil)
+	w.AdvanceTick()
+	if len(c.controlled) != 2 {
+		t.Fatalf("a cleared controller acted: %d times", len(c.controlled))
+	}
+	h.SetController(c)
+	c.leave = true
+	w.AdvanceTick()
+	w.AdvanceTick()
+	if len(c.controlled) != 3 {
+		t.Fatalf("a controller acted for a player that left: %d times", len(c.controlled))
+	}
+}

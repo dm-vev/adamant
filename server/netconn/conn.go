@@ -137,6 +137,58 @@ func (c *Conn) ReadPacket() (pk proto.Packet, err error) {
 	return pk, nil
 }
 
+// errStopped stops the reading of a batch once a packet of it ended the
+// connection.
+var errStopped = errors.New("netconn: stopped")
+
+// Receive has each packet the client sends from now on handed to handle,
+// in order, on the goroutine of the transport that received it, instead
+// of being queued for ReadPacket; the packets read during the spawn go
+// first. closed is called once the connection closed: the client left,
+// sent too much or sent a packet that does not decode. Neither may block.
+func (c *Conn) Receive(handle func(pk proto.Packet), closed func(err error)) {
+	var once sync.Once
+	end := func(err error) { once.Do(func() { closed(err) }) }
+	deliver := func(raw []byte) (err error) {
+		defer c.recoverRead(&err)
+		if c.overLimit(raw) {
+			return nil
+		}
+		pk, err := DecodePacket(raw)
+		if err != nil {
+			_ = c.Close()
+			end(err)
+			return errStopped
+		}
+		if d, ok := pk.(*v2193.DisconnectPacket); ok {
+			_ = c.Close()
+			end(DisconnectError(d.Message))
+			return errStopped
+		}
+		handle(pk)
+		return nil
+	}
+	read := append(c.deferred, c.b.TakePending()...)
+	c.deferred = nil
+	for _, raw := range read {
+		if err := deliver(raw); err != nil {
+			if err != errStopped {
+				end(err)
+			}
+			return
+		}
+	}
+	c.nn.SetReceiver(func(msg []byte) {
+		if err := c.b.HandleBatch(msg, deliver); err != nil {
+			_ = c.Close()
+			if err != errStopped {
+				end(err)
+			}
+		}
+	})
+	c.nn.OnClose(end)
+}
+
 // packetLimits are the buckets BDS keeps for packets a client has no need
 // to send often (packetlimitconfig.json of BDS 1.26.52): each packet fills
 // the bucket of its group by one, which drains at rate a second; a packet

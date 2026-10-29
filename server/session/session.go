@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	runtimedebug "runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -143,6 +144,16 @@ type Session struct {
 	viewLayer *world.ViewLayer
 
 	closeBackground chan struct{}
+
+	// inbox holds what the client sent that the world of the player did not
+	// handle yet, in order; inboxClosed is set once the connection closed.
+	// inboxSpare is the array of the inbox handled last, used again.
+	inboxMu     sync.Mutex
+	inbox       []proto.Packet
+	inboxClosed bool
+	inboxSpare  []proto.Packet
+	// commandState is what the command updates Control sends start from.
+	commandState commandUpdates
 
 	lastActivity atomic.Int64
 
@@ -345,8 +356,66 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 		chat.Global.Writet(s.conf.JoinMessage, s.conn.IdentityData().DisplayName)
 	}
 
-	go s.background()
-	go s.handlePackets()
+	// What the client sends waits in the inbox for the next tick of the
+	// world of the player, which hands it to Control.
+	s.ent.SetController(s)
+	if r, ok := s.conn.(receiver); ok {
+		r.Receive(s.receive, s.connClosed)
+	} else {
+		go s.readPackets()
+	}
+}
+
+// receiver is a Conn that hands what the client sends to a function on the
+// goroutine of its transport rather than having it read.
+type receiver interface {
+	// Receive has handle called with each packet the client sends and
+	// closed once the connection closed.
+	Receive(handle func(pk proto.Packet), closed func(err error))
+}
+
+// maxInbox bounds the packets a client may send ahead of the world of its
+// player: a client sends a few a tick, so one this far ahead floods it.
+const maxInbox = 2048
+
+// receive puts a packet the client sent in the inbox.
+func (s *Session) receive(pk proto.Packet) {
+	s.inboxMu.Lock()
+	defer s.inboxMu.Unlock()
+	if s.inboxClosed {
+		return
+	}
+	if len(s.inbox) == maxInbox {
+		s.conf.Log.Debug("client sends more than the world of its player handles", "packets", len(s.inbox))
+		s.inboxClosed = true
+		go s.CloseConnection()
+		return
+	}
+	s.inbox = append(s.inbox, pk)
+}
+
+// connClosed marks the inbox closed once the connection closed: the next
+// tick of the world of the player handles what is left and closes it.
+func (s *Session) connClosed(err error) {
+	if err != nil && !errors.Is(err, net.ErrClosed) {
+		s.conf.Log.Debug("connection closed: " + err.Error())
+	}
+	s.inboxMu.Lock()
+	s.inboxClosed = true
+	s.inboxMu.Unlock()
+}
+
+// readPackets reads the packets of a Conn that hands them to nothing into
+// the inbox.
+func (s *Session) readPackets() {
+	for {
+		pk, err := s.conn.ReadPacket()
+		if err != nil {
+			s.connClosed(err)
+			return
+		}
+		s.receive(pk)
+	}
 }
 
 // Close closes the session, which in turn closes the controllable and the connection that the session
@@ -499,21 +568,92 @@ func (s *Session) LogError(message string, args ...any) {
 	}
 }
 
-// handlePackets continuously handles incoming packets from the connection. It processes them accordingly.
-// Once the connection is closed, handlePackets will return.
-func (s *Session) handlePackets() {
-	defer func() {
-		// First close the Controllable. This might lead to a world change
-		// (player might be dead while disconnecting, in which case it will
-		// respawn first).
-		if err := s.callControllable(context.Background(), func(_ *world.Tx, c Controllable) error {
-			_ = c.Close()
-			return nil
-		}); err != nil && !sessionOwnerStopped(err) {
-			s.conf.Log.Debug("close controllable: " + err.Error())
+// Control handles what the client sent since the last tick of the world of
+// the player, in that tick, then sends chunks and updates commands. Once
+// the connection closed, it closes the player.
+func (s *Session) Control(tx *world.Tx, e world.Entity) {
+	if s.teardownStarted.Load() {
+		return
+	}
+	c, ok := e.(Controllable)
+	if !ok {
+		return
+	}
+	s.inboxMu.Lock()
+	packets, closed := s.inbox, s.inboxClosed
+	s.inbox = s.inboxSpare
+	s.inboxSpare = nil
+	s.inboxMu.Unlock()
+	for i, pk := range packets {
+		packets[i] = nil
+		if err := s.handlePacketSafely(pk, tx, c); err != nil {
+			s.conf.Log.Debug("process packet: " + err.Error())
+			clear(packets[i+1:])
+			closed = true
+			break
 		}
-		// Because the player might no longer be in the same world after
-		// closing, we create a new transaction
+		if _, here := s.ent.Entity(tx); !here {
+			// The packet took the player to another world, whose ticks
+			// handle the rest.
+			s.requeue(packets[i+1:])
+			clear(packets[i+1:])
+			s.inboxSpare = packets[:0]
+			return
+		}
+	}
+	s.inboxSpare = packets[:0]
+	if closed {
+		s.closeControllable(c)
+		return
+	}
+	s.commandState.update(s, c)
+	s.sendChunks(tx, c)
+}
+
+// requeue puts packets back at the front of the inbox.
+func (s *Session) requeue(packets []proto.Packet) {
+	if len(packets) == 0 {
+		return
+	}
+	s.inboxMu.Lock()
+	s.inbox = append(append([]proto.Packet(nil), packets...), s.inbox...)
+	s.inboxMu.Unlock()
+}
+
+// handlePacketSafely handles a packet, turning a panic of its handler into
+// an error that closes this session rather than taking down the tick of
+// the world.
+func (s *Session) handlePacketSafely(pk proto.Packet, tx *world.Tx, c Controllable) (err error) {
+	defer func() {
+		if v := recover(); v != nil {
+			s.conf.Log.Error("panic handling a packet", "packet", fmt.Sprintf("%T", pk), "panic", v, "stack", string(runtimedebug.Stack()))
+			err = fmt.Errorf("%T: panic: %v", pk, v)
+		}
+	}()
+	return s.handlePacket(pk, tx, c)
+}
+
+// closeControllable closes the Controllable of a session whose connection
+// closed. A player closes the session itself, possibly after it respawned
+// in another world; the session is closed in any case once that is done.
+func (s *Session) closeControllable(c Controllable) {
+	s.CloseConnection()
+	func() {
+		// A panic of code closing the player, a handler of the user for
+		// one, must not take down the tick: the session still closes.
+		defer func() {
+			if v := recover(); v != nil {
+				s.conf.Log.Error("panic closing the player of a session", "panic", v, "stack", string(runtimedebug.Stack()))
+			}
+		}()
+		_ = c.Close()
+	}()
+	if s.teardownStarted.Load() {
+		return
+	}
+	go func() {
+		// The Controllable might no longer be in the same world after
+		// closing, so the session closes in a transaction of its own.
 		if err := s.callControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
 			s.Close(tx, c)
 			return nil
@@ -521,75 +661,42 @@ func (s *Session) handlePackets() {
 			s.conf.Log.Debug("close session: " + err.Error())
 		}
 	}()
-	for {
-		pk, err := s.conn.ReadPacket()
-		if err != nil {
-			return
-		}
-		err = s.callControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
-			return s.handlePacket(pk, tx, c)
-		})
-		if err != nil {
-			if sessionOwnerStopped(err) {
-				return
-			}
-			s.conf.Log.Debug("process packet: " + err.Error())
-			return
-		}
-	}
 }
 
-// background performs background tasks of the Session. This includes chunk sending and automatic command updating.
-// background returns when the Session's connection is closed using CloseConnection.
-func (s *Session) background() {
-	var (
-		r          map[string]map[int]cmd.Runnable
-		enums      map[string]cmd.Enum
-		enumValues map[string][]string
-		softEnums  = make(map[string]struct{})
-		ok         bool
-		i          int
-	)
+// commandUpdates is what the command updates of a session start from: the
+// commands, enums and soft enums the client was sent last.
+type commandUpdates struct {
+	ready      bool
+	ticks      int
+	runnables  map[string]map[int]cmd.Runnable
+	enums      map[string]cmd.Enum
+	enumValues map[string][]string
+	softEnums  map[string]struct{}
+}
 
-	if err := s.withControllable(context.Background(), func(_ *world.Tx, c Controllable) error {
-		r = s.sendAvailableCommands(c, softEnums)
-		enums, enumValues = s.enums(c)
+// update sends the commands of the player first, then updates them: enums
+// every second, commands once they may have changed and every five
+// seconds otherwise.
+func (u *commandUpdates) update(s *Session, c Controllable) {
+	if !u.ready {
+		u.softEnums = make(map[string]struct{})
+		u.runnables = s.sendAvailableCommands(c, u.softEnums)
+		u.enums, u.enumValues = s.enums(c)
 		s.commandsDirty.Store(false)
-		return nil
-	}); err != nil {
-		if !sessionOwnerStopped(err) {
-			s.conf.Log.Debug("prepare command updates: " + err.Error())
-		}
+		u.ready = true
 		return
 	}
-	t := time.NewTicker(time.Second / 20)
-	defer t.Stop()
-	for {
-		select {
-		case <-t.C:
-			if err := s.withControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
-				if i++; i%20 == 0 {
-					// Enum resending happens relatively often and frequent updates are more important than with full
-					// command changes. Those are generally only related to permission changes, which doesn't happen often.
-					r = s.resendEnums(enums, enumValues, softEnums, r, c)
-				}
-				if dirty := s.commandsDirty.Swap(false); dirty || i%100 == 0 {
-					// Permission changes refresh commands on the next tick;
-					// otherwise check for command changes every five seconds.
-					if r, ok = s.resendCommands(r, c, softEnums); ok {
-						enums, enumValues = s.enums(c)
-					}
-				}
-				s.sendChunks(tx, c)
-				return nil
-			}); err != nil {
-				if !sessionOwnerStopped(err) {
-					s.conf.Log.Debug("update session background: " + err.Error())
-				}
-				return
-			}
-		case <-s.closeBackground:
-			return
+	if u.ticks++; u.ticks%20 == 0 {
+		// Enum resending happens relatively often and frequent updates are more important than with full
+		// command changes. Those are generally only related to permission changes, which doesn't happen often.
+		u.runnables = s.resendEnums(u.enums, u.enumValues, u.softEnums, u.runnables, c)
+	}
+	if dirty := s.commandsDirty.Swap(false); dirty || u.ticks%100 == 0 {
+		// Permission changes refresh commands on the next tick; otherwise
+		// check for command changes every five seconds.
+		if r, ok := s.resendCommands(u.runnables, c, u.softEnums); ok {
+			u.runnables = r
+			u.enums, u.enumValues = s.enums(c)
 		}
 	}
 }

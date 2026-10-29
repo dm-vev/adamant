@@ -154,6 +154,9 @@ func (t ticker) tick(tx *Tx) {
 			tx.chunk(pos)
 		}
 	}
+	// Input comes first: the controllers of players, their clients, act on
+	// what they sent since the last tick, frozen or not.
+	w.controlPlayers(tx)
 	runStep := w.tickFrozen.Load() && w.stepTicks.Load() > 0
 	if w.tickFrozen.Load() && !runStep {
 		t.tickFrozenPlayers(tx, w.CurrentTick())
@@ -257,6 +260,20 @@ func (t ticker) tick(tx *Tx) {
 		w.sprintTicks.Add(-1)
 	}
 
+}
+
+// controlPlayers has the controllers of the players in the world act. A
+// controller may take its player out of the world, or others in.
+func (w *World) controlPlayers(tx *Tx) {
+	for _, h := range w.playerList {
+		c := h.controller.Load()
+		if c == nil {
+			continue
+		}
+		if e, ok := h.Entity(tx); ok {
+			(*c).Control(tx, e)
+		}
+	}
 }
 
 // tickFrozenPlayers preserves player-side processing while suppressing world simulation.

@@ -286,3 +286,51 @@ func TestRateLimits(t *testing.T) {
 		}
 	}
 }
+
+// TestHandleBatch reads batches handed over by a receiver of the
+// transport: the packets ReadPacket split off first, then each packet of
+// a batch in order, under the rates of ReadPacket.
+func TestHandleBatch(t *testing.T) {
+	a, b := pipes()
+	ca, cb := NewConn(a, Config{}), NewConn(b, Config{MaxPackets: 3, PacketRate: 10, PacketBurst: 6})
+	ca.EnableCompression(Flate{})
+	cb.EnableCompression(Flate{})
+	for i := range 3 {
+		_ = ca.WritePacket(packet(9, []byte{byte(i)}))
+	}
+	_ = ca.Flush()
+	if p, err := cb.ReadPacket(); err != nil || p[len(p)-1] != 0 {
+		t.Fatalf("read % x, %v", p, err)
+	}
+	var got []byte
+	for _, p := range cb.TakePending() {
+		got = append(got, p[len(p)-1])
+	}
+	for i := 3; i < 6; i++ {
+		_ = ca.WritePacket(packet(9, []byte{byte(i)}))
+	}
+	_ = ca.Flush()
+	if err := cb.HandleBatch(<-b.in, func(p []byte) error {
+		got = append(got, p[len(p)-1])
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, []byte{1, 2, 3, 4, 5}) {
+		t.Fatalf("packets % x", got)
+	}
+	// The rates count what ReadPacket and HandleBatch read alike.
+	_ = ca.WritePacket(packet(9, []byte{6}))
+	_ = ca.Flush()
+	if err := cb.HandleBatch(<-b.in, func([]byte) error { return nil }); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("batch over the rate read with %v", err)
+	}
+	stop := errors.New("stop")
+	_ = ca.WritePacket(packet(9, nil))
+	_ = ca.Flush()
+	fresh := NewConn(b, Config{})
+	fresh.EnableCompression(Flate{})
+	if err := fresh.HandleBatch(<-b.in, func([]byte) error { return stop }); err != stop {
+		t.Fatalf("an error of f came back as %v", err)
+	}
+}

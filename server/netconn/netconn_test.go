@@ -11,6 +11,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -590,5 +591,63 @@ func TestHandshakeAsBDS(t *testing.T) {
 	send(&v2193.ClientToServerHandshakePacket{})
 	if ps, ok := next().(*v2193.PlayStatusPacket); !ok || ps.Status != 0 {
 		t.Fatalf("no login success after the handshake")
+	}
+}
+
+// TestReceive hands the packets of a spawned client to a function on the
+// goroutine of the transport, in order and the ones read during the spawn
+// first, and tells of the close once the client left.
+func TestReceive(t *testing.T) {
+	l := listen(t, Config{})
+	got := make(chan string, 16)
+	closed := make(chan error, 1)
+	go func() {
+		c, err := l.Accept()
+		if err != nil {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := c.StartGameContext(ctx, gameData()); err != nil {
+			_ = c.Close()
+			return
+		}
+		c.Receive(func(pk proto.Packet) {
+			if text, ok := pk.(*v2193.TextPacket); ok {
+				got <- text.Message
+			}
+		}, func(err error) { closed <- err })
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range 5 {
+		_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, Message: fmt.Sprint(i)})
+		if i%2 == 0 {
+			_ = conn.Flush()
+		}
+	}
+	_ = conn.Flush()
+	for i := range 5 {
+		select {
+		case msg := <-got:
+			if msg != fmt.Sprint(i) {
+				t.Fatalf("message %d is %q", i, msg)
+			}
+		case <-ctx.Done():
+			t.Fatal("packets did not arrive")
+		}
+	}
+	_ = conn.Close()
+	select {
+	case err := <-closed:
+		if err == nil {
+			t.Fatal("closed without a reason")
+		}
+	case <-ctx.Done():
+		t.Fatal("the close was not told")
 	}
 }
