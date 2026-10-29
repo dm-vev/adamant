@@ -30,6 +30,16 @@ type description struct {
 	sctpPort       int
 	identity       string
 	candidates     []netip.AddrPort
+	// extra holds the server reflexive and relayed candidates of a local
+	// description.
+	extra []candidate
+}
+
+// candidate is a candidate other than a host candidate: its address, its
+// type and the address it stands for.
+type candidate struct {
+	addr, base netip.AddrPort
+	typ        string
 }
 
 // maxDescription bounds the size of a description.
@@ -179,6 +189,16 @@ func encodeDescription(d *description) string {
 		prio := 126<<24 | (65535-i)<<8 | 255
 		foundation := crc32.ChecksumIEEE([]byte(c.Addr().String()))
 		line("a=candidate:%d 1 udp %d %s %d typ host generation 0 network-id %d network-cost 50", foundation, prio, c.Addr().String(), c.Port(), i+1)
+	}
+	for i, c := range d.extra {
+		// The type preferences of RFC 8445: server reflexive 100, relayed 0.
+		pref := 100
+		if c.typ == "relay" {
+			pref = 0
+		}
+		prio := pref<<24 | (65535-i)<<8 | 255
+		foundation := crc32.ChecksumIEEE([]byte(c.typ + c.addr.Addr().String()))
+		line("a=candidate:%d 1 udp %d %s %d typ %s raddr %s rport %d generation 0 network-cost 50", foundation, prio, c.addr.Addr().String(), c.addr.Port(), c.typ, c.base.Addr().String(), c.base.Port())
 	}
 	line("a=ice-ufrag:%s", d.ufrag)
 	line("a=ice-pwd:%s", d.pwd)

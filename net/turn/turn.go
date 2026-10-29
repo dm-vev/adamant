@@ -465,6 +465,20 @@ func (c *Client) refreshing() bool {
 	return false
 }
 
+// Keepalive sends the server a Binding indication, which needs no answer:
+// a NAT in front of the client forgets a mapping it sees no traffic on in
+// a minute or two, sooner than any refresh comes.
+func (c *Client) Keepalive() {
+	if c.state == stateNew || c.state == stateClosed {
+		return
+	}
+	var tx [12]byte
+	_, _ = rand.Read(tx[:])
+	b := stun.NewBuilder(nil, stun.BindingIndication, tx)
+	b.AddFingerprint()
+	c.send(b.Bytes(), c.cfg.Server)
+}
+
 // Close gives the allocation back to the server.
 func (c *Client) Close(now time.Time) {
 	if c.state != stateAllocated {

@@ -22,6 +22,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/net/turn"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"github.com/sandertv/gophertunnel/minecraft/resource"
@@ -252,6 +253,10 @@ func (l *Listener) refreshStatus() {
 // Serve answers the offers that arrive over a signaling service, such as
 // that of Xbox Live, until it ends.
 func (l *Listener) Serve(s nethernet.Signaling) error { return l.nn.Serve(s) }
+
+// Relay allocates a relayed address on a TURN server that clients behind
+// other networks join through, announced in the answers of Serve.
+func (l *Listener) Relay(ctx context.Context, cfg turn.Config) error { return l.nn.Relay(ctx, cfg) }
 
 // ServerStatus returns the status the server shows clients.
 func (l *Listener) ServerStatus() ServerStatus { return l.status() }

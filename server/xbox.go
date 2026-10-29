@@ -7,12 +7,17 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/turn"
 	"github.com/dm-vev/adamant/net/xbox/auth"
 	"github.com/dm-vev/adamant/net/xbox/mpsd"
 	"github.com/dm-vev/adamant/net/xbox/signaling"
@@ -131,6 +136,17 @@ func serveXboxSignaling(ctx context.Context, l *netconn.Listener, s *auth.Sessio
 			defer conn.Close()
 			backoff = 5 * time.Second
 			log.Info("Xbox Live signaling connected.")
+			if cfg, ok := relayServer(ctx, conn.Credentials()); ok {
+				// Friends on other networks reach a server behind NAT through
+				// the TURN server of the service alone.
+				rctx, cancel := context.WithTimeout(ctx, 40*time.Second)
+				if err := l.Relay(rctx, cfg); err != nil {
+					log.Warn("No relay on the TURN server of Xbox Live: friends behind other NATs may not join.", "err", err)
+				} else {
+					log.Debug("Relay allocated on the TURN server of Xbox Live.", "server", cfg.Server)
+				}
+				cancel()
+			}
 			served := make(chan struct{})
 			go func() {
 				_ = l.Serve(conn)
@@ -214,4 +230,35 @@ func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, 
 		case <-t.C:
 		}
 	}
+}
+
+// relayServer returns the first TURN server over UDP of those the signaling
+// service handed out, resolved, with its credentials.
+func relayServer(ctx context.Context, servers []signaling.ICEServer) (turn.Config, bool) {
+	for _, srv := range servers {
+		for _, u := range srv.URLs {
+			rest, ok := strings.CutPrefix(u, "turn:")
+			if !ok {
+				continue
+			}
+			hostport, query, _ := strings.Cut(rest, "?")
+			if query != "" && query != "transport=udp" {
+				continue
+			}
+			host, port, err := net.SplitHostPort(hostport)
+			if err != nil {
+				host, port = hostport, "3478"
+			}
+			p, err := strconv.ParseUint(port, 10, 16)
+			if err != nil {
+				continue
+			}
+			addrs, err := net.DefaultResolver.LookupNetIP(ctx, "ip4", host)
+			if err != nil || len(addrs) == 0 {
+				continue
+			}
+			return turn.Config{Server: netip.AddrPortFrom(addrs[0].Unmap(), uint16(p)), Username: srv.Username, Password: srv.Credential}, true
+		}
+	}
+	return turn.Config{}, false
 }

@@ -136,6 +136,7 @@ type Listener struct {
 	wg        sync.WaitGroup
 
 	status  atomic.Pointer[[]byte]
+	relay   atomic.Pointer[relay]
 	identMu sync.Mutex
 	ident   string
 	identAt time.Time
@@ -265,6 +266,9 @@ func (l *Listener) Close() error {
 		}
 		l.mu.Unlock()
 		close(l.done)
+		if r := l.relay.Swap(nil); r != nil {
+			r.close()
+		}
 		_ = l.http.Close()
 		for _, c := range conns {
 			c.abort(net.ErrClosed)
@@ -311,7 +315,7 @@ func (l *Listener) serveOffer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "SDP offer too large", http.StatusRequestEntityTooLarge)
 		return
 	}
-	answer, code, err := l.answer(string(body), l.candidates(r), time.Now())
+	answer, code, err := l.answer(string(body), l.candidates(r), false, time.Now())
 	switch {
 	case errors.Is(err, errBusy) || errors.Is(err, net.ErrClosed):
 		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
@@ -327,7 +331,7 @@ func (l *Listener) serveOffer(w http.ResponseWriter, r *http.Request) {
 // answer makes the connection an offer asks for, announcing the candidates
 // passed, and returns its answer, or the code of the error the offer is
 // answered with.
-func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, now time.Time) (answer string, code int, err error) {
+func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, relayed bool, now time.Time) (answer string, code int, err error) {
 	offer, err := parseDescription(offerSDP)
 	if err != nil {
 		return "", codeFailedToSetRemoteDescription, err
@@ -336,7 +340,21 @@ func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, now time
 	if err != nil {
 		return "", codeIdentityNotAllowed, err
 	}
-	if answer, err = l.open(offer, pub, candidates, now); err != nil {
+	var extra []candidate
+	if r := l.relay.Load(); r != nil && relayed {
+		// The peers of the offer may come through the relay.
+		for _, c := range offer.candidates {
+			r.permit(c.Addr())
+		}
+		if reflexive, relayedAddr, ok := r.candidates(); ok && len(candidates) > 0 {
+			base := candidates[0]
+			if reflexive.IsValid() && !slices.Contains(candidates, reflexive) {
+				extra = append(extra, candidate{addr: reflexive, typ: "srflx", base: base})
+			}
+			extra = append(extra, candidate{addr: relayedAddr, typ: "relay", base: reflexive})
+		}
+	}
+	if answer, err = l.open(offer, pub, candidates, extra, now); err != nil {
 		return "", codeFailedToCreateAnswer, err
 	}
 	return answer, 0, nil
@@ -353,11 +371,21 @@ func (l *Listener) Serve(s Signaling) error {
 		if err != nil {
 			return err
 		}
+		if sig.Type == SignalCandidate {
+			// A trickled candidate tells an address the peer may come
+			// through the relay from.
+			if r := l.relay.Load(); r != nil {
+				if addr, ok := parseCandidate(sig.Data); ok {
+					r.permit(addr.Addr())
+				}
+			}
+			continue
+		}
 		if sig.Type != SignalOffer {
 			continue
 		}
 		reply := Signal{Type: SignalAnswer, ConnectionID: sig.ConnectionID, NetworkID: sig.NetworkID}
-		answer, code, err := l.answer(sig.Data, l.serviceCandidates(), time.Now())
+		answer, code, err := l.answer(sig.Data, l.serviceCandidates(), true, time.Now())
 		if err != nil {
 			reply.Type, reply.Data = SignalError, strconv.Itoa(code)
 		} else {
@@ -426,7 +454,7 @@ func (l *Listener) identity(now time.Time) (string, error) {
 // open makes the connection an offer asks for and returns the answer. The
 // server takes the DTLS client role unless the offer takes it, as BDS
 // does.
-func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []netip.AddrPort, now time.Time) (string, error) {
+func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []netip.AddrPort, extra []candidate, now time.Time) (string, error) {
 	identity, err := l.identity(now)
 	if err != nil {
 		return "", err
@@ -444,16 +472,18 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 		sctpPort:       5000,
 		identity:       identity,
 		candidates:     candidates,
+		extra:          extra,
 	}
 	sock := l.socks[int(l.nextSock.Add(1))%len(l.socks)]
+	out, outBatch := l.writers(sock)
 	c := newConn(connConfig{
 		local:       local,
 		remote:      offer,
 		dtlsClient:  setup == SetupActive,
 		certificate: l.cert,
 		sendBuffer:  l.cfg.SendBuffer,
-		out:         func(b []byte, to netip.AddrPort) { _, _ = sock.WriteToUDPAddrPort(b, to) },
-		outBatch:    batchWriter(sock),
+		out:         out,
+		outBatch:    outBatch,
 		localAddr:   l.addr,
 	}, now)
 	c.publicKey = pub
@@ -490,6 +520,33 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 	c.schedule()
 	c.release()
 	return encodeDescription(local), nil
+}
+
+// writers returns the functions a connection sends with on sock: to a peer
+// heard through the relay last, through the relay.
+func (l *Listener) writers(sock *net.UDPConn) (out func([]byte, netip.AddrPort), outBatch func([]byte, int, netip.AddrPort)) {
+	batch := batchWriter(sock)
+	out = func(b []byte, to netip.AddrPort) {
+		if r := l.relay.Load(); r != nil && r.via(to) {
+			r.send(to, b)
+			return
+		}
+		_, _ = sock.WriteToUDPAddrPort(b, to)
+	}
+	if batch == nil {
+		return out, nil
+	}
+	return out, func(b []byte, size int, to netip.AddrPort) {
+		if r := l.relay.Load(); r != nil && r.via(to) {
+			for len(b) > 0 {
+				n := min(size, len(b))
+				r.send(to, b[:n])
+				b = b[n:]
+			}
+			return
+		}
+		batch(b, size, to)
+	}
 }
 
 // candidates returns the addresses announced to the client of a request:
@@ -648,6 +705,13 @@ func (l *Listener) read(sock *net.UDPConn) {
 		if l.cfg.Datagram != nil && n > 0 && buf[0] >= 192 {
 			l.datagram(sock, buf[:n], addr)
 			continue
+		}
+		if r := l.relay.Load(); r != nil {
+			if addr == r.server {
+				r.handle(buf[:n], &msg)
+				continue
+			}
+			r.heardDirect(addr)
 		}
 		l.dispatch(buf[:n], addr, &msg)
 	}
