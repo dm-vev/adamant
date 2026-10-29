@@ -217,7 +217,6 @@ func (r *relay) close() {
 	r.signal.Do(func() { close(r.ready) })
 }
 
-
 // Relayed reports whether what goes to a peer goes through the TURN relay
 // of the listener.
 func (l *Listener) Relayed(peer netip.AddrPort) bool {

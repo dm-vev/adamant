@@ -79,7 +79,9 @@ type ListenConfig struct {
 	// SendBuffer bounds the bytes queued on a connection. Zero means 16
 	// MiB.
 	SendBuffer int
-	// TLSConfig makes the signaling HTTPS.
+	// TLSConfig makes the signaling HTTPS as well: a connection that opens
+	// with a TLS handshake is served HTTPS, any other plain HTTP, on the
+	// same port.
 	TLSConfig *tls.Config
 	// Datagram, if set, is given the datagrams of other protocols that
 	// arrive on the sockets: those whose first byte is of neither STUN nor
@@ -200,7 +202,7 @@ func (cfg ListenConfig) Listen(address string) (*Listener, error) {
 	l.ipv4 = l.bound.Is4()
 
 	if cfg.TLSConfig != nil {
-		tcp = tls.NewListener(tcp, cfg.TLSConfig)
+		tcp = newSniffListener(tcp, cfg.TLSConfig)
 	}
 	l.http = &http.Server{
 		Handler:           l,
