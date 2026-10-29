@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,7 +16,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/dm-vev/adamant/net/bedrock"
 	bedrocklogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -26,7 +26,6 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"github.com/sandertv/gophertunnel/minecraft/resource"
-	"github.com/sandertv/gophertunnel/minecraft/service"
 	"github.com/sandertv/gophertunnel/minecraft/text"
 )
 
@@ -44,6 +43,9 @@ const (
 	statusInterval = 4 * time.Second
 	// packChunkSize is the size of the chunks of a resource pack sent.
 	packChunkSize = 128 << 10
+	// keysTimeout bounds the fetch of the keys of the authorization
+	// service a login may make.
+	keysTimeout = 10 * time.Second
 )
 
 // Config configures a Listener.
@@ -77,10 +79,11 @@ type Config struct {
 // A client logs in on a goroutine of its own, which ends once Accept can
 // return it.
 type Listener struct {
-	cfg      Config
-	batches  bedrock.Config
-	nn       *nethernet.Listener
-	verifier *oidc.IDTokenVerifier
+	cfg     Config
+	batches bedrock.Config
+	nn      *nethernet.Listener
+	// keys verify the tokens of Xbox Live logins; nil without Xbox Live.
+	keys     *bedrocklogin.Keys
 	incoming chan *Conn
 	players  atomic.Int32
 	done     chan struct{}
@@ -171,8 +174,8 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	}
 	if !cfg.AuthenticationDisabled {
 		var err error
-		if l.verifier, err = verifier(); err != nil {
-			return nil, fmt.Errorf("netconn: verifier of Xbox Live logins: %w", err)
+		if l.keys, err = xboxKeys(); err != nil {
+			return nil, fmt.Errorf("netconn: keys of Xbox Live logins: %w", err)
 		}
 	}
 	var err error
@@ -186,19 +189,12 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	return l, nil
 }
 
-// verifier returns the verifier of the tokens of Xbox Live logins.
-func verifier() (*oidc.IDTokenVerifier, error) {
+// xboxKeys returns the keys of the authorization service of the game,
+// which signs the tokens of Xbox Live logins.
+func xboxKeys() (*bedrocklogin.Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	discovery, err := service.Discover(ctx, service.ApplicationTypeMinecraftPE, v2193.Version)
-	if err != nil {
-		return nil, err
-	}
-	env := new(service.AuthorizationEnvironment)
-	if err := discovery.Environment(env); err != nil {
-		return nil, err
-	}
-	return env.VerifierContext(ctx)
+	return bedrocklogin.Discover(ctx, nil, v2193.Version)
 }
 
 // movement reports the packets of movement, which compress too little to
@@ -395,21 +391,41 @@ func (c *Conn) handshake() error {
 	return err
 }
 
-// authenticate checks the login request: the Xbox Live chain if the server
+// authenticate checks the login request: the Xbox Live token if the server
 // asks for it, the key the transport proved, and the server's own rules.
+// The request is read by package login of the net module, which trusts
+// none of it; the identity and the client data then pass the rules of
+// gophertunnel's types, which the server holds them in.
 func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
-	var (
-		auth login.AuthResult
-		err  error
-	)
-	if c.identity, c.client, auth, err = login.Parse(pk.ConnectionRequest, c.l.verifier); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), keysTimeout)
+	defer cancel()
+	l, err := bedrocklogin.Parse(ctx, pk.ConnectionRequest, c.l.keys, time.Now())
+	if err != nil {
 		return fmt.Errorf("netconn: parse login request: %w", err)
 	}
-	if !auth.XBOXLiveAuthenticated && !c.l.cfg.AuthenticationDisabled {
+	c.identity = login.IdentityData{
+		XUID:           l.Identity.XUID,
+		Identity:       l.Identity.Identity,
+		DisplayName:    l.Identity.DisplayName,
+		TitleID:        l.Identity.TitleID,
+		PlayFabID:      l.Identity.PlayFabID,
+		PlayFabTitleID: l.Identity.PlayFabTitleID,
+	}
+	if err := c.identity.Validate(); err != nil {
+		return fmt.Errorf("netconn: validate identity data: %w", err)
+	}
+	if err := json.Unmarshal(l.ClientDataJSON, &c.client); err != nil {
+		return fmt.Errorf("netconn: client data: %w", err)
+	}
+	c.client.ServerAddress = l.ClientData.ServerAddress
+	if err := c.client.Validate(); err != nil {
+		return fmt.Errorf("netconn: validate client data: %w", err)
+	}
+	if !l.XboxLive && !c.l.cfg.AuthenticationDisabled {
 		_ = c.WritePacket(&v2193.DisconnectPacket{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})
 		return errors.New("netconn: client is not logged in with Xbox Live")
 	}
-	if pub := c.nn.PublicKey(); pub != nil && !auth.PublicKey.Equal(pub) {
+	if pub := c.nn.PublicKey(); pub != nil && !l.Key.Equal(pub) {
 		// The transport proved another key: a login replayed elsewhere.
 		_ = c.WritePacket(&v2193.DisconnectPacket{Reason: packet.DisconnectReasonNotAuthenticated})
 		return errors.New("netconn: login key is not the key of the transport identity")
