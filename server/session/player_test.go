@@ -256,6 +256,9 @@ func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
 	}
 	s.sendRecipes()
 	raw := <-s.packets
+	if st, ok := raw.(*staticPacket); ok {
+		raw = st.Packet
+	}
 	pk, ok := raw.(*packet.CraftingData)
 	if !ok {
 		t.Fatalf("packet type = %T, want *packet.CraftingData", raw)

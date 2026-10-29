@@ -16,7 +16,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/player/debug"
@@ -29,7 +28,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -133,140 +131,10 @@ func (s *Session) sendBiomes() {
 
 // sendRecipes sends the current crafting recipes to the session.
 func (s *Session) sendRecipes() {
-	var (
-		shapedRecipes            []protocol.ShapedRecipe
-		shapelessRecipes         []protocol.ShapelessRecipe
-		userDataShapelessRecipes []protocol.UserDataShapelessRecipe
-		multiRecipes             []protocol.MultiRecipe
-		smithingTransformRecipes []protocol.SmithingTransformRecipe
-		smithingTrimRecipes      []protocol.SmithingTrimRecipe
-		potionRecipes            []protocol.PotionRecipe
-		potionContainerChange    []protocol.PotionContainerChangeRecipe
-	)
-
-	for index, i := range recipe.Recipes() {
-		networkID := uint32(index) + 1
-		s.recipes[networkID] = i
-
-		switch i := i.(type) {
-		case recipe.Shapeless:
-			shapelessRecipes = append(shapelessRecipes, protocol.ShapelessRecipe{
-				RecipeID:        s.registerJavaRecipeID(i),
-				Priority:        int32(i.Priority()),
-				Input:           stacksToIngredientItems(s.br, i.Input()),
-				Output:          stacksToRecipeStacks(s.br, i.Output()),
-				Block:           i.Block(),
-				RecipeNetworkID: networkID,
-			})
-		case recipe.UserDataShapeless:
-			userDataShapelessRecipes = append(userDataShapelessRecipes, protocol.UserDataShapelessRecipe{ShapelessRecipe: protocol.ShapelessRecipe{
-				RecipeID:        s.registerJavaRecipeID(i),
-				Priority:        int32(i.Priority()),
-				Input:           stacksToIngredientItems(s.br, i.Input()),
-				Output:          stacksToRecipeStacks(s.br, i.Output()),
-				Block:           i.Block(),
-				RecipeNetworkID: networkID,
-			}})
-		case recipe.Multi:
-			s.registerJavaMultiRecipeID(i)
-			multiRecipes = append(multiRecipes, protocol.MultiRecipe{
-				UUID:            i.UUID(),
-				RecipeNetworkID: networkID,
-			})
-		case recipe.Shaped:
-			shapedRecipes = append(shapedRecipes, protocol.ShapedRecipe{
-				RecipeID:        s.registerJavaRecipeID(i),
-				Priority:        int32(i.Priority()),
-				Width:           int32(i.Shape().Width()),
-				Height:          int32(i.Shape().Height()),
-				Input:           stacksToIngredientItems(s.br, i.Input()),
-				Output:          stacksToRecipeStacks(s.br, i.Output()),
-				Block:           i.Block(),
-				AssumeSymmetry:  true,
-				RecipeNetworkID: networkID,
-			})
-		case recipe.SmithingTransform:
-			input, output := stacksToIngredientItems(s.br, i.Input()), stacksToRecipeStacks(s.br, i.Output())
-			smithingTransformRecipes = append(smithingTransformRecipes, protocol.SmithingTransformRecipe{
-				RecipeID:        s.registerJavaRecipeID(i),
-				Base:            input[0],
-				Addition:        input[1],
-				Template:        input[2],
-				Result:          output[0],
-				Block:           i.Block(),
-				RecipeNetworkID: networkID,
-			})
-		case recipe.SmithingTrim:
-			input := stacksToIngredientItems(s.br, i.Input())
-			smithingTrimRecipes = append(smithingTrimRecipes, protocol.SmithingTrimRecipe{
-				RecipeID:        s.registerJavaRecipeID(i),
-				Base:            input[0],
-				Addition:        input[1],
-				Template:        input[2],
-				Block:           i.Block(),
-				RecipeNetworkID: networkID,
-			})
-		case recipe.Potion:
-			inputRuntimeID, inputMeta, _ := world.ItemRuntimeID(i.Input()[0].(item.Stack).Item())
-			reagentRuntimeID, reagentMeta, _ := world.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
-			outputRuntimeID, outputMeta, _ := world.ItemRuntimeID(i.Output()[0].Item())
-
-			potionRecipes = append(potionRecipes, protocol.PotionRecipe{
-				InputPotionID:        inputRuntimeID,
-				InputPotionMetadata:  int32(inputMeta),
-				ReagentItemID:        reagentRuntimeID,
-				ReagentItemMetadata:  int32(reagentMeta),
-				OutputPotionID:       outputRuntimeID,
-				OutputPotionMetadata: int32(outputMeta),
-			})
-
-		case recipe.PotionContainerChange:
-			inputRuntimeID, _, _ := world.ItemRuntimeID(i.Input()[0].(item.Stack).Item())
-			reagentRuntimeID, _, _ := world.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
-			outputRuntimeID, _, _ := world.ItemRuntimeID(i.Output()[0].Item())
-
-			potionContainerChange = append(potionContainerChange, protocol.PotionContainerChangeRecipe{
-				InputItemID:   inputRuntimeID,
-				ReagentItemID: reagentRuntimeID,
-				OutputItemID:  outputRuntimeID,
-			})
-		}
-	}
-	s.writePacket(&packet.CraftingData{
-		ShapedRecipes:                shapedRecipes,
-		ShapelessRecipes:             shapelessRecipes,
-		MultiRecipes:                 multiRecipes,
-		UserDataShapelessRecipes:     userDataShapelessRecipes,
-		SmithingTransformRecipes:     smithingTransformRecipes,
-		SmithingTrimRecipes:          smithingTrimRecipes,
-		PotionRecipes:                potionRecipes,
-		PotionContainerChangeRecipes: potionContainerChange,
-		ClearRecipes:                 true,
-	})
-}
-func (s *Session) registerJavaRecipeID(r recipe.Recipe) string {
-	if s.javaRecipeIDs == nil {
-		s.javaRecipeIDs = make(map[string][]string)
-	}
-	javaIDs := recipe.JavaRecipeIDs(r)
-	id := uuid.New().String()
-	if len(javaIDs) == 1 {
-		id = javaIDs[0]
-	}
-	for _, javaID := range javaIDs {
-		s.javaRecipeIDs[javaID] = append(s.javaRecipeIDs[javaID], id)
-	}
-	return id
-}
-
-func (s *Session) registerJavaMultiRecipeID(r recipe.Multi) {
-	if s.javaRecipeIDs == nil {
-		s.javaRecipeIDs = make(map[string][]string)
-	}
-	packetID := r.UUID().String()
-	for _, javaID := range recipe.JavaRecipeIDs(r) {
-		s.javaRecipeIDs[javaID] = append(s.javaRecipeIDs[javaID], packetID)
-	}
+	d := recipesFor(s.br)
+	s.recipes = maps.Clone(d.recipes)
+	s.javaRecipeIDs = maps.Clone(d.javaIDs)
+	s.writePacket(d.packet)
 }
 
 // UnlockRecipes sends newly unlocked Java recipes that have a corresponding
@@ -1558,34 +1426,6 @@ func stacksToIngredientItems(_ world.BlockRegistry, inputs []recipe.Item) []prot
 		})
 	}
 	return items
-}
-
-// creativeContent returns all creative groups, and creative inventory items as protocol item stacks.
-func creativeContent(br world.BlockRegistry) ([]protocol.CreativeGroup, []protocol.CreativeItem) {
-	groups := make([]protocol.CreativeGroup, 0, len(creative.Groups()))
-	for _, group := range creative.Groups() {
-		groups = append(groups, protocol.CreativeGroup{
-			Category: group.Category.Uint8(),
-			Name:     group.Name,
-			Icon:     deleteDamage(stackFromItem(br, group.Icon)),
-		})
-	}
-
-	it := make([]protocol.CreativeItem, 0, len(creative.Items()))
-	for index, i := range creative.Items() {
-		group := slices.IndexFunc(creative.Groups(), func(group creative.Group) bool {
-			return group.Name == i.Group
-		})
-		if group < 0 {
-			continue
-		}
-		it = append(it, protocol.CreativeItem{
-			CreativeItemNetworkID: uint32(index) + 1,
-			Item:                  deleteDamage(stackFromItem(br, i.Stack)),
-			GroupIndex:            uint32(group),
-		})
-	}
-	return groups, it
 }
 
 // deleteDamage strips the damage from a protocol item.

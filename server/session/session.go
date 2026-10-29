@@ -285,8 +285,7 @@ func (conf Config) New(conn Conn) *Session {
 
 	s.registerHandlers()
 	s.sendBiomes()
-	groups, items := creativeContent(s.br)
-	s.writePacket(&packet.CreativeContent{Groups: groups, Items: items})
+	s.writePacket(creativePacket(s.br))
 	s.sendRecipes()
 	s.sendArmourTrimData()
 	s.SendSpeed(0.1)
