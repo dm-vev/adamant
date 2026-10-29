@@ -141,6 +141,15 @@ func (c *Conn) Latency() time.Duration {
 // RemoteAddr returns the address of the client.
 func (c *Conn) RemoteAddr() net.Addr { return c.t.RemoteAddr() }
 
+// SetSendBatch has what the connection sends from now on gathered by b, to
+// go out with what other connections send, until it is set to nil: see
+// nethernet.SendBatch. A player of a proxy sends as before.
+func (c *Conn) SetSendBatch(b *nethernet.SendBatch) {
+	if c.nn != nil {
+		c.nn.SetSendBatch(b)
+	}
+}
+
 // Buffered returns the bytes sent to the client that it did not take yet,
 // zero for a player of a proxy, which buffers for its clients itself.
 func (c *Conn) Buffered() int {

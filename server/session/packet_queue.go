@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/nethernet"
 )
 
 // writeQueued writes a packet taken from the queue to the connection. A
@@ -215,25 +216,46 @@ func (p *flushPool) submit(s *Session) {
 	p.cond.Signal()
 }
 
+// flushRound bounds the sessions a flusher takes at once, whose datagrams
+// go out together once it flushed them all.
+const flushRound = 16
+
 func (p *flushPool) work() {
+	batch := nethernet.NewSendBatch()
+	round := make([]*Session, 0, flushRound)
 	for {
 		p.mu.Lock()
 		for p.head == len(p.queue) {
 			p.cond.Wait()
 		}
-		s := p.queue[p.head]
-		p.queue[p.head] = nil
-		if p.head++; p.head == len(p.queue) {
+		n := min(len(p.queue)-p.head, flushRound)
+		round = append(round[:0], p.queue[p.head:p.head+n]...)
+		clear(p.queue[p.head : p.head+n])
+		if p.head += n; p.head == len(p.queue) {
 			p.queue, p.head = p.queue[:0], 0
 		}
 		p.mu.Unlock()
-		p.flush(s)
+		for _, s := range round {
+			p.flush(s, batch)
+		}
+		clear(round)
+		batch.Flush()
 	}
 }
 
-// flush flushes s; a panic of its connection closes the session rather than
-// the process.
-func (p *flushPool) flush(s *Session) {
+// sendBatcher is a connection whose datagrams a nethernet.SendBatch may
+// gather.
+type sendBatcher interface {
+	SetSendBatch(b *nethernet.SendBatch)
+}
+
+// flush flushes s, gathering its datagrams in batch; a panic of its
+// connection closes the session rather than the process.
+func (p *flushPool) flush(s *Session, batch *nethernet.SendBatch) {
+	if sb, ok := s.conn.(sendBatcher); ok {
+		sb.SetSendBatch(batch)
+		defer sb.SetSendBatch(nil)
+	}
 	defer func() {
 		if v := recover(); v != nil {
 			s.conf.Log.Error("panic flushing session packets", "panic", v)

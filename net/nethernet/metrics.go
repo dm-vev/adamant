@@ -40,6 +40,10 @@ var (
 		"Connections of the listeners whose channels opened and that did not close.")
 	connectionsPending = metrics.Default.Gauge("adamant_nethernet_connections_pending",
 		"Connections of the listeners that did not open yet.")
+	sendBatches = metrics.Default.Counter("adamant_nethernet_send_batches_total",
+		"Calls that sent the datagrams of several connections of a socket at once.")
+	sendBatchMessages = metrics.Default.Histogram("adamant_nethernet_send_batch_messages",
+		"What connections sent at once in a call sending for several.", 1, 2, 4, 8, 16, 32, 64)
 )
 
 // socketIndex returns the index of a socket of the listener for the

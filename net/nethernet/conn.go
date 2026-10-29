@@ -89,7 +89,11 @@ type connConfig struct {
 	out   func(b []byte, to netip.AddrPort)
 	// outBatch, if set, sends datagrams of size bytes back to back in b, the
 	// last maybe shorter, in one call.
-	outBatch  func(b []byte, size int, to netip.AddrPort)
+	outBatch func(b []byte, size int, to netip.AddrPort)
+	// direct, if set, returns the socket datagrams to a peer go out on and
+	// the counter of what is sent on it, nil for a peer reached through the
+	// relay: what a SendBatch may gather.
+	direct    func(to netip.AddrPort) (*net.UDPConn, func(datagrams, n int))
 	localAddr net.Addr
 }
 
@@ -103,6 +107,10 @@ type Conn struct {
 	clock    func() time.Time
 	out      func(b []byte, to netip.AddrPort)
 	outBatch func(b []byte, size int, to netip.AddrPort)
+	direct   func(to netip.AddrPort) (*net.UDPConn, func(datagrams, n int))
+	// sendBatch, if set, takes the datagrams of the connection rather than
+	// its socket: see SendBatch.
+	sendBatch *SendBatch
 	// batch gathers the DTLS datagrams of the event being handled, to go
 	// out in one call: batchSize bytes each but maybe the last.
 	batch      []byte
@@ -185,6 +193,19 @@ type Stats struct {
 	MessagesSent, BytesSent, MessagesReceived, BytesReceived uint64
 }
 
+// SetSendBatch has the datagrams the connection sends from now on gathered
+// by b, until it is set to nil: see SendBatch. A peer reached through the
+// relay is sent to as before.
+func (c *Conn) SetSendBatch(b *SendBatch) {
+	c.mu.Lock()
+	if b == nil {
+		// What was gathered before goes into the batch it was gathered for.
+		c.flushBatch()
+	}
+	c.sendBatch = b
+	c.mu.Unlock()
+}
+
 // Buffered returns the bytes of the messages sent on the connection that
 // the peer did not take yet: queued, or in flight unacknowledged.
 func (c *Conn) Buffered() int {
@@ -212,6 +233,7 @@ func newConn(cfg connConfig, now time.Time) *Conn {
 		clock:      cfg.clock,
 		out:        cfg.out,
 		outBatch:   cfg.outBatch,
+		direct:     cfg.direct,
 		dtlsClient: cfg.dtlsClient,
 		localAddr:  cfg.localAddr,
 		peerFP:     cfg.remote.fingerprints,
@@ -284,12 +306,26 @@ var batchBuffers = sync.Pool{New: func() any {
 	return &b
 }}
 
-// flushBatch sends the datagrams gathered.
+// flushBatch sends the datagrams gathered, or hands them to the SendBatch
+// set on the connection.
 func (c *Conn) flushBatch() {
-	switch c.batchCount {
-	case 0:
+	if c.batchCount == 0 {
 		return
-	case 1:
+	}
+	var sock *net.UDPConn
+	var count func(int, int)
+	if c.sendBatch != nil && c.direct != nil {
+		sock, count = c.direct(c.batchTo)
+	}
+	switch {
+	case sock != nil:
+		size := c.batchSize
+		if c.batchCount == 1 {
+			size = len(c.batch)
+		}
+		c.sendBatch.add(sock, c.batch, size, c.batchTo)
+		count(c.batchCount, len(c.batch))
+	case c.batchCount == 1:
 		c.out(c.batch, c.batchTo)
 	default:
 		c.outBatch(c.batch, c.batchSize, c.batchTo)

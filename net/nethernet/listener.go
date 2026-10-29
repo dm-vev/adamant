@@ -481,6 +481,7 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 	}
 	sock := l.socks[int(l.nextSock.Add(1))%len(l.socks)]
 	out, outBatch := l.writers(sock)
+	direct := l.direct(sock)
 	c := newConn(connConfig{
 		local:       local,
 		remote:      offer,
@@ -489,6 +490,7 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 		sendBuffer:  l.cfg.SendBuffer,
 		out:         out,
 		outBatch:    outBatch,
+		direct:      direct,
 		localAddr:   l.addr,
 	}, now)
 	c.publicKey = pub
@@ -563,6 +565,30 @@ func (l *Listener) writers(sock *net.UDPConn) (out func([]byte, netip.AddrPort),
 			return
 		}
 		batch(b, size, to)
+	}
+}
+
+// direct returns what a connection gathers its datagrams for a SendBatch
+// with: sock and its counters for a peer reached without the relay, nil
+// for one reached through it, and nil itself where a SendBatch sends each
+// message on its own anyway.
+func (l *Listener) direct(sock *net.UDPConn) func(netip.AddrPort) (*net.UDPConn, func(int, int)) {
+	if !sendBatchSupported {
+		return nil
+	}
+	idx := l.socketIndex(sock)
+	sent, sentBytes := datagramsSent.At(idx), bytesSent.At(idx)
+	count := func(datagrams, n int) {
+		if sent != nil {
+			sent.Add(uint64(datagrams))
+			sentBytes.Add(uint64(n))
+		}
+	}
+	return func(to netip.AddrPort) (*net.UDPConn, func(int, int)) {
+		if r := l.relay.Load(); r != nil && r.via(to) {
+			return nil, nil
+		}
+		return sock, count
 	}
 }
 
