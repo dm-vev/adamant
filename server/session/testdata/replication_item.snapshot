@@ -1,0 +1,49 @@
+== spawn
+AddItemActor EntityUniqueID=1 EntityRuntimeID=2 Item={StackNetworkID:0 Stack:{NetworkID:882 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}} Position=[8.5 3.125 8.5] Velocity=[0 0 0] EntityMetadata=map[0:562949953945600 3:0 4: 8:0 9:0 26:0 53:0.25 54:0.25 57:0 58:0 59:0 60:0 81:0 92:0 108:8 109:16 110:ambient 111:1 120:0] FromFishing=false
+== tick 1
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:true Val:8.5} PositionY={Set:true Val:3.085} PositionZ={Set:true Val:8.5} RotationX={Set:true Val:0} RotationY={Set:true Val:0} RotationYHead={Set:true Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+== tick 2
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:3.0058} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+== tick 3
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:2.888184} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+== tick 4
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:2.7329204} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+== tick 5
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:2.540762} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+== tick 6
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:2.3124466} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+SetActorMotion EntityRuntimeID=2 Velocity=[0 -0.22374894 0] Tick=0
+== tick 7
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:2.0486977} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+== tick 8
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:1.7502238} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+== tick 9
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:1.4177194} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+== tick 10
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:1.125} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=true ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+SetActorMotion EntityRuntimeID=2 Velocity=[0 0 0] Tick=0
+== tick 11
+== tick 12
+== tick 13
+== tick 14
+== tick 15
+== tick 16
+== tick 17
+== tick 18
+== tick 19
+SetTime Time=20
+LevelEvent EventType=3003 Position=[0 0 0] EventData=0
+LevelEvent EventType=3004 Position=[0 0 0] EventData=0
+== tick 20
+== tick 21
+== tick 22
+== tick 23
+== tick 24
+== tick 25
+== place a block
+UpdateBlock Position=[9 1 8] NewBlockRuntimeID=2150698529 Flags=2 Layer=0
+== sound and particle
+LevelEvent EventType=1000 Position=[8.5 1 8.5] EventData=0
+LevelEvent EventType=2025 Position=[8.5 1 8.5] EventData=0
+== remove
+RemoveActor EntityUniqueID=1
