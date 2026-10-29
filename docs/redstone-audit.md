@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **paused at the user's request on 2026-10-28; audit incomplete**.
+Status: **paused at the user's request on 2026-10-29; audit incomplete**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -1796,7 +1796,7 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Doors/trapdoors/fence gates | Open: direct/conducted input, upper/lower halves, manual changes while powered, transition events and all materials |
 | Powered/detector/activator rails | Detector inventory strength, command-cart eligibility/container, typed body selection and producer state corrected against 87 settled/lifecycle and 32 source/wire/lamp timing cases; query geometry matches 324 executed client cases. Powered/activator cadence, configured axis, tested source overlap, straight/slope range, connection placement and zero-strength activator publication corrected against 256 BDS scenes. Cart height, binary32 motion, container drag and detector chunk ownership match 320 native motion scenes; stationary rider/TNT/hopper activator effects match 24 further scenes. Open: full source-list construction/order, loops, broader detector and producer lifecycle, multi-cart order, chunk persistence, cart curves/derailment/collisions, command-cart activation, broader moving-cart transfers and activation lifecycle |
 | Dispensers/droppers/crafters | Dispenser/dropper nine-slot container contract corrected and settled comparator fullness verified. Dispenser scene publication, four-tick scheduling, cart origin/lower-rail fallback and tested newborn actor phase corrected against 188 BDS scenes. Open: broader edge/delay/retrigger/source direction, dropper circuit cadence, other inventory side effects, craft scheduling, actor lifecycle and persistence |
-| Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Early lock publication corrected using the native scene consumer; 144 additional lock-pulse traces are retained. Tested hopper-cart collection and transfer effects match 48 further scenes. Open: broader lock graph/lifecycle, exact block-hopper transfer phases, cooldown/ordering, all other containers/sides, moving cart interactions and reload |
+| Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Early lock publication corrected against 144 lock-pulse traces. Transfer clock/counter units now match 110 actual push traces and 25 native heap checkpoints; recursive chain transfers match 60 scenes across placement orders/chunk boundaries. Tested hopper-cart collection and transfer effects match 48 further scenes. Open: broader lock graph/lifecycle, larger hopper graphs and shared RNG stream, pull/collection timing (35/98 item scenes still differ), other containers/sides, moving cart interactions and reload |
 | TNT/note blocks/bells | Open: triggering edge, conducted sources, scheduled action, payload and repeated input |
 | Command/structure blocks | Open: trigger/cycle timing, modes, conditionals, powered-state persistence and cross-chunk execution |
 | Analog-output blocks | 77 settled scalar cases, 81 inventory cases and nine pot cases verify the tested paths; campfire's unsupported override removed. Another 267 book/record/shelf states, 50 hopper-transfer results and 792 frame cases match; lectern spread arithmetic, seven disc values and directional frame reads corrected. Open: broader transitions/through-block reads/materials, additional container variants/init/loot, player book/shelf/frame interactions, jukebox lifecycle, lectern pulse/packet validation, frame maps/support variants, nondefault statue world poses, shelves, sensors, command output and creaking hearts |
@@ -4586,3 +4586,130 @@ The root entry point also builds with `go build -o
 .tmp/adamant-container-audit-check.exe .`; `go run .` remains the server entry.
 Code checkpoints: `a7ae2f8` (piston contacts/entity phases), `d76fd761`
 (rails/carts) and `26048efd` (container signals/dispensing/transfers).
+
+### Resumed 2026-10-29: hopper transfer clock and counter units
+
+The ordinary replay of the last 30 hopper push/lock traces failed twenty
+empty/partial-destination scenes: the first transfer happened one tick early.
+Ten full-destination controls passed. Eight inventory-load offsets in each of
+five output directions, repeated at both placement parities, add 80 native idle
+scenes (`adamant-redstone-bds-qs58n6v7`, `adamant-redstone-bds-o9oa8spi`). The first transfer always
+appears on an even game tick, irrespective of placement parity; subsequent
+transfers remain eight game ticks apart. The kernel's one-GT idle polling did
+not match this first-transfer phase.
+
+The original HopperBlockActor::_tick (`0x4acb450`) first rejects a repeated
+Level::getCurrentTick value, then decrements its transfer counter once. The
+constructor (`0x4acaf40`, store at `0x4acaf9e`) initializes the transfer speed
+to **4**, not 8. A new read-only owned-BDS heap probe locates the tick component
+through a unique original-client prefix, validates its position accessor and
+the body offsets for last-tick/transfer counters, and reads two hoppers at 25
+bounded Script API checkpoints. Native actor tick callbacks advance every GT,
+but last_tick stays unchanged on odd ticks and the transfer counter only
+decrements on even ticks. After a transfer it holds 4, producing the observed
+eight-GT interval. This establishes the counter's units rather than inferring
+them only from the visible item interval.
+
+Hopper transfer processing now follows that even-GT clock and uses four native
+counter steps after success. Receiver initialization and source timer handling
+are corrected by the subsequent chain comparison below. Inventory insertion on an odd tick
+can run on the next even tick; insertion on an even tick waits two snapshots.
+The separate item-actor collection timer keeps its previous GT units pending
+its own native comparison. This is not a claim of item collection parity.
+
+All 110 idle/lock-unlock push scenes, 96 dropper/container scenes, 144 lock-input
+scenes, the existing bookshelf controls and the new direct heap-counter replay
+pass (entity 16.700 s, block 1.455 s), log
+`.tmp/hopper-actor-clock-replay.log`. The counter replay checks every retained
+native counter and inventory snapshot, including opposite load parities. Full
+native fixture load, clock and per-frame item conservation controls passed.
+Broader traversal graphs, transfers into and out of other containers,
+collection, and persistence remain open.
+
+### Hopper recursive transfer order
+
+Sixty original-BDS chain scenes (`adamant-redstone-bds-thgk678e`) vary all five
+output directions, source counts 1/4/16, both actor creation orders and a chunk
+boundary. The previous implementation failed 41 scenes. Native recursion visits
+the hopper below itself, below its destination and below the paired half of a
+destination double chest. Three candidates, including absent entries, undergo
+the original two-word shuffle. The kernel now uses that algorithm with the
+world RNG, shares the actor's last-transfer-tick guard across block-value copies,
+limits recursion to the native entry budget of 50, and preserves live changes
+made by a recursive neighbour. The world's complete random stream has not yet
+been matched to the native generator.
+
+Receiving a first item initializes a hopper's timer to four steps if its pass
+has run, or five before its pending decrement. Further received items do not
+reset it. Pulling from another hopper does not reset that source's timer. These
+rules permit the tested vertical pair to push and pull two items in the same
+eight-GT cycle. Transfer and recursive lookups now avoid loading absent chunks.
+All 60 chain scenes, 110 idle/push scenes, heap-counter and dropper/bookshelf
+controls pass (`.tmp/hopper-chain-recursion-fixed.log`: entity 13.924 s, block
+3.101 s). Chain/clock checks also pass three repetitions (entity 23.850 s).
+Separate synthetic guards verify the recursion boundary, item conservation and
+no neighbour-chunk loading; both pass three repetitions (block 2.703 s).
+
+### Unfinished dropped-item pickup comparison and paused checkpoint
+
+The user requested commits, publication and a pause on 2026-10-29. The effort
+estimate remains approximately **65%**; all 22 matrix rows retain open work.
+
+Ninety-eight original-BDS captures (`adamant-redstone-bds-o9_jfgc6`) preserve
+full inventory slots, dropped-actor identities, positions, velocities, bounds
+and grounded state over 120 frames. They vary empty/partial/full hoppers, item
+counts, height/edge placement, locking, output containers and sequential item
+types. Spawn velocities are recorded native API inputs, not a claim of matching
+the API's random toss generator. All capture conservation controls pass.
+The new replay still fails **35/98** scenes (`.tmp/hopper-items-replay-baseline.log`).
+No pickup fix is claimed or included in this checkpoint. The diagnostic is
+explicitly opt-in until resolved; reproduce in PowerShell with:
+
+```powershell
+$env:ADAMANT_REDSTONE_PICKUP_AUDIT = '1'
+go test ./server/entity -run '^TestHopperItemCollectionMatchesBDS$' -count=1
+Remove-Item Env:ADAMANT_REDSTONE_PICKUP_AUDIT
+```
+
+The executed-original-client probe `scripts/redstone_native_hopper_shapes_probe.py`
+retains 126 collision constructions and 40 empty-query paths in
+`server/block/testdata/bedrock_1_26_51_hopper_shapes.json`. Original functions
+are HopperBlock::addAABBs (`0x66bb380`, length `0x4a1`), spout construction
+(`0x66bb870`, `0x286`), Hopper::_tryAddItemsFromPos (`0x2060eb0`, `0x672`) and
+world pickup (`0x2062b80`, `0x137`). Function hashes and client hash are retained.
+Host callbacks supply state, allocation and empty actor queries; candidate
+selection and successful collection are not exercised by this empty-query probe.
+
+At ordinary coordinates the native model has seven boxes: a floor at local
+Y .625..6875, four walls from .6875..1, a neck and a facing-dependent spout.
+The current Go model has five boxes and a floor surface at .625. Native world
+translation uses binary32 arithmetic and omits degenerate boxes at large
+coordinates. A block hopper queries [x,y+.625,z]..[x+1,y+2,z+1], unless the block
+above reports isContainerBlock; an entity hopper has two centred queries.
+The original pickup code shrinks relative query bounds by 1e-4 and returns
+after the first successfully acquired actor, including partial insertion.
+Before implementing selection, inspect the candidate filtering loop beginning
+at `0x20611c0`: its exact position/body test remains unresolved. Slot-order
+insertion also needs comparison; Inventory.AddItem currently merges stacks
+before filling earlier empty slots. The geometry, item-actor pickup path and
+inventory insertion have deliberately not been changed at this pause.
+
+The resumed six-package suite before the recursion changes passed block
+(100.315 s), world (15.809 s), player (18.771 s), session (3.552 s) and item
+(3.184 s). Entity failed only TestGoatsRamMobs (340.244 s). The same goat test
+failed 1/30 repetitions on unchanged baseline `5ff95e72`
+(`.tmp/redstone-goat-baseline-repeat.log`), establishing existing instability.
+Intentional portal recovery panic logs are not additional failures. These
+results do not claim a green complete suite at this checkpoint; focused
+hopper regressions are reported separately above.
+
+Final pause verification: `go test ./server/entity ./server/block -run
+'Test(Hopper|DropperContainerActionsMatchBDS|BookshelfHopperSignalsMatchNativeCapture)'
+-count=1` passes entity (20.954 s) and block (1.456 s), log
+`.tmp/redstone-paused-2026-10-29-focused.log`. The unfinished item-pickup
+diagnostic is skipped by default as documented above, not counted as passing.
+All six new/updated Python probes parse, and all six new native fixtures report
+complete captures with the expected scene/checkpoint counts. The root server
+build passes with `go build -o .tmp/adamant-redstone-paused-2026-10-29.exe .`;
+`go run .` remains available. The transfer/chain correction is committed in
+`7dd2da9e`; this checkpoint retains the open collection comparison for resumption.
