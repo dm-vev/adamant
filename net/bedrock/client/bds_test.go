@@ -178,4 +178,7 @@ func TestBDSCorpus(t *testing.T) {
 		t.Logf("%4d %-40T %6d packets, %d did not decode, %d encode back differently, %d with NBT reordered", id, v2193.New(id), s.n, s.failed, s.changed, s.reordered)
 	}
 	t.Logf("%d packets of %d kinds", total, len(ids))
+	// Whether BDS sends anything on the unreliable channel, which the game
+	// opens beside the reliable one.
+	t.Logf("%d messages on the unreliable channel", c.nn.Stats().UnreliableReceived)
 }

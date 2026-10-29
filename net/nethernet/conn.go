@@ -177,7 +177,7 @@ type Conn struct {
 	counted  bool
 
 	// The messages and their bytes sent and received, for Stats.
-	messagesSent, bytesSent, messagesReceived, bytesReceived uint64
+	messagesSent, bytesSent, messagesReceived, bytesReceived, unreliableReceived uint64
 }
 
 // Stats are the state of a connection, as a netstat shows it.
@@ -191,6 +191,8 @@ type Stats struct {
 	// MessagesSent, BytesSent, MessagesReceived and BytesReceived count
 	// the messages of the reliable channel.
 	MessagesSent, BytesSent, MessagesReceived, BytesReceived uint64
+	// UnreliableReceived counts the messages of the unreliable channel.
+	UnreliableReceived uint64
 }
 
 // SetSendBatch has the datagrams the connection sends from now on gathered
@@ -219,12 +221,13 @@ func (c *Conn) Stats() Stats {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return Stats{
-		Remote:           c.remote,
-		SCTP:             c.assoc.Stats(),
-		MessagesSent:     c.messagesSent,
-		BytesSent:        c.bytesSent,
-		MessagesReceived: c.messagesReceived,
-		BytesReceived:    c.bytesReceived,
+		Remote:             c.remote,
+		SCTP:               c.assoc.Stats(),
+		MessagesSent:       c.messagesSent,
+		BytesSent:          c.bytesSent,
+		MessagesReceived:   c.messagesReceived,
+		BytesReceived:      c.bytesReceived,
+		UnreliableReceived: c.unreliableReceived,
 	}
 }
 
@@ -487,6 +490,7 @@ func (c *Conn) handleMessage(stream uint16, ppid uint32, data []byte) {
 		case c.unreliable.open && stream == c.unreliable.stream:
 			// Messages of the unreliable channel are never split.
 			if len(data) > 1 && data[0] == 0 {
+				c.unreliableReceived++
 				c.deliver(bytes.Clone(data[1:]))
 			}
 		}
