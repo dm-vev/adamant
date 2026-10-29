@@ -6,12 +6,16 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"log/slog"
+	"math/big"
 	"net"
+	"net/http"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -308,5 +312,65 @@ func TestNetherNetListenerTakesProxies(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the player of the proxy was not accepted")
+	}
+}
+
+// TestNetherNetListenerServesHTTPS serves the signaling over HTTPS with
+// the certificate the authority issued the domain, kept in the cache of
+// the server, and over plain HTTP on the same port.
+func TestNetherNetListenerServesHTTPS(t *testing.T) {
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "example.org"}, DNSNames: []string{"example.org"},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(90 * 24 * time.Hour)}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyDER, _ := x509.MarshalECPrivateKey(key)
+	cache := t.TempDir()
+	pemData := append(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})...)
+	if err := os.WriteFile(filepath.Join(cache, "certificate.pem"), pemData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	leaf, _ := x509.ParseCertificate(der)
+	pool := x509.NewCertPool()
+	pool.AddCert(leaf)
+
+	uc := DefaultConfig()
+	uc.Network.Address = "127.0.0.1:0"
+	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	uc.Network.HTTPSDomain = "example.org"
+	uc.Network.ACMECacheDir = cache
+	uc.Network.ACMEDirectory = "http://127.0.0.1:1/unused"
+	uc.Network.ACMEChallengeAddress = "127.0.0.1:0"
+	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	addr := l.(netherNetListener).Addr().String()
+	https := &http.Client{Timeout: 2 * time.Second, Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool, ServerName: "example.org"}}}
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		resp, err := https.Get("https://" + addr + "/v1/join")
+		if err == nil {
+			_ = resp.Body.Close()
+			if resp.StatusCode != http.StatusOK || resp.TLS == nil {
+				t.Fatalf("HTTPS signaling answered %s", resp.Status)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("HTTPS signaling: %v", err)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	resp, err := http.Get("http://" + addr + "/v1/join")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || resp.TLS != nil {
+		t.Fatalf("HTTP signaling answered %s", resp.Status)
 	}
 }

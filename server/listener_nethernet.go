@@ -2,23 +2,28 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"net/netip"
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/dm-vev/adamant/net/acme"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -47,6 +52,15 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 		allow = conf.Allower.Allow
 	}
 	listen := nethernet.ListenConfig{Key: key, AllowAnonymous: conf.AuthDisabled}
+	var certs *acme.Manager
+	if domain := uc.Network.HTTPSDomain; domain != "" {
+		cacheDir := uc.Network.ACMECacheDir
+		if cacheDir == "" {
+			cacheDir = "acme"
+		}
+		certs = &acme.Manager{Directory: uc.Network.ACMEDirectory, Domain: domain, Email: uc.Network.ACMEEmail, CacheDir: cacheDir}
+		listen.TLSConfig = &tls.Config{GetCertificate: certs.GetCertificate, MinVersion: tls.VersionTLS12}
+	}
 	if uc.Network.EnableQuery {
 		// Server lists send query requests to the port of the game, which
 		// is the port of the NetherNet sockets.
@@ -82,6 +96,9 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 		return nil, fmt.Errorf("create NetherNet listener: %w", err)
 	}
 	conf.Log.Info("NetherNet listener running.", "addr", l.Addr())
+	if certs != nil {
+		keepCertificate(l, certs, uc.Network.ACMEChallengeAddress, conf.Log)
+	}
 	if uc.Xbox.Enabled {
 		tokenFile := uc.Xbox.TokenFile
 		if tokenFile == "" {
@@ -99,6 +116,43 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 		}
 	}
 	return netherNetListener{l}, nil
+}
+
+// keepCertificate obtains the certificate of the HTTPS signaling and keeps
+// it renewed while the listener lives, answering the challenges of the
+// authority on addr, ":80" if empty. Until it has one, or if it gets none,
+// clients join over plain HTTP.
+func keepCertificate(l *netconn.Listener, certs *acme.Manager, addr string, log *slog.Logger) {
+	if addr == "" {
+		addr = ":80"
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	challenges := &http.Server{
+		Handler:           certs.HTTPHandler(nil),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		MaxHeaderBytes:    8 << 10,
+	}
+	if ln, err := net.Listen("tcp", addr); err != nil {
+		log.Warn("The challenges of the certificate authority go unanswered: a cached certificate still serves.", "addr", addr, "err", err)
+	} else {
+		go func() { _ = challenges.Serve(ln) }()
+	}
+	go func() {
+		<-l.Closed()
+		cancel()
+		_ = challenges.Close()
+	}()
+	go func() {
+		if err := certs.Run(ctx); err != nil {
+			if ctx.Err() == nil {
+				log.Warn("The signaling has no certificate: clients join over plain HTTP.", "domain", certs.Domain, "err", err)
+			}
+			return
+		}
+		log.Info("The signaling is served over HTTPS.", "domain", certs.Domain)
+	}()
 }
 
 // minProxySecret bounds the length of the secret of proxy links from below.

@@ -383,6 +383,27 @@ type UserConfig struct {
 		// LAN shows the server in the LAN tab of clients on the same network
 		// and lets them join from there, over UDP port 7551 as the game does.
 		LAN bool
+		// HTTPSDomain is the domain of the server for its signaling over
+		// HTTPS: clients that join by an https:// address trust its
+		// certificate rather than its key on first use. The server obtains
+		// the certificate from Let's Encrypt and renews it, proving the domain
+		// on TCP port 80, which must reach the server. Plain HTTP stays served
+		// on the port of the game. An empty value serves plain HTTP alone.
+		HTTPSDomain string
+		// ACMEEmail is the contact of the account of the server at the
+		// certificate authority, optional.
+		ACMEEmail string
+		// ACMECacheDir keeps the account and the certificate across restarts,
+		// as the authority issues a domain few certificates a week. An empty
+		// value uses "acme".
+		ACMECacheDir string
+		// ACMEDirectory is the directory URL of the certificate authority.
+		// An empty value uses Let's Encrypt.
+		ACMEDirectory string
+		// ACMEChallengeAddress is where the server answers the challenges of
+		// the authority, which asks on port 80: another address suits a port
+		// forwarded to it. An empty value uses ":80".
+		ACMEChallengeAddress string
 	}
 	// Xbox holds the publishing of the server on Xbox Live.
 	Xbox struct {
