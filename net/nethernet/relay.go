@@ -93,6 +93,7 @@ func (r *relay) handle(b []byte, msg *stun.Message) {
 	if !ok {
 		return
 	}
+	relayedDatagrams.Inc()
 	r.peersMu.RLock()
 	_, known := r.peers[peer]
 	r.peersMu.RUnlock()
@@ -216,3 +217,10 @@ func (r *relay) close() {
 	r.signal.Do(func() { close(r.ready) })
 }
 
+
+// Relayed reports whether what goes to a peer goes through the TURN relay
+// of the listener.
+func (l *Listener) Relayed(peer netip.AddrPort) bool {
+	r := l.relay.Load()
+	return r != nil && r.via(peer)
+}

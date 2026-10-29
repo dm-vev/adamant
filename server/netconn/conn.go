@@ -59,14 +59,33 @@ type Conn struct {
 	w wire.Writer
 
 	closeOnce sync.Once
+	connected time.Time
 }
 
 func newConn(l *Listener, nn *nethernet.Conn) *Conn {
 	return &Conn{
-		l:  l,
-		nn: nn,
-		b:  bedrock.NewConn(nn, l.batches),
+		l:         l,
+		nn:        nn,
+		b:         bedrock.NewConn(nn, l.batches),
+		connected: time.Now(),
 	}
+}
+
+// Stats are the state of the connection of a client, as a netstat shows
+// it.
+type Stats struct {
+	nethernet.Stats
+	// Protocol is the protocol the client speaks.
+	Protocol int32
+	// Connected is when the connection opened.
+	Connected time.Time
+}
+
+// Stats returns the state of the connection.
+func (c *Conn) Stats() Stats {
+	st := Stats{Stats: c.nn.Stats(), Protocol: v2193.Protocol, Connected: c.connected}
+	st.Relayed = c.l.nn.Relayed(st.Remote)
+	return st
 }
 
 // IdentityData returns the identity the client logged in with.
@@ -127,6 +146,7 @@ func (c *Conn) ReadPacket() (pk proto.Packet, err error) {
 		return nil, err
 	}
 	if pk, err = DecodePacket(raw); err != nil {
+		undecodable.Inc()
 		_ = c.Close()
 		return nil, err
 	}
@@ -156,6 +176,7 @@ func (c *Conn) Receive(handle func(pk proto.Packet), closed func(err error)) {
 		}
 		pk, err := DecodePacket(raw)
 		if err != nil {
+			undecodable.Inc()
 			_ = c.Close()
 			end(err)
 			return errStopped

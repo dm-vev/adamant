@@ -22,6 +22,7 @@
   "commands.gamemode.description": "Changes a player's game mode.",
   "commands.gamerule.description": "Changes or queries a world game rule.",
   "commands.gc.description": "Runs chunk cleanup and triggers a Go garbage collection cycle.",
+  "commands.netstat.description": "Shows the state of the network connections of players.",
   "commands.give.description": "Gives items to players.",
   "commands.help.description": "Shows available commands and their usage.",
   "commands.item.description": "Replaces or modifies items in inventories.",

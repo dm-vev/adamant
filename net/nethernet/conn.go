@@ -163,6 +163,40 @@ type Conn struct {
 	ufrag       string
 	addrs       []netip.AddrPort
 	pendingSlot bool
+	// answered is when the listener answered the offer of the connection;
+	// counted is set while it counts the connection as open.
+	answered time.Time
+	counted  bool
+
+	// The messages and their bytes sent and received, for Stats.
+	messagesSent, bytesSent, messagesReceived, bytesReceived uint64
+}
+
+// Stats are the state of a connection, as a netstat shows it.
+type Stats struct {
+	// Remote is the address of the peer and Relayed whether it is reached
+	// through the TURN relay of the listener.
+	Remote  netip.AddrPort
+	Relayed bool
+	// SCTP is the state of the association.
+	SCTP sctp.Stats
+	// MessagesSent, BytesSent, MessagesReceived and BytesReceived count
+	// the messages of the reliable channel.
+	MessagesSent, BytesSent, MessagesReceived, BytesReceived uint64
+}
+
+// Stats returns the state of the connection.
+func (c *Conn) Stats() Stats {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return Stats{
+		Remote:           c.remote,
+		SCTP:             c.assoc.Stats(),
+		MessagesSent:     c.messagesSent,
+		BytesSent:        c.bytesSent,
+		MessagesReceived: c.messagesReceived,
+		BytesReceived:    c.bytesReceived,
+	}
 }
 
 func newConn(cfg connConfig, now time.Time) *Conn {
@@ -485,6 +519,8 @@ func (c *Conn) deliver(msg []byte) {
 	if c.err != nil {
 		return
 	}
+	c.messagesReceived++
+	c.bytesReceived += uint64(len(msg))
 	if c.receiver != nil {
 		c.pending = append(c.pending, msg)
 		return
@@ -676,6 +712,8 @@ func (c *Conn) Send(msg []byte) error {
 			return err
 		}
 	}
+	c.messagesSent++
+	c.bytesSent += uint64(len(msg))
 	c.schedule()
 	return nil
 }

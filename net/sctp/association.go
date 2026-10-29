@@ -195,6 +195,9 @@ type Association struct {
 	buffered     int
 	flight       int
 	cwnd         int
+	// retransmits counts the chunks marked to go again, timeouts the
+	// expiries of the retransmission timer.
+	retransmits, timeouts uint64
 	ssthresh     int
 	partialAcked int
 	peerWindow   int
@@ -293,6 +296,25 @@ func (a *Association) Available() int { return max(0, a.cfg.SendBuffer-a.buffere
 
 // RTT returns the smoothed round trip time, zero before a measurement.
 func (a *Association) RTT() time.Duration { return a.srtt }
+
+// Stats are the state of an association, as a netstat shows it.
+type Stats struct {
+	// RTT and RTO are the smoothed round trip time and the retransmission
+	// timeout.
+	RTT, RTO time.Duration
+	// Cwnd is the congestion window and Flight the bytes in flight.
+	Cwnd, Flight int
+	// Buffered is the bytes of the messages queued or in flight.
+	Buffered int
+	// Retransmits counts the chunks sent again, Timeouts the expiries of
+	// the retransmission timer.
+	Retransmits, Timeouts uint64
+}
+
+// Stats returns the state of the association.
+func (a *Association) Stats() Stats {
+	return Stats{RTT: a.srtt, RTO: a.rto, Cwnd: a.cwnd, Flight: a.flight, Buffered: a.buffered, Retransmits: a.retransmits, Timeouts: a.timeouts}
+}
 
 // Connect opens the association from this side by sending an INIT.
 func (a *Association) Connect(now time.Time) {
@@ -1065,6 +1087,9 @@ func (a *Association) markRetransmit(ch *outChunk, now time.Time) {
 		a.abandon(m)
 		return
 	}
+	if !ch.retransmit {
+		a.retransmits++
+	}
 	ch.retransmit = true
 }
 
@@ -1183,6 +1208,7 @@ func (a *Association) retransmitTimeout(now time.Time) error {
 	if a.errorCount++; a.errorCount > a.cfg.MaxRetransmissions {
 		return a.fail(ErrTimeout)
 	}
+	a.timeouts++
 	a.ssthresh = max(a.cwnd/2, 4*a.cfg.MaxPacketSize)
 	a.cwnd = a.cfg.MaxPacketSize
 	a.partialAcked = 0

@@ -59,6 +59,9 @@ type Session struct {
 	heldPackets    []proto.Packet
 	flushing       bool
 	flushSpare     []proto.Packet
+	// tickEnded is when the batch of the tick of the world of the session
+	// that is waiting for a flusher ended, zero for none.
+	tickEnded int64
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
@@ -312,6 +315,7 @@ func (s *Session) SetHandle(handle *world.EntityHandle, skin skin.Skin) {
 
 	s.listEntry.Store(s.newListEntry(skin))
 	sessions.Add(s)
+	sessionsOpen.Add(1)
 }
 
 // ViewerEntity identifies the observer for source-defined particle range checks.
@@ -383,6 +387,7 @@ func (s *Session) receive(pk proto.Packet) {
 		return
 	}
 	if len(s.inbox) == maxInbox {
+		inboxCut.Inc()
 		s.conf.Log.Debug("client sends more than the world of its player handles", "packets", len(s.inbox))
 		s.inboxClosed = true
 		go s.CloseConnection()
@@ -480,7 +485,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 		// This should always be called last due to the timing of the removal of
 		// entity runtime IDs.
 		if s.ent != nil {
-			run(func() { sessions.Remove(s, c) })
+			run(func() { sessions.Remove(s, c); sessionsOpen.Add(-1) })
 			run(func() {
 				s.entityMutex.Lock()
 				clear(s.entityRuntimeIDs)
@@ -524,6 +529,36 @@ func (s *Session) Addr() net.Addr {
 // Latency returns the latency of the connection.
 func (s *Session) Latency() time.Duration {
 	return s.conn.Latency()
+}
+
+// NetStats are the state of the connection of a session, as a netstat
+// shows it.
+type NetStats struct {
+	// Addr is the address of the client.
+	Addr net.Addr
+	// Latency is half the round trip time.
+	Latency time.Duration
+	// Queued counts the packets waiting for the connection, Inbox those of
+	// the client waiting for the world of the player.
+	Queued, Inbox int
+	// Conn is the state of the connection, if it tells it.
+	Conn    netconn.Stats
+	HasConn bool
+}
+
+// NetStats returns the state of the connection of the session.
+func (s *Session) NetStats() NetStats {
+	st := NetStats{Addr: s.conn.RemoteAddr(), Latency: s.conn.Latency()}
+	s.packetsMu.Lock()
+	st.Queued = len(s.pendingPackets) + len(s.heldPackets)
+	s.packetsMu.Unlock()
+	s.inboxMu.Lock()
+	st.Inbox = len(s.inbox)
+	s.inboxMu.Unlock()
+	if c, ok := s.conn.(interface{ Stats() netconn.Stats }); ok {
+		st.Conn, st.HasConn = c.Stats(), true
+	}
+	return st
 }
 
 // withControllable runs f with the current Controllable on its world owner.

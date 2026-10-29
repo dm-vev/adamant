@@ -16,6 +16,7 @@ func Register(srv serverAdapter) {
 	cmd.Register(newMeCommand())
 	cmd.Register(newStopCommand(srv))
 	cmd.Register(newKickCommand())
+	cmd.Register(newNetstatCommand())
 	cmd.Register(newGamemodeCommand())
 	cmd.Register(newTimeCommand())
 	cmd.Register(newGCCommand(srv))

@@ -294,7 +294,9 @@ func (l *Listener) left() {
 // login logs a client in and queues it for Accept.
 func (l *Listener) login(nn *nethernet.Conn) {
 	c := newConn(l, nn)
+	loginsStarted.Inc()
 	if max := l.cfg.MaximumPlayers; max != 0 && int(l.players.Load()) >= max {
+		loginsFull.Inc()
 		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: packet.PlayStatusLoginFailedServerFull})
 		_ = c.Flush()
 		_ = nn.Close()
@@ -316,9 +318,12 @@ func (l *Listener) login(nn *nethernet.Conn) {
 		if !errors.As(err, &closed) && !errors.Is(err, net.ErrClosed) {
 			l.cfg.Log.Debug("login failed", "raddr", nn.RemoteAddr(), "err", err)
 		}
+		loginsFailed.Inc()
 		_ = c.Close()
 		return
 	}
+	loginsDone.Inc()
+	loginSeconds.Observe(time.Since(c.connected).Seconds())
 	_ = nn.SetReadDeadline(time.Time{})
 	select {
 	case l.incoming <- c:

@@ -3713,6 +3713,15 @@ func (p *Player) Latency() time.Duration {
 	return p.session().Latency()
 }
 
+// NetStats returns the state of the connection of the player, false for a
+// player without one.
+func (p *Player) NetStats() (session.NetStats, bool) {
+	if p.session() == session.Nop {
+		return session.NetStats{}, false
+	}
+	return p.session().NetStats(), true
+}
+
 // Tick ticks the entity, performing actions such as checking if the player is still breaking a block.
 func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.bindTx(tx)

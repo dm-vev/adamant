@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 )
@@ -45,6 +46,7 @@ func (s *Session) writePacket(pk proto.Packet) {
 		closeConn := s.closing.CompareAndSwap(false, true)
 		s.packetsMu.Unlock()
 		if closeConn {
+			backlogClosed.Inc()
 			s.conf.Log.Warn("closing session due to outgoing packet backlog", "queued", queued)
 			go s.CloseConnection()
 		}
@@ -105,6 +107,9 @@ func (s *Session) EndBatch() {
 	s.pendingPackets = append(s.pendingPackets, held...)
 	clear(held)
 	s.heldPackets = held[:0]
+	if s.tickEnded == 0 {
+		s.tickEnded = nanotime()
+	}
 	submit := s.scheduleFlushLocked()
 	s.packetsMu.Unlock()
 	if submit {
@@ -126,9 +131,19 @@ func (s *Session) flush() {
 		}
 		s.pendingPackets = s.flushSpare
 		s.flushSpare = nil
+		ended := s.tickEnded
+		s.tickEnded = 0
 		s.packetsMu.Unlock()
 
+		start := nanotime()
 		err := s.writeBatch(batch)
+		done := nanotime()
+		flushes.Inc()
+		flushSeconds.Observe(float64(done-start) / 1e9)
+		flushPackets.Observe(float64(len(batch)))
+		if ended != 0 {
+			tickToSend.Observe(float64(done-ended) / 1e9)
+		}
 		clear(batch)
 		if cap(batch) <= maxKeptBatch {
 			s.flushSpare = batch[:0]
@@ -230,3 +245,8 @@ func (p *flushPool) flush(s *Session) {
 	}()
 	s.flush()
 }
+
+// nanotime returns a monotonic time in nanoseconds for the metrics.
+func nanotime() int64 { return int64(time.Since(processStart)) }
+
+var processStart = time.Now()

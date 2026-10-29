@@ -14,6 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/df-mc/dragonfly/server/console"
 	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/pelletier/go-toml"
 )
 
@@ -27,9 +28,10 @@ func main() {
 		panic(err)
 	}
 	go func() {
-		// Profiles show what the process holds: serve them to this machine
-		// alone.
-		log.Println("pprof on localhost:6060")
+		// Profiles and metrics show what the process holds: serve them to
+		// this machine alone.
+		http.Handle("/metrics", metrics.Default.Handler())
+		log.Println("pprof and metrics on localhost:6060")
 		_ = http.ListenAndServe("localhost:6060", nil)
 	}()
 

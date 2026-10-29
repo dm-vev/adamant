@@ -156,6 +156,7 @@ func (c *Conn) WritePacket(packet []byte) error {
 		c.plain = false
 	}
 	c.body = AppendPacket(c.body, packet)
+	countPacket(packetsSent, packetBytesSent, packet)
 	return nil
 }
 
@@ -180,6 +181,8 @@ func (c *Conn) SendBatch(msg []byte) error {
 	if err := c.flush(); err != nil {
 		return err
 	}
+	batchesSent.Inc()
+	batchBytesSent.Add(uint64(len(msg)))
 	return c.transport.Send(msg)
 }
 
@@ -204,6 +207,9 @@ func (c *Conn) flush() error {
 		}
 		msg = c.out
 	}
+	batchesSent.Inc()
+	batchBytesRaw.Add(uint64(len(c.body)))
+	batchBytesSent.Add(uint64(len(msg)))
 	err := c.transport.Send(msg)
 	c.body, c.plain = c.body[:0], true
 	if cap(c.body) > keptBuffer {
@@ -231,6 +237,7 @@ func (c *Conn) ReadPacket() ([]byte, error) {
 		// The packets share the body of their batch, which no one reuses.
 		if err := Packets(body, c.cfg.MaxPackets, func(p []byte) error {
 			c.pending = append(c.pending, p[:len(p):len(p)])
+			countPacket(packetsReceived, packetBytesReceived, p)
 			return nil
 		}); err != nil {
 			c.pending = c.pending[:0]
@@ -268,6 +275,7 @@ func (c *Conn) HandleBatch(msg []byte, f func(packet []byte) error) error {
 	}()
 	if err := Packets(body, c.cfg.MaxPackets, func(p []byte) error {
 		split = append(split, p[:len(p):len(p)])
+		countPacket(packetsReceived, packetBytesReceived, p)
 		return nil
 	}); err != nil {
 		return err
@@ -301,6 +309,7 @@ func (c *Conn) meter(n, size int) error {
 	now := time.Now()
 	if c.cfg.PacketRate > 0 && !c.inPackets.take(now, n, c.cfg.PacketRate, c.cfg.PacketBurst) ||
 		c.cfg.ByteRate > 0 && !c.inBytes.take(now, size, c.cfg.ByteRate, c.cfg.ByteBurst) {
+		rateLimited.Inc()
 		return ErrRateLimited
 	}
 	return nil

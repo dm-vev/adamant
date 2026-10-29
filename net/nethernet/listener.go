@@ -336,8 +336,10 @@ func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, relayed 
 	if err != nil {
 		return "", codeFailedToSetRemoteDescription, err
 	}
+	offers.Inc()
 	pub, err := l.verifyIdentity(offer, now)
 	if err != nil {
+		offersRefused.Inc()
 		return "", codeIdentityNotAllowed, err
 	}
 	var extra []candidate
@@ -355,6 +357,7 @@ func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, relayed 
 		}
 	}
 	if answer, err = l.open(offer, pub, candidates, extra, now); err != nil {
+		offersRefused.Inc()
 		return "", codeFailedToCreateAnswer, err
 	}
 	return answer, 0, nil
@@ -508,7 +511,9 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 	if err == nil {
 		c.ufrag = local.ufrag
 		c.pendingSlot = true
+		c.answered = now
 		l.pending++
+		connectionsPending.Add(1)
 		l.conns[c] = struct{}{}
 	}
 	l.mu.Unlock()
@@ -526,7 +531,16 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 // heard through the relay last, through the relay.
 func (l *Listener) writers(sock *net.UDPConn) (out func([]byte, netip.AddrPort), outBatch func([]byte, int, netip.AddrPort)) {
 	batch := batchWriter(sock)
+	idx := l.socketIndex(sock)
+	sent, sentBytes := datagramsSent.At(idx), bytesSent.At(idx)
+	count := func(datagrams, n int) {
+		if sent != nil {
+			sent.Add(uint64(datagrams))
+			sentBytes.Add(uint64(n))
+		}
+	}
 	out = func(b []byte, to netip.AddrPort) {
+		count(1, len(b))
 		if r := l.relay.Load(); r != nil && r.via(to) {
 			r.send(to, b)
 			return
@@ -537,6 +551,7 @@ func (l *Listener) writers(sock *net.UDPConn) (out func([]byte, netip.AddrPort),
 		return out, nil
 	}
 	return out, func(b []byte, size int, to netip.AddrPort) {
+		count((len(b)+size-1)/size, len(b))
 		if r := l.relay.Load(); r != nil && r.via(to) {
 			for len(b) > 0 {
 				n := min(size, len(b))
@@ -632,6 +647,12 @@ func (l *Listener) ready(c *Conn) {
 	if c.pendingSlot {
 		c.pendingSlot = false
 		l.pending--
+		connectionsPending.Add(-1)
+	}
+	c.counted = true
+	connectionsOpen.Add(1)
+	if !c.answered.IsZero() {
+		openSeconds.Observe(time.Since(c.answered).Seconds())
 	}
 	closed := l.closed
 	l.mu.Unlock()
@@ -658,6 +679,11 @@ func (l *Listener) remove(c *Conn) {
 	if c.pendingSlot {
 		c.pendingSlot = false
 		l.pending--
+		connectionsPending.Add(-1)
+	}
+	if c.counted {
+		c.counted = false
+		connectionsOpen.Add(-1)
 	}
 	l.ufragMu.Lock()
 	if l.ufrags[c.ufrag] == c {
@@ -692,6 +718,8 @@ func (l *Listener) read(sock *net.UDPConn) {
 	defer l.wg.Done()
 	buf := make([]byte, 1<<16)
 	var msg stun.Message
+	idx := l.socketIndex(sock)
+	received, receivedBytes := datagramsReceived.At(idx), bytesReceived.At(idx)
 	for {
 		n, from, err := sock.ReadFromUDPAddrPort(buf)
 		if err != nil {
@@ -700,10 +728,18 @@ func (l *Listener) read(sock *net.UDPConn) {
 			}
 			continue
 		}
+		if received != nil {
+			received.Inc()
+			receivedBytes.Add(uint64(n))
+		}
 		addr := netip.AddrPortFrom(from.Addr().Unmap(), from.Port())
 		// RFC 7983 leaves the first bytes from 192 on to others than WebRTC.
-		if l.cfg.Datagram != nil && n > 0 && buf[0] >= 192 {
-			l.datagram(sock, buf[:n], addr)
+		if n > 0 && buf[0] >= 192 {
+			if l.cfg.Datagram != nil {
+				l.datagram(sock, buf[:n], addr)
+			} else {
+				droppedDatagrams.Add(dropOtherProtocol, 1)
+			}
 			continue
 		}
 		if r := l.relay.Load(); r != nil {
@@ -743,13 +779,17 @@ func (l *Listener) dispatch(b []byte, from netip.AddrPort, msg *stun.Message) {
 		l.ufragMu.RLock()
 		c = l.ufrags[string(local)]
 		l.ufragMu.RUnlock()
-		if c != nil && c.handleDatagram(b, from, time.Now()) {
+		if c == nil {
+			droppedDatagrams.Add(dropUnknownUfrag, 1)
+		} else if c.handleDatagram(b, from, time.Now()) {
 			l.bind(from, c)
 		}
 		return
 	}
 	if c = l.addrs.get(from); c != nil {
 		c.handleDatagram(b, from, time.Now())
+	} else {
+		droppedDatagrams.Add(dropUnknownAddress, 1)
 	}
 }
 

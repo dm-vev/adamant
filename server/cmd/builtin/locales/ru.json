@@ -6,6 +6,7 @@
   "commands.fillbiome.description": "Заполняет область указанным биомом.",
   "commands.forceload.description": "Удерживает чанки загруженными и активными.",
   "commands.gc.description": "Выгружает неиспользуемые чанки и запускает сборку мусора.",
+  "commands.netstat.description": "Показывает состояние сетевых соединений игроков.",
   "commands.item.description": "Заменяет и изменяет предметы в инвентарях.",
   "commands.pardon-ip.description": "Снимает блокировку с IP-адреса.",
   "commands.pardon.description": "Снимает блокировку с игрока.",
