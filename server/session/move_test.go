@@ -22,28 +22,11 @@ func (e movingEntity) H() *world.EntityHandle  { return e.h }
 func (e movingEntity) Position() mgl64.Vec3    { return mgl64.Vec3{} }
 func (e movingEntity) Rotation() cube.Rotation { return cube.Rotation{} }
 
-// TestEntityMoveIsEncodedOnce shows a move to two sessions: each is shown
-// all of the first move after the entity appeared, as the client has it
-// where it appeared, then both the same packet of the parts that changed,
-// encoded once.
+// TestEntityMoveIsEncodedOnce shows a move to two sessions: both are given
+// the same packet of the parts that changed, encoded once.
 func TestEntityMoveIsEncodedOnce(t *testing.T) {
 	e := movingEntity{h: entity.NewText("mob", mgl64.Vec3{})}
 	a, b := testSession("a"), testSession("b")
-	for _, s := range []*Session{a, b} {
-		s.freshMoves = map[*world.EntityHandle]struct{}{e.h: {}}
-	}
-	first := &world.EntityMove{Pos: mgl64.Vec3{1, 64, 1}, OnGround: true, Changed: world.MoveX, Ticks: 3}
-	a.ViewEntityMove(e, first)
-	b.ViewEntityMove(e, first)
-	for _, s := range []*Session{a, b} {
-		pk := (<-s.packets).(*v2193.MoveActorDeltaPacket)
-		if !pk.PositionX.Set || !pk.PositionY.Set || !pk.PositionZ.Set || !pk.RotationX.Set || !pk.RotationY.Set || !pk.RotationYHead.Set {
-			t.Fatalf("first move of a fresh entity: %+v, want every part", pk)
-		}
-	}
-	if first.Shared != nil {
-		t.Fatal("moves of fresh entities were shared")
-	}
 	next := &world.EntityMove{Pos: mgl64.Vec3{1.3, 64, 1}, OnGround: true, Changed: world.MoveX, Ticks: 3}
 	a.ViewEntityMove(e, next)
 	b.ViewEntityMove(e, next)

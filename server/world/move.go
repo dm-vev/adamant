@@ -91,6 +91,10 @@ type MoveTracker struct {
 	since int
 	// moving notes an entity that moved on the last tick.
 	moving bool
+	// full marks an entity a viewer was shown anew, which has it where it
+	// was then rather than where the moves left it: the next move shows all
+	// its parts.
+	full bool
 }
 
 // Move returns the move the viewers of an entity are to be shown on this
@@ -151,6 +155,10 @@ func (t *MoveTracker) Move(pos mgl64.Vec3, rot cube.Rotation, headYaw float64, v
 		changed = 0
 	}
 	if changed != 0 {
+		if t.full {
+			changed |= MoveAll
+			t.full = false
+		}
 		t.remember(pos, pitch, yaw, head, onGround)
 	}
 	if vel.Sub(t.vel).LenSqr() > moveVelocityChange {
@@ -167,6 +175,11 @@ func (t *MoveTracker) Move(pos mgl64.Vec3, rot cube.Rotation, headYaw float64, v
 // by the tracker, as by a teleport, for the moves after it to start from.
 func (t *MoveTracker) Shown(pos mgl64.Vec3, rot cube.Rotation, headYaw float64, onGround bool) {
 	t.remember(pos, angleByte(rot.Pitch()), angleByte(rot.Yaw()), angleByte(headYaw), onGround)
+}
+
+// showAll makes the next move show all its parts.
+func (t *MoveTracker) showAll() {
+	t.full = true
 }
 
 // remember notes a position as shown.

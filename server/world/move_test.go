@@ -174,3 +174,24 @@ func TestMoveTrackerFirstMove(t *testing.T) {
 		t.Fatalf("first move %+v, want all of it at once", move)
 	}
 }
+
+// TestMoveTrackerShowsAllAfterNewViewer shows an entity anew to a viewer,
+// which has it where it was then: the next move carries all its parts, and
+// the moves after it the parts that changed again.
+func TestMoveTrackerShowsAllAfterNewViewer(t *testing.T) {
+	var tr MoveTracker
+	pos := mgl64.Vec3{0.5, 64, 0.5}
+	_, _ = tr.Move(pos, cube.Rotation{}, 0, mgl64.Vec3{}, true, false, 0)
+	tr.showAll()
+	if move, _ := tr.Move(pos, cube.Rotation{}, 0, mgl64.Vec3{}, true, false, 0); move != nil {
+		t.Fatalf("a move of an entity standing still: %+v", move)
+	}
+	pos[0] += 0.5
+	if move, _ := tr.Move(pos, cube.Rotation{}, 0, mgl64.Vec3{}, true, true, 0); move == nil || move.Changed&MoveAll != MoveAll {
+		t.Fatalf("move after a new viewer: %+v, want all parts", move)
+	}
+	pos[0] += 0.5
+	if move, _ := tr.Move(pos, cube.Rotation{}, 0, mgl64.Vec3{}, true, true, 0); move == nil || move.Changed != MoveX {
+		t.Fatalf("move after that: %+v, want x alone", move)
+	}
+}

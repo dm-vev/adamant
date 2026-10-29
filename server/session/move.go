@@ -57,16 +57,6 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 	}
 	// A move may change the velocity alone, which goes without a delta.
 	delta := m.Changed&^world.MoveVelocity != 0
-	if delta && s.takeFreshMove(e.H()) {
-		// The client has the entity where it was when shown, which the moves
-		// shown since may have left: it is shown all of this one.
-		pk, motion := moveActorDelta(id, e, m, world.MoveAll|m.Changed)
-		s.writePacket(pk)
-		if motion != nil {
-			s.writePacket(motion)
-		}
-		return
-	}
 	shared, _ := m.Shared.(*sharedMove)
 	if shared == nil {
 		pk, motion := moveActorDelta(id, e, m, m.Changed)
@@ -91,20 +81,6 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 // made, which the client is not shown again.
 func (s *Session) ClientMoving() bool {
 	return s != Nop && s.moving.Load()
-}
-
-// takeFreshMove reports whether the entity of a handle was shown since the
-// last move of it the session was shown, and notes it moved.
-func (s *Session) takeFreshMove(h *world.EntityHandle) bool {
-	s.entityMutex.RLock()
-	_, fresh := s.freshMoves[h]
-	s.entityMutex.RUnlock()
-	if fresh {
-		s.entityMutex.Lock()
-		delete(s.freshMoves, h)
-		s.entityMutex.Unlock()
-	}
-	return fresh
 }
 
 // moveActorDelta returns the MoveActorDelta of the parts of a move, and the

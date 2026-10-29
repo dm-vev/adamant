@@ -60,6 +60,7 @@ func (s *Session) StartShowingEntity(e world.Entity) {
 	s.entityMutex.Unlock()
 
 	if ok {
+		e.H().ResendMove()
 		s.ViewEntity(e)
 		s.ViewEntityState(e)
 		s.ViewEntityItems(e)

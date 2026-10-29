@@ -2803,6 +2803,9 @@ func (w *World) Handler() Handler {
 // showEntity shows an Entity to a viewer of the world. It makes sure
 // everything of the Entity, including the items held, is shown.
 func showEntity(e Entity, viewer Viewer) {
+	// The viewer has the entity where it is now, which the parts the moves
+	// leave out need not match.
+	e.H().data.Moves.showAll()
 	viewer.ViewEntity(e)
 	viewer.ViewEntityItems(e)
 	viewer.ViewEntityArmour(e)

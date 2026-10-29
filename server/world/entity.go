@@ -384,6 +384,13 @@ func cancelled(c <-chan struct{}) bool {
 	}
 }
 
+// ResendMove makes the next move of the entity its viewers are shown carry
+// all its parts, for a viewer shown the entity anew other than by the world,
+// such as a session showing an entity it hid.
+func (e *EntityHandle) ResendMove() {
+	e.data.Moves.showAll()
+}
+
 // execWorld uses a sync.Cond to synchronise access to the handler's world. We
 // are dealing with a rather complicated synchronisation pattern here. The goal
 // for execWorld is to block until e.w becomes accessible. Meanwhile, World.exec

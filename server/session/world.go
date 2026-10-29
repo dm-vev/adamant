@@ -78,10 +78,6 @@ func (s *Session) ViewEntity(e world.Entity) {
 		s.entities[runtimeID] = e.H()
 	}
 	delete(s.deathAnimations, runtimeID)
-	if s.freshMoves == nil {
-		s.freshMoves = make(map[*world.EntityHandle]struct{})
-	}
-	s.freshMoves[e.H()] = struct{}{}
 	s.entityMutex.Unlock()
 
 	yaw, pitch := e.Rotation().Elem()
@@ -306,7 +302,6 @@ func (s *Session) HideEntity(e world.Entity) {
 		delete(s.entityRuntimeIDs, e.H())
 		delete(s.entities, id)
 		delete(s.deathAnimations, id)
-		delete(s.freshMoves, e.H())
 	}
 	s.entityMutex.Unlock()
 	if !ok {
