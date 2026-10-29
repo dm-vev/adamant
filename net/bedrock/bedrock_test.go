@@ -251,3 +251,38 @@ func TestSendBatch(t *testing.T) {
 		}
 	}
 }
+
+// TestRateLimits fails the read of a peer that runs past the burst of
+// packets or of bytes it may send.
+func TestRateLimits(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		cfg  Config
+		pk   []byte
+	}{
+		{"packets", Config{MaxPackets: 10, PacketRate: 10, PacketBurst: 20}, packet(9, []byte("hi"))},
+		{"bytes", Config{MaxBatch: 1000, ByteRate: 1000, ByteBurst: 2000}, packet(9, bytes.Repeat([]byte{1}, 95))},
+	} {
+		a, b := pipes()
+		ca, cb := NewConn(a, Config{}), NewConn(b, c.cfg)
+		send := func() {
+			for range 10 {
+				_ = ca.WritePacket(c.pk)
+			}
+			_ = ca.Flush()
+		}
+		// Two batches fit the burst; the third, at once, does not.
+		for i := range 3 {
+			send()
+			var err error
+			for range 10 {
+				if _, err = cb.ReadPacket(); err != nil {
+					break
+				}
+			}
+			if i < 2 && err != nil || i == 2 && !errors.Is(err, ErrRateLimited) {
+				t.Fatalf("%s: batch %d read with %v", c.name, i, err)
+			}
+		}
+	}
+}

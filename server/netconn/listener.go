@@ -26,6 +26,13 @@ import (
 )
 
 const (
+	// defaultPacketRate and defaultPacketBurst bound the packets a client
+	// sends a second: the game sends PlayerAuthInput 20 times a second and
+	// a few more around it, a flood is cut off.
+	defaultPacketRate, defaultPacketBurst = 500, 2048
+	// defaultByteRate and defaultByteBurst bound the bytes a client sends
+	// once decompressed: a login carries a skin of up to a few MiB.
+	defaultByteRate, defaultByteBurst = 2 << 20, 16 << 20
 	// loginTimeout bounds the login of a client, resource packs included.
 	loginTimeout = time.Minute
 	// statusInterval paces the updates of the status clients look up.
@@ -53,8 +60,10 @@ type Config struct {
 	Allow func(addr net.Addr, identity login.IdentityData, client login.ClientData) (string, bool)
 	// Batches configures the batches of every connection: Compression is
 	// announced to clients, Threshold and Incompressible decide which
-	// batches are compressed. Zero values mean flate at level 1, a
-	// threshold of 256 bytes and movement sent as it is.
+	// batches are compressed, the rates bound what a client sends. Zero
+	// values mean flate at level 1, a threshold of 256 bytes, movement sent
+	// as it is, and 500 packets and 2 MiB a second with bursts of 2048
+	// packets and 16 MiB.
 	Batches     bedrock.Config
 	Compression bedrock.Compression
 }
@@ -139,6 +148,12 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	l := &Listener{cfg: cfg, batches: cfg.Batches, incoming: make(chan *Conn), done: make(chan struct{})}
 	if l.batches.Incompressible == nil {
 		l.batches.Incompressible = movement
+	}
+	if l.batches.PacketRate == 0 {
+		l.batches.PacketRate, l.batches.PacketBurst = defaultPacketRate, defaultPacketBurst
+	}
+	if l.batches.ByteRate == 0 {
+		l.batches.ByteRate, l.batches.ByteBurst = defaultByteRate, defaultByteBurst
 	}
 	if !cfg.AuthenticationDisabled {
 		var err error

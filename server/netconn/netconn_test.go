@@ -495,3 +495,51 @@ func TestWriteProto(t *testing.T) {
 		}
 	}
 }
+
+// TestFloodingClientIsCut reads a client that sends far more packets than
+// a game does until the read fails.
+func TestFloodingClientIsCut(t *testing.T) {
+	l := listen(t, Config{})
+	result := make(chan error, 1)
+	go func() {
+		c, err := l.Accept()
+		if err != nil {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := c.StartGameContext(ctx, gameData()); err != nil {
+			result <- err
+			return
+		}
+		for {
+			if _, err := c.ReadPacket(); err != nil {
+				result <- err
+				return
+			}
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	for range 100 {
+		for range 100 {
+			_ = conn.WritePacket(&v2193.TextPacket{TextType: packet.TextTypeChat, SourceName: "Player", Message: "spam"})
+		}
+		if err := conn.Flush(); err != nil {
+			break
+		}
+	}
+	select {
+	case err := <-result:
+		if !errors.Is(err, bedrock.ErrRateLimited) {
+			t.Fatalf("read ended with %v, want %v", err, bedrock.ErrRateLimited)
+		}
+	case <-ctx.Done():
+		t.Fatal("the flood was not cut off")
+	}
+}

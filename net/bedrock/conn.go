@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // MessageConn is the transport under a Conn: whole messages each way, in
@@ -34,6 +35,13 @@ type Config struct {
 	MaxBatch int
 	// MaxPackets bounds the packets of a batch received. Zero means 1024.
 	MaxPackets int
+	// PacketRate and ByteRate bound the packets and the decompressed bytes
+	// received a second, PacketBurst and ByteBurst how far a peer may run
+	// ahead of them; a peer past either fails the read with
+	// ErrRateLimited. A zero rate means no bound; a burst under the largest
+	// batch allowed is raised to it.
+	PacketRate, PacketBurst int
+	ByteRate, ByteBurst     int
 }
 
 func (cfg Config) withDefaults() Config {
@@ -49,7 +57,31 @@ func (cfg Config) withDefaults() Config {
 	if cfg.MaxPackets == 0 {
 		cfg.MaxPackets = 1024
 	}
+	cfg.PacketBurst = max(cfg.PacketBurst, cfg.MaxPackets)
+	cfg.ByteBurst = max(cfg.ByteBurst, cfg.MaxBatch)
 	return cfg
+}
+
+// ErrRateLimited is returned once a peer sends more than the rates of the
+// Config allow.
+var ErrRateLimited = errors.New("bedrock: peer sends too much")
+
+// bucket holds tokens that come back at a rate up to a burst.
+type bucket struct {
+	tokens float64
+	last   time.Time
+}
+
+// take takes n tokens, reporting false once there were too few.
+func (b *bucket) take(now time.Time, n, rate, burst int) bool {
+	if b.last.IsZero() {
+		b.tokens = float64(burst)
+	} else {
+		b.tokens = min(float64(burst), b.tokens+now.Sub(b.last).Seconds()*float64(rate))
+	}
+	b.last = now
+	b.tokens -= float64(n)
+	return b.tokens >= 0
 }
 
 var errAlgorithm = errors.New("bedrock: batch names an unknown compression algorithm")
@@ -73,6 +105,8 @@ type Conn struct {
 	readMu  sync.Mutex
 	readAlg Compression
 	pending [][]byte
+	// packets and bytes meter what the peer sends against the rates.
+	inPackets, inBytes bucket
 
 	writeMu sync.Mutex
 	alg     Compression
@@ -200,6 +234,10 @@ func (c *Conn) ReadPacket() ([]byte, error) {
 			c.pending = c.pending[:0]
 			return nil, err
 		}
+		if err := c.meter(len(c.pending), len(body)); err != nil {
+			c.pending = c.pending[:0]
+			return nil, err
+		}
 	}
 	p := c.pending[0]
 	c.pending[0] = nil
@@ -208,6 +246,19 @@ func (c *Conn) ReadPacket() ([]byte, error) {
 		c.pending = nil
 	}
 	return p, nil
+}
+
+// meter takes a batch of n packets and size bytes from the rates.
+func (c *Conn) meter(n, size int) error {
+	if c.cfg.PacketRate == 0 && c.cfg.ByteRate == 0 {
+		return nil
+	}
+	now := time.Now()
+	if c.cfg.PacketRate > 0 && !c.inPackets.take(now, n, c.cfg.PacketRate, c.cfg.PacketBurst) ||
+		c.cfg.ByteRate > 0 && !c.inBytes.take(now, size, c.cfg.ByteRate, c.cfg.ByteBurst) {
+		return ErrRateLimited
+	}
+	return nil
 }
 
 // decode returns the body of a batch received.
