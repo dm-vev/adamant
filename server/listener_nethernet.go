@@ -19,7 +19,9 @@ import (
 	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/net/nethernet/lan"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -85,7 +87,46 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 		}
 		go publishXbox(l, tokenFile, conf.Log)
 	}
+	if uc.Network.LAN {
+		publishLAN(l, conf, "")
+	}
 	return netherNetListener{l}, nil
+}
+
+// publishLAN answers the clients on the network that look for games with
+// the status of the listener and serves the signaling of their joins, on
+// addr, port 7551 if empty. A port taken by another game leaves the server
+// out of the LAN tab.
+func publishLAN(l *netconn.Listener, conf Config, addr string) *lan.Listener {
+	ll, err := lan.Config{Addr: addr, Data: func() lan.ServerData {
+		st := l.ServerStatus()
+		return lan.ServerData{
+			ServerName:            st.ServerName,
+			Protocol:              v2193.Protocol,
+			Version:               v2193.Version,
+			LevelName:             st.ServerSubName,
+			PlayerCount:           int32(st.PlayerCount),
+			MaxPlayerCount:        int32(st.MaxPlayers),
+			AcceptsOnlineAuth:     !conf.AuthDisabled,
+			AcceptsSelfSignedAuth: conf.AuthDisabled,
+			ConnectionType:        lan.ConnectionTypeLAN,
+		}
+	}}.Listen()
+	if err != nil {
+		conf.Log.Warn("The server does not show on LAN.", "err", err)
+		return nil
+	}
+	conf.Log.Info("The server shows on LAN.", "addr", ll.Addr(), "network-id", ll.NetworkID())
+	go func() {
+		<-l.Closed()
+		_ = ll.Close()
+	}()
+	go func() {
+		if err := l.Serve(ll); err != nil && !errors.Is(err, net.ErrClosed) {
+			conf.Log.Warn("LAN signaling ended.", "err", err)
+		}
+	}()
+	return ll
 }
 
 // batchCompression returns the compression of the batches of package

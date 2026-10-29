@@ -1,3 +1,5 @@
+github.com/andreburgaud/crypt2go v1.8.0 h1:J73vGTb1P6XL69SSuumbKs0DWn3ulbl9L92ZXBjw6pc=
+github.com/andreburgaud/crypt2go v1.8.0/go.mod h1:L5nfShQ91W78hOWhUH2tlGRPO+POAPJAF5fKOLB9SXg=
 github.com/coder/websocket v1.8.14 h1:9L0p0iKiNOibykf283eHkKUHHrpG7f65OE3BhhO7v9g=
 github.com/coder/websocket v1.8.14/go.mod h1:NX3SzP+inril6yawo5CQXx8+fk145lPDC6pumgx0mVg=
 github.com/coreos/go-oidc/v3 v3.17.0 h1:hWBGaQfbi0iVviX4ibC7bk8OKT5qNr4klBaCHVNvehc=

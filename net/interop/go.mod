@@ -19,6 +19,7 @@ require (
 )
 
 require (
+	github.com/andreburgaud/crypt2go v1.8.0 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/df-mc/go-playfab/v2 v2.0.2 // indirect
 	github.com/df-mc/jsonc v1.0.5 // indirect

@@ -380,6 +380,9 @@ type UserConfig struct {
 		// QueryPlugins controls whether the query response should list plugins.
 		// When disabled, the query `plugins` field only contains the engine label.
 		QueryPlugins bool
+		// LAN shows the server in the LAN tab of clients on the same network
+		// and lets them join from there, over UDP port 7551 as the game does.
+		LAN bool
 	}
 	// Xbox holds the publishing of the server on Xbox Live.
 	Xbox struct {

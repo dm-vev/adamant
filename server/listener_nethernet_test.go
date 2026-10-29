@@ -11,9 +11,11 @@ import (
 	"errors"
 	"log/slog"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -23,6 +25,9 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
+	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/net/nethernet/lan"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -181,4 +186,57 @@ func TestBatchCompression(t *testing.T) {
 			t.Fatalf("%T: compression %#v", c, got)
 		}
 	}
+}
+
+// TestNetherNetListenerOnLAN shows the server to a client looking for games
+// on the network, which joins it over the signaling of the LAN.
+func TestNetherNetListenerOnLAN(t *testing.T) {
+	uc := DefaultConfig()
+	uc.Network.Address = "127.0.0.1:0"
+	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	conf := Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}
+	l, err := uc.netherNetListener(conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	srv := publishLAN(l.(netherNetListener).Listener, conf, "127.0.0.1:0")
+	if srv == nil {
+		t.Fatal("the server does not show on LAN")
+	}
+	go func() {
+		c, err := l.Accept()
+		if err != nil {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		_ = c.StartGameContext(ctx, netconn.GameData{EntityRuntimeID: 1, EntityUniqueID: 1})
+	}()
+	finder, err := lan.Config{Addr: "127.0.0.1:0"}.Listen()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer finder.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	for finder.Servers()[srv.NetworkID()].ServerName != "Adamant" {
+		if err := finder.Discover(netip.MustParseAddrPort(srv.Addr().String())); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatal("the server did not answer on LAN")
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	if d := finder.Servers()[srv.NetworkID()]; d.Protocol != v2193.Protocol || !d.AcceptsSelfSignedAuth || d.ConnectionType != lan.ConnectionTypeLAN {
+		t.Fatalf("LAN data %+v", d)
+	}
+	key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	nn, err := nethernet.Dialer{Key: key}.DialSignaling(ctx, finder, strconv.FormatUint(srv.NetworkID(), 10))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = nn.Close()
 }
