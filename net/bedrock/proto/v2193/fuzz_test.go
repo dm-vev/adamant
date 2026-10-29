@@ -2,6 +2,7 @@ package v2193
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/dm-vev/adamant/net/bedrock/wire"
@@ -44,6 +45,43 @@ func TestEveryPacketDecodesEmpty(t *testing.T) {
 		if pk := New(id); pk != nil {
 			r := wire.NewReader(nil)
 			pk.Decode(r)
+		}
+	}
+}
+
+// TestNestingIsBounded decodes data store values, which hold values of
+// their own type, nested to the bound and past it.
+func TestNestingIsBounded(t *testing.T) {
+	nested := func(lists int) []byte {
+		var w wire.Writer
+		w.Varuint32(1) // One update,
+		w.Varuint32(1) // a change of a property.
+		w.String("store")
+		w.String("property")
+		w.Uint32(0)
+		for range lists {
+			w.Int32(5) // A list of one value,
+			w.Varuint32(1)
+		}
+		w.Int32(0) // ending in no value.
+		return w.B
+	}
+	for _, c := range []struct {
+		lists int
+		ok    bool
+	}{{wire.MaxDepth - 1, true}, {wire.MaxDepth, false}, {wire.MaxDepth * 100, false}} {
+		b := nested(c.lists)
+		var pk ClientBoundDataStorePacket
+		r := wire.NewReader(b)
+		pk.Decode(r)
+		if c.ok {
+			var w wire.Writer
+			pk.Encode(&w)
+			if r.Err() != nil || r.Len() != 0 || !bytes.Equal(w.B, b) {
+				t.Errorf("%d nested lists: %v, %d bytes left", c.lists, r.Err(), r.Len())
+			}
+		} else if !errors.Is(r.Err(), wire.ErrDepth) {
+			t.Errorf("%d nested lists: error %v, want %v", c.lists, r.Err(), wire.ErrDepth)
 		}
 	}
 }

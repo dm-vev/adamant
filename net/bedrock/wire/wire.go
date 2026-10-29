@@ -85,7 +85,12 @@ var (
 	ErrVarint   = errors.New("wire: malformed variable-length integer")
 	ErrTooLong  = errors.New("wire: length over its limit")
 	ErrTooLarge = errors.New("wire: value over its limit")
+	ErrDepth    = errors.New("wire: values nested too deep")
 )
+
+// MaxDepth bounds the nesting of values that hold values of their own
+// type.
+const MaxDepth = 64
 
 // DefaultMaxString bounds a string or byte slice read without a bound of
 // its own.
@@ -94,9 +99,10 @@ const DefaultMaxString = 1 << 20
 // Reader decodes fields from a slice. After the first error every read
 // returns a zero value and Err returns that error.
 type Reader struct {
-	b   []byte
-	off int
-	err error
+	b     []byte
+	off   int
+	err   error
+	depth int
 	// MaxString bounds the strings and byte slices read; zero means
 	// DefaultMaxString.
 	MaxString int
@@ -117,6 +123,20 @@ func (r *Reader) Fail(err error) {
 		r.err = err
 	}
 }
+
+// Nest notes the start of a value that may hold values of its own type,
+// and reports false, failing, past MaxDepth. Unnest notes its end.
+func (r *Reader) Nest() bool {
+	r.depth++
+	if r.depth > MaxDepth {
+		r.Fail(ErrDepth)
+		return false
+	}
+	return true
+}
+
+// Unnest notes the end of a value Nest noted.
+func (r *Reader) Unnest() { r.depth-- }
 
 // Failf records a formatted error.
 func (r *Reader) Failf(format string, args ...any) { r.Fail(fmt.Errorf(format, args...)) }

@@ -384,36 +384,6 @@ func (x *ScoreboardEntry) Decode(r *wire.Reader) {
 	}
 }
 
-// RecipeUnlockRequirement says when a recipe unlocks: in a context, or
-// once the player holds its ingredients.
-type RecipeUnlockRequirement struct {
-	Context     int32
-	Ingredients []ItemDescriptorCount
-}
-
-func (x *RecipeUnlockRequirement) Encode(w *wire.Writer) {
-	w.Varint32(x.Context)
-	// Ingredients go only without a context.
-	w.Bool(x.Context == 0)
-	if x.Context == 0 {
-		w.Varuint32(uint32(len(x.Ingredients)))
-		for i := range x.Ingredients {
-			writeItemDescriptorCount(w, &x.Ingredients[i])
-		}
-	}
-}
-
-func (x *RecipeUnlockRequirement) Decode(r *wire.Reader) {
-	x.Context = r.Varint32()
-	x.Ingredients = nil
-	if r.Bool() {
-		x.Ingredients = make([]ItemDescriptorCount, r.Count(r.Len()))
-		for i := range x.Ingredients {
-			readItemDescriptorCount(r, &x.Ingredients[i])
-		}
-	}
-}
-
 // ItemType is the network ID and metadata of an item.
 type ItemType struct {
 	NetworkID     int32

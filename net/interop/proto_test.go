@@ -52,6 +52,45 @@ var implementations = map[reflect.Type][]func() any{
 		func() any { return &protocol.UseItemOnEntityTransactionData{} },
 		func() any { return &protocol.ReleaseItemTransactionData{} },
 	},
+	// Only the events the game still reads.
+	reflect.TypeFor[protocol.Event](): {
+		func() any { return &protocol.AchievementAwardedEvent{} },
+		func() any { return &protocol.EntityInteractEvent{} },
+		func() any { return &protocol.PortalBuiltEvent{} },
+		func() any { return &protocol.PortalUsedEvent{} },
+		func() any { return &protocol.MobKilledEvent{} },
+		func() any { return &protocol.CauldronUsedEvent{} },
+		func() any { return &protocol.PlayerDiedEvent{} },
+		func() any { return &protocol.BossKilledEvent{} },
+		func() any { return &protocol.SlashCommandExecutedEvent{} },
+		func() any { return &protocol.MobBornEvent{} },
+		func() any { return &protocol.CauldronInteractEvent{} },
+		func() any { return &protocol.ComposterInteractEvent{} },
+		func() any { return &protocol.BellUsedEvent{} },
+		func() any { return &protocol.EntityDefinitionTriggerEvent{} },
+		func() any { return &protocol.RaidUpdateEvent{} },
+		func() any { return &protocol.TargetBlockHitEvent{} },
+		func() any { return &protocol.PiglinBarterEvent{} },
+		func() any { return &protocol.WaxedOrUnwaxedCopperEvent{} },
+		func() any { return &protocol.CodeBuilderRuntimeActionEvent{} },
+		func() any { return &protocol.CodeBuilderScoreboardEvent{} },
+		func() any { return &protocol.ItemUsedEvent{} },
+		func() any { return &protocol.StriderRiddenInLavaInOverworldEvent{} },
+		func() any { return &protocol.SneakCloseToSculkSensorEvent{} },
+		func() any { return &protocol.CarefulRestorationEvent{} },
+	},
+	reflect.TypeFor[protocol.ShapeData](): {
+		func() any { return &protocol.LastShape{} },
+		func() any { return &protocol.ArrowShape{} },
+		func() any { return &protocol.TextShape{} },
+		func() any { return &protocol.BoxShape{} },
+		func() any { return &protocol.LineShape{} },
+		func() any { return &protocol.SphereShape{} },
+		func() any { return &protocol.CylinderShape{} },
+		func() any { return &protocol.PyramidShape{} },
+		func() any { return &protocol.EllipsoidShape{} },
+		func() any { return &protocol.ConeShape{} },
+	},
 }
 
 // fill sets a value to random contents: small numbers often, so that enum
@@ -64,6 +103,20 @@ func fill(rng *rand.Rand, v reflect.Value, depth int) {
 	if v.Type() == reflect.TypeFor[protocol.GameRule]() {
 		values := []any{nil, rng.IntN(2) == 0, uint32(rng.IntN(100)), float32(rng.IntN(100)) / 4}
 		v.Set(reflect.ValueOf(protocol.GameRule{Name: "rule", CanBeModifiedByPlayer: small, Value: values[rng.IntN(len(values))]}))
+		return
+	}
+	if v.Type() == reflect.TypeFor[protocol.PackSetting]() {
+		values := []any{float32(rng.IntN(100)) / 4, small, "value", []string{"a", "bc"}}
+		v.Set(reflect.ValueOf(protocol.PackSetting{Name: "setting", Value: values[rng.IntN(len(values))]}))
+		return
+	}
+	if v.Type() == reflect.TypeFor[protocol.Bitset]() {
+		// The flags of an entity: the only bitset packets hold.
+		b := protocol.NewBitset(protocol.EntityDataFlagCount)
+		for range rng.IntN(4) {
+			b.Set(rng.IntN(protocol.EntityDataFlagCount))
+		}
+		v.Set(reflect.ValueOf(b))
 		return
 	}
 	if impls, ok := implementations[v.Type()]; ok && depth < 6 {
@@ -205,7 +258,7 @@ func TestGeneratedCodecsMatchGophertunnel(t *testing.T) {
 		for try := 0; try < 200 && tested < 30; try++ {
 			pk := pool[id]()
 			fill(rng, reflect.ValueOf(pk).Elem(), 0)
-			canonical(pk)
+			canonical(rng, pk)
 			b, ok := marshal(pk)
 			if !ok {
 				continue
@@ -249,8 +302,11 @@ func TestGeneratedCodecsMatchGophertunnel(t *testing.T) {
 
 // canonical brings the fields of a packet that the wire holds in fewer
 // bits than gophertunnel into the values the wire can hold.
-func canonical(pk packet.Packet) {
+func canonical(rng *rand.Rand, pk packet.Packet) {
 	switch pk := pk.(type) {
+	case *packet.RequestAbility:
+		// The value of an ability is a bool or a float32.
+		pk.Value = []any{rng.IntN(2) == 0, float32(rng.IntN(100)) / 4}[rng.IntN(2)]
 	case *packet.PlayerList:
 		// The action goes as a variant, which decides, and again as a byte.
 		for i := range pk.Entries {
@@ -318,6 +374,14 @@ func same(ours, theirs reflect.Value, path string) error {
 			return fmt.Errorf("%s: nil, gophertunnel %v", path, theirs.Interface())
 		}
 		ours = ours.Elem()
+	}
+	if b, ok := theirs.Interface().(protocol.Bitset); ok {
+		for i := range max(b.Len(), 64*ours.Len()) {
+			if ours.Interface().(v2193.Bitset).Has(i) != (i < b.Len() && b.Load(i)) {
+				return fmt.Errorf("%s: bit %d differs", path, i)
+			}
+		}
+		return nil
 	}
 	if ours.Kind() == reflect.Slice && theirs.Kind() == reflect.Struct && theirs.Type().Name() == "InputFlags" {
 		// The flags of gophertunnel keep their IDs in an unexported list.

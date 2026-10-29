@@ -346,7 +346,11 @@ func (im *importer) translate(fd *ast.FuncDecl) ([]string, string) {
 	if err := c.block(fd.Body.List, 0); err != nil {
 		return nil, err.Error()
 	}
-	return c.lines, ""
+	lines, err := c.regroup(c.lines)
+	if err != nil {
+		return nil, err.Error()
+	}
+	return lines, ""
 }
 
 // usesRecv reports whether the body of a method uses its receiver.
@@ -433,6 +437,12 @@ type ctx struct {
 	// type they are written as.
 	counts map[types.Object]string
 	enums  map[types.Object]enumLocal
+	// loop holds the value of each loop variable of an unrolled loop.
+	loop map[types.Object]int64
+	// nested maps the fields whose own fields are coded, x.A.B, to the
+	// struct types they hold.
+	nested    map[string]*types.TypeName
+	optionals map[types.Object]optional
 }
 
 func (c *ctx) emit(depth int, s string) {
@@ -448,6 +458,17 @@ func (c *ctx) src(n ast.Node) string {
 func (c *ctx) block(stmts []ast.Stmt, depth int) error {
 	for i := 0; i < len(stmts); i++ {
 		s := stmts[i]
+		n, err := c.presentLocal(stmts[i:], depth)
+		if err == nil && n == 0 {
+			n, err = c.impliedOptional(stmts[i:], depth)
+		}
+		if err != nil {
+			return err
+		}
+		if n > 0 {
+			i += n - 1
+			continue
+		}
 		if as, ok := s.(*ast.AssignStmt); ok && as.Tok == token.DEFINE {
 			if c.enumLocal(as) {
 				continue
@@ -468,6 +489,338 @@ func (c *ctx) block(stmts []ast.Stmt, depth int) error {
 		}
 	}
 	return nil
+}
+
+// presentLocal recognises a bool saying whether a condition holds, and
+// what follows when it does:
+//
+//	b := COND
+//	io.Bool(&b)
+//	if b { ... }
+func (c *ctx) presentLocal(stmts []ast.Stmt, depth int) (int, error) {
+	if len(stmts) < 3 {
+		return 0, nil
+	}
+	as, ok := stmts[0].(*ast.AssignStmt)
+	if !ok || as.Tok != token.DEFINE || len(as.Lhs) != 1 || len(as.Rhs) != 1 {
+		return 0, nil
+	}
+	id, ok := as.Lhs[0].(*ast.Ident)
+	if !ok {
+		return 0, nil
+	}
+	b := c.pkg.TypesInfo.Defs[id]
+	if b == nil || !types.Identical(b.Type(), types.Typ[types.Bool]) {
+		return 0, nil
+	}
+	es, ok := stmts[1].(*ast.ExprStmt)
+	if !ok {
+		return 0, nil
+	}
+	call, ok := es.X.(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		return 0, nil
+	}
+	if name, ok := c.ioMethod(call); !ok || name != "Bool" || !c.pointsTo(call.Args[0], b) {
+		return 0, nil
+	}
+	ifs, ok := stmts[2].(*ast.IfStmt)
+	if !ok || ifs.Init != nil || ifs.Else != nil {
+		return 0, nil
+	}
+	if cond, ok := ifs.Cond.(*ast.Ident); !ok || c.pkg.TypesInfo.Uses[cond] != b {
+		return 0, nil
+	}
+	for _, st := range stmts[2:] {
+		if st != stmts[2] && c.uses(st, b) || st == stmts[2] && c.uses(ifs.Body, b) {
+			return 0, nil
+		}
+	}
+	cond, err := c.expr(as.Rhs[0])
+	if err != nil {
+		return 0, err
+	}
+	c.emit(depth, "present "+cond)
+	if err := c.block(ifs.Body.List, depth+1); err != nil {
+		return 0, err
+	}
+	return 3, nil
+}
+
+// impliedOptional recognises an Optional local standing for a field that
+// goes when a condition holds:
+//
+//	var o Optional[T]
+//	if COND { o = Option(x.F) }
+//	...
+//	OptionalFunc(io, &o, codec)
+//	if v, ok := o.Value(); ok { x.F = v }
+//
+// or, for a field of an enum, Option(fToString(x.F)) and
+// fFromString(io, &x.F, v). The field goes where OptionalFunc codes it.
+func (c *ctx) impliedOptional(stmts []ast.Stmt, depth int) (int, error) {
+	if n, ok := c.optionalDecl(stmts); ok {
+		return n, nil
+	}
+	switch st := stmts[0].(type) {
+	case *ast.ExprStmt:
+		codec, ok := st.X.(*ast.CallExpr)
+		if !ok || len(codec.Args) != 3 {
+			return 0, nil
+		}
+		if fn := c.callee(codec); fn == nil || fn.Name() != "OptionalFunc" {
+			return 0, nil
+		}
+		u, ok := codec.Args[1].(*ast.UnaryExpr)
+		if !ok || u.Op != token.AND {
+			return 0, nil
+		}
+		id, ok := u.X.(*ast.Ident)
+		if !ok {
+			return 0, nil
+		}
+		o, ok := c.optionals[c.pkg.TypesInfo.Uses[id]]
+		if !ok {
+			return 0, nil
+		}
+		w, ok := c.ioFunc(codec.Args[2], c.optionalElem(codec.Args[1]))
+		if !ok {
+			if w, ok = c.closureList(codec.Args[2]); !ok {
+				return 0, fmt.Errorf("OptionalFunc with %s", c.src(codec.Args[2]))
+			}
+		}
+		if o.wire != "" {
+			if w != "string" {
+				return 0, fmt.Errorf("enum %s as %s", o.path, w)
+			}
+			w = o.wire
+		}
+		c.emit(depth, "present "+o.cond)
+		return 1, c.put(depth+1, o.path, w)
+	case *ast.IfStmt:
+		init, ok := st.Init.(*ast.AssignStmt)
+		if !ok || len(init.Lhs) != 2 || len(init.Rhs) != 1 || st.Else != nil || len(st.Body.List) != 1 {
+			return 0, nil
+		}
+		call, ok := init.Rhs[0].(*ast.CallExpr)
+		if !ok {
+			return 0, nil
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "Value" {
+			return 0, nil
+		}
+		id, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return 0, nil
+		}
+		o, ok := c.optionals[c.pkg.TypesInfo.Uses[id]]
+		if !ok {
+			return 0, nil
+		}
+		if got, err := c.storedField(st.Body.List[0]); err != nil || got != o.path {
+			return 0, fmt.Errorf("Optional of %s goes back to another field", o.path)
+		}
+		return 1, nil
+	}
+	return 0, nil
+}
+
+// optional is an Optional local standing for a field.
+type optional struct {
+	cond, path string
+	// wire is the wire type of a field of an enum.
+	wire string
+}
+
+// optionalDecl recognises the declaration of an Optional local and the
+// statement that sets it when a condition holds.
+func (c *ctx) optionalDecl(stmts []ast.Stmt) (int, bool) {
+	if len(stmts) < 2 {
+		return 0, false
+	}
+	ds, ok := stmts[0].(*ast.DeclStmt)
+	if !ok {
+		return 0, false
+	}
+	gd, ok := ds.Decl.(*ast.GenDecl)
+	if !ok || gd.Tok != token.VAR || len(gd.Specs) != 1 {
+		return 0, false
+	}
+	vs, ok := gd.Specs[0].(*ast.ValueSpec)
+	if !ok || len(vs.Names) != 1 || len(vs.Values) != 0 {
+		return 0, false
+	}
+	o := c.pkg.TypesInfo.Defs[vs.Names[0]]
+	set, ok := stmts[1].(*ast.IfStmt)
+	if !ok || set.Init != nil || set.Else != nil || len(set.Body.List) != 1 {
+		return 0, false
+	}
+	asg, ok := set.Body.List[0].(*ast.AssignStmt)
+	if !ok || asg.Tok != token.ASSIGN || len(asg.Lhs) != 1 || len(asg.Rhs) != 1 {
+		return 0, false
+	}
+	if id, ok := asg.Lhs[0].(*ast.Ident); !ok || c.pkg.TypesInfo.Uses[id] != o {
+		return 0, false
+	}
+	option, ok := asg.Rhs[0].(*ast.CallExpr)
+	if !ok || len(option.Args) != 1 {
+		return 0, false
+	}
+	if fn := c.callee(option); fn == nil || fn.Name() != "Option" {
+		return 0, false
+	}
+	val := option.Args[0]
+	var opt optional
+	if call, ok := val.(*ast.CallExpr); ok && len(call.Args) == 1 {
+		if fn := c.callee(call); fn != nil && strings.HasSuffix(fn.Name(), "ToString") {
+			e, ok := c.im.enum(fn)
+			b, isBasic := c.pkg.TypesInfo.TypeOf(call.Args[0]).Underlying().(*types.Basic)
+			if !ok || !isBasic {
+				return 0, false
+			}
+			opt.wire = "enum(" + e.name + ") as " + types.Typ[b.Kind()].Name()
+			val = call.Args[0]
+		}
+	}
+	var err error
+	if opt.path, err = c.path(val); err != nil {
+		return 0, false
+	}
+	if opt.cond, err = c.expr(set.Cond); err != nil {
+		return 0, false
+	}
+	if c.optionals == nil {
+		c.optionals = map[types.Object]optional{}
+	}
+	c.optionals[o] = opt
+	return 2, true
+}
+
+// storedField returns the field the value of an Optional goes back to:
+// x.F = v, or fFromString(io, &x.F, v).
+func (c *ctx) storedField(st ast.Stmt) (string, error) {
+	switch st := st.(type) {
+	case *ast.AssignStmt:
+		if len(st.Lhs) == 1 && st.Tok == token.ASSIGN {
+			return c.path(st.Lhs[0])
+		}
+	case *ast.ExprStmt:
+		if call, ok := st.X.(*ast.CallExpr); ok && len(call.Args) == 3 {
+			if fn := c.callee(call); fn != nil && strings.HasSuffix(fn.Name(), "FromString") {
+				return c.field(call.Args[1])
+			}
+		}
+	}
+	return "", fmt.Errorf("statement %s", firstLine(c.src(st)))
+}
+
+// pointsTo reports an argument &v for the local v.
+func (c *ctx) pointsTo(e ast.Expr, v types.Object) bool {
+	u, ok := e.(*ast.UnaryExpr)
+	if !ok || u.Op != token.AND {
+		return false
+	}
+	id, ok := u.X.(*ast.Ident)
+	return ok && c.pkg.TypesInfo.Uses[id] == v
+}
+
+// uses reports whether a node uses an object.
+func (c *ctx) uses(n ast.Node, obj types.Object) bool {
+	used := false
+	ast.Inspect(n, func(n ast.Node) bool {
+		if id, ok := n.(*ast.Ident); ok && c.pkg.TypesInfo.Uses[id] == obj {
+			used = true
+		}
+		return !used
+	})
+	return used
+}
+
+// unroll translates for i := A; i < B; i++ with constant bounds as its
+// body once for each i.
+func (c *ctx) unroll(s *ast.ForStmt, depth int) error {
+	bad := fmt.Errorf("statement %s", firstLine(c.src(s)))
+	init, ok := s.Init.(*ast.AssignStmt)
+	if !ok || init.Tok != token.DEFINE || len(init.Lhs) != 1 || len(init.Rhs) != 1 {
+		return bad
+	}
+	id, ok := init.Lhs[0].(*ast.Ident)
+	if !ok {
+		return bad
+	}
+	v := c.pkg.TypesInfo.Defs[id]
+	cond, ok := s.Cond.(*ast.BinaryExpr)
+	if !ok || cond.Op != token.LSS {
+		return bad
+	}
+	if x, ok := cond.X.(*ast.Ident); !ok || c.pkg.TypesInfo.Uses[x] != v {
+		return bad
+	}
+	post, ok := s.Post.(*ast.IncDecStmt)
+	if !ok || post.Tok != token.INC {
+		return bad
+	}
+	if x, ok := post.X.(*ast.Ident); !ok || c.pkg.TypesInfo.Uses[x] != v {
+		return bad
+	}
+	from, ok := constant.Int64Val(constant.ToInt(c.pkg.TypesInfo.Types[init.Rhs[0]].Value))
+	if !ok {
+		return bad
+	}
+	to, ok := constant.Int64Val(constant.ToInt(c.pkg.TypesInfo.Types[cond.Y].Value))
+	if !ok || to-from > 64 {
+		return bad
+	}
+	if c.loop == nil {
+		c.loop = map[types.Object]int64{}
+	}
+	for i := from; i < to; i++ {
+		c.loop[v] = i
+		if err := c.block(s.Body.List, depth); err != nil {
+			return err
+		}
+	}
+	delete(c.loop, v)
+	return nil
+}
+
+// regroup gathers the lines of the fields of a nested struct, x.A.B, into
+// a codec of the struct's own: the struct goes as the field A.
+func (c *ctx) regroup(lines []string) ([]string, error) {
+	if len(c.nested) == 0 {
+		return lines, nil
+	}
+	var out []string
+	done := map[string]bool{}
+	for i := 0; i < len(lines); {
+		text := strings.TrimLeft(lines[i], "\t")
+		indent := lines[i][:len(lines[i])-len(text)]
+		word, _, _ := strings.Cut(text, " ")
+		base, _, isNested := strings.Cut(word, ".")
+		if !isNested {
+			out = append(out, lines[i])
+			i++
+			continue
+		}
+		tn := c.nested[base]
+		if done[base] || c.im.types[tn] != nil {
+			return nil, fmt.Errorf("fields of %s apart", base)
+		}
+		done[base] = true
+		d := &decl{name: tn.Name()}
+		for ; i < len(lines); i++ {
+			t := strings.TrimLeft(lines[i], "\t")
+			if lines[i][:len(lines[i])-len(t)] != indent || !strings.HasPrefix(t, base+".") {
+				break
+			}
+			d.lines = append(d.lines, strings.TrimPrefix(t, base+"."))
+		}
+		c.im.types[tn] = d
+		c.im.decls = append(c.im.decls, d)
+		out = append(out, indent+base+" "+tn.Name())
+	}
+	return out, nil
 }
 
 // enumLocal recognises s := fToString(x.F): the field goes as the name of
@@ -659,6 +1012,8 @@ func (c *ctx) stmt(s ast.Stmt, depth int) error {
 		return nil
 	case *ast.BlockStmt:
 		return c.block(s.List, depth)
+	case *ast.ForStmt:
+		return c.unroll(s, depth)
 	case *ast.EmptyStmt:
 		return nil
 	}
@@ -956,7 +1311,9 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		}
 		w, ok := c.ioFunc(args[2], elem)
 		if !ok {
-			return fmt.Errorf("%s with %s", name, c.src(args[2]))
+			if w, ok = c.closureCodec(args[2]); !ok {
+				return fmt.Errorf("%s with %s", name, c.src(args[2]))
+			}
 		}
 		return c.put(depth, path, list("[]"+w, countTypes[name]))
 	case "SliceOfLen", "FuncSliceOfLen":
@@ -1043,6 +1400,41 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		return c.put(depth, path, w)
 	}
 	return fmt.Errorf("helper %s", name)
+}
+
+// closureCodec translates func(v *T) { ... } coding the fields of v as the
+// codec of T, unless T has one already.
+func (c *ctx) closureCodec(e ast.Expr) (string, bool) {
+	lit, ok := e.(*ast.FuncLit)
+	if !ok || len(lit.Type.Params.List) != 1 || len(lit.Type.Params.List[0].Names) != 1 {
+		return "", false
+	}
+	param := c.pkg.TypesInfo.Defs[lit.Type.Params.List[0].Names[0]]
+	ptr, ok := param.Type().(*types.Pointer)
+	if !ok {
+		return "", false
+	}
+	named, ok := types.Unalias(ptr.Elem()).(*types.Named)
+	if !ok {
+		return "", false
+	}
+	if _, isStruct := named.Underlying().(*types.Struct); !isStruct {
+		return "", false
+	}
+	tn := named.Obj()
+	if _, ok := c.im.types[tn]; ok {
+		return tn.Name(), true
+	}
+	d := &decl{name: tn.Name()}
+	c.im.types[tn] = d
+	inner := &ctx{im: c.im, pkg: c.pkg, io: c.io, recv: param, fields: map[string]string{}, counts: map[types.Object]string{}}
+	if err := inner.block(lit.Body.List, 0); err != nil {
+		d.manual = err.Error()
+	} else if d.lines, err = inner.regroup(inner.lines); err != nil {
+		d.manual = err.Error()
+	}
+	c.im.decls = append(c.im.decls, d)
+	return tn.Name(), true
 }
 
 // closureList translates func(x *[]T) { FuncSlice(io, x, io.M) }.
@@ -1186,6 +1578,22 @@ func (c *ctx) field(e ast.Expr) (string, error) {
 	if !ok || u.Op != token.AND {
 		return "", fmt.Errorf("argument %s is not a field", c.src(e))
 	}
+	if sel, ok := u.X.(*ast.SelectorExpr); ok {
+		if inner, ok := sel.X.(*ast.SelectorExpr); ok {
+			// x.A.B: a field of a struct without a codec of its own.
+			base, err := c.path(inner)
+			named, isNamed := types.Unalias(c.pkg.TypesInfo.TypeOf(inner)).(*types.Named)
+			if err == nil && isNamed && !strings.ContainsAny(base, "[.") && base != "self" {
+				if _, isStruct := named.Underlying().(*types.Struct); isStruct {
+					if c.nested == nil {
+						c.nested = map[string]*types.TypeName{}
+					}
+					c.nested[base] = named.Obj()
+					return base + "." + sel.Sel.Name, nil
+				}
+			}
+		}
+	}
 	return c.path(u.X)
 }
 
@@ -1200,11 +1608,17 @@ func (c *ctx) path(e ast.Expr) (string, error) {
 	case *ast.ParenExpr:
 		return c.path(e.X)
 	case *ast.IndexExpr:
-		tv := c.pkg.TypesInfo.Types[e.Index]
-		if tv.Value == nil {
+		var i string
+		if tv := c.pkg.TypesInfo.Types[e.Index]; tv.Value != nil {
+			i = tv.Value.ExactString()
+		} else if id, ok := e.Index.(*ast.Ident); ok {
+			if v, ok := c.loop[c.pkg.TypesInfo.Uses[id]]; ok {
+				i = strconv.FormatInt(v, 10)
+			}
+		}
+		if i == "" {
 			return "", fmt.Errorf("index %s", c.src(e))
 		}
-		i := tv.Value.ExactString()
 		if id, ok := e.X.(*ast.Ident); ok && c.pkg.TypesInfo.Uses[id] == c.recv {
 			return "self[" + i + "]", nil
 		}

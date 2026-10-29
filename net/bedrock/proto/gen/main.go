@@ -7,8 +7,10 @@
 // switch and case lines around them. A declaration marked manual has no
 // codec yet: a packet becomes raw, its bytes kept as they are, and so does
 // every packet that holds a manual type, until a codec is written by hand
-// in the package. An "enum name" declaration lists "value name" lines: a
-// field of wire type "enum(name) as T" goes as the name of its value.
+// in the package. A "present COND" line is a bool saying whether COND
+// holds, followed by the lines under it when it does. An "enum name"
+// declaration lists "value name" lines: a field of wire type
+// "enum(name) as T" goes as the name of its value.
 package main
 
 import (
@@ -30,7 +32,7 @@ import (
 )
 
 type node struct {
-	kind string // "field", "if", "else", "switch", "case", "default"
+	kind string // "field", "if", "else", "present", "switch", "case", "default"
 	path string
 	wire string
 	// as is the Go type of an integer field that differs from its wire
@@ -178,7 +180,7 @@ func parse(path string) (*schema, error) {
 		case "manual":
 			cur.manual = rest
 			continue
-		case "if", "switch":
+		case "if", "present", "switch":
 			nd.expr = rest
 		case "case":
 			for _, v := range strings.Split(rest, ",") {
@@ -204,7 +206,7 @@ func parse(path string) (*schema, error) {
 		}
 		*top.list = append(*top.list, nd)
 		top.last = nd
-		if word == "if" || word == "switch" {
+		if word == "if" || word == "present" || word == "switch" {
 			stack = append(stack, frame{list: &nd.body})
 		}
 	}
@@ -309,7 +311,7 @@ var special = map[string]string{
 	"eventtype": "Event", "eventordinal": "Event", "transactiondata": "InventoryTransactionData",
 	"playerinventoryaction": "UseItemTransactionData", "gamerule": "GameRule",
 	"abilityvalue": "AbilityValue", "packsetting": "PackSetting", "shapedata": "ShapeData",
-	"inputflags": "InputFlags",
+	"inputflags": "InputFlags", "bitset": "Bitset",
 }
 
 // enumOf returns the enum of a wire type enum(name).
@@ -322,13 +324,22 @@ func (s *schema) enumOf(w string) (*enum, bool) {
 	return e, ok
 }
 
-// specialBase returns a special wire type without its arguments, as
+// specialBase returns a special wire type without its argument, as
 // inputflags(66) is inputflags.
 func specialBase(w string) string {
 	if i := strings.IndexByte(w, '('); i > 0 {
 		return w[:i]
 	}
 	return w
+}
+
+// specialArg returns the argument of a special wire type, passed on to its
+// codec, with a comma before it.
+func specialArg(w string) string {
+	if i := strings.IndexByte(w, '('); i > 0 {
+		return ", " + strings.TrimSuffix(w[i+1:], ")")
+	}
+	return ""
 }
 
 // complete reports whether a wire type has a codec.
@@ -343,7 +354,7 @@ func (s *schema) complete(w string, seen map[*decl]bool) bool {
 	if _, ok := s.enumOf(w); ok {
 		return true
 	}
-	if strings.HasPrefix(w, "nbt(") || strings.HasPrefix(w, "nbtlist(") || strings.HasPrefix(w, "bitset(") {
+	if strings.HasPrefix(w, "nbt(") || strings.HasPrefix(w, "nbtlist(") {
 		return s.hand[w]
 	}
 	if _, ok := special[specialBase(w)]; ok {
@@ -461,9 +472,6 @@ func (s *schema) goType(w string) (string, error) {
 	if _, ok := s.byName[w]; ok {
 		return w, nil
 	}
-	if strings.HasPrefix(w, "bitset(") {
-		return "Bitset", nil
-	}
 	if strings.HasPrefix(w, "nbt(") {
 		return "map[string]any", nil
 	}
@@ -575,6 +583,38 @@ func (g *gen) enum(e *enum, pkg string) {
 	g.p("}")
 }
 
+// recursive reports whether a declaration holds values of its own type,
+// directly or through other types.
+func (s *schema) recursive(d *decl) bool {
+	seen := map[*decl]bool{}
+	var reaches func(nodes []*node) bool
+	reaches = func(nodes []*node) bool {
+		found := false
+		walk(nodes, func(n *node) {
+			if n.kind != "field" || found {
+				return
+			}
+			elem := n.wire
+			for {
+				k, e, _ := baseOf(elem)
+				if k == "value" {
+					break
+				}
+				elem = e
+			}
+			t, ok := s.byName[elem]
+			if !ok || seen[t] {
+				found = found || t == d
+				return
+			}
+			seen[t] = true
+			found = t == d || reaches(t.body)
+		})
+		return found
+	}
+	return reaches(d.body)
+}
+
 // usedTypes returns the types complete packets use.
 func (s *schema) usedTypes() map[string]bool {
 	used := map[string]bool{}
@@ -660,6 +700,13 @@ func (g *gen) decl(d *decl) error {
 	g.p("}")
 	g.p("")
 	g.p("func (p *%s) Decode(r *wire.Reader) {", typeName)
+	if g.s.recursive(d) {
+		// A hostile peer nests values of the type as deep as its bytes go.
+		g.p("if !r.Nest() {")
+		g.p("return")
+		g.p("}")
+		g.p("defer r.Unnest()")
+	}
 	if err := g.body(d.body, false); err != nil {
 		return err
 	}
@@ -713,6 +760,23 @@ func (g *gen) body(nodes []*node, enc bool) error {
 				if err := g.body(n.elses, enc); err != nil {
 					return err
 				}
+			}
+			g.p("}")
+		case "present":
+			cond, err := g.cond(n.expr)
+			if err != nil {
+				return err
+			}
+			if enc {
+				ok := g.temp()
+				g.p("%s := %s", ok, cond)
+				g.p("w.Bool(%s)", ok)
+				g.p("if %s {", ok)
+			} else {
+				g.p("if r.Bool() {")
+			}
+			if err := g.body(n.body, enc); err != nil {
+				return err
 			}
 			g.p("}")
 		case "switch":
@@ -890,9 +954,9 @@ func (g *gen) value(w, v string, enc bool) error {
 	}
 	if t, ok := special[specialBase(w)]; ok {
 		if enc {
-			g.p("write%s(w, &%s)", t, v)
+			g.p("write%s(w, &%s%s)", t, v, specialArg(w))
 		} else {
-			g.p("read%s(r, &%s)", t, v)
+			g.p("read%s(r, &%s%s)", t, v, specialArg(w))
 		}
 		return nil
 	}

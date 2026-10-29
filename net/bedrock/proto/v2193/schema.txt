@@ -1,5 +1,5 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
-# 455 declarations, 17 of them manual.
+# 459 declarations, 11 of them manual.
 
 type CommandEnum
 	Type string
@@ -278,7 +278,7 @@ packet 29 UpdateAttributes
 	Tick varuint64
 
 packet 30 InventoryTransaction
-	manual statement hasLegacy := pk.LegacyRequestID < -1 && (pk.LegacyRequestID&1) == 0
+	manual Marshal of pk.TransactionData
 
 packet 31 MobEquipment
 	EntityRuntimeID varuint64
@@ -346,7 +346,11 @@ packet 43 SetSpawnPosition
 	SpawnPosition blockpos
 
 packet 44 Animate
-	manual statement var swingSource protocol.Optional[string]
+	ActionType uint8
+	EntityRuntimeID varuint64
+	Data float32
+	present SwingSource != 0
+		SwingSource enum(swingSource) as uint8
 
 packet 45 Respawn
 	Position vec3
@@ -1603,8 +1607,47 @@ type EnvironmentAttributeData
 	NoiseTransition bool
 	NoiseAlignment NoiseAlignment
 
+type DataStoreMapEntry
+	Key string
+	Value DataStorePropertyValue
+
+type DataStorePropertyValue
+	Type int32
+	switch Type
+	case 0
+	case 1
+		BoolValue bool
+	case 2
+		Int64Value int64
+	case 3
+		DoubleValue float64
+	case 4
+		StringValue string
+	case 5
+		ListValue []DataStorePropertyValue
+	case 6
+		MapValue []DataStoreMapEntry
+	default
+
+type DataStoreChange
+	DataStoreName string
+	Property string
+	UpdateCount uint32
+	NewValue DataStorePropertyValue
+
+type DataStoreRemoval
+	DataStoreName string
+
 type DataStoreChangeEntry
-	manual nested field x.Change.DataStoreName
+	ChangeType varuint32
+	switch ChangeType
+	case 0
+		Update DataStoreUpdate
+	case 1
+		Change DataStoreChange
+	case 2
+		Removal DataStoreRemoval
+	default
 
 type MapTrackedObject
 	Type int32
@@ -1748,6 +1791,18 @@ type ParameterKeyframeValue
 	Time float32
 	Value vec3
 
+type LegacySetItemSlot
+	ContainerID uint8
+	Slots bytes
+
+type InventoryAction
+	SourceType varuint32
+	WindowID ?int8
+	SourceFlags ?varuint32
+	InventorySlot varuint32
+	OldItem iteminstance
+	NewItem iteminstance
+
 type ItemEntry
 	Name string
 	RuntimeID int16
@@ -1762,7 +1817,10 @@ type ItemStackRequest
 	FilterCause int32
 
 type ItemStackResponse
-	manual statement var containerInfo Optional[[]StackResponseContainerInfo]
+	Status uint8
+	RequestID varint32
+	present len(ContainerInfo) != 0
+		ContainerInfo []StackResponseContainerInfo
 
 type LocatorBarWaypoint
 	GroupHandle uuid
@@ -1784,18 +1842,6 @@ type PartyInfo
 type PlayerArmourDamageEntry
 	ArmourSlot varint32
 	Damage int16
-
-type LegacySetItemSlot
-	ContainerID uint8
-	Slots bytes
-
-type InventoryAction
-	SourceType varuint32
-	WindowID ?int8
-	SourceFlags ?varuint32
-	InventorySlot varuint32
-	OldItem iteminstance
-	NewItem iteminstance
 
 type PlayerBlockAction
 	Action varint32
@@ -2405,7 +2451,10 @@ type IntegerEntityProperty
 type InvalidItemDescriptor
 
 type ItemEnchantments
-	manual statement for i := 0; i < 3; i++ {
+	Slot int32
+	Enchantments[0] []EnchantmentInstance
+	Enchantments[1] []EnchantmentInstance
+	Enchantments[2] []EnchantmentInstance
 
 type ItemTagItemDescriptor
 	Tag string
@@ -2523,7 +2572,9 @@ type RaidUpdateEvent
 	WonRaid bool
 
 type RecipeUnlockRequirement
-	manual statement present := x.Context == RecipeUnlockContextNone
+	Context varint32
+	present Context == 0
+		Ingredients []itemdescriptorcount
 
 type ReleaseItemTransactionData
 	ActionType varint32
@@ -2555,7 +2606,14 @@ type StackResponseContainerInfo
 	SlotInfo []StackResponseSlotInfo
 
 type StackResponseSlotInfo
-	manual statement var stackNetworkID Optional[int32]
+	Slot uint8
+	HotbarSlot uint8
+	Count uint8
+	present StackNetworkID > 0
+		StackNetworkID varint32
+	CustomName string
+	FilteredCustomName ?string
+	DurabilityCorrection varint32
 
 type StriderRiddenInLavaInOverworldEvent
 
@@ -2632,6 +2690,17 @@ type transferStackRequestAction
 
 type Unknown
 	Payload rest
+
+enum swingSource
+	1 none
+	2 build
+	3 mine
+	4 interact
+	5 attack
+	6 useitem
+	7 throwitem
+	8 dropitem
+	9 event
 
 enum clientBoundDebugRender
 	0 cleardebugmarkers

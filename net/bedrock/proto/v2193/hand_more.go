@@ -52,29 +52,26 @@ func readGameRule(r *wire.Reader, x *GameRule) {
 	}
 }
 
-// inputFlagCount is the number of the flags of PlayerAuthInput.
-const inputFlagCount = 66
-
 // InputFlags holds the IDs of the flags a PlayerAuthInput sets.
 type InputFlags []int32
 
-func writeInputFlags(w *wire.Writer, x *InputFlags) {
+func writeInputFlags(w *wire.Writer, x *InputFlags, count int) {
 	w.Varuint32(uint32(len(*x)))
 	for _, id := range *x {
 		w.Varint32(id)
 	}
 }
 
-func readInputFlags(r *wire.Reader, x *InputFlags) {
+func readInputFlags(r *wire.Reader, x *InputFlags, count int) {
 	n := r.Varuint32()
-	if n > inputFlagCount {
+	if n > uint32(count) {
 		r.Failf("v2193: %d input flags", n)
 		return
 	}
 	ids := make(InputFlags, n)
 	for i := range ids {
 		id := r.Varint32()
-		if id < 0 || id >= inputFlagCount || slices.Contains(ids[:i], id) {
+		if id < 0 || int(id) >= count || slices.Contains(ids[:i], id) {
 			r.Failf("v2193: input flag %d", id)
 			return
 		}
