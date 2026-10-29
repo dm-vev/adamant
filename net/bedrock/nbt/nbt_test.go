@@ -9,21 +9,59 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
+// sample is a compound of every tag, as Read gives it.
 func sample() map[string]any {
 	return map[string]any{
-		"byte":   int8(-3),
+		"byte":   uint8(253),
 		"short":  int16(300),
 		"int":    int32(-70000),
 		"long":   int64(1) << 40,
 		"float":  float32(1.5),
 		"double": 2.25,
-		"bytes":  []byte{1, 2, 3},
+		"bytes":  [3]byte{1, 2, 3},
 		"name":   "minecraft:chest",
-		"list":   []any{int32(1), int32(2)},
-		"nested": map[string]any{"Items": []any{map[string]any{"Count": int8(1)}}},
-		"ints":   []int32{-1, 5},
-		"longs":  []int64{1 << 50},
+		"list":   []int32{1, 2},
+		"names":  []any{"a", "b"},
+		"nested": map[string]any{"Items": []any{map[string]any{"Count": uint8(1)}}},
+		"ints":   [2]int32{-1, 5},
+		"longs":  [1]int64{1 << 50},
 		"empty":  []any{},
+	}
+}
+
+type facing int32
+
+// TestGophertunnelValues writes values as a server builds them for
+// gophertunnel: typed slices go as lists, named types by their kind, bool
+// and int8 as bytes, maps of any value type as compounds.
+func TestGophertunnelValues(t *testing.T) {
+	in := map[string]any{
+		"ints":   []int32{1, 2},
+		"items":  []map[string]any{{"Count": uint8(1)}},
+		"names":  []string{"a", "b"},
+		"facing": facing(3),
+		"flag":   true,
+		"signed": int8(-1),
+		"tags":   map[string]string{"k": "v"},
+		"bytes":  []byte{7},
+	}
+	want := map[string]any{
+		"ints":   []int32{1, 2},
+		"items":  []any{map[string]any{"Count": uint8(1)}},
+		"names":  []any{"a", "b"},
+		"facing": int32(3),
+		"flag":   uint8(1),
+		"signed": uint8(255),
+		"tags":   map[string]any{"k": "v"},
+		"bytes":  []byte{7},
+	}
+	var w wire.Writer
+	if err := Write(&w, in); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Read(wire.NewReader(w.B))
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("read back %#v, %v", got, err)
 	}
 }
 
@@ -138,5 +176,23 @@ func TestLittleEndian(t *testing.T) {
 	got, err := ReadEncoded(wire.NewReader(w.B), LittleEndian)
 	if err != nil || !reflect.DeepEqual(got, sample()) {
 		t.Fatalf("read back %#v, %v", got, err)
+	}
+}
+
+// TestArrayBound reads an int array of a length past maxArray: refused, as
+// each length would make a Go type kept for good.
+func TestArrayBound(t *testing.T) {
+	var w wire.Writer
+	w.Uint8(tagCompound)
+	Network.writeString(&w, "")
+	w.Uint8(tagIntArray)
+	Network.writeString(&w, "a")
+	Network.writeInt(&w, maxArray+1)
+	for range maxArray + 1 {
+		w.Uint8(0)
+	}
+	w.Uint8(tagEnd)
+	if _, err := Read(wire.NewReader(w.B)); !errors.Is(err, wire.ErrTooLong) {
+		t.Fatalf("read an array of %d: %v", maxArray+1, err)
 	}
 }

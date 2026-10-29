@@ -85,3 +85,20 @@ func TestNestingIsBounded(t *testing.T) {
 		}
 	}
 }
+
+type blockPos [3]int32
+type vec3 [3]float32
+
+// TestMetadataOfNamedTypes writes metadata holding a position and a vector
+// of named types, as a server built on gophertunnel holds them.
+func TestMetadataOfNamedTypes(t *testing.T) {
+	m := Metadata{1: blockPos{1, -2, 3}, 2: vec3{0.5, 1, 2}}
+	var w wire.Writer
+	writeMetadata(&w, &m)
+	var back Metadata
+	r := wire.NewReader(w.B)
+	readMetadata(r, &back)
+	if r.Err() != nil || back[1] != [3]int32{1, -2, 3} || back[2] != [3]float32{0.5, 1, 2} {
+		t.Fatalf("read back %v, %v", back, r.Err())
+	}
+}

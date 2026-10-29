@@ -421,7 +421,7 @@ func same(ours, theirs reflect.Value, path string) error {
 			}
 			return nil
 		}
-		if reflect.DeepEqual(normalise(ours.Interface()), normalise(theirs.Interface())) ||
+		if reflect.DeepEqual(ours.Interface(), theirs.Interface()) ||
 			ours.Len() == 0 && theirs.Len() == 0 {
 			return nil
 		}

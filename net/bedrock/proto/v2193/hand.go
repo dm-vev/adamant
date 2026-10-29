@@ -1,6 +1,7 @@
 package v2193
 
 import (
+	"reflect"
 	"slices"
 	"sync/atomic"
 
@@ -214,7 +215,7 @@ func writeMetadata(w *wire.Writer, x *Metadata) {
 			w.Varuint32(t)
 			w.Uint8(uint8(t))
 		}
-		switch v := (*x)[k].(type) {
+		switch v := canonicalMetadata((*x)[k]).(type) {
 		case uint8:
 			typ(metadataByte)
 			w.Uint8(v)
@@ -252,6 +253,30 @@ func writeMetadata(w *wire.Writer, x *Metadata) {
 			panic("v2193: metadata value of no type")
 		}
 	}
+}
+
+// metadataTypes are the Go types of the values of metadata.
+var metadataTypes = []reflect.Type{
+	reflect.TypeFor[uint8](), reflect.TypeFor[int16](), reflect.TypeFor[int32](), reflect.TypeFor[float32](),
+	reflect.TypeFor[string](), reflect.TypeFor[map[string]any](), reflect.TypeFor[[3]int32](),
+	reflect.TypeFor[int64](), reflect.TypeFor[[3]float32](),
+}
+
+// canonicalMetadata returns a value of a named type of the kind of a
+// metadata type, as a position of type [3]int32 or a vector of [3]float32,
+// as that metadata type.
+func canonicalMetadata(v any) any {
+	switch v.(type) {
+	case uint8, int16, int32, float32, string, map[string]any, [3]int32, int64, [3]float32, nil:
+		return v
+	}
+	rv := reflect.ValueOf(v)
+	for _, t := range metadataTypes {
+		if rv.Kind() == t.Kind() && rv.Type().ConvertibleTo(t) {
+			return rv.Convert(t).Interface()
+		}
+	}
+	return v
 }
 
 func readMetadata(r *wire.Reader, x *Metadata) {
