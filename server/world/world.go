@@ -1512,8 +1512,13 @@ func (tx *Tx) temperature(pos cube.Pos) float64 {
 func (w *World) addParticle(tx *Tx, pos mgl64.Vec3, p Particle) {
 	p.Spawn(w, pos)
 	viewers := w.viewersOf(tx, pos)
+	var b Broadcast
 	for _, viewer := range viewers {
-		viewer.ViewParticle(pos, p)
+		if sv, ok := viewer.(SharedViewer); ok {
+			sv.ViewParticleShared(pos, p, &b)
+		} else {
+			viewer.ViewParticle(pos, p)
+		}
 	}
 	w.releaseViewers(viewers)
 }

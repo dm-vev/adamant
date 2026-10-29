@@ -585,6 +585,21 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 	if s.dropCosmetic() {
 		return
 	}
+	s.particlePackets(pos, p, s.writePacket)
+}
+
+// ViewParticleShared ...
+func (s *Session) ViewParticleShared(pos mgl64.Vec3, p world.Particle, b *world.Broadcast) {
+	if s.dropCosmetic() {
+		return
+	}
+	// The packets of a particle name blocks by the registry of the session,
+	// that of the world every session of it shares.
+	s.writeBroadcast(b, func(out func(proto.Packet)) { s.particlePackets(pos, p, out) })
+}
+
+// particlePackets hands out the packets that show a particle at a position.
+func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(proto.Packet)) {
 	switch pa := p.(type) {
 	case particle.CreakingTrail:
 		buf := bytes.NewBuffer(nil)
@@ -599,7 +614,7 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			"HeartZ":         float32(pa.Heart.Z()),
 		})
 		data := buf.Bytes()
-		s.writePacket(&v2193.LevelEventGenericPacket{
+		out(&v2193.LevelEventGenericPacket{
 			EventID:             v2193.LevelEventParticleCreakingHeartTrail,
 			SerialisedEventData: data[2 : len(data)-1],
 		})
@@ -627,7 +642,7 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			TimeToLive: float32(max(0, pa.TravelTicks)) / 20,
 		})
 		data := buf.Bytes()
-		s.writePacket(&v2193.LevelEventGenericPacket{
+		out(&v2193.LevelEventGenericPacket{
 			EventID:             v2193.LevelEventParticlesVibrationSignal,
 			SerialisedEventData: data[2 : len(data)-1],
 		})
@@ -643,81 +658,81 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			zSign = 1 << 26
 		}
 
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesDragonEgg,
 			Position:  vec64To32(pos),
 			EventData: int32((((((abs(pa.Diff.X()) << 16) | (abs(pa.Diff.Y()) << 8)) | abs(pa.Diff.Z())) | xSign) | ySign) | zSign),
 		})
 	case particle.Note:
-		s.writePacket(&v2193.BlockEventPacket{
+		out(&v2193.BlockEventPacket{
 			EventType: pa.Instrument.Int32(),
 			EventData: int32(pa.Pitch),
 			Position:  v2193.BlockPos{int32(pos.X()), int32(pos.Y()), int32(pos.Z())},
 		})
 	case particle.HugeExplosion:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.BoneMeal:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleCropGrowth,
 			Position:  vec64To32(pos),
 			EventData: int32(boolByte(pa.Area)),
 		})
 	case particle.BlockForceField:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleDenyBlock,
 			Position:  vec64To32(pos),
 		})
 	case particle.BlockBreak:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesDestroyBlock,
 			Position:  vec64To32(pos),
 			EventData: int32(networkBlockID(s.br, pa.Block)),
 		})
 	case particle.PunchBlock:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesCrackBlock,
 			Position:  vec64To32(pos),
 			EventData: int32(networkBlockID(s.br, pa.Block)) | (int32(pa.Face) << 24),
 		})
 	case particle.DragonDestroyBlock:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | v2193.ParticleTypeDragonDestroyBlock,
 			Position:  vec64To32(pos),
 		})
 	case particle.EndermanTeleport:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesTeleport,
 			Position:  vec64To32(pos),
 		})
 	case particle.Flame:
 		if pa.Colour != (color.RGBA{}) {
-			s.writePacket(&v2193.LevelEventPacket{
+			out(&v2193.LevelEventPacket{
 				EventType: v2193.LevelEventParticleLegacyEvent | 57,
 				Position:  vec64To32(pos),
 				EventData: nbtconv.Int32FromRGBA(pa.Colour),
 			})
 			return
 		}
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 8,
 			Position:  vec64To32(pos),
 		})
 	case particle.Evaporate:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesEvaporateWater,
 			Position:  vec64To32(pos),
 		})
 	case particle.SnowballPoof:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 15,
 			Position:  vec64To32(pos),
 		})
 	case particle.EggSmash:
 		rid, meta, _ := world.ItemRuntimeID(item.Egg{})
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 14,
 			EventData: (rid << 16) | int32(meta),
 			Position:  vec64To32(pos),
@@ -726,7 +741,7 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		if (pa.Colour == color.RGBA{}) {
 			pa.Colour, _ = effect.ResultingColour(nil)
 		}
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesPotionSplash,
 			EventData: (int32(pa.Colour.A) << 24) | (int32(pa.Colour.R) << 16) | (int32(pa.Colour.G) << 8) | int32(pa.Colour.B),
 			Position:  vec64To32(pos),
@@ -736,54 +751,54 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		if pa.Paused {
 			t = v2193.ParticleTypePauseMobGrowth
 		}
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | int32(t),
 			Position:  vec64To32(pos),
 		})
 	case particle.SonicExplosion:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventSonicExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.WindBurst:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesWindExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.Effect:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 34,
 			EventData: (int32(pa.Colour.A) << 24) | (int32(pa.Colour.R) << 16) | (int32(pa.Colour.G) << 8) | int32(pa.Colour.B),
 			Position:  vec64To32(pos),
 		})
 	case particle.EntityFlame:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 19,
 			Position:  vec64To32(pos),
 		})
 	case particle.Dust:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 33,
 			Position:  vec64To32(pos),
 			EventData: nbtconv.Int32FromRGBA(pa.Colour),
 		})
 	case particle.WaterDrip:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 28,
 			Position:  vec64To32(pos),
 		})
 	case particle.LavaDrip:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 29,
 			Position:  vec64To32(pos),
 		})
 	case particle.Lava:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 10,
 			Position:  vec64To32(pos),
 		})
 	case particle.DustPlume:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 88,
 			Position:  vec64To32(pos),
 		})
@@ -798,26 +813,26 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		buf := bytes.NewBuffer(nil)
 		_ = nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian).Encode(data)
 		encoded := buf.Bytes()
-		s.writePacket(&v2193.LevelEventGenericPacket{EventID: event, SerialisedEventData: encoded[2 : len(encoded)-1]})
+		out(&v2193.LevelEventGenericPacket{EventID: event, SerialisedEventData: encoded[2 : len(encoded)-1]})
 	case particle.SculkSoul:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | v2193.ParticleTypeSculkSoul,
 			Position:  vec64To32(pos),
 		})
 	case particle.CauldronEffect:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: cauldronLevelEvents[pa.Kind],
 			Position:  vec64To32(pos),
 			EventData: nbtconv.Int32FromRGBA(pa.Colour),
 		})
 	case particle.DripstoneDrip:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
 	case particle.PointedDripstoneLand:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventSoundPointedDripstoneLand, Position: vec64To32(pos)})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventSoundPointedDripstoneLand, Position: vec64To32(pos)})
 	case particle.EggCrack:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticleTurtleEgg, Position: vec64To32(pos)})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticleTurtleEgg, Position: vec64To32(pos)})
 	case particle.ElectricSpark:
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesElectricSpark,
 			Position:  vec64To32(pos),
 			EventData: pa.Data,
@@ -827,7 +842,7 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		if pa.Open {
 			kind = v2193.ParticleTypeEyeblossomOpen
 		}
-		s.writePacket(&v2193.LevelEventPacket{
+		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | kind,
 			Position:  vec64To32(pos),
 		})
@@ -836,19 +851,19 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		if pa.Ominous {
 			event = v2193.LevelEventParticlesTrialSpawnerDetectionCharged
 		}
-		s.writePacket(&v2193.LevelEventPacket{EventType: event, Position: vec64To32(pos), EventData: int32(pa.Players)})
+		out(&v2193.LevelEventPacket{EventType: event, Position: vec64To32(pos), EventData: int32(pa.Players)})
 	case particle.TrialSpawnerSpawning:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerSpawning, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerSpawning, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.TrialSpawnerEjecting:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerEjecting, Position: vec64To32(pos)})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerEjecting, Position: vec64To32(pos)})
 	case particle.TrialSpawnerBecomeOminous:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerBecomeCharged, Position: vec64To32(pos)})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerBecomeCharged, Position: vec64To32(pos)})
 	case particle.VaultActivate:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultActivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultActivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.VaultDeactivate:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultDeactivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultDeactivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.VaultEjectItem:
-		s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultEjectItem, Position: vec64To32(pos)})
+		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultEjectItem, Position: vec64To32(pos)})
 	}
 }
 

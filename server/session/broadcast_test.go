@@ -5,12 +5,13 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// TestBroadcastsAreEncodedOnce shows a sound and an animation to the
-// sessions of one broadcast: they are given the same packets, but for the
+// TestBroadcastsAreEncodedOnce shows a sound, a particle and an animation
+// to the sessions of one broadcast: they are given the same packets, but for the
 // player of a session, which knows itself by runtime ID 1.
 func TestBroadcastsAreEncodedOnce(t *testing.T) {
 	a, b := testSession("a"), testSession("b")
@@ -19,6 +20,12 @@ func TestBroadcastsAreEncodedOnce(t *testing.T) {
 	b.ViewSoundShared(mgl64.Vec3{1, 2, 3}, sound.Click{}, &sb)
 	if pa, pb := a.testPacket(), b.testPacket(); pa == nil || pa != pb {
 		t.Fatalf("sound packets %v and %v are not one", pa, pb)
+	}
+	var partb world.Broadcast
+	a.ViewParticleShared(mgl64.Vec3{1, 2, 3}, particle.HugeExplosion{}, &partb)
+	b.ViewParticleShared(mgl64.Vec3{1, 2, 3}, particle.HugeExplosion{}, &partb)
+	if pa, pb := a.testPacket(), b.testPacket(); pa == nil || pa != pb {
+		t.Fatalf("particle packets %v and %v are not one", pa, pb)
 	}
 	e := movingEntity{h: entity.NewText("mob", mgl64.Vec3{})}
 	var ab world.Broadcast

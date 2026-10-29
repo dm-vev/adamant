@@ -97,11 +97,13 @@ func (b *Broadcast) Load() any { return b.v }
 // Store keeps v for the other viewers.
 func (b *Broadcast) Store(v any) { b.v = v }
 
-// SharedViewer is a Viewer shown sounds and animations through a Broadcast
-// that the viewers of each share.
+// SharedViewer is a Viewer shown sounds, particles and animations through
+// a Broadcast that the viewers of each share.
 type SharedViewer interface {
 	// ViewSoundShared views a sound played at a position.
 	ViewSoundShared(pos mgl64.Vec3, s Sound, b *Broadcast)
+	// ViewParticleShared views a particle spawned at a position.
+	ViewParticleShared(pos mgl64.Vec3, p Particle, b *Broadcast)
 	// ViewEntityAnimationShared views an animation an entity plays.
 	ViewEntityAnimationShared(e Entity, a EntityAnimation, b *Broadcast)
 }
