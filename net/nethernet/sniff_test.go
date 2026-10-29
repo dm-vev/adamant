@@ -1,6 +1,7 @@
 package nethernet
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -129,5 +130,37 @@ func TestSniffingBounded(t *testing.T) {
 		_ = a.Close()
 	case <-time.After(10 * time.Second):
 		t.Fatal("no connection accepted after the idle ones closed")
+	}
+}
+
+// TestDialOverHTTPS joins a listener whose signaling has a certificate by
+// an https:// address, and another client by an http:// one: both open
+// their channels and carry messages.
+func TestDialOverHTTPS(t *testing.T) {
+	cert, pool := selfSigned(t)
+	l := listen(t, ListenConfig{TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}}})
+	_, port, _ := net.SplitHostPort(l.Addr().String())
+	secure := newDialer(t)
+	secure.HTTPClient = &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{RootCAs: pool, ServerName: "example.org"},
+	}}
+	for _, c := range []struct {
+		d       Dialer
+		address string
+	}{{secure, "https://127.0.0.1:" + port}, {newDialer(t), "http://127.0.0.1:" + port}} {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		cli, err := c.d.DialContext(ctx, c.address)
+		cancel()
+		if err != nil {
+			t.Fatalf("%s: %v", c.address, err)
+		}
+		srv := accept(t, l)
+		if err := cli.Send([]byte(c.address)); err != nil {
+			t.Fatal(err)
+		}
+		if got := read(t, srv); string(got) != c.address {
+			t.Fatalf("server read %q", got)
+		}
+		_ = cli.Close()
 	}
 }
