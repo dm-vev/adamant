@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/df-mc/go-nethernet v1.0.24
+	github.com/df-mc/go-xsapi/v2 v2.0.3
 	github.com/dm-vev/adamant/net v0.0.0
 	github.com/go-gl/mathgl v1.1.0
 	github.com/google/uuid v1.6.0

@@ -2,6 +2,8 @@ github.com/coreos/go-oidc/v3 v3.17.0 h1:hWBGaQfbi0iVviX4ibC7bk8OKT5qNr4klBaCHVNv
 github.com/coreos/go-oidc/v3 v3.17.0/go.mod h1:wqPbKFrVnE90vty060SB40FCJ8fTHTxSwyXJqZH+sI8=
 github.com/df-mc/go-nethernet v1.0.24 h1:6jL+e7MPywyCKUPCncUde2nMf8id5KdcahOSzS9PX4Y=
 github.com/df-mc/go-nethernet v1.0.24/go.mod h1:SFH4cfiLRWUUNGMvQeaOjFfFX4eexTkIfBtp55vJNqY=
+github.com/df-mc/go-xsapi/v2 v2.0.3 h1:fQLw4k15OinFhagWjbSj0BwQXeDUmY8a1J8yquEod3w=
+github.com/df-mc/go-xsapi/v2 v2.0.3/go.mod h1:Gi/zQG2DFMJOMt4DIjuBuINTnU4YnZINe+RyFyza8oo=
 github.com/go-gl/mathgl v1.1.0 h1:0lzZ+rntPX3/oGrDzYGdowSLC2ky8Osirvf5uAwfIEA=
 github.com/go-gl/mathgl v1.1.0/go.mod h1:yhpkQzEiH9yPyxDUGzkmgScbaBVlhC06qodikEM0ZwQ=
 github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=
