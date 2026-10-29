@@ -1,5 +1,15 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
-# 334 declarations, 42 of them manual.
+# 368 declarations, 25 of them manual.
+
+type CommandEnum
+	manual codec is not a method taking an IO
+
+type CommandOrigin
+	manual statement originStr := commandOriginToString(x.Origin)
+
+type PlayerMovementSettings
+	RewindHistorySize varint32
+	ServerAuthoritativeBlockBreaking bool
 
 packet 1 Login
 	ClientProtocol int32be
@@ -12,7 +22,6 @@ packet 3 ServerToClientHandshake
 	JWT bytes
 
 packet 4 ClientToServerHandshake
-	manual codec is not a method taking an IO
 
 packet 5 Disconnect
 	Reason varint32
@@ -48,7 +57,87 @@ packet 10 SetTime
 	Time varint32
 
 packet 11 StartGame
-	manual helper PlayerMoveSettings
+	EntityUniqueID varint64
+	EntityRuntimeID varuint64
+	PlayerGameMode varint32
+	PlayerPosition vec3
+	Pitch float32
+	Yaw float32
+	WorldSeed int64
+	SpawnBiomeType int16
+	UserDefinedBiomeName string
+	Dimension varint32
+	Generator varint32
+	WorldGameMode varint32
+	Hardcore bool
+	Difficulty varint32
+	WorldSpawn blockpos
+	AchievementsDisabled bool
+	EditorWorldType varint32
+	CreatedInEditor bool
+	ExportedFromEditor bool
+	DayCycleLockTime varint32
+	EducationEditionOffer varuint32
+	EducationFeaturesEnabled bool
+	EducationProductID string
+	RainLevel float32
+	LightningLevel float32
+	ConfirmedPlatformLockedContent bool
+	MultiPlayerGame bool
+	LANBroadcastEnabled bool
+	XBLBroadcastMode varint32
+	PlatformBroadcastMode varint32
+	CommandsEnabled bool
+	TexturePackRequired bool
+	GameRules []gamerule
+	Experiments []ExperimentData count uint32
+	ExperimentsPreviouslyToggled bool
+	BonusChestEnabled bool
+	StartWithMapEnabled bool
+	PlayerPermissions uint8
+	ServerChunkTickRadius int32
+	HasLockedBehaviourPack bool
+	HasLockedTexturePack bool
+	FromLockedWorldTemplate bool
+	MSAGamerTagsOnly bool
+	FromWorldTemplate bool
+	WorldTemplateSettingsLocked bool
+	OnlySpawnV1Villagers bool
+	PersonaDisabled bool
+	CustomSkinsDisabled bool
+	EmoteChatMuted bool
+	BaseGameVersion string
+	LimitedWorldWidth int32
+	LimitedWorldDepth int32
+	NewNether bool
+	EducationSharedResourceURI EducationSharedResourceURI
+	ForceExperimentalGameplay ?bool
+	ChatRestrictionLevel uint8
+	DisablePlayerInteractions bool
+	ServerEditorConnectionPolicy varint32
+	AllowAnonymousBlockDropsInEditorWorlds bool
+	LevelID string
+	WorldName string
+	TemplateContentIdentity string
+	Trial bool
+	PlayerMovementSettings PlayerMovementSettings
+	Time int64
+	EnchantmentSeed varint32
+	Blocks []BlockEntry
+	MultiPlayerCorrelationID string
+	ServerAuthoritativeInventory bool
+	GameVersion string
+	PropertyData nbt
+	ServerBlockStateChecksum uint64
+	WorldTemplateID uuid
+	ClientSideGeneration bool
+	UseBlockNetworkIDHashes bool
+	ServerAuthoritativeSound bool
+	ServerJoinInformation ?ServerJoinInformation
+	ServerID string
+	ScenarioID string
+	WorldID string
+	OwnerID string
 
 packet 12 AddPlayer
 	UUID uuid
@@ -104,7 +193,12 @@ packet 17 TakeItemActor
 	TakerEntityRuntimeID varuint64
 
 packet 18 MoveActorAbsolute
-	manual value pk.Rotation[0]
+	EntityRuntimeID varuint64
+	Flags uint8
+	Position vec3
+	Rotation[0] bytefloat
+	Rotation[1] bytefloat
+	Rotation[2] bytefloat
 
 packet 19 MovePlayer
 	EntityRuntimeID varuint64
@@ -334,14 +428,26 @@ packet 64 SimpleEvent
 	EventType uint16
 
 packet 65 Event
-	manual Event written as eventtype and eventordinal
+	manual Marshal of pk.Event
 
 packet 66 SpawnExperienceOrb
 	Position vec3
 	ExperienceAmount varint32
 
 packet 67 ClientBoundMapItemData
-	manual OptionalFunc with func(x *[]int64) { 	protocol.FuncSlice(io, x, io.Varint64) }
+	MapID varint64
+	Dimension uint8
+	LockedMap bool
+	Origin blockpos
+	MapsIncludedIn ?[]varint64
+	Scale ?uint8
+	TrackedObjects ?[]MapTrackedObject
+	Decorations ?[]MapDecoration
+	Width ?varint32
+	Height ?varint32
+	XOffset ?varint32
+	YOffset ?varint32
+	Pixels ?[]argbbe
 
 packet 68 MapInfoRequest
 	MapID varint64
@@ -375,10 +481,20 @@ packet 75 ShowCredits
 	StatusType varint32
 
 packet 76 AvailableCommands
-	manual helper FuncIOSlice
+	EnumValues []string
+	ChainedSubcommandValues []string
+	Suffixes []string
+	Enums []CommandEnum
+	ChainedSubcommands []ChainedSubcommand
+	Commands []Command
+	DynamicEnums []DynamicEnum
+	Constraints []CommandEnumConstraint
 
 packet 77 CommandRequest
-	manual helper CommandOriginData
+	CommandLine string
+	CommandOrigin CommandOrigin
+	Internal bool
+	Version string
 
 packet 78 CommandBlockUpdate
 	Block bool
@@ -398,7 +514,7 @@ packet 78 CommandBlockUpdate
 	ExecuteOnFirstTick bool
 
 packet 79 CommandOutput
-	manual helper CommandOriginData
+	manual statement outputTypeStr := commandOutputTypeToString(pk.OutputType)
 
 packet 80 UpdateTrade
 	WindowID uint8
@@ -552,7 +668,6 @@ packet 101 ModalFormResponse
 	CancelReason ?uint8
 
 packet 102 ServerSettingsRequest
-	manual codec is not a method taking an IO
 
 packet 103 ServerSettingsResponse
 	FormID varuint32
@@ -635,7 +750,9 @@ packet 119 AvailableActorIdentifiers
 	SerialisedEntityIdentifiers rest
 
 packet 121 NetworkChunkPublisherUpdate
-	manual statement count := uint32(len(pk.SavedChunks))
+	Position blockpos
+	Radius varuint32
+	SavedChunks []chunkpos count uint32
 
 packet 122 BiomeDefinitionList
 	BiomeDefinitions []BiomeDefinition
@@ -732,7 +849,7 @@ packet 143 NetworkSettings
 	ClientThrottleScalar float32
 
 packet 144 PlayerAuthInput
-	manual helper InputFlagList
+	manual call protocol.InputFlagList(io, &pk.InputData, InputFlagCount)
 
 packet 145 CreativeContent
 	Groups []CreativeGroup
@@ -828,7 +945,14 @@ packet 165 SyncActorProperty
 	PropertyData nbt
 
 packet 166 AddVolumeEntity
-	manual value pk.Bounds[0]
+	EntityRuntimeID varuint32
+	EntityMetadata nbt
+	EncodingIdentifier string
+	InstanceIdentifier string
+	Bounds[0] blockpos
+	Bounds[1] blockpos
+	Dimension varint32
+	EngineVersion string
 
 packet 167 RemoveVolumeEntity
 	EntityRuntimeID varuint32
@@ -1001,7 +1125,6 @@ packet 304 AgentAnimation
 	EntityRuntimeID varuint64
 
 packet 305 RefreshEntitlements
-	manual codec is not a method taking an IO
 
 packet 306 PlayerToggleCrafterSlotRequest
 	PosX int32
@@ -1025,7 +1148,6 @@ packet 309 AwardAchievement
 	AchievementID int32
 
 packet 310 ClientBoundCloseForm
-	manual codec is not a method taking an IO
 
 packet 312 ServerBoundLoadingScreen
 	Type varint32
@@ -1111,7 +1233,14 @@ packet 325 PlayerUpdateEntityOverrides
 	manual statement names := [...]string{"clearoverrides", "removeoverride", "setintoverride", "setfloatoverride"}
 
 packet 326 PlayerLocation
-	manual Type written as varuint32 and varint32
+	EntityUniqueID varint64
+	Type varuint32
+	Type varint32
+	switch Type
+	case 0
+		Position vec3
+	case 1
+	default
 
 packet 327 ClientBoundControlSchemeSet
 	ControlScheme uint8
@@ -1147,7 +1276,6 @@ packet 334 ClientBoundDataDrivenUICloseScreen
 	FormID ?uint32
 
 packet 335 ClientBoundDataDrivenUIReload
-	manual codec is not a method taking an IO
 
 packet 336 ClientBoundTextureShift
 	ActionID uint8
@@ -1171,7 +1299,6 @@ packet 339 CameraAimAssistActorPriority
 	PriorityData []CameraAimAssistActorPriorityData
 
 packet 340 ResourcePacksReadyForValidation
-	manual codec is not a method taking an IO
 
 packet 341 LocatorBar
 	Waypoints []LocatorBarWaypoint
@@ -1274,8 +1401,34 @@ type AbilityData
 	CommandPermissions uint8
 	Layers []AbilityLayer
 
+type ChainedSubcommand
+	Name string
+	Values []ChainedSubcommandValue
+
+type Command
+	manual statement permissionStr := commandPermissionToString(c.PermissionLevel)
+
+type DynamicEnum
+	Type string
+	Values []string
+
+type CommandEnumConstraint
+	EnumValueIndex uint32
+	EnumIndex uint32
+	Constraints bytes
+
 type BiomeDefinition
-	manual OptionalFunc with func(s *[]uint16) { 	FuncSlice(r, s, r.Uint16) }
+	NameIndex int16
+	BiomeID int16
+	Temperature float32
+	Downfall float32
+	FoliageSnow float32
+	Depth float32
+	Scale float32
+	MapWaterColour int32
+	Rain bool
+	Tags ?[]uint16
+	ChunkGeneration ?BiomeChunkGeneration
 
 type CameraAimAssistActorPriorityData
 	PresetIndex int32
@@ -1382,6 +1535,19 @@ type EnvironmentAttributeData
 type DataStoreChangeEntry
 	manual nested field x.Change.DataStoreName
 
+type MapTrackedObject
+	Type int32
+	EntityUniqueID ?varint64
+	BlockPosition ?blockpos
+
+type MapDecoration
+	Type uint8
+	Rotation uint8
+	X uint8
+	Y uint8
+	Label string
+	Colour argbbe
+
 type CacheBlob
 	Hash uint64
 	Payload bytes
@@ -1406,23 +1572,40 @@ type FullContainerName
 	DynamicContainerID ?uint32
 
 type ShapedRecipe
-	manual helper marshalShaped
+	RecipeID string
+	Width varint32
+	Height varint32
+	Input []itemdescriptorcount
+	Output []itemstack
+	UUID uuid
+	Block string
+	Priority varint32
+	AssumeSymmetry bool
+	UnlockRequirement ?RecipeUnlockRequirement
+	RecipeNetworkID varuint32
 
 type ShapelessRecipe
-	manual helper marshalShapeless
+	RecipeID string
+	Input []itemdescriptorcount
+	Output []itemstack
+	UUID uuid
+	Block string
+	Priority varint32
+	UnlockRequirement ?RecipeUnlockRequirement
+	RecipeNetworkID varuint32
 
 type MultiRecipe
 	UUID uuid
 	RecipeNetworkID varuint32
 
 type UserDataShapelessRecipe
-	manual helper marshalShapeless
+	ShapelessRecipe ShapelessRecipe
 
 type ShapelessChemistryRecipe
-	manual helper marshalShapeless
+	ShapelessRecipe ShapelessRecipe
 
 type ShapedChemistryRecipe
-	manual helper marshalShaped
+	ShapedRecipe ShapedRecipe
 
 type SmithingTransformRecipe
 	RecipeID string
@@ -1533,10 +1716,10 @@ type EnchantmentOption
 	RecipeNetworkID varuint32
 
 type PlayerListEntry
-	manual helper playerListAction
+	manual call playerListAction(r, &x.ActionType)
 
 type Skin
-	manual if with a statement: err := x.validate()
+	manual statement trusted := "false"
 
 type PrimitiveShape
 	NetworkID varuint64
@@ -1636,6 +1819,15 @@ type ScoreboardIdentityEntry
 	EntryID varint64
 	EntityUniqueID ?varint64
 
+type BlockEntry
+	Name string
+	Properties nbt
+
+type ServerJoinInformation
+	GatheringJoinInfo ?GatheringJoinInfo
+	StoreEntryPointInfo ?StoreEntryPointInfo
+	PresenceInfo ?PresenceInfo
+
 type StructureSettings
 	PaletteName string
 	IgnoreEntities bool
@@ -1663,7 +1855,9 @@ type SubChunkEntry
 	BlobHash ?uint64
 
 type SubChunkOffset
-	manual value x[0]
+	self[0] int8
+	self[1] int8
+	self[2] int8
 
 type SyncWorldClockStateData
 	ClockID varuint64
@@ -1745,6 +1939,23 @@ type AbilityLayer
 	VerticalFlySpeed float32
 	WalkSpeed float32
 
+type ChainedSubcommandValue
+	Index varuint32
+	Value varuint32
+
+type BiomeChunkGeneration
+	Climate ?BiomeClimate
+	ConsolidatedFeatures ?[]BiomeConsolidatedFeature
+	MountainParameters ?BiomeMountainParameters
+	SurfaceMaterialAdjustments ?[]BiomeElementData
+	OverworldRules ?BiomeOverworldRules
+	MultiNoiseRules ?BiomeMultiNoiseRules
+	LegacyRules ?[]BiomeConditionalTransformation
+	ReplacementsData ?[]BiomeReplacementData
+	VillageType ?uint8
+	SurfaceBuilder ?BiomeSurfaceBuilder
+	SubsurfaceBuilder ?BiomeSurfaceBuilder
+
 type CameraAimAssistPriorities
 	Entities []CameraAimAssistPriority
 	Blocks []CameraAimAssistPriority
@@ -1777,6 +1988,9 @@ type CameraPresetAimAssist
 	TargetMode ?int32
 	Angle ?vec2
 	Distance ?float32
+
+type RecipeUnlockRequirement
+	manual statement present := x.Context == RecipeUnlockContextNone
 
 type Waypoint
 	UpdateFlag uint32
@@ -1826,6 +2040,76 @@ type VoxelCells
 	ZSize uint8
 	Storage []uint8
 
+type BiomeClimate
+	Temperature float32
+	Downfall float32
+	SnowAccumulationMin float32
+	SnowAccumulationMax float32
+
+type BiomeConsolidatedFeature
+	Scatter BiomeScatterParameter
+	Feature int16
+	Identifier int16
+	Pass int16
+	CanUseInternal bool
+
+type BiomeMountainParameters
+	SteepBlock int32
+	NorthSlopes bool
+	SouthSlopes bool
+	WestSlopes bool
+	EastSlopes bool
+	TopSlideEnabled bool
+
+type BiomeElementData
+	NoiseFrequencyScale float32
+	NoiseLowerBound float32
+	NoiseUpperBound float32
+	HeightMinType varint32
+	HeightMin int16
+	HeightMaxType varint32
+	HeightMax int16
+	AdjustedMaterials BiomeSurfaceMaterial
+
+type BiomeOverworldRules
+	HillsTransformations []BiomeWeight
+	MutateTransformations []BiomeWeight
+	RiverTransformations []BiomeWeight
+	ShoreTransformations []BiomeWeight
+	PreHillsEdgeTransformations []BiomeConditionalTransformation
+	PostShoreEdgeTransformations []BiomeConditionalTransformation
+	ClimateTransformations []BiomeTemperatureWeight
+
+type BiomeMultiNoiseRules
+	Temperature float32
+	Humidity float32
+	Altitude float32
+	Weirdness float32
+	Weight float32
+
+type BiomeConditionalTransformation
+	WeightedBiomes []BiomeWeight
+	ConditionJSON int16
+	MinPassingNeighbours uint32
+
+type BiomeReplacementData
+	Biome int16
+	Dimension int16
+	TargetBiomes []int16
+	Amount float32
+	NoiseFrequencyScale float32
+	ReplacementIndex uint32
+
+type BiomeSurfaceBuilder
+	SurfaceMaterials ?BiomeSurfaceMaterial
+	HasDefaultOverworldSurface bool
+	HasSwampSurface bool
+	HasFrozenOceanSurface bool
+	HasEndSurface bool
+	MesaSurface ?BiomeMesaSurface
+	CappedSurface ?BiomeCappedSurface
+	NoiseGradientSurface ?BiomeNoiseGradientSurface
+
 type CameraAimAssistPriority
 	Identifier string
 	Priority int32
@@ -1833,3 +2117,71 @@ type CameraAimAssistPriority
 type WaypointWorldPosition
 	Position vec3
 	DimensionID varint32
+
+type BiomeScatterParameter
+	Coordinates []BiomeCoordinate
+	EvaluationOrder varint32
+	ChancePercentType varint32
+	ChancePercent int16
+	ChanceNumerator int32
+	ChanceDenominator int32
+	IterationsType varint32
+	Iterations int16
+
+type BiomeSurfaceMaterial
+	TopBlock int32
+	MidBlock int32
+	SeaFloorBlock int32
+	FoundationBlock int32
+	SeaBlock int32
+	SeaFloorDepth int32
+
+type BiomeWeight
+	Biome int16
+	Weight uint32
+
+type BiomeTemperatureWeight
+	Temperature varint32
+	Weight uint32
+
+type BiomeMesaSurface
+	ClayMaterial uint32
+	HardClayMaterial uint32
+	BrycePillars bool
+	HasForest bool
+
+type BiomeCappedSurface
+	FloorBlocks []int32
+	CeilingBlocks []int32
+	SeaBlock ?uint32
+	FoundationBlock ?uint32
+	BeachBlock ?uint32
+
+type BiomeNoiseGradientSurface
+	NonReplaceableBlocks []uint32
+	GradientBlocks []NoiseBlockSpecifier
+	Noise NoiseDescriptor
+
+type BiomeCoordinate
+	MinValueType varint32
+	MinValue int16
+	MaxValueType varint32
+	MaxValue int16
+	GridOffset uint32
+	GridStepSize uint32
+	Distribution varint32
+
+type NoiseBlockSpecifier
+	Noise string
+	Threshold float32
+	Range FloatRange
+	Block uint32
+
+type NoiseDescriptor
+	Name string
+	FirstOctave int32
+	Amplitudes []float32
+
+type FloatRange
+	Min float32
+	Max float32

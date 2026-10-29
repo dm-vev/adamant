@@ -348,6 +348,8 @@ type gen struct {
 	b     bytes.Buffer
 	d     *decl
 	names map[string]bool
+	// types holds the Go types of the fields of the declaration.
+	types map[string]string
 	tmp   int
 }
 
@@ -474,14 +476,21 @@ func (g *gen) decl(d *decl) error {
 		return err
 	}
 	g.names = map[string]bool{}
+	g.types = map[string]string{}
 	for _, f := range fields {
 		g.names[f.name] = true
+		g.types[f.name] = f.goType
 	}
-	g.p("type %s struct {", typeName)
-	for _, f := range fields {
-		g.p("%s %s", f.name, f.goType)
+	if len(fields) == 1 && fields[0].name == "self" {
+		// The value is itself an array.
+		g.p("type %s %s", typeName, fields[0].goType)
+	} else {
+		g.p("type %s struct {", typeName)
+		for _, f := range fields {
+			g.p("%s %s", f.name, f.goType)
+		}
+		g.p("}")
 	}
-	g.p("}")
 	if d.packet {
 		g.p("")
 		g.p("func (*%s) ID() uint32 { return %d }", typeName, d.id)
@@ -506,6 +515,19 @@ func (g *gen) body(nodes []*node, enc bool) error {
 		switch n.kind {
 		case "field":
 			v := "p." + n.path
+			if strings.HasPrefix(n.path, "self") {
+				v = "p" + strings.TrimPrefix(n.path, "self")
+			}
+			if conv, ok := g.conversion(n); ok {
+				// A field written again as another integer type.
+				m := plain[n.wire]
+				if enc {
+					g.p("w.%s(%s(%s))", m, goTypes[n.wire], v)
+				} else {
+					g.p("%s = %s(r.%s())", v, conv, m)
+				}
+				continue
+			}
 			if err := g.value(n.wire, v, enc); err != nil {
 				return fmt.Errorf("%s.%s: %w", g.d.name, n.path, err)
 			}
@@ -553,6 +575,28 @@ func (g *gen) body(nodes []*node, enc bool) error {
 		}
 	}
 	return nil
+}
+
+// conversion returns the Go type of a field a node writes as an integer of
+// another type, as a field written twice with two encodings is.
+func (g *gen) conversion(n *node) (string, bool) {
+	if strings.Contains(n.path, "[") {
+		return "", false
+	}
+	declared, ok := g.types[n.path]
+	wire, isPlain := goTypes[n.wire]
+	if !ok || !isPlain || declared == wire || !integerType(declared) || !integerType(wire) {
+		return "", false
+	}
+	return declared, true
+}
+
+func integerType(t string) bool {
+	switch t {
+	case "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64":
+		return true
+	}
+	return false
 }
 
 // cond rewrites an expression of the schema to Go: field names become

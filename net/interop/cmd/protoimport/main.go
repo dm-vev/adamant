@@ -232,15 +232,26 @@ func (im *importer) typeDecl(tn *types.TypeName) {
 	im.decls = append(im.decls, d)
 }
 
-// translate imports the body of a codec.
+// translate imports the body of a codec: a Marshal method, or a function
+// taking the IO and a pointer to the value.
 func (im *importer) translate(fd *ast.FuncDecl) ([]string, string) {
 	p := im.owner[fd]
-	c := &ctx{im: im, pkg: p, fields: map[string]string{}}
-	if fd.Recv != nil && len(fd.Recv.List[0].Names) == 1 {
-		c.recv = p.TypesInfo.Defs[fd.Recv.List[0].Names[0]]
+	c := &ctx{im: im, pkg: p, fields: map[string]string{}, counts: map[types.Object]string{}}
+	var names []*ast.Ident
+	for _, f := range fd.Type.Params.List {
+		names = append(names, f.Names...)
 	}
-	if params := fd.Type.Params.List; len(params) == 1 && len(params[0].Names) == 1 {
-		c.io = p.TypesInfo.Defs[params[0].Names[0]]
+	switch {
+	case fd.Recv != nil && len(fd.Recv.List[0].Names) == 1 && len(names) == 1:
+		c.recv = p.TypesInfo.Defs[fd.Recv.List[0].Names[0]]
+		c.io = p.TypesInfo.Defs[names[0]]
+	case fd.Recv == nil && len(names) == 2:
+		c.io = p.TypesInfo.Defs[names[0]]
+		c.recv = p.TypesInfo.Defs[names[1]]
+	}
+	if len(fd.Body.List) == 0 {
+		// A packet without fields.
+		return nil, ""
 	}
 	if c.recv == nil || c.io == nil {
 		return nil, "codec is not a method taking an IO"
@@ -259,6 +270,9 @@ type ctx struct {
 	io     types.Object
 	lines  []string
 	fields map[string]string
+	// counts maps the locals that hold the length of a list to the wire
+	// type they are written as.
+	counts map[types.Object]string
 }
 
 func (c *ctx) emit(depth int, s string) {
@@ -272,12 +286,100 @@ func (c *ctx) src(n ast.Node) string {
 }
 
 func (c *ctx) block(stmts []ast.Stmt, depth int) error {
-	for _, s := range stmts {
+	for i := 0; i < len(stmts); i++ {
+		s := stmts[i]
+		if as, ok := s.(*ast.AssignStmt); ok && as.Tok == token.DEFINE {
+			// n := T(len(x.F)) written as io.M(&n): the count of a list
+			// read and written with SliceOfLen.
+			if obj, wire, ok := c.countLocal(as, stmts[i+1:]); ok {
+				c.counts[obj] = wire
+				i++
+				continue
+			}
+			if c.validationOnly(as, stmts[i+1:]) {
+				continue
+			}
+		}
 		if err := c.stmt(s, depth); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// countLocal recognises a local holding the length of a list that the next
+// statement writes.
+func (c *ctx) countLocal(as *ast.AssignStmt, rest []ast.Stmt) (types.Object, string, bool) {
+	if len(as.Lhs) != 1 || len(as.Rhs) != 1 || len(rest) == 0 {
+		return nil, "", false
+	}
+	id, ok := as.Lhs[0].(*ast.Ident)
+	if !ok {
+		return nil, "", false
+	}
+	conv, ok := as.Rhs[0].(*ast.CallExpr)
+	if !ok || len(conv.Args) != 1 {
+		return nil, "", false
+	}
+	inner, ok := conv.Args[0].(*ast.CallExpr)
+	if !ok {
+		return nil, "", false
+	}
+	if fun, isID := inner.Fun.(*ast.Ident); !isID || fun.Name != "len" {
+		return nil, "", false
+	}
+	es, ok := rest[0].(*ast.ExprStmt)
+	if !ok {
+		return nil, "", false
+	}
+	call, ok := es.X.(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		return nil, "", false
+	}
+	name, ok := c.ioMethod(call)
+	if !ok {
+		return nil, "", false
+	}
+	u, ok := call.Args[0].(*ast.UnaryExpr)
+	if !ok || u.Op != token.AND {
+		return nil, "", false
+	}
+	if arg, ok := u.X.(*ast.Ident); !ok || arg.Name != id.Name {
+		return nil, "", false
+	}
+	wire, ok := primitives[name]
+	if !ok {
+		return nil, "", false
+	}
+	return c.pkg.TypesInfo.Defs[id], wire, true
+}
+
+// validationOnly reports a local whose every use reports invalid values.
+func (c *ctx) validationOnly(as *ast.AssignStmt, rest []ast.Stmt) bool {
+	objs := map[types.Object]bool{}
+	for _, l := range as.Lhs {
+		if id, ok := l.(*ast.Ident); ok {
+			if obj := c.pkg.TypesInfo.Defs[id]; obj != nil {
+				objs[obj] = true
+			}
+		}
+	}
+	if len(objs) == 0 {
+		return false
+	}
+	ok := true
+	for _, st := range rest {
+		if ifs, isIf := st.(*ast.IfStmt); isIf && c.validation(ifs) {
+			continue
+		}
+		ast.Inspect(st, func(n ast.Node) bool {
+			if id, isID := n.(*ast.Ident); isID && objs[c.pkg.TypesInfo.Uses[id]] {
+				ok = false
+			}
+			return ok
+		})
+	}
+	return ok
 }
 
 func (c *ctx) stmt(s ast.Stmt, depth int) error {
@@ -289,11 +391,11 @@ func (c *ctx) stmt(s ast.Stmt, depth int) error {
 		}
 		return c.call(call, depth)
 	case *ast.IfStmt:
-		if s.Init != nil {
-			return fmt.Errorf("if with a statement: %s", c.src(s.Init))
-		}
 		if c.validation(s) {
 			return nil
+		}
+		if s.Init != nil {
+			return fmt.Errorf("if with a statement: %s", c.src(s.Init))
 		}
 		cond, err := c.expr(s.Cond)
 		if err != nil {
@@ -356,6 +458,9 @@ func (c *ctx) validation(s *ast.IfStmt) bool {
 		return false
 	}
 	for _, st := range s.Body.List {
+		if _, ok := st.(*ast.ReturnStmt); ok {
+			continue
+		}
 		es, ok := st.(*ast.ExprStmt)
 		if !ok {
 			return false
@@ -471,7 +576,10 @@ func (c *ctx) call(call *ast.CallExpr, depth int) error {
 		return fmt.Errorf("call %s", c.src(call))
 	}
 	if fn.Pkg() != nil && fn.Pkg().Path() == protocolPath && fn.Type().(*types.Signature).Recv() == nil {
-		return c.helper(fn.Name(), call, depth)
+		if _, ok := countTypes[fn.Name()]; ok || helpers[fn.Name()] {
+			return c.helper(fn.Name(), call, depth)
+		}
+		return c.codecFunc(fn, call, depth)
 	}
 	sig := fn.Type().(*types.Signature)
 	if fn.Name() == "Marshal" && sig.Recv() != nil {
@@ -509,6 +617,55 @@ func (c *ctx) call(call *ast.CallExpr, depth int) error {
 	return fmt.Errorf("call %s", firstLine(c.src(call)))
 }
 
+// helpers are the generic helpers of package protocol helper translates.
+var helpers = map[string]bool{
+	"SliceOfLen": true, "FuncSliceOfLen": true, "Single": true, "OptionalFunc": true,
+	"OptionalMarshaler": true, "IntegerFunc": true,
+}
+
+// codecFunc translates a call of a function of package protocol taking the
+// IO and a pointer: inline when the pointer is the value itself, else a
+// field of the type it codes.
+func (c *ctx) codecFunc(fn *types.Func, call *ast.CallExpr, depth int) error {
+	fd := c.im.funcs[fn]
+	if fd == nil || len(call.Args) != 2 {
+		return fmt.Errorf("call %s", firstLine(c.src(call)))
+	}
+	var names []*ast.Ident
+	for _, f := range fd.Type.Params.List {
+		names = append(names, f.Names...)
+	}
+	if len(names) != 2 {
+		return fmt.Errorf("call %s", firstLine(c.src(call)))
+	}
+	if id, ok := call.Args[1].(*ast.Ident); ok && c.pkg.TypesInfo.Uses[id] == c.recv {
+		p := c.im.owner[fd]
+		inner := &ctx{im: c.im, pkg: p, fields: c.fields, counts: map[types.Object]string{},
+			io: p.TypesInfo.Defs[names[0]], recv: p.TypesInfo.Defs[names[1]]}
+		if err := inner.block(fd.Body.List, depth); err != nil {
+			return err
+		}
+		c.lines = append(c.lines, inner.lines...)
+		return nil
+	}
+	path, err := c.field(call.Args[1])
+	if err != nil {
+		return err
+	}
+	named, ok := types.Unalias(c.pointee(call.Args[1])).(*types.Named)
+	if !ok {
+		return fmt.Errorf("call %s", firstLine(c.src(call)))
+	}
+	tn := named.Obj()
+	if _, ok := c.im.types[tn]; !ok {
+		d := &decl{name: tn.Name()}
+		c.im.types[tn] = d
+		d.lines, d.manual = c.im.translate(fd)
+		c.im.decls = append(c.im.decls, d)
+	}
+	return c.put(depth, path, tn.Name())
+}
+
 // isRecvCall reports a method called on the value whose codec this is.
 func (c *ctx) isRecvCall(call *ast.CallExpr) bool {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
@@ -533,6 +690,16 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 			return fmt.Errorf("%s of %s", name, elem)
 		}
 		return c.put(depth, path, list("[]"+t, countTypes[name]))
+	case "FuncIOSlice":
+		path, elem, err := c.sliceField(args[1])
+		if err != nil {
+			return err
+		}
+		t, err := c.funcType(args[2], elem)
+		if err != nil {
+			return err
+		}
+		return c.put(depth, path, "[]"+t)
 	case "FuncSlice", "FuncSliceUint32Length":
 		path, _, err := c.sliceField(args[1])
 		if err != nil {
@@ -548,9 +715,16 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		if err != nil {
 			return err
 		}
-		n, err := c.expr(args[1])
-		if err != nil {
-			return err
+		var n string
+		countWire := ""
+		if id, ok := args[1].(*ast.Ident); ok {
+			countWire = c.counts[c.pkg.TypesInfo.Uses[id]]
+		}
+		if countWire == "" {
+			var err error
+			if n, err = c.expr(args[1]); err != nil {
+				return err
+			}
 		}
 		var t string
 		if name == "SliceOfLen" {
@@ -563,6 +737,9 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 			if t, ok = c.ioFunc(args[3]); !ok {
 				return fmt.Errorf("%s with %s", name, c.src(args[3]))
 			}
+		}
+		if countWire != "" {
+			return c.put(depth, path, list("[]"+t, countWire))
 		}
 		return c.put(depth, path, "[]"+t+" len "+n)
 	case "Single":
@@ -582,7 +759,9 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 		}
 		w, ok := c.ioFunc(args[2])
 		if !ok {
-			return fmt.Errorf("OptionalFunc with %s", c.src(args[2]))
+			if w, ok = c.closureList(args[2]); !ok {
+				return fmt.Errorf("OptionalFunc with %s", c.src(args[2]))
+			}
 		}
 		return c.put(depth, path, "?"+w)
 	case "OptionalMarshaler":
@@ -613,11 +792,92 @@ func (c *ctx) helper(name string, call *ast.CallExpr, depth int) error {
 	return fmt.Errorf("helper %s", name)
 }
 
+// closureList translates func(x *[]T) { FuncSlice(io, x, io.M) }.
+func (c *ctx) closureList(e ast.Expr) (string, bool) {
+	lit, ok := e.(*ast.FuncLit)
+	if !ok || len(lit.Body.List) != 1 {
+		return "", false
+	}
+	es, ok := lit.Body.List[0].(*ast.ExprStmt)
+	if !ok {
+		return "", false
+	}
+	call, ok := es.X.(*ast.CallExpr)
+	if !ok {
+		return "", false
+	}
+	fn := c.callee(call)
+	if fn == nil {
+		return "", false
+	}
+	count, ok := countTypes[fn.Name()]
+	if !ok {
+		return "", false
+	}
+	if !strings.HasPrefix(fn.Name(), "Func") {
+		// Slice(io, x): a list of values with codecs of their own.
+		if len(call.Args) != 2 {
+			return "", false
+		}
+		s, ok := c.pkg.TypesInfo.TypeOf(call.Args[1]).(*types.Pointer)
+		if !ok {
+			return "", false
+		}
+		sl, ok := s.Elem().Underlying().(*types.Slice)
+		if !ok {
+			return "", false
+		}
+		t, ok := c.im.ref(sl.Elem())
+		if !ok {
+			return "", false
+		}
+		return list("[]"+t, count), true
+	}
+	if len(call.Args) != 3 {
+		return "", false
+	}
+	w, ok := c.ioFunc(call.Args[2])
+	if !ok {
+		return "", false
+	}
+	return list("[]"+w, count), true
+}
+
 func list(t, count string) string {
 	if count == "" {
 		return t
 	}
 	return t + " count " + count
+}
+
+// funcType returns the type a codec function of package protocol codes,
+// importing it.
+func (c *ctx) funcType(e ast.Expr, elem types.Type) (string, error) {
+	var id *ast.Ident
+	switch f := e.(type) {
+	case *ast.Ident:
+		id = f
+	case *ast.SelectorExpr:
+		id = f.Sel
+	default:
+		return "", fmt.Errorf("codec %s", c.src(e))
+	}
+	fn, ok := c.pkg.TypesInfo.Uses[id].(*types.Func)
+	if !ok || c.im.funcs[fn] == nil {
+		return "", fmt.Errorf("codec %s", c.src(e))
+	}
+	named, ok := types.Unalias(elem).(*types.Named)
+	if !ok {
+		return "", fmt.Errorf("codec of %s", elem)
+	}
+	tn := named.Obj()
+	if _, ok := c.im.types[tn]; !ok {
+		d := &decl{name: tn.Name()}
+		c.im.types[tn] = d
+		d.lines, d.manual = c.im.translate(c.im.funcs[fn])
+		c.im.decls = append(c.im.decls, d)
+	}
+	return tn.Name(), nil
 }
 
 func (c *ctx) pointee(e ast.Expr) types.Type {
@@ -643,10 +903,9 @@ func (c *ctx) sliceField(e ast.Expr) (string, types.Type, error) {
 
 // put records that a field is read and written with a wire type.
 func (c *ctx) put(depth int, path, wire string) error {
-	if prev, ok := c.fields[path]; ok && prev != wire {
-		return fmt.Errorf("%s written as %s and %s", path, prev, wire)
+	if _, ok := c.fields[path]; !ok {
+		c.fields[path] = wire
 	}
-	c.fields[path] = wire
 	c.emit(depth, path+" "+wire)
 	return nil
 }
@@ -670,6 +929,20 @@ func (c *ctx) path(e ast.Expr) (string, error) {
 		return "", fmt.Errorf("nested field %s", c.src(e))
 	case *ast.ParenExpr:
 		return c.path(e.X)
+	case *ast.IndexExpr:
+		tv := c.pkg.TypesInfo.Types[e.Index]
+		if tv.Value == nil {
+			return "", fmt.Errorf("index %s", c.src(e))
+		}
+		i := tv.Value.ExactString()
+		if id, ok := e.X.(*ast.Ident); ok && c.pkg.TypesInfo.Uses[id] == c.recv {
+			return "self[" + i + "]", nil
+		}
+		base, err := c.path(e.X)
+		if err != nil {
+			return "", err
+		}
+		return base + "[" + i + "]", nil
 	case *ast.StarExpr:
 		if id, ok := e.X.(*ast.Ident); ok && c.pkg.TypesInfo.Uses[id] == c.recv {
 			return "self", nil
