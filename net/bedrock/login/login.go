@@ -1,9 +1,10 @@
 // Package login encodes the login request of a client, the connection
-// request of its Login packet: a multiplayer token naming the player and
-// the public key of the client, and the data of its device and skin, each
-// a JWT signed with its P-384 key. A client without an Xbox Live account
-// signs the token itself, which a server takes when it does not ask for
-// Xbox Live.
+// request of its Login packet, and reads it for a server: a multiplayer
+// token naming the player and the public key of the client, and the data
+// of its device and skin, each a JWT signed with its P-384 key. The
+// authorization service of the game signs the token of a player of Xbox
+// Live; a client without an account signs it itself, which a server takes
+// when it does not ask for Xbox Live.
 package login
 
 import (
@@ -30,6 +31,9 @@ type Identity struct {
 	XUID string
 	// PlayFabID and PlayFabTitleID name the PlayFab account of the player.
 	PlayFabID, PlayFabTitleID string
+	// TitleID is the Xbox Live title of the game the player plays, which
+	// only the certificate chain of a login names.
+	TitleID string
 }
 
 // ClientData describes the device and the skin of a client, under the
