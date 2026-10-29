@@ -130,6 +130,10 @@ func renderComponent(v any) string {
 		return b.String()
 	case map[string]any:
 		var b strings.Builder
+		// Bedrock wraps its components in rawtext.
+		if raw, ok := x["rawtext"]; ok {
+			b.WriteString(renderComponent(raw))
+		}
 		if t, ok := x["text"]; ok {
 			b.WriteString(fmt.Sprint(t))
 		}
