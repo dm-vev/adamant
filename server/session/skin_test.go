@@ -1,7 +1,6 @@
 package session
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	"math/rand/v2"
@@ -11,12 +10,11 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // encodable checks a skin as it goes to clients: each texture holds the
 // pixels of its size, which gophertunnel's encoder panicked over in the
-// session writer, and the codecs encode it.
+// session writer and the client refuses, and it encodes and decodes back.
 func encodable(t *testing.T, name string, s v2193.Skin) {
 	t.Helper()
 	if int(s.SkinImageWidth)*int(s.SkinImageHeight)*4 != len(s.SkinData) {
@@ -25,25 +23,11 @@ func encodable(t *testing.T, name string, s v2193.Skin) {
 	if int(s.CapeImageWidth)*int(s.CapeImageHeight)*4 != len(s.CapeData) {
 		t.Fatalf("%s: cape %dx%d of %d bytes", name, s.CapeImageWidth, s.CapeImageHeight, len(s.CapeData))
 	}
-	gt := protocol.Skin{
-		SkinID: s.SkinID, SkinImageWidth: s.SkinImageWidth, SkinImageHeight: s.SkinImageHeight, SkinData: s.SkinData,
-		CapeImageWidth: s.CapeImageWidth, CapeImageHeight: s.CapeImageHeight, CapeData: s.CapeData, SkinGeometry: s.SkinGeometry,
-	}
 	for _, a := range s.Animations {
 		if int(a.ImageWidth)*int(a.ImageHeight)*4 != len(a.ImageData) {
 			t.Fatalf("%s: animation %dx%d of %d bytes", name, a.ImageWidth, a.ImageHeight, len(a.ImageData))
 		}
-		gt.Animations = append(gt.Animations, protocol.SkinAnimation{ImageWidth: a.ImageWidth, ImageHeight: a.ImageHeight, ImageData: a.ImageData, AnimationType: a.AnimationType, FrameCount: a.FrameCount})
 	}
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Fatalf("%s: gophertunnel's encoder panics: %v", name, r)
-			}
-		}()
-		var buf bytes.Buffer
-		gt.Marshal(protocol.NewWriter(&buf, 0))
-	}()
 	var w wire.Writer
 	s.Encode(&w)
 	var back v2193.Skin

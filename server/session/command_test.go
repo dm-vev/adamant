@@ -12,8 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/text"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"golang.org/x/text/language"
 )
 
@@ -36,10 +35,7 @@ func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			pk, _ := BuildAvailableCommands(commands, tt.src, make(map[string]struct{}))
-			var wire bytes.Buffer
-			wire.Write(encodePacket(pk))
-			var decoded packet.AvailableCommands
-			decoded.Marshal(protocol.NewReader(&wire, 0, true))
+			decoded := decodeCommands(t, encodePacket(pk))
 			got := make(map[string]string)
 			for _, command := range decoded.Commands {
 				got[command.Name] = command.Description
@@ -69,6 +65,19 @@ func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
 	}
 }
 
+// decodeCommands decodes AvailableCommands as a client reads it: all of
+// it, with nothing left over.
+func decodeCommands(t *testing.T, b []byte) v2193.AvailableCommandsPacket {
+	t.Helper()
+	var pk v2193.AvailableCommandsPacket
+	r := wire.NewReader(b)
+	pk.Decode(r)
+	if r.Err() != nil || r.Len() != 0 {
+		t.Fatalf("AvailableCommands does not decode: %v, %d bytes left", r.Err(), r.Len())
+	}
+	return pk
+}
+
 type commandLocaleSource struct {
 	cmd.Source
 	locale language.Tag
@@ -92,19 +101,13 @@ func TestAvailableCommandsStableWireRegistry(t *testing.T) {
 	var first []byte
 	for range 100 {
 		pk, _ := BuildAvailableCommands(commands, nil, make(map[string]struct{}))
-		var encoded bytes.Buffer
-		encoded.Write(encodePacket(pk))
-		wire := append([]byte(nil), encoded.Bytes()...)
+		encoded := encodePacket(pk)
 		if first == nil {
-			first = wire
-		} else if !bytes.Equal(first, wire) {
+			first = encoded
+		} else if !bytes.Equal(first, encoded) {
 			t.Fatal("unchanged commands produced a different command/enum registry")
 		}
-		var decoded packet.AvailableCommands
-		decoded.Marshal(protocol.NewReader(&encoded, 0, true))
-		if encoded.Len() != 0 {
-			t.Fatalf("command packet has %d unread bytes", encoded.Len())
-		}
+		decoded := decodeCommands(t, encoded)
 		if len(decoded.Commands) != 2 || decoded.Commands[0].Name != "alpha" || decoded.Commands[1].Name != "zulu" {
 			t.Fatalf("commands = %#v, want sorted canonical names without alias duplicates", decoded.Commands)
 		}

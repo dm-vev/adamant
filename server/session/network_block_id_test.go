@@ -1,7 +1,6 @@
 package session
 
 import (
-	"bytes"
 	"encoding/binary"
 	"testing"
 
@@ -9,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
 // Network block IDs BDS 1.26.52 sends for these states with block network ID
@@ -31,22 +30,17 @@ func TestChunksNameBlocksByNetworkHash(t *testing.T) {
 	index := int(-world.Overworld.Range().Min() >> 4)
 	payload := chunk.EncodeSubChunk(c, chunk.NetworkEncoding, index)
 
-	buf := bytes.NewBuffer(payload[3:])
-	header, _ := buf.ReadByte()
-	bits := int(header >> 1)
+	r := wire.NewReader(payload[3:])
+	bits := int(r.Uint8() >> 1)
 	words := (4096 + 32/bits - 1) / (32 / bits)
-	buf.Next(words * 4)
-	var count int32
-	if err := protocol.Varint32(buf, &count); err != nil {
-		t.Fatal(err)
-	}
+	r.Next(words * 4)
+	count := r.Varint32()
 	palette := map[uint32]bool{}
 	for range count {
-		var v int32
-		if err := protocol.Varint32(buf, &v); err != nil {
-			t.Fatal(err)
-		}
-		palette[uint32(v)] = true
+		palette[uint32(r.Varint32())] = true
+	}
+	if r.Err() != nil {
+		t.Fatal(r.Err())
 	}
 	if !palette[bdsStoneNetworkID] || !palette[bdsGrassBlockNetworkID] {
 		t.Fatalf("sub-chunk palette %v lacks the network IDs of stone and grass", palette)

@@ -1,7 +1,6 @@
 package builtin
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"slices"
@@ -12,8 +11,6 @@ import (
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestBuiltinCommandRegistryKeepsNativeHelpLocal(t *testing.T) {
@@ -32,12 +29,8 @@ func TestBuiltinCommandRegistryKeepsNativeHelpLocal(t *testing.T) {
 	}
 	Register(registerTestAdapter{})
 	pk, runnable := session.BuildAvailableCommands(cmd.Commands(), nil, make(map[string]struct{}))
-	var wire bytes.Buffer
-	wire.Write(encodePacket(pk))
-	var decoded packet.AvailableCommands
-	// A server registry exceeds the client-to-server slice limit of 1024.
-	decoded.Marshal(protocol.NewReader(&wire, 0, false))
-	commands := make(map[string]protocol.Command)
+	decoded := decodeCommands(t, encodePacket(pk))
+	commands := make(map[string]v2193.Command)
 	for _, command := range decoded.Commands {
 		commands[command.Name] = command
 	}
@@ -99,6 +92,19 @@ type metadataHelpSource struct {
 func (s *metadataHelpSource) SendCommandOutput(output *cmd.Output) { s.output = output }
 
 // encodePacket encodes a packet of the generated codecs.
+// decodeCommands decodes AvailableCommands as a client reads it: all of
+// it, with nothing left over.
+func decodeCommands(t *testing.T, b []byte) v2193.AvailableCommandsPacket {
+	t.Helper()
+	var pk v2193.AvailableCommandsPacket
+	r := wire.NewReader(b)
+	pk.Decode(r)
+	if r.Err() != nil || r.Len() != 0 {
+		t.Fatalf("AvailableCommands does not decode: %v, %d bytes left", r.Err(), r.Len())
+	}
+	return pk
+}
+
 func encodePacket(pk interface{ Encode(*wire.Writer) }) []byte {
 	var w wire.Writer
 	pk.Encode(&w)

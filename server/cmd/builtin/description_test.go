@@ -1,7 +1,6 @@
 package builtin
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"strings"
@@ -10,8 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/bedrock/text"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
 )
 
@@ -32,10 +29,7 @@ func TestBuiltinDescriptionsMatchNativeTranslations(t *testing.T) {
 	for _, locale := range []string{"en_US", "ru_RU", "de_DE"} {
 		t.Run(locale, func(t *testing.T) {
 			pk, _ := session.BuildAvailableCommands(commands, &descriptionTestSource{locale: language.MustParse(locale)}, make(map[string]struct{}))
-			var wire bytes.Buffer
-			wire.Write(encodePacket(pk))
-			var decoded packet.AvailableCommands
-			decoded.Marshal(protocol.NewReader(&wire, 0, false))
+			decoded := decodeCommands(t, encodePacket(pk))
 			for _, command := range decoded.Commands {
 				key, native := nativeCommandDescriptions[command.Name]
 				if !native {
