@@ -65,8 +65,10 @@ func (w *Writer) ByteSlice(v []byte) {
 // Bytes writes bytes as they are, as the last field of a packet.
 func (w *Writer) Bytes(v []byte) { w.B = append(w.B, v...) }
 
-// ByteFloat writes an angle in degrees as a byte, 256 steps a turn.
-func (w *Writer) ByteFloat(v float32) { w.B = append(w.B, byte(v/(360.0/256.0))) }
+// ByteFloat writes an angle in degrees as a byte, 256 steps a turn. The
+// angle wraps around through an int, so that a negative one wraps on every
+// platform, where a float converted to a byte straight saturates on some.
+func (w *Writer) ByteFloat(v float32) { w.B = append(w.B, byte(int64(v/(360.0/256.0)))) }
 
 // UUID writes a UUID as two little-endian halves, the most significant
 // first.

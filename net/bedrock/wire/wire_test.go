@@ -76,6 +76,17 @@ func TestVarintBytes(t *testing.T) {
 	}
 }
 
+// TestByteFloatWraps writes angles out of a turn, which wrap around.
+func TestByteFloatWraps(t *testing.T) {
+	for v, want := range map[float32]byte{0: 0, 90: 64, 359: 255, 360: 0, -10: 249, -90: 192, 720 + 45: 32} {
+		var w Writer
+		w.ByteFloat(v)
+		if w.B[0] != want {
+			t.Errorf("%v degrees: byte %d, want %d", v, w.B[0], want)
+		}
+	}
+}
+
 func TestReaderErrors(t *testing.T) {
 	for name, tc := range map[string]struct {
 		data []byte
