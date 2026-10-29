@@ -53,6 +53,9 @@ type Conn struct {
 
 	writeMu sync.Mutex
 	buf     bytes.Buffer
+	// w encodes packets into buf for the shield ID wShield.
+	w       *protocol.Writer
+	wShield int32
 
 	closeOnce sync.Once
 }
@@ -90,7 +93,12 @@ func (c *Conn) WritePacket(pk packet.Packet) error {
 	defer c.writeMu.Unlock()
 	c.buf.Reset()
 	c.buf.Write(bedrock.AppendHeader(c.buf.AvailableBuffer(), bedrock.Header{ID: pk.ID()}))
-	pk.Marshal(protocol.NewWriter(&c.buf, c.shieldID.Load()))
+	if shield := c.shieldID.Load(); c.w == nil || c.wShield != shield {
+		// One writer serves every packet: making one for each was most of
+		// what a server allocated to send them.
+		c.w, c.wShield = protocol.NewWriter(&c.buf, shield), shield
+	}
+	pk.Marshal(c.w)
 	err := c.b.WritePacket(c.buf.Bytes())
 	if c.buf.Cap() > keptBuffer {
 		// Large packets are rare: the buffer is not kept for them.
