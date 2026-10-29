@@ -3,19 +3,20 @@ package packbuilder
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/resource"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/resource"
+	"github.com/google/uuid"
 )
 
 // buildManifest creates a JSON manifest file for the client to be able to read the resource pack. It creates
 // basic information and writes it to the pack.
 func buildManifest(dir string, headerUUID, moduleUUID uuid.UUID) error {
-	version, err := parseVersion(protocol.CurrentVersion)
+	version, err := parseVersion(v2193.Version)
 	if err != nil {
 		return fmt.Errorf("parse game version: %w", err)
 	}
@@ -24,7 +25,7 @@ func buildManifest(dir string, headerUUID, moduleUUID uuid.UUID) error {
 		Header: resource.Header{
 			Name:               "dragonfly auto-generated resource pack",
 			Description:        "This resource pack contains auto-generated content from dragonfly",
-			UUID:               headerUUID,
+			UUID:               resource.UUID(headerUUID),
 			Version:            [3]int{0, 0, 1},
 			MinimumGameVersion: version,
 		},

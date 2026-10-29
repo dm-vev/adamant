@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/resource"
+	"github.com/dm-vev/adamant/net/bedrock/resource"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 

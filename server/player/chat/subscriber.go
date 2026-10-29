@@ -2,9 +2,10 @@ package chat
 
 import (
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/sandertv/gophertunnel/minecraft/text"
 	"strings"
+
+	"github.com/dm-vev/adamant/net/bedrock/text"
+	"github.com/google/uuid"
 )
 
 // Subscriber represents an entity that may subscribe to a Chat. In order to do

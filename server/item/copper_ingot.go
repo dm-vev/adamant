@@ -1,6 +1,6 @@
 package item
 
-import "github.com/sandertv/gophertunnel/minecraft/text"
+import "github.com/dm-vev/adamant/net/bedrock/text"
 
 // CopperIngot is a metal ingot melted from copper ore.
 type CopperIngot struct{}

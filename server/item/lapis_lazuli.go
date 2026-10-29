@@ -1,6 +1,6 @@
 package item
 
-import "github.com/sandertv/gophertunnel/minecraft/text"
+import "github.com/dm-vev/adamant/net/bedrock/text"
 
 // LapisLazuli is a mineral used for enchanting and decoration.
 type LapisLazuli struct{}

@@ -3,7 +3,7 @@ package chat
 import (
 	"testing"
 
-	"github.com/sandertv/gophertunnel/minecraft/text"
+	"github.com/dm-vev/adamant/net/bedrock/text"
 )
 
 func TestLiteralTranslationFallback(t *testing.T) {

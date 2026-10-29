@@ -1,6 +1,6 @@
 package item
 
-import "github.com/sandertv/gophertunnel/minecraft/text"
+import "github.com/dm-vev/adamant/net/bedrock/text"
 
 // Emerald is a rare mineral obtained from emerald ore or from villagers.
 type Emerald struct{}

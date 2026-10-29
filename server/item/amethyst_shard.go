@@ -1,6 +1,6 @@
 package item
 
-import "github.com/sandertv/gophertunnel/minecraft/text"
+import "github.com/dm-vev/adamant/net/bedrock/text"
 
 // AmethystShard is a crystalline mineral obtained from mining a fully grown amethyst cluster.
 type AmethystShard struct{}

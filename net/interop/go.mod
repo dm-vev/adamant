@@ -7,6 +7,7 @@ require (
 	github.com/df-mc/dragonfly v0.0.0
 	github.com/df-mc/go-nethernet v1.0.24
 	github.com/df-mc/go-xsapi/v2 v2.0.3
+	github.com/df-mc/jsonc v1.0.5
 	github.com/dm-vev/adamant/net v0.0.0
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
@@ -23,7 +24,6 @@ require (
 	github.com/andreburgaud/crypt2go v1.8.0 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/df-mc/go-playfab/v2 v2.0.2 // indirect
-	github.com/df-mc/jsonc v1.0.5 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/pion/datachannel v1.6.3 // indirect
