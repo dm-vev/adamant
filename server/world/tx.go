@@ -536,6 +536,8 @@ func (tx *Tx) runDeferred() {
 			st.Run(tx.w)
 		}
 	}
+	// The transaction ended: the viewers are shown the blocks it changed.
+	tx.w.flushBlockUpdates()
 }
 
 // normalTransaction is added to the transaction queue for transactions created

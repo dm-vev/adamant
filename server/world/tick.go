@@ -143,6 +143,8 @@ func (t ticker) tick(tx *Tx) {
 			}
 		}
 	}()
+	// The blocks the tick changed go out with the rest of what it shows.
+	defer w.flushBlockUpdates()
 	w.focusGeneration(loaders)
 	w.updateEntityTickingAreas(loaders)
 	w.loadForcedChunks()

@@ -55,6 +55,9 @@ type World struct {
 	// light far from every column whose entities tick, which wait until a
 	// column near them comes to tick or light near them is read.
 	deferredSpreads map[ChunkPos]pendingSpread
+	// blockUpdates holds the columns whose viewers are yet to be shown
+	// changes of their blocks.
+	blockUpdates blockUpdateQueue
 
 	queue         chan transaction
 	queueClosing  chan struct{}
@@ -681,9 +684,7 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 			candidate.column.invalidateSubChunkHeightMaps()
 			candidate.column.invalidateNetworkSubChunkPayloads()
 			candidate.column.modified = true
-			for viewer := range candidate.column.viewers {
-				viewer.ViewBlockUpdate(candidate.pos, updated, 0)
-			}
+			w.viewBlockUpdate(candidate.column, candidate.pos, updated, 0)
 		}
 		if candidate.column.CanonicalizeMissingBlockState(candidate.pos, 0) {
 			candidate.column.modified = true
@@ -713,9 +714,7 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 		c.BlockEntities[pos] = nbtB
 		c.invalidateTickerBlockEntities()
 		c.invalidateBlockEntityPayloads()
-		for v := range c.viewers {
-			v.ViewBlockUpdate(pos, nbtB, 0)
-		}
+		w.viewBlockUpdate(c, pos, nbtB, 0)
 		return nbtB
 	}
 	return w.conf.Blocks.BlockByRuntimeIDOrAir(rid)
@@ -962,9 +961,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		}
 
 		if secondLayer != nil {
-			c.forEachViewer(func(viewer Viewer) {
-				viewer.ViewBlockUpdate(pos, secondLayer, 1)
-			})
+			w.viewBlockUpdate(c, pos, secondLayer, 1)
 		}
 	}
 	w.relightIfChanged(c, pos, lightBefore)
@@ -974,12 +971,10 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	w.redstone.replaceCircuit(pos, oldBlock, b, opts.circuitPublication)
 
 	if !opts.disableViewUpdates {
-		c.forEachViewer(func(viewer Viewer) {
-			viewer.ViewBlockUpdate(pos, b, 0)
-			if opts.nativeState != nil {
-				viewer.ViewBlockUpdate(pos, w.conf.Blocks.BlockByRuntimeIDOrAir(opts.nativeState.Liquid), 1)
-			}
-		})
+		w.viewBlockUpdate(c, pos, b, 0)
+		if opts.nativeState != nil {
+			w.viewBlockUpdate(c, pos, w.conf.Blocks.BlockByRuntimeIDOrAir(opts.nativeState.Liquid), 1)
+		}
 	}
 
 	if !opts.DisableBlockUpdates {
@@ -1298,14 +1293,10 @@ func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 		c.invalidateRandomTickSubChunks()
 		c.invalidateSubChunkHeightMaps()
 		c.invalidateNetworkSubChunkPayloads()
-		for v := range c.viewers {
-			v.ViewBlockUpdate(pos, b, 0)
-		}
+		w.viewBlockUpdate(c, pos, b, 0)
 	} else {
 		c.SetBlock(x, y, z, 1, rid)
-		for v := range c.viewers {
-			v.ViewBlockUpdate(pos, b, 1)
-		}
+		w.viewBlockUpdate(c, pos, b, 1)
 	}
 	c.modified = true
 
@@ -1323,16 +1314,12 @@ func (w *World) removeLiquids(c *Column, pos cube.Pos) bool {
 	noneLeft := false
 	if noLeft, changed := w.removeLiquidOnLayer(c, x, y, z, 0); noLeft {
 		if changed {
-			for v := range c.viewers {
-				v.ViewBlockUpdate(pos, air, 0)
-			}
+			w.viewBlockUpdate(c, pos, air, 0)
 		}
 		noneLeft = true
 	}
 	if _, changed := w.removeLiquidOnLayer(c, x, y, z, 1); changed {
-		for v := range c.viewers {
-			v.ViewBlockUpdate(pos, air, 1)
-		}
+		w.viewBlockUpdate(c, pos, air, 1)
 	}
 	return noneLeft
 }
@@ -3640,6 +3627,9 @@ type Column struct {
 
 	viewers map[Viewer]struct{}
 	loaders []*Loader
+	// pendingBlocks are the changes of blocks the viewers are yet to be
+	// shown.
+	pendingBlocks pendingBlockUpdates
 
 	ready           atomic.Bool
 	readyCh         chan struct{}

@@ -1,31 +1,18 @@
 package session
 
 import (
-	"time"
+	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-const (
-	maxPendingBlockUpdates = 8192
-	maxBlockUpdatesPerTick = 128
-)
-
-type blockUpdateKey struct {
-	pos   cube.Pos
-	layer uint8
-}
-
-type blockUpdateData struct {
-	pos       protocol.BlockPos
-	runtimeID uint32
-	layer     uint32
-	nbt       map[string]any
-}
+// subChunkBlocksAt is the number of changes of a sub-chunk shown together
+// from which they go as one UpdateSubChunkBlocks rather than an UpdateBlock
+// each, which costs less until then.
+const subChunkBlocksAt = 8
 
 // networkBlockID returns the ID clients know a block by: its network block
 // hash, as BDS sends block IDs with block network ID hashes enabled.
@@ -34,87 +21,125 @@ func networkBlockID(br world.BlockRegistry, b world.Block) uint32 {
 	return hash
 }
 
-func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
-	update := blockUpdateData{
-		pos:       protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		runtimeID: networkBlockID(s.br, b),
-		layer:     uint32(layer),
-	}
-	if v, ok := clientBlockActor(b); ok {
-		if updater, ok := v.(world.UpdateNBTer); ok {
-			update.nbt = s.clientUpdateNBT(updater.UpdateNBT())
-		} else if nbtData := v.EncodeNBT(); nbtData["id"] != nil {
-			update.nbt = clientActorNBT(nbtData, pos)
-		}
-	}
-
-	s.blockUpdatesMu.Lock()
-	if s.blockUpdates == nil {
-		s.blockUpdates = make(map[blockUpdateKey]blockUpdateData, 64)
-	}
-	if len(s.blockUpdates) >= maxPendingBlockUpdates {
-		s.blockUpdatesMu.Unlock()
-		s.logBlockUpdateDrop()
-		return
-	}
-	s.blockUpdates[blockUpdateKey{pos: pos, layer: uint8(layer)}] = update
-	s.blockUpdatesMu.Unlock()
+// sharedBlockUpdates is what the viewers of a world.BlockUpdates share of it:
+// its packets, encoded once, and the changes that carry a block actor, whose
+// data each viewer is sent as it sees it.
+type sharedBlockUpdates struct {
+	packets []*sharedPacket
+	actors  []world.BlockUpdate
 }
 
-func (s *Session) flushBlockUpdates() {
-	s.blockUpdatesMu.Lock()
-	updates := s.blockUpdates
-	if len(updates) == 0 {
-		s.blockUpdatesMu.Unlock()
+// ViewBlockUpdates ...
+func (s *Session) ViewBlockUpdates(u *world.BlockUpdates) {
+	if s == Nop {
 		return
 	}
-	s.blockUpdates = make(map[blockUpdateKey]blockUpdateData, 64)
-	s.blockUpdatesMu.Unlock()
+	shared, _ := u.Shared.(*sharedBlockUpdates)
+	if shared == nil {
+		shared = blockUpdatePackets(s.br, u.Updates)
+		u.Shared = shared
+	}
+	for _, pk := range shared.packets {
+		s.writePacket(pk)
+	}
+	for _, a := range shared.actors {
+		if data := s.blockActorUpdateNBT(a.Pos, a.Block); data != nil {
+			s.writePacket(&v2193.BlockActorDataPacket{Position: blockPos(a.Pos), NBTData: data})
+		}
+	}
+}
 
-	sent := 0
-	var leftover map[blockUpdateKey]blockUpdateData
-	for key, update := range updates {
-		if sent < maxBlockUpdatesPerTick {
-			s.writePacket(&v2193.UpdateBlockPacket{
-				Position:          update.pos,
-				NewBlockRuntimeID: update.runtimeID,
-				Flags:             packet.BlockUpdateNetwork,
-				Layer:             update.layer,
-			})
-			if update.nbt != nil {
-				s.writePacket(&v2193.BlockActorDataPacket{
-					Position: update.pos,
-					NBTData:  update.nbt,
-				})
+// ViewBlockUpdate ...
+func (s *Session) ViewBlockUpdate(pos cube.Pos, b world.Block, layer int) {
+	if s == Nop {
+		return
+	}
+	s.writePacket(&v2193.UpdateBlockPacket{
+		Position:          blockPos(pos),
+		NewBlockRuntimeID: networkBlockID(s.br, b),
+		Flags:             packet.BlockUpdateNetwork,
+		Layer:             uint32(layer),
+	})
+	if data := s.blockActorUpdateNBT(pos, b); data != nil {
+		s.writePacket(&v2193.BlockActorDataPacket{Position: blockPos(pos), NBTData: data})
+	}
+}
+
+// blockUpdatePackets returns the packets of the changes of blocks passed: an
+// UpdateBlock for each change of a sub-chunk with few, an
+// UpdateSubChunkBlocks for the changes of one with many, as BDS sends those
+// of a fill.
+func blockUpdatePackets(br world.BlockRegistry, updates []world.BlockUpdate) *sharedBlockUpdates {
+	shared := &sharedBlockUpdates{}
+	counts := make(map[cube.Pos]int, 4)
+	for _, u := range updates {
+		counts[subChunkOf(u.Pos)]++
+		if u.Layer == 0 {
+			if _, ok := clientBlockActor(u.Block); ok {
+				shared.actors = append(shared.actors, u)
 			}
-			sent++
+		}
+	}
+	var many map[cube.Pos]*v2193.UpdateSubChunkBlocksPacket
+	for _, u := range updates {
+		sub := subChunkOf(u.Pos)
+		if counts[sub] < subChunkBlocksAt {
+			shared.packets = append(shared.packets, &sharedPacket{Packet: &v2193.UpdateBlockPacket{
+				Position:          blockPos(u.Pos),
+				NewBlockRuntimeID: networkBlockID(br, u.Block),
+				Flags:             packet.BlockUpdateNetwork,
+				Layer:             uint32(u.Layer),
+			}})
 			continue
 		}
-		if leftover == nil {
-			leftover = make(map[blockUpdateKey]blockUpdateData, len(updates)-sent)
+		pk := many[sub]
+		if pk == nil {
+			if many == nil {
+				many = make(map[cube.Pos]*v2193.UpdateSubChunkBlocksPacket)
+			}
+			pk = &v2193.UpdateSubChunkBlocksPacket{Position: [3]int32{int32(sub[0] << 4), int32(sub[1] << 4), int32(sub[2] << 4)}}
+			many[sub] = pk
+			shared.packets = append(shared.packets, &sharedPacket{Packet: pk})
 		}
-		leftover[key] = update
-	}
-	if len(leftover) == 0 {
-		return
-	}
-
-	s.blockUpdatesMu.Lock()
-	if len(s.blockUpdates) == 0 {
-		s.blockUpdates = leftover
-	} else {
-		for key, update := range leftover {
-			s.blockUpdates[key] = update
+		entry := v2193.BlockChangeEntry{
+			BlockPos:       blockPos(u.Pos),
+			BlockRuntimeID: networkBlockID(br, u.Block),
+			Flags:          packet.BlockUpdateNetwork,
+			// BDS sends -1: the change syncs no entity.
+			SyncedUpdateEntityUniqueID: math.MaxUint64,
+		}
+		if u.Layer == 0 {
+			pk.Blocks = append(pk.Blocks, entry)
+		} else {
+			pk.Extra = append(pk.Extra, entry)
 		}
 	}
-	s.blockUpdatesMu.Unlock()
+	return shared
 }
 
-func (s *Session) logBlockUpdateDrop() {
-	drops := s.blockUpdateDrops.Add(1)
-	now := time.Now().UnixNano()
-	last := s.blockUpdateLastLog.Load()
-	if now-last > int64(time.Second) && s.blockUpdateLastLog.CompareAndSwap(last, now) {
-		s.conf.Log.Warn("dropping block updates due to backlog", "dropped", drops)
+// blockActorUpdateNBT returns the block actor data a client is sent with a
+// change to a block at pos, or nil for a block without one.
+func (s *Session) blockActorUpdateNBT(pos cube.Pos, b world.Block) map[string]any {
+	v, ok := clientBlockActor(b)
+	if !ok {
+		return nil
 	}
+	if updater, ok := v.(world.UpdateNBTer); ok {
+		return s.clientUpdateNBT(updater.UpdateNBT())
+	}
+	if data := v.EncodeNBT(); data["id"] != nil {
+		return clientActorNBT(data, pos)
+	}
+	return nil
+}
+
+// subChunkOf returns the position of the sub-chunk holding a block, in
+// sub-chunks.
+func subChunkOf(pos cube.Pos) cube.Pos {
+	return cube.Pos{pos[0] >> 4, pos[1] >> 4, pos[2] >> 4}
+}
+
+// blockPos returns a block position as the protocol carries it.
+func blockPos(pos cube.Pos) [3]int32 {
+	return [3]int32{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 }

@@ -142,11 +142,7 @@ type Session struct {
 
 	viewLayer *world.ViewLayer
 
-	blockUpdatesMu     sync.Mutex
-	blockUpdates       map[blockUpdateKey]blockUpdateData
-	blockUpdateDrops   atomic.Uint32
-	blockUpdateLastLog atomic.Int64
-	closeBackground    chan struct{}
+	closeBackground chan struct{}
 
 	lastActivity atomic.Int64
 
@@ -571,7 +567,6 @@ func (s *Session) background() {
 	for {
 		select {
 		case <-t.C:
-			s.flushBlockUpdates()
 			if err := s.withControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
 				if i++; i%20 == 0 {
 					// Enum resending happens relatively often and frequent updates are more important than with full

@@ -64,9 +64,12 @@ type Viewer interface {
 	ViewParticle(pos mgl64.Vec3, p Particle)
 	// ViewSound is called when a sound is played in the world.
 	ViewSound(pos mgl64.Vec3, s Sound)
-	// ViewBlockUpdate views the updating of a block. It is called when a block is set at the position passed
-	// to the method.
+	// ViewBlockUpdate views a block at the position passed at once, as one the viewer alone is shown again
+	// after the client of a player predicted another.
 	ViewBlockUpdate(pos cube.Pos, b Block, layer int)
+	// ViewBlockUpdates views the changes of the blocks of a column that every viewer of it is shown alike
+	// once the transaction that made them ends.
+	ViewBlockUpdates(u *BlockUpdates)
 	// ViewBlockAction views an action performed by a block. Available actions may be found in the `action`
 	// package, and include things such as a chest opening.
 	ViewBlockAction(pos cube.Pos, a BlockAction)
@@ -119,6 +122,7 @@ func (NopViewer) ViewEntityAnimation(Entity, EntityAnimation)                   
 func (NopViewer) ViewParticle(mgl64.Vec3, Particle)                                          {}
 func (NopViewer) ViewSound(mgl64.Vec3, Sound)                                                {}
 func (NopViewer) ViewBlockUpdate(cube.Pos, Block, int)                                       {}
+func (NopViewer) ViewBlockUpdates(*BlockUpdates)                                             {}
 func (NopViewer) ViewBlockAction(cube.Pos, BlockAction)                                      {}
 func (NopViewer) ViewEmote(Entity, uuid.UUID)                                                {}
 func (NopViewer) ViewSkin(Entity)                                                            {}

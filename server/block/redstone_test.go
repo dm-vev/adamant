@@ -639,6 +639,12 @@ func (v *redstoneWireTestBlockUpdateViewer) ViewBlockUpdate(pos cube.Pos, _ worl
 	v.updates[pos]++
 }
 
+func (v *redstoneWireTestBlockUpdateViewer) ViewBlockUpdates(u *world.BlockUpdates) {
+	for _, update := range u.Updates {
+		v.ViewBlockUpdate(update.Pos, update.Block, update.Layer)
+	}
+}
+
 func (v *redstoneWireTestBlockUpdateViewer) reset() {
 	v.mu.Lock()
 	defer v.mu.Unlock()

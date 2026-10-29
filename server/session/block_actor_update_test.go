@@ -20,8 +20,7 @@ func TestVaultUpdateIsSentAsBDS(t *testing.T) {
 		"display_item":      map[string]any{"Name": "minecraft:emerald", "Count": byte(8), "Damage": int16(0)},
 	}}).(block.Vault)
 	pos := cube.Pos{4, 100, 6}
-	s.enqueueBlockUpdate(pos, v, 0)
-	data := s.blockUpdates[blockUpdateKey{pos: pos}].nbt
+	data := s.blockActorUpdateNBT(pos, v)
 	if _, saved := data["config"]; saved {
 		t.Fatalf("vault update carries its saved block actor: %v", data)
 	}
@@ -33,8 +32,7 @@ func TestVaultUpdateIsSentAsBDS(t *testing.T) {
 	}
 
 	// Other block actors are still sent whole.
-	s.enqueueBlockUpdate(pos.Side(cube.FaceUp), block.NewChest(), 0)
-	if chest := s.blockUpdates[blockUpdateKey{pos: pos.Side(cube.FaceUp)}].nbt; chest["id"] != "Chest" || chest["y"] != int32(101) {
+	if chest := s.blockActorUpdateNBT(pos.Side(cube.FaceUp), block.NewChest()); chest["id"] != "Chest" || chest["y"] != int32(101) {
 		t.Fatalf("chest update %v", chest)
 	}
 }

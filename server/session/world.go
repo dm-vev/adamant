@@ -1459,14 +1459,6 @@ func (s *Session) ViewBrewingUpdate(prevBrewTime, brewTime time.Duration, prevFu
 	}
 }
 
-// ViewBlockUpdate ...
-func (s *Session) ViewBlockUpdate(pos cube.Pos, b world.Block, layer int) {
-	if s == Nop {
-		return
-	}
-	s.enqueueBlockUpdate(pos, b, layer)
-}
-
 // ViewEntityAction ...
 func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 	switch act := a.(type) {

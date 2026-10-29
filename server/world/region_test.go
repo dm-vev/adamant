@@ -283,6 +283,7 @@ func (v *countingViewer) ViewSound(mgl64.Vec3, world.Sound)       { defer v.ente
 func (v *countingViewer) ViewBlockUpdate(cube.Pos, world.Block, int) {
 	defer v.enter()()
 }
+func (v *countingViewer) ViewBlockUpdates(*world.BlockUpdates)        { defer v.enter()() }
 func (v *countingViewer) ViewBlockAction(cube.Pos, world.BlockAction) { defer v.enter()() }
 
 // TestRegionMonstersDespawnFarFromPlayersOfOtherRegions checks monsters in
