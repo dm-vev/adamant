@@ -169,3 +169,47 @@ func appendUvarint(b []byte, v uint64) []byte {
 	}
 	return append(b, byte(v))
 }
+
+// TestBatchesBeforeCloseAreRead closes a player right after sending it
+// batches: the other end reads them before the close, as a refusal goes
+// to a client before the server closes it, rather than losing them.
+func TestBatchesBeforeCloseAreRead(t *testing.T) {
+	l, err := Listen("127.0.0.1:0", secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	link, err := Dial(l.Addr().String(), secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer link.Close()
+	p, err := link.Open(Token{Identity: json.RawMessage(`"p"`), Addr: "10.0.0.1:1000"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sp, err := l.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range 3 {
+		if err := sp.Send([]byte{byte(i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = sp.Close()
+	select {
+	case <-p.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the close did not reach the proxy")
+	}
+	for i := range 3 {
+		if msg, err := p.ReadMessage(); err != nil || !bytes.Equal(msg, []byte{byte(i)}) {
+			t.Fatalf("read %v, %v, want batch %d", msg, err, i)
+		}
+	}
+	var ce *ClosedError
+	if _, err := p.ReadMessage(); !errors.As(err, &ce) {
+		t.Fatalf("read after the batches: %v, want the close", err)
+	}
+}

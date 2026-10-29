@@ -161,14 +161,17 @@ func (p *Player) Close() error {
 }
 
 func (p *Player) close(reason string) {
-	if p.end(ErrClosed) {
+	if p.end(ErrClosed, true) {
 		_ = p.l.write(frameClose, p.id, []byte(reason))
 		p.l.forget(p.id)
 	}
 }
 
-// end closes the player for err and reports whether it was open.
-func (p *Player) end(err error) bool {
+// end closes the player for err and reports whether it was open. The
+// batches queued are dropped if drop is set, as a player closed here reads
+// no more, and read before err otherwise: those the other end sent before
+// it closed the player still reach it.
+func (p *Player) end(err error, drop bool) bool {
 	p.mu.Lock()
 	if p.err != nil {
 		p.mu.Unlock()
@@ -176,7 +179,9 @@ func (p *Player) end(err error) bool {
 	}
 	p.err = err
 	closer := p.closer
-	p.queue = nil
+	if drop {
+		p.queue = nil
+	}
 	close(p.done)
 	p.mu.Unlock()
 	if closer != nil {

@@ -209,7 +209,7 @@ func (l *Link) end(err error) {
 		close(l.done)
 		_ = l.conn.Close()
 		for _, p := range players {
-			p.end(err)
+			p.end(err, false)
 		}
 	})
 }
@@ -310,7 +310,7 @@ func (l *Link) handle(typ byte, id uint64, payload []byte) error {
 		}
 	case frameClose:
 		if p := l.player(id); p != nil {
-			p.end(&ClosedError{Reason: string(payload)})
+			p.end(&ClosedError{Reason: string(payload)}, false)
 			l.forget(id)
 		}
 	default:
