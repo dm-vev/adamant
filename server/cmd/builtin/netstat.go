@@ -38,6 +38,11 @@ func (n netstatCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 			continue
 		}
 		c := st.Conn
+		if c.Proxied {
+			// A proxy carries the client, whose transport the proxy keeps.
+			o.Printf("Protocol %d through a proxy, connected %v ago", c.Protocol, time.Since(c.Connected).Round(time.Second))
+			continue
+		}
 		relay := ""
 		if c.Relayed {
 			relay = " through the TURN relay"

@@ -24,6 +24,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/net/proxy"
 	"github.com/dm-vev/adamant/net/turn"
 )
 
@@ -234,7 +235,22 @@ func (l *Listener) accept() {
 		if err != nil {
 			return
 		}
-		go l.login(nn)
+		go l.run(newConn(l, nn, nn), (*Conn).login)
+	}
+}
+
+// ServeProxy logs in the players that proxies open on links to ln, as it
+// does clients of its own, until ln closes. The proxy logged a player in
+// already: what the player is, it names in the token it signed, and the
+// server goes on from the resource packs. Batches on a link go
+// uncompressed, which the proxy compresses for its clients as it does.
+func (l *Listener) ServeProxy(ln *proxy.Listener) error {
+	for {
+		p, err := ln.Accept()
+		if err != nil {
+			return err
+		}
+		go l.run(newConn(l, p, nil), func(c *Conn) error { return c.loginProxied(p.Token()) })
 	}
 }
 
@@ -293,15 +309,14 @@ func (l *Listener) left() {
 	l.updateStatus()
 }
 
-// login logs a client in and queues it for Accept.
-func (l *Listener) login(nn *nethernet.Conn) {
-	c := newConn(l, nn)
+// run logs a client in with login and queues it for Accept.
+func (l *Listener) run(c *Conn, login func(*Conn) error) {
 	loginsStarted.Inc()
 	if max := l.cfg.MaximumPlayers; max != 0 && int(l.players.Load()) >= max {
 		loginsFull.Inc()
 		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedServerFull})
 		_ = c.Flush()
-		_ = nn.Close()
+		_ = c.t.Close()
 		return
 	}
 	l.players.Add(1)
@@ -309,16 +324,16 @@ func (l *Listener) login(nn *nethernet.Conn) {
 		// A panic is a bug of the login, which no client may use to take
 		// the server down: the client is dropped.
 		if v := recover(); v != nil {
-			l.cfg.Log.Error("login panicked", "raddr", nn.RemoteAddr(), "panic", v)
+			l.cfg.Log.Error("login panicked", "raddr", c.t.RemoteAddr(), "panic", v)
 			_ = c.Close()
 		}
 	}()
 	l.updateStatus()
-	_ = nn.SetReadDeadline(time.Now().Add(loginTimeout))
-	if err := c.login(); err != nil {
+	_ = c.t.SetReadDeadline(time.Now().Add(loginTimeout))
+	if err := login(c); err != nil {
 		var closed DisconnectError
 		if !errors.As(err, &closed) && !errors.Is(err, net.ErrClosed) {
-			l.cfg.Log.Debug("login failed", "raddr", nn.RemoteAddr(), "err", err)
+			l.cfg.Log.Debug("login failed", "raddr", c.t.RemoteAddr(), "err", err)
 		}
 		loginsFailed.Inc()
 		_ = c.Close()
@@ -326,7 +341,7 @@ func (l *Listener) login(nn *nethernet.Conn) {
 	}
 	loginsDone.Inc()
 	loginSeconds.Observe(time.Since(c.connected).Seconds())
-	_ = nn.SetReadDeadline(time.Time{})
+	_ = c.t.SetReadDeadline(time.Time{})
 	select {
 	case l.incoming <- c:
 	case <-l.done:
@@ -373,6 +388,34 @@ func (c *Conn) login() error {
 	if err := c.handshake(); err != nil {
 		return err
 	}
+	return c.join()
+}
+
+// loginProxied runs the login of a player a proxy logged in, as the token
+// of the proxy names it, then the resource packs.
+func (c *Conn) loginProxied(t proxy.Token) error {
+	c.b.EnableCompression(bedrock.None{})
+	if t.Protocol != v2193.Protocol {
+		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedClient})
+		_ = c.Flush()
+		return fmt.Errorf("netconn: proxied client speaks protocol %d, not %d", t.Protocol, v2193.Protocol)
+	}
+	if err := json.Unmarshal(t.Identity, &c.identity); err != nil {
+		return fmt.Errorf("netconn: identity of proxied client: %w", err)
+	}
+	if err := json.Unmarshal(t.ClientData, &c.client); err != nil {
+		return fmt.Errorf("netconn: client data of proxied client: %w", err)
+	}
+	if err := c.admit(t.XboxLive); err != nil {
+		_ = c.Flush()
+		return err
+	}
+	return c.join()
+}
+
+// join tells a client that logged in that it did and hands it the
+// resource packs.
+func (c *Conn) join() error {
 	_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginSuccess})
 	_ = c.WritePacket(c.l.packsInfo())
 	if err := c.Flush(); err != nil {
@@ -423,19 +466,25 @@ func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
 		return fmt.Errorf("netconn: client data: %w", err)
 	}
 	c.client.ServerAddress = l.ClientData.ServerAddress
+	if pub := c.nn.PublicKey(); pub != nil && !l.Key.Equal(pub) {
+		// The transport proved another key: a login replayed elsewhere.
+		_ = c.WritePacket(&v2193.DisconnectPacket{Reason: v2193.DisconnectReasonNotAuthenticated})
+		return errors.New("netconn: login key is not the key of the transport identity")
+	}
+	return c.admit(l.XboxLive)
+}
+
+// admit decides whether a client that logged in, with Xbox Live or not,
+// may join: the rules of the server, Validate, then Allow.
+func (c *Conn) admit(xboxLive bool) error {
 	if validate := c.l.cfg.Validate; validate != nil {
 		if err := validate(c.identity, c.client); err != nil {
 			return fmt.Errorf("netconn: validate login: %w", err)
 		}
 	}
-	if !l.XboxLive && !c.l.cfg.AuthenticationDisabled {
+	if !xboxLive && !c.l.cfg.AuthenticationDisabled {
 		_ = c.WritePacket(&v2193.DisconnectPacket{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})
 		return errors.New("netconn: client is not logged in with Xbox Live")
-	}
-	if pub := c.nn.PublicKey(); pub != nil && !l.Key.Equal(pub) {
-		// The transport proved another key: a login replayed elsewhere.
-		_ = c.WritePacket(&v2193.DisconnectPacket{Reason: v2193.DisconnectReasonNotAuthenticated})
-		return errors.New("netconn: login key is not the key of the transport identity")
 	}
 	if allow := c.l.cfg.Allow; allow != nil {
 		if reason, ok := allow(c.RemoteAddr(), c.identity, c.client); !ok {

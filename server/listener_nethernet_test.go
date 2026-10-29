@@ -7,6 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"log/slog"
@@ -16,6 +17,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -26,8 +28,10 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
+	"github.com/dm-vev/adamant/net/proxy"
 )
 
 func TestServerIdentityConcurrentCreationPreservesIdentity(t *testing.T) {
@@ -236,4 +240,73 @@ func TestNetherNetListenerOnLAN(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = nn.Close()
+}
+
+// TestNetherNetListenerTakesProxies serves the links of proxies the config
+// names: a player a proxy opens on one logs in, and a secret short enough
+// to guess keeps the server from starting.
+func TestNetherNetListenerTakesProxies(t *testing.T) {
+	uc := DefaultConfig()
+	uc.Network.Address = "127.0.0.1:0"
+	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	uc.Proxy.Address = "127.0.0.1:0"
+	uc.Proxy.Secret = "short"
+	conf := Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}
+	if l, err := uc.netherNetListener(conf); err == nil {
+		_ = l.Close()
+		t.Fatal("the server started with a secret of 5 characters")
+	}
+
+	// The address of the links is only known once listening: take a port.
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	uc.Proxy.Address = probe.Addr().String()
+	_ = probe.Close()
+	uc.Proxy.Secret = strings.Repeat("s", minProxySecret)
+	l, err := uc.netherNetListener(conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	accepted := make(chan session.Conn, 1)
+	go func() {
+		if c, err := l.Accept(); err == nil {
+			accepted <- c
+		}
+	}()
+	link, err := proxy.Dial(uc.Proxy.Address, []byte(uc.Proxy.Secret))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer link.Close()
+	// The proxy names a login the rules of the server take.
+	identity, _ := json.Marshal(login.Identity{DisplayName: "Proxied", Identity: "8b4ec2c6-6f3b-4d0a-9d55-3b7e0c3c3f1a"})
+	data, _ := json.Marshal(login.DefaultClientData("play.example.invalid:19132", "Proxied", v2193.Version))
+	p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, Addr: "203.0.113.7:4242", Protocol: v2193.Protocol})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := bedrock.NewConn(p, bedrock.Config{})
+	b.EnableCompression(bedrock.None{})
+	_ = p.SetReadDeadline(time.Now().Add(10 * time.Second))
+	for _, response := range []uint32{v2193.PackResponseAllPacksDownloaded, v2193.PackResponseCompleted} {
+		w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDResourcePackClientResponse})}
+		(&v2193.ResourcePackClientResponsePacket{Response: response}).Encode(&w)
+		if err := b.WritePacket(w.B); err != nil {
+			t.Fatal(err)
+		}
+		if err := b.Flush(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	select {
+	case c := <-accepted:
+		if c.IdentityData().DisplayName != "Proxied" || c.RemoteAddr().String() != "203.0.113.7:4242" {
+			t.Fatalf("accepted %s from %v", c.IdentityData().DisplayName, c.RemoteAddr())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the player of the proxy was not accepted")
+	}
 }

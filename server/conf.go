@@ -404,6 +404,19 @@ type UserConfig struct {
 		// current one fails.
 		LegacySignaling bool
 	}
+	// Proxy holds the links that proxies carry their players to the server
+	// over, beside the clients that join it themselves.
+	Proxy struct {
+		// Address is the TCP address proxies dial their links to, such as
+		// "127.0.0.1:19133". An empty value takes no proxies. Links are not
+		// encrypted: they are for a network the proxies and the server
+		// trust.
+		Address string
+		// Secret is the secret the proxies sign the players they open with,
+		// of 32 characters at least. Whoever knows it joins as anyone it
+		// likes, so it must stay as secret as a password.
+		Secret string
+	}
 	Server struct {
 		// Name is the name of the server as it shows up in the server list.
 		Name string

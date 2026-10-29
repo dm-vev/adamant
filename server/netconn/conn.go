@@ -1,6 +1,7 @@
 // Package netconn runs the Bedrock connections of the server over
-// NetherNet: it logs a client in, hands it the resource packs and starts its
-// game, then carries the packets of its session. Packets are coded with
+// NetherNet, and those of the players proxies open on links to it: it logs
+// a client in, hands it the resource packs and starts its game, then
+// carries the packets of its session. Packets are coded with
 // the generated codecs of protocol 2193 and batched by package bedrock of
 // the net module. A connection has no goroutine of its own once it logged in: its
 // session reads and writes on its own goroutines, and a batch goes out when
@@ -14,6 +15,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,10 +35,25 @@ type DisconnectError string
 
 func (e DisconnectError) Error() string { return "netconn: client disconnected: " + string(e) }
 
+// transport carries the batches of a connection: a NetherNet connection,
+// or a player a proxy opened on a link.
+type transport interface {
+	bedrock.MessageConn
+	SetReadDeadline(t time.Time) error
+	// SetReceiver has each message received from now on handed to recv
+	// rather than queued for ReadMessage.
+	SetReceiver(recv func(msg []byte))
+	// OnClose has f called once the transport closed.
+	OnClose(f func(error))
+	RemoteAddr() net.Addr
+}
+
 // Conn is the connection of a client that logged in. It implements the
 // connection a session of the server needs.
 type Conn struct {
-	l  *Listener
+	l *Listener
+	t transport
+	// nn is the NetherNet connection of t, nil for a player of a proxy.
 	nn *nethernet.Conn
 	b  *bedrock.Conn
 
@@ -61,11 +78,12 @@ type Conn struct {
 	connected time.Time
 }
 
-func newConn(l *Listener, nn *nethernet.Conn) *Conn {
+func newConn(l *Listener, t transport, nn *nethernet.Conn) *Conn {
 	return &Conn{
 		l:         l,
+		t:         t,
 		nn:        nn,
-		b:         bedrock.NewConn(nn, l.batches),
+		b:         bedrock.NewConn(t, l.batches),
 		connected: time.Now(),
 	}
 }
@@ -78,11 +96,23 @@ type Stats struct {
 	Protocol int32
 	// Connected is when the connection opened.
 	Connected time.Time
+	// Proxied reports whether a proxy carries the connection, which then
+	// has no state of NetherNet but the address of the client.
+	Proxied bool
 }
 
 // Stats returns the state of the connection.
 func (c *Conn) Stats() Stats {
-	st := Stats{Stats: c.nn.Stats(), Protocol: v2193.Protocol, Connected: c.connected}
+	st := Stats{Protocol: v2193.Protocol, Connected: c.connected}
+	if c.nn == nil {
+		st.Proxied = true
+		if a, ok := c.t.RemoteAddr().(*net.UDPAddr); ok {
+			ap := a.AddrPort()
+			st.Remote = netip.AddrPortFrom(ap.Addr().Unmap(), ap.Port())
+		}
+		return st
+	}
+	st.Stats = c.nn.Stats()
 	st.Relayed = c.l.nn.Relayed(st.Remote)
 	return st
 }
@@ -99,11 +129,17 @@ func (c *Conn) ClientCacheEnabled() bool { return c.cacheEnabled.Load() }
 // ChunkRadius returns the chunk radius the client asked for.
 func (c *Conn) ChunkRadius() int { return int(c.chunkRadius.Load()) }
 
-// Latency returns half the round trip time of the transport.
-func (c *Conn) Latency() time.Duration { return c.nn.Latency() }
+// Latency returns half the round trip time of the transport, zero for a
+// player of a proxy, whose link is not the way to the client.
+func (c *Conn) Latency() time.Duration {
+	if c.nn == nil {
+		return 0
+	}
+	return c.nn.Latency()
+}
 
 // RemoteAddr returns the address of the client.
-func (c *Conn) RemoteAddr() net.Addr { return c.nn.RemoteAddr() }
+func (c *Conn) RemoteAddr() net.Addr { return c.t.RemoteAddr() }
 
 // WritePacket adds a packet to the batch sent at the next Flush. A Static
 // goes in a batch of its own, encoded once for every connection.
@@ -198,7 +234,7 @@ func (c *Conn) Receive(handle func(pk proto.Packet), closed func(err error)) {
 			return
 		}
 	}
-	c.nn.SetReceiver(func(msg []byte) {
+	c.t.SetReceiver(func(msg []byte) {
 		if err := c.b.HandleBatch(msg, deliver); err != nil {
 			_ = c.Close()
 			if err != errStopped {
@@ -206,7 +242,7 @@ func (c *Conn) Receive(handle func(pk proto.Packet), closed func(err error)) {
 			}
 		}
 	})
-	c.nn.OnClose(end)
+	c.t.OnClose(end)
 }
 
 // packetLimits are the buckets BDS keeps for packets a client has no need
@@ -395,10 +431,10 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 	}
 
 	// A cancelled context ends the wait for the client.
-	stop := context.AfterFunc(ctx, func() { _ = c.nn.SetReadDeadline(time.Now()) })
+	stop := context.AfterFunc(ctx, func() { _ = c.t.SetReadDeadline(time.Now()) })
 	defer func() {
 		stop()
-		_ = c.nn.SetReadDeadline(time.Time{})
+		_ = c.t.SetReadDeadline(time.Time{})
 	}()
 	for {
 		pk, err := c.read(v2193.IDRequestChunkRadius, v2193.IDSetLocalPlayerAsInitialised)
@@ -486,7 +522,7 @@ func startGame(data GameData) *v2193.StartGamePacket {
 // client.
 func (c *Conn) Close() error {
 	c.closeOnce.Do(func() {
-		_ = c.nn.Close()
+		_ = c.t.Close()
 		c.l.left()
 	})
 	return nil

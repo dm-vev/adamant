@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/netip"
 	"os"
@@ -23,6 +24,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
+	"github.com/dm-vev/adamant/net/proxy"
 )
 
 // listenerFunc returns the NetherNet listener of the server, the standard
@@ -90,7 +92,39 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 	if uc.Network.LAN {
 		publishLAN(l, conf, "")
 	}
+	if uc.Proxy.Address != "" {
+		if err := serveProxies(l, uc.Proxy.Address, uc.Proxy.Secret, conf.Log); err != nil {
+			_ = l.Close()
+			return nil, err
+		}
+	}
 	return netherNetListener{l}, nil
+}
+
+// minProxySecret bounds the length of the secret of proxy links from below.
+const minProxySecret = 32
+
+// serveProxies takes the players that proxies open on links to addr,
+// signed with secret, until the listener closes.
+func serveProxies(l *netconn.Listener, addr, secret string, log *slog.Logger) error {
+	if len(secret) < minProxySecret {
+		return fmt.Errorf("the secret of proxy links must be %d characters long at least", minProxySecret)
+	}
+	pl, err := proxy.Listen(addr, []byte(secret))
+	if err != nil {
+		return fmt.Errorf("listen for proxies: %w", err)
+	}
+	log.Info("Proxies may carry players to the server.", "addr", pl.Addr())
+	go func() {
+		<-l.Closed()
+		_ = pl.Close()
+	}()
+	go func() {
+		if err := l.ServeProxy(pl); err != nil && !errors.Is(err, proxy.ErrClosed) {
+			log.Warn("The links of proxies ended.", "err", err)
+		}
+	}()
+	return nil
 }
 
 // publishLAN answers the clients on the network that look for games with
