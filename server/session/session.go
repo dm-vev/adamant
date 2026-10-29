@@ -92,6 +92,10 @@ type Session struct {
 	// deathAnimations records ordinary mobs whose death event lets the client
 	// finish the animation and remove the actor itself. Protected by entityMutex.
 	deathAnimations map[uint64]struct{}
+	// justShown holds the entities shown whose equipment was not shown yet:
+	// equipment they lack then goes unsent, as BDS sends none. Protected by
+	// entityMutex.
+	justShown map[*world.EntityHandle]struct{}
 
 	// heldSlot points to the current hotbar slot index. It is stored in an atomic pointer so inventory callbacks can
 	// safely access the pointer while the session is still wiring up inventory state.

@@ -78,6 +78,10 @@ func (s *Session) ViewEntity(e world.Entity) {
 		s.entities[runtimeID] = e.H()
 	}
 	delete(s.deathAnimations, runtimeID)
+	if s.justShown == nil {
+		s.justShown = make(map[*world.EntityHandle]struct{})
+	}
+	s.justShown[e.H()] = struct{}{}
 	s.entityMutex.Unlock()
 
 	yaw, pitch := e.Rotation().Elem()
@@ -302,6 +306,7 @@ func (s *Session) HideEntity(e world.Entity) {
 		delete(s.entityRuntimeIDs, e.H())
 		delete(s.entities, id)
 		delete(s.deathAnimations, id)
+		delete(s.justShown, e.H())
 	}
 	s.entityMutex.Unlock()
 	if !ok {
@@ -463,18 +468,37 @@ func (s *Session) ViewEntityItems(e world.Entity) {
 	}
 
 	mainHand, offHand := c.HeldItems()
+	// An entity just shown holds nothing until told otherwise.
+	shown := s.justShownEquipment(e.H(), false)
 
 	// Show the main hand item.
-	s.writePacket(&v2193.MobEquipmentPacket{
-		EntityRuntimeID: runtimeID,
-		NewItem:         instanceFromItem(s.br, mainHand),
-	})
+	if !shown || !mainHand.Empty() {
+		s.writePacket(&v2193.MobEquipmentPacket{
+			EntityRuntimeID: runtimeID,
+			NewItem:         instanceFromItem(s.br, mainHand),
+		})
+	}
 	// Show the off-hand item.
-	s.writePacket(&v2193.MobEquipmentPacket{
-		EntityRuntimeID: runtimeID,
-		NewItem:         instanceFromItem(s.br, offHand),
-		WindowID:        protocol.WindowIDOffHand,
-	})
+	if !shown || !offHand.Empty() {
+		s.writePacket(&v2193.MobEquipmentPacket{
+			EntityRuntimeID: runtimeID,
+			NewItem:         instanceFromItem(s.br, offHand),
+			WindowID:        protocol.WindowIDOffHand,
+		})
+	}
+}
+
+// justShownEquipment reports whether the entity of a handle was shown and
+// its equipment not yet, forgetting it once done is set: the armour goes
+// last.
+func (s *Session) justShownEquipment(h *world.EntityHandle, done bool) bool {
+	s.entityMutex.Lock()
+	defer s.entityMutex.Unlock()
+	_, shown := s.justShown[h]
+	if done {
+		delete(s.justShown, h)
+	}
+	return shown
 }
 
 // ViewEntityArmour ...
@@ -511,6 +535,10 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 	}
 	if s.viewLayer != nil && s.viewLayer.Visibility(e) == world.EnforceInvisible() {
 		helm, chestplate, leggings, boots, body = item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}
+	}
+	if s.justShownEquipment(e.H(), true) && helm.Empty() && chestplate.Empty() && leggings.Empty() && boots.Empty() && body.Empty() {
+		// An entity just shown wears nothing until told otherwise.
+		return
 	}
 
 	// Show the entity's armour and body equipment.
