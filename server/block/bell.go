@@ -136,10 +136,16 @@ func (b Bell) UseOnBlock(
 	return placed(ctx)
 }
 
-// NeighbourUpdateTick drops a Bell that lost its support and, as
+// NeighbourChanged drops a Bell that lost its support and, as
 // BellBlock.neighborChanged, updates its attachment. The actor samples its
 // native scene consumer when deciding whether to ring.
-func (b Bell) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+func (b Bell) NeighbourChanged(pos, changed cube.Pos, tx *world.Tx) {
+	// Native command states are not checked by their own placement. Observe
+	// actual loaded neighbour changes immediately, without replaying stale
+	// deferred notifications created before this bell was installed.
+	if pos == changed {
+		return
+	}
 	switch b.Attach {
 	case StandingBellAttachment():
 		if !bellSupportSolid(tx, pos, cube.FaceDown) {
@@ -155,6 +161,10 @@ func (b Bell) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 		if !bellSupportSolid(tx, pos, b.Facing.Face().Opposite()) {
 			breakBlock(b, pos, tx)
 			return
+		}
+		if bellSupportSolid(tx, pos, b.Facing.Face()) {
+			b.Attach = MultipleBellAttachment()
+			tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 		}
 	case MultipleBellAttachment():
 		face := b.Facing.Face()
