@@ -13,7 +13,24 @@ import (
 )
 
 func TestDropperContainerActionsMatchBDS(t *testing.T) {
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_dropper_containers.json")
+	replayContainerActionsBDS(t, "bedrock_1_26_51_dropper_containers.json", 96, 4)
+}
+
+func TestHopperTransferPulsesMatchBDS(t *testing.T) {
+	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_transfer_pulses.json", 30, 4)
+}
+
+func TestHopperIdleTransfersMatchBDS(t *testing.T) {
+	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_idle_even.json", 40, 2)
+	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_idle_odd.json", 40, 2)
+}
+
+func TestHopperChainTransfersMatchBDS(t *testing.T) {
+	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_chains.json", 60, 2)
+}
+
+func replayContainerActionsBDS(t *testing.T, filename string, count, changes int) {
+	data, err := os.ReadFile("../block/testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,33 +44,41 @@ func TestDropperContainerActionsMatchBDS(t *testing.T) {
 			Scenario struct {
 				Kind, Target, Fill string
 				Face               int
+				InputPhase         int `json:"input_phase"`
+				Load               int
+				SetupPhase         int `json:"phase"`
+				Count, Offset      int
+				Reverse            bool
 			}
 			Base, Target, Source cube.Pos
 			Lock                 *cube.Pos
+			Destination          *cube.Pos
 			SetupTick            int64 `json:"setup_tick"`
 			Changes              []struct {
 				Tick int64
 				Kind string
 			}
 			Samples []struct {
-				Tick          int64
-				Block, Target pistonEntityNativeBlock
-				Items         []*nativeItem
-				TargetItems   []*nativeItem `json:"target_items"`
-				Drops         []nativeItem
+				Tick             int64
+				Block, Target    pistonEntityNativeBlock
+				Items            []*nativeItem
+				TargetItems      []*nativeItem `json:"target_items"`
+				Drops            []nativeItem
+				Destination      *pistonEntityNativeBlock
+				DestinationItems []*nativeItem `json:"destination_items"`
 			}
 		}
 	}
 	if err := json.Unmarshal(data, &native); err != nil {
 		t.Fatal(err)
 	}
-	if !native.Complete || len(native.Scenarios) != 96 {
+	if !native.Complete || len(native.Scenarios) != count {
 		t.Fatal("incomplete native dropper/container capture")
 	}
 	for _, trace := range native.Scenarios {
 		c := trace.Scenario
-		t.Run(fmt.Sprintf("%s/%s/face%d/%s", c.Kind, c.Target, c.Face, c.Fill), func(t *testing.T) {
-			if len(trace.Samples) != 128 || len(trace.Changes) != 4 {
+		t.Run(fmt.Sprintf("%s/%s/face%d/%s/input%d/setup%d/load%d/count%d/offset%d/reverse%t", c.Kind, c.Target, c.Face, c.Fill, c.InputPhase, c.SetupPhase, c.Load, c.Count, c.Offset, c.Reverse), func(t *testing.T) {
+			if len(trace.Samples) != 128 || len(trace.Changes) != changes || trace.SetupTick%2 != int64(c.SetupPhase) {
 				t.Fatal("invalid native container controls")
 			}
 			// The native API reports the deprecated facing_direction alias
@@ -87,18 +112,28 @@ func TestDropperContainerActionsMatchBDS(t *testing.T) {
 						tx.SetBlock(cube.Pos{p[0] + x, 63, p[2] + z}, block.Bedrock{}, nil)
 					}
 				}
+				var origin world.Block
 				if c.Kind == "dropper" {
 					d := block.NewDropper()
 					d.Facing = cube.Face(c.Face)
-					tx.SetBlock(p, d, nil)
+					origin = d
 				} else if c.Kind == "dispenser" {
 					d := block.NewDispenser()
 					d.Facing = cube.Face(c.Face)
-					tx.SetBlock(p, d, nil)
+					origin = d
+				} else if c.Kind == "hopper" {
+					h := block.NewHopper()
+					h.Facing = cube.Face(c.Face)
+					origin = h
 				} else {
 					t.Fatal("unknown native source container")
 				}
-				if c.Face != 1 {
+				if !c.Reverse {
+					tx.SetBlock(p, origin, nil)
+				}
+				if trace.Destination != nil {
+					tx.SetBlock(*trace.Destination, block.NewBarrel(), nil)
+				} else if c.Face != 1 {
 					tx.SetBlock(trace.Target.Side(cube.FaceDown), block.Stone{}, nil)
 				}
 				var target world.Block
@@ -117,6 +152,9 @@ func TestDropperContainerActionsMatchBDS(t *testing.T) {
 					t.Fatal("unknown native target container")
 				}
 				tx.SetBlock(trace.Target, target, nil)
+				if c.Reverse {
+					tx.SetBlock(p, origin, nil)
+				}
 				if trace.Lock != nil {
 					tx.SetBlock(*trace.Lock, block.RedstoneBlock{}, nil)
 				}
@@ -152,6 +190,13 @@ func TestDropperContainerActionsMatchBDS(t *testing.T) {
 					}
 					compare(p, frame.Items)
 					compare(trace.Target, frame.TargetItems)
+					if trace.Destination != nil {
+						if frame.Destination == nil {
+							t.Fatal("missing native chain destination")
+						}
+						comparePistonEntityNativeBlock(t, tx, frame.Tick, *trace.Destination, *frame.Destination)
+						compare(*trace.Destination, frame.DestinationItems)
+					}
 					drops := 0
 					for e := range tx.Entities() {
 						if e.H().Type() == ItemType {
@@ -177,7 +222,11 @@ func TestDropperContainerActionsMatchBDS(t *testing.T) {
 							switch change.Kind {
 							case "load":
 								inv := tx.Block(p).(block.Container).Inventory(tx, p)
-								if err := inv.SetItem(0, item.NewStack(item.Diamond{}, 4)); err != nil {
+								n := c.Count
+								if n == 0 {
+									n = 4
+								}
+								if err := inv.SetItem(0, item.NewStack(item.Diamond{}, n)); err != nil {
 									t.Fatal(err)
 								}
 								if c.Fill != "empty" {
