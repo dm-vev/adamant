@@ -68,9 +68,9 @@ type Config struct {
 	// Batches configures the batches of every connection: Compression is
 	// announced to clients, Threshold and Incompressible decide which
 	// batches are compressed, the rates bound what a client sends. Zero
-	// values mean flate at level 1, a threshold of 256 bytes, movement sent
-	// as it is, and 500 packets and 2 MiB a second with bursts of 2048
-	// packets and 16 MiB.
+	// values mean flate at level 1, a threshold of 256 bytes, every batch
+	// over it compressed, and 500 packets and 2 MiB a second with bursts of
+	// 2048 packets and 16 MiB.
 	Batches     bedrock.Config
 	Compression bedrock.Compression
 }
@@ -157,9 +157,6 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 		cfg.Compression = bedrock.Flate{Level: 1}
 	}
 	l := &Listener{cfg: cfg, batches: cfg.Batches, incoming: make(chan *Conn), done: make(chan struct{})}
-	if l.batches.Incompressible == nil {
-		l.batches.Incompressible = movement
-	}
 	if l.batches.PacketRate == 0 {
 		l.batches.PacketRate, l.batches.PacketBurst = defaultPacketRate, defaultPacketBurst
 	}
@@ -195,16 +192,6 @@ func xboxKeys() (*bedrocklogin.Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return bedrocklogin.Discover(ctx, nil, v2193.Version)
-}
-
-// movement reports the packets of movement, which compress too little to
-// be worth the CPU.
-func movement(id uint32) bool {
-	switch id {
-	case packet.IDMoveActorAbsolute, packet.IDMovePlayer, packet.IDSetActorMotion, packet.IDMoveActorDelta:
-		return true
-	}
-	return false
 }
 
 // Accept returns the next client that logged in.
