@@ -185,32 +185,35 @@ type Association struct {
 	t2         time.Time
 	t2Retrans  int
 
+	// peerFeatures is what the INIT of the peer offered, for Stats.
+	peerFeatures PeerFeatures
+
 	// Sending.
-	nextTSN      uint32
-	cumAck       uint32
-	advancedAck  uint32
-	ssn          map[uint16]uint16
-	pending      []*outMessage
-	outstanding  []*outChunk
-	buffered     int
-	flight       int
-	cwnd         int
+	nextTSN     uint32
+	cumAck      uint32
+	advancedAck uint32
+	ssn         map[uint16]uint16
+	pending     []*outMessage
+	outstanding []*outChunk
+	buffered    int
+	flight      int
+	cwnd        int
 	// retransmits counts the chunks marked to go again, timeouts the
 	// expiries of the retransmission timer.
 	retransmits, timeouts uint64
-	ssthresh     int
-	partialAcked int
-	peerWindow   int
-	fastRecovery bool
-	recoverTSN   uint32
-	t3           time.Time
-	rto          time.Duration
-	srtt, rttvar time.Duration
-	rttTSN       uint32
-	rttSent      time.Time
-	rttActive    bool
-	errorCount   int
-	forwardDue   bool
+	ssthresh              int
+	partialAcked          int
+	peerWindow            int
+	fastRecovery          bool
+	recoverTSN            uint32
+	t3                    time.Time
+	rto                   time.Duration
+	srtt, rttvar          time.Duration
+	rttTSN                uint32
+	rttSent               time.Time
+	rttActive             bool
+	errorCount            int
+	forwardDue            bool
 
 	// Receiving.
 	peerCum     uint32
@@ -309,11 +312,23 @@ type Stats struct {
 	// Retransmits counts the chunks sent again, Timeouts the expiries of
 	// the retransmission timer.
 	Retransmits, Timeouts uint64
+	// Peer is what the INIT or INIT ACK of the peer offered.
+	Peer PeerFeatures
+}
+
+// PeerFeatures is what the INIT or INIT ACK of a peer offered: its window
+// and streams, the chunk types of its Supported Extensions, such as 0x40
+// for I-DATA, and the types of its parameters.
+type PeerFeatures struct {
+	Window                uint32
+	OutStreams, InStreams uint16
+	Extensions            []byte
+	Params                []uint16
 }
 
 // Stats returns the state of the association.
 func (a *Association) Stats() Stats {
-	return Stats{RTT: a.srtt, RTO: a.rto, Cwnd: a.cwnd, Flight: a.flight, Buffered: a.buffered, Retransmits: a.retransmits, Timeouts: a.timeouts}
+	return Stats{RTT: a.srtt, RTO: a.rto, Cwnd: a.cwnd, Flight: a.flight, Buffered: a.buffered, Retransmits: a.retransmits, Timeouts: a.timeouts, Peer: a.peerFeatures}
 }
 
 // Connect opens the association from this side by sending an INIT.
@@ -593,6 +608,8 @@ func (a *Association) handleCookieEcho(c chunk) {
 
 // adopt takes the parameters of the peer's INIT or INIT ACK.
 func (a *Association) adopt(peer initChunk) {
+	a.peerFeatures = PeerFeatures{Window: peer.window, OutStreams: peer.outStreams, InStreams: peer.inStreams,
+		Extensions: slices.Clone(peer.extensions), Params: slices.Clone(peer.params)}
 	a.peerTag = peer.tag
 	a.peerCum = peer.tsn - 1
 	a.peerWindow = int(peer.window)

@@ -182,7 +182,15 @@ type initChunk struct {
 	forwardTSN bool
 	reconfig   bool
 	cookie     []byte
+	// extensions and params are the chunk types of its Supported
+	// Extensions and the types of its parameters, as the peer offered
+	// them.
+	extensions []byte
+	params     []uint16
 }
+
+// maxPeerFeatures bounds the parameters and extensions of an INIT kept.
+const maxPeerFeatures = 32
 
 func parseInit(v []byte) (initChunk, bool) {
 	if len(v) < 16 {
@@ -203,10 +211,14 @@ func parseInit(v []byte) (initChunk, bool) {
 		return initChunk{}, false
 	}
 	for _, p := range params {
+		if len(c.params) < maxPeerFeatures {
+			c.params = append(c.params, p.typ)
+		}
 		switch p.typ {
 		case paramForwardTSN:
 			c.forwardTSN = true
 		case paramSupportedExtension:
+			c.extensions = append(c.extensions, p.value[:min(len(p.value), maxPeerFeatures)]...)
 			for _, t := range p.value {
 				switch t {
 				case chunkForwardTSN:

@@ -193,6 +193,9 @@ type Stats struct {
 	MessagesSent, BytesSent, MessagesReceived, BytesReceived uint64
 	// UnreliableReceived counts the messages of the unreliable channel.
 	UnreliableReceived uint64
+	// DTLS13Offered reports whether the ClientHello of the peer offered
+	// DTLS 1.3 beside 1.2, which the connection speaks.
+	DTLS13Offered bool
 }
 
 // SetSendBatch has the datagrams the connection sends from now on gathered
@@ -228,6 +231,7 @@ func (c *Conn) Stats() Stats {
 		MessagesReceived:   c.messagesReceived,
 		BytesReceived:      c.bytesReceived,
 		UnreliableReceived: c.unreliableReceived,
+		DTLS13Offered:      c.dtls.PeerOffers13(),
 	}
 }
 

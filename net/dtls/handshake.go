@@ -1,6 +1,9 @@
 package dtls
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"slices"
+)
 
 // Handshake message types.
 const (
@@ -29,8 +32,12 @@ const (
 	extSignatureAlgorithms  = 13
 	extUseSRTP              = 14
 	extExtendedMasterSecret = 23
+	extSupportedVersions    = 43
 	extRenegotiationInfo    = 0xff01
 )
+
+// version13 is DTLS 1.3 as a supported_versions extension names it.
+const version13 = 0xfefc
 
 // scsvRenegotiation is the signalling cipher suite of RFC 5746.
 const scsvRenegotiation = 0x00ff
@@ -199,6 +206,10 @@ type extensions struct {
 	renegotiationInfo    bool
 	// srtpProfiles holds the profiles of a use_srtp extension, if any.
 	srtpProfiles []uint16
+	// offers13 is set if a supported_versions extension offers DTLS 1.3,
+	// which a ClientHello of DTLS 1.2 may carry to say the peer would
+	// speak it.
+	offers13 bool
 }
 
 func parseExtensions(b []byte) (extensions, bool) {
@@ -239,6 +250,11 @@ func parseExtensions(b []byte) (extensions, bool) {
 				return e, false
 			}
 			e.srtpProfiles = profiles
+		case extSupportedVersions:
+			// Only read: the handshake is of DTLS 1.2, which the peer
+			// offers beside 1.3.
+			versions, ok := parseUint16s(d.vec8())
+			e.offers13 = ok && slices.Contains(versions, version13)
 		case extRenegotiationInfo:
 			// Only an initial handshake happens: the renegotiated
 			// connection data must be empty.

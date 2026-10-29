@@ -51,6 +51,9 @@ func (n netstatCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Printf("SCTP: RTT %v, RTO %v, cwnd %d B, in flight %d B, buffered %d B", c.SCTP.RTT.Round(time.Millisecond),
 			c.SCTP.RTO.Round(time.Millisecond), c.SCTP.Cwnd, c.SCTP.Flight, c.SCTP.Buffered)
 		o.Printf("Retransmitted chunks %d, timeouts %d", c.SCTP.Retransmits, c.SCTP.Timeouts)
-		o.Printf("Sent %d batches (%d B), received %d (%d B)", c.MessagesSent, c.BytesSent, c.MessagesReceived, c.BytesReceived)
+		o.Printf("Sent %d batches (%d B), received %d (%d B), %d unreliable", c.MessagesSent, c.BytesSent, c.MessagesReceived, c.BytesReceived, c.UnreliableReceived)
+		peer := c.SCTP.Peer
+		o.Printf("Client SCTP: window %d B, streams %d/%d, extensions % x, parameters %x; DTLS 1.3 offered: %v",
+			peer.Window, peer.OutStreams, peer.InStreams, peer.Extensions, peer.Params, c.DTLS13Offered)
 	}
 }

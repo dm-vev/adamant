@@ -180,5 +180,9 @@ func TestBDSCorpus(t *testing.T) {
 	t.Logf("%d packets of %d kinds", total, len(ids))
 	// Whether BDS sends anything on the unreliable channel, which the game
 	// opens beside the reliable one.
-	t.Logf("%d messages on the unreliable channel", c.nn.Stats().UnreliableReceived)
+	st := c.nn.Stats()
+	t.Logf("%d messages on the unreliable channel", st.UnreliableReceived)
+	// What the SCTP of BDS offered in its INIT ACK: 0x40 among the
+	// extensions would be I-DATA.
+	t.Logf("SCTP of BDS: %+v", st.SCTP.Peer)
 }

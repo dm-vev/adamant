@@ -150,6 +150,9 @@ type Conn struct {
 	state  state
 	err    error
 
+	// peerOffers13 is set once a ClientHello of the peer offered DTLS 1.3.
+	peerOffers13 bool
+
 	// Handshake.
 	msgSeqSend, msgSeqRecv uint16
 	partials               []*partial
@@ -727,11 +730,16 @@ func (c *Conn) serverMessage(m *partial, now time.Time) error {
 	return &AlertError{Description: alertUnexpectedMessage}
 }
 
+// PeerOffers13 reports whether the ClientHello of the peer offered DTLS
+// 1.3 beside 1.2, which the handshake speaks.
+func (c *Conn) PeerOffers13() bool { return c.peerOffers13 }
+
 func (c *Conn) handleClientHello(m *partial, now time.Time) error {
 	hello, ok := parseClientHello(m.body)
 	if !ok {
 		return &AlertError{Description: alertDecodeError}
 	}
+	c.peerOffers13 = c.peerOffers13 || hello.ext.offers13
 	// DTLS versions count down: anything above 1.2 is older.
 	if hello.version > version12 {
 		return &AlertError{Description: alertProtocolVersion}
