@@ -118,7 +118,8 @@ func (c *Conn) Flush() error { return c.b.Flush() }
 
 // ReadPacket returns the next packet of the client. A packet over the
 // bucket of its kind is dropped.
-func (c *Conn) ReadPacket() (proto.Packet, error) {
+func (c *Conn) ReadPacket() (pk proto.Packet, err error) {
+	defer c.recoverRead(&err)
 	raw, err := c.next()
 	for err == nil && c.overLimit(raw) {
 		raw, err = c.next()
@@ -126,8 +127,7 @@ func (c *Conn) ReadPacket() (proto.Packet, error) {
 	if err != nil {
 		return nil, err
 	}
-	pk, err := DecodePacket(raw)
-	if err != nil {
+	if pk, err = DecodePacket(raw); err != nil {
 		_ = c.Close()
 		return nil, err
 	}
@@ -247,9 +247,20 @@ func DecodePacket(raw []byte) (pk proto.Packet, err error) {
 	return pk, nil
 }
 
+// recoverRead turns a panic reading what the client sent, a bug no client
+// may use to take the server down, into an error that closes the
+// connection.
+func (c *Conn) recoverRead(err *error) {
+	if v := recover(); v != nil {
+		_ = c.Close()
+		*err = fmt.Errorf("netconn: read: panic: %v", v)
+	}
+}
+
 // read returns the next packet with one of the IDs passed. Other packets
 // are deferred for the session; a Disconnect ends the connection.
-func (c *Conn) read(ids ...uint32) (proto.Packet, error) {
+func (c *Conn) read(ids ...uint32) (pk proto.Packet, err error) {
+	defer c.recoverRead(&err)
 	for {
 		raw, err := c.b.ReadPacket()
 		if err != nil {
