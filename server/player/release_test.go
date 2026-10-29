@@ -16,11 +16,11 @@ import (
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 func TestReleaseItemResyncsOnlyWhenNothingWasConsumed(t *testing.T) {

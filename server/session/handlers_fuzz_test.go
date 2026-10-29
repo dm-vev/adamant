@@ -16,12 +16,12 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 // fuzzConn is the connection of a client whose packets a fuzz test hands
@@ -36,14 +36,14 @@ type fuzzConn struct {
 	unencoded string
 }
 
-func (c *fuzzConn) Close() error                     { c.once.Do(func() { close(c.closed) }); return nil }
+func (c *fuzzConn) Close() error                 { c.once.Do(func() { close(c.closed) }); return nil }
 func (c *fuzzConn) IdentityData() login.Identity { return c.identity }
-func (*fuzzConn) ClientData() login.ClientData       { return login.ClientData{} }
-func (*fuzzConn) ClientCacheEnabled() bool           { return true }
-func (*fuzzConn) ChunkRadius() int                   { return 1 }
-func (*fuzzConn) Latency() time.Duration             { return 0 }
-func (*fuzzConn) Flush() error                       { return nil }
-func (*fuzzConn) RemoteAddr() net.Addr               { return &net.UDPAddr{} }
+func (*fuzzConn) ClientData() login.ClientData   { return login.ClientData{} }
+func (*fuzzConn) ClientCacheEnabled() bool       { return true }
+func (*fuzzConn) ChunkRadius() int               { return 1 }
+func (*fuzzConn) Latency() time.Duration         { return 0 }
+func (*fuzzConn) Flush() error                   { return nil }
+func (*fuzzConn) RemoteAddr() net.Addr           { return &net.UDPAddr{} }
 func (*fuzzConn) StartGameContext(context.Context, netconn.GameData) error {
 	return nil
 }

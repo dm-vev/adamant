@@ -19,12 +19,12 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
-	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 

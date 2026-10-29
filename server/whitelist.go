@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pelletier/go-toml"
 	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/pelletier/go-toml"
 )
 
 var (

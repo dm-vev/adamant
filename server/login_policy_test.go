@@ -22,9 +22,11 @@ func TestValidateLogin(t *testing.T) {
 		"online non-Latin": func(i *login.Identity, _ *login.ClientData) { i.XUID, i.DisplayName = "123", "Шахтёр" },
 		"device":           func(_ *login.Identity, d *login.ClientData) { d.DeviceOS = 99 },
 		"language":         func(_ *login.Identity, d *login.ClientData) { d.LanguageCode = "not a language!" },
-		"skin size":        func(_ *login.Identity, d *login.ClientData) { d.SkinData = base64.StdEncoding.EncodeToString([]byte{1}) },
-		"no port":          func(_ *login.Identity, d *login.ClientData) { d.ServerAddress = "host" },
-		"bad URL":          func(_ *login.Identity, d *login.ClientData) { d.ServerAddress = "ftp://host:1:1" },
+		"skin size": func(_ *login.Identity, d *login.ClientData) {
+			d.SkinData = base64.StdEncoding.EncodeToString([]byte{1})
+		},
+		"no port": func(_ *login.Identity, d *login.ClientData) { d.ServerAddress = "host" },
+		"bad URL": func(_ *login.Identity, d *login.ClientData) { d.ServerAddress = "ftp://host:1:1" },
 	} {
 		i, d := id, data
 		change(&i, &d)

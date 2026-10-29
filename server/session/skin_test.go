@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/player/skin"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 // encodable checks a skin as it goes to clients: each texture holds the

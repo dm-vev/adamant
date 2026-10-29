@@ -7,10 +7,10 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/player/skin"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 // A skin is what a client says it is: the functions below trust nothing in

@@ -19,10 +19,10 @@ import (
 	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/bedrock"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
-	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 

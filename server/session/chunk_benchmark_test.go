@@ -14,9 +14,9 @@ import (
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/dm-vev/adamant/net/bedrock/login"
 )
 
 func init() {
@@ -215,7 +215,7 @@ type benchmarkConn struct {
 }
 
 func (benchmarkConn) Close() error                                             { return nil }
-func (benchmarkConn) IdentityData() login.Identity                         { return login.Identity{} }
+func (benchmarkConn) IdentityData() login.Identity                             { return login.Identity{} }
 func (benchmarkConn) ClientData() login.ClientData                             { return login.ClientData{} }
 func (c benchmarkConn) ClientCacheEnabled() bool                               { return c.cacheEnabled }
 func (benchmarkConn) ChunkRadius() int                                         { return 8 }

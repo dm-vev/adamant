@@ -15,11 +15,11 @@ import (
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -193,12 +193,12 @@ func (c *packetPanicConn) Close() error {
 }
 
 func (c *packetPanicConn) IdentityData() login.Identity { return c.identity }
-func (*packetPanicConn) ClientData() login.ClientData       { return login.ClientData{} }
-func (*packetPanicConn) ClientCacheEnabled() bool           { return false }
-func (*packetPanicConn) ChunkRadius() int                   { return 1 }
-func (*packetPanicConn) Latency() time.Duration             { return 0 }
-func (*packetPanicConn) Flush() error                       { return nil }
-func (*packetPanicConn) RemoteAddr() net.Addr               { return &net.TCPAddr{} }
+func (*packetPanicConn) ClientData() login.ClientData   { return login.ClientData{} }
+func (*packetPanicConn) ClientCacheEnabled() bool       { return false }
+func (*packetPanicConn) ChunkRadius() int               { return 1 }
+func (*packetPanicConn) Latency() time.Duration         { return 0 }
+func (*packetPanicConn) Flush() error                   { return nil }
+func (*packetPanicConn) RemoteAddr() net.Addr           { return &net.TCPAddr{} }
 
 func (c *packetPanicConn) ReadPacket() (proto.Packet, error) {
 	select {
