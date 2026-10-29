@@ -49,6 +49,32 @@ func TestEveryPacketDecodesEmpty(t *testing.T) {
 	}
 }
 
+// TestListsAreBounded decodes a packet of a list as long as MaxList and
+// one of a longer list, which fails as a server reads what clients send.
+func TestListsAreBounded(t *testing.T) {
+	encode := func(n int) []byte {
+		pk := &InventoryContentPacket{WindowID: 1, Content: make([]ItemInstance, n)}
+		var w wire.Writer
+		pk.Encode(&w)
+		return w.B
+	}
+	for n, want := range map[int]error{1024: nil, 1025: wire.ErrTooLarge} {
+		r := wire.NewReader(encode(n))
+		r.MaxList = 1024
+		var pk InventoryContentPacket
+		pk.Decode(r)
+		if !errors.Is(r.Err(), want) {
+			t.Fatalf("%d items: %v, want %v", n, r.Err(), want)
+		}
+		// Without a bound, a list takes what the bytes hold.
+		r = wire.NewReader(encode(n))
+		pk.Decode(r)
+		if r.Err() != nil || len(pk.Content) != n {
+			t.Fatalf("%d items without a bound: %v, %d decoded", n, r.Err(), len(pk.Content))
+		}
+	}
+}
+
 // TestNestingIsBounded decodes data store values, which hold values of
 // their own type, nested to the bound and past it.
 func TestNestingIsBounded(t *testing.T) {

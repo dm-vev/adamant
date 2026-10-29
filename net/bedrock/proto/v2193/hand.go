@@ -164,8 +164,7 @@ func writeStrings16(w *wire.Writer, s []string) {
 
 func readStrings16(r *wire.Reader) []string {
 	n := int(r.Uint32())
-	if n > r.Len() {
-		r.Fail(wire.ErrShort)
+	if !r.List(n) {
 		return nil
 	}
 	var s []string
@@ -281,8 +280,7 @@ func canonicalMetadata(v any) any {
 
 func readMetadata(r *wire.Reader, x *Metadata) {
 	n := int(r.Varuint32())
-	if n > r.Len() {
-		r.Fail(wire.ErrShort)
+	if !r.List(n) {
 		return
 	}
 	m := make(Metadata, n)

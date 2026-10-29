@@ -106,6 +106,10 @@ type Reader struct {
 	// MaxString bounds the strings and byte slices read; zero means
 	// DefaultMaxString.
 	MaxString int
+	// MaxList bounds the elements of a list read; zero leaves a list
+	// bound only by the bytes left, a byte at least an element. A server
+	// sets it for what clients send, whose lists are short.
+	MaxList int
 }
 
 // NewReader returns a Reader of b.
@@ -285,8 +289,8 @@ func (r *Reader) UUID() (v [16]byte) {
 	return v
 }
 
-// Count reads the varuint32 length of a list and checks it against max
-// and against the bytes left, a byte at least an element.
+// Count reads the varuint32 length of a list and checks it against max,
+// MaxList and the bytes left, a byte at least an element.
 func (r *Reader) Count(max int) int {
 	n := r.Varuint32()
 	if r.err != nil {
@@ -296,9 +300,23 @@ func (r *Reader) Count(max int) int {
 		r.Fail(ErrTooLarge)
 		return 0
 	}
-	if int(n) > r.Len() {
-		r.Fail(ErrShort)
+	if !r.List(int(n)) {
 		return 0
 	}
 	return int(n)
+}
+
+// List checks the length of a list read before against MaxList and the
+// bytes left, a byte at least an element, and reports whether the list
+// fits, failing otherwise.
+func (r *Reader) List(n int) bool {
+	switch {
+	case n < 0 || n > r.Len():
+		r.Fail(ErrShort)
+	case r.MaxList > 0 && n > r.MaxList:
+		r.Fail(ErrTooLarge)
+	default:
+		return true
+	}
+	return false
 }

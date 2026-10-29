@@ -914,9 +914,7 @@ func (g *gen) value(w, v string, enc bool) error {
 			if err != nil {
 				return err
 			}
-			// Every element takes a byte at least.
-			g.p("if %s < 0 || %s > r.Len() {", n, n)
-			g.p("r.Fail(wire.ErrShort)")
+			g.p("if !r.List(%s) {", n)
 			g.p("return")
 			g.p("}")
 			g.p("%s = make([]%s, %s)", v, et, n)

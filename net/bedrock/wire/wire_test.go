@@ -89,6 +89,9 @@ func TestReaderErrors(t *testing.T) {
 		"string over limit": {[]byte{0x80, 0x80, 0x80, 0x01}, func(r *Reader) { _ = r.String() }, ErrTooLong},
 		"count over max":    {[]byte{10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, func(r *Reader) { r.Count(5) }, ErrTooLarge},
 		"count past end":    {[]byte{10, 0}, func(r *Reader) { r.Count(100) }, ErrShort},
+		"count over list":   {[]byte{3, 0, 0, 0}, func(r *Reader) { r.MaxList = 2; r.Count(5) }, ErrTooLarge},
+		"list over bound":   {[]byte{0, 0, 0, 0}, func(r *Reader) { r.MaxList = 2; r.List(3) }, ErrTooLarge},
+		"list past end":     {[]byte{0, 0}, func(r *Reader) { r.List(3) }, ErrShort},
 	} {
 		r := NewReader(tc.data)
 		tc.read(r)
