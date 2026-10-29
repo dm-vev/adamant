@@ -20,4 +20,12 @@ var (
 		"Sessions closed for a client far ahead of the world of its player.")
 	sessionsOpen = metrics.Default.Gauge("adamant_sessions",
 		"Sessions of players in the worlds of the server.")
+	congestions = metrics.Default.Counter("adamant_session_congestions_total",
+		"Times a connection held more for its client than the client took.")
+	movesKeptBack = metrics.Default.Counter("adamant_session_moves_kept_back_total",
+		"Moves of entities kept back from congested clients.")
+	cosmeticsDropped = metrics.Default.Counter("adamant_session_cosmetics_dropped_total",
+		"Sounds, particles and animations dropped for congested clients.")
+	staleShown = metrics.Default.Counter("adamant_session_stale_entities_shown_total",
+		"Entities shown where they are once the congestion of a client cleared.")
 )

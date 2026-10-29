@@ -141,6 +141,15 @@ func (c *Conn) Latency() time.Duration {
 // RemoteAddr returns the address of the client.
 func (c *Conn) RemoteAddr() net.Addr { return c.t.RemoteAddr() }
 
+// Buffered returns the bytes sent to the client that it did not take yet,
+// zero for a player of a proxy, which buffers for its clients itself.
+func (c *Conn) Buffered() int {
+	if c.nn == nil {
+		return 0
+	}
+	return c.nn.Buffered()
+}
+
 // WritePacket adds a packet to the batch sent at the next Flush. A Static
 // goes in a batch of its own, encoded once for every connection.
 func (c *Conn) WritePacket(pk proto.Packet) error {

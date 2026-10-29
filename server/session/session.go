@@ -85,6 +85,13 @@ type Session struct {
 
 	teleportPos atomic.Pointer[mgl64.Vec3]
 
+	// congested is set while the connection holds more for the client than
+	// it takes: see congestedAbove. stale holds the entities whose moves
+	// were kept back meanwhile, under staleMu.
+	congested atomic.Bool
+	staleMu   sync.Mutex
+	stale     map[*world.EntityHandle]struct{}
+
 	entityMutex sync.RWMutex
 	// entityRuntimeIDs holds the runtime IDs of entities shown to the session.
 	entityRuntimeIDs map[*world.EntityHandle]uint64
@@ -636,6 +643,7 @@ func (s *Session) Control(tx *world.Tx, e world.Entity) {
 		return
 	}
 	s.commandState.update(s, c)
+	s.updateCongestion(tx)
 	s.sendChunks(tx, c)
 }
 

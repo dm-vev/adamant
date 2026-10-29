@@ -185,6 +185,14 @@ type Stats struct {
 	MessagesSent, BytesSent, MessagesReceived, BytesReceived uint64
 }
 
+// Buffered returns the bytes of the messages sent on the connection that
+// the peer did not take yet: queued, or in flight unacknowledged.
+func (c *Conn) Buffered() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.assoc.Buffered()
+}
+
 // Stats returns the state of the connection.
 func (c *Conn) Stats() Stats {
 	c.mu.Lock()

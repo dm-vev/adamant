@@ -323,7 +323,7 @@ func (s *Session) HideEntity(e world.Entity) {
 // ViewEntityMovement ...
 func (s *Session) ViewEntityMovement(e world.Entity, pos mgl64.Vec3, rot cube.Rotation, onGround bool) {
 	id := s.entityRuntimeID(e)
-	if (id == selfEntityRuntimeID && s.moving.Load()) || s.entityHidden(e) {
+	if (id == selfEntityRuntimeID && s.moving.Load()) || s.entityHidden(e) || s.keepBack(e) {
 		return
 	}
 	s.viewEntityAbsoluteMovement(id, e, pos, rot, onGround, false)
@@ -361,7 +361,7 @@ func absoluteMove(id uint64, e world.Entity, pos mgl64.Vec3, rot cube.Rotation, 
 
 // ViewEntityVelocity ...
 func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
-	if s.entityHidden(e) {
+	if s.entityHidden(e) || s.keepBack(e) {
 		return
 	}
 	s.writePacket(&v2193.SetActorMotionPacket{
@@ -582,6 +582,9 @@ func (s *Session) ViewSleepingPlayers(sleeping, max int) {
 
 // ViewParticle ...
 func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
+	if s.dropCosmetic() {
+		return
+	}
 	switch pa := p.(type) {
 	case particle.CreakingTrail:
 		buf := bytes.NewBuffer(nil)
@@ -1419,6 +1422,9 @@ func (s *Session) PlaySound(t world.Sound, pos mgl64.Vec3) {
 
 // ViewSound ...
 func (s *Session) ViewSound(pos mgl64.Vec3, soundType world.Sound) {
+	if s.dropCosmetic() {
+		return
+	}
 	s.playSound(pos, soundType, false)
 }
 
@@ -1718,6 +1724,9 @@ func (s *Session) entityMetadata(e world.Entity) v2193.Metadata {
 
 // ViewEntityAnimation ...
 func (s *Session) ViewEntityAnimation(e world.Entity, a world.EntityAnimation) {
+	if s.dropCosmetic() {
+		return
+	}
 	s.writePacket(animationPacket(s.entityRuntimeID(e), a))
 }
 
@@ -1735,11 +1744,17 @@ func animationPacket(id uint64, a world.EntityAnimation) *v2193.AnimateEntityPac
 
 // ViewSoundShared ...
 func (s *Session) ViewSoundShared(pos mgl64.Vec3, t world.Sound, b *world.Broadcast) {
+	if s.dropCosmetic() {
+		return
+	}
 	s.writeBroadcast(b, func(out func(proto.Packet)) { s.soundPackets(pos, t, false, out) })
 }
 
 // ViewEntityAnimationShared ...
 func (s *Session) ViewEntityAnimationShared(e world.Entity, a world.EntityAnimation, b *world.Broadcast) {
+	if s.dropCosmetic() {
+		return
+	}
 	if e.H() == s.ent {
 		// The player of the session knows itself by another runtime ID.
 		s.ViewEntityAnimation(e, a)

@@ -42,7 +42,7 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 		}
 		return
 	}
-	if s.entityHidden(e) {
+	if s.entityHidden(e) || s.keepBack(e) {
 		return
 	}
 	id := s.entityRuntimeID(e)
