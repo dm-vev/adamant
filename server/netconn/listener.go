@@ -250,6 +250,16 @@ func (l *Listener) refreshStatus() {
 	}
 }
 
+// Serve answers the offers that arrive over a signaling service, such as
+// that of Xbox Live, until it ends.
+func (l *Listener) Serve(s nethernet.Signaling) error { return l.nn.Serve(s) }
+
+// ServerStatus returns the status the server shows clients.
+func (l *Listener) ServerStatus() minecraft.ServerStatus { return l.status() }
+
+// Closed is closed once the listener closed.
+func (l *Listener) Closed() <-chan struct{} { return l.done }
+
 func (l *Listener) status() minecraft.ServerStatus {
 	s := l.cfg.StatusProvider.ServerStatus(int(l.players.Load()), l.cfg.MaximumPlayers)
 	if s.MaxPlayers == 0 {

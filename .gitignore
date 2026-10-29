@@ -36,3 +36,5 @@ white-list.txt
 whitelist.toml
 server-key.pem
 .server-key-*
+xbox-token.json
+.xbox-token-*

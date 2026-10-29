@@ -48,6 +48,13 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 		return nil, fmt.Errorf("create NetherNet listener: %w", err)
 	}
 	conf.Log.Info("NetherNet listener running.", "addr", l.Addr())
+	if uc.Xbox.Enabled {
+		tokenFile := uc.Xbox.TokenFile
+		if tokenFile == "" {
+			tokenFile = "xbox-token.json"
+		}
+		go publishXbox(l, tokenFile, conf.Log)
+	}
 	return netherNetListener{l}, nil
 }
 

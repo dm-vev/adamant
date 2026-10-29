@@ -380,6 +380,18 @@ type UserConfig struct {
 		// When disabled, the query `plugins` field only contains the engine label.
 		QueryPlugins bool
 	}
+	// Xbox holds the publishing of the server on Xbox Live.
+	Xbox struct {
+		// Enabled publishes the server on Xbox Live through the account it
+		// signs in as, so that friends of the account see it in their friends
+		// list and join from there. It needs the NetherNet transport. The
+		// account is signed in on the first start, with a code the console
+		// shows to enter at a page of Microsoft.
+		Enabled bool
+		// TokenFile keeps the sign-in of the account across restarts. It holds
+		// secrets. An empty value uses "xbox-token.json".
+		TokenFile string
+	}
 	Server struct {
 		// Name is the name of the server as it shows up in the server list.
 		Name string
@@ -627,6 +639,7 @@ func DefaultConfig() UserConfig {
 	c.Network.Address = ":19132"
 	c.Network.Transport = "nethernet"
 	c.Network.IdentityFile = "server-key.pem"
+	c.Xbox.TokenFile = "xbox-token.json"
 	c.Network.EnableQuery = false
 	c.Network.QueryPlugins = false
 	c.Server.Name = "Dragonfly Server"
