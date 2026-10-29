@@ -3264,8 +3264,10 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		return
 	}
 	viewers, release := p.viewers()
+	// Every viewer is shown the same move, encoded once for all of them.
+	move := &world.EntityMove{Pos: res, Rot: resRot, OnGround: p.OnGround(), Absolute: true}
 	for _, v := range viewers {
-		v.ViewEntityMovement(p, res, resRot, p.OnGround())
+		v.ViewEntityMove(p, move)
 	}
 	releaseBorrowedViewers(p.tx, viewers, release)
 

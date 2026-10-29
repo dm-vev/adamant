@@ -237,3 +237,45 @@ func TestPlayerMovementVibrations(t *testing.T) {
 		})
 	}
 }
+
+// moveViewer records the moves of entities it is shown.
+type moveViewer struct {
+	world.NopViewer
+	moves []*world.EntityMove
+}
+
+func (v *moveViewer) ViewEntityMove(_ world.Entity, m *world.EntityMove) {
+	v.moves = append(v.moves, m)
+}
+
+// TestPlayerMoveIsSharedByViewers moves a player: every viewer is shown the
+// same move, its position, for the move to be encoded once for all of them.
+func TestPlayerMoveIsSharedByViewers(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+	a, b := &moveViewer{}, &moveViewer{}
+	pos := mgl64.Vec3{8.5, 65, 8.5}
+	<-w.Exec(func(tx *world.Tx) {
+		for x := range 16 {
+			for z := range 16 {
+				tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
+			}
+		}
+		for _, v := range []*moveViewer{a, b} {
+			l := world.NewLoader(1, w, v)
+			l.Move(tx, pos)
+			l.Load(tx, 9)
+		}
+	})
+	w.AdvanceTick()
+	<-w.Exec(func(tx *world.Tx) {
+		p := tx.AddEntity(world.EntitySpawnOpts{Position: pos}.New(Type, Config{Position: pos, GameMode: world.GameModeSurvival, Health: 20, MaxHealth: 20})).(*Player)
+		p.Move(mgl64.Vec3{0.2, 0, 0}, 0, 0)
+	})
+	if len(a.moves) != 1 || len(b.moves) != 1 {
+		t.Fatalf("viewers shown %d and %d moves, want one each", len(a.moves), len(b.moves))
+	}
+	if m := a.moves[0]; m != b.moves[0] || !m.Absolute || m.Pos != pos.Add(mgl64.Vec3{0.2, 0, 0}) {
+		t.Fatalf("moves %+v and %+v, want the same position for both", m, b.moves[0])
+	}
+}
