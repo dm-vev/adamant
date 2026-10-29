@@ -22,6 +22,7 @@ import (
 	"go/token"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,6 +63,9 @@ func main() {
 	flag.Parse()
 	s, err := parse(*in)
 	if err != nil {
+		log.Fatal(err)
+	}
+	if err := s.findHand(*out); err != nil {
 		log.Fatal(err)
 	}
 	s.resolveRaw()
@@ -169,6 +173,64 @@ func parse(path string) (*schema, error) {
 		}
 	}
 	return s, sc.Err()
+}
+
+// findHand finds the codecs written by hand in the package of the output:
+// a function writeT for a special wire type of Go type T, an Encode method
+// for a declaration.
+func (s *schema) findHand(out string) error {
+	dir := filepath.Dir(out)
+	files, err := filepath.Glob(filepath.Join(dir, "*.go"))
+	if err != nil {
+		return err
+	}
+	funcs := map[string]bool{}
+	methods := map[string]bool{}
+	fset := token.NewFileSet()
+	for _, f := range files {
+		if filepath.Base(f) == filepath.Base(out) || strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, f, nil, parser.SkipObjectResolution)
+		if err != nil {
+			return err
+		}
+		for _, d := range file.Decls {
+			fd, ok := d.(*ast.FuncDecl)
+			if !ok {
+				continue
+			}
+			if fd.Recv == nil {
+				funcs[fd.Name.Name] = true
+				continue
+			}
+			if fd.Name.Name != "Encode" {
+				continue
+			}
+			t := fd.Recv.List[0].Type
+			if st, ok := t.(*ast.StarExpr); ok {
+				t = st.X
+			}
+			if id, ok := t.(*ast.Ident); ok {
+				methods[id.Name] = true
+			}
+		}
+	}
+	for w, t := range special {
+		if funcs["write"+t] {
+			s.hand[w] = true
+		}
+	}
+	for _, d := range s.decls {
+		name := d.name
+		if d.packet {
+			name += "Packet"
+		}
+		if methods[name] {
+			s.hand[d.name] = true
+		}
+	}
+	return nil
 }
 
 // base splits a wire type into its kind and element.

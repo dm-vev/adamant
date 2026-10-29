@@ -119,3 +119,24 @@ func FuzzRead(f *testing.F) {
 		}
 	})
 }
+
+// TestLittleEndian checks the form of worlds and item data: fixed-width
+// ints and an int16 string length.
+func TestLittleEndian(t *testing.T) {
+	var w wire.Writer
+	if err := WriteEncoded(&w, map[string]any{"a": int32(-1)}, LittleEndian); err != nil {
+		t.Fatal(err)
+	}
+	want := []byte{tagCompound, 0, 0, tagInt, 1, 0, 'a', 0xff, 0xff, 0xff, 0xff, tagEnd}
+	if !bytes.Equal(w.B, want) {
+		t.Fatalf("% x, want % x", w.B, want)
+	}
+	w.B = w.B[:0]
+	if err := WriteEncoded(&w, sample(), LittleEndian); err != nil {
+		t.Fatal(err)
+	}
+	got, err := ReadEncoded(wire.NewReader(w.B), LittleEndian)
+	if err != nil || !reflect.DeepEqual(got, sample()) {
+		t.Fatalf("read back %#v, %v", got, err)
+	}
+}

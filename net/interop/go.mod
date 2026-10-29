@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/df-mc/go-nethernet v1.0.24
 	github.com/dm-vev/adamant/net v0.0.0
+	github.com/go-gl/mathgl v1.1.0
 	github.com/google/uuid v1.6.0
 	github.com/pion/dtls/v3 v3.1.9
 	github.com/pion/logging v0.2.4
@@ -15,7 +16,6 @@ require (
 )
 
 require (
-	github.com/go-gl/mathgl v1.1.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/pion/datachannel v1.6.3 // indirect
