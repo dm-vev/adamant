@@ -3,6 +3,7 @@ module github.com/dm-vev/adamant/net/interop
 go 1.26.0
 
 require (
+	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/df-mc/go-nethernet v1.0.24
 	github.com/dm-vev/adamant/net v0.0.0
 	github.com/go-gl/mathgl v1.1.0
@@ -16,7 +17,6 @@ require (
 )
 
 require (
-	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/pion/datachannel v1.6.3 // indirect
