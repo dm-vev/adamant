@@ -14,7 +14,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -42,15 +41,15 @@ func TestGameTypeFromMode(t *testing.T) {
 
 func TestResyncInventory(t *testing.T) {
 	s := &Session{
-		br:      world.DefaultBlockRegistry,
-		inv:     inventory.New(36, nil),
-		offHand: inventory.New(1, nil),
-		packets: make(chan proto.Packet, 2),
+		br:          world.DefaultBlockRegistry,
+		inv:         inventory.New(36, nil),
+		offHand:     inventory.New(1, nil),
+		holdPackets: 1,
 	}
 	s.ResyncInventory()
 
 	for _, want := range []uint32{protocol.WindowIDInventory, protocol.WindowIDOffHand} {
-		pk := <-s.packets
+		pk := s.testPacket()
 		content, ok := pk.(*v2193.InventoryContentPacket)
 		if !ok {
 			t.Fatalf("packet type = %T, want *v2193.InventoryContentPacket", pk)
@@ -71,7 +70,7 @@ func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
 		t.Fatalf("send game mode: %v", err)
 	}
 
-	pk := <-s.packets
+	pk := s.testPacket()
 	gameType, ok := pk.(*v2193.SetPlayerGameTypePacket)
 	if !ok {
 		t.Fatalf("packet type = %T, want *v2193.SetPlayerGameTypePacket", pk)
@@ -79,16 +78,14 @@ func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
 	if gameType.GameType != packet.GameTypeCreative {
 		t.Fatalf("game type = %d, want %d", gameType.GameType, packet.GameTypeCreative)
 	}
-	select {
-	case pk := <-s.packets:
+	if pk := s.testPacket(); pk != nil {
 		t.Fatalf("ability packet sent without delay: %T", pk)
-	default:
 	}
 	if err := task.Wait(context.Background()); err != nil {
 		t.Fatalf("resend abilities: %v", err)
 	}
 
-	pk = <-s.packets
+	pk = s.testPacket()
 	abilities, ok := pk.(*v2193.UpdateAbilitiesPacket)
 	if !ok {
 		t.Fatalf("packet type = %T, want *v2193.UpdateAbilitiesPacket", pk)
@@ -108,7 +105,7 @@ func TestCloseConnectionCancelsDelayedAbilityResend(t *testing.T) {
 	}).Wait(context.Background()); err != nil {
 		t.Fatalf("send game mode: %v", err)
 	}
-	<-s.packets // SetPlayerGameType.
+	s.testPacket() // SetPlayerGameType.
 
 	s.CloseConnection()
 	s.abilityResendMu.Lock()
@@ -120,10 +117,8 @@ func TestCloseConnectionCancelsDelayedAbilityResend(t *testing.T) {
 	if err := task.Wait(context.Background()); !errors.Is(err, world.ErrTaskCancelled) {
 		t.Fatalf("delayed ability resend error = %v, want %v", err, world.ErrTaskCancelled)
 	}
-	select {
-	case pk := <-s.packets:
+	if pk := s.testPacket(); pk != nil {
 		t.Fatalf("ability packet sent after close: %T", pk)
-	default:
 	}
 }
 
@@ -181,8 +176,7 @@ func abilityTestSession(t *testing.T, delay time.Duration) (*Session, *abilityTe
 	t.Helper()
 	s := &Session{
 		conn:               abilityTestConn{},
-		packets:            make(chan proto.Packet, 16),
-		closeBackground:    make(chan struct{}),
+		holdPackets:        1,
 		abilityResendDelay: delay,
 	}
 	c := &abilityTestControllable{mode: world.GameModeCreative}
@@ -251,13 +245,12 @@ func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
 	recipe.Register(recipe.NewMulti(id))
 
 	s := &Session{
-		br:              world.DefaultBlockRegistry,
-		recipes:         make(map[uint32]recipe.Recipe),
-		packets:         make(chan proto.Packet, 1),
-		closeBackground: make(chan struct{}),
+		br:          world.DefaultBlockRegistry,
+		recipes:     make(map[uint32]recipe.Recipe),
+		holdPackets: 1,
 	}
 	s.sendRecipes()
-	raw := <-s.packets
+	raw := s.testPacket()
 	if st, ok := raw.(*staticPacket); ok {
 		raw = st.Packet
 	}
@@ -996,7 +989,7 @@ func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stac
 	if result, _ := s.ui.Item(craftingResult); !result.Empty() {
 		t.Fatalf("rejected craft produced %v", result)
 	}
-	pk, ok := (<-s.packets).(*v2193.ItemStackResponsePacket)
+	pk, ok := (s.testPacket()).(*v2193.ItemStackResponsePacket)
 	if !ok || len(pk.Responses) != 1 || pk.Responses[0].Status != protocol.ItemStackResponseStatusError {
 		t.Fatalf("rejected craft response = %#v", pk)
 	}
@@ -1033,13 +1026,12 @@ func nonEmptySlots(input []item.Stack) []int {
 
 func craftingTestSession() *Session {
 	return &Session{
-		br:              world.DefaultBlockRegistry,
-		recipes:         make(map[uint32]recipe.Recipe),
-		ui:              inventory.New(51, nil),
-		inv:             inventory.New(36, nil),
-		offHand:         inventory.New(1, nil),
-		packets:         make(chan proto.Packet, 4),
-		closeBackground: make(chan struct{}),
+		br:          world.DefaultBlockRegistry,
+		recipes:     make(map[uint32]recipe.Recipe),
+		ui:          inventory.New(51, nil),
+		inv:         inventory.New(36, nil),
+		offHand:     inventory.New(1, nil),
+		holdPackets: 1,
 	}
 }
 

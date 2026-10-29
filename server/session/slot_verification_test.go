@@ -21,7 +21,7 @@ func TestVerifySlotResyncsStaleCount(t *testing.T) {
 	if err := s.VerifySlot(0, actual.Grow(-1)); err != nil {
 		t.Fatalf("stale client count rejected: %v", err)
 	}
-	pk, ok := (<-s.packets).(*v2193.InventorySlotPacket)
+	pk, ok := (s.testPacket()).(*v2193.InventorySlotPacket)
 	if !ok || pk.WindowID != protocol.WindowIDInventory || pk.Slot != 0 || pk.NewItem.Stack.Count != 5 {
 		t.Fatalf("slot correction = %#v, want five beef in inventory slot zero", pk)
 	}

@@ -141,7 +141,7 @@ func TestFlightInputFlags(t *testing.T) {
 				t.Fatalf("start flying = %v, want %v", c.flying, test.startFlying)
 			}
 			if !test.mode.AllowsFlying() {
-				assertFlightAbilities(t, <-s.packets, test.mode, false)
+				assertFlightAbilities(t, s.testPacket(), test.mode, false)
 			}
 
 			c.flying = true
@@ -151,9 +151,9 @@ func TestFlightInputFlags(t *testing.T) {
 			}
 			if test.mode == world.GameModeSpectator {
 				for range 2 {
-					<-s.packets
+					s.testPacket()
 				}
-				assertFlightAbilities(t, <-s.packets, test.mode, true)
+				assertFlightAbilities(t, s.testPacket(), test.mode, true)
 			}
 		})
 	}
@@ -163,9 +163,8 @@ func inputFlags(flag int) v2193.InputFlags { return v2193.InputFlags{int32(flag)
 
 func newFlightTestSession() *Session {
 	return &Session{
-		conf:            Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
-		packets:         make(chan proto.Packet, 4),
-		closeBackground: make(chan struct{}),
+		conf:        Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
+		holdPackets: 1,
 	}
 }
 

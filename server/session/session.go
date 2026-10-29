@@ -48,15 +48,17 @@ type Session struct {
 	bossBarMu     sync.Mutex
 	bossBarIDs    map[string]int64
 	nextBossBarID int64
-	packets       chan proto.Packet
-	// packetsMu protects the overflow FIFO and the packets held. The channel
-	// holds the first packets; bursts spill into pendingPackets without
-	// blocking the world owner. While the world of the session ticks, packets
-	// are held in heldPackets and handed to the writer at once afterwards.
+	// packetsMu protects the packets queued for the connection. While the
+	// world of the session ticks, packets are held in heldPackets and handed
+	// to the flushers at once afterwards; others go to pendingPackets, which
+	// a flusher takes while flushing is set. flushSpare is the array of the
+	// batch flushed last, used again by the flusher alone.
 	packetsMu      sync.Mutex
 	pendingPackets []proto.Packet
 	holdPackets    int
 	heldPackets    []proto.Packet
+	flushing       bool
+	flushSpare     []proto.Packet
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
@@ -142,8 +144,6 @@ type Session struct {
 	debugShapeUpdates []debugShapeUpdate
 
 	viewLayer *world.ViewLayer
-
-	closeBackground chan struct{}
 
 	// inbox holds what the client sent that the world of the player did not
 	// handle yet, in order; inboxClosed is set once the connection closed.
@@ -256,9 +256,7 @@ func (conf Config) New(conn Conn) *Session {
 	*s = Session{
 		conf:                  conf,
 		openChunkTransactions: make([]map[uint64]struct{}, 0, 8),
-		closeBackground:       make(chan struct{}),
 		handlers:              map[uint32]packetHandler{},
-		packets:               make(chan proto.Packet, 256),
 		entityRuntimeIDs:      map[*world.EntityHandle]uint64{},
 		entities:              map[uint64]*world.EntityHandle{},
 		hiddenEntities:        map[uuid.UUID]struct{}{},
@@ -302,7 +300,6 @@ func (conf Config) New(conn Conn) *Session {
 	s.sendRecipes()
 	s.sendArmourTrimData()
 	s.SendSpeed(0.1)
-	go s.sendPackets()
 	return s
 }
 
@@ -516,7 +513,6 @@ func (s *Session) CloseConnection() {
 			resend.Cancel()
 		}
 		_ = s.conn.Close()
-		close(s.closeBackground)
 	})
 }
 

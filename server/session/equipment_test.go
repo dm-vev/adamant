@@ -25,10 +25,9 @@ func (e equippedEntity) EquipmentArmour() (item.Stack, item.Stack, item.Stack, i
 // drain returns the packets queued for a session.
 func drain(s *Session) (pks []proto.Packet) {
 	for {
-		select {
-		case pk := <-s.packets:
+		if pk := s.testPacket(); pk != nil {
 			pks = append(pks, pk)
-		default:
+		} else {
 			return pks
 		}
 	}

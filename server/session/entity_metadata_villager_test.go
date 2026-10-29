@@ -44,7 +44,7 @@ func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
 	if err := w.Do(func(tx *world.Tx) {
 		villager := tx.AddEntity(handle).(*entity.Villager)
 		viewer.ViewEntity(villager)
-		added, ok := (<-viewer.packets).(*v2193.AddActorPacket)
+		added, ok := (viewer.testPacket()).(*v2193.AddActorPacket)
 		if !ok {
 			t.Fatal("villager did not produce an AddActor packet")
 		}
@@ -71,18 +71,18 @@ func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
 			t.Fatal("prepared villager missing after MCDB reload")
 		}
 		viewer.ViewEntity(villager)
-		added := (<-viewer.packets).(*v2193.AddActorPacket)
+		added := (viewer.testPacket()).(*v2193.AddActorPacket)
 		assertBaby(added.EntityMetadata, true)
 		villager.Tick(tx, 1)
 		if got := villager.Age(); got != 0 {
 			t.Fatalf("age after growth tick=%d, want 0", got)
 		}
 		viewer.ViewEntityState(villager)
-		grown := (<-viewer.packets).(*v2193.SetActorDataPacket)
+		grown := (viewer.testPacket()).(*v2193.SetActorDataPacket)
 		assertBaby(grown.EntityMetadata, false)
 		villager.SetAge(2400)
 		viewer.ViewEntityState(villager)
-		cooldown := (<-viewer.packets).(*v2193.SetActorDataPacket)
+		cooldown := (viewer.testPacket()).(*v2193.SetActorDataPacket)
 		assertBaby(cooldown.EntityMetadata, false)
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)

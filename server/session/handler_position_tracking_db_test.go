@@ -7,7 +7,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -18,7 +17,7 @@ func TestPositionTrackingDBHandlerMissingAndTracked(t *testing.T) {
 	pos := cube.Pos{4, 65, 6}
 	handle := w.TrackPosition(pos, 0)
 	c := trackingControllable{inv: inventory.New(36, nil)}
-	s := &Session{packets: make(chan proto.Packet, 2), closeBackground: make(chan struct{})}
+	s := &Session{holdPackets: 1}
 	h := &PositionTrackingDBHandler{}
 
 	w.Do(func(tx *world.Tx) {
@@ -31,11 +30,11 @@ func TestPositionTrackingDBHandlerMissingAndTracked(t *testing.T) {
 		}
 	})
 
-	missing := (<-s.packets).(*v2193.PositionTrackingDBServerBroadcastPacket)
+	missing := (s.testPacket()).(*v2193.PositionTrackingDBServerBroadcastPacket)
 	if missing.BroadcastAction != packet.PositionTrackingDBBroadcastActionNotFound || missing.Payload["status"] != byte(positionTrackingStatusMissing) {
 		t.Fatalf("missing response = %#v", missing)
 	}
-	tracked := (<-s.packets).(*v2193.PositionTrackingDBServerBroadcastPacket)
+	tracked := (s.testPacket()).(*v2193.PositionTrackingDBServerBroadcastPacket)
 	if tracked.BroadcastAction != packet.PositionTrackingDBBroadcastActionUpdate || tracked.Payload["dim"] != int32(0) {
 		t.Fatalf("tracked response = %#v", tracked)
 	}

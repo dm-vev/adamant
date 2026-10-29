@@ -60,7 +60,7 @@ func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
 	output.Printt(native.DescriptionTranslation())
 	output.Printt(localized.DescriptionTranslation())
 	s.SendCommandOutput(output, language.Russian)
-	pk := (<-s.packets).(*v2193.CommandOutputPacket)
+	pk := (s.testPacket()).(*v2193.CommandOutputPacket)
 	if text.Clean(pk.OutputMessages[0].Message) != "%commands.gamemode.description" || text.Clean(pk.OutputMessages[1].Message) != "Русское описание" {
 		t.Fatalf("translated output = %#v", pk.OutputMessages)
 	}
@@ -156,7 +156,7 @@ func TestClientHelpDoesNotTriggerCommandOrEnumRefresh(t *testing.T) {
 	c := &abilityTestControllable{}
 	soft := make(map[string]struct{})
 	before := s.sendAvailableCommands(c, soft)
-	<-s.packets
+	s.testPacket()
 	if _, changed := s.resendCommands(before, c, soft); changed {
 		t.Error("client-local help caused an unchanged command registry to be resent")
 	}

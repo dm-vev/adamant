@@ -30,7 +30,7 @@ func TestEntityMoveIsEncodedOnce(t *testing.T) {
 	next := &world.EntityMove{Pos: mgl64.Vec3{1.3, 64, 1}, OnGround: true, Changed: world.MoveX, Ticks: 3}
 	a.ViewEntityMove(e, next)
 	b.ViewEntityMove(e, next)
-	pa, pb := <-a.packets, <-b.packets
+	pa, pb := a.testPacket(), b.testPacket()
 	if pa != pb {
 		t.Fatal("the sessions were not given the same packet")
 	}
@@ -48,30 +48,26 @@ func TestEntityMoveIsEncodedOnce(t *testing.T) {
 	// In the air, the velocity goes with the move.
 	jump := &world.EntityMove{Pos: mgl64.Vec3{1.3, 64.4, 1}, Vel: mgl64.Vec3{0, 0.42, 0}, Changed: world.MoveY | world.MoveVelocity}
 	a.ViewEntityMove(e, jump)
-	if _, ok := (<-a.packets).(*sharedPacket); !ok {
+	if _, ok := (a.testPacket()).(*sharedPacket); !ok {
 		t.Fatal("the move of the jump is not shared")
 	}
-	motion := (<-a.packets).(*sharedPacket)
+	motion := (a.testPacket()).(*sharedPacket)
 	if pk, ok := motion.Packet.(*v2193.SetActorMotionPacket); !ok || pk.Velocity != [3]float32{0, 0.42, 0} {
 		t.Fatalf("motion %+v", motion.Packet)
 	}
 	// A velocity alone goes without a delta.
 	push := &world.EntityMove{Pos: mgl64.Vec3{1.3, 64.4, 1}, Vel: mgl64.Vec3{0.5, 0, 0}, Changed: world.MoveVelocity}
 	a.ViewEntityMove(e, push)
-	if pk, ok := (<-a.packets).(*sharedPacket); !ok || pk.Packet.(*v2193.SetActorMotionPacket).Velocity != [3]float32{0.5, 0, 0} {
+	if pk, ok := (a.testPacket()).(*sharedPacket); !ok || pk.Packet.(*v2193.SetActorMotionPacket).Velocity != [3]float32{0.5, 0, 0} {
 		t.Fatalf("push shown as %+v, want the velocity", pk)
 	}
-	select {
-	case pk := <-a.packets:
+	if pk := a.testPacket(); pk != nil {
 		t.Fatalf("a push shown with %T", pk)
-	default:
 	}
 	// A session is not shown the moves of its own player.
 	a.ViewEntityMove(movingEntity{h: a.ent}, next)
-	select {
-	case pk := <-a.packets:
+	if pk := a.testPacket(); pk != nil {
 		t.Fatalf("own player shown a move: %T", pk)
-	default:
 	}
 }
 
@@ -86,7 +82,7 @@ func TestAbsoluteMoveIsEncodedOnce(t *testing.T) {
 	for _, s := range []*Session{a, b, own} {
 		s.ViewEntityMove(p, move)
 	}
-	pa, pb := <-a.packets, <-b.packets
+	pa, pb := a.testPacket(), b.testPacket()
 	if pa != pb {
 		t.Fatal("the viewers were not given the same packet")
 	}
@@ -97,15 +93,13 @@ func TestAbsoluteMoveIsEncodedOnce(t *testing.T) {
 	if got.EntityRuntimeID != own.ent.RuntimeID() || got.Flags != packet.MoveFlagOnGround || got.Position[1] != 64 || got.Rotation[1] != 90 {
 		t.Fatalf("viewer shown %+v", got)
 	}
-	if self := (<-own.packets).(*v2193.MoveActorAbsolutePacket); self.EntityRuntimeID != selfEntityRuntimeID {
+	if self := (own.testPacket()).(*v2193.MoveActorAbsolutePacket); self.EntityRuntimeID != selfEntityRuntimeID {
 		t.Fatalf("own session shown %+v", self)
 	}
 	own.moving.Store(true)
 	own.ViewEntityMove(p, move)
-	select {
-	case pk := <-own.packets:
+	if pk := own.testPacket(); pk != nil {
 		t.Fatalf("a move its client made echoed back: %T", pk)
-	default:
 	}
 }
 

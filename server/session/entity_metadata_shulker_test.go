@@ -72,7 +72,7 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 			}
 			shulker := tx.AddEntity(handle)
 			viewer.ViewEntity(shulker)
-			added := (<-viewer.packets).(*v2193.AddActorPacket)
+			added := (viewer.testPacket()).(*v2193.AddActorPacket)
 			assertMetadata(added.EntityMetadata, pos, tc.face, tc.colour, tc.peek)
 		}
 	})
@@ -97,7 +97,7 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 			found[i] = true
 			tc := cases[i]
 			viewer.ViewEntity(shulker)
-			added := (<-viewer.packets).(*v2193.AddActorPacket)
+			added := (viewer.testPacket()).(*v2193.AddActorPacket)
 			assertMetadata(added.EntityMetadata, pos, tc.face, tc.colour, tc.peek)
 			if got := shulker.H().NBT(tx)["Variant"]; got != int32(tc.colour) {
 				t.Errorf("saved shell Variant = %v, want %d", got, tc.colour)
@@ -123,15 +123,14 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 			tx.SetBlock(pos.Side(cube.FaceEast), block.Air{}, nil)
 			tx.SetBlock(pos.Side(cube.FaceNorth), block.Stone{}, nil)
 			east.Tick(tx, 1)
-			select {
-			case pk := <-viewer.packets:
+			if pk := viewer.testPacket(); pk != nil {
 				updated, ok := pk.(*v2193.SetActorDataPacket)
 				if !ok {
 					t.Fatalf("attachment change sent %T, want SetActorData", pk)
 				}
 				// Shulker.findNewAttachment keeps the shell as open as it was.
 				assertMetadata(updated.EntityMetadata, pos, cube.FaceNorth, 4, 73)
-			default:
+			} else {
 				t.Fatal("attachment/peek changed without a client metadata update")
 			}
 		})

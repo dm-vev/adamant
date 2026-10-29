@@ -2,6 +2,8 @@ package session
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 )
@@ -20,14 +22,14 @@ func (s *Session) writeQueued(pk proto.Packet) (err error) {
 	return s.conn.WritePacket(pk)
 }
 
-// maxQueuedPackets bounds retained packets for a connection whose writer cannot
-// keep up. The normal 256-packet channel is only a fast path, not a burst limit:
-// chunk/entity publication may enqueue hundreds of packets in a single tick.
+// maxQueuedPackets bounds retained packets for a connection whose writes
+// cannot keep up. Chunk and entity publication may queue hundreds of packets
+// in a single tick, so it is far above what a tick shows.
 const maxQueuedPackets = 16 * 1024
 
-// writePacket queues a packet without waiting for encoding or network I/O on the
-// world owner. All accepted packets retain FIFO order, including during bursts.
-// Every packet in pendingPackets was queued after every packet in the channel.
+// writePacket queues a packet without waiting for encoding or network I/O on
+// the world owner. Packets keep their order. Outside a batch the session is
+// handed to the flushers at once; within one, when the batch ends.
 func (s *Session) writePacket(pk proto.Packet) {
 	if s == Nop {
 		return
@@ -37,16 +39,7 @@ func (s *Session) writePacket(pk proto.Packet) {
 		s.packetsMu.Unlock()
 		return
 	}
-	if s.holdPackets == 0 && len(s.pendingPackets) == 0 {
-		select {
-		case s.packets <- pk:
-			s.packetsMu.Unlock()
-			return
-		default:
-		}
-	}
-	queued := len(s.packets) + len(s.pendingPackets) + len(s.heldPackets)
-	if queued >= maxQueuedPackets {
+	if queued := len(s.pendingPackets) + len(s.heldPackets); queued >= maxQueuedPackets {
 		// Stop accepting packets immediately. Close off-owner because closing a
 		// real connection may flush buffered data and wait for network I/O.
 		closeConn := s.closing.CompareAndSwap(false, true)
@@ -59,15 +52,30 @@ func (s *Session) writePacket(pk proto.Packet) {
 	}
 	if s.holdPackets > 0 {
 		s.heldPackets = append(s.heldPackets, pk)
-	} else {
-		s.pendingPackets = append(s.pendingPackets, pk)
+		s.packetsMu.Unlock()
+		return
 	}
+	s.pendingPackets = append(s.pendingPackets, pk)
+	submit := s.scheduleFlushLocked()
 	s.packetsMu.Unlock()
+	if submit {
+		flushers.submit(s)
+	}
 }
 
-// BeginBatch holds the packets queued until EndBatch, so that the writer
-// wakes once for what a tick of the world of the session shows rather than
-// for every packet.
+// scheduleFlushLocked marks the session as waiting for a flusher and
+// reports whether it must be handed to one: not if one has it already.
+func (s *Session) scheduleFlushLocked() bool {
+	if s.flushing || s.conn == nil {
+		return false
+	}
+	s.flushing = true
+	return true
+}
+
+// BeginBatch holds the packets queued until EndBatch, so that a flusher
+// takes what a tick of the world of the session shows at once rather than
+// packet by packet.
 func (s *Session) BeginBatch() {
 	if s == Nop {
 		return
@@ -77,85 +85,81 @@ func (s *Session) BeginBatch() {
 	s.packetsMu.Unlock()
 }
 
-// EndBatch hands the packets held since BeginBatch to the writer: the first
-// through the channel, waking the writer, and the rest through the overflow,
-// which the writer takes at once.
+// EndBatch hands the packets held since BeginBatch to a flusher.
 func (s *Session) EndBatch() {
 	if s == Nop {
 		return
 	}
 	s.packetsMu.Lock()
-	defer s.packetsMu.Unlock()
 	if s.holdPackets--; s.holdPackets > 0 || len(s.heldPackets) == 0 {
+		s.packetsMu.Unlock()
 		return
 	}
 	held := s.heldPackets
 	if s.closing.Load() {
 		clear(held)
 		s.heldPackets = held[:0]
+		s.packetsMu.Unlock()
 		return
 	}
-	rest := held
-	if len(s.pendingPackets) == 0 {
-		select {
-		case s.packets <- held[0]:
-			rest = held[1:]
-		default:
-		}
-	}
-	s.pendingPackets = append(s.pendingPackets, rest...)
+	s.pendingPackets = append(s.pendingPackets, held...)
 	clear(held)
 	s.heldPackets = held[:0]
+	submit := s.scheduleFlushLocked()
+	s.packetsMu.Unlock()
+	if submit {
+		flushers.submit(s)
+	}
 }
 
-func (s *Session) sendPackets() {
-	var batch []proto.Packet
+// flush writes the packets queued to the connection and flushes them as a
+// batch, again while more were queued meanwhile. One flusher at a time has
+// a session.
+func (s *Session) flush() {
 	for {
-		select {
-		case <-s.closeBackground:
-			return
-		case pk := <-s.packets:
-			batch = append(batch[:0], pk)
-		}
-		// Take the rest of the channel and then the overflow, queued after it,
-		// while no packet can be queued.
 		s.packetsMu.Lock()
-		for drained := false; !drained; {
-			select {
-			case pk := <-s.packets:
-				batch = append(batch, pk)
-			default:
-				drained = true
-			}
-		}
-		batch = append(batch, s.pendingPackets...)
-		clear(s.pendingPackets)
-		s.pendingPackets = s.pendingPackets[:0]
-		s.packetsMu.Unlock()
-		if s.closing.Load() {
+		batch := s.pendingPackets
+		if len(batch) == 0 || s.closing.Load() {
+			s.flushing = false
+			s.packetsMu.Unlock()
 			return
 		}
-		s.connWriteMu.Lock()
-		for i, pk := range batch {
-			err := s.writeQueued(pk)
-			batch[i] = nil
-			if err != nil {
-				s.connWriteMu.Unlock()
-				s.conf.Log.Debug("write session packet: " + err.Error())
-				s.CloseConnection()
-				return
-			}
+		s.pendingPackets = s.flushSpare
+		s.flushSpare = nil
+		s.packetsMu.Unlock()
+
+		err := s.writeBatch(batch)
+		clear(batch)
+		if cap(batch) <= maxKeptBatch {
+			s.flushSpare = batch[:0]
 		}
-		// What a tick showed goes out as one batch, when the tick ends
-		// rather than on a timer of the connection.
-		err := s.conn.Flush()
-		s.connWriteMu.Unlock()
 		if err != nil {
-			s.conf.Log.Debug("flush session packets: " + err.Error())
+			s.conf.Log.Debug("write session packets: " + err.Error())
+			s.packetsMu.Lock()
+			s.flushing = false
+			s.packetsMu.Unlock()
 			s.CloseConnection()
 			return
 		}
 	}
+}
+
+// maxKeptBatch bounds the packets of the array of a batch a session keeps
+// for the next: the rare burst of a spawn is not kept for good.
+const maxKeptBatch = 1024
+
+// writeBatch writes packets to the connection and flushes them: what a tick
+// showed goes out as one batch, when the tick ends rather than on a timer of
+// the connection.
+func (s *Session) writeBatch(batch []proto.Packet) error {
+	s.connWriteMu.Lock()
+	defer s.connWriteMu.Unlock()
+	for _, pk := range batch {
+		if err := s.writeQueued(pk); err != nil {
+			return err
+		}
+	}
+	return s.conn.Flush()
 }
 
 // clearPacketQueue releases payloads retained by a session that is closing.
@@ -164,11 +168,65 @@ func (s *Session) clearPacketQueue() {
 	defer s.packetsMu.Unlock()
 	s.pendingPackets = nil
 	s.heldPackets = nil
-	for {
-		select {
-		case <-s.packets:
-		default:
-			return
+}
+
+// flushers write the packets queued for sessions to their connections: a
+// goroutine a CPU shared by all sessions rather than one a session, each
+// taking the sessions handed to it in turn. They start with the first
+// session handed to them.
+var flushers flushPool
+
+// flushPool is a queue of sessions to flush with the goroutines taking from
+// it.
+type flushPool struct {
+	start sync.Once
+	mu    sync.Mutex
+	cond  sync.Cond
+	queue []*Session
+	head  int
+}
+
+// submit queues s to be flushed.
+func (p *flushPool) submit(s *Session) {
+	p.start.Do(func() {
+		p.cond.L = &p.mu
+		for range max(runtime.GOMAXPROCS(0), 1) {
+			go p.work()
 		}
+	})
+	p.mu.Lock()
+	p.queue = append(p.queue, s)
+	p.mu.Unlock()
+	p.cond.Signal()
+}
+
+func (p *flushPool) work() {
+	for {
+		p.mu.Lock()
+		for p.head == len(p.queue) {
+			p.cond.Wait()
+		}
+		s := p.queue[p.head]
+		p.queue[p.head] = nil
+		if p.head++; p.head == len(p.queue) {
+			p.queue, p.head = p.queue[:0], 0
+		}
+		p.mu.Unlock()
+		p.flush(s)
 	}
+}
+
+// flush flushes s; a panic of its connection closes the session rather than
+// the process.
+func (p *flushPool) flush(s *Session) {
+	defer func() {
+		if v := recover(); v != nil {
+			s.conf.Log.Error("panic flushing session packets", "panic", v)
+			s.packetsMu.Lock()
+			s.flushing = false
+			s.packetsMu.Unlock()
+			s.CloseConnection()
+		}
+	}()
+	s.flush()
 }

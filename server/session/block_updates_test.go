@@ -34,10 +34,9 @@ func TestBlockUpdatesAreEncodedOnce(t *testing.T) {
 	b.ViewBlockUpdates(u)
 	drain := func(s *Session) (pks []proto.Packet) {
 		for {
-			select {
-			case pk := <-s.packets:
+			if pk := s.testPacket(); pk != nil {
 				pks = append(pks, pk)
-			default:
+			} else {
 				return pks
 			}
 		}

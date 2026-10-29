@@ -72,17 +72,17 @@ func transactionTestSession(count int) *Session {
 
 func assertActionThenHeldSlot(t *testing.T, s *Session, wantCount uint16) {
 	t.Helper()
-	if _, ok := (<-s.packets).(*v2193.TextPacket); !ok {
+	if _, ok := (s.testPacket()).(*v2193.TextPacket); !ok {
 		t.Fatal("action packet was not sent before the inventory resync")
 	}
-	slot, ok := (<-s.packets).(*v2193.InventorySlotPacket)
+	slot, ok := (s.testPacket()).(*v2193.InventorySlotPacket)
 	if !ok {
 		t.Fatal("held slot was not resynced")
 	}
 	if slot.WindowID != protocol.WindowIDInventory || slot.Slot != 0 || slot.NewItem.Stack.Count != wantCount {
 		t.Fatalf("held slot = %+v, want inventory slot 0 with count %d", slot, wantCount)
 	}
-	if len(s.packets) != 0 {
+	if len(s.heldPackets) != 0 {
 		t.Fatal("unexpected full inventory resend")
 	}
 }

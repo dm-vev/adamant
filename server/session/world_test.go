@@ -14,7 +14,7 @@ func TestViewFallDamageSendsGameRule(t *testing.T) {
 	s := testSession("fall-damage")
 	s.ViewFallDamage(false)
 
-	pk, ok := (<-s.packets).(*v2193.GameRulesChangedPacket)
+	pk, ok := (s.testPacket()).(*v2193.GameRulesChangedPacket)
 	if !ok {
 		t.Fatalf("packet type = %T, want *v2193.GameRulesChangedPacket", pk)
 	}
@@ -40,30 +40,30 @@ func TestViewVisibilityHidesArmourPerViewer(t *testing.T) {
 	}
 
 	hiddenViewer.ViewVisibility(e, world.EnforceInvisible())
-	hiddenArmour := (<-hiddenViewer.packets).(*v2193.MobArmourEquipmentPacket)
+	hiddenArmour := (hiddenViewer.testPacket()).(*v2193.MobArmourEquipmentPacket)
 	if hiddenArmour.Helmet.Stack.Count != 0 {
 		t.Fatal("invisible viewer received equipped armour")
 	}
-	if len(publicViewer.packets) != 0 {
+	if len(publicViewer.heldPackets) != 0 {
 		t.Fatal("visibility override leaked packets to public viewer")
 	}
 
 	publicViewer.ViewEntityArmour(e)
-	if got := (<-publicViewer.packets).(*v2193.MobArmourEquipmentPacket); got.Helmet.Stack.Count != 1 {
+	if got := (publicViewer.testPacket()).(*v2193.MobArmourEquipmentPacket); got.Helmet.Stack.Count != 1 {
 		t.Fatal("public viewer did not receive equipped armour")
 	}
 	if armour.Helmet().Count() != 1 {
 		t.Fatal("per-viewer hiding changed the entity's armour")
 	}
 	hiddenViewer.ViewEntityItems(e)
-	if got := (<-hiddenViewer.packets).(*v2193.MobEquipmentPacket); got.NewItem.Stack.Count != 1 {
+	if got := (hiddenViewer.testPacket()).(*v2193.MobEquipmentPacket); got.NewItem.Stack.Count != 1 {
 		t.Fatal("armour hiding suppressed held-item updates")
 	}
-	<-hiddenViewer.packets // Empty off-hand update.
+	hiddenViewer.testPacket() // Empty off-hand update.
 
 	for _, level := range []world.VisibilityLevel{world.EnforceVisible(), world.EnforceInvisible(), world.PublicVisibility()} {
 		hiddenViewer.ViewVisibility(e, level)
-		got := (<-hiddenViewer.packets).(*v2193.MobArmourEquipmentPacket)
+		got := (hiddenViewer.testPacket()).(*v2193.MobArmourEquipmentPacket)
 		want := uint16(1)
 		if level == world.EnforceInvisible() {
 			want = 0
@@ -78,21 +78,21 @@ func TestViewVisibilityHidesArmourPerViewer(t *testing.T) {
 
 	hiddenViewer.ViewVisibility(e, world.EnforceInvisible())
 	publicViewer.ViewVisibility(e, world.EnforceInvisible())
-	<-hiddenViewer.packets
-	<-publicViewer.packets
+	hiddenViewer.testPacket()
+	publicViewer.testPacket()
 	hiddenViewer.RemoveViewLayer(e)
-	if got := (<-hiddenViewer.packets).(*v2193.MobArmourEquipmentPacket); got.Helmet.Stack.Count != 1 {
+	if got := (hiddenViewer.testPacket()).(*v2193.MobArmourEquipmentPacket); got.Helmet.Stack.Count != 1 {
 		t.Fatal("removing one viewer's invisibility layer did not restore armour")
 	}
-	if len(publicViewer.packets) != 0 {
+	if len(publicViewer.heldPackets) != 0 {
 		t.Fatal("removing one viewer's layer refreshed another viewer")
 	}
 	publicViewer.ViewEntityArmour(e)
-	if got := (<-publicViewer.packets).(*v2193.MobArmourEquipmentPacket); got.Helmet.Stack.Count != 0 {
+	if got := (publicViewer.testPacket()).(*v2193.MobArmourEquipmentPacket); got.Helmet.Stack.Count != 0 {
 		t.Fatal("remaining invisibility layer did not retain precedence")
 	}
 	publicViewer.RemoveViewLayer(e)
-	if got := (<-publicViewer.packets).(*v2193.MobArmourEquipmentPacket); got.Helmet.Stack.Count != 1 {
+	if got := (publicViewer.testPacket()).(*v2193.MobArmourEquipmentPacket); got.Helmet.Stack.Count != 1 {
 		t.Fatal("removing final invisibility layer did not restore armour")
 	}
 }
@@ -110,7 +110,7 @@ func TestViewEntityArmourPublishesBodyItem(t *testing.T) {
 	s.entities[2] = handle
 
 	s.ViewEntityArmour(entity)
-	got := (<-s.packets).(*v2193.MobArmourEquipmentPacket)
+	got := (s.testPacket()).(*v2193.MobArmourEquipmentPacket)
 	if got.Helmet.Stack.Count != 1 || got.Body.Stack.Count != 1 {
 		t.Fatalf("armour packet helmet/body counts = %d/%d, want 1/1", got.Helmet.Stack.Count, got.Body.Stack.Count)
 	}
@@ -135,10 +135,10 @@ func TestHideSessionlessControllableTwice(t *testing.T) {
 	if _, ok := s.entities[runtimeID]; ok {
 		t.Fatal("entity remains after hiding sessionless controllable")
 	}
-	if got := len(s.packets); got != 1 {
+	if got := len(s.heldPackets); got != 1 {
 		t.Fatalf("got %d remove packets, want 1", got)
 	}
-	removed := (<-s.packets).(*v2193.RemoveActorPacket)
+	removed := (s.testPacket()).(*v2193.RemoveActorPacket)
 	if removed.EntityUniqueID != uniqueID {
 		t.Fatalf("removed actor ID %d, want %d (runtime ID is %d)", removed.EntityUniqueID, uniqueID, runtimeID)
 	}

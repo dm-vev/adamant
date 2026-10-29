@@ -70,8 +70,8 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 		t.Fatalf("session list contains removed session: %v", remaining)
 	}
 
-	first := packetOf(<-existing.packets).(*v2193.PlayerListPacket)
-	second := packetOf(<-existing.packets).(*v2193.PlayerListPacket)
+	first := packetOf(existing.testPacket()).(*v2193.PlayerListPacket)
+	second := packetOf(existing.testPacket()).(*v2193.PlayerListPacket)
 	if first.Entries[0].ActionType != protocol.PlayerListActionAdd || second.Entries[0].ActionType != protocol.PlayerListActionRemove {
 		t.Fatalf("player list updates out of order: %v then %v", first.Entries[0].ActionType, second.Entries[0].ActionType)
 	}
@@ -104,12 +104,26 @@ func testSession(name string) *Session {
 	return &Session{
 		conn:             testConn{identity: login.IdentityData{Identity: uuid.NewString(), DisplayName: name}},
 		conf:             Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
-		packets:          make(chan proto.Packet, 8),
-		closeBackground:  make(chan struct{}),
+		holdPackets:      1,
 		ent:              handle,
 		entityRuntimeIDs: map[*world.EntityHandle]uint64{handle: selfEntityRuntimeID},
 		entities:         map[uint64]*world.EntityHandle{selfEntityRuntimeID: handle},
 	}
+}
+
+// testPacket takes the next packet queued for a session of a test, which
+// holds what it is given for the test to take: nil if none was queued.
+func (s *Session) testPacket() proto.Packet {
+	s.packetsMu.Lock()
+	defer s.packetsMu.Unlock()
+	for _, queue := range []*[]proto.Packet{&s.heldPackets, &s.pendingPackets} {
+		if len(*queue) > 0 {
+			pk := (*queue)[0]
+			*queue = (*queue)[1:]
+			return pk
+		}
+	}
+	return nil
 }
 
 type testConn struct {
@@ -139,7 +153,7 @@ func TestPlayerListEntryIsShared(t *testing.T) {
 	c.listEntry.Store(c.newListEntry(sk))
 	l.s = []*Session{a, b}
 	l.Add(c)
-	pa, pb := <-a.packets, <-b.packets
+	pa, pb := a.testPacket(), b.testPacket()
 	if pa != pb || pa != proto.Packet(c.listEntry.Load()) {
 		t.Fatal("the sessions were not given the same entry of the new session")
 	}
@@ -148,7 +162,7 @@ func TestPlayerListEntryIsShared(t *testing.T) {
 	}
 	seen := map[uuid.UUID]bool{}
 	for range 3 {
-		seen[packetOf(<-c.packets).(*v2193.PlayerListPacket).Entries[0].UUID] = true
+		seen[packetOf(c.testPacket()).(*v2193.PlayerListPacket).Entries[0].UUID] = true
 	}
 	if !seen[a.ent.UUID()] || !seen[b.ent.UUID()] || !seen[c.ent.UUID()] {
 		t.Fatalf("the new session listed %v", seen)
@@ -172,9 +186,9 @@ func TestShowSkinReachesEverySession(t *testing.T) {
 	sk := skin.New(64, 64)
 	sk.PlayFabID = "new-skin"
 	a.ShowSkin(sk)
-	first := <-a.packets
+	first := a.testPacket()
 	for _, s := range []*Session{b, c} {
-		if pk := <-s.packets; pk != first {
+		if pk := s.testPacket(); pk != first {
 			t.Fatal("the sessions were not given the same PlayerSkin")
 		}
 	}

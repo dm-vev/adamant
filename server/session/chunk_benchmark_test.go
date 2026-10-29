@@ -200,10 +200,9 @@ func benchmarkColumnWithBlockEntities(b *testing.B, count int) (*world.Column, i
 
 func benchmarkSession(cacheEnabled bool) *Session {
 	return &Session{
-		conn:            benchmarkConn{cacheEnabled: cacheEnabled},
-		conf:            Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
-		blobs:           map[uint64][]byte{},
-		closeBackground: make(chan struct{}),
+		conn:  benchmarkConn{cacheEnabled: cacheEnabled},
+		conf:  Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},
+		blobs: map[uint64][]byte{},
 	}
 }
 

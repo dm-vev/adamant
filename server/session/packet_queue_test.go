@@ -63,7 +63,7 @@ func TestSessionPacketBurstPreservesOrder(t *testing.T) {
 	}
 	s.packetsMu.Lock()
 	defer s.packetsMu.Unlock()
-	if len(s.packets) != 0 || len(s.pendingPackets) != 0 {
+	if len(s.pendingPackets) != 0 {
 		t.Fatal("drained queue retained packets")
 	}
 }
@@ -81,7 +81,7 @@ func TestSessionPacketBacklogBounded(t *testing.T) {
 	s.writePacket(&v2193.TextPacket{Message: "after close"})
 	s.packetsMu.Lock()
 	defer s.packetsMu.Unlock()
-	if len(s.packets) != 0 || len(s.pendingPackets) != 0 {
+	if len(s.pendingPackets) != 0 {
 		t.Fatal("closed session retained queued packets")
 	}
 }
@@ -219,7 +219,7 @@ func TestSessionHeldPacketsBounded(t *testing.T) {
 	s.EndBatch()
 	s.packetsMu.Lock()
 	defer s.packetsMu.Unlock()
-	if len(s.packets) != 0 || len(s.pendingPackets) != 0 || len(s.heldPackets) != 0 {
+	if len(s.pendingPackets) != 0 || len(s.heldPackets) != 0 {
 		t.Fatal("closed session retained queued packets")
 	}
 }
@@ -313,9 +313,9 @@ func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 // TestEmptyMessageShowsAnEmptyLine sends an empty chat message, which
 // Bedrock refuses as it is: a space goes instead, as Java shows a line.
 func TestEmptyMessageShowsAnEmptyLine(t *testing.T) {
-	s := &Session{packets: make(chan proto.Packet, 1), closeBackground: make(chan struct{})}
+	s := &Session{holdPackets: 1}
 	s.SendMessage("")
-	if text, ok := (<-s.packets).(*v2193.TextPacket); !ok || text.Message != " " {
+	if text, ok := (s.testPacket()).(*v2193.TextPacket); !ok || text.Message != " " {
 		t.Fatalf("sent %+v, want a Text of one space", text)
 	}
 }
