@@ -33,7 +33,7 @@ func TestBuiltinDescriptionsMatchNativeTranslations(t *testing.T) {
 		t.Run(locale, func(t *testing.T) {
 			pk, _ := session.BuildAvailableCommands(commands, &descriptionTestSource{locale: language.MustParse(locale)}, make(map[string]struct{}))
 			var wire bytes.Buffer
-			pk.Marshal(protocol.NewWriter(&wire, 0))
+			wire.Write(encodePacket(pk))
 			var decoded packet.AvailableCommands
 			decoded.Marshal(protocol.NewReader(&wire, 0, false))
 			for _, command := range decoded.Commands {

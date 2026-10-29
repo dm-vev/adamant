@@ -25,6 +25,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -608,7 +609,11 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 		srv.conf.Log.Debug("spawn failed: "+err.Error(), "raddr", conn.RemoteAddr())
 		return
 	}
-	_ = conn.WritePacket(&packet.ItemRegistry{Items: srv.customItems})
+	items := make([]v2193.ItemEntry, len(srv.customItems))
+	for i, e := range srv.customItems {
+		items[i] = v2193.ItemEntry(e)
+	}
+	_ = session.WriteTo(conn, &v2193.ItemRegistryPacket{Items: items})
 	srv.incoming <- srv.createPlayer(id, conn, d, w)
 }
 

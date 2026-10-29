@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -32,7 +33,7 @@ func (h *ContainerCloseHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 	default:
 		containerType = pk.ContainerType
 	}
-	s.writePacket(&packet.ContainerClose{
+	s.writePacket(&v2193.ContainerClosePacket{
 		WindowID:      pk.WindowID,
 		ContainerType: containerType,
 	})

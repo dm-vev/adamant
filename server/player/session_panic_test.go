@@ -14,6 +14,8 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -173,7 +175,7 @@ type packetPanicConn struct {
 	closed     chan struct{}
 	once       sync.Once
 	writesMu   sync.Mutex
-	writes     []packet.Packet
+	writes     []any
 }
 
 func newPacketPanicConn() *packetPanicConn {
@@ -236,7 +238,13 @@ func waitForSessionViewer(t *testing.T, w *world.World, pos mgl64.Vec3, sess *se
 	}
 }
 
-func (c *packetPanicConn) WritePacket(pk packet.Packet) error {
+func (c *packetPanicConn) WritePacket(pk packet.Packet) error { return c.add(pk) }
+
+// WriteProto takes the packets of the generated codecs, which the session
+// writes as they are.
+func (c *packetPanicConn) WriteProto(pk proto.Packet) error { return c.add(pk) }
+
+func (c *packetPanicConn) add(pk any) error {
 	c.writesMu.Lock()
 	c.writes = append(c.writes, pk)
 	c.writesMu.Unlock()
@@ -249,7 +257,7 @@ func (c *packetPanicConn) disconnected() bool {
 	c.writesMu.Lock()
 	defer c.writesMu.Unlock()
 	for _, pk := range c.writes {
-		if _, ok := pk.(*packet.Disconnect); ok {
+		if _, ok := pk.(*v2193.DisconnectPacket); ok {
 			return true
 		}
 	}

@@ -8,9 +8,9 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
@@ -35,16 +35,16 @@ func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
 	w := open()
 	viewer := testSession("prepared-villager")
 	viewer.br = world.DefaultBlockRegistry
-	assertBaby := func(metadata protocol.EntityMetadata, want bool) {
+	assertBaby := func(metadata v2193.Metadata, want bool) {
 		t.Helper()
-		if got := metadata.Flag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBaby); got != want {
+		if got := protocol.EntityMetadata(metadata).Flag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBaby); got != want {
 			t.Errorf("client Baby=%t, want %t", got, want)
 		}
 	}
 	if err := w.Do(func(tx *world.Tx) {
 		villager := tx.AddEntity(handle).(*entity.Villager)
 		viewer.ViewEntity(villager)
-		added, ok := (<-viewer.packets).(*packet.AddActor)
+		added, ok := (<-viewer.packets).(*v2193.AddActorPacket)
 		if !ok {
 			t.Fatal("villager did not produce an AddActor packet")
 		}
@@ -71,18 +71,18 @@ func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
 			t.Fatal("prepared villager missing after MCDB reload")
 		}
 		viewer.ViewEntity(villager)
-		added := (<-viewer.packets).(*packet.AddActor)
+		added := (<-viewer.packets).(*v2193.AddActorPacket)
 		assertBaby(added.EntityMetadata, true)
 		villager.Tick(tx, 1)
 		if got := villager.Age(); got != 0 {
 			t.Fatalf("age after growth tick=%d, want 0", got)
 		}
 		viewer.ViewEntityState(villager)
-		grown := (<-viewer.packets).(*packet.SetActorData)
+		grown := (<-viewer.packets).(*v2193.SetActorDataPacket)
 		assertBaby(grown.EntityMetadata, false)
 		villager.SetAge(2400)
 		viewer.ViewEntityState(villager)
-		cooldown := (<-viewer.packets).(*packet.SetActorData)
+		cooldown := (<-viewer.packets).(*v2193.SetActorDataPacket)
 		assertBaby(cooldown.EntityMetadata, false)
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)

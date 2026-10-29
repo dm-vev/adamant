@@ -26,6 +26,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -101,7 +102,7 @@ func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
 
 // SendRespawn spawns the Controllable entity of the session client-side in the world, provided it has died.
 func (s *Session) SendRespawn(pos mgl64.Vec3, c Controllable) {
-	s.writePacket(&packet.Respawn{
+	s.writePacket(&v2193.RespawnPacket{
 		Position:        vec64To32(entityNetworkPosition(c, pos)),
 		State:           packet.RespawnStateReadyToSpawn,
 		EntityRuntimeID: selfEntityRuntimeID,
@@ -112,7 +113,7 @@ func (s *Session) SendRespawn(pos mgl64.Vec3, c Controllable) {
 // to do so other than to prevent the client-side "Respawn point set" message when sleeping in a bed.
 func (s *Session) SendPlayerSpawn(pos mgl64.Vec3) {
 	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	s.writePacket(&packet.SetSpawnPosition{
+	s.writePacket(&v2193.SetSpawnPositionPacket{
 		SpawnType:     packet.SpawnTypePlayer,
 		Position:      blockPos,
 		Dimension:     packet.DimensionOverworld,
@@ -123,8 +124,8 @@ func (s *Session) SendPlayerSpawn(pos mgl64.Vec3) {
 // sendBiomes sends all the vanilla biomes to the session.
 func (s *Session) sendBiomes() {
 	definitions, stringList := world.BiomeDefinitions()
-	s.writePacket(&packet.BiomeDefinitionList{
-		BiomeDefinitions: definitions,
+	s.writePacket(&v2193.BiomeDefinitionListPacket{
+		BiomeDefinitions: to[[]v2193.BiomeDefinition](definitions),
 		StringList:       stringList,
 	})
 }
@@ -168,7 +169,7 @@ func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) []string {
 		}
 	}
 	if len(packetIDs) != 0 {
-		s.writePacket(&packet.UnlockedRecipes{UnlockType: unlockType, Recipes: packetIDs})
+		s.writePacket(&v2193.UnlockedRecipesPacket{UnlockType: unlockType, Recipes: packetIDs})
 	}
 	return accepted
 }
@@ -201,7 +202,7 @@ func (s *Session) sendArmourTrimData() {
 		}
 	}
 
-	s.writePacket(&packet.TrimData{Patterns: trimPatterns, Materials: trimMaterials})
+	s.writePacket(&v2193.TrimDataPacket{Patterns: to[[]v2193.TrimPattern](trimPatterns), Materials: to[[]v2193.TrimMaterial](trimMaterials)})
 }
 
 // ResyncInventory resends the main and off-hand inventories after an unfulfilled client prediction.
@@ -212,22 +213,22 @@ func (s *Session) ResyncInventory() {
 
 // sendInv sends the inventory passed to the client with the window ID.
 func (s *Session) sendInv(inv *inventory.Inventory, windowID uint32) {
-	pk := &packet.InventoryContent{
+	pk := &v2193.InventoryContentPacket{
 		WindowID: windowID,
-		Content:  make([]protocol.ItemInstance, 0, inv.Size()),
+		Content:  make([]v2193.ItemInstance, 0, inv.Size()),
 	}
 	for _, i := range inv.Slots() {
-		pk.Content = append(pk.Content, instanceFromItem(s.br, i))
+		pk.Content = append(pk.Content, toItemInstance(instanceFromItem(s.br, i)))
 	}
 	s.writePacket(pk)
 }
 
 // sendItem sends the item stack passed to the client with the window ID and slot passed.
 func (s *Session) sendItem(item item.Stack, slot int, windowID uint32) {
-	s.writePacket(&packet.InventorySlot{
+	s.writePacket(&v2193.InventorySlotPacket{
 		WindowID: windowID,
 		Slot:     uint32(slot),
-		NewItem:  instanceFromItem(s.br, item),
+		NewItem:  toItemInstance(instanceFromItem(s.br, item)),
 	})
 }
 
@@ -344,7 +345,7 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 func (s *Session) Disconnect(message string) {
 	if s != Nop {
 		s.connWriteMu.Lock()
-		_ = s.conn.WritePacket(&packet.Disconnect{
+		_ = WriteTo(s.conn, &v2193.DisconnectPacket{
 			HideDisconnectionScreen: message == "",
 			Message:                 message,
 		})
@@ -355,9 +356,9 @@ func (s *Session) Disconnect(message string) {
 
 // SendSpeed sends the speed of the player in an UpdateAttributes packet, so that it is updated client-side.
 func (s *Session) SendSpeed(speed float64) {
-	s.writePacket(&packet.UpdateAttributes{
+	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Attributes: []protocol.Attribute{{
+		Attributes: toAttributes([]protocol.Attribute{{
 			AttributeValue: protocol.AttributeValue{
 				Name:  "minecraft:movement",
 				Value: float32(speed),
@@ -365,15 +366,15 @@ func (s *Session) SendSpeed(speed float64) {
 			},
 			DefaultMax: math.MaxFloat32,
 			Default:    0.1,
-		}},
+		}}),
 	})
 }
 
 // SendFood ...
 func (s *Session) SendFood(food int, saturation, exhaustion float64) {
-	s.writePacket(&packet.UpdateAttributes{
+	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Attributes: []protocol.Attribute{
+		Attributes: toAttributes([]protocol.Attribute{
 			{
 				AttributeValue: protocol.AttributeValue{
 					Name:  "minecraft:player.hunger",
@@ -400,7 +401,7 @@ func (s *Session) SendFood(food int, saturation, exhaustion float64) {
 				},
 				DefaultMax: 5,
 			},
-		},
+		}),
 	})
 }
 
@@ -457,11 +458,11 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 		metadata[protocol.EntityDataKeyNPCData] = string(display)
 	}
 
-	s.writePacket(&packet.SetActorData{
+	s.writePacket(&v2193.SetActorDataPacket{
 		EntityRuntimeID: entityRuntimeID,
-		EntityMetadata:  metadata,
+		EntityMetadata:  toMetadata(metadata),
 	})
-	s.writePacket(&packet.NPCDialogue{
+	s.writePacket(&v2193.NPCDialoguePacket{
 		EntityUniqueID: uint64(s.entityUniqueID(e)),
 		ActionType:     packet.NPCDialogueActionOpen,
 		Dialogue:       d.Body(),
@@ -493,7 +494,7 @@ func (s *Session) CloseDialogue() {
 		return
 	}
 
-	s.writePacket(&packet.NPCDialogue{
+	s.writePacket(&v2193.NPCDialoguePacket{
 		EntityUniqueID: entityUniqueID,
 		ActionType:     packet.NPCDialogueActionClose,
 	})
@@ -533,7 +534,7 @@ func (s *Session) SendForm(f form.Form) {
 	h.forms[id] = f
 	h.mu.Unlock()
 
-	s.writePacket(&packet.ModalFormRequest{
+	s.writePacket(&v2193.ModalFormRequestPacket{
 		FormID:   id,
 		FormData: b,
 	})
@@ -542,7 +543,7 @@ func (s *Session) SendForm(f form.Form) {
 // CloseForm closes any forms that the player currently has open. If the player has no forms open, nothing
 // happens.
 func (s *Session) CloseForm() {
-	s.writePacket(&packet.ClientBoundCloseForm{})
+	s.writePacket(&v2193.ClientBoundCloseFormPacket{})
 }
 
 // Transfer transfers the player to a server with the IP and port passed.
@@ -553,7 +554,7 @@ func (s *Session) Transfer(ip net.IP, port int) {
 		}
 		return
 	}
-	s.writePacket(&packet.Transfer{
+	s.writePacket(&v2193.TransferPacket{
 		Address: ip.String(),
 		Port:    uint16(port),
 	})
@@ -565,7 +566,7 @@ func (s *Session) SendGameMode(c Controllable) {
 	if s == Nop {
 		return
 	}
-	s.writePacket(&packet.SetPlayerGameType{GameType: GameTypeFromMode(c.GameMode())})
+	s.writePacket(&v2193.SetPlayerGameTypePacket{GameType: GameTypeFromMode(c.GameMode())})
 	s.resendAbilities(c)
 }
 
@@ -616,7 +617,7 @@ func (s *Session) SendAbilities(c Controllable) {
 	s.abilities.Store(&data)
 	self := data
 	self.EntityUniqueID = selfEntityRuntimeID
-	s.writePacket(&packet.UpdateAbilities{AbilityData: self})
+	s.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: toAbilityData(self)})
 }
 
 // SendPermissions refreshes abilities for this player and the other clients
@@ -681,9 +682,9 @@ func (s *Session) abilityData(c Controllable, uniqueID int64) protocol.AbilityDa
 
 // SendHealth sends the health and max health to the player.
 func (s *Session) SendHealth(health, max, absorption float64) {
-	s.writePacket(&packet.UpdateAttributes{
+	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Attributes: []protocol.Attribute{{
+		Attributes: toAttributes([]protocol.Attribute{{
 			AttributeValue: protocol.AttributeValue{
 				Name:  "minecraft:health",
 				Value: float32(math.Ceil(health)),
@@ -698,7 +699,7 @@ func (s *Session) SendHealth(health, max, absorption float64) {
 				Max:   float32(math.MaxFloat32),
 			},
 			DefaultMax: float32(math.MaxFloat32),
-		}},
+		}}),
 	})
 }
 
@@ -719,7 +720,7 @@ func (s *Session) sendEffect(e effect.Effect, op byte) {
 	if e.Infinite() {
 		dur = -1
 	}
-	s.writePacket(&packet.MobEffect{
+	s.writePacket(&v2193.MobEffectPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Operation:       op,
 		EffectType:      int32(id),
@@ -736,7 +737,7 @@ func (s *Session) SendEffectRemoval(e effect.Type) {
 	if !ok {
 		panic(fmt.Sprintf("unregistered effect type %T", e))
 	}
-	s.writePacket(&packet.MobEffect{
+	s.writePacket(&v2193.MobEffectPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
 		Operation:       packet.MobEffectRemove,
 		EffectType:      int32(id),
@@ -746,7 +747,7 @@ func (s *Session) SendEffectRemoval(e effect.Type) {
 // SendGameRules sends all the provided game rules to the player. Once sent, they will be immediately updated
 // on the client if they are valid.
 func (s *Session) sendGameRules(gameRules []protocol.GameRule) {
-	s.writePacket(&packet.GameRulesChanged{GameRules: gameRules})
+	s.writePacket(&v2193.GameRulesChangedPacket{GameRules: to[[]v2193.GameRule](gameRules)})
 }
 
 // EnableCoordinates will either enable or disable coordinates for the player depending on the value given.
@@ -846,9 +847,9 @@ func (s *Session) broadcastOffHandFunc(c Controllable) inventory.SlotFunc {
 		})
 		if !s.inTransaction.Load() {
 			i, _ := s.offHand.Item(0)
-			s.writePacket(&packet.InventoryContent{
+			s.writePacket(&v2193.InventoryContentPacket{
 				WindowID: protocol.WindowIDOffHand,
-				Content:  []protocol.ItemInstance{instanceFromItem(s.br, i)},
+				Content:  toItemInstances([]protocol.ItemInstance{instanceFromItem(s.br, i)}),
 			})
 		}
 	}
@@ -903,9 +904,9 @@ func (s *Session) SendHeldSlot(slot int, c Controllable, force bool) {
 		return
 	}
 	mainHand, _ := c.HeldItems()
-	s.writePacket(&packet.MobEquipment{
+	s.writePacket(&v2193.MobEquipmentPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		NewItem:         instanceFromItem(s.br, mainHand),
+		NewItem:         toItemInstance(instanceFromItem(s.br, mainHand)),
 		InventorySlot:   byte(slot),
 		HotBarSlot:      byte(slot),
 	})
@@ -952,9 +953,9 @@ func (s *Session) VerifySlot(slot int, expected item.Stack) error {
 
 // SendExperience sends the experience level and progress from the given experience manager to the player.
 func (s *Session) SendExperience(level int, progress float64) {
-	s.writePacket(&packet.UpdateAttributes{
+	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Attributes: []protocol.Attribute{
+		Attributes: toAttributes([]protocol.Attribute{
 			{
 				AttributeValue: protocol.AttributeValue{
 					Name:  "minecraft:player.level",
@@ -971,13 +972,13 @@ func (s *Session) SendExperience(level int, progress float64) {
 				},
 				DefaultMax: 1,
 			},
-		},
+		}),
 	})
 }
 
 // SendChargeItemComplete sends a packet to indicate that the item charging process has been completed.
 func (s *Session) SendChargeItemComplete() {
-	s.writePacket(&packet.ActorEvent{
+	s.writePacket(&v2193.ActorEventPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
 		EventType:       packet.ActorEventFinishedChargingItem,
 	})
@@ -1043,10 +1044,10 @@ func (s *Session) SendHudUpdates() {
 	s.hudMu.Unlock()
 
 	if len(show) > 0 {
-		s.writePacket(&packet.SetHud{Elements: show, Visibility: packet.HudVisibilityReset})
+		s.writePacket(&v2193.SetHudPacket{Elements: show, Visibility: packet.HudVisibilityReset})
 	}
 	if len(hide) > 0 {
-		s.writePacket(&packet.SetHud{Elements: hide, Visibility: packet.HudVisibilityHide})
+		s.writePacket(&v2193.SetHudPacket{Elements: hide, Visibility: packet.HudVisibilityHide})
 	}
 }
 
@@ -1119,7 +1120,7 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 	s.debugShapeUpdates = s.debugShapeUpdates[:0]
 	s.debugShapesMu.Unlock()
 
-	s.writePacket(&packet.PrimitiveShapes{Shapes: shapes})
+	s.writePacket(&v2193.PrimitiveShapesPacket{Shapes: to[[]v2193.PrimitiveShape](shapes)})
 }
 
 // LockInput applies an input lock to the player, disabling the specified input. If the lock is already
@@ -1156,7 +1157,7 @@ func (s *Session) InputLocked(l input.Lock) bool {
 func (s *Session) SendInputLocks() {
 	s.inputLocksMu.RLock()
 	defer s.inputLocksMu.RUnlock()
-	s.writePacket(&packet.UpdateClientInputLocks{
+	s.writePacket(&v2193.UpdateClientInputLocksPacket{
 		Locks: s.inputLocks,
 	})
 }

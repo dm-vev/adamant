@@ -2,6 +2,9 @@ package session
 
 import (
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -10,10 +13,9 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"math"
-	"time"
 )
 
 // ItemStackRequestHandler handles the ItemStackRequest packet. It handles the actions done within the
@@ -825,10 +827,10 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 			SlotInfo:  slots,
 		})
 	}
-	s.writePacket(&packet.ItemStackResponse{Responses: []protocol.ItemStackResponse{{
+	s.writePacket(&v2193.ItemStackResponsePacket{Responses: []v2193.ItemStackResponse{{
 		Status:        protocol.ItemStackResponseStatusOK,
 		RequestID:     id,
-		ContainerInfo: info,
+		ContainerInfo: to[[]v2193.StackResponseContainerInfo](info),
 	}}})
 
 	h.changes = map[byte]map[byte]changeInfo{}
@@ -837,8 +839,8 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 
 // reject rejects the item stack request sent by the client so that it is reverted client-side.
 func (h *ItemStackRequestHandler) reject(id int32, s *Session, tx *world.Tx) {
-	s.writePacket(&packet.ItemStackResponse{
-		Responses: []protocol.ItemStackResponse{{
+	s.writePacket(&v2193.ItemStackResponsePacket{
+		Responses: []v2193.ItemStackResponse{{
 			Status:    protocol.ItemStackResponseStatusError,
 			RequestID: id,
 		}},

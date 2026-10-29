@@ -9,9 +9,10 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // subChunkRequests is set to true to enable the sub-chunk request system. This can (likely) cause unexpected issues,
@@ -44,7 +45,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 	if s.chunkLoader == nil {
 		// The chunk loader is initialised during Spawn, so return an empty response for early requests.
 		dim, _ := world.DimensionID(tx.World().Dimension())
-		s.writePacket(&packet.SubChunk{
+		s.writePacket(&v2193.SubChunkPacket{
 			Dimension:       int32(dim),
 			Position:        protocol.SubChunkPos(centre),
 			CacheEnabled:    s.conn.ClientCacheEnabled(),
@@ -82,11 +83,11 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 		s.blobMu.Unlock()
 	}
 	dim, _ := world.DimensionID(tx.World().Dimension())
-	s.writePacket(&packet.SubChunk{
+	s.writePacket(&v2193.SubChunkPacket{
 		Dimension:       int32(dim),
 		Position:        protocol.SubChunkPos(centre),
 		CacheEnabled:    s.conn.ClientCacheEnabled(),
-		SubChunkEntries: entries,
+		SubChunkEntries: toSubChunkEntries(entries),
 	})
 }
 
@@ -180,11 +181,11 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 	if subChunkRequests {
 		biomes := networkBiomePayload(col)
 		if hash := xxhash.Sum64(biomes); s.trackBlob(hash, biomes) {
-			s.writePacket(&packet.LevelChunk{
+			s.writePacket(&v2193.LevelChunkPacket{
 				Dimension:     s.dimensionID(dim),
 				SubChunkCount: 0,
 				Position:      protocol.ChunkPos(pos),
-				SubChunkLimit: protocol.Option(int32(c.HighestFilledSubChunk())),
+				SubChunkLimit: proto.Some(int32(c.HighestFilledSubChunk())),
 				BlobHashes:    []uint64{hash},
 				RawPayload:    []byte{0},
 				CacheEnabled:  true,
@@ -222,7 +223,7 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 
 	raw := chunkBlockEntityPayload(col, false)
 
-	s.writePacket(&packet.LevelChunk{
+	s.writePacket(&v2193.LevelChunkPacket{
 		Dimension:     s.dimensionID(dim),
 		Position:      protocol.ChunkPos{pos.X(), pos.Z()},
 		SubChunkCount: count,
@@ -236,17 +237,17 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col *world.Column) {
 	c := col.Chunk
 	if subChunkRequests {
-		s.writePacket(&packet.LevelChunk{
+		s.writePacket(&v2193.LevelChunkPacket{
 			Dimension:     s.dimensionID(dim),
 			SubChunkCount: 0,
 			Position:      protocol.ChunkPos(pos),
-			SubChunkLimit: protocol.Option(int32(c.HighestFilledSubChunk())),
+			SubChunkLimit: proto.Some(int32(c.HighestFilledSubChunk())),
 			RawPayload:    limitedChunkPayload(col),
 		})
 		return
 	}
 
-	s.writePacket(&packet.LevelChunk{
+	s.writePacket(&v2193.LevelChunkPacket{
 		Dimension:     s.dimensionID(dim),
 		Position:      protocol.ChunkPos{pos.X(), pos.Z()},
 		SubChunkCount: uint32(len(c.Sub())),

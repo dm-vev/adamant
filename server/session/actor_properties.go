@@ -3,8 +3,8 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // actorProperty is an actor property as BDS declares it in SyncActorProperty.
@@ -108,7 +108,7 @@ func (s *Session) sendActorProperties(w *world.World) {
 		for i, p := range props {
 			declarations[i] = p.declaration()
 		}
-		s.writePacket(&packet.SyncActorProperty{PropertyData: map[string]any{"type": id, "properties": declarations}})
+		s.writePacket(&v2193.SyncActorPropertyPacket{PropertyData: map[string]any{"type": id, "properties": declarations}})
 	}
 }
 

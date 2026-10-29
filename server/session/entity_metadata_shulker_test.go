@@ -8,9 +8,9 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 type shulkerMetadataViewer struct {
@@ -42,7 +42,7 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 		{cube.FaceEast, 11, 4, 73},
 	}
 	viewer := testSession("shulker-metadata")
-	assertMetadata := func(m protocol.EntityMetadata, pos cube.Pos, face cube.Face, colour, peek byte) {
+	assertMetadata := func(m v2193.Metadata, pos cube.Pos, face cube.Face, colour, peek byte) {
 		t.Helper()
 		// Captured BDS 1.26.52.3 keys and wire types: Variant int32,
 		// Peek int32, face byte, Attached int16, attachment BlockPos.
@@ -72,7 +72,7 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 			}
 			shulker := tx.AddEntity(handle)
 			viewer.ViewEntity(shulker)
-			added := (<-viewer.packets).(*packet.AddActor)
+			added := (<-viewer.packets).(*v2193.AddActorPacket)
 			assertMetadata(added.EntityMetadata, pos, tc.face, tc.colour, tc.peek)
 		}
 	})
@@ -97,7 +97,7 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 			found[i] = true
 			tc := cases[i]
 			viewer.ViewEntity(shulker)
-			added := (<-viewer.packets).(*packet.AddActor)
+			added := (<-viewer.packets).(*v2193.AddActorPacket)
 			assertMetadata(added.EntityMetadata, pos, tc.face, tc.colour, tc.peek)
 			if got := shulker.H().NBT(tx)["Variant"]; got != int32(tc.colour) {
 				t.Errorf("saved shell Variant = %v, want %d", got, tc.colour)
@@ -125,7 +125,7 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 			east.Tick(tx, 1)
 			select {
 			case pk := <-viewer.packets:
-				updated, ok := pk.(*packet.SetActorData)
+				updated, ok := pk.(*v2193.SetActorDataPacket)
 				if !ok {
 					t.Fatalf("attachment change sent %T, want SetActorData", pk)
 				}

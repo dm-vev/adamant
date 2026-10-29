@@ -10,6 +10,8 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -125,11 +127,17 @@ func joinPermissionPlayer(t *testing.T, srv *Server, name string) (incoming, *pe
 type permissionTestConn struct {
 	*serverPanicConn
 	mu      sync.Mutex
-	packets []packet.Packet
+	packets []any
 	updates chan struct{}
 }
 
-func (c *permissionTestConn) WritePacket(pk packet.Packet) error {
+func (c *permissionTestConn) WritePacket(pk packet.Packet) error { return c.add(pk) }
+
+// WriteProto takes the packets of the generated codecs, which the session
+// writes as they are.
+func (c *permissionTestConn) WriteProto(pk proto.Packet) error { return c.add(pk) }
+
+func (c *permissionTestConn) add(pk any) error {
 	c.mu.Lock()
 	c.packets = append(c.packets, pk)
 	c.mu.Unlock()
@@ -144,13 +152,13 @@ func (c *permissionTestConn) mark() int {
 	defer c.mu.Unlock()
 	return len(c.packets)
 }
-func (c *permissionTestConn) wait(t *testing.T, after int, matches func(packet.Packet) bool) packet.Packet {
+func (c *permissionTestConn) wait(t *testing.T, after int, matches func(any) bool) any {
 	t.Helper()
 	timer := time.NewTimer(2 * time.Second)
 	defer timer.Stop()
 	for {
 		c.mu.Lock()
-		var found packet.Packet
+		var found any
 		for _, pk := range c.packets[after:] {
 			if matches(pk) {
 				found = pk
@@ -168,15 +176,15 @@ func (c *permissionTestConn) wait(t *testing.T, after int, matches func(packet.P
 		}
 	}
 }
-func (c *permissionTestConn) waitPermission(t *testing.T, after int, uniqueID int64, operator bool) protocol.AbilityData {
+func (c *permissionTestConn) waitPermission(t *testing.T, after int, uniqueID int64, operator bool) v2193.AbilityData {
 	t.Helper()
-	pk := c.wait(t, after, func(pk packet.Packet) bool {
-		update, ok := pk.(*packet.UpdateAbilities)
+	pk := c.wait(t, after, func(pk any) bool {
+		update, ok := pk.(*v2193.UpdateAbilitiesPacket)
 		if !ok || update.AbilityData.EntityUniqueID != uniqueID {
 			return false
 		}
 		return (update.AbilityData.PlayerPermissions == packet.PermissionLevelOperator) == operator
-	}).(*packet.UpdateAbilities)
+	}).(*v2193.UpdateAbilitiesPacket)
 	data := pk.AbilityData
 	wantPlayer, wantCommand := byte(packet.PermissionLevelMember), byte(protocol.CommandPermissionLevelAny)
 	wantFlags := uint32(0)
@@ -194,8 +202,8 @@ func (c *permissionTestConn) waitPermission(t *testing.T, after int, uniqueID in
 }
 func (c *permissionTestConn) waitCommand(t *testing.T, after int, name string, allowed bool) {
 	t.Helper()
-	c.wait(t, after, func(pk packet.Packet) bool {
-		commands, ok := pk.(*packet.AvailableCommands)
+	c.wait(t, after, func(pk any) bool {
+		commands, ok := pk.(*v2193.AvailableCommandsPacket)
 		if !ok {
 			return false
 		}

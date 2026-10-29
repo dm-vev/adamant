@@ -10,6 +10,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -31,7 +32,7 @@ func TestBuiltinCommandRegistryKeepsNativeHelpLocal(t *testing.T) {
 	Register(registerTestAdapter{})
 	pk, runnable := session.BuildAvailableCommands(cmd.Commands(), nil, make(map[string]struct{}))
 	var wire bytes.Buffer
-	pk.Marshal(protocol.NewWriter(&wire, 0))
+	wire.Write(encodePacket(pk))
 	var decoded packet.AvailableCommands
 	// A server registry exceeds the client-to-server slice limit of 1024.
 	decoded.Marshal(protocol.NewReader(&wire, 0, false))
@@ -95,3 +96,10 @@ type metadataHelpSource struct {
 }
 
 func (s *metadataHelpSource) SendCommandOutput(output *cmd.Output) { s.output = output }
+
+// encodePacket encodes a packet of the generated codecs.
+func encodePacket(pk interface{ Encode(*wire.Writer) }) []byte {
+	var w wire.Writer
+	pk.Encode(&w)
+	return w.B
+}

@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -110,7 +111,7 @@ func (StructureTemplateDataRequestHandler) Handle(p packet.Packet, s *Session, t
 	default:
 		return fmt.Errorf("unknown structure template request type %d", pk.RequestType)
 	}
-	response := &packet.StructureTemplateDataResponse{StructureName: pk.StructureName, ResponseType: responseType}
+	response := &v2193.StructureTemplateDataResponsePacket{StructureName: pk.StructureName, ResponseType: responseType}
 	if template != nil {
 		response.Success, response.StructureTemplate = true, template.EncodeNBT()
 	}

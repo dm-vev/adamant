@@ -168,12 +168,12 @@ func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
 		select {
 		case raw := <-conn.packets:
 			switch pk := raw.(type) {
-			case *packet.AddItemActor:
+			case *v2193.AddItemActorPacket:
 				spawns++
 				if pk.Item.Stack.Count == 3 {
 					survivorID = pk.EntityRuntimeID
 				}
-			case *packet.ActorEvent:
+			case *v2193.ActorEventPacket:
 				if pk.EventType == packet.ActorEventUpdateStackSize {
 					updates++
 					updatedID = pk.EntityRuntimeID
@@ -181,7 +181,7 @@ func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
 						t.Errorf("stack size event=%d, want 4", pk.EventData)
 					}
 				}
-			case *packet.Text:
+			case *v2193.TextPacket:
 				if pk.Message == marker {
 					if spawns != 2 || updates != 1 || survivorID == 0 || updatedID != survivorID {
 						t.Fatalf("spawns=%d updates=%d updated actor=%d, want two spawns and one update of actor %d", spawns, updates, updatedID, survivorID)
@@ -203,19 +203,19 @@ func entityPacketPositions(t *testing.T, packets <-chan any, entityType string) 
 		select {
 		case pk := <-packets:
 			switch pk := pk.(type) {
-			case *packet.AddPlayer:
+			case *v2193.AddPlayerPacket:
 				if entityType == "player" {
 					spawn = pk.Position
 				}
-			case *packet.AddItemActor:
+			case *v2193.AddItemActorPacket:
 				if entityType == "item" {
 					spawn = pk.Position
 				}
-			case *packet.AddActor:
+			case *v2193.AddActorPacket:
 				if entityType == "falling_block" {
 					spawn = pk.Position
 				}
-			case *packet.MovePlayer:
+			case *v2193.MovePlayerPacket:
 				teleport = pk.Position
 			case *v2193.MoveActorAbsolutePacket:
 				if pk.Flags&packet.MoveFlagTeleport != 0 {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -43,7 +44,7 @@ func (h *InteractHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Co
 			return nil
 		}
 		s.invOpened = true
-		s.writePacket(&packet.ContainerOpen{
+		s.writePacket(&v2193.ContainerOpenPacket{
 			WindowID:                0,
 			ContainerType:           0xff,
 			ContainerEntityUniqueID: -1,

@@ -21,6 +21,8 @@ import (
 	"github.com/df-mc/dragonfly/server/player/hud"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -232,7 +234,7 @@ func (conf Config) New(conn Conn) *Session {
 		r = maxChunkRadius
 	}
 	if r != requestedRadius {
-		_ = conn.WritePacket(&packet.ChunkRadiusUpdated{ChunkRadius: int32(r)})
+		_ = WriteTo(conn, &v2193.ChunkRadiusUpdatedPacket{ChunkRadius: int32(r)})
 	}
 	if conf.Log == nil {
 		conf.Log = slog.Default()
@@ -319,7 +321,7 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	chunkRadius := s.chunkRadius.Load()
 	s.chunkLoader = world.NewLoader(int(chunkRadius), tx.World(), s)
 	s.chunkLoader.Move(tx, pos)
-	s.writePacket(&packet.NetworkChunkPublisherUpdate{
+	s.writePacket(&v2193.NetworkChunkPublisherUpdatePacket{
 		Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 		Radius:   uint32(chunkRadius) << 4,
 	})
@@ -609,7 +611,7 @@ func (s *Session) sendChunks(tx *world.Tx, c Controllable) {
 	chunkPos := world.ChunkPos{int32(blockPos[0] >> 4), int32(blockPos[2] >> 4)}
 	if s.lastChunkPos != chunkPos || worldSwitched {
 		s.lastChunkPos = chunkPos
-		s.writePacket(&packet.NetworkChunkPublisherUpdate{
+		s.writePacket(&v2193.NetworkChunkPublisherUpdatePacket{
 			Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 			Radius:   uint32(chunkRadius) << 4,
 		})
@@ -651,17 +653,17 @@ func (s *Session) changeDimension(dim int32, silent bool, c Controllable) {
 	id := h.currentID.Add(1)
 	h.expectedID.Store(id)
 
-	s.writePacket(&packet.ChangeDimension{
+	s.writePacket(&v2193.ChangeDimensionPacket{
 		Dimension:       dim,
 		Position:        vec64To32(entityNetworkPosition(c, c.Position())),
-		LoadingScreenID: protocol.Option(id),
+		LoadingScreenID: proto.Some(id),
 	})
-	s.writePacket(&packet.StopSound{StopAll: silent})
-	s.writePacket(&packet.PlayStatus{Status: packet.PlayStatusPlayerSpawn})
+	s.writePacket(&v2193.StopSoundPacket{StopAll: silent})
+	s.writePacket(&v2193.PlayStatusPacket{Status: packet.PlayStatusPlayerSpawn})
 
 	// As of v1.19.50, the dimension ack that is meant to be sent by the client is now sent by the server. The client
 	// still sends the ack, but after the server has sent it. Thanks to Mojang for another groundbreaking change.
-	s.writePacket(&packet.PlayerAction{
+	s.writePacket(&v2193.PlayerActionPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
 		ActionType:      protocol.PlayerActionDimensionChangeDone,
 	})
@@ -759,6 +761,6 @@ func (s *Session) sendAvailableEntities(w *world.World) {
 		s.conf.Log.Error("failed to marshal entity identifiers", "err", err)
 		return
 	}
-	s.writePacket(&packet.AvailableActorIdentifiers{SerialisedEntityIdentifiers: serialisedEntityData})
+	s.writePacket(&v2193.AvailableActorIdentifiersPacket{SerialisedEntityIdentifiers: serialisedEntityData})
 	s.sendActorProperties(w)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -197,10 +198,10 @@ type registryParameterSource struct {
 
 func (s registryParameterSource) Tx() *world.Tx { return s.tx }
 
-func decodeRegistryCommands(t *testing.T, pk *packet.AvailableCommands) (packet.AvailableCommands, []byte) {
+func decodeRegistryCommands(t *testing.T, pk *v2193.AvailableCommandsPacket) (packet.AvailableCommands, []byte) {
 	t.Helper()
 	var wire bytes.Buffer
-	pk.Marshal(protocol.NewWriter(&wire, 0))
+	wire.Write(encodePacket(pk))
 	encoded := bytes.Clone(wire.Bytes())
 	var decoded packet.AvailableCommands
 	decoded.Marshal(protocol.NewReader(&wire, 0, false))

@@ -8,6 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -101,7 +102,7 @@ func TestFlightInputFlags(t *testing.T) {
 				t.Fatalf("start flying = %v, want %v", c.flying, test.startFlying)
 			}
 			if !test.mode.AllowsFlying() {
-				assertFlightAbilities(t, (<-s.packets).(packet.Packet), test.mode, false)
+				assertFlightAbilities(t, <-s.packets, test.mode, false)
 			}
 
 			c.flying = true
@@ -113,7 +114,7 @@ func TestFlightInputFlags(t *testing.T) {
 				for range 2 {
 					<-s.packets
 				}
-				assertFlightAbilities(t, (<-s.packets).(packet.Packet), test.mode, true)
+				assertFlightAbilities(t, <-s.packets, test.mode, true)
 			}
 		})
 	}
@@ -133,11 +134,11 @@ func newFlightTestSession() *Session {
 	}
 }
 
-func assertFlightAbilities(t *testing.T, pk packet.Packet, mode world.GameMode, flying bool) {
+func assertFlightAbilities(t *testing.T, pk queuedPacket, mode world.GameMode, flying bool) {
 	t.Helper()
-	abilities, ok := pk.(*packet.UpdateAbilities)
+	abilities, ok := pk.(*v2193.UpdateAbilitiesPacket)
 	if !ok {
-		t.Fatalf("packet type = %T, want *packet.UpdateAbilities", pk)
+		t.Fatalf("packet type = %T, want *v2193.UpdateAbilitiesPacket", pk)
 	}
 	values := abilities.AbilityData.Layers[0].Values
 	if got := values&protocol.AbilityFlying != 0; got != flying {

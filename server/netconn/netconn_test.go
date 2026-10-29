@@ -413,7 +413,7 @@ func TestOurClientJoins(t *testing.T) {
 }
 
 // staticText is a Text the same for every connection.
-type staticText struct{ packet.Packet }
+type staticText struct{ proto.Packet }
 
 func (*staticText) StaticPacket() {}
 
@@ -421,7 +421,7 @@ func (*staticText) StaticPacket() {}
 // it, from a batch encoded once.
 func TestStaticPacketsEncodeOnce(t *testing.T) {
 	l := listen(t, Config{})
-	st := &staticText{&packet.Text{TextType: packet.TextTypeRaw, Message: strings.Repeat("static ", 100)}}
+	st := &staticText{&v2193.TextPacket{TextType: packet.TextTypeRaw, Message: strings.Repeat("static ", 100)}}
 	go func() {
 		for {
 			c, err := l.Accept()
@@ -436,7 +436,7 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 					return
 				}
 				_ = c.WritePacket(&packet.Text{TextType: packet.TextTypeRaw, Message: "first"})
-				_ = c.WritePacket(st)
+				_ = c.WriteProto(st)
 				_ = c.Flush()
 			}()
 		}
@@ -461,7 +461,7 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 		stop()
 		cancel()
 		_ = conn.Close()
-		if got[0] != "first" || got[1] != st.Packet.(*packet.Text).Message {
+		if got[0] != "first" || got[1] != st.Packet.(*v2193.TextPacket).Message {
 			t.Fatalf("read %q", got)
 		}
 	}

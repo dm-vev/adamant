@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"github.com/sandertv/gophertunnel/minecraft/text"
@@ -36,7 +37,7 @@ func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pk, _ := BuildAvailableCommands(commands, tt.src, make(map[string]struct{}))
 			var wire bytes.Buffer
-			pk.Marshal(protocol.NewWriter(&wire, 0))
+			wire.Write(encodePacket(pk))
 			var decoded packet.AvailableCommands
 			decoded.Marshal(protocol.NewReader(&wire, 0, true))
 			got := make(map[string]string)
@@ -59,7 +60,7 @@ func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
 	output.Printt(native.DescriptionTranslation())
 	output.Printt(localized.DescriptionTranslation())
 	s.SendCommandOutput(output, language.Russian)
-	pk := (<-s.packets).(*packet.CommandOutput)
+	pk := (<-s.packets).(*v2193.CommandOutputPacket)
 	if text.Clean(pk.OutputMessages[0].Message) != "%commands.gamemode.description" || text.Clean(pk.OutputMessages[1].Message) != "Русское описание" {
 		t.Fatalf("translated output = %#v", pk.OutputMessages)
 	}
@@ -92,7 +93,7 @@ func TestAvailableCommandsStableWireRegistry(t *testing.T) {
 	for range 100 {
 		pk, _ := BuildAvailableCommands(commands, nil, make(map[string]struct{}))
 		var encoded bytes.Buffer
-		pk.Marshal(protocol.NewWriter(&encoded, 0))
+		encoded.Write(encodePacket(pk))
 		wire := append([]byte(nil), encoded.Bytes()...)
 		if first == nil {
 			first = wire

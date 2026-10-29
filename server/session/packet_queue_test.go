@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -314,7 +315,7 @@ func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 func TestEmptyMessageShowsAnEmptyLine(t *testing.T) {
 	s := &Session{packets: make(chan queuedPacket, 1), closeBackground: make(chan struct{})}
 	s.SendMessage("")
-	if text, ok := (<-s.packets).(*packet.Text); !ok || text.Message != " " {
+	if text, ok := (<-s.packets).(*v2193.TextPacket); !ok || text.Message != " " {
 		t.Fatalf("sent %+v, want a Text of one space", text)
 	}
 }

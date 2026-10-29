@@ -18,6 +18,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
@@ -88,18 +89,18 @@ func (s *Session) ViewEntity(e world.Entity) {
 	case Controllable:
 		_, actualPlayer := sessions.Lookup(v.UUID())
 		if !actualPlayer {
-			s.writePacket(&packet.PlayerList{Entries: []protocol.PlayerListEntry{{
+			s.writePacket(&v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
 				ActionType:     protocol.PlayerListActionAdd,
 				UUID:           v.UUID(),
 				EntityUniqueID: s.entityUniqueID(e),
 				Username:       v.Name(),
 				BuildPlatform:  int32(protocol.DeviceUnknown),
-				Skin:           skinToProtocol(v.Skin()),
+				Skin:           toSkin(skinToProtocol(v.Skin())),
 			}}})
 		}
 
-		s.writePacket(&packet.AddPlayer{
-			EntityMetadata:  metadata,
+		s.writePacket(&v2193.AddPlayerPacket{
+			EntityMetadata:  toMetadata(metadata),
 			EntityRuntimeID: runtimeID,
 			GameType:        GameTypeFromMode(v.GameMode()),
 			HeadYaw:         float32(yaw),
@@ -108,12 +109,12 @@ func (s *Session) ViewEntity(e world.Entity) {
 			UUID:            v.UUID(),
 			Username:        v.Name(),
 			Yaw:             float32(yaw),
-			EntityLinks:     links,
+			EntityLinks:     toEntityLinks(links),
 			BuildPlatform:   int32(protocol.DeviceUnknown),
-			AbilityData:     s.abilityData(v, s.entityUniqueID(e)),
+			AbilityData:     toAbilityData(s.abilityData(v, s.entityUniqueID(e))),
 		})
 		if !actualPlayer {
-			s.writePacket(&packet.PlayerList{Entries: []protocol.PlayerListEntry{{
+			s.writePacket(&v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
 				ActionType: protocol.PlayerListActionRemove,
 				UUID:       v.UUID(),
 			}}})
@@ -127,13 +128,13 @@ func (s *Session) ViewEntity(e world.Entity) {
 	case *entity.Ent:
 		switch e.H().Type() {
 		case entity.ItemType:
-			s.writePacket(&packet.AddItemActor{
+			s.writePacket(&v2193.AddItemActorPacket{
 				EntityUniqueID:  s.entityUniqueID(e),
 				EntityRuntimeID: runtimeID,
-				Item:            instanceFromItem(s.br, v.Behaviour().(*entity.ItemBehaviour).Item()),
+				Item:            toItemInstance(instanceFromItem(s.br, v.Behaviour().(*entity.ItemBehaviour).Item())),
 				Position:        vec64To32(entityNetworkPosition(e, v.Position())),
 				Velocity:        vec64To32(v.Velocity()),
-				EntityMetadata:  metadata,
+				EntityMetadata:  toMetadata(metadata),
 			})
 			return
 		case entity.TextType:
@@ -149,14 +150,14 @@ func (s *Session) ViewEntity(e world.Entity) {
 		vel = v.Velocity()
 	}
 
-	s.writePacket(&packet.AddActor{
+	s.writePacket(&v2193.AddActorPacket{
 		EntityUniqueID:   s.entityUniqueID(e),
 		EntityRuntimeID:  runtimeID,
 		EntityType:       id,
-		Attributes:       mobAttributes(e),
-		EntityMetadata:   metadata,
-		EntityProperties: entityProperties(e),
-		EntityLinks:      links,
+		Attributes:       toAttributeValues(mobAttributes(e)),
+		EntityMetadata:   toMetadata(metadata),
+		EntityProperties: toEntityProperties(entityProperties(e)),
+		EntityLinks:      toEntityLinks(links),
 		Position:         vec64To32(entityNetworkPosition(e, e.Position())),
 		Velocity:         vec64To32(vel),
 		Pitch:            float32(pitch),
@@ -203,12 +204,12 @@ func (s *Session) viewMobHealth(e world.Entity) {
 	if !ok || e.H().Type().EncodeEntity() == "minecraft:player" {
 		return
 	}
-	s.writePacket(&packet.UpdateAttributes{
+	s.writePacket(&v2193.UpdateAttributesPacket{
 		EntityRuntimeID: s.entityRuntimeID(e),
-		Attributes: []protocol.Attribute{{
-			AttributeValue: protocol.AttributeValue{Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth())},
-			DefaultMax:     float32(h.MaxHealth()),
-			Default:        float32(h.MaxHealth()),
+		Attributes: []v2193.Attribute{{
+			Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth()),
+			DefaultMax: float32(h.MaxHealth()),
+			Default:    float32(h.MaxHealth()),
 		}},
 	})
 }
@@ -237,7 +238,7 @@ func (s *Session) ViewEntityLinkType(ridden, rider *world.EntityHandle, linkType
 			pkType = byte(protocol.EntityLinkRider)
 		}
 	}
-	s.writePacket(&packet.SetActorLink{EntityLink: protocol.EntityLink{
+	s.writePacket(&v2193.SetActorLinkPacket{EntityLink: v2193.EntityLink{
 		RiddenEntityUniqueID: s.handleUniqueID(ridden),
 		RiderEntityUniqueID:  s.handleUniqueID(rider),
 		Type:                 pkType,
@@ -259,17 +260,17 @@ func (s *Session) handleUniqueID(h *world.EntityHandle) int64 {
 // ViewElderGuardianCurse shows the ghost of an elder guardian, as BDS does
 // for the mining fatigue it gives.
 func (s *Session) ViewElderGuardianCurse(pos mgl64.Vec3) {
-	s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticleSoundGuardianGhost, Position: vec64To32(pos)})
+	s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventParticleSoundGuardianGhost, Position: vec64To32(pos)})
 }
 
 // ViewSpectatedEntity attaches the camera of the client to an entity, as BDS
 // does for /camera attach_to_entity, or detaches it again if e is nil.
 func (s *Session) ViewSpectatedEntity(e world.Entity) {
 	if e == nil {
-		s.writePacket(&packet.CameraInstruction{DetachFromEntity: protocol.Option(true)})
+		s.writePacket(&v2193.CameraInstructionPacket{DetachFromEntity: proto.Some(true)})
 		return
 	}
-	s.writePacket(&packet.CameraInstruction{AttachToEntity: protocol.Option(s.entityUniqueID(e))})
+	s.writePacket(&v2193.CameraInstructionPacket{AttachToEntity: proto.Some(s.entityUniqueID(e))})
 }
 
 // ViewEntityGameMode ...
@@ -281,7 +282,7 @@ func (s *Session) ViewEntityGameMode(e world.Entity) {
 	if !ok {
 		return
 	}
-	s.writePacket(&packet.UpdatePlayerGameType{
+	s.writePacket(&v2193.UpdatePlayerGameTypePacket{
 		GameType:       GameTypeFromMode(c.GameMode()),
 		PlayerUniqueID: s.entityUniqueID(c),
 	})
@@ -313,7 +314,7 @@ func (s *Session) HideEntity(e world.Entity) {
 		// model before its death animation had a chance to render.
 		return
 	}
-	s.writePacket(&packet.RemoveActor{EntityUniqueID: s.handleUniqueID(e.H())})
+	s.writePacket(&v2193.RemoveActorPacket{EntityUniqueID: s.handleUniqueID(e.H())})
 }
 
 // ViewEntityMovement ...
@@ -386,7 +387,7 @@ func entityBasePosition(e world.Entity, pos mgl32.Vec3) mgl32.Vec3 {
 
 // ViewTime ...
 func (s *Session) ViewTime(time int) {
-	s.writePacket(&packet.SetTime{Time: int32(time)})
+	s.writePacket(&v2193.SetTimePacket{Time: int32(time)})
 }
 
 // ViewTimeCycle ...
@@ -413,14 +414,14 @@ func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 
 	s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: id})
 	if _, ok := e.(Controllable); ok {
-		s.writePacket(&packet.MovePlayer{
+		s.writePacket(&v2193.MovePlayerPacket{
 			EntityRuntimeID: id,
 			Position:        vec64To32(entityNetworkPosition(e, position)),
 			Pitch:           float32(pitch),
 			Yaw:             float32(yaw),
 			HeadYaw:         float32(yaw),
 			Mode:            packet.MoveModeTeleport,
-			TeleportData: protocol.Option(protocol.TeleportData{
+			TeleportData: proto.Some(v2193.TeleportData{
 				TeleportCause: packet.TeleportCauseUnknown,
 			}),
 		})
@@ -459,14 +460,14 @@ func (s *Session) ViewEntityItems(e world.Entity) {
 	mainHand, offHand := c.HeldItems()
 
 	// Show the main hand item.
-	s.writePacket(&packet.MobEquipment{
+	s.writePacket(&v2193.MobEquipmentPacket{
 		EntityRuntimeID: runtimeID,
-		NewItem:         instanceFromItem(s.br, mainHand),
+		NewItem:         toItemInstance(instanceFromItem(s.br, mainHand)),
 	})
 	// Show the off-hand item.
-	s.writePacket(&packet.MobEquipment{
+	s.writePacket(&v2193.MobEquipmentPacket{
 		EntityRuntimeID: runtimeID,
-		NewItem:         instanceFromItem(s.br, offHand),
+		NewItem:         toItemInstance(instanceFromItem(s.br, offHand)),
 		WindowID:        protocol.WindowIDOffHand,
 	})
 }
@@ -508,13 +509,13 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 	}
 
 	// Show the entity's armour and body equipment.
-	s.writePacket(&packet.MobArmourEquipment{
+	s.writePacket(&v2193.MobArmourEquipmentPacket{
 		EntityRuntimeID: runtimeID,
-		Helmet:          instanceFromItem(s.br, helm),
-		Chestplate:      instanceFromItem(s.br, chestplate),
-		Leggings:        instanceFromItem(s.br, leggings),
-		Boots:           instanceFromItem(s.br, boots),
-		Body:            instanceFromItem(s.br, body),
+		Helmet:          toItemInstance(instanceFromItem(s.br, helm)),
+		Chestplate:      toItemInstance(instanceFromItem(s.br, chestplate)),
+		Leggings:        toItemInstance(instanceFromItem(s.br, leggings)),
+		Boots:           toItemInstance(instanceFromItem(s.br, boots)),
+		Body:            toItemInstance(instanceFromItem(s.br, body)),
 	})
 }
 
@@ -525,7 +526,7 @@ func (s *Session) ViewItemCooldown(item world.Item, duration time.Duration) {
 	if _, suffix, ok := strings.Cut(name, ":"); ok && suffix != "" {
 		category = suffix
 	}
-	s.writePacket(&packet.ClientStartItemCooldown{
+	s.writePacket(&v2193.ClientStartItemCooldownPacket{
 		Category: category,
 		Duration: int32(duration.Milliseconds() / 50),
 	})
@@ -542,7 +543,7 @@ func (s *Session) ViewSleepingPlayers(sleeping, max int) {
 
 	eventData := buf.Bytes()
 
-	s.writePacket(&packet.LevelEventGeneric{
+	s.writePacket(&v2193.LevelEventGenericPacket{
 		EventID:             packet.LevelEventSleepingPlayers,
 		SerialisedEventData: eventData[2 : len(eventData)-1],
 	})
@@ -564,7 +565,7 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			"HeartZ":         float32(pa.Heart.Z()),
 		})
 		data := buf.Bytes()
-		s.writePacket(&packet.LevelEventGeneric{
+		s.writePacket(&v2193.LevelEventGenericPacket{
 			EventID:             packet.LevelEventParticleCreakingHeartTrail,
 			SerialisedEventData: data[2 : len(data)-1],
 		})
@@ -592,7 +593,7 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			TimeToLive: float32(max(0, pa.TravelTicks)) / 20,
 		})
 		data := buf.Bytes()
-		s.writePacket(&packet.LevelEventGeneric{
+		s.writePacket(&v2193.LevelEventGenericPacket{
 			EventID:             packet.LevelEventParticlesVibrationSignal,
 			SerialisedEventData: data[2 : len(data)-1],
 		})
@@ -608,81 +609,81 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			zSign = 1 << 26
 		}
 
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesDragonEgg,
 			Position:  vec64To32(pos),
 			EventData: int32((((((abs(pa.Diff.X()) << 16) | (abs(pa.Diff.Y()) << 8)) | abs(pa.Diff.Z())) | xSign) | ySign) | zSign),
 		})
 	case particle.Note:
-		s.writePacket(&packet.BlockEvent{
+		s.writePacket(&v2193.BlockEventPacket{
 			EventType: pa.Instrument.Int32(),
 			EventData: int32(pa.Pitch),
 			Position:  protocol.BlockPos{int32(pos.X()), int32(pos.Y()), int32(pos.Z())},
 		})
 	case particle.HugeExplosion:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.BoneMeal:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleCropGrowth,
 			Position:  vec64To32(pos),
 			EventData: int32(boolByte(pa.Area)),
 		})
 	case particle.BlockForceField:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleDenyBlock,
 			Position:  vec64To32(pos),
 		})
 	case particle.BlockBreak:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesDestroyBlock,
 			Position:  vec64To32(pos),
 			EventData: int32(networkBlockID(s.br, pa.Block)),
 		})
 	case particle.PunchBlock:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesCrackBlock,
 			Position:  vec64To32(pos),
 			EventData: int32(networkBlockID(s.br, pa.Block)) | (int32(pa.Face) << 24),
 		})
 	case particle.DragonDestroyBlock:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | packet.ParticleTypeDragonDestroyBlock,
 			Position:  vec64To32(pos),
 		})
 	case particle.EndermanTeleport:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesTeleport,
 			Position:  vec64To32(pos),
 		})
 	case particle.Flame:
 		if pa.Colour != (color.RGBA{}) {
-			s.writePacket(&packet.LevelEvent{
+			s.writePacket(&v2193.LevelEventPacket{
 				EventType: packet.LevelEventParticleLegacyEvent | 57,
 				Position:  vec64To32(pos),
 				EventData: nbtconv.Int32FromRGBA(pa.Colour),
 			})
 			return
 		}
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 8,
 			Position:  vec64To32(pos),
 		})
 	case particle.Evaporate:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesEvaporateWater,
 			Position:  vec64To32(pos),
 		})
 	case particle.SnowballPoof:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 15,
 			Position:  vec64To32(pos),
 		})
 	case particle.EggSmash:
 		rid, meta, _ := world.ItemRuntimeID(item.Egg{})
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 14,
 			EventData: (rid << 16) | int32(meta),
 			Position:  vec64To32(pos),
@@ -691,7 +692,7 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		if (pa.Colour == color.RGBA{}) {
 			pa.Colour, _ = effect.ResultingColour(nil)
 		}
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesPotionSplash,
 			EventData: (int32(pa.Colour.A) << 24) | (int32(pa.Colour.R) << 16) | (int32(pa.Colour.G) << 8) | int32(pa.Colour.B),
 			Position:  vec64To32(pos),
@@ -701,54 +702,54 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		if pa.Paused {
 			t = packet.ParticleTypePauseMobGrowth
 		}
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | int32(t),
 			Position:  vec64To32(pos),
 		})
 	case particle.SonicExplosion:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSonicExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.WindBurst:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesWindExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.Effect:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 34,
 			EventData: (int32(pa.Colour.A) << 24) | (int32(pa.Colour.R) << 16) | (int32(pa.Colour.G) << 8) | int32(pa.Colour.B),
 			Position:  vec64To32(pos),
 		})
 	case particle.EntityFlame:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 19,
 			Position:  vec64To32(pos),
 		})
 	case particle.Dust:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 33,
 			Position:  vec64To32(pos),
 			EventData: nbtconv.Int32FromRGBA(pa.Colour),
 		})
 	case particle.WaterDrip:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 28,
 			Position:  vec64To32(pos),
 		})
 	case particle.LavaDrip:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 29,
 			Position:  vec64To32(pos),
 		})
 	case particle.Lava:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 10,
 			Position:  vec64To32(pos),
 		})
 	case particle.DustPlume:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | 88,
 			Position:  vec64To32(pos),
 		})
@@ -763,26 +764,26 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		buf := bytes.NewBuffer(nil)
 		_ = nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian).Encode(data)
 		encoded := buf.Bytes()
-		s.writePacket(&packet.LevelEventGeneric{EventID: event, SerialisedEventData: encoded[2 : len(encoded)-1]})
+		s.writePacket(&v2193.LevelEventGenericPacket{EventID: event, SerialisedEventData: encoded[2 : len(encoded)-1]})
 	case particle.SculkSoul:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | packet.ParticleTypeSculkSoul,
 			Position:  vec64To32(pos),
 		})
 	case particle.CauldronEffect:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: cauldronLevelEvents[pa.Kind],
 			Position:  vec64To32(pos),
 			EventData: nbtconv.Int32FromRGBA(pa.Colour),
 		})
 	case particle.DripstoneDrip:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
 	case particle.PointedDripstoneLand:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventSoundPointedDripstoneLand, Position: vec64To32(pos)})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventSoundPointedDripstoneLand, Position: vec64To32(pos)})
 	case particle.EggCrack:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticleTurtleEgg, Position: vec64To32(pos)})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventParticleTurtleEgg, Position: vec64To32(pos)})
 	case particle.ElectricSpark:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticlesElectricSpark,
 			Position:  vec64To32(pos),
 			EventData: pa.Data,
@@ -792,7 +793,7 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		if pa.Open {
 			kind = packet.ParticleTypeEyeblossomOpen
 		}
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventParticleLegacyEvent | kind,
 			Position:  vec64To32(pos),
 		})
@@ -801,19 +802,19 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		if pa.Ominous {
 			event = packet.LevelEventParticlesTrialSpawnerDetectionCharged
 		}
-		s.writePacket(&packet.LevelEvent{EventType: event, Position: vec64To32(pos), EventData: int32(pa.Players)})
+		s.writePacket(&v2193.LevelEventPacket{EventType: event, Position: vec64To32(pos), EventData: int32(pa.Players)})
 	case particle.TrialSpawnerSpawning:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesTrialSpawnerSpawning, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventParticlesTrialSpawnerSpawning, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.TrialSpawnerEjecting:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesTrialSpawnerEjecting, Position: vec64To32(pos)})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventParticlesTrialSpawnerEjecting, Position: vec64To32(pos)})
 	case particle.TrialSpawnerBecomeOminous:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesTrialSpawnerBecomeCharged, Position: vec64To32(pos)})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventParticlesTrialSpawnerBecomeCharged, Position: vec64To32(pos)})
 	case particle.VaultActivate:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventAnimationVaultActivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventAnimationVaultActivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.VaultDeactivate:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventAnimationVaultDeactivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventAnimationVaultDeactivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.VaultEjectItem:
-		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventAnimationVaultEjectItem, Position: vec64To32(pos)})
+		s.writePacket(&v2193.LevelEventPacket{EventType: packet.LevelEventAnimationVaultEjectItem, Position: vec64To32(pos)})
 	}
 }
 
@@ -857,7 +858,7 @@ func tierToSoundEvent(tier item.ArmourTier) string {
 
 // playSound plays a world.Sound at a position, disabling relative volume if set to true.
 func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool) {
-	pk := &packet.LevelSoundEvent{
+	pk := &v2193.LevelSoundEventPacket{
 		Position:              vec64To32(pos),
 		EntityType:            ":",
 		ExtraData:             -1,
@@ -893,7 +894,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType = packet.SoundEventNote
 		pk.ExtraData = (so.Instrument.Int32() << 8) | int32(so.Pitch)
 	case sound.DoorCrash:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundZombieDoorCrash,
 			Position:  vec64To32(pos),
 		})
@@ -903,13 +904,13 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.Thunder:
 		pk.SoundType, pk.EntityType = packet.SoundEventThunder, "minecraft:lightning_bolt"
 	case sound.Click:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundClick,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.SignWaxed:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventWaxOn,
 			Position:  vec64To32(pos),
 		})
@@ -917,19 +918,19 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.WaxedSignFailedInteraction:
 		pk.SoundType = packet.SoundEventWaxedSignInteractFail
 	case sound.WaxRemoved:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventWaxOff,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.CopperScraped:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventScrape,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.Pop:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundInfinityArrowPickup,
 			Position:  vec64To32(pos),
 		})
@@ -937,49 +938,49 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.Teleport:
 		pk.SoundType = packet.SoundEventTeleport
 	case sound.ItemAdd:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundAddItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ItemFrameRemove:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundItemFrameRemoveItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ItemFrameRotate:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundItemFrameRotateItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.HangingPlace:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundItemFramePlace,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.HangingBreak:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundItemFrameBreak,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.GhastWarning:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundGhastWarning,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.GhastShoot:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundGhastFireball,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.TNT:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundFuse,
 			Position:  vec64To32(pos),
 		})
@@ -1076,19 +1077,19 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.BlockPlace:
 		pk.SoundType, pk.ExtraData = packet.SoundEventPlace, int32(networkBlockID(s.br, so.Block))
 	case sound.AnvilLand:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundAnvilLand,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.AnvilUse:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundAnvilUsed,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.AnvilBreak:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundAnvilBroken,
 			Position:  vec64To32(pos),
 		})
@@ -1215,7 +1216,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.LevelUp:
 		pk.SoundType, pk.ExtraData = packet.SoundEventLevelUp, 0x10000000
 	case sound.Experience:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundExperienceOrbPickup,
 			Position:  vec64To32(pos),
 		})
@@ -1271,7 +1272,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.MusicDiscEnd:
 		pk.SoundType = packet.SoundEventRecordNull
 	case sound.FireCharge:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundBlazeFireball,
 			Position:  vec64To32(pos),
 		})
@@ -1295,7 +1296,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.LecternBookPlace:
 		pk.SoundType = packet.SoundEventLecternBookPlace
 	case sound.Totem:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundTotemUsed,
 			Position:  vec64To32(pos),
 		})
@@ -1305,7 +1306,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.ShulkerBoxOpen:
 		pk.SoundType = packet.SoundEventShulkerBoxOpen
 	case sound.DecoratedPotInserted:
-		s.writePacket(&packet.PlaySound{
+		s.writePacket(&v2193.PlaySoundPacket{
 			SoundName: "block.decorated_pot.insert",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1319,7 +1320,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		if !ok {
 			return
 		}
-		s.writePacket(&packet.PlaySound{
+		s.writePacket(&v2193.PlaySoundPacket{
 			SoundName: name,
 			Position:  vec64To32(pos),
 			Volume:    float32(so.Volume),
@@ -1327,7 +1328,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		})
 		return
 	case sound.LightningExplode:
-		s.writePacket(&packet.PlaySound{
+		s.writePacket(&v2193.PlaySoundPacket{
 			SoundName: "ambient.weather.lightning.impact",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1335,7 +1336,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		})
 		return
 	case sound.LightningThunder:
-		s.writePacket(&packet.PlaySound{
+		s.writePacket(&v2193.PlaySoundPacket{
 			SoundName: "ambient.weather.thunder",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1343,25 +1344,25 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		})
 		return
 	case sound.ArmourStandHit:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundArmorStandHit,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandBreak:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundArmorStandBreak,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandPlace:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundArmorStandPlace,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandLand:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventSoundArmorStandLand,
 			Position:  vec64To32(pos),
 		})
@@ -1387,7 +1388,7 @@ func (s *Session) ViewSound(pos mgl64.Vec3, soundType world.Sound) {
 // OpenSign ...
 func (s *Session) OpenSign(pos cube.Pos, frontSide bool) {
 	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	s.writePacket(&packet.OpenSign{
+	s.writePacket(&v2193.OpenSignPacket{
 		Position:  blockPos,
 		FrontSide: frontSide,
 	})
@@ -1397,7 +1398,7 @@ func (s *Session) OpenSign(pos cube.Pos, frontSide bool) {
 // Fuel values are UI-scaled and use the per-item cook requirement as the duration baseline.
 func (s *Session) ViewFurnaceUpdate(prevCookTime, cookTime, prevRemainingFuelTime, remainingFuelTime, prevMaxFuelTime, maxFuelTime time.Duration) {
 	if prevCookTime != cookTime {
-		s.writePacket(&packet.ContainerSetData{
+		s.writePacket(&v2193.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
 			Key:      packet.ContainerDataFurnaceTickCount,
 			Value:    int32(cookTime.Milliseconds() / 50),
@@ -1405,7 +1406,7 @@ func (s *Session) ViewFurnaceUpdate(prevCookTime, cookTime, prevRemainingFuelTim
 	}
 
 	if prevRemainingFuelTime != remainingFuelTime {
-		s.writePacket(&packet.ContainerSetData{
+		s.writePacket(&v2193.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
 			Key:      packet.ContainerDataFurnaceLitTime,
 			Value:    int32(remainingFuelTime.Milliseconds() / 50),
@@ -1413,7 +1414,7 @@ func (s *Session) ViewFurnaceUpdate(prevCookTime, cookTime, prevRemainingFuelTim
 	}
 
 	if prevMaxFuelTime != maxFuelTime {
-		s.writePacket(&packet.ContainerSetData{
+		s.writePacket(&v2193.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
 			Key:      packet.ContainerDataFurnaceLitDuration,
 			Value:    int32(maxFuelTime.Milliseconds() / 50),
@@ -1424,7 +1425,7 @@ func (s *Session) ViewFurnaceUpdate(prevCookTime, cookTime, prevRemainingFuelTim
 // ViewBrewingUpdate updates a brewing stand for the associated session based on previous times.
 func (s *Session) ViewBrewingUpdate(prevBrewTime, brewTime time.Duration, prevFuelAmount, fuelAmount, prevFuelTotal, fuelTotal int32) {
 	if prevBrewTime != brewTime {
-		s.writePacket(&packet.ContainerSetData{
+		s.writePacket(&v2193.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
 			Key:      packet.ContainerDataBrewingStandBrewTime,
 			Value:    int32(brewTime.Milliseconds() / 50),
@@ -1432,7 +1433,7 @@ func (s *Session) ViewBrewingUpdate(prevBrewTime, brewTime time.Duration, prevFu
 	}
 
 	if prevFuelAmount != fuelAmount {
-		s.writePacket(&packet.ContainerSetData{
+		s.writePacket(&v2193.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
 			Key:      packet.ContainerDataBrewingStandFuelAmount,
 			Value:    fuelAmount,
@@ -1440,7 +1441,7 @@ func (s *Session) ViewBrewingUpdate(prevBrewTime, brewTime time.Duration, prevFu
 	}
 
 	if prevFuelTotal != fuelTotal {
-		s.writePacket(&packet.ContainerSetData{
+		s.writePacket(&v2193.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
 			Key:      packet.ContainerDataBrewingStandFuelTotal,
 			Value:    fuelTotal,
@@ -1464,18 +1465,18 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			if s.entityRuntimeID(e) == selfEntityRuntimeID && s.swingingArm.Load() {
 				return
 			}
-			s.writePacket(&packet.Animate{
+			s.writePacket(&v2193.AnimatePacket{
 				ActionType:      packet.AnimateActionSwingArm,
 				EntityRuntimeID: s.entityRuntimeID(e),
 			})
 			return
 		}
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventStartAttacking,
 		})
 	case entity.HurtAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventHurt,
 		})
@@ -1484,7 +1485,7 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		if act.Count <= 0 {
 			act.Count = 55
 		}
-		s.writePacket(&packet.Animate{
+		s.writePacket(&v2193.AnimatePacket{
 			ActionType:      packet.AnimateActionCriticalHit,
 			EntityRuntimeID: s.entityRuntimeID(e),
 			Data:            float32(act.Count),
@@ -1493,13 +1494,13 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		if act.Count <= 0 {
 			act.Count = 15
 		}
-		s.writePacket(&packet.Animate{
+		s.writePacket(&v2193.AnimatePacket{
 			ActionType:      packet.AnimateActionMagicCriticalHit,
 			EntityRuntimeID: s.entityRuntimeID(e),
 			Data:            float32(act.Count),
 		})
 	case entity.DragonDeathAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventDragonStartDeathAnim,
 		})
@@ -1516,45 +1517,45 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		if !visible {
 			return
 		}
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: id,
 			EventType:       packet.ActorEventDeath,
 		})
 	case entity.WitchMagicAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventWitchHatMagic,
 		})
 	case entity.SilverfishMergeAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventSilverfishMergeAnimation,
 		})
 	case entity.PickedUpAction:
-		s.writePacket(&packet.TakeItemActor{
+		s.writePacket(&v2193.TakeItemActorPacket{
 			ItemEntityRuntimeID:  s.entityRuntimeID(e),
 			TakerEntityRuntimeID: s.entityRuntimeID(act.Collector),
 		})
 	case entity.ItemStackSizeAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventUpdateStackSize,
 			EventData:       int32(act.Count),
 		})
 	case entity.WolfShakeAction:
-		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventShakeWetness})
+		s.writePacket(&v2193.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventShakeWetness})
 	case entity.VibrationDetectedAction:
-		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventVibrationDetected})
+		s.writePacket(&v2193.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventVibrationDetected})
 	case entity.SquidInkAction:
-		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventSquidFleeing})
+		s.writePacket(&v2193.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventSquidFleeing})
 	case entity.ArrowShakeAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventShake,
 			EventData:       int32(act.Duration.Milliseconds() / 50),
 		})
 	case entity.FireworkExplosionAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFireworksExplode,
 		})
@@ -1571,7 +1572,7 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 				return
 			}
 			rid, meta, _ := world.ItemRuntimeID(it)
-			s.writePacket(&packet.ActorEvent{
+			s.writePacket(&v2193.ActorEventPacket{
 				EntityRuntimeID: s.entityRuntimeID(e),
 				EventType:       packet.ActorEventFeed,
 				// It's a little weird how the runtime ID is still shifted 16 bits to the left here, given the
@@ -1580,22 +1581,22 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			})
 		}
 	case entity.TotemUseAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventTalismanActivate,
 		})
 	case entity.FishHookBubbleAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFishhookBubble,
 		})
 	case entity.FishHookBiteAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFishhookHookTime,
 		})
 	case entity.FishHookTeaseAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFishhookTease,
 		})
@@ -1604,7 +1605,7 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		if act.Succeeded {
 			event = packet.ActorEventTamingSucceeded
 		}
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       event,
 		})
@@ -1613,17 +1614,17 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		if act.Milk {
 			event = packet.ActorEventDrinkMilk
 		}
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       event,
 		})
 	case entity.EatGrassAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventEatGrass,
 		})
 	case entity.LoveHeartsAction:
-		s.writePacket(&packet.ActorEvent{
+		s.writePacket(&v2193.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventInLoveHearts,
 		})
@@ -1643,10 +1644,10 @@ func clientRemovesDyingMob(e world.Entity) bool {
 
 // ViewEntityState ...
 func (s *Session) ViewEntityState(e world.Entity) {
-	s.writePacket(&packet.SetActorData{
+	s.writePacket(&v2193.SetActorDataPacket{
 		EntityRuntimeID:  s.entityRuntimeID(e),
-		EntityMetadata:   s.entityMetadata(e),
-		EntityProperties: entityProperties(e),
+		EntityMetadata:   toMetadata(s.entityMetadata(e)),
+		EntityProperties: toEntityProperties(entityProperties(e)),
 	})
 	if _, mount := e.(interface{ MountState() entity.MountState }); mount {
 		// Riders see the health of their mount, which feeding restores.
@@ -1688,7 +1689,7 @@ func (s *Session) entityMetadata(e world.Entity) protocol.EntityMetadata {
 
 // ViewEntityAnimation ...
 func (s *Session) ViewEntityAnimation(e world.Entity, a world.EntityAnimation) {
-	s.writePacket(&packet.AnimateEntity{
+	s.writePacket(&v2193.AnimateEntityPacket{
 		Animation:     a.Name(),
 		NextState:     a.NextState(),
 		StopCondition: a.StopCondition(),
@@ -1752,7 +1753,7 @@ func (s *Session) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	}
 
 	s.openedContainerID.Store(uint32(containerType))
-	s.writePacket(&packet.ContainerOpen{
+	s.writePacket(&v2193.ContainerOpenPacket{
 		WindowID:                nextID,
 		ContainerType:           containerType,
 		ContainerPosition:       protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
@@ -1784,7 +1785,7 @@ func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, 
 	s.openedPos.Store(&openPos)
 	s.openedContainerID.Store(uint32(containerType))
 
-	s.writePacket(&packet.ContainerOpen{
+	s.writePacket(&v2193.ContainerOpenPacket{
 		WindowID:                nextID,
 		ContainerType:           containerType,
 		ContainerPosition:       protocol.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
@@ -1826,7 +1827,7 @@ func (s *Session) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *wor
 	s.openedEntity.Store(e.H())
 	s.openedPos.Store(&openPos)
 	s.openedContainerID.Store(uint32(protocol.ContainerTypeTrade))
-	s.writePacket(&packet.ContainerOpen{
+	s.writePacket(&v2193.ContainerOpenPacket{
 		WindowID:                nextID,
 		ContainerType:           protocol.ContainerTypeTrade,
 		ContainerPosition:       protocol.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
@@ -1840,7 +1841,7 @@ func (s *Session) sendMerchantOffers(e world.Entity, merchant entity.Merchant, u
 	if level < 0 {
 		level = 0
 	}
-	s.writePacket(&packet.UpdateTrade{
+	s.writePacket(&v2193.UpdateTradePacket{
 		WindowID:          byte(s.openedWindowID.Load()),
 		WindowType:        15,
 		Size:              int32(len(offers)),
@@ -1934,7 +1935,7 @@ func (s *Session) openNormalContainer(b block.Container, pos cube.Pos, tx *world
 	}
 	s.openedContainerID.Store(uint32(containerType))
 
-	s.writePacket(&packet.ContainerOpen{
+	s.writePacket(&v2193.ContainerOpenPacket{
 		WindowID:                nextID,
 		ContainerType:           containerType,
 		ContainerPosition:       protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
@@ -1958,10 +1959,10 @@ func (s *Session) ViewSlotChange(slot int, newItem item.Stack) {
 		// Don't send slot changes to the player itself.
 		return
 	}
-	s.writePacket(&packet.InventorySlot{
+	s.writePacket(&v2193.InventorySlotPacket{
 		WindowID: s.openedWindowID.Load(),
 		Slot:     uint32(slot),
-		NewItem:  instanceFromItem(s.br, newItem),
+		NewItem:  toItemInstance(instanceFromItem(s.br, newItem)),
 	})
 }
 
@@ -1974,7 +1975,7 @@ func (s *Session) ViewCrafterSlotState(slot int, disabled bool) {
 	if disabled {
 		value = 1
 	}
-	s.writePacket(&packet.ContainerSetData{WindowID: byte(s.openedWindowID.Load()), Key: int32(slot), Value: value})
+	s.writePacket(&v2193.ContainerSetDataPacket{WindowID: byte(s.openedWindowID.Load()), Key: int32(slot), Value: value})
 }
 
 // ViewCrafterTriggered sends the native Crafter's redstone data property.
@@ -1986,7 +1987,7 @@ func (s *Session) ViewCrafterTriggered(triggered bool) {
 	if triggered {
 		value = 1
 	}
-	s.writePacket(&packet.ContainerSetData{WindowID: byte(s.openedWindowID.Load()), Key: 9, Value: value})
+	s.writePacket(&v2193.ContainerSetDataPacket{WindowID: byte(s.openedWindowID.Load()), Key: 9, Value: value})
 }
 
 // ViewBlockAction ...
@@ -1994,25 +1995,25 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	switch t := a.(type) {
 	case world.PositionTrackingUpdateAction:
-		s.writePacket(&packet.PositionTrackingDBServerBroadcast{
+		s.writePacket(&v2193.PositionTrackingDBServerBroadcastPacket{
 			BroadcastAction: packet.PositionTrackingDBBroadcastActionUpdate,
 			TrackingID:      t.Handle,
 			Payload:         positionTrackingPayload(t.Handle, t.Position, t.Dimension, positionTrackingStatusTracked),
 		})
 	case world.PositionTrackingDestroyAction:
-		s.writePacket(&packet.PositionTrackingDBServerBroadcast{
+		s.writePacket(&v2193.PositionTrackingDBServerBroadcastPacket{
 			BroadcastAction: packet.PositionTrackingDBBroadcastActionDestroy,
 			TrackingID:      t.Handle,
 			Payload:         positionTrackingPayload(t.Handle, cube.Pos{}, 0, positionTrackingStatusMissing),
 		})
 	case block.OpenAction:
-		s.writePacket(&packet.BlockEvent{
+		s.writePacket(&v2193.BlockEventPacket{
 			Position:  blockPos,
 			EventType: packet.BlockEventChangeChestState,
 			EventData: 1,
 		})
 	case block.CloseAction:
-		s.writePacket(&packet.BlockEvent{
+		s.writePacket(&v2193.BlockEventPacket{
 			Position:  blockPos,
 			EventType: packet.BlockEventChangeChestState,
 		})
@@ -2021,13 +2022,13 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 			// An instant break has no cracking to animate, and encoding the crack speed would divide by zero.
 			break
 		}
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventStartBlockCracking,
 			Position:  vec64To32(pos.Vec3()),
 			EventData: int32(65535 / (t.BreakTime.Seconds() * 20)),
 		})
 	case block.StopCrackAction:
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventStopBlockCracking,
 			Position:  vec64To32(pos.Vec3()),
 			EventData: 0,
@@ -2036,7 +2037,7 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 		if t.BreakTime <= 0 {
 			break
 		}
-		s.writePacket(&packet.LevelEvent{
+		s.writePacket(&v2193.LevelEventPacket{
 			EventType: packet.LevelEventUpdateBlockCracking,
 			Position:  vec64To32(pos.Vec3()),
 			EventData: int32(65535 / (t.BreakTime.Seconds() * 20)),
@@ -2044,7 +2045,7 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 	case block.DecoratedPotWobbleAction:
 		nbt := clientActorNBT(t.DecoratedPot.EncodeNBT(), pos)
 		nbt["animation"] = boolByte(t.Success) + 1
-		s.writePacket(&packet.BlockActorData{
+		s.writePacket(&v2193.BlockActorDataPacket{
 			Position: blockPos,
 			NBTData:  nbt,
 		})
@@ -2057,7 +2058,7 @@ func (s *Session) ViewEmote(player world.Entity, emote uuid.UUID) {
 	if s.emoteChatMuted {
 		flags |= packet.EmoteFlagMuteChat
 	}
-	s.writePacket(&packet.Emote{
+	s.writePacket(&v2193.EmotePacket{
 		EntityRuntimeID: s.entityRuntimeID(player),
 		EmoteID:         emote.String(),
 		Flags:           flags,
@@ -2067,9 +2068,9 @@ func (s *Session) ViewEmote(player world.Entity, emote uuid.UUID) {
 // ViewSkin ...
 func (s *Session) ViewSkin(e world.Entity) {
 	if v, ok := e.(Controllable); ok {
-		s.writePacket(&packet.PlayerSkin{
+		s.writePacket(&v2193.PlayerSkinPacket{
 			UUID: v.UUID(),
-			Skin: skinToProtocol(v.Skin()),
+			Skin: toSkin(skinToProtocol(v.Skin())),
 		})
 	}
 }
@@ -2077,7 +2078,7 @@ func (s *Session) ViewSkin(e world.Entity) {
 // ViewWorldSpawn ...
 func (s *Session) ViewWorldSpawn(pos cube.Pos) {
 	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	s.writePacket(&packet.SetSpawnPosition{
+	s.writePacket(&v2193.SetSpawnPositionPacket{
 		SpawnType:     packet.SpawnTypeWorld,
 		Position:      blockPos,
 		Dimension:     packet.DimensionOverworld,
@@ -2092,7 +2093,7 @@ func (s *Session) SetPlayerSpawn(pos cube.Pos, dim world.Dimension) {
 	}
 	id, _ := world.DimensionID(dim)
 	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	s.writePacket(&packet.SetSpawnPosition{
+	s.writePacket(&v2193.SetSpawnPositionPacket{
 		SpawnType:     packet.SpawnTypePlayer,
 		Position:      blockPos,
 		Dimension:     int32(id),
@@ -2102,7 +2103,7 @@ func (s *Session) SetPlayerSpawn(pos cube.Pos, dim world.Dimension) {
 
 // ViewWeather ...
 func (s *Session) ViewWeather(raining, thunder bool) {
-	pk := &packet.LevelEvent{
+	pk := &v2193.LevelEventPacket{
 		EventType: packet.LevelEventStopRaining,
 	}
 	if raining {
@@ -2110,7 +2111,7 @@ func (s *Session) ViewWeather(raining, thunder bool) {
 	}
 	s.writePacket(pk)
 
-	pk = &packet.LevelEvent{
+	pk = &v2193.LevelEventPacket{
 		EventType: packet.LevelEventStopThunderstorm,
 	}
 	if thunder {
@@ -2121,7 +2122,7 @@ func (s *Session) ViewWeather(raining, thunder bool) {
 
 // ViewEntityWake ...
 func (s *Session) ViewEntityWake(e world.Entity) {
-	s.writePacket(&packet.Animate{
+	s.writePacket(&v2193.AnimatePacket{
 		EntityRuntimeID: s.entityRuntimeID(e),
 		ActionType:      packet.AnimateActionStopSleep,
 	})
@@ -2147,7 +2148,7 @@ func (s *Session) closeWindow(clientRequested bool) bool {
 	s.openedWindow.Store(inventory.New(1, nil))
 	s.openedEntity.Store(nil)
 	if !clientRequested {
-		s.writePacket(&packet.ContainerClose{
+		s.writePacket(&v2193.ContainerClosePacket{
 			WindowID:      windowID,
 			ContainerType: containerType,
 			ServerSide:    true,

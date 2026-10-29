@@ -7,8 +7,8 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
@@ -18,9 +18,9 @@ func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 		useItem   func(*Session)
 		wantCount uint16
 	}{
-		{name: "cancelled", count: 1, useItem: func(s *Session) { s.writePacket(&packet.Text{Message: "cancelled use-item"}) }, wantCount: 1},
+		{name: "cancelled", count: 1, useItem: func(s *Session) { s.writePacket(&v2193.TextPacket{Message: "cancelled use-item"}) }, wantCount: 1},
 		{name: "successful", count: 2, useItem: func(s *Session) {
-			s.writePacket(&packet.Text{Message: "successful use-item"})
+			s.writePacket(&v2193.TextPacket{Message: "successful use-item"})
 			_ = s.inv.SetItem(0, item.NewStack(item.Apple{}, 1))
 		}, wantCount: 1},
 	} {
@@ -45,7 +45,7 @@ func TestUseItemOnEntityTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 		tx.AddEntity(target)
 		s.entities[2] = target
 		c := transactionControllable{useItemOnEntity: func(world.Entity) bool {
-			s.writePacket(&packet.Text{Message: "cancelled use-on-entity"})
+			s.writePacket(&v2193.TextPacket{Message: "cancelled use-on-entity"})
 			return false
 		}}
 		err := new(InventoryTransactionHandler).handleUseItemOnEntityTransaction(&protocol.UseItemOnEntityTransactionData{
@@ -72,10 +72,10 @@ func transactionTestSession(count int) *Session {
 
 func assertActionThenHeldSlot(t *testing.T, s *Session, wantCount uint16) {
 	t.Helper()
-	if _, ok := (<-s.packets).(*packet.Text); !ok {
+	if _, ok := (<-s.packets).(*v2193.TextPacket); !ok {
 		t.Fatal("action packet was not sent before the inventory resync")
 	}
-	slot, ok := (<-s.packets).(*packet.InventorySlot)
+	slot, ok := (<-s.packets).(*v2193.InventorySlotPacket)
 	if !ok {
 		t.Fatal("held slot was not resynced")
 	}

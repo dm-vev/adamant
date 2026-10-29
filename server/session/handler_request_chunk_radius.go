@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -26,6 +27,6 @@ func (*RequestChunkRadiusHandler) Handle(p packet.Packet, s *Session, tx *world.
 		s.chunkLoader.ChangeRadius(tx, int(chunkRadius))
 	}
 
-	s.writePacket(&packet.ChunkRadiusUpdated{ChunkRadius: chunkRadius})
+	s.writePacket(&v2193.ChunkRadiusUpdatedPacket{ChunkRadius: chunkRadius})
 	return nil
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -17,7 +19,7 @@ import (
 // staticPacket is a packet that is the same for every player, such as the
 // recipes: a connection may encode and compress it once for all of them.
 // It must not change once written.
-type staticPacket struct{ packet.Packet }
+type staticPacket struct{ proto.Packet }
 
 // StaticPacket marks the packet as static.
 func (*staticPacket) StaticPacket() {}
@@ -158,7 +160,7 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			})
 		}
 	}
-	d.packet = &staticPacket{&packet.CraftingData{
+	recipes := to[v2193.CraftingDataPacket](packet.CraftingData{
 		ShapedRecipes:                shapedRecipes,
 		ShapelessRecipes:             shapelessRecipes,
 		MultiRecipes:                 multiRecipes,
@@ -168,7 +170,8 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 		PotionRecipes:                potionRecipes,
 		PotionContainerChangeRecipes: potionContainerChange,
 		ClearRecipes:                 true,
-	}}
+	})
+	d.packet = &staticPacket{&recipes}
 	return d
 }
 
@@ -210,7 +213,7 @@ var creativeCache struct {
 
 // creativePacket returns the CreativeContent of a block registry, made
 // again once more creative groups or items were registered.
-func creativePacket(br world.BlockRegistry) packet.Packet {
+func creativePacket(br world.BlockRegistry) proto.Packet {
 	groups, items := creative.Groups(), creative.Items()
 	if !reflect.TypeOf(br).Comparable() {
 		return creativeContent(br, groups, items)
@@ -230,7 +233,7 @@ func creativePacket(br world.BlockRegistry) packet.Packet {
 
 // creativeContent returns the creative groups and the items in them as
 // protocol item stacks.
-func creativeContent(br world.BlockRegistry, groups []creative.Group, items []creative.Item) *packet.CreativeContent {
+func creativeContent(br world.BlockRegistry, groups []creative.Group, items []creative.Item) *v2193.CreativeContentPacket {
 	pk := &packet.CreativeContent{Groups: make([]protocol.CreativeGroup, 0, len(groups)), Items: make([]protocol.CreativeItem, 0, len(items))}
 	for _, group := range groups {
 		pk.Groups = append(pk.Groups, protocol.CreativeGroup{
@@ -252,5 +255,6 @@ func creativeContent(br world.BlockRegistry, groups []creative.Group, items []cr
 			GroupIndex:            uint32(group),
 		})
 	}
-	return pk
+	out := to[v2193.CreativeContentPacket](*pk)
+	return &out
 }

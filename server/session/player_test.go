@@ -14,6 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -49,9 +50,9 @@ func TestResyncInventory(t *testing.T) {
 
 	for _, want := range []uint32{protocol.WindowIDInventory, protocol.WindowIDOffHand} {
 		pk := <-s.packets
-		content, ok := pk.(*packet.InventoryContent)
+		content, ok := pk.(*v2193.InventoryContentPacket)
 		if !ok {
-			t.Fatalf("packet type = %T, want *packet.InventoryContent", pk)
+			t.Fatalf("packet type = %T, want *v2193.InventoryContentPacket", pk)
 		}
 		if content.WindowID != want {
 			t.Errorf("window ID = %v, want %v", content.WindowID, want)
@@ -70,9 +71,9 @@ func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
 	}
 
 	pk := <-s.packets
-	gameType, ok := pk.(*packet.SetPlayerGameType)
+	gameType, ok := pk.(*v2193.SetPlayerGameTypePacket)
 	if !ok {
-		t.Fatalf("packet type = %T, want *packet.SetPlayerGameType", pk)
+		t.Fatalf("packet type = %T, want *v2193.SetPlayerGameTypePacket", pk)
 	}
 	if gameType.GameType != packet.GameTypeCreative {
 		t.Fatalf("game type = %d, want %d", gameType.GameType, packet.GameTypeCreative)
@@ -87,9 +88,9 @@ func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
 	}
 
 	pk = <-s.packets
-	abilities, ok := pk.(*packet.UpdateAbilities)
+	abilities, ok := pk.(*v2193.UpdateAbilitiesPacket)
 	if !ok {
-		t.Fatalf("packet type = %T, want *packet.UpdateAbilities", pk)
+		t.Fatalf("packet type = %T, want *v2193.UpdateAbilitiesPacket", pk)
 	}
 	want := uint32(protocol.AbilityMayFly | protocol.AbilityInvulnerable | protocol.AbilityInstantBuild | protocol.AbilityBuild | protocol.AbilityMine | protocol.AbilityDoorsAndSwitches | protocol.AbilityOpenContainers | protocol.AbilityAttackPlayers | protocol.AbilityAttackMobs)
 	if got := abilities.AbilityData.Layers[0].Values; got != want {
@@ -259,9 +260,9 @@ func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
 	if st, ok := raw.(*staticPacket); ok {
 		raw = st.Packet
 	}
-	pk, ok := raw.(*packet.CraftingData)
+	pk, ok := raw.(*v2193.CraftingDataPacket)
 	if !ok {
-		t.Fatalf("packet type = %T, want *packet.CraftingData", raw)
+		t.Fatalf("packet type = %T, want *v2193.CraftingDataPacket", raw)
 	}
 	if len(pk.ShapedRecipes) == 0 || !pk.ShapedRecipes[len(pk.ShapedRecipes)-1].AssumeSymmetry {
 		t.Fatal("shaped recipe is not visible through symmetry metadata")
@@ -994,7 +995,7 @@ func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stac
 	if result, _ := s.ui.Item(craftingResult); !result.Empty() {
 		t.Fatalf("rejected craft produced %v", result)
 	}
-	pk, ok := (<-s.packets).(*packet.ItemStackResponse)
+	pk, ok := (<-s.packets).(*v2193.ItemStackResponsePacket)
 	if !ok || len(pk.Responses) != 1 || pk.Responses[0].Status != protocol.ItemStackResponseStatusError {
 		t.Fatalf("rejected craft response = %#v", pk)
 	}

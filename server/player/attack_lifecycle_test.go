@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -82,18 +83,18 @@ func TestMeleeHitStopsUpdatingRemovedTarget(t *testing.T) {
 				criticals, deaths := 0, 0
 				for _, pk := range conn.packets {
 					switch pk := pk.(type) {
-					case *packet.Animate:
+					case *v2193.AnimatePacket:
 						if pk.EntityRuntimeID == 0 {
 							t.Error("animation targets runtime ID zero")
 						}
 						if pk.ActionType == packet.AnimateActionCriticalHit {
 							criticals++
 						}
-					case *packet.SetActorData:
+					case *v2193.SetActorDataPacket:
 						if pk.EntityRuntimeID == 0 {
 							t.Error("metadata targets runtime ID zero")
 						}
-					case *packet.ActorEvent:
+					case *v2193.ActorEventPacket:
 						if pk.EventType == packet.ActorEventDeath {
 							deaths++
 						}

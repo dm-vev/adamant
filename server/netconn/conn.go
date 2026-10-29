@@ -98,13 +98,6 @@ func (c *Conn) RemoteAddr() net.Addr { return c.nn.RemoteAddr() }
 // WritePacket adds a packet to the batch sent at the next Flush. A Static
 // goes in a batch of its own, encoded once for every connection.
 func (c *Conn) WritePacket(pk packet.Packet) error {
-	if st, ok := pk.(Static); ok {
-		msg, err := c.l.static(st, c.shieldID.Load())
-		if err != nil {
-			return err
-		}
-		return c.b.SendBatch(msg)
-	}
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	c.buf.Reset()
@@ -126,6 +119,13 @@ func (c *Conn) WritePacket(pk packet.Packet) error {
 // WriteProto adds a packet of the generated codecs to the batch sent at the
 // next Flush.
 func (c *Conn) WriteProto(pk proto.Packet) error {
+	if st, ok := pk.(Static); ok {
+		msg, err := c.l.static(st, c.shieldID.Load())
+		if err != nil {
+			return err
+		}
+		return c.b.SendBatch(msg)
+	}
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	c.pw.B = bedrock.AppendHeader(c.pw.B[:0], bedrock.Header{ID: pk.ID()})

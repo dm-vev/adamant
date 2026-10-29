@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -24,7 +25,7 @@ func TestMobDeathAnimationSurvivesRemoval(t *testing.T) {
 		viewer.ViewEntityAction(e, entity.DeathAction{})
 		viewer.HideEntity(e)
 		viewer.HideEntity(e)
-		pk, ok := (<-viewer.packets).(*packet.ActorEvent)
+		pk, ok := (<-viewer.packets).(*v2193.ActorEventPacket)
 		if !ok || pk.EventType != packet.ActorEventDeath || pk.EntityRuntimeID != 2 {
 			t.Errorf("death packet = %#v, want actor 2 death event", pk)
 		}
@@ -59,7 +60,7 @@ func TestForcedHideStillRemovesDyingMob(t *testing.T) {
 		viewer.ViewEntityAction(e, entity.DeathAction{})
 		<-viewer.packets
 		viewer.StopShowingEntity(e)
-		if pk, ok := (<-viewer.packets).(*packet.RemoveActor); !ok || pk.EntityUniqueID != e.H().UniqueID() {
+		if pk, ok := (<-viewer.packets).(*v2193.RemoveActorPacket); !ok || pk.EntityUniqueID != e.H().UniqueID() {
 			t.Errorf("forced-hide packet = %#v, want RemoveActor", pk)
 		}
 	}).Wait(context.Background()); err != nil {
@@ -89,7 +90,7 @@ func TestSpecialDeathSequencesStillSendRemoveActor(t *testing.T) {
 				viewer.ViewEntityAction(e, entity.DeathAction{})
 				<-viewer.packets
 				viewer.HideEntity(e)
-				if pk, ok := (<-viewer.packets).(*packet.RemoveActor); !ok || pk.EntityUniqueID != h.UniqueID() {
+				if pk, ok := (<-viewer.packets).(*v2193.RemoveActorPacket); !ok || pk.EntityUniqueID != h.UniqueID() {
 					t.Errorf("special-death removal = %#v, want RemoveActor", pk)
 				}
 			}).Wait(context.Background()); err != nil {
@@ -143,11 +144,11 @@ func TestKilledMobSendsDeathWithoutImmediateRemoveActor(t *testing.T) {
 			deaths := 0
 			for len(viewer.packets) > 0 {
 				switch pk := (<-viewer.packets).(type) {
-				case *packet.ActorEvent:
+				case *v2193.ActorEventPacket:
 					if pk.EntityRuntimeID == runtimeID && pk.EventType == packet.ActorEventDeath {
 						deaths++
 					}
-				case *packet.RemoveActor:
+				case *v2193.RemoveActorPacket:
 					if pk.EntityUniqueID == uniqueID {
 						t.Error("lethal hit immediately removed the dying actor")
 					}
@@ -180,7 +181,7 @@ func TestMobRemovalWithoutDeathStillSendsRemoveActor(t *testing.T) {
 		viewer.entityRuntimeIDs[e.H()] = 2
 		viewer.entities[2] = e.H()
 		viewer.HideEntity(e)
-		pk, ok := (<-viewer.packets).(*packet.RemoveActor)
+		pk, ok := (<-viewer.packets).(*v2193.RemoveActorPacket)
 		if !ok || pk.EntityUniqueID != e.H().UniqueID() {
 			t.Errorf("removal packet = %#v, want RemoveActor for %d", pk, e.H().UniqueID())
 		}

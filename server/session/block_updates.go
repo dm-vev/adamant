@@ -82,7 +82,7 @@ func (s *Session) flushBlockUpdates() {
 				Layer:             update.layer,
 			})
 			if update.nbt != nil {
-				s.writePacket(&packet.BlockActorData{
+				s.writePacket(&v2193.BlockActorDataPacket{
 					Position: update.pos,
 					NBTData:  update.nbt,
 				})

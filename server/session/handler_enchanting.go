@@ -11,8 +11,8 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 const (
@@ -131,7 +131,7 @@ func (s *Session) sendEnchantmentOptions(tx *world.Tx, c Controllable, pos cube.
 	}
 
 	// Send the enchantment options to the client.
-	s.writePacket(&packet.PlayerEnchantOptions{Options: options})
+	s.writePacket(&v2193.PlayerEnchantOptionsPacket{Options: to[[]v2193.EnchantmentOption](options)})
 }
 
 // determineAvailableEnchantments returns a list of pseudo-random enchantments for the given item stack.

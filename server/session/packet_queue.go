@@ -31,6 +31,22 @@ func (p protoPacket) Marshal(io protocol.IO) {
 	io.Bytes(&w.B)
 }
 
+// WriteTo writes a packet, gophertunnel's or one of the generated codecs of
+// protocol 2193, to a connection: the latter through WriteProto if the
+// connection has it, else through Marshal.
+func WriteTo(conn Conn, pk interface{ ID() uint32 }) error {
+	switch pk := pk.(type) {
+	case packet.Packet:
+		return conn.WritePacket(pk)
+	case proto.Packet:
+		if w, ok := conn.(protoWriter); ok {
+			return w.WriteProto(pk)
+		}
+		return conn.WritePacket(protoPacket{pk})
+	}
+	return nil
+}
+
 // writeQueued writes a packet taken from the queue to the connection. A
 // packet that does not encode, as a Text without a message, is a bug of
 // the server: it is dropped and logged rather than taking the server down
@@ -42,16 +58,7 @@ func (s *Session) writeQueued(pk queuedPacket) (err error) {
 			err = nil
 		}
 	}()
-	switch pk := pk.(type) {
-	case packet.Packet:
-		return s.conn.WritePacket(pk)
-	case proto.Packet:
-		if w, ok := s.conn.(protoWriter); ok {
-			return w.WriteProto(pk)
-		}
-		return s.conn.WritePacket(protoPacket{pk})
-	}
-	return nil
+	return WriteTo(s.conn, pk)
 }
 
 // maxQueuedPackets bounds retained packets for a connection whose writer cannot

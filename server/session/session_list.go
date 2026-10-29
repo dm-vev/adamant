@@ -7,9 +7,9 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 var sessions = new(sessionList)
@@ -96,26 +96,26 @@ func (l *sessionList) sendAbilities(from *Session, data protocol.AbilityData) {
 	l.mu.Unlock()
 	for _, other := range others {
 		if other != from {
-			other.writePacket(&packet.UpdateAbilities{AbilityData: data})
+			other.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: toAbilityData(data)})
 		}
 	}
 }
 
 func (l *sessionList) sendSessionTo(s, to *Session) {
 
-	to.writePacket(&packet.PlayerList{
-		Entries: []protocol.PlayerListEntry{{
+	to.writePacket(&v2193.PlayerListPacket{
+		Entries: []v2193.PlayerListEntry{{
 			ActionType:     protocol.PlayerListActionAdd,
 			UUID:           s.ent.UUID(),
 			EntityUniqueID: s.ent.UniqueID(),
 			Username:       s.conn.IdentityData().DisplayName,
 			XUID:           s.conn.IdentityData().XUID,
 			BuildPlatform:  int32(protocol.DeviceUnknown),
-			Skin:           skinToProtocol(s.joinSkin),
+			Skin:           toSkin(skinToProtocol(s.joinSkin)),
 		}},
 	})
 	if data := s.abilities.Load(); data != nil && s != to {
-		to.writePacket(&packet.UpdateAbilities{AbilityData: *data})
+		to.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: toAbilityData(*data)})
 	}
 }
 
@@ -142,8 +142,8 @@ func (l *sessionList) unsendSessionFrom(s, from *Session) {
 	}
 	from.entityMutex.Unlock()
 
-	from.writePacket(&packet.PlayerList{
-		Entries: []protocol.PlayerListEntry{{
+	from.writePacket(&v2193.PlayerListPacket{
+		Entries: []v2193.PlayerListEntry{{
 			ActionType: protocol.PlayerListActionRemove,
 			UUID:       s.ent.UUID(),
 		}},

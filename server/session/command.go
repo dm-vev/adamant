@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -20,24 +21,24 @@ func (s *Session) SendCommandOutput(output *cmd.Output, l language.Tag) {
 	if s == Nop {
 		return
 	}
-	messages := make([]protocol.CommandOutputMessage, 0, output.MessageCount()+output.ErrorCount())
+	messages := make([]v2193.CommandOutputMessage, 0, output.MessageCount()+output.ErrorCount())
 	for _, message := range output.Messages() {
-		om := protocol.CommandOutputMessage{Success: true, Message: message.String()}
+		om := v2193.CommandOutputMessage{Success: true, Message: message.String()}
 		if t, ok := message.(translation); ok {
 			om.Message, om.Parameters = t.Resolve(l), t.Params(l)
 		}
 		messages = append(messages, om)
 	}
 	for _, err := range output.Errors() {
-		om := protocol.CommandOutputMessage{Message: err.Error()}
+		om := v2193.CommandOutputMessage{Message: err.Error()}
 		if t, ok := err.(translation); ok {
 			om.Message, om.Parameters = t.Resolve(l), t.Params(l)
 		}
 		messages = append(messages, om)
 	}
 
-	s.writePacket(&packet.CommandOutput{
-		CommandOrigin:  s.commandOriginSnapshot(),
+	s.writePacket(&v2193.CommandOutputPacket{
+		CommandOrigin:  toCommandOrigin(s.commandOriginSnapshot()),
 		OutputType:     packet.CommandOutputTypeAllOutput,
 		SuccessCount:   uint32(output.MessageCount()),
 		OutputMessages: messages,
@@ -70,10 +71,10 @@ func BuildAvailableCommands(
 	commands map[string]cmd.Command,
 	src cmd.Source,
 	softEnums map[string]struct{},
-) (*packet.AvailableCommands, map[string]map[int]cmd.Runnable) {
+) (*v2193.AvailableCommandsPacket, map[string]map[int]cmd.Runnable) {
 	m := make(map[string]map[int]cmd.Runnable, len(commands))
 
-	pk := &packet.AvailableCommands{}
+	pk := &v2193.AvailableCommandsPacket{}
 
 	var enums []commandEnum
 	enumIndices := map[string]uint32{}
@@ -99,7 +100,7 @@ func BuildAvailableCommands(
 		}
 
 		params := c.Params(src)
-		overloads := make([]protocol.CommandOverload, len(params))
+		overloads := make([]v2193.CommandOverload, len(params))
 
 		aliasesIndex := uint32(math.MaxUint32)
 		if len(c.Aliases()) > 0 {
@@ -153,7 +154,7 @@ func BuildAvailableCommands(
 						}
 					}
 				}
-				overloads[i].Parameters = append(overloads[i].Parameters, protocol.CommandParameter{
+				overloads[i].Parameters = append(overloads[i].Parameters, v2193.CommandParameter{
 					Name:     paramInfo.Name,
 					Type:     t,
 					Optional: paramInfo.Optional,
@@ -161,7 +162,7 @@ func BuildAvailableCommands(
 				})
 			}
 		}
-		pk.Commands = append(pk.Commands, protocol.Command{
+		pk.Commands = append(pk.Commands, v2193.Command{
 			Name:            c.Name(),
 			Description:     commandDescription(c, src),
 			AliasesOffset:   aliasesIndex,
@@ -170,17 +171,17 @@ func BuildAvailableCommands(
 		})
 	}
 
-	pk.DynamicEnums = make([]protocol.DynamicEnum, 0, len(dynamicEnums))
+	pk.DynamicEnums = make([]v2193.DynamicEnum, 0, len(dynamicEnums))
 	for _, e := range dynamicEnums {
-		pk.DynamicEnums = append(pk.DynamicEnums, protocol.DynamicEnum{Type: e.Type, Values: e.Options})
+		pk.DynamicEnums = append(pk.DynamicEnums, v2193.DynamicEnum{Type: e.Type, Values: e.Options})
 	}
 
 	enumValueIndices := make(map[string]uint32, len(enums)*3)
 	pk.EnumValues = make([]string, 0, len(enumValueIndices))
 
-	pk.Enums = make([]protocol.CommandEnum, 0, len(enums))
+	pk.Enums = make([]v2193.CommandEnum, 0, len(enums))
 	for enumIndex, enum := range enums {
-		protoEnum := protocol.CommandEnum{Type: enum.Type}
+		protoEnum := v2193.CommandEnum{Type: enum.Type}
 		for _, opt := range enum.Options {
 			index, ok := enumValueIndices[opt]
 			if !ok {
@@ -191,7 +192,7 @@ func BuildAvailableCommands(
 			protoEnum.ValueIndices = append(protoEnum.ValueIndices, index)
 			if enum.Constraints != nil {
 				if constraints := enum.Constraints(opt); len(constraints) > 0 {
-					pk.Constraints = append(pk.Constraints, protocol.CommandEnumConstraint{
+					pk.Constraints = append(pk.Constraints, v2193.CommandEnumConstraint{
 						EnumValueIndex: index,
 						EnumIndex:      uint32(enumIndex),
 						Constraints:    constraints,
@@ -373,7 +374,7 @@ func (s *Session) resendEnums(
 		}
 
 		if _, dynamic := softEnums[name]; dynamic {
-			s.writePacket(&packet.UpdateSoftEnum{EnumType: name, Options: values, ActionType: packet.SoftEnumActionSet})
+			s.writePacket(&v2193.UpdateSoftEnumPacket{EnumType: name, Options: values, ActionType: packet.SoftEnumActionSet})
 		} else {
 			softEnums[name] = struct{}{}
 			r = s.sendAvailableCommands(c, softEnums)

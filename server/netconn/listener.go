@@ -1,7 +1,6 @@
 package netconn
 
 import (
-	"bytes"
 	"compress/flate"
 	"context"
 	"crypto/ecdsa"
@@ -19,6 +18,8 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/dm-vev/adamant/net/bedrock"
 	bedrocklogin "github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -99,7 +100,7 @@ type Listener struct {
 // once and kept, by the identity of the packet, as long as the listener
 // lives: a Static must not change after it is written.
 type Static interface {
-	packet.Packet
+	proto.Packet
 	// StaticPacket marks the packet; it does nothing.
 	StaticPacket()
 }
@@ -123,14 +124,13 @@ func (l *Listener) static(pk Static, shield int32) ([]byte, error) {
 	if msg, ok := l.statics[key]; ok {
 		return msg, nil
 	}
-	var buf bytes.Buffer
-	buf.Write(bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()}))
-	pk.Marshal(protocol.NewWriter(&buf, shield))
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+	pk.Encode(&w)
 	comp := l.cfg.Compression
 	if _, ok := comp.(bedrock.Flate); ok {
 		comp = staticCompression
 	}
-	msg, err := bedrock.EncodeBatch(comp, buf.Bytes())
+	msg, err := bedrock.EncodeBatch(comp, w.B)
 	if err != nil {
 		return nil, err
 	}

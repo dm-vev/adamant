@@ -148,9 +148,9 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 
 // handleInputFlags handles the toggleable input flags set in a PlayerAuthInput packet.
 func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.InputFlags, s *Session, tx *world.Tx, c Controllable) {
- dashedByJump := h.tryDash(flags, tx, c)
- jumpedByVehicle := !dashedByJump && h.tryRideJump(flags, tx, c)
- dismountedByJump := !dashedByJump && !jumpedByVehicle && h.tryDismount(flags, tx, c)
+	dashedByJump := h.tryDash(flags, tx, c)
+	jumpedByVehicle := !dashedByJump && h.tryRideJump(flags, tx, c)
+	dismountedByJump := !dashedByJump && !jumpedByVehicle && h.tryDismount(flags, tx, c)
 	if flags.Load(packet.InputFlagStartSprinting) {
 		c.StartSprinting()
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/scoreboard"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
@@ -17,7 +18,7 @@ func (s *Session) SendMessage(message string) {
 		// empty line Java shows.
 		message = " "
 	}
-	s.writePacket(&packet.Text{
+	s.writePacket(&v2193.TextPacket{
 		TextType: packet.TextTypeRaw,
 		Message:  message,
 	})
@@ -26,7 +27,7 @@ func (s *Session) SendMessage(message string) {
 // SendTranslation sends a translation localised for a specific language.Tag.
 func (s *Session) SendTranslation(t chat.Translation, l language.Tag, a []any) {
 	tr := t.F(a...)
-	s.writePacket(&packet.Text{
+	s.writePacket(&v2193.TextPacket{
 		TextType:         packet.TextTypeTranslation,
 		NeedsTranslation: true,
 		Message:          tr.Resolve(l),
@@ -36,7 +37,7 @@ func (s *Session) SendTranslation(t chat.Translation, l language.Tag, a []any) {
 
 // SendTip ...
 func (s *Session) SendTip(message string) {
-	s.writePacket(&packet.Text{
+	s.writePacket(&v2193.TextPacket{
 		TextType: packet.TextTypeTip,
 		Message:  message,
 	})
@@ -44,7 +45,7 @@ func (s *Session) SendTip(message string) {
 
 // SendAnnouncement ...
 func (s *Session) SendAnnouncement(message string) {
-	s.writePacket(&packet.Text{
+	s.writePacket(&v2193.TextPacket{
 		TextType: packet.TextTypeAnnouncement,
 		Message:  message,
 	})
@@ -52,7 +53,7 @@ func (s *Session) SendAnnouncement(message string) {
 
 // SendPopup ...
 func (s *Session) SendPopup(message string) {
-	s.writePacket(&packet.Text{
+	s.writePacket(&v2193.TextPacket{
 		TextType: packet.TextTypePopup,
 		Message:  message,
 	})
@@ -60,7 +61,7 @@ func (s *Session) SendPopup(message string) {
 
 // SendJukeboxPopup ...
 func (s *Session) SendJukeboxPopup(message string) {
-	s.writePacket(&packet.Text{
+	s.writePacket(&v2193.TextPacket{
 		TextType: packet.TextTypeJukeboxPopup,
 		Message:  message,
 	})
@@ -68,7 +69,7 @@ func (s *Session) SendJukeboxPopup(message string) {
 
 // SendToast ...
 func (s *Session) SendToast(title, message string) {
-	s.writePacket(&packet.ToastRequest{
+	s.writePacket(&v2193.ToastRequestPacket{
 		Title:   title,
 		Message: message,
 	})
@@ -96,7 +97,7 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 
 	if currentName != name {
 		s.RemoveScoreboard()
-		pk := &packet.SetDisplayObjective{
+		pk := &v2193.SetDisplayObjectivePacket{
 			DisplaySlot:   "sidebar",
 			ObjectiveName: name,
 			DisplayName:   name,
@@ -110,9 +111,9 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 		s.writePacket(pk)
 	} else {
 		// Remove all current lines from the scoreboard. We can't replace them without removing them.
-		pk := &packet.SetScore{}
+		pk := &v2193.SetScorePacket{}
 		for i := range currentLines {
-			pk.Entries = append(pk.Entries, protocol.ScoreboardEntry{
+			pk.Entries = append(pk.Entries, v2193.ScoreboardEntry{
 				IdentityType:  protocol.ScoreboardIdentityRemove,
 				EntryID:       int64(i),
 				ObjectiveName: currentName,
@@ -123,14 +124,14 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 			s.writePacket(pk)
 		}
 	}
-	pk := &packet.SetScore{}
+	pk := &v2193.SetScorePacket{}
 	displayLines := make([]string, len(lines))
 	for k, line := range lines {
 		if len(line) == 0 {
 			line = "§" + colours[k]
 		}
 		displayLines[k] = line
-		pk.Entries = append(pk.Entries, protocol.ScoreboardEntry{
+		pk.Entries = append(pk.Entries, v2193.ScoreboardEntry{
 			EntryID:       int64(k),
 			ObjectiveName: name,
 			Score:         int32(k),
@@ -158,7 +159,7 @@ func (s *Session) RemoveScoreboard() {
 	if current == nil {
 		return
 	}
-	s.writePacket(&packet.RemoveObjective{ObjectiveName: *current})
+	s.writePacket(&v2193.RemoveObjectivePacket{ObjectiveName: *current})
 	var name string
 	var lines []string
 	s.currentScoreboard.Store(&name)
@@ -172,7 +173,7 @@ func (s *Session) SendBossBar(text string, colour uint8, healthPercentage float6
 
 // SendBossBarID shows or updates the independently identified boss bar.
 func (s *Session) SendBossBarID(id, text string, colour uint8, healthPercentage float64) {
-	s.writePacket(&packet.BossEvent{
+	s.writePacket(&v2193.BossEventPacket{
 		BossEntityUniqueID: s.bossBarEntityID(id),
 		EventType:          packet.BossEventShow,
 		BossBarTitle:       text,
@@ -186,7 +187,7 @@ func (s *Session) RemoveBossBar() { s.RemoveBossBarID("default") }
 
 // RemoveBossBarID hides only the boss bar identified by id.
 func (s *Session) RemoveBossBarID(id string) {
-	s.writePacket(&packet.BossEvent{
+	s.writePacket(&v2193.BossEventPacket{
 		BossEntityUniqueID: s.bossBarEntityID(id),
 		EventType:          packet.BossEventHide,
 	})
@@ -215,7 +216,7 @@ const tickLength = time.Second / 20
 
 // SetTitleDurations ...
 func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDuration time.Duration) {
-	s.writePacket(&packet.SetTitle{
+	s.writePacket(&v2193.SetTitlePacket{
 		ActionType:      packet.TitleActionSetDurations,
 		FadeInDuration:  int32(fadeInDuration / tickLength),
 		RemainDuration:  int32(remainDuration / tickLength),
@@ -225,15 +226,15 @@ func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDurat
 
 // SendTitle ...
 func (s *Session) SendTitle(text string) {
-	s.writePacket(&packet.SetTitle{ActionType: packet.TitleActionSetTitle, Text: text})
+	s.writePacket(&v2193.SetTitlePacket{ActionType: packet.TitleActionSetTitle, Text: text})
 }
 
 // SendSubtitle ...
 func (s *Session) SendSubtitle(text string) {
-	s.writePacket(&packet.SetTitle{ActionType: packet.TitleActionSetSubtitle, Text: text})
+	s.writePacket(&v2193.SetTitlePacket{ActionType: packet.TitleActionSetSubtitle, Text: text})
 }
 
 // SendActionBarMessage ...
 func (s *Session) SendActionBarMessage(text string) {
-	s.writePacket(&packet.SetTitle{ActionType: packet.TitleActionSetActionBar, Text: text})
+	s.writePacket(&v2193.SetTitlePacket{ActionType: packet.TitleActionSetActionBar, Text: text})
 }

@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -14,7 +14,7 @@ type ClientCacheBlobStatusHandler struct {
 func (c *ClientCacheBlobStatusHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, _ Controllable) error {
 	pk := p.(*packet.ClientCacheBlobStatus)
 
-	resp := &packet.ClientCacheMissResponse{Blobs: make([]protocol.CacheBlob, 0, len(pk.MissHashes))}
+	resp := &v2193.ClientCacheMissResponsePacket{Blobs: make([]v2193.CacheBlob, 0, len(pk.MissHashes))}
 
 	s.blobMu.Lock()
 	for _, hit := range pk.HitHashes {
@@ -23,7 +23,7 @@ func (c *ClientCacheBlobStatusHandler) Handle(p packet.Packet, s *Session, _ *wo
 	for _, miss := range pk.MissHashes {
 		blob, ok := s.blobs[miss]
 		if ok {
-			resp.Blobs = append(resp.Blobs, protocol.CacheBlob{Hash: miss, Payload: blob})
+			resp.Blobs = append(resp.Blobs, v2193.CacheBlob{Hash: miss, Payload: blob})
 		} else {
 			// A missing blob can happen when identical hashes are reused or cache state is reset. We still resolve the
 			// transaction to avoid stalling chunk delivery on an unresolvable hash.

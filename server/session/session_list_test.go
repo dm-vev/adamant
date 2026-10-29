@@ -10,11 +10,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func TestSessionListConcurrentAddRemove(t *testing.T) {
@@ -68,8 +68,8 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 		t.Fatalf("session list contains removed session: %v", remaining)
 	}
 
-	first := (<-existing.packets).(*packet.PlayerList)
-	second := (<-existing.packets).(*packet.PlayerList)
+	first := (<-existing.packets).(*v2193.PlayerListPacket)
+	second := (<-existing.packets).(*v2193.PlayerListPacket)
 	if first.Entries[0].ActionType != protocol.PlayerListActionAdd || second.Entries[0].ActionType != protocol.PlayerListActionRemove {
 		t.Fatalf("player list updates out of order: %v then %v", first.Entries[0].ActionType, second.Entries[0].ActionType)
 	}

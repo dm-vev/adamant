@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -35,7 +36,7 @@ func (*PositionTrackingDBHandler) Handle(p packet.Packet, s *Session, tx *world.
 	if !found {
 		action, status = packet.PositionTrackingDBBroadcastActionNotFound, positionTrackingStatusMissing
 	}
-	s.writePacket(&packet.PositionTrackingDBServerBroadcast{
+	s.writePacket(&v2193.PositionTrackingDBServerBroadcastPacket{
 		BroadcastAction: action,
 		TrackingID:      pk.TrackingID,
 		Payload:         positionTrackingPayload(pk.TrackingID, pos, dim, status),

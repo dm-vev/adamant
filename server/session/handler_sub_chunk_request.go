@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -15,11 +15,11 @@ func (*SubChunkRequestHandler) Handle(p packet.Packet, s *Session, tx *world.Tx,
 	pk := p.(*packet.SubChunkRequest)
 	if dimID, _ := world.DimensionID(tx.World().Dimension()); pk.Dimension != int32(dimID) {
 		// Outdated sub chunk request from a previous dimension.
-		s.writePacket(&packet.SubChunk{
+		s.writePacket(&v2193.SubChunkPacket{
 			Dimension:       pk.Dimension,
 			Position:        pk.Position,
 			CacheEnabled:    s.conn.ClientCacheEnabled(),
-			SubChunkEntries: []protocol.SubChunkEntry{},
+			SubChunkEntries: []v2193.SubChunkEntry{},
 		})
 		return nil
 	}

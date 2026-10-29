@@ -15,6 +15,8 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -106,7 +108,7 @@ func (cancelReleaseHandler) HandleItemRelease(ctx *Context, _ item.Stack, _ time
 
 type releaseTestConn struct {
 	mu      sync.Mutex
-	packets []packet.Packet
+	packets []any
 }
 
 func (*releaseTestConn) Close() error { return nil }
@@ -124,7 +126,13 @@ func (*releaseTestConn) RemoteAddr() net.Addr         { return &net.TCPAddr{} }
 func (*releaseTestConn) ReadPacket() (packet.Packet, error) {
 	return nil, io.EOF
 }
-func (c *releaseTestConn) WritePacket(pk packet.Packet) error {
+func (c *releaseTestConn) WritePacket(pk packet.Packet) error { return c.add(pk) }
+
+// WriteProto takes the packets of the generated codecs, which the session
+// writes as they are.
+func (c *releaseTestConn) WriteProto(pk proto.Packet) error { return c.add(pk) }
+
+func (c *releaseTestConn) add(pk any) error {
 	c.mu.Lock()
 	c.packets = append(c.packets, pk)
 	c.mu.Unlock()
@@ -138,7 +146,7 @@ func (c *releaseTestConn) waitForMessage(t *testing.T, marker string) {
 	for time.Now().Before(deadline) {
 		c.mu.Lock()
 		for _, pk := range c.packets {
-			if text, ok := pk.(*packet.Text); ok && text.Message == marker {
+			if text, ok := pk.(*v2193.TextPacket); ok && text.Message == marker {
 				c.mu.Unlock()
 				return
 			}
@@ -155,7 +163,7 @@ func (c *releaseTestConn) inventoryContents(windowID uint32) int {
 
 	count := 0
 	for _, pk := range c.packets {
-		if content, ok := pk.(*packet.InventoryContent); ok && content.WindowID == windowID {
+		if content, ok := pk.(*v2193.InventoryContentPacket); ok && content.WindowID == windowID {
 			count++
 		}
 	}
