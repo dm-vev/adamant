@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **paused at the user's request on 2026-10-29; audit incomplete**.
+Status: **paused at the user's checkpoint on 2026-10-29; audit incomplete**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -12,7 +12,7 @@ Unmodified Windows BDS 1.26.51.1 supplies additional world-level observations.
 The repository's Java gameplay baseline does not override the requested
 Bedrock reference for this audit.
 
-The current effort estimate is approximately **65%** of the full audit. This is
+The current effort estimate is approximately **70%** of the full audit. This is
 a planning estimate, not a percentage of proven equivalence or a count of closed
 matrix rows. Every row below retains its outstanding work. The published checkpoint
 includes capture tooling, comparators/analog outputs, switches, pressure plates,
@@ -1780,7 +1780,7 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 
 | Area | Current status / next evidence required |
 |---|---|
-| Circuit cadence and ordering | Shared clock and capacitor traversal installed; registration/bucket growth/chunk vectors verified in 26 heap/world cases. Per-chunk actor shuffle matches 130 executed client cases; actor identity rechecks and insertion order corrected. Open: complete publication traversal, native load/generation order and shared RNG stream, other groups, startup/restart, simultaneous changes, priorities and sound |
+| Circuit cadence and ordering | Shared clock and capacitor traversal installed; registration/bucket growth/chunk vectors verified in 26 heap/world cases. Per-chunk actor shuffle matches 130 executed client cases; actor identity rechecks, insertion order and inline chunk callbacks corrected. Native raw MT stream, bounded draws, snow-coordinate budget and player-area raster/LFSR traversal, staggered phases and tested circular bounds are verified below. Open: complete publication traversal, native load/generation order, remaining whole-world RNG consumers, standalone area grouping, other groups, startup/restart, simultaneous changes, priorities and sound |
 | Source/consumer/conductor graph | 480 switch output/conduction cases match tested direct and one-stone-block paths. Open: broader weak/strong activation, other sources/materials, face filtering, nonconductors, attenuation, removal and independent circuits |
 | Redstone wire | Transport phases and 48 basic network traces verified. Open: horizontal shape, directional output, native vertical/material matrices, other component connections, feedback, cancellation and reload |
 | Repeaters | Side-source filter, pulse pipeline and delay setup corrected; fixed/random evaluator traces and 96 world timing/lock/train/delay traces match. Open: powered placement, native load/pulse persistence, source graph and cross-chunk ordering |
@@ -1795,9 +1795,9 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Lamps and copper bulbs | Lamp source/consumer phase corrected in observer/wire matrices. Bulb comparator output verified lit/unlit for all eight variants. Open: broader lamp retrigger/cancellation/load cases, bulb toggle timing/interaction and persistence |
 | Doors/trapdoors/fence gates | Open: direct/conducted input, upper/lower halves, manual changes while powered, transition events and all materials |
 | Powered/detector/activator rails | Detector inventory strength, command-cart eligibility/container, typed body selection and producer state corrected against 87 settled/lifecycle and 32 source/wire/lamp timing cases; query geometry matches 324 executed client cases. Powered/activator cadence, configured axis, tested source overlap, straight/slope range, connection placement and zero-strength activator publication corrected against 256 BDS scenes. Cart height, binary32 motion, container drag and detector chunk ownership match 320 native motion scenes; stationary rider/TNT/hopper activator effects match 24 further scenes. Open: full source-list construction/order, loops, broader detector and producer lifecycle, multi-cart order, chunk persistence, cart curves/derailment/collisions, command-cart activation, broader moving-cart transfers and activation lifecycle |
-| Dispensers/droppers/crafters | Dispenser/dropper nine-slot container contract corrected and settled comparator fullness verified. Dispenser scene publication, four-tick scheduling, cart origin/lower-rail fallback and tested newborn actor phase corrected against 188 BDS scenes. Open: broader edge/delay/retrigger/source direction, dropper circuit cadence, other inventory side effects, craft scheduling, actor lifecycle and persistence |
-| Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Early lock publication corrected against 144 lock-pulse traces. Transfer clock/counter units now match 110 actual push traces and 25 native heap checkpoints; recursive chain transfers match 60 scenes across placement orders/chunk boundaries. Tested hopper-cart collection and transfer effects match 48 further scenes. Open: broader lock graph/lifecycle, larger hopper graphs and shared RNG stream, pull/collection timing (35/98 item scenes still differ), other containers/sides, moving cart interactions and reload |
-| TNT/note blocks/bells | Open: triggering edge, conducted sources, scheduled action, payload and repeated input |
+| Dispensers/droppers/crafters | Nine-slot contract, consumer publication, tested pulse timing and cart origin/newborn phase corrected. Native reservoir selection matches 2,048 executed cases; dropper's additional container pass matches 20 owned RNG traces. Crafter routing matches 102 hopper scenes, pulse/animation timing 36 scenes, sided output/remainders 240 scenes and saved animation 12 scenes. Ordinary/crafter ejection matches 36 exact-input motion traces and 1,440 executed velocities; ordinary effects match 96 real-packet scenes. Initial flags match 32 container load scenes. Open: broader source graphs/queues, other item/recipe behaviours, actor lifecycle and full world unload/restart persistence |
+| Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Early lock publication corrected against 144 lock-pulse traces. Transfer clock/counter units match 110 actual push traces and 25 native heap checkpoints; recursive chain transfers match 60 scenes across placement orders/chunk boundaries. Block-item pickup matches 142 scenes including holes, simultaneous stacks and covers; native query/type gates and seven-box hopper geometry are checked separately. Slot selection matches 72 generic push/pull, 78 sided furnace and 40 brewing scenes; twenty persisted-counter loads verify the tested decode/clock path. Tested hopper-cart collection and transfer effects match 48 further scenes. Open: broader lock graph/lifecycle, larger hopper graphs and complete world RNG consumption, other container transfers/sides, moving cart interactions and reload |
+| TNT/note blocks/bells | TNT consumer timing matches 72 direct/conducted scenes; 12 wire updates verify state aliases. Note clock/instruments/effects match 112 event, 46 packet and 12 load scenes; the two unsealed-water dependencies now match alongside 12 activation controls. Bell clock/toggle/animation match 64 redstone and 16 load scenes; 64 player-use and 64 arrow-hit scenes verify direction gates, actor fields and wire sequences. Sixteen executed shapes and 28 exact binary32 arrow flights check shared geometry/movement. Open: broader sources/lifecycle, TNT motion/fuse/chains/unstable/underwater behavior, note tuning/vibrations and wider persistence, bell support/placement, wind-charge/attack/hearing/vibration behavior and chunk lifecycle |
 | Command/structure blocks | Open: trigger/cycle timing, modes, conditionals, powered-state persistence and cross-chunk execution |
 | Analog-output blocks | 77 settled scalar cases, 81 inventory cases and nine pot cases verify the tested paths; campfire's unsupported override removed. Another 267 book/record/shelf states, 50 hopper-transfer results and 792 frame cases match; lectern spread arithmetic, seven disc values and directional frame reads corrected. Open: broader transitions/through-block reads/materials, additional container variants/init/loot, player book/shelf/frame interactions, jukebox lifecycle, lectern pulse/packet validation, frame maps/support variants, nondefault statue world poses, shelves, sensors, command output and creaking hearts |
 | Persistence and lifecycle | Open: pending ticks/phase memory, state replacement at the same position, chunk unload/reload, world teardown and viewer updates |
@@ -4713,3 +4713,1225 @@ complete captures with the expected scene/checkpoint counts. The root server
 build passes with `go build -o .tmp/adamant-redstone-paused-2026-10-29.exe .`;
 `go run .` remains available. The transfer/chain correction is committed in
 `7dd2da9e`; this checkpoint retains the open collection comparison for resumption.
+
+### Resumed: dropped-item collection, geometry and container covers
+
+The user resumed the full audit and requested uninterrupted work. The preceding
+paused checkpoint is historical; its pickup diagnostic and 35/98 divergence
+count are superseded by the ordinary regression results below. No new commits
+or publication have been requested during this resumed work.
+
+Block hoppers now collect during their own even-GT transfer pass, after pushing
+and attempting a container pull. World collection shares the native four-step
+transfer timer; the separate item-actor pickup/cooldown path has been removed.
+A successful partial pickup retains the same item actor and sends its updated
+stack count. Only the first successfully acquired actor is processed per pass.
+Inventory.AddItemInSlotOrder implements the native ascending-slot insertion
+policy for block-hopper pushes, pulls and world pickup: an earlier empty slot
+precedes a later matching stack. Player inventory AddItem retains its own policy.
+
+The original Hopper::_tryAddItemsFromPos body loop at `0x20611c0` tests AABBs
+in relative binary32 coordinates against bounds shrunk by 1e-4. The complete
+BlockSource::fetchEntities overload at `0x2d850b0` first visits only the chunks
+covered by the unexpanded query and then checks actor AABBs. This distinction
+explained two remaining scenes: bodies can overlap the query while belonging
+to the adjacent, unvisited chunk. The kernel now reproduces both stages,
+including current actor-chunk ownership. Merely expanding an origin query or
+requiring the origin inside the pickup box gives incorrect results.
+
+All original 98 item scenes now match. Eight additional original-BDS scenes
+(`adamant-redstone-bds-8w2jgddg`) verify inventory holes, matching later stacks,
+simultaneous diamond/dirt actors and sequential spawns, both with and without
+an output barrel. Full slots, actor identity, partial leftovers and physical
+state match. Their fixture is `bedrock_1_26_51_hopper_item_order.json`.
+The diagnostic environment gate has been removed; all are ordinary tests.
+
+Another 36 scenes (`adamant-redstone-bds-b4yh6w2n`) place 18 types of blocks
+above the hopper: ordinary solids, empty containers, an ender chest, lectern,
+bookshelf, composter, decorated pot and jukebox. They retain native cover
+states and alias controls. A native container suppresses world pickup even
+when empty; solidity alone does not. All retained inventory and physical
+snapshots match after the movement/shape corrections below. Fixture:
+`bedrock_1_26_51_hopper_item_covers.json`. All 142 scenes pass every-frame item
+conservation controls, not just final inventory totals.
+
+The new `redstone_native_hopper_pickup_probe.py` executes the original query
+construction, relative shrink and geometric rejection instructions in 648
+boundary cases, including large coordinates. One supplied actor bypasses the
+source prefilter; at the original geometry-success branch `0x206125e` a local
+marker replaces inventory transfer and jumps to the original loop tail
+`0x2061370`. Thus these are geometry results, not simulated successful pickups
+or proof of source ordering. Original code hashes, interception points and
+scope are retained in `bedrock_1_26_51_hopper_pickup_geometry.json`. The same
+probe reads the actual vtable slot +0xb8 and executes the constant native
+isContainerBlock getters for 18 block classes. Both 648 geometric results and
+18 container classifications match the Go helpers (block 2.716 s).
+
+The hopper collision model now contains the original seven boxes with a floor
+surface at .6875, four upper walls, neck and facing-dependent spout. Native
+collision fetching translates corners in binary32 and discards degenerate
+boxes; 126 executed-client constructions cover all facings and extreme
+coordinates. This changes the native collision path, not generic Java movement.
+The cover scenes exposed two additional differences. ItemActor::postNormalTick
+at `0x3348b76` applies block friction after a vertical collision with resulting
+Y velocity <= 0, even after a ceiling hit while OnGround is false. The two ECS
+hashes are verified against ActorCollision::hasVerticalCollision (`0x2539f10`)
+and isOnGround (`0x2539fc0`); this policy is now enabled specifically for items.
+BrewingStandBlock::addAABBs (`0x318c730`, length 0x1fa) constructs its central
+column from Y 0 to .875, followed by the .125-high base. The old column extended
+below the block and pushed items down prematurely. That model is corrected,
+and 21 original constructions have been added to the shape fixture.
+
+The combined 142 real item scenes, 126 hopper shapes and pickup helper checks
+pass (entity 8.725 s, block 2.688 s), log
+`.tmp/hopper-pickup-covers-friction-fixed.log`. Before the final ceiling-friction
+and brewing-shape correction, the wider native/BDS regression selection also
+passed entity (141.044 s), block (83.239 s) and world (6.398 s), log
+`.tmp/hopper-pickup-native-regression.log`. A complete shared-suite run and
+further source-slot/side comparisons are reported below. The broader 22-row
+audit remains incomplete.
+
+### Source-slot continuation after a rejected transfer
+
+Sixty original-BDS push scenes (`adamant-redstone-bds-0rxithg2`) vary all five
+output directions, barrel/chest/locked-hopper destinations and four slot
+layouts: a blocked first type with a fitting later type, an empty source slot
+before those stacks, an earlier empty destination before a matching stack,
+and an empty destination with two source types. Twelve additional pull scenes
+(`adamant-redstone-bds-e3d80uwz`) exercise the same layouts with containers
+above the receiving hopper. Exact initial slot readbacks, both clocks and
+every-frame item conservation pass before replay.
+
+The previous push loop failed thirty of the sixty scenes by stopping at the
+first rejected stack, leaving a later fitting stack untouched. The original
+Hopper::_pushOutItems loop returns to source-slot increment at `0x2061d10`
+after a rejected attempt (`0x2061fda..1fe5`). The kernel now continues instead
+of returning false. All 72 push/pull scenes match full per-frame slots and
+flags, including the already corrected ascending destination-slot policy.
+Fixtures: `bedrock_1_26_51_hopper_slot_transfers.json` and
+`bedrock_1_26_51_hopper_slot_pulls.json`. The baseline log records all thirty
+failures; `.tmp/hopper-pickup-and-slot-transfers-fixed.log` passes the combined
+hopper, dropper/container, bookshelf and item-identity checks (entity 29.424 s,
+block 3.177 s).
+
+The first complete shared run after pickup changes passed block (104.634 s),
+world (15.174 s), player (18.749 s), session (3.501 s) and item (2.739 s).
+Entity (354.152 s) failed only TestPartialHopperCollectionKeepsItemActor: its
+direct item.Tick call encoded the removed item-actor pickup ownership. The
+test now invokes the block actor at an actual even world tick, then checks
+that the partial remainder keeps its handle and the same motion as a control
+item. It passes in the combined focused run above. Other entity tests,
+including all 147 executed hopper/brewing collision constructions, passed
+that initial full run. Log: `.tmp/hopper-pickup-shared-suite.log`.
+
+The repeated full shared regression after the source-slot correction passes
+all six packages: entity 360.200 s, block 102.791 s, world 15.707 s, player
+18.713 s, session 4.301 s and item 2.931 s. Inventory has no standalone tests;
+its insertion policy is exercised through the native scene replays. No AI or
+NBT tests are filtered. Log: `.tmp/hopper-pickup-slot-order-shared-suite.log`.
+This verifies the tested checkpoint, not completion of the outstanding audit.
+
+### Furnace sides, extraction holes and dropper slot order
+
+Sixty original-BDS furnace insertion scenes (`adamant-redstone-bds-cfsv5yhq`)
+cover ordinary/blast furnaces and smokers in all five hopper output directions,
+with diamonds before fuel or raw iron and both input/fuel source orders.
+Eighteen extraction scenes (`adamant-redstone-bds-5x15nbfo`) separately cover
+outputs, retained input/fuel, an empty bucket, a blocked bucket with fitting
+output, a nearly full receiver and an earlier empty receiver slot. Actual
+furnace/smoker output items are used. Initial readbacks and every-frame total
+conservation pass; these scenes do not perform new cooking. All sixty insertion
+controls already match. Three extraction scenes exposed use of player-style
+stack merging: output incorrectly went into the later existing stack. Furnace
+extraction now uses AddItemInSlotOrder, matching the native destination scan.
+
+Thirty-six original-BDS dropper scenes (`adamant-redstone-bds-n2ez81xt`) retain
+both pulse edges and all six output faces into barrels/chests/locked hoppers.
+A single source stack makes random slot selection unambiguous. Eighteen
+earlier-empty destination cases failed for the same reason; eighteen
+matching-first controls passed. Generic dropper insertion now uses the same
+ascending-slot policy. Both complete new corpora and all existing hopper,
+dropper, dispenser-pulse, bookshelf, smelter and partial-identity controls pass
+together (entity 51.216 s, block 3.200 s), log
+`.tmp/hopper-furnace-dropper-slot-fixed.log`. The two routing fixes follow the
+last green shared-suite run above; that full-run timing does not include them.
+Their baseline log retains all twenty-one divergences.
+
+The new fixtures are `bedrock_1_26_51_hopper_sided_transfers.json`,
+`bedrock_1_26_51_hopper_furnace_pulls.json` and
+`bedrock_1_26_51_dropper_slot_transfers.json`. Broader cooking, experience,
+container actor lifecycle and receiving-hopper timer interactions remain open.
+
+### Persisted hopper counter inputs
+
+Twenty original-BDS structure-load scenes (`adamant-redstone-bds-fumjl1kf`)
+load authored TransferCooldown values -3/-1/0/1/2/3/4/5/8/2147483647 at both
+load parities. Initial slot readbacks, the actual load event tick and all-frame
+four-item conservation pass. The kernel's DecodeNBT counter and subsequent
+clock match all twenty cases (entity 3.850 s), log
+`.tmp/hopper-persisted-clock-replay.log`. Slot contents are controlled separately
+in this counter replay. This is not a world-save or chunk unload/reload test.
+The fixture is `bedrock_1_26_51_hopper_cooldown_load.json`.
+
+### Brewing bottle slots and still-open phase comparison
+
+Twenty real BDS insertion scenes (`adamant-redstone-bds-mes3iw4z`) use legitimate
+source stacks of nether wart, blaze powder, a water potion and empty glass
+bottles, each after a rejected diamond stack, in all five hopper facings.
+Source and destination initial readbacks pass. Fuel powder can become brewing
+fuel, so raw inventory-only conservation is not asserted for that conversion.
+The test explicitly registers the same vanilla recipes as server startup;
+a standalone World alone does not initialize the recipe registry.
+
+BrewingStandBlockActor::canPushInItem (`0x2dbdd10`, slot-empty checks at
+`0x2dbded2..1df09`) accepts each bottle/potion slot only while empty. The old
+kernel merged several empty glass bottles into one slot. Automated insertion
+now fills the three slots one bottle at a time and retains a fourth source
+bottle. After the RNG/phase changes below, eighteen of twenty original full
+traces matched; two south-facing fuel/bottle traces differed at a transfer
+boundary. The original raw native fixture is
+`bedrock_1_26_51_hopper_brewing_inserts.json`. Native setContainerChanged marks
+the actor dirty; its subsequent tick updates appearance and fuel. Actual random
+inputs/order must be controlled before attributing every phase difference to
+block logic: the native capture runs multiple scenes together, while the Go
+replay isolates them. The independent hardware trace below resolves these
+controlled block-logic replays without claiming whole-world scheduling parity.
+
+### Native level random stream and per-chunk actor execution
+
+A new read-only owned-BDS probe (`redstone_bds_level_random_probe.py`) identifies
+Random's vtable through the original nextInt load/call prefix and its unique
+post-call shift, validates its Core generator and locates the unique LevelRandom
+owner through its two getters. Bounded Script callbacks hold at twenty points.
+Two complete captures use world seeds 1 and 4294967298; the observed Core seeds
+are 1 and 2. Original Core::Random instructions run on local copies of each
+state and explain all nineteen consecutive transitions in each capture. The
+seed-1 capture has an initial transition of 178 draws, then alternating 62/64;
+the entire stream is not merely the tested hopper's two calls. Reference roots:
+`adamant-redstone-bds-9gdxzmdz` and `adamant-redstone-bds-5u4dwaac`.
+
+A separate executed-client corpus constructs Random through its original
+constructor (`0x2203820`, size 0xc7), then executes Core::_genRandInt32
+(`0x26dae0`, size 0x1c8) for 2,000 draws at each of seven seeds. Another 49
+bounded cases execute Core::nextInt (`0x26dd50`, size 0x22), including a zero
+bound and a following raw-draw control. These are 14,000 raw outputs, 1,960
+bounded outputs and 49 draw-consumption controls. Hashes and all inputs are
+retained. The Go port matches these outputs, all forty captured states and
+all thirty-eight complete state transitions. Native Core twists one MT state
+word per draw; eagerly twisting the full array matches seeded outputs but
+cannot replay a partially twisted native heap state.
+
+The default world source now uses this MT19937 stream with the low 32 bits of
+the resolved world seed. Explicit caller-supplied rand.Source values retain
+Go semantics. Block-actor shuffling and hopper neighbour traversal share direct
+raw-word draws; they do not obtain and truncate a two-word Go Uint64. Bounded
+precipitation draws use the native modulo operation. The generic Go Uint64
+adapter and remaining random consumers are not a complete native API/consumer
+port. Native precipitation column coordinates also use a separate LCG;
+whole-world draw scheduling and this coordinate path remain open.
+
+The chunk dispatcher had another independent ordering error: it copied and
+shuffled every chunk's actor list, then executed all actor callbacks together.
+LevelChunk::tickImpl calls tickBlockEntities at `0x32cab8f` before returning to
+the next chunk. The kernel now processes each chunk's precipitation/random
+blocks and its live actor snapshot in that chunk, preserving the original
+same-chunk identity guard. Actor RNG calls therefore precede the next chunk's
+shuffle. A controlled sequence regression fails before this change with
+[a,c,b] instead of [a,b,c], while consuming the same five supplied words, then
+passes after it. The complete world package passes (14.378 s) after the initial
+phase fix. After bounded draws are integrated, the RNG/actor and combined
+container regression passes world (2.586 s); entity (79.302 s) fails only the
+two brewing phase cases documented above. No full shared-suite pass is claimed
+after this newer RNG/scheduler/brewing work.
+
+New RNG fixtures: `bedrock_1_26_51_level_random_seeded.json`,
+`bedrock_1_26_51_level_random.json` and
+`bedrock_1_26_51_level_random_high_seed.json`. The earlier native actor shuffle
+probe calls its supplied Random wrapper a level; the instructions themselves
+are unchanged. ILevel slot +0xa68 returns Random&, whose +0x9f8 points at Core.
+Both the chunk shuffle and hopper recursion use that same level-owned source.
+
+### Independently recorded actor RNG inputs for brewing transfers
+
+`redstone_bds_actor_random_probe.py` now traces only its fresh Reference-owned
+BDS child using hardware execution breakpoints. No instruction bytes or
+on-disk executable are changed. Thread debug registers are restored before
+detach. This is explicitly debugger-observed evidence, separate from the
+earlier uninstrumented world captures. Native tick timing under a debugger is
+not used as wall-clock performance evidence.
+
+The locator matches the client chunk-actor prologue and validates the unique
+BDS function containing a direct call to the identified Core generator:
+`LevelChunk::tickBlockEntities` at `0x9fd340`, shuffle return caller
+`0x9fd6b3`. The two hopper recursive-traversal calls have return callers
+`0x57f82d6` and `0x57f82f5`. At each generator entry, the original client
+generator executes on a local state copy to record the impending raw word.
+The process's generator and state remain untouched. Actor-pass entry and
+return boundaries and actual chunk positions distinguish these draws from
+the rest of the level stream.
+
+A small smoke capture (`adamant-redstone-bds-m8u729ay`) validates the four
+loaded chunk positions and these three callers. The full brewing capture
+(`adamant-redstone-bds-xj9dmv6c`) retains twenty scenes, 256 held Script API
+checkpoints, all chunk-pass words and outside-pass draws. The first checkpoint
+includes startup passes; the replay uses the last pass of each scene chunk
+before its held sample. All subsequent checkpoints contain 192 chunk passes.
+Fixture: `bedrock_1_26_51_hopper_brewing_actor_inputs.json`.
+
+`TestHopperBrewingInsertionsMatchBDS` now replays these independently recorded
+inputs through the existing custom rand.Source contract. High bits supply
+actor raw words; explicit low-bit controls suppress unrelated Go precipitation
+coordinate selection in each loaded column. There is no production test hook,
+seed search, relaxed state comparison or order inferred from expected output.
+Every native block state and inventory slot is still compared at each of 128
+ticks per scene, and the exact number of supplied draws must be consumed.
+All twenty scenes pass (entity package, focused run: 3.688 s). This closes the
+two uncontrolled-input brewing replay discrepancies; broader world RNG draw
+scheduling remains open. The shared suite result and later changes follow.
+
+### Brewing extraction, full-suite findings and native snow RNG budget
+
+Twenty more owned-BDS scenes (`adamant-redstone-bds-lb8z82a4`) extract glass
+bottles, water potions, mixed bottle/potion slots and ingredient-only controls
+into empty, full and partially filled hoppers. They include an empty slot before
+a later matching stack. All initial slots have native API readback controls;
+256 held actor-input checkpoints retain the same independent RNG provenance
+as the insertion corpus. Two of twenty scenes initially failed: the kernel
+merged into the later bottle stack instead of filling the earlier empty slot.
+Brewer extraction now uses AddItemInSlotOrder, as the already-corrected generic
+container and furnace extraction paths do. All forty brewing insertion and
+extraction scenes pass together (4.941 s).
+
+The complete seven-package command after the initial insertion replay passed
+block (101.041 s), world (13.953 s), player (18.445 s) and item (2.662 s);
+inventory has no package-local tests. Entity (360.765 s) failed
+TestVillagersRunFromZombies, and session (3.459 s) failed the two cross-chunk
+MovingBlock timing assertions investigated below. Separate twenty-run villager
+checks fail four times on the resumed checkout and once on the unchanged
+5ff95e72 baseline. This reproduces existing instability; no AI test was hidden,
+relaxed or filtered from the full-suite result. No all-green full suite is
+claimed at this checkpoint.
+
+The snow/precipitation attempt path had two additional effects on the shared
+level RNG before actor shuffling. LevelChunk::tickImpl reads randomTickSpeed
+and performs that many attempts, including zero attempts at speed zero.
+Each attempt first advances the chunk's own mSnowRandomValue by
+`state = state*3 + 0x3c6ef35f` and selects x/z from bits 2..5 and 10..13; only
+then does it draw the level's bounded 1/16 roll. Coordinate selection does not
+consume two more level draws after a successful roll. The kernel now follows
+this attempt count and separate coordinate stream, preserving the existing
+freeze/snow callback behavior. The native constructor initializes the counter
+to `0x283ae83`; this per-chunk state is independent of the saved world seed.
+This does not claim that every downstream weather effect matches Bedrock.
+
+The exact original client arithmetic/store window (`0x32c9b55`, size 0x4e)
+executes for 588 supplied states/origins/heights, including signed and large
+coordinates. An owned-BDS hardware trace (`adamant-redstone-bds-zyu0lnei`)
+changes randomTickSpeed through 0, 1, 3 and 0 and records all four chunk counters
+at twenty held checkpoints. All 76 transitions advance by exactly the preceding
+callback's configured attempt count. Native chunk construction in BDS also
+stores the same initial constant at `0x9f0386`.
+
+New fixtures are `bedrock_1_26_51_precipitation_column_random.json` and
+`bedrock_1_26_51_chunk_snow_random.json`. The native coordinate/counter tests,
+existing freeze/snow effect test, level RNG, actor scheduling and forty brewing
+scenes pass together: world 2.673 s, entity 4.626 s. The brewing input adapter
+no longer needs artificial precipitation controls, since both native and Go
+scenes now make zero precipitation draws. The per-chunk callback-order test
+likewise consumes only its three actual actor/shuffle words, rather than the
+earlier five-word sequence including two weather controls.
+
+### Cross-chunk actor eligibility and once-per-second area traversal
+
+An additional owned-BDS trace (`adamant-redstone-bds-jsx88ziy`), repeated with
+bounded-call context (`adamant-redstone-bds-jxfl353f`), drives eight pistons
+with three-block payloads across x=16. A fourth hardware breakpoint observes
+the original MovingBlockActor::tick entry (BDS `0x486f9d0`, matched against the
+client `0x4ade460` prologue), recording position, age and dirty flags. The
+fixture `bedrock_1_26_51_piston_chunk_actor_visits.json` contains all 100 held
+checkpoints and native chunk-pass order.
+
+Ordinary ticks visit the nine rectangular ticking-area chunks in z/x order.
+Ticks 20, 40, 60, 80 and 100 use a different order. The two native bounded-255
+draws at callers `0x581e87e` and `0x581e895` seed two nonzero 8-bit LFSR cycles.
+The next value is `(s>>1) | (((s ^ (s>>2) ^ (s>>3) ^ (s>>4)) & 1)<<7)`.
+Values exceeding the rectangle's width/depth are skipped; accepted values
+minus one are the local coordinates. The observed ten raw inputs reproduce
+all five exceptional nine-chunk orders exactly. Whole-world area traversal,
+overlap and player/forced-area integration remain open in the kernel.
+
+`redstone_native_chunk_visit_probe.py` additionally executes the complete
+original BDS rectangular helper (`0x581e840`, size 0x165) with supplied RNG and
+visitor callbacks: sixty rectangles/start-word combinations, including a
+255-cell side, visit every cell once. The separate original client arithmetic
+window (`0x351ab19`, 36 bytes) records every nonzero LFSR transition. The corpus
+is `bedrock_1_26_51_chunk_visits.json`; it is algorithm evidence, not a claim
+that native world area scheduling has already been integrated.
+
+The old session packet replay compares all actor NBT and sound fields but its
+input clock is explicitly not a native simulation timestamp. It had also
+asserted a universal one-GT creation/publication delay across chunk boundaries.
+That assertion was not supported by the fixture. Same-chunk snapshot timing
+is still checked. Cross-chunk eligibility now has a dispatcher regression for
+both directions: native actor insertion appends immediately, so a chunk still
+ahead may tick the new actor, while a chunk already visited waits until its
+next pass. No artificial MovingBlock birth delay was added to hide the still
+open area-traversal discrepancy.
+
+### Player-area traversal integration and staggered native phases
+
+The ordinary player-loader dispatcher now uses the native rectangle visitor:
+z/x raster on ordinary ticks and the supplied two-start LFSR order on each
+area's shuffled ticks. Callbacks execute before the next area selects its RNG
+inputs. A per-pass visited set prevents shared chunks from ticking twice.
+Loader registration is now retained in a stable vector through close/world
+transfer, replacing the randomized traversal of the viewer map. This follows
+the native dimension area vector rather than choosing a fresh Go map order.
+Explicit per-chunk force tickets and unusually large custom areas retain their
+existing coverage fallback. Standalone-area grouping/persistence, native circle
+eligibility and complete player activation geometry remain open. Manual
+Synchronous worlds deliberately retain their stable all-loaded-column walk;
+they have no native area membership and do not claim native area timing.
+
+The complete world package passed after initial integration (14.354 s). A root
+server build succeeded. A new complete seven-package run then passed entity
+(509.030 s), block (100.620 s), world (14.146 s), player (18.722 s), session
+(3.384 s) and item (3.536 s); inventory has no package-local tests. This is the
+checkpoint before the staggered-phase refinement below, not a retroactive
+all-suite claim after it.
+
+A two-area native capture first exposed a missing detail in that initial
+integration: area 0 shuffled on ticks divisible by twenty, while area 1 shuffled
+on the next tick. Both areas must not shuffle together. The repeated owned
+trace (`adamant-redstone-bds-ujsz0vl8`) additionally breaks on TickingArea::tick
+(BDS `0x581fff0`) and records its actual Tick, randomize argument and caller.
+The native area clock equals the held Script clock. The caller is in the BDS
+Level::_subTick at `0x7cc795`. Its index/clock reduction sequence is byte-for-byte
+identical to client `0x1171b40..0x1171b82`: each area uses
+`uint64(tick)%20 == uint64(index)%20`. Indices beyond twenty reuse that phase.
+
+The original client arithmetic window (`0x1171b4b`, size 0x37) now executes for
+2,115 tick/index pairs, including unsigned 64-bit boundaries. The kernel phase
+helper matches every result. The new overlap corpus
+`bedrock_1_26_51_overlapping_chunk_areas.json` retains 45 held checkpoints,
+area-entry flags, all fifteen distinct chunk visits, actor RNG words, bounded
+call context and monotonic hardware event sequence numbers.
+
+TestPlayerAreaDispatcherMatchesOwnedBDSOverlap invokes the ordinary area
+dispatcher against 44 complete post-startup checkpoints, with the recorded RNG
+inputs interleaved in their actual native order. Bounded modulo results are
+mapped into the equivalent interval for an explicitly supplied Go rand.Source;
+raw shuffle/hopper words are unchanged. No expected visit order selects inputs.
+The two hot chunks reproduce the native three-actor shuffle count and empty
+hopper draw count; zero-draw single-actor witnesses observe visits to the other
+chunks. This isolates dispatch and draw scheduling, not the entire native block
+simulation. Every chunk order and consumed-draw count matches, including shared
+chunks and the two staggered shuffled phases. The complete world package passes
+after the refinement (13.983 s).
+
+The earlier focused combined run (world 2.567 s, entity 82.682 s) also exposed
+TestBlockActorDataNBTBytes comparing different valid compound-key orders. The
+same test fails on the unchanged 5ff95e72 baseline in a separate twenty-run
+check. Its implementation and assertion were not changed. The later complete
+seven-package run above passed it as well as the villager test; their observed
+instability is retained here rather than hidden from the verification record.
+
+### Native circular block-ticking bounds
+
+TickingAreaView::tick's ordinary circular-area branch uses binary32 arithmetic
+to compare squared distance strictly against
+`((inclusive width)*0.5 + sqrt(3))^2`, within the area's inclusive rectangular
+bounds. The previous kernel block filter used only radius squared and excluded
+native corner chunks. A separate block-area predicate now follows this native
+branch; block actors/random blocks and scheduled block/fluid eligibility use
+that predicate. Square source-defined areas retain their rectangular bound.
+
+The original contiguous client arithmetic window (`0x351ac1a`, size 0xa9)
+executes for 2,240 origin/radius/offset inputs. Supplied local Bounds remove the
+need for the surrounding mutex operations; the authored ABI wrapper preserves
+Win64 nonvolatile registers. Native arithmetic and its strict comparison are
+unchanged. These include both sides of rectangular bounds, radii up to 64 and
+large positive/negative chunk origins. The kernel matches every circle result
+and checks the rectangular bound independently. These cases extend
+`bedrock_1_26_51_chunk_visits.json`.
+
+Two real BDS circular ticking areas independently confirm the active footprint:
+radius 2 visits 25 chunks, and radius 4 visits 81, including all four corners.
+The radius-2 trace (`adamant-redstone-bds-g64pcxx9`) additionally reads the actual
+view's child ChunkViewSource: its native bounds are [-2,0,-2]..[2,0,2], dimensions
+5x1x5, and its circle flag is true. The client getter returns this+0x238; that
+view's source pointer is at +8. Active bounds come from the child source used
+by tick, whose loading parent has its own larger bounds.
+
+Fixtures are `bedrock_1_26_51_circle2_chunk_area.json` and
+`bedrock_1_26_51_circle4_chunk_area.json` (radius-4 reference root
+`adamant-redstone-bds-khph0sx8`). The ordinary dispatcher reproduces nineteen
+complete post-startup checkpoints of each, with actual native raw actor words
+and bounded inputs, alongside all 44 overlap checkpoints. Eligible witnesses
+come from the independently observed native chunk set, so a wrong Go filter
+cannot remove corners from both the input and expected output. All visit
+orders and draw counts match. A further regression checks the scheduled
+block/fluid eligibility gate at (4,4), while a ready chunk beyond the bounding
+box remains ineligible. This is not an end-to-end claim for every queued action.
+
+The complete world package passes after the circle integration (14.063 s).
+With the additional scheduled-corner regression, world (14.816 s), player
+(18.126 s) and session (4.212 s) pass together, and the root server builds again.
+The seven-package all-green checkpoint above predates the staggered/circle
+refinements; its entity/block/item results are not relabelled as later runs.
+Remaining activation work includes actual player loading/retention boundaries,
+entity ticking, source creation/removal order, standalone area persistence and
+broader large/overlapping-world layouts. Every audit matrix row remains open.
+
+### Crafter inventory routing and immutable snapshot readback
+
+The hopper/crafter corpus now covers 60 enabled-slot insertion scenes, 30
+disabled-slot scenes and 12 bottom-extraction scenes. Every per-tick inventory
+matches the kernel, including nonstackable items, earliest tied minima, disabled
+holes and rejected first source stacks. This confirms existing crafter routing;
+it does not yet establish crafting recipes, output insertion or powered timing.
+
+The stable Script API exposes no crafter inventory component on this BDS build.
+Each target observation therefore saves a uniquely named one-block structure
+before that tick's source changes. After stopping the owned reference server,
+cmd/redstone-structure-readback reads those snapshots from its database without
+writing it. Native palette types, orientation, disabled masks and initial source
+and target inventories are checked before publishing a complete fixture.
+There are 7,740 enabled-slot, 3,870 disabled-slot and 1,548 extraction snapshots.
+The command's disk save mode persists structures in the world database, as
+documented by [Microsoft's structure command reference](https://learn.microsoft.com/en-us/minecraft/creator/commands/commands/structure?view=minecraft-bedrock-stable).
+
+The first enabled-slot capture exposed a readback limitation: the Go LevelDB
+reader rejected the first native journal batch's sequence relative to the
+manifest and, in its default non-strict mode, silently omitted 1,224 snapshots.
+The helper now defaults to strict reading. Its explicit -immutable-audit-wal
+mode independently verifies physical journal CRCs/fragments and complete batch
+records, then merges only uniquely named audit snapshots. Conflicting values,
+deletions and damaged records fail. It never repairs or rewrites a database and
+does not claim to fix general mutable-world recovery. The reference capture's
+three verified journal batches restore all 7,740 snapshots.
+
+Integrity tests cover fragmented records, matching duplicates, corruption,
+conflicts, deletion and truncation. The combined focused check of those tests
+and all 102 crafter-routing scenes passes (command 0.213 s, entity 7.468 s).
+
+### Crafter pulse publication and visual lifetime
+
+Crafter previously used immediate generic redstone updates rather than the
+native sampled container-consumer cycle. It now uses the same evaluated/published
+cycle as dispensers and droppers, with a four-GT queued rising-edge action.
+Publishing merges only Triggered into the live actor, preserving its inventory,
+disabled slots and crafting countdown. Viewer notification follows publication.
+Falling power no longer resets crafting or its remaining ticks: the client's
+CrafterBlock::_onRedstoneUpdate (0x6ec3580) clears only triggered_bit, while the
+actor independently owns the six-tick visual counter.
+
+The uninstrumented BDS capture bedrock_1_26_51_crafter_pulses.json has 36 scenes:
+two absolute tick parities, nine pulse trains and both a valid iron-block grid
+and an invalid dirt grid. Samples compare every crafter block state and every
+barrel output slot before scripted source changes. A one-GT pulse is missed in
+one parity and sampled in the other, and queued crafting survives falling power.
+All 36 replays match after the fix (entity 3.393 s). These scenes establish this
+recipe/output and pulse clock, not general recipe parity or world ejection.
+
+### Native random container-slot selection
+
+The client dispenser (0x9787796), dropper outer loop (0x9791cc4) and dropper's
+container-transfer loop (0x4ac43c5) each use reservoir selection. Each occupied
+slot draws modulo the number of occupied slots encountered so far, replacing
+the candidate when the result is zero. The first occupied slot consumes a draw
+with bound one; empty slots consume none. The previous kernel counted occupied
+slots first and made one Go IntN draw, advancing the shared stream differently.
+
+The three original contiguous native loops now execute against supplied slot
+occupancy and bounded-word callbacks. The authored ABI wrappers only preserve
+registers and supply their surrounding locals; isNull/container-size callbacks
+represent the supplied inventory. All 512 nine-slot occupancy masks with four
+word patterns produce matching native results and exact draw counts across
+all three loops (2,048 cases, bedrock_1_26_51_container_random_slots.json).
+The kernel reservoir helper matches every result and consumes the same words.
+The focused crafter/container/dispenser regression passes block (2.759 s) and
+entity (29.815 s). The additional native dropper container-selection pass is
+verified below; that focused checkpoint predates its integration.
+
+An additional uninstrumented 90-scene capture records mixed dropper sources
+with barrels, chests and hoppers in all six directions. The owned hardware trace
+then independently records 20 barrel scenes over 256 held tick checkpoints
+(adamant-redstone-bds-44oo89ad). At the original Core RNG entry it retains the
+raw word, bounded caller, divisor and source actor position. Both relevant BDS
+call sites are validated: outer dispenseFrom returns at 0x8a2ca55, while
+pushOutItems' second reservoir returns at 0x57f0d77. Only this fresh owned child
+is debugged; executable instructions remain unchanged and debug registers are
+restored before detach.
+
+When a destination container exists, native DropperBlock::dispenseFrom first
+selects a candidate and then calls pushOutItems, which makes a fresh selection.
+The kernel now consumes both passes and transfers the second candidate. The
+first candidate remains the world-ejection fallback. The native trace also
+exposed a missing shuffle participant: the kernel filtered actor storage to Go
+TickerBlock implementations. Native storage includes actors such as barrels
+and droppers even when their virtual tick does no work. Actor insertion/version
+tracking and shuffling now include every stored block actor; only invoking the
+Go callback still requires TickerBlock.
+
+The common replay feeds only independently recorded words for each scene's
+scheduled actions and actual actor chunks, retaining their consumption order.
+All 20 traces now match every source/destination slot at every sampled tick and
+consume exactly the observed draw count (entity 3.703 s). The native block-actor
+regressions pass alongside it (world 1.721 s). General random consumers and
+all other dropper/dispenser item behaviours remain open.
+
+### Crafter sided outputs, remainders and chunk-owned queued actions
+
+Native CrafterBlockActor::tryMoveItemsIntoContainer (0x4abbb60) calls the
+dropper's sided insertion helper from ascending destination slots, one item at
+a time (0x4abbe50..0x4abbe7e). The kernel now follows slot order for generic
+containers and the destination's HopperInsertable rules for filtered/balanced
+containers. This fixes bypassing furnace and brewing-stand side restrictions,
+merging into a later matching stack before an earlier empty slot, and putting
+multiple glass bottles into one brewing slot. Comparable crafting remainders
+are grouped before insertion/ejection: cake returns a stack of three buckets,
+and honey-block crafting returns four glass bottles.
+
+The uninstrumented native corpus has 144 ordinary-output scenes (iron blocks,
+oak planks and glass bottles) and 96 remainder scenes (cake and honey blocks).
+Each covers six output directions and barrel, chest, locked hopper, furnace
+and brewing stand destinations, including earlier empty/later matching slots.
+Each source grid is verified immediately after load and after the scenario
+using two uniquely named native structures, for 480 stopped-database snapshots.
+The Go replay checks all block states, destination slots, dropped stack sizes
+and final source slots. It retains native legacy/canonical direction controls.
+
+The first captures exposed cross-chunk brewing-display publication one tick
+too early. The client LevelChunk::tickImpl drains its pending queues at
+0x32ca437/0x32ca4f8 before its actor pass at 0x32cab8f. The kernel had drained
+all scheduled block actions before every chunk. Components with a ported
+RedstoneCircuitComponent now drain queued actions in their owning chunk before
+copying/shuffling its actors; other Java block/fluid queue paths remain as
+before. Native capacity/priority rules and remaining non-circuit block types
+are separate open work, so this is not a full native queue-equivalence claim.
+
+Native area shuffle can reverse two neighbouring chunks on its staggered
+phase. The first unrestricted capture demonstrated this (a west-facing honey
+scene crafted on area 1's shuffled tick). The repeated fixtures explicitly start
+every scene at tick%20==2; the observed crafting sample falls outside both
+area-shuffle phases. This isolates the queue/actor dependency with the manual
+replay's stable axis order. Original discovery captures remain in .tmp; no
+synthetic display delay or omitted block-state assertion substitutes for order.
+The checked fixtures come from adamant-redstone-bds-18vqbtdn (144 outputs) and
+adamant-redstone-bds-g4q3h_qw (96 remainders). All 240 now match, alongside the
+36 pulse scenes, 20 dropper RNG scenes and block-actor/scheduled/area dispatcher
+regressions (entity 32.570 s, world 2.302 s).
+
+The complete eight-package check before these output/queue changes passed block
+(100.946 s), world (14.023 s), player (18.492 s), session (3.359 s), item (2.605 s)
+and the readback command (0.229 s); inventory has no local tests. Entity
+(366.741 s) failed TestFishSwimAround. A focused repeat failed once in thirty
+current runs; the unchanged 5ff95e72 baseline passed an initial thirty but then
+failed five of 120 additional runs (98.319 s). The fish test and implementation
+were not changed. This checkpoint is not labelled an all-green full suite.
+
+The complete check after the chunk-owned circuit queue and output changes passed
+block (100.580 s), world (14.146 s), player (18.440 s), session (3.399 s), item
+(2.573 s) and readback (0.257 s). Entity (378.679 s) failed the goat panic and
+happy-ghast floating tests; the goat test's baseline instability was already
+recorded above. In sixty focused floating runs, current code fails three times
+(35.569 s) and the unchanged 5ff95e72 worktree fails ten times (34.534 s).
+Neither floating implementation nor test was changed. No native crafter,
+queue, hopper, piston or other redstone
+regression failed in that run. These results predate the sound addition below.
+
+### Crafter sound packets
+
+The native loopback client capture has twelve scenes: both input parities for
+valid crafting into a barrel, invalid and empty grids, valid world ejection,
+blocked-container ejection and cake with returned buckets. There are ten actual
+LevelSoundEvent packets. BDS is silent when every result fits into the target
+container. Invalid/empty grids emit crafter.fail. Ejection emits crafter.craft
+once per crafting action, including cake's multiple output stacks. The first
+capture's assumption that every successful craft sends a packet was rejected
+by these observations rather than implemented.
+
+Both events use the integer block position, empty EntityType, unique ID -1 and
+the network hash of the live pre-animation block permutation in ExtraData.
+The fixture's north-up triggered/non-crafting state hashes to 1247582580; the
+kernel derives that value from its block registry rather than hardcoding it.
+Missing failure/ejection events are now emitted with those fields. Receipt
+times associate nearby controlled scenes, not native simulation timestamps.
+The fixture is bedrock_1_26_51_crafter_sounds.json, owned reference root
+adamant-redstone-bds-yg9krev5.
+
+All twelve sound scenes match their API state/output controls and captured
+event fields. The combined crafter pulse/output/remainder/hopper-routing,
+mixed-dropper and real piston packet regression passes entity (19.419 s), block
+(1.860 s) and session (1.929 s). The root server build succeeds after this sound
+addition. World-ejected item trajectories, other recipes and persistence
+remain open; current stack/count agreement is not a motion-parity claim.
+
+### Crafter ejection origin and native floating RNG
+
+Twelve additional uninstrumented six-direction/parity scenes record the
+world-ejected actor's position, velocity, AABB and ground flag on every tick
+(bedrock_1_26_51_crafter_ejections.json, adamant-redstone-bds-wfzukz3m). These are
+motion discovery traces; their initial RNG inputs are not yet replay controls.
+Their first observations can already include a physics/collision step and must
+not be equated blindly with the constructor's initial velocity or position.
+
+The crafter calls DispenserBlock::ejectItem, with a different launch point:
+binary32 x/z+0.5 and y+0.3, followed by the facing offset of +/-0.7. The shared
+routine subtracts 0.125 vertically or 0.15625 horizontally from launch Y.
+The kernel's y+0.5 launch and fixed direction*0.2 velocity were different.
+Crafter ejection now uses the inspected origin and shared native velocity:
+horizontal speed nextFloat*0.1+0.2, initial Y speed 0.2, followed by three
+cached binary32 Gaussian values scaled separately by 0.0075 and then six.
+Facing changes the base horizontal components, not the base upward speed.
+
+The unchanged client velocity window 0x9788485 (0x3af bytes) executes against a
+supplied actor state and native seeded RNG. Its nextFloat callback executes the
+original Core::Random float conversion; inline rejection/caching instructions
+remain native. Forty consecutive launches in each of 36 seed/facing streams
+retain cache carry-over, independently recorded raw words and exact budgets.
+The initial wrapper's X/Z local mapping was corrected against the direction
+tables before accepting this fixture. The corrected 1,440 velocities match
+the kernel bit for bit, with no tolerance or altered draw budget.
+
+The original crafter position window 0x6ec2569 (0x88 bytes) and generic ejection
+Y-correction window 0x97883e8 (0x33 bytes) independently produce 48 launch points
+covering all twelve native orientations and large positive/negative positions.
+Those also match bit for bit. All belong to
+bedrock_1_26_51_ejection_velocities.json.
+
+One subtle numerical dependency is explicit: the copied client velocity code
+forwards logf/sqrtf to the host Windows CRT. This capture uses ucrtbase.dll SHA
+dedb7611e1abc1ff3852dcac3d4c93a048d729e25b061973b9969f22698f14ca,
+logf RVA 0xa9d40 and active FMA dispatch 3. Rounding Go's double math.Log to
+float32 differed by one ULP in the recorded stream. A restricted positive-normal
+Gaussian-radius logarithm now follows that inspected CRT's table reduction and
+fused arithmetic. Tables are derived mathematically from ln(1+i/128): heads
+clear twelve mantissa bits, positive tails round toward zero, and reciprocals
+use 2/(1+i/128). No library binary or extracted instruction bytes are stored in
+production. The helper matches all 30,727 independently called CRT values,
+including table-rounding and near-one branch boundaries. Other CRT/CPU profiles
+are not claimed equivalent by this comparison.
+
+Tx.RandomFloat32 and RandomGaussianFloat32 use one raw-word conversion and the
+world's cached native Gaussian pair, sharing the simulation stream with raw
+draws. The focused logarithm/origin/velocity and complete crafter pulse/output/
+remainder check passes block (2.756 s), world (1.679 s), entity (12.766 s).
+The live trajectory follow-up below resolves initial eligibility and the
+isolated six-direction motion scenes. Ordinary dispenser/dropper integration
+and broader RNG consumers remain separate work.
+
+### Live crafter ejection: construction draws and chunk activation
+
+The owned BDS follow-up scopes the complete DispenserBlock::ejectItem call,
+recording raw RNG calls between entry and return and ItemActor::postNormalTick
+entries afterwards. No original instruction bytes are changed. The accepted
+fixture is bedrock_1_26_51_crafter_ejection_actor_inputs.json, reference root
+adamant-redstone-bds-rqsadg7k: twelve six-direction/parity scenes, each with one
+hundred API samples. These are debugger-observed traces, distinct from the
+earlier uninstrumented discovery capture.
+
+Construction consumes one shared float before the speed and Gaussian draws
+(native parent return 0xd1c84d; speed parent 0x8a23385). The inspected constructor
+uses it for an internal actor flag with no Go equivalent; the kernel preserves
+the draw without assigning an invented visual property. The replay warms only
+RNG state from earlier recorded ejection scopes, then supplies the current
+scene's independent native words and checks the exact consumption budget.
+
+Item post ticks remain in the global post phase: the final ejection return
+precedes every item post tick in the recorded birth frame. Eligibility depends
+on the destination chunk's visit. Down/up/south/east items tick in their birth
+frame; north/west items enter an already visited chunk and first tick in the
+following frame. Moving item physics into a per-chunk callback would contradict
+that ordering. The kernel instead tracks chunks still pending in the block
+pass and admits newborn queued items only if their owning chunk is pending.
+
+All twelve scenes now match every recorded position, velocity, AABB and ground
+flag through flight and landing, preserving one output actor's identity and
+stack (entity 3.295 s before the pickup follow-up). The native post-tick entries
+also expose PickupDelay at actor+0x44c as zero. Crafter output now explicitly
+uses zero pickup delay; the ordinary item factory's default remains unchanged.
+This verifies the field, not player collection latency in an unrecorded scene.
+
+The combined crafter/ejection/Gaussian/hopper/dispenser/dropper/queue/piston
+regression passes entity (109.198 s), block (1.268 s) and world (1.682 s) after
+the pickup follow-up. Session (1.175 s) fails only TestBlockActorDataNBTBytes:
+the identical NBT fields `id` and `rott` are serialized in the other map order,
+the previously documented byte-order-sensitive test failure. Its assertion is
+retained. The subsequent complete eight-package run passes block (147.560 s),
+world (17.854 s), player (21.094 s), session (3.707 s), item (3.421 s) and readback
+(0.226 s); inventory has no tests. Entity (584.015 s) fails only
+TestPigsWanderWithoutCarrotsOnSticks. A focused current repeat fails once in
+sixty runs (70.592 s); an initial sixty unchanged-baseline runs pass (53.942 s).
+Another 180 unchanged 5ff95e72 baseline runs fail four times (190.620 s), proving
+the unchanged wandering test's instability. No redstone regression failed, but
+this checkpoint is not labelled an all-green suite.
+Other entity activation graphs, recipe coverage and persistence remain open.
+
+### Ordinary dispenser/dropper follow-up evidence
+
+The ordinary-item follow-up retains twenty-four six-direction/parity scenes
+with a three-ingot stack in slot four. Native whole-ejection scopes, the
+immediately preceding bound-one selection draw, one hundred API samples per
+scene and zero-delay item post ticks are retained in
+bedrock_1_26_51_dispenser_ejection_actor_inputs.json (owned debugger-observed
+reference adamant-redstone-bds-mofiy18z). Both ordinary blocks use the same
+binary32 y+0.3 launch arithmetic as the crafter; the old kernel uses y+0.5 and
+fixed direction*0.2 instead. Both now use the shared native item launch,
+construction draw, Gaussian velocity, zero pickup delay and chunk-owned birth
+eligibility. The replay also consumes the recorded pre-ejection selection word.
+All twenty-four ordinary scenes and twelve crafter scenes pass every motion,
+stack/slot and exact draw-budget assertion (entity 5.235 s); the independently
+executed origin/velocity corpus passes block (2.140 s).
+
+A separate uninstrumented loopback capture records ninety-six scenes covering
+both blocks, six directions, both input parities and empty inventory, air,
+barrel and full-barrel destinations. All source inventory controls match. The
+fixture bedrock_1_26_51_dispenser_sounds.json retains 132 scene-associated
+packets (adamant-redstone-bds-zcmaqlmr). Empty inventories emit block.click.fail
+at the integer source position. A dropper transferring into either accepting
+or full containers is silent. World ejection sends a 2000 smoke LevelEvent and
+block.click at the uncorrected launch point, whose containing block determines
+ExtraData. Droppers additionally click at their integer source position.
+Vertical smoke direction data is four; north/south/west/east are one/seven/
+three/five. The positive-facing launch offset is 1.2 from the integer source,
+so packet association includes that point rather than using a unit-radius
+filter. Every scene's expected packet count is checked; the unrelated player
+spawn packet is retained in raw observations and excluded from scene matches.
+
+The kernel now emits these ordinary item effects and empty-inventory failures.
+A real session viewer publishes smoke as LevelEvent 2000 with the facing data
+above and keeps its order before launch-point click and optional dropper source
+click. All ninety-six scenes match the full captured LevelEvent/LevelSoundEvent
+objects, source permutations and source/destination counts (session 3.956 s).
+The first broader check passes the entity/container/queue regressions (114.656 s)
+and world (2.542 s), but finds three old block factory tests expecting fixed
+direction*0.2 motion. Those tests now take their exact velocities, origins and
+draw budgets from the independently executed client corpus, preserving fallback
+factory/count assertions rather than retaining the superseded motion model.
+The focused factory check passes block (2.905 s, then 2.819 s).
+
+### Crafter saved animation and initial container publication
+
+Twelve uninstrumented native structure save/load scenes capture every animation
+age from zero through five at both input parities. Each retained disk structure
+is read from the stopped reference database with verified immutable WAL handling.
+The fixture bedrock_1_26_51_crafter_loads.json has 1,344 API frames and twelve
+native actor records (adamant-redstone-bds-sk6ba3eq). At ages zero through four,
+the saved crafting block state remains true after load, but its animation
+countdown is absent from actor NBT. Age five saves a false state. BDS retains the
+true state on the loaded copy rather than resuming its old actor's countdown.
+This records native behavior even though the retained visual flag is unusual;
+it is not an invented countdown repair.
+
+The kernel's private adamant:java.crafting_ticks_remaining made the copied
+actor finish the previous countdown. Encoding/decoding no longer persists that
+transient timer. A second exposed difference was the loaded triggered flag:
+the initial zero consumer input never changed, so a saved true flag could stay
+true indefinitely. ConsumerComponent::evaluate at 0x66d899e..0x66d89a5 includes
+an initial update flag even when strength stays zero. The container evaluator
+now reconciles visible triggered/toggle state with evaluated power even without
+an input edge. It still schedules activation only on a visible false-to-true
+transition. Every source and copied-block frame in all twelve save/load scenes
+matches after both corrections (entity 3.083 s).
+
+An additional native corpus independently checks that initial publication for
+crafter, dispenser, dropper and hopper, with stored flag false/true, initial
+power false/true, both load parities and a later input reversal. All thirty-two
+native captures are complete in bedrock_1_26_51_container_load_flags.json
+(adamant-redstone-bds-4oov17nl). All 2,304 flag frames and immediate load states
+match the Go replay. Together with the twelve saved-animation and thirty-six
+ejection-motion scenes, the focused replay passes entity (5.252 s), and the
+ninety-six real-session effect scenes pass session (2.256 s).
+Full world restart/unload activation graphs remain open. The root server build
+passes after the ordinary effects and saved-animation/publication fixes.
+
+The broader eight-package redstone selection after these production changes
+passes session (4.388 s), entity (151.086 s), block (41.384 s), world (3.182 s),
+player (3.768 s) and item (2.683 s, no matching tests); inventory has no tests
+and readback has no matches in this selection (0.201 s). The selection includes
+dispenser/dropper/crafter, hopper, item merge, piston, actor, scheduled-update,
+RNG and chunk area/visit checks. It is explicitly narrower than the complete
+suite recorded above and does not replace that suite's failure ledger.
+
+### TNT initial pulse and state evidence
+
+The next row begins with seventy-two uninstrumented TNT scenes: six source
+faces, direct redstone blocks or buttons strongly powering a support block,
+both input parities and pulse widths of one, two and eight game ticks. All
+long-pulse positive controls prime exactly one TNT actor. Native TNT ignores a
+one-GT pulse at one parity and publishes priming after two or three observed
+GT depending on input phase. bedrock_1_26_51_tnt_pulses.json retains 5,184 source/
+TNT block frames and actor observations (adamant-redstone-bds-4xd1_605).
+Trajectory and fuse equivalence are not implied by actor-count/priming timing.
+
+An apparent state difference was checked on the wire before changing the
+palette. Stable Script API reports allow_underwater_bit together with the
+resolved tnt/underwater_tnt ID, but native network permutations omit that old
+selector. Ten command/legacy-structure scenes and twelve actual block updates
+prove all four wire hashes using only explode_bit. Legacy authored structures
+load into the same native states; the direct underwater_tnt command spelling
+is rejected, while tnt with the selector is accepted. The fixture is
+bedrock_1_26_51_tnt_states.json (adamant-redstone-bds-vkxc7jzf). Packet tooling
+now records both UpdateBlock and batched UpdateSubChunkBlocks. The failed
+initial capture interpretations were not used to rewrite the palette: the
+packet hash check retains raw SDK and wire permutations separately and verifies
+the alias against the resolved type. Native block comparison handles this
+specific verified alias, as it already handles the SDK's legacy stone_type.
+
+The baseline kernel primes too early in all seventy-two pulse scenes. TNT now
+uses a late-input scene consumer on the shared two-GT clock and primes from
+its accepted publication rather than the immediate neighbour action. The
+existing cancellation path still gates publication; gamerule/igniter behavior
+is unchanged by this clock fix. All 5,184 block/source/count frames and stable
+primed actor identities match (entity 4.179 s). Wire-state and TNT/cancellation
+checks pass block (1.964 s) and world (1.997 s); session has no matches in that
+focused selection. No TNT trajectory, fuse, explosion-chain, unstable-break or
+underwater activation equivalence is claimed by these checks.
+
+The shared TNT/circuit/note/bell/piston/crafter/container regression subsequently
+passes block (44.953 s), entity (56.078 s), world (2.898 s), player (4.266 s) and
+session (3.494 s). This predates the note corrections below.
+
+### Note-block event, instrument and packet evidence
+
+The note follow-up records BlockSource::blockEvent entry with a hardware
+execution breakpoint in a fresh owned BDS. The client body at 0x2d84440 is
+located uniquely in the validated BDS; position, event type/data and actual
+caller are recorded without patching instructions. Held Script API checkpoints
+associate calls with native game ticks, rather than packet receipt time.
+bedrock_1_26_51_note_block_events.json contains 112 scenes, 128 checkpoints and
+96 actual note callbacks from 0x65edfb8, covering all sixteen instruments,
+pitches 0/12/24, both input parities, widths one/two/eight, repeated pulses and
+stone/glass/water/leaves above the note block. The accepted reference is
+adamant-redstone-bds-6mrv5l9p. An earlier discovery had unsupported sand; the
+repeated fixture supports it on stone and verifies the instrument substrate's
+actual type every frame. That discovery is not the accepted instrument oracle.
+
+A separate uninstrumented loopback capture has 46 compact scenes with 96 real
+packets (bedrock_1_26_51_note_packets.json, adamant-redstone-bds-h8gyd0ll).
+BDS sends both BlockEvent and LevelSoundEvent, in that order. The sound is
+named note, with empty EntityType, integer block position, unique ID -1 and
+ExtraData = (instrument << 8) | pitch. The first hypothesis that the separate
+sound was redundant was rejected by these actual packets. The instrument is
+identical in the preceding BlockEvent. The kernel instead sent sound first,
+used the note block's embedded bass instrument for BlockEvent, and sent ':'
+as EntityType. Its immediate neighbour action also played before the native
+consumer publication and accepted the missed one-GT pulses.
+
+The kernel now shares the native container consumer clock for Note, merges
+only power into the live actor to retain pitch, selects the substrate instrument
+once for both packets and publishes BlockEvent before sound with empty
+EntityType. The 112 timed-event and 46 packet replays pass alongside container,
+crafter and TNT regressions: session (9.504 s), entity (23.210 s), block (3.476 s);
+world has no matches in this selection (1.083 s). Saved note power, player tuning,
+additional substrate/occlusion paths and vibration integration remain open.
+
+
+The original unsealed-water scenes expose a separate environment difference:
+the kernel replaces the adjacent source cell with flowing water at tick 53,
+whereas BDS retains air before the scripted power changes. Both full native
+128-frame traces are preserved in bedrock_1_26_51_note_water_flow.json, reference
+adamant-redstone-bds-nf1vcg52, and the failing replay is retained in the local
+verification log. This is an open setup/activation/flow dependency, not a claim
+that one fixed fluid delay is wrong. The accepted acoustic-isolation fixture
+explicitly encloses the water above the note in stone; its sealed_water input
+is reproduced in Go. Source permutation assertions remain intact and the
+unsealed evidence is not discarded. The old rising/falling note unit test now
+waits for each published edge rather than inspecting the old immediate state;
+the strict 112-scene oracle separately fixes the exact allowed ticks.
+
+The subsequent complete eight-package run passes entity (548.324 s), world
+(28.445 s), player (36.309 s), session (11.843 s), item (5.623 s) and readback
+(0.373 s); inventory has no tests. Block (181.991 s) fails only the old lever-
+through-support note test, which sampled before the consumer publication. This
+run predates the note-load and bell fixes below and is not called all green.
+
+### Note actor loading and first-time circuit events
+
+Twelve further owned native traces load pitches 0, 12, 24, 25, 127 and 255,
+with both values of the old private powered tag and power already present.
+bedrock_1_26_51_note_load_events.json (adamant-redstone-bds-kpkqetd6) records
+twelve actual callbacks on the later re-trigger, with pitches above 24 clamped
+to 24. The initial positive circuit event does not play. The inspected client
+load at 0x4aded37..0x4aded4c zero-extends the note and clamps it; save at
+0x4adec90 writes only note after its base save, not the actor's power history.
+The redstone handler at 0x6ea6727 checks the event's mIsFirstTime flag at +0x24
+and returns before changing that history.
+
+Note loading now clamps pitch, resets transient power and omits the old private
+power persistence. Its consumer ignores the first evaluation and subsequently
+publishes actual input edges, rather than reconciling actor power with initial
+scene strength. The strict 112 original scenes, twelve load scenes and 46 real
+packet scenes pass together (session 10.961 s). The old lever/conduction units
+must first register an unpowered component, then wait for each published edge;
+without that setup they exercise the native initial-event suppression instead
+of conduction. The corrected units pass block (3.663 s), alongside the note
+replays (session 3.363 s), before the bell implementation below.
+
+### Bell consumer sampling, animation and wire publication
+
+Sixty-four uninstrumented scenes cover four bell directions, direct power and
+strong button conduction, both input parities, one/two/eight-GT pulses and a
+repeated pulse train. Per-frame structures retain 7,168 native Bell actors,
+verified against each API permutation in stopped read-only LevelDB/WAL
+(bedrock_1_26_51_bell_pulses.json, adamant-redstone-bds-t0rdhk__). They expose
+the missing two-GT consumer gate, actor-owned edge detection and the distinction
+between input power and toggle_bit. The latter flips on each accepted ring and
+does not clear on a falling input. Native ringing resets Ticks to zero and its
+animation counter advances independently of that input.
+
+A separate owned hardware trace records all 72 BellBlockActor::ring entries
+inside their owning chunk's actor pass: BDS 0x1f1c400, caller 0x1f1c370, validated
+against client 0x2db8720 and its field-reset body. All have null actor and forced
+true (bedrock_1_26_51_bell_ring_events.json, adamant-redstone-bds-q75_3v_3).
+The client tick increments animation first, gates consumer reads using the
+dimension counter at 0x2db850e..0x2db851a, and rings on a positive edge at
+0x2db8665..0x2db868b. This explains the extra observed tick after evaluation
+without adding a synthetic delay. Bell now reads a dedicated scene consumer
+on that actor gate, keeps transient power history separately from toggle_bit,
+and retains that toggle across release. Every block/source/actor frame matches
+all 64 scenes (entity 6.385 s), with bell/note/TNT/loaded-container units passing
+block (2.529 s) and session (4.458 s).
+
+Thirty-two more original-BDS scenes record 304 actual packets: 128 block
+updates, 128 actor compounds and 48 bell sounds, with 3,584 per-tick snapshots
+(bedrock_1_26_51_bell_packets.json, adamant-redstone-bds-t0dx6u1g). The sound
+precedes updates, uses the integer bell position and empty EntityType. A ring
+sends block flags 3 then 1, followed by two identical ringing actor compounds
+at Ticks zero. Bell state/actor publication now preserves that sequence through
+the existing bounded queue. The first complete packet/actor/queue/piston/note
+check passes session (8.543 s), entity (4.122 s) and block (2.553 s).
+
+The following flush-isolation check exercises both normal flushing and a viewer
+that flushes the ordinary state before the ring action arrives. Redstone ring
+NBT is left to its dedicated action, which retains the actor pair and sends
+only the remaining neighbour update if the network state was already flushed.
+Ordinary bell initialization still includes its actor coordinates. These tests
+retain every native field, duplicate and packet order. Full bell placement,
+player/projectile ringing, support changes, hearing/vibration behavior and
+reload/activation graphs remain open.
+
+The completed normal/split-flush comparison passes session (6.470 s), block
+(3.414 s) and entity (4.561 s). A further ordinary regression queues 400 stone
+updates before a bell ring and verifies that both state flags and both actor
+snapshots survive the bounded state/actor backlog. It passes in the subsequent
+session run; that run still failed the two retained water scenes, resolved below.
+
+### Static water activation and actor-only note publication
+
+Twelve further unmodified BDS traces isolate static command water, explicit
+flowing_water placement and actual neighbouring placement/removal, at both
+input parities. They retain every sampled state of eleven cells for 128 ticks
+(bedrock_1_26_51_water_activation.json, adamant-redstone-bds-i35by00_). Static
+water remains dormant without a real neighbour mutation. A change above it
+starts lateral flow five GT later; descent follows another five GT later.
+Explicit flowing_water is converted to water immediately and starts flowing
+five GT after placement. Falling streams retain their lateral liquid_depth:
+the checked falling cells have depth 9, not 8.
+
+Client LiquidBlock::neighborChanged (0x345b040) schedules against the live block
+and chunk queue. LiquidBlockDynamic::onPlace (0x345fbb0) installs its static
+mLiquidBlock and schedules activation. LiquidBlock::_tick at
+0x345c364..0x345c36a adds the falling bit to the existing depth. Water now receives
+loaded neighbour notifications synchronously in either layer, ignores synthetic
+self notifications, and no longer consumes deferred notifications created before
+the water existed. Physical SetLiquid placement still activates water through a
+separate optional placement callback. Native water ticks bypass the legacy Java
+fluid-state adapter, whose falling-state conversion discarded the native depth.
+Other fluid adapters have not been declared equivalent by this water corpus.
+
+The retained unsealed note scenes additionally exposed a false block replacement
+on each note power-history change. Native note power is actor-only; replacing its
+permutation incorrectly wakes dormant water above it. The circuit publication
+path now permits actor-only consumer output, preserving event cancellation and
+the post-publication callback without sending neighbour mutations. All twelve
+water traces and both original unsealed note traces now pass strict per-frame
+state comparisons, alongside note events/load/packets and bell packet/actor/queue
+tests (entity 3.637 s, session 3.915 s, block 1.962 s). Subsequent physical-water
+and full shared checks are recorded separately; this is not full fluid parity.
+
+### Bell save/load evidence
+
+Sixteen additional owned original-BDS scenes save a bell at ring ages 0, 5, 24
+and 25, then load it with or without power already present, at both source
+parities (bedrock_1_26_51_bell_loads.json, adamant-redstone-bds-fbk250yc).
+The stopped immutable LevelDB/WAL readback verifies all 1,656 input/per-frame
+actor snapshots against the corresponding API permutation. Native loads retain
+Ringing, Ticks and Direction. Initial positive scene power can ring the loaded
+bell again and flip its saved toggle_bit; unlike the note consumer, this actor
+does not suppress that initial positive input. Unpowered loads continue the
+saved animation, and later scripted power edges exercise repeated ringing.
+The ordinary replay compares all 160 frames, both source positions, both bell
+positions and every saved actor field. It passes with the broader entity
+container/ejection/TNT/water selection (78.637 s); the full bell lifecycle row
+remains open.
+
+The full block package passes (119.776 s), as do player (24.291 s), item
+(3.842 s) and structure readback (0.615 s). That first broader run exposed the
+old note-save expectation and fluid tests whose physical setup now correctly
+reserves an earlier pending activation. The note assertions now enforce native
+transient power. Queue-clock and schedule-only tests install dormant static
+water, or reserve their explicit tick before physical placement; their original
+delay, identity, geometry and dispatch assertions remain unchanged. Native-only
+extension boundaries retain their existing positional collision/SideClosed
+contract through the shared mixed-boundary aperture calculation. The focused
+follow-up passes world (3.163 s), session (5.457 s), entity (3.769 s). The next
+complete world/session runs pass (14.093 s / 6.951 s), and the root server build
+succeeds. These results precede the player-use bell changes below.
+
+### Bell player-use direction and wire evidence
+
+Sixty-four owned native player scenes cover all four attachments, all four
+permutation directions and approaches from all four horizontal sides. There
+are forty accepted and twenty-four rejected interactions. The corpus retains
+2,928 verified saved actor frames and all 272 position-associated native
+packets (bedrock_1_26_51_bell_use.json, adamant-redstone-bds-v3rllv8y).
+The audit client can hold an explicit look rotation before interacting; every
+accepted fixture verifies the actual server-side yaw in the native before-event.
+An earlier discovery capture kept the client's default northward idle yaw and
+is not used as this directional oracle. Native after-events occur only for the
+accepted uses, so rejected uses correctly have no after-event.
+
+Client BellBlock::use at 0x2a5f6c0 selects the player's horizontal look direction
+and applies attachment-specific axis gates at 0x2a5f9ff..0x2a5fa3a. Standing
+bells accept their facing axis, hanging bells either axis, side/multiple bells
+the perpendicular axis. The swing direction comes from the opposite-direction
+table before the actor ring call at 0x2a5facd, not directly from the packet's
+clicked face. Every accepted use flips toggle_bit. Its actual wire publication
+is state flags 3, one actor compound at Ticks zero, then sound. A rejected use
+confirms the unchanged permutation with flags 3 and no new actor compound.
+This differs from the separately verified redstone actor-pass duplicate sequence.
+
+The implementation now applies those direction gates and toggles at the common
+ring entry point. Manual sound can wait behind the bounded state/actor queue,
+and player rejection sends only the state confirmation to that player. The
+strict replay retains all native actor fields and packets, with both ordinary
+and split viewer flushing. It passes (session 9.113 s) alongside bell load,
+redstone, note, water and fluid-clock regressions. A backlog regression then
+demonstrated that replacing a pending bell state or receiving a rejected click
+could erase its unsent sound and animation. State coalescing now retains queued
+effects, and rejection preserves the earlier pending actor/effects without
+creating a new actor notification. The regression retains both accepted sounds
+after the final state/actor behind 400 ordinary updates. It failed before the
+fix (zero actors/sounds) and passes afterwards, together with all native bell
+player/redstone/load/packet and piston queue selections (session 7.006 s,
+entity 54.083 s, block 55.646 s, world 2.235 s, player 3.716 s). This does not
+close projectile, support, hearing/vibration or broader bell lifecycle work.
+
+### Bell arrow collisions, native shapes and split entity phases
+
+Sixty-four uninstrumented BDS arrow scenes cover all bell attachments,
+directions and horizontal approaches, with both actual input parities. Each
+retains eighty frames of the full bell permutation, saved actor and arrow
+position/velocity/AABB (5,120 actor snapshots). The accepted capture records the
+actual native spawn position separately from the requested position: BDS can
+move an arrow placed inside an adjacent support before its first physics step.
+bedrock_1_26_51_bell_projectiles.json uses adamant-redstone-bds-36hne4ff. All
+sixty-four arrows hit the bell, including directions rejected for player use.
+Their ring follows the bell's facing rather than the impact face. The native
+handler at client 0x2a61e30 has no player-use axis gate and excludes the two wind
+charge types, whose activating-attack route remains separate and open.
+
+The original BellBlock::getVisualShape at 0x2a5fbe0 was executed for all sixteen
+attachment/direction combinations, with host callbacks supplying only native
+state-reader values. The original collision default's virtual dispatch at
+0x3182a80 was additionally executed for 48 translated cases, with no per-state
+collision override or block offset component supplied. Original arithmetic and
+tables remain unchanged (client_1_26_51_bell_shapes.json). The old Java-style
+multi-box model disagreed: native standing height is 13/16, hanging/side/multiple
+outlines are single aggregate AABBs, and side/multiple axes differ. The corrected
+model agrees with all sixteen original shapes and the live arrow collisions.
+This default-path execution alone is not a claim about arbitrary custom native
+collision overrides or all entity contacts.
+
+The arrow comparison also exposed the distinction between normal-tick button
+contacts and ProjectileSystem movement. Moving the entire arrow tick after
+blocks fixed the bell's animation origin but broke the retained wooden-button
+wire timing. The kernel now samples the arrow's earlier button contact before
+the circuit/block pass while running its movement/collision afterwards, through
+a bounded once-per-GT pre-block callback. Bell animation therefore starts at
+Ticks zero on impact, while the existing 180 button projectile traces retain
+their exact source and wire timing. This was checked as a shared dependency,
+not by loosening the button assertions or adding a bell-specific tick delay.
+
+Twenty-eight further native free-flight scenes cover seven launch vectors,
+two heights and both input parities (bedrock_1_26_51_arrow_flight.json,
+adamant-redstone-bds-b8bqvhv7). Every one of their 64 frames is retained. Arrows
+trace the preceding velocity, then apply drag/gravity for the next step; position
+addition, drag and gravity each round as binary32. The ordinary replay requires
+exact position and velocity equality, in addition to its AABB comparisons.
+The original double arithmetic accumulated visible test differences and has
+been replaced for native arrows. No broader projectile-fluid/acceleration
+equivalence is inferred from these air scenes.
+
+An independent packet capture at separated six-block scene spacing retains
+another 5,120 actor frames and all 320 bell packets, with actual native birth
+positions (bedrock_1_26_51_bell_projectile_packets.json,
+adamant-redstone-bds-fj0xgaib). Setup/collision states use flags 3, one actor
+snapshot, then sound; the redstone duplicate sequence is not used here. The
+strict physical-arrow replay compares every actor field and every packet at
+the bell position, with normal and split viewer flushing. The full native bell,
+arrow motion, arrow/button and pre/post-block selection passes entity (6.127 s),
+session (6.183 s), block (3.263 s) and world (1.953 s). A complete eight-package
+run and root build follow; their result is not assumed from this focused pass.
+
+### Bell support lifecycle and remaining packet diagnostic
+
+Another 128 original-BDS scenes cover all four attachments and directions,
+both input parities, support removal/replacement, adding a second side support,
+two ordered mutations in one transaction, and deliberately unsupported command
+states. Each retains 64 frames of six cells
+(bedrock_1_26_51_bell_supports.json, adamant-redstone-bds-zo7x9xp5). A separate
+connected-client capture preserves all 416 associated packets
+(bedrock_1_26_51_bell_support_packets.json, adamant-redstone-bds-fboi3t1d).
+
+The state fix now processes actual loaded neighbour mutations synchronously,
+ignores synthetic self-notifications and does not replay deferred notifications
+created before the bell existed. Unsupported command bells remain until a real
+neighbour change, matching native behavior. Adding the opposite side support
+converts side to multiple attachment; the next ordered removal can then select
+the remaining wall and reverse facing. The ordinary
+TestBellSupportStatesMatchBDS retains all 128 traces and every cell/state check.
+It passes alongside the existing bell/note/water/arrow/native-button selection
+(session 12.067 s, block 6.426 s, entity 7.342 s, world 2.331 s).
+
+Wire parity for these support mutations is still unfinished. The current queue
+collapses intermediate same-position permutations and actor notifications;
+removing a bell sends air with flags 2 where the captured native update uses 3.
+The strict packet diagnostic preserves these mismatches without loosening their
+assertions. It is explicitly separate from the completed state regression and
+is enabled with:
+
+```text
+go test -tags redstone_bell_support_audit ./server/session -run '^TestBellSupportUpdatesMatchNativePackets$' -count=1
+```
+
+This command is expected to fail at this checkpoint. It was rerun before
+publication (session 4.664 s) and still exposes the recorded discrepancies.
+The user paused the audit and requested commits/publication; this diagnostic
+records the next work rather than claiming the support packet path is fixed.
+
+### Publication checkpoint on 2026-10-29
+
+The completed core snapshot passes the full eight-package check: block
+116.765 s, entity 453.236 s, world 17.802 s, player 22.283 s, session 11.710 s,
+item 3.805 s and structure readback 0.254 s; inventory has no tests. That full
+run precedes the small bell-support state fix above, whose new ordinary
+128-scene regression and related shared selection also pass. The root server
+build succeeds after the support change, retaining the root entry point for
+`go run .`. The final complete block/session/world/player check also passes:
+117.719 s / 9.681 s / 14.963 s / 23.489 s. This checks the published support
+state fix as well as the shared code; the opt-in packet diagnostic remains an
+explicitly documented failure, not part of a claim of completed wire parity.
+
+The implementation/evidence snapshot is committed in `79bed5c9`; the verified
+support state transitions, retained native captures and unfinished wire
+diagnostic are committed separately in `bc2467f9`. Private operator/ban data
+and the temporary gameplay log are excluded from this publication.
+
+The effort estimate is now approximately 70%, increased from the prior 65%
+planning checkpoint. It describes work performed, not proven global parity:
+all 22 matrix rows still retain open coverage. The audit remains paused after
+the user's request; creating and sending this checkpoint does not resume it.
