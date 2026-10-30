@@ -1353,9 +1353,7 @@ func (p *Player) spawnLocation() (playerSpawn cube.Pos, w *world.World, spawnBlo
 		return playerSpawn, w, false, previousDimension, false
 	}
 
-	// We can use the principle here that returning through a portal of a specific dimension inside that dimension will
-	// always bring us back to the overworld.
-	w = w.PortalDestination(w.Dimension())
+	w = w.DefaultWorld()
 	spawn := w.Spawn()
 	return spawn, w, playerSpawn != spawn, previousDimension, true
 }

@@ -48,6 +48,46 @@ func (stubConn) WritePacket(proto.Packet) error { return nil }
 
 func (stubConn) StartGameContext(context.Context, netconn.GameData) error { return nil }
 
+func TestRespawnInDefaultWorldWithoutBed(t *testing.T) {
+	for _, portals := range []bool{false, true} {
+		name := "no portal destination"
+		if portals {
+			name = "portal returns current world"
+		}
+		t.Run(name, func(t *testing.T) {
+			log := slog.New(slog.NewTextHandler(io.Discard, nil))
+			var w *world.World
+			conf := world.Config{Log: log, Synchronous: true}
+			if portals {
+				conf.PortalDestination = func(world.Dimension) *world.World { return w }
+				conf.DefaultWorld = func() *world.World { return w }
+			}
+			w = conf.New()
+			t.Cleanup(func() { _ = w.Close() })
+			w.SetSpawn(cube.Pos{8, 64, 8})
+			sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
+			t.Cleanup(sess.CloseConnection)
+			cfg := Config{Session: sess, Position: mgl64.Vec3{32, 64, 32}, GameMode: world.GameModeSurvival}
+			handle := world.EntitySpawnOpts{Position: cfg.Position, ID: uuid.New()}.New(Type, cfg)
+			sess.SetHandle(handle, cfg.Skin)
+			<-w.Exec(func(tx *world.Tx) {
+				p := tx.AddEntity(handle).(*Player)
+				p.addHealth(-p.MaxHealth())
+				p.Respawn()
+				respawned, ok := handle.Entity(tx)
+				if !ok {
+					t.Error("respawn disconnected the player from its default world")
+					return
+				}
+				p = respawned.(*Player)
+				if p.Health() != p.MaxHealth() || p.Position() == cfg.Position {
+					t.Errorf("respawn health %v/%v, position %v", p.Health(), p.MaxHealth(), p.Position())
+				}
+			})
+		})
+	}
+}
+
 func TestRespawnFallsBackToDefaultDimension(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
