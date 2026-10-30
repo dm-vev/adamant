@@ -36,55 +36,64 @@ var trackingRanges = map[string]float64{
 	"minecraft:chest_boat": 10 * 16,
 
 	"minecraft:warden": 16 * 16, "minecraft:lightning_bolt": 16 * 16, "minecraft:ender_crystal": 16 * 16,
+
+	"minecraft:player": math.Inf(1),
 }
 
 const (
-	// interestInterval is the ticks between the checks of which entities
-	// are within range of the player of a session.
+	// interestInterval is the ticks between the checks of whether the
+	// entities kept out of range came within it, which are shown soon.
 	interestInterval = 5
+	// interestRound is the ticks over which every entity shown is checked
+	// once for having gone out of range, a part each tick: one shown a
+	// while longer costs only its packets.
+	interestRound = 20
 	// interestMargin is how far past its range an entity shown goes before
 	// it is hidden, so that one at the edge does not come and go.
 	interestMargin = 8.0
 )
 
-// trackingRange returns how far horizontally from the player of a session
-// an entity is shown: that of its type, or of the farthest-seen entity
-// riding it, as Java takes the range of a vehicle from its passengers.
-func trackingRange(e world.Entity) float64 {
-	if _, ok := e.(Controllable); ok {
-		return math.Inf(1)
-	}
-	name := e.H().Type().EncodeEntity()
-	if n, ok := e.H().Type().(interface{ NetworkEncodeEntity() string }); ok {
+// typeRange returns how far horizontally from the player of a session an
+// entity of a type is shown.
+func typeRange(t world.EntityType) float64 {
+	name := t.EncodeEntity()
+	if n, ok := t.(interface{ NetworkEncodeEntity() string }); ok {
 		// The type the client knows the entity by.
 		name = n.NetworkEncodeEntity()
 	}
-	r, ok := trackingRanges[name]
-	if !ok {
-		r = defaultTrackingRange
+	if r, ok := trackingRanges[name]; ok {
+		return r
 	}
-	if linker, ok := e.(entity.Linker); ok {
-		for _, link := range linker.Links() {
-			if link.Rider != nil && link.Rider != e.H() {
-				// A player or anything else riding: the vehicle is seen as
-				// far as its rider, which is a player at most.
-				r = math.Inf(1)
-			}
-		}
-	}
-	return r
+	return defaultTrackingRange
 }
 
 // withinRange reports whether e is within its range of pos, widened by
-// margin.
+// margin. An entity ridden is seen as far as its rider, which may be a
+// player, as Java takes the range of a vehicle from its passengers.
 func withinRange(e world.Entity, pos mgl64.Vec3, margin float64) bool {
-	r := trackingRange(e)
+	return withinRangeOf(e, typeRange(e.H().Type()), pos, margin)
+}
+
+// withinRangeOf is withinRange of an entity of range r.
+func withinRangeOf(e world.Entity, r float64, pos mgl64.Vec3, margin float64) bool {
 	if math.IsInf(r, 1) {
 		return true
 	}
 	r += margin
-	d := e.Position().Sub(pos)
-	return d[0]*d[0]+d[2]*d[2] <= r*r
+	if d := e.Position().Sub(pos); d[0]*d[0]+d[2]*d[2] <= r*r {
+		return true
+	}
+	if _, ok := e.(Controllable); ok {
+		return true
+	}
+	if linker, ok := e.(entity.Linker); ok {
+		for _, link := range linker.Links() {
+			if link.Rider != nil && link.Rider != e.H() {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // outOfRange reports whether the world shows the session an entity farther
@@ -107,37 +116,57 @@ func (s *Session) outOfRange(e world.Entity) bool {
 }
 
 // updateInterest is called on the ticks of the world of the player of the
-// session, at pos: every interestInterval ticks it hides the entities shown
-// that went out of range and shows those that came within it.
+// session, at pos: it hides the entities shown that went out of range, a
+// part of them each tick, and every interestInterval ticks shows those
+// kept out of range that came within it.
 func (s *Session) updateInterest(tx *world.Tx, pos mgl64.Vec3) {
 	s.viewPos.Store(&pos)
-	if s.interestTick++; s.interestTick%interestInterval != 0 {
+	part := s.interestTick % interestRound
+	if part == 0 {
+		// The entities to check over the next round. Players and the like
+		// are seen as far as the chunks: their positions are not looked up.
+		s.entityMutex.RLock()
+		shown := s.interestShown[:0]
+		for h := range s.entityRuntimeIDs {
+			if r := typeRange(h.Type()); h != s.ent && !math.IsInf(r, 1) {
+				shown = append(shown, rangedEntity{h: h, r: r})
+			}
+		}
+		s.entityMutex.RUnlock()
+		s.interestShown = shown
+	}
+	n := len(s.interestShown)
+	for _, re := range s.interestShown[part*n/interestRound : (part+1)*n/interestRound] {
+		if e, ok := re.h.Entity(tx); ok && !withinRangeOf(e, re.r, pos, interestMargin) && !s.entityHidden(e) {
+			s.hideFar(e)
+		}
+	}
+	if part == interestRound-1 {
+		clear(s.interestShown)
+	}
+	s.interestTick++
+	if s.interestTick%interestInterval != 0 || !s.hidesFar.Load() {
 		return
 	}
 	s.entityMutex.RLock()
-	shown, far := s.interestShown[:0], s.interestFar[:0]
-	for h := range s.entityRuntimeIDs {
-		if h != s.ent {
-			shown = append(shown, h)
-		}
-	}
+	far := s.interestFar[:0]
 	for h := range s.farEntities {
 		far = append(far, h)
 	}
 	s.entityMutex.RUnlock()
-	for _, h := range shown {
-		if e, ok := h.Entity(tx); ok && !s.entityHidden(e) && !withinRange(e, pos, interestMargin) {
-			s.hideFar(e)
-		}
-	}
 	for _, h := range far {
 		if e, ok := h.Entity(tx); ok && withinRange(e, pos, 0) {
 			s.showNear(e)
 		}
 	}
-	clear(shown)
 	clear(far)
-	s.interestShown, s.interestFar = shown[:0], far[:0]
+	s.interestFar = far[:0]
+}
+
+// rangedEntity is an entity shown and its range.
+type rangedEntity struct {
+	h *world.EntityHandle
+	r float64
 }
 
 // hideFar hides an entity shown that went out of range, keeping it to be

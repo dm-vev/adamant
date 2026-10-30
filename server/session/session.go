@@ -103,13 +103,14 @@ type Session struct {
 	// farEntities holds the entities the world shows the session that are
 	// farther from its player than their range, hidesFar is set while it
 	// holds any, and viewPos is where the player was last tick: see
-	// trackingRange. interestTick counts the ticks to the next check, and
+	// typeRange. interestTick counts the ticks to the next check, and
 	// interestShown and interestFar are the buffers of a check.
-	farEntities                map[*world.EntityHandle]struct{}
-	hidesFar                   atomic.Bool
-	viewPos                    atomic.Pointer[mgl64.Vec3]
-	interestTick               int
-	interestShown, interestFar []*world.EntityHandle
+	farEntities   map[*world.EntityHandle]struct{}
+	hidesFar      atomic.Bool
+	viewPos       atomic.Pointer[mgl64.Vec3]
+	interestTick  int
+	interestShown []rangedEntity
+	interestFar   []*world.EntityHandle
 	// deathAnimations records ordinary mobs whose death event lets the client
 	// finish the animation and remove the actor itself. Protected by entityMutex.
 	deathAnimations map[uint64]struct{}

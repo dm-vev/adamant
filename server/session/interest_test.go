@@ -44,9 +44,10 @@ func TestEntitiesShownWithinRange(t *testing.T) {
 			t.Fatalf("a move of an item out of range was sent: %T", pk)
 		}
 
-		// The player goes to x=150: the far item comes within range, the
-		// near one is left 140 blocks behind, past 96 and the margin.
-		for range interestInterval {
+		// The player goes to x=150 for two rounds of checks: the far item
+		// comes within range, the near one is left 140 blocks behind, past
+		// 96 and the margin.
+		for range 2 * interestRound {
 			s.updateInterest(tx, mgl64.Vec3{150, 64, 0})
 		}
 		var removed, added bool
