@@ -79,8 +79,8 @@ func Discover(ctx context.Context, client *http.Client, version string) (*Keys, 
 
 // NewKeys returns the keys of the tokens of an authorization service by its
 // issuer, reading where it publishes them and how it signs from its OpenID
-// configuration. The client makes the requests; nil means
-// http.DefaultClient.
+// configuration and fetching its keys before logins begin. The client makes
+// the requests; nil means http.DefaultClient.
 func NewKeys(ctx context.Context, client *http.Client, issuer string) (*Keys, error) {
 	if client == nil {
 		client = http.DefaultClient
@@ -117,6 +117,9 @@ func NewKeys(ctx context.Context, client *http.Client, issuer string) (*Keys, er
 		}
 		// A configuration that names none signs as OpenID does by default.
 		k.algs = []string{rs256}
+	}
+	if _, err := k.fetch(ctx, time.Time{}); err != nil {
+		return nil, fmt.Errorf("login: keys of the authorization service: %w", err)
 	}
 	return k, nil
 }
