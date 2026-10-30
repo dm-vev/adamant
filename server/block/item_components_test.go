@@ -8,14 +8,13 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// TestItemComponentsFollowJava checks values of Java 26.3 item components
-// the Bedrock-derived items had wrong: stack sizes, durability, fire
-// resistance and composting chances.
-func TestItemComponentsFollowJava(t *testing.T) {
+// TestItemComponents checks imported Java components with Bedrock's cake
+// stack size, which the native container transfer fixtures exercise.
+func TestItemComponents(t *testing.T) {
 	for _, c := range []struct {
 		id    string
 		stack int
-	}{{"minecraft:cake", 1}, {"minecraft:name_tag", 64}} {
+	}{{"minecraft:cake", 64}, {"minecraft:name_tag", 64}} {
 		if got := javaStack(t, c.id, 1).MaxCount(); got != c.stack {
 			t.Errorf("%v stacks to %v, want %v", c.id, got, c.stack)
 		}

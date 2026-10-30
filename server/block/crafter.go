@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -21,17 +22,17 @@ type Crafter struct {
 	solid
 	bass
 
-	Facing cube.Face
-	Top cube.Face
-	Triggered bool
-	Crafting bool
-	CustomName string
-	DisabledSlots uint16
+	Facing                 cube.Face
+	Top                    cube.Face
+	Triggered              bool
+	Crafting               bool
+	CustomName             string
+	DisabledSlots          uint16
 	CraftingTicksRemaining int32
 
 	inventory *inventory.Inventory
-	viewerMu *sync.RWMutex
-	viewers map[ContainerViewer]struct{}
+	viewerMu  *sync.RWMutex
+	viewers   map[ContainerViewer]struct{}
 }
 
 // NewCrafter creates an empty crafter with all nine slots enabled.
@@ -43,17 +44,30 @@ func NewCrafter() Crafter {
 		inventory: inventory.New(9, func(slot int, _, after item.Stack) {
 			m.RLock()
 			defer m.RUnlock()
-			for viewer := range v { viewer.ViewSlotChange(slot, after) }
+			for viewer := range v {
+				viewer.ViewSlotChange(slot, after)
+			}
 		}),
 		viewerMu: m, viewers: v,
 	}
 }
 
-func (c Crafter) ContainerSize() int { return 9 }
+func (c Crafter) ContainerSize() int                                 { return 9 }
 func (c Crafter) Inventory(*world.Tx, cube.Pos) *inventory.Inventory { return c.inventory }
-func (c Crafter) WithName(a ...any) world.Item { c.CustomName = strings.TrimSuffix(fmt.Sprintln(a...), "\n"); return c }
-func (c Crafter) AddViewer(v ContainerViewer, _ *world.Tx, _ cube.Pos) { c.viewerMu.Lock(); defer c.viewerMu.Unlock(); c.viewers[v] = struct{}{} }
-func (c Crafter) RemoveViewer(v ContainerViewer, _ *world.Tx, _ cube.Pos) { c.viewerMu.Lock(); defer c.viewerMu.Unlock(); delete(c.viewers, v) }
+func (c Crafter) WithName(a ...any) world.Item {
+	c.CustomName = strings.TrimSuffix(fmt.Sprintln(a...), "\n")
+	return c
+}
+func (c Crafter) AddViewer(v ContainerViewer, _ *world.Tx, _ cube.Pos) {
+	c.viewerMu.Lock()
+	defer c.viewerMu.Unlock()
+	c.viewers[v] = struct{}{}
+}
+func (c Crafter) RemoveViewer(v ContainerViewer, _ *world.Tx, _ cube.Pos) {
+	c.viewerMu.Lock()
+	defer c.viewerMu.Unlock()
+	delete(c.viewers, v)
+}
 
 // SetSlotDisabled changes an empty slot's enabled state to the requested value.
 func (c Crafter) SetSlotDisabled(slot int, disabled bool) (Crafter, bool) {
@@ -99,7 +113,10 @@ func (c Crafter) NotifyTriggered() {
 }
 
 func (c Crafter) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *item.UseContext) bool {
-	if opener, ok := u.(ContainerOpener); ok { opener.OpenBlockContainer(pos, tx); return true }
+	if opener, ok := u.(ContainerOpener); ok {
+		opener.OpenBlockContainer(pos, tx)
+		return true
+	}
 	return true
 }
 
@@ -122,20 +139,25 @@ func (c Crafter) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *worl
 
 func (c Crafter) BreakInfo() BreakInfo {
 	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(Crafter{})).withBlastResistance(3.5).withBreakHandler(func(pos cube.Pos, tx *world.Tx, _ item.User) {
-		for _, stack := range c.Inventory(tx, pos).Clear() { dropItem(tx, stack, pos.Vec3()) }
+		for _, stack := range c.Inventory(tx, pos).Clear() {
+			dropItem(tx, stack, pos.Vec3())
+		}
 	})
 }
 
 func (c Crafter) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
 	powered := power > 0
-	if powered == c.Triggered { return c, false }
+	if powered == c.Triggered {
+		return c, false
+	}
 	c.Triggered = powered
-	if !powered { c.Crafting = false; c.CraftingTicksRemaining = 0 }
 	c.NotifyTriggered()
 	return c, true
 }
 func (c Crafter) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, oldPower, newPower int) {
-	if oldPower == 0 && newPower > 0 { tx.ScheduleBlockUpdate(pos, after, gameTicks(4)) }
+	if oldPower == 0 && newPower > 0 {
+		tx.ScheduleBlockUpdate(pos, after, gameTicks(4))
+	}
 }
 func (c Crafter) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) { c.craft(pos, tx) }
 func (c Crafter) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
@@ -153,14 +175,23 @@ func (c Crafter) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 
 func (c Crafter) craft(pos cube.Pos, tx *world.Tx) {
 	input := make([]item.Stack, 9)
-	for slot := range 9 { input[slot], _ = c.inventory.Item(slot) }
+	for slot := range 9 {
+		input[slot], _ = c.inventory.Item(slot)
+	}
 	var output item.Stack
 	var match bool
 	for _, dynamic := range recipe.DynamicRecipes() {
-		if dynamic.Block() != "crafting_table" { continue }
+		if dynamic.Block() != "crafting_table" {
+			continue
+		}
 		recipeInput := make([]recipe.Item, 9)
-		for i := range input { recipeInput[i] = input[i] }
-		if stacks, ok := dynamic.Match(recipeInput); ok && len(stacks) > 0 { output, match = stacks[0], true; break }
+		for i := range input {
+			recipeInput[i] = input[i]
+		}
+		if stacks, ok := dynamic.Match(recipeInput); ok && len(stacks) > 0 {
+			output, match = stacks[0], true
+			break
+		}
 	}
 	if !match {
 		bestPriority := uint32(math.MaxUint32)
@@ -182,40 +213,96 @@ func (c Crafter) craft(pos cube.Pos, tx *world.Tx) {
 		}
 	}
 	if !match || output.Empty() {
+		playCrafterSound(pos, tx, "crafter.fail")
 		return
 	}
 	c.Crafting = true
 	c.CraftingTicksRemaining = 6
 	front := pos.Side(c.Facing)
-	remaining := c.insertResult(tx, front, output)
-	if !remaining.Empty() { c.eject(pos, tx, remaining) }
+	outputs := []item.Stack{output}
 	for slot := range 9 {
 		if rest := crafterRemainder(input[slot]); !rest.Empty() {
-			remaining := c.insertResult(tx, front, rest)
-			if !remaining.Empty() { c.eject(pos, tx, remaining) }
+			for i := range outputs {
+				outputs[i], rest = outputs[i].AddStack(rest)
+				if rest.Empty() {
+					break
+				}
+			}
+			if !rest.Empty() {
+				outputs = append(outputs, rest)
+			}
 		}
-		if !input[slot].Empty() { _ = c.inventory.SetItem(slot, input[slot].Grow(-1)) }
+	}
+	ejected := false
+	for _, result := range outputs {
+		if remaining := c.insertResult(tx, front, result); !remaining.Empty() {
+			c.eject(pos, tx, remaining)
+			ejected = true
+		}
+	}
+	if ejected {
+		playCrafterSound(pos, tx, "crafter.craft")
+	}
+	for slot := range 9 {
+		if !input[slot].Empty() {
+			_ = c.inventory.SetItem(slot, input[slot].Grow(-1))
+		}
 	}
 	notifyComparatorUpdate(pos, tx)
 	tx.SetBlock(pos, c, nil)
 }
 
+// BDS sends one craft event only when output reaches the world. A failed
+// recipe sends fail; fully inserted output is silent. Both identify the live
+// pre-animation permutation and originate at the integer block position.
+func playCrafterSound(pos cube.Pos, tx *world.Tx, name string) {
+	registry := tx.World().BlockRegistry()
+	hash, _ := registry.RuntimeIDToHash(registry.BlockRuntimeID(tx.Block(pos)))
+	tx.PlaySound(pos.Vec3(), sound.NativeEvent{SoundType: name, ExtraData: int32(hash), EntityUniqueID: -1})
+}
+
 func matchCrafterShaped(r recipe.Recipe, input []item.Stack) (item.Stack, bool) {
-	shaped, ok := r.(recipe.Shaped); if !ok { return item.Stack{}, false }
+	shaped, ok := r.(recipe.Shaped)
+	if !ok {
+		return item.Stack{}, false
+	}
 	shape, ingredients := shaped.Shape(), r.Input()
 	w, h := shape[0], shape[1]
-	if w < 1 || h < 1 || w > 3 || h > 3 || len(ingredients) != w*h { return item.Stack{}, false }
-	for oy := range 4-h { for ox := range 4-w { for mirror := range 2 {
-		good := true
-		for y := range 3 { for x := range 3 {
-			idx := y*3+x
-			if x < ox || x >= ox+w || y < oy || y >= oy+h { if !input[idx].Empty() { good = false }; continue }
-			rx := x-ox; if mirror == 1 { rx = w-1-rx }
-			expected := ingredients[(y-oy)*w+rx]
-			if !crafterIngredientMatches(input[idx], expected) { good = false }
-		}}
-		if good { out := r.Output(); if len(out)>0 { return out[0], true } }
-	}}}
+	if w < 1 || h < 1 || w > 3 || h > 3 || len(ingredients) != w*h {
+		return item.Stack{}, false
+	}
+	for oy := range 4 - h {
+		for ox := range 4 - w {
+			for mirror := range 2 {
+				good := true
+				for y := range 3 {
+					for x := range 3 {
+						idx := y*3 + x
+						if x < ox || x >= ox+w || y < oy || y >= oy+h {
+							if !input[idx].Empty() {
+								good = false
+							}
+							continue
+						}
+						rx := x - ox
+						if mirror == 1 {
+							rx = w - 1 - rx
+						}
+						expected := ingredients[(y-oy)*w+rx]
+						if !crafterIngredientMatches(input[idx], expected) {
+							good = false
+						}
+					}
+				}
+				if good {
+					out := r.Output()
+					if len(out) > 0 {
+						return out[0], true
+					}
+				}
+			}
+		}
+	}
 	return item.Stack{}, false
 }
 
@@ -262,14 +349,23 @@ func crafterIngredientMatches(stack item.Stack, expected recipe.Item) bool {
 		if stack.Empty() || ingredient.Empty() {
 			return stack.Empty() && ingredient.Empty()
 		}
-		name, meta := stack.Item().EncodeItem(); wantName, wantMeta := ingredient.Item().EncodeItem()
-		if name != wantName { return false }
-		if _, variants := ingredient.Value("variants"); variants { return true }
+		name, meta := stack.Item().EncodeItem()
+		wantName, wantMeta := ingredient.Item().EncodeItem()
+		if name != wantName {
+			return false
+		}
+		if _, variants := ingredient.Value("variants"); variants {
+			return true
+		}
 		return meta == wantMeta
 	case recipe.ItemTag:
-		if stack.Empty() { return false }
-		name, _ := stack.Item().EncodeItem(); return ingredient.Contains(name)
-	default: return false
+		if stack.Empty() {
+			return false
+		}
+		name, _ := stack.Item().EncodeItem()
+		return ingredient.Contains(name)
+	default:
+		return false
 	}
 }
 
@@ -292,16 +388,28 @@ func crafterRemainder(stack item.Stack) item.Stack {
 
 func (c Crafter) insertResult(tx *world.Tx, destPos cube.Pos, stack item.Stack) item.Stack {
 	if target, ok := tx.Block(destPos).(Container); ok {
+		// Native crafter output uses the dropper's sided, ascending-slot
+		// insertion helper once per item. Special containers must retain
+		// their slot filters and balancing rather than receive raw AddItem.
+		if receiver, ok := target.(HopperInsertable); ok {
+			transfer := Hopper{Facing: c.Facing, inventory: inventory.New(1, nil)}
+			_ = transfer.inventory.SetItem(0, stack)
+			for !stack.Empty() && receiver.InsertItem(transfer, destPos, tx) {
+				stack, _ = transfer.inventory.Item(0)
+			}
+			return stack
+		}
 		inv := target.Inventory(tx, destPos)
-		added, _ := inv.AddItem(stack)
-		if added > 0 { notifyComparatorUpdate(destPos, tx); stack = stack.Grow(-added) }
+		added, _ := inv.AddItemInSlotOrder(stack)
+		if added > 0 {
+			notifyComparatorUpdate(destPos, tx)
+			stack = stack.Grow(-added)
+		}
 	}
 	return stack
 }
 func (c Crafter) eject(pos cube.Pos, tx *world.Tx, stack item.Stack) {
-	dir := pos.Side(c.Facing).Vec3Centre().Sub(pos.Vec3Centre())
-	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre().Add(dir.Mul(.7)), Velocity: dir.Mul(.2)}
-	tx.AddEntity(tx.World().EntityRegistry().Config().Item(opts, stack))
+	ejectContainerItem(pos, c.Facing, tx, stack)
 }
 
 // InsertItem receives one item from a hopper into an enabled, least-filled matching crafter slot.
@@ -366,32 +474,45 @@ func crafterOrientation(front, top cube.Face) string {
 	if front == cube.FaceDown || front == cube.FaceUp {
 		switch top {
 		case cube.FaceEast:
-			if front == cube.FaceDown { return "down_east" }
+			if front == cube.FaceDown {
+				return "down_east"
+			}
 			return "up_east"
 		case cube.FaceNorth:
-			if front == cube.FaceDown { return "down_north" }
+			if front == cube.FaceDown {
+				return "down_north"
+			}
 			return "up_north"
 		case cube.FaceSouth:
-			if front == cube.FaceDown { return "down_south" }
+			if front == cube.FaceDown {
+				return "down_south"
+			}
 			return "up_south"
 		case cube.FaceWest:
-			if front == cube.FaceDown { return "down_west" }
+			if front == cube.FaceDown {
+				return "down_west"
+			}
 			return "up_west"
 		}
 	}
 	if top == cube.FaceUp {
 		switch front {
-		case cube.FaceWest: return "west_up"
-		case cube.FaceEast: return "east_up"
-		case cube.FaceNorth: return "north_up"
-		case cube.FaceSouth: return "south_up"
+		case cube.FaceWest:
+			return "west_up"
+		case cube.FaceEast:
+			return "east_up"
+		case cube.FaceNorth:
+			return "north_up"
+		case cube.FaceSouth:
+			return "south_up"
 		}
 	}
 	return "north_up"
 }
-// EncodeNBT encodes the Crafter block actor as BDS does, its disabled slots
-// as a bit mask. Triggering and crafting are block states; the remaining
-// crafting ticks are kept so a crafter saved mid-craft finishes.
+
+// EncodeNBT encodes the Crafter block actor with its disabled-slot bit mask.
+// Triggering and crafting are block states. The native animation countdown is
+// transient and is not restored when an actor is loaded during crafting.
 func (c Crafter) EncodeNBT() map[string]any {
 	if c.inventory == nil {
 		facing, top, triggered, crafting, disabled, name := c.Facing, c.Top, c.Triggered, c.Crafting, c.DisabledSlots, c.CustomName
@@ -400,7 +521,6 @@ func (c Crafter) EncodeNBT() map[string]any {
 	}
 	m := map[string]any{
 		"id": "Crafter", "Items": nbtconv.InvToNBT(c.inventory), "disabled_slots": int16(c.DisabledSlots),
-		"adamant:java": map[string]any{"crafting_ticks_remaining": c.CraftingTicksRemaining},
 	}
 	if c.CustomName != "" {
 		m["CustomName"] = c.CustomName
@@ -415,7 +535,6 @@ func (c Crafter) DecodeNBT(data map[string]any) any {
 	facing, top, triggered, crafting := c.Facing, c.Top, c.Triggered, c.Crafting
 	c = NewCrafter()
 	c.Facing, c.Top, c.Triggered, c.Crafting = facing, top, triggered, crafting
-	c.CraftingTicksRemaining = nbtconv.Int32(javaActorState(data), "crafting_ticks_remaining")
 	c.CustomName = nbtconv.String(data, "CustomName")
 	nbtconv.InvFromNBT(c.inventory, nbtconv.Slice(data, "Items"), data)
 	if _, ok := data["disabled_slots"].(int16); ok {
@@ -434,7 +553,9 @@ func allCrafters() (states []world.Block) {
 	for _, facing := range cube.Faces() {
 		for _, top := range cube.Faces() {
 			if facing == cube.FaceUp || facing == cube.FaceDown {
-				if top == cube.FaceUp || top == cube.FaceDown { continue }
+				if top == cube.FaceUp || top == cube.FaceDown {
+					continue
+				}
 			} else if top != cube.FaceUp {
 				continue
 			}

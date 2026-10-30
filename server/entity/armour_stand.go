@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // NewArmourStand creates a new armour stand entity in the world with the given spawn options.
@@ -23,12 +24,34 @@ var ArmourStandType armourStandType
 type armourStandType struct{}
 
 func (armourStandType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &Ent{tx: tx, handle: handle, data: data}
+	e := &Ent{tx: tx, handle: handle, data: data}
+	if b, ok := data.Data.(*ArmourStandBehaviour); ok && !b.collisionInitialised {
+		b.collisionInitialised = true
+		b.passive.mc.CheckCollision(tx, e, data.Pos, mgl64.Vec3{})
+		b.passive.mc.nativeBoxSet = false
+		b.passive.mc.onGround = true
+		data.OnGround = true
+	}
+	return e
 }
 
 func (armourStandType) EncodeEntity() string { return "minecraft:armor_stand" }
 
-func (armourStandType) BBox(world.Entity) cube.BBox {
+// TickAfterBlocks follows native ECS mob travel, which runs after dimension
+// block ticks.
+func (armourStandType) TickAfterBlocks() bool { return true }
+
+func (armourStandType) CollisionWidth() float64 { return .5 }
+func (armourStandType) BBox(e world.Entity) cube.BBox {
+	if ent, ok := e.(*Ent); ok {
+		if b, ok := ent.data.Data.(*ArmourStandBehaviour); ok {
+			c := b.passive.mc
+			if c.nativeBoxSet && ent.Position() == c.nativeBoxPosition {
+				lo, hi := c.nativeBox.Min(), c.nativeBox.Max()
+				return cube.Box(float64(lo[0]), float64(lo[1]), float64(lo[2]), float64(hi[0]), float64(hi[1]), float64(hi[2])).Translate(ent.Position().Mul(-1))
+			}
+		}
+	}
 	return cube.Box(-0.25, 0, -0.25, 0.25, 1.975, 0.25)
 }
 

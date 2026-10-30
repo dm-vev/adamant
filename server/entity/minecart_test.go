@@ -193,8 +193,8 @@ func TestMinecartFollowsSlope(t *testing.T) {
 		start, vel mgl64.Vec3
 		end        float64
 	}{
-		{"down", mgl64.Vec3{21.5, 11, 0.5}, mgl64.Vec3{-0.2}, 1.5},
-		{"up", mgl64.Vec3{4.5, 1, 0.5}, mgl64.Vec3{1.2}, 11.5},
+		{"down", mgl64.Vec3{21.5, 11, 0.5}, mgl64.Vec3{-0.2}, float64(float32(1.5) - float32(minecartNetworkOffset))},
+		{"up", mgl64.Vec3{4.5, 1, 0.5}, mgl64.Vec3{1.2}, float64(float32(11.5) - float32(minecartNetworkOffset))},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			w := world.Config{Synchronous: true, Entities: DefaultRegistry, RandomTickSpeed: -1}.New()

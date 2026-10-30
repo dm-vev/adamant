@@ -58,7 +58,9 @@ func (Water) SpreadDecay() int {
 func (w Water) WithDepth(depth int, falling bool) world.Liquid {
 	w.Depth = depth
 	w.Falling = falling
-	w.Still = false
+	// Native flow placements use LiquidBlock; LiquidBlockDynamic is only
+	// the temporary activation entry point for explicit flowing_water states.
+	w.Still = true
 	return w
 }
 
@@ -97,6 +99,12 @@ func (Water) LightDiffusionLevel() uint8 {
 	return 2
 }
 
+// ScheduledFluidTick dispatches native water rather than Java's fluid-state
+// adapter, which discards the depth of a falling Bedrock stream.
+func (w Water) ScheduledFluidTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
+	w.ScheduledTick(pos, tx, r)
+}
+
 // ScheduledTick ...
 func (w Water) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	if w.Depth == 7 {
@@ -127,8 +135,37 @@ func (w Water) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	tickLiquid(w, pos, tx)
 }
 
-// NeighbourUpdateTick ...
-func (w Water) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+// Placed activates dynamic water, as LiquidBlockDynamic::onPlace does. Static
+// command water remains dormant until a neighbouring block changes.
+func (w Water) Placed(pos cube.Pos, tx *world.Tx, _ world.Block) {
+	if !w.Still {
+		w.Still = true
+		tx.SetBlock(pos, w, &world.SetOpts{DisableBlockUpdates: true})
+		w.activate(pos, tx)
+	}
+}
+
+// LiquidPlaced activates bucket and flowing-water placements, including water
+// placed in the second layer. They do not use the static setblock entry point.
+func (w Water) LiquidPlaced(pos cube.Pos, tx *world.Tx) {
+	if !w.Still {
+		w.Still = true
+		tx.SetLiquid(pos, w)
+		return
+	}
+	w.activate(pos, tx)
+}
+
+// NeighbourChanged observes a real neighbouring mutation immediately. Ignoring
+// the world's synthetic self notification also prevents static command water
+// from being activated merely by its own placement.
+func (w Water) NeighbourChanged(pos, changed cube.Pos, tx *world.Tx) {
+	if pos != changed {
+		w.activate(pos, tx)
+	}
+}
+
+func (w Water) activate(pos cube.Pos, tx *world.Tx) {
 	if tx.World().Dimension().WaterEvaporates() {
 		// Particles are spawned client-side.
 		tx.SetLiquid(pos, nil)

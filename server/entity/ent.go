@@ -177,6 +177,36 @@ func (e *Ent) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	e.movesShown(pos, rot, e.HeadYaw())
 }
 
+// MoveByPiston resolves the requested displacement against terrain. Piston
+// contact cannot move an entity through a wall beyond the moving block.
+func (e *Ent) MoveByPiston(delta mgl64.Vec3, source world.BlockSource) {
+	var c *MovementComputer
+	switch b := e.Behaviour().(type) {
+	case *ItemBehaviour:
+		c = b.passive.mc
+	case *ArmourStandBehaviour:
+		c = b.passive.mc
+	}
+	if c != nil {
+		previous := c.blockSource
+		c.blockSource = source
+		requested := delta
+		var clipped mgl64.Vec3
+		delta, clipped = c.CheckCollision(e.tx, e, e.Position(), delta)
+		c.blockSource = previous
+		for axis := range 3 {
+			if clipped[axis] != requested[axis] {
+				e.data.Vel[axis] = 0
+			}
+		}
+		e.Move(delta, 0, 0)
+		return
+	}
+	c = &MovementComputer{blockSource: source}
+	delta, _ = c.CheckCollision(e.tx, e, e.Position(), delta)
+	e.Move(delta, 0, 0)
+}
+
 // Age returns the total time lived of this entity. It increases by
 // time.Second/20 for every time Tick is called.
 func (e *Ent) Age() time.Duration {
@@ -334,6 +364,15 @@ func (e *Ent) Attack(attacker world.Entity, tx *world.Tx) {
 	}
 }
 
+// TickBeforeBlockUpdates preserves native arrow normal-tick button contacts
+// before ProjectileSystem's later movement/collision pass.
+func (e *Ent) TickBeforeBlockUpdates(tx *world.Tx, _ int64) {
+	if _, arrow := e.handle.Type().(arrowType); arrow {
+		e.bindTx(tx)
+		checkButtonContactsBeforeMovement(tx, e.living())
+	}
+}
+
 // Tick ticks Ent, progressing its lifetime and closing the entity if it is
 // in the void.
 func (e *Ent) Tick(tx *world.Tx, current int64) {
@@ -357,6 +396,7 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 		e.data.Vel = mgl64.Vec3{}
 	}
 
+	checkButtonContactsBeforeMovement(tx, e.living())
 	m := e.Behaviour().Tick(e, tx)
 	if e.handle.Closed() {
 		// The behaviour removed the entity, as an item merging into another

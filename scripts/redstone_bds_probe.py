@@ -20,7 +20,7 @@ import uuid
 
 
 class Reference:
-    def __init__(self, binary, assets, port, script=None):
+    def __init__(self, binary, assets, port, script=None, structures=None, local_client=False, entity_definitions=None, seed=1):
         self.root = Path(tempfile.mkdtemp(prefix="adamant-redstone-bds-"))
         shutil.copyfile(binary, self.root / "bedrock_server.exe")
         for name in ("behavior_packs", "resource_packs", "definitions", "data", "world_templates"):
@@ -37,9 +37,17 @@ class Reference:
         settings = {"server-name": "RedstoneReference", "online-mode": "true", "allow-cheats": "true",
                     "default-player-permission-level": "operator", "transport": "raknet", "server-ip": "127.0.0.1",
                     "server-port": str(port), "server-portv6": str(port + 1), "view-distance": "4", "tick-distance": "4",
-                    "max-threads": "2", "level-name": "redstone-reference", "level-seed": "1", "level-type": "FLAT",
+                    "max-threads": "2", "level-name": "redstone-reference", "level-seed": str(seed), "level-type": "FLAT",
                     "content-log-file-enabled": "true", "pause-when-empty-seconds": "0",
                     "allow-list": "true", "enable-lan-visibility": "false"}
+        if local_client:
+            # This opt-in affects only the fresh temporary reference server.
+            # The packet client has no Xbox credentials. BDS forbids an
+            # allowlist without online authentication.
+            settings["online-mode"] = "false"
+            settings["allow-list"] = "false"
+            settings["gamemode"] = "creative"
+            settings["default-player-permission-level"] = "member"
         (self.root / "server.properties").write_text("".join(f"{k}={v}\n" for k, v in settings.items()), encoding="utf-8")
         (self.root / "permissions.json").write_text("[]\n", encoding="utf-8")
         (self.root / "allowlist.json").write_text("[]\n", encoding="utf-8")
@@ -60,6 +68,20 @@ class Reference:
                 "dependencies": [{"module_name": "@minecraft/server", "version": "2.0.0"}]}
             (pack / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
             (pack / "scripts" / "main.js").write_text(script, encoding="utf-8")
+            for name, contents in (structures or {}).items():
+                # Authored audit structures live only in this temporary pack.
+                if any(part in ("", ".", "..") or not part.replace("_", "").isalnum()
+                       for part in name.split("/")):
+                    raise ValueError("invalid audit structure name")
+                target = pack / "structures" / (name + ".mcstructure")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(contents)
+            for name, definition in (entity_definitions or {}).items():
+                if not name or not name.replace("_", "").isalnum():
+                    raise ValueError("invalid audit entity definition name")
+                target = pack / "entities" / (name + ".json")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps(definition), encoding="utf-8")
             level = self.root / "worlds" / "redstone-reference"
             level.mkdir(parents=True)
             (level / "world_behavior_packs.json").write_text(
@@ -88,7 +110,7 @@ class Reference:
         result = []
         while time.monotonic() < deadline:
             if self.process.poll() is not None:
-                raise RuntimeError("BDS stopped: " + "\n".join(self.log[-15:]))
+                raise RuntimeError(f"BDS stopped (exit {self.process.returncode & 0xffffffff:#x}): " + "\n".join(self.log[-15:]))
             try:
                 line = self.lines.get(timeout=.1)
             except queue.Empty:

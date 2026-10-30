@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -40,62 +39,26 @@ func (b Button) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 }
 
 // Activate ...
-func (b Button) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
+func (b Button) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, user item.User, _ *item.UseContext) bool {
+	source, _ := user.(world.Entity)
+	return b.press(pos, tx, source)
+}
+
+func (b Button) press(pos cube.Pos, tx *world.Tx, source world.Entity) bool {
 	if b.Pressed {
 		return false
 	}
-	b.press(pos, tx)
-	return true
-}
-
-// press ports ButtonBlock.press: the button powers its neighbours and the
-// block it hangs on until it springs back.
-func (b Button) press(pos cube.Pos, tx *world.Tx) {
 	b.Pressed = true
 	tx.SetBlock(pos, b, nil)
+	playRedstoneSwitchSound(pos, tx, b, true)
+	tx.EmitGameEvent(world.GameEventBlockActivate, pos.Vec3Centre(), world.GameEventContext{Source: source})
+	// Native buttonPressed dispatches the vibration while its active circuit
+	// producer still has the old strength, then updates that producer.
+	tx.Redstone().SetProducerStrength(pos, 15)
 	tx.ScheduleBlockUpdate(pos, b, gameTicks(b.Type.pressTicks()))
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
-	b.playClick(pos, tx, true)
-}
-
-// playClick plays the click of the button as it is pressed or springs back.
-func (b Button) playClick(pos cube.Pos, tx *world.Tx, on bool) {
-	name := "button.click_off"
-	if on {
-		name = "button.click_on"
-	}
-	tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: name, ExtraData: int32(world.BlockRuntimeID(b))})
-}
-
-// arrowsPress reports if arrows press the button, as wooden buttons are,
-// BlockSetType.canButtonBeActivatedByArrows.
-func (b Button) arrowsPress() bool {
-	return b.Type.button != buttonStone && b.Type.button != buttonPolishedBlackstone
-}
-
-// arrowInside reports if an arrow or trident sticks in the button.
-func (b Button) arrowInside(pos cube.Pos, tx *world.Tx) bool {
-	for _, box := range b.Model().BBox(pos, tx) {
-		box = box.Translate(pos.Vec3())
-		for e := range tx.EntitiesWithin(box) {
-			switch e.H().Type().EncodeEntity() {
-			case "minecraft:arrow", "minecraft:thrown_trident":
-				if e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-// EntityInside ports ButtonBlock.entityInside: an arrow stuck in a wooden
-// button presses it.
-func (b Button) EntityInside(pos cube.Pos, tx *world.Tx, _ world.Entity) {
-	if !b.Pressed && b.arrowsPress() && b.arrowInside(pos, tx) {
-		b.press(pos, tx)
-	}
+	return true
 }
 
 // NeighbourUpdateTick ...
@@ -110,17 +73,93 @@ func (b Button) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	if !b.Pressed {
 		return
 	}
-	// ButtonBlock.checkPressed: an arrow still in a wooden button keeps it
-	// pressed.
-	if b.arrowsPress() && b.arrowInside(pos, tx) {
+	if b.Type.pressTicks() == 30 && b.hasActivatingProjectile(pos, tx) {
 		tx.ScheduleBlockUpdate(pos, b, gameTicks(b.Type.pressTicks()))
 		return
 	}
-	defer b.playClick(pos, tx, false)
 	b.Pressed = false
 	tx.SetBlock(pos, b, nil)
+	playRedstoneSwitchSound(pos, tx, b, false)
+	tx.EmitGameEvent(world.GameEventBlockDeactivate, pos.Vec3Centre(), world.GameEventContext{})
+	tx.Redstone().SetProducerStrength(pos, 0)
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
+}
+
+// EntityInside checks the native arrow/trident query whenever an entity
+// overlaps an unpressed wooden button. The entering entity need not itself
+// be the activating projectile.
+func (b Button) EntityInside(pos cube.Pos, tx *world.Tx, _ world.Entity) {
+	if !b.Pressed && b.Type.pressTicks() == 30 {
+		if projectile, ok := b.activatingProjectile(pos, tx); ok {
+			b.press(pos, tx, projectile)
+		}
+	}
+}
+
+// ProjectileBBox follows ButtonBlock::getCollisionShape: arrows and thrown
+// tridents collide with the unpressed button outline, even while pressed.
+// Other projectiles and ordinary entities pass through it.
+func (b Button) ProjectileBBox(_ cube.Pos, _ world.BlockSource, e world.Entity) []cube.BBox {
+	if !buttonActivatingProjectile(e) {
+		return nil
+	}
+	return []cube.BBox{b.projectileBox()}
+}
+
+func buttonActivatingProjectile(e world.Entity) bool {
+	switch e.H().Type().EncodeEntity() {
+	case "minecraft:arrow", "minecraft:thrown_trident":
+		return true
+	}
+	return false
+}
+
+func (b Button) hasActivatingProjectile(pos cube.Pos, tx *world.Tx) bool {
+	_, ok := b.activatingProjectile(pos, tx)
+	return ok
+}
+
+func (b Button) activatingProjectile(pos cube.Pos, tx *world.Tx) (world.Entity, bool) {
+	box := b.projectileBox().Translate(pos.Vec3())
+	// EntitiesWithin filters origins, not bounding boxes. Expand the query
+	// for arrow/trident dimensions, then test their actual boxes. This query
+	// visits available chunks only.
+	for e := range tx.EntitiesWithin(box.Grow(1)) {
+		if !buttonActivatingProjectile(e) {
+			continue
+		}
+		other := e.H().Type().BBox(e).Translate(e.Position())
+		lo, hi, otherLo, otherHi := box.Min(), box.Max(), other.Min(), other.Max()
+		// Native queries include touching faces. A resting arrow on a floor
+		// button has its lower Y exactly equal to the button's upper Y.
+		if lo[0] <= otherHi[0] && hi[0] >= otherLo[0] &&
+			lo[1] <= otherHi[1] && hi[1] >= otherLo[1] &&
+			lo[2] <= otherHi[2] && hi[2] >= otherLo[2] {
+			return e, true
+		}
+	}
+	return nil, false
+}
+
+// projectileBox is the fixed query/collision outline used by the native
+// button, independent of its animated pressed depth.
+func (b Button) projectileBox() cube.BBox {
+	switch b.Facing {
+	case cube.FaceDown:
+		return cube.Box(5.0/16, 14.0/16, 6.0/16, 11.0/16, 1, 10.0/16)
+	case cube.FaceUp:
+		return cube.Box(5.0/16, 0, 6.0/16, 11.0/16, 2.0/16, 10.0/16)
+	case cube.FaceNorth:
+		return cube.Box(5.0/16, 6.0/16, 14.0/16, 11.0/16, 10.0/16, 1)
+	case cube.FaceSouth:
+		return cube.Box(5.0/16, 6.0/16, 0, 11.0/16, 10.0/16, 2.0/16)
+	case cube.FaceWest:
+		return cube.Box(14.0/16, 6.0/16, 5.0/16, 1, 10.0/16, 11.0/16)
+	case cube.FaceEast:
+		return cube.Box(0, 6.0/16, 5.0/16, 2.0/16, 10.0/16, 11.0/16)
+	}
+	return cube.BBox{}
 }
 
 func (b Button) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
@@ -128,6 +167,20 @@ func (b Button) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
 		return 15
 	}
 	return 0
+}
+
+// RedstoneProducerPower initializes the scene-graph producer from the button
+// permutation. Later presses/releases update its strength after their event.
+func (b Button) RedstoneProducerPower() int {
+	if b.Pressed {
+		return 15
+	}
+	return 0
+}
+
+func (b Button) RedstoneProducerOutput(power int) world.Block {
+	b.Pressed = power != 0
+	return b
 }
 
 func (b Button) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {

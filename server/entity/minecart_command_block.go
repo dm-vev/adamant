@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"strings"
 )
@@ -26,6 +27,7 @@ type CommandBlockMinecartConfig struct {
 func (c CommandBlockMinecartConfig) Apply(data *world.EntityData) {
 	data.Data = &commandBlockMinecartBehaviour{
 		MinecartBehaviour: minecartConf.New(), command: c.Command, customName: c.CustomName,
+		inv:        inventory.New(1, nil),
 		lastOutput: c.LastOutput, trackOutput: c.TrackOutput, successCount: c.SuccessCount,
 		tickDelay: c.TickDelay, powered: c.Powered, conditional: c.Conditional,
 		needsRedstone: c.NeedsRedstone, conditionMet: c.ConditionMet,
@@ -40,12 +42,19 @@ func NewCommandBlockMinecart(opts world.EntitySpawnOpts, conf CommandBlockMineca
 
 type commandBlockMinecartBehaviour struct {
 	*MinecartBehaviour
+	inv                                                                                *inventory.Inventory
 	command, customName, lastOutput                                                    string
 	successCount, tickDelay                                                            int
 	trackOutput, powered, conditional, needsRedstone, conditionMet, executeOnFirstTick bool
 	mode                                                                               int
 	lastActivatorRail                                                                  cube.Pos
 	hasActivatorRail                                                                   bool
+}
+
+// Inventory exposes the one-slot container used by Bedrock's detector-rail
+// comparator query. It is independent of command execution success count.
+func (m *MinecartCommandBlock) Inventory() *inventory.Inventory {
+	return m.Behaviour().(*commandBlockMinecartBehaviour).inv
 }
 
 func (b *commandBlockMinecartBehaviour) Base() *MinecartBehaviour { return b.MinecartBehaviour }
@@ -113,12 +122,12 @@ type commandBlockMinecartType struct{}
 func (commandBlockMinecartType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	return &MinecartCommandBlock{Minecart: &Minecart{Ent: &Ent{tx: tx, handle: h, data: d}}}
 }
-func (commandBlockMinecartType) EncodeEntity() string { return "minecraft:command_block_minecart" }
-func (commandBlockMinecartType) BBox(world.Entity) cube.BBox {
-	return cube.Box(-.49, 0, -.49, .49, .7, .49)
-}
+func (commandBlockMinecartType) EncodeEntity() string          { return "minecraft:command_block_minecart" }
+func (commandBlockMinecartType) BBox(e world.Entity) cube.BBox { return minecartBBox(e) }
+func (commandBlockMinecartType) NetworkOffset() float64        { return minecartNetworkOffset }
 func (commandBlockMinecartType) DecodeNBT(m map[string]any, d *world.EntityData) {
-	b := &commandBlockMinecartBehaviour{MinecartBehaviour: minecartConf.New()}
+	b := &commandBlockMinecartBehaviour{MinecartBehaviour: minecartConf.New(), inv: inventory.New(1, nil)}
+	nbtconv.InvFromNBT(b.inv, nbtconv.Slice(m, "Items"), m)
 	b.command = nbtconv.String(m, "Command")
 	b.customName = nbtconv.String(m, "CustomName")
 	b.lastOutput = nbtconv.String(m, "LastOutput")
@@ -151,6 +160,11 @@ func (commandBlockMinecartType) EncodeNBT(d *world.EntityData) map[string]any {
 		"auto": boolByte(!b.needsRedstone), "Version": int32(26),
 	}
 	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
+	if items := nbtconv.InvToNBT(b.inv); items != nil {
+		m["Items"] = items
+	} else {
+		m["Items"] = []map[string]any{}
+	}
 	return m
 }
 

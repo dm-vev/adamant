@@ -730,7 +730,7 @@ func (b *MountBehaviour) springSkeletonTrap(m *Mob) {
 	difficulty := tx.LocalDifficulty(m.BlockPos())
 	b.trap, b.tamed, b.ageTicks = false, true, 0
 	pos := m.data.Pos
-	tx.AddEntity(NewVisualLightning(world.EntitySpawnOpts{Position: pos}))
+	tx.AddEntity(NewVisualLightning(world.EntitySpawnOpts{Position: tx.RedirectLightning(pos)}))
 	skeleton := trapSkeleton(tx, difficulty, pos)
 	if skeleton == nil {
 		return

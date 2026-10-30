@@ -1,0 +1,128 @@
+{
+  "complete": true,
+  "reference": "Capture original-BDS item air and landing motion through stable Script API.",
+  "scenarios": [
+    {
+      "name": "air",
+      "spawn": {
+        "position": {
+          "x": 8,
+          "y": 70,
+          "z": 8
+        },
+        "velocity": {
+          "x": 0.10000000149011612,
+          "y": 0.20000000298023224,
+          "z": -0.10000000149011612
+        },
+        "on_ground": true
+      },
+      "samples": [
+        {
+          "tick": 4,
+          "position": {
+            "x": 8.100000381469727,
+            "y": 70.16000366210938,
+            "z": 7.899999618530273
+          },
+          "velocity": {
+            "x": 0.09800000488758087,
+            "y": 0.15680000185966492,
+            "z": -0.09800000488758087
+          },
+          "on_ground": false
+        },
+        {
+          "tick": 5,
+          "position": {
+            "x": 8.197999954223633,
+            "y": 70.27680206298828,
+            "z": 7.802000045776367
+          },
+          "velocity": {
+            "x": 0.09604000300168991,
+            "y": 0.11446400731801987,
+            "z": -0.09604000300168991
+          },
+          "on_ground": false
+        },
+        {
+          "tick": 6,
+          "position": {
+            "x": 8.294039726257324,
+            "y": 70.35126495361328,
+            "z": 7.705960273742676
+          },
+          "velocity": {
+            "x": 0.09411920607089996,
+            "y": 0.07297472655773163,
+            "z": -0.09411920607089996
+          },
+          "on_ground": false
+        }
+      ]
+    },
+    {
+      "name": "landing",
+      "spawn": {
+        "position": {
+          "x": 24,
+          "y": 65.05000305175781,
+          "z": 24
+        },
+        "velocity": {
+          "x": 0.10000000149011612,
+          "y": -0.10000000149011612,
+          "z": 0
+        },
+        "on_ground": true
+      },
+      "samples": [
+        {
+          "tick": 4,
+          "position": {
+            "x": 24.100000381469727,
+            "y": 65,
+            "z": 24
+          },
+          "velocity": {
+            "x": 0.05880000814795494,
+            "y": 0,
+            "z": 0
+          },
+          "on_ground": true
+        },
+        {
+          "tick": 5,
+          "position": {
+            "x": 24.15880012512207,
+            "y": 65,
+            "z": 24
+          },
+          "velocity": {
+            "x": 0.03457440808415413,
+            "y": 0,
+            "z": 0
+          },
+          "on_ground": true
+        },
+        {
+          "tick": 6,
+          "position": {
+            "x": 24.193374633789062,
+            "y": 65,
+            "z": 24
+          },
+          "velocity": {
+            "x": 0.020329754799604416,
+            "y": 0,
+            "z": 0
+          },
+          "on_ground": true
+        }
+      ]
+    }
+  ],
+  "binary_sha256": "76d547f82e02c18d0986c30b47132c9cc4171d0f2df1c00649e50ff35788b321",
+  "log_directory": "C:\\Users\\Andrey\\AppData\\Local\\Temp\\adamant-redstone-bds-innpqga_"
+}

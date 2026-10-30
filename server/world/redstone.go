@@ -140,6 +140,8 @@ type redstoneEngine struct {
 	readingCircuitOutputs bool
 	circuitCauses         map[cube.Pos]redstoneDirty
 	circuitOutputCauses   map[cube.Pos]redstoneDirty
+	producers             map[cube.Pos]redstoneProducer
+	pendingProducers      map[cube.Pos]redstoneProducer
 }
 
 // redstoneDirty records why a position needs redstone evaluation.
@@ -277,6 +279,8 @@ func (e *redstoneEngine) removeChunk(chunkPos ChunkPos) {
 		return chunkPosFromBlockPos(pos) == chunkPos
 	})
 	maps.DeleteFunc(e.circuitPowers, func(pos cube.Pos, _ int) bool { return chunkPosFromBlockPos(pos) == chunkPos })
+	maps.DeleteFunc(e.producers, func(pos cube.Pos, _ redstoneProducer) bool { return chunkPosFromBlockPos(pos) == chunkPos })
+	maps.DeleteFunc(e.pendingProducers, func(pos cube.Pos, _ redstoneProducer) bool { return chunkPosFromBlockPos(pos) == chunkPos })
 	maps.DeleteFunc(e.circuitPowerOutputs, func(pos cube.Pos, _ int) bool { return chunkPosFromBlockPos(pos) == chunkPos })
 	maps.DeleteFunc(e.circuitCauses, func(pos cube.Pos, _ redstoneDirty) bool { return chunkPosFromBlockPos(pos) == chunkPos })
 	maps.DeleteFunc(e.circuitOutputCauses, func(pos cube.Pos, _ redstoneDirty) bool { return chunkPosFromBlockPos(pos) == chunkPos })
@@ -656,7 +660,7 @@ func (e *redstoneEngine) strongPowerFrom(pos cube.Pos, tx *Tx, face cube.Face) i
 	if !ok {
 		return 0
 	}
-	if source, ok := b.(RedstoneStrongPowerSource); ok {
+	if source, ok := e.producerOutput(neighbour, b).(RedstoneStrongPowerSource); ok {
 		if power, ok := e.suppressedSources[neighbour]; ok {
 			return ClampRedstonePower(power)
 		}
@@ -953,6 +957,9 @@ func (e *redstoneEngine) powerFrom(pos cube.Pos, tx *Tx, face cube.Face) int {
 
 // redstonePower reads source power while guarding against recursive source evaluation.
 func (e *redstoneEngine) redstonePower(source RedstonePowerSource, pos cube.Pos, tx *Tx, face cube.Face) int {
+	if producer, ok := source.(RedstoneCircuitProducer); ok {
+		source = e.producerBlock(pos, producer).(RedstonePowerSource)
+	}
 	if e.readingCircuitOutputs {
 		if pending, ok := e.circuitOutputs[pos].(RedstonePowerSource); ok {
 			source = pending

@@ -16,7 +16,9 @@ type PressurePlate struct {
 	transparent
 	sourceWaterDisplacer
 
-	Type   PressurePlateType
+	Type PressurePlateType
+	// Signal is the encoded redstone_signal property. Ordinary plates use
+	// 0/1 for released/pressed; weighted plates store electrical strength.
 	Signal int
 }
 
@@ -51,24 +53,30 @@ func (p PressurePlate) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) 
 	if !p.triggersEntity(e) {
 		return
 	}
-	if p.Signal == 15 && !p.Type.weighted() {
+	if p.Signal == 1 && !p.Type.weighted() {
 		return
 	}
-	p.updateSignal(pos, tx)
+	p.updateSignal(pos, tx, e)
 }
 
 // ScheduledTick ...
 func (p PressurePlate) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	p.updateSignal(pos, tx)
+	p.updateSignal(pos, tx, nil)
 }
 
 func (p PressurePlate) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
+	if !p.Type.weighted() {
+		if p.Signal == 1 {
+			return 15
+		}
+		return 0
+	}
 	return p.Signal
 }
 
-func (p PressurePlate) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
+func (p PressurePlate) RedstoneStrongPower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
 	if face == cube.FaceDown {
-		return p.Signal
+		return p.RedstonePower(pos, tx, face)
 	}
 	return 0
 }
@@ -83,7 +91,7 @@ func (p PressurePlate) EncodeBlock() (string, map[string]any) {
 	return "minecraft:" + p.Type.blockName(), map[string]any{"redstone_signal": int32(p.Signal)}
 }
 
-func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx) {
+func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx, source world.Entity) {
 	newSignal := p.signalForEntities(pos, tx)
 	if newSignal == p.Signal {
 		if newSignal > 0 {
@@ -91,8 +99,19 @@ func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx) {
 		}
 		return
 	}
+	wasPowered := p.Signal > 0
 	p.Signal = newSignal
 	tx.SetBlock(pos, p, nil)
+	// Native checkPressed posts only on a zero/nonzero transition. Changes
+	// between two positive weighted strengths do not create another vibration.
+	if wasPowered != (newSignal > 0) {
+		playPressurePlateSound(pos, tx, p, newSignal > 0)
+		event := world.GameEventBlockDeactivate
+		if newSignal > 0 {
+			event = world.GameEventBlockActivate
+		}
+		tx.EmitGameEvent(event, pos.Vec3Centre(), world.GameEventContext{Source: source})
+	}
 	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	if newSignal > 0 {
 		tx.ScheduleBlockUpdate(pos, p, gameTicks(p.Type.pressedTicks()))
@@ -101,8 +120,11 @@ func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx) {
 
 func (p PressurePlate) signalForEntities(pos cube.Pos, tx *world.Tx) int {
 	count := 0
-	box := cube.Box(float64(pos[0]), float64(pos[1]), float64(pos[2]), float64(pos[0]+1), float64(pos[1])+0.5, float64(pos[2]+1))
-	for e := range tx.EntitiesWithin(box) {
+	// BasePressurePlateBlock::getSensitiveAABB is inset by 1/16 and
+	// extends 1/4 block above the support. Entity origins alone miss
+	// resting items and bodies overlapping from a neighbouring block.
+	box := cube.Box(1.0/16, 0, 1.0/16, 15.0/16, 0.25, 15.0/16).Translate(pos.Vec3())
+	for e := range redstoneEntitiesInBox(tx, box, !p.Type.triggersItems()) {
 		if p.triggersEntity(e) {
 			count++
 		}
@@ -115,16 +137,23 @@ func (p PressurePlate) signalForEntities(pos cube.Pos, tx *world.Tx) int {
 		if count > maxWeight {
 			count = maxWeight
 		}
-		return int(math.Ceil(float64(count) / float64(maxWeight) * 15))
+		return int(math.Ceil(float64(float32(count) / float32(maxWeight) * 15)))
 	}
-	return 15
+	return 1
 }
 
 func (p PressurePlate) triggersEntity(e world.Entity) bool {
+	// Both native queries explicitly skip ActorType::Experience (69).
+	if e.H().Type().EncodeEntity() == "minecraft:xp_orb" {
+		return false
+	}
 	if p.Type.triggersItems() {
 		return true
 	}
-	return e.H().Type().EncodeEntity() != "minecraft:item"
+	// Native stone plates query the Mob category, which also contains
+	// players and armour stands, but excludes arrows and other objects.
+	_, living := e.(interface{ Health() float64 })
+	return living || e.H().Type().EncodeEntity() == "minecraft:armor_stand"
 }
 
 func allPressurePlates() (plates []world.Block) {

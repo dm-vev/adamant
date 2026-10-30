@@ -2,15 +2,17 @@ package world_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-func TestLightningSeeksTopmostRodWithin128Blocks(t *testing.T) {
+func TestLightningFindsExposedRodWithinNativeCylinder(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
+	w.StartRaining(time.Hour)
 	<-w.Exec(func(tx *world.Tx) {
 		center := cube.Pos{0, 64, 0}
 		rod := cube.Pos{40, 80, -30}

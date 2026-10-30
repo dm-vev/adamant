@@ -93,6 +93,7 @@ func (s *Session) EndBatch() {
 	if s == Nop {
 		return
 	}
+	s.flushBlockUpdates()
 	s.packetsMu.Lock()
 	if s.holdPackets--; s.holdPackets > 0 || len(s.heldPackets) == 0 {
 		s.packetsMu.Unlock()

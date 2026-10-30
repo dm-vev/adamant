@@ -21,7 +21,9 @@ func TestFluidTickSourceIdentitySurvivesScheduleOnlySave(t *testing.T) {
 	w := world.Config{Synchronous: true, Provider: db, RandomTickSpeed: -1}.New()
 	waterPos, lavaPos := cube.Pos{8, 64, 8}, cube.Pos{10, 64, 8}
 	<-w.Exec(func(tx *world.Tx) {
-		tx.SetLiquid(waterPos, block.Water{Depth: 7, Still: true})
+		// Static command placement leaves the queue empty for the explicit
+		// schedule-only persistence checks below. Physical SetLiquid activates it.
+		tx.SetBlock(waterPos, block.Water{Depth: 7, Still: true}, nil)
 		tx.SetLiquid(lavaPos, block.Lava{Depth: 7, Still: true})
 	})
 	if err := w.Close(); err != nil {
@@ -133,7 +135,9 @@ func TestBlockToFluidSchedulingUsesCurrentSharedTickClock(t *testing.T) {
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(blockPos, scheduler, nil)
-		tx.SetLiquid(fluidPos, block.Water{Depth: 8, Still: true})
+		// Keep the fluid dormant so its first pending tick belongs to the
+		// scheduler callback, rather than physical placement's five-GT tick.
+		tx.SetBlock(fluidPos, block.Water{Depth: 8, Still: true}, nil)
 		tx.ScheduleBlockUpdate(blockPos, scheduler, time.Second/20)
 	})
 	w.AdvanceTick()
@@ -223,6 +227,9 @@ func TestFluidMixedSourceNativeBoundaries(t *testing.T) {
 				t.Fatal("missing native water")
 			}
 			<-w.Exec(func(tx *world.Tx) {
+				// Reserve this test's explicit tick before physical placement
+				// schedules its own activation. The first pending tick wins.
+				tx.ScheduleBlockUpdate(source, block.Water{Depth: 8, Still: true}, time.Second/20)
 				tx.SetBlock(source, slab, nil)
 				tx.SetLiquid(source, liquid.(world.Liquid))
 				tx.SetBlock(target, custom, nil)
@@ -234,7 +241,6 @@ func TestFluidMixedSourceNativeBoundaries(t *testing.T) {
 				for _, face := range [...]cube.Face{cube.FaceNorth, cube.FaceSouth, cube.FaceEast} {
 					tx.SetBlock(target.Side(face), block.Stone{}, nil)
 				}
-				tx.ScheduleBlockUpdate(source, block.Water{Depth: 8, Still: true}, time.Second/20)
 			})
 			w.AdvanceTick()
 			<-w.Exec(func(tx *world.Tx) {

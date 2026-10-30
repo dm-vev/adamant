@@ -62,6 +62,13 @@ func (p DecoratedPot) withLoot(pos cube.Pos, tx *world.Tx) DecoratedPot {
 
 func (DecoratedPot) ContainerSize() int { return 1 }
 
+// ComparatorOutput reads the native pot's one-slot container, including its
+// deferred loot initialization, without exposing a container UI.
+func (p DecoratedPot) ComparatorOutput(tx *world.Tx, pos cube.Pos) uint8 {
+	p = p.withLoot(pos, tx)
+	return comparatorSignalFromStacks([]item.Stack{p.Item})
+}
+
 // SideClosed ...
 func (p DecoratedPot) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 	return false
@@ -287,11 +294,3 @@ func allDecoratedPots() (pots []world.Block) {
 
 // ComparatorOutput ports DecoratedPotBlock.getAnalogOutputSignal: how full
 // the single slot of the pot is.
-func (p DecoratedPot) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
-	if p.Item.Empty() {
-		return 0
-	}
-	inv := inventory.New(1, nil)
-	_ = inv.SetItem(0, p.Item)
-	return comparatorSignalFromInventory(inv)
-}

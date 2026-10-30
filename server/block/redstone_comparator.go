@@ -72,6 +72,14 @@ func (RedstoneComparator) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand
 	}
 }
 
+// Tick samples the rear block in the chunk's shuffled actor pass. The native
+// actor samples only before the next circuit evaluation (every other game tick).
+func (RedstoneComparator) Tick(tick int64, pos cube.Pos, tx *world.Tx) {
+	if tick&1 != 0 {
+		tx.Redstone().SampleAnalogInput(pos)
+	}
+}
+
 // RedstonePower returns the comparator output through its front face.
 func (c RedstoneComparator) RedstonePower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
 	if face == c.circuitFacing(pos, tx).Opposite() {
@@ -168,13 +176,13 @@ func comparatorTargetOutput(input, side int, subtract bool) uint8 {
 func (c RedstoneComparator) analogInputPower(pos cube.Pos, tx *world.Tx) (uint8, bool) {
 	inputFace := c.Facing.Face()
 	inputPos := pos.Side(inputFace)
-	if output, ok := comparatorOverride(tx, inputPos, inputFace.Opposite()); ok {
+	if output, ok := comparatorOverride(tx, inputPos, inputFace); ok {
 		return output, true
 	}
 	// Bedrock's block actor installs a readable analog rear override even
 	// when the intervening conductor has a direct strength of 15.
 	if b, loaded := tx.BlockLoaded(inputPos); loaded && world.RedstoneFullPowerConductor(inputPos, b, tx) {
-		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace), inputFace.Opposite()); ok {
+		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace), inputFace); ok {
 			return output, true
 		}
 	}
@@ -185,23 +193,16 @@ type comparatorOutputer interface {
 	ComparatorOutput(tx *world.Tx, pos cube.Pos) uint8
 }
 
-// directionalComparatorOutputer is a block whose comparator output depends on
-// the side the comparator reads it from.
-type directionalComparatorOutputer interface {
-	// ComparatorOutputTowards returns the output read by a comparator on the
-	// face towards of the block.
-	ComparatorOutputTowards(tx *world.Tx, pos cube.Pos, towards cube.Face) uint8
-}
-
-// comparatorOverride returns the output a comparator on the face towards of
-// the block at pos reads from it, if the block is loaded and has one.
-func comparatorOverride(tx *world.Tx, pos cube.Pos, towards cube.Face) (uint8, bool) {
+func comparatorOverride(tx *world.Tx, pos cube.Pos, face cube.Face) (uint8, bool) {
 	b, loaded := tx.BlockLoaded(pos)
 	if !loaded {
 		return 0, false
 	}
-	if out, ok := b.(directionalComparatorOutputer); ok {
-		return out.ComparatorOutputTowards(tx, pos, towards), true
+	// ItemFrameBlock::getComparatorSignal accepts only the queried native
+	// facing. ItemFrame.Facing points toward its support, the opposite of the
+	// native facing property. Other analog providers ignore the queried face.
+	if frame, ok := b.(ItemFrame); ok && frame.Facing.Opposite() != face {
+		return 0, true
 	}
 	if out, ok := b.(comparatorOutputer); ok {
 		return out.ComparatorOutput(tx, pos), true
@@ -216,25 +217,39 @@ func comparatorSignalFromInventory(inv *inventory.Inventory) uint8 {
 	if inv == nil {
 		return 0
 	}
-	slots := inv.Slots()
+	return comparatorSignalFromStacks(inv.Slots())
+}
+
+// comparatorSignalFromStacks follows Container::getRedstoneSignalFromContainer
+// (client 0x26aefc0). Its per-stack ratios, accumulator, average and final
+// multiplication all use binary32 arithmetic before flooring and adding the
+// nonempty bonus. It is also used by the decorated pot's one-slot container.
+func comparatorSignalFromStacks(slots []item.Stack) uint8 {
 	if len(slots) == 0 {
 		return 0
 	}
-	// AbstractContainerMenu.getRedstoneSignalFromContainer, in float.
+	filled := 0
 	var fraction float32
 	for _, it := range slots {
 		if it.Empty() {
 			continue
 		}
-		fraction += float32(it.Count()) / float32(max(it.MaxCount(), 1))
+		filled++
+		maxCount := it.MaxCount()
+		if maxCount <= 0 {
+			maxCount = 1
+		}
+		fraction += float32(it.Count()) / float32(maxCount)
+	}
+	if filled == 0 {
+		return 0
 	}
 	fraction /= float32(len(slots))
-	// Mth.lerpDiscrete(fraction, 0, 15).
-	signal := int(math.Floor(float64(fraction * 14)))
-	if fraction > 0 {
-		signal++
+	signal := int(math.Floor(float64(fraction*14))) + 1
+	if signal > 15 {
+		signal = 15
 	}
-	return uint8(min(signal, 15))
+	return uint8(signal)
 }
 
 func allRedstoneComparators() (comparators []world.Block) {

@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -15,6 +14,7 @@ const (
 	minecartDefaultMaxSpeed = 0.4
 	minecartDisplayOffset   = 6
 	minecartSeatOffset      = 0.75
+	minecartNetworkOffset   = float64(float32(0.35))
 )
 
 var minecartMatrix = [10][2][3]int{
@@ -71,8 +71,10 @@ func (conf MinecartBehaviourConfig) New() *MinecartBehaviour {
 		maxSpeed:            conf.MaxSpeed,
 		derailedVelocityMod: conf.DerailedVelocityMod,
 		flyingVelocityMod:   conf.FlyingVelocityMod,
-		mc:                  &MovementComputer{},
-		rollingDirection:    1,
+		// Carts clip new contacts but do not recover an existing block
+		// overlap by pushing themselves out (including slope exits).
+		mc:               &MovementComputer{nativeCollisions: true, depenetrationBits: 1},
+		rollingDirection: 1,
 	}
 	if conf.DisplayBlock != nil {
 		if tile, ok := displayTileFromBlock(conf.DisplayBlock); ok {
@@ -99,8 +101,10 @@ type MinecartBehaviour struct {
 	derailedVelocityMod mgl64.Vec3
 	flyingVelocityMod   mgl64.Vec3
 
-	currentSpeed float64
-	passenger    *world.EntityHandle
+	currentSpeed     float64
+	passenger        *world.EntityHandle
+	activatorPending bool
+	activatorPowered bool
 
 	rollingAmplitude int
 	rollingDirection int
@@ -116,12 +120,18 @@ func (b *MinecartBehaviour) Base() *MinecartBehaviour {
 // Tick ticks the minecart behaviour.
 func (b *MinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	prevPos, prevVel, prevRot := e.data.Pos, e.data.Vel, e.data.Rot
+	if b.activatorPending {
+		b.activatorPending = false
+		if activator, ok := e.Behaviour().(interface{ Activate(*Ent, *world.Tx, bool) }); ok {
+			activator.Activate(e, tx, b.activatorPowered)
+		}
+	}
 	if b.rollingAmplitude > 0 {
 		b.rollingAmplitude--
 	}
 
-	pos, vel := e.data.Pos, e.data.Vel
-	vel[1] -= 0.04
+	pos, vel := minecartCentre(e.data.Pos), minecartVec32(e.data.Vel)
+	vel[1] = float64(float32(vel[1]) - float32(0.04))
 
 	x, y, z := int(math.Floor(pos[0])), int(math.Floor(pos[1])), int(math.Floor(pos[2]))
 	if isRailAt(tx, cube.Pos{x, y - 1, z}) {
@@ -131,18 +141,13 @@ func (b *MinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	rail := tx.Block(railPos)
 
 	if block.IsRail(rail) {
+		b.applyNaturalSlowdown(e, &vel)
 		pos, vel = b.moveOnRails(e, tx, railPos, rail, pos, vel)
-		if ar, ok := rail.(block.ActivatorRail); ok && ar.Powered {
-			b.Activate(e, tx, ar.Powered)
-		}
-		if dr, ok := rail.(block.DetectorRail); ok {
-			b.activateDetectorRail(railPos, dr, tx)
-		}
 	} else {
 		pos, vel = b.moveDerailed(e, tx, pos, vel)
 	}
 
-	e.data.Pos, e.data.Vel = pos, vel
+	e.data.Pos, e.data.Vel = minecartFeet(pos), vel
 	b.updateRotation(e, prevPos)
 	b.updatePassenger(e, tx)
 	b.checkPassengerAlive(e, tx)
@@ -311,261 +316,6 @@ func (b *MinecartBehaviour) Dismount(e *Ent, tx *world.Tx) {
 // DismountAll dismounts all passengers from the minecart.
 func (b *MinecartBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 	b.Dismount(e, tx)
-}
-
-func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, rail world.Block, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
-	b.mc.onGround = true
-	vector, vectorOk := b.nextRailPos(tx, pos)
-	// As in Java's moveAlongTrack, the minecart moves at the height of the
-	// rail block, one higher on a slope, and takes its height on the track
-	// once it moved. Moving at its height on the slope instead ran it into the
-	// block under the next rail uphill and left it inside the ground at the
-	// foot of a slope, which it then fell through.
-	pos[1] = float64(railPos[1])
-
-	poweredRail := false
-	powered := false
-	if pr, ok := rail.(block.PoweredRail); ok {
-		poweredRail = true
-		powered = pr.Powered
-	}
-	slowed := poweredRail && !powered
-
-	dir, _, _ := block.RailInfo(rail)
-	switch dir {
-	case block.RailAscendingNorth:
-		vel[2] += 0.0078125
-	case block.RailAscendingSouth:
-		vel[2] -= 0.0078125
-	case block.RailAscendingEast:
-		vel[0] -= 0.0078125
-	case block.RailAscendingWest:
-		vel[0] += 0.0078125
-	}
-	if dir.Ascending() {
-		pos[1]++
-	}
-
-	facing := minecartMatrix[int(dir)]
-	facing1 := float64(facing[1][0] - facing[0][0])
-	facing2 := float64(facing[1][2] - facing[0][2])
-	speedOnTurns := math.Sqrt(facing1*facing1 + facing2*facing2)
-	realFacing := vel[0]*facing1 + vel[2]*facing2
-	if realFacing < 0 {
-		facing1 = -facing1
-		facing2 = -facing2
-	}
-
-	speed := math.Sqrt(vel[0]*vel[0] + vel[2]*vel[2])
-	if speed > 2 {
-		speed = 2
-	}
-	vel[0] = speed * facing1 / speedOnTurns
-	vel[2] = speed * facing2 / speedOnTurns
-
-	if b.passenger != nil && b.currentSpeed > 0 {
-		if ent, ok := b.passenger.Entity(tx); ok {
-			yaw := ent.Rotation().Yaw() * math.Pi / 180
-			motion := vel[0]*vel[0] + vel[2]*vel[2]
-			if motion < 0.01 {
-				vel[0] += -math.Sin(yaw) * 0.1
-				vel[2] += math.Cos(yaw) * 0.1
-				slowed = false
-			}
-		}
-	}
-
-	if slowed {
-		expectedSpeed := math.Sqrt(vel[0]*vel[0] + vel[2]*vel[2])
-		if expectedSpeed < 0.03 {
-			vel[0], vel[1], vel[2] = 0, 0, 0
-		} else {
-			vel[0] *= 0.5
-			vel[1] = 0
-			vel[2] *= 0.5
-		}
-	}
-
-	baseX := float64(railPos[0]) + 0.5 + float64(facing[0][0])*0.5
-	baseZ := float64(railPos[2]) + 0.5 + float64(facing[0][2])*0.5
-	nextX := float64(railPos[0]) + 0.5 + float64(facing[1][0])*0.5
-	nextZ := float64(railPos[2]) + 0.5 + float64(facing[1][2])*0.5
-
-	facing1 = nextX - baseX
-	facing2 = nextZ - baseZ
-
-	var along float64
-	if facing1 == 0 {
-		pos[0] = float64(railPos[0]) + 0.5
-		along = pos[2] - float64(railPos[2])
-	} else if facing2 == 0 {
-		pos[2] = float64(railPos[2]) + 0.5
-		along = pos[0] - float64(railPos[0])
-	} else {
-		dx := pos[0] - baseX
-		dz := pos[2] - baseZ
-		along = (dx*facing1 + dz*facing2) * 2
-	}
-
-	pos[0] = baseX + facing1*along
-	pos[2] = baseZ + facing2*along
-
-	motX := vel[0]
-	motZ := vel[2]
-	if b.passenger != nil {
-		motX *= 0.75
-		motZ *= 0.75
-	}
-	motX = clamp(motX, -b.maxSpeed, b.maxSpeed)
-	motZ = clamp(motZ, -b.maxSpeed, b.maxSpeed)
-
-	pos, vel = b.moveWithCollision(e, tx, pos, mgl64.Vec3{motX, 0, motZ}, vel)
-
-	if facing[0][1] != 0 && int(math.Floor(pos[0]))-railPos[0] == facing[0][0] && int(math.Floor(pos[2]))-railPos[2] == facing[0][2] {
-		pos[1] += float64(facing[0][1])
-	} else if facing[1][1] != 0 && int(math.Floor(pos[0]))-railPos[0] == facing[1][0] && int(math.Floor(pos[2]))-railPos[2] == facing[1][2] {
-		pos[1] += float64(facing[1][1])
-	}
-
-	b.applyDrag(&vel)
-
-	nextVector, nextOk := b.nextRailPos(tx, pos)
-	if nextOk && vectorOk {
-		delta := (vector[1] - nextVector[1]) * 0.05
-		speed = math.Sqrt(vel[0]*vel[0] + vel[2]*vel[2])
-		if speed > 0 {
-			vel[0] = vel[0] / speed * (speed + delta)
-			vel[2] = vel[2] / speed * (speed + delta)
-		}
-		pos[1] = nextVector[1]
-	}
-
-	floorX := int(math.Floor(pos[0]))
-	floorZ := int(math.Floor(pos[2]))
-	if floorX != railPos[0] || floorZ != railPos[2] {
-		speed = math.Sqrt(vel[0]*vel[0] + vel[2]*vel[2])
-		vel[0] = speed * float64(floorX-railPos[0])
-		vel[2] = speed * float64(floorZ-railPos[2])
-	}
-
-	if poweredRail && powered {
-		speed = math.Sqrt(vel[0]*vel[0] + vel[2]*vel[2])
-		if speed > 0.01 {
-			vel[0] += vel[0] / speed * 0.06
-			vel[2] += vel[2] / speed * 0.06
-		} else if dir == block.RailNorthSouth {
-			if tx.Block(railPos.Side(cube.FaceNorth)).Model().FaceSolid(railPos.Side(cube.FaceNorth), cube.FaceSouth, tx) {
-				vel[2] = 0.02
-			} else if tx.Block(railPos.Side(cube.FaceSouth)).Model().FaceSolid(railPos.Side(cube.FaceSouth), cube.FaceNorth, tx) {
-				vel[2] = -0.02
-			}
-		} else if dir == block.RailEastWest {
-			if tx.Block(railPos.Side(cube.FaceWest)).Model().FaceSolid(railPos.Side(cube.FaceWest), cube.FaceEast, tx) {
-				vel[0] = 0.02
-			} else if tx.Block(railPos.Side(cube.FaceEast)).Model().FaceSolid(railPos.Side(cube.FaceEast), cube.FaceWest, tx) {
-				vel[0] = -0.02
-			}
-		}
-	}
-
-	return pos, vel
-}
-
-func (b *MinecartBehaviour) moveDerailed(e *Ent, tx *world.Tx, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
-	vel[0] = clamp(vel[0], -b.maxSpeed, b.maxSpeed)
-	vel[2] = clamp(vel[2], -b.maxSpeed, b.maxSpeed)
-
-	if b.mc.onGround {
-		vel[0] *= b.derailedVelocityMod[0]
-		vel[1] *= b.derailedVelocityMod[1]
-		vel[2] *= b.derailedVelocityMod[2]
-	}
-
-	pos, vel = b.moveWithCollision(e, tx, pos, vel, vel)
-
-	if !b.mc.onGround {
-		vel[0] *= b.flyingVelocityMod[0]
-		vel[1] *= b.flyingVelocityMod[1]
-		vel[2] *= b.flyingVelocityMod[2]
-	}
-	return pos, vel
-}
-
-func (b *MinecartBehaviour) applyDrag(vel *mgl64.Vec3) {
-	if b.passenger != nil || !b.slowWhenEmpty {
-		(*vel)[0] *= 0.997
-		(*vel)[1] = 0
-		(*vel)[2] *= 0.997
-		return
-	}
-	(*vel)[0] *= 0.96
-	(*vel)[1] = 0
-	(*vel)[2] *= 0.96
-}
-
-func (b *MinecartBehaviour) nextRailPos(tx *world.Tx, pos mgl64.Vec3) (mgl64.Vec3, bool) {
-	x := int(math.Floor(pos[0]))
-	y := int(math.Floor(pos[1]))
-	z := int(math.Floor(pos[2]))
-	if isRailAt(tx, cube.Pos{x, y - 1, z}) {
-		y--
-	}
-	railPos := cube.Pos{x, y, z}
-	rail := tx.Block(railPos)
-	if !block.IsRail(rail) {
-		return mgl64.Vec3{}, false
-	}
-	dir, _, _ := block.RailInfo(rail)
-	facing := minecartMatrix[int(dir)]
-
-	nextOne := float64(x) + 0.5 + float64(facing[0][0])*0.5
-	nextTwo := float64(y) + 0.5 + float64(facing[0][1])*0.5
-	nextThree := float64(z) + 0.5 + float64(facing[0][2])*0.5
-	nextFour := float64(x) + 0.5 + float64(facing[1][0])*0.5
-	nextFive := float64(y) + 0.5 + float64(facing[1][1])*0.5
-	nextSix := float64(z) + 0.5 + float64(facing[1][2])*0.5
-	nextSeven := nextFour - nextOne
-	nextEight := (nextFive - nextTwo) * 2
-	nextMax := nextSix - nextThree
-
-	var railOffset float64
-	if nextSeven == 0 {
-		railOffset = pos[2] - float64(z)
-	} else if nextMax == 0 {
-		railOffset = pos[0] - float64(x)
-	} else {
-		whatOne := pos[0] - nextOne
-		whatTwo := pos[2] - nextThree
-		railOffset = (whatOne*nextSeven + whatTwo*nextMax) * 2
-	}
-
-	pos[0] = nextOne + nextSeven*railOffset
-	pos[1] = nextTwo + nextEight*railOffset
-	pos[2] = nextThree + nextMax*railOffset
-
-	if nextEight < 0 {
-		pos[1] += 1
-	}
-	if nextEight > 0 {
-		pos[1] += 0.5
-	}
-	return pos, true
-}
-
-// moveWithCollision moves the minecart by delta, which on rails is its
-// velocity scaled for a passenger and clamped to the maximum speed. Like
-// Java's Entity.move, the velocity keeps its value but along an axis the
-// movement collided on: taking the movement as the new velocity scaled it down
-// again every tick, so a ridden minecart never passed 3.6 m/s on powered rails.
-func (b *MinecartBehaviour) moveWithCollision(e *Ent, tx *world.Tx, pos, delta, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
-	dPos, moved := b.mc.checkCollision(tx, e, pos, delta)
-	pos = pos.Add(dPos)
-	for axis := range 3 {
-		if moved[axis] != delta[axis] {
-			vel[axis] = 0
-		}
-	}
-	return pos, vel
 }
 
 func (b *MinecartBehaviour) updateRotation(e *Ent, prevPos mgl64.Vec3) {
@@ -769,18 +519,6 @@ func minecartEntityTypeID(entityID string) int {
 	}
 }
 
-func (b *MinecartBehaviour) activateDetectorRail(pos cube.Pos, r block.DetectorRail, tx *world.Tx) {
-	if r.Powered {
-		tx.ScheduleBlockUpdate(pos, r, time.Second/20)
-		return
-	}
-	r.Powered = true
-	tx.SetBlock(pos, r, nil)
-	tx.DoBlockUpdatesAround(pos)
-	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
-	tx.ScheduleBlockUpdate(pos, r, time.Second/20)
-}
-
 func (b *MinecartBehaviour) broadcastLink(e *Ent, tx *world.Tx, passenger *world.EntityHandle, mounted bool) {
 	viewers := tx.Viewers(e.data.Pos)
 	for _, v := range viewers {
@@ -974,9 +712,10 @@ func (minecartType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.E
 
 func (minecartType) EncodeEntity() string { return "minecraft:minecart" }
 
-func (minecartType) BBox(world.Entity) cube.BBox {
-	return cube.Box(-0.49, 0, -0.49, 0.49, 0.7, 0.49)
-}
+func (minecartType) BBox(e world.Entity) cube.BBox { return minecartBBox(e) }
+
+// NetworkOffset converts the public base position to the native actor centre.
+func (minecartType) NetworkOffset() float64 { return minecartNetworkOffset }
 
 func (minecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := minecartConf

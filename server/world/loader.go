@@ -74,9 +74,7 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	l.loadQueue = l.loadQueue[:0]
 	l.mu.Unlock()
 
-	old.viewerMu.Lock()
-	delete(old.viewers, l)
-	old.viewerMu.Unlock()
+	old.removeWorldViewer(l)
 
 	l.mu.Lock()
 	l.world(new)
@@ -285,9 +283,7 @@ func (l *Loader) Close(tx *Tx) {
 	l.viewer = nil
 	l.mu.Unlock()
 
-	w.viewerMu.Lock()
-	delete(w.viewers, l)
-	w.viewerMu.Unlock()
+	w.removeWorldViewer(l)
 	l.changeMu.Unlock()
 	l.detach(tx, w, loaded, viewer)
 }
@@ -461,7 +457,7 @@ func (l *Loader) activeArea(simRadius int32) loaderActiveArea {
 	l.mu.Lock()
 	if l.forceActive {
 		radius := int32(l.r)
-		area := loaderActiveArea{pos: l.pos, radius: radius, radiusSq: int64(radius) * int64(radius)}
+		area := loaderActiveArea{pos: l.pos, radius: radius, radiusSq: int64(radius) * int64(radius), square: l.square}
 		if l.square {
 			area.radiusSq *= 2
 		}

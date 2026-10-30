@@ -244,7 +244,9 @@ func (w weather) lightningPosition(tx *Tx, c ChunkPos) mgl64.Vec3 {
 
 	center := cube.Pos{int(x), tx.HighestBlock(int(x), int(z)) + 1, int(z)}
 	if rod, ok := tx.findLightningRod(center); ok {
-		return rod.Side(cube.FaceUp).Vec3Middle()
+		// Native LevelChunk::tickImpl spawns at the rod's integer block position;
+		// LightningBolt::normalTick invokes that block's hit callback directly.
+		return rod.Vec3()
 	}
 	vec := w.adjustPositionToEntities(tx, mgl64.Vec3{x, float64(center.Y()), z})
 	if pos := cube.PosFromVec3(vec); len(tx.Block(pos).Model().BBox(pos, tx)) != 0 {
@@ -254,18 +256,6 @@ func (w weather) lightningPosition(tx *Tx, c ChunkPos) mgl64.Vec3 {
 		return vec.Add(mgl64.Vec3{0, 1})
 	}
 	return vec
-}
-
-// findLightningRod ports ServerLevel.findLightningRod: the closest lightning
-// rod POI within 128 blocks that is the top block of its column.
-func (tx *Tx) findLightningRod(center cube.Pos) (cube.Pos, bool) {
-	rod, _, ok := tx.NearestPOI(center, Other, 128, func(p POI) bool {
-		return strings.HasSuffix(p.Type, "lightning_rod")
-	})
-	if !ok || tx.HighestBlock(rod.X(), rod.Z()) != rod.Y() {
-		return cube.Pos{}, false
-	}
-	return rod, true
 }
 
 // adjustPositionToEntities adjusts the mgl64.Vec3 passed to the position of

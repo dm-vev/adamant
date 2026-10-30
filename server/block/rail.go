@@ -1,12 +1,13 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item/inventory"
+	"iter"
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -397,19 +398,29 @@ func activatorRailMatch(b world.Block) (RailDirection, bool) {
 	return RailNorthSouth, false
 }
 
-func railCheckSurrounding(pos cube.Pos, tx *world.Tx, relative bool, power int, match railPowerMatcher) bool {
+func railCheckSurrounding(pos cube.Pos, tx *world.Tx, relative bool, power int, match railPowerMatcher) int {
 	if power >= 8 {
-		return false
+		return 0
 	}
 	rail, ok := railAt(pos, tx)
 	if !ok {
-		return false
+		return 0
 	}
 	dx, dy, dz := pos[0], pos[1], pos[2]
 	onStraight := true
 	base := RailNorthSouth
-	hasBase := false
-	switch rail.RailDirection() {
+	shape := rail.RailDirection()
+	direction, configured := tx.Redstone().CircuitDirection(pos)
+	if !configured {
+		direction = railComponentDirection(shape)
+	}
+	if direction == cube.FaceWest {
+		base = RailEastWest
+	}
+	if railComponentDirection(shape) != direction {
+		shape = base
+	}
+	switch shape {
 	case RailNorthSouth:
 		if relative {
 			dz++
@@ -430,8 +441,6 @@ func railCheckSurrounding(pos cube.Pos, tx *world.Tx, relative bool, power int, 
 			dy++
 			onStraight = false
 		}
-		base = RailEastWest
-		hasBase = true
 	case RailAscendingWest:
 		if relative {
 			dx--
@@ -440,8 +449,6 @@ func railCheckSurrounding(pos cube.Pos, tx *world.Tx, relative bool, power int, 
 		} else {
 			dx++
 		}
-		base = RailEastWest
-		hasBase = true
 	case RailAscendingNorth:
 		if relative {
 			dz++
@@ -450,8 +457,6 @@ func railCheckSurrounding(pos cube.Pos, tx *world.Tx, relative bool, power int, 
 			dy++
 			onStraight = false
 		}
-		base = RailNorthSouth
-		hasBase = true
 	case RailAscendingSouth:
 		if relative {
 			dz++
@@ -460,35 +465,34 @@ func railCheckSurrounding(pos cube.Pos, tx *world.Tx, relative bool, power int, 
 		} else {
 			dz--
 		}
-		base = RailNorthSouth
-		hasBase = true
 	default:
-		return false
+		return 0
 	}
-	if railCanPowered(cube.Pos{dx, dy, dz}, tx, base, hasBase, relative, power, match) {
-		return true
+	strength := railCanPowered(cube.Pos{dx, dy, dz}, tx, direction, relative, power, match)
+	if onStraight {
+		strength = max(strength, railCanPowered(cube.Pos{dx, dy - 1, dz}, tx, direction, relative, power, match))
 	}
-	return onStraight && railCanPowered(cube.Pos{dx, dy - 1, dz}, tx, base, hasBase, relative, power, match)
+	return strength
 }
 
-func railCanPowered(pos cube.Pos, tx *world.Tx, base RailDirection, hasBase bool, relative bool, power int, match railPowerMatcher) bool {
-	dir, ok := match(tx.Block(pos))
+func railCanPowered(pos cube.Pos, tx *world.Tx, direction cube.Face, relative bool, power int, match railPowerMatcher) int {
+	b, loaded := tx.BlockLoaded(pos)
+	if !loaded {
+		return 0
+	}
+	shape, ok := match(b)
 	if !ok {
-		return false
+		return 0
 	}
-	if hasBase {
-		if base == RailEastWest {
-			if dir == RailNorthSouth || dir == RailAscendingNorth || dir == RailAscendingSouth {
-				return false
-			}
-		} else if base == RailNorthSouth {
-			if dir == RailEastWest || dir == RailAscendingEast || dir == RailAscendingWest {
-				return false
-			}
-		}
+	configured, known := tx.Redstone().CircuitDirection(pos)
+	if !known {
+		configured = railComponentDirection(shape)
 	}
-	if redstonePowered(pos, tx) {
-		return true
+	if configured != direction {
+		return 0
+	}
+	if railDirectlyPowered(pos, tx, match) {
+		return 8 - power
 	}
 	return railCheckSurrounding(pos, tx, relative, power+1, match)
 }
@@ -580,30 +584,18 @@ func (PoweredRail) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 
 // NeighbourUpdateTick ...
 func (r PoweredRail) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	r.updatePowered(pos, tx)
+	r.checkSupport(pos, tx)
 }
 
 // ScheduledTick ...
 func (r PoweredRail) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	r.updatePowered(pos, tx)
+	r.checkSupport(pos, tx)
 }
 
-func (r PoweredRail) updatePowered(pos cube.Pos, tx *world.Tx) {
+func (r PoweredRail) checkSupport(pos cube.Pos, tx *world.Tx) {
 	if !railCanStay(pos, tx, r.Direction) {
 		breakBlock(r, pos, tx)
 		return
-	}
-	powered := redstonePowered(pos, tx) ||
-		railCheckSurrounding(pos, tx, true, 0, poweredRailMatch) ||
-		railCheckSurrounding(pos, tx, false, 0, poweredRailMatch)
-	if powered == r.Powered {
-		return
-	}
-	r.Powered = powered
-	tx.SetBlock(pos, r, nil)
-	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
-	if r.Direction.Ascending() {
-		tx.DoBlockUpdatesAround(pos.Side(cube.FaceUp))
 	}
 }
 
@@ -675,10 +667,21 @@ func (r DetectorRail) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 
 // EntityInside ...
 func (r DetectorRail) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
-	if !isMinecartEntity(e) {
+	if r.Powered || !isMinecartEntity(e) {
 		return
 	}
-	r.updatePowered(pos, tx, true)
+	r.updatePowered(pos, tx, detectorRailHasMinecart(pos, tx))
+}
+
+// ComparatorOutput reads the first container minecart in the detection area.
+// Bedrock queries containers independently of the rail's powered state.
+func (DetectorRail) ComparatorOutput(tx *world.Tx, pos cube.Pos) uint8 {
+	for e := range detectorRailMinecarts(pos, tx) {
+		if container, ok := e.(interface{ Inventory() *inventory.Inventory }); ok {
+			return comparatorSignalFromInventory(container.Inventory())
+		}
+	}
+	return 0
 }
 
 // ScheduledTick ...
@@ -687,10 +690,21 @@ func (r DetectorRail) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 }
 
 func (r DetectorRail) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
+	return r.RedstoneProducerPower()
+}
+
+// RedstoneProducerPower seeds the scene component when the rail is installed.
+func (r DetectorRail) RedstoneProducerPower() int {
 	if r.Powered {
 		return 15
 	}
 	return 0
+}
+
+// RedstoneProducerOutput retains circuit strength across same-ID state edits.
+func (r DetectorRail) RedstoneProducerOutput(power int) world.Block {
+	r.Powered = power != 0
+	return r
 }
 
 func (r DetectorRail) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
@@ -760,30 +774,18 @@ func (ActivatorRail) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 
 // NeighbourUpdateTick ...
 func (r ActivatorRail) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	r.updatePowered(pos, tx)
+	r.checkSupport(pos, tx)
 }
 
 // ScheduledTick ...
 func (r ActivatorRail) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	r.updatePowered(pos, tx)
+	r.checkSupport(pos, tx)
 }
 
-func (r ActivatorRail) updatePowered(pos cube.Pos, tx *world.Tx) {
+func (r ActivatorRail) checkSupport(pos cube.Pos, tx *world.Tx) {
 	if !railCanStay(pos, tx, r.Direction) {
 		breakBlock(r, pos, tx)
 		return
-	}
-	powered := redstonePowered(pos, tx) ||
-		railCheckSurrounding(pos, tx, true, 0, activatorRailMatch) ||
-		railCheckSurrounding(pos, tx, false, 0, activatorRailMatch)
-	if powered == r.Powered {
-		return
-	}
-	r.Powered = powered
-	tx.SetBlock(pos, r, nil)
-	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
-	if r.Direction.Ascending() {
-		tx.DoBlockUpdatesAround(pos.Side(cube.FaceUp))
 	}
 }
 
@@ -851,7 +853,10 @@ func (r ActivatorRail) RailDirection() RailDirection { return r.Direction }
 func (r ActivatorRail) RailPowered() (bool, bool) { return r.Powered, true }
 
 func railAt(pos cube.Pos, tx *world.Tx) (railBlock, bool) {
-	b := tx.Block(pos)
+	b, loaded := tx.BlockLoaded(pos)
+	if !loaded {
+		return nil, false
+	}
 	if r, ok := b.(railBlock); ok {
 		return r, true
 	}
@@ -885,38 +890,58 @@ func (r DetectorRail) updatePowered(pos cube.Pos, tx *world.Tx, powered bool) {
 	tx.SetBlock(pos, r, nil)
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
+	tx.Redstone().SetProducerStrength(pos, r.RedstoneProducerPower())
 	if powered {
 		tx.ScheduleBlockUpdate(pos, r, gameTicks(20))
 	}
 }
 
 func detectorRailHasMinecart(pos cube.Pos, tx *world.Tx) bool {
-	for e := range tx.EntitiesWithin(detectorRailSearchBox(pos)) {
-		if isMinecartEntity(e) {
-			return true
-		}
+	for range detectorRailMinecarts(pos, tx) {
+		return true
 	}
 	return false
 }
 
-// detectorRailSearchBox ports DetectorRailBlock.getSearchBB: the minecarts a
-// detector rail notices.
-func detectorRailSearchBox(pos cube.Pos) cube.BBox {
-	return cube.Box(float64(pos[0])+.2, float64(pos[1]), float64(pos[2])+.2, float64(pos[0])+1-.2, float64(pos[1])+1-.2, float64(pos[2])+1-.2)
-}
-
-// ComparatorOutput ports DetectorRailBlock.getAnalogOutputSignal: a powered
-// detector rail measures how full a minecart with a container on it is.
-func (r DetectorRail) ComparatorOutput(tx *world.Tx, pos cube.Pos) uint8 {
-	if !r.Powered {
-		return 0
-	}
-	for e := range tx.EntitiesWithin(detectorRailSearchBox(pos)) {
-		if c, ok := e.(interface{ Inventory() *inventory.Inventory }); ok && isMinecartEntity(e) {
-			return comparatorSignalFromInventory(c.Inventory())
+func detectorRailMinecarts(pos cube.Pos, tx *world.Tx) iter.Seq[world.Entity] {
+	return func(yield func(world.Entity) bool) {
+		box := detectorRailDetectionBox(pos)
+		minCell, maxCell := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+		// EntitiesWithin filters positions. Include the neighbouring cart origins,
+		// then apply the typed native fetch's inclusive binary32 AABB comparisons.
+		for e := range tx.EntitiesWithin(box.Grow(1)) {
+			if !isMinecartEntity(e) {
+				continue
+			}
+			// Native fetch visits only chunks touched by the query itself. A
+			// body extending in from a neighbouring owner chunk is not fetched.
+			owner, present := tx.EntityChunk(e)
+			if !present || int(owner[0]) < minCell[0]>>4 || int(owner[0]) > maxCell[0]>>4 || int(owner[1]) < minCell[2]>>4 || int(owner[1]) > maxCell[2]>>4 {
+				continue
+			}
+			body := e.H().Type().BBox(e).Translate(e.Position())
+			lo, hi := body.Min(), body.Max()
+			minPos, maxPos := box.Min(), box.Max()
+			if float64(float32(lo[0])) > maxPos[0] || minPos[0] > float64(float32(hi[0])) ||
+				float64(float32(lo[1])) > maxPos[1] || minPos[1] > float64(float32(hi[1])) ||
+				float64(float32(lo[2])) > maxPos[2] || minPos[2] > float64(float32(hi[2])) {
+				continue
+			}
+			if !yield(e) {
+				return
+			}
 		}
 	}
-	return 0
+}
+
+// Both DetectorRailBlock::_checkPressed and getComparatorSignal construct
+// this binary32 box: horizontal inset 0.2, from block Y to Y + 0.8.
+func detectorRailDetectionBox(pos cube.Pos) cube.BBox {
+	lo := mgl64.Vec3{float64(float32(int32(pos[0])) + 0.2), float64(float32(int32(pos[1]))), float64(float32(int32(pos[2])) + 0.2)}
+	hi := mgl64.Vec3{float64(float32(int32(pos[0])+1) - 0.2), float64(float32(int32(pos[1])+1) - 0.2), float64(float32(int32(pos[2])+1) - 0.2)}
+	// AABB construction normalises its bounds even where binary32 rounding
+	// collapses or reverses the inset near the coordinate limit.
+	return cube.Box(min(lo[0], hi[0]), min(lo[1], hi[1]), min(lo[2], hi[2]), max(lo[0], hi[0]), max(lo[1], hi[1]), max(lo[2], hi[2]))
 }
 
 func isMinecartEntity(e world.Entity) bool {

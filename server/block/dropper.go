@@ -48,6 +48,9 @@ func NewDropper() Dropper {
 	}
 }
 
+// ContainerSize returns the nine slots exposed by the native dropper.
+func (Dropper) ContainerSize() int { return 9 }
+
 // Inventory returns the dropper's nine-slot inventory.
 func (d Dropper) Inventory(*world.Tx, cube.Pos) *inventory.Inventory { return d.inventory }
 
@@ -121,45 +124,46 @@ func (d Dropper) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after wo
 func (d Dropper) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	// The scheduled dispense is retained even if the signal falls before it
 	// runs, matching the source block's rising-edge scheduling.
-	slot, count := -1, 0
-	for i := range 9 {
-		stack, _ := d.inventory.Item(i)
-		if !stack.Empty() {
-			count++
-		}
-	}
-	if count == 0 {
-		return
-	}
-	pick := r.IntN(count)
-	for i := range 9 {
-		stack, _ := d.inventory.Item(i)
-		if stack.Empty() {
-			continue
-		}
-		if pick == 0 {
-			slot = i
-			break
-		}
-		pick--
-	}
+	slot := randomContainerSlot(d.inventory, tx.RandomUint32)
 	if slot < 0 {
+		playContainerSound(pos.Vec3(), tx, "block.click.fail")
 		return
 	}
 	stack, _ := d.inventory.Item(slot)
 	one := stack.Grow(1 - stack.Count())
 	frontPos := pos.Side(d.Facing)
-	if container, ok := tx.Block(frontPos).(Container); ok {
-		if _, err := container.Inventory(tx, frontPos).AddItem(one); err == nil {
+	front := tx.Block(frontPos)
+	if container, ok := front.(Container); ok {
+		// Native dispenseFrom selects once before pushOutItems; the latter
+		// performs its own reservoir walk when it finds a container. The
+		// outer candidate is used only by the world-ejection fallback.
+		slot = randomContainerSlot(d.inventory, tx.RandomUint32)
+		stack, _ = d.inventory.Item(slot)
+		one = stack.Grow(1 - stack.Count())
+		accepted := false
+		if receiver, ok := front.(HopperInsertable); ok {
+			// Use the destination's sided slot rules, with only the randomly
+			// selected source item available. Do not let it choose another slot
+			// from the dropper if that item cannot be accepted.
+			transfer := Hopper{Facing: d.Facing, inventory: inventory.New(1, nil)}
+			_ = transfer.inventory.SetItem(0, one)
+			accepted = receiver.InsertItem(transfer, frontPos, tx)
+		} else {
+			_, err := container.Inventory(tx, frontPos).AddItemInSlotOrder(one)
+			accepted = err == nil
+		}
+		if accepted {
 			_ = d.inventory.SetItem(slot, stack.Grow(-1))
 			notifyComparatorUpdate(pos, tx)
 			notifyComparatorUpdate(frontPos, tx)
-			return
 		}
+		// A container that is full or rejects the item retains it in the
+		// dropper. Only a missing container takes the world-ejection path.
+		return
 	}
-	direction := frontPos.Vec3Centre().Sub(pos.Vec3Centre())
-	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre().Add(direction.Mul(0.7)), Velocity: direction.Mul(0.2)}
-	tx.AddEntity(tx.World().EntityRegistry().Config().Item(opts, one))
+	ejectContainerItem(pos, d.Facing, tx, one)
+	playItemEjectionEffects(pos, d.Facing, tx)
+	playContainerSound(pos.Vec3(), tx, "block.click")
 	_ = d.inventory.SetItem(slot, stack.Grow(-1))
 	notifyComparatorUpdate(pos, tx)
 }
@@ -205,4 +209,3 @@ func allDroppers() (droppers []world.Block) {
 }
 
 // ContainerSize returns the nine slots of a dropper.
-func (Dropper) ContainerSize() int { return 9 }

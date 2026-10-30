@@ -49,6 +49,12 @@ type PunchBlock struct {
 // BlockForceField is a particle that shows up as a block that turns invisible from an opaque black colour.
 type BlockForceField struct{ particle }
 
+// DispenserSmoke is the directional puff emitted by ordinary item ejection.
+type DispenserSmoke struct {
+	particle
+	Face cube.Face
+}
+
 // BoneMeal is a particle that shows up on bone meal usage.
 type BoneMeal struct {
 	particle
@@ -108,7 +114,7 @@ type SculkChargePop struct{ particle }
 type SculkSoul struct{ particle }
 
 // ElectricSpark is the spark of lightning striking a lightning rod or cleaning
-// copper. Data is the rod's axis, or -1 for copper.
+// copper. Data is the protocol event payload; Bedrock rod hits use zero.
 type ElectricSpark struct {
 	particle
 	Data int32

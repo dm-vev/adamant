@@ -56,7 +56,9 @@ func tickLiquid(b world.Liquid, pos cube.Pos, tx *world.Tx) {
 	} else if canFlowBelow {
 		below := pos.Side(cube.FaceDown)
 		if displacer == nil || !displacer.SideClosed(pos, below, tx) {
-			flowInto(b.WithDepth(8, true), pos, below, tx, true)
+			// Bedrock retains the horizontal depth when setting the falling
+			// bit (LiquidBlock::_tick, 0x345c364..0x345c36a).
+			flowInto(b.WithDepth(b.LiquidDepth(), true), pos, below, tx, true)
 		}
 	}
 
@@ -123,6 +125,9 @@ func sourceAround(b world.Liquid, pos cube.Pos, tx *world.Tx) (sourcePresent boo
 // flowInto makes the liquid passed flow into the position passed in a world. If successful, the block at that
 // position will be broken and the liquid with a lower depth will replace it.
 func flowInto(b world.Liquid, src, pos cube.Pos, tx *world.Tx, falling bool) bool {
+	if !tx.NativeLiquidBoundaryOpen(src, pos) {
+		return false
+	}
 	newDepth := b.LiquidDepth() - b.SpreadDecay()
 	if falling {
 		newDepth = b.LiquidDepth()

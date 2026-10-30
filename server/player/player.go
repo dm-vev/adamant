@@ -2477,11 +2477,13 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 	if hitDependent || !p.Sneaking() || i.Empty() {
 		useCtx := p.useContext()
 		activated := false
-		if hitDependent {
-			activated = hitAct.ActivateAt(pos, face, clickPos, p.tx, p, useCtx)
-		} else if act, ok := b.(block.Activatable); ok {
-			activated = act.Activate(pos, face, p.tx, p, useCtx)
-		}
+		p.tx.WithBlockInteraction(func() {
+			if hitDependent {
+				activated = hitAct.ActivateAt(pos, face, clickPos, p.tx, p, useCtx)
+			} else if act, ok := b.(block.Activatable); ok {
+				activated = act.Activate(pos, face, p.tx, p, useCtx)
+			}
+		})
 		if activated {
 			p.SwingArm()
 			if useCtx.HeldItemSet {
@@ -2494,6 +2496,9 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 			p.addNewItem(useCtx)
 			return
+		}
+		if bell, ok := b.(block.Bell); ok {
+			p.session().ViewBlockAction(pos, block.BellUseRejectedAction{Bell: bell})
 		}
 	}
 	if i.Empty() {

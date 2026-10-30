@@ -46,15 +46,17 @@ type RedstoneCircuitStrength interface {
 // the block's component setup callback.
 type RedstoneCircuitDirection interface{ CircuitDirection() cube.Face }
 
-// RedstoneCircuitAnalogInput samples block-actor analog inputs once per game
-// tick, after circuit evaluation. ComparatorCapacitor consumes the preceding
-// actor sample; direct electrical inputs are cached on the circuit step.
+// RedstoneCircuitAnalogInput samples analog inputs once per circuit interval,
+// in the chunk's block-actor pass. ComparatorCapacitor consumes
+// the preceding actor sample; direct electrical inputs are cached on the circuit step.
 type RedstoneCircuitAnalogInput interface {
 	SampleAnalogInput(pos cube.Pos, tx *Tx) RedstoneCircuitState
 }
 
 // redstoneCircuitPublicationRefresher distinguishes a capacitor publishing its
 // own state from an external identifier replacement that reruns native setup.
+// External identifier replacement also discards the old capacitor's pending
+// publication. RefreshPublished preserves that capacitor's transient state.
 // Other components retain their ordinary Refresh behavior on publication.
 type redstoneCircuitPublicationRefresher interface {
 	RefreshPublished(before, after Block) RedstoneCircuitState
@@ -71,6 +73,28 @@ type RedstoneCircuitLateInput interface {
 // events. A consumer such as a lamp has no electrical output of its own.
 type RedstoneCircuitInputChange interface {
 	CircuitInputChange() (oldPower, newPower int)
+}
+
+// RedstoneCircuitActorOutput marks a consumer update that changes only its
+// actor, without replacing a block permutation or notifying its neighbours.
+type RedstoneCircuitActorOutput interface {
+	CircuitActorOutput() bool
+}
+
+// RedstoneCircuitConsumer exposes a consumer's evaluated scene strength to its
+// block actor. Unlike a capacitor, it supplies no electrical output to neighbours.
+type RedstoneCircuitConsumer interface {
+	CircuitConsumerStrength() int
+}
+
+// ConsumerPower reads the scene component, independently of the actor's visible
+// state. The actor observes a circuit evaluation on its next tick.
+func (r RedstoneTransaction) ConsumerPower(pos cube.Pos) (int, bool) {
+	consumer, ok := r.tx.World().redstone.circuits[pos].(RedstoneCircuitConsumer)
+	if !ok {
+		return 0, false
+	}
+	return ClampRedstonePower(consumer.CircuitConsumerStrength()), true
 }
 
 // RedstoneCircuitHalfPulse publishes after ordinary components in the same
@@ -96,6 +120,7 @@ type RedstoneCircuitPostPublisher interface {
 }
 
 func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publication bool) {
+	e.replaceProducer(pos, before, after)
 	e.circuitTraversal.replace(pos, after)
 	component, ok := after.(RedstoneCircuitComponent)
 	if !ok {
@@ -113,10 +138,16 @@ func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publi
 		beforeName, _ := before.EncodeBlock()
 		afterName, _ := after.EncodeBlock()
 		if beforeName != afterName {
-			if state, ok := e.circuits[pos].(redstoneCircuitPublicationRefresher); publication && ok {
+			state, reinitialises := e.circuits[pos].(redstoneCircuitPublicationRefresher)
+			if publication && reinitialises {
 				e.circuits[pos] = state.RefreshPublished(before, after)
 			} else {
 				e.circuits[pos] = e.circuits[pos].Refresh(before, after)
+				if reinitialises {
+					delete(e.circuitOutputs, pos)
+					delete(e.circuitPowerOutputs, pos)
+					delete(e.circuitOutputCauses, pos)
+				}
 			}
 		}
 		return
@@ -133,13 +164,7 @@ func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publi
 }
 
 func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
-	defer func() {
-		for pos, state := range e.circuits {
-			if actor, ok := state.(RedstoneCircuitAnalogInput); ok {
-				e.circuits[pos] = actor.SampleAnalogInput(pos, tx)
-			}
-		}
-	}()
+	e.activateProducers()
 	for pos, power := range e.circuitPowerOutputs {
 		delete(e.circuitPowerOutputs, pos)
 		b, loaded := tx.BlockLoaded(pos)
@@ -213,8 +238,13 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 		update := d.redstoneUpdate(pos, b, oldPower, newPower, tick)
 		update.After = output
 		if e.redstoneUpdateAllowed(tx, update) {
-			tx.SetBlock(pos, output, &SetOpts{DisableRedstoneUpdates: true, circuitPublication: true})
-			e.invalidateAroundWith(pos, d.propagatedFrom(pos), tx.Range())
+			actor, actorOnly := e.circuits[pos].(RedstoneCircuitActorOutput)
+			if actorOnly && actor.CircuitActorOutput() {
+				tx.SetBlockEntity(pos, output)
+			} else {
+				tx.SetBlock(pos, output, &SetOpts{DisableRedstoneUpdates: true, circuitPublication: true})
+				e.invalidateAroundWith(pos, d.propagatedFrom(pos), tx.Range())
+			}
 			if state, ok := e.circuits[pos].(RedstoneCircuitPostPublisher); ok {
 				state.CircuitPublished(pos, tx, b, output)
 			}
@@ -342,6 +372,15 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 			}
 			e.circuitOutputCauses[pos] = e.circuitCauses[pos]
 		}
+	}
+}
+
+// SampleAnalogInput runs the component's block-actor input read at its position
+// in the chunk tick order, rather than sampling all comparators after all actors.
+func (r RedstoneTransaction) SampleAnalogInput(pos cube.Pos) {
+	e := r.tx.World().redstone
+	if actor, ok := e.circuits[pos].(RedstoneCircuitAnalogInput); ok {
+		e.circuits[pos] = actor.SampleAnalogInput(pos, r.tx)
 	}
 }
 

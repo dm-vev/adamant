@@ -32,41 +32,30 @@ func (b Bell) BBox(cube.Pos, world.BlockSource) []cube.BBox {
 	switch b.Attachment {
 	case BellAttachmentStanding:
 		if b.Facing.Face().Axis() == cube.X {
-			return []cube.BBox{cube.Box(0.25, 0, 0, 0.75, 1, 1)}
+			return []cube.BBox{cube.Box(0.25, 0, 0, 0.75, 0.8125, 1)}
 		}
-		return []cube.BBox{cube.Box(0, 0, 0.25, 1, 1, 0.75)}
+		return []cube.BBox{cube.Box(0, 0, 0.25, 1, 0.8125, 0.75)}
 	case BellAttachmentHanging:
-		return []cube.BBox{
-			cube.Box(0.3125, 0.375, 0.3125, 0.6875, 0.8125, 0.6875),
-			cube.Box(0.25, 0.25, 0.25, 0.75, 0.375, 0.75),
-			cube.Box(0.4375, 0.8125, 0.4375, 0.5625, 1, 0.5625),
-		}
+		return []cube.BBox{cube.Box(0.25, 0.25, 0.25, 0.75, 1, 0.75)}
 	case BellAttachmentSide, BellAttachmentMultiple:
-		boxes := []cube.BBox{
-			cube.Box(0.3125, 0.375, 0.3125, 0.6875, 0.8125, 0.6875),
-			cube.Box(0.25, 0.25, 0.25, 0.75, 0.375, 0.75),
-		}
 		if b.Attachment == BellAttachmentMultiple {
 			if b.Facing.Face().Axis() == cube.X {
-				return append(boxes, cube.Box(0.4375, 0.8125, 0, 0.5625, 0.9375, 1))
+				return []cube.BBox{cube.Box(0, 0.25, 0.25, 1, 1, 0.75)}
 			}
-			return append(boxes, cube.Box(0, 0.8125, 0.4375, 1, 0.9375, 0.5625))
+			return []cube.BBox{cube.Box(0.25, 0.25, 0, 0.75, 1, 1)}
 		}
 		switch b.Facing {
 		case cube.North:
-			return append(boxes, cube.Box(0.4375, 0.8125, 0, 0.5625, 0.9375, 0.8125))
+			return []cube.BBox{cube.Box(0.25, 0.25, 0.1875, 0.75, 0.9375, 1)}
 		case cube.South:
-			return append(boxes, cube.Box(0.4375, 0.8125, 0.1875, 0.5625, 0.9375, 1))
+			return []cube.BBox{cube.Box(0.25, 0.25, 0, 0.75, 0.9375, 0.8125)}
 		case cube.West:
-			return append(boxes, cube.Box(0, 0.8125, 0.4375, 0.8125, 0.9375, 0.5625))
+			return []cube.BBox{cube.Box(0.1875, 0.25, 0.25, 1, 0.9375, 0.75)}
 		default:
-			return append(boxes, cube.Box(0.1875, 0.8125, 0.4375, 1, 0.9375, 0.5625))
+			return []cube.BBox{cube.Box(0, 0.25, 0.25, 0.8125, 0.9375, 0.75)}
 		}
 	default:
-		return []cube.BBox{
-			cube.Box(0.3125, 0.375, 0.3125, 0.6875, 0.8125, 0.6875),
-			cube.Box(0.25, 0.25, 0.25, 0.75, 0.375, 0.75),
-		}
+		return nil
 	}
 }
 

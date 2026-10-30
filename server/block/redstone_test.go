@@ -424,8 +424,12 @@ func TestLeverUpdatesConsumerBehindAttachedBlock(t *testing.T) {
 		tx.SetBlock(notePos, Note{}, nil)
 		tx.SetBlock(leverPos, Lever{Facing: cube.FaceEast}, nil)
 	})
+	for range 3 {
+		w.AdvanceTick()
+	}
 
 	redstoneWireTestSetBlockAndWait(t, w, leverPos, Lever{Powered: true, Facing: cube.FaceEast})
+	redstoneWireTestWaitFor(t, w, func(tx *world.Tx) bool { return tx.Block(notePos).(Note).Powered })
 
 	var powered bool
 	runWorld(w, func(tx *world.Tx) {
@@ -451,9 +455,14 @@ func TestNoteBlockPlaysOnRedstoneRisingEdgeOnly(t *testing.T) {
 		tx.SetBlock(notePos, Note{}, nil)
 		tx.SetBlock(leverPos, Lever{Facing: cube.FaceEast}, nil)
 	})
+	for range 3 {
+		w.AdvanceTick()
+	}
 
 	redstoneWireTestSetBlockAndWait(t, w, leverPos, Lever{Powered: true, Facing: cube.FaceEast})
+	redstoneWireTestWaitFor(t, w, func(tx *world.Tx) bool { return tx.Block(notePos).(Note).Powered })
 	redstoneWireTestSetBlockAndWait(t, w, leverPos, Lever{Powered: false, Facing: cube.FaceEast})
+	redstoneWireTestWaitFor(t, w, func(tx *world.Tx) bool { return !tx.Block(notePos).(Note).Powered })
 
 	var powered bool
 	runWorld(w, func(tx *world.Tx) {
@@ -501,6 +510,19 @@ func TestTNTRedstoneEngineRisingEdgePrimes(t *testing.T) {
 		tx.SetBlock(sourcePos, RedstoneBlock{}, nil)
 	})
 	w.AdvanceTick()
+	// Native consumers sample on the shared two-GT circuit clock and publish
+	// on the following chunk pass. A neighbour change must not prime at once.
+	runWorld(w, func(tx *world.Tx) {
+		if _, ok := tx.Block(tntPos).(TNT); !ok {
+			t.Fatal("TNT primed before consumer publication")
+		}
+		for range tx.Entities() {
+			t.Fatal("TNT actor spawned before consumer publication")
+		}
+	})
+	for range 2 {
+		w.AdvanceTick()
+	}
 
 	var blockAfter world.Block
 	entities := 0

@@ -130,6 +130,11 @@ type Session struct {
 	// the skin goes nowhere else when another player sees the player.
 	listEntry atomic.Pointer[sharedPacket]
 
+	blockUpdatesMu     sync.Mutex
+	blockUpdates       map[blockUpdateKey]blockUpdateData
+	blockUpdateDrops   atomic.Uint64
+	blockUpdateLastLog atomic.Int64
+
 	breakingPos cube.Pos
 
 	inTransaction, containerOpened atomic.Bool

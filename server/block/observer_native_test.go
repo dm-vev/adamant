@@ -215,6 +215,10 @@ func TestObserverAfterPistonMoveMatchesNativeCapture(t *testing.T) {
 				<-w.Exec(func(tx *world.Tx) {
 					p := Piston{Facing: cube.FaceEast, Sticky: trace.Scenario.Sticky, Extending: !pulling, Attached: []cube.Pos{base}}
 					if !pulling {
+						// This replay starts at a completed native extension. Seed
+						// its scene consumer as extended too, rather than creating
+						// an unpowered retracted component in an artificial world.
+						p.State, p.NewState = pistonStateExtended, pistonStateExtended
 						tx.SetBlock(cube.Pos{-3, 65, 0}, RedstoneBlock{}, nil)
 					}
 					tx.SetBlock(cube.Pos{-2, 65, 0}, p, nil)

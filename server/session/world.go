@@ -691,6 +691,13 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 			EventType: v2193.LevelEventParticleDenyBlock,
 			Position:  vec64To32(pos),
 		})
+	case particle.DispenserSmoke:
+		direction := cube.Pos{}.Side(pa.Face)
+		s.writePacket(&v2193.LevelEventPacket{
+			EventType: v2193.LevelEventParticlesShoot,
+			Position:  vec64To32(pos),
+			EventData: int32(direction[0] + 1 + (direction[2]+1)*3),
+		})
 	case particle.BlockBreak:
 		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesDestroyBlock,
@@ -913,7 +920,11 @@ func tierToSoundEvent(tier item.ArmourTier) string {
 
 // playSound plays a world.Sound at a position, disabling relative volume if set to true.
 func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool) {
-	s.soundPackets(pos, t, disableRelative, s.writePacket)
+	out := s.writePacket
+	if bell, ok := t.(sound.BellRing); ok && bell.AfterBlock {
+		out = func(pk proto.Packet) { s.enqueuePacketAfterBlock(cube.PosFromVec3(pos), pk) }
+	}
+	s.soundPackets(pos, t, disableRelative, out)
 }
 
 // soundPackets hands out the packets that play a sound at a position, the
@@ -954,6 +965,7 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 	case sound.Note:
 		pk.SoundType = v2193.SoundEventNote
 		pk.ExtraData = (so.Instrument.Int32() << 8) | int32(so.Pitch)
+		pk.EntityType = ""
 	case sound.DoorCrash:
 		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventSoundZombieDoorCrash,
@@ -1130,9 +1142,9 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 	case sound.FenceGateClose:
 		pk.SoundType, pk.ExtraData = v2193.SoundEventFenceGateClose, int32(networkBlockID(s.br, so.Block))
 	case sound.PistonIn:
-		pk.SoundType = v2193.SoundEventPistonIn
+		pk.SoundType, pk.EntityType = v2193.SoundEventPistonIn, ""
 	case sound.PistonOut:
-		pk.SoundType = v2193.SoundEventPistonOut
+		pk.SoundType, pk.EntityType = v2193.SoundEventPistonOut, ""
 	case sound.Deny:
 		pk.SoundType = v2193.SoundEventDeny
 	case sound.BlockPlace:
@@ -1169,6 +1181,7 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		pk.SoundType = v2193.SoundEventBarrelOpen
 	case sound.BellRing:
 		pk.SoundType = v2193.SoundEventBell
+		pk.EntityType = ""
 	case sound.BlockBreaking:
 		pk.SoundType, pk.ExtraData = v2193.SoundEventHit, int32(networkBlockID(s.br, so.Block))
 	case sound.ItemBreak:
@@ -1768,6 +1781,10 @@ func (s *Session) ViewSoundShared(pos mgl64.Vec3, t world.Sound, b *world.Broadc
 	if s.dropCosmetic() {
 		return
 	}
+	if bell, ok := t.(sound.BellRing); ok && bell.AfterBlock {
+		s.playSound(pos, t, false)
+		return
+	}
 	s.writeBroadcast(b, func(out func(proto.Packet)) { s.soundPackets(pos, t, false, out) })
 }
 
@@ -2091,6 +2108,12 @@ func (s *Session) ViewCrafterTriggered(triggered bool) {
 func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 	blockPos := v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	switch t := a.(type) {
+	case block.BellRingAction:
+		s.enqueueBellRingUpdate(pos, t.Bell)
+	case block.BellUseRejectedAction:
+		s.enqueueBellUseRejection(pos, t.Bell)
+	case block.MovingBlockUpdateAction:
+		s.enqueueBlockActorUpdate(pos, t.MovingBlock.PistonPos, clientActorNBT(t.MovingBlock.EncodeNBT(), pos))
 	case world.PositionTrackingUpdateAction:
 		s.writePacket(&v2193.PositionTrackingDBServerBroadcastPacket{
 			BroadcastAction: v2193.PositionTrackingDBBroadcastActionUpdate,

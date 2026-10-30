@@ -26,6 +26,20 @@ type Block interface {
 	Model() BlockModel
 }
 
+// ProjectileCollider supplies entity-specific block collision boxes for a
+// projectile. Boxes are relative to the block position. A nil slice means
+// that this block does not collide with that projectile. Ordinary entity
+// collision continues to use Block.Model().BBox.
+type ProjectileCollider interface {
+	ProjectileBBox(pos cube.Pos, src BlockSource, projectile Entity) []cube.BBox
+}
+
+// RainObstructor supplies precipitation obstruction independently of solid
+// faces, as the native BlockPrecipitationInteractionsComponent does.
+type RainObstructor interface {
+	ObstructsRain() bool
+}
+
 // MissingStateReconstructor reconstructs derived block properties that were absent from a decoded disk state.
 // It must preserve all properties not listed in missing and must not cause chunk loads.
 type MissingStateReconstructor interface {
@@ -155,6 +169,12 @@ type ScheduledTicker interface {
 	ScheduledTick(pos cube.Pos, tx *Tx, r *rand.Rand)
 }
 
+// ScheduledFluidTicker handles the native fluid queue directly, before the
+// legacy Java fluid-state adapter. The live liquid in either layer is passed.
+type ScheduledFluidTicker interface {
+	ScheduledFluidTick(pos cube.Pos, tx *Tx, r *rand.Rand)
+}
+
 // TickerBlock is an implementation of NBTer with an additional Tick method that is called on every world
 // tick for loaded blocks that implement this interface.
 type TickerBlock interface {
@@ -183,6 +203,13 @@ type NeighbourChangeListener interface {
 // again, for example when completing a constructed mob.
 type PlacementHandler interface {
 	Placed(pos cube.Pos, tx *Tx, previous Block)
+}
+
+// LiquidPlacementHandler receives a successful SetLiquid placement in either
+// layer. Physical liquid placement may activate a fluid that remains dormant
+// when the same static state is installed through SetBlock.
+type LiquidPlacementHandler interface {
+	LiquidPlaced(pos cube.Pos, tx *Tx)
 }
 
 // BlockRemovalHandler receives a foreground replacement while the old block

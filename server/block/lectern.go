@@ -24,7 +24,8 @@ type Lectern struct {
 	Facing cube.Direction
 	// Book is the book currently held by the Lectern.
 	Book item.Stack
-	// Page is the page the Lectern is currently on in the book.
+	// Page is the zero-based two-page spread currently displayed. Bedrock stores
+	// the spread index in the block actor and LecternUpdate packet.
 	Page int
 	// Powered indicates if the lectern is currently emitting a redstone pulse.
 	Powered bool
@@ -202,22 +203,13 @@ func (l Lectern) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
 	if r, ok := l.Book.Item().(readableBook); ok {
 		totalPages = r.TotalPages()
 	}
-	if totalPages <= 1 {
-		return 1
+	if totalPages < 4 {
+		return 15
 	}
-	page := l.Page
-	if page < 0 {
-		page = 0
-	} else if page >= totalPages {
-		page = totalPages - 1
-	}
-	signal := int(math.Floor(float64(page) / float64(totalPages-1) * 14))
-	if signal < 0 {
-		signal = 0
-	} else if signal > 14 {
-		signal = 14
-	}
-	return uint8(signal + 1)
+	// The native getter divides by (totalPages / 2 - 1), using binary32
+	// division and multiplication before flooring the result.
+	page := max(0, min(l.Page, totalPages/2-1))
+	return uint8(math.Floor(float64(float32(page)/float32(totalPages/2-1)*14))) + 1
 }
 
 // allLecterns ...

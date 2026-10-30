@@ -64,11 +64,19 @@ func (s *lightningState) tick(e *Ent, tx *world.Tx) {
 		if d := tx.World().Difficulty(); s.BlockFire && !s.visualOnly && (d == world.DifficultyNormal || d == world.DifficultyHard) {
 			s.spawnFire(tx, cube.PosFromVec3(pos), 4)
 		}
-		strike := cube.PosFromVec3(pos.Sub(mgl64.Vec3{0, 1e-6}))
+		// Bedrock invokes the hit callback at floor(position), including at an
+		// exact integer Y. Subtracting an epsilon hits the block below instead.
+		strike := cube.PosFromVec3(pos)
+		copperStart := strike.Side(cube.FaceDown)
 		if rod, ok := tx.Block(strike).(block.LightningRod); ok {
 			rod.Strike(strike, tx)
+			// Bedrock cleans the rod through its own hit callback, then starts
+			// copper cleaning at the support on the opposite facing side.
+			copperStart = strike.Side(rod.Facing.Opposite())
+		} else if copper, ok := tx.Block(strike).(block.Oxidisable); ok && copper.CanOxidate() {
+			tx.SetBlock(strike, copper.WithOxidationLevel(block.UnoxidisedOxidation()), nil)
 		}
-		clearCopperOnLightningStrike(tx, strike)
+		clearCopperOnLightningStrike(tx, copperStart)
 		tx.EmitGameEvent(world.GameEventLightningStrike, pos, world.GameEventContext{Source: e})
 	}
 	if s.state--; s.state < 0 {
@@ -88,15 +96,17 @@ func (s *lightningState) tick(e *Ent, tx *world.Tx) {
 	}
 }
 
-// clearCopperOnLightningStrike ports LightningBolt.clearCopperOnLightningStrike:
-// struck unwaxed copper loses all oxidation, and 3-5 random walks of up to
-// eight steps through neighbouring copper each remove one oxidation level.
+// clearCopperOnLightningStrike starts at the block below the bolt, or at a
+// struck rod's support. Rods use their hit callback so cleaning can also pulse
+// them. The generic copper walk still requires a separate native parity audit.
 func clearCopperOnLightningStrike(tx *world.Tx, struck cube.Pos) {
 	copper, ok := tx.Block(struck).(block.Oxidisable)
-	if !ok {
+	if !ok || !copper.CanOxidate() {
 		return
 	}
-	if copper.CanOxidate() {
+	if rod, ok := copper.(block.LightningRod); ok {
+		rod.Strike(struck, tx)
+	} else {
 		tx.SetBlock(struck, copper.WithOxidationLevel(block.UnoxidisedOxidation()), nil)
 	}
 	for range rand.IntN(3) + 3 {
@@ -121,7 +131,9 @@ func cleanRandomCopperNear(tx *world.Tx, pos cube.Pos) (cube.Pos, bool) {
 		if !ok || !copper.CanOxidate() {
 			continue
 		}
-		if previous, ok := copper.OxidationLevel().Decrease(); ok {
+		if rod, ok := copper.(block.LightningRod); ok {
+			rod.Strike(candidate, tx)
+		} else if previous, ok := copper.OxidationLevel().Decrease(); ok {
 			tx.SetBlock(candidate, copper.WithOxidationLevel(previous), nil)
 		}
 		tx.AddParticle(candidate.Vec3Centre(), particle.ElectricSpark{Data: -1})

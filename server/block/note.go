@@ -24,8 +24,11 @@ type Note struct {
 // note_block_play game event allays listen for, as NoteBlock.playNote. The
 // source is the entity that played it, nil for redstone.
 func (n Note) playNote(pos cube.Pos, tx *world.Tx, source world.Entity) {
-	tx.PlaySound(pos.Vec3(), sound.Note{Instrument: n.instrument(pos, tx), Pitch: n.Pitch})
-	tx.AddParticle(pos.Vec3(), particle.Note{Instrument: n.Instrument(), Pitch: n.Pitch})
+	instrument := n.instrument(pos, tx)
+	// BlockSource::blockEvent publishes the selected instrument before
+	// NoteBlock::triggerEvent emits the corresponding LevelSoundEvent.
+	tx.AddParticle(pos.Vec3(), particle.Note{Instrument: instrument, Pitch: n.Pitch})
+	tx.PlaySound(pos.Vec3(), sound.Note{Instrument: instrument, Pitch: n.Pitch})
 	tx.EmitGameEvent(world.GameEventNoteBlockPlay, pos.Vec3Centre(), world.GameEventContext{Source: source})
 }
 
@@ -40,16 +43,15 @@ func (n Note) instrument(pos cube.Pos, tx *world.Tx) sound.Instrument {
 }
 
 func (n Note) DecodeNBT(data map[string]any) any {
-	n.Pitch = int(nbtconv.Uint8(data, "note"))
-	n.Powered = nbtconv.Bool(javaActorState(data), "powered")
+	n.Pitch = min(24, int(nbtconv.Uint8(data, "note")))
+	n.Powered = false
 	return n
 }
 
-// EncodeNBT encodes the Music block actor as BDS does, with only the note.
-// Whether the block is powered, the rising edge Java's POWERED state tracks
-// and Bedrock has no state for, is kept for the server only.
+// EncodeNBT encodes the Music block actor. Native power history is transient;
+// loading an actor restores only its clamped note, not the preceding edge.
 func (n Note) EncodeNBT() map[string]any {
-	return map[string]any{"id": "Music", "note": byte(n.Pitch), "adamant:java": map[string]any{"powered": boolByte(n.Powered)}}
+	return map[string]any{"id": "Music", "note": byte(n.Pitch)}
 }
 
 // javaActorState returns the server-only Java state a block actor keeps

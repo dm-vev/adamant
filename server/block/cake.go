@@ -70,9 +70,9 @@ func (c Cake) BreakInfo() BreakInfo {
 	return newBreakInfo(0.5, neverHarvestable, nothingEffective, simpleDrops())
 }
 
-// MaxCount returns 1: cakes do not stack.
+// MaxCount returns the Bedrock stack limit for cakes.
 func (c Cake) MaxCount() int {
-	return 1
+	return 64
 }
 
 // EncodeItem ...

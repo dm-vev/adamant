@@ -18,6 +18,9 @@ type NetherBrickFence struct {
 	WestConnection  bool
 }
 
+// ObstructsRain follows the native precipitation component despite open faces.
+func (NetherBrickFence) ObstructsRain() bool { return true }
+
 // BreakInfo ...
 func (n NetherBrickFence) BreakInfo() BreakInfo {
 	return newBreakInfo(2, pickaxeHarvestable, pickaxeEffective, oneOf(n)).withBlastResistance(6)

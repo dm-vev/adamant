@@ -53,6 +53,9 @@ func NewDispenser() Dispenser {
 	}
 }
 
+// ContainerSize returns the nine slots exposed by the native dispenser.
+func (Dispenser) ContainerSize() int { return 9 }
+
 func (d Dispenser) Inventory(tx *world.Tx, pos cube.Pos) *inventory.Inventory {
 	return d.generateLoot(tx, pos).inventory
 }
@@ -138,29 +141,9 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	// Java schedules the tick on the rising edge and does not cancel it when
 	// power falls again before the scheduled tick runs.
 	d = d.generateLoot(tx, pos)
-	slot, count := -1, 0
-	for i := range 9 {
-		stack, _ := d.inventory.Item(i)
-		if !stack.Empty() {
-			count++
-		}
-	}
-	if count == 0 {
-		return
-	}
-	pick := r.IntN(count)
-	for i := range 9 {
-		stack, _ := d.inventory.Item(i)
-		if stack.Empty() {
-			continue
-		}
-		if pick == 0 {
-			slot = i
-			break
-		}
-		pick--
-	}
+	slot := randomContainerSlot(d.inventory, tx.RandomUint32)
 	if slot < 0 {
+		playContainerSound(pos.Vec3(), tx, "block.click.fail")
 		return
 	}
 	stack, _ := d.inventory.Item(slot)
@@ -186,7 +169,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 			opts.Velocity = direction.Mul(0.1)
 			tx.AddEntity(tx.World().EntityRegistry().Config().Boat(opts, held.Variant.Int()))
 		} else {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		}
 	case item.ChestBoat:
 		front := pos.Side(d.Facing)
@@ -202,31 +185,52 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 			opts.Velocity = direction.Mul(0.1)
 			tx.AddEntity(tx.World().EntityRegistry().Config().ChestBoat(opts, held.Variant.Int()))
 		} else {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		}
 	case item.Minecart, item.MinecartChest, item.MinecartHopper, item.MinecartTNT, item.MinecartCommandBlock:
 		front := pos.Side(d.Facing)
-		if IsRail(tx.Block(front)) {
-			opts = world.EntitySpawnOpts{Position: front.Vec3Middle().Add(mgl64.Vec3{0, 0.0625, 0})}
-			direction, _, _ := RailInfo(tx.Block(front))
-			if direction.Ascending() {
-				opts.Position[1] += 0.5
+		railPos := front
+		if _, air := tx.Block(front).(Air); air {
+			railPos = front.Side(cube.FaceDown)
+		}
+		if IsRail(tx.Block(railPos)) {
+			// Native MinecartItem::dispense requests the rail-cell centre,
+			// offset 1/8 along the horizontal facing, for every rail shape.
+			var centre mgl64.Vec3
+			for axis := range 3 {
+				centre[axis] = float64(float32(railPos[axis]) + .5)
+				if axis != 1 {
+					centre[axis] = float64(float32(centre[axis]) + float32(direction[axis])*.125)
+				}
 			}
+			opts = world.EntitySpawnOpts{Position: centre}
 			conf := tx.World().EntityRegistry().Config()
+			var cart *world.EntityHandle
 			switch held.(type) {
 			case item.Minecart:
-				tx.AddEntity(conf.Minecart(opts))
+				cart = conf.Minecart(opts)
 			case item.MinecartChest:
-				tx.AddEntity(conf.MinecartChest(opts))
+				cart = conf.MinecartChest(opts)
 			case item.MinecartHopper:
-				tx.AddEntity(conf.MinecartHopper(opts))
+				cart = conf.MinecartHopper(opts)
 			case item.MinecartTNT:
-				tx.AddEntity(conf.MinecartTNT(opts))
+				cart = conf.MinecartTNT(opts)
 			case item.MinecartCommandBlock:
-				tx.AddEntity(conf.MinecartCommandBlock(opts))
+				cart = conf.MinecartCommandBlock(opts)
+			}
+			if origin, ok := cart.Type().(interface{ NetworkOffset() float64 }); ok {
+				centre[1] = float64(float32(centre[1]) - float32(origin.NetworkOffset()))
+				cart.SetPosition(centre)
+			}
+			spawned := tx.AddEntity(cart)
+			// Native chunk actor passes include a newly dispensed cart in the
+			// current or a later chunk, but defer a cart entering an earlier
+			// chunk until the next game tick. Coordinates are signed here.
+			if owner, ok := tx.EntityChunk(spawned); ok && owner[0] >= int32(pos[0]>>4) && owner[1] >= int32(pos[2]>>4) {
+				tx.QueueEntityTick(spawned)
 			}
 		} else {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		}
 	case item.FireCharge:
 		tx.AddEntity(tx.World().EntityRegistry().Config().SmallFireball(opts, nil))
@@ -250,14 +254,14 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
 		create := tx.World().EntityRegistry().Config().ArmourStand
 		if create == nil {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		} else {
 			tx.AddEntity(create(opts))
 		}
 	case TNT:
 		create := tx.World().EntityRegistry().Config().TNT
 		if create == nil {
-			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+			d.eject(tx, pos, stack.Grow(1-stack.Count()))
 		} else {
 			tx.AddEntity(create(world.EntitySpawnOpts{Position: pos.Side(d.Facing).Vec3Middle()}, 4*time.Second, nil))
 		}
@@ -276,7 +280,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 					if left.Empty() {
 						left = ctx.NewItem
 					} else {
-						d.eject(tx, opts, ctx.NewItem)
+						d.eject(tx, pos, ctx.NewItem)
 					}
 				}
 				_ = d.inventory.SetItem(slot, left)
@@ -284,7 +288,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 				return
 			}
 		}
-		d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		d.eject(tx, pos, stack.Grow(1-stack.Count()))
 	case item.Bucket, item.MobBucket, item.FishBucket, item.BoneMeal, item.FlintAndSteel, item.GlassBottle:
 		behavior := held.(interface {
 			UseOnBlock(cube.Pos, cube.Face, mgl64.Vec3, *world.Tx, item.User, *item.UseContext) bool
@@ -296,24 +300,24 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 				if left.Empty() {
 					left = ctx.NewItem
 				} else {
-					d.eject(tx, opts, ctx.NewItem)
+					d.eject(tx, pos, ctx.NewItem)
 				}
 			}
 			_ = d.inventory.SetItem(slot, left)
 			notifyComparatorUpdate(pos, tx)
 			return
 		}
-		d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		d.eject(tx, pos, stack.Grow(1-stack.Count()))
 	default:
-		d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		d.eject(tx, pos, stack.Grow(1-stack.Count()))
 	}
 	_ = d.inventory.SetItem(slot, stack.Grow(-1))
 	notifyComparatorUpdate(pos, tx)
 }
 
-func (Dispenser) eject(tx *world.Tx, opts world.EntitySpawnOpts, stack item.Stack) {
-	opts.Velocity = opts.Velocity.Mul(0.2 / 1.1)
-	tx.AddEntity(tx.World().EntityRegistry().Config().Item(opts, stack))
+func (d Dispenser) eject(tx *world.Tx, pos cube.Pos, stack item.Stack) {
+	ejectContainerItem(pos, d.Facing, tx, stack)
+	playItemEjectionEffects(pos, d.Facing, tx)
 }
 
 func (Dispenser) EncodeItem() (string, int16) { return "minecraft:dispenser", 0 }
@@ -357,4 +361,3 @@ func allDispensers() (dispensers []world.Block) {
 }
 
 // ContainerSize returns the nine slots of a dispenser.
-func (Dispenser) ContainerSize() int { return 9 }

@@ -65,6 +65,10 @@ func (r BlockResult) BlockPosition() cube.Pos {
 // if no colliding point was found, a zero BlockResult is returned and ok is false.
 func BlockIntercept(pos cube.Pos, src world.BlockSource, b world.Block, start, end mgl64.Vec3, shape Shape) (result BlockResult, ok bool) {
 	bbs := shapeBoxes(shape, b.Model(), pos, src)
+	return blockBoxesIntercept(pos, bbs, start, end)
+}
+
+func blockBoxesIntercept(pos cube.Pos, bbs []cube.BBox, start, end mgl64.Vec3) (result BlockResult, ok bool) {
 	if len(bbs) == 0 {
 		return
 	}

@@ -15,6 +15,7 @@ type torchNetworkBlock struct {
 	States struct {
 		Signal   int    `json:"redstone_signal"`
 		Powered  bool   `json:"open_bit"`
+		Pressed  bool   `json:"button_pressed_bit"`
 		Facing   string `json:"torch_facing_direction"`
 		Lit      bool   `json:"output_lit_bit"`
 		Subtract bool   `json:"output_subtract_bit"`

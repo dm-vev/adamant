@@ -134,6 +134,25 @@ func (tx *Tx) SetBlockEntity(pos cube.Pos, b Block) {
 	tx.setBlockEntity(pos, b)
 }
 
+// RandomUint32 draws from the world's simulation RNG, shared with block-actor
+// scheduling. Use it when a block's native algorithm consumes raw random words.
+func (tx *Tx) RandomUint32() uint32 {
+	return tx.World().randomUint32()
+}
+
+// RandomFloat32 consumes one raw simulation word using Core::Random's
+// binary32 conversion. It may round a word near uint32's maximum to one.
+func (tx *Tx) RandomFloat32() float32 {
+	return nativeRandomFloat32(tx.World().randomUint32())
+}
+
+// RandomGaussianFloat32 draws from the native cached binary32 Gaussian stream.
+// It shares raw simulation words with RandomUint32 and RandomFloat32.
+func (tx *Tx) RandomGaussianFloat32() float32 {
+	w := tx.World()
+	return w.nativeGaussianFloat.next(w.randomUint32)
+}
+
 // Block reads a block from the position passed. If a chunk is not yet loaded
 // at that position, the chunk is loaded, or generated if it could not be found
 // in the world save, and the block returned.
@@ -194,6 +213,19 @@ func (tx *Tx) ScheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
 	tx.lockShared()
 	defer tx.unlockShared()
 	tx.World().scheduleBlockUpdate(pos, b, delay)
+}
+
+// WithBlockInteraction runs a player block activation with the last processed
+// block queue clock. Native player input precedes the chunk's queue pass,
+// whereas contact and lightning callbacks use the current simulation clock.
+// The event clock is unchanged, and the ordinary queue clock is restored even
+// if the activation panics. Nested activations share the same input clock.
+func (tx *Tx) WithBlockInteraction(activate func()) {
+	queue := tx.World().scheduledBlockTicks
+	clock := queue.currentTick
+	queue.currentTick = queue.processedTick
+	defer func() { queue.currentTick = clock }()
+	activate()
 }
 
 // HasScheduledBlockUpdate reports whether an update of the type of b is
@@ -392,6 +424,42 @@ func (tx *Tx) EntitiesWithin(box cube.BBox) iter.Seq[Entity] {
 	return tx.World().entitiesWithin(tx, box)
 }
 
+// EntityChunk returns the chunk whose entity list currently owns e. Movement
+// within an entity tick may precede migration to a new chunk, so this can differ
+// from the chunk containing e.Position(). The bool is false for removed entities.
+func (tx *Tx) EntityChunk(e Entity) (ChunkPos, bool) {
+	state, ok := tx.World().entities[e.H()]
+	if !ok {
+		return ChunkPos{}, false
+	}
+	return state.pos, true
+}
+
+// QueueEntityTick lets an actor created by a block join this tick's entity
+// movement after block/circuit updates. It does not repeat an entity's normal
+// tick if it has already run, and removed actors are ignored. Call before the
+// post-block phase; ordinary entity spawning does not need this operation.
+func (tx *Tx) QueueEntityTick(e Entity) {
+	w := tx.World()
+	state := w.entities[e.H()]
+	if state == nil {
+		return
+	}
+	tick := w.CurrentTick()
+	if state.firstTickPending {
+		if state.isItem && w.blockTickingPass {
+			if _, pending := w.pendingBlockTickChunks[state.pos]; !pending {
+				return
+			}
+		}
+		state.firstTickPending = false
+		state.lastProcessedTick = tick - 1
+	}
+	if state.lastProcessedTick != tick {
+		w.queuedEntityTicks = append(w.queuedEntityTicks, e.H())
+	}
+}
+
 // Entities returns an iterator that yields all entities in the World.
 func (tx *Tx) Entities() iter.Seq[Entity] {
 	return tx.World().allEntities(tx)
@@ -530,6 +598,9 @@ func (tx *Tx) CurrentTick() int64 {
 
 // close finishes the Tx, causing any following call on the Tx to panic.
 func (tx *Tx) close() {
+	if !tx.closed {
+		tx.w.flushLight()
+	}
 	tx.closed = true
 }
 

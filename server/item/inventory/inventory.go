@@ -230,6 +230,39 @@ func (inv *Inventory) AddItem(it item.Stack) (n int, err error) {
 	return first - it.Count(), fmt.Errorf("could not add full item stack to inventory")
 }
 
+// AddItemInSlotOrder inserts into the first eligible slots in ascending order,
+// allowing an earlier empty slot to precede a later matching stack. Automated
+// native container transfers use this order. It returns the amount inserted and
+// an error when some of the stack does not fit.
+func (inv *Inventory) AddItemInSlotOrder(it item.Stack) (int, error) {
+	if it.Empty() {
+		return 0, nil
+	}
+	first := it.Count()
+	inv.mu.Lock()
+	inv.check()
+	for slot, current := range inv.slots {
+		if current.Empty() {
+			current = it.Grow(-it.Count())
+		}
+		a, b := current.AddStack(it)
+		if b.Count() == it.Count() || !inv.validator(a, slot) {
+			continue
+		}
+		f := inv.setItem(slot, a)
+		defer f()
+		it = b
+		if it.Empty() {
+			break
+		}
+	}
+	inv.mu.Unlock()
+	if !it.Empty() {
+		return first - it.Count(), fmt.Errorf("could not add full item stack to inventory")
+	}
+	return first, nil
+}
+
 // RemoveItem attempts to remove an item from the inventory. It will visit all slots in the inventory and
 // empties them until it.Count() items have been removed from the inventory.
 // If less than it.Count() items were removed from the inventory, an error is returned.

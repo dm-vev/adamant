@@ -303,7 +303,7 @@ func regionsOf(refs []columnRef) [][]columnRef {
 // it does only if some regions tick at once. The regions tick in phases one
 // after another; the owner does what the regions of a phase left to it,
 // region after region, before the next phase.
-func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef) bool {
+func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef, afterBlocks bool) bool {
 	phases := regionPhasesOf(refs, runtime.GOMAXPROCS(0))
 	if !slices.ContainsFunc(phases, func(regions [][]columnRef) bool { return len(regions) > 1 }) {
 		return false
@@ -316,14 +316,14 @@ func (t ticker) tickRegions(tx *Tx, tick int64, refs []columnRef) bool {
 		// Regions find players near them by the grid of players, which the
 		// owner builds again if what it did after the last phase moved any.
 		w.playersByCell(tx)
-		t.tickRegionPhase(tx, tick, groups)
+		t.tickRegionPhase(tx, tick, groups, afterBlocks)
 	}
 	return true
 }
 
 // tickRegionPhase ticks the entities of the regions passed at once, and
 // then does what they left to the owner, region after region.
-func (t ticker) tickRegionPhase(tx *Tx, tick int64, groups [][]columnRef) {
+func (t ticker) tickRegionPhase(tx *Tx, tick int64, groups [][]columnRef, afterBlocks bool) {
 	w := tx.World()
 	regions := make([]*region, len(groups))
 	cells := make(map[regionCellPos]*region, len(groups)*2)
@@ -363,7 +363,7 @@ func (t ticker) tickRegionPhase(tx *Tx, tick int64, groups [][]columnRef) {
 			r := regions[i]
 			r.locals = w.workerLocals[worker]
 			for _, ref := range r.refs {
-				t.tickEntityColumn(r.tx, tick, ref.pos, ref.col, true)
+				t.tickEntityColumn(r.tx, tick, ref.pos, ref.col, true, afterBlocks)
 			}
 			if r.locked != 0 {
 				panic("region finished holding the shared lock")

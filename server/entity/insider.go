@@ -11,6 +11,10 @@ import (
 
 // CheckEntityInsiders applies inside-block effects from available terrain without loading or waiting for chunks.
 func CheckEntityInsiders(tx *world.Tx, box cube.BBox, e world.Entity) {
+	checkEntityInsidersFiltered(tx, box, e, nil)
+}
+
+func checkEntityInsidersFiltered(tx *world.Tx, box cube.BBox, e world.Entity, include func(world.Block) bool) {
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
 
 	for y := low[1]; y <= high[1]; y++ {
@@ -21,7 +25,7 @@ func CheckEntityInsiders(tx *world.Tx, box cube.BBox, e world.Entity) {
 				if !loaded {
 					continue
 				}
-				if collide, ok := b.(block.EntityInsider); ok {
+				if collide, ok := b.(block.EntityInsider); ok && (include == nil || include(b)) {
 					collide.EntityInside(blockPos, tx, e)
 					if _, liquid := b.(world.Liquid); liquid {
 						continue
@@ -29,7 +33,7 @@ func CheckEntityInsiders(tx *world.Tx, box cube.BBox, e world.Entity) {
 				}
 
 				if l, ok := tx.Liquid(blockPos); ok {
-					if collide, ok := l.(block.EntityInsider); ok {
+					if collide, ok := l.(block.EntityInsider); ok && (include == nil || include(l)) {
 						collide.EntityInside(blockPos, tx, e)
 					}
 				}
@@ -40,7 +44,38 @@ func CheckEntityInsiders(tx *world.Tx, box cube.BBox, e world.Entity) {
 
 // checkEntityInsiders checks if the entity is colliding with any EntityInsider blocks.
 func checkEntityInsiders(tx *world.Tx, e world.Entity) {
-	CheckEntityInsiders(tx, e.H().Type().BBox(e).Translate(e.Position()).Grow(-0.0001), e)
+	box := e.H().Type().BBox(e).Translate(e.Position()).Grow(-0.0001)
+	if buttonProjectile(e) {
+		checkEntityInsidersFiltered(tx, box, e, func(b world.Block) bool {
+			_, button := b.(block.Button)
+			return !button
+		})
+		return
+	}
+	CheckEntityInsiders(tx, box, e)
+}
+
+// Native arrow/trident button contacts precede projectile movement. A newly
+// arriving arrow is already stopped at the button in one native snapshot,
+// but presses it on the following entity tick. Other block effects retain
+// their existing contact phase.
+func checkButtonContactsBeforeMovement(tx *world.Tx, e world.Entity) {
+	if !buttonProjectile(e) {
+		return
+	}
+	box := e.H().Type().BBox(e).Translate(e.Position()).Grow(-0.0001)
+	checkEntityInsidersFiltered(tx, box, e, func(b world.Block) bool {
+		_, button := b.(block.Button)
+		return button
+	})
+}
+
+func buttonProjectile(e world.Entity) bool {
+	switch e.H().Type().EncodeEntity() {
+	case "minecraft:arrow", "minecraft:thrown_trident":
+		return true
+	}
+	return false
 }
 
 // stepOnBlock ports the stepOn half of Entity.applyEffectsFromBlocks: an

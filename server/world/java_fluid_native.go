@@ -15,6 +15,26 @@ type javaFluidBlock struct {
 	native Block
 }
 
+// NativeLiquidBoundaryOpen preserves native-only extension blocks' positional
+// collision and SideClosed contracts when a liquid uses its own tick handler.
+// Registered vanilla blocks keep that handler's native flow rules; mixed
+// boundaries use the existing shared aperture calculation without inventing a
+// canonical source identity for an extension.
+func (tx *Tx) NativeLiquidBoundaryOpen(from, to cube.Pos) bool {
+	c := javaShapeContext{tx: tx, pos: from}
+	first, _ := javaFluidStateAt(&c, from)
+	second, _ := javaFluidStateAt(&c, to)
+	if first.native == nil && second.native == nil {
+		return true
+	}
+	for _, face := range cube.Faces() {
+		if from.Side(face) == to {
+			return javaFluidMixedWallPass(&c, first, second, from, int(face))
+		}
+	}
+	return false
+}
+
 func (b javaFluidBlock) is(name string) bool {
 	return b.native == nil && javaName(b.state) == name
 }

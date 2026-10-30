@@ -18,7 +18,7 @@ MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true
 == tick 8
 MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:1.7502238} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
 == tick 9
-MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:1.4177194} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
+MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:1.4177192} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=false ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
 == tick 10
 MoveActorDelta EntityRuntimeID=2 PositionX={Set:false Val:0} PositionY={Set:true Val:1.125} PositionZ={Set:false Val:0} RotationX={Set:false Val:0} RotationY={Set:false Val:0} RotationYHead={Set:false Val:0} OnGround=true ForceMove=false ForceMoveLocalEntity=false ForceCompletion=false Ticks=0
 SetActorMotion EntityRuntimeID=2 Velocity=[0 0 0] Tick=0

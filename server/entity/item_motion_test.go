@@ -2,6 +2,8 @@ package entity
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
@@ -13,42 +15,64 @@ import (
 )
 
 func TestItemMovementMatchesNativeAirSteps(t *testing.T) {
-	w := world.Config{Synchronous: true}.New()
-	t.Cleanup(func() { _ = w.Close() })
-	// Scalar reference for ItemActor::postNormalTick: subtract 0.04 from Y,
-	// move with that velocity, then multiply all axes by 0.98. These expected
-	// states are independent of MovementComputer's implementation.
-	steps := []struct{ pos, vel mgl64.Vec3 }{
-		{mgl64.Vec3{4.1, 10.16, 3.9}, mgl64.Vec3{0.098, 0.1568, -0.098}},
-		{mgl64.Vec3{4.198, 10.2768, 3.802}, mgl64.Vec3{0.09604, 0.114464, -0.09604}},
-		{mgl64.Vec3{4.29404, 10.351264, 3.70596}, mgl64.Vec3{0.0941192, 0.07297472, -0.0941192}},
-	}
-	if err := w.Do(func(tx *world.Tx) {
-		e := tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{4, 10, 4}, Velocity: mgl64.Vec3{0.1, 0.2, -0.1}}, item.NewStack(item.Diamond{}, 1))).(*Ent)
-		for tick, want := range steps {
-			e.Tick(tx, int64(tick))
-			if !e.Position().ApproxEqualThreshold(want.pos, 1e-9) || !e.Velocity().ApproxEqualThreshold(want.vel, 1e-9) {
-				t.Errorf("tick %d: position=%v velocity=%v, want %v %v", tick+1, e.Position(), e.Velocity(), want.pos, want.vel)
-			}
-		}
-	}).Wait(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	testItemMotionTrace(t, "air")
 }
 
 func TestItemLandingAppliesFrictionAfterCollision(t *testing.T) {
+	testItemMotionTrace(t, "landing")
+}
+
+func testItemMotionTrace(t *testing.T, name string) {
+	t.Helper()
+	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_item_motion.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type point struct{ X, Y, Z float64 }
+	vec := func(p point) mgl64.Vec3 { return mgl64.Vec3{p.X, p.Y, p.Z} }
+	type sample struct {
+		Position, Velocity point
+		OnGround           bool `json:"on_ground"`
+	}
+	var native struct {
+		Complete  bool
+		Scenarios []struct {
+			Name    string
+			Spawn   sample
+			Samples []sample
+		}
+	}
+	if err := json.Unmarshal(data, &native); err != nil {
+		t.Fatal(err)
+	}
+	if !native.Complete || len(native.Scenarios) != 2 {
+		t.Fatal("incomplete original-BDS item motion fixture")
+	}
+	var initial sample
+	var steps []sample
+	for _, c := range native.Scenarios {
+		if c.Name == name {
+			initial, steps = c.Spawn, c.Samples
+		}
+	}
+	if len(steps) != 3 {
+		t.Fatal("missing original-BDS motion steps")
+	}
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	if err := w.Do(func(tx *world.Tx) {
-		tx.SetBlock(cube.Pos{4, 0, 4}, block.Stone{}, nil)
-		e := tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{4.5, 1.05, 4.5}, Velocity: mgl64.Vec3{0.1, -0.1, 0}}, item.NewStack(item.Diamond{}, 1))).(*Ent)
-		e.Tick(tx, 0)
-		if !e.OnGround() || !e.Position().ApproxEqualThreshold(mgl64.Vec3{4.6, 1, 4.5}, 1e-9) || !e.Velocity().ApproxEqualThreshold(mgl64.Vec3{0.0588, 0, 0}, 1e-9) {
-			t.Errorf("landing: position=%v velocity=%v onGround=%v", e.Position(), e.Velocity(), e.OnGround())
+		cell := cube.PosFromVec3(vec(initial.Position))
+		for x := -3; x <= 3; x++ {
+			for z := -3; z <= 3; z++ {
+				tx.SetBlock(cube.Pos{cell[0] + x, 64, cell[2] + z}, block.Stone{}, nil)
+			}
 		}
-		e.Tick(tx, 1)
-		if !e.Position().ApproxEqualThreshold(mgl64.Vec3{4.6588, 1, 4.5}, 1e-9) || !e.Velocity().ApproxEqualThreshold(mgl64.Vec3{0.0345744, 0, 0}, 1e-9) {
-			t.Errorf("ground slide: position=%v velocity=%v", e.Position(), e.Velocity())
+		e := tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: vec(initial.Position), Velocity: vec(initial.Velocity)}, item.NewStack(item.Diamond{}, 1))).(*Ent)
+		for tick, want := range steps {
+			e.Tick(tx, int64(tick))
+			if e.Position() != vec(want.Position) || e.Velocity() != vec(want.Velocity) || e.OnGround() != want.OnGround {
+				t.Errorf("tick %d: position=%v velocity=%v grounded=%t, original BDS=%v %v %t", tick+1, e.Position(), e.Velocity(), e.OnGround(), vec(want.Position), vec(want.Velocity), want.OnGround)
+			}
 		}
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)
@@ -137,7 +161,9 @@ type partialItemCollector struct{ world.Entity }
 func (partialItemCollector) Collect(item.Stack) (int, bool) { return 2, true }
 
 func TestPartialHopperCollectionKeepsItemActor(t *testing.T) {
-	w := world.Config{Synchronous: true}.New()
+	settings := (world.NopProvider{}).Settings()
+	settings.CurrentTick = 1 // World.New reaches the even transfer step at 2.
+	w := world.Config{Synchronous: true, Provider: world.NopProvider{Set: settings}}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	if err := w.Do(func(tx *world.Tx) {
 		pos := cube.Pos{4, 0, 4}
@@ -149,8 +175,15 @@ func TestPartialHopperCollectionKeepsItemActor(t *testing.T) {
 		_ = inv.SetItem(4, item.NewStack(item.Diamond{}, 62))
 		tx.SetBlock(pos, hopper, nil)
 		e := tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{4.25, 1.1, 4.3}}, item.NewStack(item.Diamond{}, 5))).(*Ent)
+		control := tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, item.NewStack(item.Stick{}, 1))).(*Ent)
+		if tx.CurrentTick() != 2 {
+			t.Fatal("expected an even hopper transfer step")
+		}
+		// Pickup belongs to the block actor, before the item movement phase.
+		hopper.Tick(tx.CurrentTick(), pos, tx)
 		e.Tick(tx, 0)
-		if e.H().Closed() || e.Behaviour().(*ItemBehaviour).Item().Count() != 3 || !e.Position().ApproxEqualThreshold(mgl64.Vec3{4.25, 1.06, 4.3}, 1e-9) {
+		control.Tick(tx, 0)
+		if e.H().Closed() || e.Behaviour().(*ItemBehaviour).Item().Count() != 3 || e.Position() != control.Position() || e.Velocity() != control.Velocity() {
 			t.Errorf("partial hopper pickup replaced or moved the item: closed=%v count=%d position=%v", e.H().Closed(), e.Behaviour().(*ItemBehaviour).Item().Count(), e.Position())
 		}
 		if got, _ := inv.Item(4); got.Count() != 64 {

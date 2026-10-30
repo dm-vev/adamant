@@ -125,6 +125,9 @@ func (AttackDamageSource) ReducedByArmour() bool        { return true }
 func (AttackDamageSource) ReducedByResistance() bool    { return true }
 func (AttackDamageSource) Fire() bool                   { return false }
 func (AttackDamageSource) IgnoreTotem() bool            { return false }
+
+// SourceEntity returns the entity responsible for this direct attack or break.
+func (s AttackDamageSource) SourceEntity() world.Entity { return s.Attacker }
 func (SonicBoomDamageSource) ReducedByArmour() bool     { return false }
 func (SonicBoomDamageSource) ReducedByResistance() bool { return true }
 func (SonicBoomDamageSource) Fire() bool                { return false }

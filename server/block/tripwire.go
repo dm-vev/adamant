@@ -9,9 +9,12 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// Forty strings put the opposite hook at distance 41.
+const maxTripwireDistance = 41
+
 // Tripwire is a string block that can activate tripwire hooks.
 type Tripwire struct {
-	carpet
+	empty
 	transparent
 	replaceable
 	sourceWaterDisplacer
@@ -26,21 +29,39 @@ type Tripwire struct {
 	WestConnection  bool
 }
 
-// BreakInfo ports TripWireBlock.affectNeighborsAfterRemoval: string taken
-// away trips the hooks of its line, as if pressed, unless shears cut it,
-// disarming it as TripWireBlock.playerWillDestroy does.
+// BreakInfo ...
 func (t Tripwire) BreakInfo() BreakInfo {
-	return newBreakInfo(0, alwaysHarvestable, nothingEffective, simpleDrops(item.NewStack(item.String{}, 1))).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
-		if u != nil {
-			if held, _ := u.HeldItems(); held.Item() != nil {
-				if _, shears := held.Item().(item.Shears); shears {
-					t.Disarmed = true
-				}
-			}
+	return newBreakInfo(0, alwaysHarvestable, nothingEffective, simpleDrops(item.NewStack(item.String{}, 1)))
+}
+
+// PlayerWillDestroy updates the source while the string still exists. Native
+// shears clear its powered bit; other tools set it. Both request the hook's
+// delayed recheck, so the removed string later detaches the remaining line.
+func (t Tripwire) PlayerWillDestroy(pos cube.Pos, tx *world.Tx, source world.DamageSource) {
+	shears := false
+	if damage, ok := source.(world.EntityDamageSource); ok {
+		if carrier, ok := damage.SourceEntity().(item.Carrier); ok {
+			main, _ := carrier.HeldItems()
+			_, shears = main.Item().(item.Shears)
 		}
-		t.Powered = true
-		updateTripwireSource(pos, t, tx)
-	})
+	}
+	t.Powered = !shears
+	tx.SetBlock(pos, t, nil)
+	updateTripwireFrom(pos, tx)
+}
+
+// Placed follows TripWireBlock::onPlace's default permutation, followed by
+// connection/source updates. Same-identifier property edits retain their state.
+func (t Tripwire) Placed(pos cube.Pos, tx *world.Tx, previous world.Block) {
+	if _, same := previous.(Tripwire); same {
+		return
+	}
+	initial := Tripwire{Suspended: true}
+	if t != initial {
+		tx.SetBlock(pos, initial, &world.SetOpts{DisableBlockUpdates: true})
+	}
+	updateTripwireConnections(pos, tx)
+	updateTripwireFrom(pos, tx)
 }
 
 // UseOnBlock places string as BDS does, always with suspended_bit set,
@@ -51,68 +72,28 @@ func (t Tripwire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 		return false
 	}
 	t.Suspended = true
-	t.NorthConnection = tripwireConnectsFrom(tx, pos, cube.North)
-	t.EastConnection = tripwireConnectsFrom(tx, pos, cube.East)
-	t.SouthConnection = tripwireConnectsFrom(tx, pos, cube.South)
-	t.WestConnection = tripwireConnectsFrom(tx, pos, cube.West)
 	place(tx, pos, t, user, ctx)
-	if placed(ctx) {
-		// TripWireBlock.onPlace.
-		updateTripwireSource(pos, t, tx)
-	}
+	updateTripwireConnections(pos, tx)
+	updateTripwireFrom(pos, tx)
 	return placed(ctx)
 }
 
-// NeighbourUpdateTick ports TripWireBlock.updateShape: string connects to
-// the string and facing hooks beside it.
+// NeighbourUpdateTick ...
 func (t Tripwire) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	updateTripwireConnections(pos, tx)
 }
 
-// tripwireShape is the shape of string: low over the ground when attached
-// to hooks, half a block high otherwise.
-func (t Tripwire) tripwireShape() cube.BBox {
-	if t.Attached {
-		return cube.Box(0, 1.0/16, 0, 1, 2.5/16, 1)
-	}
-	return cube.Box(0, 0, 0, 1, 0.5, 1)
-}
-
-// EntityInside ports TripWireBlock.entityInside: an entity in the shape of
-// unpowered string presses it.
-func (t Tripwire) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
-	if t.Powered || tx.HasScheduledBlockUpdate(pos, t) {
-		return
-	}
-	if !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(t.tripwireShape().Translate(pos.Vec3())) {
-		return
-	}
-	t.checkPressed(pos, tx, true)
-}
-
-// ScheduledTick ports TripWireBlock.tick: pressed string checks whether it
-// still is.
-func (t Tripwire) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+// EntityInside ...
+func (t Tripwire) EntityInside(pos cube.Pos, tx *world.Tx, _ world.Entity) {
 	if t.Powered {
-		t.checkPressed(pos, tx, tripwirePressed(pos, t, tx))
+		return
 	}
+	t.updatePowered(pos, tx)
 }
 
-// checkPressed ports TripWireBlock.checkPressed: string pressed or let go
-// updates the hooks of its line, and checks again in 10 ticks while pressed,
-// or the next tick once let go.
-func (t Tripwire) checkPressed(pos cube.Pos, tx *world.Tx, pressed bool) {
-	was := t.Powered
-	if pressed != was {
-		t.Powered = pressed
-		tx.SetBlock(pos, t, nil)
-		updateTripwireSource(pos, t, tx)
-	}
-	if pressed {
-		tx.ScheduleBlockUpdate(pos, t, gameTicks(10))
-	} else if was {
-		tx.ScheduleBlockUpdate(pos, t, gameTicks(1))
-	}
+// ScheduledTick ...
+func (t Tripwire) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	t.updatePowered(pos, tx)
 }
 
 // EncodeItem ...
@@ -134,40 +115,60 @@ func (t Tripwire) EncodeBlock() (string, map[string]any) {
 	}
 }
 
-// tripwirePressed reports if an entity is within the shape of the string.
-func tripwirePressed(pos cube.Pos, t Tripwire, tx *world.Tx) bool {
-	for range tx.EntitiesWithin(t.tripwireShape().Translate(pos.Vec3())) {
+func (t Tripwire) updatePowered(pos cube.Pos, tx *world.Tx) {
+	powered := tripwirePowered(pos, tx)
+	if powered == t.Powered {
+		if powered {
+			tx.ScheduleBlockUpdate(pos, t, gameTicks(10))
+		}
+		return
+	}
+	t.Powered = powered
+	tx.SetBlock(pos, t, nil)
+	updateTripwireFrom(pos, tx)
+	if powered {
+		tx.ScheduleBlockUpdate(pos, t, gameTicks(10))
+	}
+}
+
+func tripwirePowered(pos cube.Pos, tx *world.Tx) bool {
+	t, ok := tx.Block(pos).(Tripwire)
+	if !ok {
+		return false
+	}
+	var box cube.BBox
+	if !t.Suspended {
+		box = cube.Box(0, 0, 0, 1, 3.0/32, 1)
+	} else if t.Attached {
+		box = cube.Box(0, 1.0/16, 0, 1, 5.0/32, 1)
+	} else {
+		box = cube.Box(0, 0, 0, 1, 0.5, 1)
+	}
+	for range redstoneEntitiesInBox(tx, box.Translate(pos.Vec3()), false) {
 		return true
 	}
 	return false
 }
 
-// tripwireMaxDistance is how far apart, exclusive, two hooks of one line
-// may be.
-const tripwireMaxDistance = 42
-
-// updateTripwireSource ports TripWireBlock.updateSource: the hook at the
-// south or west end of the line of string through pos recalculates the
-// line, taking the string at pos to be in the state passed.
-func updateTripwireSource(pos cube.Pos, state Tripwire, tx *world.Tx) {
+func updateTripwireFrom(pos cube.Pos, tx *world.Tx) {
+	// The native callback searches south and west; calculateState updates
+	// both end hooks and all intervening strings.
 	for _, dir := range []cube.Direction{cube.South, cube.West} {
 		cur := pos
-		for i := 1; i < tripwireMaxDistance; i++ {
+		for distance := 1; distance <= maxTripwireDistance; distance++ {
 			cur = cur.Side(dir.Face())
-			b := tx.Block(cur)
-			if hook, ok := b.(TripwireHook); ok {
-				if hook.Facing == dir.Opposite() {
-					calculateTripwireHook(cur, hook, false, true, i, &state, tx)
-				}
-				break
+			b, _ := tx.BlockLoaded(cur)
+			if _, ok := b.(Tripwire); ok {
+				continue
 			}
-			if _, ok := b.(Tripwire); !ok {
-				break
+			hook, ok := b.(TripwireHook)
+			if ok && hook.Facing == dir.Opposite() {
+				updateTripwireLineChanged(cur, hook, tx, distance)
 			}
+			break
 		}
 	}
 }
-
 func updateTripwireConnections(pos cube.Pos, tx *world.Tx) {
 	t, ok := tx.Block(pos).(Tripwire)
 	if !ok {
@@ -193,6 +194,85 @@ func updateTripwireConnections(pos cube.Pos, tx *world.Tx) {
 	t.SouthConnection = connections[cube.South]
 	t.WestConnection = connections[cube.West]
 	tx.SetBlock(pos, t, &world.SetOpts{DisableBlockUpdates: true})
+}
+
+func updateTripwireLine(pos cube.Pos, hook TripwireHook, tx *world.Tx) {
+	updateTripwireLineChanged(pos, hook, tx, -1)
+}
+
+func updateTripwireLineChanged(pos cube.Pos, hook TripwireHook, tx *world.Tx, changedIndex int) {
+	facing := hook.Facing
+	attached := false
+	continuous := true
+	powered := false
+	wirePositions := make([]cube.Pos, 0, maxTripwireDistance)
+	var otherPos cube.Pos
+	var otherHook TripwireHook
+	foundOther := false
+
+	cur := pos
+	for distance := 1; distance <= maxTripwireDistance; distance++ {
+		cur = cur.Side(facing.Face())
+		b, _ := tx.BlockLoaded(cur)
+		if tw, ok := b.(Tripwire); ok {
+			wirePositions = append(wirePositions, cur)
+			if tw.Powered && !tw.Disarmed {
+				powered = true
+			}
+			if distance == changedIndex {
+				continuous = continuous && !tw.Disarmed
+				tx.ScheduleBlockUpdate(pos, hook, gameTicks(10))
+			}
+			continue
+		}
+		if other, ok := b.(TripwireHook); ok {
+			if other.Facing == facing.Opposite() {
+				attached = distance >= 2 && continuous
+				otherPos, otherHook, foundOther = cur, other, true
+			}
+			break
+		}
+		// Native calculateState continues over holes to update the opposite
+		// hook and surviving strings when a later source update rescans.
+		continuous = false
+	}
+	if !attached {
+		powered = false
+	}
+	strength := 0
+	if powered {
+		strength = 15
+	}
+	if foundOther {
+		updateHookState(otherPos, otherHook, attached, powered, tx)
+		tx.Redstone().SetProducerStrength(otherPos, strength)
+		// Native uses the starting hook's previous flags for both sounds.
+		emitTripwireHookState(otherPos, tx, hook, attached, powered)
+	}
+	emitTripwireHookState(pos, tx, hook, attached, powered)
+	updateHookState(pos, hook, attached, powered, tx)
+	tx.Redstone().SetProducerStrength(pos, strength)
+	if hook.Attached == attached || !foundOther {
+		return
+	}
+	for _, wirePos := range wirePositions {
+		updateTripwireConnections(wirePos, tx)
+		tw := tx.Block(wirePos).(Tripwire)
+		if tw.Attached != attached {
+			tw.Attached = attached
+			tx.SetBlock(wirePos, tw, nil)
+		}
+	}
+}
+
+func updateHookState(pos cube.Pos, hook TripwireHook, attached, powered bool, tx *world.Tx) {
+	if hook.Attached == attached && hook.Powered == powered {
+		return
+	}
+	hook.Attached = attached
+	hook.Powered = powered
+	tx.SetBlock(pos, hook, nil)
+	tx.DoBlockUpdatesAround(pos.Side(hook.Facing.Opposite().Face()))
 }
 
 func (t Tripwire) ReconstructMissingState(pos cube.Pos, missing []string, bs world.BlockSource) world.Block {

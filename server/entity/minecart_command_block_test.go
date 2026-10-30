@@ -3,6 +3,7 @@ package entity
 import (
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -20,5 +21,22 @@ func TestCommandBlockMinecartNBTRoundTrip(t *testing.T) {
 		if got[key] != want {
 			t.Errorf("%s = %#v, want %#v", key, got[key], want)
 		}
+	}
+}
+
+func TestCommandBlockMinecartContainerNBTRoundTrip(t *testing.T) {
+	data := &world.EntityData{}
+	(CommandBlockMinecartConfig{SuccessCount: 7}).Apply(data)
+	before := data.Data.(*commandBlockMinecartBehaviour)
+	if err := before.inv.SetItem(0, item.NewStack(item.Diamond{}, 37)); err != nil {
+		t.Fatal(err)
+	}
+	encoded := CommandBlockMinecartType.EncodeNBT(data)
+	decoded := &world.EntityData{}
+	CommandBlockMinecartType.DecodeNBT(encoded, decoded)
+	after := decoded.Data.(*commandBlockMinecartBehaviour)
+	stack, err := after.inv.Item(0)
+	if err != nil || after.inv.Size() != 1 || stack.Count() != 37 || !stack.Comparable(item.NewStack(item.Diamond{}, 1)) || after.successCount != 7 {
+		t.Fatalf("command-cart container was not preserved: stack=%v, success=%d, error=%v", stack, after.successCount, err)
 	}
 }

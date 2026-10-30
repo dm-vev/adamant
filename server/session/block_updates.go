@@ -33,6 +33,14 @@ func (s *Session) ViewBlockUpdates(u *world.BlockUpdates) {
 	if s == Nop {
 		return
 	}
+	for _, update := range u.Updates {
+		s.blockUpdatesMu.Lock()
+		_, pending := s.blockUpdates[blockUpdateKey{pos: update.Pos, layer: uint8(update.Layer)}]
+		s.blockUpdatesMu.Unlock()
+		if pending {
+			s.enqueueBlockUpdate(update.Pos, update.Block, update.Layer)
+		}
+	}
 	shared, _ := u.Shared.(*sharedBlockUpdates)
 	if shared == nil {
 		shared = blockUpdatePackets(s.br, u.Updates)
@@ -50,17 +58,8 @@ func (s *Session) ViewBlockUpdates(u *world.BlockUpdates) {
 
 // ViewBlockUpdate ...
 func (s *Session) ViewBlockUpdate(pos cube.Pos, b world.Block, layer int) {
-	if s == Nop {
-		return
-	}
-	s.writePacket(&v2193.UpdateBlockPacket{
-		Position:          blockPos(pos),
-		NewBlockRuntimeID: networkBlockID(s.br, b),
-		Flags:             v2193.BlockUpdateNetwork,
-		Layer:             uint32(layer),
-	})
-	if data := s.blockActorUpdateNBT(pos, b); data != nil {
-		s.writePacket(&v2193.BlockActorDataPacket{Position: blockPos(pos), NBTData: data})
+	if s != Nop {
+		s.enqueueBlockUpdate(pos, b, layer)
 	}
 }
 

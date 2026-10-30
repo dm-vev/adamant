@@ -52,6 +52,12 @@ func (w *World) viewBlockUpdate(c *Column, pos cube.Pos, b Block, layer int) {
 	if len(c.viewers) == 0 {
 		return
 	}
+	if _, ordered := b.(UpdateNBTer); ordered {
+		for v := range c.viewers {
+			v.ViewBlockUpdate(pos, b, layer)
+		}
+		return
+	}
 	p := &c.pendingBlocks
 	key := blockUpdateKey{pos: pos, layer: uint8(layer)}
 	if i, ok := p.index[key]; ok {

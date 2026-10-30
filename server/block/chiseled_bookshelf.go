@@ -16,16 +16,19 @@ type ChiseledBookshelf struct {
 	solid
 	bass
 
-	Facing cube.Direction
-	Items [6]item.Stack
+	Facing             cube.Direction
+	Items              [6]item.Stack
 	LastInteractedSlot int
-	StoredMask uint8
+	StoredMask         uint8
 }
+
 // Hash ...
 func (b ChiseledBookshelf) Hash() (uint64, uint64) {
 	mask := b.StoredMask & 63
 	for slot, stack := range b.Items {
-		if !stack.Empty() { mask |= 1 << slot }
+		if !stack.Empty() {
+			mask |= 1 << slot
+		}
 	}
 	return hashChiseledBookshelf, uint64(b.Facing)&3 | uint64(mask)<<2
 }
@@ -34,6 +37,7 @@ func (b ChiseledBookshelf) Hash() (uint64, uint64) {
 func NewChiseledBookshelf() ChiseledBookshelf {
 	return ChiseledBookshelf{Facing: cube.North, LastInteractedSlot: -1}
 }
+
 // WithStoredMask sets the six occupancy bits decoded from native block state.
 func (b ChiseledBookshelf) WithStoredMask(mask uint8) ChiseledBookshelf {
 	b.StoredMask = mask & 63
@@ -44,19 +48,22 @@ func (b ChiseledBookshelf) EncodeItem() (string, int16) { return "minecraft:chis
 func (b ChiseledBookshelf) EncodeBlock() (string, map[string]any) {
 	mask := b.StoredMask & 63
 	for slot, stack := range b.Items {
-		if !stack.Empty() { mask |= 1 << slot }
+		if !stack.Empty() {
+			mask |= 1 << slot
+		}
 	}
 	return "minecraft:chiseled_bookshelf", map[string]any{
-		"direction": int32(horizontalDirection(b.Facing)),
+		"direction":    int32(horizontalDirection(b.Facing)),
 		"books_stored": int32(mask),
 	}
 }
 
-
 // UseOnBlock places the bookshelf facing away from the player.
 func (b ChiseledBookshelf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, ok := firstReplaceable(tx, pos, face, b)
-	if !ok { return false }
+	if !ok {
+		return false
+	}
 	b = NewChiseledBookshelf()
 	b.Facing = user.Rotation().Direction().Opposite()
 	place(tx, pos, b, user, ctx)
@@ -66,23 +73,30 @@ func (b ChiseledBookshelf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3
 // ActivateAt handles the clicked shelf face and exact slot, preserving Java's
 // held-book insertion and empty-hand retrieval behavior.
 func (b ChiseledBookshelf) ActivateAt(pos cube.Pos, face cube.Face, hit mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
-	if face != b.Facing.Face() { return false }
+	if face != b.Facing.Face() {
+		return false
+	}
 	x := hit[0]
 	z := hit[2]
 	var horizontal float64
 	switch b.Facing {
-	case cube.North: horizontal = 1 - x
-	case cube.South: horizontal = x
-	case cube.West: horizontal = z
-	case cube.East: horizontal = 1 - z
-	default: return false
+	case cube.North:
+		horizontal = 1 - x
+	case cube.South:
+		horizontal = x
+	case cube.West:
+		horizontal = z
+	case cube.East:
+		horizontal = 1 - z
+	default:
+		return false
 	}
 	column := max(0, min(2, int(horizontal*3)))
 	row := max(0, min(1, int((1-hit[1])*2)))
 	slot := row*3 + column
 	held, _ := user.HeldItems()
 	if acceptsBookshelfBook(held) && b.Items[slot].Empty() {
-		b.Items[slot] = held.Grow(1-held.Count())
+		b.Items[slot] = held.Grow(1 - held.Count())
 		b.StoredMask |= 1 << slot
 		b.LastInteractedSlot = slot
 		ctx.SubtractFromCount(1)
@@ -110,13 +124,19 @@ func (b ChiseledBookshelf) ActivateAt(pos cube.Pos, face cube.Face, hit mgl64.Ve
 	tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: soundName, Volume: 1, Pitch: 1})
 	notifyComparatorUpdate(pos, tx)
 	if p, ok := user.(interface{ Inventory() *inventory.Inventory }); ok {
-		if _, err := p.Inventory().AddItem(book); err != nil { dropItem(tx, book, pos.Vec3Centre()) }
-	} else { dropItem(tx, book, pos.Vec3Centre()) }
+		if _, err := p.Inventory().AddItem(book); err != nil {
+			dropItem(tx, book, pos.Vec3Centre())
+		}
+	} else {
+		dropItem(tx, book, pos.Vec3Centre())
+	}
 	return true
 }
 
 func acceptsBookshelfBook(stack item.Stack) bool {
-	if stack.Empty() { return false }
+	if stack.Empty() {
+		return false
+	}
 	name, _ := stack.Item().EncodeItem()
 	switch name {
 	case "minecraft:book", "minecraft:enchanted_book", "minecraft:writable_book", "minecraft:written_book":
@@ -125,19 +145,26 @@ func acceptsBookshelfBook(stack item.Stack) bool {
 	return false
 }
 
-// ComparatorOutput exposes the slot most recently interacted with, as in Java.
+// ComparatorOutput exposes the slot most recently interacted with, even after
+// that slot has been emptied.
 func (b ChiseledBookshelf) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
-	if b.LastInteractedSlot < 0 || b.LastInteractedSlot >= len(b.Items) { return 0 }
+	if b.LastInteractedSlot < 0 || b.LastInteractedSlot >= len(b.Items) {
+		return 0
+	}
 	return uint8(b.LastInteractedSlot + 1)
 }
 
 // InsertItem accepts the first item from a hopper that fits the first empty slot.
 func (b ChiseledBookshelf) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 	for sourceSlot, stack := range h.inventory.Slots() {
-		if !acceptsBookshelfBook(stack) { continue }
+		if !acceptsBookshelfBook(stack) {
+			continue
+		}
 		for slot := range b.Items {
-			if !b.Items[slot].Empty() { continue }
-			b.Items[slot] = stack.Grow(1-stack.Count())
+			if !b.Items[slot].Empty() {
+				continue
+			}
+			b.Items[slot] = stack.Grow(1 - stack.Count())
 			b.StoredMask |= 1 << slot
 			b.LastInteractedSlot = slot
 			_ = h.inventory.SetItem(sourceSlot, stack.Grow(-1))
@@ -152,8 +179,12 @@ func (b ChiseledBookshelf) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool
 // ExtractItem transfers the first occupied slot to a hopper.
 func (b ChiseledBookshelf) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 	for slot := range b.Items {
-		if b.Items[slot].Empty() { continue }
-		if _, err := h.inventory.AddItem(b.Items[slot]); err != nil { return false }
+		if b.Items[slot].Empty() {
+			continue
+		}
+		if _, err := h.inventory.AddItem(b.Items[slot]); err != nil {
+			return false
+		}
 		b.Items[slot] = item.Stack{}
 		b.StoredMask &^= 1 << slot
 		b.LastInteractedSlot = slot
@@ -171,12 +202,15 @@ func (ChiseledBookshelf) BreakInfo() BreakInfo {
 // EncodeNBT stores the six independent stacks and comparator memory in the block actor.
 func (b ChiseledBookshelf) EncodeNBT() map[string]any {
 	data := map[string]any{
-		"id": "ChiseledBookshelf",
+		"id":                 "ChiseledBookshelf",
 		"BlockEntityVersion": int32(0),
 	}
 	hasItems := false
 	for _, stack := range b.Items {
-		if !stack.Empty() { hasItems = true; break }
+		if !stack.Empty() {
+			hasItems = true
+			break
+		}
 	}
 	if hasItems {
 		items := make([]any, len(b.Items))
@@ -203,11 +237,15 @@ func (b ChiseledBookshelf) DecodeNBT(data map[string]any) any {
 	registry := world.BlockRegistryFromNBT(data)
 	for slot := range b.Items {
 		b.Items[slot] = item.Stack{}
-		if slot >= len(items) { continue }
+		if slot >= len(items) {
+			continue
+		}
 		entry, _ := items[slot].(map[string]any)
 		stack := item.ReadNBT(entry, nil, registry)
-		if stack.Empty() { continue }
-		b.Items[slot] = stack.Grow(1-stack.Count())
+		if stack.Empty() {
+			continue
+		}
+		b.Items[slot] = stack.Grow(1 - stack.Count())
 		b.StoredMask |= 1 << slot
 	}
 	last, ok := data["LastInteractedSlot"]
@@ -222,6 +260,8 @@ func (b ChiseledBookshelf) DecodeNBT(data map[string]any) any {
 	} else {
 		b.LastInteractedSlot = -1
 	}
-	if b.LastInteractedSlot < -1 || b.LastInteractedSlot > 5 { b.LastInteractedSlot = -1 }
+	if b.LastInteractedSlot < -1 || b.LastInteractedSlot > 5 {
+		b.LastInteractedSlot = -1
+	}
 	return b
 }

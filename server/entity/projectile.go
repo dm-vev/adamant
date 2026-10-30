@@ -270,7 +270,11 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 // tickAttached performs the attached logic for a projectile. It checks if the
 // projectile is still attached to a block and if it can be picked up.
 func (lt *ProjectileBehaviour) tickAttached(e *Ent, tx *world.Tx) bool {
-	boxes := tx.Block(lt.collisionPos).Model().BBox(lt.collisionPos, tx)
+	b := tx.Block(lt.collisionPos)
+	boxes := b.Model().BBox(lt.collisionPos, tx)
+	if collider, ok := b.(world.ProjectileCollider); ok {
+		boxes = collider.ProjectileBBox(lt.collisionPos, tx, e)
+	}
 	box := e.H().Type().BBox(e).Translate(e.Position())
 
 	for _, bb := range boxes {
@@ -404,10 +408,15 @@ func (lt *ProjectileBehaviour) tickMovement(e *Ent, tx *world.Tx) (*Movement, tr
 	viewers := tx.Viewers(pos)
 
 	velBefore := vel
-	if lt.conf.Acceleration > 0 {
-		vel = lt.applyInertia(tx, pos, vel)
-	} else {
-		vel = lt.mc.applyHorizontalForces(tx, pos, lt.mc.applyVerticalForces(vel))
+	_, nativeArrow := e.H().Type().(arrowType)
+	// ProjectileSystem traces the existing arrow velocity. Gravity and drag
+	// affect the following step, not the segment about to collide.
+	if !nativeArrow {
+		if lt.conf.Acceleration > 0 {
+			vel = lt.applyInertia(tx, pos, vel)
+		} else {
+			vel = lt.mc.applyHorizontalForces(tx, pos, lt.mc.applyVerticalForces(vel))
+		}
 	}
 	rot := cube.Rotation{
 		mgl64.RadToDeg(math.Atan2(vel[0], vel[2])),
@@ -419,12 +428,19 @@ func (lt *ProjectileBehaviour) tickMovement(e *Ent, tx *world.Tx) (*Movement, tr
 		hit trace.Result
 		ok  bool
 	)
+	if nativeArrow {
+		for axis := range end {
+			end[axis] = float64(float32(pos[axis]) + float32(vel[axis]))
+		}
+	}
 	if !mgl64.FloatEqual(end.Sub(pos).LenSqr(), 0) {
-		if hit, ok = trace.Perform(pos, end, tx, e.H().Type().BBox(e).Grow(1.0), lt.ignores(e), trace.RayShape); ok {
+		if hit, ok = trace.PerformProjectile(pos, end, tx, e.H().Type().BBox(e).Grow(1.0), lt.ignores(e), e); ok {
 			if _, ok := hit.(trace.BlockResult); ok {
 				// Undo the gravity because the velocity as a result of gravity
 				// at the point of collision should be 0.
-				vel[1] = (vel[1] + lt.mc.Gravity) / (1 - lt.mc.Drag)
+				if !nativeArrow {
+					vel[1] = (vel[1] + lt.mc.Gravity) / (1 - lt.mc.Drag)
+				}
 				x, y, z := vel.Mul(lt.conf.BlockCollisionVelocityMultiplier).Elem()
 				// Calculate multipliers for all coordinates: 1 for the ones that
 				// weren't on the same axis as the one collided with, -1 for the one
@@ -436,6 +452,18 @@ func (lt *ProjectileBehaviour) tickMovement(e *Ent, tx *world.Tx) (*Movement, tr
 				vel = zeroVec3
 			}
 			end = hit.Position()
+		}
+	}
+	if nativeArrow && hit == nil {
+		friction := 1 - float32(lt.mc.Drag)
+		for axis := range vel {
+			vel[axis] = float64(float32(vel[axis]) * friction)
+		}
+		vel[1] = float64(float32(vel[1]) - float32(lt.mc.Gravity))
+	} else if nativeArrow {
+		for axis := range end {
+			end[axis] = float64(float32(end[axis]))
+			vel[axis] = float64(float32(vel[axis]))
 		}
 	}
 	return &Movement{v: viewers, releaseTx: tx, e: e, pos: end, vel: vel, dpos: end.Sub(pos), dvel: vel.Sub(velBefore), rot: rot}, hit

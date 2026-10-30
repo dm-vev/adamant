@@ -3,6 +3,7 @@ package world
 import (
 	"cmp"
 	"math"
+	"math/rand/v2"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -213,8 +214,9 @@ func (t ticker) tick(tx *Tx) {
 		tryAdvanceDay = w.set.RequiredSleepTicks <= 0
 	}
 	w.set.Unlock()
-	// Both Java registries share the same game-time clock, even though the
-	// block queue drains before the fluid queue.
+	// Contact and other simulation callbacks use this tick's queue clock.
+	// Player block interactions retain the last processed queue clock through
+	// Tx.WithBlockInteraction, before the next scheduled block pass.
 	w.scheduledBlockTicks.currentTick = tick
 	w.scheduledFluidTicks.currentTick = tick
 	t.tickInhabitedTime(w, loaders)
@@ -250,11 +252,13 @@ func (t ticker) tick(tx *Tx) {
 			spawnTick(tx)
 		}
 		tx.TickRaids()
-		w.scheduledBlockTicks.tick(tx, tick, loaders...)
+		w.scheduledBlockTicks.tickNonCircuits(tx, tick, loaders...)
 		w.scheduledFluidTicks.tick(tx, tick, loaders...)
 		t.tickBlocksRandomly(tx, loaders, tick)
 		t.performNeighbourUpdates(tx)
 		w.redstone.tick(tx, tick)
+		t.tickQueuedEntities(tx, tick)
+		t.tickEntitiesInPhase(tx, tick, true)
 	}
 	if w.sprintTicks.Load() > 0 {
 		w.sprintTicks.Add(-1)
@@ -379,7 +383,10 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 // every loaded chunk because they have no background loaders.
 func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	w := tx.World()
-	r := int32(w.tickRange())
+	var (
+		r = int32(w.tickRange())
+		g randUint4
+	)
 	if r == 0 && len(w.forcedChunks) == 0 {
 		// NOP if the simulation distance is 0 and no forced chunks exist.
 		return
@@ -428,60 +435,138 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		areas = append(areas, loaderActiveArea{pos: pos, radius: 0})
 	}
 	w.scratchLoaderAreas = areas
+	// Native chunk activation admits newborn items only if their owner chunk
+	// still participates in this pass. ItemActor::postNormalTick itself runs
+	// globally after queued block actions, not inline in each chunk.
+	if w.pendingBlockTickChunks == nil {
+		w.pendingBlockTickChunks = make(map[ChunkPos]struct{}, len(columns))
+	}
+	clear(w.pendingBlockTickChunks)
+	for _, ref := range columns {
+		if (w.conf.Synchronous || blockColumnWithinAreas(ref.pos, areas)) && w.blockTickingReady(ref.pos, ref.col) {
+			w.pendingBlockTickChunks[ref.pos] = struct{}{}
+		}
+	}
+	w.blockTickingPass = true
+	defer func() { w.blockTickingPass = false }()
+	visitColumns := func(visit func(columnRef)) {
+		if w.conf.Synchronous {
+			// Manual worlds intentionally tick every loaded column, without
+			// native player/ticking-area membership. Retain their stable order.
+			for _, ref := range columns {
+				visit(ref)
+			}
+			return
+		}
+		eligible := make(map[ChunkPos]*Column, len(columns))
+		for _, ref := range columns {
+			eligible[ref.pos] = ref.col
+		}
+		seen := make(map[ChunkPos]struct{}, len(columns))
+		for index, area := range areas[:len(loaders)] {
+			minimum, maximum := ChunkPos{area.pos[0] - area.radius, area.pos[1] - area.radius}, ChunkPos{area.pos[0] + area.radius, area.pos[1] + area.radius}
+			visitChunkRectangle(minimum, maximum, randomizeChunkArea(tick, uint64(index)), w.randomIntN, func(pos ChunkPos) {
+				if _, done := seen[pos]; done {
+					return
+				}
+				col := eligible[pos]
+				if col == nil || !blockColumnWithinArea(pos, area) {
+					return
+				}
+				seen[pos] = struct{}{}
+				visit(columnRef{pos: pos, col: col})
+			})
+		}
+		// Explicit per-chunk force tickets and unusually large custom loader
+		// areas keep their existing coverage. Native standalone area grouping
+		// and persistence are separate from this player-area traversal.
+		for _, ref := range columns {
+			if _, done := seen[ref.pos]; done {
+				continue
+			}
+			if blockColumnWithinAreas(ref.pos, areas) {
+				visit(ref)
+			}
+		}
+	}
 
 	blockEntities := w.scratchBlockEntities[:0]
 	randomBlocks := w.scratchRandom[:0]
+	tickActors := func(c *Column, pos ChunkPos) {
+		// Native LevelChunk::tickImpl drains its pending block queue before
+		// copying/shuffling actors (client 0x32ca437, 0x32cab8f). Components
+		// already ported to the Bedrock circuit clock follow that chunk pass.
+		w.scheduledBlockTicks.tickCircuitChunk(tx, tick, pos)
+		// LevelChunk::tickImpl executes its actor pass before the next
+		// chunk begins. Actor callbacks may consume the same RNG used by
+		// that next chunk's shuffle or replace its not-yet-copied actors.
+		blockEntities = appendShuffledBlockEntities(blockEntities[:0], c.tickerBlockEntityPositions(), worldRandomWords{w})
+		tickBlockEntityRefs(tx, tick, blockEntities)
+		delete(w.pendingBlockTickChunks, pos)
+	}
 
 	if !doRandomTicks {
-		for _, ref := range columns {
-			if !w.conf.Synchronous && !columnWithinAreas(ref.pos, areas) {
-				continue
+		visitColumns(func(ref columnRef) {
+			if !w.conf.Synchronous && !blockColumnWithinAreas(ref.pos, areas) {
+				return
 			}
 			c := ref.col
 			if !w.blockTickingReady(ref.pos, c) {
-				continue
+				return
 			}
-			blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
-			w.tickPrecipitation(tx, ref.pos)
-		}
-		for _, pos := range blockEntities {
-			tb := tx.chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
-			tb.Tick(tick, pos, tx)
-		}
+			w.tickChunkPrecipitation(tx, ref.pos)
+			tickActors(c, ref.pos)
+		})
 		w.scratchLoaderAreas = areas[:0]
 		w.scratchRandom = randomBlocks[:0]
 		w.scratchBlockEntities = blockEntities[:0]
 		return
 	}
 
-	scan := w.scratchRandomScan[:0]
-	for _, ref := range columns {
-		if !w.conf.Synchronous && !columnWithinAreas(ref.pos, areas) {
-			continue
+	minSubY := tx.Range().Min() >> 4
+
+	visitColumns(func(ref columnRef) {
+		if !w.conf.Synchronous && !blockColumnWithinAreas(ref.pos, areas) {
+			return
 		}
 		c := ref.col
 		if !w.blockTickingReady(ref.pos, c) {
-			continue
+			return
 		}
-		blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
-		w.tickPrecipitation(tx, ref.pos)
-		if indices := c.randomTickSubChunkIndices(w.conf.Blocks); len(indices) != 0 {
-			scan = append(scan, randomTickScan{pos: ref.pos, sub: c.Sub(), indices: indices})
-		}
-	}
-	randomBlocks = w.findRandomTicks(randomBlocks, scan, randomTickSpeed, w.r.Uint64())
-	clear(scan)
-	w.scratchRandomScan = scan[:0]
+		w.tickChunkPrecipitation(tx, ref.pos)
 
-	for _, pos := range randomBlocks {
-		if rb, ok := tx.Block(pos).(RandomTicker); ok {
-			rb.RandomTick(pos, tx, w.r)
+		cx, cz := int(ref.pos[0]<<4), int(ref.pos[1]<<4)
+		subChunks := c.Sub()
+		randomSubIndices := c.randomTickSubChunkIndices(w.conf.Blocks)
+		if len(randomSubIndices) == 0 {
+			tickActors(c, ref.pos)
+			return
 		}
-	}
-	for _, pos := range blockEntities {
-		tb := tx.chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
-		tb.Tick(tick, pos, tx)
-	}
+
+		// We generate up to j random positions for every sub chunk that may contain random-tickable blocks.
+		for j := 0; j < randomTickSpeed; j++ {
+			x, y, z := g.uint4(w.r), g.uint4(w.r), g.uint4(w.r)
+
+			for _, subIndex := range randomSubIndices {
+				sub := subChunks[subIndex]
+				if rid := sub.Layers()[0].At(x, y, z); tx.World().conf.Blocks.RandomTickBlock(rid) {
+					subY := (subIndex + minSubY) << 4
+					randomBlocks = append(randomBlocks, cube.Pos{cx + int(x), subY + int(y), cz + int(z)})
+
+					// Only generate new coordinates if a tickable block was actually found. If not, we can just re-use
+					// the coordinates for the next sub chunk.
+					x, y, z = g.uint4(w.r), g.uint4(w.r), g.uint4(w.r)
+				}
+			}
+		}
+		for _, pos := range randomBlocks {
+			if rb, ok := tx.Block(pos).(RandomTicker); ok {
+				rb.RandomTick(pos, tx, w.r)
+			}
+		}
+		randomBlocks = randomBlocks[:0]
+		tickActors(c, ref.pos)
+	})
 
 	w.scratchLoaderAreas = areas[:0]
 	w.scratchRandom = randomBlocks[:0]
@@ -560,6 +645,33 @@ func (g *randomTickStream) uint4() uint8 {
 	g.bits >>= 4
 	g.n--
 	return v
+}
+
+// LevelChunk::tickBlockEntities (client 0x32cb7a3..0x32cb839) makes a copy of
+// the actor vector, then performs a forward Fisher-Yates shuffle using a raw
+// unsigned 32-bit random value modulo i+1. Each chunk is shuffled separately.
+func appendShuffledBlockEntities[T any](dst, positions []T, r interface{ Uint32() uint32 }) []T {
+	start := len(dst)
+	dst = append(dst, positions...)
+	for i := 1; i < len(positions); i++ {
+		j := int(r.Uint32() % uint32(i+1))
+		dst[start+i], dst[start+j] = dst[start+j], dst[start+i]
+	}
+	return dst
+}
+
+func tickBlockEntityRefs(tx *Tx, tick int64, refs []blockEntityTickRef) {
+	for _, ref := range refs {
+		c := tx.chunk(chunkPosFromBlockPos(ref.pos))
+		// Native storage rechecks the saved actor component pointer after the
+		// shuffle. An actor replaced during an earlier callback waits a tick.
+		if c.tickerBlockEntityVersions[ref.pos] != ref.version {
+			continue
+		}
+		if tb, ok := c.BlockEntities[ref.pos].(TickerBlock); ok {
+			tb.Tick(tick, ref.pos, tx)
+		}
+	}
 }
 
 func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {
@@ -642,10 +754,16 @@ func (w *World) entitiesTick(col *Column) bool {
 // reduces per-tick iteration costs on large worlds while still keeping important counters such as entity age and
 // fire timers consistent.
 func (t ticker) tickEntities(tx *Tx, tick int64) {
+	t.tickEntitiesInPhase(tx, tick, false)
+}
+
+func (t ticker) tickEntitiesInPhase(tx *Tx, tick int64, afterBlocks bool) {
 	const sleepMaintenanceInterval = 40 // ~2 seconds between maintenance passes for sleeping chunks.
 
 	w := tx.World()
-	t.prefetchEntities(tx)
+	if !afterBlocks {
+		t.prefetchEntities(tx)
+	}
 
 	lazyMaintenance := tick%sleepMaintenanceInterval == 0
 
@@ -655,17 +773,30 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 		active := w.scratchRegionRefs[:0]
 		for _, ref := range w.entityColumns {
 			if col := ref.col; col != nil && len(col.Entities) > 0 && col.Ready() && w.entitiesTick(col) {
+				if afterBlocks {
+					needed := false
+					for _, handle := range col.Entities {
+						phase, phased := handle.Type().(interface{ TickAfterBlocks() bool })
+						if phased && phase.TickAfterBlocks() || handle.state != nil && handle.state.postBlockTicker != nil {
+							needed = true
+							break
+						}
+					}
+					if !needed {
+						continue
+					}
+				}
 				active = append(active, ref)
 			}
 		}
-		ticked := t.tickRegions(tx, tick, active)
+		ticked := t.tickRegions(tx, tick, active, afterBlocks)
 		clear(active)
 		w.scratchRegionRefs = active[:0]
 		if ticked {
 			if lazyMaintenance {
 				for _, ref := range slices.Clone(w.entityColumns) {
 					if col := ref.col; col != nil && len(col.Entities) > 0 && col.Ready() && !w.entitiesTick(col) {
-						t.tickEntityColumn(tx, tick, ref.pos, col, false)
+						t.tickEntityColumn(tx, tick, ref.pos, col, false, afterBlocks)
 					}
 				}
 			}
@@ -682,13 +813,13 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 			continue
 		}
 		if w.entitiesTick(col) {
-			t.tickEntityColumn(tx, tick, ref.pos, col, true)
+			t.tickEntityColumn(tx, tick, ref.pos, col, true, afterBlocks)
 			continue
 		}
 		if !lazyMaintenance {
 			continue
 		}
-		t.tickEntityColumn(tx, tick, ref.pos, col, false)
+		t.tickEntityColumn(tx, tick, ref.pos, col, false, afterBlocks)
 	}
 }
 
@@ -753,10 +884,57 @@ type prefetchItem struct {
 	p Prefetcher
 }
 
-func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, active bool) {
+func (t ticker) tickQueuedEntities(tx *Tx, tick int64) {
+	w := tx.World()
+	queued := w.queuedEntityTicks
+	w.queuedEntityTicks = nil
+	for _, handle := range queued {
+		state := w.entities[handle]
+		if state == nil || state.lastProcessedTick == tick {
+			continue
+		}
+		col := w.chunks[state.pos]
+		if col == nil || !col.Ready() {
+			continue
+		}
+		active := w.conf.Synchronous || len(col.viewers) > 0
+		t.tickEntityHandle(tx, tick, handle, entityChunkRef{col: col, pos: state.pos, waiting: active && !w.entityTickingReady(state.pos)}, active)
+	}
+}
+
+func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, active, afterBlocks bool) {
 	ref := entityChunkRef{col: col, pos: pos, waiting: active && !tx.World().entityTickingReady(pos)}
 	for index := 0; index < len(col.Entities); {
 		handle := col.Entities[index]
+		phase, phased := handle.Type().(interface{ TickAfterBlocks() bool })
+		if (phased && phase.TickAfterBlocks()) != afterBlocks {
+			// Native normal-tick contacts can precede the block/circuit pass
+			// even when the entity's ECS movement runs afterwards.
+			if !afterBlocks && active && !ref.waiting {
+				state := handle.state
+				if state != nil && state.lastPreBlockTick != tick {
+					state.entity(tx, handle)
+					state.lastPreBlockTick = tick
+					if state.preBlockTicker != nil {
+						state.preBlockTicker.TickBeforeBlockUpdates(tx, tick)
+					}
+				}
+			}
+			// Pre-block entities can sample the completed block/circuit phase
+			// without repeating their movement, ageing or normal entity tick.
+			if afterBlocks && active && !ref.waiting {
+				state := handle.state
+				if state != nil && state.lastTick == tick && state.lastProcessedTick == tick && state.lastPostBlockTick != tick && state.postBlockTicker != nil {
+					state.lastPostBlockTick = tick
+					state.entity(tx, handle)
+					state.postBlockTicker.TickAfterBlockUpdates(tx, tick)
+				}
+			}
+			if index < len(col.Entities) && col.Entities[index] == handle {
+				index++
+			}
+			continue
+		}
 		t.tickEntityHandle(tx, tick, handle, ref, active)
 		if index < len(col.Entities) && col.Entities[index] == handle {
 			index++
@@ -775,6 +953,7 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	if state.lastProcessedTick == tick {
 		return
 	}
+	state.firstTickPending = false
 	state.lastProcessedTick = tick
 	// Java ticks the vehicle before its passengers. Marking first also stops
 	// malformed cyclic saved links from recursing indefinitely.
@@ -983,6 +1162,7 @@ type scheduledTickQueue struct {
 	processing     bool
 	fluid          bool
 	currentTick    int64
+	processedTick  int64
 	nextOrder      int64
 }
 
@@ -1062,6 +1242,7 @@ func newScheduledTickQueueForKind(tick int64, fluid bool) *scheduledTickQueue {
 	return &scheduledTickQueue{
 		scheduledTicks: make(map[scheduledTickIndex]int64),
 		currentTick:    tick,
+		processedTick:  tick,
 		fluid:          fluid,
 	}
 }
@@ -1069,14 +1250,31 @@ func newScheduledTickQueueForKind(tick int64, fluid bool) *scheduledTickQueue {
 // tick collects at most one source tick budget from loaded, ticking chunks,
 // then dispatches the collected batch. Fluid ticks run after the block queue.
 func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
+	queue.tickPhase(tx, tick, false, nil, loaders...)
+}
+
+func (queue *scheduledTickQueue) tickNonCircuits(tx *Tx, tick int64, loaders ...*Loader) {
+	queue.tickPhase(tx, tick, true, nil, loaders...)
+}
+
+func (queue *scheduledTickQueue) tickCircuitChunk(tx *Tx, tick int64, pos ChunkPos) {
+	queue.tickPhase(tx, tick, true, &pos)
+}
+
+// tickPhase keeps the existing Java block/fluid queue separate from components
+// with a Bedrock circuit implementation. The latter drain in their owning
+// chunk's visit, preserving cross-chunk actor/queue ordering. Queue capacity,
+// priorities and remaining non-circuit native block types are audited separately.
+func (queue *scheduledTickQueue) tickPhase(tx *Tx, tick int64, circuitPhase bool, circuitChunk *ChunkPos, loaders ...*Loader) {
 	queue.currentTick = tick
+	queue.processedTick = tick
 	if len(queue.chunks) == 0 {
 		return
 	}
 
 	w := tx.World()
 	areas := w.scratchLoaderAreas[:0]
-	if !w.conf.Synchronous {
+	if circuitChunk == nil && !w.conf.Synchronous {
 		simulationRadius := int32(w.tickRange())
 		if len(loaders) != 0 {
 			for _, loader := range loaders {
@@ -1089,16 +1287,36 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 		}
 	}
 	queue.dispatch = queue.dispatch[:0]
-	for pos, list := range queue.chunks {
-		if list.due > tick || !w.scheduledTickChunkEligible(pos, areas) {
-			continue
+	collect := func(pos ChunkPos, list *scheduledChunkTicks) {
+		if list == nil || list.due > tick || circuitChunk == nil && !w.scheduledTickChunkEligible(pos, areas) {
+			return
 		}
 		for i, t := range list.ticks {
 			if t.deferred || t.t > tick {
 				continue
 			}
+			if circuitPhase {
+				// StateToRuntimeID supplies native default properties; a bare
+				// BlockByName lookup would miss stateful blocks such as crafters.
+				rid, found := w.conf.Blocks.StateToRuntimeID(t.btype, nil)
+				var b Block
+				if found {
+					b, _ = w.conf.Blocks.BlockByRuntimeID(rid)
+				}
+				_, circuit := b.(RedstoneCircuitComponent)
+				if circuit != (circuitChunk != nil) {
+					continue
+				}
+			}
 			t.queueIndex = i
 			queue.dispatch = append(queue.dispatch, t)
+		}
+	}
+	if circuitChunk != nil {
+		collect(*circuitChunk, queue.chunks[*circuitChunk])
+	} else {
+		for pos, list := range queue.chunks {
+			collect(pos, list)
 		}
 	}
 	slices.SortFunc(queue.dispatch, func(a, b scheduledTick) int {
@@ -1161,6 +1379,10 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 		if queue.fluid {
 			liquid, ok := tx.Liquid(t.pos)
 			if !ok || !scheduledFluidTickMatches(liquid, t.btype) {
+				continue
+			}
+			if ticker, ok := liquid.(ScheduledFluidTicker); ok {
+				ticker.ScheduledFluidTick(t.pos, tx, w.r)
 				continue
 			}
 			switch t.btype {
@@ -1295,7 +1517,7 @@ func (w *World) scheduledTickChunkEligible(pos ChunkPos, areas []loaderActiveAre
 	if !w.blockTickingReady(pos, col) {
 		return false
 	}
-	return w.conf.Synchronous || columnWithinAreas(pos, areas) || w.IsChunkForced(pos)
+	return w.conf.Synchronous || blockColumnWithinAreas(pos, areas) || w.IsChunkForced(pos)
 }
 
 func compareScheduledTickDrainOrder(a, b scheduledTick) int {
@@ -1599,4 +1821,22 @@ func (queue *scheduledTickQueue) add(ticks []scheduledTick) {
 		queue.scheduledTicks[index] = t.t
 		queue.push(t)
 	}
+}
+
+type randUint4 struct {
+	x uint64
+	n uint8
+}
+
+// uint4 returns a random uint4.
+func (g *randUint4) uint4(r *rand.Rand) uint8 {
+	if g.n == 0 {
+		g.x = r.Uint64()
+		g.n = 16
+	}
+	val := g.x & 0b1111
+
+	g.x >>= 4
+	g.n--
+	return uint8(val)
 }

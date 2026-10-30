@@ -6,15 +6,33 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
-// tickPrecipitation ports the precipitation step of ServerLevel.tickChunk:
-// with a 1/16 chance per ticked chunk a random column is picked; exposed
+// tickChunkPrecipitation follows LevelChunk::tickImpl's randomTickSpeed
+// attempts. Zero disables these draws too, before block-actor shuffling.
+func (w *World) tickChunkPrecipitation(tx *Tx, chunk ChunkPos) {
+	for range max(w.conf.RandomTickSpeed, 0) {
+		w.tickPrecipitation(tx, chunk)
+	}
+}
+
+// nextPrecipitationColumn follows the original per-chunk snow LCG. Coordinates
+// are selected on every attempt, before the level RNG's 1/16 weather roll.
+func nextPrecipitationColumn(state *uint32, chunk ChunkPos) (x, z int) {
+	*state = *state*3 + 0x3c6ef35f
+	return int(chunk[0])<<4 | int(*state>>2&15), int(chunk[1])<<4 | int(*state>>10&15)
+}
+
+// tickPrecipitation performs one native precipitation attempt: exposed
 // water below its motion-blocking height freezes into ice in cold biomes and,
 // while it rains, snow accumulates up to max_snow_accumulation_height layers.
 func (w *World) tickPrecipitation(tx *Tx, chunk ChunkPos) {
-	if w.r.IntN(16) != 0 {
+	column, ready := w.loadedChunk(chunk)
+	if !ready {
 		return
 	}
-	x, z := int(chunk[0])<<4+w.r.IntN(16), int(chunk[1])<<4+w.r.IntN(16)
+	x, z := nextPrecipitationColumn(&column.snowRandomValue, chunk)
+	if w.randomIntN(16) != 0 {
+		return
+	}
 	top := cube.Pos{x, tx.motionBlockingHeight(x, z), z}
 	below := top.Side(cube.FaceDown)
 	if tx.shouldFreeze(below) {

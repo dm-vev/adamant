@@ -81,31 +81,68 @@ func (b *brewer) brewingCanPlace(slot int, s item.Stack) bool {
 // WorldlyContainer accepts it: a hopper above fills the ingredient slot, one
 // at the side the first empty potion slot or the fuel slot.
 func (b *brewer) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
-	slots := []int{1, 2, 3, 4}
-	if h.Facing == cube.FaceDown {
-		slots = []int{0}
-	}
 	for sourceSlot, sourceStack := range h.inventory.Slots() {
+		var slot int
+
 		if sourceStack.Empty() {
 			continue
 		}
-		for _, slot := range slots {
-			if !b.brewingCanPlace(slot, sourceStack) {
+
+		if h.Facing == cube.FaceDown {
+			if !recipe.ValidBrewingReagent(sourceStack.Item()) {
+				// This item is not a valid brewing reagent.
 				continue
 			}
-			it, _ := b.inventory.Item(slot)
-			if !it.Empty() && (!sourceStack.Comparable(it) || it.Count() >= it.MaxCount()) {
+			slot = 0
+		} else if _, ok := sourceStack.Item().(item.BlazePowder); ok {
+			slot = 4
+		} else {
+			_, okPotion := sourceStack.Item().(item.Potion)
+			_, okSplash := sourceStack.Item().(item.SplashPotion)
+			_, okLingering := sourceStack.Item().(item.LingeringPotion)
+			_, okBottle := sourceStack.Item().(item.GlassBottle)
+			if !okPotion && !okSplash && !okLingering && !okBottle {
 				continue
 			}
-			stack := sourceStack.Grow(1 - sourceStack.Count())
-			if !it.Empty() {
-				stack = it.Grow(1)
+			for brewingSlot, brewingStack := range b.inventory.Slots() {
+				if brewingSlot == 0 || brewingSlot == 4 {
+					continue
+				}
+				// Native canPushInItem accepts a potion/bottle slot only while
+				// empty, even when the item itself can stack (glass bottles).
+				if !brewingStack.Empty() {
+					continue
+				}
+
+				slot = brewingSlot
+				break
 			}
-			_ = b.inventory.SetItem(slot, stack)
-			_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
-			notifyComparatorUpdate(pos, tx)
-			return true
+			// Could not find an empty slot
+			if slot == 0 {
+				continue
+			}
 		}
+
+		stack := sourceStack.Grow(-sourceStack.Count() + 1)
+		it, _ := b.Inventory(tx, pos).Item(slot)
+
+		if !sourceStack.Comparable(it) {
+			// The items are not the same.
+			continue
+		}
+		if it.Count() == it.MaxCount() {
+			// The item has the maximum count that the stack is able to hold.
+			continue
+		}
+		if !it.Empty() {
+			stack = it.Grow(1)
+		}
+
+		_ = b.Inventory(tx, pos).SetItem(slot, stack)
+		_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
+		notifyComparatorUpdate(pos, tx)
+		return true
+
 	}
 	return false
 }
@@ -113,18 +150,16 @@ func (b *brewer) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 // ExtractItem lets a hopper below take the potions, then a glass bottle from
 // the ingredient slot, as SLOTS_FOR_DOWN and canTakeItemThroughFace.
 func (b *brewer) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
-	for _, slot := range []int{1, 2, 3, 0} {
-		stack, _ := b.inventory.Item(slot)
-		if stack.Empty() {
+	for sourceSlot, sourceStack := range b.inventory.Slots() {
+		if sourceStack.Empty() || sourceSlot == 0 || sourceSlot == 4 {
 			continue
 		}
-		if _, bottle := stack.Item().(item.GlassBottle); slot == 0 && !bottle {
+		_, err := h.inventory.AddItemInSlotOrder(sourceStack.Grow(-sourceStack.Count() + 1))
+		if err != nil {
+			// The hopper is full.
 			continue
 		}
-		if _, err := h.inventory.AddItem(stack.Grow(1 - stack.Count())); err != nil {
-			continue
-		}
-		_ = b.inventory.SetItem(slot, stack.Grow(-1))
+		_ = b.Inventory(tx, pos).SetItem(sourceSlot, sourceStack.Grow(-1))
 		notifyComparatorUpdate(pos, tx)
 		return true
 	}

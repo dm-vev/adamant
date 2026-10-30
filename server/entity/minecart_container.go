@@ -315,9 +315,8 @@ func (chestMinecartType) Open(tx *world.Tx, handle *world.EntityHandle, data *wo
 
 func (chestMinecartType) EncodeEntity() string { return "minecraft:chest_minecart" }
 
-func (chestMinecartType) BBox(world.Entity) cube.BBox {
-	return cube.Box(-0.49, 0, -0.49, 0.49, 0.7, 0.49)
-}
+func (chestMinecartType) BBox(e world.Entity) cube.BBox { return minecartBBox(e) }
+func (chestMinecartType) NetworkOffset() float64        { return minecartNetworkOffset }
 
 func (chestMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := chestMinecartConf
@@ -371,9 +370,8 @@ func (hopperMinecartType) Open(tx *world.Tx, handle *world.EntityHandle, data *w
 
 func (hopperMinecartType) EncodeEntity() string { return "minecraft:hopper_minecart" }
 
-func (hopperMinecartType) BBox(world.Entity) cube.BBox {
-	return cube.Box(-0.49, 0, -0.49, 0.49, 0.7, 0.49)
-}
+func (hopperMinecartType) BBox(e world.Entity) cube.BBox { return minecartBBox(e) }
+func (hopperMinecartType) NetworkOffset() float64        { return minecartNetworkOffset }
 
 func (hopperMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	beh := hopperMinecartConf.New()
@@ -419,7 +417,6 @@ type HopperMinecartBehaviour struct {
 // Tick moves the minecart and transfers items when its cooldown permits.
 func (b *HopperMinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	movement := b.MinecartBehaviour.Tick(e, tx)
-	b.updateEnabled(e, tx)
 	if b.transferCooldown > 0 {
 		b.transferCooldown--
 		return movement
@@ -428,41 +425,15 @@ func (b *HopperMinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return movement
 	}
 	pos := cube.PosFromVec3(e.Position())
-	if b.push(pos.Side(cube.FaceDown), tx) || b.pull(pos.Side(cube.FaceUp), tx) || b.collectItem(e, tx) {
-		b.transferCooldown = 8
+	// The native cart collects from above/world items; it does not push into
+	// a container beneath it. A separate hopper can extract its inventory.
+	if b.pull(pos.Side(cube.FaceUp), tx) || b.collectItem(e, tx) {
+		b.transferCooldown = 1
 	}
 	return movement
 }
 
-func (b *HopperMinecartBehaviour) updateEnabled(e *Ent, tx *world.Tx) {
-	pos := cube.PosFromVec3(e.Position())
-	for _, railPos := range [...]cube.Pos{pos, pos.Side(cube.FaceDown)} {
-		if rail, ok := tx.Block(railPos).(block.ActivatorRail); ok {
-			b.enabled = !rail.Powered
-			return
-		}
-	}
-}
-
-func (b *HopperMinecartBehaviour) push(pos cube.Pos, tx *world.Tx) bool {
-	destination, ok := tx.Block(pos).(block.Container)
-	if !ok {
-		return false
-	}
-	for slot, stack := range b.inv.Slots() {
-		if stack.Empty() {
-			continue
-		}
-		one := stack.Grow(1 - stack.Count())
-		if added, _ := destination.Inventory(tx, pos).AddItem(one); added != 1 {
-			continue
-		}
-		_ = b.inv.SetItem(slot, stack.Grow(-1))
-		block.NotifyComparatorUpdate(pos, tx)
-		return true
-	}
-	return false
-}
+func (b *HopperMinecartBehaviour) Activate(_ *Ent, _ *world.Tx, powered bool) { b.enabled = !powered }
 
 func (b *HopperMinecartBehaviour) pull(pos cube.Pos, tx *world.Tx) bool {
 	source, ok := tx.Block(pos).(block.Container)
@@ -491,15 +462,17 @@ func (b *HopperMinecartBehaviour) collectItem(e *Ent, tx *world.Tx) bool {
 		if !ok || itemEntity.H().Type() != ItemType {
 			continue
 		}
-		stack := itemEntity.Behaviour().(*ItemBehaviour).Item()
-		one := stack.Grow(1 - stack.Count())
-		if added, _ := b.inv.AddItem(one); added != 1 {
+		behaviour := itemEntity.Behaviour().(*ItemBehaviour)
+		stack := behaviour.Item()
+		added, _ := b.inv.AddItem(stack)
+		if added == 0 {
 			continue
 		}
-		if stack.Count() > 1 {
-			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: itemEntity.Position(), Velocity: itemEntity.Velocity()}, stack.Grow(-1)))
+		if added == stack.Count() {
+			_ = itemEntity.CloseIn(tx)
+		} else {
+			behaviour.setCount(itemEntity, stack.Count()-added, tx)
 		}
-		_ = itemEntity.CloseIn(tx)
 		return true
 	}
 	return false

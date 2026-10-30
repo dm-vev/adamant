@@ -160,7 +160,7 @@ func (s SculkSensor) receiveVibration(tx *world.Tx, pos cube.Pos, info world.Vib
 		s.data = newSculkSensorData()
 	}
 	s.data.lastVibrationFrequency = world.GameEventFrequency(info.Event)
-	s.data.power = max(1, 15-int(math.Floor(15*float64(distance)/float64(radius))))
+	s.data.power = max(1, 15-int(math.Floor(float64(distance/float32(radius)*15))))
 	switch block := state.(type) {
 	case SculkSensor:
 		block.data = s.data
@@ -239,6 +239,7 @@ func (s SculkSensor) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	}
 }
 func (s SculkSensor) RedstonePower(_ cube.Pos, _ *world.Tx, _ cube.Face) int { return s.OutputPower() }
+
 // RedstoneStrongPower ports SculkSensorBlock.getDirectSignal: the sensor
 // strongly powers the block below it.
 func (s SculkSensor) RedstoneStrongPower(_ cube.Pos, tx *world.Tx, face cube.Face) int {
@@ -374,11 +375,12 @@ func (s CalibratedSculkSensor) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand
 	}
 }
 func (s CalibratedSculkSensor) RedstonePower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
-	if face == s.Facing.Face() {
+	if face == s.Facing.Opposite().Face() {
 		return 0
 	}
 	return s.SculkSensor.RedstonePower(pos, tx, face)
 }
+
 // RedstoneStrongPower strongly powers the block below the sensor, as the
 // plain sculk sensor does.
 func (s CalibratedSculkSensor) RedstoneStrongPower(pos cube.Pos, tx *world.Tx, face cube.Face) int {

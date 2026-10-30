@@ -54,21 +54,6 @@ func newSmelter() *smelter {
 	return s
 }
 
-// smelterFuelSlot reports if a stack may be put in a smelter's fuel slot, as
-// AbstractFurnaceBlockEntity.canPlaceItem: fuel, or an empty bucket while
-// the slot holds none.
-func smelterFuelSlot(stack, fuel item.Stack) bool {
-	if item.CookingBurnTime(stack.Item(), false) > 0 {
-		return true
-	}
-	b, ok := stack.Item().(item.Bucket)
-	if !ok || !b.Empty() {
-		return false
-	}
-	held, ok := fuel.Item().(item.Bucket)
-	return !ok || !held.Empty()
-}
-
 // InsertItem inserts an item from a hopper as the furnace's
 // WorldlyContainer accepts it: a hopper above fills the input slot and one
 // at the side the fuel slot.
@@ -82,7 +67,7 @@ func (s *smelter) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 			continue
 		}
 		it, _ := s.inventory.Item(slot)
-		if slot == 1 && !smelterFuelSlot(sourceStack, it) {
+		if slot == 1 && item.CookingBurnTime(sourceStack.Item(), false) <= 0 {
 			continue
 		}
 		if !it.Empty() && (!sourceStack.Comparable(it) || it.Count() >= it.MaxCount()) {
@@ -104,21 +89,32 @@ func (s *smelter) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 // fuel slot if it holds a bucket, as AbstractFurnaceBlockEntity's
 // SLOTS_FOR_DOWN and canTakeItemThroughFace.
 func (s *smelter) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
-	for _, slot := range []int{2, 1} {
-		stack, _ := s.inventory.Item(slot)
-		if stack.Empty() {
+	for sourceSlot, sourceStack := range s.inventory.Slots() {
+		if sourceStack.Empty() {
 			continue
 		}
-		if _, bucket := stack.Item().(item.Bucket); slot == 1 && !bucket {
+
+		if sourceSlot == 0 {
 			continue
 		}
-		if _, err := h.inventory.AddItem(stack.Grow(1 - stack.Count())); err != nil {
+
+		if sourceSlot == 1 {
+			if item.CookingBurnTime(sourceStack.Item(), false) > 0 {
+				continue
+			}
+		}
+
+		_, err := h.inventory.AddItemInSlotOrder(sourceStack.Grow(-sourceStack.Count() + 1))
+		if err != nil {
+			// The hopper is full.
 			continue
 		}
-		_ = s.inventory.SetItem(slot, stack.Grow(-1))
+
+		_ = s.Inventory(tx, pos).SetItem(sourceSlot, sourceStack.Grow(-1))
 		notifyComparatorUpdate(pos, tx)
 		return true
 	}
+
 	return false
 }
 
