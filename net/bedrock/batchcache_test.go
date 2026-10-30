@@ -73,3 +73,28 @@ func TestBatchCacheConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// TestPacketsCountedPerBatch writes packets of a few IDs: once the batch
+// goes, the counters of each ID hold its packets and bytes, as when they
+// were counted a packet at a time.
+func TestPacketsCountedPerBatch(t *testing.T) {
+	a, _ := pipes()
+	c := NewConn(a, Config{})
+	c.EnableCompression(Flate{})
+	moves, text := packet(111, []byte("move")), packet(9, []byte("hello"))
+	m0, mb0, t0 := packetsSent.At(111).Load(), packetBytesSent.At(111).Load(), packetsSent.At(9).Load()
+	for range 5 {
+		_ = c.WritePacket(moves)
+	}
+	_ = c.WritePacket(text)
+	_ = c.Flush()
+	if got := packetsSent.At(111).Load() - m0; got != 5 {
+		t.Fatalf("%d moves counted, want 5", got)
+	}
+	if got := packetBytesSent.At(111).Load() - mb0; got != uint64(5*len(moves)) {
+		t.Fatalf("%d bytes of moves counted, want %d", got, 5*len(moves))
+	}
+	if got := packetsSent.At(9).Load() - t0; got != 1 {
+		t.Fatalf("%d texts counted, want 1", got)
+	}
+}

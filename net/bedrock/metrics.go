@@ -31,6 +31,50 @@ var (
 		"Connections cut for sending more than their rates allow.")
 )
 
+// maxTally bounds the packet IDs a tally keeps apart; the packets of more
+// are counted at once.
+const maxTally = 32
+
+// tally counts the packets of a batch by ID until the batch is sent, so
+// that the counters of the process, which every connection adds to, are
+// added to once a batch for each ID rather than once a packet.
+type tally struct {
+	ids            []uint16
+	packets, bytes []uint64
+}
+
+// add counts a packet.
+func (t *tally) add(p []byte) {
+	id, n := binary.Uvarint(p)
+	if n <= 0 {
+		return
+	}
+	i := uint16(id & (maxPacketID - 1))
+	for k, x := range t.ids {
+		if x == i {
+			t.packets[k]++
+			t.bytes[k] += uint64(len(p))
+			return
+		}
+	}
+	if len(t.ids) == maxTally {
+		countPacket(packetsSent, packetBytesSent, p)
+		return
+	}
+	t.ids = append(t.ids, i)
+	t.packets = append(t.packets, 1)
+	t.bytes = append(t.bytes, uint64(len(p)))
+}
+
+// flush adds what was counted to the counters of the process.
+func (t *tally) flush() {
+	for k, i := range t.ids {
+		packetsSent.Add(int(i), t.packets[k])
+		packetBytesSent.Add(int(i), t.bytes[k])
+	}
+	t.ids, t.packets, t.bytes = t.ids[:0], t.packets[:0], t.bytes[:0]
+}
+
 // countPacket counts a packet in a vector of packets and one of bytes.
 func countPacket(packets, bytes *metrics.CounterVec, p []byte) {
 	id, n := binary.Uvarint(p)

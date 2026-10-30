@@ -119,6 +119,8 @@ type Conn struct {
 	// plain reports whether every packet of body is incompressible.
 	plain bool
 	out   []byte
+	// sent counts the packets of body for the metrics.
+	sent tally
 }
 
 // NewConn returns a Conn over a transport. Compression is off until
@@ -159,7 +161,7 @@ func (c *Conn) WritePacket(packet []byte) error {
 		c.plain = false
 	}
 	c.body = AppendPacket(c.body, packet)
-	countPacket(packetsSent, packetBytesSent, packet)
+	c.sent.add(packet)
 	return nil
 }
 
@@ -217,6 +219,7 @@ func (c *Conn) flush() error {
 	batchesSent.Inc()
 	batchBytesRaw.Add(uint64(len(c.body)))
 	batchBytesSent.Add(uint64(len(msg)))
+	c.sent.flush()
 	err := c.transport.Send(msg)
 	c.body, c.plain = c.body[:0], true
 	if cap(c.body) > keptBuffer {
