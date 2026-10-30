@@ -166,6 +166,11 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	if l.batches.ByteRate == 0 {
 		l.batches.ByteRate, l.batches.ByteBurst = defaultByteRate, defaultByteBurst
 	}
+	if l.batches.Cache == nil {
+		// The clients of one place are sent alike on a tick: their batches
+		// are compressed once.
+		l.batches.Cache = bedrock.NewBatchCache()
+	}
 	if l.key = nn.Key; l.key == nil {
 		var err error
 		if l.key, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader); err != nil {

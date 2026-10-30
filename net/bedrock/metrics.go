@@ -25,6 +25,8 @@ var (
 		"Bytes of the bodies of the batches sent, before compression.")
 	batchBytesSent = metrics.Default.Counter("adamant_bedrock_batch_bytes_sent_total",
 		"Bytes of the batches sent, after compression.")
+	batchCacheHits = metrics.Default.Counter("adamant_bedrock_batch_cache_hits_total",
+		"Batches sent compressed as another connection compressed the same body.")
 	rateLimited = metrics.Default.Counter("adamant_bedrock_rate_limited_total",
 		"Connections cut for sending more than their rates allow.")
 )

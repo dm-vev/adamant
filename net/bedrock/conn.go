@@ -42,6 +42,9 @@ type Config struct {
 	// batch allowed is raised to it.
 	PacketRate, PacketBurst int
 	ByteRate, ByteBurst     int
+	// Cache, if set, is shared by connections whose batches often go
+	// alike, which it compresses once. Nil compresses each batch.
+	Cache *BatchCache
 }
 
 func (cfg Config) withDefaults() Config {
@@ -202,6 +205,10 @@ func (c *Conn) flush() error {
 		var err error
 		if len(c.body) < c.cfg.Threshold || c.plain || c.alg.Algorithm() == AlgorithmNone {
 			c.out = append(append(c.out[:0], noneByte), c.body...)
+		} else if c.cfg.Cache != nil {
+			if c.out, err = c.cfg.Cache.compress(c.out[:0], c.alg, c.body); err != nil {
+				return err
+			}
 		} else if c.out, err = c.alg.Compress(append(c.out[:0], byte(c.alg.Algorithm())), c.body); err != nil {
 			return err
 		}
