@@ -161,6 +161,7 @@ func main() {
 	}
 	var pending *command
 	var queuedUse *protocol.UseItemTransactionData
+	var packetSequence uint64
 	dispatch := func() {
 		if pending == nil {
 			return
@@ -202,6 +203,7 @@ func main() {
 		case e := <-errc:
 			panic(e)
 		case p := <-incoming:
+			packetSequence++
 			switch x := p.(type) {
 			case *packet.InventoryContent:
 				if x.WindowID == protocol.WindowIDInventory && len(x.Content) > 0 {
@@ -217,16 +219,16 @@ func main() {
 				if x.Layer == 0 {
 					blocks[x.Position] = x.NewBlockRuntimeID
 				}
-				emit(map[string]any{"block_update": x, "received_at_ms": time.Now().UnixMilli()})
+				emit(map[string]any{"block_update": x, "received_at_ms": time.Now().UnixMilli(), "packet_sequence": packetSequence})
 			case *packet.UpdateSubChunkBlocks:
 				for _, entry := range x.Blocks {
 					blocks[entry.BlockPos] = entry.BlockRuntimeID
 				}
-				emit(map[string]any{"subchunk_update": x, "received_at_ms": time.Now().UnixMilli()})
+				emit(map[string]any{"subchunk_update": x, "received_at_ms": time.Now().UnixMilli(), "packet_sequence": packetSequence})
 			case *packet.BlockActorData:
-				emit(map[string]any{"block_actor": x, "received_at_ms": time.Now().UnixMilli()})
+				emit(map[string]any{"block_actor": x, "received_at_ms": time.Now().UnixMilli(), "packet_sequence": packetSequence})
 			case *packet.BlockEvent:
-				emit(map[string]any{"block_event": x, "received_at_ms": time.Now().UnixMilli()})
+				emit(map[string]any{"block_event": x, "received_at_ms": time.Now().UnixMilli(), "packet_sequence": packetSequence})
 			case *packet.MovePlayer:
 				if x.EntityRuntimeID == conn.GameData().EntityRuntimeID {
 					pos = x.Position
@@ -241,9 +243,11 @@ func main() {
 					_ = conn.WritePacket(&packet.NetworkStackLatency{Timestamp: x.Timestamp})
 				}
 			case *packet.LevelSoundEvent:
-				emit(map[string]any{"sound": x, "received_at_ms": time.Now().UnixMilli()})
+				emit(map[string]any{"sound": x, "received_at_ms": time.Now().UnixMilli(), "packet_sequence": packetSequence})
 			case *packet.LevelEvent:
-				emit(map[string]any{"level_event": x})
+				emit(map[string]any{"level_event": x, "received_at_ms": time.Now().UnixMilli(), "packet_sequence": packetSequence})
+			case *packet.Text:
+				emit(map[string]any{"text": x, "received_at_ms": time.Now().UnixMilli(), "packet_sequence": packetSequence})
 			case *packet.Disconnect:
 				panic(x.Message)
 			}
