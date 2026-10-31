@@ -13,6 +13,7 @@ import (
 
 // CopperDoor is a block that can be used as an openable 1x2 barrier.
 type CopperDoor struct {
+	blockInteractionUpdate
 	transparent
 	bass
 	sourceWaterDisplacer
@@ -45,7 +46,7 @@ func (d CopperDoor) Strip() (world.Block, world.Sound, bool) {
 
 // Model ...
 func (d CopperDoor) Model() world.BlockModel {
-	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right}
+	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
 }
 
 // Wax waxes the copper door to stop it from oxidising further.
@@ -157,21 +158,13 @@ func (d CopperDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *w
 }
 
 func (d CopperDoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
-	d.Open = !d.Open
-	tx.SetBlock(pos, d, nil)
-
-	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
-	other := tx.Block(otherPos)
-	if door, ok := other.(CopperDoor); ok {
-		door.Open = d.Open
-		tx.SetBlock(otherPos, door, nil)
+	open, _, _ := barrierOpen(d)
+	if d.Top {
+		if lower, ok := tx.Block(pos.Side(cube.FaceDown)).(CopperDoor); ok {
+			open = lower.Open
+		}
 	}
-	if d.Open {
-		tx.PlaySound(pos.Vec3Centre(), sound.DoorOpen{Block: d})
-		return true
-	}
-	tx.PlaySound(pos.Vec3Centre(), sound.DoorClose{Block: d})
-	return true
+	return setDoorOpen(pos, d, !open, tx)
 }
 
 func (d CopperDoor) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {

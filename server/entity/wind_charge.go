@@ -167,58 +167,15 @@ func windChargeInteractBlocks(tx *world.Tx, origin mgl64.Vec3, owner world.Entit
 	for _, pos := range positions {
 		blk := tx.Block(pos)
 		switch b := blk.(type) {
-		case blockpkg.Bell:
-			b.ActivateByAttack(pos, tx)
 		case blockpkg.Button:
-			// ButtonBlock::_onHitByActivatingAttack calls buttonPressed
-			// with a null actor, independently of projectile ownership.
+			// ButtonBlock passes a null actor independently of ownership.
 			b.Activate(pos, cube.FaceUp, tx, nil, &item.UseContext{})
 		case blockpkg.Lever:
 			b.Activate(pos, cube.FaceUp, tx, user, &item.UseContext{})
-		case blockpkg.WoodDoor:
-			if b.Top {
-				continue
-			}
-			ctx := &item.UseContext{}
-			b.Activate(pos, cube.FaceUp, tx, user, ctx)
-		case blockpkg.CopperDoor:
-			if b.Top {
-				continue
-			}
-			ctx := &item.UseContext{}
-			b.Activate(pos, cube.FaceUp, tx, user, ctx)
-		case blockpkg.WoodTrapdoor:
-			ctx := &item.UseContext{}
-			b.Activate(pos, cube.FaceUp, tx, user, ctx)
-		case blockpkg.CopperTrapdoor:
-			ctx := &item.UseContext{}
-			b.Activate(pos, cube.FaceUp, tx, user, ctx)
-		case blockpkg.WoodFenceGate:
-			if user != nil {
-				ctx := &item.UseContext{}
-				b.Activate(pos, cube.FaceUp, tx, user, ctx)
-				continue
-			}
-			b.Open = !b.Open
-			tx.SetBlock(pos, b, nil)
-			if b.Open {
-				tx.PlaySound(pos.Vec3Centre(), sound.FenceGateOpen{Block: b})
-			} else {
-				tx.PlaySound(pos.Vec3Centre(), sound.FenceGateClose{Block: b})
-			}
-		case blockpkg.Candle:
-			if !b.Lit {
-				continue
-			}
-			ctx := &item.UseContext{}
-			b.Activate(pos, cube.FaceUp, tx, user, ctx)
-		case blockpkg.CandleCake:
-			if !b.Lit {
-				continue
-			}
-			b.Lit = false
-			tx.SetBlock(pos, b, nil)
-			tx.PlaySound(pos.Vec3Centre(), sound.FireExtinguish{})
+		case interface {
+			ActivateByAttack(cube.Pos, *world.Tx) bool
+		}:
+			b.ActivateByAttack(pos, tx)
 		}
 	}
 }

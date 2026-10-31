@@ -731,6 +731,9 @@ type SetOpts struct {
 	// around the changed block. This is used by the redstone engine while
 	// applying its own block-state updates to avoid duplicate same-tick work.
 	DisableRedstoneUpdates bool
+	// CommandFill invokes the native block's command-fill callback, separately
+	// from ordinary permutation changes and player placement.
+	CommandFill bool
 
 	// Source mutations publish both native layers together and apply Java's
 	// independent notification and block-entity side-effect flags.
@@ -768,6 +771,9 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	}
 	if opts == nil {
 		opts = &SetOpts{}
+	}
+	if updater, ok := b.(BlockFillUpdater); ok && opts.CommandFill {
+		b = updater.CommandFillUpdate(tx)
 	}
 
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
@@ -873,6 +879,9 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	w.updatePOI(pos, b)
 	if handler, ok := b.(PlacementHandler); ok && !opts.disablePlacementHandler {
 		handler.Placed(pos, tx, oldBlock)
+	}
+	if handler, ok := b.(BlockFillHandler); ok && opts.CommandFill {
+		handler.Filled(pos, tx, oldBlock)
 	}
 }
 

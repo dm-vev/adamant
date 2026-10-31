@@ -16,6 +16,7 @@ var hashIronDoor, hashIronTrapdoor = NextHash(), NextHash()
 // IronDoor is a 1x2 door that only redstone can open (BlockSetType.IRON
 // cannot be opened by hand).
 type IronDoor struct {
+	blockInteractionUpdate
 	transparent
 	sourceWaterDisplacer
 
@@ -31,7 +32,7 @@ type IronDoor struct {
 
 // Model ...
 func (d IronDoor) Model() world.BlockModel {
-	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right}
+	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
 }
 
 // NeighbourUpdateTick breaks the door when its other half or the support
@@ -157,6 +158,7 @@ func allIronDoors() (doors []world.Block) {
 
 // IronTrapdoor is a 1x1 trapdoor that only redstone can open.
 type IronTrapdoor struct {
+	blockInteractionUpdate
 	transparent
 	sourceWaterDisplacer
 

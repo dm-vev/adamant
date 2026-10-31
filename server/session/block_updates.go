@@ -34,11 +34,12 @@ type blockUpdateData struct {
 	after             *cube.Pos
 	// Support changes retain intermediate states separately from their deferred
 	// actor snapshots. Removal seals that sequence ahead of the new block.
-	bellSupport   bool
-	bellRemoval   bool
-	supportReady  <-chan struct{}
-	priorStates   []packet.Packet
-	beforePackets []packet.Packet
+	// Circuit states wait until their callback has also emitted its sound.
+	bellSupport      bool
+	bellRemoval      bool
+	publicationReady <-chan struct{}
+	priorStates      []packet.Packet
+	beforePackets    []packet.Packet
 }
 
 func (u blockUpdateData) statePackets() []packet.Packet {
@@ -81,6 +82,33 @@ func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	if _, bell := b.(block.Bell); bell {
 		update.flags |= packet.BlockUpdateNeighbours
 	}
+	if attack, ok := b.(interface{ BlockInteractionUpdate() bool }); ok && attack.BlockInteractionUpdate() {
+		update.flags |= packet.BlockUpdateNeighbours
+		// DoorBlock publishes its lower half before its upper half, including
+		// an upper permutation whose network open bit remains unchanged.
+		top := false
+		switch b := b.(type) {
+		case block.WoodDoor:
+			top = b.Top
+		case block.CopperDoor:
+			top = b.Top
+		case block.IronDoor:
+			top = b.Top
+		}
+		if top {
+			below := pos.Side(cube.FaceDown)
+			update.after = &below
+		}
+	}
+	if deferred, ok := b.(interface{ BlockUpdateReady() <-chan struct{} }); ok {
+		update.publicationReady = deferred.BlockUpdateReady()
+	}
+	if dependent, ok := b.(interface{ BlockUpdateAfter() (cube.Face, bool) }); ok {
+		if face, enabled := dependent.BlockUpdateAfter(); enabled {
+			parent := pos.Side(face)
+			update.after = &parent
+		}
+	}
 	if v, ok := clientBlockActor(b); ok {
 		if updater, ok := v.(world.UpdateNBTer); ok {
 			update.nbt = s.clientUpdateNBT(updater.UpdateNBT())
@@ -107,13 +135,16 @@ func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	// still belongs to the earlier accepted interaction and must be heard.
 	update.afterPackets = previous.afterPackets
 	update.beforePackets = previous.beforePackets
+	if update.publicationReady == nil {
+		update.publicationReady = previous.publicationReady
+	}
 	if previous.bellRemoval {
 		update.flags |= packet.BlockUpdateNeighbours
 		update.beforePackets = previous.packets()
 		update.afterPackets = nil
 	} else if previous.bellSupport {
 		update.bellSupport = true
-		update.supportReady = previous.supportReady
+		update.publicationReady = previous.publicationReady
 		update.priorStates = previous.statePackets()
 		if previous.nbt != nil && !previous.actorOnly {
 			update.actors = append(update.actors, previous.nbt)
@@ -155,9 +186,9 @@ func (s *Session) flushBlockUpdates() {
 		if update.bellRemoval {
 			return
 		}
-		if update.supportReady != nil {
+		if update.publicationReady != nil {
 			select {
-			case <-update.supportReady:
+			case <-update.publicationReady:
 			default:
 				return
 			}
@@ -221,14 +252,14 @@ func (s *Session) enqueueBellSupportUpdate(pos cube.Pos, bell *block.Bell, ready
 	}
 	if bell == nil {
 		update.bellRemoval = true
-		update.supportReady = nil
+		update.publicationReady = nil
 	} else {
 		if len(update.beforePackets)+len(update.priorStates)+len(update.actors) >= maxPendingBellPackets {
 			s.logBlockUpdateDrop()
 			return
 		}
 		update.bellSupport = true
-		update.supportReady = ready
+		update.publicationReady = ready
 		update.actors = append(update.actors, clientActorNBT(bell.EncodeNBT(), pos))
 	}
 	s.blockUpdates[key] = update

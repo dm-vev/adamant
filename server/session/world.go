@@ -861,6 +861,7 @@ func tierToSoundEvent(tier item.ArmourTier) string {
 
 // playSound plays a world.Sound at a position, disabling relative volume if set to true.
 func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool) {
+	var afterBlock *cube.Pos
 	pk := &packet.LevelSoundEvent{
 		Position:              vec64To32(pos),
 		EntityType:            ":",
@@ -870,6 +871,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	}
 	switch so := t.(type) {
 	case sound.NativeEvent:
+		afterBlock = so.AfterBlock
 		pk.SoundType = so.SoundType
 		pk.EntityType = so.EntityType
 		pk.ExtraData = so.ExtraData
@@ -1373,6 +1375,10 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 			EventType: packet.LevelEventSoundArmorStandLand,
 			Position:  vec64To32(pos),
 		})
+		return
+	}
+	if afterBlock != nil {
+		s.enqueuePacketAfterBlock(*afterBlock, pk)
 		return
 	}
 	s.writePacket(pk)

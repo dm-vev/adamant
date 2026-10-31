@@ -14,11 +14,19 @@ type Door struct {
 	Open bool
 	// Right specifies the attachment side of the door and, with that, the direction it opens in.
 	Right bool
+	// Top reads opening from the lower half. Bedrock retains the upper half's
+	// unused open_bit rather than mirroring the lower permutation on toggles.
+	Top bool
 }
 
 // BBox returns a physics.BBox that depends on if the Door is open, what direction it is facing and whether it is
 // attached to the right/left side of a block.
-func (d Door) BBox(cube.Pos, world.BlockSource) []cube.BBox {
+func (d Door) BBox(pos cube.Pos, source world.BlockSource) []cube.BBox {
+	if d.Top {
+		if lower, ok := source.Block(pos.Side(cube.FaceDown)).Model().(Door); ok && !lower.Top {
+			d.Open = lower.Open
+		}
+	}
 	if d.Open {
 		if d.Right {
 			return []cube.BBox{full.ExtendTowards(d.Facing.RotateLeft().Face(), -0.8125)}

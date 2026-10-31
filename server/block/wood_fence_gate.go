@@ -12,6 +12,7 @@ import (
 
 // WoodFenceGate is a block that can be used as an openable 1x1 barrier.
 type WoodFenceGate struct {
+	blockInteractionUpdate
 	transparent
 	bass
 	sourceWaterDisplacer

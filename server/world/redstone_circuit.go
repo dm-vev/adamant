@@ -119,6 +119,13 @@ type RedstoneCircuitPostPublisher interface {
 	CircuitPublished(pos cube.Pos, tx *Tx, before, after Block)
 }
 
+// RedstoneCircuitPublisher handles an accepted native consumer notification
+// whose mutation may target another position, as with the upper door consumer.
+// Return true when publication was handled, including an unchanged live target.
+type RedstoneCircuitPublisher interface {
+	PublishCircuit(pos cube.Pos, tx *Tx, before, after Block) bool
+}
+
 func (e *redstoneEngine) replaceCircuit(pos cube.Pos, before, after Block, publication bool) {
 	e.replaceProducer(pos, before, after)
 	e.circuitTraversal.replace(pos, after)
@@ -239,7 +246,10 @@ func (e *redstoneEngine) tickCircuits(tx *Tx, tick int64) {
 		update.After = output
 		if e.redstoneUpdateAllowed(tx, update) {
 			actor, actorOnly := e.circuits[pos].(RedstoneCircuitActorOutput)
-			if actorOnly && actor.CircuitActorOutput() {
+			publisher, custom := e.circuits[pos].(RedstoneCircuitPublisher)
+			if custom && publisher.PublishCircuit(pos, tx, b, output) {
+				// The native handler published its own target permutation(s).
+			} else if actorOnly && actor.CircuitActorOutput() {
 				tx.SetBlockEntity(pos, output)
 			} else {
 				tx.SetBlock(pos, output, &SetOpts{DisableRedstoneUpdates: true, circuitPublication: true})

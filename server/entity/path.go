@@ -156,15 +156,11 @@ func groundStepCost(tx *world.Tx, pos cube.Pos, p GroundProfile) float64 {
 			cost += 8
 		}
 	}
-	switch b := tx.Block(pos).(type) {
+	switch tx.Block(pos).(type) {
 	case block.Fire:
 		cost += 16
-	case block.WoodDoor:
-		if !b.Open && !p.AllowDoors {
-			return 1e6
-		}
-	case block.CopperDoor:
-		if !b.Open && !p.AllowDoors {
+	case block.WoodDoor, block.CopperDoor:
+		if open, _ := doorOpen(tx, pos); !open && !p.AllowDoors {
 			return 1e6
 		}
 	}
@@ -190,13 +186,9 @@ func groundWalkable(tx *world.Tx, pos cube.Pos, p GroundProfile) bool {
 		}
 	}
 	if !p.AllowDoors {
-		switch b := tx.Block(pos).(type) {
-		case block.WoodDoor:
-			if !b.Open {
-				return false
-			}
-		case block.CopperDoor:
-			if !b.Open {
+		switch tx.Block(pos).(type) {
+		case block.WoodDoor, block.CopperDoor:
+			if open, _ := doorOpen(tx, pos); !open {
 				return false
 			}
 		}

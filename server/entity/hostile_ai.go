@@ -376,8 +376,16 @@ func woodenDoor(tx *world.Tx, pos cube.Pos) bool {
 func doorOpen(tx *world.Tx, pos cube.Pos) (open, ok bool) {
 	switch d := tx.Block(pos).(type) {
 	case block.WoodDoor:
+		if d.Top {
+			lower, exists := tx.Block(pos.Side(cube.FaceDown)).(block.WoodDoor)
+			return lower.Open, exists
+		}
 		return d.Open, true
 	case block.CopperDoor:
+		if d.Top {
+			lower, exists := tx.Block(pos.Side(cube.FaceDown)).(block.CopperDoor)
+			return lower.Open, exists
+		}
 		return d.Open, true
 	}
 	return false, false

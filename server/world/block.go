@@ -205,6 +205,18 @@ type PlacementHandler interface {
 	Placed(pos cube.Pos, tx *Tx, previous Block)
 }
 
+// BlockFillHandler handles Bedrock's onFillBlock callback for a command-placed
+// permutation. Changing a permutation during an interaction does not call it.
+type BlockFillHandler interface {
+	Filled(pos cube.Pos, tx *Tx, replaced Block)
+}
+
+// BlockFillUpdater prepares a command-fill mutation snapshot for its viewer
+// notification, independently of the optional Filled callback's side effects.
+type BlockFillUpdater interface {
+	CommandFillUpdate(tx *Tx) Block
+}
+
 // LiquidPlacementHandler receives a successful SetLiquid placement in either
 // layer. Physical liquid placement may activate a fluid that remains dormant
 // when the same static state is installed through SetBlock.

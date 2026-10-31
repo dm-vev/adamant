@@ -1,5 +1,3 @@
-//go:build redstone_wind_material_audit
-
 package entity
 
 import (
@@ -15,9 +13,8 @@ import (
 )
 
 // The SDK exposes a redundant legacy direction beside cardinal_direction.
-// An upper door's unused open bit is retained in the corpus; wire comparison
-// follows the independently verified upper-half contract in block tests.
-func windMaterialState(t *testing.T, b pistonEntityNativeBlock, wire bool) []byte {
+// Native upper-door open bits are compared directly, including retained bits.
+func windMaterialState(t *testing.T, b pistonEntityNativeBlock) []byte {
 	t.Helper()
 	properties := map[string]any{}
 	for k, v := range b.States {
@@ -41,9 +38,7 @@ func windMaterialState(t *testing.T, b pistonEntityNativeBlock, wire bool) []byt
 	if b.ID == "minecraft:stone" {
 		delete(properties, "stone_type")
 	}
-	if _, door := properties["door_hinge_bit"]; door && wire && properties["upper_block_bit"] == true {
-		properties["open_bit"] = false
-	}
+
 	encoded, _ := json.Marshal(struct {
 		ID     string
 		States map[string]any
@@ -51,11 +46,39 @@ func windMaterialState(t *testing.T, b pistonEntityNativeBlock, wire bool) []byt
 	return encoded
 }
 
-// TestWindBurstMaterialsMatchBDS is an unfinished, strict audit diagnostic.
-// It currently reproduces powered-door/trapdoor/gate and candle differences;
-// see docs/redstone-audit.md before enabling it. No mismatches are skipped.
+func windMaterialBlocks(t *testing.T) func(pistonEntityNativeBlock) world.Block {
+	t.Helper()
+	world.DefaultBlockRegistry.Finalize()
+	byState := map[string]world.Block{}
+	for _, b := range world.DefaultBlockRegistry.Blocks() {
+		id, states := b.EncodeBlock()
+		key := windMaterialState(t, pistonEntityNativeBlock{ID: id, States: states})
+		byState[string(key)] = b
+	}
+	return func(b pistonEntityNativeBlock) world.Block {
+		t.Helper()
+		key := windMaterialState(t, b)
+		v, ok := byState[string(key)]
+		if !ok {
+			t.Fatalf("native material input unavailable: %s", key)
+		}
+		return v
+	}
+}
+
+// TestWindBurstMaterialsMatchBDS retains every frame of the material corpus,
+// including initial scene power, iron controls and nil-owner candle hits.
 func TestWindBurstMaterialsMatchBDS(t *testing.T) {
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_wind_materials.json")
+	testWindMaterialNative(t, "bedrock_1_26_51_wind_materials.json", 176, false)
+}
+
+func TestWindBurstBarrierInputsMatchBDS(t *testing.T) {
+	testWindMaterialNative(t, "bedrock_1_26_51_wind_barrier_inputs.json", 192, true)
+}
+
+func testWindMaterialNative(t *testing.T, file string, count int, independentInputs bool) {
+	t.Helper()
+	data, err := os.ReadFile("../block/testdata/" + file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,15 +86,15 @@ func TestWindBurstMaterialsMatchBDS(t *testing.T) {
 		Complete  bool
 		Scenarios []struct {
 			Scenario struct {
-				Kind, Form       string
+				Kind, Form, Feed string
 				Initial, Powered bool
 				Phase            int
 			}
-			Base, Target cube.Pos
-			Positions    []cube.Pos
-			SetupTick    int64 `json:"setup_tick"`
-			Initial      []pistonEntityNativeBlock
-			Changes      []struct {
+			Base, Target       cube.Pos
+			Positions, Sources []cube.Pos
+			SetupTick          int64 `json:"setup_tick"`
+			Initial            []pistonEntityNativeBlock
+			Changes            []struct {
 				Tick  int64
 				Spawn pistonEntityNativeBody
 			}
@@ -88,19 +111,23 @@ func TestWindBurstMaterialsMatchBDS(t *testing.T) {
 	if err = json.Unmarshal(data, &native); err != nil {
 		t.Fatal(err)
 	}
-	if !native.Complete || len(native.Scenarios) != 176 {
+	if !native.Complete || len(native.Scenarios) != count {
 		t.Fatal("incomplete native wind material corpus")
 	}
-	world.DefaultBlockRegistry.Finalize()
-	byState := map[string]world.Block{}
-	for _, b := range world.DefaultBlockRegistry.Blocks() {
-		id, states := b.EncodeBlock()
-		key := windMaterialState(t, pistonEntityNativeBlock{ID: id, States: states}, false)
-		byState[string(key)] = b
-	}
+	decode := windMaterialBlocks(t)
 	for _, c := range native.Scenarios {
-		t.Run(fmt.Sprintf("%s/initial%t/powered%t/phase%d", c.Scenario.Kind, c.Scenario.Initial, c.Scenario.Powered, c.Scenario.Phase), func(t *testing.T) {
-			if len(c.Positions) != 4 || len(c.Initial) != 4 || len(c.Samples) != 56 || len(c.Changes) != 1 || len(c.Hits) != 1 || c.Changes[0].Tick != c.SetupTick+20+int64(c.Scenario.Phase) || cube.PosFromVec3(c.Hits[0].Position.vec()) != c.Base {
+		t.Run(fmt.Sprintf("%s/initial%t/powered%t/%s/phase%d", c.Scenario.Kind, c.Scenario.Initial, c.Scenario.Powered, c.Scenario.Feed, c.Scenario.Phase), func(t *testing.T) {
+			cells := 4
+			if independentInputs {
+				cells = 5
+				if c.Scenario.Feed == "split" {
+					cells = 6
+				}
+				if len(c.Sources) != cells-4 {
+					t.Fatal("independent barrier input geometry missing")
+				}
+			}
+			if len(c.Positions) != cells || len(c.Initial) != cells || len(c.Samples) != 56 || len(c.Changes) != 1 || len(c.Hits) != 1 || c.Changes[0].Tick != c.SetupTick+20+int64(c.Scenario.Phase) || cube.PosFromVec3(c.Hits[0].Position.vec()) != c.Base {
 				t.Fatal("invalid native wind material controls")
 			}
 			settings := (world.NopProvider{}).Settings()
@@ -110,15 +137,6 @@ func TestWindBurstMaterialsMatchBDS(t *testing.T) {
 			defer func() { <-w.Exec(func(tx *world.Tx) { loader.Close(tx) }); _ = w.Close() }()
 			_ = w.SetGameRule("spawn_mobs", false)
 			_ = w.SetGameRule("fire_tick", false)
-			decode := func(b pistonEntityNativeBlock) world.Block {
-				t.Helper()
-				key := windMaterialState(t, b, false)
-				v, ok := byState[string(key)]
-				if !ok {
-					t.Fatalf("native material input unavailable: %s", key)
-				}
-				return v
-			}
 			<-w.Exec(func(tx *world.Tx) {
 				loader.Move(tx, c.Base.Vec3Centre())
 				loader.Load(tx, 25)
@@ -128,7 +146,9 @@ func TestWindBurstMaterialsMatchBDS(t *testing.T) {
 						tx.SetBlock(cube.Pos{x, 64, z}, stone, nil)
 					}
 				}
-				tx.SetBlock(c.Positions[3], decode(c.Initial[3]), nil)
+				for i, pos := range c.Positions[3:] {
+					tx.SetBlock(pos, decode(c.Initial[i+3]), nil)
+				}
 				for i, pos := range c.Positions[:3] {
 					tx.SetBlock(pos, decode(c.Initial[i]), nil)
 				}
@@ -136,13 +156,13 @@ func TestWindBurstMaterialsMatchBDS(t *testing.T) {
 			for _, f := range c.Samples {
 				w.AdvanceTick()
 				<-w.Exec(func(tx *world.Tx) {
-					if tx.CurrentTick() != f.Tick || len(f.Blocks) != 4 {
+					if tx.CurrentTick() != f.Tick || len(f.Blocks) != cells {
 						t.Fatal("native material clock/cell count differs")
 					}
 					for i, pos := range c.Positions {
 						id, states := tx.Block(pos).EncodeBlock()
-						got := windMaterialState(t, pistonEntityNativeBlock{ID: id, States: states}, true)
-						want := windMaterialState(t, f.Blocks[i], true)
+						got := windMaterialState(t, pistonEntityNativeBlock{ID: id, States: states})
+						want := windMaterialState(t, f.Blocks[i])
 						if !bytes.Equal(got, want) {
 							t.Errorf("tick %d at %v: got %s, native %s", f.Tick, pos, got, want)
 						}

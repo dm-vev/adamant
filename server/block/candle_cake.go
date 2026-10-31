@@ -11,6 +11,7 @@ import (
 
 // CandleCake is a cake with a single candle placed on top of it.
 type CandleCake struct {
+	blockInteractionUpdate
 	transparent
 	sourceWaterDisplacer
 

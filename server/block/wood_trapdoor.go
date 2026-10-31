@@ -13,6 +13,7 @@ import (
 
 // WoodTrapdoor is a block that can be used as an openable 1x1 barrier.
 type WoodTrapdoor struct {
+	blockInteractionUpdate
 	transparent
 	bass
 	sourceWaterDisplacer

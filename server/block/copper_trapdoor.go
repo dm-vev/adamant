@@ -14,6 +14,7 @@ import (
 
 // CopperTrapdoor is a block that can be used as an openable 1x1 barrier.
 type CopperTrapdoor struct {
+	blockInteractionUpdate
 	transparent
 	bass
 	sourceWaterDisplacer

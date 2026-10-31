@@ -13,6 +13,7 @@ import (
 // Candle is a non-solid decorative block that can be lit to emit light. Up to four candles may occupy the same block
 // space, increasing the emitted light level.
 type Candle struct {
+	blockInteractionUpdate
 	empty
 	transparent
 	sourceWaterDisplacer

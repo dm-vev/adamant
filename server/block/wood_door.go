@@ -12,6 +12,7 @@ import (
 
 // WoodDoor is a block that can be used as an openable 1x2 barrier.
 type WoodDoor struct {
+	blockInteractionUpdate
 	transparent
 	bass
 	sourceWaterDisplacer
@@ -48,7 +49,7 @@ func (d WoodDoor) FuelInfo() item.FuelInfo {
 
 // Model ...
 func (d WoodDoor) Model() world.BlockModel {
-	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right}
+	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
 }
 
 // NeighbourUpdateTick breaks the door when its other half or the support
@@ -133,21 +134,13 @@ func (d WoodDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 
 // Activate ...
 func (d WoodDoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
-	d.Open = !d.Open
-	tx.SetBlock(pos, d, nil)
-
-	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
-	other := tx.Block(otherPos)
-	if door, ok := other.(WoodDoor); ok {
-		door.Open = d.Open
-		tx.SetBlock(otherPos, door, nil)
+	open, _, _ := barrierOpen(d)
+	if d.Top {
+		if lower, ok := tx.Block(pos.Side(cube.FaceDown)).(WoodDoor); ok {
+			open = lower.Open
+		}
 	}
-	if d.Open {
-		tx.PlaySound(pos.Vec3Centre(), sound.DoorOpen{Block: d})
-		return true
-	}
-	tx.PlaySound(pos.Vec3Centre(), sound.DoorClose{Block: d})
-	return true
+	return setDoorOpen(pos, d, !open, tx)
 }
 
 // BreakInfo ...

@@ -19,7 +19,7 @@ func (tx *Tx) SetBlockFromCommand(pos cube.Pos, b Block, source BlockState) {
 	registry := tx.World().conf.Blocks
 	id, err := gamedata.BlockStateID(NormaliseBlockName(source.Name), source.Properties)
 	if err != nil {
-		tx.setBlock(pos, b, &SetOpts{DisableBlockUpdates: true})
+		tx.setBlock(pos, b, &SetOpts{DisableBlockUpdates: true, CommandFill: true})
 		tx.updateNeighboursOf(pos)
 		return
 	}
@@ -41,7 +41,7 @@ func (tx *Tx) SetBlockFromCommand(pos cube.Pos, b Block, source BlockState) {
 		}
 		b = shapedBlock
 	}
-	tx.setBlock(pos, b, &SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true, nativeState: &native})
+	tx.setBlock(pos, b, &SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true, CommandFill: true, nativeState: &native})
 	tx.updateNeighboursOf(pos)
 }
 

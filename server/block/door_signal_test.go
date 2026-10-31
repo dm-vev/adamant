@@ -1,9 +1,11 @@
 package block
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -20,7 +22,15 @@ func TestDoorsOnlyFollowSignalChanges(t *testing.T) {
 		}
 	}
 	open := func(tx *world.Tx) (bool, bool, bool) {
-		return tx.Block(door).(WoodDoor).Open, tx.Block(door.Side(cube.FaceUp)).(WoodDoor).Open, tx.Block(trapdoor).(WoodTrapdoor).Open
+		upperPos := door.Side(cube.FaceUp)
+		upper := tx.Block(upperPos).(WoodDoor)
+		if upper.Open {
+			t.Fatal("ordinary toggle overwrote the upper native open bit")
+		}
+		openShape := upper.Model().(model.Door)
+		openShape.Top, openShape.Open = false, true
+		upperOpen := reflect.DeepEqual(upper.Model().BBox(upperPos, tx), openShape.BBox(upperPos, tx))
+		return tx.Block(door).(WoodDoor).Open, upperOpen, tx.Block(trapdoor).(WoodTrapdoor).Open
 	}
 	runWorld(w, func(tx *world.Tx) {
 		for x := -1; x <= 6; x++ {

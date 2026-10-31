@@ -6,10 +6,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// TestUpperDoorHalfSentClosed checks the network state of door halves as BDS
-// sends them: the upper half never carries open_bit, while the lower half
-// does and the server keeps the open state on both.
-func TestUpperDoorHalfSentClosed(t *testing.T) {
+// Native packets retain the upper half's unused open bit. Ordinary toggles
+// leave that bit unchanged; the lower half determines visible opening.
+func TestUpperDoorHalfRetainsNativeOpenBit(t *testing.T) {
 	br := world.DefaultBlockRegistry
 	br.Finalize()
 	hash := func(b world.Block) uint32 {
@@ -30,8 +29,11 @@ func TestUpperDoorHalfSentClosed(t *testing.T) {
 		case CopperDoor:
 			closedTop, openBottom, closedBottom = CopperDoor{Top: true}, CopperDoor{Open: true}, CopperDoor{}
 		}
-		if hash(door) != hash(closedTop) {
-			t.Errorf("%T: open upper half is sent open", door)
+		if hash(door) == hash(closedTop) {
+			t.Errorf("%T: upper half lost its retained native open bit", door)
+		}
+		if rid, ok := br.HashToRuntimeID(hash(door)); !ok || rid != br.BlockRuntimeID(door) {
+			t.Errorf("%T: upper network state does not round trip", door)
 		}
 		if hash(openBottom) == hash(closedBottom) {
 			t.Errorf("%T: open lower half is sent closed", door)
