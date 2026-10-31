@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **active after the user's resumption; audit incomplete (2026-10-31)**.
+Status: **paused at the user's request; audit incomplete (2026-10-31)**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -1793,7 +1793,7 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Daylight detectors and lightning rods | Detector clock, environment, initial/live roof lighting, body and producer registration corrected; 48,960 dimension/initialization source frames, 28,800 weather samples, 24 live roof traces, 16 source-removal/overlap traces, ten producer heap checkpoints and 12 player inversions with wire timing match. Rod hit/expiry/retrigger/oxidation/producer and tested support output match 100 real-bolt traces; 96 rod shapes match inspected bounds. Attraction geometry/order/selection matches 670 executed client cases with synthetic world inputs plus 120 native sort/heap cases; 26 actual BDS traps verify shared selector integration, bolt positions and pulse occurrence through tested rain occluders. Open: other lighting filters/liquid states and lifecycle, partial weather/fog, wider detector face/conduction/support/events/persistence; random weather scheduling, broader precipitation/climate/occluders, copper/projectile/interaction/events and lifecycle |
 | Sculk sensors/calibrated sensors/shriekers | Missing lever/button/plate/hook events, calibrated disabled-output face, integer distance/selection/reception, binary32 range/cell conversion and button event/producer ordering corrected. 568 controlled traces (four include heap readback) cover tested phases/strengths, diagonal positions, adjacent switches and plates, all plate types, hook contacts, filters in four facings, all 16 wool colours and eight material controls. Original client selector/strength/range gates execute in 80/110/92 cases and hook sound/event dispatch in 64 cases. Native binary32 ray offsets, traversal and unit-cube intersections replace the Java obstruction path; 208 executed obstruction cases, 133 full cell sequences, 202 direct intersections and 168 additional BDS seam/material/coordinate traces match. Open: other event/filter/occlusion/output paths, fractional entity-source integration, waterlogging, resonance, shriekers, startup, network action phase and persistence |
 | Lamps and copper bulbs | Lamp source/consumer phase corrected in observer/wire matrices. Bulb comparator output verified lit/unlit for all eight variants. Open: broader lamp retrigger/cancellation/load cases, bulb toggle timing/interaction and persistence |
-| Doors/trapdoors/fence gates | Open: direct/conducted input, upper/lower halves, manual changes while powered, transition events and all materials |
+| Doors/trapdoors/fence gates | 192 native consumer pulse traces, 192 dust/stone/glass signal traces and 192 independent redstone packet traces cover the tested lower/upper/split inputs and command edits. Another 176 material and 192 separate-input wind traces check the attack gate. Wire regressions retain 3512 redstone and 168 wind interaction packets, normal/split flushing. Native upper-door bits are retained. Open: broader analog/conduction, actual player placement/use while powered, exact network delivery tick, full material/geometry/event matrices, persistence and lifecycle |
 | Powered/detector/activator rails | Detector inventory strength, command-cart eligibility/container, typed body selection and producer state corrected against 87 settled/lifecycle and 32 source/wire/lamp timing cases; query geometry matches 324 executed client cases. Powered/activator cadence, configured axis, tested source overlap, straight/slope range, connection placement and zero-strength activator publication corrected against 256 BDS scenes. Cart height, binary32 motion, container drag and detector chunk ownership match 320 native motion scenes; stationary rider/TNT/hopper activator effects match 24 further scenes. Open: full source-list construction/order, loops, broader detector and producer lifecycle, multi-cart order, chunk persistence, cart curves/derailment/collisions, command-cart activation, broader moving-cart transfers and activation lifecycle |
 | Dispensers/droppers/crafters | Nine-slot contract, consumer publication, tested pulse timing and cart origin/newborn phase corrected. Native reservoir selection matches 2,048 executed cases; dropper's additional container pass matches 20 owned RNG traces. Crafter routing matches 102 hopper scenes, pulse/animation timing 36 scenes, sided output/remainders 240 scenes and saved animation 12 scenes. Ordinary/crafter ejection matches 36 exact-input motion traces and 1,440 executed velocities; ordinary effects match 96 real-packet scenes. Initial flags match 32 container load scenes. Open: broader source graphs/queues, other item/recipe behaviours, actor lifecycle and full world unload/restart persistence |
 | Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Early lock publication corrected against 144 lock-pulse traces. Transfer clock/counter units match 110 actual push traces and 25 native heap checkpoints; recursive chain transfers match 60 scenes across placement orders/chunk boundaries. Block-item pickup matches 142 scenes including holes, simultaneous stacks and covers; native query/type gates and seven-box hopper geometry are checked separately. Slot selection matches 72 generic push/pull, 78 sided furnace and 40 brewing scenes; twenty persisted-counter loads verify the tested decode/clock path. Tested hopper-cart collection and transfer effects match 48 further scenes. Open: broader lock graph/lifecycle, larger hopper graphs and complete world RNG consumption, other container transfers/sides, moving cart interactions and reload |
@@ -6178,3 +6178,298 @@ The completed implementation and native regressions are committed in
 `a727e33f`; the unfinished material capture and opt-in diagnostic are retained
 separately in `de6d45f9`. Private operator/ban data and the temporary gameplay
 log are excluded from these commits.
+
+### Resumed barrier consumers and wind materials
+
+The former 176-scene opt-in material diagnostic now passes as an ordinary
+regression. Its build tag is removed. Doors, trapdoors and gates now have
+world-owned consumers on the shared two-GT circuit clock; their visible open
+bit seeds their initial component value, and the first input notification is
+ignored. Manual and activating-attack changes do not overwrite the electrical
+history. Wind handlers consult evaluated consumer strength, ignore upper door
+hits and iron controls, and preserve gate facing independently of ownership.
+Lit candles and candle cakes use a dedicated owner-independent extinguish
+handler, avoiding the previous nil-user panic and held-item/enchantment path.
+
+`scripts/redstone_bds_barrier_probe.py` captures another 192 original-BDS
+scenes in `bedrock_1_26_51_barrier_pulses.json` (owned root
+`adamant-redstone-bds-ooa7adyq`). Three door families, three trapdoor families
+and two gate families each have both initial states, both initial power states,
+both absolute source parities and lower/upper/split input controls. Every scene
+retains all 108 frames, one-, two-, three-, four- and eight-GT pulse inputs,
+another late transition and a command edit of the live open bit. Split feeds
+keep the independent upper input steady while pulsing the lower. Go compares
+all 41,472 recorded cell states, including upper unused bits and the complete
+initially powered interval. The existing iron-door test now allows the initial
+consumer notification before testing a subsequent rising edge, matching the
+native distinction instead of expecting command placement to act as that edge.
+
+The inspected handlers at DoorBlock::_onRedstoneUpdate (`0x9789080`),
+TrapDoorBlock::_onRedstoneUpdate (`0x4032090`) and
+FenceGateBlock::_onRedstoneUpdate (`0x7ac3a30`) return on the event's first-time
+flag. Native setup seeds their input from open state. The already retained
+activating-attack handlers independently gate on positive consumer strength.
+Door input publication combines both halves while leaving their scene
+strengths independent. A native consumer publication callback lets an upper
+door notification mutate its lower target after cancellation is checked,
+without first publishing a fictitious upper open-state change.
+
+A fresh connected-client capture from
+`scripts/redstone_bds_wind_material_packet_probe.py` retains all 176 independent
+scenes and their original packets in
+`bedrock_1_26_51_wind_material_effects.json` (owned root
+`adamant-redstone-bds-skwpruz8`). An explicit Script checkpoint at setup+10 GT
+separates setup packets from effects; projectile spawn is at setup+20/21 GT.
+Packet receipt times delimit that scope, not simulation tick order. Original
+setup packets and the checkpoint remain in the corpus. The ordinary session
+test compares all 168 activating-attack packets over 160 scenes, with both
+normal and split flushing, alongside every sampled raw block state. Sixteen
+campfire/soul-campfire controls remain separately identified: their raw packets
+include four periodic actor refreshes after the checkpoint. Those refreshes are
+retained, but their independent actor clock is outside this packet comparison;
+the material-state regression checks their unchanged state.
+
+The wire evidence corrects a previous audit assumption. BDS retains the upper
+door's unused open bit even when it is true, and republishes that unchanged
+permutation when the lower half toggles. It does not always send an upper
+open_bit=false. The old registry normalization and its incorrect unit-test
+expectation are replaced by raw, reversible network hashes. Both material
+comparators now check the original upper bits directly; they no longer
+normalize them away. The packet comparison retains the exact original IDs.
+The stronger evidence therefore supersedes the earlier upper-half claim in
+this report, without rewriting the native captures to match it.
+
+Opening a door now changes its lower permutation and republishes the retained
+upper permutation, with native flags 3 and lower-before-upper ordering. The
+sound follows both states and uses the old lower permutation's hash. Trapdoor
+and gate attack sounds instead use their new permutation's hash. Candle
+attacks use extinguish.candle at integer block coordinates, after the state
+update, with the native empty entity identifier and ExtraData=-1. The pending
+queue retains these dependencies and effects through its existing bounded
+publication path, including split flushing. Ordinary non-attack candle use and
+splash paths are not changed by this dedicated handler.
+
+The upper collision model now reads the lower half's opening, following the
+inspected DoorBlock::_isDoorToggled (`0x9789b60`) call from the native visual
+shape body at `0x97896c0`. AI door reads and ground path costs use that same
+lower opening rather than the retained upper bit. Eight additional integration
+controls cover both disagreement directions for wooden/copper doors, compare
+upper/lower collision shapes and path costs, and exercise an upper-half AI
+interaction while retaining its original permutation.
+
+Command fill is a separate lifecycle event. Native onFillBlock (`0x978ba10`)
+copies the lower open bit to its matching partner when placing/editing the
+command state. An explicit command-fill callback now handles that distinction;
+ordinary permutation changes, oxidation, native toggles and actor publication
+do not accidentally run the command callback. The pulse replay drives that
+real callback on its recorded command changes. Actual setblock/fill/clone
+integration tests also pass (builtin 0.487 s).
+
+The native material/pulse/packet tests pass together before the final command
+callback split (session 6.769 s, entity 5.891 s, block 0.350 s). After that split,
+the related shared selection passes block 0.718 s, session 14.927 s, entity
+43.234 s and world 0.293 s. The additional AI/path/material/pulse selection
+passes after its final integration changes (entity 5.862 s).
+
+The final complete shared check passes block 96.254 s, session 19.279 s,
+world 13.610 s, player 17.421 s and item 1.368 s; inventory has no tests.
+The root server builds after the final AI/path changes. Both new Python probes
+parse successfully, the two new BDS corpora are complete, and diff whitespace
+checks pass. This was the resumed working snapshot after `1e99e7e2`;
+the paused publication below records its final implementation and evidence.
+
+This extends the barrier and activating-attack evidence, not full parity.
+Remaining work includes analog/conducted input changes, actual player placement
+and powered use, broader command property changes, invalid/mixed door halves,
+hinge and direction geometry, native save/load component initialization,
+campfire actor publication timing, vibration ownership, cancellation and
+multi-device/backlog matrices. Broader wind liquids/geometry, natural breeze
+flight and whole-world RNG/lifecycle remain open. The full audit remains active
+at approximately 70% effort; all 22 matrix rows retain open work.
+
+### Barrier signal changes and independent attack inputs
+
+Three further complete, independently captured original-BDS corpora extend the
+barrier comparison. All retain the inspected BDS SHA-256
+`76d547f82e02c18d0986c30b47132c9cc4171d0f2df1c00649e50ff35788b321`:
+
+- `bedrock_1_26_51_barrier_signals.json`: 192 scenes from
+  `scripts/redstone_bds_barrier_signal_probe.py`, root
+  `adamant-redstone-bds-rj5xs5m5`. Real source blocks and dust lines change
+  strength while remaining positive, switch fully off/on, and follow explicit
+  command closures while powered. Three door, three trapdoor and two gate
+  families each have both initial states, input heights, source parities and
+  direct-dust/stone-bridge/glass-bridge controls. Glass supports isolate raised
+  dust from downward conduction. Every scene retains 120 frames, both target
+  cells, the nearest dust strength and its bridge/support, plus all initial
+  input geometry and fifteen original command mutations. Go checks all 92,160
+  cell states. In the tested controls, dust changes 13/11 directly or 14/12 at
+  the bridge; stone conducts the change, while glass does not. The native
+  barriers can reopen on a positive-to-positive change after a command closure.
+  Treating their consumer history as only a powered boolean would miss this.
+- `bedrock_1_26_51_wind_barrier_inputs.json`: 192 scenes from
+  `scripts/redstone_bds_wind_barrier_input_probe.py`, root
+  `adamant-redstone-bds-c4lzdo4e`. These retain real projectile impacts, 56
+  complete frames and separately placed lower/upper/split sources, rather than
+  only the earlier powered floor. All 57,344 recorded cell states match. A
+  positive upper door consumer does not by itself reject an attack on the
+  lower half whose own consumer is zero; the gate reads that component, not
+  the combined visible door opening or immediate physical adjacency.
+- `bedrock_1_26_51_barrier_packets.json`: 192 fresh connected-client scenes
+  from `scripts/redstone_bds_barrier_packet_probe.py`, root
+  `adamant-redstone-bds-azy8r85t`. They preserve every target state frame,
+  original setup packet, the explicit setup+10-GT scope checkpoint, original
+  command inputs, and all 3512 subsequent target state/sound packets.
+
+The signal/pulse replay passes together before publication changes (entity
+12.488 s), and both material/independent-input projectile corpora pass together
+(6.276 s). These are direct native state checks; no material, frame, positive
+strength change or upper open bit is filtered out.
+
+### Barrier redstone publication and sound origin
+
+The fresh 3512-packet comparison initially fails every scene in both normal
+and split flushing. Redstone-triggered sounds precede the pending block updates
+in the native stream. The preceding wind corpus instead places its sound
+after the state updates. The former shared Go path imposed the latter order on
+redstone notifications too. Trapdoor/gate circuit packets additionally used
+flags 2 and the generic sound entity identifier instead of native flags 3 and
+the empty identifier. Command edits had separate primary/partner flag and
+ordering differences.
+
+Circuit publication now retains its mutation snapshots until the enclosing
+callback completes. The world is still mutated before its sound callback,
+following the native setOpen operation; only packet publication is ordered.
+The sound uses the existing immediate bounded outgoing queue; it does not wait
+for the per-block background flush. Both halves of a door remain in
+lower-before-upper order. The readiness gate makes this hold even
+when a viewer attempts a split flush while receiving a block callback.
+The new viewer assertion also checks that sound listeners already observe the
+mutated barrier, preventing an apparent wire fix that instead plays sound
+against the old world state. Wind/ordinary door interaction retains its
+separate after-state publication path.
+
+Command-fill snapshots now explicitly request the native primary flags 3.
+A changed upper partner uses flags 2 and depends on the lower update; it is not
+sent if that unused bit was already equal. This is separate from a circuit
+notification republishing an unchanged upper permutation with flags 3.
+The new optional command-fill updater prepares only the outgoing snapshot;
+the existing fill callback retains the actual partner mutation.
+
+The first publication correction leaves 48 door origin mismatches across the
+two flush modes. Native sound stays at the notifying position: an upper-half
+consumer produces sound at upper Y+0.5, even though the changed open bit is in
+the lower block. The common helper now retains that original position rather
+than moving sound down with its mutation target. Sound block data still uses
+the old lower permutation for doors and the new permutation for gates/trapdoors.
+
+All original 3512 redstone packets and 168 activating-attack packets now match
+without dropping fields or modifying their original IDs, including both
+flushing modes. All four state/input corpora and the door AI integration
+controls pass together with these packet tests (session 13.623 s, entity
+14.994 s). Adding the post-mutation sound-listener assertion and the shared
+bell/moving-block/queue selection also passes (session 19.607 s). The final
+immediate-sound path retains that complete selection (19.554 s), and the full
+session package passes again (24.389 s).
+
+The complete shared check passes block 106.881 s, session 30.192 s, world
+16.013 s, player 20.151 s and item 1.435 s; inventory has no tests. The related
+entity selection passes 72.113 s, including both wind cohorts, all barrier
+corpora, arrows, bells, pistons, ground paths and breeze AI. Actual
+setblock/fill/clone integration tests pass again (builtin 0.598 s). The root
+server builds after the final sound publication change; all three added Python
+probes parse and diff whitespace checks pass. A full entity-suite pass is not
+claimed: the reproduced, unchanged frog breeding flake remains as recorded
+above.
+
+This proves the retained state frames and per-scene packet order/fields, not
+the exact network delivery tick. Original receipt timestamps show a separation
+between redstone sounds and state delivery, but receipt time alone is not an
+authoritative simulation-tick label. An ordered native tick marker or direct
+sender-phase observation is still required for that clock comparison.
+Actual player use/placement, broader conductor/source combinations,
+multi-device ordering, cancellation, persistence and all other open matrix
+requirements also remain outstanding. The effort estimate remains approximately
+70%; the paused publication below supersedes this resumed working status.
+
+### Native packet phase markers and paused publication checkpoint
+
+Two complete original-BDS captures now bound packet delivery relative to the
+Script interval, using received packet sequence rather than wall-clock gaps:
+
+- `bedrock_1_26_51_barrier_clock.json`: 32 independent redstone scenes, 108
+  frames each, 216 ordered before/after markers and 604 effect packets;
+  owned root `adamant-redstone-bds-srge33hb`.
+- `bedrock_1_26_51_wind_barrier_clock.json`: 32 independent real-projectile
+  scenes, 108 frames each, 216 ordered markers and 56 effect packets;
+  owned root `adamant-redstone-bds-kg4fg7_4`. Iron controls retain no attack
+  effects. The original impact events, inputs and raw state frames remain.
+
+The probes are `scripts/redstone_bds_barrier_clock_probe.py` and
+`scripts/redstone_bds_wind_barrier_clock_probe.py`. The loopback-only client now
+records monotonically increasing receive sequence numbers and the original
+text packets. BDS wraps Script messages in rawtext objects; the capture decodes
+their derived markers while retaining those original fields. Completion requires
+the actual final marker, so a delayed last network flush cannot silently remove
+the end of the trace. Both corpora retain the same inspected original BDS hash.
+
+`scripts/redstone_barrier_clock_analysis.py` independently matches every effect
+to the original state transition and native network hash, preserving the upper
+door's unused bit and validating SDK direction aliases. It checks all packet
+fields and records the surrounding original markers. For N, the observed
+mutation tick (the explicit input tick for commands), the retained intervals are:
+
+| Effects | Count | Previous marker | Following marker |
+|---|---:|---|---|
+| Circuit sound | 220 | N-1 after inputs | N before inputs |
+| Circuit lower/upper state | 340 | N after inputs | N+1 before inputs |
+| Command state | 44 | N after inputs | N+1 before inputs |
+| Wind state and sound | 56 | N after inputs | N+1 before inputs |
+
+These are receive-order bounds around actual native Script ticks, not a
+conversion from milliseconds or a claim about an unobserved lower-level sender
+clock. The native Script frame already observes the changed world permutation.
+
+The ordinary `TestBarrierPacketsRespectNativeScriptPhase` replays both corpora
+with actual circuit updates, command inputs and real Go wind projectile
+collisions. A stationary observer registers a deferred Script-like callback
+before the ordinary block/circuit/late-projectile phases. That callback checks
+every raw state frame and emits the two phase markers around the recorded
+inputs. It also attempts an early flush. Both normal and split block viewers
+must preserve the original packet/marker stream; only the explicitly warmed
+setup window is excluded from packet comparison, on both sides. State frames
+are checked throughout, including that window.
+
+The initial phase comparison exposes 80 failures: wind state can escape before
+the Script-like interval in either flush mode, and a split command mutation can
+escape between its before/after markers. Readiness now covers wind/manual door,
+trapdoor/gate attack and candle snapshots as well as circuit publication.
+Command-fill snapshot preparation receives its owning transaction and creates
+the same callback-completion gate; a changed upper partner shares that gate.
+Actual world mutation, collision and electrical sampling remain in their
+ordinary phases. Circuit sound stays immediate, while wind sound retains its
+after-state order. This fixes premature publication without adding a fixed
+whole-tick delay or changing the original native packet IDs.
+
+The phase regression and both earlier packet corpora pass together (session
+12.926 s). The final complete shared check passes block 98.488 s, session
+27.407 s, world 13.931 s, player 17.451 s and item 1.257 s; inventory has no
+tests. The related entity selection passes 56.344 s, and actual
+setblock/fill/clone integration passes (builtin 0.597 s). The root server builds
+after the final callback-gate change. All added clock Python sources parse and
+diff whitespace checks pass. The previously documented full-entity-suite
+limitation remains; this is not a claim that the unrelated frog flake is fixed.
+
+The audit is now paused at the user's request, with approximately 70% of the
+full effort completed. This remains a planning estimate, not proven global
+parity: all 22 matrix rows retain open work. Exact lower-level sender timing,
+unrestricted asynchronous network/background scheduling, backpressure and
+multi-device lifecycle/cancellation still require further comparison, alongside
+the outstanding gameplay, geometry, player-use and persistence matrices.
+This publication records the completed fixes and reproducible evidence without
+resuming the remaining audit. Private operator/ban data and the temporary
+gameplay log are excluded.
+
+The implementation/state regressions are committed in `1eb77585` and the
+independent packet/phase capture tools, original corpora and regressions in
+`af7ab67f`. Publication of this checkpoint does not resume the paused audit.
