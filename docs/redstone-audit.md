@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **paused at the user's checkpoint on 2026-10-29; audit incomplete**.
+Status: **active after the user's resumption; audit incomplete (2026-10-31)**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -1788,7 +1788,7 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Redstone torches | Native counter, shared clock and registration traversal installed; 34 one-torch traces, 36 ascending networks, 62 common-support traces, 60 placement traces, 24 rotation/replacement traces, 60 settled face/conduction cases and 3,776 algorithm cases match. Immediate placement inversion and premature direction refresh fixed. Open: broader player interactions, full source/material/attenuation graph, replacement registration order in larger graphs, dependency lifecycle, native sound/publication order, restart/unload/reload and broader cancellation |
 | Observers | 38 face/phase/retrigger traces, 28 output traces, 12 lifecycle traces and 18 movement callback windows match. Open: notification-only changes, larger chains, powered placement/load, unload/reload and complete piston timing |
 | Pistons and sticky pistons | Scene consumer and actor transition phases replace immediate neighbour movement. 432 direct/weak input and pulse traces, 576 retrigger traces, 144 strong conducted-input traces, 96 linear limit/obsidian/filled-chest traces and 528 adhesive branch traces match. Native positional spawn sorting is executed in 334 component cases. Eight actor/consumer heap traces expose and correct premature serialized NewState. Another 96 vibration traces, sixteen actual packet traces and 384 interruption traces verify the scoped event, publication and orphan restoration changes below. Open: broader source/registration/property/load lifecycle, additional adhesive/support/notification/material contexts, other block actors and inventories, drops, partial geometry, moving entities, sounds/events/packets and persistence |
-| Levers and buttons | 196 source states, 480 direct/conducted output cases, 180 actual-arrow traces and 66 real player-use/retrigger traces match. Missing wooden-button activation/holding, projectile collision/contact phase and switch sound events corrected; six native click packets verify three sources. Fifteen adjacent-sensor traces expose and correct button event-before-producer strength ordering. Open: trident world capture, multiple entities/boundaries, broader support/materials, full sound material/mount matrix, producer startup, replacement and reload |
+| Levers and buttons | 196 source states, 480 direct/conducted output cases, 180 actual-arrow traces and 66 real player-use/retrigger traces match. Missing wooden-button activation/holding, projectile collision/contact phase and switch sound events corrected; six native click packets verify three sources. Fifteen adjacent-sensor traces expose and correct button event-before-producer strength ordering. Another 64 player-charge and 16 actual breeze-charge grids verify activation, pulse release and the tested wall/range footprints; executed client ray/set functions independently check selection and order. Open: broader burst materials, mixed-device ordering/events/packets, trident world capture, multiple entities/boundaries, broader support/materials, full sound material/mount matrix, producer startup, replacement and reload |
 | Pressure plates and tripwire | Plate conversion/query fixes verified in 302 native traces and five executed scalar methods. Tripwire initialization, contact bounds, 40-string limit, disarming/recheck and neighbour callback scope corrected; 140 contact + 80 line traces match. Artificial carpet collision removed against an executed native getter. Another 58 actual player-cut traces and 230 hook sound packets match. Missing plate/hook vibrations corrected against 68 all-type plate and 20 hook contact/sensor traces; 64 executed hook-helper cases verify event priority, actor absence, sound order and visible-state hash. Seventeen additional settled all-material traces and 34 actual player-client packets verify added plate click sounds and tested adjacent calibrated-input ordering. Hook producer setup, supported rotations and replacements now match 136 additional full traces. Sixteen actual-player hook placements expose and remove the duplicate line scan; sixteen native attachment packets are compared separately from cleanup sounds. Open: player modes/actor states, complete boundary/transition/contact integration, broader producer startup/load/order, previously powered/disarmed cutting, gaps/crossings/support/materials, wider audio/lifecycle events and persistence |
 | Daylight detectors and lightning rods | Detector clock, environment, initial/live roof lighting, body and producer registration corrected; 48,960 dimension/initialization source frames, 28,800 weather samples, 24 live roof traces, 16 source-removal/overlap traces, ten producer heap checkpoints and 12 player inversions with wire timing match. Rod hit/expiry/retrigger/oxidation/producer and tested support output match 100 real-bolt traces; 96 rod shapes match inspected bounds. Attraction geometry/order/selection matches 670 executed client cases with synthetic world inputs plus 120 native sort/heap cases; 26 actual BDS traps verify shared selector integration, bolt positions and pulse occurrence through tested rain occluders. Open: other lighting filters/liquid states and lifecycle, partial weather/fog, wider detector face/conduction/support/events/persistence; random weather scheduling, broader precipitation/climate/occluders, copper/projectile/interaction/events and lifecycle |
 | Sculk sensors/calibrated sensors/shriekers | Missing lever/button/plate/hook events, calibrated disabled-output face, integer distance/selection/reception, binary32 range/cell conversion and button event/producer ordering corrected. 568 controlled traces (four include heap readback) cover tested phases/strengths, diagonal positions, adjacent switches and plates, all plate types, hook contacts, filters in four facings, all 16 wool colours and eight material controls. Original client selector/strength/range gates execute in 80/110/92 cases and hook sound/event dispatch in 64 cases. Native binary32 ray offsets, traversal and unit-cube intersections replace the Java obstruction path; 208 executed obstruction cases, 133 full cell sequences, 202 direct intersections and 168 additional BDS seam/material/coordinate traces match. Open: other event/filter/occlusion/output paths, fractional entity-source integration, waterlogging, resonance, shriekers, startup, network action phase and persistence |
@@ -1797,7 +1797,7 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Powered/detector/activator rails | Detector inventory strength, command-cart eligibility/container, typed body selection and producer state corrected against 87 settled/lifecycle and 32 source/wire/lamp timing cases; query geometry matches 324 executed client cases. Powered/activator cadence, configured axis, tested source overlap, straight/slope range, connection placement and zero-strength activator publication corrected against 256 BDS scenes. Cart height, binary32 motion, container drag and detector chunk ownership match 320 native motion scenes; stationary rider/TNT/hopper activator effects match 24 further scenes. Open: full source-list construction/order, loops, broader detector and producer lifecycle, multi-cart order, chunk persistence, cart curves/derailment/collisions, command-cart activation, broader moving-cart transfers and activation lifecycle |
 | Dispensers/droppers/crafters | Nine-slot contract, consumer publication, tested pulse timing and cart origin/newborn phase corrected. Native reservoir selection matches 2,048 executed cases; dropper's additional container pass matches 20 owned RNG traces. Crafter routing matches 102 hopper scenes, pulse/animation timing 36 scenes, sided output/remainders 240 scenes and saved animation 12 scenes. Ordinary/crafter ejection matches 36 exact-input motion traces and 1,440 executed velocities; ordinary effects match 96 real-packet scenes. Initial flags match 32 container load scenes. Open: broader source graphs/queues, other item/recipe behaviours, actor lifecycle and full world unload/restart persistence |
 | Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Early lock publication corrected against 144 lock-pulse traces. Transfer clock/counter units match 110 actual push traces and 25 native heap checkpoints; recursive chain transfers match 60 scenes across placement orders/chunk boundaries. Block-item pickup matches 142 scenes including holes, simultaneous stacks and covers; native query/type gates and seven-box hopper geometry are checked separately. Slot selection matches 72 generic push/pull, 78 sided furnace and 40 brewing scenes; twenty persisted-counter loads verify the tested decode/clock path. Tested hopper-cart collection and transfer effects match 48 further scenes. Open: broader lock graph/lifecycle, larger hopper graphs and complete world RNG consumption, other container transfers/sides, moving cart interactions and reload |
-| TNT/note blocks/bells | TNT consumer timing matches 72 direct/conducted scenes; 12 wire updates verify state aliases. Note clock/instruments/effects match 112 event, 46 packet and 12 load scenes; the two unsealed-water dependencies now match alongside 12 activation controls. Bell clock/toggle/animation match 64 redstone and 16 load scenes; 64 player-use and 64 arrow-hit scenes verify direction gates, actor fields and wire sequences. Sixteen executed shapes and 28 exact binary32 arrow flights check shared geometry/movement. Open: broader sources/lifecycle, TNT motion/fuse/chains/unstable/underwater behavior, note tuning/vibrations and wider persistence, bell support/placement, wind-charge/attack/hearing/vibration behavior and chunk lifecycle |
+| TNT/note blocks/bells | TNT consumer timing matches 72 direct/conducted scenes; 12 wire updates verify state aliases. Note clock/instruments/effects match 112 event, 46 packet and 12 load scenes; the two unsealed-water dependencies now match alongside 12 activation controls. Bell clock/toggle/animation match 64 redstone and 16 load scenes; 64 player-use and 64 arrow-hit scenes verify direction gates, actor fields and wire sequences. Another 128 support scenes and 416 packets match with normal/split/backlogged publication. Player wind charges and actual breeze-fired charges add 128 actor scenes plus 128 independent packet scenes with 640 packets, including ignored repeated hits and the tested adjacent-support bursts. Sixteen executed shapes and 28 exact binary32 arrow flights check shared geometry/movement. Open: broader sources/lifecycle, TNT motion/fuse/chains/unstable/underwater behavior, note tuning/vibrations and wider persistence, wider bell support/placement eligibility, broader wind-burst geometry/occlusion/order, other attack/hearing/vibration behavior and chunk lifecycle |
 | Command/structure blocks | Open: trigger/cycle timing, modes, conditionals, powered-state persistence and cross-chunk execution |
 | Analog-output blocks | 77 settled scalar cases, 81 inventory cases and nine pot cases verify the tested paths; campfire's unsupported override removed. Another 267 book/record/shelf states, 50 hopper-transfer results and 792 frame cases match; lectern spread arithmetic, seven disc values and directional frame reads corrected. Open: broader transitions/through-block reads/materials, additional container variants/init/loot, player book/shelf/frame interactions, jukebox lifecycle, lectern pulse/packet validation, frame maps/support variants, nondefault statue world poses, shelves, sensors, command output and creaking hearts |
 | Persistence and lifecycle | Open: pending ticks/phase memory, state replacement at the same position, chunk unload/reload, world teardown and viewer updates |
@@ -5897,7 +5897,8 @@ TestBellSupportStatesMatchBDS retains all 128 traces and every cell/state check.
 It passes alongside the existing bell/note/water/arrow/native-button selection
 (session 12.067 s, block 6.426 s, entity 7.342 s, world 2.331 s).
 
-Wire parity for these support mutations is still unfinished. The current queue
+At the 2026-10-29 checkpoint, wire parity for these support mutations was still
+unfinished. The queue then
 collapses intermediate same-position permutations and actor notifications;
 removing a bell sends air with flags 2 where the captured native update uses 3.
 The strict packet diagnostic preserves these mismatches without loosening their
@@ -5908,10 +5909,11 @@ is enabled with:
 go test -tags redstone_bell_support_audit ./server/session -run '^TestBellSupportUpdatesMatchNativePackets$' -count=1
 ```
 
-This command is expected to fail at this checkpoint. It was rerun before
+This command was expected to fail at that checkpoint. It was rerun before
 publication (session 4.664 s) and still exposes the recorded discrepancies.
 The user paused the audit and requested commits/publication; this diagnostic
 records the next work rather than claiming the support packet path is fixed.
+The resumed fix and ordinary regression below supersede this opt-in diagnostic.
 
 ### Publication checkpoint on 2026-10-29
 
@@ -5935,3 +5937,244 @@ The effort estimate is now approximately 70%, increased from the prior 65%
 planning checkpoint. It describes work performed, not proven global parity:
 all 22 matrix rows still retain open coverage. The audit remains paused after
 the user's request; creating and sending this checkpoint does not resume it.
+
+### Resumed bell support packet audit on 2026-10-31
+
+The original strict diagnostic reproduced the support publication differences
+without changing the retained BDS corpus. Support-driven attachment changes now
+publish their block state independently of the actor notification. Actor data
+waits until the enclosing world callback ends, so two consecutive surviving
+permutations publish both states before both actor snapshots even if a viewer
+flushes between source mutations. Removing the bell seals pending support
+states/actors before the air update and retains native flags 3. The transient
+publication markers reset on load, ring and actor tick; saved actor NBT is
+unchanged.
+
+TestBellSupportUpdatesMatchNativePackets is now an ordinary regression without
+an opt-in build tag. It compares all 416 native packets in all 128 scenes with
+normal flushing, split flushing, and a 400-position backlog. No native fields,
+duplicates or intermediate updates were removed from its comparison. The full
+bell/moving-actor selection passes (session 6.202 s), including existing player,
+arrow and redstone ring sequences. Additional queue tests exercise 140 real
+support mutations with and without final removal across the 128-block batch
+boundary, plus a flush between the removal marker and foreground replacement
+(session 0.431 s). Pending per-position history is bounded, and each flush now
+counts actual block packets rather than assuming one packet per position.
+Selection, packet queuing and retaining partial entries now share the pending
+block mutex. The outgoing packet queue is non-blocking and bounded; no encoding
+or network I/O runs under that mutex. This avoids losing an unsent support or
+removal marker to a concurrent newer update during a detached-map flush.
+
+The full shared check passes block 131.857 s, session 13.457 s, world 15.614 s
+and player 18.707 s. The precise bell/arrow/button/water/piston entity selection
+also passes (33.468 s). A broader preliminary entity filter additionally ran
+TestBredFrogLaysFrogspawnOnNearbyWater and failed once (one frog instead of two);
+twenty isolated unchanged-baseline repetitions pass (5.779 s). That isolated
+baseline success does not prove the cause of the preliminary failure.
+The stronger comparison uses an untouched detached worktree at the published
+`e5eea7aa` checkpoint: the same frog test fails 4/100 repetitions (44.814 s),
+versus 1/40 on the current tree (10.947 s). Its assertion and AI implementation
+are unchanged by this support fix; this is a reproduced pre-existing failure,
+not a green full-entity-suite claim. After the final queue mutex change, the
+complete session package passes again (11.270 s), and the root server builds.
+
+The next inspected client path was BellBlock::_onHitByActivatingAttack at
+`0x2a62040`. It rejects an already-ringing actor at `0x2a620d8` before calling
+the ring body at `0x2a621e3`. The shared Go wind-charge interaction initially
+had no bell case. The native capture and fix are recorded in the next section.
+
+This closes the retained support-state/packet diagnostic, not the full bell
+coverage row. Wider placement eligibility, broader wind-charge/attack, hearing and
+vibration, chunk lifecycle and the other outstanding matrix requirements remain
+open. The effort estimate remains approximately 70% of the full audit.
+
+### Bell activating attacks and actual breeze projectiles
+
+Four independent original-BDS corpora retain 64 scenes each, all four bell
+attachments/directions, both input parities and single/repeated hits ten ticks
+apart. Each stores 80 frames and 5,120 original saved bell actor snapshots:
+
+- bedrock_1_26_51_bell_wind_projectiles.json: player wind charges, owned root
+  adamant-redstone-bds-ces7svv3;
+- bedrock_1_26_51_bell_wind_packets.json: independent connected-client capture,
+  320 bell packets, adamant-redstone-bds-cmlwehb1;
+- bedrock_1_26_51_bell_breeze_projectiles.json: actual breeze-fired charges,
+  adamant-redstone-bds-yu1t7zxr;
+- bedrock_1_26_51_bell_breeze_packets.json: independent connected-client capture
+  of actual breeze-fired charges, 320 bell packets, adamant-redstone-bds-3pg4dodb.
+
+The native breeze projectile is not summonable; the first direct-spawn pilot
+was rejected by BDS and is not used as an oracle. Instead, unmodified native
+breezes shoot at iron golems. The probes retain each of the 96 original birth
+bodies and breeze owner identities, hold those real actors in air, and use
+explicit teleport/shoot inputs to control the subsequent bell impact. No entity
+definition is replaced. The resulting evidence measures controlled projectile
+and bell behavior, not natural breeze targeting or launch accuracy.
+
+All scenes ring once, along the bell's facing, without the player-use axis
+restriction. The second hit while already ringing produces no additional toggle,
+animation reset or bell notification. In the native breeze corpus, twelve
+impacts hit the front support rather than the bell itself; their bursts still
+activate the adjacent bell. The strict replay retains those hit cells rather
+than rewriting them as direct bell collisions.
+
+The shared burst interaction now calls Bell.ActivateByAttack, preserving the
+inspected idle gate and facing. Both charge types run their collision/burst pass
+after block actors, keeping the first ringing snapshot at Ticks zero. Their
+measured native body is 0.3125 blocks wide/high with its bottom at actor Y;
+the old player box was smaller, and the old breeze box was additionally shifted
+downward. Player wind charge drag is now zero rather than 0.01, matching the
+retained flight frames. Impact removes both native charge types in that same
+collision pass; the previous implementation retained them until the next GT.
+
+The new entity replay checks every bell state/actor frame, projectile presence,
+the available projectile motion/AABB frames and the translated original breeze
+birth AABBs. Both 64-scene entity corpora pass together (1.252 s). The generalized
+session replay also checks all actor fields and all 640 actual bell packets with
+normal and split flushing, alongside the existing player-use, arrow, redstone
+and support corpora (8.209 s). Existing shared bell/arrow/button/water/piston and
+breeze AI selection passes after the player-charge change (53.918 s); the final
+shared check after the breeze geometry/phase fix is recorded separately below.
+
+The final complete shared check passes block 96.856 s, session 13.578 s, world
+13.793 s and player 17.175 s. The focused entity selection including both wind
+charge corpora, arrows/buttons, water, pistons, breeze AI and Bedrock identifier
+aliases also passes (38.545 s). The root server builds after all changes.
+All four newly retained corpora are complete and preserve the original binary
+hash, per-shot inputs and read-only structure-journal evidence.
+
+Broader burst search geometry/occlusion and multi-block interaction ordering,
+natural breeze flight/targeting, other activating attacks, bell hearing and
+vibration, wider placement/support eligibility and chunk lifecycle remain open.
+These captures do not prove complete projectile or bell parity. The subsequent
+switch-grid/ray comparison below extends the footprint and ordering evidence.
+
+### Wind burst ray selection, switch activation and affected-set order
+
+The old burst implementation visited the union of three neighbour cubes in Go
+map order. It did not activate levers or buttons. The replacement follows the
+client Explosion::explode boundary-ray loop at `0x1134b44..0x1134e75`, preserving
+binary32 normalization, strength, stepping and the non-air cost. Each burst
+consumes exactly 1,352 native float inputs, one for every boundary cell of a
+16-cubed direction grid. The block-hit origin moves 0.25 blocks out along the
+hit face, as WindBurstOnHitSubcomponent::doOnHitEffect at `0x235ad90` does;
+the original client constant at `0xe61e140` is 0.25. The measured native powers
+are binary32 1.2 for player charges and 3.0 for breeze charges.
+
+The original loop runs locally with entry/exit adapters bypassing unrelated
+explosion setup, entity effects and publication. World-cell reads and affected
+insertions are supplied callbacks; all loop instructions and constants are
+unchanged. The original affected-set insertion at `0x1137d60`, rehash at
+`0x119edb0` and bucket-vector helper at `0x76e00` execute independently, with only
+allocation/free and scalar ceilf supplied by the host. Their output verifies
+the shared BlockPos hash/list rules, including duplicates, negative/large
+coordinates and 8/64/512 bucket growth boundaries through 600 distinct keys.
+Production now uses that traversal instead of randomized Go map iteration.
+
+The complete uninstrumented BDS evidence is:
+
+- bedrock_1_26_51_wind_switch_grids.json: 64 scenes, four directions, both
+  parities, a stone-wall control, and lever/stone/wooden/blackstone-button grids;
+  each records 49 cells over all 56 frames, including button release. Owned root
+  adamant-redstone-bds-3chgyxkk.
+- bedrock_1_26_51_breeze_switch_grids.json: sixteen independent grids fed by
+  actual breeze-fired charges, preserving original birth/owner data and the
+  controlled teleport/shoot inputs; root adamant-redstone-bds-2lu8ffvq.
+- client_1_26_51_wind_bursts.json and client_1_26_51_breeze_wind_bursts.json:
+  executed original ray and collection functions with the recorded world/RNG
+  inputs. All 64+16 footprints match the independent BDS grid states.
+
+Read-only level-RNG snapshots at bounded Script checkpoints preserve the full
+before/after transition, verified by original client draws on copies. That
+interval includes unrelated world draws; it is not itself an explosion scope.
+One breeze window has 1,574 words rather than the common 1,592. No words or
+frames were removed to make those totals uniform. Additional hardware traces
+of fresh owned BDS children resolve the exact ray inputs:
+
+- bedrock_1_26_51_breeze_switch_grids_hardware.json: sixteen original explosion
+  entries, native power 3.0 and all 1,352 observed ray words per entry;
+  adamant-redstone-bds-by0dvi1x.
+- bedrock_1_26_51_wind_switch_grids_hardware.json: eight player-charge entry
+  controls, power 1.2, native resistance limit zero, and the same 1,352-word
+  contract; adamant-redstone-bds-2ii6ri72.
+
+The BDS explosion entry at `0x795690` is located independently from matching
+client entry and radius-check instructions. Every scoped copied input stream
+also matches the actual first 1,352 observed level draws after that entry.
+Both charge types begin those inputs 80 words into the held interval in these
+scenes. Debug registers are restored before detach; no target instructions or
+definitions are replaced. Hardware-observed captures remain distinguished from
+the uninstrumented grids.
+
+Go replay now checks the complete 80 grids and all button release frames,
+and independently compares exact affected-position order to original client
+instructions. Button activating attacks use the native null actor argument;
+levers use their existing state/event path. The ray inputs stay on the shared
+world RNG, and unobserved extra ray draws fail replay. The focused native set
+passes entity 4.387 s and world 0.247 s before adding the final player-entry
+integrity check. The full shared suite also passes block 98.263 s, session
+13.914 s, world 13.911 s and player 17.289 s; the related entity selection,
+including bell packet dependencies, arrows, pistons and breeze AI, passes
+40.441 s. The root server builds after the implementation change.
+After adding both hardware-entry integrity regressions, the complete focused
+ray/grid/input/order checks pass again (entity 2.611 s, world 0.259 s).
+
+This establishes the tested ray/state/collection paths, not complete wind
+interaction parity. Remaining work includes liquid and partial-geometry
+boundaries, other interactable materials, mixed-device mutation/publication
+order, sound/vibration ownership and packet fields, cancellation, whole-world
+RNG ordering (including constructor/shoot draws outside the retained burst
+scope) and chunk lifecycle. All broader audit matrix requirements remain
+open, and the full-audit effort estimate remains approximately 70%.
+
+### Wind material diagnostic and publication checkpoint on 2026-10-31
+
+The next complete original-BDS capture,
+`bedrock_1_26_51_wind_materials.json`, retains 176 scenes: 22 materials/forms,
+both initial open/lit states, both powered states and both spawn parities.
+Each scene includes the four original setup permutations, 56 complete frames,
+the real player wind projectile input and its block-hit event. The owned root
+is `adamant-redstone-bds-_d0i0rmt`; the capture script is
+`scripts/redstone_bds_wind_material_probe.py`.
+
+This diagnostic is unfinished and deliberately preserves the failures. Native
+powered doors, trapdoors and gates retain their initial state when hit, whereas
+the existing Go interaction toggles them. Initially powered command placement
+also exposes an earlier initial edge difference, including iron controls.
+Lit candles expose a nil-owner panic through ordinary player activation;
+the comparison catches and reports that panic rather than dropping the scene.
+The pre-fix run fails 64 of 176 scenes and reports eight candle hit panics.
+Campfire, soul-campfire and fire controls retain their native state.
+
+The inspected client activating-attack handlers independently contain a
+positive consumer-strength gate for doors at `0x978a8d1..0x978a916`, trapdoors
+at `0x4033846..0x4033884` and gates at `0x7ac4d1f..0x7ac4d64`. Their circuit
+lifecycle, initial sampling and publication still need comparison before a
+complete fix. This checkpoint does not claim those material paths are fixed.
+
+The diagnostic validates redundant SDK direction aliases before comparing
+canonical states. It retains the raw upper-door open bit in the corpus while
+using the independently verified upper-half network representation for visible
+state comparison. No failing scenes or frames are skipped. Run it explicitly:
+
+```text
+go test -tags redstone_wind_material_audit ./server/entity -run '^TestWindBurstMaterialsMatchBDS$' -count=1
+```
+
+This command is expected to fail at this publication checkpoint. The opt-in
+tag keeps the newly captured open audit separate from the passing regression
+suite for the completed bell, projectile, ray and switch changes above.
+The user requested commits and publication; the audit remains active and its
+full effort estimate remains approximately 70%, with all 22 matrix rows open.
+
+The final pre-publication bell/wind/switch/queue/order selection passes session
+8.636 s, entity 4.578 s and world 0.310 s. The root server builds again with
+`go build -o .tmp/adamant-redstone-audit.exe .`; the `go run .` entry point is
+retained. Python probe syntax and `git diff --check` also pass. This final
+selection supplements the complete shared-package checks recorded above;
+it is not a claim that the unfinished material diagnostic passes.
+
+The completed implementation and native regressions are committed in
+`a727e33f`; the unfinished material capture and opt-in diagnostic are retained
+separately in `de6d45f9`. Private operator/ban data and the temporary gameplay
+log are excluded from these commits.
