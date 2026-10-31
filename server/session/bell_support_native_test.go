@@ -64,9 +64,9 @@ func compareBellSupportBlock(t *testing.T, tx *world.Tx, tick int64, pos cube.Po
 	}
 }
 
-func TestBellSupportStatesMatchBDS(t *testing.T) { testBellSupportsNative(t, false, false) }
+func TestBellSupportStatesMatchBDS(t *testing.T) { testBellSupportsNative(t, false, false, false) }
 
-func testBellSupportsNative(t *testing.T, packets, split bool) {
+func testBellSupportsNative(t *testing.T, packets, split, backlog bool) {
 	t.Helper()
 	file := "bedrock_1_26_51_bell_supports.json"
 	if packets {
@@ -133,7 +133,7 @@ func testBellSupportsNative(t *testing.T, packets, split bool) {
 			_ = w.SetGameRule("block_drops", false)
 			var got []packet.Packet
 			position := protocol.BlockPos{int32(trace.Base[0]), int32(trace.Base[1]), int32(trace.Base[2])}
-			collect := func() {
+			drain := func() {
 				s.flushBlockUpdates()
 				for len(s.packets) > 0 {
 					p := <-s.packets
@@ -154,6 +154,17 @@ func testBellSupportsNative(t *testing.T, packets, split bool) {
 						if v.Position == vec64To32(trace.Base.Vec3()) {
 							got = append(got, p)
 						}
+					}
+				}
+			}
+			collect := func() {
+				for rounds := 0; ; rounds++ {
+					drain()
+					if len(s.blockUpdates) == 0 {
+						return
+					}
+					if rounds >= 8 {
+						t.Fatal("bell notifications did not drain through the block backlog")
 					}
 				}
 			}
@@ -182,6 +193,11 @@ func testBellSupportsNative(t *testing.T, packets, split bool) {
 					}
 					for _, change := range trace.Changes {
 						if change.Tick == f.Tick {
+							if backlog {
+								for i := 0; i < 400; i++ {
+									s.enqueueBlockUpdate(cube.Pos{i, 80, 0}, block.Stone{}, 0)
+								}
+							}
 							for _, write := range change.Writes {
 								compareBellSupportBlock(t, tx, f.Tick, write.Position, write.Before)
 								tx.SetBlock(write.Position, bellSupportInputBlock(t, tx, write.After), nil)

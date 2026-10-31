@@ -48,6 +48,20 @@ type BellRingAction struct {
 	Bell Bell
 }
 
+// BellSupportAction publishes the actor after a support-driven permutation
+// change. Consecutive changes publish their states before the actor snapshots.
+type BellSupportAction struct {
+	action
+	Bell Bell
+	// Ready closes after the enclosing world callback, so another support
+	// change in that callback can publish its state before the actor data.
+	Ready <-chan struct{}
+}
+
+// BellRemovalAction marks the foreground replacement while the old actor is
+// still available, so pending support notifications precede the removal.
+type BellRemovalAction struct{ action }
+
 // BellUseRejectedAction confirms an unchanged bell permutation to the player
 // whose interaction was rejected by the native attachment/direction gate.
 type BellUseRejectedAction struct {

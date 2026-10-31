@@ -33,6 +33,7 @@ type Bell struct {
 	ringDirection   cube.Face
 	redstonePowered bool
 	ringUpdate      bool
+	supportUpdate   bool
 }
 
 // BreakInfo ...
@@ -70,9 +71,21 @@ func (b Bell) Ring(pos cube.Pos, tx *world.Tx, face cube.Face) bool {
 	return true
 }
 
+// ActivateByAttack follows BellBlock::_onHitByActivatingAttack. Wind bursts
+// use the bell's facing without the player-use axis gate, but do not restart
+// an actor that is already ringing.
+func (b Bell) ActivateByAttack(pos cube.Pos, tx *world.Tx) bool {
+	if b.ringing {
+		return false
+	}
+	b.ring(pos, tx, b.Facing.Face(), false)
+	return true
+}
+
 // ring ports BellBlock.attemptToRing: the bell swings towards face.
 func (b Bell) ring(pos cube.Pos, tx *world.Tx, face cube.Face, redstone bool) {
 	b.ringUpdate = redstone
+	b.supportUpdate = false
 	b.Powered = !b.Powered
 	b.ringing, b.ticks = true, 0
 	b.ringDirection = face
@@ -164,7 +177,7 @@ func (b Bell) NeighbourChanged(pos, changed cube.Pos, tx *world.Tx) {
 		}
 		if bellSupportSolid(tx, pos, b.Facing.Face()) {
 			b.Attach = MultipleBellAttachment()
-			tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
+			b.updateSupport(pos, tx)
 		}
 	case MultipleBellAttachment():
 		face := b.Facing.Face()
@@ -175,10 +188,10 @@ func (b Bell) NeighbourChanged(pos, changed cube.Pos, tx *world.Tx) {
 		case positiveSolid:
 			b.Attach = SideBellAttachment()
 			b.Facing = face.Opposite().Direction()
-			tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
+			b.updateSupport(pos, tx)
 		case negativeSolid:
 			b.Attach = SideBellAttachment()
-			tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
+			b.updateSupport(pos, tx)
 		default:
 			breakBlock(b, pos, tx)
 			return
@@ -186,11 +199,36 @@ func (b Bell) NeighbourChanged(pos, changed cube.Pos, tx *world.Tx) {
 	}
 }
 
+func (b Bell) updateSupport(pos cube.Pos, tx *world.Tx) {
+	b.ringUpdate, b.supportUpdate = false, true
+	tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
+	ready := tx.Defer(func(*world.Tx) {}).Done()
+	viewers := tx.Viewers(pos.Vec3())
+	for _, viewer := range viewers {
+		viewer.ViewBlockAction(pos, BellSupportAction{Bell: b, Ready: ready})
+	}
+	tx.ReleaseViewers(viewers)
+}
+
+// Removed retains the native removal flags and the ordering of any support
+// actor notifications already pending at this position.
+func (Bell) Removed(pos cube.Pos, tx *world.Tx, replacement world.Block) {
+	if _, same := replacement.(Bell); same {
+		return
+	}
+	viewers := tx.Viewers(pos.Vec3())
+	for _, viewer := range viewers {
+		viewer.ViewBlockAction(pos, BellRemovalAction{})
+	}
+	tx.ReleaseViewers(viewers)
+}
+
 // Tick advances the Ticks count of the Bell as BDS does: two a tick while
 // ringing until it reaches 50 and the bell stops, one a tick while still,
 // wrapping at 50.
 func (b Bell) Tick(current int64, pos cube.Pos, tx *world.Tx) {
 	b.ringUpdate = false
+	b.supportUpdate = false
 	if b.ringing {
 		if b.ticks += 2; b.ticks >= bellRingTicks {
 			b.ringing, b.ticks = false, 0
@@ -247,6 +285,7 @@ func (b Bell) EncodeNBT() map[string]any {
 func (b Bell) DecodeNBT(data map[string]any) any {
 	b.redstonePowered = false
 	b.ringUpdate = false
+	b.supportUpdate = false
 	b.ringing = nbtconv.Bool(data, "Ringing")
 	b.ticks = int(nbtconv.Int32(data, "Ticks"))
 	b.ringDirection = cube.Face(255)
@@ -256,11 +295,11 @@ func (b Bell) DecodeNBT(data map[string]any) any {
 	return b
 }
 
-// UpdateNBT leaves the two redstone-ring actor snapshots to BellRingAction.
+// UpdateNBT leaves redstone-ring and support snapshots to their actions.
 // This also keeps their order if a viewer flushes the ordinary state update
 // before receiving that action. Chunk/save encoding still uses EncodeNBT.
 func (b Bell) UpdateNBT() map[string]any {
-	if b.ringUpdate {
+	if b.ringUpdate || b.supportUpdate {
 		return nil
 	}
 	return b.EncodeNBT()

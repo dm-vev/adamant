@@ -27,21 +27,41 @@ func (u bellNativeUseUser) Rotation() cube.Rotation { return u.rotation }
 
 func TestBellPlayerUseMatchesNativeActorsAndPackets(t *testing.T) {
 	for _, split := range []bool{false, true} {
-		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellInteractionNative(t, split, false) })
+		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellInteractionNative(t, split, "use") })
 	}
 }
 
 func TestBellArrowEffectsMatchNativePackets(t *testing.T) {
 	for _, split := range []bool{false, true} {
-		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellInteractionNative(t, split, true) })
+		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellInteractionNative(t, split, "arrow") })
 	}
 }
 
-func testBellInteractionNative(t *testing.T, split, projectile bool) {
+func TestBellWindChargeEffectsMatchNativePackets(t *testing.T) {
+	for _, split := range []bool{false, true} {
+		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellInteractionNative(t, split, "wind") })
+	}
+}
+
+func TestBellBreezeWindChargeEffectsMatchNativePackets(t *testing.T) {
+	for _, split := range []bool{false, true} {
+		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellInteractionNative(t, split, "breeze") })
+	}
+}
+
+func testBellInteractionNative(t *testing.T, split bool, kind string) {
 	t.Helper()
+	projectile, wind := kind != "use", kind == "wind" || kind == "breeze"
 	file, snapshots, packets, successes := "bedrock_1_26_51_bell_use.json", 2928, 272, 40
 	if projectile {
 		file, snapshots, packets, successes = "bedrock_1_26_51_bell_projectile_packets.json", 5120, 320, 64
+	}
+	if wind {
+		file, successes = "bedrock_1_26_51_bell_wind_packets.json", 96
+	}
+	projectileID := "minecraft:wind_charge_projectile"
+	if kind == "breeze" {
+		file, projectileID = "bedrock_1_26_51_bell_breeze_packets.json", "minecraft:breeze_wind_charge_projectile"
 	}
 	data, err := os.ReadFile("../block/testdata/" + file)
 	if err != nil {
@@ -54,6 +74,8 @@ func testBellInteractionNative(t *testing.T, split, projectile bool) {
 			Scenario struct {
 				Attachment          string
 				Direction, Approach int
+				Repeat              bool
+				Phase               int
 			}
 			Base      cube.Pos
 			SetupTick int64 `json:"setup_tick"`
@@ -61,6 +83,10 @@ func testBellInteractionNative(t *testing.T, split, projectile bool) {
 				Tick     int64
 				GameTick int64 `json:"game_tick"`
 				Rotation struct{ X, Y float64 }
+				Spawn    struct {
+					ID                 string
+					Position, Velocity struct{ X, Y, Z float64 }
+				}
 			}
 			Results []struct{ Tick int64 }
 			Spawn   struct {
@@ -98,12 +124,26 @@ func testBellInteractionNative(t *testing.T, split, projectile bool) {
 		if projectile {
 			accepted += len(trace.Hits)
 		}
-		t.Run(fmt.Sprintf("%s/direction%d/approach%d", c.Attachment, c.Direction, c.Approach), func(t *testing.T) {
-			if len(trace.Changes) != 1 || len(trace.Results) > 1 || len(trace.Samples) < 40 {
+		t.Run(fmt.Sprintf("%s/direction%d/approach%d/repeat%t/phase%d", c.Attachment, c.Direction, c.Approach, c.Repeat, c.Phase), func(t *testing.T) {
+			shots := 1
+			if wind && c.Repeat {
+				shots++
+			}
+			if len(trace.Changes) != shots || len(trace.Results) > 1 || len(trace.Samples) < 40 {
 				t.Fatal("invalid native bell use controls")
 			}
-			if projectile && (len(trace.Hits) != 1 || trace.Spawn.ID != "minecraft:arrow" || len(trace.Samples) != 80) {
+			if projectile && !wind && (len(trace.Hits) != 1 || trace.Spawn.ID != "minecraft:arrow" || len(trace.Samples) != 80) {
 				t.Fatal("invalid native bell arrow packet controls")
+			}
+			if wind {
+				if len(trace.Hits) != shots || len(trace.Samples) != 80 {
+					t.Fatal("invalid native bell wind packet controls")
+				}
+				for i, change := range trace.Changes {
+					if change.Spawn.ID != projectileID || change.Tick != trace.SetupTick+40+int64(c.Phase+i*10) {
+						t.Fatal("native wind packet shot identity or clock differs")
+					}
+				}
 			}
 			settings := (world.NopProvider{}).Settings()
 			settings.CurrentTick, settings.WeatherCycle = trace.SetupTick-1, false
@@ -188,9 +228,19 @@ func testBellInteractionNative(t *testing.T, split, projectile bool) {
 					for _, change := range trace.Changes {
 						if projectile {
 							if change.Tick == f.Tick {
-								opts := world.EntitySpawnOpts{Position: mgl64.Vec3{trace.Spawn.Position.X, trace.Spawn.Position.Y, trace.Spawn.Position.Z}, Velocity: mgl64.Vec3{trace.Spawn.Velocity.X, trace.Spawn.Velocity.Y, trace.Spawn.Velocity.Z}}
-								conf := entity.ProjectileBehaviourConfig{Gravity: .05, Drag: .01, Damage: 2, Sound: sound.ArrowHit{}, SurviveBlockCollision: true, DisablePickup: true}
-								tx.AddEntity(opts.New(entity.ArrowType, conf))
+								spawn := trace.Spawn
+								if wind {
+									spawn = change.Spawn
+								}
+								opts := world.EntitySpawnOpts{Position: mgl64.Vec3{spawn.Position.X, spawn.Position.Y, spawn.Position.Z}, Velocity: mgl64.Vec3{spawn.Velocity.X, spawn.Velocity.Y, spawn.Velocity.Z}}
+								if kind == "breeze" {
+									tx.AddEntity(entity.NewBreezeWindCharge(opts, nil))
+								} else if wind {
+									tx.AddEntity(entity.NewWindCharge(opts, nil))
+								} else {
+									conf := entity.ProjectileBehaviourConfig{Gravity: .05, Drag: .01, Damage: 2, Sound: sound.ArrowHit{}, SurviveBlockCollision: true, DisablePickup: true}
+									tx.AddEntity(opts.New(entity.ArrowType, conf))
+								}
 								applied++
 							}
 							continue
@@ -215,8 +265,8 @@ func testBellInteractionNative(t *testing.T, split, projectile bool) {
 					break
 				}
 			}
-			if applied != 1 {
-				t.Fatal("native bell player input was not replayed exactly once")
+			if applied != shots {
+				t.Fatal("native bell inputs were not replayed exactly once each")
 			}
 			var want []packet.Packet
 			for _, p := range trace.Packets {

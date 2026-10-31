@@ -11,7 +11,7 @@ import threading
 
 
 class OwnedHardwareTrace:
-    def __init__(self, process, memory, core_pointer, core_rva, chunk_rva, native, moving_rva=None, area_rva=None, ejection_rva=None, item_tick_rva=None, block_event_rva=None, bell_ring_rva=None):
+    def __init__(self, process, memory, core_pointer, core_rva, chunk_rva, native, moving_rva=None, area_rva=None, ejection_rva=None, item_tick_rva=None, block_event_rva=None, bell_ring_rva=None, explosion_rva=None):
         if process.poll() is not None:
             raise RuntimeError('owned reference process is not running')
         self.process, self.memory, self.core_pointer, self.native = process, memory, core_pointer, native
@@ -22,8 +22,9 @@ class OwnedHardwareTrace:
         self.item_tick_address = memory.base + item_tick_rva if item_tick_rva is not None else None
         self.block_event_address = memory.base + block_event_rva if block_event_rva is not None else None
         self.bell_ring_address = memory.base + bell_ring_rva if bell_ring_rva is not None else None
-        if sum(x is not None for x in (self.moving_address,self.area_address,self.ejection_address,self.block_event_address,self.bell_ring_address))>1:raise ValueError('DR3 has only one supplementary target')
-        self.extra_address = self.moving_address or self.area_address or self.ejection_address or self.block_event_address or self.bell_ring_address
+        self.explosion_address = memory.base + explosion_rva if explosion_rva is not None else None
+        if sum(x is not None for x in (self.moving_address,self.area_address,self.ejection_address,self.block_event_address,self.bell_ring_address,self.explosion_address))>1:raise ValueError('DR3 has only one supplementary target')
+        self.extra_address = self.moving_address or self.area_address or self.ejection_address or self.block_event_address or self.bell_ring_address or self.explosion_address
         self.kernel = C.WinDLL('kernel32', use_last_error=True)
         self.kernel.DebugActiveProcess.argtypes = [W.DWORD]
         self.kernel.DebugActiveProcessStop.argtypes = [W.DWORD]
@@ -42,6 +43,8 @@ class OwnedHardwareTrace:
         self.item_ticks=[]
         self.block_events=[]
         self.bell_rings=[]
+        self.explosions=[]
+        self.native_lock=threading.Lock()
         self.lock, self.ready, self.stopping = threading.Lock(), threading.Event(), threading.Event()
         self.error, self.total_hits = None, 0
         self.thread = threading.Thread(target=self.run, daemon=True)
@@ -130,8 +133,9 @@ class OwnedHardwareTrace:
         elif flags & 1 and rip == self.core_address:
             if rcx == self.core_pointer:
                 raw = self.memory.read(rcx, 0x9D4)
-                self.native.reset(raw)
-                value = self.native.draw()
+                with self.native_lock:
+                    self.native.reset(raw)
+                    value = self.native.draw()
                 caller = struct.unpack('<Q', self.memory.read(rsp, 8))[0] - self.memory.base
                 record = dict(value=value, caller=hex(caller), index=struct.unpack_from('<i', raw, 0x9CC)[0], sequence=self.total_hits)
                 if caller==getattr(self,'random_float_caller',None):
@@ -179,6 +183,17 @@ class OwnedHardwareTrace:
                 facing=C.c_uint64.from_address(pointer+0xB8).value&255,return_address=return_address,entry_sequence=self.total_hits)
             C.c_uint64.from_address(pointer+0x58).value=return_address
             C.c_uint64.from_address(pointer+0x70).value=0x55
+        elif flags & 8 and rip == self.explosion_address:
+            raw=self.memory.read(rcx,0x90)
+            with self.native_lock:
+                self.native.reset(self.memory.read(self.core_pointer,0x9d4))
+                words=[self.native.draw() for _ in range(1352)]
+            record=dict(position=list(struct.unpack_from('<3f',raw)),radius=struct.unpack_from('<f',raw,12)[0],
+                max_resistance=struct.unpack_from('<f',raw,0x70)[0],
+                flags=list(raw[0x50:0x59]),words=words,sequence=self.total_hits,
+                caller=hex(struct.unpack('<Q',self.memory.read(rsp,8))[0]-self.memory.base),
+                active_chunk=self.active['position'] if self.active is not None else None)
+            with self.lock:self.explosions.append(record)
         elif flags & 8 and rip == self.bell_ring_address:
             record=dict(position=list(struct.unpack('<iii',self.memory.read(rcx+8,12))),
                 direction=C.c_uint64.from_address(pointer+0x88).value&255,
@@ -280,12 +295,13 @@ class OwnedHardwareTrace:
         if self.error:raise self.error
         with self.lock:
             if self.active is not None or self.ejection_active is not None:raise RuntimeError('Script checkpoint is inside an actor/ejection pass')
-            result = dict(chunks=self.chunks, outside=self.outside, areas=self.areas,ejections=self.ejections,item_post_ticks=self.item_ticks,block_events=self.block_events,bell_rings=self.bell_rings)
+            result = dict(chunks=self.chunks, outside=self.outside, areas=self.areas,ejections=self.ejections,item_post_ticks=self.item_ticks,block_events=self.block_events,bell_rings=self.bell_rings,explosions=self.explosions)
             self.chunks, self.outside, self.areas = [], [], []
             self.ejections=[]
             self.item_ticks=[]
             self.block_events=[]
             self.bell_rings=[]
+            self.explosions=[]
             return result
 
     def stop(self):

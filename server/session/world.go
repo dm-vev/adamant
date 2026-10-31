@@ -1990,6 +1990,10 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 	switch t := a.(type) {
 	case block.BellRingAction:
 		s.enqueueBellRingUpdate(pos, t.Bell)
+	case block.BellSupportAction:
+		s.enqueueBellSupportUpdate(pos, &t.Bell, t.Ready)
+	case block.BellRemovalAction:
+		s.enqueueBellSupportUpdate(pos, nil, nil)
 	case block.BellUseRejectedAction:
 		s.enqueueBellUseRejection(pos, t.Bell)
 	case block.MovingBlockUpdateAction:

@@ -13,6 +13,7 @@ import (
 const (
 	maxPendingBlockUpdates = 8192
 	maxBlockUpdatesPerTick = 128
+	maxPendingBellPackets  = 4 * maxBlockUpdatesPerTick
 )
 
 type blockUpdateKey struct {
@@ -31,6 +32,36 @@ type blockUpdateData struct {
 	actors            []map[string]any
 	afterPackets      []packet.Packet
 	after             *cube.Pos
+	// Support changes retain intermediate states separately from their deferred
+	// actor snapshots. Removal seals that sequence ahead of the new block.
+	bellSupport   bool
+	bellRemoval   bool
+	supportReady  <-chan struct{}
+	priorStates   []packet.Packet
+	beforePackets []packet.Packet
+}
+
+func (u blockUpdateData) statePackets() []packet.Packet {
+	states := append([]packet.Packet(nil), u.priorStates...)
+	if !u.actorOnly {
+		states = append(states, &packet.UpdateBlock{Position: u.pos, NewBlockRuntimeID: u.runtimeID, Flags: u.flags, Layer: u.layer})
+		if u.repeatBlockUpdate {
+			states = append(states, &packet.UpdateBlock{Position: u.pos, NewBlockRuntimeID: u.runtimeID, Flags: packet.BlockUpdateNeighbours, Layer: u.layer})
+		}
+	}
+	return states
+}
+
+func (u blockUpdateData) packets() []packet.Packet {
+	packets := append([]packet.Packet(nil), u.beforePackets...)
+	packets = append(packets, u.statePackets()...)
+	if !u.actorOnly && u.nbt != nil {
+		packets = append(packets, &packet.BlockActorData{Position: u.pos, NBTData: u.nbt})
+	}
+	for _, data := range u.actors {
+		packets = append(packets, &packet.BlockActorData{Position: u.pos, NBTData: data})
+	}
+	return append(packets, u.afterPackets...)
 }
 
 // networkBlockID returns the ID clients know a block by: its network block
@@ -75,19 +106,41 @@ func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	// The newer state supersedes actor data, but an already queued sound
 	// still belongs to the earlier accepted interaction and must be heard.
 	update.afterPackets = previous.afterPackets
+	update.beforePackets = previous.beforePackets
+	if previous.bellRemoval {
+		update.flags |= packet.BlockUpdateNeighbours
+		update.beforePackets = previous.packets()
+		update.afterPackets = nil
+	} else if previous.bellSupport {
+		update.bellSupport = true
+		update.supportReady = previous.supportReady
+		update.priorStates = previous.statePackets()
+		if previous.nbt != nil && !previous.actorOnly {
+			update.actors = append(update.actors, previous.nbt)
+		}
+		update.actors = append(update.actors, previous.actors...)
+	}
+	if len(update.beforePackets)+len(update.priorStates)+len(update.actors) > maxPendingBellPackets {
+		// Retain the latest authoritative state while bounding per-position
+		// history, just as the queue bounds the number of pending positions.
+		update.beforePackets, update.priorStates, update.actors = nil, nil, nil
+		s.logBlockUpdateDrop()
+	}
 	s.blockUpdates[key] = update
 	s.blockUpdatesMu.Unlock()
 }
 
 func (s *Session) flushBlockUpdates() {
 	s.blockUpdatesMu.Lock()
+	defer s.blockUpdatesMu.Unlock()
+	// Packet publication only enters the bounded, non-blocking outgoing queue.
+	// Keep selection, partial sends and enqueue merging under the same lock:
+	// detaching pending entries would lose support/removal markers if a newer
+	// update arrived before an unsent entry was returned to the map.
 	updates := s.blockUpdates
 	if len(updates) == 0 {
-		s.blockUpdatesMu.Unlock()
 		return
 	}
-	s.blockUpdates = make(map[blockUpdateKey]blockUpdateData, 64)
-	s.blockUpdatesMu.Unlock()
 
 	sent := 0
 	visiting := make(map[blockUpdateKey]bool)
@@ -96,6 +149,18 @@ func (s *Session) flushBlockUpdates() {
 		update, ok := updates[key]
 		if !ok || sent >= maxBlockUpdatesPerTick || visiting[key] {
 			return
+		}
+		// A removal marker belongs to the foreground replacement that follows;
+		// a concurrent flush must not consume it between those notifications.
+		if update.bellRemoval {
+			return
+		}
+		if update.supportReady != nil {
+			select {
+			case <-update.supportReady:
+			default:
+				return
+			}
 		}
 		visiting[key] = true
 		if update.after != nil {
@@ -110,51 +175,63 @@ func (s *Session) flushBlockUpdates() {
 		if sent >= maxBlockUpdatesPerTick {
 			return
 		}
-		if !update.actorOnly {
-			s.writePacket(&packet.UpdateBlock{
-				Position:          update.pos,
-				NewBlockRuntimeID: update.runtimeID,
-				Flags:             update.flags,
-				Layer:             update.layer,
-			})
-			if update.repeatBlockUpdate {
-				s.writePacket(&packet.UpdateBlock{Position: update.pos, NewBlockRuntimeID: update.runtimeID, Flags: packet.BlockUpdateNeighbours, Layer: update.layer})
+		start := sent
+		packets := update.packets()
+		for i, p := range packets {
+			if _, blockUpdate := p.(*packet.UpdateBlock); blockUpdate {
+				if sent >= maxBlockUpdatesPerTick {
+					// Keep the exact remaining sequence across the batch boundary.
+					update.beforePackets = packets[i:]
+					update.priorStates, update.actors, update.afterPackets = nil, nil, nil
+					update.actorOnly, update.repeatBlockUpdate, update.nbt = true, false, nil
+					updates[key] = update
+					return
+				}
+				sent++
 			}
-			if update.nbt != nil {
-				s.writePacket(&packet.BlockActorData{
-					Position: update.pos,
-					NBTData:  update.nbt,
-				})
-			}
-		}
-		for _, data := range update.actors {
-			s.writePacket(&packet.BlockActorData{Position: update.pos, NBTData: data})
-		}
-		for _, p := range update.afterPackets {
 			s.writePacket(p)
 		}
-		sent++
+		if sent == start {
+			sent++
+		}
 		delete(updates, key)
 	}
 	for key := range updates {
 		send(key)
 	}
-	if len(updates) == 0 {
-		return
-	}
+}
 
+// enqueueBellSupportUpdate defers a support actor until all states currently
+// pending at this position have been sent. A nil bell seals those notifications
+// before the foreground removal, including when the state already flushed.
+func (s *Session) enqueueBellSupportUpdate(pos cube.Pos, bell *block.Bell, ready <-chan struct{}) {
 	s.blockUpdatesMu.Lock()
-	if len(s.blockUpdates) == 0 {
-		s.blockUpdates = updates
-	} else {
-		for key, update := range updates {
-			// Updates enqueued during this flush describe newer world state.
-			if _, newer := s.blockUpdates[key]; !newer {
-				s.blockUpdates[key] = update
-			}
-		}
+	defer s.blockUpdatesMu.Unlock()
+	if s.blockUpdates == nil {
+		s.blockUpdates = make(map[blockUpdateKey]blockUpdateData, 64)
 	}
-	s.blockUpdatesMu.Unlock()
+	key := blockUpdateKey{pos: pos}
+	update, exists := s.blockUpdates[key]
+	if !exists {
+		if len(s.blockUpdates) >= maxPendingBlockUpdates {
+			s.logBlockUpdateDrop()
+			return
+		}
+		update = blockUpdateData{pos: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, actorOnly: true}
+	}
+	if bell == nil {
+		update.bellRemoval = true
+		update.supportReady = nil
+	} else {
+		if len(update.beforePackets)+len(update.priorStates)+len(update.actors) >= maxPendingBellPackets {
+			s.logBlockUpdateDrop()
+			return
+		}
+		update.bellSupport = true
+		update.supportReady = ready
+		update.actors = append(update.actors, clientActorNBT(bell.EncodeNBT(), pos))
+	}
+	s.blockUpdates[key] = update
 }
 
 // enqueuePacketAfterBlock retains an effect behind a pending state/actor update.

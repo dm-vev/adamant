@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -10,6 +11,117 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
+
+func TestBellSupportSequenceCrossesBatchBoundary(t *testing.T) {
+	for _, remove := range []bool{false, true} {
+		t.Run(fmt.Sprintf("remove%t", remove), func(t *testing.T) {
+			w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+			s := testSession("bell-support-batch")
+			s.br = world.DefaultBlockRegistry
+			s.packets = make(chan packet.Packet, 2048)
+			pos := cube.Pos{4, 65, 4}
+			loader := world.NewLoader(2, w, &bellPacketViewer{session: s})
+			defer func() { <-w.Exec(func(tx *world.Tx) { loader.Close(tx) }); _ = w.Close() }()
+			bell := (block.Bell{Attach: block.SideBellAttachment(), Facing: cube.South}).DecodeNBT(map[string]any{"Direction": int32(255)}).(block.Bell)
+			<-w.Exec(func(tx *world.Tx) {
+				loader.Move(tx, pos.Vec3Centre())
+				loader.Load(tx, 25)
+				tx.SetBlock(pos.Side(cube.FaceNorth), block.Stone{}, nil)
+				tx.SetBlock(pos, bell, nil)
+			})
+			s.flushBlockUpdates()
+			for len(s.packets) > 0 {
+				<-s.packets
+			}
+			const changes = 140
+			<-w.Exec(func(tx *world.Tx) {
+				for i := range changes {
+					var support world.Block = block.Stone{}
+					if i%2 == 1 {
+						support = block.Air{}
+					}
+					tx.SetBlock(pos.Side(cube.FaceSouth), support, nil)
+				}
+				if remove {
+					tx.SetBlock(pos, nil, nil)
+				}
+			})
+			states, actors, batches := 0, 0, 0
+			position := protocol.BlockPos{4, 65, 4}
+			for len(s.blockUpdates) > 0 {
+				batches++
+				if batches > 4 {
+					t.Fatal("support sequence did not drain")
+				}
+				s.flushBlockUpdates()
+				blocks := 0
+				for len(s.packets) > 0 {
+					switch p := (<-s.packets).(type) {
+					case *packet.UpdateBlock:
+						blocks++
+						if p.Position != position {
+							continue
+						}
+						want := bell
+						if states%2 == 0 {
+							want.Attach = block.MultipleBellAttachment()
+						}
+						id := networkBlockID(s.br, want)
+						if states == changes && remove {
+							id = networkBlockID(s.br, block.Air{})
+							if actors != changes {
+								t.Fatal("removal preceded support actor notifications")
+							}
+						} else if actors != 0 {
+							t.Fatal("support actor preceded an intermediate state")
+						}
+						if p.Flags != 3 || p.NewBlockRuntimeID != id {
+							t.Fatalf("state %d: flags=%d runtimeID=%d, want 3/%d", states, p.Flags, p.NewBlockRuntimeID, id)
+						}
+						states++
+					case *packet.BlockActorData:
+						if p.Position == position {
+							if states != changes || p.NBTData["Ticks"] != int32(0) || p.NBTData["Direction"] != int32(255) {
+								t.Fatal("support actor lost its clock, direction or position in the sequence")
+							}
+							actors++
+						}
+					}
+				}
+				if blocks > maxBlockUpdatesPerTick {
+					t.Fatalf("batch contains %d block updates", blocks)
+				}
+			}
+			wantStates := changes
+			if remove {
+				wantStates++
+			}
+			if states != wantStates || actors != changes || batches < 2 || s.blockUpdateDrops.Load() != 0 {
+				t.Fatalf("support sequence states=%d actors=%d batches=%d drops=%d", states, actors, batches, s.blockUpdateDrops.Load())
+			}
+		})
+	}
+}
+
+func TestBellRemovalMarkerSurvivesInterleavedFlush(t *testing.T) {
+	s := testSession("bell-removal-marker")
+	s.br = world.DefaultBlockRegistry
+	pos := cube.Pos{4, 65, 4}
+	s.ViewBlockAction(pos, block.BellRemovalAction{})
+	s.flushBlockUpdates()
+	if len(s.packets) != 0 || len(s.blockUpdates) != 1 {
+		t.Fatal("flush consumed the removal marker before the foreground replacement")
+	}
+	s.ViewBlockUpdate(pos, block.Air{}, 0)
+	s.flushBlockUpdates()
+	if len(s.packets) != 1 {
+		t.Fatal("removal did not publish exactly one state")
+	}
+	p, ok := (<-s.packets).(*packet.UpdateBlock)
+	if !ok || p.Flags != 3 || p.NewBlockRuntimeID != networkBlockID(s.br, block.Air{}) || len(s.blockUpdates) != 0 {
+		t.Fatal("interleaved flush lost the bell removal flags")
+	}
+}
 
 func TestBellRepeatedUsesRetainSoundAndAnimationThroughBacklog(t *testing.T) {
 	s := testSession("bell-use-backlog")

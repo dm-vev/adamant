@@ -22,8 +22,13 @@ func (breezeWindChargeType) Open(tx *world.Tx, handle *world.EntityHandle, data 
 	return &Ent{tx: tx, handle: handle, data: data}
 }
 func (breezeWindChargeType) EncodeEntity() string { return "minecraft:breeze_wind_charge" }
-func (breezeWindChargeType) BBox(world.Entity) cube.BBox {
-	return cube.Box(-.125, -.15, -.125, .125, .1, .125)
+
+// TickAfterBlocks preserves the native burst/animation phase, as player wind
+// charges do. Both projectile types have the same measured native body.
+func (breezeWindChargeType) TickAfterBlocks() bool { return true }
+
+func (breezeWindChargeType) BBox(e world.Entity) cube.BBox {
+	return WindChargeType.BBox(e)
 }
 func (breezeWindChargeType) DecodeNBT(_ map[string]any, data *world.EntityData) {
 	breezeWindChargeConfig(nil).Apply(data)
@@ -43,7 +48,8 @@ func breezeWindChargeConfig(owner *world.EntityHandle) ProjectileBehaviourConfig
 }
 
 func breezeWindChargeHit(projectile *Ent, tx *world.Tx, target trace.Result) {
-	origin := target.Position()
+	defer projectile.CloseIn(tx)
+	origin := windChargeBurstOrigin(target)
 	tx.AddParticle(origin, particle.WindBurst{})
 	tx.PlaySound(origin, sound.BreezeWindChargeBurst{})
 
@@ -54,7 +60,7 @@ func breezeWindChargeHit(projectile *Ent, tx *world.Tx, target trace.Result) {
 			owner, _ = handle.Entity(tx)
 		}
 	}
-	windChargeInteractBlocks(tx, target, origin, owner)
+	windChargeInteractBlocks(tx, origin, owner, 3)
 
 	windBurstKnockback(tx, origin, breezeWindChargeRadius, projectile.H())
 }

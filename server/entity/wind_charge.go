@@ -35,7 +35,7 @@ func NewWindCharge(opts world.EntitySpawnOpts, owner world.Entity) *world.Entity
 
 var windChargeConf = ProjectileBehaviourConfig{
 	Gravity: 0,
-	Drag:    0.01,
+	Drag:    0,
 	Damage:  -1,
 	Hit:     windChargeHit,
 }
@@ -51,8 +51,11 @@ func (t windChargeType) Open(tx *world.Tx, handle *world.EntityHandle, data *wor
 
 func (windChargeType) EncodeEntity() string { return "minecraft:wind_charge_projectile" }
 
+// TickAfterBlocks keeps native burst callbacks after the bell actor's pass.
+func (windChargeType) TickAfterBlocks() bool { return true }
+
 func (windChargeType) BBox(world.Entity) cube.BBox {
-	return cube.Box(-0.125, 0, -0.125, 0.125, 0.25, 0.125)
+	return cube.Box(-0.15625, 0, -0.15625, 0.15625, 0.3125, 0.15625)
 }
 
 func (windChargeType) DecodeNBT(_ map[string]any, data *world.EntityData) {
@@ -62,7 +65,7 @@ func (windChargeType) DecodeNBT(_ map[string]any, data *world.EntityData) {
 func (windChargeType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 
 func windChargeHit(e *Ent, tx *world.Tx, target trace.Result) {
-	origin := target.Position()
+	origin := windChargeBurstOrigin(target)
 	tx.AddParticle(origin, particle.WindBurst{})
 	tx.PlaySound(origin, sound.WindChargeImpact{})
 
@@ -74,7 +77,11 @@ func windChargeHit(e *Ent, tx *world.Tx, target trace.Result) {
 		}
 	}
 
-	windChargeInteractBlocks(tx, target, origin, owner)
+	windChargeInteractBlocks(tx, origin, owner, 1.2)
+	// Native impact removes the projectile in this collision pass, not at
+	// the start of the following tick. The behaviour's movement is discarded
+	// by Ent.Tick once the handle has closed.
+	defer e.CloseIn(tx)
 
 	area := cube.Box(
 		math.Floor(origin[0]-windChargeRadius),
@@ -128,24 +135,46 @@ func windChargeHit(e *Ent, tx *world.Tx, target trace.Result) {
 	}
 }
 
-func windChargeInteractBlocks(tx *world.Tx, target trace.Result, origin mgl64.Vec3, owner world.Entity) {
-	positions := make(map[cube.Pos]struct{}, 32)
-	base := cube.PosFromVec3(origin)
-	windChargeGatherNeighbours(positions, base)
-
-	if blockResult, ok := target.(trace.BlockResult); ok {
-		windChargeGatherNeighbours(positions, blockResult.BlockPosition())
-		windChargeGatherNeighbours(positions, blockResult.BlockPosition().Side(blockResult.Face()))
+func windChargeBurstOrigin(target trace.Result) mgl64.Vec3 {
+	origin := target.Position()
+	if hit, ok := target.(trace.BlockResult); ok {
+		offset := (cube.Pos{}).Side(hit.Face())
+		for axis := range origin {
+			origin[axis] = float64(float32(origin[axis]) + float32(offset[axis])*.25)
+		}
 	}
+	return origin
+}
+
+func windChargeInteractBlocks(tx *world.Tx, origin mgl64.Vec3, owner world.Entity, power float32) {
+	positions := windBurstAffectedBlocks(origin, power, func(pos cube.Pos) bool {
+		b, loaded := tx.BlockLoaded(pos)
+		if !loaded {
+			return false
+		}
+		switch b.(type) {
+		case blockpkg.Air, blockpkg.Water:
+			return false
+		}
+		return true
+	}, tx.RandomFloat32)
 
 	var user item.User
 	if u, ok := owner.(item.User); ok {
 		user = u
 	}
 
-	for pos := range positions {
+	for _, pos := range positions {
 		blk := tx.Block(pos)
 		switch b := blk.(type) {
+		case blockpkg.Bell:
+			b.ActivateByAttack(pos, tx)
+		case blockpkg.Button:
+			// ButtonBlock::_onHitByActivatingAttack calls buttonPressed
+			// with a null actor, independently of projectile ownership.
+			b.Activate(pos, cube.FaceUp, tx, nil, &item.UseContext{})
+		case blockpkg.Lever:
+			b.Activate(pos, cube.FaceUp, tx, user, &item.UseContext{})
 		case blockpkg.WoodDoor:
 			if b.Top {
 				continue
@@ -190,16 +219,6 @@ func windChargeInteractBlocks(tx *world.Tx, target trace.Result, origin mgl64.Ve
 			b.Lit = false
 			tx.SetBlock(pos, b, nil)
 			tx.PlaySound(pos.Vec3Centre(), sound.FireExtinguish{})
-		}
-	}
-}
-
-func windChargeGatherNeighbours(set map[cube.Pos]struct{}, base cube.Pos) {
-	for x := base.X() - 1; x <= base.X()+1; x++ {
-		for y := base.Y() - 1; y <= base.Y()+1; y++ {
-			for z := base.Z() - 1; z <= base.Z()+1; z++ {
-				set[cube.Pos{x, y, z}] = struct{}{}
-			}
 		}
 	}
 }
