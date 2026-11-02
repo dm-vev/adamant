@@ -53,6 +53,7 @@ var (
 	errSourceBusy  = errors.New("nethernet: too many connections opening from one source")
 	errAcceptQueue = errors.New("nethernet: connections are not accepted fast enough")
 	errAnonymous   = errors.New("nethernet: offer carries no identity")
+	errDisplaced   = errors.New("nethernet: displaced by another offer before it opened")
 )
 
 // ListenConfig configures a Listener.
@@ -81,11 +82,17 @@ type ListenConfig struct {
 	// Vouch reports, returning nil, that the authorization service of the
 	// game signed the identity token of an offer, whose key proved the
 	// token its own. An offer is never refused for it, so that a token of
-	// a form it does not know costs no client its join. Nil vouches for
-	// none.
+	// a form it does not know costs no client its join: it only ranks the
+	// offer, as MaxPending tells. Nil vouches for none.
 	Vouch func(token string) error
 	// MaxPending bounds the connections that did not open yet. Zero means
-	// 256.
+	// 256. Once they are all taken, an offer displaces the oldest of those
+	// of the lowest rank, unless that one ranks above it, and is refused
+	// then: a connection ranks 2 if Vouch vouched for its offer, and 1
+	// more once a check proved an address of its peer. Offers that never
+	// connect, vouched for by no one, thus displace each other, not a
+	// client whose checks came, nor one vouched for. An open connection is
+	// never displaced.
 	MaxPending int
 	// MaxPendingPerAddress and MaxPendingPerNetwork bound the connections
 	// not open yet that one source holds, so that one cannot hold them
@@ -603,9 +610,13 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, vouched bool, 
 	c.publicKey, c.vouched = pub, vouched
 	c.onReady = l.ready
 	c.onClose = l.remove
-	if err := l.admit(c, local.ufrag, sources, now); err != nil {
+	victim, err := l.admit(c, local.ufrag, sources, now)
+	if err != nil {
 		c.abort(err)
 		return nil, "", err
+	}
+	if victim != nil {
+		victim.abort(errDisplaced)
 	}
 	c.mu.Lock()
 	c.schedule()
@@ -614,17 +625,14 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, vouched bool, 
 }
 
 // admit counts a connection pending, found by its ufrag, within the bounds
-// of the listener and of its sources.
-func (l *Listener) admit(c *Conn, ufrag string, sources []source, now time.Time) error {
+// of its sources and of the listener, and returns the connection opening
+// it displaced, if any.
+func (l *Listener) admit(c *Conn, ufrag string, sources []source, now time.Time) (*Conn, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	switch {
-	case l.closed:
-		return net.ErrClosed
-	case l.pending >= l.maxPending:
-		return errBusy
-	case !l.room(sources):
-		return errSourceBusy
+	victim, err := l.slot(c, sources)
+	if err != nil {
+		return nil, err
 	}
 	l.ufragMu.Lock()
 	_, taken := l.ufrags[ufrag]
@@ -633,7 +641,10 @@ func (l *Listener) admit(c *Conn, ufrag string, sources []source, now time.Time)
 	}
 	l.ufragMu.Unlock()
 	if taken {
-		return errBusy
+		return nil, errBusy
+	}
+	if victim != nil {
+		l.displace(victim)
 	}
 	c.ufrag, c.pendingSlot, c.answered = ufrag, true, now
 	l.pending++
@@ -643,7 +654,7 @@ func (l *Listener) admit(c *Conn, ufrag string, sources []source, now time.Time)
 		c.sources = append(c.sources, s.key)
 	}
 	l.conns[c] = struct{}{}
-	return nil
+	return victim, nil
 }
 
 // writers returns the functions a connection sends with on sock: to a peer
@@ -794,6 +805,12 @@ func (l *Listener) addInterfaces(add func(a netip.Addr, port uint16)) {
 // with the connection locked.
 func (l *Listener) ready(c *Conn) {
 	l.mu.Lock()
+	if c.displaced {
+		// An offer displaced it as it opened.
+		l.mu.Unlock()
+		c.fail(errDisplaced)
+		return
+	}
 	l.releasePending(c)
 	if r := l.relay.Load(); r != nil {
 		// Of the permissions of the peer's addresses, that of the one it
@@ -911,6 +928,71 @@ func (l *Listener) releasePending(c *Conn) {
 		}
 	}
 	c.sources = nil
+}
+
+// slot finds a slot for a connection opening from sources: none once the
+// listener closed or a source holds its bound; one free; or, every slot
+// being taken, that of the connection it displaces, which it returns.
+// It is called with l.mu held.
+func (l *Listener) slot(c *Conn, sources []source) (victim *Conn, err error) {
+	switch {
+	case l.closed:
+		return nil, net.ErrClosed
+	case !l.room(sources):
+		return nil, errSourceBusy
+	case l.pending < l.maxPending:
+		return nil, nil
+	}
+	if victim = l.victim(c.rank()); victim == nil {
+		return nil, errBusy
+	}
+	return victim, nil
+}
+
+// rank ranks a connection opening for its slot: 2 if Vouch vouched for
+// its offer, and 1 more once a check proved an address of its peer. It is
+// called with l.mu held.
+func (c *Conn) rank() int {
+	rank := 0
+	if c.vouched {
+		rank = 2
+	}
+	if len(c.addrs) > 0 {
+		rank++
+	}
+	return rank
+}
+
+// victim returns the connection opening an offer of rank displaces: the
+// oldest of those of the lowest rank, unless it ranks above the offer. It
+// is called with l.mu held.
+func (l *Listener) victim(rank int) *Conn {
+	var victim *Conn
+	for c := range l.conns {
+		if c.pendingSlot && (victim == nil || displacedBefore(c, victim)) {
+			victim = c
+		}
+	}
+	if victim == nil || victim.rank() > rank {
+		return nil
+	}
+	return victim
+}
+
+// displacedBefore reports whether a connection opening is displaced before
+// another: it ranks lower, or as low and is older.
+func displacedBefore(a, b *Conn) bool {
+	if ra, rb := a.rank(), b.rank(); ra != rb {
+		return ra < rb
+	}
+	return a.answered.Before(b.answered)
+}
+
+// displace takes the slot of a connection opening, which the caller closes
+// as its open timeout would. It is called with l.mu held.
+func (l *Listener) displace(c *Conn) {
+	c.displaced = true
+	l.releasePending(c)
 }
 
 // bind routes the datagrams from an address the peer proved to its

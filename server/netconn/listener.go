@@ -201,8 +201,9 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 }
 
 // xboxKeys returns the keys of the authorization service of the game,
-// which signs the tokens of Xbox Live logins.
-func xboxKeys() (*bedrocklogin.Keys, error) {
+// which signs the tokens of Xbox Live logins. Tests stand in for the
+// service through it.
+var xboxKeys = func() (*bedrocklogin.Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return bedrocklogin.Discover(ctx, nil, v2193.Version)

@@ -2,8 +2,6 @@ package nethernet
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"maps"
@@ -214,12 +212,7 @@ func openRelayed(t *testing.T, l *Listener, id uint64) relayedConn {
 		if proved {
 			pwd = answer.pwd
 		}
-		b := stun.NewBuilder(nil, stun.BindingRequest, [12]byte{1})
-		b.AddString(stun.AttrUsername, answer.ufrag+":abcd")
-		b.AddUint64(stun.AttrICEControlling, 1)
-		b.AddIntegrity(hmac.New(sha1.New, []byte(pwd)))
-		b.AddFingerprint()
-		return b.Bytes()
+		return bindingRequest(answer.ufrag, pwd)
 	}}
 }
 

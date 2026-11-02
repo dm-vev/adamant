@@ -174,6 +174,8 @@ type Conn struct {
 	ufrag       string
 	addrs       []netip.AddrPort
 	pendingSlot bool
+	// displaced is set once an offer took its pending slot.
+	displaced bool
 	// sources are the keys of the sources its pending slot counts against.
 	sources []string
 	// signal names the offer of a connection opened over a signaling

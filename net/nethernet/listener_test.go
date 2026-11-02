@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,10 +19,12 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/dm-vev/adamant/net/dtls"
+	"github.com/dm-vev/adamant/net/stun"
 )
 
 func listen(t *testing.T, cfg ListenConfig) *Listener {
@@ -307,11 +311,12 @@ func TestVouch(t *testing.T) {
 }
 
 // TestPendingBound sends offers that never connect: past MaxPending the
-// listener refuses them, and takes them again once they expired.
+// listener refuses one that ranks below every connection opening, and
+// takes offers again once those expired.
 func TestPendingBound(t *testing.T) {
-	l := listen(t, ListenConfig{MaxPending: 2, AllowAnonymous: true})
-	offer := idleOffer()
-	post := func() int {
+	l := listen(t, ListenConfig{MaxPending: 2, AllowAnonymous: true, Vouch: func(string) error { return nil }})
+	vouched := identityOffer(t, newDialer(t).Key)
+	post := func(offer string) int {
 		resp, err := http.Post("http://"+l.Addr().String()+"/v1/join/1", "application/sdp", strings.NewReader(offer))
 		if err != nil {
 			t.Fatal(err)
@@ -319,13 +324,16 @@ func TestPendingBound(t *testing.T) {
 		_ = resp.Body.Close()
 		return resp.StatusCode
 	}
-	for i, want := range []int{200, 200, 503} {
-		if got := post(); got != want {
-			t.Fatalf("offer %d: status %d, want %d", i, got, want)
+	for i, step := range []struct {
+		offer string
+		want  int
+	}{{vouched, 200}, {vouched, 200}, {idleOffer(), 503}} {
+		if got := post(step.offer); got != step.want {
+			t.Fatalf("offer %d: status %d, want %d", i, got, step.want)
 		}
 	}
 	expireAll(l)
-	if got := post(); got != 200 {
+	if got := post(idleOffer()); got != 200 {
 		t.Fatalf("offer after the pending ones closed: status %d", got)
 	}
 }
@@ -337,6 +345,285 @@ func idleOffer() string {
 		ufrag: "abcd", pwd: randomString(24), setup: SetupActpass, maxMessageSize: maxMessageSize, sctpPort: 5000,
 		fingerprints: []Fingerprint{{"sha-256", dtls.Fingerprint(cert.Chain[0])}},
 	})
+}
+
+// identityOffer returns an offer of a client of key that never connects,
+// with the self-signed token of the key.
+func identityOffer(t *testing.T, key *ecdsa.PrivateKey) string {
+	t.Helper()
+	d, err := parseDescription(idleOffer())
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := clientToken(key, "", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	jws, err := signFingerprints(key, d.fingerprints)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.identity, err = encodeIdentity("", token, jws); err != nil {
+		t.Fatal(err)
+	}
+	return encodeDescription(d)
+}
+
+// bindingRequest returns a check of the peer of the end of a connection
+// with ufrag, signed with pwd.
+func bindingRequest(ufrag, pwd string) []byte {
+	b := stun.NewBuilder(nil, stun.BindingRequest, [12]byte{1})
+	b.AddString(stun.AttrUsername, ufrag+":abcd")
+	b.AddUint64(stun.AttrICEControlling, 1)
+	b.AddIntegrity(hmac.New(sha1.New, []byte(pwd)))
+	b.AddFingerprint()
+	return b.Bytes()
+}
+
+// pendingOffer is the connection an offer posted to a listener opened.
+type pendingOffer struct {
+	l      *Listener
+	c      *Conn
+	answer *description
+}
+
+// postOffer posts an offer to l from addr and returns the status of the
+// answer and the connection opened, if any.
+func postOffer(t *testing.T, l *Listener, offer, addr string) (int, pendingOffer) {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodPost, "/v1/join/1", strings.NewReader(offer))
+	r.RemoteAddr = addr
+	w := httptest.NewRecorder()
+	l.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		return w.Code, pendingOffer{}
+	}
+	answer, err := parseDescription(w.Body.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.ufragMu.RLock()
+	defer l.ufragMu.RUnlock()
+	return w.Code, pendingOffer{l, l.ufrags[answer.ufrag], answer}
+}
+
+// prove has the peer of the connection prove an address with a check.
+func (p pendingOffer) prove(from netip.AddrPort) {
+	var msg stun.Message
+	p.l.dispatch(bindingRequest(p.answer.ufrag, p.answer.pwd), from, nil, &msg)
+}
+
+// TestPendingDisplaced fills the slots of connections opening and sends
+// more offers: each displaces the oldest connection of the lowest rank,
+// unless that one ranks above it, and is refused then. A connection ranks
+// 2 if Vouch vouched for its offer, and 1 more once a check proved an
+// address of its peer. A connection displaced closes and gives its slot
+// back.
+func TestPendingDisplaced(t *testing.T) {
+	key := newDialer(t).Key
+	l := listen(t, ListenConfig{AllowAnonymous: true, MaxPending: 2, Vouch: func(string) error { return nil }})
+	pending := connectionsPending.Load()
+	unvouched, vouched := idleOffer(), identityOffer(t, key)
+	offers := map[string]pendingOffer{}
+	post := func(name, offer string, want int) {
+		t.Helper()
+		code, p := postOffer(t, l, offer, "127.0.0.1:1000")
+		if code != want {
+			t.Fatalf("offer %s: status %d, want %d", name, code, want)
+		}
+		offers[name] = p
+	}
+	prove := func(name string) {
+		offers[name].prove(netip.AddrPortFrom(netip.MustParseAddr("192.0.2.1"), 5000+uint16(name[0])))
+	}
+	displaced := func(want ...string) {
+		t.Helper()
+		var got []string
+		for name, p := range offers {
+			if p.c != nil && errors.Is(p.c.Err(), errDisplaced) {
+				got = append(got, name)
+			}
+		}
+		slices.Sort(got)
+		if !slices.Equal(got, want) {
+			t.Fatalf("displaced %v, want %v", got, want)
+		}
+	}
+	post("a", unvouched, 200)
+	post("b", unvouched, 200)
+	post("c", unvouched, 200)
+	displaced("a")
+	prove("b")
+	post("d", unvouched, 200)
+	displaced("a", "c")
+	post("e", vouched, 200)
+	displaced("a", "c", "d")
+	post("f", unvouched, 503)
+	post("g", vouched, 200)
+	displaced("a", "b", "c", "d")
+	prove("g")
+	post("h", vouched, 200)
+	displaced("a", "b", "c", "d", "e")
+	prove("h")
+	post("i", vouched, 503)
+	displaced("a", "b", "c", "d", "e")
+
+	l.mu.Lock()
+	slots, conns := l.pending, len(l.conns)
+	l.mu.Unlock()
+	if slots != 2 || conns != 2 || connectionsPending.Load() != pending+2 {
+		t.Fatalf("%d slots taken, %d connections, %d counted pending; want 2 of each", slots, conns, connectionsPending.Load()-pending)
+	}
+}
+
+// TestPendingDisplacedAfterSourceBound bounds the connections opening of
+// a source before it displaces any: an offer of a source at its bound is
+// refused as such, even if it would displace one. A connection displaced
+// gives back the counts of its sources.
+func TestPendingDisplacedAfterSourceBound(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true, MaxPending: 1, MaxPendingPerAddress: 1, Vouch: func(string) error { return nil }})
+	vouched := identityOffer(t, newDialer(t).Key)
+	for i, step := range []struct {
+		offer, from string
+		want        int
+	}{
+		{idleOffer(), "203.0.113.5:1000", 200},
+		{vouched, "203.0.113.5:1001", 429},
+		{vouched, "203.0.113.6:1000", 200},
+		{idleOffer(), "203.0.113.5:1002", 503},
+	} {
+		if got, _ := postOffer(t, l, step.offer, step.from); got != step.want {
+			t.Fatalf("offer %d from %s: status %d, want %d", i, step.from, got, step.want)
+		}
+	}
+}
+
+// TestOpenNotDisplaced displaces only connections opening: one open,
+// though it ranks below them, stays open.
+func TestOpenNotDisplaced(t *testing.T) {
+	key := newDialer(t).Key
+	token, err := clientToken(key, "", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := listen(t, ListenConfig{AllowAnonymous: true, MaxPending: 1, Vouch: func(tok string) error {
+		if tok != token {
+			return errors.New("not signed by the service")
+		}
+		return nil
+	}})
+	cli := dial(t, newDialer(t), l)
+	srv := accept(t, l)
+	vouched := identityOffer(t, key)
+	for i := range 2 {
+		if got, _ := postOffer(t, l, vouched, "127.0.0.1:1000"); got != 200 {
+			t.Fatalf("offer %d: status %d", i, got)
+		}
+	}
+	if err := cli.Send([]byte("still open")); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, srv); string(got) != "still open" || srv.Err() != nil {
+		t.Fatalf("read %q; closed with %v", got, srv.Err())
+	}
+}
+
+// TestDisplacedAsItOpens has the channels of a connection open just after
+// an offer displaced it: it closes, and is not accepted nor counted open.
+func TestDisplacedAsItOpens(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true})
+	open := connectionsOpen.Load()
+	_, p := postOffer(t, l, idleOffer(), "127.0.0.1:1000")
+	l.mu.Lock()
+	l.displace(p.c)
+	l.mu.Unlock()
+	p.c.mu.Lock()
+	l.ready(p.c)
+	p.c.release()
+	if !errors.Is(p.c.Err(), errDisplaced) || connectionsOpen.Load() != open || len(l.accept) != 0 {
+		t.Fatalf("closed with %v, %d counted open, %d to accept", p.c.Err(), connectionsOpen.Load()-open, len(l.accept))
+	}
+}
+
+// TestPendingFlood keeps every slot of the connections opening taken with
+// offers that never connect, each from a network of its own and none
+// vouched for, as a botnet would: a client vouched for joins all the
+// same, and so does one not vouched for, whose checks prove its address
+// before the flood displaces it.
+func TestPendingFlood(t *testing.T) {
+	vouched := newDialer(t)
+	token, err := clientToken(vouched.Key, "", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	vouched.Token = token
+	l := listen(t, ListenConfig{AllowAnonymous: true, Vouch: func(tok string) error {
+		if tok != token {
+			return errors.New("not signed by the service")
+		}
+		return nil
+	}})
+	offer := idleOffer()
+	post := func(i int) int {
+		code, _ := postOffer(t, l, offer, fmt.Sprintf("10.%d.%d.1:1000", i>>8&255, i&255))
+		return code
+	}
+	for i := range defaultMaxPending {
+		if got := post(i); got != 200 {
+			t.Fatalf("offer %d of the flood: status %d", i, got)
+		}
+	}
+	// A thousand offers a second go on, each displacing the oldest of the
+	// flood: every slot is taken anew within a quarter of a second.
+	stop := make(chan struct{})
+	var flood sync.WaitGroup
+	var taken atomic.Int64
+	flood.Go(func() {
+		tick := time.NewTicker(time.Millisecond)
+		defer tick.Stop()
+		for i := defaultMaxPending; ; i++ {
+			select {
+			case <-stop:
+				return
+			case <-tick.C:
+			}
+			if post(i) == 200 {
+				taken.Add(1)
+			}
+		}
+	})
+	stopped := false
+	stopFlood := func() {
+		if !stopped {
+			stopped = true
+			close(stop)
+			flood.Wait()
+		}
+	}
+	t.Cleanup(stopFlood)
+	for _, client := range []struct {
+		name string
+		d    Dialer
+	}{{"vouched for", vouched}, {"not vouched for", newDialer(t)}} {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		c, err := client.d.DialContext(ctx, l.Addr().String())
+		cancel()
+		if err != nil {
+			t.Fatalf("client %s: %v", client.name, err)
+		}
+		t.Cleanup(func() { _ = c.Close() })
+		accept(t, l)
+	}
+	stopFlood()
+	// The flood holds every slot but those the clients gave back as they
+	// opened, each counted against its two sources.
+	l.mu.Lock()
+	slots, sources := l.pending, len(l.sources)
+	l.mu.Unlock()
+	if taken.Load() == 0 || slots < defaultMaxPending-2 || sources != 2*slots {
+		t.Fatalf("the flood took %d offers while the clients joined and holds %d slots of %d sources; want some, %d at least and twice the slots",
+			taken.Load(), slots, sources, defaultMaxPending-2)
+	}
 }
 
 // expireAll closes the connections of a listener as their open timeout
@@ -566,7 +853,7 @@ func TestDatagram(t *testing.T) {
 // held pending is given back once, when it opened, not again when it
 // closed.
 func TestPendingSlotFreedOnce(t *testing.T) {
-	l := listen(t, ListenConfig{MaxPending: 1, AllowAnonymous: true})
+	l := listen(t, ListenConfig{MaxPending: 1, AllowAnonymous: true, Vouch: func(string) error { return nil }})
 	open := connectionsOpen.Load()
 	cli := dial(t, newDialer(t), l)
 	srv := accept(t, l)
@@ -587,15 +874,19 @@ func TestPendingSlotFreedOnce(t *testing.T) {
 			t.Fatalf("%d addresses still route to closed connections", routed)
 		}
 	}
-	offer := idleOffer()
-	for i, want := range []int{200, 503} {
-		resp, err := http.Post("http://"+l.Addr().String()+"/v1/join/1", "application/sdp", strings.NewReader(offer))
+	// An offer vouched for takes the one slot; one not vouched for ranks
+	// below it.
+	for i, step := range []struct {
+		offer string
+		want  int
+	}{{identityOffer(t, newDialer(t).Key), 200}, {idleOffer(), 503}} {
+		resp, err := http.Post("http://"+l.Addr().String()+"/v1/join/1", "application/sdp", strings.NewReader(step.offer))
 		if err != nil {
 			t.Fatal(err)
 		}
 		_ = resp.Body.Close()
-		if resp.StatusCode != want {
-			t.Fatalf("offer %d after a connection opened and closed: status %d, want %d", i, resp.StatusCode, want)
+		if resp.StatusCode != step.want {
+			t.Fatalf("offer %d after a connection opened and closed: status %d, want %d", i, resp.StatusCode, step.want)
 		}
 	}
 }
