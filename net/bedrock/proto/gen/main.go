@@ -17,6 +17,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -103,118 +104,174 @@ func main() {
 	log.Printf("%d declarations, %d packets raw", len(s.decls), raw)
 }
 
+// parseState holds what the parse of a schema has open.
+type parseState struct {
+	s       *schema
+	cur     *decl
+	curEnum *enum
+	// stack holds the bodies open at each depth.
+	stack []frame
+}
+
+// frame is a body open at a depth, and the node last added to it.
+type frame struct {
+	list *[]*node
+	last *node
+}
+
 func parse(path string) (*schema, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	s := &schema{byName: map[string]*decl{}, hand: map[string]bool{}, enums: map[string]*enum{}}
-	var cur *decl
-	var curEnum *enum
-	// stack holds the bodies open at each depth.
-	type frame struct {
-		list *[]*node
-		last *node
-	}
-	var stack []frame
+	p := &parseState{s: &schema{byName: map[string]*decl{}, hand: map[string]bool{}, enums: map[string]*enum{}}}
 	sc := bufio.NewScanner(f)
 	sc.Buffer(nil, 1<<20)
 	for n := 1; sc.Scan(); n++ {
-		line := sc.Text()
-		if strings.HasPrefix(strings.TrimSpace(line), "#") || strings.TrimSpace(line) == "" {
-			continue
-		}
-		depth := len(line) - len(strings.TrimLeft(line, "\t"))
-		text := strings.TrimSpace(line)
-		if depth == 0 {
-			fields := strings.Fields(text)
-			curEnum = nil
-			switch fields[0] {
-			case "hand":
-				for _, h := range fields[1:] {
-					s.hand[h] = true
-				}
-				continue
-			case "packet":
-				id, err := strconv.Atoi(fields[1])
-				client := len(fields) == 4 && fields[3] == "client"
-				if err != nil || len(fields) != 3 && !client {
-					return nil, fmt.Errorf("line %d: %q", n, text)
-				}
-				cur = &decl{packet: true, id: id, name: fields[2], client: client}
-			case "type":
-				cur = &decl{name: fields[1]}
-			case "enum":
-				if len(fields) != 2 || s.enums[fields[1]] != nil {
-					return nil, fmt.Errorf("line %d: %q", n, text)
-				}
-				curEnum = &enum{name: fields[1]}
-				s.enums[curEnum.name] = curEnum
-				s.enumList = append(s.enumList, curEnum)
-				cur = nil
-				continue
-			default:
-				return nil, fmt.Errorf("line %d: %q", n, text)
-			}
-			s.decls = append(s.decls, cur)
-			if !cur.packet {
-				s.byName[cur.name] = cur
-			}
-			stack = []frame{{list: &cur.body}}
-			continue
-		}
-		if curEnum != nil && depth == 1 {
-			v, name, ok := strings.Cut(text, " ")
-			if _, err := strconv.ParseInt(v, 10, 64); err != nil || !ok {
-				return nil, fmt.Errorf("line %d: %q", n, text)
-			}
-			curEnum.values = append(curEnum.values, v)
-			curEnum.names = append(curEnum.names, name)
-			continue
-		}
-		if cur == nil || depth > len(stack) {
-			return nil, fmt.Errorf("line %d: unexpected indentation", n)
-		}
-		stack = stack[:depth]
-		top := &stack[depth-1]
-		word, rest, _ := strings.Cut(text, " ")
-		nd := &node{kind: word}
-		switch word {
-		case "manual":
-			cur.manual = rest
-			continue
-		case "if", "present", "switch":
-			nd.expr = rest
-		case "case":
-			for _, v := range strings.Split(rest, ",") {
-				nd.vals = append(nd.vals, strings.TrimSpace(v))
-			}
-		case "default":
-		case "else":
-			if top.last == nil || top.last.kind != "if" {
-				return nil, fmt.Errorf("line %d: else without if", n)
-			}
-			stack = append(stack, frame{list: &top.last.elses})
-			continue
-		default:
-			nd.kind, nd.path, nd.wire = "field", word, rest
-			if w, as, ok := strings.Cut(rest, " as "); ok {
-				nd.wire, nd.as = w, as
-			}
-		}
-		if top.last != nil && top.last.kind == "switch" && (word == "case" || word == "default") {
-			top.last.body = append(top.last.body, nd)
-			stack = append(stack, frame{list: &nd.body})
-			continue
-		}
-		*top.list = append(*top.list, nd)
-		top.last = nd
-		if word == "if" || word == "present" || word == "switch" {
-			stack = append(stack, frame{list: &nd.body})
+		if err := p.line(sc.Text()); err != nil {
+			return nil, fmt.Errorf("line %d: %w", n, err)
 		}
 	}
-	return s, sc.Err()
+	return p.s, sc.Err()
+}
+
+// line parses a line of the schema.
+func (p *parseState) line(line string) error {
+	text := strings.TrimSpace(line)
+	if text == "" || strings.HasPrefix(text, "#") {
+		return nil
+	}
+	depth := len(line) - len(strings.TrimLeft(line, "\t"))
+	switch {
+	case depth == 0:
+		return p.decl(text)
+	case p.curEnum != nil && depth == 1:
+		return p.enumValue(text)
+	case p.cur == nil || depth > len(p.stack):
+		return errors.New("unexpected indentation")
+	}
+	return p.body(depth, text)
+}
+
+// decl parses the line of a declaration.
+func (p *parseState) decl(text string) error {
+	fields := strings.Fields(text)
+	p.curEnum = nil
+	switch fields[0] {
+	case "hand":
+		for _, h := range fields[1:] {
+			p.s.hand[h] = true
+		}
+	case "packet":
+		return p.packet(text, fields)
+	case "type":
+		p.open(&decl{name: fields[1]})
+	case "enum":
+		return p.enum(text, fields)
+	default:
+		return fmt.Errorf("%q", text)
+	}
+	return nil
+}
+
+// packet opens a packet, "packet ID Name", marked "client" if a client
+// sends it.
+func (p *parseState) packet(text string, fields []string) error {
+	id, err := strconv.Atoi(fields[1])
+	client := len(fields) == 4 && fields[3] == "client"
+	if err != nil || len(fields) != 3 && !client {
+		return fmt.Errorf("%q", text)
+	}
+	p.open(&decl{packet: true, id: id, name: fields[2], client: client})
+	return nil
+}
+
+// open opens the body of a declaration.
+func (p *parseState) open(d *decl) {
+	p.cur = d
+	p.s.decls = append(p.s.decls, d)
+	if !d.packet {
+		p.s.byName[d.name] = d
+	}
+	p.stack = []frame{{list: &d.body}}
+}
+
+// enum opens an enum, whose values follow.
+func (p *parseState) enum(text string, fields []string) error {
+	if len(fields) != 2 || p.s.enums[fields[1]] != nil {
+		return fmt.Errorf("%q", text)
+	}
+	p.curEnum = &enum{name: fields[1]}
+	p.s.enums[p.curEnum.name] = p.curEnum
+	p.s.enumList = append(p.s.enumList, p.curEnum)
+	p.cur = nil
+	return nil
+}
+
+// enumValue parses a "value name" line of an enum.
+func (p *parseState) enumValue(text string) error {
+	v, name, ok := strings.Cut(text, " ")
+	if _, err := strconv.ParseInt(v, 10, 64); err != nil || !ok {
+		return fmt.Errorf("%q", text)
+	}
+	p.curEnum.values = append(p.curEnum.values, v)
+	p.curEnum.names = append(p.curEnum.names, name)
+	return nil
+}
+
+// body parses a line of the body of a declaration at a depth.
+func (p *parseState) body(depth int, text string) error {
+	p.stack = p.stack[:depth]
+	top := &p.stack[depth-1]
+	word, rest, _ := strings.Cut(text, " ")
+	switch word {
+	case "manual":
+		p.cur.manual = rest
+	case "else":
+		if top.last == nil || top.last.kind != "if" {
+			return errors.New("else without if")
+		}
+		p.stack = append(p.stack, frame{list: &top.last.elses})
+	default:
+		p.add(top, word, newNode(word, rest))
+	}
+	return nil
+}
+
+// newNode returns the node of a line of a body but manual and else.
+func newNode(word, rest string) *node {
+	nd := &node{kind: word}
+	switch word {
+	case "if", "present", "switch":
+		nd.expr = rest
+	case "case":
+		for _, v := range strings.Split(rest, ",") {
+			nd.vals = append(nd.vals, strings.TrimSpace(v))
+		}
+	case "default":
+	default:
+		nd.kind, nd.path, nd.wire = "field", word, rest
+		if w, as, ok := strings.Cut(rest, " as "); ok {
+			nd.wire, nd.as = w, as
+		}
+	}
+	return nd
+}
+
+// add adds a node to the body open at the top, a case or default to the
+// switch before it, and opens the body of the node if it has one.
+func (p *parseState) add(top *frame, word string, nd *node) {
+	if top.last != nil && top.last.kind == "switch" && (word == "case" || word == "default") {
+		top.last.body = append(top.last.body, nd)
+		p.stack = append(p.stack, frame{list: &nd.body})
+		return
+	}
+	*top.list = append(*top.list, nd)
+	top.last = nd
+	if word == "if" || word == "present" || word == "switch" {
+		p.stack = append(p.stack, frame{list: &nd.body})
+	}
 }
 
 // findHand finds the codecs written by hand in the package of the output:
@@ -886,90 +943,110 @@ func (g *gen) value(w, v string, enc bool) error {
 	kind, elem, count := baseOf(w)
 	switch kind {
 	case "optional":
-		if enc {
-			g.p("w.Bool(%s.Set)", v)
-			g.p("if %s.Set {", v)
-		} else {
-			g.p("%s.Set = r.Bool()", v)
-			g.p("if %s.Set {", v)
-		}
-		if err := g.value(elem, v+".Val", enc); err != nil {
-			return err
-		}
-		g.p("}")
-		return nil
+		return g.optional(elem, v, enc)
 	case "list":
-		i := g.temp()
-		if enc {
-			switch {
-			case count == "":
-				g.p("w.Varuint32(uint32(len(%s)))", v)
-			case strings.HasPrefix(count, "count "):
-				t := strings.TrimPrefix(count, "count ")
-				g.p("w.%s(%s(len(%s)))", method(t), goTypes[t], v)
-			}
-			g.p("for %s := range %s {", i, v)
-		} else {
-			n := g.temp()
-			switch {
-			case count == "":
-				g.p("%s := int(r.Varuint32())", n)
-			case strings.HasPrefix(count, "count "):
-				t := strings.TrimPrefix(count, "count ")
-				g.p("%s := int(r.%s())", n, method(t))
-			default:
-				lenExpr, err := g.cond(strings.TrimPrefix(count, "len "))
-				if err != nil {
-					return err
-				}
-				g.p("%s := int(%s)", n, lenExpr)
-			}
-			et, err := g.s.goType(elem)
-			if err != nil {
-				return err
-			}
-			g.p("%s = wire.Slice[%s](r, %s)", v, et, n)
-			g.p("for %s := range %s {", i, v)
-		}
-		if err := g.value(elem, v+"["+i+"]", enc); err != nil {
+		return g.list(elem, count, v, enc)
+	}
+	return g.single(w, v, enc)
+}
+
+// optional writes the code of an optional value of a wire type.
+func (g *gen) optional(elem, v string, enc bool) error {
+	if enc {
+		g.p("w.Bool(%s.Set)", v)
+	} else {
+		g.p("%s.Set = r.Bool()", v)
+	}
+	g.p("if %s.Set {", v)
+	if err := g.value(elem, v+".Val", enc); err != nil {
+		return err
+	}
+	g.p("}")
+	return nil
+}
+
+// list writes the code of a list of elements of a wire type.
+func (g *gen) list(elem, count, v string, enc bool) error {
+	i := g.temp()
+	if enc {
+		g.listCount(count, v)
+	} else if err := g.listSlice(elem, count, v); err != nil {
+		return err
+	}
+	g.p("for %s := range %s {", i, v)
+	if err := g.value(elem, v+"["+i+"]", enc); err != nil {
+		return err
+	}
+	g.p("}")
+	return nil
+}
+
+// listCount writes the count of a list, unless another field holds it.
+func (g *gen) listCount(count, v string) {
+	switch {
+	case count == "":
+		g.p("w.Varuint32(uint32(len(%s)))", v)
+	case strings.HasPrefix(count, "count "):
+		t := strings.TrimPrefix(count, "count ")
+		g.p("w.%s(%s(len(%s)))", method(t), goTypes[t], v)
+	}
+}
+
+// listSlice reads the count of a list, or takes it from another field, and
+// makes the slice of the list.
+func (g *gen) listSlice(elem, count, v string) error {
+	n := g.temp()
+	switch {
+	case count == "":
+		g.p("%s := int(r.Varuint32())", n)
+	case strings.HasPrefix(count, "count "):
+		t := strings.TrimPrefix(count, "count ")
+		g.p("%s := int(r.%s())", n, method(t))
+	default:
+		lenExpr, err := g.cond(strings.TrimPrefix(count, "len "))
+		if err != nil {
 			return err
 		}
-		g.p("}")
-		return nil
+		g.p("%s := int(%s)", n, lenExpr)
 	}
+	et, err := g.s.goType(elem)
+	if err != nil {
+		return err
+	}
+	g.p("%s = wire.Slice[%s](r, %s)", v, et, n)
+	return nil
+}
+
+// single writes the code of a value of a wire type that is neither a list
+// nor optional.
+func (g *gen) single(w, v string, enc bool) error {
 	if m, ok := plain[w]; ok {
-		if enc {
-			g.p("w.%s(%s)", m, v)
-		} else {
-			g.p("%s = r.%s()", v, m)
-		}
+		g.code(enc, fmt.Sprintf("w.%s(%s)", m, v), fmt.Sprintf("%s = r.%s()", v, m))
 		return nil
 	}
 	if f, ok := composite[w]; ok {
-		if enc {
-			g.p("proto.Write%s(w, &%s)", f, v)
-		} else {
-			g.p("proto.Read%s(r, &%s)", f, v)
-		}
+		g.code(enc, fmt.Sprintf("proto.Write%s(w, &%s)", f, v), fmt.Sprintf("proto.Read%s(r, &%s)", f, v))
 		return nil
 	}
 	if _, ok := g.s.byName[w]; ok {
-		if enc {
-			g.p("%s.Encode(w)", v)
-		} else {
-			g.p("%s.Decode(r)", v)
-		}
+		g.code(enc, v+".Encode(w)", v+".Decode(r)")
 		return nil
 	}
 	if t, ok := special[specialBase(w)]; ok {
-		if enc {
-			g.p("write%s(w, &%s%s)", t, v, specialArg(w))
-		} else {
-			g.p("read%s(r, &%s%s)", t, v, specialArg(w))
-		}
+		arg := specialArg(w)
+		g.code(enc, fmt.Sprintf("write%s(w, &%s%s)", t, v, arg), fmt.Sprintf("read%s(r, &%s%s)", t, v, arg))
 		return nil
 	}
 	return fmt.Errorf("no codec for %q", w)
+}
+
+// code writes the line that encodes or the one that decodes.
+func (g *gen) code(enc bool, encode, decode string) {
+	if enc {
+		g.p("%s", encode)
+	} else {
+		g.p("%s", decode)
+	}
 }
 
 // plain maps wire types to the methods of wire.Writer and wire.Reader.

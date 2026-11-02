@@ -124,22 +124,7 @@ func readItemData(r *wire.Reader, shield bool) (data map[string]any, placeOn, ca
 	// of the packet and charged to its budget.
 	d := r.Sub(b)
 	defer r.Join(d)
-	switch d.Int16() {
-	case 0:
-	case -1:
-		if v := d.Uint8(); v != 1 {
-			d.Failf("v2193: item user data of version %d", v)
-			return
-		}
-		fallthrough
-	default:
-		m, err := nbt.ReadEncoded(d, nbt.LittleEndian)
-		if err != nil {
-			d.Fail(err)
-			return
-		}
-		data = m
-	}
+	data = readItemNBT(d)
 	placeOn = readStrings16(d)
 	canBreak = readStrings16(d)
 	if shield {
@@ -150,6 +135,27 @@ func readItemData(r *wire.Reader, shield bool) (data map[string]any, placeOn, ca
 		d.Failf("v2193: %d bytes after the user data of an item", d.Len())
 	}
 	return
+}
+
+// readItemNBT reads the NBT of the user data of an item after its marker:
+// 0 for none, -1 for NBT after a version of 1, another for NBT alone, as
+// gophertunnel reads it.
+func readItemNBT(d *wire.Reader) map[string]any {
+	switch d.Int16() {
+	case 0:
+		return nil
+	case -1:
+		if v := d.Uint8(); v != 1 {
+			d.Failf("v2193: item user data of version %d", v)
+			return nil
+		}
+	}
+	m, err := nbt.ReadEncoded(d, nbt.LittleEndian)
+	if err != nil {
+		d.Fail(err)
+		return nil
+	}
+	return m
 }
 
 // writeStrings16 writes strings prefixed with an int16 length, the list

@@ -104,11 +104,37 @@ type importer struct {
 func main() {
 	out := flag.String("o", "", "schema file to write; stdout if empty")
 	flag.Parse()
+	if err := run(*out); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// run imports the schema and writes it to a file, or to stdout for none.
+func run(out string) error {
+	im, err := load()
+	if err != nil {
+		return err
+	}
+	im.importAll()
+	b := im.schema(packet.NewClientPool())
+	if out == "" {
+		_, err := os.Stdout.Write(b)
+		return err
+	}
+	if err := os.WriteFile(out, b, 0o644); err != nil {
+		return err
+	}
+	log.Printf("%d declarations, %d manual", len(im.decls), im.manual())
+	return nil
+}
+
+// load loads the packages of gophertunnel's protocol into an importer.
+func load() (*importer, error) {
 	cfg := &packages.Config{Mode: packages.NeedName | packages.NeedSyntax | packages.NeedTypes |
 		packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps}
 	pkgs, err := packages.Load(cfg, protocolPath, packetPath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	im := &importer{
 		pkgs:    map[string]*packages.Package{},
@@ -120,23 +146,33 @@ func main() {
 	}
 	for _, p := range pkgs {
 		if len(p.Errors) > 0 {
-			log.Fatal(p.Errors)
+			return nil, p.Errors[0]
 		}
-		im.pkgs[p.PkgPath] = p
-		for _, f := range p.Syntax {
-			for _, d := range f.Decls {
-				if fd, ok := d.(*ast.FuncDecl); ok {
-					if fn, ok := p.TypesInfo.Defs[fd.Name].(*types.Func); ok {
-						im.funcs[fn] = fd
-						im.owner[fd] = p
-					}
+		im.add(p)
+	}
+	im.ioType = im.pkgs[protocolPath].Types.Scope().Lookup("IO").Type().Underlying().(*types.Interface)
+	return im, nil
+}
+
+// add adds a package and the declarations of its functions.
+func (im *importer) add(p *packages.Package) {
+	im.pkgs[p.PkgPath] = p
+	for _, f := range p.Syntax {
+		for _, d := range f.Decls {
+			if fd, ok := d.(*ast.FuncDecl); ok {
+				if fn, ok := p.TypesInfo.Defs[fd.Name].(*types.Func); ok {
+					im.funcs[fn] = fd
+					im.owner[fd] = p
 				}
 			}
 		}
 	}
-	im.ioType = im.pkgs[protocolPath].Types.Scope().Lookup("IO").Type().Underlying().(*types.Interface)
+}
+
+// importAll imports the packets and every type with a codec: codecs
+// written by hand dispatch to them.
+func (im *importer) importAll() {
 	im.packets()
-	// Every type with a codec: codecs written by hand dispatch to them.
 	for _, path := range []string{protocolPath, packetPath} {
 		scope := im.pkgs[path].Types.Scope()
 		for _, name := range scope.Names() {
@@ -152,36 +188,29 @@ func main() {
 		im.queue = im.queue[1:]
 		im.typeDecl(tn)
 	}
+}
 
-	var b bytes.Buffer
-	fmt.Fprintf(&b, "# Bedrock protocol, imported by protoimport from gophertunnel.\n")
-	manual := 0
+// manual returns the number of declarations marked manual.
+func (im *importer) manual() int {
+	n := 0
 	for _, d := range im.decls {
 		if d.manual != "" {
-			manual++
+			n++
 		}
 	}
-	fmt.Fprintf(&b, "# %d declarations, %d of them manual.\n", len(im.decls), manual)
-	// The packets a client sends are those gophertunnel's listener decodes.
-	client := packet.NewClientPool()
+	return n
+}
+
+// schema returns the schema of what was imported. A packet in the pool of
+// those a client sends, which gophertunnel's listener decodes, is marked
+// client.
+func (im *importer) schema(client packet.Pool) []byte {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "# Bedrock protocol, imported by protoimport from gophertunnel.\n")
+	fmt.Fprintf(&b, "# %d declarations, %d of them manual.\n", len(im.decls), im.manual())
 	for _, d := range im.decls {
 		b.WriteString("\n")
-		if d.packet {
-			from := ""
-			if client[uint32(d.id)] != nil {
-				from = " client"
-			}
-			fmt.Fprintf(&b, "packet %d %s%s\n", d.id, d.name, from)
-		} else {
-			fmt.Fprintf(&b, "type %s\n", d.name)
-		}
-		if d.manual != "" {
-			fmt.Fprintf(&b, "\tmanual %s\n", strings.ReplaceAll(d.manual, "\n", " "))
-			continue
-		}
-		for _, l := range d.lines {
-			b.WriteString("\t" + l + "\n")
-		}
+		d.write(&b, client)
 	}
 	for _, e := range im.enumList {
 		fmt.Fprintf(&b, "\nenum %s\n", e.name)
@@ -189,14 +218,26 @@ func main() {
 			fmt.Fprintf(&b, "\t%s %s\n", v, e.names[i])
 		}
 	}
-	if *out == "" {
-		os.Stdout.Write(b.Bytes())
+	return b.Bytes()
+}
+
+// write writes a declaration of the schema.
+func (d *decl) write(b *bytes.Buffer, client packet.Pool) {
+	switch {
+	case d.packet && client[uint32(d.id)] != nil:
+		fmt.Fprintf(b, "packet %d %s client\n", d.id, d.name)
+	case d.packet:
+		fmt.Fprintf(b, "packet %d %s\n", d.id, d.name)
+	default:
+		fmt.Fprintf(b, "type %s\n", d.name)
+	}
+	if d.manual != "" {
+		fmt.Fprintf(b, "\tmanual %s\n", strings.ReplaceAll(d.manual, "\n", " "))
 		return
 	}
-	if err := os.WriteFile(*out, b.Bytes(), 0o644); err != nil {
-		log.Fatal(err)
+	for _, l := range d.lines {
+		b.WriteString("\t" + l + "\n")
 	}
-	log.Printf("%d declarations, %d manual", len(im.decls), manual)
 }
 
 // packets imports every type of package packet with an ID and a codec.

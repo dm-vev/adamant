@@ -232,55 +232,40 @@ func tagOf(v any) (byte, bool) {
 	return tagOfType(reflect.TypeOf(v))
 }
 
+// The tags of types: of the slices that hold arrays, of the kinds of the
+// elements of Go arrays, and of the kinds of other values.
 var (
-	byteArrayType = reflect.TypeFor[ByteArray]()
-	intArrayType  = reflect.TypeFor[IntArray]()
-	longArrayType = reflect.TypeFor[LongArray]()
+	sliceTags = map[reflect.Type]byte{
+		reflect.TypeFor[ByteArray](): tagByteArray,
+		reflect.TypeFor[IntArray]():  tagIntArray,
+		reflect.TypeFor[LongArray](): tagLongArray,
+	}
+	elemTags = map[reflect.Kind]byte{reflect.Uint8: tagByteArray, reflect.Int32: tagIntArray, reflect.Int64: tagLongArray}
+	kindTags = map[reflect.Kind]byte{
+		reflect.Uint8: tagByte, reflect.Bool: tagByte, reflect.Int8: tagByte, reflect.Int16: tagShort,
+		reflect.Int32: tagInt, reflect.Int64: tagLong, reflect.Float32: tagFloat, reflect.Float64: tagDouble,
+		reflect.String: tagString, reflect.Slice: tagList,
+	}
 )
 
 // tagOfType returns the tag of a type by its kind, as gophertunnel does,
-// but for the slices of arrays.
+// but for the slices that hold arrays.
 func tagOfType(t reflect.Type) (byte, bool) {
-	switch t {
-	case byteArrayType:
-		return tagByteArray, true
-	case intArrayType:
-		return tagIntArray, true
-	case longArrayType:
-		return tagLongArray, true
+	if tag, ok := sliceTags[t]; ok {
+		return tag, true
 	}
 	switch t.Kind() {
-	case reflect.Uint8, reflect.Bool, reflect.Int8:
-		return tagByte, true
-	case reflect.Int16:
-		return tagShort, true
-	case reflect.Int32:
-		return tagInt, true
-	case reflect.Int64:
-		return tagLong, true
-	case reflect.Float32:
-		return tagFloat, true
-	case reflect.Float64:
-		return tagDouble, true
-	case reflect.String:
-		return tagString, true
 	case reflect.Array:
-		switch t.Elem().Kind() {
-		case reflect.Uint8:
-			return tagByteArray, true
-		case reflect.Int32:
-			return tagIntArray, true
-		case reflect.Int64:
-			return tagLongArray, true
-		}
-	case reflect.Slice:
-		return tagList, true
+		tag, ok := elemTags[t.Elem().Kind()]
+		return tag, ok
 	case reflect.Map:
-		if t.Key().Kind() == reflect.String {
-			return tagCompound, true
+		if t.Key().Kind() != reflect.String {
+			return 0, false
 		}
+		return tagCompound, true
 	}
-	return 0, false
+	tag, ok := kindTags[t.Kind()]
+	return tag, ok
 }
 
 func (e Encoding) writeCompound(w *wire.Writer, m map[string]any, depth int) error {
@@ -592,7 +577,12 @@ func (e Encoding) readList(r *wire.Reader, depth int) any {
 	if !r.Alloc(sliceCost + n*slotCost(et)) {
 		return nil
 	}
-	// Lists of bytes, ints and longs read into slices of them.
+	return e.readListElements(r, et, n, depth)
+}
+
+// readListElements reads the n elements of a list of a tag: lists of
+// bytes, ints and longs into slices of them, others into a slice of any.
+func (e Encoding) readListElements(r *wire.Reader, et byte, n, depth int) any {
 	switch et {
 	case tagByte:
 		return append([]byte{}, r.Next(n)...)
