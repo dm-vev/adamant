@@ -259,24 +259,41 @@ func (c *Conn) Ping(data []byte) error {
 	return c.writeFrame(opPing, data)
 }
 
-// Close sends a close frame, if none was sent yet, and closes the
-// connection.
+// closeWait bounds how long Close waits for its close frame to go out.
+const closeWait = time.Second
+
+// Close sends a close frame, if none was sent yet and no write is under
+// way, and closes the connection. A write blocked on a peer that stopped
+// reading does not hold Close up: closing the connection ends it.
 func (c *Conn) Close() error {
-	_ = c.closeWith(CloseNormal, "")
+	if c.writeMu.TryLock() {
+		_ = c.conn.SetWriteDeadline(time.Now().Add(closeWait))
+		_ = c.writeFrameLocked(opClose, closePayload(CloseNormal, ""))
+		c.writeMu.Unlock()
+	}
 	return c.conn.Close()
 }
 
 // closeWith sends a close frame with a code and a reason.
 func (c *Conn) closeWith(code int, reason string) error {
+	return c.writeFrame(opClose, closePayload(code, reason))
+}
+
+// closePayload returns the payload of a close frame.
+func closePayload(code int, reason string) []byte {
 	payload := make([]byte, 2, 2+len(reason))
 	binary.BigEndian.PutUint16(payload, uint16(code))
-	payload = append(payload, reason...)
-	return c.writeFrame(opClose, payload)
+	return append(payload, reason...)
 }
 
 func (c *Conn) writeFrame(op byte, data []byte) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
+	return c.writeFrameLocked(op, data)
+}
+
+// writeFrameLocked writes a frame with writeMu held.
+func (c *Conn) writeFrameLocked(op byte, data []byte) error {
 	if c.closed {
 		return ErrClosed
 	}

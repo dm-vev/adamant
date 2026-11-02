@@ -92,6 +92,46 @@ func TestDialRefused(t *testing.T) {
 	}
 }
 
+// TestCloseWithStuckWrite closes a connection whose peer stopped reading
+// while a write is blocked on it: Close returns at once and ends the
+// write.
+func TestCloseWithStuckWrite(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := Upgrade(w, r)
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		<-release // reads nothing
+	}))
+	defer srv.Close()
+	defer close(release)
+	c := dial(t, srv)
+	wrote := make(chan error, 1)
+	go func() { wrote <- c.WriteMessage(false, make([]byte, 64<<20)) }()
+	select {
+	case err := <-wrote:
+		t.Fatalf("a write of 64 MiB to a peer not reading returned: %v", err)
+	case <-time.After(200 * time.Millisecond):
+	}
+	closed := make(chan error, 1)
+	go func() { closed <- c.Close() }()
+	select {
+	case <-closed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Close blocked behind a stuck write")
+	}
+	select {
+	case err := <-wrote:
+		if err == nil {
+			t.Fatal("the stuck write succeeded")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the stuck write outlived Close")
+	}
+}
+
 // pipeConn returns a client Conn reading what is written to the returned
 // connection, and that connection.
 func pipeConn(t *testing.T, client bool) (*Conn, net.Conn) {
