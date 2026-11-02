@@ -1194,10 +1194,8 @@ func (a *Association) countMisses(highest uint32) {
 // markRetransmit marks a chunk lost: it leaves the flight and is sent
 // again, unless its message ran out of retransmissions or of time.
 func (a *Association) markRetransmit(ch *outChunk, now time.Time) {
-	if a.rttActive && ch.tsn == a.rttTSN {
-		// Karn's rule: a chunk sent twice gives no sample.
-		a.rttActive = false
-	}
+	// Karn's rule: a chunk sent twice gives no sample.
+	a.untime(ch)
 	if ch.inFlight {
 		a.flight -= ch.size()
 		ch.inFlight = false
@@ -1213,6 +1211,14 @@ func (a *Association) markRetransmit(ch *outChunk, now time.Time) {
 	ch.retransmit = true
 }
 
+// untime ends the timing of a chunk that gives no sample, so that the next
+// chunk sent is timed.
+func (a *Association) untime(ch *outChunk) {
+	if a.rttActive && ch.tsn == a.rttTSN {
+		a.rttActive = false
+	}
+}
+
 // abandon gives up a message of partial reliability: its chunks are not
 // sent again and FORWARD TSN tells the peer to skip them.
 func (a *Association) abandon(m *outMessage) {
@@ -1226,6 +1232,7 @@ func (a *Association) abandon(m *outMessage) {
 		}
 		ch.abandoned = true
 		ch.retransmit = false
+		a.untime(ch)
 		if ch.inFlight {
 			a.flight -= ch.size()
 			ch.inFlight = false

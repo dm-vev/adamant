@@ -42,7 +42,13 @@ func initValue(tag, tsn uint32, params ...[]byte) []byte {
 // parameters given besides its cookie. Its packets go nowhere.
 func connectTo(t *testing.T, now time.Time, params ...[]byte) *Association {
 	t.Helper()
-	a := New(Config{}, func([]byte) {})
+	return connectWith(t, Config{}, now, params...)
+}
+
+// connectWith is connectTo for an association configured with cfg.
+func connectWith(t *testing.T, cfg Config, now time.Time, params ...[]byte) *Association {
+	t.Helper()
+	a := New(cfg, func([]byte) {})
 	a.Connect(now)
 	params = append(params, appendParam(nil, paramStateCookie, []byte("cookie")))
 	if err := inject(a, now, chunkInitAck, 0, initValue(0x1234, 100, params...)); err != nil {
@@ -712,6 +718,38 @@ func TestMessageGivenUpPartlySentIsSkipped(t *testing.T) {
 	n.run(time.Minute, func() bool { return len(b.received) == 11 })
 	if len(b.received) != 11 || string(b.received[10].data) != "next" {
 		t.Fatalf("delivered %d messages, the last of %d bytes; want 11, the last the one after the message given up", len(b.received), len(b.received[len(b.received)-1].data))
+	}
+}
+
+// TestRTTMeasuredAfterTimedChunkGivenUp covers a timed chunk given up
+// with the message it is part of, missed with it: the next chunk sent is
+// timed, and the round trip measured again (RFC 9260 section 6.3.1, rule
+// C4).
+func TestRTTMeasuredAfterTimedChunkGivenUp(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	a := connectTo(t, now, appendParam(nil, paramForwardTSN, nil))
+	first := a.nextTSN
+	// A byte, timed, and ten chunks fill the window but for the first chunk
+	// of a message of two.
+	sendAll(t, a, now, append([]int{1}, slices.Repeat([]int{1131}, 10)...)...)
+	if err := a.Send(2, PPIDBinary, payload(1, 2000), SendOptions{Unordered: true, Partial: true}, now); err != nil {
+		t.Fatal(err)
+	}
+	// The byte gives a sample of 1 s; the window lets the second chunk of
+	// the message go, timed.
+	now = now.Add(time.Second)
+	sack(t, a, now, first+10, 1<<20)
+	sendAll(t, a, now, 1, 1, 1)
+	// Both chunks of the message are missed three times: it is given up.
+	for k := uint16(3); k <= 5; k++ {
+		sack(t, a, now, first+10, 1<<20, 3, k)
+	}
+	now = now.Add(time.Second)
+	sack(t, a, now, first+15, 1<<20)
+	sendAll(t, a, now, 1)
+	sack(t, a, now.Add(2*time.Second), first+16, 1<<20)
+	if want := time.Second + time.Second/8; a.RTT() != want {
+		t.Fatalf("RTT %v, want %v from a second sample of 2 s", a.RTT(), want)
 	}
 }
 
