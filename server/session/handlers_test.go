@@ -1,6 +1,8 @@
 package session
 
 import (
+	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/netconn"
@@ -35,5 +37,34 @@ func TestHandledPacketsDecode(t *testing.T) {
 		if err != nil || got.ID() != id {
 			t.Errorf("%T: %v", pk, err)
 		}
+	}
+}
+
+// countedError counts the times its message is built.
+type countedError struct{ n *int }
+
+func (e countedError) Error() string {
+	*e.n++
+	return "closed"
+}
+
+// TestConnClosedLogsLazily closes the connection of a session with an
+// error of a client, which may be as long as a packet: its message is
+// built only if the debug log is on.
+func TestConnClosedLogsLazily(t *testing.T) {
+	var out strings.Builder
+	n := 0
+	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(&out, nil))}}
+	s.connClosed(countedError{&n})
+	if n != 0 {
+		t.Fatalf("the message was built %d times with the debug log off", n)
+	}
+	s = &Session{conf: Config{Log: slog.New(slog.NewTextHandler(&out, &slog.HandlerOptions{Level: slog.LevelDebug}))}}
+	s.connClosed(countedError{&n})
+	if n == 0 || !strings.Contains(out.String(), "closed") {
+		t.Fatalf("the close was not logged with the debug log on: %q", out.String())
+	}
+	if !s.inboxClosed {
+		t.Fatal("the inbox stayed open")
 	}
 }

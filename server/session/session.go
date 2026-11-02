@@ -421,7 +421,7 @@ func (s *Session) receive(pk proto.Packet) {
 // tick of the world of the player handles what is left and closes it.
 func (s *Session) connClosed(err error) {
 	if err != nil && !errors.Is(err, net.ErrClosed) {
-		s.conf.Log.Debug("connection closed: " + err.Error())
+		s.conf.Log.Debug("connection closed", "err", err)
 	}
 	s.inboxMu.Lock()
 	s.inboxClosed = true

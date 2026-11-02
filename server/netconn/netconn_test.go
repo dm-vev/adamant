@@ -871,3 +871,26 @@ func TestItemDataBound(t *testing.T) {
 		t.Fatalf("decoded %d lists, %d blocks", len(st.NBTData["a"].([]any)), len(st.CanBePlacedOn))
 	}
 }
+
+// TestShortErrors decodes a CommandRequest of an origin of a name of 1 MiB
+// that no origin has: the error names it short, as one that quoted it
+// whole took 29 times its bytes to build, 231 MiB for 8 MiB.
+func TestShortErrors(t *testing.T) {
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDCommandRequest})}
+	w.String("/help")
+	w.ByteSlice(make([]byte, 1<<20)) // the name of the origin
+	w.Bytes(make([]byte, 16+1+8+1+1))
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	_, err := DecodePacket(w.B)
+	runtime.ReadMemStats(&after)
+	if err == nil || !strings.Contains(err.Error(), "commandOrigin") {
+		t.Fatalf("decoded an unknown origin: %v", err)
+	}
+	if len(err.Error()) > 512 {
+		t.Errorf("an error of %d bytes", len(err.Error()))
+	}
+	if n := after.TotalAlloc - before.TotalAlloc; n > 2*uint64(len(w.B)) {
+		t.Errorf("decoding %d bytes allocated %d", len(w.B), n)
+	}
+}

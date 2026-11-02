@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"unsafe"
 )
 
@@ -183,6 +184,19 @@ func (r *Reader) Join(d *Reader) {
 
 // Failf records a formatted error.
 func (r *Reader) Failf(format string, args ...any) { r.Fail(fmt.Errorf(format, args...)) }
+
+// maxQuote bounds the bytes of a value Quote quotes.
+const maxQuote = 64
+
+// Quote quotes a string a peer sent, as %q does, cut to its first 64 bytes:
+// an error naming it stays short, where quoting a string of megabytes
+// built one four times as long.
+func Quote(s string) string {
+	if len(s) <= maxQuote {
+		return strconv.Quote(s)
+	}
+	return strconv.Quote(s[:maxQuote]) + "..."
+}
 
 func (r *Reader) take(n int) []byte {
 	if r.err != nil {

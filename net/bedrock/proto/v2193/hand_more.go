@@ -487,7 +487,7 @@ func readItemDescriptorCount(r *wire.Reader, x *ItemDescriptorCount) {
 			r.Varint32()
 			x.Descriptor = d
 		default:
-			r.Failf("v2193: item descriptor %q", name)
+			r.Failf("v2193: item descriptor %s", wire.Quote(name))
 			return
 		}
 	default:

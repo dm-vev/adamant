@@ -12041,7 +12041,7 @@ func swingSourceValue(r *wire.Reader, name string) int64 {
 	case "event":
 		return 9
 	}
-	r.Failf("v2193: unknown swingSource %q", name)
+	r.Failf("v2193: unknown swingSource %s", wire.Quote(name))
 	return 0
 }
 
@@ -12064,7 +12064,7 @@ func clientBoundDebugRenderValue(r *wire.Reader, name string) int64 {
 	case "adddebugmarkercube":
 		return 1
 	}
-	r.Failf("v2193: unknown clientBoundDebugRender %q", name)
+	r.Failf("v2193: unknown clientBoundDebugRender %s", wire.Quote(name))
 	return 0
 }
 
@@ -12143,7 +12143,7 @@ func commandOriginValue(r *wire.Reader, name string) int64 {
 	case "executecontext":
 		return 15
 	}
-	r.Failf("v2193: unknown commandOrigin %q", name)
+	r.Failf("v2193: unknown commandOrigin %s", wire.Quote(name))
 	return 0
 }
 
@@ -12178,7 +12178,7 @@ func commandOutputTypeValue(r *wire.Reader, name string) int64 {
 	case "dataset":
 		return 4
 	}
-	r.Failf("v2193: unknown commandOutputType %q", name)
+	r.Failf("v2193: unknown commandOutputType %s", wire.Quote(name))
 	return 0
 }
 
@@ -12217,7 +12217,7 @@ func commandPermissionValue(r *wire.Reader, name string) int64 {
 	case "internal":
 		return 5
 	}
-	r.Failf("v2193: unknown commandPermission %q", name)
+	r.Failf("v2193: unknown commandPermission %s", wire.Quote(name))
 	return 0
 }
 
@@ -12364,7 +12364,7 @@ func easingTypeValue(r *wire.Reader, name string) int64 {
 	case "inverse_lerp":
 		return 32
 	}
-	r.Failf("v2193: unknown easingType %q", name)
+	r.Failf("v2193: unknown easingType %s", wire.Quote(name))
 	return 0
 }
 

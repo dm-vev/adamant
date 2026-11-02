@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -194,6 +195,21 @@ func TestSub(t *testing.T) {
 	}
 	if r.Alloc(3) {
 		t.Fatal("charged 11 to a bound of 10 through a Sub")
+	}
+}
+
+// TestQuote quotes strings a peer sent as %q does, cut past 64 bytes.
+func TestQuote(t *testing.T) {
+	long := strings.Repeat("a", 65)
+	for s, want := range map[string]string{
+		"a\x00":     `"a\x00"`,
+		long[:64]:   `"` + long[:64] + `"`,
+		long:        `"` + long[:64] + `"...`,
+		long + "\n": `"` + long[:64] + `"...`,
+	} {
+		if got := Quote(s); got != want {
+			t.Errorf("Quote(%q) = %s, want %s", s, got, want)
+		}
 	}
 }
 

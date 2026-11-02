@@ -592,7 +592,7 @@ func (g *gen) enum(e *enum, pkg string) {
 		g.p("return %s", v)
 	}
 	g.p("}")
-	g.p("r.Failf(%q, name)", pkg+": unknown "+e.name+" %q")
+	g.p("r.Failf(%q, wire.Quote(name))", pkg+": unknown "+e.name+" %s")
 	g.p("return 0")
 	g.p("}")
 }
