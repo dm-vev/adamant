@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/netip"
@@ -151,60 +152,132 @@ func saveXboxToken(path string, snap auth.Snapshot) error {
 
 // serveXboxSignaling keeps a connection to the signaling service, over
 // which friends send their offers, until the context ends: it connects
-// again once a connection drops or its token nears expiry.
+// again once a connection drops, once the relay on the TURN server it
+// handed out failed, for fresh credentials, and with a new token once its
+// token nears expiry.
 func serveXboxSignaling(ctx context.Context, l *netconn.Listener, s *auth.Session, networkID uint64, legacy bool, log *slog.Logger) {
-	backoff := 5 * time.Second
-	for ctx.Err() == nil {
-		err := func() error {
-			mc, err := s.MCToken(ctx)
-			if err != nil {
-				return err
-			}
-			conn, err := dialXboxSignaling(ctx, signaling.Config{Token: mc.Header, NetworkID: networkID}, legacy)
-			if err != nil {
-				return err
-			}
-			defer conn.Close()
-			backoff = 5 * time.Second
-			log.Info("Xbox Live signaling connected.")
-			if cfg, ok := relayServer(ctx, conn.Credentials()); ok {
-				// Friends on other networks reach a server behind NAT through
-				// the TURN server of the service alone.
-				rctx, cancel := context.WithTimeout(ctx, 40*time.Second)
-				if err := l.Relay(rctx, cfg); err != nil {
-					log.Warn("No relay on the TURN server of Xbox Live: friends behind other NATs may not join.", "err", err)
-				} else {
-					log.Debug("Relay allocated on the TURN server of Xbox Live.", "server", cfg.Server)
-				}
-				cancel()
-			}
-			served := make(chan struct{})
-			go func() {
-				_ = l.Serve(conn)
-				close(served)
-			}()
-			// Past refreshing, the token is renewed by the next MCToken.
-			renew := max(time.Until(mc.ValidUntil)-4*time.Minute, time.Minute)
-			select {
-			case <-served:
-				return conn.Err()
-			case <-ctx.Done():
-			case <-time.After(renew):
-			}
-			_ = conn.Close()
-			<-served
-			return nil
-		}()
-		if err == nil || ctx.Err() != nil {
-			continue
-		}
-		log.Warn("Xbox Live signaling failed.", "err", err, "retry", backoff)
-		select {
-		case <-ctx.Done():
-		case <-time.After(backoff):
-		}
-		backoff = min(backoff*2, 5*time.Minute)
+	x := &xboxSignalingLoop{
+		l:     l,
+		token: s.MCToken,
+		dial: func(ctx context.Context, token string) (xboxSignaling, error) {
+			return dialXboxSignaling(ctx, signaling.Config{Token: token, NetworkID: networkID}, legacy)
+		},
+		after:   time.After,
+		log:     log,
+		backoff: 5 * time.Second,
 	}
+	x.run(ctx)
+}
+
+// xboxListener is the listener the signaling of Xbox Live serves, with a
+// relay on the TURN server the service hands out.
+type xboxListener interface {
+	Serve(s nethernet.Signaling) error
+	Relay(ctx context.Context, cfg turn.Config) error
+	RelayDone() <-chan struct{}
+	RelayErr() error
+}
+
+// xboxSignalingLoop is serveXboxSignaling, with the token, the connection
+// to the service and the timers it takes.
+type xboxSignalingLoop struct {
+	l     xboxListener
+	token func(ctx context.Context) (*auth.MCToken, error)
+	dial  func(ctx context.Context, token string) (xboxSignaling, error)
+	after func(d time.Duration) <-chan time.Time
+	log   *slog.Logger
+	// backoff is how long to wait before connecting again after a failure.
+	backoff time.Duration
+}
+
+// run keeps a connection to the signaling service until the context ends.
+func (x *xboxSignalingLoop) run(ctx context.Context) {
+	var mc *auth.MCToken
+	for ctx.Err() == nil {
+		var err error
+		if mc == nil {
+			mc, err = x.token(ctx)
+		}
+		if err == nil {
+			mc, err = x.serve(ctx, mc)
+		}
+		if err != nil && ctx.Err() == nil {
+			x.wait(ctx, err)
+		}
+	}
+}
+
+// serve connects to the signaling service with the token mc and serves
+// the offers that come over the connection until it ends, or the relay on
+// the TURN server it handed out fails, or the token nears expiry. Then it
+// returns the next token, fetched while the connection still served: if
+// none can be had, the connection serves on until it ends.
+func (x *xboxSignalingLoop) serve(ctx context.Context, mc *auth.MCToken) (*auth.MCToken, error) {
+	conn, err := x.dial(ctx, mc.Header)
+	if err != nil {
+		return nil, err
+	}
+	x.backoff = 5 * time.Second
+	x.log.Info("Xbox Live signaling connected.")
+	relayDone := x.relay(ctx, conn)
+	served := make(chan struct{})
+	go func() {
+		_ = x.l.Serve(conn)
+		close(served)
+	}()
+	defer func() {
+		_ = conn.Close()
+		<-served
+	}()
+	// Past refreshing, the token is renewed by the next MCToken.
+	renew := x.after(max(time.Until(mc.ValidUntil)-4*time.Minute, time.Minute))
+	for {
+		select {
+		case <-served:
+			return nil, conn.Err()
+		case <-ctx.Done():
+			return nil, nil
+		case <-relayDone:
+			return nil, fmt.Errorf("relay on the TURN server failed: %w", x.l.RelayErr())
+		case <-renew:
+			next, err := x.token(ctx)
+			if err == nil {
+				return next, nil
+			}
+			x.log.Warn("Renewing the token of the Xbox Live signaling failed: it serves on until it drops.", "err", err)
+			renew = nil
+		}
+	}
+}
+
+// relay makes a relay on the TURN server the signaling service handed
+// out, or keeps the one made earlier: friends on other networks reach a
+// server behind NAT through it alone. It returns the channel closed once
+// the relay failed, nil without one.
+func (x *xboxSignalingLoop) relay(ctx context.Context, conn xboxSignaling) <-chan struct{} {
+	cfg, ok := relayServer(ctx, conn.Credentials())
+	if !ok {
+		return nil
+	}
+	rctx, cancel := context.WithTimeout(ctx, 40*time.Second)
+	defer cancel()
+	if err := x.l.Relay(rctx, cfg); err != nil {
+		x.log.Warn("No relay on the TURN server of Xbox Live: friends behind other NATs may not join.", "err", err)
+		return nil
+	}
+	x.log.Debug("Relay on the TURN server of Xbox Live.", "server", cfg.Server)
+	return x.l.RelayDone()
+}
+
+// wait tells why the signaling failed and waits before connecting again,
+// twice as long each time up to five minutes.
+func (x *xboxSignalingLoop) wait(ctx context.Context, err error) {
+	x.log.Warn("Xbox Live signaling failed.", "err", err, "retry", x.backoff)
+	select {
+	case <-ctx.Done():
+	case <-x.after(x.backoff):
+	}
+	x.backoff = min(x.backoff*2, 5*time.Minute)
 }
 
 // keepXboxSession publishes the session friends see the server by and

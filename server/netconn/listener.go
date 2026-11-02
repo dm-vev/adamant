@@ -278,8 +278,16 @@ func (l *Listener) refreshStatus() {
 func (l *Listener) Serve(s nethernet.Signaling) error { return l.nn.Serve(s) }
 
 // Relay allocates a relayed address on a TURN server that clients behind
-// other networks join through, announced in the answers of Serve.
+// other networks join through, announced in the answers of Serve. A relay
+// that holds its allocation on the same server is kept.
 func (l *Listener) Relay(ctx context.Context, cfg turn.Config) error { return l.nn.Relay(ctx, cfg) }
+
+// RelayDone returns a channel closed once the allocation of the relay
+// failed, nil without a relay.
+func (l *Listener) RelayDone() <-chan struct{} { return l.nn.RelayDone() }
+
+// RelayErr returns why the allocation of the relay failed, or nil.
+func (l *Listener) RelayErr() error { return l.nn.RelayErr() }
 
 // ServerStatus returns the status the server shows clients.
 func (l *Listener) ServerStatus() ServerStatus { return l.status() }

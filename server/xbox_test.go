@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,10 +15,14 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/net/turn"
 	"github.com/dm-vev/adamant/net/xbox/auth"
 	"github.com/dm-vev/adamant/net/xbox/mpsd"
 	"github.com/dm-vev/adamant/net/xbox/signaling"
@@ -157,5 +162,273 @@ func TestFriendsStalledService(t *testing.T) {
 				t.Fatal("taking a friend request still waits on a stalled service after 5s")
 			}
 		})
+	}
+}
+
+// fakeXboxConn is a connection to the signaling service of a test, made
+// with a token, which ends once closed or once the test ends it.
+type fakeXboxConn struct {
+	token string
+	creds []signaling.ICEServer
+	done  chan struct{}
+	once  sync.Once
+	err   error
+}
+
+func newFakeXboxConn(token string, creds []signaling.ICEServer) *fakeXboxConn {
+	return &fakeXboxConn{token: token, creds: creds, done: make(chan struct{})}
+}
+
+func (c *fakeXboxConn) ReadSignal() (nethernet.Signal, error) {
+	<-c.done
+	return nethernet.Signal{}, c.err
+}
+
+func (c *fakeXboxConn) WriteSignal(nethernet.Signal) error { return nil }
+func (c *fakeXboxConn) Credentials() []signaling.ICEServer { return c.creds }
+func (c *fakeXboxConn) Close() error                       { c.end(errors.New("closed")); return nil }
+
+func (c *fakeXboxConn) Err() error {
+	select {
+	case <-c.done:
+		return c.err
+	default:
+		return nil
+	}
+}
+
+func (c *fakeXboxConn) end(err error) { c.once.Do(func() { c.err = err; close(c.done) }) }
+
+func (c *fakeXboxConn) closed() bool {
+	select {
+	case <-c.done:
+		return true
+	default:
+		return false
+	}
+}
+
+// fakeXboxListener serves the signaling of a test until it ends, and
+// holds a relay that fails when the test closes failed: the next Relay
+// makes a new one.
+type fakeXboxListener struct {
+	relays chan turn.Config
+	mu     sync.Mutex
+	failed chan struct{}
+}
+
+func (l *fakeXboxListener) Serve(s nethernet.Signaling) error {
+	for {
+		if _, err := s.ReadSignal(); err != nil {
+			return err
+		}
+	}
+}
+
+func (l *fakeXboxListener) Relay(ctx context.Context, cfg turn.Config) error {
+	l.mu.Lock()
+	select {
+	case <-l.failed:
+		l.failed = make(chan struct{})
+	default:
+	}
+	l.mu.Unlock()
+	select {
+	case l.relays <- cfg:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (l *fakeXboxListener) RelayDone() <-chan struct{} {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.failed
+}
+
+func (l *fakeXboxListener) RelayErr() error {
+	select {
+	case <-l.RelayDone():
+		return errors.New("turn: refresh failed with error 401")
+	default:
+		return nil
+	}
+}
+
+// xboxLoopTest runs serveXboxSignaling with a token, a service and timers
+// the test drives: the loop asks for a token on asks and waits for the
+// reply, hands the connections it makes to dialed, and the timers it sets
+// to timers, which fire when the test sends on them.
+type xboxLoopTest struct {
+	t      *testing.T
+	l      *fakeXboxListener
+	asks   chan chan *auth.MCToken
+	dialed chan *fakeXboxConn
+	timers chan xboxTimer
+	log    strings.Builder
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+type xboxTimer struct {
+	d    time.Duration
+	fire chan time.Time
+}
+
+func runXboxLoop(t *testing.T) *xboxLoopTest {
+	x := &xboxLoopTest{
+		t:      t,
+		l:      &fakeXboxListener{relays: make(chan turn.Config), failed: make(chan struct{})},
+		asks:   make(chan chan *auth.MCToken),
+		dialed: make(chan *fakeXboxConn),
+		timers: make(chan xboxTimer),
+		done:   make(chan struct{}),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	x.cancel = cancel
+	dials := 0
+	loop := &xboxSignalingLoop{
+		l: x.l,
+		token: func(ctx context.Context) (*auth.MCToken, error) {
+			reply := make(chan *auth.MCToken)
+			select {
+			case x.asks <- reply:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			select {
+			case mc := <-reply:
+				if mc == nil {
+					return nil, errors.New("token refused")
+				}
+				return mc, nil
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		},
+		dial: func(ctx context.Context, token string) (xboxSignaling, error) {
+			dials++
+			c := newFakeXboxConn(token, []signaling.ICEServer{{URLs: []string{"turn:127.0.0.1:3478"}, Username: "user " + strconv.Itoa(dials), Credential: "p"}})
+			select {
+			case x.dialed <- c:
+				return c, nil
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		},
+		after: func(d time.Duration) <-chan time.Time {
+			tm := xboxTimer{d, make(chan time.Time, 1)}
+			select {
+			case x.timers <- tm:
+			case <-ctx.Done():
+			}
+			return tm.fire
+		},
+		log:     slog.New(slog.NewTextHandler(&x.log, nil)),
+		backoff: 5 * time.Second,
+	}
+	go func() {
+		loop.run(ctx)
+		close(x.done)
+	}()
+	t.Cleanup(x.stop)
+	return x
+}
+
+// stop ends the loop and waits for it to return.
+func (x *xboxLoopTest) stop() {
+	x.cancel()
+	<-x.done
+}
+
+func receive[T any](t *testing.T, ch <-chan T, what string) T {
+	t.Helper()
+	select {
+	case v := <-ch:
+		return v
+	case <-time.After(5 * time.Second):
+		t.Fatalf("no %s", what)
+		panic("unreachable")
+	}
+}
+
+// token answers the next ask for a token with mc, nil for a refusal.
+func (x *xboxLoopTest) token(mc *auth.MCToken) {
+	x.t.Helper()
+	receive(x.t, x.asks, "ask for a token") <- mc
+}
+
+func mcToken(name string) *auth.MCToken {
+	return &auth.MCToken{Header: name, ValidUntil: time.Now().Add(time.Hour)}
+}
+
+// TestXboxSignalingRenewsTokenFirst renews the token of the signaling
+// while its connection still serves, and switches to a new connection
+// with the new token only then; if the token cannot be renewed, the
+// connection serves until it drops.
+func TestXboxSignalingRenewsTokenFirst(t *testing.T) {
+	x := runXboxLoop(t)
+	x.token(mcToken("token 1"))
+	first := receive(t, x.dialed, "connection")
+	receive(t, x.l.relays, "relay")
+	renew := receive(t, x.timers, "renewal")
+	if renew.d < 55*time.Minute || renew.d > 56*time.Minute {
+		t.Fatalf("renewal in %v of a token valid for an hour", renew.d)
+	}
+	renew.fire <- time.Now()
+	reply := receive(t, x.asks, "ask for the new token")
+	if first.closed() {
+		t.Fatal("the connection closed before the new token was fetched")
+	}
+	reply <- nil
+	// The connection drops by itself later.
+	first.end(errors.New("dropped"))
+	backoff := receive(t, x.timers, "wait to connect again")
+	if first.err.Error() != "dropped" {
+		t.Fatalf("connection ended with %v once the token could not be renewed", first.err)
+	}
+	backoff.fire <- time.Now()
+	x.token(mcToken("token 2"))
+	second := receive(t, x.dialed, "connection")
+	receive(t, x.l.relays, "relay")
+	receive(t, x.timers, "renewal").fire <- time.Now()
+	reply = receive(t, x.asks, "ask for the new token")
+	if second.closed() {
+		t.Fatal("the connection closed before the new token was fetched")
+	}
+	reply <- mcToken("token 3")
+	third := receive(t, x.dialed, "connection")
+	if third.token != "token 3" || !second.closed() {
+		t.Fatalf("connected with %q, the old connection closed %v", third.token, second.closed())
+	}
+}
+
+// TestXboxSignalingReconnectsOnRelayFailure connects to the signaling
+// service again once the allocation of the relay failed, which brings
+// fresh TURN credentials to make a new one with, and tells why.
+func TestXboxSignalingReconnectsOnRelayFailure(t *testing.T) {
+	x := runXboxLoop(t)
+	x.token(mcToken("token"))
+	first := receive(t, x.dialed, "connection")
+	if cfg := receive(t, x.l.relays, "relay"); cfg.Username != "user 1" {
+		t.Fatalf("relay with %+v", cfg)
+	}
+	receive(t, x.timers, "renewal")
+	close(x.l.failed)
+	backoff := receive(t, x.timers, "wait to connect again once the relay failed")
+	if backoff.d != 5*time.Second || !first.closed() {
+		t.Fatalf("waits %v, the connection closed %v", backoff.d, first.closed())
+	}
+	backoff.fire <- time.Now()
+	x.token(mcToken("token"))
+	receive(t, x.dialed, "connection")
+	if cfg := receive(t, x.l.relays, "relay"); cfg.Username != "user 2" {
+		t.Fatalf("relay with %+v, want the fresh credentials", cfg)
+	}
+	receive(t, x.timers, "renewal")
+	x.stop()
+	if !strings.Contains(x.log.String(), "refresh failed with error 401") {
+		t.Fatalf("the failure of the relay not told: %s", x.log.String())
 	}
 }
