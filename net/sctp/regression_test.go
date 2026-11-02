@@ -192,9 +192,13 @@ func TestOutOfOrderStateBounded(t *testing.T) {
 		p.addChunk(chunkData, flagBegin|flagEnd|flagUnordered, head[:], []byte{1})
 		_ = b.assoc.HandlePacket(p.finish(), n.now)
 	}
-	send(b.assoc.peerCum + tsnWindow + 10)
+	send(b.assoc.peerCum + tsnWindow + 1)
 	if len(b.assoc.received) != 0 {
 		t.Fatal("kept a TSN beyond the window")
+	}
+	send(b.assoc.peerCum + tsnWindow)
+	if len(b.assoc.received) != 1 {
+		t.Fatal("dropped the last TSN of the window")
 	}
 	for i := range uint32(maxOutOfOrder + 100) {
 		send(b.assoc.peerCum + 2 + 2*i)
@@ -362,7 +366,13 @@ func TestHostileShutdownAckReturns(t *testing.T) {
 	n.open(t, false)
 	b := n.peers[1].assoc
 	var sent atomic.Int64
-	b.send = func([]byte) { sent.Add(1) }
+	var completed atomic.Bool
+	b.send = func(p []byte) {
+		sent.Add(1)
+		if hasChunk(p, chunkShutdownComplete) {
+			completed.Store(true)
+		}
+	}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -375,8 +385,8 @@ func TestHostileShutdownAckReturns(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("HandlePacket did not return after %d packets sent", sent.Load())
 	}
-	if !errors.Is(b.Err(), ErrClosed) {
-		t.Fatalf("association ended with %v, want closed", b.Err())
+	if !errors.Is(b.Err(), ErrClosed) || !completed.Load() {
+		t.Fatalf("association ended with %v, SHUTDOWN COMPLETE sent: %v; want closed after sending it", b.Err(), completed.Load())
 	}
 }
 
@@ -384,7 +394,7 @@ func TestHostileShutdownAckReturns(t *testing.T) {
 // sends a message that never ends: the association fails with an ABORT
 // rather than hold its fragments without bound.
 func TestPeerPastReceiveWindowFails(t *testing.T) {
-	const window = 64 << 10
+	const window = 64000
 	n := newNetwork(t, 21, Config{ReceiveWindow: window})
 	n.open(t, false)
 	b := n.peers[1].assoc
@@ -392,18 +402,20 @@ func TestPeerPastReceiveWindowFails(t *testing.T) {
 	b.send = func(p []byte) { aborted = aborted || hasChunk(p, chunkAbort) }
 	first := b.peerCum + 1
 	var head [12]byte
-	for i := uint32(0); ; i++ {
-		if i > 2*window/1000+1 {
-			t.Fatalf("took %d fragments of 1000 bytes under a window of %d", i, window)
-		}
-		binary.BigEndian.PutUint32(head[:], first+i)
+	taken := uint32(0)
+	for ; taken <= 2*window/1000; taken++ {
+		binary.BigEndian.PutUint32(head[:], first+taken)
 		flags := byte(0)
-		if i == 0 {
+		if taken == 0 {
 			flags = flagBegin
 		}
 		if err := inject(b, n.now, chunkData, flags, head[:], make([]byte, 1000)); err != nil {
 			break
 		}
+	}
+	// Twice the window is held, not a byte more.
+	if taken != 2*window/1000 {
+		t.Fatalf("took %d fragments of 1000 bytes under a window of %d", taken, window)
 	}
 	if !aborted {
 		t.Fatal("the peer was not sent an ABORT")
@@ -436,19 +448,19 @@ func TestTimeoutRetransmitsWithinWindow(t *testing.T) {
 	n := newNetwork(t, 23, Config{})
 	n.open(t, false)
 	a := n.peers[0].assoc
-	a.send = func([]byte) {}
-	for i := range 8 {
-		if err := a.Send(1, PPIDBinary, payload(i, 1100), SendOptions{}, n.now); err != nil {
-			t.Fatal(err)
-		}
-	}
+	first := a.nextTSN
+	// The first two chunks, of 1116 and 47 bytes, fill the window of one
+	// packet left after the timeout; the third would fit the packet of the
+	// second.
+	sendAll(t, a, n.now, append([]int{1100, 31, 10}, slices.Repeat([]int{1100}, 5)...)...)
+	sent := recordData(a)
 	for a.Stats().Timeouts == 0 {
 		if err := a.HandleTimeout(a.Deadline()); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if st := a.Stats(); st.Flight > st.Cwnd+a.cfg.MaxPacketSize-1 {
-		t.Fatalf("%d bytes in flight after a timeout, with a window of %d", st.Flight, st.Cwnd)
+	if st := a.Stats(); st.Flight > st.Cwnd+a.cfg.MaxPacketSize-1 || !slices.Equal(*sent, []uint32{first, first + 1}) {
+		t.Fatalf("sent %v again, %d bytes in flight after a timeout with a window of %d", *sent, st.Flight, st.Cwnd)
 	}
 }
 
