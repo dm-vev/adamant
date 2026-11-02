@@ -674,6 +674,47 @@ func TestForwardTSNDeliversStrandedMessage(t *testing.T) {
 	}
 }
 
+// TestMessageGivenUpPartlySentIsSkipped covers an ordered message of
+// limited lifetime that expires while waiting for the window with its
+// first chunks sent and acknowledged: the peer, which holds them, must be
+// told to skip the message, or the stream stays blocked behind it.
+func TestMessageGivenUpPartlySentIsSkipped(t *testing.T) {
+	n := newNetwork(t, 43, Config{})
+	n.open(t, false)
+	a, b := n.peers[0], n.peers[1]
+	// The SACKs of the peer are held back until the lifetime passed, and
+	// the window they open goes to the rest of the message.
+	var held [][]byte
+	hold := true
+	n.drop = func(to int, p []byte) bool {
+		if to == 0 && hold && hasChunk(p, chunkSack) {
+			held = append(held, p)
+			return true
+		}
+		return false
+	}
+	opts := SendOptions{Partial: true, MaxRetransmits: 1 << 30, Lifetime: 100 * time.Millisecond}
+	sendAll(t, a.assoc, n.now, slices.Repeat([]int{1100}, 10)...)
+	if err := a.assoc.Send(2, PPIDBinary, payload(1, 3000), opts, n.now); err != nil {
+		t.Fatal(err)
+	}
+	n.run(50*time.Millisecond, func() bool { return false })
+	hold = false
+	n.now = n.now.Add(time.Second)
+	for _, p := range held {
+		if err := a.assoc.HandlePacket(p, n.now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := a.assoc.Send(2, PPIDBinary, []byte("next"), SendOptions{}, n.now); err != nil {
+		t.Fatal(err)
+	}
+	n.run(time.Minute, func() bool { return len(b.received) == 11 })
+	if len(b.received) != 11 || string(b.received[10].data) != "next" {
+		t.Fatalf("delivered %d messages, the last of %d bytes; want 11, the last the one after the message given up", len(b.received), len(b.received[len(b.received)-1].data))
+	}
+}
+
 // TestHeldFragmentsCountTheirHeaders covers a peer that sends fragments of
 // a byte that complete nothing: each takes room in the window as the chunk
 // it came in, header and all, so that what the association holds before it

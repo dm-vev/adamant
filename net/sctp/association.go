@@ -1231,9 +1231,16 @@ func (a *Association) abandon(m *outMessage) {
 			ch.inFlight = false
 		}
 	}
-	// The part never cut into chunks is dropped from the queue.
+	// The part never cut into chunks is dropped from the queue. If the rest
+	// went out, the peer may hold it: an empty last chunk, given up at once,
+	// takes the next TSN, so that a FORWARD TSN covers the whole message
+	// (RFC 3758 sections 3.5 and 3.6).
 	if m.next < len(m.data) {
 		a.buffered -= len(m.data) - m.next
+		if m.next > 0 {
+			a.outstanding = append(a.outstanding, &outChunk{tsn: a.nextTSN, msg: m, flags: m.chunkFlags(len(m.data) - m.next), abandoned: true})
+			a.nextTSN++
+		}
 		m.next = len(m.data)
 	}
 	a.forwardDue = true
