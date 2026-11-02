@@ -629,8 +629,13 @@ func (a *Association) establish() {
 	a.initPacket = nil
 }
 
-// queueControl queues a control chunk for the next packet.
+// queueControl queues a control chunk for the next packet. A chunk too
+// large for a packet of its own, as the echo of an oversized HEARTBEAT, is
+// dropped: it could never go out, and would hold up the chunks after it.
 func (a *Association) queueControl(typ, flags byte, value []byte) {
+	if commonHeaderSize+chunkSize(len(value)) > a.cfg.MaxPacketSize {
+		return
+	}
 	b := make([]byte, 0, chunkSize(len(value)))
 	b = append(b, typ, flags)
 	b = binary.BigEndian.AppendUint16(b, uint16(chunkHeaderSize+len(value)))

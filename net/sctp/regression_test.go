@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -14,6 +15,14 @@ func packetChunks(b []byte) []chunk {
 		return nil
 	}
 	return chunks
+}
+
+// inject hands an association a packet of one chunk as its peer sends it.
+func inject(a *Association, now time.Time, typ, flags byte, parts ...[]byte) error {
+	var p packetBuilder
+	p.start(header{srcPort: 5000, dstPort: 5000, tag: a.localTag})
+	p.addChunk(typ, flags, parts...)
+	return a.HandlePacket(p.finish(), now)
 }
 
 func hasChunk(b []byte, typ byte) bool {
@@ -324,5 +333,48 @@ func TestGapAcknowledgedAtOnce(t *testing.T) {
 	}
 	if n.sent == sent || !b.assoc.sackAt.IsZero() {
 		t.Fatal("the packet that closed one gap of two was not acknowledged at once")
+	}
+}
+
+// TestOversizedHeartbeatHoldsNothingUp covers a HEARTBEAT whose echo
+// cannot fit a packet: it goes unanswered, and the chunks queued after it
+// still go out, so that a graceful shutdown completes.
+func TestOversizedHeartbeatHoldsNothingUp(t *testing.T) {
+	n := newNetwork(t, 19, Config{})
+	n.open(t, false)
+	a, b := n.peers[0], n.peers[1]
+	if err := inject(b.assoc, n.now, chunkHeartbeat, 0, make([]byte, 2000)); err != nil {
+		t.Fatal(err)
+	}
+	b.assoc.Shutdown(n.now)
+	n.run(time.Minute, func() bool { return a.assoc.Err() != nil && b.assoc.Err() != nil })
+	if !errors.Is(a.assoc.Err(), ErrClosed) || !errors.Is(b.assoc.Err(), ErrClosed) {
+		t.Fatalf("shutdown ended with %v and %v, want both closed", a.assoc.Err(), b.assoc.Err())
+	}
+}
+
+// TestHostileShutdownAckReturns covers what a hostile peer may send a
+// closing association after an oversized HEARTBEAT: every packet is
+// handled in bounded time.
+func TestHostileShutdownAckReturns(t *testing.T) {
+	n := newNetwork(t, 20, Config{})
+	n.open(t, false)
+	b := n.peers[1].assoc
+	var sent atomic.Int64
+	b.send = func([]byte) { sent.Add(1) }
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = inject(b, n.now, chunkHeartbeat, 0, make([]byte, 2000))
+		_ = inject(b, n.now, chunkShutdown, 0, binary.BigEndian.AppendUint32(nil, b.cumAck))
+		_ = inject(b, n.now, chunkShutdownAck, 0)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("HandlePacket did not return after %d packets sent", sent.Load())
+	}
+	if !errors.Is(b.Err(), ErrClosed) {
+		t.Fatalf("association ended with %v, want closed", b.Err())
 	}
 }
