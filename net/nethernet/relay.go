@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/netip"
+	"slices"
 	"sync"
 	"time"
 
@@ -28,6 +29,10 @@ type relay struct {
 	ready  chan struct{}
 	signal sync.Once
 	closed bool
+	// held counts the connections holding the permission of each peer
+	// address, and holds holds the addresses each connection holds.
+	held  map[netip.Addr]int
+	holds map[*Conn][]netip.Addr
 
 	// peers holds the addresses heard through the relay last, not
 	// directly.
@@ -48,8 +53,7 @@ const maxRelayPeers = 4096
 // the sockets of the listener connect through it. It returns once the
 // allocation was made, and replaces the relay of an earlier call.
 func (l *Listener) Relay(ctx context.Context, cfg turn.Config) error {
-	r := &relay{l: l, sock: l.socks[0], server: cfg.Server, ready: make(chan struct{}), peers: make(map[netip.AddrPort]struct{})}
-	r.client = turn.New(cfg, func(b []byte, to netip.AddrPort) { _, _ = r.sock.WriteToUDPAddrPort(b, to) })
+	r := newRelay(l, cfg)
 	if old := l.relay.Swap(r); old != nil {
 		old.close()
 	}
@@ -81,6 +85,21 @@ func (l *Listener) Relay(ctx context.Context, cfg turn.Config) error {
 		return err
 	}
 	return nil
+}
+
+// newRelay returns a relay of l on the TURN server of cfg, not started.
+func newRelay(l *Listener, cfg turn.Config) *relay {
+	r := &relay{
+		l:      l,
+		sock:   l.socks[0],
+		server: cfg.Server,
+		ready:  make(chan struct{}),
+		held:   make(map[netip.Addr]int),
+		holds:  make(map[*Conn][]netip.Addr),
+		peers:  make(map[netip.AddrPort]struct{}),
+	}
+	r.client = turn.New(cfg, func(b []byte, to netip.AddrPort) { _, _ = r.sock.WriteToUDPAddrPort(b, to) })
+	return r
 }
 
 // handle handles a datagram from the TURN server: the data of a peer goes
@@ -135,15 +154,47 @@ func (r *relay) send(peer netip.AddrPort, b []byte) {
 	r.mu.Unlock()
 }
 
-// permit lets a peer of an offer reach the listener through the relay.
-func (r *relay) permit(peer netip.Addr) {
+// hold has c hold the permission of a peer address, which lets the peer
+// reach the listener through the relay, unless c holds maxPairs already.
+// The permission is asked for when the first connection holds it.
+func (r *relay) hold(c *Conn, peer netip.Addr) {
+	peer = peer.Unmap()
 	if !peer.IsValid() || peer.IsUnspecified() || peer.IsLoopback() && !r.server.Addr().IsLoopback() {
 		return
 	}
 	r.mu.Lock()
-	r.client.Permit(peer, time.Now())
-	r.reschedule()
-	r.mu.Unlock()
+	defer r.mu.Unlock()
+	addrs := r.holds[c]
+	if len(addrs) >= maxPairs || slices.Contains(addrs, peer) {
+		return
+	}
+	r.holds[c] = append(addrs, peer)
+	if r.held[peer]++; r.held[peer] == 1 {
+		r.client.Permit(peer, time.Now())
+		r.reschedule()
+	}
+}
+
+// keep releases the permissions c holds but that of peer, all of them
+// for an invalid peer. A permission no connection holds is not renewed.
+func (r *relay) keep(c *Conn, peer netip.Addr) {
+	peer = peer.Unmap()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var kept []netip.Addr
+	for _, a := range r.holds[c] {
+		if a == peer {
+			kept = append(kept, a)
+		} else if r.held[a]--; r.held[a] == 0 {
+			delete(r.held, a)
+			r.client.Release(a)
+		}
+	}
+	if kept == nil {
+		delete(r.holds, c)
+	} else {
+		r.holds[c] = kept
+	}
 }
 
 // candidates returns the server reflexive and the relayed address of the

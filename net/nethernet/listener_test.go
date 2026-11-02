@@ -613,7 +613,7 @@ func TestAnswerSetup(t *testing.T) {
 			t.Fatal(err)
 		}
 		d.setup = c.offer
-		answer, _, err := l.answer(encodeDescription(d), nil, nil, false, time.Now())
+		answer, _, err := l.answer(encodeDescription(d), nil, nil, nil, time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}

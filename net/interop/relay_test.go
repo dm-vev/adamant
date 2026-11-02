@@ -2,22 +2,30 @@ package interop
 
 import (
 	"context"
+	"encoding/binary"
+	"fmt"
 	"net"
+	"net/netip"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/net/stun"
 	"github.com/dm-vev/adamant/net/turn"
 	pionturn "github.com/pion/turn/v5"
 )
 
 // memSignaling is one end of a signaling channel held in memory: what one
 // end writes, the other reads, named by the network ID of the writer.
+// Rewrite changes a signal before it is written; sent is told of one once
+// it was.
 type memSignaling struct {
 	id      string
 	in, out chan nethernet.Signal
 	rewrite func(nethernet.Signal) nethernet.Signal
+	sent    func(nethernet.Signal)
 	closed  chan struct{}
 }
 
@@ -44,10 +52,13 @@ func (m *memSignaling) WriteSignal(s nethernet.Signal) error {
 	s.NetworkID = m.id
 	select {
 	case m.out <- s:
-		return nil
 	case <-m.closed:
 		return net.ErrClosed
 	}
+	if m.sent != nil {
+		m.sent(s)
+	}
+	return nil
 }
 
 // onlyRelayCandidates drops every candidate of an answer but the relayed
@@ -67,76 +78,204 @@ func onlyRelayCandidates(s nethernet.Signal) nethernet.Signal {
 	return s
 }
 
-// TestListenerRelay has a client join a listener through the relay the
-// listener allocated on the TURN server of pion, with the candidates of
-// the listener's sockets taken out of the answer.
-func TestListenerRelay(t *testing.T) {
-	turnSock, err := net.ListenPacket("udp4", "127.0.0.1:0")
+// turnServer is a TURN server of pion on loopback that takes any user with
+// the password "secret" and notes the peer addresses it is asked to permit.
+type turnServer struct {
+	net.PacketConn
+	addr netip.AddrPort
+
+	mu        sync.Mutex
+	permitted map[netip.Addr]bool
+}
+
+func newTURNServer(t *testing.T) *turnServer {
+	t.Helper()
+	sock, err := net.ListenPacket("udp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
+	s := &turnServer{PacketConn: sock, addr: addrPort(sock.LocalAddr()), permitted: make(map[netip.Addr]bool)}
 	server, err := pionturn.NewServer(pionturn.ServerConfig{
 		Realm: "adamant",
 		AuthHandler: func(ra *pionturn.RequestAttributes) (string, []byte, bool) {
-			return ra.Username, pionturn.GenerateAuthKey("user", "adamant", "secret"), ra.Username == "user"
+			return ra.Username, pionturn.GenerateAuthKey(ra.Username, "adamant", "secret"), true
 		},
 		PacketConnConfigs: []pionturn.PacketConnConfig{{
-			PacketConn:            turnSock,
+			PacketConn:            s,
 			RelayAddressGenerator: &pionturn.RelayAddressGeneratorStatic{RelayAddress: net.ParseIP("127.0.0.1"), Address: "127.0.0.1"},
 		}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer server.Close()
+	t.Cleanup(func() { _ = server.Close() })
+	return s
+}
 
+// ReadFrom reads a datagram for the server, noting the peer of a
+// CreatePermission request.
+func (s *turnServer) ReadFrom(b []byte) (int, net.Addr, error) {
+	n, from, err := s.PacketConn.ReadFrom(b)
+	var m stun.Message
+	if err == nil && stun.Parse(b[:n], &m) == nil && m.Type == 0x0008 {
+		if v, ok := m.Get(0x0012); ok && len(v) == 8 && v[1] == 1 {
+			var ip [4]byte
+			binary.BigEndian.PutUint32(ip[:], binary.BigEndian.Uint32(v[4:])^0x2112A442)
+			s.mu.Lock()
+			s.permitted[netip.AddrFrom4(ip)] = true
+			s.mu.Unlock()
+		}
+	}
+	return n, from, err
+}
+
+// asked returns the peer addresses the server was asked to permit.
+func (s *turnServer) asked() []netip.Addr {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []netip.Addr
+	for a := range s.permitted {
+		out = append(out, a)
+	}
+	return out
+}
+
+// config returns the config of a relay on the server for a user.
+func (s *turnServer) config(user string) turn.Config {
+	return turn.Config{Server: s.addr, Username: user, Password: "secret"}
+}
+
+// relayListener returns a listener with a relay on a TURN server, serving
+// the signaling of the client end returned with the candidates of its
+// sockets taken out of the answers, so that a client reaches it through
+// the relay alone.
+func relayListener(t *testing.T, ctx context.Context, srv *turnServer) (*nethernet.Listener, *memSignaling) {
+	t.Helper()
 	l, err := nethernet.ListenConfig{AllowAnonymous: true}.Listen("127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer l.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	if err := l.Relay(ctx, turn.Config{Server: addrPort(turnSock.LocalAddr()), Username: "user", Password: "secret"}); err != nil {
+	t.Cleanup(func() { _ = l.Close() })
+	if err := l.Relay(ctx, srv.config("user")); err != nil {
 		t.Fatal(err)
 	}
 	srvSig, cliSig := memSignalingPair()
-	defer close(srvSig.closed)
+	t.Cleanup(func() { close(srvSig.closed) })
 	srvSig.rewrite = onlyRelayCandidates
 	go func() { _ = l.Serve(srvSig) }()
+	return l, cliSig
+}
 
-	// The client trickles the candidate of its socket, as libwebrtc does,
-	// which the server permits on the relay; the dialer offers none.
-	cliSig.rewrite = func(s nethernet.Signal) nethernet.Signal {
+// dialRelayed has a client join a listener over sig, trickling the
+// candidate of its socket after its offer, as libwebrtc does, which the
+// server permits on the relay; the dialer offers none. It returns both
+// ends of the connection.
+func dialRelayed(t *testing.T, ctx context.Context, l *nethernet.Listener, sig *memSignaling) (client, server *nethernet.Conn) {
+	t.Helper()
+	sig.sent = func(s nethernet.Signal) {
 		if s.Type == nethernet.SignalOffer {
-			go func() {
-				_ = cliSig.WriteSignal(nethernet.Signal{Type: nethernet.SignalCandidate, ConnectionID: s.ConnectionID,
-					Data: "candidate:1 1 udp 2122260223 127.0.0.1 9 typ host generation 0"})
-			}()
+			_ = sig.WriteSignal(nethernet.Signal{Type: nethernet.SignalCandidate, ConnectionID: s.ConnectionID,
+				Data: "candidate:1 1 udp 2122260223 127.0.0.1 9 typ host generation 0"})
 		}
-		return s
 	}
-	c, err := nethernet.Dialer{}.DialSignaling(ctx, cliSig, "server")
+	c, err := nethernet.Dialer{}.DialSignaling(ctx, sig, "server")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	t.Cleanup(func() { _ = c.Close() })
 	accepted, err := l.Accept()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer accepted.Close()
-	srv := accepted.(*nethernet.Conn)
-	if err := c.Send([]byte("through the relay")); err != nil {
+	t.Cleanup(func() { _ = accepted.Close() })
+	return c, accepted.(*nethernet.Conn)
+}
+
+// exchangeRelayed sends a message each way between the ends of a
+// connection.
+func exchangeRelayed(t *testing.T, client, server *nethernet.Conn) {
+	t.Helper()
+	_ = client.SetReadDeadline(time.Now().Add(10 * time.Second))
+	_ = server.SetReadDeadline(time.Now().Add(10 * time.Second))
+	if err := client.Send([]byte("through the relay")); err != nil {
 		t.Fatal(err)
 	}
-	if msg, err := srv.ReadMessage(); err != nil || string(msg) != "through the relay" {
+	if msg, err := server.ReadMessage(); err != nil || string(msg) != "through the relay" {
 		t.Fatalf("server read %q, %v", msg, err)
 	}
-	if err := srv.Send([]byte("and back")); err != nil {
+	if err := server.Send([]byte("and back")); err != nil {
 		t.Fatal(err)
 	}
-	if msg, err := c.ReadMessage(); err != nil || string(msg) != "and back" {
+	if msg, err := client.ReadMessage(); err != nil || string(msg) != "and back" {
 		t.Fatalf("client read %q, %v", msg, err)
+	}
+}
+
+// TestListenerRelay has a client join a listener through the relay the
+// listener allocated on the TURN server of pion, with the candidates of
+// the listener's sockets taken out of the answer.
+func TestListenerRelay(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	l, sig := relayListener(t, ctx, newTURNServer(t))
+	client, server := dialRelayed(t, ctx, l, sig)
+	exchangeRelayed(t, client, server)
+}
+
+// strangerOffer returns an anonymous offer of a client that never
+// connects, with a candidate of each address.
+func strangerOffer(addrs []netip.Addr) string {
+	var b strings.Builder
+	b.WriteString("v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\n")
+	for _, a := range addrs {
+		fmt.Fprintf(&b, "a=candidate:1 1 udp 2122260223 %s 9 typ host generation 0\r\n", a)
+	}
+	b.WriteString("a=ice-ufrag:abcd\r\na=ice-pwd:abcdefghijklmnopqrstuvwx\r\na=fingerprint:sha-256 00:11\r\na=setup:actpass\r\n")
+	return b.String()
+}
+
+// TestRelayPermissionsOfConnections has a stranger trickle 300 candidates
+// for no connection of its own and send offers of 32 candidates until one
+// is refused, then a client join through the relay: the TURN server is
+// asked to permit only the addresses of connections the listener took, 8
+// of each at most.
+func TestRelayPermissionsOfConnections(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	srv := newTURNServer(t)
+	l, sig := relayListener(t, ctx, srv)
+	stranger := &memSignaling{id: "stranger", in: make(chan nethernet.Signal, 16), out: sig.out, closed: sig.closed}
+	for i := range 300 {
+		_ = stranger.WriteSignal(nethernet.Signal{Type: nethernet.SignalCandidate, ConnectionID: uint64(i),
+			Data: fmt.Sprintf("candidate:1 1 udp 2122260223 10.1.%d.%d 9 typ host generation 0", i>>8, i&255)})
+	}
+	// The listener takes 4 connections opening of one sender.
+	for o := range 5 {
+		addrs := make([]netip.Addr, 32)
+		for i := range addrs {
+			addrs[i] = netip.AddrFrom4([4]byte{10, 2, byte(o), byte(i)})
+		}
+		_ = stranger.WriteSignal(nethernet.Signal{Type: nethernet.SignalOffer, ConnectionID: uint64(1000 + o), Data: strangerOffer(addrs)})
+	}
+	client, server := dialRelayed(t, ctx, l, sig)
+	exchangeRelayed(t, client, server)
+
+	// The permission of the client was asked for after those of the
+	// stranger, and the client came through: the server read them all.
+	var trickled, ofClient int
+	byOffer := make([]int, 5)
+	for _, a := range srv.asked() {
+		b := a.As4()
+		switch {
+		case a == netip.MustParseAddr("127.0.0.1"):
+			ofClient++
+		case b[1] == 1:
+			trickled++
+		case b[1] == 2:
+			byOffer[b[2]]++
+		}
+	}
+	if trickled != 0 || ofClient != 1 || byOffer[4] != 0 || byOffer[0] != 8 || byOffer[1] != 8 || byOffer[2] != 8 || byOffer[3] != 8 {
+		t.Fatalf("permissions asked for %d candidates trickled for no connection, %d of the client, %v of the addresses of each offer; want 0, 1, 8 of each taken and none of the refused", trickled, ofClient, byOffer)
 	}
 }

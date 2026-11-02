@@ -150,6 +150,9 @@ type Listener struct {
 	pending int
 	// sources counts the pending connections of each source by its key.
 	sources map[string]int
+	// signals finds the connections opened over a signaling service by
+	// the sender and connection ID of their offers.
+	signals map[signalKey]*Conn
 	closed  bool
 
 	accept    chan *Conn
@@ -175,6 +178,7 @@ func (cfg ListenConfig) Listen(address string) (*Listener, error) {
 		ufrags:     make(map[string]*Conn),
 		conns:      make(map[*Conn]struct{}),
 		sources:    make(map[string]int),
+		signals:    make(map[signalKey]*Conn),
 		perAddress: cmp.Or(cfg.MaxPendingPerAddress, defaultMaxPendingPerAddress),
 		perNetwork: cmp.Or(cfg.MaxPendingPerNetwork, defaultMaxPendingPerNetwork),
 		accept:     make(chan *Conn, acceptQueue),
@@ -344,7 +348,7 @@ func (l *Listener) serveOffer(w http.ResponseWriter, r *http.Request) {
 	if from, err := netip.ParseAddrPort(r.RemoteAddr); err == nil {
 		sources = l.addressSources(from.Addr())
 	}
-	answer, code, err := l.answer(string(body), l.candidates(r), sources, false, time.Now())
+	answer, code, err := l.answer(string(body), l.candidates(r), sources, nil, time.Now())
 	switch {
 	case errors.Is(err, errBusy) || errors.Is(err, net.ErrClosed):
 		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
@@ -362,8 +366,9 @@ func (l *Listener) serveOffer(w http.ResponseWriter, r *http.Request) {
 
 // answer makes the connection an offer from sources asks for, announcing
 // the candidates passed, and returns its answer, or the code of the error
-// the offer is answered with.
-func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, sources []source, relayed bool, now time.Time) (answer string, code int, err error) {
+// the offer is answered with. An offer that came over a signaling service,
+// named by signal, may come through the relay.
+func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, sources []source, signal *signalKey, now time.Time) (answer string, code int, err error) {
 	offer, err := parseDescription(offerSDP)
 	if err != nil {
 		return "", codeFailedToSetRemoteDescription, err
@@ -375,27 +380,61 @@ func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, sources 
 		return "", codeIdentityNotAllowed, err
 	}
 	var extra []candidate
-	if r := l.relay.Load(); r != nil && relayed {
-		// The peers of the offer may come through the relay.
-		for _, c := range offer.candidates {
-			r.permit(c.Addr())
-		}
+	r := l.relay.Load()
+	if r != nil && signal != nil {
 		if reflexive, relayedAddr, ok := r.candidates(); ok {
 			extra = extraCandidates(candidates, reflexive, relayedAddr)
 		}
 	}
-	if answer, err = l.open(offer, pub, candidates, extra, sources, now); err != nil {
+	c, answer, err := l.open(offer, pub, candidates, extra, sources, now)
+	if err != nil {
 		offersRefused.Inc()
 		return "", codeFailedToCreateAnswer, err
 	}
+	if signal != nil {
+		l.signaled(r, c, *signal, offer.candidates)
+	}
 	return answer, 0, nil
+}
+
+// signalKey names the connection a signal is of: the network of its
+// sender and its connection ID.
+type signalKey struct {
+	network string
+	id      uint64
+}
+
+// signaled notes a connection opened over a signaling service by the key
+// of its offer, which names the candidates its sender trickles for it, and
+// has it hold the permissions of the addresses of its offer on r.
+func (l *Listener) signaled(r *relay, c *Conn, key signalKey, addrs []netip.AddrPort) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !c.pendingSlot {
+		// It closed already.
+		return
+	}
+	c.signal = key
+	l.signals[key] = c
+	for _, a := range addrs {
+		l.hold(r, c, a.Addr())
+	}
+}
+
+// hold has a connection opening hold the permission of a peer address on
+// r: the peer may come through the relay from it. It is called with l.mu
+// held.
+func (l *Listener) hold(r *relay, c *Conn, addr netip.Addr) {
+	if r != nil && c.pendingSlot {
+		r.hold(c, addr)
+	}
 }
 
 // Serve answers the offers that arrive over a signaling service until it
 // ends, and returns the error it ended with. Each offer is answered with
 // the candidates of the server, as one over HTTP is, which clients of Xbox
-// Live take as well; candidates the clients trickle are left unused, as the
-// server learns their addresses from their checks.
+// Live take as well; candidates the clients trickle only let them through
+// the relay, as the server learns their addresses from their checks.
 func (l *Listener) Serve(s Signaling) error {
 	for {
 		sig, err := s.ReadSignal()
@@ -404,7 +443,7 @@ func (l *Listener) Serve(s Signaling) error {
 		}
 		switch sig.Type {
 		case SignalCandidate:
-			l.permitCandidate(sig.Data)
+			l.permitCandidate(sig)
 		case SignalOffer:
 			if err := s.WriteSignal(l.answerSignal(sig)); err != nil {
 				return err
@@ -413,13 +452,19 @@ func (l *Listener) Serve(s Signaling) error {
 	}
 }
 
-// permitCandidate lets the address of a candidate a peer trickled, which
-// it may come through the relay from, reach the listener through it.
-func (l *Listener) permitCandidate(data string) {
-	if r := l.relay.Load(); r != nil {
-		if addr, ok := parseCandidate(data); ok {
-			r.permit(addr.Addr())
-		}
+// permitCandidate has the connection the sender of a trickled candidate
+// opened with the same connection ID hold the permission of its address,
+// which the peer may come through the relay from. A candidate of no
+// connection opening is dropped.
+func (l *Listener) permitCandidate(sig Signal) {
+	addr, ok := parseCandidate(sig.Data)
+	if !ok {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if c := l.signals[signalKey{sig.NetworkID, sig.ConnectionID}]; c != nil {
+		l.hold(l.relay.Load(), c, addr.Addr())
 	}
 }
 
@@ -432,7 +477,7 @@ func (l *Listener) answerSignal(sig Signal) Signal {
 	if sig.NetworkID != "" {
 		sources = []source{{"network " + sig.NetworkID, l.perAddress}}
 	}
-	answer, code, err := l.answer(sig.Data, l.serviceCandidates(), sources, true, time.Now())
+	answer, code, err := l.answer(sig.Data, l.serviceCandidates(), sources, &signalKey{sig.NetworkID, sig.ConnectionID}, time.Now())
 	if err != nil {
 		reply.Type, reply.Data = SignalError, strconv.Itoa(code)
 	} else {
@@ -510,13 +555,13 @@ func (l *Listener) identity(now time.Time) (string, error) {
 	return l.ident, nil
 }
 
-// open makes the connection an offer from sources asks for and returns the
-// answer. The server takes the DTLS client role unless the offer takes it,
-// as BDS does.
-func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []netip.AddrPort, extra []candidate, sources []source, now time.Time) (string, error) {
+// open makes the connection an offer from sources asks for and returns it
+// with the answer. The server takes the DTLS client role unless the offer
+// takes it, as BDS does.
+func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []netip.AddrPort, extra []candidate, sources []source, now time.Time) (*Conn, string, error) {
 	identity, err := l.identity(now)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	setup := SetupActive
 	if offer.setup == SetupActive {
@@ -552,12 +597,12 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 	c.onClose = l.remove
 	if err := l.admit(c, local.ufrag, sources, now); err != nil {
 		c.abort(err)
-		return "", err
+		return nil, "", err
 	}
 	c.mu.Lock()
 	c.schedule()
 	c.release()
-	return encodeDescription(local), nil
+	return c, encodeDescription(local), nil
 }
 
 // admit counts a connection pending, found by its ufrag, within the bounds
@@ -742,6 +787,11 @@ func (l *Listener) addInterfaces(add func(a netip.Addr, port uint16)) {
 func (l *Listener) ready(c *Conn) {
 	l.mu.Lock()
 	l.releasePending(c)
+	if r := l.relay.Load(); r != nil {
+		// Of the permissions of the peer's addresses, that of the one it
+		// uses is kept.
+		r.keep(c, c.remote.Addr())
+	}
 	c.counted = true
 	connectionsOpen.Add(1)
 	if !c.answered.IsZero() {
@@ -783,6 +833,12 @@ func (l *Listener) remove(c *Conn) {
 		l.addrs.remove(a, c)
 	}
 	c.addrs = nil
+	if l.signals[c.signal] == c {
+		delete(l.signals, c.signal)
+	}
+	if r := l.relay.Load(); r != nil {
+		r.keep(c, netip.Addr{})
+	}
 }
 
 // source is what a connection not open yet counts against, by its key,
