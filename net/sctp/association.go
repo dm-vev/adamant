@@ -224,7 +224,6 @@ type Association struct {
 	rttSent               time.Time
 	rttActive             bool
 	errorCount            int
-	forwardDue            bool
 	// fastRetransmit lets the next packet carry the chunks miss
 	// indications marked without regard to cwnd (RFC 9260 section 7.2.4).
 	fastRetransmit bool
@@ -1136,7 +1135,7 @@ func (a *Association) handleSack(c chunk, now time.Time) error {
 	a.countSackMisses(advanced, gaps)
 	a.growWindow(advanced, fullyUsed, newly)
 	a.peerWindow = max(0, int(s.window)-a.flight)
-	a.advanceForwardTSN()
+	a.advanceForwardTSN(false)
 	a.updateT3(now, advanced || gaps.reneged)
 	a.maybeShutdown(now)
 	return nil
@@ -1383,17 +1382,17 @@ func (a *Association) abandon(m *outMessage) {
 	if m.next < len(m.data) {
 		a.buffered -= len(m.data) - m.next
 		if m.next > 0 {
-			a.outstanding = append(a.outstanding, &outChunk{tsn: a.nextTSN, msg: m, flags: m.chunkFlags(len(m.data) - m.next), abandoned: true})
+			a.outstanding = append(a.outstanding, &outChunk{tsn: a.nextTSN, msg: m, abandoned: true})
 			a.nextTSN++
 		}
 		m.next = len(m.data)
 	}
-	a.forwardDue = true
 }
 
 // advanceForwardTSN moves the advanced peer ack point over the abandoned
-// chunks that follow the cumulative ack and queues a FORWARD TSN.
-func (a *Association) advanceForwardTSN() {
+// chunks that follow the cumulative ack and queues a FORWARD TSN if it
+// moved, or, again, if one is still unacknowledged.
+func (a *Association) advanceForwardTSN(again bool) {
 	if !a.forwardTSN {
 		return
 	}
@@ -1408,10 +1407,9 @@ func (a *Association) advanceForwardTSN() {
 		a.advancedAck = ch.tsn
 		moved = true
 	}
-	if moved || (a.forwardDue && tsnLess(a.cumAck, a.advancedAck)) {
+	if moved || (again && tsnLess(a.cumAck, a.advancedAck)) {
 		a.queueForwardTSN()
 	}
-	a.forwardDue = false
 }
 
 func (a *Association) queueForwardTSN() {
@@ -1493,8 +1491,7 @@ func (a *Association) retransmitTimeout(now time.Time) error {
 		}
 	}
 	// A FORWARD TSN the peer has not acted on goes again.
-	a.forwardDue = true
-	a.advanceForwardTSN()
+	a.advanceForwardTSN(true)
 	a.flush(now)
 	a.updateT3(now, true)
 	a.maybeShutdown(now)
