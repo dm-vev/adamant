@@ -2,7 +2,6 @@ package block
 
 import (
 	"math"
-	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -327,7 +326,7 @@ type flammableEntity interface {
 // dropItem ...
 func dropItem(tx *world.Tx, it item.Stack, pos mgl64.Vec3) {
 	create := tx.World().EntityRegistry().Config().Item
-	opts := world.EntitySpawnOpts{Position: pos, Velocity: mgl64.Vec3{rand.Float64()*0.2 - 0.1, 0.2, rand.Float64()*0.2 - 0.1}}
+	opts := world.EntitySpawnOpts{Position: pos, ItemToss: true}
 	tx.AddEntity(create(opts, it))
 }
 

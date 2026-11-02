@@ -86,6 +86,10 @@ type EntitySpawnOpts struct {
 	Rotation cube.Rotation
 	// Velocity specifies the initial velocity of the Entity.
 	Velocity mgl64.Vec3
+	// ItemToss uses ItemActor's native initial launch velocity for item entities.
+	// Otherwise an item's explicitly supplied Velocity is retained. Item
+	// construction consumes its independent native random values in both cases.
+	ItemToss bool
 	// ID specifies the UUID of an entity. This field should usually be left
 	// empty, as a valid UUID is generated when not set. Non-player entities
 	// only have the last 8 bytes of the UUID set.
@@ -144,6 +148,9 @@ func (opts EntitySpawnOpts) New(t EntityType, conf EntityConfig) *EntityHandle {
 	}
 	handle.worldless.Store(true)
 	handle.data.Pos, handle.data.Rot, handle.data.Vel = opts.Position, opts.Rotation, opts.Velocity
+	if t.EncodeEntity() == "minecraft:item" {
+		applyNativeItemLaunch(&handle.data, opts, nextNativeItemLaunch())
+	}
 	handle.data.Name = opts.NameTag
 	conf.Apply(&handle.data)
 	handle.data.Riding = opts.Riding
@@ -198,6 +205,11 @@ func NewEntity(t EntityType, conf EntityConfig) *EntityHandle {
 // entityFromData reads an entity from the decoded NBT data passed and returns
 // an EntityHandle.
 func entityFromData(t EntityType, id int64, data map[string]any) *EntityHandle {
+	if t.EncodeEntity() == "minecraft:item" {
+		// Native ActorFactory::loadActor constructs the item before loading its
+		// saved fields. Its four TLS draws still occur; saved motion/rotation win.
+		_ = nextNativeItemLaunch()
+	}
 	handle := &EntityHandle{
 		t:         t,
 		cond:      sync.NewCond(&sync.Mutex{}),

@@ -14,11 +14,11 @@ import (
 )
 
 func TestCrafterEjectedItemsMatchOwnedBDS(t *testing.T) {
-	replayItemEjectionsOwnedBDS(t, "crafter", "bedrock_1_26_51_crafter_ejection_actor_inputs.json", 12)
+	replayItemEjectionsOwnedBDS(t, "crafter", "bedrock_1_26_51_crafter_ejection_pickup.json", 12)
 }
 
 func TestDispenserDropperEjectedItemsMatchOwnedBDS(t *testing.T) {
-	replayItemEjectionsOwnedBDS(t, "ordinary", "bedrock_1_26_51_dispenser_ejection_actor_inputs.json", 24)
+	replayItemEjectionsOwnedBDS(t, "ordinary", "bedrock_1_26_51_dispenser_ejection_pickup.json", 24)
 }
 
 func replayItemEjectionsOwnedBDS(t *testing.T, kind, filename string, count int) {
@@ -112,8 +112,10 @@ func replayItemEjectionsOwnedBDS(t *testing.T, kind, filename string, count int)
 			lastExit = max(lastExit, s.Exit)
 		}
 		for _, entry := range checkpoint.ItemTicks {
+			// The follow-up capture reads ItemActor+0x450, as written by
+			// clientInitialize; +0x44c is a separate player-touch gate.
 			if entry.PickupDelay != 0 {
-				t.Fatal("native crafter item pickup delay differs")
+				t.Fatal("native ejected item pickup delay differs")
 			}
 			if entry.Sequence <= lastExit {
 				t.Fatal("native item post tick precedes scheduled ejections")

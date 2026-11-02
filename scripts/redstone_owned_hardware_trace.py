@@ -11,7 +11,7 @@ import threading
 
 
 class OwnedHardwareTrace:
-    def __init__(self, process, memory, core_pointer, core_rva, chunk_rva, native, moving_rva=None, area_rva=None, ejection_rva=None, item_tick_rva=None, block_event_rva=None, bell_ring_rva=None, explosion_rva=None):
+    def __init__(self, process, memory, core_pointer, core_rva, chunk_rva, native, moving_rva=None, area_rva=None, ejection_rva=None, item_tick_rva=None, block_event_rva=None, bell_ring_rva=None, explosion_rva=None, resource_rva=None):
         if process.poll() is not None:
             raise RuntimeError('owned reference process is not running')
         self.process, self.memory, self.core_pointer, self.native = process, memory, core_pointer, native
@@ -23,8 +23,9 @@ class OwnedHardwareTrace:
         self.block_event_address = memory.base + block_event_rva if block_event_rva is not None else None
         self.bell_ring_address = memory.base + bell_ring_rva if bell_ring_rva is not None else None
         self.explosion_address = memory.base + explosion_rva if explosion_rva is not None else None
-        if sum(x is not None for x in (self.moving_address,self.area_address,self.ejection_address,self.block_event_address,self.bell_ring_address,self.explosion_address))>1:raise ValueError('DR3 has only one supplementary target')
-        self.extra_address = self.moving_address or self.area_address or self.ejection_address or self.block_event_address or self.bell_ring_address or self.explosion_address
+        self.resource_address = memory.base + resource_rva if resource_rva is not None else None
+        if sum(x is not None for x in (self.moving_address,self.area_address,self.ejection_address,self.block_event_address,self.bell_ring_address,self.explosion_address,self.resource_address))>1:raise ValueError('DR3 has only one supplementary target')
+        self.extra_address = self.moving_address or self.area_address or self.ejection_address or self.block_event_address or self.bell_ring_address or self.explosion_address or self.resource_address
         self.kernel = C.WinDLL('kernel32', use_last_error=True)
         self.kernel.DebugActiveProcess.argtypes = [W.DWORD]
         self.kernel.DebugActiveProcessStop.argtypes = [W.DWORD]
@@ -40,6 +41,7 @@ class OwnedHardwareTrace:
         self.owner_thread, self.active, self.chunks, self.outside = None, None, [], []
         self.areas = []
         self.ejection_active,self.ejections=None,[]
+        self.resource_active,self.resources=None,[]
         self.item_ticks=[]
         self.block_events=[]
         self.bell_rings=[]
@@ -101,7 +103,8 @@ class OwnedHardwareTrace:
             vector=struct.unpack('<Q',self.memory.read(rcx+0x218,8))[0]
             self.item_ticks.append(dict(actor=hex(rcx),position=list(struct.unpack('<3f',self.memory.read(vector,12))),
                 velocity=list(struct.unpack('<3f',self.memory.read(vector+0x18,12))),
-                pickup_delay=struct.unpack('<i',self.memory.read(rcx+0x44c,4))[0],sequence=self.total_hits))
+                pickup_delay=struct.unpack('<i',self.memory.read(rcx+0x450,4))[0],
+                touch_suppression=struct.unpack('<i',self.memory.read(rcx+0x44c,4))[0],sequence=self.total_hits))
         elif flags & 2 and rip == self.chunk_address:
             if self.owner_thread is None:
                 self.owner_thread = tid
@@ -143,6 +146,9 @@ class OwnedHardwareTrace:
                 if self.ejection_active is not None:
                     record['ejection_launch']=self.ejection_active['launch']
                     record['ejection_facing']=self.ejection_active['facing']
+                if self.resource_active is not None:
+                    record['resource_position']=self.resource_active['position']
+                    self.resource_active['words'].append(dict(record))
                 if caller in getattr(self,'ejection_callers',set()):
                     frame=C.c_uint64.from_address(pointer+0xA0).value
                     record['ejection_origin']=list(struct.unpack('<3f',self.memory.read(frame+0x58,12)))
@@ -163,7 +169,25 @@ class OwnedHardwareTrace:
                     else:self.active['words'].append(record)
         elif flags & 4:
             with self.lock:
-                if self.ejection_active is not None:
+                if self.resource_active is not None:
+                    if rip!=self.resource_active['return_address']:raise RuntimeError('unexpected resource return address')
+                    actor=C.c_uint64.from_address(pointer+0x78).value
+                    self.resource_active['exit_sequence']=self.total_hits
+                    self.resource_active['created']=bool(actor)
+                    if getattr(self,'tls_reader',None) is not None:
+                        self.resource_active['tls_after']=self.tls_reader(tid)
+                    if actor:
+                        vector=struct.unpack('<Q',self.memory.read(actor+0x218,8))[0]
+                        self.resource_active['origin']=list(struct.unpack('<3f',self.memory.read(vector,12)))
+                        self.resource_active['velocity']=list(struct.unpack('<3f',self.memory.read(vector+0x18,12)))
+                        rotation=struct.unpack('<Q',self.memory.read(actor+0x228,8))[0]
+                        self.resource_active['yaw']=struct.unpack('<f',self.memory.read(rotation+4,4))[0]
+                        self.resource_active['phase']=struct.unpack('<f',self.memory.read(actor+0x454,4))[0]
+                        self.resource_active['pickup_delay']=struct.unpack('<i',self.memory.read(actor+0x450,4))[0]
+                        self.resource_active['touch_suppression']=struct.unpack('<i',self.memory.read(actor+0x44c,4))[0]
+                    del self.resource_active['return_address']
+                    self.resources.append(self.resource_active);self.resource_active=None
+                elif self.ejection_active is not None:
                     if rip!=self.ejection_active['return_address']:raise RuntimeError('unexpected ejection return address')
                     self.ejection_active['exit_sequence']=self.total_hits
                     del self.ejection_active['return_address']
@@ -175,6 +199,19 @@ class OwnedHardwareTrace:
             C.c_uint64.from_address(pointer + 0x58).value = 0
             if self.item_tick_address is not None:C.c_uint64.from_address(pointer+0x50).value=self.item_tick_address
             C.c_uint64.from_address(pointer + 0x70).value = 5 | (0x40 if self.extra_address is not None else 0)
+        elif flags & 8 and rip == self.resource_address:
+            if self.active is not None or self.ejection_active is not None or self.resource_active is not None:
+                raise RuntimeError('nested resource/actor trace')
+            position=C.c_uint64.from_address(pointer+0x88).value
+            return_address=struct.unpack('<Q',self.memory.read(rsp,8))[0]
+            self.resource_active=dict(position=list(struct.unpack('<iii',self.memory.read(position,12))),
+                has_owner=bool(C.c_uint64.from_address(pointer+0xC0).value),words=[],
+                return_address=return_address,entry_sequence=self.total_hits,
+                caller=hex(return_address-self.memory.base))
+            if getattr(self,'tls_reader',None) is not None:
+                self.resource_active['tls_before']=self.tls_reader(tid)
+            C.c_uint64.from_address(pointer+0x58).value=return_address
+            C.c_uint64.from_address(pointer+0x70).value=0x55
         elif flags & 8 and rip == self.ejection_address:
             if self.active is not None or self.ejection_active is not None:raise RuntimeError('nested ejection/actor trace')
             position=C.c_uint64.from_address(pointer+0x88).value
@@ -294,10 +331,11 @@ class OwnedHardwareTrace:
     def checkpoint(self):
         if self.error:raise self.error
         with self.lock:
-            if self.active is not None or self.ejection_active is not None:raise RuntimeError('Script checkpoint is inside an actor/ejection pass')
-            result = dict(chunks=self.chunks, outside=self.outside, areas=self.areas,ejections=self.ejections,item_post_ticks=self.item_ticks,block_events=self.block_events,bell_rings=self.bell_rings,explosions=self.explosions)
+            if self.active is not None or self.ejection_active is not None or self.resource_active is not None:raise RuntimeError('Script checkpoint is inside an actor/ejection/resource pass')
+            result = dict(chunks=self.chunks, outside=self.outside, areas=self.areas,ejections=self.ejections,item_post_ticks=self.item_ticks,block_events=self.block_events,bell_rings=self.bell_rings,explosions=self.explosions,resources=self.resources)
             self.chunks, self.outside, self.areas = [], [], []
             self.ejections=[]
+            self.resources=[]
             self.item_ticks=[]
             self.block_events=[]
             self.bell_rings=[]
