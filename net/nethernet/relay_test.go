@@ -24,6 +24,16 @@ import (
 // connection may hold too; none once it closed.
 func TestRelayPermissionsFollowConnections(t *testing.T) {
 	l := listen(t, ListenConfig{AllowAnonymous: true})
+	// Without a relay, an offer over a signaling service holds nothing.
+	d, err := parseDescription(idleOffer())
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.candidates = []netip.AddrPort{netip.MustParseAddrPort("192.0.2.99:9")}
+	if reply := l.answerSignal(Signal{Type: SignalOffer, ConnectionID: 99, NetworkID: "client", Data: encodeDescription(d)}); reply.Type != SignalAnswer {
+		t.Fatalf("offer without a relay answered with %s %s", reply.Type, reply.Data)
+	}
+	expireAll(l)
 	// A relay not allocated yet holds the permissions all the same.
 	r := newRelay(l, turn.Config{Server: netip.MustParseAddrPort("127.0.0.1:3478")})
 	l.relay.Store(r)
@@ -82,6 +92,11 @@ func TestRelayPermissionsFollowConnections(t *testing.T) {
 	if got := held(); !maps.Equal(got, map[netip.Addr]int{loopback: 1}) {
 		t.Fatalf("held once the connection opened %v, want only the address it uses", got)
 	}
+	// One trickled once the connection opened is dropped.
+	trickle("client", 1, addr(30))
+	if got := held(); !maps.Equal(got, map[netip.Addr]int{loopback: 1}) {
+		t.Fatalf("held after a candidate trickled for an open connection %v", got)
+	}
 	second := join(3)
 	if got := held(); !maps.Equal(got, map[netip.Addr]int{loopback: 2}) {
 		t.Fatalf("held by two connections %v", got)
@@ -95,6 +110,31 @@ func TestRelayPermissionsFollowConnections(t *testing.T) {
 	trickle("client", 3, addr(20))
 	if got := held(); len(got) != 0 {
 		t.Fatalf("held once the connections closed %v", got)
+	}
+	l.mu.Lock()
+	signals := len(l.signals)
+	l.mu.Unlock()
+	if signals != 0 {
+		t.Fatalf("%d offers over signaling still noted once their connections closed", signals)
+	}
+}
+
+// TestRelayPermitsPeerAddresses holds permissions only for addresses a
+// peer may send from through the relay: not an invalid or unspecified
+// one, nor loopback unless the TURN server is on loopback too.
+func TestRelayPermitsPeerAddresses(t *testing.T) {
+	l := listen(t, ListenConfig{})
+	r := newRelay(l, turn.Config{Server: netip.MustParseAddrPort("192.0.2.1:3478")})
+	t.Cleanup(r.close)
+	c := &Conn{}
+	for _, a := range []netip.Addr{{}, netip.IPv4Unspecified(), netip.MustParseAddr("127.0.0.1"), netip.MustParseAddr("::ffff:198.51.100.1")} {
+		r.hold(c, a)
+	}
+	r.mu.Lock()
+	held := maps.Clone(r.held)
+	r.mu.Unlock()
+	if !maps.Equal(held, map[netip.Addr]int{netip.MustParseAddr("198.51.100.1"): 1}) {
+		t.Fatalf("held %v", held)
 	}
 }
 
@@ -147,15 +187,18 @@ func TestRelayNotMade(t *testing.T) {
 	}
 }
 
-// TestRelayRoutes routes what goes to a peer through the relay once a
-// check that came through it proved the connection, until the connection
-// closes; a check that proves nothing makes no route nor undoes one, and
-// one that came directly makes none.
-func TestRelayRoutes(t *testing.T) {
-	l := listen(t, ListenConfig{AllowAnonymous: true})
-	r := newRelay(l, turn.Config{Server: netip.MustParseAddrPort("127.0.0.1:3478")})
-	l.relay.Store(r)
-	answerSDP, _, err := l.answer(idleOffer(), nil, nil, &signalKey{"client", 1}, time.Now())
+// relayedConn is a connection opening, answered over a signaling service,
+// with the checks of its peer.
+type relayedConn struct {
+	c     *Conn
+	check func(proved bool) []byte
+}
+
+// openRelayed has l answer an offer over a signaling service with the
+// connection ID id.
+func openRelayed(t *testing.T, l *Listener, id uint64) relayedConn {
+	t.Helper()
+	answerSDP, _, err := l.answer(idleOffer(), nil, nil, &signalKey{"client", id}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,36 +206,66 @@ func TestRelayRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	check := func(pwd string) []byte {
+	l.mu.Lock()
+	c := l.signals[signalKey{"client", id}]
+	l.mu.Unlock()
+	return relayedConn{c: c, check: func(proved bool) []byte {
+		pwd := "not the password of the connection"
+		if proved {
+			pwd = answer.pwd
+		}
 		b := stun.NewBuilder(nil, stun.BindingRequest, [12]byte{1})
 		b.AddString(stun.AttrUsername, answer.ufrag+":abcd")
 		b.AddUint64(stun.AttrICEControlling, 1)
 		b.AddIntegrity(hmac.New(sha1.New, []byte(pwd)))
 		b.AddFingerprint()
 		return b.Bytes()
-	}
+	}}
+}
+
+// TestRelayRoutes routes what goes to a peer through the relay once a
+// check that came through it proved the connection, until the connection
+// closes; a check that proves nothing makes no route nor undoes one, and
+// one that came directly makes none. A peer heard directly is routed
+// through the relay again by its next check through it, and the route of
+// an address another connection proved since stays as the first closes.
+func TestRelayRoutes(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true})
+	r := newRelay(l, turn.Config{Server: netip.MustParseAddrPort("127.0.0.1:3478")})
+	l.relay.Store(r)
+	first, second := openRelayed(t, l, 1), openRelayed(t, l, 2)
 	peer, direct := netip.MustParseAddrPort("192.0.2.1:5000"), netip.MustParseAddrPort("192.0.2.2:5000")
 	var msg stun.Message
-	l.dispatch(check("not the password of the connection"), peer, r, &msg)
+	l.dispatch(first.check(false), peer, r, &msg)
 	if l.Relayed(peer) {
 		t.Fatal("a check that proved nothing made a route")
 	}
-	l.dispatch(check(answer.pwd), peer, r, &msg)
+	l.dispatch(first.check(true), peer, r, &msg)
 	if !l.Relayed(peer) {
 		t.Fatal("a check that proved the connection made no route")
 	}
-	l.dispatch(check("not the password of the connection"), peer, r, &msg)
+	l.dispatch(first.check(false), peer, r, &msg)
 	if !l.Relayed(peer) {
 		t.Fatal("a check that proved nothing undid a route")
 	}
-	l.dispatch(check(answer.pwd), direct, nil, &msg)
+	l.dispatch(first.check(true), direct, nil, &msg)
 	if l.Relayed(direct) {
 		t.Fatal("a check that came directly made a route")
 	}
-	l.mu.Lock()
-	c := l.signals[signalKey{"client", 1}]
-	l.mu.Unlock()
-	c.abort(net.ErrClosed)
+	r.heardDirect(peer)
+	if l.Relayed(peer) {
+		t.Fatal("a peer heard directly still routed through the relay")
+	}
+	l.dispatch(first.check(true), peer, r, &msg)
+	if !l.Relayed(peer) {
+		t.Fatal("a check through the relay of a peer heard directly made no route")
+	}
+	l.dispatch(second.check(true), peer, r, &msg)
+	first.c.abort(net.ErrClosed)
+	if !l.Relayed(peer) {
+		t.Fatal("the route of an address another connection proved went with the first")
+	}
+	second.c.abort(net.ErrClosed)
 	if l.Relayed(peer) {
 		t.Fatal("the route of a connection that closed kept")
 	}

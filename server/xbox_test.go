@@ -404,6 +404,28 @@ func TestXboxSignalingRenewsTokenFirst(t *testing.T) {
 	}
 }
 
+// TestXboxSignalingBacksOff waits five seconds after a failure to connect
+// to the signaling service, twice as long after each next one up to five
+// minutes, and five seconds again once it connected.
+func TestXboxSignalingBacksOff(t *testing.T) {
+	x := runXboxLoop(t)
+	for _, want := range []time.Duration{5, 10, 20, 40, 80, 160, 300, 300} {
+		x.token(nil)
+		backoff := receive(t, x.timers, "wait to connect again")
+		if backoff.d != want*time.Second {
+			t.Fatalf("waits %v, want %v", backoff.d, want*time.Second)
+		}
+		backoff.fire <- time.Now()
+	}
+	x.token(mcToken("token"))
+	receive(t, x.dialed, "connection").end(errors.New("dropped"))
+	receive(t, x.l.relays, "relay")
+	receive(t, x.timers, "renewal")
+	if backoff := receive(t, x.timers, "wait to connect again"); backoff.d != 5*time.Second {
+		t.Fatalf("waits %v once connected, want 5s", backoff.d)
+	}
+}
+
 // TestXboxSignalingReconnectsOnRelayFailure connects to the signaling
 // service again once the allocation of the relay failed, which brings
 // fresh TURN credentials to make a new one with, and tells why.

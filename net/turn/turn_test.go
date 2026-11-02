@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"net/netip"
+	"slices"
 	"testing"
 	"time"
 
@@ -212,10 +213,18 @@ func TestPermissionReleased(t *testing.T) {
 	c.Permit(released, now)
 	exchange(t, s, c, toServer, now)
 	c.Release(released)
+	// The permission released lasts until it lapses on the server, past
+	// the renewal of the one kept.
+	renewed := now.Add(permitLifetime - permitRefresh)
+	run(t, s, c, toServer, renewed)
+	if !c.Permitted(released, renewed) {
+		t.Fatal("released permission forgotten before it lapsed")
+	}
 	later := now.Add(2 * permitLifetime)
 	run(t, s, c, toServer, later)
-	if !c.Permitted(kept, later) || s.permissions[kept] < 3 {
-		t.Fatalf("permission of a wanted peer not renewed: %d requests", s.permissions[kept])
+	// Asked for at once, and renewed a minute before it runs out twice.
+	if !c.Permitted(kept, later) || s.permissions[kept] != 3 {
+		t.Fatalf("permission of a wanted peer: %d requests in ten minutes, want 3", s.permissions[kept])
 	}
 	if c.Permitted(released, now.Add(permitLifetime)) || s.permissions[released] != 1 {
 		t.Fatalf("permission of a released peer renewed: %d requests", s.permissions[released])
@@ -281,19 +290,58 @@ func TestPermitBeforeAllocation(t *testing.T) {
 	}
 }
 
-// TestAllocationRetransmits sends a request again while the server is
-// lost, and fails once it gave up.
-func TestAllocationRetransmits(t *testing.T) {
-	sends := 0
-	c := New(Config{Server: serverAddr, Username: "u", Password: "p"}, func([]byte, netip.AddrPort) { sends++ })
+// TestAllocationMalformedRelayedAddress fails an allocation whose success
+// carries a relayed address it cannot read.
+func TestAllocationMalformedRelayedAddress(t *testing.T) {
+	var sent []byte
+	c := New(Config{Server: serverAddr}, func(b []byte, _ netip.AddrPort) { sent = append([]byte(nil), b...) })
 	now := time.Unix(0, 0)
+	c.Start(now)
+	var m stun.Message
+	if err := stun.Parse(sent, &m); err != nil {
+		t.Fatal(err)
+	}
+	b := stun.NewBuilder(nil, msgType(methodAllocate, classSuccess), m.Transaction)
+	b.Add(attrXORRelayedAddress, []byte{0, 1, 2})
+	c.HandleDatagram(b.Bytes(), now)
+	if c.Allocated() || c.Err() == nil {
+		t.Fatalf("allocated %v, err %v", c.Allocated(), c.Err())
+	}
+}
+
+// TestPermitAskedOnce asks for a permission once while the request is
+// out, however often the peer is wanted or the timers run.
+func TestPermitAskedOnce(t *testing.T) {
+	s := &fakeServer{t: t, nonce: "nonce-1"}
+	now := time.Unix(1000, 0)
+	c, toServer := allocate(t, s, now)
+	peer := peerAddr.Addr()
+	c.Permit(peer, now)
+	c.Permit(peer, now)
+	c.HandleTimeout(now)
+	exchange(t, s, c, toServer, now)
+	if !c.Permitted(peer, now) || s.permissions[peer] != 1 {
+		t.Fatalf("permitted %v after %d requests, want 1", c.Permitted(peer, now), s.permissions[peer])
+	}
+}
+
+// TestAllocationRetransmits sends a request again while the server is
+// lost, half a second after the first send and twice as long after each
+// other, as RFC 8489 has it, and fails once it gave up.
+func TestAllocationRetransmits(t *testing.T) {
+	start := time.Unix(0, 0)
+	now := start
+	var sends []time.Duration
+	c := New(Config{Server: serverAddr, Username: "u", Password: "p"}, func([]byte, netip.AddrPort) { sends = append(sends, now.Sub(start)) })
 	c.Start(now)
 	for i := 0; i < 20 && c.Err() == nil; i++ {
 		now = c.Deadline()
 		c.HandleTimeout(now)
 	}
-	if sends != maxSends || c.Err() == nil || c.Allocated() {
-		t.Fatalf("%d sends, err %v", sends, c.Err())
+	want := []time.Duration{0, 500 * time.Millisecond, 1500 * time.Millisecond, 3500 * time.Millisecond,
+		7500 * time.Millisecond, 15500 * time.Millisecond, 31500 * time.Millisecond}
+	if !slices.Equal(sends, want) || now.Sub(start) != 63500*time.Millisecond || c.Err() == nil || c.Allocated() {
+		t.Fatalf("sent at %v, failed at %v with %v", sends, now.Sub(start), c.Err())
 	}
 }
 
