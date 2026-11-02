@@ -395,7 +395,9 @@ func (a *Association) HandleTimeout(now time.Time) error {
 	if err := a.shutdownTimeout(now); err != nil {
 		return err
 	}
-	a.resetTimeout(now)
+	if err := a.resetTimeout(now); err != nil {
+		return err
+	}
 	a.sackTimeout(now)
 	return a.err
 }
@@ -446,14 +448,21 @@ func (a *Association) shutdownTimeout(now time.Time) error {
 }
 
 // resetTimeout sends this side's stream reset request again when its
-// timer expires.
-func (a *Association) resetTimeout(now time.Time) {
+// timer expires. Each expiry counts toward failing the association and
+// doubles the retransmission timeout, as one of T3-rtx does (RFC 6525
+// section 5.1.1).
+func (a *Association) resetTimeout(now time.Time) error {
 	if !due(a.reset.timer, now) {
-		return
+		return nil
 	}
+	if a.errorCount++; a.errorCount > a.cfg.MaxRetransmissions {
+		return a.fail(ErrTimeout)
+	}
+	a.rto = min(2*a.rto, rtoMax)
 	a.reset.timer = now.Add(a.rto)
 	a.queueResetRequest()
 	a.flush(now)
+	return nil
 }
 
 // sackTimeout sends the SACK delayed once the delay passed.

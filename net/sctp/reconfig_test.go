@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 )
 
 // resetPeer returns the second association of a network, open, recording
@@ -239,20 +240,30 @@ func TestResetWaitsForQueuedMessages(t *testing.T) {
 	}
 }
 
-// TestResetTimer covers a reset request lost: it goes again after the
-// retransmission timeout.
+// TestResetTimer covers a reset request the peer never answers: it goes
+// again on each expiry of its timer, which backs off the retransmission
+// timeout as that of DATA does and counts toward failing the association,
+// failed after MaxRetransmissions of them (RFC 6525 section 5.1.1).
 func TestResetTimer(t *testing.T) {
-	n := newNetwork(t, 76, Config{})
+	n := newNetwork(t, 76, Config{MaxRetransmissions: 2})
 	n.open(t, false)
 	a := n.peers[0].assoc
 	sent := recordPackets(a)
 	if err := a.ResetStreams([]uint16{1}, n.now); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.HandleTimeout(a.Deadline()); err != nil {
-		t.Fatal(err)
+	var err error
+	var intervals []time.Duration
+	for at := n.now; err == nil && len(intervals) < 10; {
+		intervals = append(intervals, a.Deadline().Sub(at))
+		at = a.Deadline()
+		err = a.HandleTimeout(at)
 	}
-	if !slices.Equal(chunksSent(*sent), []byte{chunkReconfig, chunkReconfig}) || !a.Deadline().Equal(n.now.Add(2*a.Stats().RTO)) {
-		t.Fatalf("sent %v, next at %v", chunksSent(*sent), a.Deadline().Sub(n.now))
+	want := []byte{chunkReconfig, chunkReconfig, chunkReconfig, chunkAbort}
+	if !errors.Is(err, ErrTimeout) || !slices.Equal(chunksSent(*sent), want) {
+		t.Fatalf("sent %v, then %v; want %v and a timeout", chunksSent(*sent), err, want)
+	}
+	if rto := intervals[0]; !slices.Equal(intervals, []time.Duration{rto, 2 * rto, 4 * rto}) {
+		t.Fatalf("intervals %v, want doubling from %v", intervals, rto)
 	}
 }
