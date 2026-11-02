@@ -32,7 +32,7 @@ type PlayerMovementSettings
 	RewindHistorySize varint32
 	ServerAuthoritativeBlockBreaking bool
 
-packet 1 Login
+packet 1 Login client
 	ClientProtocol int32be
 	ConnectionRequest bytes
 
@@ -42,7 +42,7 @@ packet 2 PlayStatus
 packet 3 ServerToClientHandshake
 	JWT bytes
 
-packet 4 ClientToServerHandshake
+packet 4 ClientToServerHandshake client
 
 packet 5 Disconnect
 	Reason varint32
@@ -68,10 +68,10 @@ packet 7 ResourcePackStack
 	ExperimentsPreviouslyToggled bool
 	IncludeEditorPacks bool
 
-packet 8 ResourcePackClientResponse
+packet 8 ResourcePackClientResponse client
 	manual statement name, ok := resourcePackResponseToString(pk.Response)
 
-packet 9 Text
+packet 9 Text client
 	manual statement var categoryType uint8
 
 packet 10 SetTime
@@ -221,7 +221,7 @@ packet 18 MoveActorAbsolute
 	Rotation[1] bytefloat
 	Rotation[2] bytefloat
 
-packet 19 MovePlayer
+packet 19 MovePlayer client
 	EntityRuntimeID varuint64
 	Position vec3
 	Pitch float32
@@ -233,7 +233,7 @@ packet 19 MovePlayer
 	TeleportData ?TeleportData
 	Tick varuint64
 
-packet 21 UpdateBlock
+packet 21 UpdateBlock client
 	Position blockpos
 	NewBlockRuntimeID varuint32
 	Flags varuint32
@@ -256,7 +256,7 @@ packet 26 BlockEvent
 	EventType varint32
 	EventData varint32
 
-packet 27 ActorEvent
+packet 27 ActorEvent client
 	EntityRuntimeID varuint64
 	EventType uint8
 	EventData varint32
@@ -277,10 +277,10 @@ packet 29 UpdateAttributes
 	Attributes []Attribute
 	Tick varuint64
 
-packet 30 InventoryTransaction
+packet 30 InventoryTransaction client
 	manual Marshal of pk.TransactionData
 
-packet 31 MobEquipment
+packet 31 MobEquipment client
 	EntityRuntimeID varuint64
 	NewItem iteminstance
 	InventorySlot uint8
@@ -295,22 +295,22 @@ packet 32 MobArmourEquipment
 	Boots iteminstance
 	Body iteminstance
 
-packet 33 Interact
+packet 33 Interact client
 	ActionType uint8
 	TargetEntityRuntimeID varuint64
 	Position ?vec3
 
-packet 34 BlockPickRequest
+packet 34 BlockPickRequest client
 	Position blockpos
 	AddBlockNBT bool
 	HotBarSlot uint8
 
-packet 35 ActorPickRequest
+packet 35 ActorPickRequest client
 	EntityUniqueID int64
 	HotBarSlot uint8
 	WithData bool
 
-packet 36 PlayerAction
+packet 36 PlayerAction client
 	EntityRuntimeID varuint64
 	ActionType varint32
 	BlockPosition blockpos
@@ -333,7 +333,7 @@ packet 40 SetActorMotion
 	Velocity vec3
 	Tick varuint64
 
-packet 41 SetActorLink
+packet 41 SetActorLink client
 	EntityLink EntityLink
 
 packet 42 SetHealth
@@ -345,25 +345,25 @@ packet 43 SetSpawnPosition
 	Dimension varint32
 	SpawnPosition blockpos
 
-packet 44 Animate
+packet 44 Animate client
 	ActionType uint8
 	EntityRuntimeID varuint64
 	Data float32
 	present SwingSource != 0
 		SwingSource enum(swingSource) as uint8
 
-packet 45 Respawn
+packet 45 Respawn client
 	Position vec3
 	State uint8
 	EntityRuntimeID varuint64
 
-packet 46 ContainerOpen
+packet 46 ContainerOpen client
 	WindowID uint8
 	ContainerType uint8
 	ContainerPosition blockpos
 	ContainerEntityUniqueID varint64
 
-packet 47 ContainerClose
+packet 47 ContainerClose client
 	WindowID uint8
 	ContainerType uint8
 	ServerSide bool
@@ -410,7 +410,7 @@ packet 54 GUIDataPickItem
 	ItemEffects string
 	HotBarSlot int32
 
-packet 55 AdventureSettings
+packet 55 AdventureSettings client
 	Flags varuint32
 	CommandPermissionLevel varuint32
 	ActionPermissions varuint32
@@ -418,7 +418,7 @@ packet 55 AdventureSettings
 	CustomStoredPermissions varuint32
 	PlayerUniqueID int64
 
-packet 56 BlockActorData
+packet 56 BlockActorData client
 	Position blockpos
 	NBTData nbt
 
@@ -443,13 +443,13 @@ packet 61 ChangeDimension
 	Respawn bool
 	LoadingScreenID ?uint32
 
-packet 62 SetPlayerGameType
+packet 62 SetPlayerGameType client
 	GameType varint32
 
 packet 63 PlayerList
 	Entries []PlayerListEntry
 
-packet 64 SimpleEvent
+packet 64 SimpleEvent client
 	EventType uint16
 
 packet 65 Event
@@ -474,11 +474,11 @@ packet 67 ClientBoundMapItemData
 	YOffset ?varint32
 	Pixels ?[]argbbe
 
-packet 68 MapInfoRequest
+packet 68 MapInfoRequest client
 	MapID varint64
 	ClientPixels []PixelRequest count uint32
 
-packet 69 RequestChunkRadius
+packet 69 RequestChunkRadius client
 	ChunkRadius varint32
 	MaxChunkRadius uint8
 
@@ -492,7 +492,7 @@ packet 73 Camera
 	CameraEntityUniqueID varint64
 	TargetPlayerUniqueID varint64
 
-packet 74 BossEvent
+packet 74 BossEvent client
 	BossEntityUniqueID varint64
 	EventType uint8
 	BossBarTitle string
@@ -501,7 +501,7 @@ packet 74 BossEvent
 	Colour uint8
 	Overlay uint8
 
-packet 75 ShowCredits
+packet 75 ShowCredits client
 	PlayerRuntimeID varuint64
 	StatusType varint32
 
@@ -515,13 +515,13 @@ packet 76 AvailableCommands
 	DynamicEnums []DynamicEnum
 	Constraints []CommandEnumConstraint
 
-packet 77 CommandRequest
+packet 77 CommandRequest client
 	CommandLine string
 	CommandOrigin CommandOrigin
 	Internal bool
 	Version string
 
-packet 78 CommandBlockUpdate
+packet 78 CommandBlockUpdate client
 	Block bool
 	if Block
 		Position blockpos
@@ -579,7 +579,7 @@ packet 83 ResourcePackChunkData
 	DataOffset uint64
 	Data bytes
 
-packet 84 ResourcePackChunkRequest
+packet 84 ResourcePackChunkRequest client
 	UUID string
 	ChunkIndex int32
 
@@ -617,7 +617,7 @@ packet 88 SetTitle
 packet 89 AddBehaviourTree
 	BehaviourTree string
 
-packet 90 StructureBlockUpdate
+packet 90 StructureBlockUpdate client
 	Position blockpos
 	StructureName string
 	FilteredStructureName string
@@ -634,25 +634,25 @@ packet 91 ShowStoreOffer
 	OfferID uuid
 	Type uint8
 
-packet 92 PurchaseReceipt
+packet 92 PurchaseReceipt client
 	Receipts []string
 
-packet 93 PlayerSkin
+packet 93 PlayerSkin client
 	UUID uuid
 	Skin Skin
 	NewSkinName string
 	OldSkinName string
 
-packet 94 SubClientLogin
+packet 94 SubClientLogin client
 	ConnectionRequest bytes
 
-packet 95 AutomationClientConnect
+packet 95 AutomationClientConnect client
 	ServerURI string
 
 packet 96 SetLastHurtBy
 	EntityType varint32
 
-packet 97 BookEdit
+packet 97 BookEdit client
 	InventorySlot varint32
 	ActionType varuint32
 	switch ActionType
@@ -671,7 +671,7 @@ packet 97 BookEdit
 		XUID string
 	default
 
-packet 98 NPCRequest
+packet 98 NPCRequest client
 	EntityRuntimeID varuint64
 	RequestType uint8
 	CommandString string
@@ -691,12 +691,12 @@ packet 100 ModalFormRequest
 	FormID varuint32
 	FormData bytes
 
-packet 101 ModalFormResponse
+packet 101 ModalFormResponse client
 	FormID varuint32
 	ResponseData ?bytes
 	CancelReason ?uint8
 
-packet 102 ServerSettingsRequest
+packet 102 ServerSettingsRequest client
 
 packet 103 ServerSettingsResponse
 	FormID varuint32
@@ -705,7 +705,7 @@ packet 103 ServerSettingsResponse
 packet 104 ShowProfile
 	XUID string
 
-packet 105 SetDefaultGameType
+packet 105 SetDefaultGameType client
 	GameType varint32
 
 packet 106 RemoveObjective
@@ -721,7 +721,7 @@ packet 107 SetDisplayObjective
 packet 108 SetScore
 	Entries []ScoreboardEntry
 
-packet 109 LabTable
+packet 109 LabTable client
 	ActionType uint8
 	Position blockpos
 	ReactionType uint8
@@ -752,7 +752,7 @@ packet 112 SetScoreboardIdentity
 	ActionType uint8
 	Entries []ScoreboardIdentityEntry
 
-packet 113 SetLocalPlayerAsInitialised
+packet 113 SetLocalPlayerAsInitialised client
 	EntityRuntimeID varuint64
 
 packet 114 UpdateSoftEnum
@@ -760,11 +760,11 @@ packet 114 UpdateSoftEnum
 	Options []string
 	ActionType uint8
 
-packet 115 NetworkStackLatency
+packet 115 NetworkStackLatency client
 	Timestamp int64
 	NeedsResponse bool
 
-packet 117 ScriptCustomEvent
+packet 117 ScriptCustomEvent client
 	EventName string
 	EventData bytes
 
@@ -787,7 +787,7 @@ packet 122 BiomeDefinitionList
 	BiomeDefinitions []BiomeDefinition
 	StringList []string
 
-packet 123 LevelSoundEvent
+packet 123 LevelSoundEvent client
 	SoundType string
 	Position vec3
 	ExtraData varint32
@@ -801,35 +801,35 @@ packet 124 LevelEventGeneric
 	EventID varint32
 	SerialisedEventData rest
 
-packet 125 LecternUpdate
+packet 125 LecternUpdate client
 	Page uint8
 	PageCount uint8
 	Position blockpos
 
-packet 129 ClientCacheStatus
+packet 129 ClientCacheStatus client
 	Enabled bool
 
 packet 130 OnScreenTextureAnimation
 	AnimationType uint32
 
-packet 131 MapCreateLockedCopy
+packet 131 MapCreateLockedCopy client
 	OriginalMapID varint64
 	NewMapID varint64
 
-packet 132 StructureTemplateDataRequest
+packet 132 StructureTemplateDataRequest client
 	StructureName string
 	Position blockpos
 	Settings StructureSettings
 	RequestType uint8
 
-packet 133 StructureTemplateDataResponse
+packet 133 StructureTemplateDataResponse client
 	StructureName string
 	Success bool
 	if Success
 		StructureTemplate nbt
 	ResponseType uint8
 
-packet 135 ClientCacheBlobStatus
+packet 135 ClientCacheBlobStatus client
 	MissHashes []uint64
 	HitHashes []uint64
 
@@ -848,7 +848,7 @@ packet 137 EducationSettings
 	HasQuiz bool
 	ExternalLinkSettings ?EducationExternalLinkSettings
 
-packet 138 Emote
+packet 138 Emote client
 	EntityRuntimeID varuint64
 	EmoteID string
 	EmoteLength varuint32
@@ -856,14 +856,14 @@ packet 138 Emote
 	PlatformID string
 	Flags uint8
 
-packet 139 MultiPlayerSettings
+packet 139 MultiPlayerSettings client
 	ActionType varint32
 
-packet 140 SettingsCommand
+packet 140 SettingsCommand client
 	CommandLine string
 	SuppressOutput bool
 
-packet 141 AnvilDamage
+packet 141 AnvilDamage client
 	AnvilPosition blockpos
 
 packet 142 CompletedUsingItem
@@ -877,7 +877,7 @@ packet 143 NetworkSettings
 	ClientThrottleThreshold uint8
 	ClientThrottleScalar float32
 
-packet 144 PlayerAuthInput
+packet 144 PlayerAuthInput client
 	Pitch float32
 	Yaw float32
 	Position vec3
@@ -907,7 +907,7 @@ packet 145 CreativeContent
 packet 146 PlayerEnchantOptions
 	Options []EnchantmentOption
 
-packet 147 ItemStackRequest
+packet 147 ItemStackRequest client
 	Requests []ItemStackRequest
 
 packet 148 ItemStackResponse
@@ -920,12 +920,12 @@ packet 150 CodeBuilder
 	URL string
 	ShouldOpenCodeBuilder bool
 
-packet 151 UpdatePlayerGameType
+packet 151 UpdatePlayerGameType client
 	GameType varint32
 	PlayerUniqueID varint64
 	Tick varuint64
 
-packet 152 EmoteList
+packet 152 EmoteList client
 	PlayerRuntimeID varuint64
 	EmotePieces []uuid
 
@@ -934,15 +934,15 @@ packet 153 PositionTrackingDBServerBroadcast
 	TrackingID varint32
 	Payload nbt
 
-packet 154 PositionTrackingDBClientRequest
+packet 154 PositionTrackingDBClientRequest client
 	RequestAction uint8
 	TrackingID varint32
 
-packet 155 DebugInfo
+packet 155 DebugInfo client
 	PlayerUniqueID varint64
 	Data bytes
 
-packet 156 PacketViolationWarning
+packet 156 PacketViolationWarning client
 	Type varint32
 	Severity varint32
 	PacketID varint32
@@ -983,7 +983,7 @@ packet 161 CorrectPlayerMovePrediction
 packet 162 ItemRegistry
 	Items []ItemEntry
 
-packet 163 FilterText
+packet 163 FilterText client
 	Text string
 	FromServer bool
 
@@ -1029,7 +1029,7 @@ packet 169 NPCDialogue
 packet 170 EducationResourceURI
 	Resource EducationSharedResourceURI
 
-packet 171 CreatePhoto
+packet 171 CreatePhoto client
 	EntityUniqueID int64
 	PhotoName string
 	ItemName string
@@ -1039,7 +1039,7 @@ packet 172 UpdateSubChunkBlocks
 	Blocks []BlockChangeEntry
 	Extra []BlockChangeEntry
 
-packet 173 PhotoInfoRequest
+packet 173 PhotoInfoRequest client
 	PhotoID varint64
 
 packet 174 SubChunk
@@ -1048,7 +1048,7 @@ packet 174 SubChunk
 	Position subchunkpos
 	SubChunkEntries []SubChunkEntry
 
-packet 175 SubChunkRequest
+packet 175 SubChunkRequest client
 	Dimension varint32
 	Offsets []SubChunkOffset
 	Position subchunkpos
@@ -1057,11 +1057,11 @@ packet 176 ClientStartItemCooldown
 	Category string
 	Duration varint32
 
-packet 177 ScriptMessage
+packet 177 ScriptMessage client
 	Identifier string
 	Data bytes
 
-packet 178 CodeBuilderSource
+packet 178 CodeBuilderSource client
 	Operation uint8
 	Category uint8
 	CodeStatus uint8
@@ -1090,11 +1090,11 @@ packet 183 LessonProgress
 	Score varint32
 	Identifier string
 
-packet 184 RequestAbility
+packet 184 RequestAbility client
 	Ability varint32
 	Value abilityvalue
 
-packet 185 RequestPermissions
+packet 185 RequestPermissions client
 	EntityUniqueID int64
 	PermissionLevel varint32
 	RequestedPermissions uint16
@@ -1117,7 +1117,7 @@ packet 189 DeathInfo
 	Cause string
 	Messages []string
 
-packet 190 EditorNetwork
+packet 190 EditorNetwork client
 	RouteToManager bool
 	Payload nbt
 
@@ -1128,7 +1128,7 @@ packet 192 ServerStats
 	ServerTime float32
 	NetworkTime float32
 
-packet 193 RequestNetworkSettings
+packet 193 RequestNetworkSettings client
 	ClientProtocol int32be
 
 packet 194 GameTestRequest
@@ -1140,7 +1140,7 @@ packet 194 GameTestRequest
 	TestsPerRow varint32
 	Name string
 
-packet 195 GameTestResults
+packet 195 GameTestResults client
 	Succeeded bool
 	Error string
 	Name string
@@ -1173,7 +1173,7 @@ packet 302 TrimData
 	Patterns []TrimPattern
 	Materials []TrimMaterial
 
-packet 303 OpenSign
+packet 303 OpenSign client
 	Position blockpos
 	FrontSide bool
 
@@ -1183,14 +1183,14 @@ packet 304 AgentAnimation
 
 packet 305 RefreshEntitlements
 
-packet 306 PlayerToggleCrafterSlotRequest
+packet 306 PlayerToggleCrafterSlotRequest client
 	PosX int32
 	PosY int32
 	PosZ int32
 	Slot uint8
 	Disabled bool
 
-packet 307 SetPlayerInventoryOptions
+packet 307 SetPlayerInventoryOptions client
 	LeftInventoryTab varint32
 	RightInventoryTab varint32
 	Filtering bool
@@ -1206,7 +1206,7 @@ packet 309 AwardAchievement
 
 packet 310 ClientBoundCloseForm
 
-packet 312 ServerBoundLoadingScreen
+packet 312 ServerBoundLoadingScreen client
 	Type varint32
 	LoadingScreenID ?uint32
 
@@ -1216,7 +1216,7 @@ packet 313 JigsawStructureData
 packet 314 CurrentStructureFeature
 	CurrentFeature string
 
-packet 315 ServerBoundDiagnostics
+packet 315 ServerBoundDiagnostics client
 	AverageFramesPerSecond float32
 	AverageServerSimTickTime float32
 	AverageClientSimTickTime float32
@@ -1254,12 +1254,12 @@ packet 320 CameraAimAssistPresets
 	Presets []CameraAimAssistPreset
 	Operation uint8
 
-packet 321 ClientCameraAimAssist
+packet 321 ClientCameraAimAssist client
 	PresetID string
 	Action uint8
 	AllowAimAssist bool
 
-packet 322 ClientMovementPredictionSync
+packet 322 ClientMovementPredictionSync client
 	ActorFlags bitset(131)
 	BoundingBoxScale float32
 	BoundingBoxWidth float32
@@ -1276,7 +1276,7 @@ packet 322 ClientMovementPredictionSync
 	EntityUniqueID varint64
 	Flying bool
 
-packet 323 UpdateClientOptions
+packet 323 UpdateClientOptions client
 	GraphicsMode ?uint8
 	FilterProfanity ?bool
 
@@ -1305,7 +1305,7 @@ packet 327 ClientBoundControlSchemeSet
 packet 328 PrimitiveShapes
 	Shapes []PrimitiveShape
 
-packet 329 ServerBoundPackSettingChange
+packet 329 ServerBoundPackSettingChange client
 	PackID uuid
 	PackSetting packsetting
 
@@ -1321,7 +1321,7 @@ packet 331 GraphicsOverrideParameter
 	ParameterType uint8
 	Reset bool
 
-packet 332 ServerBoundDataStore
+packet 332 ServerBoundDataStore client
 	Update DataStoreUpdate
 
 packet 333 ClientBoundDataDrivenUIShowScreen
@@ -1355,15 +1355,15 @@ packet 338 CameraSpline
 packet 339 CameraAimAssistActorPriority
 	PriorityData []CameraAimAssistActorPriorityData
 
-packet 340 ResourcePacksReadyForValidation
+packet 340 ResourcePacksReadyForValidation client
 
 packet 341 LocatorBar
 	Waypoints []LocatorBarWaypoint
 
-packet 342 PartyChanged
+packet 342 PartyChanged client
 	PartyInfo ?PartyInfo
 
-packet 343 ServerBoundDataDrivenScreenClosed
+packet 343 ServerBoundDataDrivenScreenClosed client
 	FormID uint32
 	CloseReason string
 
@@ -1422,11 +1422,11 @@ packet 349 SendPartyDestinationCookie
 	Intent string
 	DestinationName string
 
-packet 350 PartyDestinationCookieResponse
+packet 350 PartyDestinationCookieResponse client
 	Cookie string
 	Accepted bool
 
-packet 351 SetPlayerFurnaceOptions
+packet 351 SetPlayerFurnaceOptions client
 	FurnaceType uint8
 	FurnaceOptions FurnaceOptions
 

@@ -328,11 +328,18 @@ func (c *Conn) next() ([]byte, error) {
 	return c.b.ReadPacket()
 }
 
-// errUnknownPacket is returned for a packet the codecs do not know: the
-// client is dropped, as gophertunnel drops it.
+// errUnknownPacket is returned for a packet the codecs do not know or a
+// client does not send: the client is dropped, as gophertunnel drops it.
 type errUnknownPacket uint32
 
 func (e errUnknownPacket) Error() string { return fmt.Sprintf("netconn: unknown packet %d", uint32(e)) }
+
+// fromClient reports whether a client sends packets of an ID: those the
+// schema marks, from the pool of gophertunnel's listener, and the
+// Disconnect a client may send as it leaves, which that pool lacks. The
+// fields of others, such as a SubChunk, are never read: they could hold
+// dozens of times their bytes.
+func fromClient(id uint32) bool { return v2193.FromClient(id) || id == v2193.IDDisconnect }
 
 // maxList bounds the elements of a list a client sends, as gophertunnel
 // bounds them for a server. A string or a byte slice takes the bytes of
@@ -352,7 +359,7 @@ func DecodePacket(raw []byte) (pk proto.Packet, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if pk = v2193.New(h.ID); pk == nil {
+	if pk = v2193.New(h.ID); pk == nil || !fromClient(h.ID) {
 		return nil, errUnknownPacket(h.ID)
 	}
 	defer func() {

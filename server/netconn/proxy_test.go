@@ -57,7 +57,8 @@ func openProxied(t *testing.T, link *proxy.Link, name string, protocol int32) *b
 	return b
 }
 
-// readUntil reads the packets of the server until one of the ID passed.
+// readUntil reads the packets of the server until one of the ID passed,
+// which it decodes as a client does.
 func readUntil(t *testing.T, b *bedrock.Conn, id uint32) proto.Packet {
 	t.Helper()
 	for {
@@ -65,16 +66,18 @@ func readUntil(t *testing.T, b *bedrock.Conn, id uint32) proto.Packet {
 		if err != nil {
 			t.Fatalf("waiting for packet %d: %v", id, err)
 		}
-		h, _, err := bedrock.ReadHeader(raw)
+		h, fields, err := bedrock.ReadHeader(raw)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if h.ID != id {
 			continue
 		}
-		pk, err := DecodePacket(raw)
-		if err != nil {
-			t.Fatal(err)
+		pk := v2193.New(id)
+		r := wire.NewReader(fields)
+		pk.Decode(r)
+		if r.Err() != nil {
+			t.Fatal(r.Err())
 		}
 		return pk
 	}

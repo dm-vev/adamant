@@ -2,15 +2,16 @@
 // schema: a struct per packet and type, with Encode and Decode methods over
 // package wire that allocate only what they decode.
 //
-// The schema lists declarations: "packet ID Name" or "type Name", then
-// one line per field read and written, "Name wiretype", with if, else,
-// switch and case lines around them. A declaration marked manual has no
-// codec yet: a packet becomes raw, its bytes kept as they are, and so does
-// every packet that holds a manual type, until a codec is written by hand
-// in the package. A "present COND" line is a bool saying whether COND
-// holds, followed by the lines under it when it does. An "enum name"
-// declaration lists "value name" lines: a field of wire type
-// "enum(name) as T" goes as the name of its value.
+// The schema lists declarations: "packet ID Name", "packet ID Name client"
+// for a packet a client sends, or "type Name", then one line per field
+// read and written, "Name wiretype", with if, else, switch and case lines
+// around them. A declaration marked manual has no codec yet: a packet
+// becomes raw, its bytes kept as they are, and so does every packet that
+// holds a manual type, until a codec is written by hand in the package. A
+// "present COND" line is a bool saying whether COND holds, followed by the
+// lines under it when it does. An "enum name" declaration lists "value
+// name" lines: a field of wire type "enum(name) as T" goes as the name of
+// its value.
 package main
 
 import (
@@ -52,6 +53,8 @@ type decl struct {
 	body   []*node
 	// raw marks a packet without a complete codec.
 	raw bool
+	// client marks a packet a client sends.
+	client bool
 }
 
 // enum is an enum whose values go as names.
@@ -135,10 +138,11 @@ func parse(path string) (*schema, error) {
 				continue
 			case "packet":
 				id, err := strconv.Atoi(fields[1])
-				if err != nil || len(fields) != 3 {
+				client := len(fields) == 4 && fields[3] == "client"
+				if err != nil || len(fields) != 3 && !client {
 					return nil, fmt.Errorf("line %d: %q", n, text)
 				}
-				cur = &decl{packet: true, id: id, name: fields[2]}
+				cur = &decl{packet: true, id: id, name: fields[2], client: client}
 			case "type":
 				cur = &decl{name: fields[1]}
 			case "enum":
@@ -533,26 +537,36 @@ func (s *schema) generate(pkg string) ([]byte, error) {
 	g.p("")
 	g.p("// Raw reports whether the packet of an ID has no codec yet and keeps its")
 	g.p("// fields as bytes.")
-	g.p("func Raw(id uint32) bool {")
-	g.p("switch id {")
-	var raw []string
-	for _, d := range packets {
-		if d.raw {
-			raw = append(raw, strconv.Itoa(d.id))
-		}
-	}
-	if len(raw) > 0 {
-		g.p("case %s:", strings.Join(raw, ", "))
-		g.p("return true")
-	}
-	g.p("}")
-	g.p("return false")
-	g.p("}")
+	g.ids("Raw", packets, func(d *decl) bool { return d.raw })
+	g.p("")
+	g.p("// FromClient reports whether a client sends packets of an ID, as the")
+	g.p("// schema marks them.")
+	g.ids("FromClient", packets, func(d *decl) bool { return d.client })
 	src, err := format.Source(g.b.Bytes())
 	if err != nil {
 		return g.b.Bytes(), fmt.Errorf("format: %w", err)
 	}
 	return src, nil
+}
+
+// ids writes a function of a name that reports whether an ID is of one of
+// the packets a predicate holds for.
+func (g *gen) ids(name string, packets []*decl, holds func(*decl) bool) {
+	g.p("func %s(id uint32) bool {", name)
+	g.p("switch id {")
+	var ids []string
+	for _, d := range packets {
+		if holds(d) {
+			ids = append(ids, strconv.Itoa(d.id))
+		}
+	}
+	if len(ids) > 0 {
+		g.p("case %s:", strings.Join(ids, ", "))
+		g.p("return true")
+	}
+	g.p("}")
+	g.p("return false")
+	g.p("}")
 }
 
 // enum writes the functions that map the values of an enum to their names

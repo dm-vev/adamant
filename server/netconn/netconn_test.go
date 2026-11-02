@@ -1,6 +1,7 @@
 package netconn
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -710,5 +711,48 @@ func TestNBTMemoryBound(t *testing.T) {
 	w.Bytes(make([]byte, maxList+2))
 	if _, err := DecodePacket(w.B); !errors.Is(err, wire.ErrTooLarge) {
 		t.Fatalf("decoded a list of %d compounds: %v", maxList+1, err)
+	}
+}
+
+// TestServerPacketsRefused decodes packets only a server sends, crafted to
+// hold far more than their bytes: they are refused for their ID, as a
+// ClientBoundDataStore of 1 KiB held 248 KiB and a SubChunk 57 times its
+// bytes.
+func TestServerPacketsRefused(t *testing.T) {
+	store := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDClientBoundDataStore})}
+	store.Varuint32(1024)
+	store.Bytes(bytes.Repeat([]byte{3}, 1024))
+	sub := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDSubChunk})}
+	sub.Bytes(make([]byte, 14))
+	sub.Varuint32(1024)
+	sub.Bytes(make([]byte, 10*1024))
+	for _, raw := range [][]byte{store.B, sub.B} {
+		pk, n, err := held(raw)
+		if !errors.As(err, new(errUnknownPacket)) {
+			t.Errorf("decoded %T of %d bytes into %d held: %v", pk, len(raw), n, err)
+		}
+	}
+}
+
+// TestLoginPacketsDecode decodes each packet the connection reads of a
+// client itself, from the login to the spawn: none is refused for its ID.
+func TestLoginPacketsDecode(t *testing.T) {
+	for _, pk := range []proto.Packet{
+		&v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol},
+		&v2193.LoginPacket{ClientProtocol: v2193.Protocol},
+		&v2193.ClientToServerHandshakePacket{},
+		&v2193.ClientCacheStatusPacket{},
+		&v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted},
+		&v2193.ResourcePackChunkRequestPacket{},
+		&v2193.RequestChunkRadiusPacket{ChunkRadius: 8},
+		&v2193.SetLocalPlayerAsInitialisedPacket{},
+		&v2193.DisconnectPacket{Message: "bye"},
+	} {
+		w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+		pk.Encode(&w)
+		got, err := DecodePacket(w.B)
+		if err != nil || got.ID() != pk.ID() {
+			t.Errorf("%T: %v", pk, err)
+		}
 	}
 }

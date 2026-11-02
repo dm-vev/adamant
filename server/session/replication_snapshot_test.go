@@ -17,12 +17,10 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
-	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
@@ -155,11 +153,13 @@ func TestReplicationSnapshot(t *testing.T) {
 // shared by sessions is in a wrapper of the session, then decoded.
 func decoded(t *testing.T, pk proto.Packet) proto.Packet {
 	t.Helper()
-	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+	var w wire.Writer
 	pk.Encode(&w)
-	back, err := netconn.DecodePacket(w.B)
-	if err != nil {
-		t.Fatalf("packet %d does not decode: %v", pk.ID(), err)
+	back := v2193.New(pk.ID())
+	r := wire.NewReader(w.B)
+	back.Decode(r)
+	if r.Err() != nil || r.Len() != 0 {
+		t.Fatalf("packet %d does not decode: %v, %d bytes left", pk.ID(), r.Err(), r.Len())
 	}
 	return back
 }

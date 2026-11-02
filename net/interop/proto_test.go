@@ -508,6 +508,25 @@ func head(b []byte) []byte {
 	return b
 }
 
+// TestFromClientMatchesGophertunnel checks the packets the schema marks as
+// a client's against the pool gophertunnel's listener decodes them with: a
+// server refuses the others before reading them.
+func TestFromClientMatchesGophertunnel(t *testing.T) {
+	pool := packet.NewClientPool()
+	n := 0
+	for id := range uint32(1 << 12) {
+		if v2193.FromClient(id) != (pool[id] != nil) {
+			t.Errorf("packet %d: from a client %v here, %v in gophertunnel", id, v2193.FromClient(id), pool[id] != nil)
+		}
+		if v2193.FromClient(id) {
+			n++
+		}
+	}
+	if n != len(pool) {
+		t.Fatalf("%d packets from a client, gophertunnel has %d", n, len(pool))
+	}
+}
+
 // TestShieldItemsMatchGophertunnel codes a shield, whose user data carries
 // the tick it started blocking at, with the shield ID set on both sides.
 func TestShieldItemsMatchGophertunnel(t *testing.T) {

@@ -6,7 +6,8 @@
 // changed.
 //
 // A statement it cannot translate marks its packet or type manual, with the
-// reason, instead of guessing.
+// reason, instead of guessing. A packet in the pool of the packets clients
+// send that gophertunnel's listener decodes is marked client.
 package main
 
 import (
@@ -24,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -160,10 +162,16 @@ func main() {
 		}
 	}
 	fmt.Fprintf(&b, "# %d declarations, %d of them manual.\n", len(im.decls), manual)
+	// The packets a client sends are those gophertunnel's listener decodes.
+	client := packet.NewClientPool()
 	for _, d := range im.decls {
 		b.WriteString("\n")
 		if d.packet {
-			fmt.Fprintf(&b, "packet %d %s\n", d.id, d.name)
+			from := ""
+			if client[uint32(d.id)] != nil {
+				from = " client"
+			}
+			fmt.Fprintf(&b, "packet %d %s%s\n", d.id, d.name, from)
 		} else {
 			fmt.Fprintf(&b, "type %s\n", d.name)
 		}
