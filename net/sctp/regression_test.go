@@ -26,6 +26,37 @@ func inject(a *Association, now time.Time, typ, flags byte, parts ...[]byte) err
 	return a.HandlePacket(p.finish(), now)
 }
 
+// initValue returns the value of an INIT or INIT ACK of a peer with the
+// tag and initial TSN given, a window of 1 MiB, a stream each way and the
+// parameters given, each made with appendParam.
+func initValue(tag, tsn uint32, params ...[]byte) []byte {
+	v := binary.BigEndian.AppendUint32(nil, tag)
+	v = binary.BigEndian.AppendUint32(v, 1<<20)
+	v = binary.BigEndian.AppendUint16(v, 1)
+	v = binary.BigEndian.AppendUint16(v, 1)
+	v = binary.BigEndian.AppendUint32(v, tsn)
+	return slices.Concat(append([][]byte{v}, params...)...)
+}
+
+// connectTo opens an association with a peer whose INIT ACK has the
+// parameters given besides its cookie. Its packets go nowhere.
+func connectTo(t *testing.T, now time.Time, params ...[]byte) *Association {
+	t.Helper()
+	a := New(Config{}, func([]byte) {})
+	a.Connect(now)
+	params = append(params, appendParam(nil, paramStateCookie, []byte("cookie")))
+	if err := inject(a, now, chunkInitAck, 0, initValue(0x1234, 100, params...)); err != nil {
+		t.Fatal(err)
+	}
+	if err := inject(a, now, chunkCookieAck, 0); err != nil {
+		t.Fatal(err)
+	}
+	if !a.Established() {
+		t.Fatal("not established")
+	}
+	return a
+}
+
 func hasChunk(b []byte, typ byte) bool {
 	for _, c := range packetChunks(b) {
 		if c.typ == typ {
@@ -534,5 +565,32 @@ func TestFragmentFloodTakesLinearTime(t *testing.T) {
 		if b.held != packets*chunks {
 			t.Fatalf("flags %#x: holding %d bytes, want %d", flags, b.held, packets*chunks)
 		}
+	}
+}
+
+// TestPartialReliabilityNeedsPeerSupport covers a peer whose INIT ACK does
+// not offer FORWARD TSN: it cannot be told to skip a message given up, so a
+// partially reliable message goes reliably, again after a loss, until it
+// is acknowledged.
+func TestPartialReliabilityNeedsPeerSupport(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	a := connectTo(t, now)
+	first := a.nextTSN
+	sent := recordData(a)
+	opts := SendOptions{Unordered: true, Partial: true, Lifetime: time.Millisecond}
+	if err := a.Send(1, PPIDBinary, []byte("lost"), opts, now); err != nil {
+		t.Fatal(err)
+	}
+	for a.Stats().Timeouts == 0 {
+		if err := a.HandleTimeout(a.Deadline()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !slices.Equal(*sent, []uint32{first, first}) {
+		t.Fatalf("sent %v, want %d again after the loss", *sent, first)
+	}
+	sack(t, a, now, first, 1<<20)
+	if a.Buffered() != 0 {
+		t.Fatalf("%d bytes buffered after the peer acknowledged the message", a.Buffered())
 	}
 }

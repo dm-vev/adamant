@@ -51,7 +51,8 @@ type SendOptions struct {
 	Unordered bool
 	// Partial makes the message partially reliable (RFC 3758): its chunks
 	// are sent at most MaxRetransmits times again, and not again once
-	// Lifetime has passed since Send if Lifetime is set.
+	// Lifetime has passed since Send if Lifetime is set. To a peer without
+	// FORWARD TSN the message goes reliably.
 	Partial        bool
 	MaxRetransmits int
 	Lifetime       time.Duration
@@ -684,6 +685,9 @@ func (a *Association) queueMessage(stream uint16, ppid uint32, data []byte, opts
 	if !owned {
 		data = bytes.Clone(data)
 	}
+	// A peer without FORWARD TSN could not be told to skip a message given
+	// up (RFC 3758 section 3.3.3).
+	opts.Partial = opts.Partial && a.forwardTSN
 	m := &outMessage{stream: stream, ppid: ppid, opts: opts, data: data}
 	if opts.Partial && opts.Lifetime > 0 {
 		m.expires = now.Add(opts.Lifetime)
