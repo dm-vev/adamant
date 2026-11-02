@@ -142,38 +142,59 @@ func getJSON(ctx context.Context, client *http.Client, url string, v any) error 
 	return json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(v)
 }
 
-// verify checks a multiplayer token: signed by a key of the service, of
-// its issuer, for multiplayer and not expired at now. It returns the
-// members of the payload.
+// VerifyIssued checks that the service issued a token: signed by a key of
+// the service, of its issuer and not expired at now. Unlike the token of a
+// Login, it may be for any audience: the identity tokens NetherNet clients
+// sign their offers with are documented as issued by the service, but no
+// audience of theirs was confirmed.
+func (k *Keys) VerifyIssued(ctx context.Context, token string, now time.Time) error {
+	_, _, err := k.issued(ctx, token, now)
+	return err
+}
+
+// verify checks a multiplayer token: issued by the service and for
+// multiplayer. It returns the members of the payload.
 func (k *Keys) verify(ctx context.Context, token string, now time.Time) (map[string]json.RawMessage, error) {
-	t, err := parseJWS(token, k.algs...)
+	m, c, err := k.issued(ctx, token, now)
 	if err != nil {
 		return nil, err
 	}
+	if !slices.Contains(c.audience, multiplayerAudience) {
+		return nil, fmt.Errorf("login: token for %q, not %q", c.audience, multiplayerAudience)
+	}
+	return m, nil
+}
+
+// issued checks a token of the service: signed by a key of the service, of
+// its issuer and not expired at now. It returns the members of the payload
+// and its claims.
+func (k *Keys) issued(ctx context.Context, token string, now time.Time) (map[string]json.RawMessage, claims, error) {
+	t, err := parseJWS(token, k.algs...)
+	if err != nil {
+		return nil, claims{}, err
+	}
 	if err := k.verifySignature(ctx, t); err != nil {
-		return nil, err
+		return nil, claims{}, err
 	}
 	m, err := object(t.payload)
 	if err != nil {
-		return nil, fmt.Errorf("login: token payload: %w", err)
+		return nil, claims{}, fmt.Errorf("login: token payload: %w", err)
 	}
 	c, err := readClaims(m)
 	if err != nil {
-		return nil, fmt.Errorf("login: token claims: %w", err)
+		return nil, claims{}, fmt.Errorf("login: token claims: %w", err)
 	}
 	switch {
 	case c.issuer != k.issuer:
-		return nil, fmt.Errorf("login: token issued by %q, not %q", c.issuer, k.issuer)
-	case !slices.Contains(c.audience, multiplayerAudience):
-		return nil, fmt.Errorf("login: token for %q, not %q", c.audience, multiplayerAudience)
+		return nil, claims{}, fmt.Errorf("login: token issued by %q, not %q", c.issuer, k.issuer)
 	case c.expiry == nil || c.expiry.time().Before(now):
 		// As go-oidc, the expiry of a token of the service has no leeway.
-		return nil, errors.New("login: token expired")
+		return nil, claims{}, errors.New("login: token expired")
 	}
 	if err := c.valid(now); err != nil {
-		return nil, err
+		return nil, claims{}, err
 	}
-	return m, nil
+	return m, c, nil
 }
 
 // verifySignature checks the signature of a token with the keys held, and

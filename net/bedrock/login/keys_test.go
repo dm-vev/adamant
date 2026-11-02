@@ -2,6 +2,10 @@ package login
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -57,5 +61,48 @@ func TestNewKeysFetchFailure(t *testing.T) {
 				t.Fatalf("lost cancellation: %v", err)
 			}
 		})
+	}
+}
+
+// TestVerifyIssued vouches for a token the authorization service signed
+// for any audience, as the identity token of a NetherNet offer, whose
+// audience is not confirmed, and not for one of another issuer, signed by
+// another key or by the client, or out of its time; a Login still asks for
+// the multiplayer audience.
+func TestVerifyIssued(t *testing.T) {
+	s := newAuthService(t)
+	keys, err := NewKeys(context.Background(), nil, s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	with := func(change func(map[string]any)) string {
+		c := s.claims(now, "client-key")
+		change(c)
+		return signRS256(t, s.key, s.kid, c)
+	}
+	other, _ := rsa.GenerateKey(rand.Reader, 2048)
+	client, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	selfSigned, _ := sign(client, "client-key", s.claims(now, "client-key"))
+	for name, tc := range map[string]struct {
+		token  string
+		issued bool
+	}{
+		"multiplayer":           {with(func(map[string]any) {}), true},
+		"other audience":        {with(func(c map[string]any) { c["aud"] = "api://other" }), true},
+		"no audience":           {with(func(c map[string]any) { delete(c, "aud") }), true},
+		"other issuer":          {with(func(c map[string]any) { c["iss"] = "https://evil.example/" }), false},
+		"expired":               {with(func(c map[string]any) { c["exp"] = now.Add(-time.Second).Unix() }), false},
+		"no expiry":             {with(func(c map[string]any) { delete(c, "exp") }), false},
+		"not valid yet":         {with(func(c map[string]any) { c["nbf"] = now.Add(2 * time.Minute).Unix() }), false},
+		"signed by another key": {signRS256(t, other, s.kid, s.claims(now, "client-key")), false},
+		"signed by the client":  {selfSigned, false},
+	} {
+		if err := keys.VerifyIssued(context.Background(), tc.token, now); (err == nil) != tc.issued {
+			t.Errorf("%s: VerifyIssued returned %v", name, err)
+		}
+	}
+	if _, err := keys.verify(context.Background(), with(func(c map[string]any) { c["aud"] = "api://other" }), now); err == nil {
+		t.Error("a Login took a token for another audience")
 	}
 }

@@ -78,6 +78,12 @@ type ListenConfig struct {
 	// key it names. Nil reads the cpk claim of the token without checking
 	// who issued it: the Login of the client must carry the same key.
 	VerifyToken func(token string) (*ecdsa.PublicKey, error)
+	// Vouch reports, returning nil, that the authorization service of the
+	// game signed the identity token of an offer, whose key proved the
+	// token its own. An offer is never refused for it, so that a token of
+	// a form it does not know costs no client its join. Nil vouches for
+	// none.
+	Vouch func(token string) error
 	// MaxPending bounds the connections that did not open yet. Zero means
 	// 256.
 	MaxPending int
@@ -374,7 +380,7 @@ func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, sources 
 		return "", codeFailedToSetRemoteDescription, err
 	}
 	offers.Inc()
-	pub, err := l.verifyIdentity(offer, now)
+	pub, vouched, err := l.verifyIdentity(offer, now)
 	if err != nil {
 		offersRefused.Inc()
 		return "", codeIdentityNotAllowed, err
@@ -386,7 +392,7 @@ func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, sources 
 			extra = extraCandidates(candidates, reflexive, relayedAddr)
 		}
 	}
-	c, answer, err := l.open(offer, pub, candidates, extra, sources, now)
+	c, answer, err := l.open(offer, pub, vouched, candidates, extra, sources, now)
 	if err != nil {
 		offersRefused.Inc()
 		return "", codeFailedToCreateAnswer, err
@@ -508,18 +514,19 @@ func signalError(w http.ResponseWriter, code int) {
 	_, _ = io.WriteString(w, strconv.Itoa(code))
 }
 
-// verifyIdentity returns the key the identity of an offer proves: its
-// token names the key, which signed the fingerprints of the offer.
-func (l *Listener) verifyIdentity(d *description, now time.Time) (*ecdsa.PublicKey, error) {
+// verifyIdentity returns the key the identity of an offer proves, and
+// whether Vouch vouched for its token: the token names the key, which
+// signed the fingerprints of the offer.
+func (l *Listener) verifyIdentity(d *description, now time.Time) (*ecdsa.PublicKey, bool, error) {
 	if d.identity == "" {
 		if l.cfg.AllowAnonymous {
-			return nil, nil
+			return nil, false, nil
 		}
-		return nil, errAnonymous
+		return nil, false, errAnonymous
 	}
 	token, jws, err := decodeIdentity(d.identity)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	var pub *ecdsa.PublicKey
 	if l.cfg.VerifyToken != nil {
@@ -528,12 +535,12 @@ func (l *Listener) verifyIdentity(d *description, now time.Time) (*ecdsa.PublicK
 		pub, err = tokenKey(token, now)
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := verifyFingerprints(pub, jws, d.fingerprints); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return pub, nil
+	return pub, l.cfg.Vouch != nil && l.cfg.Vouch(token) == nil, nil
 }
 
 // identity returns the identity attribute of the answers: a token issued
@@ -555,10 +562,11 @@ func (l *Listener) identity(now time.Time) (string, error) {
 	return l.ident, nil
 }
 
-// open makes the connection an offer from sources asks for and returns it
-// with the answer. The server takes the DTLS client role unless the offer
-// takes it, as BDS does.
-func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []netip.AddrPort, extra []candidate, sources []source, now time.Time) (*Conn, string, error) {
+// open makes the connection an offer from sources asks for, of the key
+// its identity proves and vouched for or not, and returns it with the
+// answer. The server takes the DTLS client role unless the offer takes it,
+// as BDS does.
+func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, vouched bool, candidates []netip.AddrPort, extra []candidate, sources []source, now time.Time) (*Conn, string, error) {
 	identity, err := l.identity(now)
 	if err != nil {
 		return nil, "", err
@@ -592,7 +600,7 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 		direct:      direct,
 		localAddr:   l.addr,
 	}, now)
-	c.publicKey = pub
+	c.publicKey, c.vouched = pub, vouched
 	c.onReady = l.ready
 	c.onClose = l.remove
 	if err := l.admit(c, local.ufrag, sources, now); err != nil {

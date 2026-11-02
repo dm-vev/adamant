@@ -256,6 +256,56 @@ func TestForgedIdentity(t *testing.T) {
 	}
 }
 
+// TestVouch asks Vouch about the token of each offer whose identity
+// verified, and answers the offer whatever it says: one it does not vouch
+// for opens all the same, not vouched for. An offer whose identity does
+// not verify is refused before Vouch is asked.
+func TestVouch(t *testing.T) {
+	var mu sync.Mutex
+	var asked []string
+	signed := ""
+	l := listen(t, ListenConfig{Vouch: func(token string) error {
+		mu.Lock()
+		defer mu.Unlock()
+		asked = append(asked, token)
+		if token != signed {
+			return errors.New("not signed by the service")
+		}
+		return nil
+	}})
+	var tokens []string
+	for _, vouched := range []bool{false, true} {
+		d := newDialer(t)
+		token, err := clientToken(d.Key, "", time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		d.Token = token
+		tokens = append(tokens, token)
+		if vouched {
+			mu.Lock()
+			signed = token
+			mu.Unlock()
+		}
+		dial(t, d, l)
+		if srv := accept(t, l); srv.vouched != vouched {
+			t.Fatalf("connection vouched for: %v, want %v", srv.vouched, vouched)
+		}
+	}
+	forged := newDialer(t)
+	forged.Token = tokens[0]
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := forged.DialContext(ctx, l.Addr().String()); err == nil {
+		t.Fatal("took a token of another key")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !slices.Equal(asked, tokens) {
+		t.Fatalf("Vouch asked about %d tokens, want the %d of the offers whose identity verified", len(asked), len(tokens))
+	}
+}
+
 // TestPendingBound sends offers that never connect: past MaxPending the
 // listener refuses them, and takes them again once they expired.
 func TestPendingBound(t *testing.T) {

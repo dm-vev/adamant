@@ -45,6 +45,9 @@ const (
 	// keysTimeout bounds the fetch of the keys of the authorization
 	// service a login may make.
 	keysTimeout = 10 * time.Second
+	// vouchTimeout bounds the fetch of the keys a vouch for an offer may
+	// make: offers over a signaling service are answered one at a time.
+	vouchTimeout = 2 * time.Second
 )
 
 // Config configures a Listener.
@@ -182,6 +185,9 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 		if l.keys, err = xboxKeys(); err != nil {
 			return nil, fmt.Errorf("netconn: keys of Xbox Live logins: %w", err)
 		}
+		if nn.Vouch == nil {
+			nn.Vouch = l.vouch
+		}
 	}
 	var err error
 	if l.nn, err = nn.Listen(address); err != nil {
@@ -200,6 +206,14 @@ func xboxKeys() (*bedrocklogin.Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return bedrocklogin.Discover(ctx, nil, v2193.Version)
+}
+
+// vouch reports whether the authorization service of the game signed the
+// identity token of an offer, as it signs those of clients of Xbox Live.
+func (l *Listener) vouch(token string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), vouchTimeout)
+	defer cancel()
+	return l.keys.VerifyIssued(ctx, token, time.Now())
 }
 
 // Accept returns the next client that logged in.

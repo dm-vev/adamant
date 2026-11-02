@@ -131,6 +131,9 @@ type Conn struct {
 	localAddr  net.Addr
 	peerFP     []Fingerprint
 	publicKey  *ecdsa.PublicKey
+	// vouched is set once Vouch of the listener vouched for the identity
+	// token of the offer.
+	vouched    bool
 	maxSegment int
 	// at is the time of the event being handled.
 	at time.Time
