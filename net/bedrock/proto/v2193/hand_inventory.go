@@ -81,7 +81,7 @@ func (p *InventoryTransactionPacket) Decode(r *wire.Reader) {
 	p.LegacyRequestID = r.Varint32()
 	p.LegacySetItemSlots = nil
 	if r.Bool() {
-		p.LegacySetItemSlots = make([]LegacySetItemSlot, r.Count(r.Len()))
+		p.LegacySetItemSlots = wire.Slice[LegacySetItemSlot](r, r.Count(r.Len()))
 		for i := range p.LegacySetItemSlots {
 			p.LegacySetItemSlots[i].Decode(r)
 		}
@@ -92,7 +92,7 @@ func (p *InventoryTransactionPacket) Decode(r *wire.Reader) {
 		r.Failf("v2193: inventory transaction type %d", t)
 		return
 	}
-	p.Actions = make([]InventoryAction, r.Count(r.Len()))
+	p.Actions = wire.Slice[InventoryAction](r, r.Count(r.Len()))
 	for i := range p.Actions {
 		p.Actions[i].Decode(r)
 	}
@@ -250,7 +250,7 @@ func (x *Skin) Decode(r *wire.Reader) {
 	x.SkinImageWidth = r.Uint32()
 	x.SkinImageHeight = r.Uint32()
 	x.SkinData = r.ByteSlice()
-	x.Animations = make([]SkinAnimation, r.Count(r.Len()))
+	x.Animations = wire.Slice[SkinAnimation](r, r.Count(r.Len()))
 	for i := range x.Animations {
 		x.Animations[i].Decode(r)
 	}
@@ -264,11 +264,11 @@ func (x *Skin) Decode(r *wire.Reader) {
 	x.FullID = r.String()
 	x.ArmSize = r.Uint8()
 	proto.ReadARGBBE(r, &x.SkinColour)
-	x.PersonaPieces = make([]PersonaPiece, r.Count(r.Len()))
+	x.PersonaPieces = wire.Slice[PersonaPiece](r, r.Count(r.Len()))
 	for i := range x.PersonaPieces {
 		x.PersonaPieces[i].Decode(r)
 	}
-	x.PieceTintColours = make([]PersonaPieceTintColour, r.Count(r.Len()))
+	x.PieceTintColours = wire.Slice[PersonaPieceTintColour](r, r.Count(r.Len()))
 	for i := range x.PieceTintColours {
 		x.PieceTintColours[i].Decode(r)
 	}
@@ -409,7 +409,7 @@ func writeMaterialReducer(w *wire.Writer, x *MaterialReducer) {
 func readMaterialReducer(r *wire.Reader, x *MaterialReducer) {
 	mix := r.Varint32()
 	x.InputItem = ItemType{NetworkID: mix >> 16, MetadataValue: uint32(mix & 0x7fff)}
-	x.Outputs = make([]MaterialReducerOutput, r.Count(r.Len()))
+	x.Outputs = wire.Slice[MaterialReducerOutput](r, r.Count(r.Len()))
 	for i := range x.Outputs {
 		x.Outputs[i].Decode(r)
 	}

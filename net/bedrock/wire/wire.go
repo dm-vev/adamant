@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"unsafe"
 )
 
 // Writer appends encoded fields to B.
@@ -327,6 +328,18 @@ func (r *Reader) Count(max int) int {
 		return 0
 	}
 	return int(n)
+}
+
+// Slice returns a slice for a list of n elements whose length was read
+// before, checked as List checks it, with the memory it takes charged to
+// MaxAlloc: lists in lists, each within MaxList, may hold many times their
+// bytes. It returns nil, failing r, for a list that does not fit.
+func Slice[T any](r *Reader, n int) []T {
+	var v T
+	if !r.List(n) || !r.Alloc(n*int(unsafe.Sizeof(v))) {
+		return nil
+	}
+	return make([]T, n)
 }
 
 // List checks the length of a list read before against MaxList and the

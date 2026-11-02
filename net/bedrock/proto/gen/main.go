@@ -928,10 +928,7 @@ func (g *gen) value(w, v string, enc bool) error {
 			if err != nil {
 				return err
 			}
-			g.p("if !r.List(%s) {", n)
-			g.p("return")
-			g.p("}")
-			g.p("%s = make([]%s, %s)", v, et, n)
+			g.p("%s = wire.Slice[%s](r, %s)", v, et, n)
 			g.p("for %s := range %s {", i, v)
 		}
 		if err := g.value(elem, v+"["+i+"]", enc); err != nil {

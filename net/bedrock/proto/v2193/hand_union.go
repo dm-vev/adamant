@@ -320,7 +320,7 @@ func readPackSetting(r *wire.Reader, x *PackSetting) {
 	case 2:
 		x.Value = r.String()
 	case 3:
-		v := make([]string, r.Count(r.Len()))
+		v := wire.Slice[string](r, r.Count(r.Len()))
 		for i := range v {
 			v[i] = r.String()
 		}

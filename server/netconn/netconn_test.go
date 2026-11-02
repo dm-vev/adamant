@@ -756,3 +756,67 @@ func TestLoginPacketsDecode(t *testing.T) {
 		}
 	}
 }
+
+// itemStackRequest returns an ItemStackRequest of n requests, each of an
+// action of 1024 empty craft results and of 1024 empty filter strings:
+// 7 bytes to send an item and a string, 112 to hold them.
+func itemStackRequest(n int) []byte {
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDItemStackRequest})}
+	w.Varuint32(uint32(n))
+	for range n {
+		w.Varint32(0)                 // request ID
+		w.Varuint32(1)                // one action
+		w.Bytes([]byte{17, 19})       // of craft results, deprecated
+		w.Varuint32(1024)             // results
+		w.Bytes(make([]byte, 6*1024)) // each empty
+		w.Uint8(0)                    // times crafted
+		w.Varuint32(1024)             // filter strings
+		w.Bytes(make([]byte, 1024))   // each empty
+		w.Int32(0)                    // filter cause
+	}
+	return w.B
+}
+
+// craftActions returns an ItemStackRequest of n requests of 1024 actions of
+// no craft results: 4 bytes to send an action, a slot of 16 bytes and a
+// struct of 32 to hold it.
+func craftActions(n int) []byte {
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDItemStackRequest})}
+	w.Varuint32(uint32(n))
+	for range n {
+		w.Varint32(0)
+		w.Varuint32(1024)
+		for range 1024 {
+			w.Bytes([]byte{17, 19, 0, 0})
+		}
+		w.Varuint32(0)
+		w.Int32(0)
+	}
+	return w.B
+}
+
+// TestListMemoryBound decodes ItemStackRequests of lists in lists, each
+// within maxList, that hold 12 to 16 times their bytes, as 7 MiB of them
+// held 114 MiB: past the memory a packet may take they are refused,
+// within it they decode.
+func TestListMemoryBound(t *testing.T) {
+	for _, raw := range [][]byte{itemStackRequest(80), craftActions(128)} {
+		_, n, err := held(raw)
+		if !errors.Is(err, wire.ErrAlloc) {
+			t.Errorf("decoded %d bytes into %d held: %v", len(raw), n, err)
+		}
+		if n > 1<<20 {
+			t.Errorf("a refused packet of %d bytes holds %d", len(raw), n)
+		}
+	}
+	if _, err := DecodePacket(craftActions(16)); err != nil {
+		t.Fatal(err)
+	}
+	pk, err := DecodePacket(itemStackRequest(8))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req := pk.(*v2193.ItemStackRequestPacket).Requests; len(req) != 8 || len(req[7].FilterStrings) != 1024 {
+		t.Fatalf("decoded %d requests", len(req))
+	}
+}

@@ -1,6 +1,7 @@
 package v2193
 
 import (
+	"reflect"
 	"slices"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -276,7 +277,11 @@ func readStackRequestAction(r *wire.Reader, x *StackRequestAction) {
 	if variant >= actionTakeOutContainer-1 {
 		id += 2
 	}
+	// An action takes a byte or two to send and a struct to hold.
 	a := newStackRequestAction(id)
+	if !r.Alloc(int(reflect.TypeOf(a).Elem().Size())) {
+		return
+	}
 	a.Decode(r)
 	*x = a
 }
@@ -361,7 +366,7 @@ func (p *TextPacket) Decode(r *wire.Reader) {
 	case TextTypeTranslation, TextTypePopup, TextTypeJukeboxPopup:
 		p.Message = r.String()
 		n := r.Count(r.Len())
-		p.Parameters = make([]string, n)
+		p.Parameters = wire.Slice[string](r, n)
 		for i := range p.Parameters {
 			p.Parameters[i] = r.String()
 		}
@@ -413,7 +418,7 @@ func (p *ResourcePackClientResponsePacket) Decode(r *wire.Reader) {
 	_ = r.String()
 	if p.Response == packResponseSendPacks {
 		n := r.Count(r.Len())
-		p.PacksToDownload = make([]string, n)
+		p.PacksToDownload = wire.Slice[string](r, n)
 		for i := range p.PacksToDownload {
 			p.PacksToDownload[i] = r.String()
 		}

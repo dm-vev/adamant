@@ -136,6 +136,30 @@ func TestAlloc(t *testing.T) {
 	}
 }
 
+// TestSlice makes the slice of a list within the bounds of a Reader, with
+// its memory charged, and none for a list past them.
+func TestSlice(t *testing.T) {
+	r := NewReader(make([]byte, 8))
+	r.MaxAlloc = 24
+	if s := Slice[int64](r, 3); len(s) != 3 || r.Err() != nil {
+		t.Fatalf("slice of 3 longs in a bound of 24 bytes: %d, %v", len(s), r.Err())
+	}
+	if s := Slice[int64](r, 1); s != nil || !errors.Is(r.Err(), ErrAlloc) {
+		t.Fatalf("slice of a long past the bound: %d, %v", len(s), r.Err())
+	}
+	r = NewReader(make([]byte, 2))
+	r.MaxList = 2
+	if s := Slice[byte](r, 2); len(s) != 2 {
+		t.Fatalf("slice of 2: %d, %v", len(s), r.Err())
+	}
+	if s := Slice[byte](r, 3); s != nil || !errors.Is(r.Err(), ErrShort) {
+		t.Fatalf("slice past the bytes left: %d, %v", len(s), r.Err())
+	}
+	if s := Slice[byte](NewReader(nil), 0); s == nil {
+		t.Fatal("no slice of an empty list")
+	}
+}
+
 func FuzzReader(f *testing.F) {
 	f.Add([]byte{5, 'h', 'e', 'l', 'l', 'o', 0xac, 0x02})
 	f.Fuzz(func(t *testing.T, b []byte) {
