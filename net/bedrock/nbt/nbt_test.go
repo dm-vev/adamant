@@ -3,6 +3,8 @@ package nbt
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"math/rand/v2"
 	"reflect"
 	"runtime"
 	"strings"
@@ -196,6 +198,69 @@ func TestArrayBound(t *testing.T) {
 	w.Uint8(tagEnd)
 	if _, err := Read(wire.NewReader(w.B)); !errors.Is(err, wire.ErrTooLong) {
 		t.Fatalf("read an array of %d: %v", maxArray+1, err)
+	}
+}
+
+// arrays returns network NBT of a compound of arrays of a tag, of zeros, of
+// the lengths from start to end, keyed by length in order.
+func arrays(t byte, start, end int) []byte {
+	var w wire.Writer
+	w.Uint8(tagCompound)
+	_ = Network.writeString(&w, "")
+	for n := start; n < end; n++ {
+		w.Uint8(t)
+		_ = Network.writeString(&w, fmt.Sprintf("%05d", n))
+		Network.writeInt(&w, int32(n))
+		w.Bytes(make([]byte, n))
+	}
+	w.Uint8(tagEnd)
+	return w.B
+}
+
+// TestArrayTypes reads arrays of many lengths. Each length of a Go array
+// makes a type kept for good, 104 MiB of them for every length a peer may
+// send, so past 256 elements an array reads into a slice of a type of its
+// tag; shorter ones read into Go arrays, as callers take them. All write
+// back as arrays.
+func TestArrayTypes(t *testing.T) {
+	for _, tag := range []byte{tagByteArray, tagIntArray, tagLongArray} {
+		// Lengths no run of the process has read yet, whose types a
+		// reflect.ArrayOf would make anew.
+		start := 300 + rand.IntN(4096)
+		data := arrays(tag, start, start+512)
+		goArrays := 0
+		_, n := held(func() any {
+			m, err := Read(wire.NewReader(data))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, v := range m {
+				if reflect.TypeOf(v).Kind() == reflect.Array {
+					goArrays++
+				}
+			}
+			return nil
+		})
+		if goArrays > 0 || n > 64<<10 {
+			t.Errorf("tag %d: read 512 lengths into %d Go arrays, keeping %d bytes", tag, goArrays, n)
+		}
+		m, err := Read(wire.NewReader(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var w wire.Writer
+		if err := Write(&w, m); err != nil || !bytes.Equal(w.B, data) {
+			t.Fatalf("tag %d: arrays write back otherwise: %v", tag, err)
+		}
+	}
+	// Fireworks read their colours as arrays of one byte or none.
+	short := map[string]any{"none": [0]byte{}, "one": [1]byte{3}, "ints": [4]int32{1, 2, 3, 4}, "longs": [256]int64{}}
+	var w wire.Writer
+	if err := Write(&w, short); err != nil {
+		t.Fatal(err)
+	}
+	if m, err := Read(wire.NewReader(w.B)); err != nil || !reflect.DeepEqual(m, short) {
+		t.Fatalf("read short arrays back as %#v, %v", m, err)
 	}
 }
 

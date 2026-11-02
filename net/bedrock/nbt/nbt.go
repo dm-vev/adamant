@@ -7,11 +7,13 @@
 // Values are plain Go values, as gophertunnel's nbt package takes and gives
 // them, so that the values a server builds for it go as they are: a map
 // with string keys is a compound, any slice a list, a Go array of bytes,
-// ints or longs an array tag, and uint8 (or bool or int8), int16, int32,
-// int64, float32, float64 and string the other tags, named types by their
-// kind. Read gives map[string]any, uint8, [N]byte, [N]int32 and [N]int64
-// arrays, []byte, []int32 and []int64 for lists of bytes, ints and longs,
-// and []any for other lists. Compounds are written with their keys in
+// ints or longs an array tag, as are ByteArray, IntArray and LongArray,
+// and uint8 (or bool or int8), int16, int32, int64, float32, float64 and
+// string the other tags, named types by their kind. Read gives
+// map[string]any, uint8, [N]byte, [N]int32 and [N]int64 arrays of up to
+// 256 elements and ByteArray, IntArray and LongArray of more, []byte,
+// []int32 and []int64 for lists of bytes, ints and longs, and []any for
+// other lists. Compounds are written with their keys in
 // order, so that equal values encode to equal bytes. The Reader read from
 // bounds what a peer may make a read take: its MaxList the lists but of
 // bytes, its MaxAlloc the memory the values hold.
@@ -48,9 +50,22 @@ const (
 	maxDepth = 64
 	// maxString bounds a string read, as the game bounds it.
 	maxString = 32767
-	// maxArray bounds an array read. Each length makes a Go array type that
-	// is kept for good, so a peer must not choose from unbounded lengths.
+	// maxArray bounds an array read: the longest of the game, the colours
+	// of a map, has 65536 bytes.
 	maxArray = 1 << 16
+	// maxArrayType bounds the arrays read into Go arrays. Each length makes
+	// a type kept for good, so a peer must not choose from many lengths:
+	// those of all lengths up to maxArray took 104 MiB. A longer array
+	// reads into a ByteArray, IntArray or LongArray.
+	maxArrayType = 256
+)
+
+// ByteArray, IntArray and LongArray hold the arrays read of more elements
+// than a Go array is made for, and write as arrays.
+type (
+	ByteArray []byte
+	IntArray  []int32
+	LongArray []int64
 )
 
 // The bytes of memory values read take, charged to the MaxAlloc of the
@@ -217,8 +232,23 @@ func tagOf(v any) (byte, bool) {
 	return tagOfType(reflect.TypeOf(v))
 }
 
-// tagOfType returns the tag of a type by its kind, as gophertunnel does.
+var (
+	byteArrayType = reflect.TypeFor[ByteArray]()
+	intArrayType  = reflect.TypeFor[IntArray]()
+	longArrayType = reflect.TypeFor[LongArray]()
+)
+
+// tagOfType returns the tag of a type by its kind, as gophertunnel does,
+// but for the slices of arrays.
 func tagOfType(t reflect.Type) (byte, bool) {
+	switch t {
+	case byteArrayType:
+		return tagByteArray, true
+	case intArrayType:
+		return tagIntArray, true
+	case longArrayType:
+		return tagLongArray, true
+	}
 	switch t.Kind() {
 	case reflect.Uint8, reflect.Bool, reflect.Int8:
 		return tagByte, true
@@ -478,25 +508,6 @@ func (e Encoding) readCompound(r *wire.Reader, depth int) map[string]any {
 	return m
 }
 
-var (
-	byteType  = reflect.TypeFor[byte]()
-	int32Type = reflect.TypeFor[int32]()
-	int64Type = reflect.TypeFor[int64]()
-)
-
-// newArray returns a settable Go array of n elements, or an invalid value,
-// failing r, for an array past maxArray or the memory r may take.
-func newArray(r *wire.Reader, n int, elem reflect.Type) reflect.Value {
-	if n > maxArray {
-		r.Fail(wire.ErrTooLong)
-		return reflect.Value{}
-	}
-	if !r.Alloc(n * int(elem.Size())) {
-		return reflect.Value{}
-	}
-	return reflect.New(reflect.ArrayOf(n, elem)).Elem()
-}
-
 // count reads the length of an array or list, which takes at least min
 // bytes an element.
 func (e Encoding) count(r *wire.Reader, min int) int {
@@ -608,33 +619,49 @@ func (e Encoding) readList(r *wire.Reader, depth int) any {
 	return l
 }
 
-// readArray reads the payload of an array tag.
+// readArray reads the payload of an array tag: into a Go array if it is
+// short, as callers take it, or else into a slice of a type of the tag.
 func (e Encoding) readArray(r *wire.Reader, t byte) any {
 	n := e.count(r, 1)
-	switch t {
-	case tagByteArray:
-		a := newArray(r, n, byteType)
-		if !a.IsValid() {
-			return nil
-		}
-		reflect.Copy(a, reflect.ValueOf(r.Next(n)))
-		return a.Interface()
-	case tagIntArray:
-		a := newArray(r, n, int32Type)
-		if !a.IsValid() {
-			return nil
-		}
-		for i := range n {
-			a.Index(i).SetInt(int64(e.readInt(r)))
-		}
-		return a.Interface()
-	}
-	a := newArray(r, n, int64Type)
-	if !a.IsValid() {
+	if n > maxArray {
+		r.Fail(wire.ErrTooLong)
 		return nil
 	}
-	for i := range n {
-		a.Index(i).SetInt(e.readLong(r))
+	s := e.readElements(r, t, n)
+	if s == nil || n > maxArrayType {
+		return s
 	}
+	v := reflect.ValueOf(s)
+	a := reflect.New(reflect.ArrayOf(n, v.Type().Elem())).Elem()
+	reflect.Copy(a, v)
 	return a.Interface()
+}
+
+// readElements reads the n elements of an array tag into a ByteArray,
+// IntArray or LongArray, or nil past the memory r may take.
+func (e Encoding) readElements(r *wire.Reader, t byte, n int) any {
+	switch t {
+	case tagByteArray:
+		if !r.Alloc(n) {
+			return nil
+		}
+		return ByteArray(append([]byte{}, r.Next(n)...))
+	case tagIntArray:
+		if !r.Alloc(4 * n) {
+			return nil
+		}
+		s := make(IntArray, n)
+		for i := range s {
+			s[i] = e.readInt(r)
+		}
+		return s
+	}
+	if !r.Alloc(8 * n) {
+		return nil
+	}
+	s := make(LongArray, n)
+	for i := range s {
+		s[i] = e.readLong(r)
+	}
+	return s
 }
