@@ -37,12 +37,20 @@ const (
 	innerWebRTC       = "Signaling_WebRtc_v1_0"
 	innerDelivery     = "Signaling_DeliveryNotification_V1_0"
 	userAgent         = "libHttpClient/1.0.0.0"
-	pingFirst         = 30 * time.Second
-	pingInterval      = 50 * time.Second
 	readLimit         = 256 << 10
 	maxBatch          = 64
 	signalQueue       = 256
 	credentialTimeout = 10 * time.Second
+)
+
+// Timing of a connection, variables for tests. A connection that receives
+// nothing for two ping intervals has lost its service.
+var (
+	pingFirst    = 30 * time.Second
+	pingInterval = 50 * time.Second
+	// writeTimeout bounds how long a frame written may wait for the service
+	// to take it.
+	writeTimeout = 10 * time.Second
 )
 
 // ICEServer is a STUN or TURN server the service hands out, with the
@@ -160,6 +168,10 @@ func Dial(ctx context.Context, cfg Config) (*Conn, error) {
 		return nil, err
 	}
 	ws.SetReadLimit(readLimit)
+	// The service answers each ping: a black-holed path is told within two
+	// intervals rather than by TCP giving up a quarter of an hour later.
+	ws.SetReadTimeout(2 * pingInterval)
+	ws.SetWriteTimeout(writeTimeout)
 	c := &Conn{
 		ws:        ws,
 		networkID: strconv.FormatUint(cfg.NetworkID, 10),
@@ -169,7 +181,7 @@ func Dial(ctx context.Context, cfg Config) (*Conn, error) {
 		gotCreds:  make(chan struct{}),
 	}
 	go c.read()
-	go c.keepAlive()
+	go c.keepAlive(pingFirst, pingInterval)
 	if err := c.fetchCredentials(ctx); err != nil {
 		_ = c.Close()
 		return nil, err
@@ -340,9 +352,10 @@ func (c *Conn) write(v any) error {
 	return nil
 }
 
-// keepAlive pings the service, which drops a host that goes quiet.
-func (c *Conn) keepAlive() {
-	t := time.NewTimer(pingFirst)
+// keepAlive pings the service, which drops a host that goes quiet and
+// answers each ping.
+func (c *Conn) keepAlive(first, interval time.Duration) {
+	t := time.NewTimer(first)
 	defer t.Stop()
 	for {
 		select {
@@ -352,7 +365,7 @@ func (c *Conn) keepAlive() {
 			if err := c.notify(methodPing, json.RawMessage(`{}`)); err != nil {
 				return
 			}
-			t.Reset(pingInterval)
+			t.Reset(interval)
 		}
 	}
 }

@@ -28,7 +28,7 @@ const (
 )
 
 // legacyPing paces the pings of the legacy protocol, as the game sends them.
-const legacyPing = 5 * time.Second
+var legacyPing = 5 * time.Second
 
 // LegacyConn is a connection to the signaling service over the protocol the
 // game spoke before JSON-RPC, peers named by their NetherNet network IDs:
@@ -79,6 +79,10 @@ func DialLegacy(ctx context.Context, cfg Config) (*LegacyConn, error) {
 		return nil, err
 	}
 	ws.SetReadLimit(readLimit)
+	// The service answers no message of the host, but the WebSocket pings
+	// keepAlive sends: a black-holed path is told within two intervals.
+	ws.SetReadTimeout(2 * legacyPing)
+	ws.SetWriteTimeout(writeTimeout)
 	c := &LegacyConn{
 		ws:       ws,
 		signals:  make(chan nethernet.Signal, signalQueue),
@@ -86,7 +90,7 @@ func DialLegacy(ctx context.Context, cfg Config) (*LegacyConn, error) {
 		gotCreds: make(chan struct{}),
 	}
 	go c.read()
-	go c.keepAlive()
+	go c.keepAlive(legacyPing)
 	ctx, cancel := context.WithTimeout(ctx, credentialTimeout)
 	defer cancel()
 	select {
@@ -164,8 +168,10 @@ func (c *LegacyConn) Err() error {
 	}
 }
 
-func (c *LegacyConn) keepAlive() {
-	t := time.NewTicker(legacyPing)
+// keepAlive pings the service as the game does, and with WebSocket pings,
+// whose pongs tell the service is still there.
+func (c *LegacyConn) keepAlive(interval time.Duration) {
+	t := time.NewTicker(interval)
 	defer t.Stop()
 	for {
 		select {
@@ -173,6 +179,9 @@ func (c *LegacyConn) keepAlive() {
 			return
 		case <-t.C:
 			if err := c.write(legacyMessage{Type: legacyNotFound}); err != nil {
+				return
+			}
+			if err := c.ws.Ping(nil); err != nil {
 				return
 			}
 		}

@@ -271,3 +271,147 @@ func TestLegacy(t *testing.T) {
 		t.Fatalf("sent %+v", m)
 	}
 }
+
+// set sets a variable for the length of a test.
+func set[T any](t *testing.T, p *T, v T) {
+	old := *p
+	*p = v
+	t.Cleanup(func() { *p = old })
+}
+
+// blackHole is a signaling service that hands out TURN credentials and
+// then goes silent: it neither reads what the host sends nor answers its
+// pings, as a path that drops every packet looks to the host.
+func blackHole(t *testing.T) string {
+	t.Helper()
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ws, err := websocket.Upgrade(w, r)
+		if err != nil {
+			return
+		}
+		defer ws.Close()
+		for {
+			_, data, err := ws.ReadMessage()
+			if err != nil {
+				return
+			}
+			var req request
+			if json.Unmarshal(data, &req) == nil && req.Method == methodTurnAuth {
+				_ = ws.WriteMessage(true, []byte(`{"jsonrpc":"2.0","id":`+string(req.ID)+`,"result":{"TurnAuthServers":[]}}`))
+				break
+			}
+		}
+		<-release
+	}))
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release) })
+	return "ws" + strings.TrimPrefix(srv.URL, "http")
+}
+
+// TestSilentService keeps a connection to a service that answers its pings
+// and one to a service gone silent: the first stays up past the time a
+// silent service is given, the second ends.
+func TestSilentService(t *testing.T) {
+	set(t, &pingFirst, 20*time.Millisecond)
+	set(t, &pingInterval, 200*time.Millisecond)
+	_, url := newService(t)
+	live := dialService(t, url, "host", 1)
+	silent := dialService(t, blackHole(t), "host", 2)
+	select {
+	case <-silent.Done():
+		if silent.Err() == nil {
+			t.Fatal("ended without a reason")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the connection to a silent service is still up after 5s")
+	}
+	time.Sleep(1500 * time.Millisecond)
+	if err := live.Err(); err != nil {
+		t.Fatalf("the connection to a service answering pings ended: %v", err)
+	}
+}
+
+// TestStuckWrite writes signals to a service that stopped reading them:
+// once the connection takes no more, a write fails and ends it rather than
+// blocking.
+func TestStuckWrite(t *testing.T) {
+	set(t, &writeTimeout, 200*time.Millisecond)
+	c := dialService(t, blackHole(t), "host", 1)
+	failed := make(chan error, 1)
+	go func() {
+		s := nethernet.Signal{Type: nethernet.SignalCandidate, ConnectionID: 1, Data: strings.Repeat("a", 256<<10), NetworkID: "peer"}
+		for {
+			if err := c.WriteSignal(s); err != nil {
+				failed <- err
+				return
+			}
+		}
+	}()
+	select {
+	case <-failed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("writes to a service not reading still block after 5s")
+	}
+	if c.Err() == nil {
+		t.Fatal("a failed write left the connection up")
+	}
+}
+
+// legacyService is a service of the legacy protocol that hands out TURN
+// credentials and sends nothing more. While live it reads what the host
+// sends, which answers WebSocket pings; otherwise it goes silent.
+func legacyService(t *testing.T, live bool) string {
+	t.Helper()
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ws, err := websocket.Upgrade(w, r)
+		if err != nil {
+			return
+		}
+		defer ws.Close()
+		_ = ws.WriteMessage(true, []byte(`{"Type":2,"From":"Server","Message":"{\"TurnAuthServers\":[]}"}`))
+		for live {
+			if _, _, err := ws.ReadMessage(); err != nil {
+				return
+			}
+		}
+		<-release
+	}))
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release) })
+	return "ws" + strings.TrimPrefix(srv.URL, "http")
+}
+
+func dialLegacy(t *testing.T, url string) *LegacyConn {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c, err := DialLegacy(ctx, Config{Token: "MCToken t", NetworkID: 1, URL: url})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+	return c
+}
+
+// TestLegacySilentService does as TestSilentService over the legacy
+// protocol, whose service answers no message of the host: a live service
+// is told by its answers to WebSocket pings.
+func TestLegacySilentService(t *testing.T) {
+	set(t, &legacyPing, 100*time.Millisecond)
+	live := dialLegacy(t, legacyService(t, true))
+	silent := dialLegacy(t, legacyService(t, false))
+	select {
+	case <-silent.Done():
+		if silent.Err() == nil {
+			t.Fatal("ended without a reason")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the connection to a silent service is still up after 5s")
+	}
+	time.Sleep(1500 * time.Millisecond)
+	if err := live.Err(); err != nil {
+		t.Fatalf("the connection to a service answering pings ended: %v", err)
+	}
+}

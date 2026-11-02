@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 )
@@ -80,7 +81,9 @@ type Conn struct {
 	writeMu sync.Mutex
 	closed  bool // a close frame was sent; guarded by writeMu
 
-	readLimit int
+	writeTimeout atomic.Int64 // a time.Duration
+	readTimeout  time.Duration
+	readLimit    int
 	// message is the message being reassembled from fragments.
 	message   []byte
 	messageOp byte
@@ -91,6 +94,15 @@ func (c *Conn) SetReadLimit(n int) { c.readLimit = n }
 
 // SetReadDeadline sets the deadline of the reads of the connection.
 func (c *Conn) SetReadDeadline(t time.Time) error { return c.conn.SetReadDeadline(t) }
+
+// SetReadTimeout bounds how long ReadMessage waits for each frame, pings
+// and pongs too, so that a peer silent for longer fails the read. Zero, the
+// default, leaves reads to SetReadDeadline. It is set before reading.
+func (c *Conn) SetReadTimeout(d time.Duration) { c.readTimeout = d }
+
+// SetWriteTimeout bounds how long each frame written may take, pongs and
+// pings too. Zero, the default, means no bound.
+func (c *Conn) SetWriteTimeout(d time.Duration) { c.writeTimeout.Store(int64(d)) }
 
 // Dial opens a WebSocket connection to a ws or wss URL with the headers
 // passed added to the opening handshake. TLS uses cfg, or the defaults if
@@ -289,6 +301,9 @@ func closePayload(code int, reason string) []byte {
 func (c *Conn) writeFrame(op byte, data []byte) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
+	if d := time.Duration(c.writeTimeout.Load()); d > 0 {
+		_ = c.conn.SetWriteDeadline(time.Now().Add(d))
+	}
 	return c.writeFrameLocked(op, data)
 }
 
@@ -425,6 +440,9 @@ func validCloseCode(code int) bool {
 
 // readFrame reads one frame, unmasked.
 func (c *Conn) readFrame() (fin bool, op byte, payload []byte, err error) {
+	if c.readTimeout > 0 {
+		_ = c.conn.SetReadDeadline(time.Now().Add(c.readTimeout))
+	}
 	var h [2]byte
 	if _, err := io.ReadFull(c.br, h[:]); err != nil {
 		return false, 0, nil, err
