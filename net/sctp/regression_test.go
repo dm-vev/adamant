@@ -778,3 +778,25 @@ func TestHeldFragmentsCountTheirHeaders(t *testing.T) {
 		t.Fatalf("window %d after a fragment, %d taken before the abort (sent: %v); want %d and %d", windows[0], taken, aborted, window-chunk, 2*window/chunk)
 	}
 }
+
+// TestErrorCountResetByChunkGivenUpAcked covers a SACK that acknowledges
+// a chunk given up: it acknowledges a DATA chunk sent, and the count of
+// timeouts in a row that fails the association starts over (RFC 9260
+// section 8.1).
+func TestErrorCountResetByChunkGivenUpAcked(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	a := connectWith(t, Config{MaxRetransmissions: 1}, now, appendParam(nil, paramForwardTSN, nil))
+	first := a.nextTSN
+	sendAll(t, a, now, 1)
+	if err := a.Send(2, PPIDBinary, []byte{2}, SendOptions{Partial: true}, now); err != nil {
+		t.Fatal(err)
+	}
+	// The timeout gives the second chunk up; the peer had it.
+	if err := a.HandleTimeout(a.Deadline()); err != nil {
+		t.Fatal(err)
+	}
+	sack(t, a, a.Deadline(), first-1, 1<<20, 2, 2)
+	if err := a.HandleTimeout(a.Deadline()); err != nil {
+		t.Fatalf("the timeout after the SACK failed the association: %v", err)
+	}
+}

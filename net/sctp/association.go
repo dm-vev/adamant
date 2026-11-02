@@ -1051,6 +1051,9 @@ func (a *Association) handleSack(c chunk, now time.Time) error {
 	// again (RFC 9260 section 6.2.1).
 	var highestGap uint32
 	haveGap, reneged := false, false
+	// Any DATA chunk acknowledged starts the count of timeouts over (RFC
+	// 9260 section 8.1), one given up too.
+	progress := advanced
 	for _, ch := range a.outstanding {
 		covered := gapCovers(s, ch.tsn)
 		if covered && (!haveGap || tsnLess(highestGap, ch.tsn)) {
@@ -1060,6 +1063,7 @@ func (a *Association) handleSack(c chunk, now time.Time) error {
 		case covered && !ch.acked:
 			ch.acked = true
 			ch.retransmit = false
+			progress = true
 			if ch.inFlight {
 				a.flight -= ch.size()
 				ch.inFlight = false
@@ -1079,7 +1083,7 @@ func (a *Association) handleSack(c chunk, now time.Time) error {
 			reneged = true
 		}
 	}
-	if newly > 0 || advanced {
+	if progress {
 		a.errorCount = 0
 	}
 	// Miss indications follow the highest TSN newly acknowledged, so that
