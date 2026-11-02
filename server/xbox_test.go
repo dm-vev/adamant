@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/net/xbox/auth"
+	"github.com/dm-vev/adamant/net/xbox/mpsd"
 	"github.com/dm-vev/adamant/net/xbox/signaling"
 	"github.com/dm-vev/adamant/net/xbox/social"
 )
@@ -107,5 +108,54 @@ func TestXboxFriendsAccept(t *testing.T) {
 	}
 	if wait := f.accept(context.Background()); wait != 30*time.Second || len(added) != 2 {
 		t.Fatalf("waits %v after adding %v", wait, added)
+	}
+}
+
+// TestFriendsStalledService takes a friend request through social services
+// that stall one of the requests of it, with a context that lives as long
+// as the server: each request gives up rather than holding up the friends
+// of the account for good.
+func TestFriendsStalledService(t *testing.T) {
+	old := xboxCallTimeout
+	xboxCallTimeout = 200 * time.Millisecond
+	defer func() { xboxCallTimeout = old }()
+	for _, stall := range []string{"friendrequests", "friends/v2", "handles"} {
+		t.Run(stall, func(t *testing.T) {
+			release := make(chan struct{})
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.Contains(r.URL.Path, stall) {
+					<-release
+				}
+				switch {
+				case strings.Contains(r.URL.Path, "friendrequests"):
+					_, _ = w.Write([]byte(`{"people":[{"xuid":"2535400000000002","gamertag":"Friend"}]}`))
+				case strings.Contains(r.URL.Path, "friends/v2"):
+					_, _ = w.Write([]byte(`{"isFriend":true}`))
+				default:
+					w.WriteHeader(http.StatusCreated)
+				}
+			}))
+			defer srv.Close()
+			defer close(release)
+			f := &xboxFriends{
+				client: social.Client{
+					Token:     func(context.Context) (string, error) { return "XBL3.0 x=1;token", nil },
+					Endpoints: social.Endpoints{Social: srv.URL, PeopleHub: srv.URL, SessionDirectory: srv.URL},
+				},
+				requests: make(chan struct{}, 1),
+				log:      slog.New(slog.DiscardHandler),
+			}
+			f.host.Store(&mpsd.Host{})
+			done := make(chan struct{})
+			go func() {
+				f.accept(context.Background())
+				close(done)
+			}()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatal("taking a friend request still waits on a stalled service after 5s")
+			}
+		})
 	}
 }

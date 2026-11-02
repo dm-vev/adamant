@@ -29,6 +29,11 @@ import (
 // xboxUpdateInterval paces the updates of the session friends see.
 const xboxUpdateInterval = 30 * time.Second
 
+// xboxCallTimeout bounds each call to the services of Xbox Live, which
+// would otherwise wait on a service that stalls for as long as the server
+// runs.
+var xboxCallTimeout = 30 * time.Second
+
 // publishXbox publishes the server on Xbox Live until its listener closes:
 // it signs the account in, serves the offers friends send over the
 // signaling service and keeps the session friends see the server by up to
@@ -237,26 +242,39 @@ func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, 
 			MaxMemberCount: st.MaxPlayers,
 		}
 		if host == nil {
-			mc, err := s.MCToken(ctx)
+			callCtx, cancel := context.WithTimeout(ctx, xboxCallTimeout)
+			mc, err := s.MCToken(callCtx)
+			cancel()
 			if err == nil {
-				host, err = mpsd.Publish(ctx, mpsd.Config{Token: token, NetherNetID: networkID, PlayerMessagingID: mc.PlayerMessagingID,
+				callCtx, cancel = context.WithTimeout(ctx, xboxCallTimeout)
+				host, err = mpsd.Publish(callCtx, mpsd.Config{Token: token, NetherNetID: networkID, PlayerMessagingID: mc.PlayerMessagingID,
 					LegacySignaling: opts.legacySignaling, FriendRequests: notify}, status)
+				cancel()
 			}
 			friends.host.Store(host)
 			if err != nil {
 				if ctx.Err() == nil {
 					log.Warn("Publishing on Xbox Live failed.", "err", err)
 				}
-			} else if x, err := s.XSTS(ctx, auth.XboxLive); err == nil {
-				log.Info("Published on Xbox Live: friends of the account see the server.", "gamertag", x.Gamertag)
+			} else {
+				callCtx, cancel = context.WithTimeout(ctx, xboxCallTimeout)
+				if x, err := s.XSTS(callCtx, auth.XboxLive); err == nil {
+					log.Info("Published on Xbox Live: friends of the account see the server.", "gamertag", x.Gamertag)
+				}
+				cancel()
 			}
-		} else if err := host.Update(ctx, status); err != nil && ctx.Err() == nil {
-			log.Warn("Updating the Xbox Live session failed; publishing it again.", "err", err)
-			closeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			_ = host.Close(closeCtx)
+		} else {
+			callCtx, cancel := context.WithTimeout(ctx, xboxCallTimeout)
+			err := host.Update(callCtx, status)
 			cancel()
-			host = nil
-			friends.host.Store(nil)
+			if err != nil && ctx.Err() == nil {
+				log.Warn("Updating the Xbox Live session failed; publishing it again.", "err", err)
+				closeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				_ = host.Close(closeCtx)
+				cancel()
+				host = nil
+				friends.host.Store(nil)
+			}
 		}
 		select {
 		case <-ctx.Done():
@@ -351,7 +369,9 @@ func (f *xboxFriends) run(ctx context.Context) {
 // accept adds the people who sent a friend request as friends and invites
 // them. It returns how long to wait if the service refused for too many.
 func (f *xboxFriends) accept(ctx context.Context) time.Duration {
-	people, err := f.client.FriendRequests(ctx)
+	callCtx, cancel := context.WithTimeout(ctx, xboxCallTimeout)
+	people, err := f.client.FriendRequests(callCtx)
+	cancel()
 	if err != nil {
 		if ctx.Err() == nil {
 			f.log.Debug("Reading the friend requests on Xbox Live failed.", "err", err)
@@ -359,7 +379,9 @@ func (f *xboxFriends) accept(ctx context.Context) time.Duration {
 		return 0
 	}
 	for _, p := range people {
-		friend, err := f.client.AddFriend(ctx, p.XUID)
+		callCtx, cancel := context.WithTimeout(ctx, xboxCallTimeout)
+		friend, err := f.client.AddFriend(callCtx, p.XUID)
+		cancel()
 		var limited *social.RateLimited
 		if errors.As(err, &limited) {
 			return limited.After
@@ -373,7 +395,10 @@ func (f *xboxFriends) accept(ctx context.Context) time.Duration {
 		}
 		f.log.Info("Added a friend on Xbox Live.", "gamertag", p.Gamertag)
 		if host := f.host.Load(); host != nil {
-			if err := f.client.Invite(ctx, p.XUID, host.Ref()); err != nil {
+			callCtx, cancel := context.WithTimeout(ctx, xboxCallTimeout)
+			err := f.client.Invite(callCtx, p.XUID, host.Ref())
+			cancel()
+			if err != nil {
 				f.log.Debug("Inviting a friend failed.", "gamertag", p.Gamertag, "err", err)
 			}
 		}
