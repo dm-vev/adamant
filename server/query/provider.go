@@ -36,9 +36,7 @@ func loadProvider() ProviderFunc {
 	return *ptr
 }
 
-// engineLabel is the default server identifier reported via query.
-//
-// Lumi uses the constant `Nukkit.NUKKIT` ("Lumi") as the engine label in both the `server_engine` field and as the
-// base of the `plugins` value. Keeping this default aligned makes the query output compatible without requiring the
-// caller to fill Data.Engine explicitly.
-const engineLabel = "Lumi"
+// engineLabel is the default server identifier reported via query, in both
+// the `server_engine` field and as the base of the `plugins` value, as the
+// about command names the server.
+const engineLabel = "Adamant"

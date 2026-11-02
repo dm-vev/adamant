@@ -37,7 +37,7 @@ func TestQueryWithGophertunnel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
-	for key, want := range map[string]string{"hostname": "Adamant test", "map": "world", "numplayers": "2", "maxplayers": "20", "players": "Alex, Steve"} {
+	for key, want := range map[string]string{"hostname": "Adamant test", "map": "world", "numplayers": "2", "maxplayers": "20", "players": "Alex, Steve", "server_engine": "Adamant", "plugins": "Adamant"} {
 		if info[key] != want {
 			t.Errorf("%s = %q, want %q (all: %v)", key, info[key], want, info)
 		}
