@@ -171,9 +171,12 @@ func isAir(b world.Block) bool {
 
 // destroyCommandBlock breaks a block with drops, as Level.destroyBlock(pos, true).
 func destroyCommandBlock(tx *world.Tx, pos cube.Pos) {
-	if breakable, ok := tx.Block(pos).(block.Breakable); ok && !isAir(tx.Block(pos)) {
+	if isAir(tx.Block(pos)) {
+		return
+	}
+	if breakable, ok := tx.Block(pos).(block.Breakable); ok && tx.World().GameRuleBool("block_drops") {
 		for _, drop := range breakable.BreakInfo().Drops(item.ToolNone{}, nil) {
-			tx.AddEntity(tx.World().EntityRegistry().Config().Item(world.EntitySpawnOpts{Position: pos.Vec3Centre()}, drop))
+			tx.DropBlockResource(pos, drop)
 		}
 	}
 	tx.SetBlock(pos, nil, nil)
@@ -198,8 +201,18 @@ func (s setBlockCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		}
 	case "destroy":
 		destroyCommandBlock(tx, pos)
+		// Native /setblock reports success for a requested air block after
+		// destruction, without trying to replace the now-empty cell again.
+		if isAir(b) {
+			o.Printf("Changed the block at %d, %d, %d", pos[0], pos[1], pos[2])
+			return
+		}
 	}
 	if sameBlockState(tx.Block(pos), b) {
+		o.Error("Could not set the block")
+		return
+	}
+	if !tx.CanFillBlock(pos, b) {
 		o.Error("Could not set the block")
 		return
 	}
@@ -237,11 +250,18 @@ func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, fi
 	air, _ := world.BlockByName("minecraft:air", nil)
 	airSource := world.BlockState{Name: "minecraft:air"}
 	count := 0
+	var filled []cube.Pos
 	for x := lo[0]; x <= hi[0]; x++ {
 		for y := lo[1]; y <= hi[1]; y++ {
 			for z := lo[2]; z <= hi[2]; z++ {
 				pos := cube.Pos{x, y, z}
 				if pos.OutOfBounds(tx.Range()) {
+					continue
+				}
+				// Native FillCommand validates the requested block before its
+				// mode's destruction or hollow-interior substitution. Setblock's
+				// destroy mode deliberately uses the opposite order.
+				if !tx.CanFillBlock(pos, b) {
 					continue
 				}
 				shell := x == lo[0] || x == hi[0] || y == lo[1] || y == hi[1] || z == lo[2] || z == hi[2]
@@ -268,11 +288,13 @@ func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, fi
 				if sameBlockState(tx.Block(pos), place) {
 					continue
 				}
-				tx.SetBlockFromCommand(pos, freshBlockEntity(place), placeSource)
+				tx.SetBlockFromFillCommand(pos, freshBlockEntity(place), placeSource)
+				filled = append(filled, pos)
 				count++
 			}
 		}
 	}
+	tx.FinishBlockFill(filled)
 	if count == 0 {
 		o.Error("No blocks were filled")
 		return

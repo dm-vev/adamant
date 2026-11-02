@@ -169,7 +169,9 @@ func init() {
 	world.RegisterBlock(Slime{})
 	world.RegisterBlock(SmithingTable{})
 	world.RegisterBlock(Snow{})
-	world.RegisterBlock(SnowLayer{})
+	for _, b := range (SnowLayer{}).Permutations() {
+		world.RegisterBlock(b)
+	}
 	world.RegisterBlock(SoulSand{})
 	world.RegisterBlock(SoulSoil{})
 	world.RegisterBlock(Sponge{Wet: true})

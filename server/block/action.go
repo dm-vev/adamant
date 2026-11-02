@@ -1,6 +1,10 @@
 package block
 
-import "time"
+import (
+	"time"
+
+	"github.com/df-mc/dragonfly/server/world"
+)
 
 // OpenAction is a world.BlockAction to open a block at a position. It is sent for blocks such as chests.
 type OpenAction struct{ action }
@@ -67,6 +71,14 @@ type BellRemovalAction struct{ action }
 type BellUseRejectedAction struct {
 	action
 	Bell Bell
+}
+
+// PlacementAction confirms a successful placement to its placing player.
+// Other viewers receive the world's ordinary queued state and sound instead.
+type PlacementAction struct {
+	action
+	Block         world.Block
+	Confirmations int
 }
 
 // action implements the Action interface. Structures in this package may embed it to gets its functionality

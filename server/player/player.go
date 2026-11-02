@@ -2503,6 +2503,13 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 		}
 	}
 	if i.Empty() {
+		if rejected, ok := b.(interface {
+			RejectedUseUpdates(cube.Pos, *world.Tx, func(cube.Pos, world.Block))
+		}); ok && p.session() != session.Nop {
+			rejected.RejectedUseUpdates(pos, p.tx, func(pos cube.Pos, b world.Block) {
+				p.session().ViewBlockUpdate(pos, b, 0)
+			})
+		}
 		return
 	}
 	switch ib := i.Item().(type) {
@@ -2972,8 +2979,18 @@ func (p *Player) placeBlock(pos cube.Pos, b world.Block, ignoreBBox bool) bool {
 		p.resendNearbyBlocks(pos, cube.Faces()...)
 		return false
 	}
+	placement, nativePlacement := b.(block.PlayerPlacementNotifier)
+	if nativePlacement {
+		b = placement.PlayerPlacementUpdate(p.tx)
+	}
 	p.tx.SetBlock(pos, b, nil)
-	p.tx.PlaySound(pos.Vec3(), sound.BlockPlace{Block: b})
+	if nativePlacement {
+		placement.PlayerPlaced(pos, p.tx, func(action world.BlockAction) {
+			p.session().ViewBlockAction(pos, action)
+		})
+	} else {
+		p.tx.PlaySound(pos.Vec3(), sound.BlockPlace{Block: b})
+	}
 	p.SwingArm()
 	return true
 }
@@ -3073,8 +3090,7 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 		}
 	}
 	for _, drop := range drops {
-		opts := world.EntitySpawnOpts{Position: pos.Vec3Centre(), Velocity: mgl64.Vec3{rand.Float64()*0.2 - 0.1, 0.2, rand.Float64()*0.2 - 0.1}}
-		p.tx.AddEntity(entity.NewItem(opts, drop))
+		p.tx.DropBlockResource(pos, drop)
 	}
 
 	p.Exhaust(0.005)

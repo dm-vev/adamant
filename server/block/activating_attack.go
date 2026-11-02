@@ -6,16 +6,18 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 )
 
-// blockInteractionUpdate marks only the outgoing mutation snapshot. It is
+// blockInteractionUpdate marks only the outgoing state snapshot. It is
 // neither a block permutation property nor saved state.
 type blockInteractionUpdate struct {
-	active bool
-	after  bool
-	ready  <-chan struct{}
+	active        bool
+	after         bool
+	afterFace     cube.Face
+	explicitOrder bool
+	ready         <-chan struct{}
 }
 
 func (u blockInteractionUpdate) BlockInteractionUpdate() bool        { return u.active }
-func (u blockInteractionUpdate) BlockUpdateAfter() (cube.Face, bool) { return cube.FaceDown, u.after }
+func (u blockInteractionUpdate) BlockUpdateAfter() (cube.Face, bool) { return u.afterFace, u.after }
 func (u blockInteractionUpdate) BlockUpdateReady() <-chan struct{}   { return u.ready }
 
 func (d WoodDoor) ActivateByAttack(pos cube.Pos, tx *world.Tx) bool {
@@ -42,11 +44,17 @@ func activateBarrierByAttack(b world.Block, pos cube.Pos, tx *world.Tx) bool {
 	if door {
 		return setDoorOpen(pos, b, !open, tx)
 	}
-	after := markBlockInteraction(barrierWithOpen(b, !open), tx)
+	return setBarrierOpenByInteraction(pos, b, !open, tx)
+}
+
+// TrapDoorBlock::setOpen and FenceGateBlock::_setOpen publish the new
+// permutation before their sound, for both player use and activating attacks.
+// The caller supplies the gate facing chosen for that interaction.
+func setBarrierOpenByInteraction(pos cube.Pos, b world.Block, open bool, tx *world.Tx) bool {
+	after := markBlockInteraction(barrierWithOpen(b, open), tx)
 	tx.SetBlock(pos, after, nil)
-	afterPos := pos
-	event := barrierToggleSound(tx, after, !open)
-	event.AfterBlock = &afterPos
+	event := barrierToggleSound(tx, after, open)
+	event.AfterBlock = &pos
 	tx.PlaySound(pos.Vec3Centre(), event)
 	return true
 }
@@ -139,13 +147,13 @@ func markBlockInteraction(b world.Block, tx *world.Tx) world.Block {
 func markInteraction(b world.Block, update blockInteractionUpdate) world.Block {
 	switch b := b.(type) {
 	case WoodDoor:
-		b.blockInteractionUpdate = update
+		b.blockInteractionUpdate = doorInteractionOrder(update, b.Top)
 		return b
 	case CopperDoor:
-		b.blockInteractionUpdate = update
+		b.blockInteractionUpdate = doorInteractionOrder(update, b.Top)
 		return b
 	case IronDoor:
-		b.blockInteractionUpdate = update
+		b.blockInteractionUpdate = doorInteractionOrder(update, b.Top)
 		return b
 	case WoodTrapdoor:
 		b.blockInteractionUpdate = update
@@ -167,4 +175,13 @@ func markInteraction(b world.Block, update blockInteractionUpdate) world.Block {
 		return b
 	}
 	panic("block has no activating-attack update")
+}
+
+func doorInteractionOrder(update blockInteractionUpdate, top bool) blockInteractionUpdate {
+	// Ordinary toggles publish lower before upper. An unchanged-state
+	// rejection instead confirms the clicked half before its partner.
+	if update.active && top && !update.explicitOrder {
+		update.after, update.afterFace = true, cube.FaceDown
+	}
+	return update
 }

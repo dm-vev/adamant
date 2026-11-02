@@ -91,13 +91,10 @@ func (l Leaves) RandomTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	}
 }
 
-// NeighbourUpdateTick ...
-func (l Leaves) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if !l.Persistent && !l.ShouldUpdate {
-		l.ShouldUpdate = true
-		tx.SetBlock(pos, l, leavesUpdateBitOpts)
-	}
-}
+// Ordinary neighbour notifications do not flag native leaf decay. The removal
+// of a log or leaf explicitly invokes DecayingBlocksUtil instead.
+func (Leaves) NeighbourChanged(cube.Pos, cube.Pos, *world.Tx)    {}
+func (Leaves) NeighbourUpdateTick(cube.Pos, cube.Pos, *world.Tx) {}
 
 // FlammabilityInfo ...
 func (l Leaves) FlammabilityInfo() FlammabilityInfo {

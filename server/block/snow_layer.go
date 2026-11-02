@@ -18,13 +18,16 @@ type SnowLayer struct {
 
 	// Layers is the amount of snow layers, in the range 1..8.
 	Layers uint8
+	// Covered retains the native covered_bit independently of layer height.
+	Covered bool
 }
 
 // Permutations ...
 func (SnowLayer) Permutations() []world.Block {
-	perms := make([]world.Block, 0, 8)
+	perms := make([]world.Block, 0, 16)
 	for i := uint8(1); i <= 8; i++ {
 		perms = append(perms, SnowLayer{Layers: i})
+		perms = append(perms, SnowLayer{Layers: i, Covered: true})
 	}
 	return perms
 }
@@ -33,6 +36,10 @@ func (SnowLayer) Permutations() []world.Block {
 func (s SnowLayer) Model() world.BlockModel {
 	return model.SnowLayer{Layers: s.Layers}
 }
+
+// ReplaceableBy follows TopSnowBlock's height gate. Eight layers form a full
+// support; thinner snow is replaced at the clicked cell instead of built upon.
+func (s SnowLayer) ReplaceableBy(world.Block) bool { return s.Layers < 8 }
 
 // SideClosed ...
 func (SnowLayer) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
@@ -60,7 +67,7 @@ func (s SnowLayer) EncodeBlock() (name string, properties map[string]any) {
 		layers = 8
 	}
 	// Bedrock uses "height" in the range 0..7 (int32 in the palette), plus a covered_bit (uint8).
-	return "minecraft:snow_layer", map[string]any{"height": int32(layers - 1), "covered_bit": uint8(0)}
+	return "minecraft:snow_layer", map[string]any{"height": int32(layers - 1), "covered_bit": boolByte(s.Covered)}
 }
 
 // Hash ...
@@ -72,7 +79,7 @@ func (s SnowLayer) Hash() (uint64, uint64) {
 	if layers > 8 {
 		layers = 8
 	}
-	return hashSnowLayer, uint64(layers-1) | (uint64(0) << 3)
+	return hashSnowLayer, uint64(layers-1) | (uint64(boolByte(s.Covered)) << 3)
 }
 
 // NeighbourUpdateTick ...

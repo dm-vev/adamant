@@ -84,21 +84,6 @@ func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	}
 	if attack, ok := b.(interface{ BlockInteractionUpdate() bool }); ok && attack.BlockInteractionUpdate() {
 		update.flags |= packet.BlockUpdateNeighbours
-		// DoorBlock publishes its lower half before its upper half, including
-		// an upper permutation whose network open bit remains unchanged.
-		top := false
-		switch b := b.(type) {
-		case block.WoodDoor:
-			top = b.Top
-		case block.CopperDoor:
-			top = b.Top
-		case block.IronDoor:
-			top = b.Top
-		}
-		if top {
-			below := pos.Side(cube.FaceDown)
-			update.after = &below
-		}
 	}
 	if deferred, ok := b.(interface{ BlockUpdateReady() <-chan struct{} }); ok {
 		update.publicationReady = deferred.BlockUpdateReady()

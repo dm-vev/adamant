@@ -17,6 +17,10 @@ type CopperDoor struct {
 	transparent
 	bass
 	sourceWaterDisplacer
+	// pairTransform is transient operation metadata, absent from stored and
+	// network states. Item use and oxidation transform an existing pair;
+	// arbitrary API replacements must retain native survival semantics.
+	pairTransform bool
 
 	// Oxidation is the level of oxidation of the copper door.
 	Oxidation OxidationType
@@ -36,9 +40,11 @@ type CopperDoor struct {
 func (d CopperDoor) Strip() (world.Block, world.Sound, bool) {
 	if d.Waxed {
 		d.Waxed = false
+		d.pairTransform = true
 		return d, sound.WaxRemoved{}, true
 	} else if ot, ok := d.Oxidation.Decrease(); ok {
 		d.Oxidation = ot
+		d.pairTransform = true
 		return d, sound.CopperScraped{}, true
 	}
 	return d, nil, false
@@ -46,7 +52,8 @@ func (d CopperDoor) Strip() (world.Block, world.Sound, bool) {
 
 // Model ...
 func (d CopperDoor) Model() world.BlockModel {
-	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
+	name, _ := d.EncodeItem()
+	return model.Door{Kind: name, Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
 }
 
 // Wax waxes the copper door to stop it from oxidising further.
@@ -55,6 +62,7 @@ func (d CopperDoor) Wax(cube.Pos, mgl64.Vec3) (world.Block, bool) {
 		return d, false
 	}
 	d.Waxed = true
+	d.pairTransform = true
 	return d, true
 }
 
@@ -68,33 +76,13 @@ func (d CopperDoor) OxidationLevel() OxidationType {
 
 func (d CopperDoor) WithOxidationLevel(o OxidationType) Oxidisable {
 	d.Oxidation = o
+	d.pairTransform = true
 	return d
 }
 
-// NeighbourUpdateTick breaks the door when its other half or the support
-// below the lower half is gone, checking only the side the update came from,
-// and keeps both halves oxidised and waxed alike.
+// NeighbourUpdateTick forwards legacy notifications to the native queue.
 func (d CopperDoor) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
-	below, above := doorUpdateFrom(pos, changed)
-	other, otherChanged := pos.Side(cube.FaceUp), above
-	if d.Top {
-		other, otherChanged = pos.Side(cube.FaceDown), below
-	} else if support := pos.Side(cube.FaceDown); below && !tx.Block(support).Model().FaceSolid(support, cube.FaceUp, tx) {
-		// CopperDoor is pickaxeHarvestable, so don't use breakBlock() here.
-		breakBlockNoDrops(d, pos, tx)
-		dropItem(tx, item.NewStack(d, 1), pos.Vec3Centre())
-		return
-	}
-	if b, ok := tx.Block(other).(CopperDoor); !ok {
-		if otherChanged {
-			breakBlockNoDrops(d, pos, tx)
-			return
-		}
-	} else if d.Oxidation != b.Oxidation || d.Waxed != b.Waxed {
-		d.Oxidation, d.Waxed = b.Oxidation, b.Waxed
-		tx.SetBlock(pos, d, nil)
-	}
-	tx.Redstone().ScheduleUpdate(pos)
+	d.NeighbourChanged(pos, changed, tx)
 }
 
 // RedstoneEdgeUpdate opens or closes the door when its signal switches.
@@ -123,16 +111,8 @@ func (d CopperDoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after
 
 // UseOnBlock handles the directional placing of doors
 func (d CopperDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
-	if face != cube.FaceUp {
-		// Doors can only be placed when clicking the top face.
-		return false
-	}
-	below := pos
-	pos = pos.Side(cube.FaceUp)
-	if !replaceableWith(tx, pos, d) || !replaceableWith(tx, pos.Side(cube.FaceUp), d) {
-		return false
-	}
-	if !tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) {
+	pos, ok := doorPlacementPosition(tx, pos, face, d)
+	if !ok {
 		return false
 	}
 	d.Facing = user.Rotation().Direction()
@@ -173,9 +153,7 @@ func (d CopperDoor) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 
 // BreakInfo ...
 func (d CopperDoor) BreakInfo() BreakInfo {
-	return newBreakInfo(3, func(t item.Tool) bool {
-		return t.ToolType() == item.TypePickaxe && t.HarvestLevel() >= item.ToolTierStone.HarvestLevel
-	}, pickaxeEffective, oneOf(d)).withBlastResistance(6)
+	return newBreakInfo(3, alwaysHarvestable, pickaxeEffective, doorDrops(d)).withBlastResistance(6)
 }
 
 // SideClosed ...

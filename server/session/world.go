@@ -1994,6 +1994,13 @@ func (s *Session) ViewCrafterTriggered(triggered bool) {
 func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	switch t := a.(type) {
+	case block.PlacementAction:
+		if s == Nop {
+			return
+		}
+		for range t.Confirmations {
+			s.writePacket(&packet.UpdateBlock{Position: blockPos, NewBlockRuntimeID: networkBlockID(s.br, t.Block), Flags: packet.BlockUpdateNetwork | packet.BlockUpdateNeighbours})
+		}
 	case block.BellRingAction:
 		s.enqueueBellRingUpdate(pos, t.Bell)
 	case block.BellSupportAction:

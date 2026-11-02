@@ -71,15 +71,16 @@ const h=system.runInterval(()=>{try{
 '''
 
 
-def capture_player_use(args, cases, require_parities=True, sound_prefixes=("button.click_",)):
+def capture_player_use(args, cases, require_parities=True, sound_prefixes=("button.click_",),
+                       source_script=None, client_executable=None):
     output = {"complete": False, "reference": "unmodified Windows BDS; native player interaction events and per-tick state readback",
               "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(), "scenarios": []}
     reference = Reference(args.binary.resolve(), args.assets.resolve(), args.port,
-                          script=SCRIPT.replace("CASES", json.dumps(cases)), local_client=True)
+                          script=(SCRIPT if source_script is None else source_script).replace("CASES", json.dumps(cases)), local_client=True)
     client = None
     try:
         reference.until(lambda s: "ADAMANT_USE " in s and '"ready":true' in s, timeout=30)
-        client = LocalClient(reference, args.port)
+        client = LocalClient(reference, args.port, executable=client_executable)
         reference.command("op RedstoneAudit")
         reference.command("scriptevent audit:start now")
         while True:

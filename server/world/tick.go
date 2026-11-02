@@ -325,7 +325,11 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 			}
 			continue
 		}
-		if ticker, ok := b.(NeighbourUpdateTicker); ok {
+		if listener, immediate := b.(NeighbourChangeListener); immediate {
+			if !update.recipientLoaded {
+				listener.NeighbourChanged(pos, changedNeighbour, tx)
+			}
+		} else if ticker, ok := b.(NeighbourUpdateTicker); ok {
 			ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
 		}
 		if liquid, ok := tx.additionalLiquid(pos); ok {

@@ -49,27 +49,13 @@ func (d WoodDoor) FuelInfo() item.FuelInfo {
 
 // Model ...
 func (d WoodDoor) Model() world.BlockModel {
-	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
+	name, _ := d.EncodeItem()
+	return model.Door{Kind: name, Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
 }
 
-// NeighbourUpdateTick breaks the door when its other half or the support
-// below the lower half is gone, checking only the side the update came from.
+// NeighbourUpdateTick forwards legacy notifications to the native queue.
 func (d WoodDoor) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
-	below, above := doorUpdateFrom(pos, changed)
-	if d.Top {
-		if _, ok := tx.Block(pos.Side(cube.FaceDown)).(WoodDoor); below && !ok {
-			breakBlockNoDrops(d, pos, tx)
-			return
-		}
-	} else if support := pos.Side(cube.FaceDown); below && !tx.Block(support).Model().FaceSolid(support, cube.FaceUp, tx) {
-		breakBlock(d, pos, tx)
-		return
-	} else if _, ok := tx.Block(pos.Side(cube.FaceUp)).(WoodDoor); above && !ok {
-		breakBlockNoDrops(d, pos, tx)
-		return
-	}
-
-	tx.Redstone().ScheduleUpdate(pos)
+	d.NeighbourChanged(pos, changed, tx)
 }
 
 // RedstoneEdgeUpdate opens or closes the door when its signal switches.
@@ -98,16 +84,8 @@ func (d WoodDoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after w
 
 // UseOnBlock handles the directional placing of doors
 func (d WoodDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
-	if face != cube.FaceUp {
-		// Doors can only be placed when clicking the top face.
-		return false
-	}
-	below := pos
-	pos = pos.Side(cube.FaceUp)
-	if !replaceableWith(tx, pos, d) || !replaceableWith(tx, pos.Side(cube.FaceUp), d) {
-		return false
-	}
-	if !tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) {
+	pos, ok := doorPlacementPosition(tx, pos, face, d)
+	if !ok {
 		return false
 	}
 	d.Facing = user.Rotation().Direction()
@@ -145,7 +123,7 @@ func (d WoodDoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User,
 
 // BreakInfo ...
 func (d WoodDoor) BreakInfo() BreakInfo {
-	return newBreakInfo(3, alwaysHarvestable, axeEffective, oneOf(d))
+	return newBreakInfo(3, alwaysHarvestable, axeEffective, doorDrops(d))
 }
 
 // SideClosed ...

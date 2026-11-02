@@ -1,19 +1,63 @@
 package world
 
 import (
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
-// SetBlockFromCommand places a block at pos as Java's BlockInput.place and
-// Level.updateNeighboursOnBlockSet do for /setblock and /fill. The Java state
-// source is first shaped by the blocks around pos, keeping source where that
-// would leave air, and the properties source names override the shape. Only
-// the neighbours are then updated, so a door half or a torch placed in the air
-// stays until a neighbour changes. b is the native block of source and
-// carries any block entity data the command gave it.
-func (tx *Tx) SetBlockFromCommand(pos cube.Pos, b Block, source BlockState) {
+// CanFillBlock checks whether a block accepts a command fill at pos.
+func (tx *Tx) CanFillBlock(pos cube.Pos, b Block) bool {
 	if pos.OutOfBounds(tx.Range()) {
+		return false
+	}
+	if validator, ok := b.(BlockFillValidator); ok {
+		return validator.CanFillAtPos(pos, tx)
+	}
+	return true
+}
+
+// SetBlockFromCommand supplies b unchanged to its native fill lifecycle when
+// implemented. Other blocks use Java's BlockInput.place: source is shaped by
+// neighbours, preserving it if shaping would leave air, then its explicitly
+// supplied properties override the shape. Only neighbours are notified. b
+// carries any block entity data supplied by the command.
+func (tx *Tx) SetBlockFromCommand(pos cube.Pos, b Block, source BlockState) {
+	tx.setBlockFromCommand(pos, b, source, true)
+}
+
+// SetBlockFromFillCommand places a cell, deferring native neighbour publication
+// until FinishBlockFill after the batch has installed every requested cell.
+func (tx *Tx) SetBlockFromFillCommand(pos cube.Pos, b Block, source BlockState) {
+	tx.setBlockFromCommand(pos, b, source, false)
+}
+
+// FinishBlockFill runs the native post-fill notifications and tick executors.
+func (tx *Tx) FinishBlockFill(positions []cube.Pos) {
+	for _, pos := range positions {
+		b := tx.Block(pos)
+		if _, nativeFill := b.(BlockFillHandler); !nativeFill {
+			continue
+		}
+		tx.updateNeighboursOf(pos)
+		if ticker, ok := b.(BlockFillTicker); ok && ticker.TickAfterCommandFill() {
+			tx.ScheduleBlockUpdate(pos, b, time.Second/20)
+		}
+	}
+}
+
+func (tx *Tx) setBlockFromCommand(pos cube.Pos, b Block, source BlockState, notifyNative bool) {
+	if !tx.CanFillBlock(pos, b) {
+		return
+	}
+	if _, nativeFill := b.(BlockFillHandler); nativeFill {
+		// Native fill callbacks receive the requested permutation unchanged.
+		// Java neighbour shaping can borrow a different door's material.
+		tx.setBlock(pos, b, &SetOpts{DisableBlockUpdates: true, CommandFill: true})
+		if notifyNative {
+			tx.updateNeighboursOf(pos)
+		}
 		return
 	}
 	registry := tx.World().conf.Blocks

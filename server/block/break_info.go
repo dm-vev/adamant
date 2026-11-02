@@ -91,23 +91,27 @@ func BreakDuration(b world.Block, i item.Stack, ctx BreakContext) time.Duration 
 		speed /= 5
 	}
 
-	damage := speed / info.Hardness
+	// PlayerDestroy::getDestroyProgress divides binary32 speed by hardness,
+	// then by 30 or 100 (client 0x2834570..0x283458b). Keeping those operations
+	// in binary64 makes, for example, a hardness-3 door take 91 ticks instead
+	// of the native 90 because the reciprocal lands just above an integer.
+	damage := float32(speed) / float32(info.Hardness)
 	if canHarvest {
 		damage /= 30
 	} else {
 		damage /= 100
 	}
 	if positive > 0 {
-		damage *= math.Pow(1.2, float64(positive))
+		damage *= float32(math.Pow(1.2, float64(positive)))
 	}
 	if ctx.MiningFatigueLevel > 0 {
-		damage *= math.Pow(0.7, float64(ctx.MiningFatigueLevel))
+		damage *= float32(math.Pow(0.7, float64(ctx.MiningFatigueLevel)))
 	}
 	if damage >= 1 {
 		// The block breaks within a single tick.
 		return 0
 	}
-	return time.Duration(math.Ceil(1/damage)) * time.Second / 20
+	return time.Duration(math.Ceil(1/float64(damage))) * time.Second / 20
 }
 
 // BreaksInstantly checks if the block passed has zero hardness and therefore breaks without consuming tool
@@ -434,7 +438,7 @@ func breakBlock(b world.Block, pos cube.Pos, tx *world.Tx) {
 	}
 	if breakable, ok := b.(Breakable); ok {
 		for _, drop := range breakable.BreakInfo().Drops(item.ToolNone{}, nil) {
-			dropItem(tx, drop, pos.Vec3Centre())
+			tx.DropBlockResource(pos, drop)
 		}
 	}
 }

@@ -12,8 +12,19 @@ from redstone_audit_structure import _payload, byte, compound, integer, string
 
 def network_state_hash(state):
     """Canonical network hash of the native SDK's block state (not a Go RID)."""
+    states = dict(state['states'])
+    if 'minecraft:cardinal_direction' in states and 'direction' in states:
+        expected = dict(south=0, west=1, north=2, east=3)[states['minecraft:cardinal_direction']]
+        if states['direction'] != expected:
+            raise ValueError('native SDK direction aliases disagree')
+        # Script exposes this legacy alias, but the network permutation does
+        # not contain it. Keeping it makes an otherwise valid use get rejected.
+        del states['direction']
+    if state['id'] == 'minecraft:stone' and 'stone_type' in states:
+        if states.pop('stone_type') != 'stone':
+            raise ValueError('unexpected SDK alias for the split stone block')
     properties = {}
-    for key, value in sorted(state["states"].items()):
+    for key, value in sorted(states.items()):
         if isinstance(value, bool):
             properties[key] = byte(int(value))
         elif isinstance(value, int):
@@ -30,8 +41,11 @@ def network_state_hash(state):
 
 
 class LocalClient:
-    def __init__(self, reference, port, executable=None):
+    def __init__(self, reference, port, executable=None, name='RedstoneAudit', log_filename='client.log'):
         self.root = reference.root
+        if name not in ('RedstoneAudit', 'RedstoneObserver') or Path(log_filename).name != log_filename:
+            raise ValueError('invalid owned audit client name or log file')
+        self.log_filename = log_filename
         if executable is None:
             executable = self.root / "redstone-client.exe"
             result = subprocess.run(["go", "build", "-o", str(executable), "./scripts/redstone_client"],
@@ -39,7 +53,10 @@ class LocalClient:
                                     timeout=60, creationflags=subprocess.CREATE_NO_WINDOW)
             if result.returncode:
                 raise RuntimeError("audit client build failed: " + result.stdout + result.stderr)
-        self.process = subprocess.Popen([str(executable), f"127.0.0.1:{port}"], stdin=subprocess.PIPE,
+        command = [str(executable), f"127.0.0.1:{port}"]
+        if name != 'RedstoneAudit':
+            command.append(name)
+        self.process = subprocess.Popen(command, stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                         encoding="utf-8", errors="replace", creationflags=subprocess.CREATE_NO_WINDOW)
         self.lines, self.log = queue.Queue(), []
@@ -101,4 +118,4 @@ class LocalClient:
                     self.process.kill()
                 self.process.wait()
         self.thread.join(timeout=2)
-        (self.root / "client.log").write_text("\n".join(self.log) + "\n", encoding="utf-8")
+        (self.root / self.log_filename).write_text("\n".join(self.log) + "\n", encoding="utf-8")

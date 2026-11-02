@@ -26,18 +26,23 @@ type command struct {
 	Rotation   *mgl32.Vec2
 	RuntimeID  *uint32 `json:"runtime_id"`
 	BreakTicks int     `json:"break_ticks"`
+	Sneaking   *bool
 }
 
 func emit(v any) { b, _ := json.Marshal(v); fmt.Println(string(b)) }
 func main() {
-	if len(os.Args) != 2 {
+	if len(os.Args) != 2 && !(len(os.Args) == 3 && os.Args[2] == "RedstoneObserver") {
 		panic("local address required")
+	}
+	name := "RedstoneAudit"
+	if len(os.Args) == 3 {
+		name = os.Args[2]
 	}
 	host, _, err := net.SplitHostPort(os.Args[1])
 	if err != nil || !net.ParseIP(host).IsLoopback() {
 		panic("the audit client only connects to an explicit loopback IP")
 	}
-	conn, err := (minecraft.Dialer{IdentityData: login.IdentityData{DisplayName: "RedstoneAudit", Identity: uuid.NewString()}}).DialTimeout("raknet", os.Args[1], 20*time.Second)
+	conn, err := (minecraft.Dialer{IdentityData: login.IdentityData{DisplayName: name, Identity: uuid.NewString()}}).DialTimeout("raknet", os.Args[1], 20*time.Second)
 	if err != nil {
 		panic(err)
 	}
@@ -89,11 +94,25 @@ func main() {
 	var mining *protocol.UseItemTransactionData
 	var miningTicks, queuedBreakTicks int
 	lookYaw, lookPitch := float32(180), float32(40)
+	sneaking, wasSneaking := false, false
 	send := func(use *protocol.UseItemTransactionData) {
 		tick++
 		p := &packet.PlayerAuthInput{InputData: protocol.NewInputFlags(packet.InputFlagCount), Position: pos, Tick: tick, Pitch: lookPitch, Yaw: lookYaw, HeadYaw: lookYaw, InteractPitch: lookPitch, InteractYaw: lookYaw, InputMode: packet.InputModeMouse, InteractionModel: packet.InteractionModelCrosshair, CameraOrientation: mgl32.Vec3{0, 0, 1}}
 		p.InputData.Set(packet.InputFlagClientAckServerData)
 		p.InputData.Set(packet.InputFlagInternalUpdate)
+		if sneaking {
+			p.InputData.Set(packet.InputFlagSneaking)
+			p.InputData.Set(packet.InputFlagSneakDown)
+			p.InputData.Set(packet.InputFlagSneakCurrentRaw)
+			if !wasSneaking {
+				p.InputData.Set(packet.InputFlagStartSneaking)
+				p.InputData.Set(packet.InputFlagSneakPressedRaw)
+			}
+		} else if wasSneaking {
+			p.InputData.Set(packet.InputFlagStopSneaking)
+			p.InputData.Set(packet.InputFlagSneakReleasedRaw)
+		}
+		wasSneaking = sneaking
 		if stopMining != nil {
 			p.InputData.Set(packet.InputFlagPerformBlockActions)
 			p.BlockActions = protocol.Option([]protocol.PlayerBlockAction{*stopMining})
@@ -262,6 +281,9 @@ func main() {
 		case c, ok := <-commands:
 			if !ok || c.Action == "stop" {
 				return
+			}
+			if c.Sneaking != nil {
+				sneaking = *c.Sneaking
 			}
 			if c.Action == "look" {
 				if c.Rotation == nil {

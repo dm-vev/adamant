@@ -84,14 +84,7 @@ func (t CopperTrapdoor) WithOxidationLevel(o OxidationType) Oxidisable {
 }
 
 func (t CopperTrapdoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
-	t.Open = !t.Open
-	tx.SetBlock(pos, t, nil)
-	if t.Open {
-		tx.PlaySound(pos.Vec3Centre(), sound.TrapdoorOpen{Block: t})
-		return true
-	}
-	tx.PlaySound(pos.Vec3Centre(), sound.TrapdoorClose{Block: t})
-	return true
+	return setBarrierOpenByInteraction(pos, t, !t.Open, tx)
 }
 
 // RedstoneEdgeUpdate opens or closes the block when its signal switches, as

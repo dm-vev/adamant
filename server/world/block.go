@@ -211,10 +211,22 @@ type BlockFillHandler interface {
 	Filled(pos cube.Pos, tx *Tx, replaced Block)
 }
 
+// BlockFillValidator checks native command-fill eligibility before changing
+// the world. It is separate from player placement and post-fill side effects.
+type BlockFillValidator interface {
+	CanFillAtPos(pos cube.Pos, tx *Tx) bool
+}
+
 // BlockFillUpdater prepares a command-fill mutation snapshot for its viewer
 // notification, independently of the optional Filled callback's side effects.
 type BlockFillUpdater interface {
 	CommandFillUpdate(tx *Tx) Block
+}
+
+// BlockFillTicker identifies native blocks with tick event executors. /fill
+// schedules these after its complete batch, unlike /setblock.
+type BlockFillTicker interface {
+	TickAfterCommandFill() bool
 }
 
 // LiquidPlacementHandler receives a successful SetLiquid placement in either

@@ -32,35 +32,12 @@ type IronDoor struct {
 
 // Model ...
 func (d IronDoor) Model() world.BlockModel {
-	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
+	return model.Door{Kind: "minecraft:iron_door", Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
 }
 
-// NeighbourUpdateTick breaks the door when its other half or the support
-// below the lower half is gone, checking only the side the update came from.
+// NeighbourUpdateTick forwards legacy notifications to the native queue.
 func (d IronDoor) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
-	below, above := doorUpdateFrom(pos, changed)
-	if d.Top {
-		if _, ok := tx.Block(pos.Side(cube.FaceDown)).(IronDoor); below && !ok {
-			breakBlockNoDrops(d, pos, tx)
-			return
-		}
-	} else if support := pos.Side(cube.FaceDown); below && !tx.Block(support).Model().FaceSolid(support, cube.FaceUp, tx) {
-		breakBlockNoDrops(d, pos, tx)
-		dropItem(tx, item.NewStack(d, 1), pos.Vec3Centre())
-		return
-	} else if _, ok := tx.Block(pos.Side(cube.FaceUp)).(IronDoor); above && !ok {
-		breakBlockNoDrops(d, pos, tx)
-		return
-	}
-	tx.Redstone().ScheduleUpdate(pos)
-}
-
-// doorUpdateFrom reports whether an update from changed lets a door half at
-// pos check the block below and the block above it. Like
-// DoorBlock.updateShape, a door reacts only to the blocks above and below
-// it; an update of the door itself checks both.
-func doorUpdateFrom(pos, changed cube.Pos) (below, above bool) {
-	return changed == pos || changed == pos.Side(cube.FaceDown), changed == pos || changed == pos.Side(cube.FaceUp)
+	d.NeighbourChanged(pos, changed, tx)
 }
 
 // RedstoneEdgeUpdate opens or closes the door when the signal of either half
@@ -91,15 +68,8 @@ func (d IronDoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after w
 
 // UseOnBlock places both halves of the door on top of the clicked face.
 func (d IronDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
-	if face != cube.FaceUp {
-		return false
-	}
-	below := pos
-	pos = pos.Side(cube.FaceUp)
-	if !replaceableWith(tx, pos, d) || !replaceableWith(tx, pos.Side(cube.FaceUp), d) {
-		return false
-	}
-	if !tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) {
+	pos, ok := doorPlacementPosition(tx, pos, face, d)
+	if !ok {
 		return false
 	}
 	d.Facing = user.Rotation().Direction()
@@ -113,7 +83,8 @@ func (d IronDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 			d.Right = true
 		}
 	}
-	d.Open = tx.RedstonePower(pos) > 0 || tx.RedstonePower(pos.Side(cube.FaceUp)) > 0
+	// Native placement starts closed even on an already powered support.
+	// The newly registered consumer ignores its first input notification.
 
 	ctx.IgnoreBBox = true
 	place(tx, pos, d, user, ctx)
@@ -124,7 +95,7 @@ func (d IronDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 
 // BreakInfo ...
 func (d IronDoor) BreakInfo() BreakInfo {
-	return newBreakInfo(5, pickaxeHarvestable, pickaxeEffective, oneOf(IronDoor{})).withBlastResistance(5)
+	return newBreakInfo(5, alwaysHarvestable, pickaxeEffective, doorDrops(d)).withBlastResistance(5)
 }
 
 // SideClosed ...
@@ -176,7 +147,7 @@ func (t IronTrapdoor) Model() world.BlockModel {
 }
 
 // UseOnBlock places the trapdoor, upside down when clicked on the upper half
-// of a side or on a bottom face, already open if placed powered.
+// of a side or on a bottom face.
 func (t IronTrapdoor) UseOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, face, used := firstReplaceable(tx, pos, face, t)
 	if !used {
@@ -184,7 +155,8 @@ func (t IronTrapdoor) UseOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Ve
 	}
 	t.Facing = user.Rotation().Direction().Opposite()
 	t.Top = (clickPos.Y() > 0.5 && face != cube.FaceUp) || face == cube.FaceDown
-	t.Open = tx.RedstonePower(pos) > 0
+	// Native placement retains the default closed permutation. Power is
+	// sampled by the newly registered consumer, including its first-update gate.
 	place(tx, pos, t, user, ctx)
 	return placed(ctx)
 }

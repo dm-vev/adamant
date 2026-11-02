@@ -1848,7 +1848,9 @@ func (tx *Tx) doBlockUpdatesAround(pos cube.Pos) {
 
 func (tx *Tx) updateNeighbour(pos, changedNeighbour cube.Pos) {
 	deferred := true
+	recipientLoaded := false
 	if b, loaded := tx.BlockLoaded(pos); loaded {
+		recipientLoaded = true
 		if listener, ok := b.(NeighbourChangeListener); ok {
 			listener.NeighbourChanged(pos, changedNeighbour, tx)
 			deferred = false
@@ -1860,7 +1862,7 @@ func (tx *Tx) updateNeighbour(pos, changedNeighbour cube.Pos) {
 		}
 	}
 	if deferred {
-		tx.World().updateNeighbour(pos, changedNeighbour)
+		tx.World().neighbourUpdates.push(neighbourUpdate{pos: pos, neighbour: changedNeighbour, recipientLoaded: recipientLoaded})
 	}
 }
 
@@ -1868,6 +1870,10 @@ func (tx *Tx) updateNeighbour(pos, changedNeighbour cube.Pos) {
 // neighbour that changed.
 type neighbourUpdate struct {
 	pos, neighbour cube.Pos
+	// An immediate listener installed later must not inherit notifications
+	// queued for a loaded legacy recipient. A generating recipient still
+	// receives its original notification once its chunk becomes ready.
+	recipientLoaded bool
 }
 
 // updateNeighbour ticks the position passed as a result of the neighbour
