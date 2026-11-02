@@ -77,9 +77,10 @@ func TestOutOfOrderWithinWindow(t *testing.T) {
 			last = s
 		}
 	}
-	// Fragments of messages not ended are held until the gap closes.
+	// Fragments of messages not ended, in chunks of 1000 bytes, are held
+	// until the gap closes.
 	for i := range uint32(5) {
-		if err := inject(b, n.now, chunkData, flagBegin, dataValue(cum+2+i, make([]byte, 1000))); err != nil {
+		if err := inject(b, n.now, chunkData, flagBegin, dataValue(cum+2+i, make([]byte, 1000-dataHeaderSize))); err != nil {
 			t.Fatal(err)
 		}
 	}

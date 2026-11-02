@@ -27,7 +27,8 @@ type Config struct {
 	// ReceiveWindow is the receive window advertised. Zero means 1 MiB. A
 	// message may be as large as the window; a peer that makes the
 	// association hold more than twice the window, one of chunks out of
-	// order and one of the message being reassembled, fails it.
+	// order and one of the message being reassembled, fails it. What is
+	// held counts as the DATA chunks it came in, headers too.
 	ReceiveWindow uint32
 	// SendBuffer bounds the bytes queued or in flight. Zero means 1 MiB.
 	SendBuffer int
@@ -154,6 +155,11 @@ type inFragment struct {
 	flags  byte
 	data   []byte
 }
+
+// size is the room a fragment takes in the receive window: that of the
+// chunk it came in, so that fragments of a byte cannot make the association
+// hold many times the window in memory.
+func (f *inFragment) size() int { return dataHeaderSize + len(f.data) }
 
 // inStream is the receiving side of a stream.
 type inStream struct {
@@ -758,7 +764,7 @@ func (a *Association) track(f inFragment) (bool, error) {
 	if f.tsn != a.peerCum+1 {
 		return a.trackOutOfOrder(i, f), nil
 	}
-	if a.held+len(f.data) > 2*int(a.cfg.ReceiveWindow) {
+	if a.held+f.size() > 2*int(a.cfg.ReceiveWindow) {
 		return false, errOverrun
 	}
 	// RFC 9260 section 6.7: while gaps remain, and when one closes, every
@@ -776,7 +782,7 @@ func (a *Association) track(f inFragment) (bool, error) {
 // those received, if there is room for it, and has the gap reported at
 // once.
 func (a *Association) trackOutOfOrder(i int, f inFragment) bool {
-	if f.tsn-a.peerCum > tsnWindow || len(a.received) >= maxOutOfOrder || a.held+len(f.data) > int(a.cfg.ReceiveWindow) {
+	if f.tsn-a.peerCum > tsnWindow || len(a.received) >= maxOutOfOrder || a.held+f.size() > int(a.cfg.ReceiveWindow) {
 		return false
 	}
 	a.received = slices.Insert(a.received, i, f.tsn)
@@ -860,7 +866,7 @@ func (a *Association) receive(f inFragment) {
 // list and the index of the fragment in it.
 func (a *Association) hold(list []inFragment, f inFragment) ([]inFragment, int) {
 	f.data = bytes.Clone(f.data)
-	a.held += len(f.data)
+	a.held += f.size()
 	i, _ := slices.BinarySearchFunc(list, f.tsn, compareFragment)
 	return slices.Insert(list, i, f), i
 }
@@ -938,12 +944,12 @@ func (a *Association) deliverFragments(stream uint16, frags []inFragment) {
 	size := 0
 	for _, f := range frags {
 		size += len(f.data)
+		a.held -= f.size()
 	}
 	data := make([]byte, 0, size)
 	for _, f := range frags {
 		data = append(data, f.data...)
 	}
-	a.held -= size
 	a.deliver(stream, frags[0].ppid, data)
 }
 
@@ -999,7 +1005,7 @@ func (a *Association) skip(stream uint16, s *inStream, cum uint32, ssn uint16) {
 			}
 		}
 		if tsnLessEq(f.tsn, cum) {
-			a.held -= len(f.data)
+			a.held -= f.size()
 		} else {
 			kept = append(kept, f)
 		}
@@ -1011,7 +1017,7 @@ func (a *Association) skip(stream uint16, s *inStream, cum uint32, ssn uint16) {
 func (a *Association) dropFragments(list []inFragment, cum uint32) []inFragment {
 	return slices.DeleteFunc(list, func(f inFragment) bool {
 		if tsnLessEq(f.tsn, cum) {
-			a.held -= len(f.data)
+			a.held -= f.size()
 			return true
 		}
 		return false

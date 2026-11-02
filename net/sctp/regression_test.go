@@ -440,13 +440,13 @@ func TestPeerPastReceiveWindowFails(t *testing.T) {
 		if taken == 0 {
 			flags = flagBegin
 		}
-		if err := inject(b, n.now, chunkData, flags, head[:], make([]byte, 1000)); err != nil {
+		if err := inject(b, n.now, chunkData, flags, head[:], make([]byte, 1000-dataHeaderSize)); err != nil {
 			break
 		}
 	}
 	// Twice the window is held, not a byte more.
 	if taken != 2*window/1000 {
-		t.Fatalf("took %d fragments of 1000 bytes under a window of %d", taken, window)
+		t.Fatalf("took %d chunks of 1000 bytes under a window of %d", taken, window)
 	}
 	if !aborted {
 		t.Fatal("the peer was not sent an ABORT")
@@ -562,8 +562,8 @@ func TestFragmentFloodTakesLinearTime(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatalf("flags %#x: %d packets of %d fragments not handled in 5 s", flags, packets, chunks)
 		}
-		if b.held != packets*chunks {
-			t.Fatalf("flags %#x: holding %d bytes, want %d", flags, b.held, packets*chunks)
+		if b.held != packets*chunks*(dataHeaderSize+1) {
+			t.Fatalf("flags %#x: holding %d bytes, want %d", flags, b.held, packets*chunks*(dataHeaderSize+1))
 		}
 	}
 }
@@ -671,5 +671,31 @@ func TestForwardTSNDeliversStrandedMessage(t *testing.T) {
 	n.run(time.Minute, func() bool { return a.assoc.Buffered() == 0 })
 	if !forwarded || len(b.received) != 1 || b.received[0].data[0] != 1 {
 		t.Fatalf("FORWARD TSN sent: %v; delivered %v, want the second message", forwarded, b.received)
+	}
+}
+
+// TestHeldFragmentsCountTheirHeaders covers a peer that sends fragments of
+// a byte that complete nothing: each takes room in the window as the chunk
+// it came in, header and all, so that what the association holds before it
+// fails stays in proportion to the window.
+func TestHeldFragmentsCountTheirHeaders(t *testing.T) {
+	const window, chunk = 1700, dataHeaderSize + 1
+	n := newNetwork(t, 42, Config{ReceiveWindow: window})
+	n.open(t, false)
+	b := n.peers[1].assoc
+	var windows []uint32
+	aborted := false
+	b.send = func(p []byte) {
+		if s, ok := sackIn(p); ok {
+			windows = append(windows, s.window)
+		}
+		aborted = aborted || hasChunk(p, chunkAbort)
+	}
+	taken := 0
+	for inject(b, n.now, chunkData, flagBegin|flagImmediate, dataValue(b.peerCum+1, []byte{1})) == nil {
+		taken++
+	}
+	if windows[0] != window-chunk || taken != 2*window/chunk || !aborted {
+		t.Fatalf("window %d after a fragment, %d taken before the abort (sent: %v); want %d and %d", windows[0], taken, aborted, window-chunk, 2*window/chunk)
 	}
 }

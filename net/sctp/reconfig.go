@@ -212,14 +212,14 @@ func (a *Association) performPendingReset() bool {
 	for _, s := range streams {
 		if in := a.streams[s]; in != nil {
 			for _, f := range in.held {
-				a.held -= len(f.data)
+				a.held -= f.size()
 			}
 			delete(a.streams, s)
 		}
 	}
 	a.unordered = slices.DeleteFunc(a.unordered, func(f inFragment) bool {
 		if slices.Contains(streams, f.stream) {
-			a.held -= len(f.data)
+			a.held -= f.size()
 			return true
 		}
 		return false
