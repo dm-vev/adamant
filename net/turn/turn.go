@@ -460,9 +460,14 @@ func (c *Client) HandleTimeout(now time.Time) {
 		t.next = now.Add(rto << (t.sent - 1))
 		c.send(t.raw, c.cfg.Server)
 	}
-	if c.state != stateAllocated {
-		return
+	if c.state == stateAllocated {
+		c.renew(now)
 	}
+}
+
+// renew refreshes the allocation, renews the permissions wanted that are
+// due and forgets those that lapsed.
+func (c *Client) renew(now time.Time) {
 	if !now.Before(c.refreshAt()) && !c.refreshing() {
 		c.request(methodRefresh, netip.Addr{}, now)
 	}

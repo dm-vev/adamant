@@ -71,28 +71,35 @@ func (l *Listener) Relay(ctx context.Context, cfg turn.Config) error {
 		return net.ErrClosed
 	default:
 	}
-	r.mu.Lock()
-	now := time.Now()
-	r.client.Start(now)
-	r.alive = now
-	r.schedule()
-	r.mu.Unlock()
-	select {
-	case <-r.ready:
-	case <-ctx.Done():
-		l.relay.CompareAndSwap(r, nil)
-		r.close()
-		return ctx.Err()
-	}
-	r.mu.Lock()
-	err := r.client.Err()
-	r.mu.Unlock()
-	if err != nil {
+	r.start()
+	if err := r.wait(ctx); err != nil {
 		l.relay.CompareAndSwap(r, nil)
 		r.close()
 		return err
 	}
 	return nil
+}
+
+// start asks the TURN server for the allocation.
+func (r *relay) start() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Now()
+	r.client.Start(now)
+	r.alive = now
+	r.schedule()
+}
+
+// wait waits until the allocation was made, and returns why it was not.
+func (r *relay) wait(ctx context.Context) error {
+	select {
+	case <-r.ready:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.client.Err()
 }
 
 // newRelay returns a relay of l on the TURN server of cfg, not started.

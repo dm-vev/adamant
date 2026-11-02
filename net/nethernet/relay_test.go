@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"maps"
 	"net"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
 
@@ -93,6 +95,55 @@ func TestRelayPermissionsFollowConnections(t *testing.T) {
 	trickle("client", 3, addr(20))
 	if got := held(); len(got) != 0 {
 		t.Fatalf("held once the connections closed %v", got)
+	}
+}
+
+// TestRelayNotMade returns why Relay made no relay, leaving the listener
+// without one: the TURN server refused the allocation, the context ended
+// before the server answered, or the listener closed.
+func TestRelayNotMade(t *testing.T) {
+	l := listen(t, ListenConfig{})
+	server, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	cfg := turn.Config{Server: server.LocalAddr().(*net.UDPAddr).AddrPort()}
+	refused := make(chan struct{})
+	go func() {
+		// The server refuses the first request, an Allocate, and answers
+		// no other.
+		defer close(refused)
+		buf := make([]byte, 1500)
+		n, from, err := server.ReadFromUDPAddrPort(buf)
+		var m stun.Message
+		if err != nil || stun.Parse(buf[:n], &m) != nil {
+			return
+		}
+		b := stun.NewBuilder(nil, 0x0113, m.Transaction)
+		b.AddErrorCode(403, "Forbidden")
+		_, _ = server.WriteToUDPAddrPort(b.Bytes(), from)
+	}()
+	none := func(what string, err error, want error) {
+		t.Helper()
+		if !errors.Is(err, want) || l.RelayDone() != nil || l.RelayErr() != nil {
+			t.Fatalf("%s: Relay returned %v, want %v; RelayDone %v, RelayErr %v", what, err, want, l.RelayDone(), l.RelayErr())
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = l.Relay(ctx, cfg)
+	<-refused
+	if err == nil || !strings.Contains(err.Error(), "403") {
+		t.Fatalf("refused allocation: Relay returned %v", err)
+	}
+	none("refused allocation", nil, nil)
+	short, cancelShort := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancelShort()
+	none("server silent", l.Relay(short, cfg), context.DeadlineExceeded)
+	_ = l.Close()
+	if err := l.Relay(ctx, cfg); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("closed listener: Relay returned %v", err)
 	}
 }
 
