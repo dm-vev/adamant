@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
 	"net/netip"
 	"strconv"
@@ -145,6 +146,29 @@ func TestQueryResponsesMatchLumiFormat(t *testing.T) {
 	if shortInfo.hostIP != host {
 		t.Fatalf("unexpected short hostip: got %q, want %q", shortInfo.hostIP, host)
 	}
+}
+
+// parseChallenge reads a handshake response as query clients do: the type,
+// the session ID, then the challenge as the null-terminated decimal text of
+// an int32, which goes back as its four big-endian bytes.
+func parseChallenge(resp []byte, session uint32) ([4]byte, error) {
+	var token [4]byte
+	if len(resp) < 6 || resp[0] != queryTypeHandshake {
+		return token, errors.New("unexpected handshake response type")
+	}
+	if binary.BigEndian.Uint32(resp[1:5]) != session {
+		return token, errors.New("unexpected handshake session id")
+	}
+	text, ok := bytes.CutSuffix(resp[5:], []byte{0x00})
+	if !ok {
+		return token, errors.New("handshake challenge not null-terminated")
+	}
+	n, err := strconv.ParseInt(string(text), 10, 32)
+	if err != nil {
+		return token, fmt.Errorf("handshake challenge %q: %w", text, err)
+	}
+	binary.BigEndian.PutUint32(token[:], uint32(int32(n)))
+	return token, nil
 }
 
 func TestHandleQueryRejectsInvalidToken(t *testing.T) {
@@ -322,27 +346,21 @@ func doNukkitQuery(conn *packetConn, remote net.Addr, expected Data) (map[string
 	if len(recorder.writes) != 1 {
 		return nil, shortQueryInfo{}, errors.New("missing handshake response")
 	}
-	handshakeResp := recorder.writes[0]
-	if len(handshakeResp) != 10 {
-		return nil, shortQueryInfo{}, errors.New("unexpected handshake response length")
+	token, err := parseChallenge(recorder.writes[0], session)
+	if err != nil {
+		return nil, shortQueryInfo{}, err
 	}
-	if handshakeResp[0] != queryTypeHandshake {
-		return nil, shortQueryInfo{}, errors.New("unexpected handshake response type")
-	}
-	if binary.BigEndian.Uint32(handshakeResp[1:5]) != session {
-		return nil, shortQueryInfo{}, errors.New("unexpected handshake session id")
-	}
-	token := append([]byte(nil), handshakeResp[5:9]...)
 
 	var sequence [4]byte
 	binary.BigEndian.PutUint32(sequence[:], session+1)
 
-	infoReq := make([]byte, 0, 7+4+8)
+	infoReq := make([]byte, 0, 7+4+4)
 	infoReq = append(infoReq, queryVersion[:]...)
 	infoReq = append(infoReq, queryTypeInformation)
 	infoReq = append(infoReq, sequence[:]...)
-	infoReq = append(infoReq, token...)
-	infoReq = append(infoReq, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+	infoReq = append(infoReq, token[:]...)
+	// The four bytes of padding that ask for the full statistics.
+	infoReq = append(infoReq, 0x00, 0x00, 0x00, 0x00)
 
 	if handled := conn.handleQuery(infoReq, remote); !handled {
 		return nil, shortQueryInfo{}, errors.New("long stats request not handled")
@@ -368,7 +386,7 @@ func doNukkitQuery(conn *packetConn, remote net.Addr, expected Data) (map[string
 	shortReq = append(shortReq, queryVersion[:]...)
 	shortReq = append(shortReq, queryTypeInformation)
 	shortReq = append(shortReq, sequence[:]...)
-	shortReq = append(shortReq, token...)
+	shortReq = append(shortReq, token[:]...)
 	if handled := conn.handleQuery(shortReq, remote); !handled {
 		return nil, shortQueryInfo{}, errors.New("short stats request not handled")
 	}
@@ -519,12 +537,66 @@ func TestResponderAnswers(t *testing.T) {
 	if r.Answer([]byte{0x16, 0xfe, 0xfd, 1, 2, 3, 4}, from, reply) {
 		t.Fatal("a DTLS record was taken for a query")
 	}
-	if !r.Answer([]byte{0xfe, 0xfd, queryTypeHandshake, 0, 0, 0, 7}, from, reply) || len(answers) != 1 || len(answers[0]) != 10 {
+	if !r.Answer([]byte{0xfe, 0xfd, queryTypeHandshake, 0, 0, 0, 7}, from, reply) || len(answers) != 1 {
 		t.Fatalf("handshake answers %x", answers)
 	}
-	token := answers[0][5:9]
-	stat := append([]byte{0xfe, 0xfd, queryTypeInformation, 0, 0, 0, 8}, token...)
+	token, err := parseChallenge(answers[0], 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stat := append([]byte{0xfe, 0xfd, queryTypeInformation, 0, 0, 0, 8}, token[:]...)
 	if !r.Answer(stat, from, reply) || len(answers) != 2 || !bytes.Contains(answers[1], []byte("Adamant")) {
 		t.Fatalf("statistics answers %q", answers)
+	}
+}
+
+// TestResponderIgnores covers the datagrams a Responder takes without an
+// answer, or does not take: any query while query is off, a statistics
+// request without its token, and a query of an unknown type.
+func TestResponderIgnores(t *testing.T) {
+	r, err := NewResponder(netip.MustParseAddrPort("127.0.0.1:19132"), nopLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	from := netip.MustParseAddrPort("10.0.0.1:5000")
+	answered := 0
+	reply := func([]byte) { answered++ }
+	handshake := []byte{0xfe, 0xfd, queryTypeHandshake, 0, 0, 0, 1}
+
+	SetEnabled(false)
+	t.Cleanup(func() { SetEnabled(true) })
+	if !r.Answer(handshake, from, reply) || answered != 0 {
+		t.Fatalf("query off: taken and answered %d times, want taken unanswered", answered)
+	}
+	SetEnabled(true)
+	if !r.Answer([]byte{0xfe, 0xfd, queryTypeInformation, 0, 0, 0, 1, 0xde, 0xad}, from, reply) || answered != 0 {
+		t.Fatalf("statistics without a token: answered %d times", answered)
+	}
+	if r.Answer([]byte{0xfe, 0xfd, 0x05, 0, 0, 0, 1}, from, reply) || answered != 0 {
+		t.Fatal("a query of an unknown type was taken")
+	}
+}
+
+// TestChallengeOfNegativeToken covers a token whose first byte has its top
+// bit set: its challenge is a negative int32, which clients read back to the
+// same four bytes.
+func TestChallengeOfNegativeToken(t *testing.T) {
+	addr := &net.UDPAddr{IP: net.IPv4(10, 0, 0, 1), Port: 5000}
+	pc := &packetConn{log: nopLogger{}}
+	for i := 0; ; i++ {
+		pc.token[0], pc.token[1] = byte(i), byte(i>>8)
+		if d := pc.tokenDigest(addr, pc.token); d[0] >= 0x80 {
+			break
+		}
+	}
+	recorder := &packetRecorder{}
+	pc.PacketConn, pc.lastToken = recorder, pc.token
+	pc.writeHandshake(addr, 3)
+	token, err := parseChallenge(recorder.writes[0], 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := pc.tokenDigest(addr, pc.token); token != want {
+		t.Fatalf("challenge reads back as % x, want % x", token, want)
 	}
 }

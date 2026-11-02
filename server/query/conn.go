@@ -48,20 +48,21 @@ func (c *packetConn) handleQuery(b []byte, addr net.Addr) bool {
 		c.writeHandshake(addr, sequence)
 		return true
 	case queryTypeInformation:
-		// The statistics request must include the 4-byte token. If it doesn't, it is ignored.
-		if len(b) < 11 {
-			return true
-		}
-		if !c.validateToken(addr, b[7:11]) {
-			return true
-		}
-		// Lumi decides between long and short responses by checking that 8 bytes remain after the token.
-		long := len(b[11:]) == 8
-		c.writeInfo(addr, sequence, long)
+		c.answerInformation(b, addr, sequence)
 		return true
 	default:
 		return false
 	}
+}
+
+// answerInformation answers a statistics request that carries a valid
+// token: with the full statistics if four bytes of padding follow the
+// token, with the basic ones if the request ends with it.
+func (c *packetConn) answerInformation(b []byte, addr net.Addr, sequence int32) {
+	if len(b) < 11 || !c.validateToken(addr, b[7:11]) {
+		return
+	}
+	c.writeInfo(addr, sequence, len(b[11:]) >= 4)
 }
 
 func (c *packetConn) tokenDigest(addr net.Addr, token [16]byte) [4]byte {
@@ -135,17 +136,18 @@ func javaIPv6HostAddress(ip net.IP) string {
 }
 
 // writeHandshake constructs the handshake response that contains the issued
-// token.
+// token: the challenge is the decimal text of the token read as a big-endian
+// int32, which clients send back as those four bytes.
 func (c *packetConn) writeHandshake(addr net.Addr, sequence int32) {
 	digest := c.tokenDigest(addr, c.token)
 
-	var resp [10]byte
+	resp := make([]byte, 5, 17)
 	resp[0] = queryTypeHandshake
 	binary.BigEndian.PutUint32(resp[1:5], uint32(sequence))
-	copy(resp[5:9], digest[:])
-	resp[9] = 0x00
+	resp = strconv.AppendInt(resp, int64(int32(binary.BigEndian.Uint32(digest[:]))), 10)
+	resp = append(resp, 0x00)
 
-	if _, err := c.PacketConn.WriteTo(resp[:], addr); err != nil {
+	if _, err := c.PacketConn.WriteTo(resp, addr); err != nil {
 		c.log.Debug("query handshake write failed", "err", err, "raddr", addr.String())
 	}
 }
