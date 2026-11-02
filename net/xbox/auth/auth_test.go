@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -16,6 +17,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -276,6 +278,101 @@ func TestStalledService(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("StartLogin still waits on a stalled service after 5s")
+	}
+}
+
+// TestStalledRefresh renews the MCToken against services that stall the
+// request for it: meanwhile the tokens at hand are handed out at once and
+// a caller that needs the MCToken waits only as long as its context lets
+// it, and once the services answer, the callers that waited get the token
+// of the one renewal.
+func TestStalledRefresh(t *testing.T) {
+	sv := &services{t: t, refresh: "refresh-1"}
+	var starts atomic.Int32
+	entered := make(chan struct{}, 1)
+	release := make(chan struct{})
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1.0/session/start" {
+			starts.Add(1)
+			select {
+			case entered <- struct{}{}:
+			default:
+			}
+			<-release
+		}
+		sv.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+	var once sync.Once
+	unstall := func() { once.Do(func() { close(release) }) }
+	defer unstall()
+
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	der, _ := x509.MarshalPKCS8PrivateKey(key)
+	s, err := testConfig(srv).Restore(Snapshot{RefreshToken: "refresh-1", ProofKey: base64.StdEncoding.EncodeToString(der), DeviceID: "{device}"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	x, err := s.XSTS(ctx, XboxLive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	renewed := make(chan error, 1)
+	go func() {
+		_, err := s.MCToken(ctx)
+		renewed <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the MCToken was not asked for")
+	}
+
+	atHand := make(chan *XSTSToken, 1)
+	go func() {
+		got, _ := s.XSTS(ctx, XboxLive)
+		_ = s.Snapshot()
+		atHand <- got
+	}()
+	select {
+	case got := <-atHand:
+		if got != x {
+			t.Fatalf("XSTS token %+v, want the one at hand", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the XSTS token at hand waits on a stalled renewal")
+	}
+	short, cancelShort := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancelShort()
+	waited := make(chan error, 1)
+	go func() {
+		_, err := s.MCToken(short)
+		waited <- err
+	}()
+	select {
+	case err := <-waited:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("MCToken behind a stalled renewal: %v, want the deadline of its context", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("MCToken outlived its context behind a stalled renewal")
+	}
+
+	later := make(chan error, 1)
+	go func() {
+		_, err := s.MCToken(ctx)
+		later <- err
+	}()
+	unstall()
+	for _, ch := range []chan error{renewed, later} {
+		if err := <-ch; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := starts.Load(); n != 1 {
+		t.Fatalf("the MCToken was asked for %d times, want once", n)
 	}
 }
 

@@ -138,8 +138,6 @@ func (s *Session) MultiplayerToken(ctx context.Context, pub *ecdsa.PublicKey) (s
 			SignedToken string `json:"signedToken"`
 		} `json:"result"`
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if err := s.post(ctx, s.ep.Minecraft+"/api/v1.0/multiplayer/session/start", map[string]any{
 		// The key becomes the cpk claim of the token.
 		"publicKey": base64.StdEncoding.EncodeToString(der),

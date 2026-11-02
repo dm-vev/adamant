@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -156,14 +157,23 @@ type MCToken struct {
 }
 
 // Session holds the tokens of an account and renews them as they expire.
-// It is safe for concurrent use.
+// It is safe for concurrent use. Tokens at hand are handed out at once;
+// one caller at a time renews them, the others waiting for it as long as
+// their contexts let them, and no lock is held across a request.
 type Session struct {
-	conf      Config
-	ep        Endpoints
+	conf     Config
+	ep       Endpoints
+	key      *ecdsa.PrivateKey
+	deviceID string
+	// skew is how far the clock of the services runs ahead, a
+	// time.Duration.
+	skew atomic.Int64
+	// renewing holds a value while a caller renews tokens: the methods
+	// ending in Locked, and those they call, run with it held. They change
+	// what is read outside a renewal with mu held too.
+	renewing  chan struct{}
 	mu        sync.Mutex
 	refresh   string
-	key       *ecdsa.PrivateKey
-	deviceID  string
 	access    token
 	device    token
 	user      token
@@ -171,7 +181,6 @@ type Session struct {
 	xsts      map[string]*XSTSToken
 	playfab   token
 	mc        *MCToken
-	skew      time.Duration
 	onRefresh func(Snapshot)
 }
 
@@ -202,7 +211,7 @@ func (c Config) Restore(s Snapshot) (*Session, error) {
 	if s.RefreshToken == "" || s.DeviceID == "" {
 		return nil, errors.New("auth: snapshot without refresh token or device ID")
 	}
-	return &Session{conf: c, ep: c.endpoints(), refresh: s.RefreshToken, key: key, deviceID: s.DeviceID, xsts: map[string]*XSTSToken{}}, nil
+	return &Session{conf: c, ep: c.endpoints(), refresh: s.RefreshToken, key: key, deviceID: s.DeviceID, xsts: map[string]*XSTSToken{}, renewing: make(chan struct{}, 1)}, nil
 }
 
 // newSession returns a Session for a fresh login with a new device.
@@ -211,7 +220,7 @@ func (c Config) newSession(access token, refresh string) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Session{conf: c, ep: c.endpoints(), refresh: refresh, access: access, key: key, deviceID: "{" + newUUID() + "}", xsts: map[string]*XSTSToken{}}, nil
+	return &Session{conf: c, ep: c.endpoints(), refresh: refresh, access: access, key: key, deviceID: "{" + newUUID() + "}", xsts: map[string]*XSTSToken{}, renewing: make(chan struct{}, 1)}, nil
 }
 
 // Snapshot returns what signs the account in again.
@@ -236,21 +245,56 @@ func (s *Session) OnRefresh(f func(Snapshot)) {
 }
 
 // now returns the time of the services, as their Date headers tell it.
-func (s *Session) now() time.Time { return time.Now().Add(s.skew) }
+func (s *Session) now() time.Time { return time.Now().Add(time.Duration(s.skew.Load())) }
+
+// lockRenewal waits for the caller renewing tokens, if any, as long as the
+// context lets it, and has this caller renew them.
+func (s *Session) lockRenewal(ctx context.Context) error {
+	select {
+	case s.renewing <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (s *Session) unlockRenewal() { <-s.renewing }
 
 // XSTS returns an XSTS token for a relying party.
 func (s *Session) XSTS(ctx context.Context, relyingParty string) (*XSTSToken, error) {
+	if t := s.freshXSTS(relyingParty); t != nil {
+		return t, nil
+	}
+	if err := s.lockRenewal(ctx); err != nil {
+		return nil, err
+	}
+	defer s.unlockRenewal()
+	return s.xstsLocked(ctx, relyingParty)
+}
+
+// freshXSTS returns the XSTS token of a relying party if it and the tokens
+// it was asked for with are fresh, nil otherwise.
+func (s *Session) freshXSTS(relyingParty string) *XSTSToken {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.xstsLocked(ctx, relyingParty)
+	if t := s.xsts[relyingParty]; s.authorized() && t.fresh(s.now()) {
+		return t
+	}
+	return nil
 }
 
 // MCToken returns the token of the Minecraft services.
 func (s *Session) MCToken(ctx context.Context) (*MCToken, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.mc != nil && s.now().Add(refreshMargin).Before(s.mc.ValidUntil) {
-		return s.mc, nil
+	if mc := s.freshMC(); mc != nil {
+		return mc, nil
+	}
+	if err := s.lockRenewal(ctx); err != nil {
+		return nil, err
+	}
+	defer s.unlockRenewal()
+	if mc := s.freshMC(); mc != nil {
+		// Renewed by the caller waited for.
+		return mc, nil
 	}
 	ticket, err := s.playfabLocked(ctx)
 	if err != nil {
@@ -260,8 +304,20 @@ func (s *Session) MCToken(ctx context.Context) (*MCToken, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.mu.Lock()
 	s.mc = mc
+	s.mu.Unlock()
 	return mc, nil
+}
+
+// freshMC returns the MCToken if it is fresh, nil otherwise.
+func (s *Session) freshMC() *MCToken {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.mc != nil && s.now().Add(refreshMargin).Before(s.mc.ValidUntil) {
+		return s.mc
+	}
+	return nil
 }
 
 // post sends a JSON request, signed with the proof key if sign is set, and
@@ -283,14 +339,15 @@ func (s *Session) post(ctx context.Context, rawURL string, body any, header http
 		if req.Header.Get("User-Agent") == "" {
 			req.Header.Set("User-Agent", s.conf.UserAgent)
 		}
-		skew := s.skew
+		skew := s.skew.Load()
 		if sign {
 			req.Header.Set("Signature", signature(req, b, s.key, s.now()))
 		}
 		err = s.do(req, out)
 		var se *StatusError
+		moved := time.Duration(s.skew.Load() - skew)
 		if sign && !retried && errors.As(err, &se) && (se.Status == http.StatusUnauthorized || se.Status == http.StatusForbidden) &&
-			(s.skew-skew > 30*time.Second || skew-s.skew > 30*time.Second) {
+			(moved > 30*time.Second || moved < -30*time.Second) {
 			// Signed at a time the service took as wrong: again at its time.
 			continue
 		}
@@ -307,7 +364,7 @@ func (s *Session) do(req *http.Request, out any) error {
 	}
 	defer resp.Body.Close()
 	if d, err := http.ParseTime(resp.Header.Get("Date")); err == nil {
-		s.skew = time.Until(d)
+		s.skew.Store(int64(time.Until(d)))
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponse))
 	if err != nil {

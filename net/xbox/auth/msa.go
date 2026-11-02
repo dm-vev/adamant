@@ -121,9 +121,12 @@ func (s *Session) accessToken(ctx context.Context) (string, error) {
 	}
 	s.access = token{resp.AccessToken, expiry(time.Now(), resp.ExpiresIn)}
 	if resp.RefreshToken != "" && resp.RefreshToken != s.refresh {
+		s.mu.Lock()
 		s.refresh = resp.RefreshToken
-		if s.onRefresh != nil {
-			s.onRefresh(s.snapshot())
+		snap, onRefresh := s.snapshot(), s.onRefresh
+		s.mu.Unlock()
+		if onRefresh != nil {
+			onRefresh(snap)
 		}
 	}
 	return s.access.value, nil

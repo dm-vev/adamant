@@ -22,6 +22,18 @@ type xblToken struct {
 
 func (t *xblToken) valid() bool { return t != nil && t.Token != "" && !t.NotAfter.IsZero() }
 
+// fresh reports whether an XSTS token is far enough from expiry.
+func (t *XSTSToken) fresh(now time.Time) bool {
+	return t != nil && now.Add(refreshMargin).Before(t.NotAfter)
+}
+
+// authorized reports whether the user and title tokens and the XSTS token
+// of Xbox Live they were asked for with are fresh.
+func (s *Session) authorized() bool {
+	now := s.now()
+	return s.user.fresh(now) && s.title.fresh(now) && s.xsts[XboxLive].fresh(now)
+}
+
 // xsts returns the token as an XSTSToken.
 func (t *xblToken) xsts() (*XSTSToken, error) {
 	if !t.valid() || len(t.DisplayClaims.XUI) == 0 || t.DisplayClaims.XUI[0].UserHash == "" {
@@ -63,10 +75,8 @@ func (s *Session) deviceToken(ctx context.Context) (string, error) {
 // authorize signs the user in with the SISU authorization, which returns
 // the user and title tokens and the XSTS token of Xbox Live.
 func (s *Session) authorize(ctx context.Context) error {
-	if s.user.fresh(s.now()) && s.title.fresh(s.now()) {
-		if t := s.xsts[XboxLive]; t != nil && s.now().Add(refreshMargin).Before(t.NotAfter) {
-			return nil
-		}
+	if s.authorized() {
+		return nil
 	}
 	device, err := s.deviceToken(ctx)
 	if err != nil {
@@ -100,9 +110,11 @@ func (s *Session) authorize(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	s.mu.Lock()
 	s.user = token{resp.UserToken.Token, resp.UserToken.NotAfter}
 	s.title = token{resp.TitleToken.Token, resp.TitleToken.NotAfter}
 	s.xsts[XboxLive] = x
+	s.mu.Unlock()
 	return nil
 }
 
@@ -112,7 +124,7 @@ func (s *Session) xstsLocked(ctx context.Context, relyingParty string) (*XSTSTok
 	if err := s.authorize(ctx); err != nil {
 		return nil, err
 	}
-	if t := s.xsts[relyingParty]; t != nil && s.now().Add(refreshMargin).Before(t.NotAfter) {
+	if t := s.xsts[relyingParty]; t.fresh(s.now()) {
 		return t, nil
 	}
 	device, err := s.deviceToken(ctx)
@@ -136,6 +148,8 @@ func (s *Session) xstsLocked(ctx context.Context, relyingParty string) (*XSTSTok
 	if err != nil {
 		return nil, err
 	}
+	s.mu.Lock()
 	s.xsts[relyingParty] = x
+	s.mu.Unlock()
 	return x, nil
 }
