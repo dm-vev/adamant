@@ -1025,97 +1025,133 @@ func (a *Association) dropFragments(list []inFragment, cum uint32) []inFragment 
 }
 
 func (a *Association) handleSack(c chunk, now time.Time) error {
-	switch a.state {
-	case stateEstablished, stateShutdownPending, stateShutdownReceived, stateShutdownSent, stateShutdownAckSent:
-	default:
+	if a.state < stateEstablished {
 		return nil
 	}
-	s, ok := parseSack(c.value, a.gapScratch)
+	s, ok, err := a.readSack(c)
 	if !ok {
-		return errPacket
-	}
-	a.gapScratch = s.gaps[:0]
-	if tsnLess(s.cumTSN, a.cumAck) {
-		// An old SACK, reordered.
-		return nil
-	}
-	if !tsnLess(s.cumTSN, a.nextTSN) {
-		// It acknowledges data never sent.
-		return errPacket
+		return err
 	}
 	fullyUsed := a.flight >= a.cwnd-a.cfg.MaxPacketSize
 	advanced := tsnLess(a.cumAck, s.cumTSN)
-	newly, highest, haveHighest := a.ackCumulative(s.cumTSN, now)
-	// Gap acknowledged chunks are marked; a chunk acknowledged by an
-	// earlier SACK and not by this one was reneged on and is unacknowledged
-	// again (RFC 9260 section 6.2.1).
-	var highestGap uint32
-	haveGap, reneged := false, false
+	newly := a.ackCumulative(s.cumTSN, now)
+	gaps := a.ackGaps(s, now)
+	newly += gaps.newly
 	// Any DATA chunk acknowledged starts the count of timeouts over (RFC
 	// 9260 section 8.1), one given up too.
-	progress := advanced
+	if advanced || gaps.acked {
+		a.errorCount = 0
+	}
+	a.countSackMisses(advanced, gaps)
+	a.growWindow(advanced, fullyUsed, newly)
+	a.peerWindow = max(0, int(s.window)-a.flight)
+	a.advanceForwardTSN()
+	a.updateT3(now, advanced || gaps.reneged)
+	a.maybeShutdown(now)
+	return nil
+}
+
+// readSack parses a SACK, and reports whether to act on it: an old one,
+// reordered, is ignored, and one that acknowledges data never sent fails
+// the association.
+func (a *Association) readSack(c chunk) (sackChunk, bool, error) {
+	s, ok := parseSack(c.value, a.gapScratch)
+	if !ok {
+		return s, false, errPacket
+	}
+	a.gapScratch = s.gaps[:0]
+	if tsnLess(s.cumTSN, a.cumAck) {
+		return s, false, nil
+	}
+	if !tsnLess(s.cumTSN, a.nextTSN) {
+		return s, false, errPacket
+	}
+	return s, true, nil
+}
+
+// gapAcks is what the gap ack blocks of a SACK acknowledged: whether any
+// chunk anew and its bytes not given up, the highest TSN newly
+// acknowledged and the highest reported, each the cumulative TSN if none,
+// and whether the peer reneged.
+type gapAcks struct {
+	acked               bool
+	newly               int
+	highest, highestGap uint32
+	reneged             bool
+}
+
+// ackGaps marks the chunks the gap ack blocks of a SACK cover; a chunk
+// acknowledged by an earlier SACK and not by this one was reneged on and
+// is unacknowledged again (RFC 9260 section 6.2.1). The chunks are in TSN
+// order, so the last one met is the highest.
+func (a *Association) ackGaps(s sackChunk, now time.Time) gapAcks {
+	g := gapAcks{highest: s.cumTSN, highestGap: s.cumTSN}
 	for _, ch := range a.outstanding {
 		covered := gapCovers(s, ch.tsn)
-		if covered && (!haveGap || tsnLess(highestGap, ch.tsn)) {
-			highestGap, haveGap = ch.tsn, true
-		}
 		switch {
 		case covered && !ch.acked:
-			ch.acked = true
-			ch.retransmit = false
-			progress = true
-			if ch.inFlight {
-				a.flight -= ch.size()
-				ch.inFlight = false
-			}
-			if !ch.abandoned {
-				newly += len(ch.data)
-			}
-			if ch.transmits == 1 && a.rttActive && ch.tsn == a.rttTSN {
-				a.measure(now.Sub(a.rttSent))
-			}
-			if !haveHighest || tsnLess(highest, ch.tsn) {
-				highest, haveHighest = ch.tsn, true
-			}
+			g.acked = true
+			g.newly += a.ackGap(ch, now)
+			g.highest = ch.tsn
 		case !covered && ch.acked:
 			ch.acked = false
 			ch.misses = 0
-			reneged = true
+			g.reneged = true
+		}
+		if covered {
+			g.highestGap = ch.tsn
 		}
 	}
-	if progress {
-		a.errorCount = 0
+	return g
+}
+
+// ackGap marks a chunk acknowledged by a gap ack block, and returns its
+// bytes newly acknowledged: none if it was given up.
+func (a *Association) ackGap(ch *outChunk, now time.Time) int {
+	ch.acked = true
+	ch.retransmit = false
+	a.leaveFlight(ch)
+	a.sample(ch, now)
+	if ch.abandoned {
+		return 0
 	}
-	// Miss indications follow the highest TSN newly acknowledged, so that
-	// a SACK repeating the same gaps adds nothing; in fast recovery an
-	// advancing cumulative ack counts every reported gap (RFC 9260 section
-	// 7.2.4).
-	switch {
-	case a.fastRecovery && advanced && haveGap:
-		a.countMisses(highestGap)
-	case haveHighest:
-		a.countMisses(highest)
+	return len(ch.data)
+}
+
+// countSackMisses counts the miss indications of a SACK: below the highest
+// TSN newly acknowledged, so that a SACK repeating the same gaps adds
+// nothing; in fast recovery, below the highest reported when the
+// cumulative TSN moved, every gap counting (RFC 9260 section 7.2.4).
+// Fast recovery ends once the TSNs outstanding when it began are
+// acknowledged.
+func (a *Association) countSackMisses(advanced bool, g gapAcks) {
+	if a.fastRecovery && advanced {
+		a.countMisses(g.highestGap)
+	} else {
+		a.countMisses(g.highest)
 	}
 	if a.fastRecovery && !tsnLess(a.cumAck, a.recoverTSN) {
 		a.fastRecovery = false
 	}
-	// Congestion window growth (RFC 9260 sections 7.2.1 and 7.2.2).
-	if advanced && !a.fastRecovery && fullyUsed {
-		if a.cwnd <= a.ssthresh {
-			a.cwnd += min(newly, a.cfg.MaxPacketSize)
-		} else {
-			a.partialAcked += newly
-			if a.partialAcked >= a.cwnd {
-				a.partialAcked -= a.cwnd
-				a.cwnd += a.cfg.MaxPacketSize
-			}
-		}
+}
+
+// growWindow grows the congestion window by the bytes newly acknowledged
+// by a SACK that moved the cumulative TSN, outside fast recovery and with
+// the window fully used: by slow start up to the threshold, by congestion
+// avoidance past it (RFC 9260 sections 7.2.1 and 7.2.2).
+func (a *Association) growWindow(advanced, fullyUsed bool, newly int) {
+	if !advanced || a.fastRecovery || !fullyUsed {
+		return
 	}
-	a.peerWindow = max(0, int(s.window)-a.flight)
-	a.advanceForwardTSN()
-	a.updateT3(now, advanced || reneged)
-	a.maybeShutdown(now)
-	return nil
+	if a.cwnd <= a.ssthresh {
+		a.cwnd += min(newly, a.cfg.MaxPacketSize)
+		return
+	}
+	a.partialAcked += newly
+	if a.partialAcked >= a.cwnd {
+		a.partialAcked -= a.cwnd
+		a.cwnd += a.cfg.MaxPacketSize
+	}
 }
 
 // gapCovers reports whether a gap ack block of a SACK covers tsn.
@@ -1129,9 +1165,9 @@ func gapCovers(s sackChunk, tsn uint32) bool {
 	return false
 }
 
-// ackCumulative releases the chunks up to cum, returning the bytes newly
-// acknowledged and the highest TSN newly acknowledged.
-func (a *Association) ackCumulative(cum uint32, now time.Time) (newly int, highest uint32, haveHighest bool) {
+// ackCumulative releases the chunks up to cum, and returns the bytes newly
+// acknowledged.
+func (a *Association) ackCumulative(cum uint32, now time.Time) (newly int) {
 	drop := 0
 	for _, ch := range a.outstanding {
 		if !tsnLessEq(ch.tsn, cum) {
@@ -1139,10 +1175,7 @@ func (a *Association) ackCumulative(cum uint32, now time.Time) (newly int, highe
 		}
 		if !ch.acked && !ch.abandoned {
 			newly += len(ch.data)
-			highest, haveHighest = ch.tsn, true
-			if ch.transmits == 1 && a.rttActive && ch.tsn == a.rttTSN {
-				a.measure(now.Sub(a.rttSent))
-			}
+			a.sample(ch, now)
 		}
 		a.release(ch)
 		drop++
@@ -1154,7 +1187,23 @@ func (a *Association) ackCumulative(cum uint32, now time.Time) (newly int, highe
 	if tsnLess(a.advancedAck, a.cumAck) {
 		a.advancedAck = a.cumAck
 	}
-	return newly, highest, haveHighest
+	return newly
+}
+
+// sample measures the round trip by a chunk acknowledged, if it is the
+// one timed and went once.
+func (a *Association) sample(ch *outChunk, now time.Time) {
+	if ch.transmits == 1 && a.rttActive && ch.tsn == a.rttTSN {
+		a.measure(now.Sub(a.rttSent))
+	}
+}
+
+// leaveFlight takes a chunk out of the bytes in flight.
+func (a *Association) leaveFlight(ch *outChunk) {
+	if ch.inFlight {
+		a.flight -= ch.size()
+		ch.inFlight = false
+	}
 }
 
 // updateT3 keeps the retransmission timer running while data is in flight
@@ -1200,10 +1249,7 @@ func (a *Association) countMisses(highest uint32) {
 func (a *Association) markRetransmit(ch *outChunk, now time.Time) {
 	// Karn's rule: a chunk sent twice gives no sample.
 	a.untime(ch)
-	if ch.inFlight {
-		a.flight -= ch.size()
-		ch.inFlight = false
-	}
+	a.leaveFlight(ch)
 	m := ch.msg
 	if m.opts.Partial && (ch.transmits > m.opts.MaxRetransmits || !now.IsZero() && m.expired(now)) {
 		a.abandon(m)
@@ -1237,10 +1283,7 @@ func (a *Association) abandon(m *outMessage) {
 		ch.abandoned = true
 		ch.retransmit = false
 		a.untime(ch)
-		if ch.inFlight {
-			a.flight -= ch.size()
-			ch.inFlight = false
-		}
+		a.leaveFlight(ch)
 	}
 	// The part never cut into chunks is dropped from the queue. If the rest
 	// went out, the peer may hold it: an empty last chunk, given up at once,
@@ -1316,10 +1359,7 @@ func (a *Association) anyUnacked() bool {
 
 // release frees the send buffer space of an acknowledged chunk.
 func (a *Association) release(ch *outChunk) {
-	if ch.inFlight {
-		a.flight -= ch.size()
-		ch.inFlight = false
-	}
+	a.leaveFlight(ch)
 	a.buffered -= len(ch.data)
 	ch.data = nil
 }
@@ -1654,7 +1694,7 @@ func (a *Association) handleShutdown(c chunk, now time.Time) error {
 	}
 	cum := binary.BigEndian.Uint32(c.value)
 	if !tsnLess(cum, a.cumAck) && tsnLess(cum, a.nextTSN) {
-		_, _, _ = a.ackCumulative(cum, now)
+		a.ackCumulative(cum, now)
 		a.updateT3(now, true)
 	}
 	if a.state == stateShutdownAckSent {

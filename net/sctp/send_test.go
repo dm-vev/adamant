@@ -430,6 +430,23 @@ func TestWindowGrowsByBytesNewlyAcknowledged(t *testing.T) {
 	}
 }
 
+// TestWindowIgnoresChunksGivenUp covers a SACK that acknowledges a chunk
+// given up, out of flight: its bytes do not grow the window.
+func TestWindowIgnoresChunksGivenUp(t *testing.T) {
+	a := connectTo(t, start, prSCTP)
+	first := a.nextTSN
+	sendAll(t, a, start, 1)
+	if err := a.Send(2, PPIDBinary, make([]byte, 100), SendOptions{Partial: true}, start); err != nil {
+		t.Fatal(err)
+	}
+	sendAll(t, a, start, 200)
+	at := timeout(t, a)
+	sack(t, a, at, first, 1<<20, 1, 2)
+	if want := a.cfg.MaxPacketSize + 201; a.Stats().Cwnd != want {
+		t.Fatalf("window %d, want %d", a.Stats().Cwnd, want)
+	}
+}
+
 // TestRTTFromCumulativeAck covers the round trip time: the first chunk
 // sent is timed, and the SACK that acknowledges it gives the one sample
 // (RFC 9260 section 6.3.1).
@@ -718,6 +735,22 @@ func TestHandleTimeoutRunsEveryTimerDue(t *testing.T) {
 	}
 	if want := []byte{chunkData, chunkReconfig}; !slices.Equal(chunksSent(*sent), want) {
 		t.Fatalf("sent %v, want %v", chunksSent(*sent), want)
+	}
+}
+
+// TestSACKChecked covers a SACK shorter than its fixed fields and one
+// that acknowledges data never sent: the association fails with an ABORT.
+func TestSACKChecked(t *testing.T) {
+	for _, value := range []func(a *Association) []byte{
+		func(a *Association) []byte { return appendSack(nil, a.nextTSN-1, 1<<20, nil, nil)[:11] },
+		func(a *Association) []byte { return appendSack(nil, a.nextTSN, 1<<20, nil, nil) },
+	} {
+		a := connectTo(t, start)
+		sendAll(t, a, start, 1)
+		sent := recordPackets(a)
+		if err := inject(a, start, chunkSack, 0, value(a)); !errors.Is(err, errPacket) || !slices.Equal(chunksSent(*sent), []byte{chunkAbort}) {
+			t.Fatalf("failed with %v, sent %v; want a malformed packet and an ABORT", err, chunksSent(*sent))
+		}
 	}
 }
 
