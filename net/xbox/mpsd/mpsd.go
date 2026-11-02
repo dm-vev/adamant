@@ -43,6 +43,10 @@ const (
 	maxResponse        = 1 << 20
 )
 
+// defaultClient sends the requests of a Config without an HTTPClient: unlike
+// http.DefaultClient, it gives up on a service that stalls.
+var defaultClient = &http.Client{Timeout: 30 * time.Second}
+
 // Endpoints are the services a Host talks to.
 type Endpoints struct {
 	SessionDirectory string
@@ -80,7 +84,8 @@ type Config struct {
 	LegacySignaling bool
 	// Endpoints are the services. Zero values mean DefaultEndpoints.
 	Endpoints Endpoints
-	// HTTPClient sends requests. Nil means http.DefaultClient.
+	// HTTPClient sends requests. Nil means a client that gives up on a
+	// request after 30 seconds.
 	HTTPClient *http.Client
 	// Dial opens the real-time activity WebSocket. Nil means
 	// websocket.Dial.
@@ -552,7 +557,7 @@ func (h *Host) request(ctx context.Context, method, url string, body any, header
 	req.Header.Set("X-Xbl-Contract-Version", contractVersion)
 	client := h.cfg.HTTPClient
 	if client == nil {
-		client = http.DefaultClient
+		client = defaultClient
 	}
 	resp, err := client.Do(req)
 	if err != nil {

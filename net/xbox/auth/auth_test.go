@@ -251,6 +251,34 @@ func TestSignIn(t *testing.T) {
 	}
 }
 
+// TestStalledService starts a login with a Microsoft account service that
+// never answers, with a context without deadline and no client of the
+// caller's: the client of the package gives up on it.
+func TestStalledService(t *testing.T) {
+	old := defaultClient
+	defaultClient = &http.Client{Timeout: 200 * time.Millisecond}
+	defer func() { defaultClient = old }()
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
+	defer srv.Close()
+	defer close(release)
+	conf := Android
+	conf.Endpoints = Endpoints{srv.URL, srv.URL, srv.URL, srv.URL, srv.URL, srv.URL}
+	started := make(chan error, 1)
+	go func() {
+		_, err := conf.StartLogin(context.Background())
+		started <- err
+	}()
+	select {
+	case err := <-started:
+		if err == nil {
+			t.Fatal("started a login with a service that never answered")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("StartLogin still waits on a stalled service after 5s")
+	}
+}
+
 func TestRestoreRefusesBrokenSnapshots(t *testing.T) {
 	for _, s := range []Snapshot{
 		{},

@@ -321,3 +321,40 @@ func TestPublishLegacySignaling(t *testing.T) {
 		}
 	}
 }
+
+// TestStalledDirectory publishes to a session directory that never answers
+// the write of the session, with a context without deadline and no client
+// of the caller's: the client of the package gives up on it.
+func TestStalledDirectory(t *testing.T) {
+	old := defaultClient
+	defaultClient = &http.Client{Timeout: 200 * time.Millisecond}
+	defer func() { defaultClient = old }()
+	d := &directory{}
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			<-release
+		}
+		d.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+	defer close(release)
+	published := make(chan error, 1)
+	go func() {
+		_, err := Publish(context.Background(), Config{
+			Token:             func(context.Context) (string, string, error) { return "XBL3.0 x=1;token", "2535400000000001", nil },
+			NetherNetID:       1,
+			PlayerMessagingID: "pmid-1",
+			Endpoints:         Endpoints{SessionDirectory: srv.URL, RTA: "ws" + strings.TrimPrefix(srv.URL, "http") + "/connect"},
+		}, Status{})
+		published <- err
+	}()
+	select {
+	case err := <-published:
+		if err == nil {
+			t.Fatal("published to a directory that never answered")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Publish still waits on a stalled directory after 5s")
+	}
+}

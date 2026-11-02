@@ -48,7 +48,8 @@ type Config struct {
 	TreatmentOverrides []string
 	// Endpoints are the services. Zero values mean DefaultEndpoints.
 	Endpoints Endpoints
-	// HTTPClient sends the requests. Nil means http.DefaultClient.
+	// HTTPClient sends the requests. Nil means a client that gives up on a
+	// request after 30 seconds.
 	HTTPClient *http.Client
 }
 
@@ -111,11 +112,15 @@ func (c Config) endpoints() Endpoints {
 	return e
 }
 
+// defaultClient sends the requests of a Config without an HTTPClient: unlike
+// http.DefaultClient, it gives up on a service that stalls.
+var defaultClient = &http.Client{Timeout: 30 * time.Second}
+
 func (c Config) client() *http.Client {
 	if c.HTTPClient != nil {
 		return c.HTTPClient
 	}
-	return http.DefaultClient
+	return defaultClient
 }
 
 // Snapshot is what a Session needs to sign its account in again: the
