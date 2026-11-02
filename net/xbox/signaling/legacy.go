@@ -131,14 +131,20 @@ func (c *LegacyConn) WriteSignal(s nethernet.Signal) error {
 	return c.write(legacyMessage{Type: legacySignal, To: s.NetworkID, Message: s.String()})
 }
 
+// write sends a message. A write that fails ends the connection with its
+// error, as Conn does.
 func (c *LegacyConn) write(m legacyMessage) error {
 	b, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}
 	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
-	return c.ws.WriteMessage(true, b)
+	err = c.ws.WriteMessage(true, b)
+	c.writeMu.Unlock()
+	if err != nil {
+		c.end(err)
+	}
+	return err
 }
 
 // Close closes the connection.
@@ -182,6 +188,7 @@ func (c *LegacyConn) keepAlive(interval time.Duration) {
 				return
 			}
 			if err := c.ws.Ping(nil); err != nil {
+				c.end(err)
 				return
 			}
 		}

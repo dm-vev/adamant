@@ -332,29 +332,38 @@ func TestSilentService(t *testing.T) {
 	}
 }
 
-// TestStuckWrite writes signals to a service that stopped reading them:
-// once the connection takes no more, a write fails and ends it rather than
-// blocking.
+// TestStuckWrite writes signals to a service that stopped reading them,
+// over either protocol: once the connection takes no more, a write fails
+// and ends it rather than blocking, and Err tells why it ended.
 func TestStuckWrite(t *testing.T) {
 	set(t, &writeTimeout, 200*time.Millisecond)
-	c := dialService(t, blackHole(t), "host", 1)
-	failed := make(chan error, 1)
-	go func() {
-		s := nethernet.Signal{Type: nethernet.SignalCandidate, ConnectionID: 1, Data: strings.Repeat("a", 256<<10), NetworkID: "peer"}
-		for {
-			if err := c.WriteSignal(s); err != nil {
-				failed <- err
-				return
+	for name, c := range map[string]interface {
+		nethernet.Signaling
+		Err() error
+	}{
+		"JSON-RPC": dialService(t, blackHole(t), "host", 1),
+		"legacy":   dialLegacy(t, legacyService(t, false)),
+	} {
+		t.Run(name, func(t *testing.T) {
+			failed := make(chan error, 1)
+			go func() {
+				s := nethernet.Signal{Type: nethernet.SignalCandidate, ConnectionID: 1, Data: strings.Repeat("a", 256<<10), NetworkID: "7"}
+				for {
+					if err := c.WriteSignal(s); err != nil {
+						failed <- err
+						return
+					}
+				}
+			}()
+			select {
+			case <-failed:
+			case <-time.After(5 * time.Second):
+				t.Fatal("writes to a service not reading still block after 5s")
 			}
-		}
-	}()
-	select {
-	case <-failed:
-	case <-time.After(5 * time.Second):
-		t.Fatal("writes to a service not reading still block after 5s")
-	}
-	if c.Err() == nil {
-		t.Fatal("a failed write left the connection up")
+			if c.Err() == nil {
+				t.Fatal("a failed write left the connection up")
+			}
+		})
 	}
 }
 
