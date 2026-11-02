@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dm-vev/adamant/net/dtls"
+	"github.com/dm-vev/adamant/net/sctp"
 )
 
 const (
@@ -34,6 +35,9 @@ type end struct {
 	inbox      []datagram
 	received   [][]byte
 	ready      bool
+	// dropRecords is how many of the next DTLS application data datagrams
+	// sent to it are lost.
+	dropRecords int
 }
 
 // vnet carries the datagrams of a server and a client Conn on a virtual
@@ -106,6 +110,10 @@ func (n *vnet) carry(to *end, from, dst netip.AddrPort, b []byte) {
 		return
 	}
 	if len(b) > 0 && b[0] == 23 {
+		if to.dropRecords > 0 {
+			to.dropRecords--
+			return
+		}
 		to.lastRecord = bytes.Clone(b)
 	}
 	to.inbox = append(to.inbox, datagram{bytes.Clone(b), from})
@@ -358,6 +366,23 @@ func TestConnCloseDeliversLastMessage(t *testing.T) {
 				t.Fatalf("transports still running: %v, %v", srv.c.finished, cli.c.finished)
 			}
 		})
+	}
+}
+
+// TestConnAnswersPeerShutdown has the server close, and the answer of the
+// client to its SHUTDOWN lost: the client stays to answer it again, so
+// that the association of the server ends closed, not aborted.
+func TestConnAnswersPeerShutdown(t *testing.T) {
+	n := newVnet(t, 9, true, nil)
+	n.open(t)
+	// What opening the channels left to send goes first.
+	n.run(time.Second, func() bool { return false })
+	srv, cli := n.ends[server], n.ends[client]
+	srv.dropRecords = 1
+	_ = srv.c.Close()
+	n.run(time.Minute, func() bool { return srv.c.finished && cli.c.finished })
+	if !errors.Is(srv.c.assoc.Err(), sctp.ErrClosed) || !errors.Is(cli.c.Err(), errPeerClosed) {
+		t.Fatalf("association of the server ended with %v; client closed with %v", srv.c.assoc.Err(), cli.c.Err())
 	}
 }
 
