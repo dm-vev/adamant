@@ -39,8 +39,10 @@ func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, col *world.
 	s.sendBlobHashes(pos, dim, col)
 }
 
-// ViewSubChunks ...
-func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChunkOffset, tx *world.Tx) {
+// ViewSubChunks sends the sub-chunks at the offsets from centre and returns
+// the bytes of their payloads: to a client that caches them, those of the
+// block entities, as the blobs go when it asks for them.
+func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChunkOffset, tx *world.Tx) int {
 	if s.chunkLoader == nil {
 		// The chunk loader is initialised during Spawn, so return an empty response for early requests.
 		dim, _ := world.DimensionID(tx.World().Dimension())
@@ -50,7 +52,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 			CacheEnabled:    s.conn.ClientCacheEnabled(),
 			SubChunkEntries: nil,
 		})
-		return
+		return 0
 	}
 	if len(offsets) > maxSubChunkOffsets {
 		// Cap offsets to bound memory usage when handling malformed or abusive requests.
@@ -60,6 +62,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 
 	entries := make([]v2193.SubChunkEntry, 0, len(offsets))
 	transaction := make(map[uint64]struct{})
+	size := 0
 	for _, offset := range offsets {
 		ind := int16(centre.Y()) + int16(offset[1]) - int16(r[0])>>4
 		if ind < 0 || ind > int16(r.Height()>>4) {
@@ -74,7 +77,9 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 			entries = append(entries, v2193.SubChunkEntry{Result: v2193.SubChunkResultChunkNotFound, Offset: offset})
 			continue
 		}
-		entries = append(entries, s.subChunkEntry(offset, ind, col, transaction))
+		entry := s.subChunkEntry(offset, ind, col, transaction)
+		size += len(entry.RawPayload.Val)
+		entries = append(entries, entry)
 	}
 	if s.conn.ClientCacheEnabled() && len(transaction) > 0 {
 		s.blobMu.Lock()
@@ -88,6 +93,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 		CacheEnabled:    s.conn.ClientCacheEnabled(),
 		SubChunkEntries: entries,
 	})
+	return size
 }
 
 func (s *Session) subChunkEntry(offset v2193.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) v2193.SubChunkEntry {

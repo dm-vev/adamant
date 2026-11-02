@@ -24,6 +24,7 @@ func (c *ClientCacheBlobStatusHandler) Handle(p proto.Packet, s *Session, _ *wor
 		blob, ok := s.blobs[miss]
 		if ok {
 			resp.Blobs = append(resp.Blobs, v2193.CacheBlob{Hash: miss, Payload: blob})
+			s.chunkBytes += len(blob)
 		} else {
 			// A missing blob can happen when identical hashes are reused or cache state is reset. We still resolve the
 			// transaction to avoid stalling chunk delivery on an unresolvable hash.

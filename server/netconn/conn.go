@@ -26,6 +26,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
+	"github.com/dm-vev/adamant/net/sctp"
 	"github.com/google/uuid"
 )
 
@@ -157,6 +158,24 @@ func (c *Conn) Buffered() int {
 		return 0
 	}
 	return c.nn.Buffered()
+}
+
+// SendQueue returns the bytes sent to the client that wait behind those in
+// flight, and the congestion window and round trip time of its path; all
+// zero for a player of a proxy, which queues for its clients itself.
+func (c *Conn) SendQueue() (queued, window int, rtt time.Duration) {
+	if c.nn == nil {
+		return 0, 0, 0
+	}
+	return sendQueue(c.nn.Stats().SCTP)
+}
+
+// sendQueue returns the bytes of an association that wait behind those in
+// flight, and its congestion window and round trip time.
+func sendQueue(st sctp.Stats) (queued, window int, rtt time.Duration) {
+	// Flight counts the headers of its chunks: what is all in flight may
+	// be more than Buffered.
+	return max(0, st.Buffered-st.Flight), st.Cwnd, st.RTT
 }
 
 // WritePacket adds a packet to the batch sent at the next Flush. A Static

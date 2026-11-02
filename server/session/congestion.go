@@ -1,10 +1,82 @@
 package session
 
 import (
+	"math"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// Chunks wait while the connection queues more for its client than its
+// path carries: a congestion window, or what the path carries in a tick at
+// that window and the round trip measured if more. The packets of the game
+// behind them would wait as long; the sctp package measures the bound in
+// TestLossProfile. chunkTick is the tick of a world. chunkCompression is
+// how many times smaller chunks go out than their bytes: flate at level 1,
+// as batches go, shrinks the sub-chunks of a generated column 3.5 times; a
+// little less is taken, so the estimate errs long. Past maxQueuedSubChunks
+// offsets queued, the oldest requests are answered whatever the room, so a
+// client that asks without end cannot grow the queue: the send buffer of
+// the connection bounds it then.
+const (
+	chunkTick          = time.Second / 20
+	chunkCompression   = 3
+	maxQueuedSubChunks = 16 << 10
+)
+
+// sendQueue is a connection that tells what it queued for its client: the
+// bytes waiting behind those in flight, and the congestion window and
+// round trip time of its path, a window of zero if it has none.
+type sendQueue interface {
+	SendQueue() (queued, window int, rtt time.Duration)
+}
+
+// connRoom returns the bytes the connection may queue for its client this
+// tick past those it holds: see chunkTick. A connection that does not tell
+// has room without bound.
+func (s *Session) connRoom() int {
+	q, ok := s.conn.(sendQueue)
+	if !ok {
+		return math.MaxInt
+	}
+	queued, window, rtt := q.SendQueue()
+	if window <= 0 {
+		return math.MaxInt
+	}
+	bound := window
+	if rtt > 0 {
+		bound = max(bound, int(int64(window)*int64(chunkTick)/int64(rtt)))
+	}
+	return bound - queued
+}
+
+// chunkRoom returns what is left of room, the room of the connection, once
+// the chunks written this tick and the blobs the client is to ask for are
+// counted as they go out.
+func (s *Session) chunkRoom(room int) int {
+	owed := s.chunkBytes
+	s.blobMu.Lock()
+	for _, b := range s.blobs {
+		owed += len(b)
+	}
+	s.blobMu.Unlock()
+	return room - owed/chunkCompression
+}
+
+// sendSubChunks answers the sub-chunk requests queued, oldest first, while
+// the chunks of the tick leave room, and past maxQueuedSubChunks whatever
+// the room.
+func (s *Session) sendSubChunks(tx *world.Tx, room int) {
+	for len(s.subChunkQueue) > 0 && (s.subChunkOffsets > maxQueuedSubChunks || s.chunkRoom(room) > 0) {
+		pk := s.subChunkQueue[0]
+		s.subChunkQueue[0] = nil
+		s.subChunkQueue = s.subChunkQueue[1:]
+		s.subChunkOffsets -= len(pk.Offsets)
+		s.chunkBytes += s.answerSubChunks(pk, tx)
+	}
+}
 
 // Bytes the connection holds for its client, sent or not yet taken, past
 // which the session is congested, and below which it is no longer. A

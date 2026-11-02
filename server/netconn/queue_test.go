@@ -1,0 +1,84 @@
+package netconn
+
+import (
+	"context"
+	"math/rand/v2"
+	"testing"
+	"time"
+
+	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
+	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/sctp"
+)
+
+// TestSendQueueOfAssociation takes the bytes an association buffered past
+// those in flight, none once all are in flight with the headers of their
+// chunks, with its window and round trip.
+func TestSendQueueOfAssociation(t *testing.T) {
+	for _, c := range []struct {
+		buffered, flight, queued int
+	}{
+		{100 << 10, 30 << 10, 70 << 10},
+		{1000, 1000 + 16, 0},
+	} {
+		queued, window, rtt := sendQueue(sctp.Stats{Buffered: c.buffered, Flight: c.flight, Cwnd: 50 << 10, RTT: time.Millisecond})
+		if queued != c.queued || window != 50<<10 || rtt != time.Millisecond {
+			t.Errorf("%d buffered, %d in flight: %d queued behind %d over %v", c.buffered, c.flight, queued, window, rtt)
+		}
+	}
+}
+
+// TestSendQueue reports the bytes SCTP queued for a client behind those in
+// flight, with the window and round trip of its path, until the client
+// took them; and nothing for a player of a proxy, which queues for its
+// clients itself.
+func TestSendQueue(t *testing.T) {
+	if queued, window, rtt := (&Conn{}).SendQueue(); queued != 0 || window != 0 || rtt != 0 {
+		t.Fatalf("a player of a proxy queues %d behind a window of %d over %v", queued, window, rtt)
+	}
+	l := listen(t, Config{})
+	spawned := serve(t, l)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, "http://"+l.Addr().String(), ourclient.Config{Identity: ourlogin.Identity{DisplayName: "Bot"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	srv := <-spawned
+
+	// A Static goes out in one message encoded once: the client on the
+	// loopback takes the bytes sent about as fast as they are compressed.
+	letters := make([]byte, 512<<10)
+	for i := range letters {
+		letters[i] = byte('a' + rand.IntN(26))
+	}
+	text := &staticText{&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: string(letters)}}
+	texts, queued, window, rtt := 0, 0, 0, time.Duration(0)
+	for queued == 0 && texts < 16 {
+		if err := srv.WritePacket(text); err != nil {
+			t.Fatal(err)
+		}
+		texts++
+		queued, window, rtt = srv.SendQueue()
+	}
+	if queued <= 0 || window < 4<<10 || rtt <= 0 {
+		t.Fatalf("%d queued behind a window of %d over %v right after %d texts of 512 KiB", queued, window, rtt, texts)
+	}
+	for read := 0; read < texts; {
+		pk, err := conn.ReadPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := pk.(*v2193.TextPacket); ok {
+			read++
+		}
+	}
+	for queued, _, _ = srv.SendQueue(); queued != 0; queued, _, _ = srv.SendQueue() {
+		if ctx.Err() != nil {
+			t.Fatalf("%d bytes still queued once the client took everything", queued)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}

@@ -159,6 +159,14 @@ type Session struct {
 	openChunkTransactions []map[uint64]struct{}
 	invOpened             bool
 
+	// subChunkQueue holds the sub-chunk requests of the client not answered
+	// yet, oldest first, and subChunkOffsets the offsets they ask for;
+	// chunkBytes counts the bytes of chunks written this tick. The world of
+	// the player reads and writes them: see loadChunks.
+	subChunkQueue   []*v2193.SubChunkRequestPacket
+	subChunkOffsets int
+	chunkBytes      int
+
 	hudMu      sync.RWMutex
 	hudUpdates map[hud.Element]bool
 	hiddenHud  map[hud.Element]struct{}
@@ -811,15 +819,27 @@ func (s *Session) sendChunks(tx *world.Tx, c Controllable) {
 			Radius:   uint32(chunkRadius) << 4,
 		})
 	}
+	s.loadChunks(tx)
+}
 
-	s.blobMu.Lock()
-	const maxChunkTransactions = 8
-	toLoad := maxChunkTransactions - len(s.openChunkTransactions)
-	s.blobMu.Unlock()
-	if toLoad > 4 {
-		toLoad = 4
+// loadChunks answers the sub-chunk requests of the client and loads the
+// next up to 4 chunks, as far as the connection has room for chunks this
+// tick: see connRoom. Chunks wait while requests do, as the client asks
+// for the sub-chunks of each: room is left only once none are queued.
+func (s *Session) loadChunks(tx *world.Tx) {
+	room := s.connRoom()
+	s.sendSubChunks(tx, room)
+	if s.chunkRoom(room) > 0 {
+		s.blobMu.Lock()
+		const maxChunkTransactions = 8
+		toLoad := maxChunkTransactions - len(s.openChunkTransactions)
+		s.blobMu.Unlock()
+		if toLoad > 4 {
+			toLoad = 4
+		}
+		s.chunkLoader.Load(tx, toLoad)
 	}
-	s.chunkLoader.Load(tx, toLoad)
+	s.chunkBytes = 0
 }
 
 // handleWorldSwitch handles the player of the Session switching worlds.
