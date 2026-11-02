@@ -610,6 +610,7 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, vouched bool, 
 	c.publicKey, c.vouched = pub, vouched
 	c.onReady = l.ready
 	c.onClose = l.remove
+	c.onMove = l.moved
 	victim, err := l.admit(c, local.ufrag, sources, now)
 	if err != nil {
 		c.abort(err)
@@ -813,9 +814,9 @@ func (l *Listener) ready(c *Conn) {
 	}
 	l.releasePending(c)
 	if r := l.relay.Load(); r != nil {
-		// Of the permissions of the peer's addresses, that of the one it
-		// uses is kept.
-		r.keep(c, c.remote.Addr())
+		// Of the permissions of the peer's addresses, it holds that of the
+		// one it uses alone.
+		r.use(c, c.remote)
 	}
 	c.counted = true
 	connectionsOpen.Add(1)
@@ -832,6 +833,21 @@ func (l *Listener) ready(c *Conn) {
 	case l.accept <- c:
 	default:
 		c.fail(errAcceptQueue)
+	}
+}
+
+// moved has an open connection that goes to another address of its peer
+// hold the permission of that address alone. It is called with the
+// connection locked.
+func (l *Listener) moved(c *Conn) {
+	r := l.relay.Load()
+	if r == nil {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if c.counted {
+		r.use(c, c.remote)
 	}
 }
 

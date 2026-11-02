@@ -224,6 +224,16 @@ func (r *relay) keep(c *Conn, peer netip.Addr) {
 	}
 }
 
+// use has c hold, of the permissions of peer addresses, that of the
+// address of peer alone, which it uses: anew if what goes to peer goes
+// through the relay, else only if it held it.
+func (r *relay) use(c *Conn, peer netip.AddrPort) {
+	r.keep(c, peer.Addr())
+	if r.via(peer) {
+		r.hold(c, peer.Addr())
+	}
+}
+
 // candidates returns the server reflexive and the relayed address of the
 // allocation, if there is one.
 func (r *relay) candidates() (reflexive, relayed netip.AddrPort, ok bool) {

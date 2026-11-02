@@ -186,10 +186,12 @@ func TestRelayNotMade(t *testing.T) {
 }
 
 // relayedConn is a connection opening, answered over a signaling service,
-// with the checks of its peer.
+// with the checks of its peer, and one nominating the address it comes
+// from.
 type relayedConn struct {
-	c     *Conn
-	check func(proved bool) []byte
+	c          *Conn
+	check      func(proved bool) []byte
+	nomination []byte
 }
 
 // openRelayed has l answer an offer over a signaling service with the
@@ -207,13 +209,99 @@ func openRelayed(t *testing.T, l *Listener, id uint64) relayedConn {
 	l.mu.Lock()
 	c := l.signals[signalKey{"client", id}]
 	l.mu.Unlock()
+	username := answer.ufrag + ":abcd"
 	return relayedConn{c: c, check: func(proved bool) []byte {
 		pwd := "not the password of the connection"
 		if proved {
 			pwd = answer.pwd
 		}
-		return bindingRequest(answer.ufrag, pwd)
-	}}
+		return bindingRequest(username, pwd, false)
+	}, nomination: bindingRequest(username, answer.pwd, true)}
+}
+
+// TestRelayPermissionFollowsMove has ICE move an open connection, whose
+// client went quiet, to an address reached through the relay, of another
+// IP than the permission it holds: it holds that of the new address alone.
+// Moved back by DTLS from the client, reached directly, it holds none, nor
+// once it closed. A connection that opens through the relay from an
+// address its offer did not name holds the permission of that address.
+func TestRelayPermissionFollowsMove(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true})
+	r := newRelay(l, turn.Config{Server: netip.MustParseAddrPort("127.0.0.1:3478")})
+	l.relay.Store(r)
+	held := func() map[netip.Addr]int {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		return maps.Clone(r.held)
+	}
+	var nomination []byte
+	signal := func(_ context.Context, offerSDP string) (string, error) {
+		offer, err := parseDescription(offerSDP)
+		if err != nil {
+			return "", err
+		}
+		reply := l.answerSignal(Signal{Type: SignalOffer, ConnectionID: 1, NetworkID: "client", Data: offerSDP})
+		answer, err := parseDescription(reply.Data)
+		if err != nil {
+			return "", fmt.Errorf("offer answered with %s %s", reply.Type, reply.Data)
+		}
+		nomination = bindingRequest(answer.ufrag+":"+offer.ufrag, answer.pwd, true)
+		return reply.Data, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cli, err := newDialer(t).dial(ctx, signal, netip.MustParseAddr("127.0.0.1"), netip.AddrPort{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cli.Close() })
+	srv := accept(t, l)
+	direct := srv.Stats().Remote
+	if got := held(); !maps.Equal(got, map[netip.Addr]int{direct.Addr(): 1}) {
+		t.Fatalf("held once the connection opened %v, want that of %v", got, direct)
+	}
+	// The client sends nothing from its address, as one whose network went
+	// away.
+	cli.mu.Lock()
+	out, outBatch := cli.out, cli.outBatch
+	cli.out, cli.outBatch = func([]byte, netip.AddrPort) {}, nil
+	cli.mu.Unlock()
+	var msg stun.Message
+	relayed := netip.MustParseAddrPort("192.0.2.7:5000")
+	l.dispatch(nomination, relayed, r, &msg)
+	if srv.Stats().Remote != relayed {
+		t.Fatalf("ICE did not move the connection to %v", relayed)
+	}
+	if got := held(); !maps.Equal(got, map[netip.Addr]int{relayed.Addr(): 1}) {
+		t.Fatalf("held once ICE moved the connection through the relay %v, want that of %v alone", got, relayed)
+	}
+	cli.mu.Lock()
+	cli.out, cli.outBatch = out, outBatch
+	cli.mu.Unlock()
+	if err := cli.Send([]byte("from the first address")); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, srv); string(got) != "from the first address" || srv.Stats().Remote != direct {
+		t.Fatalf("read %q; the connection is at %v, not back at %v", got, srv.Stats().Remote, direct)
+	}
+	if got := held(); len(got) != 0 {
+		t.Fatalf("held once DTLS moved the connection to an address reached directly %v", got)
+	}
+	srv.abort(net.ErrClosed)
+	if got := held(); len(got) != 0 {
+		t.Fatalf("held once the connection closed %v", got)
+	}
+
+	opening := openRelayed(t, l, 2)
+	peer := netip.MustParseAddrPort("192.0.2.8:5000")
+	l.dispatch(opening.nomination, peer, r, &msg)
+	opening.c.mu.Lock()
+	l.ready(opening.c)
+	opening.c.release()
+	if got := held(); !maps.Equal(got, map[netip.Addr]int{peer.Addr(): 1}) {
+		t.Fatalf("held once a connection opened through the relay %v, want that of %v", got, peer)
+	}
+	opening.c.abort(net.ErrClosed)
 }
 
 // TestRelayRoutes routes what goes to a peer through the relay once a

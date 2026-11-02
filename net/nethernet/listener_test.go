@@ -369,12 +369,16 @@ func identityOffer(t *testing.T, key *ecdsa.PrivateKey) string {
 	return encodeDescription(d)
 }
 
-// bindingRequest returns a check of the peer of the end of a connection
-// with ufrag, signed with pwd.
-func bindingRequest(ufrag, pwd string) []byte {
+// bindingRequest returns a check of the controlling peer of a connection
+// with a username, signed with pwd, nominating the address it comes from
+// if nominate is set.
+func bindingRequest(username, pwd string, nominate bool) []byte {
 	b := stun.NewBuilder(nil, stun.BindingRequest, [12]byte{1})
-	b.AddString(stun.AttrUsername, ufrag+":abcd")
+	b.AddString(stun.AttrUsername, username)
 	b.AddUint64(stun.AttrICEControlling, 1)
+	if nominate {
+		b.AddFlag(stun.AttrUseCandidate)
+	}
 	b.AddIntegrity(hmac.New(sha1.New, []byte(pwd)))
 	b.AddFingerprint()
 	return b.Bytes()
@@ -410,7 +414,7 @@ func postOffer(t *testing.T, l *Listener, offer, addr string) (int, pendingOffer
 // prove has the peer of the connection prove an address with a check.
 func (p pendingOffer) prove(from netip.AddrPort) {
 	var msg stun.Message
-	p.l.dispatch(bindingRequest(p.answer.ufrag, p.answer.pwd), from, nil, &msg)
+	p.l.dispatch(bindingRequest(p.answer.ufrag+":abcd", p.answer.pwd, false), from, nil, &msg)
 }
 
 // TestPendingDisplaced fills the slots of connections opening and sends

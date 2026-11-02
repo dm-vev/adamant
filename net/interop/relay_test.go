@@ -350,6 +350,94 @@ func TestRelayRoutesProvenPeers(t *testing.T) {
 	}
 }
 
+// TestRelayFollowsMove has a client join through the relay, trickling an
+// address of another IP beside its own, then a socket at that address
+// nominate it with a check through the relay, as a client whose network
+// changed does: the listener answers through the relay and moves the
+// connection to the new address, which the TURN server lets through.
+func TestRelayFollowsMove(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	moved, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 2)})
+	if err != nil {
+		t.Skipf("no second loopback address: %v", err)
+	}
+	defer moved.Close()
+	l, srvSig, sig := relayListener(t, ctx, newTURNServer(t).config("user"))
+	var mu sync.Mutex
+	ufrags := map[string]string{}
+	var pwd string
+	note := func(side string, s nethernet.Signal) {
+		mu.Lock()
+		defer mu.Unlock()
+		for line := range strings.Lines(s.Data) {
+			line = strings.TrimSpace(line)
+			if v, ok := strings.CutPrefix(line, "a=ice-ufrag:"); ok {
+				ufrags[side] = v
+			}
+			if v, ok := strings.CutPrefix(line, "a=ice-pwd:"); ok && side == "server" {
+				pwd = v
+			}
+		}
+	}
+	srvSig.rewrite = func(s nethernet.Signal) nethernet.Signal {
+		note("server", s)
+		return onlyRelayCandidates(s)
+	}
+	sig.rewrite = func(s nethernet.Signal) nethernet.Signal {
+		if s.Type == nethernet.SignalOffer {
+			note("client", s)
+		}
+		return s
+	}
+	sig.sent = func(s nethernet.Signal) {
+		if s.Type == nethernet.SignalOffer {
+			for _, ip := range []string{"127.0.0.1", "127.0.0.2"} {
+				_ = sig.WriteSignal(nethernet.Signal{Type: nethernet.SignalCandidate, ConnectionID: s.ConnectionID,
+					Data: "candidate:1 1 udp 2122260223 " + ip + " 9 typ host generation 0"})
+			}
+		}
+	}
+	client, err := nethernet.Dialer{}.DialSignaling(ctx, sig, "server")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	accepted, err := l.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer accepted.Close()
+	server := accepted.(*nethernet.Conn)
+
+	mu.Lock()
+	check := stun.NewBuilder(nil, stun.BindingRequest, [12]byte{4, 5, 6})
+	check.AddString(stun.AttrUsername, ufrags["server"]+":"+ufrags["client"])
+	check.AddUint64(stun.AttrICEControlling, 1)
+	check.AddFlag(stun.AttrUseCandidate)
+	check.AddIntegrity(hmac.New(sha1.New, []byte(pwd)))
+	check.AddFingerprint()
+	mu.Unlock()
+	if _, err := moved.WriteToUDPAddrPort(check.Bytes(), addrPort(client.RemoteAddr())); err != nil {
+		t.Fatal(err)
+	}
+	_ = moved.SetReadDeadline(time.Now().Add(5 * time.Second))
+	buf := make([]byte, 1500)
+	n, from, err := moved.ReadFromUDPAddrPort(buf)
+	var m stun.Message
+	if err != nil || from != addrPort(client.RemoteAddr()) || stun.Parse(buf[:n], &m) != nil || m.Type != stun.BindingSuccess {
+		t.Fatalf("the nomination was not answered through the relay: %v", err)
+	}
+	if to := addrPort(moved.LocalAddr()); !l.Relayed(to) {
+		t.Fatalf("what goes to %v does not go through the relay", to)
+	}
+	// DTLS from the client moves the connection back to its address.
+	exchangeRelayed(t, client, server)
+	if got, want := server.Stats().Remote, netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), addrPort(client.LocalAddr()).Port()); got != want {
+		t.Fatalf("the connection is at %v, not back at %v", got, want)
+	}
+}
+
 // strangerOffer returns an anonymous offer of a client that never
 // connects, with a candidate of each address.
 func strangerOffer(addrs []netip.Addr) string {

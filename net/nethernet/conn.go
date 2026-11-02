@@ -147,6 +147,7 @@ type Conn struct {
 
 	onReady    func(c *Conn)
 	onClose    func(c *Conn)
+	onMove     func(c *Conn)
 	receiver   func(msg []byte)
 	delivering bool
 	pending    [][]byte
@@ -391,7 +392,7 @@ func (c *Conn) handleDatagram(b []byte, from netip.AddrPort, now time.Time) (che
 		if !c.agent.Validated(from) {
 			return false
 		}
-		c.remote = from
+		c.moveTo(from)
 		if err := c.dtls.HandleDatagram(b, now, c.receiveSCTP); err != nil {
 			c.fail(dtlsError(err))
 			return false
@@ -436,14 +437,45 @@ func (c *Conn) progress(now time.Time) {
 	if c.finished {
 		return
 	}
-	if addr, ok := c.agent.Selected(); ok && addr != c.selected {
-		// Follow the path the controlling side nominates.
-		c.selected, c.remote = addr, addr
-		if !c.started {
-			c.started = true
-			c.dtls.Start(now)
-		}
+	c.follow(now)
+	c.associate(now)
+	c.tellReady()
+	if !c.finished && !c.linger.IsZero() && c.assoc.Err() != nil {
+		c.finish()
 	}
+	c.schedule()
+}
+
+// follow follows the path the controlling side nominates, and starts DTLS
+// on the first.
+func (c *Conn) follow(now time.Time) {
+	addr, ok := c.agent.Selected()
+	if !ok || addr == c.selected {
+		return
+	}
+	c.selected = addr
+	c.moveTo(addr)
+	if !c.started {
+		c.started = true
+		c.dtls.Start(now)
+	}
+}
+
+// moveTo has what goes to the peer go to addr, and tells onMove, with the
+// connection locked, if that is a change.
+func (c *Conn) moveTo(addr netip.AddrPort) {
+	if addr == c.remote {
+		return
+	}
+	c.remote = addr
+	if c.onMove != nil {
+		c.onMove(c)
+	}
+}
+
+// associate starts SCTP once DTLS is up, and opens the channels once SCTP
+// is, or closes the connection once the peer shut SCTP down.
+func (c *Conn) associate(now time.Time) {
 	if c.dtls.Established() && !c.connecting {
 		// Both sides open the association, as BDS and libwebrtc do: the
 		// INITs cross and SCTP settles it.
@@ -459,18 +491,19 @@ func (c *Conn) progress(now time.Time) {
 		// The peer shuts the association down.
 		c.shut(errPeerClosed, true)
 	}
-	if !c.ready && c.reliable.open && c.err == nil {
-		c.ready = true
-		c.expires = time.Time{}
-		close(c.opened)
-		if c.onReady != nil {
-			c.onReady(c)
-		}
+}
+
+// tellReady tells of the connection once its channels opened.
+func (c *Conn) tellReady() {
+	if c.ready || !c.reliable.open || c.err != nil {
+		return
 	}
-	if !c.finished && !c.linger.IsZero() && c.assoc.Err() != nil {
-		c.finish()
+	c.ready = true
+	c.expires = time.Time{}
+	close(c.opened)
+	if c.onReady != nil {
+		c.onReady(c)
 	}
-	c.schedule()
 }
 
 // openChannels opens the two channels of NetherNet. The DTLS client takes
