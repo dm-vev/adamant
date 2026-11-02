@@ -648,3 +648,28 @@ func TestIncomingResetTakesSequenceNumber(t *testing.T) {
 		t.Fatalf("responses %v, %d resets; want %v and one", responses, len(resets), want)
 	}
 }
+
+// TestForwardTSNDeliversStrandedMessage covers an ordered message that
+// arrived whole behind one lost, both given up by the sender, which saw no
+// SACK: the FORWARD TSN that skips them lets the one that arrived take its
+// turn (RFC 3758 section 3.6) rather than drop it.
+func TestForwardTSNDeliversStrandedMessage(t *testing.T) {
+	n := newNetwork(t, 41, Config{})
+	n.open(t, false)
+	a, b := n.peers[0], n.peers[1]
+	first := a.assoc.nextTSN
+	forwarded := false
+	n.drop = func(to int, p []byte) bool {
+		forwarded = forwarded || to == 1 && hasChunk(p, chunkForwardTSN)
+		return to == 1 && slices.Contains(dataTSNs(p), first) || to == 0 && !forwarded
+	}
+	for i := range 2 {
+		if err := a.assoc.Send(1, PPIDBinary, []byte{byte(i)}, SendOptions{Partial: true}, n.now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n.run(time.Minute, func() bool { return a.assoc.Buffered() == 0 })
+	if !forwarded || len(b.received) != 1 || b.received[0].data[0] != 1 {
+		t.Fatalf("FORWARD TSN sent: %v; delivered %v, want the second message", forwarded, b.received)
+	}
+}

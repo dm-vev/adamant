@@ -974,13 +974,38 @@ func (a *Association) handleForwardTSN(c chunk) {
 			s = &inStream{}
 			a.streams[stream] = s
 		}
-		s.held = a.dropFragments(s.held, newCum)
+		a.skip(stream, s, newCum, ssn)
 		if !ssnLess(ssn, s.nextSSN) {
 			s.nextSSN = ssn + 1
 		}
 		a.assembleOrdered(stream, s, 0)
 	}
 	a.performPendingReset()
+}
+
+// skip applies to an ordered stream a FORWARD TSN that skips its messages
+// up to SSN ssn: those held whole are stranded data, delivered in turn
+// (RFC 3758 section 3.6), and the fragments of the others up to TSN cum
+// are dropped.
+func (a *Association) skip(stream uint16, s *inStream, cum uint32, ssn uint16) {
+	kept := s.held[:0]
+	for i := 0; i < len(s.held); i++ {
+		f := s.held[i]
+		if f.flags&flagBegin != 0 && !ssnLess(f.ssn, s.nextSSN) && !ssnLess(ssn, f.ssn) {
+			if end, ok := messageEnd(s.held, i); ok {
+				a.deliverFragments(stream, s.held[i:end+1])
+				i = end
+				continue
+			}
+		}
+		if tsnLessEq(f.tsn, cum) {
+			a.held -= len(f.data)
+		} else {
+			kept = append(kept, f)
+		}
+	}
+	clear(s.held[len(kept):])
+	s.held = kept
 }
 
 func (a *Association) dropFragments(list []inFragment, cum uint32) []inFragment {
