@@ -122,11 +122,11 @@ func TestReaderErrors(t *testing.T) {
 func TestAlloc(t *testing.T) {
 	r := NewReader([]byte{1})
 	r.MaxAlloc = 10
-	if !r.Alloc(6) || !r.Alloc(4) || r.Err() != nil {
-		t.Fatalf("charged 10 to a bound of 10: %v", r.Err())
+	if !r.Alloc(6) || !r.Alloc(4) || r.Err() != nil || r.Allocated() != 10 {
+		t.Fatalf("charged 10 to a bound of 10: %d, %v", r.Allocated(), r.Err())
 	}
-	if r.Alloc(1) || !errors.Is(r.Err(), ErrAlloc) {
-		t.Fatalf("charged 11 to a bound of 10: %v", r.Err())
+	if r.Alloc(1) || !errors.Is(r.Err(), ErrAlloc) || r.Allocated() != 10 {
+		t.Fatalf("charged 11 to a bound of 10: %d, %v", r.Allocated(), r.Err())
 	}
 	if r.Uint8() != 0 || r.Alloc(0) {
 		t.Fatal("read after the bound was passed")

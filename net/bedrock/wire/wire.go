@@ -167,6 +167,9 @@ func (r *Reader) Alloc(n int) bool {
 	return true
 }
 
+// Allocated returns the bytes of memory charged with Alloc so far.
+func (r *Reader) Allocated() int { return r.alloc }
+
 // Sub returns a Reader of b, bytes read from r that hold values of their
 // own, with the limits of r and what is left of its budget. r is not read
 // until Join takes back what the Reader charged and its error.

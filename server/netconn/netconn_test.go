@@ -601,24 +601,14 @@ func TestHandshakeAsBDS(t *testing.T) {
 func TestReceive(t *testing.T) {
 	l := listen(t, Config{})
 	got := make(chan string, 16)
-	closed := make(chan error, 1)
-	go func() {
-		c, err := l.Accept()
-		if err != nil {
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		if err := c.StartGameContext(ctx, gameData()); err != nil {
-			_ = c.Close()
-			return
-		}
-		c.Receive(func(pk proto.Packet) {
-			if text, ok := pk.(*v2193.TextPacket); ok {
-				got <- text.Message
+	closed := receive(l, func(pk proto.Packet, cost int) {
+		if text, ok := pk.(*v2193.TextPacket); ok {
+			if cost < len(text.Message) {
+				text.Message = fmt.Sprintf("a cost of %d", cost)
 			}
-		}, func(err error) { closed <- err })
-	}()
+			got <- text.Message
+		}
+	})
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
@@ -653,6 +643,69 @@ func TestReceive(t *testing.T) {
 	}
 }
 
+// receive spawns the client that connects to l next and has the packets it
+// sends handed to handle, telling on the channel returned why its
+// connection closed.
+func receive(l *Listener, handle func(pk proto.Packet, cost int)) <-chan error {
+	closed := make(chan error, 1)
+	go func() {
+		c, err := l.Accept()
+		if err != nil {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := c.StartGameContext(ctx, gameData()); err != nil {
+			_ = c.Close()
+			return
+		}
+		c.Receive(handle, func(err error) { closed <- err })
+	}()
+	return closed
+}
+
+// TestReceiveEnds has spawned clients send what ends their connection: a
+// Disconnect, told with its message, and a packet only a server sends,
+// refused. Neither is handed on.
+func TestReceiveEnds(t *testing.T) {
+	for name, c := range map[string]struct {
+		pk   proto.Packet
+		want func(error) bool
+	}{
+		"disconnect": {&v2193.DisconnectPacket{Message: "bye"}, func(err error) bool {
+			var d DisconnectError
+			return errors.As(err, &d) && d == "bye"
+		}},
+		"server packet": {&v2193.SubChunkPacket{}, func(err error) bool { return errors.As(err, new(errUnknownPacket)) }},
+	} {
+		l := listen(t, Config{})
+		handed := make(chan proto.Packet, 1)
+		closed := receive(l, func(pk proto.Packet, _ int) { handed <- pk })
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = conn.WritePacket(c.pk)
+		_ = conn.Flush()
+		select {
+		case err := <-closed:
+			if !c.want(err) {
+				t.Errorf("%s: closed for %v", name, err)
+			}
+		case <-ctx.Done():
+			t.Errorf("%s: the close was not told", name)
+		}
+		select {
+		case pk := <-handed:
+			t.Errorf("%s: handed %T on", name, pk)
+		default:
+		}
+		_ = conn.Close()
+		cancel()
+	}
+}
+
 // held returns what decoding raw returns and the bytes of memory it holds.
 func held(raw []byte) (proto.Packet, uint64, error) {
 	var before, after runtime.MemStats
@@ -683,6 +736,30 @@ func blockActorData(n int) []byte {
 	}
 	w.Uint8(0)
 	return w.B
+}
+
+// TestDecodeCost decodes packets that take memory of each kind: their
+// bytes, NBT, lists and strings. The cost decodePacket tells is about what
+// each holds, at least half of it, and no more than its bytes and the
+// memory a packet may take past them.
+func TestDecodeCost(t *testing.T) {
+	text := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDText})}
+	(&v2193.TextPacket{TextType: v2193.TextTypeChat, Message: strings.Repeat("x", 1<<20)}).Encode(&text)
+	for name, raw := range map[string][]byte{
+		"empty compounds":     blockActorData(56),
+		"item stack requests": itemStackRequest(8),
+		"item NBT":            mobEquipment(map[string]any{"a": emptyCompounds(16)}, make([]string, maxList)),
+		"long text":           text.B,
+	} {
+		_, n, err := held(raw)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		_, cost, err := decodePacket(raw)
+		if err != nil || uint64(cost) < n/2 || cost > maxAlloc+len(raw) {
+			t.Errorf("%s: %d bytes held, a cost of %d: %v", name, n, cost, err)
+		}
+	}
 }
 
 // TestNBTMemoryBound decodes BlockActorData of NBT that takes 64 times its

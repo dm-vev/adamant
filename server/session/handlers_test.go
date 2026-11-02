@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/dm-vev/adamant/net/bedrock"
@@ -66,5 +67,75 @@ func TestConnClosedLogsLazily(t *testing.T) {
 	}
 	if !s.inboxClosed {
 		t.Fatal("the inbox stayed open")
+	}
+}
+
+// closingConn tells when the session closed it.
+type closingConn struct {
+	testConn
+	closed chan struct{}
+}
+
+func (c closingConn) Close() error {
+	close(c.closed)
+	return nil
+}
+
+// inboxSession returns a session of a connection that tells when it is
+// closed.
+func inboxSession() (*Session, chan struct{}) {
+	closed := make(chan struct{})
+	return &Session{conn: closingConn{closed: closed}, conf: Config{Log: slog.New(slog.DiscardHandler)}}, closed
+}
+
+// inboxState returns the packets in the inbox of a session, the memory they take
+// and whether it is closed.
+func (s *Session) inboxState() (n, cost int, closed bool) {
+	s.inboxMu.Lock()
+	defer s.inboxMu.Unlock()
+	return len(s.inbox), s.inboxCost, s.inboxClosed
+}
+
+// TestInboxMemoryBound has a client send packets of the most memory a
+// packet may take, 4 MiB, while the world of its player does not tick: the
+// connection is cut before its inbox holds more than 32 MiB, where the
+// count of packets alone let it hold 2048 of them, 8 GiB. Ordinary traffic
+// and a burst of the largest items a client sends fit, and the memory of
+// the packets the world takes is given back.
+func TestInboxMemoryBound(t *testing.T) {
+	s, closed := inboxSession()
+	for range 64 {
+		s.receive(&v2193.BlockActorDataPacket{}, 4<<20)
+	}
+	if n, cost, cut := s.inboxState(); !cut || n != 8 || cost != 32<<20 {
+		t.Fatalf("holds %d packets of %d bytes, cut %v", n, cost, cut)
+	}
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the connection was not closed")
+	}
+
+	// Moves for a while, then seven InventoryTransactions of three copies
+	// of a shulker box of 27 full books, the largest item a client sends,
+	// each 4.24 MiB to hold as netconn decodes it.
+	const shulkers = 4441926
+	s, _ = inboxSession()
+	for range maxInbox - 7 {
+		s.receive(&v2193.PlayerAuthInputPacket{}, 200)
+	}
+	for range 7 {
+		s.receive(&v2193.InventoryTransactionPacket{}, shulkers)
+	}
+	if n, cost, cut := s.inboxState(); cut || n != maxInbox {
+		t.Fatalf("ordinary traffic: %d packets of %d bytes, cut %v", n, cost, cut)
+	}
+	packets, _ := s.takeInbox()
+	if n, cost, _ := s.inboxState(); n != 0 || cost != 0 || len(packets) != maxInbox {
+		t.Fatalf("took %d packets, left %d of %d bytes", len(packets), n, cost)
+	}
+	s.requeue(packets[maxInbox-7:])
+	if n, cost, _ := s.inboxState(); n != 7 || cost != 7*shulkers {
+		t.Fatalf("put back 7 packets: %d packets of %d bytes", n, cost)
 	}
 }

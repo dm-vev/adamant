@@ -170,12 +170,14 @@ type Session struct {
 	viewLayer *world.ViewLayer
 
 	// inbox holds what the client sent that the world of the player did not
-	// handle yet, in order; inboxClosed is set once the connection closed.
-	// inboxSpare is the array of the inbox handled last, used again.
+	// take to handle yet, in order, and inboxCost the bytes of memory it
+	// takes; inboxClosed is set once the connection closed. inboxSpare is
+	// the array of the inbox handled last, used again.
 	inboxMu     sync.Mutex
-	inbox       []proto.Packet
+	inbox       []received
+	inboxCost   int
 	inboxClosed bool
-	inboxSpare  []proto.Packet
+	inboxSpare  []received
 	// commandState is what the command updates Control sends start from.
 	commandState commandUpdates
 
@@ -391,30 +393,46 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 // receiver is a Conn that hands what the client sends to a function on the
 // goroutine of its transport rather than having it read.
 type receiver interface {
-	// Receive has handle called with each packet the client sends and
-	// closed once the connection closed.
-	Receive(handle func(pk proto.Packet), closed func(err error))
+	// Receive has handle called with each packet the client sends and the
+	// bytes of memory it takes, and closed once the connection closed.
+	Receive(handle func(pk proto.Packet, cost int), closed func(err error))
+}
+
+// received is a packet of the inbox and the bytes of memory it takes.
+type received struct {
+	pk   proto.Packet
+	cost int
 }
 
 // maxInbox bounds the packets a client may send ahead of the world of its
 // player: a client sends a few a tick, so one this far ahead floods it.
-const maxInbox = 2048
+// maxInboxCost bounds the memory they take, which the NBT of a packet may
+// make 4 MiB past its bytes, 2048 of them 8 GiB. The largest item a client
+// sends, a shulker box of 27 full books, takes 1.41 MiB, three copies in
+// an InventoryTransaction 4.24 MiB: seven of those fit, a tick of several
+// items several times over.
+const (
+	maxInbox     = 2048
+	maxInboxCost = 32 << 20
+)
 
-// receive puts a packet the client sent in the inbox.
-func (s *Session) receive(pk proto.Packet) {
+// receive puts a packet the client sent in the inbox, with the bytes of
+// memory it takes.
+func (s *Session) receive(pk proto.Packet, cost int) {
 	s.inboxMu.Lock()
 	defer s.inboxMu.Unlock()
 	if s.inboxClosed {
 		return
 	}
-	if len(s.inbox) == maxInbox {
+	if len(s.inbox) == maxInbox || cost > maxInboxCost-s.inboxCost {
 		inboxCut.Inc()
-		s.conf.Log.Debug("client sends more than the world of its player handles", "packets", len(s.inbox))
+		s.conf.Log.Debug("client sends more than the world of its player handles", "packets", len(s.inbox), "bytes", s.inboxCost)
 		s.inboxClosed = true
 		go s.CloseConnection()
 		return
 	}
-	s.inbox = append(s.inbox, pk)
+	s.inbox = append(s.inbox, received{pk, cost})
+	s.inboxCost += cost
 }
 
 // connClosed marks the inbox closed once the connection closed: the next
@@ -429,7 +447,7 @@ func (s *Session) connClosed(err error) {
 }
 
 // readPackets reads the packets of a Conn that hands them to nothing into
-// the inbox.
+// the inbox. Such a Conn tells no cost of them: the count bounds them.
 func (s *Session) readPackets() {
 	for {
 		pk, err := s.conn.ReadPacket()
@@ -437,7 +455,7 @@ func (s *Session) readPackets() {
 			s.connClosed(err)
 			return
 		}
-		s.receive(pk)
+		s.receive(pk, 0)
 	}
 }
 
@@ -631,30 +649,13 @@ func (s *Session) Control(tx *world.Tx, e world.Entity) {
 	if !ok {
 		return
 	}
-	s.inboxMu.Lock()
-	packets, closed := s.inbox, s.inboxClosed
-	s.inbox = s.inboxSpare
-	s.inboxSpare = nil
-	s.inboxMu.Unlock()
-	for i, pk := range packets {
-		packets[i] = nil
-		if err := s.handlePacketSafely(pk, tx, c); err != nil {
-			s.conf.Log.Debug("process packet: " + err.Error())
-			clear(packets[i+1:])
-			closed = true
-			break
-		}
-		if _, here := s.ent.Entity(tx); !here {
-			// The packet took the player to another world, whose ticks
-			// handle the rest.
-			s.requeue(packets[i+1:])
-			clear(packets[i+1:])
-			s.inboxSpare = packets[:0]
-			return
-		}
-	}
+	packets, closed := s.takeInbox()
+	failed, left := s.handleInbox(packets, tx, c)
 	s.inboxSpare = packets[:0]
-	if closed {
+	if left {
+		return
+	}
+	if closed || failed {
 		s.closeControllable(c)
 		return
 	}
@@ -664,13 +665,47 @@ func (s *Session) Control(tx *world.Tx, e world.Entity) {
 	s.sendChunks(tx, c)
 }
 
+// handleInbox handles the packets taken from the inbox, clearing them, and
+// reports a packet that failed, which ends the session, or one that took
+// the player to another world, whose ticks handle the rest.
+func (s *Session) handleInbox(packets []received, tx *world.Tx, c Controllable) (failed, left bool) {
+	for i, r := range packets {
+		packets[i] = received{}
+		if err := s.handlePacketSafely(r.pk, tx, c); err != nil {
+			s.conf.Log.Debug("process packet: " + err.Error())
+			clear(packets[i+1:])
+			return true, false
+		}
+		if _, here := s.ent.Entity(tx); !here {
+			s.requeue(packets[i+1:])
+			clear(packets[i+1:])
+			return false, true
+		}
+	}
+	return false, false
+}
+
+// takeInbox takes the packets of the inbox for the world to handle, giving
+// back the memory they took, and reports whether the connection closed.
+func (s *Session) takeInbox() (packets []received, closed bool) {
+	s.inboxMu.Lock()
+	defer s.inboxMu.Unlock()
+	packets, closed = s.inbox, s.inboxClosed
+	s.inbox, s.inboxCost = s.inboxSpare, 0
+	s.inboxSpare = nil
+	return packets, closed
+}
+
 // requeue puts packets back at the front of the inbox.
-func (s *Session) requeue(packets []proto.Packet) {
+func (s *Session) requeue(packets []received) {
 	if len(packets) == 0 {
 		return
 	}
 	s.inboxMu.Lock()
-	s.inbox = append(append([]proto.Packet(nil), packets...), s.inbox...)
+	s.inbox = append(append([]received(nil), packets...), s.inbox...)
+	for _, r := range packets {
+		s.inboxCost += r.cost
+	}
 	s.inboxMu.Unlock()
 }
 

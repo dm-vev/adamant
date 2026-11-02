@@ -216,32 +216,14 @@ var errStopped = errors.New("netconn: stopped")
 
 // Receive has each packet the client sends from now on handed to handle,
 // in order, on the goroutine of the transport that received it, instead
-// of being queued for ReadPacket; the packets read during the spawn go
-// first. closed is called once the connection closed: the client left,
-// sent too much or sent a packet that does not decode. Neither may block.
-func (c *Conn) Receive(handle func(pk proto.Packet), closed func(err error)) {
+// of being queued for ReadPacket, with the bytes of memory it takes; the
+// packets read during the spawn go first. closed is called once the
+// connection closed: the client left, sent too much or sent a packet that
+// does not decode. Neither may block.
+func (c *Conn) Receive(handle func(pk proto.Packet, cost int), closed func(err error)) {
 	var once sync.Once
 	end := func(err error) { once.Do(func() { closed(err) }) }
-	deliver := func(raw []byte) (err error) {
-		defer c.recoverRead(&err)
-		if c.overLimit(raw) {
-			return nil
-		}
-		pk, err := DecodePacket(raw)
-		if err != nil {
-			undecodable.Inc()
-			_ = c.Close()
-			end(err)
-			return errStopped
-		}
-		if d, ok := pk.(*v2193.DisconnectPacket); ok {
-			_ = c.Close()
-			end(DisconnectError(d.Message))
-			return errStopped
-		}
-		handle(pk)
-		return nil
-	}
+	deliver := func(raw []byte) error { return c.deliver(raw, handle, end) }
 	read := append(c.deferred, c.b.TakePending()...)
 	c.deferred = nil
 	for _, raw := range read {
@@ -261,6 +243,31 @@ func (c *Conn) Receive(handle func(pk proto.Packet), closed func(err error)) {
 		}
 	})
 	c.t.OnClose(end)
+}
+
+// deliver decodes a packet the client sent and hands it to handle with the
+// memory it takes, or ends the connection with why for a packet that does
+// not decode or a Disconnect, returning errStopped. A packet over the
+// bucket of its kind is dropped.
+func (c *Conn) deliver(raw []byte, handle func(pk proto.Packet, cost int), end func(err error)) (err error) {
+	defer c.recoverRead(&err)
+	if c.overLimit(raw) {
+		return nil
+	}
+	pk, cost, err := decodePacket(raw)
+	if err != nil {
+		undecodable.Inc()
+		_ = c.Close()
+		end(err)
+		return errStopped
+	}
+	if d, ok := pk.(*v2193.DisconnectPacket); ok {
+		_ = c.Close()
+		end(DisconnectError(d.Message))
+		return errStopped
+	}
+	handle(pk, cost)
+	return nil
 }
 
 // packetLimits are the buckets BDS keeps for packets a client has no need
@@ -354,31 +361,40 @@ const (
 
 // DecodePacket decodes a packet a client sent, header first, with the
 // codecs of protocol 2193 and the limits a server keeps against a client.
-func DecodePacket(raw []byte) (pk proto.Packet, err error) {
+func DecodePacket(raw []byte) (proto.Packet, error) {
+	pk, _, err := decodePacket(raw)
+	return pk, err
+}
+
+// decodePacket decodes a packet as DecodePacket does and returns the bytes
+// of memory it takes: those of its fields, which its strings copy and its
+// byte slices share, and those its values take past them, as MaxAlloc
+// charged them.
+func decodePacket(raw []byte) (pk proto.Packet, cost int, err error) {
 	h, fields, err := bedrock.ReadHeader(raw)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if pk = v2193.New(h.ID); pk == nil || !fromClient(h.ID) {
-		return nil, errUnknownPacket(h.ID)
+		return nil, 0, errUnknownPacket(h.ID)
 	}
 	defer func() {
 		// The codecs fail softly; a panic is a bug of a hand-written one,
 		// which must not take the server down.
 		if v := recover(); v != nil {
-			pk, err = nil, fmt.Errorf("netconn: decode %T: %v", pk, v)
+			pk, cost, err = nil, 0, fmt.Errorf("netconn: decode %T: %v", pk, v)
 		}
 	}()
 	r := wire.NewReader(fields)
 	r.MaxList, r.MaxString, r.MaxAlloc = maxList, maxString, maxAlloc
 	pk.Decode(r)
 	if err := r.Err(); err != nil {
-		return nil, fmt.Errorf("netconn: decode %T: %w", pk, err)
+		return nil, 0, fmt.Errorf("netconn: decode %T: %w", pk, err)
 	}
 	if r.Len() != 0 {
-		return nil, fmt.Errorf("netconn: decode %T: %d bytes left", pk, r.Len())
+		return nil, 0, fmt.Errorf("netconn: decode %T: %d bytes left", pk, r.Len())
 	}
-	return pk, nil
+	return pk, len(fields) + r.Allocated(), nil
 }
 
 // recoverRead turns a panic reading what the client sent, a bug no client
