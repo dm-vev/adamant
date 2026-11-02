@@ -13,6 +13,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"maps"
 	"slices"
 	"time"
 )
@@ -1413,28 +1414,40 @@ func (a *Association) advanceForwardTSN(again bool) {
 }
 
 func (a *Association) queueForwardTSN() {
+	last := a.forwardStreams()
 	v := binary.BigEndian.AppendUint32(nil, a.advancedAck)
+	for _, stream := range slices.Sorted(maps.Keys(last)) {
+		v = binary.BigEndian.AppendUint16(v, stream)
+		v = binary.BigEndian.AppendUint16(v, last[stream])
+	}
+	a.queueControl(chunkForwardTSN, 0, v)
+}
+
+// forwardStreams returns the last SSN given up on each ordered stream up to
+// the advanced peer ack point. A FORWARD TSN naming more streams than a
+// packet takes could not go: the point is lowered to the TSN before the
+// first stream without room (RFC 3758 section 3.5, rule C4), and the SACK
+// of it moves the point on again.
+func (a *Association) forwardStreams() map[uint16]uint16 {
+	room := (a.cfg.MaxPacketSize - commonHeaderSize - chunkHeaderSize - 4) / 4
 	last := map[uint16]uint16{}
 	for _, ch := range a.outstanding {
 		if tsnLess(a.advancedAck, ch.tsn) {
 			break
 		}
-		if ch.abandoned && !ch.msg.opts.Unordered {
-			if ssn, ok := last[ch.msg.stream]; !ok || ssnLess(ssn, ch.msg.ssn) {
-				last[ch.msg.stream] = ch.msg.ssn
-			}
+		if !ch.abandoned || ch.msg.opts.Unordered {
+			continue
+		}
+		ssn, ok := last[ch.msg.stream]
+		if !ok && len(last) == room {
+			a.advancedAck = ch.tsn - 1
+			break
+		}
+		if !ok || ssnLess(ssn, ch.msg.ssn) {
+			last[ch.msg.stream] = ch.msg.ssn
 		}
 	}
-	streams := make([]uint16, 0, len(last))
-	for stream := range last {
-		streams = append(streams, stream)
-	}
-	slices.Sort(streams)
-	for _, stream := range streams {
-		v = binary.BigEndian.AppendUint16(v, stream)
-		v = binary.BigEndian.AppendUint16(v, last[stream])
-	}
-	a.queueControl(chunkForwardTSN, 0, v)
+	return last
 }
 
 func (a *Association) anyUnacked() bool {

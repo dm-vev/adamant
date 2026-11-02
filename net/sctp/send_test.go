@@ -694,6 +694,37 @@ func TestForwardTSNStreams(t *testing.T) {
 	}
 }
 
+// TestForwardTSNFitsPacket covers a FORWARD TSN that would name more
+// streams than a packet takes: it skips the chunks up to the last whose
+// streams fit, and the SACK of it brings one for the rest (RFC 3758
+// section 3.5, rule C4).
+func TestForwardTSNFitsPacket(t *testing.T) {
+	a := connectTo(t, start, prSCTP)
+	first := a.nextTSN
+	// A packet of 1163 bytes takes a FORWARD TSN of 285 streams.
+	var pairs []uint16
+	for s := range uint16(300) {
+		if err := a.Send(s, PPIDBinary, []byte{1}, SendOptions{Partial: true}, start); err != nil {
+			t.Fatal(err)
+		}
+		pairs = append(pairs, s, 0)
+	}
+	var values [][]byte
+	a.send = func(p []byte) {
+		for _, c := range packetChunks(p) {
+			if c.typ == chunkForwardTSN {
+				values = append(values, bytes.Clone(c.value))
+			}
+		}
+	}
+	at := timeout(t, a)
+	sack(t, a, at, first+284, 1<<20)
+	want := [][]byte{forwardTSN(first+284, pairs[:2*285]...), forwardTSN(first+299, pairs[2*285:]...)}
+	if !slices.EqualFunc(values, want, bytes.Equal) {
+		t.Fatalf("sent %d FORWARD TSNs, want two: to TSN %d naming 285 streams, then to %d naming 15", len(values), first+284, first+299)
+	}
+}
+
 // TestSendBufferBoundary covers a message that fills the send buffer
 // exactly: it is accepted, and the next byte is not.
 func TestSendBufferBoundary(t *testing.T) {
