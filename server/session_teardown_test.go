@@ -174,6 +174,10 @@ func TestContainerRemoveViewerPanicDoesNotBlockServerShutdown(t *testing.T) {
 	}
 }
 
+// newSessionTestServer returns a server for tests of sessions and their
+// teardown. Its world generates no terrain: World.Close waits for the
+// chunks being generated, which under the race detector takes seconds a
+// chunk and has nothing to do with what these tests check.
 func newSessionTestServer(t *testing.T, provider player.Provider) *Server {
 	t.Helper()
 	srv := Config{
@@ -183,6 +187,7 @@ func newSessionTestServer(t *testing.T, provider player.Provider) *Server {
 		DisableNether:           true,
 		DisableEnd:              true,
 		MaxChunkRadius:          1,
+		Generator:               func(world.Dimension, int64) world.Generator { return world.NopGenerator{} },
 	}.New()
 	closeWorlds(t, srv)
 	return srv
