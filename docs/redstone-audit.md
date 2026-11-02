@@ -1,6 +1,6 @@
 # Bedrock redstone audit
 
-Status: **paused at the user's request; audit incomplete (2026-10-31)**.
+Status: **paused at the user's request (2026-11-02); audit incomplete**.
 This report tracks the full redstone implementation,
 not just the fixes already made. An existing Go test or a matching happy-path
 delay is not evidence of complete Bedrock equivalence.
@@ -1793,7 +1793,7 @@ it can be marked verified. No row is complete merely because its Go tests pass.
 | Daylight detectors and lightning rods | Detector clock, environment, initial/live roof lighting, body and producer registration corrected; 48,960 dimension/initialization source frames, 28,800 weather samples, 24 live roof traces, 16 source-removal/overlap traces, ten producer heap checkpoints and 12 player inversions with wire timing match. Rod hit/expiry/retrigger/oxidation/producer and tested support output match 100 real-bolt traces; 96 rod shapes match inspected bounds. Attraction geometry/order/selection matches 670 executed client cases with synthetic world inputs plus 120 native sort/heap cases; 26 actual BDS traps verify shared selector integration, bolt positions and pulse occurrence through tested rain occluders. Open: other lighting filters/liquid states and lifecycle, partial weather/fog, wider detector face/conduction/support/events/persistence; random weather scheduling, broader precipitation/climate/occluders, copper/projectile/interaction/events and lifecycle |
 | Sculk sensors/calibrated sensors/shriekers | Missing lever/button/plate/hook events, calibrated disabled-output face, integer distance/selection/reception, binary32 range/cell conversion and button event/producer ordering corrected. 568 controlled traces (four include heap readback) cover tested phases/strengths, diagonal positions, adjacent switches and plates, all plate types, hook contacts, filters in four facings, all 16 wool colours and eight material controls. Original client selector/strength/range gates execute in 80/110/92 cases and hook sound/event dispatch in 64 cases. Native binary32 ray offsets, traversal and unit-cube intersections replace the Java obstruction path; 208 executed obstruction cases, 133 full cell sequences, 202 direct intersections and 168 additional BDS seam/material/coordinate traces match. Open: other event/filter/occlusion/output paths, fractional entity-source integration, waterlogging, resonance, shriekers, startup, network action phase and persistence |
 | Lamps and copper bulbs | Lamp source/consumer phase corrected in observer/wire matrices. Bulb comparator output verified lit/unlit for all eight variants. Open: broader lamp retrigger/cancellation/load cases, bulb toggle timing/interaction and persistence |
-| Doors/trapdoors/fence gates | 192 native consumer pulse traces, 192 dust/stone/glass signal traces and 192 independent redstone packet traces cover the tested lower/upper/split inputs and command edits. Another 176 material and 192 separate-input wind traces check the attack gate. Wire regressions retain 3512 redstone and 168 wind interaction packets, normal/split flushing. Native upper-door bits are retained. Open: broader analog/conduction, actual player placement/use while powered, exact network delivery tick, full material/geometry/event matrices, persistence and lifecycle |
+| Doors/trapdoors/fence gates | 192 native consumer pulse, 192 signal and 192 redstone packet scenes; 176 material and 192 wind scenes; 136 actual player-use scenes with 608 interaction packets. Another 112 player placements, 28 observer controls and 28 Script-clock controls check placement publication. Door-specific checks add 829 command scenes, 624 geometry scenes, 282 neighbour/survival/resource scenes, 48 destroy-command resource scenes, 42 actual player-break scenes, 66 actual support-placement scenes and 22 copper tool transformations. The latter support comparison covers 42 accepted and 24 rejected placements with independently verified native input hashes. Sixteen leaf source-removal scenes check related notification side effects. Native raw upper-door bits are retained. Open: broader analog/conduction and source/registration graphs, remaining placement/held-item contexts, resource spawn arithmetic and trajectories, exact delivery beyond the tested Script windows, full material/event matrices, natural oxidation timing, persistence and lifecycle |
 | Powered/detector/activator rails | Detector inventory strength, command-cart eligibility/container, typed body selection and producer state corrected against 87 settled/lifecycle and 32 source/wire/lamp timing cases; query geometry matches 324 executed client cases. Powered/activator cadence, configured axis, tested source overlap, straight/slope range, connection placement and zero-strength activator publication corrected against 256 BDS scenes. Cart height, binary32 motion, container drag and detector chunk ownership match 320 native motion scenes; stationary rider/TNT/hopper activator effects match 24 further scenes. Open: full source-list construction/order, loops, broader detector and producer lifecycle, multi-cart order, chunk persistence, cart curves/derailment/collisions, command-cart activation, broader moving-cart transfers and activation lifecycle |
 | Dispensers/droppers/crafters | Nine-slot contract, consumer publication, tested pulse timing and cart origin/newborn phase corrected. Native reservoir selection matches 2,048 executed cases; dropper's additional container pass matches 20 owned RNG traces. Crafter routing matches 102 hopper scenes, pulse/animation timing 36 scenes, sided output/remainders 240 scenes and saved animation 12 scenes. Ordinary/crafter ejection matches 36 exact-input motion traces and 1,440 executed velocities; ordinary effects match 96 real-packet scenes. Initial flags match 32 container load scenes. Open: broader source graphs/queues, other item/recipe behaviours, actor lifecycle and full world unload/restart persistence |
 | Hoppers | Settled bookshelf transfers verified in 48 cases with two barrel controls. Early lock publication corrected against 144 lock-pulse traces. Transfer clock/counter units match 110 actual push traces and 25 native heap checkpoints; recursive chain transfers match 60 scenes across placement orders/chunk boundaries. Block-item pickup matches 142 scenes including holes, simultaneous stacks and covers; native query/type gates and seven-box hopper geometry are checked separately. Slot selection matches 72 generic push/pull, 78 sided furnace and 40 brewing scenes; twenty persisted-counter loads verify the tested decode/clock path. Tested hopper-cart collection and transfer effects match 48 further scenes. Open: broader lock graph/lifecycle, larger hopper graphs and complete world RNG consumption, other container transfers/sides, moving cart interactions and reload |
@@ -5449,10 +5449,15 @@ pass and admits newborn queued items only if their owning chunk is pending.
 
 All twelve scenes now match every recorded position, velocity, AABB and ground
 flag through flight and landing, preserving one output actor's identity and
-stack (entity 3.295 s before the pickup follow-up). The native post-tick entries
-also expose PickupDelay at actor+0x44c as zero. Crafter output now explicitly
-uses zero pickup delay; the ordinary item factory's default remains unchanged.
-This verifies the field, not player collection latency in an unrecorded scene.
+stack (entity 3.295 s before the pickup follow-up). The initial post-tick trace
+read actor+0x44c and labelled it PickupDelay. A later inspection of
+`clientInitialize` and `playerTouch` establishes that the constructor's pickup
+delay is at **+0x450**; +0x44c is a separate player-touch gate. The original
+zero readback is not evidence for the pickup-delay field. The fresh crafter
+and dispenser/dropper captures recorded below correct the address and confirm
+zero pickup delay independently. Crafter output explicitly uses zero pickup
+delay; the ordinary item factory's default remains unchanged. Actual player
+collection latency is outside these field readbacks.
 
 The combined crafter/ejection/Gaussian/hopper/dispenser/dropper/queue/piston
 regression passes entity (109.198 s), block (1.268 s) and world (1.682 s) after
@@ -6473,3 +6478,787 @@ gameplay log are excluded.
 The implementation/state regressions are committed in `1eb77585` and the
 independent packet/phase capture tools, original corpora and regressions in
 `af7ab67f`. Publication of this checkpoint does not resume the paused audit.
+
+### Resumed actual player barrier use (2026-11-02)
+
+The user resumed the full audit after the published checkpoint. The effort
+estimate remains approximately 70%; every matrix row still retains open work.
+
+`scripts/redstone_bds_barrier_use_probe.py` records actual empty-hand use
+transactions from the owned loopback player. Script commands prepare the
+scenes; they never toggle a barrier in place of player input. The before/after
+interaction records retain both Script and game time, original permutations,
+and actual player rotation. A received Script text marker after twelve setup
+ticks bounds the interaction packet scope without relying on receipt times.
+The native client hashes validate the SDK's redundant direction alias before
+removing it from the network permutation; including that alias caused rejected
+transactions in the diagnostic pilot. Original state records retain the alias.
+The inspected client entry points are `DoorBlock::_useDoor` (`0x978b620`),
+`TrapDoorBlock::_useTrapDoor` (`0x4033710`) and `FenceGateBlock::use`
+(`0x7ac31b0`), with copper overrides at `0x6ebb3b0` and `0x6ebd410`.
+The material-based iron rejection and the ordinary `_setOpen` calls are
+separate from the already inspected activating-attack consumer-power gates.
+
+The complete original-BDS corpus is
+`bedrock_1_26_51_barrier_use.json`, owned root
+`adamant-redstone-bds-hku40pu6`, with the same inspected binary hash. It retains:
+
+- 136 independent scenes and 272 actual clicks, of which 192 are accepted;
+- 5169 interval frames and 7906 raw barrier cell states;
+- wooden/copper/iron doors clicked at either half, initial open/closed
+  permutations, no input or a constant lower/upper input, and both requested
+  input phases;
+- wooden/copper/iron trapdoors in both vertical positions, open/closed and
+  powered/unpowered; gates approached from both sides with the same controls;
+- 480 accepted-use effect packets and 128 unchanged-state confirmations for
+  rejected iron use; original setup packets and text checkpoints also remain.
+
+The initial `TestBarrierPlayerUseMatchesNativeStatesAndPackets` fails in 96
+scene/flush combinations: all wooden/copper trapdoor and gate controls, in
+both ordinary and split flushing. Their states already match, but manual use
+still takes a legacy sound/update path. These interactions now share the native
+attack publication helper: flags 3, new permutation hash, empty sound entity
+type, and state before sound, with callback-completion readiness. Manual gate
+rotation remains selected by the player's direction; attacks retain their
+separate no-rotation and consumer-power gates. Ordinary door use, including
+upper-half clicks and manual toggling under steady power, already matches.
+
+The same native corpus exposes missing empty-hand rejection confirmations for
+iron doors/trapdoors. Their new `RejectedUseUpdates` methods produce outgoing
+snapshots without changing world blocks or notifying other viewers. The actual
+player input path publishes those snapshots to its own session. Paired door
+snapshots confirm the clicked half before its partner and share one completion
+gate; this differs from the lower-before-upper order of accepted toggles.
+The complete session replay now includes those 128 native corrections;
+`TestPlayerRejectedIronUseMatchesNativePackets` additionally invokes the real
+player input path and background sender against four native input-height controls.
+
+The accepted-use packet regression passes together with all earlier barrier,
+wind-material and phase packet regressions (session 23.468 s). Adding all iron
+confirmations exposes their distinct clicked-half-first ordering, corrected
+without changing accepted-use ordering. The full 608-packet replay and earlier
+barrier/wind/phase corpora then pass together (session 22.759 s), as does the
+actual player input/background sender check (player 0.595 s). Broader shared
+checks pass: block 159.282 s, session 45.638 s, world 17.859 s, player 23.635 s
+and item 1.273 s; inventory has no tests. The related entity selection passes
+84.613 s, including barrier/wind/bell/arrow/piston and ground-path controls;
+actual setblock/clone integration passes (builtin 0.449 s). This does not claim
+a full entity-suite pass or a fix for the independently reproduced frog flake.
+These controls do not establish placement behavior, held-item rejection,
+malformed door-pair handling, vibration ownership, persistence, or unrestricted
+background delivery timing. Those comparisons remain open.
+
+### Actual player placement on an existing source
+
+`scripts/redstone_bds_barrier_placement_probe.py` adds 112 actual survival-player
+placements: seven barrier families, four player orientations, stone/redstone
+supports and both requested input phases. The held-item IDs are checked against
+the actual native inventory; the before/after events retain the actual item,
+count, rotation, game clock and both raw door halves. The ordinary loopback
+client's authenticated interaction places the block, with no scripted block
+replacement standing in for that input.
+
+The complete original-BDS capture
+`bedrock_1_26_51_barrier_placement.json`, owned root
+`adamant-redstone-bds-3xayzj4q`, retains 4255 interval frames, 6078 barrier cell
+states and 544 scoped effect packets. The shared packet scope includes integer
+as well as centre-origin sounds, so a door's native integer-origin placement
+sound is retained. Original setup observations and text checkpoints remain.
+
+`TestBarrierPlayerPlacementMatchesNativeStates` invokes the actual player's
+`UseItemOnBlock`, including item consumption, placement callbacks, scene
+registration and subsequent world ticks. All raw properties are compared;
+SDK direction/stone aliases are validated before canonicalization. The initial
+comparison fails for all sixteen powered iron-door/trapdoor scenes: legacy
+placement code queries live power and pre-opens those blocks. Native placement
+starts with the closed default permutation and the newly registered consumer
+ignores its first notification, just as for the other barrier materials. The
+premature iron power queries are removed. All 112 complete state traces then
+pass with the iron rejection/input tests and existing iron/door block controls
+(player 1.890 s, block 0.404 s).
+
+This comparison proves the retained placement state/timing controls, not their
+entire wire sequence. Native placement also retains intermediate/repeated state
+notifications and family-specific placement sound data; those 544 packets are
+retained for the next comparison and are not claimed to match yet. Broader
+click faces/heights, side obstructions and hinges, held-item rejection, support
+replacement, cancellation, persistence and all other matrix requirements remain
+open. No matrix row is closed and the planning estimate remains approximately
+70%.
+
+After the final placement correction, the complete block and player packages
+pass again (157.900 s and 24.886 s). The related session/barrier/bell/wind
+selection passes (40.981 s), alongside the related entity selection (28.243 s).
+The root server builds with the final implementation; all three Python sources
+parse, both complete native corpora validate, Go formatting and diff whitespace
+checks pass. The earlier shared world/item and command checks also remain as
+recorded above. No full entity-suite pass is claimed.
+
+### Placement packet ownership and authenticated input
+
+The next comparison uses two actual loopback clients connected to one
+unmodified BDS. The synthetic `RedstoneObserver` only observes; the original
+`RedstoneAudit` sends the same real placement transactions. Both are moved near
+each independent scene, and both receive their own original Script text
+checkpoint. No game binary or user world is modified.
+
+`scripts/redstone_bds_barrier_placement_observer_probe.py` retains 28 complete
+scenes across all seven families, both support powers and both requested input
+phases. The checked-in
+`bedrock_1_26_51_barrier_placement_observer.json` contains 1064 frames, 136 placer
+effect packets and 68 observer effect packets. Owned capture root:
+`adamant-redstone-bds-yko6_09y`. The native game binary hash is unchanged.
+The additional client name is restricted to the synthetic observer in the
+loopback-only helper; separate client logs are retained.
+
+Every observer stream exactly equals the final public portion of its placing
+player's stream. Only the placing player receives the private prefix: two
+confirmations for an ordinary barrier/lower door half, then one for the upper
+half of a door. The subsequent common publication consists of one state per
+affected cell and one placement sound. This evidence rules out broadcasting
+all repeated state confirmations to every viewer.
+
+`TestBarrierPlacementPacketsMatchBDS` imports the actual player implementation
+and runs the authenticated item-interaction handler, player placement and world
+callbacks, session block queue and outgoing packet writer. It compares all
+fields/order in the earlier 544 packets plus the independent 136 placing-player
+and 68 observer packets, under both normal and split flushing. Test-only
+exports permit explicit flushes without adding production APIs or a concurrent
+background world tick. Outgoing time markers only drain the Go packet writer;
+they are not native sender-clock measurements.
+
+The first actual entry-point replay fails because `PlayerAuthInput` accepts only
+break actions and rejects the native-accepted click-block action. It now shares
+action dispatch and held-slot feedback with inventory transactions after the
+existing held-item equality gate. The regression additionally supplies a
+mismatched client-held count and verifies that it produces no placement or
+block/sound effects. Existing actual player break controls remain in the related
+verification selection.
+
+After dispatch is fixed, every placement exposes wire differences. Successful
+barrier placement now marks the world snapshot with native flags 3 and callback
+completion readiness. The placing player's separate action sends only its
+private confirmations through the bounded outgoing queue; observers receive
+only the queued public update. The world mutation and neighbour callbacks are
+not repeated to imitate network confirmations. Normal accepted toggles and
+rejected iron-use ordering retain their separate existing metadata.
+
+Native `DoorItem` emits one integer-origin placement sound after both halves,
+using the actual lower permutation. Ordinary trapdoor/gate items emit a
+centre-origin sound whose data identifies the native default permutation,
+independently of the newly placed facing. Both sound entity types are empty.
+The new player placement notifier retains these distinctions and queues the
+sound behind its actual pending public state. Deferred publication observes the
+completed placement callback, including the real partner's presence; no fake
+upper block is introduced when a placement callback cancels it.
+
+All 748 native placement packets match in both flushing modes. The initial
+focused check also retains all 608 ordinary/rejected use packets and actual
+placement state controls (session 21.676 s, player 1.756 s). Adding the held-item
+negative controls and related old bell/wind/barrier plus actual player break
+controls passes (session 44.963 s, player 4.947 s). Broader shared checks are
+complete: block 156.864 s, session 54.219 s, world 17.126 s, player 25.093 s,
+item 1.271 s; inventory has no tests. The related entity selection passes
+84.142 s and actual setblock/clone integration passes (builtin 0.314 s). The
+root server builds after the final notifier/input changes; all four Python
+sources parse, native observer/placer stream ownership revalidates, Go
+formatting and diff whitespace checks pass. The known full-entity-suite
+limitation remains. Exact lower-level sender timing, arbitrary prediction results,
+held-slot changes, larger placement/lifecycle/cancellation/hinge matrices and
+all other open audit rows remain outstanding; no global equivalence is claimed.
+
+### Native placement phase bounds
+
+`scripts/redstone_bds_barrier_placement_clock_probe.py` repeats the two-client
+placement comparison with original before-sample/after-input Script text
+markers on every sampled tick. It waits until both receivers have actually
+received the final marker before stopping either client. The complete corpus
+`bedrock_1_26_51_barrier_placement_clock.json` retains 28 scenes, 1063 frames,
+2126 markers on each client, 136 placing-player effects and 68 observer effects;
+owned root `adamant-redstone-bds-eoj7gptx`.
+
+`scripts/redstone_placement_clock_analysis.py` classifies the original packet
+receive sequence without converting receipt milliseconds into simulation time.
+For N, the first Script sample that observes the placed block, all 204 effects
+fall after N-1's after-input marker and before N's before-sample marker: 68
+private confirmations, 80 public cell updates and 56 public sound receptions.
+This differs from the separately captured late circuit-publication phase.
+It does not establish an unobserved lower-level sender tick.
+
+`TestBarrierPlacementPacketsRespectNativeScriptPhase` reuses the actual
+authenticated input/player/world/session path and compares the full per-scene
+marker/effect stream for both receivers under normal/split flushing, including
+an attempted flush before every next Script sample. Raw state frames are now
+checked in all placement packet replays as well. The retained marker stream
+passes (session 1.592 s) with the existing transaction-completion readiness;
+these controls do not require an artificial additional world-tick delay.
+The complete session package passes after this new regression (50.193 s).
+
+### Door half geometry dependencies
+
+The inspected client `DoorBlock::getDir` (`0x9789a10`) reads direction from the
+lower block selected by `getDoorBlocks` (`0x9789440`), and
+`hasRightHinge` (`0x9789300`) reads the upper block. Both use the native pair;
+`getDoorBlocks` compares the concrete block-type pointers before returning it.
+The shared visual/collision geometry therefore cannot use each half's own raw
+direction and hinge as if they were independent shapes.
+
+`scripts/redstone_bds_door_geometry_probe.py` independently records 384
+controlled pairs across wooden/copper/iron doors, every lower/upper direction,
+both lower/upper hinge bits and open/closed states. This is a deliberately
+authored permutation matrix, not a normal player-placement claim. Command
+results are retained, then direct Script API permutations explicitly supply
+the independent half inputs; a native state check rejects any normalization
+before sampling. Each half receives twelve original BDS dimension ray casts
+from opposite horizontal faces and three transverse offsets, with positive
+hit and miss controls. The probe never computes the expected shape itself.
+
+`bedrock_1_26_51_door_geometry.json`, owned root
+`adamant-redstone-bds-u5117nkd`, retains all 9216 native ray queries and 6144
+hits, original face locations, setup and final raw permutations. The game
+binary hash is unchanged. `TestDoorHalfGeometryMatchesNativeRays` replays these
+hit/miss and face controls through both physical collision and ray models,
+for 18432 shape comparisons. The Script API's face-location representation is
+retained but is not compared to an unadjusted geometric intercept coordinate;
+this test proves topology and hit faces, not that separate API's coordinate
+bias/normalization behavior.
+
+The initial regression fails in 312 scenes. Upper geometry now reads lower
+direction/opening, while lower geometry reads the upper hinge. Each model also
+retains its concrete door name to prevent borrowing properties from a different
+door material/variant. The raw block permutations are not rewritten to conceal
+the inconsistency. Native door thickness is unchanged. All retained controls
+pass with the old door AI/path integration, player placement/use and packet
+regressions (block 0.601 s, entity 12.532 s, player 1.883 s, session 26.072 s).
+Broader shared checks pass: block 166.292 s, session 64.323 s, world 17.177 s,
+player 24.808 s and item 1.127 s; inventory has no tests. The related entity
+selection passes 92.107 s and actual setblock/clone integration passes
+(builtin 0.509 s). The root server builds with the final geometry correction;
+all new Python sources parse, Go formatting and diff whitespace checks pass.
+The earlier full-entity-suite limitation remains.
+
+The native command preparation also shows that the command-produced upper
+permutation follows the lower permutation in all 384 scenes. Its full command
+validation/fill callback path needs a separate comparison; geometry inputs are
+therefore supplied with the explicit API step above rather than silently
+treating those command outputs as the requested independent states. Missing,
+mixed and wrongly flagged halves, full fill/placement validation, natural
+oxidation/hinges, persistence and the other outstanding matrix work remain open.
+
+A further diagnostic records the commands' actual return values:
+`bedrock_1_26_51_door_command_controls.json`, owned root
+`adamant-redstone-bds-o39wfou6`, twelve complete native controls. Every lower
+command succeeds and creates the upper permutation; every explicitly upper
+command in these controls returns successCount zero. The upper hinge therefore
+did not independently change in the initial geometry diagnostic. The complete
+geometry corpus uses explicit API permutations to isolate that dependency,
+as recorded above. The disassembled `DoorBlock::onFillBlock` at `0x978ba10`
+also constructs an upper permutation from a lower one and calls the block
+source setter with flags 2. Command eligibility and the complete fill callback
+remain the next separate audit work, including the existing kernel helper's
+then narrower open-bit-only synchronization. The following resumed comparison
+repairs this command path; those initial controls alone did not prove it.
+
+### Native door command eligibility, fill batches and survival
+
+Door commands now preserve the requested native material and permutation,
+create the complete upper half, and reject native-ineligible fills. Previously
+Java neighbour shaping could turn a requested oak/iron/copper door into the
+spruce door above it. The old callback only synchronized an existing partner's
+open bit and did not create the upper cell.
+
+The client `DoorBlock::canFillAtPos` (`0x978bcf0`) rejects an incoming upper
+half and any incoming lower half directly above a door. It does not require
+solid support or an empty upper cell. `onFillBlock` (`0x978ba10`) clones the
+complete incoming lower permutation, changes its upper bit and writes it one
+cell above with flags 2. The new native fill route bypasses Java door shaping,
+shares the command publication readiness gate and retains the upper write's
+different notification flags. Ordinary interactions still retain unused raw
+upper properties rather than executing a fill callback.
+
+`bedrock_1_26_51_door_commands.json` retains 384 native scenes: three door
+families, setblock/fill, eight existing-block/support contexts, both half bits
+and four opening/hinge/direction combinations. The owned root is
+`adamant-redstone-bds-3zmdb895`. An independent complete repeat at
+`adamant-redstone-bds-5pmc6g1i` reproduced every immediate and eight-tick
+block-state result. Four initially surprising floating copper/fill removals
+were reproducible, not discarded as noise.
+
+Their cause is native `FillCommand::execute` (`0xb666c50`), specifically its
+post-fill pass at `0xb667ef2..0xb66807c`: it publishes neighbours after the
+batch and schedules a one-tick callback for blocks with native tick executors.
+Copper doors have these executors even when waxed or fully oxidised. Setblock
+does not make this extra scheduling call. Sixteen additional retained
+`bedrock_1_26_51_door_command_copper_variants.json` controls, root
+`adamant-redstone-bds-ev4wfkgm`, exercise all eight copper names with both
+commands. The kernel now models this difference explicitly instead of adding
+a general extra delay to doors or all command placements.
+
+Another 384 mode controls, `bedrock_1_26_51_door_command_modes.json`, root
+`adamant-redstone-bds-8z_pdx5o`, and 45 volume controls,
+`bedrock_1_26_51_door_volume_fill.json`, root
+`adamant-redstone-bds-_ke2zb9j`, check replace/keep/destroy and fill's
+hollow/outline modes in single cells, vertical columns, horizontal squares
+and 3x3x3 volumes. Fill validates the requested door before destruction or
+substituting interior air. Setblock destroy first removes its occupied target,
+then validates the incoming block. Destroying air itself is a no-op; notifying
+neighbours in that case incorrectly destroyed unrelated authored door halves.
+The tested fill ordering now retains automatically generated upper cells even
+when they lie inside a hollow volume.
+
+`TestDoorSetBlockAndFillMatchNativeCommands` runs the actual command parser and
+compares command success, all immediate cells and eight subsequent native
+frames in **829** scenes. Native SDK direction/stone aliases are validated
+before removal; the Java argument translation must decode to precisely the
+captured native input permutation. Initial authored floor notifications are
+drained, and context API permutations use the public block setter, without
+inventing command-fill callbacks. Doors ignore the generic kernel setter's
+legacy self notification; native replacement only notifies surrounding cells.
+
+The client `DoorBlock::neighborChanged` (`0x3197fc0`) first calls `canSurvive`
+(`0x978b200`, virtual slot `0x3c8`). An invalid door schedules a one-tick
+survival check. It does not immediately remove both halves or restrict the
+check to the vertical side that changed. `bedrock_1_26_51_door_support.json`,
+root `adamant-redstone-bds-3ywq7ufd`, retains 48 traces across three families,
+both tick parities, support removal/restoration in one transaction, individual
+half removal, mixed materials, repeated half flags and a side notification to
+a floating door. The restored support cancels removal on the pending check;
+otherwise a lower half removed next tick notifies its upper half, which is
+removed on the following tick. The new native neighbour listener and survival
+callback match those state phases.
+
+Deferred notifications for a loaded legacy recipient no longer reach an
+immediate listener installed at that cell later. Notifications delayed solely
+by chunk generation still reach the listener when its chunk becomes ready.
+`TestImmediateNeighbourListenerRejectsOldOccupantNotifications` independently
+checks both cases and rejects duplicate synchronous/deferred delivery.
+
+### Invalid door pair geometry
+
+`bedrock_1_26_51_door_invalid_geometry.json`, root
+`adamant-redstone-bds-3irt56xs`, adds 240 immediate native scenes and 5760
+ray queries for missing lower/upper halves, different materials and pairs
+whose two half flags agree. These rays run before scheduled survival checks;
+the source states and every native ray outcome are retained. The old model
+fails 210 scenes in this additional corpus.
+
+Native `getDoorBlocks` requires concrete type equality but does not require the
+partner's half bit to differ. When the pair cannot be found, the direction,
+open and hinge getters use native direction zero, closed and left hinge. In
+the kernel's rotated door representation this direction is `cube.East`.
+The model now follows these rules without rewriting stored raw permutations.
+Both geometry corpora pass: **624 scenes, 14976 native rays and 29952 physical
+collision/ray-model comparisons**. The survival check separately requires
+complementary half flags; geometric pairing does not establish survival.
+
+The command, lifecycle and geometry regressions pass with the prior barrier
+use, player placement, packet ownership and script-phase checks. After the
+final shared queue and copper transformation changes, complete package checks
+pass: block 165.657 s, session 62.601 s, world 22.623 s, player 29.449 s,
+item 1.271 s and builtin commands 19.403 s; inventory has no tests. The related
+entity selection passes in 82.831 s. The root server builds successfully;
+Go formatting, updated Python source parsing, retained corpus completeness/
+native binary hashes and diff whitespace checks pass. The previously recorded
+full-entity-suite frogspawn flake remains a limitation of wider verification.
+These focused controls do not close the audit matrix: full command packet fields, other
+materials/support surfaces, item drops, natural oxidation timing, persistence
+and the outstanding circuit/producer/consumer rows remain open.
+
+### Copper door item transformations versus API replacement
+
+`bedrock_1_26_51_copper_door_api.json`, owned root
+`adamant-redstone-bds-gs9xqeyz`, adds six native traces replacing either half
+with another copper oxidation/wax variant through the Script API. The pair
+stays mismatched immediately, then the unchanged half disappears next tick
+and the replaced half one tick later. Native type equality must therefore
+include the copper variant. The previous generic neighbour synchronization of
+oxidation/wax bits hid this distinction. These traces now join the survival
+test, for **54** native neighbour/lifecycle scenes.
+
+Item use has different semantics. The new
+`redstone_bds_copper_door_transform_probe.py` uses an actual loopback player
+holding honeycomb or an iron axe. It explicitly releases crouch around each
+teleport, presses it after settling, and requires native `isSneaking` to be
+true before and during the captured input. The packet helper supplies held and
+raw crouch-input flags; merely claiming the predicted sneaking state did not
+establish the native precondition. Exploratory interactions that opened the
+door instead of applying the tool are not used as successful transformations.
+
+`bedrock_1_26_51_copper_door_transform.json`, root
+`adamant-redstone-bds-upx2zsbh`, retains 22 successful actual player operations:
+waxing all four oxidation levels, scraping the three oxidised levels and
+unwaxing all four waxed variants, clicked on either half. Before/after events
+verify the held item and record the actual Script/game clocks and relation to
+the sample phase. Both halves have changed in the same callback and remain
+stable through the following frames.
+
+The kernel now marks explicit waxing, scraping and oxidation transformations
+with transient operation metadata and completes the matching existing partner
+in its placement callback. Raw API replacements carry no such marker and
+retain the native invalid-pair lifecycle. This also avoids introducing a
+regression in natural oxidation when removing the old generic neighbour copy.
+The metadata is absent from encoded, stored and hashed permutations.
+`TestCopperDoorItemTransformsMatchNativeStates` replays the real honeycomb/axe
+item paths and compares all retained pre/post and per-tick states. It proves
+those paths' world mutations, not full input-dispatch or item packet parity.
+A separate forced-oxidation regression exercises the random-tick callback on
+either half and checks that the pair survives pending checks; it deliberately
+does not claim validation of native oxidation probability or timing.
+
+The audit remains active. The next comparison includes command packet fields,
+item drops, additional native support surfaces and full player/inventory
+dispatch for the new copper transformations, alongside the matrix's remaining
+redstone lifecycle and ordering work. No commits or pushes were made during
+this resumed work.
+
+### Door survival resources, support kinds and leaf decay notifications
+
+The resumed comparison adds unmodified-BDS resource and support readback:
+
+| Corpus | Scenes | Owned reference root |
+|---|---:|---|
+| `bedrock_1_26_51_door_drops.json` | 96 | `adamant-redstone-bds-s4ab5mfq` |
+| `bedrock_1_26_51_door_support_surfaces.json` | 132 | `adamant-redstone-bds-zzhipsxo` |
+| `bedrock_1_26_51_leaf_decay_neighbours.json` | 16 | `adamant-redstone-bds-27ckphii` |
+| `bedrock_1_26_51_door_player_break.json` | 36 | `adamant-redstone-bds-pv3ikrmo` |
+| `bedrock_1_26_51_door_player_break_empty_hand.json` | 6 | `adamant-redstone-bds-pah8526k` |
+| `bedrock_1_26_51_door_command_drops.json` | 48 | `adamant-redstone-bds-goe_o59a` |
+| `bedrock_1_26_51_door_support_placement.json` | 66 | `adamant-redstone-bds-u7pnif28` |
+
+The survival/drop corpus covers all three door families, both mutation
+parities and both tile-drop settings. Removing the upper half through the
+Script API drops the lower half's item on its scheduled survival tick. Removing
+the lower half directly leaves no resource for the surviving upper half.
+Malformed pairs of two lower halves produce two resources on successive
+ticks; two upper halves produce none. Restoring the support in the mutation
+callback prevents the pending tick from destroying the repaired pair. The
+kernel's survival callback now drops a lower resource for every failed
+survival condition, including a missing or incompatible partner. The combined
+survival regression now checks **282** native scenes, including the previous
+48 stone-support and six raw copper-replacement scenes. It compares each
+sample's resource identities/counts independently of item trajectories.
+
+The support corpus supplies 22 explicit support permutations for wood, iron
+and copper doors at both mutation parities. Requested permutations are retained
+separately from later world readback, including farmland and snow state values.
+Native `DoorBlock::canSurvive` (`0x978b200`) and `mayPlace` (`0x978af40`) use
+support kind 1 and explicitly allow `VanillaBlockTypeGroups::PathIds`.
+`ThinFenceBlock::canProvideSupport` (`0x40a1dd0`, also used by walls) allows
+vertical faces only for kinds 0 and 2; its centre support does not support a
+door. The inspected farmland getter (`0x319b070`) only supports the bottom
+face. The kernel now uses these distinctions for door placement and survival
+without changing other consumers' support rules.
+
+This comparison also exposed missing snow permutations: only the default snow
+layer had been registered, so other layer states used the unknown full-block
+model. All 16 height/covered permutations now have typed registration and
+distinct hashes. `TopSnowBlock::canProvideSupport` (`0x95da330`) reads the height
+and requires eight layers, independently of `covered_bit`. The native support
+corpus exercises heights 1, 7 and 8; a separate registry/support regression
+checks every typed height/covered combination. These observations do not
+establish general snow geometry or drop parity.
+
+Nearby leaves previously changed their decay bit after arbitrary neighbour
+updates, including door changes. Native `LeavesBlock::onRemove` (`0x66c8320`)
+and `LogBlock::onRemove` (`0x3461d70`) call `DecayingBlocksUtil::runDecay`
+(`0x9780060`) with cube radii 1 and 4 respectively. The utility requires the
+expanded area's chunks, sets `update_bit` with flags 2 and includes persistent
+leaves. Rotation or another same-identifier state edit does not run removal.
+The kernel now follows that source-removal path; ordinary leaf neighbour
+callbacks do not invent decay notifications. Sixteen BDS source-change traces
+compare initial/requested/immediate and six subsequent frames, including
+diagonal cube boundaries, persistent leaves, log species replacement, log
+rotation, leaf state changes, ordinary stone removal and door removal/toggling.
+The older leaf test now removes an actual log with the required chunks loaded.
+The remaining random-decay search, stripped-log/wood support and chunk-edge
+lifecycle work is outside these source-notification controls.
+
+Native `DoorBlock::playerWillDestroy` (`0x978a2d0`) immediately destroys a
+matching complementary partner, with resources owned by the lower half and
+subject to game mode and the native block's tool requirement. This differs from raw Script/API
+removal's scheduled cascade. New door player callbacks implement that immediate
+paired removal, and upper-half `BreakInfo` yields no raw resource. The actual
+loopback-player corpus verifies creative and survival breaks of either half,
+diamond/wooden pickaxes and both tile-drop settings. Six additional actual
+empty-hand survival controls establish that BDS drops all three door types
+without a tool. Iron and copper doors now use `alwaysHarvestable`, while
+pickaxes remain their effective mining tools. This also corrects their
+empty-hand breaking durations: the retained BDS actions take 150 game ticks
+for iron and 90 for copper (90 for wood). The replay checks those durations
+against `BreakDuration`; it does not generalize the result to trapdoors or
+other metal blocks.
+The replay uses the real `Player.BreakBlock` path and compares resource spawn
+counts and source cells, including after native items have subsequently been collected. It does
+not claim equality of random resource positions, velocity, merging or pickup.
+The source-cell check exposed the previous upper-half fallback resource at
+Y+1 for empty-hand metal-door breaks; resources now belong to the lower cell
+for every tested tool. The combined player regression covers 42 native scenes.
+
+The empty-hand duration assertion also exposed a separate rounding defect:
+`BreakDuration` returned 91 ticks for a hardness-3 block because its binary64
+reciprocal landed slightly above 90. The inspected native
+`PlayerDestroy::getDestroyProgress` (`0x2834570..0x283458b`) divides binary32
+speed by hardness and then by 30 or 100. The kernel now retains binary32
+progress for that calculation. The existing breaking-calculation selection and
+the six native empty-hand duration controls pass. This is evidence for the
+tested duration arithmetic, not full native status-effect/mining-state parity.
+
+The command corpus executes actual `/setblock ... air destroy` and `/fill ...
+air destroy` at either half, for all three families, both parities and both
+tile-drop settings. It revealed two additional command defects: destruction
+created resources with `block_drops=false`, and `/setblock ... air destroy`
+incorrectly returned failure after successfully removing the block. The kernel
+now suppresses those resources and follows SetBlockCommand's native air-target
+early success branch (`0x85bc410..0x85bc497`), without a second empty-cell
+replacement. Native `/fill ... air destroy` reports zero changed blocks after
+its destruction side effect; that distinct command result remains intact.
+The parser-level regression checks return status, immediate cells and every
+retained later cell/resource frame. Packet fields and general resource spawn
+arithmetic remain open.
+
+The support-placement corpus uses an actual survival player holding two doors
+and clicks all 22 dry support permutations for each door family. It retains
+42 accepted and 24 rejected placements, the before-interaction snapshot, actual
+placement events, every frame's three cells and the final held count. For
+each of the 66 inputs, the helper's independently cached native `UpdateBlock`
+hash equals the sent interaction hash. Those checked values are retained as
+`packet_input`; a malformed client-side permutation hash therefore cannot
+explain a recorded rejection. SDK legacy aliases are validated before removal.
+
+These actual placements exposed another difference from merely checking door
+survival. `DoorItem::_useOn` (`0x8ba98ce..0x8ba98ff`) first asks whether the
+clicked cell can be built over. It increments Y and requires an upward face
+only when that check fails. Native `TopSnowBlock::_canBeBuiltOver`
+(`0x95da0c0`, height gate `0x95da2b3`) accepts a dry snow layer below height 7.
+The kernel had always moved the door above the clicked cell, rejecting thin
+snow as its support. Door placement now replaces thin snow in the clicked
+cell; an eight-layer block remains as the support underneath the new door.
+The snow replacement predicate also respects the full-height boundary. The
+new player replay passes all 66 immediate/per-frame states and item-consumption
+checks after these fixes. The prior top-face placement and packet corpus still
+passes in the focused selection. Other replaceable materials, side/bottom
+clicks, liquid/extra-layer snow contexts and their packet publications remain
+open.
+
+After the final placement, snow-height and binary32 duration changes, the full
+shared package run passes: block **166.897 s**, session **60.482 s**, world
+**17.534 s**, player **26.911 s**, item **1.253 s** and builtin commands
+**14.570 s** (`.tmp/door-support-resources-final-shared.log`). The related
+bell/arrow/water/piston/breeze/wind/barrier/door/path/entity-identifier selection
+also passed in **78.845 s** (`.tmp/door-resources-related-entity.log`); the final
+placement/duration changes do not change those entity handlers. The final root
+server builds successfully (`.tmp/door-support-resources-final-build.log`).
+The 400 additional retained scenarios pass binary-hash/completeness checks,
+all seven new/extended Python probe sources parse, Go formatting and diff
+whitespace checks pass, and all 66 placement packet-input hashes match the
+independent native cache. Earlier exploratory captures and the intermediate
+duration-assertion failure are preserved in owned temporary logs; they are not
+presented as successful full runs. The previously recorded full entity-suite
+frogspawn/wandering limitations remain outside this selected validation.
+
+The audit remains active at approximately **70%** estimated effort; these
+controls do not close the audit matrix. Next work includes native resource
+spawn arithmetic/shared RNG consumption, further placement and lifecycle
+contexts and the outstanding circuit/producer/consumer work. No commits or
+pushes were made in this resumed pass.
+
+### Block-resource spawn coordinates and shared RNG budget
+
+`redstone_native_block_resource_probe.py` executes the complete original
+`BlockType::popResource` body at `0x31840d0` (0x1c0 bytes), with supplied block
+source, level, random-wrapper and item-factory callbacks. The original guards,
+native float conversion and all spawn-point instructions remain unchanged.
+The factory records its inputs rather than constructing an actor. The retained
+`bedrock_1_26_51_block_resource_native.json` contains **240** cases: six native
+MT seeds, five positive/negative and large-coordinate origins, both source-drop
+gate results, empty/nonempty stacks and present/absent owner pointers. Sixty
+cases create resources; 180 are guarded out. False drop gates and empty stacks
+consume no offset words. A valid resource consumes three independent words,
+computes `float32(random * 0.7 + 0.15)` per axis with separate binary32
+operations, then adds the converted integer block coordinate. The original
+factory receives a null owner and pickup-delay argument 10. Each supplied
+float callback is checked against its consumed raw native word; this control
+caught an initially omitted mapped conversion constant in the probe before
+accepting the corpus. That exploratory zero-result capture is not native
+spawn-position evidence.
+
+`redstone_bds_block_resource_random_probe.py` provides separate live evidence
+from a fresh owned, hash-verified BDS child. Hardware execution breakpoints
+record entry/return of the located `popResource` at BDS RVA `0x1a241c0`, the
+world-core raw draws and the returned item actor's initial position, velocity
+and delay. Original instruction bytes are unchanged, and debug registers are
+restored before detach. The retained
+`bedrock_1_26_51_block_resource_random.json`, root
+`adamant-redstone-bds-x2wo68ho`, contains **13** command/API scenes and 169 held
+Script checkpoints: both door halves in all three families with tile drops
+enabled/disabled, plus a direct API spawn control. Twelve resource calls
+produce six items and six guarded null returns. Each successful resource call
+draws the three position words (native parent returns `0x1a2426d`, `0x1a2429c`,
+`0x1a242b9`) and **one additional shared float in Actor construction** (parent
+`0xd1c84d`). The returned actor's X/Z match the native position arithmetic and
+its Y is raised by 0.125 in the spawner. All six returned resource actors have
+pickup delay 10 at +0x450. The direct API spawn retains its supplied origin and
+exposes the same single constructor draw outside a resource scope. It does
+not justify adding three offset draws to ordinary item/entity creation.
+
+The kernel previously spawned these resources at a fixed block centre and
+used no shared simulation words. `Tx.DropBlockResource` now owns the checked
+drop/empty guards, native binary32 offset arithmetic, spawner height correction,
+four-word shared budget and ten-tick pickup delay. Common support-loss breaking,
+door survival/player-partner removal, the real player's ordinary break drops
+and destroy commands use this path. Explicit item spawning and inventory
+spills keep their own origins. The scalar regression compares all 240
+executed-client cases; the factory regression independently supplies the live
+scope's words and compares bit-exact returned positions, guard results and
+word consumption. It also checks that empty stacks do not invoke the factory.
+
+The actor's horizontal toss uses binary32 arithmetic with an independent random
+source. Full equivalence of the native thread-local cosmetic/yaw/launch stream
+is **not** established by the shared-world-word controls. This change also does
+not establish complete generic actor-constructor RNG accounting, resource
+trajectory/packet ordering, natural item movement eligibility, specialised
+resource-producing callbacks or container-spill parity. Those remain audit
+work rather than being inferred from matching spawn counts.
+
+The pickup-field correction was also checked independently against ordinary
+ejection. Fresh, retained debugger-observed corpora are
+`bedrock_1_26_51_crafter_ejection_pickup.json` (12 scenes, root
+`adamant-redstone-bds-e1mxav37`) and
+`bedrock_1_26_51_dispenser_ejection_pickup.json` (24 scenes, root
+`adamant-redstone-bds-dd25v5f2`). They read the actual +0x450 pickup field and
+retain +0x44c separately. All **644** crafter and **1288** dispenser/dropper
+item-post-tick observations have pickup delay zero. The existing full
+position/velocity/AABB/ground/identity/stack replay now uses these follow-up
+corpora and also checks the zero delay in the kernel's actual item behaviour.
+The earlier corpora remain available as historical movement/RNG evidence.
+
+After integrating the common resource path and switching the ejection replay
+to the corrected field captures, the complete shared package run passes:
+world **25.166 s**, block **161.770 s**, session **57.988 s**, player
+**28.505 s**, item **1.625 s**, builtin commands **15.519 s**
+(`.tmp/block-resource-complete-shared.log`). The expanded related entity
+selection passes in **195.436 s** (`.tmp/block-resource-related-entity.log`),
+including item/hazard, crafter, dispenser/dropper, hopper, bell/arrow,
+water-placement, piston, breeze/wind, barrier/door, path and identifier checks.
+The root server builds (`.tmp/block-resource-root-build.log`). Four new native
+corpora (**289 scenes** total), their pinned image hashes, the resource trace's
+scope/caller/constructor controls and the new/extended Python syntax checks
+pass. Go formatting and diff whitespace checks pass. The full entity suite's
+previously recorded unrelated frogspawn/wandering limitations remain; this
+selected run does not claim full-suite success.
+
+The full audit remains active and incomplete. The next comparison includes
+native TLS item launch randomness, remaining resource callbacks/constructor
+accounting and movement/publication eligibility, alongside the other open
+circuit/lifecycle rows. This pass makes no commits or pushes.
+
+### Independent item-constructor randomness and factory handoff
+
+The next comparison retains the separate item-constructor stream rather than
+inferring it from the world's position/actor-flag draws. The new `--tls` mode
+of `redstone_bds_block_resource_random_probe.py` reads the owned simulation
+thread's TEB/static TLS and copies its `Core::Random` state at resource
+entry/return. The PE TLS directory identifies the module index, thread basic
+information is checked against the freshly owned child PID, and wrapper/core
+pointers and state indices are validated before accepting a snapshot. Original
+instructions remain unchanged. Client TLS offsets cannot be reused for BDS:
+`Random::getThreadLocal` is at client RVA `0x2203ae0` versus BDS `0x168b620`.
+The inspected BDS code uses the wrapper at TLS+0xe60 and core at TLS+0x460,
+with initialisation flags +0x1860/+0xe48; three instruction checks pin those
+offsets. The initial capture using client offsets was rejected as incomplete.
+
+`bedrock_1_26_51_block_resource_tls.json`, owned root
+`adamant-redstone-bds-fvyk1iqn`, contains 13 scenes / 169 checkpoints and six
+successful resource scopes. Each successful item construction advances the
+independent native MT core by exactly **four** words; guarded resource calls
+leave it unchanged. The returned body retains phase, yaw and initial velocity
+readback. A separate direct API spawn copies the core on the surrounding held
+Script checkpoints and independently confirms the same four-word budget,
+initial velocity and final yaw. These state copies are distinct from the
+world-core words already recorded by the hardware execution breakpoint.
+
+`redstone_native_item_launch_probe.py` executes two unchanged client windows,
+`0x3347aea..0x3347b16` and `0x3347be3..0x3347c66`, joined by a supplied host
+wrapper. Unrelated entity-component construction is supplied by buffers; this
+is not execution of the complete actor constructor. The windows consume native
+float draws for phase, yaw, X and Z, in that order, and set Y velocity to the
+binary32 value 0.2. The retained
+`bedrock_1_26_51_item_launch_native.json` checks six MT seeds over 200 consecutive
+constructors each: **1200 launches / 4800 raw words**, crossing the 624-word MT
+boundary. Float callbacks are independently checked against their raw words.
+The same original windows also reproduce all six live resource velocities and
+phases plus the direct API velocity from the independently copied TLS states.
+
+This stronger readback exposed a handoff detail hidden by velocity-only checks.
+The constructor computes a random yaw, but ActorFactory applies its requested
+rotation afterwards. All seven checked final native bodies have factory yaw
+zero. The kernel therefore consumes the yaw word while retaining the factory's
+requested rotation; it does not publish the temporary constructor yaw. The
+live fixture retains `factory_yaw` separately from the executed constructor's
+yaw. Saved item rotation and motion likewise win over constructor defaults.
+The inspected BDS `ActorFactory::loadActor` (`0x1ce8200`) calls
+`_constructActor` (`0x1ce6ec0`) before loading the saved actor, so the kernel's
+NBT restoration path also accounts for construction draws. A Go boundary
+regression verifies restored origin, zero rotation and nonzero saved motion;
+it is not a complete live chunk unload/reload proof.
+
+The kernel now centralises item-constructor draws in item handle construction
+and restoration. It uses a separate, entropy-seeded native MT stream shared
+across item constructors; each four-word group is protected because Go world
+owners may run concurrently. It does not draw its seed or values from the
+world's simulation RNG. `EntitySpawnOpts.ItemToss` selects the constructor's
+native launch for ordinary loot, block resources and the existing default
+block-item drop helper. Explicit motion, including dispenser/crafter velocity,
+is retained while construction still consumes its independent words. Numeric
+phase/yaw/velocity and next-word continuation match the 1200 executed cases;
+seven live bodies and option/restoration boundaries are checked separately.
+
+This establishes the item-constructor algorithm and the tested factory
+handoffs. It does not reproduce every other native TLS consumer, assign the
+native server's bob-phase property to a Go visual model, synchronise independent
+OS entropy seeds across processes, establish complete multi-thread TLS
+ownership, or close world persistence and movement/publication eligibility.
+The existing shared actor-flag accounting outside the scoped creation paths
+also remains open. The full redstone audit is still active.
+
+After the factory-yaw correction and restoration accounting, final complete
+shared checks pass: world **24.346 s**, block **168.715 s**, session
+**63.421 s**, player **32.846 s**, item **1.269 s** and builtin commands
+**14.912 s** (`.tmp/item-launch-final-shared.log`). The expanded item/crafter/
+dispenser/dropper/hopper plus related bell/water/piston/wind/barrier/path entity
+selection passes in **192.630 s** (`.tmp/item-launch-final-entity.log`).
+The final root server builds (`.tmp/item-launch-final-build.log`). Native
+window/image hashes, all 13 TLS scenes, the seven independently matched final
+bodies, 1200 sequential constructors, probe syntax, Go formatting and diff
+whitespace checks pass. Earlier incomplete TLS-offset capture and the rejected
+constructor-yaw-versus-factory-yaw comparison are retained in owned temporary
+logs; neither is counted as a successful native control. No commits or pushes
+were made. The estimate remains approximately 70% effort with the full audit
+matrix still open; this is not a percentage of proven equivalence.
+
+### Paused checkpoint (2026-11-02)
+
+The user requested pausing the audit, committing the completed changes and
+publishing `dev`. The effort estimate remains approximately **70%**. The
+evidence does not yet support claiming that the full audit is above 70% or
+complete. All open matrix requirements remain in scope for the next session.
+
+The saved implementation includes native item resource spawning and constructor
+randomness, barrier interactions/placement/publication, door command geometry
+and lifecycle, support and drop semantics, copper transformations, snow state
+registration and the related leaf decay notification fixes. The final shared
+and related entity checks above pass, and the server builds from the root.
+No further lifecycle investigation changes were made after the pause request.
+Local player/permission lists, temporary logs, binaries and verification
+worktrees are excluded from the published changes.
+
+Implementation commits in this checkpoint:
+
+- `82ddec2f` — native item resource spawning, constructor randomness and their
+  executed-client/live-BDS controls.
+- `78bf1100` — barrier interactions/placement/publication and door lifecycle,
+  command, geometry, support, snow and leaf notification corrections.
+
+The report checkpoint records the pause separately. The full shared and
+selected entity validation results immediately above apply to the final code;
+commit-boundary checks additionally use an isolated checkout.
