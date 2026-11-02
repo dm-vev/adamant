@@ -548,8 +548,10 @@ func (a *Association) tagValid(tag uint32, c chunk, index int) bool {
 	switch c.typ {
 	case chunkAbort, chunkShutdownComplete:
 		if c.flags&1 != 0 {
-			// The T bit: the sender reflected our own tag.
-			return tag == a.peerTag
+			// The T bit: the sender reflected its own tag, which is not
+			// known before the INIT ACK or COOKIE ECHO (RFC 9260 section
+			// 8.5.1, rule B).
+			return a.peerTag != 0 && tag == a.peerTag
 		}
 	case chunkCookieEcho:
 		// A COOKIE ECHO carries the tag of the INIT ACK it answers; the

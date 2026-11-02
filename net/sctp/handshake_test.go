@@ -234,3 +234,48 @@ func TestForwardTSNInSupportedExtensions(t *testing.T) {
 		t.Fatalf("sent %v, want the DATA, then a FORWARD TSN after the timeout", chunksSent(*sent))
 	}
 }
+
+// TestAbortTagChecked covers the ABORTs an association acts on: one with
+// its own tag and the T bit clear, or with the peer's tag and the T bit
+// set. While the peer's tag is unknown, in COOKIE-WAIT, one with the T bit
+// is discarded (RFC 9260 section 8.5.1, rule B).
+func TestAbortTagChecked(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	cookieWait := func(*testing.T) *Association {
+		a := New(Config{}, func([]byte) {})
+		a.Connect(now)
+		return a
+	}
+	established := func(t *testing.T) *Association { return connectTo(t, now) }
+	cases := []struct {
+		name string
+		open func(*testing.T) *Association
+		// peer has the packet carry the peer's tag, not this side's.
+		peer    bool
+		flags   byte
+		aborted bool
+	}{
+		{"cookie wait, own tag", cookieWait, false, 0, true},
+		{"cookie wait, T bit", cookieWait, true, 1, false},
+		{"own tag", established, false, 0, true},
+		{"own tag, T bit", established, false, 1, false},
+		{"peer's tag", established, true, 0, false},
+		{"peer's tag, T bit", established, true, 1, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a := c.open(t)
+			tag := a.localTag
+			if c.peer {
+				tag = a.peerTag
+			}
+			var p packetBuilder
+			p.start(header{srcPort: 5000, dstPort: 5000, tag: tag})
+			p.addChunk(chunkAbort, c.flags)
+			_ = a.HandlePacket(p.finish(), now)
+			if aborted := errors.Is(a.Err(), ErrAborted); aborted != c.aborted {
+				t.Fatalf("aborted: %v, want %v", aborted, c.aborted)
+			}
+		})
+	}
+}
