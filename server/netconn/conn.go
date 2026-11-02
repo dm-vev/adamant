@@ -337,10 +337,12 @@ func (e errUnknownPacket) Error() string { return fmt.Sprintf("netconn: unknown 
 // maxList bounds the elements of a list a client sends, as gophertunnel
 // bounds them for a server. A string or a byte slice takes the bytes of
 // its packet and no more, so the packet alone bounds it: a login carries a
-// skin of any size the game makes.
+// skin of any size the game makes. maxAlloc bounds the memory past its
+// bytes the values of a packet take: a byte of NBT may take dozens to hold.
 const (
 	maxList   = 1024
 	maxString = math.MaxInt32
+	maxAlloc  = 4 << 20
 )
 
 // DecodePacket decodes a packet a client sent, header first, with the
@@ -361,7 +363,7 @@ func DecodePacket(raw []byte) (pk proto.Packet, err error) {
 		}
 	}()
 	r := wire.NewReader(fields)
-	r.MaxList, r.MaxString = maxList, maxString
+	r.MaxList, r.MaxString, r.MaxAlloc = maxList, maxString, maxAlloc
 	pk.Decode(r)
 	if err := r.Err(); err != nil {
 		return nil, fmt.Errorf("netconn: decode %T: %w", pk, err)

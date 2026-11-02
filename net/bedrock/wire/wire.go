@@ -88,6 +88,7 @@ var (
 	ErrTooLong  = errors.New("wire: length over its limit")
 	ErrTooLarge = errors.New("wire: value over its limit")
 	ErrDepth    = errors.New("wire: values nested too deep")
+	ErrAlloc    = errors.New("wire: values over the memory they may take")
 )
 
 // MaxDepth bounds the nesting of values that hold values of their own
@@ -112,6 +113,12 @@ type Reader struct {
 	// bound only by the bytes left, a byte at least an element. A server
 	// sets it for what clients send, whose lists are short.
 	MaxList int
+	// MaxAlloc bounds the bytes of memory the values read take past the
+	// data of the Reader, as the decoders charge them with Alloc; zero
+	// leaves them unbound. A byte sent may take dozens to hold, as an empty
+	// NBT compound does, so a server sets it for what clients send.
+	MaxAlloc int
+	alloc    int
 }
 
 // NewReader returns a Reader of b.
@@ -143,6 +150,20 @@ func (r *Reader) Nest() bool {
 
 // Unnest notes the end of a value Nest noted.
 func (r *Reader) Unnest() { r.depth-- }
+
+// Alloc charges n bytes of memory a value read takes to MaxAlloc, and
+// reports false, failing, past it or after an error.
+func (r *Reader) Alloc(n int) bool {
+	if r.err != nil {
+		return false
+	}
+	if r.MaxAlloc > 0 && n > r.MaxAlloc-r.alloc {
+		r.Fail(ErrAlloc)
+		return false
+	}
+	r.alloc += n
+	return true
+}
 
 // Failf records a formatted error.
 func (r *Reader) Failf(format string, args ...any) { r.Fail(fmt.Errorf(format, args...)) }

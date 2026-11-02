@@ -116,6 +116,26 @@ func TestReaderErrors(t *testing.T) {
 	}
 }
 
+// TestAlloc charges memory to the bound of a Reader: up to it and not past,
+// and without a bound anything.
+func TestAlloc(t *testing.T) {
+	r := NewReader([]byte{1})
+	r.MaxAlloc = 10
+	if !r.Alloc(6) || !r.Alloc(4) || r.Err() != nil {
+		t.Fatalf("charged 10 to a bound of 10: %v", r.Err())
+	}
+	if r.Alloc(1) || !errors.Is(r.Err(), ErrAlloc) {
+		t.Fatalf("charged 11 to a bound of 10: %v", r.Err())
+	}
+	if r.Uint8() != 0 || r.Alloc(0) {
+		t.Fatal("read after the bound was passed")
+	}
+	r = NewReader(nil)
+	if !r.Alloc(1<<40) || !r.Alloc(1<<40) || r.Err() != nil {
+		t.Fatalf("charged to no bound: %v", r.Err())
+	}
+}
+
 func FuzzReader(f *testing.F) {
 	f.Add([]byte{5, 'h', 'e', 'l', 'l', 'o', 0xac, 0x02})
 	f.Fuzz(func(t *testing.T, b []byte) {

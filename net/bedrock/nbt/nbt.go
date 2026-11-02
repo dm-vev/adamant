@@ -12,7 +12,9 @@
 // kind. Read gives map[string]any, uint8, [N]byte, [N]int32 and [N]int64
 // arrays, []byte, []int32 and []int64 for lists of bytes, ints and longs,
 // and []any for other lists. Compounds are written with their keys in
-// order, so that equal values encode to equal bytes.
+// order, so that equal values encode to equal bytes. The Reader read from
+// bounds what a peer may make a read take: its MaxList the lists but of
+// bytes, its MaxAlloc the memory the values hold.
 package nbt
 
 import (
@@ -49,6 +51,17 @@ const (
 	// maxArray bounds an array read. Each length makes a Go array type that
 	// is kept for good, so a peer must not choose from unbounded lengths.
 	maxArray = 1 << 16
+)
+
+// The bytes of memory values read take, charged to the MaxAlloc of the
+// Reader: an empty compound takes a byte to send and 64 bytes to hold.
+const (
+	mapCost   = 48  // a map
+	groupCost = 288 // the first group of eight entries of a map
+	entryCost = 64  // an entry of a map, with room for it to grow
+	boxCost   = 16  // a value in a list of any, or the header of a string
+	sliceCost = 24  // a slice in an interface
+	wordCost  = 8   // a number in an interface
 )
 
 var (
@@ -443,6 +456,9 @@ func (e Encoding) readCompound(r *wire.Reader, depth int) map[string]any {
 		r.Fail(errDepth)
 		return nil
 	}
+	if !r.Alloc(mapCost) {
+		return nil
+	}
 	m := make(map[string]any)
 	for r.Err() == nil {
 		t := r.Uint8()
@@ -450,6 +466,13 @@ func (e Encoding) readCompound(r *wire.Reader, depth int) map[string]any {
 			break
 		}
 		k := e.readString(r)
+		cost := entryCost + len(k)
+		if len(m) == 0 {
+			cost += groupCost
+		}
+		if !r.Alloc(cost) {
+			break
+		}
 		m[k] = e.readPayload(r, t, depth)
 	}
 	return m
@@ -462,10 +485,13 @@ var (
 )
 
 // newArray returns a settable Go array of n elements, or an invalid value,
-// failing r, for an array past maxArray.
+// failing r, for an array past maxArray or the memory r may take.
 func newArray(r *wire.Reader, n int, elem reflect.Type) reflect.Value {
 	if n > maxArray {
 		r.Fail(wire.ErrTooLong)
+		return reflect.Value{}
+	}
+	if !r.Alloc(n * int(elem.Size())) {
 		return reflect.Value{}
 	}
 	return reflect.New(reflect.ArrayOf(n, elem)).Elem()
@@ -486,6 +512,29 @@ func (e Encoding) readPayload(r *wire.Reader, t byte, depth int) any {
 	switch t {
 	case tagByte:
 		return r.Uint8()
+	case tagShort, tagInt, tagLong, tagFloat, tagDouble:
+		if !r.Alloc(wordCost) {
+			return nil
+		}
+		return e.readNumber(r, t)
+	case tagString:
+		s := e.readString(r)
+		r.Alloc(boxCost + len(s))
+		return s
+	case tagList:
+		return e.readList(r, depth)
+	case tagCompound:
+		return e.readCompound(r, depth+1)
+	case tagByteArray, tagIntArray, tagLongArray:
+		return e.readArray(r, t)
+	}
+	r.Fail(errTagType)
+	return nil
+}
+
+// readNumber reads the payload of a tag of a number wider than a byte.
+func (e Encoding) readNumber(r *wire.Reader, t byte) any {
+	switch t {
 	case tagShort:
 		return r.Int16()
 	case tagInt:
@@ -494,58 +543,83 @@ func (e Encoding) readPayload(r *wire.Reader, t byte, depth int) any {
 		return e.readLong(r)
 	case tagFloat:
 		return r.Float32()
-	case tagDouble:
-		return r.Float64()
+	}
+	return r.Float64()
+}
+
+// slotCost returns the bytes an element of a list of a tag takes in the
+// slice it is read into.
+func slotCost(t byte) int {
+	switch t {
+	case tagByte:
+		return 1
+	case tagInt:
+		return 4
+	case tagLong:
+		return 8
+	}
+	return boxCost
+}
+
+// readList reads the payload of a list. A list of bytes holds a byte a
+// byte, as a byte slice does, so only lists of other tags are bound by the
+// MaxList of r.
+func (e Encoding) readList(r *wire.Reader, depth int) any {
+	if depth+1 == maxDepth {
+		r.Fail(errDepth)
+		return nil
+	}
+	et := r.Uint8()
+	n := e.count(r, 1)
+	if et == tagEnd && n > 0 || et > tagLongArray {
+		r.Fail(errTagType)
+		return nil
+	}
+	if et != tagByte && !r.List(n) {
+		return nil
+	}
+	if !r.Alloc(sliceCost + n*slotCost(et)) {
+		return nil
+	}
+	// Lists of bytes, ints and longs read into slices of them.
+	switch et {
+	case tagByte:
+		return append([]byte{}, r.Next(n)...)
+	case tagInt:
+		s := make([]int32, n)
+		for i := range s {
+			s[i] = e.readInt(r)
+		}
+		return s
+	case tagLong:
+		s := make([]int64, n)
+		for i := range s {
+			s[i] = e.readLong(r)
+		}
+		return s
+	}
+	l := make([]any, 0, n)
+	for range n {
+		if r.Err() != nil {
+			return nil
+		}
+		l = append(l, e.readPayload(r, et, depth+1))
+	}
+	return l
+}
+
+// readArray reads the payload of an array tag.
+func (e Encoding) readArray(r *wire.Reader, t byte) any {
+	n := e.count(r, 1)
+	switch t {
 	case tagByteArray:
-		n := e.count(r, 1)
 		a := newArray(r, n, byteType)
 		if !a.IsValid() {
 			return nil
 		}
 		reflect.Copy(a, reflect.ValueOf(r.Next(n)))
 		return a.Interface()
-	case tagString:
-		return e.readString(r)
-	case tagList:
-		if depth+1 == maxDepth {
-			r.Fail(errDepth)
-			return nil
-		}
-		et := r.Uint8()
-		n := e.count(r, 1)
-		if et == tagEnd && n > 0 || et > tagLongArray {
-			r.Fail(errTagType)
-			return nil
-		}
-		// Lists of bytes, ints and longs read into slices of them.
-		switch et {
-		case tagByte:
-			return append([]byte{}, r.Next(n)...)
-		case tagInt:
-			s := make([]int32, n)
-			for i := range s {
-				s[i] = e.readInt(r)
-			}
-			return s
-		case tagLong:
-			s := make([]int64, n)
-			for i := range s {
-				s[i] = e.readLong(r)
-			}
-			return s
-		}
-		l := make([]any, 0, n)
-		for range n {
-			if r.Err() != nil {
-				return nil
-			}
-			l = append(l, e.readPayload(r, et, depth+1))
-		}
-		return l
-	case tagCompound:
-		return e.readCompound(r, depth+1)
 	case tagIntArray:
-		n := e.count(r, 1)
 		a := newArray(r, n, int32Type)
 		if !a.IsValid() {
 			return nil
@@ -554,17 +628,13 @@ func (e Encoding) readPayload(r *wire.Reader, t byte, depth int) any {
 			a.Index(i).SetInt(int64(e.readInt(r)))
 		}
 		return a.Interface()
-	case tagLongArray:
-		n := e.count(r, 1)
-		a := newArray(r, n, int64Type)
-		if !a.IsValid() {
-			return nil
-		}
-		for i := range n {
-			a.Index(i).SetInt(e.readLong(r))
-		}
-		return a.Interface()
 	}
-	r.Fail(errTagType)
-	return nil
+	a := newArray(r, n, int64Type)
+	if !a.IsValid() {
+		return nil
+	}
+	for i := range n {
+		a.Index(i).SetInt(e.readLong(r))
+	}
+	return a.Interface()
 }

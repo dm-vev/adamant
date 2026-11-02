@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -648,5 +649,66 @@ func TestReceive(t *testing.T) {
 		}
 	case <-ctx.Done():
 		t.Fatal("the close was not told")
+	}
+}
+
+// held returns what decoding raw returns and the bytes of memory it holds.
+func held(raw []byte) (proto.Packet, uint64, error) {
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+	pk, err := DecodePacket(raw)
+	runtime.GC()
+	runtime.ReadMemStats(&after)
+	runtime.KeepAlive(pk)
+	if after.HeapAlloc < before.HeapAlloc {
+		return pk, 0, err
+	}
+	return pk, after.HeapAlloc - before.HeapAlloc, err
+}
+
+// blockActorData returns a BlockActorData of NBT of n lists of 1024 empty
+// compounds, each a byte to send and 64 bytes to hold.
+func blockActorData(n int) []byte {
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDBlockActorData})}
+	w.Bytes([]byte{0, 0, 0})      // position
+	w.Bytes([]byte{10, 0})        // root compound
+	w.Bytes([]byte{9, 1, 'a', 9}) // "a", a list of lists
+	w.Varint32(int32(n))
+	for range n {
+		w.Bytes([]byte{10})
+		w.Varint32(1024)
+		w.Bytes(make([]byte, 1024))
+	}
+	w.Uint8(0)
+	return w.B
+}
+
+// TestNBTMemoryBound decodes BlockActorData of NBT that takes 64 times its
+// bytes to hold, as 8 MiB of empty compounds held 512 MiB: past the memory
+// a packet may take it is refused, within it it decodes.
+func TestNBTMemoryBound(t *testing.T) {
+	raw := blockActorData(128)
+	_, n, err := held(raw)
+	if !errors.Is(err, wire.ErrAlloc) {
+		t.Errorf("decoded %d bytes into %d held: %v", len(raw), n, err)
+	}
+	if n > 1<<20 {
+		t.Errorf("a refused packet of %d bytes holds %d", len(raw), n)
+	}
+	pk, err := DecodePacket(blockActorData(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l := pk.(*v2193.BlockActorDataPacket).NBTData["a"].([]any); len(l) != 16 {
+		t.Fatalf("decoded %d lists", len(l))
+	}
+	// One list of more compounds than a list may hold.
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: v2193.IDBlockActorData})}
+	w.Bytes([]byte{0, 0, 0, 10, 0, 9, 1, 'a', 10})
+	w.Varint32(maxList + 1)
+	w.Bytes(make([]byte, maxList+2))
+	if _, err := DecodePacket(w.B); !errors.Is(err, wire.ErrTooLarge) {
+		t.Fatalf("decoded a list of %d compounds: %v", maxList+1, err)
 	}
 }

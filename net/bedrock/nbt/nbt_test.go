@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -195,6 +196,145 @@ func TestArrayBound(t *testing.T) {
 	w.Uint8(tagEnd)
 	if _, err := Read(wire.NewReader(w.B)); !errors.Is(err, wire.ErrTooLong) {
 		t.Fatalf("read an array of %d: %v", maxArray+1, err)
+	}
+}
+
+// root returns network NBT of a root compound of one tag "a", whose payload
+// body writes.
+func root(t byte, body func(w *wire.Writer)) []byte {
+	var w wire.Writer
+	w.Uint8(tagCompound)
+	_ = Network.writeString(&w, "")
+	w.Uint8(t)
+	_ = Network.writeString(&w, "a")
+	body(&w)
+	w.Uint8(tagEnd)
+	return w.B
+}
+
+// listOf writes a list of n elements of a type, each the bytes of elem.
+func listOf(w *wire.Writer, t byte, n int, elem []byte) {
+	w.Uint8(t)
+	Network.writeInt(w, int32(n))
+	for range n {
+		w.Bytes(elem)
+	}
+}
+
+// lists returns NBT of a list of n lists of 1024 elements of a type.
+func lists(n int, t byte, elem []byte) []byte {
+	return root(tagList, func(w *wire.Writer) {
+		w.Uint8(tagList)
+		Network.writeInt(w, int32(n))
+		for range n {
+			listOf(w, t, 1024, elem)
+		}
+	})
+}
+
+// held returns the bytes of memory what read returns holds.
+func held(read func() any) (any, uint64) {
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+	v := read()
+	runtime.GC()
+	runtime.ReadMemStats(&after)
+	runtime.KeepAlive(v)
+	if after.HeapAlloc < before.HeapAlloc {
+		return v, 0
+	}
+	return v, after.HeapAlloc - before.HeapAlloc
+}
+
+// TestAllocBound reads NBT that takes far more memory than its bytes: a
+// byte of an empty compound takes a map of 48 bytes and a slot of 16 in
+// its list. Within the MaxAlloc of the Reader it reads; past it it fails.
+func TestAllocBound(t *testing.T) {
+	data := lists(64, tagCompound, []byte{tagEnd})
+	r := wire.NewReader(data)
+	r.MaxAlloc = 1 << 20
+	_, n := held(func() any {
+		m, err := Read(r)
+		if !errors.Is(err, wire.ErrAlloc) {
+			t.Errorf("read %d bytes of empty compounds over a bound of %d: %v", len(data), r.MaxAlloc, err)
+		}
+		return m
+	})
+	if n > 2<<20 {
+		t.Errorf("read %d bytes into %d held", len(data), n)
+	}
+	r = wire.NewReader(data)
+	r.MaxAlloc = 16 << 20
+	m, err := Read(r)
+	if err != nil || len(m["a"].([]any)) != 64 {
+		t.Fatalf("read within the bound: %v", err)
+	}
+}
+
+// TestAllocCharged reads NBT of shapes a peer may send for the most memory
+// a byte: the memory each holds must be about what is charged for it, so
+// that a bound of half of it fails and a bound of thrice it does not.
+func TestAllocCharged(t *testing.T) {
+	keys := root(tagCompound, func(w *wire.Writer) {
+		for i := range 1 << 15 {
+			w.Uint8(tagCompound)
+			_ = Network.writeString(w, string([]byte{byte(i), byte(i >> 8), 'k'}))
+			w.Uint8(tagEnd)
+		}
+		w.Uint8(tagEnd)
+	})
+	for name, data := range map[string][]byte{
+		"empty compounds":   lists(64, tagCompound, []byte{tagEnd}),
+		"compounds of ints": lists(8, tagCompound, []byte{tagInt, 1, 'i', 0x80, 0x08, tagEnd}),
+		"distinct keys":     keys,
+		"empty lists":       lists(64, tagList, []byte{tagEnd, 0}),
+		"empty strings":     lists(128, tagString, []byte{0}),
+		"strings":           lists(64, tagString, []byte{2, 'a', 'b'}),
+		"longs":             lists(256, tagLong, []byte{0}),
+		"doubles":           lists(32, tagDouble, make([]byte, 8)),
+		"floats":            lists(32, tagFloat, []byte{0, 0, 0x80, 0x3f}),
+	} {
+		_, n := held(func() any {
+			m, err := Read(wire.NewReader(data))
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			return m
+		})
+		r := wire.NewReader(data)
+		r.MaxAlloc = int(n / 2)
+		if _, err := Read(r); !errors.Is(err, wire.ErrAlloc) {
+			t.Errorf("%s: %d bytes held, read within a bound of half of them: %v", name, n, err)
+		}
+		r = wire.NewReader(data)
+		r.MaxAlloc = int(n * 3)
+		if _, err := Read(r); err != nil {
+			t.Errorf("%s: %d bytes held, read failed within a bound of thrice them: %v", name, n, err)
+		}
+	}
+}
+
+// TestListBound reads NBT lists past the MaxList of the Reader, as a
+// server bounds what clients send: they fail as other lists do, but for a
+// list of bytes, which holds a byte a byte.
+func TestListBound(t *testing.T) {
+	for _, et := range []byte{tagInt, tagLong, tagString, tagCompound} {
+		data := root(tagList, func(w *wire.Writer) { listOf(w, et, 1025, []byte{0}) })
+		r := wire.NewReader(data)
+		r.MaxList = 1024
+		if _, err := Read(r); !errors.Is(err, wire.ErrTooLarge) {
+			t.Errorf("list of 1025 of tag %d: %v", et, err)
+		}
+		r = wire.NewReader(data)
+		if _, err := Read(r); err != nil {
+			t.Errorf("list of 1025 of tag %d without a bound: %v", et, err)
+		}
+	}
+	r := wire.NewReader(root(tagList, func(w *wire.Writer) { listOf(w, tagByte, 1025, []byte{7}) }))
+	r.MaxList = 1024
+	if m, err := Read(r); err != nil || len(m["a"].([]byte)) != 1025 {
+		t.Fatalf("list of 1025 bytes: %v", err)
 	}
 }
 
