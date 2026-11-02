@@ -218,6 +218,9 @@ type Association struct {
 	rttActive             bool
 	errorCount            int
 	forwardDue            bool
+	// fastRetransmit lets the next packet carry the chunks miss
+	// indications marked without regard to cwnd (RFC 9260 section 7.2.4).
+	fastRetransmit bool
 
 	// Receiving.
 	peerCum     uint32
@@ -1091,6 +1094,7 @@ func (a *Association) countMisses(highest uint32) {
 			continue
 		}
 		ch.fastDone = true
+		a.fastRetransmit = true
 		if !a.fastRecovery {
 			a.fastRecovery = true
 			a.recoverTSN = a.nextTSN - 1
@@ -1360,12 +1364,14 @@ func (a *Association) addSack() {
 // added any.
 func (a *Association) addData(now time.Time, limit int) bool {
 	added := false
+	free := a.fastRetransmit
+	a.fastRetransmit = false
 	for _, ch := range a.outstanding {
 		if !ch.retransmit {
 			continue
 		}
-		if a.flight >= a.cwnd && added {
-			return true
+		if a.flight >= a.cwnd && !free {
+			return added
 		}
 		if a.packet.size()+chunkSize(12+len(ch.data)) > limit {
 			return added

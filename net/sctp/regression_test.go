@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -425,4 +426,62 @@ func TestMessageLargerThanWindowArrives(t *testing.T) {
 	if len(b.received) != 1 || !bytes.Equal(b.received[0].data, msg) {
 		t.Fatalf("received %d messages, errors %v and %v", len(b.received), a.err, b.err)
 	}
+}
+
+// TestTimeoutRetransmitsWithinWindow covers the expiry of the
+// retransmission timer: the window collapses to one packet, and what goes
+// again keeps to it (RFC 9260 sections 6.3.3 and 7.2.1) rather than go
+// all at once.
+func TestTimeoutRetransmitsWithinWindow(t *testing.T) {
+	n := newNetwork(t, 23, Config{})
+	n.open(t, false)
+	a := n.peers[0].assoc
+	a.send = func([]byte) {}
+	for i := range 8 {
+		if err := a.Send(1, PPIDBinary, payload(i, 1100), SendOptions{}, n.now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for a.Stats().Timeouts == 0 {
+		if err := a.HandleTimeout(a.Deadline()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if st := a.Stats(); st.Flight > st.Cwnd+a.cfg.MaxPacketSize-1 {
+		t.Fatalf("%d bytes in flight after a timeout, with a window of %d", st.Flight, st.Cwnd)
+	}
+}
+
+// TestFastRetransmitIgnoresFullWindow covers a chunk reported missing
+// three times while the window is full: it goes again at once, without
+// regard to the window (RFC 9260 section 7.2.4).
+func TestFastRetransmitIgnoresFullWindow(t *testing.T) {
+	n := newNetwork(t, 24, Config{})
+	n.open(t, false)
+	a := n.peers[0].assoc
+	var sent [][]byte
+	a.send = func(p []byte) { sent = append(sent, bytes.Clone(p)) }
+	first := a.nextTSN
+	for i := range 10 {
+		if err := a.Send(1, PPIDBinary, payload(i, 1100), SendOptions{}, n.now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for k := uint16(1); k <= 3; k++ {
+		sent = nil
+		// The chunks after the first arrived, one more each time.
+		sack := appendSack(nil, first-1, 1<<20, []uint16{2, 1 + k}, nil)
+		if err := inject(a, n.now, chunkSack, 0, sack); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if st := a.Stats(); st.Flight < st.Cwnd {
+		t.Fatalf("the window is not full: %d bytes in flight, window %d", st.Flight, st.Cwnd)
+	}
+	for _, p := range sent {
+		if slices.Contains(dataTSNs(p), first) {
+			return
+		}
+	}
+	t.Fatal("the chunk missed three times did not go again at once")
 }
