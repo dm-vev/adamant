@@ -820,3 +820,54 @@ func TestListMemoryBound(t *testing.T) {
 		t.Fatalf("decoded %d requests", len(req))
 	}
 }
+
+// mobEquipment returns a MobEquipment of an item of the NBT and the blocks
+// to be placed on passed, as a client sends it.
+func mobEquipment(data map[string]any, placeOn []string) []byte {
+	pk := &v2193.MobEquipmentPacket{NewItem: v2193.ItemInstance{Stack: v2193.ItemStack{
+		NetworkID: 1, Count: 1, NBTData: data, CanBePlacedOn: placeOn,
+	}}}
+	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+	pk.Encode(&w)
+	return w.B
+}
+
+// emptyCompounds returns n lists of 1024 empty compounds.
+func emptyCompounds(n int) []any {
+	l := make([]any, n)
+	for i := range l {
+		c := make([]any, 1024)
+		for j := range c {
+			c[j] = map[string]any{}
+		}
+		l[i] = c
+	}
+	return l
+}
+
+// TestItemDataBound decodes MobEquipments of items whose user data holds
+// far more than its bytes, as 8 MiB of it held 512 MiB of empty compounds
+// or 65 MiB of empty strings: the data is read with the limits and the
+// memory budget of its packet.
+func TestItemDataBound(t *testing.T) {
+	for name, raw := range map[string][]byte{
+		"compounds": mobEquipment(map[string]any{"a": emptyCompounds(128)}, nil),
+		"strings":   mobEquipment(nil, make([]string, maxList+1)),
+	} {
+		_, n, err := held(raw)
+		if err == nil {
+			t.Errorf("%s: decoded %d bytes into %d held", name, len(raw), n)
+		}
+		if n > 1<<20 {
+			t.Errorf("%s: a refused packet of %d bytes holds %d", name, len(raw), n)
+		}
+	}
+	pk, err := DecodePacket(mobEquipment(map[string]any{"a": emptyCompounds(16)}, make([]string, maxList)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := pk.(*v2193.MobEquipmentPacket).NewItem.Stack
+	if len(st.NBTData["a"].([]any)) != 16 || len(st.CanBePlacedOn) != maxList {
+		t.Fatalf("decoded %d lists, %d blocks", len(st.NBTData["a"].([]any)), len(st.CanBePlacedOn))
+	}
+}

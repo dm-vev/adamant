@@ -160,6 +160,43 @@ func TestSlice(t *testing.T) {
 	}
 }
 
+// TestSub reads bytes read from a Reader with its limits and what is left
+// of its budget: what the Sub charges counts against the Reader once
+// joined, and its error fails the Reader.
+func TestSub(t *testing.T) {
+	r := NewReader([]byte{3, 'a', 'b', 'c', 9})
+	r.MaxList, r.MaxString, r.MaxAlloc = 2, 2, 10
+	r.Alloc(4)
+	d := r.Sub(r.Next(4))
+	if d.Len() != 4 || d.Count(5) != 0 || !errors.Is(d.Err(), ErrTooLarge) {
+		t.Fatalf("a list of 3 in a Sub of a bound of 2: %v", d.Err())
+	}
+	if d = r.Sub(r.Bytes()); d.Len() != 1 || !d.Alloc(6) || d.Alloc(1) {
+		t.Fatal("the Sub charged other than what was left of the budget")
+	}
+	r.Join(d)
+	if !errors.Is(r.Err(), ErrAlloc) {
+		t.Fatalf("joined a failed Sub: %v", r.Err())
+	}
+	if d := NewReader(nil).Sub([]byte{3, 'a', 'b', 'c'}); d.String() != "abc" {
+		t.Fatalf("a Sub of no bound: %v", d.Err())
+	}
+	r = NewReader(nil)
+	r.MaxString, r.MaxAlloc = 2, 10
+	if d := r.Sub([]byte{3, 'a', 'b', 'c'}); d.String() != "" || !errors.Is(d.Err(), ErrTooLong) {
+		t.Fatalf("a string of 3 in a Sub of a bound of 2: %v", d.Err())
+	}
+	d = r.Sub(nil)
+	d.Alloc(8)
+	r.Join(d)
+	if r.Err() != nil {
+		t.Fatalf("joined a Sub within the bound: %v", r.Err())
+	}
+	if r.Alloc(3) {
+		t.Fatal("charged 11 to a bound of 10 through a Sub")
+	}
+}
+
 func FuzzReader(f *testing.F) {
 	f.Add([]byte{5, 'h', 'e', 'l', 'l', 'o', 0xac, 0x02})
 	f.Fuzz(func(t *testing.T, b []byte) {

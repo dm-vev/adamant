@@ -120,19 +120,22 @@ func readItemData(r *wire.Reader, shield bool) (data map[string]any, placeOn, ca
 	if len(b) == 0 || r.Err() != nil {
 		return
 	}
-	d := wire.NewReader(b)
+	// The data holds NBT and lists of its own: it is read with the limits
+	// of the packet and charged to its budget.
+	d := r.Sub(b)
+	defer r.Join(d)
 	switch d.Int16() {
 	case 0:
 	case -1:
 		if v := d.Uint8(); v != 1 {
-			r.Failf("v2193: item user data of version %d", v)
+			d.Failf("v2193: item user data of version %d", v)
 			return
 		}
 		fallthrough
 	default:
 		m, err := nbt.ReadEncoded(d, nbt.LittleEndian)
 		if err != nil {
-			r.Fail(err)
+			d.Fail(err)
 			return
 		}
 		data = m
@@ -145,9 +148,6 @@ func readItemData(r *wire.Reader, shield bool) (data map[string]any, placeOn, ca
 	if d.Err() == nil && d.Len() != 0 {
 		// Bytes the codec would drop: a shield taken for another item.
 		d.Failf("v2193: %d bytes after the user data of an item", d.Len())
-	}
-	if d.Err() != nil {
-		r.Fail(d.Err())
 	}
 	return
 }
@@ -164,17 +164,17 @@ func writeStrings16(w *wire.Writer, s []string) {
 
 func readStrings16(r *wire.Reader) []string {
 	n := int(r.Uint32())
-	if !r.List(n) {
+	if n == 0 {
 		return nil
 	}
-	var s []string
-	for range n {
+	s := wire.Slice[string](r, n)
+	for i := range s {
 		l := int(r.Int16())
 		if l < 0 {
 			r.Fail(wire.ErrShort)
 			return nil
 		}
-		s = append(s, string(r.Next(l)))
+		s[i] = string(r.Next(l))
 	}
 	return s
 }

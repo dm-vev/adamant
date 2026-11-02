@@ -166,6 +166,21 @@ func (r *Reader) Alloc(n int) bool {
 	return true
 }
 
+// Sub returns a Reader of b, bytes read from r that hold values of their
+// own, with the limits of r and what is left of its budget. r is not read
+// until Join takes back what the Reader charged and its error.
+func (r *Reader) Sub(b []byte) *Reader {
+	return &Reader{b: b, depth: r.depth, MaxString: r.MaxString, MaxList: r.MaxList, MaxAlloc: r.MaxAlloc, alloc: r.alloc}
+}
+
+// Join takes back into r what a Reader of Sub charged and its error.
+func (r *Reader) Join(d *Reader) {
+	r.alloc = d.alloc
+	if d.err != nil {
+		r.Fail(d.err)
+	}
+}
+
 // Failf records a formatted error.
 func (r *Reader) Failf(format string, args ...any) { r.Fail(fmt.Errorf(format, args...)) }
 
