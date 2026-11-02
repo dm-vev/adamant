@@ -171,6 +171,8 @@ type Conn struct {
 	ufrag       string
 	addrs       []netip.AddrPort
 	pendingSlot bool
+	// sources are the keys of the sources its pending slot counts against.
+	sources []string
 	// answered is when the listener answered the offer of the connection;
 	// counted is set while it counts the connection as open.
 	answered time.Time

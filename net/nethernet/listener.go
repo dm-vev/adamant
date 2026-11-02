@@ -2,6 +2,7 @@ package nethernet
 
 import (
 	"bytes"
+	"cmp"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -33,8 +34,11 @@ const (
 )
 
 const (
-	// defaultMaxPending bounds the connections that did not open yet.
-	defaultMaxPending = 256
+	// defaultMaxPending bounds the connections that did not open yet, and
+	// the two after it those of one source.
+	defaultMaxPending           = 256
+	defaultMaxPendingPerAddress = 4
+	defaultMaxPendingPerNetwork = 32
 	// acceptQueue bounds the connections opened and not accepted yet.
 	acceptQueue = 256
 	// identityRefresh is how long a server identity token is handed out:
@@ -46,6 +50,7 @@ const (
 
 var (
 	errBusy        = errors.New("nethernet: too many connections opening")
+	errSourceBusy  = errors.New("nethernet: too many connections opening from one source")
 	errAcceptQueue = errors.New("nethernet: connections are not accepted fast enough")
 	errAnonymous   = errors.New("nethernet: offer carries no identity")
 )
@@ -76,6 +81,13 @@ type ListenConfig struct {
 	// MaxPending bounds the connections that did not open yet. Zero means
 	// 256.
 	MaxPending int
+	// MaxPendingPerAddress and MaxPendingPerNetwork bound the connections
+	// not open yet that one source holds, so that one cannot hold them
+	// all: an address, an IPv6 /64 taken as one, or the sender of offers
+	// over a signaling service; and a network, an IPv4 /24 or an IPv6
+	// /48. Zero means 4 and 32. Loopback is not bounded: a proxy on the
+	// host stands for every client.
+	MaxPendingPerAddress, MaxPendingPerNetwork int
 	// SendBuffer bounds the bytes queued on a connection. Zero means 16
 	// MiB.
 	SendBuffer int
@@ -126,6 +138,9 @@ type Listener struct {
 	groupOnce sync.Once
 	group     *sendGroup
 
+	// perAddress and perNetwork bound the pending connections of a source.
+	perAddress, perNetwork int
+
 	ufragMu sync.RWMutex
 	ufrags  map[string]*Conn
 	addrs   addrTable
@@ -133,6 +148,8 @@ type Listener struct {
 	mu      sync.Mutex
 	conns   map[*Conn]struct{}
 	pending int
+	// sources counts the pending connections of each source by its key.
+	sources map[string]int
 	closed  bool
 
 	accept    chan *Conn
@@ -157,6 +174,9 @@ func (cfg ListenConfig) Listen(address string) (*Listener, error) {
 		cert:       cfg.Certificate,
 		ufrags:     make(map[string]*Conn),
 		conns:      make(map[*Conn]struct{}),
+		sources:    make(map[string]int),
+		perAddress: cmp.Or(cfg.MaxPendingPerAddress, defaultMaxPendingPerAddress),
+		perNetwork: cmp.Or(cfg.MaxPendingPerNetwork, defaultMaxPendingPerNetwork),
 		accept:     make(chan *Conn, acceptQueue),
 		done:       make(chan struct{}),
 	}
@@ -320,10 +340,17 @@ func (l *Listener) serveOffer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "SDP offer too large", http.StatusRequestEntityTooLarge)
 		return
 	}
-	answer, code, err := l.answer(string(body), l.candidates(r), false, time.Now())
+	var sources []source
+	if from, err := netip.ParseAddrPort(r.RemoteAddr); err == nil {
+		sources = l.addressSources(from.Addr())
+	}
+	answer, code, err := l.answer(string(body), l.candidates(r), sources, false, time.Now())
 	switch {
 	case errors.Is(err, errBusy) || errors.Is(err, net.ErrClosed):
 		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+		return
+	case errors.Is(err, errSourceBusy):
+		http.Error(w, "too many connections opening", http.StatusTooManyRequests)
 		return
 	case err != nil:
 		signalError(w, code)
@@ -333,10 +360,10 @@ func (l *Listener) serveOffer(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.WriteString(w, answer)
 }
 
-// answer makes the connection an offer asks for, announcing the candidates
-// passed, and returns its answer, or the code of the error the offer is
-// answered with.
-func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, relayed bool, now time.Time) (answer string, code int, err error) {
+// answer makes the connection an offer from sources asks for, announcing
+// the candidates passed, and returns its answer, or the code of the error
+// the offer is answered with.
+func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, sources []source, relayed bool, now time.Time) (answer string, code int, err error) {
 	offer, err := parseDescription(offerSDP)
 	if err != nil {
 		return "", codeFailedToSetRemoteDescription, err
@@ -353,15 +380,11 @@ func (l *Listener) answer(offerSDP string, candidates []netip.AddrPort, relayed 
 		for _, c := range offer.candidates {
 			r.permit(c.Addr())
 		}
-		if reflexive, relayedAddr, ok := r.candidates(); ok && len(candidates) > 0 {
-			base := candidates[0]
-			if reflexive.IsValid() && !slices.Contains(candidates, reflexive) {
-				extra = append(extra, candidate{addr: reflexive, typ: "srflx", base: base})
-			}
-			extra = append(extra, candidate{addr: relayedAddr, typ: "relay", base: reflexive})
+		if reflexive, relayedAddr, ok := r.candidates(); ok {
+			extra = extraCandidates(candidates, reflexive, relayedAddr)
 		}
 	}
-	if answer, err = l.open(offer, pub, candidates, extra, now); err != nil {
+	if answer, err = l.open(offer, pub, candidates, extra, sources, now); err != nil {
 		offersRefused.Inc()
 		return "", codeFailedToCreateAnswer, err
 	}
@@ -379,30 +402,58 @@ func (l *Listener) Serve(s Signaling) error {
 		if err != nil {
 			return err
 		}
-		if sig.Type == SignalCandidate {
-			// A trickled candidate tells an address the peer may come
-			// through the relay from.
-			if r := l.relay.Load(); r != nil {
-				if addr, ok := parseCandidate(sig.Data); ok {
-					r.permit(addr.Addr())
-				}
+		switch sig.Type {
+		case SignalCandidate:
+			l.permitCandidate(sig.Data)
+		case SignalOffer:
+			if err := s.WriteSignal(l.answerSignal(sig)); err != nil {
+				return err
 			}
-			continue
-		}
-		if sig.Type != SignalOffer {
-			continue
-		}
-		reply := Signal{Type: SignalAnswer, ConnectionID: sig.ConnectionID, NetworkID: sig.NetworkID}
-		answer, code, err := l.answer(sig.Data, l.serviceCandidates(), true, time.Now())
-		if err != nil {
-			reply.Type, reply.Data = SignalError, strconv.Itoa(code)
-		} else {
-			reply.Data = answer
-		}
-		if err := s.WriteSignal(reply); err != nil {
-			return err
 		}
 	}
+}
+
+// permitCandidate lets the address of a candidate a peer trickled, which
+// it may come through the relay from, reach the listener through it.
+func (l *Listener) permitCandidate(data string) {
+	if r := l.relay.Load(); r != nil {
+		if addr, ok := parseCandidate(data); ok {
+			r.permit(addr.Addr())
+		}
+	}
+}
+
+// answerSignal returns the answer to an offer that came over a signaling
+// service, or the error it is answered with. The offer counts against the
+// network it came from, which the service vouches for.
+func (l *Listener) answerSignal(sig Signal) Signal {
+	reply := Signal{Type: SignalAnswer, ConnectionID: sig.ConnectionID, NetworkID: sig.NetworkID}
+	var sources []source
+	if sig.NetworkID != "" {
+		sources = []source{{"network " + sig.NetworkID, l.perAddress}}
+	}
+	answer, code, err := l.answer(sig.Data, l.serviceCandidates(), sources, true, time.Now())
+	if err != nil {
+		reply.Type, reply.Data = SignalError, strconv.Itoa(code)
+	} else {
+		reply.Data = answer
+	}
+	return reply
+}
+
+// extraCandidates returns the candidates of the relay announced beside
+// candidates: the address the TURN server saw the listener at, unless it
+// is one of them, and the relayed address, based on it. There are none
+// without candidates to base them on.
+func extraCandidates(candidates []netip.AddrPort, reflexive, relayed netip.AddrPort) []candidate {
+	if len(candidates) == 0 {
+		return nil
+	}
+	var extra []candidate
+	if reflexive.IsValid() && !slices.Contains(candidates, reflexive) {
+		extra = append(extra, candidate{addr: reflexive, typ: "srflx", base: candidates[0]})
+	}
+	return append(extra, candidate{addr: relayed, typ: "relay", base: reflexive})
 }
 
 // signalError answers an offer with an error code, as BDS does.
@@ -459,10 +510,10 @@ func (l *Listener) identity(now time.Time) (string, error) {
 	return l.ident, nil
 }
 
-// open makes the connection an offer asks for and returns the answer. The
-// server takes the DTLS client role unless the offer takes it, as BDS
-// does.
-func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []netip.AddrPort, extra []candidate, now time.Time) (string, error) {
+// open makes the connection an offer from sources asks for and returns the
+// answer. The server takes the DTLS client role unless the offer takes it,
+// as BDS does.
+func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []netip.AddrPort, extra []candidate, sources []source, now time.Time) (string, error) {
 	identity, err := l.identity(now)
 	if err != nil {
 		return "", err
@@ -499,32 +550,7 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 	c.publicKey = pub
 	c.onReady = l.ready
 	c.onClose = l.remove
-
-	l.mu.Lock()
-	switch {
-	case l.closed:
-		err = net.ErrClosed
-	case l.pending >= l.maxPending:
-		err = errBusy
-	default:
-		l.ufragMu.Lock()
-		if _, taken := l.ufrags[local.ufrag]; taken {
-			err = errBusy
-		} else {
-			l.ufrags[local.ufrag] = c
-		}
-		l.ufragMu.Unlock()
-	}
-	if err == nil {
-		c.ufrag = local.ufrag
-		c.pendingSlot = true
-		c.answered = now
-		l.pending++
-		connectionsPending.Add(1)
-		l.conns[c] = struct{}{}
-	}
-	l.mu.Unlock()
-	if err != nil {
+	if err := l.admit(c, local.ufrag, sources, now); err != nil {
 		c.abort(err)
 		return "", err
 	}
@@ -532,6 +558,39 @@ func (l *Listener) open(offer *description, pub *ecdsa.PublicKey, candidates []n
 	c.schedule()
 	c.release()
 	return encodeDescription(local), nil
+}
+
+// admit counts a connection pending, found by its ufrag, within the bounds
+// of the listener and of its sources.
+func (l *Listener) admit(c *Conn, ufrag string, sources []source, now time.Time) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	switch {
+	case l.closed:
+		return net.ErrClosed
+	case l.pending >= l.maxPending:
+		return errBusy
+	case !l.room(sources):
+		return errSourceBusy
+	}
+	l.ufragMu.Lock()
+	_, taken := l.ufrags[ufrag]
+	if !taken {
+		l.ufrags[ufrag] = c
+	}
+	l.ufragMu.Unlock()
+	if taken {
+		return errBusy
+	}
+	c.ufrag, c.pendingSlot, c.answered = ufrag, true, now
+	l.pending++
+	connectionsPending.Add(1)
+	for _, s := range sources {
+		l.sources[s.key]++
+		c.sources = append(c.sources, s.key)
+	}
+	l.conns[c] = struct{}{}
+	return nil
 }
 
 // writers returns the functions a connection sends with on sock: to a peer
@@ -682,11 +741,7 @@ func (l *Listener) addInterfaces(add func(a netip.Addr, port uint16)) {
 // with the connection locked.
 func (l *Listener) ready(c *Conn) {
 	l.mu.Lock()
-	if c.pendingSlot {
-		c.pendingSlot = false
-		l.pending--
-		connectionsPending.Add(-1)
-	}
+	l.releasePending(c)
 	c.counted = true
 	connectionsOpen.Add(1)
 	if !c.answered.IsZero() {
@@ -714,11 +769,7 @@ func (l *Listener) remove(c *Conn) {
 		return
 	}
 	delete(l.conns, c)
-	if c.pendingSlot {
-		c.pendingSlot = false
-		l.pending--
-		connectionsPending.Add(-1)
-	}
+	l.releasePending(c)
 	if c.counted {
 		c.counted = false
 		connectionsOpen.Add(-1)
@@ -732,6 +783,59 @@ func (l *Listener) remove(c *Conn) {
 		l.addrs.remove(a, c)
 	}
 	c.addrs = nil
+}
+
+// source is what a connection not open yet counts against, by its key,
+// with how many such connections it may hold.
+type source struct {
+	key string
+	max int
+}
+
+// addressSources returns the sources an offer from addr counts against:
+// its address, an IPv6 /64 taken as one, and its network, an IPv4 /24 or
+// an IPv6 /48. Loopback counts against none.
+func (l *Listener) addressSources(addr netip.Addr) []source {
+	addr = addr.Unmap()
+	if !addr.IsValid() || addr.IsLoopback() {
+		return nil
+	}
+	host, network := 32, 24
+	if addr.Is6() {
+		host, network = 64, 48
+	}
+	return []source{
+		{netip.PrefixFrom(addr, host).Masked().String(), l.perAddress},
+		{netip.PrefixFrom(addr, network).Masked().String(), l.perNetwork},
+	}
+}
+
+// room reports whether every source may hold another pending connection.
+// It is called with l.mu held.
+func (l *Listener) room(sources []source) bool {
+	for _, s := range sources {
+		if l.sources[s.key] >= s.max {
+			return false
+		}
+	}
+	return true
+}
+
+// releasePending gives back the pending slot of a connection, and its
+// sources theirs. It is called with l.mu held.
+func (l *Listener) releasePending(c *Conn) {
+	if !c.pendingSlot {
+		return
+	}
+	c.pendingSlot = false
+	l.pending--
+	connectionsPending.Add(-1)
+	for _, key := range c.sources {
+		if l.sources[key]--; l.sources[key] == 0 {
+			delete(l.sources, key)
+		}
+	}
+	c.sources = nil
 }
 
 // bind routes the datagrams from an address the peer proved to its

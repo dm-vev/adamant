@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -259,11 +260,7 @@ func TestForgedIdentity(t *testing.T) {
 // listener refuses them, and takes them again once they expired.
 func TestPendingBound(t *testing.T) {
 	l := listen(t, ListenConfig{MaxPending: 2, AllowAnonymous: true})
-	cert, _ := dtls.GenerateCertificate()
-	offer := encodeDescription(&description{
-		ufrag: "abcd", pwd: randomString(24), setup: SetupActpass, maxMessageSize: maxMessageSize, sctpPort: 5000,
-		fingerprints: []Fingerprint{{"sha-256", dtls.Fingerprint(cert.Chain[0])}},
-	})
+	offer := idleOffer()
 	post := func() int {
 		resp, err := http.Post("http://"+l.Addr().String()+"/v1/join/1", "application/sdp", strings.NewReader(offer))
 		if err != nil {
@@ -277,6 +274,24 @@ func TestPendingBound(t *testing.T) {
 			t.Fatalf("offer %d: status %d, want %d", i, got, want)
 		}
 	}
+	expireAll(l)
+	if got := post(); got != 200 {
+		t.Fatalf("offer after the pending ones closed: status %d", got)
+	}
+}
+
+// idleOffer returns an anonymous offer of a client that never connects.
+func idleOffer() string {
+	cert, _ := dtls.GenerateCertificate()
+	return encodeDescription(&description{
+		ufrag: "abcd", pwd: randomString(24), setup: SetupActpass, maxMessageSize: maxMessageSize, sctpPort: 5000,
+		fingerprints: []Fingerprint{{"sha-256", dtls.Fingerprint(cert.Chain[0])}},
+	})
+}
+
+// expireAll closes the connections of a listener as their open timeout
+// does.
+func expireAll(l *Listener) {
 	l.mu.Lock()
 	conns := make([]*Conn, 0, len(l.conns))
 	for c := range l.conns {
@@ -286,8 +301,88 @@ func TestPendingBound(t *testing.T) {
 	for _, c := range conns {
 		c.abort(errOpenTimeout)
 	}
-	if got := post(); got != 200 {
+}
+
+// TestPendingBoundPerSource sends offers that never connect from a few
+// sources: past its bound on an address, an IPv6 /64 taken as one, or on
+// a network, an IPv4 /24 or an IPv6 /48, a source is refused while others
+// are taken, and taken again once its connections expired. Loopback is
+// not bounded, and offers over a signaling service count against the
+// network ID of their sender.
+func TestPendingBoundPerSource(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true, MaxPendingPerAddress: 2, MaxPendingPerNetwork: 3})
+	pending := connectionsPending.Load()
+	offer := idleOffer()
+	post := func(from string) int {
+		r := httptest.NewRequest(http.MethodPost, "/v1/join/1", strings.NewReader(offer))
+		r.RemoteAddr = from
+		w := httptest.NewRecorder()
+		l.ServeHTTP(w, r)
+		return w.Code
+	}
+	steps := []struct {
+		from string
+		want int
+	}{
+		{"203.0.113.5:1000", 200}, {"203.0.113.5:1001", 200}, {"203.0.113.5:1002", 429},
+		{"203.0.113.6:1000", 200}, {"203.0.113.7:1000", 429},
+		{"198.51.100.1:1000", 200},
+		{"[2001:db8:1:2::1]:1000", 200}, {"[2001:db8:1:2::2]:1000", 200}, {"[2001:db8:1:2::3]:1000", 429},
+		{"[2001:db8:1:3::1]:1000", 200}, {"[2001:db8:1:4::1]:1000", 429},
+		{"127.0.0.1:1000", 200}, {"127.0.0.1:1001", 200}, {"127.0.0.1:1002", 200},
+	}
+	for i, s := range steps {
+		if got := post(s.from); got != s.want {
+			t.Fatalf("offer %d from %s: status %d, want %d", i, s.from, got, s.want)
+		}
+	}
+	// One of the two of an address expires: one more is taken, not two.
+	if got := post("198.51.100.1:1001"); got != 200 {
+		t.Fatalf("second offer of an address: status %d", got)
+	}
+	l.mu.Lock()
+	var first *Conn
+	for c := range l.conns {
+		if slices.Contains(c.sources, "198.51.100.1/32") {
+			first = c
+			break
+		}
+	}
+	l.mu.Unlock()
+	first.abort(errOpenTimeout)
+	for i, want := range []int{200, 429} {
+		if got := post("198.51.100.1:1002"); got != want {
+			t.Fatalf("offer %d after one of the address expired: status %d, want %d", i, got, want)
+		}
+	}
+	expireAll(l)
+	if got := connectionsPending.Load(); got != pending {
+		t.Fatalf("%d connections counted pending once all expired, want %d", got, pending)
+	}
+	l.ufragMu.RLock()
+	routed := len(l.ufrags)
+	l.ufragMu.RUnlock()
+	if routed != 0 {
+		t.Fatalf("%d ufrags still route checks once their connections closed", routed)
+	}
+	if got := post("203.0.113.5:1004"); got != 200 {
 		t.Fatalf("offer after the pending ones closed: status %d", got)
+	}
+
+	var router signalRouter
+	server, client := router.join("1234"), router.join("5678")
+	go func() { _ = l.Serve(server) }()
+	// A trickled candidate is taken without a reply.
+	if err := client.WriteSignal(Signal{Type: SignalCandidate, ConnectionID: 7, Data: "candidate:1 1 udp 1 192.0.2.9 4000 typ host", NetworkID: "1234"}); err != nil {
+		t.Fatal(err)
+	}
+	for i, want := range []string{SignalAnswer, SignalAnswer, SignalError} {
+		if err := client.WriteSignal(Signal{Type: SignalOffer, ConnectionID: uint64(i), Data: offer, NetworkID: "1234"}); err != nil {
+			t.Fatal(err)
+		}
+		if reply, err := client.ReadSignal(); err != nil || reply.Type != want {
+			t.Fatalf("offer %d over signaling: %s, %v; want %s", i, reply.Type, err, want)
+		}
 	}
 }
 
@@ -415,4 +510,115 @@ func TestDatagram(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = c.Close()
+}
+
+// TestPendingSlotFreedOnce opens a connection and closes it: the slot it
+// held pending is given back once, when it opened, not again when it
+// closed.
+func TestPendingSlotFreedOnce(t *testing.T) {
+	l := listen(t, ListenConfig{MaxPending: 1, AllowAnonymous: true})
+	open := connectionsOpen.Load()
+	cli := dial(t, newDialer(t), l)
+	srv := accept(t, l)
+	if got := connectionsOpen.Load(); got != open+1 {
+		t.Fatalf("%d connections counted open with one opened, want %d", got, open+1)
+	}
+	_ = cli.Close()
+	srv.abort(net.ErrClosed)
+	if got := connectionsOpen.Load(); got != open {
+		t.Fatalf("%d connections counted open once it closed, want %d", got, open)
+	}
+	for i := range l.addrs.stripes {
+		st := &l.addrs.stripes[i]
+		st.RLock()
+		routed := len(st.m)
+		st.RUnlock()
+		if routed != 0 {
+			t.Fatalf("%d addresses still route to closed connections", routed)
+		}
+	}
+	offer := idleOffer()
+	for i, want := range []int{200, 503} {
+		resp, err := http.Post("http://"+l.Addr().String()+"/v1/join/1", "application/sdp", strings.NewReader(offer))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != want {
+			t.Fatalf("offer %d after a connection opened and closed: status %d, want %d", i, resp.StatusCode, want)
+		}
+	}
+}
+
+// TestExtraCandidates covers the candidates of the relay announced beside
+// those of the sockets: the address the TURN server saw unless the sockets
+// have it, then the relayed one, none without a candidate to base them on.
+func TestExtraCandidates(t *testing.T) {
+	host := netip.MustParseAddrPort("192.0.2.1:19132")
+	reflexive := netip.MustParseAddrPort("198.51.100.1:40000")
+	relayed := netip.MustParseAddrPort("203.0.113.1:50000")
+	srflx := candidate{addr: reflexive, typ: "srflx", base: host}
+	relay := candidate{addr: relayed, typ: "relay", base: reflexive}
+	cases := []struct {
+		name       string
+		candidates []netip.AddrPort
+		reflexive  netip.AddrPort
+		want       []candidate
+	}{
+		{"both", []netip.AddrPort{host}, reflexive, []candidate{srflx, relay}},
+		{"reflexive announced", []netip.AddrPort{host, reflexive}, reflexive, []candidate{relay}},
+		{"no reflexive", []netip.AddrPort{host}, netip.AddrPort{}, []candidate{{addr: relayed, typ: "relay"}}},
+		{"no candidates", nil, reflexive, nil},
+	}
+	for _, c := range cases {
+		if got := extraCandidates(c.candidates, c.reflexive, relayed); !slices.Equal(got, c.want) {
+			t.Errorf("%s: %+v, want %+v", c.name, got, c.want)
+		}
+	}
+}
+
+// TestOfferBody covers the body of an offer over HTTP: an empty one and
+// one past the size of a description are refused as such, one of that
+// size is read.
+func TestOfferBody(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true})
+	post := func(body string) int {
+		r := httptest.NewRequest(http.MethodPost, "/v1/join/1", strings.NewReader(body))
+		w := httptest.NewRecorder()
+		l.ServeHTTP(w, r)
+		return w.Code
+	}
+	for _, c := range []struct {
+		name string
+		body string
+		want int
+	}{
+		{"empty", "", http.StatusBadRequest},
+		{"too large", strings.Repeat("a", maxDescription+1), http.StatusRequestEntityTooLarge},
+		{"largest", strings.Repeat("a", maxDescription), http.StatusInternalServerError},
+	} {
+		if got := post(c.body); got != c.want {
+			t.Errorf("%s offer: status %d, want %d", c.name, got, c.want)
+		}
+	}
+}
+
+// TestAnswerSetup covers the DTLS role of an answer: the server takes the
+// client role unless the offer takes it, as BDS does.
+func TestAnswerSetup(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true})
+	for _, c := range []struct{ offer, want Setup }{{SetupActpass, SetupActive}, {SetupActive, SetupPassive}, {SetupPassive, SetupActive}} {
+		d, err := parseDescription(idleOffer())
+		if err != nil {
+			t.Fatal(err)
+		}
+		d.setup = c.offer
+		answer, _, err := l.answer(encodeDescription(d), nil, nil, false, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, err := parseDescription(answer); err != nil || got.setup != c.want {
+			t.Errorf("answer to an offer of %s: %v, %v; want %s", c.offer, got.setup, err, c.want)
+		}
+	}
 }
