@@ -704,57 +704,80 @@ func (a *Association) handleData(c chunk) error {
 	default:
 		return nil
 	}
-	if len(c.value) < 13 {
-		// A DATA chunk carries at least one byte.
-		return errPacket
+	f, err := parseData(c)
+	if err != nil {
+		return err
 	}
-	f := inFragment{
+	a.dataPackets++
+	if c.flags&flagImmediate != 0 {
+		a.sackNow = true
+	}
+	if take, err := a.track(f); !take {
+		return err
+	}
+	a.receive(f)
+	a.performPendingReset()
+	return nil
+}
+
+// parseData reads the fragment of a DATA chunk, which carries at least a
+// byte.
+func parseData(c chunk) (inFragment, error) {
+	if len(c.value) < 13 {
+		return inFragment{}, errPacket
+	}
+	return inFragment{
 		tsn:    binary.BigEndian.Uint32(c.value),
 		stream: binary.BigEndian.Uint16(c.value[4:]),
 		ssn:    binary.BigEndian.Uint16(c.value[6:]),
 		ppid:   binary.BigEndian.Uint32(c.value[8:]),
 		flags:  c.flags,
 		data:   c.value[12:],
-	}
-	a.dataPackets++
-	if c.flags&flagImmediate != 0 {
-		a.sackNow = true
-	}
+	}, nil
+}
+
+// track records the TSN of a fragment received and reports whether to take
+// the fragment: a duplicate is dropped, and so is one out of order without
+// room, which the peer sends again. A fragment in order must be taken, but
+// no peer that keeps to the window makes the association hold more than
+// twice it: that one fails the association.
+func (a *Association) track(f inFragment) (bool, error) {
 	if tsnLessEq(f.tsn, a.peerCum) {
 		a.duplicate(f.tsn)
-		return nil
+		return false, nil
 	}
 	i, found := slices.BinarySearchFunc(a.received, f.tsn, compareTSN)
 	if found {
 		a.duplicate(f.tsn)
-		return nil
+		return false, nil
 	}
 	if f.tsn != a.peerCum+1 {
-		if f.tsn-a.peerCum > tsnWindow || len(a.received) >= maxOutOfOrder || a.held+len(f.data) > int(a.cfg.ReceiveWindow) {
-			// No room: the peer sends it again.
-			return nil
-		}
-		a.received = slices.Insert(a.received, i, f.tsn)
-		// Out of order: tell the peer about the gap at once.
-		a.sackNow = true
-	} else {
-		if a.held+len(f.data) > 2*int(a.cfg.ReceiveWindow) {
-			// A chunk in order must be taken, but no peer that keeps to the
-			// window makes the association hold this much.
-			return errOverrun
-		}
-		// RFC 9260 section 6.7: while gaps remain, and when one closes, every
-		// packet is acknowledged at once, or the sender's loss recovery
-		// waits for the delayed SACK on each retransmission.
-		if len(a.received) > 0 {
-			a.sackNow = true
-		}
-		a.peerCum = f.tsn
-		a.absorbReceived()
+		return a.trackOutOfOrder(i, f), nil
 	}
-	a.receive(f)
-	a.performPendingReset()
-	return nil
+	if a.held+len(f.data) > 2*int(a.cfg.ReceiveWindow) {
+		return false, errOverrun
+	}
+	// RFC 9260 section 6.7: while gaps remain, and when one closes, every
+	// packet is acknowledged at once, or the sender's loss recovery waits
+	// for the delayed SACK on each retransmission.
+	if len(a.received) > 0 {
+		a.sackNow = true
+	}
+	a.peerCum = f.tsn
+	a.absorbReceived()
+	return true, nil
+}
+
+// trackOutOfOrder keeps the TSN of a fragment above a gap, at index i of
+// those received, if there is room for it, and has the gap reported at
+// once.
+func (a *Association) trackOutOfOrder(i int, f inFragment) bool {
+	if f.tsn-a.peerCum > tsnWindow || len(a.received) >= maxOutOfOrder || a.held+len(f.data) > int(a.cfg.ReceiveWindow) {
+		return false
+	}
+	a.received = slices.Insert(a.received, i, f.tsn)
+	a.sackNow = true
+	return true
 }
 
 func compareTSN(x, t uint32) int {
@@ -1294,30 +1317,45 @@ func (a *Association) sending() bool {
 // flush sends packets of control chunks, a SACK, retransmissions and new
 // data, as much as the windows allow.
 func (a *Association) flush(now time.Time) {
-	if a.state < stateEstablished && len(a.control) == 0 {
+	if a.state < stateEstablished {
+		// Nothing is queued before the association is established.
 		return
 	}
-	for {
-		a.packet.start(header{srcPort: a.cfg.LocalPort, dstPort: a.cfg.RemotePort, tag: a.peerTag})
-		limit := a.cfg.MaxPacketSize
-		for len(a.control) > 0 && a.packet.size()+len(a.control[0]) <= limit {
-			a.packet.buf = append(a.packet.buf, a.control[0]...)
-			a.control = a.control[1:]
-		}
-		if a.sackNow || !a.sackAt.IsZero() && (len(a.pending) > 0 || a.retransmitting()) {
-			// A delayed SACK rides along with data.
-			a.addSack()
-		}
-		sentData := a.sending() && a.addData(now, limit)
-		if a.packet.empty() {
-			break
-		}
-		a.send(a.packet.finish())
-		if !sentData && len(a.control) == 0 && !a.moreToSend() {
-			break
-		}
+	for a.flushPacket(now) {
 	}
 	a.sendResetRequestWhenReady(now)
+}
+
+// flushPacket sends a packet of what is due, if anything is, and reports
+// whether more may follow.
+func (a *Association) flushPacket(now time.Time) bool {
+	a.packet.start(header{srcPort: a.cfg.LocalPort, dstPort: a.cfg.RemotePort, tag: a.peerTag})
+	a.addControl()
+	if a.sackDue() {
+		a.addSack()
+	}
+	if a.sending() {
+		a.addData(now, a.cfg.MaxPacketSize)
+	}
+	if a.packet.empty() {
+		return false
+	}
+	a.send(a.packet.finish())
+	return len(a.control) > 0 || a.moreToSend()
+}
+
+// addControl adds the control chunks queued that fit the packet.
+func (a *Association) addControl() {
+	for len(a.control) > 0 && a.packet.size()+len(a.control[0]) <= a.cfg.MaxPacketSize {
+		a.packet.buf = append(a.packet.buf, a.control[0]...)
+		a.control = a.control[1:]
+	}
+}
+
+// sackDue reports whether the packet carries a SACK: one due now, or one
+// delayed riding along with data.
+func (a *Association) sackDue() bool {
+	return a.sackNow || !a.sackAt.IsZero() && (len(a.pending) > 0 || a.retransmitting())
 }
 
 func (a *Association) retransmitting() bool {
@@ -1360,75 +1398,97 @@ func (a *Association) addSack() {
 }
 
 // addData adds retransmissions and new DATA chunks to the packet being
-// built, within the congestion and receive windows, and reports whether it
-// added any.
-func (a *Association) addData(now time.Time, limit int) bool {
-	added := false
+// built, within the congestion and receive windows. New data waits for
+// every retransmission.
+func (a *Association) addData(now time.Time, limit int) {
 	free := a.fastRetransmit
 	a.fastRetransmit = false
+	if a.addRetransmissions(now, limit, free) {
+		a.addNewData(now, limit)
+	}
+}
+
+// addRetransmissions adds the chunks marked to go again, within cwnd
+// unless free, and reports whether all went.
+func (a *Association) addRetransmissions(now time.Time, limit int, free bool) bool {
 	for _, ch := range a.outstanding {
 		if !ch.retransmit {
 			continue
 		}
-		if a.flight >= a.cwnd && !free {
-			return added
-		}
-		if a.packet.size()+chunkSize(12+len(ch.data)) > limit {
-			return added
+		if a.flight >= a.cwnd && !free || a.packet.size()+chunkSize(12+len(ch.data)) > limit {
+			return false
 		}
 		a.writeData(ch, now)
 		ch.retransmit = false
-		added = true
 	}
+	return true
+}
+
+// addNewData cuts the messages queued into new chunks while the windows
+// and the packet have room. A message whose lifetime ran out is given up:
+// the peer is told to skip the chunks of it that went out.
+func (a *Association) addNewData(now time.Time, limit int) {
 	for len(a.pending) > 0 {
 		m := a.pending[0]
-		if !m.abandoned && m.expired(now) && m.next > 0 {
-			// Some chunks went out: the peer must be told to skip them.
+		if m.expired(now) {
 			a.abandon(m)
 		}
-		if m.abandoned || m.next >= len(m.data) || m.expired(now) {
-			if m.next < len(m.data) {
-				// Expired before any of it was sent: nothing to skip.
-				a.buffered -= len(m.data) - m.next
-				m.next = len(m.data)
-				m.abandoned = true
-			}
+		if m.abandoned {
 			a.pending = a.pending[1:]
 			continue
 		}
 		if a.flight >= a.cwnd || (a.peerWindow <= 0 && a.flight > 0) {
-			return added
+			return
 		}
-		room := (limit-a.packet.size())&^3 - dataHeaderSize
-		if room < 64 && !(room > 0 && len(m.data)-m.next <= room) {
-			return added
+		n := a.chunkLen(m, (limit-a.packet.size())&^3-dataHeaderSize)
+		if n == 0 {
+			return
 		}
-		n := min(len(m.data)-m.next, a.maxPayload, room)
-		var flags byte
-		if m.next == 0 {
-			flags |= flagBegin
-		}
-		if m.next+n == len(m.data) {
-			flags |= flagEnd
-		}
-		if m.opts.Unordered {
-			flags |= flagUnordered
-		}
-		ch := &outChunk{tsn: a.nextTSN, msg: m, flags: flags, data: m.data[m.next : m.next+n]}
-		a.nextTSN++
-		m.next += n
-		if m.next == len(m.data) {
-			a.pending = a.pending[1:]
-		}
-		a.outstanding = append(a.outstanding, ch)
-		if !a.rttActive {
-			a.rttActive, a.rttTSN, a.rttSent = true, ch.tsn, now
-		}
-		a.writeData(ch, now)
-		a.peerWindow -= ch.size()
-		added = true
+		a.writeNew(m, n, now)
 	}
-	return added
+}
+
+// chunkLen returns how many bytes of m the next chunk takes with room
+// bytes left in the packet: none if the rest of m does not fit and the
+// room is too small to be worth a fragment.
+func (a *Association) chunkLen(m *outMessage, room int) int {
+	rest := len(m.data) - m.next
+	if room < 64 && rest > room {
+		return 0
+	}
+	return min(rest, a.maxPayload, room)
+}
+
+// writeNew cuts the next n bytes of m, the message first in the queue,
+// into a new chunk and writes it into the packet.
+func (a *Association) writeNew(m *outMessage, n int, now time.Time) {
+	ch := &outChunk{tsn: a.nextTSN, msg: m, flags: m.chunkFlags(n), data: m.data[m.next : m.next+n]}
+	a.nextTSN++
+	m.next += n
+	if m.next == len(m.data) {
+		a.pending = a.pending[1:]
+	}
+	a.outstanding = append(a.outstanding, ch)
+	if !a.rttActive {
+		a.rttActive, a.rttTSN, a.rttSent = true, ch.tsn, now
+	}
+	a.writeData(ch, now)
+	a.peerWindow -= ch.size()
+}
+
+// chunkFlags returns the flags of a chunk of the next n bytes of m.
+func (m *outMessage) chunkFlags(n int) byte {
+	var flags byte
+	if m.next == 0 {
+		flags |= flagBegin
+	}
+	if m.next+n == len(m.data) {
+		flags |= flagEnd
+	}
+	if m.opts.Unordered {
+		flags |= flagUnordered
+	}
+	return flags
 }
 
 func (a *Association) writeData(ch *outChunk, now time.Time) {
@@ -1528,10 +1588,7 @@ func (a *Association) handleShutdown(c chunk, now time.Time) error {
 func (a *Association) flushControl() {
 	for len(a.control) > 0 {
 		a.packet.start(header{srcPort: a.cfg.LocalPort, dstPort: a.cfg.RemotePort, tag: a.peerTag})
-		for len(a.control) > 0 && a.packet.size()+len(a.control[0]) <= a.cfg.MaxPacketSize {
-			a.packet.buf = append(a.packet.buf, a.control[0]...)
-			a.control = a.control[1:]
-		}
+		a.addControl()
 		a.send(a.packet.finish())
 	}
 }
