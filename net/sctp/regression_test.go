@@ -378,3 +378,51 @@ func TestHostileShutdownAckReturns(t *testing.T) {
 		t.Fatalf("association ended with %v, want closed", b.Err())
 	}
 }
+
+// TestPeerPastReceiveWindowFails covers a peer that ignores the window and
+// sends a message that never ends: the association fails with an ABORT
+// rather than hold its fragments without bound.
+func TestPeerPastReceiveWindowFails(t *testing.T) {
+	const window = 64 << 10
+	n := newNetwork(t, 21, Config{ReceiveWindow: window})
+	n.open(t, false)
+	b := n.peers[1].assoc
+	aborted := false
+	b.send = func(p []byte) { aborted = aborted || hasChunk(p, chunkAbort) }
+	first := b.peerCum + 1
+	var head [12]byte
+	for i := uint32(0); ; i++ {
+		if i > 2*window/1000+1 {
+			t.Fatalf("took %d fragments of 1000 bytes under a window of %d", i, window)
+		}
+		binary.BigEndian.PutUint32(head[:], first+i)
+		flags := byte(0)
+		if i == 0 {
+			flags = flagBegin
+		}
+		if err := inject(b, n.now, chunkData, flags, head[:], make([]byte, 1000)); err != nil {
+			break
+		}
+	}
+	if !aborted {
+		t.Fatal("the peer was not sent an ABORT")
+	}
+}
+
+// TestMessageLargerThanWindowArrives covers a message larger than the
+// receive window from a peer that keeps to it: zero window probes carry
+// the part past the window.
+func TestMessageLargerThanWindowArrives(t *testing.T) {
+	const window = 16 << 10
+	n := newNetwork(t, 22, Config{ReceiveWindow: window})
+	n.open(t, false)
+	a, b := n.peers[0], n.peers[1]
+	msg := payload(22, window*3/2)
+	if err := a.assoc.Send(1, PPIDBinary, msg, SendOptions{}, n.now); err != nil {
+		t.Fatal(err)
+	}
+	n.run(time.Minute, func() bool { return len(b.received) > 0 })
+	if len(b.received) != 1 || !bytes.Equal(b.received[0].data, msg) {
+		t.Fatalf("received %d messages, errors %v and %v", len(b.received), a.err, b.err)
+	}
+}

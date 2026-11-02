@@ -24,7 +24,10 @@ type Config struct {
 	// MaxPacketSize bounds the packets sent. Zero means 1163: a 1200 byte
 	// datagram less the DTLS record overhead.
 	MaxPacketSize int
-	// ReceiveWindow is the receive window advertised. Zero means 1 MiB.
+	// ReceiveWindow is the receive window advertised. Zero means 1 MiB. A
+	// message may be as large as the window; a peer that makes the
+	// association hold more than twice the window, one of chunks out of
+	// order and one of the message being reassembled, fails it.
 	ReceiveWindow uint32
 	// SendBuffer bounds the bytes queued or in flight. Zero means 1 MiB.
 	SendBuffer int
@@ -100,6 +103,7 @@ var (
 	ErrStreamResetting = errors.New("sctp: stream is being reset")
 	errState           = errors.New("sctp: association not established")
 	errEmpty           = errors.New("sctp: empty message")
+	errOverrun         = errors.New("sctp: peer sent past the receive window")
 	// errSkipRest stops the processing of a packet at an unknown chunk.
 	errSkipRest = errors.New("sctp: skip the rest of the packet")
 )
@@ -731,6 +735,11 @@ func (a *Association) handleData(c chunk) error {
 		// Out of order: tell the peer about the gap at once.
 		a.sackNow = true
 	} else {
+		if a.held+len(f.data) > 2*int(a.cfg.ReceiveWindow) {
+			// A chunk in order must be taken, but no peer that keeps to the
+			// window makes the association hold this much.
+			return errOverrun
+		}
 		// RFC 9260 section 6.7: while gaps remain, and when one closes, every
 		// packet is acknowledged at once, or the sender's loss recovery
 		// waits for the delayed SACK on each retransmission.
