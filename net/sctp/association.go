@@ -386,48 +386,84 @@ func (a *Association) HandleTimeout(now time.Time) error {
 	if a.err != nil {
 		return a.err
 	}
-	if !a.t1.IsZero() && !now.Before(a.t1) {
-		if a.t1Retrans++; a.t1Retrans > maxInitRetrans {
-			return a.fail(ErrTimeout)
-		}
-		a.t1Interval = min(2*a.t1Interval, rtoMax)
-		a.t1 = now.Add(a.t1Interval)
-		switch a.state {
-		case stateCookieWait:
-			a.send(a.initPacket)
-		case stateCookieEchoed:
-			a.sendCookieEcho()
-		}
+	if err := a.initTimeout(now); err != nil {
+		return err
 	}
-	if !a.t3.IsZero() && !now.Before(a.t3) {
-		if err := a.retransmitTimeout(now); err != nil {
-			return err
-		}
+	if err := a.retransmitTimeout(now); err != nil {
+		return err
 	}
-	if !a.t2.IsZero() && !now.Before(a.t2) {
-		if a.t2Retrans++; a.t2Retrans > a.cfg.MaxRetransmissions {
-			return a.fail(ErrTimeout)
-		}
-		a.t2 = now.Add(a.rto)
-		switch a.state {
-		case stateShutdownSent:
-			a.queueShutdown()
-		case stateShutdownAckSent:
-			a.queueControl(chunkShutdownAck, 0, nil)
-		}
-		a.flush(now)
+	if err := a.shutdownTimeout(now); err != nil {
+		return err
 	}
-	if !a.reset.timer.IsZero() && !now.Before(a.reset.timer) {
-		a.reset.timer = now.Add(a.rto)
-		a.queueResetRequest()
-		a.flush(now)
-	}
-	if !a.sackAt.IsZero() && !now.Before(a.sackAt) {
-		a.sackNow = true
-		a.sackAt = time.Time{}
-		a.flush(now)
-	}
+	a.resetTimeout(now)
+	a.sackTimeout(now)
 	return a.err
+}
+
+// due reports whether a timer runs and expired by now.
+func due(timer, now time.Time) bool { return !timer.IsZero() && !now.Before(timer) }
+
+// initTimeout handles the expiry of T1-init: the INIT or the COOKIE ECHO
+// goes again, the interval doubling, until the association fails after
+// maxInitRetrans times. The timer runs in COOKIE-WAIT and COOKIE-ECHOED
+// alone.
+func (a *Association) initTimeout(now time.Time) error {
+	if !due(a.t1, now) {
+		return nil
+	}
+	if a.t1Retrans++; a.t1Retrans > maxInitRetrans {
+		return a.fail(ErrTimeout)
+	}
+	a.t1Interval = min(2*a.t1Interval, rtoMax)
+	a.t1 = now.Add(a.t1Interval)
+	if a.state == stateCookieWait {
+		a.send(a.initPacket)
+	} else {
+		a.sendCookieEcho()
+	}
+	return nil
+}
+
+// shutdownTimeout handles the expiry of T2-shutdown: the SHUTDOWN or the
+// SHUTDOWN ACK goes again, until the association fails after
+// MaxRetransmissions times. The timer runs in SHUTDOWN-SENT and
+// SHUTDOWN-ACK-SENT alone.
+func (a *Association) shutdownTimeout(now time.Time) error {
+	if !due(a.t2, now) {
+		return nil
+	}
+	if a.t2Retrans++; a.t2Retrans > a.cfg.MaxRetransmissions {
+		return a.fail(ErrTimeout)
+	}
+	a.t2 = now.Add(a.rto)
+	if a.state == stateShutdownSent {
+		a.queueShutdown()
+	} else {
+		a.queueControl(chunkShutdownAck, 0, nil)
+	}
+	a.flush(now)
+	return nil
+}
+
+// resetTimeout sends this side's stream reset request again when its
+// timer expires.
+func (a *Association) resetTimeout(now time.Time) {
+	if !due(a.reset.timer, now) {
+		return
+	}
+	a.reset.timer = now.Add(a.rto)
+	a.queueResetRequest()
+	a.flush(now)
+}
+
+// sackTimeout sends the SACK delayed once the delay passed.
+func (a *Association) sackTimeout(now time.Time) {
+	if !due(a.sackAt, now) {
+		return
+	}
+	a.sackNow = true
+	a.sackAt = time.Time{}
+	a.flush(now)
 }
 
 // HandlePacket processes a received packet.
@@ -437,28 +473,43 @@ func (a *Association) HandlePacket(b []byte, now time.Time) error {
 	}
 	h, chunks, err := parsePacket(b, a.chunks)
 	a.chunks = chunks[:0]
-	if err != nil || h.dstPort != a.cfg.LocalPort || h.srcPort != a.cfg.RemotePort {
-		return a.err
-	}
-	if a.err != nil {
+	switch {
+	case err != nil || !a.ours(h):
+	case a.err != nil:
 		a.handleOutOfTheBlue(h, chunks)
-		return a.err
+	case chunks[0].typ == chunkInit:
+		a.handleInitPacket(h, chunks)
+	default:
+		return a.handleChunks(h.tag, chunks, now)
 	}
-	if len(chunks) > 0 && chunks[0].typ == chunkInit {
-		// An INIT travels alone with a zero tag.
-		if h.tag == 0 && len(chunks) == 1 {
-			a.handleInit(chunks[0])
-		}
-		return nil
+	return a.err
+}
+
+// handleInitPacket answers an INIT, which travels alone with a zero tag
+// (RFC 9260 section 8.5.1).
+func (a *Association) handleInitPacket(h header, chunks []chunk) {
+	if h.tag == 0 && len(chunks) == 1 {
+		a.handleInit(chunks[0])
 	}
+}
+
+// ours reports whether a packet goes between the ports of the association.
+func (a *Association) ours(h header) bool {
+	return h.dstPort == a.cfg.LocalPort && h.srcPort == a.cfg.RemotePort
+}
+
+// handleChunks processes the chunks of a packet in turn, then sends what
+// they call for. A chunk with a tag not valid ends the packet unanswered.
+func (a *Association) handleChunks(tag uint32, chunks []chunk, now time.Time) error {
 	for i, c := range chunks {
-		if !a.tagValid(h.tag, c, i) {
+		if !a.tagValid(tag, c, i) {
 			return nil
 		}
-		if err := a.handleChunk(c, now); err != nil {
-			if errors.Is(err, errSkipRest) {
-				break
-			}
+		err := a.handleChunk(c, now)
+		if errors.Is(err, errSkipRest) {
+			break
+		}
+		if err != nil {
 			return a.fail(err)
 		}
 		if a.err != nil {
@@ -501,50 +552,84 @@ func (a *Association) tagValid(tag uint32, c chunk, index int) bool {
 
 func (a *Association) handleChunk(c chunk, now time.Time) error {
 	switch c.typ {
-	case chunkInitAck:
-		a.handleInitAck(c, now)
-	case chunkCookieEcho:
-		a.handleCookieEcho(c)
-	case chunkCookieAck:
-		if a.state == stateCookieEchoed {
-			a.establish()
-		}
 	case chunkData:
 		return a.handleData(c)
 	case chunkSack:
 		return a.handleSack(c, now)
 	case chunkForwardTSN:
 		a.handleForwardTSN(c)
-	case chunkHeartbeat:
-		if a.state >= stateEstablished {
-			a.queueControl(chunkHeartbeatAck, 0, c.value)
-		}
 	case chunkReconfig:
 		a.handleReconfig(c)
+	case chunkHeartbeat:
+		a.handleHeartbeat(c)
+	case chunkHeartbeatAck, chunkError:
+	default:
+		return a.handleControl(c, now)
+	}
+	return nil
+}
+
+// handleControl handles the chunks that open and close the association,
+// and those of types not known.
+func (a *Association) handleControl(c chunk, now time.Time) error {
+	switch c.typ {
+	case chunkInitAck:
+		a.handleInitAck(c, now)
+	case chunkCookieEcho:
+		a.handleCookieEcho(c)
+	case chunkCookieAck:
+		a.handleCookieAck()
 	case chunkAbort:
 		a.state = stateDone
 		a.err = ErrAborted
 	case chunkShutdown:
 		return a.handleShutdown(c, now)
 	case chunkShutdownAck:
-		if a.state == stateShutdownSent || a.state == stateShutdownAckSent {
-			a.queueControl(chunkShutdownComplete, 0, nil)
-			a.flushControl()
-			a.close(ErrClosed)
-		}
+		a.handleShutdownAck()
 	case chunkShutdownComplete:
-		if a.state == stateShutdownAckSent {
-			a.close(ErrClosed)
-		}
-	case chunkHeartbeatAck, chunkError:
+		a.handleShutdownComplete()
 	default:
-		if c.typ&0x80 == 0 {
-			// Unknown chunk types with the top bit clear stop the
-			// processing of the packet.
-			return errSkipRest
-		}
+		return unknownChunk(c.typ)
 	}
 	return nil
+}
+
+// unknownChunk returns what a chunk of a type not known calls for: one
+// with the top bit clear stops the processing of the packet (RFC 9260
+// section 3.2).
+func unknownChunk(typ byte) error {
+	if typ&0x80 == 0 {
+		return errSkipRest
+	}
+	return nil
+}
+
+// handleHeartbeat echoes a HEARTBEAT once the association is open.
+func (a *Association) handleHeartbeat(c chunk) {
+	if a.state >= stateEstablished {
+		a.queueControl(chunkHeartbeatAck, 0, c.value)
+	}
+}
+
+func (a *Association) handleCookieAck() {
+	if a.state == stateCookieEchoed {
+		a.establish()
+	}
+}
+
+// handleShutdownAck ends a shutdown with a SHUTDOWN COMPLETE.
+func (a *Association) handleShutdownAck() {
+	if a.state == stateShutdownSent || a.state == stateShutdownAckSent {
+		a.queueControl(chunkShutdownComplete, 0, nil)
+		a.flushControl()
+		a.close(ErrClosed)
+	}
+}
+
+func (a *Association) handleShutdownComplete() {
+	if a.state == stateShutdownAckSent {
+		a.close(ErrClosed)
+	}
 }
 
 func (a *Association) handleInit(c chunk) {
@@ -1382,7 +1467,11 @@ func (a *Association) measure(r time.Duration) {
 
 // retransmitTimeout handles the expiry of the retransmission timer: the
 // window collapses to one packet and everything in flight is sent again.
+// The chunk timed, if any, is among it, and gives no sample.
 func (a *Association) retransmitTimeout(now time.Time) error {
+	if !due(a.t3, now) {
+		return nil
+	}
 	if a.errorCount++; a.errorCount > a.cfg.MaxRetransmissions {
 		return a.fail(ErrTimeout)
 	}
@@ -1392,7 +1481,6 @@ func (a *Association) retransmitTimeout(now time.Time) error {
 	a.partialAcked = 0
 	a.fastRecovery = false
 	a.rto = min(2*a.rto, rtoMax)
-	a.rttActive = false
 	for _, ch := range a.outstanding {
 		if !ch.acked && !ch.abandoned {
 			a.markRetransmit(ch, now)
@@ -1401,9 +1489,8 @@ func (a *Association) retransmitTimeout(now time.Time) error {
 	// A FORWARD TSN the peer has not acted on goes again.
 	a.forwardDue = true
 	a.advanceForwardTSN()
-	a.t3 = now.Add(a.rto)
 	a.flush(now)
-	a.updateT3(now, false)
+	a.updateT3(now, true)
 	a.maybeShutdown(now)
 	return nil
 }
