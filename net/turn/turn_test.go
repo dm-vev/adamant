@@ -20,6 +20,8 @@ type fakeServer struct {
 	out      [][]byte
 	sent     []string
 	refreshN int
+	// permissions counts the CreatePermission requests granted by peer.
+	permissions map[netip.Addr]int
 }
 
 var (
@@ -80,6 +82,12 @@ func (s *fakeServer) handle(b []byte) {
 			b.AddUint32(attrLifetime, 600)
 		}, true)
 	case methodCreatePermission:
+		v, _ := m.Get(attrXORPeerAddress)
+		peer, _ := decodeXORAddress(v, m.Transaction)
+		if s.permissions == nil {
+			s.permissions = make(map[netip.Addr]int)
+		}
+		s.permissions[peer.Addr()]++
 		reply(classSuccess, func(*stun.Builder) {}, true)
 	case methodRefresh:
 		if s.refreshN++; s.refreshN == 1 {
@@ -166,6 +174,110 @@ func TestAllocation(t *testing.T) {
 	}
 	if !c.Permitted(peerAddr.Addr(), later.Add(3*time.Minute)) {
 		t.Fatal("permission not renewed")
+	}
+}
+
+// allocate returns a client allocated on s at now, and the datagrams it
+// sends the server.
+func allocate(t *testing.T, s *fakeServer, now time.Time) (*Client, *[][]byte) {
+	toServer := new([][]byte)
+	c := New(Config{Server: serverAddr, Username: "user", Password: "pass"}, func(b []byte, _ netip.AddrPort) {
+		*toServer = append(*toServer, append([]byte(nil), b...))
+	})
+	c.Start(now)
+	exchange(t, s, c, toServer, now)
+	if !c.Allocated() {
+		t.Fatalf("not allocated: %v", c.Err())
+	}
+	return c, toServer
+}
+
+// run handles the deadlines of the client and exchanges what it sends
+// with s until past end.
+func run(t *testing.T, s *fakeServer, c *Client, toServer *[][]byte, end time.Time) {
+	for at := c.Deadline(); !at.After(end); at = c.Deadline() {
+		c.HandleTimeout(at)
+		exchange(t, s, c, toServer, at)
+	}
+}
+
+// TestPermissionReleased renews the permission of a peer while it is
+// wanted and lets that of a released one lapse on the server.
+func TestPermissionReleased(t *testing.T) {
+	s := &fakeServer{t: t, nonce: "nonce-1"}
+	now := time.Unix(1000, 0)
+	c, toServer := allocate(t, s, now)
+	kept, released := netip.MustParseAddr("192.0.2.9"), netip.MustParseAddr("192.0.2.10")
+	c.Permit(kept, now)
+	c.Permit(released, now)
+	exchange(t, s, c, toServer, now)
+	c.Release(released)
+	later := now.Add(2 * permitLifetime)
+	run(t, s, c, toServer, later)
+	if !c.Permitted(kept, later) || s.permissions[kept] < 3 {
+		t.Fatalf("permission of a wanted peer not renewed: %d requests", s.permissions[kept])
+	}
+	if c.Permitted(released, now.Add(permitLifetime)) || s.permissions[released] != 1 {
+		t.Fatalf("permission of a released peer renewed: %d requests", s.permissions[released])
+	}
+	// One wanted again is asked for anew.
+	c.Permit(released, later)
+	exchange(t, s, c, toServer, later)
+	if !c.Permitted(released, later) {
+		t.Fatal("permission of a peer wanted again not granted")
+	}
+}
+
+// TestPermitBound grants permissions to as many peers as a listener may
+// ask for, 256 connections opening with 8 addresses each and as many
+// open, and refuses those past the bound until one is released.
+func TestPermitBound(t *testing.T) {
+	s := &fakeServer{t: t, nonce: "nonce-1"}
+	now := time.Unix(1000, 0)
+	c, toServer := allocate(t, s, now)
+	const bound = 4096
+	peer := func(i int) netip.Addr { return netip.AddrFrom4([4]byte{10, 0, byte(i >> 8), byte(i)}) }
+	for i := range bound + 1 {
+		c.Permit(peer(i), now)
+	}
+	exchange(t, s, c, toServer, now)
+	for i := range bound {
+		if !c.Permitted(peer(i), now) {
+			t.Fatalf("peer %d of %d not permitted", i, bound)
+		}
+	}
+	if c.Permitted(peer(bound), now) {
+		t.Fatal("peer past the bound permitted")
+	}
+	c.Release(peer(0))
+	c.Permit(peer(bound), now)
+	exchange(t, s, c, toServer, now)
+	if !c.Permitted(peer(bound), now) {
+		t.Fatal("peer not permitted in the room of a released one")
+	}
+}
+
+// TestPermitBeforeAllocation asks for the permissions wanted before the
+// allocation was made once it is, but for those released since.
+func TestPermitBeforeAllocation(t *testing.T) {
+	s := &fakeServer{t: t, nonce: "nonce-1"}
+	var toServer [][]byte
+	c := New(Config{Server: serverAddr, Username: "user", Password: "pass"}, func(b []byte, _ netip.AddrPort) {
+		toServer = append(toServer, append([]byte(nil), b...))
+	})
+	now := time.Unix(1000, 0)
+	early, allocating, released := netip.MustParseAddr("192.0.2.9"), netip.MustParseAddr("192.0.2.10"), netip.MustParseAddr("192.0.2.11")
+	c.Permit(early, now)
+	c.Permit(released, now)
+	c.Start(now)
+	c.Permit(allocating, now)
+	c.Release(released)
+	exchange(t, s, c, &toServer, now)
+	if !c.Permitted(early, now) || !c.Permitted(allocating, now) {
+		t.Fatalf("permitted before the allocation %v, while it was made %v", c.Permitted(early, now), c.Permitted(allocating, now))
+	}
+	if s.permissions[released] != 0 {
+		t.Fatal("permission released before the allocation asked for")
 	}
 }
 

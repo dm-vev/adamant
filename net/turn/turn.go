@@ -113,6 +113,8 @@ type Client struct {
 	permits map[netip.Addr]time.Time
 	// asked holds the peer addresses a CreatePermission is out for.
 	asked map[netip.Addr]bool
+	// wanted holds the peer addresses whose permissions are kept alive.
+	wanted map[netip.Addr]bool
 
 	msg stun.Message
 }
@@ -135,7 +137,7 @@ const (
 )
 
 // permitLifetime is how long a permission lasts on the server, and
-// permitRefresh how long before that the client renews one in use.
+// permitRefresh how long before that the client renews one wanted.
 const (
 	permitLifetime = 5 * time.Minute
 	permitRefresh  = time.Minute
@@ -149,6 +151,7 @@ func New(cfg Config, send func(b []byte, to netip.AddrPort)) *Client {
 		pending: make(map[[12]byte]*transaction),
 		permits: make(map[netip.Addr]time.Time),
 		asked:   make(map[netip.Addr]bool),
+		wanted:  make(map[netip.Addr]bool),
 	}
 }
 
@@ -179,24 +182,37 @@ func (c *Client) Err() error { return c.err }
 func (c *Client) Server() netip.AddrPort { return c.cfg.Server }
 
 // Permit lets peer send to the client through the relay, and the client
-// send to it. Permissions are per IP address and kept alive while used.
+// send to it, until Release. Permissions are per IP address, asked for
+// once the allocation is made and renewed while wanted.
 func (c *Client) Permit(peer netip.Addr, now time.Time) {
 	peer = peer.Unmap()
+	if !c.wanted[peer] && len(c.wanted) >= maxPermits {
+		return
+	}
+	c.wanted[peer] = true
+	c.ask(peer, now)
+}
+
+// Release stops renewing the permission of peer, which lapses on the
+// server by itself.
+func (c *Client) Release(peer netip.Addr) { delete(c.wanted, peer.Unmap()) }
+
+// maxPermits bounds the peers of an allocation: the owner bounds what it
+// asks for well below.
+const maxPermits = 4096
+
+// ask asks the server for the permission of a peer unless one is out or
+// lasts past the time of its renewal.
+func (c *Client) ask(peer netip.Addr, now time.Time) {
 	if c.state != stateAllocated || c.asked[peer] {
 		return
 	}
 	if until, ok := c.permits[peer]; ok && now.Add(permitRefresh).Before(until) {
 		return
 	}
-	if len(c.asked)+len(c.permits) >= maxPermits {
-		return
-	}
 	c.asked[peer] = true
 	c.request(methodCreatePermission, peer, now)
 }
-
-// maxPermits bounds the peers of an allocation.
-const maxPermits = 256
 
 // Permitted reports whether peer may send through the relay.
 func (c *Client) Permitted(peer netip.Addr, now time.Time) bool {
@@ -279,6 +295,9 @@ func (c *Client) succeeded(t *transaction, now time.Time) {
 		}
 		c.state = stateAllocated
 		c.expires = now.Add(c.lifetime(m))
+		for peer := range c.wanted {
+			c.ask(peer, now)
+		}
 	case methodRefresh:
 		c.expires = now.Add(c.lifetime(m))
 	case methodCreatePermission:
@@ -397,8 +416,10 @@ func (c *Client) Deadline() time.Time {
 	}
 	if c.state == stateAllocated {
 		earlier(c.refreshAt())
-		for _, until := range c.permits {
-			earlier(until.Add(-permitRefresh))
+		for peer, until := range c.permits {
+			if c.wanted[peer] {
+				earlier(until.Add(-permitRefresh))
+			}
 		}
 	}
 	return d
@@ -417,8 +438,8 @@ func (cfg Config) lifetimeOr(d time.Duration) time.Duration {
 	return d
 }
 
-// HandleTimeout retransmits requests, refreshes the allocation and renews
-// the permissions due.
+// HandleTimeout retransmits requests, refreshes the allocation, renews the
+// permissions wanted that are due and forgets those that lapsed.
 func (c *Client) HandleTimeout(now time.Time) {
 	for tx, t := range c.pending {
 		if now.Before(t.next) {
@@ -448,10 +469,10 @@ func (c *Client) HandleTimeout(now time.Time) {
 	for peer, until := range c.permits {
 		if !now.Before(until) {
 			delete(c.permits, peer)
-		} else if !now.Before(until.Add(-permitRefresh)) && !c.asked[peer] {
-			c.asked[peer] = true
-			c.request(methodCreatePermission, peer, now)
 		}
+	}
+	for peer := range c.wanted {
+		c.ask(peer, now)
 	}
 }
 
