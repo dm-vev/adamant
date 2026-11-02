@@ -715,9 +715,12 @@ func TestMessageGivenUpPartlySentIsSkipped(t *testing.T) {
 	if err := a.assoc.Send(2, PPIDBinary, []byte("next"), SendOptions{}, n.now); err != nil {
 		t.Fatal(err)
 	}
-	n.run(time.Minute, func() bool { return len(b.received) == 11 })
+	n.run(time.Minute, func() bool { return len(b.received) == 11 && a.assoc.Buffered() == 0 })
 	if len(b.received) != 11 || string(b.received[10].data) != "next" {
 		t.Fatalf("delivered %d messages, the last of %d bytes; want 11, the last the one after the message given up", len(b.received), len(b.received[len(b.received)-1].data))
+	}
+	if a.assoc.Buffered() != 0 {
+		t.Fatalf("%d bytes buffered once everything was acknowledged or given up", a.assoc.Buffered())
 	}
 }
 

@@ -60,6 +60,7 @@ func (n *network) carry(to int, b []byte) {
 	if len(b) > n.max {
 		n.t.Errorf("packet of %d bytes over the limit of %d", len(b), n.max)
 	}
+	n.checkFlags(to, b)
 	if n.drop != nil && n.drop(to, b) {
 		return
 	}
@@ -72,6 +73,19 @@ func (n *network) carry(to int, b []byte) {
 	}
 	for range copies {
 		n.peers[to].inbox = append(n.peers[to].inbox, bytes.Clone(b))
+	}
+}
+
+// checkFlags checks the chunk flags of a packet: none but those of DATA,
+// and the T bit of an ABORT or SHUTDOWN COMPLETE that reflects the tag of
+// the peer (RFC 9260 section 3.2).
+func (n *network) checkFlags(to int, b []byte) {
+	h, chunks, _ := parsePacket(b, nil)
+	for _, c := range chunks {
+		reflected := (c.typ == chunkAbort || c.typ == chunkShutdownComplete) && c.flags == 1 && h.tag == n.peers[to].assoc.peerTag
+		if c.typ != chunkData && c.flags != 0 && !reflected {
+			n.t.Errorf("chunk %d sent with flags %#x", c.typ, c.flags)
+		}
 	}
 }
 
