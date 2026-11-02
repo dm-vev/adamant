@@ -594,3 +594,57 @@ func TestPartialReliabilityNeedsPeerSupport(t *testing.T) {
 		t.Fatalf("%d bytes buffered after the peer acknowledged the message", a.Buffered())
 	}
 }
+
+// resetResponses returns the sequence numbers and results of the stream
+// reset responses of a packet.
+func resetResponses(p []byte) [][2]uint32 {
+	var responses [][2]uint32
+	for _, c := range packetChunks(p) {
+		params, _ := parseParams(c.value)
+		for _, param := range params {
+			if c.typ == chunkReconfig && param.typ == paramReconfigResponse {
+				responses = append(responses, [2]uint32{binary.BigEndian.Uint32(param.value), binary.BigEndian.Uint32(param.value[4:])})
+			}
+		}
+	}
+	return responses
+}
+
+// outgoingReset returns an Outgoing SSN Reset Request parameter.
+func outgoingReset(seq, last uint32, streams ...uint16) []byte {
+	v := binary.BigEndian.AppendUint32(nil, seq)
+	v = binary.BigEndian.AppendUint32(v, 0)
+	v = binary.BigEndian.AppendUint32(v, last)
+	for _, s := range streams {
+		v = binary.BigEndian.AppendUint16(v, s)
+	}
+	return appendParam(nil, paramOutgoingReset, v)
+}
+
+// TestIncomingResetTakesSequenceNumber covers a peer that asks this side
+// to reset the streams it sends on, which this side denies, then resets
+// its own: every request takes the next sequence number (RFC 6525 section
+// 4.1), and one sent again gets the answer it got (section 5.2.1).
+func TestIncomingResetTakesSequenceNumber(t *testing.T) {
+	var resets [][]uint16
+	n := newNetwork(t, 40, Config{})
+	n.peers[1].assoc.cfg.OnStreamReset = func(s []uint16) { resets = append(resets, s) }
+	n.open(t, false)
+	b := n.peers[1].assoc
+	var responses [][2]uint32
+	b.send = func(p []byte) { responses = append(responses, resetResponses(p)...) }
+	seq := n.peers[0].assoc.initialTSN
+	incoming := appendParam(nil, paramIncomingReset, binary.BigEndian.AppendUint16(binary.BigEndian.AppendUint32(nil, seq), 1))
+	for range 2 {
+		if err := inject(b, n.now, chunkReconfig, 0, incoming); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := inject(b, n.now, chunkReconfig, 0, outgoingReset(seq+1, b.peerCum, 1)); err != nil {
+		t.Fatal(err)
+	}
+	want := [][2]uint32{{seq, resultDenied}, {seq, resultDenied}, {seq + 1, resultPerformed}}
+	if !slices.Equal(responses, want) || len(resets) != 1 {
+		t.Fatalf("responses %v, %d resets; want %v and one", responses, len(resets), want)
+	}
+}

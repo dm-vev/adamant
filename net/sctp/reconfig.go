@@ -34,8 +34,10 @@ type resetState struct {
 	outLast uint32
 	timer   time.Time
 
-	// nextIn is the sequence number of the next request of the peer.
-	nextIn uint32
+	// nextIn is the sequence number of the next request of the peer, and
+	// lastResult the result of the request before it.
+	nextIn     uint32
+	lastResult uint32
 	// waiting is a request of the peer waiting for the data sent before
 	// it.
 	waiting *incomingReset
@@ -126,11 +128,7 @@ func (a *Association) handleReconfig(c chunk) {
 		case paramOutgoingReset:
 			a.handleOutgoingReset(p.value)
 		case paramIncomingReset:
-			if len(p.value) >= 4 {
-				// This side resets its streams when it closes channels,
-				// not when asked to.
-				a.queueResetResponse(binary.BigEndian.Uint32(p.value), resultDenied)
-			}
+			a.handleIncomingReset(p.value)
 		case paramReconfigResponse:
 			a.handleResetResponse(p.value)
 		}
@@ -144,29 +142,53 @@ func (a *Association) handleOutgoingReset(v []byte) {
 	if len(v) < 12 || (len(v)-12)%2 != 0 {
 		return
 	}
-	r := &a.reset
 	seq := binary.BigEndian.Uint32(v)
-	last := binary.BigEndian.Uint32(v[8:])
-	switch {
-	case seq == r.nextIn-1:
-		// A retransmission of the request performed last.
-		a.queueResetResponse(seq, resultPerformed)
-		return
-	case seq != r.nextIn:
-		a.queueResetResponse(seq, resultBadSequence)
-		return
-	case r.waiting != nil:
-		a.queueResetResponse(seq, resultInProgress)
+	if !a.newRequest(seq) {
 		return
 	}
 	var streams []uint16
 	for off := 12; off < len(v); off += 2 {
 		streams = append(streams, binary.BigEndian.Uint16(v[off:]))
 	}
-	r.waiting = &incomingReset{seq: seq, last: last, streams: streams}
+	a.reset.waiting = &incomingReset{seq: seq, last: binary.BigEndian.Uint32(v[8:]), streams: streams}
 	if !a.performPendingReset() {
 		a.queueResetResponse(seq, resultInProgress)
 	}
+}
+
+// handleIncomingReset denies the peer's request to reset the streams this
+// side sends on: this side resets its streams when it closes channels, not
+// when asked to. The request takes a sequence number like any other (RFC
+// 6525 section 4.1).
+func (a *Association) handleIncomingReset(v []byte) {
+	if len(v) < 4 {
+		return
+	}
+	seq := binary.BigEndian.Uint32(v)
+	if !a.newRequest(seq) {
+		return
+	}
+	a.reset.nextIn++
+	a.reset.lastResult = resultDenied
+	a.queueResetResponse(seq, resultDenied)
+}
+
+// newRequest reports whether seq is that of the next request of the peer,
+// and answers the request if not: the request before it, sent again, gets
+// the answer it got (RFC 6525 section 5.2.1).
+func (a *Association) newRequest(seq uint32) bool {
+	r := &a.reset
+	switch {
+	case seq == r.nextIn-1:
+		a.queueResetResponse(seq, r.lastResult)
+	case seq != r.nextIn:
+		a.queueResetResponse(seq, resultBadSequence)
+	case r.waiting != nil:
+		a.queueResetResponse(seq, resultInProgress)
+	default:
+		return true
+	}
+	return false
 }
 
 // performPendingReset applies the peer's waiting reset once the data sent
@@ -178,6 +200,7 @@ func (a *Association) performPendingReset() bool {
 	}
 	a.reset.waiting = nil
 	a.reset.nextIn++
+	a.reset.lastResult = resultPerformed
 	streams := w.streams
 	if len(streams) == 0 {
 		// No stream named: every stream is reset.
