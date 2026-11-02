@@ -135,6 +135,11 @@ func TestAlloc(t *testing.T) {
 	if !r.Alloc(1<<40) || !r.Alloc(1<<40) || r.Err() != nil {
 		t.Fatalf("charged to no bound: %v", r.Err())
 	}
+	r = NewReader(nil)
+	r.MaxAlloc = 1
+	if r.Alloc(2) {
+		t.Fatal("charged 2 to a bound of 1")
+	}
 }
 
 // TestSlice makes the slice of a list within the bounds of a Reader, with

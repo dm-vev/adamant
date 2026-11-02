@@ -349,7 +349,13 @@ func TestAllocCharged(t *testing.T) {
 		}
 		w.Uint8(tagEnd)
 	})
+	// An array of 300 zeros, longer than a Go array is made for.
+	var array wire.Writer
+	Network.writeInt(&array, 300)
+	array.Bytes(make([]byte, 300))
 	for name, data := range map[string][]byte{
+		"int arrays":        lists(2, tagIntArray, array.B),
+		"long arrays":       lists(1, tagLongArray, array.B),
 		"empty compounds":   lists(64, tagCompound, []byte{tagEnd}),
 		"compounds of ints": lists(8, tagCompound, []byte{tagInt, 1, 'i', 0x80, 0x08, tagEnd}),
 		"distinct keys":     keys,
