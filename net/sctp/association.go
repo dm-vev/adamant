@@ -810,7 +810,10 @@ func (a *Association) duplicate(tsn uint32) {
 }
 
 // receive delivers a fragment or holds it until its message completes and,
-// for an ordered stream, its turn comes.
+// for an ordered stream, its turn comes. Only the message of the fragment
+// can complete, and only the message after one delivered can take its
+// turn: the work is that of the messages delivered, however many
+// fragments are held.
 func (a *Association) receive(f inFragment) {
 	whole := f.flags&(flagBegin|flagEnd) == flagBegin|flagEnd
 	if f.flags&flagUnordered != 0 {
@@ -818,10 +821,9 @@ func (a *Association) receive(f inFragment) {
 			a.deliver(f.stream, f.ppid, f.data)
 			return
 		}
-		f.data = bytes.Clone(f.data)
-		a.held += len(f.data)
-		a.unordered = insertFragment(a.unordered, f)
-		a.assembleUnordered()
+		var i int
+		a.unordered, i = a.hold(a.unordered, f)
+		a.assembleUnordered(i)
 		return
 	}
 	s := a.streams[f.stream]
@@ -832,75 +834,100 @@ func (a *Association) receive(f inFragment) {
 	if whole && f.ssn == s.nextSSN {
 		s.nextSSN++
 		a.deliver(f.stream, f.ppid, f.data)
-	} else {
-		if ssnLess(f.ssn, s.nextSSN) {
-			return
-		}
-		f.data = bytes.Clone(f.data)
-		a.held += len(f.data)
-		s.held = insertFragment(s.held, f)
+		// The fragments of the messages after it follow it.
+		i, _ := slices.BinarySearchFunc(s.held, f.tsn, compareFragment)
+		a.assembleOrdered(f.stream, s, i)
+		return
 	}
-	a.assembleOrdered(f.stream, s)
+	if ssnLess(f.ssn, s.nextSSN) {
+		return
+	}
+	var i int
+	s.held, i = a.hold(s.held, f)
+	if f.ssn != s.nextSSN {
+		return
+	}
+	if start, _, ok := heldMessage(s.held, i); ok {
+		a.assembleOrdered(f.stream, s, start)
+	}
 }
 
-func insertFragment(list []inFragment, f inFragment) []inFragment {
-	i, _ := slices.BinarySearchFunc(list, f.tsn, func(x inFragment, t uint32) int { return compareTSN(x.tsn, t) })
-	return slices.Insert(list, i, f)
+// hold keeps a copy of a fragment in a list in TSN order, and returns the
+// list and the index of the fragment in it.
+func (a *Association) hold(list []inFragment, f inFragment) ([]inFragment, int) {
+	f.data = bytes.Clone(f.data)
+	a.held += len(f.data)
+	i, _ := slices.BinarySearchFunc(list, f.tsn, compareFragment)
+	return slices.Insert(list, i, f), i
 }
 
-// assembleOrdered delivers the held messages of a stream whose turn came.
-func (a *Association) assembleOrdered(stream uint16, s *inStream) {
-	for len(s.held) > 0 {
-		start := -1
-		for i, f := range s.held {
-			if f.ssn == s.nextSSN && f.flags&flagBegin != 0 {
-				start = i
-				break
-			}
-		}
-		if start < 0 {
-			return
-		}
-		end, ok := messageEnd(s.held, start)
+func compareFragment(f inFragment, tsn uint32) int { return compareTSN(f.tsn, tsn) }
+
+// assembleOrdered delivers the held messages of a stream whose turn came,
+// the first starting at s.held[i]. A sender assigns the TSNs of a stream in
+// the order of its SSNs, so each message follows the one before.
+func (a *Association) assembleOrdered(stream uint16, s *inStream, i int) {
+	for i < len(s.held) && s.held[i].ssn == s.nextSSN && s.held[i].flags&flagBegin != 0 {
+		end, ok := messageEnd(s.held, i)
 		if !ok {
 			return
 		}
-		a.deliverFragments(stream, s.held[start:end+1])
-		s.held = slices.Delete(s.held, start, end+1)
+		a.deliverFragments(stream, s.held[i:end+1])
+		s.held = slices.Delete(s.held, i, end+1)
 		s.nextSSN++
 	}
 }
 
-// assembleUnordered delivers the unordered messages whose fragments all
-// arrived.
-func (a *Association) assembleUnordered() {
-	for i := 0; i < len(a.unordered); i++ {
-		if a.unordered[i].flags&flagBegin == 0 {
-			continue
-		}
-		end, ok := messageEnd(a.unordered, i)
-		if !ok {
-			continue
-		}
-		a.deliverFragments(a.unordered[i].stream, a.unordered[i:end+1])
-		a.unordered = slices.Delete(a.unordered, i, end+1)
-		i--
+// assembleUnordered delivers the unordered message of the fragment at index
+// i, if all its fragments arrived.
+func (a *Association) assembleUnordered(i int) {
+	start, end, ok := heldMessage(a.unordered, i)
+	if !ok {
+		return
 	}
+	a.deliverFragments(a.unordered[start].stream, a.unordered[start:end+1])
+	a.unordered = slices.Delete(a.unordered, start, end+1)
 }
 
-// messageEnd returns the index of the last fragment of the message that
-// starts at list[start], if all its fragments are held. The fragments of a
-// message have consecutive TSNs (RFC 9260 section 6.9).
-func messageEnd(list []inFragment, start int) (int, bool) {
-	for i := start; i < len(list); i++ {
-		if i > start && (list[i].tsn != list[i-1].tsn+1 || list[i].flags&flagBegin != 0 || list[i].stream != list[start].stream) {
+// heldMessage returns the bounds of the message of the fragment list[i],
+// if all its fragments are held. The end is looked for first: a fragment
+// that arrives in order is the last held, and ends no message unless its
+// own.
+func heldMessage(list []inFragment, i int) (start, end int, ok bool) {
+	if end, ok = messageEnd(list, i); ok {
+		start, ok = messageStart(list, i)
+	}
+	return start, end, ok
+}
+
+// messageEnd returns the index of the last fragment of the message of
+// list[i], if the fragments up to it are held. The fragments of a message
+// have consecutive TSNs (RFC 9260 section 6.9).
+func messageEnd(list []inFragment, i int) (int, bool) {
+	for list[i].flags&flagEnd == 0 {
+		if i+1 == len(list) || list[i+1].flags&flagBegin != 0 || !adjacent(list[i], list[i+1]) {
 			return 0, false
 		}
-		if list[i].flags&flagEnd != 0 {
-			return i, true
-		}
+		i++
 	}
-	return 0, false
+	return i, true
+}
+
+// messageStart returns the index of the first fragment of the message of
+// list[i], if the fragments from it are held.
+func messageStart(list []inFragment, i int) (int, bool) {
+	for list[i].flags&flagBegin == 0 {
+		if i == 0 || list[i-1].flags&flagEnd != 0 || !adjacent(list[i-1], list[i]) {
+			return 0, false
+		}
+		i--
+	}
+	return i, true
+}
+
+// adjacent reports whether g may follow f in a message.
+func adjacent(f, g inFragment) bool {
+	return g.tsn == f.tsn+1 && g.stream == f.stream
 }
 
 func (a *Association) deliverFragments(stream uint16, frags []inFragment) {
@@ -947,7 +974,7 @@ func (a *Association) handleForwardTSN(c chunk) {
 		if !ssnLess(ssn, s.nextSSN) {
 			s.nextSSN = ssn + 1
 		}
-		a.assembleOrdered(stream, s)
+		a.assembleOrdered(stream, s, 0)
 	}
 	a.performPendingReset()
 }

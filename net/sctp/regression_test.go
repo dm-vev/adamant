@@ -497,3 +497,42 @@ func TestFastRetransmitIgnoresFullWindow(t *testing.T) {
 	}
 	t.Fatal("the chunk missed three times did not go again at once")
 }
+
+// TestFragmentFloodTakesLinearTime covers a peer that sends fragments of a
+// byte that complete no message: unordered ones that each begin a message,
+// and ordered ones of a message whose turn has not come. Each costs the
+// same however many are held, rather than a look over all of them.
+func TestFragmentFloodTakesLinearTime(t *testing.T) {
+	for _, flags := range []byte{flagBegin | flagUnordered, flagBegin} {
+		n := newNetwork(t, 39, Config{ReceiveWindow: 4 << 20})
+		n.open(t, false)
+		b := n.peers[1].assoc
+		b.send = func([]byte) {}
+		const packets, chunks = 3000, 50
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			tsn := b.peerCum + 1
+			for range packets {
+				var p packetBuilder
+				p.start(header{srcPort: 5000, dstPort: 5000, tag: b.localTag})
+				for range chunks {
+					// An ordered fragment has SSN 1, and SSN 0 never comes.
+					v := dataValue(tsn, []byte{1})
+					binary.BigEndian.PutUint16(v[6:], 1)
+					p.addChunk(chunkData, flags, v)
+					tsn++
+				}
+				_ = b.HandlePacket(p.finish(), n.now)
+			}
+		}()
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("flags %#x: %d packets of %d fragments not handled in 5 s", flags, packets, chunks)
+		}
+		if b.held != packets*chunks {
+			t.Fatalf("flags %#x: holding %d bytes, want %d", flags, b.held, packets*chunks)
+		}
+	}
+}
