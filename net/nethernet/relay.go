@@ -29,6 +29,9 @@ type relay struct {
 	ready  chan struct{}
 	signal sync.Once
 	closed bool
+	// failed is closed once the allocation failed.
+	failed   chan struct{}
+	failOnce sync.Once
 	// held counts the connections holding the permission of each peer
 	// address, and holds holds the addresses each connection holds.
 	held  map[netip.Addr]int
@@ -50,8 +53,14 @@ const keepaliveInterval = 15 * time.Second
 // it, with the address the TURN server saw the listener at, in the answers
 // to offers that come over a signaling service: clients that cannot reach
 // the sockets of the listener connect through it. It returns once the
-// allocation was made, and replaces the relay of an earlier call.
+// allocation was made. The relay of an earlier call that holds its
+// allocation on the same TURN server is kept, with the connections through
+// it, and Relay returns at once; one that failed, as RelayDone tells, or
+// is on another server is replaced.
 func (l *Listener) Relay(ctx context.Context, cfg turn.Config) error {
+	if r := l.relay.Load(); r != nil && r.serves(cfg) {
+		return nil
+	}
 	r := newRelay(l, cfg)
 	if old := l.relay.Swap(r); old != nil {
 		old.close()
@@ -93,12 +102,21 @@ func newRelay(l *Listener, cfg turn.Config) *relay {
 		sock:   l.socks[0],
 		server: cfg.Server,
 		ready:  make(chan struct{}),
+		failed: make(chan struct{}),
 		held:   make(map[netip.Addr]int),
 		holds:  make(map[*Conn][]netip.Addr),
 		peers:  make(map[netip.AddrPort]struct{}),
 	}
 	r.client = turn.New(cfg, func(b []byte, to netip.AddrPort) { _, _ = r.sock.WriteToUDPAddrPort(b, to) })
 	return r
+}
+
+// serves reports whether the relay holds its allocation on the TURN server
+// of cfg.
+func (r *relay) serves(cfg turn.Config) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.server == cfg.Server && r.client.Allocated()
 }
 
 // handle handles a datagram from the TURN server: the data of a peer goes
@@ -232,10 +250,13 @@ func (r *relay) schedule() {
 }
 
 // reschedule arms the timer anew and tells Relay once the allocation was
-// made or failed. r.mu is held.
+// made or failed, and RelayDone once it failed. r.mu is held.
 func (r *relay) reschedule() {
 	if r.client.Allocated() || r.client.Err() != nil {
 		r.signal.Do(func() { close(r.ready) })
+	}
+	if r.client.Err() != nil {
+		r.failOnce.Do(func() { close(r.failed) })
 	}
 	r.schedule()
 }
@@ -268,6 +289,27 @@ func (r *relay) close() {
 	}
 	r.client.Close(time.Now())
 	r.signal.Do(func() { close(r.ready) })
+}
+
+// RelayDone returns a channel closed once the allocation of the current
+// relay failed, nil without a relay. Relay, called again with fresh
+// credentials, makes a new one.
+func (l *Listener) RelayDone() <-chan struct{} {
+	if r := l.relay.Load(); r != nil {
+		return r.failed
+	}
+	return nil
+}
+
+// RelayErr returns why the allocation of the current relay failed, or nil.
+func (l *Listener) RelayErr() error {
+	r := l.relay.Load()
+	if r == nil {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.client.Err()
 }
 
 // Relayed reports whether what goes to a peer goes through the TURN relay
