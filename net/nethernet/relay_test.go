@@ -2,6 +2,8 @@ package nethernet
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha1"
 	"fmt"
 	"maps"
 	"net"
@@ -9,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dm-vev/adamant/net/stun"
 	"github.com/dm-vev/adamant/net/turn"
 )
 
@@ -90,5 +93,56 @@ func TestRelayPermissionsFollowConnections(t *testing.T) {
 	trickle("client", 3, addr(20))
 	if got := held(); len(got) != 0 {
 		t.Fatalf("held once the connections closed %v", got)
+	}
+}
+
+// TestRelayRoutes routes what goes to a peer through the relay once a
+// check that came through it proved the connection, until the connection
+// closes; a check that proves nothing makes no route nor undoes one, and
+// one that came directly makes none.
+func TestRelayRoutes(t *testing.T) {
+	l := listen(t, ListenConfig{AllowAnonymous: true})
+	r := newRelay(l, turn.Config{Server: netip.MustParseAddrPort("127.0.0.1:3478")})
+	l.relay.Store(r)
+	answerSDP, _, err := l.answer(idleOffer(), nil, nil, &signalKey{"client", 1}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	answer, err := parseDescription(answerSDP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(pwd string) []byte {
+		b := stun.NewBuilder(nil, stun.BindingRequest, [12]byte{1})
+		b.AddString(stun.AttrUsername, answer.ufrag+":abcd")
+		b.AddUint64(stun.AttrICEControlling, 1)
+		b.AddIntegrity(hmac.New(sha1.New, []byte(pwd)))
+		b.AddFingerprint()
+		return b.Bytes()
+	}
+	peer, direct := netip.MustParseAddrPort("192.0.2.1:5000"), netip.MustParseAddrPort("192.0.2.2:5000")
+	var msg stun.Message
+	l.dispatch(check("not the password of the connection"), peer, r, &msg)
+	if l.Relayed(peer) {
+		t.Fatal("a check that proved nothing made a route")
+	}
+	l.dispatch(check(answer.pwd), peer, r, &msg)
+	if !l.Relayed(peer) {
+		t.Fatal("a check that proved the connection made no route")
+	}
+	l.dispatch(check("not the password of the connection"), peer, r, &msg)
+	if !l.Relayed(peer) {
+		t.Fatal("a check that proved nothing undid a route")
+	}
+	l.dispatch(check(answer.pwd), direct, nil, &msg)
+	if l.Relayed(direct) {
+		t.Fatal("a check that came directly made a route")
+	}
+	l.mu.Lock()
+	c := l.signals[signalKey{"client", 1}]
+	l.mu.Unlock()
+	c.abort(net.ErrClosed)
+	if l.Relayed(peer) {
+		t.Fatal("the route of a connection that closed kept")
 	}
 }

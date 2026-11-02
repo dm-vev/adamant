@@ -2,6 +2,8 @@ package interop
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha1"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -146,24 +148,24 @@ func (s *turnServer) config(user string) turn.Config {
 }
 
 // relayListener returns a listener with a relay on a TURN server, serving
-// the signaling of the client end returned with the candidates of its
-// sockets taken out of the answers, so that a client reaches it through
-// the relay alone.
-func relayListener(t *testing.T, ctx context.Context, srv *turnServer) (*nethernet.Listener, *memSignaling) {
+// the signaling of the server end returned with the candidates of its
+// sockets taken out of the answers, so that a client on the client end
+// reaches it through the relay alone.
+func relayListener(t *testing.T, ctx context.Context, srv *turnServer) (l *nethernet.Listener, server, client *memSignaling) {
 	t.Helper()
 	l, err := nethernet.ListenConfig{AllowAnonymous: true}.Listen("127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = l.Close() })
-	if err := l.Relay(ctx, srv.config("user")); err != nil {
+	if err = l.Relay(ctx, srv.config("user")); err != nil {
 		t.Fatal(err)
 	}
-	srvSig, cliSig := memSignalingPair()
-	t.Cleanup(func() { close(srvSig.closed) })
-	srvSig.rewrite = onlyRelayCandidates
-	go func() { _ = l.Serve(srvSig) }()
-	return l, cliSig
+	server, client = memSignalingPair()
+	t.Cleanup(func() { close(server.closed) })
+	server.rewrite = onlyRelayCandidates
+	go func() { _ = l.Serve(server) }()
+	return l, server, client
 }
 
 // dialRelayed has a client join a listener over sig, trickling the
@@ -217,9 +219,52 @@ func exchangeRelayed(t *testing.T, client, server *nethernet.Conn) {
 func TestListenerRelay(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	l, sig := relayListener(t, ctx, newTURNServer(t))
+	l, _, sig := relayListener(t, ctx, newTURNServer(t))
 	client, server := dialRelayed(t, ctx, l, sig)
 	exchangeRelayed(t, client, server)
+}
+
+// TestRelayRoutesProvenPeers has a client join through the relay, then a
+// socket at the address the relay permits for the client send junk to the
+// relay: a datagram of no protocol and a check with the ufrag of the
+// server's end of the connection not signed with its password. What goes
+// to the socket goes to it directly, not through the relay, while what
+// goes to the client goes through it.
+func TestRelayRoutesProvenPeers(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	l, srvSig, sig := relayListener(t, ctx, newTURNServer(t))
+	var ufrag string
+	srvSig.rewrite = func(s nethernet.Signal) nethernet.Signal {
+		for line := range strings.Lines(s.Data) {
+			if v, ok := strings.CutPrefix(strings.TrimSpace(line), "a=ice-ufrag:"); ok {
+				ufrag = v
+			}
+		}
+		return onlyRelayCandidates(s)
+	}
+	client, server := dialRelayed(t, ctx, l, sig)
+	relayed := addrPort(client.RemoteAddr())
+
+	junk := listenLoopback(t)
+	check := stun.NewBuilder(nil, stun.BindingRequest, [12]byte{1, 2, 3})
+	check.AddString(stun.AttrUsername, ufrag+":abcd")
+	check.AddUint64(stun.AttrICEControlling, 1)
+	check.AddIntegrity(hmac.New(sha1.New, []byte("not the password of the connection")))
+	check.AddFingerprint()
+	for _, b := range [][]byte{{23, 0xfe, 0xfd, 0, 1, 2, 3}, check.Bytes()} {
+		if _, err := junk.WriteToUDPAddrPort(b, relayed); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The relay hands over what the client sends after the junk.
+	exchangeRelayed(t, client, server)
+	if l.Relayed(addrPort(junk.LocalAddr())) {
+		t.Fatal("junk from a permitted address made a route through the relay")
+	}
+	if !l.Relayed(netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), addrPort(client.LocalAddr()).Port())) {
+		t.Fatal("no route through the relay to the client")
+	}
 }
 
 // strangerOffer returns an anonymous offer of a client that never
@@ -243,7 +288,7 @@ func TestRelayPermissionsOfConnections(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	srv := newTURNServer(t)
-	l, sig := relayListener(t, ctx, srv)
+	l, _, sig := relayListener(t, ctx, srv)
 	stranger := &memSignaling{id: "stranger", in: make(chan nethernet.Signal, 16), out: sig.out, closed: sig.closed}
 	for i := range 300 {
 		_ = stranger.WriteSignal(nethernet.Signal{Type: nethernet.SignalCandidate, ConnectionID: uint64(i),

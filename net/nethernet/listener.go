@@ -829,14 +829,25 @@ func (l *Listener) remove(c *Conn) {
 		delete(l.ufrags, c.ufrag)
 	}
 	l.ufragMu.Unlock()
+	l.forget(c)
+}
+
+// forget forgets the routes of a connection that closed: the addresses it
+// proved, the way back to them through the relay, its offer over a
+// signaling service and the permissions it held. It is called with l.mu
+// held.
+func (l *Listener) forget(c *Conn) {
+	r := l.relay.Load()
 	for _, a := range c.addrs {
-		l.addrs.remove(a, c)
+		if l.addrs.remove(a, c) && r != nil {
+			r.unroute(a)
+		}
 	}
 	c.addrs = nil
 	if l.signals[c.signal] == c {
 		delete(l.signals, c.signal)
 	}
-	if r := l.relay.Load(); r != nil {
+	if r != nil {
 		r.keep(c, netip.Addr{})
 	}
 }
@@ -895,18 +906,19 @@ func (l *Listener) releasePending(c *Conn) {
 }
 
 // bind routes the datagrams from an address the peer proved to its
-// connection.
-func (l *Listener) bind(a netip.AddrPort, c *Conn) {
+// connection, and reports whether they are.
+func (l *Listener) bind(a netip.AddrPort, c *Conn) bool {
 	if l.addrs.get(a) == c {
-		return
+		return true
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if _, ok := l.conns[c]; !ok || len(c.addrs) >= maxPairs {
-		return
+		return false
 	}
 	c.addrs = append(c.addrs, a)
 	l.addrs.set(a, c)
+	return true
 }
 
 // maxPairs bounds the addresses of one connection, as the ICE agent does.
@@ -947,7 +959,7 @@ func (l *Listener) read(sock *net.UDPConn) {
 			}
 			r.heardDirect(addr)
 		}
-		l.dispatch(buf[:n], addr, &msg)
+		l.dispatch(buf[:n], addr, nil, &msg)
 	}
 }
 
@@ -961,8 +973,9 @@ func (l *Listener) datagram(sock *net.UDPConn, b []byte, from netip.AddrPort) {
 }
 
 // dispatch hands a datagram to its connection: a check by the ICE username
-// it carries, anything else by the address it came from.
-func (l *Listener) dispatch(b []byte, from netip.AddrPort, msg *stun.Message) {
+// it carries, anything else by the address it came from. Via is the relay
+// it came through, nil for one that reached the sockets.
+func (l *Listener) dispatch(b []byte, from netip.AddrPort, via *relay, msg *stun.Message) {
 	var c *Conn
 	defer func() {
 		// A panic reading a datagram fails the connection it was for, not
@@ -979,8 +992,8 @@ func (l *Listener) dispatch(b []byte, from netip.AddrPort, msg *stun.Message) {
 		l.ufragMu.RUnlock()
 		if c == nil {
 			droppedDatagrams.Add(dropUnknownUfrag, 1)
-		} else if c.handleDatagram(b, from, time.Now()) {
-			l.bind(from, c)
+		} else {
+			l.check(c, b, from, via)
 		}
 		return
 	}
@@ -989,6 +1002,20 @@ func (l *Listener) dispatch(b []byte, from netip.AddrPort, msg *stun.Message) {
 	} else {
 		droppedDatagrams.Add(dropUnknownAddress, 1)
 	}
+}
+
+// check hands a check to its connection and routes the datagrams from an
+// address it proved to it. A check that came through the relay via is
+// answered through it, and what goes to the address goes on through it
+// once the check proved the connection.
+func (l *Listener) check(c *Conn, b []byte, from netip.AddrPort, via *relay) {
+	routed, proved := via != nil && via.route(from), false
+	defer func() {
+		if routed && !proved {
+			via.unroute(from)
+		}
+	}()
+	proved = c.handleDatagram(b, from, time.Now()) && l.bind(from, c)
 }
 
 // addrTable maps the addresses peers proved to their connections, in
@@ -1027,12 +1054,15 @@ func (t *addrTable) set(a netip.AddrPort, c *Conn) {
 	s.m[a] = c
 }
 
-// remove forgets an address unless another connection took it since.
-func (t *addrTable) remove(a netip.AddrPort, c *Conn) {
+// remove forgets an address unless another connection took it since, and
+// reports whether it did.
+func (t *addrTable) remove(a netip.AddrPort, c *Conn) bool {
 	s := &t.stripes[t.stripe(a)]
 	s.Lock()
 	defer s.Unlock()
-	if s.m[a] == c {
-		delete(s.m, a)
+	if s.m[a] != c {
+		return false
 	}
+	delete(s.m, a)
+	return true
 }

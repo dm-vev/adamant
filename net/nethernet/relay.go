@@ -34,8 +34,10 @@ type relay struct {
 	held  map[netip.Addr]int
 	holds map[*Conn][]netip.Addr
 
-	// peers holds the addresses heard through the relay last, not
-	// directly.
+	// peers holds the addresses that proved their connections with a check
+	// through the relay, and were not heard directly since: what goes to
+	// them goes through the relay. Each is of a connection, which forgets
+	// it as it closes.
 	peersMu sync.RWMutex
 	peers   map[netip.AddrPort]struct{}
 }
@@ -43,9 +45,6 @@ type relay struct {
 // keepaliveInterval paces the datagrams that keep the mapping of a NAT in
 // front of the listener to the TURN server.
 const keepaliveInterval = 15 * time.Second
-
-// maxRelayPeers bounds the peers a relay keeps the path of.
-const maxRelayPeers = 4096
 
 // Relay allocates a relayed address on the TURN server of cfg and announces
 // it, with the address the TURN server saw the listener at, in the answers
@@ -109,33 +108,36 @@ func (r *relay) handle(b []byte, msg *stun.Message) {
 	peer, data, ok := r.client.HandleDatagram(b, time.Now())
 	r.reschedule()
 	r.mu.Unlock()
-	if !ok {
-		return
+	if ok {
+		relayedDatagrams.Inc()
+		r.l.dispatch(data, peer, r, msg)
 	}
-	relayedDatagrams.Inc()
-	r.peersMu.RLock()
-	_, known := r.peers[peer]
-	r.peersMu.RUnlock()
-	if !known {
-		r.peersMu.Lock()
-		if len(r.peers) < maxRelayPeers {
-			r.peers[peer] = struct{}{}
-		}
-		r.peersMu.Unlock()
+}
+
+// route has what goes to a peer go through the relay, and reports whether
+// it did not before.
+func (r *relay) route(peer netip.AddrPort) bool {
+	r.peersMu.Lock()
+	defer r.peersMu.Unlock()
+	if _, ok := r.peers[peer]; ok {
+		return false
 	}
-	r.l.dispatch(data, peer, msg)
+	r.peers[peer] = struct{}{}
+	return true
+}
+
+// unroute has what goes to a peer go to it directly.
+func (r *relay) unroute(peer netip.AddrPort) {
+	r.peersMu.Lock()
+	delete(r.peers, peer)
+	r.peersMu.Unlock()
 }
 
 // heardDirect notes that a peer reached the sockets themselves: what goes
 // to it goes there again.
 func (r *relay) heardDirect(peer netip.AddrPort) {
-	r.peersMu.RLock()
-	_, known := r.peers[peer]
-	r.peersMu.RUnlock()
-	if known {
-		r.peersMu.Lock()
-		delete(r.peers, peer)
-		r.peersMu.Unlock()
+	if r.via(peer) {
+		r.unroute(peer)
 	}
 }
 
