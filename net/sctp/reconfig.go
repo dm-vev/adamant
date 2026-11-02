@@ -139,7 +139,7 @@ func (a *Association) handleReconfig(c chunk) {
 // reset waits for the data the peer sent before it; a request seen before
 // is answered again without being applied twice.
 func (a *Association) handleOutgoingReset(v []byte) {
-	if len(v) < 12 || (len(v)-12)%2 != 0 {
+	if len(v) < 12 || len(v)%2 != 0 {
 		return
 	}
 	seq := binary.BigEndian.Uint32(v)
@@ -231,26 +231,36 @@ func (a *Association) performPendingReset() bool {
 	return true
 }
 
-// handleResetResponse handles the peer's answer to this side's request.
+// handleResetResponse handles the peer's answer to this side's request:
+// one in progress waits for the timer to send the request again, and any
+// other ends it, a success with the streams reset.
 func (a *Association) handleResetResponse(v []byte) {
 	r := &a.reset
-	if len(v) < 8 || r.out == nil || !r.outSent || binary.BigEndian.Uint32(v) != r.outSeq {
+	if !r.answered(v) {
 		return
 	}
-	switch binary.BigEndian.Uint32(v[4:]) {
-	case resultInProgress:
-		// The timer sends the request again.
+	result := binary.BigEndian.Uint32(v[4:])
+	if result == resultInProgress {
 		return
-	case resultPerformed, resultNothingToDo:
-		streams := r.out
-		for _, s := range streams {
-			delete(a.ssn, s)
-		}
-		r.out, r.outSent, r.timer = nil, false, time.Time{}
-		if a.cfg.OnResetDone != nil {
-			a.cfg.OnResetDone(streams)
-		}
-	default:
-		r.out, r.outSent, r.timer = nil, false, time.Time{}
+	}
+	streams := r.out
+	r.out, r.timer = nil, time.Time{}
+	if result == resultPerformed || result == resultNothingToDo {
+		a.resetDone(streams)
+	}
+}
+
+// answered reports whether a response answers this side's request sent.
+func (r *resetState) answered(v []byte) bool {
+	return len(v) >= 8 && r.out != nil && r.outSent && binary.BigEndian.Uint32(v) == r.outSeq
+}
+
+// resetDone starts the streams of this side's reset over at SSN 0.
+func (a *Association) resetDone(streams []uint16) {
+	for _, s := range streams {
+		delete(a.ssn, s)
+	}
+	if a.cfg.OnResetDone != nil {
+		a.cfg.OnResetDone(streams)
 	}
 }

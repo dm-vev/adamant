@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"hash/crc32"
+	"slices"
 )
 
 // Chunk types.
@@ -211,27 +212,32 @@ func parseInit(v []byte) (initChunk, bool) {
 		return initChunk{}, false
 	}
 	for _, p := range params {
-		if len(c.params) < maxPeerFeatures {
-			c.params = append(c.params, p.typ)
-		}
-		switch p.typ {
-		case paramForwardTSN:
-			c.forwardTSN = true
-		case paramSupportedExtension:
-			c.extensions = append(c.extensions, p.value[:min(len(p.value), maxPeerFeatures)]...)
-			for _, t := range p.value {
-				switch t {
-				case chunkForwardTSN:
-					c.forwardTSN = true
-				case chunkReconfig:
-					c.reconfig = true
-				}
-			}
-		case paramStateCookie:
-			c.cookie = p.value
-		}
+		c.addParam(p)
 	}
 	return c, true
+}
+
+// addParam takes a parameter of an INIT or INIT ACK: its type, what it
+// offers, the cookie.
+func (c *initChunk) addParam(p param) {
+	if len(c.params) < maxPeerFeatures {
+		c.params = append(c.params, p.typ)
+	}
+	switch p.typ {
+	case paramForwardTSN:
+		c.forwardTSN = true
+	case paramSupportedExtension:
+		c.addExtensions(p.value)
+	case paramStateCookie:
+		c.cookie = p.value
+	}
+}
+
+// addExtensions takes the chunk types of a Supported Extensions parameter.
+func (c *initChunk) addExtensions(types []byte) {
+	c.extensions = append(c.extensions, types[:min(len(types), maxPeerFeatures)]...)
+	c.forwardTSN = c.forwardTSN || slices.Contains(types, chunkForwardTSN)
+	c.reconfig = c.reconfig || slices.Contains(types, chunkReconfig)
 }
 
 func (c initChunk) marshal() []byte {

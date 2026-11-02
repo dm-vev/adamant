@@ -758,20 +758,8 @@ func (a *Association) SendOwned(stream uint16, ppid uint32, data []byte, opts Se
 }
 
 func (a *Association) queueMessage(stream uint16, ppid uint32, data []byte, opts SendOptions, now time.Time, owned bool) error {
-	if a.err != nil {
-		return a.err
-	}
-	if a.state != stateEstablished {
-		return errState
-	}
-	if len(data) == 0 {
-		return errEmpty
-	}
-	if a.reset.resetting(stream) {
-		return ErrStreamResetting
-	}
-	if a.buffered+len(data) > a.cfg.SendBuffer {
-		return ErrBufferFull
+	if err := a.refuse(stream, len(data)); err != nil {
+		return err
 	}
 	if !owned {
 		data = bytes.Clone(data)
@@ -790,6 +778,24 @@ func (a *Association) queueMessage(stream uint16, ppid uint32, data []byte, opts
 	a.pending = append(a.pending, m)
 	a.buffered += len(data)
 	a.flush(now)
+	return nil
+}
+
+// refuse returns why a message of size bytes cannot be sent on a stream,
+// if it cannot.
+func (a *Association) refuse(stream uint16, size int) error {
+	switch {
+	case a.err != nil:
+		return a.err
+	case a.state != stateEstablished:
+		return errState
+	case size == 0:
+		return errEmpty
+	case a.reset.resetting(stream):
+		return ErrStreamResetting
+	case a.buffered+size > a.cfg.SendBuffer:
+		return ErrBufferFull
+	}
 	return nil
 }
 
@@ -1045,7 +1051,7 @@ func (a *Association) deliver(stream uint16, ppid uint32, data []byte) {
 }
 
 func (a *Association) handleForwardTSN(c chunk) {
-	if len(c.value) < 4 || (len(c.value)-4)%4 != 0 {
+	if len(c.value) < 4 || len(c.value)%4 != 0 {
 		return
 	}
 	newCum := binary.BigEndian.Uint32(c.value)
