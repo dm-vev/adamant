@@ -90,6 +90,9 @@ func TestVersionsMatchProtocol(t *testing.T) {
 	if version.Minecraft != v2193.CurrentVersion {
 		t.Errorf("version.Minecraft = %q, protocol has %q", version.Minecraft, v2193.CurrentVersion)
 	}
+	if version.Minecraft != v2193.Version {
+		t.Errorf("version.Minecraft = %q, protocol has Version %q", version.Minecraft, v2193.Version)
+	}
 	checkGameValues(t, []gameValue{
 		{"leveldat.NetworkVersion", leveldat.NetworkVersion, v2193.CurrentProtocol},
 	})

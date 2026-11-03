@@ -22,6 +22,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/text"
+	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nbt"
@@ -102,7 +103,7 @@ func (srv *Server) Listen() {
 		}
 	}
 
-	srv.conf.Log.Info("Dragonfly server started.", "mc-version", v2193.Version, "go-version", info.GoVersion, "commit", revision)
+	srv.conf.Log.Info("Dragonfly server started.", "mc-version", version.Minecraft, "go-version", info.GoVersion, "commit", revision)
 	srv.startListening()
 	go srv.wait()
 	go srv.idleTimeoutLoop()
