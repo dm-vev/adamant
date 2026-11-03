@@ -1,4 +1,4 @@
-package server
+package bedrockadapter
 
 import (
 	"bytes"
@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/bedrock"
@@ -117,7 +118,7 @@ func TestNetherNetListenerServesSessions(t *testing.T) {
 	c.Network.Address = "127.0.0.1:0"
 	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
 	c.Network.EnableQuery = true
-	l, err := c.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), StatusProvider: statusProvider{name: "Adamant"}}, nil)
+	l, err := c.netherNetListener(server.Config{Log: slog.New(slog.DiscardHandler), StatusProvider: nameStatus{name: "Adamant"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +205,7 @@ func TestNetherNetListenerOnLAN(t *testing.T) {
 	c := testNetherNetConfig()
 	c.Network.Address = "127.0.0.1:0"
 	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
-	conf := Config{Log: slog.New(slog.DiscardHandler), StatusProvider: statusProvider{name: "Adamant"}}
+	conf := server.Config{Log: slog.New(slog.DiscardHandler), StatusProvider: nameStatus{name: "Adamant"}}
 	l, err := c.netherNetListener(conf, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -260,7 +261,7 @@ func TestNetherNetListenerTakesProxies(t *testing.T) {
 	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
 	c.Proxy.Address = "127.0.0.1:0"
 	c.Proxy.Secret = "short"
-	conf := Config{Log: slog.New(slog.DiscardHandler), StatusProvider: statusProvider{name: "Adamant"}}
+	conf := server.Config{Log: slog.New(slog.DiscardHandler), StatusProvider: nameStatus{name: "Adamant"}}
 	if l, err := c.netherNetListener(conf, nil); err == nil {
 		_ = l.Close()
 		t.Fatal("the server started with a secret of 5 characters")
@@ -348,7 +349,7 @@ func TestNetherNetListenerServesHTTPS(t *testing.T) {
 	c.Network.ACMECacheDir = cache
 	c.Network.ACMEDirectory = "http://127.0.0.1:1/unused"
 	c.Network.ACMEChallengeAddress = "127.0.0.1:0"
-	l, err := c.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), StatusProvider: statusProvider{name: "Adamant"}}, nil)
+	l, err := c.netherNetListener(server.Config{Log: slog.New(slog.DiscardHandler), StatusProvider: nameStatus{name: "Adamant"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,7 +415,8 @@ func TestValidateLogin(t *testing.T) {
 
 // TestNetconnStatusMatchesProvider holds the status netconn shows clients of
 // Bedrock Edition to what the provider of the server gave netconn before
-// the provider was neutral: for every count, the same fields.
+// the provider was neutral: for every count, the same fields. The default
+// provider of the server is unexported; nameStatus is a copy of it.
 func TestNetconnStatusMatchesProvider(t *testing.T) {
 	// oldStatusProvider is the default provider as it was, a
 	// netconn.StatusProvider.
@@ -425,7 +427,7 @@ func TestNetconnStatusMatchesProvider(t *testing.T) {
 	custom := customStatus{}
 	for _, count := range []int{0, 1, 2, 3} {
 		for _, maxPlayers := range []int{0, 20} {
-			if got, want := netconnStatusProvider(statusProvider{name: "Adamant"}).ServerStatus(count, maxPlayers), old(oldStatusProvider{"Adamant"}, count, maxPlayers); got != want {
+			if got, want := netconnStatusProvider(nameStatus{name: "Adamant"}).ServerStatus(count, maxPlayers), old(oldStatusProvider{"Adamant"}, count, maxPlayers); got != want {
 				t.Errorf("default status for %d of %d = %+v, want %+v", count, maxPlayers, got, want)
 			}
 			want := netconn.ServerStatus{ServerName: "Name", ServerSubName: "Sub", PlayerCount: count + 1, MaxPlayers: maxPlayers + 2}
@@ -441,7 +443,15 @@ func TestNetconnStatusMatchesProvider(t *testing.T) {
 
 // testNetherNetConfig returns the options of a NetherNet listener of the
 // default config.toml that lets clients join without Xbox Live.
-func testNetherNetConfig() netherNetConfig {
+func testNetherNetConfig() Config {
 	uc := DefaultConfig()
-	return netherNetConfig{Network: uc.Network, Xbox: uc.Xbox, Proxy: uc.Proxy, AuthDisabled: true}
+	return Config{Network: uc.Network, Xbox: uc.Xbox, Proxy: uc.Proxy, AuthDisabled: true}
+}
+
+// nameStatus is the default StatusProvider of the server: the name of the
+// server, and the counts passed.
+type nameStatus struct{ name string }
+
+func (s nameStatus) ServerStatus(playerCount, maxPlayers int) server.Status {
+	return server.Status{Name: s.name, PlayerCount: playerCount, MaxPlayers: maxPlayers}
 }

@@ -22,11 +22,10 @@ func closeWorlds(tb testing.TB, srv *Server) {
 func TestServerDefaultDimensionFallback(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	conf := Config{
-		Log:                     log,
-		DisableResourceBuilding: true,
-		DisableOverworld:        true,
-		DisableEnd:              true,
-		DefaultDimension:        world.Nether,
+		Log:              log,
+		DisableOverworld: true,
+		DisableEnd:       true,
+		DefaultDimension: world.Nether,
 	}
 
 	srv := conf.New()
@@ -54,8 +53,7 @@ func TestServerDefaultDimensionFallback(t *testing.T) {
 func TestNetherPortalDestinationOverworld(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	conf := Config{
-		Log:                     log,
-		DisableResourceBuilding: true,
+		Log: log,
 	}
 
 	srv := conf.New()
@@ -72,9 +70,8 @@ func TestNetherPortalDestinationOverworld(t *testing.T) {
 func TestNetherPortalDestinationDisabledOverworld(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	conf := Config{
-		Log:                     log,
-		DisableResourceBuilding: true,
-		DisableOverworld:        true,
+		Log:              log,
+		DisableOverworld: true,
 	}
 
 	srv := conf.New()

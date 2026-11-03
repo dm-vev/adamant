@@ -144,6 +144,9 @@ var mutatorNames = func() map[string]bool {
 var ownInterfaces = map[string]bool{
 	// The handlers of the packets of the Bedrock session.
 	"session.packetHandler": true,
+	// The connections of the Bedrock listener to the signaling services of
+	// Xbox Live, which the listener dials itself.
+	"bedrockadapter.xboxSignaling": true,
 }
 
 // mutationHints holds a one-line hint for each rule of R4.

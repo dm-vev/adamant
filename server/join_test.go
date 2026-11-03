@@ -197,7 +197,6 @@ func newJoinTest(t *testing.T, provider player.Provider, conf Config) *joinTest 
 	jt := &joinTest{l: clienttest.NewListener(), spawned: make(chan *world.EntityHandle, 4)}
 	conf.Log = slog.New(slog.NewTextHandler(io.Discard, nil))
 	conf.PlayerProvider = provider
-	conf.DisableResourceBuilding = true
 	conf.DisableNether, conf.DisableEnd = true, true
 	conf.Generator = func(world.Dimension, int64) world.Generator { return world.NopGenerator{} }
 	conf.Listeners = []func(Config, Host) (Listener, error){func(Config, Host) (Listener, error) { return jt.l, nil }}

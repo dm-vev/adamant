@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/protocol/java"
 	"github.com/df-mc/dragonfly/server"
 	"github.com/pelletier/go-toml"
@@ -15,18 +16,19 @@ import (
 // protocol adapter. Each part reads the keys it owns from the same file, and
 // two parts may own keys of the same table.
 type fileConfig struct {
-	Server server.UserConfig
-	Java   javaadapter.UserConfig
+	Server  server.UserConfig
+	Bedrock bedrockadapter.UserConfig
+	Java    javaadapter.UserConfig
 }
 
 // defaultFileConfig returns the file of the default settings of every part.
 func defaultFileConfig() fileConfig {
-	return fileConfig{Server: server.DefaultConfig(), Java: javaadapter.DefaultConfig()}
+	return fileConfig{Server: server.DefaultConfig(), Bedrock: bedrockadapter.DefaultConfig(), Java: javaadapter.DefaultConfig()}
 }
 
 // parts returns pointers to the parts of the file, in the order they are
 // read and composed.
-func (f *fileConfig) parts() []any { return []any{&f.Server, &f.Java} }
+func (f *fileConfig) parts() []any { return []any{&f.Server, &f.Bedrock, &f.Java} }
 
 // readConfig reads config.toml, or writes the default file if there is none,
 // and composes the server's Config with the listeners of the adapters.
@@ -70,14 +72,30 @@ func readConfigFile(path string) (fileConfig, error) {
 // listeners of the adapters: the NetherNet listener, and the listener for
 // clients of Java Edition if it has an address.
 func (f fileConfig) config(log *slog.Logger) (server.Config, error) {
+	conf, _, _, err := f.compose(log)
+	return conf, err
+}
+
+// compose returns the server's Config of the parts of the file, with the
+// listeners of the adapters, and the Configs of the adapters it was
+// composed with.
+func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Config, javaadapter.Config, error) {
+	// The adapters' parts come first: a bad Transport is reported before the
+	// world is opened, as UserConfig.Config reported it before.
+	bc, err := f.Bedrock.Config(log)
+	if err != nil {
+		return server.Config{}, bc, javaadapter.Config{}, err
+	}
+	jc := f.Java.Config()
 	conf, err := f.Server.Config(log)
 	if err != nil {
-		return conf, err
+		return conf, bc, jc, err
 	}
-	if jc := f.Java.Config(); jc.Address != "" {
+	conf.Listeners = append(conf.Listeners, bc.Listener)
+	if jc.Address != "" {
 		conf.Listeners = append(conf.Listeners, jc.Listener)
 	}
-	return conf, nil
+	return conf, bc, jc, nil
 }
 
 // marshalConfig writes the parts as one TOML document: their tables merged,

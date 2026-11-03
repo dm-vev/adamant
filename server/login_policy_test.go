@@ -26,8 +26,8 @@ func TestValidateName(t *testing.T) {
 		"online non-Latin":         {client.Identity{Name: "Шахтёр", XUID: "123"}, false},
 		"single spaces and digits": {client.Identity{Name: "a b 2"}, true},
 	} {
-		if err := validateName(tc.id); (err == nil) != tc.ok {
-			t.Errorf("%s: validateName(%+v) = %v, want ok %v", name, tc.id, err, tc.ok)
+		if err := ValidateName(tc.id); (err == nil) != tc.ok {
+			t.Errorf("%s: ValidateName(%+v) = %v, want ok %v", name, tc.id, err, tc.ok)
 		}
 	}
 }

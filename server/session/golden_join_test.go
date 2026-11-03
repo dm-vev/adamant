@@ -56,17 +56,16 @@ var joinServer = sync.OnceValue(func() goldenServer {
 	srv := server.Config{
 		Log: slog.New(slog.DiscardHandler),
 		Listeners: []func(server.Config, server.Host) (server.Listener, error){func(c server.Config, _ server.Host) (server.Listener, error) {
-			return session.Listen(l, session.ListenConfig{Log: c.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
+			return session.Listen(l, session.ListenConfig{Log: c.Log}), nil
 		}},
-		Name:                    "Golden Server",
-		DisableResourceBuilding: true,
-		DisableNether:           true,
-		DisableEnd:              true,
-		MaxChunkRadius:          goldenRadius,
-		RandomTickSpeed:         -1,
-		OverworldSeed:           goldenSeed,
-		WorldProvider:           world.NopProvider{Set: goldenSettings()},
-		Generator:               func(world.Dimension, int64) world.Generator { return goldenGenerator() },
+		Name:            "Golden Server",
+		DisableNether:   true,
+		DisableEnd:      true,
+		MaxChunkRadius:  goldenRadius,
+		RandomTickSpeed: -1,
+		OverworldSeed:   goldenSeed,
+		WorldProvider:   world.NopProvider{Set: goldenSettings()},
+		Generator:       func(world.Dimension, int64) world.Generator { return goldenGenerator() },
 	}.New()
 	// The world of the server ticks on a clock: its time stood still from
 	// the start, but set it again in case a tick got in first.

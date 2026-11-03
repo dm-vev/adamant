@@ -1,4 +1,4 @@
-package server
+package bedrockadapter
 
 import (
 	"context"

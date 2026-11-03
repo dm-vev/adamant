@@ -34,12 +34,11 @@ func TestCloseDisconnectsWithShutdownMessage(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			srv := Config{
-				Log:                     slog.New(slog.NewTextHandler(io.Discard, nil)),
-				DisableResourceBuilding: true,
-				DisableNether:           true,
-				DisableEnd:              true,
-				ShutdownMessage:         tc.conf,
-				Generator:               func(world.Dimension, int64) world.Generator { return world.NopGenerator{} },
+				Log:             slog.New(slog.NewTextHandler(io.Discard, nil)),
+				DisableNether:   true,
+				DisableEnd:      true,
+				ShutdownMessage: tc.conf,
+				Generator:       func(world.Dimension, int64) world.Generator { return world.NopGenerator{} },
 			}.New()
 			closeWorlds(t, srv)
 

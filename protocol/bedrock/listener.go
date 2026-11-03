@@ -1,4 +1,4 @@
-package server
+package bedrockadapter
 
 import (
 	"bytes"
@@ -17,9 +17,12 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/packbuilder"
+	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/session"
@@ -32,11 +35,19 @@ import (
 	"github.com/dm-vev/adamant/net/proxy"
 )
 
-// listener returns the NetherNet listener of the server, the standard
-// listener used when UserConfig.Config() is called.
-func (c netherNetConfig) listener(conf Config, host Host) (Listener, error) {
-	c.Resources, c.ResourcesRequired = conf.Resources, conf.ResourcesRequired
-	c.AuthDisabled, c.MuteEmoteChat, c.Compression = conf.AuthDisabled, conf.MuteEmoteChat, conf.Compression
+// Listener returns the NetherNet listener of the adapter: a server.Listener
+// for server.Config.Listeners. It reads conf.Log, conf.MaxPlayers,
+// conf.StatusProvider, conf.Allower and conf.Blocks, and host for queries.
+// Unless c.DisableResourceBuilding, it offers clients a resource pack of the
+// custom blocks and items of conf.Blocks after c.Resources.
+func (c Config) Listener(conf server.Config, host server.Host) (server.Listener, error) {
+	packs := slices.Clone(c.Resources)
+	if !c.DisableResourceBuilding {
+		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks); ok {
+			packs = append(packs, pack)
+		}
+	}
+	c.Resources = packs
 	l, err := c.netherNetListener(conf, host)
 	if err != nil {
 		return nil, err
@@ -47,7 +58,7 @@ func (c netherNetConfig) listener(conf Config, host Host) (Listener, error) {
 // netherNetListener returns the connections of the NetherNet listener of
 // the server, admitted to it as the Config says. Queries are answered
 // from the server host.
-func (c netherNetConfig) netherNetListener(conf Config, host Host) (session.ConnListener, error) {
+func (c Config) netherNetListener(conf server.Config, host server.Host) (session.ConnListener, error) {
 	identityFile := c.Network.IdentityFile
 	if identityFile == "" {
 		identityFile = "server-key.pem"
@@ -199,7 +210,7 @@ func serveProxies(l *netconn.Listener, addr, secret string, log *slog.Logger) er
 // the status of the listener and serves the signaling of their joins, on
 // addr, port 7551 if empty. A port taken by another game leaves the server
 // out of the LAN tab.
-func publishLAN(l *netconn.Listener, c netherNetConfig, log *slog.Logger, addr string) *lan.Listener {
+func publishLAN(l *netconn.Listener, c Config, log *slog.Logger, addr string) *lan.Listener {
 	ll, err := lan.Config{Addr: addr, Data: func() lan.ServerData {
 		st := l.ServerStatus()
 		return lan.ServerData{
@@ -238,26 +249,6 @@ func batchCompression(c bedrock.Compression) bedrock.Compression {
 		return bedrock.Flate{Level: 1}
 	}
 	return c
-}
-
-// netconnStatusProvider returns the StatusProvider of the server as netconn
-// shows it to clients of Bedrock Edition, or nil, which leaves netconn its
-// default, if p is nil.
-func netconnStatusProvider(p StatusProvider) netconn.StatusProvider {
-	if p == nil {
-		return nil
-	}
-	return netconnStatus{p}
-}
-
-// netconnStatus is a StatusProvider as netconn reads it: the Status of the
-// provider, field for field, for the counts netconn passes.
-type netconnStatus struct{ provider StatusProvider }
-
-// ServerStatus returns the status of the provider for the counts passed.
-func (s netconnStatus) ServerStatus(playerCount, maxPlayers int) netconn.ServerStatus {
-	st := s.provider.ServerStatus(playerCount, maxPlayers)
-	return netconn.ServerStatus{ServerName: st.Name, ServerSubName: st.SubName, PlayerCount: st.PlayerCount, MaxPlayers: st.MaxPlayers}
 }
 
 // netherNetListener is a netconn.Listener as the session listens on it.
@@ -354,7 +345,7 @@ func validateLogin(id login.Identity, data login.ClientData) error {
 	if err := netconn.ValidateIdentity(id); err != nil {
 		return err
 	}
-	if err := validateName(session.IdentityOf(id)); err != nil {
+	if err := server.ValidateName(session.IdentityOf(id)); err != nil {
 		return err
 	}
 	return netconn.ValidateClientData(data)

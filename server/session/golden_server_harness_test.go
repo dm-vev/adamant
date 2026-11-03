@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/df-mc/dragonfly/server/netconn"
@@ -262,8 +263,10 @@ type serverClient struct {
 
 // serverConfig changes how the server of a scenario is made.
 type serverConfig struct {
-	// user changes the user configuration the server is made of.
-	user func(uc *server.UserConfig)
+	// user changes the user configuration the server is made of, and
+	// bedrock the part of the configuration of the Bedrock adapter.
+	user    func(uc *server.UserConfig)
+	bedrock func(uc *bedrockadapter.UserConfig)
 	// network keeps the listener the program makes, a NetherNet listener,
 	// beside the listener of the test.
 	network bool
@@ -287,20 +290,29 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 		spawned: make(chan *world.EntityHandle, 4), acceptDone: make(chan struct{})}
 	s.l = &serverListener{goldenListener: goldenListener{conns: make(chan session.Conn, 4), closed: make(chan struct{})}}
 
-	uc := server.DefaultConfig()
+	uc, bu := server.DefaultConfig(), bedrockadapter.DefaultConfig()
 	uc.Server.Name = serverName
-	uc.Server.AuthEnabled = false
+	bu.Server.AuthEnabled = false
 	uc.World.SaveData = false
 	uc.World.Seed = goldenSeed
 	uc.World.DisableNether, uc.World.DisableEnd = true, true
 	uc.Players.SaveData = false
 	uc.Players.MaximumChunkRadius = goldenRadius
-	uc.Resources.AutoBuildPack = false
-	uc.Resources.Folder = filepath.Join(s.dir, "resources")
+	bu.Resources.AutoBuildPack = false
+	bu.Resources.Folder = filepath.Join(s.dir, "resources")
 	uc.Whitelist.File = filepath.Join(s.dir, "white-list.txt")
-	uc.Network.IdentityFile = filepath.Join(s.dir, "server-key.pem")
+	bu.Network.IdentityFile = filepath.Join(s.dir, "server-key.pem")
 	if conf.user != nil {
 		conf.user(&uc)
+	}
+	if conf.bedrock != nil {
+		conf.bedrock(&bu)
+	}
+	// As readConfig composes them: the part of the adapter first, and its
+	// listener first.
+	bc, err := bu.Config(slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
 	}
 	c, err := uc.Config(slog.New(slog.DiscardHandler))
 	if err != nil {
@@ -308,10 +320,10 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 	}
 	c.Log = goldenLog()
 	test := func(c server.Config, _ server.Host) (server.Listener, error) {
-		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
+		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: bc.MuteEmoteChat}), nil
 	}
 	if conf.network {
-		c.Listeners = append(c.Listeners, test)
+		c.Listeners = append(c.Listeners, bc.Listener, test)
 	} else {
 		c.Listeners = []func(server.Config, server.Host) (server.Listener, error){test}
 	}

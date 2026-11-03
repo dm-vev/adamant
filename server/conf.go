@@ -3,25 +3,23 @@ package server
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
-	"slices"
 	"time"
 	_ "unsafe"
 
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/packbuilder"
+	// The packages of the functions New calls through go:linkname must be
+	// linked in, whether or not a listener imports them.
+	_ "github.com/df-mc/dragonfly/server/item/creative"
+	_ "github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/playerdb"
-	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
-	"github.com/dm-vev/adamant/net/bedrock"
-	"github.com/dm-vev/adamant/net/bedrock/resource"
 )
 
 // Config contains options for starting a Minecraft server.
@@ -38,30 +36,10 @@ type Config struct {
 	// Name is the name of the server. By default, it is shown to users in the
 	// server list before joining the server and when opening the in-game menu.
 	Name string
-	// Resources is a slice of resource packs to use on the server. When joining
-	// the server, the player will then first be requested to download these
-	// resource packs.
-	Resources []*resource.Pack
-	// ResourcesRequires specifies if the downloading of resource packs is
-	// required to join the server. If set to true, players will not be able to
-	// join without first downloading and applying the Resources above.
-	ResourcesRequired bool
-	// DisableResourceBuilding specifies if automatic resource pack building for
-	// custom items should be disabled. Dragonfly, by default, automatically
-	// produces a resource pack for custom items. If this is not desired (for
-	// example if a resource pack already exists), this can be set to false.
-	DisableResourceBuilding bool
 	// Allower may be used to specify what players can join the server and what
 	// players cannot. By returning false in the Allow method, for example if
 	// the player has been banned, will prevent the player from joining.
 	Allower Allower
-	// AuthDisabled specifies if XBOX Live authentication should be disabled.
-	// Note that this should generally only be done for testing purposes or for
-	// local games. Allowing players to join without authentication is generally
-	// a security hazard.
-	AuthDisabled bool
-	// MuteEmoteChat specifies if the player emote chat should be muted or not.
-	MuteEmoteChat bool
 	// ReconnectPolicy controls what happens when a player tries to join while already connected.
 	ReconnectPolicy ReconnectPolicy
 	// MaxPlayers is the maximum amount of players allowed to join the server at
@@ -82,9 +60,6 @@ type Config struct {
 	// list. By default, StatusProvider will show the server name from the Name
 	// field and the current player count and maximum players.
 	StatusProvider StatusProvider
-	// Compression compresses the batches of the connections the default
-	// listener accepts: bedrock.Flate (at level 1 if nil) or bedrock.None.
-	Compression bedrock.Compression
 	// PlayerProvider is the player.Provider used for storing and loading player
 	// data. If left as nil, player data will be newly created every time a
 	// player joins the server and no data will be stored.
@@ -238,14 +213,6 @@ func (conf Config) New() *Server {
 	world.SetBuiltinStructureTemplates(advanced.VanillaStructureTemplate)
 	conf.OverworldSeed = conf.WorldProvider.Settings().ResolveSeed(conf.OverworldSeed)
 
-	if !conf.DisableResourceBuilding {
-		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks); ok {
-			conf.Resources = append(conf.Resources, pack)
-		}
-	}
-	// Copy resources so that the slice can't be edited afterward.
-	conf.Resources = slices.Clone(conf.Resources)
-
 	srv := &Server{
 		conf:       conf,
 		incoming:   make(chan incoming),
@@ -357,27 +324,16 @@ func parseDimension(name string) (world.Dimension, bool) {
 
 // UserConfig is the user configuration for a Dragonfly server. It holds
 // settings that affect different aspects of the server, such as its name and
-// maximum players. UserConfig may be serialised and can be converted to a
-// Config by calling UserConfig.Config().
+// maximum players: the keys of config.toml that the server owns, beside
+// those the protocol adapters own in the same file. UserConfig may be
+// serialised and can be converted to a Config by calling UserConfig.Config().
 type UserConfig struct {
-	// Network holds settings related to network aspects of the server.
-	Network networkConfig
-	// Xbox holds the publishing of the server on Xbox Live.
-	Xbox xboxConfig
-	// Proxy holds the links that proxies carry their players to the server
-	// over, beside the clients that join it themselves.
-	Proxy  proxyConfig
 	Server struct {
 		// Name is the name of the server as it shows up in the server list.
 		Name string
-		// AuthEnabled controls whether players must be connected to Xbox Live
-		// in order to join the server.
-		AuthEnabled bool
 		// DisableJoinQuitMessages specifies if default join and quit messages
 		// for players should be disabled.
 		DisableJoinQuitMessages bool
-		// MuteEmoteChat specifies if the player emote chat should be muted or not.
-		MuteEmoteChat bool
 		// ReconnectPolicy controls what happens when a player connects while already online.
 		// Valid values: "kick-joining" or "kick-existing".
 		ReconnectPolicy string
@@ -448,17 +404,6 @@ type UserConfig struct {
 		// LevelDB player provider if it is enabled.
 		Folder string
 	}
-	Resources struct {
-		// AutoBuildPack is if the server should automatically generate a
-		// resource pack for custom features.
-		AutoBuildPack bool
-		// Folder controls the location where resource packs will be loaded
-		// from.
-		Folder string
-		// Required is a boolean to force the client to load the resource pack
-		// on join. If they do not accept, they'll have to leave the server.
-		Required bool
-	}
 	Whitelist struct {
 		// Enabled controls if the whitelist should be enforced for players attempting to join.
 		Enabled bool
@@ -473,128 +418,13 @@ type UserConfig struct {
 	}
 }
 
-// networkConfig holds settings related to network aspects of the server:
-// the [Network] table of config.toml.
-type networkConfig struct {
-	// Address is the address on which the server should listen. Players may
-	// connect to this address in order to join.
-	Address string
-	// Transport names the transport players join over: "nethernet", the
-	// only one, which an empty value also selects.
-	Transport string
-	// IdentityFile stores the NetherNet server's persistent P-384 identity key.
-	// An empty value uses "server-key.pem".
-	IdentityFile string
-	// EnableQuery controls whether Bedrock Query responses are enabled. Query
-	// requests arrive on the UDP port of the game, beside NetherNet.
-	// When disabled, query packets are ignored (no reply is sent).
-	EnableQuery bool
-	// QueryPlugins controls whether the query response should list plugins.
-	// When disabled, the query `plugins` field only contains the engine label.
-	QueryPlugins bool
-	// LAN shows the server in the LAN tab of clients on the same network
-	// and lets them join from there, over UDP port 7551 as the game does.
-	LAN bool
-	// HTTPSDomain is the domain of the server for its signaling over
-	// HTTPS: clients that join by an https:// address trust its
-	// certificate rather than its key on first use. The server obtains
-	// the certificate from Let's Encrypt and renews it, proving the domain
-	// on TCP port 80, which must reach the server. Plain HTTP stays served
-	// on the port of the game. An empty value serves plain HTTP alone.
-	HTTPSDomain string
-	// ACMEEmail is the contact of the account of the server at the
-	// certificate authority, optional.
-	ACMEEmail string
-	// ACMECacheDir keeps the account and the certificate across restarts,
-	// as the authority issues a domain few certificates a week. An empty
-	// value uses "acme".
-	ACMECacheDir string
-	// ACMEDirectory is the directory URL of the certificate authority.
-	// An empty value uses Let's Encrypt.
-	ACMEDirectory string
-	// ACMEChallengeAddress is where the server answers the challenges of
-	// the authority, which asks on port 80: another address suits a port
-	// forwarded to it. An empty value uses ":80".
-	ACMEChallengeAddress string
-}
-
-// xboxConfig holds the publishing of the server on Xbox Live: the [Xbox]
-// table of config.toml.
-type xboxConfig struct {
-	// Enabled publishes the server on Xbox Live through the account it
-	// signs in as, so that friends of the account see it in their friends
-	// list and join from there. It needs the NetherNet transport. The
-	// account is signed in on the first start, with a code the console
-	// shows to enter at a page of Microsoft.
-	Enabled bool
-	// TokenFile keeps the sign-in of the account across restarts. It holds
-	// secrets. An empty value uses "xbox-token.json".
-	TokenFile string
-	// AcceptFriends takes the friend requests the account receives and
-	// invites each new friend to the server, so that players add the
-	// account and join.
-	AcceptFriends bool
-	// LegacySignaling has friends signal their joins over the protocol the
-	// game spoke before JSON-RPC, a fallback for when the service of the
-	// current one fails.
-	LegacySignaling bool
-}
-
-// proxyConfig holds the links that proxies carry their players to the
-// server over, beside the clients that join it themselves: the [Proxy]
-// table of config.toml.
-type proxyConfig struct {
-	// Address is the TCP address proxies dial their links to, such as
-	// "127.0.0.1:19133". An empty value takes no proxies. Links are not
-	// encrypted: they are for a network the proxies and the server
-	// trust.
-	Address string
-	// Secret is the secret the proxies sign the players they open with,
-	// of 32 characters at least. Whoever knows it joins as anyone it
-	// likes, so it must stay as secret as a password.
-	Secret string
-}
-
-// netherNetConfig holds the options of the NetherNet listener: the
-// [Network], [Xbox] and [Proxy] tables of config.toml, which
-// UserConfig.Config fills it with, and the settings of Bedrock Edition
-// that the Config of the server holds, which listener fills it with.
-type netherNetConfig struct {
-	Network networkConfig
-	Xbox    xboxConfig
-	Proxy   proxyConfig
-	// Resources are the resource packs offered to clients, and
-	// ResourcesRequired makes clients take them.
-	Resources         []*resource.Pack
-	ResourcesRequired bool
-	// AuthDisabled lets clients join without Xbox Live.
-	AuthDisabled bool
-	// MuteEmoteChat mutes the emote chat of players.
-	MuteEmoteChat bool
-	// Compression compresses the batches of the connections: bedrock.Flate
-	// (at level 1 if nil) or bedrock.None.
-	Compression bedrock.Compression
-}
-
 // Config converts a UserConfig to a Config, so that it may be used for creating
-// a Server. An error is returned if creating data providers or loading
-// resources failed.
+// a Server. An error is returned if creating data providers or loading the
+// whitelist, operators or bans failed. The Config has no listener: the
+// listeners of the protocol adapters, such as Config.Listener of package
+// protocol/bedrock, are appended to its Listeners.
 func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
-	transport := strings.ToLower(strings.TrimSpace(uc.Network.Transport))
-	if transport == "" {
-		transport = "nethernet"
-	}
-	if transport == "raknet" {
-		return Config{}, fmt.Errorf("network transport %q is no longer supported: players join over NetherNet", uc.Network.Transport)
-	}
-	if transport != "nethernet" {
-		return Config{}, fmt.Errorf("unknown network transport %q", uc.Network.Transport)
-	}
-	uc.Network.Transport = transport
 	var err error
-	query.SetEnabled(uc.Network.EnableQuery)
-	query.SetPluginListingEnabled(uc.Network.QueryPlugins)
-
 	defaultDim := world.Dimension(world.Overworld)
 	if name := strings.TrimSpace(uc.World.DefaultDimension); name != "" {
 		if parsed, ok := parseDimension(name); ok {
@@ -610,25 +440,21 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	}
 
 	conf := Config{
-		Log:                     log,
-		Name:                    uc.Server.Name,
-		ResourcesRequired:       uc.Resources.Required,
-		AuthDisabled:            !uc.Server.AuthEnabled,
-		MuteEmoteChat:           uc.Server.MuteEmoteChat,
-		ReconnectPolicy:         ReconnectKickExisting,
-		MaxPlayers:              uc.Players.MaxCount,
-		MaxChunkRadius:          uc.Players.MaximumChunkRadius,
-		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
-		OverworldSeed:           uc.World.Seed,
-		GeneratorProfile:        generatorProfile,
-		GeneratorWorkers:        uc.World.GeneratorWorkers,
-		GeneratorQueueSize:      uc.World.GeneratorQueueSize,
-		Regions:                 uc.World.Regions,
-		DisableOverworld:        uc.World.DisableOverworld,
-		DisableNether:           uc.World.DisableNether,
-		DisableEnd:              uc.World.DisableEnd,
-		DefaultDimension:        defaultDim,
-		PortalDisabledMessage:   uc.World.PortalDisabledMessage,
+		Log:                   log,
+		Name:                  uc.Server.Name,
+		ReconnectPolicy:       ReconnectKickExisting,
+		MaxPlayers:            uc.Players.MaxCount,
+		MaxChunkRadius:        uc.Players.MaximumChunkRadius,
+		OverworldSeed:         uc.World.Seed,
+		GeneratorProfile:      generatorProfile,
+		GeneratorWorkers:      uc.World.GeneratorWorkers,
+		GeneratorQueueSize:    uc.World.GeneratorQueueSize,
+		Regions:               uc.World.Regions,
+		DisableOverworld:      uc.World.DisableOverworld,
+		DisableNether:         uc.World.DisableNether,
+		DisableEnd:            uc.World.DisableEnd,
+		DefaultDimension:      defaultDim,
+		PortalDisabledMessage: uc.World.PortalDisabledMessage,
 	}
 	whitelistFile := strings.TrimSpace(uc.Whitelist.File)
 	if whitelistFile == "" {
@@ -649,10 +475,6 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		if err != nil {
 			return conf, fmt.Errorf("create world provider: %w", err)
 		}
-	}
-	conf.Resources, err = loadResources(uc.Resources.Folder)
-	if err != nil {
-		return conf, fmt.Errorf("load resources: %w", err)
 	}
 	wl, err := LoadWhitelist(whitelistFile)
 	if err != nil {
@@ -678,26 +500,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 			return conf, fmt.Errorf("create player provider: %w", err)
 		}
 	}
-	conf.Listeners = append(conf.Listeners, netherNetConfig{Network: uc.Network, Xbox: uc.Xbox, Proxy: uc.Proxy}.listener)
 	return conf, nil
-}
-
-// loadResources loads all resource packs found in a directory passed.
-func loadResources(dir string) ([]*resource.Pack, error) {
-	_ = os.MkdirAll(dir, 0777)
-
-	resources, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, fmt.Errorf("read dir: %w", err)
-	}
-	packs := make([]*resource.Pack, len(resources))
-	for i, entry := range resources {
-		packs[i], err = resource.ReadPath(filepath.Join(dir, entry.Name()))
-		if err != nil {
-			return nil, fmt.Errorf("compile resource (%v): %w", entry.Name(), err)
-		}
-	}
-	return packs, nil
 }
 
 // defaultGenerator constructs a dimension generator using the resolved seed.
@@ -717,15 +520,7 @@ func defaultGenerator(dim world.Dimension, seed int64) world.Generator {
 // DefaultConfig returns a configuration with the default values filled out.
 func DefaultConfig() UserConfig {
 	c := UserConfig{}
-	c.Network.Address = ":19132"
-	c.Network.Transport = "nethernet"
-	c.Network.IdentityFile = "server-key.pem"
-	c.Xbox.TokenFile = "xbox-token.json"
-	c.Xbox.AcceptFriends = true
-	c.Network.EnableQuery = false
-	c.Network.QueryPlugins = false
 	c.Server.Name = "Dragonfly Server"
-	c.Server.AuthEnabled = true
 	c.World.SaveData = true
 	c.World.Folder = "world"
 	c.World.Seed = 0
@@ -739,9 +534,6 @@ func DefaultConfig() UserConfig {
 	c.Players.MaximumChunkRadius = 32
 	c.Players.SaveData = true
 	c.Players.Folder = "players"
-	c.Resources.AutoBuildPack = true
-	c.Resources.Folder = "resources"
-	c.Resources.Required = false
 	c.Whitelist.File = "white-list.txt"
 	c.Whitelist.Reason = defaultWhitelistKickMessage
 	return c

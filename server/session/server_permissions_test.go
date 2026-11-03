@@ -23,15 +23,11 @@ func TestServerOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
 	// the whitelist.
 	dir := t.TempDir()
 	uc := server.DefaultConfig()
-	uc.Server.AuthEnabled = false
 	uc.World.SaveData = false
 	uc.World.DisableNether, uc.World.DisableEnd = true, true
 	uc.Players.SaveData = false
 	uc.Players.MaximumChunkRadius = 1
-	uc.Resources.AutoBuildPack = false
-	uc.Resources.Folder = filepath.Join(dir, "resources")
 	uc.Whitelist.File = filepath.Join(dir, "white-list.txt")
-	uc.Network.IdentityFile = filepath.Join(dir, "server-key.pem")
 	conf, err := uc.Config(slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)

@@ -279,10 +279,9 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 		}
 	}
 	return configMeaning{
-		"Name": conf.Name, "AuthDisabled": conf.AuthDisabled, "MuteEmoteChat": conf.MuteEmoteChat,
+		"Name":            conf.Name,
 		"ReconnectPolicy": conf.ReconnectPolicy, "JoinMessage": !conf.JoinMessage.Zero(), "QuitMessage": !conf.QuitMessage.Zero(),
 		"MaxPlayers": conf.MaxPlayers, "MaxChunkRadius": conf.MaxChunkRadius,
-		"Resources": len(conf.Resources), "ResourcesRequired": conf.ResourcesRequired, "DisableResourceBuilding": conf.DisableResourceBuilding,
 		"OverworldSeed": conf.OverworldSeed, "GeneratorProfile": conf.GeneratorProfile.String(),
 		"GeneratorWorkers": conf.GeneratorWorkers, "GeneratorQueueSize": conf.GeneratorQueueSize,
 		"Regions": conf.Regions, "DisableOverworld": conf.DisableOverworld, "DisableNether": conf.DisableNether, "DisableEnd": conf.DisableEnd,
@@ -325,14 +324,16 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf, err := f.config(log)
+	conf, bc, jc, err := f.compose(log)
 	if err != nil {
 		return nil, err
 	}
 	m := serverMeaning(t, conf, log)
 	closeProviders(t, conf)
-	// The listeners read the parts they were composed of.
-	n, x, p, j := f.Server.Network, f.Server.Xbox, f.Server.Proxy, f.Java.Java
+	// The settings of the listeners are those of the Configs of the adapters.
+	m["AuthDisabled"], m["MuteEmoteChat"] = bc.AuthDisabled, bc.MuteEmoteChat
+	m["Resources"], m["ResourcesRequired"], m["DisableResourceBuilding"] = len(bc.Resources), bc.ResourcesRequired, bc.DisableResourceBuilding
+	n, x, p, j := bc.Network, bc.Xbox, bc.Proxy, jc
 	m["Network.Address"], m["Network.IdentityFile"], m["Network.EnableQuery"] = n.Address, n.IdentityFile, n.EnableQuery
 	m["Network.LAN"], m["Network.HTTPSDomain"], m["Network.ACMEEmail"], m["Network.ACMECacheDir"] = n.LAN, n.HTTPSDomain, n.ACMEEmail, n.ACMECacheDir
 	m["Network.ACMEDirectory"], m["Network.ACMEChallengeAddress"] = n.ACMEDirectory, n.ACMEChallengeAddress

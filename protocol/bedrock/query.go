@@ -1,9 +1,10 @@
-package server
+package bedrockadapter
 
 import (
 	"sort"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
@@ -12,7 +13,7 @@ import (
 // queryData assembles the Data structure consumed by the query package from
 // the server host. It collects the dynamic server state while keeping the
 // query implementation agnostic of the Server internals.
-func queryData(h Host, host string, port int) query.Data {
+func queryData(h server.Host, host string, port int) query.Data {
 	playerNames := h.PlayerNames()
 	sort.Strings(playerNames)
 	status := h.Status()

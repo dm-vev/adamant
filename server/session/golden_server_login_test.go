@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/server"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
@@ -59,9 +60,10 @@ func TestGoldenServerLogin(t *testing.T) {
 	proxyAddr := probe.Addr().String()
 	_ = probe.Close()
 	s := newServerScenario(t, "server_login", serverConfig{brief: true, network: true, user: func(uc *server.UserConfig) {
+		uc.Whitelist.Enabled = true
+	}, bedrock: func(uc *bedrockadapter.UserConfig) {
 		uc.Network.Address = "127.0.0.1:0"
 		uc.Proxy.Address, uc.Proxy.Secret = proxyAddr, proxySecret
-		uc.Whitelist.Enabled = true
 	}})
 	for _, name := range []string{"Member", "Banned", "Addressed"} {
 		if _, err := s.srv.WhitelistAdd(name); err != nil {

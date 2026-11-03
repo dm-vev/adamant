@@ -1,74 +1,36 @@
 package server
 
 import (
-	"reflect"
-	"sort"
-	"strings"
+	"slices"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/query"
-	"github.com/df-mc/dragonfly/server/version"
 )
 
-// TestQueryDataFromHost holds the answers to queries, read from the Host, to
-// those the server gave when the query read the Server: over a server with
+// TestServerStatus checks the Status and the PlayerNames of a server with
 // two players, with the default status and with one that sets every field.
-func TestQueryDataFromHost(t *testing.T) {
-	for name, provider := range map[string]StatusProvider{"default": nil, "custom": customStatus{}} {
+func TestServerStatus(t *testing.T) {
+	for name, tc := range map[string]struct {
+		provider StatusProvider
+		want     Status
+	}{
+		"default": {nil, Status{Name: "Status Test", PlayerCount: 2, MaxPlayers: 3}},
+		"custom":  {customStatus{}, Status{Name: "Name", SubName: "Sub", PlayerCount: 3, MaxPlayers: 5}},
+	} {
 		t.Run(name, func(t *testing.T) {
-			jt := newJoinTest(t, player.NopProvider{}, Config{Name: "Query Test", MaxPlayers: 10, StatusProvider: provider})
+			jt := newJoinTest(t, player.NopProvider{}, Config{Name: "Status Test", StatusProvider: tc.provider})
 			jt.start()
 			jt.join(t, joinLogin("Bob", ""))
 			jt.join(t, joinLogin("Alice", ""))
-
-			got, want := queryData(jt.srv, "127.0.0.1", 19132), oldQueryData(jt.srv, "127.0.0.1", 19132)
-			if !reflect.DeepEqual(got, want) {
-				t.Errorf("query data = %+v, want %+v", got, want)
+			if got := jt.srv.Status(); got != tc.want {
+				t.Errorf("Status() = %+v, want %+v", got, tc.want)
 			}
-			if got.PlayerCount != 2 || !reflect.DeepEqual(got.PlayerNames, []string{"Alice", "Bob"}) {
-				t.Errorf("query data lists %d players %v, want Alice and Bob", got.PlayerCount, got.PlayerNames)
+			names := jt.srv.PlayerNames()
+			slices.Sort(names)
+			if !slices.Equal(names, []string{"Alice", "Bob"}) {
+				t.Errorf("PlayerNames() = %v, want Alice and Bob", names)
 			}
 		})
-	}
-}
-
-// oldQueryData is buildQueryData as it was when the query read the Server,
-// with the fields of the neutral Status in place of netconn's.
-func oldQueryData(srv *Server, host string, port int) query.Data {
-	playerCount := srv.PlayerCount()
-	maxPlayers := srv.MaxPlayerCount()
-	status := srv.conf.StatusProvider.ServerStatus(playerCount, maxPlayers)
-	worldName := ""
-	if srv.world != nil {
-		worldName = srv.world.Name()
-	}
-	modeName := defaultGameModeName(srv.world)
-	pluginString := ""
-	if query.PluginListingEnabled() {
-		pluginString = strings.Join(plugins(), ";")
-	}
-	difficulty := "NORMAL"
-
-	playerNames := srv.players.names()
-	sort.Strings(playerNames)
-
-	return query.Data{
-		HostName:         status.Name,
-		MOTD:             status.SubName,
-		GameMode:         modeName,
-		Difficulty:       difficulty,
-		WorldName:        worldName,
-		PlayerCount:      playerCount,
-		MaxPlayers:       status.MaxPlayers,
-		HostIP:           host,
-		HostPort:         port,
-		Plugins:          pluginString,
-		PlayerNames:      playerNames,
-		Version:          version.Minecraft,
-		GameID:           "MINECRAFTPE",
-		GameType:         defaultGameType(srv.world),
-		WhitelistEnabled: srv.WhitelistEnabled(),
 	}
 }
 

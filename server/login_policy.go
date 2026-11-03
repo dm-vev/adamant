@@ -15,13 +15,13 @@ var (
 	offlineNameChar = regexp.MustCompile(`[\p{L}0-9 ]`).MatchString
 )
 
-// validateName holds the name of a player that logged in to the rules the
+// ValidateName holds the name of a player that logged in to the rules the
 // server keeps it to, those gophertunnel kept it to: one of the game's form,
 // of at most 15 characters for a player of Xbox Live, one with an XUID, and
 // 16 for others, with no space first or last, no digit first and no two
 // spaces in a row, of Latin letters, digits and spaces for a player of Xbox
 // Live and of any letters, digits and spaces for others.
-func validateName(id client.Identity) error {
+func ValidateName(id client.Identity) error {
 	nameLimit := 15
 	if id.XUID == "" {
 		// Clients without an account may take one more character.
