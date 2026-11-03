@@ -1717,6 +1717,13 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       v2193.ActorEventInLoveHearts,
 		})
+	case entity.OfferFlowerAction:
+		// Bedrock plays the iron golem's flower as an animation of its
+		// resource pack, which, like other animations, is cosmetic.
+		if s.dropCosmetic() {
+			return
+		}
+		s.writePacket(animationPacket(s.entityRuntimeID(e), offerFlowerAnimation))
 	}
 }
 
@@ -1783,6 +1790,10 @@ func (s *Session) ViewEntityAnimation(e world.Entity, a world.EntityAnimation) {
 	}
 	s.writePacket(animationPacket(s.entityRuntimeID(e), a))
 }
+
+// offerFlowerAnimation is the animation of Bedrock's resource pack in which
+// an iron golem holds out a poppy.
+var offerFlowerAnimation = world.NewEntityAnimation("animation.iron_golem.offer_flower")
 
 // animationPacket returns the packet that plays an animation on the entity
 // of a runtime ID.

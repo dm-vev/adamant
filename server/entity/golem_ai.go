@@ -350,7 +350,11 @@ func (g *offerFlowerGoal) CanContinueToUse(*Mob) bool { return g.tick > 0 }
 func (g *offerFlowerGoal) Start(m *Mob) {
 	g.tick = adjustedTickDelay(g, 400)
 	g.golem.offerFlowerTick = 400
-	m.tx.PlayEntityAnimation(m.Self, world.NewEntityAnimation("animation.iron_golem.offer_flower"))
+	vs := m.tx.Viewers(m.Self.Position())
+	for _, v := range vs {
+		v.ViewEntityAction(m.Self, OfferFlowerAction{})
+	}
+	m.tx.ReleaseViewers(vs)
 	m.updateState()
 }
 

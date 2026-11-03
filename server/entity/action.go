@@ -109,6 +109,10 @@ type DrinkAction struct {
 // EatGrassAction shows a sheep lowering its head to eat grass.
 type EatGrassAction struct{ action }
 
+// OfferFlowerAction shows an iron golem holding out a poppy, as Java's
+// entity event 11 does, for as long as IronGolem.offerFlower keeps it.
+type OfferFlowerAction struct{ action }
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}
