@@ -62,6 +62,7 @@ func isolated(t *testing.T) bool {
 	if os.Getenv("GOLDEN_CHILD") == t.Name() {
 		return false
 	}
+	readGoldenSnapshots(t)
 	args := []string{"-test.run=^" + t.Name() + "$", "-test.count=1", "-test.timeout=5m"}
 	if *updateSnapshots {
 		args = append(args, "-update-snapshots")
@@ -72,6 +73,26 @@ func isolated(t *testing.T) bool {
 		t.Fatalf("%s in a process of its own: %v\n%s", t.Name(), err, out)
 	}
 	return true
+}
+
+// readGoldenSnapshots reads every snapshot of testdata/golden in the process
+// that runs the go test command. The scenario's own process compares with
+// them, and Go caches a test result on the files the test process opened
+// only: read here too, a changed snapshot runs the tests again.
+func readGoldenSnapshots(t *testing.T) {
+	t.Helper()
+	dir := filepath.Join("testdata", "golden")
+	entries, err := os.ReadDir(dir)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Type().IsRegular() {
+			if _, err := os.ReadFile(filepath.Join(dir, e.Name())); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 }
 
 // goldenName, goldenUUID and goldenXUID are who the client of every scenario
