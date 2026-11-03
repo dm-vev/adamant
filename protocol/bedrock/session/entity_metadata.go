@@ -322,17 +322,14 @@ func (s *Session) addSpecificMetadata(e any, m v2193.Metadata) {
 	}
 	if b, ok := e.(buoyantMeta); ok {
 		m[v2193.EntityDataKeyIsBuoyant] = byte(boolByte(b.Buoyant()))
-		if data := b.BuoyancyData(); data != "" {
-			m[v2193.EntityDataKeyBuoyancyData] = data
+		if b.Buoyant() {
+			m[v2193.EntityDataKeyBuoyancyData] = buoyancyData
+			// The driver of a buoyant vehicle sits in its first seat.
+			m[v2193.EntityDataKeyControllingSeatIndex] = byte(0)
 		}
 	}
-	if c, ok := e.(controllingSeat); ok {
-		m[v2193.EntityDataKeyControllingSeatIndex] = byte(c.ControllingSeatIndex())
-	}
-	if t, ok := e.(interactText); ok {
-		if text := t.InteractText(); text != "" {
-			m[v2193.EntityDataKeyInteractText] = text
-		}
+	if text := interactText(e); text != "" {
+		m[v2193.EntityDataKeyInteractText] = text
 	}
 	if r, ok := e.(rideTarget); ok {
 		m[v2193.EntityDataKeyCanRideTarget] = byte(boolByte(r.CanRideTarget()))
@@ -713,15 +710,34 @@ type rowTime interface {
 
 type buoyantMeta interface {
 	Buoyant() bool
-	BuoyancyData() string
 }
 
-type controllingSeat interface {
-	ControllingSeatIndex() int32
-}
+// buoyancyData is the buoyancy data BDS sends of boats, the buoyant
+// vehicles.
+const buoyancyData = "{\"apply_gravity\":true,\"base_buoyancy\":1.0,\"big_wave_probability\":0.02999999932944775,\"big_wave_speed\":10.0,\"drag_down_on_buoyancy_removed\":0.0,\"liquid_blocks\":[\"minecraft:water\",\"minecraft:flowing_water\"],\"simulate_waves\":true}"
 
-type interactText interface {
-	InteractText() string
+// interactText returns the prompt clients show when they look at a
+// vehicle: to open the container of a chest boat or container minecart, to
+// ride a boat with a free seat or an empty minecart that carries
+// passengers, and none otherwise.
+func interactText(e any) string {
+	if _, ok := e.(containerMeta); ok {
+		return "action.interact.opencontainer"
+	}
+	switch v := e.(type) {
+	case interface{ Full() bool }:
+		if !v.Full() {
+			return "action.interact.ride.boat"
+		}
+	case interface {
+		Rideable() bool
+		Passenger() *world.EntityHandle
+	}:
+		if v.Rideable() && v.Passenger() == nil {
+			return "action.interact.ride.minecart"
+		}
+	}
+	return ""
 }
 
 type riderSeat interface {

@@ -29,8 +29,6 @@ const (
 	boatContainerTypeChest = 34
 )
 
-const boatBuoyancyData = "{\"apply_gravity\":true,\"base_buoyancy\":1.0,\"big_wave_probability\":0.02999999932944775,\"big_wave_speed\":10.0,\"drag_down_on_buoyancy_removed\":0.0,\"liquid_blocks\":[\"minecraft:water\",\"minecraft:flowing_water\"],\"simulate_waves\":true}"
-
 // NewBoat creates a new boat entity with the variant passed.
 func NewBoat(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
 	conf := boatConf
@@ -136,14 +134,6 @@ func (b *BoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return b.newMovement(e, tx, prevPos, prevVel, prevRot)
 }
 
-// InteractText returns the interaction prompt for the boat.
-func (b *BoatBehaviour) InteractText() string {
-	if b.full() {
-		return ""
-	}
-	return "action.interact.ride.boat"
-}
-
 // CanRideTarget reports if the boat can be ridden.
 func (b *BoatBehaviour) CanRideTarget() bool {
 	return true
@@ -218,16 +208,6 @@ func (b *BoatBehaviour) Buoyant() bool {
 	return true
 }
 
-// BuoyancyData returns the buoyancy metadata JSON.
-func (b *BoatBehaviour) BuoyancyData() string {
-	return boatBuoyancyData
-}
-
-// ControllingSeatIndex returns the controlling seat index metadata.
-func (b *BoatBehaviour) ControllingSeatIndex() int32 {
-	return 0
-}
-
 // RowTimeLeft returns the left paddle animation timer metadata.
 func (b *BoatBehaviour) RowTimeLeft() float32 {
 	return b.rowTimeLeft
@@ -251,7 +231,7 @@ func (b *BoatBehaviour) Passenger() *world.EntityHandle {
 
 // Mount mounts a passenger on the boat.
 func (b *BoatBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) bool {
-	if passenger == nil || b.full() {
+	if passenger == nil || b.Full() {
 		return false
 	}
 	if b.waterLevelDiff(e, tx) < -boatSinkingDepth {
@@ -569,7 +549,8 @@ func (b *BoatBehaviour) passengerCount() int {
 	return count
 }
 
-func (b *BoatBehaviour) full() bool {
+// Full reports if every seat of the boat is taken.
+func (b *BoatBehaviour) Full() bool {
 	return b.passengerCount() >= b.maxPassengers
 }
 
@@ -884,11 +865,6 @@ func (b *ChestBoatBehaviour) ContainerSize() int32 {
 // ContainerStrengthModifier returns the container strength metadata value.
 func (b *ChestBoatBehaviour) ContainerStrengthModifier() int32 {
 	return 0
-}
-
-// InteractText returns the interaction prompt for chest boats.
-func (b *ChestBoatBehaviour) InteractText() string {
-	return "action.interact.opencontainer"
 }
 
 // AddViewer adds an inventory viewer.

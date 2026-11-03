@@ -169,15 +169,10 @@ func (b *MinecartBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
 	b.DismountAll(e, tx)
 }
 
-// InteractText returns the interaction prompt for the minecart.
-func (b *MinecartBehaviour) InteractText() string {
-	if b.rideable {
-		if b.passenger == nil {
-			return "action.interact.ride.minecart"
-		}
-		return ""
-	}
-	return ""
+// Rideable reports if the minecart carries a passenger, as only plain
+// minecarts do.
+func (b *MinecartBehaviour) Rideable() bool {
+	return b.rideable
 }
 
 // CanRideTarget reports if the minecart may be ridden.

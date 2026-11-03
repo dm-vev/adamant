@@ -100,11 +100,6 @@ func (b *MinecartContainerBehaviour) ContainerStrengthModifier() int32 {
 	return 0
 }
 
-// InteractText returns the interaction prompt for the container.
-func (b *MinecartContainerBehaviour) InteractText() string {
-	return "action.interact.opencontainer"
-}
-
 // Inventory returns the inventory of the minecart.
 func (b *MinecartContainerBehaviour) Inventory() *inventory.Inventory {
 	return b.inv
