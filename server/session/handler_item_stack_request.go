@@ -27,6 +27,7 @@ type ItemStackRequestHandler struct {
 
 	pendingResults []item.Stack
 	multiCraft     *multiCraft
+	autoCraft      *autoCraft
 
 	current       time.Time
 	ignoreDestroy bool
@@ -67,9 +68,9 @@ func (h *ItemStackRequestHandler) Handle(p proto.Packet, s *Session, tx *world.T
 // handleRequest resolves a single item stack request from the client.
 func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (err error) {
 	h.currentRequest = req.RequestID
-	h.multiCraft = nil
+	h.multiCraft, h.autoCraft = nil, nil
 	defer func() {
-		h.multiCraft = nil
+		h.multiCraft, h.autoCraft = nil, nil
 		if err != nil {
 			h.reject(req.RequestID, s, tx)
 			return
@@ -85,6 +86,14 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 			case *v2193.ConsumeStackRequestAction, *v2193.CraftResultsDeprecatedStackRequestAction:
 			default:
 				return fmt.Errorf("multi recipe contains unexpected action %T", action)
+			}
+		}
+		if _, consume := action.(*v2193.ConsumeStackRequestAction); h.autoCraft != nil && !consume {
+			// The Consume actions of a recipe-book craft have all come:
+			// what follows takes its results.
+			if err = h.finishAutoCraft(s, tx); err != nil {
+				err = fmt.Errorf("%T: %w", action, err)
+				return
 			}
 		}
 		switch a := action.(type) {
@@ -138,6 +147,8 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 		case *v2193.ConsumeStackRequestAction:
 			if h.multiCraft != nil {
 				err = h.handleMultiConsume(a, s, tx)
+			} else if h.autoCraft != nil {
+				err = h.handleAutoCraftConsume(a, s, tx)
 			}
 		case *v2193.CraftResultsDeprecatedStackRequestAction:
 			if h.multiCraft != nil {
@@ -153,6 +164,9 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 	}
 	if h.multiCraft != nil {
 		return h.finishMultiCraft(s, tx)
+	}
+	if h.autoCraft != nil {
+		return h.finishAutoCraft(s, tx)
 	}
 	return
 }

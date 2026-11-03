@@ -12,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/creative"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -706,6 +705,15 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *v2193.AutoCraftRecipeStackR
 	if timesCrafted < 1 {
 		return fmt.Errorf("times crafted must be at least 1")
 	}
+	// BDS refuses a recipe-book craft unless the inventory or a crafting
+	// table is open, with a crafter open too.
+	if s.containerOpened.Load() {
+		if s.openedContainerID.Load() != uint32(v2193.ContainerTypeWorkbench) {
+			return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
+		}
+	} else if !s.invOpened {
+		return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
+	}
 
 	flattenedInputs := make([]recipe.Item, 0, len(craft.Input()))
 	for _, i := range craft.Input() {
@@ -723,60 +731,100 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *v2193.AutoCraftRecipeStackR
 		flattenedInputs = append(flattenedInputs, i)
 	}
 
-	consumedInputs := make([]item.Stack, 0, len(flattenedInputs))
-	for _, expected := range flattenedInputs {
-		remaining := expected.Count() * timesCrafted
-		var lockedErr error
+	remaining := make([]int, len(flattenedInputs))
+	for i, expected := range flattenedInputs {
+		remaining[i] = expected.Count() * timesCrafted
+	}
+	h.autoCraft = &autoCraft{
+		recipe:    craft,
+		id:        a.RecipeNetworkID,
+		times:     timesCrafted,
+		userData:  userDataShapeless,
+		inputs:    flattenedInputs,
+		remaining: remaining,
+		consumed:  make(map[v2193.StackRequestSlotInfo]bool),
+	}
+	return nil
+}
 
-		for id, inv := range map[byte]*inventory.Inventory{
-			v2193.ContainerCraftingInput:              s.ui,
-			v2193.ContainerCombinedHotBarAndInventory: s.inv,
-		} {
-			for slot, has := range inv.Slots() {
-				if has.Empty() {
-					// We don't have this item, skip it.
-					continue
-				}
-				if !matchingCraftingStacks(has, expected, userDataShapeless) {
-					// Not the same item.
-					continue
-				}
-				if err := ensureUnlockedForCrafting(has); err != nil {
-					lockedErr = err
-					continue
-				}
+// autoCraft is a recipe-book craft in progress. Its inputs are paid from
+// the slots the client names in the Consume actions that follow the
+// AutoCraftRecipe action, in the crafting grid or the inventory: BDS
+// 1.26.52.3 takes exactly those slots and refuses a craft whose Consume
+// actions do not pay for all of its inputs.
+type autoCraft struct {
+	recipe    recipe.Recipe
+	id        uint32
+	times     int
+	userData  bool
+	inputs    []recipe.Item
+	remaining []int
+	consumed  map[v2193.StackRequestSlotInfo]bool
+	taken     []item.Stack
+}
 
-				removal := has.Count()
-				if remaining < removal {
-					removal = remaining
-				}
-				remaining -= removal
-				consumedInputs = append(consumedInputs, has.Grow(removal-has.Count()))
-
-				has = has.Grow(-removal)
-				h.setItemInSlot(v2193.StackRequestSlotInfo{
-					Container: v2193.FullContainerName{ContainerID: id},
-					Slot:      byte(slot),
-				}, has, s, tx)
-				if remaining == 0 {
-					// Consumed this item, so go to the next one.
-					break
-				}
-			}
-			if remaining == 0 {
-				// Consumed this item, so go to the next one.
-				break
-			}
+// handleAutoCraftConsume pays for the recipe-book craft in progress with
+// the slot a Consume action names.
+func (h *ItemStackRequestHandler) handleAutoCraftConsume(a *v2193.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
+	craft := h.autoCraft
+	switch a.Source.Container.ContainerID {
+	case v2193.ContainerCombinedHotBarAndInventory:
+	case v2193.ContainerCraftingInput:
+		if offset, size := s.craftingOffset(), s.craftingSize(); uint32(a.Source.Slot) < offset || uint32(a.Source.Slot) >= offset+size {
+			return fmt.Errorf("recipe %v: consumed slot %v outside the crafting grid", craft.id, a.Source.Slot)
 		}
-		if remaining != 0 {
-			if lockedErr != nil {
-				return lockedErr
-			}
-			return fmt.Errorf("recipe %v: could not consume expected item: %v", a.RecipeNetworkID, expected)
+	default:
+		return fmt.Errorf("recipe %v: cannot consume from container %v", craft.id, a.Source.Container.ContainerID)
+	}
+	key := v2193.StackRequestSlotInfo{Container: a.Source.Container, Slot: a.Source.Slot}
+	if craft.consumed[key] {
+		return fmt.Errorf("recipe %v: consumed slot %v of container %v more than once", craft.id, a.Source.Slot, a.Source.Container.ContainerID)
+	}
+	craft.consumed[key] = true
+	if err := h.verifySlot(a.Source, s, tx); err != nil {
+		return err
+	}
+	has, err := h.itemInSlot(a.Source, s, tx)
+	if err != nil {
+		return err
+	}
+	count := int(a.Count)
+	if count < 1 || has.Count() < count {
+		return fmt.Errorf("recipe %v: consumed %v items from a stack of %v", craft.id, count, has.Count())
+	}
+	if err := ensureUnlockedForCrafting(has); err != nil {
+		return err
+	}
+	left := count
+	for i, expected := range craft.inputs {
+		if left == 0 {
+			break
+		}
+		if craft.remaining[i] == 0 || !matchingCraftingStacks(has, expected, craft.userData) {
+			continue
+		}
+		n := min(left, craft.remaining[i])
+		craft.remaining[i] -= n
+		left -= n
+	}
+	if left != 0 {
+		return fmt.Errorf("recipe %v: consumed %v not needed by the recipe", craft.id, has.Grow(left-has.Count()))
+	}
+	craft.taken = append(craft.taken, has.Grow(count-has.Count()))
+	return h.setItemInSlot(a.Source, has.Grow(-count), s, tx)
+}
+
+// finishAutoCraft creates the results of the recipe-book craft in progress
+// once the client has named all the slots that pay for it.
+func (h *ItemStackRequestHandler) finishAutoCraft(s *Session, tx *world.Tx) error {
+	craft := h.autoCraft
+	h.autoCraft = nil
+	for i, expected := range craft.inputs {
+		if craft.remaining[i] != 0 {
+			return fmt.Errorf("recipe %v: could not consume expected item: %v", craft.id, expected)
 		}
 	}
-
-	output, err := craftingResults(craft, consumedInputs, timesCrafted, s.br)
+	output, err := craftingResults(craft.recipe, craft.taken, craft.times, s.br)
 	if err != nil {
 		return err
 	}
