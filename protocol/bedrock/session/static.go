@@ -236,7 +236,7 @@ func creativeContent(br world.BlockRegistry, groups []creative.Group, items []cr
 	pk := &v2193.CreativeContentPacket{Groups: make([]v2193.CreativeGroup, 0, len(groups)), Items: make([]v2193.CreativeItem, 0, len(items))}
 	for _, group := range groups {
 		pk.Groups = append(pk.Groups, v2193.CreativeGroup{
-			Category: group.Category.Uint8(),
+			Category: bedrockCreativeCategory(group.Category),
 			Name:     group.Name,
 			Icon:     deleteDamage(stackFromItem(br, group.Icon)),
 		})

@@ -1,0 +1,23 @@
+package session
+
+import (
+	"github.com/df-mc/dragonfly/server/item/creative"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+)
+
+// bedrockCreativeCategory returns the creative category CreativeContent sends
+// for the category of a creative group: the number of its creative tab, or 0
+// (All) for the zero Category.
+func bedrockCreativeCategory(c creative.Category) uint8 {
+	switch c {
+	case creative.ConstructionCategory():
+		return v2193.CreativeCategoryConstruction
+	case creative.NatureCategory():
+		return v2193.CreativeCategoryNature
+	case creative.EquipmentCategory():
+		return v2193.CreativeCategoryEquipment
+	case creative.ItemsCategory():
+		return v2193.CreativeCategoryItems
+	}
+	return v2193.CreativeCategoryAll
+}

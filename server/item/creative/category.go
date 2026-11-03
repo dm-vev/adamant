@@ -30,8 +30,3 @@ func EquipmentCategory() Category {
 func ItemsCategory() Category {
 	return Category{4}
 }
-
-// Uint8 returns the category type as a uint8.
-func (s category) Uint8() uint8 {
-	return uint8(s)
-}

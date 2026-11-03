@@ -56,7 +56,7 @@ func (builder *ComponentBuilder) applyDefaultProperties(x map[string]any) {
 		},
 	}
 	x["creative_group"] = builder.category.Group()
-	x["creative_category"] = int32(builder.category.Uint8())
+	x["creative_category"] = creativeCategory(builder.category)
 	if _, ok := x["max_stack_size"]; !ok {
 		x["max_stack_size"] = int32(64)
 	}

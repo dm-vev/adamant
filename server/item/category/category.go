@@ -29,11 +29,6 @@ func Items() Category {
 	return Category{category: 4}
 }
 
-// Uint8 ...
-func (c Category) Uint8() uint8 {
-	return c.category
-}
-
 // WithGroup returns the category with the provided subgroup. This can be used to put an item inside a group such as
 // swords, food or different types of blocks.
 func (c Category) WithGroup(group string) Category {
