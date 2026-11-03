@@ -1,0 +1,242 @@
+== a client not on the whitelist: Stranger from 203.0.113.1:4242
+>> Disconnect id=5 len=29
+    {Reason:55 HideDisconnectionScreen:false Message:"§cServer is white-listed" FilteredMessage:""}
+    | 6e0019c2a7635365727665722069732077686974652d6c697374656400
+-- the connection closed
+-- server
+    players online: 0
+== a client on the whitelist banned by name, of another case: Banned from 203.0.113.1:4242
+>> Disconnect id=5 len=53
+    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server. Reason: griefing" FilteredMessage:""}
+    | 6e0031596f75206172652062616e6e65642066726f6d20746869732073657276
+    | 65722e20526561736f6e3a206772696566696e6700
+-- the connection closed
+-- server
+    players online: 0
+== an operator banned by name: BannedOperator from 203.0.113.1:4242
+>> Disconnect id=5 len=36
+    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server." FilteredMessage:""}
+    | 6e0020596f75206172652062616e6e65642066726f6d20746869732073657276
+    | 65722e00
+-- the connection closed
+-- server
+    players online: 0
+== a client on the whitelist from a banned address: Addressed from 203.0.113.9:4242
+>> Disconnect id=5 len=49
+    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server. Reason: spam" FilteredMessage:""}
+    | 6e002d596f75206172652062616e6e65642066726f6d20746869732073657276
+    | 65722e20526561736f6e3a207370616d00
+-- the connection closed
+-- server
+    players online: 0
+== a client whose name the rules of logins refuse: 9Lives from 203.0.113.1:4242
+-- the connection closed
+-- server
+    players online: 0
+== an operator not on the whitelist: Operator from 203.0.113.1:4242
+>> PlayStatus id=2 len=4
+    {Status:0}
+    | 00000000
+>> ResourcePacksInfo id=6 len=22
+    ResourcePacksInfoPacket
+      TexturePackRequired: false
+      HasAddons: false
+      HasScripts: false
+      ForceDisableVibrantVisuals: false
+      WorldTemplateUUID: 0x00000000000000000000000000000000
+      WorldTemplateVersion: ""
+      TexturePacks: []
+    | 00000000000000000000000000000000000000000000
+-- server
+    players online: 0
+== a client on the whitelist: Member from 203.0.113.1:4242
+>> PlayStatus id=2 len=4
+    {Status:0}
+    | 00000000
+>> ResourcePacksInfo id=6 len=22
+    ResourcePacksInfoPacket
+      TexturePackRequired: false
+      HasAddons: false
+      HasScripts: false
+      ForceDisableVibrantVisuals: false
+      WorldTemplateUUID: 0x00000000000000000000000000000000
+      WorldTemplateVersion: ""
+      TexturePacks: []
+    | 00000000000000000000000000000000000000000000
+<< ResourcePackClientResponse id=8 len=21
+    {Response:2 PacksToDownload:[]}
+    | 0213646f776e6c6f6164696e6766696e6973686564
+>> ResourcePackStack id=7 len=390
+    ResourcePackStackPacket
+      TexturePackRequired: false
+      TexturePacks: []v2193.StackResourcePack (8)
+        [0] {UUID:"d34cfa4b-2ad1-453d-a0db-668b429a3ea0" Version:"1.26.40" SubPackName:""}
+        [1] {UUID:"b41c2785-c512-4a49-af56-3a87afd47c57" Version:"1.21.30" SubPackName:""}
+        [2] {UUID:"a4df0cb3-17be-4163-88d7-fcf7002b935d" Version:"1.21.20" SubPackName:""}
+        [3] {UUID:"d19adffe-a2e1-4b02-8436-ca4583368c89" Version:"1.21.10" SubPackName:""}
+        [4] {UUID:"85d5603d-2824-4b21-8044-34f441f4fce1" Version:"1.21.0" SubPackName:""}
+        [5] {UUID:"e977cd13-0a11-4618-96fb-03dfe9c43608" Version:"1.20.60" SubPackName:""}
+        [6] {UUID:"0674721c-a0aa-41a1-9ba8-1ed33ea3e7ed" Version:"1.20.50" SubPackName:""}
+        [7] {UUID:"0fba4063-dba1-4281-9b89-ff9390653530" Version:"1.0.0" SubPackName:""}
+      BaseGameVersion: "1.26.50"
+      Experiments: [{Name:"cameras" Enabled:true}]
+      ExperimentsPreviouslyToggled: false
+      IncludeEditorPacks: false
+    | 00082464333463666134622d326164312d343533642d613064622d3636386234
+    | 3239613365613007312e32362e3430002462343163323738352d633531322d34
+    | 6134392d616635362d33613837616664343763353707312e32312e3330002461
+    | 346466306362332d313762652d343136332d383864372d666366373030326239
+    | 33356407312e32312e3230002464313961646666652d613265312d346230322d
+    | 383433362d63613435383333363863383907312e32312e313000243835643536
+    | 3033642d323832342d346232312d383034342d33346634343166346663653106
+    | 312e32312e30002465393737636431332d306131312d343631382d393666622d
+    | 30336466653963343336303807312e32302e3630002430363734373231632d61
+    | 3061612d343161312d396261382d31656433336561336537656407312e32302e
+    | 3530002430666261343036332d646261312d343238312d396238392d66663933
+    | 393036353335333005312e302e300007312e32362e3530010000000763616d65
+    | 726173010000
+<< ResourcePackClientResponse id=8 len=27
+    {Response:3 PacksToDownload:[]}
+    | 03197265736f757263657061636b737461636b66696e6973686564
+>> JigsawStructureData id=313 len=64
+    {StructureData:map["jigsaws":[] "processors":[] "structure_sets":[] "template_pools":[]]}
+    | 0a0009076a6967736177730a00090a70726f636573736f72730a00090e737472
+    | 7563747572655f736574730a00090e74656d706c6174655f706f6f6c730a0000
+>> VoxelShapes id=337 len=4
+    {Shapes:[] NameMap:[] CustomShapeCount:0}
+    | 00000000
+>> StartGame id=11 len=73601 normalised
+    StartGamePacket
+      EntityUniqueID: 1
+      EntityRuntimeID: 1
+      PlayerGameMode: 0
+      PlayerPosition: [0.5 -58.37999 0.5]
+      Pitch: 0
+      Yaw: 0
+      WorldSeed: 20261103
+      SpawnBiomeType: 0
+      UserDefinedBiomeName: ""
+      Dimension: 0
+      Generator: 1
+      WorldGameMode: 0
+      Hardcore: false
+      Difficulty: 2
+      WorldSpawn: [0 0 0]
+      AchievementsDisabled: true
+      EditorWorldType: 0
+      CreatedInEditor: false
+      ExportedFromEditor: false
+      DayCycleLockTime: 0
+      EducationEditionOffer: 0
+      EducationFeaturesEnabled: true
+      EducationProductID: ""
+      RainLevel: 0
+      LightningLevel: 0
+      ConfirmedPlatformLockedContent: false
+      MultiPlayerGame: true
+      LANBroadcastEnabled: true
+      XBLBroadcastMode: 0
+      PlatformBroadcastMode: 0
+      CommandsEnabled: true
+      TexturePackRequired: false
+      GameRules: []v2193.GameRule (27)
+        [0] {Name:"commandblockoutput" CanBeModifiedByPlayer:false Value:true}
+        [1] {Name:"commandblocksenabled" CanBeModifiedByPlayer:false Value:true}
+        [2] {Name:"doentitydrops" CanBeModifiedByPlayer:false Value:true}
+        [3] {Name:"doimmediaterespawn" CanBeModifiedByPlayer:false Value:false}
+        [4] {Name:"dolimitedcrafting" CanBeModifiedByPlayer:false Value:false}
+        [5] {Name:"domobloot" CanBeModifiedByPlayer:false Value:true}
+        [6] {Name:"domobspawning" CanBeModifiedByPlayer:false Value:false}
+        [7] {Name:"dotiledrops" CanBeModifiedByPlayer:false Value:true}
+        [8] {Name:"doweathercycle" CanBeModifiedByPlayer:false Value:false}
+        [9] {Name:"drowningdamage" CanBeModifiedByPlayer:false Value:true}
+        [10] {Name:"falldamage" CanBeModifiedByPlayer:false Value:true}
+        [11] {Name:"firedamage" CanBeModifiedByPlayer:false Value:true}
+        [12] {Name:"freezedamage" CanBeModifiedByPlayer:false Value:true}
+        [13] {Name:"keepinventory" CanBeModifiedByPlayer:false Value:false}
+        [14] {Name:"locatorBar" CanBeModifiedByPlayer:false Value:false}
+        [15] {Name:"maxcommandchainlength" CanBeModifiedByPlayer:false Value:65536}
+        [16] {Name:"mobgriefing" CanBeModifiedByPlayer:false Value:true}
+        [17] {Name:"naturalregeneration" CanBeModifiedByPlayer:false Value:false}
+        [18] {Name:"playerssleepingpercentage" CanBeModifiedByPlayer:false Value:100}
+        [19] {Name:"projectilescanbreakblocks" CanBeModifiedByPlayer:false Value:true}
+        [20] {Name:"pvp" CanBeModifiedByPlayer:false Value:true}
+        [21] {Name:"randomtickspeed" CanBeModifiedByPlayer:false Value:0}
+        [22] {Name:"sendcommandfeedback" CanBeModifiedByPlayer:false Value:true}
+        [23] {Name:"showdeathmessages" CanBeModifiedByPlayer:false Value:true}
+        [24] {Name:"spawnradius" CanBeModifiedByPlayer:false Value:0}
+        [25] {Name:"tntexplodes" CanBeModifiedByPlayer:false Value:true}
+        [26] {Name:"tntexplosiondropdecay" CanBeModifiedByPlayer:false Value:false}
+      Experiments: []
+      ExperimentsPreviouslyToggled: false
+      BonusChestEnabled: false
+      StartWithMapEnabled: false
+      PlayerPermissions: 1
+      ServerChunkTickRadius: 0
+      HasLockedBehaviourPack: false
+      HasLockedTexturePack: false
+      FromLockedWorldTemplate: false
+      MSAGamerTagsOnly: false
+      FromWorldTemplate: false
+      WorldTemplateSettingsLocked: false
+      OnlySpawnV1Villagers: false
+      PersonaDisabled: false
+      CustomSkinsDisabled: false
+      EmoteChatMuted: false
+      BaseGameVersion: "1.26.50"
+      LimitedWorldWidth: 0
+      LimitedWorldDepth: 0
+      NewNether: false
+      EducationSharedResourceURI: {ButtonName:"" LinkURI:""}
+      ForceExperimentalGameplay: none
+      ChatRestrictionLevel: 0
+      DisablePlayerInteractions: false
+      ServerEditorConnectionPolicy: 0
+      AllowAnonymousBlockDropsInEditorWorlds: false
+      LevelID: ""
+      WorldName: "Golden Server"
+      TemplateContentIdentity: ""
+      Trial: false
+      PlayerMovementSettings: {RewindHistorySize:0 ServerAuthoritativeBlockBreaking:true}
+      Time: 6000
+      EnchantmentSeed: 0
+      Blocks: (98) rendered sha256 d68ab02308b55b4bed558049fbbfae1d8ba9ad07db29e0d87d5786e74c301ab9
+      MultiPlayerCorrelationID: "40e81a4d-0000-0000-0000-000000000001"
+      ServerAuthoritativeInventory: true
+      GameVersion: "1.26.50"
+      PropertyData: map[]
+      ServerBlockStateChecksum: 0
+      WorldTemplateID: 0x00000000000000000000000000000000
+      ClientSideGeneration: false
+      UseBlockNetworkIDHashes: true
+      ServerAuthoritativeSound: false
+      ServerJoinInformation: none
+      ServerID: ""
+      ScenarioID: ""
+      WorldID: ""
+      OwnerID: ""
+    sha256 830876ddb9ddf6e7443e3b7bc46863b3164dbc57fa1c138300aa57bc138f97ff
+>> ItemRegistry id=162 len=113670 normalised
+    sha256 58061297c22ae2ad60740ab892e2478e77f92dfec3bc5f2cd645549da4b46d92
+<< RequestChunkRadius id=69 len=2
+    {ChunkRadius:1 MaxChunkRadius:0}
+    | 0200
+>> ChunkRadiusUpdated id=70 len=1
+    {ChunkRadius:1}
+    | 02
+>> PlayStatus id=2 len=4
+    {Status:3}
+    | 00000003
+>> CreativeContent id=145 len=2
+    {Groups:[] Items:[]}
+    | 0000
+<< SetLocalPlayerAsInitialised id=113 len=1
+    {EntityRuntimeID:1}
+    | 01
+-- Accept yielded Member
+== Member's client disconnects
+-- player provider
+    loaded 00000000-0000-4000-8000-00000000900b: none saved
+    saved Member (2535400000000111, 00000000-0000-4000-8000-00000000900b): in Overworld at [0.5 -60 0.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 0, held slot 0
+-- server
+    players online: 0

@@ -229,6 +229,8 @@ type serverScenario struct {
 	// clients are the clients that connected, in the order they did.
 	clients []*serverClient
 	markers int
+	// yielded are the names of the players Accept yielded, in order.
+	yielded []string
 
 	// spawned receives each player Accept yields, once the loop body wrote
 	// its markers; acceptDone is closed once Accept ends.
@@ -261,6 +263,9 @@ type serverClient struct {
 type serverConfig struct {
 	// user changes the user configuration the server is made of.
 	user func(uc *server.UserConfig)
+	// network keeps the listener the program makes, a NetherNet listener,
+	// beside the listener of the test.
+	network bool
 	// brief records the registries a client is sent as it joins, the
 	// blocks and items of the game data and every packet but
 	// AvailableCommands whose encoding is written as its SHA-256, by that
@@ -301,7 +306,12 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 		t.Fatal(err)
 	}
 	c.Log = goldenLog()
-	c.Listeners = []func(server.Config) (server.Listener, error){func(server.Config) (server.Listener, error) { return s.l, nil }}
+	test := func(server.Config) (server.Listener, error) { return s.l, nil }
+	if conf.network {
+		c.Listeners = append(c.Listeners, test)
+	} else {
+		c.Listeners = []func(server.Config) (server.Listener, error){test}
+	}
 	c.PlayerProvider = s.players
 	c.RandomTickSpeed = -1
 	c.WorldProvider = world.NopProvider{Set: goldenSettings()}
@@ -388,6 +398,7 @@ func (s *serverScenario) accept() {
 			joining.h = p.H()
 			p.Message(joining.nextMarkerLocked())
 		}
+		s.yielded = append(s.yielded, p.Name())
 		s.mu.Unlock()
 		s.spawned <- p.H()
 	}
@@ -455,6 +466,16 @@ func (s *serverScenario) join(heading string, who serverIdentity) *serverClient 
 	}
 	s.joined(heading, c, others)
 	return c
+}
+
+// lastYielded returns the name of the player Accept yielded last.
+func (s *serverScenario) lastYielded() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.yielded) == 0 {
+		return ""
+	}
+	return s.yielded[len(s.yielded)-1]
 }
 
 // awaitSpawn waits until Accept yields a player.
