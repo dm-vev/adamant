@@ -298,7 +298,7 @@ func (s *Session) addSpecificMetadata(e any, m v2193.Metadata) {
 	if d, ok := e.(displayTile); ok {
 		var display int32
 		if b, ok := d.DisplayBlock(); ok {
-			display = int32(networkBlockID(s.br, b))
+			display = int32(s.blockHash(b))
 		}
 		m[v2193.EntityDataKeyDisplayBlockState] = display
 		m[v2193.EntityDataKeyDisplayOffset] = int32(d.DisplayOffset())

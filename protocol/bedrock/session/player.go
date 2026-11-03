@@ -1354,7 +1354,7 @@ func stackToItem(br world.BlockRegistry, it v2193.ItemStack) item.Stack {
 		// Clients name the block of a block item by its network block hash. An
 		// unknown hash or a block that is no item leaves air.
 		t = block.Air{}
-		if rid, known := br.HashToRuntimeID(uint32(it.BlockRuntimeID)); known {
+		if rid, known := hashesOf(br).hashToRuntimeID(uint32(it.BlockRuntimeID)); known {
 			if b, found := br.BlockByRuntimeID(rid); found {
 				if blockItem, isItem := b.(world.Item); isItem {
 					t = blockItem

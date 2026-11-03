@@ -257,7 +257,7 @@ func (s *Session) writeActorAppearance(e world.Entity, m v2193.Metadata) {
 		if !ok {
 			carried = block.Air{}
 		}
-		m[v2193.EntityDataKeyCarryBlockRuntimeID] = int32(networkBlockID(s.br, carried))
+		m[v2193.EntityDataKeyCarryBlockRuntimeID] = int32(s.blockHash(carried))
 		if e.Angry() {
 			setActorFlag(m, v2193.EntityDataFlagAngry)
 		}

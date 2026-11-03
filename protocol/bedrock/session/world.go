@@ -147,9 +147,9 @@ func (s *Session) ViewEntity(e world.Entity) {
 			})
 			return
 		case entity.TextType:
-			metadata[v2193.EntityDataKeyVariant] = int32(networkBlockID(s.br, block.Air{}))
+			metadata[v2193.EntityDataKeyVariant] = int32(s.blockHash(block.Air{}))
 		case entity.FallingBlockType:
-			metadata[v2193.EntityDataKeyVariant] = int32(networkBlockID(s.br, v.Behaviour().(*entity.FallingBlockBehaviour).Block()))
+			metadata[v2193.EntityDataKeyVariant] = int32(s.blockHash(v.Behaviour().(*entity.FallingBlockBehaviour).Block()))
 		}
 	}
 	id = networkID(e.H().Type())
@@ -704,13 +704,13 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesDestroyBlock,
 			Position:  vec64To32(pos),
-			EventData: int32(networkBlockID(s.br, pa.Block)),
+			EventData: int32(s.blockHash(pa.Block)),
 		})
 	case particle.PunchBlock:
 		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticlesCrackBlock,
 			Position:  vec64To32(pos),
-			EventData: int32(networkBlockID(s.br, pa.Block)) | (int32(pa.Face) << 24),
+			EventData: int32(s.blockHash(pa.Block)) | (int32(pa.Face) << 24),
 		})
 	case particle.DragonDestroyBlock:
 		out(&v2193.LevelEventPacket{
@@ -956,7 +956,7 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 			pk.EntityType = world.BedrockEntityIdentifier(so.Entity)
 		}
 		if so.Block != nil {
-			pk.ExtraData = int32(networkBlockID(s.br, so.Block))
+			pk.ExtraData = int32(s.blockHash(so.Block))
 		}
 		if so.Source != nil {
 			pk.EntityUniqueID = so.Source.UniqueID()
@@ -1149,17 +1149,17 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 	case sound.Burp:
 		pk.SoundType = v2193.SoundEventBurp
 	case sound.DoorOpen:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventDoorOpen, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventDoorOpen, int32(s.blockHash(so.Block))
 	case sound.DoorClose:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventDoorClose, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventDoorClose, int32(s.blockHash(so.Block))
 	case sound.TrapdoorOpen:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventTrapdoorOpen, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventTrapdoorOpen, int32(s.blockHash(so.Block))
 	case sound.TrapdoorClose:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventTrapdoorClose, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventTrapdoorClose, int32(s.blockHash(so.Block))
 	case sound.FenceGateOpen:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventFenceGateOpen, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventFenceGateOpen, int32(s.blockHash(so.Block))
 	case sound.FenceGateClose:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventFenceGateClose, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventFenceGateClose, int32(s.blockHash(so.Block))
 	case sound.PistonIn:
 		pk.SoundType, pk.EntityType = v2193.SoundEventPistonIn, ""
 	case sound.PistonOut:
@@ -1167,7 +1167,7 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 	case sound.Deny:
 		pk.SoundType = v2193.SoundEventDeny
 	case sound.BlockPlace:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventPlace, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventPlace, int32(s.blockHash(so.Block))
 	case sound.AnvilLand:
 		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventSoundAnvilLand,
@@ -1202,13 +1202,13 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		pk.SoundType = v2193.SoundEventBell
 		pk.EntityType = ""
 	case sound.BlockBreaking:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventHit, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventHit, int32(s.blockHash(so.Block))
 	case sound.ItemBreak:
 		pk.SoundType = v2193.SoundEventBreak
 	case sound.ItemUseOn:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventItemUseOn, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventItemUseOn, int32(s.blockHash(so.Block))
 	case sound.BlockBounce:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventBounce, int32(networkBlockID(s.br, so.Block))
+		pk.SoundType, pk.ExtraData = v2193.SoundEventBounce, int32(s.blockHash(so.Block))
 	case sound.GeyserEruptionStart:
 		pk.SoundType = v2193.SoundEventGeyserEruptionStart
 		if so.Continuous {

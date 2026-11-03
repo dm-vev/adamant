@@ -35,6 +35,12 @@ type ListenConfig struct {
 	Log *slog.Logger
 	// EmoteChatMuted mutes the chat messages of emotes.
 	EmoteChatMuted bool
+	// Blocks is the finalized block registry of the worlds of the server.
+	// Listen builds its network block hashes, as the server makes its
+	// listeners: two states of one hash then fail the start of the server,
+	// with a panic, rather than the game of the first client. Nil leaves
+	// them to the first session.
+	Blocks world.BlockRegistry
 }
 
 // Listener is the listener of the Bedrock Edition adapter. It hands the
@@ -55,6 +61,9 @@ type Listener struct {
 func Listen(l ConnListener, conf ListenConfig) *Listener {
 	if conf.Log == nil {
 		conf.Log = slog.Default()
+	}
+	if conf.Blocks != nil {
+		hashesOf(conf.Blocks)
 	}
 	return &Listener{l: l, conf: conf}
 }

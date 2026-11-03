@@ -199,6 +199,9 @@ type Session struct {
 	inputLocks   uint32
 
 	br world.BlockRegistry
+	// hashes are the network block hashes of br, by which the session sends
+	// blocks.
+	hashes *blockHashes
 }
 
 // debugShapeUpdate represents a pending debug shape mutation. A nil shape removes the matching ID.
@@ -340,6 +343,7 @@ func (conf Config) New(conn Conn) *Session {
 	} else {
 		s.br = conf.BlockRegistry
 	}
+	s.hashes = hashesOf(s.br)
 
 	s.registerHandlers()
 	s.sendBiomes()

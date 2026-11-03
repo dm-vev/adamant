@@ -320,7 +320,7 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 	}
 	c.Log = goldenLog()
 	test := func(c server.Config, _ server.Host) (server.Listener, error) {
-		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: bc.MuteEmoteChat}), nil
+		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: bc.MuteEmoteChat, Blocks: c.Blocks}), nil
 	}
 	if conf.network {
 		c.Listeners = append(c.Listeners, bc.Listener, test)

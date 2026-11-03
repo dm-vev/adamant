@@ -7,6 +7,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/segmentio/fasthash/fnv1a"
 )
@@ -27,6 +28,13 @@ func (h *blockHashes) runtimeIDToHash(rid uint32) (uint32, bool) {
 		return 0, false
 	}
 	return h.hash[rid], true
+}
+
+// blockID returns the network block hash of a block of the registry br the
+// hashes are of, 0 if it has none, as clients take a block they do not know.
+func (h *blockHashes) blockID(br world.BlockRegistry, b world.Block) uint32 {
+	hash, _ := h.runtimeIDToHash(br.BlockRuntimeID(b))
+	return hash
 }
 
 // hashToRuntimeID returns the runtime ID of a network block hash, and false

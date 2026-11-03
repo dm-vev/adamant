@@ -52,7 +52,7 @@ func (c Config) Listener(conf server.Config, host server.Host) (server.Listener,
 	if err != nil {
 		return nil, err
 	}
-	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
+	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat, Blocks: conf.Blocks}), nil
 }
 
 // netherNetListener returns the connections of the NetherNet listener of

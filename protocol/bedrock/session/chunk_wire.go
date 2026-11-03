@@ -27,7 +27,7 @@ var chunkWireBufferPool = sync.Pool{
 func encodeSubChunk(c *chunk.Chunk, ind int) []byte {
 	buf := chunkWireBufferPool.Get().(*[]byte)
 	layers := c.Sub()[ind].Layers()
-	br := c.BlockRegistry()
+	hashes := hashesOf(c.BlockRegistry())
 	b := append((*buf)[:0], chunk.SubChunkVersion, byte(len(layers)), uint8(ind+(c.Range()[0]>>4)))
 	for _, storage := range layers {
 		var palette bool
@@ -36,7 +36,7 @@ func encodeSubChunk(c *chunk.Chunk, ind int) []byte {
 		}
 		p := storage.Palette()
 		for i := range p.Len() {
-			hash, _ := br.RuntimeIDToHash(p.Value(uint16(i)))
+			hash, _ := hashes.runtimeIDToHash(p.Value(uint16(i)))
 			b = appendVarint32(b, int32(hash))
 		}
 	}

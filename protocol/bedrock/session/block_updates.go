@@ -14,10 +14,20 @@ import (
 const subChunkBlocksAt = 8
 
 // networkBlockID returns the ID clients know a block by: its network block
-// hash, as BDS sends block IDs with block network ID hashes enabled.
+// hash, as BDS sends block IDs with block network ID hashes enabled. A
+// session has the hashes of its registry at hand, see Session.blockHash.
 func networkBlockID(br world.BlockRegistry, b world.Block) uint32 {
-	hash, _ := br.RuntimeIDToHash(br.BlockRuntimeID(b))
-	return hash
+	return hashesOf(br).blockID(br, b)
+}
+
+// blockHash returns the ID clients know a block by, as networkBlockID, from
+// the hashes of the registry of the session.
+func (s *Session) blockHash(b world.Block) uint32 {
+	h := s.hashes
+	if h == nil {
+		h = hashesOf(s.br)
+	}
+	return h.blockID(s.br, b)
 }
 
 // sharedBlockUpdates is what the viewers of a world.BlockUpdates share of it:
@@ -69,6 +79,7 @@ func (s *Session) ViewBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 // of a fill.
 func blockUpdatePackets(br world.BlockRegistry, updates []world.BlockUpdate) *sharedBlockUpdates {
 	shared := &sharedBlockUpdates{}
+	hashes := hashesOf(br)
 	counts := make(map[cube.Pos]int, 4)
 	for _, u := range updates {
 		counts[subChunkOf(u.Pos)]++
@@ -84,7 +95,7 @@ func blockUpdatePackets(br world.BlockRegistry, updates []world.BlockUpdate) *sh
 		if counts[sub] < subChunkBlocksAt {
 			shared.packets = append(shared.packets, &sharedPacket{Packet: &v2193.UpdateBlockPacket{
 				Position:          blockPos(u.Pos),
-				NewBlockRuntimeID: networkBlockID(br, u.Block),
+				NewBlockRuntimeID: hashes.blockID(br, u.Block),
 				Flags:             v2193.BlockUpdateNetwork,
 				Layer:             uint32(u.Layer),
 			}})
@@ -101,7 +112,7 @@ func blockUpdatePackets(br world.BlockRegistry, updates []world.BlockUpdate) *sh
 		}
 		entry := v2193.BlockChangeEntry{
 			BlockPos:       blockPos(u.Pos),
-			BlockRuntimeID: networkBlockID(br, u.Block),
+			BlockRuntimeID: hashes.blockID(br, u.Block),
 			Flags:          v2193.BlockUpdateNetwork,
 			// BDS sends -1: the change syncs no entity.
 			SyncedUpdateEntityUniqueID: math.MaxUint64,

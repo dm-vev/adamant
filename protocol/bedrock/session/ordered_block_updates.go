@@ -35,7 +35,7 @@ type blockUpdateData struct {
 func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	update := blockUpdateData{
 		pos:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		runtimeID: networkBlockID(s.br, b),
+		runtimeID: s.blockHash(b),
 		layer:     uint32(layer),
 		flags:     v2193.BlockUpdateNetwork,
 	}
@@ -192,7 +192,7 @@ func (s *Session) enqueueBellRingUpdate(pos cube.Pos, bell block.Bell) {
 		}
 		// The ordinary network update was already flushed. Only the second,
 		// neighbour-only update remains, followed by the actor pair.
-		update = blockUpdateData{pos: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, runtimeID: networkBlockID(s.br, bell), flags: v2193.BlockUpdateNeighbours}
+		update = blockUpdateData{pos: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, runtimeID: s.blockHash(bell), flags: v2193.BlockUpdateNeighbours}
 	} else {
 		update.flags = v2193.BlockUpdateNetwork | v2193.BlockUpdateNeighbours
 		update.repeatBlockUpdate = true
@@ -223,7 +223,7 @@ func (s *Session) enqueueBellUseRejection(pos cube.Pos, bell block.Bell) {
 	// Preserve animation/effects from an earlier accepted ring that has
 	// not yet passed the backlog; this rejection adds no new actor data.
 	update.pos = v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	update.runtimeID = networkBlockID(s.br, bell)
+	update.runtimeID = s.blockHash(bell)
 	update.flags = v2193.BlockUpdateNetwork | v2193.BlockUpdateNeighbours
 	update.actorOnly = false
 	s.blockUpdates[key] = update
