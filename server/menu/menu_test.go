@@ -1,12 +1,14 @@
 package menu_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
@@ -282,6 +284,38 @@ func TestGrid(t *testing.T) {
 				t.Errorf("Grid() of %v = %v, %v, want %v, %v", m.Kind(), first, size, test.first, test.size)
 			}
 			m.Close(tx, nil)
+		}
+	})
+}
+
+// TestEnchantmentOptionsRefuseWhatCannotBeEnchanted checks the verdict of
+// EnchantmentOptions on its input, and that the options of a seed are the
+// same each time they are drawn.
+func TestEnchantmentOptionsRefuseWhatCannotBeEnchanted(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *world.Tx) {
+		pos := cube.Pos{0, 64, 0}
+		tx.SetBlock(pos, block.EnchantingTable{}, nil)
+		sword := item.NewStack(item.Sword{Tier: item.ToolTierIron}, 1)
+		if _, ok := menu.EnchantmentOptions(tx, 7, pos, item.NewStack(item.Stick{}, 1)); ok {
+			t.Error("a stick can be enchanted")
+		}
+		if _, ok := menu.EnchantmentOptions(tx, 7, pos, sword.WithEnchantments(item.NewEnchantment(enchantment.Sharpness, 1))); ok {
+			t.Error("an enchanted sword can be enchanted again")
+		}
+		first, ok := menu.EnchantmentOptions(tx, 7, pos, sword)
+		if !ok {
+			t.Fatal("an iron sword cannot be enchanted")
+		}
+		again, _ := menu.EnchantmentOptions(tx, 7, pos, sword)
+		if !reflect.DeepEqual(first, again) {
+			t.Errorf("seed 7 drew %v, then %v", first, again)
+		}
+		for i, option := range first {
+			if option.Cost < 1 || len(option.Enchantments) == 0 {
+				t.Errorf("option %d of seed 7 is %+v", i, option)
+			}
 		}
 	})
 }

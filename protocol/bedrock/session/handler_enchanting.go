@@ -37,17 +37,17 @@ func (h *ItemStackRequestHandler) handleEnchant(a *v2193.CraftRecipeStackRequest
 		return fmt.Errorf("enchanting tables only accept one item at a time")
 	}
 
-	// Determine the available enchantments using the session's enchantment seed.
-	allCosts, allEnchants := s.determineAvailableEnchantments(tx, c, s.menu.Load().Pos(), input)
-	if len(allEnchants) == 0 {
+	// Determine the available enchantments using the player's enchantment seed.
+	options, ok := menu.EnchantmentOptions(tx, c.EnchantmentSeed(), s.menu.Load().Pos(), input)
+	if !ok {
 		return fmt.Errorf("can't enchant non-enchantable item")
 	}
 
-	// Use the slot plus one as the cost. The requirement and enchantments can be found in the results from
-	// determineAvailableEnchantments using the same slot index.
+	// Use the slot plus one as the cost. The requirement and enchantments can be found in the options at the same
+	// slot index.
 	cost := int(a.RecipeNetworkID + 1)
-	requirement := allCosts[a.RecipeNetworkID]
-	enchants := allEnchants[a.RecipeNetworkID]
+	requirement := options[a.RecipeNetworkID].Cost
+	enchants := options[a.RecipeNetworkID].Enchantments
 
 	// If we don't have infinite resources, we need to deduct Lapis Lazuli and experience.
 	if !c.GameMode().CreativeInventory() {
@@ -96,14 +96,10 @@ func (h *ItemStackRequestHandler) handleEnchant(a *v2193.CraftRecipeStackRequest
 // and nearby bookshelves.
 func (s *Session) sendEnchantmentOptions(tx *world.Tx, c Controllable, pos cube.Pos, stack item.Stack) {
 	// First determine the available enchantments for the given item stack.
-	selectedCosts, selectedEnchants := s.determineAvailableEnchantments(tx, c, pos, stack)
-	if len(selectedEnchants) == 0 {
+	options, ok := menu.EnchantmentOptions(tx, c.EnchantmentSeed(), pos, stack)
+	if !ok {
 		// No available enchantments.
 		return
-	}
-	var options [3]menu.EnchantmentOption
-	for i := range options {
-		options[i] = menu.EnchantmentOption{Cost: selectedCosts[i], Enchantments: selectedEnchants[i]}
 	}
 	s.ViewEnchantmentOptions(options)
 }
@@ -143,6 +139,11 @@ func (s *Session) ViewEnchantmentOptions(selected [3]menu.EnchantmentOption) {
 }
 
 // determineAvailableEnchantments returns a list of pseudo-random enchantments for the given item stack.
+//
+// It and the functions below are the copy of menu.EnchantmentOptions that
+// the session used before. The session no longer calls them: they are kept
+// as the oracle of TestEnchantmentOptionsMatchTheSession until the old
+// handlers of item stack requests are removed.
 func (s *Session) determineAvailableEnchantments(tx *world.Tx, c Controllable, pos cube.Pos, stack item.Stack) ([]int, [][]item.Enchantment) {
 	// First ensure that the item is enchantable and does not already have any enchantments.
 	enchantable, ok := stack.Item().(item.Enchantable)
