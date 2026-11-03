@@ -420,10 +420,7 @@ func TestMessageMatchesChat(t *testing.T) {
 		{"no parameters", chat.MessageBedTooFar, nil,
 			text.Colourf("<grey>%v</grey>", text.Translate("tile.bed.tooFar", "Bed is too far away")), ""},
 		{"a translation as a parameter", chat.Translate(key("%death.attack.mob"), 2, "%v was slain by %v"), []any{"Steve", stone},
-			text.Colourf("%v", text.Translate("death.attack.mob", "%s was slain by %s", steve, text.Colourf("%v", text.Translate("tile.stone.name", "Stone")))),
-			// The fallback of the chat package formats a Translation passed
-			// as an argument as a Go value, "{%tile.stone.name %v 0 Stone}".
-			"the chat package formats a Translation argument of a fallback as a Go value"},
+			text.Colourf("%v", text.Translate("death.attack.mob", "%s was slain by %s", steve, text.Colourf("%v", text.Translate("tile.stone.name", "Stone")))), ""},
 		{"the key of a mob as a parameter", chat.Translate(key("%death.attack.mob"), 2, "%v was slain by %v"), []any{"Steve", "%entity.zombie.name"},
 			text.Colourf("%v", text.Translate("death.attack.mob", "%s was slain by %s", steve, text.Translate("entity.zombie.name", "Zombie"))),
 			// The game passes the key of a mob as a string, which the

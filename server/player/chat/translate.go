@@ -137,13 +137,36 @@ func (t translation) Params(l language.Tag) []string {
 	return params
 }
 
-// String formats and returns the fallback value of the translation.
+// String formats and returns the fallback value of the translation. A
+// translation passed as an argument, filled in or taking no arguments, is
+// formatted as its own fallback.
 func (t translation) String() string {
 	formatted := text.Colourf(t.t.format, t.t.fallback)
 	if len(t.params) == 0 {
 		return formatted
 	}
-	return fmt.Sprintf(formatted, t.params...)
+	return fmt.Sprintf(formatted, fallbackArgs(t.params)...)
+}
+
+// fallbackArgs returns the arguments of a translation as its fallback shows
+// them: a translation filled in, or one that takes no arguments, as its
+// fallback, and any other value as it is.
+func fallbackArgs(params []any) []any {
+	args := make([]any, len(params))
+	for i, a := range params {
+		switch v := a.(type) {
+		case Translation:
+			if v.params == 0 {
+				args[i] = v.F().String()
+				continue
+			}
+		case translation:
+			args[i] = v.String()
+			continue
+		}
+		args[i] = a
+	}
+	return args
 }
 
 // Error formats and returns the fallback value of the translation.
