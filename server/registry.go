@@ -3,6 +3,7 @@ package server
 import (
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
 )
@@ -16,11 +17,11 @@ type players struct {
 	online map[uuid.UUID]*onlinePlayer
 }
 
-// onlinePlayer holds the entity handle, XUID and name of a player.
+// onlinePlayer is a player online: its entity handle and the identity its
+// client logged in as.
 type onlinePlayer struct {
 	handle *world.EntityHandle
-	xuid   string
-	name   string
+	id     client.Identity
 }
 
 // add puts p online, keyed by the UUID of its handle.
@@ -60,7 +61,7 @@ func (r *players) byName(name string) (*world.EntityHandle, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, p := range r.online {
-		if p.name == name {
+		if p.id.Name == name {
 			return p.handle, true
 		}
 	}
@@ -72,7 +73,7 @@ func (r *players) byXUID(xuid string) (*world.EntityHandle, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, p := range r.online {
-		if p.xuid == xuid {
+		if p.id.XUID == xuid {
 			return p.handle, true
 		}
 	}
@@ -85,7 +86,7 @@ func (r *players) byKey(key string) *world.EntityHandle {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, p := range r.online {
-		if normalizeName(p.name) == key {
+		if normalizeName(p.id.Name) == key {
 			return p.handle
 		}
 	}
@@ -109,7 +110,7 @@ func (r *players) names() []string {
 	defer r.mu.RUnlock()
 	out := make([]string, 0, len(r.online))
 	for _, p := range r.online {
-		out = append(out, p.name)
+		out = append(out, p.id.Name)
 	}
 	return out
 }

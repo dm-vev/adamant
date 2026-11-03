@@ -572,7 +572,7 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 		items[i] = v2193.ItemEntry(e)
 	}
 	_ = conn.WritePacket(&v2193.ItemRegistryPacket{Items: items})
-	srv.incoming <- srv.createPlayer(id, conn, d, w)
+	srv.incoming <- srv.createPlayer(conn, d, w)
 }
 
 func (srv *Server) handleReconnect(l Listener, conn session.Conn, id uuid.UUID, handle *world.EntityHandle) bool {
@@ -687,9 +687,9 @@ func (srv *Server) handleSessionClose(tx *world.Tx, c session.Controllable) {
 	}
 }
 
-// createPlayer creates a new player instance using the UUID and connection
-// passed.
-func (srv *Server) createPlayer(id uuid.UUID, conn session.Conn, conf player.Config, w *world.World) incoming {
+// createPlayer creates a new player instance using the connection passed,
+// as the player of its identity.
+func (srv *Server) createPlayer(conn session.Conn, conf player.Config, w *world.World) incoming {
 	srv.pwg.Add(1)
 
 	s := session.Config{
@@ -703,17 +703,18 @@ func (srv *Server) createPlayer(id uuid.UUID, conn session.Conn, conf player.Con
 		IsOperator:     srv.IsOperator,
 	}.New(conn)
 
-	conf.Name = conn.IdentityData().DisplayName
-	conf.XUID = conn.IdentityData().XUID
-	conf.UUID = id
+	id := session.IdentityOf(conn.IdentityData())
+	conf.Name = id.Name
+	conf.XUID = id.XUID
+	conf.UUID = id.UUID
 	conf.Locale, _ = language.Parse(strings.Replace(conn.ClientData().LanguageCode, "_", "-", 1))
 	conf.Skin = session.ClientSkin(conn.ClientData())
 	conf.Client = s
 	conf.Log = srv.conf.Log.With("name", conn.IdentityData().DisplayName, "uuid", conn.IdentityData().Identity, "raddr", conn.RemoteAddr().String())
 
-	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id}.New(player.Type, conf)
+	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id.UUID}.New(player.Type, conf)
 	s.SetHandle(handle, conf.Skin)
-	return incoming{s: s, w: w, conf: conf, p: &onlinePlayer{name: conf.Name, xuid: conf.XUID, handle: handle}}
+	return incoming{s: s, w: w, conf: conf, p: &onlinePlayer{id: id, handle: handle}}
 }
 
 // createWorld loads a world with a specific dimension using the provider set

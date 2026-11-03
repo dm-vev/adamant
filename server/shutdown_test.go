@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/client/clienttest"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
@@ -46,7 +47,7 @@ func TestCloseDisconnectsWithShutdownMessage(t *testing.T) {
 			handle := world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}}.New(player.Type, player.Config{
 				Name: "Shutdown", Locale: language.English, Client: rec,
 			})
-			srv.players.add(&onlinePlayer{handle: handle, name: "Shutdown"})
+			srv.players.add(&onlinePlayer{handle: handle, id: client.Identity{Name: "Shutdown", UUID: handle.UUID()}})
 			<-srv.world.Exec(func(tx *world.Tx) { tx.AddEntity(handle) })
 
 			srv.Listen()

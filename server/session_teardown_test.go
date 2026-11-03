@@ -67,7 +67,7 @@ func TestHandleStopPanicCompletesServerSessionTeardown(t *testing.T) {
 	_ = armour.Inventory().SetItem(0, item.NewStack(item.Apple{}, 1))
 
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	inc := srv.createPlayer(id, conn, player.Config{
+	inc := srv.createPlayer(conn, player.Config{
 		Position: pos, Inventory: inv, OffHand: offHand, Armour: armour,
 	}, srv.world)
 	t.Cleanup(inc.s.CloseConnection)
@@ -129,9 +129,8 @@ func TestContainerRemoveViewerPanicDoesNotBlockServerShutdown(t *testing.T) {
 	provider := &recordingSaveProvider{saved: make(chan struct{}, 1)}
 	srv := newSessionTestServer(t, provider)
 	conn := newServerPanicConn()
-	id := uuid.MustParse(conn.identity.Identity)
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	inc := srv.createPlayer(id, conn, player.Config{Position: pos}, srv.world)
+	inc := srv.createPlayer(conn, player.Config{Position: pos}, srv.world)
 	srv.players.add(inc.p)
 
 	removed := make(chan struct{})
@@ -324,7 +323,7 @@ func TestFailedJoinUnlistsPlayer(t *testing.T) {
 	srv := newSessionTestServer(t, player.NopProvider{})
 
 	observer := newListConn()
-	obs := srv.createPlayer(uuid.MustParse(observer.identity.Identity), observer, player.Config{}, srv.world)
+	obs := srv.createPlayer(observer, player.Config{}, srv.world)
 	t.Cleanup(func() {
 		obs.s.CloseConnection()
 		obs.s.Unbind()
@@ -333,7 +332,7 @@ func TestFailedJoinUnlistsPlayer(t *testing.T) {
 	})
 	joining := newListConn()
 	id := uuid.MustParse(joining.identity.Identity)
-	inc := srv.createPlayer(id, joining, player.Config{}, srv.world)
+	inc := srv.createPlayer(joining, player.Config{}, srv.world)
 	observer.awaitList(t, v2193.PlayerListActionAdd, id)
 
 	// The world closes before Accept spawns the player.
@@ -348,7 +347,7 @@ func TestFailedJoinUnlistsPlayer(t *testing.T) {
 	observer.awaitList(t, v2193.PlayerListActionRemove, id)
 
 	later := newListConn()
-	after := srv.createPlayer(uuid.MustParse(later.identity.Identity), later, player.Config{}, srv.world)
+	after := srv.createPlayer(later, player.Config{}, srv.world)
 	t.Cleanup(func() {
 		after.s.CloseConnection()
 		after.s.Unbind()

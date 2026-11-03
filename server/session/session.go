@@ -637,8 +637,7 @@ func (s *Session) Profile() client.Profile {
 	if s == Nop {
 		return client.Profile{}
 	}
-	d := s.conn.ClientData()
-	return client.Profile{DeviceID: d.DeviceID, DeviceModel: d.DeviceModel, SelfSignedID: d.SelfSignedID}
+	return ProfileOf(s.conn.ClientData())
 }
 
 // LogError writes an error through the session's configured logger.

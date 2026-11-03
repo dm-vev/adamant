@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
@@ -11,7 +12,7 @@ import (
 
 func newOnlinePlayer(name, xuid string) *onlinePlayer {
 	h := world.EntitySpawnOpts{ID: uuid.New()}.New(player.Type, player.Config{Name: name})
-	return &onlinePlayer{handle: h, name: name, xuid: xuid}
+	return &onlinePlayer{handle: h, id: client.Identity{Name: name, UUID: h.UUID(), XUID: xuid}}
 }
 
 func TestPlayersRegistry(t *testing.T) {
