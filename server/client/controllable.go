@@ -64,6 +64,7 @@ type Controllable interface {
 	PickBlock(pos cube.Pos)
 	AttackEntity(e world.Entity) bool
 	Drop(s item.Stack) (n int)
+	DropFromInventory(slot, count int) error
 	SwingArm()
 	PunchAir()
 

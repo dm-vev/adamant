@@ -5,9 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -136,28 +134,9 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *v2193.Inventor
 	if !expected.Equal(actual) {
 		return fmt.Errorf("different item thrown than held in slot: %#v was thrown but held %#v", expected, actual)
 	}
-	if err := ensureUnlockedForInventoryRemoval(actual, v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: v2193.ContainerInventory},
-		Slot:      byte(slot),
-	}); err != nil {
-		return err
-	}
-
-	// Explicitly don't re-use the thrown variable. This item was supplied by the user, and if some
-	// logic in the Comparable() method was flawed, users would be able to cheat with item properties.
-	// Only grow or shrink the held item to prevent any such issues.
-	res := actual.Grow(count - actual.Count())
-	heldSlot := s.heldSlot.Load()
-	if heldSlot == nil {
-		return fmt.Errorf("held slot not initialised for inventory transaction")
-	}
-	if err := call(event.C(inventory.Holder(c)), int(atomic.LoadUint32(heldSlot)), res, s.inv.Handler().HandleDrop); err != nil {
-		return err
-	}
-
-	n := c.Drop(res)
-	_ = s.inv.SetItem(slot, actual.Grow(-n))
-	return nil
+	// The player checks the count and the lock again, lets the handlers see
+	// the drop and drops what is left of the stack in the slot.
+	return c.DropFromInventory(slot, count)
 }
 
 // handleUseItemOnEntityTransaction ...

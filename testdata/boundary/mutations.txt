@@ -32,7 +32,6 @@ protocol/bedrock/session/handler_crafting.go (*world.Tx).ScaleMap
 protocol/bedrock/session/handler_emote.go (world.Viewer).ViewEmote
 protocol/bedrock/session/handler_grindstone.go (*world.Tx).AddEntity
 protocol/bedrock/session/handler_interact.go (interface).Dismount
-protocol/bedrock/session/handler_inventory_transaction.go (*inventory.Inventory).SetItem
 protocol/bedrock/session/handler_item_stack_request.go (*inventory.Inventory).SetItem
 protocol/bedrock/session/handler_item_stack_request.go (*inventory.Inventory).SetItem
 protocol/bedrock/session/handler_item_stack_request.go (*world.Tx).AddEntity
