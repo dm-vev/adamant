@@ -111,7 +111,7 @@ func (s *witherState) customServerAiStep(m *Mob) {
 		if s.invulnerable <= 0 {
 			eye := mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}
 			block.ExplosionConfig{NoBlockDamage: mobGriefingDisabled(tx)}.Explode(tx, world.NewEntityExplosionSource(witherExplosionSource{w, eye}, 7))
-			tx.PlayGlobalSound(m.data.Pos, sound.Custom{Name: "mob.wither.spawn", Volume: 1, Pitch: 1})
+			tx.PlayGlobalSound(m.data.Pos, sound.Custom{Name: "entity.wither.spawn", Volume: 1, Pitch: 1})
 		}
 		m.updateState()
 		if m.AI.tickCount%10 == 0 {
@@ -191,7 +191,7 @@ func (s *witherState) destroyBlocks(m *Mob) {
 		}
 	}
 	if destroyed {
-		m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.wither.break_block", Volume: 1, Pitch: 1})
+		m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.wither.break_block", Volume: 1, Pitch: 1})
 	}
 }
 
@@ -255,7 +255,7 @@ func (s *witherState) performRangedAttackAt(m *Mob, head int, target world.Entit
 // performRangedAttack ports WitherBoss.performRangedAttack: a head fires a
 // wither skull at a spot.
 func (s *witherState) performRangedAttack(m *Mob, head int, at mgl64.Vec3, dangerous bool) {
-	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.wither.shoot", Volume: 1, Pitch: 1})
+	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.wither.shoot", Volume: 1, Pitch: 1})
 	from := headPos(m, head)
 	dir := at.Sub(from)
 	if dir.LenSqr() == 0 {

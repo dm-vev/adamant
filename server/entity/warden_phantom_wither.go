@@ -405,7 +405,7 @@ func (w *Wither) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		w.viewAction(DeathAction{})
 		w.removeBossBar()
 		w.dropSourceLoot(src)
-		w.tx.PlaySound(w.Position(), sound.Custom{Name: "mob.wither.death", Volume: 1, Pitch: 1})
+		w.tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wither.death", Volume: 1, Pitch: 1})
 	}
 	return d, true
 }

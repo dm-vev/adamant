@@ -268,8 +268,8 @@ func newFrogBrain(f *frogBehaviour) *Brain {
 		{1, newFrogShootTongue(f)},
 	}, []memoryCondition{{memAttackTarget, memPresent}}, []memoryType{memAttackTarget})
 	b.addActivityWith(activityLongJump, []prioritizedBehavior{
-		{0, newLongJumpMidJump(frogTimeBetweenLongJumps, "mob.frog.step")},
-		{1, newLongJumpToPreferredBlock(frogTimeBetweenLongJumps, 2, 4, 3.5714288, func(*Mob) string { return "mob.frog.jump_to_block" },
+		{0, newLongJumpMidJump(frogTimeBetweenLongJumps, "entity.frog.step")},
+		{1, newLongJumpToPreferredBlock(frogTimeBetweenLongJumps, 2, 4, 3.5714288, func(*Mob) string { return "entity.frog.long_jump" },
 			func(b world.Block) bool { return blockInTag(b, "frog_prefer_jump_to") }, .5, frogLandingSpot)},
 	}, []memoryCondition{{memTemptingPlayer, memAbsent}, {memBreedTarget, memAbsent}, {memLongJumpCooldownTicks, memAbsent}, {memIsInWater, memAbsent}}, nil)
 	return b
@@ -381,7 +381,7 @@ func newFrogShootTongue(f *frogBehaviour) *behavior {
 			case frogTongueMove:
 				switch {
 				case target.Position().Sub(m.data.Pos).Len() < 1.75:
-					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.frog.tongue", Volume: 2, Pitch: 1})
+					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.frog.tongue", Volume: 2, Pitch: 1})
 					f.setPose(m, frogUsingTongue)
 					if v, ok := target.(interface{ SetVelocity(mgl64.Vec3) }); ok {
 						if pull := m.data.Pos.Sub(target.Position()); pull.LenSqr() > 0 {
@@ -415,7 +415,7 @@ func newFrogShootTongue(f *frogBehaviour) *behavior {
 // frogEat ports ShootTongue.eatEntity: the frog bites what its tongue holds,
 // and prey it kills disappears at once.
 func frogEat(m *Mob, f *frogBehaviour) {
-	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.frog.eat", Volume: 2, Pitch: 1})
+	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.frog.eat", Volume: 2, Pitch: 1})
 	if f.tongueTarget == nil {
 		return
 	}
@@ -607,7 +607,7 @@ func (f *Frog) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
 		return false
 	}
 	// Frog.playEatingSound.
-	f.tx.PlaySound(f.Position(), sound.Custom{Name: "mob.frog.eat", Volume: 2, Pitch: 1})
+	f.tx.PlaySound(f.Position(), sound.Custom{Name: "entity.frog.eat", Volume: 2, Pitch: 1})
 	return true
 }
 

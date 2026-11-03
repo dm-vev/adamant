@@ -301,7 +301,7 @@ func (b *AquaticMobBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 	if _, hurt := l.Hurt(2, AttackDamageSource{Attacker: m.Self}); !hurt {
 		return false
 	}
-	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.axolotl.attack", Volume: 1, Pitch: 1})
+	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.axolotl.attack", Volume: 1, Pitch: 1})
 	return true
 }
 

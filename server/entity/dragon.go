@@ -317,7 +317,7 @@ func (b *EnderDragonBehaviour) tickDeath(e *Ent, tx *world.Tx) *Movement {
 	}
 	if b.deathTime == 1 {
 		dragon.viewAction(DragonDeathAction{})
-		tx.PlayGlobalSound(e.Position(), sound.Custom{Name: "mob.enderdragon.death", Volume: 10, Pitch: 1})
+		tx.PlayGlobalSound(e.Position(), sound.Custom{Name: "entity.ender_dragon.death", Volume: 10, Pitch: 1})
 	}
 	m := b.movement.TickMovement(e, e.Position(), mgl64.Vec3{0, float64(float32(.1)), 0}, e.Rotation(), e.Rotation(), tx)
 	e.data.Pos, e.data.Rot = m.Position(), m.Rotation()

@@ -223,7 +223,7 @@ func newGoatBrain(g *GoatBehaviour) *Brain {
 		)},
 	}, []memoryCondition{{memRamCooldownTicks, memPresent}, {memLongJumpCooldownTicks, memPresent}}, nil)
 	b.addActivityWith(activityLongJump, []prioritizedBehavior{
-		{0, newLongJumpMidJump(jumps, "mob.goat.step")},
+		{0, newLongJumpMidJump(jumps, "entity.goat.step")},
 		{1, newLongJumpToRandomPos(jumps, 5, 5, 3.5714288, func(*Mob) string { return "" }, nil)},
 	}, []memoryCondition{{memTemptingPlayer, memAbsent}, {memBreedTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLongJumpCooldownTicks, memAbsent}}, nil)
 	b.addActivityWith(activityRam, []prioritizedBehavior{
@@ -347,7 +347,7 @@ func newPrepareRamNearestTarget(g *GoatBehaviour, cooldownOnFail func() int, min
 				edge := tp.Vec3Middle().Add(mgl64.Vec3{.5 * signum(float64(tp[0]-at[0])), 0, .5 * signum(float64(tp[2]-at[2]))})
 				b.set(memRamTarget, edge)
 				r := m.Random()
-				m.tx.PlaySound(m.data.Pos, sound.Custom{Name: g.sound("mob.goat.prepare_ram", "mob.goat.prepare_ram.screamer"), Volume: 1, Pitch: float64((r.NextFloat()-r.NextFloat())*.2 + 1)})
+				m.tx.PlaySound(m.data.Pos, sound.Custom{Name: g.sound("entity.goat.prepare_ram", "entity.goat.screaming.prepare_ram"), Volume: 1, Pitch: float64((r.NextFloat()-r.NextFloat())*.2 + 1)})
 				candidate = nil
 			}
 		},
@@ -389,7 +389,7 @@ func newGoatRamTarget(g *GoatBehaviour, between func() uniformInt) *behavior {
 					break
 				}
 			}
-			impact := g.sound("mob.goat.ram_impact", "mob.goat.ram_impact.screamer")
+			impact := g.sound("entity.goat.ram_impact", "entity.goat.screaming.ram_impact")
 			switch {
 			case hit != nil:
 				damage := g.attackDamage()
@@ -417,7 +417,7 @@ func newGoatRamTarget(g *GoatBehaviour, between func() uniformInt) *behavior {
 			case goatRammedHornBreaker(m):
 				m.tx.PlaySound(m.data.Pos, sound.Custom{Name: impact, Volume: 1, Pitch: 1})
 				if (&Goat{Ent: m.Ent}).dropHorn() {
-					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.goat.horn_break", Volume: 1, Pitch: 1})
+					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.goat.horn_break", Volume: 1, Pitch: 1})
 				}
 				finish(m)
 			default:
@@ -557,7 +557,7 @@ func (g *Goat) Milk(*world.Tx) bool { return !g.Dead() && g.behaviour().age >= 0
 
 // MilkSound returns the sound of milking the goat.
 func (g *Goat) MilkSound() world.Sound {
-	return sound.Custom{Name: g.behaviour().sound("mob.cow.milk", "mob.goat.milk.screamer"), Volume: 1, Pitch: 1}
+	return sound.Custom{Name: g.behaviour().sound("entity.goat.milk", "entity.goat.screaming.milk"), Volume: 1, Pitch: 1}
 }
 
 // Interact feeds the goat wheat to breed it or let a kid grow up faster.
@@ -566,7 +566,7 @@ func (g *Goat) Interact(_ *world.Tx, u item.User, c *item.UseContext) bool {
 		return false
 	}
 	r := rand.Float64()*.4 + .8
-	g.tx.PlaySound(g.Position(), sound.Custom{Name: "mob.goat.eat", Volume: 1, Pitch: r})
+	g.tx.PlaySound(g.Position(), sound.Custom{Name: "entity.goat.eat", Volume: 1, Pitch: r})
 	return true
 }
 

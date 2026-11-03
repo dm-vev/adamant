@@ -432,7 +432,7 @@ func (b *AllayBehaviour) throwItem(m *Mob, target mgl64.Vec3) {
 	throwItemTowards(m, stack, target.Add(mgl64.Vec3{0, 1, 0}), mgl64.Vec3{float64(float32(.2)), float64(float32(.3)), float64(float32(.2))}, float64(float32(.2)))
 	if m.tx.CurrentTick()%7 == 0 && m.Random().NextDouble() < .9 {
 		pitches := [...]float64{.5625, .625, .75, .9375, 1, 1, 1.125, 1.25, 1.5, 1.875, 2, 2.25, 2.5, 3, 3.75, 4}
-		m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.allay.item_thrown", Volume: 1, Pitch: pitches[m.Random().NextInt(int32(len(pitches)))]})
+		m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.allay.item_thrown", Volume: 1, Pitch: pitches[m.Random().NextInt(int32(len(pitches)))]})
 	}
 }
 
@@ -630,7 +630,7 @@ func (a *Allay) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext
 	if b.held.Empty() && !stack.Empty() {
 		b.held = stack.Grow(1 - stack.Count())
 		ctx.SubtractFromCount(1)
-		tx.PlaySound(a.Position(), sound.Custom{Name: "mob.allay.item_given", Volume: 2, Pitch: 1})
+		tx.PlaySound(a.Position(), sound.Custom{Name: "entity.allay.item_given", Volume: 2, Pitch: 1})
 		b.br.set(memLikedPlayer, from.H().UUID())
 		a.updateState()
 		return true
@@ -639,7 +639,7 @@ func (a *Allay) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext
 		held := b.held
 		b.held = item.Stack{}
 		a.updateState()
-		tx.PlaySound(a.Position(), sound.Custom{Name: "mob.allay.item_taken", Volume: 2, Pitch: 1})
+		tx.PlaySound(a.Position(), sound.Custom{Name: "entity.allay.item_taken", Volume: 2, Pitch: 1})
 		a.viewAction(SwingArmAction{})
 		if !b.inventory.Empty() {
 			m := b.ai.Mob(a.Ent, a)

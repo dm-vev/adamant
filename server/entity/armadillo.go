@@ -173,7 +173,7 @@ func (b *ArmadilloBehaviour) customServerAiStep(m *Mob) {
 	if b.scuteTime--; b.scuteTime <= 0 && m.Alive() {
 		if dropArmadilloShed(m.Ent, m.tx) {
 			r := m.Random()
-			m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.armadillo.scute_drop", Volume: 1, Pitch: float64((r.NextFloat()-r.NextFloat())*.2 + 1)})
+			m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.armadillo.scute_drop", Volume: 1, Pitch: float64((r.NextFloat()-r.NextFloat())*.2 + 1)})
 			m.tx.EmitGameEvent(world.GameEventEntityPlace, m.data.Pos, world.GameEventContext{Source: m.Self})
 		}
 		b.scuteTime = armadilloScuteDropTime(m.Random().NextInt)
@@ -213,7 +213,7 @@ func (b *ArmadilloBehaviour) rollUp(m *Mob) {
 	m.SetSpeed(0)
 	resetLove(m.Self.(breeder))
 	m.tx.EmitGameEvent(world.GameEventEntityAction, m.data.Pos, world.GameEventContext{Source: m.Self})
-	b.makeSound(m, "mob.armadillo.roll")
+	b.makeSound(m, "entity.armadillo.roll")
 	b.switchState(m, armadilloRolling)
 }
 
@@ -223,7 +223,7 @@ func (b *ArmadilloBehaviour) rollOut(m *Mob) {
 		return
 	}
 	m.tx.EmitGameEvent(world.GameEventEntityAction, m.data.Pos, world.GameEventContext{Source: m.Self})
-	b.makeSound(m, "mob.armadillo.unroll_finish")
+	b.makeSound(m, "entity.armadillo.unroll_finish")
 	b.switchState(m, armadilloIdle)
 }
 
@@ -327,7 +327,7 @@ func newArmadilloBallUp(a *ArmadilloBehaviour) *behavior {
 			if a.state == armadilloRolling && a.inStateTicks > armadilloRolling.animationDuration() {
 				a.switchState(m, armadilloScared)
 				if m.OnGround() {
-					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.armadillo.land", Volume: 1, Pitch: 1})
+					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.armadillo.land", Volume: 1, Pitch: 1})
 				}
 				return
 			}
@@ -343,11 +343,11 @@ func newArmadilloBallUp(a *ArmadilloBehaviour) *behavior {
 					// Entity event 64 makes the armadillo peek out.
 					a.peekTicks = int(armadilloScared.animationDuration())
 					m.updateState()
-					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.armadillo.peek", Volume: 1, Pitch: 1})
+					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.armadillo.peek", Volume: 1, Pitch: 1})
 					nextPeek = pickPeek(m)
 				}
 				if danger < armadilloUnrolling.animationDuration() {
-					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.armadillo.unroll_start", Volume: 1, Pitch: 1})
+					m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.armadillo.unroll_start", Volume: 1, Pitch: 1})
 					a.switchState(m, armadilloUnrolling)
 				}
 			case armadilloUnrolling:
@@ -480,7 +480,7 @@ func (a *Armadillo) Brush() item.Stack {
 	if err != nil || len(stacks) == 0 {
 		return item.Stack{}
 	}
-	a.tx.PlaySound(a.Position(), sound.Custom{Name: "mob.armadillo.brush", Volume: 1, Pitch: 1})
+	a.tx.PlaySound(a.Position(), sound.Custom{Name: "entity.armadillo.brush", Volume: 1, Pitch: 1})
 	a.tx.EmitGameEvent(world.GameEventEntityInteract, a.Position(), world.GameEventContext{Source: a})
 	return stacks[0]
 }

@@ -301,7 +301,7 @@ func (b *SnifferBehaviour) dropSeed(m *Mob) {
 			m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: head.Vec3()}, stack))
 		}
 	}
-	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "mob.sniffer.drop_seed", Volume: 1, Pitch: 1})
+	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.sniffer.drop_seed", Volume: 1, Pitch: 1})
 }
 
 // newSnifferBrain ports SnifferAi and the brain provider of Sniffer.
@@ -552,7 +552,7 @@ func (s *Sniffer) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 		return false
 	}
 	// Sniffer.playEatingSound.
-	tx.PlaySound(s.Position(), sound.Custom{Name: "mob.sniffer.eat", Volume: 1, Pitch: .8 + rand.Float64()*.4})
+	tx.PlaySound(s.Position(), sound.Custom{Name: "entity.sniffer.eat", Volume: 1, Pitch: .8 + rand.Float64()*.4})
 	return true
 }
 

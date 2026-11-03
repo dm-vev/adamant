@@ -62,9 +62,9 @@ func (s *piglinState) customServerAiStep(m *Mob) {
 	if s.conversion > 300 {
 		if m.tx.World().Difficulty() != world.DifficultyPeaceful {
 			if s.brute {
-				s.makeSound(m, "mob.piglin_brute.converted_to_zombified")
+				s.makeSound(m, "entity.piglin_brute.converted_to_zombified")
 			} else {
-				s.makeSound(m, "mob.piglin.converted_to_zombified")
+				s.makeSound(m, "entity.piglin.converted_to_zombified")
 			}
 		}
 		s.finishConversion(m)
@@ -325,21 +325,21 @@ func piglinActivitySound(m *Mob, s *piglinState) string {
 	br := s.br
 	switch {
 	case act == activityFight:
-		return "mob.piglin.angry"
+		return "entity.piglin.angry"
 	case !s.immune && m.tx.World().Dimension() == world.Overworld:
-		return "mob.piglin.retreat"
+		return "entity.piglin.retreat"
 	case act == activityAvoid && piglinNearAvoidTarget(m):
-		return "mob.piglin.retreat"
+		return "entity.piglin.retreat"
 	case act == activityAdmireItem:
-		return "mob.piglin.admiring_item"
+		return "entity.piglin.admiring_item"
 	case act == activityCelebrate:
-		return "mob.piglin.celebrate"
+		return "entity.piglin.celebrate"
 	case br.has(memNearestPlayerHoldingWantedItem):
-		return "mob.piglin.jealous"
+		return "entity.piglin.jealous"
 	case br.has(memNearestRepellent):
-		return "mob.piglin.retreat"
+		return "entity.piglin.retreat"
 	}
-	return "mob.piglin.ambient"
+	return "entity.piglin.ambient"
 }
 
 // piglinNearAvoidTarget ports PiglinAi.isNearAvoidTarget.
@@ -1332,7 +1332,7 @@ func piglinBruteUpdateActivity(m *Mob, s *piglinState) {
 // piglinBrutePlayActivitySound ports PiglinBruteAi.playActivitySound.
 func piglinBrutePlayActivitySound(m *Mob, s *piglinState) {
 	if act, _ := s.br.activeNonCore(); act == activityFight {
-		s.makeSound(m, "mob.piglin_brute.angry")
+		s.makeSound(m, "entity.piglin_brute.angry")
 	}
 }
 

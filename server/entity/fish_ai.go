@@ -103,7 +103,7 @@ func (b *AquaticMobBehaviour) setTadpoleAge(e *Ent, tx *world.Tx, age int) {
 	if p, ok := frog.(interface{ SetPersistenceRequired(bool) }); ok {
 		p.SetPersistenceRequired(true)
 	}
-	tx.PlaySound(e.data.Pos, sound.Custom{Name: "mob.tadpole.convert_to_frog", Volume: .15, Pitch: 1})
+	tx.PlaySound(e.data.Pos, sound.Custom{Name: "entity.tadpole.grow_up", Volume: .15, Pitch: 1})
 }
 
 // feedTadpole ports Tadpole.mobInteract: frog food makes a tadpole grow up

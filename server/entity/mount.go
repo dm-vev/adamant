@@ -523,7 +523,7 @@ func (m *Mount) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) boo
 			b.chestItems = make([]item.Stack, b.chestSize())
 			b.chestInv = nil
 			ctx.SubtractFromCount(1)
-			tx.PlaySound(m.Position(), sound.Custom{Name: "mob.horse.armor", Volume: 1, Pitch: 1})
+			tx.PlaySound(m.Position(), sound.Custom{Name: "entity.horse.armor", Volume: 1, Pitch: 1})
 			m.updateState()
 			return true
 		}

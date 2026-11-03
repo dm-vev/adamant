@@ -46,7 +46,7 @@ func (b *eyeOfEnderBehaviour) Tick(e *Ent, tx *world.Tx) {
 	if b.life <= 80 {
 		return
 	}
-	tx.PlaySound(next, sound.Custom{Name: "random.glass"})
+	tx.PlaySound(next, sound.Custom{Name: "entity.ender_eye.death"})
 	if b.survive {
 		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: next}, item.NewStack(item.EnderEye{}, 1)))
 	}

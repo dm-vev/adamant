@@ -158,7 +158,7 @@ func TieLeashedEntities(pos cube.Pos, tx *world.Tx, user world.Entity) bool {
 		}
 		return false
 	}
-	tx.PlaySound(knotCentre, sound.Custom{Name: "leashknot.place", Volume: 1, Pitch: 1})
+	tx.PlaySound(knotCentre, sound.Custom{Name: "item.lead.tied", Volume: 1, Pitch: 1})
 	tx.EmitGameEvent(world.GameEventBlockAttach, centre, world.GameEventContext{Source: user})
 	return true
 }

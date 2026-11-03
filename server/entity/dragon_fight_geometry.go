@@ -150,10 +150,10 @@ func placeFightSpike(tx *world.Tx, spike *vanilla.EndSpike, beam cube.Pos) {
 
 func spawnFightGateway(tx *world.Tx, origin cube.Pos) {
 	tx.AddParticle(origin.Vec3Centre(),particle.HugeExplosion{})
-	tx.PlaySound(origin.Vec3Centre(),sound.Custom{Name:"portal.travel",Volume:10,Pitch:float64((1+(rand.Float32()-rand.Float32())*.2)*.7)})
+	tx.PlaySound(origin.Vec3Centre(),sound.Custom{Name:"block.end_gateway.spawn",Volume:10,Pitch:float64((1+(rand.Float32()-rand.Float32())*.2)*.7)})
 	block.GenerateEndGateway(tx, origin, block.NewEndGateway())
 }
 
 func endFightPulse(tx *world.Tx) {
-	tx.PlaySound(mgl64.Vec3{.5,128.5,.5},sound.Custom{Name:"mob.enderdragon.growl",Volume:64,Pitch:float64(.8+rand.Float32()*.3)})
+	tx.PlaySound(mgl64.Vec3{.5,128.5,.5},sound.Custom{Name:"entity.ender_dragon.growl",Volume:64,Pitch:float64(.8+rand.Float32()*.3)})
 }

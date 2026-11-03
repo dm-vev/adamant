@@ -1,0 +1,17 @@
+# Bedrock sound names the game still plays by.
+#
+# The game names the sounds it plays through sound.Custom by their Java sound event IDs, which the Bedrock
+# session maps to Bedrock's sound definitions (server/session/sound_names.go). Each line is a string literal
+# of server/{entity,item,block,player,world} that starts with mob., random., bottle., leashknot. or portal.
+# and is still a Bedrock name, with the reason it is.
+#
+# This list is a ratchet, which TestCustomSoundsUseJavaNames in server/world/sound checks: a Bedrock literal
+# missing from it fails the test, and so does an entry no file uses any more. Adding an entry needs a
+# justification in review.
+
+# Java Edition has no sound for it: its parrots do not imitate happy ghasts.
+mob.imitate.happy_ghast
+
+# Level sound event names of sound.NativeEvent, not sound definitions: the game's names for event sounds.
+mob.husk.convert_to_zombie
+mob.warning

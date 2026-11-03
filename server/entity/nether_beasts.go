@@ -175,7 +175,7 @@ func (s *netherBeastState) customServerAiStep(m *Mob) {
 		// Zoglin.updateActivity.
 		s.br.setActiveToFirstValid(activityFight, activityIdle)
 		if now, _ := s.br.activeNonCore(); now == activityFight && old != activityFight {
-			s.makeSound(m, "mob.zoglin.angry")
+			s.makeSound(m, "entity.zoglin.angry")
 		}
 		m.SetAggressive(s.br.has(memAttackTarget))
 		return
@@ -188,7 +188,7 @@ func (s *netherBeastState) customServerAiStep(m *Mob) {
 	m.SetAggressive(s.br.has(memAttackTarget))
 	if s.converting(m) {
 		if s.conversion++; s.conversion > 300 {
-			s.makeSound(m, "mob.hoglin.converted_to_zombified")
+			s.makeSound(m, "entity.hoglin.converted_to_zombified")
 			s.finishConversion(m)
 		}
 	} else {
@@ -218,13 +218,13 @@ func (s *netherBeastState) activitySound(m *Mob) string {
 	act, _ := s.br.activeNonCore()
 	switch {
 	case act == activityAvoid || s.converting(m):
-		return "mob.hoglin.retreat"
+		return "entity.hoglin.retreat"
 	case act == activityFight:
-		return "mob.hoglin.angry"
+		return "entity.hoglin.angry"
 	case s.br.has(memNearestRepellent):
-		return "mob.hoglin.retreat"
+		return "entity.hoglin.retreat"
 	}
-	return "mob.hoglin.ambient"
+	return "entity.hoglin.ambient"
 }
 
 // converting ports Hoglin.isConverting: a hoglin out of the nether turns
@@ -266,9 +266,9 @@ func (s *netherBeastState) doHurtTarget(m *Mob, target world.Entity) bool {
 	}
 	s.attackAnimation = 10
 	if s.kind == zoglinKind {
-		s.makeSound(m, "mob.zoglin.attack")
+		s.makeSound(m, "entity.zoglin.attack")
 	} else {
-		s.makeSound(m, "mob.hoglin.attack")
+		s.makeSound(m, "entity.hoglin.attack")
 		hoglinOnHitTarget(m, s, target)
 	}
 	damage := 6.0
