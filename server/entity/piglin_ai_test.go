@@ -33,7 +33,11 @@ func goldenPlayer(tx *world.Tx, pos mgl64.Vec3) *player.Player {
 }
 
 func playerHurt(tx *world.Tx, h *world.EntityHandle) bool {
-	e, _ := h.Entity(tx)
+	e, ok := h.Entity(tx)
+	if !ok {
+		// A player without a client leaves the world once it has died.
+		return true
+	}
 	return e.(entity.Living).Health() < e.(entity.Living).MaxHealth()
 }
 

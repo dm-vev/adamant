@@ -118,8 +118,7 @@ func TestPandasBiteBackOnce(t *testing.T) {
 	for range 400 {
 		w.AdvanceTick()
 		<-w.Exec(func(tx *world.Tx) {
-			p, _ := player.Entity(tx)
-			if h := p.(entity.Living).Health(); h < last {
+			if h := playerHealth(tx, player); h < last {
 				bites++
 				last = h
 			}

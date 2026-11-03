@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -99,8 +98,7 @@ func TestKillerBunniesAttackPlayers(t *testing.T) {
 	for range 300 {
 		w.AdvanceTick()
 		<-w.Exec(func(tx *world.Tx) {
-			e, _ := p.Entity(tx)
-			lowest = min(lowest, e.(*player.Player).Health())
+			lowest = min(lowest, playerHealth(tx, p))
 		})
 	}
 	if lowest > 20-8+1e-9 {

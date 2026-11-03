@@ -30,8 +30,7 @@ func TestHoglinsAttackPlayers(t *testing.T) {
 		w.AdvanceTick()
 		hurt := false
 		<-w.Exec(func(tx *world.Tx) {
-			e, _ := p.Entity(tx)
-			hurt = e.(entity.Living).Health() < e.(entity.Living).MaxHealth()
+			hurt = playerHurt(tx, p)
 		})
 		if hurt {
 			return
@@ -61,8 +60,7 @@ func TestHoglinsShunRepellents(t *testing.T) {
 	for range 160 {
 		w.AdvanceTick()
 		<-w.Exec(func(tx *world.Tx) {
-			e, _ := p.Entity(tx)
-			if e.(entity.Living).Health() < e.(entity.Living).MaxHealth() {
+			if playerHurt(tx, p) {
 				t.Fatal("hoglin near warped fungus attacked a player")
 			}
 			far = far || horizontalDistance(entityPos(tx, hoglin), mgl64.Vec3{.5, 64, .5}) >= 8

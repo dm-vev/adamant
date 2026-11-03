@@ -100,8 +100,7 @@ func TestZombiePathsAroundFences(t *testing.T) {
 	for range 400 {
 		stepWorld(t, w, 1)
 		<-w.Exec(func(tx *world.Tx) {
-			e, _ := p.Entity(tx)
-			lowest = min(lowest, e.(*player.Player).Health())
+			lowest = min(lowest, playerHealth(tx, p))
 		})
 	}
 	if pos := aiEntityPos(w, zombie); lowest == 20 {
@@ -123,8 +122,7 @@ func TestZombieAttacksSurvivalPlayersOnly(t *testing.T) {
 		for range 200 {
 			stepWorld(t, w, 1)
 			<-w.Exec(func(tx *world.Tx) {
-				e, _ := p.Entity(tx)
-				lowest = min(lowest, e.(*player.Player).Health())
+				lowest = min(lowest, playerHealth(tx, p))
 			})
 		}
 		if hurt := lowest < 20; hurt != tc.hurt {
@@ -182,8 +180,7 @@ func TestSkeletonShootsPlayersInRange(t *testing.T) {
 	for range 200 {
 		stepWorld(t, w, 1)
 		<-w.Exec(func(tx *world.Tx) {
-			e, _ := p.Entity(tx)
-			lowest = min(lowest, e.(*player.Player).Health())
+			lowest = min(lowest, playerHealth(tx, p))
 			s, _ := skeleton.Entity(tx)
 			drew = drew || s.(interface{ UsingItem() bool }).UsingItem()
 			for other := range tx.Entities() {
@@ -207,12 +204,21 @@ func TestWitherSkeletonWithersInMelee(t *testing.T) {
 	withered := false
 	for range 200 {
 		stepWorld(t, w, 1)
+		gone := false
 		<-w.Exec(func(tx *world.Tx) {
-			e, _ := p.Entity(tx)
+			// The player leaves the world once it has died.
+			e, ok := p.Entity(tx)
+			if !ok {
+				gone = true
+				return
+			}
 			for _, eff := range e.(*player.Player).Effects() {
 				withered = withered || eff.Type() == effect.Wither
 			}
 		})
+		if withered || gone {
+			break
+		}
 	}
 	if !withered {
 		t.Fatal("wither skeleton did not wither the player")
@@ -244,15 +250,23 @@ func addSpecies(w *world.World, h *world.EntityHandle) *world.EntityHandle {
 	return h
 }
 
+// playerHealth returns the health of the player of h. A player without a
+// client leaves the world once it has died, so one that is gone counts as
+// dead.
+func playerHealth(tx *world.Tx, h *world.EntityHandle) float64 {
+	if e, ok := h.Entity(tx); ok {
+		return e.(*player.Player).Health()
+	}
+	return 0
+}
+
 func lowestHealth(t *testing.T, w *world.World, p *world.EntityHandle, ticks int, each func(tx *world.Tx)) float64 {
 	t.Helper()
 	lowest := 20.0
 	for range ticks {
 		stepWorld(t, w, 1)
 		<-w.Exec(func(tx *world.Tx) {
-			if e, ok := p.Entity(tx); ok {
-				lowest = min(lowest, e.(*player.Player).Health())
-			}
+			lowest = min(lowest, playerHealth(tx, p))
 			if each != nil {
 				each(tx)
 			}
@@ -323,9 +337,10 @@ func TestCaveSpiderPoisons(t *testing.T) {
 	addSpecies(w, entity.NewCaveSpider(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
 	poisoned := false
 	lowestHealth(t, w, p, 200, func(tx *world.Tx) {
-		e, _ := p.Entity(tx)
-		for _, eff := range e.(*player.Player).Effects() {
-			poisoned = poisoned || eff.Type() == effect.Poison
+		if e, ok := p.Entity(tx); ok {
+			for _, eff := range e.(*player.Player).Effects() {
+				poisoned = poisoned || eff.Type() == effect.Poison
+			}
 		}
 	})
 	if !poisoned {
@@ -846,13 +861,19 @@ func TestElderGuardianCursesPlayers(t *testing.T) {
 	cursed := false
 	for range 1210 {
 		stepWorld(t, w, 1)
+		gone := false
 		<-w.Exec(func(tx *world.Tx) {
-			e, _ := p.Entity(tx)
+			// The player leaves the world once it has died.
+			e, ok := p.Entity(tx)
+			if !ok {
+				gone = true
+				return
+			}
 			for _, eff := range e.(*player.Player).Effects() {
 				cursed = cursed || eff.Type() == effect.MiningFatigue && eff.Level() == 3
 			}
 		})
-		if cursed {
+		if cursed || gone {
 			break
 		}
 	}
@@ -869,9 +890,10 @@ func TestWitchThrowsPotionsAtPlayers(t *testing.T) {
 	addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
 	affected := false
 	lowestHealth(t, w, p, 300, func(tx *world.Tx) {
-		e, _ := p.Entity(tx)
-		for _, eff := range e.(*player.Player).Effects() {
-			affected = affected || eff.Type() == effect.Slowness || eff.Type() == effect.Poison
+		if e, ok := p.Entity(tx); ok {
+			for _, eff := range e.(*player.Player).Effects() {
+				affected = affected || eff.Type() == effect.Slowness || eff.Type() == effect.Poison
+			}
 		}
 	})
 	if !affected {

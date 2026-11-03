@@ -125,8 +125,9 @@ func TestPufferfishPuffUpAndSting(t *testing.T) {
 			if f, ok := fish.Entity(tx); ok {
 				puffed = puffed || f.(*entity.Pufferfish).Variant() == 2
 			}
-			p, _ := player.Entity(tx)
-			poisoned = poisoned || hasEffect(p.(entity.Living), effect.Poison)
+			if p, ok := player.Entity(tx); ok {
+				poisoned = poisoned || hasEffect(p.(entity.Living), effect.Poison)
+			}
 		})
 	}
 	if !puffed {
