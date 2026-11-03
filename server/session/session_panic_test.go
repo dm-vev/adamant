@@ -42,7 +42,7 @@ func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
 	pos := mgl64.Vec3{0.5, 64, 0.5}
 	cfg := player.Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
 	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
-	sess.SetHandle(h, cfg.Skin)
+	sess.Bind(h, cfg.Skin)
 	if err := w.Do(func(tx *world.Tx) {
 		p := tx.AddEntity(h).(*player.Player)
 		p.Handle(packetPanicHandler{})
@@ -118,7 +118,7 @@ func TestHandleQuitPanicCompletesSessionTeardown(t *testing.T) {
 		Inventory: inv, OffHand: offHand, Armour: armour,
 	}
 	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
-	sess.SetHandle(h, cfg.Skin)
+	sess.Bind(h, cfg.Skin)
 	if err := w.Do(func(tx *world.Tx) {
 		p := tx.AddEntity(h).(*player.Player)
 		p.Handle(quitPanicHandler{})

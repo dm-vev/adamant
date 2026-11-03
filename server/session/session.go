@@ -342,9 +342,9 @@ func (conf Config) New(conn Conn) *Session {
 	return s
 }
 
-// SetHandle sets the world.EntityHandle of the Session and attaches a skin to
-// other players on join.
-func (s *Session) SetHandle(handle *world.EntityHandle, skin skin.Skin) {
+// Bind binds the Session to handle, the entity handle of its player, and
+// attaches a skin to other players on join.
+func (s *Session) Bind(handle *world.EntityHandle, skin skin.Skin) {
 	s.ent = handle
 	s.entityRuntimeIDs[handle] = selfEntityRuntimeID
 	s.entities[selfEntityRuntimeID] = handle
@@ -354,7 +354,7 @@ func (s *Session) SetHandle(handle *world.EntityHandle, skin skin.Skin) {
 	sessionsOpen.Add(1)
 }
 
-// Unbind undoes SetHandle for a session whose player never spawned, as when
+// Unbind undoes Bind for a session whose player never spawned, as when
 // its join fails before the player is added to a world: it removes the
 // player from the player list of every session, its own among them. The
 // session is then closed, and a later Close does nothing. Unbind does

@@ -424,7 +424,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	}
 	pconf.Client = s.sess
 	s.h = world.EntitySpawnOpts{Position: pconf.Position, ID: id}.New(player.Type, pconf)
-	s.sess.SetHandle(s.h, pconf.Skin)
+	s.sess.Bind(s.h, pconf.Skin)
 
 	t.Cleanup(s.close)
 

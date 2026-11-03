@@ -57,7 +57,7 @@ func TestPlayerDisplacementRejectsStaleAuthInput(t *testing.T) {
 	origin := mgl64.Vec3{0.5, 64, 0.5}
 	cfg := player.Config{Client: sess, Position: origin, GameMode: world.GameModeSurvival}
 	handle := world.EntitySpawnOpts{Position: origin, ID: uuid.New()}.New(player.Type, cfg)
-	sess.SetHandle(handle, cfg.Skin)
+	sess.Bind(handle, cfg.Skin)
 	if err := w.Do(func(tx *world.Tx) {
 		p := tx.AddEntity(handle).(*player.Player)
 		p.Displace(mgl64.Vec3{0.2})

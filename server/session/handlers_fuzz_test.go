@@ -87,7 +87,7 @@ func FuzzHandlePacket(f *testing.F) {
 		pos := mgl64.Vec3{0.5, 64, 0.5}
 		cfg := player.Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
 		h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
-		sess.SetHandle(h, cfg.Skin)
+		sess.Bind(h, cfg.Skin)
 		<-w.Exec(func(tx *world.Tx) { sess.Spawn(tx.AddEntity(h).(*player.Player), tx) })
 		return h
 	}

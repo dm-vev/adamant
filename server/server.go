@@ -585,7 +585,7 @@ func (srv *Server) createPlayer(conn session.Conn, conf player.Config, w *world.
 	conf.Log = srv.conf.Log.With("name", conn.IdentityData().DisplayName, "uuid", conn.IdentityData().Identity, "raddr", conn.RemoteAddr().String())
 
 	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id.UUID}.New(player.Type, conf)
-	s.SetHandle(handle, conf.Skin)
+	s.Bind(handle, conf.Skin)
 	return incoming{s: s, w: w, conf: conf, p: &onlinePlayer{id: id, handle: handle}}
 }
 
