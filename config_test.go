@@ -12,9 +12,9 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/query"
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml"
 )

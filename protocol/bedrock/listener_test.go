@@ -26,9 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
+	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/netconn"
-	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"

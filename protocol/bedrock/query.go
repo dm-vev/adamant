@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 )

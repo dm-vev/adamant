@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/query"
+	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 )

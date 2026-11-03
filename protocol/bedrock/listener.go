@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/packbuilder"
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
+	"github.com/df-mc/dragonfly/protocol/bedrock/query"
+	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/netconn"
-	"github.com/df-mc/dragonfly/server/query"
-	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/acme"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"

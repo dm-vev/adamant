@@ -1,8 +1,8 @@
 package bedrockadapter
 
 import (
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/netconn"
 )
 
 // netconnStatusProvider returns the StatusProvider of the server as netconn
