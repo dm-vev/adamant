@@ -223,7 +223,7 @@ func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackReques
 
 	originals := s.inv.Slots()
 	remaining := append([]item.Stack(nil), originals...)
-	inputA := merchantCostA(offer)
+	inputA := offer.CostA()
 	for _, cost := range [2]item.Stack{inputA, offer.SecondaryInput} {
 		if cost.Empty() {
 			continue

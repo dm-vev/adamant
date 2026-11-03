@@ -39,7 +39,7 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 		handler := craftingTestHandler()
 		user := merchantTestUser{mode: world.GameModeSurvival, handle: entity.NewItem(world.EntitySpawnOpts{}, item.NewStack(item.Emerald{}, 1))}
 
-		price := merchantCostA(offer)
+		price := offer.CostA()
 		_ = s.inv.SetItem(0, price)
 		place := &v2193.PlaceStackRequestAction{}
 		place.Count = byte(price.Count())

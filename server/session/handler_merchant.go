@@ -2,7 +2,6 @@ package session
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
@@ -20,17 +19,6 @@ const (
 // merchantTradeOpen reports if the session has a trade screen open.
 func (s *Session) merchantTradeOpen() bool {
 	return s.containerOpened.Load() && byte(s.openedContainerID.Load()) == v2193.ContainerTypeTrade
-}
-
-// merchantCostA returns the first input of an offer with its price applied,
-// as MerchantOffer.getCostA: the base count, plus the demand times the price
-// multiplier rounded down if positive, plus the special price, kept between
-// 1 and the item's stack size.
-func merchantCostA(offer entity.MerchantOffer) item.Stack {
-	base := offer.Input.Count()
-	demand := int(math.Floor(float64(float32(int32(base)*int32(offer.Demand)) * offer.PriceMultiplier)))
-	price := min(max(base+max(0, demand)+offer.SpecialPrice, 1), offer.Input.MaxCount())
-	return offer.Input.Grow(price - base)
 }
 
 // openedMerchant returns the merchant the session's trade screen is open for.
@@ -83,7 +71,7 @@ func (h *ItemStackRequestHandler) handleMerchantCraft(a *v2193.CraftRecipeStackR
 		if offer.Uses >= offer.MaxUses || offer.Input.Empty() || offer.Output.Empty() {
 			return fmt.Errorf("merchant offer %d is unavailable", index)
 		}
-		costA, costB := merchantCostA(offer), offer.SecondaryInput
+		costA, costB := offer.CostA(), offer.SecondaryInput
 		if !merchantPays(inputA, costA) || !merchantPays(inputB, costB) {
 			return fmt.Errorf("merchant offer %d: inputs %v and %v do not pay %v and %v", index, inputA, inputB, costA, costB)
 		}

@@ -26,6 +26,17 @@ type MerchantOffer struct {
 	PriceMultiplier float32
 }
 
+// CostA returns the first input of the offer with its price applied, as
+// Java's MerchantOffer.getCostA: the base count, plus the demand times the
+// price multiplier rounded down if positive, plus the special price, kept
+// between 1 and the item's stack size.
+func (offer MerchantOffer) CostA() item.Stack {
+	base := offer.Input.Count()
+	demand := int(math.Floor(float64(float32(int32(base)*int32(offer.Demand)) * offer.PriceMultiplier)))
+	price := min(max(base+max(0, demand)+offer.SpecialPrice, 1), offer.Input.MaxCount())
+	return offer.Input.Grow(price - base)
+}
+
 // Merchant exposes the state required by a trading UI. Implementations must
 // apply trade side effects only from CompleteMerchantTrade, after the session
 // has validated and reserved all inventory transfers for the same offer.
