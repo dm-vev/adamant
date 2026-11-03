@@ -4,6 +4,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -142,4 +143,28 @@ func (l *sessionList) unsendSessionFrom(s, from *Session) {
 			UUID:       s.ent.UUID(),
 		}},
 	})
+}
+
+// ListPlayer lists p to the client of s: as the session list shows a
+// session to another, it maps the entity of a player of a session to a
+// runtime ID of s, and writes its player list entry and, but to its own
+// session, its abilities. A player of a client of another protocol is not
+// listed.
+func (s *Session) ListPlayer(p client.Listed) {
+	o, ok := p.Client.(*Session)
+	if !ok {
+		return
+	}
+	sessions.runtimeID(o, s)
+	sessions.sendSessionTo(o, s)
+}
+
+// UnlistPlayer removes p from the player list of the client of s, and the
+// runtime ID of its entity, as the session list does.
+func (s *Session) UnlistPlayer(p client.Listed) {
+	o, ok := p.Client.(*Session)
+	if !ok {
+		return
+	}
+	sessions.unsendSessionFrom(o, s)
 }

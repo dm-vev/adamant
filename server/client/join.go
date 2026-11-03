@@ -51,6 +51,7 @@ type Join interface {
 // and the server makes the player, binds the client to it and spawns it.
 type Joining interface {
 	Client
+	PlayerList
 	// Bind binds the client to h, the entity handle of its player, which
 	// joins with the skin sk. The server calls it once, before it adds the
 	// player to a world, on no world's goroutine.

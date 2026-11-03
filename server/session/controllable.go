@@ -11,4 +11,4 @@ type Controllable = client.Controllable
 type Diagnostics = client.Diagnostics
 
 // Session is the client of a player that plays over Bedrock Edition.
-var _ client.Client = (*Session)(nil)
+var _ client.Joining = (*Session)(nil)

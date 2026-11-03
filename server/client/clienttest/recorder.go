@@ -70,8 +70,8 @@ type Answers struct {
 // returned keeps the Game it was started with, and its Close first calls
 // the Left hook of that Game.
 //
-// As a client.Joining, the Recorder records Bind and Spawn and does nothing
-// else for them.
+// As a client.Joining, the Recorder records Bind, Spawn, ListPlayer and
+// UnlistPlayer and does nothing else for them.
 type Recorder struct {
 	// Answers are set before the player uses the Recorder.
 	Answers Answers
@@ -323,6 +323,8 @@ func (r *Recorder) InputLocked(l input.Lock) bool {
 
 func (r *Recorder) Bind(a0 *world.EntityHandle, a1 skin.Skin)  { r.record("Bind", a0, a1) }
 func (r *Recorder) Spawn(a0 client.Controllable, a1 *world.Tx) { r.record("Spawn", a0, a1) }
+func (r *Recorder) ListPlayer(a0 client.Listed)                { r.record("ListPlayer", a0) }
+func (r *Recorder) UnlistPlayer(a0 client.Listed)              { r.record("UnlistPlayer", a0) }
 
 func (r *Recorder) ViewEntity(a0 world.Entity)         { r.record("ViewEntity", a0) }
 func (r *Recorder) HideEntity(a0 world.Entity)         { r.record("HideEntity", a0) }
