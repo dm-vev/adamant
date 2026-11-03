@@ -11,6 +11,7 @@ import (
 )
 
 func TestMinecartMovesOnStraightRails(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		dir  block.RailDirection
@@ -45,6 +46,7 @@ func TestMinecartMovesOnStraightRails(t *testing.T) {
 }
 
 func TestMinecartAcceleratesOnPoweredRail(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -65,6 +67,7 @@ func TestMinecartAcceleratesOnPoweredRail(t *testing.T) {
 }
 
 func TestRiderInputStartsMinecart(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -92,6 +95,7 @@ func TestRiderInputStartsMinecart(t *testing.T) {
 }
 
 func TestMinecartPassengerSeatHeight(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -134,6 +138,7 @@ func placeMinecartRailLine(tx *world.Tx, pos cube.Pos, direction block.RailDirec
 // by its movement, scaled by 0.75 for the passenger every tick, so it stayed
 // under 0.18 blocks a tick.
 func TestRiddenMinecartReachesMaxSpeedOnPoweredRails(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: DefaultRegistry, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	var cart *world.EntityHandle
@@ -179,6 +184,7 @@ func TestRiddenMinecartReachesMaxSpeedOnPoweredRails(t *testing.T) {
 // block under the next rail uphill and left it inside the ground at the foot
 // of a slope, which it fell through.
 func TestMinecartFollowsSlope(t *testing.T) {
+	t.Parallel()
 	railY := func(x int) int {
 		switch {
 		case x >= 20:

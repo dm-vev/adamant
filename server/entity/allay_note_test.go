@@ -14,6 +14,7 @@ import (
 // AllayAi.getItemDepositPosition: an allay that hears a note block likes it
 // and drops what it gathers on it while it keeps playing.
 func TestAllaysDeliverToNoteBlocks(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	note := cube.Pos{6, 64, 0}

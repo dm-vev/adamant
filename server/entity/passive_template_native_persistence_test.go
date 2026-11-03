@@ -19,6 +19,7 @@ import (
 // codec. Select distinct visible states so a shared template path is not tested
 // repeatedly just because the golden contains several RNG seeds.
 func TestPreparedPassiveSourceStateSurvivesMCDB(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_passive_template_authored_spawn.json")
 	if err != nil {
 		t.Fatal(err)

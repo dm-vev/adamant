@@ -7,6 +7,7 @@ import (
 )
 
 func TestCowNBTAndMilkAge(t *testing.T) {
+	t.Parallel()
 	data := &world.EntityData{}
 	CowType.DecodeNBT(map[string]any{
 		"Health": float32(10), "Age": int32(-100),

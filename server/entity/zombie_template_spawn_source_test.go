@@ -13,6 +13,7 @@ import (
 )
 
 func TestZombieVillagerTemplateSpawnMatchesJava263(t *testing.T) {
+	t.Parallel()
 	for _, fixture := range []string{"java263_zombie_template_spawn.json", "java263_zombie_template_live_spawn.json"} {
 		data, err := os.ReadFile("testdata/" + fixture)
 		if err != nil {

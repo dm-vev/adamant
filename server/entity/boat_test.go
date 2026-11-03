@@ -7,12 +7,14 @@ import (
 )
 
 func TestBoatTypeEncodeEntity(t *testing.T) {
+	t.Parallel()
 	if got, want := entity.BoatType.EncodeEntity(), "minecraft:boat"; got != want {
 		t.Fatalf("BoatType.EncodeEntity() = %q, want %q", got, want)
 	}
 }
 
 func TestChestBoatTypeEncodeEntity(t *testing.T) {
+	t.Parallel()
 	if got, want := entity.ChestBoatType.EncodeEntity(), "minecraft:chest_boat"; got != want {
 		t.Fatalf("ChestBoatType.EncodeEntity() = %q, want %q", got, want)
 	}

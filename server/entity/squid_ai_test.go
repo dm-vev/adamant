@@ -11,6 +11,7 @@ import (
 // TestSquidsSwimAround checks SquidRandomMovementGoal and the tentacle
 // strokes of Squid.aiStep: a squid swims about the pool it is in.
 func TestSquidsSwimAround(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var squid *world.EntityHandle
 	start := mgl64.Vec3{.5, 61, .5}
@@ -40,6 +41,7 @@ func TestSquidsSwimAround(t *testing.T) {
 // TestSquidsFleeWhatHurtThem checks SquidFleeGoal: a squid swims away from
 // a player that hurt it.
 func TestSquidsFleeWhatHurtThem(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var squid *world.EntityHandle
 	player := mgl64.Vec3{.5, 61, .5}
@@ -64,6 +66,7 @@ func TestSquidsFleeWhatHurtThem(t *testing.T) {
 // fall of Squid.aiStep: a squid on land falls and starts to drown after 16
 // seconds.
 func TestSquidsDrownOnLand(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var squid *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

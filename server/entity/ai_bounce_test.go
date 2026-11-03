@@ -13,6 +13,7 @@ import (
 // cow dropped onto slime bounces back up, and one dropped onto stone does
 // not.
 func TestMobsBounceOffSlime(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		floor   world.Block
 		bounces bool

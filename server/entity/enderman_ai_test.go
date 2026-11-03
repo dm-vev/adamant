@@ -13,6 +13,7 @@ import (
 // TestEndermanSavesCarriedBlockAsBDS checks the carried block is saved under
 // carriedBlock as a block state compound, as BDS saves it, and read back.
 func TestEndermanSavesCarriedBlockAsBDS(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	data := &world.EntityData{}
 	EndermanType.DecodeNBT(map[string]any{"carriedBlock": map[string]any{"name": "minecraft:grass_block", "states": map[string]any{}}}, data)
@@ -40,6 +41,7 @@ func TestEndermanSavesCarriedBlockAsBDS(t *testing.T) {
 // take resolves to a default state and may be placed back without the Java
 // shape rules failing.
 func TestEndermanHandlesEveryHoldableBlock(t *testing.T) {
+	t.Parallel()
 	names, err := gamedata.BlockTagMembers("minecraft:enderman_holdable")
 	if err != nil || len(names) == 0 {
 		t.Fatalf("holdable blocks %v, error %v", names, err)
@@ -69,6 +71,7 @@ func TestEndermanHandlesEveryHoldableBlock(t *testing.T) {
 // TestEndermanLeavesBlocks checks an enderman puts the block it carries
 // down beside it on solid ground.
 func TestEndermanLeavesBlocks(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	h := NewEnderman(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}})

@@ -25,17 +25,21 @@ func (h *dispenserCartSpawnRecorder) HandleEntitySpawn(tx *world.Tx, e world.Ent
 }
 
 func TestDispenserCartMotionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayDispenserCartBDS(t, "bedrock_1_26_51_dispenser_cart_origins.json", 40)
 }
 func TestDispenserCartFallbackMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayDispenserCartBDS(t, "bedrock_1_26_51_dispenser_cart_fallback.json", 60)
 }
 
 func TestDispenserCartChunkMotionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayDispenserCartBDS(t, "bedrock_1_26_51_dispenser_cart_chunks.json", 40)
 }
 
 func TestDispenserCartSignedChunkMotionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayDispenserCartBDS(t, "bedrock_1_26_51_dispenser_cart_signed_chunks.json", 48)
 }
 

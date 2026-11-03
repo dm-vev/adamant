@@ -11,6 +11,7 @@ import (
 // TestLlamasSpitOnceAtTheirAttacker checks LlamaHurtByTargetGoal with
 // RangedAttackGoal: a hurt llama spits at its attacker and then calms down.
 func TestLlamasSpitOnceAtTheirAttacker(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		h := spawnAnimal(t, tx, "minecraft:llama", .5, nil)
@@ -31,6 +32,7 @@ func TestLlamasSpitOnceAtTheirAttacker(t *testing.T) {
 // TestLlamasFollowALeashedLlama checks LlamaFollowCaravanGoal: a free llama
 // near a llama on a lead walks up behind it.
 func TestLlamasFollowALeashedLlama(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var lead, follower *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

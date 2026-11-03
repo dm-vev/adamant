@@ -30,6 +30,7 @@ func buildSulfurSpring(tx *world.Tx, below world.Block, depth int) {
 }
 
 func TestNoxiousGasGivesNauseaToEntitiesSurfacingAboveSulfur(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	var near, far *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -82,6 +83,7 @@ func highestItemY(t *testing.T, below world.Block) float64 {
 }
 
 func TestEruptingGeyserLaunchesEntitiesUpward(t *testing.T) {
+	t.Parallel()
 	calm := highestItemY(t, block.Stone{})
 	geyser := highestItemY(t, block.Lava{Depth: 8, Still: true})
 	// Two water blocks give a geyser 12 blocks high, pushing up to 0.5

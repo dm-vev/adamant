@@ -11,6 +11,7 @@ import (
 )
 
 func TestBubbleColumnAppliesThroughEntityInsiderPath(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{0, 64, 0}

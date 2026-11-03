@@ -25,6 +25,7 @@ func buildPowderSnowPit(tx *world.Tx) {
 }
 
 func TestMobFreezesInPowderSnowAndTakesFreezeDamage(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -75,6 +76,7 @@ func TestMobFreezesInPowderSnowAndTakesFreezeDamage(t *testing.T) {
 }
 
 func TestLeatherArmourPreventsFreezing(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	var zombie *entity.Zombie
 	<-w.Exec(func(tx *world.Tx) {
@@ -96,6 +98,7 @@ func TestLeatherArmourPreventsFreezing(t *testing.T) {
 }
 
 func TestSkeletonFreezesIntoStray(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	var skeleton *entity.Skeleton
 	<-w.Exec(func(tx *world.Tx) {
@@ -130,6 +133,7 @@ func TestSkeletonFreezesIntoStray(t *testing.T) {
 }
 
 func TestFreezeDamageGameRuleProtectsPlayers(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		p := tx.AddEntity((world.EntitySpawnOpts{}).New(player.Type, player.Config{Position: mgl64.Vec3{0.5, 64, 0.5}, GameMode: world.GameModeSurvival})).(*player.Player)

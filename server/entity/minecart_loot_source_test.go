@@ -103,6 +103,7 @@ func runMinecartLootTransaction(t *testing.T, w *world.World, fn func(*world.Tx)
 }
 
 func TestMinecartLootInventoryMatchesJava263(t *testing.T) {
+	t.Parallel()
 	for _, fixture := range minecartLootFixtures(t) {
 		t.Run(fixture.Biome+"/"+fixture.Seed, func(t *testing.T) {
 			w := world.Config{Synchronous: true}.New()
@@ -132,6 +133,7 @@ func TestMinecartLootInventoryMatchesJava263(t *testing.T) {
 }
 
 func TestMinecartPendingAndConsumedLootSurviveMCDBRestart(t *testing.T) {
+	t.Parallel()
 	var fixture minecartLootFixture
 	for _, candidate := range minecartLootFixtures(t) {
 		if candidate.Biome == "forest" && candidate.Seed == "-6891946900181190969" {
@@ -201,6 +203,7 @@ func TestMinecartPendingAndConsumedLootSurviveMCDBRestart(t *testing.T) {
 }
 
 func TestPendingMinecartLootMaterializesOnceWhenDestroyed(t *testing.T) {
+	t.Parallel()
 	fixture := minecartLootFixtures(t)[0]
 	key := func(slot minecartLootSlot) string {
 		data, err := json.Marshal(struct {

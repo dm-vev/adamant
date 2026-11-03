@@ -12,6 +12,7 @@ import (
 )
 
 func TestSmallFireballType(t *testing.T) {
+	t.Parallel()
 	entityType, ok := DefaultRegistry.Lookup("minecraft:small_fireball")
 	if !ok || entityType != SmallFireballType {
 		t.Fatalf("small fireball is not registered: %v", entityType)
@@ -33,6 +34,7 @@ func TestSmallFireballType(t *testing.T) {
 }
 
 func TestSmallFireballHit(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 

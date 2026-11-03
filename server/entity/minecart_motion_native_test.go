@@ -20,18 +20,22 @@ type minecartMotionNativeBody struct {
 }
 
 func TestMinecartFlatMotionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayMinecartFlatMotionBDS(t, "bedrock_1_26_51_minecart_motion_flat.json", 96)
 }
 
 func TestMinecartInventoryMotionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayMinecartFlatMotionBDS(t, "bedrock_1_26_51_minecart_motion_inventory.json", 160)
 }
 
 func TestMinecartSlopeMotionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayMinecartFlatMotionBDS(t, "bedrock_1_26_51_minecart_motion_slopes.json", 64)
 }
 
 func TestMinecartOverlapMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayMinecartFlatMotionBDS(t, "bedrock_1_26_51_cart_overlap.json", 72)
 }
 

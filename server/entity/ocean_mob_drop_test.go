@@ -11,6 +11,7 @@ import (
 )
 
 func TestSourceLootingChangesActualDrownedEquipmentDrop(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name                   string
 		chance                 float32

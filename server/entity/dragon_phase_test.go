@@ -53,6 +53,7 @@ func addTestDragon(tx *world.Tx, pos mgl64.Vec3, phase entity.DragonPhase, fight
 // TestDragonPartsAreJavaSized checks the parts are as wide as deep and stand
 // on their positions, as EnderDragonParts do.
 func TestDragonPartsAreJavaSized(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dragon := addTestDragon(tx, mgl64.Vec3{10, 80, 30}, entity.DragonHoldingPattern, nil)
@@ -72,6 +73,7 @@ func TestDragonPartsAreJavaSized(t *testing.T) {
 // TestDragonPathKeepsToInnerRingsWithoutCrystals checks findPath and
 // findClosestNode leave the outer ring out once no crystal is alive.
 func TestDragonPathKeepsToInnerRingsWithoutCrystals(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dragon := addTestDragon(tx, mgl64.Vec3{60, 100, 0}, entity.DragonHoldingPattern, dragonTestFight{})
@@ -109,6 +111,7 @@ func TestDragonPathKeepsToInnerRingsWithoutCrystals(t *testing.T) {
 // TestDragonLandsAndRoarsAtNearbyPlayer runs a dragon from landing through
 // scanning, roaring and breathing its flame, as the sitting phases do.
 func TestDragonLandsAndRoarsAtNearbyPlayer(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dragon := addTestDragon(tx, mgl64.Vec3{.5, 64.2, .5}, entity.DragonLanding, dragonTestFight{})
@@ -164,6 +167,7 @@ func TestDragonLandsAndRoarsAtNearbyPlayer(t *testing.T) {
 // parts a quarter, arrows bounce off a sitting dragon, and a second hit
 // within half a second only hurts as far as it exceeds the first.
 func TestDragonDamageRules(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		attacker := addSurvivalPlayer(tx, mgl64.Vec3{20.5, 64, .5})
@@ -206,6 +210,7 @@ func TestDragonDamageRules(t *testing.T) {
 // TestDragonFliesThroughBlocks checks the dragon's head, neck and body break
 // what is not dragon immune while mob griefing is on, and stop at end stone.
 func TestDragonFliesThroughBlocks(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dragon := addTestDragon(tx, mgl64.Vec3{.5, 80, .5}, entity.DragonHovering, nil)
@@ -230,6 +235,7 @@ func TestDragonFliesThroughBlocks(t *testing.T) {
 // TestGlassBottleCollectsDragonBreath checks a glass bottle takes dragon's
 // breath from a cloud the dragon left, shrinking it, as BottleItem.use does.
 func TestGlassBottleCollectsDragonBreath(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dragon := addTestDragon(tx, mgl64.Vec3{.5, 100, .5}, entity.DragonHovering, nil)
@@ -255,6 +261,7 @@ func TestGlassBottleCollectsDragonBreath(t *testing.T) {
 // TestExplosionHurtsDragonHead checks an explosion at a sitting dragon's
 // head hurts the head part in full.
 func TestExplosionHurtsDragonHead(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dragon := addTestDragon(tx, mgl64.Vec3{.5, 100, .5}, entity.DragonSittingScanning, nil)
@@ -269,6 +276,7 @@ func TestExplosionHurtsDragonHead(t *testing.T) {
 // TestDragonCirclesTheIsland checks a dragon in its holding pattern flies
 // from node to node above the island.
 func TestDragonCirclesTheIsland(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dragon := addTestDragon(tx, mgl64.Vec3{0, 128, 0}, entity.DragonHoldingPattern, dragonTestFight{crystals: 10})
@@ -296,6 +304,7 @@ func TestDragonCirclesTheIsland(t *testing.T) {
 // TestDragonUsesNoPortal checks End portals and gateways leave the dragon
 // be, as EnderDragon.canUsePortal.
 func TestDragonUsesNoPortal(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dragon := addTestDragon(tx, mgl64.Vec3{.5, 80, .5}, entity.DragonHovering, nil)

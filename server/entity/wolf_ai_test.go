@@ -41,6 +41,7 @@ func livingHealth(tx *world.Tx, h *world.EntityHandle) float64 {
 // TestWildWolvesHuntSheep checks NonTameRandomTargetGoal with
 // Wolf.PREY_SELECTOR: a wild wolf hunts down a sheep nearby.
 func TestWildWolvesHuntSheep(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var sheep *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -63,6 +64,7 @@ func TestWildWolvesHuntSheep(t *testing.T) {
 // TestWolvesAttackSkeletons checks the NearestAttackableTargetGoal of wolves
 // for AbstractSkeleton.
 func TestWolvesAttackSkeletons(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	w.SetTime(18000)
 	var skeleton *world.EntityHandle
@@ -89,6 +91,7 @@ func TestWolvesAttackSkeletons(t *testing.T) {
 // TestTamedWolvesFollowTheirOwner checks FollowOwnerGoal: a tamed wolf more
 // than ten blocks from its owner comes back to it.
 func TestTamedWolvesFollowTheirOwner(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var wolf *world.EntityHandle
 	ownerPos := mgl64.Vec3{11.5, 64, .5}
@@ -121,6 +124,7 @@ func pen(tx *world.Tx, radius int) {
 // TestTamedWolvesAttackWhatTheirOwnerHits checks OwnerHurtTargetGoal: a
 // tamed wolf attacks the mob its owner hit.
 func TestTamedWolvesAttackWhatTheirOwnerHits(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cow *world.EntityHandle
 	var owner *world.EntityHandle
@@ -160,6 +164,7 @@ func TestTamedWolvesAttackWhatTheirOwnerHits(t *testing.T) {
 // TestTamedWolvesDefendTheirOwner checks OwnerHurtByTargetGoal: a tamed wolf
 // attacks the mob that hurt its owner.
 func TestTamedWolvesDefendTheirOwner(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cow, owner *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -192,6 +197,7 @@ func TestTamedWolvesDefendTheirOwner(t *testing.T) {
 // TestWolvesSitWhenOrdered checks SitWhenOrderedToGoal: a tamed wolf its
 // owner orders to sit sits down and stays where it is.
 func TestWolvesSitWhenOrdered(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var wolf, owner *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -234,6 +240,7 @@ func TestWolvesSitWhenOrdered(t *testing.T) {
 // TestHurtWolvesFightBack checks HurtByTargetGoal and NeutralMob for wolves:
 // a wild wolf hurt by a player turns angry and bites it.
 func TestHurtWolvesFightBack(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var wolf, attacker *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -268,6 +275,7 @@ func TestHurtWolvesFightBack(t *testing.T) {
 // TestWolvesBegForBones checks BegGoal: a wolf tilts its head at a player
 // holding a bone.
 func TestWolvesBegForBones(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var wolf *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

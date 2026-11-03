@@ -18,6 +18,7 @@ func camelSitting(tx *world.Tx, h *world.EntityHandle) bool {
 // Camel.refuseToMove: an idle camel sits down now and then and does not move
 // while it sits.
 func TestCamelsSitDownAndStayPut(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -52,6 +53,7 @@ func TestCamelsSitDownAndStayPut(t *testing.T) {
 // TestCamelsFollowCactus checks FollowTemptation for camels: an adult camel
 // follows a player holding cactus and stops 3.5 blocks away.
 func TestCamelsFollowCactus(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	playerPos := mgl64.Vec3{9.5, 64, .5}
@@ -72,6 +74,7 @@ func TestCamelsFollowCactus(t *testing.T) {
 // TestHurtCamelsStandUpAndPanic checks CamelAi.CamelPanic: a sitting camel
 // that is hurt stands up at once and runs off at four times its speed.
 func TestHurtCamelsStandUpAndPanic(t *testing.T) {
+	t.Parallel()
 	// A camel eating grass stands still, panicking or not.
 	w := wolfTestWorld(t)
 	// A camel standing up at once still takes 52 ticks of a new world.
@@ -115,6 +118,7 @@ func TestHurtCamelsStandUpAndPanic(t *testing.T) {
 // TestCamelsIgnoreTheTimeOfDay checks Camel.getPoseTime counts game ticks:
 // setting the time of day back does not freeze a camel in a pose change.
 func TestCamelsIgnoreTheTimeOfDay(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	for range 53 {
 		w.AdvanceTick()
@@ -141,6 +145,7 @@ func TestCamelsIgnoreTheTimeOfDay(t *testing.T) {
 // TestCamelCalvesFollowAdults checks BabyFollowAdult for camels: a calf
 // walks back to an adult camel it strays from.
 func TestCamelCalvesFollowAdults(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var calf *world.EntityHandle
 	adultPos := mgl64.Vec3{12.5, 64, .5}

@@ -16,6 +16,7 @@ import (
 )
 
 func TestItemEscapeMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_piston_item_escape.json")
 	if err != nil {
 		t.Fatal(err)
@@ -62,6 +63,7 @@ func TestItemEscapeMatchesExecutedClient(t *testing.T) {
 }
 
 func TestItemEscapeFlagsMatchBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_entity_physics.json")
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +89,10 @@ func TestItemEscapeFlagsMatchBDS(t *testing.T) {
 	}
 }
 
-func TestItemSpawnInsideBlockMatchesBDS(t *testing.T) { testItemNativePhysics(t, 1) }
+func TestItemSpawnInsideBlockMatchesBDS(t *testing.T) {
+	t.Parallel()
+	testItemNativePhysics(t, 1)
+}
 
 func testItemNativePhysics(t *testing.T, index int) {
 	t.Helper()

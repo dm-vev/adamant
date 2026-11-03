@@ -12,6 +12,7 @@ import (
 // TestSheepDyeingFollowsJava follows DyeItem.interactLivingEntity: a sheep
 // takes a dye of another colour, but not when sheared.
 func TestSheepDyeingFollowsJava(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		s := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}}.New(entity.SheepType, entity.SheepConfig{})).(*entity.Sheep)

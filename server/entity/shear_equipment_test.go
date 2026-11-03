@@ -12,6 +12,7 @@ import (
 // horse: shears take its armour off first, then its saddle, each dropping as
 // an item.
 func TestShearsTakeEquipmentOffMounts(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

@@ -11,6 +11,7 @@ import (
 // burn_in_daylight tag: in the sun a zombie horse catches fire, while a
 // parched, which the tag leaves out, does not.
 func TestDaylightBurnsTheTaggedUndead(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	w.SetTime(6000)
 	w.StopTime()

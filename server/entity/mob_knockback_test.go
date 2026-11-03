@@ -15,6 +15,7 @@ import (
 // LivingEntity.knockback does: half their speed is kept, the push is added,
 // only a mob on the ground is lifted, and resistance weakens the push.
 func TestKnockBackKeepsHalfTheSpeed(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

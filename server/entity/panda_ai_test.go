@@ -39,6 +39,7 @@ func waitForPanda(w *world.World, h *world.EntityHandle, ticks int, cond func(*e
 // bamboo and waits up to 160 seconds to pick it up again, and it finishes
 // only a third of the bites it starts, so eating may take it many minutes.
 func TestPandasSitToEatBamboo(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var panda *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -75,6 +76,7 @@ func TestPandasSitToEatBamboo(t *testing.T) {
 // TestPlayfulPandasRoll checks PandaRollGoal and Panda.handleRoll: a
 // playful panda now and then rolls over.
 func TestPlayfulPandasRoll(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var panda *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -91,6 +93,7 @@ func TestPlayfulPandasRoll(t *testing.T) {
 // TestLazyPandasLieOnTheirBacks checks PandaLieOnBackGoal: a lazy panda now
 // and then lies on its back.
 func TestLazyPandasLieOnTheirBacks(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var panda *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -105,6 +108,7 @@ func TestLazyPandasLieOnTheirBacks(t *testing.T) {
 // Panda.doHurtTarget: a panda that is not aggressive bites what hurt it once
 // and then forgets it.
 func TestPandasBiteBackOnce(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var panda, player *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -132,6 +136,7 @@ func TestPandasBiteBackOnce(t *testing.T) {
 // TestWeakCubsSneeze checks PandaSneezeGoal: a weak cub now and then
 // sneezes.
 func TestWeakCubsSneeze(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var panda *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

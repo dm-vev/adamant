@@ -47,6 +47,7 @@ func addSurvivalPlayer(tx *world.Tx, pos mgl64.Vec3) *player.Player {
 }
 
 func TestWanderingTraderOffersItsTradeSets(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tr := addTrader(tx, mgl64.Vec3{.5, 64, .5})
@@ -84,6 +85,7 @@ func TestWanderingTraderOffersItsTradeSets(t *testing.T) {
 }
 
 func TestWanderingTraderTradesUseOffersAndDropExperience(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tr := addTrader(tx, mgl64.Vec3{.5, 64, .5})
@@ -112,6 +114,7 @@ func TestWanderingTraderTradesUseOffersAndDropExperience(t *testing.T) {
 }
 
 func TestWanderingTraderLeavesWhenItsDespawnDelayEnds(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var leaving, trading *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -143,6 +146,7 @@ func TestWanderingTraderLeavesWhenItsDespawnDelayEnds(t *testing.T) {
 }
 
 func TestWanderingTraderDrinksInvisibilityAtNightAndMilkAtDay(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	w.SetTime(18000)
 	var h *world.EntityHandle
@@ -189,6 +193,7 @@ func hasEffect(l entity.Living, t effect.Type) bool {
 }
 
 func TestWanderingTraderPanicsWhenHurt(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	start := mgl64.Vec3{.5, 64, .5}
@@ -217,6 +222,7 @@ func TestWanderingTraderPanicsWhenHurt(t *testing.T) {
 }
 
 func TestWanderingTraderFleesFromZombies(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	// At night the zombie does not burn and run about.
 	w.SetTime(18000)
@@ -237,6 +243,7 @@ func TestWanderingTraderFleesFromZombies(t *testing.T) {
 }
 
 func TestWanderingTraderWalksToItsWanderTarget(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	target := cube.Pos{14, 64, 0}
@@ -279,6 +286,7 @@ func addTraderLlama(t *testing.T, tx *world.Tx, tr *entity.WanderingTrader, pos 
 }
 
 func TestTraderLlamasLeaveWithTheirTrader(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var led, free *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -301,6 +309,7 @@ func TestTraderLlamasLeaveWithTheirTrader(t *testing.T) {
 }
 
 func TestTraderLlamasCannotBeRiddenWhileLed(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tr := addTrader(tx, mgl64.Vec3{.5, 64, .5})
@@ -321,6 +330,7 @@ func TestTraderLlamasCannotBeRiddenWhileLed(t *testing.T) {
 // TraderLlamaDefendWanderingTraderGoal with RangedAttackGoal, which spits
 // two seconds after the llama took aim.
 func TestTraderLlamasSpitAtTheirTradersAttacker(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var tr *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -354,6 +364,7 @@ func TestTraderLlamasSpitAtTheirTradersAttacker(t *testing.T) {
 func spawnWanderingTrader(tx *world.Tx, random *vanilla.Random) bool
 
 func TestWanderingTradersSpawnAtTheVillageBellWithLlamas(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	bell := cube.Pos{10, 64, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -414,6 +425,7 @@ func TestWanderingTradersSpawnAtTheVillageBellWithLlamas(t *testing.T) {
 // trader holds still while a player trades with it, and a hurt trader ends
 // the trade and walks on.
 func TestWanderingTraderStandsStillWhileTrading(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h, customer *world.EntityHandle
 	start := mgl64.Vec3{.5, 64, .5}

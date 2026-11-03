@@ -37,6 +37,7 @@ func snifferOf(tx *world.Tx, h *world.EntityHandle) *Sniffer {
 // FinishedDigging: a sniffer on grass sniffs out a block, walks to it, digs
 // up a seed, remembers the block and rests from sniffing.
 func TestSniffersDigUpSeeds(t *testing.T) {
+	t.Parallel()
 	w, h := snifferTestWorld(t)
 	seen := map[snifferState]bool{}
 	for range 12000 {
@@ -74,6 +75,7 @@ func TestSniffersDigUpSeeds(t *testing.T) {
 // TestHurtSniffersStopDigging checks the AnimalPanic of SnifferAi: a sniffer
 // hurt while it digs stops and runs.
 func TestHurtSniffersStopDigging(t *testing.T) {
+	t.Parallel()
 	w, h := snifferTestWorld(t)
 	stepTicks(t, w, 2)
 	<-w.Exec(func(tx *world.Tx) {
@@ -95,6 +97,7 @@ func TestHurtSniffersStopDigging(t *testing.T) {
 // TestSniffersSaveExploredBlocks checks that the blocks a sniffer dug up
 // stay remembered once it is saved and loaded.
 func TestSniffersSaveExploredBlocks(t *testing.T) {
+	t.Parallel()
 	data := &world.EntityData{}
 	SnifferConfig{Explored: []cube.Pos{{1, 2, 3}, {4, 5, 6}}}.Apply(data)
 	loaded := &world.EntityData{}

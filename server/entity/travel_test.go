@@ -13,6 +13,7 @@ import (
 )
 
 func TestPortalTravelComputerStopPortalContact(t *testing.T) {
+	t.Parallel()
 	t.Run("keeps timer after portal contact", func(t *testing.T) {
 		tc := &PortalTravelComputer{inside: true, awaitingTravel: true, start: time.Now()}
 		tc.StopPortalContact()
@@ -34,6 +35,7 @@ func TestPortalTravelComputerStopPortalContact(t *testing.T) {
 }
 
 func TestEntDisplace(t *testing.T) {
+	t.Parallel()
 	w := world.New()
 	t.Cleanup(func() { _ = w.Close() })
 	origin := mgl64.Vec3{1, 2, 3}
@@ -48,6 +50,7 @@ func TestEntDisplace(t *testing.T) {
 }
 
 func TestEntProjectileTravelsThroughPortal(t *testing.T) {
+	t.Parallel()
 	var overworld, nether *world.World
 	overworld = world.Config{PortalDestination: func(dim world.Dimension) *world.World {
 		if dim == world.Nether {
@@ -115,6 +118,7 @@ func TestEntProjectileTravelsThroughPortal(t *testing.T) {
 }
 
 func TestEntTravelsThroughPortalOnTick(t *testing.T) {
+	t.Parallel()
 	var overworld, nether *world.World
 	overworld = world.Config{PortalDestination: func(dim world.Dimension) *world.World {
 		if dim == world.Nether {
@@ -177,6 +181,7 @@ func TestEntTravelsThroughPortalOnTick(t *testing.T) {
 }
 
 func TestRegisteredCowTravelsThroughEndPortal(t *testing.T) {
+	t.Parallel()
 	var overworld, end *world.World
 	overworld = world.Config{PortalDestination: func(dim world.Dimension) *world.World {
 		if dim == world.End {
@@ -236,6 +241,7 @@ func TestRegisteredCowTravelsThroughEndPortal(t *testing.T) {
 }
 
 func TestEndArrivalDestinationRegeneratesPlatformForEntityKinds(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Dim: world.End, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	tc := &PortalTravelComputer{}
@@ -262,6 +268,7 @@ func TestEndArrivalDestinationRegeneratesPlatformForEntityKinds(t *testing.T) {
 }
 
 func TestEndReturnSpawnSelection(t *testing.T) {
+	t.Parallel()
 	t.Run("overworld uses configured spawn point", func(t *testing.T) {
 		w := world.New()
 		t.Cleanup(func() { _ = w.Close() })
@@ -306,6 +313,7 @@ func TestEndReturnSpawnSelection(t *testing.T) {
 }
 
 func TestEntReturnsFromEndToDefaultWorldSpawn(t *testing.T) {
+	t.Parallel()
 	defaultWorld := world.Config{Dim: world.Nether}.New()
 	defaultWorld.SetSpawn(cube.Pos{23, 70, -9})
 	var end *world.World
@@ -351,6 +359,7 @@ func TestEntReturnsFromEndToDefaultWorldSpawn(t *testing.T) {
 }
 
 func TestTranslatePortalPosition(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		pos, want      cube.Pos
@@ -372,6 +381,7 @@ func TestTranslatePortalPosition(t *testing.T) {
 }
 
 func TestPortalTravelComputerDelayedTravel(t *testing.T) {
+	t.Parallel()
 	overworld, nether := portalWorlds(t)
 	_ = nether
 
@@ -393,6 +403,7 @@ func TestPortalTravelComputerDelayedTravel(t *testing.T) {
 }
 
 func TestPortalTravelHonoursAllowEnteringNether(t *testing.T) {
+	t.Parallel()
 	overworld, nether := portalWorlds(t)
 	tc := NewPortalTravelComputer()
 	mustDo(t, overworld, func(tx *world.Tx) {
@@ -412,6 +423,7 @@ func TestPortalTravelHonoursAllowEnteringNether(t *testing.T) {
 }
 
 func TestPortalTravelComputerCooldown(t *testing.T) {
+	t.Parallel()
 	overworld, nether := portalWorlds(t)
 	_ = nether
 
@@ -430,6 +442,7 @@ func TestPortalTravelComputerCooldown(t *testing.T) {
 }
 
 func TestEntPortalTravelWithoutDestinationPortal(t *testing.T) {
+	t.Parallel()
 	overworld, nether := portalWorlds(t)
 
 	spawnRecorder := &entitySpawnRecorder{}
@@ -479,6 +492,7 @@ func TestEntPortalTravelWithoutDestinationPortal(t *testing.T) {
 }
 
 func TestPortalTravelClosesHandleWhenBothWorldsClose(t *testing.T) {
+	t.Parallel()
 	source := world.Config{Synchronous: true}.New()
 	destination := world.Config{Dim: world.Nether, Synchronous: true}.New()
 
@@ -506,6 +520,7 @@ func TestPortalTravelClosesHandleWhenBothWorldsClose(t *testing.T) {
 }
 
 func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name         string
 		spawnHandler world.Handler
@@ -604,6 +619,7 @@ func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
 }
 
 func TestPortalDestinationNetherSearchBoundary(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		x     int
 		found bool
@@ -621,6 +637,7 @@ func TestPortalDestinationNetherSearchBoundary(t *testing.T) {
 }
 
 func TestPortalTravelRegistersEntityInDestinationChunk(t *testing.T) {
+	t.Parallel()
 	source := world.Config{Synchronous: true}.New()
 	destination := world.Config{Dim: world.Nether, Synchronous: true}.New()
 	t.Cleanup(func() {
@@ -691,6 +708,7 @@ func TestFallingBlockDoesNotTravelThroughPortal(t *testing.T) {
 }
 
 func TestEntPortalTravelCreatesPortal(t *testing.T) {
+	t.Parallel()
 	overworld, nether := portalWorlds(t)
 
 	sourcePos := mgl64.Vec3{80.5, 64, 80.5}

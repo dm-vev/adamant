@@ -13,6 +13,7 @@ import (
 // MagmaBlock.stepOn: magma burns a mob standing on it, but not one immune
 // to fire.
 func TestMobsStepOnMagma(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var zombie, piglin *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

@@ -11,6 +11,7 @@ import (
 // Zombie.hurtServer: on hard a zombie certain to call reinforcements calls
 // another zombie when a player hits it, and its chance then drops.
 func TestZombiesCallReinforcements(t *testing.T) {
+	t.Parallel()
 	w, p := naturalSpawnWorld(t, 18000)
 	w.SetDifficulty(world.DifficultyHard)
 	var z *world.EntityHandle

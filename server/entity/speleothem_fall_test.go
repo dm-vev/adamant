@@ -34,6 +34,7 @@ func droppedDripstone(tx *world.Tx) (n int) {
 }
 
 func TestFallingStalactiteHurtsByColumnLengthAndShatters(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	var h *world.EntityHandle
 	hurt := &hurtRecorder{}
@@ -83,6 +84,7 @@ func TestFallingStalactiteHurtsByColumnLengthAndShatters(t *testing.T) {
 }
 
 func TestUnsupportedStalagmiteBreaksIntoItem(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 63, 0}, block.Stone{}, nil)

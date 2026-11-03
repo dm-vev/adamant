@@ -14,6 +14,7 @@ func countWindCharges(tx *world.Tx) int { return countEntities(tx, "minecraft:br
 // TestBreezesShootWindCharges checks Shoot and Slide: a breeze fights a
 // player in survival with wind charges.
 func TestBreezesShootWindCharges(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var b *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -42,6 +43,7 @@ func TestBreezesShootWindCharges(t *testing.T) {
 // TestBreezesLongJump checks LongJump: a breeze jumps to a spot behind a
 // player far enough away.
 func TestBreezesLongJump(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var b *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -65,6 +67,7 @@ func TestBreezesLongJump(t *testing.T) {
 // TestBreezesIgnoreCreativePlayers checks BreezeAttackEntitySensor: a breeze
 // leaves players in creative mode alone.
 func TestBreezesIgnoreCreativePlayers(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		spawnAnimal(t, tx, "minecraft:breeze", .5, nil)

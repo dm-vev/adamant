@@ -13,6 +13,7 @@ import (
 // NaturalSpawner.spawnMobsForChunkGeneration: newly generated Overworld land
 // comes with the animals of its biomes.
 func TestChunksSpawnOriginalCreatures(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	w := world.Config{Entities: entity.DefaultRegistry, Generator: overworld.NewOverworld(42), Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })

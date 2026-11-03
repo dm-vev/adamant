@@ -13,6 +13,7 @@ import (
 // TestLavaHurtsMobs checks Entity.lavaHurt reaches mobs: a cow standing in
 // lava burns to death in two seconds.
 func TestLavaHurtsMobs(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cow *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -30,6 +31,7 @@ func TestLavaHurtsMobs(t *testing.T) {
 // TestFireImmuneMobsIgnoreLava checks Entity.fireImmune: lava and fire
 // neither hurt nor ignite the mobs Java builds immune to fire.
 func TestFireImmuneMobsIgnoreLava(t *testing.T) {
+	t.Parallel()
 	for _, id := range []string{"minecraft:ghast", "minecraft:blaze", "minecraft:magma_cube", "minecraft:wither_skeleton", "minecraft:strider"} {
 		t.Run(id, func(t *testing.T) {
 			w := wolfTestWorld(t)
@@ -67,6 +69,7 @@ func TestFireImmuneMobsIgnoreLava(t *testing.T) {
 // TestBurningMobsTakeDamage checks the fire of Entity.baseTick: a mob on fire
 // takes a point of damage a second until the fire burns out.
 func TestBurningMobsTakeDamage(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cow *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -88,6 +91,7 @@ func TestBurningMobsTakeDamage(t *testing.T) {
 
 // TestRainPutsOutBurningMobs checks Entity.move: rain puts out a mob on fire.
 func TestRainPutsOutBurningMobs(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	w.StartRaining(time.Hour)
 	var cow *world.EntityHandle
@@ -108,6 +112,7 @@ func TestRainPutsOutBurningMobs(t *testing.T) {
 // TestZombiesBurnInDaylight checks Mob.burnUndead with the fire of
 // Entity.baseTick: a zombie under the noon sun burns to death.
 func TestZombiesBurnInDaylight(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	w.SetTime(6000)
 	var zombie *world.EntityHandle

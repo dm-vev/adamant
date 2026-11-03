@@ -50,6 +50,7 @@ func dropMob(t *testing.T, id string, landing world.Block, mobGriefing bool) (lo
 }
 
 func TestMobFallDamage(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, id string
 		landing  world.Block
@@ -73,6 +74,7 @@ func TestMobFallDamage(t *testing.T) {
 }
 
 func TestMobsTrampleFarmlandWithMobGriefing(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		id          string

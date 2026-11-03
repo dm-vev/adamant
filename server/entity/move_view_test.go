@@ -52,6 +52,7 @@ func (r *moveRecorder) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 // off: its viewer is shown a move every few ticks rather than one and a
 // velocity on every tick, and has it where it is once it stood still.
 func TestMobMovesAsBDS(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: entity.DefaultRegistry, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	recorder := &moveRecorder{pos: map[*world.EntityHandle]mgl64.Vec3{}}
@@ -99,6 +100,7 @@ func TestMobMovesAsBDS(t *testing.T) {
 // it falls, at once, its velocity on a few of them, and nothing once it lies
 // still, where the viewer has it.
 func TestItemMovesAsBDS(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: entity.DefaultRegistry, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	recorder := &moveRecorder{pos: map[*world.EntityHandle]mgl64.Vec3{}}

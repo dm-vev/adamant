@@ -30,6 +30,7 @@ func spearTestWorld(t *testing.T) *world.World {
 // TestZombiesStabWithSpears checks SpearUseGoal and KineticWeapon: a zombie
 // with a spear lowers it and charges its target, stabbing it.
 func TestZombiesStabWithSpears(t *testing.T) {
+	t.Parallel()
 	w := spearTestWorld(t)
 	var golem *world.EntityHandle
 	used := false

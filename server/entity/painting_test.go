@@ -19,6 +19,7 @@ func wall(tx *world.Tx, x0, x1, y0, y1 int) {
 }
 
 func TestPaintingChoosesLargestFittingCanvas(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -47,6 +48,7 @@ func TestPaintingChoosesLargestFittingCanvas(t *testing.T) {
 }
 
 func TestPaintingRejectsOverlapAndBlockedSpace(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -65,6 +67,7 @@ func TestPaintingRejectsOverlapAndBlockedSpace(t *testing.T) {
 }
 
 func TestPaintingDropsAfterSupportCheckAndOnAttack(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	countItems := func(tx *world.Tx) (n int) {
@@ -100,6 +103,7 @@ func TestPaintingDropsAfterSupportCheckAndOnAttack(t *testing.T) {
 }
 
 func TestPaintingNBTRecoversBlockFromCentredPosition(t *testing.T) {
+	t.Parallel()
 	for _, facing := range []cube.Direction{cube.North, cube.South, cube.West, cube.East} {
 		for _, name := range []string{"Kebab", "Pool", "Wanderer", "Match", "Skeleton", "backyard"} {
 			m, _ := PaintingMotiveByName(name)

@@ -14,6 +14,7 @@ import (
 // one on grass, so next to a field of grass it nearly always heads there,
 // where picking spots at random would lead it there a third of the time.
 func TestAnimalsPickGrassToStrollTo(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

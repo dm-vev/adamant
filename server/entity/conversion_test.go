@@ -17,6 +17,7 @@ import (
 // ConversionType.SINGLE: a zombie with its eyes under water for 30 seconds
 // shakes for 15 and turns into a drowned that keeps its helmet and name.
 func TestZombiesDrownIntoDrowned(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -76,6 +77,7 @@ func TestZombiesDrownIntoDrowned(t *testing.T) {
 // finishConversion: a weakened zombie villager fed a golden apple turns back
 // into a villager that keeps its profession and favours its curer.
 func TestZombieVillagersAreCured(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	// It is night, so the zombie villager does not burn, and no monsters
 	// spawn to fight around it.
@@ -127,6 +129,7 @@ func TestZombieVillagersAreCured(t *testing.T) {
 
 // TestLightningTurnsVillagersIntoWitches checks Villager.thunderHit.
 func TestLightningTurnsVillagersIntoWitches(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		addVillager(t, tx, mgl64.Vec3{.5, 64, .5})

@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
+	t.Parallel()
 	position := mgl64.Vec3{12.5, 70, -9.25}
 	rotation := cube.Rotation{135, -10}
 	handle, err := NewFromStructureNBT(map[string]any{
@@ -55,12 +56,14 @@ func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 }
 
 func TestNewFromJavaNBTRejectsUnknownEntity(t *testing.T) {
+	t.Parallel()
 	if _, err := NewFromStructureNBT(map[string]any{"id": "minecraft:unknown_template_mob"}, world.EntitySpawnOpts{}); err == nil {
 		t.Fatal("expected an unknown Java entity id to fail rather than create a placeholder")
 	}
 }
 
 func TestShulkerSurvivesMCDBRestart(t *testing.T) {
+	t.Parallel()
 	coloured, err := NewFromStructureNBT(map[string]any{
 		"id": "minecraft:shulker", "AttachFace": "east",
 		"Peek": int8(73), "Color": int8(5), "Health": float32(18),
@@ -134,6 +137,7 @@ func TestShulkerSurvivesMCDBRestart(t *testing.T) {
 }
 
 func TestShulkerBulletHitAppliesLevitation(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -172,6 +176,7 @@ func TestShulkerBulletHitAppliesLevitation(t *testing.T) {
 }
 
 func TestShulkerNativeVariantOverridesGenericColor(t *testing.T) {
+	t.Parallel()
 	for _, variant := range []int32{0, 15, 16} {
 		var data world.EntityData
 		ShulkerType.DecodeNBT(map[string]any{
@@ -186,6 +191,7 @@ func TestShulkerNativeVariantOverridesGenericColor(t *testing.T) {
 }
 
 func TestShulkerBulletCanHitOwnerAfterLeaving(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

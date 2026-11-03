@@ -43,6 +43,7 @@ func striderOf(tx *world.Tx, h *world.EntityHandle) *entity.Strider {
 // that striders are immune to fire: a strider stands on the surface of
 // lava, half a block deep in it, without burning or shivering.
 func TestStridersWalkOnLava(t *testing.T) {
+	t.Parallel()
 	w := lavaTestWorld(t, 1)
 	var strider *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -71,6 +72,7 @@ func TestStridersWalkOnLava(t *testing.T) {
 // TestStridersFloatUpThroughLava checks Strider.floatStrider: a strider that
 // sank into lava rises to its surface.
 func TestStridersFloatUpThroughLava(t *testing.T) {
+	t.Parallel()
 	w := lavaTestWorld(t, 3)
 	var strider *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -86,6 +88,7 @@ func TestStridersFloatUpThroughLava(t *testing.T) {
 // Strider.tick: a strider on stone shivers and walks into lava seven blocks
 // away, where it stops shivering.
 func TestStridersHeadForLava(t *testing.T) {
+	t.Parallel()
 	w := lavaTestWorld(t, 1)
 	var strider *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -114,6 +117,7 @@ func TestStridersHeadForLava(t *testing.T) {
 // TestWaterHurtsStriders checks LivingEntity.isSensitiveToWater for
 // striders: water hurts a strider standing in it.
 func TestWaterHurtsStriders(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var strider *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -152,6 +156,7 @@ func rideStrider(t *testing.T, held item.Stack) (*world.World, *world.EntityHand
 // while the player holds a warped fungus on a stick, at 0.35 times its
 // speed while it shivers, which takes a third off it.
 func TestStridersAreSteeredWithWarpedFungusOnSticks(t *testing.T) {
+	t.Parallel()
 	w, strider, _ := rideStrider(t, item.NewStack(item.WarpedFungusOnAStick{}, 1))
 	start := aiEntityPos(w, strider)
 	stepWorld(t, w, 40)
@@ -166,6 +171,7 @@ func TestStridersAreSteeredWithWarpedFungusOnSticks(t *testing.T) {
 // the boost ends, at the cost of a point of durability, and a worn out one
 // turns into a fishing rod.
 func TestWarpedFungusOnSticksBoostStriders(t *testing.T) {
+	t.Parallel()
 	w, strider, rider := rideStrider(t, item.NewStack(item.WarpedFungusOnAStick{}, 1))
 	stepWorld(t, w, 20)
 	use := func() (left item.Stack) {

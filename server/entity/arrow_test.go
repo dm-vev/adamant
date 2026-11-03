@@ -13,6 +13,7 @@ import (
 )
 
 func TestCalculateArrowDamage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name             string
 		critical         bool
@@ -35,6 +36,7 @@ func TestCalculateArrowDamage(t *testing.T) {
 }
 
 func TestArrowNBTRoundTrip(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		damage     float64
@@ -64,6 +66,7 @@ func TestArrowNBTRoundTrip(t *testing.T) {
 }
 
 func TestArrowUsesBDSStairRayShape(t *testing.T) {
+	t.Parallel()
 	// BDS 1.26.52.3 projectile captures use the straight stair outline even
 	// where an outer corner removes physical collision from this quadrant.
 	for _, scenario := range []struct {

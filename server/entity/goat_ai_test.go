@@ -44,6 +44,7 @@ func stepTicks(t *testing.T, w *world.World, n int) {
 // TestGoatsRamMobs checks PrepareRamNearestTarget and RamTarget: a goat
 // lines up with a mob standing nearby, lowers its head and charges.
 func TestGoatsRamMobs(t *testing.T) {
+	t.Parallel()
 	w, _ := goatTestWorld(t, mgl64.Vec3{.5, 64, .5}, 1, 100000)
 	var cow *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -74,6 +75,7 @@ func TestGoatsRamMobs(t *testing.T) {
 // a goat on a pillar it cannot walk down from leaps to the ground, landing
 // without harm.
 func TestGoatsLongJumpOffLedges(t *testing.T) {
+	t.Parallel()
 	// The goat stands four blocks up, too high to walk down but low enough
 	// to jump.
 	w, goat := goatTestWorld(t, mgl64.Vec3{.5, 68, .5}, 100000, 100000)
@@ -115,6 +117,7 @@ func TestGoatsLongJumpOffLedges(t *testing.T) {
 // TestGoatsGiveMilk checks the milking of Goat.mobInteract: adults give
 // milk, kids do not.
 func TestGoatsGiveMilk(t *testing.T) {
+	t.Parallel()
 	w, goat := goatTestWorld(t, mgl64.Vec3{.5, 64, .5}, 100000, 100000)
 	<-w.Exec(func(tx *world.Tx) {
 		e, _ := goat.Entity(tx)

@@ -7,6 +7,7 @@ import (
 )
 
 func TestAquaticVariantsSaveAsBDS(t *testing.T) {
+	t.Parallel()
 	const packed = 1 | 1<<8 | 11<<16 | 7<<24 // large stripey, blue and gray
 	data := &world.EntityData{}
 	TropicalFishType.DecodeNBT(map[string]any{"id": "minecraft:tropical_fish", "Variant": int32(packed)}, data)

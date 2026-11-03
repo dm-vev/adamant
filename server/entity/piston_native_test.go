@@ -30,14 +30,17 @@ type pistonEntityNativeBody struct {
 }
 
 func TestPistonVanillaEntitiesMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPistonVanillaEntitiesNative(t, "bedrock_1_26_51_piston_vanilla_entities.json", 512)
 }
 
 func TestPistonVanillaObstructionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonVanillaEntitiesNative(t, "bedrock_1_26_51_piston_vanilla_obstruction.json", 256)
 }
 
 func TestPistonVanillaRidersMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPistonVanillaEntitiesNative(t, "bedrock_1_26_51_piston_vanilla_riders.json", 768)
 }
 

@@ -9,6 +9,7 @@ import (
 )
 
 func TestOverlappingMobsArePushedApart(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -26,6 +27,7 @@ func TestOverlappingMobsArePushedApart(t *testing.T) {
 }
 
 func TestCrammingDamagesPackedMobs(t *testing.T) {
+	t.Parallel()
 	for _, limit := range []int{24, 0} {
 		w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 		<-w.Exec(func(tx *world.Tx) {

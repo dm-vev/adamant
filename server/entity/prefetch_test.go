@@ -143,6 +143,7 @@ func (blockFlipperType) EncodeNBT(*world.EntityData) map[string]any  { return ni
 // liquids and liquid hints a transaction gives. The read view reads on all
 // cores at once, as in the parallel phase.
 func TestReadViewMatchesTransactionForEveryBlock(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	blocks := world.DefaultBlockRegistry.Blocks()
@@ -278,6 +279,7 @@ func TestPrefetchEveryMobType(t *testing.T) {
 // changes blocks among the cached positions, and checks every position
 // still reads what computing its type afresh gives.
 func TestPathTypeCacheFollowsBlockChanges(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	palette := []world.Block{block.Air{}, block.Stone{}, block.Water{Depth: 8, Still: true}, block.Lava{Depth: 8, Still: true},

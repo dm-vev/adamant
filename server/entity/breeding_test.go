@@ -75,6 +75,7 @@ func baby(tx *world.Tx, h *world.EntityHandle) bool {
 }
 
 func TestFedAdultsBreedABabyAndRest(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	var a, b *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -117,6 +118,7 @@ func TestFedAdultsBreedABabyAndRest(t *testing.T) {
 }
 
 func TestHurtAnimalsFallOutOfLove(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		p := addDeathTestPlayer(tx)
@@ -131,6 +133,7 @@ func TestHurtAnimalsFallOutOfLove(t *testing.T) {
 }
 
 func TestFeedingBabiesSpeedsUpGrowth(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	var fed, unfed *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -177,6 +180,7 @@ func breedPairIn(t *testing.T, w *world.World, id string, food world.Item, nbt m
 }
 
 func TestFarmAnimalsBreedOnTheirFood(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		id   string
 		food world.Item
@@ -216,6 +220,7 @@ func TestFarmAnimalsBreedOnTheirFood(t *testing.T) {
 }
 
 func TestSniffersLayAnEggInsteadOfABaby(t *testing.T) {
+	t.Parallel()
 	w := breedPair(t, "minecraft:sniffer", block.TorchflowerCrop{}, nil)
 	<-w.Exec(func(tx *world.Tx) {
 		eggs := 0
@@ -244,6 +249,9 @@ func TestLambFleeceMixesParentDyes(t *testing.T) {
 		world.DefaultBlockRegistry.Finalize()
 		registerVanillaRecipes()
 	})
+	// The recipes are registered for the whole process: only once they
+	// are does the test run alongside others.
+	t.Parallel()
 	w := breedingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		p := addDeathTestPlayer(tx)
@@ -270,6 +278,7 @@ func TestLambFleeceMixesParentDyes(t *testing.T) {
 }
 
 func TestOnlyTamedPetsBreedTamedYoung(t *testing.T) {
+	t.Parallel()
 	owner := []int32{0x11223344, 0x55667788, -0x66778899, 0x0abbccdd}
 	cases := []struct {
 		id    string
@@ -335,6 +344,7 @@ func frogPond(tx *world.Tx) {
 }
 
 func TestFrogspawnHatchesIntoTadpoles(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		frogPond(tx)
@@ -351,6 +361,7 @@ func TestFrogspawnHatchesIntoTadpoles(t *testing.T) {
 }
 
 func TestFrogspawnNeedsWaterBelow(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	pos := cube.Pos{4, 64, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -367,6 +378,7 @@ func TestFrogspawnNeedsWaterBelow(t *testing.T) {
 }
 
 func TestBredFrogLaysFrogspawnOnNearbyWater(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		frogPond(tx)
@@ -397,6 +409,7 @@ func TestBredFrogLaysFrogspawnOnNearbyWater(t *testing.T) {
 }
 
 func TestGoldenDandelionPausesBabyGrowth(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	var locked, free *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -431,6 +444,7 @@ func TestGoldenDandelionPausesBabyGrowth(t *testing.T) {
 // TestPandasNeedBambooNearbyToBreed checks PandaBreedGoal: pandas in love
 // only breed with bamboo growing within eight blocks.
 func TestPandasNeedBambooNearbyToBreed(t *testing.T) {
+	t.Parallel()
 	for _, bamboo := range []bool{false, true} {
 		w := breedingTestWorld(t)
 		<-w.Exec(func(tx *world.Tx) {
@@ -457,6 +471,7 @@ func TestPandasNeedBambooNearbyToBreed(t *testing.T) {
 // TestBredTurtlesLayEggsAtHome checks TurtleBreedGoal and TurtleLayEggGoal:
 // instead of a baby, the turtle carries eggs it lays on the sand of its home.
 func TestBredTurtlesLayEggsAtHome(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := -1; x <= 3; x++ {
@@ -488,6 +503,7 @@ func TestBredTurtlesLayEggsAtHome(t *testing.T) {
 // TestAxolotlsBreedOnTropicalFishBuckets checks Axolotl.usePlayerItem: a
 // bucket of tropical fish puts an axolotl in love and leaves a water bucket.
 func TestAxolotlsBreedOnTropicalFishBuckets(t *testing.T) {
+	t.Parallel()
 	w := breedingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		p := addDeathTestPlayer(tx)

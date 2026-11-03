@@ -15,6 +15,7 @@ import (
 // the still water around it into frosted ice as it moves into a block, in
 // the disk of 3 blocks of level I, and does not burn on magma.
 func TestMobsWalkOnFrostWalker(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

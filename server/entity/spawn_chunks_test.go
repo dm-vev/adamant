@@ -14,6 +14,7 @@ import (
 // for the mob caps, and the chunks found to spawn mobs in with the players
 // near each, are those found asking of every chunk around the players.
 func TestSpawningChunksMatchEveryChunk(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Provider: world.NopProvider{}, Generator: world.NopGenerator{}, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	r := rand.New(rand.NewPCG(5, 6))

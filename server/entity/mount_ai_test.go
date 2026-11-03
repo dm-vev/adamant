@@ -63,6 +63,7 @@ func riding(tx *world.Tx, rider *world.EntityHandle) bool {
 // bucks its rider off and grows more tempered, until its temper makes it
 // accept the rider as its owner.
 func TestHorsesAreTamedByRiding(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var calm, wild *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -97,6 +98,7 @@ func TestHorsesAreTamedByRiding(t *testing.T) {
 // TestFeedingCalmsUntamedHorses checks AbstractHorse.handleEating: sugar
 // raises the temper of an untamed horse.
 func TestFeedingCalmsUntamedHorses(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		h := spawnAnimal(t, tx, "minecraft:horse", .5, nil)
@@ -116,6 +118,7 @@ func TestFeedingCalmsUntamedHorses(t *testing.T) {
 // health fed golden carrots fall in love and have an untamed foal, and a
 // horse and a donkey have a mule.
 func TestTamedHorsesBreed(t *testing.T) {
+	t.Parallel()
 	cases := []struct{ mother, father, child string }{
 		{"minecraft:horse", "minecraft:horse", "minecraft:horse"},
 		{"minecraft:horse", "minecraft:donkey", "minecraft:mule"},
@@ -168,6 +171,7 @@ func TestTamedHorsesBreed(t *testing.T) {
 // spawned horse gets 15 to 30 health, and a speed and jump strength within
 // the horse ranges, which differ between horses.
 func TestHorsesFinalizeRandomAttributes(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		speeds := map[float64]bool{}
@@ -192,6 +196,7 @@ func TestHorsesFinalizeRandomAttributes(t *testing.T) {
 // with the default movement speed of 0.225 that its rider steers forward
 // covers 0.225/(1-0.546) blocks per tick, about ten blocks a second.
 func TestRiddenHorsesRunAtJavaSpeed(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h, rider *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -227,6 +232,7 @@ func TestRiddenHorsesRunAtJavaSpeed(t *testing.T) {
 // step height of horses: a horse its rider steers into a block one high
 // walks up onto it without jumping.
 func TestRiddenHorsesStepUpBlocks(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -264,6 +270,7 @@ func TestRiddenHorsesStepUpBlocks(t *testing.T) {
 // runs on their pathfinding: a horse walks around a wall to a player holding
 // a golden carrot.
 func TestHorsesPathAroundWallsToGoldenCarrots(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	playerPos := mgl64.Vec3{8.5, 64, .5}

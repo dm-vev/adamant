@@ -44,6 +44,7 @@ func playerHurt(tx *world.Tx, h *world.EntityHandle) bool {
 // TestPiglinsAttackPlayersWithoutGold checks PiglinSpecificSensor and the
 // FIGHT activity: a piglin attacks a player wearing no gold.
 func TestPiglinsAttackPlayersWithoutGold(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -64,6 +65,7 @@ func TestPiglinsAttackPlayersWithoutGold(t *testing.T) {
 // TestPiglinsLeavePlayersInGoldAlone checks PiglinAi.isWearingSafeArmor: a
 // piglin leaves a player wearing a golden helmet alone.
 func TestPiglinsLeavePlayersInGoldAlone(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -84,6 +86,7 @@ func TestPiglinsLeavePlayersInGoldAlone(t *testing.T) {
 // stopHoldingOffHandItem: a piglin given a gold ingot admires it for six
 // seconds and throws its bartering loot to the player.
 func TestPiglinsBarterForGold(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var piglin *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -125,6 +128,7 @@ func TestPiglinsBarterForGold(t *testing.T) {
 // and GoToWantedItem: a piglin walks to a gold ingot on the ground, picks it
 // up and admires it.
 func TestPiglinsPickUpGold(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var piglin *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -148,6 +152,7 @@ func TestPiglinsPickUpGold(t *testing.T) {
 // TestPiglinsGuardChests checks PiglinAi.angerNearbyPiglins: a piglin that
 // sees a player in gold open a chest attacks them.
 func TestPiglinsGuardChests(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -177,6 +182,7 @@ func TestPiglinsGuardChests(t *testing.T) {
 // TestPiglinBrutesAttackPlayersInGold checks PiglinBruteAi: a brute attacks
 // even a player wearing gold.
 func TestPiglinBrutesAttackPlayersInGold(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -196,6 +202,7 @@ func TestPiglinBrutesAttackPlayersInGold(t *testing.T) {
 
 // TestPiglinsTurnIntoZombifiedPiglins checks AbstractPiglin.isConverting.
 func TestPiglinsTurnIntoZombifiedPiglins(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) { spawnAnimal(t, tx, "minecraft:piglin", .5, nil) })
 	for range 320 {
@@ -212,6 +219,7 @@ func TestPiglinsTurnIntoZombifiedPiglins(t *testing.T) {
 // SpearRetreat: a piglin with a golden spear charges a player wearing no
 // gold and stabs them.
 func TestPiglinsChargeWithSpears(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var pig, p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

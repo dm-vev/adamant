@@ -10,6 +10,7 @@ import (
 )
 
 func TestProjectilesBreakPotsPerGamerules(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -50,6 +51,7 @@ func TestProjectilesBreakPotsPerGamerules(t *testing.T) {
 // TestSnowballHurtsBlazes follows Snowball.onHitEntity: a blaze hit by a
 // snowball takes 3 damage, other mobs none.
 func TestSnowballHurtsBlazes(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: DefaultRegistry}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

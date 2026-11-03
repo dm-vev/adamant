@@ -22,6 +22,7 @@ func dolphinOf(tx *world.Tx, h *world.EntityHandle) *entity.Dolphin {
 // TestDolphinsSwimAround checks the RandomSwimmingGoal and
 // SmoothSwimmingMoveControl of dolphins: a dolphin swims about its pool.
 func TestDolphinsSwimAround(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var dolphin *world.EntityHandle
 	start := mgl64.Vec3{.5, 61, .5}
@@ -42,6 +43,7 @@ func TestDolphinsSwimAround(t *testing.T) {
 // TestDolphinsBreatheAir checks BreathAirGoal: a dolphin low on air swims up
 // to the surface and breathes in.
 func TestDolphinsBreatheAir(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var dolphin *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -67,6 +69,7 @@ func TestDolphinsBreatheAir(t *testing.T) {
 // PlayWithItemsGoal: a dolphin swims to an item in the water, picks it up
 // and tosses it away again, as a new item entity.
 func TestDolphinsPlayWithItems(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var original *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -108,6 +111,7 @@ func TestDolphinsPlayWithItems(t *testing.T) {
 // TestDolphinsDryOutOnLand checks Dolphin.tick: a dolphin on land hops about
 // and dries out after two minutes.
 func TestDolphinsDryOutOnLand(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var dolphin *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

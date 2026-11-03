@@ -18,6 +18,7 @@ func addCat(tx *world.Tx, pos mgl64.Vec3, conf entity.CatBehaviourConfig) *world
 // TestStrayCatsFleeFromPlayers checks CatAvoidEntityGoal: a stray cat runs
 // from a player that comes near.
 func TestStrayCatsFleeFromPlayers(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cat *world.EntityHandle
 	playerPos := mgl64.Vec3{4.5, 64, .5}
@@ -38,6 +39,7 @@ func TestStrayCatsFleeFromPlayers(t *testing.T) {
 // TestStrayCatsCreepToFish checks CatTemptGoal: a stray cat creeps up to a
 // player holding raw cod.
 func TestStrayCatsCreepToFish(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cat *world.EntityHandle
 	playerPos := mgl64.Vec3{8.5, 64, .5}
@@ -65,6 +67,7 @@ func TestStrayCatsCreepToFish(t *testing.T) {
 // TestTamedCatsFollowTheirOwner checks FollowOwnerGoal for cats, which come
 // back to within five blocks of their owner.
 func TestTamedCatsFollowTheirOwner(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cat *world.EntityHandle
 	ownerPos := mgl64.Vec3{12.5, 64, .5}
@@ -85,6 +88,7 @@ func TestTamedCatsFollowTheirOwner(t *testing.T) {
 // TestStrayCatsHuntRabbits checks the NonTameRandomTargetGoal of cats and
 // OcelotAttackGoal: a stray cat stalks a rabbit and scratches it.
 func TestStrayCatsHuntRabbits(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var rabbit *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -108,6 +112,7 @@ func TestStrayCatsHuntRabbits(t *testing.T) {
 // TestOcelotsHuntChickens checks the NearestAttackableTargetGoal of ocelots
 // for chickens.
 func TestOcelotsHuntChickens(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var chicken *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -133,6 +138,7 @@ func TestOcelotsHuntChickens(t *testing.T) {
 // MoveToBlockGoal looks three blocks below the cat before the blocks at its
 // own level, which it skips, so the bed lies in a pit.
 func TestTamedCatsLieOnBeds(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cat *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

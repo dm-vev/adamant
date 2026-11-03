@@ -35,6 +35,7 @@ func (r *stateViewRecorder) ViewEntityState(e world.Entity) {
 // entity, so sessions dropped the flags of the species: a vindicator never
 // showed it was angry and raised its axe, nor a pillager its crossbow charge.
 func TestIllagerStateReachesViewers(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	w.SetDifficulty(world.DifficultyNormal)

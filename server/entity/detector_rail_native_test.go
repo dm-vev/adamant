@@ -16,14 +16,17 @@ import (
 
 // This compares settled analog output, not minecart travel or update timing.
 func TestDetectorRailInventorySignalMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testDetectorRailSettledNative(t, "bedrock_1_26_51_detector_rail_inventory.json", 15)
 }
 
 func TestCommandCartInventorySignalMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testDetectorRailSettledNative(t, "bedrock_1_26_51_command_cart_inventory.json", 5)
 }
 
 func TestDetectorRailTimingMatchesBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_detector_rail_timing.json")
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +119,7 @@ func TestDetectorRailTimingMatchesBDS(t *testing.T) {
 }
 
 func TestDetectorRailBoundaryMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testDetectorRailSettledNative(t, "bedrock_1_26_51_detector_rail_boundary.json", 51)
 }
 
@@ -225,6 +229,7 @@ func testDetectorRailSettledNative(t *testing.T, fixture string, count int) {
 }
 
 func TestDetectorRailProducerLifecycleMatchesBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_detector_rail_lifecycle.json")
 	if err != nil {
 		t.Fatal(err)

@@ -54,6 +54,7 @@ func copperGolemSortingWorld(t *testing.T, chestItems ...item.Stack) (*world.Wor
 // for copper golems: a copper golem takes sixteen items out of a copper
 // chest and puts them into a chest holding the same item.
 func TestCopperGolemsSortItemsIntoChests(t *testing.T) {
+	t.Parallel()
 	w, source, dest, golem := copperGolemSortingWorld(t, item.NewStack(block.Cobblestone{}, 1))
 	carried := false
 	for range 2400 {
@@ -84,6 +85,7 @@ func TestCopperGolemsSortItemsIntoChests(t *testing.T) {
 // TransportItemsBetweenContainers.matchesLeavingItemsRequirement: a copper
 // golem does not put items into a chest holding other items.
 func TestCopperGolemsLeaveChestsWithOtherItems(t *testing.T) {
+	t.Parallel()
 	w, _, dest, golem := copperGolemSortingWorld(t, item.NewStack(item.Stick{}, 1))
 	carried := false
 	for range 1600 {
@@ -104,6 +106,7 @@ func TestCopperGolemsLeaveChestsWithOtherItems(t *testing.T) {
 // TestCopperGolemsOpenChestsTheyUse checks CopperGolemAi.onReachedTargetInteraction:
 // a copper golem opens the chest it takes items from and shows it does.
 func TestCopperGolemsOpenChestsTheyUse(t *testing.T) {
+	t.Parallel()
 	w, source, _, golem := copperGolemSortingWorld(t)
 	for range 1200 {
 		w.AdvanceTick()
@@ -129,6 +132,7 @@ func TestCopperGolemsOpenChestsTheyUse(t *testing.T) {
 // CarvedPumpkinBlock: a carved pumpkin on exposed copper becomes an exposed
 // copper golem on an exposed copper chest.
 func TestCopperGolemsSpawnOnCopperChests(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 64, 0}, block.Copper{Oxidation: block.ExposedOxidation()}, nil)
@@ -163,6 +167,7 @@ func TestCopperGolemsSpawnOnCopperChests(t *testing.T) {
 // a copper golem waits by a chest somebody else has open, and uses it once
 // they close it.
 func TestCopperGolemsQueueForOpenChests(t *testing.T) {
+	t.Parallel()
 	w, _, dest, golem := copperGolemSortingWorld(t, item.NewStack(block.Cobblestone{}, 1))
 	var other *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

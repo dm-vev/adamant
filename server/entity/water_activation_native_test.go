@@ -12,6 +12,7 @@ import (
 )
 
 func TestWaterActivationMatchesBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_water_activation.json")
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +106,7 @@ func TestWaterActivationMatchesBDS(t *testing.T) {
 }
 
 func TestPhysicalWaterPlacementFlowsInBothLayers(t *testing.T) {
+	t.Parallel()
 	for _, waterlogged := range []bool{false, true} {
 		t.Run(fmt.Sprintf("waterlogged%t", waterlogged), func(t *testing.T) {
 			w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()

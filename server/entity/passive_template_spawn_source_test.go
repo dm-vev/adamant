@@ -13,6 +13,7 @@ import (
 )
 
 func TestPassiveTemplateSpawnMatchesJava263(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_passive_template_authored_spawn.json")
 	if err != nil {
 		t.Fatal(err)

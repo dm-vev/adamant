@@ -20,6 +20,7 @@ func immuneHoglin(t *testing.T, tx *world.Tx, x float64) *world.EntityHandle {
 // TestHoglinsAttackPlayers checks the FIGHT activity of HoglinAi: a hoglin
 // charges a player nearby and gores them.
 func TestHoglinsAttackPlayers(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -43,6 +44,7 @@ func TestHoglinsAttackPlayers(t *testing.T) {
 // SetWalkTargetAwayFrom: a hoglin near warped fungus leaves the player
 // alone and walks away from the fungus.
 func TestHoglinsShunRepellents(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var hoglin, p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -74,6 +76,7 @@ func TestHoglinsShunRepellents(t *testing.T) {
 // TestHoglinsTurnIntoZoglins checks Hoglin.isConverting: a hoglin in the
 // overworld becomes a zoglin after fifteen seconds.
 func TestHoglinsTurnIntoZoglins(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) { spawnAnimal(t, tx, "minecraft:hoglin", .5, nil) })
 	for range 320 {
@@ -89,6 +92,7 @@ func TestHoglinsTurnIntoZoglins(t *testing.T) {
 // TestZoglinsAttackAnyMob checks the brain of Zoglin: a zoglin attacks the
 // mobs around it, here a cow.
 func TestZoglinsAttackAnyMob(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cow *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

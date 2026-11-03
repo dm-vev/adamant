@@ -28,6 +28,7 @@ func beeOf(tx *world.Tx, h *world.EntityHandle) (*entity.Bee, bool) {
 // flowers flies to one and gathers nectar after hovering over it for 20
 // seconds.
 func TestBeesPollinateFlowers(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var bee *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -59,6 +60,7 @@ func TestBeesPollinateFlowers(t *testing.T) {
 // BeeEnterHiveGoal: a bee carrying nectar finds a hive nearby, flies to it
 // and enters it.
 func TestBeesTakeNectarHome(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var bee *world.EntityHandle
 	hive := cube.Pos{4, 64, 0}
@@ -90,6 +92,7 @@ func TestBeesTakeNectarHome(t *testing.T) {
 // Bee.doHurtTarget: a hurt bee stings its attacker, poisoning it, and dies
 // within a minute of losing its stinger.
 func TestBeesStingWhatHurtThem(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var bee, player *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -135,6 +138,7 @@ func TestBeesStingWhatHurtThem(t *testing.T) {
 // honey of a hive without smoke makes the bees around attack and releases
 // those inside at the player.
 func TestHarvestingHoneyAngersBees(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	hive := cube.Pos{2, 64, 0}
 	<-w.Exec(func(tx *world.Tx) {

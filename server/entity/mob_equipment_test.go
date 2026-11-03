@@ -18,6 +18,7 @@ func husk(tx *world.Tx, h *world.EntityHandle) *entity.HostileMob {
 // husk that may pick up loot puts on a helmet and takes up a sword lying at
 // its feet, and swaps the sword for a better one.
 func TestMobsPickUpAndWearLoot(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -56,6 +57,7 @@ func TestMobsPickUpAndWearLoot(t *testing.T) {
 // for a mob: a husk in diamond armour loses less health to a blow than one
 // without.
 func TestMobArmourAbsorbsDamage(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		bare := husk(tx, spawnAnimal(t, tx, "minecraft:husk", .5, nil))

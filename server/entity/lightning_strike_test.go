@@ -10,6 +10,7 @@ import (
 )
 
 func TestLightningOnRodPowersItAndCleansCopper(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	rod := cube.Pos{0, 65, 0}
 	oxidised := block.Copper{Oxidation: block.OxidisedOxidation()}

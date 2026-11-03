@@ -8,6 +8,7 @@ import (
 )
 
 func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
+	t.Parallel()
 	const ownerUUID = "123e4567-e89b-12d3-a456-426614174000"
 	data := &world.EntityData{}
 	WolfType.DecodeNBT(map[string]any{
@@ -61,6 +62,7 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 	}
 }
 func TestNewFromJavaNBTRejectsUnknownWolfEquipment(t *testing.T) {
+	t.Parallel()
 	_, err := NewFromStructureNBT(map[string]any{
 		"id": "minecraft:wolf",
 		"equipment": map[string]any{"body": map[string]any{"id": "minecraft:not_an_item", "count": int32(1)}},

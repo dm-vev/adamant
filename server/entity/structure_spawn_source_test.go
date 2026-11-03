@@ -18,6 +18,7 @@ import (
 )
 
 func TestPreparedStructureMobsMatchJava263(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_structure_mob_spawn.json")
 	if err != nil {
 		t.Fatal(err)
@@ -72,6 +73,7 @@ func TestPreparedStructureMobsMatchJava263(t *testing.T) {
 }
 
 func TestSourceVindicatorEquipmentSurvivesNativeMCDB(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_structure_mob_spawn.json")
 	if err != nil {
 		t.Fatal(err)

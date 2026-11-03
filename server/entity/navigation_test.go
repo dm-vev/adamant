@@ -10,6 +10,7 @@ import (
 )
 
 func TestGroundPathDoesNotClipDiagonalCorner(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	start, goal := cube.Pos{0, 1, 0}, cube.Pos{1, 1, 1}
@@ -30,6 +31,7 @@ func TestGroundPathDoesNotClipDiagonalCorner(t *testing.T) {
 }
 
 func TestGroundPathAvoidsFire(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	start, goal := cube.Pos{0, 1, 0}, cube.Pos{4, 1, 0}
@@ -52,6 +54,7 @@ func TestGroundPathAvoidsFire(t *testing.T) {
 }
 
 func TestGroundPathRespectsMaximumFall(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	start, goal := cube.Pos{0, 5, 0}, cube.Pos{1, 1, 0}
@@ -67,6 +70,7 @@ func TestGroundPathRespectsMaximumFall(t *testing.T) {
 }
 
 func TestNavigatorCachesAndReplansFarTargets(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	var n Navigator
@@ -92,6 +96,7 @@ func TestNavigatorCachesAndReplansFarTargets(t *testing.T) {
 // with two turns through a corridor one block wide. The path stays within
 // the 16 blocks a cow walks at most, its follow range.
 func TestCowFollowsNavigatorThroughWindingCorridor(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	start, goal := cube.Pos{1, 1, 7}, cube.Pos{7, 1, 3}

@@ -32,6 +32,7 @@ func waitArmadillo(t *testing.T, w *world.World, h *world.EntityHandle, ticks in
 // an armadillo rolls up when a zombie comes within seven blocks, and once the
 // zombie is gone it unrolls again.
 func TestArmadillosRollUpAtTheUndead(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	w.SetTime(18000)
 	var armadillo, zombie *world.EntityHandle
@@ -56,6 +57,7 @@ func TestArmadillosRollUpAtTheUndead(t *testing.T) {
 // hurtServer: a blow makes an armadillo roll up, after which blows hurt it
 // half a point less than half.
 func TestHitArmadillosRollUpAndShrugOffBlows(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var armadillo *world.EntityHandle
 	var p world.Entity
@@ -85,6 +87,7 @@ func TestHitArmadillosRollUpAndShrugOffBlows(t *testing.T) {
 // TestArmadillosFollowSpiderEyes checks FollowTemptation: an armadillo
 // follows a player holding a spider eye.
 func TestArmadillosFollowSpiderEyes(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var armadillo *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -100,6 +103,7 @@ func TestArmadillosFollowSpiderEyes(t *testing.T) {
 // TestArmadillosStroll checks the idle activity of ArmadilloAi: an armadillo
 // strolls about.
 func TestArmadillosStroll(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var armadillo *world.EntityHandle
 	start := mgl64.Vec3{.5, 64, .5}

@@ -15,6 +15,7 @@ import (
 // water gets a bite within the 600 ticks of luring and 80 of approach, and
 // retrieving it then lands a catch and wears the rod down by one.
 func TestFishingHookCatchesAsJava(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: entity.DefaultRegistry, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

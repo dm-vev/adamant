@@ -10,6 +10,7 @@ import (
 // back, as LivingEntity saves it, so a mob under water does not get a full
 // breath back from a reload.
 func TestMobAirIsSaved(t *testing.T) {
+	t.Parallel()
 	var data world.EntityData
 	CowConfig{}.Apply(&data)
 	ai := data.Data.(mobAIBehaviour).mobAI()

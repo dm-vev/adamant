@@ -8,6 +8,7 @@ import (
 )
 
 func TestCommandTagsRoundTripThroughEntityNBT(t *testing.T) {
+	t.Parallel()
 	var data world.EntityData
 	CowType.DecodeNBT(map[string]any{}, &data)
 	cow := &Cow{Ent: &Ent{data: &data}}

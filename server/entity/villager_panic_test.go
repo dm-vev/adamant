@@ -25,6 +25,7 @@ func villager(tx *world.Tx, h *world.EntityHandle) *entity.Villager {
 }
 
 func TestVillagersRunFromZombies(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	zombieAt := mgl64.Vec3{5.5, 64, .5}
@@ -54,6 +55,7 @@ func TestVillagersRunFromZombies(t *testing.T) {
 }
 
 func TestHurtVillagersCalmDown(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -119,6 +121,7 @@ func panickingVillagerGolems(t *testing.T, slept bool) int {
 }
 
 func TestPanickingVillagersSummonAnIronGolem(t *testing.T) {
+	t.Parallel()
 	if n := panickingVillagerGolems(t, true); n != 1 {
 		t.Fatalf("three panicking villagers that slept summoned %d iron golems, want one", n)
 	}

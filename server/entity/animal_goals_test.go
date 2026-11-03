@@ -25,6 +25,7 @@ func horizontalDistance(a, b mgl64.Vec3) float64 {
 // holding an animal's food lures it from ten blocks away until it stands
 // 2.5 blocks away.
 func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		id   string
 		food world.Item
@@ -75,6 +76,7 @@ func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
 // TestAnimalsPathAroundWallsToTheirFood checks animals find a path around a
 // wall to a player holding their food rather than walking into the wall.
 func TestAnimalsPathAroundWallsToTheirFood(t *testing.T) {
+	t.Parallel()
 	foods := map[string]world.Item{"minecraft:cow": item.Wheat{}, "minecraft:sheep": item.Wheat{}, "minecraft:chicken": block.WheatSeeds{}}
 	for id, food := range foods {
 		t.Run(id, func(t *testing.T) {
@@ -104,6 +106,7 @@ func TestAnimalsPathAroundWallsToTheirFood(t *testing.T) {
 // TestChickensFallSlowly checks Chicken.aiStep: a falling chicken flaps its
 // wings, which slows its fall to about a block a second.
 func TestChickensFallSlowly(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -122,6 +125,7 @@ func TestChickensFallSlowly(t *testing.T) {
 // TestBabiesFollowAdults checks FollowParentGoal: a baby more than three
 // blocks from the nearest grown animal of its kind walks up to it.
 func TestBabiesFollowAdults(t *testing.T) {
+	t.Parallel()
 	for _, id := range []string{"minecraft:cow", "minecraft:polar_bear"} {
 		t.Run(id, func(t *testing.T) {
 			w := traderTestWorld(t)
@@ -159,6 +163,7 @@ func TestBabiesFollowAdults(t *testing.T) {
 // the grass block it stands on, which turns to dirt, regrows its wool and
 // lets it grow up a minute sooner.
 func TestSheepEatGrassToRegrowWool(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -193,6 +198,7 @@ func TestSheepEatGrassToRegrowWool(t *testing.T) {
 // TestRabbitsFleeFromPlayers checks RabbitAvoidEntityGoal: a rabbit runs away
 // from a survival player without carrots that comes within eight blocks.
 func TestRabbitsFleeFromPlayers(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	playerPos := mgl64.Vec3{5.5, 64, .5}
@@ -213,6 +219,7 @@ func TestRabbitsFleeFromPlayers(t *testing.T) {
 // TestBeesFollowFlowers checks the bee's TemptGoal: a calm bee flies up to a
 // player holding a flower.
 func TestBeesFollowFlowers(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	eye := mgl64.Vec3{9.5, 64 + 1.62, .5}
@@ -233,6 +240,7 @@ func TestBeesFollowFlowers(t *testing.T) {
 // TestWorriedPandasFleeFromPlayers checks PandaAvoidGoal: a worried panda
 // runs from a player within eight blocks.
 func TestWorriedPandasFleeFromPlayers(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var worried *world.EntityHandle
 	playerPos := mgl64.Vec3{4.5, 64, .5}

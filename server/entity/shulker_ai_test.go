@@ -65,6 +65,7 @@ func shulkerAttacks(tx *world.Tx, h *world.EntityHandle, ticks int) bool {
 // TargetGoal.canContinueToUse: a shulker closes its shell once its target
 // becomes invalid.
 func TestShulkerStopsAttackingInvalidTarget(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		invalidate func(*world.Tx, *player.Player)
@@ -103,6 +104,7 @@ func TestShulkerStopsAttackingInvalidTarget(t *testing.T) {
 // TestShulkerRestartsAttackAfterIdle checks that a shulker attacks a player
 // again once they are no longer in creative mode.
 func TestShulkerRestartsAttackAfterIdle(t *testing.T) {
+	t.Parallel()
 	w, shulker, target := shulkerAIWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		actor, _ := target.Entity(tx)
@@ -129,6 +131,7 @@ func TestShulkerRestartsAttackAfterIdle(t *testing.T) {
 // shulker forgets a target hidden for three seconds and finds it again once
 // it is visible.
 func TestShulkerForgetsHiddenTarget(t *testing.T) {
+	t.Parallel()
 	w, shulker, _ := shulkerAIWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		if !shulkerAttacks(tx, shulker, 400) {
@@ -157,6 +160,7 @@ func TestShulkerForgetsHiddenTarget(t *testing.T) {
 // TestShulkersTeleportWhenHurt checks Shulker.hurtServer: a shulker hurt
 // below half its health may teleport to another spot it can stay at.
 func TestShulkersTeleportWhenHurt(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var shulker *world.EntityHandle
 	start := mgl64.Vec3{.5, 64, .5}

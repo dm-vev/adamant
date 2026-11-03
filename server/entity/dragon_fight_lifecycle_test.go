@@ -16,6 +16,7 @@ import (
 )
 
 func TestEndFightNativeLifecycleAndMCDBRestart(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	const seed = 5023
 	open := func() (*world.World, *mcdb.DB) {
@@ -249,6 +250,7 @@ func TestEndFightNativeLifecycleAndMCDBRestart(t *testing.T) {
 }
 
 func TestDragonDyingFlightPrecedesSourceDeathAnimation(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

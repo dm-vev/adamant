@@ -10,6 +10,7 @@ import (
 // TestMobEquipmentSurvivesSaving checks that every equipment slot and drop
 // chance of a mob survives its native NBT.
 func TestMobEquipmentSurvivesSaving(t *testing.T) {
+	t.Parallel()
 	var data, restored world.EntityData
 	HuskType.DecodeNBT(map[string]any{
 		"equipment": map[string]any{

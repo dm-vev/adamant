@@ -15,10 +15,12 @@ import (
 )
 
 func TestItemMovementMatchesNativeAirSteps(t *testing.T) {
+	t.Parallel()
 	testItemMotionTrace(t, "air")
 }
 
 func TestItemLandingAppliesFrictionAfterCollision(t *testing.T) {
+	t.Parallel()
 	testItemMotionTrace(t, "landing")
 }
 
@@ -80,6 +82,7 @@ func testItemMotionTrace(t *testing.T, name string) {
 }
 
 func TestItemMergePreservesExistingActors(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name                  string
 		first, second         int
@@ -141,6 +144,7 @@ func TestItemMergePreservesExistingActors(t *testing.T) {
 }
 
 func TestPartialItemPickupKeepsActor(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	if err := w.Do(func(tx *world.Tx) {
@@ -161,6 +165,7 @@ type partialItemCollector struct{ world.Entity }
 func (partialItemCollector) Collect(item.Stack) (int, bool) { return 2, true }
 
 func TestPartialHopperCollectionKeepsItemActor(t *testing.T) {
+	t.Parallel()
 	settings := (world.NopProvider{}).Settings()
 	settings.CurrentTick = 1 // World.New reaches the even transfer step at 2.
 	w := world.Config{Synchronous: true, Provider: world.NopProvider{Set: settings}}.New()

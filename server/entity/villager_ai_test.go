@@ -30,6 +30,7 @@ func placeBed(tx *world.Tx, pos cube.Pos) {
 // AssignProfessionFromJobSite: an unemployed villager takes a lectern near
 // and becomes a librarian.
 func TestVillagersTakeJobs(t *testing.T) {
+	t.Parallel()
 	w := villagerWorld(t, 1000)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -51,6 +52,7 @@ func TestVillagersTakeJobs(t *testing.T) {
 // and SleepInBed: at night a villager sleeps in a bed near, which is then
 // occupied.
 func TestVillagersSleepAtNight(t *testing.T) {
+	t.Parallel()
 	w := villagerWorld(t, 13000)
 	var h *world.EntityHandle
 	bed := cube.Pos{5, 64, 0}
@@ -96,6 +98,7 @@ func TestVillagersSleepAtNight(t *testing.T) {
 // TestFarmersBakeBread checks WorkAtComposter.makeBread: a farmer at its
 // composter while at work bakes bread out of its wheat.
 func TestFarmersBakeBread(t *testing.T) {
+	t.Parallel()
 	w := villagerWorld(t, 3000)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -125,6 +128,7 @@ func TestFarmersBakeBread(t *testing.T) {
 // TestVillagersBreed checks VillagerMakeLove: two villagers with food and a
 // bed free beside their own have a baby that gets the bed.
 func TestVillagersBreed(t *testing.T) {
+	t.Parallel()
 	w := villagerWorld(t, 500)
 	<-w.Exec(func(tx *world.Tx) {
 		// A pen keeps them close enough to court.

@@ -13,6 +13,7 @@ import (
 // TestTurtlesHeadForWater checks TurtleGoToWaterGoal: a turtle on land
 // crawls slowly towards the water nearby, to the edge of it.
 func TestTurtlesHeadForWater(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var turtle *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -32,6 +33,7 @@ func TestTurtlesHeadForWater(t *testing.T) {
 // TestTurtlesSwimAway checks TurtleTravelGoal: a turtle in water swims off
 // on a long journey.
 func TestTurtlesSwimAway(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var turtle *world.EntityHandle
 	start := mgl64.Vec3{.5, 61, .5}

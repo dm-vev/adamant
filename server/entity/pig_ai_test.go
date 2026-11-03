@@ -43,6 +43,7 @@ func ridePig(t *testing.T, held world.Item, yaw float64) (*world.World, *world.E
 // getRiddenSpeed: a pig walks the way the player riding it looks while the
 // player holds a carrot on a stick, at 0.225 times its speed.
 func TestPigsAreSteeredWithCarrotsOnSticks(t *testing.T) {
+	t.Parallel()
 	// A yaw of -90 looks towards positive x.
 	w, pig, _ := ridePig(t, item.CarrotOnAStick{}, -90)
 	start := aiEntityPos(w, pig)
@@ -63,6 +64,7 @@ func TestPigsAreSteeredWithCarrotsOnSticks(t *testing.T) {
 // TestPigsWanderWithoutCarrotsOnSticks checks Pig.getControllingPassenger:
 // without a carrot on a stick the player riding a pig does not steer it.
 func TestPigsWanderWithoutCarrotsOnSticks(t *testing.T) {
+	t.Parallel()
 	w, pig, rider := ridePig(t, item.Stick{}, -90)
 	<-w.Exec(func(tx *world.Tx) {
 		e, _ := pig.Entity(tx)
@@ -84,6 +86,7 @@ func TestPigsWanderWithoutCarrotsOnSticks(t *testing.T) {
 // boost of 140 to 980 ticks speeds the pig up along a sine, so between ticks
 // 70 and 110 it runs at least 1.2 times as fast.
 func TestCarrotsOnSticksBoostPigs(t *testing.T) {
+	t.Parallel()
 	w, pig, rider := ridePig(t, item.CarrotOnAStick{}, -90)
 	stepWorld(t, w, 20)
 	use := func() (durability int) {
@@ -113,6 +116,7 @@ func TestCarrotsOnSticksBoostPigs(t *testing.T) {
 // TestCarrotsOnSticksBreakIntoFishingRods checks the carrot on a stick turns
 // back into a fishing rod once it is used up.
 func TestCarrotsOnSticksBreakIntoFishingRods(t *testing.T) {
+	t.Parallel()
 	w, _, rider := ridePig(t, item.CarrotOnAStick{}, -90)
 	<-w.Exec(func(tx *world.Tx) {
 		r, _ := rider.Entity(tx)
@@ -128,6 +132,7 @@ func TestCarrotsOnSticksBreakIntoFishingRods(t *testing.T) {
 // TestSteeredPigsStepUpBlocks checks LivingEntity.getMaxUpStep: a pig a
 // player steers walks up a block one high, which it could not on its own.
 func TestSteeredPigsStepUpBlocks(t *testing.T) {
+	t.Parallel()
 	w, pig, _ := ridePig(t, item.CarrotOnAStick{}, -90)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := 3; x <= 30; x++ {

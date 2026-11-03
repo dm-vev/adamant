@@ -10,6 +10,7 @@ import (
 )
 
 func TestBossSpeedEffectsAndZeroPersistence(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []world.EntityType{WardenType, PhantomType, WitherType} {
 		t.Run(kind.EncodeEntity(), func(t *testing.T) {
 			var data world.EntityData
@@ -41,6 +42,7 @@ func TestBossSpeedEffectsAndZeroPersistence(t *testing.T) {
 }
 
 func TestPhantomSizeDoesNotScaleHealth(t *testing.T) {
+	t.Parallel()
 	var data world.EntityData
 	PhantomType.DecodeNBT(map[string]any{"Size": int32(64)}, &data)
 	phantom := PhantomType.Open(nil, nil, &data).(*Phantom)

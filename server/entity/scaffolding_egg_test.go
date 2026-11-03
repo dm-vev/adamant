@@ -20,6 +20,7 @@ func countDropped[T world.Item](tx *world.Tx) (n int) {
 }
 
 func TestScaffoldingBreaksWhenSupportIsLost(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 63, 0}, block.Stone{}, nil)
@@ -49,6 +50,7 @@ func TestScaffoldingBreaksWhenSupportIsLost(t *testing.T) {
 }
 
 func TestUnsupportedScaffoldingFallsOntoGround(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 63, 0}, block.Stone{}, nil)
@@ -68,6 +70,7 @@ func TestUnsupportedScaffoldingFallsOntoGround(t *testing.T) {
 }
 
 func TestSnifferEggHatchesSnifflet(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	pos := cube.Pos{0, 64, 0}
 	<-w.Exec(func(tx *world.Tx) {

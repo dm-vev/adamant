@@ -14,6 +14,7 @@ import (
 // player close by and rears up first, and one without a cub leaves the
 // player alone.
 func TestPolarBearsGuardTheirCubs(t *testing.T) {
+	t.Parallel()
 	for _, cub := range []bool{false, true} {
 		w := aiTestWorld(t)
 		p := addAITestPlayer(w, mgl64.Vec3{4.5, 65, .5}, world.GameModeSurvival)
@@ -41,6 +42,7 @@ func TestPolarBearsGuardTheirCubs(t *testing.T) {
 // TestHurtPolarBearCubsCallAdults checks PolarBearHurtByTargetGoal: an adult
 // polar bear attacks the player that hurt a cub nearby.
 func TestHurtPolarBearCubsCallAdults(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	// The player stands farther than half the follow range, beyond which
 	// PolarBearAttackPlayersGoal does not look.
@@ -64,6 +66,7 @@ func TestHurtPolarBearCubsCallAdults(t *testing.T) {
 // TestPolarBearsHuntFoxes checks the NearestAttackableTargetGoal of adult
 // polar bears for foxes.
 func TestPolarBearsHuntFoxes(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var fox *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

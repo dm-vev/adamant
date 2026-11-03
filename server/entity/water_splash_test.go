@@ -15,6 +15,7 @@ import (
 // blaze and puts out a burning zombie, a blaze further away is unharmed, and
 // an axolotl out of water gets 1800 ticks of air back.
 func TestWaterSplashHurtsExtinguishesAndRehydrates(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -55,6 +56,7 @@ func TestWaterSplashHurtsExtinguishesAndRehydrates(t *testing.T) {
 // the potion, still gets (1-3.825/4)*3600 ticks of Strength, while one 5
 // blocks away is out of reach.
 func TestSplashPotionScalesByBoxDistance(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -81,6 +83,7 @@ func TestSplashPotionScalesByBoxDistance(t *testing.T) {
 // wait. A creeper with an effect
 // leaves a cloud of it when it explodes, and lingering water none.
 func TestLingeringCloudFollowsJava(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

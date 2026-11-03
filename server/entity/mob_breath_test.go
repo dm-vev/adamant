@@ -13,6 +13,7 @@ import (
 // cow kept under water runs out of air after 15 seconds and drowns, while an
 // undead husk breathes water.
 func TestMobsDrownUnderWater(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var cow, husk *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

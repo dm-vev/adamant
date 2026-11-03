@@ -10,6 +10,7 @@ import (
 )
 
 func TestHopperMinecartPullAndCooldown(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -44,6 +45,7 @@ func TestHopperMinecartPullAndCooldown(t *testing.T) {
 }
 
 func TestFullHopperMinecartDoesNotLoseItemsOnFailedPull(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -68,6 +70,7 @@ func TestFullHopperMinecartDoesNotLoseItemsOnFailedPull(t *testing.T) {
 }
 
 func TestHopperMinecartCollectsStackWithoutDuplication(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -97,6 +100,7 @@ func TestHopperMinecartCollectsStackWithoutDuplication(t *testing.T) {
 }
 
 func TestHopperMinecartNBTRoundTrip(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	b := hopperMinecartConf.New()
 	b.transferCooldown = 7
@@ -115,6 +119,7 @@ func TestHopperMinecartNBTRoundTrip(t *testing.T) {
 }
 
 func TestHopperMinecartActivatorRail(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 

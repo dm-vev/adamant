@@ -12,6 +12,7 @@ import (
 )
 
 func TestBellArrowCollisionsMatchBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_bell_projectiles.json")
 	if err != nil {
 		t.Fatal(err)

@@ -53,6 +53,7 @@ func happyGhast(tx *world.Tx, h *world.EntityHandle) *entity.HappyGhast {
 // careful GhastMoveControl: a happy ghast floats about without touching the
 // ground.
 func TestHappyGhastsFloatAround(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h *world.EntityHandle
 	start := mgl64.Vec3{.5, 70, .5}
@@ -77,6 +78,7 @@ func TestHappyGhastsFloatAround(t *testing.T) {
 // TestHappyGhastsStayStillUnderPlayers checks HappyGhast.scanPlayerAboveGhast
 // and the still timeout: a happy ghast with a player on top stops.
 func TestHappyGhastsStayStillUnderPlayers(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h, p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -105,6 +107,7 @@ func TestHappyGhastsStayStillUnderPlayers(t *testing.T) {
 // TestHappyGhastsFollowSnowballs checks TemptGoal.ForNonPathfinders: a happy
 // ghast floats towards a player holding a snowball and stays near them.
 func TestHappyGhastsFollowSnowballs(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h *world.EntityHandle
 	player := mgl64.Vec3{14.5, 64, .5}
@@ -129,6 +132,7 @@ func TestHappyGhastsFollowSnowballs(t *testing.T) {
 // TestGhastlingsFollowPlayers checks BabyFollowAdult with
 // NEAREST_VISIBLE_PLAYER: a ghastling flies up to a player nearby.
 func TestGhastlingsFollowPlayers(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h *world.EntityHandle
 	player := mgl64.Vec3{6.5, 64, .5}
@@ -153,6 +157,7 @@ func TestGhastlingsFollowPlayers(t *testing.T) {
 // ghasts: a snowball lets a ghastling grow up a tenth of its remaining time
 // faster.
 func TestGhastlingsGrowUpOnSnowballs(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		h := spawnHappyGhast(t, tx, mgl64.Vec3{.5, 66, .5}, map[string]any{"Age": int32(-24000)})
@@ -169,6 +174,7 @@ func TestGhastlingsGrowUpOnSnowballs(t *testing.T) {
 // TestHappyGhastsHealSlowly checks HappyGhast.continuousHeal: outside rain
 // and clouds a happy ghast heals a point every 30 seconds.
 func TestHappyGhastsHealSlowly(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -187,6 +193,7 @@ func TestHappyGhastsHealSlowly(t *testing.T) {
 // TestHappyGhastsFlyWhereRidersLook checks HappyGhast.getRiddenInput and
 // travel: a player riding a harnessed happy ghast flies it forward.
 func TestHappyGhastsFlyWhereRidersLook(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h, p *world.EntityHandle
 	start := mgl64.Vec3{.5, 70, .5}
@@ -221,6 +228,7 @@ func TestHappyGhastsFlyWhereRidersLook(t *testing.T) {
 // HappyGhast.getRiddenInput: a happy ghast whose rider jumps flies up, and
 // the jump does not take the rider off it.
 func TestHappyGhastsRiseWhenRidersJump(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var h, p *world.EntityHandle
 	start := mgl64.Vec3{.5, 70, .5}

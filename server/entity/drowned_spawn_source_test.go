@@ -60,6 +60,7 @@ func spawnAttributesByID(value any) map[string]map[string]any {
 }
 
 func TestDrownedStructureSpawnMatchesJava263(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_drowned_spawn.json")
 	if err != nil {
 		t.Fatal(err)

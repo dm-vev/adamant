@@ -11,6 +11,7 @@ import (
 )
 
 func TestForgiveDeadPlayerClearsAngerWithinRange(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	var victim, near, far *world.EntityHandle

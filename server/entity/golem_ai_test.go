@@ -14,6 +14,7 @@ import (
 // TestIronGolemsFightEnemies checks the NearestAttackableTargetGoal of iron
 // golems for enemies: a golem crushes a zombie nearby and flings it up.
 func TestIronGolemsFightEnemies(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	var zombie *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -37,6 +38,7 @@ func TestIronGolemsFightEnemies(t *testing.T) {
 // IronGolem.canAttack: a village golem hurt by a player fights it, but one
 // a player built never attacks players.
 func TestIronGolemsTurnOnWhoeverHurtsThem(t *testing.T) {
+	t.Parallel()
 	for _, built := range []bool{false, true} {
 		w := aiTestWorld(t)
 		p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
@@ -62,6 +64,7 @@ func TestIronGolemsTurnOnWhoeverHurtsThem(t *testing.T) {
 // TestSnowGolemsPeltEnemies checks the RangedAttackGoal of snow golems: a
 // snow golem throws snowballs at a zombie nearby.
 func TestSnowGolemsPeltEnemies(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.AddEntity(entity.NewSnowGolem(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
@@ -83,6 +86,7 @@ func TestSnowGolemsPeltEnemies(t *testing.T) {
 // TestSnowGolemsLeaveSnow checks SnowGolem.aiStep: a snow golem leaves snow
 // where it stands.
 func TestSnowGolemsLeaveSnow(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.AddEntity(entity.NewSnowGolem(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))

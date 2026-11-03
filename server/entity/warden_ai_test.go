@@ -25,6 +25,7 @@ func warden(tx *world.Tx, h *world.EntityHandle) *entity.Warden {
 // TestWardensHearVibrations checks Warden.VibrationUser: a warden hears the
 // steps of a player and grows angry at them.
 func TestWardensHearVibrations(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var wd, p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -55,6 +56,7 @@ func TestWardensHearVibrations(t *testing.T) {
 // TestWardensFightAttackers checks Warden.hurtServer, Roar-free targeting
 // and MeleeAttack: a warden hit by a player close by fights them.
 func TestWardensFightAttackers(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var wd, p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -82,6 +84,7 @@ func TestWardensFightAttackers(t *testing.T) {
 // TestWardensSonicBoomUnreachableTargets checks SonicBoom: a warden fighting
 // a target it cannot reach blasts it.
 func TestWardensSonicBoomUnreachableTargets(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var wd, p *world.EntityHandle
 	target := mgl64.Vec3{10.5, 70, .5}
@@ -121,6 +124,7 @@ func TestWardensSonicBoomUnreachableTargets(t *testing.T) {
 // TestWardensDigAway checks Digging: a warden off its dig cooldown with
 // nothing to do digs into the ground and is gone.
 func TestWardensDigAway(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var wd *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) { wd = spawnAnimal(t, tx, "minecraft:warden", .5, nil) })
@@ -149,6 +153,7 @@ func TestWardensDigAway(t *testing.T) {
 
 // TestWardensDarkenPlayers checks Warden.applyDarknessAround.
 func TestWardensDarkenPlayers(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -169,6 +174,7 @@ func TestWardensDarkenPlayers(t *testing.T) {
 // TestWardensEmerge checks Warden.finalizeSpawn and Emerging: a summoned
 // warden emerges from the ground for almost seven seconds, invulnerable.
 func TestWardensEmerge(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var wd *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) { wd = spawnWarden(t, tx, mgl64.Vec3{.5, 64, .5}, "triggered") })

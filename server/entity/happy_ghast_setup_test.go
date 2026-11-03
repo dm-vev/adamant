@@ -11,6 +11,7 @@ import (
 // a ghastling flies with its brain, and once grown up it floats with the
 // goals and the careful GhastMoveControl of an adult.
 func TestGhastlingsTakeAdultControlsWhenGrown(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	var h *world.EntityHandle

@@ -25,6 +25,7 @@ func foxOf(tx *world.Tx, h *world.EntityHandle) *entity.Fox {
 // TestFoxesHuntChickens checks the land target goal, StalkPreyGoal and
 // FoxPounceGoal of red foxes: a fox stalks a chicken and bites it.
 func TestFoxesHuntChickens(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var chicken *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -47,6 +48,7 @@ func TestFoxesHuntChickens(t *testing.T) {
 
 // TestFoxesFleeFromPlayers checks the AvoidEntityGoal of foxes for players.
 func TestFoxesFleeFromPlayers(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var fox *world.EntityHandle
 	playerPos := mgl64.Vec3{4.5, 64, .5}
@@ -68,6 +70,7 @@ func TestFoxesFleeFromPlayers(t *testing.T) {
 // sweet berry bush, takes a berry into its mouth and leaves the bush
 // picked.
 func TestFoxesPickSweetBerries(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var fox *world.EntityHandle
 	bush := cube.Pos{5, 64, 0}
@@ -124,6 +127,7 @@ func (shelterGenerator) DefaultSpawn(world.Dimension) cube.Pos { return cube.Pos
 // TestFoxesSleepUnderCoverByDay checks SleepGoal: by day a fox under cover
 // in bright light with nothing around lies down to sleep.
 func TestFoxesSleepUnderCoverByDay(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry, Generator: shelterGenerator{}}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetTime(6000)
@@ -151,6 +155,7 @@ func TestFoxesSleepUnderCoverByDay(t *testing.T) {
 // TestFoxesDefendTrustedPlayers checks DefendTrustedTargetGoal: a fox bites
 // the zombie that hurts a player it trusts.
 func TestFoxesDefendTrustedPlayers(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
 	var zombie *world.EntityHandle
@@ -175,6 +180,7 @@ func TestFoxesDefendTrustedPlayers(t *testing.T) {
 // TestFoxesPickUpItems checks FoxSearchForItemsGoal and Fox.pickUpItem: a
 // fox fetches an item nearby and holds one of it in its mouth.
 func TestFoxesPickUpItems(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var fox *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

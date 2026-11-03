@@ -12,6 +12,7 @@ import (
 )
 
 func TestBoatGroundFrictionAveragesFootprint(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -36,6 +37,7 @@ func TestBoatGroundFrictionAveragesFootprint(t *testing.T) {
 }
 
 func TestBoatGroundFrictionInWater(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -52,6 +54,7 @@ func TestBoatGroundFrictionInWater(t *testing.T) {
 }
 
 func TestControlledBoatTurnKeepsInputYaw(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -75,6 +78,7 @@ func TestControlledBoatTurnKeepsInputYaw(t *testing.T) {
 }
 
 func TestBoatPassengerSeatHeight(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -127,6 +131,7 @@ func (r *seatTestRider) Close() error                      { return nil }
 func (r *seatTestRider) Move(pos mgl64.Vec3, _, _ float64) { r.data.Pos = r.data.Pos.Add(pos) }
 
 func TestBoatNBTRoundTrip(t *testing.T) {
+	t.Parallel()
 	data := &world.EntityData{Data: BoatBehaviourConfig{Variant: 8}.New()}
 	nbt := BoatType.EncodeNBT(data)
 	decoded := new(world.EntityData)
@@ -137,6 +142,7 @@ func TestBoatNBTRoundTrip(t *testing.T) {
 }
 
 func TestChestBoatNBTRoundTrip(t *testing.T) {
+	t.Parallel()
 	behaviour := chestBoatConf.New()
 	behaviour.variant = 9
 	_ = behaviour.inv.SetItem(26, item.NewStack(item.Diamond{}, 3))
@@ -154,6 +160,7 @@ func TestChestBoatNBTRoundTrip(t *testing.T) {
 // a lone rider sits centred, a second rider moves the first forward and
 // sits behind it, and turning sideways depends on the rider's family.
 func TestBoatReseatsRidersAsTheySit(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 

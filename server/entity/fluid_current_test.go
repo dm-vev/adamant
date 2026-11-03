@@ -27,6 +27,7 @@ func fluidTestStream(tx *world.Tx) {
 // TestFluidFlowRunsDownTheStream checks FlowingFluid.getFlow points from the
 // source to where the water runs out, and falls along walls.
 func TestFluidFlowRunsDownTheStream(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -53,6 +54,7 @@ func TestFluidFlowRunsDownTheStream(t *testing.T) {
 // TestItemsFloatInWater checks items rise to the surface of water as
 // ItemEntity.setUnderwaterMovement makes them, instead of sinking.
 func TestItemsFloatInWater(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -81,6 +83,7 @@ func TestItemsFloatInWater(t *testing.T) {
 // TestCurrentsCarryItemsAndMobs checks flowing water pushes items and mobs
 // down the stream, as Entity.updateFluidInteraction does, and leaves fish be.
 func TestCurrentsCarryItemsAndMobs(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -113,6 +116,7 @@ func TestCurrentsCarryItemsAndMobs(t *testing.T) {
 // TestExperienceOrbsRiseInWater checks orbs rise in water as
 // ExperienceOrb.setUnderwaterMovement makes them.
 func TestExperienceOrbsRiseInWater(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

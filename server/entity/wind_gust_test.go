@@ -15,6 +15,7 @@ import (
 // pushes what is within twice its radius away from it, hurts nothing, and
 // leaves what is further away be.
 func TestWindChargeBurstsAsJavaExplosions(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -46,6 +47,7 @@ func TestWindChargeBurstsAsJavaExplosions(t *testing.T) {
 // TestBlastProtectionResistsGusts checks Blast Protection on armour gives the
 // explosion knockback resistance of 0.15 a level.
 func TestBlastProtectionResistsGusts(t *testing.T) {
+	t.Parallel()
 	if got := explosionKnockbackResistance(nil); got != 0 {
 		t.Fatalf("resistance of nothing = %v, want 0", got)
 	}
@@ -58,6 +60,7 @@ func TestBlastProtectionResistsGusts(t *testing.T) {
 // of a wind charge: a wooden door its rays reach opens, an iron door does
 // not.
 func TestWindChargesTriggerBlocksAlongTheirRays(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

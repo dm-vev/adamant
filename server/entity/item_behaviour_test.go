@@ -8,6 +8,7 @@ import (
 )
 
 func TestHazardConsumesItems(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		block  world.Block

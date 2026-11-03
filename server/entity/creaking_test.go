@@ -39,6 +39,7 @@ func creakingTestWorld(t *testing.T) (*world.World, *world.EntityHandle, *world.
 }
 
 func TestCreakingDamageRemembersResponsiblePlayer(t *testing.T) {
+	t.Parallel()
 	w, mob, owner := creakingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		e, _ := mob.Entity(tx)
@@ -75,6 +76,7 @@ func TestCreakingDamageRemembersResponsiblePlayer(t *testing.T) {
 }
 
 func TestCreakingTeardownDoesNotAdvanceGameplayRandom(t *testing.T) {
+	t.Parallel()
 	w, mob, _ := creakingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		*tx.RegionRandom() = vanilla.NewLegacyRandom(17)

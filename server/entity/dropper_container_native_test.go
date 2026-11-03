@@ -20,53 +20,65 @@ func registerNativeVanillaRecipes()
 var nativeRecipesOnce sync.Once
 
 func TestDropperContainerActionsMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_dropper_containers.json", 96, 4)
 }
 
 func TestHopperTransferPulsesMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_transfer_pulses.json", 30, 4)
 }
 
 func TestHopperIdleTransfersMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_idle_even.json", 40, 2)
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_idle_odd.json", 40, 2)
 }
 
 func TestHopperChainTransfersMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_chains.json", 60, 2)
 }
 
 func TestHopperSlotTransfersMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_slot_transfers.json", 60, 2)
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_slot_pulls.json", 12, 2)
 }
 
 func TestHopperCrafterSlotTransfersMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_crafter_slots.json", 60, 2)
 }
 
 func TestHopperCrafterDisabledSlotsMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_crafter_disabled.json", 30, 2)
 }
 
 func TestHopperCrafterExtractionsMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_crafter_pulls.json", 12, 2)
 }
 
 func TestHopperSidedFurnaceTransfersMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_sided_transfers.json", 60, 2)
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_furnace_pulls.json", 18, 2)
 }
 
 func TestDropperSlotTransfersMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_dropper_slot_transfers.json", 36, 4)
 }
 
 func TestDropperMixedSlotTransfersMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_dropper_mixed_actor_inputs.json", 20, 4)
 }
 
 func TestHopperPersistedCooldownClockMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_cooldown_load.json", 20, 2)
 }
 
@@ -75,6 +87,9 @@ func TestHopperBrewingInsertionsMatchBDS(t *testing.T) {
 		world.DefaultBlockRegistry.Finalize()
 		registerNativeVanillaRecipes()
 	})
+	// The recipes are registered for the whole process: only once they
+	// are does the test run alongside others.
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_brewing_actor_inputs.json", 20, 2)
 }
 
@@ -83,6 +98,9 @@ func TestHopperBrewingExtractionsMatchBDS(t *testing.T) {
 		world.DefaultBlockRegistry.Finalize()
 		registerNativeVanillaRecipes()
 	})
+	// The recipes are registered for the whole process: only once they
+	// are does the test run alongside others.
+	t.Parallel()
 	replayContainerActionsBDS(t, "bedrock_1_26_51_hopper_brewing_pull_actor_inputs.json", 20, 2)
 }
 

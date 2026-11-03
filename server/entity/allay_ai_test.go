@@ -49,6 +49,7 @@ func itemsNear(tx *world.Tx, pos mgl64.Vec3, r float64, it world.Item) int {
 // GoAndGiveItemsToTarget: an allay given a diamond fetches the diamonds it
 // sees and throws them to the player who gave it the first.
 func TestAllaysBringItemsToTheirPlayer(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var allay *world.EntityHandle
 	playerPos := mgl64.Vec3{.5, 64, .5}
@@ -74,6 +75,7 @@ func TestAllaysBringItemsToTheirPlayer(t *testing.T) {
 // setJukeboxPlaying: an allay dancing to a jukebox given an amethyst shard
 // makes another allay, after which it waits five minutes to do so again.
 func TestAllaysDuplicateWhileDancing(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var allay *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

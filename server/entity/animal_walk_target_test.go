@@ -12,6 +12,7 @@ import (
 // TestBrainAnimalsPreferGrass checks that goats, armadillos and frogs, which
 // keep Animal.getWalkTargetValue, like grass best to stroll to.
 func TestBrainAnimalsPreferGrass(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

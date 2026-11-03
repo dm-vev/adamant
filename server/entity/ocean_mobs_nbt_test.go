@@ -14,6 +14,7 @@ import (
 )
 
 func TestDrownedJavaSpawnEquipmentAttributesRoundTrip(t *testing.T) {
+	t.Parallel()
 	weapon := map[string]any{"id": "minecraft:iron_sword", "count": int32(1), "components": map[string]any{
 		"minecraft:damage":       int32(7),
 		"minecraft:enchantments": map[string]any{"levels": map[string]any{"minecraft:sharpness": int32(3)}},
@@ -60,6 +61,7 @@ func TestDrownedJavaSpawnEquipmentAttributesRoundTrip(t *testing.T) {
 }
 
 func TestZombieNautilusSourceDefaultsAndVariant(t *testing.T) {
+	t.Parallel()
 	source := map[string]any{
 		"Health": float32(9), "variant": "minecraft:warm",
 		"attributes": []any{
@@ -81,6 +83,7 @@ func TestZombieNautilusSourceDefaultsAndVariant(t *testing.T) {
 }
 
 func TestDrownedBabyTransientMovementModifierSurvivesReloadOnce(t *testing.T) {
+	t.Parallel()
 	source := map[string]any{
 		"Health": float32(20), "IsBaby": byte(1),
 		"attributes": []any{map[string]any{"id": "minecraft:movement_speed", "base": float64(.23000000417232513)}},
@@ -106,6 +109,7 @@ func TestDrownedBabyTransientMovementModifierSurvivesReloadOnce(t *testing.T) {
 }
 
 func TestDrownedJockeyRiderFirstMCDBReloadAndTick(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"minecraft:chicken", "minecraft:zombie_nautilus"} {
 		t.Run(kind, func(t *testing.T) {
 			dir := t.TempDir()
@@ -192,6 +196,7 @@ func TestDrownedJockeyRiderFirstMCDBReloadAndTick(t *testing.T) {
 }
 
 func TestOceanLiveEquipmentMutationSurvivesMCDBAndDrop(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	open := func() *world.World {
 		db, err := mcdb.Open(dir)
@@ -274,6 +279,7 @@ func TestOceanLiveEquipmentMutationSurvivesMCDBAndDrop(t *testing.T) {
 }
 
 func TestNativeMapEquipmentAndClearedMetadataSurviveMCDB(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	open := func() *world.World {
 		db, err := mcdb.Open(dir)
@@ -333,6 +339,7 @@ func TestNativeMapEquipmentAndClearedMetadataSurviveMCDB(t *testing.T) {
 }
 
 func TestChickenJockeyDoesNotLaySourceVariantEgg(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

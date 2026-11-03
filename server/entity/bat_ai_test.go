@@ -40,6 +40,7 @@ func batOf(tx *world.Tx, h *world.EntityHandle) *entity.Bat {
 // resting under a solid block hangs still from the top of its block while
 // no player comes near.
 func TestBatsHangFromCeilings(t *testing.T) {
+	t.Parallel()
 	w := caveTestWorld(t)
 	var bat *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -62,6 +63,7 @@ func TestBatsHangFromCeilings(t *testing.T) {
 // TestBatsWakeWhenPlayersComeNear checks Bat.customServerAiStep: a player
 // within four blocks the bat sees wakes it, and it flies off.
 func TestBatsWakeWhenPlayersComeNear(t *testing.T) {
+	t.Parallel()
 	w := caveTestWorld(t)
 	var bat *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -93,6 +95,7 @@ func TestBatsWakeWhenPlayersComeNear(t *testing.T) {
 // flying about the room. It climbs slower than it sinks, so in a low room
 // it may spend a while near the floor, but not most of its time on it.
 func TestBatsFlyAbout(t *testing.T) {
+	t.Parallel()
 	w := caveTestWorld(t)
 	var bat *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -122,6 +125,7 @@ func TestBatsFlyAbout(t *testing.T) {
 
 // TestHurtBatsWake checks Bat.hurtServer: hurting a resting bat wakes it.
 func TestHurtBatsWake(t *testing.T) {
+	t.Parallel()
 	w := caveTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		b := batOf(tx, tx.AddEntity(entity.NewBat(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 71.1, .5}})).H())

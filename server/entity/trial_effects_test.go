@@ -50,6 +50,7 @@ func killWith(t *testing.T, w *world.World, t2 effect.LastingType) {
 }
 
 func TestInfestedAndOozingImmunities(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		cases := []struct {
@@ -78,6 +79,7 @@ func TestInfestedAndOozingImmunities(t *testing.T) {
 }
 
 func TestOozingReleasesTwoSlimesLimitedByCramming(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		cramming, nearby, want int
 	}{{24, 0, 2}, {2, 1, 1}, {1, 1, 0}, {0, 3, 2}} {
@@ -100,6 +102,7 @@ func TestOozingReleasesTwoSlimesLimitedByCramming(t *testing.T) {
 }
 
 func TestWeavingSpreadsCobwebsUnlessMobGriefingIsOff(t *testing.T) {
+	t.Parallel()
 	for _, griefing := range []bool{true, false} {
 		w := newDeathTestWorld(t)
 		if err := w.SetGameRule("mob_griefing", griefing); err != nil {
@@ -128,6 +131,7 @@ func TestWeavingSpreadsCobwebsUnlessMobGriefingIsOff(t *testing.T) {
 }
 
 func TestWindChargedDeathBlowsNearbyMobsAway(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	var bystander *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -145,6 +149,7 @@ func TestWindChargedDeathBlowsNearbyMobsAway(t *testing.T) {
 }
 
 func TestInfestedReleasesSilverfishWhenHurt(t *testing.T) {
+	t.Parallel()
 	// Silverfish would hide in a stone floor.
 	w := traderTestWorld(t)
 	var pig *world.EntityHandle
@@ -172,6 +177,7 @@ func TestInfestedReleasesSilverfishWhenHurt(t *testing.T) {
 }
 
 func TestTrialPotionsGiveTheirEffects(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		potion potion.Potion
 		effect effect.LastingType
@@ -194,6 +200,7 @@ func TestTrialPotionsGiveTheirEffects(t *testing.T) {
 }
 
 func TestEffectNetworkIDs(t *testing.T) {
+	t.Parallel()
 	for id, want := range map[int]effect.Type{
 		31: effect.TrialOmen, 32: effect.RaidOmen, 33: effect.WindCharged, 34: effect.Weaving,
 		35: effect.Oozing, 36: effect.Infested, 37: effect.BreathOfTheNautilus,

@@ -10,6 +10,7 @@ import (
 )
 
 func TestExplosionImpulseAtExactOrigin(t *testing.T) {
+	t.Parallel()
 	pos := mgl64.Vec3{1, 2, 3}
 	src := directionTestExplosionSource{pos: pos}
 	if got := ExplosionImpulse(&directionTestEntity{pos: pos}, src, 1); got != (mgl64.Vec3{}) {
@@ -21,6 +22,7 @@ func TestExplosionImpulseAtExactOrigin(t *testing.T) {
 }
 
 func TestExplosionImpulseAddsToEntityTypeVelocity(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		new  func(world.EntitySpawnOpts) *world.EntityHandle

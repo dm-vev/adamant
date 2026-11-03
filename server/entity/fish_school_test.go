@@ -13,6 +13,7 @@ import (
 // of each other form a school one of them leads, which the others follow.
 // The pool is small enough to keep them that close.
 func TestFishFormSchools(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	var fish []*world.EntityHandle

@@ -13,6 +13,7 @@ import (
 // TestZombifiedPiglinSurvivesMCDBReopen checks a zombified piglin is decoded
 // again when its chunk loads, instead of being dropped as an unknown actor.
 func TestZombifiedPiglinSurvivesMCDBReopen(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	open := func() *world.World {
 		db, err := mcdb.Open(dir)

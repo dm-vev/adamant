@@ -47,6 +47,7 @@ func tadpoleOf(tx *world.Tx, h *world.EntityHandle) (*Tadpole, bool) {
 // TestTadpolesGrowFasterOnSlimeBalls checks Tadpole.feed: a slime ball takes
 // a tenth off the time a tadpole has left to grow up.
 func TestTadpolesGrowFasterOnSlimeBalls(t *testing.T) {
+	t.Parallel()
 	w, h := tadpoleTestWorld(t, 0)
 	<-w.Exec(func(tx *world.Tx) {
 		tp, _ := tadpoleOf(tx, h)
@@ -66,6 +67,7 @@ func TestTadpolesGrowFasterOnSlimeBalls(t *testing.T) {
 // Tadpole.mobInteract: a tadpole given a golden dandelion stays a tadpole
 // and refuses slime balls.
 func TestGoldenDandelionsStopTadpolesGrowing(t *testing.T) {
+	t.Parallel()
 	w, h := tadpoleTestWorld(t, tadpoleTicksToBeFrog-5)
 	<-w.Exec(func(tx *world.Tx) {
 		tp, _ := tadpoleOf(tx, h)
@@ -92,6 +94,7 @@ func TestGoldenDandelionsStopTadpolesGrowing(t *testing.T) {
 // TestTadpolesGrowIntoFrogs checks Tadpole.ageUp: a tadpole twenty minutes
 // old turns into a frog.
 func TestTadpolesGrowIntoFrogs(t *testing.T) {
+	t.Parallel()
 	w, h := tadpoleTestWorld(t, tadpoleTicksToBeFrog-3)
 	stepTicks(t, w, 5)
 	<-w.Exec(func(tx *world.Tx) {
@@ -113,6 +116,7 @@ func TestTadpolesGrowIntoFrogs(t *testing.T) {
 // TestTadpolesSwimAbout checks the idle activity of TadpoleAi and the swim
 // goal of AbstractFish: a tadpole swims about its pool.
 func TestTadpolesSwimAbout(t *testing.T) {
+	t.Parallel()
 	w, h := tadpoleTestWorld(t, 0)
 	start := mgl64.Vec3{.5, 62, .5}
 	for range 1200 {

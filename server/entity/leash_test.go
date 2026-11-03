@@ -10,6 +10,7 @@ import (
 )
 
 func TestLeashAttachBreakAndFenceKnotLifecycle(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	mobHandle := NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}})
@@ -89,6 +90,7 @@ func countLeashDrops(tx *world.Tx) int {
 // mobs to a fence uses the knot already there, and mobs led from farther
 // than 16 blocks are not gathered.
 func TestTyingLeadsReusesTheKnot(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

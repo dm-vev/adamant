@@ -8,6 +8,7 @@ import (
 )
 
 func TestCommandBlockMinecartNBTRoundTrip(t *testing.T) {
+	t.Parallel()
 	input := map[string]any{
 		"Command": "say minecart", "CustomName": "rail", "LastOutput": "ok", "TrackOutput": uint8(1),
 		"SuccessCount": int32(3), "powered": uint8(1), "conditionMet": uint8(1), "TickDelay": int32(6),
@@ -25,6 +26,7 @@ func TestCommandBlockMinecartNBTRoundTrip(t *testing.T) {
 }
 
 func TestCommandBlockMinecartContainerNBTRoundTrip(t *testing.T) {
+	t.Parallel()
 	data := &world.EntityData{}
 	(CommandBlockMinecartConfig{SuccessCount: 7}).Apply(data)
 	before := data.Data.(*commandBlockMinecartBehaviour)

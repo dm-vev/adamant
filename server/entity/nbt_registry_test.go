@@ -10,6 +10,7 @@ import (
 )
 
 func TestDroppedItemNBTRoundTripUsesBlockRegistry(t *testing.T) {
+	t.Parallel()
 	registry, blockItem := entityTestBlockRegistry()
 	want := item.NewStack(blockItem, 2)
 	behaviour := ItemBehaviourConfig{Item: want}.New(registry)
@@ -25,6 +26,7 @@ func TestDroppedItemNBTRoundTripUsesBlockRegistry(t *testing.T) {
 }
 
 func TestMinecartContainerNBTRoundTripUsesBlockRegistry(t *testing.T) {
+	t.Parallel()
 	registry, blockItem := entityTestBlockRegistry()
 	want := item.NewStack(blockItem, 4)
 	behaviour := chestMinecartConf.New()
@@ -47,6 +49,7 @@ func TestMinecartContainerNBTRoundTripUsesBlockRegistry(t *testing.T) {
 }
 
 func TestFallingBlockNBTUsesBlockRegistry(t *testing.T) {
+	t.Parallel()
 	registry, blockItem := entityTestBlockRegistry()
 	encoded := FallingBlockType.EncodeNBT(&world.EntityData{Data: FallingBlockBehaviourConfig{Block: blockItem}.New()})
 

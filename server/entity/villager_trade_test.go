@@ -20,6 +20,7 @@ func farmer(t *testing.T, tx *world.Tx, xp int32) *entity.Villager {
 }
 
 func TestVillagerTradesDropExperience(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name         string
 		xp           int32
@@ -51,6 +52,7 @@ func TestVillagerTradesDropExperience(t *testing.T) {
 }
 
 func TestVillagerTradeScreenShowsItsProfessionAndUnlockedTier(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		v := farmer(t, tx, 0)

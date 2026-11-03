@@ -13,14 +13,17 @@ import (
 )
 
 func TestDispenserDropperPulsesMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayDispenserPulsesBDS(t, "bedrock_1_26_51_dispenser_pulses.json", 288)
 }
 
 func TestDispenserDropperSwitchPulsesMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayDispenserPulsesBDS(t, "bedrock_1_26_51_dispenser_switch_pulses.json", 144)
 }
 
 func TestHopperLockPulsesMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayDispenserPulsesBDS(t, "bedrock_1_26_51_hopper_pulses.json", 144)
 }
 

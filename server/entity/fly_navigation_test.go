@@ -13,6 +13,7 @@ import (
 // through the air over a wall it cannot walk around, to the very block it
 // was asked to fly to.
 func TestFlyingPathGoesOverWalls(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	target := cube.Pos{5, 3, 0}

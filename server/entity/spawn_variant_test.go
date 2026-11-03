@@ -11,6 +11,7 @@ import (
 // TestSpawnedMobsTakeTheirBiomeVariant follows the finalizeSpawn variant
 // selection of Java 26.
 func TestSpawnedMobsTakeTheirBiomeVariant(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer func() { _ = w.Close() }()
 	spawn := func(tx *world.Tx, id, biomeName string, x float64) world.Entity {

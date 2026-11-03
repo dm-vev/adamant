@@ -12,6 +12,7 @@ import (
 // TestExplosionHurtsMobs checks explosions hurt and push living mobs, as
 // ServerExplosion.hurtEntities does.
 func TestExplosionHurtsMobs(t *testing.T) {
+	t.Parallel()
 	w := dragonTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		cow := tx.AddEntity(entity.NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{4.5, 64, .5}})).(entity.Living)

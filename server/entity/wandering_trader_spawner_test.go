@@ -10,6 +10,7 @@ import (
 )
 
 func TestWanderingTraderStateSurvivesSaving(t *testing.T) {
+	t.Parallel()
 	conf := wanderingTraderConfig{
 		Health: 13, healthSet: true, DespawnDelay: 4321,
 		WanderTarget: cube.Pos{5, 70, -3}, HasWanderTarget: true, Home: mobHome{pos: cube.Pos{5, 70, -3}, radius: 16},
@@ -36,6 +37,7 @@ func TestWanderingTraderStateSurvivesSaving(t *testing.T) {
 }
 
 func TestMerchantOfferTiersSurviveSaving(t *testing.T) {
+	t.Parallel()
 	offers := []MerchantOffer{{Input: item.NewStack(item.Emerald{}, 1), Output: item.NewStack(item.Bread{}, 6), MaxUses: 16, Tier: 3}}
 	if got := readMerchantOffers(map[string]any{"Offers": writeMerchantOffers(offers)}); got[0].Tier != 3 {
 		t.Fatalf("restored tier %d, want 3", got[0].Tier)
@@ -53,6 +55,7 @@ func roll(ok func(int32) bool) vanilla.Random {
 }
 
 func TestWanderingTraderChanceGrowsUntilATraderSpawns(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	s := &wanderingTraderSpawner{tickDelay: 1, data: &wanderingTraderData{SpawnDelay: 1200, SpawnChance: 25}}

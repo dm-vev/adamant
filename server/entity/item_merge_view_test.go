@@ -38,6 +38,7 @@ func (r *viewRecorder) check(e world.Entity) {
 // movement after it was hidden, and the item it merged into was still ticked
 // from its column: clients logged an unknown entity for every merge.
 func TestMergedItemsSendNoUpdates(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: entity.DefaultRegistry, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	recorder := &viewRecorder{shown: map[*world.EntityHandle]bool{}}

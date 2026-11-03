@@ -44,6 +44,7 @@ func addDeathTestPlayer(tx *world.Tx) *player.Player {
 }
 
 func TestMobExperienceRequiresPlayerKillAndFollowsJavaRewards(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name           string
 		nbt            map[string]any
@@ -97,6 +98,7 @@ func TestMobExperienceRequiresPlayerKillAndFollowsJavaRewards(t *testing.T) {
 }
 
 func TestSculkCatalystAbsorbsDeathExperienceAndSpreadsSculk(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	catalyst := cube.Pos{0, 64, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -137,6 +139,7 @@ func TestSculkCatalystAbsorbsDeathExperienceAndSpreadsSculk(t *testing.T) {
 }
 
 func TestCatalystOutOfRangeLeavesExperience(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 64, 0}, block.NewSculkCatalyst(), nil)
@@ -152,6 +155,7 @@ func TestCatalystOutOfRangeLeavesExperience(t *testing.T) {
 }
 
 func TestMountDeathDropsEquipmentAndChest(t *testing.T) {
+	t.Parallel()
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		h, err := entity.NewFromStructureNBT(map[string]any{"id": "minecraft:donkey", "Tame": byte(1)}, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}, SpawnFinalized: true})

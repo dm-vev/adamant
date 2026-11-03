@@ -12,6 +12,7 @@ import (
 // TestEveryMobPersistsItsEffects guards against mobs whose effects are lost
 // on saving because their behaviour does not expose its effect manager.
 func TestEveryMobPersistsItsEffects(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

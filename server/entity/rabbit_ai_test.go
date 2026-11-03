@@ -13,6 +13,7 @@ import (
 // TestRabbitsHop checks RabbitMoveControl and RabbitJumpControl: a rabbit
 // lured by a carrot moves in hops, leaving the ground whenever it moves on.
 func TestRabbitsHop(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	playerPos := mgl64.Vec3{8.5, 64, .5}
@@ -55,6 +56,7 @@ func TestRabbitsHop(t *testing.T) {
 // TestRabbitsRaidCarrots checks RaidGardenGoal: a rabbit standing in a field
 // of fully grown carrots nibbles one down a stage.
 func TestRabbitsRaidCarrots(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := -2; x <= 2; x++ {
@@ -88,6 +90,7 @@ func TestRabbitsRaidCarrots(t *testing.T) {
 // TestKillerBunniesAttackPlayers checks the goals Rabbit.setVariant gives
 // the killer bunny: it hunts players and bites them for 8 damage.
 func TestKillerBunniesAttackPlayers(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

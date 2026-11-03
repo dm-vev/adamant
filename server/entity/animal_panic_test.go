@@ -51,6 +51,7 @@ func playerAttack(tx *world.Tx) world.DamageSource {
 }
 
 func TestAnimalsPanicWhenHurt(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		id                  string
 		nbt                 map[string]any
@@ -143,6 +144,7 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 }
 
 func TestWolvesPandasAndArmadillosOnlyPanicFromHazards(t *testing.T) {
+	t.Parallel()
 	for _, id := range []string{"minecraft:wolf", "minecraft:panda", "minecraft:armadillo"} {
 		t.Run(id, func(t *testing.T) {
 			w := traderTestWorld(t)
@@ -165,6 +167,7 @@ func TestWolvesPandasAndArmadillosOnlyPanicFromHazards(t *testing.T) {
 // forgets the damage after two seconds, a mob with a brain panics for 100 to
 // 120 ticks after one hit.
 func TestBrainPanicLastsFiveSeconds(t *testing.T) {
+	t.Parallel()
 	w := traderTestWorld(t)
 	var h *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) { h = spawnAnimal(t, tx, "minecraft:goat", .5, nil) })

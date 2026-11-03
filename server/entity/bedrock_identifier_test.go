@@ -11,6 +11,7 @@ import (
 // from their Bedrock identifiers save and spawn as BDS does, and that worlds
 // holding either name load them.
 func TestBedrockEntityIdentifiers(t *testing.T) {
+	t.Parallel()
 	for name, bedrock := range map[string]string{
 		"minecraft:villager":           "minecraft:villager_v2",
 		"minecraft:zombie_villager":    "minecraft:zombie_villager_v2",

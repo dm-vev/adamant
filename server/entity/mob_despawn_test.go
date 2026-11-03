@@ -15,6 +15,7 @@ import (
 // 128 blocks from every player leaves the world, unless a name tag made it
 // persistent, and an animal stays however far it is.
 func TestMobsDespawnFarFromPlayers(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	w.SetDifficulty(world.DifficultyNormal)
 	var plain, named, cow *world.EntityHandle

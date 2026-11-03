@@ -47,6 +47,7 @@ func (r *spawnLightRecorder) HandleEntitySpawn(tx *world.Tx, e world.Entity) {
 // block light reaches, so glowstone set into the floor keeps them off the
 // ground it lights, as torches do.
 func TestLitGroundKeepsMonstersAway(t *testing.T) {
+	t.Parallel()
 	w, _ := naturalSpawnWorld(t, 18000)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := -56; x < 56; x += 6 {
@@ -85,6 +86,7 @@ func TestLitGroundKeepsMonstersAway(t *testing.T) {
 // every 400 ticks: animals spawn by day on grass, in light above 8, by the
 // rules of Animal.checkAnimalSpawnRules.
 func TestAnimalsSpawnOnLitGrass(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetDifficulty(world.DifficultyNormal)
@@ -123,6 +125,7 @@ func TestAnimalsSpawnOnLitGrass(t *testing.T) {
 // spawn_monsters rule: the spawn rules of zombified piglins, ghasts, magma
 // cubes and endermen turn them away on peaceful, but piglins have none.
 func TestPeacefulNetherStillSpawnsPiglins(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Dim: world.Nether, Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetDifficulty(world.DifficultyPeaceful)
@@ -160,6 +163,7 @@ func TestPeacefulNetherStillSpawnsPiglins(t *testing.T) {
 // level of 63, nautili between 25 and 5 below it, and glow squids deeper
 // than 33 below it.
 func TestWaterMobsSpawnInTheSea(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetDifficulty(world.DifficultyNormal)
@@ -220,6 +224,7 @@ func TestWaterMobsSpawnInTheSea(t *testing.T) {
 // a group, and once the player is gone far away every monster that may
 // despawn does so, as Mob.checkDespawn removes mobs beyond 128 blocks.
 func TestMonsterPopulationStaysCappedAndLeaves(t *testing.T) {
+	t.Parallel()
 	w, p := naturalSpawnWorld(t, 18000)
 	// A player without a client leaves the world once it dies, and the
 	// monsters of a night kill it; the test needs it to stay and go away.
@@ -266,6 +271,7 @@ func TestMonsterPopulationStaysCappedAndLeaves(t *testing.T) {
 // random tick: in the Overworld near a player, a portal now and then lets a
 // zombified piglin through onto the obsidian beneath it.
 func TestNetherPortalsLetZombifiedPiglinsThrough(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetDifficulty(world.DifficultyNormal)

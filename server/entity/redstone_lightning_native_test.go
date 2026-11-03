@@ -16,6 +16,7 @@ import (
 // Replay real native lightning entities, including the block permutation and
 // dust publication. Calling LightningRod.Strike alone misses entity integration.
 func TestLightningRodsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_lightning.json")
 	if err != nil {
 		t.Fatal(err)

@@ -14,6 +14,7 @@ import (
 )
 
 func TestTNTFuseDecrementsBeforeExpiry(t *testing.T) {
+	t.Parallel()
 	for _, ticks := range []int{0, 1, 80} {
 		t.Run(fmt.Sprint(ticks), func(t *testing.T) {
 			w := world.Config{Synchronous: true, Entities: entity.DefaultRegistry}.New()

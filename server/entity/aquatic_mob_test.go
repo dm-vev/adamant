@@ -8,6 +8,7 @@ import (
 )
 
 func TestAquaticBucketRoundTrip(t *testing.T) {
+	t.Parallel()
 	originalData := world.EntityData{Data: (AquaticMobConfig{
 		ID: "minecraft:tropical_fish", Health: 2, MaxHealth: 3, Variant: 5, BucketVariant: 117506305,
 		Age: -2400, healthSet: true,

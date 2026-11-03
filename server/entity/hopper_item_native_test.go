@@ -20,14 +20,17 @@ type hopperNativeItemBody struct {
 }
 
 func TestHopperItemCollectionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayHopperItemsBDS(t, "bedrock_1_26_51_hopper_items.json", 98)
 }
 
 func TestHopperItemSlotAndActorOrderMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayHopperItemsBDS(t, "bedrock_1_26_51_hopper_item_order.json", 8)
 }
 
 func TestHopperItemCollectionWithCoverMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayHopperItemsBDS(t, "bedrock_1_26_51_hopper_item_covers.json", 36)
 }
 

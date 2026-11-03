@@ -30,6 +30,7 @@ func droppedItems(tx *world.Tx) map[string]int {
 }
 
 func TestPatrolLeaderIsCaptainAndDropsOminousBottle(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	var leaderH, memberH *world.EntityHandle

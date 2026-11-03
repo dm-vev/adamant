@@ -13,6 +13,7 @@ import (
 // TestVillagesAreSieged checks VillageSiege: on a siege night zombies spawn
 // one by one at the edge of the village a player is in.
 func TestVillagesAreSieged(t *testing.T) {
+	t.Parallel()
 	w, _ := naturalSpawnWorld(t, 18001)
 	<-w.Exec(func(tx *world.Tx) {
 		for i := range 6 {

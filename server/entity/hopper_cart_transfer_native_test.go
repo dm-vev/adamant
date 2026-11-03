@@ -14,10 +14,12 @@ import (
 )
 
 func TestHopperCartContainerTransfersMatchBDS(t *testing.T) {
+	t.Parallel()
 	replayHopperCartTransfersBDS(t, "bedrock_1_26_51_hopper_cart_transfer.json", 24)
 }
 
 func TestHopperCartItemCollectionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayHopperCartTransfersBDS(t, "bedrock_1_26_51_hopper_cart_items.json", 24)
 }
 

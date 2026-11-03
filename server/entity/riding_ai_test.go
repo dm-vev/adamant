@@ -23,6 +23,7 @@ func ridingOf(tx *world.Tx, h *world.EntityHandle) *world.EntityHandle {
 // piglin now and then gets on a baby hoglin it sees, sits on top of it, and
 // gets off once it is hurt.
 func TestBabyPiglinsRideBabyHoglins(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var piglin, hoglin *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -74,6 +75,7 @@ func TestBabyPiglinsRideBabyHoglins(t *testing.T) {
 // updateControlFlags: a baby zombie riding a chicken walks it up to a
 // player with its own goals and attacks.
 func TestChickenJockeysChasePlayers(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var chicken, p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -107,6 +109,7 @@ func TestChickenJockeysChasePlayers(t *testing.T) {
 // keeps no seats: a pillager riding a ravager stays on its back as it
 // moves.
 func TestRavagerRidersStayOnTop(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var ravager, pillager *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -140,6 +143,7 @@ func TestRavagerRidersStayOnTop(t *testing.T) {
 // TestSkeletonTrapsSpring checks SkeletonTrapGoal: a trap horse a player
 // comes near turns into four skeleton horsemen in iron helmets.
 func TestSkeletonTrapsSpring(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		horse := tx.AddEntity(entity.NewSkeletonHorse(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}}))

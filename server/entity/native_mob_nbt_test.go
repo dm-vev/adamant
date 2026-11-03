@@ -3,6 +3,7 @@ package entity
 import "testing"
 
 func TestMergeNativeMobNBTPreservesUnknownActorState(t *testing.T) {
+	t.Parallel()
 	loaded := map[string]any{
 		"identifier": "minecraft:wolf",
 		"UniqueID":   int64(-4294967292),
@@ -45,6 +46,7 @@ func TestMergeNativeMobNBTPreservesUnknownActorState(t *testing.T) {
 }
 
 func TestNativeMobJavaStateUsesSeparateNamespace(t *testing.T) {
+	t.Parallel()
 	native := map[string]any{"UniqueID": int64(4), "OwnerNew": int64(-1)}
 	java := MergeNativeMobJavaState(native, map[string]any{"AngerTime": int32(17), "AngryAt": "java-player-uuid"})
 	if _, ok := java["AngerTime"]; ok {
@@ -57,6 +59,7 @@ func TestNativeMobJavaStateUsesSeparateNamespace(t *testing.T) {
 }
 
 func TestNativeMobEquipmentAndActorFieldCodecs(t *testing.T) {
+	t.Parallel()
 	raw := map[string]any{
 		"UniqueID":   int64(-4294967294),
 		"OwnerNew":   int64(-1),

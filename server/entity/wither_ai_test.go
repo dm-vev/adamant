@@ -43,6 +43,7 @@ func countType(tx *world.Tx, t world.EntityType) int {
 // skulls on top summons a wither with a third of its health, which nothing
 // hurts while it heals up, and which blows up when it is done.
 func TestWithersAreSummoned(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for _, pos := range []cube.Pos{{0, 64, 0}, {0, 65, 0}, {-1, 65, 0}, {1, 65, 0}} {
@@ -75,6 +76,7 @@ func TestWithersAreSummoned(t *testing.T) {
 // and the heads of WitherBoss.customServerAiStep: a wither shoots skulls at
 // a player nearby, and spares the undead.
 func TestWithersShootSkullsAtPlayers(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var wither, zombie *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -102,6 +104,7 @@ func TestWithersShootSkullsAtPlayers(t *testing.T) {
 // TestPoweredWithersShrugOffArrows checks WitherBoss.hurtServer: below half
 // health the wither's armour turns arrows aside.
 func TestPoweredWithersShrugOffArrows(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		wi := witherOf(tx, tx.AddEntity(entity.NewWither(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}})).H())
@@ -125,6 +128,7 @@ func TestPoweredWithersShrugOffArrows(t *testing.T) {
 // TestHurtWithersBreakBlocks checks WitherBoss.customServerAiStep: a second
 // after a wither is hurt it breaks the blocks around it.
 func TestHurtWithersBreakBlocks(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var wither *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -153,6 +157,7 @@ func TestHurtWithersBreakBlocks(t *testing.T) {
 // TestWitherSkullsSpeedUp checks AbstractHurtingProjectile.applyInertia: a
 // wither skull starts slow and speeds up to nearly two blocks a tick.
 func TestWitherSkullsSpeedUp(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var skull *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

@@ -30,6 +30,7 @@ func addSulfurCube(tx *world.Tx, pos mgl64.Vec3, body world.Item) *world.EntityH
 // TestSulfurCubesHopAbout checks the goals of AbstractCubeMob: a sulfur cube
 // hops about in random directions.
 func TestSulfurCubesHopAbout(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cube *world.EntityHandle
 	start := mgl64.Vec3{.5, 64, .5}
@@ -53,6 +54,7 @@ func TestSulfurCubesHopAbout(t *testing.T) {
 // SulfurCube.pickUpItem: a sulfur cube hops to a block lying nearby and
 // swallows it, taking on its archetype, and then sits still.
 func TestSulfurCubesSwallowBlocks(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cube *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -88,6 +90,7 @@ func TestSulfurCubesSwallowBlocks(t *testing.T) {
 // #sulfur_cube_swallowable: a baby cube eats slime balls to grow, and an
 // adult swallows blocks but not coal.
 func TestSulfurCubesTakeOnlyTheirFood(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		p := addSurvivalPlayer(tx, mgl64.Vec3{3.5, 64, .5})
@@ -112,6 +115,7 @@ func TestSulfurCubesTakeOnlyTheirFood(t *testing.T) {
 // knockback: a blow does not hurt a cube holding a block but sends it
 // flying.
 func TestHitSulfurCubesHoldingBlocksFlyOff(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		p := addSurvivalPlayer(tx, mgl64.Vec3{-1.5, 64, .5})
@@ -135,6 +139,7 @@ func TestHitSulfurCubesHoldingBlocksFlyOff(t *testing.T) {
 // with the bounciness of an archetype: a cube holding planks dropped onto
 // stone bounces back up.
 func TestBouncySulfurCubesBounce(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cube *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -158,6 +163,7 @@ func TestBouncySulfurCubesBounce(t *testing.T) {
 // flint and steel lights a cube holding TNT, which blows up six seconds
 // later.
 func TestSulfurCubesHoldingTNTExplode(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var cube *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

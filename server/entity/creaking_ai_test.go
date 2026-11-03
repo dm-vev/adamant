@@ -19,6 +19,7 @@ func addLookingPlayer(tx *world.Tx, pos mgl64.Vec3, yaw float64) *world.EntityHa
 // TestCreakingsFreezeWhenWatched checks Creaking.checkCanMove: a creaking a
 // player looks at wakes up but stays still.
 func TestCreakingsFreezeWhenWatched(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var c, p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -56,6 +57,7 @@ func TestCreakingsFreezeWhenWatched(t *testing.T) {
 // creaking woken up by a player that then looks away walks up to them and
 // attacks.
 func TestCreakingsAttackWhenUnwatched(t *testing.T) {
+	t.Parallel()
 	w := happyGhastWorld(t)
 	var p *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

@@ -50,6 +50,7 @@ func axolotlOf(tx *world.Tx, h *world.EntityHandle) *Axolotl {
 // minutes before it hunts again. The drowned stands still on the bottom, as
 // an axolotl cannot bite what floats above it.
 func TestAxolotlsFightDrowned(t *testing.T) {
+	t.Parallel()
 	w := axolotlTestWorld(t, 3)
 	var axolotl, drowned *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -80,6 +81,7 @@ func TestAxolotlsFightDrowned(t *testing.T) {
 // hurt in water by a mob sooner or later plays dead, regenerating, and may
 // not be attacked meanwhile.
 func TestAxolotlsPlayDead(t *testing.T) {
+	t.Parallel()
 	w := axolotlTestWorld(t, 3)
 	var axolotl, attacker *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -122,6 +124,7 @@ func TestAxolotlsPlayDead(t *testing.T) {
 // TestAxolotlsDryOut checks Axolotl.handleAirSupply: an axolotl out of water
 // for five minutes takes damage.
 func TestAxolotlsDryOut(t *testing.T) {
+	t.Parallel()
 	w := axolotlTestWorld(t, 3)
 	var axolotl *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -145,6 +148,7 @@ func TestAxolotlsDryOut(t *testing.T) {
 // the water nearby. It crawls a block in four seconds and may dither at the
 // water's edge, so the test only follows it there.
 func TestAxolotlsFindWater(t *testing.T) {
+	t.Parallel()
 	w := axolotlTestWorld(t, 3)
 	var axolotl *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

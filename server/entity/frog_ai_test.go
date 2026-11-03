@@ -53,6 +53,7 @@ func waitFrog(t *testing.T, w *world.World, h *world.EntityHandle, ticks int, co
 // TestFrogsLayFrogspawnBesideWater checks the LAY_SPAWN activity: a pregnant
 // frog on land finds the water's edge and lays frogspawn on the water.
 func TestFrogsLayFrogspawnBesideWater(t *testing.T) {
+	t.Parallel()
 	w, frog := frogTestWorld(t, mgl64.Vec3{-3.5, 64, .5}, func(tx *world.Tx) {
 		for x := 2; x <= 5; x++ {
 			for z := -2; z <= 2; z++ {
@@ -88,6 +89,7 @@ func TestFrogsLayFrogspawnBesideWater(t *testing.T) {
 
 // TestFrogsCroak checks Croak: a frog idling on land croaks now and then.
 func TestFrogsCroak(t *testing.T) {
+	t.Parallel()
 	w, frog := frogTestWorld(t, mgl64.Vec3{.5, 64, .5}, nil)
 	if !waitFrog(t, w, frog, 2400, func(_ *world.Tx, f *Frog) bool { return f.Croaking() }) {
 		t.Fatal("frog did not croak in two minutes")
@@ -97,6 +99,7 @@ func TestFrogsCroak(t *testing.T) {
 // TestFrogsLongJumpOutOfPits checks LongJumpToPreferredBlock: a frog in a
 // pit too deep to climb out of leaps onto the ground around it.
 func TestFrogsLongJumpOutOfPits(t *testing.T) {
+	t.Parallel()
 	w, frog := frogTestWorld(t, mgl64.Vec3{.5, 64, .5}, func(tx *world.Tx) {
 		for x := -6; x <= 6; x++ {
 			for z := -6; z <= 6; z++ {
@@ -125,6 +128,7 @@ func TestFrogsLongJumpOutOfPits(t *testing.T) {
 // TestFrogsSwimToLand checks the SWIM activity and TryFindLand: a frog in a
 // pool swims to its shore.
 func TestFrogsSwimToLand(t *testing.T) {
+	t.Parallel()
 	w, frog := frogTestWorld(t, mgl64.Vec3{.5, 63.2, .5}, func(tx *world.Tx) {
 		for x := -3; x <= 3; x++ {
 			for z := -3; z <= 3; z++ {
@@ -143,6 +147,7 @@ func TestFrogsSwimToLand(t *testing.T) {
 // TestFrogPregnancyIsSaved checks that a pregnant frog stays pregnant once
 // saved and loaded, as Java keeps the is_pregnant memory of its brain.
 func TestFrogPregnancyIsSaved(t *testing.T) {
+	t.Parallel()
 	data := &world.EntityData{}
 	frogConfig{pregnant: true}.Apply(data)
 	nbt := FrogType.EncodeNBT(data)

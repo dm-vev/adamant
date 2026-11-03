@@ -10,6 +10,7 @@ import (
 // TestOceanNearestTargetWithinRange checks zombie nautili find the nearest
 // player or axolotl within their range, and nothing further.
 func TestOceanNearestTargetWithinRange(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: DefaultRegistry}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

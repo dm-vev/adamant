@@ -18,6 +18,7 @@ func addParrot(tx *world.Tx, pos mgl64.Vec3, conf entity.ParrotConfig) *world.En
 // TestParrotsPerchOnTrees checks ParrotWanderGoal: a parrot on a canopy
 // mostly flies to another free block on the leaves and lands there.
 func TestParrotsPerchOnTrees(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var parrot *world.EntityHandle
 	start := cube.Pos{2, 65, 0}
@@ -51,6 +52,7 @@ func TestParrotsPerchOnTrees(t *testing.T) {
 // Parrot.calculateFlapping: a parrot with nowhere to fly to falls with
 // gravity, its flapping keeping it slower than a tenth of a block a tick.
 func TestParrotsFlapToFallSlowly(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var parrot *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -78,6 +80,7 @@ func TestParrotsFlapToFallSlowly(t *testing.T) {
 // ServerPlayer.setEntityOnShoulder: once five seconds in the world, a tamed
 // parrot its owner on the ground touches sits on the owner's left shoulder.
 func TestParrotsLandOnTheirOwnersShoulder(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var parrot, owner *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -122,6 +125,7 @@ func TestParrotsLandOnTheirOwnersShoulder(t *testing.T) {
 // TestParrotsFollowMobs checks FollowMobGoal: a parrot flies after a mob of
 // another species nearby.
 func TestParrotsFollowMobs(t *testing.T) {
+	t.Parallel()
 	w := wolfTestWorld(t)
 	var parrot, cow *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

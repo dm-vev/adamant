@@ -51,6 +51,7 @@ func addFish(tx *world.Tx, pos mgl64.Vec3, id string) *world.EntityHandle {
 // TestFishSwimAround checks FishSwimGoal: a fish swims about the pool it is
 // in.
 func TestFishSwimAround(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var fish *world.EntityHandle
 	start := mgl64.Vec3{.5, 61, .5}
@@ -78,6 +79,7 @@ func TestFishSwimAround(t *testing.T) {
 // TestFishFleePlayers checks the AvoidEntityGoal of fish: a fish swims away
 // from a player nearby.
 func TestFishFleePlayers(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var fish *world.EntityHandle
 	player := mgl64.Vec3{.5, 61, .5}
@@ -100,6 +102,7 @@ func TestFishFleePlayers(t *testing.T) {
 // Pufferfish.playerTouch: a pufferfish puffs up by a player and poisons the
 // player it touches.
 func TestPufferfishPuffUpAndSting(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var fish, player *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
@@ -142,6 +145,7 @@ func TestPufferfishPuffUpAndSting(t *testing.T) {
 // WaterAnimal.handleAirSupply: a fish on land flops about and starts to
 // drown after 15 seconds.
 func TestFishFlopAndDrownOnLand(t *testing.T) {
+	t.Parallel()
 	w := poolTestWorld(t)
 	var fish *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {

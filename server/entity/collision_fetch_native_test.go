@@ -13,6 +13,7 @@ import (
 )
 
 func TestCollisionFetchCellsMatchExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_collision_fetch.json")
 	if err != nil {
 		t.Fatal(err)

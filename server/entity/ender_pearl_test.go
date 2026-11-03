@@ -13,6 +13,7 @@ import (
 // owner is teleported to where the pearl was when its tick began and takes
 // 5 fall damage unless fall damage is off; other owners take none.
 func TestEnderPearlFallDamageSetting(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 

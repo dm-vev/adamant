@@ -14,6 +14,7 @@ import (
 // Entity.checkFallDamage, the landing is a hit_ground vibration the sensor
 // picks up.
 func TestMobLandingActivatesSculkSensor(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	loader := world.NewLoader(2, w, world.NopViewer{})
 	t.Cleanup(func() {

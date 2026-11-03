@@ -14,6 +14,7 @@ import (
 // toughness, leaves fall damage alone, and netherite armour also resists
 // knockback.
 func TestHorseArmourProtects(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

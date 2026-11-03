@@ -24,6 +24,7 @@ func (o omenHolder) RaidOmenLevel() int         { return 1 }
 // Raider.pickUpItem: a raider of a wave without a captain walks to an
 // ominous banner, puts it on and leads the wave.
 func TestRaidersTakeTheCaptainsBanner(t *testing.T) {
+	t.Parallel()
 	w, p := naturalSpawnWorld(t, 6000)
 	w.SetSpawnMobs(false)
 	var v *world.EntityHandle

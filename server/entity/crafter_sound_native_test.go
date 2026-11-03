@@ -29,6 +29,9 @@ func (o *crafterSoundObserver) HandleSound(_ *world.Context, s world.Sound, p mg
 
 func TestCrafterSoundsMatchNativePackets(t *testing.T) {
 	nativeRecipesOnce.Do(func() { world.DefaultBlockRegistry.Finalize(); registerNativeVanillaRecipes() })
+	// The recipes are registered for the whole process: only once they
+	// are does the test run alongside others.
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_crafter_sounds.json")
 	if err != nil {
 		t.Fatal(err)

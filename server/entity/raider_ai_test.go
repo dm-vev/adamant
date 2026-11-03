@@ -12,6 +12,7 @@ import (
 // TestPatrolWalksTowardsItsTarget checks a patrol leader and its companion
 // walk towards the patrol target, and a lone raider stops patrolling.
 func TestPatrolWalksTowardsItsTarget(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
 	w.SetTime(18000)

@@ -15,6 +15,7 @@ import (
 )
 
 func TestActivatorCartEffectsMatchBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_activator_cart_effects.json")
 	if err != nil {
 		t.Fatal(err)

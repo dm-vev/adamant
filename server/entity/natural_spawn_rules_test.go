@@ -39,6 +39,7 @@ func phantomsAfterSleeplessNight(t *testing.T, rules map[string]bool) int {
 }
 
 func TestPhantomsNeedMonsterSpawning(t *testing.T) {
+	t.Parallel()
 	if phantomsAfterSleeplessNight(t, nil) == 0 {
 		t.Fatal("no phantoms spawned over an insomniac player")
 	}

@@ -52,6 +52,7 @@ type netherTemplateSpawnCase struct {
 }
 
 func TestNetherTemplateSpawnMatchesJava263(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_nether_template_spawn.json")
 	if err != nil {
 		t.Fatal(err)

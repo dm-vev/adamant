@@ -69,6 +69,7 @@ func aiEntityPos(w *world.World, h *world.EntityHandle) (pos mgl64.Vec3) {
 // TestZombieClimbsStepsToReachItsTarget checks the zombie jumps onto blocks
 // in its way, which mobs walking by velocity alone could not.
 func TestZombieClimbsStepsToReachItsTarget(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for z := -16; z <= 16; z++ {
@@ -88,6 +89,7 @@ func TestZombieClimbsStepsToReachItsTarget(t *testing.T) {
 // TestZombiePathsAroundFences checks the zombie walks around a fence it
 // sees its target through rather than into it.
 func TestZombiePathsAroundFences(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for z := -5; z <= 5; z++ {
@@ -111,6 +113,7 @@ func TestZombiePathsAroundFences(t *testing.T) {
 // TestZombieAttacksSurvivalPlayersOnly checks the zombie hurts a survival
 // player in reach and leaves a creative one alone.
 func TestZombieAttacksSurvivalPlayersOnly(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		mode world.GameMode
 		hurt bool
@@ -134,6 +137,7 @@ func TestZombieAttacksSurvivalPlayersOnly(t *testing.T) {
 // TestIdleZombieStrollsNearPlayers checks the zombie walks around without a
 // target while a player is near.
 func TestIdleZombieStrollsNearPlayers(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	// Random positions below a floor in the void are never stable, so the
 	// ground is made deep.
@@ -173,6 +177,7 @@ func addHostile(w *world.World, id string, pos mgl64.Vec3) *world.EntityHandle {
 // TestSkeletonShootsPlayersInRange checks the skeleton draws its bow and
 // shoots a player it sees within 15 blocks.
 func TestSkeletonShootsPlayersInRange(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{10.5, 65, .5}, world.GameModeSurvival)
 	skeleton := addHostile(w, "minecraft:skeleton", mgl64.Vec3{.5, 65, .5})
@@ -198,6 +203,7 @@ func TestSkeletonShootsPlayersInRange(t *testing.T) {
 // TestWitherSkeletonWithersInMelee checks the wither skeleton fights with
 // its sword and withers what it hits.
 func TestWitherSkeletonWithersInMelee(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{4.5, 65, .5}, world.GameModeSurvival)
 	addHostile(w, "minecraft:wither_skeleton", mgl64.Vec3{.5, 65, .5})
@@ -228,6 +234,7 @@ func TestWitherSkeletonWithersInMelee(t *testing.T) {
 // TestSkeletonAvoidsWolves checks the skeleton walks away from a wolf near
 // it.
 func TestSkeletonAvoidsWolves(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	addAITestPlayer(w, mgl64.Vec3{-14.5, 65, -14.5}, world.GameModeCreative)
 	skeleton := addHostile(w, "minecraft:skeleton", mgl64.Vec3{.5, 65, .5})
@@ -278,6 +285,7 @@ func lowestHealth(t *testing.T, w *world.World, p *world.EntityHandle, ticks int
 // TestCreeperSwellsAndExplodesNearPlayers checks the creeper walks up to a
 // player, swells with its fuse lit and explodes.
 func TestCreeperSwellsAndExplodesNearPlayers(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{6.5, 65, .5}, world.GameModeSurvival)
 	creeper := addSpecies(w, entity.NewCreeper(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
@@ -295,6 +303,7 @@ func TestCreeperSwellsAndExplodesNearPlayers(t *testing.T) {
 // TestSpiderClimbsWallsAtNight checks the spider climbs a wall two blocks
 // high to a player on top of it, too high to jump.
 func TestSpiderClimbsWallsAtNight(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := 2; x <= 16; x++ {
@@ -320,6 +329,7 @@ func TestSpiderClimbsWallsAtNight(t *testing.T) {
 // TestSpidersLeavePlayersAloneInDaylight checks a spider in the light picks
 // no target.
 func TestSpidersLeavePlayersAloneInDaylight(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	w.SetTime(6000)
 	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
@@ -332,6 +342,7 @@ func TestSpidersLeavePlayersAloneInDaylight(t *testing.T) {
 // TestCaveSpiderPoisons checks the cave spider poisons what it bites on
 // normal difficulty.
 func TestCaveSpiderPoisons(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
 	addSpecies(w, entity.NewCaveSpider(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
@@ -351,6 +362,7 @@ func TestCaveSpiderPoisons(t *testing.T) {
 // TestHurtSilverfishWakesInfestedBlocks checks a silverfish hurt by a player
 // breaks the infested blocks around it, releasing more silverfish.
 func TestHurtSilverfishWakesInfestedBlocks(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	// Planks around the infested blocks keep released silverfish from
 	// hiding again straight away.
@@ -388,6 +400,7 @@ func TestHurtSilverfishWakesInfestedBlocks(t *testing.T) {
 // TestIdleSilverfishHidesInStone checks a silverfish with nothing to attack
 // hides in the stone next to it.
 func TestIdleSilverfishHidesInStone(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	fish := addSpecies(w, entity.NewSilverfish(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
 	stepWorld(t, w, 600)
@@ -426,6 +439,7 @@ func endermanAngry(w *world.World, h *world.EntityHandle) (angry bool) {
 // in the eyes makes it scream and freeze, and a carved pumpkin hides the
 // stare.
 func TestEndermanAngersAtPlayersStaringAtIt(t *testing.T) {
+	t.Parallel()
 	for _, pumpkin := range []bool{false, true} {
 		w := aiTestWorld(t)
 		from, to := mgl64.Vec3{.5, 65, -7.5}, mgl64.Vec3{.5, 65, .5}
@@ -454,6 +468,7 @@ func TestEndermanAngersAtPlayersStaringAtIt(t *testing.T) {
 // TestEndermanDodgesProjectiles checks a projectile hitting an enderman
 // teleports it away unhurt.
 func TestEndermanDodgesProjectiles(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	h := addSpecies(w, entity.NewEnderman(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
 	<-w.Exec(func(tx *world.Tx) {
@@ -473,6 +488,7 @@ func TestEndermanDodgesProjectiles(t *testing.T) {
 // TestEndermanTakesBlocks checks an enderman picks up a flower next to it
 // in a field of flowers.
 func TestEndermanTakesBlocks(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := -16; x <= 16; x++ {
@@ -507,6 +523,7 @@ func TestEndermanTakesBlocks(t *testing.T) {
 // TestMobDamageCooldown checks a mob hit again within half a second only
 // takes the damage by which the hit exceeds the last.
 func TestMobDamageCooldown(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	h := addZombie(w, mgl64.Vec3{.5, 65, .5})
 	<-w.Exec(func(tx *world.Tx) {
@@ -534,6 +551,7 @@ func TestMobDamageCooldown(t *testing.T) {
 // by its size, and splits into two to four slimes of half its size when it
 // dies, while the smallest slimes are harmless.
 func TestSlimesHopAtPlayersAndSplit(t *testing.T) {
+	t.Parallel()
 	for _, size := range []int{1, 4} {
 		w := aiTestWorld(t)
 		p := addAITestPlayer(w, mgl64.Vec3{6.5, 65, .5}, world.GameModeSurvival)
@@ -581,6 +599,7 @@ func TestSlimesHopAtPlayersAndSplit(t *testing.T) {
 // than a slime of its size, its armour softens hits, and it splits when it
 // dies.
 func TestMagmaCubesHopHigherAndShrugOffHits(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	magma := addSpecies(w, entity.NewMagmaCubeWithSize(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}, 4))
 	slime := addSpecies(w, entity.NewSlimeWithSize(world.EntitySpawnOpts{Position: mgl64.Vec3{8.5, 65, 8.5}}, 4))
@@ -611,6 +630,7 @@ func TestMagmaCubesHopHigherAndShrugOffHits(t *testing.T) {
 // TestBlazeChargesAndShootsFireballs checks a blaze that sees a player
 // burns while it charges and shoots fireballs at it.
 func TestBlazeChargesAndShootsFireballs(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	addAITestPlayer(w, mgl64.Vec3{10.5, 65, .5}, world.GameModeSurvival)
 	blaze := addSpecies(w, entity.NewBlaze(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
@@ -633,6 +653,7 @@ func TestBlazeChargesAndShootsFireballs(t *testing.T) {
 // fireball at a player level with them. A ghast that drifts more than four
 // blocks above or below the player ignores it, so there are three.
 func TestGhastFloatsAndShootsAtPlayers(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	addAITestPlayer(w, mgl64.Vec3{14.5, 65, .5}, world.GameModeSurvival)
 	var ghasts []*world.EntityHandle
@@ -660,6 +681,7 @@ func TestGhastFloatsAndShootsAtPlayers(t *testing.T) {
 // TestPillagerLoadsAndShootsItsCrossbow checks a pillager loads its crossbow
 // in sight of a player and shoots arrows at it.
 func TestPillagerLoadsAndShootsItsCrossbow(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{7.5, 65, .5}, world.GameModeSurvival)
 	pillager := addSpecies(w, entity.NewPillager(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure"}))
@@ -677,6 +699,7 @@ func TestPillagerLoadsAndShootsItsCrossbow(t *testing.T) {
 // TestVindicatorsHuntPlayersAndJohnnyEverything checks a vindicator attacks
 // players, and one named Johnny attacks a cow too.
 func TestVindicatorsHuntPlayersAndJohnnyEverything(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{5.5, 65, .5}, world.GameModeSurvival)
 	addSpecies(w, entity.NewVindicator(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure"}))
@@ -707,6 +730,7 @@ func TestVindicatorsHuntPlayersAndJohnnyEverything(t *testing.T) {
 // TestEvokerSummonsVexesAndTurnsSheepRed checks an evoker summons vexes at
 // a player in sight, and an idle one turns a blue sheep red.
 func TestEvokerSummonsVexesAndTurnsSheepRed(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{10.5, 65, .5}, world.GameModeSurvival)
 	addSpecies(w, entity.NewEvoker(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure"}))
@@ -734,6 +758,7 @@ func TestEvokerSummonsVexesAndTurnsSheepRed(t *testing.T) {
 // TestRavagerBitesAndKnocksBack checks a ravager bites a player hard
 // enough to knock it back.
 func TestRavagerBitesAndKnocksBack(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{5.5, 65, .5}, world.GameModeSurvival)
 	addSpecies(w, entity.NewRavager(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
@@ -763,6 +788,7 @@ func buildPool(w *world.World) {
 // TestDrownedSwimsToPlayersInWater checks a drowned hunts a player in the
 // water by day and swims to it.
 func TestDrownedSwimsToPlayersInWater(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	w.SetTime(6000)
 	buildPool(w)
@@ -776,6 +802,7 @@ func TestDrownedSwimsToPlayersInWater(t *testing.T) {
 // TestDrownedLeavesPlayersOnLandByDay checks a drowned ignores a player on
 // land by day.
 func TestDrownedLeavesPlayersOnLandByDay(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	w.SetTime(6000)
 	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
@@ -787,6 +814,7 @@ func TestDrownedLeavesPlayersOnLandByDay(t *testing.T) {
 
 // TestDrownedThrowsTridents checks a drowned holding a trident throws it.
 func TestDrownedThrowsTridents(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{8.5, 65, .5}, world.GameModeSurvival)
 	drowned, err := entity.NewFromStructureNBT(map[string]any{"id": "minecraft:drowned",
@@ -806,6 +834,7 @@ func TestDrownedThrowsTridents(t *testing.T) {
 // TestGuardianBeamsPlayersInWater checks a guardian aims its beam at a
 // player in the water and hurts it once the beam charged.
 func TestGuardianBeamsPlayersInWater(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	buildPool(w)
 	p := addAITestPlayer(w, mgl64.Vec3{5.5, 65, .5}, world.GameModeSurvival)
@@ -826,6 +855,7 @@ func TestGuardianBeamsPlayersInWater(t *testing.T) {
 // TestGuardianPricksAndFlops checks a guardian standing still pricks what
 // hits it, and one on land flops about.
 func TestGuardianPricksAndFlops(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{2.5, 65, .5}, world.GameModeSurvival)
 	guardian := addSpecies(w, entity.NewGuardian(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
@@ -854,6 +884,7 @@ func TestGuardianPricksAndFlops(t *testing.T) {
 // TestElderGuardianCursesPlayers checks an elder guardian gives a player
 // nearby mining fatigue within a minute.
 func TestElderGuardianCursesPlayers(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	buildPool(w)
 	p := addAITestPlayer(w, mgl64.Vec3{12.5, 72, .5}, world.GameModeSurvival)
@@ -885,6 +916,7 @@ func TestElderGuardianCursesPlayers(t *testing.T) {
 // TestWitchThrowsPotionsAtPlayers checks a witch throws potions that slow
 // or poison a player.
 func TestWitchThrowsPotionsAtPlayers(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{6.5, 65, .5}, world.GameModeSurvival)
 	addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
@@ -904,6 +936,7 @@ func TestWitchThrowsPotionsAtPlayers(t *testing.T) {
 // TestWitchDrinksAndResistsMagic checks a burning witch drinks fire
 // resistance, and magic hurts it little.
 func TestWitchDrinksAndResistsMagic(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	witch := addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
 	<-w.Exec(func(tx *world.Tx) {
@@ -935,6 +968,7 @@ func TestWitchDrinksAndResistsMagic(t *testing.T) {
 // TestPhantomSwoopsAtPlayers checks a phantom circling above a player
 // swoops down and bites it, unless a cat is near.
 func TestPhantomSwoopsAtPlayers(t *testing.T) {
+	t.Parallel()
 	for _, cat := range []bool{false, true} {
 		w := aiTestWorld(t)
 		p := addAITestPlayer(w, mgl64.Vec3{.5, 65, .5}, world.GameModeSurvival)
@@ -955,6 +989,7 @@ func TestPhantomSwoopsAtPlayers(t *testing.T) {
 // player alone until it hits one, and then that one and those around it
 // attack the player.
 func TestZombifiedPiglinsDefendEachOther(t *testing.T) {
+	t.Parallel()
 	w := aiTestWorld(t)
 	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
 	hit := addSpecies(w, entity.NewZombifiedPiglin(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))

@@ -20,6 +20,7 @@ func (p gridPlayer) Position() mgl64.Vec3 { return p.pos }
 // the distance to the nearest player found through the grid of spawning
 // are those found asking every player.
 func TestSpawnPlayerGridMatchesEveryPlayer(t *testing.T) {
+	t.Parallel()
 	r := rand.New(rand.NewPCG(3, 4))
 	for layout := range 50 {
 		var players []world.Entity

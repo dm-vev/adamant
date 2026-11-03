@@ -14,6 +14,7 @@ import (
 )
 
 func TestMobEffectsSurviveARestart(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	open := func() (*world.World, *mcdb.DB) {
 		db, err := mcdb.Open(dir)

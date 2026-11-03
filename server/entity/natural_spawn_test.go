@@ -49,6 +49,7 @@ func (r *spawnRecorder) HandleEntitySpawn(_ *world.Tx, e world.Entity) {
 // dark ground around a player, never within 24 blocks of it, up to the
 // monster cap.
 func TestMonstersSpawnInTheDark(t *testing.T) {
+	t.Parallel()
 	w, _ := naturalSpawnWorld(t, 18000)
 	rec := &spawnRecorder{spawned: map[string][]mgl64.Vec3{}}
 	w.Handle(rec)
@@ -83,6 +84,7 @@ func TestMonstersSpawnInTheDark(t *testing.T) {
 // TestMonstersDoNotSpawnInDaylight checks Monster.isDarkEnoughToSpawn: by day
 // no monster spawns on ground open to the sky.
 func TestMonstersDoNotSpawnInDaylight(t *testing.T) {
+	t.Parallel()
 	w, _ := naturalSpawnWorld(t, 6000)
 	for range 400 {
 		w.AdvanceTick()
