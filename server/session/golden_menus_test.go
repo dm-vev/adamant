@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
@@ -583,7 +584,7 @@ func (s *scenario) menuRefusalSteps() {
 // crafting table of two results, the first of which is the item passed.
 func (s *scenario) twoResultRecipe(first world.Item) uint32 {
 	s.t.Helper()
-	rid, _, _ := world.ItemRuntimeID(first)
+	rid, _, _ := bedrockdata.ItemRuntimeID(first)
 	for _, r := range s.crafting.ShapedRecipes {
 		if r.Block == "crafting_table" && len(r.Output) == 2 && r.Output[0].NetworkID == rid {
 			return r.RecipeNetworkID
