@@ -1,0 +1,64 @@
+
+[Java]
+  Address = ""
+  Message = ""
+
+[Network]
+  ACMECacheDir = ""
+  ACMEChallengeAddress = ""
+  ACMEDirectory = ""
+  ACMEEmail = ""
+  Address = ":19132"
+  EnableQuery = false
+  HTTPSDomain = ""
+  IdentityFile = "server-key.pem"
+  LAN = false
+  QueryPlugins = false
+  Transport = "nethernet"
+
+[Players]
+  Folder = "players"
+  MaxCount = 0
+  MaximumChunkRadius = 32
+  SaveData = true
+
+[Proxy]
+  Address = ""
+  Secret = ""
+
+[Resources]
+  AutoBuildPack = true
+  Folder = "resources"
+  Required = false
+
+[Server]
+  AuthEnabled = true
+  DisableJoinQuitMessages = false
+  MuteEmoteChat = false
+  Name = "Dragonfly Server"
+  ReconnectPolicy = "kick-existing"
+
+[Whitelist]
+  Enabled = false
+  File = "white-list.txt"
+  Reason = "§cServer is white-listed"
+
+[World]
+  DefaultDimension = "overworld"
+  DisableEnd = false
+  DisableNether = false
+  DisableOverworld = false
+  Folder = "world"
+  GeneratorProfile = "auto"
+  GeneratorQueueSize = 0
+  GeneratorWorkers = 0
+  PortalDisabledMessage = "The %s dimension is disabled on this server."
+  Regions = false
+  SaveData = true
+  Seed = 0
+
+[Xbox]
+  AcceptFriends = true
+  Enabled = false
+  LegacySignaling = false
+  TokenFile = "xbox-token.json"
