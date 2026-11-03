@@ -18,6 +18,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -4690,7 +4691,7 @@ func (p *Player) PunchAir() {
 }
 
 // UpdateDiagnostics updates the diagnostics of the player.
-func (p *Player) UpdateDiagnostics(d session.Diagnostics) {
+func (p *Player) UpdateDiagnostics(d client.Diagnostics) {
 	p.Handler().HandleDiagnostics(p, d)
 }
 

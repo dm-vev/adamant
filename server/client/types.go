@@ -1,6 +1,7 @@
-package session
+package client
 
-// Diagnostics represents the latest diagnostics data of the client.
+// Diagnostics are the latest diagnostics a client sent of how it runs.
+// Times are in milliseconds.
 type Diagnostics struct {
 	// AverageFramesPerSecond is the average amount of frames per second that the client has been
 	// running at.

@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player/skin"
-	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -153,7 +153,7 @@ type Handler interface {
 	// HandleDiagnostics handles the latest diagnostics data that the player has sent to the server. This is
 	// not sent by every client however, only those with the "Creator > Enable Client Diagnostics" setting
 	// enabled.
-	HandleDiagnostics(p *Player, d session.Diagnostics)
+	HandleDiagnostics(p *Player, d client.Diagnostics)
 }
 
 // NopHandler implements the Handler interface but does not execute any code when an event is called. The
@@ -201,4 +201,4 @@ func (NopHandler) HandleFoodLoss(*Context, int, *int)                           
 func (NopHandler) HandleDeath(*Player, world.DamageSource, *bool)                          {}
 func (NopHandler) HandleRespawn(*Player, *mgl64.Vec3, **world.World)                       {}
 func (NopHandler) HandleQuit(*Player)                                                      {}
-func (NopHandler) HandleDiagnostics(*Player, session.Diagnostics)                          {}
+func (NopHandler) HandleDiagnostics(*Player, client.Diagnostics)                           {}
