@@ -13,13 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Bedrock's horse flags, sent in the actor data that Java keeps the eating
-// and standing flags of AbstractHorse in.
-const (
-	horseFlagEating   = 32
-	horseFlagStanding = 128
-)
-
 // horseRearing reports whether the species can rear, which
 // AbstractHorse.canPerformRearing denies llamas and camels.
 func (b *MountBehaviour) horseRearing() bool {

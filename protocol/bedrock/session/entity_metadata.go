@@ -446,6 +446,12 @@ func (s *Session) addSpecificMetadata(e any, m v2193.Metadata) {
 	}
 }
 
+// The bits of the horse flags of the actor data of mounts.
+const (
+	horseFlagEating   = 32
+	horseFlagStanding = 128
+)
+
 // addMountMetadata writes the flags and data Bedrock clients show of horses,
 // llamas and camels, as the dedicated server sends them.
 func addMountMetadata(s entity.MountState, m v2193.Metadata) {
@@ -456,12 +462,25 @@ func addMountMetadata(s entity.MountState, m v2193.Metadata) {
 		}
 	}
 	if s.Rearing {
-		m[v2193.EntityDataKeyHorseFlags] = s.HorseFlags
+		var flags int64
+		if s.Eating {
+			flags |= horseFlagEating
+		}
+		if s.Standing {
+			flags |= horseFlagStanding
+		}
+		m[v2193.EntityDataKeyHorseFlags] = flags
 	}
 	if s.ContainerSize > 0 {
 		m[v2193.EntityDataKeyContainerType] = byte(v2193.ContainerTypeHorse)
 		m[v2193.EntityDataKeyContainerSize] = s.ContainerSize
-		m[v2193.EntityDataKeyContainerStrengthModifier] = s.StrengthModifier
+		// BDS sends a strength modifier of 3 for tamed llamas, the only
+		// mounts with a strength, and 0 for the others.
+		var modifier int32
+		if s.MaxStrength != 0 {
+			modifier = 3
+		}
+		m[v2193.EntityDataKeyContainerStrengthModifier] = modifier
 	}
 	if s.MaxStrength > 0 {
 		m[v2193.EntityDataKeyStrength] = s.Strength

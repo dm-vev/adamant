@@ -912,35 +912,31 @@ func (m *Mount) SetSitting(v bool) {
 }
 func (m *Mount) AgeTicks() int { return m.b().ageTicks }
 
-// MountState is the state Bedrock clients show of a mount.
+// MountState is the state clients show of a mount.
 type MountState struct {
 	Saddled, Tamed, Chested, Sitting bool
 	// Controlled is set on a saddled mount a player can steer, which can
 	// then power jump, or dash for camels.
 	Controlled, PowerJump, Dash bool
-	// Rearing is set for the species that rear and eat grass, whose
-	// eating and standing flags HorseFlags holds.
-	Rearing    bool
-	HorseFlags int64
+	// Rearing is set for the species that rear and eat grass. Eating and
+	// Standing tell if such a mount eats or stands on its hind legs, the
+	// flags Java keeps in AbstractHorse.
+	Rearing, Eating, Standing bool
 	// ContainerSize is the size of the horse inventory of a tamed mount.
-	ContainerSize, StrengthModifier int32
-	// Strength and MaxStrength are the strength of a llama.
+	ContainerSize int32
+	// Strength and MaxStrength are the strength of a llama. MaxStrength is
+	// 0 for the other species.
 	Strength, MaxStrength int32
 }
 
-// MountState returns the state Bedrock clients show of the mount.
+// MountState returns the state clients show of the mount.
 func (m *Mount) MountState() MountState {
 	b := m.b()
 	s := MountState{Saddled: b.saddled, Tamed: b.tamed, Chested: b.chested, Sitting: b.sitting, Controlled: b.saddled, Rearing: b.horseRearing()}
 	if s.Controlled {
 		s.PowerJump, s.Dash = !b.camel(), b.camel()
 	}
-	if b.eating {
-		s.HorseFlags |= horseFlagEating
-	}
-	if b.standCounter > 0 {
-		s.HorseFlags |= horseFlagStanding
-	}
+	s.Eating, s.Standing = b.eating, b.standCounter > 0
 	if b.tamed {
 		switch {
 		case b.kind == mountHorse || b.kind == mountSkeletonHorse || b.kind == mountZombieHorse:
@@ -949,9 +945,6 @@ func (m *Mount) MountState() MountState {
 			s.ContainerSize = 5
 		default:
 			s.ContainerSize = 16
-		}
-		if b.llama() {
-			s.StrengthModifier = 3
 		}
 	}
 	if b.llama() {
