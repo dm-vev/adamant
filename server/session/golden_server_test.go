@@ -1,6 +1,7 @@
 package session_test
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -144,6 +145,33 @@ func TestGoldenServerReconnectKickJoining(t *testing.T) {
 	again.left()
 	s.endStep([]*serverClient{g}, false)
 	s.providerLog()
+	s.server()
+	s.snapshot()
+}
+
+// TestGoldenServerStartFails records a client whose game does not start,
+// as one that went away before it answered StartGame: the listener
+// disconnects it with "Connection timeout.", it is sent nothing, and no
+// player of it is online. The player then joins from another client as if
+// the first had never logged in.
+func TestGoldenServerStartFails(t *testing.T) {
+	// Each runs in a process of its own, which waits on the clock of its
+	// server most of the time.
+	t.Parallel()
+	if isolated(t) {
+		return
+	}
+	s := newServerScenario(t, "server_start_fails", serverConfig{brief: true})
+	s.out.WriteString("== the game of Golden does not start\n")
+	c := s.connectConn(&identityConn{goldenConn: newGoldenConn(), who: goldenIdentity, startErr: errors.New("the client went away")})
+	s.out.WriteString("-- Golden\n")
+	c.readClosed()
+	c.write(c.take(), false)
+	c.left()
+	s.providerLog()
+	s.server()
+
+	s.join("Golden joins from another client", goldenIdentity)
 	s.server()
 	s.snapshot()
 }

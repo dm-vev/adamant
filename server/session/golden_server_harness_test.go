@@ -1,6 +1,7 @@
 package session_test
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -108,10 +109,19 @@ var (
 )
 
 // identityConn is a goldenConn of a client that logs in as an identity of
-// its own.
+// its own. If startErr is set, the game of the client does not start:
+// StartGameContext returns it, as it does for a client that went away.
 type identityConn struct {
 	*goldenConn
-	who serverIdentity
+	who      serverIdentity
+	startErr error
+}
+
+func (c *identityConn) StartGameContext(ctx context.Context, data netconn.GameData) error {
+	if c.startErr != nil {
+		return c.startErr
+	}
+	return c.goldenConn.StartGameContext(ctx, data)
 }
 
 func (c *identityConn) IdentityData() login.Identity {
@@ -370,9 +380,10 @@ func (s *serverScenario) accept() {
 	defer close(s.acceptDone)
 	for p := range s.srv.Accept() {
 		s.mu.Lock()
+		// A client that went before its player spawned joins no more.
 		var joining *serverClient
 		for _, c := range s.clients {
-			if c.h == nil && c.who.id == p.UUID() {
+			if c.h == nil && !c.gone && c.who.id == p.UUID() {
 				joining = c
 				break
 			}
@@ -435,7 +446,15 @@ func (c *serverClient) currentMarker() string {
 // without waiting for anything.
 func (s *serverScenario) connect(who serverIdentity) *serverClient {
 	s.t.Helper()
-	c := &serverClient{s: s, who: who, conn: &identityConn{goldenConn: newGoldenConn(), who: who}}
+	return s.connectConn(&identityConn{goldenConn: newGoldenConn(), who: who})
+}
+
+// connectConn hands the server the connection passed, without waiting for
+// anything.
+func (s *serverScenario) connectConn(conn *identityConn) *serverClient {
+	s.t.Helper()
+	who := conn.who
+	c := &serverClient{s: s, who: who, conn: conn}
 	c.rec = &scenario{t: s.t, name: s.name, norm: s.norm, stacks: map[stackSlot]int32{}, nextRequest: -1}
 	s.mu.Lock()
 	s.clients = append(s.clients, c)
