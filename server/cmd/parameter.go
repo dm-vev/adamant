@@ -46,12 +46,28 @@ type ParamDescriber interface {
 	DescribeParams(src Source) []ParamInfo
 }
 
-// ParamOptioner may be implemented by a parameter to supply additional Bedrock
-// command parameter options (the protocol.ParamOption constants). These options
-// affect client metadata only; parsing still uses Parameter or Enum.
+// ParamOptioner may be implemented by a parameter to supply options that change
+// how clients show and complete it. These options affect client metadata only;
+// parsing still uses Parameter or Enum.
 type ParamOptioner interface {
-	ParamOptions() byte
+	ParamOptions() ParamOption
 }
+
+// ParamOption is a set of options of a command parameter that change how
+// clients show and complete it. Options may be combined with |.
+type ParamOption uint8
+
+const (
+	// ParamOptionCollapseEnum shows the options of an enum parameter as one
+	// placeholder instead of listing them.
+	ParamOptionCollapseEnum ParamOption = 1 << iota
+	// ParamOptionHasSemanticConstraint marks a parameter whose enum options
+	// carry constraints, as those of ConstrainedEnum.
+	ParamOptionHasSemanticConstraint
+	// ParamOptionAsChainedCommand marks a parameter that is followed by a
+	// chained command, as the subcommands of execute.
+	ParamOptionAsChainedCommand
+)
 
 // ConstrainedEnum may be implemented by a hard enum to attach client-side
 // constraints to individual completion values. Constraint IDs are the protocol's

@@ -1,9 +1,11 @@
 package session
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
@@ -58,4 +60,23 @@ func TestCloudParticleValuesMatchProtocol(t *testing.T) {
 	checkGameValues(t, []gameValue{
 		{"CloudParticleDragonBreath", int64(entity.CloudParticleDragonBreath), v2193.ParticleTypeDragonBreath},
 	})
+}
+
+// TestParamOptionValuesMatchProtocol checks that the options of command
+// parameters the game owns keep the values of the flags the protocol sends for
+// them, and that each maps to its own flag.
+func TestParamOptionValuesMatchProtocol(t *testing.T) {
+	checkGameValues(t, []gameValue{
+		{"ParamOptionCollapseEnum", int64(cmd.ParamOptionCollapseEnum), v2193.ParamOptionCollapseEnum},
+		{"ParamOptionHasSemanticConstraint", int64(cmd.ParamOptionHasSemanticConstraint), v2193.ParamOptionHasSemanticConstraint},
+		{"ParamOptionAsChainedCommand", int64(cmd.ParamOptionAsChainedCommand), v2193.ParamOptionAsChainedCommand},
+	})
+	all := cmd.ParamOptionCollapseEnum | cmd.ParamOptionHasSemanticConstraint | cmd.ParamOptionAsChainedCommand
+	checkGameValues(t, []gameValue{
+		{"paramOptions(0)", int64(paramOptions(0)), 0},
+		{"paramOptions(all)", int64(paramOptions(all)), v2193.ParamOptionCollapseEnum | v2193.ParamOptionHasSemanticConstraint | v2193.ParamOptionAsChainedCommand},
+	})
+	for _, f := range paramOptionFlags {
+		checkGameValues(t, []gameValue{{fmt.Sprintf("paramOptions(%d)", f.option), int64(paramOptions(f.option)), int64(f.flag)}})
+	}
 }

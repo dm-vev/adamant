@@ -107,7 +107,7 @@ func BuildAvailableCommands(
 
 				opt := byte(0)
 				if options, ok := paramInfo.Value.(cmd.ParamOptioner); ok {
-					opt = options.ParamOptions()
+					opt = paramOptions(options.ParamOptions())
 				}
 				if suffix != "" {
 					index, ok := suffixIndices[suffix]
