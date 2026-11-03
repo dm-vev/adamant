@@ -12,7 +12,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
@@ -377,7 +376,7 @@ func (l *oracleSessionList) Remove(s *Session) {
 	l.opMu.Lock()
 	l.mu.Lock()
 	others := slices.Clone(l.s)
-	l.s = sliceutil.DeleteVal(l.s, s)
+	l.s = deleteVal(l.s, s)
 	l.mu.Unlock()
 
 	// Unsend outside the lock to avoid blocking list operations on I/O.
@@ -432,4 +431,15 @@ func describePackets(pks []proto.Packet) string {
 		b = fmt.Appendf(b, "%T%+v ", pk, pk)
 	}
 	return string(b)
+}
+
+// deleteVal deletes the first occurrence of a value in a slice of the type E
+// and returns a new slice without the value. E must be comparable.
+func deleteVal[E comparable](s []E, v E) []E {
+	for i, vs := range s {
+		if (any)(v) == (any)(vs) {
+			return slices.Delete(s, i, i+1)
+		}
+	}
+	return s
 }
