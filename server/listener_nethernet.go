@@ -36,10 +36,16 @@ import (
 // listenerFunc returns the NetherNet listener of the server, the standard
 // listener used when UserConfig.Config() is called.
 func (uc UserConfig) listenerFunc(conf Config) (Listener, error) {
-	return uc.netherNetListener(conf)
+	l, err := uc.netherNetListener(conf)
+	if err != nil {
+		return nil, err
+	}
+	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: conf.MuteEmoteChat}), nil
 }
 
-func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
+// netherNetListener returns the connections of the NetherNet listener of
+// the server, admitted to it as the Config says.
+func (uc UserConfig) netherNetListener(conf Config) (session.ConnListener, error) {
 	identityFile := uc.Network.IdentityFile
 	if identityFile == "" {
 		identityFile = "server-key.pem"
@@ -272,7 +278,7 @@ func batchCompression(c bedrock.Compression) bedrock.Compression {
 	return c
 }
 
-// netherNetListener is a netconn.Listener as the server listens on it.
+// netherNetListener is a netconn.Listener as the session listens on it.
 type netherNetListener struct {
 	*netconn.Listener
 }

@@ -29,10 +29,10 @@ import (
 )
 
 // The golden tests of the server join their clients to a server.Server the
-// way a client joins one: a server.Listener of the test hands the server
-// connections, and the server finalises them, starts their game, makes their
-// sessions and players, spawns them through Accept, reconnects, disconnects
-// and closes them itself. The scenarios of golden_harness_test.go instead
+// way a client joins one: the session.Listener of a ConnListener of the test
+// hands the server the joins of connections, and the server starts their
+// game, makes their sessions and players, spawns them through Accept,
+// reconnects, disconnects and closes them itself. The scenarios of golden_harness_test.go instead
 // make the session and the player as the server does; these go through the
 // server, as built from a server.UserConfig the way the program builds it,
 // with its operators, whitelist and bans in files of a directory of the test.
@@ -130,7 +130,7 @@ func (c *identityConn) IdentityData() login.Identity {
 
 func (c *identityConn) RemoteAddr() net.Addr { return c.who.addr }
 
-// serverListener is the server.Listener of the scenarios: it hands the
+// serverListener is the session.ConnListener of the scenarios: it hands the
 // server the connections the test passes it, and records what the server
 // disconnects through it.
 type serverListener struct {
@@ -307,7 +307,9 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 		t.Fatal(err)
 	}
 	c.Log = goldenLog()
-	test := func(server.Config) (server.Listener, error) { return s.l, nil }
+	test := func(c server.Config) (server.Listener, error) {
+		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
+	}
 	if conf.network {
 		c.Listeners = append(c.Listeners, test)
 	} else {

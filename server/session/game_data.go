@@ -11,11 +11,11 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-// StartGame starts the game g for conn, as BDS does: it sends StartGame,
+// startGame starts the game g for conn, as BDS does: it sends StartGame,
 // with the content c defines and the emotes of the chat muted if
 // emoteChatMuted is set, then the ItemRegistry of the custom items. It
 // returns the error of StartGame, after which nothing is written.
-func StartGame(ctx context.Context, conn Conn, g client.Game, c *StartContent, emoteChatMuted bool) error {
+func startGame(ctx context.Context, conn Conn, g client.Game, c *startContent, emoteChatMuted bool) error {
 	if err := conn.StartGameContext(ctx, gameData(g, c, emoteChatMuted)); err != nil {
 		return err
 	}
@@ -25,7 +25,7 @@ func StartGame(ctx context.Context, conn Conn, g client.Game, c *StartContent, e
 
 // gameData returns the netconn.GameData that shows a client the game g,
 // with the content c defines.
-func gameData(g client.Game, c *StartContent, emoteChatMuted bool) netconn.GameData {
+func gameData(g client.Game, c *startContent, emoteChatMuted bool) netconn.GameData {
 	mode := GameTypeFromMode(g.Level.DefaultGameMode())
 	difficulty, _ := world.DifficultyID(g.Level.Difficulty())
 	permissions := v2193.PermissionLevelMember

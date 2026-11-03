@@ -24,7 +24,6 @@ server/conf.go github.com/dm-vev/adamant/net/bedrock/resource
 server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/resource
 server/internal/packbuilder/resource_pack.go github.com/dm-vev/adamant/net/bedrock/resource
-server/listener.go github.com/df-mc/dragonfly/server/session
 server/listener_nethernet.go github.com/df-mc/dragonfly/server/netconn
 server/listener_nethernet.go github.com/df-mc/dragonfly/server/session
 server/listener_nethernet.go github.com/dm-vev/adamant/net/acme
@@ -46,15 +45,6 @@ server/listener_nethernet_test.go github.com/dm-vev/adamant/net/java
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet/lan
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/proxy
-server/permissions_test.go github.com/df-mc/dragonfly/server/netconn
-server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto
-server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/server.go github.com/df-mc/dragonfly/server/session
-server/session_teardown_test.go github.com/df-mc/dragonfly/server/netconn
-server/session_teardown_test.go github.com/df-mc/dragonfly/server/session
-server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/login
-server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/proto
-server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/status.go github.com/df-mc/dragonfly/server/netconn
 server/xbox.go github.com/df-mc/dragonfly/server/netconn
 server/xbox.go github.com/dm-vev/adamant/net/bedrock/proto/v2193

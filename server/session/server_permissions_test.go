@@ -1,12 +1,14 @@
-package server
+package session_test
 
 import (
 	"context"
+	"log/slog"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
@@ -16,20 +18,35 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
-	srv := newSessionTestServer(t, player.NopProvider{})
-	var err error
-	srv.operators, err = loadOperators(filepath.Join(t.TempDir(), "ops.json"))
+func TestServerOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
+	// As the program makes it: the operators list is the ops.json beside
+	// the whitelist.
+	dir := t.TempDir()
+	uc := server.DefaultConfig()
+	uc.Server.AuthEnabled = false
+	uc.World.SaveData = false
+	uc.World.DisableNether, uc.World.DisableEnd = true, true
+	uc.Players.SaveData = false
+	uc.Players.MaximumChunkRadius = 1
+	uc.Resources.AutoBuildPack = false
+	uc.Resources.Folder = filepath.Join(dir, "resources")
+	uc.Whitelist.File = filepath.Join(dir, "white-list.txt")
+	uc.Network.IdentityFile = filepath.Join(dir, "server-key.pem")
+	conf, err := uc.Config(slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)
 	}
+	conf.Log = slog.New(slog.DiscardHandler)
+	conf.PlayerProvider = player.NopProvider{}
+	ts := startTeardownServer(t, conf, nil)
+	srv := ts.srv
 	if _, err := srv.Op("Alice"); err != nil {
 		t.Fatal(err)
 	}
 	commandName := "permission-test-" + uuid.NewString()
 	cmd.Register(cmd.New(commandName, "Permission regression", nil, permissionTestCommand{srv: srv}))
 
-	alice, conn, data := joinPermissionPlayer(t, srv, "Alice")
+	alice, conn, data := joinPermissionPlayer(t, ts, "Alice")
 	if data.PlayerPermissions != v2193.PermissionLevelOperator {
 		t.Errorf("StartGame permissions = %d, want operator", data.PlayerPermissions)
 	}
@@ -38,18 +55,18 @@ func TestOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
 
 	// A joining client must see the existing operator's permissions even
 	// before receiving the player's actor or loading its chunk.
-	_, observer, observerData := joinPermissionPlayer(t, srv, "Bob")
+	_, observer, observerData := joinPermissionPlayer(t, ts, "Bob")
 	if observerData.PlayerPermissions != v2193.PermissionLevelMember {
 		t.Errorf("member StartGame permissions = %d", observerData.PlayerPermissions)
 	}
-	observer.waitPermission(t, 0, alice.p.handle.UniqueID(), true)
+	observer.waitPermission(t, 0, alice.UniqueID(), true)
 	observer.waitPermission(t, 0, 1, false)
 
 	for _, operator := range []bool{false, true, false} {
 		before, observerBefore := conn.mark(), observer.mark()
 		// Run from the same world owner as the target, just like /deop self.
 		// Name matching must follow the case-insensitive operator list.
-		err := player.Do(alice.p.handle, func(_ *world.Tx, _ *player.Player) {
+		err := player.Do(alice, func(_ *world.Tx, _ *player.Player) {
 			var changed bool
 			var err error
 			if operator {
@@ -65,14 +82,14 @@ func TestOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
 			t.Fatal(err)
 		}
 		conn.waitPermission(t, before, 1, operator)
-		observer.waitPermission(t, observerBefore, alice.p.handle.UniqueID(), operator)
+		observer.waitPermission(t, observerBefore, alice.UniqueID(), operator)
 		conn.waitCommand(t, before, commandName, operator)
 	}
 
 	// A later ability resend (for example after a game mode change) must
 	// consult current permissions rather than restore the login status.
 	before := conn.mark()
-	if err := player.Do(alice.p.handle, func(_ *world.Tx, p *player.Player) {
+	if err := player.Do(alice, func(_ *world.Tx, p *player.Player) {
 		p.SetGameMode(world.GameModeCreative)
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)
@@ -83,7 +100,7 @@ func TestOperatorPermissionsAtLoginAndAfterChanges(t *testing.T) {
 	}
 }
 
-type permissionTestCommand struct{ srv *Server }
+type permissionTestCommand struct{ srv *server.Server }
 
 func (c permissionTestCommand) Allow(src cmd.Source) bool {
 	p, ok := src.(*player.Player)
@@ -91,37 +108,20 @@ func (c permissionTestCommand) Allow(src cmd.Source) bool {
 }
 func (permissionTestCommand) Run(cmd.Source, *cmd.Output, *world.Tx) {}
 
-func joinPermissionPlayer(t *testing.T, srv *Server, name string) (incoming, *permissionTestConn, netconn.GameData) {
+// joinPermissionPlayer joins a client that logs in as name to the server
+// and returns the handle of its player, once spawned, its connection and
+// the game it was started with.
+func joinPermissionPlayer(t *testing.T, ts *teardownServer, name string) (*world.EntityHandle, *permissionTestConn, netconn.GameData) {
 	t.Helper()
-	conn := &permissionTestConn{serverPanicConn: newServerPanicConn(), updates: make(chan struct{}, 1)}
+	conn := &permissionTestConn{teardownConn: newTeardownConn(), updates: make(chan struct{}, 1)}
 	conn.identity.DisplayName = name
-	done := make(chan struct{})
-	go func() {
-		srv.finaliseConn(context.Background(), conn, nil)
-		close(done)
-	}()
+	ts.l.conns <- conn
 	data := <-conn.started
-	inc := <-srv.incoming
-	<-done
-	id := uuid.MustParse(conn.identity.Identity)
-	srv.players.add(inc.p)
-	t.Cleanup(func() {
-		inc.s.CloseConnection()
-		if !srv.waitForPlayerRemoval(id, 5*time.Second) {
-			t.Error("permission test player did not disconnect")
-		}
-	})
-	if err := inc.w.Do(func(tx *world.Tx) {
-		p := tx.AddEntity(inc.p.handle).(*player.Player)
-		inc.s.Spawn(p, tx)
-	}).Wait(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	return inc, conn, data
+	return ts.awaitSpawn(t), conn, data
 }
 
 type permissionTestConn struct {
-	*serverPanicConn
+	*teardownConn
 	mu      sync.Mutex
 	packets []proto.Packet
 	updates chan struct{}

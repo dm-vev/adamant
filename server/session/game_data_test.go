@@ -20,7 +20,7 @@ import (
 // made it from a client.Game: its defaultGameData, as finaliseConn then
 // changed it for the player d in w. It is the oracle of
 // TestGameDataFromGame.
-func oldGameData(level *world.World, name string, content *StartContent, pos mgl64.Vec3, rot cube.Rotation, w *world.World, muted, operator bool) netconn.GameData {
+func oldGameData(level *world.World, name string, content *startContent, pos mgl64.Vec3, rot cube.Rotation, w *world.World, muted, operator bool) netconn.GameData {
 	mode := GameTypeFromMode(level.DefaultGameMode())
 	difficulty, _ := world.DifficultyID(level.Difficulty())
 	data := netconn.GameData{
@@ -76,14 +76,14 @@ func TestGameDataFromGame(t *testing.T) {
 		t.Cleanup(func() { _ = w.Close() })
 		return w
 	}
-	plain := NewStartContent(world.DefaultBlockRegistry, nil, nil)
-	custom := NewStartContent(world.DefaultBlockRegistry, nil, []world.DimensionRegistration{{ID: 3, Name: "adamant:test", Dimension: world.Overworld}})
+	plain := newStartContent(world.DefaultBlockRegistry, nil, nil)
+	custom := newStartContent(world.DefaultBlockRegistry, nil, []world.DimensionRegistration{{ID: 3, Name: "adamant:test", Dimension: world.Overworld}})
 
 	survival := newWorld(world.Overworld, world.GameModeSurvival, true)
 	nether := newWorld(world.Nether, world.GameModeSurvival, true)
 	for name, tc := range map[string]struct {
 		level, w *world.World
-		content  *StartContent
+		content  *startContent
 		operator bool
 		muted    bool
 	}{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"net"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -15,13 +16,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"golang.org/x/text/language"
 	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 )
 
@@ -38,9 +37,6 @@ type Server struct {
 	dimensions       map[world.Dimension]*world.World
 	defaultDimension world.Dimension
 
-	// start is the content of the game as the client is defined it as its
-	// game starts, made once the server starts listening.
-	start       *session.StartContent
 	whitelist   *Whitelist
 	operators   *operatorsList
 	bans        *banList
@@ -62,7 +58,7 @@ type Server struct {
 // incoming holds data of a player that is connecting to the server.
 type incoming struct {
 	conf player.Config
-	s    *session.Session
+	c    client.Joining
 	p    *onlinePlayer
 	w    *world.World
 }
@@ -128,20 +124,22 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 
 			ret, err := world.Call(context.Background(), inc.w, func(tx *world.Tx) (bool, error) {
 				p := tx.AddEntity(inc.p.handle).(*player.Player)
-				inc.s.Spawn(p, tx)
+				inc.c.Spawn(p, tx)
 				return !yield(p), nil
 			})
 			if err != nil {
 				srv.players.remove(inc.p.handle.UUID())
 				srv.pwg.Done()
 				// Join failed before spawn: the entity was never added, so close
-				// the orphaned handle and fully tear the session down (Disconnect
-				// only writes a packet; CloseConnection frees the conn/goroutines;
+				// the orphaned handle and fully tear the client down (Disconnect
+				// only tells the client; CloseConnection frees the connection;
 				// Unbind removes the player from the player list of the others).
 				_ = inc.p.handle.Close()
-				inc.s.Disconnect(text.Literal("join failed"))
-				inc.s.CloseConnection()
-				inc.s.Unbind()
+				inc.c.Disconnect(text.Literal("join failed"))
+				inc.c.CloseConnection()
+				if u, ok := inc.c.(unbinder); ok {
+					u.Unbind()
+				}
 				continue
 			}
 			if ret {
@@ -150,6 +148,12 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 		}
 	}
 }
+
+// unbinder is a client.Joining that can undo its Bind for a player that
+// never spawned, as the Bedrock session can.
+//
+// Transitional: the Roster of the server replaces it.
+type unbinder interface{ Unbind() }
 
 // World returns the server's standard world. Players will be spawned in this
 // world and this world will be read from and written to when the world is
@@ -373,18 +377,18 @@ func (srv *Server) close() {
 	}
 }
 
-// listen makes the Server listen for new connections from the Listener passed.
-// This may be used to listen for players on different interfaces. Note that
-// the maximum player count of additional Listeners added is not enforced
-// automatically. The limit must be enforced by the Listener.
+// listen makes the Server listen for the joins of clients from the Listener
+// passed. This may be used to listen for players on different interfaces.
+// Note that the maximum player count of additional Listeners added is not
+// enforced automatically. The limit must be enforced by the Listener.
 func (srv *Server) listen(l Listener) {
 	wg := new(sync.WaitGroup)
 	ctx, cancel := context.WithCancel(context.Background())
 	for {
-		c, err := l.Accept()
+		j, err := l.Accept()
 		if err != nil {
-			// Cancel the context so that any call to StartGameContext is
-			// cancelled rapidly.
+			// Cancel the context so that any Join.Start is cancelled
+			// rapidly.
 			cancel()
 			// First wait until all connections that are being handled are done
 			// inserting the player into the channel. Afterwards, when we're
@@ -398,7 +402,7 @@ func (srv *Server) listen(l Listener) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			srv.finaliseConn(ctx, c, l)
+			srv.join(ctx, j)
 		}()
 	}
 }
@@ -406,8 +410,6 @@ func (srv *Server) listen(l Listener) {
 // startListening starts making the EncodeBlock listener listen, accepting new
 // connections from players.
 func (srv *Server) startListening() {
-	srv.start = session.NewStartContent(srv.conf.Blocks, world.CustomItems(), world.CustomDimensions())
-
 	srv.wg.Add(len(srv.listeners))
 	for _, l := range srv.listeners {
 		go srv.listen(l)
@@ -422,14 +424,16 @@ func (srv *Server) wait() {
 	close(srv.incoming)
 }
 
-// finaliseConn finalises the session.Conn passed and adds it to the incoming
-// channel.
-func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listener) {
-	id := uuid.MustParse(conn.IdentityData().Identity)
+// join answers the Join of a client: it holds the join to the reconnect
+// policy, loads the player, starts the game of the client and queues the
+// player for Accept.
+func (srv *Server) join(ctx context.Context, j client.Join) {
+	login := j.Login()
+	id := login.Identity.UUID
 	// A player still online leaves before the joining one is loaded: the
 	// server then loads what it saved of the player as it left.
 	if handle, ok := srv.Player(id); ok {
-		if !srv.handleReconnect(l, conn, id, handle) {
+		if !srv.handleReconnect(j, login, handle) {
 			return
 		}
 	}
@@ -461,35 +465,38 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 		}
 	}
 
-	g := srv.game(conn.IdentityData().DisplayName, d, w)
-	if err := session.StartGame(ctx, conn, g, srv.start, srv.conf.MuteEmoteChat); err != nil {
-		_ = l.Disconnect(conn, "Connection timeout.")
+	c, err := j.Start(ctx, srv.game(login, d, w))
+	if err != nil {
+		j.Reject(text.Literal("Connection timeout."))
 
-		srv.conf.Log.Debug("spawn failed: "+err.Error(), "raddr", conn.RemoteAddr())
+		srv.conf.Log.Debug("spawn failed: "+err.Error(), "raddr", login.Addr)
 		return
 	}
-	srv.incoming <- srv.createPlayer(conn, d, w)
+	srv.incoming <- srv.createPlayer(login, c, d, w)
 }
 
-// game returns the Game a client that logged in as the player of the name
-// passed starts in, as the player d in w.
-func (srv *Server) game(name string, d player.Config, w *world.World) client.Game {
+// game returns the Game a client of login starts in, as the player d in w.
+func (srv *Server) game(login client.Login, d player.Config, w *world.World) client.Game {
 	return client.Game{
 		Name:           srv.conf.Name,
 		Level:          srv.world,
 		World:          w,
 		Position:       d.Position,
 		Rotation:       d.Rotation,
-		Operator:       srv.IsOperator(name),
+		Operator:       srv.IsOperator(login.Identity.Name),
 		MaxChunkRadius: srv.conf.MaxChunkRadius,
 		JoinMessage:    srv.conf.JoinMessage,
 		QuitMessage:    srv.conf.QuitMessage,
 		IsOperator:     srv.IsOperator,
-		Left:           srv.handleSessionClose,
+		Left:           srv.left,
 	}
 }
 
-func (srv *Server) handleReconnect(l Listener, conn session.Conn, id uuid.UUID, handle *world.EntityHandle) bool {
+// handleReconnect holds the join of a client that logged in as a player
+// still online, handle, to the reconnect policy of the server. It reports
+// whether the client may join.
+func (srv *Server) handleReconnect(j client.Join, login client.Login, handle *world.EntityHandle) bool {
+	id := login.Identity.UUID
 	switch srv.conf.ReconnectPolicy {
 	case ReconnectKickExisting:
 		player.Do(handle, func(_ *world.Tx, p *player.Player) {
@@ -498,12 +505,12 @@ func (srv *Server) handleReconnect(l Listener, conn session.Conn, id uuid.UUID, 
 		if srv.waitForPlayerRemoval(id, 5*time.Second) {
 			return true
 		}
-		_ = l.Disconnect(conn, "Already logged in.")
-		srv.conf.Log.Debug("spawn failed: already logged in", "raddr", conn.RemoteAddr())
+		j.Reject(text.Literal("Already logged in."))
+		srv.conf.Log.Debug("spawn failed: already logged in", "raddr", login.Addr)
 		return false
 	default:
-		_ = l.Disconnect(conn, "Already logged in.")
-		srv.conf.Log.Debug("spawn failed: already logged in", "raddr", conn.RemoteAddr())
+		j.Reject(text.Literal("Already logged in."))
+		srv.conf.Log.Debug("spawn failed: already logged in", "raddr", login.Addr)
 		return false
 	}
 }
@@ -534,9 +541,10 @@ func (srv *Server) dimension(dimension world.Dimension) *world.World {
 	return srv.world
 }
 
-// handleSessionClose handles the closing of a session. It removes the player
-// of the session from the server.
-func (srv *Server) handleSessionClose(tx *world.Tx, c session.Controllable) {
+// left handles the player c leaving, as its client closes: the server saves
+// it and stops counting it online. It is the Left hook of the Game of every
+// client.
+func (srv *Server) left(tx *world.Tx, c client.Controllable) {
 	// Always decrement the wait group because createPlayer unconditionally increments it.
 	defer srv.pwg.Done()
 
@@ -559,34 +567,31 @@ func (srv *Server) handleSessionClose(tx *world.Tx, c session.Controllable) {
 	}
 }
 
-// createPlayer creates a new player instance using the connection passed,
-// as the player of its identity.
-func (srv *Server) createPlayer(conn session.Conn, conf player.Config, w *world.World) incoming {
+// createPlayer creates a new player instance, the player of the client c
+// that logged in as login says, and binds c to it.
+func (srv *Server) createPlayer(login client.Login, c client.Joining, conf player.Config, w *world.World) incoming {
 	srv.pwg.Add(1)
 
-	s := session.Config{
-		Log:            srv.conf.Log,
-		MaxChunkRadius: srv.conf.MaxChunkRadius,
-		EmoteChatMuted: srv.conf.MuteEmoteChat,
-		JoinMessage:    srv.conf.JoinMessage,
-		QuitMessage:    srv.conf.QuitMessage,
-		HandleStop:     srv.handleSessionClose,
-		BlockRegistry:  w.BlockRegistry(),
-		IsOperator:     srv.IsOperator,
-	}.New(conn)
-
-	id := session.IdentityOf(conn.IdentityData())
+	id := login.Identity
 	conf.Name = id.Name
 	conf.XUID = id.XUID
 	conf.UUID = id.UUID
-	conf.Locale, _ = language.Parse(strings.Replace(conn.ClientData().LanguageCode, "_", "-", 1))
-	conf.Skin = session.ClientSkin(conn.ClientData())
-	conf.Client = s
-	conf.Log = srv.conf.Log.With("name", conn.IdentityData().DisplayName, "uuid", conn.IdentityData().Identity, "raddr", conn.RemoteAddr().String())
+	conf.Locale = login.Locale
+	conf.Skin = login.Skin
+	conf.Client = c
+	conf.Log = srv.conf.Log.With("name", id.Name, "uuid", id.UUID.String(), "raddr", addrString(login.Addr))
 
 	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id.UUID}.New(player.Type, conf)
-	s.Bind(handle, conf.Skin)
-	return incoming{s: s, w: w, conf: conf, p: &onlinePlayer{id: id, handle: handle}}
+	c.Bind(handle, conf.Skin)
+	return incoming{c: c, w: w, conf: conf, p: &onlinePlayer{id: id, handle: handle}}
+}
+
+// addrString returns the address passed as a string, "" if it is nil.
+func addrString(addr net.Addr) string {
+	if addr == nil {
+		return ""
+	}
+	return addr.String()
 }
 
 // createWorld loads a world with a specific dimension using the provider set

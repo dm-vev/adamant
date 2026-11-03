@@ -89,7 +89,7 @@ func (customBlockItem) Category() category.Category             { return categor
 // wool stairs, stood invisible over their fences.
 func TestBlockEntriesDefineBlocksOfData(t *testing.T) {
 	blocks := map[string]map[string]any{}
-	for _, b := range NewStartContent(world.DefaultBlockRegistry, nil, nil).Blocks() {
+	for _, b := range newStartContent(world.DefaultBlockRegistry, nil, nil).Blocks() {
 		blocks[b.Name] = b.Properties
 	}
 	for _, colour := range item.Colours() {
@@ -123,7 +123,7 @@ func TestBlocksOfDataAreBlocksOfTheServer(t *testing.T) {
 // TestDimensionDefinitions checks that the client is defined the custom
 // dimensions of the game by name, range and ID, generated as void.
 func TestDimensionDefinitions(t *testing.T) {
-	defs := NewStartContent(world.DefaultBlockRegistry, nil, []world.DimensionRegistration{
+	defs := newStartContent(world.DefaultBlockRegistry, nil, []world.DimensionRegistration{
 		{ID: 3, Name: "adamant:test", Dimension: world.Overworld},
 	}).Dimensions()
 	r := world.Overworld.Range()

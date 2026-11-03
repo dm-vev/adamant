@@ -12,7 +12,8 @@ type Identity struct {
 	// Bedrock Edition. It does not change while the player plays, whatever
 	// name tag it is given.
 	Name string
-	// UUID identifies the player across its logins.
+	// UUID identifies the player across its logins. It is not uuid.Nil in
+	// an Identity a Listener yields.
 	UUID uuid.UUID
 	// XUID is the Xbox Live user ID of a player that logged in with Xbox
 	// Live, in decimal; empty otherwise.

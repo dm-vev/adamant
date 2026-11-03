@@ -370,8 +370,9 @@ type scenarioConfig struct {
 const warmupTicks = 4
 
 // newScenario joins a player to a world of its own as the server does: the
-// session is made as createPlayer makes it, the player as finaliseConn and
-// createPlayer fill its config, and it is spawned as Accept spawns it. The
+// session is made as a Join of the session's Listener makes it, the player
+// as Server.join and createPlayer fill its config, and it is spawned as
+// Accept spawns it. The
 // client then gets its chunks around the spawn, which are recorded only if
 // the config says so.
 func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
@@ -394,7 +395,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	}
 	var stopOnce sync.Once
 
-	// As Server.createPlayer.
+	// As the Start of a Join of the session's Listener.
 	sconf := session.Config{
 		Log:            goldenLog(),
 		MaxChunkRadius: goldenRadius,
@@ -407,7 +408,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	}
 	s.sess = sconf.New(conn)
 
-	// As Server.finaliseConn for a player the provider does not know, then
+	// As Server.join for a player the provider does not know, then
 	// Server.createPlayer.
 	var pconf player.Config
 	<-w.Exec(func(tx *world.Tx) { pconf.Position = tx.PlayerSpawnPosition(w.Spawn()) })

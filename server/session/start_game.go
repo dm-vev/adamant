@@ -13,22 +13,22 @@ import (
 	"github.com/dm-vev/adamant/net/nbt"
 )
 
-// StartContent is the content of the game the client is defined in
+// startContent is the content of the game the client is defined in
 // StartGame and the ItemRegistry after it: the blocks, the custom items and
 // the custom dimensions, made into their Bedrock entries once. A nil
-// StartContent holds no entries.
-type StartContent struct {
+// startContent holds no entries.
+type startContent struct {
 	blocks      []v2193.BlockEntry
 	customItems []v2193.ItemEntry
 	dimensions  []v2193.DimensionDefinition
 }
 
-// NewStartContent makes the entries of the content of the game: the vanilla
+// newStartContent makes the entries of the content of the game: the vanilla
 // blocks the game defines by data and the custom blocks of br, the custom
 // items and the block items of the custom blocks of br, and the custom
 // dimensions passed.
-func NewStartContent(br world.BlockRegistry, items []world.CustomItem, dims []world.DimensionRegistration) *StartContent {
-	return &StartContent{
+func newStartContent(br world.BlockRegistry, items []world.CustomItem, dims []world.DimensionRegistration) *startContent {
+	return &startContent{
 		blocks:      blockEntries(br),
 		customItems: customItemEntries(br, items),
 		dimensions:  dimensionDefinitions(dims),
@@ -36,7 +36,7 @@ func NewStartContent(br world.BlockRegistry, items []world.CustomItem, dims []wo
 }
 
 // Blocks returns the block entries of StartGame.
-func (c *StartContent) Blocks() []v2193.BlockEntry {
+func (c *startContent) Blocks() []v2193.BlockEntry {
 	if c == nil {
 		return nil
 	}
@@ -44,7 +44,7 @@ func (c *StartContent) Blocks() []v2193.BlockEntry {
 }
 
 // Dimensions returns the dimension definitions of StartGame.
-func (c *StartContent) Dimensions() []v2193.DimensionDefinition {
+func (c *startContent) Dimensions() []v2193.DimensionDefinition {
 	if c == nil {
 		return nil
 	}
@@ -53,7 +53,7 @@ func (c *StartContent) Dimensions() []v2193.DimensionDefinition {
 
 // Items returns the item entries of StartGame: the vanilla items, in no
 // order, then the custom items. It makes a new slice on every call.
-func (c *StartContent) Items() []v2193.ItemEntry {
+func (c *startContent) Items() []v2193.ItemEntry {
 	entries := make([]v2193.ItemEntry, 0, len(vanillaItems))
 	for name, e := range vanillaItems {
 		entries = append(entries, v2193.ItemEntry{
@@ -72,7 +72,7 @@ func (c *StartContent) Items() []v2193.ItemEntry {
 
 // ItemRegistry returns the entries of the ItemRegistry written after
 // StartGame, the custom items, in a new slice.
-func (c *StartContent) ItemRegistry() []v2193.ItemEntry {
+func (c *startContent) ItemRegistry() []v2193.ItemEntry {
 	if c == nil {
 		return []v2193.ItemEntry{}
 	}

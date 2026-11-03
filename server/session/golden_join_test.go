@@ -14,7 +14,8 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 )
 
-// goldenListener is a server.Listener that hands the server one connection.
+// goldenListener is a session.ConnListener that hands the server one
+// connection.
 type goldenListener struct {
 	conns     chan session.Conn
 	closeOnce sync.Once
@@ -53,8 +54,10 @@ type goldenServer struct {
 var joinServer = sync.OnceValue(func() goldenServer {
 	l := &goldenListener{conns: make(chan session.Conn, 1), closed: make(chan struct{})}
 	srv := server.Config{
-		Log:                     slog.New(slog.DiscardHandler),
-		Listeners:               []func(server.Config) (server.Listener, error){func(server.Config) (server.Listener, error) { return l, nil }},
+		Log: slog.New(slog.DiscardHandler),
+		Listeners: []func(server.Config) (server.Listener, error){func(c server.Config) (server.Listener, error) {
+			return session.Listen(l, session.ListenConfig{Log: c.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
+		}},
 		Name:                    "Golden Server",
 		DisableResourceBuilding: true,
 		DisableNether:           true,
