@@ -18,6 +18,9 @@ import (
 // the spawn point, death and respawn, coordinates and instant respawn, and
 // a transfer to another server.
 func TestGoldenPlayerState(t *testing.T) {
+	if isolated(t) {
+		return
+	}
 	s := newScenario(t, "player_state", scenarioConfig{})
 
 	s.step("health: hurt, healed, maximum and absorption", func(_ *world.Tx, p *player.Player) {

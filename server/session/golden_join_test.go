@@ -129,6 +129,9 @@ var joinServer = sync.OnceValue(func() goldenServer {
 // abilities, permissions, attributes, inventories, commands) and in the
 // first tick (chunks around the spawn).
 func TestGoldenJoin(t *testing.T) {
+	if isolated(t) {
+		return
+	}
 	s := newScenario(t, "join", scenarioConfig{keepJoin: true})
 	srv := joinServer()
 	var head strings.Builder

@@ -17,6 +17,9 @@ import (
 // changed in a loaded chunk, and the chunks of where the player is moved
 // to.
 func TestGoldenChunks(t *testing.T) {
+	if isolated(t) {
+		return
+	}
 	s := newScenario(t, "chunks", scenarioConfig{chunks: true})
 
 	s.tick("columns", 3)

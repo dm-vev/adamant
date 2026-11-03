@@ -62,6 +62,9 @@ func (goldenDialogue) Submit(dialogue.Submitter, dialogue.Button, *world.Tx) {}
 // HUD elements, in colour tags of text.Colourf and in raw § codes,
 // including the material colours of Bedrock (§s, §m, §n and the others).
 func TestGoldenText(t *testing.T) {
+	if isolated(t) {
+		return
+	}
 	s := newScenario(t, "text", scenarioConfig{})
 
 	s.step("message: plain, colour tags, raw codes", func(_ *world.Tx, p *player.Player) {

@@ -11,12 +11,15 @@ import (
 	"hash/crc32"
 	"io"
 	"log/slog"
+	"maps"
 	"math"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -36,6 +39,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 )
@@ -47,6 +51,28 @@ import (
 // changes that must not change what Bedrock clients receive: any changed
 // byte of any packet changes a snapshot. Run with -update-snapshots to
 // write the snapshots again, and read the diff before committing it.
+
+// isolated runs the golden test passed in a process of its own, the test
+// binary run again for it alone, and reports whether it did: the test then
+// returns, its process having done the work. Other tests of the package
+// register recipes and the like for the whole process, which the client is
+// sent, so a golden test run after them would see what they left.
+func isolated(t *testing.T) bool {
+	t.Helper()
+	if os.Getenv("GOLDEN_CHILD") == t.Name() {
+		return false
+	}
+	args := []string{"-test.run=^" + t.Name() + "$", "-test.count=1", "-test.timeout=5m"}
+	if *updateSnapshots {
+		args = append(args, "-update-snapshots")
+	}
+	cmd := exec.Command(os.Args[0], args...)
+	cmd.Env = append(os.Environ(), "GOLDEN_CHILD="+t.Name())
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("%s in a process of its own: %v\n%s", t.Name(), err, out)
+	}
+	return true
+}
 
 // goldenName, goldenUUID and goldenXUID are who the client of every scenario
 // logs in as.
@@ -164,6 +190,16 @@ func (c *goldenConn) StartGameContext(_ context.Context, data netconn.GameData) 
 	return nil
 }
 
+// goldenLog returns the logger of the sessions of the scenarios: none, or
+// at the debug level on standard error if GOLDEN_DEBUG is set, which shows
+// why the session refused what a client sent.
+func goldenLog() *slog.Logger {
+	if os.Getenv("GOLDEN_DEBUG") == "" {
+		return slog.New(slog.DiscardHandler)
+	}
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+}
+
 // goldenSettings returns the settings of a world of the scenarios: the time
 // and weather stand still, so that nothing a client is sent depends on how
 // long a test took.
@@ -183,6 +219,43 @@ func goldenSettings() *world.Settings {
 		RequiredSleepTicks: 100,
 	}
 }
+
+// goldenProvider is the provider of a world of the scenarios: it saves
+// nothing but maps, which it keeps in memory, numbered from 1.
+type goldenProvider struct {
+	world.NopProvider
+	mu   sync.Mutex
+	maps map[int64]world.MapData
+}
+
+func (p *goldenProvider) LoadMap(id int64) (world.MapData, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	data, ok := p.maps[id]
+	if !ok {
+		return world.MapData{}, fmt.Errorf("no map %d", id)
+	}
+	return data, nil
+}
+
+func (p *goldenProvider) StoreMap(data world.MapData) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.maps == nil {
+		p.maps = map[int64]world.MapData{}
+	}
+	p.maps[data.ID] = data
+	return nil
+}
+
+func (p *goldenProvider) AllocateMapID() (int64, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return int64(len(p.maps) + 1), nil
+}
+
+func (*goldenProvider) JavaMapID(nativeID int64) (int32, error) { return int32(nativeID), nil }
+func (*goldenProvider) NativeMapID(javaID int32) (int64, error) { return int64(javaID), nil }
 
 // goldenRules sets the game rules of a world of the scenarios: players
 // spawn right at the spawn, not at random around it.
@@ -217,6 +290,20 @@ type scenario struct {
 	// chunks are the positions of the chunks the client was sent, in
 	// order, which it then asks the sub-chunks of.
 	chunks []v2193.ChunkPos
+	// responses are the statuses of the item stack requests the client
+	// was answered, in order.
+	responses []uint8
+	// nextRequest is the ID of the next item stack request of the client:
+	// -1, -3 and on, as the client numbers them.
+	nextRequest int32
+	// window and windowType are of the container last opened.
+	window     uint32
+	windowType uint8
+	// crafting are the recipes the client was sent, which its requests
+	// name by their network IDs, and enchantOptions the options of the
+	// enchanting table it was last sent.
+	crafting       *v2193.CraftingDataPacket
+	enchantOptions []v2193.EnchantmentOption
 	// stopped is closed once the session stopped.
 	stopped chan struct{}
 }
@@ -259,18 +346,18 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		Synchronous:     true,
 		RandomTickSpeed: -1,
 		Generator:       goldenGenerator(),
-		Provider:        world.NopProvider{Set: goldenSettings()},
+		Provider:        &goldenProvider{NopProvider: world.NopProvider{Set: goldenSettings()}},
 		Seed:            goldenSeed,
 	}.New()
 	if err := goldenRules(w); err != nil {
 		t.Fatal(err)
 	}
-	s := &scenario{t: t, name: name, w: w, conn: newGoldenConn(), norm: newNormaliser(), stacks: map[stackSlot]int32{}, stopped: make(chan struct{})}
+	s := &scenario{t: t, name: name, w: w, conn: newGoldenConn(), norm: newNormaliser(), stacks: map[stackSlot]int32{}, nextRequest: -1, stopped: make(chan struct{})}
 	var stopOnce sync.Once
 
 	// As Server.createPlayer.
 	s.sess = session.Config{
-		Log:            slog.New(slog.DiscardHandler),
+		Log:            goldenLog(),
 		MaxChunkRadius: goldenRadius,
 		HandleStop:     func(*world.Tx, session.Controllable) { stopOnce.Do(func() { close(s.stopped) }) },
 		BlockRegistry:  w.BlockRegistry(),
@@ -306,6 +393,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		p := tx.AddEntity(s.h).(*player.Player)
 		s.sess.Spawn(p, tx)
 	})
+	s.sync()
 	s.awaitPacket("UpdateAbilities", conf.keepJoin)
 	s.awaitPacket("UpdateAbilities", conf.keepJoin)
 	s.drain(conf.keepJoin)
@@ -316,10 +404,10 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	}
 	// The first tick sends the chunks around the spawn.
 	s.begin("first tick", conf.keepJoin)
-	s.w.AdvanceTick()
+	s.advance()
 	s.drain(conf.keepJoin)
 	for range warmupTicks - 1 {
-		s.w.AdvanceTick()
+		s.advance()
 		s.drain(false)
 	}
 	return s
@@ -329,6 +417,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 // player quit, the session is out of the list of sessions, which the next
 // scenario then starts without.
 func (s *scenario) close() {
+	s.sync()
 	if _, err := world.Call(context.Background(), s.w, func(tx *world.Tx) (struct{}, error) {
 		if e, ok := s.h.Entity(tx); ok {
 			e.(*player.Player).Disconnect("golden end")
@@ -383,13 +472,37 @@ func (s *scenario) gameModeStep(heading string, resends int, f func(tx *world.Tx
 func (s *scenario) run(f func(tx *world.Tx, p *player.Player)) {
 	s.t.Helper()
 	var panicked any
+	var stack []byte
+	s.sync()
+	defer s.sync()
 	<-s.w.Exec(func(tx *world.Tx) {
-		defer func() { panicked = recover() }()
+		defer func() {
+			if panicked = recover(); panicked != nil {
+				stack = debug.Stack()
+			}
+		}()
 		f(tx, s.player(tx))
 	})
 	if panicked != nil {
-		s.t.Fatalf("%s: %v", s.name, panicked)
+		s.t.Fatalf("%s: %v\n%s", s.name, panicked, stack)
 	}
+}
+
+// advance advances the world of the scenario a tick.
+func (s *scenario) advance() {
+	s.sync()
+	s.w.AdvanceTick()
+	s.sync()
+}
+
+// sync orders what the test does in the world with the transactions of the
+// timers of the session, which run on goroutines of their own: both lock
+// the handle of the player, which World does too. The timer that sends the
+// abilities again starts its transaction 50ms after it was set, by when the
+// transaction that set it ended and synced, and the test waits for what the
+// timer sends, and a moment more, before it syncs again and goes on.
+func (s *scenario) sync() {
+	_ = s.h.World()
 }
 
 // tick advances the world of the scenario n ticks, recording what the
@@ -402,7 +515,7 @@ func (s *scenario) tick(heading string, n int) {
 			h = fmt.Sprintf("%s, tick %d", heading, i)
 		}
 		s.begin(h, true)
-		s.w.AdvanceTick()
+		s.advance()
 		s.drain(true)
 	}
 }
@@ -418,7 +531,7 @@ func (s *scenario) client(heading string, pks ...proto.Packet) {
 		s.out.WriteString(s.describe(decodeAs(s.t, pk.ID(), raw), raw, "<<"))
 		s.send(pk)
 	}
-	s.w.AdvanceTick()
+	s.advance()
 	s.drain(true)
 }
 
@@ -566,13 +679,60 @@ func (s *scenario) trackStacks(pk proto.Packet) {
 		s.stacks[stackSlot{pk.WindowID, int32(pk.Slot)}] = pk.NewItem.StackNetworkID
 	case *v2193.LevelChunkPacket:
 		s.chunks = append(s.chunks, pk.Position)
+	case *v2193.ItemStackResponsePacket:
+		for _, r := range pk.Responses {
+			s.responses = append(s.responses, r.Status)
+			for _, c := range r.ContainerInfo {
+				for _, slot := range c.SlotInfo {
+					s.stacks[stackSlot{s.windowOf(c.Container.ContainerID), int32(slot.Slot)}] = slot.StackNetworkID
+				}
+			}
+		}
+	case *v2193.ContainerOpenPacket:
+		s.window, s.windowType = uint32(pk.WindowID), pk.ContainerType
+	case *v2193.CraftingDataPacket:
+		s.crafting = pk
+	case *v2193.PlayerEnchantOptionsPacket:
+		s.enchantOptions = pk.Options
 	}
 }
 
-// stackID returns the stack network ID of a slot of a window as the client
-// was last sent it, the raw ID the server knows it by.
-func (s *scenario) stackID(window uint32, slot int) int32 {
-	return s.stacks[stackSlot{window, int32(slot)}]
+// windowOf returns the window of the client that holds a container of
+// item stack requests: the inventory, the off-hand, the armour, the
+// container opened, or else the UI.
+func (s *scenario) windowOf(container uint8) uint32 {
+	switch container {
+	case v2193.ContainerHotBar, v2193.ContainerInventory, v2193.ContainerCombinedHotBarAndInventory:
+		return v2193.WindowIDInventory
+	case v2193.ContainerOffhand:
+		return v2193.WindowIDOffHand
+	case v2193.ContainerArmor:
+		return v2193.WindowIDArmour
+	case v2193.ContainerLevelEntity, v2193.ContainerShulkerBox, v2193.ContainerBarrel:
+		return s.window
+	}
+	return v2193.WindowIDUI
+}
+
+// again returns a slot of a container that an earlier action of the item
+// stack request being made changed: the client names it by the ID of the
+// request, as the stack it holds has an ID the client was not yet sent.
+func (s *scenario) again(container uint8, slot int) v2193.StackRequestSlotInfo {
+	return v2193.StackRequestSlotInfo{
+		Container:      v2193.FullContainerName{ContainerID: container},
+		Slot:           uint8(slot),
+		StackNetworkID: s.nextRequest,
+	}
+}
+
+// slot returns a slot of a container of item stack requests with the stack
+// network ID the client was last sent for it.
+func (s *scenario) slot(container uint8, slot int) v2193.StackRequestSlotInfo {
+	return v2193.StackRequestSlotInfo{
+		Container:      v2193.FullContainerName{ContainerID: container},
+		Slot:           uint8(slot),
+		StackNetworkID: s.stacks[stackSlot{s.windowOf(container), int32(slot)}],
+	}
 }
 
 // snapshot compares the record of a scenario with its snapshot, or writes
@@ -680,7 +840,7 @@ func packetName(pk proto.Packet) string {
 //     UniqueID or RuntimeID or ends in EntityID, but not those of blocks or
 //     the RuntimeID of an item entry. Unique IDs of entities other than
 //     players are made of their random UUID. They become 1000 and up. 0
-//     (none) and 1 (the player) stay, as do the IDs of boss bars that the
+//     and -1 (none) and 1 (the player) stay, as do the IDs of boss bars that the
 //     session numbers from -2^62.
 //   - Stack network IDs of items, from another counter of the process:
 //     fields named StackNetworkID. Positive ones become 1 and up; 0 (no
@@ -696,6 +856,13 @@ func packetName(pk proto.Packet) string {
 //     becomes "name".
 //   - The Elements of SetHud, which the session collects in a map: they
 //     are sorted.
+//   - The SerialisedEventData of LevelEventGeneric and the
+//     SerialisedOffers of UpdateTrade, NBT the session encodes from maps,
+//     whose entries the encoder writes in no order: the entries of each
+//     compound are sorted by name.
+//   - The containers of an ItemStackResponse and the slots of each, which
+//     the session collects in maps: they are sorted by container ID and
+//     slot, before any stack network ID in them is named.
 //   - The visible effects of entity metadata (EntityDataKeyVisibleMobEffects),
 //     seven bits for each effect packed in the order of a map of the effects
 //     of the entity: the effects are sorted.
@@ -729,6 +896,30 @@ func (n *normaliser) packet(v reflect.Value) {
 	if hud, ok := v.Addr().Interface().(*v2193.SetHudPacket); ok && len(hud.Elements) > 1 {
 		slices.Sort(hud.Elements)
 		n.touched = true
+	}
+	if pk, ok := v.Addr().Interface().(*v2193.LevelEventGenericPacket); ok {
+		pk.SerialisedEventData = sortedCompound(pk.SerialisedEventData)
+		n.touched = true
+	}
+	if pk, ok := v.Addr().Interface().(*v2193.UpdateTradePacket); ok {
+		pk.SerialisedOffers = sortedNBT(pk.SerialisedOffers)
+		n.touched = true
+	}
+	if pk, ok := v.Addr().Interface().(*v2193.ItemStackResponsePacket); ok {
+		for _, r := range pk.Responses {
+			if len(r.ContainerInfo) > 1 {
+				n.touched = true
+			}
+			slices.SortFunc(r.ContainerInfo, func(a, b v2193.StackResponseContainerInfo) int {
+				return int(a.Container.ContainerID) - int(b.Container.ContainerID)
+			})
+			for _, c := range r.ContainerInfo {
+				if len(c.SlotInfo) > 1 {
+					n.touched = true
+				}
+				slices.SortFunc(c.SlotInfo, func(a, b v2193.StackResponseSlotInfo) int { return int(a.Slot) - int(b.Slot) })
+			}
+		}
 	}
 	if v.Type() == reflect.TypeFor[v2193.PlayerEnchantOptionsPacket]() {
 		opts := v.FieldByName("Options")
@@ -803,17 +994,68 @@ func (n *normaliser) value(v reflect.Value, name string) {
 		case name == "BossEntityUniqueID" && v.Int() < bossBarIDs:
 			// The session numbers boss bars of their own ID itself.
 		case entityIDField(name):
-			if id := v.Int(); id != 0 && id != 1 {
+			if id := v.Int(); id != 0 && id != 1 && id != -1 {
 				v.SetInt(int64(n.entity(uint64(id))))
 			}
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if v.CanSet() && entityIDField(name) {
-			if id := v.Uint(); id > 1 {
+			if id := v.Uint(); id > 1 && id != math.MaxUint64 {
 				v.SetUint(n.entity(id))
 			}
 		}
 	}
+}
+
+// sortedCompound returns the entries of an NBT compound of the network
+// encoding, without its header and end, sorted by name at every depth.
+func sortedCompound(entries []byte) []byte {
+	whole := sortedNBT(append(append([]byte{10, 0}, entries...), 0))
+	return whole[2 : len(whole)-1]
+}
+
+// sortedNBT returns an NBT compound of the network encoding with the
+// entries of every compound in it sorted by name. The encoder writes the
+// entries of a map in the order Go ranges over it, but those of a struct
+// in the order of its fields: each compound becomes a struct of a field for
+// each entry, in the order of their names.
+func sortedNBT(raw []byte) []byte {
+	var m map[string]any
+	if err := nbt.UnmarshalEncoding(raw, &m, nbt.NetworkLittleEndian); err != nil {
+		return raw
+	}
+	out, err := nbt.MarshalEncoding(orderedNBT(m).Interface(), nbt.NetworkLittleEndian)
+	if err != nil {
+		return raw
+	}
+	return out
+}
+
+// orderedNBT returns an NBT value with each compound in it as a struct of
+// its entries in the order of their names.
+func orderedNBT(v any) reflect.Value {
+	switch v := v.(type) {
+	case map[string]any:
+		keys := slices.Sorted(maps.Keys(v))
+		fields := make([]reflect.StructField, len(keys))
+		values := make([]reflect.Value, len(keys))
+		for i, k := range keys {
+			values[i] = orderedNBT(v[k])
+			fields[i] = reflect.StructField{Name: fmt.Sprintf("F%d", i), Type: values[i].Type(), Tag: reflect.StructTag(fmt.Sprintf("nbt:%q", k))}
+		}
+		out := reflect.New(reflect.StructOf(fields)).Elem()
+		for i := range values {
+			out.Field(i).Set(values[i])
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, e := range v {
+			out[i] = orderedNBT(e).Interface()
+		}
+		return reflect.ValueOf(out)
+	}
+	return reflect.ValueOf(v)
 }
 
 // sortedEffects returns the visible effects of entity metadata, seven bits
@@ -895,6 +1137,11 @@ func writeValue(b *strings.Builder, indent, label string, v reflect.Value) {
 		v = val
 	}
 	if line := inline(v); len(line) <= maxInline || !expandable(v) {
+		if len(line) > maxUnclipped {
+			// Long lists of numbers, as the pixels of a map.
+			writeClipped(b, indent, label, v)
+			return
+		}
 		fmt.Fprintf(b, "%s%s%s\n", indent, label, line)
 		return
 	}
@@ -935,6 +1182,10 @@ func writeValue(b *strings.Builder, indent, label string, v reflect.Value) {
 // the registries a client is sent as it joins, are written on one line
 // each, see writeClipped.
 const maxExpanded = 128
+
+// maxUnclipped is the width of the longest value with no parts to write on
+// lines of their own that is written as it is.
+const maxUnclipped = 2048
 
 // maxClipped is the width of the longest element of a long list written as
 // it is.
@@ -1065,6 +1316,16 @@ func writeInline(b *strings.Builder, v reflect.Value) {
 				// JSON, as of forms, as the text it is.
 				b.WriteString("json" + strconv.Quote(string(raw)))
 				return
+			}
+			if len(raw) > 3 && raw[0] == 10 {
+				// NBT, as of trade offers, decoded, if it is NBT the
+				// scenarios write as it is.
+				var m map[string]any
+				if err := nbt.UnmarshalEncoding(raw, &m, nbt.NetworkLittleEndian); err == nil && string(sortedNBT(raw)) == string(raw) {
+					b.WriteString("nbt")
+					writeInline(b, reflect.ValueOf(m))
+					return
+				}
 			}
 			if len(raw) <= 48 {
 				b.WriteString("0x" + hex.EncodeToString(raw))
