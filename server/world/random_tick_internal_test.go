@@ -19,6 +19,7 @@ func (s cubeStructure) At(int, int, int, func(int, int, int) Block) (Block, Liqu
 // in columns scanned on all cores are those each column finds on its own,
 // in the order of the columns, and that every one of them ticks randomly.
 func TestRandomTicksFoundInColumnOrder(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, RandomTickSpeed: -1, Provider: NopProvider{}, Generator: NopGenerator{}}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *Tx) {

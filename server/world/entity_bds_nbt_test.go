@@ -5,6 +5,7 @@ import "testing"
 // TestEntityNBTReadsBDSRotationAndName checks entities from a BDS world keep
 // their rotation and name, which BDS saves as Rotation and CustomName.
 func TestEntityNBTReadsBDSRotationAndName(t *testing.T) {
+	t.Parallel()
 	for _, rotation := range []any{[]float32{90, -10}, []any{float32(90), float32(-10)}} {
 		h := entityFromData(closeTrackingEntityType{}, 1, map[string]any{"Rotation": rotation, "CustomName": "Bob", "CustomNameVisible": uint8(0)})
 		if h.data.Rot.Yaw() != 90 || h.data.Rot.Pitch() != -10 {

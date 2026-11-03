@@ -7,6 +7,7 @@ import (
 )
 
 func TestNeighbourUpdateFIFOAcrossWrapAndGrowth(t *testing.T) {
+	t.Parallel()
 	var queue neighbourUpdateQueue
 	push := func(start, end int) {
 		for i := start; i < end; i++ {

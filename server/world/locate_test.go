@@ -26,6 +26,7 @@ func (g *biomeSearchGenerator) JavaBiomeAt(x, y, z int32) string {
 }
 
 func TestFindNearestBiomeSamplesGeneratorGrid(t *testing.T) {
+	t.Parallel()
 	generator := &biomeSearchGenerator{target: cube.Pos{32, 64, 0}}
 	w := Config{Generator: generator, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()

@@ -7,6 +7,7 @@ import (
 )
 
 func TestFallDamageSetting(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
@@ -26,6 +27,7 @@ func TestFallDamageSetting(t *testing.T) {
 }
 
 func TestSetFallDamageUpdatesSharedWorldViewersOnce(t *testing.T) {
+	t.Parallel()
 	settings := defaultSettings()
 	provider := NopProvider{Set: settings}
 	overworld := Config{Synchronous: true, Provider: provider}.New()
@@ -209,6 +211,7 @@ func TestSetFallDamageSlowViewerDoesNotBlockClose(t *testing.T) {
 }
 
 func TestSetFallDamageConcurrentWorldAndViewerClose(t *testing.T) {
+	t.Parallel()
 	settings := defaultSettings()
 	provider := NopProvider{Set: settings}
 	overworld := Config{Synchronous: true, Provider: provider}.New()

@@ -3,6 +3,7 @@ package world
 import "testing"
 
 func TestCreakingTimelineBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, dimension := range []Dimension{Overworld, Nether, End} {
 		w := Config{Synchronous: true, Dim: dimension}.New()
 		for _, test := range []struct{ tick int; active bool }{
@@ -17,6 +18,7 @@ func TestCreakingTimelineBoundaries(t *testing.T) {
 }
 
 func TestMonsterSpawningRequiresBothRules(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	for _, mobs := range []bool{false, true} {

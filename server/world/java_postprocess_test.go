@@ -40,6 +40,7 @@ func (g postprocessTestGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chu
 }
 
 func TestGenerationPostprocessingSourceShapeTransitions(t *testing.T) {
+	t.Parallel()
 	state := func(name string, properties map[string]any) world.BlockState {
 		return world.BlockState{Name: "minecraft:" + name, Properties: properties}
 	}
@@ -269,6 +270,7 @@ func TestGenerationPostprocessingSourceShapeTransitions(t *testing.T) {
 }
 
 func TestGenerationPostprocessingCopperChestActor(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"single", "left"} {
 		t.Run(kind, func(t *testing.T) {
 			p := postprocessTestPos
@@ -382,6 +384,7 @@ func TestGenerationPostprocessingCopperChestActor(t *testing.T) {
 }
 
 func TestGenerationPostprocessingActorProjection(t *testing.T) {
+	t.Parallel()
 	p := postprocessTestPos
 	shulker := block.NewShulkerBox()
 	shulker.CustomName = "source cargo"

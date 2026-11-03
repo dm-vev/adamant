@@ -13,6 +13,7 @@ import (
 // whenever that changed by over 0.2 blocks a tick since it was last shown,
 // and a teleport when it goes too far.
 func TestMoveTrackerAsBDS(t *testing.T) {
+	t.Parallel()
 	var tr MoveTracker
 	rot := cube.Rotation{90, 0}
 	pos := mgl64.Vec3{0.5, 64, 0.5}
@@ -100,6 +101,7 @@ func TestMoveTrackerAsBDS(t *testing.T) {
 // tick it moves, at once, its velocity once it changed by more than 0.2
 // blocks a tick from the zero BDS starts from, and again when it lands.
 func TestMoveTrackerEveryTick(t *testing.T) {
+	t.Parallel()
 	var tr MoveTracker
 	pos := mgl64.Vec3{0.5, 70, 0.5}
 	_, _ = tr.Move(pos, cube.Rotation{}, 0, mgl64.Vec3{}, false, false, 0)
@@ -132,6 +134,7 @@ func TestMoveTrackerEveryTick(t *testing.T) {
 // TestMoveTrackerAngles shows a turn only once it changes the angle the
 // protocol sends, in 256ths of a turn.
 func TestMoveTrackerAngles(t *testing.T) {
+	t.Parallel()
 	var tr MoveTracker
 	pos := mgl64.Vec3{}
 	_, _ = tr.Move(pos, cube.Rotation{0, 0}, 0, mgl64.Vec3{}, true, false, MoveInterval)
@@ -155,6 +158,7 @@ func TestMoveTrackerAngles(t *testing.T) {
 // teleport put the entity, for parts to be left out only where the client
 // has them.
 func TestMoveTrackerShown(t *testing.T) {
+	t.Parallel()
 	var tr MoveTracker
 	_, _ = tr.Move(mgl64.Vec3{10, 64, 10}, cube.Rotation{}, 0, mgl64.Vec3{}, true, false, 0)
 	tr.Shown(mgl64.Vec3{12, 64, 10}, cube.Rotation{}, 0, true)
@@ -168,6 +172,7 @@ func TestMoveTrackerShown(t *testing.T) {
 // moved since its viewers were shown it, at once, as the tracker does not
 // know where they have it.
 func TestMoveTrackerFirstMove(t *testing.T) {
+	t.Parallel()
 	var tr MoveTracker
 	move, teleport := tr.Move(mgl64.Vec3{1, 70, 1}, cube.Rotation{}, 0, mgl64.Vec3{0, -0.1, 0}, false, true, MoveInterval)
 	if teleport || move == nil || move.Changed != MoveAll || move.Ticks != 0 {
@@ -179,6 +184,7 @@ func TestMoveTrackerFirstMove(t *testing.T) {
 // which has it where it was then: the next move carries all its parts, and
 // the moves after it the parts that changed again.
 func TestMoveTrackerShowsAllAfterNewViewer(t *testing.T) {
+	t.Parallel()
 	var tr MoveTracker
 	pos := mgl64.Vec3{0.5, 64, 0.5}
 	_, _ = tr.Move(pos, cube.Rotation{}, 0, mgl64.Vec3{}, true, false, 0)

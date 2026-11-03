@@ -13,6 +13,7 @@ import (
 // block update. Chunk and sub-chunk responses must not keep serving the
 // block entity data cached before the change.
 func TestSetBlockEntityDropsCachedPayloads(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	l := world.NewLoader(0, w, world.NopViewer{})
 	t.Cleanup(func() {

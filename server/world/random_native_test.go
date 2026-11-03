@@ -8,6 +8,7 @@ import (
 )
 
 func TestLevelRandomWordsMatchExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_level_random_seeded.json")
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +59,7 @@ func TestLevelRandomWordsMatchExecutedClient(t *testing.T) {
 }
 
 func TestLevelRandomHeapStatesMatchExecutedClient(t *testing.T) {
+	t.Parallel()
 	for _, file := range []string{"bedrock_1_26_51_level_random.json", "bedrock_1_26_51_level_random_high_seed.json"} {
 		data, err := os.ReadFile("../block/testdata/" + file)
 		if err != nil {
@@ -106,6 +108,7 @@ func TestLevelRandomHeapStatesMatchExecutedClient(t *testing.T) {
 }
 
 func TestLevelRandomRawDrawsShareTheWorldStream(t *testing.T) {
+	t.Parallel()
 	settings := (NopProvider{}).Settings()
 	settings.Seed = 4294967298
 	settings.SeedSet = true

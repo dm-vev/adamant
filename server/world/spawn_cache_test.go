@@ -10,6 +10,7 @@ import (
 // TestHighestBlockFollowsBlockChanges checks the highest block a column
 // remembers follows blocks placed above it and removed again.
 func TestHighestBlockFollowsBlockChanges(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *Tx) {
@@ -52,6 +53,7 @@ func (s pillarStructure) At(int, int, int, func(int, int, int) Block) (Block, Li
 // random in a few columns and builds a structure over them, checking the
 // highest blocks found against scanning the columns.
 func TestHighestBlockMatchesScanningAsBlocksChange(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *Tx) {
@@ -92,6 +94,7 @@ func TestHighestBlockMatchesScanningAsBlocksChange(t *testing.T) {
 // entity ticking stops being so once a chunk within two of it closes, and
 // one remembered as ticking its blocks once a chunk within one closes.
 func TestEntityTickingStopsWhenANeighbourCloses(t *testing.T) {
+	t.Parallel()
 	w := Config{RandomTickSpeed: -1, Provider: NopProvider{}}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *Tx) {

@@ -24,6 +24,7 @@ func structureTestWorld(t *testing.T) *world.World {
 // Dedicated Server places its blocks and block entities, and that air in it
 // replaces the blocks in the world.
 func TestBedrockStructureTemplatesLoad(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile("testdata/bds_structure_template.nbt")
 	if err != nil {
 		t.Fatal(err)
@@ -62,6 +63,7 @@ func TestBedrockStructureTemplatesLoad(t *testing.T) {
 // TestRotatedStructuresKeepTheirShape checks that rotating a structure turns
 // stairs with it and keeps double chests paired, with a copy of their items.
 func TestRotatedStructuresKeepTheirShape(t *testing.T) {
+	t.Parallel()
 	w := structureTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		src := cube.Pos{0, 70, 0}
@@ -102,6 +104,7 @@ func TestRotatedStructuresKeepTheirShape(t *testing.T) {
 // the blocks they are placed over, and that an integrity of zero places no
 // block.
 func TestStructureVoidsAndIntegrityLeaveBlocks(t *testing.T) {
+	t.Parallel()
 	w := structureTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		src := cube.Pos{0, 70, 0}
@@ -126,6 +129,7 @@ func TestStructureVoidsAndIntegrityLeaveBlocks(t *testing.T) {
 // TestStructureEntitiesAreCopied checks that saving a structure with entities
 // copies them, and placing it spawns new ones at the rotated positions.
 func TestStructureEntitiesAreCopied(t *testing.T) {
+	t.Parallel()
 	w := structureTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		src := cube.Pos{0, 70, 0}

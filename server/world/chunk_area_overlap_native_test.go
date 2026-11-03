@@ -26,11 +26,13 @@ type nativeAreaReplayRegion struct {
 }
 
 func TestPlayerAreaDispatcherMatchesOwnedBDSOverlap(t *testing.T) {
+	t.Parallel()
 	replayNativeChunkAreaDispatcher(t, "bedrock_1_26_51_overlapping_chunk_areas.json", 45, 15,
 		[]nativeAreaReplayRegion{{centre: ChunkPos{0, 0}, radius: 1}, {centre: ChunkPos{2, 0}, radius: 1}})
 }
 
 func TestPlayerAreaDispatcherMatchesOwnedBDSCircle(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		file          string
 		radius, count int

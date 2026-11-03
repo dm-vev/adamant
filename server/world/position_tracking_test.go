@@ -10,6 +10,7 @@ import (
 )
 
 func TestPositionTrackingDimensionAndWorldIdentity(t *testing.T) {
+	t.Parallel()
 	sharedProvider := &lifecycleProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, freshSettings: true}
 	overworld := Config{Provider: sharedProvider, Dim: Overworld, Synchronous: true}.New()
 	nether := Config{Provider: sharedProvider, Dim: Nether, Synchronous: true}.New()
@@ -39,6 +40,7 @@ func TestPositionTrackingDimensionAndWorldIdentity(t *testing.T) {
 }
 
 func TestPositionTrackingBreakAndReplacement(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	pos := cube.Pos{8, 64, 8}
@@ -56,6 +58,7 @@ func TestPositionTrackingBreakAndReplacement(t *testing.T) {
 }
 
 func TestPositionTrackingCleanupIsBounded(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	for x := range maxInactivePositionTrackingEntries + 32 {
@@ -228,6 +231,7 @@ func TestPositionTrackingSaveSerialisesSnapshotAndWrite(t *testing.T) {
 }
 
 func TestPositionTrackingFailedLoadPreservesProviderData(t *testing.T) {
+	t.Parallel()
 	want := PositionTrackingData{Next: 7, Entries: []PositionTrackingEntry{{Handle: 7, Position: cube.Pos{7, 70, 7}, Active: true}}}
 	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, data: want, loadErr: errors.New("temporary read failure"), failLoads: -1}
 	w := Config{Provider: provider, Synchronous: true}.New()
@@ -246,6 +250,7 @@ func TestPositionTrackingFailedLoadPreservesProviderData(t *testing.T) {
 }
 
 func TestPositionTrackingTransientLoadRecoversBeforeSave(t *testing.T) {
+	t.Parallel()
 	want := PositionTrackingData{Next: 4, Entries: []PositionTrackingEntry{{Handle: 4, Position: cube.Pos{4, 70, 4}, Active: true}}}
 	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, data: want, loadErr: errors.New("temporary read failure"), failLoads: 1}
 	w := Config{Provider: provider, Synchronous: true}.New()
@@ -265,6 +270,7 @@ func TestPositionTrackingTransientLoadRecoversBeforeSave(t *testing.T) {
 }
 
 func TestPositionTrackingFailedLoadBlocksAllocationUntilRecovery(t *testing.T) {
+	t.Parallel()
 	stored := cube.Pos{3, 70, 3}
 	provider := &trackingTestProvider{
 		NopProvider: NopProvider{WorldData: &WorldDataMemory{}},
@@ -289,6 +295,7 @@ func TestPositionTrackingFailedLoadBlocksAllocationUntilRecovery(t *testing.T) {
 }
 
 func TestPositionTrackingFailedLoadPreservesLoadedHandleUntilRecovery(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{7, 70, 7}
 	provider := &trackingTestProvider{
 		NopProvider: NopProvider{WorldData: &WorldDataMemory{}},
@@ -312,6 +319,7 @@ func TestPositionTrackingFailedLoadPreservesLoadedHandleUntilRecovery(t *testing
 }
 
 func TestPositionTrackingFinalCloseSavesLatestOnce(t *testing.T) {
+	t.Parallel()
 	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}}
 	first := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
 	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
@@ -334,6 +342,7 @@ func TestPositionTrackingFinalCloseSavesLatestOnce(t *testing.T) {
 }
 
 func TestPositionTrackingWritableChangesSaveWhenReadOnlyWorldClosesLast(t *testing.T) {
+	t.Parallel()
 	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}}
 	writable := Config{Provider: provider, Synchronous: true}.New()
 	readOnly := Config{Provider: provider, Dim: Nether, ReadOnly: true, Synchronous: true}.New()
@@ -356,6 +365,7 @@ func TestPositionTrackingWritableChangesSaveWhenReadOnlyWorldClosesLast(t *testi
 }
 
 func TestPositionTrackingProviderIdentityTopology(t *testing.T) {
+	t.Parallel()
 	first := Config{Provider: NopProvider{}, Synchronous: true}.New()
 	second := Config{Provider: NopProvider{}, Dim: Nether, Synchronous: true}.New()
 	if got := first.TrackPosition(cube.Pos{1, 64, 1}, 0); got != 1 {

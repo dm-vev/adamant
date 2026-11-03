@@ -11,6 +11,7 @@ import (
 )
 
 func TestChunkRectangleVisitsMatchExecutedNative(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_chunk_visits.json")
 	if err != nil {
 		t.Fatal(err)
@@ -77,6 +78,7 @@ func TestChunkRectangleVisitsMatchExecutedNative(t *testing.T) {
 }
 
 func TestChunkRectangleOrderMatchesOwnedBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_piston_chunk_actor_visits.json")
 	if err != nil {
 		t.Fatal(err)
@@ -138,6 +140,7 @@ func TestChunkRectangleOrderMatchesOwnedBDS(t *testing.T) {
 }
 
 func TestNativeCircularBlockAreaIncludesScheduledCornerTicks(t *testing.T) {
+	t.Parallel()
 	// The original-BDS circle4 capture visits (4,4) in the full chunk pass,
 	// including its pending block/fluid queues. A radius-squared-16 circle
 	// incorrectly excluded that corner while the area's bounding box includes it.
@@ -180,6 +183,7 @@ func (r *areaVisitRandom) Uint64() uint64 {
 }
 
 func TestAreaActorsRunBeforeTheNextAreaSelectsItsOrder(t *testing.T) {
+	t.Parallel()
 	for _, overlap := range []bool{false, true} {
 		t.Run(fmt.Sprint("overlap_", overlap), func(t *testing.T) {
 			random := &areaVisitRandom{words: []uint64{0xabcdef0100000008, 8, 8}}

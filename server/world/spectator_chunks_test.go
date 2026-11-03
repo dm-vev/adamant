@@ -14,6 +14,7 @@ func (spectatorViewer) Spectating(*Tx) bool { return true }
 // chunks while spectators_generate_chunks is on, and with it off only sees the
 // chunks something else loaded.
 func TestSpectatorsGenerateChunks(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, Provider: NopProvider{}, Generator: NopGenerator{}}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	if err := w.SetGameRule("spectators_generate_chunks", false); err != nil {

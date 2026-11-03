@@ -39,6 +39,7 @@ func (minimalRedstoneTestHandler) HandleExplosion(*Context, ExplosionSource, *[]
 func (minimalRedstoneTestHandler) HandleClose(*Tx) {}
 
 func TestClampRedstonePower(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		power int
@@ -60,6 +61,7 @@ func TestClampRedstonePower(t *testing.T) {
 }
 
 func TestRedstoneStepFace(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		from cube.Pos
@@ -79,6 +81,7 @@ func TestRedstoneStepFace(t *testing.T) {
 }
 
 func TestCompareBlockPosSortOrder(t *testing.T) {
+	t.Parallel()
 	positions := []cube.Pos{
 		{3, 2, 1},
 		{2, 1, 2},
@@ -106,6 +109,7 @@ func TestCompareBlockPosSortOrder(t *testing.T) {
 }
 
 func TestRedstoneRelayerNeighbourPositionsAreDeterministic(t *testing.T) {
+	t.Parallel()
 	engine := newRedstoneEngine(0)
 	pos := cube.Pos{0, 64, 0}
 	got := engine.redstoneRelayerNeighbourPositions(nil, pos, redstoneNeighbourOrderTestBlock{neighbours: []cube.Pos{
@@ -130,6 +134,7 @@ func TestRedstoneRelayerNeighbourPositionsAreDeterministic(t *testing.T) {
 }
 
 func TestRedstoneStrongPowerConductorExcludesMarkedNonConductors(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{0, 64, 0}
 	tests := []struct {
 		name  string
@@ -149,6 +154,7 @@ func TestRedstoneStrongPowerConductorExcludesMarkedNonConductors(t *testing.T) {
 }
 
 func TestRedstoneEngineInvalidateAround(t *testing.T) {
+	t.Parallel()
 	var nilEngine *redstoneEngine
 	nilEngine.invalidateAround(cube.Pos{0, 0, 0}, cube.Pos{0, 0, 0}, RedstoneUpdateCauseBlockUpdate, cube.Range{0, 0})
 
@@ -185,6 +191,7 @@ func TestRedstoneEngineInvalidateAround(t *testing.T) {
 }
 
 func TestBlockLoadedRejectsChunkStillGenerating(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -200,6 +207,7 @@ func TestBlockLoadedRejectsChunkStillGenerating(t *testing.T) {
 }
 
 func TestRedstoneEngineRemoveChunkKeepsUnchangedDirtyOutsideChunk(t *testing.T) {
+	t.Parallel()
 	engine := newRedstoneEngine(42)
 	unloadedChunk := chunkPosFromBlockPos(cube.Pos{0, 64, 0})
 	dirtyPos := cube.Pos{32, 64, 0}
@@ -220,6 +228,7 @@ func TestRedstoneEngineRemoveChunkKeepsUnchangedDirtyOutsideChunk(t *testing.T) 
 }
 
 func TestRedstoneEngineRemoveChunkClearsTransientStateInChunk(t *testing.T) {
+	t.Parallel()
 	engine := newRedstoneEngine(42)
 	unloadedPos := cube.Pos{0, 64, 0}
 	keptPos := cube.Pos{32, 64, 0}
@@ -398,6 +407,7 @@ func TestRedstoneUpdateIncludesContextMetadata(t *testing.T) {
 }
 
 func TestRedstoneRecursiveSourceEvaluationReturnsZero(t *testing.T) {
+	t.Parallel()
 	sourcePos, targetPos := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}
 	w := Config{Synchronous: true, Blocks: redstoneRecursiveSourceTestRegistry()}.New()
 	defer w.Close()
@@ -473,6 +483,7 @@ func TestRedstoneActionReplacingSelfDoesNotRestorePowerCache(t *testing.T) {
 }
 
 func TestRedstoneRelayerToSinkDoesNotLosePower(t *testing.T) {
+	t.Parallel()
 	sourcePos, relayerPos, sinkPos := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}, cube.Pos{2, 64, 0}
 	w := Config{Synchronous: true, Blocks: redstoneSignalLossTestRegistry()}.New()
 	defer w.Close()
@@ -498,6 +509,7 @@ func TestRedstoneRelayerToSinkDoesNotLosePower(t *testing.T) {
 }
 
 func TestRedstoneVerticalRelayerPropagation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		from  cube.Pos
@@ -534,6 +546,7 @@ func TestRedstoneVerticalRelayerPropagation(t *testing.T) {
 }
 
 func TestPlacedRedstoneTorchTurnsOffWhenAttachmentBecomesPowered(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, Blocks: redstoneTorchAttachmentTestRegistry()}.New()
 	defer w.Close()
 
@@ -577,6 +590,7 @@ func TestRedstoneConsumerUpdatesBehindPoweredConductor(t *testing.T) {
 }
 
 func TestWeaklyPoweredConductorActivatesConsumerButNotDust(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, Blocks: redstoneWeakConductorTestRegistry()}.New()
 	defer w.Close()
 
@@ -1009,6 +1023,7 @@ func TestScheduledTickQueueCanRescheduleFromScheduledCallback(t *testing.T) {
 }
 
 func TestScheduledTickCancelledWhenNativePropertyChangesJavaBlockType(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	head := scheduledTickTypeVariant{head: true}
 	stem := scheduledTickTypeVariant{}

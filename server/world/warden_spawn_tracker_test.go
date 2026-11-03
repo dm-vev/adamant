@@ -3,6 +3,7 @@ package world
 import "testing"
 
 func TestWardenSpawnTrackerTickDecayAndCodec(t *testing.T) {
+	t.Parallel()
 	tracker := &WardenSpawnTracker{TicksSinceLastWarning: 11999, WarningLevel: 3, CooldownTicks: 1}
 	tracker.Tick()
 	if tracker.TicksSinceLastWarning != 12000 || tracker.WarningLevel != 3 || tracker.CooldownTicks != 0 {

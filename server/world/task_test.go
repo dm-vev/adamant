@@ -14,6 +14,7 @@ import (
 )
 
 func TestCallRethrowsPanic(t *testing.T) {
+	t.Parallel()
 	w := Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
@@ -29,6 +30,7 @@ func TestCallRethrowsPanic(t *testing.T) {
 }
 
 func TestCallRefRethrowsPanic(t *testing.T) {
+	t.Parallel()
 	w := Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	h := NewEntity(taskTestEntityType{}, taskTestEntityConfig{})
@@ -88,6 +90,7 @@ func TestCallRethrowsPanicWhenCancellationLoses(t *testing.T) {
 }
 
 func TestDoCapturesPanic(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
@@ -103,6 +106,7 @@ func TestDoCapturesPanic(t *testing.T) {
 }
 
 func TestTaskWaitReturnsPanicError(t *testing.T) {
+	t.Parallel()
 	w := Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
@@ -121,6 +125,7 @@ func TestTaskWaitReturnsPanicError(t *testing.T) {
 }
 
 func TestEntityDoCancelAfterInvalidatedWeakTransactionDoesNotPoisonHandle(t *testing.T) {
+	t.Parallel()
 	w := New()
 	defer w.Close()
 
@@ -284,6 +289,7 @@ func TestDoQueuedBeforeCloseDoesNotRunAfterHandleClose(t *testing.T) {
 }
 
 func TestEntityDoScheduledDuringWorldCloseRunsBeforeQueueShutdown(t *testing.T) {
+	t.Parallel()
 	var task *Task
 	w := New()
 	h := NewEntity(closeSchedulingEntityType{}, closeSchedulingEntityConfig{onClose: func(h *EntityHandle) {
@@ -303,6 +309,7 @@ func TestEntityDoScheduledDuringWorldCloseRunsBeforeQueueShutdown(t *testing.T) 
 }
 
 func TestEntityDoBlockedBeforeWorldCloseFailsPromptly(t *testing.T) {
+	t.Parallel()
 	w := New()
 	h := NewEntity(closeSchedulingEntityType{}, closeSchedulingEntityConfig{})
 	<-w.exec(func(tx *Tx) { tx.AddEntity(h) })

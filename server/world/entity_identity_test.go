@@ -7,6 +7,7 @@ import (
 )
 
 func TestJavaUUIDSurvivesNativeEntityReload(t *testing.T) {
+	t.Parallel()
  id:=uuid.MustParse("67491480-7a42-4168-980a-c6906b09f268")
  original:=EntitySpawnOpts{ID:id}.New(testEntityType{},testEntityConfig{})
  encoded:=original.encodeNBT()
@@ -17,6 +18,7 @@ func TestJavaUUIDSurvivesNativeEntityReload(t *testing.T) {
 }
 
 func TestEntityIdentityIndexesFollowWorldMembership(t *testing.T) {
+	t.Parallel()
  first:=Config{Synchronous:true}.New()
  second:=Config{Synchronous:true}.New()
  defer first.Close()

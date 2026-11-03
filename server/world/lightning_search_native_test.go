@@ -74,10 +74,14 @@ func TestLightningSearchMatchesExecutedClient(t *testing.T) {
 			}
 		}
 	})
+	// The biomes are registered for the whole process, so only once they
+	// are does the test run alongside others.
+	t.Parallel()
 	materials := []string{"lightning_rod", "exposed_lightning_rod", "weathered_lightning_rod", "oxidized_lightning_rod",
 		"waxed_lightning_rod", "waxed_exposed_lightning_rod", "waxed_weathered_lightning_rod", "waxed_oxidized_lightning_rod", "stone"}
 	for i, trace := range reference.Cases {
 		t.Run(fmt.Sprintf("%03d/%s", i, trace.Name), func(t *testing.T) {
+			t.Parallel()
 			w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 			defer w.Close()
 			w.StopWeatherCycle()

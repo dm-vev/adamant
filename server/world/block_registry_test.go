@@ -3,6 +3,7 @@ package world
 import "testing"
 
 func TestStateToRuntimeIDFillsMissingProperties(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	defaults := map[string]any{
 		"facing":   "east",
@@ -38,6 +39,7 @@ func TestStateToRuntimeIDFillsMissingProperties(t *testing.T) {
 }
 
 func TestStateToRuntimeIDRejectsInvalidSuppliedProperties(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.RegisterBlockState(BlockState{Name: "test:partial_state", Properties: map[string]any{
 		"facing": "east", "corner": "none",

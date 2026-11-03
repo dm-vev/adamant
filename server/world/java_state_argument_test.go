@@ -8,6 +8,7 @@ import (
 )
 
 func TestParseJavaBlockStateMatchesJava263(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_block_arguments.json")
 	if err != nil {
 		t.Fatal(err)

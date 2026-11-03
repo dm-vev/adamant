@@ -9,6 +9,7 @@ import (
 )
 
 func TestPositionTrackingReplacementPaths(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name    string
 		replace func(*world.Tx, cube.Pos, world.Block)
@@ -36,6 +37,7 @@ func TestPositionTrackingReplacementPaths(t *testing.T) {
 }
 
 func TestPositionTrackingSamePositionReplacementUsesNewHandle(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	pos, temporaryPos := cube.Pos{4, 64, 4}, cube.Pos{5, 64, 4}

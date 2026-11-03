@@ -10,6 +10,7 @@ import (
 )
 
 func TestVibrationSelectionSurvivesReload(t *testing.T) {
+	t.Parallel()
 	var data VibrationData
 	data.Selector.AddCandidate(VibrationInfo{Event: GameEventExplode, Distance: 5}, 10)
 	data.Selector.AddCandidate(VibrationInfo{Event: GameEventStep, Distance: 3}, 10)
@@ -32,6 +33,7 @@ func TestVibrationSelectionSurvivesReload(t *testing.T) {
 }
 
 func TestVibrationOcclusionRequiresAllSixRays(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	wool, ok := w.conf.Blocks.BlockByName("minecraft:white_wool", nil)
@@ -59,6 +61,7 @@ func TestVibrationOcclusionRequiresAllSixRays(t *testing.T) {
 }
 
 func TestVibrationReloadWaitsForLoadedNeighbours(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	pos := cube.Pos{160, 64, 160}

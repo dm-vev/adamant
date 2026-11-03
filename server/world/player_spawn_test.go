@@ -11,6 +11,7 @@ import (
 )
 
 func TestPlayerSpawnPositionRespectsRadiusAndAvoidsWater(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

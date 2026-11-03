@@ -11,6 +11,7 @@ import (
 )
 
 func TestVibrationSelectorMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_vibration_selector.json")
 	if err != nil {
 		t.Fatal(err)
@@ -63,6 +64,7 @@ func TestVibrationSelectorMatchesExecutedClient(t *testing.T) {
 }
 
 func TestVibrationRangeMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_vibration_selector.json")
 	if err != nil {
 		t.Fatal(err)

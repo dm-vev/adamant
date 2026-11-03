@@ -3,6 +3,7 @@ package world
 import "testing"
 
 func TestJavaDirtPathDoesNotInventSnowyProperty(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	rid, ok := registry.StateToRuntimeID("minecraft:grass_path", nil)
@@ -25,6 +26,7 @@ func TestJavaDirtPathDoesNotInventSnowyProperty(t *testing.T) {
 }
 
 func TestJavaTorchAttachmentDirections(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, family := range []struct{ standing, wall, native string }{
@@ -65,6 +67,7 @@ func TestJavaTorchAttachmentDirections(t *testing.T) {
 }
 
 func TestJavaDefaultsPreserveExplicitState(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	properties := map[string]any{"facing": "west"}
@@ -82,6 +85,7 @@ func TestJavaDefaultsPreserveExplicitState(t *testing.T) {
 }
 
 func TestJavaLeafLitterNativeSegmentCounts(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	// BDS 1.26.52.3 build 51798919 drops growth+1 items for all eight
@@ -117,6 +121,7 @@ func TestJavaLeafLitterNativeSegmentCounts(t *testing.T) {
 }
 
 func TestJavaDoorOpenIndependentOfPower(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, name := range []string{"oak_door", "oak_trapdoor", "oak_fence_gate"} {
@@ -143,6 +148,7 @@ func TestJavaDoorOpenIndependentOfPower(t *testing.T) {
 }
 
 func TestJavaMovingPistonPaletteAndCanonicalStates(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, facing := range []string{"down", "up", "north", "south", "west", "east"} {
@@ -171,6 +177,7 @@ func TestJavaMovingPistonPaletteAndCanonicalStates(t *testing.T) {
 }
 
 func TestJavaCaveVineTipAgeRoundTrip(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, berries := range []bool{false, true} {
@@ -193,6 +200,7 @@ func TestJavaCaveVineTipAgeRoundTrip(t *testing.T) {
 }
 
 func TestJavaFreeFluidSecondaryLayer(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, names := range []struct{ native, java string }{
@@ -223,6 +231,7 @@ func TestJavaFreeFluidSecondaryLayer(t *testing.T) {
 }
 
 func TestJavaWallHeadIdentityRoundTrip(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, name := range []string{"skeleton_wall_skull", "wither_skeleton_wall_skull", "zombie_wall_head", "player_wall_head", "creeper_wall_head", "dragon_wall_head", "piglin_wall_head"} {
@@ -251,6 +260,7 @@ func TestJavaWallHeadIdentityRoundTrip(t *testing.T) {
 }
 
 func TestJavaBubbleColumnDirectionAndWater(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, drag := range []bool{false, true} {
@@ -274,6 +284,7 @@ func TestJavaBubbleColumnDirectionAndWater(t *testing.T) {
 }
 
 func TestJavaWaterloggingUsesSourcePropertyCapability(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, name := range []string{"minecraft:campfire", "minecraft:candle", "minecraft:chest", "minecraft:lantern"} {
@@ -303,6 +314,7 @@ func TestJavaWaterloggingUsesSourcePropertyCapability(t *testing.T) {
 }
 
 func TestJavaSharedNativeBlockNamesKeepMaterialIdentity(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, pair := range []struct{ java, native string }{
@@ -333,6 +345,7 @@ func TestJavaSharedNativeBlockNamesKeepMaterialIdentity(t *testing.T) {
 }
 
 func TestJavaSeaPickleCountsAndHydration(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, count := range []int32{1, 4} {
@@ -356,6 +369,7 @@ func TestJavaSeaPickleCountsAndHydration(t *testing.T) {
 }
 
 func TestJavaCopperDoubleSlabIdentity(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, pair := range []struct{ java, native string }{
@@ -379,6 +393,7 @@ func TestJavaCopperDoubleSlabIdentity(t *testing.T) {
 }
 
 func TestJavaPortalAndEggStateProperties(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, row := range []struct {
@@ -405,6 +420,7 @@ func TestJavaPortalAndEggStateProperties(t *testing.T) {
 }
 
 func TestJavaRetainedLeafDistance(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	var nativeID uint32
@@ -427,6 +443,7 @@ func TestJavaRetainedLeafDistance(t *testing.T) {
 }
 
 func TestJavaInverseIncludesUnrepresentedDefaults(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	native, err := ResolveState(registry, BlockState{Name: "minecraft:mangrove_propagule", Properties: map[string]any{"hanging": true}})
@@ -443,6 +460,7 @@ func TestJavaInverseIncludesUnrepresentedDefaults(t *testing.T) {
 }
 
 func TestJavaHangingSignAttachments(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	for _, tc := range []struct {
@@ -502,6 +520,7 @@ func TestJavaHangingSignAttachments(t *testing.T) {
 // map to the facing_direction BDS gives them: pistons number the horizontal
 // directions the other way round, so a piston pushing east is 4.
 func TestJavaPistonFacingsMatchBDS(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	want := map[string]int32{"down": 0, "up": 1, "north": 3, "south": 2, "west": 5, "east": 4}
@@ -531,6 +550,7 @@ func TestJavaPistonFacingsMatchBDS(t *testing.T) {
 // Bedrock's huge_mushroom_bits, an enumeration that was read as a bitmask:
 // red caps then showed pores on their outer sides.
 func TestHugeMushroomVariantsAreEnumerated(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	faces := func(up, down, north, east, south, west bool) map[string]any {

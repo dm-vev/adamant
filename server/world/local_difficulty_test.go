@@ -3,6 +3,7 @@ package world
 import "testing"
 
 func TestEffectiveDifficultyBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		base Difficulty
@@ -27,6 +28,7 @@ func TestEffectiveDifficultyBoundaries(t *testing.T) {
 }
 
 func TestMoonBrightnessPhases(t *testing.T) {
+	t.Parallel()
 	want := [...]float32{1, .75, .5, .25, 0, .25, .5, .75}
 	for phase, brightness := range want {
 		if got := moonBrightness(int64(phase) * 24_000); got != brightness {
@@ -39,6 +41,7 @@ func TestMoonBrightnessPhases(t *testing.T) {
 }
 
 func TestSpecialMultiplierBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		effective, want float32
 	}{

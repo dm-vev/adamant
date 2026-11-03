@@ -46,6 +46,7 @@ func TestLootRandomSequenceContinuesPerDimension(t *testing.T) {
 }
 
 func TestNopProviderWithoutStoreCanCloseWorld(t *testing.T) {
+	t.Parallel()
 	w := Config{Provider: NopProvider{}, Synchronous: true}.New()
 	<-w.Exec(func(tx *Tx) { tx.LootRandomSequence("test:source", 0).NextLong() })
 	if err := w.Close(); err != nil {

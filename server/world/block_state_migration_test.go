@@ -73,6 +73,7 @@ func (b migrationDependentBlock) ReconstructMissingState(pos cube.Pos, missing [
 }
 
 func TestMissingStateDependencyWaitsForBoundaryReconstruction(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	for _, east := range []bool{false, true} {
 		for _, b := range []Block{migrationTestBlock{east: east}, migrationDependentBlock{migrationTestBlock{east: east}}} {
@@ -139,6 +140,7 @@ func (p *migrationTestProvider) StoreColumn(pos ChunkPos, _ Dimension, col *chun
 }
 
 func TestDiskMissingStateMigrationTracksPaletteEntriesAndChunkBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, markerFirst := range []bool{true, false} {
 		name := "neighbour loads after marker"
 		if !markerFirst {

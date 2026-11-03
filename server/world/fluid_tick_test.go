@@ -12,6 +12,7 @@ import (
 )
 
 func TestFluidTickSourceIdentitySurvivesScheduleOnlySave(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	db, err := mcdb.Open(dir)
 	if err != nil {
@@ -87,6 +88,7 @@ func TestFluidTickSourceIdentitySurvivesScheduleOnlySave(t *testing.T) {
 }
 
 func TestFluidTickDispatchMatchesFamilyNotNativeBlockName(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	pos := cube.Pos{8, 64, 8}
@@ -125,6 +127,7 @@ func (b fluidSchedulingTestBlock) ScheduledTick(_ cube.Pos, tx *world.Tx, _ *ran
 }
 
 func TestBlockToFluidSchedulingUsesCurrentSharedTickClock(t *testing.T) {
+	t.Parallel()
 	blockPos, fluidPos := cube.Pos{8, 64, 8}, cube.Pos{9, 64, 8}
 	scheduler := fluidSchedulingTestBlock{target: fluidPos}
 	registry := world.NewBlockRegistry()
@@ -193,6 +196,7 @@ func (nativeFluidHalfModel) FaceSolid(pos cube.Pos, face cube.Face, _ world.Bloc
 }
 
 func TestFluidMixedSourceNativeBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name              string
 		z                 int

@@ -26,6 +26,7 @@ func (s *nativeActorDraws) Uint64() uint64 {
 }
 
 func TestBlockActorShuffleMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_actor_order.json")
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +106,7 @@ func (r *chunkActorOrderSource) Uint64() uint64 {
 }
 
 func TestChunkActorCallbacksPrecedeTheNextChunkShuffle(t *testing.T) {
+	t.Parallel()
 	// LevelChunk::tickImpl calls tickBlockEntities at 0x32cab8f before
 	// returning to its caller. The next chunk's shuffle must therefore see
 	// RNG draws consumed by this chunk's actors. randomTickSpeed zero also
@@ -134,6 +136,7 @@ func TestChunkActorCallbacksPrecedeTheNextChunkShuffle(t *testing.T) {
 }
 
 func TestBlockActorReplacementDuringTickWaitsUntilNextTick(t *testing.T) {
+	t.Parallel()
 	for _, change := range []string{"remove", "replace", "update-data"} {
 		t.Run(change, func(t *testing.T) {
 			w := Config{Synchronous: true, RandomTickSpeed: -1, RandSource: actorIdentityRandom{}}.New()
@@ -177,6 +180,7 @@ func TestBlockActorReplacementDuringTickWaitsUntilNextTick(t *testing.T) {
 }
 
 func TestNewBlockActorEligibilityFollowsChunkVisitOrder(t *testing.T) {
+	t.Parallel()
 	// Native storage appends a newly placed actor immediately (client
 	// 0x32c11ac..0x32c11f1), while tickBlockEntities copies only the chunk
 	// currently being visited. A destination chunk still ahead in this pass

@@ -8,6 +8,7 @@ import (
 )
 
 func TestEntityExplosionSourceSnapshotsOrigin(t *testing.T) {
+	t.Parallel()
 	entity := &movingExplosionSourceEntity{pos: mgl64.Vec3{1, 2, 3}}
 	sources := []ExplosionSource{
 		NewEntityExplosionSource(entity, 4),

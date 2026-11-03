@@ -73,6 +73,7 @@ func checkStatefulGeneratedBlock(t *testing.T, w *world.World, x int, diamond bo
 }
 
 func TestPersistentGeneratorStateSurvivesMCDBRestartAndIsDimensionScoped(t *testing.T) {
+	t.Parallel()
 	for _, synchronous := range []bool{true, false} {
 		name := "workers"
 		if synchronous {
@@ -123,6 +124,7 @@ func TestPersistentGeneratorStateSurvivesMCDBRestartAndIsDimensionScoped(t *test
 }
 
 func TestPersistentGeneratorRejectsInvalidStateBeforeGeneratingOrSaving(t *testing.T) {
+	t.Parallel()
 	provider := world.NopProvider{Set: &world.Settings{SeedSet: true}, WorldData: new(world.WorldDataMemory)}
 	invalid := []byte{7, 9}
 	if err := provider.SaveWorldData("generation:0", invalid); err != nil {

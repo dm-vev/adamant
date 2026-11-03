@@ -21,6 +21,7 @@ func (r *blockUpdateRecorder) ViewBlockUpdates(u *world.BlockUpdates) { r.shown 
 // transaction: its viewer is shown them together once the transaction ends,
 // the last change of a block changed twice in place of both.
 func TestBlockUpdatesShownOncePerTransaction(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	r := &blockUpdateRecorder{}

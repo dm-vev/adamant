@@ -20,6 +20,7 @@ func (cancelBatchTestBlock) Model() BlockModel                                  
 func (b cancelBatchTestBlock) ScheduledTick(pos cube.Pos, tx *Tx, _ *rand.Rand) { b.tick(pos, tx) }
 
 func TestScheduledTickCancelCollectedCallbackAndReschedule(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	aPos, bPos, cPos := cube.Pos{0, 65, 0}, cube.Pos{1, 65, 0}, cube.Pos{2, 65, 0}
 	var aCalls, bCalls, cCalls int

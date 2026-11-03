@@ -7,6 +7,7 @@ import (
 )
 
 func TestSleepDarknessMatchesJava263Source(t *testing.T) {
+	t.Parallel()
 	var fixture struct {
 		Cases []struct {
 			Tick     int     `json:"tick"`

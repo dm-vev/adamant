@@ -12,6 +12,7 @@ import (
 )
 
 func TestVibrationOcclusionMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_vibration_occlusion.json")
 	if err != nil {
 		t.Fatal(err)

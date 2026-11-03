@@ -22,6 +22,7 @@ func (c regionProbeConfig) Apply(data *EntityData) { data.Data = c }
 // the phase. As without regions, an entity that moved in its tick changes
 // columns when it ticks next.
 func TestRegionPhaseKeepsRegionsApart(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, Regions: true}.New()
 	defer w.Close()
 
@@ -141,6 +142,7 @@ func containsHandle(handles []*EntityHandle, h *EntityHandle) bool {
 // TestRegionLockNests checks the shared lock of a region may be taken again
 // by the region holding it and is free once every lock is undone.
 func TestRegionLockNests(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	r := &region{}
@@ -169,6 +171,7 @@ func TestRegionLockNests(t *testing.T) {
 // TestRegionOwnersNeverMeet checks no column is owned by two regions for
 // random layouts of columns.
 func TestRegionOwnersNeverMeet(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	seed := uint64(1)
@@ -235,6 +238,7 @@ func (w *World) regionOwnerAmong(pos ChunkPos, r *region) bool {
 // cells in phases in which no two regions own columns that meet, and that
 // regions are split only where it shortens the tick.
 func TestRegionPhasesSplitCrowdedRegions(t *testing.T) {
+	t.Parallel()
 	ref := func(cx, cz int32, entities int) columnRef {
 		pos := ChunkPos{cx*regionCell + 3, cz*regionCell + 5}
 		return columnRef{pos: pos, col: &Column{Entities: make([]*EntityHandle, entities)}}

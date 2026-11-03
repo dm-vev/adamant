@@ -11,6 +11,7 @@ import (
 // player within the distance asked, in the order Tx.Players finds them, and
 // finds a player where it moved to once the world was told it moved.
 func TestPlayersNearFindsPlayersWhereTheyAre(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 

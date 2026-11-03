@@ -55,6 +55,7 @@ func TestDimensionRegistryConcurrentAccess(t *testing.T) {
 }
 
 func TestDimensionRegistryBuiltInIDs(t *testing.T) {
+	t.Parallel()
 	reg := newDimensionRegistry(map[int]Dimension{0: Overworld, 1: Nether, 2: End})
 	for id, want := range map[int]Dimension{0: Overworld, 1: Nether, 2: End} {
 		if got, ok := reg.Lookup(id); !ok || got != want {

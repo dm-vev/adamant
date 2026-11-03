@@ -10,6 +10,7 @@ import (
 )
 
 func TestTemplateShapeGrowthUsesBoundaryOrder(t *testing.T) {
+	t.Parallel()
 	// Executed Java 26.3 StructureTemplate fixture, legacy region stream seed 0.
 	// Palette order is x-then-z, but upward boundary faces are visited z-then-x.
 	positions := []cube.Pos{{8, 64, 9}, {9, 64, 8}}
@@ -101,6 +102,7 @@ func (r *templateShapeFixture) SetBlockState(pos cube.Pos, state uint32, flags i
 }
 
 func TestSimpleBlockPlacementDoublePlantOccupancyAndWaterlogging(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{8, 64, 8}
 	stone := javaDefault("clay")
 	plant, err := gamedata.BlockStateID("minecraft:small_dripleaf", map[string]any{
@@ -142,6 +144,7 @@ func TestSimpleBlockPlacementDoublePlantOccupancyAndWaterlogging(t *testing.T) {
 }
 
 func TestSimpleBlockPlacementRejectsBlockedDoublePlantTop(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{8, 64, 8}
 	region := templateShapeFixture{states: map[cube.Pos]uint32{
 		pos.Side(cube.FaceDown): javaDefault("dirt"),
@@ -156,6 +159,7 @@ func TestSimpleBlockPlacementRejectsBlockedDoublePlantTop(t *testing.T) {
 }
 
 func TestSimpleBlockMossCarpetDoesNotTopAnExistingBase(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{8, 64, 8}
 	region := templateShapeFixture{
 		states: map[cube.Pos]uint32{
@@ -176,6 +180,7 @@ func TestSimpleBlockMossCarpetDoesNotTopAnExistingBase(t *testing.T) {
 }
 
 func TestSimpleBlockPlacementUsesRegionRandomAndSchedulesCurrentBlock(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{8, 64, 8}
 	region := templateShapeFixture{
 		states: map[cube.Pos]uint32{
@@ -209,6 +214,7 @@ func TestSimpleBlockPlacementUsesRegionRandomAndSchedulesCurrentBlock(t *testing
 }
 
 func TestSimpleBlockPlacementReturnsTrueWhenSetIsRejected(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{8, 64, 8}
 	region := templateShapeFixture{
 		states:     map[cube.Pos]uint32{},

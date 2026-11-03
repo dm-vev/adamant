@@ -21,6 +21,7 @@ func (b circuitOrderTestBlock) Hash() (uint64, uint64) { return b.kind, 0 }
 // process. Both the queue before graph update and the resulting chunk vectors
 // were independently read from BDS; no expected order comes from this model.
 func TestCircuitTraversalMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	t.Run("placement-history", func(t *testing.T) { testCircuitTraversalCapture(t, "bedrock_1_26_51_circuit_order.json", 20) })
 	t.Run("table-growth", func(t *testing.T) { testCircuitTraversalCapture(t, "bedrock_1_26_51_circuit_order_growth.json", 6) })
 }

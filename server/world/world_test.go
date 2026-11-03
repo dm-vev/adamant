@@ -27,6 +27,7 @@ func (p *neighbourUpdateCountingProvider) LoadColumn(pos ChunkPos, dim Dimension
 // TestSynchronousWorldDo verifies that Do on a synchronous World runs the task
 // on the calling goroutine and returns a completed task.
 func TestSynchronousWorldDo(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -68,6 +69,7 @@ func TestSynchronousWorldAdvanceTick(t *testing.T) {
 }
 
 func TestWorldTickAdvancesRaidCelebration(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	raid := &Raid{id: 1, status: RaidVictory, celebrationTicks: 10}
@@ -80,6 +82,7 @@ func TestWorldTickAdvancesRaidCelebration(t *testing.T) {
 }
 
 func TestTickRaidsPrunesStoppedRaids(t *testing.T) {
+	t.Parallel()
 	memory := &WorldDataMemory{}
 	w := Config{Provider: NopProvider{WorldData: memory}, Synchronous: true}.New()
 	defer w.Close()
@@ -142,6 +145,7 @@ func TestWorldConstructionResolvesUnloadedSpawnHeight(t *testing.T) {
 }
 
 func TestNeighbourUpdatesDoNotLoadMissingChunks(t *testing.T) {
+	t.Parallel()
 	provider := &neighbourUpdateCountingProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}}
 	w := Config{Provider: provider, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
@@ -159,6 +163,7 @@ func TestNeighbourUpdatesDoNotLoadMissingChunks(t *testing.T) {
 }
 
 func TestNeighbourUpdatesWaitForTrackedChunkReadiness(t *testing.T) {
+	t.Parallel()
 	var updates []string
 	block := &neighbourMechanicsTestBlock{name: "bubble", updates: &updates}
 	registry := NewBlockRegistry()
@@ -187,6 +192,7 @@ func TestNeighbourUpdatesWaitForTrackedChunkReadiness(t *testing.T) {
 }
 
 func TestNeighbourUpdatesDeferGeneratingChunksWithoutLosingReadyWork(t *testing.T) {
+	t.Parallel()
 	var updates []string
 	pendingBlock := &neighbourMechanicsTestBlock{name: "redstone", updates: &updates}
 	readyBlock := &neighbourMechanicsTestBlock{name: "bubble", updates: &updates}
@@ -240,6 +246,7 @@ func TestNeighbourUpdatesDeferGeneratingChunksWithoutLosingReadyWork(t *testing.
 }
 
 func TestNeighbourUpdatesMixedReadinessPreservesMechanicsOrder(t *testing.T) {
+	t.Parallel()
 	var updates []string
 	bubble := &neighbourMechanicsTestBlock{name: "bubble", updates: &updates}
 	displacer := &neighbourMechanicsTestBlock{name: "displacer"}
@@ -382,6 +389,7 @@ func TestSharedProviderClosesAfterLastWorld(t *testing.T) {
 }
 
 func TestIndependentProvidersSharingSettingsCloseIndependently(t *testing.T) {
+	t.Parallel()
 	settings := defaultSettings()
 	firstProvider := &lifecycleProvider{NopProvider: NopProvider{Set: settings}}
 	secondProvider := &lifecycleProvider{NopProvider: NopProvider{Set: settings}}
@@ -410,6 +418,7 @@ func TestIndependentProvidersSharingSettingsCloseIndependently(t *testing.T) {
 }
 
 func TestSharedProviderWithDistinctSettingsClosesOnce(t *testing.T) {
+	t.Parallel()
 	provider := &lifecycleProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, freshSettings: true}
 	first := Config{Provider: provider, Synchronous: true}.New()
 	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
@@ -433,6 +442,7 @@ func TestSharedProviderWithDistinctSettingsClosesOnce(t *testing.T) {
 }
 
 func TestSharedProviderConstructionRetainedBeforeProviderUse(t *testing.T) {
+	t.Parallel()
 	provider := &lifecycleProvider{
 		NopProvider:          NopProvider{WorldData: &WorldDataMemory{}},
 		freshSettings:        true,
@@ -507,6 +517,7 @@ func TestSharedProviderConstructionWaitsForFinalClose(t *testing.T) {
 }
 
 func TestProviderRetentionReleasedWhenConstructionPanics(t *testing.T) {
+	t.Parallel()
 	provider := &lifecycleProvider{panicBlockRegistry: true}
 	var recovered any
 	func() {
@@ -657,6 +668,7 @@ func TestCloseDoesNotLeaveOwnerWaitingForGeneration(t *testing.T) {
 }
 
 func TestSynchronousEntityDoCanRemoveEntity(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -710,6 +722,7 @@ func TestSynchronousEntityDoWaitsForAddEntityToFinish(t *testing.T) {
 }
 
 func TestSynchronousAdvanceTickTicksViewerlessEntities(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -728,6 +741,7 @@ func TestSynchronousAdvanceTickTicksViewerlessEntities(t *testing.T) {
 }
 
 func TestLoadedEntityCanBeRemoved(t *testing.T) {
+	t.Parallel()
 	pos := ChunkPos{0, 0}
 	provider := &entityLoadProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, columns: make(map[ChunkPos]*chunk.Column)}
 	w := Config{
@@ -761,6 +775,7 @@ func TestLoadedEntityCanBeRemoved(t *testing.T) {
 }
 
 func TestLoadedEntityMigratesWithoutLeavingDuplicate(t *testing.T) {
+	t.Parallel()
 	sourcePos, destinationPos := ChunkPos{0, 0}, ChunkPos{1, 0}
 	provider := &entityLoadProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, columns: make(map[ChunkPos]*chunk.Column)}
 	w := Config{
@@ -797,6 +812,7 @@ func TestLoadedEntityMigratesWithoutLeavingDuplicate(t *testing.T) {
 }
 
 func TestEntityCrossingIntoLaterColumnTicksOnce(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -866,6 +882,7 @@ func (listedPlayerType) EncodeEntity() string { return "minecraft:player" }
 // order they were added, as Java's ServerLevel lists them, skips players
 // leaving while they are walked, and lists a player added again last.
 func TestPlayersFoundInTheOrderAdded(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -908,6 +925,7 @@ func TestPlayersFoundInTheOrderAdded(t *testing.T) {
 }
 
 func TestSynchronousAdvanceTickTicksViewerlessBlockEntities(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -930,6 +948,7 @@ func TestSynchronousAdvanceTickTicksViewerlessBlockEntities(t *testing.T) {
 }
 
 func TestEntitiesWithinCanRemoveYieldedEntities(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -1261,6 +1280,7 @@ func (c *recordingController) Control(tx *Tx, e Entity) {
 // the start of every tick of its world, before entities tick, until it is
 // cleared or its player leaves.
 func TestControllersActEachTick(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	ticks := new(int)

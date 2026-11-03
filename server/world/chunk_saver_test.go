@@ -13,6 +13,7 @@ import (
 // loaded again keep the blocks set in them, whether the background saver
 // already wrote them or not, and that they survive closing the world.
 func TestUnloadedChunkReloadsWithItsChanges(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	db, err := (mcdb.Config{}).Open(dir)
 	if err != nil {

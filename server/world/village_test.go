@@ -8,6 +8,7 @@ import (
 )
 
 func TestNativePOITransitions(t *testing.T) {
+	t.Parallel()
 	registry := NewBlockRegistry()
 	registry.Finalize()
 	w := Config{Blocks: registry, Dim: End, Synchronous: true}.New()

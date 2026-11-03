@@ -13,6 +13,7 @@ import (
 )
 
 func TestFrozenWorldStopsBlockTicksUntilStepped(t *testing.T) {
+	t.Parallel()
 	var ticks atomic.Int32
 	b := frozenTickBlock{ticks: &ticks}
 	registry := world.NewBlockRegistry()
@@ -56,6 +57,7 @@ func (frozenTickBlock) Hash() (uint64, uint64)                                { 
 func (b frozenTickBlock) ScheduledTick(_ cube.Pos, _ *world.Tx, _ *rand.Rand) { b.ticks.Add(1) }
 
 func TestFrozenWorldStopsEntityMovementUntilStepped(t *testing.T) {
+	t.Parallel()
 	registry := (world.EntityRegistryConfig{}).New([]world.EntityType{frozenMoveType{}})
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: registry}.New()
 	defer w.Close()
@@ -117,6 +119,7 @@ func (e *frozenMoveEntity) Rotation() cube.Rotation   { return e.data.Rot }
 func (e *frozenMoveEntity) Tick(_ *world.Tx, _ int64) { e.data.Pos[0]++ }
 
 func TestFrozenWorldStepsOnlyRequestedTicks(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	initial := w.CurrentTick()
@@ -142,6 +145,7 @@ func TestFrozenWorldStepsOnlyRequestedTicks(t *testing.T) {
 }
 
 func TestForcedChunkStaysLoadedAndPersists(t *testing.T) {
+	t.Parallel()
 	data := &world.WorldDataMemory{}
 	config := world.Config{Synchronous: true, RandomTickSpeed: -1, Provider: &world.NopProvider{WorldData: data}}
 	w := config.New()

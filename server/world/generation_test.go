@@ -102,6 +102,7 @@ func checkGeneratedPayload(t *testing.T, w *world.World) {
 }
 
 func TestGeneratedPayloadPersistsWithoutDuplicateActivation(t *testing.T) {
+	t.Parallel()
 	for _, synchronous := range []bool{true, false} {
 		name := "worker"
 		if synchronous {
@@ -163,6 +164,7 @@ func TestGeneratedPayloadPersistsWithoutDuplicateActivation(t *testing.T) {
 }
 
 func TestReadOnlyWorldClosesGeneratedEntities(t *testing.T) {
+	t.Parallel()
 	g := &payloadGenerator{}
 	w := world.Config{Generator: g, Entities: entity.DefaultRegistry, Synchronous: true, ReadOnly: true}.New()
 	t.Cleanup(func() { _ = w.Close() })

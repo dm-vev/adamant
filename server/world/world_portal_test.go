@@ -6,6 +6,7 @@ import (
 )
 
 func TestWorldPortalDestinationNil(t *testing.T) {
+	t.Parallel()
 	conf := Config{
 		Dim:                   Overworld,
 		PortalDestination:     func(Dimension) *World { return nil },
@@ -24,6 +25,7 @@ func TestWorldPortalDestinationNil(t *testing.T) {
 }
 
 func TestWorldPortalDestinationAvoidsSelf(t *testing.T) {
+	t.Parallel()
 	fallback := Config{Dim: Overworld}.New()
 	t.Cleanup(func() { _ = fallback.Close() })
 

@@ -32,6 +32,7 @@ func checkFreshLight(t *testing.T, tx *world.Tx, step string, pos cube.Pos) {
 // TestLightFollowsBlockChanges checks light is recomputed after blocks are
 // placed, broken and flooded, and matches the light computed from scratch.
 func TestLightFollowsBlockChanges(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -96,6 +97,7 @@ func TestLightFollowsBlockChanges(t *testing.T) {
 // more than one area is relit in, some of them next to each other, and
 // checks the light around each matches the light computed from scratch.
 func TestLightFollowsChangesAcrossManyChunks(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -138,6 +140,7 @@ func (relightTestStructure) At(x, y, z int, _ func(x, y, z int) world.Block) (wo
 // TestLightFollowsBuiltStructures checks building a structure across chunks
 // recomputes their light.
 func TestLightFollowsBuiltStructures(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -158,6 +161,7 @@ func TestLightFollowsBuiltStructures(t *testing.T) {
 // and leaves dim skylight a level a block, a roof of bottom slabs shuts it
 // out with the faces it occludes, and glass lets it through undimmed.
 func TestLightFollowsJavaRules(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -226,6 +230,7 @@ func TestLightFollowsJavaRules(t *testing.T) {
 // a bottom and a top slab side by side shut light out, while those of two
 // bottom slabs leave the upper half open.
 func TestPartialFacesOccludeTogether(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -264,6 +269,7 @@ func TestPartialFacesOccludeTogether(t *testing.T) {
 // TestNetherAndEndHaveNoSkyLight checks DimensionType.hasSkyLight: the
 // Nether and the End have no sky, so only blocks light them.
 func TestNetherAndEndHaveNoSkyLight(t *testing.T) {
+	t.Parallel()
 	for _, dim := range []world.Dimension{world.Nether, world.End} {
 		w := world.Config{Dim: dim, Synchronous: true, RandomTickSpeed: -1}.New()
 		<-w.Exec(func(tx *world.Tx) {

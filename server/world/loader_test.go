@@ -67,6 +67,7 @@ func (v *loaderReentryViewer) ViewChunk(pos ChunkPos, _ Dimension, _ *Column) {
 }
 
 func TestChunkCallbackPanicDoesNotSkipOtherLoaders(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := ChunkPos{}
@@ -124,6 +125,7 @@ func readyTestColumn(w *World, pos ChunkPos) *Column {
 }
 
 func TestLoaderRetriesEntityPublicationAfterPanic(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	h := EntitySpawnOpts{Position: mgl64.Vec3{0.5, 4, 0.5}}.New(reentrantEntityType{}, reentrantEntityConfig{})
@@ -212,6 +214,7 @@ func countLoader(loaders []*Loader, target *Loader) int {
 // TestChunkCallbackDoesNotReenterLoader checks that viewing an entity may load
 // another pending chunk without re-entering Loader.viewChunk under Loader.mu.
 func TestChunkCallbackDoesNotReenterLoader(t *testing.T) {
+	t.Parallel()
 	w := New()
 	nested := ChunkPos{1, 0}
 	v := &reentrantViewer{pos: cube.Pos{int(nested[0]) * 16, 0, int(nested[1]) * 16}, done: make(chan struct{})}
@@ -454,6 +457,7 @@ func TestLoaderChangeWorldDoesNotBlockViewChunkCompletion(t *testing.T) {
 }
 
 func TestLoaderChangeWorldAfterOldWorldClosed(t *testing.T) {
+	t.Parallel()
 	old := New()
 	newWorld := New()
 	t.Cleanup(func() {
@@ -538,6 +542,7 @@ func TestLoaderCloseSerialisedWithChangeWorld(t *testing.T) {
 }
 
 func TestLoaderCloseRemovesChunksFromLoaderWorld(t *testing.T) {
+	t.Parallel()
 	old := Config{Synchronous: true}.New()
 	current := Config{Synchronous: true}.New()
 	t.Cleanup(func() {

@@ -17,6 +17,7 @@ type sourceBorderBounds struct {
 }
 
 func TestWorldBorderMatchesJava263Source(t *testing.T) {
+	t.Parallel()
 	var fixture struct {
 		Static struct {
 			Bounds     sourceBorderBounds

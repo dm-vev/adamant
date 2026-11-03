@@ -12,6 +12,7 @@ import (
 )
 
 func TestQueuedEntityBirthTickRunsOnceAndIgnoresRemoval(t *testing.T) {
+	t.Parallel()
 	var blocks atomic.Int32
 	states := []*postBlockProbeState{{blocks: &blocks}, {blocks: &blocks}, {blocks: &blocks}, {blocks: &blocks}}
 	entities := make([]*postBlockProbeEntity, len(states))
@@ -69,6 +70,7 @@ func (b entitySpawnTickBlock) ScheduledTick(_ cube.Pos, tx *world.Tx, _ *rand.Ra
 }
 
 func TestEntityPostBlockPhaseHandlesRemovalAndFrozenTicks(t *testing.T) {
+	t.Parallel()
 	var blocks atomic.Int32
 	b := frozenTickBlock{ticks: &blocks}
 	registry := world.NewBlockRegistry()

@@ -21,6 +21,7 @@ import (
 // TestRegionGroups checks columns join a region when their cells touch, and
 // stay apart otherwise.
 func TestRegionGroups(t *testing.T) {
+	t.Parallel()
 	sorted := func(groups [][]world.ChunkPos) [][]world.ChunkPos {
 		for _, g := range groups {
 			slices.SortFunc(g, func(a, b world.ChunkPos) int {
@@ -70,6 +71,7 @@ var regionCentres = []cube.Pos{{0, 0, 0}, {1024, 0, 0}, {0, 0, 1024}, {1024, 0, 
 // race detector to find any state two regions share without a lock, and
 // fails if a tick does not finish in time, as a deadlock would.
 func TestRegionsTickWithoutRaces(t *testing.T) {
+	t.Parallel()
 	tickAreasWithoutRaces(t, regionCentres, 1)
 }
 
@@ -78,6 +80,7 @@ func TestRegionsTickWithoutRaces(t *testing.T) {
 // areas straddling the borders of cells, for the race detector to find any
 // state the cells of a phase share without a lock.
 func TestCrowdedRegionsTickWithoutRaces(t *testing.T) {
+	t.Parallel()
 	var centres []cube.Pos
 	for x := range 3 {
 		for z := range 3 {
@@ -314,6 +317,7 @@ func (v *countingViewer) ViewBlockAction(cube.Pos, world.BlockAction) { defer v.
 // further than 128 blocks away, rather than staying as if the world had no
 // players.
 func TestRegionMonstersDespawnFarFromPlayersOfOtherRegions(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Regions: true, Entities: entity.DefaultRegistry, Generator: regionTestGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 	w.SetDifficulty(world.DifficultyHard)

@@ -33,6 +33,7 @@ func (e *closeTrackingEntity) Rotation() cube.Rotation { return e.data.Rot }
 // chunk it left unloads while still listing it. The entity moves to its new
 // chunk instead of closing with the old one, which kicked teleported players.
 func TestTeleportedEntitySurvivesUnloadOfChunkItLeft(t *testing.T) {
+	t.Parallel()
 	w := Config{Synchronous: true, Provider: NopProvider{}, Generator: NopGenerator{}}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	l := NewLoader(0, w, NopViewer{})

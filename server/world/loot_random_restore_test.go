@@ -3,6 +3,7 @@ package world
 import "testing"
 
 func TestPersistedZeroLootSequenceUsesJavaRepair(t *testing.T) {
+	t.Parallel()
 	provider := NopProvider{WorldData: &WorldDataMemory{}}
 	w := Config{Provider: provider, Synchronous: true}.New()
 	namespace := w.lootRandomSequenceNamespace()

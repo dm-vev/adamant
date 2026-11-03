@@ -78,6 +78,7 @@ func lightAround(t *testing.T, w *World, load func(tx *Tx)) map[cube.Pos][2]uint
 // filled on other goroutines, are lit as a synchronous world lights them,
 // whether a block read loads them or a loader does.
 func TestLoadedColumnsLightMatchesSynchronousLoading(t *testing.T) {
+	t.Parallel()
 	DefaultBlockRegistry.Finalize()
 	readAll := func(tx *Tx) {
 		for x := int32(-3); x <= 3; x++ {

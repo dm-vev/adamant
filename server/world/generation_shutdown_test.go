@@ -26,6 +26,7 @@ func (g *shutdownGenerator) GenerateChunk(pos ChunkPos, _ *chunk.Chunk, _ Genera
 }
 
 func TestCloseConsumesInFlightGeneratedEntities(t *testing.T) {
+	t.Parallel()
 	for _, readOnly := range []bool{false, true} {
 		name := "writable"
 		if readOnly {
