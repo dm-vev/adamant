@@ -1,0 +1,452 @@
+== message: plain, colour tags, raw codes
+>> Text id=9 len=20
+    {TextType:0 NeedsTranslation:false SourceName:"" Message:"plain message" Parameters:[] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 0000000d706c61696e206d657373616765000000
+>> Text id=9 len=86
+    TextPacket
+      TextType: 0
+      NeedsTranslation: false
+      SourceName: ""
+      Message: "§r§cred§r §lbold §r§l§oboth§r §sdiamond§r §mredstone§r §ncopper§r"
+      Parameters: []
+      XUID: ""
+      PlatformChatID: ""
+      FilteredMessage: none
+    | 0000004fc2a772c2a763726564c2a77220c2a76c626f6c6420c2a772c2a76cc2
+    | a76f626f7468c2a77220c2a7736469616d6f6e64c2a77220c2a76d7265647374
+    | 6f6e65c2a77220c2a76e636f70706572c2a772000000
+>> Text id=9 len=173
+    TextPacket
+      TextType: 0
+      NeedsTranslation: false
+      SourceName: ""
+      Message: "§sdiamond §mredstone §ncopper §hquartz §iiron §jnetherite §pgold §qemerald §tlapis §uamethyst §vresin §gdark yellow §kobfuscated§r §lbold§r §oitalic"
+      Parameters: []
+      XUID: ""
+      PlatformChatID: ""
+      FilteredMessage: none
+    | 000000a501c2a7736469616d6f6e6420c2a76d72656473746f6e6520c2a76e63
+    | 6f7070657220c2a76871756172747a20c2a76969726f6e20c2a76a6e65746865
+    | 7269746520c2a770676f6c6420c2a771656d6572616c6420c2a7746c61706973
+    | 20c2a775616d65746879737420c2a776726573696e20c2a7676461726b207965
+    | 6c6c6f7720c2a76b6f626675736361746564c2a77220c2a76c626f6c64c2a772
+    | 20c2a76f6974616c6963000000
+>> Text id=9 len=33
+    {TextType:0 NeedsTranslation:false SourceName:"" Message:"formatted 42 §anamed true" Parameters:[] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 0000001a666f726d617474656420343220c2a7616e616d656420747275650000
+    | 00
+>> Text id=9 len=8
+    {TextType:0 NeedsTranslation:false SourceName:"" Message:" " Parameters:[] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 0000000120000000
+>> Text id=9 len=29
+    {TextType:0 NeedsTranslation:false SourceName:"" Message:"multi\nline\n§cred line" Parameters:[] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 000000166d756c74690a6c696e650ac2a763726564206c696e65000000
+== translations
+>> Text id=9 len=53
+    TextPacket
+      TextType: 2
+      NeedsTranslation: true
+      SourceName: ""
+      Message: "§r§e%multiplayer.player.joined§r"
+      Parameters: ["§bGolden"]
+      XUID: ""
+      PlatformChatID: ""
+      FilteredMessage: none
+    | 01020223c2a772c2a765256d756c7469706c617965722e706c617965722e6a6f
+    | 696e6564c2a7720109c2a762476f6c64656e000000
+>> Text id=9 len=33
+    {TextType:2 NeedsTranslation:true SourceName:"" Message:"§r§7%tile.bed.tooFar§r" Parameters:[] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 01020219c2a772c2a7372574696c652e6265642e746f6f466172c2a772000000
+    | 00
+>> Text id=9 len=86
+    TextPacket
+      TextType: 2
+      NeedsTranslation: true
+      SourceName: ""
+      Message: "§r§s%commands.give.success§r"
+      Parameters: ["§sdiamond" "3" "§r§e%disconnect.disconnected§r"]
+      XUID: ""
+      PlatformChatID: ""
+      FilteredMessage: none
+    | 0102021fc2a772c2a77325636f6d6d616e64732e676976652e73756363657373
+    | c2a772030ac2a7736469616d6f6e64013321c2a772c2a76525646973636f6e6e
+    | 6563742e646973636f6e6e6563746564c2a772000000
+== tip, popup, jukebox popup, toast
+>> Text id=9 len=27
+    {TextType:5 NeedsTranslation:false SourceName:"" Message:"§r§qtip§r §ltext" Parameters:[] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 00000514c2a772c2a771746970c2a77220c2a76c74657874000000
+>> Text id=9 len=34
+    {TextType:3 NeedsTranslation:false SourceName:"" Message:"§r§ppopup§r §mredstone" Parameters:[] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 0002031ac2a772c2a770706f707570c2a77220c2a76d72656473746f6e650000
+    | 0000
+>> Text id=9 len=30
+    {TextType:4 NeedsTranslation:false SourceName:"" Message:"§nNow playing: copper" Parameters:[] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 00020416c2a76e4e6f7720706c6179696e673a20636f7070657200000000
+>> ToastRequest id=186 len=32
+    {Title:"§r§uToast§r" Message:"§ttoast message"}
+    | 0ec2a772c2a775546f617374c2a77210c2a774746f617374206d657373616765
+== title, subtitle and action bar with durations
+>> SetTitle id=88 len=8
+    {ActionType:5 Text:"" FadeInDuration:10 RemainDuration:60 FadeOutDuration:20 XUID:"" PlatformOnlineID:"" FilteredMessage:""}
+    | 0a00147828000000
+>> SetTitle id=88 len=22
+    {ActionType:2 Text:"§r§tTitle§r" FadeInDuration:0 RemainDuration:0 FadeOutDuration:0 XUID:"" PlatformOnlineID:"" FilteredMessage:""}
+    | 040ec2a772c2a7745469746c65c2a772000000000000
+>> SetTitle id=88 len=19
+    {ActionType:3 Text:"§qsubtitle" FadeInDuration:0 RemainDuration:0 FadeOutDuration:0 XUID:"" PlatformOnlineID:"" FilteredMessage:""}
+    | 060bc2a7717375627469746c65000000000000
+>> SetTitle id=88 len=23
+    {ActionType:4 Text:"§r§jaction§r" FadeInDuration:0 RemainDuration:0 FadeOutDuration:0 XUID:"" PlatformOnlineID:"" FilteredMessage:""}
+    | 080fc2a772c2a76a616374696f6ec2a772000000000000
+>> SetTitle id=88 len=8
+    {ActionType:5 Text:"" FadeInDuration:1 RemainDuration:40 FadeOutDuration:1 XUID:"" PlatformOnlineID:"" FilteredMessage:""}
+    | 0a00025002000000
+>> SetTitle id=88 len=29
+    {ActionType:4 Text:"§sonly an action bar" FadeInDuration:0 RemainDuration:0 FadeOutDuration:0 XUID:"" PlatformOnlineID:"" FilteredMessage:""}
+    | 0815c2a7736f6e6c7920616e20616374696f6e20626172000000000000
+== boss bar added
+>> BossEvent id=74 len=35
+    {BossEntityUniqueID:1 EventType:0 BossBarTitle:"§r§cBoss§r §mredstone" FilteredBossBarTitle:"" HealthPercentage:0.5 Colour:2 Overlay:0}
+    | 020019c2a772c2a763426f7373c2a77220c2a76d72656473746f6e6500000000
+    | 3f0200
+== boss bar updated
+>> BossEvent id=74 len=35
+    {BossEntityUniqueID:1 EventType:0 BossBarTitle:"§r§cBoss§r §mredstone" FilteredBossBarTitle:"" HealthPercentage:0.25 Colour:5 Overlay:0}
+    | 020019c2a772c2a763426f7373c2a77220c2a76d72656473746f6e6500000080
+    | 3e0500
+== second boss bar by ID
+>> BossEvent id=74 len=27
+    {BossEntityUniqueID:-4611686018427387904 EventType:0 BossBarTitle:"§nsecond" FilteredBossBarTitle:"" HealthPercentage:1 Colour:3 Overlay:0}
+    | ffffffffffffffff7f0009c2a76e7365636f6e64000000803f0300
+== boss bars removed
+>> BossEvent id=74 len=18
+    {BossEntityUniqueID:-4611686018427387904 EventType:2 BossBarTitle:"" FilteredBossBarTitle:"" HealthPercentage:0 Colour:0 Overlay:0}
+    | ffffffffffffffff7f020000000000000000
+>> BossEvent id=74 len=10
+    {BossEntityUniqueID:1 EventType:2 BossBarTitle:"" FilteredBossBarTitle:"" HealthPercentage:0 Colour:0 Overlay:0}
+    | 02020000000000000000
+== scoreboard set
+>> RemoveObjective id=106 len=1
+    {ObjectiveName:""}
+    | 00
+>> SetDisplayObjective id=107 len=45
+    {DisplaySlot:"sidebar" ObjectiveName:"§r§uBoard§r" DisplayName:"§r§uBoard§r" CriteriaName:"dummy" SortOrder:0}
+    | 07736964656261720ec2a772c2a775426f617264c2a7720ec2a772c2a775426f
+    | 617264c2a7720564756d6d7900
+>> SetScore id=108 len=224
+    SetScorePacket
+      Entries: []v2193.ScoreboardEntry (4)
+        [0] {IdentityType:3 EntryID:0 ObjectiveName:"§r§uBoard§r" Score:0 EntityUniqueID:0 DisplayName:" §ncopper line "}
+        [1] {IdentityType:3 EntryID:1 ObjectiveName:"§r§uBoard§r" Score:1 EntityUniqueID:0 DisplayName:" §r§sdiamond§r line "}
+        [2] {IdentityType:3 EntryID:2 ObjectiveName:"§r§uBoard§r" Score:2 EntityUniqueID:0 DisplayName:"             "}
+        [3] {IdentityType:3 EntryID:3 ObjectiveName:"§r§uBoard§r" Score:3 EntityUniqueID:0 DisplayName:" §kobfuscated "}
+    | 0403106368616e676566616b65706c61796572000ec2a772c2a775426f617264
+    | c2a772000000001020c2a76e636f70706572206c696e652003106368616e6765
+    | 66616b65706c61796572020ec2a772c2a775426f617264c2a772010000001720
+    | c2a772c2a7736469616d6f6e64c2a772206c696e652003106368616e67656661
+    | 6b65706c61796572040ec2a772c2a775426f617264c2a772020000000d202020
+    | 2020202020202020202003106368616e676566616b65706c61796572060ec2a7
+    | 72c2a775426f617264c2a772030000000f20c2a76b6f62667573636174656420
+== scoreboard changed
+>> SetScore id=108 len=101
+    SetScorePacket
+      Entries: []v2193.ScoreboardEntry (4)
+        [0] {IdentityType:0 EntryID:0 ObjectiveName:"§r§uBoard§r" Score:0 EntityUniqueID:0 DisplayName:""}
+        [1] {IdentityType:0 EntryID:1 ObjectiveName:"§r§uBoard§r" Score:0 EntityUniqueID:0 DisplayName:""}
+        [2] {IdentityType:0 EntryID:2 ObjectiveName:"§r§uBoard§r" Score:0 EntityUniqueID:0 DisplayName:""}
+        [3] {IdentityType:0 EntryID:3 ObjectiveName:"§r§uBoard§r" Score:0 EntityUniqueID:0 DisplayName:""}
+    | 04000672656d6f766500010ec2a772c2a775426f617264c2a772000672656d6f
+    | 766502010ec2a772c2a775426f617264c2a772000672656d6f766504010ec2a7
+    | 72c2a775426f617264c2a772000672656d6f766506010ec2a772c2a775426f61
+    | 7264c2a772
+>> SetScore id=108 len=108
+    SetScorePacket
+      Entries: []v2193.ScoreboardEntry (2)
+        [0] {IdentityType:3 EntryID:0 ObjectiveName:"§r§uBoard§r" Score:0 EntityUniqueID:0 DisplayName:" §schanged  "}
+        [1] {IdentityType:3 EntryID:1 ObjectiveName:"§r§uBoard§r" Score:1 EntityUniqueID:0 DisplayName:" §ncopper line "}
+    | 0203106368616e676566616b65706c61796572000ec2a772c2a775426f617264
+    | c2a772000000000d20c2a7736368616e676564202003106368616e676566616b
+    | 65706c61796572020ec2a772c2a775426f617264c2a772010000001020c2a76e
+    | 636f70706572206c696e6520
+== scoreboard removed
+>> RemoveObjective id=106 len=15
+    {ObjectiveName:"§r§uBoard§r"}
+    | 0ec2a772c2a775426f617264c2a772
+== another entity spawns
+>> AddActor id=13 len=220 normalised
+    AddActorPacket
+      EntityUniqueID: 1001
+      EntityRuntimeID: 1002
+      EntityType: "minecraft:falling_block"
+      Position: [2.5 -59 0.5]
+      Velocity: [0 0 0]
+      Pitch: 0
+      Yaw: 0
+      HeadYaw: 0
+      BodyYaw: 0
+      Attributes: []
+      EntityMetadata: map (20)
+        0: 844424930246656
+        108: 8
+        109: 16
+        110: "ambient"
+        111: 1
+        120: 0
+        2: -604749536
+        26: 0
+        3: 0
+        4: "§r§pfloating§r §ntext"
+        53: 0
+        54: 0
+        57: 0
+        58: 0
+        59: 0
+        60: 0
+        8: 0
+        81: 1
+        9: 0
+        92: 0
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      EntityLinks: []
+    | d20fea07176d696e6563726166743a66616c6c696e675f626c6f636b00002040
+    | 00006cc20000003f000000000000000000000000000000000000000000000000
+    | 00000000001400070780808e8080808003020202bffbddc00403000000040404
+    | 19c2a772c2a770666c6f6174696e67c2a77220c2a76e74657874080202000900
+    | 00001a0000003503030000000036030300000000390000003a0303000000003b
+    | 0000003c030300000000510000015c0707006c0303000000416d030300008041
+    | 6e040407616d6269656e746f03030000803f78030300000000000000
+== its name tag changes
+>> SetActorData id=39 len=130 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844424930246656 108:8 109:16 110:"ambient" 111:1 120:0 26:0 3:0 4:"§mrenamed" 53:0 54:0 57:0 58:0 59:0 60:0 8:0 81:1 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea071300070780808e8080808003030000000404040ac2a76d72656e616d6564
+    | 08020200090000001a0000003503030000000036030300000000390000003a03
+    | 03000000003b0000003c030300000000510000015c0707006c0303000000416d
+    | 0303000080416e040407616d6269656e746f03030000803f7803030000000000
+    | 0000
+== name tag and score tag of it for this player
+>> SetActorData id=39 len=137 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844424930246656 108:8 109:16 110:"ambient" 111:1 120:0 26:0 3:0 4:"§r§iown name§r" 53:0 54:0 57:0 58:0 59:0 60:0 8:0 81:1 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea071300070780808e80808080030300000004040411c2a772c2a7696f776e20
+    | 6e616d65c2a77208020200090000001a00000035030300000000360303000000
+    | 00390000003a0303000000003b0000003c030300000000510000015c0707006c
+    | 0303000000416d0303000080416e040407616d6269656e746f03030000803f78
+    | 030300000000000000
+>> SetActorData id=39 len=153 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844424930246656 108:8 109:16 110:"ambient" 111:1 120:0 26:0 3:0 4:"§r§iown name§r" 53:0 54:0 57:0 58:0 59:0 60:0 8:0 81:1 84:"§u10 points" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea071400070780808e80808080030300000004040411c2a772c2a7696f776e20
+    | 6e616d65c2a77208020200090000001a00000035030300000000360303000000
+    | 00390000003a0303000000003b0000003c030300000000510000015404040cc2
+    | a775313020706f696e74735c0707006c0303000000416d0303000080416e0404
+    | 07616d6269656e746f03030000803f78030300000000000000
+>> SetActorData id=39 len=153 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844424930213888 108:8 109:16 110:"ambient" 111:1 120:0 26:0 3:0 4:"§r§iown name§r" 53:0 54:0 57:0 58:0 59:0 60:0 8:0 81:0 84:"§u10 points" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea071400070780808a80808080030300000004040411c2a772c2a7696f776e20
+    | 6e616d65c2a77208020200090000001a00000035030300000000360303000000
+    | 00390000003a0303000000003b0000003c030300000000510000005404040cc2
+    | a775313020706f696e74735c0707006c0303000000416d0303000080416e0404
+    | 07616d6269656e746f03030000803f78030300000000000000
+== public name tag and score tag again
+>> SetActorData id=39 len=146 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844424930213888 108:8 109:16 110:"ambient" 111:1 120:0 26:0 3:0 4:"§mrenamed" 53:0 54:0 57:0 58:0 59:0 60:0 8:0 81:0 84:"§u10 points" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea071400070780808a8080808003030000000404040ac2a76d72656e616d6564
+    | 08020200090000001a0000003503030000000036030300000000390000003a03
+    | 03000000003b0000003c030300000000510000005404040cc2a775313020706f
+    | 696e74735c0707006c0303000000416d0303000080416e040407616d6269656e
+    | 746f03030000803f78030300000000000000
+>> SetActorData id=39 len=130 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844424930213888 108:8 109:16 110:"ambient" 111:1 120:0 26:0 3:0 4:"§mrenamed" 53:0 54:0 57:0 58:0 59:0 60:0 8:0 81:0 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea071300070780808a8080808003030000000404040ac2a76d72656e616d6564
+    | 08020200090000001a0000003503030000000036030300000000390000003a03
+    | 03000000003b0000003c030300000000510000005c0707006c0303000000416d
+    | 0303000080416e040407616d6269656e746f03030000803f7803030000000000
+    | 0000
+>> SetActorData id=39 len=130 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844424930246656 108:8 109:16 110:"ambient" 111:1 120:0 26:0 3:0 4:"§mrenamed" 53:0 54:0 57:0 58:0 59:0 60:0 8:0 81:1 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea071300070780808e8080808003030000000404040ac2a76d72656e616d6564
+    | 08020200090000001a0000003503030000000036030300000000390000003a03
+    | 03000000003b0000003c030300000000510000015c0707006c0303000000416d
+    | 0303000080416e040407616d6269656e746f03030000803f7803030000000000
+    | 0000
+== score tag of the player
+>> SetActorData id=39 len=142
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:0 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"§s 12  hearts" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 510000015404040ec2a77320313220206865617274735c070700780303000000
+    | 0081010000008301070700000000
+>> SetActorData id=39 len=151
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map (22)
+        0: 844459290443776
+        120: 0
+        129: 0
+        131: 0
+        15: 0
+        26: 0
+        3: 0
+        38: 1
+        4: "§r§aGolden§r"
+        42: 300
+        53: 0.6
+        54: 1.8
+        57: 0
+        58: 0
+        59: 0
+        60: 0
+        7: 300
+        8: 0
+        81: 1
+        84: "§s 12  hearts"
+        9: 0
+        92: 0
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c68080828003030000000404040fc2a772c2a761476f6c6465
+    | 6ec2a7720701012c0108020200090000000f0202001a0000002603030000803f
+    | 2a01012c013503039a99193f3603036666e63f390000003a0303000000003b00
+    | 00003c030300000000510000015404040ec2a77320313220206865617274735c
+    | 0707007803030000000081010000008301070700000000
+== command output
+>> CommandOutput id=79 len=138
+    CommandOutputPacket
+      CommandOrigin: {Origin:0 UUID:0x00000000000000000000000000000000 RequestID:"" PlayerUniqueID:0}
+      OutputType: 3
+      SuccessCount: 3
+      OutputMessages: []v2193.CommandOutputMessage (4)
+        [0] {Message:"§aplain output" Success:true Parameters:[]}
+        [1] {Message:"formatted 7" Success:true Parameters:[]}
+        [2] {Message:"§r§s%commands.give.success§r" Success:true Parameters:["a" "b" "c"]}
+        [3] {Message:"§cerror output" Success:false Parameters:[]}
+      DataSet: none
+    | 06706c6179657200000000000000000000000000000000000000000000000000
+    | 09616c6c6f757470757403000000040fc2a761706c61696e206f757470757401
+    | 000b666f726d6174746564203701001fc2a772c2a77325636f6d6d616e64732e
+    | 676976652e73756363657373c2a77201030161016201630fc2a7636572726f72
+    | 206f7574707574000000
+== menu form
+>> ModalFormRequest id=100 len=199
+    ModalFormRequestPacket
+      FormID: 1
+      FormData: json"{\"content\":\"§mbody\",\"elements\":[{\"text\":\"§nfirst\",\"type\":\"button\"},{\"image\":{\"data\":\"textures/items/apple\",\"type\":\"path\"},\"text\":\"second\",\"type\":\"button\"}],\"title\":\"§r§sMenu§r\",\"type\":\"form\"}"
+    | 01c4017b22636f6e74656e74223a22c2a76d626f6479222c22656c656d656e74
+    | 73223a5b7b2274657874223a22c2a76e6669727374222c2274797065223a2262
+    | 7574746f6e227d2c7b22696d616765223a7b2264617461223a22746578747572
+    | 65732f6974656d732f6170706c65222c2274797065223a2270617468227d2c22
+    | 74657874223a227365636f6e64222c2274797065223a22627574746f6e227d5d
+    | 2c227469746c65223a22c2a772c2a7734d656e75c2a772222c2274797065223a
+    | 22666f726d227d
+== modal form
+>> ModalFormRequest id=100 len=96
+    {FormID:2 FormData:json"{\"button1\":\"§ayes\",\"button2\":\"§cno\",\"content\":\"§squestion?\",\"title\":\"Modal\",\"type\":\"modal\"}"}
+    | 025e7b22627574746f6e31223a22c2a761796573222c22627574746f6e32223a
+    | 22c2a7636e6f222c22636f6e74656e74223a22c2a7737175657374696f6e3f22
+    | 2c227469746c65223a224d6f64616c222c2274797065223a226d6f64616c227d
+== custom form
+>> ModalFormRequest id=100 len=260
+    ModalFormRequestPacket
+      FormID: 3
+      FormData: json"{\"content\":[{\"default\":\"Golden\",\"placeholder\":\"your name\",\"text\":\"§lName\",\"type\":\"input\"},{\"default\":true,\"text\":\"Agree\",\"type\":\"toggle\"},{\"default\":2.5,\"max\":10,\"min\":0,\"step\":0.5,\"text\":\"Amount\",\"type\":\"slider\"}],\"title\":\"§uCustom\",\"type\":\"custom_form\"}"
+    | 0381027b22636f6e74656e74223a5b7b2264656661756c74223a22476f6c6465
+    | 6e222c22706c616365686f6c646572223a22796f7572206e616d65222c227465
+    | 7874223a22c2a76c4e616d65222c2274797065223a22696e707574227d2c7b22
+    | 64656661756c74223a747275652c2274657874223a224167726565222c227479
+    | 7065223a22746f67676c65227d2c7b2264656661756c74223a322e352c226d61
+    | 78223a31302c226d696e223a302c2273746570223a302e352c2274657874223a
+    | 22416d6f756e74222c2274797065223a22736c69646572227d5d2c227469746c
+    | 65223a22c2a775437573746f6d222c2274797065223a22637573746f6d5f666f
+    | 726d227d
+== dialogue of the other entity
+>> SetActorData id=39 len=218 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map (21)
+        0: 844424930246656
+        108: 8
+        109: 16
+        110: "ambient"
+        111: 1
+        120: 0
+        26: 0
+        3: 0
+        39: 1
+        4: "§mrenamed"
+        40: "{\"portrait_offsets\":{\"rotate\":[0,-32,0],\"scale\":[1,1,1],\"translate\":[-0,-0,-0]}}"
+        53: 0
+        54: 0
+        57: 0
+        58: 0
+        59: 0
+        60: 0
+        8: 0
+        81: 1
+        9: 0
+        92: 0
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea071500070780808e8080808003030000000404040ac2a76d72656e616d6564
+    | 08020200090000001a00000027000001280404507b22706f7274726169745f6f
+    | 666673657473223a7b22726f74617465223a5b302c2d33322c305d2c22736361
+    | 6c65223a5b312c312c315d2c227472616e736c617465223a5b2d302c2d302c2d
+    | 305d7d7d3503030000000036030300000000390000003a0303000000003b0000
+    | 003c030300000000510000015c0707006c0303000000416d0303000080416e04
+    | 0407616d6269656e746f03030000803f78030300000000000000
+>> NPCDialogue id=169 len=98 normalised
+    NPCDialoguePacket
+      EntityUniqueID: 1001
+      ActionType: 0
+      Dialogue: "§r§qbody§r"
+      SceneName: "default"
+      NPCName: "§pDialogue"
+      ActionJSON: "[{\"button_name\":\"§ayes\",\"mode\":0,\"text\":\"\",\"type\":1}]"
+    | e903000000000000000dc2a772c2a771626f6479c2a7720764656661756c740b
+    | c2a7704469616c6f677565365b7b22627574746f6e5f6e616d65223a22c2a761
+    | 796573222c226d6f6465223a302c2274657874223a22222c2274797065223a31
+    | 7d5d
+== dialogue closed
+>> NPCDialogue id=169 len=13 normalised
+    {EntityUniqueID:1001 ActionType:1 Dialogue:"" SceneName:"" NPCName:"" ActionJSON:""}
+    | e9030000000000000200000000
+== HUD: hide health and hunger
+== HUD sent in the tick
+>> SetHud id=308 len=4 normalised
+    {Elements:[6 8] Visibility:0}
+    | 020c1000
+== HUD: show health
+== HUD sent in the tick
+>> SetHud id=308 len=3
+    {Elements:[6] Visibility:1}
+    | 010c02
