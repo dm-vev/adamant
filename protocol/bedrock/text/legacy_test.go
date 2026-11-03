@@ -11,11 +11,12 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/text"
+	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 )
 
 // FuzzLegacyWriter compares the legacy writer of server/text, Text.Legacy,
-// with String, the renderer of this package, on every kind of text the
-// other fuzz tests make: the random trees of FuzzTree, in both modes, the
+// which String and Append are, with the renderer this package had before
+// it (oldString), on every kind of text the other fuzz tests make: the random trees of FuzzTree, in both modes, the
 // texts Colourf makes of the markup of FuzzColourf, and those ParseLegacy
 // reads from the strings of FuzzLegacy. Their corpora are its seeds.
 func FuzzLegacyWriter(f *testing.F) {
@@ -59,16 +60,17 @@ func colourf(format string, a []any) text.Text {
 	return text.Colourf(format, a...)
 }
 
-// checkLegacyWriter fails t if the legacy writer of server/text does not
-// write tr as String and Append do, or writes one of its codes not as Code
-// does.
+// checkLegacyWriter fails t if the legacy writer of server/text, through
+// String and Append, does not write tr as the renderer this package had
+// before it did, or writes one of its codes not as that renderer did.
 func checkLegacyWriter(t testing.TB, tr text.Text) {
 	t.Helper()
-	if got, want := tr.Legacy(), String(tr); got != want {
-		t.Fatalf("%#v.Legacy() = %q, String writes %q", tr, got, want)
+	want := oldAppend([]byte("x"), tr)
+	if got := String(tr); got != string(want[1:]) {
+		t.Fatalf("String(%#v) = %q, the old renderer wrote %q", tr, got, want[1:])
 	}
-	if got, want := tr.AppendLegacy([]byte("x")), Append([]byte("x"), tr); !slices.Equal(got, want) {
-		t.Fatalf("%#v.AppendLegacy = %q, Append %q", tr, got, want)
+	if got := Append([]byte("x"), tr); !slices.Equal(got, want) {
+		t.Fatalf("Append of %#v = %q, the old renderer wrote %q", tr, got, want)
 	}
 	for s := range tr.Spans(text.SpanOptions{Decorations: text.AllDecorations}) {
 		for _, c := range s.Codes {
@@ -77,12 +79,83 @@ func checkLegacyWriter(t testing.TB, tr text.Text) {
 	}
 }
 
-// checkCodeLegacy fails t if c.Legacy() is not Code(c).
+// checkCodeLegacy fails t if Code(c) is not the code the old renderer
+// wrote for c.
 func checkCodeLegacy(t testing.TB, c text.Code) {
 	t.Helper()
-	if got, want := c.Legacy(), Code(c); got != want {
-		t.Fatalf("%v.Legacy() = %q, Code gives %q", c, got, want)
+	if got, want := Code(c), oldCode(c); got != want {
+		t.Fatalf("Code(%v) = %q, the old renderer wrote %q", c, got, want)
 	}
+}
+
+// The renderer of this package before it wrote text with the legacy
+// writer of server/text, kept as it was so that FuzzLegacyWriter keeps
+// comparing the two.
+
+// oldCodes are the § codes of the named colours.
+var oldCodes = [...]string{
+	text.Black:      nettext.Black,
+	text.DarkBlue:   nettext.DarkBlue,
+	text.DarkGreen:  nettext.DarkGreen,
+	text.DarkAqua:   nettext.DarkAqua,
+	text.DarkRed:    nettext.DarkRed,
+	text.DarkPurple: nettext.DarkPurple,
+	text.Orange:     nettext.Orange,
+	text.Grey:       nettext.Grey,
+	text.DarkGrey:   nettext.DarkGrey,
+	text.Blue:       nettext.Blue,
+	text.Green:      nettext.Green,
+	text.Aqua:       nettext.Aqua,
+	text.Red:        nettext.Red,
+	text.Purple:     nettext.Purple,
+	text.Yellow:     nettext.Yellow,
+	text.White:      nettext.White,
+	text.DarkYellow: nettext.DarkYellow,
+	text.Quartz:     nettext.Quartz,
+	text.Iron:       nettext.Iron,
+	text.Netherite:  nettext.Netherite,
+	text.Redstone:   nettext.Redstone,
+	text.Copper:     nettext.Copper,
+	text.Gold:       nettext.Gold,
+	text.Emerald:    nettext.Emerald,
+	text.Diamond:    nettext.Diamond,
+	text.Lapis:      nettext.Lapis,
+	text.Amethyst:   nettext.Amethyst,
+	text.Resin:      nettext.Resin,
+}
+
+// oldCode returns the § code of c.
+func oldCode(c text.Code) string {
+	if c.Colour != text.NoColour {
+		if n := c.Colour.Nearest(); n != text.NoColour {
+			return oldCodes[n]
+		}
+		return ""
+	}
+	switch c.Decoration {
+	case text.Obfuscated:
+		return nettext.Obfuscated
+	case text.Bold:
+		return nettext.Bold
+	case text.Italic:
+		return nettext.Italic
+	}
+	return ""
+}
+
+// oldAppend appends t as a string with § codes to dst and returns the
+// result.
+func oldAppend(dst []byte, t text.Text) []byte {
+	for s := range t.Spans(text.SpanOptions{Decorations: text.Obfuscated | text.Bold | text.Italic}) {
+		if s.Reset {
+			dst = append(dst, nettext.Reset...)
+		}
+		for _, c := range s.Codes {
+			dst = append(dst, oldCode(c)...)
+		}
+		dst = append(dst, s.Text...)
+	}
+	return dst
 }
 
 func TestLegacyWriterCodes(t *testing.T) {

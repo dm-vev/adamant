@@ -170,13 +170,19 @@ var legacyFragments = func() []string {
 	return f
 }()
 
-// checkLegacy fails t if ParseLegacy(s) does not render as s, or does not
-// show on the console as s does.
+// checkLegacy fails t if ParseLegacy(s) does not render as s, through
+// String, Inline and Message, or does not show on the console as s does.
 func checkLegacy(t testing.TB, s string) {
 	t.Helper()
 	p := text.ParseLegacy(s)
 	if got := String(p); got != s {
 		t.Fatalf("ParseLegacy(%q) renders as %q\ntext %#v", s, got, p)
+	}
+	if got := Inline(p); got != s {
+		t.Fatalf("Inline(ParseLegacy(%q)) = %q", s, got)
+	}
+	if msg, params, translated := Message(p); msg != s || params != nil || translated {
+		t.Fatalf("Message(ParseLegacy(%q)) = %q, %q, %v", s, msg, params, translated)
 	}
 	if got, want := p.Plain(), nettext.Clean(s); got != want {
 		t.Fatalf("ParseLegacy(%q).Plain() = %q, Clean %q", s, got, want)
