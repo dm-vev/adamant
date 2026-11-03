@@ -27,10 +27,10 @@ func pourWaterOnBlock(p potion.Potion, pos cube.Pos, face cube.Face, tx *world.T
 	if !ok {
 		return false
 	}
-	tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "random.splash", Volume: 1, Pitch: 1})
+	tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "entity.generic.splash", Volume: 1, Pitch: 1})
 	ctx.SubtractFromCount(1)
 	ctx.NewItem, ctx.NewItemSurvivalOnly = NewStack(GlassBottle{}, 1), true
-	tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "bottle.empty", Volume: 1, Pitch: 1})
+	tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "item.bottle.empty", Volume: 1, Pitch: 1})
 	tx.EmitGameEvent(world.GameEventFluidPlace, pos.Vec3Centre(), world.GameEventContext{})
 	tx.SetBlock(pos, mud, nil)
 	return true

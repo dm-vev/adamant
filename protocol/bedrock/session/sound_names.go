@@ -275,6 +275,7 @@ var bedrockSoundNames = map[string]string{
 	"entity.frog.long_jump":                      "mob.frog.jump_to_block",
 	"entity.frog.step":                           "mob.frog.step",
 	"entity.frog.tongue":                         "mob.frog.tongue",
+	"entity.generic.splash":                      "random.splash",
 	"entity.goat.eat":                            "mob.goat.eat",
 	"entity.goat.horn_break":                     "mob.goat.horn_break",
 	"entity.goat.milk":                           "mob.cow.milk",
@@ -308,6 +309,7 @@ var bedrockSoundNames = map[string]string{
 	"entity.wither.spawn":                        "mob.wither.spawn",
 	"entity.zoglin.angry":                        "mob.zoglin.angry",
 	"entity.zoglin.attack":                       "mob.zoglin.attack",
+	"item.bottle.empty":                          "bottle.empty",
 	"item.lead.tied":                             "leashknot.place",
 }
 

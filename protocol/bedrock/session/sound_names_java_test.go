@@ -40,6 +40,8 @@ var javaSoundDefinitions = []struct{ java, bedrock string }{
 	// FrogAi.initLongJumpActivity.
 	{"entity.frog.long_jump", "mob.frog.jump_to_block"},
 	{"entity.frog.step", "mob.frog.step"},
+	// PotionItem.useOn, a water bottle on dirt.
+	{"entity.generic.splash", "random.splash"},
 	// Goat.playEatingSound, Goat.getMilkingSound and GoatAi.
 	{"entity.goat.eat", "mob.goat.eat"},
 	{"entity.goat.horn_break", "mob.goat.horn_break"},
@@ -84,6 +86,8 @@ var javaSoundDefinitions = []struct{ java, bedrock string }{
 	// Zoglin.doHurtTarget and Zoglin.playAngrySound.
 	{"entity.zoglin.angry", "mob.zoglin.angry"},
 	{"entity.zoglin.attack", "mob.zoglin.attack"},
+	// PotionItem.useOn.
+	{"item.bottle.empty", "bottle.empty"},
 	// LeashFenceKnotEntity.playPlacementSound.
 	{"item.lead.tied", "leashknot.place"},
 }
