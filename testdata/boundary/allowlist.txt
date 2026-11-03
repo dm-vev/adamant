@@ -1,0 +1,132 @@
+# Import boundary violations that still exist.
+#
+# Each line is "<file> <import path>": a file, relative to the repository root and written with slashes,
+# followed by an import that the rules of boundary_test.go (see docs/protocol-boundary.md) forbid it.
+#
+# This list is a ratchet. It may only shrink as the protocol/game separation proceeds: an entry that is no
+# longer a violation fails the test until it is removed. Adding an entry needs a justification in review.
+#
+# Regenerate it with:
+#
+#	go test -run TestImportBoundary -update-boundary .
+#
+# Blank lines and lines starting with # are ignored. Entries are sorted.
+
+server/admin_api.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/admin_store.go github.com/dm-vev/adamant/net/bedrock/login
+server/admin_store_test.go github.com/dm-vev/adamant/net/bedrock/login
+server/allower.go github.com/dm-vev/adamant/net/bedrock/login
+server/cmd/builtin/about.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/cmd/builtin/command_metadata_test.go github.com/df-mc/dragonfly/server/session
+server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/wire
+server/cmd/builtin/description_test.go github.com/df-mc/dragonfly/server/session
+server/cmd/builtin/description_test.go github.com/dm-vev/adamant/net/bedrock/text
+server/cmd/builtin/registry_parameter.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/cmd/builtin/registry_parameter_test.go github.com/df-mc/dragonfly/server/session
+server/cmd/builtin/registry_parameter_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/conf.go github.com/df-mc/dragonfly/server/netconn
+server/conf.go github.com/dm-vev/adamant/net/bedrock
+server/conf.go github.com/dm-vev/adamant/net/bedrock/resource
+server/entity/area_effect_cloud.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/game_data_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/resource
+server/internal/packbuilder/resource_pack.go github.com/dm-vev/adamant/net/bedrock/resource
+server/item/amethyst_shard.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/copper_ingot.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/diamond.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/emerald.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/gold_ingot.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/iron_ingot.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/lapis_lazuli.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/nether_quartz.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/netherite_ingot.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/redstone_wire.go github.com/dm-vev/adamant/net/bedrock/text
+server/item/resin_brick.go github.com/dm-vev/adamant/net/bedrock/text
+server/listener.go github.com/df-mc/dragonfly/server/session
+server/listener_nethernet.go github.com/df-mc/dragonfly/server/netconn
+server/listener_nethernet.go github.com/df-mc/dragonfly/server/session
+server/listener_nethernet.go github.com/dm-vev/adamant/net/acme
+server/listener_nethernet.go github.com/dm-vev/adamant/net/bedrock
+server/listener_nethernet.go github.com/dm-vev/adamant/net/bedrock/login
+server/listener_nethernet.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/listener_nethernet.go github.com/dm-vev/adamant/net/java
+server/listener_nethernet.go github.com/dm-vev/adamant/net/nethernet
+server/listener_nethernet.go github.com/dm-vev/adamant/net/nethernet/lan
+server/listener_nethernet.go github.com/dm-vev/adamant/net/proxy
+server/listener_nethernet_test.go github.com/df-mc/dragonfly/server/netconn
+server/listener_nethernet_test.go github.com/df-mc/dragonfly/server/session
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock/client
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock/login
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock/wire
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/java
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet/lan
+server/listener_nethernet_test.go github.com/dm-vev/adamant/net/proxy
+server/login_policy.go github.com/dm-vev/adamant/net/bedrock/login
+server/login_policy_test.go github.com/dm-vev/adamant/net/bedrock/login
+server/permissions_test.go github.com/df-mc/dragonfly/server/netconn
+server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto
+server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/player/attack_lifecycle_test.go github.com/df-mc/dragonfly/server/session
+server/player/attack_lifecycle_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/player/chat/subscriber.go github.com/dm-vev/adamant/net/bedrock/text
+server/player/chat/translate.go github.com/dm-vev/adamant/net/bedrock/text
+server/player/chat/translate_test.go github.com/dm-vev/adamant/net/bedrock/text
+server/player/close_reentry_test.go github.com/df-mc/dragonfly/server/session
+server/player/conf.go github.com/df-mc/dragonfly/server/session
+server/player/handler.go github.com/df-mc/dragonfly/server/session
+server/player/input/lock.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/player/piston_native_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/player/player.go github.com/df-mc/dragonfly/server/session
+server/player/release_test.go github.com/df-mc/dragonfly/server/netconn
+server/player/release_test.go github.com/df-mc/dragonfly/server/session
+server/player/release_test.go github.com/dm-vev/adamant/net/bedrock/login
+server/player/release_test.go github.com/dm-vev/adamant/net/bedrock/proto
+server/player/release_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/player/respawn_test.go github.com/df-mc/dragonfly/server/netconn
+server/player/respawn_test.go github.com/df-mc/dragonfly/server/session
+server/player/respawn_test.go github.com/dm-vev/adamant/net/bedrock/login
+server/player/respawn_test.go github.com/dm-vev/adamant/net/bedrock/proto
+server/player/respawn_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/player/session_panic_test.go github.com/df-mc/dragonfly/server/netconn
+server/player/session_panic_test.go github.com/df-mc/dragonfly/server/session
+server/player/session_panic_test.go github.com/dm-vev/adamant/net/bedrock/login
+server/player/session_panic_test.go github.com/dm-vev/adamant/net/bedrock/proto
+server/player/session_panic_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/query/data.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/query_adapter.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/server.go github.com/df-mc/dragonfly/server/netconn
+server/server.go github.com/df-mc/dragonfly/server/session
+server/server.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/session_teardown_test.go github.com/df-mc/dragonfly/server/netconn
+server/session_teardown_test.go github.com/df-mc/dragonfly/server/session
+server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/login
+server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/proto
+server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/status.go github.com/df-mc/dragonfly/server/netconn
+server/whitelist.go github.com/dm-vev/adamant/net/bedrock/login
+server/whitelist_operators.go github.com/dm-vev/adamant/net/bedrock/login
+server/whitelist_operators_test.go github.com/dm-vev/adamant/net/bedrock/login
+server/world/biome_definition.go github.com/dm-vev/adamant/net/bedrock/proto
+server/world/biome_definition.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/world/generator/advanced/internal/structure/nbt_adapter_structure.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/world/mcdb/leveldat/data.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/world/mcdb/leveldat/version.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/xbox.go github.com/df-mc/dragonfly/server/netconn
+server/xbox.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
+server/xbox.go github.com/dm-vev/adamant/net/nethernet
+server/xbox.go github.com/dm-vev/adamant/net/turn
+server/xbox.go github.com/dm-vev/adamant/net/xbox/auth
+server/xbox.go github.com/dm-vev/adamant/net/xbox/mpsd
+server/xbox.go github.com/dm-vev/adamant/net/xbox/signaling
+server/xbox.go github.com/dm-vev/adamant/net/xbox/social
+server/xbox_test.go github.com/dm-vev/adamant/net/nethernet
+server/xbox_test.go github.com/dm-vev/adamant/net/turn
+server/xbox_test.go github.com/dm-vev/adamant/net/xbox/auth
+server/xbox_test.go github.com/dm-vev/adamant/net/xbox/mpsd
+server/xbox_test.go github.com/dm-vev/adamant/net/xbox/signaling
+server/xbox_test.go github.com/dm-vev/adamant/net/xbox/social
