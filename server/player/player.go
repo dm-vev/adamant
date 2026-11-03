@@ -598,9 +598,15 @@ func (p *Player) AlwaysShowNameTag() bool {
 }
 
 // SetScoreTag changes the score tag displayed over the player in-game. The score tag is displayed under the player's
-// name tag.
+// name tag. It is formatted following the rules of fmt.Sprintln without a newline at the end; a lone text.Text is
+// stored as its legacy string, with § codes, as ScoreTag returns the score tag.
 func (p *Player) SetScoreTag(a ...any) {
 	tag := format(a)
+	if len(a) == 1 {
+		if t, ok := a[0].(text.Text); ok {
+			tag = t.Legacy()
+		}
+	}
 	p.scoreTag = tag
 	p.updateState()
 }
@@ -4158,9 +4164,10 @@ func (p *Player) ViewLayer() *world.ViewLayer {
 	return p.session().ViewLayer()
 }
 
-// ViewNameTag overrides the public name tag of the entity for this player.
-func (p *Player) ViewNameTag(entity world.Entity, nameTag string) {
-	p.session().ViewNameTag(entity, nameTag)
+// ViewNameTag overrides the public name tag of the entity for this player. The name tag is a text.Text, taken
+// as it is, or a string or another value, formatted by fmt and read as a legacy string, with § codes.
+func (p *Player) ViewNameTag(entity world.Entity, nameTag any) {
+	p.session().ViewNameTag(entity, textOf(nameTag))
 }
 
 // ViewPublicNameTag removes the name tag override of the entity for this player.
@@ -4178,9 +4185,10 @@ func (p *Player) ViewPublicAlwaysShowNameTag(entity world.Entity) {
 	p.session().ViewPublicAlwaysShowNameTag(entity)
 }
 
-// ViewScoreTag overrides the public score tag of the entity for this player.
-func (p *Player) ViewScoreTag(entity world.Entity, scoreTag string) {
-	p.session().ViewScoreTag(entity, scoreTag)
+// ViewScoreTag overrides the public score tag of the entity for this player. The score tag is read as
+// ViewNameTag reads a name tag.
+func (p *Player) ViewScoreTag(entity world.Entity, scoreTag any) {
+	p.session().ViewScoreTag(entity, textOf(scoreTag))
 }
 
 // ViewPublicScoreTag removes the score tag override of the entity for this player.

@@ -8,9 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/text"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // The tests of this file hold the packets that the session writes for the
@@ -127,10 +130,36 @@ func oldSendMessage(s *Session, message string) {
 	})
 }
 
+// tagEntity is an entity of a view layer: its handle alone.
+type tagEntity struct {
+	world.Entity
+	h *world.EntityHandle
+}
+
+func (e tagEntity) H() *world.EntityHandle { return e.h }
+
+// checkViewTags fails t if the session stores, in its view layer, other name
+// and score tags for text.ParseLegacy(str) than it stored for str.
+func checkViewTags(t *testing.T, str string) {
+	t.Helper()
+	s := &Session{viewLayer: world.NewViewLayer(nil)}
+	e := tagEntity{h: entity.NewText("tagged", mgl64.Vec3{})}
+	s.ViewNameTag(e, text.ParseLegacy(str))
+	s.ViewScoreTag(e, text.ParseLegacy(str))
+	// The old ViewNameTag and ViewScoreTag stored the string as it is.
+	if got, ok := s.viewLayer.NameTag(e); !ok || got != str {
+		t.Fatalf("ViewNameTag(%q) stored %q (%v)", str, got, ok)
+	}
+	if got, ok := s.viewLayer.ScoreTag(e); !ok || got != str {
+		t.Fatalf("ViewScoreTag(%q) stored %q (%v)", str, got, ok)
+	}
+}
+
 // checkTextPackets fails t if a method of the session writes, for
 // text.ParseLegacy(str), other bytes than it wrote for str.
 func checkTextPackets(t *testing.T, str string) {
 	t.Helper()
+	checkViewTags(t, str)
 	for _, m := range textMethods {
 		nw, old := newCaptureSession(), newCaptureSession()
 		m.new(nw, text.ParseLegacy(str))

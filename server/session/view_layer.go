@@ -1,6 +1,10 @@
 package session
 
-import "github.com/df-mc/dragonfly/server/world"
+import (
+	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
+	"github.com/df-mc/dragonfly/server/text"
+	"github.com/df-mc/dragonfly/server/world"
+)
 
 // ViewLayer returns the session's ViewLayer. The layer may be used to override how entities are viewed
 // by this session, such as with a different name tag or visibility state.
@@ -8,12 +12,13 @@ func (s *Session) ViewLayer() *world.ViewLayer {
 	return s.viewLayer
 }
 
-// ViewNameTag overwrites the public name tag of the entity and immediately refreshes it for this session.
-func (s *Session) ViewNameTag(entity world.Entity, nameTag string) {
+// ViewNameTag overwrites the public name tag of the entity and immediately refreshes it for this session. The
+// view layer holds the name tag as a legacy string, as entities hold theirs.
+func (s *Session) ViewNameTag(entity world.Entity, nameTag text.Text) {
 	if s.viewLayer == nil {
 		return
 	}
-	s.viewLayer.ViewNameTag(entity, nameTag)
+	s.viewLayer.ViewNameTag(entity, bedrocktext.String(nameTag))
 }
 
 // ViewPublicNameTag removes the name tag override from the entity and immediately refreshes it for this session.
@@ -40,12 +45,13 @@ func (s *Session) ViewPublicAlwaysShowNameTag(entity world.Entity) {
 	s.viewLayer.ViewPublicAlwaysShowNameTag(entity)
 }
 
-// ViewScoreTag overwrites the public score tag of the entity and immediately refreshes it for this session.
-func (s *Session) ViewScoreTag(entity world.Entity, scoreTag string) {
+// ViewScoreTag overwrites the public score tag of the entity and immediately refreshes it for this session. The
+// view layer holds the score tag as a legacy string, as entities hold theirs.
+func (s *Session) ViewScoreTag(entity world.Entity, scoreTag text.Text) {
 	if s.viewLayer == nil {
 		return
 	}
-	s.viewLayer.ViewScoreTag(entity, scoreTag)
+	s.viewLayer.ViewScoreTag(entity, bedrocktext.String(scoreTag))
 }
 
 // ViewPublicScoreTag removes the score tag override from the entity and immediately refreshes it for this session.
