@@ -3720,9 +3720,9 @@ func (p *Player) Latency() time.Duration {
 
 // NetStats returns the state of the connection of the player, false for a
 // player without one.
-func (p *Player) NetStats() (session.NetStats, bool) {
+func (p *Player) NetStats() (client.NetStats, bool) {
 	if p.session() == session.Nop {
-		return session.NetStats{}, false
+		return client.NetStats{}, false
 	}
 	return p.session().NetStats(), true
 }

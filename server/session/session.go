@@ -579,36 +579,6 @@ func (s *Session) Latency() time.Duration {
 	return s.conn.Latency()
 }
 
-// NetStats are the state of the connection of a session, as a netstat
-// shows it.
-type NetStats struct {
-	// Addr is the address of the client.
-	Addr net.Addr
-	// Latency is half the round trip time.
-	Latency time.Duration
-	// Queued counts the packets waiting for the connection, Inbox those of
-	// the client waiting for the world of the player.
-	Queued, Inbox int
-	// Conn is the state of the connection, if it tells it.
-	Conn    netconn.Stats
-	HasConn bool
-}
-
-// NetStats returns the state of the connection of the session.
-func (s *Session) NetStats() NetStats {
-	st := NetStats{Addr: s.conn.RemoteAddr(), Latency: s.conn.Latency()}
-	s.packetsMu.Lock()
-	st.Queued = len(s.pendingPackets) + len(s.heldPackets)
-	s.packetsMu.Unlock()
-	s.inboxMu.Lock()
-	st.Inbox = len(s.inbox)
-	s.inboxMu.Unlock()
-	if c, ok := s.conn.(interface{ Stats() netconn.Stats }); ok {
-		st.Conn, st.HasConn = c.Stats(), true
-	}
-	return st
-}
-
 // withControllable runs f with the current Controllable on its world owner.
 // It is for off-owner session goroutines; callbacks that already have a
 // *world.Tx should use it directly instead.

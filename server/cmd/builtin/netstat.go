@@ -8,8 +8,8 @@ import (
 )
 
 // netstatCommand shows the state of the connections of players: address,
-// protocol, round trip, the congestion of SCTP and the queues on both
-// sides.
+// round trip and the queues on both sides, then what the client of each
+// tells of its transport, such as the protocol and the congestion of SCTP.
 type netstatCommand struct {
 	opGate
 	Targets []cmd.Target `cmd:"target"`
@@ -34,26 +34,8 @@ func (n netstatCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Printf("---- %s ----", p.Name())
 		o.Printf("Address: %v, latency %v", st.Addr, st.Latency.Round(time.Millisecond))
 		o.Printf("Queued for the client: %d packets; from the client: %d", st.Queued, st.Inbox)
-		if !st.HasConn {
-			continue
+		for _, line := range st.Transport {
+			o.Print(line)
 		}
-		c := st.Conn
-		if c.Proxied {
-			// A proxy carries the client, whose transport the proxy keeps.
-			o.Printf("Protocol %d through a proxy, connected %v ago", c.Protocol, time.Since(c.Connected).Round(time.Second))
-			continue
-		}
-		relay := ""
-		if c.Relayed {
-			relay = " through the TURN relay"
-		}
-		o.Printf("Protocol %d over NetherNet%s, connected %v ago", c.Protocol, relay, time.Since(c.Connected).Round(time.Second))
-		o.Printf("SCTP: RTT %v, RTO %v, cwnd %d B, in flight %d B, buffered %d B", c.SCTP.RTT.Round(time.Millisecond),
-			c.SCTP.RTO.Round(time.Millisecond), c.SCTP.Cwnd, c.SCTP.Flight, c.SCTP.Buffered)
-		o.Printf("Retransmitted chunks %d, timeouts %d", c.SCTP.Retransmits, c.SCTP.Timeouts)
-		o.Printf("Sent %d batches (%d B), received %d (%d B), %d unreliable", c.MessagesSent, c.BytesSent, c.MessagesReceived, c.BytesReceived, c.UnreliableReceived)
-		peer := c.SCTP.Peer
-		o.Printf("Client SCTP: window %d B, streams %d/%d, extensions % x, parameters %x; DTLS 1.3 offered: %v",
-			peer.Window, peer.OutStreams, peer.InStreams, peer.Extensions, peer.Params, c.DTLS13Offered)
 	}
 }

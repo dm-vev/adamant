@@ -1,5 +1,10 @@
 package client
 
+import (
+	"net"
+	"time"
+)
+
 // Profile is what a client told of the device it runs on when it joined.
 // Fields it did not tell are empty.
 type Profile struct {
@@ -10,6 +15,21 @@ type Profile struct {
 	// SelfSignedID is an ID the client made for itself, which stays the same
 	// across its logins.
 	SelfSignedID string
+}
+
+// NetStats is the state of the connection of a client, as a netstat shows
+// it.
+type NetStats struct {
+	// Addr is the address of the client.
+	Addr net.Addr
+	// Latency is half the round trip time.
+	Latency time.Duration
+	// Queued counts what waits to be sent to the client, Inbox what the
+	// client sent that waits for the world of its player.
+	Queued, Inbox int
+	// Transport describes the transport of the connection, one line each,
+	// in the words of the adapter of its protocol; empty if it tells nothing.
+	Transport []string
 }
 
 // Diagnostics are the latest diagnostics a client sent of how it runs.
