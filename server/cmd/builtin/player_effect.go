@@ -42,22 +42,8 @@ func registerPlayerEffectCommands(srv serverAdapter) {
 }
 
 func effectType(name string) effect.Type {
-	name = strings.TrimPrefix(strings.ToLower(name), "minecraft:")
-	names := map[string]effect.Type{
-		"speed": effect.Speed, "slowness": effect.Slowness, "haste": effect.Haste, "mining_fatigue": effect.MiningFatigue,
-		"strength": effect.Strength, "instant_health": effect.InstantHealth, "instant_damage": effect.InstantDamage,
-		"jump_boost": effect.JumpBoost, "nausea": effect.Nausea, "regeneration": effect.Regeneration,
-		"resistance": effect.Resistance, "fire_resistance": effect.FireResistance, "water_breathing": effect.WaterBreathing,
-		"invisibility": effect.Invisibility, "blindness": effect.Blindness, "night_vision": effect.NightVision,
-		"hunger": effect.Hunger, "weakness": effect.Weakness, "poison": effect.Poison, "wither": effect.Wither,
-		"health_boost": effect.HealthBoost, "absorption": effect.Absorption, "saturation": effect.Saturation,
-		"levitation": effect.Levitation, "fatal_poison": effect.FatalPoison, "conduit_power": effect.ConduitPower,
-		"slow_falling": effect.SlowFalling, "bad_omen": effect.BadOmen, "hero_of_the_village": effect.HeroOfTheVillage,
-		"darkness": effect.Darkness, "raid_omen": effect.RaidOmen, "trial_omen": effect.TrialOmen,
-		"wind_charged": effect.WindCharged, "weaving": effect.Weaving, "oozing": effect.Oozing,
-		"infested": effect.Infested, "breath_of_the_nautilus": effect.BreathOfTheNautilus,
-	}
-	return names[name]
+	t, _ := effect.ByName(strings.ToLower(name))
+	return t
 }
 
 func targetsOf(targets []cmd.Target) []entity.Living {
