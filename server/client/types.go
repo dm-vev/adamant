@@ -1,5 +1,17 @@
 package client
 
+// Profile is what a client told of the device it runs on when it joined.
+// Fields it did not tell are empty.
+type Profile struct {
+	// DeviceID identifies the device, as its platform does.
+	DeviceID string
+	// DeviceModel is the model of the device.
+	DeviceModel string
+	// SelfSignedID is an ID the client made for itself, which stays the same
+	// across its logins.
+	SelfSignedID string
+}
+
 // Diagnostics are the latest diagnostics a client sent of how it runs.
 // Times are in milliseconds.
 type Diagnostics struct {

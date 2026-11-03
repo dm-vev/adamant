@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
@@ -637,6 +638,16 @@ func sessionOwnerStopped(err error) bool {
 // ClientData returns the login.ClientData of the underlying *minecraft.Conn.
 func (s *Session) ClientData() login.ClientData {
 	return s.conn.ClientData()
+}
+
+// Profile returns what the client told of the device it runs on in the
+// client data of its login; the zero Profile for Nop.
+func (s *Session) Profile() client.Profile {
+	if s == Nop {
+		return client.Profile{}
+	}
+	d := s.conn.ClientData()
+	return client.Profile{DeviceID: d.DeviceID, DeviceModel: d.DeviceModel, SelfSignedID: d.SelfSignedID}
 }
 
 // LogError writes an error through the session's configured logger.
