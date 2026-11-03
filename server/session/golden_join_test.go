@@ -3,8 +3,6 @@ package session_test
 import (
 	"errors"
 	"log/slog"
-	"reflect"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -14,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // goldenListener is a server.Listener that hands the server one connection.
@@ -102,17 +99,7 @@ var joinServer = sync.OnceValue(func() goldenServer {
 		out.err = errors.New("the server did not start the game")
 		return out
 	}
-	// The game rules of the world and the items come from maps: they are in
-	// no order, so they are sorted by name.
-	rules := slices.Clone(data.GameRules)
-	slices.SortFunc(rules, func(a, b v2193.GameRule) int { return strings.Compare(a.Name, b.Name) })
-	data.GameRules = rules
-	items := slices.Clone(data.Items)
-	slices.SortFunc(items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
-	data.Items = items
-	var b strings.Builder
-	writeValue(&b, "    ", "", reflect.ValueOf(*data))
-	out.dump = b.String()
+	out.dump = gameDataDump(*data)
 	// What the server writes after StartGameContext and before the session
 	// is made: the items of the server.
 	for len(conn.written) > 0 && len(out.written) == 0 {

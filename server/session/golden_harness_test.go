@@ -868,7 +868,7 @@ func packetName(pk proto.Packet) string {
 //     of the entity: the effects are sorted.
 //
 // The GameRules and Items of the game data, which come from maps, are
-// sorted by name where the game data is written, see joinServer.
+// sorted by name where the game data is written, see gameDataDump.
 type normaliser struct {
 	entities map[uint64]uint64
 	stacks   map[int64]int64
@@ -1389,4 +1389,19 @@ func sortedKeys(v reflect.Value) []reflect.Value {
 	keys := v.MapKeys()
 	slices.SortFunc(keys, func(a, b reflect.Value) int { return strings.Compare(inline(a), inline(b)) })
 	return keys
+}
+
+// gameDataDump returns the game data a server starts a game with as the
+// snapshots show it. The game rules of the world and the items come from
+// maps: they are in no order, so they are sorted by name.
+func gameDataDump(data netconn.GameData) string {
+	rules := slices.Clone(data.GameRules)
+	slices.SortFunc(rules, func(a, b v2193.GameRule) int { return strings.Compare(a.Name, b.Name) })
+	data.GameRules = rules
+	items := slices.Clone(data.Items)
+	slices.SortFunc(items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
+	data.Items = items
+	var b strings.Builder
+	writeValue(&b, "    ", "", reflect.ValueOf(data))
+	return b.String()
 }
