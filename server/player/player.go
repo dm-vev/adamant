@@ -350,27 +350,31 @@ func (p *Player) Messaget(t chat.Translation, a ...any) {
 
 // SendPopup sends a formatted popup to the player. The popup is shown above the hotbar of the player and
 // overwrites/is overwritten by the name of the item equipped.
-// The popup is formatted following the rules of fmt.Sprintln without a newline at the end.
+// The popup is formatted following the rules of fmt.Sprintln without a newline at the end and read as a
+// legacy string, with § codes; a lone text.Text is sent as it is.
 func (p *Player) SendPopup(a ...any) {
-	p.session().SendPopup(format(a))
+	p.session().SendPopup(formatText(a))
 }
 
 // SendTip sends a tip to the player. The tip is shown in the middle of the screen of the player.
-// The tip is formatted following the rules of fmt.Sprintln without a newline at the end.
+// The tip is formatted following the rules of fmt.Sprintln without a newline at the end and read as a legacy
+// string, with § codes; a lone text.Text is sent as it is.
 func (p *Player) SendTip(a ...any) {
-	p.session().SendTip(format(a))
+	p.session().SendTip(formatText(a))
 }
 
 // SendJukeboxPopup sends a formatted jukebox popup to the player. This popup is shown above the hotbar of the player.
-// The popup is close to the position of an action bar message and the text has no background.
+// The popup is close to the position of an action bar message and the text has no background. It is formatted
+// as SendPopup formats it.
 func (p *Player) SendJukeboxPopup(a ...any) {
-	p.session().SendJukeboxPopup(format(a))
+	p.session().SendJukeboxPopup(formatText(a))
 }
 
 // SendToast sends a toast to the player. This toast is shown at the top of the screen, similar to achievements or pack
-// loading.
-func (p *Player) SendToast(title, message string) {
-	p.session().SendToast(title, message)
+// loading. The title and the message are each a text.Text, taken as it is, or a string or another value, formatted
+// by fmt and read as a legacy string, with § codes.
+func (p *Player) SendToast(title, message any) {
+	p.session().SendToast(textOf(title), textOf(message))
 }
 
 // SetRespawnPosition updates the player's persistent respawn point and the client-visible destination.
@@ -407,13 +411,13 @@ func (p *Player) SetFallDistance(distance float64) {
 // of the title, which is shown in a font similar to that of a tip/popup.
 func (p *Player) SendTitle(t title.Title) {
 	p.session().SetTitleDurations(t.FadeInDuration(), t.Duration(), t.FadeOutDuration())
-	if t.Text() != "" || t.Subtitle() != "" {
+	if !t.Text().IsZero() || !t.Subtitle().IsZero() {
 		p.session().SendTitle(t.Text())
-		if t.Subtitle() != "" {
+		if !t.Subtitle().IsZero() {
 			p.session().SendSubtitle(t.Subtitle())
 		}
 	}
-	if t.ActionText() != "" {
+	if !t.ActionText().IsZero() {
 		p.session().SendActionBarMessage(t.ActionText())
 	}
 }
@@ -5244,6 +5248,19 @@ func formatText(a []any) text.Text {
 		}
 	}
 	return text.ParseLegacy(format(a))
+}
+
+// textOf returns the value v as text: a text.Text as it is, a string read as
+// a legacy string, with § codes, and any other value formatted by fmt and
+// read so.
+func textOf(v any) text.Text {
+	switch v := v.(type) {
+	case text.Text:
+		return v
+	case string:
+		return text.ParseLegacy(v)
+	}
+	return text.ParseLegacy(fmt.Sprint(v))
 }
 
 // guardedByPiglins reports if a block is in #guarded_by_piglins.

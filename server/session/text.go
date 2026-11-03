@@ -36,10 +36,10 @@ func (s *Session) SendMessage(t text.Text) {
 }
 
 // SendTip ...
-func (s *Session) SendTip(message string) {
+func (s *Session) SendTip(t text.Text) {
 	s.writePacket(&v2193.TextPacket{
 		TextType: v2193.TextTypeTip,
-		Message:  message,
+		Message:  bedrocktext.String(t),
 	})
 }
 
@@ -52,26 +52,26 @@ func (s *Session) SendAnnouncement(message string) {
 }
 
 // SendPopup ...
-func (s *Session) SendPopup(message string) {
+func (s *Session) SendPopup(t text.Text) {
 	s.writePacket(&v2193.TextPacket{
 		TextType: v2193.TextTypePopup,
-		Message:  message,
+		Message:  bedrocktext.String(t),
 	})
 }
 
 // SendJukeboxPopup ...
-func (s *Session) SendJukeboxPopup(message string) {
+func (s *Session) SendJukeboxPopup(t text.Text) {
 	s.writePacket(&v2193.TextPacket{
 		TextType: v2193.TextTypeJukeboxPopup,
-		Message:  message,
+		Message:  bedrocktext.String(t),
 	})
 }
 
 // SendToast ...
-func (s *Session) SendToast(title, message string) {
+func (s *Session) SendToast(title, message text.Text) {
 	s.writePacket(&v2193.ToastRequestPacket{
-		Title:   title,
-		Message: message,
+		Title:   bedrocktext.String(title),
+		Message: bedrocktext.String(message),
 	})
 }
 
@@ -225,16 +225,16 @@ func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDurat
 }
 
 // SendTitle ...
-func (s *Session) SendTitle(message string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetTitle, Text: message})
+func (s *Session) SendTitle(t text.Text) {
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetTitle, Text: bedrocktext.String(t)})
 }
 
 // SendSubtitle ...
-func (s *Session) SendSubtitle(message string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetSubtitle, Text: message})
+func (s *Session) SendSubtitle(t text.Text) {
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetSubtitle, Text: bedrocktext.String(t)})
 }
 
 // SendActionBarMessage ...
-func (s *Session) SendActionBarMessage(message string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetActionBar, Text: message})
+func (s *Session) SendActionBarMessage(t text.Text) {
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetActionBar, Text: bedrocktext.String(t)})
 }

@@ -29,6 +29,42 @@ type textMethod struct {
 var textMethods = []textMethod{
 	{"SendMessage", func(s *Session, t text.Text) { s.SendMessage(t) }, oldSendMessage},
 	{"Disconnect", func(s *Session, t text.Text) { s.Disconnect(t) }, oldDisconnect},
+	{"SendTip", func(s *Session, t text.Text) { s.SendTip(t) }, oldTextPacket(v2193.TextTypeTip)},
+	{"SendPopup", func(s *Session, t text.Text) { s.SendPopup(t) }, oldTextPacket(v2193.TextTypePopup)},
+	{"SendJukeboxPopup", func(s *Session, t text.Text) { s.SendJukeboxPopup(t) }, oldTextPacket(v2193.TextTypeJukeboxPopup)},
+	{"SendToast", func(s *Session, t text.Text) { s.SendToast(t, t) }, func(s *Session, str string) { oldSendToast(s, str, str) }},
+	{"SendToast title", func(s *Session, t text.Text) { s.SendToast(t, text.Literal("message")) }, func(s *Session, str string) { oldSendToast(s, str, "message") }},
+	{"SendToast message", func(s *Session, t text.Text) { s.SendToast(text.ParseLegacy("§aTitle"), t) }, func(s *Session, str string) { oldSendToast(s, "§aTitle", str) }},
+	{"SendTitle", func(s *Session, t text.Text) { s.SendTitle(t) }, oldSetTitle(v2193.TitleActionSetTitle)},
+	{"SendSubtitle", func(s *Session, t text.Text) { s.SendSubtitle(t) }, oldSetTitle(v2193.TitleActionSetSubtitle)},
+	{"SendActionBarMessage", func(s *Session, t text.Text) { s.SendActionBarMessage(t) }, oldSetTitle(v2193.TitleActionSetActionBar)},
+}
+
+// oldTextPacket returns SendTip, SendPopup or SendJukeboxPopup as it was for
+// a string: a Text of the type passed.
+func oldTextPacket(textType byte) func(s *Session, message string) {
+	return func(s *Session, message string) {
+		s.writePacket(&v2193.TextPacket{
+			TextType: textType,
+			Message:  message,
+		})
+	}
+}
+
+// oldSendToast is SendToast as it was for strings.
+func oldSendToast(s *Session, title, message string) {
+	s.writePacket(&v2193.ToastRequestPacket{
+		Title:   title,
+		Message: message,
+	})
+}
+
+// oldSetTitle returns SendTitle, SendSubtitle or SendActionBarMessage as it
+// was for a string: a SetTitle of the action passed.
+func oldSetTitle(action int32) func(s *Session, message string) {
+	return func(s *Session, message string) {
+		s.writePacket(&v2193.SetTitlePacket{ActionType: action, Text: message})
+	}
 }
 
 // oldDisconnect is Disconnect as it was for a string.
