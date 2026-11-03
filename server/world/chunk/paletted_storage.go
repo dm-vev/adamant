@@ -73,6 +73,14 @@ func (storage *PalettedStorage) Palette() *Palette {
 	return storage.palette
 }
 
+// Indices returns the palette indices of the blocks of the storage, packed
+// into uint32s as the world format lays them out (as many to a word as fit,
+// low bits first), and the bits one index takes. The slice belongs to the
+// storage: the caller must not change it.
+func (storage *PalettedStorage) Indices() (words []uint32, bitsPerIndex uint16) {
+	return storage.indices, storage.bitsPerIndex
+}
+
 // At returns the value of the PalettedStorage at a given x, y and z.
 func (storage *PalettedStorage) At(x, y, z byte) uint32 {
 	return storage.palette.Value(storage.paletteIndex(x&15, y&15, z&15))

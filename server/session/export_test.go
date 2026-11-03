@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 )
 
@@ -11,3 +12,8 @@ import (
 func (s *Session) HandlePacket(pk proto.Packet, tx *world.Tx, c Controllable) error {
 	return s.handlePacket(pk, tx, c)
 }
+
+// EncodeSubChunk and EncodeBiomes encode the parts of a chunk as the session
+// sends them, for the tests of the encoding.
+func EncodeSubChunk(c *chunk.Chunk, ind int) []byte { return encodeSubChunk(c, ind) }
+func EncodeBiomes(c *chunk.Chunk) []byte            { return encodeBiomes(c) }

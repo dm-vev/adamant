@@ -315,7 +315,7 @@ func networkBiomePayload(col *world.Column) []byte {
 	if payload, ok := col.CachedNetworkBiomePayload(); ok {
 		return payload
 	}
-	payload := chunk.EncodeBiomes(col.Chunk, chunk.NetworkEncoding)
+	payload := encodeBiomes(col.Chunk)
 	col.CacheNetworkBiomePayload(payload)
 	return payload
 }
@@ -324,7 +324,7 @@ func networkSubChunkPayload(col *world.Column, ind int16) []byte {
 	if payload, ok := col.CachedNetworkSubChunkPayload(ind); ok {
 		return payload
 	}
-	payload := chunk.EncodeSubChunk(col.Chunk, chunk.NetworkEncoding, int(ind))
+	payload := encodeSubChunk(col.Chunk, int(ind))
 	col.CacheNetworkSubChunkPayload(ind, payload)
 	return payload
 }

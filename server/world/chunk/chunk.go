@@ -194,6 +194,12 @@ func (chunk *Chunk) Sub() []*SubChunk {
 	return chunk.sub
 }
 
+// BiomeStorages returns the paletted storages of the biomes of the chunk, one
+// for each sub-chunk from the bottom. The slice belongs to the chunk.
+func (chunk *Chunk) BiomeStorages() []*PalettedStorage {
+	return chunk.biomes
+}
+
 // Block returns the runtime ID of the block at a given x, y and z in a chunk at the given layer. If no
 // sub chunk exists at the given y, the block is assumed to be air.
 func (chunk *Chunk) Block(x uint8, y int16, z uint8, layer uint8) uint32 {
