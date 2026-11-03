@@ -1,0 +1,577 @@
+== item/bucket.go:301
+LevelSoundEvent id=123 len=44
+    LevelSoundEventPacket
+      SoundType: "bucket.empty.water"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 126275636b65742e656d7074792e77617465720000c03f00008142000020c001
+    | 000000ffffffffffffffff00
+== item/bucket.go:316
+LevelSoundEvent id=123 len=42
+    LevelSoundEventPacket
+      SoundType: "bucket.fill.lava"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 106275636b65742e66696c6c2e6c6176610000c03f00008142000020c0010000
+    | 00ffffffffffffffff00
+== item/spawn_egg.go:162
+LevelSoundEvent id=123 len=54
+    LevelSoundEventPacket
+      SoundType: "ambient"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:villager_v2"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 07616d6269656e740000c03f00008142000020c001156d696e6563726166743a
+    | 76696c6c616765725f76320000ffffffffffffffff00
+== entity/sniffer.go:587
+LevelSoundEvent id=123 len=47
+    LevelSoundEventPacket
+      SoundType: "plop"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:sniffer"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 04706c6f700000c03f00008142000020c001116d696e6563726166743a736e69
+    | 666665720000ffffffffffffffff00
+== entity/shear_equipment.go:19
+LevelSoundEvent id=123 len=47
+    LevelSoundEventPacket
+      SoundType: "unsaddle"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:pig"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 08756e736164646c650000c03f00008142000020c0010d6d696e656372616674
+    | 3a7069670000ffffffffffffffff00
+== entity/mount.go:411
+LevelSoundEvent id=123 len=46
+    LevelSoundEventPacket
+      SoundType: "mount"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:horse"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 056d6f756e740000c03f00008142000020c0010f6d696e6563726166743a686f
+    | 7273650000ffffffffffffffff00
+== entity/mount.go:617
+LevelSoundEvent id=123 len=48
+    LevelSoundEventPacket
+      SoundType: "saddle"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:donkey"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 06736164646c650000c03f00008142000020c001106d696e6563726166743a64
+    | 6f6e6b65790000ffffffffffffffff00
+== entity/mount.go:629
+LevelSoundEvent id=123 len=46
+    LevelSoundEventPacket
+      SoundType: "armor"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:horse"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0561726d6f720000c03f00008142000020c0010f6d696e6563726166743a686f
+    | 7273650000ffffffffffffffff00
+== entity/frog.go:508
+LevelSoundEvent id=123 len=49
+    LevelSoundEventPacket
+      SoundType: "lay_spawn"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:frog"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 096c61795f737061776e0000c03f00008142000020c0010e6d696e6563726166
+    | 743a66726f670000ffffffffffffffff00
+== entity/happy_ghast.go:578
+LevelSoundEvent id=123 len=53
+    LevelSoundEventPacket
+      SoundType: "attach"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:happy_ghast"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 066174746163680000c03f00008142000020c001156d696e6563726166743a68
+    | 617070795f67686173740000ffffffffffffffff00
+== entity/happy_ghast.go:612
+LevelSoundEvent id=123 len=53
+    LevelSoundEventPacket
+      SoundType: "detach"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:happy_ghast"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 066465746163680000c03f00008142000020c001156d696e6563726166743a68
+    | 617070795f67686173740000ffffffffffffffff00
+== entity/horse_ai.go:108
+LevelSoundEvent id=123 len=44
+    LevelSoundEventPacket
+      SoundType: "mad"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:horse"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 036d61640000c03f00008142000020c0010f6d696e6563726166743a686f7273
+    | 650000ffffffffffffffff00
+== entity/creaking.go:811
+LevelSoundEvent id=123 len=52
+    LevelSoundEventPacket
+      SoundType: "activate"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:creaking"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: 1735880461161533969
+      FireAtPosition: none
+    | 0861637469766174650000c03f00008142000020c001126d696e656372616674
+    | 3a637265616b696e670000111213141516171800
+== entity/wandering_trader.go:317
+LevelSoundEvent id=123 len=63
+    LevelSoundEventPacket
+      SoundType: "disappeared"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:wandering_trader"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: 578437695752307201
+      FireAtPosition: none
+    | 0b64697361707065617265640000c03f00008142000020c0011a6d696e656372
+    | 6166743a77616e646572696e675f7472616465720000010203040506070800
+== entity/villager_ai.go:1956
+LevelSoundEvent id=123 len=56
+    LevelSoundEventPacket
+      SoundType: "celebrate"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:villager_v2"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0963656c6562726174650000c03f00008142000020c001156d696e6563726166
+    | 743a76696c6c616765725f76320000ffffffffffffffff00
+== entity/chicken.go:145
+LevelSoundEvent id=123 len=47
+    LevelSoundEventPacket
+      SoundType: "plop"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:chicken"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 04706c6f700000c03f00008142000020c001116d696e6563726166743a636869
+    | 636b656e0000ffffffffffffffff00
+== entity/llama_ai.go:102
+LevelSoundEvent id=123 len=45
+    LevelSoundEventPacket
+      SoundType: "spit"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:llama"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 04737069740000c03f00008142000020c0010f6d696e6563726166743a6c6c61
+    | 6d610000ffffffffffffffff00
+== entity/effect_triggers.go:155
+LevelSoundEvent id=123 len=50
+    LevelSoundEventPacket
+      SoundType: "hurt"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:silverfish"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 04687572740000c03f00008142000020c001146d696e6563726166743a73696c
+    | 766572666973680000ffffffffffffffff00
+== entity/mount_ai.go:282
+LevelSoundEvent id=123 len=47
+    LevelSoundEventPacket
+      SoundType: "ambient"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:mule"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 07616d6269656e740000c03f00008142000020c0010e6d696e6563726166743a
+    | 6d756c650000ffffffffffffffff00
+== entity/warden.go:149
+LevelSoundEvent id=123 len=50
+    LevelSoundEventPacket
+      SoundType: "agitated"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:warden"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0861676974617465640000c03f00008142000020c001106d696e656372616674
+    | 3a77617264656e0000ffffffffffffffff00
+== entity/warden.go:298
+LevelSoundEvent id=123 len=57
+    LevelSoundEventPacket
+      SoundType: "listening_angry"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:warden"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0f6c697374656e696e675f616e6772790000c03f00008142000020c001106d69
+    | 6e6563726166743a77617264656e0000ffffffffffffffff00
+== entity/warden.go:347
+LevelSoundEvent id=123 len=48
+    LevelSoundEventPacket
+      SoundType: "attack"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:warden"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0661747461636b0000c03f00008142000020c001106d696e6563726166743a77
+    | 617264656e0000ffffffffffffffff00
+== entity/warden.go:546
+LevelSoundEvent id=123 len=50
+    LevelSoundEventPacket
+      SoundType: "agitated"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:warden"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0861676974617465640000c03f00008142000020c001106d696e656372616674
+    | 3a77617264656e0000ffffffffffffffff00
+== entity/warden.go:644
+LevelSoundEvent id=123 len=54
+    LevelSoundEventPacket
+      SoundType: "sonic_charge"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:warden"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0c736f6e69635f6368617267650000c03f00008142000020c001106d696e6563
+    | 726166743a77617264656e0000ffffffffffffffff00
+== entity/warden.go:666
+LevelSoundEvent id=123 len=52
+    LevelSoundEventPacket
+      SoundType: "sonic_boom"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:warden"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0a736f6e69635f626f6f6d0000c03f00008142000020c001106d696e65637261
+    | 66743a77617264656e0000ffffffffffffffff00
+== entity/hostile_mobs.go:857
+LevelSoundEvent id=123 len=42
+    LevelSoundEventPacket
+      SoundType: "convert_to_stray"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 10636f6e766572745f746f5f73747261790000c03f00008142000020c0010000
+    | 00ffffffffffffffff00
+== entity/hostile_mobs.go:900
+LevelSoundEvent id=123 len=52
+    LevelSoundEventPacket
+      SoundType: "mob.husk.convert_to_zombie"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 1a6d6f622e6875736b2e636f6e766572745f746f5f7a6f6d6269650000c03f00
+    | 008142000020c001000000ffffffffffffffff00
+== entity/hostile_mobs.go:904
+LevelSoundEvent id=123 len=44
+    LevelSoundEventPacket
+      SoundType: "convert_to_drowned"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 12636f6e766572745f746f5f64726f776e65640000c03f00008142000020c001
+    | 000000ffffffffffffffff00
+== block/redstone_switch_sound.go:20 on
+LevelSoundEvent id=123 len=44
+    LevelSoundEventPacket
+      SoundType: "button.click_on"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -42805984
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0f627574746f6e2e636c69636b5f6f6e0000c03f00008142000020c0bfabe928
+    | 000000ffffffffffffffff00
+== block/redstone_switch_sound.go:20 off
+LevelSoundEvent id=123 len=46
+    LevelSoundEventPacket
+      SoundType: "button.click_off"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: 700331717
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 10627574746f6e2e636c69636b5f6f66660000c03f00008142000020c08adbf1
+    | 9b05000000ffffffffffffffff00
+== block/redstone_switch_sound.go:32
+LevelSoundEvent id=123 len=53
+    LevelSoundEventPacket
+      SoundType: "pressure_plate.click_on"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1842690635
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 1770726573737572655f706c6174652e636c69636b5f6f6e0000c03f00008142
+    | 000020c095e9a9dd0d000000ffffffffffffffff00
+== block/redstone_tripwire_sound.go:34
+LevelSoundEvent id=123 len=35
+    {SoundType:"attach" Position:[1.5 64.5 -2.5] ExtraData:-28232360 EntityType:"" BabyMob:false DisableRelativeVolume:false EntityUniqueID:-1 FireAtPosition:none}
+    | 066174746163680000c03f00008142000020c0cfaaf61a000000ffffffffffff
+    | ffff00
+== block/crafter.go:261
+LevelSoundEvent id=123 len=43
+    LevelSoundEventPacket
+      SoundType: "crafter.craft"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: 1247582580
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0d637261667465722e63726166740000c03f00008142000020c0e8e5e4a50900
+    | 0000ffffffffffffffff00
+== block/item_ejection_native.go:88
+LevelSoundEvent id=123 len=41
+    LevelSoundEventPacket
+      SoundType: "block.click"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: 1592040637
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 0b626c6f636b2e636c69636b0000c03f00008142000020c0faf2a4ee0b000000
+    | ffffffffffffffff00
+== block/cauldron.go:178
+LevelSoundEvent id=123 len=49
+    LevelSoundEventPacket
+      SoundType: "bucket.fill.powder_snow"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 176275636b65742e66696c6c2e706f776465725f736e6f770000c03f00008142
+    | 000020c001000000ffffffffffffffff00
+== block/cauldron.go:210
+LevelSoundEvent id=123 len=50
+    LevelSoundEventPacket
+      SoundType: "bucket.empty.powder_snow"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 186275636b65742e656d7074792e706f776465725f736e6f770000c03f000081
+    | 42000020c001000000ffffffffffffffff00
+== block/bee_hive.go:564
+LevelSoundEvent id=123 len=44
+    LevelSoundEventPacket
+      SoundType: "block.beehive.exit"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 12626c6f636b2e626565686976652e657869740000c03f00008142000020c001
+    | 000000ffffffffffffffff00
+== block/straw_bed.go:145
+LevelSoundEvent id=123 len=48
+    LevelSoundEventPacket
+      SoundType: "straw_bed.break_leave"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ":"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 1573747261775f6265642e627265616b5f6c656176650000c03f000081420000
+    | 20c001013a0000ffffffffffffffff00
+== block/creaking_heart.go:253 emitter 100
+LevelSoundEvent id=123 len=53
+    LevelSoundEventPacket
+      SoundType: "block.creaking_heart.trail"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -600
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 1a626c6f636b2e637265616b696e675f68656172742e747261696c0000c03f00
+    | 008142000020c0af09000000ffffffffffffffff00
+== block/creaking_heart.go:253 emitter 40
+LevelSoundEvent id=123 len=53
+    LevelSoundEventPacket
+      SoundType: "block.creaking_heart.trail"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: 360
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 1a626c6f636b2e637265616b696e675f68656172742e747261696c0000c03f00
+    | 008142000020c0d005000000ffffffffffffffff00
+== block/creaking_heart.go:253 emitter 0
+LevelSoundEvent id=123 len=53
+    LevelSoundEventPacket
+      SoundType: "block.creaking_heart.trail"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: 1000
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 1a626c6f636b2e637265616b696e675f68656172742e747261696c0000c03f00
+    | 008142000020c0d00f000000ffffffffffffffff00
+== block/creaking_heart.go:283
+LevelSoundEvent id=123 len=64
+    LevelSoundEventPacket
+      SoundType: "creaking_heart_spawn"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: "minecraft:creaking"
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: 1735880461161533969
+      FireAtPosition: none
+    | 14637265616b696e675f68656172745f737061776e0000c03f00008142000020
+    | c001126d696e6563726166743a637265616b696e670000111213141516171800
+== block/creaking_heart.go:284
+LevelSoundEvent id=123 len=46
+    LevelSoundEventPacket
+      SoundType: "creaking_heart_spawn"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 14637265616b696e675f68656172745f737061776e0000c03f00008142000020
+    | c001000000ffffffffffffffff00
+== block/sculk_spreader.go:544
+LevelSoundEvent id=123 len=44
+    LevelSoundEventPacket
+      SoundType: "block.sculk.spread"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 12626c6f636b2e7363756c6b2e7370726561640000c03f00008142000020c001
+    | 000000ffffffffffffffff00
+== block/sculk_catalyst.go:85
+LevelSoundEvent id=123 len=52
+    LevelSoundEventPacket
+      SoundType: "block.sculk_catalyst.bloom"
+      Position: [1.5 64.5 -2.5]
+      ExtraData: -1
+      EntityType: ""
+      BabyMob: false
+      DisableRelativeVolume: false
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 1a626c6f636b2e7363756c6b5f636174616c7973742e626c6f6f6d0000c03f00
+    | 008142000020c001000000ffffffffffffffff00
