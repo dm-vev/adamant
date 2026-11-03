@@ -1,0 +1,5 @@
+go test fuzz v1
+string("000000")
+string("§r")
+string("§0§0")
+byte('\x01')

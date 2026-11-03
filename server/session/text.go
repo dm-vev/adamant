@@ -1,6 +1,8 @@
 package session
 
 import (
+	"slices"
+	"strings"
 	"time"
 
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
@@ -93,8 +95,8 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 		currentLinesPtr = &lines
 	}
 	currentName, currentLines := *currentScoreboard, *currentLinesPtr
-	name := sb.Name()
-	lines := sb.Lines()
+	name := bedrocktext.String(sb.Name())
+	lines := scoreboardLines(sb.Lines(), name, sb.Padding(), sb.Descending())
 
 	if currentName != name {
 		s.RemoveScoreboard()
@@ -146,6 +148,29 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 	// Store the last sent state so subsequent updates remove the right entries.
 	s.currentScoreboard.Store(&name)
 	s.currentLines.Store(&displayLines)
+}
+
+// scoreboardLines renders the lines of a scoreboard of the name passed, as rendered, in the order the
+// client shows them: padded with a space at their start, and at their end up to the width of the name, in
+// bytes, if padding is set, and reversed if the scoreboard is descending.
+func scoreboardLines(lines []text.Text, name string, padding, descending bool) []string {
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		out[i] = bedrocktext.String(line)
+	}
+	if padding {
+		for i, line := range out {
+			if len(name)-len(line)-2 <= 0 {
+				out[i] = " " + line + " "
+				continue
+			}
+			out[i] = " " + line + strings.Repeat(" ", len(name)-len(line)-2)
+		}
+	}
+	if descending {
+		slices.Reverse(out)
+	}
+	return out
 }
 
 // colours holds a list of colour codes to be filled out for empty lines in a scoreboard.
