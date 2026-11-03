@@ -29,7 +29,7 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 			tx.World().Scoreboard().AddCriteria(scoreboard.TotalKillCount, named.Name(), 1)
 		}
 	}
-	id := loot.JavaEntityID(e)
+	id := world.JavaEntityID(e)
 	monster := javaMonsters[id]
 	baby := mobIsBaby(e)
 	xp := &world.DeathExperience{Amount: mobBaseExperience(e, id, baby), Eligible: monster || id == "minecraft:hoglin" || id != "minecraft:tadpole" && !baby}
@@ -221,7 +221,7 @@ func mobBaseExperience(e world.Entity, id string, baby bool) int {
 
 // mobLootContext builds the LootContextParamSets.ENTITY parameters.
 func mobLootContext(tx *world.Tx, e world.Entity, src world.DamageSource) loot.Context {
-	ctx := loot.Context{Entity: loot.JavaEntityID(e), Origin: e.Position(), Tx: tx, ThisEntity: e, Damage: src, DamageTags: damageTags(src)}
+	ctx := loot.Context{Entity: world.JavaEntityID(e), Origin: e.Position(), Tx: tx, ThisEntity: e, Damage: src, DamageTags: damageTags(src)}
 	ctx.SourceEntity, ctx.Player = deathCredit(tx, src)
 	ctx.PlayerKilled = ctx.Player != nil
 	ctx.DirectEntity = directDamageEntity(src)

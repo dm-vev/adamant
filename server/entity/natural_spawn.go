@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -282,7 +281,7 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 		s.grid[c] = append(s.grid[c], i)
 	}
 	for e := range tx.EntitiesOfType(countsTowardsCaps) {
-		id := loot.JavaEntityID(e)
+		id := world.JavaEntityID(e)
 		category, ok := mobCategories[id]
 		if !ok {
 			continue
@@ -312,7 +311,7 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 // countsTowardsCaps reports whether the entities of a type are mobs of a
 // spawning category, which may count towards its caps.
 func countsTowardsCaps(t world.EntityType) bool {
-	_, ok := mobCategories[loot.JavaEntityTypeID(t.EncodeEntity())]
+	_, ok := mobCategories[world.JavaEntityTypeID(t.EncodeEntity())]
 	return ok
 }
 

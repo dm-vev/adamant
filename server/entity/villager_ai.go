@@ -127,7 +127,7 @@ func villagerFullLook() prioritizedBehavior {
 
 // entityMobCategory returns the MobCategory of the type of an entity.
 func entityMobCategory(e world.Entity) string {
-	c, ok := mobCategories[loot.JavaEntityID(e)]
+	c, ok := mobCategories[world.JavaEntityID(e)]
 	if !ok {
 		return "misc"
 	}

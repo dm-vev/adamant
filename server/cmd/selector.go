@@ -13,7 +13,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/javanbt"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -419,10 +418,10 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 					return false
 				}
 				if isTag {
-					in, err := gamedata.EntityTypeTagContains(id, loot.JavaEntityID(e))
+					in, err := gamedata.EntityTypeTagContains(id, world.JavaEntityID(e))
 					return err == nil && in
 				}
-				return e.H().Type().EncodeEntity() == id || loot.JavaEntityID(e) == id
+				return e.H().Type().EncodeEntity() == id || world.JavaEntityID(e) == id
 			})
 		case "name":
 			s.filter(negate, func(t Target) bool { return selectorName(t) == strings.Trim(value, `"`) })

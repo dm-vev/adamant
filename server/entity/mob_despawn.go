@@ -4,7 +4,6 @@ import (
 	"iter"
 	"math"
 
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -93,7 +92,7 @@ type mobPersister interface {
 // checkDespawn ports Mob.checkDespawn. It reports whether the mob left the
 // world.
 func (ai *MobAI) checkDespawn(m *Mob) bool {
-	id := loot.JavaEntityID(m.Self)
+	id := world.JavaEntityID(m.Self)
 	if m.tx.World().Difficulty() == world.DifficultyPeaceful && notInPeaceful[id] {
 		discardMob(m)
 		return true
@@ -183,7 +182,7 @@ func mobRequiresCustomPersistence(m *Mob) bool {
 	if p, ok := m.Behaviour().(mobPersister); ok && p.requiresCustomPersistence(m) {
 		return true
 	}
-	switch loot.JavaEntityID(m.Self) {
+	switch world.JavaEntityID(m.Self) {
 	case "minecraft:elder_guardian":
 		// ElderGuardian sets persistenceRequired when it is made.
 		return true

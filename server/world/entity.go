@@ -972,49 +972,6 @@ func (reg EntityRegistry) Lookup(name string) (EntityType, bool) {
 	return t, ok
 }
 
-// javaEntityNames maps the Java identifiers of the entity types registered
-// by their Bedrock identifiers to those, so that Java NBT and spawners find
-// them.
-var javaEntityNames = map[string]string{
-	"minecraft:zombified_piglin": "minecraft:zombie_pigman",
-	"minecraft:end_crystal":      "minecraft:ender_crystal",
-	"minecraft:experience_orb":   "minecraft:xp_orb",
-	"minecraft:eye_of_ender":     "minecraft:eye_of_ender_signal",
-	"minecraft:firework_rocket":  "minecraft:fireworks_rocket",
-	"minecraft:wind_charge":      "minecraft:wind_charge_projectile",
-}
-
-// bedrockEntityIdentifiers maps the names entity types are registered and
-// compared by to the Bedrock identifiers BDS saves and clients spawn, for the
-// types whose names differ: clients show nothing for minecraft:evoker or
-// minecraft:tropical_fish and the legacy, pre-1.14 mob for minecraft:villager.
-var bedrockEntityIdentifiers = map[string]string{
-	"minecraft:villager":           "minecraft:villager_v2",
-	"minecraft:zombie_villager":    "minecraft:zombie_villager_v2",
-	"minecraft:evoker":             "minecraft:evocation_illager",
-	"minecraft:tropical_fish":      "minecraft:tropicalfish",
-	"minecraft:evoker_fangs":       "minecraft:evocation_fang",
-	"minecraft:breeze_wind_charge": "minecraft:breeze_wind_charge_projectile",
-}
-
-// registeredEntityNames is the inverse of bedrockEntityIdentifiers.
-var registeredEntityNames = func() map[string]string {
-	m := make(map[string]string, len(bedrockEntityIdentifiers))
-	for name, id := range bedrockEntityIdentifiers {
-		m[id] = name
-	}
-	return m
-}()
-
-// BedrockEntityIdentifier returns the Bedrock identifier of the entity type
-// registered as name, which saves and clients use.
-func BedrockEntityIdentifier(name string) string {
-	if id, ok := bedrockEntityIdentifiers[name]; ok {
-		return id
-	}
-	return name
-}
-
 // Types returns all EntityTypes passed upon construction of the EntityRegistry.
 func (reg EntityRegistry) Types() []EntityType {
 	return slices.Collect(maps.Values(reg.ent))
