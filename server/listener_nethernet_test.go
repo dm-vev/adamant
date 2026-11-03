@@ -155,7 +155,8 @@ func TestNetherNetListenerServesSessions(t *testing.T) {
 		t.Fatalf("world name %q, want the server name", got)
 	}
 
-	// A query handshake on the port of the game is answered with a token.
+	// A query handshake on the port of the game is answered with a token,
+	// in decimal text ended by a zero byte.
 	sock, err := net.Dial("udp", addr)
 	if err != nil {
 		t.Fatal(err)
@@ -166,8 +167,12 @@ func TestNetherNetListenerServesSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	buf := make([]byte, 64)
-	if n, err := sock.Read(buf); err != nil || n != 10 || buf[0] != 0x09 {
+	n, err := sock.Read(buf)
+	if err != nil || n < 7 || !bytes.Equal(buf[:5], []byte{0x09, 0, 0, 0, 1}) || buf[n-1] != 0 {
 		t.Fatalf("query handshake answered with %x, %v", buf[:n], err)
+	}
+	if _, err := strconv.ParseInt(string(buf[5:n-1]), 10, 32); err != nil {
+		t.Fatalf("query token %q: %v", buf[5:n-1], err)
 	}
 
 	if err := l.Disconnect(srv, "bye"); err != nil {
