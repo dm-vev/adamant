@@ -74,7 +74,6 @@ server/player/attack_lifecycle_test.go github.com/df-mc/dragonfly/server/session
 server/player/attack_lifecycle_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/player/close_reentry_test.go github.com/df-mc/dragonfly/server/session
 server/player/conf.go github.com/df-mc/dragonfly/server/session
-server/player/input/lock.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/player/piston_native_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/player/player.go github.com/df-mc/dragonfly/server/session
 server/player/release_test.go github.com/df-mc/dragonfly/server/netconn

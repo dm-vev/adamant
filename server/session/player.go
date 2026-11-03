@@ -1111,7 +1111,7 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 func (s *Session) LockInput(l input.Lock) {
 	s.inputLocksMu.Lock()
 	defer s.inputLocksMu.Unlock()
-	s.inputLocks |= l.Uint32()
+	s.inputLocks |= bedrockLock(l)
 }
 
 // UnlockInput removes an input lock from the player, re-enabling the specified input. If the lock is not
@@ -1119,7 +1119,7 @@ func (s *Session) LockInput(l input.Lock) {
 func (s *Session) UnlockInput(l input.Lock) {
 	s.inputLocksMu.Lock()
 	defer s.inputLocksMu.Unlock()
-	s.inputLocks &^= l.Uint32()
+	s.inputLocks &^= bedrockLock(l)
 }
 
 // ClearInputLocks removes all input locks from the player, re-enabling all inputs.
@@ -1133,7 +1133,7 @@ func (s *Session) ClearInputLocks() {
 func (s *Session) InputLocked(l input.Lock) bool {
 	s.inputLocksMu.RLock()
 	defer s.inputLocksMu.RUnlock()
-	return s.inputLocks&l.Uint32() != 0
+	return s.inputLocks&bedrockLock(l) != 0
 }
 
 // SendInputLocks sends the current input lock state to the client.
