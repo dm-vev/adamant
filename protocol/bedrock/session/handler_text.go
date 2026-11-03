@@ -3,6 +3,7 @@ package session
 import (
 	"fmt"
 
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -24,7 +25,7 @@ func (TextHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllabl
 	if pk.XUID != s.conn.IdentityData().XUID {
 		return fmt.Errorf("XUID must be equal to player's XUID")
 	}
-	if !validText(pk.Message, maxChatLength) {
+	if !item.ValidText(pk.Message, maxChatLength) {
 		// As BDS does, a message too long to pass on is dropped.
 		return nil
 	}

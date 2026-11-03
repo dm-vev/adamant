@@ -1,9 +1,6 @@
 package session
 
 import (
-	"fmt"
-	"unicode/utf8"
-
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -14,70 +11,32 @@ import (
 type BookEditHandler struct{}
 
 // Handle ...
-func (b BookEditHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllable) error {
+func (b BookEditHandler) Handle(p proto.Packet, _ *Session, _ *world.Tx, c Controllable) error {
 	pk := p.(*v2193.BookEditPacket)
+	return c.EditBook(int(pk.InventorySlot), item.BookEdit{
+		Action: bookAction(pk.ActionType),
+		Page:   int(pk.PageNumber),
+		Other:  int(pk.SecondaryPageNumber),
+		Text:   pk.Text,
+		Title:  pk.Title,
+	})
+}
 
-	it, err := s.inv.Item(int(pk.InventorySlot))
-	if err != nil {
-		return fmt.Errorf("invalid inventory slot index %v", pk.InventorySlot)
-	}
-	book, ok := it.Item().(item.BookAndQuill)
-	if !ok {
-		return fmt.Errorf("inventory slot %v does not contain a writable book", pk.InventorySlot)
-	}
-
-	page := int(pk.PageNumber)
-	if page >= 50 || page < 0 {
-		return fmt.Errorf("page number %v is out of bounds", pk.PageNumber)
-	}
-	if len(pk.Text) > 256 || !utf8.ValidString(pk.Text) {
-		return fmt.Errorf("text must be UTF-8 of at most 256 bytes")
-	}
-
-	slot := int(pk.InventorySlot)
-	switch pk.ActionType {
+// bookAction returns the item.BookAction of the action type of a BookEdit
+// packet. An unknown type is the zero BookAction, which writes the book back
+// unchanged.
+func bookAction(t uint32) item.BookAction {
+	switch t {
 	case v2193.BookActionReplacePage:
-		book = book.SetPage(page, pk.Text)
+		return item.BookReplacePage
 	case v2193.BookActionAddPage:
-		if len(book.Pages) >= 50 {
-			return fmt.Errorf("unable to add page beyond 50")
-		}
-		if page >= len(book.Pages) && page <= len(book.Pages)+2 {
-			book = book.SetPage(page, "")
-			break
-		}
-		if _, ok := book.Page(page); !ok {
-			return fmt.Errorf("unable to insert page at %v", pk.PageNumber)
-		}
-		book = book.InsertPage(page, pk.Text)
+		return item.BookAddPage
 	case v2193.BookActionDeletePage:
-		if _, ok := book.Page(page); !ok {
-			// We break here instead of returning an error because the client can be a page or two ahead in the UI then
-			// the actual pages representation server side. The client still sends the deletion indexes.
-			break
-		}
-		book = book.DeletePage(page)
+		return item.BookDeletePage
 	case v2193.BookActionSwapPages:
-		if pk.SecondaryPageNumber >= 50 {
-			return fmt.Errorf("page number out of bounds")
-		}
-		_, ok := book.Page(page)
-		_, ok2 := book.Page(int(pk.SecondaryPageNumber))
-		if !ok || !ok2 {
-			// We break here instead of returning an error because the client can try to swap pages that don't exist.
-			// This happens as a result of the client being a page or two ahead in the UI then the actual pages
-			// representation server side. The client still sends the swap indexes.
-			break
-		}
-		book = book.SwapPages(page, int(pk.SecondaryPageNumber))
+		return item.BookSwapPages
 	case v2193.BookActionSign:
-		if !validText(pk.Title, maxBookTitle) {
-			return fmt.Errorf("title must be UTF-8 of at most %d characters", maxBookTitle)
-		}
-		// The author is the player who signs, whoever the client names.
-		_ = s.inv.SetItem(slot, it.WithItem(item.WrittenBook{Title: pk.Title, Author: c.Name(), Pages: book.Pages, Generation: item.OriginalGeneration()}))
-		return nil
+		return item.BookSign
 	}
-	_ = s.inv.SetItem(slot, it.WithItem(book))
-	return nil
+	return 0
 }

@@ -110,7 +110,7 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *v2193.CraftRecipe
 
 	// If we have a filter string, then the client is intending to rename the item.
 	if hasRename {
-		if !validText(filterStrings[renameIndex], maxItemName) {
+		if !item.ValidText(filterStrings[renameIndex], maxItemName) {
 			return fmt.Errorf("item name must be UTF-8 of at most %d characters", maxItemName)
 		}
 		renameCost = 1
