@@ -945,11 +945,12 @@ type actorIdentifier struct {
 	ID string `nbt:"id"`
 }
 
-// sendAvailableEntities sends all registered entities to the player.
+// sendAvailableEntities sends all registered entities to the player, in the
+// order BDS lists them (see actorTypesInOrder).
 func (s *Session) sendAvailableEntities(w *world.World) {
 	var identifiers []actorIdentifier
-	for _, t := range w.EntityRegistry().Types() {
-		identifiers = append(identifiers, actorIdentifier{ID: networkID(t)})
+	for _, id := range actorTypesInOrder(w.EntityRegistry(), bdsActorIdentifierRank) {
+		identifiers = append(identifiers, actorIdentifier{ID: id})
 	}
 	serialisedEntityData, err := nbt.Marshal(map[string]any{"idlist": identifiers})
 	if err != nil {

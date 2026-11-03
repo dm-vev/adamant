@@ -23,7 +23,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -84,14 +83,6 @@ import (
 //     the session had queued before the Disconnect, by flushers racing the
 //     close. What a client is sent after its Disconnect packet is not
 //     recorded: the client is gone.
-//   - The session lists the types of actors of the world's entity registry
-//     in an AvailableActorIdentifiers, and declares the properties of those
-//     that have any, one SyncActorProperty each, both in the order of a map
-//     of the registry (EntityRegistry.Types). The list is sorted by ID and
-//     encoded again as the session encodes it, and each run of the
-//     SyncActorProperty packets is sorted by the type it declares. The
-//     worlds of golden_harness_test.go register no entities: their list is
-//     empty and they declare none.
 //   - What the server saves of a player is recorded without the fields that
 //     count ticks (FoodTick, TimeSinceRest) or are drawn at random
 //     (EnchantmentSeed): see savedLine.
@@ -768,7 +759,6 @@ func (c *serverClient) take() []proto.Packet {
 // Disconnect is left out.
 func (c *serverClient) write(pks []proto.Packet, ticked bool) {
 	c.s.t.Helper()
-	sortActorProperties(pks)
 	for _, pk := range pks {
 		if c.gone {
 			c.rec.norm.packet(reflect.ValueOf(decodeAs(c.s.t, pk.ID(), encode(pk))).Elem())
@@ -780,14 +770,7 @@ func (c *serverClient) write(pks []proto.Packet, ticked bool) {
 		raw := encode(pk)
 		back := decodeAs(c.s.t, pk.ID(), raw)
 		c.rec.trackStacks(back)
-		sorted := sortActorIdentifiers(c.s.t, back)
-		if sorted {
-			raw = encode(back)
-		}
 		desc := c.rec.describe(back, raw, ">>")
-		if first, rest, _ := strings.Cut(desc, "\n"); sorted && !strings.HasSuffix(first, " normalised") {
-			desc = first + " normalised\n" + rest
-		}
 		if _, commands := pk.(*v2193.AvailableCommandsPacket); c.s.brief && len(raw) > maxHexBytes && !commands {
 			// The line of the packet and that of the SHA-256 of its
 			// encoding.
@@ -801,70 +784,6 @@ func (c *serverClient) write(pks []proto.Packet, ticked bool) {
 			c.s.mu.Unlock()
 		}
 	}
-}
-
-// sortActorProperties sorts each run of SyncActorProperty packets by the
-// type of actor they declare the properties of: the session declares the
-// types in the order of a map of the entity registry.
-func sortActorProperties(pks []proto.Packet) {
-	typ := func(pk proto.Packet) (string, bool) {
-		sync, ok := pk.(*v2193.SyncActorPropertyPacket)
-		if !ok {
-			return "", false
-		}
-		name, _ := sync.PropertyData["type"].(string)
-		return name, true
-	}
-	for i := 0; i < len(pks); {
-		if _, ok := typ(pks[i]); !ok {
-			i++
-			continue
-		}
-		j := i
-		for j < len(pks) {
-			if _, ok := typ(pks[j]); !ok {
-				break
-			}
-			j++
-		}
-		slices.SortStableFunc(pks[i:j], func(a, b proto.Packet) int {
-			x, _ := typ(a)
-			y, _ := typ(b)
-			return strings.Compare(x, y)
-		})
-		i = j
-	}
-}
-
-// actorIdentifier is an entry of the list of AvailableActorIdentifiers, as
-// the session encodes it.
-type actorIdentifier struct {
-	ID string `nbt:"id"`
-}
-
-// sortActorIdentifiers sorts the list of an AvailableActorIdentifiers packet
-// by ID, encoded as the session encodes it, and reports whether the packet
-// was one: the session lists the types of actors in the order of a map of
-// the entity registry.
-func sortActorIdentifiers(t *testing.T, pk proto.Packet) bool {
-	t.Helper()
-	ids, ok := pk.(*v2193.AvailableActorIdentifiersPacket)
-	if !ok {
-		return false
-	}
-	var list struct {
-		IDList []actorIdentifier `nbt:"idlist"`
-	}
-	if err := nbt.Unmarshal(ids.SerialisedEntityIdentifiers, &list); err != nil {
-		t.Fatalf("decode the actor identifiers: %v", err)
-	}
-	slices.SortFunc(list.IDList, func(a, b actorIdentifier) int { return strings.Compare(a.ID, b.ID) })
-	raw, err := nbt.Marshal(map[string]any{"idlist": list.IDList})
-	if err != nil {
-		t.Fatalf("encode the actor identifiers: %v", err)
-	}
-	ids.SerialisedEntityIdentifiers = raw
-	return true
 }
 
 // standingWeather reports whether a packet is half of the weather the world

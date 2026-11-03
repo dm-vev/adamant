@@ -93,11 +93,11 @@ func (p actorProperty) value(v any) int32 {
 }
 
 // sendActorProperties declares the properties of the registered actor types
-// that have any, as BDS does before a player spawns.
+// that have any, as BDS does before a player spawns, in the order BDS sends
+// them (see actorTypesInOrder).
 func (s *Session) sendActorProperties(w *world.World) {
 	sent := make(map[string]bool)
-	for _, t := range w.EntityRegistry().Types() {
-		id := networkID(t)
+	for _, id := range actorTypesInOrder(w.EntityRegistry(), bdsActorPropertyRank) {
 		props, ok := actorPropertyTypes[id]
 		if !ok || sent[id] {
 			continue
