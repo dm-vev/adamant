@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -111,7 +110,7 @@ func (areaEffectCloudType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		Duration:           nbtconv.TickDuration[int32](m, "Duration"),
 		DurationUseGrowth:  nbtconv.TickDuration[int32](m, "DurationOnUse"),
 		ReapplicationDelay: nbtconv.TickDuration[int32](m, "ReapplicationDelay"),
-		Particle:           nbtconv.Int32(m, "ParticleId"),
+		Particle:           CloudParticle(nbtconv.Int32(m, "ParticleId")),
 	}.New()
 }
 
@@ -137,8 +136,8 @@ func (areaEffectCloudType) EncodeNBT(data *world.EntityData) map[string]any {
 		}
 		m["mobEffects"] = list
 	}
-	if a.conf.Particle != 0 {
-		m["ParticleId"] = a.conf.Particle
+	if a.conf.Particle != CloudParticlePotion {
+		m["ParticleId"] = int32(a.conf.Particle)
 	}
 	return m
 }
@@ -160,7 +159,7 @@ func newDragonBreathCloud(pos mgl64.Vec3, owner *world.EntityHandle, radius floa
 		WaitTime:           time.Second,
 		DurationScale:      0.25,
 		Owner:              owner,
-		Particle:           v2193.ParticleTypeDragonBreath,
+		Particle:           CloudParticleDragonBreath,
 	})
 }
 

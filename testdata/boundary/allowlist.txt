@@ -27,7 +27,6 @@ server/cmd/builtin/registry_parameter_test.go github.com/dm-vev/adamant/net/bedr
 server/conf.go github.com/df-mc/dragonfly/server/netconn
 server/conf.go github.com/dm-vev/adamant/net/bedrock
 server/conf.go github.com/dm-vev/adamant/net/bedrock/resource
-server/entity/area_effect_cloud.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/game_data_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/resource

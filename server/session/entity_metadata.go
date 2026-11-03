@@ -383,8 +383,10 @@ func (s *Session) addSpecificMetadata(e any, m v2193.Metadata) {
 		m[v2193.EntityDataKeyDataDuration] = int32(math.MaxInt32)
 		m[v2193.EntityDataKeyDataChangeOnPickup] = float32(math.SmallestNonzeroFloat32)
 		m[v2193.EntityDataKeyDataChangeRate] = float32(math.SmallestNonzeroFloat32)
-		if p, ok := e.(interface{ Particle() int32 }); ok && p.Particle() != 0 {
-			m[v2193.EntityDataKeyDataParticle] = p.Particle()
+		if p, ok := e.(interface{ Particle() entity.CloudParticle }); ok {
+			if particle, ok := cloudParticleType(p.Particle()); ok {
+				m[v2193.EntityDataKeyDataParticle] = particle
+			}
 		}
 
 		colour, am := effect.ResultingColour(c.Effects())

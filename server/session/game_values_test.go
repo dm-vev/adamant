@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
@@ -47,5 +48,14 @@ func TestStructureBlockValuesMatchProtocol(t *testing.T) {
 		{"StructureBlockAnimationNone", int64(block.StructureBlockAnimationNone), v2193.AnimationModeNone},
 		{"StructureBlockAnimationLayers", int64(block.StructureBlockAnimationLayers), v2193.AnimationModeLayers},
 		{"StructureBlockAnimationBlocks", int64(block.StructureBlockAnimationBlocks), v2193.AnimationModeBlocks},
+	})
+}
+
+// TestCloudParticleValuesMatchProtocol checks that the world-format ParticleId
+// of the particles of area effect clouds equals the particle type the protocol
+// sends for them.
+func TestCloudParticleValuesMatchProtocol(t *testing.T) {
+	checkGameValues(t, []gameValue{
+		{"CloudParticleDragonBreath", int64(entity.CloudParticleDragonBreath), v2193.ParticleTypeDragonBreath},
 	})
 }

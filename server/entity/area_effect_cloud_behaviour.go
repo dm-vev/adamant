@@ -39,10 +39,25 @@ type AreaEffectCloudBehaviourConfig struct {
 	// Owner is the entity the cloud came from, if any, as the ender dragon
 	// whose breath may be bottled.
 	Owner *world.EntityHandle
-	// Particle is the Bedrock particle type the cloud shows, or 0 for that
-	// of its potion.
-	Particle int32
+	// Particle is the particle the cloud shows instead of that of its
+	// potion, or CloudParticlePotion for that of its potion.
+	Particle CloudParticle
 }
+
+// CloudParticle is a particle an area effect cloud shows instead of the
+// particles of its potion. Its value is the ParticleId the Bedrock world format
+// stores for the cloud, and a cloud read from a world keeps the value stored
+// for it even when the game has no name for it.
+type CloudParticle int32
+
+const (
+	// CloudParticlePotion shows the particles of the potion of the cloud. The
+	// world format leaves ParticleId out for it.
+	CloudParticlePotion CloudParticle = 0
+	// CloudParticleDragonBreath shows the particles of dragon's breath. 47 is
+	// its ParticleId in the world format.
+	CloudParticleDragonBreath CloudParticle = 47
+)
 
 func (conf AreaEffectCloudBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
@@ -106,9 +121,9 @@ func (a *AreaEffectCloudBehaviour) Owner() *world.EntityHandle {
 	return a.conf.Owner
 }
 
-// Particle returns the Bedrock particle type the cloud shows, or 0 for that
-// of its potion.
-func (a *AreaEffectCloudBehaviour) Particle() int32 {
+// Particle returns the particle the cloud shows instead of that of its potion,
+// or CloudParticlePotion for that of its potion.
+func (a *AreaEffectCloudBehaviour) Particle() CloudParticle {
 	return a.conf.Particle
 }
 
