@@ -9,3 +9,6 @@ type Controllable = client.Controllable
 // Diagnostics are the latest diagnostics a client sent: client.Diagnostics,
 // named here so that handlers that name the session's type keep compiling.
 type Diagnostics = client.Diagnostics
+
+// Session is the client of a player that plays over Bedrock Edition.
+var _ client.Client = (*Session)(nil)
