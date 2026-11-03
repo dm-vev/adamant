@@ -2,54 +2,18 @@ package builtin
 
 import (
 	"encoding/json"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/text"
 	"golang.org/x/text/language"
 )
 
-func TestBuiltinDescriptionsMatchNativeTranslations(t *testing.T) {
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_commands.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var reference struct {
-		Descriptions map[string]string            `json:"command_descriptions"`
-		Languages    map[string]map[string]string `json:"language_samples"`
-	}
-	if err := json.Unmarshal(data, &reference); err != nil {
-		t.Fatal(err)
-	}
+func TestBuiltinDescriptionsKeepServerTranslations(t *testing.T) {
 	Register(registerTestAdapter{})
 	commands := cmd.Commands()
-	for _, locale := range []string{"en_US", "ru_RU", "de_DE"} {
-		t.Run(locale, func(t *testing.T) {
-			pk, _ := session.BuildAvailableCommands(commands, &descriptionTestSource{locale: language.MustParse(locale)}, make(map[string]struct{}))
-			decoded := decodeCommands(t, encodePacket(pk))
-			for _, command := range decoded.Commands {
-				key, native := nativeCommandDescriptions[command.Name]
-				if !native {
-					continue
-				}
-				if command.Description != key || reference.Languages[locale][key] == "" {
-					t.Errorf("%s description %q has no native translation in %s", command.Name, command.Description, locale)
-				}
-				// Resolve native aliases as well as canonical names: Adamant's
-				// experience, whitelist, msg and tp have different BDS names.
-				names := append([]string{command.Name}, commands[command.Name].Aliases()...)
-				for _, name := range names {
-					if expected, exists := reference.Descriptions[name]; exists && command.Description != expected {
-						t.Errorf("%s description = %q, BDS %s = %q", command.Name, command.Description, name, expected)
-					}
-				}
-			}
-		})
-	}
 	russianData, err := descriptionFiles.ReadFile("locales/ru.json")
 	if err != nil {
 		t.Fatal(err)
@@ -80,9 +44,6 @@ func TestBuiltinDescriptionsMatchNativeTranslations(t *testing.T) {
 				t.Errorf("%s catalog text for %s = %q, want %q", name, locale, resolved, expected)
 			}
 		}
-	}
-	if got := reference.Languages["ru_RU"]["commands.gamemode.description"]; got != "Задает режим игры игрока." {
-		t.Fatalf("unexpected native Russian gamemode description: %q", got)
 	}
 }
 

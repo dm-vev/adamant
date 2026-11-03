@@ -12,12 +12,6 @@
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
-server/cmd/builtin/command_metadata_test.go github.com/df-mc/dragonfly/server/session
-server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/wire
-server/cmd/builtin/description_test.go github.com/df-mc/dragonfly/server/session
-server/cmd/builtin/registry_parameter_test.go github.com/df-mc/dragonfly/server/session
-server/cmd/builtin/registry_parameter_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/conf.go github.com/df-mc/dragonfly/server/netconn
 server/conf.go github.com/dm-vev/adamant/net/bedrock
 server/conf.go github.com/dm-vev/adamant/net/bedrock/resource

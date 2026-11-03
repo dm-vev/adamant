@@ -1,4 +1,4 @@
-package builtin
+package session_test
 
 import (
 	"encoding/json"
@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
@@ -27,7 +29,12 @@ func TestBuiltinCommandRegistryKeepsNativeHelpLocal(t *testing.T) {
 	if len(reference.CommandNames) != 82 || slices.Contains(reference.CommandNames, "help") || slices.Contains(reference.CommandNames, "?") {
 		t.Fatal("native registry fixture must omit the client's local help command")
 	}
-	Register(registerTestAdapter{})
+	// Registering the builtin commands is for the whole process, and the
+	// sessions of other tests would see them: run where none can.
+	if isolated(t) {
+		return
+	}
+	builtin.Register((*server.Server)(nil))
 	pk, runnable := session.BuildAvailableCommands(cmd.Commands(), nil, make(map[string]struct{}))
 	decoded := decodeCommands(t, encodePacket(pk))
 	commands := make(map[string]v2193.Command)
