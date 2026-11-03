@@ -56,7 +56,10 @@ func dial(ctx context.Context, address, name string, radius int32) (*conn, error
 	if err != nil {
 		return nil, err
 	}
-	c := &conn{nn: nn, b: bedrock.NewConn(nn, bedrock.Config{})}
+	// The server batches more than the 1024 packets the library takes by
+	// default when much happens at once, such as water flowing in a
+	// vanilla world: the bot takes what the server sends.
+	c := &conn{nn: nn, b: bedrock.NewConn(nn, bedrock.Config{MaxPackets: 1 << 16, MaxBatch: 64 << 20})}
 	stop := context.AfterFunc(ctx, func() { _ = nn.SetReadDeadline(time.Now()) })
 	err = c.join(request, radius)
 	if !stop() || err != nil {
