@@ -39,7 +39,7 @@ func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
 	t.Cleanup(sess.CloseConnection)
 
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Session: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
+	cfg := Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
 	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(Type, cfg)
 	sess.SetHandle(h, cfg.Skin)
 	if err := w.Do(func(tx *world.Tx) {
@@ -113,7 +113,7 @@ func TestHandleQuitPanicCompletesSessionTeardown(t *testing.T) {
 
 	pos := mgl64.Vec3{0.5, 64, 0.5}
 	cfg := Config{
-		Session: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName,
+		Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName,
 		Inventory: inv, OffHand: offHand, Armour: armour,
 	}
 	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(Type, cfg)

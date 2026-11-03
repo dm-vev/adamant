@@ -68,7 +68,7 @@ func TestRespawnInDefaultWorldWithoutBed(t *testing.T) {
 			w.SetSpawn(cube.Pos{8, 64, 8})
 			sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
 			t.Cleanup(sess.CloseConnection)
-			cfg := Config{Session: sess, Position: mgl64.Vec3{32, 64, 32}, GameMode: world.GameModeSurvival}
+			cfg := Config{Client: sess, Position: mgl64.Vec3{32, 64, 32}, GameMode: world.GameModeSurvival}
 			handle := world.EntitySpawnOpts{Position: cfg.Position, ID: uuid.New()}.New(Type, cfg)
 			sess.SetHandle(handle, cfg.Skin)
 			<-w.Exec(func(tx *world.Tx) {
@@ -130,7 +130,7 @@ func TestRespawnFallsBackToDefaultDimension(t *testing.T) {
 
 	spawn := nether.Spawn().Vec3Centre().Add(mgl64.Vec3{0, 1.5})
 	cfg := Config{
-		Session:  sess,
+		Client:   sess,
 		Position: spawn,
 		GameMode: world.GameModeSurvival,
 	}
@@ -195,7 +195,7 @@ func TestPlayerReturnsFromEndToChargedNetherAnchor(t *testing.T) {
 	origin := mgl64.Vec3{5.5, 64, 5.5}
 	velocity := mgl64.Vec3{0.25, 0.5, -0.75}
 	cfg := Config{
-		Session: sess, Position: origin, UUID: id, GameMode: world.GameModeSurvival,
+		Client: sess, Position: origin, UUID: id, GameMode: world.GameModeSurvival,
 		RespawnDimension: world.Nether, RespawnPosition: spawn, HasRespawnPoint: true,
 	}
 	handle := world.EntitySpawnOpts{Position: origin, Velocity: velocity, ID: id}.New(Type, cfg)
@@ -433,7 +433,7 @@ func TestStationarySurvivalPlayerCompletesPortalTimer(t *testing.T) {
 		t.Fatalf("build destination portal: %v", err)
 	}
 	spawn := sourcePortal.Vec3Middle()
-	cfg := Config{Session: sess, Position: spawn, GameMode: world.GameModeSurvival}
+	cfg := Config{Client: sess, Position: spawn, GameMode: world.GameModeSurvival}
 	handle := world.EntitySpawnOpts{Position: spawn, ID: uuid.New()}.New(Type, cfg)
 	sess.SetHandle(handle, cfg.Skin)
 	if err := overworld.Do(func(tx *world.Tx) {
@@ -465,7 +465,7 @@ func TestPlayerDisplacementRejectsStaleAuthInput(t *testing.T) {
 	t.Cleanup(sess.CloseConnection)
 
 	origin := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Session: sess, Position: origin, GameMode: world.GameModeSurvival}
+	cfg := Config{Client: sess, Position: origin, GameMode: world.GameModeSurvival}
 	handle := world.EntitySpawnOpts{Position: origin, ID: uuid.New()}.New(Type, cfg)
 	sess.SetHandle(handle, cfg.Skin)
 	if err := w.Do(func(tx *world.Tx) {
@@ -530,7 +530,7 @@ func TestPlayerWithClientRespawnsAfterDeath(t *testing.T) {
 	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
 	t.Cleanup(sess.CloseConnection)
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Session: sess, Position: pos, GameMode: world.GameModeSurvival}
+	cfg := Config{Client: sess, Position: pos, GameMode: world.GameModeSurvival}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, cfg)
 	sess.SetHandle(handle, cfg.Skin)
 	quits, respawns := 0, 0
@@ -577,7 +577,7 @@ func TestDeadPlayerWithClientRespawnsOnClose(t *testing.T) {
 	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
 	t.Cleanup(sess.CloseConnection)
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Session: sess, Position: pos, GameMode: world.GameModeSurvival}
+	cfg := Config{Client: sess, Position: pos, GameMode: world.GameModeSurvival}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, cfg)
 	sess.SetHandle(handle, cfg.Skin)
 	quits, respawns := 0, 0

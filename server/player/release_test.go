@@ -52,7 +52,7 @@ func TestReleaseItemResyncsOnlyWhenNothingWasConsumed(t *testing.T) {
 			if test.arrows > 0 {
 				_ = inv.SetItem(1, item.NewStack(item.Arrow{}, test.arrows))
 			}
-			handle := world.EntitySpawnOpts{ID: uuid.New()}.New(Type, Config{Session: s, Inventory: inv})
+			handle := world.EntitySpawnOpts{ID: uuid.New()}.New(Type, Config{Client: s, Inventory: inv})
 
 			if err := w.Do(func(tx *world.Tx) {
 				tx.AddEntity(handle)

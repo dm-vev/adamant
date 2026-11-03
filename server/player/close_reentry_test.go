@@ -39,7 +39,7 @@ func TestQuitAndSessionStopMayCloseAgain(t *testing.T) {
 	}.New(conn)
 	defer sess.CloseConnection()
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Session: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
+	cfg := Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
 	handle := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(Type, cfg)
 	sess.SetHandle(handle, cfg.Skin)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

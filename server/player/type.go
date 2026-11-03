@@ -29,8 +29,8 @@ func (t ptype) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Entity
 		return allowedInOffhand && it.OffHand()
 	})
 
-	if pd.s != nil {
-		pd.s.HandleInventories(tx, p, pd.inv, pd.offHand, pd.enderChest, pd.ui, pd.armour, pd.heldSlot)
+	if pd.c != nil {
+		pd.c.HandleInventories(tx, p, pd.inv, pd.offHand, pd.enderChest, pd.ui, pd.armour, pd.heldSlot)
 	} else {
 		pd.inv.SlotFunc(func(slot int, before, after item.Stack) {
 			if slot == int(atomic.LoadUint32(p.heldSlot)) {

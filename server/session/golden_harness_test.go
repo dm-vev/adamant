@@ -400,7 +400,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	if conf.player != nil {
 		conf.player(&pconf)
 	}
-	pconf.Session = s.sess
+	pconf.Client = s.sess
 	s.h = world.EntitySpawnOpts{Position: pconf.Position, ID: goldenUUID}.New(player.Type, pconf)
 	s.sess.SetHandle(s.h, pconf.Skin)
 

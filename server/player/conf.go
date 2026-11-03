@@ -9,11 +9,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player/skin"
-	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -22,7 +22,10 @@ import (
 
 // Config holds options that a Player can be created with.
 type Config struct {
-	Session *session.Session
+	// Client is the client of the player, nil if a remote client does not
+	// play it. It is never a typed nil: a nil pointer of a type that
+	// implements client.Client counts as a client.
+	Client client.Client
 	// Log is the logger of the player, which it logs errors of its game
 	// through. If nil, slog.Default() is used.
 	Log      *slog.Logger
@@ -103,7 +106,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		gameMode:            conf.GameMode,
 		skin:                conf.Skin,
 		enchantSeed:         conf.EnchantmentSeed,
-		s:                   conf.Session,
+		c:                   conf.Client,
 		log:                 conf.Log,
 		h:                   NopHandler{},
 		speed:               0.1,
