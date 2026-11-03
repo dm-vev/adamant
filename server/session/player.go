@@ -12,6 +12,7 @@ import (
 	"time"
 	_ "unsafe" // Imported for compiler directives.
 
+	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -23,6 +24,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/form"
 	"github.com/df-mc/dragonfly/server/player/hud"
 	"github.com/df-mc/dragonfly/server/player/input"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -339,14 +341,16 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 	return nil, false
 }
 
-// Disconnect disconnects the client and ultimately closes the session. If the message passed is non-empty,
-// it will be shown to the client.
-func (s *Session) Disconnect(message string) {
+// Disconnect disconnects the client and ultimately closes the session. The message passed is shown to the
+// client as the reason, written with bedrocktext.Inline, so that a translation without arguments is
+// translated by the client; a message that renders empty disconnects the client with no screen.
+func (s *Session) Disconnect(message text.Text) {
 	if s != Nop {
+		msg := bedrocktext.Inline(message)
 		s.connWriteMu.Lock()
 		_ = s.conn.WritePacket(&v2193.DisconnectPacket{
-			HideDisconnectionScreen: message == "",
-			Message:                 message,
+			HideDisconnectionScreen: msg == "",
+			Message:                 msg,
 		})
 		_ = s.conn.Flush()
 		s.connWriteMu.Unlock()

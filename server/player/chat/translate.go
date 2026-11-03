@@ -117,17 +117,6 @@ func (t Translation) Enc(format string) Translation {
 	return t
 }
 
-// Resolve passes 0 arguments to the translation and resolves the translation
-// string for the language passed, in the format of Enc, as a string with §
-// codes: the message Bedrock Edition clients were sent for it. Resolve
-// panics if the Translation requires at least 1 argument.
-//
-// Deprecated: Use F and the Text method of the translation it returns.
-func (t Translation) Resolve(l language.Tag) string {
-	t.F()
-	return text.Colourf(t.format, t.str.Resolve(l)).Legacy()
-}
-
 // F takes arguments for a translation string passed and returns a filled out
 // translation that may be sent to players. The number of arguments passed must
 // be exactly equal to the number specified in Translate. If not, F will panic.

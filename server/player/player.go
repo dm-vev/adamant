@@ -1294,7 +1294,7 @@ func (p *Player) respawn(f func(p *Player)) {
 			f(np)
 			return
 		}
-		np.quit("respawn failed")
+		np.quit(text.Literal("respawn failed"))
 	}
 	task := w.Do(func(tx *world.Tx) {
 		np := tx.AddEntity(handle).(*Player)
@@ -1334,7 +1334,7 @@ func (p *Player) respawn(f func(p *Player)) {
 			// session without a world so the stop handler still runs, then
 			// free the connection.
 			_ = handle.Close()
-			sess.Disconnect("respawn failed")
+			sess.Disconnect(text.Literal("respawn failed"))
 			sess.Close(nil, p)
 			sess.CloseConnection()
 		})
@@ -4867,14 +4867,15 @@ func (p *Player) canReach(pos mgl64.Vec3) bool {
 
 // Disconnect closes the player and removes it from the world.
 // Disconnect, unlike Close, allows a custom message to be passed to show to the player when it is
-// disconnected. The message is formatted following the rules of fmt.Sprintln without a newline at the end.
+// disconnected. The message is formatted following the rules of fmt.Sprintln without a newline at the end and
+// read as a legacy string, with § codes; a lone text.Text is shown as it is.
 // The first call removes the player from its current world before returning.
 // Calls made after teardown starts return without waiting, including calls from
 // quit callbacks. The player must not be used afterwards. If the player is dead,
 // it first respawns: teardown completes on the owner of its respawn world.
 func (p *Player) Disconnect(msg ...any) {
 	if p.closing.CompareAndSwap(false, true) {
-		p.close(format(msg))
+		p.close(formatText(msg))
 	}
 }
 
@@ -4887,14 +4888,14 @@ func (p *Player) Disconnect(msg ...any) {
 // it first respawns: teardown completes on the owner of its respawn world.
 func (p *Player) Close() error {
 	if p.closing.CompareAndSwap(false, true) {
-		p.close("Connection closed.")
+		p.close(text.Literal("Connection closed."))
 	}
 	return nil
 }
 
 // close closes the player without disconnecting it. It executes code shared by both the closing and the
 // disconnecting of players.
-func (p *Player) close(msg string) {
+func (p *Player) close(msg text.Text) {
 	// If the player is being disconnected while they are dead, we respawn the player
 	// so that the player logic works correctly the next time they join. This
 	// asks whether a client exists that can respawn the player: session()
@@ -4909,7 +4910,7 @@ func (p *Player) close(msg string) {
 	p.quit(msg)
 }
 
-func (p *Player) quit(msg string) {
+func (p *Player) quit(msg text.Text) {
 	p.StopFishing(p.tx, false)
 	p.h.HandleQuit(p)
 	p.h = NopHandler{}

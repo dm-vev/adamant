@@ -28,6 +28,20 @@ type textMethod struct {
 // textMethods are the methods FuzzTextPackets checks.
 var textMethods = []textMethod{
 	{"SendMessage", func(s *Session, t text.Text) { s.SendMessage(t) }, oldSendMessage},
+	{"Disconnect", func(s *Session, t text.Text) { s.Disconnect(t) }, oldDisconnect},
+}
+
+// oldDisconnect is Disconnect as it was for a string.
+func oldDisconnect(s *Session, message string) {
+	if s != Nop {
+		s.connWriteMu.Lock()
+		_ = s.conn.WritePacket(&v2193.DisconnectPacket{
+			HideDisconnectionScreen: message == "",
+			Message:                 message,
+		})
+		_ = s.conn.Flush()
+		s.connWriteMu.Unlock()
+	}
 }
 
 // oldSendMessage is SendMessage as it was for a string.

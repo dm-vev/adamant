@@ -18,11 +18,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/internal/blockinternal"
 	"github.com/df-mc/dragonfly/server/internal/iteminternal"
-	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nbt"
@@ -30,6 +30,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
+	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 )
 
 // Server implements a Dragonfly server. It runs the main server loop and
@@ -158,7 +159,7 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 				// the orphaned handle and fully tear the session down (Disconnect
 				// only writes a packet; CloseConnection frees the conn/goroutines).
 				_ = inc.p.handle.Close()
-				inc.s.Disconnect("join failed")
+				inc.s.Disconnect(text.Literal("join failed"))
 				inc.s.CloseConnection()
 				continue
 			}
@@ -390,7 +391,7 @@ func (srv *Server) close() {
 
 	srv.conf.Log.Debug("Disconnecting players...")
 	for p := range srv.Players(nil) {
-		p.Disconnect(chat.MessageServerDisconnect.Resolve(p.Locale()))
+		p.Disconnect(chat.MessageServerDisconnect.F().Text(p.Locale()))
 	}
 	srv.pwg.Wait()
 

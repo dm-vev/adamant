@@ -73,8 +73,9 @@ func TestTranslationText(t *testing.T) {
 	if got, want := MessageJoin.F("§bSteve").String(), "§r§e§bSteve joined the game§r"; got != want {
 		t.Errorf("String = %q, want %q", got, want)
 	}
-	if got, want := MessageServerDisconnect.Resolve(language.English), "§r§e%disconnect.disconnected§r"; got != want {
-		t.Errorf("Resolve = %q, want %q", got, want)
+	disconnect := text.Colourf("<yellow>%v</yellow>", text.Translate("disconnect.disconnected", "Disconnected by Server"))
+	if got := MessageServerDisconnect.F().Text(language.English); !text.Equal(got, disconnect) {
+		t.Errorf("Text = %#v, want %#v", got, disconnect)
 	}
 }
 

@@ -280,6 +280,31 @@ func TestChatCommandDescriptions(t *testing.T) {
 	t.Logf("%d cases", cases)
 }
 
+// TestChatInlineTranslations holds the fields that the Bedrock session writes
+// with Inline, such as the reason of a disconnection, to what they were for
+// a translation without arguments: the string Resolve of the old code gave,
+// "§r§e%disconnect.disconnected§r" for the message of a server that shuts
+// down.
+func TestChatInlineTranslations(t *testing.T) {
+	news := newRepoTranslations(t)
+	cases := 0
+	for name, old := range oldRepoTranslations {
+		if old.params != 0 {
+			continue
+		}
+		for _, l := range chatLocales {
+			if got, want := Inline(news[name].F().Text(l)), old.Resolve(l); got != want {
+				t.Fatalf("%s, %v: Inline gives %q, Resolve of the old code %q", name, l, got, want)
+			}
+			cases++
+		}
+	}
+	if got := Inline(chat.MessageServerDisconnect.F().Text(language.English)); got != "§r§e%disconnect.disconnected§r" {
+		t.Fatalf("the message of a server that shuts down is %q", got)
+	}
+	t.Logf("%d cases", cases)
+}
+
 func TestChatGoldenTranslation(t *testing.T) {
 	// goldenTranslation of server/session/golden_text_test.go, sent with the
 	// arguments the golden tests pass it.
