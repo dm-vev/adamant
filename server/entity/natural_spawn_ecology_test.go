@@ -3,13 +3,23 @@ package entity_test
 import (
 	"math/rand/v2"
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// undamagedPlayer keeps a player that anchors natural spawns alive:
+// monsters still target and attack it, but it takes no damage.
+type undamagedPlayer struct{ player.NopHandler }
+
+func (undamagedPlayer) HandleHurt(ctx *player.Context, _ *float64, _ bool, _ *time.Duration, _ world.DamageSource) {
+	ctx.Cancel()
+}
 
 // spawnLightRecorder records the light of the blocks mobs spawn in.
 type spawnLightRecorder struct {
@@ -211,6 +221,12 @@ func TestWaterMobsSpawnInTheSea(t *testing.T) {
 // despawn does so, as Mob.checkDespawn removes mobs beyond 128 blocks.
 func TestMonsterPopulationStaysCappedAndLeaves(t *testing.T) {
 	w, p := naturalSpawnWorld(t, 18000)
+	// A player without a client leaves the world once it dies, and the
+	// monsters of a night kill it; the test needs it to stay and go away.
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := p.Entity(tx)
+		e.(*player.Player).Handle(undamagedPlayer{})
+	})
 	countMonsters := func(tx *world.Tx) (n int) {
 		for e := range tx.Entities() {
 			if _, ok := e.(entity.Living); ok && e.H().Type().EncodeEntity() != "minecraft:player" {
