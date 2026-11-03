@@ -14,6 +14,7 @@ import (
 // BaseFireBlock.canBePlacedAt: fire needs a sturdy floor or a neighbour that
 // burns, soul sand gives soul fire, and a failed use costs no durability.
 func TestFlintAndSteelPlacesFireAsJava(t *testing.T) {
+	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{8, 63, 8}, block.Stone{}, nil)
@@ -48,6 +49,7 @@ func TestFlintAndSteelPlacesFireAsJava(t *testing.T) {
 // TestShearsFollowJava follows ShearsItem: shearing the tip of weeping
 // vines stops them at age 25, and breaking short grass wears the shears.
 func TestShearsFollowJava(t *testing.T) {
+	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{8, 70, 8}, block.Netherrack{}, nil)

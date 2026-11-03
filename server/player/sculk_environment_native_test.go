@@ -15,18 +15,22 @@ import (
 )
 
 func TestSculkCalibratedFilteringMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testSculkNativeEnvironment(t, "bedrock_1_26_51_sculk_filters.json", 24)
 }
 
 func TestSculkVibrationObstructionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testSculkNativeEnvironment(t, "bedrock_1_26_51_sculk_occlusion.json", 48)
 }
 
 func TestSculkButtonVibrationsMatchBDS(t *testing.T) {
+	t.Parallel()
 	testSculkNativeEnvironment(t, "bedrock_1_26_51_sculk_buttons.json", 8)
 }
 
 func TestSculkAdjacentSwitchFilteringMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testSculkNativeEnvironment(t, "bedrock_1_26_51_sculk_adjacent.json", 15)
 }
 

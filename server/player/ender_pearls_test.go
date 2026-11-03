@@ -9,6 +9,7 @@ import (
 )
 
 func TestEnderPearlsVanishOnOwnerDeath(t *testing.T) {
+	t.Parallel()
 	for _, vanish := range []bool{true, false} {
 		w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
 		<-w.Exec(func(tx *world.Tx) {

@@ -60,6 +60,7 @@ type sculkNativeCapture struct {
 // heap capture below also records which order's analog read actually occurred,
 // so its replay has no choices to search.
 func TestSculkPlayerLeverVibrationsMatchBDS(t *testing.T) {
+	t.Parallel()
 	native := readSculkNativeCapture(t, "bedrock_1_26_51_sculk_use.json", 36)
 	for _, trace := range native.Scenarios {
 		c := trace.Scenario
@@ -82,6 +83,7 @@ func TestSculkPlayerLeverVibrationsMatchBDS(t *testing.T) {
 }
 
 func TestSculkComparatorSamplingMatchesNativeHeap(t *testing.T) {
+	t.Parallel()
 	native := readSculkNativeCapture(t, "bedrock_1_26_51_sculk_components.json", 4)
 	if len(native.Checkpoints) != 44 {
 		t.Fatal("missing native comparator checkpoints")

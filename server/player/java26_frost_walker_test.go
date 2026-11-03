@@ -12,6 +12,7 @@ import (
 )
 
 func TestFrostWalkerFreezesSourceWater(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	pos := cube.Pos{0, 64, 0}
@@ -28,6 +29,7 @@ func TestFrostWalkerFreezesSourceWater(t *testing.T) {
 	})
 }
 func TestFrostWalkerDepthStriderIncompatibility(t *testing.T) {
+	t.Parallel()
 	if enchantment.FrostWalker.CompatibleWithEnchantment(enchantment.DepthStrider) || enchantment.DepthStrider.CompatibleWithEnchantment(enchantment.FrostWalker) {
 		t.Fatal("Frost Walker and Depth Strider must be incompatible")
 	}

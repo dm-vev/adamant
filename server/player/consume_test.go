@@ -16,6 +16,7 @@ import (
 // which LivingEntity.addEffect calls for every effect added: absorption is
 // raised to four points, never stacked beyond.
 func TestGoldenAppleTopsUpAbsorption(t *testing.T) {
+	t.Parallel()
 	hungerTestPlayer(t, world.DifficultyNormal, func(tx *world.Tx, p *Player) {
 		item.GoldenApple{}.Consume(tx, p)
 		if p.Absorption() != 4 {
@@ -42,6 +43,7 @@ func TestGoldenAppleTopsUpAbsorption(t *testing.T) {
 // clear of blocks, and below the Nether's logical height of 128, at most a
 // block above the floor.
 func TestChorusFruitTeleportsOntoGround(t *testing.T) {
+	t.Parallel()
 	for _, dim := range []world.Dimension{world.Overworld, world.Nether} {
 		w := world.Config{Synchronous: true, Dim: dim}.New()
 		t.Cleanup(func() { _ = w.Close() })

@@ -12,6 +12,7 @@ import (
 )
 
 func TestConfigPortalTravelCooldown(t *testing.T) {
+	t.Parallel()
 	data := &world.EntityData{}
 	Config{}.Apply(data)
 	if got := data.Data.(*playerData).portalTravel.Cooldown; got != 15*time.Second {
@@ -20,6 +21,7 @@ func TestConfigPortalTravelCooldown(t *testing.T) {
 }
 
 func TestEndReturnUsesRespawnBlockInDestinationDimension(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name      string
 		dimension world.Dimension

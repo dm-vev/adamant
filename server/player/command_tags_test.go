@@ -6,6 +6,7 @@ import (
 )
 
 func TestCommandTagsPersistInPlayerJavaState(t *testing.T) {
+	t.Parallel()
 	p := &Player{playerData: &playerData{wardenSpawnTracker: decodePlayerWardenTracker(nil)}}
 	p.SetCommandTags([]string{"alpha", "beta"})
 	if got := p.CommandTags(); !reflect.DeepEqual(got, []string{"alpha", "beta"}) {

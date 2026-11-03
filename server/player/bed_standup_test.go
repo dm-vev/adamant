@@ -12,6 +12,7 @@ import (
 )
 
 func TestBedStandUpMatchesJava263Source(t *testing.T) {
+	t.Parallel()
 	var fixture struct {
 		Cases []struct {
 			Name, Facing             string
@@ -80,6 +81,7 @@ func TestBedStandUpMatchesJava263Source(t *testing.T) {
 }
 
 func TestBedStandUpEffectiveBunkMatchesJava263Source(t *testing.T) {
+	t.Parallel()
 	var fixture struct {
 		Cases []struct {
 			Name, Facing               string

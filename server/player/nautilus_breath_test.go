@@ -12,6 +12,7 @@ import (
 )
 
 func TestBreathOfTheNautilusHoldsAirUnderwater(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name       string
 		underwater bool

@@ -14,6 +14,7 @@ import (
 )
 
 func TestLodestoneCompassBindRelinkAndBreak(t *testing.T) {
+	t.Parallel()
 	withItemUsePlayer(t, Config{}, func(tx *world.Tx, p *Player) {
 		first, second := cube.Pos{1, 64, 0}, cube.Pos{2, 64, 0}
 		tx.SetBlock(first, block.Lodestone{}, nil)
@@ -56,6 +57,7 @@ func TestLodestoneCompassBindRelinkAndBreak(t *testing.T) {
 }
 
 func TestConsumableCompletesFromTicks(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name     string
 		repeated bool
@@ -91,6 +93,7 @@ func TestConsumableCompletesFromTicks(t *testing.T) {
 }
 
 func TestUseItemRespectsGameModeInteraction(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		mode world.GameMode
@@ -114,6 +117,7 @@ func TestUseItemRespectsGameModeInteraction(t *testing.T) {
 }
 
 func TestConsumableCancellationStopsUse(t *testing.T) {
+	t.Parallel()
 	withItemUsePlayer(t, Config{Food: 10}, func(_ *world.Tx, p *Player) {
 		h := &cancelConsumeHandler{}
 		p.h = h
@@ -131,6 +135,7 @@ func TestConsumableCancellationStopsUse(t *testing.T) {
 }
 
 func TestItemUseCancelledByHeldItemChanges(t *testing.T) {
+	t.Parallel()
 	t.Run("slot switch", func(t *testing.T) {
 		withItemUsePlayer(t, Config{Food: 10}, func(_ *world.Tx, p *Player) {
 			p.SetHeldItems(item.NewStack(item.Apple{}, 1), item.Stack{})
@@ -159,6 +164,7 @@ func TestItemUseCancelledByHeldItemChanges(t *testing.T) {
 }
 
 func TestChargeableCompletesFromTicks(t *testing.T) {
+	t.Parallel()
 	withItemUsePlayer(t, Config{}, func(_ *world.Tx, p *Player) {
 		p.SetHeldItems(item.NewStack(item.Crossbow{}, 1), item.Stack{})
 		_ = p.Inventory().SetItem(1, item.NewStack(item.Arrow{}, 2))
@@ -184,6 +190,7 @@ func TestChargeableCompletesFromTicks(t *testing.T) {
 }
 
 func TestReleasableRequiresActiveUseAndReleasesOnce(t *testing.T) {
+	t.Parallel()
 	withItemUsePlayer(t, Config{}, func(_ *world.Tx, p *Player) {
 		p.SetHeldItems(item.NewStack(item.Bow{}, 1), item.Stack{})
 		_ = p.Inventory().SetItem(1, item.NewStack(item.Arrow{}, 2))

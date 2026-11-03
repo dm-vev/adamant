@@ -9,6 +9,7 @@ import (
 )
 
 func TestJava26DamageBonusEntityCategories(t *testing.T) {
+	t.Parallel()
 	sword, ok := world.ItemByName("minecraft:diamond_sword", 0)
 	if !ok {
 		t.Fatal("diamond sword is unavailable")

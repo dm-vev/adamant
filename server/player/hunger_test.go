@@ -34,6 +34,7 @@ func hungerApprox(a, b float64) bool { return math.Abs(a-b) < 1e-6 }
 // saturation spent (at most 6) and gains that much exhaustion, which costs a
 // point of saturation once it exceeds 4.
 func TestSaturationHealsBySaturationSpent(t *testing.T) {
+	t.Parallel()
 	hungerTestPlayer(t, world.DifficultyNormal, func(tx *world.Tx, p *Player) {
 		p.hunger.setState(20, 0, 0, 5)
 		p.health.AddHealth(-10)
@@ -52,6 +53,7 @@ func TestSaturationHealsBySaturationSpent(t *testing.T) {
 // TestSlowRegenerationNeedsEightyTicks heals one point every 80 ticks with 18
 // or more food and no saturation, costing 6 exhaustion.
 func TestSlowRegenerationNeedsEightyTicks(t *testing.T) {
+	t.Parallel()
 	hungerTestPlayer(t, world.DifficultyNormal, func(tx *world.Tx, p *Player) {
 		p.hunger.setState(18, 0, 0, 0)
 		p.health.AddHealth(-10)
@@ -75,6 +77,7 @@ func TestSlowRegenerationNeedsEightyTicks(t *testing.T) {
 // TestExhaustionDrainsOncePerTick removes at most 4 exhaustion a tick and caps
 // it at 40, as FoodData.addExhaustion and tick do.
 func TestExhaustionDrainsOncePerTick(t *testing.T) {
+	t.Parallel()
 	hungerTestPlayer(t, world.DifficultyNormal, func(tx *world.Tx, p *Player) {
 		p.hunger.setState(20, 0, 0, 1)
 		p.Exhaust(100)
@@ -93,6 +96,7 @@ func TestExhaustionDrainsOncePerTick(t *testing.T) {
 // TestStarvationStopsAtHalfAHeartOnNormal hurts a starving player while its
 // health is above 1 on Normal, as FoodData.tick.
 func TestStarvationStopsAtHalfAHeartOnNormal(t *testing.T) {
+	t.Parallel()
 	hungerTestPlayer(t, world.DifficultyNormal, func(tx *world.Tx, p *Player) {
 		p.hunger.setState(0, 0, 0, 0)
 		p.health.AddHealth(-18.5)
@@ -110,6 +114,7 @@ func TestStarvationStopsAtHalfAHeartOnNormal(t *testing.T) {
 // ticks a point of food, and exhaustion still drains saturation but never
 // food.
 func TestPeacefulRegeneration(t *testing.T) {
+	t.Parallel()
 	hungerTestPlayer(t, world.DifficultyPeaceful, func(tx *world.Tx, p *Player) {
 		p.hunger.setState(10, 0, 0, 0)
 		p.health.AddHealth(-10)
@@ -129,6 +134,7 @@ func TestPeacefulRegeneration(t *testing.T) {
 // sprinting on the ground costs 0.1 a metre; walking and sprinting through
 // the air cost nothing.
 func TestMovementExhaustion(t *testing.T) {
+	t.Parallel()
 	hungerTestPlayer(t, world.DifficultyNormal, func(tx *world.Tx, p *Player) {
 		p.Move(mgl64.Vec3{0.5, 0, 0}, 0, 0)
 		if got := p.hunger.snapshot().exhaustionLevel; got != 0 {

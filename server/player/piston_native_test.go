@@ -53,6 +53,7 @@ type pistonPlayerNativeSnapshot struct {
 // Actual player breaks use native before/after absolute clocks. Destruction
 // particle payloads/order are checked separately from the final block states.
 func TestPistonPlayerBreakMatchesBDS(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"creative", "survival"} {
 		t.Run(mode, func(t *testing.T) { testPistonPlayerNativeBreak(t, mode) })
 	}

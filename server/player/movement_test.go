@@ -113,6 +113,7 @@ func TestPlayerMoveDoesNotWaitForGeneratingCollisionChunk(t *testing.T) {
 	}
 }
 func TestPlayerGroundDetection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		position mgl64.Vec3
@@ -159,6 +160,7 @@ func TestPlayerGroundDetection(t *testing.T) {
 }
 
 func TestPlayerMovementVibrations(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name                                      string
 		water, swimming, climbing, seam, displace bool
@@ -252,6 +254,7 @@ func (v *moveViewer) ViewEntityMove(_ world.Entity, m *world.EntityMove) {
 // move with the next tick, the same position for all of them, to be encoded
 // once, and nothing for a tick it does not move or a move too small to show.
 func TestPlayerMoveIsSharedByViewers(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	a, b := &moveViewer{}, &moveViewer{}

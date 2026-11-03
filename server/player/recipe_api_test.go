@@ -7,6 +7,7 @@ import (
 )
 
 func TestLockRecipesRemovesOnlyUnlockedIDs(t *testing.T) {
+	t.Parallel()
 	p := &Player{playerData: &playerData{unlockedRecipes: map[string]struct{}{
 		"minecraft:test": {}, "minecraft:other": {},
 	}}}
@@ -22,6 +23,7 @@ func TestLockRecipesRemovesOnlyUnlockedIDs(t *testing.T) {
 // the player keeps them, in a map that takes more. The map was dropped, so
 // unlocking a recipe, as a knowledge book does, wrote to a nil map.
 func TestConfigKeepsUnlockedRecipes(t *testing.T) {
+	t.Parallel()
 	var data world.EntityData
 	Config{UnlockedRecipes: []string{"minecraft:stick"}}.Apply(&data)
 	p := &Player{playerData: data.Data.(*playerData)}

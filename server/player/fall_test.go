@@ -12,6 +12,7 @@ import (
 )
 
 func TestFallDamageSetting(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
@@ -40,6 +41,7 @@ func TestFallDamageSetting(t *testing.T) {
 }
 
 func TestFallDamageSettingPreservesEntityLand(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetFallDamage(false)
@@ -56,6 +58,7 @@ func TestFallDamageSettingPreservesEntityLand(t *testing.T) {
 }
 
 func TestLandingOnStalagmiteTipDoublesFallDamage(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name       string
 		stalagmite block.PointedDripstone

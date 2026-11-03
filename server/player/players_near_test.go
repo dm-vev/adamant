@@ -11,6 +11,7 @@ import (
 // found near where it went at once, as mobs looking for players near them
 // in the same tick must find it.
 func TestMovedPlayersFoundWhereTheyAre(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

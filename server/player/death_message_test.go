@@ -15,6 +15,7 @@ import (
 )
 
 func TestDeathMessageMatchesBedrockKeys(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	job := w.Do(func(tx *world.Tx) {
@@ -89,6 +90,7 @@ func translationOf(t text.Text) (key string, args []string, ok bool) {
 }
 
 func TestMobNameInWords(t *testing.T) {
+	t.Parallel()
 	for id, want := range map[string]string{"cow": "Cow", "cave_spider": "Cave Spider", "zombie_villager_v2": "Zombie Villager V2", "a__b": "A  B", "": ""} {
 		if got := mobName(id); !text.Equal(got, text.Translate("entity."+id+".name", want)) {
 			t.Errorf("the name of %q is %#v, want the fallback %q", id, got, want)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestZombifiedPiglinIsNeutralUntilProvoked(t *testing.T) {
+	t.Parallel()
 	for _, universal := range []bool{false, true} {
 		w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
 		var attackerH, bystanderH, piglinH *world.EntityHandle

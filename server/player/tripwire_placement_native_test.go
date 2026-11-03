@@ -15,6 +15,7 @@ import (
 )
 
 func TestTripwirePlayerPlacementMatchesBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_hook_placement.json")
 	if err != nil {
 		t.Fatal(err)

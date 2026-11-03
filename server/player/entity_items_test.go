@@ -24,6 +24,7 @@ func entityItemWorld(t *testing.T) *world.World {
 // stands on the floor of the block above the clicked one, turned to the
 // nearest 45 degrees facing the player, named after the stack.
 func TestArmourStandPlacementFollowsJava(t *testing.T) {
+	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{8, 64, 8}, block.Stone{}, nil)
@@ -56,6 +57,7 @@ func TestArmourStandPlacementFollowsJava(t *testing.T) {
 // TestBoatPlacedOnWaterSurface follows BoatItem.use: the boat goes where the
 // player's view meets the water surface, facing as the player does.
 func TestBoatPlacedOnWaterSurface(t *testing.T) {
+	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := 0; x < 16; x++ {
@@ -88,6 +90,7 @@ func TestBoatPlacedOnWaterSurface(t *testing.T) {
 // fills from the water source the player looks at, even clicking into the
 // air.
 func TestGlassBottleFillsFromWaterSource(t *testing.T) {
+	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := 0; x < 16; x++ {
@@ -137,6 +140,7 @@ func bucketTestPlayer(t *testing.T, dim world.Dimension, f func(tx *world.Tx, p 
 // block looked at, an empty bucket picks the source up again, and water
 // evaporates in the Nether.
 func TestBucketsFollowJava(t *testing.T) {
+	t.Parallel()
 	water := item.Bucket{Content: item.LiquidBucketContent(block.Water{Depth: 8, Still: true})}
 	bucketTestPlayer(t, world.Overworld, func(tx *world.Tx, p *Player) {
 		p.SetHeldItems(item.NewStack(water, 1), item.Stack{})
@@ -170,6 +174,7 @@ func TestBucketsFollowJava(t *testing.T) {
 // TestFishBucketSpawnsFishInWater follows MobBucketItem: the water is
 // emptied like a water bucket's and the fish spawns standing in it.
 func TestFishBucketSpawnsFishInWater(t *testing.T) {
+	t.Parallel()
 	bucketTestPlayer(t, world.Overworld, func(tx *world.Tx, p *Player) {
 		p.SetHeldItems(item.NewStack(item.FishBucket{MobBucket: item.MobBucket{Entity: "minecraft:cod"}}, 1), item.Stack{})
 		p.UseItem()
@@ -195,6 +200,7 @@ func TestFishBucketSpawnsFishInWater(t *testing.T) {
 // faces the player's nearest cardinal direction, and inside a cauldron it
 // rests on the cauldron's floor, found on its collision shape.
 func TestCushionPlacementFollowsJava(t *testing.T) {
+	t.Parallel()
 	w := entityItemWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{8, 63, 8}, block.Cauldron{}, nil)
@@ -225,6 +231,7 @@ func TestCushionPlacementFollowsJava(t *testing.T) {
 // LilyPadBlock.mayPlaceOn: the pad goes above the water source looked at,
 // and on ice.
 func TestLilyPadPlacesOnWaterAndIce(t *testing.T) {
+	t.Parallel()
 	bucketTestPlayer(t, world.Overworld, func(tx *world.Tx, p *Player) {
 		tx.SetBlock(cube.Pos{8, 62, 8}, block.Water{Still: true, Depth: 8}, nil)
 		// Standing off to the south and looking down at the water north.
@@ -249,6 +256,7 @@ func TestLilyPadPlacesOnWaterAndIce(t *testing.T) {
 // up from; monsters need a difficulty above peaceful; an egg of the clicked
 // mob's own type spawns its baby; dispensers spawn in front.
 func TestSpawnEggsFollowJava(t *testing.T) {
+	t.Parallel()
 	w := entityItemWorld(t)
 	w.SetDifficulty(world.DifficultyNormal)
 	mobs := func(tx *world.Tx, id string) (out []world.Entity) {

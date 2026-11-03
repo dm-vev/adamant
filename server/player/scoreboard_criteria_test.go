@@ -10,6 +10,7 @@ import (
 )
 
 func TestScoreboardCriteriaTrackPlayerStatsAndKills(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	job := w.Do(func(tx *world.Tx) {

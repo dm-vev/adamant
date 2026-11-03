@@ -13,6 +13,7 @@ import (
 // UUID updates the map frames, whatever other entities with an inventory
 // and held items, as villagers, are about.
 func TestLowestPlayerUpdatesMapFrames(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	id := func(b byte) uuid.UUID { return uuid.UUID{b, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15} }

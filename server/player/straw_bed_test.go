@@ -11,6 +11,7 @@ import (
 )
 
 func TestPlayerStrawBedSleepWakeDoesNotSetRespawn(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetTime(18000)
@@ -58,6 +59,7 @@ func TestPlayerStrawBedSleepWakeDoesNotSetRespawn(t *testing.T) {
 }
 
 func TestPlayerStrawBedMissingFootCannotStartSleeping(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	head := cube.Pos{257, 70, -256}
@@ -81,6 +83,7 @@ func TestPlayerStrawBedMissingFootCannotStartSleeping(t *testing.T) {
 }
 
 func TestStrawBedOtherDimensionsDestroyOnUseWithoutExplosion(t *testing.T) {
+	t.Parallel()
 	for index, dimension := range []world.Dimension{world.Nether, world.End} {
 		t.Run([]string{"nether", "end"}[index], func(t *testing.T) {
 			w := world.Config{Dim: dimension, Synchronous: true, RandomTickSpeed: -1}.New()

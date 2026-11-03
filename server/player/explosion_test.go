@@ -11,6 +11,7 @@ import (
 )
 
 func TestPlayerExplosionVelocityAndArmour(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 

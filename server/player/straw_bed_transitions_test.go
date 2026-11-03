@@ -13,6 +13,7 @@ import (
 )
 
 func TestStrawBedSleepRestrictions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name                              string
 		time                              int
@@ -79,6 +80,7 @@ func TestStrawBedSleepRestrictions(t *testing.T) {
 }
 
 func TestStrawBedSleepDismountsAndClearsMotion(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetTime(18000)
@@ -112,6 +114,7 @@ func TestStrawBedSleepDismountsAndClearsMotion(t *testing.T) {
 }
 
 func TestStrawBedTickWakesAtSourceDawn(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetTime(23477)
@@ -158,6 +161,7 @@ func TestStrawBedTickWakesAtSourceDawn(t *testing.T) {
 }
 
 func TestStrawBedWakeFloatingUsesSourceFallback(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	w.SetTime(18000)
