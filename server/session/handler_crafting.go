@@ -248,13 +248,20 @@ func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) err
 	if err != nil {
 		return err
 	}
-	for slot, count := range craft.consumed {
+	// The inputs are consumed in the order of their slots, whatever order the
+	// client named them in: each write of the UI inventory sends all of it.
+	for i := range craft.input {
+		slot := byte(craft.offset + i)
+		count, consumed := craft.consumed[slot]
+		if !consumed {
+			continue
+		}
 		has, err := s.ui.Item(int(slot))
 		if err != nil {
 			return err
 		}
 		if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
-			Container: v2193.FullContainerName{ContainerID: craft.containers[int(slot)-craft.offset]},
+			Container: v2193.FullContainerName{ContainerID: craft.containers[i]},
 			Slot:      slot,
 		}, has.Grow(-count), s, tx); err != nil {
 			return err

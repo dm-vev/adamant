@@ -1105,3 +1105,36 @@ func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
 		}
 	}
 }
+
+// TestMultiRecipeConsumesInSlotOrder repairs two bows of the grid: each
+// write of the UI inventory sends the whole of it, so the order the inputs
+// are consumed in is what the client is sent. It must be the order of the
+// slots, every time.
+func TestMultiRecipeConsumesInSlotOrder(t *testing.T) {
+	for range 50 {
+		s := craftingTestSession()
+		first := item.NewStack(item.Bow{}, 1).WithDurability(10)
+		second := item.NewStack(item.Bow{}, 1).WithDurability(20)
+		_ = s.ui.SetItem(craftingGridSmallOffset, first)
+		_ = s.ui.SetItem(craftingGridSmallOffset+1, second)
+		s.recipes[1] = recipe.NewMulti(uuid.MustParse(repairMultiRecipe))
+		var writes []int
+		s.ui.SlotFunc(func(slot int, _, _ item.Stack) { writes = append(writes, slot) })
+
+		h := craftingTestHandler()
+		err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+			&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{multiResultItem(item.NewStack(item.Bow{}, 1).WithDurability(49))}},
+			// The client names the second slot first: the order of the
+			// actions does not choose it either.
+			&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset+1, item_id(second))},
+			&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset, item_id(first))},
+		}}, s, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(writes) < 2 || writes[0] != craftingGridSmallOffset || writes[1] != craftingGridSmallOffset+1 {
+			t.Fatalf("the UI slots were written in the order %v, want %d and %d first", writes, craftingGridSmallOffset, craftingGridSmallOffset+1)
+		}
+	}
+}
