@@ -17,6 +17,7 @@ type bindingTestControllable struct {
 func (c bindingTestControllable) GameMode() world.GameMode { return c.mode }
 
 func TestBindingBlocksArmourRemovalOutsideCreative(t *testing.T) {
+	t.Parallel()
 	bound := item.NewStack(item.Boots{Tier: item.ArmourTierLeather{}}, 1).WithEnchantments(item.NewEnchantment(enchantment.CurseOfBinding, 1))
 	from := v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerArmor}, Slot: 3}
 	to := v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerInventory}, Slot: 0}

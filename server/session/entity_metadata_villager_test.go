@@ -13,6 +13,7 @@ import (
 )
 
 func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
+	t.Parallel()
 	path := t.TempDir()
 	open := func() *world.World {
 		db, err := mcdb.Open(path)

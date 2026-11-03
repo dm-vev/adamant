@@ -72,6 +72,7 @@ func do(t *testing.T, w *world.World, f func(tx *world.Tx)) {
 // go. Once the queue drains, the sub-chunks go in the order asked, as many
 // a tick as the room left takes, then the next chunks.
 func TestChunksWaitForRoom(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	columns := []world.ChunkPos{{0, 0}, {1, 0}, {0, 1}}
@@ -138,6 +139,7 @@ func (cacheConn) ClientCacheEnabled() bool { return true }
 // sub-chunk by its hash, to ask for it, and the bytes of its block
 // entities alone are counted.
 func TestSubChunkAnswer(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	s, _ := gatedSession(t, w, []world.ChunkPos{{0, 0}})
@@ -188,6 +190,7 @@ func (c pathConn) SendQueue() (queued, window int, rtt time.Duration) {
 // congestion window, or by what its path carries in a tick if more, and
 // leaves a connection that does not tell without bound.
 func TestConnRoom(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		queued, window int
 		rtt            time.Duration
@@ -216,6 +219,7 @@ func TestConnRoom(t *testing.T) {
 // for a client whose queue is full, 16 Ki: the oldest requests are
 // answered, in order, until those left are within the bound.
 func TestSubChunkQueueBounded(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	s := testSession("asks")
@@ -245,6 +249,7 @@ func TestSubChunkQueueBounded(t *testing.T) {
 // TestOutdatedSubChunkRequest answers a request queued for a dimension the
 // player is no longer in with no sub-chunks, as the client expects.
 func TestOutdatedSubChunkRequest(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	s, _ := gatedSession(t, w, []world.ChunkPos{{0, 0}})
@@ -267,6 +272,7 @@ func TestOutdatedSubChunkRequest(t *testing.T) {
 // for, and the chunks written in the tick: a blob the client misses moves
 // from the one to the other, and one it has frees its room.
 func TestChunkRoomCountsChunksOwed(t *testing.T) {
+	t.Parallel()
 	s := testSession("owed")
 	s.blobs = map[uint64][]byte{1: make([]byte, 30<<10), 2: make([]byte, 3<<10)}
 	if room := s.chunkRoom(100 << 10); room != 100<<10-11<<10 {

@@ -53,6 +53,7 @@ func clientData(width, height, n int, persona bool) login.ClientData {
 // took the server down: the skin kept 0x0 as its size and the pixels the
 // client sent, which gophertunnel refused to encode in the PlayerList.
 func TestPersonaSkinOfAnyPlayer(t *testing.T) {
+	t.Parallel()
 	s := ClientSkin(clientData(256, 256, 256*256*4, true))
 	if s.Bounds().Dx() != 256 || s.Bounds().Dy() != 256 || len(s.Pix) != 256*256*4 || !s.Persona {
 		t.Fatalf("persona skin %v of %d bytes", s.Bounds(), len(s.Pix))
@@ -61,6 +62,7 @@ func TestPersonaSkinOfAnyPlayer(t *testing.T) {
 }
 
 func TestClientSkinTrustsNothing(t *testing.T) {
+	t.Parallel()
 	for name, data := range map[string]login.ClientData{
 		"256x256 not persona":  clientData(256, 256, 256*256*4, false),
 		"negative size":        clientData(-64, -64, 64*64*4, false),
@@ -118,6 +120,7 @@ func TestClientSkinTrustsNothing(t *testing.T) {
 // is refused, which closed the session, and each goes on as one clients
 // can read.
 func TestPlayerSkinTrustsNothing(t *testing.T) {
+	t.Parallel()
 	persona := protocolToSkin(v2193.Skin{SkinImageWidth: 256, SkinImageHeight: 256, SkinData: make([]byte, 256*256*4), PersonaSkin: true, SkinGeometry: []byte("{}")})
 	if persona.Bounds().Dx() != 256 || len(persona.Pix) != 256*256*4 {
 		t.Fatalf("persona skin %v", persona.Bounds())
@@ -157,6 +160,7 @@ func TestPlayerSkinTrustsNothing(t *testing.T) {
 // TestSkinChangedByHand sends a skin whose pixels were changed to fill no
 // texture: it goes as the empty one rather than as a skin no client reads.
 func TestSkinChangedByHand(t *testing.T) {
+	t.Parallel()
 	s := skin.New(64, 64)
 	s.Pix = make([]byte, 10)
 	s.Cape = skin.NewCape(64, 32)

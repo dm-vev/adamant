@@ -14,6 +14,7 @@ import (
 )
 
 func TestBlockActorDataNBTBytes(t *testing.T) {
+	t.Parallel()
 	pk := &v2193.BlockActorDataPacket{
 		Position: v2193.BlockPos{12, 64, -7},
 		NBTData:  block.EnchantingTable{}.EncodeNBT(),
@@ -29,6 +30,7 @@ func TestBlockActorDataNBTBytes(t *testing.T) {
 }
 
 func TestEndCrystalMetadataPacket(t *testing.T) {
+	t.Parallel()
 	m := v2193.NewMetadata()
 	(&Session{}).addSpecificMetadata(endCrystalMetadataStub{
 		showBase:  true,

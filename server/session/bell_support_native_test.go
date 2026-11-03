@@ -64,7 +64,10 @@ func compareBellSupportBlock(t *testing.T, tx *world.Tx, tick int64, pos cube.Po
 	}
 }
 
-func TestBellSupportStatesMatchBDS(t *testing.T) { testBellSupportsNative(t, false, false) }
+func TestBellSupportStatesMatchBDS(t *testing.T) {
+	t.Parallel()
+	testBellSupportsNative(t, false, false)
+}
 
 func testBellSupportsNative(t *testing.T, packets, split bool) {
 	t.Helper()

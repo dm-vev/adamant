@@ -17,6 +17,7 @@ func (highFlagEntity) JumpGoalJumping() bool { return true }
 // ram attack of goats and the croak of frogs, go into the second flag field
 // instead of being shifted out of the first.
 func TestHighEntityFlagsReachFlagsTwo(t *testing.T) {
+	t.Parallel()
 	m := v2193.NewMetadata()
 	(&Session{}).addSpecificMetadata(highFlagEntity{}, m)
 	two := m[v2193.EntityDataKeyFlagsTwo].(int64)

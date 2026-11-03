@@ -15,6 +15,7 @@ import (
 // summoned with /summon, or with the minecraft:entity_born event for babies.
 
 func TestActorMetadataMatchesBDS(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer func() { _ = w.Close() }()
 	viewer := testSession("actor-metadata")
@@ -102,6 +103,7 @@ func TestActorMetadataMatchesBDS(t *testing.T) {
 }
 
 func TestEndermanCarriesBlockOnClient(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer func() { _ = w.Close() }()
 	viewer := testSession("enderman-metadata")
@@ -122,6 +124,7 @@ func TestEndermanCarriesBlockOnClient(t *testing.T) {
 // client only while it attacks, as BDS flags it when it acquires a target:
 // Bedrock vindicators raise their axe only then.
 func TestVindicatorAngryWhileAttacking(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer func() { _ = w.Close() }()
 	w.SetDifficulty(world.DifficultyNormal)

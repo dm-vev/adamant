@@ -11,6 +11,7 @@ import (
 )
 
 func TestPositionTrackingDBHandlerMissingAndTracked(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	pos := cube.Pos{4, 65, 6}

@@ -22,17 +22,21 @@ type nativeNotePacket struct {
 }
 
 func TestNoteEventsMatchOwnedBDS(t *testing.T) {
+	t.Parallel()
 	replayNativeNotes(t, "bedrock_1_26_51_note_block_events.json", 112, true, false)
 }
 func TestNoteEffectsMatchNativePackets(t *testing.T) {
+	t.Parallel()
 	replayNativeNotes(t, "bedrock_1_26_51_note_packets.json", 46, false, false)
 }
 
 func TestNoteLoadedStateMatchesOwnedBDS(t *testing.T) {
+	t.Parallel()
 	replayNativeNotes(t, "bedrock_1_26_51_note_load_events.json", 12, true, true)
 }
 
 func TestNoteUnsealedWaterCommandSceneMatchesBDS(t *testing.T) {
+	t.Parallel()
 	replayNativeNotes(t, "bedrock_1_26_51_note_water_flow.json", 2, false, false)
 }
 

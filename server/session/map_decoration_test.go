@@ -11,6 +11,7 @@ import (
 // exploration maps against protocol 2193: the session sends the type the
 // world gives a decoration as it is.
 func TestMapDecorationTypesAreProtocolTypes(t *testing.T) {
+	t.Parallel()
 	for name, want := range map[string]byte{
 		"minecraft:red_x":            v2193.MapDecorationTypeCrossWhite,
 		"minecraft:woodland_mansion": v2193.MapDecorationTypeMansion,

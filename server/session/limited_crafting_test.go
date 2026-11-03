@@ -38,6 +38,7 @@ func (recipeTestType) EncodeNBT(*world.EntityData) map[string]any  { return nil 
 // RecipeCraftingHolder.setRecipeUsed: with limited_crafting on, a crafting
 // recipe needs to be unlocked, and with it off any recipe crafts.
 func TestLimitedCraftingLocksRecipes(t *testing.T) {
+	t.Parallel()
 	windCharge := recipe.NewShapeless([]recipe.Item{item.NewStack(item.BreezeRod{}, 1)}, item.NewStack(item.WindCharge{}, 4), "crafting_table")
 	ids := recipe.JavaRecipeIDs(windCharge)
 	if len(ids) != 1 || ids[0] != "minecraft:wind_charge" {

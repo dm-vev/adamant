@@ -20,6 +20,7 @@ type shulkerMetadataViewer struct {
 func (v shulkerMetadataViewer) ViewEntityState(e world.Entity) { v.session.ViewEntityState(e) }
 
 func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
+	t.Parallel()
 	path := t.TempDir()
 	open := func() *world.World {
 		db, err := mcdb.Open(path)

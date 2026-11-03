@@ -20,6 +20,7 @@ import (
 )
 
 func TestGameTypeFromMode(t *testing.T) {
+	t.Parallel()
 	tests := map[string]struct {
 		mode world.GameMode
 		want int32
@@ -38,6 +39,7 @@ func TestGameTypeFromMode(t *testing.T) {
 }
 
 func TestResyncInventory(t *testing.T) {
+	t.Parallel()
 	s := &Session{
 		br:          world.DefaultBlockRegistry,
 		inv:         inventory.New(36, nil),
@@ -95,6 +97,7 @@ func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
 }
 
 func TestCloseConnectionCancelsDelayedAbilityResend(t *testing.T) {
+	t.Parallel()
 	s, c, w := abilityTestSession(t, time.Hour)
 	var task *world.Task
 	if err := w.Do(func(*world.Tx) {
@@ -121,6 +124,7 @@ func TestCloseConnectionCancelsDelayedAbilityResend(t *testing.T) {
 }
 
 func TestNewAbilityResendCancelsStaleTask(t *testing.T) {
+	t.Parallel()
 	s, c, w := abilityTestSession(t, time.Hour)
 	var first, second *world.Task
 	if err := w.Do(func(*world.Tx) {
@@ -268,6 +272,7 @@ func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
 }
 
 func TestCraftingAcceptsUserDataShapelessRecipes(t *testing.T) {
+	t.Parallel()
 	s := &Session{recipes: map[uint32]recipe.Recipe{
 		1: recipe.NewUserDataShapeless(nil, item.Stack{}, "crafting_table"),
 	}}
@@ -282,6 +287,7 @@ func TestCraftingAcceptsUserDataShapelessRecipes(t *testing.T) {
 }
 
 func TestMultiRecipeCraftsServerValidatedResult(t *testing.T) {
+	t.Parallel()
 	s := craftingTestSession()
 	first := item.NewStack(item.Bow{}, 1).WithDurability(10)
 	second := item.NewStack(item.Bow{}, 1).WithDurability(20)
@@ -312,6 +318,7 @@ func TestMultiRecipeCraftsServerValidatedResult(t *testing.T) {
 }
 
 func TestUserDataShapelessPreservesServerSourceNBT(t *testing.T) {
+	t.Parallel()
 	s := craftingTestSession()
 	sourceBox := block.NewShulkerBox()
 	sourceBox.Type = block.RedShulkerBox()
@@ -354,6 +361,7 @@ func TestUserDataShapelessPreservesServerSourceNBT(t *testing.T) {
 }
 
 func TestMultiRecipeRejectsUntrustedConsumption(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		id       string
@@ -435,6 +443,7 @@ func TestMultiRecipeRejectsUntrustedConsumption(t *testing.T) {
 }
 
 func TestUserDataShapelessRejectsExtraGridItem(t *testing.T) {
+	t.Parallel()
 	s := craftingTestSession()
 	box := block.NewShulkerBox()
 	box.Type = block.RedShulkerBox()
@@ -457,6 +466,7 @@ func TestUserDataShapelessRejectsExtraGridItem(t *testing.T) {
 }
 
 func TestMultiRecipeValidRepresentatives(t *testing.T) {
+	t.Parallel()
 	t.Run("firework", func(t *testing.T) {
 		s := craftingTestSession()
 		input := []item.Stack{
@@ -531,6 +541,7 @@ func TestMultiRecipeValidRepresentatives(t *testing.T) {
 }
 
 func TestBannerMultiRecipeDerivesPatternFromGrid(t *testing.T) {
+	t.Parallel()
 	t.Run("border arrangement", func(t *testing.T) {
 		s := largeCraftingTestSession()
 		base := block.Banner{Colour: item.ColourWhite()}
@@ -563,6 +574,7 @@ func TestBannerMultiRecipeDerivesPatternFromGrid(t *testing.T) {
 }
 
 func TestBannerMultiRecipeRejectsForgedPatterns(t *testing.T) {
+	t.Parallel()
 	base := block.Banner{Colour: item.ColourWhite()}
 	red := item.NewStack(item.Dye{Colour: item.ColourRed()}, 1)
 	patterned := func(pattern block.BannerPatternType) item.Stack {
@@ -646,6 +658,7 @@ func TestBannerMultiRecipeRejectsForgedPatterns(t *testing.T) {
 }
 
 func TestMapMultiRecipesApplyStateTransitions(t *testing.T) {
+	t.Parallel()
 	base := world.MapData{
 		ID: 42, Dimension: 0, CenterX: 64, CenterZ: 64, Scale: 2, Tracking: true,
 		Colors: make([]byte, 128*128),
@@ -719,6 +732,7 @@ func TestMapMultiRecipesApplyStateTransitions(t *testing.T) {
 }
 
 func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
+	t.Parallel()
 	t.Run("extend locked map", func(t *testing.T) {
 		data := world.MapData{ID: 42, Scale: 1, Locked: true, Colors: make([]byte, 128*128)}
 		w, _ := mapCraftingWorld(t, data)
@@ -830,6 +844,7 @@ func requireMapTransition(t *testing.T, result item.Stack, id int64) {
 }
 
 func TestRepairMultiRecipeStripsDataAndRetainsCurses(t *testing.T) {
+	t.Parallel()
 	first := item.NewStack(item.Bow{}, 1).
 		WithDurability(10).
 		WithCustomName("forged survivor").
@@ -859,6 +874,7 @@ func TestRepairMultiRecipeStripsDataAndRetainsCurses(t *testing.T) {
 }
 
 func TestRepairMultiRecipeStripsItemNBT(t *testing.T) {
+	t.Parallel()
 	charged := item.Crossbow{Item: item.NewStack(item.Arrow{}, 1)}
 	input := []item.Stack{item.NewStack(charged, 1).WithDurability(100), item.NewStack(charged, 1).WithDurability(100)}
 	expected := item.NewStack(item.Crossbow{}, 1).WithDurability(223)
@@ -870,6 +886,7 @@ func TestRepairMultiRecipeStripsItemNBT(t *testing.T) {
 }
 
 func TestRepairMultiRecipeRejectsInvalidCountAndTampering(t *testing.T) {
+	t.Parallel()
 	t.Run("stacked input", func(t *testing.T) {
 		s := craftingTestSession()
 		input := []item.Stack{item.NewStack(craftingStackableDurable{}, 2), item.NewStack(craftingStackableDurable{}, 1)}
@@ -1058,6 +1075,7 @@ func craftingSlot(slot int, stackID int32) v2193.StackRequestSlotInfo {
 // the client crafts its map recipes from the table's input and additional
 // slots, not from the crafting grid.
 func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
+	t.Parallel()
 	w, _ := mapCraftingWorld(t, world.MapData{ID: 42, Scale: 1, Colors: make([]byte, 128*128)})
 	s := craftingTestSession()
 	pos := cube.Pos{0, 64, 0}

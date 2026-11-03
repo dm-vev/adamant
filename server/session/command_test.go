@@ -18,6 +18,7 @@ import (
 )
 
 func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
+	t.Parallel()
 	native := cmd.New("native", "Native fallback", nil, commandSoftEnumFixture{}).
 		WithDescriptionTranslation(chat.Translate(commandTestDescription{fallback: "%commands.gamemode.description"}, 0, "Native fallback"))
 	localized := cmd.New("localized", "English fallback", nil, commandSoftEnumFixture{}).
@@ -96,6 +97,7 @@ func (d commandTestDescription) Resolve(locale language.Tag) string {
 }
 
 func TestAvailableCommandsStableWireRegistry(t *testing.T) {
+	t.Parallel()
 	alpha := cmd.New("alpha", "Enum and suffix arguments", []string{"a"}, commandRegistryFixture{})
 	zulu := cmd.New("zulu", "Soft enum arguments", nil, commandSoftEnumFixture{})
 	commands := map[string]cmd.Command{"zulu": zulu, "a": alpha, "alpha": alpha}

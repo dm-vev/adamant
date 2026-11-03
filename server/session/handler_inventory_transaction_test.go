@@ -11,6 +11,7 @@ import (
 )
 
 func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name      string
 		count     int
@@ -35,6 +36,7 @@ func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 }
 
 func TestUseItemOnEntityTransactionResyncsHeldSlotAfterAction(t *testing.T) {
+	t.Parallel()
 	s := transactionTestSession(1)
 	w := world.New()
 	t.Cleanup(func() { _ = w.Close() })

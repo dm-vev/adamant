@@ -22,6 +22,7 @@ const (
 // sends them: by network block hash, independent of where the state sits in
 // the server's palette.
 func TestChunksNameBlocksByNetworkHash(t *testing.T) {
+	t.Parallel()
 	br := world.DefaultBlockRegistry
 	c := chunk.New(br, world.Overworld.Range())
 	stone, grass := br.BlockRuntimeID(block.Stone{}), br.BlockRuntimeID(block.Grass{})
@@ -50,6 +51,7 @@ func TestChunksNameBlocksByNetworkHash(t *testing.T) {
 // TestItemStacksNameBlocksByNetworkHash checks block items carry the network
 // block ID of their block both ways.
 func TestItemStacksNameBlocksByNetworkHash(t *testing.T) {
+	t.Parallel()
 	br := world.DefaultBlockRegistry
 	stack := stackFromItem(br, item.NewStack(block.Stone{}, 3))
 	if uint32(stack.BlockRuntimeID) != bdsStoneNetworkID {

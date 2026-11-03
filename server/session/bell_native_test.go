@@ -33,6 +33,7 @@ func (v *bellPacketViewer) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 func (v *bellPacketViewer) ViewSound(pos mgl64.Vec3, s world.Sound) { v.session.ViewSound(pos, s) }
 
 func TestBellEffectsMatchNativePackets(t *testing.T) {
+	t.Parallel()
 	for _, split := range []bool{false, true} {
 		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellEffectsNativePackets(t, split) })
 	}

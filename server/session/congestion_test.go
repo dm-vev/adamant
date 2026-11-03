@@ -25,6 +25,7 @@ func (c bufferedConn) Buffered() int { return int(c.buffered.Load()) }
 // moves of the player itself still go, and once the client caught up the
 // entity is shown where it is then, once.
 func TestCongestedClientGetsFreshState(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	s := testSession("congested")

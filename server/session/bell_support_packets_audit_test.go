@@ -12,6 +12,7 @@ import (
 // this diagnostic retains the native intermediate states, actor notifications
 // and removal flags that the current publication queue does not yet preserve.
 func TestBellSupportUpdatesMatchNativePackets(t *testing.T) {
+	t.Parallel()
 	for _, split := range []bool{false, true} {
 		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellSupportsNative(t, true, split) })
 	}

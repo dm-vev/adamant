@@ -11,6 +11,7 @@ import (
 )
 
 func TestStackToItemUsesBlockRegistryForNestedNBT(t *testing.T) {
+	t.Parallel()
 	registry := world.NewBlockRegistry()
 	custom := sessionRegistryBlockItem{}
 	name, states := custom.EncodeBlock()
@@ -37,6 +38,7 @@ func TestStackToItemUsesBlockRegistryForNestedNBT(t *testing.T) {
 }
 
 func TestStackToItemClearsMissingLodestoneHandle(t *testing.T) {
+	t.Parallel()
 	stack := stackFromItem(world.DefaultBlockRegistry, item.NewStack(item.Compass{TrackingHandle: 1}, 1))
 	stack.NBTData = nil
 	got := stackToItem(world.DefaultBlockRegistry, stack)

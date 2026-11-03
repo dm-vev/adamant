@@ -146,6 +146,7 @@ func TestDroppedItemNetworkHeightAboveSurface(t *testing.T) {
 }
 
 func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
+	t.Parallel()
 	conn := &packetConn{packets: make(chan any, 1024)}
 	viewer := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1}.New(conn)
 	t.Cleanup(viewer.CloseConnection)

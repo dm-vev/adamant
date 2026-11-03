@@ -16,6 +16,7 @@ import (
 // moves are not sent, until the player comes near; one left behind past
 // its range and the margin is hidden.
 func TestEntitiesShownWithinRange(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	s := testSession("interest")

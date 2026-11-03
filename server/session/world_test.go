@@ -11,6 +11,7 @@ import (
 )
 
 func TestViewFallDamageSendsGameRule(t *testing.T) {
+	t.Parallel()
 	s := testSession("fall-damage")
 	s.ViewFallDamage(false)
 
@@ -25,6 +26,7 @@ func TestViewFallDamageSendsGameRule(t *testing.T) {
 }
 
 func TestViewVisibilityHidesArmourPerViewer(t *testing.T) {
+	t.Parallel()
 	handle := &world.EntityHandle{}
 	armour := inventory.NewArmour(nil)
 	helm := item.NewStack(item.Helmet{Tier: item.ArmourTierDiamond{}}, 1)
@@ -98,6 +100,7 @@ func TestViewVisibilityHidesArmourPerViewer(t *testing.T) {
 }
 
 func TestViewEntityArmourPublishesBodyItem(t *testing.T) {
+	t.Parallel()
 	s := testSession("body-equipment")
 	s.br = world.DefaultBlockRegistry
 	handle := &world.EntityHandle{}
@@ -117,6 +120,7 @@ func TestViewEntityArmourPublishesBodyItem(t *testing.T) {
 }
 
 func TestHideSessionlessControllableTwice(t *testing.T) {
+	t.Parallel()
 	s := testSession("viewer")
 	const uniqueID = 17
 	handle := world.EntitySpawnOpts{ID: [16]byte{8: uniqueID}}.New(entity.TextType, entity.StationaryBehaviourConfig{})

@@ -24,6 +24,7 @@ func (e movingEntity) Rotation() cube.Rotation { return cube.Rotation{} }
 // TestEntityMoveIsEncodedOnce shows a move to two sessions: both are given
 // the same packet of the parts that changed, encoded once.
 func TestEntityMoveIsEncodedOnce(t *testing.T) {
+	t.Parallel()
 	e := movingEntity{h: entity.NewText("mob", mgl64.Vec3{})}
 	a, b := testSession("a"), testSession("b")
 	next := &world.EntityMove{Pos: mgl64.Vec3{1.3, 64, 1}, OnGround: true, Changed: world.MoveX, Ticks: 3}
@@ -75,6 +76,7 @@ func TestEntityMoveIsEncodedOnce(t *testing.T) {
 // encoded once, and its own session the move under its own runtime ID,
 // unless its client made the move.
 func TestAbsoluteMoveIsEncodedOnce(t *testing.T) {
+	t.Parallel()
 	a, b, own := testSession("a"), testSession("b"), testSession("own")
 	p := movingEntity{h: own.ent}
 	move := &world.EntityMove{Pos: mgl64.Vec3{1, 64, 1}, Rot: cube.Rotation{90, 10}, OnGround: true, Absolute: true}
@@ -111,6 +113,7 @@ type countingPacket struct {
 func (p countingPacket) Encode(w *wire.Writer) { *p.n++; p.Packet.Encode(w) }
 
 func TestSharedPacketEncodesOnce(t *testing.T) {
+	t.Parallel()
 	n := 0
 	p := &sharedPacket{Packet: countingPacket{&v2193.SetActorMotionPacket{EntityRuntimeID: 9}, &n}}
 	for range 5 {

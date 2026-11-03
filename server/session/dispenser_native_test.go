@@ -30,6 +30,7 @@ func (v *dispenserPacketViewer) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 }
 
 func TestDispenserEffectsMatchNativePackets(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_dispenser_sounds.json")
 	if err != nil {
 		t.Fatal(err)

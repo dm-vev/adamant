@@ -16,6 +16,7 @@ import (
 // slot, then crafts the offer by its network ID, the offer index plus one,
 // consumes the input and takes the created output.
 func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
@@ -89,6 +90,7 @@ func (u merchantTestUser) H() *world.EntityHandle   { return u.handle }
 // TestMerchantOffersNameTheirNetworkIDs checks the offers the trade screen
 // receives carry the netId its trade requests name and the levels' experience.
 func TestMerchantOffersNameTheirNetworkIDs(t *testing.T) {
+	t.Parallel()
 	data, err := serializeMerchantOffers([]entity.MerchantOffer{{Input: item.NewStack(item.Emerald{}, 1), Output: item.NewStack(item.Bread{}, 6), MaxUses: 16}})
 	if err != nil {
 		t.Fatal(err)

@@ -13,6 +13,7 @@ import (
 // sends them: the rotation keys always, the seat position only once the
 // entity sat somewhere, as a player on a horse does.
 func TestSeatMetadataLikeBDS(t *testing.T) {
+	t.Parallel()
 	never := v2193.NewMetadata()
 	writeSeatMetadata(never, world.RiderSeat{})
 	if _, ok := never[v2193.EntityDataKeySeatOffset]; ok {

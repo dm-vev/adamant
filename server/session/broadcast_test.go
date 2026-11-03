@@ -14,6 +14,7 @@ import (
 // to the sessions of one broadcast: they are given the same packets, but for the
 // player of a session, which knows itself by runtime ID 1.
 func TestBroadcastsAreEncodedOnce(t *testing.T) {
+	t.Parallel()
 	a, b := testSession("a"), testSession("b")
 	var sb world.Broadcast
 	a.ViewSoundShared(mgl64.Vec3{1, 2, 3}, sound.Click{}, &sb)

@@ -12,6 +12,7 @@ import (
 // NBT BDS sends, with the block's position and BlockEntityVersion, and none
 // of the adamant: state the server keeps for itself.
 func TestClientActorNBTMatchesBDS(t *testing.T) {
+	t.Parallel()
 	note := block.Note{Pitch: 3, Powered: true}
 	got := clientActorNBT(note.EncodeNBT(), cube.Pos{1, -2, 3})
 	want := map[string]any{"id": "Music", "note": byte(3), "BlockEntityVersion": int32(0), "x": int32(1), "y": int32(-2), "z": int32(3)}

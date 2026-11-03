@@ -17,6 +17,7 @@ import (
 // the server decodes what a client sends: none may be refused for its ID,
 // which would drop every client that sends it.
 func TestHandledPacketsDecode(t *testing.T) {
+	t.Parallel()
 	s := &Session{}
 	s.registerHandlers()
 	// Packets whose zero value has no encoding.
@@ -53,6 +54,7 @@ func (e countedError) Error() string {
 // error of a client, which may be as long as a packet: its message is
 // built only if the debug log is on.
 func TestConnClosedLogsLazily(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	n := 0
 	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(&out, nil))}}
@@ -103,6 +105,7 @@ func (s *Session) inboxState() (n, cost int, closed bool) {
 // and a burst of the largest items a client sends fit, and the memory of
 // the packets the world takes is given back.
 func TestInboxMemoryBound(t *testing.T) {
+	t.Parallel()
 	s, closed := inboxSession()
 	for range 64 {
 		s.receive(&v2193.BlockActorDataPacket{}, 4<<20)

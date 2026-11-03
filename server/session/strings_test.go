@@ -8,6 +8,7 @@ import (
 )
 
 func TestValidText(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		s    string
 		max  int
@@ -38,6 +39,7 @@ func (c *chatControllable) Chat(msg ...any) { c.said = append(c.said, msg[0].(st
 // on and longer: the longer ones are dropped, as BDS drops them, rather
 // than passed on to every player.
 func TestChatOverItsLengthIsDropped(t *testing.T) {
+	t.Parallel()
 	s := testSession("Talker")
 	c := &chatControllable{}
 	for _, msg := range []string{strings.Repeat("a", maxChatLength), strings.Repeat("b", maxChatLength+1), strings.Repeat("c", 1<<20), "bad \xff UTF-8"} {

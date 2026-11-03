@@ -10,6 +10,7 @@ import (
 )
 
 func TestVerifySlotResyncsStaleCount(t *testing.T) {
+	t.Parallel()
 	s := testSession("stale-slot")
 	s.br = world.DefaultBlockRegistry
 	s.inv = inventory.New(36, nil)

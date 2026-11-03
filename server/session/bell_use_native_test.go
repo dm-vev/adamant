@@ -26,12 +26,14 @@ type bellNativeUseUser struct {
 func (u bellNativeUseUser) Rotation() cube.Rotation { return u.rotation }
 
 func TestBellPlayerUseMatchesNativeActorsAndPackets(t *testing.T) {
+	t.Parallel()
 	for _, split := range []bool{false, true} {
 		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellInteractionNative(t, split, false) })
 	}
 }
 
 func TestBellArrowEffectsMatchNativePackets(t *testing.T) {
+	t.Parallel()
 	for _, split := range []bool{false, true} {
 		t.Run(fmt.Sprintf("split%t", split), func(t *testing.T) { testBellInteractionNative(t, split, true) })
 	}

@@ -14,6 +14,7 @@ import (
 )
 
 func TestMobDeathAnimationSurvivesRemoval(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	if err := w.Do(func(tx *world.Tx) {
@@ -46,6 +47,7 @@ func TestMobDeathAnimationSurvivesRemoval(t *testing.T) {
 }
 
 func TestForcedHideStillRemovesDyingMob(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	if err := w.Do(func(tx *world.Tx) {
@@ -66,6 +68,7 @@ func TestForcedHideStillRemovesDyingMob(t *testing.T) {
 }
 
 func TestSpecialDeathSequencesStillSendRemoveActor(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		spawn func(world.EntitySpawnOpts) *world.EntityHandle
@@ -98,6 +101,7 @@ func TestSpecialDeathSequencesStillSendRemoveActor(t *testing.T) {
 }
 
 func TestKilledMobSendsDeathWithoutImmediateRemoveActor(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		spawn func(world.EntitySpawnOpts) *world.EntityHandle
@@ -170,6 +174,7 @@ func (v deathAnimationViewer) ViewEntityAction(e world.Entity, a world.EntityAct
 }
 
 func TestMobRemovalWithoutDeathStillSendsRemoveActor(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	if err := w.Do(func(tx *world.Tx) {

@@ -37,6 +37,7 @@ func (v *pistonPacketViewer) ViewBlockAction(pos cube.Pos, a world.BlockAction) 
 // Compare the real session publication path against packets received from BDS.
 // Both block actor sequences and complete piston sound fields come from BDS.
 func TestPistonUpdatesMatchNativePackets(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name, file string
 		actors     int

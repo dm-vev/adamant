@@ -11,6 +11,7 @@ import (
 )
 
 func TestBellSharedSoundFollowsStateForEveryViewer(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{4, 65, 4}
 	bell := block.Bell{Attach: block.StandingBellAttachment(), Facing: cube.South}
 	a, b := testSession("first"), testSession("second")
@@ -39,6 +40,7 @@ func TestBellSharedSoundFollowsStateForEveryViewer(t *testing.T) {
 }
 
 func TestBellRepeatedUsesRetainSoundAndAnimationThroughBacklog(t *testing.T) {
+	t.Parallel()
 	s := testSession("bell-use-backlog")
 	s.br = world.DefaultBlockRegistry
 	s.heldPackets = nil
@@ -89,6 +91,7 @@ func TestBellRepeatedUsesRetainSoundAndAnimationThroughBacklog(t *testing.T) {
 }
 
 func TestBellActorPairSurvivesBlockBacklog(t *testing.T) {
+	t.Parallel()
 	s := testSession("bell-backlog")
 	s.br = world.DefaultBlockRegistry
 	s.heldPackets = nil
@@ -125,6 +128,7 @@ func TestBellActorPairSurvivesBlockBacklog(t *testing.T) {
 }
 
 func TestMovingActorWaitsForParentThroughBlockBacklog(t *testing.T) {
+	t.Parallel()
 	s := testSession("moving-backlog")
 	s.br = world.DefaultBlockRegistry
 	s.heldPackets = nil
@@ -172,6 +176,7 @@ func TestMovingActorWaitsForParentThroughBlockBacklog(t *testing.T) {
 }
 
 func TestMovingActorReplacementSurvivesFullBacklog(t *testing.T) {
+	t.Parallel()
 	s := testSession("moving-replaced")
 	s.br = world.DefaultBlockRegistry
 	pos := cube.Pos{1, 65, 1}
@@ -188,6 +193,7 @@ func TestMovingActorReplacementSurvivesFullBacklog(t *testing.T) {
 }
 
 func TestMovingActorNotificationDoesNotResendBlock(t *testing.T) {
+	t.Parallel()
 	s := testSession("moving-actor-only")
 	s.enqueueBlockActorUpdate(cube.Pos{2, 65, 1}, cube.Pos{1, 65, 1}, map[string]any{"id": "MovingBlock"})
 	s.flushBlockUpdates()

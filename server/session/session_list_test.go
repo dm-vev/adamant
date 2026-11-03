@@ -173,6 +173,7 @@ func packetOf(pk proto.Packet) proto.Packet {
 // the same PlayerList packet of it, encoded once, and the new one the
 // entries of the others.
 func TestPlayerListEntryIsShared(t *testing.T) {
+	t.Parallel()
 	r := new(client.Roster)
 	a, b, c := testSession("a"), testSession("b"), testSession("c")
 	sk := skin.New(64, 64)

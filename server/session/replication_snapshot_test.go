@@ -38,6 +38,7 @@ var updateSnapshots = flag.Bool("update-snapshots", false, "rewrite the snapshot
 // of the snapshot, to be looked at rather than slip by. Run with
 // -update-snapshots to write it again.
 func TestReplicationSnapshot(t *testing.T) {
+	t.Parallel()
 	conn := &packetConn{packets: make(chan any, 4096)}
 	viewer := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1}.New(conn)
 	t.Cleanup(viewer.CloseConnection)

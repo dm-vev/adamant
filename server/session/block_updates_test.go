@@ -17,6 +17,7 @@ import (
 // change of a sub-chunk with few and one UpdateSubChunkBlocks for those of a
 // sub-chunk with many, and each the block actor data of a chest.
 func TestBlockUpdatesAreEncodedOnce(t *testing.T) {
+	t.Parallel()
 	a, b := testSession("a"), testSession("b")
 	for _, s := range []*Session{a, b} {
 		s.br = world.DefaultBlockRegistry

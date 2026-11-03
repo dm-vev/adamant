@@ -11,6 +11,7 @@ import (
 )
 
 func TestSubChunkHeightMapPreservesXZCoordinates(t *testing.T) {
+	t.Parallel()
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 31})
 	stone := world.DefaultBlockRegistry.BlockRuntimeID(block.Stone{})
 	c.SetBlock(2, 6, 5, 0, stone)

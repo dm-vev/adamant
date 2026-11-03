@@ -8,6 +8,7 @@ import (
 )
 
 func TestLoadingScreenAcknowledgementOrdering(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name               string
 		expected, received uint32

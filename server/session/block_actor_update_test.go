@@ -12,6 +12,7 @@ import (
 // BDS sends the item displayed and the players connected, with the client's
 // own player under its runtime ID, not the saved block actor.
 func TestVaultUpdateIsSentAsBDS(t *testing.T) {
+	t.Parallel()
 	s := testSession("vault-update")
 	s.br = world.DefaultBlockRegistry
 	own := s.ent.UniqueID()

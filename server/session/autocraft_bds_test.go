@@ -191,6 +191,7 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 // Consume actions name, in the grid or the inventory, as BDS does, and
 // refuses the requests BDS refuses.
 func TestAutoCraftMatchesBDS(t *testing.T) {
+	t.Parallel()
 	capture := loadAutoCraftCapture(t)
 	craft := stickRecipe(t)
 	for _, c := range capture.Cases {
@@ -249,6 +250,7 @@ func TestAutoCraftMatchesBDS(t *testing.T) {
 // both in the grid and in the inventory many times: which slots pay for the
 // craft no longer depends on the order of a Go map.
 func TestAutoCraftOutcomeIsStable(t *testing.T) {
+	t.Parallel()
 	capture := loadAutoCraftCapture(t)
 	craft := stickRecipe(t)
 	runs := 0

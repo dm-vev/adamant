@@ -16,6 +16,7 @@ import (
 )
 
 func TestSessionPacketBurstPreservesOrder(t *testing.T) {
+	t.Parallel()
 	c := newQueueTestConn()
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(c)
 	t.Cleanup(s.CloseConnection)
@@ -69,6 +70,7 @@ func TestSessionPacketBurstPreservesOrder(t *testing.T) {
 }
 
 func TestSessionPacketBacklogBounded(t *testing.T) {
+	t.Parallel()
 	c := newQueueTestConn()
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(c)
 	t.Cleanup(s.CloseConnection)
@@ -87,6 +89,7 @@ func TestSessionPacketBacklogBounded(t *testing.T) {
 }
 
 func TestSessionPacketWriteFailureClosesConnection(t *testing.T) {
+	t.Parallel()
 	c := newQueueTestConn()
 	c.writeErr = io.ErrClosedPipe
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(c)
@@ -100,6 +103,7 @@ func TestSessionPacketWriteFailureClosesConnection(t *testing.T) {
 }
 
 func TestSessionPacketQueueConcurrentProducers(t *testing.T) {
+	t.Parallel()
 	c := newQueueTestConn()
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(c)
 	t.Cleanup(s.CloseConnection)
@@ -207,6 +211,7 @@ func TestSessionPacketsHeldDuringBatch(t *testing.T) {
 // TestSessionHeldPacketsBounded checks packets held during a batch count
 // towards the backlog that closes a connection that cannot keep up.
 func TestSessionHeldPacketsBounded(t *testing.T) {
+	t.Parallel()
 	c := newQueueTestConn()
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(c)
 	t.Cleanup(s.CloseConnection)
@@ -286,6 +291,7 @@ func (c marshalConn) WritePacket(pk proto.Packet) error {
 // game has no type for, whose encoder panics, then a valid packet: the
 // first is dropped, the second written, and the session goes on.
 func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
+	t.Parallel()
 	c := newQueueTestConn()
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(marshalConn{c})
 	t.Cleanup(s.CloseConnection)
@@ -313,6 +319,7 @@ func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 // TestEmptyMessageShowsAnEmptyLine sends an empty chat message, which
 // Bedrock refuses as it is: a space goes instead, as Java shows a line.
 func TestEmptyMessageShowsAnEmptyLine(t *testing.T) {
+	t.Parallel()
 	s := &Session{holdPackets: 1}
 	s.SendMessage(text.Literal(""))
 	if text, ok := (s.testPacket()).(*v2193.TextPacket); !ok || text.Message != " " {

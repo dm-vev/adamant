@@ -14,6 +14,7 @@ import (
 )
 
 func TestTeleportAcknowledgementClearedForUnchangedMovement(t *testing.T) {
+	t.Parallel()
 	expected := mgl64.Vec3{}
 	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
 	s.teleportPos.Store(&expected)
@@ -29,6 +30,7 @@ func TestTeleportAcknowledgementClearedForUnchangedMovement(t *testing.T) {
 }
 
 func TestTeleportAcknowledgedAtLargeCoordinates(t *testing.T) {
+	t.Parallel()
 	expected := mgl64.Vec3{29_999_999, 100, -29_999_999}
 	c := newUnchangedControllable()
 	ack := vec32To64(entityBasePosition(c, vec64To32(entityNetworkPosition(c, expected))))
@@ -44,6 +46,7 @@ func TestTeleportAcknowledgedAtLargeCoordinates(t *testing.T) {
 }
 
 func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name     string
 		sleeping bool
@@ -84,6 +87,7 @@ func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
 // back, rather than taking the player there, which froze its world as it
 // looked for ground along the whole way.
 func TestMoveTooFarIsRefused(t *testing.T) {
+	t.Parallel()
 	start := mgl64.Vec3{0.5, 64, 0.5}
 	for name, to := range map[string]mgl64.Vec3{
 		"far below": {0.5, -1e37, 0.5},
@@ -118,6 +122,7 @@ func TestMoveTooFarIsRefused(t *testing.T) {
 }
 
 func TestFlightInputFlags(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		mode        world.GameMode

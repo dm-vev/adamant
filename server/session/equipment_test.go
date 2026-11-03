@@ -37,6 +37,7 @@ func drain(s *Session) (pks []proto.Packet) {
 // is sent only the equipment it has, and a change after that is sent
 // whole, so that an item taken away is cleared.
 func TestEquipmentOfShownEntities(t *testing.T) {
+	t.Parallel()
 	s := testSession("viewer")
 	s.br = world.DefaultBlockRegistry
 	bare := equippedEntity{movingEntity: movingEntity{h: entity.NewText("cow", mgl64.Vec3{})}}
