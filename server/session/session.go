@@ -267,6 +267,11 @@ type Config struct {
 	HandleStop func(*world.Tx, Controllable)
 	// BlockRegistry overrides the registry used for network serialization. If nil, world.DefaultBlockRegistry is used.
 	BlockRegistry world.BlockRegistry
+	// Roster is the list of the players of the server, on which Bind lists
+	// the player of the Session and its close unlists it. If nil, New gives
+	// the Session a Roster of its own, on which it lists only its own
+	// player.
+	Roster *client.Roster
 }
 
 func (conf Config) New(conn Conn) *Session {
@@ -287,6 +292,9 @@ func (conf Config) New(conn Conn) *Session {
 	}
 	if conf.Log == nil {
 		conf.Log = slog.Default()
+	}
+	if conf.Roster == nil {
+		conf.Roster = new(client.Roster)
 	}
 	conf.Log = conf.Log.With("name", conn.IdentityData().DisplayName, "uuid", conn.IdentityData().Identity, "raddr", conn.RemoteAddr().String())
 
@@ -343,32 +351,35 @@ func (conf Config) New(conn Conn) *Session {
 }
 
 // Bind binds the Session to handle, the entity handle of its player, and
-// attaches a skin to other players on join.
+// attaches a skin to other players on join: it lists the player on the
+// Roster of its Config.
 func (s *Session) Bind(handle *world.EntityHandle, skin skin.Skin) {
 	s.ent = handle
 	s.entityRuntimeIDs[handle] = selfEntityRuntimeID
 	s.entities[selfEntityRuntimeID] = handle
 
 	s.listEntry.Store(s.newListEntry(skin))
-	sessions.Add(s)
-	sessionsOpen.Add(1)
+	if s.conf.Roster == nil {
+		// A session made without New lists its player on a Roster of its own.
+		s.conf.Roster = new(client.Roster)
+	}
+	s.conf.Roster.List(client.Listed{Identity: IdentityOf(s.conn.IdentityData()), Handle: handle, Client: s})
 }
 
-// Unbind undoes Bind for a session whose player never spawned, as when
-// its join fails before the player is added to a world: it removes the
-// player from the player list of every session, its own among them. The
-// session is then closed, and a later Close does nothing. Unbind does
-// nothing if the session has no handle or its teardown started.
-func (s *Session) Unbind() {
-	if s.ent == nil || !s.teardownStarted.CompareAndSwap(false, true) {
+// unlist unlists the player c of the Session from its Roster, last in its
+// teardown, and then, outside the lock of the Roster, removes c from the
+// view layers of the sessions still listed.
+func (s *Session) unlist(c Controllable) {
+	r := s.roster()
+	r.Unlist(s)
+	if c == nil {
 		return
 	}
-	sessions.Remove(s, nil)
-	sessionsOpen.Add(-1)
-	s.entityMutex.Lock()
-	clear(s.entityRuntimeIDs)
-	clear(s.entities)
-	s.entityMutex.Unlock()
+	for _, p := range r.Players() {
+		if other, ok := p.Client.(*Session); ok && other.viewLayer != nil {
+			other.viewLayer.Remove(c)
+		}
+	}
 }
 
 // ViewerEntity identifies the observer for source-defined particle range checks.
@@ -554,7 +565,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 		// This should always be called last due to the timing of the removal of
 		// entity runtime IDs.
 		if s.ent != nil {
-			run(func() { sessions.Remove(s, c); sessionsOpen.Add(-1) })
+			run(func() { s.unlist(c) })
 			run(func() {
 				s.entityMutex.Lock()
 				clear(s.entityRuntimeIDs)

@@ -102,10 +102,11 @@ type Connection interface {
 	// none. In this order, Close closes the connection and the screens of
 	// the client, calls the Left hook of its Game, clears the inventories
 	// of c, writes the QuitMessage of the Game, unsubscribes c from the
-	// chat, removes c from the world of tx if tx is not nil, and closes the
-	// entity handle of c. Player relies on it to do so, and does none of it
-	// itself when it has a client. Only the first call does anything; later
-	// calls, including those from callbacks that Close runs, return at once.
+	// chat, removes c from the world of tx if tx is not nil, closes the
+	// entity handle of c, and, last, unlists c from the Roster of its Game.
+	// Player relies on it to do so, and does none of it itself when it has
+	// a client. Only the first call does anything; later calls, including
+	// those from callbacks that Close runs, return at once.
 	//
 	// Transitional: removing the player and the rest of its teardown are
 	// game logic, and move into the game in phase 4.

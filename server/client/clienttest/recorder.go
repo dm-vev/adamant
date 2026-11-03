@@ -67,8 +67,9 @@ type Answers struct {
 // Close does for the world what a client must: on its first call it removes
 // the player from the world of tx, if tx is not nil, and closes its entity
 // handle, outside the lock of the Recorder. A Recorder that Join.Start
-// returned keeps the Game it was started with, and its Close first calls
-// the Left hook of that Game.
+// returned keeps the Game it was started with: its Bind lists its player on
+// the Roster of the Game, one of its own if the Game has none, and its Close
+// first calls the Left hook of the Game and last unlists the player.
 //
 // As a client.Joining, the Recorder records Bind, Spawn, ListPlayer and
 // UnlistPlayer and does nothing else for them.
@@ -83,8 +84,10 @@ type Recorder struct {
 	locks  map[input.Lock]struct{}
 	shapes map[int]debug.Shape
 	layer  *world.ViewLayer
-	// game is the Game of the Recorder, nil for one New made.
+	// game is the Game of the Recorder, nil for one New made, and id the
+	// identity of the client Join.Start started it for.
 	game *client.Game
+	id   client.Identity
 }
 
 // Compile time check to make sure Recorder implements client.Joining.
@@ -234,6 +237,22 @@ func (r *Recorder) Close(tx *world.Tx, c client.Controllable) {
 		tx.RemoveEntity(c)
 	}
 	_ = c.H().Close()
+	if game != nil {
+		game.Roster.Unlist(r)
+	}
+}
+
+// Bind records the call and, for a Recorder that Join.Start returned, lists
+// the player of h on the Roster of its Game, outside the lock: the Roster
+// calls ListPlayer.
+func (r *Recorder) Bind(h *world.EntityHandle, sk skin.Skin) {
+	r.mu.Lock()
+	r.recordLocked("Bind", h, sk)
+	game, id := r.game, r.id
+	r.mu.Unlock()
+	if game != nil {
+		game.Roster.List(client.Listed{Identity: id, Handle: h, Client: r})
+	}
 }
 
 func (r *Recorder) ShowHudElement(e hud.Element) {
@@ -321,7 +340,6 @@ func (r *Recorder) InputLocked(l input.Lock) bool {
 
 // The methods below are only recorded.
 
-func (r *Recorder) Bind(a0 *world.EntityHandle, a1 skin.Skin)  { r.record("Bind", a0, a1) }
 func (r *Recorder) Spawn(a0 client.Controllable, a1 *world.Tx) { r.record("Spawn", a0, a1) }
 func (r *Recorder) ListPlayer(a0 client.Listed)                { r.record("ListPlayer", a0) }
 func (r *Recorder) UnlistPlayer(a0 client.Listed)              { r.record("UnlistPlayer", a0) }

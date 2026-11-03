@@ -1,120 +1,80 @@
 package session
 
 import (
-	"slices"
-	"sync"
-
 	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
-	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/google/uuid"
 )
 
-var sessions = new(sessionList)
+// The players of the clients a session lists are those of the Roster of
+// its Config: the Roster lists and unlists them, in an order of its own,
+// through the ListPlayer and UnlistPlayer of each session listed. A
+// session lists only the players of Bedrock sessions; it shows another
+// player as it shows an entity, in ViewEntity.
 
-type sessionList struct {
-	mu   sync.Mutex
-	opMu sync.Mutex
-	s    []*Session
+// roster returns the Roster of the session: that of its Config, or an
+// empty one for a session made without New.
+func (s *Session) roster() *client.Roster {
+	if s.conf.Roster == nil {
+		return new(client.Roster)
+	}
+	return s.conf.Roster
 }
 
-func (l *sessionList) Add(s *Session) {
-	l.opMu.Lock()
-	defer l.opMu.Unlock()
-
-	l.mu.Lock()
-	others := slices.Clone(l.s)
-	l.mu.Unlock()
-
-	// Install every runtime ID before Lookup can publish the session to ViewEntity.
-	for _, other := range others {
-		l.runtimeID(s, other)
-		l.runtimeID(other, s)
-	}
-	l.runtimeID(s, s)
-
-	l.mu.Lock()
-	l.s = append(l.s, s)
-	l.mu.Unlock()
-
-	// Avoid holding the session list lock while sending packets to prevent
-	// blocking unrelated session list operations on network backpressure.
-	for _, other := range others {
-		// Show all sessions to the new session and the new session to all
-		// existing sessions.
-		l.sendSessionTo(s, other)
-		l.sendSessionTo(other, s)
-	}
-	// Show the new session to itself.
-	l.sendSessionTo(s, s)
-}
-
-func (l *sessionList) Remove(s *Session, entity world.Entity) {
-	l.opMu.Lock()
-	l.mu.Lock()
-	others := slices.Clone(l.s)
-	l.s = sliceutil.DeleteVal(l.s, s)
-	l.mu.Unlock()
-
-	// Unsend outside the lock to avoid blocking list operations on I/O.
-	for _, other := range others {
-		l.unsendSessionFrom(s, other)
-	}
-	l.opMu.Unlock()
-
-	if entity == nil {
+// ListPlayer lists p to the client of s: it maps the entity of a player of
+// a session to a runtime ID of s, and writes its player list entry and,
+// but to its own session, its abilities. A player of a client of another
+// protocol is not listed. The session counts itself open from when it is
+// shown itself.
+func (s *Session) ListPlayer(p client.Listed) {
+	o, ok := p.Client.(*Session)
+	if !ok {
 		return
 	}
-	for _, other := range others {
-		if other.viewLayer != nil {
-			other.viewLayer.Remove(entity)
-		}
+	runtimeID(o, s)
+	sendSessionTo(o, s)
+	if o == s {
+		sessionsOpen.Add(1)
 	}
 }
 
-func (l *sessionList) Lookup(id uuid.UUID) (*Session, bool) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if index := slices.IndexFunc(l.s, func(session *Session) bool {
-		return session.ent.UUID() == id
-	}); index != -1 {
-		return l.s[index], true
+// UnlistPlayer removes p from the player list of the client of s, and the
+// runtime ID of its entity. The session counts itself closed once it is
+// shown itself unlisted.
+func (s *Session) UnlistPlayer(p client.Listed) {
+	o, ok := p.Client.(*Session)
+	if !ok {
+		return
 	}
-	return nil, false
+	unsendSessionFrom(o, s)
+	if o == s {
+		sessionsOpen.Add(-1)
+	}
 }
 
 // sendAbilities updates player-list permissions even for clients in another
 // dimension. The payload was built on the target player's world owner.
-func (l *sessionList) sendAbilities(from *Session, data v2193.AbilityData) {
-	l.opMu.Lock()
-	defer l.opMu.Unlock()
-	l.mu.Lock()
-	others := slices.Clone(l.s)
-	l.mu.Unlock()
-	for _, other := range others {
-		if other != from {
-			other.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: data})
+func (s *Session) sendAbilities(data v2193.AbilityData) {
+	s.roster().Update(func(players []client.Listed) {
+		for _, p := range players {
+			if other, ok := p.Client.(*Session); ok && other != s {
+				other.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: data})
+			}
 		}
-	}
+	})
 }
 
-func (l *sessionList) sendSessionTo(s, to *Session) {
+// sendSessionTo writes the player list entry of s to the session to, and
+// the abilities of s if to is another session.
+func sendSessionTo(s, to *Session) {
 	to.writePacket(s.playerListEntry())
 	if data := s.abilities.Load(); data != nil && s != to {
 		to.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: *data})
 	}
 }
 
-// all returns the sessions of the list.
-func (l *sessionList) all() []*Session {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return slices.Clone(l.s)
-}
-
-func (*sessionList) runtimeID(s, to *Session) uint64 {
+// runtimeID maps the entity of s to its runtime ID in the session to, and
+// returns it.
+func runtimeID(s, to *Session) uint64 {
 	to.entityMutex.Lock()
 	defer to.entityMutex.Unlock()
 
@@ -128,7 +88,9 @@ func (*sessionList) runtimeID(s, to *Session) uint64 {
 	return runtimeID
 }
 
-func (l *sessionList) unsendSessionFrom(s, from *Session) {
+// unsendSessionFrom removes the runtime ID of the entity of s from the
+// session from, and s from its player list.
+func unsendSessionFrom(s, from *Session) {
 	from.entityMutex.Lock()
 	if id, ok := from.entityRuntimeIDs[s.ent]; ok {
 		// Only remove the runtime ID when the mapping exists to avoid deleting unrelated entities.
@@ -143,28 +105,4 @@ func (l *sessionList) unsendSessionFrom(s, from *Session) {
 			UUID:       s.ent.UUID(),
 		}},
 	})
-}
-
-// ListPlayer lists p to the client of s: as the session list shows a
-// session to another, it maps the entity of a player of a session to a
-// runtime ID of s, and writes its player list entry and, but to its own
-// session, its abilities. A player of a client of another protocol is not
-// listed.
-func (s *Session) ListPlayer(p client.Listed) {
-	o, ok := p.Client.(*Session)
-	if !ok {
-		return
-	}
-	sessions.runtimeID(o, s)
-	sessions.sendSessionTo(o, s)
-}
-
-// UnlistPlayer removes p from the player list of the client of s, and the
-// runtime ID of its entity, as the session list does.
-func (s *Session) UnlistPlayer(p client.Listed) {
-	o, ok := p.Client.(*Session)
-	if !ok {
-		return
-	}
-	sessions.unsendSessionFrom(o, s)
 }

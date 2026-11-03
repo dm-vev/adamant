@@ -43,4 +43,8 @@ type Game struct {
 	// inventories of c are cleared. The server then saves c and stops
 	// counting it online. tx is nil if c is no longer in any world.
 	Left func(tx *world.Tx, c Controllable)
+	// Roster is the list of the players of the server. Bind lists the
+	// player on it and Close unlists it. Nil gives the client a Roster of
+	// its own, on which it lists only its own player.
+	Roster *Roster
 }

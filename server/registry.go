@@ -8,11 +8,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// players is the registry of the players of a server that clients play:
-// those online, which Players, PlayerCount and the lookups by UUID, name
-// and XUID see. A player is online from Accept, which spawns it, until it
-// leaves and is saved. The zero players holds none.
+// players is the registry of the players of a server that clients play.
+// It keeps them in two lists, of different lifetimes:
+//   - roster, the players every client lists: from the Bind of the client
+//     of a player, as the server makes the player, until the client
+//     unlists it, last in its Close. The adapters of the clients read it
+//     to replicate it.
+//   - online, the players of Players, PlayerCount and the lookups by UUID,
+//     name and XUID: from Accept, which spawns the player, until it leaves
+//     and is saved.
+//
+// The zero players holds none.
 type players struct {
+	roster client.Roster
+
 	mu     sync.RWMutex
 	online map[uuid.UUID]*onlinePlayer
 }

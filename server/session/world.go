@@ -94,7 +94,9 @@ func (s *Session) ViewEntity(e world.Entity) {
 	id := e.H().Type().EncodeEntity()
 	switch v := e.(type) {
 	case Controllable:
-		_, actualPlayer := sessions.Lookup(v.UUID())
+		listed, ok := s.roster().Player(v.UUID())
+		_, ofSession := listed.Client.(*Session)
+		actualPlayer := ok && ofSession
 		if !actualPlayer {
 			s.writePacket(&v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
 				ActionType:     v2193.PlayerListActionAdd,

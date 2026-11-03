@@ -631,7 +631,7 @@ func (s *Session) SendPermissions(c Controllable) {
 	s.commandsDirty.Store(true)
 	data := s.abilityData(c, c.H().UniqueID())
 	s.abilities.Store(&data)
-	sessions.sendAbilities(s, data)
+	s.sendAbilities(data)
 }
 
 // abilityData builds abilities without changing player state, so the same

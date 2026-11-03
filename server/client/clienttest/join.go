@@ -45,7 +45,11 @@ func (j *Join) Start(ctx context.Context, g client.Game) (client.Joining, error)
 	r := New()
 	r.Answers.Profile = j.L.Profile
 	r.Answers.Addr = j.L.Addr
+	if g.Roster == nil {
+		g.Roster = new(client.Roster)
+	}
 	r.game = &g
+	r.id = j.L.Identity
 	j.rec = r
 	return r, nil
 }

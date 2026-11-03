@@ -62,6 +62,13 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	if bob.Games()[0].Operator {
 		t.Error("the Game of Bob holds him an operator")
 	}
+	if g.Roster != &jt.srv.players.roster || bob.Games()[0].Roster != g.Roster {
+		t.Error("the Games do not share the Roster of the server")
+	}
+	// Bob, bound after Alice, was shown her, and she him.
+	if !listedTo(alice.Recorder(), "Bob") || !listedTo(bob.Recorder(), "Alice") {
+		t.Error("the clients of Alice and Bob were not shown each other")
+	}
 
 	var methods []string
 	for _, c := range alice.Recorder().Calls() {
@@ -147,7 +154,7 @@ func TestJoinStartFailureRejects(t *testing.T) {
 
 // TestJoinLeftSavesThePlayer checks that the Left hook of the Game, which
 // the client calls as it closes, saves the player and stops counting it
-// online.
+// online, and that the client unlists it.
 func TestJoinLeftSavesThePlayer(t *testing.T) {
 	provider := &joinSaveProvider{}
 	jt := newJoinTest(t, provider, Config{})
@@ -163,6 +170,9 @@ func TestJoinLeftSavesThePlayer(t *testing.T) {
 	}
 	if _, ok := jt.srv.Player(j.L.Identity.UUID); ok {
 		t.Error("Alice is online after she left")
+	}
+	if len(jt.srv.players.roster.Players()) != 0 {
+		t.Error("Alice is listed after she left")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -230,6 +240,13 @@ func joinLogin(name, xuid string) *clienttest.Join {
 		Locale:   language.English,
 		Addr:     &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 19132},
 	}}
+}
+
+// listedTo reports whether r was shown the player of the name passed.
+func listedTo(r *clienttest.Recorder, name string) bool {
+	return slices.ContainsFunc(r.CallsTo("ListPlayer"), func(c clienttest.Call) bool {
+		return c.Args[0].(client.Listed).Identity.Name == name
+	})
 }
 
 // awaitRejected waits until j is rejected, and checks that it was rejected

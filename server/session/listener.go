@@ -134,6 +134,7 @@ func (j *join) Start(ctx context.Context, g client.Game) (client.Joining, error)
 		HandleStop:     g.Left,
 		BlockRegistry:  g.World.BlockRegistry(),
 		IsOperator:     g.IsOperator,
+		Roster:         g.Roster,
 	}.New(j.conn), nil
 }
 

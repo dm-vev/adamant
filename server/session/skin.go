@@ -195,7 +195,9 @@ func (s *Session) ShowSkin(sk skin.Skin) {
 	}
 	s.listEntry.Store(s.newListEntry(sk))
 	pk := &sharedPacket{Packet: &v2193.PlayerSkinPacket{UUID: s.ent.UUID(), Skin: skinToProtocol(sk)}}
-	for _, other := range sessions.all() {
-		other.writePacket(pk)
+	for _, p := range s.roster().Players() {
+		if other, ok := p.Client.(*Session); ok {
+			other.writePacket(pk)
+		}
 	}
 }

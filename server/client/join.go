@@ -53,8 +53,9 @@ type Joining interface {
 	Client
 	PlayerList
 	// Bind binds the client to h, the entity handle of its player, which
-	// joins with the skin sk. The server calls it once, before it adds the
-	// player to a world, on no world's goroutine.
+	// joins with the skin sk. It then lists the player on the Roster of the
+	// Game the client started with. The server calls it once, before it
+	// adds the player to a world, on no world's goroutine.
 	Bind(h *world.EntityHandle, sk skin.Skin)
 	// Spawn shows the client its player c, which the server just added to
 	// the world of tx, and the world around it. It subscribes c to the chat,

@@ -133,13 +133,11 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 				// Join failed before spawn: the entity was never added, so close
 				// the orphaned handle and fully tear the client down (Disconnect
 				// only tells the client; CloseConnection frees the connection;
-				// Unbind removes the player from the player list of the others).
+				// Unlist removes the player from the player list of the others).
 				_ = inc.p.handle.Close()
 				inc.c.Disconnect(text.Literal("join failed"))
 				inc.c.CloseConnection()
-				if u, ok := inc.c.(unbinder); ok {
-					u.Unbind()
-				}
+				srv.players.roster.Unlist(inc.c)
 				continue
 			}
 			if ret {
@@ -148,12 +146,6 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 		}
 	}
 }
-
-// unbinder is a client.Joining that can undo its Bind for a player that
-// never spawned, as the Bedrock session can.
-//
-// Transitional: the Roster of the server replaces it.
-type unbinder interface{ Unbind() }
 
 // World returns the server's standard world. Players will be spawned in this
 // world and this world will be read from and written to when the world is
@@ -489,6 +481,7 @@ func (srv *Server) game(login client.Login, d player.Config, w *world.World) cli
 		QuitMessage:    srv.conf.QuitMessage,
 		IsOperator:     srv.IsOperator,
 		Left:           srv.left,
+		Roster:         &srv.players.roster,
 	}
 }
 
