@@ -19,7 +19,8 @@ import (
 // of a menu that has none. It also opens a dispenser and a dropper. The
 // requests are those of the BDS capture in
 // testdata/bedrock_1_26_52_menu_requests.json, which BDS answered as the
-// comments say.
+// comments say, and a refused request that changed two slots of the
+// crafting grid.
 func TestGoldenRefusals(t *testing.T) {
 	if isolated(t) {
 		return
@@ -93,6 +94,14 @@ func TestGoldenRefusals(t *testing.T) {
 		for _, slot := range []int{0, 1} {
 			s.attempt("an apple put in the container of "+menu.name+fmt.Sprintf(", slot %d", slot),
 				&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerLevelEntity, slot)})
+		}
+		if _, ok := menu.b.(block.CraftingTable); ok {
+			// Each write of the UI sends the whole of it: the undo sends the
+			// grid as it was before the second plank, then before the first.
+			s.refuse("refused: two planks put in the grid, then a stale stack ID",
+				&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)},
+				&v2193.PlaceStackRequestAction{Count: 1, Source: s.again(inv, 2), Destination: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid+3)},
+				&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)})
 		}
 		s.closeContainer("the client closes " + menu.name)
 	}

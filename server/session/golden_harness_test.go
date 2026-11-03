@@ -705,7 +705,7 @@ func (s *scenario) trackStacks(pk proto.Packet) {
 			s.responses = append(s.responses, r.Status)
 			for _, c := range r.ContainerInfo {
 				for _, slot := range c.SlotInfo {
-					s.stacks[stackSlot{s.windowOf(c.Container.ContainerID), int32(slot.Slot)}] = slot.StackNetworkID
+					s.stacks[s.stackKey(c.Container.ContainerID, int(slot.Slot))] = slot.StackNetworkID
 				}
 			}
 		}
@@ -752,8 +752,18 @@ func (s *scenario) slot(container uint8, slot int) v2193.StackRequestSlotInfo {
 	return v2193.StackRequestSlotInfo{
 		Container:      v2193.FullContainerName{ContainerID: container},
 		Slot:           uint8(slot),
-		StackNetworkID: s.stacks[stackSlot{s.windowOf(container), int32(slot)}],
+		StackNetworkID: s.stacks[s.stackKey(container, slot)],
 	}
+}
+
+// stackKey returns the window and slot of the client that a slot of a
+// container of item stack requests is. The off hand is a window of one
+// slot, which requests name as slot 1.
+func (s *scenario) stackKey(container uint8, slot int) stackSlot {
+	if container == v2193.ContainerOffhand {
+		slot = 0
+	}
+	return stackSlot{s.windowOf(container), int32(slot)}
 }
 
 // snapshot compares the record of a scenario with its snapshot, or writes

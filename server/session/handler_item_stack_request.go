@@ -24,6 +24,9 @@ type ItemStackRequestHandler struct {
 
 	changes         map[byte]map[byte]changeInfo
 	responseChanges map[int32]map[*inventory.Inventory]map[byte]responseChange
+	// undo holds the content of each slot before every change of the request
+	// being handled, in the order of the changes.
+	undo []slotUndo
 
 	pendingResults []item.Stack
 	multiCraft     *multiCraft
@@ -40,10 +43,17 @@ type responseChange struct {
 	timestamp time.Time
 }
 
-// changeInfo holds information on a slot change initiated by an item stack request. It holds both the new and the old
-// item information and is used for reverting and verifying.
+// changeInfo holds information on a slot change initiated by an item stack request: the slot as the response to
+// the request reports it.
 type changeInfo struct {
-	after  v2193.StackResponseSlotInfo
+	after v2193.StackResponseSlotInfo
+}
+
+// slotUndo is a change of an item stack request to undo if the request is refused: the inventory and the index
+// of the slot changed, and what the slot held before.
+type slotUndo struct {
+	inv    *inventory.Inventory
+	slot   int
 	before item.Stack
 }
 
@@ -775,10 +785,8 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot v2193.StackRequestSlotInfo,
 	if h.changes[slot.Container.ContainerID] == nil {
 		h.changes[slot.Container.ContainerID] = map[byte]changeInfo{}
 	}
-	h.changes[slot.Container.ContainerID][slot.Slot] = changeInfo{
-		after:  respSlot,
-		before: before,
-	}
+	h.changes[slot.Container.ContainerID][slot.Slot] = changeInfo{after: respSlot}
+	h.undo = append(h.undo, slotUndo{inv: inv, slot: sl, before: before})
 
 	if h.responseChanges[h.currentRequest] == nil {
 		h.responseChanges[h.currentRequest] = map[*inventory.Inventory]map[byte]responseChange{}
@@ -847,6 +855,7 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 	}}})
 
 	h.changes = map[byte]map[byte]changeInfo{}
+	h.undo = nil
 	h.pendingResults = nil
 }
 
@@ -859,19 +868,16 @@ func (h *ItemStackRequestHandler) reject(id int32, s *Session, tx *world.Tx) {
 		}},
 	})
 
-	// Revert changes that we already made for valid actions.
-	for container, slots := range h.changes {
-		for slot, info := range slots {
-			inv, ok := s.invByID(int32(container), tx)
-			if !ok {
-				// Skip reverting missing containers to avoid panicking on malicious or out-of-order requests.
-				continue
-			}
-			_ = inv.SetItem(int(slot), info.before)
-		}
+	// Undo the changes made for the actions that were valid, the last first, so that a slot changed more than
+	// once ends up with what it held before the request. Each slot is set in the inventory and at the index
+	// it was changed at: the off hand at 0, whatever slot the client named it by.
+	for i := len(h.undo) - 1; i >= 0; i-- {
+		u := h.undo[i]
+		_ = u.inv.SetItem(u.slot, u.before)
 	}
 
 	h.changes = map[byte]map[byte]changeInfo{}
+	h.undo = nil
 	h.pendingResults = nil
 }
 
