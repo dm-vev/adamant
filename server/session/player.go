@@ -124,7 +124,7 @@ func (s *Session) SendPlayerSpawn(pos mgl64.Vec3) {
 
 // sendBiomes sends all the vanilla biomes to the session.
 func (s *Session) sendBiomes() {
-	definitions, stringList := world.BiomeDefinitions()
+	definitions, stringList := biomeDefinitions()
 	s.writePacket(&v2193.BiomeDefinitionListPacket{
 		BiomeDefinitions: definitions,
 		StringList:       stringList,

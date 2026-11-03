@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // HandlePacket handles a packet as the session does once it read one, for
@@ -17,3 +18,7 @@ func (s *Session) HandlePacket(pk proto.Packet, tx *world.Tx, c Controllable) er
 // sends them, for the tests of the encoding.
 func EncodeSubChunk(c *chunk.Chunk, ind int) []byte { return encodeSubChunk(c, ind) }
 func EncodeBiomes(c *chunk.Chunk) []byte            { return encodeBiomes(c) }
+
+// BiomeDefinitions returns the biome definitions the session sends, for the
+// tests of the definitions.
+func BiomeDefinitions() ([]v2193.BiomeDefinition, []string) { return biomeDefinitions() }
