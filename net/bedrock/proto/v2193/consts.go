@@ -9,9 +9,9 @@ const (
 	AbilityAttackMobsIndex                                                         = 5
 	AbilityAttackPlayers                                                           = 16
 	AbilityAttackPlayersIndex                                                      = 4
-	AbilityBaseFlySpeed                                                            = 1 / 20
-	AbilityBaseVerticalFlySpeed                                                    = 1
-	AbilityBaseWalkSpeed                                                           = 1 / 10
+	AbilityBaseFlySpeed                                                            = 1.0 / 20
+	AbilityBaseVerticalFlySpeed                                                    = 1.0
+	AbilityBaseWalkSpeed                                                           = 1.0 / 10
 	AbilityBuild                                                                   = 1
 	AbilityBuildIndex                                                              = 0
 	AbilityCount                                                                   = 1048576
