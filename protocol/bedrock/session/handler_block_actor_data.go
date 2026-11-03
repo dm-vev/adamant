@@ -2,16 +2,12 @@ package session
 
 import (
 	"fmt"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 // BlockActorDataHandler handles an incoming BlockActorData packet from the client, sent for some block entities like
@@ -23,7 +19,7 @@ func (b BlockActorDataHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, 
 	pk := p.(*v2193.BlockActorDataPacket)
 	if id, ok := pk.NBTData["id"]; ok {
 		pos := blockPosFromProtocol(pk.Position)
-		if !canReach(c, pos.Vec3Middle()) {
+		if !c.CanReach(pos.Vec3Middle()) {
 			return fmt.Errorf("block at %v is not within reach", pos)
 		}
 		switch id {
@@ -85,13 +81,13 @@ func (b BlockActorDataHandler) handleSign(
 	if err != nil {
 		return err
 	}
-	if err := co.EditSign(pos, frontText, backText); err != nil {
-		return err
-	}
-	return nil
+	// The player trims the texts, checks them and the reach again, and
+	// writes the side that changed.
+	return co.EditSign(pos, hanging, frontText, backText)
 }
 
 // textFromNBTData attempts to retrieve the text from the NBT data of specific sign from the BlockActorData packet.
+// The player trims and checks it.
 func (b BlockActorDataHandler) textFromNBTData(data map[string]any, frontSide bool) (string, error) {
 	var sideData map[string]any
 	var side string
@@ -110,40 +106,13 @@ func (b BlockActorDataHandler) textFromNBTData(data map[string]any, frontSide bo
 		sideData = backSide
 		side = "back"
 	}
-	var text string
 	pkText, ok := sideData["Text"]
 	if !ok {
 		return "", fmt.Errorf("sign block actor data had no 'Text' tag for side %s", side)
 	}
-	if text, ok = pkText.(string); !ok {
+	text, ok := pkText.(string)
+	if !ok {
 		return "", fmt.Errorf("sign block actor data 'Text' tag was not a string for side %s: %#v", side, pkText)
 	}
-
-	// Verify that the text was valid. It must be valid UTF8 and not more than 100 characters long.
-	text = strings.TrimRight(text, "\n")
-	if len(text) > 256 {
-		return "", fmt.Errorf("sign block actor data text was longer than 256 characters for side %s", side)
-	}
-	if !utf8.ValidString(text) {
-		return "", fmt.Errorf("sign block actor data text was not valid UTF8 for side %s", side)
-	}
 	return text, nil
-}
-
-// canReach checks if a player can reach a position with its current range. The range depends on if the player
-// is either survival or creative mode.
-func canReach(c Controllable, pos mgl64.Vec3) bool {
-	const (
-		creativeRange = 14.0
-		survivalRange = 8.0
-	)
-	if !c.GameMode().AllowsInteraction() {
-		return false
-	}
-
-	eyes := entity.EyePosition(c)
-	if c.GameMode().CreativeInventory() {
-		return eyes.Sub(pos).Len() <= creativeRange && !c.Dead()
-	}
-	return eyes.Sub(pos).Len() <= survivalRange && !c.Dead()
 }

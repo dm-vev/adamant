@@ -111,7 +111,9 @@ type Controllable interface {
 	Exhaust(points float64)
 
 	OpenSign(pos cube.Pos, frontSide bool)
-	EditSign(pos cube.Pos, frontText, backText string) error
+	CanReach(pos mgl64.Vec3) bool
+
+	EditSign(pos cube.Pos, hanging bool, frontText, backText string) error
 	TurnLecternPage(pos cube.Pos, page int) error
 
 	EditBook(slot int, edit item.BookEdit) error

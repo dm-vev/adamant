@@ -16,7 +16,7 @@ type LecternUpdateHandler struct{}
 func (LecternUpdateHandler) Handle(p proto.Packet, _ *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*v2193.LecternUpdatePacket)
 	pos := blockPosFromProtocol(pk.Position)
-	if !canReach(c, pos.Vec3Middle()) {
+	if !c.CanReach(pos.Vec3Middle()) {
 		return fmt.Errorf("block at %v is not within reach", pos)
 	}
 	if _, ok := tx.Block(pos).(block.Lectern); !ok {

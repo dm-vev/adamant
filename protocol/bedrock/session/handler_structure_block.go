@@ -32,7 +32,7 @@ func (StructureBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.
 		return fmt.Errorf("only creative operators may edit structure blocks")
 	}
 	pos := blockPosFromProtocol(pk.Position)
-	if !canReach(c, pos.Vec3Middle()) {
+	if !c.CanReach(pos.Vec3Middle()) {
 		return fmt.Errorf("structure block at %v is not within reach", pos)
 	}
 	if pk.StructureBlockType < 0 || pk.StructureBlockType > int32(block.StructureBlockExport) {
@@ -87,7 +87,7 @@ func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx
 	switch pk.RequestType {
 	case v2193.StructureTemplateRequestExportFromSave:
 		pos := blockPosFromProtocol(pk.Position)
-		if !canReach(c, pos.Vec3Middle()) {
+		if !c.CanReach(pos.Vec3Middle()) {
 			return fmt.Errorf("structure block at %v is not within reach", pos)
 		}
 		var size [3]int

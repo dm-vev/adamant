@@ -19,7 +19,7 @@ func (CrafterSlotToggleHandler) Handle(p proto.Packet, s *Session, tx *world.Tx,
 	if m := s.menu.Load(); m == nil || m.Pos() != pos || s.openedContainerID.Load() != uint32(v2193.ContainerTypeCrafter) {
 		return fmt.Errorf("no matching Crafter container opened")
 	}
-	if pk.Slot >= 9 || !canReach(c, pos.Vec3Middle()) {
+	if pk.Slot >= 9 || !c.CanReach(pos.Vec3Middle()) {
 		return fmt.Errorf("invalid or unreachable Crafter slot request")
 	}
 	crafter, ok := tx.Block(pos).(block.Crafter)
