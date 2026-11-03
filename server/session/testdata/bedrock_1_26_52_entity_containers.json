@@ -1,0 +1,915 @@
+{
+ "version": "1.26.52.3",
+ "build": 51798919,
+ "bedrock_server_sha256": "0a490c711d4a2ce075debcd979e8862b7eaba008373f9970f0edbb67f98f9207",
+ "capture": "Linux BDS with transport=raknet, online-mode=false, a FLAT world, cheats on; one offline gophertunnel v1.62.0 client (survival, empty hands) at 0.5 -60 0.5 facing +X, the entity at 2.5 -60 0.5. Packets decoded with net/bedrock/proto/v2193. sha256 is of each decompressed packet, header and payload; raw is that packet in hex, kept for ContainerOpen, UpdateEquip and ContainerClose. Inventory packets are summarised as window, size and non-empty slots (slot:item*count). actor_data holds keys 44/45/46 (container type, size, strength modifier) of the entity before it was opened, from AddActor and SetActorData, with their Go types.",
+ "setup": [
+  "gamerule domobspawning false",
+  "gamerule dodaylightcycle false",
+  "gamerule doweathercycle false",
+  "time set day",
+  "gamemode survival Probe",
+  "gamerule doentitydrops false",
+  "gamerule domobloot false"
+ ],
+ "before_each": [
+  "ride Probe stop_riding",
+  "kill @e[type=!player]",
+  "tp Probe 0.5 -60 0.5 facing 5 -60 0.5",
+  "kill @e[type=item]",
+  "clear Probe"
+ ],
+ "scenarios": [
+  {
+   "name": "horse_saddle_armor",
+   "entity": "minecraft:horse",
+   "commands": [
+    "summon horse 2.5 -60 0.5",
+    "effect @e[type=horse] slowness 9999 255 true",
+    "event entity @e[type=horse] minecraft:on_tame",
+    "replaceitem entity @e[type=horse] slot.saddle 0 saddle",
+    "replaceitem entity @e[type=horse] slot.armor.body 0 iron_horse_armor"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 2,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "0724a7da9fae9107b170c2bbe257c30f0be74f21359f199d2e9e9346b0251458",
+     "raw": "51020c00f3ffffff1f0a000905736c6f74730a04090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d6265720000090d61636365707465644974656d730a0c0a08736c6f744974656d0203417578ff7f08044e616d651b6d696e6563726166743a686f72736561726d6f726c65617468657200000a08736c6f744974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f7269726f6e00000a08736c6f744974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f72676f6c6400000a08736c6f744974656d0203417578ff7f08044e616d651b6d696e6563726166743a686f72736561726d6f726469616d6f6e6400000a08736c6f744974656d0203417578ff7f08044e616d651c6d696e6563726166743a636f707065725f686f7273655f61726d6f7200000a08736c6f744974656d0203417578ff7f08044e616d651f6d696e6563726166743a6e65746865726974655f686f7273655f61726d6f7200000a046974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f7269726f6e00030a736c6f744e756d626572020000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "f5301430dcaf54ba519b898d5485da9ab6645cf984b0dc45288e82bc63587ca0",
+     "window": 2,
+     "size": 2,
+     "items": [
+      "0:minecraft:saddle*1"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "436b7651265da52b79acd55869111c168e03998454e4d66fe1ee456916167d30",
+     "window": 2,
+     "items": [
+      "0:minecraft:saddle*1"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "abe73ce65647bce71eb6a6cc3edea27dc11f4b7462e3388dc6eb0c191f0876d3",
+     "raw": "2f02f700"
+    }
+   ]
+  },
+  {
+   "name": "horse_empty",
+   "entity": "minecraft:horse",
+   "commands": [
+    "summon horse 2.5 -60 0.5",
+    "effect @e[type=horse] slowness 9999 255 true",
+    "event entity @e[type=horse] minecraft:on_tame"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 2,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "e2cc298fbb1442c5d6fedbb0646efe8ae072f02caa6d2e90928b30a8579d740d",
+     "raw": "51040c00edffffff1f0a000905736c6f74730a04090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d6265720000090d61636365707465644974656d730a0c0a08736c6f744974656d0203417578ff7f08044e616d651b6d696e6563726166743a686f72736561726d6f726c65617468657200000a08736c6f744974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f7269726f6e00000a08736c6f744974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f72676f6c6400000a08736c6f744974656d0203417578ff7f08044e616d651b6d696e6563726166743a686f72736561726d6f726469616d6f6e6400000a08736c6f744974656d0203417578ff7f08044e616d651c6d696e6563726166743a636f707065725f686f7273655f61726d6f7200000a08736c6f744974656d0203417578ff7f08044e616d651f6d696e6563726166743a6e65746865726974655f686f7273655f61726d6f7200000a046974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f7269726f6e00030a736c6f744e756d626572020000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "a7b7513afe18805e145016804cdd3bfed19af460d749848006d3cdee44f3ea61",
+     "window": 4,
+     "size": 2
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "5cee51207ce3e76e955710bc252d2cfeb07c19ce5bb4ea32bfcfd9d87da4fca0",
+     "raw": "2f04f700"
+    }
+   ]
+  },
+  {
+   "name": "donkey_nochest",
+   "entity": "minecraft:donkey",
+   "commands": [
+    "summon donkey 2.5 -60 0.5",
+    "effect @e[type=donkey] slowness 9999 255 true",
+    "event entity @e[type=donkey] minecraft:on_tame",
+    "replaceitem entity @e[type=donkey] slot.saddle 0 saddle"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 16,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "55600d671f7cc138be1cba7f7e649e37af677406134c6cea1d12d671eb638bc1",
+     "raw": "51050c00ebffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d626572000000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "2065359d1ecbcc3fa3e39b26d13133d85bcb67bfbb78fbcc34ba6100418b3ff4",
+     "window": 5,
+     "size": 1,
+     "items": [
+      "0:minecraft:saddle*1"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "68ba1db6d93ad11f9723abd8507c141d71842f72bfba160718889f1df67e7cde",
+     "window": 5,
+     "items": [
+      "0:minecraft:saddle*1"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "b78bbeb1ed0bcf53e27dfcfeb7e77eef68de12bd36b61456ed764540a4638ffe",
+     "raw": "2f05f700"
+    }
+   ]
+  },
+  {
+   "name": "donkey_chest",
+   "entity": "minecraft:donkey",
+   "commands": [
+    "summon donkey 2.5 -60 0.5",
+    "effect @e[type=donkey] slowness 9999 255 true",
+    "event entity @e[type=donkey] minecraft:on_tame",
+    "event entity @e[type=donkey] minecraft:on_chest",
+    "replaceitem entity @e[type=donkey] slot.saddle 0 saddle",
+    "replaceitem entity @e[type=donkey] slot.inventory 0 diamond 3",
+    "replaceitem entity @e[type=donkey] slot.inventory 14 apple 2"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 16,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "67f279c699f2de6cc10b37edf188aaab7f7c834cd7ec54ef18c370dd90d15ca8",
+     "raw": "51060c00e7ffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d626572000000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "e423e6582348fd79f5201486c6b6d857a3febee3ba8eecc85ef5e903d033509d",
+     "window": 6,
+     "size": 16,
+     "items": [
+      "0:minecraft:diamond*3",
+      "14:minecraft:apple*2"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "893b1d5669ddad8c157e0103138207b4df5b5803aac434847fd6c1bcaa08800d",
+     "window": 6,
+     "items": [
+      "0:minecraft:diamond*3"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "dd30714947f6c957d2b20fcf3b2ba4848dfa6228bd599f33e9fb41fd7edc12d3",
+     "window": 6,
+     "items": [
+      "14:minecraft:apple*2"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "d0d4599b40427a39d1ec82c8ea1e0b244773ef8f5218f7f9642b9fbf0b5b05b2",
+     "raw": "2f06f700"
+    }
+   ]
+  },
+  {
+   "name": "mule_chest",
+   "entity": "minecraft:mule",
+   "commands": [
+    "summon mule 2.5 -60 0.5",
+    "effect @e[type=mule] slowness 9999 255 true",
+    "event entity @e[type=mule] minecraft:on_tame",
+    "event entity @e[type=mule] minecraft:on_chest",
+    "replaceitem entity @e[type=mule] slot.inventory 1 diamond 1"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 16,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "8e9a6455c4ba9f2e6b171de38501ef8cbb7d779ca0d3bf3b59acbc2a3dbb7f4c",
+     "raw": "51070c00dfffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d626572000000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "3c2bb899931d6ded9b8ededb51ad1bc4ab2e924d9d2a59777339509b08531d19",
+     "window": 7,
+     "size": 16,
+     "items": [
+      "1:minecraft:diamond*1"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "327c262cce9b015a0d8f433e01ac7a7d8b491ada1e49dc5fcec602a2d81f1179",
+     "window": 7,
+     "items": [
+      "1:minecraft:diamond*1"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "a31e88b0f828989fcdfc6ab6d0a41e8efaec58e9ce9086f56d24f4bc61ca1297",
+     "raw": "2f07f700"
+    }
+   ]
+  },
+  {
+   "name": "llama_nochest",
+   "entity": "minecraft:llama",
+   "commands": [
+    "summon llama 2.5 -60 0.5",
+    "effect @e[type=llama] slowness 9999 255 true",
+    "event entity @e[type=llama] minecraft:on_tame",
+    "replaceitem entity @e[type=llama] slot.armor.body 0 red_carpet"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 16,
+    "strength_modifier": 3,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "628ed79dda88c89f0358ec00094daaf8f1e648b4624c2ac5bbfe15527083d700",
+     "raw": "51080c00d9ffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a63617270657400000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a63617270657400030a736c6f744e756d626572020000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "6d718cf041bab76f4552f333d65578f2eac695e83b9334937319ae356aaf4c06",
+     "window": 8,
+     "size": 1
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "ba14269cad0417263286799bd308b004173ed44e5b02faff48762bb772ae5840",
+     "raw": "2f08f700"
+    }
+   ]
+  },
+  {
+   "name": "llama_chest",
+   "entity": "minecraft:llama",
+   "commands": [
+    "summon llama 2.5 -60 0.5",
+    "effect @e[type=llama] slowness 9999 255 true",
+    "event entity @e[type=llama] minecraft:on_tame",
+    "event entity @e[type=llama] minecraft:on_chest",
+    "replaceitem entity @e[type=llama] slot.armor.body 0 red_carpet",
+    "replaceitem entity @e[type=llama] slot.inventory 0 diamond 2"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 16,
+    "strength_modifier": 3,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "bd4ee0d1cd4d0152d4c7edf37892446551bd793787b07d63f43e555425ef2833",
+     "raw": "51090c00d7ffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d08044e616d65106d696e6563726166743a63617270657400000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a63617270657400030a736c6f744e756d626572020000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "f2af8b65c76f8d9dea1eb511fc519b85eaccb3856b915a64a57d50bbdbc4bb70",
+     "window": 9,
+     "size": 10,
+     "items": [
+      "0:minecraft:diamond*2"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "7fee683a83f9f6222e104101b4707f11770dad17bee3068ac02cde8ca6845be2",
+     "window": 9,
+     "items": [
+      "0:minecraft:diamond*2"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "c9622531bf993e096e04722a32d1280e39aa1ff5032f4d27a5ff1aaaacff9522",
+     "raw": "2f09f700"
+    }
+   ]
+  },
+  {
+   "name": "camel",
+   "entity": "minecraft:camel",
+   "commands": [
+    "summon camel 2.5 -60 0.5",
+    "effect @e[type=camel] slowness 9999 255 true",
+    "replaceitem entity @e[type=camel] slot.saddle 0 saddle"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 5,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "93a7c671830703778be8c85652400589a1719cb1607b990f0dbbdaad289d67d9",
+     "raw": "510a0c00d1ffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d626572000000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "8c3b819c1d5d4757b3756193c7435845224825f05d0c16884cbb6b580e04890f",
+     "window": 10,
+     "size": 1,
+     "items": [
+      "0:minecraft:saddle*1"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "bceed77785ea34ea8b0eb0664a3a9c9328836f5280705821d792497fdb00309f",
+     "window": 10,
+     "items": [
+      "0:minecraft:saddle*1"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "eae2bfbfe1bd0e1ed26ec9c422c61a958af3a19000b7ec915d771a0791009e4a",
+     "raw": "2f0af700"
+    }
+   ]
+  },
+  {
+   "name": "horse_ride_open",
+   "entity": "minecraft:horse",
+   "commands": [
+    "summon horse 2.5 -60 0.5",
+    "effect @e[type=horse] slowness 9999 255 true",
+    "event entity @e[type=horse] minecraft:on_tame",
+    "replaceitem entity @e[type=horse] slot.saddle 0 saddle",
+    "ride Probe start_riding @e[type=horse,c=1] teleport_rider"
+   ],
+   "action": "ride, then Interact OpenInventory (action 6) targeting the ridden entity; then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 2,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "a806d7066ac7418bdd323197e2a2a2a72f748ad63e344a6bcb147d39e19ed7c6",
+     "raw": "510b0c00cdffffff1f0a000905736c6f74730a04090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d6265720000090d61636365707465644974656d730a0c0a08736c6f744974656d0203417578ff7f08044e616d651b6d696e6563726166743a686f72736561726d6f726c65617468657200000a08736c6f744974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f7269726f6e00000a08736c6f744974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f72676f6c6400000a08736c6f744974656d0203417578ff7f08044e616d651b6d696e6563726166743a686f72736561726d6f726469616d6f6e6400000a08736c6f744974656d0203417578ff7f08044e616d651c6d696e6563726166743a636f707065725f686f7273655f61726d6f7200000a08736c6f744974656d0203417578ff7f08044e616d651f6d696e6563726166743a6e65746865726974655f686f7273655f61726d6f7200000a046974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f7269726f6e00030a736c6f744e756d626572020000"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "441f8870bff1c0f64d455be325a2e00611ea23827dd7343417502ae1786e96bc",
+     "window": 11,
+     "size": 2,
+     "items": [
+      "0:minecraft:saddle*1"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "8d01221b0f12f727ab43a1cf8c3ec8f0fe609ee42bff4710ca0f34dac2c529a2",
+     "window": 11,
+     "items": [
+      "0:minecraft:saddle*1"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "eb4bd83e4cb3f0032a3d7406cedb3fb12144489b227399edab253dd873be703f",
+     "raw": "2f0bf700"
+    }
+   ]
+  },
+  {
+   "name": "donkey_chest_ride_open",
+   "entity": "minecraft:donkey",
+   "commands": [
+    "summon donkey 2.5 -60 0.5",
+    "effect @e[type=donkey] slowness 9999 255 true",
+    "event entity @e[type=donkey] minecraft:on_tame",
+    "event entity @e[type=donkey] minecraft:on_chest",
+    "replaceitem entity @e[type=donkey] slot.saddle 0 saddle",
+    "replaceitem entity @e[type=donkey] slot.inventory 0 diamond 3",
+    "ride Probe start_riding @e[type=donkey,c=1] teleport_rider"
+   ],
+   "action": "ride, then Interact OpenInventory (action 6) targeting the ridden entity; then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 16,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "c385df9230a44143d1cf342ca572714aebaa12a89254b561456e946ad29e70e8",
+     "raw": "510c0c00c9ffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d626572000000"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "24c76d3224a21271a9bfb2a78fdf56497738a06f637aa8bd90826c0ad7ac6597",
+     "window": 12,
+     "size": 16,
+     "items": [
+      "0:minecraft:diamond*3"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "61436b714d29d98873d581a8a33b387d617bbbd0cae529f010fc46604212048b",
+     "window": 12,
+     "items": [
+      "0:minecraft:diamond*3"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "595d2ee6fb20b6d390ba012af4551d1f0994c729f06b04d3bc58bc83974b26d2",
+     "raw": "2f0cf700"
+    }
+   ]
+  },
+  {
+   "name": "chest_boat",
+   "entity": "minecraft:chest_boat",
+   "commands": [
+    "summon chest_boat 2.5 -60 0.5",
+    "replaceitem entity @e[type=chest_boat] slot.inventory 0 diamond 4"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 34,
+    "container_size": 27,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "ContainerOpen",
+     "sha256": "516fd7409173847f907c7d7381e43177d20eedd2f17a36ae5db37c5965cc3214",
+     "raw": "2e0d00047700c3ffffff1f"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "eb9a34b0397a127984fc51beb3b09ae93afe28ea1779fa4a12173cf9d9a99db0",
+     "window": 13,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*4"
+     ]
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "eb9a34b0397a127984fc51beb3b09ae93afe28ea1779fa4a12173cf9d9a99db0",
+     "window": 13,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*4"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "88f3e02eb49799f5fc8c77a5caf51537c928de702978e7001aeeea8c9eee5559",
+     "raw": "2f0df700"
+    }
+   ]
+  },
+  {
+   "name": "chest_boat_ride_open",
+   "entity": "minecraft:chest_boat",
+   "commands": [
+    "summon chest_boat 2.5 -60 0.5",
+    "replaceitem entity @e[type=chest_boat] slot.inventory 0 diamond 4",
+    "ride Probe start_riding @e[type=chest_boat,c=1] teleport_rider"
+   ],
+   "action": "ride, then Interact OpenInventory (action 6) targeting the ridden entity; then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 34,
+    "container_size": 27,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "ContainerOpen",
+     "sha256": "89e82e498c61538c787b1afa80219d0489b52b519977a7b8f6afb17711efafd6",
+     "raw": "2e0e00047700bfffffff1f"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "e93e24120e86214c1debc529f5bf3183fc8940141b0860da1610b1af15715d4b",
+     "window": 14,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*4"
+     ]
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "e93e24120e86214c1debc529f5bf3183fc8940141b0860da1610b1af15715d4b",
+     "window": 14,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*4"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "a56cb8d2847de05dbd462d033bd9b79e3fa5c3af784b622cbe5aa62517655f15",
+     "raw": "2f0ef700"
+    }
+   ]
+  },
+  {
+   "name": "chest_minecart",
+   "entity": "minecraft:chest_minecart",
+   "commands": [
+    "summon chest_minecart 2.5 -60 0.5",
+    "replaceitem entity @e[type=chest_minecart] slot.inventory 0 diamond 5"
+   ],
+   "action": "InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 10,
+    "container_size": 27,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "ContainerOpen",
+     "sha256": "66dbd5f4766cc5d598cd4d2dd40f9b9ac5cb7d837e9ed75164c49af9033ce7ac",
+     "raw": "2e0f00047700bbffffff1f"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "8c6de5f6379c3d297e942d476dec6f749a939a8a242218266cc1c5e48b49227f",
+     "window": 15,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*5"
+     ]
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "8c6de5f6379c3d297e942d476dec6f749a939a8a242218266cc1c5e48b49227f",
+     "window": 15,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*5"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "cd1568e4b6e4f761e9e6320c032fa93ad1bba38ae5e39accfd06d2ca5c2517f1",
+     "raw": "2f0ff700"
+    }
+   ]
+  },
+  {
+   "name": "hopper_minecart",
+   "entity": "minecraft:hopper_minecart",
+   "commands": [
+    "summon hopper_minecart 2.5 -60 0.5",
+    "replaceitem entity @e[type=hopper_minecart] slot.inventory 0 diamond 6"
+   ],
+   "action": "InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 11,
+    "container_size": 5,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "ContainerOpen",
+     "sha256": "2f9bdad1459f5d6f4f48df73b5099eb4d2baf934911968d3f97368f7bf743108",
+     "raw": "2e1008047700b5ffffff1f"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "8f22f2dbf8d63a87c7be9c1501ed39d82de0cf552ed2f60588edb17457307ccb",
+     "window": 16,
+     "size": 5,
+     "items": [
+      "0:minecraft:diamond*6"
+     ]
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "8f22f2dbf8d63a87c7be9c1501ed39d82de0cf552ed2f60588edb17457307ccb",
+     "window": 16,
+     "size": 5,
+     "items": [
+      "0:minecraft:diamond*6"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "54960690565122d7ddd07e0865476014611f2b10c1ade3877a51a0d054761ce1",
+     "raw": "2f10f700"
+    }
+   ]
+  },
+  {
+   "name": "camel_husk",
+   "entity": "minecraft:camel_husk",
+   "commands": [
+    "summon camel_husk 2.5 -60 0.5",
+    "effect @e[type=camel_husk] slowness 9999 255 true",
+    "replaceitem entity @e[type=camel_husk] slot.saddle 0 saddle"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 5,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "507f6beaff8a96b0ccedd4a0545cf3342e06d271977642543ceb3f283282d1da",
+     "raw": "51110c00afffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d626572000000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "dcf5858c094cacf6203df8dfb2f3acd9f38cccdb49cfff39bffd535b28f65b88",
+     "window": 17,
+     "size": 1
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "9dd5915858920d9fc651d4eb5d15b020a13230a623e4043865e84b2c093e2e0d",
+     "raw": "2f11f700"
+    }
+   ]
+  },
+  {
+   "name": "trader_llama_chest",
+   "entity": "minecraft:trader_llama",
+   "commands": [
+    "summon trader_llama 2.5 -60 0.5",
+    "effect @e[type=trader_llama] slowness 9999 255 true",
+    "event entity @e[type=trader_llama] minecraft:on_tame",
+    "event entity @e[type=trader_llama] minecraft:on_chest"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 16,
+    "strength_modifier": 3,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "1ecf90a6097e1d8c0ff3f8bf7e32361102e2b6c116f0374e32db3a364bbb68cf",
+     "raw": "51120c00a9ffffff1f0a000905736c6f74730a02090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a63617270657400000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a63617270657400030a736c6f744e756d626572020000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "119dcf72cdb377430aefe3798b7978a7c6a6922ab66ee7be3cfa9621b553950b",
+     "window": 18,
+     "size": 7
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "f9ad87943090a7250ab11844982772f724b1fa65ff4379e0b8f741afc61a18a4",
+     "raw": "2f12f700"
+    }
+   ]
+  },
+  {
+   "name": "horse_container_slot1_armor",
+   "entity": "minecraft:horse",
+   "commands": [
+    "summon horse 2.5 -60 0.5",
+    "effect @e[type=horse] slowness 9999 255 true",
+    "event entity @e[type=horse] minecraft:on_tame",
+    "replaceitem entity @e[type=horse] slot.inventory 1 iron_horse_armor"
+   ],
+   "action": "sneak, then InventoryTransaction UseItemOnEntity interact (empty hand); then ContainerClose from the client",
+   "actor_data": {
+    "container_type": 12,
+    "container_size": 2,
+    "strength_modifier": 0,
+    "types": "44:uint8 45:int32 46:int32"
+   },
+   "open": [
+    {
+     "type": "UpdateEquip",
+     "sha256": "d7f735d30b1986186a080e980404d55556e6435a223e53e0d9592da90525735f",
+     "raw": "51130c00a5ffffff1f0a000905736c6f74730a04090d61636365707465644974656d730a020a08736c6f744974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500000a046974656d0203417578ff7f08044e616d65106d696e6563726166743a736164646c6500030a736c6f744e756d6265720000090d61636365707465644974656d730a0c0a08736c6f744974656d0203417578ff7f08044e616d651d6d696e6563726166743a6c6561746865725f686f7273655f61726d6f7200000a08736c6f744974656d0203417578ff7f08044e616d651a6d696e6563726166743a69726f6e5f686f7273655f61726d6f7200000a08736c6f744974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f72676f6c6400000a08736c6f744974656d0203417578ff7f08044e616d651b6d696e6563726166743a686f72736561726d6f726469616d6f6e6400000a08736c6f744974656d0203417578ff7f08044e616d651c6d696e6563726166743a636f707065725f686f7273655f61726d6f7200000a08736c6f744974656d0203417578ff7f08044e616d651f6d696e6563726166743a6e65746865726974655f686f7273655f61726d6f7200000a046974656d0203417578ff7f08044e616d65186d696e6563726166743a686f72736561726d6f7269726f6e00030a736c6f744e756d626572020000"
+    },
+    {
+     "type": "Animate",
+     "sha256": "51d289fc182bcda000363641e962849f09a5a99d1555cf182eec41e97efb2523"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "c4d2065cf1933d364a0f104bc4950494ee85e7f29198fa73ac9988f438439577",
+     "window": 19,
+     "size": 2,
+     "items": [
+      "1:minecraft:iron_horse_armor*1"
+     ]
+    },
+    {
+     "type": "InventorySlot",
+     "sha256": "7c0cf4a9f192bbdb503f5d468394401603a5c7db9af449691eb79373243c685e",
+     "window": 19,
+     "items": [
+      "1:minecraft:iron_horse_armor*1"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "4dcd50a0a941b2e45a9e238b64203267ee438eb49bb311d7050706d30939a465",
+     "raw": "2f13f700"
+    }
+   ]
+  },
+  {
+   "name": "chest_block",
+   "commands": [
+    "setblock 2 -60 0 chest",
+    "replaceitem block 2 -60 0 slot.container 0 diamond 7"
+   ],
+   "action": "PlayerAuthInput item interaction: click the chest block at 2 -60 0, face 4; then ContainerClose from the client",
+   "open": [
+    {
+     "type": "ContainerOpen",
+     "sha256": "99c83bd7bfc9d5abcc57990ed5fc704c7a1875ea7afd8f9f9af80940541cbf7f",
+     "raw": "2e140004770001"
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "3a8ab87ec0c601a5a07294b7fdfc4607c3d2fc6fb6eaec6be34dc8098c681dc1",
+     "window": 20,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*7"
+     ]
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "3a8ab87ec0c601a5a07294b7fdfc4607c3d2fc6fb6eaec6be34dc8098c681dc1",
+     "window": 20,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*7"
+     ]
+    },
+    {
+     "type": "InventoryContent",
+     "sha256": "3a8ab87ec0c601a5a07294b7fdfc4607c3d2fc6fb6eaec6be34dc8098c681dc1",
+     "window": 20,
+     "size": 27,
+     "items": [
+      "0:minecraft:diamond*7"
+     ]
+    }
+   ],
+   "close": [
+    {
+     "type": "ContainerClose",
+     "sha256": "deee2db411529656305478af816010fb40d450ab473a9097ff6e0bee424601b9",
+     "raw": "2f14f700"
+    }
+   ]
+  }
+ ]
+}

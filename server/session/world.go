@@ -1899,12 +1899,23 @@ func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, 
 	s.openedPos.Store(&openPos)
 	s.openedContainerID.Store(uint32(containerType))
 
-	s.writePacket(&v2193.ContainerOpenPacket{
-		WindowID:                nextID,
-		ContainerType:           containerType,
-		ContainerPosition:       v2193.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
-		ContainerEntityUniqueID: s.entityUniqueID(e),
-	})
+	if containerType == v2193.ContainerTypeHorse {
+		// BDS opens the inventory of a mount with UpdateEquip, which names the
+		// slots of its screen, and no ContainerOpen.
+		s.writePacket(&v2193.UpdateEquipPacket{
+			WindowID:                nextID,
+			WindowType:              containerType,
+			EntityUniqueID:          s.entityUniqueID(e),
+			SerialisedInventoryData: mountEquipDataOf(e),
+		})
+	} else {
+		s.writePacket(&v2193.ContainerOpenPacket{
+			WindowID:                nextID,
+			ContainerType:           containerType,
+			ContainerPosition:       v2193.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
+			ContainerEntityUniqueID: s.entityUniqueID(e),
+		})
+	}
 	s.sendInv(inv, uint32(nextID))
 }
 

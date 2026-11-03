@@ -15,9 +15,15 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// The container types of container minecarts in their actor data (CartChest
+// 10, CartHopper 11). BDS 1.26.52.3 opens their inventories with others: a
+// chest minecart as a plain container (0), a hopper minecart as a hopper (8).
 const (
 	minecartContainerChest  int32 = 10
 	minecartContainerHopper int32 = 11
+
+	minecartOpenChest  byte = 0
+	minecartOpenHopper byte = 8
 )
 
 // MinecartContainerBehaviourConfig configures a container minecart.
@@ -75,6 +81,14 @@ func (b *MinecartContainerBehaviour) Base() *MinecartBehaviour {
 // ContainerType returns the container type for metadata.
 func (b *MinecartContainerBehaviour) ContainerType() int32 {
 	return b.containerType
+}
+
+// openContainerType returns the container type the inventory opens with.
+func (b *MinecartContainerBehaviour) openContainerType() byte {
+	if b.containerType == minecartContainerHopper {
+		return minecartOpenHopper
+	}
+	return minecartOpenChest
 }
 
 // ContainerSize returns the container size for metadata.
@@ -142,7 +156,7 @@ func (m *MinecartContainer) Interact(tx *world.Tx, user item.User, _ *item.UseCo
 		m.generateLoot(tx, user)
 	}
 	if opener, ok := user.(ContainerOpener); ok {
-		opener.OpenEntityContainer(m, b.Inventory(), byte(b.containerType), tx)
+		opener.OpenEntityContainer(m, b.Inventory(), b.openContainerType(), tx)
 		return true
 	}
 	return false
