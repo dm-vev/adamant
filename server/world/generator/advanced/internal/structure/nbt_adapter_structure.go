@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func convertJigsaw(data map[string]any) (map[string]any, error) {
@@ -39,11 +39,11 @@ func convertJigsaw(data map[string]any) (map[string]any, error) {
 func convertStructureBlock(state world.BlockState, data map[string]any) (map[string]any, error) {
 	out := map[string]any{
 		"id": "StructureBlock", "BlockEntityVersion": int32(0),
-		"animationMode": uint8(v2193.AnimationModeNone), "animationSeconds": float32(0),
-		"data": int32(v2193.StructureBlockData), "dataField": "", "structureName": "",
+		"animationMode": block.StructureBlockAnimationNone, "animationSeconds": float32(0),
+		"data": int32(block.StructureBlockData), "dataField": "", "structureName": "",
 		"ignoreEntities": uint8(1), "includePlayers": uint8(0), "isPowered": uint8(0),
 		"lastTouchedPlayerId": int64(-1), "integrity": float32(100), "seed": int64(0),
-		"mirror": uint8(v2193.StructureMirrorNone), "rotation": uint8(v2193.StructureRotationNone),
+		"mirror": block.StructureBlockMirrorNone, "rotation": block.StructureBlockRotationNone,
 		"redstoneSaveMode": int32(0), "removeBlocks": uint8(0), "showBoundingBox": uint8(1),
 		"xStructureOffset": int32(0), "yStructureOffset": int32(1), "zStructureOffset": int32(0),
 		"xStructureSize": int32(0), "yStructureSize": int32(0), "zStructureSize": int32(0),
@@ -100,25 +100,25 @@ func convertStructureBlock(state world.BlockState, data map[string]any) (map[str
 	}
 	switch strings.ToUpper(mode) {
 	case "SAVE":
-		out["data"] = int32(v2193.StructureBlockSave)
+		out["data"] = int32(block.StructureBlockSave)
 	case "LOAD":
-		out["data"] = int32(v2193.StructureBlockLoad)
+		out["data"] = int32(block.StructureBlockLoad)
 	case "CORNER":
-		out["data"] = int32(v2193.StructureBlockCorner)
+		out["data"] = int32(block.StructureBlockCorner)
 	}
 	switch data["rotation"] {
 	case "CLOCKWISE_90":
-		out["rotation"] = uint8(v2193.StructureRotationRotate90)
+		out["rotation"] = block.StructureBlockRotation90
 	case "CLOCKWISE_180":
-		out["rotation"] = uint8(v2193.StructureRotationRotate180)
+		out["rotation"] = block.StructureBlockRotation180
 	case "COUNTERCLOCKWISE_90":
-		out["rotation"] = uint8(v2193.StructureRotationRotate270)
+		out["rotation"] = block.StructureBlockRotation270
 	}
 	switch data["mirror"] {
 	case "FRONT_BACK":
-		out["mirror"] = uint8(v2193.StructureMirrorXAxis)
+		out["mirror"] = block.StructureBlockMirrorX
 	case "LEFT_RIGHT":
-		out["mirror"] = uint8(v2193.StructureMirrorZAxis)
+		out["mirror"] = block.StructureBlockMirrorZ
 	}
 	canonical := map[string]any{}
 	if author, exists := data["author"]; exists {

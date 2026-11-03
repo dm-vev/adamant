@@ -11,7 +11,8 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// StructureBlockMode is the mode of a structure block, in Bedrock's order.
+// StructureBlockMode is the mode of a structure block. Its values are those of
+// the data field of structure blocks in the Bedrock world format.
 type StructureBlockMode uint8
 
 const (
@@ -81,7 +82,8 @@ type StructureBlock struct {
 	// ShowBoundingBox shows the box of the structure to clients.
 	ShowBoundingBox bool
 	// Rotation is the clockwise rotation of a loaded structure in quarter
-	// turns, and Mirror mirrors it along X (1), Z (2) or both (3).
+	// turns, and Mirror mirrors it along X (1), Z (2) or both (3). See
+	// StructureBlockRotationNone and StructureBlockMirrorNone.
 	Rotation, Mirror uint8
 	// Integrity is the percentage of blocks of a loaded structure placed.
 	Integrity float32

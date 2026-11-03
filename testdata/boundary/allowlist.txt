@@ -107,7 +107,6 @@ server/whitelist_operators.go github.com/dm-vev/adamant/net/bedrock/login
 server/whitelist_operators_test.go github.com/dm-vev/adamant/net/bedrock/login
 server/world/biome_definition.go github.com/dm-vev/adamant/net/bedrock/proto
 server/world/biome_definition.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/world/generator/advanced/internal/structure/nbt_adapter_structure.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/world/mcdb/leveldat/data.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/world/mcdb/leveldat/version.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/xbox.go github.com/df-mc/dragonfly/server/netconn
