@@ -4890,8 +4890,11 @@ func (p *Player) Close() error {
 // disconnecting of players.
 func (p *Player) close(msg string) {
 	// If the player is being disconnected while they are dead, we respawn the player
-	// so that the player logic works correctly the next time they join.
-	if p.Dead() && p.session() != nil {
+	// so that the player logic works correctly the next time they join. This
+	// asks whether a client exists that can respawn the player: session()
+	// never returns nil, and respawn does nothing without a client, so a dead
+	// player without one quits directly instead of staying in the world.
+	if p.Dead() && p.session() != session.Nop {
 		p.respawn(func(np *Player) {
 			np.quit(msg)
 		})

@@ -11,6 +11,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
@@ -515,4 +516,84 @@ func waitForPlayerWorld(t *testing.T, handle *world.EntityHandle, target *world.
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("timed out waiting for player portal travel")
+}
+
+// A dead player with a client stays in the world after its death animation
+// until it respawns, and closing it while dead respawns it before it quits.
+func TestPlayerWithClientRespawnsAfterDeath(t *testing.T) {
+	log := slog.New(slog.DiscardHandler)
+	w := world.Config{Log: log}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
+	t.Cleanup(sess.CloseConnection)
+	pos := mgl64.Vec3{0.5, 64, 0.5}
+	cfg := Config{Session: sess, Position: pos, GameMode: world.GameModeSurvival}
+	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, cfg)
+	sess.SetHandle(handle, cfg.Skin)
+	quits, respawns := 0, 0
+	if err := w.Do(func(tx *world.Tx) {
+		p := tx.AddEntity(handle).(*Player)
+		p.Handle(deathCloseHandler{quits: &quits, respawns: &respawns})
+		p.Hurt(1000, entity.VoidDamageSource{})
+	}).Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(deathAnimationWait)
+	if err := w.Do(func(tx *world.Tx) {
+		e, ok := handle.Entity(tx)
+		if !ok {
+			t.Fatal("dead player with a client was removed after its death animation")
+		}
+		p := e.(*Player)
+		if !p.Dead() || quits != 0 {
+			t.Fatalf("dead=%v quits=%d before respawn", p.Dead(), quits)
+		}
+		p.Respawn()
+	}).Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := handle.Do(func(_ *world.Tx, e world.Entity) {
+		if p := e.(*Player); p.Dead() || respawns != 1 || quits != 0 {
+			t.Errorf("after respawn: dead=%v respawns=%d quits=%d", p.Dead(), respawns, quits)
+		}
+	}).Wait(ctx); err != nil {
+		t.Fatalf("player gone after respawn: %v", err)
+	}
+}
+
+// Closing a dead player with a client, as on disconnect, respawns it first so
+// it does not rejoin dead, and then quits.
+func TestDeadPlayerWithClientRespawnsOnClose(t *testing.T) {
+	log := slog.New(slog.DiscardHandler)
+	w := world.Config{Log: log}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
+	t.Cleanup(sess.CloseConnection)
+	pos := mgl64.Vec3{0.5, 64, 0.5}
+	cfg := Config{Session: sess, Position: pos, GameMode: world.GameModeSurvival}
+	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, cfg)
+	sess.SetHandle(handle, cfg.Skin)
+	quits, respawns := 0, 0
+	if err := w.Do(func(tx *world.Tx) {
+		p := tx.AddEntity(handle).(*Player)
+		p.Handle(deathCloseHandler{quits: &quits, respawns: &respawns})
+		p.Hurt(1000, entity.VoidDamageSource{})
+		_ = p.Close()
+	}).Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// The quit runs on the respawn world's owner; a barrier observes it.
+	if err := w.Do(func(*world.Tx) {}).Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if respawns != 1 || quits != 1 {
+		t.Errorf("respawns=%d quits=%d, want 1 and 1", respawns, quits)
+	}
 }
