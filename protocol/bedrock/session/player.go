@@ -1026,10 +1026,10 @@ func (s *Session) SendHudUpdates() {
 	var show, hide []int32
 	for e, vis := range s.hudUpdates {
 		if vis {
-			show = append(show, int32(e.Uint8()))
+			show = append(show, bedrockHudElement(e))
 			delete(s.hiddenHud, e)
 		} else {
-			hide = append(hide, int32(e.Uint8()))
+			hide = append(hide, bedrockHudElement(e))
 			s.hiddenHud[e] = struct{}{}
 		}
 	}

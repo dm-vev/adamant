@@ -87,11 +87,6 @@ func ItemText() Element {
 	return Element{12}
 }
 
-// Uint8 returns the element type as a uint8.
-func (s element) Uint8() uint8 {
-	return uint8(s)
-}
-
 // All returns all the HUD elements that are available to be shown or hidden in the game.
 func All() []Element {
 	return []Element{

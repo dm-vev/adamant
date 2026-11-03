@@ -205,7 +205,7 @@ func (s *Session) SendBossBarID(id string, title text.Text, colour bossbar.Colou
 		EventType:          v2193.BossEventShow,
 		BossBarTitle:       bedrocktext.String(title),
 		HealthPercentage:   float32(healthPercentage),
-		Colour:             colour.Uint8(),
+		Colour:             bedrockBossBarColour(colour),
 	})
 }
 

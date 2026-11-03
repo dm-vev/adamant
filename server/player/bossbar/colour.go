@@ -44,7 +44,3 @@ func White() Colour {
 }
 
 type colour uint8
-
-func (c colour) Uint8() uint8 {
-	return uint8(c)
-}

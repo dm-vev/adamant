@@ -72,11 +72,12 @@ func oldSendBossBars(s *Session, title string) {
 			Colour:             colour,
 		})
 	}
-	for i, c := range bossBarColours {
-		oldSendBossBarID("default", title, c.Uint8(), float64(i)/8)
-		oldSendBossBarID("other", title, c.Uint8(), 1)
+	// The colours were their own numbers, in the order of bossBarColours.
+	for i := range bossBarColours {
+		oldSendBossBarID("default", title, uint8(i), float64(i)/8)
+		oldSendBossBarID("other", title, uint8(i), 1)
 	}
-	oldSendBossBarID("default", title, bossbar.Red().Uint8(), 0.5)
+	oldSendBossBarID("default", title, 2, 0.5)
 }
 
 // oldTextPacket returns SendTip, SendPopup or SendJukeboxPopup as it was for
