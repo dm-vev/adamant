@@ -25,9 +25,15 @@ type summary struct {
 	Generated time.Time `json:"generated"`
 	Base      string    `json:"base"`
 	Commits   []string  `json:"commits"`
+	// Notes are caveats of whoever ran the comparison, such as a machine
+	// that was busy.
+	Notes []string `json:"notes"`
 	// FullCommits maps the short SHAs of Commits to the full ones.
 	FullCommits map[string]string `json:"full_commits"`
 	Host        map[string]string `json:"host"`
+	// Build holds, by commit, how its server and benchmarks were built:
+	// the go version and the build environment the script recorded.
+	Build map[string]map[string]string `json:"build"`
 
 	// Metrics describes every metric of LoadTest.
 	Metrics map[string]metricInfo `json:"metrics"`
@@ -197,6 +203,11 @@ func summarize(args []string) error {
 	base := fs.String("base", "", "base commit, the first of -commits if empty")
 	commitList := fs.String("commits", "", "commits, comma-separated, as the directories of -results name them")
 	out := fs.String("out", "", "file to write; <results>/summary.json if empty")
+	var notes []string
+	fs.Func("note", "a caveat to record in the summary; may be repeated", func(v string) error {
+		notes = append(notes, v)
+		return nil
+	})
 	_ = fs.Parse(args)
 	commits := strings.Split(*commitList, ",")
 	if *commitList == "" {
@@ -209,8 +220,8 @@ func summarize(args []string) error {
 		*out = filepath.Join(*dir, "summary.json")
 	}
 	s := summary{
-		Schema: "adamant-perf-summary/1", Generated: time.Now().UTC(), Base: *base, Commits: commits,
-		FullCommits: map[string]string{}, Host: hostInfo(),
+		Schema: "adamant-perf-summary/1", Generated: time.Now().UTC(), Base: *base, Commits: commits, Notes: append([]string{}, notes...),
+		FullCommits: map[string]string{}, Host: hostInfo(), Build: map[string]map[string]string{},
 		Metrics: map[string]metricInfo{}, LoadTest: map[string]map[string]map[string]spread{},
 		Comparisons: map[string]map[string]map[string]comparison{},
 	}
@@ -221,6 +232,7 @@ func summarize(args []string) error {
 		if b, err := os.ReadFile(filepath.Join(*dir, c, "commit.txt")); err == nil {
 			s.FullCommits[c] = strings.TrimSpace(string(b))
 		}
+		s.Build[c] = readBuild(filepath.Join(*dir, c))
 		lt, err := loadRuns(filepath.Join(*dir, c, "loadtest"))
 		if err != nil {
 			return err
@@ -264,6 +276,23 @@ func summarize(args []string) error {
 		return err
 	}
 	return os.WriteFile(*out, append(data, '\n'), 0o644)
+}
+
+// readBuild reads what the script recorded of the build of a commit:
+// go-version.txt, and build.txt, which holds a key=value a line.
+func readBuild(dir string) map[string]string {
+	b := map[string]string{}
+	if data, err := os.ReadFile(filepath.Join(dir, "go-version.txt")); err == nil {
+		b["go_version"] = strings.TrimSpace(string(data))
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, "build.txt")); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			if k, v, ok := strings.Cut(line, "="); ok {
+				b[strings.TrimSpace(k)] = strings.TrimSpace(v)
+			}
+		}
+	}
+	return b
 }
 
 // loadRuns reads the runs below dir, one directory a scenario.
@@ -347,8 +376,14 @@ func newSample(v []float64) sample {
 	return s
 }
 
-// benchLine matches a result line of go test -bench.
-var benchLine = regexp.MustCompile(`^(Benchmark\S+?)(-\d+)?\s+\d+\s+(.*)$`)
+// benchLine matches a result line of go test -bench; benchName the name
+// alone, when what the benchmark logs splits its line, and benchRest the
+// rest of such a line.
+var (
+	benchLine = regexp.MustCompile(`^(Benchmark\S+?)(-\d+)?\s+\d+\s+(\d.*)$`)
+	benchName = regexp.MustCompile(`^(Benchmark\S+?)(-\d+)?\s`)
+	benchRest = regexp.MustCompile(`^\s+\d+\s+(\d.*)$`)
+)
 
 // readBench reads a go test -bench output: "package Name" -> unit ->
 // values.
@@ -359,7 +394,7 @@ func readBench(path string) (map[string]map[string][]float64, error) {
 	}
 	defer f.Close()
 	out := map[string]map[string][]float64{}
-	pkg := ""
+	pkg, pending := "", ""
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	for sc.Scan() {
@@ -368,12 +403,19 @@ func readBench(path string) (map[string]map[string][]float64, error) {
 			pkg = strings.TrimSpace(p)
 			continue
 		}
-		m := benchLine.FindStringSubmatch(line)
-		if m == nil {
+		var name, rest string
+		if m := benchLine.FindStringSubmatch(line); m != nil {
+			name, rest, pending = m[1], m[3], ""
+		} else if m := benchName.FindStringSubmatch(line); m != nil {
+			pending = m[1]
+			continue
+		} else if m := benchRest.FindStringSubmatch(line); m != nil && pending != "" {
+			name, rest, pending = pending, m[1], ""
+		} else {
 			continue
 		}
-		key := pkg + " " + m[1]
-		fields := strings.Fields(m[3])
+		key := pkg + " " + name
+		fields := strings.Fields(rest)
 		for i := 0; i+1 < len(fields); i += 2 {
 			v, err := strconv.ParseFloat(fields[i], 64)
 			if err != nil {

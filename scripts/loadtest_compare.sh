@@ -12,6 +12,23 @@
 # test itself (cmd/loadtest) is built once, from the checkout the script is
 # run from.
 #
+# A whole comparison is this one command; it takes about two hours (the
+# load tests about 40 minutes, the microbenchmarks the rest). Run it where
+# nothing else loads the machine, or read the host_other_cores metric of
+# the runs, which tells how busy the rest of the machine was. To keep it
+# running when the session that starts it ends, start it as a unit of the
+# user's systemd:
+#
+#   systemd-run --user --unit=loadtest-compare --working-directory="$PWD" \
+#     --setenv=PATH="$PATH" scripts/loadtest_compare.sh 281cf3c8 813fe6dd
+#
+# and follow it with journalctl --user -fu loadtest-compare.
+#
+# Results go to RESULTS/<commit>/ and RESULTS/bench/, and everything is
+# summarised in RESULTS/summary.json. Every binary is built with the same
+# go and the same flags (-trimpath), which RESULTS/<commit>/build.txt
+# records.
+#
 # Environment (defaults in brackets):
 #   RESULTS      results directory [/home/agent/perf-results]
 #   SCENARIOS    world:bots pairs [flat:1 flat:10 flat:30 vanilla:10]
@@ -24,8 +41,16 @@
 #   BENCH        1 to run the microbenchmarks, 0 to skip them [1]
 #   BENCH_COUNT  rounds of the microbenchmarks [10]
 #   LOADTESTS    1 to run the load tests, 0 to skip them [1]
-#   RESUME       1 to keep the results of runs already done [1]
+#   RESUME       1 to keep the results of runs already done, after an
+#                interruption; 0 runs everything again [0]
+#   WORK         where the trees are exported and the runs take place
+#                [RESULTS/work]
 #   KEEP_WORK    1 to keep the exported trees and run folders [0]
+#   MAX_LOAD     1-minute load average past which the script refuses to
+#                start, and warns before each run and benchmark round
+#                [the number of CPUs]
+#   FORCE        1 to start even when the machine is busier than MAX_LOAD,
+#                for a smoke test; the numbers are then noise [0]
 set -euo pipefail
 export LC_ALL=C
 
@@ -40,8 +65,10 @@ LOADTEST=${LOADTEST:-}
 BENCH=${BENCH:-1}
 BENCH_COUNT=${BENCH_COUNT:-10}
 LOADTESTS=${LOADTESTS:-1}
-RESUME=${RESUME:-1}
+RESUME=${RESUME:-0}
 KEEP_WORK=${KEEP_WORK:-0}
+MAX_LOAD=${MAX_LOAD:-$(nproc --all)}
+FORCE=${FORCE:-0}
 
 repo=$(git rev-parse --show-toplevel)
 if [ $# -lt 1 ]; then
@@ -54,8 +81,8 @@ for c in "$@"; do
 done
 base=${commits[0]}
 
-mkdir -p "$RESULTS/bin" "$RESULTS/worlds"
-work=$(mktemp -d "${TMPDIR:-/tmp}/loadtest-compare.XXXXXX")
+mkdir -p "$RESULTS/bin" "$RESULTS/worlds" "${WORK:-$RESULTS/work}"
+work=$(mktemp -d "${WORK:-$RESULTS/work}/loadtest-compare.XXXXXX")
 cleanup() {
 	if [ -n "${server_pid:-}" ] && kill -0 "$server_pid" 2>/dev/null; then
 		kill -9 "$server_pid" 2>/dev/null || true
@@ -67,6 +94,34 @@ cleanup() {
 trap cleanup EXIT
 
 log() { echo "[$(date +%H:%M:%S)] $*" >&2; }
+
+# notes are the caveats summary.json records: each warning of a busy
+# machine.
+notes=()
+
+# busy reports whether the 1-minute load average is past MAX_LOAD.
+busy() {
+	awk -v max="$MAX_LOAD" '{ exit !($1 > max) }' /proc/loadavg
+}
+
+# check_load warns when the machine is busy: what then runs measures the
+# other load as much as the server.
+check_load() {
+	if busy; then
+		log "WARNING: load average $(cut -d' ' -f1 /proc/loadavg) is past $MAX_LOAD: $1 is measured on a busy machine"
+		notes+=(-note "load average $(cut -d' ' -f1 /proc/loadavg) past $MAX_LOAD during $1")
+	fi
+}
+
+if busy; then
+	if [ "$FORCE" != 1 ]; then
+		echo "$0: the 1-minute load average is $(cut -d' ' -f1 /proc/loadavg), past $MAX_LOAD (MAX_LOAD):" >&2
+		echo "the machine is too busy for numbers that mean anything. Run it when the machine is quiet, or set FORCE=1 for a smoke test." >&2
+		exit 3
+	fi
+	log "WARNING: FORCE=1 on a busy machine (load average $(cut -d' ' -f1 /proc/loadavg) past $MAX_LOAD): the numbers are noise"
+	notes+=(-note "started with FORCE=1 at a load average of $(cut -d' ' -f1 /proc/loadavg), past $MAX_LOAD: the numbers are noise")
+fi
 
 pin() {
 	# pin CPUS command...: runs the command on the CPUS, or anywhere if empty.
@@ -88,9 +143,17 @@ for c in "${commits[@]}"; do
 	git -C "$repo" archive "$c" | tar -x -C "$src"
 	git -C "$repo" rev-parse "$c^{commit}" >"$RESULTS/$c/commit.txt"
 	go version >"$RESULTS/$c/go-version.txt"
+	{
+		echo "build_flags=-trimpath"
+		echo "GOFLAGS=$(go env GOFLAGS)"
+		echo "CGO_ENABLED=$(go env CGO_ENABLED)"
+		echo "GOAMD64=$(go env GOAMD64)"
+		echo "GOEXPERIMENT=$(go env GOEXPERIMENT)"
+	} >"$RESULTS/$c/build.txt"
 	if [ "$LOADTESTS" = 1 ]; then
 		log "building the server of $c"
 		(cd "$src" && go build -trimpath -o "$RESULTS/$c/bin/adamant" .)
+		echo "server=$(go version -m "$RESULTS/$c/bin/adamant" | awk '$1 == "build" { printf "%s ", $2 }')" >>"$RESULTS/$c/build.txt"
 	fi
 done
 
@@ -125,6 +188,7 @@ run_one() {
   SaveData = false
 EOF
 	log "run $c $world-$bots rep $rep"
+	check_load "run $c $world-$bots rep $rep"
 	local launched
 	launched=$(date +%s%N)
 	(cd "$run" && pin "$SERVER_CPUS" "$RESULTS/$c/bin/adamant" -headless >server.log 2>&1) &
@@ -214,15 +278,17 @@ if [ "$BENCH" = 1 ]; then
 	for c in "${commits[@]}"; do
 		mkdir -p "$work/bench-$c" "$RESULTS/$c/bench"
 		: >"$RESULTS/$c/bench/micro.txt"
+		: >"$RESULTS/$c/bench/micro.stderr.log"
 		while read -r m p; do
 			name=$(echo "$m/$p" | tr '/.' '__')
-			(cd "$work/src-$c/$m" && go test -c -o "$work/bench-$c/$name.test" "./$p") ||
+			(cd "$work/src-$c/$m" && go test -c -trimpath -o "$work/bench-$c/$name.test" "./$p") ||
 				log "benchmarks of $m/$p do not build at $c"
 		done <<<"$pkgs"
 	done
 	# Rounds alternate the commits, one run of each benchmark a round.
 	for round in $(seq 1 "$BENCH_COUNT"); do
 		log "benchmark round $round of $BENCH_COUNT"
+		check_load "benchmark round $round"
 		for c in "${commits[@]}"; do
 			while read -r m p; do
 				name=$(echo "$m/$p" | tr '/.' '__')
@@ -230,7 +296,7 @@ if [ "$BENCH" = 1 ]; then
 				[ -x "$bin" ] || continue
 				names=$(awk -v m="$m" -v p="$p" '$1 == m && $2 == p { print $3 }' "$common" | paste -sd'|')
 				(cd "$work/src-$c/$m/$p" && pin "$SERVER_CPUS" "$bin" -test.run '^$' -test.bench "^($names)\$" \
-					-test.count 1 -test.benchmem -test.timeout 60m) >>"$RESULTS/$c/bench/micro.txt" 2>&1 ||
+					-test.count 1 -test.benchmem -test.timeout 60m) >>"$RESULTS/$c/bench/micro.txt" 2>>"$RESULTS/$c/bench/micro.stderr.log" ||
 					log "benchmarks of $m/$p failed at $c"
 			done <<<"$pkgs"
 		done
@@ -244,7 +310,7 @@ if [ "$BENCH" = 1 ]; then
 	# The text paths, old against new, at the checkout the script runs
 	# from.
 	log "text benchmarks of $(git -C "$repo" rev-parse --short=8 HEAD)"
-	(cd "$repo" && go test -c -o "$work/textbench.test" ./cmd/loadtest)
+	(cd "$repo" && go test -c -trimpath -o "$work/textbench.test" ./cmd/loadtest)
 	: >"$RESULTS/bench/text.txt"
 	for _ in $(seq 1 "$BENCH_COUNT"); do
 		(cd "$repo/cmd/loadtest" && pin "$SERVER_CPUS" "$work/textbench.test" -test.run '^$' -test.bench . \
@@ -256,5 +322,5 @@ fi
 "$loadtest" summarize -results "$RESULTS" -base "$base" -commits "$(
 	IFS=,
 	echo "${commits[*]}"
-)" -out "$RESULTS/summary.json"
+)" "${notes[@]}" -out "$RESULTS/summary.json"
 log "wrote $RESULTS/summary.json"
