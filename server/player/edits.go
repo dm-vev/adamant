@@ -7,6 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -16,6 +17,36 @@ import (
 // within 14 in a game mode with the creative inventory.
 func (p *Player) CanReach(pos mgl64.Vec3) bool {
 	return p.canReach(pos)
+}
+
+// CanUseGameMasterBlocks reports whether the player may use the blocks of
+// game masters, such as command, structure and jigsaw blocks: it is an
+// operator in a game mode with the creative inventory, as
+// Player.canUseGameMasterBlocks of Java.
+func (p *Player) CanUseGameMasterBlocks() bool {
+	return p.GameMode().CreativeInventory() && cmd.IsOperator(p.Name())
+}
+
+// EditJigsaw sets the names, pool, final state, joint and priorities of the
+// jigsaw at pos to those of edited, as the jigsaw editor of the player sets
+// them, keeping where the jigsaw faces. It fails if the jigsaw is out of the
+// reach of the player or the player may not use game master blocks, and does
+// nothing if no jigsaw is at pos.
+func (p *Player) EditJigsaw(pos cube.Pos, edited block.Jigsaw) error {
+	if !p.CanReach(pos.Vec3Middle()) {
+		return fmt.Errorf("block at %v is not within reach", pos)
+	}
+	if !p.CanUseGameMasterBlocks() {
+		return fmt.Errorf("only creative operators may edit jigsaw blocks")
+	}
+	j, ok := p.tx.Block(pos).(block.Jigsaw)
+	if !ok {
+		p.log.Debug("edit jigsaw: no jigsaw at position", "pos", pos.String())
+		return nil
+	}
+	edited.Facing, edited.Rotation = j.Facing, j.Rotation
+	p.tx.SetBlock(pos, edited, nil)
+	return nil
 }
 
 // MaxSignTextLength bounds the text of a side of a sign, in bytes.

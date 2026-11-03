@@ -39,7 +39,7 @@ func (b BlockActorDataHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, 
 // jigsaw editor of an operator in creative mode sets the names, pool, final
 // state, joint and priorities of a jigsaw.
 func (b BlockActorDataHandler) handleJigsaw(pk *v2193.BlockActorDataPacket, pos cube.Pos, s *Session, tx *world.Tx, c Controllable) error {
-	if !canUseGameMasterBlocks(c) {
+	if !c.CanUseGameMasterBlocks() {
 		return fmt.Errorf("only creative operators may edit jigsaw blocks")
 	}
 	j, ok := tx.Block(pos).(block.Jigsaw)
@@ -47,8 +47,9 @@ func (b BlockActorDataHandler) handleJigsaw(pk *v2193.BlockActorDataPacket, pos 
 		s.conf.Log.Debug("no jigsaw at position of jigsaw block actor data", "pos", pos.String())
 		return nil
 	}
-	tx.SetBlock(pos, j.DecodeNBT(pk.NBTData).(block.Jigsaw), nil)
-	return nil
+	// The player checks the reach and the operator again and writes the
+	// jigsaw.
+	return c.EditJigsaw(pos, j.DecodeNBT(pk.NBTData).(block.Jigsaw))
 }
 
 // handleSign handles the BlockActorData packet sent when editing a sign and validates the expected sign variant.

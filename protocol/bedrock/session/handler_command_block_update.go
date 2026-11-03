@@ -20,7 +20,7 @@ func (CommandBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.Tx
 		return fmt.Errorf("invalid command block mode %d", pk.Mode)
 	}
 	pos := cube.Pos{int(pk.Position[0]), int(pk.Position[1]), int(pk.Position[2])}
-	if !canUseGameMasterBlocks(c) {
+	if !c.CanUseGameMasterBlocks() {
 		return fmt.Errorf("only creative operators may edit command blocks")
 	}
 	if len(pk.Command) > maxNBTString || len(pk.Name) > maxNBTString || len(pk.LastOutput) > maxNBTString {

@@ -2,12 +2,16 @@ package player
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // signPos is a sign within reach of the player of withClientPlayer, and
@@ -173,5 +177,104 @@ func TestPlayerTurnLecternPage(t *testing.T) {
 		if l := tx.Block(farPos).(block.Lectern); l.Page != 0 {
 			t.Fatalf("the lectern out of reach is at page %d", l.Page)
 		}
+	})
+}
+
+// operatorName is the name of the operator of withOperator.
+const operatorName = "edits operator"
+
+var installOperators sync.Once
+
+// withOperator runs f with a player in w named operatorName, an operator in
+// the game mode passed, unless op is false.
+func withOperator(t *testing.T, w *world.World, mode world.GameMode, op bool, f func(tx *world.Tx, p *Player)) {
+	t.Helper()
+	installOperators.Do(func() {
+		cmd.SetOperatorChecker(func(name string) bool { return name == operatorName })
+	})
+	name := operatorName
+	if !op {
+		name = "edits player"
+	}
+	pos := mgl64.Vec3{0.5, 100, 0.5}
+	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, Config{Name: name, Position: pos, GameMode: mode})
+	<-w.Exec(func(tx *world.Tx) {
+		f(tx, tx.AddEntity(handle).(*Player))
+	})
+}
+
+func TestPlayerCanUseGameMasterBlocks(t *testing.T) {
+	for _, c := range []struct {
+		mode world.GameMode
+		op   bool
+		want bool
+	}{
+		{world.GameModeCreative, true, true},
+		{world.GameModeCreative, false, false},
+		{world.GameModeSurvival, true, false},
+		{world.GameModeSpectator, true, false},
+	} {
+		w, _ := clientTestWorld(t)
+		withOperator(t, w, c.mode, c.op, func(tx *world.Tx, p *Player) {
+			if got := p.CanUseGameMasterBlocks(); got != c.want {
+				t.Errorf("%v, operator %v: CanUseGameMasterBlocks() = %v, want %v", c.mode, c.op, got, c.want)
+			}
+		})
+	}
+}
+
+func TestPlayerEditJigsaw(t *testing.T) {
+	placed := block.NewJigsaw(cube.FaceNorth, 0)
+	edited := block.NewJigsaw(cube.FaceUp, 2)
+	edited.Name, edited.Pool, edited.PlacementPriority = "minecraft:a", "minecraft:pool", 3
+
+	t.Run("edit", func(t *testing.T) {
+		w, _ := clientTestWorld(t)
+		withOperator(t, w, world.GameModeCreative, true, func(tx *world.Tx, p *Player) {
+			tx.SetBlock(signPos, placed, nil)
+			if err := p.EditJigsaw(signPos, edited); err != nil {
+				t.Fatalf("EditJigsaw: %v", err)
+			}
+			got := tx.Block(signPos).(block.Jigsaw)
+			want := edited
+			want.Facing, want.Rotation = placed.Facing, placed.Rotation
+			if got != want {
+				t.Fatalf("the jigsaw is %#v, want %#v", got, want)
+			}
+		})
+	})
+	for _, c := range []struct {
+		name string
+		pos  cube.Pos
+		mode world.GameMode
+		op   bool
+	}{
+		{"out of reach", farPos, world.GameModeCreative, true},
+		{"not an operator", signPos, world.GameModeCreative, false},
+		{"survival", signPos, world.GameModeSurvival, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			w, _ := clientTestWorld(t)
+			withOperator(t, w, c.mode, c.op, func(tx *world.Tx, p *Player) {
+				tx.SetBlock(c.pos, placed, nil)
+				if err := p.EditJigsaw(c.pos, edited); err == nil {
+					t.Fatal("EditJigsaw succeeded")
+				}
+				if got := tx.Block(c.pos); got != world.Block(placed) {
+					t.Fatalf("a refused edit made the jigsaw %#v", got)
+				}
+			})
+		})
+	}
+	t.Run("no jigsaw", func(t *testing.T) {
+		w, _ := clientTestWorld(t)
+		withOperator(t, w, world.GameModeCreative, true, func(tx *world.Tx, p *Player) {
+			if err := p.EditJigsaw(signPos, edited); err != nil {
+				t.Fatalf("EditJigsaw: %v, want nil", err)
+			}
+			if _, ok := tx.Block(signPos).(block.Air); !ok {
+				t.Fatalf("an edit of air placed %#v", tx.Block(signPos))
+			}
+		})
 	})
 }

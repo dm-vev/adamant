@@ -1,6 +1,7 @@
 package client
 
 import (
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -112,9 +113,11 @@ type Controllable interface {
 
 	OpenSign(pos cube.Pos, frontSide bool)
 	CanReach(pos mgl64.Vec3) bool
+	CanUseGameMasterBlocks() bool
 
 	EditSign(pos cube.Pos, hanging bool, frontText, backText string) error
 	TurnLecternPage(pos cube.Pos, page int) error
+	EditJigsaw(pos cube.Pos, edited block.Jigsaw) error
 
 	EditBook(slot int, edit item.BookEdit) error
 

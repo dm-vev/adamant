@@ -5,7 +5,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -15,12 +14,6 @@ import (
 // Bedrock structure editor accepts along the X, Y and Z axes.
 var structureLimits = [3]int{64, 384, 64}
 
-// canUseGameMasterBlocks ports Player.canUseGameMasterBlocks: only operators
-// in creative mode may edit structure, jigsaw and command blocks.
-func canUseGameMasterBlocks(c Controllable) bool {
-	return c.GameMode().CreativeInventory() && cmd.IsOperator(c.Name())
-}
-
 // StructureBlockUpdateHandler applies the settings of the structure block
 // editor, and saves or loads the structure when the client asks to.
 type StructureBlockUpdateHandler struct{}
@@ -28,7 +21,7 @@ type StructureBlockUpdateHandler struct{}
 // Handle ...
 func (StructureBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*v2193.StructureBlockUpdatePacket)
-	if !canUseGameMasterBlocks(c) {
+	if !c.CanUseGameMasterBlocks() {
 		return fmt.Errorf("only creative operators may edit structure blocks")
 	}
 	pos := blockPosFromProtocol(pk.Position)
@@ -79,7 +72,7 @@ type StructureTemplateDataRequestHandler struct{}
 // Handle ...
 func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*v2193.StructureTemplateDataRequestPacket)
-	if !canUseGameMasterBlocks(c) {
+	if !c.CanUseGameMasterBlocks() {
 		return fmt.Errorf("only creative operators may request structures")
 	}
 	var template *world.StructureTemplate
