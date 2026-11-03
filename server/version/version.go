@@ -18,6 +18,16 @@ import (
 // as major, minor and patch numbers separated by dots.
 const Minecraft = "1.26.50"
 
+// Java is the release of Minecraft: Java Edition whose behaviour the game
+// ports, as major and minor numbers separated by a dot. Where the game ports a
+// mechanic from Java Edition rather than from Bedrock Dedicated Server, it is
+// that of this release, and the names it uses for sounds, particles, entity
+// types and effects are those of this release.
+//
+// Java names no content and no world format of the server: those are of
+// Minecraft. It has no effect on what Bedrock clients are sent.
+const Java = "26.3"
+
 // MinecraftNumbers returns the numbers of Minecraft, followed by two zeros for
 // the revision and the beta numbers, as the world format stores versions.
 func MinecraftNumbers() []int32 {
