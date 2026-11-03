@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/internal/blockinternal"
 	"github.com/df-mc/dragonfly/server/internal/iteminternal"
 	"github.com/df-mc/dragonfly/server/netconn"
@@ -820,8 +821,7 @@ var (
 	// concrete, unless the server defines them.
 	vanillaBlocks = map[string]map[string]any{}
 
-	//go:embed world/vanilla_items.nbt
-	vanillaItemsData []byte
+	vanillaItemsData = bedrockdata.VanillaItems
 	vanillaItems     = map[string]struct {
 		RuntimeID      int32          `nbt:"runtime_id"`
 		ComponentBased bool           `nbt:"component_based"`

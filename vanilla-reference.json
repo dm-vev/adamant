@@ -7,7 +7,7 @@
   "protocol_version": 2193,
   "item_registry": {
     "source": "live BDS ItemRegistry packet",
-    "path": "server/world/vanilla_items.nbt",
+    "path": "server/internal/bedrockdata/vanilla_items.nbt",
     "entries": 2076,
     "sha256": "13a4e0b69f91934ea0745d26cef0ea2e7f02ea44add0fd46afb55cb35f214929"
   },

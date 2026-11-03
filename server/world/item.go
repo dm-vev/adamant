@@ -1,12 +1,12 @@
 package world
 
 import (
-	_ "embed"
 	"fmt"
 	"image"
 	"slices"
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item/category"
 	"github.com/dm-vev/adamant/net/nbt"
 )
@@ -64,8 +64,7 @@ type itemHash struct {
 }
 
 var (
-	//go:embed vanilla_items.nbt
-	itemRuntimeIDData []byte
+	itemRuntimeIDData = bedrockdata.VanillaItems
 	// itemMu protects all item registry maps and slices.
 	itemMu sync.RWMutex
 	// items holds a list of all registered items, indexed using the itemHash created when calling
