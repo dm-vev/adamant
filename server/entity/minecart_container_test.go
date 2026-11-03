@@ -113,8 +113,8 @@ func TestHopperMinecartNBTRoundTrip(t *testing.T) {
 	HopperMinecartType.DecodeNBT(nbt, decoded)
 	got := decoded.Data.(*HopperMinecartBehaviour)
 	stack, _ := got.inv.Item(4)
-	if nbt["TransferCooldown"] != int32(7) || got.transferCooldown != 7 || got.enabled || stack.Count() != 3 || got.ContainerType() != minecartContainerHopper || got.ContainerSize() != 5 {
-		t.Fatalf("round trip failed: nbt=%v cooldown=%d enabled=%v stack=%v type=%d size=%d", nbt, got.transferCooldown, got.enabled, stack, got.ContainerType(), got.ContainerSize())
+	if nbt["TransferCooldown"] != int32(7) || got.transferCooldown != 7 || got.enabled || stack.Count() != 3 || got.ContainerKind() != ContainerMinecartHopper || got.ContainerSize() != 5 {
+		t.Fatalf("round trip failed: nbt=%v cooldown=%d enabled=%v stack=%v kind=%d size=%d", nbt, got.transferCooldown, got.enabled, stack, got.ContainerKind(), got.ContainerSize())
 	}
 }
 
@@ -149,4 +149,25 @@ func inventoryCount(stacks []item.Stack) (count int) {
 		count += stack.Count()
 	}
 	return
+}
+
+// TestVehicleContainerKinds checks the kind of container of chest boats and
+// container minecarts, which clients are told the container type of their
+// actor data by, and that a minecart configured with a kind of no minecart
+// is a chest minecart.
+func TestVehicleContainerKinds(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		got  ContainerKind
+		want ContainerKind
+	}{
+		{"chest boat", chestBoatConf.New().ContainerKind(), ContainerChestBoat},
+		{"chest minecart", chestMinecartConf.New().ContainerKind(), ContainerMinecartChest},
+		{"hopper minecart", hopperMinecartConf.New().ContainerKind(), ContainerMinecartHopper},
+		{"minecart of the zero kind", MinecartContainerBehaviourConfig{Size: 1}.New().ContainerKind(), ContainerMinecartChest},
+	} {
+		if c.got != c.want {
+			t.Errorf("%s: ContainerKind() = %d, want %d", c.name, c.got, c.want)
+		}
+	}
 }

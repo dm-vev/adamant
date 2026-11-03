@@ -305,10 +305,12 @@ func (s *Session) addSpecificMetadata(e any, m v2193.Metadata) {
 		m[v2193.EntityDataKeyCustomDisplay] = byte(boolByte(d.CustomDisplay()))
 	}
 	if c, ok := e.(containerMeta); ok {
-		// The dedicated server sends the container type as a byte.
-		m[v2193.EntityDataKeyContainerType] = byte(c.ContainerType())
-		m[v2193.EntityDataKeyContainerSize] = c.ContainerSize()
-		m[v2193.EntityDataKeyContainerStrengthModifier] = c.ContainerStrengthModifier()
+		if typ, ok := actorContainerType(c.ContainerKind()); ok {
+			// The dedicated server sends the container type as a byte.
+			m[v2193.EntityDataKeyContainerType] = typ
+			m[v2193.EntityDataKeyContainerSize] = c.ContainerSize()
+			m[v2193.EntityDataKeyContainerStrengthModifier] = c.ContainerStrengthModifier()
+		}
 	}
 	if h, ok := e.(minecartDamage); ok {
 		m[v2193.EntityDataKeyHurt] = int32(h.RollingAmplitude())
@@ -692,7 +694,7 @@ type displayTile interface {
 }
 
 type containerMeta interface {
-	ContainerType() int32
+	ContainerKind() entity.ContainerKind
 	ContainerSize() int32
 	ContainerStrengthModifier() int32
 }

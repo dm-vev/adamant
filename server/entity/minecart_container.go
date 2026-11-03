@@ -15,20 +15,14 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// The container types of container minecarts in their actor data (CartChest
-// 10, CartHopper 11). BDS 1.26.52.3 opens their inventories with others: a
-// chest minecart as a plain container (0), a hopper minecart as a hopper (8),
-// which the session does for their ContainerKind.
-const (
-	minecartContainerChest  int32 = 10
-	minecartContainerHopper int32 = 11
-)
-
 // MinecartContainerBehaviourConfig configures a container minecart.
 type MinecartContainerBehaviourConfig struct {
-	Minecart      MinecartBehaviourConfig
-	Size          int
-	ContainerType int32
+	Minecart MinecartBehaviourConfig
+	Size     int
+	// Kind is the kind of container the minecart is:
+	// ContainerMinecartHopper for a hopper minecart, ContainerMinecartChest,
+	// which any other kind is taken as, for a chest minecart.
+	Kind ContainerKind
 }
 
 // Apply applies the configuration to the entity data.
@@ -41,7 +35,7 @@ func (conf MinecartContainerBehaviourConfig) New() *MinecartContainerBehaviour {
 	base := conf.Minecart.New()
 	b := &MinecartContainerBehaviour{
 		MinecartBehaviour: base,
-		containerType:     conf.ContainerType,
+		kind:              conf.Kind,
 		containerSize:     int32(conf.Size),
 		viewerMu:          new(sync.RWMutex),
 		viewers:           make(map[block.ContainerViewer]struct{}, 1),
@@ -65,7 +59,7 @@ type MinecartContainerBehaviour struct {
 	viewerMu *sync.RWMutex
 	viewers  map[block.ContainerViewer]struct{}
 
-	containerType int32
+	kind          ContainerKind
 	containerSize int32
 	lootTable     string
 	lootSeed      int64
@@ -76,15 +70,11 @@ func (b *MinecartContainerBehaviour) Base() *MinecartBehaviour {
 	return b.MinecartBehaviour
 }
 
-// ContainerType returns the container type for metadata.
-func (b *MinecartContainerBehaviour) ContainerType() int32 {
-	return b.containerType
-}
-
-// containerKind returns the kind of container the inventory opens as: a
-// hopper for the container type of a hopper minecart, a chest otherwise.
-func (b *MinecartContainerBehaviour) containerKind() ContainerKind {
-	if b.containerType == minecartContainerHopper {
+// ContainerKind returns the kind of container the minecart is:
+// ContainerMinecartHopper for the kind of a hopper minecart,
+// ContainerMinecartChest otherwise.
+func (b *MinecartContainerBehaviour) ContainerKind() ContainerKind {
+	if b.kind == ContainerMinecartHopper {
 		return ContainerMinecartHopper
 	}
 	return ContainerMinecartChest
@@ -150,7 +140,7 @@ func (m *MinecartContainer) Interact(tx *world.Tx, user item.User, _ *item.UseCo
 		m.generateLoot(tx, user)
 	}
 	if opener, ok := user.(ContainerOpener); ok {
-		opener.OpenEntityContainer(m, b.Inventory(), b.containerKind(), tx)
+		opener.OpenEntityContainer(m, b.Inventory(), b.ContainerKind(), tx)
 		return true
 	}
 	return false
@@ -275,10 +265,10 @@ func (m *MinecartContainer) Destroy(tx *world.Tx, src world.DamageSource, causer
 		}
 		if canDropMinecart(causer, tx.World()) {
 			drop := item.Stack{}
-			switch b.containerType {
-			case minecartContainerChest:
+			switch b.ContainerKind() {
+			case ContainerMinecartChest:
 				drop = item.NewStack(item.MinecartChest{}, 1)
-			case minecartContainerHopper:
+			case ContainerMinecartHopper:
 				drop = item.NewStack(item.MinecartHopper{}, 1)
 			}
 			if !drop.Empty() {
@@ -363,8 +353,8 @@ var chestMinecartConf = MinecartContainerBehaviourConfig{
 		DisplayOffset: minecartDisplayOffset,
 		Rideable:      false,
 	},
-	Size:          27,
-	ContainerType: minecartContainerChest,
+	Size: 27,
+	Kind: ContainerMinecartChest,
 }
 
 // HopperMinecartType is a world.EntityType implementation for hopper minecarts.
@@ -492,6 +482,6 @@ var hopperMinecartConf = hopperMinecartBehaviourConfig{MinecartContainerBehaviou
 		DisplayOffset: minecartDisplayOffset,
 		Rideable:      false,
 	},
-	Size:          5,
-	ContainerType: minecartContainerHopper,
+	Size: 5,
+	Kind: ContainerMinecartHopper,
 }}

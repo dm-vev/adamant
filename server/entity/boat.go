@@ -14,19 +14,15 @@ import (
 )
 
 const (
-	boatSeatOffset         = 1.02001
-	boatRiderOffsetXWhen2  = 0.2
-	boatPassengerOffsetX   = -0.6
-	boatSinkingDepth       = 0.07
-	boatSinkingSpeed       = 0.0005
-	boatSinkingMaxSpeed    = 0.005
-	boatGravity            = 0.04
-	boatWaterDrag          = 0.9
-	boatNetworkOffset      = 0.375
-	// boatContainerTypeChest is the container type (ChestBoat, 34) BDS
-	// 1.26.52.3 sends in a chest boat's actor data; it opens the chest as a
-	// plain container (0), which the session does for ContainerChestBoat.
-	boatContainerTypeChest = 34
+	boatSeatOffset        = 1.02001
+	boatRiderOffsetXWhen2 = 0.2
+	boatPassengerOffsetX  = -0.6
+	boatSinkingDepth      = 0.07
+	boatSinkingSpeed      = 0.0005
+	boatSinkingMaxSpeed   = 0.005
+	boatGravity           = 0.04
+	boatWaterDrag         = 0.9
+	boatNetworkOffset     = 0.375
 )
 
 // NewBoat creates a new boat entity with the variant passed.
@@ -852,9 +848,10 @@ func (b *ChestBoatBehaviour) Inventory() *inventory.Inventory {
 	return b.inv
 }
 
-// ContainerType returns the container type metadata value.
-func (b *ChestBoatBehaviour) ContainerType() int32 {
-	return boatContainerTypeChest
+// ContainerKind returns ContainerChestBoat, the kind of container the chest
+// of a chest boat is.
+func (b *ChestBoatBehaviour) ContainerKind() ContainerKind {
+	return ContainerChestBoat
 }
 
 // ContainerSize returns the container size metadata value.
@@ -908,7 +905,7 @@ func (b *ChestBoat) Interact(tx *world.Tx, user item.User, ctx *item.UseContext)
 	}
 	if sneaking, ok := user.(interface{ Sneaking() bool }); ok && sneaking.Sneaking() {
 		if opener, ok := user.(ContainerOpener); ok {
-			opener.OpenEntityContainer(b, beh.Inventory(), ContainerChestBoat, tx)
+			opener.OpenEntityContainer(b, beh.Inventory(), beh.ContainerKind(), tx)
 			return true
 		}
 		return false
