@@ -69,12 +69,29 @@ const (
 	ParamOptionAsChainedCommand
 )
 
+// EnumConstraint is a condition on an option of an enum, under which clients
+// offer the option.
+type EnumConstraint uint8
+
+const (
+	// EnumConstraintCheatsEnabled offers the option only where cheats are
+	// enabled.
+	EnumConstraintCheatsEnabled EnumConstraint = iota
+	// EnumConstraintOperatorPermissions offers the option only to operators.
+	EnumConstraintOperatorPermissions
+	// EnumConstraintHostPermissions offers the option only to the host.
+	EnumConstraintHostPermissions
+	// EnumConstraintAllowAliases offers the option only where the command
+	// allows aliases, as the full identifiers of registries.
+	EnumConstraintAllowAliases
+)
+
 // ConstrainedEnum may be implemented by a hard enum to attach client-side
-// constraints to individual completion values. Constraint IDs are the protocol's
-// CommandEnumConstraint constants. These do not change server-side validation.
+// constraints to individual completion values. These do not change
+// server-side validation.
 type ConstrainedEnum interface {
 	Enum
-	Constraints(option string) []byte
+	Constraints(option string) []EnumConstraint
 }
 
 // DynamicEnum is an optional extension of Enum that marks an enum as dynamic, meaning it should be encoded as a

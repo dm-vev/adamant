@@ -15,9 +15,11 @@ import (
 // complete token to match a bare identifier in the completion list.
 type itemArgument string
 
-func (itemArgument) Type() string                     { return "Item" }
-func (itemArgument) ParamOptions() cmd.ParamOption    { return cmd.ParamOptionHasSemanticConstraint }
-func (itemArgument) Constraints(option string) []byte { return registryAliasConstraints(option) }
+func (itemArgument) Type() string                  { return "Item" }
+func (itemArgument) ParamOptions() cmd.ParamOption { return cmd.ParamOptionHasSemanticConstraint }
+func (itemArgument) Constraints(option string) []cmd.EnumConstraint {
+	return registryAliasConstraints(option)
+}
 func (itemArgument) Parse(line *cmd.Line, value reflect.Value) error {
 	return parseRegistryArgument(line, value)
 }
@@ -32,9 +34,11 @@ func (itemArgument) Options(cmd.Source) []string {
 
 type blockArgument string
 
-func (blockArgument) Type() string                     { return "Block" }
-func (blockArgument) ParamOptions() cmd.ParamOption    { return cmd.ParamOptionHasSemanticConstraint }
-func (blockArgument) Constraints(option string) []byte { return registryAliasConstraints(option) }
+func (blockArgument) Type() string                  { return "Block" }
+func (blockArgument) ParamOptions() cmd.ParamOption { return cmd.ParamOptionHasSemanticConstraint }
+func (blockArgument) Constraints(option string) []cmd.EnumConstraint {
+	return registryAliasConstraints(option)
+}
 func (blockArgument) Parse(line *cmd.Line, value reflect.Value) error {
 	return parseRegistryArgument(line, value)
 }
@@ -85,11 +89,12 @@ func addRegistryName(names map[string]struct{}, name string) {
 	}
 }
 
-func registryAliasConstraints(name string) []byte {
+// registryAliasConstraints returns the constraints of a registry name in
+// completions: full minecraft identifiers are offered where aliases are
+// allowed, as BDS does; short names have none.
+func registryAliasConstraints(name string) []cmd.EnumConstraint {
 	if strings.HasPrefix(name, "minecraft:") {
-		// SemanticConstraint::RequiresAllowAliases is constraint ID 3 in
-		// BDS 1.26.51. Full minecraft identifiers carry it; short names do not.
-		return []byte{3}
+		return []cmd.EnumConstraint{cmd.EnumConstraintAllowAliases}
 	}
 	return nil
 }

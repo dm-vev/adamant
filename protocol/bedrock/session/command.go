@@ -182,7 +182,7 @@ func BuildAvailableCommands(
 			}
 			protoEnum.ValueIndices = append(protoEnum.ValueIndices, index)
 			if enum.Constraints != nil {
-				if constraints := enum.Constraints(opt); len(constraints) > 0 {
+				if constraints := enumConstraints(enum.Constraints(opt)); len(constraints) > 0 {
 					pk.Constraints = append(pk.Constraints, v2193.CommandEnumConstraint{
 						EnumValueIndex: index,
 						EnumIndex:      uint32(enumIndex),
@@ -231,7 +231,7 @@ type commandEnum struct {
 	Type        string
 	Options     []string
 	Dynamic     bool
-	Constraints func(string) []byte
+	Constraints func(string) []cmd.EnumConstraint
 }
 
 // valueToParamType finds the command argument type of the value passed and returns it, in addition to creating

@@ -27,3 +27,30 @@ func paramOptions(options cmd.ParamOption) byte {
 	}
 	return flags
 }
+
+// enumConstraintRequiresAllowAliases is the ID of BDS's
+// SemanticConstraint::RequiresAllowAliases in 1.26.51, which the protocol
+// has no constant of.
+const enumConstraintRequiresAllowAliases = 3
+
+// enumConstraints returns the IDs AvailableCommands sends for the
+// constraints of an enum option.
+func enumConstraints(constraints []cmd.EnumConstraint) []byte {
+	if len(constraints) == 0 {
+		return nil
+	}
+	ids := make([]byte, 0, len(constraints))
+	for _, c := range constraints {
+		switch c {
+		case cmd.EnumConstraintCheatsEnabled:
+			ids = append(ids, v2193.CommandEnumConstraintCheatsEnabled)
+		case cmd.EnumConstraintOperatorPermissions:
+			ids = append(ids, v2193.CommandEnumConstraintOperatorPermissions)
+		case cmd.EnumConstraintHostPermissions:
+			ids = append(ids, v2193.CommandEnumConstraintHostPermissions)
+		case cmd.EnumConstraintAllowAliases:
+			ids = append(ids, enumConstraintRequiresAllowAliases)
+		}
+	}
+	return ids
+}

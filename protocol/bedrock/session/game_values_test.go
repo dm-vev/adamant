@@ -97,3 +97,30 @@ func TestVersionsMatchProtocol(t *testing.T) {
 		{"leveldat.NetworkVersion", leveldat.NetworkVersion, v2193.CurrentProtocol},
 	})
 }
+
+// TestEnumConstraintValuesMatchProtocol checks that the constraints of enum
+// options the game owns keep the IDs AvailableCommands sends for them: the
+// protocol's constants, and 3 for RequiresAllowAliases, which BDS 1.26.51
+// sends of full registry names (testdata/bedrock_1_26_51_registry_arguments.json
+// of the builtin commands).
+func TestEnumConstraintValuesMatchProtocol(t *testing.T) {
+	all := []cmd.EnumConstraint{cmd.EnumConstraintCheatsEnabled, cmd.EnumConstraintOperatorPermissions, cmd.EnumConstraintHostPermissions, cmd.EnumConstraintAllowAliases}
+	ids := enumConstraints(all)
+	if len(ids) != len(all) {
+		t.Fatalf("enumConstraints(%v) = %v, want one ID each", all, ids)
+	}
+	checkGameValues(t, []gameValue{
+		{"EnumConstraintCheatsEnabled", int64(ids[0]), v2193.CommandEnumConstraintCheatsEnabled},
+		{"EnumConstraintOperatorPermissions", int64(ids[1]), v2193.CommandEnumConstraintOperatorPermissions},
+		{"EnumConstraintHostPermissions", int64(ids[2]), v2193.CommandEnumConstraintHostPermissions},
+		{"EnumConstraintAllowAliases", int64(ids[3]), 3},
+	})
+	for i, c := range all {
+		if int(c) != int(ids[i]) {
+			t.Errorf("%d: the game's value %d differs from the ID %d", i, c, ids[i])
+		}
+	}
+	if got := enumConstraints(nil); got != nil {
+		t.Errorf("enumConstraints(nil) = %v, want nil", got)
+	}
+}
