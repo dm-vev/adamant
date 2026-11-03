@@ -48,8 +48,9 @@ type GameData struct {
 	Time int64
 	// DayCycleLockTime is the time the day cycle stopped at.
 	DayCycleLockTime int32
-	// CustomBlocks are the blocks the server adds to the game.
-	CustomBlocks []v2193.BlockEntry
+	// Blocks are the blocks the client learns from the server: the vanilla
+	// blocks the game defines by data and the blocks the server adds.
+	Blocks []v2193.BlockEntry
 	// Items are all items of the game, vanilla and custom.
 	Items []v2193.ItemEntry
 	// PlayerMovementSettings sets how movement is authoritative.

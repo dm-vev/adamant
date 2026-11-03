@@ -48,11 +48,12 @@ func run() error {
 	authenticate := flag.Bool("auth", false, "authenticate a test account using Microsoft device-code login; tokens are not saved")
 	timeout := flag.Duration("timeout", 5*time.Minute, "total authentication, login and spawn deadline")
 	itemsNBT := flag.String("items-nbt", "", "write the complete item registry as vanilla_items.nbt to PATH (must not already exist)")
+	blocksNBT := flag.String("blocks-nbt", "", "write the block definitions of StartGame as vanilla_blocks.nbt to PATH (must not already exist)")
 	biomesPacket := flag.String("biomes-packet", "", "request client generation data and write the complete biome-definition packet body to PATH (must not already exist)")
 	waitMessage := flag.String("wait-message", "", "after spawning, wait for this exact server text before disconnecting")
 	flag.Parse()
 	if *address == "" || flag.NArg() != 0 || *timeout <= 0 {
-		return fmt.Errorf("use -address http://host:port [-auth] [-timeout 5m] [-items-nbt PATH] [-biomes-packet PATH] [-wait-message TEXT]; timeout must be positive")
+		return fmt.Errorf("use -address http://host:port [-auth] [-timeout 5m] [-items-nbt PATH] [-blocks-nbt PATH] [-biomes-packet PATH] [-wait-message TEXT]; timeout must be positive")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
@@ -126,6 +127,15 @@ func run() error {
 		}
 		if err := writeNewFileAtomic(*itemsNBT, encoded); err != nil {
 			return fmt.Errorf("write item registry: %w", err)
+		}
+	}
+	if *blocksNBT != "" {
+		encoded, err := encodeBlocksNBT(conn.StartGame().Blocks)
+		if err != nil {
+			return fmt.Errorf("encode block definitions: %w", err)
+		}
+		if err := writeNewFileAtomic(*blocksNBT, encoded); err != nil {
+			return fmt.Errorf("write block definitions: %w", err)
 		}
 	}
 	if *biomesPacket != "" {

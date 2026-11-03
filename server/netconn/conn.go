@@ -554,7 +554,7 @@ func startGame(data GameData) *v2193.StartGamePacket {
 		GameRules:                    data.GameRules,
 		Time:                         data.Time,
 		DayCycleLockTime:             data.DayCycleLockTime,
-		Blocks:                       data.CustomBlocks,
+		Blocks:                       data.Blocks,
 		AchievementsDisabled:         true,
 		Generator:                    1,
 		EducationFeaturesEnabled:     true,

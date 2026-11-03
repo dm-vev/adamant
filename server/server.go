@@ -45,7 +45,7 @@ type Server struct {
 	dimensions       map[world.Dimension]*world.World
 	defaultDimension world.Dimension
 
-	customBlocks     []v2193.BlockEntry
+	blockEntries     []v2193.BlockEntry
 	customItems      []v2193.ItemEntry
 	customDimensions []v2193.DimensionDefinition
 	whitelist        *Whitelist
@@ -465,19 +465,23 @@ func (srv *Server) startListening() {
 	}
 }
 
-// makeBlockEntries initialises the server's block components map using the
-// registered custom blocks. It allows block components to be created only once
-// at startup.
+// makeBlockEntries initialises the definitions of blocks the client gets at
+// spawn: the vanilla blocks the game defines by data, as BDS sends them, and
+// the registered custom blocks. It allows block components to be created only
+// once at startup.
 func (srv *Server) makeBlockEntries() {
 	custom := slices.Collect(maps.Values(srv.conf.Blocks.CustomBlocks()))
-	srv.customBlocks = make([]v2193.BlockEntry, len(custom))
+	srv.blockEntries = make([]v2193.BlockEntry, 0, len(vanillaBlocks)+len(custom))
 
+	for _, name := range slices.Sorted(maps.Keys(vanillaBlocks)) {
+		srv.blockEntries = append(srv.blockEntries, v2193.BlockEntry{Name: name, Properties: vanillaBlocks[name]})
+	}
 	for i, b := range custom {
 		name, _ := b.EncodeBlock()
-		srv.customBlocks[i] = v2193.BlockEntry{
+		srv.blockEntries = append(srv.blockEntries, v2193.BlockEntry{
 			Name:       name,
 			Properties: blockinternal.Components(name, b, 10000+int32(i)),
-		}
+		})
 	}
 }
 
@@ -673,7 +677,7 @@ func (srv *Server) defaultGameData() netconn.GameData {
 		PlayerPosition:    vec64To32(srv.world.Spawn().Vec3Centre().Add(mgl64.Vec3{0, player.Type.NetworkOffset()})),
 
 		Items:        srv.itemEntries(),
-		CustomBlocks: srv.customBlocks,
+		Blocks:       srv.blockEntries,
 		GameRules: append([]v2193.GameRule{
 			{Name: "naturalregeneration", Value: false},
 			{Name: "locatorBar", Value: false},
@@ -847,6 +851,14 @@ func (srv *Server) itemEntries() []v2193.ItemEntry {
 }
 
 var (
+	//go:embed vanilla_blocks.nbt
+	vanillaBlocksData []byte
+	// vanillaBlocks are the properties of the vanilla blocks the game defines
+	// by data, by name, as BDS defines them to the client in StartGame. The
+	// client draws none of these blocks, such as stairs and slabs of wool or
+	// concrete, unless the server defines them.
+	vanillaBlocks = map[string]map[string]any{}
+
 	//go:embed world/vanilla_items.nbt
 	vanillaItemsData []byte
 	vanillaItems     = map[string]struct {
@@ -857,8 +869,9 @@ var (
 	}{}
 )
 
-// init reads all item entries from the resource JSON, and sets the according
-// values in the runtime ID maps.
+// init reads all item entries and vanilla block definitions from their
+// embedded NBT, and sets the according values in the runtime ID maps.
 func init() {
 	_ = nbt.Unmarshal(vanillaItemsData, &vanillaItems)
+	_ = nbt.Unmarshal(vanillaBlocksData, &vanillaBlocks)
 }
