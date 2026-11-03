@@ -3,7 +3,6 @@ package player
 import (
 	"context"
 	"io"
-	"net"
 	"testing"
 	"time"
 
@@ -11,41 +10,12 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client/clienttest"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/netconn"
-	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
-
-type stubConn struct{}
-
-func (stubConn) Close() error { return nil }
-
-func (stubConn) IdentityData() login.Identity {
-	return login.Identity{Identity: uuid.NewString(), DisplayName: "Test"}
-}
-
-func (stubConn) ClientData() login.ClientData { return login.ClientData{} }
-
-func (stubConn) ClientCacheEnabled() bool { return false }
-
-func (stubConn) ChunkRadius() int { return 1 }
-
-func (stubConn) Latency() time.Duration { return 0 }
-
-func (stubConn) Flush() error { return nil }
-
-func (stubConn) RemoteAddr() net.Addr { return &net.TCPAddr{} }
-
-func (stubConn) ReadPacket() (proto.Packet, error) { return nil, io.EOF }
-
-func (stubConn) WritePacket(proto.Packet) error { return nil }
-
-func (stubConn) StartGameContext(context.Context, netconn.GameData) error { return nil }
 
 func TestRespawnInDefaultWorldWithoutBed(t *testing.T) {
 	for _, portals := range []bool{false, true} {
@@ -64,11 +34,9 @@ func TestRespawnInDefaultWorldWithoutBed(t *testing.T) {
 			w = conf.New()
 			t.Cleanup(func() { _ = w.Close() })
 			w.SetSpawn(cube.Pos{8, 64, 8})
-			sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
-			t.Cleanup(sess.CloseConnection)
-			cfg := Config{Client: sess, Position: mgl64.Vec3{32, 64, 32}, GameMode: world.GameModeSurvival}
+			c := clienttest.New()
+			cfg := Config{Client: c, Position: mgl64.Vec3{32, 64, 32}, GameMode: world.GameModeSurvival}
 			handle := world.EntitySpawnOpts{Position: cfg.Position, ID: uuid.New()}.New(Type, cfg)
-			sess.SetHandle(handle, cfg.Skin)
 			<-w.Exec(func(tx *world.Tx) {
 				p := tx.AddEntity(handle).(*Player)
 				p.addHealth(-p.MaxHealth())
@@ -120,20 +88,15 @@ func TestRespawnFallsBackToDefaultDimension(t *testing.T) {
 		_ = nether.Close()
 	})
 
-	conn := stubConn{}
-	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(conn)
-	t.Cleanup(func() {
-		sess.CloseConnection()
-	})
+	c := clienttest.New()
 
 	spawn := nether.Spawn().Vec3Centre().Add(mgl64.Vec3{0, 1.5})
 	cfg := Config{
-		Client:   sess,
+		Client:   c,
 		Position: spawn,
 		GameMode: world.GameModeSurvival,
 	}
 	handle := world.EntitySpawnOpts{Position: spawn, ID: uuid.New()}.New(Type, cfg)
-	sess.SetHandle(handle, cfg.Skin)
 
 	<-nether.Exec(func(tx *world.Tx) {
 		p := tx.AddEntity(handle).(*Player)
@@ -186,18 +149,15 @@ func TestPlayerReturnsFromEndToChargedNetherAnchor(t *testing.T) {
 		_ = nether.Close()
 	})
 
-	conn := stubConn{}
-	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(conn)
-	t.Cleanup(sess.CloseConnection)
+	c := clienttest.New()
 	id := uuid.New()
 	origin := mgl64.Vec3{5.5, 64, 5.5}
 	velocity := mgl64.Vec3{0.25, 0.5, -0.75}
 	cfg := Config{
-		Client: sess, Position: origin, UUID: id, GameMode: world.GameModeSurvival,
+		Client: c, Position: origin, UUID: id, GameMode: world.GameModeSurvival,
 		RespawnDimension: world.Nether, RespawnPosition: spawn, HasRespawnPoint: true,
 	}
 	handle := world.EntitySpawnOpts{Position: origin, Velocity: velocity, ID: id}.New(Type, cfg)
-	sess.SetHandle(handle, cfg.Skin)
 	nether.SetPlayerSpawn(id, spawn)
 
 	if err := nether.Do(func(tx *world.Tx) {
@@ -422,18 +382,15 @@ func TestStationarySurvivalPlayerCompletesPortalTimer(t *testing.T) {
 		_ = nether.Close()
 	})
 
-	conn := stubConn{}
-	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(conn)
-	t.Cleanup(sess.CloseConnection)
+	c := clienttest.New()
 
 	sourcePortal, targetPortal := cube.Pos{80, 64, 80}, cube.Pos{10, 64, 10}
 	if err := nether.Do(func(tx *world.Tx) { buildPortalFrame(tx, targetPortal) }).Wait(context.Background()); err != nil {
 		t.Fatalf("build destination portal: %v", err)
 	}
 	spawn := sourcePortal.Vec3Middle()
-	cfg := Config{Client: sess, Position: spawn, GameMode: world.GameModeSurvival}
+	cfg := Config{Client: c, Position: spawn, GameMode: world.GameModeSurvival}
 	handle := world.EntitySpawnOpts{Position: spawn, ID: uuid.New()}.New(Type, cfg)
-	sess.SetHandle(handle, cfg.Skin)
 	if err := overworld.Do(func(tx *world.Tx) {
 		tx.SetBlock(sourcePortal, block.Portal{Axis: cube.Z}, nil)
 		p := tx.AddEntity(handle).(*Player)
@@ -497,12 +454,10 @@ func TestPlayerWithClientRespawnsAfterDeath(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
-	t.Cleanup(sess.CloseConnection)
+	c := clienttest.New()
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Client: sess, Position: pos, GameMode: world.GameModeSurvival}
+	cfg := Config{Client: c, Position: pos, GameMode: world.GameModeSurvival}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, cfg)
-	sess.SetHandle(handle, cfg.Skin)
 	quits, respawns := 0, 0
 	if err := w.Do(func(tx *world.Tx) {
 		p := tx.AddEntity(handle).(*Player)
@@ -544,12 +499,10 @@ func TestDeadPlayerWithClientRespawnsOnClose(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(stubConn{})
-	t.Cleanup(sess.CloseConnection)
+	c := clienttest.New()
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Client: sess, Position: pos, GameMode: world.GameModeSurvival}
+	cfg := Config{Client: c, Position: pos, GameMode: world.GameModeSurvival}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, cfg)
-	sess.SetHandle(handle, cfg.Skin)
 	quits, respawns := 0, 0
 	if err := w.Do(func(tx *world.Tx) {
 		p := tx.AddEntity(handle).(*Player)

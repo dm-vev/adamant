@@ -56,15 +56,6 @@ server/permissions_test.go github.com/df-mc/dragonfly/server/netconn
 server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto
 server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/player/piston_native_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/player/release_test.go github.com/df-mc/dragonfly/server/netconn
-server/player/release_test.go github.com/df-mc/dragonfly/server/session
-server/player/release_test.go github.com/dm-vev/adamant/net/bedrock/login
-server/player/release_test.go github.com/dm-vev/adamant/net/bedrock/proto
-server/player/release_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/player/respawn_test.go github.com/df-mc/dragonfly/server/netconn
-server/player/respawn_test.go github.com/df-mc/dragonfly/server/session
-server/player/respawn_test.go github.com/dm-vev/adamant/net/bedrock/login
-server/player/respawn_test.go github.com/dm-vev/adamant/net/bedrock/proto
 server/server.go github.com/df-mc/dragonfly/server/netconn
 server/server.go github.com/df-mc/dragonfly/server/session
 server/server.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
