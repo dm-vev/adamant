@@ -9510,7 +9510,7 @@ func (p *AttributeModifier) Decode(r *wire.Reader) {
 type AutoCraftRecipeStackRequestAction struct {
 	RecipeNetworkID uint32
 	NumberOfCrafts  uint8
-	Ingredients     []ItemDescriptorCount
+	Ingredients     []RecipeIngredient
 }
 
 func (p *AutoCraftRecipeStackRequestAction) Encode(w *wire.Writer) {
@@ -9526,7 +9526,7 @@ func (p *AutoCraftRecipeStackRequestAction) Decode(r *wire.Reader) {
 	p.RecipeNetworkID = r.Varuint32()
 	p.NumberOfCrafts = r.Uint8()
 	v410 := int(r.Varuint32())
-	p.Ingredients = wire.Slice[ItemDescriptorCount](r, v410)
+	p.Ingredients = wire.Slice[RecipeIngredient](r, v410)
 	for v409 := range p.Ingredients {
 		p.Ingredients[v409].Decode(r)
 	}

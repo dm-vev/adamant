@@ -500,6 +500,70 @@ func readItemDescriptorCount(r *wire.Reader, x *ItemDescriptorCount) {
 func (x *ItemDescriptorCount) Encode(w *wire.Writer) { writeItemDescriptorCount(w, x) }
 func (x *ItemDescriptorCount) Decode(r *wire.Reader) { readItemDescriptorCount(r, x) }
 
+// RecipeIngredient is an item a client names in a recipe-book craft
+// (AutoCraftRecipeStackRequestAction), with its count. It is written
+// unlike the ItemDescriptorCount of CraftingData: the variant of the
+// descriptor, the type of the descriptor again as a byte, its data, then the
+// count as an uint16. BDS 1.26.52.3 takes this form and disconnects a client
+// that sends the CraftingData form.
+type RecipeIngredient struct {
+	Descriptor ItemDescriptor
+	Count      uint16
+}
+
+// Types of the descriptor of a RecipeIngredient.
+const (
+	recipeIngredientEmpty uint8 = iota
+	recipeIngredientName
+	recipeIngredientMoLang
+	recipeIngredientTag
+)
+
+func (x *RecipeIngredient) Encode(w *wire.Writer) {
+	var t uint8
+	switch x.Descriptor.(type) {
+	case nil, *InvalidItemDescriptor:
+		t = recipeIngredientEmpty
+	case *DefaultItemDescriptor:
+		t = recipeIngredientName
+	case *MoLangItemDescriptor:
+		t = recipeIngredientMoLang
+	case *ItemTagItemDescriptor:
+		t = recipeIngredientTag
+	default:
+		panic("v2193: recipe ingredient of no type")
+	}
+	w.Varuint32(uint32(t))
+	w.Uint8(t)
+	if x.Descriptor != nil {
+		x.Descriptor.Encode(w)
+	}
+	w.Uint16(x.Count)
+}
+
+func (x *RecipeIngredient) Decode(r *wire.Reader) {
+	variant := r.Varuint32()
+	if t := r.Uint8(); r.Err() == nil && uint32(t) != variant {
+		r.Failf("v2193: recipe ingredient variant %d of type %d", variant, t)
+		return
+	}
+	switch variant {
+	case uint32(recipeIngredientEmpty):
+		x.Descriptor = &InvalidItemDescriptor{}
+	case uint32(recipeIngredientName):
+		x.Descriptor = &DefaultItemDescriptor{}
+	case uint32(recipeIngredientMoLang):
+		x.Descriptor = &MoLangItemDescriptor{}
+	case uint32(recipeIngredientTag):
+		x.Descriptor = &ItemTagItemDescriptor{}
+	default:
+		r.Failf("v2193: recipe ingredient variant %d", variant)
+		return
+	}
+	x.Descriptor.Decode(r)
+	x.Count = r.Uint16()
+}
+
 // Versions of the data of an ItemEntry.
 const (
 	ItemEntryVersionLegacy int32 = iota

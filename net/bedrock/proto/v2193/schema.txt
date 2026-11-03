@@ -1,5 +1,5 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
-# 459 declarations, 11 of them manual.
+# 460 declarations, 12 of them manual.
 
 type CommandEnum
 	Type string
@@ -2115,10 +2115,13 @@ type AttributeModifier
 type ItemDescriptorCount
 	manual statement id, _, ok := itemDescriptorType(x.Descriptor)
 
+type RecipeIngredient
+	manual statement id, _, ok := itemDescriptorType(x.Descriptor)
+
 type AutoCraftRecipeStackRequestAction
 	RecipeNetworkID varuint32
 	NumberOfCrafts uint8
-	Ingredients []ItemDescriptorCount
+	Ingredients []RecipeIngredient
 
 type BeaconPaymentStackRequestAction
 	PrimaryEffect varint32

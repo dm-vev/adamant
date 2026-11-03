@@ -1,0 +1,921 @@
+{
+ "version": "1.26.52.3",
+ "protocol_version": 2193,
+ "build_id": 51798919,
+ "server_sha256": "0a490c711d4a2ce075debcd979e8862b7eaba008373f9970f0edbb67f98f9207",
+ "client": "gophertunnel v1.62.0 over RakNet, offline mode (transport=raknet, online-mode=false, flat world)",
+ "commands": [
+  "recipe give CraftProbe *",
+  "gamemode survival CraftProbe",
+  "tp CraftProbe 0.5 -60 0.5",
+  "clear CraftProbe",
+  "give CraftProbe oak_planks 10",
+  "setblock 2 -60 0 crafting_table",
+  "setblock 2 -60 2 crafter"
+ ],
+ "screens": {
+  "inventory": "the inventory, opened with Interact (open inventory); grid slots 28-31",
+  "table": "a crafting table, opened by clicking it; grid slots 32-40",
+  "crafter": "a crafter, opened by clicking it",
+  "closed": "no screen open: the inventory closed with ContainerClose"
+ },
+ "recipe": {
+  "id": "minecraft:stick",
+  "network_id": 1581,
+  "ingredients": "two RecipeIngredient entries, item name minecraft:oak_planks, aux 0, count 1"
+ },
+ "cases": [
+  {
+   "name": "inventory/grid-empty",
+   "setup": "no planks in the grid; the request consumes 2 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 10,
+     "stack_id": 2
+    }
+   ],
+   "request": "93010101040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c00000200000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032ffffffff0c0009000000000000000000",
+   "request_sha256": "24947ae757ffedf9fe2aab687810179c654a7057469f200152db70d023a48e1a",
+   "response": "940101000101010c000200000801040000000909040106000000",
+   "response_sha256": "48f2dd73d41404e9352cddaa47270316296bbb1356731f6338d370247531e69d",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 8
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "inventory/consume-grid-too-much",
+   "setup": "1 plank in the grid; the request consumes 2 from the grid slot",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 5
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 6
+    }
+   ],
+   "request": "93010109040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020d001c0600000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032fbffffff0c0009000000000000000000",
+   "request_sha256": "2004142f31f43f7541504fb72da09a4b87282b932a3ee50e8d67d4c36d101a06",
+   "response": "940101330900",
+   "response_sha256": "4cfc70bc09bf801fa78813d659c8bcdf045164fc73186d0e90750a4aee32651b",
+   "status": 51,
+   "changes": []
+  },
+  {
+   "name": "inventory/nothing-named",
+   "setup": "1 plank in the grid; the request names no slot and takes no result",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 12
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 13
+    }
+   ],
+   "request": "93010121010b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000000000000",
+   "request_sha256": "6f676d884efb994e88d22aea40e06795f0f56a4cd73c57d45637afb6ddf540ee",
+   "response": "940101132100",
+   "response_sha256": "56092269b1ef7186bf4fa88a09cef1727fa7a0df0430b2f4137e9b7959c9a96c",
+   "status": 19,
+   "changes": []
+  },
+  {
+   "name": "inventory/no-result-taken",
+   "setup": "1 plank in the grid; the request consumes 2 from inventory slot 0 and takes no result",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 15
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 16
+    }
+   ],
+   "request": "9301012d020b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c00000f0000000000000000",
+   "request_sha256": "5ad091381e0b3600e61d80e691fda26fde1722a87a2ac55ee734d32ee88d4a8e",
+   "response": "940101002d01010c0001000007011e000000",
+   "response_sha256": "f459b4bb1828a5e32d53429ca619b82eea29d49858dd17abfa0952f306fb356e",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 7
+    }
+   ]
+  },
+  {
+   "name": "inventory/consume-inventory-only",
+   "setup": "1 plank in the grid; the request consumes 2 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 20
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 21
+    }
+   ],
+   "request": "93010145040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c00001400000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032ddffffff0c0009000000000000000000",
+   "request_sha256": "8bf0ba4f642621f4c005931ed80594c3a56cb55df08e527cdc5987edeafd903e",
+   "response": "940101004501010c00020000070128000000090904012c000000",
+   "response_sha256": "20c4ffa985e0f80b97ce3ad78279ff2decd6786586aaa29d80a306e42ae9015a",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 7
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "inventory/consume-grid-then-inventory",
+   "setup": "1 plank in the grid; the request consumes the grid slot, then 1 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 24
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 25
+    }
+   ],
+   "request": "93010151050b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505010d001c190000000505010c00001800000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032d7ffffff0c0009000000000000000000",
+   "request_sha256": "466e504a2d8d2add2763572b99aad40043b2d082e6f33d27c0610b1957317ed0",
+   "response": "940101005101020d00011c1c00000000000c000200000801300000000909040134000000",
+   "response_sha256": "359bfc1c85969db6e7594be81947d3db47817a9f8a20359ee25d07341b4168f3",
+   "status": 0,
+   "changes": [
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 0
+    },
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 8
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "inventory/consume-inventory-then-grid",
+   "setup": "1 plank in the grid; the request consumes 1 from inventory slot 0, then the grid slot",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 28
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 29
+    }
+   ],
+   "request": "93010159050b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505010c00001c0000000505010d001c1d00000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032d3ffffff0c0009000000000000000000",
+   "request_sha256": "c39fa275c751be06c485fd1f3da58c3be5e7cd196a809e8f36862c388eeb2c27",
+   "response": "940101005901020c00020000080138000000090904013c0000000d00011c1c0000000000",
+   "response_sha256": "3957f82441979c8b2dbaea5655f5f7d701421299c881b7987738facf7a742cb0",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 8
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 0
+    }
+   ]
+  },
+  {
+   "name": "inventory/no-consume",
+   "setup": "1 plank in the grid; the request names no slot",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 32
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 33
+    }
+   ],
+   "request": "93010161030b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b7300010011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032cfffffff0c0009000000000000000000",
+   "request_sha256": "cd6aa50a223dcabbc6832fc8d660ded7f1121d698e15ba6c0c80fa46794404e7",
+   "response": "940101316100",
+   "response_sha256": "943053046236ca9ba56f03a6334b2924d28682e79136bc4709a154108a4bfc64",
+   "status": 49,
+   "changes": []
+  },
+  {
+   "name": "inventory/consume-too-few",
+   "setup": "1 plank in the grid; the request consumes only 1 plank, from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 35
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 36
+    }
+   ],
+   "request": "9301016d040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505010c00002300000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032c9ffffff0c0009000000000000000000",
+   "request_sha256": "272a71fc7291d10c2d9f1361ff31b4fe8ae528d98bff813444936be3f7b679fa",
+   "response": "940101136d00",
+   "response_sha256": "05f20ee4ab87d9a678fbdffd5f59a662477bf16fc7ae466aa97581006e889a47",
+   "status": 19,
+   "changes": []
+  },
+  {
+   "name": "inventory/consume-grid-only-2-in-grid",
+   "setup": "2 planks in the grid; the request consumes both from the grid slot",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 8,
+     "stack_id": 39
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 2,
+     "stack_id": 40
+    }
+   ],
+   "request": "93010179040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020d001c2800000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032c3ffffff0c0009000000000000000000",
+   "request_sha256": "efe983e27791022d661ade49cef6cd2213fd84edc5de714d21e778531a4956bc",
+   "response": "940101007901020d00011c1c00000000000c00010909040152000000",
+   "response_sha256": "689510bf3814cf83209048d1c740f7d15cd919eb01345c4f8a23215af7586f4e",
+   "status": 0,
+   "changes": [
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 0
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "inventory/times-2-inventory",
+   "setup": "two crafts; 1 plank in the grid; the request consumes 4 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 43
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 44
+    }
+   ],
+   "request": "9301018101040b0dad0c02020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505040c00002b00000011130101010f6d696e6563726166743a737469636b000800000a00000000000000000000020101083c0032bfffffff0c0009000000000000000000",
+   "request_sha256": "a0a355c36476f4c7695cbda193a7fef8c16e39fbdab55de57a27918eeb1869d3",
+   "response": "94010100810101010c00020000050156000000090908015a000000",
+   "response_sha256": "903865837de3d057ee04dcd3ecc3c715e57902f1ca282eadc611a1fea27d7734",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 5
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 8
+    }
+   ]
+  },
+  {
+   "name": "inventory/times-2-mixed",
+   "setup": "two crafts; 1 plank in the grid; the request consumes the grid slot and 3 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 47
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 48
+    }
+   ],
+   "request": "9301018d01050b0dad0c02020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505010d001c300000000505030c00002f00000011130101010f6d696e6563726166743a737469636b000800000a00000000000000000000020101083c0032b9ffffff0c0009000000000000000000",
+   "request_sha256": "ca963ae0b301d9da4479e857c1c548a25234f8f7d1eb5d75a03bf1cf902e03a1",
+   "response": "940101008d0101020d00011c1c00000000000c0002000006015e0000000909080162000000",
+   "response_sha256": "9561eefcccbe7acb625cae6b97bcac25fb0a88742c63922ab4f68c670fee2870",
+   "status": 0,
+   "changes": [
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 0
+    },
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 6
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 8
+    }
+   ]
+  },
+  {
+   "name": "inventory/hotbar-container",
+   "setup": "1 plank in the grid; the request consumes 2 from slot 0 named in the hotbar container (28)",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 51
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 52
+    }
+   ],
+   "request": "9301019501040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505021c00003300000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032b5ffffff0c0009000000000000000000",
+   "request_sha256": "6a18e348c6256139f3bb5e6ecf0cd6df29b18b5dbcb1c43060c981a41ee0bd91",
+   "response": "9401011b950100",
+   "response_sha256": "babf1c4e9cb02c6127eb34e3ad9b639a084ddffd30fefaf916e4c4d48d4290c9",
+   "status": 27,
+   "changes": []
+  },
+  {
+   "name": "inventory/plain-craft-with-inventory",
+   "setup": "1 plank in the grid; a plain CraftRecipe (not the recipe book) consuming the grid slot and 1 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 54
+    },
+    {
+     "container": 13,
+     "slot": 28,
+     "count": 1,
+     "stack_id": 55
+    }
+   ],
+   "request": "930101a101050a0cad0c010505010d001c370000000505010c00003600000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032afffffff0c0009000000000000000000",
+   "request_sha256": "e55db39d4f4d7372b87560867df2e00d7717bd94dddd75a97bbaa02d3890a5d0",
+   "response": "94010123a10100",
+   "response_sha256": "cb459d1ae06fc95a34caac1d3b9ea4884cf2617eb31a39b7ad2c0d30a51d9973",
+   "status": 35,
+   "changes": []
+  },
+  {
+   "name": "table/grid-empty",
+   "setup": "no planks in the grid; the request consumes 2 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 10,
+     "stack_id": 57
+    }
+   ],
+   "request": "930101a901040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c00003900000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032abffffff0c0009000000000000000000",
+   "request_sha256": "358d111247c5a8151c2d92fe7dd1e41988ebe19819255c0eb33d5001e83521d5",
+   "response": "94010100a90101010c000200000801720000000909040174000000",
+   "response_sha256": "de63b9f5744e2d71d4e6a8ebaf8d1ee68eedab4ec958c200a09cf4f3a9882537",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 8
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "table/consume-grid-too-much",
+   "setup": "1 plank in the grid; the request consumes 2 from the grid slot",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 60
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 61
+    }
+   ],
+   "request": "930101b101040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020d00203d00000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032a7ffffff0c0009000000000000000000",
+   "request_sha256": "4f25ef61518f61040ac3d65bee0c50179430eb96ea84b3e7ddb614ee46bf0ce4",
+   "response": "94010133b10100",
+   "response_sha256": "70944323304cdb244f5b59999405f34ace91688f5b3b627ade7de1cba317129c",
+   "status": 51,
+   "changes": []
+  },
+  {
+   "name": "table/nothing-named",
+   "setup": "1 plank in the grid; the request names no slot and takes no result",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 67
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 68
+    }
+   ],
+   "request": "930101c901010b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000000000000",
+   "request_sha256": "58e97b70e96d596debf5564adb85d343f690fac6ae4a052b90b29f17d9881671",
+   "response": "94010113c90100",
+   "response_sha256": "291cba2b8684ae1e6fcafbf27b85d09fae7d405d900746e882793a925eeaec5d",
+   "status": 19,
+   "changes": []
+  },
+  {
+   "name": "table/no-result-taken",
+   "setup": "1 plank in the grid; the request consumes 2 from inventory slot 0 and takes no result",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 70
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 71
+    }
+   ],
+   "request": "930101d501020b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c0000460000000000000000",
+   "request_sha256": "5d001557fc4b3ba896279c14722269561a33482589d07845770ec9970adbd47f",
+   "response": "94010100d50101010c0001000007018c01000000",
+   "response_sha256": "b0f520c1417228fbaa4beae03d450ba472cd97ccd94647d248fd244a6ab8a872",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 7
+    }
+   ]
+  },
+  {
+   "name": "table/consume-inventory-only",
+   "setup": "1 plank in the grid; the request consumes 2 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 75
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 76
+    }
+   ],
+   "request": "930101ed01040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c00004b00000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c003289ffffff0c0009000000000000000000",
+   "request_sha256": "4deb0ca36aa5cacf21c4ad67d3f2b121e550bf9e453d409d2af4039a8287d0c2",
+   "response": "94010100ed0101010c0002000007019601000000090904019a01000000",
+   "response_sha256": "9629384b3bdfc8ed64e890da80bb4d8a4c6d9943128a809e826cc73e250dd620",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 7
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "table/consume-grid-then-inventory",
+   "setup": "1 plank in the grid; the request consumes the grid slot, then 1 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 79
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 80
+    }
+   ],
+   "request": "930101f901050b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505010d0020500000000505010c00004f00000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c003283ffffff0c0009000000000000000000",
+   "request_sha256": "3ddcf70bfb9c881baddca8310ea7366949c018181015b2288139b6cbb2bbf9b0",
+   "response": "94010100f90101020d0001202000000000000c0002000008019e0100000009090401a201000000",
+   "response_sha256": "97d6ec1020968bc42b4b16b4f59e5b76cd5724f0467e0fc97b4da2a6c799f1b8",
+   "status": 0,
+   "changes": [
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 0
+    },
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 8
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "table/consume-inventory-then-grid",
+   "setup": "1 plank in the grid; the request consumes 1 from inventory slot 0, then the grid slot",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 83
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 84
+    }
+   ],
+   "request": "9301018102050b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505010c0000530000000505010d00205400000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c00327fffffff0c0009000000000000000000",
+   "request_sha256": "a9e582194b8374596372dff8d42741b9fc027949f3b6acd1b01c0e0bb5aaeb76",
+   "response": "94010100810201020c000200000801a60100000009090401aa010000000d000120200000000000",
+   "response_sha256": "6fdd6c59a9435fc8ca3c46ae9ecfd34ef5e615908b4ef4c69315b28eb8b4832c",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 8
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 0
+    }
+   ]
+  },
+  {
+   "name": "table/no-consume",
+   "setup": "1 plank in the grid; the request names no slot",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 87
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 88
+    }
+   ],
+   "request": "9301018902030b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b7300010011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c00327bffffff0c0009000000000000000000",
+   "request_sha256": "2c31091011bfaaf183e1924a9cc916e003aeac80bfa985f4954c9ffd7fbb928e",
+   "response": "94010131890200",
+   "response_sha256": "245975dc4f48554ba8a685293c96dedc8121fcb0e19cf34f38ba9383dff807e9",
+   "status": 49,
+   "changes": []
+  },
+  {
+   "name": "table/consume-too-few",
+   "setup": "1 plank in the grid; the request consumes only 1 plank, from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 90
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 91
+    }
+   ],
+   "request": "9301019502040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505010c00005a00000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c003275ffffff0c0009000000000000000000",
+   "request_sha256": "2e039f9610c1f563ce2a874784ad43b9e2a80f71f1923b3e14c66a5943b98b4e",
+   "response": "94010113950200",
+   "response_sha256": "208ffb563d9ecdd6d1ba1ef526bbde7c441b9d453fdcff23cf9a24e11e81b557",
+   "status": 19,
+   "changes": []
+  },
+  {
+   "name": "table/consume-grid-only-2-in-grid",
+   "setup": "2 planks in the grid; the request consumes both from the grid slot",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 8,
+     "stack_id": 94
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 2,
+     "stack_id": 95
+    }
+   ],
+   "request": "930101a102040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020d00205f00000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c00326fffffff0c0009000000000000000000",
+   "request_sha256": "a983072261f4c4f1bcbc8bbe9013762b3ca565b6f51e2e447971614362b94121",
+   "response": "94010100a10201020d0001202000000000000c000109090401c001000000",
+   "response_sha256": "366b8d2815b38c701aa5cef4b63f8c79b3b2d413c48426d55248166e47c8163d",
+   "status": 0,
+   "changes": [
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 0
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "table/times-2-inventory",
+   "setup": "two crafts; 1 plank in the grid; the request consumes 4 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 98
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 99
+    }
+   ],
+   "request": "930101a902040b0dad0c02020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505040c00006200000011130101010f6d696e6563726166743a737469636b000800000a00000000000000000000020101083c00326bffffff0c0009000000000000000000",
+   "request_sha256": "353e28676b0041aeb007f830db94fb50a3870de638b19b630c277a9dce320697",
+   "response": "94010100a90201010c000200000501c40100000009090801c801000000",
+   "response_sha256": "0fe99d12de2eb7247a2e38ac540dbf837dfcc9810e46e71f71ee03a9ca5b6816",
+   "status": 0,
+   "changes": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 5
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 8
+    }
+   ]
+  },
+  {
+   "name": "table/times-2-mixed",
+   "setup": "two crafts; 1 plank in the grid; the request consumes the grid slot and 3 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 102
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 103
+    }
+   ],
+   "request": "930101b502050b0dad0c02020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505010d0020670000000505030c00006600000011130101010f6d696e6563726166743a737469636b000800000a00000000000000000000020101083c003265ffffff0c0009000000000000000000",
+   "request_sha256": "38d741889904663a52589b24de9ad63e8472bc2e7c00e537910e227ece5ff282",
+   "response": "94010100b50201020d0001202000000000000c000200000601cc0100000009090801d001000000",
+   "response_sha256": "ffe1ae446cdf106c038612ef2914bc75c5d15f2c41079a655fa3d6e8c0e646f4",
+   "status": 0,
+   "changes": [
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 0
+    },
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 6
+    },
+    {
+     "container": 12,
+     "slot": 9,
+     "count": 8
+    }
+   ]
+  },
+  {
+   "name": "table/hotbar-container",
+   "setup": "1 plank in the grid; the request consumes 2 from slot 0 named in the hotbar container (28)",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 106
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 107
+    }
+   ],
+   "request": "930101bd02040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505021c00006a00000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c003261ffffff0c0009000000000000000000",
+   "request_sha256": "2d54b0cd8cac238879290188aa56a0480a6a5ee5aa4d0362784e4db4b15ed83d",
+   "response": "9401011bbd0200",
+   "response_sha256": "b6ea87bb6969a3d3fc2ae6676c75293dbfc92f545455b9ed9668a3788e81c92b",
+   "status": 27,
+   "changes": []
+  },
+  {
+   "name": "table/plain-craft-with-inventory",
+   "setup": "1 plank in the grid; a plain CraftRecipe (not the recipe book) consuming the grid slot and 1 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 9,
+     "stack_id": 109
+    },
+    {
+     "container": 13,
+     "slot": 32,
+     "count": 1,
+     "stack_id": 110
+    }
+   ],
+   "request": "930101c902050a0cad0c010505010d00206e0000000505010c00006d00000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c00325bffffff0c0009000000000000000000",
+   "request_sha256": "d85e062f1fdc5cbe929b9738c5f61ba6930022b4bc579c7bfd397cba1995fdf7",
+   "response": "94010123c90200",
+   "response_sha256": "087035496eac2a2ab492639f0528f8ece541b93ff936c40a53cbf0c874d36b41",
+   "status": 35,
+   "changes": []
+  },
+  {
+   "name": "crafter/grid-empty",
+   "setup": "no planks in the grid; the request consumes 2 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 10,
+     "stack_id": 112
+    }
+   ],
+   "request": "930101d102040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c00007000000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c003257ffffff0c0009000000000000000000",
+   "request_sha256": "eee8c5ec53da81aac4ef6c3ddfd1019e620b7ad1a5e097eb0d713edfa798e44e",
+   "response": "94010107d10200",
+   "response_sha256": "c2afa746a7fd3dcd6325b3dbaa1418a9575f9f23b9adf5cde6a5d6e6c6c87f33",
+   "status": 7,
+   "changes": []
+  },
+  {
+   "name": "closed/grid-empty",
+   "setup": "no planks in the grid; the request consumes 2 from inventory slot 0",
+   "before": [
+    {
+     "container": 12,
+     "slot": 0,
+     "count": 10,
+     "stack_id": 2
+    }
+   ],
+   "request": "93010101040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c00000200000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032ffffffff0c0009000000000000000000",
+   "request_sha256": "24947ae757ffedf9fe2aab687810179c654a7057469f200152db70d023a48e1a",
+   "response": "940101070100",
+   "response_sha256": "abb37636a7778d9832d987ac123fd8dc44fa4ecf882df9c8be92b49f91920ae2",
+   "status": 7,
+   "changes": []
+  }
+ ]
+}
