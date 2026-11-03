@@ -8,7 +8,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -244,7 +243,7 @@ func createEnchantments(random *rand.Rand, stack item.Stack, value, level int) [
 		// Ensure that we don't have any conflicting enchantments. If so, remove them from the list of available
 		// enchantments.
 		lastEnchant := selectedEnchants[len(selectedEnchants)-1]
-		if availableEnchants = sliceutil.Filter(availableEnchants, func(enchant item.Enchantment) bool {
+		if availableEnchants = filter(availableEnchants, func(enchant item.Enchantment) bool {
 			return lastEnchant.Type().CompatibleWithEnchantment(enchant.Type())
 		}); len(availableEnchants) == 0 {
 			// We've exhausted all available enchantments.
@@ -338,4 +337,16 @@ func clamp(value, min, max int) int {
 		return max
 	}
 	return value
+}
+
+// filter iterates over elements of collection, returning an array of all
+// elements function c returns true for.
+func filter[E any](s []E, c func(E) bool) []E {
+	a := make([]E, 0, len(s))
+	for _, e := range s {
+		if c(e) {
+			a = append(a, e)
+		}
+	}
+	return a
 }

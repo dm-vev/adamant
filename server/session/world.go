@@ -12,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
@@ -725,7 +724,7 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 			out(&v2193.LevelEventPacket{
 				EventType: v2193.LevelEventParticleLegacyEvent | 57,
 				Position:  vec64To32(pos),
-				EventData: nbtconv.Int32FromRGBA(pa.Colour),
+				EventData: int32FromRGBA(pa.Colour),
 			})
 			return
 		}
@@ -793,7 +792,7 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 33,
 			Position:  vec64To32(pos),
-			EventData: nbtconv.Int32FromRGBA(pa.Colour),
+			EventData: int32FromRGBA(pa.Colour),
 		})
 	case particle.WaterDrip:
 		out(&v2193.LevelEventPacket{
@@ -836,7 +835,7 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 		out(&v2193.LevelEventPacket{
 			EventType: cauldronLevelEvents[pa.Kind],
 			Position:  vec64To32(pos),
-			EventData: nbtconv.Int32FromRGBA(pa.Colour),
+			EventData: int32FromRGBA(pa.Colour),
 		})
 	case particle.DripstoneDrip:
 		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
