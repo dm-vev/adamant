@@ -12,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
@@ -72,7 +73,7 @@ func TestMeleeHitStopsUpdatingRemovedTarget(t *testing.T) {
 					}
 				})
 				const marker = "melee-lifecycle-done"
-				s.SendMessage(marker)
+				s.SendMessage(text.Literal(marker))
 				conn.waitForMessage(t, marker)
 				if strings.Contains(logs.String(), "entity runtime ID not found") {
 					t.Errorf("attack used a removed entity: %s", &logs)

@@ -15,6 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -58,7 +59,7 @@ func TestReleaseItemResyncsOnlyWhenNothingWasConsumed(t *testing.T) {
 			}).Wait(context.Background()); err != nil {
 				t.Fatalf("add player: %v", err)
 			}
-			s.SendMessage("release-item-test-ready")
+			s.SendMessage(text.Literal("release-item-test-ready"))
 			conn.waitForMessage(t, "release-item-test-ready")
 			conn.reset()
 
@@ -80,7 +81,7 @@ func TestReleaseItemResyncsOnlyWhenNothingWasConsumed(t *testing.T) {
 			}
 
 			const marker = "release-item-test-marker"
-			s.SendMessage(marker)
+			s.SendMessage(text.Literal(marker))
 			conn.waitForMessage(t, marker)
 			if got := conn.inventoryContents(v2193.WindowIDInventory); got != test.wantInventoryContents {
 				t.Errorf("main inventory packets = %d, want %d", got, test.wantInventoryContents)

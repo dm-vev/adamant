@@ -7,6 +7,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
@@ -55,7 +56,7 @@ func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
 	output := &cmd.Output{}
 	output.Printt(native.DescriptionTranslation())
 	output.Printt(localized.DescriptionTranslation())
-	s.SendCommandOutput(output, language.Russian)
+	s.SendCommandOutput(client.CommandOutputOf(output, language.Russian))
 	pk := (s.testPacket()).(*v2193.CommandOutputPacket)
 	if text.Clean(pk.OutputMessages[0].Message) != "%commands.gamemode.description" || text.Clean(pk.OutputMessages[1].Message) != "Русское описание" {
 		t.Fatalf("translated output = %#v", pk.OutputMessages)

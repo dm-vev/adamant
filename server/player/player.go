@@ -39,6 +39,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/player/title"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -328,22 +329,23 @@ func (p *Player) Handle(h Handler) {
 }
 
 // Message sends a formatted message to the player. The message is formatted following the rules of
-// fmt.Sprintln, however the newline at the end is not written.
+// fmt.Sprintln, however the newline at the end is not written, and read as a legacy string, with § codes.
+// A lone text.Text is sent as it is.
 func (p *Player) Message(a ...any) {
-	p.session().SendMessage(format(a))
+	p.session().SendMessage(formatText(a))
 }
 
 // Messagef sends a formatted message using a specific format to the player. The message is formatted
-// according to the fmt.Sprintf formatting rules.
+// according to the fmt.Sprintf formatting rules and read as a legacy string, with § codes.
 func (p *Player) Messagef(f string, a ...any) {
-	p.session().SendMessage(fmt.Sprintf(f, a...))
+	p.session().SendMessage(text.ParseLegacy(fmt.Sprintf(f, a...)))
 }
 
 // Messaget sends a translatable message to a player and parameterises it using
-// the arguments passed. Messaget panics if an incorrect amount of arguments
-// is passed.
+// the arguments passed, in the language of the player. Messaget panics if an
+// incorrect amount of arguments is passed.
 func (p *Player) Messaget(t chat.Translation, a ...any) {
-	p.session().SendTranslation(t, p.locale, a)
+	p.session().SendMessage(t.F(a...).Text(p.locale))
 }
 
 // SendPopup sends a formatted popup to the player. The popup is shown above the hotbar of the player and
@@ -496,7 +498,7 @@ func (p *Player) Transfer(address string) error {
 // also shown to other operators as "[Player: message]" and logged.
 func (p *Player) SendCommandOutput(output *cmd.Output) {
 	if p.tx == nil {
-		p.session().SendCommandOutput(output, p.locale)
+		p.session().SendCommandOutput(client.CommandOutputOf(output, p.locale))
 		return
 	}
 	w := p.tx.World()
@@ -513,7 +515,7 @@ func (p *Player) SendCommandOutput(output *cmd.Output) {
 	if !w.GameRuleBool("send_command_feedback") {
 		output = output.WithoutMessages()
 	}
-	p.session().SendCommandOutput(output, p.locale)
+	p.session().SendCommandOutput(client.CommandOutputOf(output, p.locale))
 }
 
 // SendDialogue sends an NPC dialogue to the player, using the entity passed as the entity that the dialogue
@@ -5230,6 +5232,17 @@ func (p *Player) resendNearbyBlock(pos cube.Pos) {
 // end, which is typically used for sending messages, popups and tips.
 func format(a []any) string {
 	return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintln(a...), "\n"), "\n")
+}
+
+// formatText returns the values a as text: a lone text.Text as it is, any
+// other values formatted by format and read as a legacy string, with § codes.
+func formatText(a []any) text.Text {
+	if len(a) == 1 {
+		if t, ok := a[0].(text.Text); ok {
+			return t
+		}
+	}
+	return text.ParseLegacy(format(a))
 }
 
 // guardedByPiglins reports if a block is in #guarded_by_piglins.

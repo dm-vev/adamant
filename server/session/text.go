@@ -4,14 +4,26 @@ import (
 	"time"
 
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
-	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/scoreboard"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"golang.org/x/text/language"
 )
 
-// SendMessage ...
-func (s *Session) SendMessage(message string) {
+// SendMessage shows t in the chat. A text that holds a translation is sent
+// as a translated Text, which the client translates into its language, with
+// the message and parameters of bedrocktext.Message; any other is sent as it
+// is, as a raw one.
+func (s *Session) SendMessage(t text.Text) {
+	message, params, translated := bedrocktext.Message(t)
+	if translated {
+		s.writePacket(&v2193.TextPacket{
+			TextType:         v2193.TextTypeTranslation,
+			NeedsTranslation: true,
+			Message:          message,
+			Parameters:       params,
+		})
+		return
+	}
 	if message == "" {
 		// Bedrock refuses a Text without a message; a space shows the
 		// empty line Java shows.
@@ -20,17 +32,6 @@ func (s *Session) SendMessage(message string) {
 	s.writePacket(&v2193.TextPacket{
 		TextType: v2193.TextTypeRaw,
 		Message:  message,
-	})
-}
-
-// SendTranslation sends a translation localised for a specific language.Tag.
-func (s *Session) SendTranslation(t chat.Translation, l language.Tag, a []any) {
-	message, params, _ := bedrocktext.Message(t.F(a...).Text(l))
-	s.writePacket(&v2193.TextPacket{
-		TextType:         v2193.TextTypeTranslation,
-		NeedsTranslation: true,
-		Message:          message,
-		Parameters:       params,
 	})
 }
 
@@ -166,16 +167,16 @@ func (s *Session) RemoveScoreboard() {
 }
 
 // SendBossBar sends a boss bar using the default identifier.
-func (s *Session) SendBossBar(text string, colour uint8, healthPercentage float64) {
-	s.SendBossBarID("default", text, colour, healthPercentage)
+func (s *Session) SendBossBar(title string, colour uint8, healthPercentage float64) {
+	s.SendBossBarID("default", title, colour, healthPercentage)
 }
 
 // SendBossBarID shows or updates the independently identified boss bar.
-func (s *Session) SendBossBarID(id, text string, colour uint8, healthPercentage float64) {
+func (s *Session) SendBossBarID(id, title string, colour uint8, healthPercentage float64) {
 	s.writePacket(&v2193.BossEventPacket{
 		BossEntityUniqueID: s.bossBarEntityID(id),
 		EventType:          v2193.BossEventShow,
-		BossBarTitle:       text,
+		BossBarTitle:       title,
 		HealthPercentage:   float32(healthPercentage),
 		Colour:             colour,
 	})
@@ -224,16 +225,16 @@ func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDurat
 }
 
 // SendTitle ...
-func (s *Session) SendTitle(text string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetTitle, Text: text})
+func (s *Session) SendTitle(message string) {
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetTitle, Text: message})
 }
 
 // SendSubtitle ...
-func (s *Session) SendSubtitle(text string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetSubtitle, Text: text})
+func (s *Session) SendSubtitle(message string) {
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetSubtitle, Text: message})
 }
 
 // SendActionBarMessage ...
-func (s *Session) SendActionBarMessage(text string) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetActionBar, Text: text})
+func (s *Session) SendActionBarMessage(message string) {
+	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetActionBar, Text: message})
 }

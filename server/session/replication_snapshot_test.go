@@ -18,6 +18,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -55,7 +56,7 @@ func TestReplicationSnapshot(t *testing.T) {
 	step := func(heading string, keep bool) {
 		t.Helper()
 		marker := "end of " + heading
-		viewer.SendMessage(marker)
+		viewer.SendMessage(text.Literal(marker))
 		if keep {
 			fmt.Fprintf(&out, "== %s\n", heading)
 		}

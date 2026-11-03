@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
@@ -313,7 +314,7 @@ func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 // Bedrock refuses as it is: a space goes instead, as Java shows a line.
 func TestEmptyMessageShowsAnEmptyLine(t *testing.T) {
 	s := &Session{holdPackets: 1}
-	s.SendMessage("")
+	s.SendMessage(text.Literal(""))
 	if text, ok := (s.testPacket()).(*v2193.TextPacket); !ok || text.Message != " " {
 		t.Fatalf("sent %+v, want a Text of one space", text)
 	}

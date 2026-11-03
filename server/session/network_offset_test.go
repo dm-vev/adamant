@@ -16,6 +16,7 @@ import (
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -175,7 +176,7 @@ func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
 		t.Fatal(err)
 	}
 	const marker = "item-merge-done"
-	viewer.SendMessage(marker)
+	viewer.SendMessage(text.Literal(marker))
 	var spawns, updates int
 	var survivorID, updatedID uint64
 	timer := time.NewTimer(5 * time.Second)

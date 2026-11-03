@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/go-gl/mathgl/mgl64"
@@ -16,23 +16,19 @@ import (
 )
 
 // SendCommandOutput sends the output of a command to the player. It will be shown to the caller of the
-// command, which might be the player or a websocket server.
-func (s *Session) SendCommandOutput(output *cmd.Output, l language.Tag) {
+// command, which might be the player or a websocket server. Each message is written with
+// bedrocktext.Message: a translation as its key and parameters, which the client translates.
+func (s *Session) SendCommandOutput(o client.CommandOutput) {
 	if s == Nop {
 		return
 	}
-	messages := make([]v2193.CommandOutputMessage, 0, output.MessageCount()+output.ErrorCount())
-	for _, message := range output.Messages() {
-		om := v2193.CommandOutputMessage{Success: true, Message: message.String()}
-		if t, ok := message.(chat.Texter); ok {
-			om.Message, om.Parameters, _ = bedrocktext.Message(t.Text(l))
-		}
-		messages = append(messages, om)
-	}
-	for _, err := range output.Errors() {
-		om := v2193.CommandOutputMessage{Message: err.Error()}
-		if t, ok := err.(chat.Texter); ok {
-			om.Message, om.Parameters, _ = bedrocktext.Message(t.Text(l))
+	messages := make([]v2193.CommandOutputMessage, 0, len(o.Messages))
+	successes := uint32(0)
+	for _, m := range o.Messages {
+		om := v2193.CommandOutputMessage{Success: m.Success}
+		om.Message, om.Parameters, _ = bedrocktext.Message(m.Text)
+		if m.Success {
+			successes++
 		}
 		messages = append(messages, om)
 	}
@@ -40,7 +36,7 @@ func (s *Session) SendCommandOutput(output *cmd.Output, l language.Tag) {
 	s.writePacket(&v2193.CommandOutputPacket{
 		CommandOrigin:  s.commandOriginSnapshot(),
 		OutputType:     v2193.CommandOutputTypeAllOutput,
-		SuccessCount:   uint32(output.MessageCount()),
+		SuccessCount:   successes,
 		OutputMessages: messages,
 	})
 }
