@@ -103,6 +103,7 @@ func tickAreasWithoutRaces(t *testing.T, regionCentres []cube.Pos, phasesPerTick
 
 	viewers := make([]*countingViewer, len(regionCentres))
 	var players []*world.EntityHandle
+	deaths := make([]atomic.Int64, len(regionCentres))
 	<-w.Exec(func(tx *world.Tx) {
 		for i, c := range regionCentres {
 			// The loaders make the columns around the centres tick actively.
@@ -110,7 +111,7 @@ func tickAreasWithoutRaces(t *testing.T, regionCentres []cube.Pos, phasesPerTick
 			l := world.NewLoader(4, w, viewers[i])
 			l.Move(tx, c.Vec3Centre())
 			l.Load(tx, 128)
-			players = append(players, fillRegionArea(tx, c))
+			players = append(players, fillRegionArea(tx, c, &deaths[i]))
 		}
 		// An arrow in the first area shot by the player of the second: its
 		// owner is in another region while it flies.
@@ -160,17 +161,27 @@ func tickAreasWithoutRaces(t *testing.T, regionCentres []cube.Pos, phasesPerTick
 			t.Error("no entity left in the world")
 		}
 		t.Logf("%d ticks, %d region phases, %d entities left", ticks, w.RegionPhases(), alive)
+		// The players have no client, so one killed by the mobs leaves the
+		// world after its death animation: only one that left without dying
+		// is lost.
+		died := 0
 		for i, h := range players {
-			if _, ok := h.Entity(tx); !ok {
-				t.Errorf("player of area %d left the world", i)
+			n := deaths[i].Load()
+			if n > 0 {
+				died++
+			}
+			if _, ok := h.Entity(tx); !ok && n == 0 {
+				t.Errorf("player of area %d left the world without dying", i)
 			}
 		}
+		t.Logf("%d of %d players died", died, len(players))
 	})
 }
 
 // fillRegionArea builds a village with farms around c and fills it with
-// mobs and a player, whose handle it returns.
-func fillRegionArea(tx *world.Tx, c cube.Pos) *world.EntityHandle {
+// mobs and a player, whose handle it returns and whose deaths it counts in
+// deaths.
+func fillRegionArea(tx *world.Tx, c cube.Pos, deaths *atomic.Int64) *world.EntityHandle {
 	at := func(x, y, z int) cube.Pos { return cube.Pos{c[0] + x, y, c[2] + z} }
 	for x := -24; x < 24; x++ {
 		for z := -24; z < 24; z++ {
@@ -203,6 +214,7 @@ func fillRegionArea(tx *world.Tx, c cube.Pos) *world.EntityHandle {
 	}
 	conf := player.Config{Position: c.Add(cube.Pos{0, 64, 0}).Vec3Middle(), GameMode: world.GameModeSurvival}
 	p := tx.AddEntity(world.EntitySpawnOpts{Position: conf.Position}.New(player.Type, conf))
+	p.(*player.Player).Handle(deathCountingHandler{deaths: deaths})
 	for i := 0; i < 3; i++ {
 		tx.AddEntity(entity.NewZombie(spawn(-15+i*5, -15)))
 		tx.AddEntity(entity.NewSkeleton(spawn(-15+i*5, -10)))
@@ -226,6 +238,16 @@ func fillRegionArea(tx *world.Tx, c cube.Pos) *world.EntityHandle {
 	tx.AddEntity(entity.NewSlime(spawn(10, 10)))
 	tx.AddEntity(entity.NewTNT(world.EntitySpawnOpts{Position: at(-6, 64, 0).Vec3Middle()}, 3*time.Second, nil))
 	return p.H()
+}
+
+// deathCountingHandler counts the deaths of a player.
+type deathCountingHandler struct {
+	player.NopHandler
+	deaths *atomic.Int64
+}
+
+func (h deathCountingHandler) HandleDeath(*player.Player, world.DamageSource, *bool) {
+	h.deaths.Add(1)
 }
 
 // regionTestGenerator generates flat grass over dirt and stone.
