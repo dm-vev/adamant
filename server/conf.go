@@ -361,81 +361,12 @@ func parseDimension(name string) (world.Dimension, bool) {
 // Config by calling UserConfig.Config().
 type UserConfig struct {
 	// Network holds settings related to network aspects of the server.
-	Network struct {
-		// Address is the address on which the server should listen. Players may
-		// connect to this address in order to join.
-		Address string
-		// Transport names the transport players join over: "nethernet", the
-		// only one, which an empty value also selects.
-		Transport string
-		// IdentityFile stores the NetherNet server's persistent P-384 identity key.
-		// An empty value uses "server-key.pem".
-		IdentityFile string
-		// EnableQuery controls whether Bedrock Query responses are enabled. Query
-		// requests arrive on the UDP port of the game, beside NetherNet.
-		// When disabled, query packets are ignored (no reply is sent).
-		EnableQuery bool
-		// QueryPlugins controls whether the query response should list plugins.
-		// When disabled, the query `plugins` field only contains the engine label.
-		QueryPlugins bool
-		// LAN shows the server in the LAN tab of clients on the same network
-		// and lets them join from there, over UDP port 7551 as the game does.
-		LAN bool
-		// HTTPSDomain is the domain of the server for its signaling over
-		// HTTPS: clients that join by an https:// address trust its
-		// certificate rather than its key on first use. The server obtains
-		// the certificate from Let's Encrypt and renews it, proving the domain
-		// on TCP port 80, which must reach the server. Plain HTTP stays served
-		// on the port of the game. An empty value serves plain HTTP alone.
-		HTTPSDomain string
-		// ACMEEmail is the contact of the account of the server at the
-		// certificate authority, optional.
-		ACMEEmail string
-		// ACMECacheDir keeps the account and the certificate across restarts,
-		// as the authority issues a domain few certificates a week. An empty
-		// value uses "acme".
-		ACMECacheDir string
-		// ACMEDirectory is the directory URL of the certificate authority.
-		// An empty value uses Let's Encrypt.
-		ACMEDirectory string
-		// ACMEChallengeAddress is where the server answers the challenges of
-		// the authority, which asks on port 80: another address suits a port
-		// forwarded to it. An empty value uses ":80".
-		ACMEChallengeAddress string
-	}
+	Network networkConfig
 	// Xbox holds the publishing of the server on Xbox Live.
-	Xbox struct {
-		// Enabled publishes the server on Xbox Live through the account it
-		// signs in as, so that friends of the account see it in their friends
-		// list and join from there. It needs the NetherNet transport. The
-		// account is signed in on the first start, with a code the console
-		// shows to enter at a page of Microsoft.
-		Enabled bool
-		// TokenFile keeps the sign-in of the account across restarts. It holds
-		// secrets. An empty value uses "xbox-token.json".
-		TokenFile string
-		// AcceptFriends takes the friend requests the account receives and
-		// invites each new friend to the server, so that players add the
-		// account and join.
-		AcceptFriends bool
-		// LegacySignaling has friends signal their joins over the protocol the
-		// game spoke before JSON-RPC, a fallback for when the service of the
-		// current one fails.
-		LegacySignaling bool
-	}
+	Xbox xboxConfig
 	// Proxy holds the links that proxies carry their players to the server
 	// over, beside the clients that join it themselves.
-	Proxy struct {
-		// Address is the TCP address proxies dial their links to, such as
-		// "127.0.0.1:19133". An empty value takes no proxies. Links are not
-		// encrypted: they are for a network the proxies and the server
-		// trust.
-		Address string
-		// Secret is the secret the proxies sign the players they open with,
-		// of 32 characters at least. Whoever knows it joins as anyone it
-		// likes, so it must stay as secret as a password.
-		Secret string
-	}
+	Proxy  proxyConfig
 	Server struct {
 		// Name is the name of the server as it shows up in the server list.
 		Name string
@@ -542,6 +473,109 @@ type UserConfig struct {
 	}
 }
 
+// networkConfig holds settings related to network aspects of the server:
+// the [Network] table of config.toml.
+type networkConfig struct {
+	// Address is the address on which the server should listen. Players may
+	// connect to this address in order to join.
+	Address string
+	// Transport names the transport players join over: "nethernet", the
+	// only one, which an empty value also selects.
+	Transport string
+	// IdentityFile stores the NetherNet server's persistent P-384 identity key.
+	// An empty value uses "server-key.pem".
+	IdentityFile string
+	// EnableQuery controls whether Bedrock Query responses are enabled. Query
+	// requests arrive on the UDP port of the game, beside NetherNet.
+	// When disabled, query packets are ignored (no reply is sent).
+	EnableQuery bool
+	// QueryPlugins controls whether the query response should list plugins.
+	// When disabled, the query `plugins` field only contains the engine label.
+	QueryPlugins bool
+	// LAN shows the server in the LAN tab of clients on the same network
+	// and lets them join from there, over UDP port 7551 as the game does.
+	LAN bool
+	// HTTPSDomain is the domain of the server for its signaling over
+	// HTTPS: clients that join by an https:// address trust its
+	// certificate rather than its key on first use. The server obtains
+	// the certificate from Let's Encrypt and renews it, proving the domain
+	// on TCP port 80, which must reach the server. Plain HTTP stays served
+	// on the port of the game. An empty value serves plain HTTP alone.
+	HTTPSDomain string
+	// ACMEEmail is the contact of the account of the server at the
+	// certificate authority, optional.
+	ACMEEmail string
+	// ACMECacheDir keeps the account and the certificate across restarts,
+	// as the authority issues a domain few certificates a week. An empty
+	// value uses "acme".
+	ACMECacheDir string
+	// ACMEDirectory is the directory URL of the certificate authority.
+	// An empty value uses Let's Encrypt.
+	ACMEDirectory string
+	// ACMEChallengeAddress is where the server answers the challenges of
+	// the authority, which asks on port 80: another address suits a port
+	// forwarded to it. An empty value uses ":80".
+	ACMEChallengeAddress string
+}
+
+// xboxConfig holds the publishing of the server on Xbox Live: the [Xbox]
+// table of config.toml.
+type xboxConfig struct {
+	// Enabled publishes the server on Xbox Live through the account it
+	// signs in as, so that friends of the account see it in their friends
+	// list and join from there. It needs the NetherNet transport. The
+	// account is signed in on the first start, with a code the console
+	// shows to enter at a page of Microsoft.
+	Enabled bool
+	// TokenFile keeps the sign-in of the account across restarts. It holds
+	// secrets. An empty value uses "xbox-token.json".
+	TokenFile string
+	// AcceptFriends takes the friend requests the account receives and
+	// invites each new friend to the server, so that players add the
+	// account and join.
+	AcceptFriends bool
+	// LegacySignaling has friends signal their joins over the protocol the
+	// game spoke before JSON-RPC, a fallback for when the service of the
+	// current one fails.
+	LegacySignaling bool
+}
+
+// proxyConfig holds the links that proxies carry their players to the
+// server over, beside the clients that join it themselves: the [Proxy]
+// table of config.toml.
+type proxyConfig struct {
+	// Address is the TCP address proxies dial their links to, such as
+	// "127.0.0.1:19133". An empty value takes no proxies. Links are not
+	// encrypted: they are for a network the proxies and the server
+	// trust.
+	Address string
+	// Secret is the secret the proxies sign the players they open with,
+	// of 32 characters at least. Whoever knows it joins as anyone it
+	// likes, so it must stay as secret as a password.
+	Secret string
+}
+
+// netherNetConfig holds the options of the NetherNet listener: the
+// [Network], [Xbox] and [Proxy] tables of config.toml, which
+// UserConfig.Config fills it with, and the settings of Bedrock Edition
+// that the Config of the server holds, which listener fills it with.
+type netherNetConfig struct {
+	Network networkConfig
+	Xbox    xboxConfig
+	Proxy   proxyConfig
+	// Resources are the resource packs offered to clients, and
+	// ResourcesRequired makes clients take them.
+	Resources         []*resource.Pack
+	ResourcesRequired bool
+	// AuthDisabled lets clients join without Xbox Live.
+	AuthDisabled bool
+	// MuteEmoteChat mutes the emote chat of players.
+	MuteEmoteChat bool
+	// Compression compresses the batches of the connections: bedrock.Flate
+	// (at level 1 if nil) or bedrock.None.
+	Compression bedrock.Compression
+}
+
 // Config converts a UserConfig to a Config, so that it may be used for creating
 // a Server. An error is returned if creating data providers or loading
 // resources failed.
@@ -644,7 +678,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 			return conf, fmt.Errorf("create player provider: %w", err)
 		}
 	}
-	conf.Listeners = append(conf.Listeners, uc.listenerFunc)
+	conf.Listeners = append(conf.Listeners, netherNetConfig{Network: uc.Network, Xbox: uc.Xbox, Proxy: uc.Proxy}.listener)
 	return conf, nil
 }
 

@@ -32,21 +32,23 @@ import (
 	"github.com/dm-vev/adamant/net/proxy"
 )
 
-// listenerFunc returns the NetherNet listener of the server, the standard
+// listener returns the NetherNet listener of the server, the standard
 // listener used when UserConfig.Config() is called.
-func (uc UserConfig) listenerFunc(conf Config, host Host) (Listener, error) {
-	l, err := uc.netherNetListener(conf, host)
+func (c netherNetConfig) listener(conf Config, host Host) (Listener, error) {
+	c.Resources, c.ResourcesRequired = conf.Resources, conf.ResourcesRequired
+	c.AuthDisabled, c.MuteEmoteChat, c.Compression = conf.AuthDisabled, conf.MuteEmoteChat, conf.Compression
+	l, err := c.netherNetListener(conf, host)
 	if err != nil {
 		return nil, err
 	}
-	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: conf.MuteEmoteChat}), nil
+	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
 }
 
 // netherNetListener returns the connections of the NetherNet listener of
 // the server, admitted to it as the Config says. Queries are answered
 // from the server host.
-func (uc UserConfig) netherNetListener(conf Config, host Host) (session.ConnListener, error) {
-	identityFile := uc.Network.IdentityFile
+func (c netherNetConfig) netherNetListener(conf Config, host Host) (session.ConnListener, error) {
+	identityFile := c.Network.IdentityFile
 	if identityFile == "" {
 		identityFile = "server-key.pem"
 	}
@@ -60,23 +62,23 @@ func (uc UserConfig) netherNetListener(conf Config, host Host) (session.ConnList
 			return conf.Allower.Allow(addr, session.IdentityOf(id), session.ProfileOf(d))
 		}
 	}
-	listen := nethernet.ListenConfig{Key: key, AllowAnonymous: conf.AuthDisabled}
+	listen := nethernet.ListenConfig{Key: key, AllowAnonymous: c.AuthDisabled}
 	var certs *acme.Manager
-	if domain := uc.Network.HTTPSDomain; domain != "" {
-		cacheDir := uc.Network.ACMECacheDir
+	if domain := c.Network.HTTPSDomain; domain != "" {
+		cacheDir := c.Network.ACMECacheDir
 		if cacheDir == "" {
 			cacheDir = "acme"
 		}
-		certs = &acme.Manager{Directory: uc.Network.ACMEDirectory, Domain: domain, Email: uc.Network.ACMEEmail, CacheDir: cacheDir}
+		certs = &acme.Manager{Directory: c.Network.ACMEDirectory, Domain: domain, Email: c.Network.ACMEEmail, CacheDir: cacheDir}
 		listen.TLSConfig = &tls.Config{GetCertificate: certs.GetCertificate, MinVersion: tls.VersionTLS12}
 	}
-	if uc.Network.EnableQuery {
+	if c.Network.EnableQuery {
 		// Server lists send query requests to the port of the game, which
 		// is the port of the NetherNet sockets.
-		local, err := netip.ParseAddrPort(uc.Network.Address)
+		local, err := netip.ParseAddrPort(c.Network.Address)
 		if err != nil {
 			local = netip.AddrPortFrom(netip.IPv4Unspecified(), 19132)
-			if _, port, err := net.SplitHostPort(uc.Network.Address); err == nil {
+			if _, port, err := net.SplitHostPort(c.Network.Address); err == nil {
 				if p, err := strconv.ParseUint(port, 10, 16); err == nil {
 					local = netip.AddrPortFrom(netip.IPv4Unspecified(), uint16(p))
 				}
@@ -97,32 +99,32 @@ func (uc UserConfig) netherNetListener(conf Config, host Host) (session.ConnList
 		Log:                    conf.Log,
 		MaximumPlayers:         conf.MaxPlayers,
 		StatusProvider:         netconnStatusProvider(conf.StatusProvider),
-		AuthenticationDisabled: conf.AuthDisabled,
-		ResourcePacks:          conf.Resources,
-		TexturePacksRequired:   conf.ResourcesRequired,
+		AuthenticationDisabled: c.AuthDisabled,
+		ResourcePacks:          c.Resources,
+		TexturePacksRequired:   c.ResourcesRequired,
 		Validate:               validateLogin,
 		Allow:                  allow,
-		Compression:            batchCompression(conf.Compression),
-	}.Listen(listen, uc.Network.Address)
+		Compression:            batchCompression(c.Compression),
+	}.Listen(listen, c.Network.Address)
 	if err != nil {
 		return nil, fmt.Errorf("create NetherNet listener: %w", err)
 	}
 	conf.Log.Info("NetherNet listener running.", "addr", l.Addr())
 	if certs != nil {
-		keepCertificate(l, certs, uc.Network.ACMEChallengeAddress, conf.Log)
+		keepCertificate(l, certs, c.Network.ACMEChallengeAddress, conf.Log)
 	}
-	if uc.Xbox.Enabled {
-		tokenFile := uc.Xbox.TokenFile
+	if c.Xbox.Enabled {
+		tokenFile := c.Xbox.TokenFile
 		if tokenFile == "" {
 			tokenFile = "xbox-token.json"
 		}
-		go publishXbox(l, tokenFile, xboxOptions{acceptFriends: uc.Xbox.AcceptFriends, legacySignaling: uc.Xbox.LegacySignaling}, conf.Log)
+		go publishXbox(l, tokenFile, xboxOptions{acceptFriends: c.Xbox.AcceptFriends, legacySignaling: c.Xbox.LegacySignaling}, conf.Log)
 	}
-	if uc.Network.LAN {
-		publishLAN(l, conf, "")
+	if c.Network.LAN {
+		publishLAN(l, c, conf.Log, "")
 	}
-	if uc.Proxy.Address != "" {
-		if err := serveProxies(l, uc.Proxy.Address, uc.Proxy.Secret, conf.Log); err != nil {
+	if c.Proxy.Address != "" {
+		if err := serveProxies(l, c.Proxy.Address, c.Proxy.Secret, conf.Log); err != nil {
 			_ = l.Close()
 			return nil, err
 		}
@@ -197,7 +199,7 @@ func serveProxies(l *netconn.Listener, addr, secret string, log *slog.Logger) er
 // the status of the listener and serves the signaling of their joins, on
 // addr, port 7551 if empty. A port taken by another game leaves the server
 // out of the LAN tab.
-func publishLAN(l *netconn.Listener, conf Config, addr string) *lan.Listener {
+func publishLAN(l *netconn.Listener, c netherNetConfig, log *slog.Logger, addr string) *lan.Listener {
 	ll, err := lan.Config{Addr: addr, Data: func() lan.ServerData {
 		st := l.ServerStatus()
 		return lan.ServerData{
@@ -207,23 +209,23 @@ func publishLAN(l *netconn.Listener, conf Config, addr string) *lan.Listener {
 			LevelName:             st.ServerSubName,
 			PlayerCount:           int32(st.PlayerCount),
 			MaxPlayerCount:        int32(st.MaxPlayers),
-			AcceptsOnlineAuth:     !conf.AuthDisabled,
-			AcceptsSelfSignedAuth: conf.AuthDisabled,
+			AcceptsOnlineAuth:     !c.AuthDisabled,
+			AcceptsSelfSignedAuth: c.AuthDisabled,
 			ConnectionType:        lan.ConnectionTypeLAN,
 		}
 	}}.Listen()
 	if err != nil {
-		conf.Log.Warn("The server does not show on LAN.", "err", err)
+		log.Warn("The server does not show on LAN.", "err", err)
 		return nil
 	}
-	conf.Log.Info("The server shows on LAN.", "addr", ll.Addr(), "network-id", ll.NetworkID())
+	log.Info("The server shows on LAN.", "addr", ll.Addr(), "network-id", ll.NetworkID())
 	go func() {
 		<-l.Closed()
 		_ = ll.Close()
 	}()
 	go func() {
 		if err := l.Serve(ll); err != nil && !errors.Is(err, net.ErrClosed) {
-			conf.Log.Warn("LAN signaling ended.", "err", err)
+			log.Warn("LAN signaling ended.", "err", err)
 		}
 	}()
 	return ll

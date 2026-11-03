@@ -113,11 +113,11 @@ func TestServerIdentityRejectsInvalidExistingKeyWithoutReplacingIt(t *testing.T)
 // spawned, and disconnected with a message. The listener answers the
 // query of server lists on the same port.
 func TestNetherNetListenerServesSessions(t *testing.T) {
-	uc := DefaultConfig()
-	uc.Network.Address = "127.0.0.1:0"
-	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
-	uc.Network.EnableQuery = true
-	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}, nil)
+	c := testNetherNetConfig()
+	c.Network.Address = "127.0.0.1:0"
+	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	c.Network.EnableQuery = true
+	l, err := c.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), StatusProvider: statusProvider{name: "Adamant"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,16 +201,16 @@ func TestBatchCompression(t *testing.T) {
 // TestNetherNetListenerOnLAN shows the server to a client looking for games
 // on the network, which joins it over the signaling of the LAN.
 func TestNetherNetListenerOnLAN(t *testing.T) {
-	uc := DefaultConfig()
-	uc.Network.Address = "127.0.0.1:0"
-	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
-	conf := Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}
-	l, err := uc.netherNetListener(conf, nil)
+	c := testNetherNetConfig()
+	c.Network.Address = "127.0.0.1:0"
+	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	conf := Config{Log: slog.New(slog.DiscardHandler), StatusProvider: statusProvider{name: "Adamant"}}
+	l, err := c.netherNetListener(conf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer l.Close()
-	srv := publishLAN(l.(netherNetListener).Listener, conf, "127.0.0.1:0")
+	srv := publishLAN(l.(netherNetListener).Listener, c, conf.Log, "127.0.0.1:0")
 	if srv == nil {
 		t.Fatal("the server does not show on LAN")
 	}
@@ -255,13 +255,13 @@ func TestNetherNetListenerOnLAN(t *testing.T) {
 // names: a player a proxy opens on one logs in, and a secret short enough
 // to guess keeps the server from starting.
 func TestNetherNetListenerTakesProxies(t *testing.T) {
-	uc := DefaultConfig()
-	uc.Network.Address = "127.0.0.1:0"
-	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
-	uc.Proxy.Address = "127.0.0.1:0"
-	uc.Proxy.Secret = "short"
-	conf := Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}
-	if l, err := uc.netherNetListener(conf, nil); err == nil {
+	c := testNetherNetConfig()
+	c.Network.Address = "127.0.0.1:0"
+	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	c.Proxy.Address = "127.0.0.1:0"
+	c.Proxy.Secret = "short"
+	conf := Config{Log: slog.New(slog.DiscardHandler), StatusProvider: statusProvider{name: "Adamant"}}
+	if l, err := c.netherNetListener(conf, nil); err == nil {
 		_ = l.Close()
 		t.Fatal("the server started with a secret of 5 characters")
 	}
@@ -271,10 +271,10 @@ func TestNetherNetListenerTakesProxies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	uc.Proxy.Address = probe.Addr().String()
+	c.Proxy.Address = probe.Addr().String()
 	_ = probe.Close()
-	uc.Proxy.Secret = strings.Repeat("s", minProxySecret)
-	l, err := uc.netherNetListener(conf, nil)
+	c.Proxy.Secret = strings.Repeat("s", minProxySecret)
+	l, err := c.netherNetListener(conf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +285,7 @@ func TestNetherNetListenerTakesProxies(t *testing.T) {
 			accepted <- c
 		}
 	}()
-	link, err := proxy.Dial(uc.Proxy.Address, []byte(uc.Proxy.Secret))
+	link, err := proxy.Dial(c.Proxy.Address, []byte(c.Proxy.Secret))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,14 +341,14 @@ func TestNetherNetListenerServesHTTPS(t *testing.T) {
 	pool := x509.NewCertPool()
 	pool.AddCert(leaf)
 
-	uc := DefaultConfig()
-	uc.Network.Address = "127.0.0.1:0"
-	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
-	uc.Network.HTTPSDomain = "example.org"
-	uc.Network.ACMECacheDir = cache
-	uc.Network.ACMEDirectory = "http://127.0.0.1:1/unused"
-	uc.Network.ACMEChallengeAddress = "127.0.0.1:0"
-	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}, nil)
+	c := testNetherNetConfig()
+	c.Network.Address = "127.0.0.1:0"
+	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	c.Network.HTTPSDomain = "example.org"
+	c.Network.ACMECacheDir = cache
+	c.Network.ACMEDirectory = "http://127.0.0.1:1/unused"
+	c.Network.ACMEChallengeAddress = "127.0.0.1:0"
+	l, err := c.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), StatusProvider: statusProvider{name: "Adamant"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -437,4 +437,11 @@ func TestNetconnStatusMatchesProvider(t *testing.T) {
 	if netconnStatusProvider(nil) != nil {
 		t.Error("no provider is not left to netconn's default")
 	}
+}
+
+// testNetherNetConfig returns the options of a NetherNet listener of the
+// default config.toml that lets clients join without Xbox Live.
+func testNetherNetConfig() netherNetConfig {
+	uc := DefaultConfig()
+	return netherNetConfig{Network: uc.Network, Xbox: uc.Xbox, Proxy: uc.Proxy, AuthDisabled: true}
 }
