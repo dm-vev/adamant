@@ -76,7 +76,8 @@ type Config struct {
 	// kicking all online players. If set, JoinMessage and QuitMessage must have
 	// exactly 1 argument, which will be replaced with the name of the player
 	// joining or quitting.
-	// ShutdownMessage is set to chat.MessageServerDisconnect if empty.
+	// ShutdownMessage must have no arguments. It is set to
+	// chat.MessageServerDisconnect if empty.
 	JoinMessage, QuitMessage, ShutdownMessage chat.Translation
 	// StatusProvider provides the server status shown to players in the server
 	// list. By default, StatusProvider will show the server name from the Name

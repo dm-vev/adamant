@@ -20,7 +20,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/iteminternal"
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
@@ -393,7 +392,7 @@ func (srv *Server) close() {
 
 	srv.conf.Log.Debug("Disconnecting players...")
 	for p := range srv.Players(nil) {
-		p.Disconnect(chat.MessageServerDisconnect.F().Text(p.Locale()))
+		p.Disconnect(srv.conf.ShutdownMessage.F().Text(p.Locale()))
 	}
 	srv.pwg.Wait()
 
