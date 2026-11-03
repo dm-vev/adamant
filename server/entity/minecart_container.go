@@ -17,13 +17,11 @@ import (
 
 // The container types of container minecarts in their actor data (CartChest
 // 10, CartHopper 11). BDS 1.26.52.3 opens their inventories with others: a
-// chest minecart as a plain container (0), a hopper minecart as a hopper (8).
+// chest minecart as a plain container (0), a hopper minecart as a hopper (8),
+// which the session does for their ContainerKind.
 const (
 	minecartContainerChest  int32 = 10
 	minecartContainerHopper int32 = 11
-
-	minecartOpenChest  byte = 0
-	minecartOpenHopper byte = 8
 )
 
 // MinecartContainerBehaviourConfig configures a container minecart.
@@ -83,12 +81,13 @@ func (b *MinecartContainerBehaviour) ContainerType() int32 {
 	return b.containerType
 }
 
-// openContainerType returns the container type the inventory opens with.
-func (b *MinecartContainerBehaviour) openContainerType() byte {
+// containerKind returns the kind of container the inventory opens as: a
+// hopper for the container type of a hopper minecart, a chest otherwise.
+func (b *MinecartContainerBehaviour) containerKind() ContainerKind {
 	if b.containerType == minecartContainerHopper {
-		return minecartOpenHopper
+		return ContainerMinecartHopper
 	}
-	return minecartOpenChest
+	return ContainerMinecartChest
 }
 
 // ContainerSize returns the container size for metadata.
@@ -156,7 +155,7 @@ func (m *MinecartContainer) Interact(tx *world.Tx, user item.User, _ *item.UseCo
 		m.generateLoot(tx, user)
 	}
 	if opener, ok := user.(ContainerOpener); ok {
-		opener.OpenEntityContainer(m, b.Inventory(), b.openContainerType(), tx)
+		opener.OpenEntityContainer(m, b.Inventory(), b.containerKind(), tx)
 		return true
 	}
 	return false

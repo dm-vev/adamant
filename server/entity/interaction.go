@@ -144,9 +144,27 @@ func CanBeHitByPiercingWeapon(target, attacker world.Entity) bool {
 	return true
 }
 
+// ContainerKind is the kind of container an entity opens to a player that
+// uses it, which the client of the player shows in its own way.
+type ContainerKind uint8
+
+const (
+	// ContainerMount is the inventory of a mount: the chest of a donkey,
+	// llama or mule, and the gear of any mount.
+	ContainerMount ContainerKind = iota
+	// ContainerChestBoat is the chest of a chest boat.
+	ContainerChestBoat
+	// ContainerMinecartChest is the chest of a minecart with a chest.
+	ContainerMinecartChest
+	// ContainerMinecartHopper is the hopper of a minecart with a hopper.
+	ContainerMinecartHopper
+)
+
 // ContainerOpener represents a user that can open an entity container.
 type ContainerOpener interface {
-	OpenEntityContainer(e world.Entity, inv *inventory.Inventory, containerType byte, tx *world.Tx)
+	// OpenEntityContainer opens inv, the inventory of the entity e, as a
+	// container of the kind passed.
+	OpenEntityContainer(e world.Entity, inv *inventory.Inventory, kind ContainerKind, tx *world.Tx)
 }
 
 // LinkType is the type of link between two entities.

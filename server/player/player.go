@@ -3672,14 +3672,15 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	}
 }
 
-// OpenEntityContainer opens an entity container, such as a chest minecart.
-func (p *Player) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, containerType byte, tx *world.Tx) {
+// OpenEntityContainer opens inv, the inventory of the entity e, such as a
+// chest minecart, as a container of the kind passed.
+func (p *Player) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, kind entity.ContainerKind, tx *world.Tx) {
 	if _, mount := e.(*entity.Mount); !mount {
 		// ContainerEntity.interactWithContainerVehicle angers piglins.
 		entity.AngerNearbyPiglins(tx, p, true)
 	}
 	if p.session() != session.Nop {
-		p.session().OpenEntityContainer(e, inv, containerType, tx)
+		p.session().OpenEntityContainer(e, inv, kind, tx)
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/netconn"
@@ -141,7 +142,7 @@ func TestContainerRemoveViewerPanicDoesNotBlockServerShutdown(t *testing.T) {
 		p := tx.AddEntity(inc.p.handle).(*player.Player)
 		container := tx.AddEntity(containerHandle)
 		inc.s.Spawn(p, tx)
-		p.OpenEntityContainer(container, inventory.New(1, nil), 35, tx)
+		p.OpenEntityContainer(container, inventory.New(1, nil), entity.ContainerChestBoat, tx)
 	}).Wait(context.Background()); err != nil {
 		t.Fatalf("spawn player and open container: %v", err)
 	}

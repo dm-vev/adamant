@@ -25,9 +25,8 @@ const (
 	boatNetworkOffset      = 0.375
 	// boatContainerTypeChest is the container type (ChestBoat, 34) BDS
 	// 1.26.52.3 sends in a chest boat's actor data; it opens the chest as a
-	// plain container (0).
+	// plain container (0), which the session does for ContainerChestBoat.
 	boatContainerTypeChest = 34
-	boatContainerOpenChest = 0
 )
 
 const boatBuoyancyData = "{\"apply_gravity\":true,\"base_buoyancy\":1.0,\"big_wave_probability\":0.02999999932944775,\"big_wave_speed\":10.0,\"drag_down_on_buoyancy_removed\":0.0,\"liquid_blocks\":[\"minecraft:water\",\"minecraft:flowing_water\"],\"simulate_waves\":true}"
@@ -933,7 +932,7 @@ func (b *ChestBoat) Interact(tx *world.Tx, user item.User, ctx *item.UseContext)
 	}
 	if sneaking, ok := user.(interface{ Sneaking() bool }); ok && sneaking.Sneaking() {
 		if opener, ok := user.(ContainerOpener); ok {
-			opener.OpenEntityContainer(b, beh.Inventory(), boatContainerOpenChest, tx)
+			opener.OpenEntityContainer(b, beh.Inventory(), ContainerChestBoat, tx)
 			return true
 		}
 		return false

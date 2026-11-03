@@ -22,11 +22,6 @@ import (
 // species identity remains a distinct EntityType and is never encoded as a kind tag.
 type mountKind uint8
 
-// mountContainerHorse is the container type (Horse, 12) the inventory of a
-// mount opens with. BDS 1.26.52.3 opens it with UpdateEquip of that window
-// type for every mount, chested or not, and sends no ContainerOpen.
-const mountContainerHorse byte = 12
-
 const (
 	mountHorse mountKind = iota
 	mountDonkey
@@ -547,9 +542,9 @@ func (m *Mount) interactAbstractHorse(tx *world.Tx, user item.User, ctx *item.Us
 	if b.tamed && sneaking {
 		if opener, ok := user.(ContainerOpener); ok {
 			if b.chested {
-				opener.OpenEntityContainer(m, b.chestInventory(), mountContainerHorse, tx)
+				opener.OpenEntityContainer(m, b.chestInventory(), ContainerMount, tx)
 			} else {
-				opener.OpenEntityContainer(m, m.gearInventory(), mountContainerHorse, tx)
+				opener.OpenEntityContainer(m, m.gearInventory(), ContainerMount, tx)
 			}
 			return true
 		}
@@ -566,7 +561,7 @@ func (m *Mount) interactCamel(tx *world.Tx, user item.User, ctx *item.UseContext
 	baby := b.ageTicks < 0
 	if sneaking && !baby {
 		if opener, ok := user.(ContainerOpener); ok {
-			opener.OpenEntityContainer(m, m.gearInventory(), mountContainerHorse, tx)
+			opener.OpenEntityContainer(m, m.gearInventory(), ContainerMount, tx)
 			return true
 		}
 	}

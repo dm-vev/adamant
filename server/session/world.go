@@ -1875,8 +1875,13 @@ func (s *Session) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	})
 }
 
-// OpenEntityContainer opens an entity-backed container inventory.
-func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, containerType byte, tx *world.Tx) {
+// OpenEntityContainer opens inv, the inventory of the entity e, as a
+// container of the kind passed. It does nothing for a kind it does not know.
+func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, kind entity.ContainerKind, tx *world.Tx) {
+	containerType, ok := entityContainerType(kind)
+	if !ok {
+		return
+	}
 	if s.containerOpened.Load() {
 		if opened := s.openedEntity.Load(); opened != nil && opened == e.H() {
 			return
@@ -1899,7 +1904,7 @@ func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, 
 	s.openedPos.Store(&openPos)
 	s.openedContainerID.Store(uint32(containerType))
 
-	if containerType == v2193.ContainerTypeHorse {
+	if kind == entity.ContainerMount {
 		// BDS opens the inventory of a mount with UpdateEquip, which names the
 		// slots of its screen, and no ContainerOpen.
 		s.writePacket(&v2193.UpdateEquipPacket{
@@ -1917,6 +1922,24 @@ func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, 
 		})
 	}
 	s.sendInv(inv, uint32(nextID))
+}
+
+// entityContainerType returns the container type that the inventory of an
+// entity of the kind passed opens with, as BDS 1.26.52.3 opens it: a mount
+// with UpdateEquip of window type 12 (Horse), for every mount, chested or
+// not; a chest boat and a chest minecart as a plain container (0); a hopper
+// minecart as a hopper (8). The actor data of these entities names other
+// types, which they give themselves.
+func entityContainerType(kind entity.ContainerKind) (byte, bool) {
+	switch kind {
+	case entity.ContainerMount:
+		return v2193.ContainerTypeHorse, true
+	case entity.ContainerChestBoat, entity.ContainerMinecartChest:
+		return v2193.ContainerTypeContainer, true
+	case entity.ContainerMinecartHopper:
+		return v2193.ContainerTypeHopper, true
+	}
+	return 0, false
 }
 
 // OpenMerchant opens the Bedrock merchant UI for an entity and sends its current offers.
