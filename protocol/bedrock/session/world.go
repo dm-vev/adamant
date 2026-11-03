@@ -15,6 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -1845,113 +1846,147 @@ func (s *Session) writeBroadcast(b *world.Broadcast, build func(out func(proto.P
 	}
 }
 
-// OpenBlockContainer ...
-func (s *Session) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
-	if s.containerOpened.Load() && *s.openedPos.Load() == pos {
-		return
-	}
-	s.closeCurrentContainer(tx, false)
-
-	b := tx.Block(pos)
-	if container, ok := b.(block.Container); ok {
-		s.openNormalContainer(container, pos, tx)
-		return
-	}
-	// We hit a special kind of window like beacons, which are not actually opened server-side.
+// OpenMenu shows the client m, the menu its player opened in tx, in a new
+// window: ContainerOpen, or UpdateEquip for the inventory of a mount, then
+// the items of the menu, if it holds any of its own, and the slot states of
+// a crafter. A lectern opens a window the session keeps no state for, as
+// the client sends no close for it.
+func (s *Session) OpenMenu(m *menu.Menu, tx *world.Tx) {
 	nextID := s.nextWindowID()
-	// The client does not send a ContainerClose packet for lecterns.
-	_, lectern := b.(block.Lectern)
-	if !lectern {
-		s.containerOpened.Store(true)
-		s.openedWindow.Store(s.noWindow)
-		s.openedPos.Store(&pos)
+	if m.Kind() != menu.Lectern {
+		s.menu.Store(m)
 	}
-
-	var containerType byte
-	switch b := b.(type) {
-	case block.CraftingTable:
-		containerType = v2193.ContainerTypeWorkbench
-	case block.EnchantingTable:
-		containerType = v2193.ContainerTypeEnchantment
-	case block.Anvil:
-		containerType = v2193.ContainerTypeAnvil
-	case block.Beacon:
-		containerType = v2193.ContainerTypeBeacon
-	case block.Lectern:
-		containerType = v2193.ContainerTypeLectern
-	case block.Loom:
-		containerType = v2193.ContainerTypeLoom
-	case block.Grindstone:
-		containerType = v2193.ContainerTypeGrindstone
-	case block.CartographyTable:
-		containerType = v2193.ContainerTypeCartography
-	case block.Stonecutter:
-		containerType = v2193.ContainerTypeStonecutter
-	case block.SmithingTable:
-		containerType = v2193.ContainerTypeSmithingTable
-	case block.EnderChest:
-		b.AddViewer(tx, pos)
-
-		s.openedWindow.Store(s.enderChest)
-		defer s.sendInv(s.enderChest, uint32(nextID))
-	}
-
+	containerType := windowType(m, tx)
 	s.openedContainerID.Store(uint32(containerType))
-	s.writePacket(&v2193.ContainerOpenPacket{
-		WindowID:                nextID,
-		ContainerType:           containerType,
-		ContainerPosition:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		ContainerEntityUniqueID: -1,
-	})
-}
 
-// OpenEntityContainer opens inv, the inventory of the entity e, as a
-// container of the kind passed. It does nothing for a kind it does not know.
-func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, kind entity.ContainerKind, tx *world.Tx) {
-	containerType, ok := entityContainerType(kind)
-	if !ok {
-		return
-	}
-	if s.containerOpened.Load() {
-		if opened := s.openedEntity.Load(); opened != nil && opened == e.H() {
-			return
+	pos := m.Pos()
+	switch m.Kind() {
+	case menu.Entity:
+		e, _ := m.Entity().Entity(tx)
+		if m.ContainerKind() == entity.ContainerMount {
+			// BDS opens the inventory of a mount with UpdateEquip, which names the
+			// slots of its screen, and no ContainerOpen.
+			s.writePacket(&v2193.UpdateEquipPacket{
+				WindowID:                nextID,
+				WindowType:              containerType,
+				EntityUniqueID:          s.handleUniqueID(m.Entity()),
+				SerialisedInventoryData: mountEquipDataOf(e),
+			})
+		} else {
+			s.writePacket(&v2193.ContainerOpenPacket{
+				WindowID:                nextID,
+				ContainerType:           containerType,
+				ContainerPosition:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+				ContainerEntityUniqueID: s.handleUniqueID(m.Entity()),
+			})
 		}
-	}
-	s.closeCurrentContainer(tx, false)
-
-	if viewer, ok := e.(interface {
-		AddViewer(v block.ContainerViewer)
-	}); ok {
-		viewer.AddViewer(s)
-	}
-
-	nextID := s.nextWindowID()
-	s.containerOpened.Store(true)
-	s.openedWindow.Store(inv)
-	s.openedEntity.Store(e.H())
-	pos := e.Position()
-	openPos := cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
-	s.openedPos.Store(&openPos)
-	s.openedContainerID.Store(uint32(containerType))
-
-	if kind == entity.ContainerMount {
-		// BDS opens the inventory of a mount with UpdateEquip, which names the
-		// slots of its screen, and no ContainerOpen.
-		s.writePacket(&v2193.UpdateEquipPacket{
-			WindowID:                nextID,
-			WindowType:              containerType,
-			EntityUniqueID:          s.entityUniqueID(e),
-			SerialisedInventoryData: mountEquipDataOf(e),
-		})
-	} else {
+		s.sendInv(m.Inventory(), uint32(nextID))
+	case menu.Merchant:
 		s.writePacket(&v2193.ContainerOpenPacket{
 			WindowID:                nextID,
 			ContainerType:           containerType,
-			ContainerPosition:       v2193.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
-			ContainerEntityUniqueID: s.entityUniqueID(e),
+			ContainerPosition:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+			ContainerEntityUniqueID: s.handleUniqueID(m.Entity()),
 		})
+	default:
+		s.writePacket(&v2193.ContainerOpenPacket{
+			WindowID:                nextID,
+			ContainerType:           containerType,
+			ContainerPosition:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+			ContainerEntityUniqueID: -1,
+		})
+		if blockContainer(m.Kind()) || m.Kind() == menu.EnderChest {
+			s.sendInv(m.Inventory(), uint32(nextID))
+		}
+		if crafter, ok := tx.Block(pos).(block.Crafter); ok && m.Kind() == menu.Crafter {
+			for slot := range 9 {
+				s.ViewCrafterSlotState(slot, crafter.DisabledSlots&(1<<slot) != 0)
+			}
+			s.ViewCrafterTriggered(crafter.Triggered)
+		}
 	}
-	s.sendInv(inv, uint32(nextID))
+}
+
+// blockContainer reports whether menus of the kind passed are open for a
+// block.Container.
+func blockContainer(k menu.Kind) bool {
+	switch k {
+	case menu.Generic, menu.Furnace, menu.BlastFurnace, menu.Smoker, menu.BrewingStand, menu.Hopper, menu.Crafter:
+		return true
+	}
+	return false
+}
+
+// window returns the inventory of the menu the player has open as requests
+// name it: that of a block container, of an entity or the ender chest of
+// the player, and noWindow while no menu, or one with no items of its own,
+// is open.
+func (s *Session) window() *inventory.Inventory {
+	if m := s.menu.Load(); m != nil && (blockContainer(m.Kind()) || m.Kind() == menu.EnderChest || m.Kind() == menu.Entity) {
+		return m.Inventory()
+	}
+	return s.noWindow
+}
+
+// windowType returns the type of the window that m opens in, as BDS
+// 1.26.52.3 opens it.
+func windowType(m *menu.Menu, tx *world.Tx) byte {
+	switch m.Kind() {
+	case menu.Generic:
+		switch tx.Block(m.Pos()).(type) {
+		case block.Dispenser:
+			// BDS 1.26.52.3 opens a dispenser as type 6 and a dropper as 7
+			// (testdata/bedrock_1_26_52_menu_requests.json).
+			return v2193.ContainerTypeDispenser
+		case block.Dropper:
+			return v2193.ContainerTypeDropper
+		}
+	case menu.Furnace:
+		return v2193.ContainerTypeFurnace
+	case menu.BrewingStand:
+		return v2193.ContainerTypeBrewingStand
+	case menu.BlastFurnace:
+		return v2193.ContainerTypeBlastFurnace
+	case menu.Smoker:
+		return v2193.ContainerTypeSmoker
+	case menu.Hopper:
+		return v2193.ContainerTypeHopper
+	case menu.Crafter:
+		return v2193.ContainerTypeCrafter
+	case menu.Crafting:
+		return v2193.ContainerTypeWorkbench
+	case menu.Enchantment:
+		return v2193.ContainerTypeEnchantment
+	case menu.Anvil:
+		return v2193.ContainerTypeAnvil
+	case menu.Beacon:
+		return v2193.ContainerTypeBeacon
+	case menu.Lectern:
+		return v2193.ContainerTypeLectern
+	case menu.Loom:
+		return v2193.ContainerTypeLoom
+	case menu.Grindstone:
+		return v2193.ContainerTypeGrindstone
+	case menu.Cartography:
+		return v2193.ContainerTypeCartography
+	case menu.Stonecutter:
+		return v2193.ContainerTypeStonecutter
+	case menu.Smithing:
+		return v2193.ContainerTypeSmithingTable
+	case menu.Entity:
+		t, _ := entityContainerType(m.ContainerKind())
+		return t
+	case menu.Merchant:
+		return v2193.ContainerTypeTrade
+	}
+	// A chest, a barrel, an ender chest and any other block.
+	return v2193.ContainerTypeContainer
+}
+
+// CloseMenu closes the window of the menu m: the client closed it itself if
+// clientRequested, otherwise it is sent a close.
+func (s *Session) CloseMenu(_ *menu.Menu, clientRequested bool) {
+	s.closeWindow(clientRequested)
 }
 
 // entityContainerType returns the container type that the inventory of an
@@ -1972,49 +2007,20 @@ func entityContainerType(kind entity.ContainerKind) (byte, bool) {
 	return 0, false
 }
 
-// OpenMerchant opens the Bedrock merchant UI for an entity and sends its current offers.
-func (s *Session) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *world.Tx) {
-	if s.containerOpened.Load() {
-		if opened := s.openedEntity.Load(); opened != nil && opened == e.H() {
-			return
-		}
-	}
-	user, ok := s.ent.Entity(tx)
-	if !ok {
-		return
-	}
-	offers, err := merchantOffersFor(merchant, user)
-	if err != nil {
-		s.notifyMerchantError(user, "failed to load merchant offers", err)
-		return
-	}
+// ViewTrades shows the client the offers of merchant, the merchant of the
+// menu m, in the window of m.
+func (s *Session) ViewTrades(m *menu.Menu, merchant entity.Merchant, offers []entity.MerchantOffer) {
 	serializedOffers, err := serializeMerchantOffers(offers)
 	if err != nil {
-		s.notifyMerchantError(user, "failed to serialize merchant offers", err)
+		if s.conf.Log != nil {
+			s.conf.Log.Error("failed to serialize merchant offers", "err", err)
+		}
 		return
 	}
-	s.closeCurrentContainer(tx, false)
-	if trader, ok := merchant.(entity.TradingMerchant); ok && !trader.StartTrading(s.ent) {
-		return
-	}
-	nextID := s.nextWindowID()
-	pos := e.Position()
-	openPos := cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
-	s.containerOpened.Store(true)
-	s.openedWindow.Store(s.noWindow)
-	s.openedEntity.Store(e.H())
-	s.openedPos.Store(&openPos)
-	s.openedContainerID.Store(uint32(v2193.ContainerTypeTrade))
-	s.writePacket(&v2193.ContainerOpenPacket{
-		WindowID:                nextID,
-		ContainerType:           v2193.ContainerTypeTrade,
-		ContainerPosition:       v2193.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
-		ContainerEntityUniqueID: s.entityUniqueID(e),
-	})
-	s.sendMerchantOffers(e, merchant, user, offers, serializedOffers)
+	s.sendMerchantOffers(m.Entity(), merchant, s.ent, offers, serializedOffers)
 }
 
-func (s *Session) sendMerchantOffers(e world.Entity, merchant entity.Merchant, user world.Entity, offers []entity.MerchantOffer, serializedOffers []byte) {
+func (s *Session) sendMerchantOffers(e *world.EntityHandle, merchant entity.Merchant, user *world.EntityHandle, offers []entity.MerchantOffer, serializedOffers []byte) {
 	level := merchant.MerchantLevel() - 1
 	if level < 0 {
 		level = 0
@@ -2024,8 +2030,8 @@ func (s *Session) sendMerchantOffers(e world.Entity, merchant entity.Merchant, u
 		WindowType:        15,
 		Size:              int32(len(offers)),
 		TradeTier:         int32(level),
-		VillagerUniqueID:  s.entityUniqueID(e),
-		EntityUniqueID:    s.entityUniqueID(user),
+		VillagerUniqueID:  s.handleUniqueID(e),
+		EntityUniqueID:    s.handleUniqueID(user),
 		DisplayName:       merchant.MerchantName(),
 		NewTradeUI:        true,
 		DemandBasedPrices: true,
@@ -2085,58 +2091,9 @@ func serializeMerchantOffers(offers []entity.MerchantOffer) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// openNormalContainer opens a normal container that can hold items in it server-side.
-func (s *Session) openNormalContainer(b block.Container, pos cube.Pos, tx *world.Tx) {
-	b.AddViewer(s, tx, pos) // Paired chests might update the block here.
-	b = tx.Block(pos).(block.Container)
-
-	nextID := s.nextWindowID()
-	s.containerOpened.Store(true)
-	inv := b.Inventory(tx, pos)
-	s.openedWindow.Store(inv)
-	s.openedPos.Store(&pos)
-
-	var containerType byte
-	switch b.(type) {
-	case block.Furnace:
-		containerType = v2193.ContainerTypeFurnace
-	case block.BrewingStand:
-		containerType = v2193.ContainerTypeBrewingStand
-	case block.BlastFurnace:
-		containerType = v2193.ContainerTypeBlastFurnace
-	case block.Smoker:
-		containerType = v2193.ContainerTypeSmoker
-	case block.Hopper:
-		containerType = v2193.ContainerTypeHopper
-	case block.Crafter:
-		containerType = v2193.ContainerTypeCrafter
-	case block.Dispenser:
-		// BDS 1.26.52.3 opens a dispenser as type 6 and a dropper as 7
-		// (testdata/bedrock_1_26_52_menu_requests.json).
-		containerType = v2193.ContainerTypeDispenser
-	case block.Dropper:
-		containerType = v2193.ContainerTypeDropper
-	}
-	s.openedContainerID.Store(uint32(containerType))
-
-	s.writePacket(&v2193.ContainerOpenPacket{
-		WindowID:                nextID,
-		ContainerType:           containerType,
-		ContainerPosition:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		ContainerEntityUniqueID: -1,
-	})
-	s.sendInv(b.Inventory(tx, pos), uint32(nextID))
-	if crafter, ok := b.(block.Crafter); ok {
-		for slot := range 9 {
-			s.ViewCrafterSlotState(slot, crafter.DisabledSlots&(1<<slot) != 0)
-		}
-		s.ViewCrafterTriggered(crafter.Triggered)
-	}
-}
-
 // ViewSlotChange ...
 func (s *Session) ViewSlotChange(slot int, newItem item.Stack) {
-	if !s.containerOpened.Load() {
+	if s.menu.Load() == nil {
 		return
 	}
 	if s.inTransaction.Load() {
@@ -2152,7 +2109,7 @@ func (s *Session) ViewSlotChange(slot int, newItem item.Stack) {
 
 // ViewCrafterSlotState sends the disabled/enabled state for one native Crafter slot.
 func (s *Session) ViewCrafterSlotState(slot int, disabled bool) {
-	if !s.containerOpened.Load() || s.openedContainerID.Load() != uint32(v2193.ContainerTypeCrafter) {
+	if s.menu.Load() == nil || s.openedContainerID.Load() != uint32(v2193.ContainerTypeCrafter) {
 		return
 	}
 	value := int32(0)
@@ -2164,7 +2121,7 @@ func (s *Session) ViewCrafterSlotState(slot int, disabled bool) {
 
 // ViewCrafterTriggered sends the native Crafter's redstone data property.
 func (s *Session) ViewCrafterTriggered(triggered bool) {
-	if !s.containerOpened.Load() || s.openedContainerID.Load() != uint32(v2193.ContainerTypeCrafter) {
+	if s.menu.Load() == nil || s.openedContainerID.Load() != uint32(v2193.ContainerTypeCrafter) {
 		return
 	}
 	value := int32(0)
@@ -2329,14 +2286,12 @@ func (s *Session) nextWindowID() byte {
 // closeWindow closes the container window currently opened. If no window is open, closeWindow will do
 // nothing.
 func (s *Session) closeWindow(clientRequested bool) bool {
-	if !s.containerOpened.CompareAndSwap(true, false) {
+	if s.menu.Swap(nil) == nil {
 		return false
 	}
 	containerType := byte(s.openedContainerID.Load())
 	windowID := byte(s.openedWindowID.Load())
 	s.openedContainerID.Store(0)
-	s.openedWindow.Store(s.noWindow)
-	s.openedEntity.Store(nil)
 	if !clientRequested {
 		s.writePacket(&v2193.ContainerClosePacket{
 			WindowID:      windowID,

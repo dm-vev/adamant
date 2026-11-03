@@ -124,9 +124,9 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 				err = h.handleMerchantCraft(a, s, tx, c)
 				break
 			}
-			if s.containerOpened.Load() {
+			if m := s.menu.Load(); m != nil {
 				var special bool
-				switch tx.Block(*s.openedPos.Load()).(type) {
+				switch tx.Block(m.Pos()).(type) {
 				case block.SmithingTable:
 					err, special = h.handleSmithing(a, s, tx), true
 				case block.Stonecutter:
@@ -192,20 +192,9 @@ func (h *ItemStackRequestHandler) handleTake(a *v2193.TakeStackRequestAction, s 
 }
 
 func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
-	if !s.containerOpened.Load() || byte(s.openedContainerID.Load()) != v2193.ContainerTypeTrade {
-		return fmt.Errorf("no merchant window is open")
-	}
-	handle := s.openedEntity.Load()
-	if handle == nil {
-		return fmt.Errorf("merchant window has no entity")
-	}
-	target, ok := handle.Entity(tx)
-	if !ok {
-		return fmt.Errorf("merchant is no longer in the world")
-	}
-	merchant, ok := target.(entity.Merchant)
-	if !ok {
-		return fmt.Errorf("opened entity is not a merchant")
+	target, merchant, err := s.openedMerchant(tx)
+	if err != nil {
+		return err
 	}
 	offers, err := merchantOffersFor(merchant, c)
 	if err != nil {
@@ -311,16 +300,16 @@ func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackReques
 	updatedOffers, err := merchantOffersFor(merchant, c)
 	if err != nil {
 		s.notifyMerchantError(c, "failed to reload merchant offers", err)
-		s.closeCurrentContainer(tx, false)
+		c.CloseMenu(false)
 		return nil
 	}
 	serializedOffers, err := serializeMerchantOffers(updatedOffers)
 	if err != nil {
 		s.notifyMerchantError(c, "failed to serialize updated merchant offers", err)
-		s.closeCurrentContainer(tx, false)
+		c.CloseMenu(false)
 		return nil
 	}
-	s.sendMerchantOffers(target, merchant, c, updatedOffers, serializedOffers)
+	s.sendMerchantOffers(target.H(), merchant, c.H(), updatedOffers, serializedOffers)
 	return nil
 }
 
@@ -510,8 +499,8 @@ func (h *ItemStackRequestHandler) handleSwap(a *v2193.SwapStackRequestAction, s 
 // collectRewards checks if the source inventory has rewards for the player, for example, experience rewards when
 // smelting. If it does, it will drop the rewards at the player's location.
 func (h *ItemStackRequestHandler) collectRewards(s *Session, inv *inventory.Inventory, slot int, tx *world.Tx, c Controllable) {
-	if inv == s.openedWindow.Load() && s.containerOpened.Load() && slot == inv.Size()-1 {
-		if f, ok := tx.Block(*s.openedPos.Load()).(smelter); ok {
+	if m := s.menu.Load(); inv == s.window() && m != nil && slot == inv.Size()-1 {
+		if f, ok := tx.Block(m.Pos()).(smelter); ok {
 			// AbstractFurnaceBlockEntity.awardUsedRecipesAndPopExperience
 			// spawns the orbs at the player's feet.
 			for _, o := range entity.NewExperienceOrbs(c.Position(), f.ResetExperience()) {
@@ -761,13 +750,12 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot v2193.StackRequestSlotInfo,
 	if err != nil {
 		return err
 	}
-	if inv == s.openedWindow.Load() && !i.Empty() {
-		if pos := s.openedPos.Load(); pos != nil {
-			if crafter, ok := tx.Block(*pos).(block.Crafter); ok && crafter.DisabledSlots&(1<<sl) != 0 {
-				crafter.DisabledSlots &^= 1 << sl
-				tx.SetBlock(*pos, crafter, nil)
-				crafter.NotifySlotState(sl)
-			}
+	if m := s.menu.Load(); inv == s.window() && !i.Empty() && m != nil {
+		pos := m.Pos()
+		if crafter, ok := tx.Block(pos).(block.Crafter); ok && crafter.DisabledSlots&(1<<sl) != 0 {
+			crafter.DisabledSlots &^= 1 << sl
+			tx.SetBlock(pos, crafter, nil)
+			crafter.NotifySlotState(sl)
 		}
 	}
 	if err := inv.SetItem(sl, i); err != nil {
@@ -802,14 +790,12 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot v2193.StackRequestSlotInfo,
 }
 
 func (h *ItemStackRequestHandler) notifyContainerRedstone(s *Session, tx *world.Tx) {
-	if !s.containerOpened.Load() {
+	m := s.menu.Load()
+	if m == nil {
 		return
 	}
-	openedPos := s.openedPos.Load()
-	if openedPos == nil {
-		return
-	}
-	openedInv := s.openedWindow.Load()
+	openedPos := m.Pos()
+	openedInv := s.window()
 	if openedInv == nil {
 		return
 	}
@@ -818,11 +804,11 @@ func (h *ItemStackRequestHandler) notifyContainerRedstone(s *Session, tx *world.
 		if !ok || inv != openedInv {
 			continue
 		}
-		openedBlock := tx.Block(*openedPos)
+		openedBlock := tx.Block(openedPos)
 		if _, ok := openedBlock.(block.Container); !ok {
 			return
 		}
-		block.NotifyComparatorUpdate(*openedPos, tx)
+		block.NotifyComparatorUpdate(openedPos, tx)
 		if paired, ok := openedBlock.(interface{ Paired() bool }); ok && paired.Paired() {
 			for _, face := range cube.HorizontalFaces() {
 				sidePos := openedPos.Side(face)

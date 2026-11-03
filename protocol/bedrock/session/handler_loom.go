@@ -21,10 +21,11 @@ const (
 // handleLoomCraft handles a CraftLoomRecipe stack request action made using a loom table.
 func (h *ItemStackRequestHandler) handleLoomCraft(a *v2193.CraftLoomRecipeStackRequestAction, s *Session, tx *world.Tx) error {
 	// First check if there actually is a loom opened: a menu, and a loom where it was opened.
-	if !s.containerOpened.Load() {
+	m := s.menu.Load()
+	if m == nil {
 		return fmt.Errorf("no loom container opened")
 	}
-	if _, ok := tx.Block(*s.openedPos.Load()).(block.Loom); !ok {
+	if _, ok := tx.Block(m.Pos()).(block.Loom); !ok {
 		return fmt.Errorf("no loom container opened")
 	}
 	timesCrafted := int(a.TimesCrafted)

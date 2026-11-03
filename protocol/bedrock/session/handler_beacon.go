@@ -21,10 +21,11 @@ func (h *ItemStackRequestHandler) handleBeaconPayment(a *v2193.BeaconPaymentStac
 		Slot:      beaconInputSlot,
 	}
 	// First check if there actually is a beacon opened.
-	if !s.containerOpened.Load() {
+	m := s.menu.Load()
+	if m == nil {
 		return fmt.Errorf("no beacon container opened")
 	}
-	pos := *s.openedPos.Load()
+	pos := m.Pos()
 	beacon, ok := tx.Block(pos).(block.Beacon)
 	if !ok {
 		return fmt.Errorf("no beacon container opened")

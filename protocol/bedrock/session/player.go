@@ -20,6 +20,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/dialogue"
 	"github.com/df-mc/dragonfly/server/player/form"
@@ -66,39 +67,6 @@ func (s *Session) StartShowingEntity(e world.Entity) {
 		s.ViewEntityState(e)
 		s.ViewEntityItems(e)
 		s.ViewEntityArmour(e)
-	}
-}
-
-// closeCurrentContainer closes the container the player might currently have open.
-func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
-	openedEntity := s.openedEntity.Load()
-	openedPos := s.openedPos.Load()
-	if !s.closeWindow(clientRequested) {
-		return
-	}
-
-	if openedEntity != nil {
-		if ent, ok := openedEntity.Entity(tx); ok {
-			if container, ok := ent.(interface {
-				RemoveViewer(v block.ContainerViewer)
-			}); ok {
-				container.RemoveViewer(s)
-			}
-			if trader, ok := ent.(entity.TradingMerchant); ok {
-				trader.StopTrading(s.ent)
-			}
-		}
-		return
-	}
-	if openedPos == nil {
-		return
-	}
-	pos := *openedPos
-	b := tx.Block(pos)
-	if container, ok := b.(block.Container); ok {
-		container.RemoveViewer(s, tx, pos)
-	} else if enderChest, ok := b.(block.EnderChest); ok {
-		enderChest.RemoveViewer(tx, pos)
 	}
 }
 
@@ -264,18 +232,19 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 		// Armour inventory.
 		return s.armour.Inventory(), true
 	default:
-		if !s.containerOpened.Load() {
+		m := s.menu.Load()
+		if m == nil {
 			return nil, false
 		}
 		if id == v2193.ContainerLevelEntity {
 			// A menu without items of its own has no container 7: BDS
 			// refuses an item put there (50).
-			if w := s.openedWindow.Load(); w != s.noWindow {
+			if w := s.window(); w != s.noWindow {
 				return w, true
 			}
 			return nil, false
 		}
-		if s.merchantTradeOpen() {
+		if m.Kind() == menu.Merchant {
 			switch id {
 			case v2193.ContainerTradeIngredientOne, v2193.ContainerTradeIngredientTwo,
 				v2193.ContainerTradeTwoIngredientOne, v2193.ContainerTradeTwoIngredientTwo:
@@ -283,64 +252,63 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 				return s.ui, true
 			}
 		}
-		if s.openedEntity.Load() != nil {
+		if m.Entity() != nil {
 			return nil, false
 		}
+		pos := m.Pos()
 		switch id {
 		case v2193.ContainerShulkerBox:
-			if pos := s.openedPos.Load(); pos != nil {
-				if _, ok := tx.Block(*pos).(block.ShulkerBox); ok {
-					return s.openedWindow.Load(), true
-				}
+			if _, ok := tx.Block(pos).(block.ShulkerBox); ok {
+				return s.window(), true
 			}
 		case v2193.ContainerBarrel:
-			if _, barrel := tx.Block(*s.openedPos.Load()).(block.Barrel); barrel {
-				return s.openedWindow.Load(), true
+			if _, barrel := tx.Block(pos).(block.Barrel); barrel {
+				return s.window(), true
 			}
 		case v2193.ContainerBeaconPayment:
-			if _, beacon := tx.Block(*s.openedPos.Load()).(block.Beacon); beacon {
+			if _, beacon := tx.Block(pos).(block.Beacon); beacon {
 				return s.ui, true
 			}
 		case v2193.ContainerBrewingStandInput, v2193.ContainerBrewingStandResult, v2193.ContainerBrewingStandFuel:
-			if _, brewingStand := tx.Block(*s.openedPos.Load()).(block.BrewingStand); brewingStand {
-				return s.openedWindow.Load(), true
+			if _, brewingStand := tx.Block(pos).(block.BrewingStand); brewingStand {
+				return s.window(), true
 			}
 		case v2193.ContainerAnvilInput, v2193.ContainerAnvilMaterial:
-			if _, anvil := tx.Block(*s.openedPos.Load()).(block.Anvil); anvil {
+			if _, anvil := tx.Block(pos).(block.Anvil); anvil {
 				return s.ui, true
 			}
 		case v2193.ContainerSmithingTableTemplate, v2193.ContainerSmithingTableInput, v2193.ContainerSmithingTableMaterial:
-			if _, smithing := tx.Block(*s.openedPos.Load()).(block.SmithingTable); smithing {
+			if _, smithing := tx.Block(pos).(block.SmithingTable); smithing {
 				return s.ui, true
 			}
 		case v2193.ContainerLoomInput, v2193.ContainerLoomDye, v2193.ContainerLoomMaterial:
-			if _, loom := tx.Block(*s.openedPos.Load()).(block.Loom); loom {
+			if _, loom := tx.Block(pos).(block.Loom); loom {
 				return s.ui, true
 			}
 		case v2193.ContainerCartographyInput, v2193.ContainerCartographyAdditional:
-			if _, ok := tx.Block(*s.openedPos.Load()).(block.CartographyTable); ok {
+			if _, ok := tx.Block(pos).(block.CartographyTable); ok {
 				return s.ui, true
 			}
 		case v2193.ContainerStonecutterInput:
-			if _, ok := tx.Block(*s.openedPos.Load()).(block.Stonecutter); ok {
+			if _, ok := tx.Block(pos).(block.Stonecutter); ok {
 				return s.ui, true
 			}
 		case v2193.ContainerGrindstoneInput, v2193.ContainerGrindstoneAdditional:
-			if _, ok := tx.Block(*s.openedPos.Load()).(block.Grindstone); ok {
+			if _, ok := tx.Block(pos).(block.Grindstone); ok {
 				return s.ui, true
 			}
 		case v2193.ContainerEnchantingInput, v2193.ContainerEnchantingMaterial:
-			if _, enchanting := tx.Block(*s.openedPos.Load()).(block.EnchantingTable); enchanting {
+			if _, enchanting := tx.Block(pos).(block.EnchantingTable); enchanting {
 				return s.ui, true
 			}
 		case v2193.ContainerCrafterLevelEntity:
-			if _, crafter := tx.Block(*s.openedPos.Load()).(block.Crafter); crafter {
-				return s.openedWindow.Load(), true
+			if _, crafter := tx.Block(pos).(block.Crafter); crafter {
+				return s.window(), true
 			}
 		case v2193.ContainerFurnaceIngredient, v2193.ContainerFurnaceFuel, v2193.ContainerFurnaceResult,
 			v2193.ContainerBlastFurnaceIngredient, v2193.ContainerSmokerIngredient:
-			if _, ok := tx.Block(*s.openedPos.Load()).(smelter); ok {
-				return s.openedWindow.Load(), true
+			if _, ok := tx.Block(pos).(smelter); ok {
+				return s.window(), true
 			}
 		}
 	}
@@ -805,21 +773,15 @@ func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {
 
 func (s *Session) broadcastEnderChestFunc(c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
-		if s.inTransaction.Load() || !s.containerOpened.Load() {
+		m := s.menu.Load()
+		if s.inTransaction.Load() || m == nil {
 			return
 		}
-		openedPos := s.openedPos.Load()
-		if openedPos == nil {
-			return
-		}
-		pos := *openedPos
+		pos := m.Pos()
 		// Check container state inside the transaction to avoid sending updates after the chest is closed or moved.
 		c.H().Do(func(tx *world.Tx, _ world.Entity) {
-			if !s.containerOpened.Load() {
-				return
-			}
-			current := s.openedPos.Load()
-			if current == nil || *current != pos {
+			current := s.menu.Load()
+			if current == nil || current.Pos() != pos {
 				return
 			}
 			if _, ok := tx.Block(pos).(block.EnderChest); ok {
@@ -883,8 +845,8 @@ func (s *Session) broadcastArmourFunc(c Controllable) inventory.SlotFunc {
 // in the future.
 func (s *Session) uiInventoryFunc(c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
-		if slot == enchantingInputSlot && s.containerOpened.Load() {
-			pos := *s.openedPos.Load()
+		if m := s.menu.Load(); slot == enchantingInputSlot && m != nil {
+			pos := m.Pos()
 			c.H().Do(func(tx *world.Tx, _ world.Entity) {
 				if _, enchanting := tx.Block(pos).(block.EnchantingTable); enchanting {
 					s.sendEnchantmentOptions(tx, c, pos, after)

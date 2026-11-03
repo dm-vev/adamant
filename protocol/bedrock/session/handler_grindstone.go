@@ -22,10 +22,11 @@ const (
 // handleGrindstoneCraft handles a CraftGrindstoneRecipe stack request action made using a grindstone.
 func (h *ItemStackRequestHandler) handleGrindstoneCraft(s *Session, tx *world.Tx, c Controllable) error {
 	// First check if there actually is a grindstone opened.
-	if !s.containerOpened.Load() {
+	m := s.menu.Load()
+	if m == nil {
 		return fmt.Errorf("no grindstone container opened")
 	}
-	if _, ok := tx.Block(*s.openedPos.Load()).(block.Grindstone); !ok {
+	if _, ok := tx.Block(m.Pos()).(block.Grindstone); !ok {
 		return fmt.Errorf("no grindstone container opened")
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
@@ -1050,6 +1051,21 @@ func craftingTestSession() *Session {
 	}
 }
 
+// openTestMenu opens the menu of b, placed in a world of its own, as the
+// menu the player of s has open.
+func openTestMenu(t testing.TB, s *Session, b world.Block) *menu.Menu {
+	t.Helper()
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	var m *menu.Menu
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(cube.Pos{}, b, nil)
+		m = menu.OpenBlock(tx, cube.Pos{}, s, s.enderChest)
+	})
+	s.menu.Store(m)
+	return m
+}
+
 func largeCraftingTestSession() *Session {
 	s := craftingTestSession()
 	s.openedContainerID.Store(1)
@@ -1079,8 +1095,6 @@ func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
 	w, _ := mapCraftingWorld(t, world.MapData{ID: 42, Scale: 1, Colors: make([]byte, 128*128)})
 	s := craftingTestSession()
 	pos := cube.Pos{0, 64, 0}
-	s.containerOpened.Store(true)
-	s.openedPos.Store(&pos)
 	s.openedContainerID.Store(uint32(v2193.ContainerTypeCartography))
 	glass := item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)
 	if err := s.ui.SetItem(cartographyInputSlot, craftingMapStack()); err != nil {
@@ -1108,6 +1122,7 @@ func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
 	var craftErr error
 	if err := w.Do(func(tx *world.Tx) {
 		tx.SetBlock(pos, block.CartographyTable{}, nil)
+		s.menu.Store(menu.OpenBlock(tx, pos, s, nil))
 		craftErr = craftingTestHandler().handleRequest(req, s, tx, nil)
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)

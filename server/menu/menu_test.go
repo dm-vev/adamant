@@ -25,10 +25,10 @@ func (v *fakeViewer) ViewSlotChange(slot int, _ item.Stack) { v.slots = append(v
 func (v *fakeViewer) ViewBlockAction(_ cube.Pos, a world.BlockAction) {
 	v.actions = append(v.actions, a)
 }
-func (v *fakeViewer) ViewCrafterSlotState(int, bool)                   {}
-func (v *fakeViewer) ViewEnchantmentOptions([3]menu.EnchantmentOption) {}
-func (v *fakeViewer) ViewTrades(*menu.Menu, []entity.MerchantOffer)    {}
-func (v *fakeViewer) reset()                                           { v.slots, v.actions = nil, nil }
+func (v *fakeViewer) ViewCrafterSlotState(int, bool)                                 {}
+func (v *fakeViewer) ViewEnchantmentOptions([3]menu.EnchantmentOption)               {}
+func (v *fakeViewer) ViewTrades(*menu.Menu, entity.Merchant, []entity.MerchantOffer) {}
+func (v *fakeViewer) reset()                                                         { v.slots, v.actions = nil, nil }
 
 // opened returns how often the viewer saw lids open and close.
 func (v *fakeViewer) opened() (opens, closes int) {

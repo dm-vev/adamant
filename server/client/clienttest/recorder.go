@@ -14,7 +14,9 @@ import (
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/dialogue"
@@ -426,16 +428,18 @@ func (r *Recorder) CloseForm()                                { r.record("CloseF
 func (r *Recorder) SendDialogue(a0 dialogue.Dialogue, a1 world.Entity) {
 	r.record("SendDialogue", a0, a1)
 }
-func (r *Recorder) CloseDialogue() { r.record("CloseDialogue") }
-func (r *Recorder) OpenBlockContainer(a0 cube.Pos, a1 *world.Tx) {
-	r.record("OpenBlockContainer", a0, a1)
+func (r *Recorder) CloseDialogue()                       { r.record("CloseDialogue") }
+func (r *Recorder) OpenMenu(a0 *menu.Menu, a1 *world.Tx) { r.record("OpenMenu", a0, a1) }
+func (r *Recorder) CloseMenu(a0 *menu.Menu, a1 bool)     { r.record("CloseMenu", a0, a1) }
+func (r *Recorder) ViewTrades(a0 *menu.Menu, a1 entity.Merchant, a2 []entity.MerchantOffer) {
+	r.record("ViewTrades", a0, a1, a2)
 }
-func (r *Recorder) OpenEntityContainer(a0 world.Entity, a1 *inventory.Inventory, a2 entity.ContainerKind, a3 *world.Tx) {
-	r.record("OpenEntityContainer", a0, a1, a2, a3)
+func (r *Recorder) ViewEnchantmentOptions(a0 [3]menu.EnchantmentOption) {
+	r.record("ViewEnchantmentOptions", a0)
 }
-func (r *Recorder) OpenMerchant(a0 world.Entity, a1 entity.Merchant, a2 *world.Tx) {
-	r.record("OpenMerchant", a0, a1, a2)
-}
+func (r *Recorder) ViewSlotChange(a0 int, a1 item.Stack)          { r.record("ViewSlotChange", a0, a1) }
+func (r *Recorder) ViewCrafterSlotState(a0 int, a1 bool)          { r.record("ViewCrafterSlotState", a0, a1) }
+func (r *Recorder) ViewCrafterTriggered(a0 bool)                  { r.record("ViewCrafterTriggered", a0) }
 func (r *Recorder) OpenSign(a0 cube.Pos, a1 bool)                 { r.record("OpenSign", a0, a1) }
 func (r *Recorder) SendHudUpdates()                               { r.record("SendHudUpdates") }
 func (r *Recorder) SendDebugShapes(a0 world.Dimension)            { r.record("SendDebugShapes", a0) }

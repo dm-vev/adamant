@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
@@ -37,7 +38,7 @@ func (h *ItemStackRequestHandler) handleEnchant(a *v2193.CraftRecipeStackRequest
 	}
 
 	// Determine the available enchantments using the session's enchantment seed.
-	allCosts, allEnchants := s.determineAvailableEnchantments(tx, c, *s.openedPos.Load(), input)
+	allCosts, allEnchants := s.determineAvailableEnchantments(tx, c, s.menu.Load().Pos(), input)
 	if len(allEnchants) == 0 {
 		return fmt.Errorf("can't enchant non-enchantable item")
 	}
@@ -100,13 +101,22 @@ func (s *Session) sendEnchantmentOptions(tx *world.Tx, c Controllable, pos cube.
 		// No available enchantments.
 		return
 	}
+	var options [3]menu.EnchantmentOption
+	for i := range options {
+		options[i] = menu.EnchantmentOption{Cost: selectedCosts[i], Enchantments: selectedEnchants[i]}
+	}
+	s.ViewEnchantmentOptions(options)
+}
 
+// ViewEnchantmentOptions shows the client the three options of the
+// enchanting table its player has open.
+func (s *Session) ViewEnchantmentOptions(selected [3]menu.EnchantmentOption) {
 	// Build the protocol variant of the enchantment options.
 	options := make([]v2193.EnchantmentOption, 0, 3)
 	for i := 0; i < 3; i++ {
 		// First build the enchantment instances for each selected enchantment.
-		enchants := make([]v2193.EnchantmentInstance, 0, len(selectedEnchants[i]))
-		for _, enchant := range selectedEnchants[i] {
+		enchants := make([]v2193.EnchantmentInstance, 0, len(selected[i].Enchantments))
+		for _, enchant := range selected[i].Enchantments {
 			id, _ := item.EnchantmentID(enchant.Type())
 			enchants = append(enchants, v2193.EnchantmentInstance{
 				Type:  byte(id),
@@ -119,7 +129,7 @@ func (s *Session) sendEnchantmentOptions(tx *world.Tx, c Controllable, pos cube.
 		// an unknown purpose and can cause various unexpected issues.
 		options = append(options, v2193.EnchantmentOption{
 			Name:            enchantNames[rand.IntN(len(enchantNames))],
-			Cost:            uint8(selectedCosts[i]),
+			Cost:            uint8(selected[i].Cost),
 			RecipeNetworkID: uint32(i),
 			Enchantments: v2193.ItemEnchantments{
 				Slot:         int32(i),
@@ -162,14 +172,14 @@ func (s *Session) determineAvailableEnchantments(tx *world.Tx, c Controllable, p
 
 	// Create a list of available enchantments for each slot.
 	return []int{
-			upperLevelCost,
-			middleLevelCost,
-			lowerLevelCost,
-		}, [][]item.Enchantment{
-			createEnchantments(random, stack, value, upperLevelCost),
-			createEnchantments(random, stack, value, middleLevelCost),
-			createEnchantments(random, stack, value, lowerLevelCost),
-		}
+		upperLevelCost,
+		middleLevelCost,
+		lowerLevelCost,
+	}, [][]item.Enchantment{
+		createEnchantments(random, stack, value, upperLevelCost),
+		createEnchantments(random, stack, value, middleLevelCost),
+		createEnchantments(random, stack, value, lowerLevelCost),
+	}
 }
 
 // treasureEnchantment represents an enchantment that may be a treasure enchantment.

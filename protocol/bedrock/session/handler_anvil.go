@@ -22,11 +22,12 @@ const (
 // menu. It also contains information such as the new name of the item and the multi-recipe network ID.
 func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *v2193.CraftRecipeOptionalStackRequestAction, s *Session, filterStrings []string, co Controllable, tx *world.Tx) (err error) {
 	// First check if there actually is an anvil opened.
-	if !s.containerOpened.Load() {
+	m := s.menu.Load()
+	if m == nil {
 		return fmt.Errorf("no anvil container opened")
 	}
 
-	pos := *s.openedPos.Load()
+	pos := m.Pos()
 	anvil, ok := tx.Block(pos).(block.Anvil)
 	if !ok {
 		return fmt.Errorf("no anvil container opened")

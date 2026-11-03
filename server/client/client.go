@@ -7,7 +7,9 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/dialogue"
@@ -47,6 +49,9 @@ type Client interface {
 	Self
 	Views
 }
+
+// A Client is what the menus of its player show it through.
+var _ menu.Viewer = Client(nil)
 
 // MapViewer is a viewer shown the content of maps: the client of a player
 // that carries a map, and the viewers of a map in an item frame.
@@ -164,7 +169,8 @@ type Messenger interface {
 }
 
 // Screens opens and closes the screens of the client: forms, dialogues,
-// containers and signs.
+// menus and signs. With them, a Client is the menu.Viewer of the menus of
+// its player.
 type Screens interface {
 	// SendForm shows f; its Submit method is called with the answer of the
 	// client.
@@ -175,13 +181,30 @@ type Screens interface {
 	SendDialogue(d dialogue.Dialogue, e world.Entity)
 	// CloseDialogue closes the dialogue the client has open, if any.
 	CloseDialogue()
-	// OpenBlockContainer opens the container of the block at pos.
-	OpenBlockContainer(pos cube.Pos, tx *world.Tx)
-	// OpenEntityContainer opens inv, the inventory of the entity e, as a
-	// container of the kind passed.
-	OpenEntityContainer(e world.Entity, inv *inventory.Inventory, kind entity.ContainerKind, tx *world.Tx)
-	// OpenMerchant opens the trades of merchant, the entity e.
-	OpenMerchant(e world.Entity, merchant entity.Merchant, tx *world.Tx)
+	// OpenMenu shows the menu m that the player just opened in tx: the
+	// container or the screen of a block, the inventory of an entity, or the
+	// trades of a merchant, whose offers ViewTrades shows next. The player
+	// registered the client as the viewer of what m is open for before.
+	OpenMenu(m *menu.Menu, tx *world.Tx)
+	// CloseMenu closes the menu m that the player had open: as the client
+	// closed it if clientRequested, or else as the server closes it, which
+	// the client is shown. The player releases what m held after.
+	CloseMenu(m *menu.Menu, clientRequested bool)
+	// ViewTrades shows offers, the offers of merchant, the merchant of the
+	// menu m the player has open.
+	ViewTrades(m *menu.Menu, merchant entity.Merchant, offers []entity.MerchantOffer)
+	// ViewEnchantmentOptions shows the three options of the enchanting table
+	// the player has open.
+	ViewEnchantmentOptions(options [3]menu.EnchantmentOption)
+	// ViewSlotChange shows that a slot of the inventory of the menu the
+	// player has open now holds newItem.
+	ViewSlotChange(slot int, newItem item.Stack)
+	// ViewCrafterSlotState shows whether a slot of the crafter the player
+	// has open is disabled.
+	ViewCrafterSlotState(slot int, disabled bool)
+	// ViewCrafterTriggered shows whether the crafter the player has open is
+	// powered.
+	ViewCrafterTriggered(triggered bool)
 	// OpenSign opens the editor of the sign at pos, of its front side or its
 	// back.
 	OpenSign(pos cube.Pos, frontSide bool)

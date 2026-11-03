@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -104,7 +103,6 @@ func TestRefusedRequestUndoesInReverse(t *testing.T) {
 // last menu opened says nothing once it closed.
 func TestLoomCraftWithNoMenuOpen(t *testing.T) {
 	s := craftingTestSession()
-	s.openedPos.Store(&cube.Pos{})
 	h := craftingTestHandler()
 	// No world is passed: reading a block would panic.
 	err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{

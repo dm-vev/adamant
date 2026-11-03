@@ -714,7 +714,7 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *v2193.AutoCraftRecipeStackR
 	}
 	// BDS refuses a recipe-book craft unless the inventory or a crafting
 	// table is open, with a crafter open too.
-	if s.containerOpened.Load() {
+	if s.menu.Load() != nil {
 		if s.openedContainerID.Load() != uint32(v2193.ContainerTypeWorkbench) {
 			return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
 		}

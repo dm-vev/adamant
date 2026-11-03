@@ -167,8 +167,9 @@ type Viewer interface {
 	ViewCrafterSlotState(slot int, disabled bool)
 	// ViewEnchantmentOptions shows the three options of an open enchanting table.
 	ViewEnchantmentOptions(options [3]EnchantmentOption)
-	// ViewTrades shows the offers of the merchant of m.
-	ViewTrades(m *Menu, offers []entity.MerchantOffer)
+	// ViewTrades shows offers, the offers of merchant, the merchant of the
+	// Merchant menu m, as they are now.
+	ViewTrades(m *Menu, merchant entity.Merchant, offers []entity.MerchantOffer)
 }
 
 // EnchantmentOption is an option of an enchanting table.

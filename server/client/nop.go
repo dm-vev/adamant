@@ -7,7 +7,9 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/dialogue"
@@ -67,14 +69,18 @@ func (Nop) SendScoreboard(*scoreboard.Scoreboard)                         {}
 func (Nop) RemoveScoreboard()                                             {}
 func (Nop) SendCommandOutput(CommandOutput)                               {}
 
-func (Nop) SendForm(form.Form)                                                                      {}
-func (Nop) CloseForm()                                                                              {}
-func (Nop) SendDialogue(dialogue.Dialogue, world.Entity)                                            {}
-func (Nop) CloseDialogue()                                                                          {}
-func (Nop) OpenBlockContainer(cube.Pos, *world.Tx)                                                  {}
-func (Nop) OpenEntityContainer(world.Entity, *inventory.Inventory, entity.ContainerKind, *world.Tx) {}
-func (Nop) OpenMerchant(world.Entity, entity.Merchant, *world.Tx)                                   {}
-func (Nop) OpenSign(cube.Pos, bool)                                                                 {}
+func (Nop) SendForm(form.Form)                                             {}
+func (Nop) CloseForm()                                                     {}
+func (Nop) SendDialogue(dialogue.Dialogue, world.Entity)                   {}
+func (Nop) CloseDialogue()                                                 {}
+func (Nop) OpenMenu(*menu.Menu, *world.Tx)                                 {}
+func (Nop) CloseMenu(*menu.Menu, bool)                                     {}
+func (Nop) ViewTrades(*menu.Menu, entity.Merchant, []entity.MerchantOffer) {}
+func (Nop) ViewEnchantmentOptions([3]menu.EnchantmentOption)               {}
+func (Nop) ViewSlotChange(int, item.Stack)                                 {}
+func (Nop) ViewCrafterSlotState(int, bool)                                 {}
+func (Nop) ViewCrafterTriggered(bool)                                      {}
+func (Nop) OpenSign(cube.Pos, bool)                                        {}
 
 func (Nop) ShowHudElement(hud.Element)        {}
 func (Nop) HideHudElement(hud.Element)        {}

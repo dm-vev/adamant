@@ -28,6 +28,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/debug"
@@ -71,7 +72,11 @@ type playerData struct {
 	gameMode world.GameMode
 	skin     skin.Skin
 	c        client.Client // The client of the player, nil if it has none.
-	h        Handler
+	// menu is the menu the player has open, nil if none. It is atomic as
+	// the slot functions of the inventories, which may run off the
+	// transaction, read it.
+	menu atomic.Pointer[menu.Menu]
+	h    Handler
 	// log is the logger of the player, never nil.
 	log *slog.Logger
 
@@ -3655,9 +3660,11 @@ func (p *Player) DropItemAt(pos mgl64.Vec3, stack item.Stack, velocity mgl64.Vec
 	p.tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: pos, Velocity: velocity}, stack))
 }
 
-// OpenBlockContainer opens a block container, such as a chest, at the position passed. If no container was
-// present at that location, OpenBlockContainer does nothing.
-// OpenBlockContainer will also do nothing if the player has no session connected to it.
+// OpenBlockContainer opens the menu of the block at the position passed: its
+// container, such as that of a chest, or its screen, such as that of a
+// crafting table, which the client of the player is shown. A menu the player
+// had open closes first, unless it is open for that position already.
+// OpenBlockContainer does nothing if the player has no client.
 func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	switch tx.Block(pos).(type) {
 	case block.Chest, block.TrappedChest, block.CopperChest, block.EnderChest, block.Barrel, block.ShulkerBox:
@@ -3665,22 +3672,94 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 		// player open them, as PiglinAi.angerNearbyPiglins.
 		entity.AngerNearbyPiglins(tx, p, true)
 	}
-	p.client().OpenBlockContainer(pos, tx)
+	if !p.hasClient() {
+		return
+	}
+	if m := p.Menu(); m != nil && m.Pos() == pos {
+		return
+	}
+	p.closeMenu(tx, false)
+	m := menu.OpenBlock(tx, pos, p.c, p.enderChest)
+	if m.Kind() != menu.Lectern {
+		// The client sends no close for a lectern: the player keeps no
+		// menu open for it.
+		p.menu.Store(m)
+	}
+	p.c.OpenMenu(m, tx)
 }
 
 // OpenEntityContainer opens inv, the inventory of the entity e, such as a
-// chest minecart, as a container of the kind passed.
+// chest minecart, as a container of the kind passed. A menu the player had
+// open closes first, unless it is open for e already. It does nothing if
+// the player has no client.
 func (p *Player) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, kind entity.ContainerKind, tx *world.Tx) {
 	if _, mount := e.(*entity.Mount); !mount {
 		// ContainerEntity.interactWithContainerVehicle angers piglins.
 		entity.AngerNearbyPiglins(tx, p, true)
 	}
-	p.client().OpenEntityContainer(e, inv, kind, tx)
+	if !p.hasClient() {
+		return
+	}
+	if m := p.Menu(); m != nil && m.Entity() == e.H() {
+		return
+	}
+	p.closeMenu(tx, false)
+	m := menu.OpenEntity(e, inv, kind, p.c)
+	p.menu.Store(m)
+	p.c.OpenMenu(m, tx)
 }
 
-// OpenMerchant opens a merchant interface when the player has an active session.
+// OpenMerchant opens the trades of merchant, the entity e, and shows the
+// client of the player its offers. A menu the player had open closes first,
+// unless it is open for e already. It does nothing if the player has no
+// client, if the offers cannot be had, or if the merchant does not agree to
+// trade.
 func (p *Player) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *world.Tx) {
-	p.client().OpenMerchant(e, merchant, tx)
+	if !p.hasClient() {
+		return
+	}
+	if m := p.Menu(); m != nil && m.Entity() == e.H() {
+		return
+	}
+	offers, err := merchant.MerchantOffersFor(p)
+	if err != nil {
+		p.log.Error("failed to load merchant offers", "err", err)
+		p.Message("Merchant offers are temporarily unavailable.")
+		return
+	}
+	p.closeMenu(tx, false)
+	m, ok := menu.OpenMerchant(e, merchant, p.H())
+	if !ok {
+		return
+	}
+	p.menu.Store(m)
+	p.c.OpenMenu(m, tx)
+	p.c.ViewTrades(m, merchant, offers)
+}
+
+// Menu returns the menu the player has open, nil if none. It may be called
+// from any goroutine.
+func (p *Player) Menu() *menu.Menu {
+	return p.menu.Load()
+}
+
+// CloseMenu closes the menu the player has open, if any: as its client
+// closed it, or, when clientRequested is false, as the server closes it,
+// which the client is shown.
+func (p *Player) CloseMenu(clientRequested bool) {
+	p.closeMenu(p.tx, clientRequested)
+}
+
+// closeMenu closes the menu the player has open in tx, if any: the client
+// is shown the close first, and the menu then releases what it held, such
+// as the viewer of a chest or the trade of a villager.
+func (p *Player) closeMenu(tx *world.Tx, clientRequested bool) {
+	m := p.menu.Swap(nil)
+	if m == nil {
+		return
+	}
+	p.client().CloseMenu(m, clientRequested)
+	m.Close(tx, p.H())
 }
 
 // HideEntity hides a world.Entity from the Player so that it can under no circumstance see it. Hidden entities can be

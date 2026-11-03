@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/dialogue"
@@ -115,6 +116,13 @@ type Controllable interface {
 	EnderChestInventory() *inventory.Inventory
 	Inventory() *inventory.Inventory
 	MoveItemsToInventory()
+
+	// Menu returns the menu the player has open, nil if none.
+	Menu() *menu.Menu
+	// CloseMenu closes the menu the player has open, if any: as its client
+	// closed it, or, when clientRequested is false, as the server closes it,
+	// which the client is shown.
+	CloseMenu(clientRequested bool)
 
 	// UUID returns the UUID of the controllable. It must be unique for all controllable entities present in
 	// the server.

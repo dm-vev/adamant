@@ -112,10 +112,12 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 	case "inventory":
 		s.invOpened = true
 	case "table":
-		s.containerOpened.Store(true)
+		openTestMenu(t, s, block.CraftingTable{})
 		s.openedContainerID.Store(uint32(v2193.ContainerTypeWorkbench))
 	case "crafter":
-		s.containerOpened.Store(true)
+		// A menu open in a window of the type of a crafter: the screen
+		// gate reads no more.
+		openTestMenu(t, s, block.CraftingTable{})
 		s.openedContainerID.Store(uint32(v2193.ContainerTypeCrafter))
 	case "closed":
 	default:
@@ -141,7 +143,7 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 		t.Fatalf("%s: %d requests", c.Name, len(pk.Requests))
 	}
 	req := pk.Requests[0]
-	if _, plain := req.Actions[0].(*v2193.CraftRecipeStackRequestAction); plain && s.containerOpened.Load() {
+	if _, plain := req.Actions[0].(*v2193.CraftRecipeStackRequestAction); plain && s.menu.Load() != nil {
 		// A plain craft in a block's screen looks the block up in the
 		// world, which this session has not.
 		t.Skip("a plain craft in a crafting table needs a world")

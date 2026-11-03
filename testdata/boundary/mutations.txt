@@ -61,10 +61,6 @@ protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*world.Tx).PlaySound
-protocol/bedrock/session/player.go (block.Container).RemoveViewer
-protocol/bedrock/session/player.go (block.EnderChest).RemoveViewer
-protocol/bedrock/session/player.go (entity.TradingMerchant).StopTrading
-protocol/bedrock/session/player.go (interface).RemoveViewer
 protocol/bedrock/session/player.go (world.Viewer).ViewEntityArmour
 protocol/bedrock/session/player.go (world.Viewer).ViewEntityItems
 protocol/bedrock/session/player.go (world.Viewer).ViewEntityItems
@@ -77,7 +73,3 @@ protocol/bedrock/session/session.go (*inventory.Inventory).Close
 protocol/bedrock/session/session.go (*inventory.Inventory).Close
 protocol/bedrock/session/session.go (*world.EntityHandle).Close
 protocol/bedrock/session/session.go (*world.Tx).RemoveEntity
-protocol/bedrock/session/world.go (block.Container).AddViewer
-protocol/bedrock/session/world.go (block.EnderChest).AddViewer
-protocol/bedrock/session/world.go (entity.TradingMerchant).StartTrading
-protocol/bedrock/session/world.go (interface).AddViewer

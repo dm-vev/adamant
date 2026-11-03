@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
@@ -18,27 +19,13 @@ const (
 
 // merchantTradeOpen reports if the session has a trade screen open.
 func (s *Session) merchantTradeOpen() bool {
-	return s.containerOpened.Load() && byte(s.openedContainerID.Load()) == v2193.ContainerTypeTrade
+	m := s.menu.Load()
+	return m != nil && m.Kind() == menu.Merchant
 }
 
 // openedMerchant returns the merchant the session's trade screen is open for.
 func (s *Session) openedMerchant(tx *world.Tx) (world.Entity, entity.Merchant, error) {
-	if !s.merchantTradeOpen() {
-		return nil, nil, fmt.Errorf("no merchant window is open")
-	}
-	handle := s.openedEntity.Load()
-	if handle == nil {
-		return nil, nil, fmt.Errorf("merchant window has no entity")
-	}
-	target, ok := handle.Entity(tx)
-	if !ok {
-		return nil, nil, fmt.Errorf("merchant is no longer in the world")
-	}
-	merchant, ok := target.(entity.Merchant)
-	if !ok {
-		return nil, nil, fmt.Errorf("opened entity is not a merchant")
-	}
-	return target, merchant, nil
+	return s.menu.Load().Merchant(tx)
 }
 
 // handleMerchantCraft handles the trade request the Bedrock trade screen
@@ -112,7 +99,7 @@ func (h *ItemStackRequestHandler) handleMerchantCraft(a *v2193.CraftRecipeStackR
 	}
 	if updated, err := merchantOffersFor(merchant, c); err == nil {
 		if serialized, err := serializeMerchantOffers(updated); err == nil {
-			s.sendMerchantOffers(target, merchant, c, updated, serialized)
+			s.sendMerchantOffers(target.H(), merchant, c.H(), updated, serialized)
 		}
 	}
 	return h.createResults(s, tx, output)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nbt"
@@ -34,11 +35,14 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 		offer := offers[0]
 
 		s := craftingTestSession()
-		s.containerOpened.Store(true)
-		s.openedContainerID.Store(uint32(v2193.ContainerTypeTrade))
-		s.openedEntity.Store(v.H())
 		handler := craftingTestHandler()
 		user := merchantTestUser{mode: world.GameModeSurvival, handle: entity.NewItem(world.EntitySpawnOpts{}, item.NewStack(item.Emerald{}, 1))}
+		m, ok := menu.OpenMerchant(v, v, user.handle)
+		if !ok {
+			t.Fatal("the farmer does not trade")
+		}
+		s.menu.Store(m)
+		s.openedContainerID.Store(uint32(v2193.ContainerTypeTrade))
 
 		price := offer.CostA()
 		_ = s.inv.SetItem(0, price)

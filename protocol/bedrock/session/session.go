@@ -18,6 +18,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/form"
@@ -138,18 +139,20 @@ type Session struct {
 
 	breakingPos cube.Pos
 
-	inTransaction, containerOpened atomic.Bool
-	openedWindowID                 atomic.Uint32
-	openedContainerID              atomic.Uint32
-	openedWindow                   atomic.Pointer[inventory.Inventory]
-	openedPos                      atomic.Pointer[cube.Pos]
-	openedEntity                   atomic.Pointer[world.EntityHandle]
-	swingingArm                    atomic.Bool
-	changingSlot                   atomic.Bool
-	changingDimension              atomic.Bool
+	inTransaction atomic.Bool
+	// menu is the menu the player has open as the client shows it, nil if
+	// none; a lectern, which the client sends no close for, is never one.
+	// openedWindowID is the ID of the window last opened and
+	// openedContainerID the type of the window open, 0 if none.
+	menu              atomic.Pointer[menu.Menu]
+	openedWindowID    atomic.Uint32
+	openedContainerID atomic.Uint32
+	swingingArm       atomic.Bool
+	changingSlot      atomic.Bool
+	changingDimension atomic.Bool
 	// moving is set while applying client-driven movement to avoid echoing it back to the same client.
 	moving atomic.Bool
-	// noWindow is the inventory openedWindow holds while no menu with items of its own is open: none, a crafting
+	// noWindow is the inventory window returns while no menu with items of its own is open: none, a crafting
 	// table, an anvil, a merchant and the like. Requests cannot name it.
 	noWindow *inventory.Inventory
 
@@ -328,8 +331,6 @@ func (conf Config) New(conn Conn) *Session {
 	s.heldSlot.Store(new(uint32))
 	s.chunkRadius.Store(int32(r))
 	s.noWindow = inventory.New(1, nil)
-	s.openedWindow.Store(s.noWindow)
-	s.openedPos.Store(&cube.Pos{})
 
 	var scoreboardName string
 	var scoreboardLines []string
@@ -535,7 +536,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 
 		if tx != nil {
 			run(c.MoveItemsToInventory)
-			run(func() { s.closeCurrentContainer(tx, false) })
+			run(func() { c.CloseMenu(false) })
 		}
 		if s.viewLayer != nil {
 			run(func() { _ = s.viewLayer.Close() })
