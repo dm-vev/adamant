@@ -10,6 +10,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player/chat"
@@ -123,6 +124,9 @@ type observed struct {
 	out strings.Builder
 	// norm names the IDs of what every client is sent.
 	norm *normaliser
+	// roster lists the players of every client, as the roster of a server
+	// does, so that the clients list each other.
+	roster *client.Roster
 	// clients are the clients online, in the order they joined, and names
 	// their names.
 	clients []*scenario
@@ -130,7 +134,7 @@ type observed struct {
 }
 
 func newObserved(t *testing.T) *observed {
-	return &observed{t: t, norm: newNormaliser(), names: map[*scenario]string{}}
+	return &observed{t: t, norm: newNormaliser(), roster: new(client.Roster), names: map[*scenario]string{}}
 }
 
 // join has a player join the world of the scenario, the first making it,
@@ -145,6 +149,7 @@ func (o *observed) join(heading string, who *serverIdentity) *scenario {
 	c := newScenario(o.t, "observed", scenarioConfig{world: o.w, who: who, norm: o.norm, session: func(conf *session.Config) {
 		// As the server does by default.
 		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
+		conf.Roster = o.roster
 	}})
 	if o.w == nil {
 		o.w = c.w
