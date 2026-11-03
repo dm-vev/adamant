@@ -79,7 +79,7 @@ func (s *serverScenario) permissions(heading string, c *serverClient, f func()) 
 // TestGoldenServerReconnect records a client logging in as a player that
 // is still online, as the server handles it by default: the player online
 // is disconnected and saved, and the new client joins in its place, with
-// the data the server loaded for it before the other was saved.
+// the data the server saved of the other.
 func TestGoldenServerReconnect(t *testing.T) {
 	// Each runs in a process of its own, which waits on the clock of its
 	// server most of the time.
@@ -95,6 +95,9 @@ func TestGoldenServerReconnect(t *testing.T) {
 		p.SetExperienceLevel(3)
 	})
 
+	var moved mgl64.Vec3
+	<-s.srv.World().Exec(func(tx *world.Tx) { moved = g.player(tx).Position() })
+
 	heading := "another client logs in as Golden while Golden is online"
 	fmt.Fprintf(&s.out, "== %s\n", heading)
 	again := s.connect(goldenIdentity)
@@ -106,6 +109,13 @@ func TestGoldenServerReconnect(t *testing.T) {
 	if h := s.awaitSpawn(heading); h != again.handle() {
 		t.Fatal("the server spawned another player than the client logging in again")
 	}
+	// The new client plays on from where the other left.
+	<-s.srv.World().Exec(func(tx *world.Tx) {
+		p := again.player(tx)
+		if p.Position() != moved || p.ExperienceLevel() != 3 {
+			t.Errorf("the player of the new client is at %v with experience level %d, want %v and 3, as the other was saved", p.Position(), p.ExperienceLevel(), moved)
+		}
+	})
 	s.joined(heading, again, nil)
 	s.server()
 	s.snapshot()

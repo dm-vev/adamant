@@ -978,8 +978,6 @@
 == another client logs in as Golden while Golden is online
 -- the client logging in
 -- Golden
--- player provider
-    loaded 00000000-0000-4000-8000-00000000901d: none saved
 -- server
     players online: 1 ["Golden"]
     Golden: by UUID true, by name true, by XUID true

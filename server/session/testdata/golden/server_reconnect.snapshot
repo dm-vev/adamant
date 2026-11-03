@@ -1024,7 +1024,7 @@
       CustomSkinsDisabled: false
       EmoteChatMuted: false
       BaseGameVersion: "1.26.50"
-      PlayerPosition: [0.5 -58.37999 0.5]
+      PlayerPosition: [3.5 -58.37999 2.5]
       Pitch: 0
       Yaw: 0
       Dimension: 0
@@ -1200,10 +1200,10 @@
     UpdateAttributesPacket
       EntityRuntimeID: 1
       Attributes: []v2193.Attribute (2)
-        [0] {Min:0 Max:2.1474836e+09 Value:0 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [0] {Min:0 Max:2.1474836e+09 Value:3 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
         [1] {Min:0 Max:1 Value:0 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
       Tick: 0
-    | 0102000000000000004f00000000000000000000004f00000000166d696e6563
+    | 0102000000000000004f00004040000000000000004f00000000166d696e6563
     | 726166743a706c617965722e6c6576656c00000000000000803f000000000000
     | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
     | 7269656e63650000
@@ -1236,8 +1236,8 @@
     {SpawnType:1 Position:[0 -60 0] Dimension:0 SpawnPosition:[0 -60 0]}
     | 0200770000007700
 >> NetworkChunkPublisherUpdate id=121 len=8
-    {Position:[0 -60 0] Radius:16 SavedChunks:[]}
-    | 0077001000000000
+    {Position:[3 -60 2] Radius:16 SavedChunks:[]}
+    | 0677041000000000
 >> AvailableActorIdentifiers id=119 len=3231
     AvailableActorIdentifiersPacket
       SerialisedEntityIdentifiers: nbtmap["idlist":[map["id":"minecraft:villager_v2"] map["id":"minecraft:arrow"] map["id":"minecraft:thrown_trident"] map["id":"minecraft:wind_charge_projectile"] map["id":"minecraft:breeze_wind_charge_projectile"] map["id":"minecraft:evocati… <4131 chars sha256:93df4d9d8b66bcf5>
@@ -1493,11 +1493,11 @@
 >> SetActorData id=39 len=128
     SetActorDataPacket
       EntityRuntimeID: 1
-      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:0 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:27 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
       EntityProperties: {IntegerProperties:[] FloatProperties:[]}
       Tick: 0
     | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
-    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 08020200090000000f0202361a0000002603030000803f2a01012c013503039a
     | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
     | 51000001540404005c0707007803030000000081010000008301070700000000
 >> InventoryContent id=49 len=300
@@ -1812,11 +1812,11 @@
 >> SetActorData id=39 len=128
     SetActorDataPacket
       EntityRuntimeID: 1
-      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:0 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:27 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
       EntityProperties: {IntegerProperties:[] FloatProperties:[]}
       Tick: 0
     | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
-    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 08020200090000000f0202361a0000002603030000803f2a01012c013503039a
     | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
     | 51000001540404005c0707007803030000000081010000008301070700000000
 >> LevelChunk id=58 len=550
@@ -1986,8 +1986,8 @@
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
 -- player provider
-    loaded 00000000-0000-4000-8000-00000000901d: none saved
     saved Golden (2535400000000042, 00000000-0000-4000-8000-00000000901d): in Overworld at [3.5 -60 2.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 27, held slot 0
+    loaded 00000000-0000-4000-8000-00000000901d: Golden
 -- server
     players online: 1 ["Golden"]
     Golden: by UUID true, by name true, by XUID true

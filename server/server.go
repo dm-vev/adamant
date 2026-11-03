@@ -560,6 +560,13 @@ func (srv *Server) wait() {
 // channel.
 func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listener) {
 	id := uuid.MustParse(conn.IdentityData().Identity)
+	// A player still online leaves before the joining one is loaded: the
+	// server then loads what it saved of the player as it left.
+	if handle, ok := srv.Player(id); ok {
+		if !srv.handleReconnect(l, conn, id, handle) {
+			return
+		}
+	}
 	data := srv.defaultGameData()
 
 	var (
@@ -597,12 +604,6 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 	data.EmoteChatMuted = srv.conf.MuteEmoteChat
 	if srv.IsOperator(conn.IdentityData().DisplayName) {
 		data.PlayerPermissions = v2193.PermissionLevelOperator
-	}
-
-	if handle, ok := srv.Player(id); ok {
-		if !srv.handleReconnect(l, conn, id, handle) {
-			return
-		}
 	}
 
 	if err := conn.StartGameContext(ctx, data); err != nil {
@@ -712,16 +713,22 @@ func (srv *Server) handleSessionClose(tx *world.Tx, c session.Controllable) {
 	// Always decrement the wait group because createPlayer unconditionally increments it.
 	defer srv.pwg.Done()
 
-	srv.pmu.Lock()
+	srv.pmu.RLock()
 	_, ok := srv.p[c.UUID()]
-	delete(srv.p, c.UUID())
-	srv.pmu.Unlock()
+	srv.pmu.RUnlock()
 	if !ok {
 		// When a player disconnects immediately after a session is started, it
 		// might not be added to the players map yet. This is expected, but we
 		// need to be careful not to crash when this happens.
 		return
 	}
+	// The player stays online until it is saved: a client logging in as it
+	// waits for it to go before the server loads what it saved.
+	defer func() {
+		srv.pmu.Lock()
+		delete(srv.p, c.UUID())
+		srv.pmu.Unlock()
+	}()
 
 	if tx != nil {
 		if err := srv.conf.PlayerProvider.Save(c.UUID(), c.(*player.Player).Data(), tx.World()); err != nil {
