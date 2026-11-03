@@ -1,0 +1,886 @@
+{
+ "version": "1.26.52.3",
+ "protocol_version": 2193,
+ "build_id": 51798919,
+ "server_sha256": "0a490c711d4a2ce075debcd979e8862b7eaba008373f9970f0edbb67f98f9207",
+ "client": "gophertunnel v1.62.0 over RakNet, offline mode (transport=raknet, online-mode=false, allow-list=false, FLAT world, cheats allowed); the player MenuProbe at 0.5 -60 0.5 in survival",
+ "capture": "Each case starts with the console commands of setup. Inventory requests are sent with the inventory screen open (Interact OpenInventory, then ContainerClose), as BDS refuses them with no screen open (49); the loom case sends its first request with no screen open. Blocks are opened by clicking their top face with the empty hot bar slot 8 (PlayerAuthInput item interaction). sha256 is of each decompressed packet, header and payload, and raw that packet in hex; InventoryContent is kept whole only for the window opened and the off hand. requests summarises the ItemStackResponse to each request in order: the status and the slots it reports. counts_after is what the console command clear MenuProbe <item> 0 0 printed after the case.",
+ "cases": [
+  {
+   "name": "inventory/slot-changed-twice-refused",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 16",
+    "replaceitem entity MenuProbe slot.hotbar 2 oak_planks 8"
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "5d0bdecc4fcbf830ca2bfb399f3058174aab548969fe79426e63bf4ea0a6922c",
+     "raw": "2e02ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "10ccacb36b5b9eb2df8d0c92e445e9a3ecbcb0463b59e8654f4d5fd09a740f0d",
+     "raw": "93010101030101010c0002020000000c0014000000000101010c0002ffffffff0c0015000000000101010c00000f2700000c0016000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "f091cbe45c13975cd34c9eaeddc5569afd698c466dfa718fc36a97a10d2064f4",
+     "raw": "940101310100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "98ead2031ae2bae81688f8490b62344b1c50031946997af6bf089b151665fb90",
+     "raw": "93010105010000080c0002020000003b0000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "2b23ae26b0bffa289fc5b4071e99ea71289083bf518b99cdbc96e0fc3b31a748",
+     "raw": "940101000501020c0001020200000000003b00010000080104000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "a16cec63c18e7707f5681eb3afee5ceb70b5bf814febfc4107641eb112eb3a1e",
+     "raw": "93010109010101083b0000fdffffff0c0002000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "526fa01a8d5d7d64c8ad9a482865ea9b8721d70d68fb543bcbacd0465dc16cf3",
+     "raw": "940101000901023b0001000000000000000c00010202080104000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "fb54d0be7836368ba92273a03ad4b6810a83a7b3dca5b2e3e03f5c164bc0fefd",
+     "raw": "2f02ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "abe73ce65647bce71eb6a6cc3edea27dc11f4b7462e3388dc6eb0c191f0876d3",
+     "raw": "2f02f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "one plank to slot 20, one more to slot 21, then apples named with a stale stack ID",
+     "status": 49,
+     "changes": []
+    },
+    {
+     "label": "all eight planks of slot 2 taken to the cursor, by the stack ID the client was sent",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 0
+      },
+      {
+       "container": 59,
+       "slot": 0,
+       "count": 8
+      }
+     ]
+    },
+    {
+     "label": "the planks of the cursor put back in slot 2",
+     "status": 0,
+     "changes": [
+      {
+       "container": 59,
+       "slot": 0,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 8
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 8 items that match the criteria",
+    "MenuProbe has 16 items that match the criteria"
+   ]
+  },
+  {
+   "name": "offhand/place-slot-0",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 3 shield 1"
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "3fda7c766f38f41f256c9322d709c331aabe067201818cbfe395517237524c1d",
+     "raw": "2e03ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d43b1de2f26183f0ec4de04959687c15a70b751d99867e6c5893793a36d2f38f",
+     "raw": "9301010d010101010c000305000000220000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "31e98a5e49b9ae2dd5639e2dbd3f12175d31d0d5dfe62b9566bcbb3c63004587",
+     "raw": "940101370d00"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "a7e30e353029e8d500ca3988ecf37b023e0f5ef563a400b13ac3144de17fbb49",
+     "raw": "2f03ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "3bdddd0a621b2bc76f1333438c63553984e3cbdd0c8b770408e57afa38d4476b",
+     "raw": "2f03f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "a shield placed in the off hand, slot 0",
+     "status": 55,
+     "changes": []
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 1 items that match the criteria"
+   ]
+  },
+  {
+   "name": "offhand/place-slot-1",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 3 shield 1"
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "c09ea4a6abf99eebb87d12e43492b7bc1e8ac98e63b44e50f3485d137b5f3351",
+     "raw": "2e04ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "0cb9ff0f4d21bf154f9efb4ac8029689b6fc4e3c53346f29978fc7b3f565170e",
+     "raw": "93010111010101010c000306000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "a287a861f2d4a0a054bb0d6044cd9aabbb77309a4a208b8977f36c4936aac73b",
+     "window": 119,
+     "raw": "3177016601010000010c0024ffff010a000003060044616d61676500000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "0ecb9cfcb725bd9399f8604e90ebee169f926e2d907e23f47b5e383a1aa246f2",
+     "raw": "940101001101020c000103030000000000220001010101010c000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "acd45b3dba6dccffea3f478cab04c19ba3a410cc2b2fb0d950c75fd687671b6e",
+     "raw": "2f04ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "5cee51207ce3e76e955710bc252d2cfeb07c19ce5bb4ea32bfcfd9d87da4fca0",
+     "raw": "2f04f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "a shield placed in the off hand, slot 1",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 3,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 1 items that match the criteria"
+   ]
+  },
+  {
+   "name": "offhand/changed-refused",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 16",
+    "replaceitem entity MenuProbe slot.hotbar 3 shield 1",
+    "replaceitem entity MenuProbe slot.hotbar 4 totem_of_undying 1"
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "fb97195bf41a2070ad8f3053c743a0d2276f37d4ba3d329ac0a99a714a30d555",
+     "raw": "2e05ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "3d6fbf3e5779c1322d85068fed80512412ffd8c1038dfde1921ec28b5b7247d4",
+     "raw": "93010115020101010c000308000000220001000000000101010c00000f2700000c0016000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "a307b23e8abc2bac85c7f94e1130f55c8fd4b99e161aa4ff282ed09e1cdc6119",
+     "raw": "940101311500"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "811dcd05314f98295bfb5eb8f80c836f9a9a073d2b6bfdb4eca47c944850b6ce",
+     "raw": "93010119020101010c000308000000220000000000000101010c00000f2700000c0016000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "11a95319a25dec07e076286b1f95b9747e18089e0346c3ad7ebb72dffb4ee1b9",
+     "raw": "940101321900"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "c080c429a0bd8896956fbba11cc0b1c40ac83e52b583a7167a5e04633cf96bea",
+     "raw": "9301011d010101010c000409000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "f4594e989a106f3c7037ed86dbff3766568130c479de3c124e8d99df382e19ac",
+     "window": 119,
+     "raw": "31770142020100000112000a0000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "59c00f0d23d0b6600323907f87cf68c2e359478b23f801d289de2875bbc3cbc1",
+     "raw": "940101001d01020c0001040400000000002200010101010112000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "ab89417ee627f763ed1d590ad61a05bf81519854bcaac31c8f57f1896bbdef96",
+     "raw": "2f05ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "b78bbeb1ed0bcf53e27dfcfeb7e77eef68de12bd36b61456ed764540a4638ffe",
+     "raw": "2f05f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "a shield placed in the off hand (slot 1), then apples named with a stale stack ID",
+     "status": 49,
+     "changes": []
+    },
+    {
+     "label": "a shield placed in the off hand (slot 0), then apples named with a stale stack ID",
+     "status": 50,
+     "changes": []
+    },
+    {
+     "label": "a totem placed in the off hand, slot 1",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 4,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 1 items that match the criteria",
+    "MenuProbe has 1 items that match the criteria"
+   ]
+  },
+  {
+   "name": "loom/no-screen-open",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 5 white_banner 1",
+    "replaceitem entity MenuProbe slot.hotbar 6 red_dye 1"
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "08eaea6cdfca43333b9b2865bc5aa6aa0a65644ea7edc21e21b2cf5965e6ad37",
+     "raw": "93010121040f1102626f01050501290009000000000505012a000a000000000101013c0032efffffff0c0007000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "a65ed4277ac9d3255b457c60fb65cb307750ce44d14350ac68da51be096012bd",
+     "raw": "940101072100"
+    },
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "5e98c24c4eb37cdafa1402d08a10dd46c89f49146c43b6de42587b9cec02daa3",
+     "raw": "2e06ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "a7a302824bc59368c36853f21e09ef019d4b175d71829555bedab028c8add6a6",
+     "raw": "93010125040f1102626f01050501290009000000000505012a000a000000000101013c0032edffffff0c0007000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "29e516ff6027745aedb8403f0360218af699cb3024d34b22419805ce92ea896f",
+     "raw": "940101062500"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "0b72ae9d9d4db0acbe426407599ee373cd50f6f1ce81e31d9b6944fa88a8adf2",
+     "raw": "93010129010101010c000500000000290009000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "7cbd8434fb34142669b3c1109c25f07478da181a8fd9a884da7d0e34945029b0",
+     "raw": "940101312900"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "8daf64082561ace5b1c0ef37d9fa54e5532fca31864d74013f95470567f10f63",
+     "raw": "2f06ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "d0d4599b40427a39d1ec82c8ea1e0b244773ef8f5218f7f9642b9fbf0b5b05b2",
+     "raw": "2f06f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "a border on a banner, no loom open",
+     "status": 7,
+     "changes": []
+    },
+    {
+     "label": "a border on a banner, the inventory screen open",
+     "status": 6,
+     "changes": []
+    },
+    {
+     "label": "the banner put in the loom input slot, the inventory screen open",
+     "status": 49,
+     "changes": []
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 1 items that match the criteria"
+   ]
+  },
+  {
+   "name": "anvil/level-entity-place",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 16",
+    "setblock -2 -60 0 anvil"
+   ],
+   "packets": [
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "7a07df80040313baef64d9f7f4e7695390dabc3673759e23571cd1c2cc795e18",
+     "raw": "2e070503770001"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "0b80e4c64f505c41225d80bedc6c674bd1999cdb93aa34c304ffc0c2c2c7e0d8",
+     "window": 7,
+     "raw": "31070300000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "69b6875fd640a0dd1610146280ee3e9870bc7901bc6a06c2b0e03278a3f06f0a",
+     "window": 0
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "da814275d6c79360aa043b422ba7ac94a0c2412fdf16de0d999b8e5b97cc9538",
+     "window": 120
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "2bba1d2bbc5d206763e16202caac27394deece75455121da0f2cc368434cd26b",
+     "window": 124
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "window": 119,
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "0b80e4c64f505c41225d80bedc6c674bd1999cdb93aa34c304ffc0c2c2c7e0d8",
+     "window": 7,
+     "raw": "31070300000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "dffb011053399506fea691ff0217f0ff7c86f673e5fd551003563aa7f2631b58",
+     "raw": "9301012d010101010c00000b000000070000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "40b00094b41a79843749afec9a6b2d0400dfb1b32ce390a696a17b6d40e33ea9",
+     "raw": "940101322d00"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "22a5880ebcd2a39f7f91d8cf9cc5921f311bf40b03db35abc5a01152fcf75960",
+     "raw": "93010131010101010c00000b000000070001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "e96bd7597b49c3658910e1813df7769b0e0b8aebefdea98809c7fbd1229265ca",
+     "raw": "940101323100"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "a6219ac5473bf900d0d1bac0e8ae46ed6d19cb2a5153b8558aa71c8f6e4811c0",
+     "raw": "2f070500"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "a31e88b0f828989fcdfc6ab6d0a41e8efaec58e9ce9086f56d24f4bc61ca1297",
+     "raw": "2f07f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "an apple placed in container 7 (LevelEntity), slot 0",
+     "status": 50,
+     "changes": []
+    },
+    {
+     "label": "an apple placed in container 7 (LevelEntity), slot 1",
+     "status": 50,
+     "changes": []
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 16 items that match the criteria"
+   ]
+  },
+  {
+   "name": "crafting_table/level-entity-place",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 16",
+    "setblock -2 -60 2 crafting_table"
+   ],
+   "packets": [
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "358a7571ac7c2e8b93dbe4f4cda03f88808a729bd032c71600c0ec5097fd8ec1",
+     "raw": "2e080103770401"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "02d09e1d6140fb8e4acdeafec0f064ac758d564b9cf49afc43539133478d092b",
+     "window": 0
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "da814275d6c79360aa043b422ba7ac94a0c2412fdf16de0d999b8e5b97cc9538",
+     "window": 120
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "2bba1d2bbc5d206763e16202caac27394deece75455121da0f2cc368434cd26b",
+     "window": 124
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "window": 119,
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "f1a2073f0705656b6cf566e8f75ee29146002c2e436c8483f478876f4f2fcb59",
+     "raw": "93010135010101010c00000c000000070000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "00c3afac6512cc4de99798aa6f22ddd90d1572399e92b43162e97f453a4bf0fd",
+     "raw": "940101323500"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "e3a3101341b77e52e7e23a6cf8ec870550b8c4aa4d8b1d587d030d2a77cde00c",
+     "raw": "93010139010101010c00000c000000070001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "dd82d81040f25fbcb50d5ff0bc08fef5833fbbe0750f7f9f449e444ad3dcf6a1",
+     "raw": "940101323900"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "ed39818389a25e438b9394c10c7fa06ab5ca3855c6b4973ac5e5efaf81bc2879",
+     "raw": "2f080100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "ba14269cad0417263286799bd308b004173ed44e5b02faff48762bb772ae5840",
+     "raw": "2f08f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "an apple placed in container 7 (LevelEntity), slot 0",
+     "status": 50,
+     "changes": []
+    },
+    {
+     "label": "an apple placed in container 7 (LevelEntity), slot 1",
+     "status": 50,
+     "changes": []
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 16 items that match the criteria"
+   ]
+  },
+  {
+   "name": "dispenser/open",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 16",
+    "setblock 2 -60 0 dispenser",
+    "replaceitem block 2 -60 0 slot.container 4 iron_ingot 3"
+   ],
+   "packets": [
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "bc503576264e2e5c35c0e8b05e256119b1a928c8417a95a369e74315b9a6169c",
+     "raw": "2e090604770001"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "9928684e1bcee029c1cc993a5ccc2ef172edd51af6979c08dcd629f8a4c924bd",
+     "window": 9,
+     "raw": "31090900000000000000000000000000000000000000000000000000000000000000003301030000011c000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "e3d665a76474b587e3482b1495cefa3bcf38be6b7aecc311ce9d61d53b714479",
+     "window": 0
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "da814275d6c79360aa043b422ba7ac94a0c2412fdf16de0d999b8e5b97cc9538",
+     "window": 120
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "2bba1d2bbc5d206763e16202caac27394deece75455121da0f2cc368434cd26b",
+     "window": 124
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "window": 119,
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "9928684e1bcee029c1cc993a5ccc2ef172edd51af6979c08dcd629f8a4c924bd",
+     "window": 9,
+     "raw": "31090900000000000000000000000000000000000000000000000000000000000000003301030000011c000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "9928684e1bcee029c1cc993a5ccc2ef172edd51af6979c08dcd629f8a4c924bd",
+     "window": 9,
+     "raw": "31090900000000000000000000000000000000000000000000000000000000000000003301030000011c000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "ee23f88b2d7084623ec1e2cc714f9a41bcbe872aa853b2fd8d770e7c15e23962",
+     "raw": "9301013d010101010c00000d000000070000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventorySlot",
+     "sha256": "7615b97d700458df454806b69e929192687f8e2403b2c42ae5f51c074d14d304",
+     "raw": "32090000007203010000011e000a00000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "31bf0e09e7974059693f8cf46241113a0c86d5126d5cf6c796922003732f8f71",
+     "raw": "940101003d01020c000100000f011a000000070001000001011e000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "85b8d2e015311050d900dae7850368cbfa198a2c2194044d8146abc64a8c1b03",
+     "raw": "2f090600"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "c9622531bf993e096e04722a32d1280e39aa1ff5032f4d27a5ff1aaaacff9522",
+     "raw": "2f09f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "an apple placed in container 7 (LevelEntity), slot 0",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 15
+      },
+      {
+       "container": 7,
+       "slot": 0,
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 15 items that match the criteria"
+   ]
+  },
+  {
+   "name": "dropper/open",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 16",
+    "setblock 2 -60 2 dropper",
+    "replaceitem block 2 -60 2 slot.container 4 iron_ingot 3"
+   ],
+   "packets": [
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "28049db1d1bf95d41d4e95492e974b74a14ab5a63d2f05ba49fbc5208d90decb",
+     "raw": "2e0a0704770401"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "3db46ccd8f08206a1011e5d7fb3cd07a988a672ec5d51f870c2f36361e4f6747",
+     "window": 10,
+     "raw": "310a09000000000000000000000000000000000000000000000000000000000000000033010300000122000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "42da9d11e58c684c90861e57039da74ec8471bfcdb2ed26f41ed7ebf77ac9615",
+     "window": 0
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "da814275d6c79360aa043b422ba7ac94a0c2412fdf16de0d999b8e5b97cc9538",
+     "window": 120
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "2bba1d2bbc5d206763e16202caac27394deece75455121da0f2cc368434cd26b",
+     "window": 124
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "window": 119,
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "3db46ccd8f08206a1011e5d7fb3cd07a988a672ec5d51f870c2f36361e4f6747",
+     "window": 10,
+     "raw": "310a09000000000000000000000000000000000000000000000000000000000000000033010300000122000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "3db46ccd8f08206a1011e5d7fb3cd07a988a672ec5d51f870c2f36361e4f6747",
+     "window": 10,
+     "raw": "310a09000000000000000000000000000000000000000000000000000000000000000033010300000122000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "a1330ea9596f10a6141ab3036be66ec2b16f26841ca26a456f5d84f6fdec2710",
+     "raw": "93010141010101010c000010000000070000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventorySlot",
+     "sha256": "aba0daf8c38d2e0e2afa31bf7a9c669cd5068fc45be04cb10e7d553ffaa2a8a2",
+     "raw": "320a00000072030100000124000a00000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "2f525c8acfd140755baba4f1afd31b9632d60ccdd7176910eaf79df94f6aa639",
+     "raw": "940101004101020c000100000f01200000000700010000010124000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "e94ddee2e77d79c006fe79d428db00dbf6f903372aadadcaac67eb9486c05ad6",
+     "raw": "2f0a0700"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "eae2bfbfe1bd0e1ed26ec9c422c61a958af3a19000b7ec915d771a0791009e4a",
+     "raw": "2f0af700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "an apple placed in container 7 (LevelEntity), slot 0",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 15
+      },
+      {
+       "container": 7,
+       "slot": 0,
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 15 items that match the criteria"
+   ]
+  }
+ ]
+}
