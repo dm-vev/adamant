@@ -33,6 +33,16 @@ func MapDecorationTypeFromJava(name string) (byte, bool) {
 		return 23, true
 	case "trial_chambers":
 		return 24, true
+	case "abandoned_camp":
+		return 25, true
+	case "ancient_city":
+		return 26, true
+	case "mineshaft":
+		return 27, true
+	case "desert_pyramid":
+		return 28, true
+	case "ocean_ruin_warm":
+		return 29, true
 	}
 	return 0, false
 }
