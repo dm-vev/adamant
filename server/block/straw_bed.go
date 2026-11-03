@@ -142,7 +142,7 @@ func (b StrawBed) StopSleeping(pos cube.Pos, tx *world.Tx) {
 	tx.SetBlock(pos, b, nil)
 }
 func (b StrawBed) destroy(pos cube.Pos, tx *world.Tx) {
-	tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "straw_bed.break_leave", EntityType: ":", ExtraData: -1})
+	tx.PlaySound(pos.Vec3Centre(), sound.Event{Name: "straw_bed.break_leave"})
 	other, otherPos, connected := b.counterpart(pos, tx)
 	tx.SetBlock(pos, nil, nil)
 	// Source applies the partner's shape update before the sleeper searches for

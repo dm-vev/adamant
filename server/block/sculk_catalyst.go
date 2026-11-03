@@ -82,7 +82,7 @@ func (c SculkCatalyst) HandleGameEvent(tx *world.Tx, pos cube.Pos, event world.G
 	for range 2 {
 		tx.AddParticle(pos.Vec3().Add(mgl64.Vec3{0.5 + rand.NormFloat64()*0.2, 1.15, 0.5 + rand.NormFloat64()*0.2}), particle.SculkSoul{})
 	}
-	tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "block.sculk_catalyst.bloom", ExtraData: -1})
+	tx.PlaySound(pos.Vec3Centre(), sound.Event{Name: "block.sculk_catalyst.bloom"})
 }
 
 // initialised gives a generated or loaded catalyst its own spreader.

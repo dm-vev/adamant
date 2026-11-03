@@ -256,9 +256,7 @@ func (c Crafter) craft(pos cube.Pos, tx *world.Tx) {
 // recipe sends fail; fully inserted output is silent. Both identify the live
 // pre-animation permutation and originate at the integer block position.
 func playCrafterSound(pos cube.Pos, tx *world.Tx, name string) {
-	registry := tx.World().BlockRegistry()
-	hash, _ := registry.RuntimeIDToHash(registry.BlockRuntimeID(tx.Block(pos)))
-	tx.PlaySound(pos.Vec3(), sound.NativeEvent{SoundType: name, ExtraData: int32(hash), EntityUniqueID: -1})
+	tx.PlaySound(pos.Vec3(), sound.Event{Name: name, Block: tx.Block(pos)})
 }
 
 func matchCrafterShaped(r recipe.Recipe, input []item.Stack) (item.Stack, bool) {

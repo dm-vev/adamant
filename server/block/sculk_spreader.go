@@ -541,7 +541,7 @@ func javaBlockTag(tx *world.Tx, pos cube.Pos, tag string) bool {
 }
 
 func sculkSpreadSound() world.Sound {
-	return sound.NativeEvent{SoundType: "block.sculk.spread", ExtraData: -1}
+	return sound.Event{Name: "block.sculk.spread"}
 }
 
 func chessboardDistance(a, b cube.Pos) int {

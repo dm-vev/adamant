@@ -279,7 +279,7 @@ func (g *randomStandGoal) CanUse(m *Mob) bool {
 
 func (g *randomStandGoal) Start(m *Mob) {
 	g.mount.standIfPossible(&Mount{Ent: m.Ent})
-	m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: "ambient", EntityType: m.H().Type().EncodeEntity(), ExtraData: -1})
+	m.tx.PlaySound(m.data.Pos, sound.Event{Name: "ambient", Entity: m.H().Type().EncodeEntity()})
 }
 
 func (g *randomStandGoal) CanContinueToUse(*Mob) bool { return false }

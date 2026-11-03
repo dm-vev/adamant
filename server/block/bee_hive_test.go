@@ -19,7 +19,7 @@ type hiveExitObserver struct {
 }
 
 func (h *hiveExitObserver) HandleSound(_ *world.Context, s world.Sound, _ mgl64.Vec3) {
-	if event, ok := s.(sound.NativeEvent); ok && event.SoundType == "block.beehive.exit" {
+	if event, ok := s.(sound.Event); ok && event.Name == "block.beehive.exit" {
 		h.exits++
 		for e := range h.tx.Entities() {
 			if e.H().Type().EncodeEntity() == "minecraft:bee" {

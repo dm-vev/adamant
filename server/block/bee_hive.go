@@ -561,7 +561,7 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 		spawnPos[1] -= float64(float32(box.Height()) / 2)
 		handle.SetPosition(spawnPos)
 	}
-	tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "block.beehive.exit", ExtraData: -1})
+	tx.PlaySound(pos.Vec3Centre(), sound.Event{Name: "block.beehive.exit"})
 	tx.EmitGameEvent(world.GameEventBlockChange, pos.Vec3Centre(), world.GameEventContext{Source: spawned, AffectedState: tx.Block(pos)})
 	if tx.AddEntity(handle) == nil {
 		return nil

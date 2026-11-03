@@ -99,7 +99,7 @@ func (m *Mount) spit(tx *world.Tx, target world.Entity) {
 		return
 	}
 	tx.AddEntity(NewLlamaSpit(world.EntitySpawnOpts{Position: origin, Velocity: shootVelocity(d, 1.5, 10)}, m))
-	tx.PlaySound(m.Position(), sound.NativeEvent{SoundType: "spit", EntityType: m.H().Type().EncodeEntity(), ExtraData: -1})
+	tx.PlaySound(m.Position(), sound.Event{Name: "spit", Entity: m.H().Type().EncodeEntity()})
 	m.b().llamaState.didSpit = true
 }
 

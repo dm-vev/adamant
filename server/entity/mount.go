@@ -408,7 +408,7 @@ func (m *Mount) Mount(tx *world.Tx, passenger world.Entity) bool {
 	b.passengers[seat] = passenger.H()
 	seatRider(r, m)
 	m.broadcastLink(tx, passenger.H(), true)
-	tx.PlaySound(m.Position(), sound.NativeEvent{SoundType: "mount", EntityType: m.H().Type().EncodeEntity(), ExtraData: -1})
+	tx.PlaySound(m.Position(), sound.Event{Name: "mount", Entity: m.H().Type().EncodeEntity()})
 	m.updateState()
 	return true
 }
@@ -614,7 +614,7 @@ func (m *Mount) equip(tx *world.Tx, held item.Stack, ctx *item.UseContext) bool 
 			_ = b.gearInv.SetItem(0, item.NewStack(item.Saddle{}, 1))
 		}
 		ctx.SubtractFromCount(1)
-		tx.PlaySound(m.Position(), sound.NativeEvent{SoundType: "saddle", EntityType: m.H().Type().EncodeEntity(), ExtraData: -1})
+		tx.PlaySound(m.Position(), sound.Event{Name: "saddle", Entity: m.H().Type().EncodeEntity()})
 		m.updateState()
 		return true
 	}
@@ -626,7 +626,7 @@ func (m *Mount) equip(tx *world.Tx, held item.Stack, ctx *item.UseContext) bool 
 		_ = b.gearInv.SetItem(1, b.armor)
 	}
 	ctx.SubtractFromCount(1)
-	tx.PlaySound(m.Position(), sound.NativeEvent{SoundType: "armor", EntityType: m.H().Type().EncodeEntity(), ExtraData: -1})
+	tx.PlaySound(m.Position(), sound.Event{Name: "armor", Entity: m.H().Type().EncodeEntity()})
 	m.viewArmour(tx)
 	return true
 }

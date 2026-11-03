@@ -156,8 +156,10 @@ func TestTripwirePlayerPlacementMatchesBDS(t *testing.T) {
 	// Each replay has a fresh world; the capture also retains detach packets
 	// from clearing the previous native circuit. Compare placement attachments.
 	var expected []tripwireNativeSound
+	blocks := nativeSoundBlocks(t)
 	for _, packet := range native.Sounds {
 		if packet.SoundType == "attach" {
+			packet.Block, packet.ExtraData = blocks[packet.ExtraData], 0
 			expected = append(expected, packet)
 		}
 	}

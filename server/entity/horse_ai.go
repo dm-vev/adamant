@@ -105,7 +105,7 @@ func (b *MountBehaviour) makeMad(m *Mount) {
 		return
 	}
 	b.standIfPossible(m)
-	m.tx.PlaySound(m.Position(), sound.NativeEvent{SoundType: "mad", EntityType: m.H().Type().EncodeEntity(), ExtraData: -1})
+	m.tx.PlaySound(m.Position(), sound.Event{Name: "mad", Entity: m.H().Type().EncodeEntity()})
 }
 
 // tameWithName ports AbstractHorse.tameWithName.

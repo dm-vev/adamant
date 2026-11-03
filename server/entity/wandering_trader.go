@@ -314,7 +314,7 @@ func (g *traderUseItemGoal) Start(m *Mob) {
 func (g *traderUseItemGoal) Stop(m *Mob) {
 	g.trader.using, g.trader.useTicks = item.Stack{}, 0
 	(&WanderingTrader{Ent: m.Ent}).viewItems(m.tx)
-	m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: g.sound, EntityType: "minecraft:wandering_trader", EntityUniqueID: m.H().UniqueID(), ExtraData: -1})
+	m.tx.PlaySound(m.data.Pos, sound.Event{Name: g.sound, Entity: "minecraft:wandering_trader", Source: m.H()})
 }
 
 // tickUsingItem ports LivingEntity.updatingUsingItem for the trader: once

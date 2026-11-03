@@ -83,9 +83,7 @@ func ejectContainerItem(pos cube.Pos, face cube.Face, tx *world.Tx, stack item.S
 }
 
 func playContainerSound(pos mgl64.Vec3, tx *world.Tx, name string) {
-	registry := tx.World().BlockRegistry()
-	hash, _ := registry.RuntimeIDToHash(registry.BlockRuntimeID(tx.Block(cube.PosFromVec3(pos))))
-	tx.PlaySound(pos, sound.NativeEvent{SoundType: name, ExtraData: int32(hash), EntityUniqueID: -1})
+	tx.PlaySound(pos, sound.Event{Name: name, Block: tx.Block(cube.PosFromVec3(pos))})
 }
 
 func playItemEjectionEffects(pos cube.Pos, face cube.Face, tx *world.Tx) {

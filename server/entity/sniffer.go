@@ -584,7 +584,7 @@ func (s *Sniffer) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
 // snifflet, the sniffer lays a sniffer egg item with a plop.
 func (s *Sniffer) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 	finishBreeding(s, partner, tx)
-	tx.PlaySound(s.Position(), sound.NativeEvent{SoundType: "plop", EntityType: "minecraft:sniffer", ExtraData: -1})
+	tx.PlaySound(s.Position(), sound.Event{Name: "plop", Entity: "minecraft:sniffer"})
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: s.Position()}, item.NewStack(block.SnifferEgg{}, 1)))
 }
 

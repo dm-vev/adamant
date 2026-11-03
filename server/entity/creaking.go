@@ -808,12 +808,7 @@ func playCreakingSound(e *Ent, tx *world.Tx, soundType string) {
 	playCreakingSoundAt(e, tx, soundType, e.Position())
 }
 func playCreakingSoundAt(e *Ent, tx *world.Tx, soundType string, position mgl64.Vec3) {
-	tx.PlaySound(position, sound.NativeEvent{
-		SoundType:      soundType,
-		EntityType:     "minecraft:creaking",
-		ExtraData:      -1,
-		EntityUniqueID: e.H().UniqueID(),
-	})
+	tx.PlaySound(position, sound.Event{Name: soundType, Entity: "minecraft:creaking", Source: e.H()})
 }
 
 var _ Living = (*Creaking)(nil)

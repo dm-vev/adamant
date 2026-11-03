@@ -18,7 +18,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// eventSoundCase is a sound of an event as a site of the game plays it.
+// eventSoundCase is a sound of an event as a site of the game plays it. The
+// sites are those that played a sound.NativeEvent.
 type eventSoundCase struct {
 	// site is the file and line of the game that plays the sound.
 	site  string
@@ -50,14 +51,6 @@ func lightWeightedPressurePlate(t testing.TB, signal int) block.PressurePlate {
 	return block.PressurePlate{}
 }
 
-// eventBlockHash returns the network hash of a block, as the sites of the
-// game passed it.
-func eventBlockHash(b world.Block) int32 {
-	br := world.DefaultBlockRegistry
-	hash, _ := br.RuntimeIDToHash(br.BlockRuntimeID(b))
-	return int32(hash)
-}
-
 // eventSoundCases returns the sounds the sites of the game play of events:
 // each site once, those of buttons and the trail of a creaking heart in each
 // of their variants.
@@ -76,62 +69,63 @@ func eventSoundCases(t testing.TB) []eventSoundCase {
 	// emitter counts emitter.
 	creakingHeartTrail := func(emitter int) eventSoundCase {
 		progress := float32(.2) + float32(.8)*float32(100-emitter)/100
-		return eventSoundCase{fmt.Sprintf("block/creaking_heart.go:253 emitter %d", emitter), sound.NativeEvent{SoundType: "block.creaking_heart.trail", ExtraData: int32((progress*2 - 1) * 1000)}}
+		return eventSoundCase{fmt.Sprintf("block/creaking_heart.go:253 emitter %d", emitter), sound.CreakingHeartTrail{Progress: float64(progress)}}
 	}
 
 	return []eventSoundCase{
-		{"item/bucket.go:301", sound.NativeEvent{SoundType: "bucket.empty.water", ExtraData: -1}},
-		{"item/bucket.go:316", sound.NativeEvent{SoundType: "bucket.fill.lava", ExtraData: -1}},
-		{"item/spawn_egg.go:162", sound.NativeEvent{SoundType: "ambient", EntityType: world.BedrockEntityIdentifier("minecraft:villager"), ExtraData: -1}},
-		{"entity/sniffer.go:587", sound.NativeEvent{SoundType: "plop", EntityType: "minecraft:sniffer", ExtraData: -1}},
-		{"entity/shear_equipment.go:19", sound.NativeEvent{SoundType: "unsaddle", EntityType: "minecraft:pig", ExtraData: -1}},
-		{"entity/mount.go:411", sound.NativeEvent{SoundType: "mount", EntityType: "minecraft:horse", ExtraData: -1}},
-		{"entity/mount.go:617", sound.NativeEvent{SoundType: "saddle", EntityType: "minecraft:donkey", ExtraData: -1}},
-		{"entity/mount.go:629", sound.NativeEvent{SoundType: "armor", EntityType: "minecraft:horse", ExtraData: -1}},
-		{"entity/frog.go:508", sound.NativeEvent{SoundType: "lay_spawn", EntityType: "minecraft:frog", ExtraData: -1}},
-		{"entity/happy_ghast.go:578", sound.NativeEvent{SoundType: "attach", EntityType: "minecraft:happy_ghast", ExtraData: -1}},
-		{"entity/happy_ghast.go:612", sound.NativeEvent{SoundType: "detach", EntityType: "minecraft:happy_ghast", ExtraData: -1}},
-		{"entity/horse_ai.go:108", sound.NativeEvent{SoundType: "mad", EntityType: "minecraft:horse", ExtraData: -1}},
-		{"entity/creaking.go:811", sound.NativeEvent{SoundType: "activate", EntityType: "minecraft:creaking", ExtraData: -1, EntityUniqueID: creaking.UniqueID()}},
-		{"entity/wandering_trader.go:317", sound.NativeEvent{SoundType: "disappeared", EntityType: "minecraft:wandering_trader", EntityUniqueID: trader.UniqueID(), ExtraData: -1}},
-		{"entity/villager_ai.go:1956", sound.NativeEvent{SoundType: "celebrate", EntityType: "minecraft:villager_v2", ExtraData: -1}},
-		{"entity/chicken.go:145", sound.NativeEvent{SoundType: "plop", EntityType: "minecraft:chicken", ExtraData: -1}},
-		{"entity/llama_ai.go:102", sound.NativeEvent{SoundType: "spit", EntityType: "minecraft:llama", ExtraData: -1}},
-		{"entity/effect_triggers.go:155", sound.NativeEvent{SoundType: "hurt", EntityType: "minecraft:silverfish", ExtraData: -1}},
-		{"entity/mount_ai.go:282", sound.NativeEvent{SoundType: "ambient", EntityType: "minecraft:mule", ExtraData: -1}},
-		{"entity/warden.go:149", sound.NativeEvent{SoundType: "agitated", EntityType: "minecraft:warden", ExtraData: -1}},
-		{"entity/warden.go:298", sound.NativeEvent{SoundType: "listening_angry", EntityType: "minecraft:warden", ExtraData: -1}},
-		{"entity/warden.go:347", sound.NativeEvent{SoundType: "attack", EntityType: "minecraft:warden", ExtraData: -1}},
-		{"entity/warden.go:546", sound.NativeEvent{SoundType: "agitated", EntityType: "minecraft:warden", ExtraData: -1}},
-		{"entity/warden.go:644", sound.NativeEvent{SoundType: "sonic_charge", EntityType: "minecraft:warden", ExtraData: -1}},
-		{"entity/warden.go:666", sound.NativeEvent{SoundType: "sonic_boom", EntityType: "minecraft:warden", ExtraData: -1}},
-		{"entity/hostile_mobs.go:857", sound.NativeEvent{SoundType: "convert_to_stray", ExtraData: -1}},
-		{"entity/hostile_mobs.go:900", sound.NativeEvent{SoundType: "mob.husk.convert_to_zombie", ExtraData: -1}},
-		{"entity/hostile_mobs.go:904", sound.NativeEvent{SoundType: "convert_to_drowned", ExtraData: -1}},
-		{"block/redstone_switch_sound.go:20 on", sound.NativeEvent{SoundType: "button.click_on", ExtraData: eventBlockHash(stoneButton(true))}},
-		{"block/redstone_switch_sound.go:20 off", sound.NativeEvent{SoundType: "button.click_off", ExtraData: eventBlockHash(stoneButton(false))}},
-		{"block/redstone_switch_sound.go:32", sound.NativeEvent{SoundType: "pressure_plate.click_on", ExtraData: eventBlockHash(lightWeightedPressurePlate(t, 3))}},
-		{"block/redstone_tripwire_sound.go:34", sound.NativeEvent{SoundType: "attach", ExtraData: eventBlockHash(block.Tripwire{Attached: true})}},
-		{"block/crafter.go:261", sound.NativeEvent{SoundType: "crafter.craft", ExtraData: eventBlockHash(crafter), EntityUniqueID: -1}},
-		{"block/item_ejection_native.go:88", sound.NativeEvent{SoundType: "block.click", ExtraData: eventBlockHash(dispenser), EntityUniqueID: -1}},
-		{"block/cauldron.go:178", sound.NativeEvent{SoundType: "bucket.fill.powder_snow", ExtraData: -1}},
-		{"block/cauldron.go:210", sound.NativeEvent{SoundType: "bucket.empty.powder_snow", ExtraData: -1}},
-		{"block/bee_hive.go:564", sound.NativeEvent{SoundType: "block.beehive.exit", ExtraData: -1}},
-		{"block/straw_bed.go:145", sound.NativeEvent{SoundType: "straw_bed.break_leave", EntityType: ":", ExtraData: -1}},
+		{"item/bucket.go:301", sound.Event{Name: "bucket.empty.water"}},
+		{"item/bucket.go:316", sound.Event{Name: "bucket.fill.lava"}},
+		{"item/spawn_egg.go:162", sound.Event{Name: "ambient", Entity: "minecraft:villager"}},
+		{"entity/sniffer.go:587", sound.Event{Name: "plop", Entity: "minecraft:sniffer"}},
+		{"entity/shear_equipment.go:19", sound.Event{Name: "unsaddle", Entity: "minecraft:pig"}},
+		{"entity/mount.go:411", sound.Event{Name: "mount", Entity: "minecraft:horse"}},
+		{"entity/mount.go:617", sound.Event{Name: "saddle", Entity: "minecraft:donkey"}},
+		{"entity/mount.go:629", sound.Event{Name: "armor", Entity: "minecraft:horse"}},
+		{"entity/frog.go:508", sound.Event{Name: "lay_spawn", Entity: "minecraft:frog"}},
+		{"entity/happy_ghast.go:578", sound.Event{Name: "attach", Entity: "minecraft:happy_ghast"}},
+		{"entity/happy_ghast.go:612", sound.Event{Name: "detach", Entity: "minecraft:happy_ghast"}},
+		{"entity/horse_ai.go:108", sound.Event{Name: "mad", Entity: "minecraft:horse"}},
+		{"entity/creaking.go:811", sound.Event{Name: "activate", Entity: "minecraft:creaking", Source: creaking}},
+		{"entity/wandering_trader.go:317", sound.Event{Name: "disappeared", Entity: "minecraft:wandering_trader", Source: trader}},
+		{"entity/villager_ai.go:1956", sound.Event{Name: "celebrate", Entity: "minecraft:villager"}},
+		{"entity/chicken.go:145", sound.Event{Name: "plop", Entity: "minecraft:chicken"}},
+		{"entity/llama_ai.go:102", sound.Event{Name: "spit", Entity: "minecraft:llama"}},
+		{"entity/effect_triggers.go:155", sound.Event{Name: "hurt", Entity: "minecraft:silverfish"}},
+		{"entity/mount_ai.go:282", sound.Event{Name: "ambient", Entity: "minecraft:mule"}},
+		{"entity/warden.go:149", sound.Event{Name: "agitated", Entity: "minecraft:warden"}},
+		{"entity/warden.go:298", sound.Event{Name: "listening_angry", Entity: "minecraft:warden"}},
+		{"entity/warden.go:347", sound.Event{Name: "attack", Entity: "minecraft:warden"}},
+		{"entity/warden.go:546", sound.Event{Name: "agitated", Entity: "minecraft:warden"}},
+		{"entity/warden.go:644", sound.Event{Name: "sonic_charge", Entity: "minecraft:warden"}},
+		{"entity/warden.go:666", sound.Event{Name: "sonic_boom", Entity: "minecraft:warden"}},
+		{"entity/hostile_mobs.go:857", sound.Event{Name: "convert_to_stray"}},
+		{"entity/hostile_mobs.go:900", sound.Event{Name: "mob.husk.convert_to_zombie"}},
+		{"entity/hostile_mobs.go:904", sound.Event{Name: "convert_to_drowned"}},
+		{"block/redstone_switch_sound.go:20 on", sound.Event{Name: "button.click_on", Block: stoneButton(true)}},
+		{"block/redstone_switch_sound.go:20 off", sound.Event{Name: "button.click_off", Block: stoneButton(false)}},
+		{"block/redstone_switch_sound.go:32", sound.Event{Name: "pressure_plate.click_on", Block: lightWeightedPressurePlate(t, 3)}},
+		{"block/redstone_tripwire_sound.go:34", sound.Event{Name: "attach", Block: block.Tripwire{Attached: true}}},
+		{"block/crafter.go:261", sound.Event{Name: "crafter.craft", Block: crafter}},
+		{"block/item_ejection_native.go:88", sound.Event{Name: "block.click", Block: dispenser}},
+		{"block/cauldron.go:178", sound.Event{Name: "bucket.fill.powder_snow"}},
+		{"block/cauldron.go:210", sound.Event{Name: "bucket.empty.powder_snow"}},
+		{"block/bee_hive.go:564", sound.Event{Name: "block.beehive.exit"}},
+		{"block/straw_bed.go:145", sound.Event{Name: "straw_bed.break_leave"}},
 		creakingHeartTrail(100),
 		creakingHeartTrail(40),
 		creakingHeartTrail(0),
-		{"block/creaking_heart.go:283", sound.NativeEvent{SoundType: "creaking_heart_spawn", EntityType: "minecraft:creaking", EntityUniqueID: creaking.UniqueID(), ExtraData: -1}},
-		{"block/creaking_heart.go:284", sound.NativeEvent{SoundType: "creaking_heart_spawn", ExtraData: -1}},
-		{"block/sculk_spreader.go:544", sound.NativeEvent{SoundType: "block.sculk.spread", ExtraData: -1}},
-		{"block/sculk_catalyst.go:85", sound.NativeEvent{SoundType: "block.sculk_catalyst.bloom", ExtraData: -1}},
+		{"block/creaking_heart.go:283", sound.Event{Name: "creaking_heart_spawn", Entity: "minecraft:creaking", Source: creaking}},
+		{"block/creaking_heart.go:284", sound.Event{Name: "creaking_heart_spawn"}},
+		{"block/sculk_spreader.go:544", sound.Event{Name: "block.sculk.spread"}},
+		{"block/sculk_catalyst.go:85", sound.Event{Name: "block.sculk_catalyst.bloom"}},
 	}
 }
 
 // TestEventSoundPackets compares the packets the session plays the sounds
 // of eventSoundCases with with testdata/golden/sounds.snapshot, recorded
-// when the game passed the fields of LevelSoundEvent itself. No golden
-// scenario plays them.
+// when the game passed the fields of LevelSoundEvent itself, as
+// sound.NativeEvent, rather than a sound.Event. No golden scenario plays
+// them.
 func TestEventSoundPackets(t *testing.T) {
 	var b strings.Builder
 	for _, tc := range eventSoundCases(t) {

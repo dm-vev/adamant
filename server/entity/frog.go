@@ -505,7 +505,7 @@ func newTryLaySpawnOnFluidNearLand(spawn world.Block) *oneShot {
 			}
 			m.tx.SetBlock(site, spawn, nil)
 			m.tx.EmitGameEvent(world.GameEventBlockPlace, site.Vec3Centre(), world.GameEventContext{Source: m.Self, AffectedState: spawn})
-			m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: "lay_spawn", EntityType: "minecraft:frog", ExtraData: -1})
+			m.tx.PlaySound(m.data.Pos, sound.Event{Name: "lay_spawn", Entity: "minecraft:frog"})
 			b.erase(memIsPregnant)
 			return true
 		}

@@ -146,7 +146,7 @@ func (w *Warden) FinalizeSpawn(reason string, _ *vanilla.Random) {
 	if reason == "triggered" {
 		s.pose = wardenEmerging
 		s.br.setWithExpiry(memIsEmerging, true, wardenEmergeTicks)
-		w.tx.PlaySound(w.Position(), sound.NativeEvent{SoundType: "agitated", EntityType: "minecraft:warden", ExtraData: -1})
+		w.tx.PlaySound(w.Position(), sound.Event{Name: "agitated", Entity: "minecraft:warden"})
 	}
 }
 
@@ -295,7 +295,7 @@ func (s *wardenState) increaseAngerAt(m *Mob, e world.Entity, amount int, playSo
 		if s.activeAnger(m) >= 40 {
 			name = "listening_angry"
 		}
-		m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: name, EntityType: "minecraft:warden", ExtraData: -1})
+		m.tx.PlaySound(m.data.Pos, sound.Event{Name: name, Entity: "minecraft:warden"})
 	}
 }
 
@@ -344,7 +344,7 @@ func (s *wardenState) doHurtTarget(m *Mob, target world.Entity) bool {
 	}
 	w := m.Self.(*Warden)
 	w.viewAction(SwingArmAction{})
-	m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: "attack", EntityType: "minecraft:warden", ExtraData: -1})
+	m.tx.PlaySound(m.data.Pos, sound.Event{Name: "attack", Entity: "minecraft:warden"})
 	s.br.setWithExpiry(memSonicBoomCooldown, true, 40)
 	if _, hurt := l.Hurt(30, AttackDamageSource{Attacker: w}); !hurt {
 		return false
@@ -543,7 +543,7 @@ func newWardenDigging(s *wardenState) *behavior {
 			s.setPose(m, wardenDigging)
 			return
 		}
-		m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: "agitated", EntityType: "minecraft:warden", ExtraData: -1})
+		m.tx.PlaySound(m.data.Pos, sound.Event{Name: "agitated", Entity: "minecraft:warden"})
 		bh.stop(m, time)
 	}
 	return bh
@@ -641,7 +641,7 @@ func newWardenSonicBoom(s *wardenState) *behavior {
 			b.setWithExpiry(memSonicBoomSoundDelay, true, soundTicks)
 			s.sonicBoom = true
 			m.updateState()
-			m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: "sonic_charge", EntityType: "minecraft:warden", ExtraData: -1})
+			m.tx.PlaySound(m.data.Pos, sound.Event{Name: "sonic_charge", Entity: "minecraft:warden"})
 		},
 		tick: func(m *Mob, _ int64) {
 			b := m.Brain()
@@ -663,7 +663,7 @@ func newWardenSonicBoom(s *wardenState) *behavior {
 			for i := 1; i < int(math.Floor(delta.Len()))+7; i++ {
 				m.tx.AddParticle(source.Add(dir.Mul(float64(i))), particle.SonicExplosion{})
 			}
-			m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: "sonic_boom", EntityType: "minecraft:warden", ExtraData: -1})
+			m.tx.PlaySound(m.data.Pos, sound.Event{Name: "sonic_boom", Entity: "minecraft:warden"})
 			l, ok := target.(Living)
 			if !ok {
 				return

@@ -116,6 +116,7 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 	if len(native.Sounds) != 0 && len(native.Sounds) != 2*count {
 		t.Fatal("incomplete native source sound capture")
 	}
+	blocks := nativeSoundBlocks(t)
 	for traceIndex, trace := range native.Scenarios {
 		c := trace.Scenario
 		testName := fmt.Sprintf("%s/%s/%s/powered%t/filter%d/phase%d", c.Block, c.Entity, c.Mode, c.Powered, c.Filter, c.Phase)
@@ -388,7 +389,7 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 				}
 			}
 			if soundObserver != nil && !t.Failed() {
-				var sounds []sound.NativeEvent
+				var sounds []sound.Event
 				var positions []mgl64.Vec3
 				wantPoint := trace.Source.Vec3().Add(mgl64.Vec3{.5, .1, .5})
 				for axis := range 3 {
@@ -400,7 +401,7 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 						point[axis] = float64(float32(point[axis]))
 					}
 					if point == wantPoint {
-						if event, ok := s.(sound.NativeEvent); ok {
+						if event, ok := s.(sound.Event); ok {
 							sounds = append(sounds, event)
 							positions = append(positions, point)
 						}
@@ -414,8 +415,8 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 					for axis := range 3 {
 						want.Position[axis] = float64(float32(want.Position[axis]))
 					}
-					if s.SoundType != want.SoundType || s.ExtraData != want.ExtraData || s.EntityType != want.EntityType || positions[i] != want.Position {
-						t.Errorf("sound=%+v at %v, native=%+v", s, positions[i], want)
+					if s.Name != want.SoundType || nativeSoundBlockState(s.Block) != blocks[want.ExtraData] || s.Entity != want.EntityType || s.Source != nil || positions[i] != want.Position {
+						t.Errorf("sound=%+v (block %s) at %v, native=%+v (block %s)", s, nativeSoundBlockState(s.Block), positions[i], want, blocks[want.ExtraData])
 					}
 				}
 			}

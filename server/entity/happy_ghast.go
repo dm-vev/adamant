@@ -575,7 +575,7 @@ func (h *HappyGhast) Mount(tx *world.Tx, p world.Entity) bool {
 	for i, x := range b.riders {
 		if x == nil {
 			if !b.hasRiders() {
-				tx.PlaySound(h.Position(), sound.NativeEvent{SoundType: "attach", EntityType: "minecraft:happy_ghast", ExtraData: -1})
+				tx.PlaySound(h.Position(), sound.Event{Name: "attach", Entity: "minecraft:happy_ghast"})
 			}
 			b.riders[i] = p.H()
 			if !b.playerAbove(h.Ent, tx) {
@@ -609,7 +609,7 @@ func (h *HappyGhast) Dismount(tx *world.Tx, p world.Entity) {
 			b.setStill(h, 10)
 			if !b.hasRiders() {
 				b.ai.home, b.home = noHome, noHome
-				tx.PlaySound(h.Position(), sound.NativeEvent{SoundType: "detach", EntityType: "minecraft:happy_ghast", ExtraData: -1})
+				tx.PlaySound(h.Position(), sound.Event{Name: "detach", Entity: "minecraft:happy_ghast"})
 			}
 		}
 	}

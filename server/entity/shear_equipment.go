@@ -16,7 +16,7 @@ import (
 func shearOff(tx *world.Tx, e world.Entity, user world.Entity, stack item.Stack, seatHeight float64, soundType string) {
 	pos := e.Position().Add(mgl64.Vec3{0, seatHeight, 0})
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos}, stack))
-	tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: soundType, EntityType: e.H().Type().EncodeEntity(), ExtraData: -1})
+	tx.PlaySound(e.Position(), sound.Event{Name: soundType, Entity: e.H().Type().EncodeEntity()})
 	tx.EmitGameEvent(world.GameEventShear, e.Position(), world.GameEventContext{Source: user})
 }
 

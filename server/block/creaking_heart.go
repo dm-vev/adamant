@@ -250,7 +250,7 @@ func (h CreakingHeart) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 			}
 			progress := float32(.2) + float32(.8)*float32(100-d.emitter)/100
 			location := pos.Vec3Centre().Sub(d.emitterTarget).Mul(float64(progress)).Add(d.emitterTarget)
-			tx.PlaySound(location, sound.NativeEvent{SoundType: "block.creaking_heart.trail", ExtraData: int32((progress*2 - 1) * 1000)})
+			tx.PlaySound(location, sound.CreakingHeartTrail{Progress: float64(progress)})
 		}
 		d.emitter--
 	}
@@ -280,8 +280,8 @@ func (h CreakingHeart) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 		if h.State == CreakingHeartAwake && tx.World().MonsterSpawningEnabled() && tx.World().Difficulty() != world.DifficultyPeaceful && heartPlayerNearby(pos, tx) {
 			if protector := h.spawnProtector(pos, tx); protector != nil {
 				d.protector, d.protectorUUID, d.protectorID, d.hasProtector = protector.H(), protector.H().UUID(), protector.H().UniqueID(), true
-				tx.PlaySound(protector.Position(), sound.NativeEvent{SoundType: "creaking_heart_spawn", EntityType: "minecraft:creaking", EntityUniqueID: protector.H().UniqueID(), ExtraData: -1})
-				tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "creaking_heart_spawn", ExtraData: -1})
+				tx.PlaySound(protector.Position(), sound.Event{Name: "creaking_heart_spawn", Entity: "minecraft:creaking", Source: protector.H()})
+				tx.PlaySound(pos.Vec3Centre(), sound.Event{Name: "creaking_heart_spawn"})
 				tx.SetBlock(pos, h, nil)
 			}
 		}

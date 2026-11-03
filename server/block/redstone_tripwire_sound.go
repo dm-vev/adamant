@@ -29,8 +29,6 @@ func emitTripwireHookState(pos cube.Pos, tx *world.Tx, previous TripwireHook, at
 	default:
 		return
 	}
-	registry := tx.World().BlockRegistry()
-	hash, _ := registry.RuntimeIDToHash(registry.BlockRuntimeID(tx.Block(pos)))
-	tx.PlaySound(pos.Vec3().Add(mgl64.Vec3{0.5, 0.1, 0.5}), sound.NativeEvent{SoundType: name, ExtraData: int32(hash)})
+	tx.PlaySound(pos.Vec3().Add(mgl64.Vec3{0.5, 0.1, 0.5}), sound.Event{Name: name, Block: tx.Block(pos)})
 	tx.EmitGameEvent(event, pos.Vec3Centre(), world.GameEventContext{})
 }

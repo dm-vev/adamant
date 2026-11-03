@@ -854,7 +854,7 @@ func (b *hostileState) tickStrayConversion(e *Ent, tx *world.Tx) bool {
 	// Mob.convertTo does not finalize the spawn of the mob it makes.
 	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion", SpawnFinalized: true}
 	convertMob(tx, hostileSelf(e, b.kind), opts.New(StrayType, hostileConfig{kind: StrayType.id}), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
-	tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "convert_to_stray", ExtraData: -1})
+	tx.PlaySound(e.Position(), sound.Event{Name: "convert_to_stray"})
 	return true
 }
 
@@ -897,11 +897,11 @@ func (b *hostileState) tickDrowning(e *Ent, tx *world.Tx) bool {
 	c := conversion{keepEquipment: true, preserveCanPickUpLoot: true}
 	if b.kind == "minecraft:husk" {
 		convertMob(tx, self, opts.New(ZombieType, hostileConfig{kind: ZombieType.id, baby: b.baby}), c)
-		tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "mob.husk.convert_to_zombie", ExtraData: -1})
+		tx.PlaySound(e.Position(), sound.Event{Name: "mob.husk.convert_to_zombie"})
 		return true
 	}
 	convertMob(tx, self, opts.New(DrownedType, oceanConfig{kind: oceanDrowned, baby: b.baby}), c)
-	tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "convert_to_drowned", ExtraData: -1})
+	tx.PlaySound(e.Position(), sound.Event{Name: "convert_to_drowned"})
 	return true
 }
 

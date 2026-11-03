@@ -298,7 +298,7 @@ func (b Bucket) placeSolid(pos cube.Pos, face cube.Face, solid world.Block, tx *
 		return false
 	}
 	tx.SetBlock(pos, solid, nil)
-	tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "bucket.empty." + b.Content.String(), ExtraData: -1})
+	tx.PlaySound(pos.Vec3Centre(), sound.Event{Name: "bucket.empty." + b.Content.String()})
 	ctx.NewItem = NewStack(Bucket{}, 1)
 	ctx.NewItemSurvivalOnly = true
 	ctx.SubtractFromCount(1)
@@ -313,7 +313,7 @@ func (b Bucket) fillFrom(pos cube.Pos, tx *world.Tx, user User, ctx *UseContext)
 	if pickup, ok := tx.Block(pos).(interface{ BucketPickup() bool }); ok && pickup.BucketPickup() {
 		content = SolidBucketContent(tx.Block(pos))
 		tx.SetBlock(pos, nil, nil)
-		tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "bucket.fill." + content.String(), ExtraData: -1})
+		tx.PlaySound(pos.Vec3Centre(), sound.Event{Name: "bucket.fill." + content.String()})
 	} else {
 		liquid, ok := tx.Liquid(pos)
 		if !ok || liquid.LiquidDepth() != 8 || liquid.LiquidFalling() {

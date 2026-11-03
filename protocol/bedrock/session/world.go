@@ -920,6 +920,15 @@ func tierToSoundEvent(tier item.ArmourTier) string {
 	return v2193.SoundEventEquipGeneric
 }
 
+// entitylessEventTypes holds the entity type a sound.Event of no entity is
+// sent with where it is not "". The break of a straw bed has always been
+// sent with ":", the entity type of the typed sounds, and every other event
+// with "": the difference is kept as it was until a capture of BDS shows
+// which is right.
+var entitylessEventTypes = map[string]string{
+	"straw_bed.break_leave": ":",
+}
+
 // playSound plays a world.Sound at a position, disabling relative volume if set to true.
 func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool) {
 	out := s.writePacket
@@ -940,13 +949,21 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		DisableRelativeVolume: disableRelative,
 	}
 	switch so := t.(type) {
-	case sound.NativeEvent:
-		pk.SoundType = so.SoundType
-		pk.EntityType = so.EntityType
-		pk.ExtraData = so.ExtraData
-		if so.EntityUniqueID != 0 {
-			pk.EntityUniqueID = so.EntityUniqueID
+	case sound.Event:
+		pk.SoundType = so.Name
+		pk.EntityType = entitylessEventTypes[so.Name]
+		if so.Entity != "" {
+			pk.EntityType = world.BedrockEntityIdentifier(so.Entity)
 		}
+		if so.Block != nil {
+			pk.ExtraData = int32(networkBlockID(s.br, so.Block))
+		}
+		if so.Source != nil {
+			pk.EntityUniqueID = so.Source.UniqueID()
+		}
+	case sound.CreakingHeartTrail:
+		pk.SoundType, pk.EntityType = "block.creaking_heart.trail", ""
+		pk.ExtraData = int32((float32(so.Progress)*2 - 1) * 1000)
 	case sound.LodestoneCompassLink:
 		pk.SoundType = v2193.SoundEventLinkCompassToLodestone
 	case sound.EquipItem:

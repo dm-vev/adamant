@@ -16,12 +16,12 @@ import (
 
 type crafterSoundObserver struct {
 	world.NopHandler
-	sounds    []sound.NativeEvent
+	sounds    []sound.Event
 	positions []mgl64.Vec3
 }
 
 func (o *crafterSoundObserver) HandleSound(_ *world.Context, s world.Sound, p mgl64.Vec3) {
-	if event, ok := s.(sound.NativeEvent); ok {
+	if event, ok := s.(sound.Event); ok {
 		o.sounds = append(o.sounds, event)
 		o.positions = append(o.positions, p)
 	}
@@ -68,6 +68,7 @@ func TestCrafterSoundsMatchNativePackets(t *testing.T) {
 	if !native.Complete || len(native.Scenarios) != 12 {
 		t.Fatal("incomplete native crafter sound capture")
 	}
+	blocks := nativeSoundBlocks(t)
 	for _, trace := range native.Scenarios {
 		c := trace.Scenario
 		t.Run(fmt.Sprintf("%s/phase%d", c.Recipe, c.Phase), func(t *testing.T) {
@@ -151,8 +152,8 @@ func TestCrafterSoundsMatchNativePackets(t *testing.T) {
 			}
 			for i, want := range trace.Sounds {
 				got := observer.sounds[i]
-				if got.SoundType != want.SoundType || got.EntityType != want.EntityType || got.ExtraData != want.ExtraData || got.EntityUniqueID != want.EntityUniqueID || observer.positions[i] != want.Position {
-					t.Errorf("sound=%+v at %v, native=%+v", got, observer.positions[i], want)
+				if got.Name != want.SoundType || got.Entity != want.EntityType || nativeSoundBlockState(got.Block) != blocks[want.ExtraData] || got.Source != nil || want.EntityUniqueID != -1 || observer.positions[i] != want.Position {
+					t.Errorf("sound=%+v (block %s) at %v, native=%+v (block %s)", got, nativeSoundBlockState(got.Block), observer.positions[i], want, blocks[want.ExtraData])
 				}
 			}
 		})

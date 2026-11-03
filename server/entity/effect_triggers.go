@@ -152,5 +152,5 @@ func releaseSilverfish(tx *world.Tx, e world.Entity) {
 	vel := mgl64.Vec3{look[0]*cos + look[2]*sin, look[1], -look[0]*sin + look[2]*cos}
 	pos := e.Position().Add(mgl64.Vec3{0, e.H().Type().BBox(e).Height() / 2})
 	tx.AddEntity(NewSilverfish(world.EntitySpawnOpts{Position: pos, Velocity: vel, Rotation: cube.Rotation{rand.Float64() * 360}}))
-	tx.PlaySound(pos, sound.NativeEvent{SoundType: "hurt", EntityType: "minecraft:silverfish", ExtraData: -1})
+	tx.PlaySound(pos, sound.Event{Name: "hurt", Entity: "minecraft:silverfish"})
 }

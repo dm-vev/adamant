@@ -175,7 +175,7 @@ func (c Cauldron) useBucket(pos cube.Pos, tx *world.Tx, b item.Bucket, ctx *item
 			tx.PlaySound(pos.Vec3Centre(), sound.BucketFill{Liquid: Lava{}})
 		case CauldronPowderSnow:
 			content, effect = item.SolidBucketContent(PowderSnow{}), particle.CauldronTakePowderSnow
-			tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "bucket.fill.powder_snow", ExtraData: -1})
+			tx.PlaySound(pos.Vec3Centre(), sound.Event{Name: "bucket.fill.powder_snow"})
 		default:
 			content = item.LiquidBucketContent(Water{Still: true, Depth: 8})
 			tx.PlaySound(pos.Vec3Centre(), sound.BucketFill{Liquid: Water{}})
@@ -207,7 +207,7 @@ func (c Cauldron) useBucket(pos cube.Pos, tx *world.Tx, b item.Bucket, ctx *item
 	case CauldronLava:
 		tx.PlaySound(pos.Vec3Centre(), sound.BucketEmpty{Liquid: Lava{}})
 	case CauldronPowderSnow:
-		tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "bucket.empty.powder_snow", ExtraData: -1})
+		tx.PlaySound(pos.Vec3Centre(), sound.Event{Name: "bucket.empty.powder_snow"})
 	default:
 		tx.PlaySound(pos.Vec3Centre(), sound.BucketEmpty{Liquid: Water{}})
 	}

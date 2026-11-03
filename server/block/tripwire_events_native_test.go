@@ -58,6 +58,7 @@ func TestTripwireHookEventsMatchExecutedClient(t *testing.T) {
 	}
 	sounds := map[int]string{73: "power.on", 74: "power.off", 75: "attach", 76: "detach"}
 	events := map[int]world.GameEvent{1: world.GameEventBlockActivate, 5: world.GameEventBlockDeactivate, 2: world.GameEventBlockAttach, 7: world.GameEventBlockDetach}
+	blocks := nativeSoundBlocks(t)
 	for i, c := range native.Scenarios {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			w := newMultifaceTestWorld(t)
@@ -96,9 +97,9 @@ func TestTripwireHookEventsMatchExecutedClient(t *testing.T) {
 				if len(observer.sounds) != 1 {
 					t.Fatalf("sounds=%d, native 1", len(observer.sounds))
 				}
-				got, ok := observer.sounds[0].(sound.NativeEvent)
-				if !ok || got.SoundType != sounds[s.SoundID] || got.ExtraData != s.ExtraData {
-					t.Fatalf("sound=%+v, native=%+v", observer.sounds[0], s)
+				got, ok := observer.sounds[0].(sound.Event)
+				if !ok || got.Name != sounds[s.SoundID] || nativeSoundBlockState(got.Block) != blocks[s.ExtraData] || got.Entity != "" || got.Source != nil {
+					t.Fatalf("sound=%+v (block %s), native=%+v (block %s)", observer.sounds[0], nativeSoundBlockState(got.Block), s, blocks[s.ExtraData])
 				}
 				point := observer.positions[0]
 				for axis := range 3 {

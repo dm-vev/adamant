@@ -159,7 +159,7 @@ func (s SpawnEgg) spawn(tx *world.Tx, user User, spawnPos cube.Pos, reason strin
 	}
 	if _, mob := e.(interface{ MaxHealth() float64 }); mob {
 		// Mob.playAmbientSound right after the spawn.
-		tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "ambient", EntityType: world.BedrockEntityIdentifier(s.Entity), ExtraData: -1})
+		tx.PlaySound(e.Position(), sound.Event{Name: "ambient", Entity: s.Entity})
 	}
 	return e
 }

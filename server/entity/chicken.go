@@ -142,7 +142,7 @@ func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			case 2:
 				egg.Variant = item.EggBrown
 			}
-			tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "plop", EntityType: "minecraft:chicken", ExtraData: -1})
+			tx.PlaySound(e.Position(), sound.Event{Name: "plop", Entity: "minecraft:chicken"})
 			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, item.NewStack(egg, 1)))
 			tx.EmitGameEvent(world.GameEventEntityPlace, e.Position(), world.GameEventContext{Source: chicken})
 		}

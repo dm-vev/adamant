@@ -1953,7 +1953,7 @@ func newCelebrateVillagersSurvivedRaid(b *VillagerBehaviour, minDuration, maxDur
 		tick: func(m *Mob, _ int64) {
 			r := m.Random()
 			if r.NextInt(100) == 0 {
-				m.tx.PlaySound(m.data.Pos, sound.NativeEvent{SoundType: "celebrate", EntityType: "minecraft:villager_v2", ExtraData: -1})
+				m.tx.PlaySound(m.data.Pos, sound.Event{Name: "celebrate", Entity: "minecraft:villager"})
 			}
 			if r.NextInt(200) == 0 && villagerNoBlocksAbove(m, m.BlockPos()) {
 				colours := item.Colours()
