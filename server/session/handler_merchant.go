@@ -111,11 +111,14 @@ func (h *ItemStackRequestHandler) handleMerchantCraft(a *v2193.CraftRecipeStackR
 			output = output.Grow(offer.Output.Count())
 		}
 	}
-	for slot, stack := range map[byte]item.Stack{merchantInputSlotA: inputA, merchantInputSlotB: inputB} {
+	for _, in := range [...]struct {
+		slot  byte
+		stack item.Stack
+	}{{merchantInputSlotA, inputA}, {merchantInputSlotB, inputB}} {
 		if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
 			Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoIngredientOne},
-			Slot:      slot,
-		}, stack, s, tx); err != nil {
+			Slot:      in.slot,
+		}, in.stack, s, tx); err != nil {
 			return err
 		}
 	}
