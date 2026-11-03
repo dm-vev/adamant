@@ -2080,6 +2080,12 @@ func (s *Session) openNormalContainer(b block.Container, pos cube.Pos, tx *world
 		containerType = v2193.ContainerTypeHopper
 	case block.Crafter:
 		containerType = v2193.ContainerTypeCrafter
+	case block.Dispenser:
+		// BDS 1.26.52.3 opens a dispenser as type 6 and a dropper as 7
+		// (testdata/bedrock_1_26_52_menu_requests.json).
+		containerType = v2193.ContainerTypeDispenser
+	case block.Dropper:
+		containerType = v2193.ContainerTypeDropper
 	}
 	s.openedContainerID.Store(uint32(containerType))
 

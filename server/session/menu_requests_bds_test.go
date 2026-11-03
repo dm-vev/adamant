@@ -48,8 +48,6 @@ var menuRequestsKnownDiverging = map[string]string{
 	"offhand/place-slot-0":              "the off hand is taken at slot 0, which BDS refuses (55): it holds the off hand at slot 1 only",
 	"anvil/level-entity-place":          "container 7 of an anvil is a one-slot placeholder that takes an item, which then vanishes",
 	"crafting_table/level-entity-place": "container 7 of a crafting table is a one-slot placeholder that takes an item, which then vanishes",
-	"dispenser/open":                    "a dispenser opens as type 0, BDS's as 6",
-	"dropper/open":                      "a dropper opens as type 0, BDS's as 7",
 }
 
 // TestMenuRequestsAgainstBDS replays the cases of the capture on a session:

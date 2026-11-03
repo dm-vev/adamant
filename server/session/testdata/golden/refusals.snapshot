@@ -942,8 +942,8 @@
     | 00000200000104770001100000000000000000000000003f1f8569c20000003f
     | 0000003f0000803f0000003f000100
 >> ContainerOpen id=46 len=6
-    {WindowID:3 ContainerType:0 ContainerPosition:[2 -60 0] ContainerEntityUniqueID:-1}
-    | 030004770001
+    {WindowID:3 ContainerType:6 ContainerPosition:[2 -60 0] ContainerEntityUniqueID:-1}
+    | 030604770001
 >> InventoryContent id=49 len=95 normalised
     InventoryContentPacket
       WindowID: 3
@@ -1015,11 +1015,11 @@
     | 01002d010207000100000101240000000c000100000d0126000000
 == the client closes a dispenser
 << ContainerClose id=47 len=3
-    {WindowID:3 ContainerType:0 ServerSide:false}
-    | 030000
+    {WindowID:3 ContainerType:6 ServerSide:false}
+    | 030600
 >> ContainerClose id=47 len=3
-    {WindowID:3 ContainerType:0 ServerSide:false}
-    | 030000
+    {WindowID:3 ContainerType:6 ServerSide:false}
+    | 030600
 == a dropper is placed with iron ingots in it
 >> UpdateBlock id=21 len=10
     {Position:[2 -60 2] NewBlockRuntimeID:894753366 Flags:2 Layer:0}
@@ -1054,8 +1054,8 @@
     | 00000200000104770401100000000000000000000000003f1f8569c20000003f
     | 0000003f0000803f0000003f000100
 >> ContainerOpen id=46 len=6
-    {WindowID:4 ContainerType:0 ContainerPosition:[2 -60 2] ContainerEntityUniqueID:-1}
-    | 040004770401
+    {WindowID:4 ContainerType:7 ContainerPosition:[2 -60 2] ContainerEntityUniqueID:-1}
+    | 040704770401
 >> InventoryContent id=49 len=95 normalised
     InventoryContentPacket
       WindowID: 4
@@ -1127,8 +1127,8 @@
     | 0100310102070001000001012a0000000c000100000c012c000000
 == the client closes a dropper
 << ContainerClose id=47 len=3
-    {WindowID:4 ContainerType:0 ServerSide:false}
-    | 040000
+    {WindowID:4 ContainerType:7 ServerSide:false}
+    | 040700
 >> ContainerClose id=47 len=3
-    {WindowID:4 ContainerType:0 ServerSide:false}
-    | 040000
+    {WindowID:4 ContainerType:7 ServerSide:false}
+    | 040700
