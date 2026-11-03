@@ -1,4 +1,4 @@
-package player
+package session_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -39,14 +40,14 @@ func TestQuitAndSessionStopMayCloseAgain(t *testing.T) {
 	}.New(conn)
 	defer sess.CloseConnection()
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
-	handle := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(Type, cfg)
+	cfg := player.Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
+	handle := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
 	sess.SetHandle(handle, cfg.Skin)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := w.Do(func(tx *world.Tx) {
-		p := tx.AddEntity(handle).(*Player)
-		p.Handle(closeReentryHandler{onQuit: func(p *Player) {
+		p := tx.AddEntity(handle).(*player.Player)
+		p.Handle(closeReentryHandler{onQuit: func(p *player.Player) {
 			quits++
 			reenter("HandleQuit", func() { p.Disconnect("Already quitting"); _ = p.Close() })
 		}})
@@ -78,8 +79,8 @@ func TestQuitAndSessionStopMayCloseAgain(t *testing.T) {
 }
 
 type closeReentryHandler struct {
-	NopHandler
-	onQuit func(*Player)
+	player.NopHandler
+	onQuit func(*player.Player)
 }
 
-func (h closeReentryHandler) HandleQuit(p *Player) { h.onQuit(p) }
+func (h closeReentryHandler) HandleQuit(p *player.Player) { h.onQuit(p) }

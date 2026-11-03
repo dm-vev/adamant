@@ -1,4 +1,4 @@
-package player
+package session_test
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/netconn"
+	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
@@ -39,11 +40,11 @@ func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
 	t.Cleanup(sess.CloseConnection)
 
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
-	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(Type, cfg)
+	cfg := player.Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
+	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
 	sess.SetHandle(h, cfg.Skin)
 	if err := w.Do(func(tx *world.Tx) {
-		p := tx.AddEntity(h).(*Player)
+		p := tx.AddEntity(h).(*player.Player)
 		p.Handle(packetPanicHandler{})
 		sess.Spawn(p, tx)
 	}).Wait(context.Background()); err != nil {
@@ -112,14 +113,14 @@ func TestHandleQuitPanicCompletesSessionTeardown(t *testing.T) {
 	_ = armour.Inventory().SetItem(0, item.NewStack(item.Apple{}, 1))
 
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := Config{
+	cfg := player.Config{
 		Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName,
 		Inventory: inv, OffHand: offHand, Armour: armour,
 	}
-	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(Type, cfg)
+	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
 	sess.SetHandle(h, cfg.Skin)
 	if err := w.Do(func(tx *world.Tx) {
-		p := tx.AddEntity(h).(*Player)
+		p := tx.AddEntity(h).(*player.Player)
 		p.Handle(quitPanicHandler{})
 		sess.Spawn(p, tx)
 	}).Wait(context.Background()); err != nil {
@@ -159,13 +160,13 @@ func TestHandleQuitPanicCompletesSessionTeardown(t *testing.T) {
 	}
 }
 
-type packetPanicHandler struct{ NopHandler }
+type packetPanicHandler struct{ player.NopHandler }
 
-func (packetPanicHandler) HandleChat(*Context, *string) { panic("packet handler panic") }
+func (packetPanicHandler) HandleChat(*player.Context, *string) { panic("packet handler panic") }
 
-type quitPanicHandler struct{ NopHandler }
+type quitPanicHandler struct{ player.NopHandler }
 
-func (quitPanicHandler) HandleQuit(*Player) { panic("quit handler panic") }
+func (quitPanicHandler) HandleQuit(*player.Player) { panic("quit handler panic") }
 
 type packetPanicConn struct {
 	identity   login.Identity
