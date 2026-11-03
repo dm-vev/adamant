@@ -16,7 +16,7 @@ import (
 )
 
 // customItem is an item Bedrock Edition does not have, registered by
-// TestItemRuntimeIDsMatchWorld.
+// TestCustomItemsTakeRuntimeIDsPastTheVanillaItems.
 type customItem struct {
 	name string
 	meta int16
@@ -27,13 +27,59 @@ func (c customItem) Name() string                { return c.name }
 func (customItem) Texture() image.Image          { return image.NewRGBA(image.Rect(0, 0, 1, 1)) }
 func (customItem) Category() category.Category   { return category.Items() }
 
-// TestItemRuntimeIDsMatchWorld checks the runtime IDs of the items are those
-// world.ItemRuntimeID gives, and the items of runtime IDs those
-// world.ItemByRuntimeID gives: for every item registered and every runtime ID
-// of the vanilla items, then again with a custom item registered that takes
-// the name of a vanilla item with other metadata, and one of a name of its
-// own. It runs in a process of its own, which the items it registers stay in.
-func TestItemRuntimeIDsMatchWorld(t *testing.T) {
+// TestEveryRegisteredItemHasARuntimeID checks every item the game registers
+// has a runtime ID, which Bedrock Edition finds it back by.
+func TestEveryRegisteredItemHasARuntimeID(t *testing.T) {
+	for _, it := range world.Items() {
+		name, meta := it.EncodeItem()
+		rid, gotMeta, ok := bedrockdata.ItemRuntimeID(it)
+		if !ok {
+			t.Errorf("item %v:%v has no runtime ID", name, meta)
+			continue
+		}
+		if gotMeta != meta {
+			t.Errorf("item %v:%v has metadata %v", name, meta, gotMeta)
+		}
+		if back, ok := bedrockdata.ItemByRuntimeID(rid, meta); !ok || !reflect.DeepEqual(back, it) {
+			t.Errorf("item %v:%v of runtime ID %v is found back as %#v, %v", name, meta, rid, back, ok)
+		}
+	}
+	if _, _, ok := bedrockdata.ItemRuntimeID(customItem{name: "adamant:unregistered"}); ok {
+		t.Error("an item of a name Bedrock Edition does not know has a runtime ID")
+	}
+	if _, ok := bedrockdata.ItemByRuntimeID(1<<20, 0); ok {
+		t.Error("a runtime ID no item has gives an item")
+	}
+}
+
+// TestBoatsHaveRuntimeIDs checks the boats and chest boats of every variant
+// have runtime IDs.
+func TestBoatsHaveRuntimeIDs(t *testing.T) {
+	for _, v := range item.BoatVariants() {
+		for _, it := range []world.Item{item.Boat{Variant: v}, item.ChestBoat{Variant: v}} {
+			if _, _, ok := bedrockdata.ItemRuntimeID(it); !ok {
+				name, _ := it.EncodeItem()
+				t.Errorf("runtime ID missing for %q", name)
+			}
+		}
+	}
+}
+
+// TestKnowledgeBookHasARuntimeIDOfItsOwn checks the knowledge book, which BDS
+// does not have, is a custom item with a runtime ID other than the book's.
+func TestKnowledgeBookHasARuntimeIDOfItsOwn(t *testing.T) {
+	bookID, _, ok := bedrockdata.ItemRuntimeID(item.KnowledgeBook{Recipes: []string{"minecraft:oak_planks"}})
+	nativeBookID, _, _ := bedrockdata.ItemRuntimeID(item.Book{})
+	if !ok || bookID == nativeBookID {
+		t.Fatal("knowledge book was not registered as a distinct item")
+	}
+}
+
+// TestCustomItemsTakeRuntimeIDsPastTheVanillaItems checks custom items take
+// the runtime IDs past the names known, in the order they are registered, and
+// that a custom item of a vanilla name takes the name over. It runs in a
+// process of its own, which the items it registers stay in.
+func TestCustomItemsTakeRuntimeIDsPastTheVanillaItems(t *testing.T) {
 	if isolated(t) {
 		return
 	}
@@ -46,72 +92,45 @@ func TestItemRuntimeIDsMatchWorld(t *testing.T) {
 	if err := nbt.Unmarshal(bedrockdata.VanillaItems, &vanilla); err != nil {
 		t.Fatal(err)
 	}
-	rids := map[int32]bool{-1 << 20: true, 1 << 20: true}
-	for _, e := range vanilla {
-		rids[e.RuntimeID] = true
+	a, b := customItem{name: "adamant:custom_a"}, customItem{name: "adamant:custom_b"}
+	world.RegisterItem(a)
+	world.RegisterItem(b)
+	ridA, _, okA := bedrockdata.ItemRuntimeID(a)
+	ridB, _, okB := bedrockdata.ItemRuntimeID(b)
+	if !okA || !okB || ridA < int32(len(vanilla)) || ridB != ridA+1 {
+		t.Fatalf("custom items have runtime IDs %v, %v and %v, %v; want consecutive IDs from %v on", ridA, okA, ridB, okB, len(vanilla))
 	}
-	// The IDs of custom items follow the names known.
-	for rid := int32(len(vanilla)) - 2; rid < int32(len(vanilla))+8; rid++ {
-		rids[rid] = true
-	}
-
-	compare := func(name string) {
-		t.Helper()
-		its := append(world.Items(), item.Apple{}, customItem{name: "adamant:unregistered"})
-		for _, it := range its {
-			rid, meta, ok := bedrockdata.ItemRuntimeID(it)
-			wantRID, wantMeta, wantOK := world.ItemRuntimeID(it)
-			if rid != wantRID || meta != wantMeta || ok != wantOK {
-				n, m := it.EncodeItem()
-				t.Fatalf("%s: ItemRuntimeID of %v:%v = %v, %v, %v; the world gives %v, %v, %v", name, n, m, rid, meta, ok, wantRID, wantMeta, wantOK)
-			}
-		}
-		for rid := range rids {
-			for _, meta := range []int16{0, 1, 3, 15, -1} {
-				it, ok := bedrockdata.ItemByRuntimeID(rid, meta)
-				want, wantOK := world.ItemByRuntimeID(rid, meta)
-				if ok != wantOK || !reflect.DeepEqual(it, want) {
-					t.Fatalf("%s: ItemByRuntimeID(%v, %v) = %#v, %v; the world gives %#v, %v", name, rid, meta, it, ok, want, wantOK)
-				}
-			}
+	for rid, want := range map[int32]world.Item{ridA: a, ridB: b} {
+		if it, ok := bedrockdata.ItemByRuntimeID(rid, 0); !ok || it != want {
+			t.Fatalf("runtime ID %v gives %#v, %v; want %#v", rid, it, ok, want)
 		}
 	}
-	compare("registered items")
 
-	world.RegisterItem(customItem{name: "minecraft:apple", meta: 3})
-	compare("with a custom item of a vanilla name")
-	world.RegisterItem(customItem{name: "adamant:custom_item"})
-	compare("with a custom item of a name of its own")
-
-	if _, _, ok := bedrockdata.ItemRuntimeID(customItem{name: "adamant:custom_item"}); !ok {
-		t.Fatal("the custom item has no runtime ID")
+	apple := customItem{name: "minecraft:apple", meta: 3}
+	world.RegisterItem(apple)
+	for _, it := range []world.Item{apple, item.Apple{}} {
+		if rid, _, ok := bedrockdata.ItemRuntimeID(it); !ok || rid != ridB+1 {
+			t.Fatalf("%#v has runtime ID %v, %v; want the custom item's, %v", it, rid, ok, ridB+1)
+		}
 	}
 }
 
 // BenchmarkItemRuntimeID measures the lookup of a runtime ID the session runs
-// for every stack it sends, by the world's maps and by the adapter's table.
+// for every stack it sends.
 func BenchmarkItemRuntimeID(b *testing.B) {
 	it := item.Diamond{}
-	for _, bench := range []struct {
-		name string
-		f    func(world.Item) (int32, int16, bool)
-	}{
-		{"world", world.ItemRuntimeID},
-		{"bedrockdata", bedrockdata.ItemRuntimeID},
-	} {
-		b.Run(bench.name, func(b *testing.B) {
-			for b.Loop() {
-				bench.f(it)
+	b.Run("serial", func(b *testing.B) {
+		for b.Loop() {
+			bedrockdata.ItemRuntimeID(it)
+		}
+	})
+	b.Run("parallel", func(b *testing.B) {
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				bedrockdata.ItemRuntimeID(it)
 			}
 		})
-		b.Run(bench.name+"/parallel", func(b *testing.B) {
-			b.RunParallel(func(pb *testing.PB) {
-				for pb.Next() {
-					bench.f(it)
-				}
-			})
-		})
-	}
+	})
 }
 
 // isolated runs the test in a process of its own and reports true, unless it

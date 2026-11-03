@@ -1,7 +1,6 @@
 package world
 
 import (
-	_ "embed"
 	"fmt"
 	"image"
 	"slices"
@@ -9,7 +8,6 @@ import (
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/item/category"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // Item represents an item that may be added to an inventory. It has a method to encode the item to an ID and
@@ -33,7 +31,7 @@ type CustomItem interface {
 }
 
 // RegisterItem registers an item with the ID and meta passed. Once registered, items may be obtained from an
-// ID and metadata value using itemByID().
+// ID and metadata value using ItemByName.
 // If an item with the ID and meta passed already exists, RegisterItem panics.
 func RegisterItem(item Item) {
 	itemMu.Lock()
@@ -46,15 +44,8 @@ func RegisterItem(item Item) {
 		panic(fmt.Sprintf("item registered with name %v and meta %v already exists", name, meta))
 	}
 	if c, ok := item.(CustomItem); ok {
-		nextRID := int32(len(itemNamesToRuntimeIDs))
-		itemRuntimeIDsToNames[nextRID] = name
-		itemNamesToRuntimeIDs[name] = nextRID
-
 		customItems = append(customItems, c)
 		customItemCount.Add(1)
-	}
-	if _, ok := itemNamesToRuntimeIDs[name]; !ok {
-		panic(fmt.Sprintf("item name %v does not have a runtime ID", name))
 	}
 	items[h] = item
 }
@@ -66,12 +57,6 @@ type itemHash struct {
 }
 
 var (
-	// itemRuntimeIDData is a copy of the item registry of BDS the Bedrock
-	// adapter's data holds, kept until the world no longer gives items runtime
-	// IDs.
-	//
-	//go:embed vanilla_items.nbt
-	itemRuntimeIDData []byte
 	// itemMu protects all item registry maps and slices.
 	itemMu sync.RWMutex
 	// items holds a list of all registered items, indexed using the itemHash created when calling
@@ -81,29 +66,7 @@ var (
 	customItems []CustomItem
 	// customItemCount is the number of custom items registered, len(customItems).
 	customItemCount atomic.Int64
-	// itemRuntimeIDsToNames holds a map to translate item runtime IDs to string IDs.
-	itemRuntimeIDsToNames = map[int32]string{}
-	// itemNamesToRuntimeIDs holds a map to translate item string IDs to runtime IDs.
-	itemNamesToRuntimeIDs = map[string]int32{}
 )
-
-// init reads all item entries from the resource JSON, and sets the according values in the runtime ID maps.
-func init() {
-	var m map[string]struct {
-		RuntimeID      int32          `nbt:"runtime_id"`
-		ComponentBased bool           `nbt:"component_based"`
-		Version        int32          `nbt:"version"`
-		Data           map[string]any `nbt:"data,omitempty"`
-	}
-	err := nbt.Unmarshal(itemRuntimeIDData, &m)
-	if err != nil {
-		panic(err)
-	}
-	for name, e := range m {
-		itemNamesToRuntimeIDs[name] = e.RuntimeID
-		itemRuntimeIDsToNames[e.RuntimeID] = name
-	}
-}
 
 // ItemByName attempts to return an item by a name and a metadata value.
 func ItemByName(name string, meta int16) (Item, bool) {
@@ -116,28 +79,6 @@ func ItemByName(name string, meta int16) (Item, bool) {
 		it, ok = items[itemHash{name: name}]
 	}
 	return it, ok
-}
-
-// ItemRuntimeID attempts to return the runtime ID of the Item passed. False is returned if the Item is not
-// registered.
-func ItemRuntimeID(i Item) (rid int32, meta int16, ok bool) {
-	name, meta := i.EncodeItem()
-	itemMu.RLock()
-	rid, ok = itemNamesToRuntimeIDs[name]
-	itemMu.RUnlock()
-	return rid, meta, ok
-}
-
-// ItemByRuntimeID attempts to return an Item by the runtime ID passed. If no item with that runtime ID exists,
-// false is returned. ItemByRuntimeID also tries to find the item with a metadata value of 0.
-func ItemByRuntimeID(rid int32, meta int16) (Item, bool) {
-	itemMu.RLock()
-	name, ok := itemRuntimeIDsToNames[rid]
-	itemMu.RUnlock()
-	if !ok {
-		return nil, false
-	}
-	return ItemByName(name, meta)
 }
 
 // Items returns a slice of all registered items.

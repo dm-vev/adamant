@@ -15,9 +15,8 @@ func TestKnowledgeBookNativePersistenceRetainsJavaIdentity(t *testing.T) {
 		"components": map[string]any{"minecraft:recipes": []any{recipes[0], recipes[1]}},
 	})
 	if err != nil { t.Fatal(err) }
-	bookID, _, ok := world.ItemRuntimeID(stack.Item())
-	nativeBookID, _, _ := world.ItemRuntimeID(Book{})
-	if !ok || bookID == nativeBookID { t.Fatal("knowledge book was not registered as a distinct item") }
+	registered, _ := world.ItemByName(stack.Item().EncodeItem())
+	if _, ok := registered.(KnowledgeBook); !ok { t.Fatalf("knowledge book was not registered as a distinct item: %#v", registered) }
 	native := WriteNBT(stack, true)
 	if native["Name"] != "adamant:knowledge_book" { t.Fatalf("native item identifier: %v", native["Name"]) }
 	encoded, err := nbt.Marshal(native)

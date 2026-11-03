@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
 )
 
 func TestBoatEncodeItemByVariant(t *testing.T) {
@@ -29,9 +28,6 @@ func TestBoatEncodeItemByVariant(t *testing.T) {
 			boat := item.Boat{Variant: tt.variant}
 			if got, _ := boat.EncodeItem(); got != tt.name {
 				t.Fatalf("Boat{Variant:%d}.EncodeItem() = %q, want %q", tt.variant, got, tt.name)
-			}
-			if _, _, ok := world.ItemRuntimeID(boat); !ok {
-				t.Fatalf("runtime ID missing for %q", tt.name)
 			}
 		})
 	}
@@ -59,9 +55,6 @@ func TestChestBoatEncodeItemByVariant(t *testing.T) {
 			boat := item.ChestBoat{Variant: tt.variant}
 			if got, _ := boat.EncodeItem(); got != tt.name {
 				t.Fatalf("ChestBoat{Variant:%d}.EncodeItem() = %q, want %q", tt.variant, got, tt.name)
-			}
-			if _, _, ok := world.ItemRuntimeID(boat); !ok {
-				t.Fatalf("runtime ID missing for %q", tt.name)
 			}
 		})
 	}
