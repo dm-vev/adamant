@@ -434,3 +434,35 @@ func TestNetherNetListenerShowsToJava(t *testing.T) {
 		t.Fatalf("login answered %#x %q, %v", id, fields, err)
 	}
 }
+
+// TestValidateLogin holds a login to the forms of its IDs, then to the rules
+// of names, then to those of client data, as the NetherNet listener checks
+// a login.
+func TestValidateLogin(t *testing.T) {
+	id := login.Identity{DisplayName: "Steve", Identity: "8b4ec2c6-6f3b-4d0a-9d55-3b7e0c3c3f1a"}
+	data := login.DefaultClientData("play.example.invalid:19132", "Steve", "1.26.50")
+	if err := validateLogin(id, data); err != nil {
+		t.Fatalf("a login the game makes refused: %v", err)
+	}
+	for name, tc := range map[string]struct {
+		change func(*login.Identity, *login.ClientData)
+		want   string
+	}{
+		"no UUID":         {func(i *login.Identity, _ *login.ClientData) { i.Identity = "x" }, "UUID must be"},
+		"XUID":            {func(i *login.Identity, _ *login.ClientData) { i.XUID = "x" }, "XUID must be"},
+		"name with digit": {func(i *login.Identity, _ *login.ClientData) { i.DisplayName = "1abc" }, "DisplayName may not"},
+		"client data":     {func(_ *login.Identity, d *login.ClientData) { d.DeviceOS = 99 }, "DeviceOS must"},
+		"the IDs first": {func(i *login.Identity, d *login.ClientData) {
+			i.Identity, i.DisplayName, d.DeviceOS = "x", "1abc", 99
+		}, "UUID must be"},
+		"the name before the client data": {func(i *login.Identity, d *login.ClientData) {
+			i.DisplayName, d.DeviceOS = "1abc", 99
+		}, "DisplayName may not"},
+	} {
+		i, d := id, data
+		tc.change(&i, &d)
+		if err := validateLogin(i, d); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: validateLogin = %v, want an error of %q", name, err, tc.want)
+		}
+	}
+}

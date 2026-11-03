@@ -3,11 +3,9 @@ package server
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 
-	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/google/uuid"
+	"github.com/df-mc/dragonfly/server/client"
 )
 
 // Characters the names of players may hold: Latin letters, digits and
@@ -17,22 +15,19 @@ var (
 	offlineNameChar = regexp.MustCompile(`[\p{L}0-9 ]`).MatchString
 )
 
-// validateIdentity holds the identity of a client that logged in to the
-// rules the server keeps it to, those gophertunnel kept it to: a valid UUID
-// and XUID, and a name of the game's form.
-func validateIdentity(data login.Identity) error {
-	if _, err := strconv.ParseInt(data.XUID, 10, 64); err != nil && len(data.XUID) != 0 {
-		return fmt.Errorf("XUID must be parseable as an int64, but got %v", data.XUID)
-	}
-	if id, err := uuid.Parse(data.Identity); err != nil || id == uuid.Nil {
-		return fmt.Errorf("UUID must be parseable as a valid UUID, but got %v", data.Identity)
-	}
+// validateName holds the name of a player that logged in to the rules the
+// server keeps it to, those gophertunnel kept it to: one of the game's form,
+// of at most 15 characters for a player of Xbox Live, one with an XUID, and
+// 16 for others, with no space first or last, no digit first and no two
+// spaces in a row, of Latin letters, digits and spaces for a player of Xbox
+// Live and of any letters, digits and spaces for others.
+func validateName(id client.Identity) error {
 	nameLimit := 15
-	if data.XUID == "" {
+	if id.XUID == "" {
 		// Clients without an account may take one more character.
 		nameLimit = 16
 	}
-	name := data.DisplayName
+	name := id.Name
 	if len(name) == 0 || len(name) > nameLimit {
 		return fmt.Errorf("DisplayName must not be empty or longer than %d characters, but got %v characters", nameLimit, len(name))
 	}
@@ -42,7 +37,7 @@ func validateIdentity(data login.Identity) error {
 	if name[0] >= '0' && name[0] <= '9' {
 		return fmt.Errorf("DisplayName may not have a number as first character, but got %v", name)
 	}
-	if data.XUID != "" {
+	if id.XUID != "" {
 		if !onlineNameChar(name) {
 			return fmt.Errorf("DisplayName for authorized client must only contain numbers, Latin letters and spaces, but got %v", name)
 		}

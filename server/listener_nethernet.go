@@ -363,7 +363,10 @@ func decodeServerIdentityKey(data []byte) (*ecdsa.PrivateKey, error) {
 // client names the server by is read, not resolved: a lookup of a name a
 // client chose would let it hold the login on a slow resolver.
 func validateLogin(id login.Identity, data login.ClientData) error {
-	if err := validateIdentity(id); err != nil {
+	if err := netconn.ValidateIdentity(id); err != nil {
+		return err
+	}
+	if err := validateName(session.IdentityOf(id)); err != nil {
 		return err
 	}
 	return netconn.ValidateClientData(data)

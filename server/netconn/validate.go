@@ -18,6 +18,19 @@ import (
 // versionChar matches the characters of a version of the game.
 var versionChar = regexp.MustCompile("[0-9.]").MatchString
 
+// ValidateIdentity holds the identity of a Bedrock login to the form of its
+// IDs, as gophertunnel kept it to: an XUID that parses as an int64 or none,
+// and a UUID that parses and is not nil.
+func ValidateIdentity(data login.Identity) error {
+	if _, err := strconv.ParseInt(data.XUID, 10, 64); err != nil && len(data.XUID) != 0 {
+		return fmt.Errorf("XUID must be parseable as an int64, but got %v", data.XUID)
+	}
+	if id, err := uuid.Parse(data.Identity); err != nil || id == uuid.Nil {
+		return fmt.Errorf("UUID must be parseable as a valid UUID, but got %v", data.Identity)
+	}
+	return nil
+}
+
 // ValidateClientData holds the client data of a Bedrock login to the rules
 // gophertunnel kept it to: a device and a language that exist, IDs of the
 // form they claim, skins of the sizes they claim. The address the client

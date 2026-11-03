@@ -3,34 +3,31 @@ package server
 import (
 	"testing"
 
-	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/df-mc/dragonfly/server/client"
 )
 
-// TestValidateLogin keeps the identities of logins to the rules
-// gophertunnel kept them to, and their client data to those of
-// netconn.ValidateClientData.
-func TestValidateLogin(t *testing.T) {
-	id := login.Identity{DisplayName: "Steve", Identity: "8b4ec2c6-6f3b-4d0a-9d55-3b7e0c3c3f1a"}
-	data := login.DefaultClientData("play.example.invalid:19132", "Steve", "1.26.50")
-	if err := validateLogin(id, data); err != nil {
-		t.Fatalf("a login the game makes refused: %v", err)
-	}
-	for name, change := range map[string]func(*login.Identity, *login.ClientData){
-		"no UUID":          func(i *login.Identity, _ *login.ClientData) { i.Identity = "x" },
-		"name with digit":  func(i *login.Identity, _ *login.ClientData) { i.DisplayName = "1abc" },
-		"double space":     func(i *login.Identity, _ *login.ClientData) { i.DisplayName = "a  b" },
-		"online non-Latin": func(i *login.Identity, _ *login.ClientData) { i.XUID, i.DisplayName = "123", "Шахтёр" },
-		"client data":      func(_ *login.Identity, d *login.ClientData) { d.DeviceOS = 99 },
+// TestValidateName keeps the names of players to the rules gophertunnel
+// kept them to.
+func TestValidateName(t *testing.T) {
+	for name, tc := range map[string]struct {
+		id client.Identity
+		ok bool
+	}{
+		"offline":                  {client.Identity{Name: "Steve"}, true},
+		"online":                   {client.Identity{Name: "Steve", XUID: "123"}, true},
+		"offline letters":          {client.Identity{Name: "Шахтёр"}, true},
+		"offline of 16":            {client.Identity{Name: "abcdefghijklmnop"}, true},
+		"online of 16":             {client.Identity{Name: "abcdefghijklmnop", XUID: "123"}, false},
+		"empty":                    {client.Identity{}, false},
+		"name with digit first":    {client.Identity{Name: "1abc"}, false},
+		"space first":              {client.Identity{Name: " abc"}, false},
+		"space last":               {client.Identity{Name: "abc "}, false},
+		"double space":             {client.Identity{Name: "a  b"}, false},
+		"online non-Latin":         {client.Identity{Name: "Шахтёр", XUID: "123"}, false},
+		"single spaces and digits": {client.Identity{Name: "a b 2"}, true},
 	} {
-		i, d := id, data
-		change(&i, &d)
-		if err := validateLogin(i, d); err == nil {
-			t.Errorf("%s: accepted", name)
+		if err := validateName(tc.id); (err == nil) != tc.ok {
+			t.Errorf("%s: validateName(%+v) = %v, want ok %v", name, tc.id, err, tc.ok)
 		}
-	}
-	offline := id
-	offline.DisplayName = "Шахтёр"
-	if err := validateLogin(offline, data); err != nil {
-		t.Errorf("an offline name of letters refused: %v", err)
 	}
 }

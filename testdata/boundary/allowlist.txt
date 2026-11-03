@@ -47,8 +47,6 @@ server/listener_nethernet_test.go github.com/dm-vev/adamant/net/java
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet/lan
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/proxy
-server/login_policy.go github.com/dm-vev/adamant/net/bedrock/login
-server/login_policy_test.go github.com/dm-vev/adamant/net/bedrock/login
 server/permissions_test.go github.com/df-mc/dragonfly/server/netconn
 server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto
 server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193

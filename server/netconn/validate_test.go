@@ -36,3 +36,25 @@ func TestValidateClientData(t *testing.T) {
 		t.Errorf("the address of a signaling URL refused: %v", err)
 	}
 }
+
+// TestValidateIdentity keeps the IDs of logins to the forms gophertunnel
+// kept them to.
+func TestValidateIdentity(t *testing.T) {
+	const id = "8b4ec2c6-6f3b-4d0a-9d55-3b7e0c3c3f1a"
+	for name, tc := range map[string]struct {
+		id login.Identity
+		ok bool
+	}{
+		"offline":      {login.Identity{Identity: id}, true},
+		"online":       {login.Identity{Identity: id, XUID: "2535400000000042"}, true},
+		"no UUID":      {login.Identity{}, false},
+		"bad UUID":     {login.Identity{Identity: "x"}, false},
+		"nil UUID":     {login.Identity{Identity: "00000000-0000-0000-0000-000000000000"}, false},
+		"bad XUID":     {login.Identity{Identity: id, XUID: "x"}, false},
+		"name ignored": {login.Identity{Identity: id, DisplayName: "1  "}, true},
+	} {
+		if err := ValidateIdentity(tc.id); (err == nil) != tc.ok {
+			t.Errorf("%s: ValidateIdentity = %v, want ok %v", name, err, tc.ok)
+		}
+	}
+}
