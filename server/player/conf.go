@@ -1,6 +1,7 @@
 package player
 
 import (
+	"log/slog"
 	"math"
 	"math/rand/v2"
 	"sync/atomic"
@@ -21,7 +22,10 @@ import (
 
 // Config holds options that a Player can be created with.
 type Config struct {
-	Session  *session.Session
+	Session *session.Session
+	// Log is the logger of the player, which it logs errors of its game
+	// through. If nil, slog.Default() is used.
+	Log      *slog.Logger
 	Skin     skin.Skin
 	XUID     string
 	UUID     uuid.UUID
@@ -100,6 +104,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		skin:                conf.Skin,
 		enchantSeed:         conf.EnchantmentSeed,
 		s:                   conf.Session,
+		log:                 conf.Log,
 		h:                   NopHandler{},
 		speed:               0.1,
 		flightSpeed:         0.05,
@@ -231,6 +236,9 @@ func (cfg Config) Apply(data *world.EntityData) {
 
 // fillDefaults fills empty fields in a Config with reasonable default values.
 func fillDefaults(conf Config) Config {
+	if conf.Log == nil {
+		conf.Log = slog.Default()
+	}
 	if (conf.Locale == language.Tag{}) {
 		conf.Locale = language.BritishEnglish
 	}

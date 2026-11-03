@@ -72,6 +72,8 @@ type playerData struct {
 	skin     skin.Skin
 	s        *session.Session
 	h        Handler
+	// log is the logger of the player, never nil.
+	log *slog.Logger
 
 	inv, offHand, enderChest, ui *inventory.Inventory
 	armour                       *inventory.Armour
@@ -2099,7 +2101,7 @@ func (p *Player) StopFishing(tx *world.Tx, reel bool) int {
 	}
 	damage, err := behaviour.Retrieve(hook, tx)
 	if err != nil {
-		p.session().LogError("failed to resolve Java fishing loot", "err", err)
+		p.log.Error("failed to resolve Java fishing loot", "err", err)
 	}
 	return damage
 }
@@ -4936,6 +4938,7 @@ func (p *Player) Data() Config {
 	}
 	return Config{
 		Session:             p.s,
+		Log:                 p.log,
 		Skin:                p.skin,
 		XUID:                p.xuid,
 		UUID:                p.UUID(),
