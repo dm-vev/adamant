@@ -1832,8 +1832,7 @@ func (s *Session) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	_, lectern := b.(block.Lectern)
 	if !lectern {
 		s.containerOpened.Store(true)
-		inv := inventory.New(1, nil)
-		s.openedWindow.Store(inv)
+		s.openedWindow.Store(s.noWindow)
 		s.openedPos.Store(&pos)
 	}
 
@@ -1971,7 +1970,7 @@ func (s *Session) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *wor
 	pos := e.Position()
 	openPos := cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
 	s.containerOpened.Store(true)
-	s.openedWindow.Store(inventory.New(1, nil))
+	s.openedWindow.Store(s.noWindow)
 	s.openedEntity.Store(e.H())
 	s.openedPos.Store(&openPos)
 	s.openedContainerID.Store(uint32(v2193.ContainerTypeTrade))
@@ -2305,7 +2304,7 @@ func (s *Session) closeWindow(clientRequested bool) bool {
 	containerType := byte(s.openedContainerID.Load())
 	windowID := byte(s.openedWindowID.Load())
 	s.openedContainerID.Store(0)
-	s.openedWindow.Store(inventory.New(1, nil))
+	s.openedWindow.Store(s.noWindow)
 	s.openedEntity.Store(nil)
 	if !clientRequested {
 		s.writePacket(&v2193.ContainerClosePacket{

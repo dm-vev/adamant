@@ -149,6 +149,9 @@ type Session struct {
 	changingDimension              atomic.Bool
 	// moving is set while applying client-driven movement to avoid echoing it back to the same client.
 	moving atomic.Bool
+	// noWindow is the inventory openedWindow holds while no menu with items of its own is open: none, a crafting
+	// table, an anvil, a merchant and the like. Requests cannot name it.
+	noWindow *inventory.Inventory
 
 	lastChunkPos world.ChunkPos
 
@@ -313,7 +316,8 @@ func (conf Config) New(conn Conn) *Session {
 	// Initialize heldSlot before any inventory callbacks can fire.
 	s.heldSlot.Store(new(uint32))
 	s.chunkRadius.Store(int32(r))
-	s.openedWindow.Store(inventory.New(1, nil))
+	s.noWindow = inventory.New(1, nil)
+	s.openedWindow.Store(s.noWindow)
 	s.openedPos.Store(&cube.Pos{})
 
 	var scoreboardName string

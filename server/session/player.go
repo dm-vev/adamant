@@ -267,7 +267,12 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 			return nil, false
 		}
 		if id == v2193.ContainerLevelEntity {
-			return s.openedWindow.Load(), true
+			// A menu without items of its own has no container 7: BDS
+			// refuses an item put there (50).
+			if w := s.openedWindow.Load(); w != s.noWindow {
+				return w, true
+			}
+			return nil, false
 		}
 		if s.merchantTradeOpen() {
 			switch id {

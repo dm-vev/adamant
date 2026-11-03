@@ -436,20 +436,9 @@
           FilterStrings: []
           FilterCause: 0
     | 0119010101010c000001000000070000000000000000000000
->> ItemStackResponse id=148 len=27 normalised
-    ItemStackResponsePacket
-      Responses: []v2193.ItemStackResponse (1)
-        [0] ItemStackResponse
-          Status: 0
-          RequestID: -13
-          ContainerInfo: []v2193.StackResponseContainerInfo (2)
-            [0] StackResponseContainerInfo
-              Container: {ContainerID:7 DynamicContainerID:none}
-              SlotInfo: [{Slot:0 HotbarSlot:0 Count:1 StackNetworkID:11 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
-            [1] StackResponseContainerInfo
-              Container: {ContainerID:12 DynamicContainerID:none}
-              SlotInfo: [{Slot:0 HotbarSlot:0 Count:15 StackNetworkID:12 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
-    | 010019010207000100000101160000000c000100000f0118000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-13 ContainerInfo:[]}]}
+    | 01011900
 == an apple put in the container of an anvil, slot 1
 << ItemStackRequest id=147 len=25 normalised
     ItemStackRequestPacket
@@ -459,11 +448,11 @@
           Actions: []v2193.StackRequestAction (1)
             [0] PlaceStackRequestAction
               Count: 1
-              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:12}
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
               Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:1 StackNetworkID:0}
           FilterStrings: []
           FilterCause: 0
-    | 011d010101010c00000c000000070001000000000000000000
+    | 011d010101010c000001000000070001000000000000000000
 >> ItemStackResponse id=148 len=4
     {Responses:[{Status:1 RequestID:-15 ContainerInfo:[]}]}
     | 01011d00
@@ -534,25 +523,14 @@
           Actions: []v2193.StackRequestAction (1)
             [0] PlaceStackRequestAction
               Count: 1
-              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:12}
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
               Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:0 StackNetworkID:0}
           FilterStrings: []
           FilterCause: 0
-    | 0121010101010c00000c000000070000000000000000000000
->> ItemStackResponse id=148 len=27 normalised
-    ItemStackResponsePacket
-      Responses: []v2193.ItemStackResponse (1)
-        [0] ItemStackResponse
-          Status: 0
-          RequestID: -17
-          ContainerInfo: []v2193.StackResponseContainerInfo (2)
-            [0] StackResponseContainerInfo
-              Container: {ContainerID:7 DynamicContainerID:none}
-              SlotInfo: [{Slot:0 HotbarSlot:0 Count:1 StackNetworkID:13 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
-            [1] StackResponseContainerInfo
-              Container: {ContainerID:12 DynamicContainerID:none}
-              SlotInfo: [{Slot:0 HotbarSlot:0 Count:14 StackNetworkID:14 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
-    | 0100210102070001000001011a0000000c000100000e011c000000
+    | 0121010101010c000001000000070000000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-17 ContainerInfo:[]}]}
+    | 01012100
 == an apple put in the container of a crafting table, slot 1
 << ItemStackRequest id=147 len=25 normalised
     ItemStackRequestPacket
@@ -562,11 +540,11 @@
           Actions: []v2193.StackRequestAction (1)
             [0] PlaceStackRequestAction
               Count: 1
-              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:14}
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
               Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:1 StackNetworkID:0}
           FilterStrings: []
           FilterCause: 0
-    | 0125010101010c00000e000000070001000000000000000000
+    | 0125010101010c000001000000070001000000000000000000
 >> ItemStackResponse id=148 len=4
     {Responses:[{Status:1 RequestID:-19 ContainerInfo:[]}]}
     | 01012500
@@ -629,7 +607,7 @@
         [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
-        [32] {StackNetworkID:15 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:11 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
@@ -661,7 +639,7 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
-    | 00000500010000011eb6b5ac94070a0000000000000000000000000000000000
+    | 000005000100000116b6b5ac94070a0000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
@@ -704,10 +682,10 @@
         [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
-        [32] {StackNetworkID:15 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:11 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
-        [35] {StackNetworkID:16 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:12 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [36] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [37] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [38] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
@@ -736,8 +714,8 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
-    | 00000500010000011eb6b5ac94070a0000000000000000000000000000000000
-    | 00000000000000000005000100000120b6b5ac94070a00000000000000000000
+    | 000005000100000116b6b5ac94070a0000000000000000000000000000000000
+    | 00000000000000000005000100000118b6b5ac94070a00000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
@@ -782,7 +760,7 @@
         [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
-        [32] {StackNetworkID:15 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:11 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
@@ -814,7 +792,7 @@
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
-    | 00000500010000011eb6b5ac94070a0000000000000000000000000000000000
+    | 000005000100000116b6b5ac94070a0000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
     | 0000000000000000000000000000000000000000000000000000000000000000
@@ -952,7 +930,7 @@
         [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
-        [4] {StackNetworkID:17 Stack:{NetworkID:307 MetadataValue:0 BlockRuntimeID:0 Count:3 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:13 Stack:{NetworkID:307 MetadataValue:0 BlockRuntimeID:0 Count:3 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
@@ -960,7 +938,7 @@
       Container: {ContainerID:0 DynamicContainerID:none}
       StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
     | 0309000000000000000000000000000000000000000000000000000000000000
-    | 000033010300000122000a000000000000000000000000000000000000000000
+    | 00003301030000011a000a000000000000000000000000000000000000000000
     | 00000000000000000000000000000000000000000000000000000000000000
 >> InventorySlot id=50 len=12
     InventorySlotPacket
@@ -994,11 +972,11 @@
           Actions: []v2193.StackRequestAction (1)
             [0] PlaceStackRequestAction
               Count: 1
-              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:14}
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
               Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:0 StackNetworkID:0}
           FilterStrings: []
           FilterCause: 0
-    | 012d010101010c00000e000000070000000000000000000000
+    | 012d010101010c000001000000070000000000000000000000
 >> ItemStackResponse id=148 len=27 normalised
     ItemStackResponsePacket
       Responses: []v2193.ItemStackResponse (1)
@@ -1008,11 +986,11 @@
           ContainerInfo: []v2193.StackResponseContainerInfo (2)
             [0] StackResponseContainerInfo
               Container: {ContainerID:7 DynamicContainerID:none}
-              SlotInfo: [{Slot:0 HotbarSlot:0 Count:1 StackNetworkID:18 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:1 StackNetworkID:14 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
             [1] StackResponseContainerInfo
               Container: {ContainerID:12 DynamicContainerID:none}
-              SlotInfo: [{Slot:0 HotbarSlot:0 Count:13 StackNetworkID:19 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
-    | 01002d010207000100000101240000000c000100000d0126000000
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:15 StackNetworkID:15 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+    | 01002d0102070001000001011c0000000c000100000f011e000000
 == the client closes a dispenser
 << ContainerClose id=47 len=3
     {WindowID:3 ContainerType:6 ServerSide:false}
@@ -1064,7 +1042,7 @@
         [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
-        [4] {StackNetworkID:20 Stack:{NetworkID:307 MetadataValue:0 BlockRuntimeID:0 Count:3 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:16 Stack:{NetworkID:307 MetadataValue:0 BlockRuntimeID:0 Count:3 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
         [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
@@ -1072,7 +1050,7 @@
       Container: {ContainerID:0 DynamicContainerID:none}
       StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
     | 0409000000000000000000000000000000000000000000000000000000000000
-    | 000033010300000128000a000000000000000000000000000000000000000000
+    | 000033010300000120000a000000000000000000000000000000000000000000
     | 00000000000000000000000000000000000000000000000000000000000000
 >> InventorySlot id=50 len=12
     InventorySlotPacket
@@ -1106,11 +1084,11 @@
           Actions: []v2193.StackRequestAction (1)
             [0] PlaceStackRequestAction
               Count: 1
-              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:19}
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:15}
               Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:0 StackNetworkID:0}
           FilterStrings: []
           FilterCause: 0
-    | 0131010101010c000013000000070000000000000000000000
+    | 0131010101010c00000f000000070000000000000000000000
 >> ItemStackResponse id=148 len=27 normalised
     ItemStackResponsePacket
       Responses: []v2193.ItemStackResponse (1)
@@ -1120,11 +1098,11 @@
           ContainerInfo: []v2193.StackResponseContainerInfo (2)
             [0] StackResponseContainerInfo
               Container: {ContainerID:7 DynamicContainerID:none}
-              SlotInfo: [{Slot:0 HotbarSlot:0 Count:1 StackNetworkID:21 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:1 StackNetworkID:17 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
             [1] StackResponseContainerInfo
               Container: {ContainerID:12 DynamicContainerID:none}
-              SlotInfo: [{Slot:0 HotbarSlot:0 Count:12 StackNetworkID:22 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
-    | 0100310102070001000001012a0000000c000100000c012c000000
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:14 StackNetworkID:18 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+    | 010031010207000100000101220000000c000100000e0124000000
 == the client closes a dropper
 << ContainerClose id=47 len=3
     {WindowID:4 ContainerType:7 ServerSide:false}
