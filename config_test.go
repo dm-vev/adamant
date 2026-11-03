@@ -331,8 +331,8 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	}
 	m := serverMeaning(t, conf, log)
 	closeProviders(t, conf)
-	// The NetherNet listener reads the part it was composed of.
-	n, x, p, j := f.Server.Network, f.Server.Xbox, f.Server.Proxy, f.Server.Java
+	// The listeners read the parts they were composed of.
+	n, x, p, j := f.Server.Network, f.Server.Xbox, f.Server.Proxy, f.Java.Java
 	m["Network.Address"], m["Network.IdentityFile"], m["Network.EnableQuery"] = n.Address, n.IdentityFile, n.EnableQuery
 	m["Network.LAN"], m["Network.HTTPSDomain"], m["Network.ACMEEmail"], m["Network.ACMECacheDir"] = n.LAN, n.HTTPSDomain, n.ACMEEmail, n.ACMECacheDir
 	m["Network.ACMEDirectory"], m["Network.ACMEChallengeAddress"] = n.ACMEDirectory, n.ACMEChallengeAddress

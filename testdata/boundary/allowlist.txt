@@ -23,7 +23,6 @@ server/listener_nethernet.go github.com/dm-vev/adamant/net/acme
 server/listener_nethernet.go github.com/dm-vev/adamant/net/bedrock
 server/listener_nethernet.go github.com/dm-vev/adamant/net/bedrock/login
 server/listener_nethernet.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/listener_nethernet.go github.com/dm-vev/adamant/net/java
 server/listener_nethernet.go github.com/dm-vev/adamant/net/nethernet
 server/listener_nethernet.go github.com/dm-vev/adamant/net/nethernet/lan
 server/listener_nethernet.go github.com/dm-vev/adamant/net/proxy
@@ -34,7 +33,6 @@ server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock/client
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock/login
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/bedrock/wire
-server/listener_nethernet_test.go github.com/dm-vev/adamant/net/java
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet/lan
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/proxy

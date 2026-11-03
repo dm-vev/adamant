@@ -27,7 +27,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/dm-vev/adamant/net/java"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
 	"github.com/dm-vev/adamant/net/proxy"
@@ -44,8 +43,8 @@ func (uc UserConfig) listenerFunc(conf Config, host Host) (Listener, error) {
 }
 
 // netherNetListener returns the connections of the NetherNet listener of
-// the server, admitted to it as the Config says. Queries and clients of
-// Java Edition are shown the server host.
+// the server, admitted to it as the Config says. Queries are answered
+// from the server host.
 func (uc UserConfig) netherNetListener(conf Config, host Host) (session.ConnListener, error) {
 	identityFile := uc.Network.IdentityFile
 	if identityFile == "" {
@@ -128,54 +127,7 @@ func (uc UserConfig) netherNetListener(conf Config, host Host) (session.ConnList
 			return nil, err
 		}
 	}
-	if uc.Java.Address != "" {
-		if err := serveJava(l, host, uc.Java.Address, uc.Java.Message, conf.Log); err != nil {
-			_ = l.Close()
-			return nil, err
-		}
-	}
 	return netherNetListener{l}, nil
-}
-
-// defaultJavaMessage is what a client of Java Edition that joins is told.
-const defaultJavaMessage = "This server is for Minecraft: Bedrock Edition " + v2193.Version + ". Join it with Bedrock Edition."
-
-// serveJava shows the server host to clients of Java Edition on addr until
-// the listener closes: their server list shows its name and players, and
-// the version of Bedrock Edition in place of a version they may join with,
-// as they may not; one that joins anyway is told message.
-func serveJava(l *netconn.Listener, host Host, addr, message string, log *slog.Logger) error {
-	if message == "" {
-		message = defaultJavaMessage
-	}
-	jl, err := java.Listen(addr, func() java.Status {
-		st := host.Status()
-		maxPlayers := st.MaxPlayers
-		if maxPlayers == 0 {
-			maxPlayers = st.PlayerCount + 1
-		}
-		// A protocol no client speaks lists the server as one of another
-		// version, which the name says.
-		return java.Status{Name: "Bedrock " + v2193.Version, Protocol: -1, Description: st.Name, Online: st.PlayerCount, Max: maxPlayers}
-	})
-	if err != nil {
-		return fmt.Errorf("listen for Java Edition: %w", err)
-	}
-	log.Info("Clients of Java Edition see the server.", "addr", jl.Addr())
-	go func() {
-		<-l.Closed()
-		_ = jl.Close()
-	}()
-	go func() {
-		for {
-			login, err := jl.Accept()
-			if err != nil {
-				return
-			}
-			go func() { _ = login.Disconnect(message) }()
-		}
-	}()
-	return nil
 }
 
 // keepCertificate obtains the certificate of the HTTPS signaling and keeps
