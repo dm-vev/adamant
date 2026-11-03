@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
@@ -379,7 +380,7 @@ func (s *scenario) runtimeID(h *world.EntityHandle) uint64 {
 // item passed of an input whose description holds input.
 func (s *scenario) recipe(block string, output world.Item, input string) uint32 {
 	s.t.Helper()
-	rid, _, _ := world.ItemRuntimeID(output)
+	rid, _, _ := bedrockdata.ItemRuntimeID(output)
 	for _, r := range s.crafting.ShapedRecipes {
 		if r.Block == block && len(r.Output) > 0 && r.Output[0].NetworkID == rid && strings.Contains(inline(reflect.ValueOf(r.Input)), input) {
 			return r.RecipeNetworkID
@@ -398,7 +399,7 @@ func (s *scenario) recipe(block string, output world.Item, input string) uint32 
 // the item passed.
 func (s *scenario) smithingRecipe(output world.Item) uint32 {
 	s.t.Helper()
-	rid, _, _ := world.ItemRuntimeID(output)
+	rid, _, _ := bedrockdata.ItemRuntimeID(output)
 	for _, r := range s.crafting.SmithingTransformRecipes {
 		if r.Result.NetworkID == rid {
 			return r.RecipeNetworkID

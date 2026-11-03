@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
@@ -396,7 +397,7 @@ func checkContents(t *testing.T, name string, got []proto.Packet, window byte, w
 			if it.Stack.NetworkID == 0 {
 				continue
 			}
-			stack, ok := world.ItemByRuntimeID(it.Stack.NetworkID, int16(it.Stack.MetadataValue))
+			stack, ok := bedrockdata.ItemByRuntimeID(it.Stack.NetworkID, int16(it.Stack.MetadataValue))
 			if !ok {
 				t.Fatalf("%s: unknown item %d", name, it.Stack.NetworkID)
 			}

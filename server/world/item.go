@@ -1,12 +1,13 @@
 package world
 
 import (
+	_ "embed"
 	"fmt"
 	"image"
 	"slices"
 	"sync"
+	"sync/atomic"
 
-	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item/category"
 	"github.com/dm-vev/adamant/net/nbt"
 )
@@ -50,6 +51,7 @@ func RegisterItem(item Item) {
 		itemNamesToRuntimeIDs[name] = nextRID
 
 		customItems = append(customItems, c)
+		customItemCount.Add(1)
 	}
 	if _, ok := itemNamesToRuntimeIDs[name]; !ok {
 		panic(fmt.Sprintf("item name %v does not have a runtime ID", name))
@@ -64,7 +66,12 @@ type itemHash struct {
 }
 
 var (
-	itemRuntimeIDData = bedrockdata.VanillaItems
+	// itemRuntimeIDData is a copy of the item registry of BDS the Bedrock
+	// adapter's data holds, kept until the world no longer gives items runtime
+	// IDs.
+	//
+	//go:embed vanilla_items.nbt
+	itemRuntimeIDData []byte
 	// itemMu protects all item registry maps and slices.
 	itemMu sync.RWMutex
 	// items holds a list of all registered items, indexed using the itemHash created when calling
@@ -72,6 +79,8 @@ var (
 	items = map[itemHash]Item{}
 	// customItems holds a list of all registered custom items.
 	customItems []CustomItem
+	// customItemCount is the number of custom items registered, len(customItems).
+	customItemCount atomic.Int64
 	// itemRuntimeIDsToNames holds a map to translate item runtime IDs to string IDs.
 	itemRuntimeIDsToNames = map[int32]string{}
 	// itemNamesToRuntimeIDs holds a map to translate item string IDs to runtime IDs.
@@ -143,7 +152,15 @@ func Items() []Item {
 	return m
 }
 
-// CustomItems returns a slice of all registered custom items.
+// CustomItemCount returns the number of custom items registered, which is
+// len(CustomItems()). It only grows, and it costs no lock, so that data kept
+// per custom item may be checked against it cheaply.
+func CustomItemCount() int {
+	return int(customItemCount.Load())
+}
+
+// CustomItems returns a slice of all registered custom items, in the order
+// they were registered.
 func CustomItems() []CustomItem {
 	itemMu.RLock()
 	defer itemMu.RUnlock()

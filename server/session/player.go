@@ -16,6 +16,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
@@ -1332,7 +1333,7 @@ func stackFromItem(br world.BlockRegistry, it item.Stack) v2193.ItemStack {
 		blockRuntimeID = networkBlockID(br, b)
 	}
 
-	rid, meta, _ := world.ItemRuntimeID(it.Item())
+	rid, meta, _ := bedrockdata.ItemRuntimeID(it.Item())
 
 	return v2193.ItemStack{
 		NetworkID:      rid,
@@ -1345,7 +1346,7 @@ func stackFromItem(br world.BlockRegistry, it item.Stack) v2193.ItemStack {
 
 // stackToItem converts a network ItemStack representation back to an item.Stack.
 func stackToItem(br world.BlockRegistry, it v2193.ItemStack) item.Stack {
-	t, ok := world.ItemByRuntimeID(it.NetworkID, int16(it.MetadataValue))
+	t, ok := bedrockdata.ItemByRuntimeID(it.NetworkID, int16(it.MetadataValue))
 	if !ok {
 		t = block.Air{}
 	}

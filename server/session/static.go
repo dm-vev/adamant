@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/recipe"
@@ -133,9 +134,9 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 				RecipeNetworkID: networkID,
 			})
 		case recipe.Potion:
-			inputRuntimeID, inputMeta, _ := world.ItemRuntimeID(i.Input()[0].(item.Stack).Item())
-			reagentRuntimeID, reagentMeta, _ := world.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
-			outputRuntimeID, outputMeta, _ := world.ItemRuntimeID(i.Output()[0].Item())
+			inputRuntimeID, inputMeta, _ := bedrockdata.ItemRuntimeID(i.Input()[0].(item.Stack).Item())
+			reagentRuntimeID, reagentMeta, _ := bedrockdata.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
+			outputRuntimeID, outputMeta, _ := bedrockdata.ItemRuntimeID(i.Output()[0].Item())
 
 			potionRecipes = append(potionRecipes, v2193.PotionRecipe{
 				InputPotionID:        inputRuntimeID,
@@ -147,9 +148,9 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			})
 
 		case recipe.PotionContainerChange:
-			inputRuntimeID, _, _ := world.ItemRuntimeID(i.Input()[0].(item.Stack).Item())
-			reagentRuntimeID, _, _ := world.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
-			outputRuntimeID, _, _ := world.ItemRuntimeID(i.Output()[0].Item())
+			inputRuntimeID, _, _ := bedrockdata.ItemRuntimeID(i.Input()[0].(item.Stack).Item())
+			reagentRuntimeID, _, _ := bedrockdata.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
+			outputRuntimeID, _, _ := bedrockdata.ItemRuntimeID(i.Output()[0].Item())
 
 			potionContainerChange = append(potionContainerChange, v2193.PotionContainerChangeRecipe{
 				InputItemID:   inputRuntimeID,

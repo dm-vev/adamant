@@ -120,7 +120,7 @@ func customItemEntries(br world.BlockRegistry, custom []world.CustomItem) []v219
 
 	for _, it := range items {
 		name, _ := it.EncodeItem()
-		rid, _, ok := world.ItemRuntimeID(it)
+		rid, _, ok := bedrockdata.ItemRuntimeID(it)
 		if !ok {
 			continue
 		}

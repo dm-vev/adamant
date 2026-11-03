@@ -1,8 +1,6 @@
-// Package bedrockdata holds data of Bedrock Edition that the world and the
-// Bedrock adapter both read: the vanilla item registry, by which the world
-// gives items their runtime IDs and the adapter defines them to the client.
-// An embedded file cannot be shared across package directories, so it lives
-// here until the item runtime IDs move to the adapter.
+// Package bedrockdata holds data of Bedrock Edition the Bedrock adapter reads:
+// the vanilla item registry, by which the adapter defines the items to the
+// client, and the runtime IDs it gives items from it.
 package bedrockdata
 
 import _ "embed"

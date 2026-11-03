@@ -12,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
@@ -743,7 +744,7 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 			Position:  vec64To32(pos),
 		})
 	case particle.EggSmash:
-		rid, meta, _ := world.ItemRuntimeID(item.Egg{})
+		rid, meta, _ := bedrockdata.ItemRuntimeID(item.Egg{})
 		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 14,
 			EventData: (rid << 16) | int32(meta),
@@ -1639,7 +1640,7 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 				// Not consumable, refer to the comment above.
 				return
 			}
-			rid, meta, _ := world.ItemRuntimeID(it)
+			rid, meta, _ := bedrockdata.ItemRuntimeID(it)
 			s.writePacket(&v2193.ActorEventPacket{
 				EntityRuntimeID: s.entityRuntimeID(e),
 				EventType:       v2193.ActorEventFeed,
