@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -95,5 +96,21 @@ func TestRefusedRequestUndoesInReverse(t *testing.T) {
 		if want := []int{28, 29, 29, 28}; !slices.Equal(writes, want) {
 			t.Fatalf("the UI slots were written in the order %v, want %v", writes, want)
 		}
+	}
+}
+
+// TestLoomCraftWithNoMenuOpen refuses a loom craft when no menu is open,
+// as BDS refused it (7), without reading the world: the position of the
+// last menu opened says nothing once it closed.
+func TestLoomCraftWithNoMenuOpen(t *testing.T) {
+	s := craftingTestSession()
+	s.openedPos.Store(&cube.Pos{})
+	h := craftingTestHandler()
+	// No world is passed: reading a block would panic.
+	err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		&v2193.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
+	}}, s, nil, merchantTestUser{mode: world.GameModeSurvival})
+	if err == nil {
+		t.Fatal("the loom craft with no menu open was accepted")
 	}
 }

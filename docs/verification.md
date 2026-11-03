@@ -148,6 +148,7 @@ At the capture, the session differed in every case but two (the off hand at slot
 Since the capture:
 
 - A refused request undoes its changes from a log kept in the order they were made, the last first, each in the inventory and at the index it was made: a slot changed twice gets back what it held before the request, and the off hand is set at index 0 whatever slot the client named. Before, the changes were undone in the order of a Go map, to the content before the last change of each container and slot the client named, and the off hand at the slot named, where setting it failed. `TestRefusedRequestRestoresSlotChangedTwice` (also with the slot named under the hot-bar container 28 the second time, whose outcome depended on the map order), `TestRefusedRequestRestoresOffHand` and `TestRefusedRequestUndoesInReverse` (each UI write sends the whole UI, so the order reaches the client) fail on the old code.
+- A loom craft checks that a menu is open before it reads the block where the last one was opened. The review that prompted this expected a panic before any menu was opened; there is none, as that position starts as the origin and is never cleared, and the session refused the craft before and after (the golden "loom craft with no menu open" step is unchanged). The block is no longer read, which loaded its chunk, in a world the player may since have left. `TestLoomCraftWithNoMenuOpen` passes no world and panics on the old code.
 
 ## Actor identifiers and properties at spawn
 
