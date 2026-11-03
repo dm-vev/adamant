@@ -354,6 +354,23 @@ func (s *Session) SetHandle(handle *world.EntityHandle, skin skin.Skin) {
 	sessionsOpen.Add(1)
 }
 
+// Unbind undoes SetHandle for a session whose player never spawned, as when
+// its join fails before the player is added to a world: it removes the
+// player from the player list of every session, its own among them. The
+// session is then closed, and a later Close does nothing. Unbind does
+// nothing if the session has no handle or its teardown started.
+func (s *Session) Unbind() {
+	if s.ent == nil || !s.teardownStarted.CompareAndSwap(false, true) {
+		return
+	}
+	sessions.Remove(s, nil)
+	sessionsOpen.Add(-1)
+	s.entityMutex.Lock()
+	clear(s.entityRuntimeIDs)
+	clear(s.entities)
+	s.entityMutex.Unlock()
+}
+
 // ViewerEntity identifies the observer for source-defined particle range checks.
 // The handle must be opened in the emitting world's transaction before use.
 func (s *Session) ViewerEntity() *world.EntityHandle { return s.ent }

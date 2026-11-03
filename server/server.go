@@ -157,10 +157,12 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 				srv.pwg.Done()
 				// Join failed before spawn: the entity was never added, so close
 				// the orphaned handle and fully tear the session down (Disconnect
-				// only writes a packet; CloseConnection frees the conn/goroutines).
+				// only writes a packet; CloseConnection frees the conn/goroutines;
+				// Unbind removes the player from the player list of the others).
 				_ = inc.p.handle.Close()
 				inc.s.Disconnect(text.Literal("join failed"))
 				inc.s.CloseConnection()
+				inc.s.Unbind()
 				continue
 			}
 			if ret {
