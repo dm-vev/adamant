@@ -5905,7 +5905,7 @@ assertions. It is explicitly separate from the completed state regression and
 is enabled with:
 
 ```text
-go test -tags redstone_bell_support_audit ./server/session -run '^TestBellSupportUpdatesMatchNativePackets$' -count=1
+go test -tags redstone_bell_support_audit ./protocol/bedrock/session -run '^TestBellSupportUpdatesMatchNativePackets$' -count=1
 ```
 
 This command is expected to fail at this checkpoint. It was rerun before

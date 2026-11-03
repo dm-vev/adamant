@@ -219,7 +219,9 @@ make lint
 | `server/internal/gamedata` | Block, tag and resource tables taken from the references |
 | `server/entity` | Entities, the `MobAI` and `Brain` frameworks, and every mob's AI |
 | `server/block`, `server/item` | Block and item behaviour |
-| `server/player`, `server/session` | Players and the Bedrock network session |
+| `server/player` | Players |
+| `protocol/bedrock` | The Bedrock adapter: the NetherNet listener, the network session (`session`), connections (`netconn`) and the query protocol (`query`) |
+| `protocol/java` | The Java Edition adapter: the server-list status for now |
 | `server/cmd` | Command system and built-in commands |
 | `cmd/` | Tools for comparing against BDS and auditing registries |
 

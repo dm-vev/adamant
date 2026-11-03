@@ -11,6 +11,5 @@
 // hold legacy strings, § codes with their Bedrock Edition meanings, as items
 // and signs do.
 //
-// The package imports no protocol: neither net/, nor server/session,
-// server/netconn or protocol/.
+// The package imports no protocol: neither net/ nor protocol/.
 package client

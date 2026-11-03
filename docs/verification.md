@@ -25,7 +25,7 @@ This document records how Adamant's behaviour was checked against its references
 
 Outgoing packets retain FIFO order when chunk/entity publication exceeds the 256-packet channel. A bounded overflow queue absorbs bursts without dropping accepted packets or waiting for network I/O on the world owner. The total queued-packet limit is 16,384; exceeding it closes the connection asynchronously. Packet write errors also close the session, and closing releases queued payloads.
 
-`go test ./server/session -run '^TestSessionPacket'` covers a blocked writer followed by 4,096 item spawns and 4,096 movement packets, four concurrent producers, a full-channel/refill race, backlog exhaustion and write failure. The burst regression disconnects with the original implementation and passes with the overflow queue. These are controlled connection tests; the user also confirmed that the reported Bedrock 1.26.51 connection issue is resolved.
+`go test ./protocol/bedrock/session -run '^TestSessionPacket'` covers a blocked writer followed by 4,096 item spawns and 4,096 movement packets, four concurrent producers, a full-channel/refill race, backlog exhaustion and write failure. The burst regression disconnects with the original implementation and passes with the overflow queue. These are controlled connection tests; the user also confirmed that the reported Bedrock 1.26.51 connection issue is resolved.
 
 ## Network stack under load and loss
 

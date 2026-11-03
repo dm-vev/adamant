@@ -306,7 +306,7 @@ func TestChatInlineTranslations(t *testing.T) {
 }
 
 func TestChatGoldenTranslation(t *testing.T) {
-	// goldenTranslation of server/session/golden_text_test.go, sent with the
+	// goldenTranslation of protocol/bedrock/session/golden_text_test.go, sent with the
 	// arguments the golden tests pass it.
 	nw := chat.Translate(key("%commands.give.success"), 3, "Gave %v * %v to %v").Enc("<diamond>%v</diamond>")
 	old := oldTranslate(key("%commands.give.success"), 3, "Gave %v * %v to %v").Enc("<diamond>%v</diamond>")

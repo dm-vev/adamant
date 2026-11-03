@@ -15,7 +15,7 @@ import (
 // planks as its ingredients, consuming two planks from inventory slot 0 and
 // placing the sticks in slot 9. It is the request of the case
 // inventory/consume-inventory-only of
-// server/session/testdata/bedrock_1_26_52_autocraft.json.
+// protocol/bedrock/session/testdata/bedrock_1_26_52_autocraft.json.
 const autoCraftRequest = "93010145040b0dad0c01020101146d696e6563726166743a6f616b5f706c616e6b730001000101146d696e6563726166743a6f616b5f706c616e6b730001000505020c00001400000011130101010f6d696e6563726166743a737469636b000400000a00000000000000000000010101043c0032ddffffff0c0009000000000000000000"
 
 // TestRecipeIngredientsAsBDSTakesThem decodes a recipe-book craft BDS
