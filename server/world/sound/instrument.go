@@ -7,11 +7,6 @@ type Instrument struct {
 
 type instrument int32
 
-// Int32 ...
-func (i instrument) Int32() int32 {
-	return int32(i)
-}
-
 // Piano is an instrument type for the note block.
 func Piano() Instrument {
 	return Instrument{0}

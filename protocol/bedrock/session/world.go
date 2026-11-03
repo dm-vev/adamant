@@ -674,7 +674,7 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 		})
 	case particle.Note:
 		out(&v2193.BlockEventPacket{
-			EventType: pa.Instrument.Int32(),
+			EventType: bedrockInstrument(pa.Instrument),
 			EventData: int32(pa.Pitch),
 			Position:  v2193.BlockPos{int32(pos.X()), int32(pos.Y()), int32(pos.Z())},
 		})
@@ -984,7 +984,7 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		}
 	case sound.Note:
 		pk.SoundType = v2193.SoundEventNote
-		pk.ExtraData = (so.Instrument.Int32() << 8) | int32(so.Pitch)
+		pk.ExtraData = (bedrockInstrument(so.Instrument) << 8) | int32(so.Pitch)
 		pk.EntityType = ""
 	case sound.DoorCrash:
 		out(&v2193.LevelEventPacket{
