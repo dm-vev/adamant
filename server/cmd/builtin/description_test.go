@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/session"
-	"github.com/dm-vev/adamant/net/bedrock/text"
+	"github.com/df-mc/dragonfly/server/text"
 	"golang.org/x/text/language"
 )
 
@@ -68,14 +69,14 @@ func TestBuiltinDescriptionsMatchNativeTranslations(t *testing.T) {
 			if locale != language.Russian {
 				expected, _ = descriptions.Lookup(locale, key)
 			}
-			resolved := text.Clean(command.DescriptionTranslation().Resolve(locale))
-			if resolved != expected {
+			resolved := command.DescriptionTranslation().F().Text(locale)
+			if !text.Equal(resolved, text.Colourf("%v", expected)) {
 				t.Errorf("%s description for %s = %q, want %q", name, locale, resolved, expected)
 			}
 		}
 		for _, locale := range []language.Tag{language.AmericanEnglish, language.German, language.Und} {
 			expected, _ := descriptions.Lookup(locale, key)
-			if resolved := text.Clean(command.DescriptionTranslation().Resolve(locale)); resolved != expected {
+			if resolved := command.DescriptionTranslation().F().Text(locale); !text.Equal(resolved, text.Colourf("%v", expected)) {
 				t.Errorf("%s catalog text for %s = %q, want %q", name, locale, resolved, expected)
 			}
 		}
@@ -98,23 +99,26 @@ func TestHelpKeepsDescriptionTranslations(t *testing.T) {
 	} {
 		src := &descriptionTestSource{locale: language.Russian}
 		key := "commands." + tt.name + ".description"
-		expected, _ := descriptions.Lookup(src.locale, key)
+		description, _ := descriptions.Lookup(src.locale, key)
 		fallback, _ := descriptions.Lookup(language.English, key)
+		// The text of the server's own catalog, or the key of the
+		// client's description, which it looks up.
+		expected := text.Colourf(tt.prefix+"%v", description)
 		if tt.name == "gamemode" {
-			expected = "%commands.gamemode.description"
+			expected = text.Colourf(tt.prefix+"%v", text.Translate(key, fallback))
 		}
 		help.Execute(tt.args, src, nil)
 		found := false
 		for _, message := range src.output.Messages() {
-			if translated, ok := message.(interface{ Resolve(language.Tag) string }); ok && text.Clean(translated.Resolve(src.locale)) == tt.prefix+expected {
-				if text.Clean(message.String()) != tt.prefix+fallback {
+			if translated, ok := message.(chat.Texter); ok && text.Equal(translated.Text(src.locale), expected) {
+				if text.ParseLegacy(message.String()).Plain() != tt.prefix+fallback {
 					t.Errorf("help %q console output = %q", tt.args, message.String())
 				}
 				found = true
 			}
 		}
 		if !found {
-			t.Errorf("help %q lost translated description %q", tt.args, tt.prefix+expected)
+			t.Errorf("help %q lost translated description %#v", tt.args, expected)
 		}
 	}
 }

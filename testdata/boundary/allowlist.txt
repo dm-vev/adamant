@@ -21,7 +21,6 @@ server/cmd/builtin/command_metadata_test.go github.com/df-mc/dragonfly/server/se
 server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/wire
 server/cmd/builtin/description_test.go github.com/df-mc/dragonfly/server/session
-server/cmd/builtin/description_test.go github.com/dm-vev/adamant/net/bedrock/text
 server/cmd/builtin/registry_parameter.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/cmd/builtin/registry_parameter_test.go github.com/df-mc/dragonfly/server/session
 server/cmd/builtin/registry_parameter_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
@@ -73,9 +72,6 @@ server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto
 server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/player/attack_lifecycle_test.go github.com/df-mc/dragonfly/server/session
 server/player/attack_lifecycle_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/player/chat/subscriber.go github.com/dm-vev/adamant/net/bedrock/text
-server/player/chat/translate.go github.com/dm-vev/adamant/net/bedrock/text
-server/player/chat/translate_test.go github.com/dm-vev/adamant/net/bedrock/text
 server/player/close_reentry_test.go github.com/df-mc/dragonfly/server/session
 server/player/conf.go github.com/df-mc/dragonfly/server/session
 server/player/handler.go github.com/df-mc/dragonfly/server/session

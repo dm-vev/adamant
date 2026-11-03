@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dm-vev/adamant/net/bedrock/text"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/google/uuid"
 )
 
@@ -37,16 +37,32 @@ func (c StdoutSubscriber) UUID() uuid.UUID {
 	return id
 }
 
-// Message ...
+// Message prints the values passed, joined with spaces, with the § codes
+// in them as ANSI codes, as text.ParseLegacy reads them. A text.Text passed
+// alone is printed as text.Text.ANSI writes it.
 func (c StdoutSubscriber) Message(a ...any) {
-	s := make([]string, len(a))
-	for i, b := range a {
-		s[i] = fmt.Sprint(b)
+	var t string
+	if m, ok := soleText(a); ok {
+		t = m.ANSI()
+	} else {
+		s := make([]string, len(a))
+		for i, b := range a {
+			s[i] = fmt.Sprint(b)
+		}
+		t = text.ParseLegacy(strings.Join(s, " ")).ANSI()
 	}
-	t := text.ANSI(strings.Join(s, " "))
 	if !strings.HasSuffix(t, "\n") {
 		fmt.Println(t)
 		return
 	}
 	fmt.Print(t)
+}
+
+// soleText returns the text a holds if a is a text.Text alone.
+func soleText(a []any) (text.Text, bool) {
+	if len(a) != 1 {
+		return text.Text{}, false
+	}
+	t, ok := a[0].(text.Text)
+	return t, ok
 }

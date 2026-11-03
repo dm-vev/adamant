@@ -1,0 +1,8 @@
+go test fuzz v1
+string("multiplayer.play110joined")
+bool(true)
+[]byte("\x00\x03\x04")
+[]byte("\x02\t\n")
+[]byte("\x17")
+string("Steve")
+int(-29)

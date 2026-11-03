@@ -6,9 +6,11 @@ import (
 	"slices"
 	"strings"
 
+	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/dm-vev/adamant/net/bedrock/text"
+	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/go-gl/mathgl/mgl64"
 	"golang.org/x/text/language"
 )
@@ -22,15 +24,15 @@ func (s *Session) SendCommandOutput(output *cmd.Output, l language.Tag) {
 	messages := make([]v2193.CommandOutputMessage, 0, output.MessageCount()+output.ErrorCount())
 	for _, message := range output.Messages() {
 		om := v2193.CommandOutputMessage{Success: true, Message: message.String()}
-		if t, ok := message.(translation); ok {
-			om.Message, om.Parameters = t.Resolve(l), t.Params(l)
+		if t, ok := message.(chat.Texter); ok {
+			om.Message, om.Parameters, _ = bedrocktext.Message(t.Text(l))
 		}
 		messages = append(messages, om)
 	}
 	for _, err := range output.Errors() {
 		om := v2193.CommandOutputMessage{Message: err.Error()}
-		if t, ok := err.(translation); ok {
-			om.Message, om.Parameters = t.Resolve(l), t.Params(l)
+		if t, ok := err.(chat.Texter); ok {
+			om.Message, om.Parameters, _ = bedrocktext.Message(t.Text(l))
 		}
 		messages = append(messages, om)
 	}
@@ -55,11 +57,6 @@ func (s *Session) commandOriginSnapshot() v2193.CommandOrigin {
 		return *origin
 	}
 	return v2193.CommandOrigin{}
-}
-
-type translation interface {
-	Resolve(l language.Tag) string
-	Params(l language.Tag) []string
 }
 
 // BuildAvailableCommands builds an AvailableCommands packet and the runnable command map for the Source
@@ -215,7 +212,8 @@ func commandDescription(c cmd.Command, src cmd.Source) string {
 	if localized, ok := src.(interface{ Locale() language.Tag }); ok {
 		locale = localized.Locale()
 	}
-	resolved := strings.TrimPrefix(description.Resolve(locale), text.Reset)
+	message, _, _ := bedrocktext.Message(description.F().Text(locale))
+	resolved := strings.TrimPrefix(message, nettext.Reset)
 	return strings.TrimPrefix(resolved, "%")
 }
 

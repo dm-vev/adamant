@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"golang.org/x/text/language"
 )
@@ -23,37 +24,37 @@ func deathTranslation(key string, params int, fallback string) chat.Translation 
 
 // Death message translations from the Bedrock en_US.lang death.attack keys.
 var (
-	deathGeneric      = deathTranslation("death.attack.generic", 1, "%v died")
-	deathPlayer       = deathTranslation("death.attack.player", 2, "%v was slain by %v")
-	deathMob          = deathTranslation("death.attack.mob", 2, "%v was slain by %v")
-	deathArrow        = deathTranslation("death.attack.arrow", 2, "%v was shot by %v")
-	deathTrident      = deathTranslation("death.attack.trident", 2, "%v was impaled to death by %v")
-	deathFireball     = deathTranslation("death.attack.fireball", 2, "%v was fireballed by %v")
-	deathThrown       = deathTranslation("death.attack.thrown", 2, "%v was pummeled by %v")
-	deathThorns       = deathTranslation("death.attack.thorns", 2, "%v was killed trying to hurt %v")
-	deathFall         = deathTranslation("death.attack.fall", 1, "%v hit the ground too hard")
-	deathInFire       = deathTranslation("death.attack.inFire", 1, "%v went up in flames")
-	deathOnFire       = deathTranslation("death.attack.onFire", 1, "%v burned to death")
-	deathLava         = deathTranslation("death.attack.lava", 1, "%v tried to swim in lava")
-	deathMagma        = deathTranslation("death.attack.magma", 1, "%v discovered the floor was lava")
-	deathInWall       = deathTranslation("death.attack.inWall", 1, "%v suffocated in a wall")
-	deathDrown        = deathTranslation("death.attack.drown", 1, "%v drowned")
-	deathOutOfWorld   = deathTranslation("death.attack.outOfWorld", 1, "%v fell out of the world")
-	deathExplosion    = deathTranslation("death.attack.explosion", 1, "%v blew up")
-	deathExplosionBy  = deathTranslation("death.attack.explosion.player", 2, "%v was blown up by %v")
-	deathFireworks    = deathTranslation("death.attack.fireworks", 1, "%v went off with a bang")
-	deathMagic        = deathTranslation("death.attack.magic", 1, "%v was killed by magic")
-	deathWither       = deathTranslation("death.attack.wither", 1, "%v withered away")
-	deathLightning    = deathTranslation("death.attack.lightningBolt", 1, "%v was struck by lightning")
-	deathFlyIntoWall  = deathTranslation("death.attack.flyIntoWall", 1, "%v experienced kinetic energy")
-	deathStarve       = deathTranslation("death.attack.starve", 1, "%v starved to death")
-	deathFreeze       = deathTranslation("death.attack.freeze", 1, "%v froze to death")
-	deathCactus       = deathTranslation("death.attack.cactus", 1, "%v was pricked to death")
-	deathSweetBerry   = deathTranslation("death.attack.sweetBerry", 1, "%v was poked to death by a sweet berry bush")
-	deathAnvil        = deathTranslation("death.attack.anvil", 1, "%v was squashed by a falling anvil")
-	deathFallingBlock = deathTranslation("death.attack.fallingBlock", 1, "%v was squashed by a falling block")
-	deathStalactite   = deathTranslation("death.attack.stalactite", 1, "%v was skewered by a falling stalactite")
-	deathStalagmite   = deathTranslation("death.attack.stalagmite", 1, "%v was impaled on a stalagmite")
+	deathGeneric      = deathTranslation("death.attack.generic", 1, "%s died")
+	deathPlayer       = deathTranslation("death.attack.player", 2, "%s was slain by %s")
+	deathMob          = deathTranslation("death.attack.mob", 2, "%s was slain by %s")
+	deathArrow        = deathTranslation("death.attack.arrow", 2, "%s was shot by %s")
+	deathTrident      = deathTranslation("death.attack.trident", 2, "%s was impaled to death by %s")
+	deathFireball     = deathTranslation("death.attack.fireball", 2, "%s was fireballed by %s")
+	deathThrown       = deathTranslation("death.attack.thrown", 2, "%s was pummeled by %s")
+	deathThorns       = deathTranslation("death.attack.thorns", 2, "%s was killed trying to hurt %s")
+	deathFall         = deathTranslation("death.attack.fall", 1, "%s hit the ground too hard")
+	deathInFire       = deathTranslation("death.attack.inFire", 1, "%s went up in flames")
+	deathOnFire       = deathTranslation("death.attack.onFire", 1, "%s burned to death")
+	deathLava         = deathTranslation("death.attack.lava", 1, "%s tried to swim in lava")
+	deathMagma        = deathTranslation("death.attack.magma", 1, "%s discovered the floor was lava")
+	deathInWall       = deathTranslation("death.attack.inWall", 1, "%s suffocated in a wall")
+	deathDrown        = deathTranslation("death.attack.drown", 1, "%s drowned")
+	deathOutOfWorld   = deathTranslation("death.attack.outOfWorld", 1, "%s fell out of the world")
+	deathExplosion    = deathTranslation("death.attack.explosion", 1, "%s blew up")
+	deathExplosionBy  = deathTranslation("death.attack.explosion.player", 2, "%s was blown up by %s")
+	deathFireworks    = deathTranslation("death.attack.fireworks", 1, "%s went off with a bang")
+	deathMagic        = deathTranslation("death.attack.magic", 1, "%s was killed by magic")
+	deathWither       = deathTranslation("death.attack.wither", 1, "%s withered away")
+	deathLightning    = deathTranslation("death.attack.lightningBolt", 1, "%s was struck by lightning")
+	deathFlyIntoWall  = deathTranslation("death.attack.flyIntoWall", 1, "%s experienced kinetic energy")
+	deathStarve       = deathTranslation("death.attack.starve", 1, "%s starved to death")
+	deathFreeze       = deathTranslation("death.attack.freeze", 1, "%s froze to death")
+	deathCactus       = deathTranslation("death.attack.cactus", 1, "%s was pricked to death")
+	deathSweetBerry   = deathTranslation("death.attack.sweetBerry", 1, "%s was poked to death by a sweet berry bush")
+	deathAnvil        = deathTranslation("death.attack.anvil", 1, "%s was squashed by a falling anvil")
+	deathFallingBlock = deathTranslation("death.attack.fallingBlock", 1, "%s was squashed by a falling block")
+	deathStalactite   = deathTranslation("death.attack.stalactite", 1, "%s was skewered by a falling stalactite")
+	deathStalagmite   = deathTranslation("death.attack.stalagmite", 1, "%s was impaled on a stalagmite")
 )
 
 // deathMessage ports DamageSource.getLocalizedDeathMessage onto the Bedrock
@@ -169,8 +170,8 @@ func explosionEntityID(src world.ExplosionSource) string {
 }
 
 // entityDisplayName is Entity.getDisplayName: players use their name, named
-// mobs their custom name, and other entities their translated type name, a
-// mobName.
+// mobs their custom name, and other entities their translated type name,
+// as mobName returns it.
 func entityDisplayName(e world.Entity) any {
 	if p, ok := e.(*Player); ok {
 		return p.Name()
@@ -181,18 +182,17 @@ func entityDisplayName(e world.Entity) any {
 	return mobName(strings.TrimPrefix(e.H().Type().EncodeEntity(), "minecraft:"))
 }
 
-// mobName is the name of a mob in a death message, the ID of its type
-// without minecraft:. Clients are sent the key of the name of the type,
-// which they translate; the console, which looks no key up, shows the ID in
-// words, as cave_spider shows as Cave Spider.
-type mobName string
+// mobName returns the name of a mob in a death message, of the ID of its
+// type without minecraft:: a translation of the name of the type, which
+// clients look up, with the ID in words as its fallback for the console,
+// which looks no key up, as cave_spider shows as Cave Spider.
+func mobName(id string) text.Text {
+	return text.Translate("entity."+id+".name", inWords(id))
+}
 
-// Resolve returns the key of the name of the type, after a %.
-func (n mobName) Resolve(language.Tag) string { return "%entity." + string(n) + ".name" }
-
-// String returns the ID in words, each with a capital letter.
-func (n mobName) String() string {
-	words := strings.Split(string(n), "_")
+// inWords returns the ID of a type in words, each with a capital letter.
+func inWords(id string) string {
+	words := strings.Split(id, "_")
 	for i, w := range words {
 		if w != "" {
 			words[i] = strings.ToUpper(w[:1]) + w[1:]

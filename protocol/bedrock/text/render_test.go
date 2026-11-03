@@ -10,10 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
-	"golang.org/x/text/language"
 )
 
 // colourfCases are the cases of the tests of Colourf in net/bedrock/text,
@@ -386,57 +384,6 @@ func TestCode(t *testing.T) {
 		}
 		if got := String(text.Literal("x").WithStyle(text.Style{Colour: c})); got != Code(text.Code{Colour: c})+"x" {
 			t.Errorf("%v renders as %q", c, got)
-		}
-	}
-}
-
-// key is a translation key that resolves to itself, as the game's keys do.
-type key string
-
-func (k key) Resolve(language.Tag) string { return string(k) }
-
-// TestMessageMatchesChat checks that a translation built with the model
-// renders as the chat package sends translations today: the message and
-// parameters of a TextPacket that needs translation, and the fallback for
-// subscribers that do not translate.
-func TestMessageMatchesChat(t *testing.T) {
-	steve, alex := text.Literal("Steve"), text.Literal("§cAlex")
-	stone := chat.Translate(key("%tile.stone.name"), 0, "Stone")
-	for _, c := range []struct {
-		name  string
-		old   chat.Translation
-		args  []any
-		model text.Text
-		// reason, if set, is why the fallback of the model differs from
-		// that of the chat package.
-		reason string
-	}{
-		{"join", chat.MessageJoin, []any{"Steve"},
-			text.Colourf("<yellow>%v</yellow>", text.Translate("multiplayer.player.joined", "%s joined the game", steve)), ""},
-		{"no format", chat.MessageSleeping, []any{"Steve", 2},
-			text.Colourf("%v", text.Translate("chat.type.sleeping", "%s is sleeping in a bed. To skip to dawn, %s more users need to sleep in beds at the same time.", steve, text.Literal("2"))), ""},
-		{"nested tags", chat.MessageAdminCommand, []any{"§cAlex", "Made it day"},
-			text.Colourf("<grey><i>%v</i></grey>", text.Translate("chat.type.admin", "[%s: %s]", alex, text.Literal("Made it day"))), ""},
-		{"no parameters", chat.MessageBedTooFar, nil,
-			text.Colourf("<grey>%v</grey>", text.Translate("tile.bed.tooFar", "Bed is too far away")), ""},
-		{"a translation as a parameter", chat.Translate(key("%death.attack.mob"), 2, "%v was slain by %v"), []any{"Steve", stone},
-			text.Colourf("%v", text.Translate("death.attack.mob", "%s was slain by %s", steve, text.Colourf("%v", text.Translate("tile.stone.name", "Stone")))), ""},
-		{"the key of a mob as a parameter", chat.Translate(key("%death.attack.mob"), 2, "%v was slain by %v"), []any{"Steve", "%entity.zombie.name"},
-			text.Colourf("%v", text.Translate("death.attack.mob", "%s was slain by %s", steve, text.Translate("entity.zombie.name", "Zombie"))),
-			// The game passes the key of a mob as a string, which the
-			// fallback of the chat package shows as it is.
-			"the chat package shows the key of the mob in the fallback"},
-	} {
-		l := language.English
-		old := c.old.F(c.args...)
-		msg, params, translated := Message(c.model)
-		if !translated || msg != old.Resolve(l) || !slices.Equal(params, old.Params(l)) {
-			t.Errorf("%s: Message = %q, %q, %v; the chat package sends %q, %q", c.name, msg, params, translated, old.Resolve(l), old.Params(l))
-		}
-		if got, want := String(c.model), old.String(); got != want && c.reason == "" {
-			t.Errorf("%s: String = %q; the chat package falls back to %q", c.name, got, want)
-		} else if got == want && c.reason != "" {
-			t.Errorf("%s: String is what the chat package falls back to, %q, though %s", c.name, got, c.reason)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package session
 import (
 	"time"
 
+	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/scoreboard"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -24,12 +25,12 @@ func (s *Session) SendMessage(message string) {
 
 // SendTranslation sends a translation localised for a specific language.Tag.
 func (s *Session) SendTranslation(t chat.Translation, l language.Tag, a []any) {
-	tr := t.F(a...)
+	message, params, _ := bedrocktext.Message(t.F(a...).Text(l))
 	s.writePacket(&v2193.TextPacket{
 		TextType:         v2193.TextTypeTranslation,
 		NeedsTranslation: true,
-		Message:          tr.Resolve(l),
-		Parameters:       tr.Params(l),
+		Message:          message,
+		Parameters:       params,
 	})
 }
 

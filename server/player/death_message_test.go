@@ -2,13 +2,13 @@ package player
 
 import (
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"golang.org/x/text/language"
@@ -48,11 +48,11 @@ func TestDeathMessageMatchesBedrockKeys(t *testing.T) {
 		for _, c := range cases {
 			tr, args := deathMessage("Victim", c.pos, c.src, tx)
 			got := tr.F(args...)
-			// Translations are sent with chat.Translate's leading colour reset.
-			if key := strings.TrimPrefix(got.Resolve(language.English), "§r"); key != "%"+c.key {
-				t.Errorf("%s: key %q, want %q", c.name, key, "%"+c.key)
+			key, params, ok := translationOf(got.Text(language.English))
+			if !ok || key != c.key {
+				t.Errorf("%s: key %q, want %q", c.name, key, c.key)
 			}
-			if params := got.Params(language.English); !slices.Equal(params, c.params) {
+			if !slices.Equal(params, c.params) {
 				t.Errorf("%s: params %v, want %v", c.name, params, c.params)
 			}
 			if console := got.String(); console != c.console {
@@ -66,13 +66,32 @@ func TestDeathMessageMatchesBedrockKeys(t *testing.T) {
 	}
 }
 
-func TestMobNameInWords(t *testing.T) {
-	for id, want := range map[mobName]string{"cow": "Cow", "cave_spider": "Cave Spider", "zombie_villager_v2": "Zombie Villager V2", "a__b": "A  B", "": ""} {
-		if got := id.String(); got != want {
-			t.Errorf("%q in words = %q, want %q", string(id), got, want)
+// translationOf returns the key of the first translation in t and its
+// arguments as a client is sent them: a translation as its key after a %,
+// other text as its plain text.
+func translationOf(t text.Text) (key string, args []string, ok bool) {
+	if key, _, ok := t.Translation(); ok {
+		for a := range t.Args() {
+			if k, _, ok := a.Translation(); ok {
+				args = append(args, "%"+k)
+				continue
+			}
+			args = append(args, a.Plain())
 		}
-		if got := id.Resolve(language.English); got != "%entity."+string(id)+".name" {
-			t.Errorf("%q resolves to %q", string(id), got)
+		return key, args, true
+	}
+	for c := range t.Children() {
+		if key, args, ok := translationOf(c); ok {
+			return key, args, true
+		}
+	}
+	return "", nil, false
+}
+
+func TestMobNameInWords(t *testing.T) {
+	for id, want := range map[string]string{"cow": "Cow", "cave_spider": "Cave Spider", "zombie_villager_v2": "Zombie Villager V2", "a__b": "A  B", "": ""} {
+		if got := mobName(id); !text.Equal(got, text.Translate("entity."+id+".name", want)) {
+			t.Errorf("the name of %q is %#v, want the fallback %q", id, got, want)
 		}
 	}
 }
