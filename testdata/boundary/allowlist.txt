@@ -12,11 +12,9 @@
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
-server/admin_api.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/admin_store.go github.com/dm-vev/adamant/net/bedrock/login
 server/admin_store_test.go github.com/dm-vev/adamant/net/bedrock/login
 server/allower.go github.com/dm-vev/adamant/net/bedrock/login
-server/cmd/builtin/about.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/cmd/builtin/command_metadata_test.go github.com/df-mc/dragonfly/server/session
 server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/wire
@@ -89,8 +87,6 @@ server/player/session_panic_test.go github.com/df-mc/dragonfly/server/session
 server/player/session_panic_test.go github.com/dm-vev/adamant/net/bedrock/login
 server/player/session_panic_test.go github.com/dm-vev/adamant/net/bedrock/proto
 server/player/session_panic_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/query/data.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/query_adapter.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/server.go github.com/df-mc/dragonfly/server/netconn
 server/server.go github.com/df-mc/dragonfly/server/session
 server/server.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
@@ -105,8 +101,6 @@ server/whitelist_operators.go github.com/dm-vev/adamant/net/bedrock/login
 server/whitelist_operators_test.go github.com/dm-vev/adamant/net/bedrock/login
 server/world/biome_definition.go github.com/dm-vev/adamant/net/bedrock/proto
 server/world/biome_definition.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/world/mcdb/leveldat/data.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/world/mcdb/leveldat/version.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/xbox.go github.com/df-mc/dragonfly/server/netconn
 server/xbox.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/xbox.go github.com/dm-vev/adamant/net/nethernet

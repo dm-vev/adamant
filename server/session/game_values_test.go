@@ -7,6 +7,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/version"
+	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
@@ -79,4 +81,16 @@ func TestParamOptionValuesMatchProtocol(t *testing.T) {
 	for _, f := range paramOptionFlags {
 		checkGameValues(t, []gameValue{{fmt.Sprintf("paramOptions(%d)", f.option), int64(paramOptions(f.option)), int64(f.flag)}})
 	}
+}
+
+// TestVersionsMatchProtocol checks that the release the game implements is the
+// release of the protocol the session speaks, and that the NetworkVersion that
+// level.dat stores is that protocol's number.
+func TestVersionsMatchProtocol(t *testing.T) {
+	if version.Minecraft != v2193.CurrentVersion {
+		t.Errorf("version.Minecraft = %q, protocol has %q", version.Minecraft, v2193.CurrentVersion)
+	}
+	checkGameValues(t, []gameValue{
+		{"leveldat.NetworkVersion", leveldat.NetworkVersion, v2193.CurrentProtocol},
+	})
 }

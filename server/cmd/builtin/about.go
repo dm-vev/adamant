@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 type aboutCommand struct {
@@ -28,7 +28,7 @@ func (a aboutCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		goVersion = info.GoVersion
 	}
 
-	o.Printf("Minecraft protocol: %s", v2193.CurrentVersion)
+	o.Printf("Minecraft protocol: %s", version.Minecraft)
 	o.Printf("Go runtime: %s", goVersion)
 
 	if info != nil {
