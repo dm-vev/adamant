@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -242,9 +243,9 @@ func (f *dragonFight) UpdateDragon(tx *world.Tx, e world.Entity) {
 	health := max(0., min(1., d.Health()/d.MaxHealth()))
 	name := f.bar.Text()
 	if d.NameTag() != "" {
-		name = d.NameTag()
+		name = text.ParseLegacy(d.NameTag())
 	}
-	if health == f.bar.HealthPercentage() && name == f.bar.Text() {
+	if health == f.bar.HealthPercentage() && text.Equal(name, f.bar.Text()) {
 		return
 	}
 	f.bar = bossbar.New(name).WithID(f.bar.ID()).WithColour(bossbar.Pink()).WithHealthPercentage(health)

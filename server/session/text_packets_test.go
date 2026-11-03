@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
@@ -38,6 +39,41 @@ var textMethods = []textMethod{
 	{"SendTitle", func(s *Session, t text.Text) { s.SendTitle(t) }, oldSetTitle(v2193.TitleActionSetTitle)},
 	{"SendSubtitle", func(s *Session, t text.Text) { s.SendSubtitle(t) }, oldSetTitle(v2193.TitleActionSetSubtitle)},
 	{"SendActionBarMessage", func(s *Session, t text.Text) { s.SendActionBarMessage(t) }, oldSetTitle(v2193.TitleActionSetActionBar)},
+	{"SendBossBarID", sendBossBars, oldSendBossBars},
+}
+
+// bossBarColours are the colours of boss bars.
+var bossBarColours = []bossbar.Colour{
+	bossbar.Pink(), bossbar.Blue(), bossbar.Red(), bossbar.Green(), bossbar.Yellow(), bossbar.Purple(),
+	bossbar.RebeccaPurple(), bossbar.White(),
+}
+
+// sendBossBars shows boss bars of the title t in every colour, of the
+// default ID and of another, and the default one through SendBossBar.
+func sendBossBars(s *Session, t text.Text) {
+	for i, c := range bossBarColours {
+		s.SendBossBarID("default", t, c, float64(i)/8)
+		s.SendBossBarID("other", t, c, 1)
+	}
+	s.SendBossBar(t, bossbar.Red(), 0.5)
+}
+
+// oldSendBossBars is sendBossBars with SendBossBarID as it was for a string.
+func oldSendBossBars(s *Session, title string) {
+	oldSendBossBarID := func(id, text string, colour uint8, healthPercentage float64) {
+		s.writePacket(&v2193.BossEventPacket{
+			BossEntityUniqueID: s.bossBarEntityID(id),
+			EventType:          v2193.BossEventShow,
+			BossBarTitle:       text,
+			HealthPercentage:   float32(healthPercentage),
+			Colour:             colour,
+		})
+	}
+	for i, c := range bossBarColours {
+		oldSendBossBarID("default", title, c.Uint8(), float64(i)/8)
+		oldSendBossBarID("other", title, c.Uint8(), 1)
+	}
+	oldSendBossBarID("default", title, bossbar.Red().Uint8(), 0.5)
 }
 
 // oldTextPacket returns SendTip, SendPopup or SendJukeboxPopup as it was for

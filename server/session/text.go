@@ -4,6 +4,7 @@ import (
 	"time"
 
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
+	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/scoreboard"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -167,18 +168,19 @@ func (s *Session) RemoveScoreboard() {
 }
 
 // SendBossBar sends a boss bar using the default identifier.
-func (s *Session) SendBossBar(title string, colour uint8, healthPercentage float64) {
+func (s *Session) SendBossBar(title text.Text, colour bossbar.Colour, healthPercentage float64) {
 	s.SendBossBarID("default", title, colour, healthPercentage)
 }
 
-// SendBossBarID shows or updates the independently identified boss bar.
-func (s *Session) SendBossBarID(id, title string, colour uint8, healthPercentage float64) {
+// SendBossBarID shows or updates the independently identified boss bar: title above a bar of the colour
+// passed, filled to healthPercentage.
+func (s *Session) SendBossBarID(id string, title text.Text, colour bossbar.Colour, healthPercentage float64) {
 	s.writePacket(&v2193.BossEventPacket{
 		BossEntityUniqueID: s.bossBarEntityID(id),
 		EventType:          v2193.BossEventShow,
-		BossBarTitle:       title,
+		BossBarTitle:       bedrocktext.String(title),
 		HealthPercentage:   float32(healthPercentage),
-		Colour:             colour,
+		Colour:             colour.Uint8(),
 	})
 }
 

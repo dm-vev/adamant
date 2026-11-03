@@ -3,25 +3,26 @@ package bossbar
 import (
 	"fmt"
 	"strings"
+
+	"github.com/df-mc/dragonfly/server/text"
 )
 
 // BossBar represents a boss bar that may be sent to a player. It is shown as a purple bar with text above
 // it. The health shown by the bar may be changed.
 type BossBar struct {
 	id     string
-	text   string
+	text   text.Text
 	health float64
 	c      Colour
 }
 
 // New creates a new boss bar with the text passed. The text is formatted according to the rules of
-// fmt.Sprintln.
+// fmt.Sprintln and read as a legacy string, with § codes; a lone text.Text is taken as it is.
 // By default, the boss bar will have a full health bar. To change this, use BossBar.WithHealthPercentage().
 // The default colour of the BossBar is Purple. This can be changed using BossBar.WithColour.
-func New(text ...any) BossBar {
-	return BossBar{id: "default", text: format(text), health: 1, c: Purple()}
+func New(a ...any) BossBar {
+	return BossBar{id: "default", text: formatText(a), health: 1, c: Purple()}
 }
-
 
 // WithID returns a copy of the boss bar with a stable identifier. Bars with
 // different identifiers are independent and may be displayed simultaneously.
@@ -35,8 +36,9 @@ func (bar BossBar) WithID(id string) BossBar {
 
 // ID returns the stable identifier of the boss bar.
 func (bar BossBar) ID() string { return bar.id }
+
 // Text returns the text of the boss bar: The text passed when creating the bar using New().
-func (bar BossBar) Text() string {
+func (bar BossBar) Text() text.Text {
 	return bar.text
 }
 
@@ -72,4 +74,15 @@ func (bar BossBar) Colour() Colour {
 // end, which is typically used for sending messages, popups and tips.
 func format(a []any) string {
 	return strings.TrimSuffix(fmt.Sprintln(a...), "\n")
+}
+
+// formatText returns the values a as text: a lone text.Text as it is, any
+// other values formatted by format and read as a legacy string, with § codes.
+func formatText(a []any) text.Text {
+	if len(a) == 1 {
+		if t, ok := a[0].(text.Text); ok {
+			return t
+		}
+	}
+	return text.ParseLegacy(format(a))
 }
