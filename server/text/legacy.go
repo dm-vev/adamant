@@ -43,18 +43,18 @@ func legacyAt(s string) (legacyCode, bool) {
 // keeps every code in its place, even one that changes nothing, so that a
 // renderer of § codes writes s back exactly as it is:
 //
-//   - The text of s up to its first code is the content of the text
-//     returned, which has Reset if s starts with §r.
-//   - Each code of a colour or a decoration starts a text of that style,
-//     a child of the text the code before it started, or of the text
-//     returned for the first; the text that follows the code, up to the
-//     next code, is its content.
-//   - Each §r but a first one starts a text with Reset, a child of the text
-//     returned, which takes the code that follows it, if one does, as its
-//     style, the text up to the code after as its content, and starts the
-//     texts of the codes after as above.
-//   - A text whose code is followed by no text before a §r or the end of s
-//     has empty content, so that its code is written.
+//   - The text returned has the text of s before its first code as its
+//     content, and Reset if s starts with §r.
+//   - Each other §r starts a text with Reset, a child of the text
+//     returned. If the code of a colour or a decoration follows the §r at
+//     once, that text takes it as its style.
+//   - Each other code of a colour or a decoration starts a text of that
+//     style, a child of the text the code or §r before it started, or of
+//     the text returned if there is none.
+//   - The text that follows a code, up to the next code, is the content of
+//     the text the code started. A text whose colour or decoration no text
+//     follows before a §r or the end of s has empty content, so that its
+//     code is written.
 //
 // The empty string gives the zero Text.
 func ParseLegacy(s string) Text {
