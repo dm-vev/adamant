@@ -136,6 +136,9 @@ type goldenConn struct {
 
 	closeOnce sync.Once
 	closed    chan struct{}
+	// eof is closed once the session read the end of the connection.
+	eofOnce sync.Once
+	eof     chan struct{}
 
 	mu   sync.Mutex
 	data *netconn.GameData
@@ -147,6 +150,7 @@ func newGoldenConn() *goldenConn {
 		in:      make(chan proto.Packet),
 		ready:   make(chan struct{}, 1),
 		closed:  make(chan struct{}),
+		eof:     make(chan struct{}),
 	}
 }
 
@@ -190,6 +194,7 @@ func (c *goldenConn) ReadPacket() (proto.Packet, error) {
 	case pk := <-c.in:
 		return pk, nil
 	case <-c.closed:
+		c.eofOnce.Do(func() { close(c.eof) })
 		return nil, io.EOF
 	}
 }
@@ -327,6 +332,8 @@ type scenario struct {
 	enchantOptions []v2193.EnchantmentOption
 	// stopped is closed once the session stopped.
 	stopped chan struct{}
+	// ownsWorld is set if the scenario made its world, which it then closes.
+	ownsWorld bool
 }
 
 // stackSlot is a slot of a window of the client.
@@ -346,6 +353,16 @@ type scenarioConfig struct {
 	// until the client was sent every chunk around it, unrecorded, before
 	// the scenario starts.
 	chunks bool
+	// world is the world of another scenario for the player to join, which
+	// that scenario closes; otherwise the scenario makes a world of its own.
+	world *world.World
+	// who is who the client logs in as if not goldenIdentity.
+	who *serverIdentity
+	// session changes the session.Config the session is made of.
+	session func(conf *session.Config)
+	// norm is the normaliser of another scenario to name IDs with, so that
+	// the record of either names an ID alike.
+	norm *normaliser
 }
 
 // warmupTicks are the ticks that send every chunk in goldenRadius around
@@ -362,46 +379,51 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	if err := joinServer().err; err != nil {
 		t.Fatal(err)
 	}
-	w := world.Config{
-		Log:             slog.New(slog.DiscardHandler),
-		Synchronous:     true,
-		RandomTickSpeed: -1,
-		Generator:       goldenGenerator(),
-		Provider:        &goldenProvider{NopProvider: world.NopProvider{Set: goldenSettings()}},
-		Seed:            goldenSeed,
-	}.New()
-	if err := goldenRules(w); err != nil {
-		t.Fatal(err)
+	w := conf.world
+	if w == nil {
+		w = goldenWorld(t)
 	}
-	s := &scenario{t: t, name: name, w: w, conn: newGoldenConn(), norm: newNormaliser(), stacks: map[stackSlot]int32{}, nextRequest: -1, stopped: make(chan struct{})}
+	s := &scenario{t: t, name: name, w: w, conn: newGoldenConn(), norm: newNormaliser(), stacks: map[stackSlot]int32{}, nextRequest: -1, stopped: make(chan struct{}), ownsWorld: conf.world == nil}
+	if conf.norm != nil {
+		s.norm = conf.norm
+	}
+	var conn session.Conn = s.conn
+	id := goldenUUID
+	if conf.who != nil {
+		conn, id = &identityConn{goldenConn: s.conn, who: *conf.who}, conf.who.id
+	}
 	var stopOnce sync.Once
 
 	// As Server.createPlayer.
-	s.sess = session.Config{
+	sconf := session.Config{
 		Log:            goldenLog(),
 		MaxChunkRadius: goldenRadius,
 		HandleStop:     func(*world.Tx, session.Controllable) { stopOnce.Do(func() { close(s.stopped) }) },
 		BlockRegistry:  w.BlockRegistry(),
 		IsOperator:     func(string) bool { return false },
-	}.New(s.conn)
+	}
+	if conf.session != nil {
+		conf.session(&sconf)
+	}
+	s.sess = sconf.New(conn)
 
 	// As Server.finaliseConn for a player the provider does not know, then
 	// Server.createPlayer.
 	var pconf player.Config
 	<-w.Exec(func(tx *world.Tx) { pconf.Position = tx.PlayerSpawnPosition(w.Spawn()) })
 	pconf.GameMode = w.DefaultGameMode()
-	pconf.Name = s.conn.IdentityData().DisplayName
-	pconf.XUID = s.conn.IdentityData().XUID
-	pconf.UUID = goldenUUID
-	pconf.Locale, _ = language.Parse(strings.Replace(s.conn.ClientData().LanguageCode, "_", "-", 1))
-	pconf.Skin = session.ClientSkin(s.conn.ClientData())
+	pconf.Name = conn.IdentityData().DisplayName
+	pconf.XUID = conn.IdentityData().XUID
+	pconf.UUID = id
+	pconf.Locale, _ = language.Parse(strings.Replace(conn.ClientData().LanguageCode, "_", "-", 1))
+	pconf.Skin = session.ClientSkin(conn.ClientData())
 	// The seed of the enchanting table is otherwise random.
 	pconf.EnchantmentSeed = 7
 	if conf.player != nil {
 		conf.player(&pconf)
 	}
 	pconf.Client = s.sess
-	s.h = world.EntitySpawnOpts{Position: pconf.Position, ID: goldenUUID}.New(player.Type, pconf)
+	s.h = world.EntitySpawnOpts{Position: pconf.Position, ID: id}.New(player.Type, pconf)
 	s.sess.SetHandle(s.h, pconf.Skin)
 
 	t.Cleanup(s.close)
@@ -434,6 +456,23 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	return s
 }
 
+// goldenWorld returns a new world of the scenarios.
+func goldenWorld(t *testing.T) *world.World {
+	t.Helper()
+	w := world.Config{
+		Log:             slog.New(slog.DiscardHandler),
+		Synchronous:     true,
+		RandomTickSpeed: -1,
+		Generator:       goldenGenerator(),
+		Provider:        &goldenProvider{NopProvider: world.NopProvider{Set: goldenSettings()}},
+		Seed:            goldenSeed,
+	}.New()
+	if err := goldenRules(w); err != nil {
+		t.Fatal(err)
+	}
+	return w
+}
+
 // close disconnects the player and closes the world of a scenario. Once the
 // player quit, the session is out of the list of sessions, which the next
 // scenario then starts without.
@@ -452,7 +491,9 @@ func (s *scenario) close() {
 	case <-time.After(5 * time.Second):
 		s.t.Errorf("%s: the session did not stop", s.name)
 	}
-	_ = s.w.Close()
+	if s.ownsWorld {
+		_ = s.w.Close()
+	}
 }
 
 // player returns the player of the scenario in a transaction.
@@ -729,7 +770,8 @@ func (s *scenario) windowOf(container uint8) uint32 {
 		return v2193.WindowIDOffHand
 	case v2193.ContainerArmor:
 		return v2193.WindowIDArmour
-	case v2193.ContainerLevelEntity, v2193.ContainerShulkerBox, v2193.ContainerBarrel:
+	case v2193.ContainerLevelEntity, v2193.ContainerShulkerBox, v2193.ContainerBarrel, v2193.ContainerCrafterLevelEntity,
+		v2193.ContainerFurnaceIngredient, v2193.ContainerFurnaceFuel, v2193.ContainerFurnaceResult:
 		return s.window
 	}
 	return v2193.WindowIDUI
