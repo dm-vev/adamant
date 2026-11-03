@@ -34,12 +34,7 @@ func (srv *Server) buildQueryData(host string, port int) query.Data {
 	}
 	difficulty := "NORMAL"
 
-	srv.pmu.RLock()
-	playerNames := make([]string, 0, len(srv.p))
-	for _, p := range srv.p {
-		playerNames = append(playerNames, p.name)
-	}
-	srv.pmu.RUnlock()
+	playerNames := srv.players.names()
 	sort.Strings(playerNames)
 
 	return query.Data{

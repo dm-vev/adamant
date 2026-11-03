@@ -23,7 +23,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
-	"github.com/google/uuid"
 )
 
 // Config contains options for starting a Minecraft server.
@@ -250,7 +249,6 @@ func (conf Config) New() *Server {
 	srv := &Server{
 		conf:       conf,
 		incoming:   make(chan incoming),
-		p:          make(map[uuid.UUID]*onlinePlayer),
 		dimensions: make(map[world.Dimension]*world.World),
 		idleStop:   make(chan struct{}),
 	}

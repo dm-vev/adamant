@@ -71,9 +71,7 @@ func TestHandleStopPanicCompletesServerSessionTeardown(t *testing.T) {
 		Position: pos, Inventory: inv, OffHand: offHand, Armour: armour,
 	}, srv.world)
 	t.Cleanup(inc.s.CloseConnection)
-	srv.pmu.Lock()
-	srv.p[id] = inc.p
-	srv.pmu.Unlock()
+	srv.players.add(inc.p)
 	if err := srv.world.Do(func(tx *world.Tx) {
 		p := tx.AddEntity(inc.p.handle).(*player.Player)
 		inc.s.Spawn(p, tx)
@@ -134,9 +132,7 @@ func TestContainerRemoveViewerPanicDoesNotBlockServerShutdown(t *testing.T) {
 	id := uuid.MustParse(conn.identity.Identity)
 	pos := mgl64.Vec3{0.5, 64, 0.5}
 	inc := srv.createPlayer(id, conn, player.Config{Position: pos}, srv.world)
-	srv.pmu.Lock()
-	srv.p[id] = inc.p
-	srv.pmu.Unlock()
+	srv.players.add(inc.p)
 
 	removed := make(chan struct{})
 	containerHandle := world.EntitySpawnOpts{Position: pos}.New(panicRemoveViewerType{}, panicRemoveViewerConfig{removed: removed})

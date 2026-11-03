@@ -60,16 +60,7 @@ func (srv *Server) Deop(name string) (bool, error) {
 // the operator lock. Read the latest status there so queued changes cannot
 // restore stale permissions after a subsequent op/deop or a world transfer.
 func (srv *Server) refreshPlayerPermissions(key string) {
-	srv.pmu.RLock()
-	var handle *world.EntityHandle
-	for _, p := range srv.p {
-		if normalizeName(p.name) == key {
-			handle = p.handle
-			break
-		}
-	}
-	srv.pmu.RUnlock()
-	if handle != nil {
+	if handle := srv.players.byKey(key); handle != nil {
 		go player.Do(handle, func(_ *world.Tx, p *player.Player) { p.RefreshPermissions() })
 	}
 }

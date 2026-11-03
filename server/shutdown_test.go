@@ -46,9 +46,7 @@ func TestCloseDisconnectsWithShutdownMessage(t *testing.T) {
 			handle := world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}}.New(player.Type, player.Config{
 				Name: "Shutdown", Locale: language.English, Client: rec,
 			})
-			srv.pmu.Lock()
-			srv.p[handle.UUID()] = &onlinePlayer{handle: handle, name: "Shutdown"}
-			srv.pmu.Unlock()
+			srv.players.add(&onlinePlayer{handle: handle, name: "Shutdown"})
 			<-srv.world.Exec(func(tx *world.Tx) { tx.AddEntity(handle) })
 
 			srv.Listen()

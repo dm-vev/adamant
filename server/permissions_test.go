@@ -104,9 +104,7 @@ func joinPermissionPlayer(t *testing.T, srv *Server, name string) (incoming, *pe
 	inc := <-srv.incoming
 	<-done
 	id := uuid.MustParse(conn.identity.Identity)
-	srv.pmu.Lock()
-	srv.p[id] = inc.p
-	srv.pmu.Unlock()
+	srv.players.add(inc.p)
 	t.Cleanup(func() {
 		inc.s.CloseConnection()
 		if !srv.waitForPlayerRemoval(id, 5*time.Second) {

@@ -56,10 +56,8 @@ type Server struct {
 	listeners        []Listener
 	incoming         chan incoming
 
-	pmu sync.RWMutex
-	// p holds a map of all players currently connected to the server. When they
-	// leave, they are removed from the map.
-	p map[uuid.UUID]*onlinePlayer
+	// players holds the players online.
+	players players
 	// pwg is a sync.WaitGroup used to wait for all players to be disconnected
 	// before server shutdown, so that their data is saved properly.
 	pwg sync.WaitGroup
@@ -74,13 +72,6 @@ type incoming struct {
 	s    *session.Session
 	p    *onlinePlayer
 	w    *world.World
-}
-
-// onlinePlayer holds the entity handle, XUID and name of a player.
-type onlinePlayer struct {
-	handle *world.EntityHandle
-	xuid   string
-	name   string
 }
 
 // New creates a Server using a default Config. The Server's worlds are created
@@ -140,9 +131,7 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 			if !ok {
 				return
 			}
-			srv.pmu.Lock()
-			srv.p[inc.p.handle.UUID()] = inc.p
-			srv.pmu.Unlock()
+			srv.players.add(inc.p)
 
 			ret, err := world.Call(context.Background(), inc.w, func(tx *world.Tx) (bool, error) {
 				p := tx.AddEntity(inc.p.handle).(*player.Player)
@@ -150,9 +139,7 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 				return !yield(p), nil
 			})
 			if err != nil {
-				srv.pmu.Lock()
-				delete(srv.p, inc.p.handle.UUID())
-				srv.pmu.Unlock()
+				srv.players.remove(inc.p.handle.UUID())
 				srv.pwg.Done()
 				// Join failed before spawn: the entity was never added, so close
 				// the orphaned handle and fully tear the session down (Disconnect
@@ -204,18 +191,14 @@ func (srv *Server) End() *world.World {
 // set to 0, MaxPlayerCount will return Server.PlayerCount + 1.
 func (srv *Server) MaxPlayerCount() int {
 	if srv.conf.MaxPlayers == 0 {
-		srv.pmu.RLock()
-		defer srv.pmu.RUnlock()
-		return len(srv.p) + 1
+		return srv.players.count() + 1
 	}
 	return srv.conf.MaxPlayers
 }
 
 // PlayerCount returns the total number of players connected to the Server.
 func (srv *Server) PlayerCount() int {
-	srv.pmu.RLock()
-	defer srv.pmu.RUnlock()
-	return len(srv.p)
+	return srv.players.count()
 }
 
 // WhitelistEnabled reports if the whitelist is currently enforced on the server.
@@ -291,12 +274,7 @@ func (srv *Server) WhitelistEntries() ([]string, error) {
 // will be finished. Use Player.H(), player.NewRef, or player.Do when a
 // player must be referenced after the iterator callback returns.
 func (srv *Server) Players(tx *world.Tx) iter.Seq[*player.Player] {
-	srv.pmu.RLock()
-	handles := make([]*world.EntityHandle, 0, len(srv.p))
-	for _, p := range srv.p {
-		handles = append(handles, p.handle)
-	}
-	srv.pmu.RUnlock()
+	handles := srv.players.handles()
 
 	return func(yield func(*player.Player) bool) {
 		for _, handle := range handles {
@@ -325,43 +303,21 @@ func (srv *Server) Players(tx *world.Tx) iter.Seq[*player.Player] {
 // entity handle is returned and the bool returns holds a true value. If not,
 // the bool returned is false and the handle is nil.
 func (srv *Server) Player(uuid uuid.UUID) (*world.EntityHandle, bool) {
-	srv.pmu.RLock()
-	defer srv.pmu.RUnlock()
-	p, ok := srv.p[uuid]
-	if !ok {
-		return nil, false
-	}
-	return p.handle, ok
+	return srv.players.handle(uuid)
 }
 
 // PlayerByName looks for a player on the server with the name passed. If
 // found, the entity handle is returned and the bool returned holds a true
 // value. If not, the bool is false and the handle is nil
 func (srv *Server) PlayerByName(name string) (*world.EntityHandle, bool) {
-	srv.pmu.RLock()
-	defer srv.pmu.RUnlock()
-
-	for _, p := range srv.p {
-		if p.name == name {
-			return p.handle, true
-		}
-	}
-	return nil, false
+	return srv.players.byName(name)
 }
 
 // PlayerByXUID looks for a player on the server with the XUID passed. If
 // found, the entity handle is returned and the bool returned is true. If no
 // player with the XUID was found, nil and false are returned.
 func (srv *Server) PlayerByXUID(xuid string) (*world.EntityHandle, bool) {
-	srv.pmu.RLock()
-	defer srv.pmu.RUnlock()
-
-	for _, p := range srv.p {
-		if p.xuid == xuid {
-			return p.handle, true
-		}
-	}
-	return nil, false
+	return srv.players.byXUID(xuid)
 }
 
 // CloseOnProgramEnd closes the server right before the program ends, so that
@@ -712,10 +668,7 @@ func (srv *Server) handleSessionClose(tx *world.Tx, c session.Controllable) {
 	// Always decrement the wait group because createPlayer unconditionally increments it.
 	defer srv.pwg.Done()
 
-	srv.pmu.RLock()
-	_, ok := srv.p[c.UUID()]
-	srv.pmu.RUnlock()
-	if !ok {
+	if _, ok := srv.players.handle(c.UUID()); !ok {
 		// When a player disconnects immediately after a session is started, it
 		// might not be added to the players map yet. This is expected, but we
 		// need to be careful not to crash when this happens.
@@ -723,11 +676,7 @@ func (srv *Server) handleSessionClose(tx *world.Tx, c session.Controllable) {
 	}
 	// The player stays online until it is saved: a client logging in as it
 	// waits for it to go before the server loads what it saved.
-	defer func() {
-		srv.pmu.Lock()
-		delete(srv.p, c.UUID())
-		srv.pmu.Unlock()
-	}()
+	defer srv.players.remove(c.UUID())
 
 	if tx != nil {
 		if err := srv.conf.PlayerProvider.Save(c.UUID(), c.(*player.Player).Data(), tx.World()); err != nil {
