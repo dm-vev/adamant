@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock"
@@ -126,9 +127,13 @@ func marshalConfig(parts ...any) ([]byte, error) {
 	return toml.Marshal(merged)
 }
 
-// mergeTree sets every key of src in dst, merging the tables both have.
+// mergeTree sets every key of src in dst, merging the tables both have. It
+// goes through the keys in order, so that the key it reports two parts
+// write is the first.
 func mergeTree(dst, src *toml.Tree, path []string) error {
-	for _, k := range src.Keys() {
+	keys := src.Keys()
+	slices.Sort(keys)
+	for _, k := range keys {
 		v := src.GetPath([]string{k})
 		existing := dst.GetPath([]string{k})
 		if existing == nil {
