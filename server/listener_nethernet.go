@@ -355,3 +355,16 @@ func decodeServerIdentityKey(data []byte) (*ecdsa.PrivateKey, error) {
 	}
 	return key, nil
 }
+
+// validateLogin holds the identity and the client data of a client that
+// logged in to the rules the server keeps them to, those gophertunnel kept
+// them to: a valid UUID and XUID, a name of the game's form, a device and a
+// language that exist, skins of the sizes they claim. The address the
+// client names the server by is read, not resolved: a lookup of a name a
+// client chose would let it hold the login on a slow resolver.
+func validateLogin(id login.Identity, data login.ClientData) error {
+	if err := validateIdentity(id); err != nil {
+		return err
+	}
+	return netconn.ValidateClientData(data)
+}
