@@ -3,7 +3,6 @@ package player
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"os"
 	"slices"
 	"testing"
@@ -17,6 +16,10 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// levelEventParticlesDestroyBlock is the LevelEvent ParticlesDestroyBlock of
+// BDS, which the native traces record the block break particles as.
+const levelEventParticlesDestroyBlock = 2001
 
 type pistonBreakNativeEvent struct {
 	EventType int32
@@ -33,7 +36,7 @@ type pistonBreakNativeViewer struct {
 func (v *pistonBreakNativeViewer) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 	if b, ok := p.(particle.BlockBreak); ok {
 		hash, _ := v.br.RuntimeIDToHash(v.br.BlockRuntimeID(b.Block))
-		v.events = append(v.events, pistonBreakNativeEvent{v2193.LevelEventParticlesDestroyBlock,
+		v.events = append(v.events, pistonBreakNativeEvent{levelEventParticlesDestroyBlock,
 			mgl32.Vec3{float32(pos[0]), float32(pos[1]), float32(pos[2])}, int32(hash)})
 	}
 }
@@ -208,7 +211,7 @@ func testPistonPlayerNativeBreak(t *testing.T, mode string) {
 			}
 			var expected []pistonBreakNativeEvent
 			for _, e := range trace.LevelEvents {
-				if e.EventType == v2193.LevelEventParticlesDestroyBlock {
+				if e.EventType == levelEventParticlesDestroyBlock {
 					expected = append(expected, e)
 				}
 			}
