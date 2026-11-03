@@ -1,0 +1,6 @@
+go test fuzz v1
+[]byte("")
+bool(true)
+string("%w")
+string("")
+int64(33)

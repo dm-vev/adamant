@@ -3,39 +3,8 @@ package text
 import (
 	"fmt"
 	"slices"
-	"strings"
 	"testing"
 )
-
-// legacy writes t as a stream of § codes with the codes of ParseLegacy, a
-// renderer for the tests of this package: protocol/bedrock/text renders
-// text for the game.
-func legacy(t Text) string {
-	chars := map[Code]byte{}
-	for c := 0; c < len(legacyCodes); c++ {
-		if code := legacyCodes[c]; code.ok && !code.reset {
-			chars[code.code] = byte(c)
-		}
-	}
-	var b strings.Builder
-	for s := range t.Spans(SpanOptions{Decorations: Obfuscated | Bold | Italic}) {
-		if s.Reset {
-			b.WriteString("§r")
-		}
-		for _, c := range s.Codes {
-			if c.Colour != NoColour {
-				c.Colour = c.Colour.Nearest()
-			}
-			b.WriteString("§" + string(rune(chars[c])))
-		}
-		b.WriteString(s.Text)
-		if !s.Translation.IsZero() {
-			key, _, _ := s.Translation.Translation()
-			b.WriteString("%" + key)
-		}
-	}
-	return b.String()
-}
 
 func TestColourf(t *testing.T) {
 	for _, c := range []struct {
@@ -65,7 +34,7 @@ func TestColourf(t *testing.T) {
 		if s := fmt.Sprintf("%#v", got); s != c.tree {
 			t.Errorf("Colourf(%q) = %s, want %s", c.in, s, c.tree)
 		}
-		if s := legacy(got); s != c.legacy {
+		if s := got.Legacy(); s != c.legacy {
 			t.Errorf("Colourf(%q) writes %q, want %q", c.in, s, c.legacy)
 		}
 	}
@@ -73,7 +42,7 @@ func TestColourf(t *testing.T) {
 		t.Errorf("formatted %#v", got)
 	}
 	// Markup in arguments is read.
-	if got := Colourf("<red>%v</red>", "<b>x</b>"); legacy(got) != "§r§c§lx§r" {
+	if got := Colourf("<red>%v</red>", "<b>x</b>"); got.Legacy() != "§r§c§lx§r" {
 		t.Errorf("markup in an argument: %#v", got)
 	}
 }
@@ -84,7 +53,7 @@ func TestColourfText(t *testing.T) {
 	if want := `{reset {yellow {aqua "Ste<ve>"} {" joined"}} {" &amp;"}}`; fmt.Sprintf("%#v", got) != want {
 		t.Errorf("texts as arguments: %#v, want %s", got, want)
 	}
-	if s := legacy(got); s != "§r§e§bSte<ve>§r§e joined§r &amp;" {
+	if s := got.Legacy(); s != "§r§e§bSte<ve>§r§e joined§r &amp;" {
 		t.Errorf("texts as arguments write %q", s)
 	}
 	// Other verbs format the plain text, and texts in tags or comments are
@@ -127,7 +96,7 @@ func TestParseLegacy(t *testing.T) {
 		if s := fmt.Sprintf("%#v", got); s != c.tree {
 			t.Errorf("ParseLegacy(%q) = %s, want %s", c.in, s, c.tree)
 		}
-		if s := legacy(got); s != c.in {
+		if s := got.Legacy(); s != c.in {
 			t.Errorf("ParseLegacy(%q) writes %q", c.in, s)
 		}
 	}
@@ -156,7 +125,7 @@ func TestSpans(t *testing.T) {
 		{"an RGB colour", Literal("a").WithStyle(Style{Colour: RGB(0xFF, 0x60, 0x60)}), "§ca"},
 		{"a translation filled in", Translate("k", "<%s|%2$s|%%|%1$s>", Literal("x").WithStyle(red), Literal("y")).WithStyle(Style{On: Bold}), "§l<§cx§r§l|y|%|§cx§r§l>"},
 	} {
-		if got := legacy(c.t); got != c.want {
+		if got := c.t.Legacy(); got != c.want {
 			t.Errorf("%s: %#v writes %q, want %q", c.name, c.t, got, c.want)
 		}
 	}
