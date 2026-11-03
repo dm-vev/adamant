@@ -13,7 +13,7 @@ Game logic and the server must not depend on any network protocol or transport. 
 - `protocol/<name>/`: protocol adapters inside the main module. `protocol/bedrock` receives today's `server/session`, `server/netconn`, `server/listener_nethernet.go` and `server/xbox.go`; `protocol/java` comes later. An adapter may import the game and `net/`. The game never imports an adapter, and adapters never import each other.
 - `main.go` and `cmd/`: the composition root and tools. They are unrestricted.
 
-Until phase 3 moves them, `server/session` and `server/netconn` are the Bedrock adapter and are exempt from the rules below.
+Until phase 3 moves them, `server/session` and `server/netconn` are the Bedrock adapter and are exempt from the import rules below; R4 applies to them as adapter code.
 
 ## Dependency rules
 
@@ -26,6 +26,26 @@ Until phase 3 moves them, `server/session` and `server/netconn` are the Bedrock 
 `boundary_test.go` in the repository root enforces them. `TestImportBoundary` walks the root module and the `net` module, skipping `.git`, every `testdata` directory and every other module (`fixes/`, `net/interop/`, `scripts/redstone_client/`). It parses the imports of every `.go` file, test files included, without type checking, and matches paths by whole segments. A violation is the pair `<file> <import path>`. `TestBoundaryRules` tests the rule function on its own.
 
 The allowlist, `testdata/boundary/allowlist.txt`, is a ratchet. It lists the violations that remain and starts as exactly the violations that exist today. The test fails for a violation that is not listed, and also for a listed entry that is no longer a violation, so the list stays exact and can only shrink. Entries are only ever removed; adding one needs a justification in review. `go test -run TestImportBoundary -update-boundary .` rewrites the list to the current violations. The goal of phase 5 is an empty list.
+
+## Adapters keep off the world
+
+| Rule | Files | Must not |
+| --- | --- | --- |
+| R4: adapters do not change the world | adapter code: `protocol/`, and until phase 3 moves them `server/session` and `server/netconn`; test files excepted | change the state of the game or set off its effects (sounds, particles, animations, chat broadcasts): mutations go through `client.Controllable` and `server/menu` |
+
+An adapter's client asks the game: through `client.Controllable`, through the operations of `server/menu`, and by submitting forms and dialogues. Effects count as mutations, so that every adapter does not have to set them off again: the game shows its viewers what they see.
+
+`mutation_test.go` in the repository root enforces it. `TestAdaptersKeepOffTheWorld` loads the adapter packages with `golang.org/x/tools/go/packages`, type-checked, and resolves every selector of their files that are not tests, so that a method value counts as a use as much as a call does. A use breaks R4 if it is
+
+1. a method of `*world.Tx` or `*world.World` that is not one of the reads the test lists (`worldReads`). The list holds reads, the scheduling of transactions and `Viewers`/`ReleaseViewers`; it fails closed, so a new method of either is forbidden until it is listed;
+2. a function or method declared below `server/`, outside `server/client`, `server/menu` and the adapters, that takes a `*world.Tx`, other than the reads and entry points of `txEntries`: `(*world.EntityHandle).Entity`, every method of `*world.Loader`, `(block.Container).Inventory`, `(form.Form).SubmitJSON`, `(dialogue.Dialogue).Submit` and `(dialogue.Dialogue).Close`;
+3. one of the state changers that take no transaction (`mutators`): the setters of `*inventory.Inventory` and `*inventory.Armour` and their `Close`, `(*world.EntityHandle).Close`, the writes and subscriptions of `*chat.Chat`, the trading of merchants, the inputs of vehicles, `(block.Crafter).NotifySlotState` and the experience and enchantment seed setters of `*player.Player`;
+4. a method of an interface declared in an adapter that takes a `*world.Tx` or bears the name of one of those state changers (or `AddViewer`, `RemoveViewer`, `ResetExperience`, `UpdateCommandBlock`, `RideJump`): an interface the adapter asserts a value of the game to. Interfaces only the adapter implements, as the handlers of its packets, are left out (`ownInterfaces`);
+5. a `View` method of `world.Viewer` called on a viewer: an effect the adapter shows other viewers, where the game should.
+
+The methods of `client.Controllable` are allowed by construction, which is why the contract is to lose its raw setters. Reflection, `unsafe` and game state changed through an unlisted method without a transaction are not caught; review covers them. `TestMutationRules` tests the rules on a fixture of adapter code type-checked against the game and on the paths of adapter code.
+
+The ratchet, `testdata/boundary/mutations.txt`, lists the uses that remain as `<file> <callee>` lines, one for each use, compared as a multiset. It works as the allowlist does: the test fails for a use that is not listed and for a listed entry that is no longer used, and `go test -run TestAdaptersKeepOffTheWorld -update-mutations .` rewrites it. It started with the 67 uses of the Bedrock session; phase 4 removes them, and from then on the test guards an empty list. Phase 3's move renames the files of its entries.
 
 ## The one neutral library
 
