@@ -9,41 +9,32 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// registerQueryServer exposes the Server instance to the Bedrock query listener.
-func registerQueryServer(srv *Server) {
-	query.RegisterProvider(func(host string, port int) query.Data {
-		return srv.buildQueryData(host, port)
-	})
-}
-
-// buildQueryData assembles the Data structure consumed by the query package.
-// It collects the dynamic server state while keeping the query implementation
-// agnostic of the Server internals.
-func (srv *Server) buildQueryData(host string, port int) query.Data {
-	playerCount := srv.PlayerCount()
-	maxPlayers := srv.MaxPlayerCount()
-	status := srv.conf.StatusProvider.ServerStatus(playerCount, maxPlayers)
+// queryData assembles the Data structure consumed by the query package from
+// the server host. It collects the dynamic server state while keeping the
+// query implementation agnostic of the Server internals.
+func queryData(h Host, host string, port int) query.Data {
+	playerNames := h.PlayerNames()
+	sort.Strings(playerNames)
+	status := h.Status()
+	w := h.World()
 	worldName := ""
-	if srv.world != nil {
-		worldName = srv.world.Name()
+	if w != nil {
+		worldName = w.Name()
 	}
-	modeName := defaultGameModeName(srv)
+	modeName := defaultGameModeName(w)
 	pluginString := ""
 	if query.PluginListingEnabled() {
-		pluginString = strings.Join(srv.plugins(), ";")
+		pluginString = strings.Join(plugins(), ";")
 	}
 	difficulty := "NORMAL"
 
-	playerNames := srv.players.names()
-	sort.Strings(playerNames)
-
 	return query.Data{
-		HostName:         status.ServerName,
-		MOTD:             status.ServerSubName,
+		HostName:         status.Name,
+		MOTD:             status.SubName,
 		GameMode:         modeName,
 		Difficulty:       difficulty,
 		WorldName:        worldName,
-		PlayerCount:      playerCount,
+		PlayerCount:      len(playerNames),
 		MaxPlayers:       status.MaxPlayers,
 		HostIP:           host,
 		HostPort:         port,
@@ -51,18 +42,18 @@ func (srv *Server) buildQueryData(host string, port int) query.Data {
 		PlayerNames:      playerNames,
 		Version:          version.Minecraft,
 		GameID:           "MINECRAFTPE",
-		GameType:         defaultGameType(srv),
-		WhitelistEnabled: srv.WhitelistEnabled(),
+		GameType:         defaultGameType(w),
+		WhitelistEnabled: h.WhitelistEnabled(),
 	}
 }
 
 // defaultGameModeName translates the configured default game mode into the
 // textual representation required by query clients.
-func defaultGameModeName(srv *Server) string {
-	if srv == nil || srv.world == nil {
+func defaultGameModeName(w *world.World) string {
+	if w == nil {
 		return "SURVIVAL"
 	}
-	if id, ok := world.GameModeID(srv.world.DefaultGameMode()); ok {
+	if id, ok := world.GameModeID(w.DefaultGameMode()); ok {
 		switch id {
 		case 0:
 			return "SURVIVAL"
@@ -80,11 +71,11 @@ func defaultGameModeName(srv *Server) string {
 // defaultGameType returns the Nukkit-style game type value.
 //
 // Lumi reports "CMP" when the default game mode is creative and "SMP" otherwise.
-func defaultGameType(srv *Server) string {
-	if srv == nil || srv.world == nil {
+func defaultGameType(w *world.World) string {
+	if w == nil {
 		return "SMP"
 	}
-	if id, ok := world.GameModeID(srv.world.DefaultGameMode()); ok && id == 1 {
+	if id, ok := world.GameModeID(w.DefaultGameMode()); ok && id == 1 {
 		return "CMP"
 	}
 	return "SMP"
@@ -92,7 +83,7 @@ func defaultGameType(srv *Server) string {
 
 // plugins returns the names of active plugins. The function remains in place so
 // that the query adapter can be wired into a future plugin system.
-func (srv *Server) plugins() []string {
+func plugins() []string {
 	// TODO: Wire up plugin discovery once an explicit plugin system is available.
 	return nil
 }

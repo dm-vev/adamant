@@ -307,13 +307,13 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 		t.Fatal(err)
 	}
 	c.Log = goldenLog()
-	test := func(c server.Config) (server.Listener, error) {
+	test := func(c server.Config, _ server.Host) (server.Listener, error) {
 		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
 	}
 	if conf.network {
 		c.Listeners = append(c.Listeners, test)
 	} else {
-		c.Listeners = []func(server.Config) (server.Listener, error){test}
+		c.Listeners = []func(server.Config, server.Host) (server.Listener, error){test}
 	}
 	c.PlayerProvider = s.players
 	c.RandomTickSpeed = -1

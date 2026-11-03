@@ -35,8 +35,8 @@ import (
 
 // listenerFunc returns the NetherNet listener of the server, the standard
 // listener used when UserConfig.Config() is called.
-func (uc UserConfig) listenerFunc(conf Config) (Listener, error) {
-	l, err := uc.netherNetListener(conf)
+func (uc UserConfig) listenerFunc(conf Config, host Host) (Listener, error) {
+	l, err := uc.netherNetListener(conf, host)
 	if err != nil {
 		return nil, err
 	}
@@ -44,8 +44,9 @@ func (uc UserConfig) listenerFunc(conf Config) (Listener, error) {
 }
 
 // netherNetListener returns the connections of the NetherNet listener of
-// the server, admitted to it as the Config says.
-func (uc UserConfig) netherNetListener(conf Config) (session.ConnListener, error) {
+// the server, admitted to it as the Config says. Queries and clients of
+// Java Edition are shown the server host.
+func (uc UserConfig) netherNetListener(conf Config, host Host) (session.ConnListener, error) {
 	identityFile := uc.Network.IdentityFile
 	if identityFile == "" {
 		identityFile = "server-key.pem"
@@ -82,6 +83,9 @@ func (uc UserConfig) netherNetListener(conf Config) (session.ConnListener, error
 				}
 			}
 		}
+		query.RegisterProvider(func(addr string, port int) query.Data {
+			return queryData(host, addr, port)
+		})
 		responder, err := query.NewResponder(local, conf.Log)
 		if err != nil {
 			return nil, fmt.Errorf("create query responder: %w", err)
@@ -93,7 +97,7 @@ func (uc UserConfig) netherNetListener(conf Config) (session.ConnListener, error
 	l, err := netconn.Config{
 		Log:                    conf.Log,
 		MaximumPlayers:         conf.MaxPlayers,
-		StatusProvider:         conf.StatusProvider,
+		StatusProvider:         netconnStatusProvider(conf.StatusProvider),
 		AuthenticationDisabled: conf.AuthDisabled,
 		ResourcePacks:          conf.Resources,
 		TexturePacksRequired:   conf.ResourcesRequired,
@@ -125,7 +129,7 @@ func (uc UserConfig) netherNetListener(conf Config) (session.ConnListener, error
 		}
 	}
 	if uc.Java.Address != "" {
-		if err := serveJava(l, uc.Java.Address, uc.Java.Message, conf.Log); err != nil {
+		if err := serveJava(l, host, uc.Java.Address, uc.Java.Message, conf.Log); err != nil {
 			_ = l.Close()
 			return nil, err
 		}
@@ -136,19 +140,23 @@ func (uc UserConfig) netherNetListener(conf Config) (session.ConnListener, error
 // defaultJavaMessage is what a client of Java Edition that joins is told.
 const defaultJavaMessage = "This server is for Minecraft: Bedrock Edition " + v2193.Version + ". Join it with Bedrock Edition."
 
-// serveJava shows the server to clients of Java Edition on addr until the
-// listener closes: their server list shows its name and players, and the
-// version of Bedrock Edition in place of a version they may join with, as
-// they may not; one that joins anyway is told message.
-func serveJava(l *netconn.Listener, addr, message string, log *slog.Logger) error {
+// serveJava shows the server host to clients of Java Edition on addr until
+// the listener closes: their server list shows its name and players, and
+// the version of Bedrock Edition in place of a version they may join with,
+// as they may not; one that joins anyway is told message.
+func serveJava(l *netconn.Listener, host Host, addr, message string, log *slog.Logger) error {
 	if message == "" {
 		message = defaultJavaMessage
 	}
 	jl, err := java.Listen(addr, func() java.Status {
-		st := l.ServerStatus()
+		st := host.Status()
+		maxPlayers := st.MaxPlayers
+		if maxPlayers == 0 {
+			maxPlayers = st.PlayerCount + 1
+		}
 		// A protocol no client speaks lists the server as one of another
 		// version, which the name says.
-		return java.Status{Name: "Bedrock " + v2193.Version, Protocol: -1, Description: st.ServerName, Online: st.PlayerCount, Max: st.MaxPlayers}
+		return java.Status{Name: "Bedrock " + v2193.Version, Protocol: -1, Description: st.Name, Online: st.PlayerCount, Max: maxPlayers}
 	})
 	if err != nil {
 		return fmt.Errorf("listen for Java Edition: %w", err)
@@ -276,6 +284,26 @@ func batchCompression(c bedrock.Compression) bedrock.Compression {
 		return bedrock.Flate{Level: 1}
 	}
 	return c
+}
+
+// netconnStatusProvider returns the StatusProvider of the server as netconn
+// shows it to clients of Bedrock Edition, or nil, which leaves netconn its
+// default, if p is nil.
+func netconnStatusProvider(p StatusProvider) netconn.StatusProvider {
+	if p == nil {
+		return nil
+	}
+	return netconnStatus{p}
+}
+
+// netconnStatus is a StatusProvider as netconn reads it: the Status of the
+// provider, field for field, for the counts netconn passes.
+type netconnStatus struct{ provider StatusProvider }
+
+// ServerStatus returns the status of the provider for the counts passed.
+func (s netconnStatus) ServerStatus(playerCount, maxPlayers int) netconn.ServerStatus {
+	st := s.provider.ServerStatus(playerCount, maxPlayers)
+	return netconn.ServerStatus{ServerName: st.Name, ServerSubName: st.SubName, PlayerCount: st.PlayerCount, MaxPlayers: st.MaxPlayers}
 }
 
 // netherNetListener is a netconn.Listener as the session listens on it.

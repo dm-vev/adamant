@@ -13,7 +13,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/internal/packbuilder"
-	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/playerdb"
@@ -32,9 +31,10 @@ type Config struct {
 	// if Log has at least debug level.
 	Log *slog.Logger
 	// Listeners is a list of functions to create a Listener using a Config, one
-	// for each Listener to be added to the Server. If left empty, no players
-	// will be able to connect to the Server.
-	Listeners []func(conf Config) (Listener, error)
+	// for each Listener to be added to the Server. Each is passed the Server
+	// as the Host its listener shows to the clients that look it up. If left
+	// empty, no players will be able to connect to the Server.
+	Listeners []func(conf Config, host Host) (Listener, error)
 	// Name is the name of the server. By default, it is shown to users in the
 	// server list before joining the server and when opening the in-game menu.
 	Name string
@@ -81,7 +81,7 @@ type Config struct {
 	// StatusProvider provides the server status shown to players in the server
 	// list. By default, StatusProvider will show the server name from the Name
 	// field and the current player count and maximum players.
-	StatusProvider netconn.StatusProvider
+	StatusProvider StatusProvider
 	// Compression compresses the batches of the connections the default
 	// listener accepts: bedrock.Flate (at level 1 if nil) or bedrock.None.
 	Compression bedrock.Compression
@@ -262,9 +262,8 @@ func (conf Config) New() *Server {
 	}); ok {
 		srv.operators, srv.bans = access.adminAccess()
 	}
-	registerQueryServer(srv)
 	for _, lf := range conf.Listeners {
-		l, err := lf(conf)
+		l, err := lf(conf, srv)
 		if err != nil {
 			conf.Log.Error("create listener: " + err.Error())
 			continue

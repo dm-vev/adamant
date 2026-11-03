@@ -12,7 +12,6 @@
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
-server/conf.go github.com/df-mc/dragonfly/server/netconn
 server/conf.go github.com/dm-vev/adamant/net/bedrock
 server/conf.go github.com/dm-vev/adamant/net/bedrock/resource
 server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
@@ -39,7 +38,6 @@ server/listener_nethernet_test.go github.com/dm-vev/adamant/net/java
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/nethernet/lan
 server/listener_nethernet_test.go github.com/dm-vev/adamant/net/proxy
-server/status.go github.com/df-mc/dragonfly/server/netconn
 server/xbox.go github.com/df-mc/dragonfly/server/netconn
 server/xbox.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/xbox.go github.com/dm-vev/adamant/net/nethernet

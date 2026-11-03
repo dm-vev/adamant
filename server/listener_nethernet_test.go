@@ -28,6 +28,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/session"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
@@ -118,7 +119,7 @@ func TestNetherNetListenerServesSessions(t *testing.T) {
 	uc.Network.Address = "127.0.0.1:0"
 	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
 	uc.Network.EnableQuery = true
-	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}})
+	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +207,7 @@ func TestNetherNetListenerOnLAN(t *testing.T) {
 	uc.Network.Address = "127.0.0.1:0"
 	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
 	conf := Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}
-	l, err := uc.netherNetListener(conf)
+	l, err := uc.netherNetListener(conf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +263,7 @@ func TestNetherNetListenerTakesProxies(t *testing.T) {
 	uc.Proxy.Address = "127.0.0.1:0"
 	uc.Proxy.Secret = "short"
 	conf := Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}
-	if l, err := uc.netherNetListener(conf); err == nil {
+	if l, err := uc.netherNetListener(conf, nil); err == nil {
 		_ = l.Close()
 		t.Fatal("the server started with a secret of 5 characters")
 	}
@@ -275,7 +276,7 @@ func TestNetherNetListenerTakesProxies(t *testing.T) {
 	uc.Proxy.Address = probe.Addr().String()
 	_ = probe.Close()
 	uc.Proxy.Secret = strings.Repeat("s", minProxySecret)
-	l, err := uc.netherNetListener(conf)
+	l, err := uc.netherNetListener(conf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +350,7 @@ func TestNetherNetListenerServesHTTPS(t *testing.T) {
 	uc.Network.ACMECacheDir = cache
 	uc.Network.ACMEDirectory = "http://127.0.0.1:1/unused"
 	uc.Network.ACMEChallengeAddress = "127.0.0.1:0"
-	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}})
+	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, StatusProvider: statusProvider{name: "Adamant"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +396,8 @@ func TestNetherNetListenerShowsToJava(t *testing.T) {
 	uc.Network.Address = "127.0.0.1:0"
 	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
 	uc.Java.Address = addr
-	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, MaxPlayers: 20, StatusProvider: statusProvider{name: "Adamant"}})
+	host := testHost{status: Status{Name: "Adamant", MaxPlayers: 20}}
+	l, err := uc.netherNetListener(Config{Log: slog.New(slog.DiscardHandler), AuthDisabled: true, MaxPlayers: 20, StatusProvider: statusProvider{name: "Adamant"}}, host)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,3 +468,38 @@ func TestValidateLogin(t *testing.T) {
 		}
 	}
 }
+
+// TestNetconnStatusMatchesProvider holds the status netconn shows clients of
+// Bedrock Edition to what the provider of the server gave netconn before
+// the provider was neutral: for every count, the same fields.
+func TestNetconnStatusMatchesProvider(t *testing.T) {
+	// oldStatusProvider is the default provider as it was, a
+	// netconn.StatusProvider.
+	type oldStatusProvider struct{ name string }
+	old := func(p oldStatusProvider, playerCount, maxPlayers int) netconn.ServerStatus {
+		return netconn.ServerStatus{ServerName: p.name, PlayerCount: playerCount, MaxPlayers: maxPlayers}
+	}
+	custom := customStatus{}
+	for _, count := range []int{0, 1, 2, 3} {
+		for _, maxPlayers := range []int{0, 20} {
+			if got, want := netconnStatusProvider(statusProvider{name: "Adamant"}).ServerStatus(count, maxPlayers), old(oldStatusProvider{"Adamant"}, count, maxPlayers); got != want {
+				t.Errorf("default status for %d of %d = %+v, want %+v", count, maxPlayers, got, want)
+			}
+			want := netconn.ServerStatus{ServerName: "Name", ServerSubName: "Sub", PlayerCount: count + 1, MaxPlayers: maxPlayers + 2}
+			if got := netconnStatusProvider(custom).ServerStatus(count, maxPlayers); got != want {
+				t.Errorf("custom status for %d of %d = %+v, want %+v", count, maxPlayers, got, want)
+			}
+		}
+	}
+	if netconnStatusProvider(nil) != nil {
+		t.Error("no provider is not left to netconn's default")
+	}
+}
+
+// testHost is a Host of a fixed status, with no players and no world.
+type testHost struct{ status Status }
+
+func (h testHost) Status() Status         { return h.status }
+func (h testHost) PlayerNames() []string  { return nil }
+func (h testHost) World() *world.World    { return nil }
+func (h testHost) WhitelistEnabled() bool { return false }

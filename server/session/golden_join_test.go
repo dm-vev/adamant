@@ -55,7 +55,7 @@ var joinServer = sync.OnceValue(func() goldenServer {
 	l := &goldenListener{conns: make(chan session.Conn, 1), closed: make(chan struct{})}
 	srv := server.Config{
 		Log: slog.New(slog.DiscardHandler),
-		Listeners: []func(server.Config) (server.Listener, error){func(c server.Config) (server.Listener, error) {
+		Listeners: []func(server.Config, server.Host) (server.Listener, error){func(c server.Config, _ server.Host) (server.Listener, error) {
 			return session.Listen(l, session.ListenConfig{Log: c.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
 		}},
 		Name:                    "Golden Server",

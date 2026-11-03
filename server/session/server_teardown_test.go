@@ -222,7 +222,7 @@ func startTeardownServer(t *testing.T, conf server.Config, spawn func(p *player.
 		spawned: make(chan *world.EntityHandle, 4),
 	}
 	conf.Generator = func(world.Dimension, int64) world.Generator { return world.NopGenerator{} }
-	conf.Listeners = []func(server.Config) (server.Listener, error){func(c server.Config) (server.Listener, error) {
+	conf.Listeners = []func(server.Config, server.Host) (server.Listener, error){func(c server.Config, _ server.Host) (server.Listener, error) {
 		return session.Listen(ts.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: c.MuteEmoteChat}), nil
 	}}
 	ts.srv = conf.New()

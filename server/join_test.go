@@ -200,7 +200,7 @@ func newJoinTest(t *testing.T, provider player.Provider, conf Config) *joinTest 
 	conf.DisableResourceBuilding = true
 	conf.DisableNether, conf.DisableEnd = true, true
 	conf.Generator = func(world.Dimension, int64) world.Generator { return world.NopGenerator{} }
-	conf.Listeners = []func(Config) (Listener, error){func(Config) (Listener, error) { return jt.l, nil }}
+	conf.Listeners = []func(Config, Host) (Listener, error){func(Config, Host) (Listener, error) { return jt.l, nil }}
 	jt.srv = conf.New()
 	return jt
 }
