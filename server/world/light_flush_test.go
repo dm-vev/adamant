@@ -14,13 +14,25 @@ import (
 // chunks that became complete before it already spread, so that a tick never
 // has to spread the light of every chunk generated since the last one.
 func TestTransactionsLeaveNoLightToSpread(t *testing.T) {
-	w := Config{Generator: stoneTestGenerator{}, GeneratorWorkers: 2, RandomTickSpeed: -1, Provider: NopProvider{}}.New()
+	// The workers generate a chunk for each of the permits the loop below
+	// hands out, at most four between two of its transactions, so chunks
+	// keep becoming complete between transactions however fast the machine
+	// runs either.
+	permits := make(chan struct{}, 4)
+	for range cap(permits) {
+		permits <- struct{}{}
+	}
+	w := Config{Generator: permittedTestGenerator{permits}, GeneratorWorkers: 2, RandomTickSpeed: -1, Provider: NopProvider{}}.New()
 	defer w.Close()
+	defer close(permits)
 	loader := NewLoader(6, w, NopViewer{})
 	<-w.Exec(func(tx *Tx) { loader.Move(tx, mgl64.Vec3{8, 80, 8}) })
 	deadline := time.Now().Add(time.Minute)
 	checked, spread := 0, false
 	for time.Now().Before(deadline) {
+		for len(permits) < cap(permits) {
+			permits <- struct{}{}
+		}
 		ready := 0
 		<-w.Exec(func(tx *Tx) {
 			if n := len(w.pendingSpreads); n > 0 {
@@ -67,6 +79,17 @@ func (stoneTestGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk, _ Generati
 }
 
 func (stoneTestGenerator) DefaultSpawn(Dimension) cube.Pos { return cube.Pos{8, 61, 8} }
+
+// permittedTestGenerator generates chunks as stoneTestGenerator does, each
+// once it takes a permit, or at once when the permits are closed.
+type permittedTestGenerator struct{ permits chan struct{} }
+
+func (g permittedTestGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk, ctx GenerationContext) GenerationResult {
+	<-g.permits
+	return stoneTestGenerator{}.GenerateChunk(pos, c, ctx)
+}
+
+func (permittedTestGenerator) DefaultSpawn(d Dimension) cube.Pos { return stoneTestGenerator{}.DefaultSpawn(d) }
 
 // TestLightSpreadsWaitFarFromTickingColumns generates chunks further from a
 // loader than its simulation distance and checks the light around those far
