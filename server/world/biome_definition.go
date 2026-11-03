@@ -1,7 +1,6 @@
 package world
 
 import (
-	"sort"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -9,89 +8,13 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
-var (
-	// maxVanillaBiomeID is the highest ID used by vanilla biomes.
-	maxVanillaBiomeID int
-
-	// biomeRuntimeReady reports whether runtime lookup caches reflect the current biome registry.
-	biomeRuntimeReady  bool
-	biomeIDsSorted     []int
-	biomeIDToRuntimeID map[uint32]uint32
-	biomeRuntimeToID   []uint32
-)
-
 func init() {
-	chunk.BiomeIDToRuntimeID = func(id uint32) (uint32, bool) {
-		ensureBiomeRuntimeData()
-		biomeMu.RLock()
-		defer biomeMu.RUnlock()
-		rid, ok := biomeIDToRuntimeID[id]
-		return rid, ok
-	}
-	chunk.BiomeRuntimeIDToID = func(runtimeID uint32) (uint32, bool) {
-		ensureBiomeRuntimeData()
-		biomeMu.RLock()
-		defer biomeMu.RUnlock()
-		if runtimeID >= uint32(len(biomeRuntimeToID)) {
-			return 0, false
-		}
-		return biomeRuntimeToID[runtimeID], true
-	}
-}
-
-func ensureBiomeRuntimeData() {
-	biomeMu.RLock()
-	if biomeRuntimeReady {
-		biomeMu.RUnlock()
-		return
-	}
-	biomeMu.RUnlock()
-
-	biomeMu.Lock()
-	defer biomeMu.Unlock()
-	if biomeRuntimeReady {
-		return
-	}
-	ids := make([]int, 0, len(biomes))
-	for id := range biomes {
-		ids = append(ids, id)
-	}
-	sort.Ints(ids)
-	biomeIDsSorted = ids
-
-	biomeIDToRuntimeID = make(map[uint32]uint32, len(ids))
-	biomeRuntimeToID = make([]uint32, len(ids))
-	for i, id := range ids {
-		runtimeID := uint32(i)
-		biomeIDToRuntimeID[uint32(id)] = runtimeID
-		biomeRuntimeToID[runtimeID] = uint32(id)
-	}
-	biomeRuntimeReady = true
-}
-
-// finaliseBiomeRegistry is called after all vanilla biomes have been registered.
-// It sets maxVanillaBiomeID to the highest ID found among them.
-// noinspection GoUnusedFunction
-//
-//lint:ignore U1000 Function is used through compiler directives.
-func finaliseBiomeRegistry() {
-	biomeMu.Lock()
-	defer biomeMu.Unlock()
-
-	for _, b := range biomes {
-		id := b.EncodeBiome()
-		if id > maxVanillaBiomeID {
-			maxVanillaBiomeID = id
-		}
-	}
+	chunk.BiomeIDToRuntimeID = BiomeIndex
+	chunk.BiomeRuntimeIDToID = biomeIDAt
 }
 
 // BiomeDefinitions returns the list of biome definitions along with the associated StringList.
 func BiomeDefinitions() ([]v2193.BiomeDefinition, []string) {
-	ensureBiomeRuntimeData()
-	biomeMu.RLock()
-	defer biomeMu.RUnlock()
-
 	var (
 		internedStrings     []string
 		internedStringIndex = make(map[string]int)
@@ -108,9 +31,10 @@ func BiomeDefinitions() ([]v2193.BiomeDefinition, []string) {
 	}
 
 	// The order of biomes in this packet must be deterministic across server runs.
-	encodedBiomes := make([]v2193.BiomeDefinition, 0, len(biomeIDsSorted))
-	for _, id := range biomeIDsSorted {
-		b := biomes[id]
+	ids := BiomeIDs()
+	encodedBiomes := make([]v2193.BiomeDefinition, 0, len(ids))
+	for _, id := range ids {
+		b, _ := BiomeByID(id)
 		name := b.String()
 		if !strings.Contains(name, ":") {
 			name = "minecraft:" + name
@@ -124,7 +48,7 @@ func BiomeDefinitions() ([]v2193.BiomeDefinition, []string) {
 		}
 
 		biomeID := int16(-1)
-		if id > maxVanillaBiomeID {
+		if !VanillaBiome(id) {
 			biomeID = int16(id)
 		}
 		water := b.WaterColour()

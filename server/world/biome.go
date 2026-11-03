@@ -48,7 +48,7 @@ func RegisterBiome(b Biome) {
 	}
 	biomes[id] = b
 	biomeByName[b.String()] = b
-	biomeRuntimeReady = false
+	biomeIndexReady = false
 }
 
 // BiomeByID looks up a biome by the ID and returns it if found.
