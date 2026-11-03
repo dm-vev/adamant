@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/pelletier/go-toml"
 )
 
@@ -112,7 +112,7 @@ func (w *Whitelist) Reload() error {
 
 // Allow implements the Allower interface, allowing players to join only if the whitelist is enabled and contains their
 // name.
-func (w *Whitelist) Allow(_ net.Addr, d login.Identity, _ login.ClientData) (string, bool) {
+func (w *Whitelist) Allow(_ net.Addr, id client.Identity, _ client.Profile) (string, bool) {
 	if w == nil {
 		return "", true
 	}
@@ -125,7 +125,7 @@ func (w *Whitelist) Allow(_ net.Addr, d login.Identity, _ login.ClientData) (str
 		return "", true
 	}
 
-	name := strings.TrimSpace(d.DisplayName)
+	name := strings.TrimSpace(id.Name)
 	if name == "" {
 		w.mu.RUnlock()
 		return kickMsg, false

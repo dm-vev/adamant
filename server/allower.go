@@ -1,27 +1,27 @@
 package server
 
 import (
-	"github.com/dm-vev/adamant/net/bedrock/login"
 	"net"
+
+	"github.com/df-mc/dragonfly/server/client"
 )
 
 // Allower may be implemented to specifically allow or disallow players from
-// joining a Server, by setting the specific Allower implementation through a
-// call to Server.Allow.
+// joining a Server, by setting it as Config.Allower.
 type Allower interface {
-	// Allow filters what connections are allowed to connect to the Server. The
-	// address, identity data, and client data of the connection are passed. If
-	// Admit returns false, the connection is closed with the string returned as
-	// the disconnect message. WARNING: Use the client data at your own risk, it
-	// cannot be trusted because it can be freely changed by the player
-	// connecting.
-	Allow(addr net.Addr, d login.Identity, c login.ClientData) (string, bool)
+	// Allow filters which clients may join the Server. It is passed the
+	// address, the identity and the profile of the client. If Allow returns
+	// false, the client is disconnected with the string returned as the
+	// message, a legacy string with § codes in their Bedrock Edition
+	// meanings. WARNING: use the profile at your own risk: the client tells
+	// it, and may tell anything.
+	Allow(addr net.Addr, id client.Identity, p client.Profile) (string, bool)
 }
 
 // allower is the standard Allower implementation. It accepts all connections.
 type allower struct{}
 
 // Allow always returns true.
-func (allower) Allow(net.Addr, login.Identity, login.ClientData) (string, bool) {
+func (allower) Allow(net.Addr, client.Identity, client.Profile) (string, bool) {
 	return "", true
 }

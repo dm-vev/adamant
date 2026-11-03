@@ -4,7 +4,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/df-mc/dragonfly/server/client"
 )
 
 // whitelistOperatorsAllower composes a Whitelist with an ops list so that operators bypass whitelist enforcement.
@@ -16,7 +16,7 @@ type whitelistOperatorsAllower struct {
 	operators *operatorsList
 }
 
-func (a whitelistOperatorsAllower) Allow(addr net.Addr, d login.Identity, c login.ClientData) (string, bool) {
+func (a whitelistOperatorsAllower) Allow(addr net.Addr, id client.Identity, p client.Profile) (string, bool) {
 	if a.whitelist == nil {
 		return "", true
 	}
@@ -24,13 +24,13 @@ func (a whitelistOperatorsAllower) Allow(addr net.Addr, d login.Identity, c logi
 	// Nukkit lower-cases the operator lookup before checking. The whitelist implementation already handles trimming
 	// and empty values safely, so we keep the operator check minimal and defer to Whitelist.Allow for errors.
 	if a.operators != nil {
-		name := strings.TrimSpace(d.DisplayName)
+		name := strings.TrimSpace(id.Name)
 		if name != "" && a.operators.isOperator(name) {
 			return "", true
 		}
 	}
 
-	return a.whitelist.Allow(addr, d, c)
+	return a.whitelist.Allow(addr, id, p)
 }
 
 // underlyingWhitelist exposes the configured whitelist to server.New without requiring public API changes.

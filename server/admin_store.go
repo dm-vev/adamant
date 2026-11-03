@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/df-mc/dragonfly/server/client"
 )
 
 type banEntry struct {
@@ -201,22 +201,22 @@ type adminAllower struct {
 	operators *operatorsList
 }
 
-func (a adminAllower) Allow(addr net.Addr, d login.Identity, c login.ClientData) (string, bool) {
+func (a adminAllower) Allow(addr net.Addr, id client.Identity, p client.Profile) (string, bool) {
 	addrString := ""
 	if addr != nil {
 		addrString = addr.String()
 	}
-	if reason, ok := a.bans.banned(addrString, d.DisplayName); ok {
+	if reason, ok := a.bans.banned(addrString, id.Name); ok {
 		msg := "You are banned from this server."
 		if reason != "" {
 			msg += " Reason: " + reason
 		}
 		return msg, false
 	}
-	if a.operators != nil && a.operators.isOperator(d.DisplayName) {
+	if a.operators != nil && a.operators.isOperator(id.Name) {
 		return "", true
 	}
-	return a.base.Allow(addr, d, c)
+	return a.base.Allow(addr, id, p)
 }
 func (a adminAllower) adminAccess() (*operatorsList, *banList) { return a.operators, a.bans }
 func (a adminAllower) underlyingWhitelist() *Whitelist {

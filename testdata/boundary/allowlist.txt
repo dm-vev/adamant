@@ -12,9 +12,6 @@
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
-server/admin_store.go github.com/dm-vev/adamant/net/bedrock/login
-server/admin_store_test.go github.com/dm-vev/adamant/net/bedrock/login
-server/allower.go github.com/dm-vev/adamant/net/bedrock/login
 server/cmd/builtin/command_metadata_test.go github.com/df-mc/dragonfly/server/session
 server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/cmd/builtin/command_metadata_test.go github.com/dm-vev/adamant/net/bedrock/wire
@@ -64,9 +61,6 @@ server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/login
 server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/proto
 server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/status.go github.com/df-mc/dragonfly/server/netconn
-server/whitelist.go github.com/dm-vev/adamant/net/bedrock/login
-server/whitelist_operators.go github.com/dm-vev/adamant/net/bedrock/login
-server/whitelist_operators_test.go github.com/dm-vev/adamant/net/bedrock/login
 server/world/biome_definition.go github.com/dm-vev/adamant/net/bedrock/proto
 server/world/biome_definition.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/xbox.go github.com/df-mc/dragonfly/server/netconn

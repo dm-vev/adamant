@@ -50,7 +50,9 @@ func (uc UserConfig) netherNetListener(conf Config) (Listener, error) {
 	}
 	var allow func(net.Addr, login.Identity, login.ClientData) (string, bool)
 	if conf.Allower != nil {
-		allow = conf.Allower.Allow
+		allow = func(addr net.Addr, id login.Identity, d login.ClientData) (string, bool) {
+			return conf.Allower.Allow(addr, session.IdentityOf(id), session.ProfileOf(d))
+		}
 	}
 	listen := nethernet.ListenConfig{Key: key, AllowAnonymous: conf.AuthDisabled}
 	var certs *acme.Manager
