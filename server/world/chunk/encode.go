@@ -41,9 +41,7 @@ type (
 	}
 )
 
-// Encode encodes Chunk to an intermediate representation SerialisedData. An Encoding may be passed to encode either for
-// network or disk purposed, the most notable difference being that the network encoding generally uses varints and no
-// NBT.
+// Encode encodes Chunk to an intermediate representation SerialisedData, in the Encoding passed.
 func Encode(c *Chunk, e Encoding) SerialisedData {
 	d := SerialisedData{SubChunks: make([][]byte, len(c.sub))}
 	for i := range c.sub {
@@ -53,8 +51,7 @@ func Encode(c *Chunk, e Encoding) SerialisedData {
 	return d
 }
 
-// EncodeSubChunk encodes a sub-chunk from a chunk into bytes. An Encoding may be passed to encode either for network or
-// disk purposed, the most notable difference being that the network encoding generally uses varints and no NBT.
+// EncodeSubChunk encodes a sub-chunk from a chunk into bytes, in the Encoding passed.
 func EncodeSubChunk(c *Chunk, e Encoding, ind int) []byte {
 	buf := pool.Get().(*bytes.Buffer)
 	defer func() {
@@ -80,8 +77,7 @@ func EncodeSubChunk(c *Chunk, e Encoding, ind int) []byte {
 	return sub
 }
 
-// EncodeBiomes encodes the biomes of a chunk into bytes. An Encoding may be passed to encode either for network or
-// disk purposed, the most notable difference being that the network encoding generally uses varints and no NBT.
+// EncodeBiomes encodes the biomes of a chunk into bytes, in the Encoding passed.
 func EncodeBiomes(c *Chunk, e Encoding) []byte {
 	buf := pool.Get().(*bytes.Buffer)
 	defer func() {

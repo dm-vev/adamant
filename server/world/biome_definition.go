@@ -3,15 +3,9 @@ package world
 import (
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
-
-func init() {
-	chunk.BiomeIDToRuntimeID = BiomeIndex
-	chunk.BiomeRuntimeIDToID = biomeIDAt
-}
 
 // BiomeDefinitions returns the list of biome definitions along with the associated StringList.
 func BiomeDefinitions() ([]v2193.BiomeDefinition, []string) {

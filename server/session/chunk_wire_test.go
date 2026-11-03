@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -144,28 +145,11 @@ func missingStatesChunk(t testing.TB) *chunk.Chunk {
 	return c
 }
 
-// compareChunkWire compares what the session sends of a chunk with what
-// chunk.NetworkEncoding encodes of it.
-func compareChunkWire(t *testing.T, name string, c *chunk.Chunk) {
-	t.Helper()
-	for i := range c.Sub() {
-		got, want := session.EncodeSubChunk(c, i), chunk.EncodeSubChunk(c, chunk.NetworkEncoding, i)
-		if !bytes.Equal(got, want) {
-			t.Fatalf("%s: sub-chunk %d encodes to\n%x\nchunk.NetworkEncoding to\n%x", name, i, got, want)
-		}
-	}
-	got, want := session.EncodeBiomes(c), chunk.EncodeBiomes(c, chunk.NetworkEncoding)
-	if !bytes.Equal(got, want) {
-		t.Fatalf("%s: biomes encode to\n%x\nchunk.NetworkEncoding to\n%x", name, got, want)
-	}
-}
-
-// TestChunkWireMatchesNetworkEncoding checks the session encodes chunks to
-// the bytes chunk.NetworkEncoding encodes them to.
-func TestChunkWireMatchesNetworkEncoding(t *testing.T) {
+// TestChunkWireCasesCoverPaletteSizes checks the chunks chunk_wire.snapshot
+// records hold block storages of every size of index the world format has.
+func TestChunkWireCasesCoverPaletteSizes(t *testing.T) {
 	sizes := map[uint16]bool{}
 	for _, tc := range chunkWireCases(t) {
-		compareChunkWire(t, tc.name, tc.c)
 		for _, sub := range tc.c.Sub() {
 			for _, storage := range sub.Layers() {
 				_, bits := storage.Indices()
@@ -180,60 +164,36 @@ func TestChunkWireMatchesNetworkEncoding(t *testing.T) {
 	}
 }
 
-// FuzzChunkWire compares the encoding of the session with
-// chunk.NetworkEncoding on chunks the fuzzed bytes place blocks, biomes and
-// Java state IDs in. Every five bytes are an operation: its kind, the X and
-// Z of a column, a Y and a value of two bytes.
-func FuzzChunkWire(f *testing.F) {
-	f.Add([]byte{})
-	f.Add([]byte{0, 0x12, 40, 1, 0, 1, 0x34, 41, 2, 0, 2, 0x56, 42, 3, 0, 3, 0x12, 40, 9, 0})
-	f.Add([]byte{2, 0, 0, 0, 0, 2, 0xff, 255, 255, 0, 2, 0x11, 100, 7, 0, 4, 0, 0, 0, 0})
-	var many []byte
-	for i := range 300 {
-		many = append(many, 0, byte(i), byte(i>>8), byte(i*13), byte(i*13>>8))
-	}
-	f.Add(many)
-
+// TestChunkWireOmitsJavaMetadata checks the Java state ID of a block does not
+// reach Bedrock clients: compacted, a chunk with one set encodes to the bytes
+// of the same chunk without it.
+func TestChunkWireOmitsJavaMetadata(t *testing.T) {
 	br := world.DefaultBlockRegistry
-	r := world.Overworld.Range()
-	count := br.BlockCount()
-	ids := world.BiomeIDs()
-	f.Fuzz(func(t *testing.T, ops []byte) {
-		c := chunk.New(br, r)
-		for ; len(ops) >= 5; ops = ops[5:] {
-			x, z := ops[1]&15, ops[1]>>4
-			y := int16(int(ops[2])*3/2 + r.Min())
-			v := uint32(ops[3]) | uint32(ops[4])<<8
-			switch ops[0] % 6 {
-			case 0:
-				c.SetBlock(x, y, z, 0, v%uint32(count))
-			case 1:
-				c.SetBlock(x, y, z, 1, v%uint32(count))
-			case 2:
-				if ops[3] == 0xff {
-					// An ID no biome is registered with.
-					c.SetBiome(x, y, z, 60000+v)
-					continue
-				}
-				c.SetBiome(x, y, z, uint32(ids[int(v)%len(ids)]))
-			case 3:
-				c.SetJavaStateID(x, y, z, v+1)
-			case 4:
-				c.Compact()
-			case 5:
-				y = min(y, int16(r.Max())-15)
-				for dy := range int16(16) {
-					c.SetBiome(x, y+dy, z, uint32(ids[int(v)%len(ids)]))
-				}
-			}
-		}
-		compareChunkWire(t, "fuzzed chunk", c)
-	})
+	r := cube.Range{0, 15}
+	stone := br.BlockRuntimeID(block.Stone{})
+	with, without := chunk.New(br, r), chunk.New(br, r)
+	for _, c := range []*chunk.Chunk{with, without} {
+		c.SetBlock(1, 2, 3, 0, stone)
+	}
+	with.SetJavaStateID(1, 2, 3, chunkWireJavaStateID)
+	for _, c := range []*chunk.Chunk{with, without} {
+		c.Compact()
+	}
+	if with.StateID(1, 2, 3) != chunkWireJavaStateID {
+		t.Fatal("the chunk lost the Java state ID set")
+	}
+	if got, want := session.EncodeSubChunk(with, 0), session.EncodeSubChunk(without, 0); !bytes.Equal(got, want) {
+		t.Fatalf("with a Java state ID, the sub-chunk encodes to\n%x\nwithout to\n%x", got, want)
+	}
+	if got, want := session.EncodeBiomes(with), session.EncodeBiomes(without); !bytes.Equal(got, want) {
+		t.Fatalf("with a Java state ID, the biomes encode to\n%x\nwithout to\n%x", got, want)
+	}
 }
 
-// TestGoldenChunkWire records what the session sends of the chunks of
-// chunkWireCases in testdata/golden/chunk_wire.snapshot, so that the bytes
-// stay held once nothing else encodes chunks for the network.
+// TestGoldenChunkWire compares what the session sends of the chunks of
+// chunkWireCases with testdata/golden/chunk_wire.snapshot, recorded when
+// the bytes were checked against the network encoding the chunk package
+// had.
 func TestGoldenChunkWire(t *testing.T) {
 	if isolated(t) {
 		return

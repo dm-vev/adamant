@@ -3,7 +3,6 @@ package chunk
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"slices"
 
@@ -13,8 +12,8 @@ import (
 )
 
 type (
-	// Encoding is an encoding type used for Chunk encoding. Implementations of this interface are DiskEncoding and
-	// NetworkEncoding, which can be used to encode a Chunk to an intermediate disk or network representation respectively.
+	// Encoding is an encoding type used for Chunk encoding. Its implementation is DiskEncoding, which encodes a Chunk
+	// to the intermediate representation of the world format.
 	Encoding interface {
 		encodePalette(buf *bytes.Buffer, p *Palette, e paletteEncoding)
 		decodePalette(buf *bytes.Buffer, blockSize paletteSize, e paletteEncoding) (*Palette, error)
@@ -32,14 +31,8 @@ var (
 	// DiskEncoding is the Encoding for writing a Chunk to disk. It writes block palettes using NBT and does not use
 	// varints.
 	DiskEncoding diskEncoding
-	// NetworkEncoding is the Encoding used for sending a Chunk over network. It does not use NBT and writes varints.
-	NetworkEncoding networkEncoding
 	// BiomePaletteEncoding is the paletteEncoding used for encoding a palette of biomes.
 	BiomePaletteEncoding biomePaletteEncoding
-	// BiomeIDToRuntimeID maps a biome ID to a runtime ID for network encoding.
-	BiomeIDToRuntimeID func(id uint32) (runtimeID uint32, ok bool)
-	// BiomeRuntimeIDToID maps a biome runtime ID to a biome ID for network decoding.
-	BiomeRuntimeIDToID func(runtimeID uint32) (id uint32, ok bool)
 )
 
 // biomePaletteEncoding implements the encoding of biome palettes to disk.
@@ -256,118 +249,4 @@ func (diskEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, e pa
 		return palette, fmt.Errorf("invalid palette entry count: found 0, but palette with %v bits per block must have at least 1 value", blockSize)
 	}
 	return palette, nil
-}
-
-// networkEncoding implements the Chunk encoding for sending over network.
-// Block palettes hold network block hashes, as BDS sends them with block
-// network ID hashes enabled: clients resolve a hash by its state, not by the
-// position of the state in their own palette.
-type networkEncoding struct{}
-
-func (networkEncoding) network() byte { return 1 }
-func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, pe paletteEncoding) {
-	if p.size != 0 {
-		_ = writeVarint32(buf, int32(p.Len()))
-	}
-	if _, ok := pe.(biomePaletteEncoding); ok && BiomeIDToRuntimeID != nil {
-		for _, val := range p.values {
-			rid, found := BiomeIDToRuntimeID(val)
-			if !found {
-				rid = 0
-			}
-			_ = writeVarint32(buf, int32(rid))
-		}
-		return
-	}
-	if br, ok := blockPaletteRegistry(pe); ok {
-		for _, val := range p.values {
-			hash, _ := br.RuntimeIDToHash(val)
-			_ = writeVarint32(buf, int32(hash))
-		}
-		return
-	}
-	for _, val := range p.values {
-		_ = writeVarint32(buf, int32(val))
-	}
-}
-func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, pe paletteEncoding) (*Palette, error) {
-	var paletteCount int32 = 1
-	if blockSize != 0 {
-		if err := readVarint32(buf, &paletteCount); err != nil {
-			return nil, fmt.Errorf("error reading palette entry count: %w", err)
-		}
-		if paletteCount <= 0 {
-			return nil, fmt.Errorf("invalid palette entry count %v", paletteCount)
-		}
-	}
-
-	br, blocks := blockPaletteRegistry(pe)
-	values, temp := make([]uint32, paletteCount), int32(0)
-	for i := range paletteCount {
-		if err := readVarint32(buf, &temp); err != nil {
-			return nil, fmt.Errorf("error decoding palette entry: %w", err)
-		}
-		val := uint32(temp)
-		if _, ok := pe.(biomePaletteEncoding); ok && BiomeRuntimeIDToID != nil {
-			id, found := BiomeRuntimeIDToID(val)
-			if found {
-				val = id
-			} else {
-				val = 0
-			}
-		} else if blocks {
-			rid, found := br.HashToRuntimeID(val)
-			if !found {
-				return nil, fmt.Errorf("unknown network block hash %v", val)
-			}
-			val = rid
-		}
-		values[i] = val
-	}
-	return &Palette{values: values, size: blockSize}, nil
-}
-
-// blockPaletteRegistry returns the registry a block palette encoding resolves
-// its states with.
-func blockPaletteRegistry(pe paletteEncoding) (BlockRegistry, bool) {
-	switch pe := pe.(type) {
-	case BlockPaletteEncoding:
-		return pe.Blocks, pe.Blocks != nil
-	case blockPaletteMigrationEncoding:
-		return pe.Blocks, pe.Blocks != nil
-	}
-	return nil, false
-}
-
-// writeVarint32 writes v as the zigzag varint of the network.
-func writeVarint32(buf *bytes.Buffer, v int32) error {
-	u := uint32(v) << 1
-	if v < 0 {
-		u = ^u
-	}
-	for u >= 0x80 {
-		buf.WriteByte(byte(u) | 0x80)
-		u >>= 7
-	}
-	return buf.WriteByte(byte(u))
-}
-
-// readVarint32 reads a zigzag varint of the network into x.
-func readVarint32(buf *bytes.Buffer, x *int32) error {
-	var u uint32
-	for i := uint(0); i < 35; i += 7 {
-		b, err := buf.ReadByte()
-		if err != nil {
-			return err
-		}
-		u |= uint32(b&0x7f) << i
-		if b&0x80 == 0 {
-			*x = int32(u >> 1)
-			if u&1 != 0 {
-				*x = ^*x
-			}
-			return nil
-		}
-	}
-	return errors.New("varint overflows a 32-bit integer")
 }

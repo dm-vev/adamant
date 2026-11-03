@@ -45,18 +45,6 @@ func VanillaBiome(id int) bool {
 	return id <= maxVanillaBiomeID
 }
 
-// biomeIDAt returns the ID of the biome at the position passed in BiomeIDs,
-// and false if there is none.
-func biomeIDAt(index uint32) (uint32, bool) {
-	ensureBiomeIndex()
-	biomeMu.RLock()
-	defer biomeMu.RUnlock()
-	if index >= uint32(len(biomeIDsSorted)) {
-		return 0, false
-	}
-	return uint32(biomeIDsSorted[index]), true
-}
-
 // ensureBiomeIndex builds the biome index from the biome registry if a biome
 // was registered since it was last built.
 func ensureBiomeIndex() {

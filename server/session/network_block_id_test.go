@@ -28,7 +28,7 @@ func TestChunksNameBlocksByNetworkHash(t *testing.T) {
 	c.SetBlock(0, 0, 0, 0, stone)
 	c.SetBlock(1, 0, 0, 0, grass)
 	index := int(-world.Overworld.Range().Min() >> 4)
-	payload := chunk.EncodeSubChunk(c, chunk.NetworkEncoding, index)
+	payload := encodeSubChunk(c, index)
 
 	r := wire.NewReader(payload[3:])
 	bits := int(r.Uint8() >> 1)

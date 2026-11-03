@@ -125,34 +125,3 @@ func TestMissingNativePropertyCanonicalizationPreservesJavaMetadata(t *testing.T
 		t.Fatal("canonicalization discarded source Java metadata")
 	}
 }
-
-func TestNetworkRoundTripOmitsJavaMetadata(t *testing.T) {
-	world.DefaultBlockRegistry.Finalize()
-	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 15})
-	stone, ok := world.DefaultBlockRegistry.StateToRuntimeID("minecraft:stone", nil)
-	if !ok {
-		t.Fatal("stone runtime ID missing")
-	}
-	id, err := gamedata.BlockStateID("minecraft:oak_log", gamedata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	c.SetBlock(1, 2, 3, 0, stone)
-	c.SetJavaStateID(1, 2, 3, id)
-	data := chunk.Encode(c, chunk.NetworkEncoding)
-	var payload []byte
-	for _, sub := range data.SubChunks {
-		payload = append(payload, sub...)
-	}
-	payload = append(payload, data.Biomes...)
-	decoded, err := chunk.NetworkDecode(world.DefaultBlockRegistry, payload, len(data.SubChunks), cube.Range{0, 15})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if decoded.Block(1, 2, 3, 0) != stone {
-		t.Fatal("network round trip changed native runtime ID")
-	}
-	if decoded.StateID(1, 2, 3) != 0 {
-		t.Fatal("network decoding produced source Java metadata")
-	}
-}

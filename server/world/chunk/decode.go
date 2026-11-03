@@ -7,63 +7,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
-// NetworkDecode decodes the network serialised data passed into a Chunk if successful. If not, the chunk
-// returned is nil and the error non-nil.
-// The sub chunk count passed must be that found in the LevelChunk packet.
-// NetworkDecode creates a new buffer and calls NetworkDecodeBuffer.
-//
-// The BlockRegistry passed must be finalized and must correspond to the runtime IDs used in the chunk data.
-// noinspection GoUnusedExportedFunction
-func NetworkDecode(br BlockRegistry, data []byte, count int, r cube.Range) (*Chunk, error) {
-	return NetworkDecodeBuffer(br, bytes.NewBuffer(data), count, r)
-}
-
-// NetworkDecodeBuffer decodes the network serialised data from buf passed into a Chunk if successful. If not, the chunk
-// returned is nil and the error non-nil.
-// The sub chunk count passed must be that found in the LevelChunk packet.
-// noinspection GoUnusedExportedFunction
-func NetworkDecodeBuffer(br BlockRegistry, buf *bytes.Buffer, count int, r cube.Range) (*Chunk, error) {
-	c := New(br, r)
-	// The declared count may exceed the number of sub-chunks supported by the
-	// dimension's vertical range, so validate it before indexing c.sub.
-	if count < 0 || count > len(c.sub) {
-		return nil, fmt.Errorf("invalid sub-chunk count %d: chunk range has %d sub-chunks", count, len(c.sub))
-	}
-	for i := 0; i < count; i++ {
-		index := uint8(i)
-		sub, err := decodeSubChunk(buf, c, &index, NetworkEncoding)
-		if err != nil {
-			return nil, err
-		}
-		// Version 9 sub-chunks replace index with an absolute Y from the payload.
-		// Validate that translated index before using it to access the chunk.
-		if int(index) >= len(c.sub) {
-			return nil, fmt.Errorf("invalid sub-chunk index %d: chunk range has %d sub-chunks", index, len(c.sub))
-		}
-		c.sub[index] = sub
-	}
-	var last *PalettedStorage
-	for i := 0; i < len(c.sub); i++ {
-		b, err := decodePalettedStorage(buf, NetworkEncoding, BiomePaletteEncoding)
-		if err != nil {
-			return nil, err
-		}
-		if b == nil {
-			// b == nil means this paletted storage had the flag pointing to the previous one. It basically means we should
-			// inherit whatever palette we decoded last.
-			if i == 0 {
-				// This should never happen and there is no way to handle this.
-				return nil, fmt.Errorf("first biome storage pointed to previous one")
-			}
-			b = last
-		} else {
-			last = b
-		}
-		c.biomes[i] = b
-	}
-	return c, nil
-}
-
 // DiskDecode decodes the data from a SerialisedData object into a chunk and returns it. If the data was invalid,
 // an error is returned.
 //
@@ -205,8 +148,8 @@ func decodeBiomes(buf *bytes.Buffer, c *Chunk, e Encoding) error {
 	return nil
 }
 
-// decodePalettedStorage decodes a PalettedStorage from a bytes.Buffer. The Encoding passed is used to read either a
-// network or disk block storage.
+// decodePalettedStorage decodes a PalettedStorage from a bytes.Buffer. The Encoding passed is used to read the
+// block storage.
 func decodePalettedStorage(buf *bytes.Buffer, e Encoding, pe paletteEncoding) (*PalettedStorage, error) {
 	blockSize, err := buf.ReadByte()
 	if err != nil {

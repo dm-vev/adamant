@@ -48,18 +48,12 @@ func TestBiomeIndexFollowsRegistration(t *testing.T) {
 		if !ok || index != uint32(i) {
 			t.Fatalf("BiomeIndex(%d) = %d, %v; want %d, true", id, index, ok, i)
 		}
-		if back, ok := biomeIDAt(uint32(i)); !ok || back != uint32(id) {
-			t.Fatalf("biomeIDAt(%d) = %d, %v; want %d, true", i, back, ok, id)
-		}
 	}
 	if index, _ := BiomeIndex(low); index+1 != uint32(len(ids)-1) {
 		t.Fatalf("biome %d is at %d, %d at %d", low, index, high, len(ids)-1)
 	}
 	if _, ok := BiomeIndex(47001); ok {
 		t.Fatal("an unregistered biome ID has an index")
-	}
-	if _, ok := biomeIDAt(uint32(len(ids))); ok {
-		t.Fatal("a position past the last biome has an ID")
 	}
 	ids[0] = -1
 	if BiomeIDs()[0] == -1 {
