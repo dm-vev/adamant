@@ -6,6 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -133,4 +134,44 @@ func TestPlayerEditSignIgnoresOtherBlocks(t *testing.T) {
 			})
 		})
 	}
+}
+
+// pageTurnHandler records the pages a player turns lecterns to.
+type pageTurnHandler struct {
+	NopHandler
+	turns []int
+}
+
+func (h *pageTurnHandler) HandleLecternPageTurn(_ *Context, _ cube.Pos, _ int, page *int) {
+	h.turns = append(h.turns, *page)
+}
+
+func TestPlayerTurnLecternPage(t *testing.T) {
+	book := item.NewStack(item.WrittenBook{Title: "t", Pages: []string{"a", "b", "c"}}, 1)
+	w, _ := clientTestWorld(t)
+	withClientPlayer(t, w, nil, func(tx *world.Tx, p *Player) {
+		h := &pageTurnHandler{}
+		p.Handle(h)
+		tx.SetBlock(signPos, block.Lectern{Book: book}, nil)
+		tx.SetBlock(farPos, block.Lectern{Book: book}, nil)
+
+		if err := p.TurnLecternPage(farPos, 1); err == nil {
+			t.Fatal("the player turned the page of a lectern out of reach")
+		}
+		if err := p.TurnLecternPage(signPos.Side(cube.FaceUp), 1); err == nil {
+			t.Fatal("the player turned the page of air")
+		}
+		if len(h.turns) != 0 {
+			t.Fatalf("refused turns reached the handler: %v", h.turns)
+		}
+		if err := p.TurnLecternPage(signPos, 2); err != nil {
+			t.Fatalf("TurnLecternPage: %v", err)
+		}
+		if l := tx.Block(signPos).(block.Lectern); l.Page != 2 || len(h.turns) != 1 {
+			t.Fatalf("the lectern is at page %d after %v turns, want page 2 after one", l.Page, h.turns)
+		}
+		if l := tx.Block(farPos).(block.Lectern); l.Page != 0 {
+			t.Fatalf("the lectern out of reach is at page %d", l.Page)
+		}
+	})
 }

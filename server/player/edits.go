@@ -114,9 +114,14 @@ func (p *Player) editSign(
 	return nil
 }
 
-// TurnLecternPage edits the lectern at the cube.Pos passed by turning the page to the page passed. If no lectern is
-// present, an error is returned.
+// TurnLecternPage turns the book on the lectern at pos to page, as the player
+// reads it. It fails if the lectern is out of the reach of the player or no
+// lectern is at pos. HandleLecternPageTurn may cancel the turn or change the
+// page turned to.
 func (p *Player) TurnLecternPage(pos cube.Pos, page int) error {
+	if !p.CanReach(pos.Vec3Middle()) {
+		return fmt.Errorf("block at %v is not within reach", pos)
+	}
 	lectern, ok := p.tx.Block(pos).(block.Lectern)
 	if !ok {
 		return fmt.Errorf("edit lectern: no lectern at position %v", pos)
