@@ -169,16 +169,36 @@ func explosionEntityID(src world.ExplosionSource) string {
 }
 
 // entityDisplayName is Entity.getDisplayName: players use their name, named
-// mobs their custom name, and other entities their translated type name.
-func entityDisplayName(e world.Entity) string {
+// mobs their custom name, and other entities their translated type name, a
+// mobName.
+func entityDisplayName(e world.Entity) any {
 	if p, ok := e.(*Player); ok {
 		return p.Name()
 	}
 	if named, ok := e.(interface{ NameTag() string }); ok && named.NameTag() != "" {
 		return named.NameTag()
 	}
-	id := strings.TrimPrefix(e.H().Type().EncodeEntity(), "minecraft:")
-	return "%entity." + id + ".name"
+	return mobName(strings.TrimPrefix(e.H().Type().EncodeEntity(), "minecraft:"))
+}
+
+// mobName is the name of a mob in a death message, the ID of its type
+// without minecraft:. Clients are sent the key of the name of the type,
+// which they translate; the console, which looks no key up, shows the ID in
+// words, as cave_spider shows as Cave Spider.
+type mobName string
+
+// Resolve returns the key of the name of the type, after a %.
+func (n mobName) Resolve(language.Tag) string { return "%entity." + string(n) + ".name" }
+
+// String returns the ID in words, each with a capital letter.
+func (n mobName) String() string {
+	words := strings.Split(string(n), "_")
+	for i, w := range words {
+		if w != "" {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 // broadcastDeathMessage sends the death message to every player in the world
