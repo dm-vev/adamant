@@ -23,7 +23,7 @@ type tripwireBreakNativeBlock struct {
 
 // tripwireNativeSound is a hook sound BDS sent, ExtraData the network hash
 // of its block, or one the game played, of the block state Block, named as
-// nativeSoundBlocks names them.
+// capturedBlocks names them.
 type tripwireNativeSound struct {
 	SoundType, EntityType string
 	ExtraData             int32
@@ -42,7 +42,7 @@ func (o *tripwireNativeSoundObserver) HandleSound(_ *world.Context, s world.Soun
 	}
 	switch event.Name {
 	case "attach", "detach", "power.on", "power.off":
-		o.packets = append(o.packets, tripwireNativeSound{SoundType: event.Name, EntityType: event.Entity, Block: nativeSoundBlockState(event.Block), Position: mgl32.Vec3{float32(pos[0]), float32(pos[1]), float32(pos[2])}})
+		o.packets = append(o.packets, tripwireNativeSound{SoundType: event.Name, EntityType: event.Entity, Block: capturedBlockState(event.Block), Position: mgl32.Vec3{float32(pos[0]), float32(pos[1]), float32(pos[2])}})
 	}
 }
 
@@ -219,7 +219,7 @@ func TestTripwirePlayerBreakMatchesNativeCapture(t *testing.T) {
 		})
 	}
 	var expectedSounds []tripwireNativeSound
-	blocks := nativeSoundBlocks(t)
+	blocks := capturedBlocks(t)
 	for _, s := range reference.Sounds {
 		switch s.SoundType {
 		case "attach", "detach", "power.on", "power.off":

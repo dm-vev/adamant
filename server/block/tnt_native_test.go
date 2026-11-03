@@ -37,6 +37,7 @@ func TestTNTWireStatesMatchNativePackets(t *testing.T) {
 		t.Fatal("incomplete native TNT state/packet corpus")
 	}
 	world.DefaultBlockRegistry.Finalize()
+	blocks := capturedBlocks(t)
 	packets := 0
 	for i, c := range native.Scenarios {
 		if c.Accepted != (i != 4 && i != 5) {
@@ -53,15 +54,16 @@ func TestTNTWireStatesMatchNativePackets(t *testing.T) {
 		if !ok {
 			t.Fatal("native TNT wire permutation missing")
 		}
-		hash, ok := world.DefaultBlockRegistry.RuntimeIDToHash(rid)
-		if !ok || hash != c.NetworkHash {
-			t.Fatalf("scene %d network hash=%d, native=%d", i, hash, c.NetworkHash)
+		// The session checks the state is sent as the network hash BDS sent.
+		state := capturedBlockState(world.DefaultBlockRegistry.BlockByRuntimeIDOrAir(rid))
+		if want := blocks[int32(c.NetworkHash)]; state != want {
+			t.Fatalf("scene %d state=%s, native network hash %d is of %s", i, state, c.NetworkHash, want)
 		}
 		if len(c.Updates) == 0 {
 			t.Fatal("missing native TNT wire update")
 		}
 		for _, p := range c.Updates {
-			if p.NewBlockRuntimeID != hash {
+			if p.NewBlockRuntimeID != c.NetworkHash {
 				t.Fatal("native TNT update differs")
 			}
 			packets++

@@ -43,7 +43,7 @@ func TestSwitchSoundsMatchNativePackets(t *testing.T) {
 	if !reference.Complete || len(reference.Scenarios) != 3 || len(reference.Sounds) != 6 {
 		t.Fatal("incomplete native switch sound capture")
 	}
-	blocks := nativeSoundBlocks(t)
+	blocks := capturedBlocks(t)
 	for i, trace := range reference.Scenarios {
 		t.Run(trace.Scenario.Block, func(t *testing.T) {
 			w := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.End}.New()
@@ -89,8 +89,8 @@ func TestSwitchSoundsMatchNativePackets(t *testing.T) {
 					t.Errorf("sound=%T, native event=%s", s, expected.SoundType)
 					continue
 				}
-				if got.Name != expected.SoundType || nativeSoundBlockState(got.Block) != blocks[expected.ExtraData] || got.Entity != expected.EntityType || got.Source != nil || o.positions[n] != mgl64.Vec3(expected.Position) {
-					t.Errorf("sound=%+v (block %s) at %v native=%+v (block %s)", got, nativeSoundBlockState(got.Block), o.positions[n], expected, blocks[expected.ExtraData])
+				if got.Name != expected.SoundType || capturedBlockState(got.Block) != blocks[expected.ExtraData] || got.Entity != expected.EntityType || got.Source != nil || o.positions[n] != mgl64.Vec3(expected.Position) {
+					t.Errorf("sound=%+v (block %s) at %v native=%+v (block %s)", got, capturedBlockState(got.Block), o.positions[n], expected, blocks[expected.ExtraData])
 				}
 			}
 		})

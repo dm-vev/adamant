@@ -30,10 +30,12 @@ func customHashRegistry(t testing.TB) world.BlockRegistry {
 	return br
 }
 
-// TestBlockHashesMatchWorld checks the session hashes every runtime ID of
-// the default registry and of a registry with custom states as the world
-// does, both ways, the door override included.
-func TestBlockHashesMatchWorld(t *testing.T) {
+// TestBlockHashesOfRegistries checks the session hashes every runtime ID of
+// the default registry and of a registry with custom states by its state,
+// the state BDS sends for an open upper door half aside, and maps the hash
+// of every state back to its runtime ID. Until the world left the hashes to
+// the session, it checked them against the world's, both ways.
+func TestBlockHashesOfRegistries(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	for name, br := range map[string]world.BlockRegistry{
 		"default": world.DefaultBlockRegistry,
@@ -44,31 +46,30 @@ func TestBlockHashesMatchWorld(t *testing.T) {
 			if h != hashesOf(br) {
 				t.Fatal("the hashes of a registry are built again")
 			}
-			if len(h.hash) != br.BlockCount() {
-				t.Fatalf("%d hashes, %d runtime IDs", len(h.hash), br.BlockCount())
+			if len(h.hash) != br.BlockCount() || len(h.rid) != br.BlockCount() {
+				t.Fatalf("%d hashes, %d mapped back, %d runtime IDs", len(h.hash), len(h.rid), br.BlockCount())
 			}
-			for rid := range uint32(br.BlockCount()) + 1 {
-				got, gotOK := h.runtimeIDToHash(rid)
-				want, wantOK := br.RuntimeIDToHash(rid)
-				if got != want || gotOK != wantOK {
-					name, props, _ := br.RuntimeIDToState(rid)
-					t.Fatalf("runtime ID %d (%s %v) hashes to (%d, %t), the world to (%d, %t)", rid, name, props, got, gotOK, want, wantOK)
+			doors := 0
+			for rid := range uint32(br.BlockCount()) {
+				name, props, _ := br.RuntimeIDToState(rid)
+				own, _ := networkBlockHash(name, props, nil)
+				want := own
+				if client, ok := clientDoorProperties(props); ok {
+					want, _ = networkBlockHash(name, client, nil)
+					doors++
+				}
+				if got, ok := h.runtimeIDToHash(rid); !ok || got != want {
+					t.Fatalf("runtime ID %d (%s %v) hashes to (%d, %t), want %d", rid, name, props, got, ok, want)
+				}
+				if back, ok := h.hashToRuntimeID(own); !ok || back != rid {
+					t.Fatalf("the hash of %s %v maps back to (%d, %t), want %d", name, props, back, ok, rid)
 				}
 			}
-			if len(h.rid) != br.BlockCount() {
-				t.Fatalf("%d hashes map back to runtime IDs, want %d", len(h.rid), br.BlockCount())
+			if doors == 0 {
+				t.Error("no open upper door half")
 			}
-			for hash, rid := range h.rid {
-				if want, ok := br.HashToRuntimeID(hash); !ok || want != rid {
-					t.Fatalf("hash %d maps back to %d, the world to (%d, %t)", hash, rid, want, ok)
-				}
-			}
-			for _, hash := range []uint32{0, 1, 0xffffffff} {
-				got, gotOK := h.hashToRuntimeID(hash)
-				want, wantOK := br.HashToRuntimeID(hash)
-				if got != want || gotOK != wantOK {
-					t.Errorf("hash %d maps back to (%d, %t), the world to (%d, %t)", hash, got, gotOK, want, wantOK)
-				}
+			if _, ok := h.runtimeIDToHash(uint32(br.BlockCount())); ok {
+				t.Error("a runtime ID past the registry has a hash")
 			}
 		})
 	}

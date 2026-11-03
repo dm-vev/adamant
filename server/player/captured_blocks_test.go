@@ -1,4 +1,4 @@
-package block
+package player
 
 import (
 	"encoding/json"
@@ -13,13 +13,15 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// nativeSoundBlocks returns the block states of
-// testdata/bedrock_1_26_51_sound_blocks.json by the network block hash BDS
-// sent each as with an event sound in the captures of this package. The
-// Bedrock session checks the hashes; the game's tests expect the states.
-func nativeSoundBlocks(t testing.TB) map[int32]string {
+// capturedBlocks returns the block states of
+// ../block/testdata/bedrock_1_26_51_captured_blocks.json by the network block hash BDS
+// sent each as, in its captures of the block package: with event sounds,
+// block break particles and block updates. The Bedrock session checks the
+// hashes; the game's tests expect the states, as the game does not hash
+// blocks for Bedrock clients.
+func capturedBlocks(t testing.TB) map[int32]string {
 	t.Helper()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_sound_blocks.json")
+	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_captured_blocks.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,9 +40,9 @@ func nativeSoundBlocks(t testing.TB) map[int32]string {
 	return blocks
 }
 
-// nativeSoundBlockState names the state of a block as nativeSoundBlocks
+// capturedBlockState names the state of a block as capturedBlocks
 // does: its name and its properties, sorted, as the block encodes them.
-func nativeSoundBlockState(b world.Block) string {
+func capturedBlockState(b world.Block) string {
 	if b == nil {
 		return "<nil>"
 	}

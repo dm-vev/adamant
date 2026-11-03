@@ -116,7 +116,7 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 	if len(native.Sounds) != 0 && len(native.Sounds) != 2*count {
 		t.Fatal("incomplete native source sound capture")
 	}
-	blocks := nativeSoundBlocks(t)
+	blocks := capturedBlocks(t)
 	for traceIndex, trace := range native.Scenarios {
 		c := trace.Scenario
 		testName := fmt.Sprintf("%s/%s/%s/powered%t/filter%d/phase%d", c.Block, c.Entity, c.Mode, c.Powered, c.Filter, c.Phase)
@@ -415,8 +415,8 @@ func testSculkNativeContacts(t *testing.T, name string, count int) {
 					for axis := range 3 {
 						want.Position[axis] = float64(float32(want.Position[axis]))
 					}
-					if s.Name != want.SoundType || nativeSoundBlockState(s.Block) != blocks[want.ExtraData] || s.Entity != want.EntityType || s.Source != nil || positions[i] != want.Position {
-						t.Errorf("sound=%+v (block %s) at %v, native=%+v (block %s)", s, nativeSoundBlockState(s.Block), positions[i], want, blocks[want.ExtraData])
+					if s.Name != want.SoundType || capturedBlockState(s.Block) != blocks[want.ExtraData] || s.Entity != want.EntityType || s.Source != nil || positions[i] != want.Position {
+						t.Errorf("sound=%+v (block %s) at %v, native=%+v (block %s)", s, capturedBlockState(s.Block), positions[i], want, blocks[want.ExtraData])
 					}
 				}
 			}

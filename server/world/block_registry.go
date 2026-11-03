@@ -63,8 +63,6 @@ type BlockRegistry interface {
 	// BlockHash returns a unique identifier of the block including the block states. The hash is internal to Dragonfly
 	// and is used for fast map lookups; it does not need to match any in-game identifiers.
 	BlockHash(b Block) uint64
-	// RuntimeIDToHash resolves a runtime ID to its network block hash.
-	RuntimeIDToHash(runtimeID uint32) (hash uint32, ok bool)
 }
 
 const (
@@ -126,11 +124,9 @@ type BasicBlockRegistry struct {
 	// RuntimeIDToStateView.
 	states []encodedState
 
-	finalized         bool
-	bitSize           int
-	hashes            *intintmap.Map
-	networkhashToRids map[uint32]uint32
-	ridsToNetworkhash []uint32
+	finalized bool
+	bitSize   int
+	hashes    *intintmap.Map
 
 	// stateRuntimeIDs holds a map for looking up the runtime ID of a block by the stateHash it produces.
 	stateRuntimeIDs map[stateHash]uint32
@@ -210,24 +206,6 @@ func (br *BasicBlockRegistry) Blocks() []Block {
 	return slices.Clone(br.blocks)
 }
 
-func (br *BasicBlockRegistry) HashToRuntimeID(hash uint32) (rid uint32, ok bool) {
-	if !br.finalized {
-		panic("BlockRegistry.HashToRuntimeID called on non finalized BlockRegistry")
-	}
-	rid, ok = br.networkhashToRids[hash]
-	return
-}
-
-func (br *BasicBlockRegistry) RuntimeIDToHash(runtimeID uint32) (hash uint32, ok bool) {
-	if !br.finalized {
-		panic("BlockRegistry.RuntimeIDToHash called on non finalized BlockRegistry")
-	}
-	if runtimeID >= uint32(len(br.ridsToNetworkhash)) {
-		return 0, false
-	}
-	return br.ridsToNetworkhash[runtimeID], true
-}
-
 // Clone returns an independent copy of the registry. If the source registry is finalized, the clone is also finalized.
 // If the source is not finalized, the clone remains mutable.
 func (br *BasicBlockRegistry) Clone() *BasicBlockRegistry {
@@ -266,9 +244,6 @@ func (br *BasicBlockRegistry) clone(mutable bool) *BasicBlockRegistry {
 			}
 			br2.hashes.Put(int64(br2.BlockHash(b)), int64(rid))
 		}
-		br2.networkhashToRids = make(map[uint32]uint32, len(br.networkhashToRids))
-		maps.Copy(br2.networkhashToRids, br.networkhashToRids)
-		br2.ridsToNetworkhash = append([]uint32(nil), br.ridsToNetworkhash...)
 	}
 
 	return br2
@@ -369,10 +344,7 @@ func (br *BasicBlockRegistry) Finalize() {
 	br.blockInfos = make([]blockInfo, len(br.blocks))
 	br.states = make([]encodedState, len(br.blocks))
 	br.hashes = intintmap.New(len(br.blocks), 0.999)
-	br.networkhashToRids = make(map[uint32]uint32, len(br.blocks))
-	br.ridsToNetworkhash = make([]uint32, len(br.blocks))
 	br.stateRuntimeIDs = make(map[stateHash]uint32, len(br.blocks))
-	networkHashScratch := make([]byte, 0, 0xff)
 	foundAir := false
 
 	for idx, b := range br.blocks {
@@ -423,43 +395,11 @@ func (br *BasicBlockRegistry) Finalize() {
 			}
 			br.hashes.Put(h, int64(rid))
 		}
-		var netHash uint32
-		netHash, networkHashScratch = networkBlockHash(name, properties, networkHashScratch)
-		if other, ok := br.networkhashToRids[netHash]; ok {
-			otherName, otherProperties := br.blocks[other].EncodeBlock()
-			panic(fmt.Sprintf("network block hash collision for (%s %+v) and (%s %+v)", name, properties, otherName, otherProperties))
-		}
-		br.networkhashToRids[netHash] = rid
-		br.ridsToNetworkhash[rid] = netHash
-		if client, ok := clientDoorProperties(properties); ok {
-			br.ridsToNetworkhash[rid], networkHashScratch = networkBlockHash(name, client, networkHashScratch)
-		}
 	}
 	if !foundAir {
 		panic("BlockRegistry.Finalize: no minecraft:air block state registered")
 	}
 	br.finalized = true
-}
-
-// clientDoorProperties returns the state BDS sends for the upper half of an
-// open door. Only the lower half carries open_bit on Bedrock, while the
-// server keeps Java's open state on both halves, so the upper half is sent
-// closed.
-func clientDoorProperties(properties map[string]any) (map[string]any, bool) {
-	if _, door := properties["door_hinge_bit"]; !door {
-		return nil, false
-	}
-	upper, open := properties["upper_block_bit"], properties["open_bit"]
-	if (upper != true && upper != uint8(1)) || (open != true && open != uint8(1)) {
-		return nil, false
-	}
-	client := maps.Clone(properties)
-	if open == true {
-		client["open_bit"] = false
-	} else {
-		client["open_bit"] = uint8(0)
-	}
-	return client, true
 }
 
 // AirRuntimeID returns the runtime ID of the air block.

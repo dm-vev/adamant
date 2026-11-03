@@ -68,7 +68,7 @@ func TestCrafterSoundsMatchNativePackets(t *testing.T) {
 	if !native.Complete || len(native.Scenarios) != 12 {
 		t.Fatal("incomplete native crafter sound capture")
 	}
-	blocks := nativeSoundBlocks(t)
+	blocks := capturedBlocks(t)
 	for _, trace := range native.Scenarios {
 		c := trace.Scenario
 		t.Run(fmt.Sprintf("%s/phase%d", c.Recipe, c.Phase), func(t *testing.T) {
@@ -152,8 +152,8 @@ func TestCrafterSoundsMatchNativePackets(t *testing.T) {
 			}
 			for i, want := range trace.Sounds {
 				got := observer.sounds[i]
-				if got.Name != want.SoundType || got.Entity != want.EntityType || nativeSoundBlockState(got.Block) != blocks[want.ExtraData] || got.Source != nil || want.EntityUniqueID != -1 || observer.positions[i] != want.Position {
-					t.Errorf("sound=%+v (block %s) at %v, native=%+v (block %s)", got, nativeSoundBlockState(got.Block), observer.positions[i], want, blocks[want.ExtraData])
+				if got.Name != want.SoundType || got.Entity != want.EntityType || capturedBlockState(got.Block) != blocks[want.ExtraData] || got.Source != nil || want.EntityUniqueID != -1 || observer.positions[i] != want.Position {
+					t.Errorf("sound=%+v (block %s) at %v, native=%+v (block %s)", got, capturedBlockState(got.Block), observer.positions[i], want, blocks[want.ExtraData])
 				}
 			}
 		})

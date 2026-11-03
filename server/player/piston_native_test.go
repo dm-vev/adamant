@@ -21,23 +21,25 @@ import (
 // BDS, which the native traces record the block break particles as.
 const levelEventParticlesDestroyBlock = 2001
 
+// pistonBreakNativeEvent is a level event BDS sent, EventData the network
+// hash of the block of break particles, or break particles the game showed,
+// of the block state Block, named as capturedBlocks names them.
 type pistonBreakNativeEvent struct {
 	EventType int32
 	Position  mgl32.Vec3
 	EventData int32
+	Block     string `json:"-"`
 }
 
 type pistonBreakNativeViewer struct {
 	world.NopViewer
-	br     world.BlockRegistry
 	events []pistonBreakNativeEvent
 }
 
 func (v *pistonBreakNativeViewer) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 	if b, ok := p.(particle.BlockBreak); ok {
-		hash, _ := v.br.RuntimeIDToHash(v.br.BlockRuntimeID(b.Block))
-		v.events = append(v.events, pistonBreakNativeEvent{levelEventParticlesDestroyBlock,
-			mgl32.Vec3{float32(pos[0]), float32(pos[1]), float32(pos[2])}, int32(hash)})
+		v.events = append(v.events, pistonBreakNativeEvent{EventType: levelEventParticlesDestroyBlock,
+			Position: mgl32.Vec3{float32(pos[0]), float32(pos[1]), float32(pos[2])}, Block: capturedBlockState(b.Block)})
 	}
 }
 
@@ -108,7 +110,7 @@ func testPistonPlayerNativeBreak(t *testing.T, mode string) {
 			settings := (world.NopProvider{}).Settings()
 			settings.CurrentTick = trace.SetupTick - 1
 			w := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.Overworld, Entities: entity.DefaultRegistry, Provider: world.NopProvider{Set: settings}}.New()
-			viewer := &pistonBreakNativeViewer{br: world.DefaultBlockRegistry}
+			viewer := &pistonBreakNativeViewer{}
 			loader := world.NewLoader(2, w, viewer)
 			t.Cleanup(func() { <-w.Exec(func(tx *world.Tx) { loader.Close(tx) }); _ = w.Close() })
 			if err := w.SetGameRule("block_drops", false); err != nil {
@@ -211,8 +213,10 @@ func testPistonPlayerNativeBreak(t *testing.T, mode string) {
 				t.Fatalf("applied %d breaks, %d after-event checks", applied, after)
 			}
 			var expected []pistonBreakNativeEvent
+			blocks := capturedBlocks(t)
 			for _, e := range trace.LevelEvents {
 				if e.EventType == levelEventParticlesDestroyBlock {
+					e.Block, e.EventData = blocks[e.EventData], 0
 					expected = append(expected, e)
 				}
 			}
