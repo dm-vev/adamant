@@ -53,21 +53,15 @@ func under(p, dir string) bool {
 // importing file relative to the repository root. If the import breaks a rule, violation returns the name of the
 // rule and true.
 //
-//   - R1: the game knows no protocol. Files under server/, except the Bedrock adapter zone server/session and
-//     server/netconn, import neither net/ (apart from the neutral net/nbt), nor server/session and server/netconn,
+//   - R1: the game knows no protocol. Files under server/ import neither net/ (apart from the neutral net/nbt)
 //     nor protocol/.
 //   - R2: adapters stay apart. A file under protocol/<a>/ imports no protocol/<b> with b other than a.
 //   - R3: protocol libraries know no game. Files under net/ import nothing from the root module.
 func violation(file, importPath string) (rule string, bad bool) {
 	switch {
 	case under(file, "server"):
-		if under(file, "server/session") || under(file, "server/netconn") {
-			return "", false
-		}
 		switch {
 		case under(importPath, netModule) && !under(importPath, netModule+"/nbt"):
-			return "R1", true
-		case under(importPath, rootModule+"/server/session"), under(importPath, rootModule+"/server/netconn"):
 			return "R1", true
 		case under(importPath, rootModule+"/protocol"):
 			return "R1", true
@@ -245,20 +239,17 @@ func TestBoundaryRules(t *testing.T) {
 		{"net/nbt prefix of another segment", "server/world/chunk.go", nbt + "x", "R1"},
 		{"net/bedrock/text from server/item", "server/item/diamond.go", bedrockTxt, "R1"},
 		{"net module root from the game", "server/server.go", netModule, "R1"},
-		{"net/bedrock/proto from the adapter zone", "server/session/session.go", netModule + "/bedrock/proto/v2193", ""},
-		{"net from server/netconn", "server/netconn/conn.go", netModule + "/bedrock", ""},
-		{"session from a test of the adapter zone", "server/session/golden_test.go", rootModule + "/server/session", ""},
-		{"server/session from server/player", "server/player/player.go", rootModule + "/server/session", "R1"},
-		{"below server/session from server/player", "server/player/player.go", rootModule + "/server/session/sub", "R1"},
-		{"server/netconn from server", "server/server.go", rootModule + "/server/netconn", "R1"},
-		{"server/sessionfoo is not server/session", "server/player/player.go", rootModule + "/server/sessionfoo", ""},
-		{"server/netconnfoo is not server/netconn", "server/player/player.go", rootModule + "/server/netconnfoo", ""},
-		{"file in server/sessionfoo is not in the zone", "server/sessionfoo/x.go", netModule + "/bedrock", "R1"},
-		{"file in server/netconnfoo is not in the zone", "server/netconnfoo/x.go", rootModule + "/server/session", "R1"},
+		{"file in server/session is not exempt", "server/session/session.go", netModule + "/bedrock/proto/v2193", "R1"},
+		{"file in server/netconn is not exempt", "server/netconn/conn.go", netModule + "/bedrock", "R1"},
+		{"net from protocol/bedrock/netconn", "protocol/bedrock/netconn/conn.go", netModule + "/bedrock", ""},
+		{"protocol/bedrock/session from server/player", "server/player/player.go", rootModule + "/protocol/bedrock/session", "R1"},
+		{"below protocol/bedrock from server/player", "server/player/player.go", rootModule + "/protocol/bedrock/netconn", "R1"},
+		{"server/x importing protocol/bedrock/internal", "server/x/x.go", rootModule + "/protocol/bedrock/internal/bedrockdata", "R1"},
 		{"protocol/bedrock from server/x", "server/x/x.go", rootModule + "/protocol/bedrock", "R1"},
 		{"protocol itself from server/x", "server/x/x.go", rootModule + "/protocol", "R1"},
-		{"protocol/bedrock from the adapter zone", "server/session/session.go", rootModule + "/protocol/bedrock", ""},
 		{"protocol/java from protocol/bedrock", "protocol/bedrock/session.go", rootModule + "/protocol/java", "R2"},
+		{"protocol/java importing protocol/bedrock/text", "protocol/java/status.go", rootModule + "/protocol/bedrock/text", "R2"},
+		{"protocol/bedrock importing net/java", "protocol/bedrock/listener.go", netModule + "/java", ""},
 		{"below protocol/java from protocol/bedrock", "protocol/bedrock/text/text.go", rootModule + "/protocol/java/text", "R2"},
 		{"protocol/bedrock/sub from protocol/bedrock", "protocol/bedrock/session.go", rootModule + "/protocol/bedrock/sub", ""},
 		{"protocol/bedrock from protocol/bedrock/sub", "protocol/bedrock/sub/x.go", rootModule + "/protocol/bedrock", ""},
@@ -273,10 +264,10 @@ func TestBoundaryRules(t *testing.T) {
 		{"net importing net", "net/bedrock/x.go", netModule + "/nbt", ""},
 		{"net importing the standard library", "net/bedrock/x.go", "net/http", ""},
 		{"file in network is not in net", "network/x.go", rootModule + "/server", ""},
-		{"main.go is unrestricted", "main.go", rootModule + "/server/session", ""},
+		{"main.go is unrestricted", "main.go", rootModule + "/protocol/bedrock/session", ""},
 		{"main.go imports net", "main.go", netModule + "/bedrock/login", ""},
 		{"cmd is unrestricted", "cmd/tool/main.go", rootModule + "/protocol/bedrock", ""},
-		{"cmd imports server/session", "cmd/tool/main.go", rootModule + "/server/session", ""},
+		{"cmd imports protocol/bedrock/session", "cmd/tool/main.go", rootModule + "/protocol/bedrock/session", ""},
 		{"scripts are unrestricted", "scripts/x/main.go", netModule + "/bedrock", ""},
 		{"game importing the game", "server/player/player.go", rootModule + "/server/world", ""},
 		{"game importing the standard library", "server/player/player.go", "net", ""},

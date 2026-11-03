@@ -45,9 +45,9 @@ const mutationHeader = `# Uses of the world by protocol adapters that still exis
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 `
 
-// adapterZones are the directories of adapter code, relative to the repository root. Until phase 3 moves
-// them, server/session and server/netconn are the Bedrock adapter; protocol/ holds the adapters from then on.
-var adapterZones = []string{"server/session", "server/netconn", "protocol"}
+// adapterZones are the directories of adapter code, relative to the repository root: protocol/ holds every
+// adapter, and nothing under server/ is one.
+var adapterZones = []string{"protocol"}
 
 // inAdapter reports if a slash-separated file or package directory relative to the repository root is adapter
 // code.
@@ -585,8 +585,8 @@ func TestMutationRules(t *testing.T) {
 		rel  string
 		want bool
 	}{
-		{"server/session/session.go", true},
-		{"server/netconn/conn.go", true},
+		{"server/session/session.go", false},
+		{"server/netconn/conn.go", false},
 		{"protocol/bedrock/session/session.go", true},
 		{"protocol/java/text/json.go", true},
 		{"server/sessionfoo/x.go", false},
