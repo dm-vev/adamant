@@ -13,14 +13,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/netconn"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
@@ -435,7 +433,6 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 			return
 		}
 	}
-	data := srv.defaultGameData()
 
 	var (
 		fallback  bool
@@ -464,24 +461,32 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 		}
 	}
 
-	data.PlayerPosition = vec64To32(d.Position).Add(mgl32.Vec3{0, float32(player.Type.NetworkOffset())})
-	dim, _ := world.DimensionID(w.Dimension())
-	data.Dimension = int32(dim)
-	data.Yaw, data.Pitch = float32(d.Rotation.Yaw()), float32(d.Rotation.Pitch())
-
-	data.EmoteChatMuted = srv.conf.MuteEmoteChat
-	if srv.IsOperator(conn.IdentityData().DisplayName) {
-		data.PlayerPermissions = v2193.PermissionLevelOperator
-	}
-
-	if err := conn.StartGameContext(ctx, data); err != nil {
+	g := srv.game(conn.IdentityData().DisplayName, d, w)
+	if err := session.StartGame(ctx, conn, g, srv.start, srv.conf.MuteEmoteChat); err != nil {
 		_ = l.Disconnect(conn, "Connection timeout.")
 
 		srv.conf.Log.Debug("spawn failed: "+err.Error(), "raddr", conn.RemoteAddr())
 		return
 	}
-	_ = conn.WritePacket(&v2193.ItemRegistryPacket{Items: srv.start.ItemRegistry()})
 	srv.incoming <- srv.createPlayer(conn, d, w)
+}
+
+// game returns the Game a client that logged in as the player of the name
+// passed starts in, as the player d in w.
+func (srv *Server) game(name string, d player.Config, w *world.World) client.Game {
+	return client.Game{
+		Name:           srv.conf.Name,
+		Level:          srv.world,
+		World:          w,
+		Position:       d.Position,
+		Rotation:       d.Rotation,
+		Operator:       srv.IsOperator(name),
+		MaxChunkRadius: srv.conf.MaxChunkRadius,
+		JoinMessage:    srv.conf.JoinMessage,
+		QuitMessage:    srv.conf.QuitMessage,
+		IsOperator:     srv.IsOperator,
+		Left:           srv.handleSessionClose,
+	}
 }
 
 func (srv *Server) handleReconnect(l Listener, conn session.Conn, id uuid.UUID, handle *world.EntityHandle) bool {
@@ -518,48 +523,6 @@ func (srv *Server) waitForPlayerRemoval(id uuid.UUID, timeout time.Duration) boo
 		case <-timer.C:
 			return false
 		}
-	}
-}
-
-// defaultGameData returns a netconn.GameData as sent for a new player. It
-// may later be modified if the player was saved in the player provider of the
-// server.
-func (srv *Server) defaultGameData() netconn.GameData {
-	mode := session.GameTypeFromMode(srv.world.DefaultGameMode())
-	difficulty, _ := world.DifficultyID(srv.world.Difficulty())
-	return netconn.GameData{
-		// Entity runtime/unique ID for the player itself is always 1 in df.
-		EntityUniqueID:  1,
-		EntityRuntimeID: 1,
-
-		WorldName:       srv.conf.Name,
-		WorldSeed:       srv.world.Seed(),
-		BaseGameVersion: v2193.Version,
-
-		Time:       int64(srv.world.Time()),
-		Difficulty: int32(difficulty),
-
-		WorldGameMode:     mode,
-		PlayerGameMode:    mode,
-		PlayerPermissions: v2193.PermissionLevelMember,
-		PlayerPosition:    vec64To32(srv.world.Spawn().Vec3Centre().Add(mgl64.Vec3{0, player.Type.NetworkOffset()})),
-
-		Items:        srv.start.Items(),
-		Blocks:       srv.start.Blocks(),
-		GameRules: append([]v2193.GameRule{
-			{Name: "naturalregeneration", Value: false},
-			{Name: "locatorBar", Value: false},
-			{Name: "falldamage", Value: srv.world.FallDamage()},
-		}, session.ClientGameRules(srv.world)...),
-
-		ServerAuthoritativeInventory: true,
-		// Like BDS, name blocks by network block hash so clients resolve every
-		// state by its contents instead of by its index in their own palette.
-		UseBlockNetworkIDHashes: true,
-		PlayerMovementSettings: v2193.PlayerMovementSettings{
-			ServerAuthoritativeBlockBreaking: true,
-		},
-		Dimensions: srv.start.Dimensions(),
 	}
 }
 
@@ -694,9 +657,4 @@ func (srv *Server) registerWorld(dim world.Dimension, w *world.World) {
 		return
 	}
 	srv.dimensions[dim] = w
-}
-
-// vec64To32 converts a mgl64.Vec3 to a mgl32.Vec3.
-func vec64To32(vec3 mgl64.Vec3) mgl32.Vec3 {
-	return mgl32.Vec3{float32(vec3[0]), float32(vec3[1]), float32(vec3[2])}
 }

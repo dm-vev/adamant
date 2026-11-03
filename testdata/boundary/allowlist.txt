@@ -49,9 +49,7 @@ server/listener_nethernet_test.go github.com/dm-vev/adamant/net/proxy
 server/permissions_test.go github.com/df-mc/dragonfly/server/netconn
 server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto
 server/permissions_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
-server/server.go github.com/df-mc/dragonfly/server/netconn
 server/server.go github.com/df-mc/dragonfly/server/session
-server/server.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/session_teardown_test.go github.com/df-mc/dragonfly/server/netconn
 server/session_teardown_test.go github.com/df-mc/dragonfly/server/session
 server/session_teardown_test.go github.com/dm-vev/adamant/net/bedrock/login
