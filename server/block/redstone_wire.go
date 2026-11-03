@@ -3,6 +3,7 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -113,7 +114,7 @@ func (RedstoneWire) TrimMaterial() string {
 }
 
 // MaterialColour delegates to item.RedstoneWire to keep trim metadata defined in one place.
-func (RedstoneWire) MaterialColour() string {
+func (RedstoneWire) MaterialColour() text.Colour {
 	return item.RedstoneWire{}.MaterialColour()
 }
 

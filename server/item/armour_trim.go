@@ -1,6 +1,9 @@
 package item
 
-import "github.com/df-mc/dragonfly/server/world"
+import (
+	"github.com/df-mc/dragonfly/server/text"
+	"github.com/df-mc/dragonfly/server/world"
+)
 
 // ArmourTrim is a decorative addition to an armour piece. It consists of a
 // template that specifies the pattern and a material that specifies the colour.
@@ -20,8 +23,9 @@ func (trim ArmourTrim) Zero() bool {
 type ArmourTrimMaterial interface {
 	// TrimMaterial returns the material name used for reading and writing trim data.
 	TrimMaterial() string
-	// MaterialColour returns the colour code used for internal text formatting.
-	MaterialColour() string
+	// MaterialColour returns the colour of the material, which clients use for
+	// the text that names the trim.
+	MaterialColour() text.Colour
 }
 
 // trimMaterialFromString returns a TrimMaterial from a string.

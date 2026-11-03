@@ -28,17 +28,6 @@ server/game_data_test.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/proto/v2193
 server/internal/packbuilder/manifest.go github.com/dm-vev/adamant/net/bedrock/resource
 server/internal/packbuilder/resource_pack.go github.com/dm-vev/adamant/net/bedrock/resource
-server/item/amethyst_shard.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/copper_ingot.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/diamond.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/emerald.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/gold_ingot.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/iron_ingot.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/lapis_lazuli.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/nether_quartz.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/netherite_ingot.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/redstone_wire.go github.com/dm-vev/adamant/net/bedrock/text
-server/item/resin_brick.go github.com/dm-vev/adamant/net/bedrock/text
 server/listener.go github.com/df-mc/dragonfly/server/session
 server/listener_nethernet.go github.com/df-mc/dragonfly/server/netconn
 server/listener_nethernet.go github.com/df-mc/dragonfly/server/session

@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // GoldIngot is a metal ingot melted from raw gold or obtained from loot chests.
 type GoldIngot struct{}
@@ -16,7 +16,7 @@ func (GoldIngot) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (GoldIngot) MaterialColour() string {
+func (GoldIngot) MaterialColour() text.Colour {
 	return text.Gold
 }
 

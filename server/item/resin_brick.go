@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // ResinBrick is an item used to create resin bricks. It can also be used as a
 // smithing ingredient, giving orange details to pieces of armour.
@@ -17,6 +17,6 @@ func (ResinBrick) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (ResinBrick) MaterialColour() string {
+func (ResinBrick) MaterialColour() text.Colour {
 	return text.Resin
 }

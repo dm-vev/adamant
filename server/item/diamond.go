@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // Diamond is a rare mineral obtained from diamond ore or loot chests.
 type Diamond struct{}
@@ -16,7 +16,7 @@ func (Diamond) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (Diamond) MaterialColour() string {
+func (Diamond) MaterialColour() text.Colour {
 	return text.Diamond
 }
 

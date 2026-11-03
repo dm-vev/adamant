@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // IronIngot is a metal ingot melted from raw iron or obtained from loot chests.
 type IronIngot struct{}
@@ -16,7 +16,7 @@ func (IronIngot) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (IronIngot) MaterialColour() string {
+func (IronIngot) MaterialColour() text.Colour {
 	return text.Iron
 }
 

@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // AmethystShard is a crystalline mineral obtained from mining a fully grown amethyst cluster.
 type AmethystShard struct{}
@@ -16,6 +16,6 @@ func (AmethystShard) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (AmethystShard) MaterialColour() string {
+func (AmethystShard) MaterialColour() text.Colour {
 	return text.Amethyst
 }

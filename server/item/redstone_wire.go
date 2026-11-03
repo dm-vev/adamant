@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 type RedstoneWire struct{}
 
@@ -15,6 +15,6 @@ func (RedstoneWire) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (RedstoneWire) MaterialColour() string {
+func (RedstoneWire) MaterialColour() text.Colour {
 	return text.Redstone
 }

@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // Emerald is a rare mineral obtained from emerald ore or from villagers.
 type Emerald struct{}
@@ -16,7 +16,7 @@ func (Emerald) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (Emerald) MaterialColour() string {
+func (Emerald) MaterialColour() text.Colour {
 	return text.Emerald
 }
 

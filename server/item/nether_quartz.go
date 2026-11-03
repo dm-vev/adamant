@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // NetherQuartz is a smooth, white mineral found in the Nether.
 type NetherQuartz struct{}
@@ -16,6 +16,6 @@ func (NetherQuartz) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (NetherQuartz) MaterialColour() string {
+func (NetherQuartz) MaterialColour() text.Colour {
 	return text.Quartz
 }

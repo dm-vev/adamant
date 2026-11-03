@@ -197,7 +197,7 @@ func (s *Session) sendArmourTrimData() {
 
 			trimMaterials = append(trimMaterials, v2193.TrimMaterial{
 				MaterialID: material.TrimMaterial(),
-				Colour:     material.MaterialColour(),
+				Colour:     trimMaterialColour(material),
 				ItemName:   name,
 			})
 		}

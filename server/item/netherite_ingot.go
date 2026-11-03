@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // NetheriteIngot is a rare mineral crafted with 4 pieces of netherite scrap and 4 gold ingots.
 type NetheriteIngot struct{}
@@ -16,7 +16,7 @@ func (NetheriteIngot) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (NetheriteIngot) MaterialColour() string {
+func (NetheriteIngot) MaterialColour() text.Colour {
 	return text.Netherite
 }
 

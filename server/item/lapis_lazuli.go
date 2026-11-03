@@ -1,6 +1,6 @@
 package item
 
-import "github.com/dm-vev/adamant/net/bedrock/text"
+import "github.com/df-mc/dragonfly/server/text"
 
 // LapisLazuli is a mineral used for enchanting and decoration.
 type LapisLazuli struct{}
@@ -16,6 +16,6 @@ func (LapisLazuli) TrimMaterial() string {
 }
 
 // MaterialColour ...
-func (LapisLazuli) MaterialColour() string {
+func (LapisLazuli) MaterialColour() text.Colour {
 	return text.Lapis
 }
