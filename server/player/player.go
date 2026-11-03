@@ -76,7 +76,9 @@ type playerData struct {
 	// the slot functions of the inventories, which may run off the
 	// transaction, read it.
 	menu atomic.Pointer[menu.Menu]
-	h    Handler
+	// menuTx is set while a batch of BeginMenu runs.
+	menuTx atomic.Bool
+	h      Handler
 	// log is the logger of the player, never nil.
 	log *slog.Logger
 
@@ -3741,6 +3743,27 @@ func (p *Player) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *worl
 // from any goroutine.
 func (p *Player) Menu() *menu.Menu {
 	return p.menu.Load()
+}
+
+// A Player is the owner of the batches of its menus.
+var _ menu.Owner = (*Player)(nil)
+
+// BeginMenu starts a batch of operations on the inventories of the player and
+// its open menu, whose slots n names as the caller's protocol does. The
+// batch runs within the transaction of the player and ends with its Commit
+// or Rollback.
+func (p *Player) BeginMenu(n menu.Namer) *menu.Tx {
+	p.menuTx.Store(true)
+	return menu.Begin(menu.Opts{
+		Tx:     p.tx,
+		Owner:  p,
+		Inv:    menu.Inventories{Main: p.inv, OffHand: p.offHand, EnderChest: p.enderChest, UI: p.ui, Armour: p.armour},
+		Menu:   p.Menu(),
+		Viewer: p.client(),
+		Name:   n,
+		Log:    p.log,
+		Done:   func() { p.menuTx.Store(false) },
+	})
 }
 
 // CloseMenu closes the menu the player has open, if any: as its client

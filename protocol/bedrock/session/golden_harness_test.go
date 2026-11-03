@@ -407,6 +407,9 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		conf.session(&sconf)
 	}
 	s.sess = sconf.New(conn)
+	if useMenuRequests {
+		session.UseMenuRequests(s.sess)
+	}
 
 	// As Server.join for a player the provider does not know, then
 	// Server.createPlayer.

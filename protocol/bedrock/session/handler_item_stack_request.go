@@ -11,6 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -30,7 +31,12 @@ type ItemStackRequestHandler struct {
 
 	pendingResults []item.Stack
 	multiCraft     *multiCraft
-	autoCraft      *autoCraft
+	// batch is the batch of server/menu that the request being handled
+	// runs as if the session uses menu requests (UseMenuRequests in its
+	// tests), nil otherwise. Its journal then takes the place of undo and
+	// its results that of pendingResults.
+	batch     *menu.Tx
+	autoCraft *autoCraft
 
 	current       time.Time
 	ignoreDestroy bool
@@ -79,13 +85,21 @@ func (h *ItemStackRequestHandler) Handle(p proto.Packet, s *Session, tx *world.T
 func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (err error) {
 	h.currentRequest = req.RequestID
 	h.multiCraft, h.autoCraft = nil, nil
+	if s.menuRequests {
+		h.batch = c.BeginMenu(s.nameSlot)
+	}
 	defer func() {
 		h.multiCraft, h.autoCraft = nil, nil
 		if err != nil {
 			h.reject(req.RequestID, s, tx)
 			return
 		}
-		h.notifyContainerRedstone(s, tx)
+		if h.batch != nil {
+			h.batch.Commit()
+			h.batch = nil
+		} else {
+			h.notifyContainerRedstone(s, tx)
+		}
 		h.resolve(req.RequestID, s)
 		h.ignoreDestroy = false
 	}()
@@ -591,6 +605,9 @@ func (h *ItemStackRequestHandler) handleMineBlock(a *v2193.MineBlockStackRequest
 // contains a result slot, which should map to one of the output items. From there, the server should create the relevant
 // output as usual.
 func (h *ItemStackRequestHandler) handleCreate(a *v2193.CreateStackRequestAction, s *Session, tx *world.Tx) error {
+	if h.batch != nil {
+		return h.batchOp(func() error { return h.batch.TakeResult(int(a.ResultsSlot)) })
+	}
 	slot := int(a.ResultsSlot)
 	if slot < 0 || slot >= len(h.pendingResults) {
 		// ResultsSlot is client-controlled; reject out-of-range values to avoid panics.
@@ -617,6 +634,9 @@ var defaultCreation = &v2193.CreateStackRequestAction{}
 
 // createResults creates a new craft result and adds it to the list of pending craft results.
 func (h *ItemStackRequestHandler) createResults(s *Session, tx *world.Tx, result ...item.Stack) error {
+	if h.batch != nil {
+		return h.batchOp(func() error { return h.batch.AddResults(result...) })
+	}
 	h.pendingResults = append(h.pendingResults, result...)
 	if len(result) > 1 {
 		// With multiple results, the client notifies the server on when to create the results.
@@ -735,6 +755,13 @@ func (h *ItemStackRequestHandler) itemInSlot(slot v2193.StackRequestSlotInfo, s 
 
 // setItemInSlot sets an item stack in the slot of a container present in the slot info.
 func (h *ItemStackRequestHandler) setItemInSlot(slot v2193.StackRequestSlotInfo, i item.Stack, s *Session, tx *world.Tx) error {
+	if h.batch != nil {
+		ref, ok := s.ref(slot, tx)
+		if !ok {
+			return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
+		}
+		return h.batchOp(func() error { return h.batch.SetSlot(ref, i) })
+	}
 	inv, ok := s.invByID(int32(slot.Container.ContainerID), tx)
 	if !ok {
 		return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
@@ -762,19 +789,27 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot v2193.StackRequestSlotInfo,
 		return err
 	}
 
+	h.recordChange(slot.Container.ContainerID, slot.Slot, inv, i)
+	h.undo = append(h.undo, slotUndo{inv: inv, slot: sl, before: before})
+	return nil
+}
+
+// recordChange records that the slot of the container ID passed, of the
+// inventory inv, was set to i: the response to the request shows it, and a
+// later request may name the stack by the ID of this one.
+func (h *ItemStackRequestHandler) recordChange(container, slot byte, inv *inventory.Inventory, i item.Stack) {
 	respSlot := v2193.StackResponseSlotInfo{
-		Slot:                 slot.Slot,
-		HotbarSlot:           slot.Slot,
+		Slot:                 slot,
+		HotbarSlot:           slot,
 		Count:                byte(i.Count()),
 		StackNetworkID:       item_id(i),
 		DurabilityCorrection: int32(i.MaxDurability() - i.Durability()),
 	}
 
-	if h.changes[slot.Container.ContainerID] == nil {
-		h.changes[slot.Container.ContainerID] = map[byte]changeInfo{}
+	if h.changes[container] == nil {
+		h.changes[container] = map[byte]changeInfo{}
 	}
-	h.changes[slot.Container.ContainerID][slot.Slot] = changeInfo{after: respSlot}
-	h.undo = append(h.undo, slotUndo{inv: inv, slot: sl, before: before})
+	h.changes[container][slot] = changeInfo{after: respSlot}
 
 	if h.responseChanges[h.currentRequest] == nil {
 		h.responseChanges[h.currentRequest] = map[*inventory.Inventory]map[byte]responseChange{}
@@ -782,11 +817,24 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot v2193.StackRequestSlotInfo,
 	if h.responseChanges[h.currentRequest][inv] == nil {
 		h.responseChanges[h.currentRequest][inv] = map[byte]responseChange{}
 	}
-	h.responseChanges[h.currentRequest][inv][slot.Slot] = responseChange{
+	h.responseChanges[h.currentRequest][inv][slot] = responseChange{
 		id:        respSlot.StackNetworkID,
 		timestamp: h.current,
 	}
-	return nil
+}
+
+// batchOp runs op, an operation of the batch of the request, and records
+// the changes it made, those before it failed too, as setItemInSlot
+// records each slot it set: a later request may name their stacks even if
+// this one is refused.
+func (h *ItemStackRequestHandler) batchOp(op func() error) error {
+	from := len(h.batch.Changes())
+	err := op()
+	for _, c := range h.batch.Changes()[from:] {
+		container, slot := nameParts(c.Ref.Name)
+		h.recordChange(container, slot, c.Ref.Inv, c.After)
+	}
+	return err
 }
 
 func (h *ItemStackRequestHandler) notifyContainerRedstone(s *Session, tx *world.Tx) {
@@ -857,6 +905,10 @@ func (h *ItemStackRequestHandler) reject(id int32, s *Session, tx *world.Tx) {
 	// Undo the changes made for the actions that were valid, the last first, so that a slot changed more than
 	// once ends up with what it held before the request. Each slot is set in the inventory and at the index
 	// it was changed at: the off hand at 0, whatever slot the client named it by.
+	if h.batch != nil {
+		h.batch.Rollback()
+		h.batch = nil
+	}
 	for i := len(h.undo) - 1; i >= 0; i-- {
 		u := h.undo[i]
 		_ = u.inv.SetItem(u.slot, u.before)

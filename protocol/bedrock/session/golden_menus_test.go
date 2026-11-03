@@ -64,6 +64,12 @@ func TestGoldenMenus(t *testing.T) {
 		return
 	}
 	s := newScenario(t, "menus", scenarioConfig{})
+	s.menusScenario()
+	s.snapshot()
+}
+
+// menusScenario runs the steps of TestGoldenMenus.
+func (s *scenario) menusScenario() {
 	s.step("the empty slot held", func(_ *world.Tx, p *player.Player) {
 		if err := p.SetHeldSlot(emptyHand); err != nil {
 			s.t.Error(err)
@@ -78,7 +84,6 @@ func TestGoldenMenus(t *testing.T) {
 	s.crafterSteps()
 	s.lecternSteps()
 	s.menuRefusalSteps()
-	s.snapshot()
 }
 
 // give sets the slots of the inventory of the player, in order of slot.

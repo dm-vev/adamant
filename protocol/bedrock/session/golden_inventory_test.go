@@ -59,6 +59,12 @@ func TestGoldenInventory(t *testing.T) {
 		return
 	}
 	s := newScenario(t, "inventory", scenarioConfig{})
+	s.inventoryScenario()
+	s.snapshot()
+}
+
+// inventoryScenario runs the steps of TestGoldenInventory.
+func (s *scenario) inventoryScenario() {
 
 	s.step("items given", func(_ *world.Tx, p *player.Player) {
 		inv := p.Inventory()
@@ -96,7 +102,6 @@ func TestGoldenInventory(t *testing.T) {
 	})
 	s.inventorySteps()
 	s.menuSteps()
-	s.snapshot()
 }
 
 // inventorySteps moves items within the inventory, as the inventory screen

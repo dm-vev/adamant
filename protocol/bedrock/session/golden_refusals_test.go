@@ -26,6 +26,12 @@ func TestGoldenRefusals(t *testing.T) {
 		return
 	}
 	s := newScenario(t, "refusals", scenarioConfig{})
+	s.refusalsScenario()
+	s.snapshot()
+}
+
+// refusalsScenario runs the steps of TestGoldenRefusals.
+func (s *scenario) refusalsScenario() {
 	const inv = v2193.ContainerCombinedHotBarAndInventory
 
 	s.step("items given", func(_ *world.Tx, p *player.Player) {
@@ -131,7 +137,6 @@ func TestGoldenRefusals(t *testing.T) {
 			&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerLevelEntity, 0)})
 		s.closeContainer("the client closes " + menu.name)
 	}
-	s.snapshot()
 }
 
 // refuse sends an item stack request of the actions passed and fails the

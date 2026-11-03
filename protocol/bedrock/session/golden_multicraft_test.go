@@ -22,6 +22,12 @@ func TestGoldenMultiCraft(t *testing.T) {
 		return
 	}
 	s := newScenario(t, "multicraft", scenarioConfig{})
+	s.multiCraftScenario()
+	s.snapshot()
+}
+
+// multiCraftScenario runs the steps of TestGoldenMultiCraft.
+func (s *scenario) multiCraftScenario() {
 	const inv = v2193.ContainerCombinedHotBarAndInventory
 
 	sword := item.Sword{Tier: item.ToolTierWood}
@@ -56,7 +62,6 @@ func TestGoldenMultiCraft(t *testing.T) {
 	s.request("the repaired sword taken", nil,
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(inv, 2)})
 	s.closeContainer("the client closes the crafting table")
-	s.snapshot()
 }
 
 // multiRecipe returns the network ID of the multi recipe of the UUID passed

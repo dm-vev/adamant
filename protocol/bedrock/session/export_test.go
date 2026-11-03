@@ -1,6 +1,8 @@
 package session
 
 import (
+	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -12,6 +14,23 @@ import (
 // reads: a panic of a handler reaches the test.
 func (s *Session) HandlePacket(pk proto.Packet, tx *world.Tx, c Controllable) error {
 	return s.handlePacket(pk, tx, c)
+}
+
+// UseMenuRequests has the session handle item stack requests as batches of
+// server/menu, which TestGoldenMenuRequests compares with the handlers of
+// the session.
+func UseMenuRequests(s *Session) { s.menuRequests = true }
+
+// Inventories returns the inventories of the player of the session, as the
+// session holds them.
+func (s *Session) Inventories() (inv, offHand, enderChest, ui *inventory.Inventory, armour *inventory.Armour) {
+	return s.inv, s.offHand, s.enderChest, s.ui, s.armour
+}
+
+// Window returns the menu the session shows open, and the ID and type of
+// its window.
+func (s *Session) Window() (m *menu.Menu, id, containerType uint32) {
+	return s.menu.Load(), s.openedWindowID.Load(), s.openedContainerID.Load()
 }
 
 // EncodeSubChunk and EncodeBiomes encode the parts of a chunk as the session

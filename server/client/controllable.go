@@ -119,6 +119,10 @@ type Controllable interface {
 
 	// Menu returns the menu the player has open, nil if none.
 	Menu() *menu.Menu
+	// BeginMenu starts a batch of operations on the inventories of the
+	// player and its open menu, whose slots n names as the client's
+	// protocol does.
+	BeginMenu(n menu.Namer) *menu.Tx
 	// CloseMenu closes the menu the player has open, if any: as its client
 	// closed it, or, when clientRequested is false, as the server closes it,
 	// which the client is shown.

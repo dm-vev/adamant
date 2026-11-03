@@ -133,3 +133,40 @@ func TestPlayerOpensTheTradesOfAMerchant(t *testing.T) {
 		}
 	})
 }
+
+// TestPlayerBeginsBatchesOfItsMenu checks that a batch of BeginMenu works
+// on the inventories of the player and the menu it has open, and that the
+// player knows a batch runs until it ends.
+func TestPlayerBeginsBatchesOfItsMenu(t *testing.T) {
+	w, _ := clientTestWorld(t)
+	r := clienttest.New()
+	withClientPlayer(t, w, r, func(tx *world.Tx, p *Player) {
+		chest := cube.Pos{1, 100, 0}
+		tx.SetBlock(chest, block.NewChest(), nil)
+		p.OpenBlockContainer(chest, tx)
+		m := p.Menu()
+		_ = p.Inventory().SetItem(0, item.NewStack(item.Apple{}, 3))
+
+		names := func(s menu.Slot, role menu.Role) menu.Name { return menu.Name(role) }
+		b := p.BeginMenu(names)
+		if !p.menuTx.Load() {
+			t.Fatal("no batch runs after BeginMenu")
+		}
+		if err := b.SetSlot(menu.Ref{Slot: menu.Slot{Inv: m.Inventory(), Index: 4}}, item.NewStack(item.Apple{}, 1)); err != nil {
+			t.Fatal(err)
+		}
+		if err := b.SetSlot(menu.Ref{Slot: menu.Slot{Inv: p.Inventory(), Index: 0}}, item.NewStack(item.Apple{}, 2)); err != nil {
+			t.Fatal(err)
+		}
+		b.Rollback()
+		if p.menuTx.Load() {
+			t.Error("a batch still runs after its rollback")
+		}
+		if got, _ := m.Inventory().Item(4); !got.Empty() {
+			t.Errorf("the chest holds %v after the rollback", got)
+		}
+		if got, _ := p.Inventory().Item(0); got.Count() != 3 {
+			t.Errorf("the inventory holds %v after the rollback, want 3 apples", got)
+		}
+	})
+}
