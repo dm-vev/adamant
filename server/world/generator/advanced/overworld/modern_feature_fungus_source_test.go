@@ -19,6 +19,7 @@ type fungusSourceFixture struct {
 func (s fungusSourceFixture) BaseState(int32, int32, int32) world.NativeState { return s.air }
 func (fungusSourceFixture) GenerationDepth() int32                            { return 128 }
 func TestHugeFungusPreservesNonReplaceableLeavesReference(t *testing.T) {
+	t.Parallel()
 	// Executed HugeFungusFeature.place, LegacyRandomSource(1234), origin (8,65,8).
 	// Oak leaves obstruct both the stem and hat; the explicit replacement predicate
 	// permits shroomlight only in the stem. The source preserves every leaf.

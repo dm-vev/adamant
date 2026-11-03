@@ -75,6 +75,7 @@ func buildNeighborSourceTerrain(t *testing.T, tc neighborSourceCase) neighborSou
 	return s
 }
 func TestRandomNeighborSpreadMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_neighbor_spread_source.json")
 	if err != nil {
 		t.Fatal(err)

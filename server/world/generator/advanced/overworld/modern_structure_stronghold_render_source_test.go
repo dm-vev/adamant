@@ -51,6 +51,7 @@ type strongholdRenderActor struct {
 }
 
 func TestStrongholdRenderingMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_stronghold_render.json")
 	if err != nil {
 		t.Fatal(err)

@@ -51,6 +51,7 @@ func (s sculkFeatureSource) BaseState(x, y, z int32) world.NativeState {
 	return s.states[name]
 }
 func TestSculkPatchMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_sculk.json")
 	if err != nil {
 		t.Fatal(err)

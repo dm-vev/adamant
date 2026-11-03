@@ -33,6 +33,7 @@ func configuredStartSet(t *testing.T, planner *modernStructures, name string) mo
 }
 
 func TestConfiguredStructureStartsMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_structure_starts.json")
 	if err != nil {
 		t.Fatal(err)

@@ -32,6 +32,7 @@ type steppedColumnSourceFixture struct {
 }
 
 func TestSteppedColumnFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_stepped_column_source.json")
 	if err != nil {
 		t.Fatal(err)

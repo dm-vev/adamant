@@ -16,6 +16,7 @@ func init() {
 // runtime-ID hashes. This is not a general order-independence contract: source
 // one-time chests/spawners depend on the first real chunk postProcess.
 func TestGenerationOrderForSeedZeroOriginNeighbourhood(t *testing.T) {
+	t.Parallel()
 	positions := []world.ChunkPos{{-1, -1}, {-1, 0}, {0, -1}, {0, 0}}
 	r := world.Overworld.Range()
 	generate := func(g *Overworld, pos world.ChunkPos) *chunk.Chunk {

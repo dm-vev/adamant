@@ -27,6 +27,7 @@ type shipwreckConstructorFixture struct {
 }
 
 func TestShipwreckConstructorMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_shipwreck_constructor.json")
 	if err != nil {
 		t.Fatal(err)
@@ -99,6 +100,7 @@ func (s shipwreckNativeTerrain) BaseBlock(x, y, z int32) world.Block {
 }
 
 func TestShipwreckMarkerLootUsesAppliedNativeActor(t *testing.T) {
+	t.Parallel()
 	resolve := func(name string, properties map[string]any) world.NativeState {
 		state, err := world.ResolveState(world.DefaultBlockRegistry, world.BlockState{Name: name, Properties: properties})
 		if err != nil {

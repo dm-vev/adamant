@@ -52,6 +52,7 @@ func blockPileSourceTerrain(t *testing.T, tc blockPileSourceCase, minY, maxY int
 }
 
 func TestBlockPileFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_block_pile_source.json")
 	if err != nil {
 		t.Fatal(err)

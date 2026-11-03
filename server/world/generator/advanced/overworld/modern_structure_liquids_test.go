@@ -14,6 +14,7 @@ type liquidStructureSource struct{ pillarAirSource }
 func (liquidStructureSource) NoiseBiomeAt(int32, int32, int32) string { return "minecraft:plains" }
 
 func TestTrialChamberLiquidPolicyReplacesAmbientWater(t *testing.T) {
+	t.Parallel()
 	for _, policy := range []string{"ignore_waterlogging", "apply_waterlogging"} {
 		t.Run(policy, func(t *testing.T) {
 			config := map[string]any{}
@@ -76,6 +77,7 @@ func TestTrialChamberLiquidPolicyReplacesAmbientWater(t *testing.T) {
 }
 
 func TestListTemplateLiquidPassesCompleteBeforeNextTemplate(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name                     string
 		firstWater, ignoreSecond bool
@@ -130,6 +132,7 @@ func TestListTemplateLiquidPassesCompleteBeforeNextTemplate(t *testing.T) {
 }
 
 func TestListTemplateReplacementRemovesEarlierActor(t *testing.T) {
+	t.Parallel()
 	region := templateFluidTestRegion()
 	combined := structure.Placement{TemplateUpdateFlags: 18, TemplateKnownShape: true}
 	for _, entry := range []structure.Block{

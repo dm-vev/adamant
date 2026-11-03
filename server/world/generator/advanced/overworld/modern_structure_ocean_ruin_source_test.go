@@ -8,6 +8,7 @@ import (
 )
 
 func TestOceanRuinGraphMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_ocean_ruin_source.json")
 	if err != nil {
 		t.Fatal(err)

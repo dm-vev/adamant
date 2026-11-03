@@ -44,6 +44,7 @@ type diskSourceFixture struct {
 }
 
 func TestDiskFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_disk_source.json")
 	if err != nil {
 		t.Fatal(err)

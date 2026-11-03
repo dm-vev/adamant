@@ -70,6 +70,7 @@ func buildDeltaSourceTerrain(t *testing.T, tc deltaSourceCase) deltaSourceTerrai
 }
 
 func TestDeltaFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_delta_source.json")
 	if err != nil {
 		t.Fatal(err)

@@ -14,6 +14,7 @@ import (
 )
 
 func TestVoidPlatformMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_void_platform.json")
 	if err != nil {
 		t.Fatal(err)
@@ -64,6 +65,7 @@ func TestVoidPlatformMatchesReference(t *testing.T) {
 }
 
 func TestNoOpFeaturePreservesWorldAndRandom(t *testing.T) {
+	t.Parallel()
 	region := countLayerTestRegion()
 	random := vanilla.NewLegacyRandom(123)
 	wantRandom := vanilla.NewLegacyRandom(123)

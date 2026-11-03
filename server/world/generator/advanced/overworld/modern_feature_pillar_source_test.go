@@ -34,6 +34,7 @@ type pillarSourceFixture struct {
 }
 
 func TestPillarFeaturesMatchSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_pillar_source.json")
 	if err != nil {
 		t.Fatal(err)

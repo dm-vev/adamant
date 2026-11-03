@@ -17,6 +17,7 @@ import (
 )
 
 func TestMansionPostProcessMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_mansion_post_source.json")
 	if err != nil {
 		t.Fatal(err)

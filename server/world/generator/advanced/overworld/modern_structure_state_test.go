@@ -34,6 +34,7 @@ func statefulMineshaftStart(t *testing.T) modernStructureStart {
 }
 
 func TestMineshaftSpawnerDoesNotDuplicateAcrossChunkClipsAfterMCDBRestart(t *testing.T) {
+	t.Parallel()
 	start := statefulMineshaftStart(t)
 	var chosen minePiece
 	var first, second [3]int32
@@ -146,6 +147,7 @@ func (s structureStateDecorationSource) PlaceStructureStep(pos world.ChunkPos, s
 }
 
 func TestNeighbourDecorationPreviewDoesNotConsumeMineshaftSpawner(t *testing.T) {
+	t.Parallel()
 	// A four-section source corridor crosses Z=16. Neighbour writes are previewed,
 	// but only the returned target column owns the persisted placement flag.
 	for _, firstZ := range []int32{0, 1} {

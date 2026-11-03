@@ -11,6 +11,7 @@ import (
 )
 
 func TestTemplatePlacementUpdatesBoundaryShape(t *testing.T) {
+	t.Parallel()
 	for _, placedBars := range []bool{true, false} {
 		name := "placed bars connect to existing stone"
 		if !placedBars {
@@ -50,6 +51,7 @@ func TestTemplatePlacementUpdatesBoundaryShape(t *testing.T) {
 	}
 }
 func TestTemplateKnownShapeIsIndependentOfUpdateFlags(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		flags      int
@@ -89,6 +91,7 @@ func TestTemplateKnownShapeIsIndependentOfUpdateFlags(t *testing.T) {
 	}
 }
 func TestTemplateChestShapeRefreshesInventoryPayload(t *testing.T) {
+	t.Parallel()
 	region := templateFluidTestRegion()
 	pos := [3]int32{8, 64, 8}
 	template := structure.Template{
@@ -142,6 +145,7 @@ func TestTemplateChestShapeRefreshesInventoryPayload(t *testing.T) {
 }
 
 func TestTreeLeafDistancePreservesSourceStaleBucketWrites(t *testing.T) {
+	t.Parallel()
 	region := templateFluidTestRegion()
 	logs := []featurePos{{8, 64, 8}, {9, 66, 8}}
 	near, stale := featurePos{9, 65, 8}, featurePos{9, 64, 8}
@@ -174,6 +178,7 @@ func TestTreeLeafDistancePreservesSourceStaleBucketWrites(t *testing.T) {
 }
 
 func TestBlobFoliageCornerRowsMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_blob_corner_rows.json")
 	if err != nil {
 		t.Fatal(err)

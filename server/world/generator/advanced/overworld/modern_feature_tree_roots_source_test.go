@@ -38,6 +38,7 @@ type mangroveRootSourceFixture struct {
 }
 
 func TestMangroveRootsMatchSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_mangrove_roots_source.json")
 	if err != nil {
 		t.Fatal(err)

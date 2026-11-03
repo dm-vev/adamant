@@ -11,6 +11,7 @@ import (
 )
 
 func TestMansionEntranceBoundaryMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_mansion_boundary.json")
 	if err != nil {
 		t.Fatal(err)

@@ -44,6 +44,7 @@ func floor(tx *world.Tx, b world.Block, y, radius int) {
 // saplings, a mushroom into a huge mushroom, a fungus on its nylium into a
 // huge fungus, and moss spreads a patch.
 func TestPlantsGrowIntoFeatures(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -125,6 +126,7 @@ func TestPlantsGrowIntoFeatures(t *testing.T) {
 // GrassBlock.performBonemeal: short grass grows across the grass around, and
 // with repeated use the plains biome's flowers too.
 func TestGrassBoneMealGrowsBiomePlants(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

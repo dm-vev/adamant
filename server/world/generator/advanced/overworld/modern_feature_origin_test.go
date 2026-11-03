@@ -14,6 +14,7 @@ import (
 // chunks along the border hangs on a log within leaf distance, so no chunk
 // keeps a canopy whose trunk its neighbour never placed.
 func TestTreesCrossingChunkBordersAreWhole(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	g := NewOverworld(0)
 	chunks := make(map[world.ChunkPos]*chunk.Chunk)

@@ -75,6 +75,7 @@ func buildMagmaSourceTerrain(t *testing.T, tc magmaSourceCase) magmaSourceTerrai
 	return s
 }
 func TestUnderwaterMagmaMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_underwater_magma_source.json")
 	if err != nil {
 		t.Fatal(err)

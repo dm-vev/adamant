@@ -53,6 +53,7 @@ func checkDiskMaterials(t *testing.T, r *featureRegion, want string) {
 }
 
 func TestDiskWeightedPlacementMatchesReference(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		xoroshiro bool
 		seed      int64
@@ -86,6 +87,7 @@ func TestDiskWeightedPlacementMatchesReference(t *testing.T) {
 }
 
 func TestDiskContextualOptionalStates(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name      string
 		provider  any

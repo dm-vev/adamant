@@ -35,6 +35,7 @@ var javaChunkBlocks = []struct {
 // TestChunksMatchTheJavaServer generates the chunks of javaChunkBlocks and
 // checks the blocks the Java server generated in them.
 func TestChunksMatchTheJavaServer(t *testing.T) {
+	t.Parallel()
 	g := NewOverworld(12345)
 	chunks := map[world.ChunkPos]*chunk.Chunk{}
 	for _, b := range javaChunkBlocks {

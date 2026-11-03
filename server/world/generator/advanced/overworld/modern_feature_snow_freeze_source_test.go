@@ -101,6 +101,7 @@ func snowFreezeSourceStateKey(p featurePos, name string, properties map[string]s
 }
 
 func TestSnowAndFreezeMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_snow_freeze_source.json")
 	if err != nil {
 		t.Fatal(err)

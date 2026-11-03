@@ -121,6 +121,7 @@ func multifaceSourceState(name string, properties map[string]any) world.NativeSt
 }
 
 func TestMultifaceGrowthMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_multiface_source.json")
 	if err != nil {
 		t.Fatal(err)

@@ -59,6 +59,7 @@ func largeDripstoneBuildSourceTerrain(region *featureRegion, origin featurePos, 
 }
 
 func TestLargeDripstoneMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_large_dripstone_source.json")
 	if err != nil {
 		t.Fatal(err)

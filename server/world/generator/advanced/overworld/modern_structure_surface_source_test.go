@@ -65,6 +65,7 @@ func (s surfaceSourceTerrain) NoiseBiomeAt(_, y, _ int32) string {
 // The fixtures execute Structure.findValidGenerationPoint and the source's raw
 // builders. The acceptance boundaries are independent of postProcess HPos.
 func TestSurfaceStructureGenerationMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_surface_acceptance.json")
 	if err != nil {
 		t.Fatal(err)

@@ -8,6 +8,7 @@ import (
 )
 
 func TestVinesMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_vines.json")
 	if err != nil {
 		t.Fatal(err)
@@ -65,6 +66,7 @@ func TestVinesMatchReference(t *testing.T) {
 }
 
 func TestLeavesAttachVinesButDoNotSupportPiles(t *testing.T) {
+	t.Parallel()
 	region := countLayerTestRegion()
 	p := featurePos{8, 10, 8}
 	block, _ := featureStateBlock("minecraft:oak_leaves")

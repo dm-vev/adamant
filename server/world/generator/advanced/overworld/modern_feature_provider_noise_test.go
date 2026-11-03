@@ -13,6 +13,7 @@ import (
 )
 
 func TestNamedStateProvidersMatchReference(t *testing.T) {
+	t.Parallel()
 	// Captured from the six source providers that do not need world queries,
 	// decoded from the pinned client resources by Java's actual provider codec.
 	var cases []struct {
@@ -58,6 +59,7 @@ func TestNamedStateProvidersMatchReference(t *testing.T) {
 }
 
 func TestNamedOptionalTreeProviders(t *testing.T) {
+	t.Parallel()
 	r := countLayerTestRegion()
 	grass, stone := featurePos{1, 5, 1}, featurePos{2, 5, 1}
 	r.Set(grass, countLayerNativeState(t, "grass_block"))
@@ -86,6 +88,7 @@ func TestNamedOptionalTreeProviders(t *testing.T) {
 }
 
 func TestRandomizedProviderMissingIntegerPropertyDoesNotDraw(t *testing.T) {
+	t.Parallel()
 	random := vanilla.NewLegacyRandom(123)
 	provider := map[string]any{
 		"type": "randomized_int", "source": map[string]any{"id": "minecraft:stone"}, "property": "age",

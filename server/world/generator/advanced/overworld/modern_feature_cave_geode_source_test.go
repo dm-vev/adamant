@@ -61,6 +61,7 @@ func (s geodeSourceTerrain) BaseState(x, y, z int32) world.NativeState {
 }
 
 func TestGeodeMatchesSourceFixtures(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_geode_source.json")
 	if err != nil {
 		t.Fatal(err)

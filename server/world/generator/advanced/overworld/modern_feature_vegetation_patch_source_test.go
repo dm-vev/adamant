@@ -66,6 +66,7 @@ func (s vegetationPatchSourceTerrain) BaseHeight(x, z int32, _ bool) int32 {
 }
 
 func TestVegetationPatchFeaturesMatchSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_vegetation_patch_source.json")
 	if err != nil {
 		t.Fatal(err)

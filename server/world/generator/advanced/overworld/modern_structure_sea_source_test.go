@@ -60,6 +60,7 @@ func (s seaSourceTerrain) NoiseBiomeAt(_, y, _ int32) string {
 // Fixtures execute the actual Source findValidGenerationPoint and raw builders.
 // Ocean-floor and surface stubs must not sample the first-free height instead.
 func TestSeaStructureGenerationMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_sea_acceptance.json")
 	if err != nil {
 		t.Fatal(err)

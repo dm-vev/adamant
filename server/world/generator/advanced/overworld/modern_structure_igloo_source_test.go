@@ -37,6 +37,7 @@ type iglooGraphFixturePiece struct {
 }
 
 func TestIglooGraphsMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_igloo_graphs.json")
 	if err != nil {
 		t.Fatal(err)
@@ -174,6 +175,7 @@ func (s iglooFixtureTerrain) BaseBlock(x, y, z int32) world.Block {
 }
 
 func TestIglooPostProcessMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_igloo_post.json")
 	if err != nil {
 		t.Fatal(err)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestMansionGraphsMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_mansion_graphs.json")
 	if err != nil {
 		t.Fatal(err)

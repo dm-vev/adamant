@@ -7,6 +7,7 @@ import (
 )
 
 func TestRandomNeighborSpreadCountsHolderSetMembers(t *testing.T) {
+	t.Parallel()
 	// The builtin weeping-vines feature accepts a direct holder list, unlike
 	// glowstone's single holder. Placement requires exactly one matching face.
 	for _, tc := range []struct{ name, neighbor, want string }{

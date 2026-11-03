@@ -29,6 +29,7 @@ func (sourceGeometryAquifer) CarveTopMaterial(_, _, _ int32, _ bool) (world.Bloc
 }
 
 func TestCarvingGeometryMatchesReference(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_carving_geometry.json")
 	if err != nil {

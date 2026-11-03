@@ -13,6 +13,7 @@ import (
 )
 
 func TestVinesFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_vines_source.json")
 	if err != nil {
 		t.Fatal(err)

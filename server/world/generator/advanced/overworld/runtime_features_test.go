@@ -14,6 +14,7 @@ import (
 // above its origin and leaves around them, and does not grow where its
 // trunk is blocked.
 func TestRuntimeFeaturesGrowTreesInLiveWorld(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

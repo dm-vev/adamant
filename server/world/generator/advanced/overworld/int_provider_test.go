@@ -9,6 +9,7 @@ import (
 // Sequences and following nextLong values were produced by the pinned Java 26.3
 // IntProvider implementations at seed 123, independently of this sampler.
 func TestIntProviderSequences(t *testing.T) {
+	t.Parallel()
  tests := []struct { name, provider string; xoroshiro bool; want [16]int32; next int64 }{
   {name: "legacy/constant", provider: `7`, xoroshiro: false, want: [16]int32{7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}, next: -5106534569952410475},
   {name: "legacy/uniform", provider: `{"type":"minecraft:uniform","min_inclusive":-4,"max_inclusive":9}`, xoroshiro: false, want: [16]int32{-4, 2, 2, 3, 7, 7, 6, -3, 5, -3, 5, 4, 8, 1, -3, 5}, next: -3758321679654915806},

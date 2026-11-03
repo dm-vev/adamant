@@ -42,6 +42,7 @@ func readSteppedColumnOracle(t *testing.T) steppedColumnOracle {
 }
 
 func TestSteppedColumnsMatchReference(t *testing.T) {
+	t.Parallel()
 	// Executed Java SteppedColumnClusterFeature, including weighted states,
 	// uneven ground, forbidden supports, continuation and exhausted searches.
 	for _, tc := range readSteppedColumnOracle(t).Clusters {
@@ -113,6 +114,7 @@ func TestSteppedColumnsMatchReference(t *testing.T) {
 }
 
 func TestHeightPredicateMatchesReference(t *testing.T) {
+	t.Parallel()
 	r := countLayerTestRegion()
 	r.f.source = modernTerrainSource{}
 	for _, tc := range readSteppedColumnOracle(t).Heights {

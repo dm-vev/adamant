@@ -40,6 +40,7 @@ type coralGrowthFixture struct {
 }
 
 func TestCoralGrowthMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_coral_growth_source.json")
 	if err != nil {
 		t.Fatal(err)

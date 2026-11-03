@@ -140,6 +140,7 @@ func monsterRoomSourceInt(value any) (int64, bool) {
 	return 0, false
 }
 func TestMonsterRoomMatchesSource(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	b, err := os.ReadFile("testdata/java263_monster_room_source.json")
 	if err != nil {

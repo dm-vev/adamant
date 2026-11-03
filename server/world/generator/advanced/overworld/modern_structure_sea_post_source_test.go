@@ -112,6 +112,7 @@ func (s seaPostTerrain) BaseBlock(x, y, z int32) world.Block {
 }
 
 func TestSeaPostProcessingMatchesReference(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_sea_post.json")
 	if err != nil {

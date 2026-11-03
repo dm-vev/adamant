@@ -37,6 +37,7 @@ func (s templateFeatureSource) BaseBlock(x, y, z int32) world.Block {
 func (s templateFeatureSource) BaseHeight(int32, int32, bool) int32 { return 80 }
 func (s templateFeatureSource) BiomeAt(int32, int32, int32) string  { return "desert" }
 func TestTemplateFeatureMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_templates.json")
 	if err != nil {
 		t.Fatal(err)
@@ -126,6 +127,7 @@ func TestTemplateFeatureMatchesReference(t *testing.T) {
 }
 
 func TestTemplateRuleObservesPriorFeature(t *testing.T) {
+	t.Parallel()
 	native := func(name string) world.NativeState {
 		state, err := world.ResolveState(world.DefaultBlockRegistry, world.BlockState{Name: "minecraft:" + name})
 		if err != nil {
@@ -162,6 +164,7 @@ func TestTemplateRuleObservesPriorFeature(t *testing.T) {
 }
 
 func TestLavaSubmergedStructurePublishesOnlyFinalBlockActors(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	lavaProcessor, err := structure.LoadProcessors(nil, []structure.ProcessorSpec{{Type: "lava_submerged_block"}}, structure.ProcessorEnvironment{
 		BaseBlock: func(x, _, _ int32) world.Block {

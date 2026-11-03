@@ -74,6 +74,7 @@ func replaceBlobSourceNative(t *testing.T, row replaceBlobSourceBlock) world.Nat
 }
 
 func TestReplaceBlobFeaturesMatchSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_replace_blob_source.json")
 	if err != nil {
 		t.Fatal(err)

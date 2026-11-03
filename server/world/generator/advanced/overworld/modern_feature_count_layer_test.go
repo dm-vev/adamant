@@ -37,6 +37,7 @@ func countLayerNativeState(t *testing.T, name string) world.NativeState {
 }
 
 func TestPlacementHeightFluidLayersAndNativeAliases(t *testing.T) {
+	t.Parallel()
 	r := countLayerTestRegion()
 	// These columns make the distinction between fluid-aware heightmaps,
 	// solid-only ocean floor, and Java/native alias interpretation explicit.
@@ -76,6 +77,7 @@ func TestPlacementHeightFluidLayersAndNativeAliases(t *testing.T) {
 }
 
 func TestPlacementHeightCacheInvalidatesAfterSet(t *testing.T) {
+	t.Parallel()
 	r := countLayerTestRegion()
 	bottom := featurePos{3, 10, 3}
 	top := featurePos{3, 18, 3}
@@ -100,6 +102,7 @@ func TestPlacementHeightCacheInvalidatesAfterSet(t *testing.T) {
 }
 
 func TestCountEveryLayerPositionsAcrossStoneAirWaterStack(t *testing.T) {
+	t.Parallel()
 	r := countLayerTestRegion()
 	// Java oracle fixture: minY 0, bedrock at 0, stone at 4 and 12,
 	// water at 8, otherwise air; each sampled column is identical.
@@ -140,6 +143,7 @@ func TestCountEveryLayerPositionsAcrossStoneAirWaterStack(t *testing.T) {
 }
 
 func TestBlockPredicateIdentifiersAndOffset(t *testing.T) {
+	t.Parallel()
 	r := countLayerTestRegion()
 	if !r.Set(featurePos{1, 10, 1}, countLayerNativeState(t, "stone")) {
 		t.Fatal("failed to set stone")

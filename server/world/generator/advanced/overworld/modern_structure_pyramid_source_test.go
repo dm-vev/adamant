@@ -26,6 +26,7 @@ type desertPyramidConstructorFixture struct {
 }
 
 func TestDesertPyramidRawConstructorMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_desert_pyramid_constructor.json")
 	if err != nil {
 		t.Fatal(err)
@@ -96,6 +97,7 @@ type desertPyramidSourceFixture struct {
 }
 
 func TestDesertPyramidPostProcessAndAfterPlaceMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_desert_pyramid_full.json")
 	if err != nil {
 		t.Fatal(err)
@@ -273,6 +275,7 @@ type desertPyramidSequenceFixture struct {
 }
 
 func TestDesertPyramidRepeatedChunksAndSaveReloadMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_desert_pyramid_sequence.json")
 	if err != nil {
 		t.Fatal(err)

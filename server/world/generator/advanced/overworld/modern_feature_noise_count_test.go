@@ -6,6 +6,7 @@ import (
 )
 
 func TestNoisePlacementCountsMatchReference(t *testing.T) {
+	t.Parallel()
 	// Captured from executed Java 26.3 NoiseBasedCountPlacement(128,200,0)
 	// and NoiseThresholdCountPlacement(0,1,3). Negative counts emit no positions.
 	positions := []featurePos{

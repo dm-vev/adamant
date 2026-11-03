@@ -42,6 +42,7 @@ type hugeFungusSourceTerrain struct {
 func (s hugeFungusSourceTerrain) GenerationDepth() int32 { return s.genDepth }
 
 func TestHugeFungusFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_huge_fungus_source.json")
 	if err != nil {
 		t.Fatal(err)

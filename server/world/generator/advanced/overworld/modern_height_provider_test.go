@@ -35,6 +35,7 @@ func heightProviderCases(t *testing.T) []heightProviderOracle {
 	return cases
 }
 func TestHeightProvidersMatchSource(t *testing.T) {
+	t.Parallel()
 	for _, row := range heightProviderCases(t) {
 		random := vanilla.NewLegacyRandom(row.Seed)
 		if row.Xoroshiro {
@@ -52,6 +53,7 @@ func TestHeightProvidersMatchSource(t *testing.T) {
 	}
 }
 func TestJigsawStartSamplesHeightBeforePoolSelection(t *testing.T) {
+	t.Parallel()
 	for _, row := range heightProviderCases(t) {
 		if row.MinY != -64 || row.Height != 384 || row.Seed != 0 || row.Xoroshiro {
 			continue

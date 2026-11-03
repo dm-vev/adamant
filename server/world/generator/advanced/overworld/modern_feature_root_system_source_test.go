@@ -112,6 +112,7 @@ func rootSystemFixtureState(t *testing.T, name string, properties map[string]str
 }
 
 func TestRootSystemMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_root_system_source.json")
 	if err != nil {
 		t.Fatal(err)

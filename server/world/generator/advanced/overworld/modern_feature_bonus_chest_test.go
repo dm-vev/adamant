@@ -45,6 +45,7 @@ func (s bonusFeatureSource) BaseState(x, y, z int32) world.NativeState {
 	return s.states[name]
 }
 func TestBonusChestMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_bonus_chest.json")
 	if err != nil {
 		t.Fatal(err)

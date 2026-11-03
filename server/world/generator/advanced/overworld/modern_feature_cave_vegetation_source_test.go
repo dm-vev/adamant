@@ -41,6 +41,7 @@ func loadSourceCavePlacement(t *testing.T) sourceCavePlacementFixture {
 }
 
 func TestEnvironmentScanBuildHeightMatchesReference(t *testing.T) {
+	t.Parallel()
 	fixture := loadSourceCavePlacement(t)
 	for _, scan := range fixture.Scans {
 		t.Run(fmt.Sprintf("y%d/step%d", scan.OriginY, scan.Step), func(t *testing.T) {
@@ -71,6 +72,7 @@ func TestEnvironmentScanBuildHeightMatchesReference(t *testing.T) {
 }
 
 func TestWaterloggedVegetationPatchWaterlogsGroundCellReference(t *testing.T) {
+	t.Parallel()
 	fixture := loadSourceCavePlacement(t)
 	r := templateFluidTestRegion()
 	for x := int32(7); x <= 9; x++ {

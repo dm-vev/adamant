@@ -18,10 +18,12 @@ func (s pillarAirSource) BaseState(_, _, _ int32) world.NativeState {
 	return world.NativeState{Block: s.air, Liquid: s.air}
 }
 func TestPillarFeaturesMatchReference(t *testing.T) {
+	t.Parallel()
 	checkFeatureOracle(t, "testdata/java263_pillar.json")
 }
 
 func TestMiscFeaturesMatchReference(t *testing.T) {
+	t.Parallel()
 	checkFeatureOracle(t, "testdata/java263_misc_features.json")
 }
 

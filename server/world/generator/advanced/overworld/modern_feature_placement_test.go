@@ -8,6 +8,7 @@ import (
 )
 
 func TestPlacementOrderMatchesReference(t *testing.T) {
+	t.Parallel()
 	// Captured from executed Java FeaturePlacer, including a feature consuming
 	// nextInt(7). Later positions must run even after an earlier placement succeeds.
 	uniform := func(min, max float64) map[string]any {
@@ -51,6 +52,7 @@ func TestPlacementOrderMatchesReference(t *testing.T) {
 }
 
 func TestCuboidPlacementMatchesReference(t *testing.T) {
+	t.Parallel()
 	f := &ModernFeatures{}
 	random := vanilla.NewLegacyRandom(1)
 	got := f.modifyPlacement(nil, featurePos{-1, 10, 4}, map[string]any{
@@ -64,6 +66,7 @@ func TestCuboidPlacementMatchesReference(t *testing.T) {
 }
 
 func TestRuleProviderEmptyMatchContinues(t *testing.T) {
+	t.Parallel()
 	// Executed Java skips the first matching rule when its nested provider has
 	// no optional state, rather than taking the current world state or fallback.
 	empty := map[string]any{"type": "rule_based", "rules": []any{}}

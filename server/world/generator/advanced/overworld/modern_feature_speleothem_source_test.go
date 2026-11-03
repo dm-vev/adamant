@@ -65,6 +65,7 @@ func buildSpeleothemSourceTerrain(t *testing.T, tc speleothemSourceCase) speleot
 	return terrain
 }
 func TestSpeleothemFeaturesMatchSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_speleothem_source.json")
 	if err != nil {
 		t.Fatal(err)

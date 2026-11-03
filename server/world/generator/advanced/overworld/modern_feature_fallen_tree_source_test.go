@@ -41,6 +41,7 @@ type fallenTreeSourceFixture struct {
 }
 
 func TestFallenTreeFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_fallen_tree_source.json")
 	if err != nil {
 		t.Fatal(err)

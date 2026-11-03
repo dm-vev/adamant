@@ -67,6 +67,7 @@ func blockColumnSourceTerrain(t *testing.T, tc blockColumnSourceCase, minY, maxY
 }
 
 func TestBlockColumnFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_block_column_source.json")
 	if err != nil {
 		t.Fatal(err)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestTemplatePlacementWaterlogsNativeWaterSources(t *testing.T) {
+	t.Parallel()
 	registry := world.DefaultBlockRegistry
 	water, err := world.ResolveState(registry, world.BlockState{Name: "minecraft:water"})
 	if err != nil {
@@ -63,6 +64,7 @@ func TestTemplatePlacementWaterlogsNativeWaterSources(t *testing.T) {
 }
 
 func TestTemplateFluidSourcePropagationAndCurrentState(t *testing.T) {
+	t.Parallel()
 	water, err := world.ResolveState(world.DefaultBlockRegistry, world.BlockState{Name: "minecraft:water"})
 	if err != nil {
 		t.Fatal(err)
@@ -163,6 +165,7 @@ func assertTemplateSlab(t *testing.T, region *featureRegion, pos featurePos, wan
 }
 
 func TestTemplateFluidExtinguishesNativePayload(t *testing.T) {
+	t.Parallel()
 	for _, ambient := range []bool{false, true} {
 		region := templateFluidTestRegion()
 		pos := featurePos{8, 80, 8}
@@ -197,6 +200,7 @@ func TestTemplateFluidExtinguishesNativePayload(t *testing.T) {
 }
 
 func TestTemplateFluidDropsOverwrittenActor(t *testing.T) {
+	t.Parallel()
 	region := templateFluidTestRegion()
 	campfire := structure.Block{Pos: [3]int32{8, 80, 8}, State: world.BlockState{Name: "minecraft:campfire"}, NativeBlock: block.Campfire{Type: block.NormalFire()}}
 	stone := structure.Block{Pos: campfire.Pos, State: world.BlockState{Name: "minecraft:stone"}}
@@ -206,6 +210,7 @@ func TestTemplateFluidDropsOverwrittenActor(t *testing.T) {
 }
 
 func TestTemplateRefillTicksFollowSuccessfulFillOrder(t *testing.T) {
+	t.Parallel()
 	region := templateFluidTestRegion()
 	water, err := world.ResolveState(world.DefaultBlockRegistry, world.BlockState{Name: "minecraft:water"})
 	if err != nil {
@@ -230,6 +235,7 @@ func TestTemplateRefillTicksFollowSuccessfulFillOrder(t *testing.T) {
 }
 
 func TestSpringReplayPublishesOnlyTargetOwnedTicks(t *testing.T) {
+	t.Parallel()
 	registry := world.DefaultBlockRegistry
 	stone, err := world.ResolveState(registry, world.BlockState{Name: "minecraft:stone"})
 	if err != nil {

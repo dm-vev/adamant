@@ -114,6 +114,7 @@ func fossilSourceNativeState(t *testing.T, raw string) world.NativeState {
 }
 
 func TestFossilMatchesSourceFixtures(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_fossil_source.json")
 	if err != nil {
 		t.Fatal(err)

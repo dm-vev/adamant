@@ -17,6 +17,7 @@ const javaPortalSeed = -7406315911040434051
 // instead of the height findSuitableY chose, and the biome at that height
 // was never checked.
 func TestRuinedPortalStartsMatchJava(t *testing.T) {
+	t.Parallel()
 	s := New(javaPortalSeed).modernStructures
 	for _, c := range []struct {
 		structure string
@@ -56,6 +57,7 @@ func TestRuinedPortalStartsMatchJava(t *testing.T) {
 // its centre, writing into the chunks around it: the portal of chunk
 // 379, 143 is centred in chunk 379, 144.
 func TestRuinedPortalReachesNeighbourChunks(t *testing.T) {
+	t.Parallel()
 	g := New(javaPortalSeed)
 	chunks := map[world.ChunkPos]*chunk.Chunk{}
 	for _, b := range []struct {

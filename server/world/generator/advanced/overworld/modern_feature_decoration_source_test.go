@@ -18,6 +18,7 @@ import (
 // composition DecorateInOneRegion runs. Structures are disabled on both
 // sides; noise, surfaces, carvers and every available placed feature remain on.
 func TestOverworldDecorationMatchesReference(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_decoration.json")
 	if err != nil {

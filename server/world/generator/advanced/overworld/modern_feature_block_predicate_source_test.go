@@ -43,6 +43,7 @@ func (s blockPredicateSourceTerrain) BiomeAt(x, y, z int32) string {
 }
 
 func TestBlockPredicatesMatchSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_block_predicate_source.json")
 	if err != nil {
 		t.Fatal(err)

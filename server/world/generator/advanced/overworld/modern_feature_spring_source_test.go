@@ -30,6 +30,7 @@ type springSourceFixture struct {
 }
 
 func TestSpringFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_spring_source.json")
 	if err != nil {
 		t.Fatal(err)

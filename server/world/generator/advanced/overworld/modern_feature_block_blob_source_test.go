@@ -69,6 +69,7 @@ func blockBlobSourceTerrain(t *testing.T, tc blockBlobSourceCase) replaceBlobSou
 }
 
 func TestBlockBlobFeatureMatchesSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_block_blob_source.json")
 	if err != nil {
 		t.Fatal(err)

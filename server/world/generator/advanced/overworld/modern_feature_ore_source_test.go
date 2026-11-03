@@ -34,6 +34,7 @@ func (oreExposureSource) BaseHeight(int32, int32, bool) int32 { return 128 }
 // discard chance; the single air block adjacent to (6,64,8) exposes the
 // discard behavior while the size-12 vein exercises overlapping spheres.
 func TestModernOreExposureReference(t *testing.T) {
+	t.Parallel()
 	registry := world.DefaultBlockRegistry
 	stone, err := world.ResolveState(registry, world.BlockState{Name: "minecraft:stone"})
 	if err != nil {

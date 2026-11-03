@@ -40,6 +40,7 @@ type mineshaftGraphPiece struct {
 }
 
 func TestMineshaftGraphsMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_mineshaft_graphs.json")
 	if err != nil {
 		t.Fatal(err)
@@ -168,6 +169,7 @@ func mineshaftFixtureBlockID(encoded string) (uint32, error) {
 }
 
 func TestMineshaftPlacementsMatchReference(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_mineshaft_post.json")
 	if err != nil {
@@ -331,6 +333,7 @@ type mineshaftSupportFixture struct {
 }
 
 func TestMineshaftSupportColumnsMatchReference(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_mineshaft_support.json")
 	if err != nil {

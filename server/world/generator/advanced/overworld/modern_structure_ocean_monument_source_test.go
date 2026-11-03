@@ -81,6 +81,7 @@ type monumentFullEntityFixture struct {
 }
 
 func TestOceanMonumentFullPostProcessMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_ocean_monument_full_post.json")
 	if err != nil {
 		t.Fatal(err)
@@ -162,6 +163,7 @@ func TestOceanMonumentFullPostProcessMatchesReference(t *testing.T) {
 }
 
 func TestOceanMonumentPostProcessMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_ocean_monument_post.json")
 	if err != nil {
 		t.Fatal(err)
@@ -256,6 +258,7 @@ func monumentPostHash(states map[[3]int32]string) string {
 }
 
 func TestOceanMonumentGraphMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_ocean_monument_graph.json")
 	if err != nil {
 		t.Fatal(err)

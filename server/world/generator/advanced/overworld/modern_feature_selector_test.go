@@ -18,6 +18,7 @@ func selectorTestRegion() *featureRegion {
 }
 
 func TestSelectorsMatchReference(t *testing.T) {
+	t.Parallel()
 	// Captured from all four executed Java selector features. Each selected
 	// PlacedFeature offsets its real configured feature before placement.
 	kinds := []string{"random_selector", "random_boolean_selector", "simple_random_selector", "weighted_random_selector"}
@@ -70,6 +71,7 @@ func TestSelectorsMatchReference(t *testing.T) {
 }
 
 func TestSequenceStopsOnFailureWhileOverlayContinues(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"sequence", "overlay"} {
 		t.Run(kind, func(t *testing.T) {
 			r := selectorTestRegion()
@@ -90,6 +92,7 @@ func TestSequenceStopsOnFailureWhileOverlayContinues(t *testing.T) {
 	}
 }
 func TestRandomSelectorStopsAfterSelectedChildFails(t *testing.T) {
+	t.Parallel()
 	r := selectorTestRegion()
 	first := r.f.placed["first"]
 	first.modifiers = append(first.modifiers, map[string]any{"type": "block_predicate_filter", "predicate": map[string]any{"type": "not", "predicate": map[string]any{"type": "true"}}})
@@ -118,6 +121,7 @@ func TestRandomSelectorStopsAfterSelectedChildFails(t *testing.T) {
 }
 
 func TestZeroWeightFeatureSelectorDoesNotDraw(t *testing.T) {
+	t.Parallel()
 	r := selectorTestRegion()
 	random := vanilla.NewLegacyRandom(123)
 	config := map[string]any{"features": []any{map[string]any{"data": "first", "weight": float64(0)}}}

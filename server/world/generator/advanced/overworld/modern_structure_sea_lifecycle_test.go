@@ -42,6 +42,7 @@ func seaLifecycleActors(t *testing.T, db *mcdb.DB, chunks []world.ChunkPos) map[
 }
 
 func TestMutableSeaHeightAndActorsSurviveNativeMCDBRestart(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	for _, kind := range []string{"shipwreck", "shipwreck_beached", "ocean_ruin_warm", "ocean_ruin_cold"} {
 		t.Run(kind, func(t *testing.T) {
@@ -179,6 +180,7 @@ func TestMutableSeaHeightAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 }
 
 func TestSeaNeighborPreviewDoesNotConsumeHeightAdjustment(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	for _, kind := range []string{"shipwreck", "shipwreck_beached", "ocean_ruin_warm", "ocean_ruin_cold"} {
 		t.Run(kind, func(t *testing.T) {

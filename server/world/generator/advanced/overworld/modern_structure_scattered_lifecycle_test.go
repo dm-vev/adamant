@@ -119,6 +119,7 @@ func newScatteredLifecycleGenerator(kind string) (*scatteredLifecycleGenerator, 
 	return &scatteredLifecycleGenerator{owner: owner, features: features, terrain: terrain}, start, nil
 }
 func TestScatteredStateSurvivesNativeMCDBRestart(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	for _, kind := range []string{"jungle_temple", "swamp_hut"} {
 		t.Run(kind, func(t *testing.T) {
@@ -273,6 +274,7 @@ func TestScatteredStateSurvivesNativeMCDBRestart(t *testing.T) {
 }
 
 func TestScatteredNeighborPreviewDoesNotConsumeHPosLootOrMobs(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	for _, kind := range []string{"jungle_temple", "swamp_hut"} {
 		t.Run(kind, func(t *testing.T) {

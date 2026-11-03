@@ -75,6 +75,7 @@ func lakeSourceState(t *testing.T, name string) world.NativeState {
 	return state
 }
 func TestLakeMatchesSourceFixtures(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_lake_source.json")
 	if err != nil {
 		t.Fatal(err)

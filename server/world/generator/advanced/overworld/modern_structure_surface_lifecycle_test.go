@@ -36,6 +36,7 @@ func surfaceLifecycleState(t *testing.T, g *scatteredLifecycleGenerator, start m
 }
 
 func TestMutableSurfaceBoundsAndActorsSurviveNativeMCDBRestart(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	for _, kind := range []string{"desert_pyramid", "igloo"} {
 		t.Run(kind, func(t *testing.T) {
@@ -144,6 +145,7 @@ func TestMutableSurfaceBoundsAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 }
 
 func TestMutableSurfaceNeighborPreviewDoesNotConsumeBBoxOrRuntime(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	for _, kind := range []string{"desert_pyramid", "igloo"} {
 		t.Run(kind, func(t *testing.T) {

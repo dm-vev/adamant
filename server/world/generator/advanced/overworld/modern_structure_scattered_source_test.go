@@ -288,6 +288,7 @@ func runScatteredNativeCase(f scatteredSourceCase) ([]scatteredNativeCall, error
 	return result, nil
 }
 func TestScatteredPostProcessMatchesReference(t *testing.T) {
+	t.Parallel()
 	file, err := os.Open("testdata/java263_scattered_post.json.gz")
 	if err != nil {
 		t.Fatal(err)
@@ -395,6 +396,7 @@ func TestScatteredPostProcessMatchesReference(t *testing.T) {
 }
 
 func TestScatteredConstructorsMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_scattered_constructors.json")
 	if err != nil {
 		t.Fatal(err)

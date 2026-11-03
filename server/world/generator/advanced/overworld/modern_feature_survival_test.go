@@ -12,6 +12,7 @@ import (
 )
 
 func TestBuiltinSurvivalMatchesReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_survival.json")
 	if err != nil {
 		t.Fatal(err)
@@ -53,6 +54,7 @@ func TestBuiltinSurvivalMatchesReference(t *testing.T) {
 }
 
 func TestMultifaceRejectsOccupiedFace(t *testing.T) {
+	t.Parallel()
 	region := countLayerTestRegion()
 	p := featurePos{8, 10, 8}
 	lichen, err := world.ResolveState(region.c.BlockRegistry(), world.BlockState{Name: "minecraft:glow_lichen", Properties: map[string]any{"east": true}})
@@ -73,6 +75,7 @@ func TestMultifaceRejectsOccupiedFace(t *testing.T) {
 }
 
 func TestMultifaceUsesSourceAttachmentShape(t *testing.T) {
+	t.Parallel()
 	region := countLayerTestRegion()
 	p := featurePos{8, 10, 8}
 	stair, err := world.ResolveState(region.c.BlockRegistry(), world.BlockState{Name: "minecraft:oak_stairs", Properties: map[string]any{"facing": "north", "half": "bottom", "shape": "inner_left"}})
@@ -118,6 +121,7 @@ func (multifacePostprocessGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.
 }
 
 func TestMultifaceSpreadReceivesGenerationPostprocessing(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Generator: multifacePostprocessGenerator{}, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	p := cube.Pos{8, 10, 8}

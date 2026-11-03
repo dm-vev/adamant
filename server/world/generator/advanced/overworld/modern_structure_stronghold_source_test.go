@@ -33,6 +33,7 @@ type strongholdGraphPiece struct {
 }
 
 func TestStrongholdPieceGraphsMatchReference(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_stronghold_graphs.json")
 	if err != nil {
 		t.Fatal(err)

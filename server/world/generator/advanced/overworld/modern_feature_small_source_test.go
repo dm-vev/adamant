@@ -36,6 +36,7 @@ type smallFeatureSourceTerrain struct{ replaceBlobSourceTerrain }
 
 func (smallFeatureSourceTerrain) FeatureBiomeNames() []string { return []string{"plains"} }
 func TestSmallFeaturesMatchSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_small_feature_source.json")
 	if err != nil {
 		t.Fatal(err)

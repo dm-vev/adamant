@@ -37,6 +37,7 @@ func iceFeatureTerrain(t *testing.T, tc iceFeatureSourceCase, minY, maxY int) ic
 }
 
 func TestIceFeaturesMatchSource(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_ice_feature_source.json")
 	if err != nil {
 		t.Fatal(err)
