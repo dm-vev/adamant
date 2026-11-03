@@ -57,9 +57,11 @@ const (
 // entity of a type is shown.
 func typeRange(t world.EntityType) float64 {
 	name := t.EncodeEntity()
-	if n, ok := t.(interface{ NetworkEncodeEntity() string }); ok {
+	if n, ok := t.(NetworkEncodeableEntity); ok {
 		// The type the client knows the entity by.
 		name = n.NetworkEncodeEntity()
+	} else if n, ok := networkEntityNames[name]; ok {
+		name = n
 	}
 	if r, ok := trackingRanges[name]; ok {
 		return r

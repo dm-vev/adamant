@@ -40,7 +40,6 @@ func (ominousItemSpawnerType) Open(tx *world.Tx, handle *world.EntityHandle, dat
 	return &OminousItemSpawner{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 func (ominousItemSpawnerType) EncodeEntity() string { return "minecraft:ominous_item_spawner" }
-func (ominousItemSpawnerType) NetworkEncodeEntity() string { return "minecraft:ominous_item_spawner" }
 func (ominousItemSpawnerType) BBox(world.Entity) cube.BBox { return cube.Box(-0.125, 0, -0.125, 0.125, 0.25, 0.125) }
 func (ominousItemSpawnerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 	data.NativeNBT = CloneNativeMobNBT(nbt)

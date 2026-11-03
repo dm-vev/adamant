@@ -27,7 +27,8 @@ import (
 )
 
 // NetworkEncodeableEntity is a world.EntityType where the save ID and network
-// ID are not the same.
+// ID are not the same. Plugins implement it for their own types; the session
+// names the types of the server Bedrock has no type of itself.
 type NetworkEncodeableEntity interface {
 	// NetworkEncodeEntity returns the network type ID of the entity. This is
 	// NOT the save ID.

@@ -62,10 +62,22 @@ var noFallDamage = map[string]bool{
 	"minecraft:parrot": true, "minecraft:snow_golem": true,
 }
 
-// networkID returns the identifier clients know the entity type by.
+// networkEntityNames holds the identifiers clients know the entity types of
+// the server by that Bedrock has no type of.
+var networkEntityNames = map[string]string{
+	// Text is shown as a falling block, which renders only its name tag.
+	"dragonfly:text": "minecraft:falling_block",
+}
+
+// networkID returns the identifier clients know the entity type by: the one
+// of a NetworkEncodeableEntity, then that of networkEntityNames, then the
+// Bedrock identifier of its name.
 func networkID(t world.EntityType) string {
 	if v, ok := t.(NetworkEncodeableEntity); ok {
 		return v.NetworkEncodeEntity()
+	}
+	if n, ok := networkEntityNames[t.EncodeEntity()]; ok {
+		return n
 	}
 	return world.BedrockEntityIdentifier(t.EncodeEntity())
 }

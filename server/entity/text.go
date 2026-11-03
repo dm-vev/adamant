@@ -23,7 +23,6 @@ func (t textType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Ent
 }
 func (textType) EncodeEntity() string        { return "dragonfly:text" }
 func (textType) BBox(world.Entity) cube.BBox { return cube.BBox{} }
-func (textType) NetworkEncodeEntity() string { return "minecraft:falling_block" }
 
 func (textType) DecodeNBT(_ map[string]any, data *world.EntityData) { data.Data = textConf.New() }
 func (textType) EncodeNBT(_ *world.EntityData) map[string]any       { return nil }

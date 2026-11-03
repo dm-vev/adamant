@@ -9,13 +9,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-func TestEndCrystalNetworkEncodeEntity(t *testing.T) {
-	t.Parallel()
-	if got, want := entity.EndCrystalType.NetworkEncodeEntity(), "minecraft:ender_crystal"; got != want {
-		t.Fatalf("NetworkEncodeEntity() returned %q, want %q", got, want)
-	}
-}
-
 func TestEndCrystalLegacyBeamTargetNBTMigration(t *testing.T) {
 	t.Parallel()
 	data := new(world.EntityData)
