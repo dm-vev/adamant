@@ -115,27 +115,29 @@ type Static interface {
 }
 
 // staticKey names the batch of a Static encoded with a shield ID, which
-// the items in it depend on.
+// the items in it depend on, in the compression of alg: the clients of
+// the listener read it compressed, the players of a proxy as it is.
 type staticKey struct {
 	pk     Static
 	shield int32
+	alg    uint16
 }
 
 // staticCompression compresses the batches of Statics: compressed once,
 // they take the best level.
 var staticCompression = bedrock.Flate{Level: flate.BestCompression, FixedBelow: -1}
 
-// static returns the batch of a Static, encoding it the first time.
-func (l *Listener) static(pk Static, shield int32) ([]byte, error) {
+// static returns the batch of a Static for a connection compressing with
+// comp, encoding it the first time.
+func (l *Listener) static(pk Static, shield int32, comp bedrock.Compression) ([]byte, error) {
 	l.staticMu.Lock()
 	defer l.staticMu.Unlock()
-	key := staticKey{pk, shield}
+	key := staticKey{pk: pk, shield: shield, alg: comp.Algorithm()}
 	if msg, ok := l.statics[key]; ok {
 		return msg, nil
 	}
 	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
 	pk.Encode(&w)
-	comp := l.cfg.Compression
 	if _, ok := comp.(bedrock.Flate); ok {
 		comp = staticCompression
 	}
@@ -404,7 +406,8 @@ func (c *Conn) login() error {
 	if err := c.Flush(); err != nil {
 		return err
 	}
-	c.b.EnableCompression(c.l.cfg.Compression)
+	c.comp = c.l.cfg.Compression
+	c.b.EnableCompression(c.comp)
 
 	if pk, err = c.read(v2193.IDLogin); err != nil {
 		return err
@@ -422,7 +425,8 @@ func (c *Conn) login() error {
 // loginProxied runs the login of a player a proxy logged in, as the token
 // of the proxy names it, then the resource packs.
 func (c *Conn) loginProxied(t proxy.Token) error {
-	c.b.EnableCompression(bedrock.None{})
+	c.comp = bedrock.None{}
+	c.b.EnableCompression(c.comp)
 	if t.Protocol != v2193.Protocol {
 		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedClient})
 		_ = c.Flush()

@@ -234,9 +234,917 @@
     {EntityRuntimeID:1}
     | 01
 -- Accept yielded Member
-== Member's client disconnects
+-- Member, the session made and the player spawned
+>> ItemRegistry id=162 len=223
+    ItemRegistryPacket
+      Items: []v2193.ItemEntry (1)
+        [0] ItemEntry
+          Name: "adamant:knowledge_book"
+          RuntimeID: 2076
+          ComponentBased: true
+          Version: 1
+          Data: map (1)
+            "components": map (2)
+              "item_properties": map["creative_category":4 "creative_group":"" "max_stack_size":1 "minecraft:icon":map["textures":map["default":"adamant:knowledge_book"]]]
+              "minecraft:display_name": map["value":"Knowledge Book"]
+    | 01166164616d616e743a6b6e6f776c656467655f626f6f6b1c0801020a000a0a
+    | 636f6d706f6e656e74730a0f6974656d5f70726f706572746965730311637265
+    | 61746976655f63617465676f727908080e63726561746976655f67726f757000
+    | 030e6d61785f737461636b5f73697a65020a0e6d696e6563726166743a69636f
+    | 6e0a087465787475726573080764656661756c74166164616d616e743a6b6e6f
+    | 776c656467655f626f6f6b0000000a166d696e6563726166743a646973706c61
+    | 795f6e616d65080576616c75650e4b6e6f776c6564676520426f6f6b000000
+>> BiomeDefinitionList id=122 len=7667
+    sha256 24159753c6f89d7b663e41f4ef5fc33d2ff323ee32982b43c04c44bf94adafa7
+>> CreativeContent id=145 len=72592
+    sha256 0a9e8ef24783d04f0ed6b2107ef52c95bb6b80d2257c305f91a0a06374173e6e
+>> CraftingData id=52 len=913919 normalised
+    sha256 9c49a282bf61b6af2da03a0093866cf0a23cd6aaccf6e8cdd460321a492d357e
+>> TrimData id=302 len=1269
+    TrimDataPacket
+      Patterns: []v2193.TrimPattern (18)
+        [0] {ItemName:"minecraft:sentry_armor_trim_smithing_template" PatternID:"sentry"}
+        [1] {ItemName:"minecraft:vex_armor_trim_smithing_template" PatternID:"vex"}
+        [2] {ItemName:"minecraft:wild_armor_trim_smithing_template" PatternID:"wild"}
+        [3] {ItemName:"minecraft:coast_armor_trim_smithing_template" PatternID:"coast"}
+        [4] {ItemName:"minecraft:dune_armor_trim_smithing_template" PatternID:"dune"}
+        [5] {ItemName:"minecraft:wayfinder_armor_trim_smithing_template" PatternID:"wayfinder"}
+        [6] {ItemName:"minecraft:raiser_armor_trim_smithing_template" PatternID:"raiser"}
+        [7] {ItemName:"minecraft:shaper_armor_trim_smithing_template" PatternID:"shaper"}
+        [8] {ItemName:"minecraft:host_armor_trim_smithing_template" PatternID:"host"}
+        [9] {ItemName:"minecraft:ward_armor_trim_smithing_template" PatternID:"ward"}
+        [10] {ItemName:"minecraft:silence_armor_trim_smithing_template" PatternID:"silence"}
+        [11] {ItemName:"minecraft:tide_armor_trim_smithing_template" PatternID:"tide"}
+        [12] {ItemName:"minecraft:snout_armor_trim_smithing_template" PatternID:"snout"}
+        [13] {ItemName:"minecraft:rib_armor_trim_smithing_template" PatternID:"rib"}
+        [14] {ItemName:"minecraft:eye_armor_trim_smithing_template" PatternID:"eye"}
+        [15] {ItemName:"minecraft:spire_armor_trim_smithing_template" PatternID:"spire"}
+        [16] {ItemName:"minecraft:flow_armor_trim_smithing_template" PatternID:"flow"}
+        [17] {ItemName:"minecraft:bolt_armor_trim_smithing_template" PatternID:"bolt"}
+      Materials: []v2193.TrimMaterial (11)
+        [0] {MaterialID:"amethyst" Colour:"§u" ItemName:"minecraft:amethyst_shard"}
+        [1] {MaterialID:"copper" Colour:"§n" ItemName:"minecraft:copper_ingot"}
+        [2] {MaterialID:"diamond" Colour:"§s" ItemName:"minecraft:diamond"}
+        [3] {MaterialID:"emerald" Colour:"§q" ItemName:"minecraft:emerald"}
+        [4] {MaterialID:"gold" Colour:"§p" ItemName:"minecraft:gold_ingot"}
+        [5] {MaterialID:"iron" Colour:"§i" ItemName:"minecraft:iron_ingot"}
+        [6] {MaterialID:"lapis" Colour:"§t" ItemName:"minecraft:lapis_lazuli"}
+        [7] {MaterialID:"netherite" Colour:"§j" ItemName:"minecraft:netherite_ingot"}
+        [8] {MaterialID:"quartz" Colour:"§h" ItemName:"minecraft:quartz"}
+        [9] {MaterialID:"resin" Colour:"§v" ItemName:"minecraft:resin_brick"}
+        [10] {MaterialID:"redstone" Colour:"§m" ItemName:"minecraft:redstone"}
+    | 122d6d696e6563726166743a73656e7472795f61726d6f725f7472696d5f736d
+    | 697468696e675f74656d706c6174650673656e7472792a6d696e656372616674
+    | 3a7665785f61726d6f725f7472696d5f736d697468696e675f74656d706c6174
+    | 65037665782b6d696e6563726166743a77696c645f61726d6f725f7472696d5f
+    | 736d697468696e675f74656d706c6174650477696c642c6d696e656372616674
+    | 3a636f6173745f61726d6f725f7472696d5f736d697468696e675f74656d706c
+    | 61746505636f6173742b6d696e6563726166743a64756e655f61726d6f725f74
+    | 72696d5f736d697468696e675f74656d706c6174650464756e65306d696e6563
+    | 726166743a77617966696e6465725f61726d6f725f7472696d5f736d69746869
+    | 6e675f74656d706c6174650977617966696e6465722d6d696e6563726166743a
+    | 7261697365725f61726d6f725f7472696d5f736d697468696e675f74656d706c
+    | 617465067261697365722d6d696e6563726166743a7368617065725f61726d6f
+    | 725f7472696d5f736d697468696e675f74656d706c617465067368617065722b
+    | 6d696e6563726166743a686f73745f61726d6f725f7472696d5f736d69746869
+    | 6e675f74656d706c61746504686f73742b6d696e6563726166743a776172645f
+    | 61726d6f725f7472696d5f736d697468696e675f74656d706c61746504776172
+    | 642e6d696e6563726166743a73696c656e63655f61726d6f725f7472696d5f73
+    | 6d697468696e675f74656d706c6174650773696c656e63652b6d696e65637261
+    | 66743a746964655f61726d6f725f7472696d5f736d697468696e675f74656d70
+    | 6c61746504746964652c6d696e6563726166743a736e6f75745f61726d6f725f
+    | 7472696d5f736d697468696e675f74656d706c61746505736e6f75742a6d696e
+    | 6563726166743a7269625f61726d6f725f7472696d5f736d697468696e675f74
+    | 656d706c617465037269622a6d696e6563726166743a6579655f61726d6f725f
+    | 7472696d5f736d697468696e675f74656d706c617465036579652c6d696e6563
+    | 726166743a73706972655f61726d6f725f7472696d5f736d697468696e675f74
+    | 656d706c6174650573706972652b6d696e6563726166743a666c6f775f61726d
+    | 6f725f7472696d5f736d697468696e675f74656d706c61746504666c6f772b6d
+    | 696e6563726166743a626f6c745f61726d6f725f7472696d5f736d697468696e
+    | 675f74656d706c61746504626f6c740b08616d65746879737403c2a775186d69
+    | 6e6563726166743a616d6574687973745f736861726406636f7070657203c2a7
+    | 6e166d696e6563726166743a636f707065725f696e676f74076469616d6f6e64
+    | 03c2a773116d696e6563726166743a6469616d6f6e6407656d6572616c6403c2
+    | a771116d696e6563726166743a656d6572616c6404676f6c6403c2a770146d69
+    | 6e6563726166743a676f6c645f696e676f740469726f6e03c2a769146d696e65
+    | 63726166743a69726f6e5f696e676f74056c6170697303c2a774166d696e6563
+    | 726166743a6c617069735f6c617a756c69096e657468657269746503c2a76a19
+    | 6d696e6563726166743a6e65746865726974655f696e676f740671756172747a
+    | 03c2a768106d696e6563726166743a71756172747a05726573696e03c2a77615
+    | 6d696e6563726166743a726573696e5f627269636b0872656473746f6e6503c2
+    | a76d126d696e6563726166743a72656473746f6e65
+>> UpdateAttributes id=29 len=47
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: [{Min:0 Max:3.4028235e+38 Value:0.1 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0.1 Name:"minecraft:movement" Modifiers:[]}]
+      Tick: 0
+    | 010100000000ffff7f7fcdcccc3d00000000ffff7f7fcdcccc3d126d696e6563
+    | 726166743a6d6f76656d656e740000
+>> PlayerList id=63 len=8479 normalised
+    sha256 0c5ebd792f64c3eb857ca51f5decfe8b24f9ec1359864a6843374a98bcafb68a
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2193.Attribute (2)
+        [0] {Min:0 Max:20 Value:20 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000a0410000a041000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> UpdateAttributes id=29 len=104
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2193.Attribute (2)
+        [0] {Min:0 Max:2.1474836e+09 Value:0 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [1] {Min:0 Max:1 Value:0 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000004f00000000000000000000004f00000000166d696e6563
+    | 726166743a706c617965722e6c6576656c00000000000000803f000000000000
+    | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
+    | 7269656e63650000
+>> UpdateAttributes id=29 len=158
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2193.Attribute (3)
+        [0] {Min:0 Max:20 Value:20 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.hunger" Modifiers:[]}
+        [1] {Min:0 Max:20 Value:0 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.saturation" Modifiers:[]}
+        [2] {Min:0 Max:5 Value:0 DefaultMin:0 DefaultMax:5 Default:0 Name:"minecraft:player.exhaustion" Modifiers:[]}
+      Tick: 0
+    | 0103000000000000a0410000a041000000000000a0410000a041176d696e6563
+    | 726166743a706c617965722e68756e67657200000000000000a0410000000000
+    | 0000000000a0410000a0411b6d696e6563726166743a706c617965722e736174
+    | 75726174696f6e00000000000000a04000000000000000000000a04000000000
+    | 1b6d696e6563726166743a706c617965722e65786861757374696f6e0000
+>> SetTime id=10 len=2
+    {Time:6000}
+    | e05d
+>> GameRulesChanged id=72 len=20
+    {GameRules:[{Name:"dodaylightcycle" CanBeModifiedByPlayer:false Value:false}]}
+    | 010f646f6461796c696768746379636c65000100
+>> LevelEvent id=25 len=15
+    {EventType:3003 Position:[0 0 0] EventData:0}
+    | f62e00000000000000000000000000
+>> LevelEvent id=25 len=15
+    {EventType:3004 Position:[0 0 0] EventData:0}
+    | f82e00000000000000000000000000
+>> SetSpawnPosition id=43 len=8
+    {SpawnType:1 Position:[0 -60 0] Dimension:0 SpawnPosition:[0 -60 0]}
+    | 0200770000007700
+>> NetworkChunkPublisherUpdate id=121 len=8
+    {Position:[0 -60 0] Radius:16 SavedChunks:[]}
+    | 0077001000000000
+>> AvailableActorIdentifiers id=119 len=3231 normalised
+    AvailableActorIdentifiersPacket
+      SerialisedEntityIdentifiers: nbtmap["idlist":[map["id":"minecraft:allay"] map["id":"minecraft:area_effect_cloud"] map["id":"minecraft:armadillo"] map["id":"minecraft:armor_stand"] map["id":"minecraft:arrow"] map["id":"minecraft:axolotl"] map["id":"minecraft:bat"] map["… <4131 chars sha256:7564c9f97eb23a50>
+    | 0a00090669646c6973740a8002080269640f6d696e6563726166743a616c6c61
+    | 7900080269641b6d696e6563726166743a617265615f6566666563745f636c6f
+    | 75640008026964136d696e6563726166743a61726d6164696c6c6f0008026964
+    | 156d696e6563726166743a61726d6f725f7374616e6400080269640f6d696e65
+    | 63726166743a6172726f770008026964116d696e6563726166743a61786f6c6f
+    | 746c00080269640d6d696e6563726166743a62617400080269640d6d696e6563
+    | 726166743a62656500080269640f6d696e6563726166743a626c617a65000802
+    | 69640e6d696e6563726166743a626f61740008026964106d696e656372616674
+    | 3a626f676765640008026964106d696e6563726166743a627265657a65000802
+    | 6964276d696e6563726166743a627265657a655f77696e645f6368617267655f
+    | 70726f6a656374696c6500080269640f6d696e6563726166743a63616d656c00
+    | 08026964146d696e6563726166743a63616d656c5f6875736b00080269640d6d
+    | 696e6563726166743a6361740008026964156d696e6563726166743a63617665
+    | 5f7370696465720008026964146d696e6563726166743a63686573745f626f61
+    | 740008026964186d696e6563726166743a63686573745f6d696e656361727400
+    | 08026964116d696e6563726166743a636869636b656e00080269640d6d696e65
+    | 63726166743a636f640008026964206d696e6563726166743a636f6d6d616e64
+    | 5f626c6f636b5f6d696e65636172740008026964166d696e6563726166743a63
+    | 6f707065725f676f6c656d00080269640d6d696e6563726166743a636f770008
+    | 026964126d696e6563726166743a637265616b696e670008026964116d696e65
+    | 63726166743a637265657065720008026964116d696e6563726166743a637573
+    | 68696f6e0008026964116d696e6563726166743a646f6c7068696e0008026964
+    | 106d696e6563726166743a646f6e6b65790008026964196d696e656372616674
+    | 3a647261676f6e5f6669726562616c6c0008026964116d696e6563726166743a
+    | 64726f776e656400080269640d6d696e6563726166743a656767000802696418
+    | 6d696e6563726166743a656c6465725f677561726469616e0008026964176d69
+    | 6e6563726166743a656e6465725f6372797374616c0008026964166d696e6563
+    | 726166743a656e6465725f647261676f6e0008026964156d696e656372616674
+    | 3a656e6465725f706561726c0008026964126d696e6563726166743a656e6465
+    | 726d616e0008026964136d696e6563726166743a656e6465726d697465000802
+    | 6964186d696e6563726166743a65766f636174696f6e5f66616e670008026964
+    | 1b6d696e6563726166743a65766f636174696f6e5f696c6c6167657200080269
+    | 641d6d696e6563726166743a6579655f6f665f656e6465725f7369676e616c00
+    | 08026964176d696e6563726166743a66616c6c696e675f626c6f636b00080269
+    | 64176d696e6563726166743a66616c6c696e675f626c6f636b0008026964126d
+    | 696e6563726166743a6669726562616c6c00080269641a6d696e656372616674
+    | 3a66697265776f726b735f726f636b65740008026964166d696e656372616674
+    | 3a66697368696e675f686f6f6b00080269640d6d696e6563726166743a666f78
+    | 00080269640e6d696e6563726166743a66726f6700080269640f6d696e656372
+    | 6166743a67686173740008026964146d696e6563726166743a676c6f775f7371
+    | 75696400080269640e6d696e6563726166743a676f61740008026964126d696e
+    | 6563726166743a677561726469616e0008026964156d696e6563726166743a68
+    | 617070795f67686173740008026964106d696e6563726166743a686f676c696e
+    | 0008026964196d696e6563726166743a686f707065725f6d696e656361727400
+    | 080269640f6d696e6563726166743a686f72736500080269640e6d696e656372
+    | 6166743a6875736b0008026964146d696e6563726166743a69726f6e5f676f6c
+    | 656d00080269640e6d696e6563726166743a6974656d0008026964146d696e65
+    | 63726166743a6c656173685f6b6e6f740008026964186d696e6563726166743a
+    | 6c696768746e696e675f626f6c7400080269641a6d696e6563726166743a6c69
+    | 6e676572696e675f706f74696f6e00080269640f6d696e6563726166743a6c6c
+    | 616d610008026964146d696e6563726166743a6c6c616d615f73706974000802
+    | 6964146d696e6563726166743a6d61676d615f637562650008026964126d696e
+    | 6563726166743a6d696e65636172740008026964136d696e6563726166743a6d
+    | 6f6f7368726f6f6d00080269640e6d696e6563726166743a6d756c6500080269
+    | 64126d696e6563726166743a6e617574696c75730008026964106d696e656372
+    | 6166743a6f63656c6f7400080269641e6d696e6563726166743a6f6d696e6f75
+    | 735f6974656d5f737061776e65720008026964126d696e6563726166743a7061
+    | 696e74696e6700080269640f6d696e6563726166743a70616e64610008026964
+    | 116d696e6563726166743a706172636865640008026964106d696e6563726166
+    | 743a706172726f740008026964116d696e6563726166743a7068616e746f6d00
+    | 080269640d6d696e6563726166743a7069670008026964106d696e6563726166
+    | 743a7069676c696e0008026964166d696e6563726166743a7069676c696e5f62
+    | 727574650008026964126d696e6563726166743a70696c6c6167657200080269
+    | 64146d696e6563726166743a706f6c61725f626561720008026964146d696e65
+    | 63726166743a707566666572666973680008026964106d696e6563726166743a
+    | 7261626269740008026964116d696e6563726166743a72617661676572000802
+    | 6964106d696e6563726166743a73616c6d6f6e00080269640f6d696e65637261
+    | 66743a73686565700008026964116d696e6563726166743a7368756c6b657200
+    | 08026964186d696e6563726166743a7368756c6b65725f62756c6c6574000802
+    | 6964146d696e6563726166743a73696c766572666973680008026964126d696e
+    | 6563726166743a736b656c65746f6e0008026964186d696e6563726166743a73
+    | 6b656c65746f6e5f686f72736500080269640f6d696e6563726166743a736c69
+    | 6d650008026964186d696e6563726166743a736d616c6c5f6669726562616c6c
+    | 0008026964116d696e6563726166743a736e69666665720008026964146d696e
+    | 6563726166743a736e6f775f676f6c656d0008026964126d696e656372616674
+    | 3a736e6f7762616c6c0008026964106d696e6563726166743a73706964657200
+    | 08026964176d696e6563726166743a73706c6173685f706f74696f6e00080269
+    | 640f6d696e6563726166743a737175696400080269640f6d696e656372616674
+    | 3a73747261790008026964116d696e6563726166743a73747269646572000802
+    | 6964156d696e6563726166743a73756c6675725f637562650008026964116d69
+    | 6e6563726166743a746164706f6c650008026964186d696e6563726166743a74
+    | 68726f776e5f74726964656e7400080269640d6d696e6563726166743a746e74
+    | 0008026964166d696e6563726166743a746e745f6d696e656361727400080269
+    | 64166d696e6563726166743a7472616465725f6c6c616d610008026964166d69
+    | 6e6563726166743a74726f706963616c666973680008026964106d696e656372
+    | 6166743a747572746c6500080269640d6d696e6563726166743a766578000802
+    | 6964156d696e6563726166743a76696c6c616765725f76320008026964146d69
+    | 6e6563726166743a76696e64696361746f7200080269641a6d696e6563726166
+    | 743a77616e646572696e675f7472616465720008026964106d696e6563726166
+    | 743a77617264656e0008026964206d696e6563726166743a77696e645f636861
+    | 7267655f70726f6a656374696c6500080269640f6d696e6563726166743a7769
+    | 7463680008026964106d696e6563726166743a7769746865720008026964196d
+    | 696e6563726166743a7769746865725f736b656c65746f6e0008026964166d69
+    | 6e6563726166743a7769746865725f736b756c6c00080269640e6d696e656372
+    | 6166743a776f6c660008026964136d696e6563726166743a78705f626f74746c
+    | 650008026964106d696e6563726166743a78705f6f72620008026964106d696e
+    | 6563726166743a7a6f676c696e0008026964106d696e6563726166743a7a6f6d
+    | 6269650008026964166d696e6563726166743a7a6f6d6269655f686f72736500
+    | 08026964196d696e6563726166743a7a6f6d6269655f6e617574696c75730008
+    | 026964176d696e6563726166743a7a6f6d6269655f7069676d616e0008026964
+    | 1c6d696e6563726166743a7a6f6d6269655f76696c6c616765725f76320000
+>> SyncActorProperty id=165 len=167
+    SyncActorPropertyPacket
+      PropertyData: map (2)
+        "properties": [map["enum":["unrolled" "rolled_up" "rolled_up_peeking" "rolled_up_relaxing" "rolled_up_unrolling"] "name":"minecraft:armadillo_state" "type":3]]
+        "type": "minecraft:armadillo"
+    | 0a00090a70726f706572746965730a020904656e756d080a08756e726f6c6c65
+    | 6409726f6c6c65645f757011726f6c6c65645f75705f7065656b696e6712726f
+    | 6c6c65645f75705f72656c6178696e6713726f6c6c65645f75705f756e726f6c
+    | 6c696e6708046e616d65196d696e6563726166743a61726d6164696c6c6f5f73
+    | 746174650304747970650600080474797065136d696e6563726166743a61726d
+    | 6164696c6c6f00
+>> SyncActorProperty id=165 len=72
+    {PropertyData:map["properties":[map["name":"minecraft:has_nectar" "type":2]] "type":"minecraft:bee"]}
+    | 0a00090a70726f706572746965730a0208046e616d65146d696e656372616674
+    | 3a6861735f6e656374617203047479706504000804747970650d6d696e656372
+    | 6166743a62656500
+>> SyncActorProperty id=165 len=97
+    {PropertyData:map["properties":[map["enum":["default" "royal"] "name":"minecraft:sound_variant" "type":3]] "type":"minecraft:cat"]}
+    | 0a00090a70726f706572746965730a020904656e756d08040764656661756c74
+    | 05726f79616c08046e616d65176d696e6563726166743a736f756e645f766172
+    | 69616e7403047479706506000804747970650d6d696e6563726166743a636174
+    | 00
+>> SyncActorProperty id=165 len=169
+    SyncActorPropertyPacket
+      PropertyData: map (2)
+        "properties": [map["enum":["temperate" "warm" "cold"] "name":"minecraft:climate_variant" "type":3] map["enum":["default" "picky"] "name":"minecraft:sound_variant" "type":3]]
+        "type": "minecraft:chicken"
+    | 0a00090a70726f706572746965730a040904656e756d08060974656d70657261
+    | 7465047761726d04636f6c6408046e616d65196d696e6563726166743a636c69
+    | 6d6174655f76617269616e7403047479706506000904656e756d080407646566
+    | 61756c74057069636b7908046e616d65176d696e6563726166743a736f756e64
+    | 5f76617269616e740304747970650600080474797065116d696e656372616674
+    | 3a636869636b656e00
+>> SyncActorProperty id=165 len=250
+    SyncActorPropertyPacket
+      PropertyData: map (2)
+        "properties": []interface {} (3)
+          [0] map["enum":["none" "take" "take_fail" "put" "put_fail"] "name":"minecraft:chest_interaction" "type":3]
+          [1] map["name":"minecraft:has_flower" "type":2]
+          [2] map["enum":["unoxidized" "exposed" "weathered" "oxidized"] "name":"minecraft:oxidation_level" "type":3]
+        "type": "minecraft:copper_golem"
+    | 0a00090a70726f706572746965730a060904656e756d080a046e6f6e65047461
+    | 6b650974616b655f6661696c03707574087075745f6661696c08046e616d651b
+    | 6d696e6563726166743a63686573745f696e746572616374696f6e0304747970
+    | 65060008046e616d65146d696e6563726166743a6861735f666c6f7765720304
+    | 7479706504000904656e756d08080a756e6f786964697a6564076578706f7365
+    | 6409776561746865726564086f786964697a656408046e616d65196d696e6563
+    | 726166743a6f7869646174696f6e5f6c6576656c030474797065060008047479
+    | 7065166d696e6563726166743a636f707065725f676f6c656d00
+>> SyncActorProperty id=165 len=165
+    SyncActorPropertyPacket
+      PropertyData: map (2)
+        "properties": [map["enum":["temperate" "warm" "cold"] "name":"minecraft:climate_variant" "type":3] map["enum":["default" "moody"] "name":"minecraft:sound_variant" "type":3]]
+        "type": "minecraft:cow"
+    | 0a00090a70726f706572746965730a040904656e756d08060974656d70657261
+    | 7465047761726d04636f6c6408046e616d65196d696e6563726166743a636c69
+    | 6d6174655f76617269616e7403047479706506000904656e756d080407646566
+    | 61756c74056d6f6f647908046e616d65176d696e6563726166743a736f756e64
+    | 5f76617269616e7403047479706506000804747970650d6d696e656372616674
+    | 3a636f7700
+>> SyncActorProperty id=165 len=212
+    SyncActorPropertyPacket
+      PropertyData: map (2)
+        "properties": []interface {} (2)
+          [0] map["enum":["neutral" "hostile_observed" "hostile_unobserved" "twitching" "crumbling"] "name":"minecraft:creaking_state" "type":3]
+          [1] map["max":6 "min":0 "name":"minecraft:creaking_swaying_ticks" "type":0]
+        "type": "minecraft:creaking"
+    | 0a00090a70726f706572746965730a040904656e756d080a076e65757472616c
+    | 10686f7374696c655f6f6273657276656412686f7374696c655f756e6f627365
+    | 7276656409747769746368696e67096372756d626c696e6708046e616d65186d
+    | 696e6563726166743a637265616b696e675f7374617465030474797065060003
+    | 036d61780c03036d696e0008046e616d65206d696e6563726166743a63726561
+    | 6b696e675f73776179696e675f7469636b730304747970650000080474797065
+    | 126d696e6563726166743a637265616b696e6700
+>> SyncActorProperty id=165 len=105
+    {PropertyData:map["properties":[map["enum":["temperate" "warm" "cold"] "name":"minecraft:climate_variant" "type":3]] "type":"minecraft:egg"]}
+    | 0a00090a70726f706572746965730a020904656e756d08060974656d70657261
+    | 7465047761726d04636f6c6408046e616d65196d696e6563726166743a636c69
+    | 6d6174655f76617269616e7403047479706506000804747970650d6d696e6563
+    | 726166743a65676700
+>> SyncActorProperty id=165 len=78
+    {PropertyData:map["properties":[map["name":"minecraft:can_move" "type":2]] "type":"minecraft:happy_ghast"]}
+    | 0a00090a70726f706572746965730a0208046e616d65126d696e656372616674
+    | 3a63616e5f6d6f76650304747970650400080474797065156d696e6563726166
+    | 743a68617070795f676861737400
+>> SyncActorProperty id=165 len=168
+    SyncActorPropertyPacket
+      PropertyData: map (2)
+        "properties": []interface {} (2)
+          [0] map["enum":["temperate" "warm" "cold"] "name":"minecraft:climate_variant" "type":3]
+          [1] map["enum":["default" "big" "mini"] "name":"minecraft:sound_variant" "type":3]
+        "type": "minecraft:pig"
+    | 0a00090a70726f706572746965730a040904656e756d08060974656d70657261
+    | 7465047761726d04636f6c6408046e616d65196d696e6563726166743a636c69
+    | 6d6174655f76617269616e7403047479706506000904656e756d080607646566
+    | 61756c7403626967046d696e6908046e616d65176d696e6563726166743a736f
+    | 756e645f76617269616e7403047479706506000804747970650d6d696e656372
+    | 6166743a70696700
+>> SyncActorProperty id=165 len=220
+    SyncActorPropertyPacket
+      PropertyData: map (2)
+        "properties": []interface {} (1)
+          [0] map (3)
+            "enum": ["none" "bouncy" "regular" "slow_bouncy" "slow_flat" "fast_flat" "light" "fast_sliding" "slow_sliding" "sticky" "high_resistance" "explosive" "hot"]
+            "name": "minecraft:sulfur_cube_archetype"
+            "type": 3
+        "type": "minecraft:sulfur_cube"
+    | 0a00090a70726f706572746965730a020904656e756d081a046e6f6e6506626f
+    | 756e637907726567756c61720b736c6f775f626f756e637909736c6f775f666c
+    | 617409666173745f666c6174056c696768740c666173745f736c6964696e670c
+    | 736c6f775f736c6964696e6706737469636b790f686967685f72657369737461
+    | 6e6365096578706c6f7369766503686f7408046e616d651f6d696e6563726166
+    | 743a73756c6675725f637562655f617263686574797065030474797065060008
+    | 0474797065156d696e6563726166743a73756c6675725f6375626500
+>> SyncActorProperty id=165 len=123
+    SyncActorPropertyPacket
+      PropertyData: map["properties":[map["enum":["default" "big" "cute" "grumpy" "mad" "puglin" "sad"] "name":"minecraft:sound_variant" "type":3]] "type":"minecraft:wolf"]
+    | 0a00090a70726f706572746965730a020904656e756d080e0764656661756c74
+    | 036269670463757465066772756d7079036d6164067075676c696e0373616408
+    | 046e616d65176d696e6563726166743a736f756e645f76617269616e74030474
+    | 79706506000804747970650e6d696e6563726166743a776f6c6600
+>> SyncActorProperty id=165 len=103
+    {PropertyData:map["properties":[map["enum":["default" "coral"] "name":"minecraft:variant" "type":3]] "type":"minecraft:zombie_nautilus"]}
+    | 0a00090a70726f706572746965730a020904656e756d08040764656661756c74
+    | 05636f72616c08046e616d65116d696e6563726166743a76617269616e740304
+    | 747970650600080474797065196d696e6563726166743a7a6f6d6269655f6e61
+    | 7574696c757300
+>> SetPlayerGameType id=62 len=1
+    {GameType:0}
+    | 00
+>> UpdatePlayerGameType id=151 len=3
+    {GameType:0 PlayerUniqueID:1 Tick:0}
+    | 000200
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2193.Attribute (2)
+        [0] {Min:0 Max:20 Value:20 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000a0410000a041000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:63 FlySpeed:0.05 VerticalFlySpeed:1 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
+    | 3d
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:0 26:0 3:0 38:1 4:"Member" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c6808082800303000000040404064d656d6265720701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c0707007803030000000081010000008301070700000000
+>> InventoryContent id=49 len=300
+    InventoryContentPacket
+      WindowID: 0
+      Content: []v2193.ItemInstance (36)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [27] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [28] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 0024000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 000000000000000000000000
+>> InventoryContent id=49 len=444
+    InventoryContentPacket
+      WindowID: 124
+      Content: []v2193.ItemInstance (54)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [27] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [28] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [36] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [37] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [38] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [39] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [40] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [41] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [42] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [43] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [44] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [45] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [46] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [47] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [48] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [50] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7c36000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 00000000000000000000000000000000000000000000000000000000
+>> InventoryContent id=49 len=20
+    InventoryContentPacket
+      WindowID: 119
+      Content: [{StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}]
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7701000000000000000000000000000000000000
+>> InventoryContent id=49 len=44
+    InventoryContentPacket
+      WindowID: 120
+      Content: []v2193.ItemInstance (4)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7804000000000000000000000000000000000000000000000000000000000000
+    | 000000000000000000000000
+>> Text id=9 len=50
+    TextPacket
+      TextType: 2
+      NeedsTranslation: true
+      SourceName: ""
+      Message: "§r§e%multiplayer.player.joined§r"
+      Parameters: ["Member"]
+      XUID: ""
+      PlatformChatID: ""
+      FilteredMessage: none
+    | 01020223c2a772c2a765256d756c7469706c617965722e706c617965722e6a6f
+    | 696e6564c2a77201064d656d626572000000
+-- Member
+>> AvailableCommands id=76 len=790
+    AvailableCommandsPacket
+      EnumValues: ["players" "list" "tell" "w" "msg" "value" "tm" "teammsg" "enable" "use"]
+      ChainedSubcommandValues: []
+      Suffixes: []
+      Enums: []v2193.CommandEnum (6)
+        [0] {Type:"listAliases" ValueIndices:[0 1]}
+        [1] {Type:"msgAliases" ValueIndices:[2 3 4]}
+        [2] {Type:"SubCommandvalue" ValueIndices:[5]}
+        [3] {Type:"teammsgAliases" ValueIndices:[6 7]}
+        [4] {Type:"SubCommandenable" ValueIndices:[8]}
+        [5] {Type:"SubCommanduse" ValueIndices:[9]}
+      ChainedSubcommands: []
+      Commands: []v2193.Command (9)
+        [0] Command
+          Name: "about"
+          Description: "Displays Adamant core and build information."
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[]}]
+        [1] Command
+          Name: "list"
+          Description: "commands.list.description"
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 0
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[]}]
+        [2] Command
+          Name: "me"
+          Description: "commands.me.description"
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[{Name:"action" Type:1048646 Optional:false Options:0}]}]
+        [3] Command
+          Name: "msg"
+          Description: "commands.tell.description"
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 1
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"message" Type:1048646 Optional:false Options:0}]}]
+        [4] Command
+          Name: "random"
+          Description: "Generate a random value."
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: []v2193.CommandOverload (1)
+            [0] CommandOverload
+              Chaining: false
+              Parameters: [{Name:"value" Type:3145730 Optional:false Options:0} {Name:"min" Type:1048577 Optional:false Options:0} {Name:"max" Type:1048577 Optional:false Options:0}]
+        [5] Command
+          Name: "status"
+          Description: "Displays server performance statistics."
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[]}]
+        [6] Command
+          Name: "teammsg"
+          Description: "Send a message to your team."
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 3
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[{Name:"message" Type:1048646 Optional:false Options:0}]}]
+        [7] Command
+          Name: "trigger"
+          Description: "commands.trigger.description"
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: []v2193.CommandOverload (2)
+            [0] {Chaining:false Parameters:[{Name:"enable" Type:3145732 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"use" Type:3145733 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
+        [8] Command
+          Name: "version"
+          Description: "Displays the server version."
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[]}]
+      DynamicEnums: []
+      Constraints: []
+    | 0a07706c6179657273046c6973740474656c6c0177036d73670576616c756502
+    | 746d077465616d6d736706656e61626c65037573650000060b6c697374416c69
+    | 617365730200000000010000000a6d7367416c69617365730302000000030000
+    | 00040000000f537562436f6d6d616e6476616c756501050000000e7465616d6d
+    | 7367416c696173657302060000000700000010537562436f6d6d616e64656e61
+    | 626c6501080000000d537562436f6d6d616e6475736501090000000009056162
+    | 6f75742c446973706c617973204164616d616e7420636f726520616e64206275
+    | 696c6420696e666f726d6174696f6e2e000003616e79ffffffff00010000046c
+    | 69737419636f6d6d616e64732e6c6973742e6465736372697074696f6e000003
+    | 616e790000000000010000026d6517636f6d6d616e64732e6d652e6465736372
+    | 697074696f6e000003616e79ffffffff0001000106616374696f6e4600100000
+    | 00036d736719636f6d6d616e64732e74656c6c2e6465736372697074696f6e00
+    | 0003616e7901000000000100020774617267657473080010000000076d657373
+    | 6167654600100000000672616e646f6d1847656e657261746520612072616e64
+    | 6f6d2076616c75652e000003616e79ffffffff000100030576616c7565020030
+    | 000000036d696e010010000000036d6178010010000000067374617475732744
+    | 6973706c6179732073657276657220706572666f726d616e6365207374617469
+    | 73746963732e000003616e79ffffffff00010000077465616d6d73671c53656e
+    | 642061206d65737361676520746f20796f7572207465616d2e000003616e7903
+    | 00000000010001076d65737361676546001000000007747269676765721c636f
+    | 6d6d616e64732e747269676765722e6465736372697074696f6e000003616e79
+    | ffffffff0002000206656e61626c65040030000000096f626a65637469766538
+    | 0010000000000203757365050030000000096f626a6563746976653800100000
+    | 000776657273696f6e1c446973706c6179732074686520736572766572207665
+    | 7273696f6e2e000003616e79ffffffff000100000000
+>> UpdateAttributes id=29 len=158
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2193.Attribute (3)
+        [0] {Min:0 Max:20 Value:20 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.hunger" Modifiers:[]}
+        [1] {Min:0 Max:20 Value:5 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.saturation" Modifiers:[]}
+        [2] {Min:0 Max:5 Value:0 DefaultMin:0 DefaultMax:5 Default:0 Name:"minecraft:player.exhaustion" Modifiers:[]}
+      Tick: 0
+    | 0103000000000000a0410000a041000000000000a0410000a041176d696e6563
+    | 726166743a706c617965722e68756e67657200000000000000a0410000a04000
+    | 0000000000a0410000a0411b6d696e6563726166743a706c617965722e736174
+    | 75726174696f6e00000000000000a04000000000000000000000a04000000000
+    | 1b6d696e6563726166743a706c617965722e65786861757374696f6e0000
+>> LevelChunk id=58 len=550
+    {Position:[0 0] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 00000000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:0 26:0 3:0 38:1 4:"Member" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c6808082800303000000040404064d656d6265720701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c0707007803030000000081010000008301070700000000
+>> LevelChunk id=58 len=550
+    {Position:[-1 -1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 01010000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[-1 0] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 01000000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[-1 1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 01020000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[0 -1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 00010000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[0 1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 00020000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[1 -1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 02010000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[1 0] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 02000000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[1 1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 02020000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+-- Member, the abilities sent again by the timer of the session
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:63 FlySpeed:0.05 VerticalFlySpeed:1 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
+    | 3d
 -- player provider
     loaded 00000000-0000-4000-8000-00000000900b: none saved
+== Member's client disconnects
+-- player provider
     saved Member (2535400000000111, 00000000-0000-4000-8000-00000000900b): in Overworld at [0.5 -60 0.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 0, held slot 0
 -- server
     players online: 0

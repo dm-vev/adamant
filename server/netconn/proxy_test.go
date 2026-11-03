@@ -1,11 +1,15 @@
 package netconn
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/dm-vev/adamant/net/bedrock"
+	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -151,3 +155,91 @@ func TestProxiedPlayersAdmittedAsClients(t *testing.T) {
 }
 
 var errInvalidName = wire.ErrTooLong
+
+// TestProxiedPlayerReadsStatics sends a Static to a proxied player and to
+// a client of the server's own: each reads it in a batch of the
+// compression of its connection, uncompressed over the link, and the
+// session goes on after it.
+func TestProxiedPlayerReadsStatics(t *testing.T) {
+	l := listen(t, Config{})
+	st := &staticText{&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: strings.Repeat("static ", 100)}}
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				defer cancel()
+				if err := c.StartGameContext(ctx, gameData()); err != nil {
+					_ = c.Close()
+					return
+				}
+				_ = c.WritePacket(st)
+				_ = c.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "after"})
+				_ = c.Flush()
+			}()
+		}
+	}()
+
+	b := openProxied(t, proxyLink(t, l), "Proxied", v2193.Protocol)
+	readUntil(t, b, v2193.IDResourcePacksInfo)
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseAllPacksDownloaded})
+	readUntil(t, b, v2193.IDResourcePackStack)
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
+	game := readUntil(t, b, v2193.IDStartGame).(*v2193.StartGamePacket)
+	writeRaw(t, b, &v2193.RequestChunkRadiusPacket{ChunkRadius: 8})
+	readUntil(t, b, v2193.IDPlayStatus)
+	writeRaw(t, b, &v2193.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
+	if text := readUntil(t, b, v2193.IDText).(*v2193.TextPacket); text.Message != st.Packet.(*v2193.TextPacket).Message {
+		t.Fatalf("read %q, want the static", text.Message)
+	}
+	if text := readUntil(t, b, v2193.IDText).(*v2193.TextPacket); text.Message != "after" {
+		t.Fatalf("read %q after the static", text.Message)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
+	var got []string
+	for len(got) < 2 {
+		pk, err := conn.ReadPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if text, ok := pk.(*v2193.TextPacket); ok {
+			got = append(got, text.Message)
+		}
+	}
+	if got[0] != st.Packet.(*v2193.TextPacket).Message || got[1] != "after" {
+		t.Fatalf("the direct client read %q", got)
+	}
+
+	l.staticMu.Lock()
+	defer l.staticMu.Unlock()
+	if len(l.statics) != 2 {
+		t.Fatalf("%d static batches, want one of each compression", len(l.statics))
+	}
+	for key, msg := range l.statics {
+		w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: st.ID()})}
+		st.Encode(&w)
+		comp := bedrock.Compression(bedrock.None{})
+		if key.alg != bedrock.AlgorithmNone {
+			comp = staticCompression
+		}
+		want, err := bedrock.EncodeBatch(comp, w.B)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(msg, want) {
+			t.Fatalf("the batch of algorithm %#x is not the static encoded in it", key.alg)
+		}
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"net"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -32,7 +33,10 @@ var proxySecret = strings.Repeat("golden proxy ", 4)
 // whose address is banned, and a client whose name the rules of logins
 // refuse are each sent what the server refuses them with, or nothing, and
 // none becomes a player. An operator not on the whitelist is let in; a
-// client on it logs in, gets its game started and spawns.
+// client on it logs in, gets its game started and spawns, and what its
+// session sends it is recorded as the scenarios of golden_server_test.go
+// record theirs: what the spawn sent up to the marker Accept writes, then
+// the ticks after until its chunks and the abilities sent again are in.
 //
 // What is recorded is what each client reads off its connection, decoded
 // as a client decodes it, with the normalisations of the harness, but for
@@ -115,21 +119,17 @@ func TestGoldenServerLogin(t *testing.T) {
 	game := m.readUntil(v2193.IDStartGame, v2193.IDItemRegistry).(*v2193.StartGamePacket)
 	m.send(&v2193.RequestChunkRadiusPacket{ChunkRadius: goldenRadius})
 	m.readUntil(v2193.IDChunkRadiusUpdated, v2193.IDPlayStatus, v2193.IDCreativeContent)
+	// From here on the client is recorded as those of the test's listener
+	// are: what the spawn sent it up to the marker Accept writes, then what
+	// the ticks after sent up to a marker of a step.
+	member := m.spawning()
 	m.send(&v2193.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
-	// What the client is sent from here on is read and left out. The
-	// items the server writes once the game started go out with the first
-	// flush of the session, and what the session sends goes by the clock
-	// of the world. Whether either reaches the client, and whether the
-	// player is still online once Accept yielded it, is timing: the
-	// listener encodes the batches of Static packets once, compressed,
-	// while a proxied connection compresses nothing, so the session of a
-	// proxied client ends at the flush that holds the first of them ("batch
-	// of another compression"), and what that flush held is lost.
-	go m.discard()
 	s.awaitSpawn("Member")
 	fmt.Fprintf(&s.out, "-- Accept yielded %s\n", s.lastYielded())
+	s.spawnSent(member, nil)
 	s.out.WriteString("== Member's client disconnects\n")
 	_ = m.b.Close()
+	member.left()
 	s.awaitSave("Member")
 	s.providerLog()
 	s.noPlayers()
@@ -140,6 +140,7 @@ func TestGoldenServerLogin(t *testing.T) {
 // sees it.
 type proxiedClient struct {
 	s    *serverScenario
+	who  serverIdentity
 	name string
 	b    *bedrock.Conn
 	rec  *scenario
@@ -150,8 +151,12 @@ type proxiedClient struct {
 func (s *serverScenario) proxied(link *proxy.Link, name, addr string, n int) *proxiedClient {
 	s.t.Helper()
 	id := uuid.MustParse(fmt.Sprintf("00000000-0000-4000-8000-%012x", 0x9000+n))
-	identity, _ := json.Marshal(login.Identity{DisplayName: name, Identity: id.String(), XUID: fmt.Sprintf("25354000000%05d", 100+n)})
-	data, _ := json.Marshal(login.DefaultClientData("golden.example.invalid:19132", name, v2193.Version))
+	xuid := fmt.Sprintf("25354000000%05d", 100+n)
+	identity, _ := json.Marshal(login.Identity{DisplayName: name, Identity: id.String(), XUID: xuid})
+	cd := login.DefaultClientData("golden.example.invalid:19132", name, v2193.Version)
+	// The default is drawn at random; the player list shows it.
+	cd.PlayFabID = fmt.Sprintf("%016x", 0x9000+n)
+	data, _ := json.Marshal(cd)
 	p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, Addr: addr, Protocol: v2193.Protocol})
 	if err != nil {
 		s.t.Fatal(err)
@@ -159,7 +164,10 @@ func (s *serverScenario) proxied(link *proxy.Link, name, addr string, n int) *pr
 	_ = p.SetReadDeadline(time.Now().Add(20 * time.Second))
 	b := bedrock.NewConn(p, bedrock.Config{})
 	b.EnableCompression(bedrock.None{})
-	return &proxiedClient{s: s, name: name, b: b, rec: &scenario{t: s.t, name: s.name, norm: s.norm, stacks: map[stackSlot]int32{}}}
+	host, port, _ := net.SplitHostPort(addr)
+	portNum, _ := strconv.Atoi(port)
+	who := serverIdentity{name: name, xuid: xuid, id: id, addr: &net.UDPAddr{IP: net.ParseIP(host), Port: portNum}}
+	return &proxiedClient{s: s, who: who, name: name, b: b, rec: &scenario{t: s.t, name: s.name, norm: s.norm, stacks: map[stackSlot]int32{}}}
 }
 
 // read reads the next packet the client is sent and records it. It
@@ -275,14 +283,38 @@ func (c *proxiedClient) readAll() {
 	}
 }
 
-// discard reads what the client is sent without recording it until the
-// connection closes.
-func (c *proxiedClient) discard() {
-	for {
-		if _, err := c.b.ReadPacket(); err != nil {
-			return
+// spawning makes the client one of the scenario, as those of the test's
+// listener are, before its player spawns: what it is sent from now on is
+// read off its connection, decoded as a client decodes it, and handed to
+// a serverClient, whose player Accept writes its marker to.
+func (c *proxiedClient) spawning() *serverClient {
+	sc := &serverClient{s: c.s, who: c.who, conn: &identityConn{goldenConn: newGoldenConn(), who: c.who}, rec: c.rec}
+	c.s.mu.Lock()
+	c.s.clients = append(c.s.clients, sc)
+	c.s.mu.Unlock()
+	go func() {
+		defer sc.conn.Close()
+		for {
+			raw, err := c.b.ReadPacket()
+			if err != nil {
+				return
+			}
+			h, fields, err := bedrock.ReadHeader(raw)
+			if err != nil {
+				c.s.t.Errorf("%s: %s: %v", c.s.name, c.name, err)
+				return
+			}
+			pk := v2193.New(h.ID)
+			r := wire.NewReader(fields)
+			pk.Decode(r)
+			if r.Err() != nil || r.Len() != 0 {
+				c.s.t.Errorf("%s: %s: packet %d does not decode: %v, %d bytes left", c.s.name, c.name, h.ID, r.Err(), r.Len())
+				return
+			}
+			sc.conn.written <- pk
 		}
-	}
+	}()
+	return sc
 }
 
 // send sends a packet as the client does, and records it.

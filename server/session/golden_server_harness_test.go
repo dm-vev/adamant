@@ -491,9 +491,8 @@ func (s *serverScenario) awaitSpawn(heading string) *world.EntityHandle {
 }
 
 // joined records the join of c, whose player just spawned: the game the
-// server started for it and what it was written before its session, what
-// the spawn sent each client, and what the ticks after sent until the
-// client's chunks and the abilities sent again are in.
+// server started for it and what it was written before its session, and
+// then what spawnSent records.
 func (s *serverScenario) joined(heading string, c *serverClient, others []*serverClient) {
 	s.t.Helper()
 	c.conn.mu.Lock()
@@ -507,7 +506,15 @@ func (s *serverScenario) joined(heading string, c *serverClient, others []*serve
 		dump = briefGameData(*data)
 	}
 	fmt.Fprintf(&s.out, "-- StartGameContext of %s\n>> GameData\n%s", c.who.name, dump)
+	s.spawnSent(c, others)
+	s.awaitReader(c)
+}
 
+// spawnSent records what the spawn of c, whose player just spawned, sent
+// each client, and what the ticks after sent until the client's chunks and
+// the abilities sent again are in.
+func (s *serverScenario) spawnSent(c *serverClient, others []*serverClient) {
+	s.t.Helper()
 	// The spawn ended with a marker written in the transaction of Accept.
 	for _, o := range append(others, c) {
 		fmt.Fprintf(&s.out, "-- %s, the session made and the player spawned\n", o.who.name)
@@ -528,7 +535,6 @@ func (s *serverScenario) joined(heading string, c *serverClient, others []*serve
 	})
 	s.endStep(append(others, c), true)
 	s.providerLog()
-	s.awaitReader(c)
 }
 
 // awaitReader waits until the session of c reads from its connection.

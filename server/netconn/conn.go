@@ -57,6 +57,9 @@ type Conn struct {
 	// nn is the NetherNet connection of t, nil for a player of a proxy.
 	nn *nethernet.Conn
 	b  *bedrock.Conn
+	// comp is the compression of b, set by the login before any Static
+	// is written: that of the listener, none for a player of a proxy.
+	comp bedrock.Compression
 
 	identity     login.Identity
 	client       login.ClientData
@@ -179,10 +182,14 @@ func sendQueue(st sctp.Stats) (queued, window int, rtt time.Duration) {
 }
 
 // WritePacket adds a packet to the batch sent at the next Flush. A Static
-// goes in a batch of its own, encoded once for every connection.
+// goes in a batch of its own, encoded once for every connection of its
+// compression.
 func (c *Conn) WritePacket(pk proto.Packet) error {
 	if st, ok := pk.(Static); ok {
-		msg, err := c.l.static(st, c.shieldID.Load())
+		if c.comp == nil {
+			return errors.New("netconn: Static written before the login")
+		}
+		msg, err := c.l.static(st, c.shieldID.Load(), c.comp)
 		if err != nil {
 			return err
 		}
