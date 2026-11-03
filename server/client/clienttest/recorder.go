@@ -66,7 +66,12 @@ type Answers struct {
 //
 // Close does for the world what a client must: on its first call it removes
 // the player from the world of tx, if tx is not nil, and closes its entity
-// handle, outside the lock of the Recorder.
+// handle, outside the lock of the Recorder. A Recorder that Join.Start
+// returned keeps the Game it was started with, and its Close first calls
+// the Left hook of that Game.
+//
+// As a client.Joining, the Recorder records Bind and Spawn and does nothing
+// else for them.
 type Recorder struct {
 	// Answers are set before the player uses the Recorder.
 	Answers Answers
@@ -78,10 +83,12 @@ type Recorder struct {
 	locks  map[input.Lock]struct{}
 	shapes map[int]debug.Shape
 	layer  *world.ViewLayer
+	// game is the Game of the Recorder, nil for one New made.
+	game *client.Game
 }
 
-// Compile time check to make sure Recorder implements client.Client.
-var _ client.Client = (*Recorder)(nil)
+// Compile time check to make sure Recorder implements client.Joining.
+var _ client.Joining = (*Recorder)(nil)
 
 // New returns a Recorder with no calls and zero Answers.
 func New() *Recorder {
@@ -206,18 +213,22 @@ func (r *Recorder) ViewLayer() *world.ViewLayer {
 	return r.layer
 }
 
-// Close records the call and, on the first call, removes c from the world of
-// tx, if tx is not nil, and closes the entity handle of c. It does so
-// outside the lock: removing the entity calls viewers, the Recorder among
-// them.
+// Close records the call and, on the first call, calls the Left hook of
+// the Game of the Recorder, if it has one, removes c from the world of tx,
+// if tx is not nil, and closes the entity handle of c. It does so outside
+// the lock: removing the entity calls viewers, the Recorder among them.
 func (r *Recorder) Close(tx *world.Tx, c client.Controllable) {
 	r.mu.Lock()
 	r.recordLocked("Close", tx, c)
 	first := !r.closed
 	r.closed = true
+	game := r.game
 	r.mu.Unlock()
 	if !first {
 		return
+	}
+	if game != nil && game.Left != nil {
+		game.Left(tx, c)
 	}
 	if tx != nil {
 		tx.RemoveEntity(c)
@@ -309,6 +320,9 @@ func (r *Recorder) InputLocked(l input.Lock) bool {
 }
 
 // The methods below are only recorded.
+
+func (r *Recorder) Bind(a0 *world.EntityHandle, a1 skin.Skin)  { r.record("Bind", a0, a1) }
+func (r *Recorder) Spawn(a0 client.Controllable, a1 *world.Tx) { r.record("Spawn", a0, a1) }
 
 func (r *Recorder) ViewEntity(a0 world.Entity)         { r.record("ViewEntity", a0) }
 func (r *Recorder) HideEntity(a0 world.Entity)         { r.record("HideEntity", a0) }

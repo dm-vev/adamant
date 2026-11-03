@@ -25,8 +25,8 @@ import (
 // Player holds the Client of the remote client that plays it, and uses Nop
 // if there is none.
 //
-// The adapter binds a Client to the entity of its player when the player
-// joins; that binding is not part of this contract yet (phase 2). A
+// The adapter binds the Client to the entity of its player as the player
+// joins: the Client is then the Joining that Join.Start returned. A
 // *player.Player is a view of the player valid within one transaction, so a
 // Client keeps none: it is passed the player as a Controllable where it needs
 // its state.
@@ -99,13 +99,16 @@ type Connection interface {
 	Disconnect(message text.Text)
 	// Close ends the session of the client with its player c as the player
 	// quits. tx is the transaction of the world c is in, nil if it is in
-	// none. Only the first call does anything; later calls, those from
-	// callbacks Close runs too, return at once.
+	// none. In this order, Close closes the connection and the screens of
+	// the client, calls the Left hook of its Game, clears the inventories
+	// of c, writes the QuitMessage of the Game, unsubscribes c from the
+	// chat, removes c from the world of tx if tx is not nil, and closes the
+	// entity handle of c. Player relies on it to do so, and does none of it
+	// itself when it has a client. Only the first call does anything; later
+	// calls, including those from callbacks that Close runs, return at once.
 	//
-	// Transitional: Close removes c from the world of tx, if tx is not nil,
-	// and closes the entity handle of c. Player relies on it to, and does
-	// neither itself when it has a client. Removing the player is game logic
-	// and moves into the game in phase 4.
+	// Transitional: removing the player and the rest of its teardown are
+	// game logic, and move into the game in phase 4.
 	Close(tx *world.Tx, c Controllable)
 	// CloseConnection closes the connection of the client, which ends its
 	// session eventually. It may be called from any goroutine, any number of
