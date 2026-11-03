@@ -2,23 +2,17 @@ package server
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"iter"
-	"maps"
 	"os"
 	"os/signal"
 	"runtime/debug"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/internal/bedrockdata"
-	"github.com/df-mc/dragonfly/server/internal/blockinternal"
-	"github.com/df-mc/dragonfly/server/internal/iteminternal"
 	"github.com/df-mc/dragonfly/server/netconn"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/session"
@@ -26,7 +20,6 @@ import (
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -47,16 +40,16 @@ type Server struct {
 	dimensions       map[world.Dimension]*world.World
 	defaultDimension world.Dimension
 
-	blockEntries     []v2193.BlockEntry
-	customItems      []v2193.ItemEntry
-	customDimensions []v2193.DimensionDefinition
-	whitelist        *Whitelist
-	operators        *operatorsList
-	bans             *banList
-	idleTimeout      atomic.Int64
-	idleStop         chan struct{}
-	listeners        []Listener
-	incoming         chan incoming
+	// start is the content of the game as the client is defined it as its
+	// game starts, made once the server starts listening.
+	start       *session.StartContent
+	whitelist   *Whitelist
+	operators   *operatorsList
+	bans        *banList
+	idleTimeout atomic.Int64
+	idleStop    chan struct{}
+	listeners   []Listener
+	incoming    chan incoming
 
 	// players holds the players online.
 	players players
@@ -415,93 +408,11 @@ func (srv *Server) listen(l Listener) {
 // startListening starts making the EncodeBlock listener listen, accepting new
 // connections from players.
 func (srv *Server) startListening() {
-	srv.makeBlockEntries()
-	srv.makeItemComponents()
-	srv.makeDimensionData()
+	srv.start = session.NewStartContent(srv.conf.Blocks, world.CustomItems(), world.CustomDimensions())
 
 	srv.wg.Add(len(srv.listeners))
 	for _, l := range srv.listeners {
 		go srv.listen(l)
-	}
-}
-
-// makeBlockEntries initialises the definitions of blocks the client gets at
-// spawn: the vanilla blocks the game defines by data, as BDS sends them, and
-// the registered custom blocks. It allows block components to be created only
-// once at startup.
-func (srv *Server) makeBlockEntries() {
-	custom := slices.Collect(maps.Values(srv.conf.Blocks.CustomBlocks()))
-	srv.blockEntries = make([]v2193.BlockEntry, 0, len(vanillaBlocks)+len(custom))
-
-	for _, name := range slices.Sorted(maps.Keys(vanillaBlocks)) {
-		srv.blockEntries = append(srv.blockEntries, v2193.BlockEntry{Name: name, Properties: vanillaBlocks[name]})
-	}
-	for i, b := range custom {
-		name, _ := b.EncodeBlock()
-		srv.blockEntries = append(srv.blockEntries, v2193.BlockEntry{
-			Name:       name,
-			Properties: blockinternal.Components(name, b, 10000+int32(i)),
-		})
-	}
-}
-
-// makeItemComponents initialises the server's item components map using the
-// registered custom items. It allows item components to be created only once
-// at startup
-func (srv *Server) makeItemComponents() {
-	srv.customItems = itemEntries(srv.conf.Blocks, world.CustomItems())
-}
-
-func itemEntries(br world.BlockRegistry, custom []world.CustomItem) []v2193.ItemEntry {
-	items := make([]world.CustomItem, 0, len(custom)+len(br.CustomBlocks()))
-	for _, it := range custom {
-		if _, blockItem := it.(world.CustomBlock); !blockItem {
-			items = append(items, it)
-		}
-	}
-	for _, b := range br.CustomBlocks() {
-		if it, ok := b.(world.CustomItem); ok {
-			items = append(items, it)
-		}
-	}
-
-	entries := make([]v2193.ItemEntry, 0, len(items))
-
-	for _, it := range items {
-		name, _ := it.EncodeItem()
-		rid, _, ok := world.ItemRuntimeID(it)
-		if !ok {
-			continue
-		}
-		_, isCustomBlock := it.(world.CustomBlock)
-		entryVersion := v2193.ItemEntryVersionDataDriven
-		if isCustomBlock {
-			entryVersion = v2193.ItemEntryVersionNone
-		}
-		entries = append(entries, v2193.ItemEntry{
-			Name:           name,
-			ComponentBased: !isCustomBlock,
-			RuntimeID:      int16(rid),
-			Version:        entryVersion,
-			Data:           iteminternal.Components(it),
-		})
-	}
-	return entries
-}
-
-// makeDimensionData initialises the server's custom dimensions list.
-func (srv *Server) makeDimensionData() {
-	dimensions := world.CustomDimensions()
-	srv.customDimensions = make([]v2193.DimensionDefinition, 0, len(dimensions))
-	for _, registration := range dimensions {
-		r := registration.Dimension.Range()
-		srv.customDimensions = append(srv.customDimensions, v2193.DimensionDefinition{
-			Name:          registration.Name,
-			MinimumY:      int32(r.Min()),
-			HeightRange:   int32(r.Height() + 1),
-			Generator:     v2193.GeneratorVoid,
-			DimensionType: int32(registration.ID),
-		})
 	}
 }
 
@@ -569,11 +480,7 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 		srv.conf.Log.Debug("spawn failed: "+err.Error(), "raddr", conn.RemoteAddr())
 		return
 	}
-	items := make([]v2193.ItemEntry, len(srv.customItems))
-	for i, e := range srv.customItems {
-		items[i] = v2193.ItemEntry(e)
-	}
-	_ = conn.WritePacket(&v2193.ItemRegistryPacket{Items: items})
+	_ = conn.WritePacket(&v2193.ItemRegistryPacket{Items: srv.start.ItemRegistry()})
 	srv.incoming <- srv.createPlayer(conn, d, w)
 }
 
@@ -637,8 +544,8 @@ func (srv *Server) defaultGameData() netconn.GameData {
 		PlayerPermissions: v2193.PermissionLevelMember,
 		PlayerPosition:    vec64To32(srv.world.Spawn().Vec3Centre().Add(mgl64.Vec3{0, player.Type.NetworkOffset()})),
 
-		Items:        srv.itemEntries(),
-		Blocks:       srv.blockEntries,
+		Items:        srv.start.Items(),
+		Blocks:       srv.start.Blocks(),
 		GameRules: append([]v2193.GameRule{
 			{Name: "naturalregeneration", Value: false},
 			{Name: "locatorBar", Value: false},
@@ -652,7 +559,7 @@ func (srv *Server) defaultGameData() netconn.GameData {
 		PlayerMovementSettings: v2193.PlayerMovementSettings{
 			ServerAuthoritativeBlockBreaking: true,
 		},
-		Dimensions: srv.customDimensions,
+		Dimensions: srv.start.Dimensions(),
 	}
 }
 
@@ -792,47 +699,4 @@ func (srv *Server) registerWorld(dim world.Dimension, w *world.World) {
 // vec64To32 converts a mgl64.Vec3 to a mgl32.Vec3.
 func vec64To32(vec3 mgl64.Vec3) mgl32.Vec3 {
 	return mgl32.Vec3{float32(vec3[0]), float32(vec3[1]), float32(vec3[2])}
-}
-
-// itemEntries loads a list of all custom item entries of the server, ready to
-// be sent in the StartGame packet.
-func (srv *Server) itemEntries() []v2193.ItemEntry {
-	entries := make([]v2193.ItemEntry, 0, len(vanillaItems))
-
-	for name, e := range vanillaItems {
-		entries = append(entries, v2193.ItemEntry{
-			Name:           name,
-			RuntimeID:      int16(e.RuntimeID),
-			ComponentBased: e.ComponentBased,
-			Version:        e.Version,
-			Data:           e.Data,
-		})
-	}
-	entries = append(entries, srv.customItems...)
-	return entries
-}
-
-var (
-	//go:embed vanilla_blocks.nbt
-	vanillaBlocksData []byte
-	// vanillaBlocks are the properties of the vanilla blocks the game defines
-	// by data, by name, as BDS defines them to the client in StartGame. The
-	// client draws none of these blocks, such as stairs and slabs of wool or
-	// concrete, unless the server defines them.
-	vanillaBlocks = map[string]map[string]any{}
-
-	vanillaItemsData = bedrockdata.VanillaItems
-	vanillaItems     = map[string]struct {
-		RuntimeID      int32          `nbt:"runtime_id"`
-		ComponentBased bool           `nbt:"component_based"`
-		Version        int32          `nbt:"version"`
-		Data           map[string]any `nbt:"data,omitempty"`
-	}{}
-)
-
-// init reads all item entries and vanilla block definitions from their
-// embedded NBT, and sets the according values in the runtime ID maps.
-func init() {
-	_ = nbt.Unmarshal(vanillaItemsData, &vanillaItems)
-	_ = nbt.Unmarshal(vanillaBlocksData, &vanillaBlocks)
 }

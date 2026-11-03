@@ -1,4 +1,4 @@
-package server
+package session
 
 import (
 	"image"
@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/customblock"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/category"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
-func TestItemEntriesCustomItem(t *testing.T) {
-	entries := itemEntries(world.DefaultBlockRegistry, []world.CustomItem{customItem{}})
+func TestCustomItemEntriesCustomItem(t *testing.T) {
+	entries := customItemEntries(world.DefaultBlockRegistry, []world.CustomItem{customItem{}})
 	if len(entries) != 1 {
 		t.Fatalf("got %d item entries, want 1", len(entries))
 	}
@@ -20,7 +22,7 @@ func TestItemEntriesCustomItem(t *testing.T) {
 	}
 }
 
-func TestItemEntriesUseServerBlockRegistry(t *testing.T) {
+func TestCustomItemEntriesUseServerBlockRegistry(t *testing.T) {
 	a, b := customBlockItem{id: "test:registry_a"}, customBlockItem{id: "test:registry_b"}
 	unregistered := customBlockItem{id: "test:registry_unregistered"}
 	world.RegisterItem(a)
@@ -42,7 +44,7 @@ func TestItemEntriesUseServerBlockRegistry(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			names := map[string]bool{}
-			for _, entry := range itemEntries(test.br, global) {
+			for _, entry := range customItemEntries(test.br, global) {
 				if entry.RuntimeID == 0 {
 					t.Fatalf("entry %q has invalid runtime ID 0", entry.Name)
 				}
@@ -80,3 +82,53 @@ func (customBlockItem) Properties() customblock.Properties      { return customb
 func (b customBlockItem) Name() string                          { return b.id }
 func (customBlockItem) Texture() image.Image                    { return image.NewRGBA(image.Rect(0, 0, 1, 1)) }
 func (customBlockItem) Category() category.Category             { return category.Construction() }
+
+// TestBlockEntriesDefineBlocksOfData checks that the client learns the
+// vanilla blocks the game defines by data from the server, as from BDS: it
+// draws none of them otherwise, and the tents of abandoned camps, of white
+// wool stairs, stood invisible over their fences.
+func TestBlockEntriesDefineBlocksOfData(t *testing.T) {
+	blocks := map[string]map[string]any{}
+	for _, b := range NewStartContent(world.DefaultBlockRegistry, nil, nil).Blocks() {
+		blocks[b.Name] = b.Properties
+	}
+	for _, colour := range item.Colours() {
+		for _, kind := range []string{"wool_stairs", "wool_slab", "wool_double_slab", "concrete_stairs", "concrete_slab", "concrete_double_slab"} {
+			name := "minecraft:" + colour.String() + "_" + kind
+			if _, ok := blocks[name]; !ok {
+				t.Errorf("%s is not defined", name)
+			}
+		}
+	}
+	data, _ := blocks["minecraft:white_wool_stairs"]["vanilla_block_data"].(map[string]any)
+	archetype, _ := data["block_archetype"].(map[string]any)
+	if archetype["base_block"] != "minecraft:white_wool" || archetype["type"] != "stair_block" {
+		t.Errorf("white wool stairs are built on %v, want stairs of white wool", archetype)
+	}
+}
+
+// TestBlocksOfDataAreBlocksOfTheServer checks that the server has a block
+// for each vanilla block it defines to the client.
+func TestBlocksOfDataAreBlocksOfTheServer(t *testing.T) {
+	if len(vanillaBlocks) == 0 {
+		t.Fatal("no vanilla blocks are defined")
+	}
+	for name := range vanillaBlocks {
+		if _, ok := world.DefaultBlockRegistry.StateToRuntimeID(name, nil); !ok {
+			t.Errorf("%s is no block of the server", name)
+		}
+	}
+}
+
+// TestDimensionDefinitions checks that the client is defined the custom
+// dimensions of the game by name, range and ID, generated as void.
+func TestDimensionDefinitions(t *testing.T) {
+	defs := NewStartContent(world.DefaultBlockRegistry, nil, []world.DimensionRegistration{
+		{ID: 3, Name: "adamant:test", Dimension: world.Overworld},
+	}).Dimensions()
+	r := world.Overworld.Range()
+	want := v2193.DimensionDefinition{Name: "adamant:test", MinimumY: int32(r.Min()), HeightRange: int32(r.Height() + 1), Generator: v2193.GeneratorVoid, DimensionType: 3}
+	if len(defs) != 1 || defs[0] != want {
+		t.Fatalf("dimensions = %#v, want %#v", defs, []v2193.DimensionDefinition{want})
+	}
+}
