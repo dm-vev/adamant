@@ -23,6 +23,7 @@ func (o *nativeSwitchSoundObserver) HandleSound(_ *world.Context, s world.Sound,
 }
 
 func TestSwitchSoundsMatchNativePackets(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_switch_sounds.json")
 	if err != nil {
 		t.Fatal(err)

@@ -26,6 +26,7 @@ func (u *placingUser) PlaceBlock(pos cube.Pos, b world.Block, ctx *item.UseConte
 // vines hang the same way and twisting vines stand on a block. A berry-
 // bearing tip continued by new vines becomes part of them with its berry.
 func TestGrowingPlantsNeedSupport(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	var failure string

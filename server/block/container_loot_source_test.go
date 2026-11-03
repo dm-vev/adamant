@@ -11,6 +11,7 @@ import (
 )
 
 func TestContainerLootFillMatchesJava263Source(t *testing.T) {
+	t.Parallel()
 	type slot struct {
 		Slot  int    `json:"slot"`
 		Item  string `json:"item"`

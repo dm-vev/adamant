@@ -19,6 +19,7 @@ func randomTickWorld(t *testing.T) *world.World {
 // WeatheringCopperStairBlock: cut copper slabs and stairs oxidise as copper
 // blocks do, and waxed ones never tick.
 func TestCopperSlabsAndStairsOxidise(t *testing.T) {
+	t.Parallel()
 	w := randomTickWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		slab := Slab{Block: Copper{Type: CutCopper()}}
@@ -49,6 +50,7 @@ func TestCopperSlabsAndStairsOxidise(t *testing.T) {
 // TestIceMeltsByBlockLight checks IceBlock.randomTick: ice melts into water
 // where block light is above 10, and stays where it is darker.
 func TestIceMeltsByBlockLight(t *testing.T) {
+	t.Parallel()
 	w := randomTickWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		lit, dark := cube.Pos{0, 64, 0}, cube.Pos{20, 64, 0}
@@ -71,6 +73,7 @@ func TestIceMeltsByBlockLight(t *testing.T) {
 // that lets no light through turns into dirt, while grass in the dark under
 // open air stays, and lit grass spreads to the dirt around it.
 func TestGrassFollowsJava(t *testing.T) {
+	t.Parallel()
 	w := randomTickWorld(t)
 	w.SetTime(6000)
 	w.StopTime()
@@ -117,6 +120,7 @@ func TestGrassFollowsJava(t *testing.T) {
 // TestVinesGrowFromTheirTip checks GrowingPlantHeadBlock.randomTick: the tip
 // of cave vines grows down until it is 25 old, the rest does not.
 func TestVinesGrowFromTheirTip(t *testing.T) {
+	t.Parallel()
 	w := randomTickWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 100, 0}, Stone{}, nil)
@@ -145,6 +149,7 @@ func TestVinesGrowFromTheirTip(t *testing.T) {
 // within six steps of any log, stripped ones too, do not decay, and those
 // further away do.
 func TestLeavesStayNearStrippedLogs(t *testing.T) {
+	t.Parallel()
 	w := randomTickWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 64, 0}, Log{Wood: OakWood(), Stripped: true}, nil)

@@ -30,6 +30,7 @@ func (s *ejectionNativeWords) Uint64() uint64 {
 }
 
 func TestItemEjectionVelocityMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_ejection_velocities.json")
 	if err != nil {
 		t.Fatal(err)
@@ -84,6 +85,7 @@ func TestItemEjectionVelocityMatchesExecutedClient(t *testing.T) {
 }
 
 func TestCrafterEjectionOriginMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_ejection_velocities.json")
 	if err != nil {
 		t.Fatal(err)

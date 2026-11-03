@@ -10,6 +10,7 @@ import (
 )
 
 func TestCrafterPersistsDisabledSlotsAndInventory(t *testing.T) {
+	t.Parallel()
 	crafter := NewCrafter()
 	_ = crafter.inventory.SetItem(4, item.NewStack(item.Diamond{}, 3))
 	crafter, changed := crafter.SetSlotDisabled(2, true)
@@ -49,6 +50,7 @@ func TestCrafterCraftsAndInsertsRegisteredRecipe(t *testing.T) {
 	})
 }
 func TestCrafterShapedEmptyCells(t *testing.T) {
+	t.Parallel()
 	ingredients := make([]recipe.Item, 9)
 	input := make([]item.Stack, 9)
 	for slot := range 9 {
@@ -72,6 +74,7 @@ func TestCrafterShapedEmptyCells(t *testing.T) {
 }
 
 func TestHopperFeedsEnabledCrafterSlot(t *testing.T) {
+	t.Parallel()
 	crafter := NewCrafter()
 	crafter, _ = crafter.SetSlotDisabled(0, true)
 	crafter, _ = crafter.SetSlotDisabled(2, true)
@@ -97,6 +100,7 @@ func TestHopperFeedsEnabledCrafterSlot(t *testing.T) {
 }
 
 func TestAllCrafterStatesEncodeDistinctOrientations(t *testing.T) {
+	t.Parallel()
 	states := allCrafters()
 	if len(states) != 48 {
 		t.Fatalf("got %d Crafter block states, want 48", len(states))

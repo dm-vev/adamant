@@ -27,6 +27,7 @@ func (u *torchPlacementTestUser) PlaceBlock(pos cube.Pos, b world.Block, ctx *it
 // Exercise UseOnBlock so an early attachment-power check cannot hide a mismatch
 // by directly installing the expected lit block in this replay.
 func TestTorchPlacementMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_placement.json")
 	if err != nil {
 		t.Fatal(err)

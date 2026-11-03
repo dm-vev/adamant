@@ -14,6 +14,7 @@ import (
 )
 
 func TestPistonContactShapesMatchExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_piston_contact_shapes.json")
 	if err != nil {
 		t.Fatal(err)
@@ -104,6 +105,7 @@ func (s pistonShapeNativeSource) Block(pos cube.Pos) world.Block {
 }
 
 func TestPistonHeadShapesMatchExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_piston_contact_shapes.json")
 	if err != nil {
 		t.Fatal(err)

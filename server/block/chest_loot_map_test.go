@@ -14,6 +14,7 @@ import (
 // fills, and some roll a map, which stays blank in a world without a
 // generator to find the structure in.
 func TestAbandonedCampChestFillsWithMap(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	maps := 0

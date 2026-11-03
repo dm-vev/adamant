@@ -12,6 +12,7 @@ import (
 // the item's block up by state, so any other value panics the world as soon
 // as a player is given the item.
 func TestBlockItemsAreRegisteredStates(t *testing.T) {
+	t.Parallel()
 	world.DefaultBlockRegistry.Finalize()
 	for _, it := range world.Items() {
 		b, ok := it.(world.Block)

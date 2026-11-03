@@ -21,6 +21,7 @@ func newDropTestWorld(t *testing.T) *world.World {
 }
 
 func TestBushesPlaceOnlyOnVegetationSoil(t *testing.T) {
+	t.Parallel()
 	plants := []world.Block{Bush{}, FireflyBush{}, RedShrub{}}
 	soils := []struct {
 		soil world.Block
@@ -44,6 +45,7 @@ func TestBushesPlaceOnlyOnVegetationSoil(t *testing.T) {
 }
 
 func TestRedShrubBreaksWithoutSoil(t *testing.T) {
+	t.Parallel()
 	w := newDropTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 0, 0}, Grass{}, nil)
@@ -59,6 +61,7 @@ func TestRedShrubBreaksWithoutSoil(t *testing.T) {
 }
 
 func TestBushBoneMealSpreadsToFreeNeighbourOnSoil(t *testing.T) {
+	t.Parallel()
 	for _, plant := range []world.Block{Bush{}, FireflyBush{}, RedShrub{}} {
 		w := newMultifaceTestWorld(t)
 		<-w.Exec(func(tx *world.Tx) {

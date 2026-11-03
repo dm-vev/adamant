@@ -22,6 +22,7 @@ func useOnCauldron(t *testing.T, tx *world.Tx, pos cube.Pos, held item.Stack) *i
 }
 
 func TestCauldronBucketsAndBottlesMoveBedrockLevels(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -53,6 +54,7 @@ func TestCauldronBucketsAndBottlesMoveBedrockLevels(t *testing.T) {
 }
 
 func TestCauldronMixingDifferentPotionsBoilsAway(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -72,6 +74,7 @@ func TestCauldronMixingDifferentPotionsBoilsAway(t *testing.T) {
 }
 
 func TestCauldronDyedWaterDyesAndWashesLeather(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -102,6 +105,7 @@ func TestCauldronDyedWaterDyesAndWashesLeather(t *testing.T) {
 }
 
 func TestCauldronTipsArrowsByStackSize(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		fill, arrows, tipped, left int
 	}{
@@ -128,6 +132,7 @@ func TestCauldronTipsArrowsByStackSize(t *testing.T) {
 }
 
 func TestCauldronPrecipitationFillsMatchingContents(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -158,6 +163,7 @@ func TestCauldronPrecipitationFillsMatchingContents(t *testing.T) {
 }
 
 func TestCauldronActorKeepsPotionAndDye(t *testing.T) {
+	t.Parallel()
 	dyed := Cauldron{FillLevel: 4, Liquid: CauldronWater, DyeColour: item.ColourLime().RGBA()}
 	if got := (Cauldron{FillLevel: 4}).DecodeNBT(dyed.EncodeNBT()).(Cauldron); got != dyed {
 		t.Fatalf("dyed cauldron reloaded as %#v", got)

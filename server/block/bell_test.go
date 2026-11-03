@@ -30,6 +30,7 @@ func bellNBT(w *world.World, pos cube.Pos) (nbt map[string]any) {
 // it, it counts two a tick while ringing until the bell stops at 50 and one a
 // tick while the bell is still, wrapping at 50.
 func TestBellTicksCountLikeBDS(t *testing.T) {
+	t.Parallel()
 	w, pos := bellTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		if !tx.Block(pos).(block.Bell).Ring(pos, tx, cube.FaceSouth) {
@@ -61,6 +62,7 @@ func TestBellTicksCountLikeBDS(t *testing.T) {
 // TestBellRingsWhenPowered checks actor-sampled rising edges and the native
 // toggle state, which is retained across a falling edge and flipped on retrigger.
 func TestBellRingsWhenPowered(t *testing.T) {
+	t.Parallel()
 	w, pos := bellTestWorld(t)
 	source := pos.Side(cube.FaceEast)
 	<-w.Exec(func(tx *world.Tx) { tx.SetBlock(source, block.RedstoneBlock{}, nil) })

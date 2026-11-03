@@ -11,6 +11,7 @@ import (
 // and melts into water once it is three stages old, and that ice next to
 // it with fewer than two frosted neighbours melts with it.
 func TestFrostedIceMeltsInStages(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 
@@ -41,6 +42,7 @@ func TestFrostedIceMeltsInStages(t *testing.T) {
 }
 
 func TestFrostedIceInterfacesAndEncoding(t *testing.T) {
+	t.Parallel()
 	var ice any = FrostedIce{Age: 2}
 	if _, ok := ice.(world.RandomTicker); !ok {
 		t.Fatal("FrostedIce does not implement world.RandomTicker")
@@ -55,6 +57,7 @@ func TestFrostedIceInterfacesAndEncoding(t *testing.T) {
 }
 
 func TestFrostedIceNeighbourLimit(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 

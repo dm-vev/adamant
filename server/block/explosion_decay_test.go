@@ -27,6 +27,7 @@ type decayEntityConfig struct{}
 type decayEntity struct{ h *world.EntityHandle }
 
 func TestExplosionDropDecayFollowsSourceGamerule(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	source := func(id string) world.ExplosionSource {

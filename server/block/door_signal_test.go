@@ -11,6 +11,7 @@ import (
 // or trapdoor opened by hand stays open through neighbour updates, and power
 // switching on opens it and switching off closes it.
 func TestDoorsOnlyFollowSignalChanges(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	door, trapdoor := cube.Pos{0, 64, 0}, cube.Pos{4, 64, 0}

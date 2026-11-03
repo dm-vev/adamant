@@ -20,6 +20,7 @@ func structureRow(tx *world.Tx, sb cube.Pos) {
 // keeps a rotated or mirrored structure in its box at the offset, with the
 // blocks where Bedrock Dedicated Server 1.26.52 places them.
 func TestStructureBlocksLoadInTheirBoxLikeBedrock(t *testing.T) {
+	t.Parallel()
 	type at struct {
 		x, z int
 		b    world.Block
@@ -67,6 +68,7 @@ func TestStructureBlocksLoadInTheirBoxLikeBedrock(t *testing.T) {
 // powered structure block in save mode saves its box, one in load mode places
 // the structure, and one in corner mode forgets the structure kept in memory.
 func TestPoweredStructureBlocksSaveAndLoad(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	saver, loader, corner := cube.Pos{0, 70, 0}, cube.Pos{0, 70, 20}, cube.Pos{0, 70, 40}
@@ -112,6 +114,7 @@ func TestPoweredStructureBlocksSaveAndLoad(t *testing.T) {
 // TestStructureBlockNBTMatchesBedrock checks the structure block survives
 // the block entity data Bedrock Dedicated Server writes.
 func TestStructureBlockNBTMatchesBedrock(t *testing.T) {
+	t.Parallel()
 	bds := map[string]any{"BlockEntityVersion": int32(0), "animationMode": uint8(1), "animationSeconds": float32(2.5), "data": int32(2), "dataField": "marker", "id": "StructureBlock",
 		"ignoreEntities": uint8(1), "includePlayers": uint8(1), "integrity": float32(50), "isPowered": uint8(0), "lastTouchedPlayerId": int64(-4294967295), "mirror": uint8(2), "redstoneSaveMode": int32(1),
 		"removeBlocks": uint8(1), "rotation": uint8(3), "seed": int64(7), "showBoundingBox": uint8(0), "structureName": "probe:test", "x": int32(1), "xStructureOffset": int32(1), "xStructureSize": int32(3),

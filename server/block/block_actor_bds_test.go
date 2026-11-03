@@ -10,6 +10,7 @@ import (
 // /setblock, or reads from earlier Adamant saves.
 
 func TestMobSpawnerNBTMatchesBDS(t *testing.T) {
+	t.Parallel()
 	m := MobSpawner{}.DecodeNBT(map[string]any{}).(MobSpawner).EncodeNBT()
 	for key, want := range map[string]any{
 		"MinSpawnDelay": int16(200), "MaxSpawnDelay": int16(800), "SpawnCount": int16(4), "SpawnRange": int16(4),
@@ -30,6 +31,7 @@ func TestMobSpawnerNBTMatchesBDS(t *testing.T) {
 }
 
 func TestCauldronWithoutPotionNBT(t *testing.T) {
+	t.Parallel()
 	for _, data := range []map[string]any{{}, {"PotionId": int16(-1), "PotionType": int16(-1)}} {
 		c := Cauldron{FillLevel: 3, Liquid: CauldronWater}.DecodeNBT(data).(Cauldron)
 		if c.PotionKind != CauldronNoPotion {
@@ -42,6 +44,7 @@ func TestCauldronWithoutPotionNBT(t *testing.T) {
 }
 
 func TestCommandBlockModeIsTheBlock(t *testing.T) {
+	t.Parallel()
 	// A new chain block's last performed mode is impulse and unconditional.
 	data := map[string]any{"LPCommandMode": int32(0), "LPCondionalMode": uint8(0)}
 	chain := CommandBlock{Mode: CommandBlockChain, Conditional: true}.DecodeNBT(data).(CommandBlock)
@@ -57,6 +60,7 @@ func TestCommandBlockModeIsTheBlock(t *testing.T) {
 }
 
 func TestBeehiveKeepsHoneyLevelState(t *testing.T) {
+	t.Parallel()
 	// BDS keeps the honey level only in the block state.
 	h := Beehive{HoneyLevel: 5}.DecodeNBT(map[string]any{"id": "Beehive"}).(Beehive)
 	if h.HoneyLevel != 5 {
@@ -68,6 +72,7 @@ func TestBeehiveKeepsHoneyLevelState(t *testing.T) {
 }
 
 func TestBeaconEffectKeys(t *testing.T) {
+	t.Parallel()
 	m := Beacon{}.EncodeNBT()
 	if m["primary"] != int32(0) || m["secondary"] != int32(0) {
 		t.Fatalf("beacon saved as %v, want lowercase primary and secondary", m)
@@ -75,6 +80,7 @@ func TestBeaconEffectKeys(t *testing.T) {
 }
 
 func TestShulkerBoxDefaultsMatchBDS(t *testing.T) {
+	t.Parallel()
 	m := NewShulkerBox().DecodeNBT(map[string]any{}).(ShulkerBox).EncodeNBT()
 	if m["facing"] != uint8(cube.FaceUp) || m["Findable"] != uint8(0) {
 		t.Fatalf("shulker box saved as %v", m)
@@ -82,6 +88,7 @@ func TestShulkerBoxDefaultsMatchBDS(t *testing.T) {
 }
 
 func TestBrushableNBTMatchesBDS(t *testing.T) {
+	t.Parallel()
 	m := SuspiciousGravel{}.DecodeNBT(map[string]any{}).(SuspiciousGravel).EncodeNBT()
 	if m["type"] != "minecraft:suspicious_gravel" || m["brush_count"] != int32(0) || m["brush_direction"] != uint8(noBrushDirection) {
 		t.Fatalf("suspicious gravel saved as %v", m)

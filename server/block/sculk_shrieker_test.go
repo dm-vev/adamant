@@ -8,6 +8,7 @@ import (
 )
 
 func TestSculkShriekerNativeNBTPreservesJavaVibrationData(t *testing.T) {
+	t.Parallel()
 	nativeListener := map[string]any{"selector": map[string]any{}}
 	javaListener := (&world.VibrationData{}).EncodeNBT()
 	actor := (SculkShrieker{}).DecodeNBT(map[string]any{

@@ -11,6 +11,7 @@ import (
 )
 
 func TestHoneyContactMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_honey_contact.json")
 	if err != nil {
 		t.Fatal(err)
@@ -50,6 +51,7 @@ func TestHoneyContactMatchesExecutedClient(t *testing.T) {
 }
 
 func TestHoneyBlockInterfacesAndFriction(t *testing.T) {
+	t.Parallel()
 	var honey any = HoneyBlock{}
 	if _, ok := honey.(EntityInsider); !ok {
 		t.Fatal("HoneyBlock does not implement EntityInsider")
@@ -64,6 +66,7 @@ func TestHoneyBlockInterfacesAndFriction(t *testing.T) {
 }
 
 func TestHoneyStandingMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_honey_contact.json")
 	if err != nil {
 		t.Fatal(err)

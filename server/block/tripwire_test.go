@@ -10,6 +10,7 @@ import (
 )
 
 func TestTripwireConnectionsTrackNeighboursAndPreserveState(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	wirePos := cube.Pos{0, 64, 0}
@@ -55,6 +56,7 @@ func TestTripwireConnectionsTrackNeighboursAndPreserveState(t *testing.T) {
 }
 
 func TestTripwireLineTransitionsPreserveConnections(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	hookPos := cube.Pos{0, 64, 0}
@@ -94,6 +96,7 @@ func TestTripwireLineTransitionsPreserveConnections(t *testing.T) {
 }
 
 func TestTripwirePowerTransitionPreservesConnections(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{0, 64, 0}
@@ -117,6 +120,7 @@ func TestTripwirePowerTransitionPreservesConnections(t *testing.T) {
 // TestStringPlacesSuspendedTripwire checks string places tripwire like BDS:
 // suspended whether or not a block is below it.
 func TestStringPlacesSuspendedTripwire(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

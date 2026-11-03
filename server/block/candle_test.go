@@ -25,6 +25,7 @@ type candleTestUser struct {
 func (u *candleTestUser) HeldItems() (item.Stack, item.Stack) { return u.held, item.Stack{} }
 
 func TestCandleIgnitePreservesAdditionalCandles(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 
@@ -60,6 +61,7 @@ func TestCandleIgnitePreservesAdditionalCandles(t *testing.T) {
 }
 
 func TestCandleSplashPreservesAdditionalCandles(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 
@@ -87,6 +89,7 @@ func TestCandleSplashPreservesAdditionalCandles(t *testing.T) {
 }
 
 func TestCandleActivateFireAspectExtinguishesLitCandle(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 

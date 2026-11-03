@@ -42,6 +42,7 @@ func countEntities(tx *world.Tx, name string) (n int) {
 // TestTrialSpawnerRunsTemplateTrial places a spawner as a generated trial
 // chamber does, with its configurations named, and runs its trial.
 func TestTrialSpawnerRunsTemplateTrial(t *testing.T) {
+	t.Parallel()
 	w, h := trialTestWorld(t, mgl64.Vec3{3.5, 65, 0.5})
 	pos := cube.Pos{0, 65, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -107,6 +108,7 @@ func TestTrialSpawnerRunsTemplateTrial(t *testing.T) {
 // TestVaultRewardsEachPlayerOnce unlocks a vault placed from a trial chamber
 // template.
 func TestVaultRewardsEachPlayerOnce(t *testing.T) {
+	t.Parallel()
 	w, h := trialTestWorld(t, mgl64.Vec3{2.5, 65, 0.5})
 	pos := cube.Pos{0, 65, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -169,6 +171,7 @@ func TestVaultRewardsEachPlayerOnce(t *testing.T) {
 // TestTrialChamberContainersHoldLoot fills a dispenser and a decorated pot
 // placed from trial chamber templates, which name their loot tables.
 func TestTrialChamberContainersHoldLoot(t *testing.T) {
+	t.Parallel()
 	w, h := trialTestWorld(t, mgl64.Vec3{2.5, 65, 0.5})
 	<-w.Exec(func(tx *world.Tx) {
 		dispenserPos, potPos := cube.Pos{0, 65, 0}, cube.Pos{0, 65, 2}

@@ -29,6 +29,7 @@ func (e *bouncingTestEntity) SetVelocity(v mgl64.Vec3) { e.vel = v }
 func (e *bouncingTestEntity) Sneaking() bool           { return e.sneaking }
 
 func TestShelfMushroomGrowsAwayFromFirstSupportInLookOrder(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		yaw    float64
@@ -62,6 +63,7 @@ func TestShelfMushroomGrowsAwayFromFirstSupportInLookOrder(t *testing.T) {
 }
 
 func TestShelfMushroomBreaksWithoutSupport(t *testing.T) {
+	t.Parallel()
 	w := newDropTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 1, -1}, Stone{}, nil)
@@ -77,6 +79,7 @@ func TestShelfMushroomBreaksWithoutSupport(t *testing.T) {
 }
 
 func TestShelfMushroomBoneMealGrowsOnceAndDoublesDrops(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		pos := cube.Pos{0, 1, 0}
@@ -102,6 +105,7 @@ func TestShelfMushroomBoneMealGrowsOnceAndDoublesDrops(t *testing.T) {
 }
 
 func TestShelfMushroomHalvesFallAndBouncesUnlessSneaking(t *testing.T) {
+	t.Parallel()
 	for _, sneaking := range []bool{false, true} {
 		w := newMultifaceTestWorld(t)
 		<-w.Exec(func(tx *world.Tx) {
@@ -125,6 +129,7 @@ func TestShelfMushroomHalvesFallAndBouncesUnlessSneaking(t *testing.T) {
 }
 
 func TestShelfMushroomCapHangsFromItsSupport(t *testing.T) {
+	t.Parallel()
 	for _, d := range cube.Directions() {
 		boxes := ShelfMushroom{Facing: d, Grown: true}.Model().BBox(cube.Pos{}, nil)
 		// Every box touches the side of the block the support is on.

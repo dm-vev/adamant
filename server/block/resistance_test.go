@@ -3,6 +3,7 @@ package block
 import "testing"
 
 func TestBlastResistanceScale(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		got  float64

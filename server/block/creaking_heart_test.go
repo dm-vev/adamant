@@ -10,6 +10,7 @@ import (
 )
 
 func TestCreakingHeartActivationRequiresAlignedPaleOak(t *testing.T) {
+	t.Parallel()
 	for _, axis := range cube.Axes() {
 		w := world.Config{Synchronous: true}.New()
 		w.SetTime(12600)
@@ -56,6 +57,7 @@ func TestCreakingHeartActivationRequiresAlignedPaleOak(t *testing.T) {
 }
 
 func TestCreakingHeartUnresolvedLinkGraceAfterReload(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	w.SetSpawnMobs(false)
@@ -86,6 +88,7 @@ func TestCreakingHeartUnresolvedLinkGraceAfterReload(t *testing.T) {
 }
 
 func TestCreakingResinPreservesSourceWater(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

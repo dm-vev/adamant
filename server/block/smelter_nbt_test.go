@@ -12,6 +12,7 @@ import (
 // BurnDuration the ticks the burning fuel lasts in all and no MaxTime, and
 // that they load BDS actors and actors earlier versions saved.
 func TestSmelterActorsUseBDSBurnTimes(t *testing.T) {
+	t.Parallel()
 	const tick = time.Millisecond * 50
 	blocks := []interface {
 		EncodeNBT() map[string]any

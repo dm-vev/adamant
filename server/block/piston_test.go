@@ -29,6 +29,7 @@ func (*pistonTestUser) UseItem()                            {}
 // column, and back at the user otherwise. BDS numbers horizontal piston
 // directions opposite to other blocks: facing_direction 4 pushes east.
 func TestPistonFacing(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		face cube.Face
@@ -74,6 +75,7 @@ func TestPistonFacing(t *testing.T) {
 // This test isolates moving-block restoration. Native input and actor timing
 // are checked separately against the complete per-tick BDS fixtures.
 func TestPistonMovingBlockRestoration(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -137,6 +139,7 @@ func TestPistonMovingBlockRestoration(t *testing.T) {
 }
 
 func TestPistonRedstoneDirections(t *testing.T) {
+	t.Parallel()
 	for _, facing := range cube.Faces() {
 		t.Run(facing.String(), func(t *testing.T) {
 			w := world.Config{Synchronous: true}.New()
@@ -160,6 +163,7 @@ func TestPistonRedstoneDirections(t *testing.T) {
 }
 
 func TestPistonNBT(t *testing.T) {
+	t.Parallel()
 	piston := Piston{
 		Facing: cube.FaceNorth, Sticky: true, Moving: true, Powered: true,
 		Extending: true, Progress: 0.5, LastProgress: 0,
@@ -184,6 +188,7 @@ func TestPistonNBT(t *testing.T) {
 }
 
 func TestPistonRestoresMovingBlockWithRegistry(t *testing.T) {
+	t.Parallel()
 	registry, custom := containerTestBlockRegistry()
 	w := world.Config{Synchronous: true, Blocks: registry}.New()
 	defer w.Close()
@@ -222,6 +227,7 @@ func TestPistonRestoresMovingBlockWithRegistry(t *testing.T) {
 // round, the piston's own facing kept in its NBT. Its first tick turns the
 // head, which loaded backwards, to face the way the piston pushes.
 func TestLegacyExtendedPistonHeadIsTurnedBack(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -251,6 +257,7 @@ func TestLegacyExtendedPistonHeadIsTurnedBack(t *testing.T) {
 // stays retracted with NewState extending in its actor, as BDS sends it, and
 // goes back to NewState retracted once unpowered.
 func TestBlockedPistonWantsToExtend(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	pos, source := cube.Pos{0, 0, 0}, cube.Pos{-1, 0, 0}

@@ -10,6 +10,7 @@ import (
 )
 
 func TestContainerRandomSlotsMatchNativeLoops(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_container_random_slots.json")
 	if err != nil {
 		t.Fatal(err)

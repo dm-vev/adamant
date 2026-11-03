@@ -11,6 +11,7 @@ import (
 )
 
 func TestBarrelDeferredLootSurvivesRestartAndIsConsumedOnce(t *testing.T) {
+	t.Parallel()
 	const table = "minecraft:barrels/abandoned_camp_barrel"
 	const seed = int64(263777)
 	pos := cube.Pos{257, 70, -257}
@@ -94,6 +95,7 @@ func TestBarrelDeferredLootSurvivesRestartAndIsConsumedOnce(t *testing.T) {
 }
 
 func TestBarrelLootErrorPreservesPendingTableAndInventory(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{257, 70, -257}

@@ -30,6 +30,7 @@ func registerCommandBlockTestCommands() {
 }
 
 func TestCommandBlockNBTAndComparatorRoundTrip(t *testing.T) {
+	t.Parallel()
 	b := CommandBlock{Mode: CommandBlockRepeat, Facing: cube.FaceNorth, Conditional: true, NeedsRedstone: false, Powered: true, ConditionMet: true,
 		Command: "say hi", CustomName: "test", LastOutput: "ok", TrackOutput: true, SuccessCount: 9, TickDelay: 4, ExecuteOnFirstTick: true}
 	decoded := b.DecodeNBT(b.EncodeNBT()).(CommandBlock)

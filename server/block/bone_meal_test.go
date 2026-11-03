@@ -18,6 +18,7 @@ func boneMealWorld(t *testing.T, f func(tx *world.Tx)) {
 // TestBoneMealGrowsJavaBonemealables checks the blocks Java's
 // BonemealableBlock covers that took no bone meal.
 func TestBoneMealGrowsJavaBonemealables(t *testing.T) {
+	t.Parallel()
 	boneMealWorld(t, func(tx *world.Tx) {
 		// Kelp grows at its top into water, whatever the clicked block's age.
 		for y := 60; y <= 66; y++ {
@@ -90,6 +91,7 @@ func TestBoneMealGrowsJavaBonemealables(t *testing.T) {
 // TestBoneMealSkipsNonJavaBonemealables checks flowers and sugar cane, which
 // are no BonemealableBlock in Java, take no bone meal.
 func TestBoneMealSkipsNonJavaBonemealables(t *testing.T) {
+	t.Parallel()
 	for _, b := range []world.Block{Flower{}, SugarCane{}} {
 		if _, ok := b.(item.BoneMealAffected); ok {
 			t.Errorf("%T takes bone meal", b)
@@ -100,6 +102,7 @@ func TestBoneMealSkipsNonJavaBonemealables(t *testing.T) {
 // TestBoneMealGrowsSeagrassUnderWater follows BoneMealItem.growWaterPlant:
 // bone meal on the sea floor grows seagrass in the water around it.
 func TestBoneMealGrowsSeagrassUnderWater(t *testing.T) {
+	t.Parallel()
 	boneMealWorld(t, func(tx *world.Tx) {
 		for x := -8; x <= 8; x++ {
 			for z := -8; z <= 8; z++ {
@@ -121,6 +124,7 @@ func TestBoneMealGrowsSeagrassUnderWater(t *testing.T) {
 // a wall grows a low side against it, and bone meal grows a topper above
 // with the sides it can attach.
 func TestPaleMossCarpetFollowsJava(t *testing.T) {
+	t.Parallel()
 	boneMealWorld(t, func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 59, 0}, Stone{}, nil)
 		tx.SetBlock(cube.Pos{1, 60, 0}, Stone{}, nil)

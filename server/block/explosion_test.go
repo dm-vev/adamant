@@ -13,6 +13,7 @@ import (
 )
 
 func TestExplosionAffectsEntityAtExactOrigin(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -29,6 +30,7 @@ func TestExplosionAffectsEntityAtExactOrigin(t *testing.T) {
 }
 
 func TestExplosionNoBlockDamagePreservesTerrainAndEntityImpact(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	record := new(exactOriginExplosionRecord)
@@ -56,6 +58,7 @@ func TestExplosionNoBlockDamagePreservesTerrainAndEntityImpact(t *testing.T) {
 }
 
 func TestConcurrentExplosionsLockSharedRandSource(t *testing.T) {
+	t.Parallel()
 	source := &concurrentExplosionSource{}
 	w1 := world.Config{Synchronous: true}.New()
 	w2 := world.Config{Synchronous: true}.New()

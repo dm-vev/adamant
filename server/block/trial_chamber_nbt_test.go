@@ -11,6 +11,7 @@ import (
 // trial spawners of a trial chamber it generated, and sends clients for them.
 
 func TestVaultNBTMatchesBDS(t *testing.T) {
+	t.Parallel()
 	check := func(name string, m map[string]any, key, table string) {
 		t.Helper()
 		config := m["config"].(map[string]any)
@@ -70,6 +71,7 @@ func TestVaultNBTMatchesBDS(t *testing.T) {
 }
 
 func TestVaultUpdatesClientsAsBDS(t *testing.T) {
+	t.Parallel()
 	v := NewVault()
 	u := v.UpdateNBT()
 	if players, ok := u["connected_players"].([]any); !ok || len(players) != 0 || u["connected_particle_range"] != float32(4.5) {
@@ -89,6 +91,7 @@ func TestVaultUpdatesClientsAsBDS(t *testing.T) {
 }
 
 func TestTrialSpawnerNBTMatchesBDS(t *testing.T) {
+	t.Parallel()
 	template := map[string]any{"id": "TrialSpawner", "normal_config": "minecraft:trial_chamber/melee/spider/normal", "ominous_config": "minecraft:trial_chamber/melee/spider/ominous"}
 	s := TrialSpawner{}.DecodeNBT(template).(TrialSpawner)
 	m := s.EncodeNBT()
@@ -161,6 +164,7 @@ func TestTrialSpawnerNBTMatchesBDS(t *testing.T) {
 }
 
 func TestTrialSpawnerConfigsLoad(t *testing.T) {
+	t.Parallel()
 	configs := trialSpawnerConfigs()
 	if len(configs) != 28 {
 		t.Fatalf("%d trial spawner configurations, want 28", len(configs))

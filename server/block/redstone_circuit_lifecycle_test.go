@@ -27,6 +27,7 @@ func (p *circuitReloadProvider) StoreColumn(pos world.ChunkPos, _ world.Dimensio
 }
 
 func TestRepeaterCircuitInstalledFromSavedChunk(t *testing.T) {
+	t.Parallel()
 	p := &circuitReloadProvider{NopProvider: world.NopProvider{Set: (world.NopProvider{}).Settings()}, columns: make(map[world.ChunkPos]*chunk.Column)}
 	conf := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.End, Provider: p}
 	pos := cube.Pos{0, 65, 0}
@@ -68,6 +69,7 @@ func TestRepeaterCircuitInstalledFromSavedChunk(t *testing.T) {
 }
 
 func TestRepeaterPublicationRespectsReplacementAndDelay(t *testing.T) {
+	t.Parallel()
 	for _, scenario := range []string{"removed", "replaced", "rotated", "delay"} {
 		t.Run(scenario, func(t *testing.T) {
 			w := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.End}.New()
@@ -127,6 +129,7 @@ func (cancelCircuitOutput) HandleRedstoneUpdate(ctx *world.Context, update world
 }
 
 func TestRepeaterCircuitOutputCancellation(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.End}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{0, 65, 0}
@@ -156,6 +159,7 @@ func TestRepeaterCircuitOutputCancellation(t *testing.T) {
 }
 
 func TestRepeaterDelayActivationRefreshesCapacitor(t *testing.T) {
+	t.Parallel()
 	for _, rising := range []bool{false, true} {
 		w := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.End}.New()
 		t.Cleanup(func() { _ = w.Close() })

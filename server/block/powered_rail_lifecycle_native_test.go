@@ -11,10 +11,12 @@ import (
 )
 
 func TestPoweredRailLifecycleMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPoweredRailLifecycleNative(t, "bedrock_1_26_51_powered_rail_lifecycle.json", 32)
 }
 
 func TestPoweredRailPublicationEditsMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPoweredRailLifecycleNative(t, "bedrock_1_26_51_rail_publication_edits.json", 32)
 }
 

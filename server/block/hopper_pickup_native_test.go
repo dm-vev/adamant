@@ -10,6 +10,7 @@ import (
 )
 
 func TestHopperPickupGeometryAndContainerFlagsMatchExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_hopper_pickup_geometry.json")
 	if err != nil {
 		t.Fatal(err)

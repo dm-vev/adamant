@@ -13,6 +13,7 @@ import (
 )
 
 func TestHiveResidenceMatchesJava263Source(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/java263_beehive_residence_source.json")
 	if err != nil {
 		t.Fatal(err)

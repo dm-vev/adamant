@@ -10,6 +10,7 @@ import (
 )
 
 func TestTorchCacheMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_cache.json")
 	if err != nil {
 		t.Fatal(err)
@@ -83,6 +84,7 @@ func TestTorchCacheMatchesExecutedClient(t *testing.T) {
 }
 
 func TestTorchEvaluatorMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_evaluators.json")
 	if err != nil {
 		t.Fatal(err)

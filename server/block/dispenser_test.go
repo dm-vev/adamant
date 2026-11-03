@@ -100,6 +100,7 @@ func (e *dispenserTestEntity) Position() mgl64.Vec3                         { re
 func (e *dispenserTestEntity) Rotation() cube.Rotation                      { return e.data.Rot }
 
 func TestDispenserNBTRoundTrip(t *testing.T) {
+	t.Parallel()
 	d := NewDispenser()
 	d.Facing, d.Triggered, d.CustomName = cube.FaceEast, true, "Supplies"
 	_ = d.inventory.SetItem(4, item.NewStack(item.Diamond{}, 3))
@@ -112,6 +113,7 @@ func TestDispenserNBTRoundTrip(t *testing.T) {
 }
 
 func TestAllDispenserStates(t *testing.T) {
+	t.Parallel()
 	states := allDispensers()
 	seen := map[[2]int32]bool{}
 	for _, state := range states {
@@ -124,6 +126,7 @@ func TestAllDispenserStates(t *testing.T) {
 }
 
 func TestDispenserShootsFireChargeAndKeepsPoweredState(t *testing.T) {
+	t.Parallel()
 	typ := dispenserTestEntityType{}
 	entities := world.EntityRegistryConfig{SmallFireball: func(opts world.EntitySpawnOpts, _ world.Entity) *world.EntityHandle {
 		return opts.New(typ, dispenserTestEntityConfig{})
@@ -152,6 +155,7 @@ func TestDispenserShootsFireChargeAndKeepsPoweredState(t *testing.T) {
 }
 
 func TestDispenserFallingEdgeDoesNotConsume(t *testing.T) {
+	t.Parallel()
 	d := NewDispenser()
 	d.Triggered = true
 	_ = d.inventory.SetItem(0, item.NewStack(item.Diamond{}, 2))
@@ -173,6 +177,7 @@ func TestDispenserFallingEdgeDoesNotConsume(t *testing.T) {
 }
 
 func TestDispenserFiresOncePerPoweredEdge(t *testing.T) {
+	t.Parallel()
 	typ := dispenserTestEntityType{}
 	entities := world.EntityRegistryConfig{SmallFireball: func(opts world.EntitySpawnOpts, _ world.Entity) *world.EntityHandle {
 		return opts.New(typ, dispenserTestEntityConfig{})
@@ -222,6 +227,7 @@ func TestDispenserFiresOncePerPoweredEdge(t *testing.T) {
 }
 
 func TestDispenserEjectsUnsupportedItem(t *testing.T) {
+	t.Parallel()
 	typ := dispenserTestEntityType{}
 	entities := world.EntityRegistryConfig{Item: func(opts world.EntitySpawnOpts, _ any) *world.EntityHandle {
 		return opts.New(typ, dispenserTestEntityConfig{})
@@ -250,6 +256,7 @@ func TestDispenserEjectsUnsupportedItem(t *testing.T) {
 }
 
 func TestDispenserSpawnsBoatsOnWater(t *testing.T) {
+	t.Parallel()
 	typ := dispenserTestEntityType{}
 	entities := world.EntityRegistryConfig{
 		Boat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
@@ -304,6 +311,7 @@ func TestDispenserSpawnsBoatsOnWater(t *testing.T) {
 }
 
 func TestDispenserEjectsBoatWithoutWater(t *testing.T) {
+	t.Parallel()
 	typ := dispenserTestEntityType{}
 	entities := world.EntityRegistryConfig{
 		Item: func(opts world.EntitySpawnOpts, it any) *world.EntityHandle {
@@ -334,6 +342,7 @@ func TestDispenserEjectsBoatWithoutWater(t *testing.T) {
 }
 
 func TestDispenserMinecarts(t *testing.T) {
+	t.Parallel()
 	typ := dispenserTestEntityType{}
 	entities := world.EntityRegistryConfig{
 		Item: func(opts world.EntitySpawnOpts, _ any) *world.EntityHandle {
@@ -397,6 +406,7 @@ func TestDispenserMinecarts(t *testing.T) {
 }
 
 func TestDispenserMinecartsFallbackWithoutRail(t *testing.T) {
+	t.Parallel()
 	typ := dispenserTestEntityType{}
 	entities := world.EntityRegistryConfig{Item: func(opts world.EntitySpawnOpts, it any) *world.EntityHandle {
 		return opts.New(typ, dispenserTestEntityConfig{variant: -it.(item.Stack).Count()})

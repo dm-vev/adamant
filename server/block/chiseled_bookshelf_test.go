@@ -20,6 +20,7 @@ func (u *chiseledBookshelfUser) HeldItems() (item.Stack, item.Stack) { return u.
 func (u *chiseledBookshelfUser) Inventory() *inventory.Inventory { return u.inv }
 
 func TestChiseledBookshelfSlotsAndActorRoundTrip(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 	pos := cube.Pos{0, 64, 0}

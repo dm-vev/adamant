@@ -8,6 +8,7 @@ import (
 )
 
 func TestIronDoorStatesRoundTrip(t *testing.T) {
+	t.Parallel()
 	for _, b := range append(allIronDoors(), allIronTrapdoors()...) {
 		name, props := b.EncodeBlock()
 		got, ok := world.BlockByName(name, props)
@@ -18,6 +19,7 @@ func TestIronDoorStatesRoundTrip(t *testing.T) {
 }
 
 func TestIronDoorOpensOnlyWithRedstone(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

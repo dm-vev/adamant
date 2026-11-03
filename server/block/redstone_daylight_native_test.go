@@ -27,10 +27,12 @@ func (n nativeDaylightTerrain) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk,
 }
 
 func TestDaylightDetectorsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	testDaylightDetectorCapture(t, "bedrock_1_26_51_daylight.json", 16)
 }
 
 func TestDaylightInitialProducersMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	testDaylightDetectorCapture(t, "bedrock_1_26_51_daylight_initial.json", 1)
 }
 
@@ -160,6 +162,7 @@ func testDaylightDetectorCapture(t *testing.T, filename string, count int) {
 }
 
 func TestDaylightFullDayWeatherMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_daylight_cycle.json")
 	if err != nil {
 		t.Fatal(err)
@@ -259,6 +262,7 @@ func TestDaylightFullDayWeatherMatchesNativeCapture(t *testing.T) {
 }
 
 func TestDaylightBodyMatchesInspectedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_daylight_methods.json")
 	if err != nil {
 		t.Fatal(err)
@@ -288,6 +292,7 @@ func TestDaylightBodyMatchesInspectedClient(t *testing.T) {
 }
 
 func TestDaylightPlayerInversionMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_daylight_use.json")
 	if err != nil {
 		t.Fatal(err)

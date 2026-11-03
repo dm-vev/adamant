@@ -13,6 +13,7 @@ import (
 )
 
 func TestInventorySignalsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	t.Run("containers", func(t *testing.T) {
 		testInventorySignalCapture(t, "testdata/bedrock_1_26_51_inventory_signal.json", 81)
 	})

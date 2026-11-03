@@ -9,6 +9,7 @@ import (
 )
 
 func TestHopperTransferDoesNotLoadNeighbourChunks(t *testing.T) {
+	t.Parallel()
 	settings := (world.NopProvider{}).Settings()
 	settings.CurrentTick = 1 // World.New performs the initial tick, reaching 2.
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Provider: world.NopProvider{Set: settings}}.New()
@@ -35,6 +36,7 @@ func TestHopperTransferDoesNotLoadNeighbourChunks(t *testing.T) {
 }
 
 func TestHopperRecursiveTransferHonoursNativeDepthLimit(t *testing.T) {
+	t.Parallel()
 	settings := (world.NopProvider{}).Settings()
 	settings.CurrentTick = 1
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Provider: world.NopProvider{Set: settings}}.New()

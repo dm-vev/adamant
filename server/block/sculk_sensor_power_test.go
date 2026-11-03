@@ -8,6 +8,7 @@ import (
 )
 
 func TestSculkSensorsStronglyPowerOnlyTheBlockBelow(t *testing.T) {
+	t.Parallel()
 	sensors := map[string]world.Block{
 		"sculk sensor":            NewSculkSensorState(SculkSensorActive, 9, 1),
 		"calibrated sculk sensor": CalibratedSculkSensor{SculkSensor: NewSculkSensorState(SculkSensorActive, 9, 1), Facing: cube.North},

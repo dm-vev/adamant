@@ -10,6 +10,7 @@ import (
 )
 
 func TestBedOccupancyFollowsPairedHalf(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	footPos, headPos := cube.Pos{0, 64, 0}, cube.Pos{0, 64, 1}
@@ -49,6 +50,7 @@ func TestBedOccupancyFollowsPairedHalf(t *testing.T) {
 // its colour, which Bedrock keeps in the block actor, so the bed is in the
 // #beds tag.
 func TestBedCanonicalStateKeepsItsColour(t *testing.T) {
+	t.Parallel()
 	bed := Bed{Facing: cube.East, Colour: item.ColourLightBlue(), Head: true}
 	state, err := world.CanonicalStateOf(bed)
 	if err != nil {

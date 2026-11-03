@@ -11,6 +11,7 @@ import (
 )
 
 func TestBuddingAmethystGrowsBudsOutwardToClusters(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	origin := cube.Pos{0, 10, 0}
 	r := rand.New(rand.NewPCG(3, 4))
@@ -28,6 +29,7 @@ func TestBuddingAmethystGrowsBudsOutwardToClusters(t *testing.T) {
 }
 
 func TestBuddingAmethystLeavesBudsOfOtherFacingsAndBlocks(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	origin := cube.Pos{0, 10, 0}
 	r := rand.New(rand.NewPCG(5, 6))
@@ -48,6 +50,7 @@ func TestBuddingAmethystLeavesBudsOfOtherFacingsAndBlocks(t *testing.T) {
 }
 
 func TestAmethystClusterDrops(t *testing.T) {
+	t.Parallel()
 	pickaxe := item.Pickaxe{Tier: item.ToolTierIron}
 	silk := []item.Enchantment{item.NewEnchantment(enchantment.SilkTouch, 1)}
 	cases := []struct {
@@ -76,6 +79,7 @@ func TestAmethystClusterDrops(t *testing.T) {
 }
 
 func TestAmethystBudNeedsSturdySupport(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	support, bud := cube.Pos{0, 0, 0}, cube.Pos{1, 0, 0}
 	<-w.Exec(func(tx *world.Tx) {

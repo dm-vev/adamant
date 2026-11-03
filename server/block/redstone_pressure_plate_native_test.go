@@ -14,6 +14,7 @@ import (
 // Recorded native bodies isolate the plate query and scheduled release from
 // the kernel's independent movement, AI and item merging implementations.
 func TestPressurePlatesMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_pressure_plates.json")
 	if err != nil {
 		t.Fatal(err)
@@ -163,6 +164,7 @@ func plateNativeContact(tx *world.Tx, e world.Entity, pos cube.Pos) {
 }
 
 func TestPressurePlatePowerMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_pressure_plate_methods.json")
 	if err != nil {
 		t.Fatal(err)

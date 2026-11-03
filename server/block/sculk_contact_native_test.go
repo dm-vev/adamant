@@ -20,14 +20,17 @@ type sculkContactNativeBlock struct {
 }
 
 func TestSculkPressurePlateVibrationsMatchBDS(t *testing.T) {
+	t.Parallel()
 	testSculkNativeContacts(t, "bedrock_1_26_51_sculk_plates.json", 68)
 }
 
 func TestSculkTripwireVibrationsMatchBDS(t *testing.T) {
+	t.Parallel()
 	testSculkNativeContacts(t, "bedrock_1_26_51_sculk_tripwire.json", 20)
 }
 
 func TestPressurePlateContextMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testSculkNativeContacts(t, "bedrock_1_26_51_plate_context.json", 17)
 }
 

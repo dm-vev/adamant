@@ -11,26 +11,32 @@ import (
 )
 
 func TestPoweredRailStraightMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPoweredRailNative(t, "bedrock_1_26_51_powered_rail_straight.json", 32)
 }
 
 func TestPoweredRailInputsMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPoweredRailNative(t, "bedrock_1_26_51_powered_rail_input.json", 32)
 }
 
 func TestPoweredRailTopologyMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPoweredRailNative(t, "bedrock_1_26_51_powered_rail_topology.json", 32)
 }
 
 func TestRailInputFacesMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPoweredRailNative(t, "bedrock_1_26_51_rail_input_faces.json", 36)
 }
 
 func TestRailSlopeFacesMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPoweredRailNative(t, "bedrock_1_26_51_rail_slope_faces.json", 24)
 }
 
 func TestMixedRailPowerMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPoweredRailNative(t, "bedrock_1_26_51_mixed_rail.json", 20)
 }
 

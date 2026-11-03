@@ -8,6 +8,7 @@ import (
 )
 
 func TestUnsupportedHookRespectsDisabledBlockDrops(t *testing.T) {
+	t.Parallel()
 	// With drops disabled, breaking a supported block must not invoke an item
 	// entity factory. This world deliberately has no such factory registered.
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()

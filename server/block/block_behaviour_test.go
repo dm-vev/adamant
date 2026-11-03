@@ -14,6 +14,7 @@ import (
 // update on the tick after its supporting block is removed, using a
 // synchronous World to make the tick deterministic.
 func TestTorchBreaksWithoutSupport(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: entity.DefaultRegistry}.New()
 	defer w.Close()
 

@@ -11,6 +11,7 @@ import (
 )
 
 func TestContainerNBTRoundTripUsesBlockRegistry(t *testing.T) {
+	t.Parallel()
 	registry, blockItem := containerTestBlockRegistry()
 	want := item.NewStack(blockItem, 3)
 	chest := NewChest()
@@ -55,6 +56,7 @@ func (containerTestBlockItem) Hash() (uint64, uint64)      { return 0, math.MaxU
 func (containerTestBlockItem) Model() world.BlockModel     { return nil }
 
 func TestSculkFallbackNBTPersistsWithoutDecoderContext(t *testing.T) {
+	t.Parallel()
 	listener := (&world.VibrationData{}).EncodeNBT()
 	source := map[string]any{
 		"id": "SculkShrieker", "warning_level": int32(3),

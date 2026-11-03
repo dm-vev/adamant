@@ -9,6 +9,7 @@ import (
 )
 
 func TestLeavesLootTables(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	seen := map[string]bool{}

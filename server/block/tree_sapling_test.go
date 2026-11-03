@@ -15,6 +15,7 @@ import (
 )
 
 func TestMangrovePropaguleHangingSupportAndDropBoundary(t *testing.T) {
+	t.Parallel()
 	for _, age := range []int{3, 4} {
 		t.Run(strconv.Itoa(age), func(t *testing.T) {
 			w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
@@ -64,6 +65,7 @@ func TestMangrovePropaguleHangingSupportAndDropBoundary(t *testing.T) {
 }
 
 func TestMangrovePropagulePlantingRestoresSourceWater(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
 	defer w.Close()
 	h := world.EntitySpawnOpts{}.New(player.Type, player.Config{Position: mgl64.Vec3{2.5, 65, .5}, GameMode: world.GameModeSurvival})

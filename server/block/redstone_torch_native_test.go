@@ -14,6 +14,7 @@ import (
 // Replay all native frames, including the initial oscillator phase, burnout,
 // independent input, neighbour recovery and loop removal/reconnection.
 func TestTorchWorldTimingMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	t.Run("initial-capture", func(t *testing.T) { testTorchWorldCapture(t, "bedrock_1_26_51_torch.json", 6, 300) })
 	t.Run("recovery-matrix", func(t *testing.T) { testTorchWorldCapture(t, "bedrock_1_26_51_torch_recovery.json", 18, 180) })
 	t.Run("reignition-boundary", func(t *testing.T) { testTorchWorldCapture(t, "bedrock_1_26_51_torch_reignite.json", 10, 180) })
@@ -139,6 +140,7 @@ func testTorchWorldCapture(t *testing.T, filename string, cases, samples int) {
 }
 
 func TestTorchLegacyCallbacksUseLiveCircuitState(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.End}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{1, 64, 0}

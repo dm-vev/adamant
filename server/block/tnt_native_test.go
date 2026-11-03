@@ -9,6 +9,7 @@ import (
 )
 
 func TestTNTWireStatesMatchNativePackets(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_tnt_states.json")
 	if err != nil {
 		t.Fatal(err)

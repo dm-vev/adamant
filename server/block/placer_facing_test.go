@@ -19,6 +19,7 @@ func (placerTestUser) EyeHeight() float64 { return 1.62 }
 // states BDS gave them. A player in one of the nine block columns around the
 // block turns it up or down by eye height; elsewhere it faces horizontally.
 func TestBlocksFaceTheirPlacerLikeBDS(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		block  world.Block
 		feet   mgl64.Vec3 // player feet relative to the placed block

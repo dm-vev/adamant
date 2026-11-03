@@ -14,6 +14,7 @@ import (
 // attacks it from the next cycle on, keeps a vanished target until another
 // mob shows up, and drops its target once the frame is no longer full.
 func TestConduitPowersAndHunts(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	pos := cube.Pos{0, 100, 0}

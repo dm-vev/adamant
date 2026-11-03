@@ -10,6 +10,7 @@ import (
 )
 
 func TestBubbleColumnFormationDirectionAndRemoval(t *testing.T) {
+	t.Parallel()
 	w := newBubbleTestWorld(t)
 	base := cube.Pos{0, 64, 0}
 
@@ -40,6 +41,7 @@ func TestBubbleColumnFormationDirectionAndRemoval(t *testing.T) {
 }
 
 func TestBubbleColumnInterruptedAndRestored(t *testing.T) {
+	t.Parallel()
 	w := newBubbleTestWorld(t)
 	base := cube.Pos{0, 64, 0}
 	w.Do(func(tx *world.Tx) {
@@ -71,6 +73,7 @@ func TestBubbleColumnInterruptedAndRestored(t *testing.T) {
 }
 
 func TestBubbleColumnsRequireSourceWater(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		water Water
@@ -100,6 +103,7 @@ func TestBubbleColumnsRequireSourceWater(t *testing.T) {
 }
 
 func TestBubbleColumnWorldHeightBoundary(t *testing.T) {
+	t.Parallel()
 	w := newBubbleTestWorld(t)
 	var base cube.Pos
 	w.Do(func(tx *world.Tx) {
@@ -112,6 +116,7 @@ func TestBubbleColumnWorldHeightBoundary(t *testing.T) {
 }
 
 func TestBubbleColumnEntityMotion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		column   BubbleColumn
@@ -152,6 +157,7 @@ func TestBubbleColumnEntityMotion(t *testing.T) {
 }
 
 func TestBubbleColumnRegistration(t *testing.T) {
+	t.Parallel()
 	registry := world.DefaultBlockRegistry
 	registry.Finalize()
 	for _, dragDown := range []bool{false, true} {
@@ -172,6 +178,7 @@ func TestBubbleColumnRegistration(t *testing.T) {
 }
 
 func TestLavaHardensNextToWaterloggedBubbleColumn(t *testing.T) {
+	t.Parallel()
 	w := newBubbleTestWorld(t)
 	lavaPos, bubblePos := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}
 	w.Do(func(tx *world.Tx) {

@@ -7,6 +7,7 @@ import (
 )
 
 func TestVineStatesDecodeToVines(t *testing.T) {
+	t.Parallel()
 	for bits := int32(0); bits < 16; bits++ {
 		b, ok := world.BlockByName("minecraft:vine", map[string]any{"vine_direction_bits": bits})
 		if !ok {

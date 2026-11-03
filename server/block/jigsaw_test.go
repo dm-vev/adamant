@@ -11,6 +11,7 @@ import (
 // Bedrock Dedicated Server writes for a new jigsaw and for one its editor
 // changed.
 func TestJigsawNBTMatchesBedrock(t *testing.T) {
+	t.Parallel()
 	fresh := Jigsaw{Facing: cube.FaceDown}.DecodeNBT(map[string]any{"BlockEntityVersion": int32(0), "final_state": "minecraft:air", "id": "JigsawBlock", "joint": "rollable",
 		"name": "minecraft:empty", "placement_priority": int32(0), "selection_priority": int32(0), "target": "minecraft:empty", "target_pool": "minecraft:empty"}).(Jigsaw)
 	if fresh != NewJigsaw(cube.FaceDown, 0) {
@@ -30,6 +31,7 @@ func TestJigsawNBTMatchesBedrock(t *testing.T) {
 // TestJigsawsTurnWithStructures checks that a jigsaw in a rotated structure
 // points the new way and keeps its connection settings.
 func TestJigsawsTurnWithStructures(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

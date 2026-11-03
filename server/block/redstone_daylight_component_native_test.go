@@ -10,6 +10,7 @@ import (
 )
 
 func TestDaylightProducerRegistrationMatchesNativeHeap(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_daylight_components.json")
 	if err != nil {
 		t.Fatal(err)
@@ -103,6 +104,7 @@ func (s liveLightStructure) At(int, int, int, func(int, int, int) world.Block) (
 }
 
 func TestLiveLightingQueriesStayInLoadedTerrain(t *testing.T) {
+	t.Parallel()
 	for _, structure := range []bool{false, true} {
 		name := "SetBlock"
 		if structure {

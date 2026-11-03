@@ -10,6 +10,7 @@ import (
 )
 
 func TestTorchflowerCropBloomsAfterTwoStages(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -25,6 +26,7 @@ func TestTorchflowerCropBloomsAfterTwoStages(t *testing.T) {
 }
 
 func TestTorchflowerSeedsNeedFarmland(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 0, 0}, Dirt{}, nil)
@@ -36,6 +38,7 @@ func TestTorchflowerSeedsNeedFarmland(t *testing.T) {
 }
 
 func TestPitcherCropGrowsIntoTwoBlocks(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	lower, upper := cube.Pos{0, 1, 0}, cube.Pos{0, 2, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -63,6 +66,7 @@ func TestPitcherCropGrowsIntoTwoBlocks(t *testing.T) {
 }
 
 func TestPitcherCropNeedsRoomToGrowTall(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	lower := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -76,6 +80,7 @@ func TestPitcherCropNeedsRoomToGrowTall(t *testing.T) {
 }
 
 func TestPitcherCropDrops(t *testing.T) {
+	t.Parallel()
 	for growth, want := range []world.Item{PitcherCrop{}, PitcherCrop{}, PitcherCrop{}, PitcherCrop{}, PitcherPlant{}} {
 		drops := PitcherCrop{Growth: growth}.BreakInfo().Drops(item.ToolNone{}, nil)
 		if len(drops) != 1 || drops[0].Item() != want {
@@ -85,6 +90,7 @@ func TestPitcherCropDrops(t *testing.T) {
 }
 
 func TestScaffoldingDistanceFromSupportedColumn(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	user := &pistonTestUser{rot: cube.Rotation{-90, 0}}
 	<-w.Exec(func(tx *world.Tx) {

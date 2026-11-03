@@ -9,6 +9,7 @@ import (
 )
 
 func TestBellShapesMatchExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/client_1_26_51_bell_shapes.json")
 	if err != nil {
 		t.Fatal(err)

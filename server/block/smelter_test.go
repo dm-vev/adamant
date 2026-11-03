@@ -27,6 +27,7 @@ func javaItemName(s item.Stack) string {
 // TestCookingRecipesFollowJava checks recipes from the Java 26.3 recipe data
 // that the hand-written Bedrock recipes lacked or got wrong.
 func TestCookingRecipesFollowJava(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		kind       item.CookingKind
 		input      string
@@ -55,6 +56,7 @@ func TestCookingRecipesFollowJava(t *testing.T) {
 // TestCookingFuelFollowsJava checks burn times from Java's cooking_fuel
 // components, halved in smokers and blast furnaces.
 func TestCookingFuelFollowsJava(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		id        string
 		ticks     int
@@ -85,6 +87,7 @@ func TestCookingFuelFollowsJava(t *testing.T) {
 // furnace in 100 on coal that burns 800. The fuel lit in the first tick
 // burns down from the second.
 func TestSmelterCooksLikeJava(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		kind       item.CookingKind
 		fast       bool
@@ -114,6 +117,7 @@ func TestSmelterCooksLikeJava(t *testing.T) {
 // TestSmelterProgressDecaysWithoutFuel loses two ticks of cooking progress
 // a tick once the fuel runs out, rather than all of it.
 func TestSmelterProgressDecaysWithoutFuel(t *testing.T) {
+	t.Parallel()
 	s := newSmelter()
 	_ = s.inventory.SetItem(0, javaStack(t, "minecraft:raw_iron", 1))
 	// A stick burns for 100 ticks, half the time raw iron takes.
@@ -140,6 +144,7 @@ func TestSmelterProgressDecaysWithoutFuel(t *testing.T) {
 // when a player takes the result, as getRecipesToAwardAndPopExperience: ten
 // raw iron at 0.7 give exactly 7, and the recipes survive saving.
 func TestSmelterExperienceFromRecipes(t *testing.T) {
+	t.Parallel()
 	f := NewFurnace(0)
 	_ = f.inventory.SetItem(0, javaStack(t, "minecraft:raw_iron", 10))
 	_ = f.inventory.SetItem(1, javaStack(t, "minecraft:coal", 2))
@@ -164,6 +169,7 @@ func TestSmelterExperienceFromRecipes(t *testing.T) {
 // TestSmelterDriesWetSpongeIntoBucket fills an empty bucket in the fuel slot
 // with the water of a dried sponge, as AbstractFurnaceBlockEntity.burn.
 func TestSmelterDriesWetSpongeIntoBucket(t *testing.T) {
+	t.Parallel()
 	s := newSmelter()
 	_ = s.inventory.SetItem(0, item.NewStack(Sponge{Wet: true}, 1))
 	_ = s.inventory.SetItem(1, javaStack(t, "minecraft:coal", 1))

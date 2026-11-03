@@ -11,6 +11,7 @@ import (
 )
 
 func TestComparatorRearPriorityMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_comparator_rear.json")
 	if err != nil {
 		t.Fatal(err)

@@ -12,6 +12,7 @@ import (
 )
 
 func TestBookshelfHopperSignalsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_bookshelf_hopper.json")
 	if err != nil {
 		t.Fatal(err)

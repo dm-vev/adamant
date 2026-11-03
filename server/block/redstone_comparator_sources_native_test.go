@@ -14,6 +14,7 @@ import (
 // frame, but this matrix deliberately asserts only the settled window;
 // TestComparatorTimingMatchesNativeCapture covers pulse and chain timing.
 func TestComparatorSideSourcesMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_comparator_sources.json")
 	if err != nil {
 		t.Fatal(err)

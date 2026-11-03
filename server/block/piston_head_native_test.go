@@ -16,6 +16,7 @@ type nativePistonHeadSnapshot struct {
 }
 
 func TestPistonHeadSurvivalMatchesBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_piston_head_survival.json")
 	if err != nil {
 		t.Fatal(err)
@@ -62,6 +63,7 @@ func TestPistonHeadSurvivalMatchesBDS(t *testing.T) {
 	for _, trace := range native.Scenarios {
 		c := trace.Scenario
 		t.Run(fmt.Sprintf("sticky%t/face%d/phase%d/%s%d/%s", c.Sticky, c.Facing, c.Phase, c.Stage, c.Offset, c.Edit), func(t *testing.T) {
+			t.Parallel()
 			if len(trace.Samples) != 100 || len(trace.Changes) != 2 || trace.Changes[0].Tick&1 != int64(c.Phase) || trace.Injection.Tick == 0 {
 				t.Fatal("invalid native piston-head trace")
 			}

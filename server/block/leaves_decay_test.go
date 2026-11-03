@@ -11,6 +11,7 @@ import (
 // log is removed on its random tick, as LeavesBlock.randomTick does, instead
 // of staying and dropping its loot again on every random tick.
 func TestLeavesDecayAwayFromLogs(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	pos := cube.Pos{0, 64, 0}
@@ -27,6 +28,7 @@ func TestLeavesDecayAwayFromLogs(t *testing.T) {
 // a leaf's update_bit leaves the next leaf alone, so a tree settles instead
 // of its leaves flagging one another forever.
 func TestLeavesFlagDecayWithoutNotifyingNeighbours(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	log, first, second := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}, cube.Pos{2, 64, 0}

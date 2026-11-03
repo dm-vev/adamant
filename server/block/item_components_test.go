@@ -11,6 +11,7 @@ import (
 // TestItemComponents checks imported Java components with Bedrock's cake
 // stack size, which the native container transfer fixtures exercise.
 func TestItemComponents(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		id    string
 		stack int
@@ -46,6 +47,7 @@ func TestItemComponents(t *testing.T) {
 // TestEmptyComposterAlwaysTakesALayer follows ContextIntProviders.compostable:
 // an empty composter takes a layer from any compostable item.
 func TestEmptyComposterAlwaysTakesALayer(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {

@@ -35,6 +35,7 @@ func dripstoneColumn(w *world.World, from, to int) (column []world.Block) {
 }
 
 func TestPointedDripstonePlacementShapesColumn(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) { tx.SetBlock(cube.Pos{0, 10, 0}, Stone{}, nil) })
 	lookingUp := &pistonTestUser{rot: cube.Rotation{0, -45}}
@@ -59,6 +60,7 @@ func TestPointedDripstonePlacementShapesColumn(t *testing.T) {
 }
 
 func TestPointedDripstonePlacementFallsBackToSupportedDirection(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) { tx.SetBlock(cube.Pos{0, 0, 0}, Stone{}, nil) })
 	// Looking up asks for a stalactite, but only the floor supports one.
@@ -69,6 +71,7 @@ func TestPointedDripstonePlacementFallsBackToSupportedDirection(t *testing.T) {
 }
 
 func TestPointedDripstoneOpposingTipsMergeUnlessSneaking(t *testing.T) {
+	t.Parallel()
 	for _, sneaking := range []bool{false, true} {
 		w := newMultifaceTestWorld(t)
 		<-w.Exec(func(tx *world.Tx) {
@@ -97,6 +100,7 @@ func dripstoneCave(tx *world.Tx, above world.Block) {
 }
 
 func TestPointedDripstoneDripsIntoCauldron(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		above  world.Block
@@ -137,6 +141,7 @@ func TestPointedDripstoneDripsIntoCauldron(t *testing.T) {
 }
 
 func TestPointedDripstoneDripBlockedBySolidBlock(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dripstoneCave(tx, Water{Depth: 8, Still: true})
@@ -155,6 +160,7 @@ func TestPointedDripstoneDripBlockedBySolidBlock(t *testing.T) {
 }
 
 func TestPointedDripstoneDriesMudAboveIntoClay(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		dripstoneCave(tx, Mud{})
@@ -166,6 +172,7 @@ func TestPointedDripstoneDriesMudAboveIntoClay(t *testing.T) {
 }
 
 func TestStalactiteGrowsOnlyUnderWaterSource(t *testing.T) {
+	t.Parallel()
 	for _, water := range []bool{true, false} {
 		w := newMultifaceTestWorld(t)
 		var above world.Block = Air{}

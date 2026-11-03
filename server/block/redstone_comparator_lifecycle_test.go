@@ -11,6 +11,7 @@ import (
 // 0x8e15781). Both positive outputs keep the identifier unchanged, so this
 // cannot pass merely because an identifier transition refreshes the mode.
 func TestComparatorActivationRefreshesMode(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.End}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{0, 65, 0}
@@ -51,6 +52,7 @@ func (cancelComparatorOutput) HandleRedstoneUpdate(ctx *world.Context, update wo
 }
 
 func TestComparatorCancelledPublicationRetries(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Dim: world.End}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{0, 65, 0}

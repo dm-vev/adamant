@@ -10,6 +10,7 @@ import (
 // A supported soul flame must settle instead of indefinitely enqueueing itself
 // and starving unrelated block updates behind it.
 func TestSoulFireDoesNotStarveSupportUpdates(t *testing.T) {
+	t.Parallel()
 	for _, base := range []world.Block{SoulSand{}, SoulSoil{}} {
 		name, _ := base.EncodeBlock()
 		t.Run(name, func(t *testing.T) {

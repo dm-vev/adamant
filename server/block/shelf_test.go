@@ -29,6 +29,7 @@ func powerShelf(pos cube.Pos, tx *world.Tx) {
 // shelf: the front column clicked picks the slot, which swaps with the held
 // stack, and only a comparator behind the shelf reads its slots.
 func TestShelfSwapsTheHeldItem(t *testing.T) {
+	t.Parallel()
 	shelfTestWorld(t, func(tx *world.Tx) {
 		pos := cube.Pos{0, 64, 0}
 		tx.SetBlock(pos, Shelf{Facing: cube.North}, nil)
@@ -69,6 +70,7 @@ func TestShelfSwapsTheHeldItem(t *testing.T) {
 // shelves side by side chain up to three, and a click on one swaps the end of
 // the hotbar with the shelves of its chain, left to right.
 func TestPoweredShelvesChainAndSwapTheHotbar(t *testing.T) {
+	t.Parallel()
 	shelfTestWorld(t, func(tx *world.Tx) {
 		// Seen from the front of a shelf facing north, left is east.
 		positions := []cube.Pos{{3, 64, 0}, {2, 64, 0}, {1, 64, 0}, {0, 64, 0}}
@@ -119,6 +121,7 @@ func TestPoweredShelvesChainAndSwapTheHotbar(t *testing.T) {
 // TestHoppersFillAndEmptyShelves checks the shelf as a container of hoppers:
 // they push into the first slot with room and pull from the first occupied.
 func TestHoppersFillAndEmptyShelves(t *testing.T) {
+	t.Parallel()
 	shelfTestWorld(t, func(tx *world.Tx) {
 		pos := cube.Pos{0, 64, 0}
 		shelf := Shelf{Facing: cube.North}

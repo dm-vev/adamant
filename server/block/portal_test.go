@@ -10,6 +10,7 @@ import (
 )
 
 func TestPortalRuntimeIDs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		axis cube.Axis
 		prop string

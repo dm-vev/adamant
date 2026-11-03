@@ -13,6 +13,7 @@ import (
 )
 
 func TestCampfireAnalogDispatchMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_analog_dispatch.json")
 	if err != nil {
 		t.Fatal(err)
@@ -52,6 +53,7 @@ func TestCampfireAnalogDispatchMatchesExecutedClient(t *testing.T) {
 }
 
 func TestAnalogBlockOutputsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_analog_blocks.json")
 	if err != nil {
 		t.Fatal(err)

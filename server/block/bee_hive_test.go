@@ -30,6 +30,7 @@ func (h *hiveExitObserver) HandleSound(_ *world.Context, s world.Sound, _ mgl64.
 }
 
 func TestHiveEmergencyRelease(t *testing.T) {
+	t.Parallel()
 	for _, blocked := range []bool{false, true} {
 		name := "open exit"
 		if blocked {

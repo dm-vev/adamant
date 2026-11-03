@@ -17,6 +17,7 @@ type nativeTripwireBlock struct {
 }
 
 func TestTripwireCollisionMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_tripwire_geometry.json")
 	if err != nil {
 		t.Fatal(err)
@@ -76,6 +77,7 @@ func compareNativeTripwireBlock(t *testing.T, tx *world.Tx, tick int64, pos cube
 }
 
 func TestTripwireContactsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_tripwire_contacts.json")
 	if err != nil {
 		t.Fatal(err)
@@ -185,6 +187,7 @@ func TestTripwireContactsMatchNativeCapture(t *testing.T) {
 }
 
 func TestTripwireLinesMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_tripwire_lines.json")
 	if err != nil {
 		t.Fatal(err)

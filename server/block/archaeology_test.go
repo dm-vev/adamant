@@ -9,6 +9,7 @@ import (
 )
 
 func TestSuspiciousBlocksAdvanceBrushProgress(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		block world.Block
@@ -72,6 +73,7 @@ func TestSuspiciousBlocksAdvanceBrushProgress(t *testing.T) {
 // brushing left off still resets through the scheduled ticks of
 // BrushableBlock, as checkReset does.
 func TestSuspiciousBlocksResetThroughScheduledTicks(t *testing.T) {
+	t.Parallel()
 	for _, b := range []world.Block{SuspiciousSand{}, SuspiciousGravel{}} {
 		if _, ok := b.(world.TickerBlock); ok {
 			t.Errorf("%T ticks every tick", b)

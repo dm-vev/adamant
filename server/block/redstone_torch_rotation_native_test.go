@@ -11,6 +11,7 @@ import (
 )
 
 func TestTorchRotationMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_rotation.json")
 	if err != nil {
 		t.Fatal(err)

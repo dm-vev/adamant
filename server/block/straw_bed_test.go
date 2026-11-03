@@ -14,6 +14,7 @@ import (
 )
 
 func TestStrawBedCollisionMatchesJava263Source(t *testing.T) {
+	t.Parallel()
 	var fixture struct {
 		Cases []struct {
 			Facing string                          `json:"facing"`
@@ -49,6 +50,7 @@ func TestStrawBedCollisionMatchesJava263Source(t *testing.T) {
 }
 
 func TestStrawBedNativeStatesSurviveMCDBRestart(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	db, err := mcdb.Open(dir)
 	if err != nil {
@@ -107,6 +109,7 @@ func TestStrawBedNativeStatesSurviveMCDBRestart(t *testing.T) {
 }
 
 func TestStrawBedNeighborRemovalDropsOnlyHead(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	foot, head := cube.Pos{257, 70, -257}, cube.Pos{257, 70, -256}

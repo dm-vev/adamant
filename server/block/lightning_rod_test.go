@@ -12,6 +12,7 @@ import (
 )
 
 func TestLightningRodBodyMatchesInspectedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_lightning_methods.json")
 	if err != nil {
 		t.Fatal(err)
@@ -39,6 +40,7 @@ func TestLightningRodBodyMatchesInspectedClient(t *testing.T) {
 }
 
 func TestStruckLightningRodPulsesItsSupport(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	rod, support := cube.Pos{0, 65, 0}, cube.Pos{0, 64, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -68,6 +70,7 @@ func TestStruckLightningRodPulsesItsSupport(t *testing.T) {
 }
 
 func TestFlowerPotHoldsOnePlant(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -103,6 +106,7 @@ func TestFlowerPotHoldsOnePlant(t *testing.T) {
 }
 
 func TestEyeblossomOpensAtNightAndWakesNeighbours(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	a, b := cube.Pos{0, 1, 0}, cube.Pos{2, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {

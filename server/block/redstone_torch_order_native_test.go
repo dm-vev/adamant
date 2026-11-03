@@ -15,6 +15,7 @@ import (
 // every native frame, including startup and external-input release. It does
 // not claim that the world's current coordinate sort constructs that order.
 func TestTorchClusterNativeTraversalExplainsPhase(t *testing.T) {
+	t.Parallel()
 	t.Run("placement-history", func(t *testing.T) { testTorchNativeTraversal(t, "bedrock_1_26_51_circuit_order.json", 20) })
 	t.Run("table-growth", func(t *testing.T) { testTorchNativeTraversal(t, "bedrock_1_26_51_circuit_order_growth.json", 6) })
 }
@@ -161,6 +162,7 @@ func testTorchNativeTraversal(t *testing.T, filename string, scenarios int) {
 // Unlike replaying each geometry in a fresh world, this keeps native chunk
 // registration history and unrelated older circuits between scenarios.
 func TestTorchClusterWorldHistoryMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	t.Run("placement-history", func(t *testing.T) { testTorchClusterWorldHistory(t, "bedrock_1_26_51_circuit_order.json", 20) })
 	t.Run("table-growth", func(t *testing.T) { testTorchClusterWorldHistory(t, "bedrock_1_26_51_circuit_order_growth.json", 6) })
 }

@@ -11,14 +11,17 @@ import (
 )
 
 func TestObserverMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	testObserverNativeTrace(t, "testdata/bedrock_1_26_51_observer.json", 38)
 }
 
 func TestObserverOutputMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	testObserverNativeTrace(t, "testdata/bedrock_1_26_51_observer_power.json", 28)
 }
 
 func TestObserverLifecycleMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	testObserverNativeTrace(t, "testdata/bedrock_1_26_51_observer_lifecycle.json", 12)
 }
 
@@ -147,6 +150,7 @@ func testObserverNativeTrace(t *testing.T, fixture string, count int) {
 // callback with each captured native arrival. It checks the observer's pulse,
 // independently of piston start/progress timing (audited separately).
 func TestObserverAfterPistonMoveMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_observer_move.json")
 	if err != nil {
 		t.Fatal(err)

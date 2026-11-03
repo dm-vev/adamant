@@ -15,6 +15,7 @@ import (
 // noon and none at midnight, and inverted it
 // outputs what the night sky leaves dark.
 func TestDaylightDetectorMeasuresSkyOnUpdateTicks(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	w.SetTimeCycle(false)

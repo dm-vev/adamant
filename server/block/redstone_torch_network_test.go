@@ -39,6 +39,7 @@ func compareTorchNetworkBlock(t *testing.T, tx *world.Tx, tick int64, pos cube.P
 }
 
 func TestTorchNetworksMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_network.json")
 	if err != nil {
 		t.Fatal(err)
@@ -139,6 +140,7 @@ func TestTorchNetworksMatchNativeCapture(t *testing.T) {
 // Cache traversal depends on the native chunk maps and component vectors.
 // Cycle shape/order is checked independently from exact startup/release phase.
 func TestTorchClusterCyclesMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	t.Run("subsets", func(t *testing.T) { testTorchClusters(t, "bedrock_1_26_51_torch_cluster.json", 16, 112, false) })
 	t.Run("translations", func(t *testing.T) {
 		testTorchClusters(t, "bedrock_1_26_51_torch_cluster_translation.json", 20, 80, false)
@@ -146,6 +148,7 @@ func TestTorchClusterCyclesMatchNativeCapture(t *testing.T) {
 }
 
 func TestTorchClusterExactPhaseMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	testTorchClusters(t, "bedrock_1_26_51_torch_cluster.json", 16, 112, true)
 	testTorchClusters(t, "bedrock_1_26_51_torch_cluster_translation.json", 20, 80, true)
 }

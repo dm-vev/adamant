@@ -8,6 +8,7 @@ import (
 )
 
 func TestSkullRetainsCapturedNativeAnimation(t *testing.T) {
+	t.Parallel()
 	// BDS 1.26.52.3 build51798919: a dragon head beside a redstone block,
 	// and an unpowered control, saved from a ticking area without clients.
 	for _, tc := range []struct {
@@ -35,6 +36,7 @@ func TestSkullRetainsCapturedNativeAnimation(t *testing.T) {
 }
 
 func TestSkullRedstoneAnimationTick(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 

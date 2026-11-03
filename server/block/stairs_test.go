@@ -40,6 +40,7 @@ func referenceStair(t *testing.T, name string, facing int, upsideDown bool) Stai
 }
 
 func TestStairCornersMatchBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bds_stairs_1.26.52.3.json")
 	if err != nil {
 		t.Fatal(err)
@@ -109,6 +110,7 @@ func TestStairCornersMatchBDS(t *testing.T) {
 }
 
 func TestStairNeighborRemovalClearsPersistedCorner(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{8, 64, 8}
@@ -132,6 +134,7 @@ func TestStairNeighborRemovalClearsPersistedCorner(t *testing.T) {
 }
 
 func TestStairReconstructionPreservesExplicitCorner(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{0, 64, 0}
 	stair := referenceStair(t, "minecraft:oak_stairs", 0, false)
 	stair.Corner = model.StairCornerInnerLeft
@@ -147,6 +150,7 @@ func TestStairReconstructionPreservesExplicitCorner(t *testing.T) {
 }
 
 func TestStairModelUsesPersistedShapeWithoutNeighbors(t *testing.T) {
+	t.Parallel()
 	for _, scenario := range []struct {
 		corner model.StairCorner
 		volume float64

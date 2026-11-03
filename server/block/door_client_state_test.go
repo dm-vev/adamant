@@ -10,6 +10,7 @@ import (
 // sends them: the upper half never carries open_bit, while the lower half
 // does and the server keeps the open state on both.
 func TestUpperDoorHalfSentClosed(t *testing.T) {
+	t.Parallel()
 	br := world.DefaultBlockRegistry
 	br.Finalize()
 	hash := func(b world.Block) uint32 {

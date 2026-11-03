@@ -13,6 +13,7 @@ import (
 )
 
 func TestLeafLitterSurvivesNearbyBlockChanges(t *testing.T) {
+	t.Parallel()
 	for _, ground := range []world.Block{block.Dirt{}, block.Grass{}} {
 		name, _ := ground.EncodeBlock()
 		t.Run(name, func(t *testing.T) {
@@ -69,6 +70,7 @@ func TestLeafLitterSurvivesNearbyBlockChanges(t *testing.T) {
 }
 
 func TestLeafLitterUsesFullTopSupportForPlacementAndSurvival(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name    string
 		support world.Block

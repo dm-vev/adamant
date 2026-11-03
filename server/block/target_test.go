@@ -10,6 +10,7 @@ import (
 )
 
 func TestTargetSignal(t *testing.T) {
+	t.Parallel()
 	pos := cube.Pos{2, 3, 4}
 	tests := []struct {
 		name string
@@ -33,6 +34,7 @@ func TestTargetSignal(t *testing.T) {
 }
 
 func TestTargetNBT(t *testing.T) {
+	t.Parallel()
 	target := Target{Signal: 12}
 	encoded := target.EncodeNBT()
 	if encoded["id"] != "Target" || encoded["OutputSignal"] != int32(12) {
@@ -48,6 +50,7 @@ func TestTargetNBT(t *testing.T) {
 }
 
 func TestTargetResetDelay(t *testing.T) {
+	t.Parallel()
 	for identifier, want := range map[string]time.Duration{
 		"minecraft:arrow":          time.Second,
 		"minecraft:thrown_trident": time.Second,
@@ -60,6 +63,7 @@ func TestTargetResetDelay(t *testing.T) {
 }
 
 func TestTargetInterfacesAndEncoding(t *testing.T) {
+	t.Parallel()
 	var target any = Target{Signal: 15}
 	if _, ok := target.(world.NBTer); !ok {
 		t.Fatal("Target does not implement world.NBTer")

@@ -12,6 +12,7 @@ import (
 // apply to the side the user faces only if it has text and the sign is not
 // waxed.
 func TestSignApplicatorsFollowJava(t *testing.T) {
+	t.Parallel()
 	pos, user := cube.Pos{0, 64, 0}, mgl64.Vec3{0.5, 64.5, 5}
 	written := Sign{Wood: OakWood(), Attach: StandingAttachment(0)}
 	written.Front.Text, written.Back.Text = "hi", "hi"

@@ -12,6 +12,7 @@ import (
 // TestBreakDuration verifies the Bedrock Edition breaking calculation against the reference values
 // documented at https://minecraft.wiki/w/Breaking#Calculation.
 func TestBreakDuration(t *testing.T) {
+	t.Parallel()
 	diamondPick := item.NewStack(item.Pickaxe{Tier: item.ToolTierDiamond}, 1)
 	efficiencyDiamondPick := diamondPick.WithEnchantments(item.NewEnchantment(enchantment.Efficiency, 3))
 	woodPick := item.NewStack(item.Pickaxe{Tier: item.ToolTierWood}, 1)
@@ -103,6 +104,7 @@ func TestBreakDuration(t *testing.T) {
 // TestBreaksInstantly verifies that BreaksInstantly reports an instant break only for zero-hardness blocks,
 // not for positive-hardness blocks that merely break within one tick due to a fast tool.
 func TestBreaksInstantly(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		block world.Block

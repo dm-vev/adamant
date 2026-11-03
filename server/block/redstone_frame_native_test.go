@@ -12,6 +12,7 @@ import (
 )
 
 func TestFrameSignalsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_frame_signal.json")
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +41,7 @@ func TestFrameSignalsMatchNativeCapture(t *testing.T) {
 	for _, trace := range reference.Scenarios {
 		c := trace.Scenario
 		t.Run(fmt.Sprintf("%s/query%d/through%v/facing%d/rotation%d", c.Block, c.Query, c.Through, c.Facing, c.Rotation), func(t *testing.T) {
+			t.Parallel()
 			if len(trace.Samples) != 16 || len(trace.Changes) != 1 || trace.Changes[0].Tick&1 != int64(c.Phase) {
 				t.Fatal("invalid native frame signal trace")
 			}

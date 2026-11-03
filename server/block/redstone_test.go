@@ -18,6 +18,7 @@ func runWorld(w *world.World, f func(*world.Tx)) {
 }
 
 func TestRedstoneWirePowersBlockBelowButNotAbove(t *testing.T) {
+	t.Parallel()
 	wire := RedstoneWire{Power: 15}
 	pos := cube.Pos{0, 64, 0}
 
@@ -39,6 +40,7 @@ func TestRedstoneWirePowersBlockBelowButNotAbove(t *testing.T) {
 }
 
 func TestRedstoneWireVerticalTravel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		upperSupport world.Block
@@ -81,6 +83,7 @@ func TestRedstoneWireVerticalTravel(t *testing.T) {
 }
 
 func TestRedstoneWireBreaksWhenSupportRemoved(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: redstoneBreakDropTestEntityRegistry()}.New()
 	defer w.Close()
 
@@ -103,6 +106,7 @@ func TestRedstoneWireBreaksWhenSupportRemoved(t *testing.T) {
 }
 
 func TestRedstoneWireGlowstoneLadderDoesNotOscillateAfterNeighbourBlockUpdate(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name      string
 		updatePos cube.Pos
@@ -201,6 +205,7 @@ func TestRedstoneWireGlowstoneLadderDoesNotOscillateAfterNeighbourBlockUpdate(t 
 }
 
 func TestRedstoneTorchAttachmentPower(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		setup func(tx *world.Tx, attachmentPos cube.Pos)
@@ -253,6 +258,7 @@ func TestRedstoneTorchAttachmentPower(t *testing.T) {
 }
 
 func TestRedstoneTorchUnknownFacingDoesNotPowerAttachmentFace(t *testing.T) {
+	t.Parallel()
 	torch := RedstoneTorch{Facing: unknownFace, Lit: true}
 	pos := cube.Pos{1, 64, 0}
 
@@ -274,6 +280,7 @@ func TestRedstoneTorchUnknownFacingDoesNotPowerAttachmentFace(t *testing.T) {
 }
 
 func TestRedstoneTorchUnknownFacingUsesBlockBelowAsAttachment(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -308,6 +315,7 @@ func TestRedstoneTorchUnknownFacingUsesBlockBelowAsAttachment(t *testing.T) {
 }
 
 func TestRedstoneBlockPowersAdjacentComponentsButNotThroughStone(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -337,6 +345,7 @@ func TestRedstoneBlockPowersAdjacentComponentsButNotThroughStone(t *testing.T) {
 }
 
 func TestRedstoneBlockDoesNotPowerTorchThroughStone(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -357,6 +366,7 @@ func TestRedstoneBlockDoesNotPowerTorchThroughStone(t *testing.T) {
 }
 
 func TestLeverStrongPowersAttachedBlockFace(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -382,6 +392,7 @@ func TestLeverStrongPowersAttachedBlockFace(t *testing.T) {
 }
 
 func TestLeverBreaksWhenSupportRemoved(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: redstoneBreakDropTestEntityRegistry()}.New()
 	defer w.Close()
 
@@ -404,6 +415,7 @@ func TestLeverBreaksWhenSupportRemoved(t *testing.T) {
 }
 
 func TestLeverUpdatesConsumerBehindAttachedBlock(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	loader := world.NewLoader(1, w, world.NopViewer{})
@@ -441,6 +453,7 @@ func TestLeverUpdatesConsumerBehindAttachedBlock(t *testing.T) {
 }
 
 func TestNoteBlockPlaysOnRedstoneRisingEdgeOnly(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -477,6 +490,7 @@ func TestNoteBlockPlaysOnRedstoneRisingEdgeOnly(t *testing.T) {
 }
 
 func TestTNTDoesNotConductRedstonePower(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 
@@ -500,6 +514,7 @@ func TestTNTDoesNotConductRedstonePower(t *testing.T) {
 }
 
 func TestTNTRedstoneEngineRisingEdgePrimes(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Entities: redstoneTNTTestEntityRegistry()}.New()
 	defer w.Close()
 
@@ -541,6 +556,7 @@ func TestTNTRedstoneEngineRisingEdgePrimes(t *testing.T) {
 }
 
 func TestTNTRedstonePowerAction(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		oldPower     int
@@ -747,6 +763,7 @@ func (e redstoneTNTTestEntity) Rotation() cube.Rotation {
 	return e.data.Rot
 }
 func TestRedstoneTorchLoopBurnsOutThroughWorldScheduler(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Dim: world.End, Synchronous: true}.New()
 	defer w.Close()
 
@@ -801,6 +818,7 @@ func TestRedstoneTorchLoopBurnsOutThroughWorldScheduler(t *testing.T) {
 }
 
 func TestBurnedOutRedstoneTorchRelightsWhenLoopWireBreaks(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Dim: world.End, Synchronous: true}.New()
 	defer w.Close()
 

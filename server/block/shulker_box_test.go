@@ -23,6 +23,7 @@ func (v *containerViewerStub) ViewSlotChange(slot int, _ item.Stack) {
 }
 
 func TestNewShulkerBoxInitialisesRuntimeFields(t *testing.T) {
+	t.Parallel()
 	box := NewShulkerBox()
 	if box.inventory == nil {
 		t.Fatalf("expected inventory to be initialised")
@@ -42,6 +43,7 @@ func TestNewShulkerBoxInitialisesRuntimeFields(t *testing.T) {
 }
 
 func TestShulkerBoxEncodeNBTInitialisesInventory(t *testing.T) {
+	t.Parallel()
 	box := ShulkerBox{Type: BlueShulkerBox(), Facing: cube.FaceSouth, CustomName: "Storage"}
 
 	nbt := box.EncodeNBT()
@@ -65,6 +67,7 @@ func TestShulkerBoxEncodeNBTInitialisesInventory(t *testing.T) {
 }
 
 func TestShulkerBoxInventoryRejectsNestedBoxes(t *testing.T) {
+	t.Parallel()
 	box := NewShulkerBox()
 	viewer := &containerViewerStub{}
 
@@ -100,6 +103,7 @@ func TestShulkerBoxInventoryRejectsNestedBoxes(t *testing.T) {
 }
 
 func TestShulkerBoxBreakDropsPreserveInventory(t *testing.T) {
+	t.Parallel()
 	box := NewShulkerBox()
 	box.Type = PurpleShulkerBox()
 	box.CustomName = "Treasure"
@@ -140,6 +144,7 @@ func TestShulkerBoxBreakDropsPreserveInventory(t *testing.T) {
 }
 
 func TestShulkerBoxBreakDropsCloneInventory(t *testing.T) {
+	t.Parallel()
 	box := NewShulkerBox()
 
 	loot := item.NewStack(item.Diamond{}, 2)
@@ -172,6 +177,7 @@ func TestShulkerBoxBreakDropsCloneInventory(t *testing.T) {
 }
 
 func TestShulkerBoxDropRoundTripNBT(t *testing.T) {
+	t.Parallel()
 	box := NewShulkerBox()
 
 	loot := item.NewStack(item.Diamond{}, 3)
@@ -198,6 +204,7 @@ func TestShulkerBoxDropRoundTripNBT(t *testing.T) {
 }
 
 func TestShulkerBoxPushesAllMovableEntities(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	box := NewShulkerBox()

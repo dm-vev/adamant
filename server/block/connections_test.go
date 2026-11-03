@@ -11,6 +11,7 @@ import (
 )
 
 func TestPersistedConnectionsDetermineCollisionArms(t *testing.T) {
+	t.Parallel()
 	for _, b := range []world.Block{
 		GlassPane{NorthConnection: true, EastConnection: true},
 		WoodFence{NorthConnection: true, EastConnection: true},
@@ -40,6 +41,7 @@ func TestPersistedConnectionsDetermineCollisionArms(t *testing.T) {
 }
 
 func TestAllThinAndFenceConnectionStatesAreUnique(t *testing.T) {
+	t.Parallel()
 	families := []struct {
 		name   string
 		states []world.Block
@@ -76,6 +78,7 @@ func TestAllThinAndFenceConnectionStatesAreUnique(t *testing.T) {
 }
 
 func TestThinAndFenceNeighbourUpdatesTrackChangesAndPreserveState(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{0, 64, 0}
@@ -113,6 +116,7 @@ func TestThinAndFenceNeighbourUpdatesTrackChangesAndPreserveState(t *testing.T) 
 	})
 }
 func TestMissingConnectionReconstructionChangesOnlyAbsentFields(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{0, 64, 0}
@@ -156,6 +160,7 @@ func TestMissingConnectionReconstructionChangesOnlyAbsentFields(t *testing.T) {
 }
 
 func TestPaneAndFencePlacementComputesPersistedConnections(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := cube.Pos{0, 64, 0}

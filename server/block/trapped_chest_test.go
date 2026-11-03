@@ -16,6 +16,7 @@ type chestTestViewer struct {
 func (chestTestViewer) ViewSlotChange(int, item.Stack) {}
 
 func TestTrappedChestPowerFollowsViewers(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {

@@ -29,6 +29,7 @@ func countLichenFaces(tx *world.Tx, from, to cube.Pos) (n int) {
 }
 
 func TestGlowLichenBoneMealGrowsExactlyOneFace(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		for x := -2; x <= 2; x++ {
@@ -49,6 +50,7 @@ func TestGlowLichenBoneMealGrowsExactlyOneFace(t *testing.T) {
 }
 
 func TestGlowLichenEnclosedRejectsBoneMeal(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		pos := cube.Pos{0, 1, 0}
@@ -64,6 +66,7 @@ func TestGlowLichenEnclosedRejectsBoneMeal(t *testing.T) {
 }
 
 func TestMultifaceLosesUnsupportedFaces(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -90,6 +93,7 @@ func TestMultifaceLosesUnsupportedFaces(t *testing.T) {
 }
 
 func TestMultifaceDropsOneItemPerFace(t *testing.T) {
+	t.Parallel()
 	faces := MultiFace(0).With(cube.FaceDown, true).With(cube.FaceUp, true).With(cube.FaceEast, true)
 	silk := []item.Enchantment{item.NewEnchantment(enchantment.SilkTouch, 1)}
 	if drops := (SculkVein{Faces: faces}).BreakInfo().Drops(item.ToolNone{}, silk); len(drops) != 1 || drops[0].Count() != 3 {
@@ -107,6 +111,7 @@ func TestMultifaceDropsOneItemPerFace(t *testing.T) {
 }
 
 func TestSculkCatalystPersistsChargeCursors(t *testing.T) {
+	t.Parallel()
 	c := NewSculkCatalyst()
 	c.spreader.addCursors(cube.Pos{3, 64, -2}, 1500)
 	c.spreader.cursors[1].facings, c.spreader.cursors[1].hasFacings = MultiFace(0).With(cube.FaceDown, true), true

@@ -50,6 +50,7 @@ func ticksUntil(w *world.World, limit int, done func(tx *world.Tx) bool) int {
 // pressed 20 (stone) or 30 (wood) ticks. Delays are measured inside a
 // repeater chain, from the first repeater switching.
 func TestRedstoneDelaysMatchJava(t *testing.T) {
+	t.Parallel()
 	for delay := range 4 {
 		w := redstoneTimingWorld(t)
 		source, first, second, lamp := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}, cube.Pos{2, 64, 0}, cube.Pos{3, 64, 0}

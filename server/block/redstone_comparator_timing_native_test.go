@@ -11,6 +11,7 @@ import (
 )
 
 func TestComparatorTimingMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_comparator_timing.json")
 	if err != nil {
 		t.Fatal(err)

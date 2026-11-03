@@ -13,6 +13,7 @@ import (
 // Settled lamp readback checks actual activation, including strong power
 // through a solid block. It does not assert initial publication timing.
 func TestTorchOutputFacesMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_faces.json")
 	if err != nil {
 		t.Fatal(err)

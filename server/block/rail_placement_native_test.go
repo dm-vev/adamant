@@ -11,6 +11,7 @@ import (
 )
 
 func TestRailPlacementAndPowerDoNotLoadNeighbourChunks(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
@@ -29,6 +30,7 @@ func TestRailPlacementAndPowerDoNotLoadNeighbourChunks(t *testing.T) {
 }
 
 func TestRailCurvePlacementMatchesBDS(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_rail_curve_placement.json")
 	if err != nil {
 		t.Fatal(err)

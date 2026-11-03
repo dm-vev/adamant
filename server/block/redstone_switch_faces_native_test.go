@@ -12,6 +12,7 @@ import (
 )
 
 func TestSwitchOutputFacesMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_switch_faces.json")
 	if err != nil {
 		t.Fatal(err)

@@ -32,6 +32,7 @@ func sulfurState(t *testing.T, w *world.World) (s PotentSulfur) {
 }
 
 func TestPotentSulfurPlacementStateFollowsWaterAndHeat(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		below world.Block
@@ -60,6 +61,7 @@ func TestPotentSulfurPlacementStateFollowsWaterAndHeat(t *testing.T) {
 }
 
 func TestPotentSulfurStateUpdatesWithNeighbours(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		buildSulfurPool(tx, Stone{}, 0)
@@ -100,6 +102,7 @@ func geyserTransitions(t *testing.T, w *world.World, seconds int) (at []int, sta
 }
 
 func TestPeriodicGeyserRepeatsPhasesFixedByPosition(t *testing.T) {
+	t.Parallel()
 	for depth := 1; depth <= 4; depth++ {
 		w := newMultifaceTestWorld(t)
 		<-w.Exec(func(tx *world.Tx) {
@@ -136,6 +139,7 @@ func TestPeriodicGeyserRepeatsPhasesFixedByPosition(t *testing.T) {
 }
 
 func TestGeyserCountdownLoadsFromNBT(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		buildSulfurPool(tx, Magma{}, 1)
@@ -149,6 +153,7 @@ func TestGeyserCountdownLoadsFromNBT(t *testing.T) {
 }
 
 func TestPotentSulfurWithoutGasSourcePausesCountdown(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		buildSulfurPool(tx, Magma{}, 1)

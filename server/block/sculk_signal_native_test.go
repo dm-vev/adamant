@@ -11,6 +11,7 @@ import (
 )
 
 func TestSculkSignalStrengthMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../world/testdata/bedrock_1_26_51_vibration_selector.json")
 	if err != nil {
 		t.Fatal(err)

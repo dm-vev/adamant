@@ -12,6 +12,7 @@ import (
 )
 
 func TestBookRecordSignalsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_book_record_signal.json")
 	if err != nil {
 		t.Fatal(err)

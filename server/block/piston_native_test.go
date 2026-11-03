@@ -14,50 +14,62 @@ import (
 )
 
 func TestPistonTimingMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_timing.json", 432, 100, 2)
 }
 
 func TestPistonRetriggerMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_retrigger.json", 576, 140, 4)
 }
 
 func TestPistonStrongInputMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_strong.json", 144, 100, 2)
 }
 
 func TestPistonBlocksMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_blocks.json", 96, 100, 2)
 }
 
 func TestPistonMaterialsMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_materials.json", 480, 100, 2)
 }
 
 func TestPistonPushOnlyAdhesionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_push_only.json", 288, 100, 2)
 }
 
 func TestPistonPayloadMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_payload.json", 96, 100, 2)
 }
 
 func TestPistonPoppedBlocksMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_popped.json", 112, 100, 2)
 }
 
 func TestPistonPoppedDropsMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_popped_drops.json", 112, 100, 2)
 }
 
 func TestPistonAdhesionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_adhesion.json", 240, 100, 2)
 }
 
 func TestPistonExtendedAdhesionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_adhesion_extended.json", 288, 100, 2)
 }
 
 func TestPistonVibrationsMatchBDS(t *testing.T) {
+	t.Parallel()
 	testPistonNativeTrace(t, "testdata/bedrock_1_26_51_piston_vibration.json", 96, 180, 2)
 }
 
@@ -83,6 +95,7 @@ type nativePistonDrop struct {
 }
 
 func TestPistonSortMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_piston_sort.json")
 	if err != nil {
 		t.Fatal(err)

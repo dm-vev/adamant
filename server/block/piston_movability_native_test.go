@@ -11,6 +11,7 @@ import (
 // Default-state native component classifications are separate from world
 // movement, directional Push rules, support survival and runtime actor gates.
 func TestPistonMovabilityMatchesBDSComponents(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_piston_movability.json")
 	if err != nil {
 		t.Fatal(err)

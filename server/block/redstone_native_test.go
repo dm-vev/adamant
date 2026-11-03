@@ -11,6 +11,7 @@ import (
 )
 
 func TestRedstoneWorldMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_world.json")
 	if err != nil {
 		t.Fatal(err)
@@ -86,6 +87,7 @@ func TestRedstoneWorldMatchesNativeCapture(t *testing.T) {
 }
 
 func TestComparatorArithmeticMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_evaluators.json")
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +118,7 @@ func TestComparatorArithmeticMatchesExecutedClient(t *testing.T) {
 }
 
 func TestSimpleCircuitsMatchExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_evaluators.json")
 	if err != nil {
 		t.Fatal(err)
@@ -147,6 +150,7 @@ func TestSimpleCircuitsMatchExecutedClient(t *testing.T) {
 }
 
 func TestRepeaterSideLockMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_repeater_lock.json")
 	if err != nil {
 		t.Fatal(err)
@@ -216,6 +220,7 @@ func TestRepeaterSideLockMatchesNativeCapture(t *testing.T) {
 }
 
 func TestRepeaterPipelineMatchesExecutedClient(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_evaluators.json")
 	if err != nil {
 		t.Fatal(err)
@@ -266,14 +271,17 @@ func TestRepeaterPipelineMatchesExecutedClient(t *testing.T) {
 }
 
 func TestRepeaterTimingMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	testRepeaterNativeTiming(t, "testdata/bedrock_1_26_51_repeater_timing.json", 48)
 }
 
 func TestRepeaterStateMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	testRepeaterNativeTiming(t, "testdata/bedrock_1_26_51_repeater_state.json", 40)
 }
 
 func TestRepeaterDelayMatchesNativeCapture(t *testing.T) {
+	t.Parallel()
 	testRepeaterNativeTiming(t, "testdata/bedrock_1_26_51_repeater_delay.json", 8)
 }
 

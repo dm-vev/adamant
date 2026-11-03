@@ -13,10 +13,12 @@ import (
 )
 
 func TestPistonInterruptionMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonInterruptionNative(t, "bedrock_1_26_51_piston_interruption.json")
 }
 
 func TestPistonHeadRemovalMatchesBDS(t *testing.T) {
+	t.Parallel()
 	testPistonInterruptionNative(t, "bedrock_1_26_51_piston_head_removal.json")
 }
 

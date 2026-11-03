@@ -11,6 +11,7 @@ import (
 )
 
 func TestComparatorPublicationEditsMatchNativeCapture(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bedrock_1_26_51_comparator_publication.json")
 	if err != nil {
 		t.Fatal(err)

@@ -12,6 +12,7 @@ import (
 // TestSnowLayersKeepTheirHeight checks every height of snow layers is a
 // registered state that is read back from the world as itself.
 func TestSnowLayersKeepTheirHeight(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 
@@ -30,6 +31,7 @@ func TestSnowLayersKeepTheirHeight(t *testing.T) {
 // not stay on ice, stays on soul sand, melts away by block light above 11,
 // and drops a snowball a layer to a shovel.
 func TestSnowLayerSurvivalAndDrops(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 
@@ -67,6 +69,7 @@ func TestSnowLayerSurvivalAndDrops(t *testing.T) {
 // TestFramesHoldingMapsHaveTheirOwnState checks a frame holding a map is
 // stored as the item_frame_map_bit state Bedrock keeps for it.
 func TestFramesHoldingMapsHaveTheirOwnState(t *testing.T) {
+	t.Parallel()
 	w := world.Config{Synchronous: true, Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
 

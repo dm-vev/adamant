@@ -10,6 +10,7 @@ import (
 )
 
 func TestDropperNBTRoundTrip(t *testing.T) {
+	t.Parallel()
 	d := NewDropper()
 	d.Facing, d.Triggered, d.CustomName = cube.FaceEast, true, "Supplies"
 	if err := d.inventory.SetItem(4, item.NewStack(item.Diamond{}, 3)); err != nil {
@@ -24,6 +25,7 @@ func TestDropperNBTRoundTrip(t *testing.T) {
 }
 
 func TestAllDropperStates(t *testing.T) {
+	t.Parallel()
 	states := allDroppers()
 	if len(states) != 12 {
 		t.Fatalf("got %d states, want 12", len(states))
@@ -43,6 +45,7 @@ func TestAllDropperStates(t *testing.T) {
 }
 
 func TestDropperDispensesOneRandomStack(t *testing.T) {
+	t.Parallel()
 	d := NewDropper()
 	d.Triggered = true
 	d.Facing = cube.FaceEast
@@ -65,6 +68,7 @@ func TestDropperDispensesOneRandomStack(t *testing.T) {
 }
 
 func TestDropperInsertsIntoFrontContainer(t *testing.T) {
+	t.Parallel()
 	d := NewDropper()
 	d.Facing, d.Triggered = cube.FaceEast, true
 	_ = d.inventory.SetItem(0, item.NewStack(item.Diamond{}, 2))
@@ -85,6 +89,7 @@ func TestDropperInsertsIntoFrontContainer(t *testing.T) {
 }
 
 func TestDropperFallingEdgeDoesNotDispense(t *testing.T) {
+	t.Parallel()
 	d := NewDropper()
 	d.Triggered = true
 	_ = d.inventory.SetItem(0, item.NewStack(item.Diamond{}, 2))
@@ -106,6 +111,7 @@ func TestDropperFallingEdgeDoesNotDispense(t *testing.T) {
 }
 
 func TestDropperDispensesAfterShortRedstonePulse(t *testing.T) {
+	t.Parallel()
 	d := NewDropper()
 	d.Facing = cube.FaceEast
 	_ = d.inventory.SetItem(0, item.NewStack(item.Diamond{}, 2))

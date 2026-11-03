@@ -24,6 +24,7 @@ func dripleafAt(t *testing.T, w *world.World, pos cube.Pos) (b world.Block) {
 }
 
 func TestBigDripleafTiltsUnderStandingEntityAndRecovers(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	leaf := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -54,6 +55,7 @@ func TestBigDripleafTiltsUnderStandingEntityAndRecovers(t *testing.T) {
 }
 
 func TestBigDripleafIgnoresAirborneOrLowEntities(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		y        float64
@@ -78,6 +80,7 @@ func TestBigDripleafIgnoresAirborneOrLowEntities(t *testing.T) {
 }
 
 func TestPoweredBigDripleafStaysLevel(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	leaf := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
@@ -99,6 +102,7 @@ func TestPoweredBigDripleafStaysLevel(t *testing.T) {
 }
 
 func TestBigDripleafLeafBecomesStemUnderNewLeaf(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 0, 0}, Clay{}, nil)
@@ -115,6 +119,7 @@ func TestBigDripleafLeafBecomesStemUnderNewLeaf(t *testing.T) {
 }
 
 func TestBoneMealGrowsBigDripleafFromStemAndSmallDripleaf(t *testing.T) {
+	t.Parallel()
 	w := newMultifaceTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(cube.Pos{0, 0, 0}, Clay{}, nil)
@@ -154,6 +159,7 @@ func TestBoneMealGrowsBigDripleafFromStemAndSmallDripleaf(t *testing.T) {
 }
 
 func TestSmallDripleafPlacementNeedsClayOrWaterOverSoil(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		ground world.Block
