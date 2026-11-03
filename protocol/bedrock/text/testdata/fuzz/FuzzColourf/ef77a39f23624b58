@@ -1,0 +1,4 @@
+go test fuzz v1
+string("<a><\xeb<\xfc<\xfa<\xe4<a")
+string("0")
+int64(2)

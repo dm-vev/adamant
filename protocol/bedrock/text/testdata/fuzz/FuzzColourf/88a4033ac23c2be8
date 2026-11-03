@@ -1,0 +1,4 @@
+go test fuzz v1
+string("\r\n\r<A>\r")
+string("0")
+int64(-74)

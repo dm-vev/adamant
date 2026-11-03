@@ -1,0 +1,4 @@
+go test fuzz v1
+string("%v")
+string("<A")
+int64(13)

@@ -1,0 +1,4 @@
+go test fuzz v1
+string("<red>000000000000000000000000000%v</red>")
+string("0000000")
+int64(-1)

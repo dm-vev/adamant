@@ -1,0 +1,4 @@
+go test fuzz v1
+string("<i>0<A>")
+string("<A>")
+int64(2)

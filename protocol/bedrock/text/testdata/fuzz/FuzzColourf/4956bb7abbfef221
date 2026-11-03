@@ -1,0 +1,4 @@
+go test fuzz v1
+string("%v<A0>")
+string("<i>")
+int64(-13)

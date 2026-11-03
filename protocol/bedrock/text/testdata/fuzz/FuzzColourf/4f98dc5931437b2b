@@ -1,0 +1,4 @@
+go test fuzz v1
+string("&0&\x96&0\xb9&{& ")
+string("")
+int64(-1)

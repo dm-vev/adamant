@@ -1,0 +1,4 @@
+go test fuzz v1
+string("<sCript>0</sCript><title>\r")
+string("0")
+int64(7)

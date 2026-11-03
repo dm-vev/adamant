@@ -1,0 +1,4 @@
+go test fuzz v1
+string("<red>0</red>")
+string("<netherite>")
+int64(2)

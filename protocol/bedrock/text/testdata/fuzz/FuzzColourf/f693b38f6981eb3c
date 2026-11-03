@@ -1,0 +1,4 @@
+go test fuzz v1
+string("<red><B><red>0<A>0<A>0<A>")
+string("</red>")
+int64(2)

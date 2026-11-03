@@ -1,0 +1,4 @@
+go test fuzz v1
+string("<A 0\r0 0 0\r0\r0\r%\ued00 0")
+string("0")
+int64(67)
