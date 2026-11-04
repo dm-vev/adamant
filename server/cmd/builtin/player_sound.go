@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/cmd"
@@ -88,8 +89,8 @@ func (p spawnParticleCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if v, ok := p.Position.Load(); ok {
 		pos = v
 	}
-	id := bedrockParticleIdentifier(p.Name)
-	if id == "" {
+	name := particleName(p.Name)
+	if name == "" {
 		o.Errort(cmd.MessageParameterInvalid, p.Name)
 		return
 	}
@@ -106,28 +107,29 @@ func (p spawnParticleCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 		}
 	}
 	for _, pl := range players {
-		pl.SpawnParticleIdentifier(pos, id)
+		pl.ViewNamedParticle(pos, name)
 	}
-	o.Printf("Spawned particle %s.", id)
+	o.Printf("Spawned particle %s.", name)
 }
 
-func bedrockParticleIdentifier(name string) string {
-	if id, ok := javaParticleIDs[strings.TrimPrefix(name, "minecraft:")]; ok {
-		return id
+// particleName returns the name /particle shows the particle of the name
+// passed by: minecraft: and the name of a particle type of Java Edition the
+// game knows, with or without its namespace; any other namespaced name as it
+// is, for particles clients may know from their resources; and "" for a
+// name of neither form.
+func particleName(name string) string {
+	if short := strings.TrimPrefix(name, "minecraft:"); slices.Contains(javaParticleNames, short) {
+		return "minecraft:" + short
 	}
 	if strings.Contains(name, ":") {
-		// Raw Bedrock particle identifiers pass through unchanged.
 		return name
 	}
 	return ""
 }
 
-var javaParticleIDs = map[string]string{
-	"poof": "minecraft:basic_smoke_particle", "cloud": "minecraft:basic_smoke_particle",
-	"explosion": "minecraft:huge_explosion_lab_misc_emitter", "explosion_emitter": "minecraft:huge_explosion_lab_misc_emitter",
-	"portal": "minecraft:portal_directional", "flame": "minecraft:basic_flame_particle",
-	"heart": "minecraft:heart_particle", "smoke": "minecraft:basic_smoke_particle",
-	"large_smoke": "minecraft:basic_smoke_particle", "happy_villager": "minecraft:villager_happy",
-	"angry_villager": "minecraft:villager_angry", "end_rod": "minecraft:endrod",
-	"totem_of_undying": "minecraft:totem_particle", "soul_fire_flame": "minecraft:soul_particle",
+// javaParticleNames are the particle types of Java Edition, without their
+// namespace, that /particle takes by name.
+var javaParticleNames = []string{
+	"angry_villager", "cloud", "end_rod", "explosion", "explosion_emitter", "flame", "happy_villager",
+	"heart", "large_smoke", "poof", "portal", "smoke", "soul_fire_flame", "totem_of_undying",
 }

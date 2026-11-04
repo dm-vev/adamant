@@ -118,21 +118,21 @@ func (Nop) ResyncInventory()                         {}
 func (Nop) UnlockRecipes([]string) []string          { return nil }
 func (Nop) ShowSkin(skin.Skin)                       {}
 
-func (Nop) ViewSleepingPlayers(int, int)                                {}
-func (Nop) ViewElderGuardianCurse(mgl64.Vec3)                           {}
-func (Nop) ViewSpectatedEntity(world.Entity)                            {}
-func (Nop) ViewItemCooldown(world.Item, time.Duration)                  {}
-func (Nop) PlaySound(world.Sound, mgl64.Vec3)                           {}
-func (Nop) StopSound(string, bool)                                      {}
-func (Nop) SpawnParticleIdentifier(mgl64.Vec3, string, world.Dimension) {}
-func (Nop) StartShowingEntity(world.Entity)                             {}
-func (Nop) StopShowingEntity(world.Entity)                              {}
-func (Nop) ViewLayer() *world.ViewLayer                                 { return nil }
-func (Nop) ViewNameTag(world.Entity, text.Text)                         {}
-func (Nop) ViewPublicNameTag(world.Entity)                              {}
-func (Nop) ViewAlwaysShowNameTag(world.Entity, bool)                    {}
-func (Nop) ViewPublicAlwaysShowNameTag(world.Entity)                    {}
-func (Nop) ViewScoreTag(world.Entity, text.Text)                        {}
-func (Nop) ViewPublicScoreTag(world.Entity)                             {}
-func (Nop) ViewVisibility(world.Entity, world.VisibilityLevel)          {}
-func (Nop) RemoveViewLayer(world.Entity)                                {}
+func (Nop) ViewSleepingPlayers(int, int)                          {}
+func (Nop) ViewElderGuardianCurse(mgl64.Vec3)                     {}
+func (Nop) ViewSpectatedEntity(world.Entity)                      {}
+func (Nop) ViewItemCooldown(world.Item, time.Duration)            {}
+func (Nop) PlaySound(world.Sound, mgl64.Vec3)                     {}
+func (Nop) StopSound(string, bool)                                {}
+func (Nop) ViewNamedParticle(mgl64.Vec3, string, world.Dimension) {}
+func (Nop) StartShowingEntity(world.Entity)                       {}
+func (Nop) StopShowingEntity(world.Entity)                        {}
+func (Nop) ViewLayer() *world.ViewLayer                           { return nil }
+func (Nop) ViewNameTag(world.Entity, text.Text)                   {}
+func (Nop) ViewPublicNameTag(world.Entity)                        {}
+func (Nop) ViewAlwaysShowNameTag(world.Entity, bool)              {}
+func (Nop) ViewPublicAlwaysShowNameTag(world.Entity)              {}
+func (Nop) ViewScoreTag(world.Entity, text.Text)                  {}
+func (Nop) ViewPublicScoreTag(world.Entity)                       {}
+func (Nop) ViewVisibility(world.Entity, world.VisibilityLevel)    {}
+func (Nop) RemoveViewLayer(world.Entity)                          {}

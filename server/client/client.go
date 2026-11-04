@@ -317,9 +317,10 @@ type Views interface {
 	// StopSound stops the sound of the name passed, or every sound if all is
 	// set.
 	StopSound(name string, all bool)
-	// SpawnParticleIdentifier shows the particle effect of the identifier
-	// passed at pos in the dimension dim.
-	SpawnParticleIdentifier(pos mgl64.Vec3, identifier string, dim world.Dimension)
+	// ViewNamedParticle shows the particle of the name at pos in dim: a particle
+	// type of Java Edition, such as minecraft:flame, or another namespaced name a
+	// client may know from its resources, which the adapter passes on.
+	ViewNamedParticle(pos mgl64.Vec3, name string, dim world.Dimension)
 	// StartShowingEntity shows e again after StopShowingEntity.
 	StartShowingEntity(e world.Entity)
 	// StopShowingEntity hides e from the client until StartShowingEntity.

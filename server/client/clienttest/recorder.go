@@ -466,8 +466,8 @@ func (r *Recorder) ViewItemCooldown(a0 world.Item, a1 time.Duration) {
 }
 func (r *Recorder) PlaySound(a0 world.Sound, a1 mgl64.Vec3) { r.record("PlaySound", a0, a1) }
 func (r *Recorder) StopSound(a0 string, a1 bool)            { r.record("StopSound", a0, a1) }
-func (r *Recorder) SpawnParticleIdentifier(a0 mgl64.Vec3, a1 string, a2 world.Dimension) {
-	r.record("SpawnParticleIdentifier", a0, a1, a2)
+func (r *Recorder) ViewNamedParticle(a0 mgl64.Vec3, a1 string, a2 world.Dimension) {
+	r.record("ViewNamedParticle", a0, a1, a2)
 }
 func (r *Recorder) StartShowingEntity(a0 world.Entity)        { r.record("StartShowingEntity", a0) }
 func (r *Recorder) StopShowingEntity(a0 world.Entity)         { r.record("StopShowingEntity", a0) }

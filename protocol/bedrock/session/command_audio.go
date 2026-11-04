@@ -14,12 +14,13 @@ func (s *Session) StopSound(name string, all bool) {
 	s.writePacket(&v2193.StopSoundPacket{SoundName: name, StopAll: all})
 }
 
-// SpawnParticleIdentifier sends the named Bedrock particle effect at pos in
-// the dimension dim to the session.
-func (s *Session) SpawnParticleIdentifier(pos mgl64.Vec3, identifier string, dim world.Dimension) {
+// ViewNamedParticle sends the Bedrock particle effect of the name, a
+// particle type of Java Edition or a name passed on as it is, at pos in the
+// dimension dim to the session.
+func (s *Session) ViewNamedParticle(pos mgl64.Vec3, name string, dim world.Dimension) {
 	if s == Nop {
 		return
 	}
 	id, _ := world.DimensionID(dim)
-	s.writePacket(&v2193.SpawnParticleEffectPacket{Dimension: byte(id), EntityUniqueID: -1, Position: vec64To32(pos), ParticleName: identifier})
+	s.writePacket(&v2193.SpawnParticleEffectPacket{Dimension: byte(id), EntityUniqueID: -1, Position: vec64To32(pos), ParticleName: bedrockParticleName(name)})
 }

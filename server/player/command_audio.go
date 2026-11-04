@@ -10,7 +10,9 @@ func (p *Player) StopSound(name string) {
 	p.client().StopSound(name, name == "")
 }
 
-// SpawnParticleIdentifier sends a Bedrock particle identifier at the given position, in the Overworld.
-func (p *Player) SpawnParticleIdentifier(pos mgl64.Vec3, id string) {
-	p.client().SpawnParticleIdentifier(pos, id, world.Overworld)
+// ViewNamedParticle shows the player the particle of the name at pos, in the
+// Overworld: a particle type of Java Edition, such as minecraft:flame, or
+// another namespaced name the client may know from its resources.
+func (p *Player) ViewNamedParticle(pos mgl64.Vec3, name string) {
+	p.client().ViewNamedParticle(pos, name, world.Overworld)
 }
