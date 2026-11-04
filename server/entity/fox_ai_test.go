@@ -24,12 +24,27 @@ func foxOf(tx *world.Tx, h *world.EntityHandle) *entity.Fox {
 
 // TestFoxesHuntChickens checks the land target goal, StalkPreyGoal and
 // FoxPounceGoal of red foxes: a fox stalks a chicken and bites it.
+//
+// The wall of the pen is ten blocks high. A fox stays crouched once it
+// stalked its prey, as in Java, and a crouched fox may pounce in the air
+// as it leaps at its prey with LeapAtTargetGoal: the speed up of 0.9 of
+// FoxPounceGoal on top of the 0.4 of the leap lifts it up to 9.4 blocks,
+// where the pounce alone lifts it 4.9. Over a wall two blocks high, such
+// a fox landed outside the pen in about one run in 40, and its path to
+// the chicken ended at the wall for good.
 func TestFoxesHuntChickens(t *testing.T) {
 	t.Parallel()
 	w := wolfTestWorld(t)
 	var chicken *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
 		pen(tx, 10)
+		for i := -10; i <= 10; i++ {
+			for y := 66; y < 74; y++ {
+				for _, pos := range []cube.Pos{{i, y, -10}, {i, y, 10}, {-10, y, i}, {10, y, i}} {
+					tx.SetBlock(pos, block.Stone{}, nil)
+				}
+			}
+		}
 		addFox(tx, mgl64.Vec3{-6.5, 64, .5}, entity.FoxConfig{})
 		chicken = spawnAnimal(t, tx, "minecraft:chicken", 6.5, nil)
 	})
