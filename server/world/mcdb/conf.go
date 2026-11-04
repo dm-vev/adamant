@@ -1,7 +1,9 @@
 package mcdb
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -46,23 +48,14 @@ func (conf Config) Open(dir string) (*DB, error) {
 
 	db := &DB{conf: conf, dir: dir, ldat: &leveldat.Data{}}
 	db.SetBlockRegistry(conf.Blocks)
-	newWorld := false
-	if _, err := os.Stat(filepath.Join(dir, "level.dat")); os.IsNotExist(err) {
+	found, err := readLevelDat(dir, db.ldat, conf.Log)
+	if err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
+	newWorld := !found
+	if newWorld {
 		// A level.dat was not currently present for the world.
 		db.ldat.FillDefault()
-		newWorld = true
-	} else {
-		ldat, err := leveldat.ReadFile(filepath.Join(dir, "level.dat"))
-		if err != nil {
-			return nil, fmt.Errorf("open db: read level.dat: %w", err)
-		}
-		ver := ldat.Ver()
-		if ver != leveldat.Version && ver >= 10 {
-			return nil, fmt.Errorf("open db: level.dat version %v is unsupported", ver)
-		}
-		if err = ldat.Unmarshal(db.ldat); err != nil {
-			return nil, fmt.Errorf("open db: unmarshal level.dat: %w", err)
-		}
 	}
 	db.set = db.ldat.Settings()
 	db.set.SeedSet = !newWorld
@@ -72,4 +65,53 @@ func (conf Config) Open(dir string) (*DB, error) {
 	}
 	db.ldb = ldb
 	return db, nil
+}
+
+// readLevelDat decodes the level.dat of the world in dir into dst. If it is
+// missing or cannot be read or decoded, the level.dat_old the last save kept
+// beside it is decoded instead, as Bedrock Dedicated Server does. found is
+// false if neither exists, or if the level.dat is missing and the
+// level.dat_old cannot be decoded either: the world then gets new settings,
+// as one without a level.dat always did. If the level.dat exists but neither
+// can be decoded, readLevelDat returns the error of the level.dat.
+func readLevelDat(dir string, dst *leveldat.Data, log *slog.Logger) (found bool, err error) {
+	err = decodeLevelDat(filepath.Join(dir, "level.dat"), "level.dat", dst)
+	if err == nil {
+		return true, nil
+	}
+	missing := errors.Is(err, fs.ErrNotExist)
+	oldErr := decodeLevelDat(filepath.Join(dir, "level.dat_old"), "level.dat_old", dst)
+	switch {
+	case oldErr == nil:
+		log.Warn("Could not read level.dat, read level.dat_old instead.", "error", err)
+		return true, nil
+	case missing && errors.Is(oldErr, fs.ErrNotExist):
+		return false, nil
+	case missing:
+		log.Warn("level.dat is missing and level.dat_old could not be read: the world gets new settings.", "error", oldErr)
+		return false, nil
+	case errors.Is(oldErr, fs.ErrNotExist):
+		return false, err
+	default:
+		return false, fmt.Errorf("%w (level.dat_old: %w)", err, oldErr)
+	}
+}
+
+// decodeLevelDat decodes the level.dat file at path, called name in errors,
+// into dst. dst is changed only if decoding succeeds.
+func decodeLevelDat(path, name string, dst *leveldat.Data) error {
+	ldat, err := leveldat.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read %v: %w", name, err)
+	}
+	ver := ldat.Ver()
+	if ver != leveldat.Version && ver >= 10 {
+		return fmt.Errorf("%v version %v is unsupported", name, ver)
+	}
+	var data leveldat.Data
+	if err = ldat.Unmarshal(&data); err != nil {
+		return fmt.Errorf("unmarshal %v: %w", name, err)
+	}
+	*dst = data
+	return nil
 }

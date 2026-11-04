@@ -2,6 +2,7 @@ package leveldat
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -40,10 +41,18 @@ func Read(r io.Reader) (*LevelDat, error) {
 	if err := binary.Read(r, binary.LittleEndian, &ldat.hdr); err != nil {
 		return nil, fmt.Errorf("level.dat: read header: %w", err)
 	}
-	ldat.data = make([]byte, ldat.hdr.FileLength)
-	if n, err := io.ReadFull(r, ldat.data); err != nil || int32(n) != ldat.hdr.FileLength {
-		return nil, fmt.Errorf("level.dat: read data: %w", err)
+	if ldat.hdr.FileLength < 0 {
+		return nil, fmt.Errorf("level.dat: read data: negative length %v", ldat.hdr.FileLength)
 	}
+	// The length is read from the file, so a corrupt one could be anything:
+	// the buffer grows as data is read rather than being allocated upfront.
+	var buf bytes.Buffer
+	if n, err := buf.ReadFrom(io.LimitReader(r, int64(ldat.hdr.FileLength))); err != nil {
+		return nil, fmt.Errorf("level.dat: read data: %w", err)
+	} else if n != int64(ldat.hdr.FileLength) {
+		return nil, fmt.Errorf("level.dat: read data: %w", io.ErrUnexpectedEOF)
+	}
+	ldat.data = buf.Bytes()
 	return &ldat, nil
 }
 
@@ -89,16 +98,17 @@ func (ld *LevelDat) Write(w io.Writer) error {
 	return nil
 }
 
-// WriteFile writes ld to a file at name.
+// WriteFile writes ld to a file at name, keeping the file it replaces as
+// name+"_old", as Bedrock Dedicated Server does: ld is written to
+// name+"_new" and synced to disk, the file at name is renamed to name+"_old"
+// and name+"_new" to name, and the directory is synced. A crash at any point
+// leaves a complete file at name or name+"_old", and ReadFile callers may
+// fall back to the latter. If WriteFile fails, the file at name is left as
+// it was.
 func (ld *LevelDat) WriteFile(name string) error {
-	f, err := os.OpenFile(name, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("level.dat: open file: %w", err)
+	var buf bytes.Buffer
+	if err := ld.Write(&buf); err != nil {
+		return err
 	}
-	w := bufio.NewWriter(f)
-	defer func() {
-		_ = w.Flush()
-		_ = f.Close()
-	}()
-	return ld.Write(w)
+	return osFS.writeFileAtomic(name, buf.Bytes())
 }
