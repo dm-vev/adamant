@@ -95,9 +95,18 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 			var h *world.EntityHandle
 			<-w.Exec(func(tx *world.Tx) {
 				// Camels on grass may stop to eat it even while panicking.
+				// LandRandomPos, which AnimalPanic picks spots with, keeps
+				// only those with a block below and moves them up out of
+				// the ground. On ground a block thick only those at the
+				// mob's feet have one, so it finds none in a third of the
+				// ticks, and the idle activity of a mob with a brain may
+				// stroll off at walking speed meanwhile. Stone five blocks
+				// deep has one below all those not above the mob's feet.
 				for x := -20; x <= 20; x++ {
 					for z := -20; z <= 20; z++ {
-						tx.SetBlock(cube.Pos{x, 63, z}, block.Stone{}, nil)
+						for y := 59; y <= 63; y++ {
+							tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+						}
 					}
 				}
 				h = spawnAnimal(t, tx, c.id, .5, c.nbt)
