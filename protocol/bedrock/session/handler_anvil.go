@@ -21,6 +21,18 @@ const (
 // handleCraftRecipeOptional handles the CraftRecipeOptional request action, sent when taking a result from an anvil
 // menu. It also contains information such as the new name of the item and the multi-recipe network ID.
 func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *v2193.CraftRecipeOptionalStackRequestAction, s *Session, filterStrings []string, co Controllable, tx *world.Tx) (err error) {
+	if h.batch != nil {
+		var name *string
+		if len(filterStrings) > 0 {
+			// Guard against client-provided indexes that would otherwise panic when slicing.
+			index := int64(a.FilterStringIndex)
+			if index < 0 || index >= int64(len(filterStrings)) {
+				return fmt.Errorf("filter string index %v is out of bounds", a.FilterStringIndex)
+			}
+			name = &filterStrings[index]
+		}
+		return h.batchOp(func() error { return h.batch.Repair(name) })
+	}
 	// First check if there actually is an anvil opened.
 	m := s.menu.Load()
 	if m == nil {

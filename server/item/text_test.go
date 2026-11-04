@@ -19,6 +19,8 @@ func TestValidText(t *testing.T) {
 		{strings.Repeat("ж", 513), 512, false},
 		{"a\xffb", 512, false},
 		{"", 32, true},
+		{strings.Repeat("ж", MaxCustomNameLength), MaxCustomNameLength, true},
+		{strings.Repeat("a", MaxCustomNameLength+1), MaxCustomNameLength, false},
 	} {
 		if got := ValidText(tc.s, tc.max); got != tc.want {
 			t.Errorf("%d bytes of max %d: %v, want %v", len(tc.s), tc.max, got, tc.want)
