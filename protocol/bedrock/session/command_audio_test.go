@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -27,6 +28,31 @@ func TestViewNamedParticleDimension(t *testing.T) {
 		want := &v2193.SpawnParticleEffectPacket{Dimension: c.want, EntityUniqueID: -1, Position: vec64To32(mgl64.Vec3{1, 2, 3}), ParticleName: "minecraft:heart_particle"}
 		if !reflect.DeepEqual(pks[0], want) {
 			t.Errorf("%v: %#v, want %#v", c.dim, pks[0], want)
+		}
+	}
+}
+
+// TestStopSoundNames holds the name StopSound sends to the one PlaySound
+// sends for a sound.Custom of the name: a Java sound event ID mapped, other
+// names passed through, nothing for a sound with no Bedrock counterpart,
+// and the packet that stops every sound for all.
+func TestStopSoundNames(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		all  bool
+		want []proto.Packet
+	}{
+		{"block.pumpkin.carve", false, []proto.Packet{&v2193.StopSoundPacket{SoundName: "pumpkin.carve"}}},
+		{"random.click", false, []proto.Packet{&v2193.StopSoundPacket{SoundName: "random.click"}}},
+		{"custom.pack.sound", false, []proto.Packet{&v2193.StopSoundPacket{SoundName: "custom.pack.sound"}}},
+		{"block.growing_plant.crop", false, nil},
+		{"", true, []proto.Packet{&v2193.StopSoundPacket{StopAll: true}}},
+		{"block.growing_plant.crop", true, []proto.Packet{&v2193.StopSoundPacket{StopAll: true}}},
+	} {
+		s := newCaptureSession()
+		s.StopSound(c.name, c.all)
+		if got := s.taken(); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("StopSound(%q, %v) sent %#v, want %#v", c.name, c.all, got, c.want)
 		}
 	}
 }

@@ -6,9 +6,16 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// StopSound sends a Bedrock StopSound packet to the session.
+// StopSound sends a Bedrock StopSound packet to the session, for the sound
+// the name is played by: a Java sound event ID is mapped as PlaySound maps
+// those of sound.Custom, and one with no Bedrock counterpart, which plays
+// nothing, sends nothing unless all is set.
 func (s *Session) StopSound(name string, all bool) {
 	if s == Nop {
+		return
+	}
+	name, ok := bedrockSoundName(name)
+	if !ok && !all {
 		return
 	}
 	s.writePacket(&v2193.StopSoundPacket{SoundName: name, StopAll: all})
