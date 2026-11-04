@@ -35,7 +35,8 @@ type worldData struct {
 // World returns the world captured.
 func (cp *Checkpoint) World() *World { return cp.w }
 
-// Columns returns the number of columns captured.
+// Columns returns the number of columns captured, those unloaded since the
+// last capture included.
 func (cp *Checkpoint) Columns() int { return cp.columns }
 
 // Settings returns the settings of the world as they were captured, nil if
@@ -89,9 +90,10 @@ func (cp *Checkpoint) write(flush bool) error {
 
 // capture captures the world for a save in tx. It saves every column that
 // changed since its last save, or closes every column loaded if closing, as
-// the world does when it closes. It then takes a copy of the settings and
-// encodes the data of the world saved beside its columns. The columns go to
-// the background saver at once, in the order of the world's other saves, so
+// the world does when it closes, after the columns unloaded and staged since
+// the last capture. It then takes a copy of the settings and encodes the
+// data of the world saved beside its columns. The columns go to the
+// background saver at once, in the order of the world's other saves, so
 // that a column unloaded after the capture is never written before it; the
 // rest is left to the Checkpoint returned. Closing captures no position
 // tracking data, which the provider saves as it closes. A read-only world
@@ -109,8 +111,14 @@ func (w *World) capture(tx *Tx, closing bool) *Checkpoint {
 		for pos, c := range w.chunks {
 			w.closeChunk(tx, pos, c)
 		}
-	} else {
-		cp.columns = w.saveChunks(tx)
+	}
+	// The columns unloaded since the last capture are written with this
+	// one, before the columns it captures.
+	if w.saver != nil {
+		cp.columns = w.saver.commitStaged()
+	}
+	if !closing {
+		cp.columns += w.saveChunks(tx)
 	}
 	w.conf.Log.Debug("Updating level.dat values...")
 	cp.settings = w.set.Snapshot()

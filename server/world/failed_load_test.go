@@ -155,8 +155,10 @@ func TestFailedLoadColumnNotSaved(t *testing.T) {
 			if store.column(failPos) != stored {
 				t.Fatal("stored column of the position that failed to load was replaced")
 			}
-			if n := store.storesAt(goodPos); n < 3 {
-				t.Fatalf("column next to it was stored %d times, want one save for World.Save, unloading and closing", n)
+			// Unloading stages the column beside it, which loading it
+			// again takes back: it is stored by World.Save and closing.
+			if n := store.storesAt(goodPos); n < 2 {
+				t.Fatalf("column next to it was stored %d times, want one save for World.Save and one for closing", n)
 			}
 			logMu.Lock()
 			out := logs.String()

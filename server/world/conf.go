@@ -139,6 +139,17 @@ type Config struct {
 	// region phase is a worker of a region: it may be called by several
 	// goroutines at once and must not wait for the World.
 	Fault func(f Fault)
+	// StagingLimit is how many bytes the columns the World unloaded since it
+	// was last saved may take, encoded, before it asks to be saved at once.
+	// Those columns are staged, rather than written as they unload, so that
+	// the disk holds the World as it was at a save. By default it is
+	// DefaultStagingLimit; a negative limit is none.
+	StagingLimit int
+	// StagingFull, if not nil, is called when the columns staged exceed the
+	// StagingLimit, with the bytes they take, once until the World is next
+	// saved: a server saves all its worlds then. If nil, the World saves
+	// itself, as World.Save does. It is called on a goroutine of its own.
+	StagingFull func(w *World, bytes int)
 	// Fatal, if not nil, is called once, with the first panic the World
 	// could not blame on anything, as one of the bookkeeping of its tick or
 	// one of a subsystem of the tick in 20 ticks in a row. The World then
@@ -161,6 +172,9 @@ func (conf Config) New() *World {
 	}
 	if conf.SaveInterval == 0 {
 		conf.SaveInterval = time.Minute * 10
+	}
+	if conf.StagingLimit == 0 {
+		conf.StagingLimit = DefaultStagingLimit
 	}
 	if conf.ChunkUnloadInterval <= 0 {
 		conf.ChunkUnloadInterval = time.Minute * 2

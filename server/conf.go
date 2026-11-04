@@ -135,6 +135,13 @@ type Config struct {
 	// default, SaveInterval is DefaultSaveInterval, as Java's autosave. Setting
 	// it to a negative number saves checkpoints only on /save-all and close.
 	SaveInterval time.Duration
+	// StagingLimit is how many bytes the chunks a world unloaded since the
+	// last checkpoint may take, encoded, before the server saves one at
+	// once, even with saving off. Unloaded chunks wait for the next
+	// checkpoint in memory, so that the disk holds the worlds as they were
+	// at a checkpoint. By default, it is world.DefaultStagingLimit; a
+	// negative limit is none.
+	StagingLimit int
 	// ChunkUnloadInterval specifies how often unused chunks should be unloaded
 	// from memory when no longer in use. By default, this is set to 2 minutes.
 	// ChunkUnloadInterval should not be used to prevent chunks from unloading

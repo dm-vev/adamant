@@ -2554,7 +2554,7 @@ func (w *World) restoreFailedSaves() {
 			}
 			continue
 		}
-		w.saver.store(pos, p.col, p.saved)
+		w.saver.restore(p)
 	}
 }
 
@@ -2570,7 +2570,8 @@ func (c *Column) compact() {
 
 // persistChunk saves the column at pos. A live column stays loaded and keeps
 // changing, so the background saver gets a copy of its blocks; a closing
-// column is handed over as it is.
+// column is handed over as it is, and staged by the saver until the world
+// is next captured (chunkSaver.stage).
 func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	// Column generation runs in background workers. Saving is performed on the world transaction goroutine and must
 	// not access columns that are still being generated.
@@ -2590,10 +2591,12 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 		}
 		return
 	}
-	if live {
-		col.Chunk = c.Chunk.Clone()
-		col.PostProcessing = clonePostProcessing(col.PostProcessing)
+	if !live {
+		w.saver.stage(pos, col, saved)
+		return
 	}
+	col.Chunk = c.Chunk.Clone()
+	col.PostProcessing = clonePostProcessing(col.PostProcessing)
 	w.saver.store(pos, col, saved)
 }
 
@@ -3047,12 +3050,21 @@ func (w *World) chunkLoaded(pos ChunkPos) bool {
 // This function guarantees that the returned *Column will eventually become ready,
 // even if generation is canceled due to shutdown.
 func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
-	// Attempt to load the column from the persistent provider (e.g. LevelDB),
-	// after a save of it still waiting for the background saver.
+	// Attempt to load the column staged as it unloaded, or else from the
+	// persistent provider (e.g. LevelDB), after a save of it still waiting
+	// for the background saver. A column taken from staging is written by
+	// the next capture as it is then.
+	var (
+		column *chunk.Column
+		staged bool
+		err    error
+	)
 	if w.saver != nil {
-		w.saver.writeNow(pos)
+		column, staged, err = w.saver.takeStaged(pos)
 	}
-	column, err := w.conf.Provider.LoadColumn(pos, w.conf.Dim)
+	if !staged {
+		column, err = w.conf.Provider.LoadColumn(pos, w.conf.Dim)
+	}
 
 	switch {
 	case err == nil:
@@ -3062,6 +3074,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		async := !w.conf.Synchronous
 		col := w.columnFrom(column, pos, !async)
 		col.complete = true
+		col.modified = col.modified || staged
 		col.fillingLight = async
 		if !async {
 			col.fillLight(pos)

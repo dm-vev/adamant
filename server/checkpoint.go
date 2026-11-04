@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,11 +22,17 @@ import (
 type checkpointer struct {
 	srv *Server
 	// mu runs one checkpoint at a time; id is the number of the last one.
-	mu sync.Mutex
-	id uint64
+	// closed is set by the checkpoint of the server closing, after which
+	// none is saved.
+	mu     sync.Mutex
+	id     uint64
+	closed bool
 	// stop ends the periodic checkpoints, and done is closed once they
 	// ended.
 	stop, done chan struct{}
+	// early is set while a checkpoint asked for by a world whose staged
+	// chunks exceed the limit is waiting or running.
+	early atomic.Bool
 }
 
 // run saves a checkpoint every interval while saving is on, until stop is
@@ -53,6 +60,25 @@ func (c *checkpointer) run(interval time.Duration) {
 	}
 }
 
+// stagingFull saves a checkpoint at once, even with saving off, as the
+// chunks w unloaded since the last one take bytes, more than the staging
+// limit. It is the StagingFull of the worlds of the server. A checkpoint so
+// asked for while another is waiting is not saved twice.
+func (c *checkpointer) stagingFull(w *world.World, bytes int) {
+	if !c.early.CompareAndSwap(false, true) {
+		return
+	}
+	defer c.early.Store(false)
+	select {
+	case <-c.stop:
+		// Closing the server saves a last checkpoint.
+		return
+	default:
+	}
+	c.srv.conf.Log.Warn("Saving a checkpoint early: the chunks unloaded since the last exceed the staging limit.", "dimension", fmt.Sprint(w.Dimension()), "bytes", bytes)
+	_ = c.checkpoint(context.Background(), "staged-cap")
+}
+
 // close ends the periodic checkpoints, waiting for one running.
 func (c *checkpointer) close() {
 	close(c.stop)
@@ -75,6 +101,10 @@ func (c *checkpointer) close() {
 func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.closed {
+		return nil
+	}
+	c.closed = reason == "close"
 	srv := c.srv
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(ctx, world.CaptureTimeout)

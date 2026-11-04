@@ -771,6 +771,8 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 		ReadOnly:            srv.conf.ReadOnlyWorld,
 		SaveChunks:          srv.conf.SaveChunks,
 		SaveInterval:        -1, // The checkpoints of the server save the world.
+		StagingLimit:        srv.conf.StagingLimit,
+		StagingFull:         srv.checkpoints.stagingFull,
 		ChunkUnloadInterval: srv.conf.ChunkUnloadInterval,
 		Entities:            srv.conf.Entities,
 		Blocks:              srv.conf.Blocks,
