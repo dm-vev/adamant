@@ -272,6 +272,10 @@ type World struct {
 	blockFaults blockFaults
 	// stepFaults holds the subsystems of the tick that panicked, by name.
 	stepFaults map[string]*stepFault
+	// tickStarted is when the tick the tick loop waits for was queued, in
+	// nanoseconds since the Unix epoch, or 0 between ticks: the watchdog
+	// reads it.
+	tickStarted atomic.Int64
 	// testTickHook, if not nil, is called by each tick that simulates,
 	// before anything else of the world runs: tests make the bookkeeping
 	// of the tick panic with it.

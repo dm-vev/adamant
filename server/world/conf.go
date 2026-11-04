@@ -330,10 +330,11 @@ func (conf Config) New() *World {
 	}
 	if !conf.Synchronous {
 		w.queueing.Add(1)
-		w.running.Add(2)
+		w.running.Add(3)
 
 		go t.tickLoop(w)
 		go w.autoSave()
+		go w.watchTicks()
 		go w.handleTransactions()
 	}
 

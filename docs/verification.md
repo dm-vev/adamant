@@ -607,6 +607,49 @@ Progress checks retain Java's behaviour rather than adding watchdogs or arbitrar
 
 This is not proof that all stalls are impossible. Large retained POI sets and generation caches can still scale with exploration; cold loading, lighting and persistence still have finite costs. Explicit terrain APIs such as `Tx.Block`, server-side `Player.Displace` clipping and the initial `/forceload` command can still load synchronously; background ticking must use readiness eligibility instead. Direct generator APIs with extreme radii and arbitrary provider/network/plugin callbacks are outside the bounded normal-runtime caller set. Inventory validators and mutating removal predicates still execute under their inventory lock and must not re-enter that inventory.
 
+## Panic boundaries
+
+A panic of the game no longer ends the process. Before, only `Do`/`Call` tasks, the packet handlers of sessions, the prefetch of entity ticks and the generator workers recovered; a panic anywhere else in a tick unwound the owner of its world, and the Go runtime ended the process with status 2, without a save or a crash report. Now each boundary recovers, blames the code it ran, logs the panic and goes on with the next piece of work, as Paper does, and what it cannot blame stops the server as Java's crash of a tick does, saving first.
+
+- **Faults.** A recovered panic is a `world.Fault`: its kind, the world, the type and position of what it is blamed on (the UUID of an entity), the value and the stack. It is logged at Error with the stack, rate-limited by kind and type: the first panic of a key logs, the others within a minute are counted, and the next one after it logs `<n> more panics of …` with its own stack; the log remembers 256 keys. `Config.Fault` is passed every fault, for metrics.
+- **Quarantine.** An entity, a block entity or a block that panics 3 times within 60 s (1,200 ticks) stops ticking but stays in the world and is saved; `World.Quarantined` lists it. A block entity replaced, a block of another type set at the position (a block setting itself, as one changing its state, stays quarantined) or the chunk unloading takes it out. A quarantined block gets no scheduled ticks, random ticks, neighbour updates or precipitation.
+- **Players.** A player whose tick or controller panics is disconnected with "Internal server error" on the first panic and saved through the quit path. A session whose update after the packets of a tick (commands, congestion, interest, chunk sending) panics closes, as one whose packet handler panics does; a session that panics as it is shown the blocks of a column changing is closed through `world.FailingViewer`.
+- **Fatal.** A panic of the bookkeeping of a tick, one of a region holding the lock it shares with the others, or one of a subsystem (lightning, the dragon fight, entity collisions, natural spawning, raids, redstone, the promotion of generated chunks, sleeping) in 20 ticks in a row fails the world: it no longer simulates, its ticks only have the controllers of its players act, its transactions still run and closing it still saves it. The server writes `crash-reports/crash-<yyyy-mm-dd_hh.mm.ss>-server.txt` beside `config.toml` (the fault, its stack, the world, the release, the system and the stacks of all goroutines), logs `server crashed: see <file>` and stops in order: the players are disconnected and saved, the worlds closed and saved, and the process exits as on any stop. The first tick, which `world.Config.New` runs, is not guarded: a panic there is one of constructing the world, which `New` undoes and raises.
+- **Saving and generating.** The chunk writer recovers per column and goes on, so that a save no longer waits forever for it; a column whose write panics is written again by the next save, then dropped with an Error. An entity or block entity whose NBT panics is left out of the save of its column, which still saves. A column whose generation panicked is served but never saved, and generated again once it unloads.
+- **Watchdog.** A goroutine of each world that ticks on its own checks every 5 s when the tick its tick loop waits for was queued. A tick not done after 60 s, as an infinite loop or a deadlock leaves it, has the stacks of all goroutines logged once; nothing is killed, and the tick may still end. A recover cannot end such a tick.
+
+| Boundary | Recovers | On a panic |
+|---|---|---|
+| Entity ticks, on the owner and in regions | once per column, resumed after the offender | the entity's tick ends; quarantine at the limit |
+| Player ticks and controllers | the same loop; once per controller | the player is disconnected |
+| `Session.Control` after the packets | once per tick of the session | the session closes |
+| Block entity ticks | once per column, resumed | quarantine by version at the limit |
+| Scheduled block and fluid ticks | once per batch, resumed | the tick is dropped; quarantine refuses new ticks |
+| Random ticks, precipitation | once per column visit, resumed | the tick is skipped; quarantine at the limit |
+| Neighbour updates | once per batch, resumed | the update is skipped; quarantine at the limit |
+| Subsystems of the tick | once per subsystem per tick | the subsystem ends for the tick; 20 ticks in a row fail the world |
+| The tick itself | once per tick | the world fails |
+| `Exec`, `Do`, `Call`, `Tx.Defer`, entity tasks | once per transaction or task | the transaction ends and its deferred work runs; the task fails with `*PanicError` |
+| Showing changed blocks to viewers | once per viewer | the viewer is told (`FailingViewer`) |
+| Saving a column, the chunk writer | once per entity and block entity; once per column | that entity is left out; the save is written again once, then dropped |
+| Generator workers, light fills | once per task | the column is served and never saved |
+
+The tests reproduce each panic first, in a process of their own where it would end or freeze the test binary: `go test ./server/world -run 'Panic|Fault|Quarantin|Fail|Watchdog|TickLoopMarks'`, `go test ./server/player -run 'TestPlayerTickPanicDisconnects|TestPlayerControllerPanicDisconnects'`, `go test ./server -run TestCrashReportAndOrderlyStop` and `go test ./protocol/bedrock/session -run TestSessionControlPanicClosesTheSession`.
+
+The guards cost one `defer` per column or per batch on the hot path, not one per entity or block. The CPU time of the process per operation (from getrusage, which the load of the shared machine does not inflate as it does the time), 10 interleaved rounds of the commit before and after, `-cpu 1`, `nice -n 10`, under the lock of heavy tests:
+
+| Benchmark | Commit | Before | After | |
+|---|---|---|---|---|
+| `TickEntities20000Active` | entity column guard | 1.580 ms ± 9% | 1.561 ms ± 6% | ~ (p=0.796) |
+| `TickEntities20000Tickers` (20,000 entities whose tick does nothing) | entity column guard | 3.035 ms ± 3% | 3.206 ms ± 7% | +5.6% (p=0.029) |
+| `ScheduledTickQueue4096` | scheduled-tick dispatch guard | 5.805 ms ± 11% | 5.984 ms ± 13% | ~ (p=0.315) |
+| `ScheduledTickQueue16384` | scheduled-tick dispatch guard | 9.105 ms ± 5% | 9.112 ms ± 3% | ~ (p=0.739) |
+| `TickLoaded1000Chunks` (973 chunks, random tick speed 3) | random tick and neighbour update guards | 355.1 µs ± 14% | 352.6 µs ± 12% | ~ (p=0.684) |
+
+The one measurable cost is about 8.5 ns of CPU per ticking entity whose tick does nothing, 0.17 ms a tick for 20,000 of them (0.34% of the budget of a tick): the two pointer stores that record the innermost entity being ticked, which make the blame exact. Allocations are unchanged. The loads were 10 to 21.
+
+What this does not establish: a recovered panic may leave what it was changing half changed, as an entity moving between chunks or an inventory transfer. The blame is exact and the offender stops ticking, and panics while the regions share state are fatal, but nothing checks the world's indexes after a fault. A panic of the world's own code inside a guarded loop is blamed on the entity or block being ticked. A failed world still runs the transactions of its players and of closing, which the orderly stop needs.
+
 ## Gameplay integration checks
 
 Live in-memory worlds exercised:

@@ -105,7 +105,12 @@ func (t ticker) tickLoop(w *World) {
 				lastOverloadWarning = next
 			}
 			next = next.Add(interval)
+			// The tick runs once the transactions before it ran: the
+			// watchdog counts from now, so that an owner stuck in one of
+			// them is reported as well.
+			w.tickStarted.Store(time.Now().UnixNano())
 			<-w.execTick(t.tick)
+			w.tickStarted.Store(0)
 			tc.Reset(time.Until(next))
 		case <-w.closing:
 			// World is being closed: Stop ticking and get rid of a task.
