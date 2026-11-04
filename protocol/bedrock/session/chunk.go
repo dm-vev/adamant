@@ -299,20 +299,18 @@ func joinPayloads(first, second []byte) []byte {
 	return raw
 }
 
-// The payloads of a column are kept in the caches of the column, which
-// hold one encoding of each: that of the tables whose blocks are the
-// game's own, which every protocol the adapter speaks has today. Tables of
-// another class encode the payloads anew until the caches are keyed by
-// the class of their tables.
+// The payloads of a column are kept in the caches of the column: those of
+// tables that name blocks as the game does in the column's own, and those
+// of tables of another class of blocks in the cache of the column for the
+// key of that class, so that each class encodes a sub-chunk once.
 
-// cachesColumn reports whether the payloads of the tables may be kept in
-// the caches of a column: whether they name blocks as the game does, which
-// is so of the tables of a protocol for every registry or for none.
-func (w *wireTables) cachesColumn() bool {
+// columnCache returns the cache of a column the payloads of sub-chunks and
+// chunks of the tables are kept in.
+func (w *wireTables) columnCache(col *world.Column) *world.ColumnCache {
 	if w.blocks.Load() == nil {
 		w.hashes()
 	}
-	return w.game.Load()
+	return col.Cache(w.slot.Load())
 }
 
 func (w *wireTables) networkChunkData(col *world.Column) chunk.SerialisedData {
@@ -327,47 +325,43 @@ func (w *wireTables) networkChunkData(col *world.Column) chunk.SerialisedData {
 	return data
 }
 
+// networkBiomePayload returns the biomes of a column, which every protocol
+// names alike: they are kept in the column's own cache.
 func (w *wireTables) networkBiomePayload(col *world.Column) []byte {
-	cache := w.cachesColumn()
-	if payload, ok := col.CachedNetworkBiomePayload(); ok && cache {
+	if payload, ok := col.CachedNetworkBiomePayload(); ok {
 		return payload
 	}
 	payload := encodeBiomes(col.Chunk)
-	if cache {
-		col.CacheNetworkBiomePayload(payload)
-	}
+	col.CacheNetworkBiomePayload(payload)
 	return payload
 }
 
 func (w *wireTables) networkSubChunkPayload(col *world.Column, ind int16) []byte {
-	cache := w.cachesColumn()
-	if payload, ok := col.CachedNetworkSubChunkPayload(ind); ok && cache {
+	cache := w.columnCache(col)
+	if payload, ok := cache.CachedNetworkSubChunkPayload(ind); ok {
 		return payload
 	}
 	payload := encodeSubChunk(col.Chunk, int(ind), w.blocksOf(col.BlockRegistry()))
-	if cache {
-		col.CacheNetworkSubChunkPayload(ind, payload)
-	}
+	cache.CacheNetworkSubChunkPayload(ind, payload)
 	return payload
 }
 
+// limitedChunkPayload returns the payload of a column sent to a client that
+// asks for its sub-chunks: its biomes, which every protocol names alike.
 func (w *wireTables) limitedChunkPayload(col *world.Column) []byte {
-	cache := w.cachesColumn()
-	if payload, ok := col.CachedLimitedChunkPayload(); ok && cache {
+	if payload, ok := col.CachedLimitedChunkPayload(); ok {
 		return payload
 	}
 	biomes := w.networkBiomePayload(col)
 	raw := make([]byte, len(biomes)+1)
 	copy(raw, biomes)
-	if cache {
-		col.CacheLimitedChunkPayload(raw)
-	}
+	col.CacheLimitedChunkPayload(raw)
 	return raw
 }
 
 func (w *wireTables) fullChunkPayload(col *world.Column) []byte {
-	cache := w.cachesColumn()
-	if payload, ok := col.CachedFullChunkPayload(); ok && cache {
+	cache := w.columnCache(col)
+	if payload, ok := cache.CachedFullChunkPayload(); ok {
 		return payload
 	}
 
@@ -386,9 +380,7 @@ func (w *wireTables) fullChunkPayload(col *world.Column) []byte {
 	raw = append(raw, data.Biomes...)
 	raw = append(raw, 0)
 	raw = append(raw, blockEntityPayload...)
-	if cache {
-		col.CacheFullChunkPayload(raw)
-	}
+	cache.CacheFullChunkPayload(raw)
 	return raw
 }
 

@@ -20385,6 +20385,7 @@ server/world	func	NewEntityRef	func[T server/world.Entity](h *server/world.Entit
 server/world	func	NewFinishedTask	func(err error) *server/world.Task
 server/world	func	NewLoader	func(chunkRadius int, world *server/world.World, v server/world.Viewer) *server/world.Loader
 server/world	func	NewPositionTracker	func() *server/world.PositionTracker
+server/world	func	NewSlotKey	func(name string) *server/world.SlotKey
 server/world	func	NewStructureTemplate	func(size [3]int) *server/world.StructureTemplate
 server/world	func	NewViewLayer	func(updater server/world.ViewLayerUpdater) *server/world.ViewLayer
 server/world	func	NormaliseBlockName	func(name string) string
@@ -20457,6 +20458,7 @@ server/world	method	Column.Biome	func(x uint8, y int16, z uint8) uint32
 server/world	method	Column.BiomeStorages	func() []*server/world/chunk.PalettedStorage
 server/world	method	Column.Block	func(x uint8, y int16, z uint8, layer uint8) uint32
 server/world	method	Column.BlockRegistry	func() server/world/chunk.BlockRegistry
+server/world	method	Column.Cache	func(k *server/world.SlotKey) *server/world.ColumnCache
 server/world	method	Column.CacheChunkBlockEntityPayload	func(noBorder bool, payload []byte)
 server/world	method	Column.CacheFullChunkPayload	func(payload []byte)
 server/world	method	Column.CacheLimitedChunkPayload	func(payload []byte)
@@ -20496,6 +20498,10 @@ server/world	method	Column.Sub	func() []*server/world/chunk.SubChunk
 server/world	method	Column.SubChunk	func(y int16) *server/world/chunk.SubChunk
 server/world	method	Column.SubIndex	func(y int16) int16
 server/world	method	Column.SubY	func(index int16) int16
+server/world	method	ColumnCache.CacheFullChunkPayload	func(payload []byte)
+server/world	method	ColumnCache.CacheNetworkSubChunkPayload	func(ind int16, payload []byte)
+server/world	method	ColumnCache.CachedFullChunkPayload	func() ([]byte, bool)
+server/world	method	ColumnCache.CachedNetworkSubChunkPayload	func(ind int16) ([]byte, bool)
 server/world	method	Config.New	func() *server/world.World
 server/world	method	Context.AddEntity	func(e *server/world.EntityHandle) server/world.Entity
 server/world	method	Context.AddMapDecoration	func(id int64, decoration server/world.MapDecoration) error
@@ -20801,6 +20807,7 @@ server/world	method	Settings.ResolveSeed	func(fallback int64) int64
 server/world	method	Settings.Snapshot	func() *server/world.Settings
 server/world	method	Settings.TryLock	func() bool
 server/world	method	Settings.Unlock	func()
+server/world	method	SlotKey.String	func() string
 server/world	method	StructureArea.Contains	func(pos server/block/cube.Pos, pieces bool) bool
 server/world	method	StructureTemplate.AddEntity	func(data map[string]any)
 server/world	method	StructureTemplate.Block	func(pos server/block/cube.Pos) (server/world.Block, server/world.Liquid)
@@ -21139,7 +21146,8 @@ server/world	type	Checkpoint	struct{w *server/world.World; seq uint64; columns i
 server/world	type	ChorusGenerationAccess	interface{BlockStateID(server/block/cube.Pos) (uint32, error); SetBlockState(server/block/cube.Pos, uint32, int) bool}
 server/world	type	ChunkPos	[2]int32
 server/world	type	ChunkSaving	int
-server/world	type	Column	struct{modified bool; savedIn uint64; complete bool; loadErr error; loadErrLogged bool; InhabitedTime uint64; snowRandomValue uint32; poisIndexed bool; circuitsIndexed bool; settled bool; blockVersion uint64; compactedVersion uint64; surface *server/world.surfaceHeights; entityTickingNeighbours bool; blockTickingNeighbours bool; entityTickingStamp uint64; fillingLight bool; generation server/world.GenerationResult; postProcessing [][]uint16; *server/world/chunk.Chunk; Entities []*server/world.EntityHandle; entityIndices map[*server/world.EntityHandle]int; entityIterators int; BlockEntities map[server/block/cube.Pos]server/world.Block; missingBlockStates map[server/block/cube.Pos]server/world.pendingMissingBlockState; randomTickSubChunksDirty bool; cachedRandomTickSubChunkIndices []int; tickerBlockEntitiesDirty bool; cachedTickerBlockEntities []server/world.blockEntityTickRef; tickerBlockEntityVersions map[server/block/cube.Pos]uint64; nextTickerBlockEntityVersion uint64; faultyActors map[server/block/cube.Pos]*server/world.actorFault; subChunkHeightMaps map[int16]server/world.cachedSubChunkHeightMap; networkBiomePayload server/world.cachedBlockEntityPayload; networkSubChunkPayloads map[int16]server/world.cachedBlockEntityPayload; limitedChunkPayload server/world.cachedBlockEntityPayload; fullChunkPayload server/world.cachedBlockEntityPayload; chunkBlockEntityPayload server/world.cachedBlockEntityPayload; chunkBlockEntityPayloadNoBorder server/world.cachedBlockEntityPayload; subChunkBlockEntityPayloads map[int16]server/world.cachedBlockEntityPayload; viewers map[server/world.Viewer]struct{}; loaders []*server/world.Loader; pendingBlocks server/world.pendingBlockUpdates; ready sync/atomic.Bool; readyCh chan struct{}; lightOnce sync.Once; lightSpreadOnce sync.Once; lightReady sync/atomic.Bool}
+server/world	type	Column	struct{modified bool; savedIn uint64; complete bool; loadErr error; loadErrLogged bool; InhabitedTime uint64; snowRandomValue uint32; poisIndexed bool; circuitsIndexed bool; settled bool; blockVersion uint64; compactedVersion uint64; surface *server/world.surfaceHeights; entityTickingNeighbours bool; blockTickingNeighbours bool; entityTickingStamp uint64; fillingLight bool; generation server/world.GenerationResult; postProcessing [][]uint16; *server/world/chunk.Chunk; Entities []*server/world.EntityHandle; entityIndices map[*server/world.EntityHandle]int; entityIterators int; BlockEntities map[server/block/cube.Pos]server/world.Block; missingBlockStates map[server/block/cube.Pos]server/world.pendingMissingBlockState; randomTickSubChunksDirty bool; cachedRandomTickSubChunkIndices []int; tickerBlockEntitiesDirty bool; cachedTickerBlockEntities []server/world.blockEntityTickRef; tickerBlockEntityVersions map[server/block/cube.Pos]uint64; nextTickerBlockEntityVersion uint64; faultyActors map[server/block/cube.Pos]*server/world.actorFault; subChunkHeightMaps map[int16]server/world.cachedSubChunkHeightMap; networkBiomePayload server/world.cachedBlockEntityPayload; limitedChunkPayload server/world.cachedBlockEntityPayload; chunkBlockEntityPayload server/world.cachedBlockEntityPayload; chunkBlockEntityPayloadNoBorder server/world.cachedBlockEntityPayload; subChunkBlockEntityPayloads map[int16]server/world.cachedBlockEntityPayload; ownCache server/world.ColumnCache; caches map[*server/world.SlotKey]*server/world.ColumnCache; viewers map[server/world.Viewer]struct{}; loaders []*server/world.Loader; pendingBlocks server/world.pendingBlockUpdates; ready sync/atomic.Bool; readyCh chan struct{}; lightOnce sync.Once; lightSpreadOnce sync.Once; lightReady sync/atomic.Bool}
+server/world	type	ColumnCache	struct{subChunks map[int16]server/world.cachedBlockEntityPayload; full server/world.cachedBlockEntityPayload}
 server/world	type	Commit	interface{Commit(id uint64) error; Discard(); SaveTick(dim server/world.Dimension, tick int64); server/world.Provider}
 server/world	type	Committer	interface{BeginCommit() server/world.Commit; server/world.Provider}
 server/world	type	Config	struct{Log *log/slog.Logger; Dim server/world.Dimension; PortalDestination func(dim server/world.Dimension) *server/world.World; PortalDisabledMessage func(dim server/world.Dimension) string; DefaultWorld func() *server/world.World; Provider server/world.Provider; Seed int64; Generator server/world.Generator; GeneratorProfile server/world.GeneratorProfile; GeneratorWorkers int; GeneratorQueueSize int; ReadOnly bool; SaveChunks server/world.ChunkSaving; SaveInterval time.Duration; ChunkUnloadInterval time.Duration; RandomTickSpeed int; RandSource math/rand/v2.Source; Entities server/world.EntityRegistry; Blocks server/world.BlockRegistry; Synchronous bool; Regions bool; Fault func(f server/world.Fault); StagingLimit int; StagingFull func(w *server/world.World, bytes int); Fatal func(f server/world.Fault)}
@@ -21279,6 +21287,7 @@ server/world	type	Settings	struct{sync.Mutex; owner *server/world.World; worlds 
 server/world	type	SettingsWriter	interface{WriteSettings() error}
 server/world	type	SharedViewer	interface{ViewEntityAnimationShared(e server/world.Entity, a server/world.EntityAnimation, b *server/world.Broadcast); ViewParticleShared(pos github.com/go-gl/mathgl/mgl64.Vec3, p server/world.Particle, b *server/world.Broadcast); ViewSoundShared(pos github.com/go-gl/mathgl/mgl64.Vec3, s server/world.Sound, b *server/world.Broadcast)}
 server/world	type	Sleeper	interface{Messaget(t server/player/chat.Translation, a ...any); Name() string; SendSleepingIndicator(sleeping int, max int); Sleep(pos server/block/cube.Pos); Sleeping() (server/block/cube.Pos, bool); UUID() github.com/google/uuid.UUID; Wake(); server/world.Entity}
+server/world	type	SlotKey	struct{name string}
 server/world	type	Sound	interface{Play(w *server/world.World, pos github.com/go-gl/mathgl/mgl64.Vec3)}
 server/world	type	SpawnStructureFinder	interface{SpawnStructures(pos server/world.ChunkPos) []server/world.StructureArea}
 server/world	type	SpectatingViewer	interface{Spectating(tx *server/world.Tx) bool; server/world.Viewer}

@@ -3885,12 +3885,15 @@ type Column struct {
 	faultyActors                    map[cube.Pos]*actorFault
 	subChunkHeightMaps              map[int16]cachedSubChunkHeightMap
 	networkBiomePayload             cachedBlockEntityPayload
-	networkSubChunkPayloads         map[int16]cachedBlockEntityPayload
 	limitedChunkPayload             cachedBlockEntityPayload
-	fullChunkPayload                cachedBlockEntityPayload
 	chunkBlockEntityPayload         cachedBlockEntityPayload
 	chunkBlockEntityPayloadNoBorder cachedBlockEntityPayload
 	subChunkBlockEntityPayloads     map[int16]cachedBlockEntityPayload
+
+	// ownCache holds the payloads of sub-chunks and of the chunk of no
+	// key, Cache(nil), and caches those of the keys adapters asked for.
+	ownCache ColumnCache
+	caches   map[*SlotKey]*ColumnCache
 
 	viewers map[Viewer]struct{}
 	loaders []*Loader
@@ -4118,19 +4121,27 @@ func (c *Column) invalidateSubChunkHeightMaps() {
 func (c *Column) invalidateNetworkBiomePayload() {
 	c.networkBiomePayload = cachedBlockEntityPayload{}
 	c.limitedChunkPayload = cachedBlockEntityPayload{}
-	c.fullChunkPayload = cachedBlockEntityPayload{}
+	c.invalidateKeyedPayloads(false)
 }
 
 func (c *Column) invalidateNetworkSubChunkPayloads() {
-	clear(c.networkSubChunkPayloads)
-	c.fullChunkPayload = cachedBlockEntityPayload{}
+	c.invalidateKeyedPayloads(true)
 }
 
 func (c *Column) invalidateBlockEntityPayloads() {
 	c.chunkBlockEntityPayload = cachedBlockEntityPayload{}
 	c.chunkBlockEntityPayloadNoBorder = cachedBlockEntityPayload{}
 	clear(c.subChunkBlockEntityPayloads)
-	c.fullChunkPayload = cachedBlockEntityPayload{}
+	c.invalidateKeyedPayloads(false)
+}
+
+// invalidateKeyedPayloads clears the payload of the chunk of every key, and
+// those of its sub-chunks if subChunks is set.
+func (c *Column) invalidateKeyedPayloads(subChunks bool) {
+	c.ownCache.invalidate(subChunks)
+	for _, cache := range c.caches {
+		cache.invalidate(subChunks)
+	}
 }
 
 // CachedSubChunkHeightMap returns cached height map data for a sub-chunk.
@@ -4164,21 +4175,16 @@ func (c *Column) CacheNetworkBiomePayload(payload []byte) {
 	c.networkBiomePayload = cachedBlockEntityPayload{payload: payload, ready: true}
 }
 
-// CachedNetworkSubChunkPayload returns the cached encoded network payload for a sub-chunk.
+// CachedNetworkSubChunkPayload returns the cached encoded network payload
+// for a sub-chunk, that of Cache(nil).
 func (c *Column) CachedNetworkSubChunkPayload(ind int16) ([]byte, bool) {
-	if c.networkSubChunkPayloads == nil {
-		return nil, false
-	}
-	payload, ok := c.networkSubChunkPayloads[ind]
-	return payload.payload, ok && payload.ready
+	return c.ownCache.CachedNetworkSubChunkPayload(ind)
 }
 
-// CacheNetworkSubChunkPayload stores the encoded network payload for a sub-chunk.
+// CacheNetworkSubChunkPayload stores the encoded network payload for a
+// sub-chunk, that of Cache(nil).
 func (c *Column) CacheNetworkSubChunkPayload(ind int16, payload []byte) {
-	if c.networkSubChunkPayloads == nil {
-		c.networkSubChunkPayloads = make(map[int16]cachedBlockEntityPayload, 4)
-	}
-	c.networkSubChunkPayloads[ind] = cachedBlockEntityPayload{payload: payload, ready: true}
+	c.ownCache.CacheNetworkSubChunkPayload(ind, payload)
 }
 
 // CachedLimitedChunkPayload returns the cached limited chunk raw payload.
@@ -4191,14 +4197,16 @@ func (c *Column) CacheLimitedChunkPayload(payload []byte) {
 	c.limitedChunkPayload = cachedBlockEntityPayload{payload: payload, ready: true}
 }
 
-// CachedFullChunkPayload returns the cached full chunk raw payload.
+// CachedFullChunkPayload returns the cached full chunk raw payload, that
+// of Cache(nil).
 func (c *Column) CachedFullChunkPayload() ([]byte, bool) {
-	return c.fullChunkPayload.payload, c.fullChunkPayload.ready
+	return c.ownCache.CachedFullChunkPayload()
 }
 
-// CacheFullChunkPayload stores the full chunk raw payload.
+// CacheFullChunkPayload stores the full chunk raw payload, that of
+// Cache(nil).
 func (c *Column) CacheFullChunkPayload(payload []byte) {
-	c.fullChunkPayload = cachedBlockEntityPayload{payload: payload, ready: true}
+	c.ownCache.CacheFullChunkPayload(payload)
 }
 
 // CachedChunkBlockEntityPayload returns a cached encoded block entity payload for the column.

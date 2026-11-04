@@ -32,11 +32,13 @@ type wireTables struct {
 	// chunkBR is br as the registry of a chunk, to tell the chunks of br.
 	chunkBR chunk.BlockRegistry
 	// blocks are the network hashes of the runtime IDs of br, built by
-	// hashes once br is finalized. game reports, before blocks is set, that
-	// they are the hashes of the game's own states, hashesOf(br), which the
-	// caches of columns hold.
+	// hashes once br is finalized. slot is set, before blocks, to the key
+	// the caches of columns keep the payloads of the tables under: nil if
+	// they are the hashes of the game's own states, hashesOf(br), which a
+	// column keeps in its own cache, else that of the class of blocks of
+	// the protocol.
 	blocks atomic.Pointer[blockHashes]
-	game   atomic.Bool
+	slot   atomic.Pointer[world.SlotKey]
 
 	creativeMu sync.Mutex
 	creative   *creativeData
@@ -93,9 +95,26 @@ func (w *wireTables) hashes() *blockHashes {
 		return h
 	}
 	h := blockTable(w.proto, w.br)
-	w.game.Store(h == hashesOf(w.br))
+	if h != hashesOf(w.br) {
+		w.slot.Store(slotOf(w.proto))
+	}
 	w.blocks.CompareAndSwap(nil, h)
 	return w.blocks.Load()
+}
+
+// slots holds the keys of the caches of columns of the protocols whose
+// tables name blocks otherwise than the game, by protocol.
+var slots sync.Map
+
+// slotOf returns the key of the caches of columns of the tables of a
+// protocol that names blocks otherwise than the game: one for each
+// protocol, named "bedrock/blocks/" and its number.
+func slotOf(p *versions.Protocol) *world.SlotKey {
+	if k, ok := slots.Load(p); ok {
+		return k.(*world.SlotKey)
+	}
+	k, _ := slots.LoadOrStore(p, world.NewSlotKey(fmt.Sprintf("bedrock/blocks/%d", p.Number)))
+	return k.(*world.SlotKey)
 }
 
 // blockTable returns the network hashes the clients of a protocol know the

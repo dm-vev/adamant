@@ -77,6 +77,7 @@ func (c protocolConn) Protocol() *versions.Protocol { return c.p }
 func copiedTables(br world.BlockRegistry) *wireTables {
 	h := hashesOf(br)
 	w := &wireTables{proto: otherProtocol, br: br, chunkBR: br}
+	w.slot.Store(slotOf(otherProtocol))
 	w.blocks.Store(&blockHashes{hash: slices.Clone(h.hash), rid: maps.Clone(h.rid)})
 	return w
 }
@@ -99,31 +100,39 @@ func TestBlockUpdatesOfAnotherTable(t *testing.T) {
 	}
 }
 
-// TestColumnCachesHoldTheGameTables checks the payloads of tables that
-// name blocks otherwise than the game are not kept in the caches of a
-// column, which hold one encoding, nor taken from them.
-func TestColumnCachesHoldTheGameTables(t *testing.T) {
+// TestColumnCachesKeepEachClass checks the payloads of tables that name
+// blocks otherwise than the game are kept in the cache of a column for the
+// key of their class, and those of the game's tables in the column's own:
+// each encodes a sub-chunk once, neither takes the other's.
+func TestColumnCachesKeepEachClass(t *testing.T) {
 	stone, _ := chunk.StateToRuntimeID("minecraft:stone", nil)
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 	c.SetBlock(0, 0, 0, 0, stone)
 	col := &world.Column{Chunk: c}
 	other, model := copiedTables(world.DefaultBlockRegistry), tablesOf(nil, world.DefaultBlockRegistry)
-	if other.cachesColumn() || !model.cachesColumn() {
-		t.Fatal("the caches of a column hold the payloads of another table")
+	key := slotOf(otherProtocol)
+	if model.columnCache(col) != col.Cache(nil) || other.columnCache(col) != col.Cache(key) || slotOf(otherProtocol) != key {
+		t.Fatal("the tables do not keep their payloads in the cache of their class")
 	}
-	_ = other.fullChunkPayload(col)
+	got := other.fullChunkPayload(col)
 	if _, ok := col.CachedNetworkSubChunkPayload(0); ok {
-		t.Fatal("another table filled the cache of a sub-chunk")
+		t.Fatal("another table filled the column's own cache of a sub-chunk")
 	}
 	if _, ok := col.CachedFullChunkPayload(); ok {
-		t.Fatal("another table filled the cache of the chunk")
+		t.Fatal("another table filled the column's own cache of the chunk")
+	}
+	if cached, ok := col.Cache(slotOf(otherProtocol)).CachedFullChunkPayload(); !ok || &cached[0] != &got[0] {
+		t.Fatal("another table did not fill the cache of its class")
 	}
 	want := model.fullChunkPayload(col)
 	if cached, ok := col.CachedFullChunkPayload(); !ok || &cached[0] != &want[0] {
 		t.Fatal("the game's tables did not fill the cache of the chunk")
 	}
-	if got := other.fullChunkPayload(col); &got[0] == &want[0] || string(got) != string(want) {
-		t.Fatal("another table took the payload of the cache")
+	if &got[0] == &want[0] || string(got) != string(want) {
+		t.Fatal("the two classes share a payload, or name the same blocks otherwise")
+	}
+	if again := other.fullChunkPayload(col); &again[0] != &got[0] {
+		t.Fatal("another table encoded the chunk again")
 	}
 }
 
