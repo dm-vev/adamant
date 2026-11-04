@@ -528,3 +528,11 @@ var _ Living = (*speciesMob)(nil)
 func (b *speciesState) effectManager() *EffectManager { return b.effects }
 
 func (e *Enderman) forgive(id string) { s := e.s(); s.forgiveAnger(&s.ai, id) }
+
+// observeFall ports Creeper.causeFallDamage: a creeper that falls swells by
+// one and a half for every block, up to five short of its fuse.
+func (s *speciesState) observeFall(distance float64) {
+	if s.kind == creeperSpecies {
+		s.swell = min(s.swell+int(distance*1.5), s.fuse-5)
+	}
+}

@@ -179,6 +179,38 @@ func equipItemIfPossible(m *Mob, h equipmentHolder, stack item.Stack, preferred 
 	return toEquip
 }
 
+// lootItem is the behaviour of an item entity, which mobs pick up loot from.
+type lootItem interface {
+	// lootStack returns the stack a mob may pick up: none while the pickup
+	// delay lasts.
+	lootStack() (item.Stack, bool)
+	// takeLoot takes count items off the stack and reports if none are left.
+	takeLoot(count int) (empty bool)
+}
+
+// pickableItem returns the stack of an item entity a mob may pick up: one
+// without a pickup delay.
+func pickableItem(e world.Entity) (item.Stack, bool) {
+	ent, ok := e.(*Ent)
+	if !ok {
+		return item.Stack{}, false
+	}
+	i, ok := ent.Behaviour().(lootItem)
+	if !ok {
+		return item.Stack{}, false
+	}
+	return i.lootStack()
+}
+
+// takeItemEntity takes count items off an item entity, removing it once
+// empty, as Mob.take.
+func takeItemEntity(m *Mob, e world.Entity, count int) {
+	ent := e.(*Ent)
+	if ent.Behaviour().(lootItem).takeLoot(count) {
+		_ = ent.CloseIn(m.tx)
+	}
+}
+
 // pickUpLoot ports the looting half of Mob.aiStep: a mob that may pick up
 // loot equips the items lying within a block of it that it wants, while mob
 // griefing is on.

@@ -273,3 +273,12 @@ func (c *Chicken) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHand
 }
 
 func (b *ChickenBehaviour) effectManager() *EffectManager { return b.effects }
+
+// baseExperience ports Chicken.getBaseExperienceReward: a chicken jockey gives
+// 10.
+func (c *Chicken) baseExperience() (int, bool) {
+	if c.behaviour().jockey {
+		return 10, true
+	}
+	return 0, false
+}

@@ -4183,6 +4183,7 @@ server/entity.Axolotl	server/entity.Rider	value
 server/entity.Axolotl	server/entity.Traveller	value
 server/entity.Axolotl	server/entity.ageable	*
 server/entity.Axolotl	server/entity.breeder	*
+server/entity.Axolotl	server/entity.killSupporter	*
 server/entity.Axolotl	server/entity.knockBackable	value
 server/entity.Axolotl	server/entity.moveTracked	value
 server/entity.Axolotl	server/entity.seatHolder	value
@@ -4675,6 +4676,7 @@ server/entity.Chicken	server/entity.Rider	value
 server/entity.Chicken	server/entity.Traveller	value
 server/entity.Chicken	server/entity.ageable	*
 server/entity.Chicken	server/entity.breeder	*
+server/entity.Chicken	server/entity.experienceRewarder	*
 server/entity.Chicken	server/entity.knockBackable	value
 server/entity.Chicken	server/entity.moveTracked	value
 server/entity.Chicken	server/entity.passengerPositioner	*
@@ -5872,6 +5874,7 @@ server/entity.IronGolem	server/world.Entity	value
 server/entity.IronGolem	server/world.Prefetcher	value
 server/entity.IronGolem	server/world.TickerEntity	*
 server/entity.ItemBehaviour	server/entity.Behaviour	*
+server/entity.ItemBehaviour	server/entity.lootItem	*
 server/entity.ItemBehaviour	server/entity.portalTravelComputerProvider	*
 server/entity.ItemBehaviourConfig	server/world.EntityConfig	value
 server/entity.ItemStackSizeAction	server/world.EntityAction	value
@@ -7562,10 +7565,12 @@ server/entity.SulfurCube	server/entity.Leashable	value
 server/entity.SulfurCube	server/entity.Living	*
 server/entity.SulfurCube	server/entity.Rider	value
 server/entity.SulfurCube	server/entity.Traveller	value
+server/entity.SulfurCube	server/entity.freezable	*
 server/entity.SulfurCube	server/entity.knockBackable	value
 server/entity.SulfurCube	server/entity.moveTracked	value
 server/entity.SulfurCube	server/entity.seatHolder	value
 server/entity.SulfurCube	server/entity.teleporter	*
+server/entity.SulfurCube	server/entity.waterBreather	*
 server/entity.SulfurCube	server/entity/effect.living	*
 server/entity.SulfurCube	server/item.chorusTeleporter	value
 server/entity.SulfurCube	server/world.Entity	value
@@ -7967,6 +7972,7 @@ server/entity.Warden	server/entity.Leashable	value
 server/entity.Warden	server/entity.Living	*
 server/entity.Warden	server/entity.Rider	value
 server/entity.Warden	server/entity.Traveller	value
+server/entity.Warden	server/entity.explosionIgnorer	*
 server/entity.Warden	server/entity.knockBackable	value
 server/entity.Warden	server/entity.moveTracked	value
 server/entity.Warden	server/entity.seatHolder	value
@@ -8124,6 +8130,7 @@ server/entity.Wolf	server/entity.WolfTameable	*
 server/entity.Wolf	server/entity.ageable	*
 server/entity.Wolf	server/entity.breeder	*
 server/entity.Wolf	server/entity.forgiver	*
+server/entity.Wolf	server/entity.killCreditor	*
 server/entity.Wolf	server/entity.knockBackable	value
 server/entity.Wolf	server/entity.mateChecker	*
 server/entity.Wolf	server/entity.moveTracked	value
@@ -9384,6 +9391,7 @@ server/entity.speciesState	server/entity.Behaviour	*
 server/entity.speciesState	server/entity.cubeMob	*
 server/entity.speciesState	server/entity.dismounter	*
 server/entity.speciesState	server/entity.effectHolder	*
+server/entity.speciesState	server/entity.fallObserver	*
 server/entity.speciesState	server/entity.mobAIBehaviour	*
 server/entity.speciesState	server/entity.mobCustomStep	*
 server/entity.speciesState	server/entity.mobJumper	*

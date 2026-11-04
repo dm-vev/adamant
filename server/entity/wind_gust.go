@@ -58,10 +58,16 @@ func gustIgnores(e world.Entity, blocklike bool) bool {
 	case ArmourStandType:
 		return !blocklike
 	}
-	if w, ok := e.(*Warden); ok {
-		return w.state().diggingOrEmerging()
+	if i, ok := e.(explosionIgnorer); ok {
+		return i.ignoresExplosion()
 	}
 	return false
+}
+
+// explosionIgnorer is an entity whose class overrides Entity.ignoreExplosion,
+// as Warden does.
+type explosionIgnorer interface {
+	ignoresExplosion() bool
 }
 
 // creativeFlying reports if e is a player flying in creative mode, which

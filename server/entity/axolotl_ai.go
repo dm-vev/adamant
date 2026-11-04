@@ -238,32 +238,22 @@ func (axolotlAttackablesSensor) doTick(m *Mob, b *Brain) {
 	b.setEntity(memNearestAttackable, nearest)
 }
 
-// axolotlSupportKiller ports Axolotl.onStopAttacking: when a mob an axolotl
-// fights dies at the hands of a player within 20 blocks of it, the axolotl
-// gives the player regeneration and takes their mining fatigue away. Java
-// does so the next time the brain of the axolotl finds its target dead,
-// here as the target dies.
-func axolotlSupportKiller(tx *world.Tx, target world.Entity, src world.DamageSource) {
-	killer := mobKiller(src)
-	if killer == nil || !isPlayerEntity(killer) {
+// supportKiller ports Axolotl.onStopAttacking: when a mob the axolotl fights
+// dies at the hands of a player within 20 blocks of it, the axolotl gives the
+// player regeneration and takes their mining fatigue away. Java does so the
+// next time the brain of the axolotl finds its target dead, here as the
+// target dies.
+func (a *Axolotl) supportKiller(target, killer world.Entity) {
+	b := a.behaviour()
+	if b.br == nil {
 		return
 	}
-	for e := range tx.EntitiesWithin(cube.Box(-32, -32, -32, 32, 32, 32).Translate(target.Position())) {
-		a, ok := e.(*Axolotl)
-		if !ok {
-			continue
-		}
-		b := a.behaviour()
-		if b.br == nil {
-			continue
-		}
-		if v, ok := b.br.get(memAttackTarget); !ok || v != target.H() {
-			continue
-		}
-		box := e.H().Type().BBox(e).Translate(e.Position()).Grow(20)
-		if killerBox := killer.H().Type().BBox(killer).Translate(killer.Position()); killerBox.IntersectsWith(box) {
-			axolotlApplySupportingEffects(killer)
-		}
+	if v, ok := b.br.get(memAttackTarget); !ok || v != target.H() {
+		return
+	}
+	box := a.H().Type().BBox(a).Translate(a.Position()).Grow(20)
+	if killerBox := killer.H().Type().BBox(killer).Translate(killer.Position()); killerBox.IntersectsWith(box) {
+		axolotlApplySupportingEffects(killer)
 	}
 }
 

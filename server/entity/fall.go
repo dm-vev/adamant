@@ -123,8 +123,8 @@ func (e *Ent) CauseFallDamage(distance, multiplier float64, src world.DamageSour
 	if src == nil {
 		src = FallDamageSource{}
 	}
-	if s, ok := e.data.Data.(*speciesState); ok && s.kind == creeperSpecies {
-		s.swell = min(s.swell+int(distance*1.5), s.fuse-5)
+	if o, ok := e.data.Data.(fallObserver); ok {
+		o.observeFall(distance)
 	}
 	target := e.living()
 	if living, ok := target.(interface {
@@ -141,6 +141,12 @@ func (e *Ent) CauseFallDamage(distance, multiplier float64, src world.DamageSour
 			f.CauseFallDamage(distance, multiplier, src)
 		}
 	}
+}
+
+// fallObserver is the behaviour of a mob whose class overrides causeFallDamage
+// before the damage is taken, as Creeper does.
+type fallObserver interface {
+	observeFall(distance float64)
 }
 
 func isLlama(id string) bool { return id == "minecraft:llama" || id == "minecraft:trader_llama" }

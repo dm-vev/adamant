@@ -713,3 +713,11 @@ type wolfPackSpawnGroup struct{ variant uint8 }
 func (b *WolfBehaviour) effectManager() *EffectManager { return b.effects }
 
 func (w *Wolf) forgive(id string) { b := w.behaviour(); b.forgiveAnger(&b.ai, id) }
+
+// killCreditOwner returns the owner a tamed wolf credits with its kills.
+func (w *Wolf) killCreditOwner() (string, bool) {
+	if !w.Tamed() {
+		return "", false
+	}
+	return w.behaviour().ownerUUID, true
+}

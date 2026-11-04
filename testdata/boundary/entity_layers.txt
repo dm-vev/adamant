@@ -19,57 +19,36 @@
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
 ai_physics.go spawn MobAI.checkDespawn
-effect_triggers.go passive slimeSpecies
-effect_triggers.go passive speciesConfig
-effect_triggers.go passive speciesConfig.kind
-effect_triggers.go passive speciesConfig.size
-effect_triggers.go projectile windGust
 ent.go object ArmourStandBehaviour.passive
 ent.go object ItemBehaviour.passive
 ent.go passive PassiveBehaviour.mc
 ent.go projectile arrowType
-fall.go passive creeperSpecies
-fall.go passive speciesState
-fall.go passive speciesState.fuse
-fall.go passive speciesState.kind
-fall.go passive speciesState.swell
-freeze.go hostile SulfurCube.b
-freeze.go hostile SulfurCubeBehaviour.bodyItem
 java_rest.go nether zombifiedPiglinState
 java_rest.go nether zombifiedPiglinState.ai
 leash.go object leashKnotBehaviour
 leash.go object leashKnotBehaviour.pos
-mob_breath.go hostile SulfurCubeBehaviour.bodyItem
-mob_equipment.go hostile pickableItem
-mob_equipment.go hostile takeItemEntity
-mob_loot.go aquatic axolotlSupportKiller
-mob_loot.go passive Chicken.behaviour
-mob_loot.go passive ChickenBehaviour.jockey
-mob_loot.go passive Wolf.behaviour
 
 # Distinct unexported identifiers that each group takes from each other, as of the last regeneration.
 # They are recorded here, not checked: only the lines above are.
 #
 #	ai         from aquatic       1
-#	ai         from core         59
-#	ai         from hostile      24
+#	ai         from core         60
+#	ai         from hostile      23
 #	ai         from nether        1
 #	ai         from object        3
 #	ai         from passive      88
 #	ai         from villager     12
 #	aquatic    from ai          161
-#	aquatic    from core         47
+#	aquatic    from core         46
 #	aquatic    from hostile      17
 #	aquatic    from object        1
 #	aquatic    from passive      16
 #	aquatic    from villager      1
-#	core       from ai          168
-#	core       from aquatic       1
-#	core       from hostile       4
+#	core       from ai          167
 #	core       from nether        2
 #	core       from object        4
-#	core       from passive      13
-#	core       from projectile    2
+#	core       from passive       1
+#	core       from projectile    1
 #	core       from spawn         1
 #	dragon     from ai            6
 #	dragon     from core         10
@@ -77,16 +56,15 @@ mob_loot.go passive Wolf.behaviour
 #	dragon     from passive       3
 #	hostile    from ai          192
 #	hostile    from aquatic      24
-#	hostile    from core         88
+#	hostile    from core         90
 #	hostile    from dragon        1
-#	hostile    from object        2
 #	hostile    from passive      29
 #	hostile    from projectile    2
 #	hostile    from spawn         5
 #	hostile    from villager     17
 #	nether     from ai          217
-#	nether     from core         73
-#	nether     from hostile      16
+#	nether     from core         75
+#	nether     from hostile      14
 #	nether     from object        2
 #	nether     from passive      19
 #	nether     from projectile    1
@@ -97,16 +75,15 @@ mob_loot.go passive Wolf.behaviour
 #	object     from projectile    1
 #	passive    from ai          259
 #	passive    from aquatic       2
-#	passive    from core         66
-#	passive    from hostile      30
+#	passive    from core         68
+#	passive    from hostile      28
 #	passive    from nether       11
 #	passive    from object        2
 #	passive    from projectile    1
 #	passive    from spawn         4
 #	passive    from villager      1
-#	projectile from ai           14
-#	projectile from core         10
-#	projectile from hostile       2
+#	projectile from ai           13
+#	projectile from core          8
 #	projectile from object        1
 #	registry   from dragon        2
 #	registry   from hostile       1
@@ -124,7 +101,7 @@ mob_loot.go passive Wolf.behaviour
 #	vehicle    from core         13
 #	vehicle    from object        1
 #	villager   from ai          174
-#	villager   from core         39
-#	villager   from hostile      35
+#	villager   from core         41
+#	villager   from hostile      33
 #	villager   from passive       4
 #	villager   from spawn         4

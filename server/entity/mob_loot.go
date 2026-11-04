@@ -22,7 +22,7 @@ import (
 // mob support the player who killed it.
 func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 	recordDeath(tx, e)
-	axolotlSupportKiller(tx, e, src)
+	supportKiller(tx, e, src)
 	killer, player := deathCredit(tx, src)
 	if player != nil && killer == player {
 		if named, ok := player.(interface{ Name() string }); ok {
@@ -75,6 +75,26 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 	onMobKilled(tx, e)
 }
 
+// killSupporter is a mob that rewards the player who killed the mob it fought,
+// as Axolotl.onStopAttacking.
+type killSupporter interface {
+	supportKiller(target, killer world.Entity)
+}
+
+// supportKiller lets the mobs within 32 blocks of a mob killed by a player
+// reward that player.
+func supportKiller(tx *world.Tx, target world.Entity, src world.DamageSource) {
+	killer := mobKiller(src)
+	if killer == nil || !isPlayerEntity(killer) {
+		return
+	}
+	for e := range tx.EntitiesWithin(cube.Box(-32, -32, -32, 32, 32, 32).Translate(target.Position())) {
+		if s, ok := e.(killSupporter); ok {
+			s.supportKiller(target, killer)
+		}
+	}
+}
+
 // DropWitherRose ports LivingEntity.createWitherRose for an entity that died
 // at pos: if the Wither killed it, a wither rose is planted there while mob
 // griefing is enabled and the rose can grow, and dropped as an item otherwise.
@@ -103,14 +123,23 @@ func deathCredit(tx *world.Tx, src world.DamageSource) (killer, player world.Ent
 	if killer.H().Type().EncodeEntity() == "minecraft:player" {
 		return killer, killer
 	}
-	if wolf, ok := killer.(*Wolf); ok && wolf.Tamed() {
-		if owner, err := uuid.Parse(wolf.behaviour().ownerUUID); err == nil {
-			if p, ok := tx.EntityByUUID(owner); ok && p.H().Type().EncodeEntity() == "minecraft:player" {
-				return killer, p
+	if c, ok := killer.(killCreditor); ok {
+		if id, ok := c.killCreditOwner(); ok {
+			if owner, err := uuid.Parse(id); err == nil {
+				if p, ok := tx.EntityByUUID(owner); ok && p.H().Type().EncodeEntity() == "minecraft:player" {
+					return killer, p
+				}
 			}
 		}
 	}
 	return killer, nil
+}
+
+// killCreditor is a mob that passes the credit for its kills to its owner, as
+// LivingEntity.hurtServer does for a tamed wolf.
+type killCreditor interface {
+	// killCreditOwner returns the UUID of the owner credited, if any.
+	killCreditOwner() (string, bool)
 }
 
 // mobIsBaby reports whether e or its behaviour is a baby.
@@ -177,6 +206,13 @@ var zombieClass = map[string]bool{
 	"minecraft:zombie_villager": true, "minecraft:zombified_piglin": true,
 }
 
+// experienceRewarder is a mob whose class overrides getBaseExperienceReward, as
+// Chicken does.
+type experienceRewarder interface {
+	// baseExperience returns the reward, if the override gives one.
+	baseExperience() (int, bool)
+}
+
 // mobBaseExperience ports getBaseExperienceReward of the mob's Java class.
 func mobBaseExperience(e world.Entity, id string, baby bool) int {
 	switch id {
@@ -198,8 +234,10 @@ func mobBaseExperience(e world.Entity, id string, baby bool) int {
 		}
 		return 1 + rand.IntN(2)
 	case "minecraft:chicken":
-		if c, ok := e.(*Chicken); ok && c.behaviour().jockey {
-			return 10
+		if r, ok := e.(experienceRewarder); ok {
+			if xp, ok := r.baseExperience(); ok {
+				return xp
+			}
 		}
 	}
 	if reward, ok := mobXPReward[id]; ok {

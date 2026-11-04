@@ -417,31 +417,6 @@ func (g *sulfurCubeSearchForItemsGoal) Tick(m *Mob) {
 	g.cube.move.setDirection(m.Yaw(), true)
 }
 
-// pickableItem returns the stack of an item entity a mob may pick up: one
-// without a pickup delay.
-func pickableItem(e world.Entity) (item.Stack, bool) {
-	ent, ok := e.(*Ent)
-	if !ok {
-		return item.Stack{}, false
-	}
-	i, ok := ent.Behaviour().(*ItemBehaviour)
-	if !ok || i.i.Empty() || i.pickupDelay > 0 {
-		return item.Stack{}, false
-	}
-	return i.i, true
-}
-
-// takeItemEntity takes count items off an item entity, removing it once
-// empty, as Mob.take.
-func takeItemEntity(m *Mob, e world.Entity, count int) {
-	ent := e.(*Ent)
-	i := ent.Behaviour().(*ItemBehaviour)
-	i.i = i.i.Grow(-count)
-	if i.i.Empty() {
-		_ = ent.CloseIn(m.tx)
-	}
-}
-
 // sulfurCubeHotDamageSource is the sulfur_cube_hot damage a hot cube deals
 // what touches it. Cube is set when the damage is attributed to the cube,
 // as it is for players.

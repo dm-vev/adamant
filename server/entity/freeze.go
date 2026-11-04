@@ -63,6 +63,12 @@ func FreezingStrength(data *world.EntityData) float32 {
 	return float32(min(data.FrozenTicks, ticksRequiredToFreeze)) / ticksRequiredToFreeze
 }
 
+// freezable is an entity whose class overrides Entity.canFreeze, as SulfurCube
+// does.
+type freezable interface {
+	canFreeze() bool
+}
+
 // CanFreeze ports Entity.canFreeze and its LivingEntity, Skeleton and
 // SulfurCube overrides: spectators, freeze-immune entity types and entities
 // wearing leather armour do not freeze.
@@ -75,7 +81,7 @@ func CanFreeze(e world.Entity) bool {
 	case "minecraft:stray", "minecraft:polar_bear", "minecraft:snow_golem", "minecraft:wither", "minecraft:skeleton":
 		return false
 	}
-	if s, ok := e.(*SulfurCube); ok && !s.b().bodyItem.Empty() {
+	if f, ok := e.(freezable); ok && !f.canFreeze() {
 		return false
 	}
 	armour := wornArmour(e)

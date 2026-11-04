@@ -80,14 +80,19 @@ func (ai *MobAI) decreaseAirSupply(m *Mob) int {
 	return ai.air - 1
 }
 
+// waterBreather is a mob whose class overrides
+// LivingEntity.canBreatheUnderwater, as SulfurCube does.
+type waterBreather interface {
+	canBreatheUnderwater() bool
+}
+
 // mobBreathesWater ports LivingEntity.canBreatheUnderwater and
 // MobEffectUtil.hasWaterBreathing.
 func mobBreathesWater(m *Mob) bool {
 	if entityTypeInTag(m.Self, "can_breathe_under_water") {
 		return true
 	}
-	if c, ok := m.Self.(*SulfurCube); ok && !c.Behaviour().(*SulfurCubeBehaviour).bodyItem.Empty() {
-		// SulfurCube.canBreatheUnderwater: a cube holding an item does.
+	if c, ok := m.Self.(waterBreather); ok && c.canBreatheUnderwater() {
 		return true
 	}
 	if l, ok := m.Self.(interface {

@@ -241,7 +241,7 @@ wandering_trader_spawner.go spawn
 warden.go hostile
 warden_phantom_wither.go hostile
 wind_charge.go projectile
-wind_gust.go projectile
+wind_gust.go core
 witch.go villager
 witch_ai.go villager
 wither_ai.go hostile

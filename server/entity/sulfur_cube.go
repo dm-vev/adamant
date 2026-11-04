@@ -591,3 +591,13 @@ var _ ItemAcceptor = (*SulfurCube)(nil)
 var _ Interactable = (*SulfurCube)(nil)
 
 func (b *SulfurCubeBehaviour) effectManager() *EffectManager { return b.effects }
+
+// canFreeze ports SulfurCube.canFreeze: a cube holding an item does not
+// freeze.
+func (s *SulfurCube) canFreeze() bool { return s.b().bodyItem.Empty() }
+
+// canBreatheUnderwater ports SulfurCube.canBreatheUnderwater: a cube holding
+// an item does.
+func (s *SulfurCube) canBreatheUnderwater() bool {
+	return !s.Behaviour().(*SulfurCubeBehaviour).bodyItem.Empty()
+}

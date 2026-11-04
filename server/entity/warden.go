@@ -128,6 +128,10 @@ func NewWarden(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(Warde
 func (*Warden) SpeciesType() world.EntityType               { return WardenType }
 func (w *Warden) state() *wardenState                       { return w.Behaviour().(*wardenState) }
 
+// ignoresExplosion ports Warden.ignoreExplosion: a warden that digs into the
+// ground or emerges from it is not pushed.
+func (w *Warden) ignoresExplosion() bool { return w.state().diggingOrEmerging() }
+
 // Tick ports Warden.tick: the vibrations a warden hears travel to it.
 func (w *Warden) Tick(tx *world.Tx, n int64) {
 	s := w.state()

@@ -137,7 +137,7 @@ func releaseOozingSlimes(tx *world.Tx, e world.Entity, pos mgl64.Vec3) {
 	}
 	for range count {
 		opts := world.EntitySpawnOpts{Position: pos.Add(mgl64.Vec3{0, 0.5}), Rotation: cube.Rotation{rand.Float64() * 360}}
-		tx.AddEntity(opts.New(SlimeType, speciesConfig{kind: slimeSpecies, size: 2}))
+		tx.AddEntity(NewSlime(opts))
 	}
 }
 

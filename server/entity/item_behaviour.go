@@ -83,6 +83,22 @@ func (i *ItemBehaviour) Item() item.Stack {
 	return i.i
 }
 
+// lootStack returns the stack of the item entity that a mob may pick up: none
+// while its pickup delay lasts.
+func (i *ItemBehaviour) lootStack() (item.Stack, bool) {
+	if i.i.Empty() || i.pickupDelay > 0 {
+		return item.Stack{}, false
+	}
+	return i.i, true
+}
+
+// takeLoot takes count items off the stack of the item entity, as a mob that
+// picks them up, and reports if none are left.
+func (i *ItemBehaviour) takeLoot(count int) (empty bool) {
+	i.i = i.i.Grow(-count)
+	return i.i.Empty()
+}
+
 // SetItemPickupDelay changes how long an item must wait before collection.
 // It has no effect on other entity behaviours. Zero allows immediate pickup.
 func (e *Ent) SetItemPickupDelay(delay time.Duration) {
