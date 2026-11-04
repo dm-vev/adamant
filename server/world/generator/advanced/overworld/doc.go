@@ -1,2 +1,2 @@
-// Package overworld implements a Minecraft Java Edition 1.12-style Overworld generator.
+// Package overworld implements the Java Edition 26.3 Overworld generator.
 package overworld

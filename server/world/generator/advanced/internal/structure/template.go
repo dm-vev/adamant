@@ -13,7 +13,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 	"github.com/google/uuid"
 )
 
@@ -112,7 +111,7 @@ func loadTemplate(name string, createMissing bool) (*Template, error) {
 			return nil, fmt.Errorf("structure %q gzip: %w", name, closeErr)
 		}
 	}
-	root, err := mc112.DecodeNBT(data)
+	root, err := decodeNBT(data)
 	if err != nil {
 		return nil, fmt.Errorf("structure %q NBT: %w", name, err)
 	}

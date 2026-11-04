@@ -61,19 +61,6 @@ func (c *previewCache) shard(pos world.ChunkPos) *previewCacheShard {
 	return &c.shards[(h^h>>15)%previewCacheShards]
 }
 
-func (c *previewCache) get(pos world.ChunkPos) (*chunk.Chunk, bool) {
-	s := c.shard(pos)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	elem, ok := s.index[pos]
-	if !ok {
-		return nil, false
-	}
-	s.order.MoveToFront(elem)
-	return elem.Value.(*previewCacheEntry).c, true
-}
-
 // load coalesces concurrent requests without holding the LRU lock while building.
 // Raw terrain and surfaced terrain use separate caches, so their dependencies
 // never wait on the same in-flight entry.
@@ -114,13 +101,6 @@ func (c *previewCache) load(pos world.ChunkPos, build func() *previewCacheEntry)
 		panic(flight.failure)
 	}
 	return flight.entry
-}
-
-func (c *previewCache) add(pos world.ChunkPos, ch *chunk.Chunk) {
-	s := c.shard(pos)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.addLocked(&previewCacheEntry{pos: pos, c: ch})
 }
 
 func (s *previewCacheShard) addLocked(entry *previewCacheEntry) {

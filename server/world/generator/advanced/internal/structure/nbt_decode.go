@@ -1,4 +1,4 @@
-package mc112
+package structure
 
 import (
 	"bytes"
@@ -290,8 +290,8 @@ func (r *nbtReader) readCompound(depth int) (map[string]any, error) {
 	}
 }
 
-// DecodeNBT decodes a (decompressed) Java Edition NBT payload into a root compound.
-func DecodeNBT(b []byte) (map[string]any, error) {
+// decodeNBT decodes a (decompressed) Java Edition NBT payload into a root compound.
+func decodeNBT(b []byte) (map[string]any, error) {
 	r := newNBTReader(b)
 	rootType, err := r.readByte()
 	if err != nil {

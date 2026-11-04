@@ -606,7 +606,7 @@ func parseSaveInterval(s string) (time.Duration, error) {
 }
 
 // defaultGenerator constructs a dimension generator using the resolved seed.
-// The overworld, nether and end still utilise Java 1.12 style generators.
+// Every dimension generates with its Java 26.3 generator of generator/advanced.
 func defaultGenerator(dim world.Dimension, seed int64) world.Generator {
 	switch dim {
 	case world.Overworld:
