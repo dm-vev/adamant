@@ -223,6 +223,7 @@ func clientCommand(name string) bool { return name == "help" }
 func (s *Session) sendAvailableCommands(co Controllable, softEnums map[string]struct{}) map[string]map[int]cmd.Runnable {
 	commands := cmd.Commands()
 	pk, m := BuildAvailableCommands(commands, co, softEnums)
+	s.tables().dropUnknownEnumOptions(pk)
 	s.writePacket(pk)
 	return m
 }

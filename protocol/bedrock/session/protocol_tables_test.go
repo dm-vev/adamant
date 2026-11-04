@@ -1,7 +1,9 @@
 package session
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
@@ -12,58 +14,72 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-// TestTablesOf2225 checks the tables of the clients of 2225: the states of
-// redstone wire, fire and chorus plants, and those alone, hash as 2225
-// names them, with their connections none, and back to their runtime IDs;
-// the items take 2225's runtime IDs; the entities and biomes are those of
-// 2193. Their payloads of columns are of a class of their own.
-func TestTablesOf2225(t *testing.T) {
+// TestTablesOf2193 checks the tables of the clients of 2193, now that the
+// game holds the blocks of 2225: the states of redstone wire, fire and
+// chorus plants hash without their connections, and are read back as those
+// connected to no side; the three blocks 2193 lacks hash as their
+// fallbacks, read back as those; every other state hashes as the game's;
+// the items take 2193's runtime IDs; the entities and biomes are those of
+// 2193. As the default protocol's, their payloads of columns are kept in the
+// column's own cache, and 2225's in the cache of its key.
+func TestTablesOf2193(t *testing.T) {
 	br := world.DefaultBlockRegistry
 	old, now := tablesOf(versions.Default(), br), tablesOf(versions.Model(), br)
-	game, h := old.hashes(), now.hashes()
-	if game != hashesOf(br) || h == game || now.slot.Load() == nil || old.slot.Load() != nil {
-		t.Fatal("the tables of 2225 are the game's, or of no class of their own")
+	game, h := now.hashes(), old.hashes()
+	if game != hashesOf(br) || h == game || old.slot.Load() != nil || now.slot.Load() == nil {
+		t.Fatal("the tables of 2193 are the game's, or 2225's keep the column's own cache")
 	}
 	changed := map[string]int{}
 	scratch := []byte(nil)
 	for i := range br.BlockCount() {
 		rid := uint32(i)
 		name, props, _ := br.RuntimeIDToState(rid)
-		// The upper half of an open door is sent closed, in every protocol,
-		// and is read back as the closed one.
-		wantRID, _ := game.hashToRuntimeID(game.hash[rid])
-		if back, ok := h.hashToRuntimeID(h.hash[rid]); !ok || back != wantRID {
-			t.Fatalf("%s %v: hash %d is runtime ID %d, %v, want %d", name, props, h.hash[rid], back, ok, wantRID)
+		want, wantName := map[string]any{}, name
+		for k, v := range props {
+			if !strings.HasPrefix(k, "minecraft:connection_") && !strings.HasPrefix(k, "redstone_") || k == "redstone_signal" {
+				want[k] = v
+			}
 		}
-		if h.hash[rid] == game.hash[rid] {
+		switch name {
+		case "minecraft:redstone_wire", "minecraft:fire", "minecraft:chorus_plant":
+		case "minecraft:disc_press":
+			wantName, want = "minecraft:stonecutter_block", map[string]any{"minecraft:cardinal_direction": "north"}
+		case "minecraft:ice_crystal":
+			wantName, want = "minecraft:blue_ice", map[string]any{}
+		case "minecraft:icicle":
+			wantName, want = "minecraft:pointed_dripstone", map[string]any{"dripstone_thickness": "tip", "hanging": uint8(1)}
+		default:
+			// The upper half of an open door is sent closed, in every
+			// protocol, and is read back as the closed one.
+			wantRID, _ := game.hashToRuntimeID(game.hash[rid])
+			if h.hash[rid] != game.hash[rid] {
+				t.Fatalf("%s %v hashes otherwise in 2193", name, props)
+			}
+			if back, ok := h.hashToRuntimeID(h.hash[rid]); !ok || back != wantRID {
+				t.Fatalf("%s %v: hash %d is runtime ID %d, %v, want %d", name, props, h.hash[rid], back, ok, wantRID)
+			}
 			continue
 		}
 		changed[name]++
-		want := map[string]any{}
-		for k, v := range props {
-			want[k] = v
-		}
-		switch name {
-		case "minecraft:redstone_wire":
-			for _, side := range []string{"north", "east", "south", "west"} {
-				want["redstone_"+side] = "none"
-			}
-		default:
-			sides := []string{"north", "east", "south", "west", "up"}
-			if name == "minecraft:chorus_plant" {
-				sides = append(sides, "down")
-			}
-			for _, side := range sides {
-				want["minecraft:connection_"+side] = uint8(0)
-			}
-		}
 		var hash uint32
-		if hash, scratch = networkBlockHash(name, want, scratch); hash != h.hash[rid] {
-			t.Errorf("%s %v hashes as no state of 2225", name, props)
+		if hash, scratch = networkBlockHash(wantName, want, scratch); hash != h.hash[rid] {
+			t.Errorf("%s %v hashes as no state of 2193", name, props)
+		}
+		// A hash of 2193 is read back as the state of the game it names:
+		// connected to no side, or the fallback itself.
+		backRID, _ := h.hashToRuntimeID(h.hash[rid])
+		backName, backProps, _ := br.RuntimeIDToState(backRID)
+		if backName != wantName && backName != name {
+			t.Errorf("%s %v is read back as %s %v", name, props, backName, backProps)
+		}
+		for k, v := range backProps {
+			if strings.HasPrefix(k, "minecraft:connection_") && v != uint8(0) || strings.HasPrefix(k, "redstone_") && k != "redstone_signal" && v != "none" {
+				t.Errorf("%s %v is read back connected, as %v", name, props, backProps)
+			}
 		}
 	}
-	if len(changed) != 3 || changed["minecraft:redstone_wire"] != 16 || changed["minecraft:fire"] != 16 || changed["minecraft:chorus_plant"] != 1 {
-		t.Errorf("2225 names otherwise %v", changed)
+	if fmt.Sprint(changed) != "map[minecraft:chorus_plant:64 minecraft:disc_press:4 minecraft:fire:512 minecraft:ice_crystal:6 minecraft:icicle:20 minecraft:redstone_wire:1296]" {
+		t.Errorf("2193 names otherwise %v", changed)
 	}
 	for _, it := range []world.Item{item.Apple{}, item.Bundle{}, block.Stone{}} {
 		a, _, okA := old.itemRuntimeID(it)
@@ -87,12 +103,13 @@ func TestTablesOf2225(t *testing.T) {
 	}
 }
 
-// TestChunksOf2225 encodes a sub-chunk of redstone wire for the clients of
-// each protocol: each hashes it as its protocol names it, and keeps the
-// payload in the cache of its class.
-func TestChunksOf2225(t *testing.T) {
+// TestChunksOf2193 encodes a sub-chunk of redstone wire connected to the
+// north for the clients of each protocol: each hashes it as its protocol
+// names it, and keeps the payload in its cache, the default protocol's the
+// column's own.
+func TestChunksOf2193(t *testing.T) {
 	br := world.DefaultBlockRegistry
-	wire, _ := chunk.StateToRuntimeID("minecraft:redstone_wire", map[string]any{"redstone_signal": int32(3)})
+	wire := br.BlockRuntimeID(block.RedstoneWire{Power: 3, North: block.SideWireConnection()})
 	c := chunk.New(br, cube.Range{0, 255})
 	c.SetBlock(0, 0, 0, 0, wire)
 	col := &world.Column{Chunk: c}
@@ -105,9 +122,9 @@ func TestChunksOf2225(t *testing.T) {
 		t.Fatal("the column's own cache does not hold 2193's sub-chunk")
 	}
 	if cached, _ := col.Cache(now.slot.Load()).CachedNetworkSubChunkPayload(0); string(cached) != string(b) {
-		t.Fatal("the cache of 2225's class does not hold its sub-chunk")
+		t.Fatal("the cache of 2225's key does not hold its sub-chunk")
 	}
-	if again := now.networkSubChunkPayload(col, 0); &again[0] != &b[0] {
-		t.Fatal("2225 encoded its sub-chunk again")
+	if again := old.networkSubChunkPayload(col, 0); &again[0] != &a[0] {
+		t.Fatal("2193 encoded its sub-chunk again")
 	}
 }

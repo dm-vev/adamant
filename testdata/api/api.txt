@@ -764,6 +764,7 @@ server/block	func	NewTrialSpawner	func() server/block.TrialSpawner
 server/block	func	NewVault	func() server/block.Vault
 server/block	func	NextHash	func() uint64
 server/block	func	NoWallConnection	func() server/block.WallConnectionType
+server/block	func	NoWireConnection	func() server/block.WireConnection
 server/block	func	NormalBlackstone	func() server/block.BlackstoneType
 server/block	func	NormalCopper	func() server/block.CopperType
 server/block	func	NormalDeepslate	func() server/block.DeepslateType
@@ -821,6 +822,7 @@ server/block	func	ShelfMaterials	func() []server/block.ShelfMaterial
 server/block	func	ShortWallConnection	func() server/block.WallConnectionType
 server/block	func	ShulkerBoxTypes	func() []server/block.ShulkerBoxType
 server/block	func	SideBellAttachment	func() server/block.BellAttachment
+server/block	func	SideWireConnection	func() server/block.WireConnection
 server/block	func	SittingPose	func() server/block.CopperGolemPose
 server/block	func	SkeletonSkull	func() server/block.SkullType
 server/block	func	SkullBannerPattern	func() server/block.BannerPatternType
@@ -870,6 +872,7 @@ server/block	func	TriggerExplosionBlocks	func(tx *server/world.Tx, center github
 server/block	func	TubeCoral	func() server/block.CoralType
 server/block	func	UndamagedAnvil	func() server/block.AnvilType
 server/block	func	UnoxidisedOxidation	func() server/block.OxidationType
+server/block	func	UpWireConnection	func() server/block.WireConnection
 server/block	func	Verdant	func() server/block.FroglightType
 server/block	func	VeryDamagedAnvil	func() server/block.AnvilType
 server/block	func	WallAttachment	func(facing server/block/cube.Direction) server/block.Attachment
@@ -881,6 +884,7 @@ server/block	func	WarpedWood	func() server/block.WoodType
 server/block	func	WeatheredOxidation	func() server/block.OxidationType
 server/block	func	WhiteShulkerBox	func() server/block.ShulkerBoxType
 server/block	func	WhiteTulip	func() server/block.FlowerType
+server/block	func	WireConnections	func() []server/block.WireConnection
 server/block	func	WitherRose	func() server/block.FlowerType
 server/block	func	WitherSkeletonSkull	func() server/block.SkullType
 server/block	func	WoodButton	func() server/block.ButtonType
@@ -1664,7 +1668,7 @@ server/block	method	ChorusPlant.HasLiquidDrops	func() bool
 server/block	method	ChorusPlant.Hash	func() (uint64, uint64)
 server/block	method	ChorusPlant.LightDiffusionLevel	func() uint8
 server/block	method	ChorusPlant.Model	func() server/world.BlockModel
-server/block	method	ChorusPlant.NeighbourUpdateTick	func(pos server/block/cube.Pos, _ server/block/cube.Pos, tx *server/world.Tx)
+server/block	method	ChorusPlant.NeighbourUpdateTick	func(pos server/block/cube.Pos, changedNeighbour server/block/cube.Pos, tx *server/world.Tx)
 server/block	method	ChorusPlant.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
 server/block	method	Cinnabar.BreakInfo	func() server/block.BreakInfo
 server/block	method	Cinnabar.EncodeBlock	func() (string, map[string]any)
@@ -4085,7 +4089,7 @@ server/block	method	RedstoneWire.Hash	func() (uint64, uint64)
 server/block	method	RedstoneWire.LightDiffusionLevel	func() uint8
 server/block	method	RedstoneWire.MaterialColour	func() server/text.Colour
 server/block	method	RedstoneWire.Model	func() server/world.BlockModel
-server/block	method	RedstoneWire.NeighbourUpdateTick	func(pos server/block/cube.Pos, _ server/block/cube.Pos, tx *server/world.Tx)
+server/block	method	RedstoneWire.NeighbourUpdateTick	func(pos server/block/cube.Pos, changedNeighbour server/block/cube.Pos, tx *server/world.Tx)
 server/block	method	RedstoneWire.RedstoneCircuit	func() server/world.RedstoneCircuitState
 server/block	method	RedstoneWire.RedstoneCircuitOutput	func(output server/world.Block) server/world.Block
 server/block	method	RedstoneWire.RedstonePower	func(pos server/block/cube.Pos, tx *server/world.Tx, face server/block/cube.Face) int
@@ -4093,6 +4097,7 @@ server/block	method	RedstoneWire.RedstonePowerUpdate	func(_ server/block/cube.Po
 server/block	method	RedstoneWire.RedstoneRelayerNeighbours	func(pos server/block/cube.Pos, tx *server/world.Tx) []server/block/cube.Pos
 server/block	method	RedstoneWire.RedstoneSignalLoss	func(server/block/cube.Pos, *server/world.Tx) int
 server/block	method	RedstoneWire.RedstoneWeaklyPowersBlocks	func() bool
+server/block	method	RedstoneWire.ShapesIndirectNeighbours	func() bool
 server/block	method	RedstoneWire.SideClosed	func(server/block/cube.Pos, server/block/cube.Pos, *server/world.Tx) bool
 server/block	method	RedstoneWire.TrimMaterial	func() string
 server/block	method	RedstoneWire.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
@@ -5108,6 +5113,8 @@ server/block	method	Wildflowers.Model	func() server/world.BlockModel
 server/block	method	Wildflowers.NeighbourUpdateTick	func(pos server/block/cube.Pos, _ server/block/cube.Pos, tx *server/world.Tx)
 server/block	method	Wildflowers.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
 server/block	method	Wildflowers.WithFacing	func(facing server/block/cube.Direction) server/world.Block
+server/block	method	WireConnection.String	func() string
+server/block	method	WireConnection.Uint8	func() uint8
 server/block	method	Wood.BreakInfo	func() server/block.BreakInfo
 server/block	method	Wood.EncodeBlock	func() (name string, properties map[string]any)
 server/block	method	Wood.EncodeItem	func() (name string, meta int16)
@@ -5276,7 +5283,7 @@ server/block	type	Chest	struct{server/block.chest; server/block.transparent; ser
 server/block	type	ChiseledBookshelf	struct{server/block.solid; server/block.bass; Facing server/block/cube.Direction; Items [6]server/item.Stack; LastInteractedSlot int; StoredMask uint8}
 server/block	type	ChiseledQuartz	struct{server/block.solid; server/block.bassDrum; Axis server/block/cube.Axis}
 server/block	type	ChorusFlower	struct{server/block.empty; server/block.transparent; Age int}
-server/block	type	ChorusPlant	struct{server/block.transparent}
+server/block	type	ChorusPlant	struct{server/block.transparent; North bool; East bool; South bool; West bool; Up bool; Down bool}
 server/block	type	Cinnabar	struct{server/block.solid; server/block.bassDrum; Chiseled bool}
 server/block	type	CinnabarBricks	struct{server/block.solid; server/block.bassDrum}
 server/block	type	Clay	struct{server/block.solid}
@@ -5378,7 +5385,7 @@ server/block	type	ExplosionHitHandler	interface{OnExplosionHit(src server/world.
 server/block	type	Eyeblossom	struct{server/block.empty; server/block.transparent; Open bool}
 server/block	type	Farmland	struct{server/block.tilledGrass; Hydration int}
 server/block	type	Fern	struct{server/block.replaceable; server/block.transparent; server/block.empty}
-server/block	type	Fire	struct{server/block.replaceable; server/block.transparent; server/block.empty; Type server/block.FireType; Age int}
+server/block	type	Fire	struct{server/block.replaceable; server/block.transparent; server/block.empty; Type server/block.FireType; Age int; North bool; East bool; South bool; West bool; Up bool}
 server/block	type	FireDamageSource	struct{}
 server/block	type	FireType	struct{server/block.fire}
 server/block	type	FireflyBush	struct{server/block.transparent; server/block.replaceable; server/block.empty}
@@ -5562,7 +5569,7 @@ server/block	type	RedstoneLamp	struct{server/block.solid; Lit bool}
 server/block	type	RedstoneOre	struct{server/block.solid; server/block.bassDrum; Type server/block.OreType; Lit bool}
 server/block	type	RedstoneRepeater	struct{server/block.carpet; server/block.transparent; Facing server/block/cube.Direction; Delay int; Powered bool}
 server/block	type	RedstoneTorch	struct{server/block.transparent; server/block.empty; Facing server/block/cube.Face; Lit bool}
-server/block	type	RedstoneWire	struct{server/block.empty; server/block.transparent; Power int}
+server/block	type	RedstoneWire	struct{server/block.empty; server/block.transparent; Power int; North server/block.WireConnection; East server/block.WireConnection; South server/block.WireConnection; West server/block.WireConnection}
 server/block	type	RedstoneWireStepDowner	interface{CanRedstoneWireStepDown(pos server/block/cube.Pos, from server/block/cube.Pos, tx *server/world.Tx) bool}
 server/block	type	ReinforcedDeepslate	struct{server/block.solid; server/block.bassDrum}
 server/block	type	Replaceable	interface{ReplaceableBy(b server/world.Block) bool}
@@ -5670,6 +5677,7 @@ server/block	type	Web	struct{server/block.empty; server/block.transparent}
 server/block	type	WeepingVines	struct{server/block.empty; server/block.transparent; Age int}
 server/block	type	WheatSeeds	struct{server/block.crop}
 server/block	type	Wildflowers	struct{server/block.empty; server/block.transparent; AdditionalCount int; Facing server/block/cube.Direction}
+server/block	type	WireConnection	struct{server/block.wireConnection}
 server/block	type	Wood	struct{server/block.solid; server/block.bass; Wood server/block.WoodType; Stripped bool; Axis server/block/cube.Axis}
 server/block	type	WoodDoor	struct{server/block.transparent; server/block.bass; server/block.sourceWaterDisplacer; Wood server/block.WoodType; Facing server/block/cube.Direction; Open bool; Top bool; Right bool}
 server/block	type	WoodFence	struct{server/block.transparent; server/block.bass; server/block.sourceWaterDisplacer; Wood server/block.WoodType; NorthConnection bool; EastConnection bool; SouthConnection bool; WestConnection bool}
@@ -19463,6 +19471,7 @@ server/player	method	Context.SetFeatureState	func(pos server/block/cube.Pos, sta
 server/player	method	Context.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/player	method	Context.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
 server/player	method	Context.SetRaidLeader	func(r *server/world.Raid, wave int, e server/world.Entity)
+server/player	method	Context.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/player	method	Context.SkyDarken	func() int
 server/player	method	Context.SkyLight	func(pos server/block/cube.Pos) uint8
 server/player	method	Context.Sleepers	func() iter.Seq[server/world.Sleeper]
@@ -20574,6 +20583,7 @@ server/world	func	ResolveState	func(registry server/world/chunk.BlockRegistry, s
 server/world	func	ResolveStateID	func(registry server/world/chunk.BlockRegistry, id uint32) server/world.NativeState
 server/world	func	SetBuiltinStructureTemplates	func(f func(w *server/world.World, name string) (*server/world.StructureTemplate, bool, error))
 server/world	func	SetNativeState	func(c *server/world/chunk.Chunk, x uint8, y int16, z uint8, state server/world.NativeState)
+server/world	func	ShapeFromNeighbours	func(src server/world.BlockSource, pos server/block/cube.Pos, b server/world.Block) (server/world.Block, bool)
 server/world	func	SnapshotExplosionSource	func(src server/world.ExplosionSource) server/world.ExplosionSource
 server/world	func	TransformDirection	func(direction string, mirror server/world.StructureMirror, rotation server/world.StructureRotation) string
 server/world	func	TransformState	func(state server/world.BlockState, mirror server/world.StructureMirror, rotation server/world.StructureRotation) server/world.BlockState
@@ -20798,6 +20808,7 @@ server/world	method	Context.SetFeatureState	func(pos server/block/cube.Pos, stat
 server/world	method	Context.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/world	method	Context.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
 server/world	method	Context.SetRaidLeader	func(r *server/world.Raid, wave int, e server/world.Entity)
+server/world	method	Context.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/world	method	Context.SkyDarken	func() int
 server/world	method	Context.SkyLight	func(pos server/block/cube.Pos) uint8
 server/world	method	Context.Sleepers	func() iter.Seq[server/world.Sleeper]
@@ -21122,6 +21133,7 @@ server/world	method	Tx.SetFeatureState	func(pos server/block/cube.Pos, state ser
 server/world	method	Tx.SetJavaBlockState	func(pos server/block/cube.Pos, state uint32) bool
 server/world	method	Tx.SetLiquid	func(pos server/block/cube.Pos, b server/world.Liquid)
 server/world	method	Tx.SetRaidLeader	func(r *server/world.Raid, wave int, e server/world.Entity)
+server/world	method	Tx.ShapeUpdate	func(pos server/block/cube.Pos, changed server/block/cube.Pos) (server/world.Block, bool)
 server/world	method	Tx.SkyDarken	func() int
 server/world	method	Tx.SkyLight	func(pos server/block/cube.Pos) uint8
 server/world	method	Tx.Sleepers	func() iter.Seq[server/world.Sleeper]
@@ -21369,6 +21381,7 @@ server/world	type	Generator	interface{DefaultSpawn(dim server/world.Dimension) s
 server/world	type	GeneratorProfile	int
 server/world	type	Handler	interface{HandleBlockBurn(ctx *server/world.Context, pos server/block/cube.Pos); HandleClose(tx *server/world.Tx); HandleCropTrample(ctx *server/world.Context, pos server/block/cube.Pos); HandleEntityDespawn(tx *server/world.Tx, e server/world.Entity); HandleEntitySpawn(tx *server/world.Tx, e server/world.Entity); HandleExplosion(ctx *server/world.Context, src server/world.ExplosionSource, entities *[]server/world.Entity, blocks *[]server/block/cube.Pos, itemDropChance *float64, spawnFire *bool); HandleFireSpread(ctx *server/world.Context, from server/block/cube.Pos, to server/block/cube.Pos); HandleLeavesDecay(ctx *server/world.Context, pos server/block/cube.Pos); HandleLiquidDecay(ctx *server/world.Context, pos server/block/cube.Pos, before server/world.Liquid, after server/world.Liquid); HandleLiquidFlow(ctx *server/world.Context, from server/block/cube.Pos, into server/block/cube.Pos, liquid server/world.Liquid, replaced server/world.Block); HandleLiquidHarden(ctx *server/world.Context, hardenedPos server/block/cube.Pos, liquidHardened server/world.Block, otherLiquid server/world.Block, newBlock server/world.Block); HandlePortalActivate(ctx *server/world.Context, portalType server/world.Dimension, positions []server/block/cube.Pos); HandlePortalCreate(ctx *server/world.Context, portalType server/world.Dimension, positions []server/block/cube.Pos); HandleRedstoneUpdate(ctx *server/world.Context, update server/world.RedstoneUpdate); HandleSound(ctx *server/world.Context, s server/world.Sound, pos github.com/go-gl/mathgl/mgl64.Vec3)}
 server/world	type	HealingSource	interface{HealingSource()}
+server/world	type	IndirectShaper	interface{ShapesIndirectNeighbours() bool}
 server/world	type	Item	interface{EncodeItem() (name string, meta int16)}
 server/world	type	JavaBiomeAtProvider	interface{JavaBiomeAt(x int32, y int32, z int32) string}
 server/world	type	Liquid	interface{BlastResistance() float64; Harden(pos server/block/cube.Pos, tx *server/world.Tx, flownIntoBy *server/block/cube.Pos) bool; LiquidDepth() int; LiquidFalling() bool; LiquidRemoveBlock(pos server/block/cube.Pos, tx *server/world.Tx, removed server/world.Block); LiquidType() string; SpreadDecay() int; WithDepth(depth int, falling bool) server/world.Liquid; server/world.Block}

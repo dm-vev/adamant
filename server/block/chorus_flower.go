@@ -115,7 +115,7 @@ func (c ChorusFlower) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	}
 
 	if flag && areAllHorizontalNeighborsAir(tx, up, cube.FaceDown) {
-		tx.SetBlock(pos, ChorusPlant{}, nil)
+		tx.SetBlock(pos, chorusPlantAt(tx, pos), nil)
 		tx.SetBlock(up, ChorusFlower{Age: c.Age}, nil)
 		return
 	}
@@ -146,7 +146,7 @@ func (c ChorusFlower) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		}
 
 		if branched {
-			tx.SetBlock(pos, ChorusPlant{}, nil)
+			tx.SetBlock(pos, chorusPlantAt(tx, pos), nil)
 		} else {
 			tx.SetBlock(pos, ChorusFlower{Age: 5}, nil)
 		}

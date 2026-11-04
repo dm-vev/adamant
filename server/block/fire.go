@@ -24,6 +24,26 @@ type Fire struct {
 	// Age affects how fire extinguishes. Newly placed fire starts at 0 and the value has a 1/3 chance of incrementing
 	// each block tick.
 	Age int
+	// North, East, South, West and Up are the sides of the blocks around the
+	// fire that it burns on, as Java's FireBlock places it: where the block
+	// below neither burns nor has a full top, those of the blocks there that
+	// burn. Soul fire burns on none.
+	North, East, South, West, Up bool
+}
+
+// shaped returns the fire placed at pos, as BaseFireBlock.getState shapes
+// it: fire burns on the sides of the blocks around it that burn when it has
+// no floor, and soul fire is left as it is.
+func (f Fire) shaped(src world.BlockSource, pos cube.Pos) Fire {
+	if f.Type != NormalFire() {
+		return f
+	}
+	if shaped, ok := world.ShapeFromNeighbours(src, pos, f); ok {
+		if g, ok := shaped.(Fire); ok && g.Type == NormalFire() {
+			return g
+		}
+	}
+	return f
 }
 
 // flammableBlock returns true if a block is flammable.
@@ -190,7 +210,7 @@ func (f Fire) spread(from, to cube.Pos, tx *world.Tx, r *rand.Rand) {
 	if tx.World().Handler().HandleFireSpread(ctx, from, to); ctx.Cancelled() {
 		return
 	}
-	spread := Fire{Type: f.Type, Age: min(15, f.Age+r.IntN(5)/4)}
+	spread := Fire{Type: f.Type, Age: min(15, f.Age+r.IntN(5)/4)}.shaped(tx, to)
 	tx.SetBlock(to, spread, nil)
 	tx.ScheduleBlockUpdate(to, spread, time.Duration(30+r.IntN(10))*time.Second/20)
 	portal.TryActivateNetherPortal(tx, to)
@@ -232,17 +252,28 @@ func (f Fire) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) 
 	switch below.(type) {
 	case SoulSand, SoulSoil:
 		if f.Type != SoulFire() {
-			f.Type = SoulFire()
-			tx.SetBlock(pos, f, nil)
+			tx.SetBlock(pos, Fire{Type: SoulFire(), Age: f.Age}, nil)
 		}
+		return
 	case Water:
 		if changedNeighbour == pos {
 			tx.SetBlock(pos, nil, nil)
+			return
 		}
 	default:
 		if f.Type == SoulFire() {
 			tx.SetBlock(pos, nil, nil)
 			return
+		}
+	}
+	if f.Type != NormalFire() {
+		return
+	}
+	// FireBlock.updateShape: the sides fire burns on follow the blocks
+	// around it.
+	if shaped, ok := tx.ShapeUpdate(pos, changedNeighbour); ok {
+		if g, ok := shaped.(Fire); ok && g.Type == NormalFire() && g != f {
+			tx.SetBlock(pos, g, nil)
 		}
 	}
 }
@@ -261,7 +292,14 @@ func (f Fire) LightEmissionLevel() uint8 {
 func (f Fire) EncodeBlock() (name string, properties map[string]any) {
 	switch f.Type {
 	case NormalFire():
-		return "minecraft:fire", map[string]any{"age": int32(f.Age)}
+		return "minecraft:fire", map[string]any{
+			"age":                        int32(f.Age),
+			"minecraft:connection_north": boolByte(f.North),
+			"minecraft:connection_east":  boolByte(f.East),
+			"minecraft:connection_south": boolByte(f.South),
+			"minecraft:connection_west":  boolByte(f.West),
+			"minecraft:connection_up":    boolByte(f.Up),
+		}
 	case SoulFire():
 		return "minecraft:soul_fire", map[string]any{"age": int32(f.Age)}
 	}
@@ -278,7 +316,7 @@ func (f Fire) Start(tx *world.Tx, pos cube.Pos) {
 	if air || shortGrass || fern {
 		below := tx.Block(pos.Side(cube.FaceDown))
 		if below.Model().FaceSolid(pos, cube.FaceUp, tx) || neighboursFlammable(pos, tx) {
-			f := Fire{}
+			f := Fire{}.shaped(tx, pos)
 			tx.SetBlock(pos, f, nil)
 			tx.ScheduleBlockUpdate(pos, f, time.Duration(30+rand.IntN(10))*time.Second/20)
 			portal.TryActivateNetherPortal(tx, pos)
@@ -307,6 +345,7 @@ func placeItemFire(tx *world.Tx, pos cube.Pos) bool {
 			return false
 		}
 	}
+	f = f.shaped(tx, pos)
 	tx.SetBlock(pos, f, nil)
 	tx.ScheduleBlockUpdate(pos, f, time.Duration(30+rand.IntN(10))*time.Second/20)
 	portal.TryActivateNetherPortal(tx, pos)
@@ -324,7 +363,10 @@ func (Fire) Place(pos cube.Pos, w *world.World) bool {
 // allFire ...
 func allFire() (b []world.Block) {
 	for i := 0; i < 16; i++ {
-		b = append(b, Fire{Age: i, Type: NormalFire()})
+		for sides := range 32 {
+			b = append(b, Fire{Age: i, Type: NormalFire(),
+				North: sides&1 != 0, East: sides&2 != 0, South: sides&4 != 0, West: sides&8 != 0, Up: sides&16 != 0})
+		}
 		b = append(b, Fire{Age: i, Type: SoulFire()})
 	}
 	return

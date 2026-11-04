@@ -9,8 +9,10 @@ import (
 )
 
 // GameBlocks is the protocol whose block states the game holds: those of
-// server/world's block_states.nbt, of 1.26.50.
-const GameBlocks = 2193
+// server/world's block_states.nbt, of 1.26.60. Its clients name every
+// block as the game does; those of 2193 name the blocks 1.26.60 changed
+// through the step of 2225 back.
+const GameBlocks = 2225
 
 // BlockStep turns the block states of the protocol before a protocol into
 // its own, as a schema of pmmp's BedrockBlockUpgradeSchema does: the
@@ -180,11 +182,52 @@ func MapState(p int32, name string, props map[string]any) (string, map[string]an
 	return name, props
 }
 
+// GameState returns a state of protocol p as the game names it: the
+// inverse of MapState, through the steps of the protocols after p up to
+// GameBlocks, or back through those down to it. Where several states of the
+// game are one state of p, as wire of every connection is wire of 2193, it
+// is the one of them whose properties p lacks take the values of the
+// steps: that of wire connected to no side. A state of p that stands in for
+// a block p lacks is that state of the game.
+func GameState(p int32, name string, props map[string]any) (string, map[string]any) {
+	i, j := slices.Index(protocols, p), slices.Index(protocols, GameBlocks)
+	for ; i < j && i >= 0; i++ {
+		if s, ok := BlockStepOf(protocols[i+1]); ok {
+			name, props = s.Up(name, props)
+		}
+	}
+	for ; i > j; i-- {
+		if s, ok := BlockStepOf(protocols[i]); ok {
+			name, props = s.Down(name, props)
+		}
+	}
+	return name, props
+}
+
+// KnowsBlock reports whether the clients of protocol p know the block of
+// the game of a name: false for a block the steps between GameBlocks and p
+// replace by a fallback, as 2193 does the disc press of 1.26.60.
+func KnowsBlock(p int32, name string) bool {
+	i, j := slices.Index(protocols, GameBlocks), slices.Index(protocols, p)
+	for ; i > j && j >= 0; i-- {
+		if s, ok := BlockStepOf(protocols[i]); ok {
+			if _, lacks := s.Fallbacks[name]; lacks {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // NamesBlocksAsTheGame reports whether the clients of protocol p name every
 // state of the game as the game does: whether no step lies between
-// GameBlocks and p.
+// GameBlocks and p. A protocol without data, which MapState leaves the
+// states of as they are, does.
 func NamesBlocksAsTheGame(p int32) bool {
 	i, j := slices.Index(protocols, GameBlocks), slices.Index(protocols, p)
+	if j < 0 {
+		return true
+	}
 	for lo, hi := min(i, j), max(i, j); lo < hi; lo++ {
 		if _, ok := BlockStepOf(protocols[lo+1]); ok {
 			return false

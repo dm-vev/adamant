@@ -22,7 +22,9 @@ var otherProtocol = &versions.Protocol{Codec: codec.Codec{Number: 2300, Version:
 
 // TestTablesArePerProtocolAndRegistry checks the tables of a protocol and a
 // registry are built once and those of the default protocol, 2193, are its
-// own, today the game's own hashes and item IDs.
+// own: its item IDs, and block hashes of its own, as the game holds the
+// blocks of 2225. The model and a protocol without data name the blocks as
+// the game does.
 func TestTablesArePerProtocolAndRegistry(t *testing.T) {
 	br := world.DefaultBlockRegistry
 	model := tablesOf(nil, br)
@@ -33,8 +35,11 @@ func TestTablesArePerProtocolAndRegistry(t *testing.T) {
 	if other == model || other != tablesOf(otherProtocol, br) {
 		t.Fatal("the tables of another protocol are not its own, built once")
 	}
-	if model.hashes() != hashesOf(br) || other.hashes() != hashesOf(br) {
+	if tablesOf(versions.Model(), br).hashes() != hashesOf(br) || other.hashes() != hashesOf(br) {
 		t.Fatal("a protocol does not name the blocks as the game does")
+	}
+	if model.hashes() == hashesOf(br) {
+		t.Fatal("2193 names the blocks as the game does")
 	}
 	if a, b := model.recipeData(), other.recipeData(); a == b || a.packet == b.packet {
 		t.Fatal("two protocols share the recipes encoded for one")
@@ -100,10 +105,10 @@ func TestBlockUpdatesOfAnotherTable(t *testing.T) {
 	}
 }
 
-// TestColumnCachesKeepEachClass checks the payloads of tables that name
-// blocks otherwise than the game are kept in the cache of a column for the
-// key of their class, and those of the game's tables in the column's own:
-// each encodes a sub-chunk once, neither takes the other's.
+// TestColumnCachesKeepEachClass checks the payloads of the tables of a
+// protocol other than the default are kept in the cache of a column for the
+// key of the protocol, and those of the default protocol's tables in the
+// column's own: each encodes a sub-chunk once, neither takes the other's.
 func TestColumnCachesKeepEachClass(t *testing.T) {
 	stone, _ := chunk.StateToRuntimeID("minecraft:stone", nil)
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})

@@ -2546,6 +2546,7 @@ server/block.RedstoneWire	server/block.LiquidRemovable	value
 server/block.RedstoneWire	server/item.ArmourTrimMaterial	value
 server/block.RedstoneWire	server/item.UsableOnBlock	value
 server/block.RedstoneWire	server/world.Block	value
+server/block.RedstoneWire	server/world.IndirectShaper	value
 server/block.RedstoneWire	server/world.Item	value
 server/block.RedstoneWire	server/world.NeighbourUpdateTicker	value
 server/block.RedstoneWire	server/world.RedstoneCircuitComponent	value

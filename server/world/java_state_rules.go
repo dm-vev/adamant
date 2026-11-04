@@ -794,6 +794,7 @@ var (
 
 // Enums shared by both directions.
 var (
+	wireSides         = javaEnum{{"none", "none"}, {"side", "side"}, {"up", "up"}}
 	shelfSideChains   = javaEnum{{"unconnected", int32(0)}, {"right", int32(1)}, {"center", int32(2)}, {"left", int32(3)}}
 	bambooLeaves      = javaEnum{{"none", "no_leaves"}, {"small", "small_leaves"}, {"large", "large_leaves"}}
 	dripleafTilts     = javaEnum{{"partial", "partial_tilt"}, {"full", "full_tilt"}, {"none", "none"}, {"unstable", "unstable"}}
@@ -866,8 +867,10 @@ var propertyRules = []propertyRule{
 	{java: blocksWhere(isSkull), prop: "powered", when: lacks("powered"), do: consume, restore: fixed(false)},
 	// Native open_bit carries openness, not Java's independent power latch.
 	{java: blocksWithSuffix("_door", "_trapdoor", "_fence_gate"), prop: "powered", do: checkBool("invalid powered property {v}")},
-	// Native chorus connections are derived from neighbouring blocks.
-	{java: blocks("chorus_plant"), props: []string{"up", "down", "north", "south", "east", "west"}, do: checkBool("invalid chorus connection {prop}={v}")},
+	// The six connections of a chorus plant are minecraft:connection_*,
+	// bytes, since 1.26.60.
+	{java: blocks("chorus_plant"), props: []string{"up", "down", "north", "south", "east", "west"}, nativePrefix: "minecraft:connection_", gate: gateBefore,
+		do: boolTo(false, "invalid chorus connection {prop}={v}"), back: toBool},
 	// NativeBlockForState carries pose in the block actor, not the palette.
 	{java: blocksWithSuffix("copper_golem_statue"), prop: "copper_golem_pose", do: copperGolemPose},
 	// The tree-growth latch is server-side; native propagule_stage carries age.
@@ -903,8 +906,10 @@ var propertyRules = []propertyRule{
 	{java: blocksWhere(isCampfire), prop: "lit", native: "extinguished", do: boolTo(true, "invalid campfire lit property {v}"), back: notBool},
 	// Java derives this state from the hay block below; Bedrock recalculates it.
 	{java: blocksWhere(isCampfire), prop: "signal_fire", do: consume, restore: fixed(false)},
-	// Fire geometry is neighbor-derived in Java and Bedrock.
-	{java: blocksWhere(isFire), props: []string{"north", "south", "east", "west", "up"}, do: consume},
+	// The five sides fire burns on are minecraft:connection_*, bytes, since
+	// 1.26.60. Soul fire has none.
+	{java: blocks("fire"), props: []string{"north", "south", "east", "west", "up"}, nativePrefix: "minecraft:connection_", gate: gateBefore,
+		do: boolTo(false, "invalid fire connection {prop}={v}"), back: toBool},
 	{java: blocks("vine"), props: horizontalSides, native: "vine_direction_bits", do: vineBits, back: vineBitsBack},
 	// Java's top attachment has no Bedrock vine_direction_bits equivalent.
 	{java: blocks("vine"), prop: "up", do: consume},
@@ -1040,13 +1045,11 @@ var propertyRules = []propertyRule{
 	}},
 	{java: blocks("pale_moss_carpet"), props: horizontalSides, nativePrefix: "pale_moss_carpet_side_", gate: gateBefore,
 		do: paleMossSide, back: paleMossSideBack},
-	// Wire shape is recalculated from adjacent blocks; Bedrock stores only signal power.
-	{java: blocksWhere(isRedstoneWire), props: horizontalSides, do: consume, restore: func(c ruleCtx) error {
-		for _, side := range horizontalSides {
-			c.out[side] = "none"
-		}
-		return nil
-	}},
+	// How wire connects to each side is redstone_<side> since 1.26.60, of
+	// Java's values.
+	{java: blocksWhere(isRedstoneWire), props: horizontalSides, nativePrefix: "redstone_", gate: gateBefore,
+		do:   toEnum(wireSides, "invalid redstone wire side {prop}={v}", "unsupported redstone wire side {prop}={q}"),
+		back: fromStrings(wireSides, "invalid native redstone wire side {key}={v}", "unsupported native redstone wire side {key}={q}")},
 	{java: blocksWhere(isConnectionBlock), props: horizontalSides, nativePrefix: "minecraft:connection_", gate: gateBefore,
 		do: boolTo(false, "invalid connection {prop}={v}"), back: toBool},
 	{java: blocksWhere(isWall), prop: "up", native: "wall_post_bit", gate: gateBefore, do: boolTo(false, "invalid wall post property {v}")},

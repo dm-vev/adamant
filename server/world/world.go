@@ -1096,7 +1096,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	}
 
 	if !opts.DisableBlockUpdates {
-		tx.doBlockUpdatesAround(pos)
+		tx.updateAroundSetBlock(pos, oldBlock, b)
 	}
 	if !opts.DisableRedstoneUpdates {
 		w.redstone.invalidateAroundBlockChange(pos, oldBlock, b, RedstoneUpdateCauseBlockUpdate, w.Range())

@@ -1,20 +1,26 @@
 package session
 
 import (
+	"maps"
 	"math"
+	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
 // benchmarkStates returns n blocks of distinct states the game implements,
-// spread over the runtime IDs of the default registry.
+// spread over the states the clients of the default protocol know, by their
+// hashes, so that the palette of the game does not change which they are.
 func benchmarkStates(n int) []world.Block {
 	br := world.DefaultBlockRegistry
+	known := blockTable(versions.Default(), br).rid
 	var implemented []world.Block
-	for _, b := range br.Blocks() {
+	for _, netHash := range slices.Sorted(maps.Keys(known)) {
+		b := br.BlockByRuntimeIDOrAir(known[netHash])
 		if _, hash := b.Hash(); hash != math.MaxUint64 {
 			implemented = append(implemented, b)
 		}

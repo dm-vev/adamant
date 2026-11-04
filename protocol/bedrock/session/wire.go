@@ -23,10 +23,11 @@ import (
 // The tables of a protocol and a registry are built once, by tablesOf, and
 // shared by their sessions.
 //
-// Every protocol the adapter speaks names the content of the game as the
-// game does, today: the tables of each are those of the game. The tables of
-// a protocol that names some of it otherwise map the game's content into
-// that protocol's here, and the rest of the session encodes through them.
+// The game holds the blocks of 2225, whose clients name the content of the
+// game as the game does: their tables are those of the game. The tables of
+// a protocol that names some of it otherwise, as 2193 names the blocks
+// 1.26.60 changed, map the game's content into that protocol's here, and
+// the rest of the session encodes through them.
 type wireTables struct {
 	proto *versions.Protocol
 	br    world.BlockRegistry
@@ -36,10 +37,9 @@ type wireTables struct {
 	chunkBR chunk.BlockRegistry
 	// blocks are the network hashes of the runtime IDs of br, built by
 	// hashes once br is finalized. slot is set, before blocks, to the key
-	// the caches of columns keep the payloads of the tables under: nil if
-	// they are the hashes of the game's own states, hashesOf(br), which a
-	// column keeps in its own cache, else that of the class of blocks of
-	// the protocol.
+	// the caches of columns keep the payloads of the tables under: nil for
+	// the default protocol, whose payloads a column keeps in its own cache,
+	// else that of the protocol.
 	blocks atomic.Pointer[blockHashes]
 	slot   atomic.Pointer[world.SlotKey]
 
@@ -98,20 +98,24 @@ func (w *wireTables) hashes() *blockHashes {
 		return h
 	}
 	h := blockTable(w.proto, w.br)
-	if h != hashesOf(w.br) {
+	// The tables of the default protocol keep their payloads in a column's
+	// own cache, those of every other protocol in the cache of its key, so
+	// that a server of the default config keeps one cache a column, as it
+	// did before it served more protocols.
+	if w.proto != versions.Default() {
 		w.slot.Store(slotOf(w.proto))
 	}
 	w.blocks.CompareAndSwap(nil, h)
 	return w.blocks.Load()
 }
 
-// slots holds the keys of the caches of columns of the protocols whose
-// tables name blocks otherwise than the game, by protocol.
+// slots holds the keys of the caches of columns of the protocols other
+// than the default, by protocol.
 var slots sync.Map
 
 // slotOf returns the key of the caches of columns of the tables of a
-// protocol that names blocks otherwise than the game: one for each
-// protocol, named "bedrock/blocks/" and its number.
+// protocol other than the default: one for each protocol, named
+// "bedrock/blocks/" and its number.
 func slotOf(p *versions.Protocol) *world.SlotKey {
 	if k, ok := slots.Load(p); ok {
 		return k.(*world.SlotKey)
@@ -148,33 +152,49 @@ var protocolTables sync.Map
 
 // buildProtocolHashes hashes every runtime ID of a finalized registry as
 // the clients of a protocol name its state: the hashes of the registry,
-// but for the states the protocol names otherwise, which the inverse maps
-// back to their runtime IDs in place of the game's names of them. A state
-// the protocol names otherwise in no state of the game, such as redstone
-// wire that connects to the side in 2225, has no runtime ID, as a hash no
-// client should send has none.
+// but for the states the protocol names otherwise, as 2193 names redstone
+// wire, fire and chorus plants without their connections and disc presses
+// as stonecutters. A hash the clients send is read back as the state of the
+// game the protocol's state is (bedrockdata.GameState): the wire of 2193 as
+// wire connected to no side, a stonecutter as a stonecutter. A state of the
+// game the protocol names otherwise has no runtime ID by its own hash, as a
+// hash no client should send has none.
 func buildProtocolHashes(p int32, br chunk.BlockRegistry) *blockHashes {
 	game := hashesOf(br)
 	h := &blockHashes{hash: slices.Clone(game.hash), rid: maps.Clone(game.rid)}
 	scratch := make([]byte, 0, 0xff)
+	var named map[uint32]uint32
 	for i := range br.BlockCount() {
 		rid := uint32(i)
 		name, properties, _ := br.RuntimeIDToState(rid)
 		mapped, props := bedrockdata.MapState(p, name, properties)
-		if mapped == name && maps.EqualFunc(props, properties, func(a, b any) bool { return a == b }) {
+		if mapped == name && maps.EqualFunc(props, properties, sameValue) {
 			continue
 		}
 		var netHash uint32
 		netHash, scratch = networkBlockHash(mapped, props, scratch)
+		if h.rid[game.hash[rid]] == rid {
+			delete(h.rid, game.hash[rid])
+		}
+		h.hash[rid] = netHash
+		back, backProps := bedrockdata.GameState(p, mapped, props)
+		if back != name || !maps.EqualFunc(backProps, properties, sameValue) {
+			continue
+		}
 		if other, ok := h.rid[netHash]; ok && other != rid {
 			panic(fmt.Sprintf("network block hash collision of protocol %d for runtime IDs %d and %d", p, rid, other))
 		}
-		delete(h.rid, game.hash[rid])
-		h.rid[netHash] = rid
-		h.hash[rid] = netHash
+		if named == nil {
+			named = make(map[uint32]uint32)
+		}
+		named[netHash] = rid
 	}
+	maps.Copy(h.rid, named)
 	return h
 }
+
+// sameValue reports whether two values of block properties are the same.
+func sameValue(a, b any) bool { return a == b }
 
 // blocksOf returns the network hashes the clients of the tables know the
 // blocks of a registry by, which may be another than that of the tables, as

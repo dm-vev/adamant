@@ -559,8 +559,8 @@ func (c ChorusFlower) Hash() (uint64, uint64) {
 	return hashChorusFlower, uint64(c.Age)
 }
 
-func (ChorusPlant) Hash() (uint64, uint64) {
-	return hashChorusPlant, 0
+func (c ChorusPlant) Hash() (uint64, uint64) {
+	return hashChorusPlant, uint64(boolByte(c.North)) | uint64(boolByte(c.East))<<1 | uint64(boolByte(c.South))<<2 | uint64(boolByte(c.West))<<3 | uint64(boolByte(c.Up))<<4 | uint64(boolByte(c.Down))<<5
 }
 
 func (c Cinnabar) Hash() (uint64, uint64) {
@@ -844,7 +844,7 @@ func (Fern) Hash() (uint64, uint64) {
 }
 
 func (f Fire) Hash() (uint64, uint64) {
-	return hashFire, uint64(f.Type.Uint8()) | uint64(f.Age)<<1
+	return hashFire, uint64(f.Type.Uint8()) | uint64(f.Age)<<1 | uint64(boolByte(f.North))<<9 | uint64(boolByte(f.East))<<10 | uint64(boolByte(f.South))<<11 | uint64(boolByte(f.West))<<12 | uint64(boolByte(f.Up))<<13
 }
 
 func (FireflyBush) Hash() (uint64, uint64) {
@@ -1376,7 +1376,7 @@ func (t RedstoneTorch) Hash() (uint64, uint64) {
 }
 
 func (r RedstoneWire) Hash() (uint64, uint64) {
-	return hashRedstoneWire, uint64(r.Power)
+	return hashRedstoneWire, uint64(r.Power) | uint64(r.North.Uint8())<<8 | uint64(r.East.Uint8())<<10 | uint64(r.South.Uint8())<<12 | uint64(r.West.Uint8())<<14
 }
 
 func (ReinforcedDeepslate) Hash() (uint64, uint64) {

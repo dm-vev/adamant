@@ -13,6 +13,22 @@ import (
 // ChorusPlant is a block found growing in the End. It drops chorus fruit when broken.
 type ChorusPlant struct {
 	transparent
+
+	// North, East, South, West, Up and Down are the sides the plant
+	// connects to: those of the chorus plants and flowers around it, and
+	// below it end stone.
+	North, East, South, West, Up, Down bool
+}
+
+// chorusPlantAt ports ChorusPlantBlock.getStateWithConnections: the plant
+// placed at pos, connected to the blocks around it.
+func chorusPlantAt(src world.BlockSource, pos cube.Pos) ChorusPlant {
+	if shaped, ok := world.ShapeFromNeighbours(src, pos, ChorusPlant{}); ok {
+		if c, ok := shaped.(ChorusPlant); ok {
+			return c
+		}
+	}
+	return ChorusPlant{}
 }
 
 // Model ...
@@ -30,10 +46,17 @@ func (ChorusPlant) BreakInfo() BreakInfo {
 	})
 }
 
-// NeighbourUpdateTick ...
-func (c ChorusPlant) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+// NeighbourUpdateTick breaks a plant that cannot survive, and connects the
+// rest to the block that changed, as ChorusPlantBlock.updateShape does.
+func (c ChorusPlant) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) {
 	if !c.canSurviveAt(pos, tx) {
 		breakBlock(c, pos, tx)
+		return
+	}
+	if shaped, ok := tx.ShapeUpdate(pos, changedNeighbour); ok {
+		if p, ok := shaped.(ChorusPlant); ok && p != c {
+			tx.SetBlock(pos, p, nil)
+		}
 	}
 }
 
@@ -53,7 +76,7 @@ func (c ChorusPlant) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *
 	if !used || !c.canSurviveAt(pos, tx) {
 		return false
 	}
-	place(tx, pos, c, user, ctx)
+	place(tx, pos, chorusPlantAt(tx, pos), user, ctx)
 	return placed(ctx)
 }
 
@@ -63,8 +86,24 @@ func (ChorusPlant) EncodeItem() (name string, meta int16) {
 }
 
 // EncodeBlock ...
-func (ChorusPlant) EncodeBlock() (name string, properties map[string]any) {
-	return "minecraft:chorus_plant", nil
+func (c ChorusPlant) EncodeBlock() (name string, properties map[string]any) {
+	return "minecraft:chorus_plant", map[string]any{
+		"minecraft:connection_north": boolByte(c.North),
+		"minecraft:connection_east":  boolByte(c.East),
+		"minecraft:connection_south": boolByte(c.South),
+		"minecraft:connection_west":  boolByte(c.West),
+		"minecraft:connection_up":    boolByte(c.Up),
+		"minecraft:connection_down":  boolByte(c.Down),
+	}
+}
+
+// allChorusPlants returns a chorus plant of every set of sides.
+func allChorusPlants() (b []world.Block) {
+	for sides := range 64 {
+		b = append(b, ChorusPlant{North: sides&1 != 0, East: sides&2 != 0, South: sides&4 != 0, West: sides&8 != 0,
+			Up: sides&16 != 0, Down: sides&32 != 0})
+	}
+	return
 }
 
 func (ChorusPlant) canSurviveAt(pos cube.Pos, tx *world.Tx) bool {

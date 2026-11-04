@@ -418,6 +418,12 @@ func pistonNativeBlock(byName map[string][]world.Block, expected nativeTripwireB
 		_, properties := candidate.EncodeBlock()
 		matches := true
 		for key, value := range properties {
+			if _, captured := expected.States[key]; !captured {
+				// The captures are of 1.26.51, whose states lack the
+				// connections of redstone wire 1.26.60 added: the first
+				// candidate, connected to no side, is taken.
+				continue
+			}
 			var normalized any = value
 			switch value := value.(type) {
 			case int32:

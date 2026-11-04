@@ -338,7 +338,7 @@ minecraft:chiseled_tuff 0 83dca9946eba2350e0b17a2fe101eb7f
 minecraft:chiseled_tuff_bricks 0 d76b0b0974850ac540aae4690be91169
 minecraft:chorus_flower 0 7a623b94c62c39eab632c339cdddf355
 minecraft:chorus_fruit 0 37fd8d6ed1fe15daaf74e2c6564c923d
-minecraft:chorus_plant 0 a8ea50f777ea412fae6ee96b282c4e32
+minecraft:chorus_plant 0 ee9c5a6623c52bfbcd5ed23c727a3d13
 minecraft:cinnabar 0 02a437fd68c024b9507a68ea63ca4e3c
 minecraft:cinnabar_brick_slab 0 9a11026d0ac5ef4ce1ffa2d8de1c55c1
 minecraft:cinnabar_brick_stairs 0 5ec500d3791926159c3f366a0df382a2
@@ -1578,7 +1578,7 @@ minecraft:red_tulip 0 d1ed80b605d947b69019882de8987621
 minecraft:red_wool 0 57ef0e67cb20f2b1a05c6cae8a67e60a
 minecraft:red_wool_slab 0 435dc4d929ff783947aa8492ed43648e
 minecraft:red_wool_stairs 0 73144e724414fdf91772e3b21c5a13d4
-minecraft:redstone 0 d81190264b2cd17f3d4ff5edbe596995
+minecraft:redstone 0 b674f2890075bf81b111feced54171be
 minecraft:redstone_block 0 739a5fc043569aa38272193090e95936
 minecraft:redstone_lamp 0 e0fadcb9b3508b85da715e38c1276410
 minecraft:redstone_ore 0 571df45a67301b521fc704046744dde1

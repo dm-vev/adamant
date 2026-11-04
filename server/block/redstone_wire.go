@@ -18,15 +18,42 @@ type RedstoneWire struct {
 
 	// Power is the current power level of the redstone wire. It ranges from 0 to 15.
 	Power int
+	// North, East, South and West are how the wire connects toward each
+	// side, as Java computes them from the blocks around it and keeps them
+	// as those change: placed alone, wire runs to all four sides, and wire
+	// that connects to one side alone runs on to the opposite one.
+	North, East, South, West WireConnection
 }
+
+// redstoneCross is wire that runs to all four sides, from which Java shapes
+// placed wire.
+var redstoneCross = RedstoneWire{North: SideWireConnection(), East: SideWireConnection(), South: SideWireConnection(), West: SideWireConnection()}
 
 func (r RedstoneWire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, r)
 	if !used || !redstoneWireSupported(tx, pos) {
 		return false
 	}
-	place(tx, pos, r, user, ctx)
+	place(tx, pos, redstoneWirePlaced(tx, pos), user, ctx)
 	return placed(ctx)
+}
+
+// redstoneWirePlaced ports RedstoneWireBlock.getStateForPlacement: the
+// wire placed at pos, shaped from wire that runs to all four sides by the
+// blocks around it.
+func redstoneWirePlaced(src world.BlockSource, pos cube.Pos) RedstoneWire {
+	if shaped, ok := world.ShapeFromNeighbours(src, pos, redstoneCross); ok {
+		if w, ok := shaped.(RedstoneWire); ok {
+			return w
+		}
+	}
+	return redstoneCross
+}
+
+// ShapesIndirectNeighbours reports that wire shapes the wire diagonally
+// above and below it, which it climbs to and descends to.
+func (RedstoneWire) ShapesIndirectNeighbours() bool {
+	return true
 }
 
 // RedstonePower returns the wire's current signal strength from connected faces.
@@ -82,9 +109,17 @@ func (r RedstoneWire) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (w
 	return r, true
 }
 
-func (r RedstoneWire) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+// NeighbourUpdateTick breaks wire that lost its support and shapes the rest
+// as RedstoneWireBlock.updateShape does toward the block that changed.
+func (r RedstoneWire) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) {
 	if !redstoneWireSupported(tx, pos) {
 		breakBlock(r, pos, tx)
+		return
+	}
+	if shaped, ok := tx.ShapeUpdate(pos, changedNeighbour); ok {
+		if w, ok := shaped.(RedstoneWire); ok && w != r {
+			tx.SetBlock(pos, w, &world.SetOpts{DisableRedstoneUpdates: true})
+		}
 	}
 }
 
@@ -101,7 +136,13 @@ func (RedstoneWire) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 }
 
 func (r RedstoneWire) EncodeBlock() (string, map[string]any) {
-	return "minecraft:redstone_wire", map[string]any{"redstone_signal": int32(world.ClampRedstonePower(r.Power))}
+	return "minecraft:redstone_wire", map[string]any{
+		"redstone_signal": int32(world.ClampRedstonePower(r.Power)),
+		"redstone_north":  r.North.String(),
+		"redstone_east":   r.East.String(),
+		"redstone_south":  r.South.String(),
+		"redstone_west":   r.West.String(),
+	}
 }
 
 func (RedstoneWire) EncodeItem() (name string, meta int16) {
@@ -120,7 +161,15 @@ func (RedstoneWire) MaterialColour() text.Colour {
 
 func allRedstoneWires() (all []world.Block) {
 	for i := range 16 {
-		all = append(all, RedstoneWire{Power: i})
+		for _, n := range WireConnections() {
+			for _, e := range WireConnections() {
+				for _, s := range WireConnections() {
+					for _, w := range WireConnections() {
+						all = append(all, RedstoneWire{Power: i, North: n, East: e, South: s, West: w})
+					}
+				}
+			}
+		}
 	}
 	return
 }

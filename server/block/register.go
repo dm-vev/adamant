@@ -57,7 +57,7 @@ func init() {
 	world.RegisterBlock(Cobblestone{})
 	world.RegisterBlock(CraftingTable{})
 	world.RegisterBlock(CartographyTable{})
-	world.RegisterBlock(ChorusPlant{})
+	registerAll(allChorusPlants())
 	world.RegisterBlock(DeadBush{})
 	world.RegisterBlock(Deny{})
 	world.RegisterBlock(DirtWithRoots{})

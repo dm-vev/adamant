@@ -22,6 +22,14 @@ type javaShapeContext struct {
 	tx         *Tx
 	generation GenerationShapeAccess
 	pos        cube.Pos
+	// pure shapes a block without side effects, for a native block that
+	// keeps its own: the ticks and writes of handlers are dropped, chunks
+	// are not loaded, and source, if set, is read in place of tx. A block
+	// that has no Java state, or is not loaded, reads as air and sets
+	// unknown, so that the shape read from it can be dropped.
+	pure    bool
+	source  BlockSource
+	unknown bool
 }
 
 // JavaBlockCanSurvive evaluates the source survival rule for the current block.
@@ -142,8 +150,12 @@ func javaDefault(name string) uint32 {
 // at returns the Java block state the shapes read at pos. Generation holds
 // Java states only. The world may hold any native state: at reads it as
 // game logic does (Tx.JavaBlockState), and a block of no Java block at all
-// by its collision shape (javaStandIn), never failing on world data.
+// by its collision shape (javaStandIn), never failing on world data. A pure
+// shape reads it as pureAt does.
 func (c *javaShapeContext) at(pos cube.Pos) uint32 {
+	if c.pure {
+		return c.pureAt(pos)
+	}
 	if c.generation != nil {
 		id, err := c.generation.BlockStateID(pos)
 		if err != nil {
@@ -298,6 +310,9 @@ func (c *javaShapeContext) fluidTick(pos cube.Pos, fluid javaFluidState, delay i
 }
 
 func (c *javaShapeContext) schedule(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32) {
+	if c.pure {
+		return
+	}
 	if c.generation != nil {
 		c.generation.ScheduleTick(pos, kind, name, delay)
 		return
@@ -369,6 +384,9 @@ func (c *javaShapeContext) rule(name string) bool {
 }
 
 func (c *javaShapeContext) set(pos cube.Pos, state uint32, flags int) {
+	if c.pure {
+		return
+	}
 	c.tx.setJavaBlockState(pos, state, flags)
 }
 

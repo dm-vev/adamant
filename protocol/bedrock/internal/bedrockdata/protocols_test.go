@@ -142,14 +142,17 @@ func gameStates(t *testing.T) []state {
 	return out
 }
 
-// TestGameBlocksAre2193 holds the block states of the game to those of
-// 1.26.50, the palette of protocol 2193, but for the chalkboard of
+// TestGameBlocksAre2225 holds the block states of the game to those of
+// 1.26.60, the palette of protocol 2225, but for the chalkboard of
 // Education Edition, of 4 states in the game and 16 in BDS, which the game
 // never places.
-func TestGameBlocksAre2193(t *testing.T) {
-	game, want := gameStates(t), palette(t, 2193)
-	if len(game) < 22000 || len(want) < 22000 {
-		t.Fatalf("%d states of the game, %d of 2193", len(game), len(want))
+func TestGameBlocksAre2225(t *testing.T) {
+	if bedrockdata.GameBlocks != 2225 {
+		t.Fatalf("the game holds the blocks of %d", bedrockdata.GameBlocks)
+	}
+	game, want := gameStates(t), palette(t, 2225)
+	if len(game) < 23900 || len(want) < 23900 {
+		t.Fatalf("%d states of the game, %d of 2225", len(game), len(want))
 	}
 	in := func(l []state) map[state]bool {
 		m := make(map[state]bool, len(l))
@@ -161,12 +164,12 @@ func TestGameBlocksAre2193(t *testing.T) {
 	g, w := in(game), in(want)
 	for s := range w {
 		if !g[s] && s.name() != "minecraft:chalkboard" {
-			t.Errorf("the game has no state %s of 2193", s)
+			t.Errorf("the game has no state %s of 2225", s)
 		}
 	}
 	for s := range g {
 		if !w[s] && s.name() != "minecraft:chalkboard" {
-			t.Errorf("2193 has no state %s of the game", s)
+			t.Errorf("2225 has no state %s of the game", s)
 		}
 	}
 }
@@ -367,54 +370,53 @@ func parseState(s state) (string, map[string]string) {
 	return parts[0], props
 }
 
-// typed returns the properties of a state of the game, of the types the
-// game holds them in, from those of a palette.
-func typed(t *testing.T, props map[string]string, like map[string]any) map[string]any {
-	t.Helper()
-	out := make(map[string]any, len(props))
-	for k, v := range props {
-		out[k] = v
-		if _, ok := like[k].(uint8); ok {
-			var n uint8
-			fmt.Sscan(v, &n)
-			out[k] = n
-		}
-	}
-	return out
-}
 
-// TestMapStateTo2225 maps every state of the game to 2225: each is a state
-// of 2225's palette, and only the 33 of redstone wire, fire and chorus
-// plants change, gaining their connections as none.
-func TestMapStateTo2225(t *testing.T) {
-	if !bedrockdata.NamesBlocksAsTheGame(2193) || bedrockdata.NamesBlocksAsTheGame(2225) {
-		t.Fatal("the protocols that name blocks as the game does are not 2193 alone")
+// TestMapStateTo2193 maps every state of the game to 2193: each is a state
+// of 2193's palette. The states of redstone wire, fire and chorus plants
+// lose their connections, and the three blocks 2193 lacks become their
+// fallbacks. GameState takes each back to the state of the game it names:
+// the one connected to no side, or the fallback itself.
+func TestMapStateTo2193(t *testing.T) {
+	if bedrockdata.NamesBlocksAsTheGame(2193) || !bedrockdata.NamesBlocksAsTheGame(2225) {
+		t.Fatal("the protocols that name blocks as the game does are not 2225 alone")
 	}
-	newer := map[state]bool{}
-	for _, s := range palette(t, 2225) {
-		newer[s] = true
+	older := map[state]bool{}
+	for _, s := range palette(t, 2193) {
+		older[s] = true
 	}
-	changed := map[string]int{}
+	game := map[state]bool{}
 	for _, s := range gameStates(t) {
+		game[s] = true
+	}
+	changed, canonical := map[string]int{}, map[string]int{}
+	for s := range game {
 		name, props := parseState(s)
 		in := make(map[string]any, len(props))
 		for k, v := range props {
 			in[k] = v
 		}
-		if step, _ := bedrockdata.BlockStepOf(2225); step.Added[name] != nil {
-			in = typed(t, props, step.Added[name])
+		outName, out := bedrockdata.MapState(2193, name, in)
+		down := stateOf(outName, out)
+		if !older[down] && name != "minecraft:chalkboard" {
+			t.Errorf("%s is %s in 2193, no state of its palette", s, down)
 		}
-		outName, out := bedrockdata.MapState(2225, name, in)
-		up := stateOf(outName, out)
-		if !newer[up] && name != "minecraft:chalkboard" {
-			t.Errorf("%s is %s in 2225, no state of its palette", s, up)
+		if down == s {
+			continue
 		}
-		if up != s {
-			changed[name]++
+		changed[name]++
+		backName, back := bedrockdata.GameState(2193, outName, out)
+		switch b := stateOf(backName, back); {
+		case !game[b]:
+			t.Errorf("%s of 2193 is %s of the game, no state of it", down, b)
+		case b == s:
+			canonical[name]++
 		}
 	}
-	if fmt.Sprint(changed) != "map[minecraft:chorus_plant:1 minecraft:fire:16 minecraft:redstone_wire:16]" {
-		t.Errorf("the states 2225 names otherwise: %v", changed)
+	if fmt.Sprint(changed) != "map[minecraft:chorus_plant:64 minecraft:disc_press:4 minecraft:fire:512 minecraft:ice_crystal:6 minecraft:icicle:20 minecraft:redstone_wire:1296]" {
+		t.Errorf("the states 2193 names otherwise: %v", changed)
+	}
+	if fmt.Sprint(canonical) != "map[minecraft:chorus_plant:1 minecraft:fire:16 minecraft:redstone_wire:16]" {
+		t.Errorf("the states of the game 2193 names back: %v", canonical)
 	}
 }
 
