@@ -180,14 +180,6 @@ func javaGenerationShape(id uint32) gamedata.GenerationShape {
 	return shape
 }
 
-func (c *javaShapeContext) collisionFull(id uint32) bool {
-	return javaGenerationShape(id).CollisionFull
-}
-
-func (c *javaShapeContext) collisionEmpty(id uint32) bool {
-	return javaGenerationShape(id).CollisionEmpty
-}
-
 func (c *javaShapeContext) replaceable(id uint32) bool {
 	return javaGenerationShape(id).Replaceable
 }
@@ -310,13 +302,6 @@ func (c *javaShapeContext) randomInt(n int32) int32 {
 		return c.generation.RegionRandom().NextInt(n)
 	}
 	return c.tx.RegionRandom().NextInt(n)
-}
-
-func (c *javaShapeContext) randomFloat() float32 {
-	if c.generation != nil {
-		return c.generation.RegionRandom().NextFloat()
-	}
-	return c.tx.RegionRandom().NextFloat()
 }
 
 func (c *javaShapeContext) light(pos cube.Pos) int {

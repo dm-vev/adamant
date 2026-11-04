@@ -2938,24 +2938,6 @@ func occupiedSlotMask(properties map[string]any, slots int) (int, error) {
 	return mask, nil
 }
 
-func occupiedSlotCount(properties map[string]any, slots int) (int, error) {
-	count := 0
-	for index := range slots {
-		value, exists := properties[fmt.Sprintf("slot_%d_occupied", index)]
-		if !exists {
-			continue
-		}
-		occupied, ok := boolProperty(value)
-		if !ok {
-			return 0, fmt.Errorf("java state codec: invalid shelf slot %d occupancy %v", index, value)
-		}
-		if occupied {
-			count++
-		}
-	}
-	return count, nil
-}
-
 func vineDirectionBits(properties map[string]any) (int, error) {
 	bits := 0
 	for bit, key := range [...]string{"south", "west", "north", "east"} {

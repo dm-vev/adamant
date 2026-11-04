@@ -742,12 +742,3 @@ func (wtx weakTransaction) Run(w *World) {
 	wtx.c <- valid
 	wtx.cond.Broadcast()
 }
-
-// fail delivers false to a weak transaction that will never run, using the
-// same condition handshake as Run so a waiter in cond.Wait is woken.
-func (wtx weakTransaction) fail() {
-	wtx.cond.L.Lock()
-	defer wtx.cond.L.Unlock()
-	wtx.c <- false
-	wtx.cond.Broadcast()
-}

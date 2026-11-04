@@ -399,13 +399,6 @@ func (tx *Tx) TickRaids() {
 	}
 }
 
-func boolInt(v bool) int {
-	if v {
-		return 1
-	}
-	return 0
-}
-
 func (tx *Tx) spawnRaidWave(r *Raid) bool {
 	factory := tx.World().EntityRegistry().Config().RaidSpawner
 	if factory == nil {

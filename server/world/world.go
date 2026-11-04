@@ -2893,13 +2893,6 @@ func (w *World) viewChunkEntities(tx *Tx, c *Column, viewer Viewer) {
 	}
 }
 
-// removeViewer removes a viewer from a chunk position. All entities will be
-// hidden from the viewer and no more calls will be made when events in the
-// chunk happen.
-func (w *World) removeViewer(tx *Tx, pos ChunkPos, loader *Loader) {
-	w.removeViewerFrom(tx, pos, nil, loader, loader.viewer, true)
-}
-
 // rollbackViewer removes a partially published chunk without closing it, so it may be retried.
 func (w *World) rollbackViewer(tx *Tx, pos ChunkPos, c *Column, loader *Loader, viewer Viewer) {
 	w.removeViewerFrom(tx, pos, c, loader, viewer, false)
@@ -4217,16 +4210,6 @@ type cachedSubChunkHeightMap struct {
 	mapType byte
 	mapData []int8
 	ready   bool
-}
-
-// forEachViewer calls the function passed for each viewer in the column.
-func (c *Column) forEachViewer(fn func(Viewer)) {
-	if len(c.viewers) == 0 {
-		return
-	}
-	for v := range c.viewers {
-		fn(v)
-	}
 }
 
 // Ready reports whether the Column has finished generating.
