@@ -12,10 +12,13 @@ import (
 
 // panicDistance is how far a Java mob with the movement speed attribute
 // and PanicGoal speed modifier passed runs in 20 ticks on normal ground
-// without stopping.
+// without stopping. MoveControl drives it at a speed of s, the attribute
+// times the modifier, which moves it s² a tick on top of the .6*.91 of its
+// last step it keeps. LivingEntity.applyInput takes .98 off the input
+// before MoveControl sets it again, so that does not slow it.
 func panicDistance(attribute, modifier float64) float64 {
 	s := attribute * modifier
-	return 20 * .98 * s * s / (1 - .6*.91)
+	return 20 * s * s / (1 - .6*.91)
 }
 
 func panicking(tx *world.Tx, h *world.EntityHandle) bool {
@@ -117,34 +120,58 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 					t.Fatal("animal panics before it is hurt")
 				}
 			})
-			hurt(w, h, playerAttack)
+			var attacker world.Entity
+			hurt(w, h, func(tx *world.Tx) world.DamageSource {
+				src := playerAttack(tx)
+				attacker = src.(entity.AttackDamageSource).Attacker
+				return src
+			})
+			// The attacker leaves, as a player the mob runs into pushes it.
+			<-w.Exec(func(tx *world.Tx) { tx.RemoveEntity(attacker) })
 			if !startsPanicking(w, h) {
 				t.Fatal("hurt animal does not panic")
 			}
-			var last mgl64.Vec3
+			var last, lastStep mgl64.Vec3
 			<-w.Exec(func(tx *world.Tx) { e, _ := h.Entity(tx); last = e.Position() })
-			run, fastest := 0.0, 0.0
+			run, fastest, drive, grounded := 0.0, 0.0, 0.0, 0
 			for range 40 {
 				w.AdvanceTick()
 				<-w.Exec(func(tx *world.Tx) {
 					e, _ := h.Entity(tx)
 					pos := e.Position()
 					pos[1], last[1] = 0, 0
-					step := pos.Sub(last).Len()
-					run, last, fastest = run+step, pos, max(fastest, step)
+					step := pos.Sub(last)
+					// The drive of a mob, s² towards where it faces, is its
+					// step less .6*.91 of its last once it was on the ground
+					// for both, however its path turned.
+					if grounded >= 2 {
+						drive = max(drive, step.Sub(lastStep.Mul(.6*.91)).Len())
+					}
+					grounded++
+					if !e.(interface{ OnGround() bool }).OnGround() {
+						grounded = 0
+					}
+					run, last, lastStep, fastest = run+step.Len(), pos, step, max(fastest, step.Len())
 				})
+			}
+			// The fastest step of a mob depends on how long and straight
+			// the legs to the spots PanicGoal picks at random are, and a fox
+			// may not reach .9 of its top speed on any. Its drive does not:
+			// it is s² on every tick the mob runs on the ground, and a mob
+			// at half the speed drives at a quarter. A rabbit only moves in
+			// hops, which push off in a single tick.
+			want := panicDistance(c.attribute, c.modifier)
+			if s := c.attribute * c.modifier; c.hop > 0 {
+				want = 20 * c.hop
+				if fastest < .9*c.hop {
+					t.Fatalf("panicking %s ran at most %.3f blocks a tick, want at least %.3f", c.id, fastest, .9*c.hop)
+				}
+			} else if drive < .9*s*s {
+				t.Fatalf("panicking %s drove itself at most %.4f blocks a tick, want at least %.4f, .9 of its speed of %.3f squared", c.id, drive, .9*s*s, s)
 			}
 			// PanicGoal stops where its path ends and, on flat ground, often
 			// finds no spot to run to, so the mob runs at full speed only
 			// now and then during the two seconds it panics.
-			want, peak := panicDistance(c.attribute, c.modifier), panicDistance(c.attribute, c.modifier)/20
-			if c.hop > 0 {
-				peak = c.hop
-				want = 20 * c.hop
-			}
-			if fastest < .9*peak {
-				t.Fatalf("panicking %s ran at most %.3f blocks a tick, want at least %.3f", c.id, fastest, .9*peak)
-			}
 			if run < .5*want {
 				t.Fatalf("panicking %s ran %.2f blocks in two seconds, want at least %.2f", c.id, run, .5*want)
 			}
