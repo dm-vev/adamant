@@ -250,6 +250,10 @@ type World struct {
 	// warnings so operators can tune the worker count.
 	generatorQueueSaturation atomic.Uint64
 	lastQueueSaturationLog   atomic.Uint64
+
+	// faults holds the log of the panics recovered in the world and the
+	// offenders quarantined.
+	faults faults
 }
 
 // currentTickLocked returns the tick used to update this world. The caller

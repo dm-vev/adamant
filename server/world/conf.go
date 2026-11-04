@@ -131,6 +131,17 @@ type Config struct {
 	// different part of the World. A Synchronous World ticks its regions one
 	// after another.
 	Regions bool
+	// Fault, if not nil, is called with every panic the World recovered from
+	// and blamed on part of its game, as an entity or a block, after it was
+	// logged. Logs are rate-limited, Fault is not: it is meant for metrics or
+	// a plugin. It is called on the goroutine that recovered, which in a
+	// region phase is a worker of a region: it may be called by several
+	// goroutines at once and must not wait for the World.
+	Fault func(f Fault)
+	// Fatal, if not nil, is called once, with the first panic the World
+	// could not blame on anything. A server stops in order on it, saving
+	// what it can.
+	Fatal func(f Fault)
 }
 
 // New creates a new World using the Config conf. The World returned will start
