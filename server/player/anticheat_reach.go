@@ -71,11 +71,8 @@ func (p *Player) canReachBlock(pos cube.Pos) bool {
 	if !p.clientInput() {
 		return false
 	}
-	switch p.violate(ac, anticheat.BlockReach, "distance", dist-reach, fmt.Sprintf("%.2f > %.2f to %v", dist, reach, pos)) {
-	case anticheat.Log:
-		return true
-	}
-	return false
+	// Only a check that logs lets the action through.
+	return p.violate(ac, anticheat.BlockReach, "distance", dist-reach, fmt.Sprintf("%.2f > %.2f to %v", dist, reach, pos)) == anticheat.Log
 }
 
 // canReachPoint reports whether the player reaches the point passed within

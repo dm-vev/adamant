@@ -60,8 +60,7 @@ func (p *Player) checkMenuReach() {
 	if dist <= reach {
 		return
 	}
-	switch p.violate(ac, anticheat.Menu, "distance", dist-reach, fmt.Sprintf("%.2f > %.2f from the menu", dist, reach)) {
-	case anticheat.Cancel:
+	if p.violate(ac, anticheat.Menu, "distance", dist-reach, fmt.Sprintf("%.2f > %.2f from the menu", dist, reach)) == anticheat.Cancel {
 		p.closeMenu(p.tx, false)
 	}
 }

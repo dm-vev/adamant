@@ -79,8 +79,7 @@ func TestAscendDetectsNoFall(t *testing.T) {
 		r := clienttest.New()
 		withCheckedPlayer(t, w, r, conf, tr.start, func(tx *world.Tx, p *Player) {
 			standThroughJoin(tx, p)
-			var positions []mgl64.Vec3
-			positions = tr.positions(tx)
+			positions := tr.positions(tx)
 			most := 0.0
 			for _, pos := range positions {
 				p.ClientMove(clientMoveAt(pos))
