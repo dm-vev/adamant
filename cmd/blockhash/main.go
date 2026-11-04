@@ -23,7 +23,7 @@ func main() {
 		log.Fatalln("Must pass one package to produce block hashes for.")
 	}
 	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedFiles,
+		Mode: packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedFiles | packages.NeedImports | packages.NeedDeps,
 	}
 	pkgs, err := packages.Load(cfg, flag.Args()[0])
 	if err != nil {
