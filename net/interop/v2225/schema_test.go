@@ -10,8 +10,8 @@ import (
 )
 
 // TestSchemaIsImported runs protoimport against the gophertunnel of 2225:
-// it writes schema.txt of v2225 but for the hand edit of the ingredients
-// of recipe-book crafts, which v2193 has too.
+// it writes schema.txt of v2225, with the corrections after Mojang's
+// documentation that still apply to it.
 func TestSchemaIsImported(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "schema.txt")
 	if b, err := exec.Command("go", "tool", "protoimport", "-o", out).CombinedOutput(); err != nil {
@@ -25,10 +25,10 @@ func TestSchemaIsImported(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	edited := strings.Replace(string(got), "# 479 declarations, 12 of them manual.", "# 480 declarations, 13 of them manual.", 1)
-	edited = strings.Replace(edited, "type AutoCraftRecipeStackRequestAction\n\tRecipeNetworkID varuint32\n\tNumberOfCrafts uint8\n\tIngredients []ItemDescriptorCount\n",
-		"type RecipeIngredient\n\tmanual statement id, _, ok := itemDescriptorType(x.Descriptor)\n\ntype AutoCraftRecipeStackRequestAction\n\tRecipeNetworkID varuint32\n\tNumberOfCrafts uint8\n\tIngredients []RecipeIngredient\n", 1)
-	if edited == string(got) || !bytes.Equal([]byte(edited), want) {
-		t.Fatal("v2225/schema.txt is not what protoimport imports with the hand edit of RecipeIngredient: run it")
+	if !bytes.Equal(got, want) {
+		t.Fatal("v2225/schema.txt is not what protoimport imports: run it")
+	}
+	if !strings.Contains(string(got), "\n# Corrected after Mojang's protocol documentation: AutoCraftRecipeStackRequestAction") {
+		t.Fatal("the ingredients of recipe-book crafts are not corrected")
 	}
 }

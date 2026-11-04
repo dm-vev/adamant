@@ -6,7 +6,9 @@
 // changed.
 //
 // A statement it cannot translate marks its packet or type manual, with the
-// reason, instead of guessing. A packet in the pool of the packets clients
+// reason, instead of guessing. A declaration gophertunnel codes otherwise
+// than Mojang's protocol documentation describes it is corrected, and the
+// header of the schema names it (corrections.go). A packet in the pool of the packets clients
 // send that gophertunnel's listener decodes is marked client.
 package main
 
@@ -99,6 +101,9 @@ type importer struct {
 	enums   map[string]*enum
 	// enumList holds the enums in the order of their import.
 	enumList []*enum
+	// corrected holds the names of the declarations corrected after
+	// Mojang's documentation (corrections.go).
+	corrected []string
 }
 
 func main() {
@@ -116,6 +121,9 @@ func run(out string) error {
 		return err
 	}
 	im.importAll()
+	if im.corrected, err = im.correct(); err != nil {
+		return err
+	}
 	b := im.schema(packet.NewClientPool())
 	if out == "" {
 		_, err := os.Stdout.Write(b)
@@ -208,6 +216,7 @@ func (im *importer) schema(client packet.Pool) []byte {
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "# Bedrock protocol, imported by protoimport from gophertunnel.\n")
 	fmt.Fprintf(&b, "# %d declarations, %d of them manual.\n", len(im.decls), im.manual())
+	b.WriteString(correctedLine(im.corrected))
 	for _, d := range im.decls {
 		b.WriteString("\n")
 		d.write(&b, client)

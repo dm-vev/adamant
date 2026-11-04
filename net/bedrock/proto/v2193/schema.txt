@@ -1,5 +1,6 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
 # 460 declarations, 12 of them manual.
+# Corrected after Mojang's protocol documentation: AutoCraftRecipeStackRequestAction.
 
 type CommandEnum
 	Type string
@@ -2116,7 +2117,7 @@ type ItemDescriptorCount
 	manual statement id, _, ok := itemDescriptorType(x.Descriptor)
 
 type RecipeIngredient
-	manual statement id, _, ok := itemDescriptorType(x.Descriptor)
+	manual coded by hand as Mojang's RecipeIngredient
 
 type AutoCraftRecipeStackRequestAction
 	RecipeNetworkID varuint32
