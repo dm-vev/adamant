@@ -7,12 +7,20 @@ import (
 )
 
 // SubChunkRequestHandler handles sub-chunk requests from the client. The server will respond with a packet containing
-// the requested sub-chunks, once the connection has room for them: see loadChunks.
+// the requested sub-chunks, once the connection has room for them: see loadChunks. A request for more than
+// maxSubChunkOffsets sub-chunks is answered in parts of as many, each with a packet of its own.
 type SubChunkRequestHandler struct{}
 
 // Handle ...
 func (*SubChunkRequestHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Controllable) error {
 	pk := p.(*v2193.SubChunkRequestPacket)
+	for len(pk.Offsets) > maxSubChunkOffsets {
+		part, rest := *pk, *pk
+		part.Offsets, rest.Offsets = pk.Offsets[:maxSubChunkOffsets:maxSubChunkOffsets], pk.Offsets[maxSubChunkOffsets:]
+		s.subChunkQueue = append(s.subChunkQueue, &part)
+		s.subChunkOffsets += len(part.Offsets)
+		pk = &rest
+	}
 	s.subChunkQueue = append(s.subChunkQueue, pk)
 	s.subChunkOffsets += len(pk.Offsets)
 	return nil
