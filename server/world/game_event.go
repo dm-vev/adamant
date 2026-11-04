@@ -539,7 +539,7 @@ func (w *World) tickVibration(tx *Tx, pos cube.Pos, destination mgl64.Vec3, user
 }
 
 func (w *World) sendVibrationParticle(tx *Tx, user VibrationUser, origin, destination mgl64.Vec3, travel int) bool {
-	viewers := viewerSlicePool.Get().([]Viewer)[:0]
+	viewers := borrowViewers(0)
 	if tx.region != nil {
 		// The viewers of other regions are not the region's to ask: those
 		// near enough view the columns around origin.

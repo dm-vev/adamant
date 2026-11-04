@@ -2387,13 +2387,7 @@ func (w *World) viewersOf(tx *Tx, pos mgl64.Vec3) []Viewer {
 	if !ok || len(c.viewers) == 0 {
 		return nil
 	}
-	viewers := viewerSlicePool.Get().([]Viewer)
-	if cap(viewers) < len(c.viewers)+1 {
-		viewerSlicePool.Put(viewers[:0])
-		viewers = make([]Viewer, 0, len(c.viewers)+1)
-	} else {
-		viewers = viewers[:0]
-	}
+	viewers := borrowViewers(len(c.viewers) + 1)
 	for v := range c.viewers {
 		viewers = append(viewers, v)
 	}
@@ -2406,7 +2400,7 @@ func (w *World) releaseViewers(viewers []Viewer) {
 	if viewers == nil {
 		return
 	}
-	viewerSlicePool.Put(viewers[:0])
+	returnViewers(viewers)
 }
 
 // PortalDestination returns the destination World for a portal of a specific
@@ -2885,13 +2879,7 @@ func (w *World) allViewers() ([]Viewer, []*Loader) {
 	w.viewerMu.Lock()
 	defer w.viewerMu.Unlock()
 
-	viewers := viewerSlicePool.Get().([]Viewer)
-	if cap(viewers) < len(w.viewers) {
-		viewerSlicePool.Put(viewers[:0])
-		viewers = make([]Viewer, 0, len(w.viewers))
-	} else {
-		viewers = viewers[:0]
-	}
+	viewers := borrowViewers(len(w.viewers))
 	loaders := make([]*Loader, 0, len(w.viewers))
 	for _, loader := range w.viewerLoaders {
 		viewers = append(viewers, w.viewers[loader])
@@ -3973,10 +3961,41 @@ func (w *World) removeEntityColumn(pos ChunkPos) {
 // viewerSlicePool recycles temporary []Viewer buffers created while broadcasting world state to reduce GC churn.
 // The default capacity is intentionally small: most columns have just a handful of viewers, yet larger slices are
 // returned to the pool so hot paths can still reuse previously grown allocations instead of re-allocating.
-var viewerSlicePool = sync.Pool{
-	New: func() any {
-		return make([]Viewer, 0, 8)
-	},
+//
+// The pool holds *[]Viewer: a slice put in a sync.Pool as it is would be boxed, an allocation on every release.
+// viewerHolderPool keeps the emptied holders while their slices are lent out.
+var (
+	viewerSlicePool = sync.Pool{
+		New: func() any {
+			viewers := make([]Viewer, 0, 8)
+			return &viewers
+		},
+	}
+	viewerHolderPool sync.Pool
+)
+
+// borrowViewers lends an empty pooled slice with room for n viewers. It is
+// handed back with returnViewers.
+func borrowViewers(n int) []Viewer {
+	holder := viewerSlicePool.Get().(*[]Viewer)
+	viewers := *holder
+	*holder = nil
+	viewerHolderPool.Put(holder)
+	if cap(viewers) < n {
+		returnViewers(viewers)
+		return make([]Viewer, 0, n)
+	}
+	return viewers[:0]
+}
+
+// returnViewers hands a slice lent by borrowViewers back to viewerSlicePool.
+func returnViewers(viewers []Viewer) {
+	holder, _ := viewerHolderPool.Get().(*[]Viewer)
+	if holder == nil {
+		holder = new([]Viewer)
+	}
+	*holder = viewers[:0]
+	viewerSlicePool.Put(holder)
 }
 
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
