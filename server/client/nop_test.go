@@ -41,9 +41,7 @@ func TestNopAnswersAsNoClient(t *testing.T) {
 	if shapes := c.VisibleDebugShapes(); len(shapes) != 0 {
 		t.Errorf("VisibleDebugShapes() = %v, want none", shapes)
 	}
-	if accepted := c.UnlockRecipes([]string{"minecraft:stick"}); len(accepted) != 0 {
-		t.Errorf("UnlockRecipes() = %v, want none", accepted)
-	}
+	c.ViewRecipesUnlocked([]string{"minecraft:stick"})
 	if c.ViewLayer() != nil {
 		t.Error("ViewLayer() is not nil")
 	}

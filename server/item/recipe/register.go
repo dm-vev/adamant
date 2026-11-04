@@ -31,6 +31,13 @@ func Recipes() []Recipe {
 	return slices.Clone(recipes)
 }
 
+// recipeCount returns the number of recipes registered.
+func recipeCount() int {
+	recipeMu.RLock()
+	defer recipeMu.RUnlock()
+	return len(recipes)
+}
+
 // DynamicRecipes returns each dynamic recipe in a slice.
 func DynamicRecipes() []DynamicRecipe {
 	recipeMu.RLock()

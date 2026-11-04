@@ -161,12 +161,5 @@ func changeRecipes(targets []cmd.Target, id string, give bool, o *cmd.Output) {
 	o.Printf("%s %d recipes for %s.", verb, changed, joinNames(ps))
 }
 func validRecipeID(id string) bool {
-	for _, r := range recipe.Recipes() {
-		for _, candidate := range recipe.JavaRecipeIDs(r) {
-			if candidate == id {
-				return true
-			}
-		}
-	}
-	return false
+	return recipe.KnownJavaID(id)
 }

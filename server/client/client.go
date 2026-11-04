@@ -292,10 +292,9 @@ type Self interface {
 	// ResyncInventory shows the inventories of the player again, after the
 	// client predicted a change the player did not make.
 	ResyncInventory()
-	// UnlockRecipes shows the recipes of the Java Edition IDs passed as
-	// newly unlocked and returns those of the IDs it knows; the player keeps
-	// those unlocked.
-	UnlockRecipes(javaIDs []string) (accepted []string)
+	// ViewRecipesUnlocked shows the recipes of the Java Edition IDs passed
+	// as newly unlocked, those of them the client has a recipe for.
+	ViewRecipesUnlocked(javaIDs []string)
 	// ShowSkin shows every client the new skin of the player, those that
 	// only list it too, and lists it so for clients that join later.
 	ShowSkin(sk skin.Skin)

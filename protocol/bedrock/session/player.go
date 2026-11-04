@@ -106,20 +106,21 @@ func (s *Session) sendRecipes() {
 	s.writePacket(d.packet)
 }
 
-// UnlockRecipes sends newly unlocked Java recipes that have a corresponding
-// recipe in the current Bedrock crafting data. It returns the Java IDs accepted.
-func (s *Session) UnlockRecipes(javaIDs []string) []string {
-	return s.unlockRecipes(javaIDs, v2193.UnlockedRecipesTypeNewlyUnlocked)
+// ViewRecipesUnlocked sends newly unlocked Java recipes that have a
+// corresponding recipe in the current Bedrock crafting data.
+func (s *Session) ViewRecipesUnlocked(javaIDs []string) {
+	s.unlockRecipes(javaIDs, v2193.UnlockedRecipesTypeNewlyUnlocked)
 }
 
 // SendInitiallyUnlockedRecipes sends persisted recipe unlocks after the player
 // has joined and the crafting data has been sent.
 func (s *Session) SendInitiallyUnlockedRecipes(javaIDs []string) {
-	_ = s.unlockRecipes(javaIDs, v2193.UnlockedRecipesTypeInitiallyUnlocked)
+	s.unlockRecipes(javaIDs, v2193.UnlockedRecipesTypeInitiallyUnlocked)
 }
 
-func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) []string {
-	accepted := make([]string, 0, len(javaIDs))
+// unlockRecipes sends the Bedrock recipes of the Java IDs passed, unlocked
+// as unlockType says, if there are any.
+func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) {
 	packetIDs := make([]string, 0, len(javaIDs))
 	seenPacketIDs := make(map[string]struct{}, len(javaIDs))
 	for _, javaID := range javaIDs {
@@ -127,7 +128,6 @@ func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) []string {
 		if !ok {
 			continue
 		}
-		accepted = append(accepted, javaID)
 		for _, packetID := range ids {
 			if _, seen := seenPacketIDs[packetID]; seen {
 				continue
@@ -139,7 +139,6 @@ func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) []string {
 	if len(packetIDs) != 0 {
 		s.writePacket(&v2193.UnlockedRecipesPacket{UnlockType: unlockType, Recipes: packetIDs})
 	}
-	return accepted
 }
 
 // sendArmourTrimData sends the armour trim data.

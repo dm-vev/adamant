@@ -47,8 +47,6 @@ type Answers struct {
 	ChunkRadius  int32
 	// ClientMoving is what ClientMoving reports.
 	ClientMoving bool
-	// AcceptRecipes are the Java Edition recipe IDs UnlockRecipes accepts.
-	AcceptRecipes []string
 }
 
 // Recorder is a client.Client that records every call made to it, those of
@@ -191,17 +189,8 @@ func (r *Recorder) ClientMoving() bool {
 	return r.Answers.ClientMoving
 }
 
-func (r *Recorder) UnlockRecipes(javaIDs []string) []string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.recordLocked("UnlockRecipes", javaIDs)
-	var accepted []string
-	for _, id := range javaIDs {
-		if slices.Contains(r.Answers.AcceptRecipes, id) {
-			accepted = append(accepted, id)
-		}
-	}
-	return accepted
+func (r *Recorder) ViewRecipesUnlocked(javaIDs []string) {
+	r.record("ViewRecipesUnlocked", javaIDs)
 }
 
 func (r *Recorder) ViewMapData(data world.MapData) error {

@@ -28,6 +28,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/chat"
@@ -5099,12 +5100,17 @@ func (p *Player) unlockedRecipeIDs() []string {
 	return ids
 }
 
-// UnlockRecipes adds only recipes recognised by the session's Java-to-client
-// recipe mapping to the player's persistent unlock state.
+// UnlockRecipes unlocks the recipes of the Java Edition IDs passed for the
+// player, keeping those of registered recipes, recipe.KnownJavaID, in its
+// persistent unlock state, and shows the client the IDs passed as newly
+// unlocked.
 func (p *Player) UnlockRecipes(ids []string) {
-	for _, id := range p.client().UnlockRecipes(ids) {
-		p.unlockedRecipes[id] = struct{}{}
+	for _, id := range ids {
+		if recipe.KnownJavaID(id) {
+			p.unlockedRecipes[id] = struct{}{}
+		}
 	}
+	p.client().ViewRecipesUnlocked(ids)
 }
 
 // UnlockedRecipeIDs returns the player's persisted Java recipe keys.

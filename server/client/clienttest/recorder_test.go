@@ -55,20 +55,15 @@ func TestRecorderRecordsCallsInOrder(t *testing.T) {
 func TestRecorderQueriesAgreeWithState(t *testing.T) {
 	r := clienttest.New()
 	r.Answers = clienttest.Answers{
-		Profile:       client.Profile{DeviceID: "device"},
-		Latency:       time.Second,
-		ChunkRadius:   8,
-		ClientMoving:  true,
-		LastActivity:  time.Unix(5, 0),
-		AcceptRecipes: []string{"minecraft:stick"},
+		Profile:      client.Profile{DeviceID: "device"},
+		Latency:      time.Second,
+		ChunkRadius:  8,
+		ClientMoving: true,
+		LastActivity: time.Unix(5, 0),
 	}
 	if r.Profile().DeviceID != "device" || r.Latency() != time.Second || r.ChunkRadius() != 8 || !r.ClientMoving() || !r.LastActivity().Equal(time.Unix(5, 0)) {
 		t.Error("queries do not return the Answers")
 	}
-	if got := r.UnlockRecipes([]string{"minecraft:torch", "minecraft:stick"}); !slices.Equal(got, []string{"minecraft:stick"}) {
-		t.Errorf("UnlockRecipes() = %v, want [minecraft:stick]", got)
-	}
-
 	r.HideHudElement(hud.Health())
 	if !r.HudElementHidden(hud.Health()) {
 		t.Error("HudElementHidden after HideHudElement = false")

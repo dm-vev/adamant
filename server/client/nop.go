@@ -115,7 +115,7 @@ func (Nop) SendPlayerSpawn(mgl64.Vec3)               {}
 func (Nop) SetPlayerSpawn(cube.Pos, world.Dimension) {}
 func (Nop) SendChargeItemComplete()                  {}
 func (Nop) ResyncInventory()                         {}
-func (Nop) UnlockRecipes([]string) []string          { return nil }
+func (Nop) ViewRecipesUnlocked([]string)             {}
 func (Nop) ShowSkin(skin.Skin)                       {}
 
 func (Nop) ViewSleepingPlayers(int, int)                          {}
