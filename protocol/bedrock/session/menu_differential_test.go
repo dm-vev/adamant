@@ -18,9 +18,10 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// useMenuRequests has the scenarios of the process handle item stack
-// requests as batches of server/menu (session.UseMenuRequests).
-var useMenuRequests bool
+// useSessionRequests has the scenarios of the process handle item stack
+// requests through the handlers of the session, as before they moved into
+// server/menu (session.UseSessionRequests).
+var useSessionRequests bool
 
 // The environment variables a process run by TestGoldenMenuRequests reads:
 // the path its requests take ("session" or "menu"), and the directory it
@@ -69,8 +70,9 @@ var menuRequestScenarios = []struct {
 }
 
 // TestGoldenMenuRequests runs the scenarios of item stack requests twice,
-// each time in a process of its own as the golden tests run: once as the
-// session handles the requests, and once as batches of server/menu. The
+// each time in a process of its own as the golden tests run: once through
+// the handlers the session had, kept as the oracle, and once as batches of
+// server/menu, as the session handles them. The
 // batch takes the place of the undo log, the pending results and the
 // comparator updates of the session, and every slot the session sets goes
 // through it; the operations that moved into the menu run there. What the
@@ -78,7 +80,8 @@ var menuRequestScenarios = []struct {
 // left must be the same: every slot of the player, the experience level,
 // the menu open and the window the session shows, the blocks around the
 // menus with what their containers hold, and the entities of the world.
-// The snapshots themselves judge the path of the session.
+// The snapshots themselves judge the path of the menu, which the session
+// takes.
 func TestGoldenMenuRequests(t *testing.T) {
 	if path := os.Getenv(menuRequestsPath); path != "" {
 		runMenuRequests(t, path, os.Getenv(menuRequestsOut))
@@ -110,7 +113,7 @@ func TestGoldenMenuRequests(t *testing.T) {
 // runMenuRequests runs the scenarios through the path passed and writes
 // what each recorded, and the state it left, to a file of dir.
 func runMenuRequests(t *testing.T, path, dir string) {
-	useMenuRequests = path == "menu"
+	useSessionRequests = path == "session"
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}

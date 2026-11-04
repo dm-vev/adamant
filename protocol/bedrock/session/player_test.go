@@ -1040,14 +1040,18 @@ func nonEmptySlots(input []item.Stack) []int {
 	return slots
 }
 
+// craftingTestSession returns a session of no connection and no player,
+// whose requests run through the handlers the session had before they
+// moved into server/menu.
 func craftingTestSession() *Session {
 	return &Session{
-		br:          world.DefaultBlockRegistry,
-		recipes:     make(map[uint32]recipe.Recipe),
-		ui:          inventory.New(51, nil),
-		inv:         inventory.New(36, nil),
-		offHand:     inventory.New(1, nil),
-		holdPackets: 1,
+		br:              world.DefaultBlockRegistry,
+		recipes:         make(map[uint32]recipe.Recipe),
+		ui:              inventory.New(51, nil),
+		inv:             inventory.New(36, nil),
+		offHand:         inventory.New(1, nil),
+		holdPackets:     1,
+		sessionRequests: true,
 	}
 }
 

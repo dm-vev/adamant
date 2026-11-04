@@ -172,7 +172,7 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 	if w == nil {
 		err = h.handleRequest(req, s, nil, autoCraftController{})
 	} else {
-		s.menuRequests = true
+		s.sessionRequests = false
 		<-w.Exec(func(tx *world.Tx) { err = h.handleRequest(req, s, tx, batchController{tx: tx, s: s}) })
 	}
 	slots := map[[2]byte]int{}

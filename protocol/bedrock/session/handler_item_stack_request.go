@@ -32,9 +32,9 @@ type ItemStackRequestHandler struct {
 	pendingResults []item.Stack
 	multiCraft     *multiCraft
 	// batch is the batch of server/menu that the request being handled
-	// runs as if the session uses menu requests (UseMenuRequests in its
-	// tests), nil otherwise. Its journal then takes the place of undo and
-	// its results that of pendingResults.
+	// runs as, nil if the session uses its own handlers (UseSessionRequests
+	// in its tests). Its journal then takes the place of undo and its
+	// results that of pendingResults.
 	batch     *menu.Tx
 	autoCraft *autoCraft
 
@@ -85,7 +85,7 @@ func (h *ItemStackRequestHandler) Handle(p proto.Packet, s *Session, tx *world.T
 func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (err error) {
 	h.currentRequest = req.RequestID
 	h.multiCraft, h.autoCraft = nil, nil
-	if s.menuRequests {
+	if !s.sessionRequests {
 		h.batch = c.BeginMenu(s.nameSlot)
 	}
 	defer func() {

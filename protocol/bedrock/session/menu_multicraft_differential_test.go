@@ -159,7 +159,7 @@ func craftMultiOnce(t *testing.T, c multiCase, menuRequests bool) string {
 		t.Cleanup(func() { _ = w.Close() })
 	}
 	s := craftingTestSession()
-	s.menuRequests = menuRequests
+	s.sessionRequests = !menuRequests
 	var outcome string
 	<-w.Exec(func(tx *world.Tx) {
 		offset := craftingGridSmallOffset
