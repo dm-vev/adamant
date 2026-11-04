@@ -8,7 +8,9 @@
 //	cd net/interop/v2225 && go tool constimport -pkg v2225 -o ../../bedrock/proto/v2225/consts.go
 //
 // Constants the package already declares by hand with the same value are
-// left out; one with another value stops it. The abilities, bits in
+// left out; one with another value stops it. The enums gophertunnel
+// numbers otherwise than Mojang's protocol documentation, for the protocol
+// of the package, take Mojang's values (package mojang). The abilities, bits in
 // protocol and the indices of RequestAbility in packet, take the suffix
 // Index for the latter.
 package main
@@ -27,6 +29,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dm-vev/adamant/net/interop/internal/mojang"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -114,6 +117,10 @@ func main() {
 			entries[e.name] = e
 		}
 	}
+	if len(mojang.Enums[*pkg]) > 0 {
+		from += " and Mojang's protocol documentation"
+		correct(entries, *pkg)
+	}
 	names := make([]string, 0, len(entries))
 	for n := range entries {
 		names = append(names, n)
@@ -139,6 +146,25 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("%d constants", len(names))
+}
+
+// correct replaces the constants of the enums gophertunnel numbers
+// otherwise than Mojang's documentation, for the protocol of a package,
+// with Mojang's (package mojang). They keep the type gophertunnel gives
+// them.
+func correct(entries map[string]entry, pkg string) {
+	for _, e := range mojang.Enums[pkg] {
+		typ := ""
+		for name, old := range entries {
+			if strings.HasPrefix(name, e.Prefix) {
+				typ = old.typ
+				delete(entries, name)
+			}
+		}
+		for name, v := range e.Values {
+			entries[e.Prefix+name] = entry{name: e.Prefix + name, typ: typ, val: constant.MakeInt64(v), from: "mojang"}
+		}
+	}
 }
 
 // header begins the files constimport writes.

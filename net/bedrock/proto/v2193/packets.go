@@ -5738,7 +5738,7 @@ func (p *UpdateClientOptionsPacket) Decode(r *wire.Reader) {
 }
 
 type PlayerVideoCapturePacket struct {
-	Action     uint8
+	Action     uint32
 	FrameRate  int32
 	FilePrefix string
 }
@@ -5746,16 +5746,16 @@ type PlayerVideoCapturePacket struct {
 func (*PlayerVideoCapturePacket) ID() uint32 { return 324 }
 
 func (p *PlayerVideoCapturePacket) Encode(w *wire.Writer) {
-	w.Uint8(p.Action)
-	if p.Action == 1 {
+	w.Varuint32(p.Action)
+	if p.Action == 0 {
 		w.Int32(p.FrameRate)
 		w.String(p.FilePrefix)
 	}
 }
 
 func (p *PlayerVideoCapturePacket) Decode(r *wire.Reader) {
-	p.Action = r.Uint8()
-	if p.Action == 1 {
+	p.Action = r.Varuint32()
+	if p.Action == 0 {
 		p.FrameRate = r.Int32()
 		p.FilePrefix = r.String()
 	}

@@ -46,8 +46,6 @@ func upPacket(pk proto.Packet) (proto.Packet, bool) {
 		return upCameraInstructionPacket(pk), true
 	case *v2193.ServerBoundDiagnosticsPacket:
 		return upServerBoundDiagnosticsPacket(pk), true
-	case *v2193.PlayerVideoCapturePacket:
-		return upPlayerVideoCapturePacket(pk), true
 	case *v2193.CameraSplinePacket:
 		return upCameraSplinePacket(pk), true
 	case *v2193.ClientBoundAttributeLayerSyncPacket:
@@ -443,15 +441,6 @@ func upServerBoundDiagnosticsPacket(in *v2193.ServerBoundDiagnosticsPacket) *v22
 		}
 	}
 	fixUpServerBoundDiagnosticsPacket(in, out)
-	return out
-}
-
-func upPlayerVideoCapturePacket(in *v2193.PlayerVideoCapturePacket) *v2225.PlayerVideoCapturePacket {
-	out := &v2225.PlayerVideoCapturePacket{}
-	out.Action = uint32(in.Action)
-	out.FrameRate = in.FrameRate
-	out.FilePrefix = in.FilePrefix
-	fixUpPlayerVideoCapturePacket(in, out)
 	return out
 }
 
@@ -1109,8 +1098,6 @@ func downPacket(pk proto.Packet) (proto.Packet, bool) {
 		return downCameraInstructionPacket(pk), true
 	case *v2225.ServerBoundDiagnosticsPacket:
 		return downServerBoundDiagnosticsPacket(pk), true
-	case *v2225.PlayerVideoCapturePacket:
-		return downPlayerVideoCapturePacket(pk), true
 	case *v2225.CameraSplinePacket:
 		return downCameraSplinePacket(pk), true
 	case *v2225.ClientBoundAttributeLayerSyncPacket:
@@ -1506,15 +1493,6 @@ func downServerBoundDiagnosticsPacket(in *v2225.ServerBoundDiagnosticsPacket) *v
 		}
 	}
 	fixDownServerBoundDiagnosticsPacket(in, out)
-	return out
-}
-
-func downPlayerVideoCapturePacket(in *v2225.PlayerVideoCapturePacket) *v2193.PlayerVideoCapturePacket {
-	out := &v2193.PlayerVideoCapturePacket{}
-	out.Action = uint8(in.Action)
-	out.FrameRate = in.FrameRate
-	out.FilePrefix = in.FilePrefix
-	fixDownPlayerVideoCapturePacket(in, out)
 	return out
 }
 

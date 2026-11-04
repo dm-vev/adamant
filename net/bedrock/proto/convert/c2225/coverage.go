@@ -25,7 +25,6 @@ var reviewed = map[uint32]string{
 	300: "CameraInstruction: the type, identifier and JSON flag of a spline always go in 2225 (fixups.go)",
 	315: "ServerBoundDiagnostics: the system categories and the position and dimension of a timed entity are optional " +
 		"in 2225 (fixups.go); the memory categories have the same values in both, by Mojang's JSON",
-	324: "PlayerVideoCapture: the action of a start and a stop (fixups.go)",
 	338: "CameraSpline: the type of a spline always goes and the easing of a key frame is optional in 2225 (fixups.go)",
 	345: "ClientBoundAttributeLayerSync: the payload of an environment attribute is a variant in 2225 and the noise is " +
 		"named by its settings (fixups.go); a transition's clock is lost going down",

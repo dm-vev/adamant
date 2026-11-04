@@ -1,6 +1,6 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
 # 460 declarations, 12 of them manual.
-# Corrected after Mojang's protocol documentation: AutoCraftRecipeStackRequestAction.
+# Corrected after Mojang's protocol documentation: AutoCraftRecipeStackRequestAction, PlayerVideoCapture.
 
 type CommandEnum
 	Type string
@@ -1282,8 +1282,8 @@ packet 323 UpdateClientOptions client
 	FilterProfanity ?bool
 
 packet 324 PlayerVideoCapture
-	Action uint8
-	if Action == 1
+	Action varuint32
+	if Action == 0
 		FrameRate int32
 		FilePrefix string
 

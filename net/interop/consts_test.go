@@ -8,16 +8,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/dm-vev/adamant/net/interop/internal/mojang"
 	"golang.org/x/tools/go/packages"
 )
 
 // TestConstantsMatchGophertunnel checks the value of every constant of
 // v2193 named as in gophertunnel against gophertunnel's: the abilities
 // are bits in its protocol package and, with the suffix Index, indices in
-// its packet package.
+// its packet package. The enums gophertunnel numbers otherwise than
+// Mojang's documentation are checked against Mojang's (package mojang).
 func TestConstantsMatchGophertunnel(t *testing.T) {
 	const (
 		protocolPath = "github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -36,10 +39,26 @@ func TestConstantsMatchGophertunnel(t *testing.T) {
 		scopes[p.PkgPath] = p.Types.Scope()
 	}
 	ours := scopes[v2193Path]
+	for _, e := range mojang.Enums["v2193"] {
+		for name, v := range e.Values {
+			if c, ok := ours.Lookup(e.Prefix + name).(*types.Const); !ok || !constant.Compare(c.Val(), token.EQL, constant.MakeInt64(v)) {
+				t.Errorf("%s%s is not %d, Mojang's value", e.Prefix, name, v)
+			}
+		}
+	}
 	compared := 0
 	for _, name := range ours.Names() {
 		c, ok := ours.Lookup(name).(*types.Const)
 		if !ok {
+			continue
+		}
+		if mojang.Corrected("v2193", name) {
+			if !slices.ContainsFunc(mojang.Enums["v2193"], func(e mojang.Enum) bool {
+				_, ok := e.Values[strings.TrimPrefix(name, e.Prefix)]
+				return strings.HasPrefix(name, e.Prefix) && ok
+			}) {
+				t.Errorf("%s is not of Mojang's documentation", name)
+			}
 			continue
 		}
 		theirs, from := gophertunnelConst(scopes[protocolPath], scopes[packetPath], name)

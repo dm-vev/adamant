@@ -71,16 +71,6 @@ func TestFilteredStructureName(t *testing.T) {
 	}
 }
 
-func TestVideoCaptureAction(t *testing.T) {
-	start := roundTrip(t, &v2193.PlayerVideoCapturePacket{Action: v2193.PlayerVideoCaptureActionStart, FrameRate: 30, FilePrefix: "f"}).(*v2225.PlayerVideoCapturePacket)
-	if start.Action != v2225.PlayerVideoCaptureActionStart || start.FrameRate != 30 || start.FilePrefix != "f" {
-		t.Fatalf("start %+v", start)
-	}
-	if stop := roundTrip(t, &v2193.PlayerVideoCapturePacket{Action: v2193.PlayerVideoCaptureActionStop}).(*v2225.PlayerVideoCapturePacket); stop.Action != v2225.PlayerVideoCaptureActionStop {
-		t.Fatalf("stop %+v", stop)
-	}
-}
-
 func TestSoundDataUpdate(t *testing.T) {
 	u := v2193.SoundDataUpdate{Type: v2193.SoundDataUpdateSetVolume, Volume: 0.5}
 	up := roundTrip(t, &v2193.ClientboundUpdateSoundDataPacket{ServerSoundHandle: 3, Stop: u, SetVolume: u, SetPitch: u, Fade: u, SeekTo: u, Pause: u, Resume: u}).(*v2225.ClientboundUpdateSoundDataPacket)

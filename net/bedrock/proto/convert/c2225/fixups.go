@@ -178,30 +178,6 @@ func fixDownEnvironmentAttributeData(in *v2225.EnvironmentAttributeData, out *v2
 
 // The fixes of what a copy by name gets wrong with the types alike.
 
-// A video capture starts with action 1 and stops with 0 in the v2193 of
-// gophertunnel v1.62.0, and starts with variant 0 and stops with 1 in
-// v2225 (gophertunnel #545). Mojang's JSON numbers the variant as v2225
-// does in 1.26.50 already: v2193 codes the packet as gophertunnel v1.62.0
-// did, and the fixes keep what its Action means.
-
-func fixUpPlayerVideoCapturePacket(in *v2193.PlayerVideoCapturePacket, out *v2225.PlayerVideoCapturePacket) {
-	switch in.Action {
-	case v2193.PlayerVideoCaptureActionStart:
-		out.Action = v2225.PlayerVideoCaptureActionStart
-	case v2193.PlayerVideoCaptureActionStop:
-		out.Action = v2225.PlayerVideoCaptureActionStop
-	}
-}
-
-func fixDownPlayerVideoCapturePacket(in *v2225.PlayerVideoCapturePacket, out *v2193.PlayerVideoCapturePacket) {
-	switch in.Action {
-	case v2225.PlayerVideoCaptureActionStart:
-		out.Action = v2193.PlayerVideoCaptureActionStart
-	case v2225.PlayerVideoCaptureActionStop:
-		out.Action = v2193.PlayerVideoCaptureActionStop
-	}
-}
-
 // 2193 writes the update of a sound seven times, once per kind, and the
 // client takes the last (Mojang's note
 // clientbound_update_sound_data_packet_tagged_variant; gophertunnel). 2225

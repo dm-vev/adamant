@@ -37,6 +37,18 @@ var corrections = []correction{
 		right: []string{"RecipeNetworkID varuint32", "NumberOfCrafts uint8", "Ingredients []RecipeIngredient"},
 		add:   []*decl{{name: "RecipeIngredient", manual: "coded by hand as Mojang's RecipeIngredient"}},
 	},
+	{
+		// Mojang's json/PlayerVideoCapturePacketPayload.json is a variant,
+		// its index (x-control-value-type uint32) a varuint32 as that of
+		// json/PlayerListPacketPayload.json: Start Video Capture
+		// (x-ordinal-index 0) with the frame rate (uint32) and the prefix
+		// of the files (json/Start_Video_Capture.json), or Stop Video
+		// Capture (1) with nothing. gophertunnel v1.62.0 wrote a byte,
+		// stop 0 and start 1; it is the same in 1.26.40 to 1.26.61.
+		name:  "PlayerVideoCapture",
+		wrong: []string{"Action uint8", "if Action == 1", "\tFrameRate int32", "\tFilePrefix string"},
+		right: []string{"Action varuint32", "if Action == 0", "\tFrameRate int32", "\tFilePrefix string"},
+	},
 }
 
 // correct applies the corrections to the declarations imported, and

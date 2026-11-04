@@ -231,9 +231,17 @@ func marshal(pk packet.Packet) (b []byte, ok bool) {
 	return buf.Bytes(), true
 }
 
+// mojangLayouts are the packets whose layout protoimport corrects after
+// Mojang's documentation (cmd/protoimport/corrections.go), which v2193
+// therefore codes otherwise than gophertunnel v1.62.0: TestMojangLayouts
+// of v2193 checks them.
+var mojangLayouts = map[uint32]string{
+	324: "PlayerVideoCapture",
+}
+
 // TestGeneratedCodecsMatchGophertunnel decodes what gophertunnel encodes
 // for random packets with the generated codecs and encodes it back: the
-// bytes must not change.
+// bytes must not change, but for the packets of mojangLayouts.
 func TestGeneratedCodecsMatchGophertunnel(t *testing.T) {
 	pool := packet.NewClientPool()
 	for id, f := range packet.NewServerPool() {
@@ -249,6 +257,9 @@ func TestGeneratedCodecsMatchGophertunnel(t *testing.T) {
 	for _, id := range ids {
 		if v2193.New(id) == nil {
 			t.Errorf("packet %d (%T) has no generated type", id, pool[id]())
+			continue
+		}
+		if _, ok := mojangLayouts[id]; ok {
 			continue
 		}
 		if v2193.Raw(id) {
@@ -297,7 +308,7 @@ func TestGeneratedCodecsMatchGophertunnel(t *testing.T) {
 			codecs++
 		}
 	}
-	t.Logf("%d packets: %d with codecs checked, %d raw, %d untested", len(ids), codecs, raw, untested)
+	t.Logf("%d packets: %d with codecs checked, %d raw, %d untested, %d of Mojang's layout", len(ids), codecs, raw, untested, len(mojangLayouts))
 }
 
 // canonical brings the fields of a packet that the wire holds in fewer
