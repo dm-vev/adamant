@@ -59,13 +59,16 @@ var (
 
 // validateName holds the name a player logged in with to the rules of
 // Bedrock Edition, then, unless check is NameCheckLenient, to those of the
-// game.
+// game. Names the server reserves (server.ReservedName) are refused with
+// every check.
 func validateName(id client.Identity, check NameCheck) error {
 	if err := validateBedrockName(id, check == NameCheckStrict); err != nil {
 		return err
 	}
 	if check == NameCheckLenient {
-		return nil
+		// The admin commands read some names as keys of accounts, whatever
+		// the check.
+		return server.ReservedName(id.Name)
 	}
 	return server.ValidateName(id)
 }

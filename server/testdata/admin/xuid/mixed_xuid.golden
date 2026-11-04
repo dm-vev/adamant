@@ -9,9 +9,9 @@
    "[\"pending\", {\"xuid\": \"2535412345678901\", \"name\": \"Steve\"}, {\"xuid\": \"2535412345678902\", \"name\": \"\"}]"
 -- banned-players.json (116 bytes)
    "{\"players\": [{\"xuid\": \"2535412345678903\", \"name\": \"Griefer\", \"reason\": \"griefing\"}, {\"name\": \"Pending\"}], \"ips\": []}"
-WhitelistEntries() = ["xuid:2535412345678901" "alex" "xuid:2535412345678902" "xuid:12a not an account" "xuid:2535412345678903"]
-OperatorEntries() = ["pending" "xuid:2535412345678901" "xuid:2535412345678902"]
-BanEntries(false) = ["xuid:2535412345678903" "pending"]
+WhitelistEntries() = ["Steve (xuid:2535412345678901)" "alex (held by name)" "xuid:2535412345678902" "xuid:12a not an account (held by name)" "Alex  Two (xuid:2535412345678903)"]
+OperatorEntries() = ["pending (held by name)" "Steve (xuid:2535412345678901)" "xuid:2535412345678902"]
+BanEntries(false) = ["Griefer (xuid:2535412345678903)" "pending (held by name)"]
 Allow("STEVE" xuid "2535412345678901" authenticated true) = true ""; operator true
 Allow("Alex Two" xuid "2535412345678903" authenticated true) = false "You are banned from this server. Reason: griefing"; operator false
 Allow("Griefer" xuid "2535412345678906" authenticated true) = false "§cServer is white-listed"; operator false

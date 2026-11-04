@@ -24,20 +24,17 @@ func (srv *Server) IdentityKey() identity.Mode {
 }
 
 // IsOperator reports whether the player of the name passed is an
-// operator. On a server keyed by XUID, the name is that of a player online,
-// whose account is checked; an entry still held by the name, which no
-// account joined with yet, is no one's.
+// operator. On a server keyed by XUID, the name resolves as ResolvePlayer
+// resolves it, without adding anything: the account of the player online,
+// or the account that last joined with the name, is checked; an entry still
+// held by the name, which no account joined with yet, is no one's.
 func (srv *Server) IsOperator(name string) bool {
 	if srv.operators == nil {
 		return false
 	}
 	if srv.IdentityKey() == identity.XUID {
-		p, ok := srv.players.named(name)
-		if !ok {
-			return false
-		}
-		k, ok := accountKey(p.id)
-		return ok && srv.operators.hasKey(k)
+		t, err := srv.ResolvePlayer(name)
+		return err == nil && !t.Pending && srv.operators.hasKey(t.Key)
 	}
 	return srv.operators.isOperator(name)
 }
@@ -56,77 +53,32 @@ func (srv *Server) operatorOf(id client.Identity) bool {
 	return srv.operators.isOperator(id.Name)
 }
 
-// addition returns the entry a list gains for a player an admin names: on
-// a server keyed by name, the name; on one keyed by XUID, the account of
-// "xuid:<XUID>", or of the player online with the name, or else the name
-// held until an account joins with it.
-func (srv *Server) addition(name string) (entry, error) {
-	if srv.IdentityKey() != identity.XUID {
-		return nameEntry(name)
-	}
-	k, err := identity.Parse(name)
+// addition returns the entry a list gains for a player an admin names, as
+// ResolvePlayer resolves it.
+func (srv *Server) addition(name string) (entry, Target, error) {
+	t, err := srv.ResolvePlayer(name)
 	if err != nil {
-		return entry{}, err
+		return entry{}, t, err
 	}
-	if _, ok := k.XUID(); ok {
-		return entry{key: k}, nil
+	en := entry{key: t.Key, name: t.Name}
+	if n, ok := t.Key.Name(); ok {
+		en.name = n
 	}
-	if p, ok := srv.players.named(name); ok {
-		if k, ok := accountKey(p.id); ok {
-			return entry{key: k, name: p.id.Name}, nil
-		}
-	}
-	return nameEntry(name)
+	return en, t, nil
 }
 
 // removal returns the key of the entry of a list an admin names for
-// removal: on a server keyed by name, the name, or the account an entry
-// says last had it; on one keyed by XUID, the account of "xuid:<XUID>", or
-// of the player online with the name if the list holds it, or the name
-// held until an account joins with it, or else the account the list says
-// last had the name.
-func (srv *Server) removal(name string, view func(func(*entries))) (identity.Key, bool) {
-	var key identity.Key
-	found := false
-	if srv.IdentityKey() != identity.XUID {
-		view(func(e *entries) {
-			if en, ok := e.match(name); ok {
-				key, found = en.key, true
-			}
-		})
-		return key, found
-	}
-	k, err := identity.Parse(name)
-	if err != nil {
-		return key, false
-	}
-	if _, ok := k.XUID(); ok {
-		return k, true
-	}
-	var online identity.Key
-	if p, ok := srv.players.named(name); ok {
-		online, _ = accountKey(p.id)
-	}
-	view(func(e *entries) {
-		switch {
-		case !online.IsZero() && e.has(online):
-			key, found = online, true
-		case e.has(k):
-			key, found = k, true
-		default:
-			if accounts := e.byName(name); len(accounts) > 0 {
-				key, found = accounts[0].key, true
-			}
-		}
-	})
-	return key, found
+// removal, as ResolveEntry resolves it.
+func (srv *Server) removal(list List, name string) (identity.Key, error) {
+	t, err := srv.ResolveEntry(list, name)
+	return t.Key, err
 }
 
 func (srv *Server) Op(name string) (bool, error) {
 	if srv.operators == nil {
 		return false, errAdminUnavailable
 	}
-	en, err := srv.addition(name)
+	en, _, err := srv.addition(name)
 	if err != nil {
 		return false, err
 	}
@@ -140,12 +92,18 @@ func (srv *Server) Deop(name string) (bool, error) {
 	if srv.operators == nil {
 		return false, errAdminUnavailable
 	}
-	k, ok := srv.removal(name, srv.operators.view)
-	if !ok {
+	k, err := srv.removal(Operators, name)
+	if errors.Is(err, identity.ErrEmptyName) {
 		return false, nil
+	} else if err != nil {
+		return false, err
 	}
 	var en entry
-	srv.operators.view(func(e *entries) { en, _ = e.get(k) })
+	found := false
+	srv.operators.view(func(e *entries) { en, found = e.get(k) })
+	if !found {
+		return false, nil
+	}
 	removed, err := srv.operators.remove(en)
 	if removed {
 		srv.refreshPlayerPermissions(en)
@@ -159,13 +117,7 @@ func (srv *Server) Deop(name string) (bool, error) {
 // The player is that of the account of the entry on a server keyed by XUID,
 // and of its name otherwise.
 func (srv *Server) refreshPlayerPermissions(en entry) {
-	var handle *world.EntityHandle
-	if x, ok := en.key.XUID(); ok && srv.IdentityKey() == identity.XUID {
-		handle, _ = srv.players.byXUID(x)
-	} else {
-		handle = srv.players.byKey(identity.Normalize(en.name))
-	}
-	if handle != nil {
+	if handle, ok := srv.playerOf(en); ok {
 		go player.Do(handle, func(_ *world.Tx, p *player.Player) { p.RefreshPermissions() })
 	}
 }
@@ -173,31 +125,46 @@ func (srv *Server) OperatorEntries() ([]string, error) {
 	if srv.operators == nil {
 		return nil, errAdminUnavailable
 	}
-	return srv.operators.keys(), nil
+	return srv.entryStrings(srv.operators.view), nil
 }
 func (srv *Server) BanPlayer(name, reason string) (bool, error) {
 	if srv.bans == nil {
 		return false, errAdminUnavailable
 	}
-	en, err := srv.addition(name)
+	en, _, err := srv.addition(name)
 	if err != nil {
 		return false, err
 	}
 	added, err := srv.bans.add(en, reason)
 	if added {
-		if h, ok := srv.PlayerByName(name); ok {
+		if h, ok := srv.playerOf(en); ok {
 			go player.Do(h, func(_ *world.Tx, p *player.Player) { p.Disconnect("You are banned from this server.") })
 		}
 	}
 	return added, err
 }
+
+// playerOf returns the handle of the player online an entry is of: the
+// player of its account on a server keyed by XUID, the player of its name,
+// in any case, otherwise.
+func (srv *Server) playerOf(en entry) (*world.EntityHandle, bool) {
+	if x, ok := en.key.XUID(); ok && srv.IdentityKey() == identity.XUID {
+		return srv.players.byXUID(x)
+	}
+	if p, ok := srv.players.named(en.name); ok {
+		return p.handle, true
+	}
+	return nil, false
+}
 func (srv *Server) PardonPlayer(name string) (bool, error) {
 	if srv.bans == nil {
 		return false, errAdminUnavailable
 	}
-	k, ok := srv.removal(name, srv.bans.view)
-	if !ok {
+	k, err := srv.removal(Banned, name)
+	if errors.Is(err, identity.ErrEmptyName) {
 		return false, nil
+	} else if err != nil {
+		return false, err
 	}
 	return srv.bans.remove(k)
 }
@@ -228,7 +195,10 @@ func (srv *Server) BanEntries(ip bool) ([]string, error) {
 	if srv.bans == nil {
 		return nil, errAdminUnavailable
 	}
-	return srv.bans.entries(ip), nil
+	if ip {
+		return srv.bans.entries(true), nil
+	}
+	return srv.entryStrings(srv.bans.view), nil
 }
 
 // Banned reports whether the player of the name passed, or the address
@@ -242,17 +212,8 @@ func (srv *Server) Banned(addr, name string) (string, bool) {
 	if srv.IdentityKey() != identity.XUID {
 		return srv.bans.banned(addr, name)
 	}
-	k, err := identity.Parse(name)
-	if err == nil {
-		if _, ok := k.XUID(); !ok {
-			if p, ok := srv.players.named(name); ok {
-				if acc, ok := accountKey(p.id); ok {
-					k = acc
-				}
-			}
-		}
-	}
-	return srv.bans.bannedAccount(addr, k)
+	t, _ := srv.ResolvePlayer(name)
+	return srv.bans.bannedAccount(addr, t.Key)
 }
 
 // SaveAll saves every dimension and waits until they reach the disk. It waits

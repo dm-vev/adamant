@@ -55,6 +55,9 @@ func TestNameChecks(t *testing.T) {
 		"digit first":          {client.Identity{Name: "1abc"}, admits{false, false, false}},
 		"double space":         {client.Identity{Name: "a  b"}, admits{false, false, false}},
 		"online, no Latin one": {client.Identity{Name: "Шахтёр", XUID: "1"}, admits{false, false, false}},
+		// The admin commands read these as keys of accounts.
+		"key of an xuid":     {client.Identity{Name: "xuid:1"}, admits{false, false, false}},
+		"key of a java name": {client.Identity{Name: "Java:Steve"}, admits{false, false, false}},
 	} {
 		got := admits{
 			validateName(tc.id, NameCheckLenient) == nil,

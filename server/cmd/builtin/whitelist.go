@@ -66,7 +66,11 @@ func (c whitelistAddCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Errort(cmd.MessageParameterInvalid, c.Name)
 		return
 	}
-	added, err := c.srv.WhitelistAdd(name)
+	t, ok := addTarget(c.srv, o, name)
+	if !ok {
+		return
+	}
+	added, err := c.srv.WhitelistAdd(t.Arg())
 	if err != nil {
 		if errors.Is(err, server.ErrWhitelistInvalidName) {
 			o.Errort(cmd.MessageParameterInvalid, name)
@@ -75,11 +79,14 @@ func (c whitelistAddCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Error(err)
 		return
 	}
-	if added {
-		o.Printf("Added %s to the whitelist.", name)
-		return
+	switch {
+	case !added:
+		o.Printf("%s is already on the whitelist.", t)
+	case t.Pending:
+		o.Printf(pendingAdded, t.Name, t.Name, "is on the whitelist")
+	default:
+		o.Printf("Added %s to the whitelist.", t)
 	}
-	o.Printf("%s is already on the whitelist.", name)
 }
 
 func (c whitelistOnCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
@@ -112,7 +119,11 @@ func (c whitelistRemoveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Errort(cmd.MessageParameterInvalid, c.Name)
 		return
 	}
-	removed, err := c.srv.WhitelistRemove(name)
+	t, ok := removeTarget(c.srv, o, server.Whitelisted, name)
+	if !ok {
+		return
+	}
+	removed, err := c.srv.WhitelistRemove(t.Arg())
 	if err != nil {
 		if errors.Is(err, server.ErrWhitelistInvalidName) {
 			o.Errort(cmd.MessageParameterInvalid, name)
@@ -122,10 +133,10 @@ func (c whitelistRemoveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		return
 	}
 	if removed {
-		o.Printf("Removed %s from the whitelist.", name)
+		o.Printf("Removed %s from the whitelist.", t)
 		return
 	}
-	o.Printf("%s is not on the whitelist.", name)
+	o.Printf("%s is not on the whitelist.", t)
 }
 
 func (c whitelistListCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {

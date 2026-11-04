@@ -33,6 +33,10 @@ type serverAdapter interface {
 	PardonIP(ip string) (bool, error)
 	BanEntries(ip bool) ([]string, error)
 	Banned(addr string, name string) (string, bool)
+	// ResolvePlayer and ResolveEntry find the player an admin names, by
+	// name or by "xuid:<XUID>", to add to a list and to remove from one.
+	ResolvePlayer(s string) (server.Target, error)
+	ResolveEntry(list server.List, s string) (server.Target, error)
 	// SaveAllFrom saves every dimension without waiting for it in tx, the
 	// transaction the command runs in; done runs in tx's world once they
 	// were saved.

@@ -5,8 +5,10 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
@@ -14,7 +16,8 @@ import (
 
 // The tests of this file pin how the server tells its players apart before
 // it keys them by Xbox account or by name. Each names the commit that
-// changes what it pins.
+// changes what it pins, and those that commit changed say what they
+// pinned.
 
 // TestOfflineSameNameTwiceIsOnlineTwice pins that two clients that log in
 // without Xbox Live under one name, in two cases and with two UUIDs, are
@@ -69,33 +72,38 @@ func TestOfflineClientLoadsTheRecordOfTheUUIDItSends(t *testing.T) {
 	}
 }
 
-// TestBanKicksOnlyTheExactName pins that BanPlayer looks for the player to
-// kick by the name exactly as typed: /ban steve stores the ban but leaves
-// Steve online until he next logs in. "Name players in admin commands by
-// name or by XUID" kicks the player the ban is keyed by.
-func TestBanKicksOnlyTheExactName(t *testing.T) {
-	jt := newJoinTest(t, player.NopProvider{}, Config{})
-	var err error
-	if jt.srv.bans, err = loadBans(filepath.Join(t.TempDir(), "banned-players.json")); err != nil {
-		t.Fatal(err)
-	}
-	jt.start()
-	steve := joinLogin("Steve", "")
-	h := jt.join(t, steve)
-	if _, ok := jt.srv.PlayerByName("steve"); ok {
-		t.Error("PlayerByName found Steve by another case")
-	}
-	if added, err := jt.srv.BanPlayer("steve", ""); !added || err != nil {
-		t.Fatalf("BanPlayer = %t, %v", added, err)
-	}
-	if err := player.Do(h, func(*world.Tx, *player.Player) {}).Wait(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := jt.srv.Player(steve.L.Identity.UUID); !ok || len(steve.Recorder().CallsTo("Disconnect")) != 0 {
-		t.Error("the ban of steve kicked Steve")
-	}
-	if reason, banned := jt.srv.Banned("", "Steve"); !banned || reason != "" {
-		t.Errorf("Banned(Steve) = %q, %t; want the ban stored", reason, banned)
+// TestBanKicksTheKeyedPlayer checks that BanPlayer kicks the player the
+// ban is keyed by: on a server keyed by name, the player of the name in any
+// case, so that /ban steve kicks Steve; on one keyed by XUID, the player of
+// the account. It was TestBanKicksOnlyTheExactName, which pinned that the
+// ban of steve left Steve online until he logged in again.
+func TestBanKicksTheKeyedPlayer(t *testing.T) {
+	for _, mode := range []identity.Mode{identity.Name, identity.XUID} {
+		t.Run(mode.String(), func(t *testing.T) {
+			jt := newJoinTest(t, player.NopProvider{}, Config{IdentityKey: mode})
+			var err error
+			if jt.srv.bans, err = loadBans(filepath.Join(t.TempDir(), "banned-players.json")); err != nil {
+				t.Fatal(err)
+			}
+			jt.start()
+			steve, alex := joinLogin("Steve", "2535412345678901"), joinLogin("Alex", "2535412345678902")
+			steve.L.Identity.Authenticated, alex.L.Identity.Authenticated = true, true
+			jt.join(t, steve)
+			jt.join(t, alex)
+			if added, err := jt.srv.BanPlayer("steve", ""); !added || err != nil {
+				t.Fatalf("BanPlayer = %t, %v", added, err)
+			}
+			deadline := time.Now().Add(5 * time.Second)
+			for len(steve.Recorder().CallsTo("Disconnect")) == 0 {
+				if time.Now().After(deadline) {
+					t.Fatal("the ban of steve did not kick Steve")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			if len(alex.Recorder().CallsTo("Disconnect")) != 0 {
+				t.Error("the ban of steve kicked Alex")
+			}
+		})
 	}
 }
 

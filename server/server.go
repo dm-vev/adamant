@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"net"
@@ -233,9 +234,11 @@ func (srv *Server) WhitelistAdd(name string) (bool, error) {
 	if srv.whitelist == nil {
 		return false, ErrWhitelistUnavailable
 	}
-	en, err := srv.addition(name)
-	if err != nil {
+	en, _, err := srv.addition(name)
+	if errors.Is(err, identity.ErrEmptyName) {
 		return false, ErrWhitelistInvalidName
+	} else if err != nil {
+		return false, err
 	}
 	return srv.whitelist.add(en)
 }
@@ -246,12 +249,11 @@ func (srv *Server) WhitelistRemove(name string) (bool, error) {
 	if srv.whitelist == nil {
 		return false, ErrWhitelistUnavailable
 	}
-	if _, err := identity.Parse(name); err != nil {
+	k, err := srv.removal(Whitelisted, name)
+	if errors.Is(err, identity.ErrEmptyName) {
 		return false, ErrWhitelistInvalidName
-	}
-	k, ok := srv.removal(name, srv.whitelist.view)
-	if !ok {
-		return false, nil
+	} else if err != nil {
+		return false, err
 	}
 	return srv.whitelist.remove(k)
 }
@@ -261,7 +263,7 @@ func (srv *Server) WhitelistEntries() ([]string, error) {
 	if srv.whitelist == nil {
 		return nil, ErrWhitelistUnavailable
 	}
-	return srv.whitelist.Players(), nil
+	return srv.entryStrings(srv.whitelist.view), nil
 }
 
 // OnlinePlayer is a player online, as the server knows it without asking its

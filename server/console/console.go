@@ -295,6 +295,21 @@ func (c *Console) suggestionsForParam(p cmd.ParamInfo, src cmd.Source) []prompt.
 			{Text: "1", Description: hint},
 			{Text: "0", Description: hint},
 		}
+	case string:
+		if p.Name != "player" {
+			return nil
+		}
+		// The admin commands name players by a free string: the players
+		// online, and those a server keyed by XUID has seen.
+		names := append(c.playerNames(), c.srv.KnownNames()...)
+		suggestions := make([]prompt.Suggest, 0, len(names))
+		for _, name := range names {
+			suggestions = append(suggestions, prompt.Suggest{
+				Text:        name,
+				Description: hint,
+			})
+		}
+		return suggestions
 	case []cmd.Target:
 		names := c.playerNames()
 		suggestions := make([]prompt.Suggest, 0, len(names))

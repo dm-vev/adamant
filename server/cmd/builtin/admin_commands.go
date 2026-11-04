@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
@@ -128,34 +129,79 @@ func newVersionCommand(srv serverAdapter) cmd.Command {
 }
 
 func (c opCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	ok, err := c.srv.Op(c.Name)
-	if err != nil {
+	t, ok := addTarget(c.srv, o, c.Name)
+	if !ok {
+		return
+	}
+	added, err := c.srv.Op(t.Arg())
+	switch {
+	case err != nil:
 		o.Error(err)
-	} else if !ok {
-		o.Printf("%s is already an operator.", c.Name)
-	} else {
-		o.Printf("Made %s a server operator.", c.Name)
+	case !added:
+		o.Printf("%s is already an operator.", t)
+	case t.Pending:
+		o.Printf(pendingAdded, t.Name, t.Name, "becomes an operator")
+	default:
+		o.Printf("Made %s a server operator.", t)
 	}
 }
 func (c deopCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	ok, err := c.srv.Deop(c.Name)
+	t, ok := removeTarget(c.srv, o, server.Operators, c.Name)
+	if !ok {
+		return
+	}
+	removed, err := c.srv.Deop(t.Arg())
 	if err != nil {
 		o.Error(err)
-	} else if !ok {
-		o.Printf("%s is not an operator.", c.Name)
+	} else if !removed {
+		o.Printf("%s is not an operator.", t)
 	} else {
-		o.Printf("Removed %s from the server operators.", c.Name)
+		o.Printf("Removed %s from the server operators.", t)
 	}
 }
 func (c banCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	added, err := c.srv.BanPlayer(c.Name, reasonArg(c.Reason))
+	t, ok := addTarget(c.srv, o, c.Name)
+	if !ok {
+		return
+	}
+	added, err := c.srv.BanPlayer(t.Arg(), reasonArg(c.Reason))
+	switch {
+	case err != nil:
+		o.Error(err)
+	case !added:
+		o.Printf("%s is already banned.", t)
+	case t.Pending:
+		o.Printf(pendingAdded, t.Name, t.Name, "is banned")
+	default:
+		o.Printf("Banned %s.", t)
+	}
+}
+
+// pendingAdded is what a command that adds a name no account is known by
+// to a list of a server keyed by XUID prints: the name, the name, and what
+// the account that joins with it becomes.
+const pendingAdded = "%s has not joined this server: the first Xbox account that joins as %s %s. Name the account with xuid:<XUID> instead."
+
+// addTarget resolves the player an admin names to add to a list, and
+// prints the error if it cannot.
+func addTarget(srv serverAdapter, o *cmd.Output, name string) (server.Target, bool) {
+	t, err := srv.ResolvePlayer(name)
 	if err != nil {
 		o.Error(err)
-	} else if added {
-		o.Printf("Banned %s.", c.Name)
-	} else {
-		o.Printf("%s is already banned.", c.Name)
+		return t, false
 	}
+	return t, true
+}
+
+// removeTarget resolves the entry of a list an admin names to remove, and
+// prints the error if it cannot.
+func removeTarget(srv serverAdapter, o *cmd.Output, list server.List, name string) (server.Target, bool) {
+	t, err := srv.ResolveEntry(list, name)
+	if err != nil {
+		o.Error(err)
+		return t, false
+	}
+	return t, true
 }
 func (c banIPCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	added, err := c.srv.BanIP(c.IP, reasonArg(c.Reason))
@@ -168,13 +214,17 @@ func (c banIPCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	}
 }
 func (c pardonCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	ok, err := c.srv.PardonPlayer(c.Name)
+	t, ok := removeTarget(c.srv, o, server.Banned, c.Name)
+	if !ok {
+		return
+	}
+	removed, err := c.srv.PardonPlayer(t.Arg())
 	if err != nil {
 		o.Error(err)
-	} else if ok {
-		o.Printf("Unbanned %s.", c.Name)
+	} else if removed {
+		o.Printf("Unbanned %s.", t)
 	} else {
-		o.Printf("%s is not banned.", c.Name)
+		o.Printf("%s is not banned.", t)
 	}
 }
 func (c pardonIPCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
