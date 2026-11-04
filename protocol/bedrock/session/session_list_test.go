@@ -24,7 +24,7 @@ import (
 // listedOf returns the player of a session as the session lists it in
 // Bind.
 func listedOf(s *Session) client.Listed {
-	return client.Listed{Identity: IdentityOf(s.conn.IdentityData()), Handle: s.ent, Client: s}
+	return client.Listed{Identity: identityOf(s.conn), Handle: s.ent, Client: s}
 }
 
 // TestRosterListsAndUnlistsConcurrently lists a session while another

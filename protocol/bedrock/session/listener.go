@@ -77,7 +77,7 @@ func (l *Listener) Accept() (client.Join, error) {
 		if err != nil {
 			return nil, err
 		}
-		if IdentityOf(conn.IdentityData()).UUID == uuid.Nil {
+		if identityOf(conn).UUID == uuid.Nil {
 			l.conf.Log.Debug("login refused: no valid UUID", "raddr", conn.RemoteAddr())
 			_ = l.l.Disconnect(conn, "")
 			continue
@@ -117,7 +117,7 @@ func (j *join) Login() client.Login {
 		d := j.conn.ClientData()
 		locale, _ := language.Parse(strings.Replace(d.LanguageCode, "_", "-", 1))
 		j.login = client.Login{
-			Identity: IdentityOf(j.conn.IdentityData()),
+			Identity: identityOf(j.conn),
 			Profile:  ProfileOf(d),
 			Locale:   locale,
 			Skin:     ClientSkin(d),

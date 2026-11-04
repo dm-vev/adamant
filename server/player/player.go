@@ -243,20 +243,18 @@ func (p *Player) Name() string {
 	return p.data.Name
 }
 
-// UUID returns the UUID of the player. This UUID will remain consistent with an XBOX Live account, and will,
-// unlike the name of the player, never change.
-// It is therefore recommended using the UUID over the name of the player. Additionally, it is recommended to
-// use the UUID over the XUID because of its standard format.
+// UUID returns the UUID of the player, as its client sent it. For a player that signed in with Xbox Live, it
+// follows from the account and will, unlike the name of the player, never change. A client that joined without
+// signing in chose it, and may send another at its next login, or the UUID of another player.
 func (p *Player) UUID() uuid.UUID {
 	return p.handle.UUID()
 }
 
-// XUID returns the XBOX Live user ID of the player. It will remain consistent with the XBOX Live account,
-// and will not change in the lifetime of an account.
-// The XUID is a number that can be parsed as an int64. No more information on what it represents is
-// available, and the UUID should be preferred.
-// The XUID returned is empty if the Player is not connected to a network session or if the Player is not
-// authenticated with XBOX Live.
+// XUID returns the Xbox Live user ID the login of the player named, in decimal: a number that fits a uint64. For
+// a player that signed in with Xbox Live, it is the ID of its account, which does not change in the lifetime of
+// the account. A client that joined without signing in, on a server with Xbox Live sign-in off, claimed it: it
+// may be empty, or the XUID of anyone, and must not be trusted as the account of the player. The server keys such
+// players by name (see identity.Mode). The XUID is empty for a player no client plays.
 func (p *Player) XUID() string {
 	return p.xuid
 }

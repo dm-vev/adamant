@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -42,6 +43,13 @@ func proxyLink(t *testing.T, l *Listener) *proxy.Link {
 // that logged it in does, and returns the batches of the player.
 func openProxied(t *testing.T, link *proxy.Link, name string, protocol int32) *bedrock.Conn {
 	t.Helper()
+	return openProxiedAs(t, link, name, protocol, true)
+}
+
+// openProxiedAs is openProxied of a player whose proxy says Xbox Live
+// vouched for it if xboxLive.
+func openProxiedAs(t *testing.T, link *proxy.Link, name string, protocol int32, xboxLive bool) *bedrock.Conn {
+	t.Helper()
 	identity, err := json.Marshal(ourlogin.Identity{DisplayName: name, Identity: uuid.NewString(), XUID: "2535400000000000"})
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +58,7 @@ func openProxied(t *testing.T, link *proxy.Link, name string, protocol int32) *b
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := link.Open(proxy.Token{Identity: identity, ClientData: client, XboxLive: true, Addr: "203.0.113.7:4242", Protocol: protocol})
+	p, err := link.Open(proxy.Token{Identity: identity, ClientData: client, XboxLive: xboxLive, Addr: "203.0.113.7:4242", Protocol: protocol})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,6 +126,9 @@ func TestProxiedPlayerJoins(t *testing.T) {
 	if id := c.IdentityData(); id.DisplayName != "Proxied" || id.XUID != "2535400000000000" {
 		t.Fatalf("identity %+v", id)
 	}
+	if !c.Authenticated() {
+		t.Fatal("a player whose proxy says Xbox Live vouched for it is not authenticated")
+	}
 	if cd := c.ClientData(); cd.LanguageCode != "ru_RU" || cd.ServerAddress != "play.example.org:19132" {
 		t.Fatalf("client data %+v", cd)
 	}
@@ -155,6 +166,32 @@ func TestProxiedPlayersAdmittedAsClients(t *testing.T) {
 }
 
 var errInvalidName = wire.ErrTooLong
+
+// TestProxiedPlayerAuthenticatedAsItsTokenSays checks that Allow is told
+// whether Xbox Live vouched for a proxied player as the token of its proxy
+// says, and nothing else.
+func TestProxiedPlayerAuthenticatedAsItsTokenSays(t *testing.T) {
+	told := make(chan bool, 2)
+	l := listen(t, Config{Allow: func(_ net.Addr, id ourlogin.Identity, _ ourlogin.ClientData, xboxLive bool) (string, bool) {
+		told <- xboxLive
+		return "refused", false
+	}})
+	link := proxyLink(t, l)
+	for _, xboxLive := range []bool{true, false} {
+		b := openProxiedAs(t, link, "Proxied", v2193.Protocol, xboxLive)
+		if _, err := b.ReadPacket(); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case got := <-told:
+			if got != xboxLive {
+				t.Errorf("Allow was told %t of a token that says %t", got, xboxLive)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("Allow was not called")
+		}
+	}
+}
 
 // TestProxiedPlayerReadsStatics sends a Static to a proxied player and to
 // a client of the server's own: each reads it in a batch of the

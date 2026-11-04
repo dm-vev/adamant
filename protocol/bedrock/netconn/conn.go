@@ -61,7 +61,10 @@ type Conn struct {
 	// is written: that of the listener, none for a player of a proxy.
 	comp bedrock.Compression
 
-	identity     login.Identity
+	identity login.Identity
+	// xboxLive reports that Xbox Live vouched for identity: it signed the
+	// login, or the proxy that carries the client says it did.
+	xboxLive     bool
 	client       login.ClientData
 	cacheEnabled atomic.Bool
 	chunkRadius  atomic.Int32
@@ -123,6 +126,12 @@ func (c *Conn) Stats() Stats {
 
 // IdentityData returns the identity the client logged in with.
 func (c *Conn) IdentityData() login.Identity { return c.identity }
+
+// Authenticated reports whether Xbox Live vouched for the identity the
+// client logged in with: it signed the login, or the proxy that carries the
+// client, holding the secret of the links, says it did. Otherwise the
+// client named itself, its XUID included.
+func (c *Conn) Authenticated() bool { return c.xboxLive }
 
 // ClientData returns the client data of the login: skin, locale and such.
 func (c *Conn) ClientData() login.ClientData { return c.client }

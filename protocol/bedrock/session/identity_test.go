@@ -12,10 +12,16 @@ func TestIdentityOf(t *testing.T) {
 	id := uuid.MustParse("00000000-0000-4000-8000-00000000901d")
 	for name, tc := range map[string]struct {
 		in   login.Identity
+		auth bool
 		want client.Identity
 	}{
 		"xbox live": {
 			in:   login.Identity{DisplayName: "Golden", Identity: id.String(), XUID: "2535400000000042", PlayFabID: "p", TitleID: "t"},
+			auth: true,
+			want: client.Identity{Name: "Golden", UUID: id, XUID: "2535400000000042", Authenticated: true},
+		},
+		"claimed xuid": {
+			in:   login.Identity{DisplayName: "Golden", Identity: id.String(), XUID: "2535400000000042"},
 			want: client.Identity{Name: "Golden", UUID: id, XUID: "2535400000000042"},
 		},
 		"offline": {
@@ -40,10 +46,36 @@ func TestIdentityOf(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if got := IdentityOf(tc.in); got != tc.want {
-				t.Fatalf("IdentityOf(%+v) = %+v, want %+v", tc.in, got, tc.want)
+			if got := IdentityOf(tc.in, tc.auth); got != tc.want {
+				t.Fatalf("IdentityOf(%+v, %t) = %+v, want %+v", tc.in, tc.auth, got, tc.want)
 			}
 		})
+	}
+}
+
+// loginConn is a Conn that only tells its login.
+type loginConn struct{ Conn }
+
+func (loginConn) IdentityData() login.Identity { return login.Identity{DisplayName: "Golden"} }
+
+// authConn is a Conn that reports whether Xbox Live vouched for its login,
+// as a netconn.Conn does.
+type authConn struct {
+	loginConn
+	auth bool
+}
+
+func (c authConn) Authenticated() bool { return c.auth }
+
+// TestIdentityOfConn checks that the identity of a connection is
+// authenticated only if the connection says Xbox Live vouched for it: a
+// connection that cannot say is not.
+func TestIdentityOfConn(t *testing.T) {
+	if !identityOf(authConn{auth: true}).Authenticated {
+		t.Error("the identity of a connection Xbox Live vouched for is not authenticated")
+	}
+	if identityOf(authConn{}).Authenticated || identityOf(loginConn{}).Authenticated {
+		t.Error("the identity of a connection nobody vouched for is authenticated")
 	}
 }
 

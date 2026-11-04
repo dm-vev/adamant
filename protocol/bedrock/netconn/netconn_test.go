@@ -217,6 +217,9 @@ func TestOurClientJoins(t *testing.T) {
 	if srv.IdentityData().DisplayName != "Bot" || srv.ChunkRadius() != 8 {
 		t.Fatalf("server sees %q with chunk radius %d", srv.IdentityData().DisplayName, srv.ChunkRadius())
 	}
+	if srv.Authenticated() {
+		t.Fatal("a client that logged in without Xbox Live is authenticated")
+	}
 	go func() {
 		<-ctx.Done()
 		_ = conn.Close()

@@ -67,10 +67,10 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 	if err != nil {
 		return nil, fmt.Errorf("load NetherNet identity: %w", err)
 	}
-	var allow func(net.Addr, login.Identity, login.ClientData) (string, bool)
+	var allow func(net.Addr, login.Identity, login.ClientData, bool) (string, bool)
 	if conf.Allower != nil {
-		allow = func(addr net.Addr, id login.Identity, d login.ClientData) (string, bool) {
-			return conf.Allower.Allow(addr, session.IdentityOf(id), session.ProfileOf(d))
+		allow = func(addr net.Addr, id login.Identity, d login.ClientData, xboxLive bool) (string, bool) {
+			return conf.Allower.Allow(addr, session.IdentityOf(id, xboxLive), session.ProfileOf(d))
 		}
 	}
 	listen := nethernet.ListenConfig{Key: key, AllowAnonymous: c.AuthDisabled}
@@ -348,7 +348,8 @@ func validateLogin(id login.Identity, data login.ClientData, check NameCheck) er
 	if err := netconn.ValidateIdentity(id); err != nil {
 		return err
 	}
-	if err := validateName(session.IdentityOf(id), check); err != nil {
+	// The rules of names do not ask who vouched for the identity.
+	if err := validateName(session.IdentityOf(id, false), check); err != nil {
 		return err
 	}
 	return netconn.ValidateClientData(data)

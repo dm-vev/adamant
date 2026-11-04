@@ -365,7 +365,7 @@ func (s *Session) Bind(handle *world.EntityHandle, skin skin.Skin) {
 		// A session made without New lists its player on a Roster of its own.
 		s.conf.Roster = new(client.Roster)
 	}
-	s.conf.Roster.List(client.Listed{Identity: IdentityOf(s.conn.IdentityData()), Handle: handle, Client: s})
+	s.conf.Roster.List(client.Listed{Identity: identityOf(s.conn), Handle: handle, Client: s})
 }
 
 // unlist unlists the player c of the Session from its Roster, last in its

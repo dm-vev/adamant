@@ -69,8 +69,10 @@ type Config struct {
 	// the rest. Nil takes them as they are.
 	Validate func(identity bedrocklogin.Identity, client bedrocklogin.ClientData) error
 	// Allow decides whether a client that logged in may join, and the
-	// message of a refusal.
-	Allow func(addr net.Addr, identity bedrocklogin.Identity, client bedrocklogin.ClientData) (string, bool)
+	// message of a refusal. xboxLive reports that Xbox Live vouched for
+	// the identity, directly or through a proxy that holds the secret of
+	// the links; otherwise the client named itself.
+	Allow func(addr net.Addr, identity bedrocklogin.Identity, client bedrocklogin.ClientData, xboxLive bool) (string, bool)
 	// Batches configures the batches of every connection: Compression is
 	// announced to clients, Threshold and Incompressible decide which
 	// batches are compressed, the rates bound what a client sends. Zero
@@ -438,7 +440,8 @@ func (c *Conn) loginProxied(t proxy.Token) error {
 	if err := json.Unmarshal(t.ClientData, &c.client); err != nil {
 		return fmt.Errorf("netconn: client data of proxied client: %w", err)
 	}
-	if err := c.admit(t.XboxLive); err != nil {
+	c.xboxLive = t.XboxLive
+	if err := c.admit(); err != nil {
 		_ = c.Flush()
 		return err
 	}
@@ -503,23 +506,24 @@ func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
 		_ = c.WritePacket(&v2193.DisconnectPacket{Reason: v2193.DisconnectReasonNotAuthenticated})
 		return errors.New("netconn: login key is not the key of the transport identity")
 	}
-	return c.admit(l.XboxLive)
+	c.xboxLive = l.XboxLive
+	return c.admit()
 }
 
 // admit decides whether a client that logged in, with Xbox Live or not,
 // may join: the rules of the server, Validate, then Allow.
-func (c *Conn) admit(xboxLive bool) error {
+func (c *Conn) admit() error {
 	if validate := c.l.cfg.Validate; validate != nil {
 		if err := validate(c.identity, c.client); err != nil {
 			return fmt.Errorf("netconn: validate login: %w", err)
 		}
 	}
-	if !xboxLive && !c.l.cfg.AuthenticationDisabled {
+	if !c.xboxLive && !c.l.cfg.AuthenticationDisabled {
 		_ = c.WritePacket(&v2193.DisconnectPacket{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})
 		return errors.New("netconn: client is not logged in with Xbox Live")
 	}
 	if allow := c.l.cfg.Allow; allow != nil {
-		if reason, ok := allow(c.RemoteAddr(), c.identity, c.client); !ok {
+		if reason, ok := allow(c.RemoteAddr(), c.identity, c.client, c.xboxLive); !ok {
 			_ = c.WritePacket(&v2193.DisconnectPacket{Reason: v2193.DisconnectReasonKicked, Message: reason})
 			return DisconnectError("refused: " + reason)
 		}

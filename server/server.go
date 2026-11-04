@@ -370,7 +370,10 @@ func (srv *Server) PlayerByName(name string) (*world.EntityHandle, bool) {
 
 // PlayerByXUID looks for a player on the server with the XUID passed. If
 // found, the entity handle is returned and the bool returned is true. If no
-// player with the XUID was found, nil and false are returned.
+// player with the XUID was found, nil and false are returned. On a server
+// with Xbox Live sign-in off, the XUID of a player is what its client
+// claimed (see Player.XUID): two players may claim one, and the first
+// found is returned.
 func (srv *Server) PlayerByXUID(xuid string) (*world.EntityHandle, bool) {
 	return srv.players.byXUID(xuid)
 }
