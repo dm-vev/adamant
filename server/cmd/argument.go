@@ -309,9 +309,14 @@ func ResolveCoordinates(args []string, src Source) (mgl64.Vec3, error) {
 			offsets[i] = f
 		}
 	}
-	origin := sourcePosition(src)
 	if local == 3 {
-		return localCoordinates(origin, sourceRotation(src), offsets), nil
+		return localCoordinates(anchorPosition(src), sourceRotation(src), offsets), nil
+	}
+	// WorldCoordinates.getPosition reads CommandSourceStack.getPosition: the
+	// anchor applies to local coordinates only.
+	var origin mgl64.Vec3
+	if src != nil {
+		origin = src.Position()
 	}
 	var pos mgl64.Vec3
 	for i, arg := range args {
@@ -337,8 +342,9 @@ func localCoordinates(origin mgl64.Vec3, rotation cube.Rotation, offsets mgl64.V
 	return origin.Add(left.Mul(offsets[0])).Add(up.Mul(offsets[1])).Add(forwards.Mul(offsets[2]))
 }
 
-// sourcePosition is the execution position, including execute's anchor.
-func sourcePosition(src Source) mgl64.Vec3 {
+// anchorPosition ports EntityAnchorArgument.Anchor.apply: the execution
+// position, raised to the executor's eyes when execute is anchored there.
+func anchorPosition(src Source) mgl64.Vec3 {
 	if src == nil {
 		return mgl64.Vec3{}
 	}

@@ -6,8 +6,18 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// eyedEntity is an execute executor with an eye height. Only EyeHeight is
+// called by the code under test.
+type eyedEntity struct {
+	world.Entity
+	eyes float64
+}
+
+func (e eyedEntity) EyeHeight() float64 { return e.eyes }
 
 // near compares vectors per axis to within rounding of the trigonometry.
 func near(a, b mgl64.Vec3) bool {
@@ -77,6 +87,41 @@ func TestLocalCoordinatesFollowRotation(t *testing.T) {
 			}
 			if !near(got, c.want) {
 				t.Fatalf("%q at %v = %v, want %v", c.args, c.rot, got, c.want)
+			}
+		})
+	}
+}
+
+// An execute context replaces the position and rotation of its source. Its
+// anchor applies to local coordinates only: WorldCoordinates.getPosition reads
+// CommandSourceStack.getPosition, while LocalCoordinates.getPosition reads
+// getAnchor().apply(source). So `execute anchored eyes run tp ~ ~ ~` does not
+// move the executor, and `tp ^ ^ ^` moves it to its eyes.
+func TestCoordinatesInExecuteContext(t *testing.T) {
+	base := testSource{pos: mgl64.Vec3{100, 100, 100}}
+	ctx := ExecutionContext{Executor: eyedEntity{eyes: 1.62}, Position: mgl64.Vec3{1, 2, 3}, Rotation: cube.Rotation{90, 0}}
+	feet, eyes := WithContext(base, ctx), ctx
+	eyes.Anchor = Eyes
+	eyeSrc := WithContext(base, eyes)
+
+	for _, c := range []struct {
+		name string
+		src  Source
+		args []string
+		want mgl64.Vec3
+	}{
+		{"relative at feet", feet, []string{"~", "~1", "~"}, mgl64.Vec3{1, 3, 3}},
+		{"local uses context rotation", feet, []string{"^", "^", "^1"}, mgl64.Vec3{0, 2, 3}},
+		{"relative ignores the eye anchor", eyeSrc, []string{"~", "~", "~"}, mgl64.Vec3{1, 2, 3}},
+		{"local starts at the eyes", eyeSrc, []string{"^", "^", "^"}, mgl64.Vec3{1, 3.62, 3}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := ResolveCoordinates(c.args, c.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !near(got, c.want) {
+				t.Fatalf("%q = %v, want %v", c.args, got, c.want)
 			}
 		})
 	}
