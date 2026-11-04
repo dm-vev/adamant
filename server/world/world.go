@@ -1565,7 +1565,7 @@ func (w *World) SetTime(new int) {
 
 	viewers, _ := w.allViewers()
 	for _, viewer := range viewers {
-		viewer.ViewTime(new)
+		w.view(viewer, func(v Viewer) { v.ViewTime(new) })
 	}
 	w.releaseViewers(viewers)
 }

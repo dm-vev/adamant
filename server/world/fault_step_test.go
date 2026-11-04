@@ -283,3 +283,38 @@ func TestRaidBarPanicIsBlamedOnThePlayer(t *testing.T) {
 		t.Fatalf("the world failed: %v", briefFaults(f))
 	}
 }
+
+// A viewer that panics as a skipped night shows it the new time is blamed
+// for it, not the step of the tick: the night is still skipped, rain and
+// all, and the sleepers wake.
+func TestViewerPanicAtNightSkipFailsTheViewer(t *testing.T) {
+	var sink faultSink
+	w := sink.configure(Config{Synchronous: true, RandomTickSpeed: -1}, newFaultRecorder()).New()
+	defer func() { _ = w.Close() }()
+	bad := timeTestViewer{panics: new(atomic.Bool), shown: new(atomic.Int32), failed: new(atomic.Int32)}
+	l := NewLoader(1, w, bad)
+	<-w.Exec(func(tx *Tx) { l.Move(tx, mgl64.Vec3{8, 64, 8}) })
+	defer func() { <-w.Exec(func(tx *Tx) { l.Close(tx) }) }()
+	sleeper := &sleeperTestState{sleeping: true}
+	<-w.Exec(func(tx *Tx) {
+		tx.AddEntity(EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}}.New(sleeperTestType{}, sleeperTestConfig{sleeper}))
+	})
+	// The next tick is not one of the ticks that show viewers the time.
+	for w.CurrentTick()%20 != 1 {
+		advance(t, w)
+	}
+	w.SetTime(18000)
+	w.StartRaining(time.Hour)
+	w.SetRequiredSleepDuration(time.Second / 20)
+	bad.panics.Store(true)
+	advance(t, w)
+	if sleeper.sleeping || w.Time()%TimeFull >= 18000 || w.raining() {
+		t.Fatalf("the night was not skipped: asleep %v, time %d, raining %v", sleeper.sleeping, w.Time(), w.raining())
+	}
+	if n := bad.failed.Load(); n != 1 {
+		t.Fatalf("the viewer was told it failed %d times, want once", n)
+	}
+	if faults := sink.all(0); len(faults) != 1 || faults[0].Kind != FaultViewer || faults[0].Value != "test: view time" {
+		t.Fatalf("faults = %v, want one of the viewer", briefFaults(faults))
+	}
+}
