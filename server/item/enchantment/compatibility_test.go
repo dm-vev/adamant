@@ -171,6 +171,32 @@ func TestSpearsTakeMeleeWeaponEnchantments(t *testing.T) {
 	}
 }
 
+// Java's #enchantable/sweeping item tag, the supported_items of
+// data/minecraft/enchantment/sweeping_edge.json, holds #swords alone: a
+// sword of every tier takes Sweeping Edge, and an enchanting table offers
+// it, but a spear, an axe and a mace do not. It raises the sweeping damage
+// ratio by level/(level+1).
+func TestSweepingEdge(t *testing.T) {
+	for _, tier := range item.ToolTiers() {
+		if sword := (item.Sword{Tier: tier}); !item.IsPrimaryItem(enchantment.SweepingEdge, sword) {
+			t.Errorf("Sweeping Edge does not go on a %s sword", tier.Name)
+		}
+	}
+	for _, i := range []world.Item{item.Spear{Tier: item.ToolTierIron}, item.Axe{Tier: item.ToolTierIron}, item.Mace{}, item.Trident{}} {
+		if enchantment.SweepingEdge.CompatibleWithItem(i) {
+			t.Errorf("Sweeping Edge goes on %T", i)
+		}
+	}
+	for level, want := range map[int]float64{1: 1.0 / 2, 2: 2.0 / 3, 3: 3.0 / 4} {
+		if got := enchantment.SweepingEdge.DamageRatio(level); got != want {
+			t.Errorf("level %d: ratio %v, want %v", level, got, want)
+		}
+	}
+	if id := item.JavaEnchantmentID(enchantment.SweepingEdge); id != "minecraft:sweeping_edge" {
+		t.Errorf("Java ID %s", id)
+	}
+}
+
 // Java's #enchantable/armor item tag holds #head_armor, #chest_armor,
 // #leg_armor and #foot_armor: the helmets, the turtle shell, chestplates,
 // leggings and boots. The elytra, skulls, carved pumpkins and the armour of

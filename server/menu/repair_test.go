@@ -75,6 +75,18 @@ func TestRepair(t *testing.T) {
 			},
 		},
 		{
+			// #enchantable/sweeping holds the swords.
+			name: "a book of sweeping edge", mode: world.GameModeSurvival,
+			input:     ironSword,
+			material:  item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.SweepingEdge, 3)),
+			wantLevel: 24,
+			check: func(t *testing.T, res item.Stack) {
+				if e, ok := res.Enchantment(enchantment.SweepingEdge); !ok || e.Level() != 3 {
+					t.Errorf("enchantments %v, want sweeping edge III", res.Enchantments())
+				}
+			},
+		},
+		{
 			name: "a rename", mode: world.GameModeSurvival,
 			input: ironSword, rename: name("Blade"),
 			wantLevel: 29,
@@ -199,6 +211,7 @@ func TestRepairRefused(t *testing.T) {
 		// #enchantable/armor, the supported_items of protection.json and
 		// thorns.json, does not hold the elytra.
 		{"a book of protection on an elytra", block.Anvil{}, 30, item.NewStack(item.Elytra{}, 1), item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.Protection, 1)), nil},
+		{"a book of sweeping edge on an axe", block.Anvil{}, 30, item.NewStack(item.Axe{Tier: item.ToolTierIron}, 1), item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.SweepingEdge, 1)), nil},
 		{"a book of thorns on an elytra", block.Anvil{}, 30, item.NewStack(item.Elytra{}, 1), item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.Thorns, 1)), nil},
 		{"a name of 51 characters", block.Anvil{}, 30, ironSword, item.Stack{}, name(strings.Repeat("a", item.MaxCustomNameLength+1))},
 		{"a name not of UTF-8", block.Anvil{}, 30, ironSword, item.Stack{}, name("a\xffb")},

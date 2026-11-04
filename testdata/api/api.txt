@@ -18953,6 +18953,7 @@ server/item/enchantment	var	Sharpness	server/item/enchantment.sharpness
 server/item/enchantment	var	SilkTouch	server/item/enchantment.silkTouch
 server/item/enchantment	var	Smite	server/item/enchantment.smite
 server/item/enchantment	var	SoulSpeed	server/item/enchantment.soulSpeed
+server/item/enchantment	var	SweepingEdge	server/item/enchantment.sweepingEdge
 server/item/enchantment	var	SwiftSneak	server/item/enchantment.swiftSneak
 server/item/enchantment	var	Thorns	server/item/enchantment.thorns
 server/item/enchantment	var	Unbreaking	server/item/enchantment.unbreaking

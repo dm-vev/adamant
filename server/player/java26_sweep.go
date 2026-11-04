@@ -100,8 +100,11 @@ func (p *Player) sweepAttack(target world.Entity, held item.Stack, base, strengt
 }
 
 // sweepingDamageRatio returns the minecraft:sweeping_damage_ratio of a
-// player holding held: 0, the base of the attribute.
-func (p *Player) sweepingDamageRatio(item.Stack) float64 {
+// player holding held: the base 0, plus that of Sweeping Edge.
+func (p *Player) sweepingDamageRatio(held item.Stack) float64 {
+	if e, ok := held.Enchantment(enchantment.SweepingEdge); ok {
+		return enchantment.SweepingEdge.DamageRatio(e.Level())
+	}
 	return 0
 }
 

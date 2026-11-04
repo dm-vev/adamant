@@ -51,6 +51,18 @@ var javaOptions = []struct {
 	// draw of 2, less than 3.
 	{item.Crossbow{}, 1, 13, "2: piercing 1; 3: piercing 1; 0:"},
 	{item.Boots{Tier: item.ArmourTierDiamond{}}, 15, 3, "7: protection 2 unbreaking 1; 14: unbreaking 2 depth_strider 2; 30: depth_strider 3 protection 3"},
+	// A book that draws several enchantments loses one at random.
+	{item.Book{}, 0, 0, "2: efficiency 1; 2: protection 1; 6: sharpness 1"},
+	{item.Book{}, 0, 7, "2: protection 1; 5: protection 1; 3: projectile_protection 1"},
+	{item.Book{}, 0, -1, "1: power 1; 0:; 6: protection 1"},
+	{item.Book{}, 15, 4, "9: thorns 1; 19: piercing 2; 30: fire_protection 3 respiration 3"},
+	{item.Book{}, 15, 2147483647, "8: projectile_protection 2 efficiency 1; 19: unbreaking 2; 30: looting 2"},
+	{item.Sword{Tier: item.ToolTierDiamond}, 15, 1, "4: sharpness 1 knockback 1; 12: knockback 1 sharpness 2; 30: knockback 2 unbreaking 3 sharpness 4"},
+	{item.Sword{Tier: item.ToolTierDiamond}, 15, 2, "5: bane_of_arthropods 1 sweeping_edge 1; 11: knockback 1 unbreaking 2; 30: sharpness 4 sweeping_edge 3"},
+	{item.Sword{Tier: item.ToolTierDiamond}, 15, 9, "5: knockback 1 sweeping_edge 1; 19: knockback 1 fire_aspect 1; 30: unbreaking 3 knockback 2"},
+	{item.Sword{Tier: item.ToolTierIron}, 5, 7, "3: smite 1 knockback 1; 9: knockback 1 sharpness 2; 10: unbreaking 2 sharpness 2"},
+	{item.Sword{Tier: item.ToolTierIron}, 5, 31337, "2: sharpness 1; 10: bane_of_arthropods 2; 10: sharpness 1"},
+	{item.Sword{Tier: item.ToolTierGold}, 0, 12, "2: bane_of_arthropods 1; 3: fire_aspect 1 knockback 1; 4: bane_of_arthropods 1 fire_aspect 1"},
 }
 
 // TestEnchantmentOptionsAsJava checks the options of an enchanting table

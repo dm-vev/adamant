@@ -25,7 +25,7 @@ func TestEnchantingTableOffers(t *testing.T) {
 		enchantment.Protection, enchantment.FireProtection, enchantment.FeatherFalling, enchantment.BlastProtection,
 		enchantment.ProjectileProtection, enchantment.Respiration, enchantment.AquaAffinity, enchantment.Thorns,
 		enchantment.DepthStrider, enchantment.Sharpness, enchantment.Smite, enchantment.BaneOfArthropods,
-		enchantment.Knockback, enchantment.FireAspect, enchantment.Looting, enchantment.Efficiency,
+		enchantment.Knockback, enchantment.FireAspect, enchantment.Looting, enchantment.SweepingEdge, enchantment.Efficiency,
 		enchantment.SilkTouch, enchantment.Unbreaking, enchantment.Fortune, enchantment.Power, enchantment.Punch,
 		enchantment.Flame, enchantment.Infinity, enchantment.LuckOfTheSea, enchantment.Lure, enchantment.Loyalty,
 		enchantment.Impaling, enchantment.Riptide, enchantment.Channeling, enchantment.Multishot,
@@ -41,7 +41,7 @@ func TestEnchantingTableOffers(t *testing.T) {
 		{"mace", item.Mace{}, []item.EnchantmentType{enchantment.Unbreaking, enchantment.Density, enchantment.Breach}},
 		{"sword", item.Sword{Tier: item.ToolTierDiamond}, []item.EnchantmentType{
 			enchantment.Sharpness, enchantment.Smite, enchantment.BaneOfArthropods, enchantment.Knockback,
-			enchantment.FireAspect, enchantment.Looting, enchantment.Unbreaking,
+			enchantment.FireAspect, enchantment.Looting, enchantment.SweepingEdge, enchantment.Unbreaking,
 		}},
 		// #enchantable/melee_weapon holds the spears.
 		{"spear", item.Spear{Tier: item.ToolTierDiamond}, []item.EnchantmentType{

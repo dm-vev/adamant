@@ -10343,6 +10343,8 @@ server/item/enchantment.smite	server/item.PrimaryItemEnchantment	value
 server/item/enchantment.soulSpeed	server/cmd/builtin.namedSource	value
 server/item/enchantment.soulSpeed	server/item.EnchantmentType	value
 server/item/enchantment.soulSpeed	server/menu.treasureEnchantment	value
+server/item/enchantment.sweepingEdge	server/cmd/builtin.namedSource	value
+server/item/enchantment.sweepingEdge	server/item.EnchantmentType	value
 server/item/enchantment.swiftSneak	server/cmd/builtin.namedSource	value
 server/item/enchantment.swiftSneak	server/item.EnchantmentType	value
 server/item/enchantment.swiftSneak	server/menu.treasureEnchantment	value

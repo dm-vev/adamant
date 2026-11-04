@@ -45,4 +45,6 @@ func init() {
 	item.RegisterEnchantment(39, Density)
 	item.RegisterEnchantment(40, Breach)
 	item.RegisterEnchantment(41, Lunge)
+	// Bedrock has no Sweeping Edge: it takes an ID past Bedrock's.
+	item.RegisterEnchantment(42, SweepingEdge)
 }

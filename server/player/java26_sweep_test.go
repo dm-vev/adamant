@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -43,9 +44,10 @@ func sweepCase(t *testing.T, held item.Stack, charge int, edit func(p *Player)) 
 // TestSweepAttack checks Java's sweep attack (Player.isSweepAttack and
 // doSweepAttack): a hit with a sword charged to full strength, on the
 // ground and not sprinting, also hurts the living entity beside its target,
-// by 1 times the strength without Sweeping Edge, and none beyond the grown
-// box of the target or 3 blocks from the player. A hit that is not charged, made sprinting, in the
-// air or with an axe does not sweep.
+// by 1 times the strength without Sweeping Edge and more with it, and none
+// beyond the grown box of the target or 3 blocks from the player. A hit
+// that is not charged, made sprinting, in the air or with an axe does not
+// sweep.
 func TestSweepAttack(t *testing.T) {
 	sword := item.NewStack(item.Sword{Tier: item.ToolTierIron}, 1)
 	// The delay of a sword is 20/1.6 = 12.5 ticks: strength (11+0.5)/12.5
@@ -54,6 +56,13 @@ func TestSweepAttack(t *testing.T) {
 	// The cow beside takes 1 times the strength.
 	if beside, beyond, aside := sweepCase(t, sword, 12, nil); !mgl64.FloatEqual(beside, 10-0.92) || beyond != 10 || aside != 10 {
 		t.Errorf("swept with a charged sword: health %v, %v and %v, want 9.08, 10 and 10", beside, beyond, aside)
+	}
+	// Sweeping Edge III raises the sweeping damage ratio to 3/4 of the damage
+	// of the sword, scaled by 0.2+0.8*0.92², then times the strength.
+	edged := sword.WithEnchantments(item.NewEnchantment(enchantment.SweepingEdge, 3))
+	want := 10 - (1+0.75*sword.AttackDamage()*(0.2+0.92*0.92*0.8))*0.92
+	if beside, _, _ := sweepCase(t, edged, 12, nil); !mgl64.FloatEqual(beside, want) {
+		t.Errorf("swept with Sweeping Edge III: health %v, want %v", beside, want)
 	}
 	for name, c := range map[string]struct {
 		held   item.Stack
