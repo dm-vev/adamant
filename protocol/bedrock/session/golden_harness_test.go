@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
@@ -86,15 +87,16 @@ func isolated(t *testing.T) bool {
 // only: read here too, a changed snapshot runs the tests again.
 func readGoldenSnapshots(t *testing.T) {
 	t.Helper()
-	dir := filepath.Join("testdata", "golden")
-	entries, err := os.ReadDir(dir)
-	if err != nil && !os.IsNotExist(err) {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		if e.Type().IsRegular() {
-			if _, err := os.ReadFile(filepath.Join(dir, e.Name())); err != nil {
-				t.Fatal(err)
+	for _, dir := range []string{filepath.Join("testdata", "golden"), filepath.Join("testdata", "golden", "v2225")} {
+		entries, err := os.ReadDir(dir)
+		if err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			if e.Type().IsRegular() {
+				if _, err := os.ReadFile(filepath.Join(dir, e.Name())); err != nil {
+					t.Fatal(err)
+				}
 			}
 		}
 	}
@@ -186,6 +188,10 @@ func (*goldenConn) Flush() error             { return nil }
 func (*goldenConn) RemoteAddr() net.Addr {
 	return &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 19132}
 }
+
+// Protocol returns the protocol of the client, by whose tables the session
+// names content: goldenProtocol.
+func (*goldenConn) Protocol() *versions.Protocol { return goldenProtocol }
 
 // ReadPacket hands the session the next packet the client sends. Each call
 // first tells the test that the packet read before is in the inbox of the
@@ -891,7 +897,7 @@ func (s *scenario) stackKey(container uint8, slot int) stackSlot {
 // the snapshot with -update-snapshots.
 func (s *scenario) snapshot() {
 	s.t.Helper()
-	path := filepath.Join("testdata", "golden", s.name+".snapshot")
+	path := filepath.Join(goldenDir(), s.name+".snapshot")
 	got := s.out.String()
 	if *updateSnapshots {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -964,12 +970,27 @@ func encode(pk proto.Packet) []byte {
 	return w.B
 }
 
-// goldenProtocol is the protocol the clients of the scenarios speak, the
-// default of the build, 2193, whose bytes the snapshots hold. The session
-// writes packets of the model, which go to the clients as netconn writes
-// them for a client of the protocol, and what the clients send reaches the
-// session as netconn reads it.
-var goldenProtocol = versions.Default()
+// goldenProtocol is the protocol the clients of the scenarios speak: the
+// default of the build, 2193, whose bytes testdata/golden holds, or 2225,
+// that of testdata/golden/v2225, when GOLDEN_PROTOCOL says so, as
+// TestGoldenScenariosOf2225 has its children. The session writes packets
+// of the model, which go to the clients as netconn writes them for a
+// client of the protocol, and what the clients send reaches the session as
+// netconn reads it.
+var goldenProtocol = func() *versions.Protocol {
+	if os.Getenv("GOLDEN_PROTOCOL") == "2225" {
+		return versions.Model()
+	}
+	return versions.Default()
+}()
+
+// goldenDir returns the directory of the snapshots of goldenProtocol.
+func goldenDir() string {
+	if goldenProtocol != versions.Default() {
+		return filepath.Join("testdata", "golden", fmt.Sprintf("v%d", goldenProtocol.Number))
+	}
+	return filepath.Join("testdata", "golden")
+}
 
 // toWire returns the packets of goldenProtocol that carry a packet of the
 // model, as a connection of the protocol writes them: one of the same
@@ -1144,41 +1165,47 @@ var uuidPattern = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{
 var uuidType = reflect.TypeFor[uuid.UUID]()
 
 // packet normalises the fields of a packet, of goldenProtocol as the
-// client reads it.
+// client reads it: of either codec package, by the names of its fields.
 func (n *normaliser) packet(v reflect.Value) {
 	n.kind = strings.TrimSuffix(v.Type().Name(), "Packet")
 	if normaliseOrbs {
 		n.orb(v)
 	}
-	if hud, ok := v.Addr().Interface().(*v2193.SetHudPacket); ok && len(hud.Elements) > 1 {
-		slices.Sort(hud.Elements)
+	switch n.kind {
+	case "SetHud":
+		if elems := v.FieldByName("Elements"); elems.Len() > 1 {
+			sortValues(elems, func(a, b reflect.Value) int { return int(a.Int() - b.Int()) })
+			n.touched = true
+		}
+	case "LevelEventGeneric":
+		f := v.FieldByName("SerialisedEventData")
+		f.SetBytes(sortedCompound(f.Bytes()))
 		n.touched = true
-	}
-	if pk, ok := v.Addr().Interface().(*v2193.LevelEventGenericPacket); ok {
-		pk.SerialisedEventData = sortedCompound(pk.SerialisedEventData)
+	case "UpdateTrade":
+		f := v.FieldByName("SerialisedOffers")
+		f.SetBytes(sortedNBT(f.Bytes()))
 		n.touched = true
-	}
-	if pk, ok := v.Addr().Interface().(*v2193.UpdateTradePacket); ok {
-		pk.SerialisedOffers = sortedNBT(pk.SerialisedOffers)
-		n.touched = true
-	}
-	if pk, ok := v.Addr().Interface().(*v2193.ItemStackResponsePacket); ok {
-		for _, r := range pk.Responses {
-			if len(r.ContainerInfo) > 1 {
+	case "ItemStackResponse":
+		responses := v.FieldByName("Responses")
+		for i := range responses.Len() {
+			info := responses.Index(i).FieldByName("ContainerInfo")
+			if info.Len() > 1 {
 				n.touched = true
 			}
-			slices.SortFunc(r.ContainerInfo, func(a, b v2193.StackResponseContainerInfo) int {
-				return int(a.Container.ContainerID) - int(b.Container.ContainerID)
+			sortValues(info, func(a, b reflect.Value) int {
+				return int(a.FieldByName("Container").FieldByName("ContainerID").Uint()) - int(b.FieldByName("Container").FieldByName("ContainerID").Uint())
 			})
-			for _, c := range r.ContainerInfo {
-				if len(c.SlotInfo) > 1 {
+			for j := range info.Len() {
+				slots := info.Index(j).FieldByName("SlotInfo")
+				if slots.Len() > 1 {
 					n.touched = true
 				}
-				slices.SortFunc(c.SlotInfo, func(a, b v2193.StackResponseSlotInfo) int { return int(a.Slot) - int(b.Slot) })
+				sortValues(slots, func(a, b reflect.Value) int {
+					return int(a.FieldByName("Slot").Uint()) - int(b.FieldByName("Slot").Uint())
+				})
 			}
 		}
-	}
-	if v.Type() == reflect.TypeFor[v2193.PlayerEnchantOptionsPacket]() {
+	case "PlayerEnchantOptions":
 		opts := v.FieldByName("Options")
 		for i := range opts.Len() {
 			opts.Index(i).FieldByName("Name").SetString("name")
@@ -1186,6 +1213,18 @@ func (n *normaliser) packet(v reflect.Value) {
 		}
 	}
 	n.value(v, "")
+}
+
+// sortValues sorts a slice of reflect by cmp, stably.
+func sortValues(l reflect.Value, cmp func(a, b reflect.Value) int) {
+	order := make([]reflect.Value, l.Len())
+	for i := range order {
+		order[i] = reflect.ValueOf(l.Index(i).Interface())
+	}
+	slices.SortStableFunc(order, cmp)
+	for i, x := range order {
+		l.Index(i).Set(x)
+	}
 }
 
 func (n *normaliser) value(v reflect.Value, name string) {
@@ -1668,6 +1707,16 @@ func gameDataDump(data netconn.GameData) string {
 // them: netconn writes those values to a client of the protocol in its
 // packets, whose renderings name the types of its own package.
 func asClientTypes(rendering string) string {
+	if !goldenProtocol.Converts() {
+		return rendering
+	}
 	model, client := path.Base(reflect.TypeFor[mc.GameRule]().PkgPath()), path.Base(reflect.TypeFor[v2193.GameRule]().PkgPath())
 	return strings.ReplaceAll(rendering, "[]"+model+".", "[]"+client+".")
+}
+
+// goldenItemRuntimeID returns the runtime ID the clients of goldenProtocol
+// know an item by.
+func goldenItemRuntimeID(it world.Item) (int32, int16, bool) {
+	v, _ := bedrockdata.VanillaOf(goldenProtocol.Number)
+	return v.ItemRuntimeID(it)
 }

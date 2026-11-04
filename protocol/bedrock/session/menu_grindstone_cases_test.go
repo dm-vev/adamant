@@ -9,8 +9,8 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"reflect"
 )
 
 // grindstonePos is where the cases of the grindstone place it.
@@ -81,17 +81,17 @@ func (s *scenario) takeOrbs(heading string, experience int) {
 func stationOrbMotion() func(pk proto.Packet) (changed, omit bool) {
 	orbs := map[uint64]bool{}
 	return func(pk proto.Packet) (changed, omit bool) {
-		switch pk := pk.(type) {
-		case *v2193.AddActorPacket:
-			if pk.EntityType == "minecraft:xp_orb" {
-				orbs[pk.EntityRuntimeID] = true
-				pk.Velocity = [3]float32{}
+		v := reflect.ValueOf(pk).Elem()
+		switch v.Type().Name() {
+		case "AddActorPacket":
+			if v.FieldByName("EntityType").String() == "minecraft:xp_orb" {
+				orbs[v.FieldByName("EntityRuntimeID").Uint()] = true
+				vel := v.FieldByName("Velocity")
+				vel.Set(reflect.Zero(vel.Type()))
 				return true, false
 			}
-		case *v2193.SetActorMotionPacket:
-			return false, orbs[pk.EntityRuntimeID]
-		case *v2193.MoveActorDeltaPacket:
-			return false, orbs[pk.EntityRuntimeID]
+		case "SetActorMotionPacket", "MoveActorDeltaPacket":
+			return false, orbs[v.FieldByName("EntityRuntimeID").Uint()]
 		}
 		return false, false
 	}

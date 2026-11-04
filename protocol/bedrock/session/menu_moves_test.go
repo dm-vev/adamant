@@ -18,7 +18,6 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
@@ -446,9 +445,11 @@ var orbs = map[uint64]bool{}
 // orb sets the velocity of an experience orb added in the packet v, of
 // goldenProtocol, to zero.
 func (n *normaliser) orb(v reflect.Value) {
-	if pk, ok := v.Addr().Interface().(*v2193.AddActorPacket); ok && pk.EntityType == "minecraft:xp_orb" {
-		orbs[pk.EntityRuntimeID] = true
-		pk.Velocity, n.touched = [3]float32{}, true
+	if n.kind == "AddActor" && v.FieldByName("EntityType").String() == "minecraft:xp_orb" {
+		orbs[v.FieldByName("EntityRuntimeID").Uint()] = true
+		vel := v.FieldByName("Velocity")
+		vel.Set(reflect.Zero(vel.Type()))
+		n.touched = true
 	}
 }
 
