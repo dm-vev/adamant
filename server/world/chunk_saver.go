@@ -534,7 +534,7 @@ func (s *chunkSaver) encodeStaged(sc *stagedColumn) {
 }
 
 // DefaultStagingLimit is the StagingLimit of a Config that sets none: 256
-// MiB of encoded columns, some 10,000 columns.
+// MiB of encoded columns, some 16,000 terrain columns.
 const DefaultStagingLimit = 256 << 20
 
 // stagingFull handles the columns staged exceeding the StagingLimit, with
