@@ -1,6 +1,9 @@
 package world
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // generationQueue holds the chunk generation tasks shared by the generator
 // workers. Workers take the task of the chunk nearest to a loader first, as
@@ -16,6 +19,9 @@ type generationQueue struct {
 	// focus holds the chunk positions of the loaders.
 	focus  []ChunkPos
 	closed bool
+	// length is the number of tasks waiting, stored under mu and read
+	// without it, for metrics.
+	length atomic.Int64
 }
 
 // queuedGeneration is a waiting task, numbered in the order it was pushed.
@@ -42,6 +48,7 @@ func (q *generationQueue) push(task generationTask) (int, bool) {
 	}
 	q.tasks = append(q.tasks, queuedGeneration{task: task, seq: q.next})
 	q.next++
+	q.length.Store(int64(len(q.tasks)))
 	q.ready.Signal()
 	return len(q.tasks), true
 }
@@ -85,6 +92,7 @@ func (q *generationQueue) pop() (generationTask, bool) {
 	q.tasks[best] = q.tasks[last]
 	q.tasks[last] = queuedGeneration{}
 	q.tasks = q.tasks[:last]
+	q.length.Store(int64(last))
 	return task, true
 }
 
@@ -129,5 +137,6 @@ func (q *generationQueue) close() []generationTask {
 		remaining = append(remaining, t.task)
 	}
 	q.tasks = nil
+	q.length.Store(0)
 	return remaining
 }

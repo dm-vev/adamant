@@ -189,6 +189,8 @@ type World struct {
 
 	autoSaveDisabled atomic.Bool
 	tps              atomic.Uint64
+	// stats is what the world counts of itself, for metrics.
+	stats *Stats
 
 	// Scheduled updates are partitioned by native registry: blocks drain before
 	// fluids, and each queue owns ticks by their scheduled position.
@@ -2646,8 +2648,10 @@ func (w *World) writeColumn(p Provider, pos ChunkPos, col *chunk.Column) error {
 	err := p.StoreColumn(pos, w.conf.Dim, col)
 	if err != nil {
 		w.conf.Log.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+		return err
 	}
-	return err
+	w.stats.ChunksWritten.Inc()
+	return nil
 }
 
 // clonePostProcessing copies the post-processing marks of a column.
@@ -2759,6 +2763,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		delete(w.chunks, pos)
 		delete(w.pendingLight, pos)
 		w.chunkCount.Add(-1)
+		w.stats.ChunksUnloaded.Inc()
 		w.columnLeft(pos)
 	}
 }
@@ -3095,6 +3100,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 
 	switch {
 	case err == nil:
+		w.stats.ChunksRead.Inc()
 		// Case 1: Column successfully loaded from persistent storage. A
 		// world ticking on its own goroutine fills its light on another and
 		// publishes it once it did, as it does a column generated.
@@ -3179,6 +3185,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// The column is never saved, so that it does not overwrite the
 		// column in the provider; loading the position again once it was
 		// unloaded reads it from the provider again.
+		w.stats.ChunkLoadErrors.Inc()
 		col := newColumn(chunk.New(w.conf.Blocks, w.Range()))
 		col.loadErr = err
 		col.fillLight(pos)
@@ -3422,9 +3429,23 @@ func (w *World) runGenerationTask(task generationTask) {
 		}
 	}()
 
+	// The generation is timed and counted apart from the recover above,
+	// which runs after this: a panic counts as a failure, not a time.
+	start, generated := time.Now(), false
+	w.stats.GenerationBusy.Add(1)
+	defer func() {
+		w.stats.GenerationBusy.Add(-1)
+		if generated {
+			w.stats.Generation.Observe(time.Since(start).Seconds())
+		} else {
+			w.stats.GenerationFailures.Inc()
+		}
+	}()
+
 	// Perform the actual chunk generation.
 	// The generator implementation is responsible for populating the chunk’s data.
 	task.col.generation = w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk, task.context)
+	generated = true
 	task.col.generation.pos = task.pos
 
 	task.col.BlockEntities = w.generatedBlockEntities(task.pos, task.col.Chunk)

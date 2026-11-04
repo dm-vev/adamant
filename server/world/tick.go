@@ -101,6 +101,7 @@ func (t ticker) tickLoop(w *World) {
 			} else if behind := tickStart.Sub(next); behind > overloadedThreshold+20*interval && next.Sub(lastOverloadWarning) >= overloadWarningInterval+100*interval {
 				ticks := behind / interval
 				w.conf.Log.Warn("Can't keep up! Is the server overloaded?", "behind", behind.Round(time.Millisecond), "ticks", int64(ticks))
+				w.stats.TicksSkipped.Add(uint64(ticks))
 				next = next.Add(ticks * interval)
 				lastOverloadWarning = next
 			}
@@ -148,7 +149,11 @@ func (t ticker) tick(tx *Tx) {
 // tickWorld is the tick of tick, which recovers its panics.
 func (t ticker) tickWorld(tx *Tx) {
 	start := time.Now()
-	defer func() { tx.World().tickTimes.record(time.Since(start)) }()
+	defer func() {
+		took := time.Since(start)
+		tx.World().tickTimes.record(took)
+		tx.World().stats.Ticks.Observe(took.Seconds())
+	}()
 	viewers, loaders := tx.World().allViewers()
 	w := tx.World()
 	defer w.flushLight()
