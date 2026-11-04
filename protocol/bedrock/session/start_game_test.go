@@ -109,10 +109,9 @@ func TestBlockEntriesDefineBlocksOfData(t *testing.T) {
 }
 
 // TestBlocksOfDataAreBlocksOfTheServer checks that the server has a block
-// for each vanilla block it defines to the clients of each protocol they
-// may join with.
+// for each vanilla block it defines to the clients of each protocol.
 func TestBlocksOfDataAreBlocksOfTheServer(t *testing.T) {
-	for _, p := range versions.Configurable() {
+	for _, p := range versions.All() {
 		vanillaBlocks := tablesOf(p, world.DefaultBlockRegistry).vanilla.Blocks()
 		if len(vanillaBlocks) == 0 {
 			t.Fatalf("no vanilla blocks are defined to clients of %d", p.Number)

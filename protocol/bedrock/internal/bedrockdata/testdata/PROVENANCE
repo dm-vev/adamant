@@ -1,0 +1,53 @@
+Oracles of the vanilla data of each protocol, which tests hold the data of
+vNNNN, and what the session sends, to. The binary embeds none of them.
+
+  vNNNN/creative.json  the creative inventory BDS of the protocol sends,
+  vNNNN/crafting.json  and its recipes, items by name, as cmd/vanilla-probe
+                       -creative and -crafting write them, from the runs of
+                       scripts/bedrock-data.sh that ../vNNNN/PROVENANCE
+                       records: BDS 1.26.52.3 for 2193, BDS 1.26.61.1 for
+                       2225.
+
+  vNNNN/palette.nbt    the block palette of the protocol, as Geyser keeps it
+                       (GeyserMC/Geyser, core/src/main/resources/bedrock/,
+                       MIT license, below), ungzipped:
+                       v2193 block_palette.26_50.nbt of commit
+                         50115039af4cd92e50545075d3a13eea6880cf88,
+                         sha256 (gzipped)
+                         54c9bed0bef30aadc316b21c6e82b5ac407c5c6e351b9d9690aa4e9a49fec912
+                       v2225 block_palette.26_60.nbt of commit
+                         fd35d5918ae8e8b6c05d91179315fa00413c1f65,
+                         sha256 (gzipped)
+                         9d0feee0cd2edc1499bd7f7922615caee4dd268b598fca45dc396f4d0bdcdaa3
+
+The files over 100 KiB are stored zstd-compressed, as .zst, and read
+through internal/testfixture. TestWriteOracles writes them again:
+
+  go test -run '^TestWriteOracles$' -oracles-from DIR -palettes-from GEYSER .
+
+where DIR holds the vNNNN folders scripts/bedrock-data.sh wrote and GEYSER
+the two palettes of Geyser.
+
+The palettes are under this license:
+
+The MIT License
+
+Copyright (c) 2019-2026 GeyserMC. http://geysermc.org
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

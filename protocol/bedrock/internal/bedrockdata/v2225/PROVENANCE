@@ -1,0 +1,43 @@
+Protocol 2225: Bedrock Edition 1.26.60 and 1.26.61.
+
+Taken from BDS 1.26.61.1 (build 53069370, branch r/26_u6, commit
+86f7b32281709abd4444adb52887796af061c7bd), downloaded on 2026-11-04 from
+https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.61.1.zip
+(98,093,051 bytes, sha256
+b54095267d55fd401de42f71ac4daf2c1747a49515ad41810781f1f9bafde26e), over
+NetherNet, by cmd/vanilla-probe as a client of protocol 2225 against a
+pristine copy of the server:
+
+  scripts/bedrock-data.sh /home/agent/bds/1.26.61.1 2225 OUT 19533
+
+  items.nbt     the ItemRegistry packet BDS sends, by item name:
+                2,080 entries, those of 2193 and disc_press,
+                frostbite_spawn_egg, ice_crystal and icicle, with the 82
+                runtime IDs from 791 up one more than in 2193,
+                sha256 daff3755213bbf9496a283b8cf986b1b639c3a7b1b869f77480098d866775866
+
+  blocks.nbt    the block definitions of the StartGame packet BDS sends, by
+                name: 98 entries, the same as 2193's,
+                sha256 26b6d0fd8d0ac8deda7f5c909113a440cb49e523805983e8bb3a23f9ce2d9c52
+
+  entities.txt  the identifiers of the AvailableActorIdentifiers packet BDS
+                sends, in its order: 138, those of 2193 and
+                minecraft:ice_ball,
+                sha256 331f70c4764818fd0b483a5a44d7dc12bb0d040b718c4fdff70b0208cbfcf923
+
+  biomes.txt    the identifiers of the biomes of the BiomeDefinitionList
+                packet BDS sends a client that generates chunks itself, in
+                its order: 89, the same as 2193's (the packets of both are
+                byte for byte the same),
+                sha256 6a7a1836c715ab5d9cd76e7f2298c163592bb91d34d25015a2e50a96a75d8448
+
+  blocks.json   pmmp's BedrockBlockUpgradeSchema
+                nbt_upgrade_schema/0361_1.26.50_to_1.26.60.json (CC0 1.0),
+                commit 755ff72f27dd7849caaff1c3be06a93e86525f29 of
+                2026-10-28: the connection states 1.26.60 adds to redstone
+                wire, fire and chorus plants, with their defaults,
+                sha256 3fa17b08bf9cd8c170b7d665d49c9bb0c5bd057e8f51e7834b35191c021efcdc
+
+The NBT of maps is written in no fixed order: a probe of the same BDS
+writes the same data in other bytes. The oracles of testdata/v2225 are
+from the same run; see testdata/PROVENANCE.

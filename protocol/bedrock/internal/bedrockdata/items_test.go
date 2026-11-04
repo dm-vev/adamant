@@ -144,9 +144,10 @@ func isolated(t *testing.T) bool {
 }
 
 // TestVanillaOf reads the data of each protocol: that of 2193, as
-// PROVENANCE records it, and none of a protocol without a directory.
+// PROVENANCE records it, and none of a protocol without a directory. That
+// of 2225 is TestProtocolsOfBDS's.
 func TestVanillaOf(t *testing.T) {
-	if got := bedrockdata.Protocols(); len(got) != 1 || got[0] != 2193 {
+	if got := bedrockdata.Protocols(); len(got) != 2 || got[0] != 2193 || got[1] != 2225 {
 		t.Fatalf("protocols %v", got)
 	}
 	v, ok := bedrockdata.VanillaOf(2193)
@@ -174,7 +175,7 @@ func TestVanillaOf(t *testing.T) {
 			t.Errorf("v2193/PROVENANCE does not record %s (%v)", file, err)
 		}
 	}
-	for _, p := range []int32{0, 2192, 2225} {
+	for _, p := range []int32{0, 2192, 2250} {
 		if _, ok := bedrockdata.VanillaOf(p); ok {
 			t.Errorf("data of protocol %d", p)
 		}

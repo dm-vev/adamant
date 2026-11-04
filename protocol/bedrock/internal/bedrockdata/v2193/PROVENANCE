@@ -18,3 +18,17 @@ cmd/vanilla-probe against a pristine copy of the server:
               sha256 557f896594cb3957c44306d14f76345003059cf5db7f5155fbfaa2019cd66e65
               (commit 281cf3c8, formerly
               protocol/bedrock/session/vanilla_blocks.nbt)
+
+  entities.txt  the identifiers of the AvailableActorIdentifiers packet BDS
+                sends, in its order: 137 entries,
+                sha256 93ae3b14af5e43e71f67dd786bfbb0c481d9fea6607ee82d8f0c027fb4bd6825
+
+  biomes.txt    the identifiers of the biomes of the BiomeDefinitionList
+                packet BDS sends a client that generates chunks itself, in
+                its order: 89 entries,
+                sha256 6a7a1836c715ab5d9cd76e7f2298c163592bb91d34d25015a2e50a96a75d8448
+
+  Both on 2026-11-04 by scripts/bedrock-data.sh /home/agent/bds/1.26.52.3
+  2193 OUT 19532, which also wrote an items.nbt and a blocks.nbt that
+  decode to the same entries as these, in other bytes: the NBT of maps is
+  written in no fixed order.
