@@ -32,9 +32,10 @@ type Game struct {
 	// MaxChunkRadius bounds the radius, in chunks, of the world around the
 	// player that the client is shown.
 	MaxChunkRadius int
-	// JoinMessage and QuitMessage, unless zero, are written to the chat
-	// with the name of the player as it spawns and as it quits.
-	JoinMessage, QuitMessage chat.Translation
+	// QuitMessage, unless zero, is written to the chat with the name of the
+	// player as it quits. The server writes the join message itself, as the
+	// player spawns.
+	QuitMessage chat.Translation
 	// IsOperator reports whether the player of the name passed is an
 	// operator now. Nil means none is. It may be called from any goroutine.
 	IsOperator func(name string) bool

@@ -270,7 +270,9 @@ type Config struct {
 	// If nil, players receive member permissions.
 	IsOperator func(name string) bool
 
-	JoinMessage, QuitMessage chat.Translation
+	// QuitMessage, unless zero, is written to the chat with the name of the
+	// player as it quits.
+	QuitMessage chat.Translation
 
 	// HandleStop is called once when the Session is closed. The transaction is
 	// nil if the Controllable could not be restored to any world, such as when
@@ -425,11 +427,6 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	s.sendInv(s.ui, v2193.WindowIDUI)
 	s.sendInv(s.offHand, v2193.WindowIDOffHand)
 	s.sendInv(s.armour.Inventory(), v2193.WindowIDArmour)
-
-	chat.Global.Subscribe(c)
-	if !s.conf.JoinMessage.Zero() {
-		chat.Global.Writet(s.conf.JoinMessage, s.conn.IdentityData().DisplayName)
-	}
 
 	// What the client sends waits in the inbox for the next tick of the
 	// world of the player, which hands it to Control.

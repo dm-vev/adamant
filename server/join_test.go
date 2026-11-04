@@ -56,8 +56,20 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	if !g.Operator || g.IsOperator == nil || !g.IsOperator("alice") || g.IsOperator("bob") {
 		t.Error("the Game of Alice does not hold her an operator")
 	}
-	if g.JoinMessage != chat.MessageJoin || g.QuitMessage != chat.MessageQuit || g.Left == nil {
-		t.Error("the Game does not carry the join and quit messages and the Left hook of the server")
+	if g.QuitMessage != chat.MessageQuit || g.Left == nil {
+		t.Error("the Game does not carry the quit message and the Left hook of the server")
+	}
+	// The server welcomed Bob after his client spawned him: Alice, already
+	// subscribed to the chat, was told he joined.
+	want := chat.MessageJoin.F("Bob").Text(language.BritishEnglish).Legacy()
+	var told bool
+	for _, c := range alice.Recorder().CallsTo("SendMessage") {
+		if msg, ok := c.Args[0].(text.Text); ok && msg.Legacy() == want {
+			told = true
+		}
+	}
+	if !told {
+		t.Errorf("Alice was not told %q", want)
 	}
 	if bob.Games()[0].Operator {
 		t.Error("the Game of Bob holds him an operator")

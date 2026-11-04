@@ -58,8 +58,8 @@ type Joining interface {
 	// adds the player to a world, on no world's goroutine.
 	Bind(h *world.EntityHandle, sk skin.Skin)
 	// Spawn shows the client its player c, which the server just added to
-	// the world of tx, and the world around it. It subscribes c to the chat,
-	// writes the JoinMessage of the Game, and starts handing c what the
-	// client sends. The server calls it once, in tx.
+	// the world of tx, and the world around it, and starts handing c what
+	// the client sends. The server calls it once, in tx, then subscribes c to
+	// the chat and writes its join message.
 	Spawn(c Controllable, tx *world.Tx)
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
+	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
@@ -125,6 +126,7 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 			ret, err := world.Call(context.Background(), inc.w, func(tx *world.Tx) (bool, error) {
 				p := tx.AddEntity(inc.p.handle).(*player.Player)
 				inc.c.Spawn(p, tx)
+				srv.welcome(p)
 				return !yield(p), nil
 			})
 			if err != nil {
@@ -467,6 +469,16 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 	srv.incoming <- srv.createPlayer(login, c, d, w)
 }
 
+// welcome welcomes the player p, which just spawned: it subscribes p to the
+// chat and writes the join message of the server, unless it has none, with
+// the name of p.
+func (srv *Server) welcome(p *player.Player) {
+	chat.Global.Subscribe(p)
+	if !srv.conf.JoinMessage.Zero() {
+		chat.Global.Writet(srv.conf.JoinMessage, p.Name())
+	}
+}
+
 // game returns the Game a client of login starts in, as the player d in w.
 func (srv *Server) game(login client.Login, d player.Config, w *world.World) client.Game {
 	return client.Game{
@@ -477,7 +489,6 @@ func (srv *Server) game(login client.Login, d player.Config, w *world.World) cli
 		Rotation:       d.Rotation,
 		Operator:       srv.IsOperator(login.Identity.Name),
 		MaxChunkRadius: srv.conf.MaxChunkRadius,
-		JoinMessage:    srv.conf.JoinMessage,
 		QuitMessage:    srv.conf.QuitMessage,
 		IsOperator:     srv.IsOperator,
 		Left:           srv.left,

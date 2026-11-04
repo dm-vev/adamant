@@ -32,6 +32,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/player"
+	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/generator"
@@ -360,6 +361,9 @@ type scenarioConfig struct {
 	who *serverIdentity
 	// session changes the session.Config the session is made of.
 	session func(conf *session.Config)
+	// joinMessage, unless zero, is written to the chat as the player
+	// spawns, as the server writes its join message.
+	joinMessage chat.Translation
 	// norm is the normaliser of another scenario to name IDs with, so that
 	// the record of either names an ID alike.
 	norm *normaliser
@@ -439,6 +443,11 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	<-w.Exec(func(tx *world.Tx) {
 		p := tx.AddEntity(s.h).(*player.Player)
 		s.sess.Spawn(p, tx)
+		// As Server.welcome.
+		chat.Global.Subscribe(p)
+		if !conf.joinMessage.Zero() {
+			chat.Global.Writet(conf.joinMessage, p.Name())
+		}
 	})
 	s.sync()
 	s.awaitPacket("UpdateAbilities", conf.keepJoin)

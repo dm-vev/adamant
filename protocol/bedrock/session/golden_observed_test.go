@@ -146,9 +146,9 @@ func (o *observed) join(heading string, who *serverIdentity) *scenario {
 	if who != nil {
 		name = who.name
 	}
-	c := newScenario(o.t, "observed", scenarioConfig{world: o.w, who: who, norm: o.norm, session: func(conf *session.Config) {
-		// As the server does by default.
-		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
+	// As the server does by default.
+	c := newScenario(o.t, "observed", scenarioConfig{world: o.w, who: who, norm: o.norm, joinMessage: chat.MessageJoin, session: func(conf *session.Config) {
+		conf.QuitMessage = chat.MessageQuit
 		conf.Roster = o.roster
 	}})
 	if o.w == nil {
