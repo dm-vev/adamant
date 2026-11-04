@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"time"
 	_ "unsafe"
@@ -507,10 +508,13 @@ type UserConfig struct {
 		// If true, the server will use the default LevelDB data provider and if
 		// false, an empty provider will be used. To use your own provider, turn
 		// this value to false, as you will still be able to pass your own
-		// provider.
+		// provider. With World.SaveData set too, the players are saved in the
+		// world database (playerdb.WorldProvider).
 		SaveData bool
 		// Folder controls where the player data will be stored by the default
-		// LevelDB player provider if it is enabled.
+		// LevelDB player provider if it is enabled. A server saving its players
+		// in the world database only reads it, for the players not yet moved
+		// there.
 		Folder string
 	}
 	Whitelist struct {
@@ -704,7 +708,11 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return conf, fmt.Errorf("load bans: %w", err)
 	}
 	if uc.Players.SaveData {
-		conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
+		if db, ok := conf.WorldProvider.(*mcdb.DB); ok {
+			conf.PlayerProvider, err = worldPlayers(db, uc.Players.Folder, log)
+		} else {
+			conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
+		}
 		if err != nil {
 			return conf, fmt.Errorf("create player provider: %w", err)
 		}
@@ -725,6 +733,27 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	a.warnHeld()
 	conf.Allower = a
 	return conf, nil
+}
+
+// worldPlayers returns the player provider of a server saving both its
+// world and its players: the records of players in the world database
+// (playerdb.WorldProvider over mcdb.DB), so that a checkpoint saves the world and its players
+// in one database, with the players folder of playerdb, if there is one, as
+// the fallback for players without a record there. The folder is opened
+// read-only: a player found only there moves into the world database at
+// its next save, and the folder is never written again.
+func worldPlayers(db *mcdb.DB, folder string, log *slog.Logger) (player.Provider, error) {
+	if info, err := os.Stat(folder); err != nil || !info.IsDir() {
+		return playerdb.NewWorldProvider(db, nil), nil
+	}
+	old, err := playerdb.OpenReadOnly(folder)
+	if err != nil {
+		return nil, fmt.Errorf("open the players folder %s: %w", folder, err)
+	}
+	if log != nil {
+		log.Info("Players are saved in the world database. The players folder is read for those without a record there, who move at their next save; it is no longer written.", "folder", folder)
+	}
+	return playerdb.NewWorldProvider(db, old), nil
 }
 
 // parseSaveInterval parses the World.SaveInterval of a UserConfig into the

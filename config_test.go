@@ -43,8 +43,11 @@ import (
 // file that lacks them gives a client a minute to spawn, where it had for
 // ever before; and LogLevel of [Server], whose line a new default file has,
 // and a file that lacks it logs at info, where the program logged at debug
-// before; and [AntiCheat], whose tables a new default file has, and a file
-// that lacks it, or any of its keys, runs every check with its defaults.
+// before; [AntiCheat], whose tables a new default file has, and a file that
+// lacks it, or any of its keys, runs every check with its defaults. And a
+// file saving both its world and its players now keeps the players in the
+// world database (playerdb.WorldProvider), reading the players folder only
+// for those not yet moved there, and no longer makes the folder.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -135,7 +138,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0, "SaveInterval": "5m0s",
 			"Regions": false, "DisableOverworld": false, "DisableNether": false, "DisableEnd": false,
 			"DefaultDimension": "Overworld", "PortalDisabledMessage": "The %s dimension is disabled on this server.", "SaveChunks": "modified",
-			"WorldProvider": "*mcdb.DB", "WorldFolder": true, "PlayerProvider": "*playerdb.Provider", "PlayerFolder": true,
+			"WorldProvider": "*mcdb.DB", "WorldFolder": true, "PlayerProvider": "*playerdb.WorldProvider", "PlayerFolder": false,
 			"WhitelistFile": "white-list.txt", "Stranger": "allowed",
 			"Query": false, "QueryPlugins": false,
 			"Network.Address": ":19132", "Network.IdentityFile": "server-key.pem", "Network.EnableQuery": false,

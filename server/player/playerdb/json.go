@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World, fallbackID uuid.UUID) (player.Config, *world.World) {
+func fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World, fallbackID uuid.UUID) (player.Config, *world.World) {
 	dim, _ := world.DimensionByID(int(d.Dimension))
 	mode, _ := world.GameModeByID(int(d.GameMode))
 	w := lookupWorld(dim)
@@ -86,7 +86,7 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 	return conf, w
 }
 
-func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
+func toJson(d player.Config, w *world.World) jsonData {
 	dim, _ := world.DimensionID(w.Dimension())
 	respawnDimension := d.RespawnDimension
 	if respawnDimension == nil {

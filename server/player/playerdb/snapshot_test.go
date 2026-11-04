@@ -32,8 +32,7 @@ func TestSnapshotSavesAsData(t *testing.T) {
 		p.AddEffect(effect.New(effect.Speed, 2, time.Minute))
 		p.SetExperienceLevel(7)
 
-		var provider Provider
-		data, snapshot := provider.toJson(p.Data(), w), provider.toJson(p.Snapshot(), w)
+		data, snapshot := toJson(p.Data(), w), toJson(p.Snapshot(), w)
 		gotItems, gotRest := splitItems(t, snapshot)
 		wantItems, wantRest := splitItems(t, data)
 		if !bytes.Equal(gotRest, wantRest) {

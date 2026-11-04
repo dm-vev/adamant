@@ -1,7 +1,6 @@
 package playerdb
 
 import (
-	"encoding/json"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/goleveldb/leveldb"
@@ -30,9 +29,21 @@ func NewProvider(path string) (*Provider, error) {
 	return &Provider{db: db}, nil
 }
 
+// OpenReadOnly opens the data a Provider saved under the path passed, to
+// read it only: Save fails. It fails if there is none. A server keeping
+// its players in the world database reads the players folder so, as the
+// fallback of a WorldProvider.
+func OpenReadOnly(path string) (*Provider, error) {
+	db, err := leveldb.OpenFile(path, &opt.Options{Compression: opt.SnappyCompression, ReadOnly: true, ErrorIfMissing: true})
+	if err != nil {
+		return nil, err
+	}
+	return &Provider{db: db}, nil
+}
+
 // Save ...
 func (p *Provider) Save(id uuid.UUID, d player.Config, w *world.World) error {
-	b, err := json.Marshal(p.toJson(d, w))
+	b, err := Encode(d, w)
 	if err != nil {
 		return err
 	}
@@ -45,14 +56,7 @@ func (p *Provider) Load(id uuid.UUID, world func(world.Dimension) *world.World) 
 	if err != nil {
 		return player.Config{}, nil, err
 	}
-	var d jsonData
-	err = json.Unmarshal(b, &d)
-	if err != nil {
-		return player.Config{}, nil, err
-	}
-	conf, w := p.fromJson(d, world, id)
-
-	return conf, w, nil
+	return Decode(b, id, world)
 }
 
 // Players calls yield with the UUID, the name and the XUID of each record
@@ -66,11 +70,11 @@ func (p *Provider) Players(yield func(id uuid.UUID, name, xuid string) bool) err
 		if len(key) != len(uuid.UUID{}) {
 			continue
 		}
-		var d struct{ XUID, Username string }
-		if json.Unmarshal(it.Value(), &d) != nil {
+		name, xuid, err := Identity(it.Value())
+		if err != nil {
 			continue
 		}
-		if !yield(uuid.UUID(key), d.Username, d.XUID) {
+		if !yield(uuid.UUID(key), name, xuid) {
 			break
 		}
 	}
