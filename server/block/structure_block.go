@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // StructureBlockMode is the mode of a structure block. Its values are those of
@@ -160,10 +161,10 @@ func (b StructureBlock) Activate(_ cube.Pos, _ cube.Face, _ *world.Tx, u item.Us
 // creative mode may edit structure, jigsaw and command blocks.
 func canUseGameMasterBlocks(u item.User) bool {
 	player, ok := u.(interface {
-		Name() string
+		UUID() uuid.UUID
 		GameMode() world.GameMode
 	})
-	return ok && player.GameMode().CreativeInventory() && cmd.IsOperator(player.Name())
+	return ok && player.GameMode().CreativeInventory() && cmd.IsOperator(player.UUID())
 }
 
 // RedstonePowerUpdate ...

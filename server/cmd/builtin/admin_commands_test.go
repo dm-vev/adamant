@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/google/uuid"
 )
 
 type operatorTestAdapter struct {
@@ -14,7 +15,7 @@ type operatorTestAdapter struct {
 	operator bool
 }
 
-func (s operatorTestAdapter) IsOperator(string) bool { return s.operator }
+func (s operatorTestAdapter) PlayerIsOperator(uuid.UUID) bool { return s.operator }
 
 func TestAdminPermissionTracksOperatorStatusAndExecuteContext(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()

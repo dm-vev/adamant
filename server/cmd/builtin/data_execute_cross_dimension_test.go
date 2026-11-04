@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 	"iter"
 	"testing"
 )
@@ -18,10 +19,10 @@ type executeDimensionAdapter struct {
 func (a executeDimensionAdapter) Players(*world.Tx) iter.Seq[*player.Player] {
 	return func(yield func(*player.Player) bool) {}
 }
-func (a executeDimensionAdapter) World() *world.World  { return a.world }
-func (a executeDimensionAdapter) Nether() *world.World { return a.nether }
-func (a executeDimensionAdapter) End() *world.World    { return a.end }
-func (executeDimensionAdapter) IsOperator(string) bool { return true }
+func (a executeDimensionAdapter) World() *world.World           { return a.world }
+func (a executeDimensionAdapter) Nether() *world.World          { return a.nether }
+func (a executeDimensionAdapter) End() *world.World             { return a.end }
+func (executeDimensionAdapter) PlayerIsOperator(uuid.UUID) bool { return true }
 
 func TestExecuteInTeleportMovesPlayerAcrossDimensions(t *testing.T) {
 	overworld := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()

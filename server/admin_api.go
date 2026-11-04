@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/google/uuid"
 )
 
 var errAdminUnavailable = errors.New("admin persistence unavailable")
@@ -37,6 +38,17 @@ func (srv *Server) IsOperator(name string) bool {
 		return err == nil && !t.Pending && srv.operators.hasKey(t.Key)
 	}
 	return srv.operators.isOperator(name)
+}
+
+// PlayerIsOperator reports whether the player online of the UUID passed is
+// an operator: by its account on a server keyed by XUID, by its name on one
+// keyed by name. A UUID of no player online, such as that of an entity of a
+// plugin named after an operator, is no operator's. It is the operator check
+// of the commands, the game master blocks and the abilities a client is
+// shown.
+func (srv *Server) PlayerIsOperator(id uuid.UUID) bool {
+	p, ok := srv.players.player(id)
+	return ok && srv.operatorOf(p.id)
 }
 
 // operatorOf reports whether the player of the identity passed is an

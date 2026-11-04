@@ -617,7 +617,7 @@ func (s *Session) abilityData(c Controllable, uniqueID int64) v2193.AbilityData 
 		abilities |= v2193.AbilityDoorsAndSwitches | v2193.AbilityOpenContainers | v2193.AbilityAttackPlayers | v2193.AbilityAttackMobs
 	}
 	playerPermissions, commandPermissions := byte(v2193.PermissionLevelMember), byte(v2193.CommandPermissionLevelAny)
-	if s.conf.IsOperator != nil && s.conf.IsOperator(c.Name()) {
+	if s.conf.IsOperator != nil && s.conf.IsOperator(c.UUID()) {
 		playerPermissions, commandPermissions = v2193.PermissionLevelOperator, v2193.CommandPermissionLevelGameDirectors
 		abilities |= v2193.AbilityOperatorCommands | v2193.AbilityTeleport
 	}

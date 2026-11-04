@@ -7,7 +7,7 @@ import (
 // Register registers the built-in command set on the provided server.
 func Register(srv serverAdapter) {
 	commandServer = srv
-	cmd.SetOperatorChecker(srv.IsOperator)
+	cmd.SetOperatorChecker(srv.PlayerIsOperator)
 	cmd.Register(newAboutCommand(srv))
 	cmd.Register(newHelpCommand())
 	cmd.Register(newListCommand(srv))

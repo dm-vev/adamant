@@ -382,11 +382,15 @@ func (srv *Server) Player(uuid uuid.UUID) (*world.EntityHandle, bool) {
 	return srv.players.handle(uuid)
 }
 
-// PlayerByName looks for a player on the server with the name passed. If
-// found, the entity handle is returned and the bool returned holds a true
-// value. If not, the bool is false and the handle is nil
+// PlayerByName looks for a player on the server with the name passed, in
+// any case and with spaces around, as /kick finds one. If found, the entity
+// handle is returned and the bool returned holds a true value. If not, the
+// bool is false and the handle is nil
 func (srv *Server) PlayerByName(name string) (*world.EntityHandle, bool) {
-	return srv.players.byName(name)
+	if p, ok := srv.players.named(name); ok {
+		return p.handle, true
+	}
+	return nil, false
 }
 
 // PlayerByXUID looks for a player on the server with the XUID passed. If
@@ -595,7 +599,7 @@ func (srv *Server) game(login client.Login, d player.Config, w *world.World) cli
 		Rotation:       d.Rotation,
 		Operator:       srv.operatorOf(login.Identity),
 		MaxChunkRadius: srv.conf.MaxChunkRadius,
-		IsOperator:     srv.IsOperator,
+		IsOperator:     srv.PlayerIsOperator,
 		Roster:         &srv.players.roster,
 	}
 }

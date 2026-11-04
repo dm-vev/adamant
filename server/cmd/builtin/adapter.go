@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/google/uuid"
 )
 
 type serverAdapter interface {
@@ -24,6 +25,9 @@ type serverAdapter interface {
 	WhitelistAdd(name string) (bool, error)
 	WhitelistRemove(name string) (bool, error)
 	IsOperator(name string) bool
+	// PlayerIsOperator reports whether the player online of the UUID
+	// passed is an operator.
+	PlayerIsOperator(id uuid.UUID) bool
 	Op(name string) (bool, error)
 	Deop(name string) (bool, error)
 	OperatorEntries() ([]string, error)

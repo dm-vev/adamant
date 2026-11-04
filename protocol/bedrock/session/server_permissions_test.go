@@ -100,7 +100,7 @@ type permissionTestCommand struct{ srv *server.Server }
 
 func (c permissionTestCommand) Allow(src cmd.Source) bool {
 	p, ok := src.(*player.Player)
-	return ok && c.srv.IsOperator(p.Name())
+	return ok && c.srv.PlayerIsOperator(p.UUID())
 }
 func (permissionTestCommand) Run(cmd.Source, *cmd.Output, *world.Tx) {}
 

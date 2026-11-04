@@ -412,7 +412,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		Log:            goldenLog(),
 		MaxChunkRadius: goldenRadius,
 		BlockRegistry:  w.BlockRegistry(),
-		IsOperator:     func(string) bool { return false },
+		IsOperator:     func(uuid.UUID) bool { return false },
 	}
 	if conf.session != nil {
 		conf.session(&sconf)

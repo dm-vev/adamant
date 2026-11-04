@@ -55,7 +55,7 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	if g.Name != "Join Test" || g.Level != jt.srv.World() || g.World != jt.srv.World() || g.MaxChunkRadius != 3 {
 		t.Errorf("Game = %+v, want the server's name, world and chunk radius", g)
 	}
-	if !g.Operator || g.IsOperator == nil || !g.IsOperator("alice") || g.IsOperator("bob") {
+	if !g.Operator || g.IsOperator == nil || !g.IsOperator(handle.UUID()) || g.IsOperator(bobHandle.UUID()) {
 		t.Error("the Game of Alice does not hold her an operator")
 	}
 	conf, _ := player.Call(context.Background(), handle, func(_ *world.Tx, p *player.Player) (player.Config, error) {

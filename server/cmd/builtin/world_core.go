@@ -35,7 +35,7 @@ func operatorAllowed(srv serverAdapter, src cmd.Source) bool {
 	for {
 		switch source := src.(type) {
 		case *player.Player:
-			return srv != nil && srv.IsOperator(source.Name())
+			return srv != nil && srv.PlayerIsOperator(source.UUID())
 		case cmd.ContextSource:
 			src = source.Source
 		default:

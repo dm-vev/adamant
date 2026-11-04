@@ -507,7 +507,7 @@ func (p *Player) SendCommandOutput(output *cmd.Output) {
 		for _, msg := range output.Messages() {
 			slog.Default().Info(fmt.Sprintf("[%s: %s]", p.Name(), msg))
 			for e := range p.tx.Players() {
-				if other, ok := e.(*Player); ok && other != p && cmd.IsOperator(other.Name()) {
+				if other, ok := e.(*Player); ok && other != p && cmd.IsOperator(other.UUID()) {
 					other.Messaget(chat.MessageAdminCommand, p.Name(), msg.String())
 				}
 			}

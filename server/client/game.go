@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // Game is what the server hands the adapter of a client as it starts the
@@ -31,9 +32,10 @@ type Game struct {
 	// MaxChunkRadius bounds the radius, in chunks, of the world around the
 	// player that the client is shown.
 	MaxChunkRadius int
-	// IsOperator reports whether the player of the name passed is an
-	// operator now. Nil means none is. It may be called from any goroutine.
-	IsOperator func(name string) bool
+	// IsOperator reports whether the player online of the UUID passed is
+	// an operator now. Nil means none is. It may be called from any
+	// goroutine.
+	IsOperator func(id uuid.UUID) bool
 	// Roster is the list of the players of the server. Bind lists the
 	// player on it and Close unlists it. Nil gives the client a Roster of
 	// its own, on which it lists only its own player.

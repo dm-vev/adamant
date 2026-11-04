@@ -33,20 +33,20 @@ func TestPlayersRegistry(t *testing.T) {
 	if h, ok := r.handle(a.handle.UUID()); !ok || h != a.handle {
 		t.Fatal("handle does not find Alice by UUID")
 	}
-	if h, ok := r.byName("Alice"); !ok || h != a.handle {
-		t.Fatal("byName does not find Alice")
-	}
-	if _, ok := r.byName("alice"); ok {
-		t.Fatal("byName matches a name in another case")
+	if p, ok := r.named("ALICE"); !ok || p != a {
+		t.Fatal("named does not find Alice in another case")
 	}
 	if h, ok := r.byXUID("1"); !ok || h != a.handle {
 		t.Fatal("byXUID does not find Alice")
 	}
-	if h := r.byKey("bob"); h != b.handle {
-		t.Fatal("byKey does not find Bob by his normalised name")
+	if p, ok := r.named("bob"); !ok || p != b {
+		t.Fatal("named does not find Bob by his normalised name")
 	}
-	if h := r.byKey("carol"); h != nil {
-		t.Fatal("byKey finds a player that is not online")
+	if _, ok := r.named("carol"); ok {
+		t.Fatal("named finds a player that is not online")
+	}
+	if p, ok := r.player(b.handle.UUID()); !ok || p != b {
+		t.Fatal("player does not find Bob by UUID")
 	}
 	names := r.names()
 	slices.Sort(names)

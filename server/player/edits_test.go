@@ -183,14 +183,21 @@ func TestPlayerTurnLecternPage(t *testing.T) {
 // operatorName is the name of the operator of withOperator.
 const operatorName = "edits operator"
 
-var installOperators sync.Once
+var (
+	installOperators sync.Once
+	// operatorIDs are the UUIDs of the players withOperator made operators.
+	operatorIDs sync.Map
+)
 
 // withOperator runs f with a player in w named operatorName, an operator in
 // the game mode passed, unless op is false.
 func withOperator(t *testing.T, w *world.World, mode world.GameMode, op bool, f func(tx *world.Tx, p *Player)) {
 	t.Helper()
 	installOperators.Do(func() {
-		cmd.SetOperatorChecker(func(name string) bool { return name == operatorName })
+		cmd.SetOperatorChecker(func(id uuid.UUID) bool {
+			_, ok := operatorIDs.Load(id)
+			return ok
+		})
 	})
 	name := operatorName
 	if !op {
@@ -198,6 +205,9 @@ func withOperator(t *testing.T, w *world.World, mode world.GameMode, op bool, f 
 	}
 	pos := mgl64.Vec3{0.5, 100, 0.5}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, Config{Name: name, Position: pos, GameMode: mode})
+	if op {
+		operatorIDs.Store(handle.UUID(), struct{}{})
+	}
 	<-w.Exec(func(tx *world.Tx) {
 		f(tx, tx.AddEntity(handle).(*Player))
 	})

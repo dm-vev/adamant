@@ -73,17 +73,12 @@ func (r *players) handle(id uuid.UUID) (*world.EntityHandle, bool) {
 	return p.handle, true
 }
 
-// byName returns the handle of a player online whose name is exactly the
-// one passed.
-func (r *players) byName(name string) (*world.EntityHandle, bool) {
+// player returns the player online with the UUID passed.
+func (r *players) player(id uuid.UUID) (*onlinePlayer, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for _, p := range r.online {
-		if p.id.Name == name {
-			return p.handle, true
-		}
-	}
-	return nil, false
+	p, ok := r.online[id]
+	return p, ok
 }
 
 // byXUID returns the handle of a player online with the XUID passed.
@@ -96,19 +91,6 @@ func (r *players) byXUID(xuid string) (*world.EntityHandle, bool) {
 		}
 	}
 	return nil, false
-}
-
-// byKey returns the handle of a player online whose name normalizeName
-// makes the key passed, nil if none is online.
-func (r *players) byKey(key string) *world.EntityHandle {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	for _, p := range r.online {
-		if normalizeName(p.id.Name) == key {
-			return p.handle
-		}
-	}
-	return nil
 }
 
 // named returns the player online whose name is the one passed, in any

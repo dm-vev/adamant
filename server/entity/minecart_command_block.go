@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/google/uuid"
 	"strings"
 )
 
@@ -62,10 +63,10 @@ func (b *commandBlockMinecartBehaviour) Base() *MinecartBehaviour { return b.Min
 // Interact opens the command-block editor only for creative operators.
 func (m *MinecartCommandBlock) Interact(_ *world.Tx, user item.User, _ *item.UseContext) bool {
 	player, ok := user.(interface {
-		Name() string
+		UUID() uuid.UUID
 		GameMode() world.GameMode
 	})
-	return ok && player.GameMode().CreativeInventory() && cmd.IsOperator(player.Name())
+	return ok && player.GameMode().CreativeInventory() && cmd.IsOperator(player.UUID())
 }
 
 func (m *MinecartCommandBlock) Tick(tx *world.Tx, tick int64) {

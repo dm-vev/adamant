@@ -24,7 +24,7 @@ func (p *Player) CanReach(pos mgl64.Vec3) bool {
 // operator in a game mode with the creative inventory, as
 // Player.canUseGameMasterBlocks of Java.
 func (p *Player) CanUseGameMasterBlocks() bool {
-	return p.GameMode().CreativeInventory() && cmd.IsOperator(p.Name())
+	return p.GameMode().CreativeInventory() && cmd.IsOperator(p.UUID())
 }
 
 // EditJigsaw sets the names, pool, final state, joint and priorities of the
