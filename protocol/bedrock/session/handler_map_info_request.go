@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image/color"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -13,9 +12,9 @@ import (
 // MapInfoRequestHandler returns the persistent map texture and fixed decorations requested by a client.
 type MapInfoRequestHandler struct{}
 
-func (*MapInfoRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
+func (*MapInfoRequestHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllable) error {
 	request := p.(*v2193.MapInfoRequestPacket)
-	data, err := tx.UpdateMap(request.MapID, cube.PosFromVec3(c.Position()))
+	data, err := c.ExploreMap(request.MapID)
 	if err != nil {
 		return fmt.Errorf("update map %d: %w", request.MapID, err)
 	}

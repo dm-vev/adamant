@@ -124,6 +124,8 @@ type Controllable interface {
 
 	EditBook(slot int, edit item.BookEdit) error
 
+	ExploreMap(id int64) (world.MapData, error)
+
 	EnderChestInventory() *inventory.Inventory
 	Inventory() *inventory.Inventory
 	MoveItemsToInventory()

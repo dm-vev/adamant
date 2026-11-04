@@ -37,7 +37,6 @@ protocol/bedrock/session/handler_item_stack_request.go (entity.Merchant).Complet
 protocol/bedrock/session/handler_item_stack_request.go (session.smelter).ResetExperience
 protocol/bedrock/session/handler_item_stack_request.go block.NotifyComparatorUpdate
 protocol/bedrock/session/handler_item_stack_request.go block.NotifyComparatorUpdate
-protocol/bedrock/session/handler_map_info_request.go (*world.Tx).UpdateMap
 protocol/bedrock/session/handler_merchant.go (entity.Merchant).CompleteMerchantTrade
 protocol/bedrock/session/handler_player_auth_input.go (entity.VehicleInput).SetVehicleInput
 protocol/bedrock/session/handler_player_auth_input.go (entity.VehicleInputWithRider).SetVehicleInputFrom
