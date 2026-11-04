@@ -229,3 +229,75 @@ func TestBanOverBan(t *testing.T) {
 		t.Errorf("the address banned for ever: %v", got)
 	}
 }
+
+// TestIPBanPrefixes checks the bans of addresses and networks: an IPv4
+// address alone; an IPv6 address as its /64 by default, and alone at 128;
+// a network as typed; a loopback address banned only by a ban of it alone;
+// an address an older server wrote alone matching itself alone; and
+// pardoning an IPv6 address pardons its network.
+func TestIPBanPrefixes(t *testing.T) {
+	srv, _, _ := banTestServer(t, false)
+	banned := func(addr string) bool {
+		_, ok := srv.Banned(addr, "")
+		return ok
+	}
+	for _, target := range []string{"203.0.113.7", "2001:db8:1:2::5", "198.51.100.0/24"} {
+		if _, err := srv.BanAddress(target, BanOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for addr, want := range map[string]bool{
+		"203.0.113.7:4242": true, "203.0.113.8": false,
+		"[2001:db8:1:2::99]:19132": true, "2001:db8:1:3::1": false,
+		"198.51.100.200": true, "198.51.101.1": false,
+		"::ffff:203.0.113.7": true,
+	} {
+		if got := banned(addr); got != want {
+			t.Errorf("%s banned %v, want %v", addr, got, want)
+		}
+	}
+	if bans, _ := srv.BanList(true); len(bans) != 3 || bans[1].Target != "2001:db8:1:2::/64" {
+		t.Errorf("bans of addresses %+v", bans)
+	}
+
+	if _, err := srv.BanAddress("0.0.0.0/0", BanOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if banned("127.0.0.1:19132") || !banned("192.0.2.1") {
+		t.Error("a ban of every IPv4 address bans loopback, or not the others")
+	}
+	if _, err := srv.BanAddress("127.0.0.1", BanOptions{}); err != nil || !banned("127.0.0.1") {
+		t.Errorf("a ban of 127.0.0.1 alone: %v, banned %v", err, banned("127.0.0.1"))
+	}
+
+	if removed, err := srv.PardonIP("2001:db8:1:2::5"); !removed || err != nil {
+		t.Errorf("pardoning the IPv6 address: %v, %v", removed, err)
+	}
+	if banned("2001:db8:1:2::99") {
+		t.Error("the network of the IPv6 address is still banned")
+	}
+
+	srv.bans.v6Prefix = 128
+	if _, err := srv.BanAddress("2001:db8::1", BanOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if !banned("2001:db8::1") || banned("2001:db8::2") {
+		t.Error("IPv6Prefix 128 bans more or less than the address")
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "banned-players.json")
+	if err := os.WriteFile(path, []byte(`{"players":[],"ips":[{"ip":"2001:db8::5","reason":"old"}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := loadBans(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := b.bannedIPLocked("2001:db8::5"); !ok {
+		t.Error("the address of an older file is not banned")
+	}
+	if _, ok, _ := b.bannedIPLocked("2001:db8::6"); ok {
+		t.Error("the address of an older file bans its network")
+	}
+}

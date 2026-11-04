@@ -207,6 +207,9 @@ func TestConfigBounds(t *testing.T) {
 			{`"Gone. {reason}"`, ""}, {`""`, "Bans.Message is empty: want the text a banned player is refused with"},
 			{`"Gone {why}"`, "Bans.Message holds {why}: want only {reason}, {source}, {created}, {expires}"},
 		}},
+		{table: "Bans", key: "IPv6Prefix", values: []value{
+			{"32", ""}, {"64", ""}, {"128", ""}, {"31", "Bans.IPv6Prefix = 31: want 32 to 128"}, {"129", "Bans.IPv6Prefix = 129: want 32 to 128"},
+		}},
 		{table: "Bans", key: "MaxDuration", values: []value{
 			{`"0s"`, ""}, {`"30d"`, ""}, {`"720h"`, ""}, {`""`, ""},
 			{`"-1h"`, `Bans.MaxDuration = "-1h": want a duration such as "30d" or "720h", or "0s" for no cap`},

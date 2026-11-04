@@ -28,6 +28,8 @@ type banCmd struct {
 	Name   string                    `cmd:"player"`
 	Reason cmd.Optional[cmd.Varargs] `cmd:"reason"`
 }
+// banIPCmd bans an address, a network such as 203.0.113.0/24, or the
+// address of a player online, as Java's /ban-ip takes either.
 type banIPCmd struct {
 	admin
 	srv    serverAdapter
@@ -229,16 +231,25 @@ func removeTarget(srv serverAdapter, o *cmd.Output, list server.List, name strin
 }
 func (c banIPCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 	reason := reasonArg(c.Reason)
-	change, err := c.srv.BanAddress(c.IP, server.BanOptions{Reason: reason, By: c.srv.ActorOf(src)})
+	key, err := c.srv.BanTarget(c.IP)
+	if err != nil {
+		o.Error(err)
+		return
+	}
+	affected := c.srv.PlayersAt(key)
+	change, err := c.srv.BanAddress(key, server.BanOptions{Reason: reason, By: c.srv.ActorOf(src)})
 	switch {
 	case err != nil:
 		o.Error(err)
 	case change == server.BanUnchanged:
 		o.Print("Nothing changed. That IP is already banned")
 	case change == server.BanMadePermanent:
-		o.Printf("IP %s is now banned for ever", c.IP)
+		o.Printf("IP %s is now banned for ever", key)
 	default:
-		o.Print(bannedText("Banned IP "+c.IP, reason))
+		o.Print(bannedText("Banned IP "+key, reason))
+		if len(affected) > 0 {
+			o.Printf("This ban affects %d player(s): %s", len(affected), strings.Join(affected, ", "))
+		}
 	}
 }
 func (c pardonCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {

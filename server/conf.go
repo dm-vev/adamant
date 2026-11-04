@@ -651,6 +651,10 @@ type UserConfig struct {
 		ExpiresMessage string
 		// IPMessage is the text of a ban of the address of the player.
 		IPMessage string
+		// IPv6Prefix is how many leading bits of an IPv6 address a ban of
+		// it covers: 64 bans the network of one subscriber, 128 the
+		// address alone.
+		IPv6Prefix int
 		// MaxDuration caps how long a ban for a time lasts, such as "30d";
 		// "0s" sets no cap.
 		MaxDuration string
@@ -746,6 +750,7 @@ func (uc UserConfig) Check(p *config.Problems) {
 	uc.checkPermissions(p)
 	uc.checkAudit(p)
 	checkBanMessages(p, uc.banMessages())
+	config.Range(p, "Bans.IPv6Prefix", uc.Bans.IPv6Prefix, 32, 128)
 	if _, err := parseMaxBanDuration(uc.Bans.MaxDuration); err != nil {
 		p.Errorf("Bans.MaxDuration", `Bans.MaxDuration = %q: want a duration such as "30d" or "720h", or "0s" for no cap`, uc.Bans.MaxDuration)
 	}
@@ -1069,6 +1074,7 @@ func (uc UserConfig) admission(whitelistFile string, mode identity.Mode, log *sl
 	}
 	bans.messages = uc.banMessages()
 	bans.maxDuration, _ = parseMaxBanDuration(uc.Bans.MaxDuration)
+	bans.v6Prefix = uc.Bans.IPv6Prefix
 	roles, moved, err := loadRoles(filepath.Join(baseDir, "permissions.json"))
 	if err != nil {
 		return admission{}, fmt.Errorf("load permissions: %w", err)
@@ -1188,7 +1194,7 @@ func DefaultConfig() UserConfig {
 	m := DefaultBanMessages()
 	c.Bans.DefaultReason, c.Bans.ExpiresMessage, c.Bans.IPMessage = m.DefaultReason, m.ExpiresMessage, m.IPMessage
 	c.Bans.Message, c.Bans.ReasonMessage, c.Bans.TimeFormat = m.Message, m.ReasonMessage, m.TimeFormat
-	c.Bans.MaxDuration = "0s"
+	c.Bans.MaxDuration, c.Bans.IPv6Prefix = "0s", DefaultIPv6Prefix
 	c.Permissions.Commands = map[string]int{}
 	return c
 }

@@ -185,6 +185,11 @@
   DefaultReason = ""
   ExpiresMessage = "\nYour ban will be removed on {expires}"
   IPMessage = "You are banned from this server."
+  # IPv6Prefix is how many leading bits of an IPv6 address a ban of it covers: 64 bans the network of one
+  # subscriber, who changes the rest at will; 128 the address alone. /ban-ip also takes a network, such as
+  # 203.0.113.0/24, or a player online. A loopback address, as of a proxy on the host, is banned only by a ban
+  # of it alone, never by a network.
+  IPv6Prefix = 64
   # MaxDuration caps how long a ban for a time lasts, such as "30d" or "720h"; "0s" sets no cap.
   MaxDuration = "0s"
   Message = "You are banned from this server."

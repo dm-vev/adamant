@@ -778,7 +778,7 @@ func (srv *Server) createPlayer(login client.Login, c client.Joining, conf playe
 
 	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id.UUID}.New(player.Type, conf)
 	c.Bind(handle, conf.Skin)
-	return incoming{c: c, w: w, conf: conf, p: &onlinePlayer{id: id, handle: handle}}
+	return incoming{c: c, w: w, conf: conf, p: &onlinePlayer{id: id, handle: handle, addr: login.Addr}}
 }
 
 // addrString returns the address passed as a string, "" if it is nil.

@@ -51,6 +51,11 @@ type serverAdapter interface {
 	BanAddress(ip string, o server.BanOptions) (server.BanChange, error)
 	// BanList returns the bans of players, or of addresses if ips.
 	BanList(ips bool) ([]server.BanInfo, error)
+	// BanTarget is the address or network a ban of an address, a network
+	// or a player online is kept by; PlayersAt the players online it
+	// covers.
+	BanTarget(target string) (string, error)
+	PlayersAt(key string) []string
 	ActorOf(src cmd.Source) audit.Actor
 	PardonPlayer(name string) (bool, error)
 	BanIP(ip, reason string) (bool, error)

@@ -70,9 +70,10 @@ import (
 // is shown to operators online, which it was not; [Bans], whose table a new
 // default file has, and a file that lacks it refuses banned players with
 // the text it always did, and kicks them with it, where the kick had no
-// reason before, and sets no cap on bans for a time. And a file saving both
-// its world and its players now keeps the players in the world database
-// (playerdb.WorldProvider), reading the
+// reason before, sets no cap on bans for a time, and bans the /64 of an
+// IPv6 address /ban-ip names, where it banned the address alone. And a file
+// saving both its world and its players now keeps the players in the world
+// database (playerdb.WorldProvider), reading the
 // players folder only for those not yet moved there, and no longer makes
 // the folder.
 
@@ -595,6 +596,7 @@ const everyKeyChanged = `
   DefaultReason = "Rules."
   ExpiresMessage = "\nBack on {expires}"
   IPMessage = "Address gone."
+  IPv6Prefix = 128
   MaxDuration = "30d"
   Message = "Gone."
   ReasonMessage = " Why: {reason}, by {source}"

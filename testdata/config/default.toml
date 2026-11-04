@@ -213,6 +213,7 @@
   DefaultReason = ""
   ExpiresMessage = "\nYour ban will be removed on {expires}"
   IPMessage = "You are banned from this server."
+  IPv6Prefix = 64
   MaxDuration = "0s"
   Message = "You are banned from this server."
   ReasonMessage = " Reason: {reason}"

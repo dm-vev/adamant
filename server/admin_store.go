@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net"
 	"os"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -60,10 +58,15 @@ type banList struct {
 	// maxDuration is the longest a ban for a time lasts, zero for no
 	// limit.
 	maxDuration time.Duration
+	// v6Prefix is how many leading bits of an IPv6 address a new ban of it
+	// covers.
+	v6Prefix int
+	// prefixes are the keys of the bans of networks, which a login scans.
+	prefixes []string
 }
 
 func loadBans(path string) (*banList, error) {
-	b := &banList{file: path, ips: map[string]banEntry{}, now: time.Now, messages: DefaultBanMessages()}
+	b := &banList{file: path, ips: map[string]banEntry{}, now: time.Now, messages: DefaultBanMessages(), v6Prefix: DefaultIPv6Prefix}
 	contents, err := os.ReadFile(path)
 	if errNotExist(err) {
 		if err = b.writeLocked(); err != nil {
@@ -94,7 +97,7 @@ func loadBans(path string) (*banList, error) {
 		b.players.put(en)
 	}
 	for _, e := range data.IPs {
-		key := normalizeIP(e.IP)
+		key := fileKey(e.IP)
 		if key == "" {
 			continue
 		}
@@ -104,19 +107,10 @@ func loadBans(path string) (*banList, error) {
 		}
 		b.ips[key] = e
 	}
+	b.rebuildPrefixesLocked()
 	return b, nil
 }
 
-func normalizeIP(value string) string {
-	value = strings.TrimSpace(value)
-	if host, _, err := net.SplitHostPort(value); err == nil {
-		value = host
-	}
-	if ip := net.ParseIP(strings.Trim(value, "[]")); ip != nil {
-		return ip.String()
-	}
-	return ""
-}
 
 func (b *banList) writeLocked() error {
 	data := banFile{Players: make([]banEntry, 0, len(b.players.order)), IPs: make([]banEntry, 0, len(b.ipOrder))}
@@ -188,14 +182,11 @@ func (b *banList) ban(en entry, reason string) (BanChange, error) {
 	return change, b.writeLocked()
 }
 
-// banAddress bans the address passed as ban bans a player.
-func (b *banList) banAddress(ip, reason string, f banFields) (BanChange, error) {
+// banAddress bans the address or network of the key passed, as banKey
+// returns it, as ban bans a player.
+func (b *banList) banAddress(key, reason string, f banFields) (BanChange, error) {
 	if err := f.checkExpiry(b.maxDuration); err != nil {
 		return BanUnchanged, err
-	}
-	key := normalizeIP(ip)
-	if key == "" {
-		return BanUnchanged, fmt.Errorf("invalid IP address %q", ip)
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -203,6 +194,7 @@ func (b *banList) banAddress(ip, reason string, f banFields) (BanChange, error) 
 	if !ok {
 		b.ips[key] = banEntry{IP: key, Reason: reason}.withFields(f)
 		b.ipOrder = append(b.ipOrder, key)
+		b.rebuildPrefixesLocked()
 		return BanAdded, b.writeLocked()
 	}
 	next, change := reban(entry{reason: e.Reason, ban: e.fields()}, f, reason)
@@ -337,6 +329,7 @@ func (b *banList) prune() {
 			ips = append(ips, e)
 		}
 	}
+	b.rebuildPrefixesLocked()
 	var err error
 	if len(players)+len(ips) > 0 {
 		err = b.writeLocked()
@@ -350,16 +343,17 @@ func (b *banList) prune() {
 	}
 }
 func (b *banList) addIP(ip, reason string) (bool, error) {
-	return b.addAddress(ip, reason, banFields{})
-}
-
-// addAddress bans the address passed for the reason passed, with the
-// fields passed, and writes the file, unless the address is banned.
-func (b *banList) addAddress(ip, reason string, f banFields) (bool, error) {
-	key := normalizeIP(ip)
-	if key == "" {
+	key, ok := banKey(ip, 128)
+	if !ok {
 		return false, fmt.Errorf("invalid IP address %q", ip)
 	}
+	return b.addAddress(key, reason, banFields{})
+}
+
+// addAddress bans the address or network of the key passed, as banKey
+// returns it, for the reason passed, with the fields passed, and writes the
+// file, unless it is banned.
+func (b *banList) addAddress(key, reason string, f banFields) (bool, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if _, ok := b.ips[key]; ok {
@@ -367,17 +361,26 @@ func (b *banList) addAddress(ip, reason string, f banFields) (bool, error) {
 	}
 	b.ips[key] = banEntry{IP: key, Reason: reason}.withFields(f)
 	b.ipOrder = append(b.ipOrder, key)
+	b.rebuildPrefixesLocked()
 	return true, b.writeLocked()
 }
+
+// removeIP pardons the ban of the address or the network passed: the ban
+// of it as typed, or else the ban a new ban of it would make, as of the
+// network of an IPv6 address.
 func (b *banList) removeIP(ip string) (bool, error) {
-	key := normalizeIP(ip)
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	key := fileKey(ip)
 	if _, ok := b.ips[key]; !ok {
+		key, _ = banKey(ip, b.v6Prefix)
+	}
+	if _, ok := b.ips[key]; !ok || key == "" {
 		return false, nil
 	}
 	delete(b.ips, key)
 	b.ipOrder = slices.DeleteFunc(b.ipOrder, func(v string) bool { return v == key })
+	b.rebuildPrefixesLocked()
 	return true, b.writeLocked()
 }
 func (b *banList) entries(ips bool) []string {
@@ -409,10 +412,23 @@ func (b *banList) banned(addr, name string) (banHit, bool) {
 
 // bannedIPLocked reports whether the address passed is banned, the ban,
 // and whether it expired.
+//
+// An address is banned by a ban of it alone, or of a network that holds
+// it, unless it is a loopback address, which only a ban of it alone bans.
 func (b *banList) bannedIPLocked(addr string) (banHit, bool, bool) {
-	if ip := normalizeIP(addr); ip != "" {
-		if e, ok := b.ips[ip]; ok {
-			return banHit{reason: e.Reason, fields: e.fields(), ip: true}, true, e.fields().expired(b.now())
+	a, ok := parseAddr(addr)
+	if !ok {
+		return banHit{}, false, false
+	}
+	hit := func(e banEntry) (banHit, bool, bool) {
+		return banHit{reason: e.Reason, fields: e.fields(), ip: true}, true, e.fields().expired(b.now())
+	}
+	if e, ok := b.ips[a.String()]; ok {
+		return hit(e)
+	}
+	for _, k := range b.prefixes {
+		if keyMatches(k, a) {
+			return hit(b.ips[k])
 		}
 	}
 	return banHit{}, false, false

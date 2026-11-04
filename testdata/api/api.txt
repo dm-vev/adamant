@@ -350,6 +350,7 @@ server	const	BanUpdated	server.BanChange = 3
 server	const	Banned	server.List = 2
 server	const	DefaultBackupKeep	untyped int = 10
 server	const	DefaultCommandBlockLevel	server/cmd.Level = 2
+server	const	DefaultIPv6Prefix	untyped int = 64
 server	const	DefaultOperatorLevel	server/cmd.Level = 4
 server	const	DefaultRoleLevel	server/cmd.Level = 3
 server	const	DefaultSaveInterval	time.Duration = 300000000000
@@ -392,6 +393,7 @@ server	method	Server.BanEntries	func(ip bool) ([]string, error)
 server	method	Server.BanIP	func(ip string, reason string) (bool, error)
 server	method	Server.BanList	func(ips bool) ([]server.BanInfo, error)
 server	method	Server.BanPlayer	func(name string, reason string) (bool, error)
+server	method	Server.BanTarget	func(target string) (string, error)
 server	method	Server.Banned	func(addr string, name string) (string, bool)
 server	method	Server.ClearRole	func(name string) (bool, error)
 server	method	Server.Close	func() error
@@ -426,6 +428,7 @@ server	method	Server.PlayerLevel	func(id github.com/google/uuid.UUID) server/cmd
 server	method	Server.PlayerNames	func() []string
 server	method	Server.PlayerPermissions	func(id github.com/google/uuid.UUID) server/client.Permissions
 server	method	Server.Players	func(tx *server/world.Tx) iter.Seq[*server/player.Player]
+server	method	Server.PlayersAt	func(key string) []string
 server	method	Server.Ready	func(o server.HealthOptions) server.HealthReport
 server	method	Server.ReloadPermissions	func() error
 server	method	Server.ResolveEntry	func(list server.List, s string) (server.Target, error)
@@ -488,7 +491,7 @@ server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomi
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
 server	type	Target	struct{Key server/identity.Key; Name string; Found server.Found; Pending bool}
-server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}; Bans struct{DefaultReason string; ExpiresMessage string; IPMessage string; MaxDuration string; Message string; ReasonMessage string; TimeFormat string}; Audit struct{Enabled bool; File string; Keep int; MaxSize string; MinLevel int; RecordAddresses bool}}
+server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}; Bans struct{DefaultReason string; ExpiresMessage string; IPMessage string; IPv6Prefix int; MaxDuration string; Message string; ReasonMessage string; TimeFormat string}; Audit struct{Enabled bool; File string; Keep int; MaxSize string; MinLevel int; RecordAddresses bool}}
 server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; kickMsg string; format server.whitelistFormat}
 server	var	DefaultHealthOptions	server.HealthOptions
 server	var	ErrBackupNotFound	error

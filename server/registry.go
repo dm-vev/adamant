@@ -2,6 +2,7 @@ package server
 
 import (
 	"cmp"
+	"net"
 	"slices"
 	"sync"
 
@@ -36,6 +37,9 @@ type players struct {
 type onlinePlayer struct {
 	handle *world.EntityHandle
 	id     client.Identity
+	// addr is the address the client logged in from, nil if unknown: the
+	// address of a proxied client its proxy signed.
+	addr net.Addr
 	// joined orders the players online by when they were put online.
 	joined uint64
 }

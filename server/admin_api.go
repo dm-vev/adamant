@@ -234,26 +234,32 @@ func (srv *Server) PardonPlayer(name string) (bool, error) {
 	}
 	return srv.bans.remove(k)
 }
-// BanIP bans the address passed for the reason passed, for ever,
-// recording no time or source, as the server always banned. The players
+// BanIP bans the address passed alone, an IPv6 address too, for the reason
+// passed, for ever, recording no time or source, as the server always
+// banned. The players
 // online from the address are kicked with the text of [Bans]. BanAddress
 // records when, by whom and until when.
 func (srv *Server) BanIP(ip, reason string) (bool, error) {
 	return srv.banAddress(ip, reason, banFields{})
 }
 
-// BanAddress bans the address passed as the options say, recording when
-// the ban was made, by whom and until when, over any ban of it, as Ban
-// does. The players online from the address are kicked with the text of
-// [Bans].
+// BanAddress bans the address, the network or the address of the player
+// online passed, as BanTarget resolves it, as the options say, recording
+// when the ban was made, by whom and until when, over any ban of it, as
+// Ban does. The players online from the address or the network are kicked
+// with the text of [Bans].
 func (srv *Server) BanAddress(ip string, o BanOptions) (BanChange, error) {
 	if srv.bans == nil {
 		return BanUnchanged, errAdminUnavailable
 	}
+	key, err := srv.BanTarget(ip)
+	if err != nil {
+		return BanUnchanged, err
+	}
 	f := o.fields(srv.bansNow())
-	change, err := srv.bans.banAddress(ip, o.Reason, f)
+	change, err := srv.bans.banAddress(key, o.Reason, f)
 	if change == BanAdded {
-		srv.kickAddress(ip, o.Reason, f)
+		srv.kickAddress(key, o.Reason, f)
 	}
 	return change, err
 }
@@ -264,25 +270,25 @@ func (srv *Server) banAddress(ip, reason string, f banFields) (bool, error) {
 	if srv.bans == nil {
 		return false, errAdminUnavailable
 	}
-	added, err := srv.bans.addAddress(ip, reason, f)
+	// The address alone, as the server always banned.
+	key, ok := banKey(ip, 128)
+	if !ok {
+		return false, fmt.Errorf("invalid IP address %q", ip)
+	}
+	added, err := srv.bans.addAddress(key, reason, f)
 	if added {
-		srv.kickAddress(ip, reason, f)
+		srv.kickAddress(key, reason, f)
 	}
 	return added, err
 }
 
-// kickAddress kicks the players online from the address of a new ban,
-// from a goroutine of its own, with the text of [Bans].
-func (srv *Server) kickAddress(ip, reason string, f banFields) {
-	target := normalizeIP(ip)
+// kickAddress kicks the players online whose address the ban of the key
+// passed covers, each on its owner, with the text of [Bans].
+func (srv *Server) kickAddress(key, reason string, f banFields) {
 	msg := srv.bans.message(banHit{reason: reason, fields: f, ip: true})
-	go func() {
-		for p := range srv.Players(nil) {
-			if p.Addr() != nil && normalizeIP(p.Addr().String()) == target {
-				p.Disconnect(msg)
-			}
-		}
-	}()
+	for _, p := range srv.playersAt(key) {
+		go player.Do(p.handle, func(_ *world.Tx, p *player.Player) { p.Disconnect(msg) })
+	}
 }
 
 // BanList returns the bans of players, or of addresses if ips, as /banlist
