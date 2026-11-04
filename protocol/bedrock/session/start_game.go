@@ -1,7 +1,6 @@
 package session
 
 import (
-	_ "embed"
 	"maps"
 	"slices"
 
@@ -10,17 +9,17 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/iteminternal"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // startContent is the content of the game the client is defined in
-// StartGame and the ItemRegistry after it: the blocks, the custom items and
-// the custom dimensions, made into their Bedrock entries once. A nil
-// startContent holds no entries.
+// StartGame and the ItemRegistry after it: the blocks, the vanilla and the
+// custom items and the custom dimensions, made into their Bedrock entries
+// of a protocol once. A nil startContent holds no entries.
 type startContent struct {
-	blocks      []v2193.BlockEntry
-	customItems []v2193.ItemEntry
-	dimensions  []v2193.DimensionDefinition
+	blocks       []v2193.BlockEntry
+	vanillaItems map[string]bedrockdata.ItemEntry
+	customItems  []v2193.ItemEntry
+	dimensions   []v2193.DimensionDefinition
 }
 
 // newStartContent makes the entries of the content of the game, as the
@@ -30,9 +29,10 @@ type startContent struct {
 // passed.
 func newStartContent(w *wireTables, items []world.CustomItem, dims []world.DimensionRegistration) *startContent {
 	return &startContent{
-		blocks:      blockEntries(w.br),
-		customItems: customItemEntries(w, items),
-		dimensions:  dimensionDefinitions(dims),
+		blocks:       blockEntries(w.vanilla.Blocks(), w.br),
+		vanillaItems: w.vanilla.Items(),
+		customItems:  customItemEntries(w, items),
+		dimensions:   dimensionDefinitions(dims),
 	}
 }
 
@@ -55,6 +55,7 @@ func (c *startContent) Dimensions() []v2193.DimensionDefinition {
 // Items returns the item entries of StartGame: the vanilla items, in no
 // order, then the custom items. It makes a new slice on every call.
 func (c *startContent) Items() []v2193.ItemEntry {
+	vanillaItems := c.vanilla()
 	entries := make([]v2193.ItemEntry, 0, len(vanillaItems))
 	for name, e := range vanillaItems {
 		entries = append(entries, v2193.ItemEntry{
@@ -71,6 +72,15 @@ func (c *startContent) Items() []v2193.ItemEntry {
 	return entries
 }
 
+// vanilla returns the vanilla items of the content, those of the model for
+// a nil startContent.
+func (c *startContent) vanilla() map[string]bedrockdata.ItemEntry {
+	if c == nil {
+		return tablesOf(nil, world.DefaultBlockRegistry).vanilla.Items()
+	}
+	return c.vanillaItems
+}
+
 // ItemRegistry returns the entries of the ItemRegistry written after
 // StartGame, the custom items, in a new slice.
 func (c *startContent) ItemRegistry() []v2193.ItemEntry {
@@ -85,7 +95,7 @@ func (c *startContent) ItemRegistry() []v2193.ItemEntry {
 // blockEntries returns the definitions of blocks the client gets at spawn:
 // the vanilla blocks the game defines by data, as BDS sends them, and the
 // custom blocks of br.
-func blockEntries(br world.BlockRegistry) []v2193.BlockEntry {
+func blockEntries(vanillaBlocks map[string]map[string]any, br world.BlockRegistry) []v2193.BlockEntry {
 	custom := slices.Collect(maps.Values(br.CustomBlocks()))
 	entries := make([]v2193.BlockEntry, 0, len(vanillaBlocks)+len(custom))
 
@@ -157,30 +167,4 @@ func dimensionDefinitions(dimensions []world.DimensionRegistration) []v2193.Dime
 		})
 	}
 	return defs
-}
-
-var (
-	//go:embed vanilla_blocks.nbt
-	vanillaBlocksData []byte
-	// vanillaBlocks are the properties of the vanilla blocks the game defines
-	// by data, by name, as BDS defines them to the client in StartGame. The
-	// client draws none of these blocks, such as stairs and slabs of wool or
-	// concrete, unless the server defines them.
-	vanillaBlocks = map[string]map[string]any{}
-
-	// vanillaItems are the vanilla items of the item registry of BDS, by
-	// name, as the client is defined them in StartGame.
-	vanillaItems = map[string]struct {
-		RuntimeID      int32          `nbt:"runtime_id"`
-		ComponentBased bool           `nbt:"component_based"`
-		Version        int32          `nbt:"version"`
-		Data           map[string]any `nbt:"data,omitempty"`
-	}{}
-)
-
-// init reads the vanilla item entries and block definitions from their
-// embedded NBT.
-func init() {
-	_ = nbt.Unmarshal(bedrockdata.VanillaItems, &vanillaItems)
-	_ = nbt.Unmarshal(vanillaBlocksData, &vanillaBlocks)
 }

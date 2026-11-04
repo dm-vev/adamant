@@ -1,0 +1,20 @@
+Protocol 2193: Bedrock Edition 1.26.50, 1.26.51 and 1.26.52.
+
+Taken from BDS 1.26.52.3 (build 51798919, commit
+54116bb5ee0b7aee0b5591efbcc8bc3cf64f168a) over NetherNet, by
+cmd/vanilla-probe against a pristine copy of the server:
+
+  items.nbt   the ItemRegistry packet BDS sends, by item name:
+              go run ./cmd/vanilla-probe -address http://HOST:PORT -items-nbt items.nbt
+              2,076 entries,
+              sha256 13a4e0b69f91934ea0745d26cef0ea2e7f02ea44add0fd46afb55cb35f214929
+              (vanilla-reference.json, item_registry; formerly
+              protocol/bedrock/internal/bedrockdata/vanilla_items.nbt)
+
+  blocks.nbt  the block definitions of the StartGame packet BDS sends, the
+              vanilla blocks the game defines by data, by name:
+              go run ./cmd/vanilla-probe -address http://HOST:PORT -blocks-nbt blocks.nbt
+              98 entries,
+              sha256 557f896594cb3957c44306d14f76345003059cf5db7f5155fbfaa2019cd66e65
+              (commit 281cf3c8, formerly
+              protocol/bedrock/session/vanilla_blocks.nbt)

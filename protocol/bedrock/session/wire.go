@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -26,6 +27,8 @@ import (
 type wireTables struct {
 	proto *versions.Protocol
 	br    world.BlockRegistry
+	// vanilla is the vanilla content of BDS of the protocol.
+	vanilla *bedrockdata.Vanilla
 	// chunkBR is br as the registry of a chunk, to tell the chunks of br.
 	chunkBR chunk.BlockRegistry
 	// blocks are the network hashes of the runtime IDs of br, built by
@@ -66,7 +69,21 @@ func tablesOf(p *versions.Protocol, br world.BlockRegistry) *wireTables {
 }
 
 func newTables(p *versions.Protocol, br world.BlockRegistry) *wireTables {
-	return &wireTables{proto: p, br: br, chunkBR: br}
+	return &wireTables{proto: p, br: br, chunkBR: br, vanilla: vanillaOf(p)}
+}
+
+// vanillaOf returns the vanilla content of a protocol. Every protocol the
+// adapter was built with has its own; one it was not, as a test makes,
+// takes that of the model.
+func vanillaOf(p *versions.Protocol) *bedrockdata.Vanilla {
+	if v, ok := bedrockdata.VanillaOf(p.Number); ok {
+		return v
+	}
+	if _, known := versions.ByNumber(p.Number); known {
+		panic(fmt.Sprintf("session: no vanilla data of protocol %d", p.Number))
+	}
+	v, _ := bedrockdata.VanillaOf(versions.Model().Number)
+	return v
 }
 
 // hashes returns the network hashes of the runtime IDs of the registry of
@@ -108,13 +125,13 @@ func (w *wireTables) blockID(b world.Block) uint32 {
 // itemRuntimeID returns the runtime ID and metadata the clients of the
 // tables know an item by, and false for an item they do not know.
 func (w *wireTables) itemRuntimeID(i world.Item) (rid int32, meta int16, ok bool) {
-	return bedrockdata.ItemRuntimeID(i)
+	return w.vanilla.ItemRuntimeID(i)
 }
 
 // itemByRuntimeID returns the item the clients of the tables name by a
 // runtime ID and metadata.
 func (w *wireTables) itemByRuntimeID(rid int32, meta int16) (world.Item, bool) {
-	return bedrockdata.ItemByRuntimeID(rid, meta)
+	return w.vanilla.ItemByRuntimeID(rid, meta)
 }
 
 // biomes returns the definitions of the biomes registered the clients of

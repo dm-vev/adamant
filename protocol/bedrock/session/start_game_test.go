@@ -1,6 +1,7 @@
 package session
 
 import (
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"image"
 	"math"
 	"testing"
@@ -108,14 +109,17 @@ func TestBlockEntriesDefineBlocksOfData(t *testing.T) {
 }
 
 // TestBlocksOfDataAreBlocksOfTheServer checks that the server has a block
-// for each vanilla block it defines to the client.
+// for each vanilla block it defines to the clients of each protocol.
 func TestBlocksOfDataAreBlocksOfTheServer(t *testing.T) {
-	if len(vanillaBlocks) == 0 {
-		t.Fatal("no vanilla blocks are defined")
-	}
-	for name := range vanillaBlocks {
-		if _, ok := world.DefaultBlockRegistry.StateToRuntimeID(name, nil); !ok {
-			t.Errorf("%s is no block of the server", name)
+	for _, p := range versions.All() {
+		vanillaBlocks := tablesOf(p, world.DefaultBlockRegistry).vanilla.Blocks()
+		if len(vanillaBlocks) == 0 {
+			t.Fatalf("no vanilla blocks are defined to clients of %d", p.Number)
+		}
+		for name := range vanillaBlocks {
+			if _, ok := world.DefaultBlockRegistry.StateToRuntimeID(name, nil); !ok {
+				t.Errorf("%s of %d is no block of the server", name, p.Number)
+			}
 		}
 	}
 }

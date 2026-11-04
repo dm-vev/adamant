@@ -1,10 +1,13 @@
 package bedrockdata_test
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"image"
 	"os"
 	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
@@ -12,7 +15,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/category"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // customItem is an item Bedrock Edition does not have, registered by
@@ -83,15 +85,8 @@ func TestCustomItemsTakeRuntimeIDsPastTheVanillaItems(t *testing.T) {
 	if isolated(t) {
 		return
 	}
-	var vanilla map[string]struct {
-		RuntimeID      int32          `nbt:"runtime_id"`
-		ComponentBased bool           `nbt:"component_based"`
-		Version        int32          `nbt:"version"`
-		Data           map[string]any `nbt:"data,omitempty"`
-	}
-	if err := nbt.Unmarshal(bedrockdata.VanillaItems, &vanilla); err != nil {
-		t.Fatal(err)
-	}
+	v, _ := bedrockdata.VanillaOf(2193)
+	vanilla := v.Items()
 	a, b := customItem{name: "adamant:custom_a"}, customItem{name: "adamant:custom_b"}
 	world.RegisterItem(a)
 	world.RegisterItem(b)
@@ -146,4 +141,42 @@ func isolated(t *testing.T) bool {
 		t.Fatalf("%s in a process of its own: %v\n%s", t.Name(), err, out)
 	}
 	return true
+}
+
+// TestVanillaOf reads the data of each protocol: that of 2193, as
+// PROVENANCE records it, and none of a protocol without a directory.
+func TestVanillaOf(t *testing.T) {
+	if got := bedrockdata.Protocols(); len(got) != 1 || got[0] != 2193 {
+		t.Fatalf("protocols %v", got)
+	}
+	v, ok := bedrockdata.VanillaOf(2193)
+	if again, _ := bedrockdata.VanillaOf(2193); !ok || again != v || v.Protocol != 2193 {
+		t.Fatal("the data of 2193 is not read once")
+	}
+	if n := len(v.Items()); n != 2076 {
+		t.Errorf("%d items, want the 2,076 of BDS 1.26.52.3", n)
+	}
+	if n := len(v.Blocks()); n != 98 {
+		t.Errorf("%d blocks, want the 98 of BDS 1.26.52.3", n)
+	}
+	for file, want := range map[string]string{
+		"items.nbt":  "13a4e0b69f91934ea0745d26cef0ea2e7f02ea44add0fd46afb55cb35f214929",
+		"blocks.nbt": "557f896594cb3957c44306d14f76345003059cf5db7f5155fbfaa2019cd66e65",
+	} {
+		data := v.ItemsNBT
+		if file == "blocks.nbt" {
+			data = v.BlocksNBT
+		}
+		if got := fmt.Sprintf("%x", sha256.Sum256(data)); got != want {
+			t.Errorf("v2193/%s has sha256 %s, PROVENANCE records %s", file, got, want)
+		}
+		if provenance, err := os.ReadFile("v2193/PROVENANCE"); err != nil || !strings.Contains(string(provenance), want) {
+			t.Errorf("v2193/PROVENANCE does not record %s (%v)", file, err)
+		}
+	}
+	for _, p := range []int32{0, 2192, 2225} {
+		if _, ok := bedrockdata.VanillaOf(p); ok {
+			t.Errorf("data of protocol %d", p)
+		}
+	}
 }
