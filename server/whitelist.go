@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/pelletier/go-toml"
 )
 
@@ -340,8 +341,9 @@ func encodeWhitelistFile(format whitelistFormat, names []string) ([]byte, error)
 	}
 }
 
+// normalizeName returns the form the lists compare names in.
 func normalizeName(name string) string {
-	return strings.ToLower(strings.TrimSpace(name))
+	return identity.Normalize(name)
 }
 
 var _ Allower = (*Whitelist)(nil)
