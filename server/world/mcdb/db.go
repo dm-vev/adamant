@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -48,6 +49,9 @@ type DB struct {
 	// directWrite, if not nil, is called before each write to the
 	// database outside a commit, for tests.
 	directWrite func()
+	// copiesTables is set once a snapshot could not hard-link a table and
+	// copied it, which is logged once.
+	copiesTables atomic.Bool
 }
 
 // getter reads the database, or a commit of it.

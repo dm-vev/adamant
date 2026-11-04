@@ -22352,7 +22352,11 @@ server/world/generator/advanced/overworld	type	ModernCarverAquifer	interface{Car
 server/world/generator/advanced/overworld	type	ModernFeatureSource	interface{BaseBlock(x int32, y int32, z int32) server/world.Block; BaseHeight(x int32, z int32, oceanFloor bool) int32; BaseState(x int32, y int32, z int32) server/world.NativeState; BiomeAt(x int32, y int32, z int32) string; FeatureBiomeNames() []string; FluidTickDelay(name string) int32; GenerationDepth() int32; HasSkyLight() bool; NoiseBiomeAt(quartX int32, quartY int32, quartZ int32) string; PlaceStructureStep(pos server/world.ChunkPos, step int, env server/world/generator/advanced/internal/structure.ProcessorEnvironment, emit func(server/world/generator/advanced/internal/structure.Placement)); SeaLevel() int32; UseLegacyRandomSource() bool}
 server/world/generator/advanced/overworld	type	ModernFeatures	struct{seed int64; source server/world/generator/advanced/overworld.ModernFeatureSource; biomes map[string]server/world/generator/advanced/overworld.modernBiomeFeatures; placed map[string]server/world/generator/advanced/overworld.modernFeaturePlacement; configured map[string]server/world/generator/advanced/overworld.modernFeatureConfig; carvers map[string]server/world/generator/advanced/overworld.modernFeatureConfig; temperatures map[string]float64; featureRanks [][]map[string]int; origins server/world/generator/advanced/overworld.originRecordCache; contexts server/world/generator/advanced/overworld.originRecordCache; parallel bool; heightmaps sync.Map}
 server/world/generator/advanced/overworld	type	Overworld	struct{seed int64; noise *server/internal/vanilla.OverworldNoise; zoomSeed int64; modernSurface *server/world/generator/advanced/overworld.modernSurface; modernStructures *server/world/generator/advanced/overworld.modernStructures; modernFeatures *server/world/generator/advanced/overworld.ModernFeatures; rawCache *server/world/generator/advanced/overworld.previewCache; modernPool sync.Pool; motionBlocking sync.Map; airRID uint32; stoneRID uint32; waterRID uint32; lavaRID uint32; previewCache *server/world/generator/advanced/overworld.previewCache; chunkBiomes server/world/generator/advanced/overworld.chunkBiomeCache}
+server/world/mcdb	const	VerifyFull	server/world/mcdb.Verification = 1
+server/world/mcdb	const	VerifyOff	server/world/mcdb.Verification = 2
+server/world/mcdb	const	VerifyRecord	server/world/mcdb.Verification = 0
 server/world/mcdb	func	Open	func(dir string) (*server/world/mcdb.DB, error)
+server/world/mcdb	func	VerifyBackup	func(dir string, full bool) (server/world/mcdb.CheckpointRecord, error)
 server/world/mcdb	method	ColumnIterator.Column	func() *server/world/chunk.Column
 server/world/mcdb	method	ColumnIterator.Dimension	func() server/world.Dimension
 server/world/mcdb	method	ColumnIterator.Error	func() error
@@ -22386,6 +22390,7 @@ server/world/mcdb	method	DB.AllocateMapID	func() (int64, error)
 server/world/mcdb	method	DB.BeginCommit	func() server/world.Commit
 server/world/mcdb	method	DB.Close	func() error
 server/world/mcdb	method	DB.JavaMapID	func(nativeID int64) (int32, error)
+server/world/mcdb	method	DB.LastCheckpoint	func() (server/world/mcdb.CheckpointRecord, error)
 server/world/mcdb	method	DB.LoadColumn	func(pos server/world.ChunkPos, dim server/world.Dimension) (*server/world/chunk.Column, error)
 server/world/mcdb	method	DB.LoadDragonFightData	func() (server/world.DragonFightData, bool, error)
 server/world/mcdb	method	DB.LoadMap	func(id int64) (server/world.MapData, error)
@@ -22406,14 +22411,19 @@ server/world/mcdb	method	DB.SaveStructureTemplate	func(name string, data map[str
 server/world/mcdb	method	DB.SaveWorldData	func(namespace string, data []byte) error
 server/world/mcdb	method	DB.SetBlockRegistry	func(br server/world.BlockRegistry)
 server/world/mcdb	method	DB.Settings	func() *server/world.Settings
+server/world/mcdb	method	DB.Snapshot	func(ctx context.Context, dst string, o server/world/mcdb.SnapshotOptions) (server/world/mcdb.SnapshotResult, error)
 server/world/mcdb	method	DB.StoreColumn	func(pos server/world.ChunkPos, dim server/world.Dimension, col *server/world/chunk.Column) error
 server/world/mcdb	method	DB.StoreMap	func(data server/world.MapData) error
 server/world/mcdb	method	DB.WriteSettings	func() error
+server/world/mcdb	type	CheckpointRecord	struct{ID uint64; Time time.Time; CurrentTick int64}
 server/world/mcdb	type	ColumnIterator	struct{dbIter github.com/df-mc/goleveldb/leveldb/iterator.Iterator; db *server/world/mcdb.DB; r *server/world/mcdb.IteratorRange; err error; current *server/world/chunk.Column; pos server/world.ChunkPos; dim server/world.Dimension; seen map[server/world/mcdb.dbKey]struct{}}
 server/world/mcdb	type	Commit	struct{db *server/world/mcdb.DB; mu sync.Mutex; ops []server/world/mcdb.commitOp; index map[string]int; size int; players map[string]bool; settings *server/world.Settings; ticks map[server/world.Dimension]int64; fight map[string]any; done bool; ended sync/atomic.Bool}
 server/world/mcdb	type	Config	struct{Log *log/slog.Logger; LDBOptions *github.com/df-mc/goleveldb/leveldb/opt.Options; Blocks server/world.BlockRegistry}
-server/world/mcdb	type	DB	struct{conf server/world/mcdb.Config; ldb *github.com/df-mc/goleveldb/leveldb.DB; dir string; ldat *server/world/mcdb/leveldat.Data; lmu sync.Mutex; wmu sync.Mutex; emu sync.Mutex; set *server/world.Settings; endFight map[string]any; cmu sync.Mutex; open *server/world/mcdb.Commit; directWrite func()}
+server/world/mcdb	type	DB	struct{conf server/world/mcdb.Config; ldb *github.com/df-mc/goleveldb/leveldb.DB; dir string; ldat *server/world/mcdb/leveldat.Data; lmu sync.Mutex; wmu sync.Mutex; emu sync.Mutex; set *server/world.Settings; endFight map[string]any; cmu sync.Mutex; open *server/world/mcdb.Commit; directWrite func(); copiesTables sync/atomic.Bool}
 server/world/mcdb	type	IteratorRange	struct{Min server/world.ChunkPos; Max server/world.ChunkPos; Dimension server/world.Dimension}
+server/world/mcdb	type	SnapshotOptions	struct{Retries int; Verify server/world/mcdb.Verification}
+server/world/mcdb	type	SnapshotResult	struct{Checkpoint server/world/mcdb.CheckpointRecord; Files int; Bytes int64; Linked int; Copied int64; Raced []string; Took time.Duration}
+server/world/mcdb	type	Verification	uint8
 server/world/mcdb/leveldat	const	NetworkVersion	untyped int = 2193
 server/world/mcdb/leveldat	const	Version	untyped int = 10
 server/world/mcdb/leveldat	func	Read	func(r io.Reader) (*server/world/mcdb/leveldat.LevelDat, error)
