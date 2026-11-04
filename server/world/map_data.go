@@ -15,21 +15,21 @@ import (
 // Colors contains 128x128 Java packed map-color indices; NativeColors retains
 // Bedrock's exact RGBA byte array for lossless storage and packet delivery.
 type MapData struct {
-	ID int64
-	JavaID int32
-	HasJavaID bool
-	ParentID int64
-	Dimension int32
-	CenterX, CenterZ int32
-	Scale uint8
+	ID                                                 int64
+	JavaID                                             int32
+	HasJavaID                                          bool
+	ParentID                                           int64
+	Dimension                                          int32
+	CenterX, CenterZ                                   int32
+	Scale                                              uint8
 	Locked, Tracking, UnlimitedTracking, FullyExplored bool
-	Colors []byte
-	ColorsChanged, ForceFullTexture bool
-	PixelPatch *MapPixelPatch
-	NativeColors []byte
-	NativeNBT map[string]any
-	Decorations []MapDecoration
-	TrackedObjects []MapTrackedObject
+	Colors                                             []byte
+	ColorsChanged, ForceFullTexture                    bool
+	PixelPatch                                         *MapPixelPatch
+	NativeColors                                       []byte
+	NativeNBT                                          map[string]any
+	Decorations                                        []MapDecoration
+	TrackedObjects                                     []MapTrackedObject
 }
 
 // MapDecoration is a map icon. X/Z are signed map-pixel offsets from the map
@@ -37,31 +37,33 @@ type MapData struct {
 // numbering. The block location and key type keep the tracked key data of
 // Bedrock's world format.
 type MapDecoration struct {
-	Type, Rotation byte
-	X, Z int8
-	Label string
+	Type, Rotation         byte
+	X, Z                   int8
+	Label                  string
 	BlockX, BlockY, BlockZ int32
-	KeyType int32
-	NativeNBT map[string]any
+	KeyType                int32
+	NativeNBT              map[string]any
 }
+
 // MapTrackedObject is an entity or item frame whose icon a map tracks, which
 // a player's view of the map holds and the world format does not save.
 type MapTrackedObject struct {
 	Entity *EntityHandle
 	Block  *cube.Pos
 }
+
 // MapPixelPatch contains a rectangular Java packed-color update.
 type MapPixelPatch struct {
 	X, Y, Width, Height int
-	Colors []byte
+	Colors              []byte
 }
 
 // MapFrameInfo describes the map stack displayed by a loaded item frame.
 type MapFrameInfo struct {
-	NativeID int64
+	NativeID    int64
 	HasNativeID bool
-	JavaID int32
-	HasJavaID bool
+	JavaID      int32
+	HasJavaID   bool
 }
 
 type mapFrameProvider interface {
@@ -70,18 +72,26 @@ type mapFrameProvider interface {
 
 // ForEachMapFrame visits map-bearing block entities in currently loaded chunks.
 func (tx *Tx) ForEachMapFrame(fn func(cube.Pos, MapFrameInfo)) {
-	if fn == nil { return }
+	if fn == nil {
+		return
+	}
 	for chunkPos, column := range tx.w.chunks {
-		if !column.Ready() { continue }
+		if !column.Ready() {
+			continue
+		}
 		if r := tx.region; r != nil && (!column.settled || !r.owns(tx.w, chunkPos)) {
 			// A region only visits the frames of its own columns.
 			continue
 		}
 		for pos, block := range column.BlockEntities {
 			frame, ok := block.(mapFrameProvider)
-			if !ok { continue }
+			if !ok {
+				continue
+			}
 			data, ok := frame.MapFrameData()
-			if ok { fn(pos, data) }
+			if ok {
+				fn(pos, data)
+			}
 		}
 	}
 }
@@ -108,13 +118,21 @@ const mapPixelCount = 128 * 128
 // staged until the next save of the world (Staging); MapData reads it back
 // meanwhile.
 func (w *World) StoreMapData(data MapData) error {
-	if w == nil || w.conf.Provider == nil { return ErrMapDataUnavailable }
-	if _, ok := w.conf.Provider.(MapDataProvider); !ok { return ErrMapDataUnavailable }
-	if data.Scale > 4 { return fmt.Errorf("%w: map scale %d", ErrInvalidMapData, data.Scale) }
+	if w == nil || w.conf.Provider == nil {
+		return ErrMapDataUnavailable
+	}
+	if _, ok := w.conf.Provider.(MapDataProvider); !ok {
+		return ErrMapDataUnavailable
+	}
+	if data.Scale > 4 {
+		return fmt.Errorf("%w: map scale %d", ErrInvalidMapData, data.Scale)
+	}
 	if len(data.Colors) != mapPixelCount && len(data.NativeColors) == mapPixelCount*4 {
 		data.Colors = javaColoursFromNative(data.NativeColors)
 	}
-	if len(data.Colors) != mapPixelCount { return fmt.Errorf("%w: map %d has %d Java pixels", ErrInvalidMapData, data.ID, len(data.Colors)) }
+	if len(data.Colors) != mapPixelCount {
+		return fmt.Errorf("%w: map %d has %d Java pixels", ErrInvalidMapData, data.ID, len(data.Colors))
+	}
 	if len(data.NativeColors) != mapPixelCount*4 {
 		data.NativeColors = make([]byte, mapPixelCount*4)
 		for i, packed := range data.Colors {
@@ -137,7 +155,10 @@ func javaColoursFromNative(native []byte) []byte {
 		}
 		r, g, b := native[i*4], native[i*4+1], native[i*4+2]
 		rgb := uint32(r)<<16 | uint32(g)<<8 | uint32(b)
-		if packed, ok := converted[rgb]; ok { colors[i] = packed; continue }
+		if packed, ok := converted[rgb]; ok {
+			colors[i] = packed
+			continue
+		}
 		bestDistance := uint64(^uint64(0))
 		var best byte
 		for id := 1; id < len(javaMapColours); id++ {
@@ -145,7 +166,9 @@ func javaColoursFromNative(native []byte) []byte {
 				c := MapColourRGBA(byte(id<<2) | brightness)
 				dr, dg, db := int64(r)-int64(c.R), int64(g)-int64(c.G), int64(b)-int64(c.B)
 				distance := uint64(dr*dr + dg*dg + db*db)
-				if distance < bestDistance { bestDistance, best = distance, byte(id<<2)|brightness }
+				if distance < bestDistance {
+					bestDistance, best = distance, byte(id<<2)|brightness
+				}
 			}
 		}
 		converted[rgb], colors[i] = best, best
@@ -156,11 +179,14 @@ func javaColoursFromNative(native []byte) []byte {
 // MapColourRGBA expands a Java packed map color to the RGBA color used by map packets.
 func MapColourRGBA(packed byte) color.RGBA {
 	id, brightness := packed>>2, packed&3
-	if id == 0 || int(id) >= len(javaMapColours) { return color.RGBA{} }
+	if id == 0 || int(id) >= len(javaMapColours) {
+		return color.RGBA{}
+	}
 	base := javaMapColours[id]
 	modifier := [...]uint32{180, 220, 255, 135}[brightness]
-	return color.RGBA{R:uint8((base>>16&0xff)*modifier/255), G:uint8((base>>8&0xff)*modifier/255), B:uint8((base&0xff)*modifier/255), A:0xff}
+	return color.RGBA{R: uint8((base >> 16 & 0xff) * modifier / 255), G: uint8((base >> 8 & 0xff) * modifier / 255), B: uint8((base & 0xff) * modifier / 255), A: 0xff}
 }
+
 // Java MapColor IDs/RGB values from the mapped Java 26.3 MapColor registry.
 var javaMapColours = [...]uint32{
 	0, 8368696, 16247203, 13092807, 16711680, 10526975, 10987431, 31744,
@@ -176,23 +202,33 @@ var javaMapColours = [...]uint32{
 
 // MapData loads a map by native signed ID and returns independently owned buffers.
 func (w *World) MapData(id int64) (MapData, error) {
-	if w == nil || w.conf.Provider == nil { return MapData{}, ErrMapDataUnavailable }
+	if w == nil || w.conf.Provider == nil {
+		return MapData{}, ErrMapDataUnavailable
+	}
 	p, ok := w.conf.Provider.(MapDataProvider)
-	if !ok { return MapData{}, ErrMapDataUnavailable }
+	if !ok {
+		return MapData{}, ErrMapDataUnavailable
+	}
 	data, staged := w.providerUse.staging.mapData(id)
 	if !staged {
 		var err error
-		if data, err = p.LoadMap(id); err != nil { return MapData{}, err }
+		if data, err = p.LoadMap(id); err != nil {
+			return MapData{}, err
+		}
 	}
 	if !staged || !data.HasJavaID {
 		javaID, err := p.JavaMapID(id)
-		if err != nil { return MapData{}, err }
+		if err != nil {
+			return MapData{}, err
+		}
 		data.JavaID, data.HasJavaID = javaID, true
 	}
 	if data.ID != id || (len(data.Colors) != mapPixelCount && len(data.NativeColors) != mapPixelCount*4) {
 		return MapData{}, fmt.Errorf("%w: map %d has invalid ID or pixel buffers", ErrInvalidMapData, id)
 	}
-	if len(data.Colors) != mapPixelCount { data.Colors = javaColoursFromNative(data.NativeColors) }
+	if len(data.Colors) != mapPixelCount {
+		data.Colors = javaColoursFromNative(data.NativeColors)
+	}
 	if len(data.NativeColors) != mapPixelCount*4 {
 		data.NativeColors = make([]byte, mapPixelCount*4)
 		for i, packed := range data.Colors {
@@ -208,16 +244,22 @@ func (w *World) MapData(id int64) (MapData, error) {
 
 // MapIDByJavaID resolves Java's item map_id to its persistent Bedrock map ID.
 func (w *World) MapIDByJavaID(javaID int32) (int64, error) {
-	if w == nil || w.conf.Provider == nil { return 0, ErrMapDataUnavailable }
+	if w == nil || w.conf.Provider == nil {
+		return 0, ErrMapDataUnavailable
+	}
 	p, ok := w.conf.Provider.(MapDataProvider)
-	if !ok { return 0, ErrMapDataUnavailable }
+	if !ok {
+		return 0, ErrMapDataUnavailable
+	}
 	return p.NativeMapID(javaID)
 }
 
 // MapDataByJavaID resolves and loads a map referenced by Java's int32 map_id.
 func (w *World) MapDataByJavaID(javaID int32) (MapData, error) {
 	id, err := w.MapIDByJavaID(javaID)
-	if err != nil { return MapData{}, err }
+	if err != nil {
+		return MapData{}, err
+	}
 	return w.MapData(id)
 }
 
@@ -226,7 +268,9 @@ func (w *World) CreateMap(pos cube.Pos, scale uint8) (MapData, error) {
 	var data MapData
 	var createErr error
 	task := w.Do(func(tx *Tx) { data, createErr = tx.CreateMap(pos, scale) })
-	if err := task.Wait(nil); err != nil { return MapData{}, err }
+	if err := task.Wait(nil); err != nil {
+		return MapData{}, err
+	}
 	return data, createErr
 }
 
@@ -235,31 +279,47 @@ func (tx *Tx) CreateMap(pos cube.Pos, scale uint8) (MapData, error) {
 	tx.lockShared()
 	defer tx.unlockShared()
 	w := tx.World()
-	if w == nil || w.conf.Provider == nil { return MapData{}, ErrMapDataUnavailable }
-	if scale > 4 { return MapData{}, fmt.Errorf("%w: scale %d exceeds Java maximum 4", ErrInvalidMapData, scale) }
+	if w == nil || w.conf.Provider == nil {
+		return MapData{}, ErrMapDataUnavailable
+	}
+	if scale > 4 {
+		return MapData{}, fmt.Errorf("%w: scale %d exceeds Java maximum 4", ErrInvalidMapData, scale)
+	}
 	dimensionID, ok := DimensionID(w.Dimension())
-	if !ok { return MapData{}, fmt.Errorf("map dimension %v has no registered id", w.Dimension()) }
+	if !ok {
+		return MapData{}, fmt.Errorf("map dimension %v has no registered id", w.Dimension())
+	}
 	factor := 1 << scale
 	size := 128 * factor
 	centerX := floorDiv(pos[0]+64, size)*size + size/2 - 64
 	centerZ := floorDiv(pos[2]+64, size)*size + size/2 - 64
-	data := MapData{Dimension:int32(dimensionID), CenterX:int32(centerX), CenterZ:int32(centerZ), Scale:scale, Tracking:true, Colors:make([]byte, mapPixelCount)}
+	data := MapData{Dimension: int32(dimensionID), CenterX: int32(centerX), CenterZ: int32(centerZ), Scale: scale, Tracking: true, Colors: make([]byte, mapPixelCount)}
 	// Java creates a blank saved map; exploration and biome-preview rendering fill pixels later.
 	return w.storeNewMap(data)
 }
 
 // storeNewMap assigns both identities before publishing an independent map.
 func (w *World) storeNewMap(data MapData) (MapData, error) {
-	if w == nil || w.conf.Provider == nil { return MapData{}, ErrMapDataUnavailable }
+	if w == nil || w.conf.Provider == nil {
+		return MapData{}, ErrMapDataUnavailable
+	}
 	p, ok := w.conf.Provider.(MapDataProvider)
-	if !ok { return MapData{}, ErrMapDataUnavailable }
+	if !ok {
+		return MapData{}, ErrMapDataUnavailable
+	}
 	id, err := p.AllocateMapID()
-	if err != nil { return MapData{}, err }
+	if err != nil {
+		return MapData{}, err
+	}
 	data.ID = id
 	data.JavaID, err = p.JavaMapID(id)
-	if err != nil { return MapData{}, err }
+	if err != nil {
+		return MapData{}, err
+	}
 	data.HasJavaID = true
-	if err := w.StoreMapData(data); err != nil { return MapData{}, err }
+	if err := w.StoreMapData(data); err != nil {
+		return MapData{}, err
+	}
 	return data, nil
 }
 
@@ -294,10 +354,13 @@ func (w *World) LockMap(id int64) (MapData, error) {
 // CloneMap creates a persisted independent copy with the explored pixels/decorations.
 func (w *World) CloneMap(id int64) (MapData, error) {
 	data, err := w.MapData(id)
-	if err != nil { return MapData{}, err }
+	if err != nil {
+		return MapData{}, err
+	}
 	data.ParentID = data.ID
 	return w.storeNewMap(data)
 }
+
 // ScaleMap creates a new map at the next coarser scale within a world transaction.
 func (tx *Tx) ScaleMap(id int64) (MapData, error) {
 	tx.lockShared()
@@ -313,8 +376,8 @@ func (tx *Tx) ScaleMap(id int64) (MapData, error) {
 	size := 128 << scale
 	child := MapData{
 		ParentID: source.ID, Dimension: source.Dimension, Scale: scale,
-		CenterX: int32(floorDiv(int(source.CenterX)+64, size)*size + size/2 - 64),
-		CenterZ: int32(floorDiv(int(source.CenterZ)+64, size)*size + size/2 - 64),
+		CenterX:  int32(floorDiv(int(source.CenterX)+64, size)*size + size/2 - 64),
+		CenterZ:  int32(floorDiv(int(source.CenterZ)+64, size)*size + size/2 - 64),
 		Tracking: source.Tracking, UnlimitedTracking: source.UnlimitedTracking,
 		Colors: make([]byte, mapPixelCount),
 	}
@@ -341,7 +404,9 @@ func (tx *Tx) LockMap(id int64) (MapData, error) {
 // AddMapDecoration adds or replaces a fixed icon at the same type and pixel location.
 func (w *World) AddMapDecoration(id int64, decoration MapDecoration) error {
 	data, err := w.MapData(id)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	return addMapDecoration(w, data, decoration)
 }
 
@@ -350,7 +415,9 @@ func (tx *Tx) AddMapDecoration(id int64, decoration MapDecoration) error {
 	tx.lockShared()
 	defer tx.unlockShared()
 	data, err := tx.World().MapData(id)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	return addMapDecoration(tx.World(), data, decoration)
 }
 
@@ -371,19 +438,25 @@ func (tx *Tx) AddMapDecorationAt(id int64, typ, rotation byte, keyType int32, ta
 	tx.lockShared()
 	defer tx.unlockShared()
 	data, err := tx.World().MapData(id)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	factor := 1 << data.Scale
-	pixelX := mapDecorationCoordinate((float64(target[0])+0.5-float64(data.CenterX))/float64(factor))
-	pixelZ := mapDecorationCoordinate((float64(target[2])+0.5-float64(data.CenterZ))/float64(factor))
+	pixelX := mapDecorationCoordinate((float64(target[0]) + 0.5 - float64(data.CenterX)) / float64(factor))
+	pixelZ := mapDecorationCoordinate((float64(target[2]) + 0.5 - float64(data.CenterZ)) / float64(factor))
 	return addMapDecoration(tx.World(), data, MapDecoration{
-		Type:typ, Rotation:rotation, X:pixelX, Z:pixelZ, Label:label,
-		BlockX:int32(target[0]), BlockY:int32(target[1]), BlockZ:int32(target[2]), KeyType:keyType,
+		Type: typ, Rotation: rotation, X: pixelX, Z: pixelZ, Label: label,
+		BlockX: int32(target[0]), BlockY: int32(target[1]), BlockZ: int32(target[2]), KeyType: keyType,
 	})
 }
 
 func mapDecorationCoordinate(delta float64) int8 {
-	if delta <= -63 { return -128 }
-	if delta >= 63 { return 127 }
+	if delta <= -63 {
+		return -128
+	}
+	if delta >= 63 {
+		return 127
+	}
 	return int8(delta*2 + 0.5)
 }
 
@@ -392,7 +465,9 @@ func (w *World) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 	var data MapData
 	var updateErr error
 	task := w.Do(func(tx *Tx) { data, updateErr = tx.UpdateMap(id, player) })
-	if err := task.Wait(nil); err != nil { return MapData{}, err }
+	if err := task.Wait(nil); err != nil {
+		return MapData{}, err
+	}
 	return data, updateErr
 }
 
@@ -402,25 +477,37 @@ func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 	tx.lockShared()
 	defer tx.unlockShared()
 	data, err := w.MapData(id)
-	if err != nil { return MapData{}, err }
-	if data.Locked || !data.Tracking { return data, nil }
+	if err != nil {
+		return MapData{}, err
+	}
+	if data.Locked || !data.Tracking {
+		return data, nil
+	}
 	dimensionID, ok := DimensionID(w.Dimension())
-	if !ok || data.Dimension != int32(dimensionID) { return data, nil }
+	if !ok || data.Dimension != int32(dimensionID) {
+		return data, nil
+	}
 	factor := 1 << data.Scale
 	playerX := (player[0]-int(data.CenterX))/factor + 64
 	playerZ := (player[2]-int(data.CenterZ))/factor + 64
 	radius := 128 / factor
-	if w.Dimension() == Nether { radius /= 2 }
+	if w.Dimension() == Nether {
+		radius /= 2
+	}
 	step := int(tx.CurrentTick()+1) & 15
 	startX, endX := playerX-radius+1, playerX+radius
 	startZ, endZ := playerZ-radius-1, playerZ+radius
 	changed := false
 	patchMinX, patchMinY, patchMaxX, patchMaxY := 128, 128, -1, -1
 	for imgX := startX; imgX < endX; imgX++ {
-		if imgX&15 != step { continue }
+		if imgX&15 != step {
+			continue
+		}
 		previousHeight := 0.0
 		for imgZ := startZ; imgZ < endZ; imgZ++ {
-			if imgX < 0 || imgZ < -1 || imgX >= 128 || imgZ >= 128 { continue }
+			if imgX < 0 || imgZ < -1 || imgX >= 128 || imgZ >= 128 {
+				continue
+			}
 			dx, dz := imgX-playerX, imgZ-playerZ
 			distanceSquared := dx*dx + dz*dz
 			ditherBlack := distanceSquared > (radius-2)*(radius-2)
@@ -432,9 +519,13 @@ func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 				continue
 			}
 			pixel, averageHeight, err := sampleMapPixelShaded(tx, sampleX, sampleZ, factor, imgX, imgZ, previousHeight)
-			if err != nil { return MapData{}, err }
+			if err != nil {
+				return MapData{}, err
+			}
 			previousHeight = averageHeight
-			if imgZ < 0 || distanceSquared >= radius*radius || ditherBlack && (imgX+imgZ)&1 == 0 { continue }
+			if imgZ < 0 || distanceSquared >= radius*radius || ditherBlack && (imgX+imgZ)&1 == 0 {
+				continue
+			}
 			index := imgZ*128 + imgX
 			if data.Colors[index] != pixel {
 				data.Colors[index], changed = pixel, true
@@ -449,9 +540,11 @@ func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 		}
 	}
 	if changed {
-		if err := w.StoreMapData(data); err != nil { return MapData{}, err }
+		if err := w.StoreMapData(data); err != nil {
+			return MapData{}, err
+		}
 		width, height := patchMaxX-patchMinX+1, patchMaxY-patchMinY+1
-		patch := MapPixelPatch{X:patchMinX, Y:patchMinY, Width:width, Height:height, Colors:make([]byte,width*height)}
+		patch := MapPixelPatch{X: patchMinX, Y: patchMinY, Width: width, Height: height, Colors: make([]byte, width*height)}
 		for row := range height {
 			copy(patch.Colors[row*width:(row+1)*width], data.Colors[(patchMinY+row)*128+patchMinX:(patchMinY+row)*128+patchMaxX+1])
 		}
@@ -460,15 +553,20 @@ func (tx *Tx) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 	data.ColorsChanged = changed
 	return data, nil
 }
+
 // RenderMapBiomePreview applies Java's WATER_ON_MAP_OUTLINES preview to a new explorer map.
 func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
 	tx.lockShared()
 	defer tx.unlockShared()
 	w := tx.World()
 	data, err := w.MapData(id)
-	if err != nil { return MapData{}, err }
+	if err != nil {
+		return MapData{}, err
+	}
 	dimensionID, ok := DimensionID(w.Dimension())
-	if !ok || data.Dimension != int32(dimensionID) { return data, nil }
+	if !ok || data.Dimension != int32(dimensionID) {
+		return data, nil
+	}
 	factor := 1 << data.Scale
 	var watery [mapPixelCount]bool
 	for z := range 128 {
@@ -484,7 +582,9 @@ func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
 			waterCount := 0
 			for dx := -1; dx <= 1; dx++ {
 				for dz := -1; dz <= 1; dz++ {
-					if (dx != 0 || dz != 0) && watery[(z+dz)*128+x+dx] { waterCount++ }
+					if (dx != 0 || dz != 0) && watery[(z+dz)*128+x+dx] {
+						waterCount++
+					}
 				}
 			}
 			brightness, colorID := byte(3), byte(0)
@@ -492,9 +592,12 @@ func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
 				colorID = 15 // MapColor.COLOR_ORANGE
 				if waterCount > 7 && z%2 == 0 {
 					switch (x + int(float32(math.Sin(float64(float32(z)))*7.0))) / 8 % 5 {
-					case 0, 4: brightness = 0
-					case 1, 3: brightness = 1
-					case 2: brightness = 2
+					case 0, 4:
+						brightness = 0
+					case 1, 3:
+						brightness = 1
+					case 2:
+						brightness = 2
 					}
 				} else if waterCount > 7 {
 					colorID = 0
@@ -507,7 +610,9 @@ func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
 				}
 			} else if waterCount > 0 {
 				colorID = 26 // MapColor.COLOR_BROWN
-				if waterCount > 3 { brightness = 1 }
+				if waterCount > 3 {
+					brightness = 1
+				}
 			}
 			if colorID != 0 {
 				index, pixel := z*128+x, colorID<<2|brightness
@@ -523,7 +628,9 @@ func (tx *Tx) RenderMapBiomePreview(id int64) (MapData, error) {
 		}
 	}
 	if changed {
-		if err := w.StoreMapData(data); err != nil { return MapData{}, err }
+		if err := w.StoreMapData(data); err != nil {
+			return MapData{}, err
+		}
 	}
 	data.ColorsChanged = changed
 	return data, nil
@@ -533,7 +640,9 @@ func (w *World) RenderMapBiomePreview(id int64) (MapData, error) {
 	var data MapData
 	var updateErr error
 	task := w.Do(func(tx *Tx) { data, updateErr = tx.RenderMapBiomePreview(id) })
-	if err := task.Wait(nil); err != nil { return MapData{}, err }
+	if err := task.Wait(nil); err != nil {
+		return MapData{}, err
+	}
 	return data, updateErr
 }
 
@@ -550,18 +659,22 @@ func biomeWateryMapOutline(name string) bool {
 
 func floorDiv(a, b int) int {
 	q, r := a/b, a%b
-	if r != 0 && (r < 0) != (b < 0) { q-- }
+	if r != 0 && (r < 0) != (b < 0) {
+		q--
+	}
 	return q
 }
 
-type mapColourBlock interface { MapColourIndex() (byte, bool) }
+type mapColourBlock interface{ MapColourIndex() (byte, bool) }
 
 func sampleMapPixelShaded(tx *Tx, x, z, scale, imgX, imgZ int, previousHeight float64) (byte, float64, error) {
 	if tx.World().Dimension() == Nether {
 		noise := int32(x + z*231871)
 		noise = noise*noise*31287121 + noise*11
 		colorID := byte(11)
-		if uint32(noise)>>20&1 == 0 { colorID = 10 }
+		if uint32(noise)>>20&1 == 0 {
+			colorID = 10
+		}
 		return colorID<<2 | 1, 100, nil
 	}
 	var colorCounts [256]int
@@ -575,7 +688,9 @@ func sampleMapPixelShaded(tx *Tx, x, z, scale, imgX, imgZ int, previousHeight fl
 			columnY := tx.HighestBlock(sampleX, sampleZ) + 1
 			if columnY <= tx.Range().Min() {
 				colorID := byte(11) // Java substitutes bedrock below the world surface.
-				if colorCounts[colorID] == 0 { colorOrder[orderLength], orderLength = colorID, orderLength+1 }
+				if colorCounts[colorID] == 0 {
+					colorOrder[orderLength], orderLength = colorID, orderLength+1
+				}
 				colorCounts[colorID]++
 				averageHeight += float64(tx.Range().Min()) / float64(area)
 				continue
@@ -584,70 +699,116 @@ func sampleMapPixelShaded(tx *Tx, x, z, scale, imgX, imgZ int, previousHeight fl
 			for ; columnY >= tx.Range().Min(); columnY-- {
 				block := tx.Block(cube.Pos{sampleX, columnY, sampleZ})
 				colorID, ok := javaMapColorID(block)
-				if !ok { return 0, 0, fmt.Errorf("map renderer has no mapped Java color for %T (%s)", block, blockName(block)) }
-				if colorID == 0 { continue }
-				if colorCounts[colorID] == 0 { colorOrder[orderLength], orderLength = colorID, orderLength+1 }
+				if !ok {
+					return 0, 0, fmt.Errorf("map renderer has no mapped Java color for %T (%s)", block, blockName(block))
+				}
+				if colorID == 0 {
+					continue
+				}
+				if colorCounts[colorID] == 0 {
+					colorOrder[orderLength], orderLength = colorID, orderLength+1
+				}
 				colorCounts[colorID]++
 				if _, fluid := tx.Liquid(cube.Pos{sampleX, columnY, sampleZ}); fluid {
 					for belowY := columnY - 1; belowY > tx.Range().Min(); belowY-- {
-						if _, fluid := tx.Liquid(cube.Pos{sampleX, belowY, sampleZ}); !fluid { break }
+						if _, fluid := tx.Liquid(cube.Pos{sampleX, belowY, sampleZ}); !fluid {
+							break
+						}
 						waterDepth++
 					}
 				}
 				break
 			}
-			if columnY < tx.Range().Min() { columnY = tx.Range().Min() }
+			if columnY < tx.Range().Min() {
+				columnY = tx.Range().Min()
+			}
 			averageHeight += float64(columnY) / float64(area)
 		}
 	}
-	if orderLength == 0 { return 0, averageHeight, nil }
+	if orderLength == 0 {
+		return 0, averageHeight, nil
+	}
 	best, count := colorOrder[0], colorCounts[colorOrder[0]]
 	for _, color := range colorOrder[1:orderLength] {
-		if colorCounts[color] > count { best, count = color, colorCounts[color] }
+		if colorCounts[color] > count {
+			best, count = color, colorCounts[color]
+		}
 	}
 	waterDepth /= area
 	brightness := 1
 	if best == 12 {
 		diff := float64(waterDepth)*0.1 + float64((imgX+imgZ)&1)*0.2
-		if diff < 0.5 { brightness = 2 } else if diff > 0.9 { brightness = 0 }
+		if diff < 0.5 {
+			brightness = 2
+		} else if diff > 0.9 {
+			brightness = 0
+		}
 	} else {
 		diff := (averageHeight-previousHeight)*4.0/float64(scale+4) + (float64((imgX+imgZ)&1)-0.5)*0.4
-		if diff > 0.6 { brightness = 2 } else if diff < -0.6 { brightness = 0 }
+		if diff > 0.6 {
+			brightness = 2
+		} else if diff < -0.6 {
+			brightness = 0
+		}
 	}
 	return best<<2 | byte(brightness), averageHeight, nil
 }
 
-
 func javaMapColorID(block Block) (byte, bool) {
 	if mapped, ok := block.(mapColourBlock); ok {
-		if packed, found := mapped.MapColourIndex(); found { return packed >> 2, true }
+		if packed, found := mapped.MapColourIndex(); found {
+			return packed >> 2, true
+		}
 	}
 	name, properties := block.EncodeBlock()
 	definition, ok := javaMapColorsByBlock[name]
-	if !ok { return 0, false }
+	if !ok {
+		return 0, false
+	}
 	color := definition.base
 	if definition.axis {
-		if properties["pillar_axis"] == "y" { color = definition.top } else { color = definition.side }
+		if properties["pillar_axis"] == "y" {
+			color = definition.top
+		} else {
+			color = definition.side
+		}
 	}
 	if definition.wheat {
-		if age, ok := mapBlockIntProperty(properties, "age"); ok && age >= 6 { color = 18 } else { color = 7 }
+		if age, ok := mapBlockIntProperty(properties, "age"); ok && age >= 6 {
+			color = 18
+		} else {
+			color = 7
+		}
 	}
-	if definition.bed && properties["part"] != "foot" { color = 8 }
-	if definition.whiteSpecial { color = 8 }
+	if definition.bed && properties["part"] != "foot" {
+		color = 8
+	}
+	if definition.whiteSpecial {
+		color = 8
+	}
 	return color, true
 }
 
 func mapBlockIntProperty(properties map[string]any, key string) (int, bool) {
 	switch value := properties[key].(type) {
-	case int: return value, true
-	case int8: return int(value), true
-	case int16: return int(value), true
-	case int32: return int(value), true
-	case int64: return int(value), true
-	case uint8: return int(value), true
-	case uint16: return int(value), true
-	case uint32: return int(value), true
-	case uint64: return int(value), true
+	case int:
+		return value, true
+	case int8:
+		return int(value), true
+	case int16:
+		return int(value), true
+	case int32:
+		return int(value), true
+	case int64:
+		return int(value), true
+	case uint8:
+		return int(value), true
+	case uint16:
+		return int(value), true
+	case uint32:
+		return int(value), true
+	case uint64:
+		return int(value), true
 	case string:
 		n, err := strconv.Atoi(value)
 		return n, err == nil

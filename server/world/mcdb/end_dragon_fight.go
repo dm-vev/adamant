@@ -85,17 +85,29 @@ func (db *DB) encodeDragonFight(s store, d world.DragonFightData) (map[string]an
 	db.lmu.Lock()
 	root := cloneCompound(db.endFight)
 	db.lmu.Unlock()
-	if root == nil { root = map[string]any{} }
+	if root == nil {
+		root = map[string]any{}
+	}
 	dataRoot, ok := root["data"].(map[string]any)
-	if !ok { dataRoot = map[string]any{}; root["data"] = dataRoot }
+	if !ok {
+		dataRoot = map[string]any{}
+		root["data"] = dataRoot
+	}
 	dragon, ok := dataRoot["DragonFight"].(map[string]any)
-	if !ok { dragon = map[string]any{}; dataRoot["DragonFight"] = dragon }
+	if !ok {
+		dragon = map[string]any{}
+		dataRoot["DragonFight"] = dragon
+	}
 	dragon["DragonFightVersion"] = d.Version
 	dragon["DragonKilled"] = byteValue(d.DragonKilled)
 	dragon["DragonSpawned"] = byteValue(d.DragonSpawned)
 	dragon["PreviouslyKilled"] = byteValue(d.PreviouslyKilled)
 	dragon["DragonUUID"] = d.DragonUniqueID
-	if d.ExitPortal == nil { delete(dragon, "ExitPortalLocation") } else { dragon["ExitPortalLocation"] = []int32{int32(d.ExitPortal.X()), int32(d.ExitPortal.Y()), int32(d.ExitPortal.Z())} }
+	if d.ExitPortal == nil {
+		delete(dragon, "ExitPortalLocation")
+	} else {
+		dragon["ExitPortalLocation"] = []int32{int32(d.ExitPortal.X()), int32(d.ExitPortal.Y()), int32(d.ExitPortal.Z())}
+	}
 	dragon["Gateways"] = append([]int32(nil), d.Gateways...)
 	dragon["IsRespawning"] = byteValue(d.IsRespawning)
 	dragon[dragonFightSupplementKey] = map[string]any{
@@ -103,53 +115,85 @@ func (db *DB) encodeDragonFight(s store, d world.DragonFightData) (map[string]an
 		"RespawnTime": d.RespawnTime, "RespawnCrystalIDs": append([]int64(nil), d.RespawnCrystalIDs...),
 	}
 	encoded, err := nbt.MarshalEncoding(root, nbt.LittleEndian)
-	if err != nil { return nil, fmt.Errorf("encode End dragon fight: %w", err) }
+	if err != nil {
+		return nil, fmt.Errorf("encode End dragon fight: %w", err)
+	}
 	s.put([]byte("TheEnd"), encoded)
 	return cloneCompound(root), nil
 }
 
 func boolValue(v any) bool {
 	switch x := v.(type) {
-	case byte: return x != 0
-	case int8: return x != 0
-	case bool: return x
+	case byte:
+		return x != 0
+	case int8:
+		return x != 0
+	case bool:
+		return x
 	}
 	return false
 }
 
-func byteValue(v bool) byte { if v { return 1 }; return 0 }
+func byteValue(v bool) byte {
+	if v {
+		return 1
+	}
+	return 0
+}
 
 func int64Value(v any) int64 {
 	switch x := v.(type) {
-	case int64: return x
-	case int32: return int64(x)
-	case int16: return int64(x)
-	case int8: return int64(x)
-	case byte: return int64(x)
+	case int64:
+		return x
+	case int32:
+		return int64(x)
+	case int16:
+		return int64(x)
+	case int8:
+		return int64(x)
+	case byte:
+		return int64(x)
 	}
 	return 0
 }
 
 func cloneCompound(src map[string]any) map[string]any {
-	if src == nil { return nil }
+	if src == nil {
+		return nil
+	}
 	dst := make(map[string]any, len(src))
-	for key, value := range src { dst[key] = cloneNBTValue(value) }
+	for key, value := range src {
+		dst[key] = cloneNBTValue(value)
+	}
 	return dst
 }
 
 func cloneNBTValue(value any) any {
 	switch v := value.(type) {
-	case map[string]any: return cloneCompound(v)
+	case map[string]any:
+		return cloneCompound(v)
 	case []any:
-		out := make([]any, len(v)); for i := range v { out[i] = cloneNBTValue(v[i]) }; return out
-	case []int32: return append([]int32(nil), v...)
-	case []int64: return append([]int64(nil), v...)
-	case []byte: return append([]byte(nil), v...)
-	case []int8: return append([]int8(nil), v...)
-	case []int16: return append([]int16(nil), v...)
-	case []float32: return append([]float32(nil), v...)
-	case []float64: return append([]float64(nil), v...)
-	case []string: return append([]string(nil), v...)
+		out := make([]any, len(v))
+		for i := range v {
+			out[i] = cloneNBTValue(v[i])
+		}
+		return out
+	case []int32:
+		return append([]int32(nil), v...)
+	case []int64:
+		return append([]int64(nil), v...)
+	case []byte:
+		return append([]byte(nil), v...)
+	case []int8:
+		return append([]int8(nil), v...)
+	case []int16:
+		return append([]int16(nil), v...)
+	case []float32:
+		return append([]float32(nil), v...)
+	case []float64:
+		return append([]float64(nil), v...)
+	case []string:
+		return append([]string(nil), v...)
 	}
 	return value
 }
