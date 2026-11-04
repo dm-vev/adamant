@@ -275,6 +275,8 @@ func (conf Config) New() *World {
 		activeColumnIndex:   make(map[ChunkPos]int),
 		entityColumnIndex:   make(map[ChunkPos]int),
 	}
+	w.scheduledBlockTicks.faults = &w.blockFaults
+	w.scheduledFluidTicks.faults = &w.blockFaults
 	if err := w.loadBorder(); err != nil {
 		panic(err)
 	}

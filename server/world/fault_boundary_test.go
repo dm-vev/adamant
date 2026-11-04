@@ -617,3 +617,86 @@ func TestBlockEntityTickPanicQuarantinesIt(t *testing.T) {
 		t.Fatalf("the block entity replacing the quarantined one ticked %d times, want 1", replacement.ticks)
 	}
 }
+
+func TestScheduledTickPanicDropsTheTick(t *testing.T) {
+	var sink faultSink
+	rec := newFaultRecorder()
+	registry := NewBlockRegistry()
+	badPos, goodPos := cube.Pos{0, 65, 0}, cube.Pos{1, 65, 0}
+	var badTicks, goodTicks int
+	var bad, good cancelBatchTestBlock
+	bad = cancelBatchTestBlock{name: "test:panicking", id: 11, tick: func(pos cube.Pos, tx *Tx) {
+		badTicks++
+		// It schedules itself again, then panics: a storm, once it no
+		// longer brings the world down.
+		tx.ScheduleBlockUpdate(pos, bad, time.Second/20)
+		panic("test: scheduled tick")
+	}}
+	good = cancelBatchTestBlock{name: "test:counting", id: 12, tick: func(pos cube.Pos, tx *Tx) {
+		goodTicks++
+		tx.ScheduleBlockUpdate(pos, good, time.Second/20)
+	}}
+	other := cancelBatchTestBlock{name: "test:other", id: 13, tick: func(cube.Pos, *Tx) {}}
+	for _, b := range []cancelBatchTestBlock{bad, good, other} {
+		registry.RegisterBlockState(BlockState{Name: b.name, Properties: map[string]any{}})
+		registry.RegisterBlock(b)
+	}
+	w := sink.configure(Config{Synchronous: true, Blocks: registry}, rec).New()
+	defer func() { _ = w.Close() }()
+	<-w.Exec(func(tx *Tx) {
+		// The panicking block first: the batch goes on after it.
+		tx.SetBlock(badPos, bad, nil)
+		tx.SetBlock(goodPos, good, nil)
+		tx.ScheduleBlockUpdate(badPos, bad, time.Second/20)
+		tx.ScheduleBlockUpdate(goodPos, good, time.Second/20)
+	})
+	for range FaultLimit + 2 {
+		advance(t, w)
+		if w.scheduledBlockTicks.processing {
+			t.Fatal("the queue is still processing after the tick")
+		}
+	}
+	if badTicks != FaultLimit || goodTicks != FaultLimit+2 {
+		t.Fatalf("ticks: panicking %d, other %d, want %d and %d", badTicks, goodTicks, FaultLimit, FaultLimit+2)
+	}
+	faults := sink.all(FaultScheduledTick)
+	if len(faults) != FaultLimit || faults[0].Pos != badPos || faults[0].Type != "test:panicking" || !faults[FaultLimit-1].Quarantined {
+		t.Fatalf("faults = %v", faults)
+	}
+	if q := w.Quarantined(); len(q) != 1 || q[0].Pos != badPos || q[0].Kind != FaultScheduledTick {
+		t.Fatalf("Quarantined = %v, want the block", q)
+	}
+	if lines := rec.errors(); len(lines) != 1 {
+		t.Fatalf("Error lines = %d, want 1", len(lines))
+	}
+	scheduled := func() bool {
+		_, ok := w.scheduledBlockTicks.scheduledTicks[scheduledTickIndex{pos: badPos, typeName: "test:panicking"}]
+		return ok
+	}
+	<-w.Exec(func(tx *Tx) {
+		if tx.ScheduleBlockUpdate(badPos, bad, time.Second/20); scheduled() {
+			t.Error("a tick of the quarantined block was scheduled")
+		}
+		// The block set again, as a block changing its state does, is still
+		// the block that panicked.
+		tx.SetBlock(badPos, bad, nil)
+	})
+	if q := w.Quarantined(); len(q) != 1 {
+		t.Fatalf("Quarantined after the block was set again = %v", q)
+	}
+	// Replaced by another block, it is forgotten: placed again, it ticks.
+	<-w.Exec(func(tx *Tx) { tx.SetBlock(badPos, other, nil) })
+	if q := w.Quarantined(); len(q) != 0 {
+		t.Fatalf("Quarantined after the block was replaced = %v", q)
+	}
+	<-w.Exec(func(tx *Tx) {
+		tx.SetBlock(badPos, bad, nil)
+		if tx.ScheduleBlockUpdate(badPos, bad, time.Second/20); !scheduled() {
+			t.Error("the block placed again got no tick")
+		}
+	})
+	advance(t, w)
+	if badTicks != FaultLimit+1 {
+		t.Fatalf("the block placed again ticked %d times in all, want %d", badTicks, FaultLimit+1)
+	}
+}

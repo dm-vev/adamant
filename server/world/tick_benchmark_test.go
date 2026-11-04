@@ -3,6 +3,8 @@ package world
 import (
 	"math"
 	"runtime"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,6 +30,9 @@ type benchmarkTerrainGenerator struct {
 }
 
 func newBenchmarkTerrainGenerator() benchmarkTerrainGenerator {
+	// Run alone, a benchmark reads the default registry before a world
+	// finalised it.
+	DefaultBlockRegistry.Finalize()
 	stoneRID, _ := chunk.StateToRuntimeID("minecraft:stone", nil)
 	grassRID, _ := chunk.StateToRuntimeID("minecraft:grass", nil)
 	return benchmarkTerrainGenerator{
@@ -140,18 +145,28 @@ func benchmarkScheduledTickQueueN(b *testing.B, scheduledCount int) {
 	positions := benchmarkScheduledPositions(scheduledCount)
 	blk := benchmarkScheduledBlock{}
 	queue := newScheduledTickQueue(0)
+	// The ticks are dispatched to the block in the world, air, which is
+	// not the block scheduled: the benchmark measures the queue. Positions
+	// repeat beyond 4096: each is scheduled once a tick.
+	scheduled, distinct := 0, len(slices.Compact(slices.SortedFunc(slices.Values(positions), compareBlockPos)))
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	<-w.Exec(func(tx *Tx) {
+		defer reportCPU(b)()
 		for i := 0; i < b.N; i++ {
 			for _, pos := range positions {
-				queue.schedule(DefaultBlockRegistry, pos, blk, time.Second/20)
+				if queue.schedule(w.conf.Blocks, pos, blk, time.Second/20) {
+					scheduled++
+				}
 			}
 			queue.tick(tx, int64(i+1))
 		}
 	})
 	b.StopTimer()
+	if scheduled != b.N*distinct {
+		b.Fatalf("scheduled %d ticks, want %d", scheduled, b.N*distinct)
+	}
 }
 
 func setupTickBenchmarkWorld(b *testing.B, randomTickSpeed int) (*World, int) {
@@ -305,6 +320,15 @@ func setupTickerBenchmarkWorld(b *testing.B, entityCount, perColumn int) *World 
 	return w
 }
 
+// benchmarkScheduledRegistry is a registry with the block the benchmarks of
+// the queue of scheduled ticks schedule.
+var benchmarkScheduledRegistry = sync.OnceValue(func() BlockRegistry {
+	registry := NewBlockRegistry()
+	registry.RegisterBlockState(BlockState{Name: "benchmark:scheduled", Properties: map[string]any{}})
+	registry.RegisterBlock(benchmarkScheduledBlock{})
+	return registry
+})
+
 func setupScheduledQueueBenchmarkWorld(b *testing.B) *World {
 	b.Helper()
 
@@ -314,6 +338,7 @@ func setupScheduledQueueBenchmarkWorld(b *testing.B) *World {
 		Generator:        NopGenerator{},
 		GeneratorWorkers: runtime.GOMAXPROCS(0),
 		RandomTickSpeed:  -1,
+		Blocks:           benchmarkScheduledRegistry(),
 	}
 	w := conf.New()
 	b.Cleanup(func() {

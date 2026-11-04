@@ -1309,9 +1309,12 @@ type scheduledTickQueue struct {
 	saveTicks      []scheduledTick
 	processing     bool
 	fluid          bool
-	currentTick    int64
-	processedTick  int64
-	nextOrder      int64
+	// faults, if not nil, holds the blocks of the world whose ticks
+	// panicked: those quarantined get no ticks.
+	faults        *blockFaults
+	currentTick   int64
+	processedTick int64
+	nextOrder     int64
 }
 
 // scheduledChunkTicks holds the ticks of a chunk in the order they were
@@ -1520,10 +1523,42 @@ func (queue *scheduledTickQueue) tickPhase(tx *Tx, tick int64, circuitPhase bool
 	}
 
 	queue.processing = true
-	for _, t := range queue.run {
+	for i := 0; i >= 0; {
+		i = queue.dispatchFrom(tx, w, tick, i)
+	}
+	queue.processing = false
+	for _, t := range queue.pendingTicks {
+		queue.push(t)
+	}
+	clear(queue.pendingTicks)
+	queue.pendingTicks = queue.pendingTicks[:0]
+	queue.dispatch = queue.dispatch[:0]
+	queue.run = queue.run[:0]
+	queue.groups = queue.groups[:0]
+	queue.groupHeap = queue.groupHeap[:0]
+	w.scratchLoaderAreas = areas[:0]
+}
+
+// dispatchFrom runs the ticks of queue.run from i on and returns -1 once
+// done. A panic ends it early: the tick, already out of the queue, is
+// dropped and blamed on its block, and the index after it returned, so that
+// one recover covers the batch.
+func (queue *scheduledTickQueue) dispatchFrom(tx *Tx, w *World, tick int64, i int) (next int) {
+	defer func() {
+		if r := recover(); r != nil {
+			t := queue.run[i]
+			w.blockPanicked(FaultScheduledTick, tick, t.pos, t.btype, r)
+			next = i + 1
+		}
+	}()
+	for ; i < len(queue.run); i++ {
+		t := queue.run[i]
 		if t.btype == "" {
 			continue
 		} // cancelled by an earlier callback in this batch
+		if len(w.blockFaults.m) != 0 && w.blockFaults.quarantined(t.pos, t.btype) {
+			continue
+		}
 		if queue.fluid {
 			liquid, ok := tx.Liquid(t.pos)
 			if !ok || !scheduledFluidTickMatches(liquid, t.btype) {
@@ -1570,17 +1605,7 @@ func (queue *scheduledTickQueue) tickPhase(tx *Tx, tick int64, circuitPhase bool
 			ticker.ScheduledTick(t.pos, tx, w.r)
 		}
 	}
-	queue.processing = false
-	for _, t := range queue.pendingTicks {
-		queue.push(t)
-	}
-	clear(queue.pendingTicks)
-	queue.pendingTicks = queue.pendingTicks[:0]
-	queue.dispatch = queue.dispatch[:0]
-	queue.run = queue.run[:0]
-	queue.groups = queue.groups[:0]
-	queue.groupHeap = queue.groupHeap[:0]
-	w.scratchLoaderAreas = areas[:0]
+	return -1
 }
 
 // cancel removes one type/position identity without disturbing other queued
@@ -1772,6 +1797,11 @@ func (queue *scheduledTickQueue) insertTick(br BlockRegistry, pos cube.Pos, b Bl
 // insertTypeTick retains the source registry identity even when multiple Java
 // block types share one native palette representation.
 func (queue *scheduledTickQueue) insertTypeTick(pos cube.Pos, typeName string, due int64, priority int32, deferred bool) bool {
+	if f := queue.faults; f != nil && len(f.m) != 0 && f.quarantined(pos, typeName) {
+		// The block keeps panicking: it gets no more ticks, which ends the
+		// storms of a block that schedules itself.
+		return false
+	}
 	index := scheduledTickIndex{pos: pos, typeName: typeName}
 	if _, exists := queue.scheduledTicks[index]; exists {
 		return false

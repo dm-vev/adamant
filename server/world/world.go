@@ -256,6 +256,8 @@ type World struct {
 	faults faults
 	// guard is the tick guard of the transactions of the owner.
 	guard tickGuard
+	// blockFaults holds the blocks whose ticks panicked.
+	blockFaults blockFaults
 }
 
 // currentTickLocked returns the tick used to update this world. The caller
@@ -1001,6 +1003,9 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 			// The block entity that panicked was removed or replaced.
 			w.forgetActor(c, pos)
 		}
+	}
+	if len(w.blockFaults.m) != 0 {
+		w.blockSet(pos, b)
 	}
 
 	if !opts.DisableLiquidDisplacement {
@@ -2695,8 +2700,8 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 	// closing it saves it.
 	w.restoreFailedSaves()
 	w.persistChunk(tx, pos, c, false)
-	if len(c.faultyActors) != 0 {
-		w.releaseChunk(pos)
+	if len(c.faultyActors) != 0 || len(w.blockFaults.m) != 0 {
+		w.forgetChunk(pos)
 	}
 	delete(w.unsettled, pos)
 	w.scheduledBlockTicks.removeChunk(pos)

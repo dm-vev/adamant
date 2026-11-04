@@ -469,6 +469,118 @@ func (w *World) forgetActor(c *Column, pos cube.Pos) {
 	}
 }
 
+// blockFaultEntries is how many blocks whose ticks panicked a world keeps
+// at most.
+const blockFaultEntries = 4096
+
+// blockFault is what a world keeps of the panics of the ticks of the block
+// at a position: its name, the type of its scheduled ticks.
+type blockFault struct {
+	name        string
+	faults      faultCount
+	quarantined bool
+	// seq orders the blocks by their last panic.
+	seq uint64
+}
+
+// blockFaults holds the blocks whose ticks panicked, by position, at most
+// blockFaultEntries of them: the one whose last panic is the oldest is
+// forgotten for a new one.
+type blockFaults struct {
+	m   map[cube.Pos]*blockFault
+	seq uint64
+}
+
+// quarantined reports whether the block name at pos is quarantined.
+func (b *blockFaults) quarantined(pos cube.Pos, name string) bool {
+	e := b.m[pos]
+	return e != nil && e.quarantined && e.name == name
+}
+
+// blockPanicked blames the panic r of a tick of kind of the block name at
+// pos, at tick, on it, counting it and quarantining the block once it
+// reached FaultLimit.
+func (w *World) blockPanicked(kind FaultKind, tick int64, pos cube.Pos, name string, r any) {
+	f := newFault(kind, r)
+	f.Type, f.Pos = name, pos
+	b := &w.blockFaults
+	e := b.m[pos]
+	if e == nil || e.name != name {
+		if e != nil {
+			w.forgetBlock(pos)
+		}
+		if b.m == nil {
+			b.m = make(map[cube.Pos]*blockFault)
+		}
+		if len(b.m) >= blockFaultEntries {
+			w.forgetOldestBlock()
+		}
+		e = &blockFault{name: name}
+		b.m[pos] = e
+	}
+	b.seq++
+	e.seq = b.seq
+	if e.faults.count(&f, tick) {
+		e.quarantined = true
+	}
+	w.reportFault(f, quarantineKey{pos: pos, name: name})
+}
+
+// forgetBlock forgets the panics of the block at pos, taking it out of
+// quarantine.
+func (w *World) forgetBlock(pos cube.Pos) {
+	e, ok := w.blockFaults.m[pos]
+	if !ok {
+		return
+	}
+	delete(w.blockFaults.m, pos)
+	if e.quarantined {
+		w.release(quarantineKey{pos: pos, name: e.name})
+	}
+}
+
+// forgetOldestBlock forgets the block whose last panic is the oldest.
+func (w *World) forgetOldestBlock() {
+	var (
+		oldest cube.Pos
+		seq    uint64
+		found  bool
+	)
+	for pos, e := range w.blockFaults.m {
+		if !found || e.seq < seq {
+			oldest, seq, found = pos, e.seq, true
+		}
+	}
+	if found {
+		w.forgetBlock(oldest)
+	}
+}
+
+// blockSet forgets the panics of the block at pos once a block of another
+// type, b, replaced it. A block changing its own state stays the block that
+// panicked.
+func (w *World) blockSet(pos cube.Pos, b Block) {
+	e, ok := w.blockFaults.m[pos]
+	if !ok {
+		return
+	}
+	if scheduledTickType(w.conf.Blocks, b) == e.name {
+		return
+	}
+	w.forgetBlock(pos)
+}
+
+// forgetChunk forgets the panics of the blocks and block entities of the
+// chunk at pos, which unloads.
+func (w *World) forgetChunk(pos ChunkPos) {
+	for p := range w.blockFaults.m {
+		if chunkPosFromBlockPos(p) == pos {
+			delete(w.blockFaults.m, p)
+		}
+	}
+	w.releaseChunk(pos)
+}
+
 // TickFaulter is an entity that handles a panic of its own tick or of its
 // controller, instead of being quarantined. Player implements it by
 // disconnecting with an internal error, which saves it.

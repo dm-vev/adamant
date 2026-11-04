@@ -252,3 +252,38 @@ func TestFaultKindNames(t *testing.T) {
 		t.Fatalf("unknown kind = %q", s)
 	}
 }
+
+func TestBlockFaultsForgetTheOldest(t *testing.T) {
+	rec := newFaultRecorder()
+	w := faultTestWorld(t, rec, nil, Config{})
+	at := func(i int) cube.Pos { return cube.Pos{i % 64, 10, i / 64} }
+
+	// The first block is quarantined, then blockFaultEntries others panic.
+	for range FaultLimit {
+		w.blockPanicked(FaultScheduledTick, 1, at(0), "test:first", "boom")
+	}
+	if q := w.Quarantined(); len(q) != 1 || q[0].Pos != at(0) {
+		t.Fatalf("Quarantined = %v, want the first block", q)
+	}
+	for i := 1; i <= blockFaultEntries; i++ {
+		w.blockPanicked(FaultScheduledTick, 1, at(i), "test:other", "boom")
+	}
+	if n := len(w.blockFaults.m); n != blockFaultEntries {
+		t.Fatalf("blocks kept = %d, want %d", n, blockFaultEntries)
+	}
+	if _, ok := w.blockFaults.m[at(0)]; ok || len(w.Quarantined()) != 0 {
+		t.Fatal("the block whose last panic is the oldest was not forgotten, or is still quarantined")
+	}
+	// Another block at a position is another offender.
+	w.blockPanicked(FaultScheduledTick, 1, at(1), "test:third", "boom")
+	if e := w.blockFaults.m[at(1)]; e.name != "test:third" || e.faults.n != 1 {
+		t.Fatalf("entry at a position another block panicked at = %+v", e)
+	}
+	// Unloading a chunk forgets its blocks.
+	w.forgetChunk(ChunkPos{0, 0})
+	for p := range w.blockFaults.m {
+		if chunkPosFromBlockPos(p) == (ChunkPos{0, 0}) {
+			t.Fatalf("block %v of an unloaded chunk kept", p)
+		}
+	}
+}
