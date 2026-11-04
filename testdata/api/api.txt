@@ -6174,6 +6174,7 @@ server/cmd	func	ExecutionContextOf	func(src server/cmd.Source) (server/cmd.Execu
 server/cmd	func	IsOperator	func(id github.com/google/uuid.UUID) bool
 server/cmd	func	New	func(name string, description string, aliases []string, r ...server/cmd.Runnable) server/cmd.Command
 server/cmd	func	NewBlockSource	func(pos server/block/cube.Pos, w *server/world.World, name string) *server/cmd.BlockSource
+server/cmd	func	ParseNumber	func(s string, bitSize int) (float64, error)
 server/cmd	func	Register	func(command server/cmd.Command)
 server/cmd	func	ResolveCoordinates	func(args []string, src server/cmd.Source) (github.com/go-gl/mathgl/mgl64.Vec3, error)
 server/cmd	func	ResolveTargets	func(selector string, src server/cmd.Source, tx *server/world.Tx) ([]server/cmd.Target, error)

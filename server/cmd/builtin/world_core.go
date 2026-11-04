@@ -382,7 +382,7 @@ func (b borderCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		if i >= len(parts) {
 			return 0, fmt.Errorf("missing value")
 		}
-		return strconv.ParseFloat(parts[i], 64)
+		return cmd.ParseNumber(parts[i], 64)
 	}
 	transition := func(i int) (int64, bool) {
 		if i >= len(parts) {

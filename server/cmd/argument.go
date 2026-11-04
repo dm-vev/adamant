@@ -148,7 +148,7 @@ func (p parser) int(line *Line, v reflect.Value) error {
 		return line.UsageError()
 	}
 	value, err := strconv.ParseInt(arg, 10, v.Type().Bits())
-	if err != nil {
+	if err != nil || !javaNumber(arg) {
 		return MessageNumberInvalid.F(arg)
 	}
 	v.SetInt(value)
@@ -162,7 +162,7 @@ func (p parser) uint(line *Line, v reflect.Value) error {
 		return line.UsageError()
 	}
 	value, err := strconv.ParseUint(arg, 10, v.Type().Bits())
-	if err != nil {
+	if err != nil || !javaNumber(arg) {
 		return MessageNumberInvalid.F(arg)
 	}
 	v.SetUint(value)
@@ -175,7 +175,7 @@ func (p parser) float(line *Line, v reflect.Value) error {
 	if !ok {
 		return line.UsageError()
 	}
-	value, err := strconv.ParseFloat(arg, v.Type().Bits())
+	value, err := ParseNumber(arg, v.Type().Bits())
 	if err != nil {
 		return MessageNumberInvalid.F(arg)
 	}
@@ -199,12 +199,41 @@ func (p parser) bool(line *Line, v reflect.Value) error {
 	if !ok {
 		return line.UsageError()
 	}
-	value, err := strconv.ParseBool(arg)
-	if err != nil {
+	// StringReader.readBoolean accepts exactly "true" and "false".
+	if arg != "true" && arg != "false" {
 		return MessageBooleanInvalid.F(arg)
 	}
-	v.SetBool(value)
+	v.SetBool(arg == "true")
 	return nil
+}
+
+// ParseNumber parses a decimal number as Brigadier's StringReader.readDouble
+// does: only the characters 0-9, '.' and '-' (StringReader.isAllowedNumber)
+// make up the number, so signs, exponents, hex, NaN and infinities are
+// rejected. bitSize is 32 or 64, as for strconv.ParseFloat.
+func ParseNumber(s string, bitSize int) (float64, error) {
+	if !javaNumber(s) {
+		return 0, fmt.Errorf("invalid number %q", s)
+	}
+	v, err := strconv.ParseFloat(s, bitSize)
+	if err != nil || math.IsInf(v, 0) {
+		return 0, fmt.Errorf("invalid number %q", s)
+	}
+	return v, nil
+}
+
+// javaNumber reports whether s is non-empty and consists only of the
+// characters of StringReader.isAllowedNumber.
+func javaNumber(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if (r < '0' || r > '9') && r != '.' && r != '-' {
+			return false
+		}
+	}
+	return true
 }
 
 // enum ...
@@ -273,7 +302,7 @@ func ResolveCoordinates(args []string, src Source) (mgl64.Vec3, error) {
 			return mgl64.Vec3{}, MessageNumberInvalid.F(arg)
 		}
 		if value != "" {
-			f, err := strconv.ParseFloat(value, 64)
+			f, err := ParseNumber(value, 64)
 			if err != nil {
 				return mgl64.Vec3{}, MessageNumberInvalid.F(arg)
 			}

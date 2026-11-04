@@ -2,7 +2,6 @@ package builtin
 
 import (
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -35,7 +34,7 @@ func (commandAngle) Parse(line *cmd.Line, v reflect.Value) error {
 			return nil
 		}
 	}
-	value, err := strconv.ParseFloat(arg, 64)
+	value, err := cmd.ParseNumber(arg, 64)
 	if err != nil {
 		return cmd.MessageNumberInvalid.F(arg)
 	}

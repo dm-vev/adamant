@@ -492,7 +492,7 @@ func executeStoreSink(words []string, src cmd.Source, ctx cmd.ExecutionContext, 
 			return nil, 0, errExecuteSyntax
 		}
 		key, path, kind := words[2], words[3], words[4]
-		scale, err := strconv.ParseFloat(words[5], 64)
+		scale, err := cmd.ParseNumber(words[5], 64)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -673,7 +673,7 @@ func parseRotation(words []string, base cube.Rotation) (float64, float64, error)
 		value := 0.0
 		if text != "" {
 			var err error
-			if value, err = strconv.ParseFloat(text, 64); err != nil {
+			if value, err = cmd.ParseNumber(text, 64); err != nil {
 				return 0, 0, err
 			}
 		}

@@ -77,7 +77,7 @@ func parseSelectorRange(value string) (selectorRange, error) {
 	r := selectorRange{min: math.Inf(-1), max: math.Inf(1), set: true}
 	lo, hi, isRange := strings.Cut(value, "..")
 	if !isRange {
-		v, err := strconv.ParseFloat(value, 64)
+		v, err := ParseNumber(value, 64)
 		if err != nil {
 			return r, err
 		}
@@ -89,12 +89,12 @@ func parseSelectorRange(value string) (selectorRange, error) {
 	}
 	var err error
 	if lo != "" {
-		if r.min, err = strconv.ParseFloat(lo, 64); err != nil {
+		if r.min, err = ParseNumber(lo, 64); err != nil {
 			return r, err
 		}
 	}
 	if hi != "" {
-		if r.max, err = strconv.ParseFloat(hi, 64); err != nil {
+		if r.max, err = ParseNumber(hi, 64); err != nil {
 			return r, err
 		}
 	}
@@ -325,13 +325,13 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 		var err error
 		switch key {
 		case "x", "y", "z":
-			v, perr := strconv.ParseFloat(value, 64)
+			v, perr := ParseNumber(value, 64)
 			if perr != nil {
 				return nil, MessageNumberInvalid.F(value)
 			}
 			s.origin[key[0]-'x'] = v
 		case "dx", "dy", "dz":
-			v, perr := strconv.ParseFloat(value, 64)
+			v, perr := ParseNumber(value, 64)
 			if perr != nil {
 				return nil, MessageNumberInvalid.F(value)
 			}
