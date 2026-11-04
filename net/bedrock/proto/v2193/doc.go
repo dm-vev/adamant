@@ -1,8 +1,10 @@
 // Package v2193 holds the packets of Bedrock protocol 2193 (1.26.50) and
 // their codecs, generated from schema.txt, which protoimport writes from
-// the codecs of gophertunnel. Codecs the schema cannot describe are
-// written by hand in the hand*.go files. A packet whose codec is not
-// complete keeps its fields as bytes; Raw reports it.
+// the codecs of gophertunnel v1.62.0, corrected where they differ from
+// Mojang's protocol documentation (its header names them; mojang_test.go
+// checks their bytes). Codecs the schema cannot describe are written by
+// hand in the hand*.go files. A packet whose codec is not complete keeps
+// its fields as bytes; Raw reports it.
 package v2193
 
 //go:generate go run ../gen -schema schema.txt -o packets.go -pkg v2193
