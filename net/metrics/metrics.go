@@ -2,6 +2,13 @@
 // text format of Prometheus. Counting takes atomics alone, never a lock or
 // an allocation, so that the hot paths of the transport may count every
 // datagram; the registry takes a lock only to list its metrics.
+//
+// Families of metrics with labels are written at each scrape by a function
+// of their own, which emits the samples of each set of labels: the gauges
+// of each world of a server, the histograms made with NewHistogram. Label
+// values and the text of HELP are escaped as the format says. Handler
+// serves several registries as one exposition, and Validate checks an
+// exposition as a scraper reads it.
 package metrics
 
 import (
@@ -12,7 +19,6 @@ import (
 	"slices"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -150,17 +156,7 @@ func (r *Registry) GaugeFunc(name, help string, f func() float64) {
 // Histogram registers a histogram of the upper bounds passed.
 func (r *Registry) Histogram(name, help string, bounds ...float64) *Histogram {
 	h := newHistogram(bounds)
-	r.add(metric{name, help, "histogram", func(w io.Writer, name string) {
-		var cum uint64
-		for i, b := range h.bounds {
-			cum += h.counts[i].Load()
-			fmt.Fprintf(w, "%s_bucket{le=%q} %d\n", name, strconv.FormatFloat(b, 'g', -1, 64), cum)
-		}
-		count := h.count.Load()
-		fmt.Fprintf(w, "%s_bucket{le=\"+Inf\"} %d\n", name, count)
-		fmt.Fprintf(w, "%s_sum %s\n", name, strconv.FormatFloat(math.Float64frombits(h.sum.Load()), 'g', -1, 64))
-		fmt.Fprintf(w, "%s_count %d\n", name, count)
-	}})
+	r.add(metric{name, help, "histogram", func(w io.Writer, name string) { h.write(w, name, "") }})
 	return h
 }
 
@@ -172,7 +168,7 @@ func (r *Registry) CounterVec(name, help, labelName string, n int, value func(i 
 	r.add(metric{name, help, "counter", func(w io.Writer, name string) {
 		for i := range v.counters {
 			if c := v.counters[i].Load(); c != 0 {
-				fmt.Fprintf(w, "%s{%s=%q} %d\n", name, labelName, value(i), c)
+				fmt.Fprintf(w, "%s{%s=\"%s\"} %d\n", name, labelName, EscapeLabel(value(i)), c)
 			}
 		}
 	}})
@@ -184,11 +180,7 @@ func (r *Registry) Write(w io.Writer) {
 	r.mu.Lock()
 	metrics := slices.Clone(r.metrics)
 	r.mu.Unlock()
-	slices.SortFunc(metrics, func(a, b metric) int { return strings.Compare(a.name, b.name) })
-	for _, m := range metrics {
-		fmt.Fprintf(w, "# HELP %s %s\n# TYPE %s %s\n", m.name, m.help, m.name, m.typ)
-		m.write(w, m.name)
-	}
+	writeMetrics(w, metrics)
 }
 
 // Handler serves the metrics of the registry.
