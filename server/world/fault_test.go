@@ -228,17 +228,23 @@ func TestQuarantinedListsAndReleases(t *testing.T) {
 	}
 }
 
-func TestFatalCallsTheHookOnce(t *testing.T) {
+func TestFailCallsTheHookOnce(t *testing.T) {
 	rec := newFaultRecorder()
 	var fatal []Fault
 	w := faultTestWorld(t, rec, nil, Config{Fatal: func(f Fault) { fatal = append(fatal, f) }})
-	w.fatal(Fault{Type: "test glue", Value: "first", Stack: []byte("stack")})
-	w.fatal(Fault{Type: "test glue", Value: "second"})
+	w.fail(Fault{Type: "test glue", Value: "first", Stack: []byte("stack")})
+	w.fail(Fault{Type: "test glue", Value: "second", Stack: []byte("stack 2")})
+	w.fail(Fault{Type: "test glue", Value: "third"})
 	if len(fatal) != 1 || fatal[0].Value != "first" || fatal[0].Kind != FaultFatal || fatal[0].World != w {
 		t.Fatalf("Config.Fatal calls = %v, want the first fault only, of kind fatal", fatal)
 	}
-	if lines := rec.errors(); len(lines) != 2 || lines[0].Message != "world failed" || attr(lines[0], "stack") != "stack" {
-		t.Fatalf("fatal faults are not all logged with their stack: %d lines", len(lines))
+	if !w.faults.failed.Load() {
+		t.Fatal("the world is not failed")
+	}
+	// The faults after the first are logged as other faults, rate-limited.
+	lines := rec.errors()
+	if len(lines) != 2 || lines[0].Message != "world failed" || attr(lines[0], "stack") != "stack" || lines[1].Message != "fatal panicked" || attr(lines[1], "stack") != "stack 2" {
+		t.Fatalf("fatal faults are not logged with their stack, the third suppressed: %d lines", len(lines))
 	}
 }
 

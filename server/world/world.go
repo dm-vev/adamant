@@ -270,6 +270,12 @@ type World struct {
 	guard tickGuard
 	// blockFaults holds the blocks whose ticks panicked.
 	blockFaults blockFaults
+	// stepFaults holds the subsystems of the tick that panicked, by name.
+	stepFaults map[string]*stepFault
+	// testTickHook, if not nil, is called by each tick that simulates,
+	// before anything else of the world runs: tests make the bookkeeping
+	// of the tick panic with it.
+	testTickHook func(tx *Tx)
 }
 
 // currentTickLocked returns the tick used to update this world. The caller

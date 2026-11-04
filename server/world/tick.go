@@ -124,8 +124,24 @@ func (w *World) AdvanceTick() {
 }
 
 // tick performs a tick on the World and updates the time, weather, blocks and
-// entities that require updates.
+// entities that require updates. A panic the tick could not blame on part of
+// the game, as one of its own bookkeeping, fails the World (World.fail): it
+// no longer simulates, and its next ticks only have the controllers of its
+// players act.
 func (t ticker) tick(tx *Tx) {
+	w := tx.World()
+	defer func() {
+		if r := recover(); r != nil {
+			f := newFault(FaultFatal, r)
+			f.Type = panicSite()
+			w.fail(f)
+		}
+	}()
+	t.tickWorld(tx)
+}
+
+// tickWorld is the tick of tick, which recovers its panics.
+func (t ticker) tickWorld(tx *Tx) {
 	start := time.Now()
 	defer func() { tx.World().tickTimes.record(time.Since(start)) }()
 	viewers, loaders := tx.World().allViewers()
@@ -146,6 +162,15 @@ func (t ticker) tick(tx *Tx) {
 	}()
 	// The blocks the tick changed go out with the rest of what it shows.
 	defer w.flushBlockUpdates()
+	if w.faults.failed.Load() {
+		// A failed world simulates nothing: the controllers of its players
+		// act, so that their clients can leave it and be saved.
+		w.controlPlayers(tx)
+		return
+	}
+	if h := w.testTickHook; h != nil {
+		h(tx)
+	}
 	w.focusGeneration(loaders)
 	w.updateEntityTickingAreas(loaders)
 	w.loadForcedChunks()
@@ -220,10 +245,10 @@ func (t ticker) tick(tx *Tx) {
 	w.scheduledBlockTicks.currentTick = tick
 	w.scheduledFluidTicks.currentTick = tick
 	t.tickInhabitedTime(w, loaders)
-	t.promoteGeneration(tx, loaders)
+	w.step(tx, tick, "generation promotion", func(tx *Tx) { t.promoteGeneration(tx, loaders) })
 
 	if tryAdvanceDay {
-		t.tryAdvanceDay(tx, timeCycle)
+		w.step(tx, tick, "sleeping", func(tx *Tx) { t.tryAdvanceDay(tx, timeCycle) })
 	}
 
 	if tick%20 == 0 {
@@ -239,24 +264,27 @@ func (t ticker) tick(tx *Tx) {
 	}
 	if !w.tickFrozen.Load() || runStep {
 		if thunder {
-			w.tickLightning(tx)
+			w.step(tx, tick, "lightning", w.tickLightning)
 		}
 		if w.dragonFight != nil {
-			w.dragonFight.Tick(tx)
+			w.step(tx, tick, "dragon fight", w.dragonFight.Tick)
 		}
 		t.tickEntities(tx, tick)
 		if collide := w.EntityRegistry().Config().EntityCollisions; collide != nil {
-			collide(tx)
+			w.step(tx, tick, "entity collisions", collide)
 		}
 		if spawnTick := w.EntityRegistry().Config().NaturalSpawnTick; spawnTick != nil {
-			spawnTick(tx)
+			w.step(tx, tick, "natural spawning", spawnTick)
 		}
-		tx.TickRaids()
+		w.step(tx, tick, "raids", (*Tx).TickRaids)
 		w.scheduledBlockTicks.tickNonCircuits(tx, tick, loaders...)
 		w.scheduledFluidTicks.tick(tx, tick, loaders...)
 		t.tickBlocksRandomly(tx, loaders, tick)
 		t.performNeighbourUpdates(tx, tick)
-		w.redstone.tick(tx, tick)
+		if !w.step(tx, tick, "redstone", func(tx *Tx) { w.redstone.tick(tx, tick) }) {
+			// The same input would panic again.
+			w.redstone.dropDirty()
+		}
 		t.tickQueuedEntities(tx, tick)
 		t.tickEntitiesInPhase(tx, tick, true)
 	}

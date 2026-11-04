@@ -296,6 +296,14 @@ func (e *redstoneEngine) forget(pos cube.Pos) {
 	delete(e.evaluating, pos)
 }
 
+// dropDirty forgets the positions left to evaluate, as after a panic of
+// their evaluation, which they would cause again.
+func (e *redstoneEngine) dropDirty() {
+	if e != nil {
+		clear(e.dirty)
+	}
+}
+
 // tick evaluates all dirty redstone positions for the current world tick.
 func (e *redstoneEngine) tick(tx *Tx, tick int64) {
 	if e == nil {

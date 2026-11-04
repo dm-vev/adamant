@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -200,8 +201,8 @@ type faults struct {
 	now         func() time.Time
 	entries     map[faultLogKey]*faultLogEntry
 	quarantined map[quarantineKey]Fault
-	// failed is set once the world reported a fatal fault.
-	failed bool
+	// failed is set once the world failed: it reported a fatal fault.
+	failed atomic.Bool
 }
 
 // faultLine is a line the log of faults is to log.
@@ -298,11 +299,7 @@ func (w *World) reportFault(f Fault, key quarantineKey) {
 	f.World = w
 	l := &w.faults
 	l.mu.Lock()
-	now := time.Now
-	if l.now != nil {
-		now = l.now
-	}
-	lines := l.record(f, now())
+	lines := l.record(f, l.clock()())
 	if f.Quarantined {
 		if l.quarantined == nil {
 			l.quarantined = make(map[quarantineKey]Fault)
@@ -316,6 +313,14 @@ func (w *World) reportFault(f Fault, key quarantineKey) {
 	if hook := w.conf.Fault; hook != nil {
 		hook(f)
 	}
+}
+
+// clock returns the clock of the log of faults.
+func (l *faults) clock() func() time.Time {
+	if l.now != nil {
+		return l.now
+	}
+	return time.Now
 }
 
 // release takes the offender of key out of quarantine, as when it leaves
@@ -373,18 +378,77 @@ func (w *World) Quarantined() []Fault {
 	return out
 }
 
-// fatal reports a fault nothing could be blamed for. The first one of the
-// world is logged and passed to Config.Fatal; later ones are logged only.
-func (w *World) fatal(f Fault) {
+// fail fails the world for the fault f, which nothing could be blamed for:
+// it marks the world failed and reports f, logging it and passing it to
+// Config.Fatal. A failed world no longer simulates: its ticks only have the
+// controllers of its players act, so that their clients can leave it and be
+// saved. Its transactions still run, and closing it still saves it. Once
+// failed, a world logs the faults it fails for again as other faults,
+// rate-limited, and calls Config.Fatal no more.
+func (w *World) fail(f Fault) {
 	f.Kind, f.World = FaultFatal, w
 	l := &w.faults
-	l.mu.Lock()
-	first := !l.failed
-	l.failed = true
-	l.mu.Unlock()
+	if !l.failed.CompareAndSwap(false, true) {
+		l.mu.Lock()
+		lines := l.record(f, l.clock()())
+		l.mu.Unlock()
+		for _, line := range lines {
+			line.log(w.conf.Log)
+		}
+		return
+	}
 	faultLine{msg: "world failed", f: f, stack: true}.log(w.conf.Log)
-	if hook := w.conf.Fatal; first && hook != nil {
+	if hook := w.conf.Fatal; hook != nil {
 		hook(f)
+	}
+}
+
+// stepFaultLimit is how many ticks in a row a subsystem of the tick may
+// panic in before the world fails.
+const stepFaultLimit = 20
+
+// stepFault is what a world keeps of the panics of a subsystem of its
+// tick: the last tick it panicked in, and how many ticks in a row up to it.
+type stepFault struct {
+	tick  int64
+	ticks int
+}
+
+// step runs f, the subsystem name of the tick at tick, and reports whether
+// it ended without a panic. A panic ends the subsystem for this tick and is
+// blamed on it. Once it panicked in stepFaultLimit ticks in a row, the world
+// fails: what it is part of, the world, is what breaks.
+func (w *World) step(tx *Tx, tick int64, name string, f func(tx *Tx)) (ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			w.stepPanicked(tick, name, r)
+		}
+	}()
+	f(tx)
+	return true
+}
+
+// stepPanicked blames the panic r of the subsystem name at tick on it,
+// failing the world once it panicked in stepFaultLimit ticks in a row.
+func (w *World) stepPanicked(tick int64, name string, r any) {
+	f := newFault(FaultSubsystem, r)
+	f.Type = name
+	s := w.stepFaults[name]
+	if s == nil {
+		if w.stepFaults == nil {
+			w.stepFaults = make(map[string]*stepFault)
+		}
+		s = &stepFault{}
+		w.stepFaults[name] = s
+	}
+	if s.ticks == 0 || tick != s.tick+1 {
+		s.ticks = 0
+	}
+	s.tick, s.ticks = tick, s.ticks+1
+	f.Count = s.ticks
+	w.reportFault(f, quarantineKey{})
+	if s.ticks >= stepFaultLimit {
+		w.fail(f)
 	}
 }
 

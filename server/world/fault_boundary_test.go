@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -424,9 +425,6 @@ func TestRegionPanicHoldingTheSharedLockIsFatal(t *testing.T) {
 
 		var panicked, otherRegion tickLog
 		bad := probe(a, func(tx *Tx, _ *testEntity) {
-			if len(panicked.all()) >= FaultLimit {
-				return
-			}
 			panicked.add(tx.CurrentTick())
 			tx.lockShared()
 			panic("test: panic holding the shared lock")
@@ -437,10 +435,13 @@ func TestRegionPanicHoldingTheSharedLockIsFatal(t *testing.T) {
 			tx.AddEntity(far)
 		}), "adding the entities")
 
-		waitFor(t, 30*time.Second, "the other region ticking 20 times after the panics", func() bool {
-			p := panicked.all()
-			return len(p) >= FaultLimit && len(otherRegion.all()) >= len(p)+20
-		})
+		waitFor(t, 30*time.Second, "the world failing", func() bool { return len(sink.fatals()) != 0 })
+		// The failed world simulates no more: neither entity ticks again.
+		ticked := len(otherRegion.all())
+		time.Sleep(300 * time.Millisecond)
+		if p := panicked.all(); len(p) != 1 || len(otherRegion.all()) != ticked {
+			t.Fatalf("the failed world ticked its entities: %d panics, %d ticks of the other after %d", len(p), len(otherRegion.all()), ticked)
+		}
 		fatal := sink.fatals()
 		if len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Entity != bad || fatal[0].Value != "test: panic holding the shared lock" {
 			t.Fatalf("Config.Fatal calls = %v, want one, blamed on the entity", fatal)
@@ -455,8 +456,8 @@ func TestRegionPanicHoldingTheSharedLockIsFatal(t *testing.T) {
 			}
 			w.regions.mu.Unlock()
 		}), "checking the shared lock")
-		if n := len(rec.errors()); n != FaultLimit {
-			t.Fatalf("Error lines = %d, want one for each fatal panic", n)
+		if n := len(rec.errors()); n != 1 {
+			t.Fatalf("Error lines = %d, want one for the fatal panic", n)
 		}
 	})
 }
@@ -906,4 +907,166 @@ func TestPrecipitationPanicIsARandomTickFault(t *testing.T) {
 		t.Fatalf("the rain fell onto the block %d times, want %d", ticks, FaultLimit)
 	}
 	checkBlockQuarantine(t, w, &sink, rec, FaultRandomTick, pos, "test:rain_panicking")
+}
+
+// storeCountingProvider is a provider counting the columns stored.
+type storeCountingProvider struct {
+	NopProvider
+	stores atomic.Int32
+}
+
+func (p *storeCountingProvider) StoreColumn(pos ChunkPos, dim Dimension, col *chunk.Column) error {
+	p.stores.Add(1)
+	return p.NopProvider.StoreColumn(pos, dim, col)
+}
+
+func TestTickGluePanicIsFatal(t *testing.T) {
+	isolated(t, func(t *testing.T) {
+		var sink faultSink
+		rec := newFaultRecorder()
+		prov := &storeCountingProvider{}
+		other := cancelBatchTestBlock{name: "test:other", id: 51, tick: func(cube.Pos, *Tx) {}}
+		conf := Config{Provider: prov, Blocks: testBlockRegistry(other), RandomTickSpeed: -1}
+		w := sink.configure(conf, rec).New()
+		closed := false
+		defer func() {
+			if !closed {
+				_ = w.Close()
+			}
+		}()
+
+		var ticks atomic.Int32
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
+			// A changed column, which closing the world saves.
+			tx.SetBlock(cube.Pos{0, 64, 0}, other, nil)
+			w.testTickHook = func(*Tx) {
+				if ticks.Add(1) == 5 {
+					panic("test: tick glue")
+				}
+			}
+		}), "arming the hook")
+		waitFor(t, 10*time.Second, "the world failing", func() bool { return len(sink.fatals()) != 0 })
+		fatal := sink.fatals()
+		if len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Value != "test: tick glue" || fatal[0].World != w || !strings.Contains(fatal[0].Type, "TestTickGluePanicIsFatal") {
+			t.Fatalf("Config.Fatal calls = %v, want one for the panic of the tick", fatal)
+		}
+		if !strings.Contains(string(fatal[0].Stack), "fault_boundary_test.go") {
+			t.Fatalf("the fault has not the stack of the panic:\n%s", fatal[0].Stack)
+		}
+
+		// The failed world simulates nothing, but its transactions run.
+		var before, after int64
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) { before = tx.CurrentTick() }), "an Exec of the failed world")
+		time.Sleep(300 * time.Millisecond)
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) { after = tx.CurrentTick() }), "an Exec of the failed world")
+		if before != after || ticks.Load() != 5 {
+			t.Fatalf("the failed world simulated: tick %d, then %d; the hook ran %d times, want 5", before, after, ticks.Load())
+		}
+		if n := len(rec.errors()); n != 1 {
+			t.Fatalf("Error lines = %d, want 1", n)
+		}
+
+		// Closing it still saves it.
+		stored := prov.stores.Load()
+		closed = true
+		if err := w.Close(); err != nil {
+			t.Fatalf("close: %v", err)
+		}
+		if prov.stores.Load() <= stored {
+			t.Fatal("closing the failed world saved no column")
+		}
+		if n := len(sink.fatals()); n != 1 {
+			t.Fatalf("Config.Fatal called %d times, want once", n)
+		}
+	})
+}
+
+func TestSubsystemPanicFailsTheWorldAfterTicksInARow(t *testing.T) {
+	var sink faultSink
+	rec := newFaultRecorder()
+	var (
+		collisions, spawns int
+		armed              bool
+	)
+	entities := EntityRegistryConfig{
+		EntityCollisions: func(*Tx) {
+			if !armed {
+				return
+			}
+			collisions++
+			// It panics in 10 ticks, then not in one, then in 20.
+			if collisions != 11 {
+				panic("test: collisions")
+			}
+		},
+		NaturalSpawnTick: func(*Tx) {
+			if armed {
+				spawns++
+			}
+		},
+	}.New(nil)
+	// New ticks a synchronous world once already.
+	w := sink.configure(Config{Synchronous: true, Entities: entities, RandomTickSpeed: -1}, rec).New()
+	defer func() { _ = w.Close() }()
+	armed = true
+
+	for range 10 + 1 + stepFaultLimit - 1 {
+		advance(t, w)
+	}
+	if spawns != collisions || spawns != 10+1+stepFaultLimit-1 {
+		t.Fatalf("the rest of the tick did not run: %d spawn ticks for %d of collisions", spawns, collisions)
+	}
+	faults := sink.all(FaultSubsystem)
+	if len(faults) != 10+stepFaultLimit-1 || faults[0].Type != "entity collisions" || faults[9].Count != 10 || faults[10].Count != 1 {
+		t.Fatalf("faults = %v", faults)
+	}
+	if f := sink.fatals(); len(f) != 0 {
+		t.Fatalf("the world failed before %d ticks in a row: %v", stepFaultLimit, f)
+	}
+	if n := len(rec.errors()); n != 1 {
+		t.Fatalf("Error lines = %d, want 1, the others suppressed", n)
+	}
+	advance(t, w)
+	fatal := sink.fatals()
+	if len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Type != "entity collisions" || fatal[0].Count != stepFaultLimit {
+		t.Fatalf("Config.Fatal calls = %v, want one after %d ticks in a row", fatal, stepFaultLimit)
+	}
+	// The failed world simulates nothing.
+	ticked := spawns
+	advance(t, w)
+	if spawns != ticked {
+		t.Fatal("the failed world ticked its subsystems")
+	}
+}
+
+// redstonePanicSource is a redstone source whose power panics.
+type redstonePanicSource struct{ cancelBatchTestBlock }
+
+func (redstonePanicSource) RedstonePower(cube.Pos, *Tx, cube.Face) int { panic("test: redstone") }
+
+func TestRedstonePanicDropsItsInput(t *testing.T) {
+	var sink faultSink
+	rec := newFaultRecorder()
+	source := redstonePanicSource{cancelBatchTestBlock{name: "test:redstone_panicking", id: 61, tick: func(cube.Pos, *Tx) {}}}
+	consumer := redstoneCancellationConsumer{}
+	registry := testBlockRegistry(source)
+	registry.RegisterBlockState(BlockState{Name: "test:redstone_consumer", Properties: map[string]any{"powered": false}})
+	registry.RegisterBlockState(BlockState{Name: "test:redstone_consumer", Properties: map[string]any{"powered": true}})
+	registry.RegisterBlock(consumer)
+	registry.RegisterBlock(redstoneCancellationConsumer{Powered: true})
+	w := sink.configure(Config{Synchronous: true, Blocks: registry, RandomTickSpeed: -1}, rec).New()
+	defer func() { _ = w.Close() }()
+	<-w.Exec(func(tx *Tx) {
+		tx.SetBlock(cube.Pos{0, 64, 0}, consumer, nil)
+		tx.SetBlock(cube.Pos{1, 64, 0}, source, nil)
+	})
+	advance(t, w)
+	advance(t, w)
+	faults := sink.all(FaultSubsystem)
+	if len(faults) != 1 || faults[0].Type != "redstone" || faults[0].Value != "test: redstone" {
+		t.Fatalf("faults = %v, want one of redstone", sink.all(0))
+	}
+	if n := len(w.redstone.dirty); n != 0 {
+		t.Fatalf("%d positions left to evaluate after the panic", n)
+	}
 }

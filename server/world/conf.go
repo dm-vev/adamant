@@ -140,8 +140,13 @@ type Config struct {
 	// goroutines at once and must not wait for the World.
 	Fault func(f Fault)
 	// Fatal, if not nil, is called once, with the first panic the World
-	// could not blame on anything. A server stops in order on it, saving
-	// what it can.
+	// could not blame on anything, as one of the bookkeeping of its tick or
+	// one of a subsystem of the tick in 20 ticks in a row. The World then
+	// failed: it no longer simulates, and its ticks only have the
+	// controllers of its players act, so that their clients can leave it.
+	// Its transactions still run, and closing it still saves it. A server
+	// stops in order on it, saving what it can. It is called on the owner
+	// of the World, which it must not wait for.
 	Fatal func(f Fault)
 }
 
@@ -315,11 +320,13 @@ func (conf Config) New() *World {
 			go w.generatorWorker()
 		}
 	}
+	// The first tick is not guarded as the others are: a panic of it is one
+	// of constructing the World, which New undoes and raises.
 	if conf.Synchronous {
-		<-w.execTick(t.tick)
+		<-w.execTick(t.tickWorld)
 	} else {
 		c := make(chan struct{})
-		normalTransaction{c: c, f: t.tick, tick: true}.Run(w)
+		normalTransaction{c: c, f: t.tickWorld, tick: true}.Run(w)
 	}
 	if !conf.Synchronous {
 		w.queueing.Add(1)

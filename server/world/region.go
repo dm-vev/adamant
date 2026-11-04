@@ -414,7 +414,7 @@ func (t ticker) tickRegionPhase(tx *Tx, tick int64, groups [][]columnRef, afterB
 		r.tx.closed = true
 		if r.fatal != nil {
 			// What the regions share may be half changed.
-			tx.w.fatal(*r.fatal)
+			tx.w.fail(*r.fatal)
 		}
 		for i := 0; i >= 0; {
 			i = t.runRegionWorkFrom(tx, tick, r.deferred, i)
