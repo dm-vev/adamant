@@ -2514,7 +2514,7 @@ func (p *Player) SetBlockingDelay(duration time.Duration) {
 // returns immediately.
 // UseItemOnBlock does nothing if the block at the cube.Pos passed is of the type block.Air.
 func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3) {
-	if _, ok := p.tx.Block(pos).(block.Air); ok || !p.canReach(pos.Vec3Centre()) {
+	if _, ok := p.tx.Block(pos).(block.Air); ok || !p.canReachBlock(pos) {
 		// The client used its item on a block that does not exist server-side or one it couldn't reach. Stop trying
 		// to use the item immediately.
 		p.resendNearbyBlocks(pos, face)
@@ -2859,8 +2859,14 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 // immediately and the block will not be broken. StartBreaking will stop the breaking of any block that the
 // player might be breaking before this method is called.
 func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
+	if p.breaking && pos == p.breakingPos {
+		// The client continues breaking the block it breaks, as it says
+		// with ContinueDestroyBlock: the break keeps its start.
+		p.breakingFace = face
+		return
+	}
 	p.AbortBreaking()
-	if _, air := p.tx.Block(pos).(block.Air); air || !p.canReach(pos.Vec3Centre()) {
+	if _, air := p.tx.Block(pos).(block.Air); air || !p.canReachBlock(pos) {
 		// The block was either out of range or air, so it can't be broken by the player.
 		return
 	}
@@ -3009,7 +3015,7 @@ func (p *Player) PlaceBlock(pos cube.Pos, b world.Block, ctx *item.UseContext) {
 // placeBlock makes the player place the block passed at the position passed, granted it is within the range
 // of the player. A bool is returned indicating if a block was placed successfully.
 func (p *Player) placeBlock(pos cube.Pos, b world.Block, ignoreBBox bool) bool {
-	if !p.canReach(pos.Vec3Centre()) || !p.GameMode().AllowsEditing() {
+	if !p.canReachBlock(pos) || !p.GameMode().AllowsEditing() {
 		p.resendNearbyBlocks(pos, cube.Faces()...)
 		return false
 	}
@@ -3072,7 +3078,7 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 		// Don't do anything if the position broken is already air.
 		return
 	}
-	if !p.canReach(pos.Vec3Centre()) || !p.GameMode().AllowsEditing() {
+	if !p.canReachBlock(pos) || !p.GameMode().AllowsEditing() {
 		p.resendNearbyBlocks(pos)
 		return
 	}
@@ -4968,11 +4974,9 @@ func (p *Player) tryShieldBlock(dmg float64, totalDamage float64, src world.Dama
 }
 
 // canReach checks if a player can reach a position with its current range. The range depends on if the player
-// is either survival or creative mode.
+// is either survival or creative mode. Blocks are reached by canReachBlock, which the anti-cheat configures.
 func (p *Player) canReach(pos mgl64.Vec3) bool {
-	dist := entity.EyePosition(p).Sub(pos).Len()
-	return !p.Dead() && p.GameMode().AllowsInteraction() &&
-		(dist <= 8.0 || (dist <= 14.0 && p.GameMode().CreativeInventory()))
+	return p.canReachPoint(pos)
 }
 
 // Disconnect closes the player and removes it from the world.

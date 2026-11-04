@@ -14,9 +14,13 @@ import (
 
 // CanReach reports whether the player can reach pos: it is alive, in a game
 // mode that allows interaction, and its eyes are within 8 blocks of pos, or
-// within 14 in a game mode with the creative inventory.
+// within 14 in a game mode with the creative inventory. A player checked by
+// the anti-cheat reaches the block of pos by its BlockReach.
 func (p *Player) CanReach(pos mgl64.Vec3) bool {
-	return p.canReach(pos)
+	if p.anticheat() == nil {
+		return p.canReach(pos)
+	}
+	return p.canReachBlock(blockOf(pos))
 }
 
 // CanUseGameMasterBlocks reports whether the player may use the blocks of
