@@ -2152,7 +2152,7 @@
           PlayerColour: 0x00000000
     | 01000100400000000000005751000000000080
 -- player provider
-    saved Visitor (2535400000000043, 00000000-0000-4000-8000-000000005157): in Overworld at [3.5 -60 2.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 16, held slot 0
+    saved 00000000-0000-4000-8000-000000005157: Visitor (2535400000000043, 00000000-0000-4000-8000-000000005157): in Overworld at [3.5 -60 2.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 16, held slot 0
 -- server
     players online: 1 ["Golden"]
     Golden: by UUID true, by name true, by XUID true

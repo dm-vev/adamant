@@ -149,7 +149,8 @@ func (l *serverListener) Disconnect(c session.Conn, reason string) error {
 
 // goldenPlayers is the player.Provider of a server scenario: it keeps what
 // the server saves of a player in memory, gives it back when the player
-// joins again, and logs both.
+// joins again, and logs both, each with the UUID the server keys the
+// record by, which need not be the UUID of the player.
 type goldenPlayers struct {
 	mu     sync.Mutex
 	saved  map[uuid.UUID]player.Config
@@ -166,7 +167,7 @@ func newGoldenPlayers() *goldenPlayers {
 func (p *goldenPlayers) Save(id uuid.UUID, data player.Config, w *world.World) error {
 	p.mu.Lock()
 	p.saved[id] = data
-	p.log = append(p.log, "saved "+savedLine(data, w))
+	p.log = append(p.log, fmt.Sprintf("saved %s: %s", id, savedLine(data, w)))
 	p.mu.Unlock()
 	p.saves <- data.Name
 	return nil

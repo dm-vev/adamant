@@ -2053,8 +2053,8 @@
 -- Accept ended
 -- player provider, sorted
     provider closed
-    saved Golden (2535400000000042, 00000000-0000-4000-8000-00000000901d): in Overworld at [0.5 -60 0.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 0, held slot 0
-    saved Visitor (2535400000000043, 00000000-0000-4000-8000-000000005157): in Overworld at [0.5 -60 0.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 0, held slot 0
+    saved 00000000-0000-4000-8000-000000005157: Visitor (2535400000000043, 00000000-0000-4000-8000-000000005157): in Overworld at [0.5 -60 0.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 0, held slot 0
+    saved 00000000-0000-4000-8000-00000000901d: Golden (2535400000000042, 00000000-0000-4000-8000-00000000901d): in Overworld at [0.5 -60 0.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 0, held slot 0
 -- server
     players online: 0 []
     Golden: by UUID false, by name false, by XUID false
