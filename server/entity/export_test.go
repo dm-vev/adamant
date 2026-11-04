@@ -43,3 +43,18 @@ func DragonFindPath(tx *world.Tx, d *EnderDragon, start, end int, final *cube.Po
 
 // NewDragonBreathCloud returns a cloud of the dragon's breath.
 var NewDragonBreathCloud = newDragonBreathCloud
+
+// GhastlingWalkTarget returns the entity the brain of a ghastling flies it
+// to, nil if it flies to a block, and the speed modifier it flies at. It
+// reports false if the ghastling flies nowhere.
+func GhastlingWalkTarget(tx *world.Tx, g *HappyGhast) (world.Entity, float64, bool) {
+	v, ok := g.state().br.get(memWalkTarget)
+	if !ok {
+		return nil, 0, false
+	}
+	wt := v.(walkTarget)
+	if t, ok := wt.target.(*entityTracker); ok {
+		return t.entity(tx), wt.speed, true
+	}
+	return nil, wt.speed, true
+}

@@ -140,23 +140,56 @@ func TestHappyGhastsFollowSnowballs(t *testing.T) {
 func TestGhastlingsFollowPlayers(t *testing.T) {
 	t.Parallel()
 	w := happyGhastWorld(t)
-	var h *world.EntityHandle
-	player := mgl64.Vec3{6.5, 64, .5}
+	var (
+		h *world.EntityHandle
+		p *player.Player
+	)
+	pos := mgl64.Vec3{6.5, 64, .5}
 	<-w.Exec(func(tx *world.Tx) {
-		h = spawnHappyGhast(t, tx, mgl64.Vec3{.5, 66, .5}, map[string]any{"Age": int32(-24000)})
-		addSurvivalPlayer(tx, player)
+		// LivingEntity.aiStep zeroes each axis of the velocity of a mob
+		// below 0.003. A ghastling flying at 1.1 times its speed speeds up
+		// by 0.0046 a tick and keeps .91 of it, so heading within a degree
+		// of a diagonal it keeps none and creeps at 0.0046 blocks a tick.
+		// From where it may first fly off to, its path to the player may
+		// run diagonally, as in Java. In a corridor along x, a block wide,
+		// it always heads along x.
+		for x := -9; x <= 9; x++ {
+			for y := 64; y <= 68; y++ {
+				for z := -1; z <= 1; z++ {
+					if x == -9 || x == 9 || y == 68 || z != 0 {
+						tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+					}
+				}
+			}
+		}
+		h = spawnHappyGhast(t, tx, mgl64.Vec3{-7.5, 66, .5}, map[string]any{"Age": int32(-24000)})
+		p = addSurvivalPlayer(tx, pos)
 	})
-	// Ghastlings fly about a block a second, and may first fly ten blocks
-	// away.
+	// Before its sensors first see the player, the ghastling may fly off
+	// to a spot up to ten blocks away along x, and only towards the player
+	// from the end of the corridor, so it is still four blocks or more from
+	// the player, within the three to sixteen BabyFollowAdult follows from.
+	// It must get there while BabyFollowAdult flies it to the player at 1.1
+	// times its speed, a block a second: random flights may pass by the
+	// player too.
+	following := false
 	for range 1200 {
 		w.AdvanceTick()
 		near := false
-		<-w.Exec(func(tx *world.Tx) { near = happyGhast(tx, h).Position().Sub(player).Len() < 3.5 })
-		if near {
+		<-w.Exec(func(tx *world.Tx) {
+			g := happyGhast(tx, h)
+			// MoveToTargetSink forgets the walk target the tick the
+			// ghastling got close enough.
+			if target, speed, ok := entity.GhastlingWalkTarget(tx, g); ok {
+				following = target != nil && target.H() == p.H() && speed == 1.1
+			}
+			near = g.Position().Sub(pos).Len() < 3.5
+		})
+		if near && following {
 			return
 		}
 	}
-	t.Fatal("ghastling did not follow a player six blocks away in a minute")
+	t.Fatal("ghastling did not follow a player fourteen blocks away in a minute")
 }
 
 // TestGhastlingsGrowUpOnSnowballs checks Animal.mobInteract for happy
