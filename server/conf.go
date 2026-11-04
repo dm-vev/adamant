@@ -245,6 +245,9 @@ func (conf Config) New() *Server {
 	}); ok {
 		srv.operators, srv.bans = access.adminAccess()
 	}
+	if access, ok := conf.Allower.(interface{ knownAccess() *knownPlayers }); ok && conf.IdentityKey == identity.XUID {
+		srv.known = access.knownAccess()
+	}
 	for _, lf := range conf.Listeners {
 		l, err := lf(conf, srv)
 		if err != nil {
@@ -525,6 +528,11 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return conf, fmt.Errorf("load bans: %w", err)
 	}
 	a := admission{mode: conf.IdentityKey, log: log, whitelist: wl, operators: ops, bans: bans}
+	if conf.IdentityKey == identity.XUID {
+		if a.known, _, err = loadKnownPlayers(filepath.Join(baseDir, "known-players.json"), log); err != nil {
+			return conf, fmt.Errorf("load known players: %w", err)
+		}
+	}
 	a.warnHeld()
 	conf.Allower = a
 	if uc.Players.SaveData {

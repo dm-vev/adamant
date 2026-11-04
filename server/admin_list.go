@@ -312,6 +312,9 @@ type admission struct {
 	whitelist *Whitelist
 	operators *operatorsList
 	bans      *banList
+	// known are the accounts a server keyed by XUID has seen; nil on one
+	// keyed by name.
+	known *knownPlayers
 }
 
 // errNoAccount is the message a server keyed by XUID refuses a player
@@ -464,5 +467,6 @@ func (a admission) warnHeld() {
 // admission, which the Server changes through its admin API.
 func (a admission) adminAccess() (*operatorsList, *banList) { return a.operators, a.bans }
 func (a admission) underlyingWhitelist() *Whitelist         { return a.whitelist }
+func (a admission) knownAccess() *knownPlayers              { return a.known }
 
 var _ Allower = admission{}

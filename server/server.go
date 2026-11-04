@@ -40,9 +40,12 @@ type Server struct {
 	dimensions       map[world.Dimension]*world.World
 	defaultDimension world.Dimension
 
-	whitelist   *Whitelist
-	operators   *operatorsList
-	bans        *banList
+	whitelist *Whitelist
+	operators *operatorsList
+	bans      *banList
+	// known are the accounts the server has seen join, if it is keyed by
+	// XUID.
+	known       *knownPlayers
 	idleTimeout atomic.Int64
 	idleStop    chan struct{}
 	listeners   []Listener
@@ -430,6 +433,9 @@ func (srv *Server) close() {
 	if err := srv.conf.PlayerProvider.Close(); err != nil {
 		srv.conf.Log.Error("Close player provider: " + err.Error())
 	}
+	if err := srv.known.close(); err != nil {
+		srv.conf.Log.Error("Write the known players: " + err.Error())
+	}
 
 	srv.conf.Log.Debug("Closing worlds...")
 	closed := make(map[*world.World]struct{})
@@ -510,10 +516,15 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 		// The Allower of the lists refuses such a login too: a listener
 		// that lets one in without it never lets a self-named XUID match an
 		// entry.
-		if _, ok := accountKey(login.Identity); !ok {
+		k, ok := accountKey(login.Identity)
+		if !ok {
 			j.Reject(text.Literal(errNoAccount))
 			srv.conf.Log.Debug("spawn failed: no Xbox Live account vouched for", "raddr", login.Addr)
 			return
+		}
+		if srv.known != nil {
+			x, _ := k.XUID()
+			srv.known.seen(x, login.Identity.Name, login.Identity.UUID)
 		}
 	}
 	id := login.Identity.UUID
