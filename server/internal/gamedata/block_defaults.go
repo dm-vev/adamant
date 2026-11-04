@@ -200,6 +200,74 @@ func BlockStateID(name string, properties map[string]any) (uint32, error) {
 	return codec.offset + state + 1, nil
 }
 
+// CanonicalBlockStateID returns the ID of a Java block state whose properties
+// have the types BlockStateFromID gives them: string, bool or int32. Missing
+// properties take their default. It reports false, without allocating, for a
+// state with an unknown block or property, or a value of another type or out
+// of its domain; BlockStateID may still read such a state.
+func CanonicalBlockStateID(name string, properties map[string]any) (uint32, bool) {
+	block, ok := blockIndex(name)
+	if !ok {
+		return 0, false
+	}
+	defaults := defaultBlockProperties[block]
+	codec := &blockStateCodecs[block]
+	var state uint32
+	matched := 0
+	for i, propertyID := range blockPropertyDomains[block] {
+		domain := &propertyDomains[propertyID]
+		var index uint32
+		if value, exists := properties[domain.name]; exists {
+			matched++
+			if index, ok = canonicalValueIndex(domain, value); !ok {
+				return 0, false
+			}
+		} else {
+			var err error
+			if index, err = propertyValueIndex(domain, defaults[domain.name]); err != nil {
+				return 0, false
+			}
+		}
+		state += index * codec.stride[i]
+	}
+	if matched != len(properties) {
+		return 0, false
+	}
+	return codec.offset + state + 1, true
+}
+
+// canonicalValueIndex returns the index of a value of a property's own type
+// in its domain.
+func canonicalValueIndex(domain *propertyDomain, value any) (uint32, bool) {
+	switch domain.kind {
+	case 'b':
+		b, ok := value.(bool)
+		if !ok {
+			return 0, false
+		}
+		if b {
+			return 1, true
+		}
+		return 0, true
+	case 'i':
+		n, ok := value.(int32)
+		if !ok || n < domain.min || n > domain.max {
+			return 0, false
+		}
+		return uint32(int64(n) - int64(domain.min)), true
+	default:
+		text, ok := value.(string)
+		if !ok {
+			return 0, false
+		}
+		i := sort.SearchStrings(domain.values, text)
+		return uint32(i), i < len(domain.values) && domain.values[i] == text
+	}
+}
+
+// BlockStateCount returns the number of Java block states, the greatest ID.
+func BlockStateCount() uint32 { return blockStateCount }
+
 // BlockStateFromID decodes a canonical process-local block-state ID.
 func BlockStateFromID(id uint32) (name string, properties map[string]any, ok bool) {
 	block, ok := blockStateIndex(id)

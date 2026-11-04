@@ -101,13 +101,75 @@ func (w *World) javaStateIDInColumn(c *Column, pos cube.Pos) uint32 {
 
 // ResolveState translates a Java block state to its Bedrock palette
 // representation. Java properties are never passed directly to the native
-// registry: the adapter maps each supported state family explicitly.
+// registry: the rules of java_state_rules.go map each one. A
+// BasicBlockRegistry resolves each Java state once and then looks it up by
+// its ID, for states whose properties have the types gamedata gives them.
 func ResolveState(registry chunk.BlockRegistry, state BlockState) (NativeState, error) {
+	basic, cached := registry.(*BasicBlockRegistry)
+	var id uint32
+	if cached {
+		if id, cached = gamedata.CanonicalBlockStateID(state.Name, state.Properties); cached {
+			if native, ok := basic.resolvedJavaState(id); ok {
+				return native, nil
+			}
+		}
+	}
 	native, err := resolveJavaState(registry, state)
 	if err != nil {
 		return NativeState{}, err
 	}
-	return native.WithCanonicalState(registry, state)
+	if native, err = native.WithCanonicalState(registry, state); err == nil && cached {
+		basic.storeResolvedJavaState(id, native)
+	}
+	return native, err
+}
+
+// The bits of a resolved Java state in BasicBlockRegistry.javaNativeStates:
+// both layers, whether the state retains its source ID, and whether it was
+// resolved at all.
+const (
+	resolvedLayerMask = 1<<31 - 1
+	resolvedRetained  = 1 << 62
+	resolvedKnown     = 1 << 63
+)
+
+// resolvedJavaState returns what ResolveState stored for a Java state ID.
+func (br *BasicBlockRegistry) resolvedJavaState(id uint32) (NativeState, bool) {
+	slots := br.javaNativeStates.Load()
+	if slots == nil || id >= uint32(len(*slots)) {
+		return NativeState{}, false
+	}
+	v := (*slots)[id].Load()
+	if v&resolvedKnown == 0 {
+		return NativeState{}, false
+	}
+	state := NativeState{Block: uint32(v & resolvedLayerMask), Liquid: uint32(v >> 31 & resolvedLayerMask)}
+	if v&resolvedRetained != 0 {
+		state.StateID = id
+	}
+	return state, true
+}
+
+// storeResolvedJavaState stores the native state of a Java state ID. A state
+// retains at most its own ID, which is all a slot can hold.
+func (br *BasicBlockRegistry) storeResolvedJavaState(id uint32, state NativeState) {
+	if state.Block > resolvedLayerMask || state.Liquid > resolvedLayerMask || state.StateID != 0 && state.StateID != id {
+		return
+	}
+	slots := br.javaNativeStates.Load()
+	if slots == nil {
+		fresh := make([]atomic.Uint64, gamedata.BlockStateCount()+1)
+		br.javaNativeStates.CompareAndSwap(nil, &fresh)
+		slots = br.javaNativeStates.Load()
+	}
+	if id >= uint32(len(*slots)) {
+		return
+	}
+	v := uint64(resolvedKnown) | uint64(state.Liquid)<<31 | uint64(state.Block)
+	if state.StateID != 0 {
+		v |= resolvedRetained
+	}
+	(*slots)[id].Store(v)
 }
 
 // CanonicalState returns the Java block-state view of a native block and liquid

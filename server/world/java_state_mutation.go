@@ -43,10 +43,9 @@ func applyJavaActorState(b Block, id uint32) Block {
 // ResolveStateID projects a canonical Java state through the registry's cached
 // native codec. Invalid or unmappable source states panic, as with world writes.
 func ResolveStateID(registry chunk.BlockRegistry, id uint32) NativeState {
-	basic, cached := registry.(*BasicBlockRegistry)
-	if cached {
-		if state, ok := basic.javaNativeStates.Load(id); ok {
-			return state.(NativeState)
+	if basic, cached := registry.(*BasicBlockRegistry); cached {
+		if state, ok := basic.resolvedJavaState(id); ok {
+			return state
 		}
 	}
 	name, properties, ok := gamedata.BlockStateFromID(id)
@@ -56,9 +55,6 @@ func ResolveStateID(registry chunk.BlockRegistry, id uint32) NativeState {
 	state, err := ResolveState(registry, BlockState{Name: name, Properties: properties})
 	if err != nil {
 		panic(err)
-	}
-	if cached {
-		basic.javaNativeStates.Store(id, state)
 	}
 	return state
 }

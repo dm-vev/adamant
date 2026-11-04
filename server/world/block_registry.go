@@ -112,9 +112,12 @@ func (b blockInfo) getLightFilter() uint8 {
 
 // BasicBlockRegistry is the default BlockRegistry implementation used by Dragonfly.
 type BasicBlockRegistry struct {
-	mu               sync.Mutex
-	javaStateIDs     sync.Map // Native layer pair -> canonical Java state ID.
-	javaNativeStates sync.Map // Canonical Java state ID -> native layer pair.
+	mu           sync.Mutex
+	javaStateIDs sync.Map // Native layer pair -> canonical Java state ID.
+	// javaNativeStates holds, by canonical Java state ID, the native state
+	// ResolveState gave it, packed as the resolved* bits say; zero is
+	// unresolved.
+	javaNativeStates atomic.Pointer[[]atomic.Uint64]
 	// dryJavaStateIDs holds, by primary runtime ID, the canonical Java state ID
 	// plus one of the layer pair with an air liquid layer; zero is unresolved.
 	dryJavaStateIDs atomic.Pointer[[]atomic.Uint32]

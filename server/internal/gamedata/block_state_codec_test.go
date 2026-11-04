@@ -120,3 +120,58 @@ func TestBlockStateIDsAreDenseAndDistinct(t *testing.T) {
 		}
 	}
 }
+
+// TestCanonicalBlockStateID requires CanonicalBlockStateID to agree with
+// BlockStateID on every state, whole and with each property left out, and to
+// refuse what only BlockStateID reads.
+func TestCanonicalBlockStateID(t *testing.T) {
+	for id := uint32(1); id <= BlockStateCount(); id++ {
+		name, properties, _ := BlockStateFromID(id)
+		if got, ok := CanonicalBlockStateID(name, properties); !ok || got != id {
+			t.Fatalf("ID %d %v = (%d, %t)", id, properties, got, ok)
+		}
+		for key := range properties {
+			partial := make(map[string]any, len(properties))
+			for k, v := range properties {
+				if k != key {
+					partial[k] = v
+				}
+			}
+			want, _ := BlockStateID(name, partial)
+			if got, ok := CanonicalBlockStateID(name, partial); !ok || got != want {
+				t.Fatalf("ID %d without %s = (%d, %t), want %d", id, key, got, ok, want)
+			}
+		}
+	}
+	if got, ok := CanonicalBlockStateID("oak_log", nil); !ok || got != mustBlockStateID(t, "minecraft:oak_log", nil) {
+		t.Fatalf("bare name = (%d, %t)", got, ok)
+	}
+	for _, refused := range []struct {
+		name       string
+		properties map[string]any
+	}{
+		{"minecraft:oak_log", map[string]any{"axis": "w"}},
+		{"minecraft:oak_log", map[string]any{"colour": "red"}},
+		{"minecraft:lantern", map[string]any{"hanging": "true"}},
+		{"minecraft:lantern", map[string]any{"hanging": uint8(1)}},
+		{"minecraft:wheat", map[string]any{"age": 3}},
+		{"minecraft:wheat", map[string]any{"age": int32(8)}},
+		{"minecraft:wheat", map[string]any{"age": "3"}},
+		{"minecraft:no_such_block", nil},
+		{"other:oak_log", nil},
+		{"", nil},
+	} {
+		if got, ok := CanonicalBlockStateID(refused.name, refused.properties); ok {
+			t.Errorf("%s %v = %d, want refused", refused.name, refused.properties, got)
+		}
+	}
+}
+
+func mustBlockStateID(t *testing.T, name string, properties map[string]any) uint32 {
+	t.Helper()
+	id, err := BlockStateID(name, properties)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
