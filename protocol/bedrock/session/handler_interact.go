@@ -29,11 +29,7 @@ func (h *InteractHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Con
 		if !ok {
 			return nil
 		}
-		if dismountable, ok := e.(interface {
-			Dismount(tx *world.Tx, passenger world.Entity)
-		}); ok {
-			dismountable.Dismount(tx, c)
-		}
+		c.LeaveVehicle(e)
 	case v2193.InteractActionMouseOverEntity:
 		// We don't need this action.
 	case v2193.InteractActionOpenInventory:

@@ -5,7 +5,6 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -61,30 +60,10 @@ func (h PlayerAuthInputHandler) handleMovement(pk *v2193.PlayerAuthInputPacket, 
 		}
 	}
 
-	var ridingHandle *world.EntityHandle
-	if rider, ok := c.(entity.Rider); ok {
-		ridingHandle = rider.Riding()
-	}
-	if ridingHandle != nil {
+	jumping := pk.InputData.Has(v2193.InputFlagJumping) || pk.InputData.Has(v2193.InputFlagJumpDown)
+	if c.SteerVehicle(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]), jumping) {
+		// The player steers what it rides rather than move itself.
 		deltaPos = mgl64.Vec3{}
-		if ridden, ok := ridingHandle.Entity(tx); ok {
-			if input, ok := ridden.(entity.VehicleInput); ok {
-				allowVehicleInput := true
-				if controller, ok := ridden.(entity.VehicleController); ok {
-					allowVehicleInput = controller.ControlsVehicle(c)
-				}
-				if allowVehicleInput {
-					if withRider, ok := ridden.(entity.VehicleInputWithRider); ok {
-						withRider.SetVehicleInputFrom(c, float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
-					} else {
-						input.SetVehicleInput(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
-					}
-					if jump, ok := ridden.(entity.VehicleJumpInput); ok {
-						jump.SetVehicleJumping(pk.InputData.Has(v2193.InputFlagJumping) || pk.InputData.Has(v2193.InputFlagJumpDown))
-					}
-				}
-			}
-		}
 	}
 	if mgl64.FloatEqual(deltaPos.Len(), 0) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0) {
 		// The PlayerAuthInput packet is sent every tick, so don't do anything if the position and rotation
@@ -183,9 +162,10 @@ func (h PlayerAuthInputHandler) handleActions(pk *v2193.PlayerAuthInputPacket, s
 
 // handleInputFlags handles the toggleable input flags set in a PlayerAuthInput packet.
 func (h PlayerAuthInputHandler) handleInputFlags(flags v2193.InputFlags, s *Session, tx *world.Tx, c Controllable) {
-	dashedByJump := h.tryDash(flags, tx, c)
-	jumpedByVehicle := !dashedByJump && h.tryRideJump(flags, tx, c)
-	dismountedByJump := !dashedByJump && !jumpedByVehicle && h.tryDismount(flags, tx, c)
+	jumped := flags.Has(v2193.InputFlagStartJumping)
+	dashedByJump := jumped && c.DashVehicle()
+	jumpedByVehicle := !dashedByJump && jumped && c.RideJump()
+	dismountedByJump := !dashedByJump && !jumpedByVehicle && h.tryDismount(flags, c)
 	if flags.Has(v2193.InputFlagStartSprinting) {
 		c.StartSprinting()
 	}
@@ -243,66 +223,13 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags v2193.InputFlags, s *Sess
 	}
 }
 
-func (h PlayerAuthInputHandler) tryRideJump(flags v2193.InputFlags, tx *world.Tx, c Controllable) bool {
-	if !flags.Has(v2193.InputFlagStartJumping) {
-		return false
-	}
-	rider, ok := c.(entity.Rider)
-	if !ok || rider.Riding() == nil {
-		return false
-	}
-	ridden, ok := rider.Riding().Entity(tx)
-	if !ok {
-		return false
-	}
-	jumper, ok := ridden.(interface{ RideJump() bool })
-	return ok && jumper.RideJump()
-}
-
-func (h PlayerAuthInputHandler) tryDash(flags v2193.InputFlags, tx *world.Tx, c Controllable) bool {
-	if !flags.Has(v2193.InputFlagStartJumping) {
-		return false
-	}
-	rider, ok := c.(entity.Rider)
-	if !ok {
-		return false
-	}
-	handle := rider.Riding()
-	if handle == nil {
-		return false
-	}
-	ridden, ok := handle.Entity(tx)
-	if !ok {
-		return false
-	}
-	dashable, ok := ridden.(interface {
-		Dash(*world.Tx, world.Entity) bool
-	})
-	return ok && dashable.Dash(tx, c)
-}
-
-func (h PlayerAuthInputHandler) tryDismount(flags v2193.InputFlags, tx *world.Tx, c Controllable) bool {
+// tryDismount dismounts the player from what it rides when its client
+// sneaks or jumps, and reports whether it dismounted by jumping.
+func (h PlayerAuthInputHandler) tryDismount(flags v2193.InputFlags, c Controllable) bool {
 	if !flags.Has(v2193.InputFlagStartSneaking) && !flags.Has(v2193.InputFlagStartJumping) {
 		return false
 	}
-	rider, ok := c.(entity.Rider)
-	if !ok {
-		return false
-	}
-	handle := rider.Riding()
-	if handle == nil {
-		return false
-	}
-	dismounted := false
-	if ridden, ok := handle.Entity(tx); ok {
-		if dismountable, ok := ridden.(interface {
-			Dismount(tx *world.Tx, passenger world.Entity)
-		}); ok {
-			dismountable.Dismount(tx, c)
-			dismounted = true
-		}
-	}
-	return dismounted && flags.Has(v2193.InputFlagStartJumping)
+	return c.DismountVehicle() && flags.Has(v2193.InputFlagStartJumping)
 }
 
 // handleUseItemData handles the v2193.PlayerInventoryAction found in a PlayerAuthInput packet.

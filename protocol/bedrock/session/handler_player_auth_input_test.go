@@ -242,6 +242,9 @@ func (c *unchangedControllable) Move(delta mgl64.Vec3, _, _ float64) {
 func (c *unchangedControllable) Sleeping() (cube.Pos, bool) { return cube.Pos{}, c.sleeping }
 func (*unchangedControllable) Gliding() bool                { return false }
 
+// SteerVehicle reports that the controllable rides nothing.
+func (*unchangedControllable) SteerVehicle(float64, float64, bool) bool { return false }
+
 type offsetTestType struct{}
 
 func (offsetTestType) Open(*world.Tx, *world.EntityHandle, *world.EntityData) world.Entity {

@@ -25,7 +25,6 @@ protocol/bedrock/session/handler_crafting.go (*world.Tx).LockMap
 protocol/bedrock/session/handler_crafting.go (*world.Tx).ScaleMap
 protocol/bedrock/session/handler_emote.go (world.Viewer).ViewEmote
 protocol/bedrock/session/handler_grindstone.go (*world.Tx).AddEntity
-protocol/bedrock/session/handler_interact.go (interface).Dismount
 protocol/bedrock/session/handler_item_stack_request.go (*inventory.Inventory).SetItem
 protocol/bedrock/session/handler_item_stack_request.go (*inventory.Inventory).SetItem
 protocol/bedrock/session/handler_item_stack_request.go (*world.Tx).AddEntity
@@ -38,12 +37,6 @@ protocol/bedrock/session/handler_item_stack_request.go (session.smelter).ResetEx
 protocol/bedrock/session/handler_item_stack_request.go block.NotifyComparatorUpdate
 protocol/bedrock/session/handler_item_stack_request.go block.NotifyComparatorUpdate
 protocol/bedrock/session/handler_merchant.go (entity.Merchant).CompleteMerchantTrade
-protocol/bedrock/session/handler_player_auth_input.go (entity.VehicleInput).SetVehicleInput
-protocol/bedrock/session/handler_player_auth_input.go (entity.VehicleInputWithRider).SetVehicleInputFrom
-protocol/bedrock/session/handler_player_auth_input.go (entity.VehicleJumpInput).SetVehicleJumping
-protocol/bedrock/session/handler_player_auth_input.go (interface).Dash
-protocol/bedrock/session/handler_player_auth_input.go (interface).Dismount
-protocol/bedrock/session/handler_player_auth_input.go (interface).RideJump
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc

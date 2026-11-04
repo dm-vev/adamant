@@ -104,6 +104,12 @@ type Controllable interface {
 	StopGliding()
 	Jump()
 
+	SteerVehicle(strafe, forward float64, jumping bool) (riding bool)
+	DashVehicle() bool
+	RideJump() bool
+	DismountVehicle() bool
+	LeaveVehicle(e world.Entity)
+
 	StartBreaking(pos cube.Pos, face cube.Face)
 	ContinueBreaking(face cube.Face)
 	FinishBreaking()
