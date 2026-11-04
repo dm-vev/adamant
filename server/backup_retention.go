@@ -47,6 +47,10 @@ func (b *backups) list() ([]BackupInfo, error) {
 			if err != nil || json.Unmarshal(data, &f) != nil {
 				continue
 			}
+		case strings.HasSuffix(e.Name(), zipExtension):
+			if f, err = readArchiveFile(path); err != nil {
+				continue
+			}
 		default:
 			continue
 		}
@@ -154,7 +158,7 @@ func (b *backups) diskFree(path string) (uint64, bool, error) {
 // estimate returns about how many bytes the backup of the world in the
 // folder dir takes on the disk of the backup folder: the files of the world
 // but its tables if they are hard-linked, as on the same file system, or
-// all of them.
+// all of them; and, for an archive, the world again.
 func (b *backups) estimate(dir string) (int64, error) {
 	var tables, rest int64
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -181,6 +185,10 @@ func (b *backups) estimate(dir string) (int64, error) {
 	need := rest
 	if !sameDevice(dir, b.srv.conf.Backup.Folder) {
 		need += tables
+	}
+	if b.srv.conf.Backup.Format == BackupZip {
+		// The archive, written while the copy it is made of exists.
+		need += tables + rest
 	}
 	return need, nil
 }
@@ -215,7 +223,12 @@ func (srv *Server) VerifyBackup(name string, full bool) (BackupInfo, error) {
 		return BackupInfo{}, fmt.Errorf("%w: %q", ErrBackupNotFound, name)
 	}
 	info := list[i]
-	rec, err := mcdb.VerifyBackup(filepath.Join(info.Path, backupWorld), full)
+	var rec mcdb.CheckpointRecord
+	if info.Format == BackupZip {
+		rec, err = srv.backups.verifyArchive(info.Path, full)
+	} else {
+		rec, err = mcdb.VerifyBackup(filepath.Join(info.Path, backupWorld), full)
+	}
 	if err != nil {
 		return info, fmt.Errorf("verify backup %s: %w", name, err)
 	}
@@ -234,6 +247,6 @@ func (b *backups) sweepAtStart() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.running == nil && !b.closed {
-		b.sweep()
+		b.sweep(partialPrefix, verifyPrefix)
 	}
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"archive/zip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,6 +25,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
+	"github.com/df-mc/goleveldb/leveldb/opt"
 )
 
 // backupConfig returns the Config of a server saving its world, players and
@@ -362,7 +364,8 @@ func probeOwner(w *world.World, stop <-chan struct{}) (longest time.Duration, n 
 
 // BenchmarkBackupStall backs up a running server whose world holds
 // ADAMANT_BENCH_COLUMNS terrain columns (2,000 by default), in
-// ADAMANT_BENCH_DIR if set, without and with the checkpoint first, while a
+// ADAMANT_BENCH_DIR if set, without and with the checkpoint first, and as an
+// archive, while a
 // probe runs a transaction on the owner of the world about every
 // millisecond. It reports the longest the probe waited during the backups,
 // and during as long without one, and the CPU time of the process per
@@ -396,13 +399,13 @@ func BenchmarkBackupStall(b *testing.B) {
 	srv.Listen()
 	defer srv.Close()
 	w := srv.World()
-	for _, saveFirst := range []bool{false, true} {
-		name := "snapshot"
-		if saveFirst {
-			name = "checkpoint+snapshot"
-		}
-		b.Run(name, func(b *testing.B) {
-			srv.conf.Backup.SaveFirst = saveFirst
+	for _, bc := range []struct {
+		name      string
+		saveFirst bool
+		format    BackupFormat
+	}{{"snapshot", false, BackupFolder}, {"checkpoint+snapshot", true, BackupFolder}, {"zip", false, BackupZip}} {
+		b.Run(bc.name, func(b *testing.B) {
+			srv.conf.Backup.SaveFirst, srv.conf.Backup.Format = bc.saveFirst, bc.format
 			var stall, idle, cpu time.Duration
 			var bytes int64
 			for b.Loop() {
@@ -474,5 +477,120 @@ func TestBackupSchedule(t *testing.T) {
 	}
 	if _, err := jt.srv.Backup(context.Background(), Actor{Kind: ActorConsole}, ""); err != nil {
 		t.Errorf("a backup asked for while saving is off: %v", err)
+	}
+}
+
+// TestMcworldZip backs up, as .mcworld archives, a server whose world has
+// tables: an archive holds the world at its root, its tables stored and its
+// other files deflated, with adamant-backup.json and the admin lists; the
+// server lists it, verifies it, and deletes the archives Keep keeps no
+// more; unpacked without the adamant- entries, it opens as the world at its
+// checkpoint.
+func TestMcworldZip(t *testing.T) {
+	dir := t.TempDir()
+	db, err := mcdb.Config{Log: slog.New(slog.DiscardHandler), LDBOptions: &opt.Options{WriteBuffer: 64 << 10}}.Open(filepath.Join(dir, "world"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range 200 {
+		if err := db.StoreColumn(world.ChunkPos{int32(i % 16), int32(i / 16)}, world.Overworld, stallColumn(i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ops, err := loadOperators(filepath.Join(dir, "ops.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conf := Config{WorldProvider: db, PlayerProvider: playerdb.NewWorldProvider(db, nil), IdentityKey: identity.Name,
+		Allower: admission{mode: identity.Name, operators: ops, bans: &banList{ips: map[string]banEntry{}}, whitelist: &Whitelist{}},
+		Backup:  BackupConfig{Folder: filepath.Join(dir, "backups"), Format: BackupZip, Keep: 2, SaveFirst: true, Verify: mcdb.VerifyFull}}
+	jt := newJoinTest(t, conf.PlayerProvider, conf)
+	jt.start()
+	defer jt.srv.Close()
+	if _, err := jt.srv.Op("Alice"); err != nil {
+		t.Fatal(err)
+	}
+	var infos []BackupInfo
+	for range 3 {
+		info, err := jt.srv.Backup(context.Background(), Actor{Kind: ActorAPI, Name: "test"}, "zip")
+		if err != nil {
+			t.Fatal(err)
+		}
+		infos = append(infos, info)
+	}
+	info := infos[2]
+	if info.Format != BackupZip || info.Path != filepath.Join(dir, "backups", info.Name+zipExtension) {
+		t.Fatalf("backup %+v, want a .mcworld archive", info)
+	}
+	list, err := jt.srv.Backups()
+	if err != nil || len(list) != 2 || list[0].Name != info.Name || list[0].Format != BackupZip || list[0].Checkpoint.ID != info.Checkpoint.ID {
+		t.Fatalf("the backups listed are %+v (%v), want the 2 newest archives", list, err)
+	}
+	if _, err := os.Lstat(infos[0].Path); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the oldest archive is left: %v", err)
+	}
+	entries, _ := os.ReadDir(filepath.Join(dir, "backups"))
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".") {
+			t.Errorf("%s is left in the backup folder", e.Name())
+		}
+	}
+	if _, err := jt.srv.VerifyBackup(info.Name, true); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := zip.OpenReader(info.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	methods := map[string]uint16{}
+	for _, f := range r.File {
+		methods[f.Name] = f.Method
+	}
+	tables := 0
+	for name, method := range methods {
+		switch {
+		case strings.HasSuffix(name, ".ldb"):
+			tables++
+			if method != zip.Store || !strings.HasPrefix(name, "db/") {
+				t.Errorf("table %s: method %d, want stored in db/", name, method)
+			}
+		case method != zip.Deflate:
+			t.Errorf("%s: method %d, want deflated", name, method)
+		case strings.HasPrefix(name, "world/"):
+			t.Errorf("%s: the world is not at the root of the archive", name)
+		}
+	}
+	for _, name := range []string{"level.dat", "db/CURRENT", archiveJSON, archiveAdmin + "ops.json"} {
+		if _, ok := methods[name]; !ok {
+			t.Errorf("the archive lacks %s: %v", name, methods)
+		}
+	}
+	if tables == 0 {
+		t.Error("the archive holds no table")
+	}
+	f, err := readArchiveFile(info.Path)
+	if err != nil || f.Format != "zip" || f.Name != info.Name {
+		t.Errorf("%s holds %+v (%v)", archiveJSON, f, err)
+	}
+
+	unpacked := filepath.Join(t.TempDir(), "restored")
+	if err := unzipWorld(info.Path, unpacked); err != nil {
+		t.Fatal(err)
+	}
+	if rec, err := mcdb.VerifyBackup(unpacked, true); err != nil || rec.ID != info.Checkpoint.ID {
+		t.Fatalf("the world unpacked verifies as checkpoint %d (%v), want %d", rec.ID, err, info.Checkpoint.ID)
+	}
+	restored, err := mcdb.Config{Log: slog.New(slog.DiscardHandler)}.Open(unpacked)
+	if err != nil {
+		t.Fatal(err)
+	}
+	col, err := restored.LoadColumn(world.ChunkPos{3, 5}, world.Overworld)
+	if err != nil || col == nil {
+		t.Errorf("a column of the world unpacked: %v", err)
+	}
+	if err := restored.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

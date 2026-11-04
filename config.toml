@@ -131,7 +131,8 @@
   Folder = "backups"
   # Format is how a backup is written: "folder", a copy of the world that opens as it is and shares the files
   # that did not change with the world and the other backups on the same disk, so that ten cost little more
-  # than one. Treat the backups as read-only: their files are those of the world.
+  # than one (treat the backups as read-only: their files are those of the world); or "zip", a .mcworld archive
+  # of the world, which the game imports, each as large as the world: use it with Folder on another disk.
   Format = "folder"
   # Interval is the time between scheduled backups, from the end of the last, such as "6h". The first is made
   # an interval after the server starts. "0s" schedules none.

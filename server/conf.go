@@ -555,7 +555,7 @@ type UserConfig struct {
 		Folder string
 		// Format is how a backup is written: "folder", a copy of the world
 		// that shares the files that did not change with the world and the
-		// other backups on the same disk.
+		// other backups on the same disk, or "zip", a .mcworld archive.
 		Format string
 		// Interval is the time between scheduled backups, from the end of
 		// one, such as "6h". "0s" schedules none.
@@ -665,7 +665,7 @@ func (uc UserConfig) checkBackup(p *config.Problems) {
 }
 
 // backupFormats are the values of Backup.Format.
-var backupFormats = []string{"folder"}
+var backupFormats = []string{"folder", "zip"}
 
 // inside reports whether the path sub is dir or lies inside it.
 func inside(sub, dir string) bool {
@@ -683,6 +683,9 @@ func inside(sub, dir string) bool {
 func (uc UserConfig) backupConfig() BackupConfig {
 	b := uc.Backup
 	conf := BackupConfig{Folder: cmp.Or(strings.TrimSpace(b.Folder), "backups"), Keep: b.Keep, SaveFirst: b.SaveFirst}
+	if strings.EqualFold(strings.TrimSpace(b.Format), "zip") {
+		conf.Format = BackupZip
+	}
 	if b.Enabled {
 		conf.Interval, _ = time.ParseDuration(cmp.Or(strings.TrimSpace(b.Interval), "0s"))
 	}

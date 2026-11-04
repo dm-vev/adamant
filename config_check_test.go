@@ -267,7 +267,7 @@ func TestConfigBounds(t *testing.T) {
 			{`"-1GiB"`, `Backup.MinFreeSpace = "-1GiB": want a size such as "512MiB" or "1GiB"`},
 		}},
 		{table: "Backup", key: "Format", values: []value{
-			{`"folder"`, ""}, {`"tar"`, `Backup.Format = "tar": want "folder"`},
+			{`"folder"`, ""}, {`" ZIP "`, ""}, {`"tar"`, `Backup.Format = "tar": want "folder" or "zip"`},
 		}},
 		{table: "Backup", key: "Verify", values: []value{
 			{`"record"`, ""}, {`" FULL "`, ""}, {`"off"`, ""},

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -28,10 +29,18 @@ const (
 	// that opens as it is, whose tables are hard-links to those of the
 	// world and of the other backups on the same file system.
 	BackupFolder BackupFormat = iota
+	// BackupZip writes a backup as a .mcworld archive, which the game
+	// imports as a world: the files of the world at its root, the tables of
+	// its database stored and the other files deflated, with backup.json as
+	// adamant-backup.json and the admin lists in adamant-admin/.
+	BackupZip
 )
 
-// String returns the name of f in config.toml: "folder".
+// String returns the name of f in config.toml: "folder" or "zip".
 func (f BackupFormat) String() string {
+	if f == BackupZip {
+		return "zip"
+	}
 	return "folder"
 }
 
@@ -343,7 +352,7 @@ func (b *backups) backup(ctx context.Context, snap worldSnapshotter, by Actor, r
 	if err := os.MkdirAll(conf.Folder, 0755); err != nil {
 		return info, fmt.Errorf("backup: %w", err)
 	}
-	b.sweep()
+	b.sweep(partialPrefix)
 	if !srv.playersInWorld {
 		if _, nop := srv.conf.PlayerProvider.(player.NopProvider); !nop {
 			b.log().Warn("The players are saved apart from the world: the backup holds the world and not them.")
@@ -371,7 +380,11 @@ func (b *backups) backup(ctx context.Context, snap worldSnapshotter, by Actor, r
 	}
 	if err == nil {
 		info.Took = b.clock().Sub(start)
-		err = b.publish(partial, &info)
+		if conf.Format == BackupZip {
+			err = b.publishArchive(ctx, partial, &info)
+		} else {
+			err = b.publish(partial, &info)
+		}
 	}
 	if err != nil {
 		_ = os.RemoveAll(partial)
@@ -385,14 +398,16 @@ func (b *backups) backup(ctx context.Context, snap worldSnapshotter, by Actor, r
 // published under its name.
 const partialPrefix = ".partial-"
 
-// sweep deletes the folders of backups a crash or a kill left unpublished.
-func (b *backups) sweep() {
+// sweep deletes what a crash or a kill left of backups unpublished, and of
+// archives being verified: the files and folders of the backup folder whose
+// names have one of the prefixes passed.
+func (b *backups) sweep(prefixes ...string) {
 	entries, err := os.ReadDir(b.srv.conf.Backup.Folder)
 	if err != nil {
 		return
 	}
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), partialPrefix) {
+		if slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(e.Name(), p) }) {
 			path := filepath.Join(b.srv.conf.Backup.Folder, e.Name())
 			if err := os.RemoveAll(path); err != nil {
 				b.log().Error("Delete an unfinished backup: "+err.Error(), "path", path)
@@ -444,7 +459,9 @@ func (b *backups) name(t time.Time, reason string) string {
 	name := base
 	for i := 2; ; i++ {
 		if _, err := os.Lstat(filepath.Join(b.srv.conf.Backup.Folder, name)); errors.Is(err, fs.ErrNotExist) {
-			return name
+			if _, err := os.Lstat(filepath.Join(b.srv.conf.Backup.Folder, name+zipExtension)); errors.Is(err, fs.ErrNotExist) {
+				return name
+			}
 		}
 		name = fmt.Sprintf("%s-%d", base, i)
 	}
@@ -500,6 +517,7 @@ func (b *backups) adminFiles() []string {
 	if srv.known != nil {
 		paths = append(paths, srv.known.path)
 	}
+	paths = slices.DeleteFunc(paths, func(p string) bool { return p == "" })
 	if len(paths) > 0 {
 		paths = append(paths, filepath.Join(filepath.Dir(paths[0]), "permissions.json"))
 	}
@@ -613,6 +631,9 @@ func infoOf(f backupFile, path string) BackupInfo {
 	info := BackupInfo{
 		Name: f.Name, Path: path, Created: f.Created, Reason: f.Reason, By: Actor{Kind: ActorKind(f.ByKind), Name: f.By},
 		Files: f.Files, Bytes: f.Bytes, Linked: f.Linked, Verified: f.Verified,
+	}
+	if f.Format == BackupZip.String() {
+		info.Format = BackupZip
 	}
 	info.Took, _ = time.ParseDuration(f.Took)
 	if f.Checkpoint != nil {

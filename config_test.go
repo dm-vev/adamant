@@ -178,7 +178,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.", "LogLevel": "WARN",
 			"Monitoring.Address": "127.0.0.1:9100", "Monitoring.Health": false, "Monitoring.Metrics": false, "Monitoring.Pprof": false,
 			"Monitoring.Token": "s3cret", "Monitoring.LiveTimeout": "3m0s", "Monitoring.ReadyTickAge": "10s",
-			"Backup.Folder": "archive", "Backup.Format": "folder", "Backup.Interval": "0s", "Backup.Keep": 3,
+			"Backup.Folder": "archive", "Backup.Format": "zip", "Backup.Interval": "0s", "Backup.Keep": 3,
 			"Backup.MaxAge": "720h0m0s", "Backup.MinFreeSpace": int64(512 << 20), "Backup.SaveFirst": false, "Backup.Verify": "full",
 			"Log.Format": "json", "Log.RateLimit": 0, "Log.Levels": map[string]string{
 				"anticheat": "DEBUG", "commands": "INFO", "generator": "ERROR", "network": "INFO", "player": "DEBUG",
@@ -508,7 +508,7 @@ const everyKeyChanged = `
 [Backup]
   Enabled = false
   Folder = "archive"
-  Format = " Folder "
+  Format = " Zip "
   Interval = "12h"
   Keep = 3
   MaxAge = "720h"

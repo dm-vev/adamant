@@ -337,6 +337,7 @@ server	const	ActorPlayer	server.ActorKind = "player"
 server	const	ActorRemote	server.ActorKind = "remote"
 server	const	ActorServer	server.ActorKind = "server"
 server	const	BackupFolder	server.BackupFormat = 0
+server	const	BackupZip	server.BackupFormat = 1
 server	const	Banned	server.List = 2
 server	const	DefaultBackupKeep	untyped int = 10
 server	const	DefaultSaveInterval	time.Duration = 300000000000
