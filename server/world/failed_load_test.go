@@ -135,6 +135,9 @@ func TestFailedLoadColumnNotSaved(t *testing.T) {
 			})
 			w.Save()
 			<-w.Exec(func(tx *world.Tx) {
+				// Saved since, the column beside it is stored by unloading
+				// only if it changed again.
+				tx.SetBlock(goodBlock, block.Dirt{}, nil)
 				if n, _, _ := w.CollectGarbage(tx); n != 2 {
 					t.Errorf("unloaded %d chunks, want 2", n)
 				}

@@ -220,7 +220,11 @@ type World struct {
 	scratchFocus         []ChunkPos
 	// saver writes saved columns in the background; it is nil for
 	// synchronous and read-only worlds, which write them at once.
-	saver                        *chunkSaver
+	saver *chunkSaver
+	// saves counts the columns saved, on the world goroutine. A column saved
+	// takes the count as its savedIn, which tells a failed write of that
+	// save from a later save of the column.
+	saves                        uint64
 	scratchInhabitedPlayers      []inhabitedTimePlayer
 	scratchPostProcessingColumns []columnRef
 
@@ -2423,6 +2427,7 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 			return
 		}
 		w.conf.Log.Debug("Saving chunks in memory to disk...")
+		w.restoreFailedSaves()
 		if f == nil {
 			w.saveChunks(tx)
 		} else {
@@ -2463,7 +2468,7 @@ func (w *World) saveChunks(tx *Tx) {
 			continue
 		}
 		w.finishGeneration(tx, c)
-		if !c.modified && len(c.Entities) == 0 || w.failedLoad(pos, c) {
+		if !c.needsSave() || w.failedLoad(pos, c) {
 			continue
 		}
 		columns = append(columns, persisted{pos: pos, c: c})
@@ -2478,13 +2483,52 @@ func (w *World) saveChunks(tx *Tx) {
 	})
 	for i, p := range columns {
 		col := w.columnTo(p.c, p.pos)
+		saved := w.markSaved(p.c)
 		if w.saver == nil {
-			w.writeColumn(p.pos, col)
+			if w.writeColumn(p.pos, col) != nil {
+				p.c.modified = true
+			}
 			continue
 		}
 		col.Chunk = clones[i]
 		col.PostProcessing = clonePostProcessing(col.PostProcessing)
-		w.saver.store(p.pos, col)
+		w.saver.store(p.pos, col, saved)
+	}
+}
+
+// needsSave reports whether c may hold changes the provider lacks. Entities
+// and block entities change without marking their column modified, as an
+// entity walking, the contents of a chest or a furnace smelting do, so a
+// column holding any is saved every time.
+func (c *Column) needsSave() bool {
+	return c.modified || len(c.Entities) != 0 || len(c.BlockEntities) != 0
+}
+
+// markSaved clears the modified flag of c, which is being saved, and
+// returns the number of the save, for the saver to report a failed write
+// with.
+func (w *World) markSaved(c *Column) uint64 {
+	w.saves++
+	c.modified, c.savedIn = false, w.saves
+	return w.saves
+}
+
+// restoreFailedSaves takes the saves the background saver failed to write.
+// A column still loaded and not saved since is modified again, so that the
+// next save writes it as it is then; a column unloaded since is written
+// again as it was saved.
+func (w *World) restoreFailedSaves() {
+	if w.saver == nil {
+		return
+	}
+	for pos, p := range w.saver.takeFailed() {
+		if c, ok := w.chunks[pos]; ok {
+			if c.savedIn == p.saved {
+				c.modified = true
+			}
+			continue
+		}
+		w.saver.store(pos, p.col, p.saved)
 	}
 }
 
@@ -2508,23 +2552,23 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 		return
 	}
 	w.finishGeneration(tx, c)
-	// Mutable entity state is not tracked by the block-column dirty flag.
-	// Loaded inventories and species state must be snapshotted even when no
-	// block or entity position has changed since the column was read.
-	if w.conf.ReadOnly || !c.modified && len(c.Entities) == 0 || w.failedLoad(pos, c) {
+	if w.conf.ReadOnly || !c.needsSave() || w.failedLoad(pos, c) {
 		return
 	}
 	c.compact()
 	col := w.columnTo(c, pos)
+	saved := w.markSaved(c)
 	if w.saver == nil {
-		w.writeColumn(pos, col)
+		if w.writeColumn(pos, col) != nil {
+			c.modified = true
+		}
 		return
 	}
 	if live {
 		col.Chunk = c.Chunk.Clone()
 		col.PostProcessing = clonePostProcessing(col.PostProcessing)
 	}
-	w.saver.store(pos, col)
+	w.saver.store(pos, col, saved)
 }
 
 // failedLoad reports whether c stands in for a column that failed to load,
@@ -2540,11 +2584,14 @@ func (w *World) failedLoad(pos ChunkPos, c *Column) bool {
 	return true
 }
 
-// writeColumn stores col through the provider.
-func (w *World) writeColumn(pos ChunkPos, col *chunk.Column) {
-	if err := w.conf.Provider.StoreColumn(pos, w.conf.Dim, col); err != nil {
+// writeColumn stores col through the provider, logging the error it fails
+// with.
+func (w *World) writeColumn(pos ChunkPos, col *chunk.Column) error {
+	err := w.conf.Provider.StoreColumn(pos, w.conf.Dim, col)
+	if err != nil {
 		w.conf.Log.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 	}
+	return err
 }
 
 // clonePostProcessing copies the post-processing marks of a column.
@@ -2594,6 +2641,9 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			}
 		}
 	}
+	// A failed write of the column marks it modified again, so that
+	// closing it saves it.
+	w.restoreFailedSaves()
 	w.persistChunk(tx, pos, c, false)
 	delete(w.unsettled, pos)
 	w.scheduledBlockTicks.removeChunk(pos)
@@ -3650,7 +3700,12 @@ type pendingMissingBlockState struct {
 // viewers and loaders.
 
 type Column struct {
+	// modified is set when a block, biome, entity or scheduled tick of the
+	// column changes, and cleared once the column is saved. savedIn numbers
+	// that save (World.saves): if writing it fails, the column is modified
+	// again, unless it was saved again since.
 	modified bool
+	savedIn  uint64
 	// loadErr is the error loading the column from the provider failed
 	// with, if the column is the empty one standing in for it. Such a column
 	// is never saved: it would overwrite what the provider holds, which may
