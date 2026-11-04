@@ -60,10 +60,19 @@ func adapterPackage(pkgPath string) bool {
 	return ok && inAdapter(rel)
 }
 
-// worldReads are the methods of *world.Tx and *world.World that read the world, schedule a transaction, or hand
-// out what the adapter must release. Every other method of the two is a mutation or an effect, so a new method is
-// forbidden until it is listed here: the list fails closed.
+// worldReads are the methods of the handles of the world, by the name of their type in server/world, that read
+// the world, schedule a transaction, hand out a handle checked in turn, or hand out what the adapter must
+// release. The handles are *world.Tx, *world.World and every type of server/world that holds a *world.Tx, such as
+// world.RedstoneTransaction (txHandles). Every other method of them is a mutation or an effect, so a new method,
+// or a method of a new handle, is forbidden until it is listed here: the list fails closed. TestMutationRules
+// checks that each type is a handle and each name one of its methods, so that a method that moves to another
+// handle moves here too.
 var worldReads = map[string][]string{
+	"Context":                  {"Cancelled"},
+	"RedstoneTorchTransaction": {"BurnoutStatus"},
+	"RedstoneTransaction": {
+		"CircuitDirection", "CircuitStrength", "ConsumerPower", "ObservedPower", "ProducerStrength", "Torch",
+	},
 	"Tx": {
 		"Biome", "Block", "BlockFaceSturdy", "BlockLight", "BlockLoaded", "BlockStateID", "CaptureStructure",
 		"ChunkLoaded", "ChunkReadySignal", "ChunkState", "ColumnBlockVersion", "CurrentTick", "Defer", "DeferErr",
@@ -71,8 +80,8 @@ var worldReads = map[string][]string{
 		"EntityChunk", "EntityTicking", "Features", "ForEachMapFrame", "HasScheduledBlockUpdate", "HighestBlock",
 		"HighestLightBlocker", "IsDarkOutside", "IsVillage", "Light", "LightBlockedInto", "Liquid",
 		"LoadedBlockEntities", "LocalDifficulty", "MayContainLiquid", "MovementBlockProperties", "NativeState", "POI",
-		"PlayerSpawnPosition", "Players", "PlayersNear", "Raining", "RainingAt", "Range", "RawBrightness", "ReadyChunk",
-		"RedstoneConductivePower", "RedstoneDirectPower", "RedstoneDirectPowerFrom", "RedstonePower",
+		"PlayerSpawnPosition", "Players", "PlayersNear", "Raining", "RainingAt", "Range", "RawBrightness",
+		"Redstone", "RedstoneConductivePower", "RedstoneDirectPower", "RedstoneDirectPowerFrom", "RedstonePower",
 		"RedstonePowerFrom", "RedstoneStrongPower", "RedstoneStrongPowerFrom", "ReleaseViewers", "SkyDarken",
 		"SkyLight", "Sleepers", "SnowingAt", "SunAngle", "Temperature", "Thundering", "ThunderingAt", "Viewers",
 		"VillageDistance", "World",
@@ -83,7 +92,7 @@ var worldReads = map[string][]string{
 		"FallDamage", "ForcedChunks", "Frozen", "GameRule", "GameRuleBool", "GameRuleInt", "Handler",
 		"HighestLightBlocker", "IsChunkForced", "LoadedChunkCount", "MapData", "MapDataByJavaID", "MapIDByJavaID",
 		"MonsterSpawningEnabled", "MoonBrightness", "Name", "PlayerSpawn", "PlayersSleepingPercentage", "Range",
-		"RegionPhases", "Seed", "Spawn", "SpawnMobsEnabled", "SpawnWardensEnabled", "Sprinting", "StructureTemplate",
+		"Seed", "Spawn", "SpawnMobsEnabled", "SpawnWardensEnabled", "Sprinting", "StructureTemplate",
 		"TPS", "TickRate", "TickTimes", "Time", "TimeCycle", "TrackedPosition", "WeatherCycleEnabled", "WithinBorder",
 		"WithinBorderBounds",
 	},
@@ -194,12 +203,14 @@ func calleeName(fn *types.Func) string {
 type mutationChecker struct {
 	// contract holds the methods of client.Controllable, which adapters may call: the client asks the game.
 	contract map[*types.Func]bool
+	// handles holds the names of the handles of the world in server/world (txHandles).
+	handles map[string]bool
 }
 
 // newMutationChecker returns a checker that allows the methods of client.Controllable, if pkgs holds the client
-// package among the packages they import.
+// package among the packages they import, and that knows the handles of the world, if it holds server/world.
 func newMutationChecker(imported func(path string) *types.Package) *mutationChecker {
-	c := &mutationChecker{contract: map[*types.Func]bool{}}
+	c := &mutationChecker{contract: map[*types.Func]bool{}, handles: txHandles(imported(worldPkg))}
 	if p := imported(rootModule + "/server/client"); p != nil {
 		if obj, ok := p.Scope().Lookup("Controllable").(*types.TypeName); ok {
 			ms := types.NewMethodSet(obj.Type())
@@ -223,34 +234,68 @@ func isTx(t types.Type) bool {
 	return ok && n.Obj().Pkg() != nil && n.Obj().Pkg().Path() == worldPkg && n.Obj().Name() == "Tx"
 }
 
-// takesTx reports if a signature has a *world.Tx parameter.
-func takesTx(sig *types.Signature) bool {
+// txHandles returns the names of the handles of the world in the package world: Tx, World, and every named
+// struct type with a field of type *Tx, embedded or not. Such a type, as RedstoneTransaction, acts on the world
+// through the transaction it holds, so its methods are held to R4 as those of the transaction are.
+func txHandles(world *types.Package) map[string]bool {
+	handles := map[string]bool{"Tx": true, "World": true}
+	if world == nil {
+		return handles
+	}
+	scope := world.Scope()
+	for _, name := range scope.Names() {
+		tn, ok := scope.Lookup(name).(*types.TypeName)
+		if !ok || tn.IsAlias() {
+			continue
+		}
+		st, ok := tn.Type().Underlying().(*types.Struct)
+		if !ok {
+			continue
+		}
+		for f := range st.Fields() {
+			if isTx(f.Type()) {
+				handles[name] = true
+				break
+			}
+		}
+	}
+	return handles
+}
+
+// handle returns the name of the handle of the world t is, by value or by pointer, or "" if it is none.
+func (c *mutationChecker) handle(t types.Type) string {
+	if ptr, ok := t.(*types.Pointer); ok {
+		t = ptr.Elem()
+	}
+	n, ok := t.(*types.Named)
+	if !ok || n.Obj().Pkg() == nil || n.Obj().Pkg().Path() != worldPkg {
+		return ""
+	}
+	if name := n.Obj().Name(); c.handles[name] {
+		return name
+	}
+	return ""
+}
+
+// takesTx reports if a signature has a parameter that is a *world.Tx or another handle of the world that holds
+// one, such as world.RedstoneTransaction. A *world.World is not one.
+func (c *mutationChecker) takesTx(sig *types.Signature) bool {
 	for v := range sig.Params().Variables() {
-		if isTx(v.Type()) {
+		if h := c.handle(v.Type()); isTx(v.Type()) || h != "" && h != "World" {
 			return true
 		}
 	}
 	return false
 }
 
-// worldReceiver returns "Tx" or "World" if fn is a method of *world.Tx or *world.World.
-func worldReceiver(sig *types.Signature) string {
+// worldReceiver returns the name of the handle of the world fn is a method of, such as "Tx", "World" or
+// "RedstoneTransaction", or "" if it is none.
+func (c *mutationChecker) worldReceiver(sig *types.Signature) string {
 	recv := sig.Recv()
 	if recv == nil {
 		return ""
 	}
-	ptr, ok := recv.Type().(*types.Pointer)
-	if !ok {
-		return ""
-	}
-	n, ok := ptr.Elem().(*types.Named)
-	if !ok || n.Obj().Pkg() == nil || n.Obj().Pkg().Path() != worldPkg {
-		return ""
-	}
-	if name := n.Obj().Name(); name == "Tx" || name == "World" {
-		return name
-	}
-	return ""
+	return c.handle(recv.Type())
 }
 
 // viewerInterface reports if the receiver of sig is the world.Viewer interface itself: a method called on
@@ -266,11 +311,13 @@ func viewerInterface(sig *types.Signature) bool {
 
 // rule returns the rule of R4 that a use of fn by adapter code breaks, if any.
 //
-//   - R4.1: a method of *world.Tx or *world.World other than those of worldReads.
+//   - R4.1: a method of *world.Tx, *world.World or another handle of the world (txHandles) other than those of
+//     worldReads.
 //   - R4.2: a function or method declared below server/, outside server/client (the contract), server/menu (its
-//     operations) and the adapters, with a *world.Tx parameter, other than txEntries and txEntryTypes.
+//     operations) and the adapters, with a *world.Tx parameter or one of another handle that holds it, other
+//     than txEntries and txEntryTypes.
 //   - R4.3: a function of mutators.
-//   - R4.4: a method of an interface declared in an adapter, with a *world.Tx parameter or a name of
+//   - R4.4: a method of an interface declared in an adapter, with a parameter as R4.2 or a name of
 //     mutatorNames: an interface the adapter asserts a value of the game to. The interfaces of ownInterfaces,
 //     which only the adapter implements, are left out.
 //   - R4.5: a View method of world.Viewer called on a viewer: an effect shown to others.
@@ -287,7 +334,7 @@ func (c *mutationChecker) rule(fn *types.Func) (string, bool) {
 	}
 	pkg := fn.Pkg().Path()
 	name := calleeName(fn)
-	if recv := worldReceiver(sig); recv != "" {
+	if recv := c.worldReceiver(sig); recv != "" {
 		if slices.Contains(worldReads[recv], fn.Name()) {
 			return "", false
 		}
@@ -301,7 +348,7 @@ func (c *mutationChecker) rule(fn *types.Func) (string, bool) {
 	}
 	if adapterPackage(pkg) {
 		if recv := sig.Recv(); recv != nil && !ownInterfaces[types.TypeString(recv.Type(), func(p *types.Package) string { return p.Name() })] {
-			if _, ok := recv.Type().Underlying().(*types.Interface); ok && (takesTx(sig) || mutatorNames[fn.Name()]) {
+			if _, ok := recv.Type().Underlying().(*types.Interface); ok && (c.takesTx(sig) || mutatorNames[fn.Name()]) {
 				return "R4.4", true
 			}
 		}
@@ -310,7 +357,7 @@ func (c *mutationChecker) rule(fn *types.Func) (string, bool) {
 	if !under(pkg, rootModule+"/server") || under(pkg, rootModule+"/server/client") || under(pkg, rootModule+"/server/menu") {
 		return "", false
 	}
-	if !takesTx(sig) || txEntries[name] {
+	if !c.takesTx(sig) || txEntries[name] {
 		return "", false
 	}
 	if recv := sig.Recv(); recv != nil && txEntryTypes[types.TypeString(recv.Type(), func(p *types.Package) string { return p.Name() })] {
@@ -479,6 +526,23 @@ func use(tx *world.Tx, h *world.EntityHandle, l *world.Loader, c client.Controll
 	var ph packetHandler
 	_ = ph.Handle(tx)
 	_ = b.(smelter).ResetExperience() // violation: R4.4
+
+	r := tx.Redstone()
+	r.ScheduleUpdate(pos) // violation: R4.1
+	_ = r.CircuitStrength(pos)
+	_, _ = r.ConsumerPower(pos)
+	r.Torch(pos).ClearBurnout() // violation: R4.1
+	_, _ = r.Torch(pos).BurnoutStatus()
+	set := r.SetProducerStrength // violation: R4.1
+	_ = set
+	r.SetProducerBlock(pos, nil) // violation: R4.1
+	var ctx *world.Context
+	ctx.Cancel() // violation: R4.1
+	_ = ctx.Cancelled()
+	ctx.SetBlock(pos, nil, nil) // violation: R4.1
+	_ = ctx.Block(pos)
+	b.(interface{ Pulse(world.RedstoneTransaction) }).Pulse(r) // violation: R4.4
+	b.(interface{ Watch(*world.World) }).Watch(tx.World())
 }
 `
 
@@ -509,6 +573,34 @@ func TestMutationRules(t *testing.T) {
 	checker := newMutationChecker(func(path string) *types.Package { return imported[path] })
 	if len(checker.contract) == 0 {
 		t.Fatal("the methods of client.Controllable were not found")
+	}
+	for _, name := range []string{"Tx", "World", "Context", "RedstoneTransaction", "RedstoneTorchTransaction"} {
+		if !checker.handles[name] {
+			t.Errorf("world.%s is not among the handles of the world", name)
+		}
+	}
+	if checker.handles["Loader"] {
+		t.Error("world.Loader holds no transaction but is among the handles of the world")
+	}
+
+	// worldReads by type: each type a handle, each name a method declared on it.
+	world := imported[worldPkg]
+	for typ, names := range worldReads {
+		tn, ok := world.Scope().Lookup(typ).(*types.TypeName)
+		if !ok || !checker.handles[typ] {
+			t.Errorf("worldReads lists world.%s, which is not a handle of the world (txHandles)", typ)
+			continue
+		}
+		if !slices.IsSorted(names) {
+			t.Errorf("worldReads[%q] is not sorted", typ)
+		}
+		ms := types.NewMethodSet(types.NewPointer(tn.Type()))
+		for _, name := range names {
+			sel := ms.Lookup(world, name)
+			if sel == nil || len(sel.Index()) != 1 {
+				t.Errorf("worldReads lists %s.%s, which is not a method declared on world.%s: move it with the method", typ, name, typ)
+			}
+		}
 	}
 
 	var want []string
