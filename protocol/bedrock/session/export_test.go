@@ -1,6 +1,10 @@
 package session
 
 import (
+	"maps"
+	"slices"
+
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/menu"
@@ -35,6 +39,21 @@ func EncodeSubChunk(c *chunk.Chunk, ind int) []byte {
 	return encodeSubChunk(c, ind, hashesOf(c.BlockRegistry()))
 }
 func EncodeBiomes(c *chunk.Chunk) []byte { return encodeBiomes(c) }
+
+// StatesOfDefault returns a runtime ID of each state of a finalized
+// registry the clients of the default protocol know, the one they read its
+// hash back as, sorted by its hash: the same states whatever the protocol
+// whose blocks the game holds, as the scenes of the tests of the encoding
+// take them.
+func StatesOfDefault(br world.BlockRegistry) []uint32 {
+	h := blockTable(versions.Default(), br)
+	hashes := slices.Sorted(maps.Keys(h.rid))
+	rids := make([]uint32, len(hashes))
+	for i, hash := range hashes {
+		rids[i] = h.rid[hash]
+	}
+	return rids
+}
 
 // NetworkItemNBT returns the item NBT ItemStack sends for a stack, for the
 // tests that build the stacks clients send.

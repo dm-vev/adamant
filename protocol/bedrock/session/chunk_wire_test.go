@@ -60,14 +60,19 @@ func chunkWireCases(t testing.TB) []chunkWireCase {
 	full.Compact()
 	cases = append(cases, chunkWireCase{"0 bits: a sub-chunk of stone", full})
 
-	count := uint32(br.BlockCount())
+	// The states of the palettes are taken at a stride from those the
+	// clients of the default protocol know, by their hashes, so that the
+	// states of the game the protocol does not know, and the order the
+	// registry holds the states in, do not change them.
+	states := session.StatesOfDefault(br)
+	count := len(states)
 	for _, values := range []int{2, 4, 8, 16, 32, 64, 256, 257, 4096} {
 		c := chunk.New(br, r)
 		// Air is in the palette already: values-1 other states follow it.
-		stride := count / uint32(values)
+		stride := count / values
 		for i := 1; i < values; i++ {
 			x, z, y := uint8(i>>8), uint8(i>>4&15), int16(i&15)
-			c.SetBlock(x, y+16, z, 0, uint32(i)*stride)
+			c.SetBlock(x, y+16, z, 0, states[i*stride])
 		}
 		cases = append(cases, chunkWireCase{fmt.Sprintf("%d values in a palette", values), c})
 	}
