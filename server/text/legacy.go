@@ -107,6 +107,7 @@ func ParseLegacy(s string) Text {
 		}
 	}
 	end()
+	root.legacy = s
 	return Text{root}
 }
 
@@ -165,14 +166,23 @@ func (c Code) Legacy() string {
 // Edition has none. Translations are written as their fallbacks, with
 // their arguments filled in. For every string s, ParseLegacy(s).Legacy() is
 // s; ParseLegacy(t.Legacy()) is Equivalent to t for a text that holds no
-// translation, RGB colour, underline or strike-through.
+// translation, RGB colour, underline or strike-through. A text that
+// ParseLegacy returned is written as the string it was read from, without
+// being walked; a text built from it, by WithStyle, Append or Concat, is
+// walked.
 func (t Text) Legacy() string {
+	if t.n != nil && t.n.legacy != "" {
+		return t.n.legacy
+	}
 	var buf [256]byte
 	return string(t.AppendLegacy(buf[:0]))
 }
 
 // AppendLegacy appends t as Legacy writes it to dst and returns the result.
 func (t Text) AppendLegacy(dst []byte) []byte {
+	if t.n != nil && t.n.legacy != "" {
+		return append(dst, t.n.legacy...)
+	}
 	for s := range t.Spans(SpanOptions{Decorations: legacyDecorations}) {
 		if s.Reset {
 			dst = append(dst, legacyReset...)

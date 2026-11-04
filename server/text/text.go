@@ -30,6 +30,13 @@ type node struct {
 	text     string
 	tr       *translation
 	children []Text
+	// legacy is the string ParseLegacy read the text from, if the text is
+	// one ParseLegacy returned: Legacy writes it as it is rather than walk
+	// the text, since the text renders as the string. A text built from
+	// the node, by WithStyle or Append, does not have it. ParseLegacy
+	// never returns a node for the empty string, so the string is empty
+	// for every other text.
+	legacy string
 }
 
 // kind is the kind of the content of a text.
@@ -116,7 +123,7 @@ func (t Text) WithStyle(s Style) Text {
 	if t.n != nil {
 		n = *t.n
 	}
-	n.style = s.normalised()
+	n.style, n.legacy = s.normalised(), ""
 	return Text{&n}
 }
 
@@ -127,6 +134,7 @@ func (t Text) Append(children ...Text) Text {
 		return Concat(children...)
 	}
 	n := *t.n
+	n.legacy = ""
 	n.children = slices.Clip(n.children)
 	for _, c := range children {
 		if !c.IsZero() {

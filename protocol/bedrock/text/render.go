@@ -62,6 +62,12 @@ func appendSpan(dst []byte, s text.Span) []byte {
 // written as its key after a %, as the game has always sent such a
 // parameter for the client to translate.
 func Message(t text.Text) (message string, params []string, translated bool) {
+	if !holdsTranslation(t) {
+		// With no translation to keep, the spans are those String writes,
+		// which writes the string a text of ParseLegacy was read from as
+		// it is.
+		return t.Legacy(), nil, false
+	}
 	var buf [256]byte
 	dst := buf[:0]
 	for s := range t.Spans(text.SpanOptions{Decorations: decorations, Translations: all}) {
@@ -87,6 +93,10 @@ func Message(t text.Text) (message string, params []string, translated bool) {
 // arguments filled in, as String writes it. Message writes its parameters
 // so.
 func Inline(t text.Text) string {
+	if !holdsTranslation(t) {
+		// As in Message.
+		return t.Legacy()
+	}
 	var buf [128]byte
 	dst := buf[:0]
 	for s := range t.Spans(text.SpanOptions{Decorations: decorations, Translations: withoutArgs}) {
@@ -98,6 +108,21 @@ func Inline(t text.Text) string {
 		}
 	}
 	return string(dst)
+}
+
+// holdsTranslation reports whether t is a translation or holds one among
+// its children. The arguments of a translation are not looked at: they are
+// within one.
+func holdsTranslation(t text.Text) bool {
+	if _, _, ok := t.Translation(); ok {
+		return true
+	}
+	for c := range t.Children() {
+		if holdsTranslation(c) {
+			return true
+		}
+	}
+	return false
 }
 
 // all keeps every translation.

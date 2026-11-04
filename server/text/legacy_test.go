@@ -98,5 +98,40 @@ func TestLegacyRoundTrip(t *testing.T) {
 		if got := ParseLegacy(s).Legacy(); got != s {
 			t.Fatalf("ParseLegacy(%q).Legacy() = %q", s, got)
 		}
+		// The text read is written as s without being walked; a copy of
+		// it that does not keep s is walked.
+		p := ParseLegacy(s)
+		if c := p.Append(); !Equal(c, p) || c.n.legacy != "" {
+			t.Fatalf("ParseLegacy(%q).Append() = %#v, keeps %q", s, c, c.n.legacy)
+		}
+		if got := ParseLegacy(s).Append().Legacy(); got != s {
+			t.Fatalf("ParseLegacy(%q), walked, is %q", s, got)
+		}
+	}
+}
+
+// TestLegacyChanged checks that a text built from one ParseLegacy returned
+// is written as it is, not as the string the text was read from.
+func TestLegacyChanged(t *testing.T) {
+	p := ParseLegacy("§cab")
+	for _, c := range []struct {
+		name string
+		t    Text
+		want string
+	}{
+		{"read", p, "§cab"},
+		{"styled", ParseLegacy("ab").WithStyle(Style{Colour: Blue}), "§9ab"},
+		{"same style", p.WithStyle(p.Style()), "§cab"},
+		{"appended", ParseLegacy("ab").Append(Literal("c")), "abc"},
+		{"appended to", Literal("x").Append(p), "x§cab"},
+		{"concat", Concat(p, Literal("d")), "§cab§rd"},
+		{"bold", p.WithStyle(Style{On: Bold}), "§l§cab"},
+	} {
+		if got := c.t.Legacy(); got != c.want {
+			t.Errorf("%s: %#v.Legacy() = %q, want %q", c.name, c.t, got, c.want)
+		}
+		if got := string(c.t.AppendLegacy([]byte("x"))); got != "x"+c.want {
+			t.Errorf("%s: AppendLegacy = %q", c.name, got)
+		}
 	}
 }
