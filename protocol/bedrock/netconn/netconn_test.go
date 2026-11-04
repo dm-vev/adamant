@@ -1134,6 +1134,26 @@ func TestItemDataBound(t *testing.T) {
 	}
 }
 
+// TestSubChunkRequestBound decodes requests for more sub-chunks than a
+// list may hold, as a client that sees far asks for at once and was cut
+// off for: its offsets hold the bytes they take, and the memory budget of
+// the packet still bounds them.
+func TestSubChunkRequestBound(t *testing.T) {
+	request := func(n int) []byte {
+		pk := &v2193.SubChunkRequestPacket{Offsets: make([]v2193.SubChunkOffset, n)}
+		w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+		pk.Encode(&w)
+		return w.B
+	}
+	pk, err := DecodePacket(request(16 * maxList))
+	if err != nil || len(pk.(*v2193.SubChunkRequestPacket).Offsets) != 16*maxList {
+		t.Fatalf("decoded a request of %d sub-chunks: %v", 16*maxList, err)
+	}
+	if _, err := DecodePacket(request(maxAlloc/3 + 1)); !errors.Is(err, wire.ErrAlloc) {
+		t.Fatalf("decoded a request of %d sub-chunks: %v", maxAlloc/3+1, err)
+	}
+}
+
 // TestShortErrors decodes a CommandRequest of an origin of a name of 1 MiB
 // that no origin has: the error names it short, as one that quoted it
 // whole took 29 times its bytes to build, 231 MiB for 8 MiB.

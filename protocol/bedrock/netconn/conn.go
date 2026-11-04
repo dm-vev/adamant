@@ -468,6 +468,9 @@ func fromClient(p *versions.Protocol, id uint32) bool {
 // its packet and no more, so the packet alone bounds it: a login carries a
 // skin of any size the game makes. maxAlloc bounds the memory past its
 // bytes the values of a packet take: a byte of NBT may take dozens to hold.
+// The offsets of a sub-chunk request take the three bytes they take in the
+// packet and no more, and a client that sees far asks for thousands at
+// once, so the packet and maxAlloc alone bound them.
 const (
 	maxList   = 1024
 	maxString = math.MaxInt32
@@ -512,6 +515,9 @@ func decodePacket(p *versions.Protocol, raw []byte) (pk proto.Packet, cost int, 
 	}()
 	r := wire.NewReader(fields)
 	r.MaxList, r.MaxString, r.MaxAlloc = maxList, maxString, maxAlloc
+	if h.ID == v2193.IDSubChunkRequest {
+		r.MaxList = 0
+	}
 	pk.Decode(r)
 	if err := r.Err(); err != nil {
 		return nil, 0, fmt.Errorf("netconn: decode %T: %w", pk, err)
