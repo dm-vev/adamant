@@ -2056,11 +2056,11 @@ func serializeMerchantOffers(offers []entity.MerchantOffer) ([]byte, error) {
 		// recipe network ID its trade request carries.
 		recipes[i] = map[string]any{
 			"netId":            int32(i + 1),
-			"buyA":             item.WriteNBT(offer.CostA()),
-			"buyB":             item.WriteNBT(offer.SecondaryInput),
+			"buyA":             tradeItemNBT(offer.CostA()),
+			"buyB":             tradeItemNBT(offer.SecondaryInput),
 			"buyCountA":        int32(offer.Input.Count()),
 			"buyCountB":        int32(offer.SecondaryInput.Count()),
-			"sell":             item.WriteNBT(offer.Output),
+			"sell":             tradeItemNBT(offer.Output),
 			"uses":             int32(offer.Uses),
 			"maxUses":          int32(offer.MaxUses),
 			"rewardExp":        rewardXP,
