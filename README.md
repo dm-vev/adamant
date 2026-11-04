@@ -161,7 +161,7 @@ Each claim of parity in this repository is backed by a recorded check; see [`doc
 
 ## Getting started
 
-Requirements: **Go 1.26** or newer.
+Requirements: **Go 1.27** or newer. The modules pin `toolchain go1.27.3`; an older Go downloads that toolchain unless `GOTOOLCHAIN=local` is set.
 
 ```shell
 git clone https://github.com/dm-vev/adamant

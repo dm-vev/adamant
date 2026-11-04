@@ -1,6 +1,8 @@
 module github.com/dm-vev/adamant/audit/redstone-client
 
-go 1.26.0
+go 1.27.0
+
+toolchain go1.27.3
 
 require (
 	github.com/go-gl/mathgl v1.2.0
