@@ -249,11 +249,14 @@ func goldenSettings() *world.Settings {
 }
 
 // goldenProvider is the provider of a world of the scenarios: it saves
-// nothing but maps, which it keeps in memory, numbered from 1.
+// nothing but maps, which it keeps in memory, numbered from 1 in the order
+// their IDs are reserved. A map is stored at the next save after it is
+// made, not as it is.
 type goldenProvider struct {
 	world.NopProvider
-	mu   sync.Mutex
-	maps map[int64]world.MapData
+	mu       sync.Mutex
+	maps     map[int64]world.MapData
+	reserved int64
 }
 
 func (p *goldenProvider) LoadMap(id int64) (world.MapData, error) {
@@ -279,7 +282,8 @@ func (p *goldenProvider) StoreMap(data world.MapData) error {
 func (p *goldenProvider) AllocateMapID() (int64, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return int64(len(p.maps) + 1), nil
+	p.reserved++
+	return p.reserved, nil
 }
 
 func (*goldenProvider) JavaMapID(nativeID int64) (int32, error) { return int32(nativeID), nil }

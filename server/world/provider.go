@@ -104,6 +104,10 @@ type providerRef struct {
 	writable       atomic.Bool
 	providerClosed bool
 
+	// staging holds the writes of the data saved beside the columns of the
+	// worlds of the provider until their next capture.
+	staging Staging
+
 	// structures holds the structure templates saved or loaded through the
 	// provider, shared by the dimensions it stores, as Java's
 	// StructureTemplateManager.

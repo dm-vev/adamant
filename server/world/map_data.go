@@ -88,6 +88,8 @@ func (tx *Tx) ForEachMapFrame(fn func(cube.Pos, MapFrameInfo)) {
 
 // MapDataProvider is the optional world-provider capability for persistent maps.
 // Implementations preserve signed IDs and return storage errors unchanged.
+// AllocateMapID reserves an ID by itself, not from the maps stored: a map
+// is stored at the next save of the world after StoreMapData (Staging).
 type MapDataProvider interface {
 	LoadMap(id int64) (MapData, error)
 	StoreMap(MapData) error
@@ -102,11 +104,12 @@ var ErrInvalidMapData = errors.New("invalid map data")
 const mapPixelCount = 128 * 128
 
 // StoreMapData persists a complete map state, expanding Java packed colors to
-// Bedrock RGBA only when no exact native buffer is available.
+// Bedrock RGBA only when no exact native buffer is available. The map is
+// staged until the next save of the world (Staging); MapData reads it back
+// meanwhile.
 func (w *World) StoreMapData(data MapData) error {
 	if w == nil || w.conf.Provider == nil { return ErrMapDataUnavailable }
-	p, ok := w.conf.Provider.(MapDataProvider)
-	if !ok { return ErrMapDataUnavailable }
+	if _, ok := w.conf.Provider.(MapDataProvider); !ok { return ErrMapDataUnavailable }
 	if data.Scale > 4 { return fmt.Errorf("%w: map scale %d", ErrInvalidMapData, data.Scale) }
 	if len(data.Colors) != mapPixelCount && len(data.NativeColors) == mapPixelCount*4 {
 		data.Colors = javaColoursFromNative(data.NativeColors)
@@ -119,7 +122,10 @@ func (w *World) StoreMapData(data MapData) error {
 			data.NativeColors[i*4], data.NativeColors[i*4+1], data.NativeColors[i*4+2], data.NativeColors[i*4+3] = c.R, c.G, c.B, c.A
 		}
 	}
-	return p.StoreMap(data)
+	// The map waits for the next save of the world (Staging), which writes
+	// it with the containers and players holding it as they are then.
+	w.providerUse.staging.stageMap(data)
+	return nil
 }
 
 func javaColoursFromNative(native []byte) []byte {
@@ -173,11 +179,16 @@ func (w *World) MapData(id int64) (MapData, error) {
 	if w == nil || w.conf.Provider == nil { return MapData{}, ErrMapDataUnavailable }
 	p, ok := w.conf.Provider.(MapDataProvider)
 	if !ok { return MapData{}, ErrMapDataUnavailable }
-	data, err := p.LoadMap(id)
-	if err != nil { return MapData{}, err }
-	javaID, err := p.JavaMapID(id)
-	if err != nil { return MapData{}, err }
-	data.JavaID, data.HasJavaID = javaID, true
+	data, staged := w.providerUse.staging.mapData(id)
+	if !staged {
+		var err error
+		if data, err = p.LoadMap(id); err != nil { return MapData{}, err }
+	}
+	if !staged || !data.HasJavaID {
+		javaID, err := p.JavaMapID(id)
+		if err != nil { return MapData{}, err }
+		data.JavaID, data.HasJavaID = javaID, true
+	}
 	if data.ID != id || (len(data.Colors) != mapPixelCount && len(data.NativeColors) != mapPixelCount*4) {
 		return MapData{}, fmt.Errorf("%w: map %d has invalid ID or pixel buffers", ErrInvalidMapData, id)
 	}

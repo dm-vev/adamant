@@ -105,8 +105,7 @@ func (w *World) RecordStructureReference(location StructureLocation) error {
 	if _, exists := w.structureReferences[reference]; exists {
 		return nil
 	}
-	store, ok := w.conf.Provider.(worldDataProvider)
-	if !ok {
+	if _, ok := w.conf.Provider.(worldDataProvider); !ok {
 		return fmt.Errorf("record structure reference: provider %T cannot persist Java structure references", w.conf.Provider)
 	}
 	updated := make(map[StructureReference]struct{}, len(w.structureReferences)+1)
@@ -118,7 +117,7 @@ func (w *World) RecordStructureReference(location StructureLocation) error {
 	if err != nil {
 		return err
 	}
-	if err := store.SaveWorldData(structureReferenceNamespace(dimensionID), data); err != nil {
+	if err := w.SaveWorldData(structureReferenceNamespace(dimensionID), data); err != nil {
 		return fmt.Errorf("persist structure reference: %w", err)
 	}
 	w.structureReferences = updated
@@ -159,12 +158,11 @@ func (w *World) loadStructureReferences() error {
 		w.structureReferencesErr = fmt.Errorf("load structure references: unregistered dimension %q", w.conf.Dim)
 		return w.structureReferencesErr
 	}
-	store, ok := w.conf.Provider.(worldDataProvider)
-	if !ok {
+	if _, ok := w.conf.Provider.(worldDataProvider); !ok {
 		w.structureReferencesErr = fmt.Errorf("provider %T cannot load Java structure references", w.conf.Provider)
 		return w.structureReferencesErr
 	}
-	data, err := store.LoadWorldData(structureReferenceNamespace(dimensionID))
+	data, err := w.LoadWorldData(structureReferenceNamespace(dimensionID))
 	if errors.Is(err, leveldb.ErrNotFound) {
 		return nil
 	}

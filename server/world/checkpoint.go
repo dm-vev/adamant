@@ -20,6 +20,9 @@ type Checkpoint struct {
 	settings *Settings
 	data     []worldData
 	tracking *positionTrackingCapture
+	// staged holds the writes staged by the worlds of the provider since
+	// the last capture, taken by this one, written before data.
+	staged *stagedWrites
 
 	// Extra is what the function passed to CaptureAll returned in the
 	// transaction the world was captured in, such as the players in it.
@@ -44,9 +47,10 @@ func (cp *Checkpoint) Columns() int { return cp.columns }
 func (cp *Checkpoint) Settings() *Settings { return cp.settings }
 
 // Write writes the checkpoint through the provider of its world and waits
-// for the columns captured to be written: it gives the provider the settings
-// captured and writes the data saved beside the columns, then waits for the
-// columns and writes the position tracking data. It logs every error and
+// for the columns captured to be written: it writes the data and maps the
+// worlds of the provider staged since the last capture (Staging), gives the provider the settings captured and writes the data
+// saved beside the columns, then waits for the columns and writes the
+// position tracking data. It logs every error and
 // returns them joined. The data of a capture older than one already written
 // is not written: the newer holds it. Write waits for the background saver
 // of the world: call it off any world owner.
@@ -68,6 +72,8 @@ func (cp *Checkpoint) write(flush bool) error {
 			errs = append(errs, err)
 		}
 	}
+	fail(w.providerUse.staging.write(w.conf.Provider, cp.staged))
+	cp.staged = nil
 	w.dataMu.Lock()
 	if cp.seq > w.dataWritten {
 		w.dataWritten = cp.seq
@@ -122,6 +128,7 @@ func (w *World) capture(tx *Tx, closing bool) *Checkpoint {
 	}
 	w.conf.Log.Debug("Updating level.dat values...")
 	cp.settings = w.set.Snapshot()
+	cp.staged = w.providerUse.staging.take()
 	cp.data = w.captureData()
 	if !closing {
 		tracking, err := w.providerUse.capturePositionTracker(w.conf.Provider)
@@ -190,7 +197,7 @@ func (w *World) captureData() []worldData {
 		w.conf.Log.Error("encode scoreboard: " + err.Error())
 	} else {
 		data = append(data, worldData{write: func() error {
-			if err := w.SaveWorldData(scoreboardNamespace, scoreboard); err != nil {
+			if err := w.writeWorldData(scoreboardNamespace, scoreboard); err != nil {
 				return fmt.Errorf("save scoreboard: %w", err)
 			}
 			return nil

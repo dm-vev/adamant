@@ -2049,7 +2049,8 @@ func (w *World) PlayerSpawn(id uuid.UUID) cube.Pos {
 
 // SetPlayerSpawn sets the spawn position of a player with a UUID in this
 // World. If the player has a spawn in the world, the player will be teleported
-// to this location on respawn.
+// to this location on respawn. Unlike the other data saved beside the
+// columns, it is written to the provider at once (Staging).
 func (w *World) SetPlayerSpawn(id uuid.UUID, pos cube.Pos) {
 	if w == nil {
 		return
@@ -2836,6 +2837,13 @@ func (w *World) close() {
 		return
 	}
 
+	// The last world of the provider writes what was staged after the
+	// worlds captured themselves as they closed.
+	if !w.conf.ReadOnly {
+		if err := w.providerUse.staging.write(w.conf.Provider, w.providerUse.staging.take()); err != nil {
+			w.conf.Log.Error("save staged world data: " + err.Error())
+		}
+	}
 	w.conf.Log.Debug("Closing provider...")
 	saveErr, closeErr := w.providerUse.closeProvider(w.conf.Provider)
 	if saveErr != nil {

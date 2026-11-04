@@ -219,6 +219,10 @@ func (db *DB) persistJavaMapMapping(nativeID int64, javaID int32) error {
 	}
 	if javaID >= 0 && int64(javaID) >= next {
 		next = int64(javaID) + 1
+	} else if forward != nil && reverse != nil {
+		// Both directions are stored and the counter is past the ID:
+		// reading the map writes nothing.
+		return nil
 	}
 	batch := new(leveldb.Batch)
 	batch.Put(javaMapKey(javaID), int64Bytes(nativeID))
