@@ -24,7 +24,7 @@ func TestConstantsMatchGophertunnel(t *testing.T) {
 		packetPath   = "github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 		v2193Path    = "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	)
-	pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedTypes | packages.NeedName}, protocolPath, packetPath, v2193Path)
+	pkgs, err := packages.Load(&packages.Config{Mode: loadMode}, protocolPath, packetPath, v2193Path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +55,13 @@ func TestConstantsMatchGophertunnel(t *testing.T) {
 		t.Fatalf("compared %d constants, want the hundreds constimport writes", compared)
 	}
 }
+
+// loadMode type-checks the packages from source, with the types of their
+// imports: the export data of a newer toolchain may be past what
+// go/packages reads ("export data version 5 is greater than maximum
+// supported version 2").
+const loadMode = packages.NeedTypes | packages.NeedName | packages.NeedSyntax | packages.NeedTypesInfo |
+	packages.NeedImports | packages.NeedDeps
 
 // gophertunnelConst returns gophertunnel's constant of a name of v2193 and
 // the package it is in, nil if there is none.
