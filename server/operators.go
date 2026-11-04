@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/identity"
 )
 
@@ -106,6 +107,27 @@ func (o *operatorsList) keys() []string {
 	return o.players.keys()
 }
 
+// reload reads the file again, as /permission reload does. A file that
+// cannot be read or decoded leaves the list as it was.
+func (o *operatorsList) reload() error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	contents, err := os.ReadFile(o.filePath)
+	if errNotExist(err) {
+		o.players = entries{}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read ops: %w", err)
+	}
+	players, err := decodeOps(contents)
+	if err != nil {
+		return fmt.Errorf("decode ops: %w", err)
+	}
+	o.players = players
+	return nil
+}
+
 func (o *operatorsList) reloadFromDisk() error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -126,14 +148,54 @@ func (o *operatorsList) reloadFromDisk() error {
 	return nil
 }
 
-// opsAccount is an operator of ops.json keyed by Xbox account.
+// opsAccount is an operator of ops.json written as an object: an Xbox
+// account by its XUID and the name its player last had, or a name, with a
+// level of its own and bypassesPlayerLimit, as Java writes them, if set.
+// An account with neither writes as it always has: "xuid", then "name".
 type opsAccount struct {
-	XUID string `json:"xuid"`
-	Name string `json:"name"`
+	XUID                string `json:"xuid,omitempty"`
+	Name                string `json:"name"`
+	Level               *int   `json:"level,omitempty"`
+	BypassesPlayerLimit bool   `json:"bypassesPlayerLimit,omitempty"`
 }
 
-// decodeOps reads ops.json: a JSON array of names, and of objects with the
-// XUID and the name of an Xbox account.
+// entry returns the operator of the object.
+func (o opsAccount) entry() (entry, error) {
+	var en entry
+	var err error
+	if o.XUID != "" {
+		en, err = xuidEntry(o.XUID, o.Name)
+	} else {
+		en, err = nameEntry(o.Name)
+	}
+	if err != nil {
+		return entry{}, err
+	}
+	if o.Level != nil {
+		if *o.Level < 0 || *o.Level > int(cmd.MaxLevel) {
+			return entry{}, fmt.Errorf("level %d: want 0 to %d", *o.Level, cmd.MaxLevel)
+		}
+		en.op.level, en.op.hasLevel = cmd.Level(*o.Level), true
+	}
+	en.op.bypass = o.BypassesPlayerLimit
+	return en, nil
+}
+
+// opsAccountOf returns the object of an operator ops.json writes as one.
+func opsAccountOf(en entry) opsAccount {
+	o := opsAccount{Name: en.key.String(), BypassesPlayerLimit: en.op.bypass}
+	if x, ok := en.key.XUID(); ok {
+		o.XUID, o.Name = x, en.name
+	}
+	if en.op.hasLevel {
+		l := int(en.op.level)
+		o.Level = &l
+	}
+	return o
+}
+
+// decodeOps reads ops.json: a JSON array of names, and of objects of an
+// Xbox account or a name, with a level and bypassesPlayerLimit if set.
 func decodeOps(contents []byte) (entries, error) {
 	var names []string
 	if err := json.Unmarshal(contents, &names); err == nil {
@@ -158,11 +220,11 @@ func decodeOps(contents []byte) (entries, error) {
 				}
 				continue
 			}
-			var acc opsAccount
-			if err := json.Unmarshal(r, &acc); err != nil {
+			var obj opsAccount
+			if err := json.Unmarshal(r, &obj); err != nil {
 				return entries{}, fmt.Errorf("operator %s: %w", r, err)
 			}
-			en, err := xuidEntry(acc.XUID, acc.Name)
+			en, err := obj.entry()
 			if err != nil {
 				return entries{}, fmt.Errorf("operator %s: %w", r, err)
 			}
@@ -174,9 +236,10 @@ func decodeOps(contents []byte) (entries, error) {
 
 func (o *operatorsList) writeLocked() error {
 	// A list never read nor changed writes as JSON null, as it always has,
-	// and a list of names alone as an array of strings.
+	// and a list of names alone as an array of strings. An operator with a
+	// level of its own or bypassesPlayerLimit writes as an object.
 	var v any
-	if o.players.accounts() == 0 {
+	if o.players.accounts() == 0 && !o.anySet() {
 		var names []string
 		if o.players.order != nil {
 			names = make([]string, 0, len(o.players.order))
@@ -188,8 +251,8 @@ func (o *operatorsList) writeLocked() error {
 	} else {
 		all := make([]any, 0, len(o.players.order))
 		for _, en := range o.players.order {
-			if x, ok := en.key.XUID(); ok {
-				all = append(all, opsAccount{XUID: x, Name: en.name})
+			if _, ok := en.key.XUID(); ok || en.op.set() {
+				all = append(all, opsAccountOf(en))
 			} else {
 				all = append(all, en.key.String())
 			}
@@ -201,6 +264,57 @@ func (o *operatorsList) writeLocked() error {
 		return fmt.Errorf("encode ops: %w", err)
 	}
 	return writeFileAtomic(o.filePath, append(contents, '\n'), "ops")
+}
+
+// anySet reports whether an operator has a level of its own or
+// bypassesPlayerLimit.
+func (o *operatorsList) anySet() bool {
+	for _, en := range o.players.order {
+		if en.op.set() {
+			return true
+		}
+	}
+	return false
+}
+
+// entry returns the operator of the key passed.
+func (o *operatorsList) entry(k identity.Key) (entry, bool) {
+	if o == nil {
+		return entry{}, false
+	}
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	return o.players.get(k)
+}
+
+// match returns the operator of the name passed on a server keyed by name,
+// as isOperator finds it.
+func (o *operatorsList) match(name string) (entry, bool) {
+	if o == nil {
+		return entry{}, false
+	}
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	return o.players.match(name)
+}
+
+// set replaces the fields of the operator of en, or adds en with them,
+// and writes the file, unless the operator has them already. It reports
+// whether it changed the list; the list is left as it was if the write
+// fails.
+func (o *operatorsList) set(en entry) (bool, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if old, ok := o.players.get(en.key); ok && old.op == en.op {
+		return false, nil
+	}
+	before := o.players.clone()
+	o.players.put(en)
+	if err := o.writeLocked(); err != nil {
+		o.players = before
+		return false, err
+	}
+	return true, nil
 }
 
 // update runs f with the entries of the list, and writes the file if f

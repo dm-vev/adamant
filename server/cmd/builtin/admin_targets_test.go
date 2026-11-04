@@ -29,7 +29,11 @@ func (s targetAdapter) record(call string) (bool, error) {
 	*s.calls = append(*s.calls, call)
 	return s.changed, nil
 }
-func (s targetAdapter) Op(name string) (bool, error)   { return s.record("Op " + name) }
+func (s targetAdapter) Op(name string) (bool, error) { return s.record("Op " + name) }
+func (targetAdapter) OpLevel() cmd.Level             { return cmd.LevelOwner }
+func (targetAdapter) OperatorLevel(string) (cmd.Level, bool) {
+	return cmd.LevelOwner, true
+}
 func (s targetAdapter) Deop(name string) (bool, error) { return s.record("Deop " + name) }
 func (s targetAdapter) BanPlayer(name, reason string) (bool, error) {
 	return s.record("BanPlayer " + name + " " + reason)

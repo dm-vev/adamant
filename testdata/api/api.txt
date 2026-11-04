@@ -394,7 +394,9 @@ server	method	Server.Metrics	func() *github.com/dm-vev/adamant/net/metrics.Regis
 server	method	Server.Nether	func() *server/world.World
 server	method	Server.Online	func() []server.OnlinePlayer
 server	method	Server.Op	func(name string) (bool, error)
+server	method	Server.OpLevel	func() server/cmd.Level
 server	method	Server.OperatorEntries	func() ([]string, error)
+server	method	Server.OperatorLevel	func(name string) (server/cmd.Level, bool)
 server	method	Server.PardonIP	func(ip string) (bool, error)
 server	method	Server.PardonPlayer	func(name string) (bool, error)
 server	method	Server.Player	func(uuid github.com/google/uuid.UUID) (*server/world.EntityHandle, bool)
@@ -406,6 +408,7 @@ server	method	Server.PlayerLevel	func(id github.com/google/uuid.UUID) server/cmd
 server	method	Server.PlayerNames	func() []string
 server	method	Server.Players	func(tx *server/world.Tx) iter.Seq[*server/player.Player]
 server	method	Server.Ready	func(o server.HealthOptions) server.HealthReport
+server	method	Server.ReloadPermissions	func() error
 server	method	Server.ResolveEntry	func(list server.List, s string) (server.Target, error)
 server	method	Server.ResolvePlayer	func(s string) (server.Target, error)
 server	method	Server.SaveAll	func() error
@@ -413,6 +416,7 @@ server	method	Server.SaveAllFrom	func(tx *server/world.Tx, done func(tx *server/
 server	method	Server.SaveEnabled	func(enabled bool)
 server	method	Server.SaveEnabledState	func() bool
 server	method	Server.SetIdleTimeout	func(minutes int)
+server	method	Server.SetOperatorLevel	func(name string, level server/cmd.Level) (bool, error)
 server	method	Server.StartTime	func() time.Time
 server	method	Server.Status	func() server.Status
 server	method	Server.VerifyBackup	func(name string, full bool) (server.BackupInfo, error)

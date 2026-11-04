@@ -34,6 +34,14 @@ type serverAdapter interface {
 	PlayerIsOperator(id uuid.UUID) bool
 	Op(name string) (bool, error)
 	Deop(name string) (bool, error)
+	// OperatorLevel returns the level of the operator of the name passed,
+	// and reports whether it is one; OpLevel the level Op gives.
+	OperatorLevel(name string) (cmd.Level, bool)
+	OpLevel() cmd.Level
+	// SetOperatorLevel makes the player an operator of the level passed.
+	SetOperatorLevel(name string, level cmd.Level) (bool, error)
+	// ReloadPermissions reads the lists of permissions again.
+	ReloadPermissions() error
 	OperatorEntries() ([]string, error)
 	BanPlayer(name, reason string) (bool, error)
 	PardonPlayer(name string) (bool, error)

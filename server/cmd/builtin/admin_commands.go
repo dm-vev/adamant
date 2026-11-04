@@ -128,9 +128,15 @@ func newVersionCommand(srv serverAdapter) cmd.Command {
 	return newCommand("version", nil, versionCmd{srv})
 }
 
-func (c opCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+func (c opCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 	t, ok := addTarget(c.srv, o, c.Name)
 	if !ok {
+		return
+	}
+	if own := cmd.SourceLevel(src); c.srv.OpLevel() > own {
+		// No one gives a level above their own: an admin of level 3 makes
+		// no operators of level 4.
+		o.Errorf("You can't give a level above your own (%v).", own)
 		return
 	}
 	added, err := c.srv.Op(t.Arg())
@@ -145,10 +151,16 @@ func (c opCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Printf("Made %s a server operator.", t)
 	}
 }
-func (c deopCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+func (c deopCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 	t, ok := removeTarget(c.srv, o, server.Operators, c.Name)
 	if !ok {
 		return
+	}
+	if level, ok := c.srv.OperatorLevel(t.Arg()); ok {
+		if own := cmd.SourceLevel(src); level > own {
+			o.Errorf("You can't remove an operator above your own level (%v).", own)
+			return
+		}
 	}
 	removed, err := c.srv.Deop(t.Arg())
 	if err != nil {

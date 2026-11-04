@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/identity"
 )
 
@@ -27,7 +28,25 @@ type entry struct {
 	// ip is an address a ban of a player was written with by hand, which
 	// the bans keep as they read it.
 	ip string
+	// op is what an entry of ops.json holds beside the player.
+	op opFields
 }
+
+// opFields are the fields of an operator beside the player, as Java's
+// ops.json writes them: the level of its own, and whether it joins a full
+// server.
+type opFields struct {
+	// level is the level of the operator, if hasLevel; otherwise the
+	// operator has the OperatorLevel of the server.
+	level    cmd.Level
+	hasLevel bool
+	// bypass is bypassesPlayerLimit: the operator joins a full server.
+	bypass bool
+}
+
+// set reports whether the fields hold anything an entry of names alone
+// cannot write.
+func (f opFields) set() bool { return f.hasLevel || f.bypass }
 
 // entries are the players of a list, in the order of its file, by key. A
 // nil order is a list that was never read from a file nor changed, which
