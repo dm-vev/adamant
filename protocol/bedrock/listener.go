@@ -54,7 +54,7 @@ func (c Config) Listener(conf server.Config, host server.Host) (server.Listener,
 	if err != nil {
 		return nil, err
 	}
-	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat, Blocks: conf.Blocks}), nil
+	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat, Blocks: conf.Blocks, Primary: c.Primary}), nil
 }
 
 // oldestProtocol returns the oldest protocol clients may join with: the

@@ -68,7 +68,7 @@ func (s *Session) temporaryListEntry(v Controllable, e world.Entity) *mc.PlayerL
 		Username:       v.Name(),
 		PlayFabID:      v.Skin().PlayFabID,
 		BuildPlatform:  int32(mc.DeviceUnknown),
-		Skin:           skinToProtocol(v.Skin()),
+		Skin:           skinToProtocol(v.Skin(), s.primary().Version),
 	}}}
 }
 
@@ -2210,7 +2210,7 @@ func (s *Session) ViewSkin(e world.Entity) {
 	if v, ok := e.(Controllable); ok {
 		s.writePacket(&mc.PlayerSkinPacket{
 			UUID: v.UUID(),
-			Skin: skinToProtocol(v.Skin()),
+			Skin: skinToProtocol(v.Skin(), s.primary().Version),
 		})
 	}
 }

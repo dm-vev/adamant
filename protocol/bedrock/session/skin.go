@@ -6,7 +6,6 @@ import (
 	"image"
 	"math"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
@@ -92,10 +91,11 @@ func frameCount(f float64) int {
 	return int(f)
 }
 
-// skinToProtocol returns a skin as the protocol holds it. A texture whose
-// pixels do not fill it, which a skin changed by hand may have, goes as
-// the empty one, so that what goes to a client is always one it can read.
-func skinToProtocol(s skin.Skin) mc.Skin {
+// skinToProtocol returns a skin as the protocol holds it, its geometry of
+// the engine of version engine. A texture whose pixels do not fill it,
+// which a skin changed by hand may have, goes as the empty one, so that
+// what goes to a client is always one it can read.
+func skinToProtocol(s skin.Skin, engine string) mc.Skin {
 	var animations []mc.SkinAnimation
 	for _, animation := range s.Animations {
 		if !fills(animation.Bounds(), animation.Pix) {
@@ -152,7 +152,7 @@ func skinToProtocol(s skin.Skin) mc.Skin {
 		Animations:                animations,
 		Trusted:                   true,
 		OverrideAppearance:        true,
-		GeometryDataEngineVersion: []byte(versions.Default().Version),
+		GeometryDataEngineVersion: []byte(engine),
 	}
 }
 
@@ -174,7 +174,7 @@ func (s *Session) newListEntry(sk skin.Skin) *sharedPacket {
 		XUID:           s.conn.IdentityData().XUID,
 		PlayFabID:      sk.PlayFabID,
 		BuildPlatform:  int32(mc.DeviceUnknown),
-		Skin:           skinToProtocol(sk),
+		Skin:           skinToProtocol(sk, s.primary().Version),
 	}}}}
 }
 
@@ -196,7 +196,7 @@ func (s *Session) ShowSkin(sk skin.Skin) {
 		return
 	}
 	s.listEntry.Store(s.newListEntry(sk))
-	pk := &sharedPacket{Packet: &mc.PlayerSkinPacket{UUID: s.ent.UUID(), Skin: skinToProtocol(sk)}}
+	pk := &sharedPacket{Packet: &mc.PlayerSkinPacket{UUID: s.ent.UUID(), Skin: skinToProtocol(sk, s.primary().Version)}}
 	for _, p := range s.roster().Players() {
 		if other, ok := p.Client.(*Session); ok {
 			other.writePacket(pk)

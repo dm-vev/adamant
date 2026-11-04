@@ -282,6 +282,10 @@ type Config struct {
 	// content of the game the session encodes it. Nil is the default of
 	// the build, which a connection that does not tell its protocol speaks.
 	Protocol *versions.Protocol
+	// Primary is the protocol the session speaks, whose packets and fields
+	// it uses (see primary.go): one no newer than the model. Nil is the
+	// default of the build.
+	Primary *versions.Protocol
 	// Roster is the list of the players of the server, on which Bind lists
 	// the player of the Session and its close unlists it. If nil, New gives
 	// the Session a Roster of its own, on which it lists only its own
@@ -993,6 +997,7 @@ func (s *Session) registerHandlers() {
 		mc.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},
 	}
 	s.handlers[mc.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
+	s.registerPrimaryHandlers()
 }
 
 // actorIdentifier represents the structure of an actor identifier sent over the network.

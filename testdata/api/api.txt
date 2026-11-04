@@ -282,7 +282,7 @@ protocol/bedrock/session	type	BookEditHandler	struct{}
 protocol/bedrock/session	type	ClientCacheBlobStatusHandler	struct{}
 protocol/bedrock/session	type	CommandBlockUpdateHandler	struct{}
 protocol/bedrock/session	type	CommandRequestHandler	struct{}
-protocol/bedrock/session	type	Config	struct{Log *log/slog.Logger; MaxChunkRadius int; EmoteChatMuted bool; IsOperator func(id github.com/google/uuid.UUID) bool; BlockRegistry server/world.BlockRegistry; Protocol *protocol/bedrock/internal/versions.Protocol; Roster *server/client.Roster}
+protocol/bedrock/session	type	Config	struct{Log *log/slog.Logger; MaxChunkRadius int; EmoteChatMuted bool; IsOperator func(id github.com/google/uuid.UUID) bool; BlockRegistry server/world.BlockRegistry; Protocol *protocol/bedrock/internal/versions.Protocol; Primary *protocol/bedrock/internal/versions.Protocol; Roster *server/client.Roster}
 protocol/bedrock/session	type	Conn	interface{ChunkRadius() int; ClientCacheEnabled() bool; ClientData() github.com/dm-vev/adamant/net/bedrock/login.ClientData; Flush() error; IdentityData() github.com/dm-vev/adamant/net/bedrock/login.Identity; Latency() time.Duration; ReadPacket() (pk github.com/dm-vev/adamant/net/bedrock/proto.Packet, err error); RemoteAddr() net.Addr; StartGameContext(ctx context.Context, data protocol/bedrock/netconn.GameData) error; WritePacket(pk github.com/dm-vev/adamant/net/bedrock/proto.Packet) error; io.Closer}
 protocol/bedrock/session	type	ConnListener	interface{Accept() (protocol/bedrock/session.Conn, error); Disconnect(conn protocol/bedrock/session.Conn, reason string) error; io.Closer}
 protocol/bedrock/session	type	ContainerCloseHandler	struct{}
@@ -294,7 +294,7 @@ protocol/bedrock/session	type	InteractHandler	struct{}
 protocol/bedrock/session	type	InventoryTransactionHandler	struct{}
 protocol/bedrock/session	type	ItemStackRequestHandler	struct{currentRequest int32; changes map[byte]map[byte]protocol/bedrock/session.changeInfo; responseChanges map[int32]map[*server/item/inventory.Inventory]map[byte]protocol/bedrock/session.responseChange; batch *server/menu.Tx; multiCraft *protocol/bedrock/session.multiCraft; autoCraft *protocol/bedrock/session.autoCraft; current time.Time; ignoreDestroy bool}
 protocol/bedrock/session	type	LecternUpdateHandler	struct{}
-protocol/bedrock/session	type	ListenConfig	struct{Log *log/slog.Logger; EmoteChatMuted bool; Blocks server/world.BlockRegistry}
+protocol/bedrock/session	type	ListenConfig	struct{Log *log/slog.Logger; EmoteChatMuted bool; Blocks server/world.BlockRegistry; Primary *protocol/bedrock/internal/versions.Protocol}
 protocol/bedrock/session	type	Listener	struct{l protocol/bedrock/session.ConnListener; conf protocol/bedrock/session.ListenConfig; contentMu sync.Mutex; content map[*protocol/bedrock/internal/versions.Protocol]*protocol/bedrock/session.startContent}
 protocol/bedrock/session	type	MapInfoRequestHandler	struct{}
 protocol/bedrock/session	type	MobEquipmentHandler	struct{}

@@ -42,6 +42,9 @@ type ListenConfig struct {
 	// with a panic, rather than the game of the first client. Nil leaves
 	// them to the first session.
 	Blocks world.BlockRegistry
+	// Primary is the protocol the sessions speak, [Network]
+	// PrimaryProtocol. Nil is the default of the build.
+	Primary *versions.Protocol
 }
 
 // Listener is the listener of the Bedrock Edition adapter. It hands the
@@ -151,6 +154,7 @@ func (j *join) Start(ctx context.Context, g client.Game) (client.Joining, error)
 		EmoteChatMuted: j.l.conf.EmoteChatMuted,
 		BlockRegistry:  g.World.BlockRegistry(),
 		Protocol:       p,
+		Primary:        j.l.conf.Primary,
 		IsOperator:     g.IsOperator,
 		Roster:         g.Roster,
 	}.New(j.conn), nil

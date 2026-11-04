@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
@@ -58,7 +59,7 @@ func TestPersonaSkinOfAnyPlayer(t *testing.T) {
 	if s.Bounds().Dx() != 256 || s.Bounds().Dy() != 256 || len(s.Pix) != 256*256*4 || !s.Persona {
 		t.Fatalf("persona skin %v of %d bytes", s.Bounds(), len(s.Pix))
 	}
-	encodable(t, "persona 256x256", skinToProtocol(s))
+	encodable(t, "persona 256x256", skinToProtocol(s, testEngine))
 }
 
 func TestClientSkinTrustsNothing(t *testing.T) {
@@ -83,7 +84,7 @@ func TestClientSkinTrustsNothing(t *testing.T) {
 		}(),
 	} {
 		s := ClientSkin(data)
-		encodable(t, name, skinToProtocol(s))
+		encodable(t, name, skinToProtocol(s, testEngine))
 	}
 	if s := ClientSkin(clientData(256, 256, 256*256*4, false)); s.Bounds().Dx() != 0 || s.Pix != nil {
 		t.Fatal("a skin of 256x256 that is no persona is kept, which BDS empties")
@@ -113,7 +114,7 @@ func TestClientSkinTrustsNothing(t *testing.T) {
 	if len(s.Animations) != skin.MaxAnimations {
 		t.Fatalf("%d animations kept, want the %d valid ones up to the bound", len(s.Animations), skin.MaxAnimations)
 	}
-	encodable(t, "cape and animations", skinToProtocol(s))
+	encodable(t, "cape and animations", skinToProtocol(s, testEngine))
 }
 
 // TestPlayerSkinTrustsNothing changes skins with PlayerSkin packets: none
@@ -133,7 +134,7 @@ func TestPlayerSkinTrustsNothing(t *testing.T) {
 	if len(animated.Animations) != 1 || animated.Animations[0].FrameCount != 2 {
 		t.Fatalf("animations %+v", animated.Animations)
 	}
-	encodable(t, "animated", skinToProtocol(animated))
+	encodable(t, "animated", skinToProtocol(animated, testEngine))
 
 	rng := rand.New(rand.NewPCG(1, 2))
 	size := func() uint32 {
@@ -153,7 +154,7 @@ func TestPlayerSkinTrustsNothing(t *testing.T) {
 			a.ImageData = data(a.ImageWidth, a.ImageHeight)
 			sk.Animations = append(sk.Animations, a)
 		}
-		encodable(t, fmt.Sprintf("random skin %d", i), skinToProtocol(protocolToSkin(sk)))
+		encodable(t, fmt.Sprintf("random skin %d", i), skinToProtocol(protocolToSkin(sk), testEngine))
 	}
 }
 
@@ -165,9 +166,13 @@ func TestSkinChangedByHand(t *testing.T) {
 	s.Pix = make([]byte, 10)
 	s.Cape = skin.NewCape(64, 32)
 	s.Cape.Pix = nil
-	pk := skinToProtocol(s)
+	pk := skinToProtocol(s, testEngine)
 	if pk.SkinImageWidth != 0 || pk.SkinData != nil || pk.CapeImageWidth != 0 {
 		t.Fatalf("skin %dx%d of %d bytes", pk.SkinImageWidth, pk.SkinImageHeight, len(pk.SkinData))
 	}
 	encodable(t, "changed by hand", pk)
 }
+
+// testEngine is the engine version of the skins of the tests: that of the
+// default protocol.
+var testEngine = versions.Default().Version
