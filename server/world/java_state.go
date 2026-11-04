@@ -74,6 +74,44 @@ func (tx *Tx) BlockStateID(pos cube.Pos) (uint32, error) {
 	return id, nil
 }
 
+// JavaBlockState returns the Java block state that game logic reads at pos.
+// Unlike BlockStateID it never fails on world data:
+//   - a block holding a liquid Java cannot waterlog it with, as a door or a
+//     carpet in water, reads as the block alone, which is the block Java
+//     has there;
+//   - a native state of no Java block state at all, as a torch facing
+//     "unknown" or a ceiling skull, returns ok false. Game logic reads such a
+//     block by its collision shape, in no tag and harmless, as Java reads no
+//     block of its own differently.
+//
+// Like Block, it may load its column. Out-of-height positions are air.
+func (tx *Tx) JavaBlockState(pos cube.Pos) (id uint32, ok bool) {
+	var c *Column
+	if !pos.OutOfBounds(tx.Range()) {
+		c = tx.chunk(chunkPosFromBlockPos(pos))
+	}
+	w := tx.World()
+	if id = w.javaStateIDInColumn(c, pos); validJavaState(id) {
+		return id, true
+	}
+	if c == nil {
+		return 0, false
+	}
+	state := NativeStateAt(c.Chunk, uint8(pos[0]&15), int16(pos[1]), uint8(pos[2]&15))
+	if air := w.conf.Blocks.AirRuntimeID(); state.Liquid != air {
+		if id = nativeJavaStateID(w.conf.Blocks, NativeState{Block: state.Block, Liquid: air}); validJavaState(id) {
+			return id, true
+		}
+	}
+	return 0, false
+}
+
+// validJavaState reports whether id is a Java block state gamedata knows.
+func validJavaState(id uint32) bool {
+	_, ok := gamedata.BlockStateName(id)
+	return ok
+}
+
 // javaBlockStateID returns zero for native-only states without inventing a
 // canonical identity. Native capability adapters may handle these separately.
 func (tx *Tx) javaBlockStateID(pos cube.Pos) uint32 {

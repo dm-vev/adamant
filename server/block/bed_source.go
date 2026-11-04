@@ -8,16 +8,16 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// Source Player.freeAt checks suffocation, not whether a collision shape exists.
+// Source Player.freeAt checks suffocation, not whether a collision shape
+// exists. A native state of no Java block state suffocates as Java's
+// default, BlockBehaviour.Properties.isSuffocating, has a block suffocate:
+// by a full collision cube.
 func bedBlockSuffocates(pos cube.Pos, tx *world.Tx) bool {
-	id, err := tx.BlockStateID(pos)
-	if err != nil {
-		panic(err)
-	}
-	name, ok := gamedata.BlockStateName(id)
+	id, ok := tx.JavaBlockState(pos)
 	if !ok {
-		panic("bed obstruction has no Source state")
+		return fullCollisionBlock(tx, pos)
 	}
+	name, _ := gamedata.BlockStateName(id)
 	name = strings.TrimPrefix(name, "minecraft:")
 	switch name {
 	case "farmland", "dirt_path", "soul_sand", "mud":

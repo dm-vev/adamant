@@ -19374,6 +19374,7 @@ server/player	method	Context.HighestLightBlocker	func(x int, z int) int
 server/player	method	Context.IsDarkOutside	func() bool
 server/player	method	Context.IsVillage	func(pos server/block/cube.Pos) bool
 server/player	method	Context.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
+server/player	method	Context.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/player	method	Context.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
 server/player	method	Context.JavaPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/player	method	Context.Light	func(pos server/block/cube.Pos) uint8
@@ -20696,6 +20697,7 @@ server/world	method	Context.HighestLightBlocker	func(x int, z int) int
 server/world	method	Context.IsDarkOutside	func() bool
 server/world	method	Context.IsVillage	func(pos server/block/cube.Pos) bool
 server/world	method	Context.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
+server/world	method	Context.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/world	method	Context.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
 server/world	method	Context.JavaPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/world	method	Context.Light	func(pos server/block/cube.Pos) uint8
@@ -21018,6 +21020,7 @@ server/world	method	Tx.HighestLightBlocker	func(x int, z int) int
 server/world	method	Tx.IsDarkOutside	func() bool
 server/world	method	Tx.IsVillage	func(pos server/block/cube.Pos) bool
 server/world	method	Tx.JavaBlockCanSurvive	func(pos server/block/cube.Pos) (survives bool, hasSourceState bool)
+server/world	method	Tx.JavaBlockState	func(pos server/block/cube.Pos) (id uint32, ok bool)
 server/world	method	Tx.JavaMotionBlockingHeight	func(x int, z int, noLeaves bool) int
 server/world	method	Tx.JavaPlacement	func(state uint32, pos server/block/cube.Pos) (uint32, bool)
 server/world	method	Tx.Light	func(pos server/block/cube.Pos) uint8

@@ -51,16 +51,16 @@ func bedStandUpPosition(tx *world.Tx, pos cube.Pos, forward cube.Direction, yaw 
 	return mgl64.Vec3{}, false
 }
 
-func bedStateName(tx *world.Tx, pos cube.Pos) (uint32, string) {
-	id, err := tx.BlockStateID(pos)
-	if err != nil {
-		panic(err)
+// bedState returns the Java state of the block at pos and its name. ok is
+// false for a native state of no Java block state, as a torch facing
+// "unknown": the search reads it by its collision shape alone, in no tag
+// and harmless, as Java reads none of its own blocks differently.
+func bedState(tx *world.Tx, pos cube.Pos) (id uint32, name string, ok bool) {
+	if id, ok = tx.JavaBlockState(pos); !ok {
+		return 0, "", false
 	}
-	name, ok := gamedata.BlockStateName(id)
-	if !ok {
-		panic("bed standup has no Source state")
-	}
-	return id, strings.TrimPrefix(name, "minecraft:")
+	name, ok = gamedata.BlockStateName(id)
+	return id, strings.TrimPrefix(name, "minecraft:"), ok
 }
 func bedStateTag(name, tag string) bool {
 	ok, err := gamedata.BlockTagContains(tag, name)
@@ -69,11 +69,15 @@ func bedStateTag(name, tag string) bool {
 	}
 	return ok
 }
+
+// bedFloorHeight ports DismountHelper.nonClimbableShape and the floor
+// height BlockGetter.getBlockFloorHeight takes of it.
 func bedFloorHeight(tx *world.Tx, pos cube.Pos) float64 {
-	id, name := bedStateName(tx, pos)
-	open, _ := gamedata.BlockStateBool(id, "open")
-	if bedStateTag(name, "minecraft:climbable") || strings.HasSuffix(name, "_trapdoor") && open {
-		return math.Inf(-1)
+	if id, name, ok := bedState(tx, pos); ok {
+		open, _ := gamedata.BlockStateBool(id, "open")
+		if bedStateTag(name, "minecraft:climbable") || strings.HasSuffix(name, "_trapdoor") && open {
+			return math.Inf(-1)
+		}
 	}
 	height := math.Inf(-1)
 	for _, box := range tx.Block(pos).Model().BBox(pos, tx) {
@@ -81,8 +85,13 @@ func bedFloorHeight(tx *world.Tx, pos cube.Pos) float64 {
 	}
 	return height
 }
+
+// bedDangerous ports EntityType.isBlockDangerous for a player.
 func bedDangerous(tx *world.Tx, pos cube.Pos) bool {
-	id, name := bedStateName(tx, pos)
+	id, name, ok := bedState(tx, pos)
+	if !ok {
+		return false
+	}
 	switch name {
 	case "wither_rose", "sweet_berry_bush", "cactus", "powder_snow", "lava", "magma_block", "lava_cauldron":
 		return true
@@ -110,8 +119,7 @@ func bedSafeStandUp(tx *world.Tx, pos cube.Pos, checkDangerous bool) (mgl64.Vec3
 		return mgl64.Vec3{}, false
 	}
 	for _, p := range [...]cube.Pos{pos, pos.Side(cube.FaceUp)} {
-		_, name := bedStateName(tx, p)
-		if bedStateTag(name, "minecraft:invalid_spawn_inside") {
+		if _, name, ok := bedState(tx, p); ok && bedStateTag(name, "minecraft:invalid_spawn_inside") {
 			return mgl64.Vec3{}, false
 		}
 	}
