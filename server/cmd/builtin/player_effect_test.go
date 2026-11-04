@@ -69,3 +69,32 @@ func TestEnchantCommandCompatibleAndIncompatibleItems(t *testing.T) {
 		}
 	})
 }
+
+// /enchant puts Sweeping Edge, which Bedrock has no ID of, on a sword by its
+// Java ID, with the namespace or without, up to its maximum level, and not
+// on an axe.
+func TestEnchantCommandSweepingEdge(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *world.Tx) {
+		p := tx.AddEntity(world.EntitySpawnOpts{}.New(player.Type, player.Config{Name: "SweepTarget"})).(*player.Player)
+		enchant := cmd.New("enchant", "", nil, enchantCommand{})
+		for _, name := range []string{"minecraft:sweeping_edge", "sweeping_edge"} {
+			p.SetHeldItems(item.NewStack(item.Sword{Tier: item.ToolTierIron}, 1), item.Stack{})
+			if out := runTestCommand(enchant, "@a "+name+" 3", tx); out.ErrorCount() != 0 {
+				t.Fatalf("%s: enchant errors: %v", name, out.Errors())
+			}
+			main, _ := p.HeldItems()
+			if got, ok := main.Enchantment(enchantment.SweepingEdge); !ok || got.Level() != 3 {
+				t.Fatalf("%s: held Sweeping Edge=%v present=%v", name, got, ok)
+			}
+		}
+		if out := runTestCommand(enchant, "@a minecraft:sweeping_edge 4", tx); out.ErrorCount() == 0 {
+			t.Fatal("level above the Sweeping Edge maximum was accepted")
+		}
+		p.SetHeldItems(item.NewStack(item.Axe{Tier: item.ToolTierIron}, 1), item.Stack{})
+		if out := runTestCommand(enchant, "@a minecraft:sweeping_edge", tx); out.ErrorCount() == 0 {
+			t.Fatal("an axe accepted Sweeping Edge")
+		}
+	})
+}

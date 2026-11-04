@@ -362,9 +362,7 @@ func (s Stack) Enchantments() []Enchantment {
 	}
 	e := slices.Collect(maps.Values(s.enchantments))
 	sort.Slice(e, func(i, j int) bool {
-		id1, _ := EnchantmentID(e[i].t)
-		id2, _ := EnchantmentID(e[j].t)
-		return id1 < id2
+		return enchantmentOrder(e[i].t) < enchantmentOrder(e[j].t)
 	})
 	return e
 }

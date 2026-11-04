@@ -134,19 +134,42 @@ type mapValue struct {
 	V any
 }
 
-// writeEnchantments writes the enchantments of an item to a map for NBT encoding.
+// javaOnlyEnchantmentsKey is the key of the item NBT that holds the
+// Java-only enchantments of a stack (RegisterJavaOnlyEnchantment): a list of
+// compounds of an id, the Java ID of an enchantment as a string, and a lvl,
+// its level as a short, as the compounds of ench hold a Bedrock ID and a
+// level. BDS keeps the key as it is in the items it loads, saves and sends,
+// and when it enchants one, as it does not know it.
+const javaOnlyEnchantmentsKey = "adamant:ench"
+
+// writeEnchantments writes the enchantments of an item to a map for NBT
+// encoding: those with an ID under ench, the Java-only ones under
+// javaOnlyEnchantmentsKey. As before, ench is written for any enchantment
+// that is not Java-only, empty if none of them has an ID; a stack of
+// Java-only enchantments alone has none.
 func writeEnchantments(m map[string]any, s Stack) {
-	if len(s.Enchantments()) != 0 {
-		var enchantments []map[string]any
-		for _, e := range s.Enchantments() {
-			if eType, ok := EnchantmentID(e.Type()); ok {
-				enchantments = append(enchantments, map[string]any{
-					"id":  int16(eType),
-					"lvl": int16(e.Level()),
-				})
-			}
+	var enchantments, javaOnly []map[string]any
+	other := false
+	for _, e := range s.Enchantments() {
+		if eType, ok := EnchantmentID(e.Type()); ok {
+			enchantments = append(enchantments, map[string]any{
+				"id":  int16(eType),
+				"lvl": int16(e.Level()),
+			})
+		} else if IsJavaOnlyEnchantment(e.Type()) {
+			javaOnly = append(javaOnly, map[string]any{
+				"id":  JavaEnchantmentID(e.Type()),
+				"lvl": int16(e.Level()),
+			})
+		} else {
+			other = true
 		}
+	}
+	if len(enchantments) != 0 || other {
 		m["ench"] = enchantments
+	}
+	if len(javaOnly) != 0 {
+		m[javaOnlyEnchantmentsKey] = javaOnly
 	}
 }
 
@@ -229,23 +252,37 @@ func readAnvilCost(m map[string]any, s *Stack) {
 	*s = s.WithAnvilCost(int(nbtInt32(m, "RepairCost")))
 }
 
-// readEnchantments reads the enchantments stored in the ench tag of the NBT passed and stores it into a Stack.
+// readEnchantments reads the enchantments stored in the ench tag of the NBT
+// passed, and the Java-only ones under javaOnlyEnchantmentsKey, and stores
+// them into a Stack. Entries of an unknown ID are left out.
 func readEnchantments(m map[string]any, s *Stack) {
-	enchantments, ok := m["ench"].([]map[string]any)
-	if !ok {
-		for _, e := range nbtSlice(m, "ench") {
-			if v, ok := e.(map[string]any); ok {
-				enchantments = append(enchantments, v)
-			}
-		}
-	}
-	for _, ench := range enchantments {
+	for _, ench := range nbtCompounds(m, "ench") {
 		if t, ok := EnchantmentByID(int(nbtInt16(ench, "id"))); ok {
 			// NewEnchantment panics below level 1, and this NBT is read from client packets
 			// and player saves, so it cannot be trusted to hold a sensible level.
 			*s = s.WithForcedEnchantments(NewEnchantment(t, int(max(nbtInt16(ench, "lvl"), 1))))
 		}
 	}
+	for _, ench := range nbtCompounds(m, javaOnlyEnchantmentsKey) {
+		// The Java ID of the enchantment names it even once Bedrock gives
+		// it an ID and it is registered with that.
+		if t, ok := enchantmentByJavaID(nbtString(ench, "id")); ok {
+			*s = s.WithForcedEnchantments(NewEnchantment(t, int(max(nbtInt16(ench, "lvl"), 1))))
+		}
+	}
+}
+
+// nbtCompounds returns the compounds of the list at key k of m.
+func nbtCompounds(m map[string]any, k string) []map[string]any {
+	compounds, ok := m[k].([]map[string]any)
+	if !ok {
+		for _, e := range nbtSlice(m, k) {
+			if v, ok := e.(map[string]any); ok {
+				compounds = append(compounds, v)
+			}
+		}
+	}
+	return compounds
 }
 
 // readDisplay reads the display data present in the display field in the NBT. It includes a custom name of the item

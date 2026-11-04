@@ -8,7 +8,8 @@ import (
 // SweepingEdge is a Java enchantment of swords that raises the damage of
 // a sweep attack: it adds level/(level+1) to the sweeping damage ratio
 // (data/minecraft/enchantment/sweeping_edge.json). Bedrock has no Sweeping
-// Edge, so a Bedrock client does not name it.
+// Edge: it is a Java-only enchantment (item.RegisterJavaOnlyEnchantment),
+// which item NBT holds by its Java ID, minecraft:sweeping_edge.
 var SweepingEdge sweepingEdge
 
 type sweepingEdge struct{}

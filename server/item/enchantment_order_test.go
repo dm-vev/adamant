@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/item"
-	_ "github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -46,12 +46,14 @@ func (customEnchantment) CompatibleWithItem(world.Item) bool                  { 
 // in the order it sorted them in before it kept the order, for the default
 // registry and after enchantments are registered, also with IDs lower than
 // some registered before and with an enchantment registered with two IDs,
-// and that the slice it returns is the caller's. The enchantments
-// registered cost more than any table offers and suit no item.
+// then the Java-only enchantments, which have no ID, in the order they were
+// registered, and that the slice it returns is the caller's. The
+// enchantments registered cost more than any table offers and suit no item.
 func TestEnchantmentsOrder(t *testing.T) {
+	javaOnly := []item.EnchantmentType{enchantment.SweepingEdge}
 	check := func(what string) {
 		t.Helper()
-		got, want := item.Enchantments(), oldEnchantments()
+		got, want := item.Enchantments(), append(oldEnchantments(), javaOnly...)
 		if !slices.Equal(got, want) {
 			t.Fatalf("%s: Enchantments() = %v, sorted as before %v", what, got, want)
 		}
@@ -75,10 +77,26 @@ func TestEnchantmentsOrder(t *testing.T) {
 	item.RegisterEnchantment(6999, customEnchantment{"test c"})
 	item.RegisterEnchantment(7002, customEnchantment{"test c"})
 	check("c at 6999 and 7002")
-	if e := item.Enchantments(); !slices.Equal(e[len(e)-4:], []item.EnchantmentType{
+	if e := item.Enchantments(); !slices.Equal(e[len(e)-5:], []item.EnchantmentType{
 		customEnchantment{"test b"}, customEnchantment{"test a"}, customEnchantment{"test c"}, customEnchantment{"test c"},
+		enchantment.SweepingEdge,
 	}) {
-		t.Fatalf("the enchantments registered are last as %v", e[len(e)-4:])
+		t.Fatalf("the enchantments registered are last but the Java-only ones as %v", e[len(e)-5:])
+	}
+
+	item.RegisterJavaOnlyEnchantment(customEnchantment{"test java d"})
+	item.RegisterJavaOnlyEnchantment(customEnchantment{"test java d"})
+	javaOnly = append(javaOnly, customEnchantment{"test java d"})
+	check("Java-only d, twice")
+	if !item.IsJavaOnlyEnchantment(customEnchantment{"test java d"}) || item.IsJavaOnlyEnchantment(customEnchantment{"test a"}) {
+		t.Fatal("IsJavaOnlyEnchantment does not tell d from a")
+	}
+	// Once Bedrock has an ID of an enchantment, it has the ID.
+	item.RegisterJavaOnlyEnchantment(customEnchantment{"test java e"})
+	item.RegisterEnchantment(7003, customEnchantment{"test java e"})
+	check("Java-only e at 7003")
+	if item.IsJavaOnlyEnchantment(customEnchantment{"test java e"}) {
+		t.Fatal("e registered with an ID is Java-only")
 	}
 
 	// Registering while others read is as safe as it was.

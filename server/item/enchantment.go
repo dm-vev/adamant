@@ -3,6 +3,7 @@ package item
 import (
 	"cmp"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/world"
@@ -92,16 +93,87 @@ func RegisterEnchantment(id int, enchantment EnchantmentType) {
 
 	enchantmentsMap[id] = enchantment
 	enchantmentIDs[enchantment] = id
+	enchantmentsByJavaID[JavaEnchantmentID(enchantment)] = enchantment
 	enchantmentsSorted = sortedEnchantments()
+}
+
+// RegisterJavaOnlyEnchantment registers an enchantment that Java has and
+// Bedrock lacks, such as Sweeping Edge, without an ID: a Bedrock ID it took
+// could name another enchantment to Bedrock, then or once Bedrock adds one.
+// The item NBT of a stack holds it under adamant:ench, a list of compounds
+// of its Java ID (JavaEnchantmentID) and level, instead of under ench, which
+// Bedrock reads. Enchantments lists it after the enchantments registered
+// with an ID, in the order of registration. An enchantment registered with
+// an ID too is not Java-only.
+func RegisterJavaOnlyEnchantment(enchantment EnchantmentType) {
+	enchantmentMu.Lock()
+	defer enchantmentMu.Unlock()
+
+	if !slices.Contains(javaOnlyEnchantments, enchantment) {
+		javaOnlyEnchantments = append(javaOnlyEnchantments, enchantment)
+	}
+	enchantmentsByJavaID[JavaEnchantmentID(enchantment)] = enchantment
+	enchantmentsSorted = sortedEnchantments()
+}
+
+// IsJavaOnlyEnchantment reports if e was registered with
+// RegisterJavaOnlyEnchantment and not with an ID: Bedrock has no ID of it.
+func IsJavaOnlyEnchantment(e EnchantmentType) bool {
+	enchantmentMu.RLock()
+	defer enchantmentMu.RUnlock()
+	return javaOnly(e)
+}
+
+// javaOnly reports if e is a Java-only enchantment. The caller holds
+// enchantmentMu.
+func javaOnly(e EnchantmentType) bool {
+	_, numbered := enchantmentIDs[e]
+	return !numbered && slices.Contains(javaOnlyEnchantments, e)
+}
+
+// enchantmentByJavaID returns the registered enchantment of a Java ID, with
+// or without the minecraft namespace.
+func enchantmentByJavaID(id string) (EnchantmentType, bool) {
+	if !strings.Contains(id, ":") {
+		id = "minecraft:" + id
+	}
+	enchantmentMu.RLock()
+	defer enchantmentMu.RUnlock()
+	e, ok := enchantmentsByJavaID[id]
+	return e, ok
+}
+
+// enchantmentOrder returns the place of e in the order of Enchantments,
+// which Stack.Enchantments sorts by: its ID, or after every ID for a
+// Java-only enchantment, in the order those were registered. An
+// unregistered enchantment is at 0.
+func enchantmentOrder(e EnchantmentType) int {
+	enchantmentMu.RLock()
+	defer enchantmentMu.RUnlock()
+	if id, ok := enchantmentIDs[e]; ok {
+		return id
+	}
+	if i := slices.Index(javaOnlyEnchantments, e); i >= 0 {
+		// Item NBT holds an ID as an int16, so an ID is below 1<<15.
+		return 1<<16 + i
+	}
+	return 0
 }
 
 var (
 	enchantmentMu   sync.RWMutex
 	enchantmentsMap = map[int]EnchantmentType{}
 	enchantmentIDs  = map[EnchantmentType]int{}
+	// javaOnlyEnchantments holds the enchantments of
+	// RegisterJavaOnlyEnchantment, in the order they were registered.
+	javaOnlyEnchantments []EnchantmentType
+	// enchantmentsByJavaID holds every registered enchantment by its Java
+	// ID.
+	enchantmentsByJavaID = map[string]EnchantmentType{}
 	// enchantmentsSorted holds the registered enchantments as Enchantments
-	// returns them. RegisterEnchantment builds it again; it is never
-	// changed otherwise, and Enchantments returns copies of it.
+	// returns them. RegisterEnchantment and RegisterJavaOnlyEnchantment
+	// build it again; it is never changed otherwise, and Enchantments
+	// returns copies of it.
 	enchantmentsSorted []EnchantmentType
 )
 
@@ -126,7 +198,8 @@ func EnchantmentID(e EnchantmentType) (int, bool) {
 }
 
 // Enchantments returns a slice of all registered enchantments, ordered by
-// the IDs they were registered with. The slice is the caller's.
+// the IDs they were registered with, then the Java-only enchantments in the
+// order they were registered. The slice is the caller's.
 func Enchantments() []EnchantmentType {
 	enchantmentMu.RLock()
 	defer enchantmentMu.RUnlock()
@@ -138,7 +211,8 @@ func Enchantments() []EnchantmentType {
 // An enchantment registered with more than one ID is in it once for each.
 // Enchantments of the same ID, which only one registered with several IDs
 // and one registered later with its last can be, are ordered by the IDs
-// that hold them in enchantmentsMap. The caller holds enchantmentMu.
+// that hold them in enchantmentsMap. The Java-only enchantments follow, in
+// the order they were registered. The caller holds enchantmentMu.
 func sortedEnchantments() []EnchantmentType {
 	type entry struct {
 		e      EnchantmentType
@@ -151,9 +225,14 @@ func sortedEnchantments() []EnchantmentType {
 	slices.SortFunc(entries, func(a, b entry) int {
 		return cmp.Or(cmp.Compare(a.id, b.id), cmp.Compare(a.at, b.at))
 	})
-	e := make([]EnchantmentType, len(entries))
+	e := make([]EnchantmentType, len(entries), len(entries)+len(javaOnlyEnchantments))
 	for i, entry := range entries {
 		e[i] = entry.e
+	}
+	for _, j := range javaOnlyEnchantments {
+		if javaOnly(j) {
+			e = append(e, j)
+		}
 	}
 	return e
 }

@@ -14,7 +14,10 @@ func (h *ItemStackRequestHandler) handleEnchant(a *mc.CraftRecipeStackRequestAct
 }
 
 // ViewEnchantmentOptions shows the client the three options of the
-// enchanting table its player has open.
+// enchanting table its player has open. The enchantments of an option the
+// client has no ID of, the Java-only ones, are left out of what it is sent
+// of the option: an option of those alone is sent with its cost and no
+// enchantment.
 func (s *Session) ViewEnchantmentOptions(selected [3]menu.EnchantmentOption) {
 	// Build the protocol variant of the enchantment options.
 	options := make([]mc.EnchantmentOption, 0, 3)
@@ -22,7 +25,10 @@ func (s *Session) ViewEnchantmentOptions(selected [3]menu.EnchantmentOption) {
 		// First build the enchantment instances for each selected enchantment.
 		enchants := make([]mc.EnchantmentInstance, 0, len(selected[i].Enchantments))
 		for _, enchant := range selected[i].Enchantments {
-			id, _ := item.EnchantmentID(enchant.Type())
+			id, ok := item.EnchantmentID(enchant.Type())
+			if !ok {
+				continue
+			}
 			enchants = append(enchants, mc.EnchantmentInstance{
 				Type:  byte(id),
 				Level: byte(enchant.Level()),

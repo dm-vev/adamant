@@ -17710,6 +17710,7 @@ server/item	func	FlowerBannerPattern	func() server/item.BannerPatternType
 server/item	func	GlobeBannerPattern	func() server/item.BannerPatternType
 server/item	func	GoatHornFromJavaInstrument	func(id string) (server/world/sound.Horn, bool)
 server/item	func	GusterBannerPattern	func() server/item.BannerPatternType
+server/item	func	IsJavaOnlyEnchantment	func(e server/item.EnchantmentType) bool
 server/item	func	IsPrimaryItem	func(t server/item.EnchantmentType, i server/world.Item) bool
 server/item	func	JavaEnchantmentID	func(e server/item.EnchantmentType) string
 server/item	func	JavaInstrumentID	func(h server/world/sound.Horn) string
@@ -17735,6 +17736,7 @@ server/item	func	ReadNBT	func(data map[string]any, registries ...server/world.Bl
 server/item	func	ReadTag	func(tag map[string]any, s server/item.Stack) server/item.Stack
 server/item	func	RegenerationStew	func() server/item.StewType
 server/item	func	RegisterEnchantment	func(id int, enchantment server/item.EnchantmentType)
+server/item	func	RegisterJavaOnlyEnchantment	func(enchantment server/item.EnchantmentType)
 server/item	func	SaturationDandelionStew	func() server/item.StewType
 server/item	func	SaturationOrchidStew	func() server/item.StewType
 server/item	func	SherdTypeAngler	func() server/item.SherdType
