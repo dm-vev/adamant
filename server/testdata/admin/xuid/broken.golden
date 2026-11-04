@@ -1,0 +1,3 @@
+ops.json "[{\"xuid\": \"12a\", \"name\": \"Steve\"}]": load ops list: decode ops: operator {"xuid": "12a", "name": "Steve"}: invalid XUID "12a": want its decimal digits
+ops.json "[5]": load ops list: decode ops: operator 5: json: cannot unmarshal number into Go value of type server.opsAccount
+banned-players.json "{\"players\": [{\"xuid\": \"x\", \"name\": \"Steve\"}]}": load bans: decode bans: player "Steve": invalid XUID "x": want its decimal digits

@@ -152,6 +152,13 @@ type proxiedClient struct {
 // with the n-th UUID of the proxied clients.
 func (s *serverScenario) proxied(link *proxy.Link, name, addr string, n int) *proxiedClient {
 	s.t.Helper()
+	return s.proxiedAs(link, name, addr, n, false)
+}
+
+// proxiedAs is proxied of a client whose proxy says Xbox Live vouched for
+// it if xboxLive.
+func (s *serverScenario) proxiedAs(link *proxy.Link, name, addr string, n int, xboxLive bool) *proxiedClient {
+	s.t.Helper()
 	id := uuid.MustParse(fmt.Sprintf("00000000-0000-4000-8000-%012x", 0x9000+n))
 	xuid := fmt.Sprintf("25354000000%05d", 100+n)
 	identity, _ := json.Marshal(login.Identity{DisplayName: name, Identity: id.String(), XUID: xuid})
@@ -159,7 +166,7 @@ func (s *serverScenario) proxied(link *proxy.Link, name, addr string, n int) *pr
 	// The default is drawn at random; the player list shows it.
 	cd.PlayFabID = fmt.Sprintf("%016x", 0x9000+n)
 	data, _ := json.Marshal(cd)
-	p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, Addr: addr, Protocol: v2193.Protocol})
+	p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, XboxLive: xboxLive, Addr: addr, Protocol: v2193.Protocol})
 	if err != nil {
 		s.t.Fatal(err)
 	}

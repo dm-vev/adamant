@@ -320,8 +320,10 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 	if len(conf.Listeners) == 0 {
 		t.Error("the Config has no listener")
 	}
+	// The stranger signed in with Xbox Live, as a server keyed by XUID
+	// refuses any other.
 	stranger := "allowed"
-	if msg, ok := conf.Allower.Allow(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)}, client.Identity{Name: "Stranger", UUID: uuid.New()}, client.Profile{}); !ok {
+	if msg, ok := conf.Allower.Allow(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)}, client.Identity{Name: "Stranger", UUID: uuid.New(), XUID: "2535400000000999", Authenticated: true}, client.Profile{}); !ok {
 		stranger = msg
 	}
 	whitelist := ""

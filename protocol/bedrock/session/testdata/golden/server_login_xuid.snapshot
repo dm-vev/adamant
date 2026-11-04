@@ -1,0 +1,108 @@
+== a client nobody vouched for, with the XUID of the member: Member, xuid:2535400000000101, Xbox Live false
+>> Disconnect id=5 len=43
+    {Reason:55 HideDisconnectionScreen:false Message:"This server needs an Xbox Live account." FilteredMessage:""}
+    | 6e00275468697320736572766572206e6565647320616e2058626f78204c6976
+    | 65206163636f756e742e00
+-- the connection closed
+-- server
+    players online: 0
+== a banned account: Banned, xuid:2535400000000103, Xbox Live true
+>> Disconnect id=5 len=53
+    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server. Reason: griefing" FilteredMessage:""}
+    | 6e0031596f75206172652062616e6e65642066726f6d20746869732073657276
+    | 65722e20526561736f6e3a206772696566696e6700
+-- the connection closed
+-- server
+    players online: 0
+== another account named as the operator: Operator, xuid:2535400000000104, Xbox Live true
+>> Disconnect id=5 len=29
+    {Reason:55 HideDisconnectionScreen:false Message:"§cServer is white-listed" FilteredMessage:""}
+    | 6e0019c2a7635365727665722069732077686974652d6c697374656400
+-- the connection closed
+-- server
+    players online: 0
+== an account not on the whitelist: Stranger, xuid:2535400000000105, Xbox Live true
+>> Disconnect id=5 len=29
+    {Reason:55 HideDisconnectionScreen:false Message:"§cServer is white-listed" FilteredMessage:""}
+    | 6e0019c2a7635365727665722069732077686974652d6c697374656400
+-- the connection closed
+-- server
+    players online: 0
+== the operator, off the whitelist, under another name: Renamed, xuid:2535400000000102
+>> PlayStatus id=2 len=4
+    {Status:0}
+    | 00000000
+>> ResourcePacksInfo id=6 len=22
+    ResourcePacksInfoPacket
+      TexturePackRequired: false
+      HasAddons: false
+      HasScripts: false
+      ForceDisableVibrantVisuals: false
+      WorldTemplateUUID: 0x00000000000000000000000000000000
+      WorldTemplateVersion: ""
+      TexturePacks: []
+    | 00000000000000000000000000000000000000000000
+-- server
+    players online: 0
+== the first account that joins as Pending: Pending, xuid:2535400000000106
+>> PlayStatus id=2 len=4
+    {Status:0}
+    | 00000000
+>> ResourcePacksInfo id=6 len=22
+    ResourcePacksInfoPacket
+      TexturePackRequired: false
+      HasAddons: false
+      HasScripts: false
+      ForceDisableVibrantVisuals: false
+      WorldTemplateUUID: 0x00000000000000000000000000000000
+      WorldTemplateVersion: ""
+      TexturePacks: []
+    | 00000000000000000000000000000000000000000000
+-- server
+    players online: 0
+== the member: Member, xuid:2535400000000101
+>> PlayStatus id=2 len=4
+    {Status:0}
+    | 00000000
+>> ResourcePacksInfo id=6 len=22
+    ResourcePacksInfoPacket
+      TexturePackRequired: false
+      HasAddons: false
+      HasScripts: false
+      ForceDisableVibrantVisuals: false
+      WorldTemplateUUID: 0x00000000000000000000000000000000
+      WorldTemplateVersion: ""
+      TexturePacks: []
+    | 00000000000000000000000000000000000000000000
+-- server
+    players online: 0
+== another account joins as Pending: Pending, xuid:2535400000000107
+>> Disconnect id=5 len=29
+    {Reason:55 HideDisconnectionScreen:false Message:"§cServer is white-listed" FilteredMessage:""}
+    | 6e0019c2a7635365727665722069732077686974652d6c697374656400
+-- the connection closed
+-- server
+    players online: 0
+-- white-list.txt
+    "xuid:2535400000000101\r\n"
+-- ops.json
+    "[\n"
+    "  {\n"
+    "    \"xuid\": \"2535400000000102\",\n"
+    "    \"name\": \"\"\n"
+    "  },\n"
+    "  {\n"
+    "    \"xuid\": \"2535400000000106\",\n"
+    "    \"name\": \"Pending\"\n"
+    "  }\n"
+    "]\n"
+-- banned-players.json
+    "{\n"
+    "  \"players\": [\n"
+    "    {\n"
+    "      \"xuid\": \"2535400000000103\",\n"
+    "      \"reason\": \"griefing\"\n"
+    "    }\n"
+    "  ],\n"
+    "  \"ips\": []\n"
+    "}\n"

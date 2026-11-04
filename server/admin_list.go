@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/identity"
@@ -105,6 +107,126 @@ func (e *entries) clone() entries {
 	return c
 }
 
+// match returns the entry of the player of the name passed in a list of
+// a server that keys its players by name: the entry of the name, or else
+// the first entry of an Xbox account whose player last had the name, which
+// a server keyed by XUID wrote.
+func (e *entries) match(name string) (entry, bool) {
+	k, err := identity.OfName(name)
+	if err != nil {
+		return entry{}, false
+	}
+	if en, ok := e.get(k); ok {
+		return en, true
+	}
+	n, _ := k.Name()
+	for _, en := range e.order {
+		if _, ok := en.key.XUID(); ok && identity.Normalize(en.name) == n {
+			return en, true
+		}
+	}
+	return entry{}, false
+}
+
+// byName returns the entries of Xbox accounts whose players last had the
+// name passed, in order.
+func (e *entries) byName(name string) []entry {
+	n := identity.Normalize(name)
+	var out []entry
+	for _, en := range e.order {
+		if _, ok := en.key.XUID(); ok && n != "" && identity.Normalize(en.name) == n {
+			out = append(out, en)
+		}
+	}
+	return out
+}
+
+// bind turns the pending entry of the name passed, an entry of the name on
+// a list of a server keyed by XUID, into an entry of the account x, which
+// joined with that name, where it stands, keeping its reason. If the list
+// holds x already, the pending entry is dropped instead. It returns the
+// pending entry, and reports whether there was one.
+func (e *entries) bind(x identity.Key, name string) (entry, bool) {
+	k, err := identity.OfName(name)
+	if err != nil {
+		return entry{}, false
+	}
+	i, ok := e.index[k]
+	if !ok {
+		return entry{}, false
+	}
+	pending := e.order[i]
+	if e.has(x) {
+		e.remove(k)
+		return pending, true
+	}
+	en := pending
+	en.key, en.name = x, strings.TrimSpace(name)
+	delete(e.index, k)
+	e.index[x] = i
+	e.order[i] = en
+	return pending, true
+}
+
+// pending returns the names of the pending entries of the list: the names
+// a server keyed by XUID holds until an account joins with one.
+func (e *entries) pending() []string {
+	var out []string
+	for _, en := range e.order {
+		if n, ok := en.key.Name(); ok {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// accounts returns the number of entries of Xbox accounts of the list.
+func (e *entries) accounts() int {
+	n := 0
+	for _, en := range e.order {
+		if _, ok := en.key.XUID(); ok {
+			n++
+		}
+	}
+	return n
+}
+
+// xuidEntry returns the entry of the account of the XUID passed, which
+// last had the name passed.
+func xuidEntry(xuid, name string) (entry, error) {
+	k, err := identity.OfXUID(xuid)
+	if err != nil {
+		return entry{}, err
+	}
+	return entry{key: k, name: strings.TrimSpace(name)}, nil
+}
+
+// parseEntryText reads an entry as the whitelist writes it, one a line:
+// "xuid:<XUID>", then a space and the name the player last had if known,
+// for an Xbox account, or a name. It reports false for a blank text.
+func parseEntryText(text string) (entry, bool) {
+	t := strings.TrimSpace(text)
+	if len(t) > len(xuidTextPrefix) && strings.EqualFold(t[:len(xuidTextPrefix)], xuidTextPrefix) {
+		digits, name, _ := strings.Cut(t[len(xuidTextPrefix):], " ")
+		if en, err := xuidEntry(digits, name); err == nil {
+			return en, true
+		}
+	}
+	en, err := nameEntry(t)
+	return en, err == nil
+}
+
+// entryText writes an entry as parseEntryText reads it.
+func entryText(en entry) string {
+	if _, ok := en.key.XUID(); ok && en.name != "" {
+		return en.key.String() + " " + en.name
+	}
+	return en.key.String()
+}
+
+// xuidTextPrefix starts the text of an entry of an Xbox account.
+const xuidTextPrefix = "xuid:"
+
 // newEntries returns an empty list read from a file, which writes as an
 // empty list rather than as one never read.
 func newEntries(n int) entries {
@@ -179,10 +301,32 @@ func errNotExist(err error) bool { return errors.Is(err, fs.ErrNotExist) }
 // UserConfig.Config composes: the bans first, by name or by address, then
 // the operators, who join whether or not the whitelist holds them, as
 // Nukkit lets them, then the whitelist. Any of the lists may be nil.
+//
+// A server keyed by XUID refuses first an identity Xbox Live did not
+// vouch for, or that has no XUID, then binds the pending entries of the
+// name of the player, if any, to its account, and checks the lists by the
+// account. A server keyed by name checks them by the name.
 type admission struct {
+	mode      identity.Mode
+	log       *slog.Logger
 	whitelist *Whitelist
 	operators *operatorsList
 	bans      *banList
+}
+
+// errNoAccount is the message a server keyed by XUID refuses a player
+// that Xbox Live did not vouch for with.
+const errNoAccount = "This server needs an Xbox Live account."
+
+// accountKey returns the key of the account of an identity, as a server
+// keyed by XUID takes it: none if Xbox Live did not vouch for the
+// identity, which may name any XUID.
+func accountKey(id client.Identity) (identity.Key, bool) {
+	if !id.Authenticated {
+		return identity.Key{}, false
+	}
+	k, err := identity.OfXUID(id.XUID)
+	return k, err == nil
 }
 
 // Allow refuses a banned player with the reason of the ban, allows an
@@ -192,13 +336,12 @@ func (a admission) Allow(addr net.Addr, id client.Identity, p client.Profile) (s
 	if addr != nil {
 		addrString = addr.String()
 	}
+	if a.mode == identity.XUID {
+		return a.allowAccount(addrString, id)
+	}
 	if a.bans != nil {
 		if reason, ok := a.bans.banned(addrString, id.Name); ok {
-			msg := "You are banned from this server."
-			if reason != "" {
-				msg += " Reason: " + reason
-			}
-			return msg, false
+			return bannedMessage(reason), false
 		}
 	}
 	if a.operators != nil && a.operators.isOperator(id.Name) {
@@ -208,6 +351,113 @@ func (a admission) Allow(addr net.Addr, id client.Identity, p client.Profile) (s
 		return a.whitelist.Allow(addr, id, p)
 	}
 	return "", true
+}
+
+// allowAccount is Allow on a server keyed by XUID.
+func (a admission) allowAccount(addr string, id client.Identity) (string, bool) {
+	k, ok := accountKey(id)
+	if !ok {
+		return errNoAccount, false
+	}
+	a.bind(k, id.Name)
+	if a.bans != nil {
+		if reason, ok := a.bans.bannedAccount(addr, k); ok {
+			return bannedMessage(reason), false
+		}
+	}
+	if a.operators.hasKey(k) {
+		return "", true
+	}
+	if a.whitelist != nil {
+		return a.whitelist.allowAccount(k)
+	}
+	return "", true
+}
+
+// bind binds the entries the lists hold of the name passed until an
+// account joins with it to the account of the key passed, which did, and
+// logs each.
+func (a admission) bind(k identity.Key, name string) {
+	type binder interface {
+		bind(x identity.Key, name string) (entry, bool, error)
+	}
+	for _, l := range []struct {
+		what string
+		list binder
+		ok   bool
+	}{
+		{"ban", a.bans, a.bans != nil},
+		{"operator entry", a.operators, a.operators != nil},
+		{"whitelist entry", a.whitelist, a.whitelist != nil},
+	} {
+		if !l.ok {
+			continue
+		}
+		pending, ok, err := l.list.bind(k, name)
+		if !ok {
+			continue
+		}
+		pn, _ := pending.key.Name()
+		a.logger().Info(fmt.Sprintf("Bound the %s %q to %s (%s).", l.what, pn, k, strings.TrimSpace(name)))
+		if err != nil {
+			a.logger().Error("Write the list of the bound entry: "+err.Error(), "entry", l.what)
+		}
+	}
+}
+
+func (a admission) logger() *slog.Logger {
+	if a.log == nil {
+		return slog.Default()
+	}
+	return a.log
+}
+
+// bannedMessage returns what a banned player is refused with.
+func bannedMessage(reason string) string {
+	msg := "You are banned from this server."
+	if reason != "" {
+		msg += " Reason: " + reason
+	}
+	return msg
+}
+
+// warnHeld logs, at the start of a server, the entries of its lists that a
+// server keyed in the other mode wrote: on one keyed by XUID, the
+// operators and the members of the whitelist still held by name, which the
+// first account that joins with the name becomes; on one keyed by name,
+// the entries of Xbox accounts, which match the name their player last
+// had.
+func (a admission) warnHeld() {
+	if a.mode == identity.XUID {
+		var ops, members []string
+		if a.operators != nil {
+			a.operators.view(func(e *entries) { ops = e.pending() })
+		}
+		if a.whitelist != nil {
+			a.whitelist.view(func(e *entries) { members = e.pending() })
+		}
+		if len(ops) > 0 {
+			a.logger().Warn("Operators held by name: bound to the first Xbox account that joins with that name. Name the account with xuid:<XUID> instead.", "names", ops)
+		}
+		if len(members) > 0 {
+			a.logger().Warn("Whitelist entries held by name: bound to the first Xbox account that joins with that name.", "names", members)
+		}
+		return
+	}
+	n := 0
+	count := func(e *entries) { n += e.accounts() }
+	if a.operators != nil {
+		a.operators.view(count)
+	}
+	if a.whitelist != nil {
+		a.whitelist.view(count)
+	}
+	if a.bans != nil {
+		a.bans.view(count)
+	}
+	if n > 0 {
+		a.logger().Warn(fmt.Sprintf("%d entries of the lists name Xbox accounts: on this server, keyed by name, each matches the name its player last had, and is written back unchanged.", n))
+	}
 }
 
 // adminAccess and underlyingWhitelist hand Config.New the lists of the

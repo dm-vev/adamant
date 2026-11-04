@@ -100,9 +100,10 @@ func TestBanKicksOnlyTheExactName(t *testing.T) {
 }
 
 // TestRenamedPlayerLosesOperator pins that the operators and the whitelist
-// hold names: an Xbox account that renames its gamertag is neither, and
-// whoever joins under the old name is both. "Key the admin lists by Xbox
-// account on servers with sign-in" keeps them with the account.
+// of a server keyed by name hold names: an Xbox account that renames its
+// gamertag is neither, and whoever joins under the old name is both. On a
+// server keyed by XUID, TestRenamedPlayerKeepsOperator holds the other
+// way.
 func TestRenamedPlayerLosesOperator(t *testing.T) {
 	srv := adminConfig(t, filepath.Join(t.TempDir(), "white-list.txt"), true)
 	if _, err := srv.Op("Steve"); err != nil {

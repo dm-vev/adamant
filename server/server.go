@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
@@ -221,20 +222,35 @@ func (srv *Server) WhitelistReload() error {
 	return srv.whitelist.Reload()
 }
 
-// WhitelistAdd adds a player name to the whitelist.
+// WhitelistAdd adds a player to the whitelist: by name on a server keyed
+// by name; on one keyed by XUID, the account of "xuid:<XUID>" or of the
+// player online with the name, or else the name, held until an account
+// joins with it.
 func (srv *Server) WhitelistAdd(name string) (bool, error) {
 	if srv.whitelist == nil {
 		return false, ErrWhitelistUnavailable
 	}
-	return srv.whitelist.Add(name)
+	en, err := srv.addition(name)
+	if err != nil {
+		return false, ErrWhitelistInvalidName
+	}
+	return srv.whitelist.add(en)
 }
 
-// WhitelistRemove removes a player name from the whitelist.
+// WhitelistRemove removes a player from the whitelist, named as
+// WhitelistAdd names it, or by the name the account of an entry last had.
 func (srv *Server) WhitelistRemove(name string) (bool, error) {
 	if srv.whitelist == nil {
 		return false, ErrWhitelistUnavailable
 	}
-	return srv.whitelist.Remove(name)
+	if _, err := identity.Parse(name); err != nil {
+		return false, ErrWhitelistInvalidName
+	}
+	k, ok := srv.removal(name, srv.whitelist.view)
+	if !ok {
+		return false, nil
+	}
+	return srv.whitelist.remove(k)
 }
 
 // WhitelistEntries returns the list of names currently present in the whitelist.
@@ -490,6 +506,16 @@ func (srv *Server) wait() {
 // player for Accept.
 func (srv *Server) join(ctx context.Context, j client.Join) {
 	login := j.Login()
+	if srv.IdentityKey() == identity.XUID {
+		// The Allower of the lists refuses such a login too: a listener
+		// that lets one in without it never lets a self-named XUID match an
+		// entry.
+		if _, ok := accountKey(login.Identity); !ok {
+			j.Reject(text.Literal(errNoAccount))
+			srv.conf.Log.Debug("spawn failed: no Xbox Live account vouched for", "raddr", login.Addr)
+			return
+		}
+	}
 	id := login.Identity.UUID
 	// A player still online leaves before the joining one is loaded: the
 	// server then loads what it saved of the player as it left.
@@ -554,7 +580,7 @@ func (srv *Server) game(login client.Login, d player.Config, w *world.World) cli
 		World:          w,
 		Position:       d.Position,
 		Rotation:       d.Rotation,
-		Operator:       srv.IsOperator(login.Identity.Name),
+		Operator:       srv.operatorOf(login.Identity),
 		MaxChunkRadius: srv.conf.MaxChunkRadius,
 		IsOperator:     srv.IsOperator,
 		Roster:         &srv.players.roster,

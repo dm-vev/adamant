@@ -111,6 +111,24 @@ func (r *players) byKey(key string) *world.EntityHandle {
 	return nil
 }
 
+// named returns the player online whose name is the one passed, in any
+// case and with spaces around: the identity its client logged in as and
+// its handle.
+func (r *players) named(name string) (*onlinePlayer, bool) {
+	n := normalizeName(name)
+	if n == "" {
+		return nil, false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, p := range r.online {
+		if normalizeName(p.id.Name) == n {
+			return p, true
+		}
+	}
+	return nil, false
+}
+
 // snapshot returns the players online, in the order they were put online.
 func (r *players) snapshot() []onlinePlayer {
 	r.mu.RLock()

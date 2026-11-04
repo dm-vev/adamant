@@ -214,6 +214,11 @@ func (conf Config) New() *Server {
 		conf.Log.Info("Players are keyed by name: Config.IdentityKey is identity.Auto, which a Server keys by name.")
 		conf.IdentityKey = identity.Name
 	}
+	if a, ok := conf.Allower.(admission); ok {
+		// The lists UserConfig.Config made follow the mode of the Server.
+		a.mode = conf.IdentityKey
+		conf.Allower = a
+	}
 
 	// Initialize the passed block registry and also initialize the default block registry which
 	// is used in some vanilla paths.
@@ -519,7 +524,9 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return conf, fmt.Errorf("load bans: %w", err)
 	}
-	conf.Allower = admission{whitelist: wl, operators: ops, bans: bans}
+	a := admission{mode: conf.IdentityKey, log: log, whitelist: wl, operators: ops, bans: bans}
+	a.warnHeld()
+	conf.Allower = a
 	if uc.Players.SaveData {
 		conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
 		if err != nil {

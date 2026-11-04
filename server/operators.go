@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/df-mc/dragonfly/server/identity"
 )
 
 // operatorsList tracks operator names persisted as a JSON array.
@@ -31,19 +33,47 @@ func loadOperators(path string) (*operatorsList, error) {
 	return ops, nil
 }
 
+// isOperator reports whether the player of the name passed is an operator
+// of a server keyed by name: by its name, or as the account an entry of a
+// server keyed by XUID says last had the name.
 func (o *operatorsList) isOperator(name string) bool {
 	if o == nil {
 		return false
 	}
-	en, err := nameEntry(name)
-	if err != nil {
-		return false
-	}
-
 	o.mu.RLock()
-	ok := o.players.has(en.key)
+	_, ok := o.players.match(name)
 	o.mu.RUnlock()
 	return ok
+}
+
+// hasKey reports whether the list holds the key passed.
+func (o *operatorsList) hasKey(k identity.Key) bool {
+	if o == nil {
+		return false
+	}
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	return o.players.has(k)
+}
+
+// view runs f with the entries of the operators, which f must not change.
+func (o *operatorsList) view(f func(e *entries)) {
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	f(&o.players)
+}
+
+// bind binds the pending entry of the name passed to the account x, which
+// joined with it, and writes the file. It returns the pending entry and
+// reports whether there was one.
+func (o *operatorsList) bind(x identity.Key, name string) (entry, bool, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	pending, ok := o.players.bind(x, name)
+	if !ok {
+		return entry{}, false, nil
+	}
+	return pending, true, o.writeLocked()
 }
 
 // add makes the player of en an operator and writes the file. It reports
@@ -88,29 +118,85 @@ func (o *operatorsList) reloadFromDisk() error {
 		}
 		return fmt.Errorf("read ops: %w", err)
 	}
-	var names []string
-	if err := json.Unmarshal(contents, &names); err != nil {
+	players, err := decodeOps(contents)
+	if err != nil {
 		return fmt.Errorf("decode ops: %w", err)
 	}
-	o.players = newEntries(len(names))
-	for _, name := range names {
-		if en, err := nameEntry(name); err == nil {
-			o.players.add(en)
-		}
-	}
+	o.players = players
 	return nil
 }
 
-func (o *operatorsList) writeLocked() error {
-	// A list never read nor changed writes as JSON null, as it always has.
+// opsAccount is an operator of ops.json keyed by Xbox account.
+type opsAccount struct {
+	XUID string `json:"xuid"`
+	Name string `json:"name"`
+}
+
+// decodeOps reads ops.json: a JSON array of names, and of objects with the
+// XUID and the name of an Xbox account.
+func decodeOps(contents []byte) (entries, error) {
 	var names []string
-	if o.players.order != nil {
-		names = make([]string, 0, len(o.players.order))
+	if err := json.Unmarshal(contents, &names); err == nil {
+		players := newEntries(len(names))
+		for _, name := range names {
+			if en, err := nameEntry(name); err == nil {
+				players.add(en)
+			}
+		}
+		return players, nil
+	} else {
+		var raw []json.RawMessage
+		if json.Unmarshal(contents, &raw) != nil {
+			return entries{}, err
+		}
+		players := newEntries(len(raw))
+		for _, r := range raw {
+			var name string
+			if json.Unmarshal(r, &name) == nil {
+				if en, err := nameEntry(name); err == nil {
+					players.add(en)
+				}
+				continue
+			}
+			var acc opsAccount
+			if err := json.Unmarshal(r, &acc); err != nil {
+				return entries{}, fmt.Errorf("operator %s: %w", r, err)
+			}
+			en, err := xuidEntry(acc.XUID, acc.Name)
+			if err != nil {
+				return entries{}, fmt.Errorf("operator %s: %w", r, err)
+			}
+			players.add(en)
+		}
+		return players, nil
 	}
-	for _, en := range o.players.order {
-		names = append(names, en.key.String())
+}
+
+func (o *operatorsList) writeLocked() error {
+	// A list never read nor changed writes as JSON null, as it always has,
+	// and a list of names alone as an array of strings.
+	var v any
+	if o.players.accounts() == 0 {
+		var names []string
+		if o.players.order != nil {
+			names = make([]string, 0, len(o.players.order))
+		}
+		for _, en := range o.players.order {
+			names = append(names, en.key.String())
+		}
+		v = names
+	} else {
+		all := make([]any, 0, len(o.players.order))
+		for _, en := range o.players.order {
+			if x, ok := en.key.XUID(); ok {
+				all = append(all, opsAccount{XUID: x, Name: en.name})
+			} else {
+				all = append(all, en.key.String())
+			}
+		}
+		v = all
 	}
-	contents, err := json.MarshalIndent(names, "", "  ")
+	contents, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode ops: %w", err)
 	}

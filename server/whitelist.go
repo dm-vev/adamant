@@ -129,8 +129,7 @@ func (w *Whitelist) Allow(_ net.Addr, id client.Identity, _ client.Profile) (str
 		return kickMsg, false
 	}
 
-	key, _ := identity.OfName(name)
-	ok := w.players.has(key)
+	_, ok := w.players.match(name)
 	w.mu.RUnlock()
 	if !ok {
 		return kickMsg, false
@@ -138,19 +137,22 @@ func (w *Whitelist) Allow(_ net.Addr, id client.Identity, _ client.Profile) (str
 	return "", true
 }
 
-// Add inserts the provided name into the whitelist. The returned bool indicates if the name was newly added.
-func (w *Whitelist) Add(name string) (bool, error) {
-	if w == nil {
-		return false, ErrWhitelistUnavailable
+// allowAccount holds the account of the key passed to the whitelist, as a
+// server keyed by XUID does: if enabled, it must be on it.
+func (w *Whitelist) allowAccount(k identity.Key) (string, bool) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	if !w.enabled || w.players.has(k) {
+		return "", true
 	}
-	en, err := nameEntry(name)
-	if err != nil {
-		return false, ErrWhitelistInvalidName
-	}
+	return w.kickMsg, false
+}
 
+// add puts en on the whitelist and writes the file, unless it holds its
+// key. On a failed write, the whitelist is left as it was.
+func (w *Whitelist) add(en entry) (bool, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
 	if w.players.has(en.key) {
 		return false, nil
 	}
@@ -163,6 +165,55 @@ func (w *Whitelist) Add(name string) (bool, error) {
 	return true, nil
 }
 
+// remove takes the entry of the key passed off the whitelist and writes the
+// file. On a failed write, the whitelist is left as it was.
+func (w *Whitelist) remove(k identity.Key) (bool, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if !w.players.has(k) {
+		return false, nil
+	}
+	before := w.players.clone()
+	w.players.remove(k)
+	if err := w.writeLocked(); err != nil {
+		w.players = before
+		return false, err
+	}
+	return true, nil
+}
+
+// view runs f with the entries of the whitelist, which f must not change.
+func (w *Whitelist) view(f func(e *entries)) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	f(&w.players)
+}
+
+// bind binds the pending entry of the name passed to the account x, which
+// joined with it, and writes the file. It returns the pending entry and
+// reports whether there was one.
+func (w *Whitelist) bind(x identity.Key, name string) (entry, bool, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	pending, ok := w.players.bind(x, name)
+	if !ok {
+		return entry{}, false, nil
+	}
+	return pending, true, w.writeLocked()
+}
+
+// Add inserts the provided name into the whitelist. The returned bool indicates if the name was newly added.
+func (w *Whitelist) Add(name string) (bool, error) {
+	if w == nil {
+		return false, ErrWhitelistUnavailable
+	}
+	en, err := nameEntry(name)
+	if err != nil {
+		return false, ErrWhitelistInvalidName
+	}
+	return w.add(en)
+}
+
 // Remove deletes the provided name from the whitelist. The returned bool indicates if the name was present before the
 // call.
 func (w *Whitelist) Remove(name string) (bool, error) {
@@ -173,20 +224,7 @@ func (w *Whitelist) Remove(name string) (bool, error) {
 	if err != nil {
 		return false, ErrWhitelistInvalidName
 	}
-
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	if !w.players.has(en.key) {
-		return false, nil
-	}
-	before := w.players.clone()
-	w.players.remove(en.key)
-	if err := w.writeLocked(); err != nil {
-		w.players = before
-		return false, err
-	}
-	return true, nil
+	return w.remove(en.key)
 }
 
 // Players returns the list of players stored in the whitelist in the order they appear on disk.
@@ -250,7 +288,7 @@ func parseWhitelistFile(format whitelistFormat, contents []byte) (entries, error
 	}
 	players := newEntries(len(names))
 	for _, name := range names {
-		if en, err := nameEntry(name); err == nil {
+		if en, ok := parseEntryText(name); ok {
 			players.add(en)
 		}
 	}
@@ -277,7 +315,7 @@ func encodeWhitelistFile(format whitelistFormat, players entries) ([]byte, error
 		names = make([]string, 0, len(players.order))
 	}
 	for _, en := range players.order {
-		names = append(names, en.key.String())
+		names = append(names, entryText(en))
 	}
 	switch format {
 	case whitelistFormatTOML:

@@ -1,0 +1,66 @@
+== loaded
+-- white-list.txt (123 bytes)
+   "xuid:2535412345678901 Steve\r\n"
+   "alex\r\n"
+   "XUID:0002535412345678902\r\n"
+   "xuid:12a not an account\r\n"
+   "xuid:2535412345678903   Alex  Two  \r\n"
+-- ops.json (100 bytes)
+   "[\"pending\", {\"xuid\": \"2535412345678901\", \"name\": \"Steve\"}, {\"xuid\": \"2535412345678902\", \"name\": \"\"}]"
+-- banned-players.json (116 bytes)
+   "{\"players\": [{\"xuid\": \"2535412345678903\", \"name\": \"Griefer\", \"reason\": \"griefing\"}, {\"name\": \"Pending\"}], \"ips\": []}"
+WhitelistEntries() = ["xuid:2535412345678901" "alex" "xuid:2535412345678902" "xuid:12a not an account" "xuid:2535412345678903"]
+OperatorEntries() = ["pending" "xuid:2535412345678901" "xuid:2535412345678902"]
+BanEntries(false) = ["xuid:2535412345678903" "pending"]
+Allow("STEVE" xuid "2535412345678901" authenticated true) = true ""; operator true
+Allow("Alex Two" xuid "2535412345678903" authenticated true) = false "You are banned from this server. Reason: griefing"; operator false
+Allow("Griefer" xuid "2535412345678906" authenticated true) = false "§cServer is white-listed"; operator false
+Allow("Steve" xuid "2535412345678901" authenticated false) = false "This server needs an Xbox Live account."; operator false
+Allow("Pending" xuid "" authenticated false) = false "This server needs an Xbox Live account."; operator false
+Allow("alex" xuid "2535412345678907" authenticated true) = true ""; operator false
+WhitelistAdd("New"): <nil>
+Op("New"): <nil>
+BanPlayer("New", ""): <nil>
+== after one change to each
+-- white-list.txt (143 bytes)
+   "xuid:2535412345678901 Steve\r\n"
+   "xuid:2535412345678907 alex\r\n"
+   "xuid:2535412345678902\r\n"
+   "xuid:12a not an account\r\n"
+   "xuid:2535412345678903 Alex  Two\r\n"
+   "new\r\n"
+-- ops.json (142 bytes)
+   "[\n"
+   "  \"pending\",\n"
+   "  {\n"
+   "    \"xuid\": \"2535412345678901\",\n"
+   "    \"name\": \"Steve\"\n"
+   "  },\n"
+   "  {\n"
+   "    \"xuid\": \"2535412345678902\",\n"
+   "    \"name\": \"\"\n"
+   "  },\n"
+   "  \"new\"\n"
+   "]\n"
+-- banned-players.json (204 bytes)
+   "{\n"
+   "  \"players\": [\n"
+   "    {\n"
+   "      \"xuid\": \"2535412345678903\",\n"
+   "      \"name\": \"Griefer\",\n"
+   "      \"reason\": \"griefing\"\n"
+   "    },\n"
+   "    {\n"
+   "      \"name\": \"pending\"\n"
+   "    },\n"
+   "    {\n"
+   "      \"name\": \"new\"\n"
+   "    }\n"
+   "  ],\n"
+   "  \"ips\": []\n"
+   "}\n"
+-- log
+level=WARN msg="Operators held by name: bound to the first Xbox account that joins with that name. Name the account with xuid:<XUID> instead." names=[pending]
+level=WARN msg="Whitelist entries held by name: bound to the first Xbox account that joins with that name." names="[alex xuid:12a not an account]"
+level=INFO msg="Bound the whitelist entry \"alex\" to xuid:2535412345678907 (alex)."
+
