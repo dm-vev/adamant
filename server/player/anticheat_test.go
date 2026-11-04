@@ -67,7 +67,7 @@ func TestImpulseWindowFollowsLatency(t *testing.T) {
 		latency time.Duration
 		ticks   int64
 	}{
-		{0, 10}, {150 * time.Millisecond, 16}, {500 * time.Millisecond, 30}, {time.Second, 30},
+		{0, 10}, {150 * time.Millisecond, 16}, {500 * time.Millisecond, 30}, {time.Second, 50}, {2 * time.Second, 50},
 	} {
 		w, _ := clientTestWorld(t)
 		r := clienttest.New()

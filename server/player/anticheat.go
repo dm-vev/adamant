@@ -43,11 +43,19 @@ func (p *Player) ClientMove(m client.Move) client.MoveResult {
 	if p.refuseTooQuick(ac, m, delta) {
 		return client.MoveRefused
 	}
-	if ac != nil {
-		ac.clientMove = true
-		defer func() { ac.clientMove = false }()
+	if ac == nil {
+		p.Move(delta, deltaYaw, deltaPitch)
+		return client.MoveApplied
 	}
+	st := p.moveState(ac, delta)
+	judged := p.speedJudged(ac, m)
+	if p.checkMove(ac, m, delta, st) {
+		return client.MoveRefused
+	}
+	ac.clientMove = true
 	p.Move(delta, deltaYaw, deltaPitch)
+	ac.clientMove = false
+	ac.recordMove(delta, st, judged)
 	return client.MoveApplied
 }
 

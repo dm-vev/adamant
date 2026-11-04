@@ -32,7 +32,7 @@ func TestCheckNames(t *testing.T) {
 // by default, and its thresholds.
 func TestDefault(t *testing.T) {
 	c := Default()
-	if !c.Enabled || c.ExemptOperators || len(c.ExemptPlayers) != 0 || c.LogInterval != 20 || c.MaxLatencyTicks != 20 {
+	if !c.Enabled || c.ExemptOperators || len(c.ExemptPlayers) != 0 || c.LogInterval != 20 || c.MaxLatencyTicks != 40 {
 		t.Errorf("global settings: %+v", c)
 	}
 	if c.Grace != (Grace{Dismount: 10, GameMode: 10, Impulse: 10, Join: 60, Respawn: 20, Teleport: 10, WorldChange: 40}) {

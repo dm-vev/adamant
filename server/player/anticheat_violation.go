@@ -176,5 +176,7 @@ func (p *Player) inGrace(ac *acState) bool {
 }
 
 // resetMovement forgets what the movement checks know of the moves of the
-// player, as after a setback or a teleport.
-func (ac *acState) resetMovement() {}
+// player, as after a setback or a teleport: its client starts from rest.
+func (ac *acState) resetMovement() {
+	ac.last = lastMove{}
+}

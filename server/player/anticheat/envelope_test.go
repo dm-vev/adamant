@@ -121,20 +121,22 @@ func TestHorizontalAllowanceHoldsJava(t *testing.T) {
 }
 
 // TestHorizontalAllowanceIsTight checks that the envelope of a steady walk
-// or sprint is within 3% of Java's terminal speed: the input of 1 a
-// diagonal gives, against Java's 0.98 forward.
+// or sprint is within 3% of Java's terminal speed on stone: the input of 1
+// a diagonal gives, against Java's 0.98 forward. On slippery blocks it is
+// within 3% of what stone allows, as it grants that too, and above Java's.
 func TestHorizontalAllowanceIsTight(t *testing.T) {
 	for _, tc := range []struct {
-		speed, friction, java float64
+		speed, friction, java, bound float64
 	}{
-		{0.1, 0.6, 0.2158}, {0.13, 0.6, 0.2806}, {0.13, 0.98, 0.2702}, {0.13, 0.989, 0.2845}, {0.13, 0.8, 0.1976},
+		{0.1, 0.6, 0.2158, 0.2158}, {0.13, 0.6, 0.2806, 0.2806}, {0.13, 0.98, 0.2702, 0.2806},
+		{0.13, 0.989, 0.2845, 0.2845}, {0.13, 0.8, 0.1976, 0.2806},
 	} {
 		s := State{Speed: tc.speed, Ground: true, Friction: tc.friction, PrevGround: true, PrevFriction: tc.friction}
 		for range 1000 {
 			s.PrevHorizontal = HorizontalAllowance(s)
 		}
-		if got := s.PrevHorizontal; got < tc.java || got > tc.java*1.03 {
-			t.Errorf("speed %v on friction %v: the envelope settles at %.4f, Java at %.4f", tc.speed, tc.friction, got, tc.java)
+		if got := s.PrevHorizontal; got < tc.java || got > tc.bound*1.03 {
+			t.Errorf("speed %v on friction %v: the envelope settles at %.4f, Java at %.4f, want at most %.4f", tc.speed, tc.friction, got, tc.java, tc.bound*1.03)
 		}
 	}
 	// A player who may sprint is granted the sprint it starts.

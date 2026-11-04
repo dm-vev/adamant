@@ -4,7 +4,7 @@
   ExemptOperators = false
   ExemptPlayers = []
   LogInterval = 20
-  MaxLatencyTicks = 20
+  MaxLatencyTicks = 40
 
   [AntiCheat.Ascend]
     ActAt = 0.0

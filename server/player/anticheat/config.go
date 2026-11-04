@@ -284,7 +284,7 @@ type UserConfig struct {
 	// player: the first violation, then a summary.
 	LogInterval int
 	// MaxLatencyTicks caps the round trip, in ticks, that the latency
-	// windows assume.
+	// windows assume: 40, the 2 s round trip of a latency of 1 s.
 	MaxLatencyTicks int
 	// Grace holds the grace periods of the movement checks.
 	Grace Grace
@@ -348,7 +348,7 @@ func DefaultUserConfig() UserConfig {
 	uc := UserConfig{
 		Enabled:         true,
 		LogInterval:     20,
-		MaxLatencyTicks: 20,
+		MaxLatencyTicks: 40,
 		Grace:           Grace{Dismount: 10, GameMode: 10, Impulse: 10, Join: 60, Respawn: 20, Teleport: 10, WorldChange: 40},
 
 		MovedTooQuickly: MovedTooQuicklyTable{MovedTooQuicklySettings: MovedTooQuicklySettings{Limit: 10, LimitGliding: 17.32}},

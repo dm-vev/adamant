@@ -121,7 +121,18 @@ func GroundAcceleration(speed, f float64) float64 {
 // the ground acceleration if the player stood on the ground before it or
 // before the move before, a tick of slack around a jump and a landing; in a
 // liquid at least LiquidAcceleration; in the air, AirAcceleration.
+//
+// The friction of a block may differ between a client and the server, as
+// honey's does between Java and Bedrock: the envelope also grants what the
+// move would be on blocks of the default friction, which accelerate
+// quicker and carry less.
 func HorizontalAllowance(s State) float64 {
+	ordinary := s
+	ordinary.Friction, ordinary.PrevFriction = DefaultFriction, DefaultFriction
+	return max(horizontalAllowance(s), horizontalAllowance(ordinary))
+}
+
+func horizontalAllowance(s State) float64 {
 	base := s.Speed
 	if s.MaySprint {
 		base *= SprintFactor

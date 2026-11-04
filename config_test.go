@@ -629,7 +629,7 @@ func withMeaning(extra, m configMeaning) configMeaning {
 
 // defaultAntiCheat is the meaning of the defaults of [AntiCheat].
 var defaultAntiCheat = configMeaning{
-	"AntiCheat":                 "on=true ops=false players=[] log=20 latency=20 grace={Dismount:10 GameMode:10 Impulse:10 Join:60 Respawn:20 Teleport:10 WorldChange:40}",
+	"AntiCheat":                 "on=true ops=false players=[] log=20 latency=40 grace={Dismount:10 GameMode:10 Impulse:10 Join:60 Respawn:20 Teleport:10 WorldChange:40}",
 	"AntiCheat.MovedTooQuickly": "on=true setback act>0 kick=0 decay=1 exempt=[] msg=\"Invalid move player packet received\" {Limit:10 LimitGliding:17.32}",
 	"AntiCheat.Speed":           "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Tolerance:0.3 Epsilon:0.05}",
 	"AntiCheat.Fly":             "on=true setback act>0 kick=0 decay=1 exempt=[spectator] msg=\"Flying is not enabled on this server\" {HoverTicks:80 HoverDescent:0.03125 ResendSupport:true}",

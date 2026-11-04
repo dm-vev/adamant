@@ -33,6 +33,8 @@ type acState struct {
 	// setbackPending is set from a setback until its acknowledgement, which
 	// starts no grace.
 	setbackPending bool
+	// last is what the movement checks keep of the last move of the client.
+	last lastMove
 
 	// impulses are the velocities the server gave the player that its
 	// client may still apply, each until a tick of the player.
