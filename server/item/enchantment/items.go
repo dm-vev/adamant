@@ -8,8 +8,12 @@ import (
 // The item tags below follow Java's data/minecraft/tags/item/enchantable,
 // which the supported_items and primary_items of its enchantments name.
 
-// meleeWeapon reports if i is in #enchantable/melee_weapon: a sword.
+// meleeWeapon reports if i is in #enchantable/melee_weapon: a sword or a
+// spear (#swords and #spears).
 func meleeWeapon(i world.Item) bool {
+	if _, ok := i.(item.Spear); ok {
+		return true
+	}
 	t, ok := i.(item.Tool)
 	return ok && t.ToolType() == item.TypeSword
 }

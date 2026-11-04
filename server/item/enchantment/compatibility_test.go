@@ -151,6 +151,25 @@ func TestMaceTakesWeaponEnchantments(t *testing.T) {
 	}
 }
 
+// Java's #enchantable/melee_weapon item tag holds #swords and #spears, so a
+// spear takes Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect
+// and Looting (data/minecraft/enchantment/*.json), which name it in their
+// supported_items, and an enchanting table offers them for it, as their
+// primary_items name it too or they have none.
+func TestSpearsTakeMeleeWeaponEnchantments(t *testing.T) {
+	for _, tier := range item.ToolTiers() {
+		spear := item.Spear{Tier: tier}
+		for _, e := range []item.EnchantmentType{
+			enchantment.Sharpness, enchantment.Smite, enchantment.BaneOfArthropods,
+			enchantment.Knockback, enchantment.FireAspect, enchantment.Looting,
+		} {
+			if !e.CompatibleWithItem(spear) || !item.IsPrimaryItem(e, spear) {
+				t.Errorf("%s does not go on a %s spear, or a table does not offer it", e.Name(), tier.Name)
+			}
+		}
+	}
+}
+
 // A book becomes an enchanted book holding any enchantment, as enchanting a
 // book in an enchanting table or with /enchant does, but its enchantments
 // still respect the exclusive sets. Removing the last turns it back into a

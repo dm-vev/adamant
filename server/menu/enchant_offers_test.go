@@ -43,6 +43,11 @@ func TestEnchantingTableOffers(t *testing.T) {
 			enchantment.Sharpness, enchantment.Smite, enchantment.BaneOfArthropods, enchantment.Knockback,
 			enchantment.FireAspect, enchantment.Looting, enchantment.Unbreaking,
 		}},
+		// #enchantable/melee_weapon holds the spears.
+		{"spear", item.Spear{Tier: item.ToolTierDiamond}, []item.EnchantmentType{
+			enchantment.Sharpness, enchantment.Smite, enchantment.BaneOfArthropods, enchantment.Knockback,
+			enchantment.FireAspect, enchantment.Looting, enchantment.Unbreaking, enchantment.Lunge,
+		}},
 		{"axe", item.Axe{Tier: item.ToolTierDiamond}, []item.EnchantmentType{
 			enchantment.Efficiency, enchantment.SilkTouch, enchantment.Fortune, enchantment.Unbreaking,
 		}},
