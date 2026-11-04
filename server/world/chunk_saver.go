@@ -1,8 +1,10 @@
 package world
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -21,6 +23,9 @@ type chunkSaver struct {
 	// failed holds the saves that failed to write and were not saved again
 	// since, for the world goroutine to take with takeFailed.
 	failed map[ChunkPos]pendingColumn
+	// panicked counts, by position, the writes in a row that panicked: a
+	// save whose write panicked is tried once more, then dropped.
+	panicked map[ChunkPos]int
 	// writing is the position being written, valid while busy.
 	writing ChunkPos
 	busy    bool
@@ -38,7 +43,7 @@ type pendingColumn struct {
 }
 
 func newChunkSaver(w *World) *chunkSaver {
-	s := &chunkSaver{w: w, waiting: make(map[ChunkPos]*pendingColumn), failed: make(map[ChunkPos]pendingColumn), done: make(chan struct{})}
+	s := &chunkSaver{w: w, waiting: make(map[ChunkPos]*pendingColumn), failed: make(map[ChunkPos]pendingColumn), panicked: make(map[ChunkPos]int), done: make(chan struct{})}
 	s.cond.L = &s.mu
 	go s.run()
 	return s
@@ -85,8 +90,28 @@ func (s *chunkSaver) writeNow(pos ChunkPos) {
 	}
 	s.mu.Unlock()
 	if col != nil {
-		_ = s.w.writeColumn(pos, col)
+		_, _ = s.write(pos, col)
 	}
+}
+
+// saveAttempts is how many writes of a save in a row may panic before the
+// saver drops it.
+const saveAttempts = 2
+
+// write writes col for pos through the provider. A panic of it, of
+// encoding the column or of the provider, is reported as a fault of saving
+// and returned as an error, so that the saver goes on with the next column
+// and flush does not wait for it forever.
+func (s *chunkSaver) write(pos ChunkPos, col *chunk.Column) (panicked bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			f := newFault(FaultSave, r)
+			f.Type, f.Pos = "chunk writer", cube.Pos{int(pos[0]) << 4, 0, int(pos[1]) << 4}
+			s.w.reportFault(f, quarantineKey{})
+			panicked, err = true, fmt.Errorf("save chunk: panic: %v", r)
+		}
+	}()
+	return false, s.w.writeColumn(pos, col)
 }
 
 // takeFailed returns the saves that failed to write and were not saved
@@ -143,13 +168,27 @@ func (s *chunkSaver) run() {
 		if col == nil {
 			continue
 		}
-		err := s.w.writeColumn(p.pos, col)
+		panicked, err := s.write(p.pos, col)
 		s.mu.Lock()
+		dropped := false
+		if panicked {
+			s.panicked[p.pos]++
+		} else if err == nil {
+			delete(s.panicked, p.pos)
+		}
 		if _, again := s.waiting[p.pos]; err != nil && !again {
-			s.failed[p.pos] = pendingColumn{pos: p.pos, col: col, saved: saved}
+			if dropped = s.panicked[p.pos] >= saveAttempts; dropped {
+				delete(s.panicked, p.pos)
+			} else {
+				// Taken by the next save, which writes the column again.
+				s.failed[p.pos] = pendingColumn{pos: p.pos, col: col, saved: saved}
+			}
 		}
 		s.busy = false
 		s.cond.Broadcast()
 		s.mu.Unlock()
+		if dropped {
+			s.w.conf.Log.Error("save chunk: dropped the save of the chunk, whose writes panicked twice in a row", "X", p.pos[0], "Z", p.pos[1])
+		}
 	}
 }

@@ -2594,17 +2594,28 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 }
 
 // failedLoad reports whether c stands in for a column that failed to load,
-// which is never saved, and logs that it is not saved the first time.
+// or was cut short by a panic of the generator, which is never saved, and
+// logs that it is not saved the first time.
 func (w *World) failedLoad(pos ChunkPos, c *Column) bool {
 	if c.loadErr == nil {
 		return false
 	}
 	if !c.loadErrLogged {
 		c.loadErrLogged = true
-		w.conf.Log.Warn("Not saving chunk: it failed to load, and the empty chunk in its place would overwrite it.", "X", pos[0], "Z", pos[1], "error", c.loadErr.Error())
+		msg := "Not saving chunk: it failed to load, and the empty chunk in its place would overwrite it."
+		if errors.Is(c.loadErr, errGenerationPanicked) {
+			msg = "Not saving chunk: its generation panicked. It is generated again once it unloaded."
+		}
+		w.conf.Log.Warn(msg, "X", pos[0], "Z", pos[1], "error", c.loadErr.Error())
 	}
 	return true
 }
+
+// errGenerationPanicked is the loadErr of a column whose generation
+// panicked. It holds what the generator made of it so far: it is served, so
+// that nothing waits for it, but never saved, and is generated again once it
+// unloaded.
+var errGenerationPanicked = errors.New("generation panicked")
 
 // writeColumn stores col through the provider, logging the error it fails
 // with.
@@ -3267,7 +3278,9 @@ func (w *World) fillLightAsync(pos ChunkPos, col *Column) {
 		defer w.generatorRunning.Done()
 		defer func() {
 			if r := recover(); r != nil {
-				w.conf.Log.Error("fill chunk light: panic", "error", fmt.Sprint(r), "X", pos[0], "Z", pos[1])
+				f := newFault(FaultGeneration, r)
+				f.Type, f.Pos = "light", cube.Pos{int(pos[0]) << 4, 0, int(pos[1]) << 4}
+				w.reportFault(f, quarantineKey{})
 			}
 			col.markReady()
 			if w.closed.Load() {
@@ -3344,14 +3357,14 @@ func (w *World) runGenerationTask(task generationTask) {
 	// markReady publishes them. Entity/viewer membership remains owner-only,
 	// including while generation is pending.
 	defer func() {
-		// Always recover from panics during generation to prevent worker termination.
+		// Always recover from panics during generation to prevent worker
+		// termination. The column holds what the generator made of it so
+		// far: it is served, but never saved.
 		if r := recover(); r != nil {
-			w.conf.Log.Error(
-				"generate chunk: panic",
-				"error", fmt.Sprint(r),
-				"X", task.pos[0],
-				"Z", task.pos[1],
-			)
+			f := newFault(FaultGeneration, r)
+			f.Type, f.Pos = "generator", cube.Pos{int(task.pos[0]) << 4, 0, int(task.pos[1]) << 4}
+			w.reportFault(f, quarantineKey{})
+			task.col.loadErr = fmt.Errorf("%w: %v", errGenerationPanicked, r)
 		}
 		task.col.fillLight(task.pos)
 		task.col.markReady()
@@ -3734,8 +3747,10 @@ type Column struct {
 	// loadErr is the error loading the column from the provider failed
 	// with, if the column is the empty one standing in for it. Such a column
 	// is never saved: it would overwrite what the provider holds, which may
-	// still be recovered, with air. loadErrLogged is set once that was
-	// logged.
+	// still be recovered, with air. It wraps errGenerationPanicked for a
+	// column whose generation panicked, which is not saved either: it
+	// would keep what the generator made of it so far, instead of being
+	// generated again. loadErrLogged is set once that was logged.
 	loadErr       error
 	loadErrLogged bool
 	InhabitedTime uint64
@@ -4280,10 +4295,17 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 			continue
 		}
 
-		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: w.EntityNBT(e)})
+		data, ok := w.saveEntityNBT(e)
+		if !ok {
+			continue
+		}
+		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: data})
 	}
 	for pos, be := range col.BlockEntities {
-		data := be.(NBTer).EncodeNBT()
+		data, ok := w.saveBlockEntityNBT(pos, be)
+		if !ok {
+			continue
+		}
 		if _, actor := data["id"]; !actor {
 			// A placeholder state without block actor data, such as one a
 			// world holds for a state Adamant does not implement.
@@ -4294,6 +4316,34 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 	// Scheduled ticks are emitted above in per-queue insertion order. Their
 	// positions, rather than the generated source column, determine ownership.
 	return c
+}
+
+// saveEntityNBT returns the NBT the entity of e is saved with, as EntityNBT
+// does. A panic of encoding it leaves the entity out of the save of its
+// column, which still saves: it is reported as a fault of saving, and false
+// returned.
+func (w *World) saveEntityNBT(e *EntityHandle) (data map[string]any, ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			f := newFault(FaultSave, r)
+			f.Type, f.Pos, f.Entity = e.t.EncodeEntity(), cube.PosFromVec3(e.data.Pos), e
+			w.reportFault(f, quarantineKey{})
+		}
+	}()
+	return w.EntityNBT(e), true
+}
+
+// saveBlockEntityNBT returns the NBT of the block entity be at pos, as
+// saveEntityNBT does for an entity.
+func (w *World) saveBlockEntityNBT(pos cube.Pos, be Block) (data map[string]any, ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			f := newFault(FaultSave, r)
+			f.Type, f.Pos = w.blockFaultType(be), pos
+			w.reportFault(f, quarantineKey{})
+		}
+	}()
+	return be.(NBTer).EncodeNBT(), true
 }
 
 // EntityNBT encodes the native NBT an entity is saved with, in the world
