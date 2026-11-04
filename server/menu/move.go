@@ -15,11 +15,11 @@ import (
 // into an empty slot or onto a stack of the same item, or into or out of a
 // bundle. It calls the HandleTake handler of the source's inventory and the
 // HandlePlace handler of the destination's, and fails if either cancels. It
-// refuses a destination that is the source (ErrSameSlot), to take a stack
-// cursed with binding out of an armour slot (outside creative), and an item
-// locked in the inventory or in its slot out of it. Taking the result of a
-// furnace, blast furnace or smoker drops the experience it collected at the
-// player's feet.
+// refuses a destination that is the source (ErrSameSlot) or that does not
+// take the items (ErrSlotRefusesItem), to take a stack cursed with binding
+// out of an armour slot (outside creative), and an item locked in the
+// inventory or in its slot out of it. Taking the result of a furnace, blast
+// furnace or smoker drops the experience it collected at the player's feet.
 func (t *Tx) Move(from, to Ref, count int) error {
 	if t.sameSlot(from.Slot, to.Slot) {
 		// The items would be taken out of the slot and added to what it
@@ -54,6 +54,9 @@ func (t *Tx) Move(from, to Ref, count int) error {
 	}
 	if dest.Empty() {
 		dest = i.Grow(-math.MaxInt32)
+	}
+	if err := ensureAccepts(to, dest.Grow(count)); err != nil {
+		return err
 	}
 
 	ctx := event.C(inventory.Holder(t.o.Owner))
@@ -114,6 +117,9 @@ func (t *Tx) moveOutOfBundle(from, to Ref, count int, bundleStack, destination i
 	if !destination.Empty() {
 		placed = destination.Grow(extracted.Count())
 	}
+	if err := ensureAccepts(to, placed); err != nil {
+		return err
+	}
 	ctx := event.C(inventory.Holder(t.o.Owner))
 	_ = call(ctx, from.Index, extracted, from.Inv.Handler().HandleTake)
 	if err := call(ctx, to.Index, extracted, to.Inv.Handler().HandlePlace); err != nil {
@@ -130,9 +136,10 @@ func (t *Tx) moveOutOfBundle(from, to Ref, count int, bundleStack, destination i
 	return nil
 }
 
-// Swap swaps the stacks of two slots, with the same checks as Move: the
-// handlers of both inventories are called for the take and the place of
-// both stacks, and fail it if any cancels.
+// Swap swaps the stacks of two slots, with the same checks as Move: either
+// slot must take the stack of the other, and the handlers of both
+// inventories are called for the take and the place of both stacks, and
+// fail it if any cancels.
 func (t *Tx) Swap(a, b Ref) error {
 	if t.sameSlot(a.Slot, b.Slot) {
 		return fmt.Errorf("swap: %w", ErrSameSlot)
@@ -149,6 +156,12 @@ func (t *Tx) Swap(a, b Ref) error {
 		return err
 	}
 	if err := t.ensureUnlockedForInventoryMove(dest, b.Slot, a.Slot); err != nil {
+		return err
+	}
+	if err := ensureAccepts(a, dest); err != nil {
+		return err
+	}
+	if err := ensureAccepts(b, i); err != nil {
 		return err
 	}
 
@@ -169,6 +182,16 @@ func (t *Tx) Swap(a, b Ref) error {
 	}
 	t.collectRewards(a.Slot)
 	t.collectRewards(b.Slot)
+	return nil
+}
+
+// ensureAccepts refuses to put s in the slot of r if its inventory does not
+// take it there: the inventory would leave the slot as it was while the
+// operation went on, and the items moved there would vanish.
+func ensureAccepts(r Ref, s item.Stack) error {
+	if !r.Inv.Accepts(r.Index, s) {
+		return fmt.Errorf("slot %d does not take %v: %w", r.Index, s, ErrSlotRefusesItem)
+	}
 	return nil
 }
 

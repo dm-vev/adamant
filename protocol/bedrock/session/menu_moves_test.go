@@ -78,8 +78,10 @@ func (s *scenario) movesScenario() {
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerArmor, 0), Destination: s.slot(v2193.ContainerArmor, 0)})
 	s.request("move: the chestplate put on", nil,
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 6), Destination: s.slot(v2193.ContainerArmor, 1)})
-	s.attempt("move: an apple put in the slot of the leggings",
+	s.refuseWith("refused move: an apple put in the slot of the leggings", v2193.ItemStackResponseStatusCannotPlaceItem,
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerArmor, 2)})
+	s.refuseWith("refused move: an apple put in the off hand", v2193.ItemStackResponseStatusCannotPlaceItem,
+		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerOffhand, 1)})
 	s.request("move: the totem to the off hand", nil,
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 11), Destination: s.slot(v2193.ContainerOffhand, 1)})
 	s.request("move: the totem of the off hand to the cursor", nil,
@@ -130,8 +132,12 @@ func (s *scenario) movesScenario() {
 		&v2193.SwapStackRequestAction{Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerArmor, 0)})
 	s.request("swap: the chestplates", nil,
 		&v2193.SwapStackRequestAction{Source: s.slot(inv, 3), Destination: s.slot(v2193.ContainerArmor, 1)})
-	s.attempt("swap: apples and the slot of the leggings",
+	s.refuseWith("refused swap: apples and the empty slot of the leggings", v2193.ItemStackResponseStatusFailedToValidateDstSlot,
 		&v2193.SwapStackRequestAction{Source: s.slot(inv, 4), Destination: s.slot(v2193.ContainerArmor, 2)})
+	s.refuseWith("refused swap: apples and the chestplate worn", v2193.ItemStackResponseStatusCannotPlaceItem,
+		&v2193.SwapStackRequestAction{Source: s.slot(inv, 4), Destination: s.slot(v2193.ContainerArmor, 1)})
+	s.refuseWith("refused swap: an empty slot and the apples", v2193.ItemStackResponseStatusFailedToValidateSrcSlot,
+		&v2193.SwapStackRequestAction{Source: s.slot(inv, 20), Destination: s.slot(inv, 4)})
 	s.refuseWith("refused swap: a slot with itself", v2193.ItemStackResponseStatusDstContainerAndSlotEqualToSrcContainerAndSlot,
 		&v2193.SwapStackRequestAction{Source: s.slot(inv, 0), Destination: s.slot(inv, 0)})
 	s.clearInventory("the inventory emptied")

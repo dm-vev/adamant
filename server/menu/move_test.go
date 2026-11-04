@@ -123,6 +123,63 @@ func TestMoveOntoItsOwnSlot(t *testing.T) {
 	})
 }
 
+// TestMoveIntoASlotThatRefuses checks the slots that take only some items,
+// as the off hand of a player and the armour slots: a move, a swap or a
+// move out of a bundle that would put there an item the slot does not take
+// is refused with ErrSlotRefusesItem before a handler is called, and
+// changes nothing. The inventory left such a slot as it was while the move
+// went on: two apples moved to the off hand vanished. BDS 1.26.52.3 refuses
+// such a request (status 55).
+func TestMoveIntoASlotThatRefuses(t *testing.T) {
+	inTx(t, func(tx *world.Tx) {
+		b, inv := ownerBatch(tx, nil, &fakeOwner{mode: world.GameModeSurvival})
+		// As the off hand of a player, which takes a shield but no apple.
+		inv.OffHand.SlotValidatorFunc(func(s item.Stack, _ int) bool {
+			_, shield := s.Item().(item.Shield)
+			return s.Empty() || shield
+		})
+		var log []string
+		inv.Main.Handle(cancelling{log: &log})
+		inv.OffHand.Handle(cancelling{log: &log})
+		bundle, _ := item.Bundle{}.Insert(item.NewStack(item.Bundle{}, 1), apples(3), 3)
+		_ = inv.Main.SetItem(0, apples(2))
+		_ = inv.Main.SetItem(1, item.NewStack(item.Shield{}, 1))
+		_ = inv.Main.SetItem(2, bundle)
+		offHand, leggings := ref(inv.OffHand, 0, 1), ref(inv.Armour.Inventory(), 2, 2)
+		refused := func(what string, err error) {
+			t.Helper()
+			if !errors.Is(err, menu.ErrSlotRefusesItem) {
+				t.Errorf("%s: %v, want ErrSlotRefusesItem", what, err)
+			}
+		}
+		refused("two apples moved to the off hand", b.Move(ref(inv.Main, 0, 0), offHand, 2))
+		refused("an apple moved to the slot of the leggings", b.Move(ref(inv.Main, 0, 0), leggings, 1))
+		refused("an apple of the bundle moved to the off hand", b.Move(ref(inv.Main, 2, 2), offHand, 1))
+		_ = inv.OffHand.SetItem(0, item.NewStack(item.Shield{}, 1))
+		refused("the apples swapped with the shield of the off hand", b.Swap(ref(inv.Main, 0, 0), offHand))
+		if n := len(b.Changes()); n != 0 || len(log) != 0 {
+			t.Errorf("the refused moves made %d changes and called the handlers %q", n, log)
+		}
+		if got := slotOf(inv.Main, 0); !got.Equal(apples(2)) {
+			t.Errorf("the inventory holds %v, want the two apples", got)
+		}
+		if got := slotOf(inv.Main, 2); !got.Equal(bundle) {
+			t.Errorf("the bundle is %v after it was refused", got)
+		}
+		if got := slotOf(inv.Armour.Inventory(), 2); !got.Empty() {
+			t.Errorf("the slot of the leggings holds %v", got)
+		}
+		// The shield goes in the off hand.
+		_ = inv.OffHand.SetItem(0, item.Stack{})
+		if err := b.Move(ref(inv.Main, 1, 0), offHand, 1); err != nil {
+			t.Errorf("the shield did not move to the off hand: %v", err)
+		}
+		if got := slotOf(inv.OffHand, 0); got.Count() != 1 {
+			t.Errorf("the off hand holds %v, want the shield", got)
+		}
+	})
+}
+
 // TestMoveBundles checks moves into and out of bundles: what fits goes in
 // and the rest stays, a full bundle and an empty one refuse, and what comes
 // out goes onto a stack of its item only. Each plays the sound of the
@@ -286,7 +343,8 @@ func TestMoveLocks(t *testing.T) {
 
 // TestBinding checks the curse of binding: outside creative, an item of it
 // does not leave its armour slot, whether moved, swapped or dropped (its own
-// slot is no move: ErrSameSlot); in creative it leaves.
+// slot is no move: ErrSameSlot); in creative it leaves, but for a slot
+// that does not take it.
 func TestBinding(t *testing.T) {
 	for _, mode := range []world.GameMode{world.GameModeSurvival, world.GameModeCreative} {
 		inTx(t, func(tx *world.Tx) {
@@ -305,8 +363,13 @@ func TestBinding(t *testing.T) {
 				t.Errorf("%T: dropped: %v", mode, err)
 			}
 			_ = inv.Armour.Inventory().SetItem(0, cursed)
-			if err := b.Move(helmet, ref(inv.Armour.Inventory(), 1, 0), 1); (err == nil) != free {
-				t.Errorf("%T: moved to another armour slot: %v", mode, err)
+			// The slot of the chestplate takes no helmet, curse or not:
+			// the helmet vanished there in creative.
+			if err := b.Move(helmet, ref(inv.Armour.Inventory(), 1, 0), 1); err == nil || errors.Is(err, menu.ErrSlotRefusesItem) != free {
+				t.Errorf("%T: moved to the slot of the chestplate: %v", mode, err)
+			}
+			if err := b.Move(helmet, ref(inv.Main, 5, 0), 1); (err == nil) != free {
+				t.Errorf("%T: moved to the inventory: %v", mode, err)
 			}
 		})
 	}

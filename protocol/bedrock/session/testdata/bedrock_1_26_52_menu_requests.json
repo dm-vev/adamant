@@ -1135,6 +1135,1512 @@
     "MenuProbe has 16 items that match the criteria",
     "MenuProbe has 1 items that match the criteria"
    ]
+  },
+  {
+   "name": "armour/apple-in-leggings-slot",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 4"
+   ],
+   "notes": [
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "3fda7c766f38f41f256c9322d709c331aabe067201818cbfe395517237524c1d",
+     "raw": "2e03ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d1ac50d7a6080f0a8dafe294fe07c578984be4a3f157cfbace198ec68bfd1661",
+     "raw": "9301012d010101010c000004000000060002000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "8e9a7f1667062df011f35135dc439cb61908dd041f0f440c90558fcce7114b40",
+     "raw": "940101372d00"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "72dddf3438f5271fb658b789802029c7c07973fd975d3cb783ca8c61479437bd",
+     "raw": "93010131010000010c000004000000060002000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "11d0c7d0b93f0663cd505134a49f5532ca2c03cba2660bf43a78b1149e3ba9aa",
+     "raw": "940101373100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "b2bb7d1c3c96d8a3853c2cdfa0e98de552fe10fd64d915f8e07bbc07a305dd91",
+     "raw": "930101350102020c000004000000060002000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "00c3afac6512cc4de99798aa6f22ddd90d1572399e92b43162e97f453a4bf0fd",
+     "raw": "940101323500"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "a7e30e353029e8d500ca3988ecf37b023e0f5ef563a400b13ac3144de17fbb49",
+     "raw": "2f03ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "3bdddd0a621b2bc76f1333438c63553984e3cbdd0c8b770408e57afa38d4476b",
+     "raw": "2f03f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "an apple placed in the slot of the leggings",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "an apple taken into the slot of the leggings",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "the apples swapped with the empty slot of the leggings",
+     "status": 50,
+     "changes": []
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 4 items that match the criteria"
+   ]
+  },
+  {
+   "name": "offhand/items",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 2",
+    "replaceitem entity MenuProbe slot.inventory 0 arrow 1",
+    "replaceitem entity MenuProbe slot.inventory 1 shield 1",
+    "replaceitem entity MenuProbe slot.inventory 2 totem_of_undying 1",
+    "replaceitem entity MenuProbe slot.inventory 3 firework_rocket 1",
+    "replaceitem entity MenuProbe slot.inventory 4 nautilus_shell 1",
+    "replaceitem entity MenuProbe slot.inventory 5 empty_map 1",
+    "replaceitem entity MenuProbe slot.inventory 6 filled_map 1",
+    "replaceitem entity MenuProbe slot.inventory 7 compass 1",
+    "replaceitem entity MenuProbe slot.inventory 8 torch 1"
+   ],
+   "notes": [
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "c09ea4a6abf99eebb87d12e43492b7bc1e8ac98e63b44e50f3485d137b5f3351",
+     "raw": "2e04ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "1c5dc9bb1aa79369ba1a15b1027c56e2cbf16858813c3bd9408e221a9cec9c48",
+     "raw": "93010139010101020c000005000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "3b196a922b59b83e7d6897e03f74ed9aba33fc93c34c1aa5e897231cba0fe2e3",
+     "raw": "940101373900"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "2aa7d6393904c5b46b4a0471cea5c6710c86571083aaa69bbd9196d28a7d4acc",
+     "raw": "9301013d010000020c000005000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "909dcbd3c4bda0e9dcbf53a138828056730369d508043201d95c44beff35daff",
+     "raw": "940101373d00"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "cdbb48fbe8aba638452c302876a0f4d33b2972618222c3aeed42b90fb41ac712",
+     "raw": "930101410102020c000005000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "4973a4dc2ae457e1e549079d342b690b857b7fae4bfc6159f297e886749c683a",
+     "raw": "940101324100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "9f20f089ef09f21c470067e9fd99f6bc25a56033507e228b8a8b7ea82322a312",
+     "raw": "930101450102020c000b08000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "07aedb87255c63c7ff0626037eb40e709e974f4e4dc28a61a6e11315d47c75b8",
+     "raw": "940101324500"
+    },
+    {
+     "dir": "<<",
+     "type": "SyncWorldClocks",
+     "sha256": "059de101765d7db620a9bed174dc5417a7d9f0f0737f31a9a64324d6f5fadaf3",
+     "raw": "d802000196f2e3e1f3bcfbeb63d00f00"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "ebc3022913574a95662a7cf0c301ec28c850fbe10c54514a5373a809102554af",
+     "raw": "93010149010000020c0000050000003b0000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "05cd005241bc8a4f270e4f9ca6620a5188b56861f5ea2f9ac03206eed578a48a",
+     "raw": "940101004901020c0001000000000000003b0001000002010a000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "bc0c46ac46edcf23e336109cca444f1adf4f88718e9ad3e5d6cd99a72bbf187c",
+     "raw": "9301014d010101023b0000dbffffff220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "4a76e34268a0ebf121a553f1b444b1549f66a39738b82632db651e8602081bee",
+     "raw": "940101374d00"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "95f5aeaf89c6b4173af7cc16437d4ff61b1fc036610092a22e59d25c41634050",
+     "raw": "93010151010101023b0000dbffffff0c0000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "2a50643701dc86011ab9a28518a05687c9c8855efd9b7e1c9c12ddc3dae7a7a1",
+     "raw": "940101005101023b0001000000000000000c0001000002010a000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "325b403f718a87f1e632027bcb9f328e66058a5509cbfed828966a80d9205c53",
+     "raw": "93010155010101010c000906000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "88b45a760b1b0823146f87cc82cc95c24c5b31b5cd7bebcd0766ae5708e53477",
+     "raw": "3177012f01010000010c000a0000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "fef5bb2e685a7e3702ab276810de6e8bd5487d0371e3f92d93a78338d4d0b906",
+     "raw": "940101005501020c000109090000000000220001010101010c000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "54d90dc1d65f653d49c2b9e19e42365f23de7c1b1d8c199e93d0134080154efc",
+     "raw": "9301015901010101220001060000000c0009000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "8eeef7527a5a75f7b9435580826a7932a54ea351590fd31812e0a07c622be0d5",
+     "raw": "94010100590102220001010100000000000c0001090901010c000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "53b96c2cd58abd37b1103815845b8b33ed2b6e86bae2559b96b9cd7e16b118f2",
+     "raw": "9301015d010101010c000a07000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "77536087c0541ef868343b4a024b27c1f7c6b1cd401fde64f8cabfcf4672defe",
+     "raw": "3177016601010000010e0024ffff010a000003060044616d61676500000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "eb67ab5373474c63ae9dbfb5a41c535abebe6476d28c5e6359b506d88b217177",
+     "raw": "940101005d01020c00010a0a0000000000220001010101010e000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "22ee1fce86699aa1fbabdb05ea5b106776466281a59ae2f8ab0b2cfcaf5e17c6",
+     "raw": "9301016101010101220001070000000c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "7e8d6e5097a6b781a47de348fa1a34e9dc31a0b3d45f3a69a6be2773f66f041e",
+     "raw": "94010100610102220001010100000000000c00010a0a01010e000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "f21aaba4b6846e1d6f9ec78a302246d2d544457c4b12e94d385108dc39d52a5b",
+     "raw": "93010165010101010c000b08000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "abee4a4ac24e34db1a2aad6bfdfe976e6c3826226807411836c35860d1139bb9",
+     "raw": "31770142020100000110000a0000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "0683cade34e4e587af0f9a5cbda8e8c67c7b4214177ee55353a366238fdb38a6",
+     "raw": "940101006501020c00010b0b00000000002200010101010110000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "07dd4a16151e6259abc38a85d1421c469334715b2865156a1de45306f89faa52",
+     "raw": "9301016901010101220001080000000c000b000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "d3c1e220475a616332d340effba5f75eba610f996ee7b1d35cab5ea9e4d28173",
+     "raw": "94010100690102220001010100000000000c00010b0b010110000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d3b748f31510146182056d21ff98c51123b283291b964433c29f14f71ca8b209",
+     "raw": "9301016d010101010c000c09000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "1a2157d2b267b767bf45cda1d27f1f5a60e359c94b1657bfe4bc8dbfec54c195",
+     "raw": "317701110201000001120038ffff010a00000a090046697265776f726b73090a004578706c6f73696f6e730000000000010600466c69676874010000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "f1388ede952f527bd2b76a8aa95562d5844b3ce7890f5be926b5451b40d9cddd",
+     "raw": "940101006d01020c00010c0c00000000002200010101010112000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "7b13e646c7e2e275089beb8d969a2ce9bd2eee5d82207f8964728ea62ef91033",
+     "raw": "9301017101010101220001090000000c000c000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "0eb3031ffb9779f48a1e81954b4da6cd9e263f4c3829bd78340b0826343f4e0e",
+     "raw": "94010100710102220001010100000000000c00010c0c010112000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d37a363c3f990804807126b654aa2bb3dfa20d1511e07b47bf6b3cda938d2c23",
+     "raw": "93010175010101010c000d0a000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "e57007e445e125703eb665bce42426d2c0f52df518c77c7a033612bc1db317df",
+     "raw": "31770144020100000114000a0000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "a93ae55e1a2c6c9b6de542cc262fc7db293bb82ace5e512f075eb1d72f2d3a99",
+     "raw": "940101007501020c00010d0d00000000002200010101010114000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d2c752ea048fe1e73cdaac565d58198b79bcb143ba86e7cf8bb0c6c35e25cb0c",
+     "raw": "93010179010101012200010a0000000c000d000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "fe254caf519a77b61c1d0d4584c1d757aaa4c05bb858ed714f988b121eb7bd3f",
+     "raw": "94010100790102220001010100000000000c00010d0d010114000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "cb6734f99b3a393a151d8ffd0f102c25f008efd90a7942c89d52dfcb66006667",
+     "raw": "9301017d010101010c000e0b000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "53c8075885920f3a67b27136e12ea3ba24cddf542cbcb967298ad3660fe050b4",
+     "raw": "940101377d00"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "864747935126dd86fdac1cc4c01f18af8205b68e8912e32889447c412f1a741e",
+     "raw": "9301018101010101010c000f0c000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "20b29f5488de3ba4eae68370a8a51ba26582179de977985a507296fa15dc8268",
+     "raw": "317701a70101000001180022ffff010a00000408006d61705f7575696407000000ffffffff00000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "bda96952bd814c9660f9ce450173669aae50993cd9140879ba4ebe5c10fa3845",
+     "raw": "94010100810101020c00010f0f00000000002200010101010118000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "cda64e7de44faed31a1d69edf5f416f79f896dbb6da3d58bf6ff331eff62677a",
+     "raw": "9301018501010101012200010c0000000c000f000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "66a95fee105db1aa84e6f9d5f18912e4f0db7a58ed045a01ee3fa90622a64dc2",
+     "raw": "9401010085010102220001010100000000000c00010f0f010118000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "06ef155914ea654f7721b120136f2d876badce119bb0e44ad81f5cf6e27d9b09",
+     "raw": "9301018901010101010c00100d000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "3cee334a444c4eb82712dac5220ace92111046ba7d2970fcabf5d3b3685c3fc3",
+     "raw": "94010137890100"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "3127ec4374286ef895fa6699f98092d95852d64d1e498a8c6300eb3b664c913d",
+     "raw": "9301018d01010101010c00110e000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "d4296156abacf26035e9cc6aa221af63398171c318d16582c5df70a114e0608c",
+     "raw": "940101378d0100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "02d25d2597dbe6a338cf6c38b5ad253ee73287a3423dc5b108ebda97763ba11b",
+     "raw": "9301019101010101010c000b08000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "abee4a4ac24e34db1a2aad6bfdfe976e6c3826226807411836c35860d1139bb9",
+     "raw": "31770142020100000110000a0000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "00e8f62f1423c8365af71bbda933a90ada9bbb72baa8067d13574b9138ce0e8c",
+     "raw": "94010100910101020c00010b0b00000000002200010101010110000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "3527c95192cfdd850d529c67d41940dc41b731d1ca9795335c9843cc3193f934",
+     "raw": "93010195010102020c000005000000220001080000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "f2802e8d1fbb04f131fa574e85c05564247b26b928515d80208e217b6c5a0e6d",
+     "raw": "94010137950100"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "24c6bef4a85018f423aee429357e6c950af428a9565617205adbf6d4298d06ad",
+     "raw": "9301019901010101010c000005000000220001080000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "dcb0b47795815c38a8bd3598653ea78b6e4e3e0f2c18a990478ea97028c94565",
+     "raw": "94010101990100"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "acd45b3dba6dccffea3f478cab04c19ba3a410cc2b2fb0d950c75fd687671b6e",
+     "raw": "2f04ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "5cee51207ce3e76e955710bc252d2cfeb07c19ce5bb4ea32bfcfd9d87da4fca0",
+     "raw": "2f04f700"
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    },
+    {
+     "dir": "<<",
+     "type": "ClientBoundMapItemData",
+     "sha256": "a1569d91e10b5d1b2d331f4291e466db8239cb44c504a69d199327d8e98957e0",
+     "len": 43
+    }
+   ],
+   "requests": [
+    {
+     "label": "two apples placed in the off hand",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "two apples taken into the off hand",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "the apples swapped with the empty off hand",
+     "status": 50,
+     "changes": []
+    },
+    {
+     "label": "the totem swapped with the empty off hand",
+     "status": 50,
+     "changes": []
+    },
+    {
+     "label": "two apples taken to the cursor",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 0
+      },
+      {
+       "container": 59,
+       "slot": 0,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "the apples of the cursor placed in the off hand",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "the apples of the cursor put back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 59,
+       "slot": 0,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "the arrow placed in the off hand",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 9,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the arrow taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 9,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the shield placed in the off hand",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 10,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the shield taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 10,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the totem_of_undying placed in the off hand",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 11,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the totem_of_undying taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 11,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the firework_rocket placed in the off hand",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 12,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the firework_rocket taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 12,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the nautilus_shell placed in the off hand",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 13,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the nautilus_shell taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 13,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the empty_map placed in the off hand",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "the filled_map placed in the off hand",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 15,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the filled_map taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 15,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the compass placed in the off hand",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "the torch placed in the off hand",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "the totem placed in the off hand again",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 11,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the apples swapped with the totem of the off hand",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "the apples placed onto the totem of the off hand",
+     "status": 1,
+     "changes": []
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 2 items that match the criteria",
+    "MenuProbe has 1 items that match the criteria"
+   ]
+  },
+  {
+   "name": "swap/empty-slot",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 4",
+    "replaceitem entity MenuProbe slot.hotbar 1 stone 4"
+   ],
+   "notes": [
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "fb97195bf41a2070ad8f3053c743a0d2276f37d4ba3d329ac0a99a714a30d555",
+     "raw": "2e05ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "334f3d7f321419dc178c6c95dad3ac3f603e8796ac429227436158207b6ecd39",
+     "raw": "9301019d010102020c00000f0000000c0014000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "62e57db8ed61b56a35880d054540be77ecd8ff54fa41a63bcee88596373159de",
+     "raw": "940101329d0100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "b713e881cde7b1ff3fc2f63e67ed46731201a8eda2a0c9810ce85a237c63fa3f",
+     "raw": "930101a1010102020c0014000000000c00000f0000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "da047c687d90e8fa08382303447f8aa60da7d04bba064c67598bc506f8e66299",
+     "raw": "94010131a10100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "21b6f1502b5ffd721c67435bc73dfde56d5f8988aebb3fbedf1cc1abd4b25066",
+     "raw": "930101a5010102020c0014000000000c0015000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "21d25fb44c1ac44d99003d271c23ebdb86aac6fb1ce7135385b1377ad52362a4",
+     "raw": "94010131a50100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "e262d077936001aa769c03b6bfdb35d4f0c8366ed351c4bed68a4b5aa37aa30e",
+     "raw": "930101a9010102020c00000f0000000c0001100000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "fd9d36f9992c25de91f07ef139da8d958157ad757a8121b28a94dbdc9a9a04bc",
+     "raw": "94010100a90101010c00020000040120000000010104011e000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "ab89417ee627f763ed1d590ad61a05bf81519854bcaac31c8f57f1896bbdef96",
+     "raw": "2f05ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "b78bbeb1ed0bcf53e27dfcfeb7e77eef68de12bd36b61456ed764540a4638ffe",
+     "raw": "2f05f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "the apples swapped with the empty slot 20",
+     "status": 50,
+     "changes": []
+    },
+    {
+     "label": "the empty slot 20 swapped with the apples",
+     "status": 49,
+     "changes": []
+    },
+    {
+     "label": "the empty slot 20 swapped with the empty slot 21",
+     "status": 49,
+     "changes": []
+    },
+    {
+     "label": "the apples swapped with the stone",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 4
+      },
+      {
+       "container": 12,
+       "slot": 1,
+       "count": 4
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 4 items that match the criteria",
+    "MenuProbe has 4 items that match the criteria"
+   ]
+  },
+  {
+   "name": "crafting/result-into-offhand",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 2 oak_planks 8"
+   ],
+   "notes": [
+    "recipe minecraft:stick netId 1581 1x2 block crafting_table",
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "5e98c24c4eb37cdafa1402d08a10dd46c89f49146c43b6de42587b9cec02daa3",
+     "raw": "2e06ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "85fd511bdc7ddfc79b8b83d2e5077ef6c2a78d63b4ae854895fa71e76780dd23",
+     "raw": "930101ad01010101020c0002110000000d001c000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "57d406ce8fa0a99e053d7c19a5a5edfab9d74d5818b5190d34a9849ca07280ff",
+     "raw": "94010100ad0101020c000102020601220000000d00011c1c020124000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "8e6334f3a78e639929c83356337d17a5b482e3980c34947870fa6452d844f0b7",
+     "raw": "930101b101010101020c0002110000000d001e000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "af893c99a6690308b2123bab799d2879d664f480602f6e6eb7f204b6c85acea0",
+     "raw": "94010100b10101020c000102020401220000000d00011e1e020126000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "a4cfc4ef72ccd040868eb9636a4e25473d111184d9aeb7f3d31fff249ec7f7fc",
+     "raw": "930101b501040a0cad0c010505010d001c120000000505010d001e130000000101043c0032a5ffffff220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "9cdfd57729c32528a47d79cf81912898b2ca2e3a68dd5d3877ad081c3919c770",
+     "raw": "94010137b50100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "8ed76f28b44edec8929367ef2b84a21273eb9f7aeed43ac396882081db8d635d",
+     "raw": "930101b901040a0cad0c010505010d001c120000000505010d001e130000000101043c0032a3ffffff060002000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "f9e4cfe56ee0c7917761483a0ad823355999ee539f2ee3eb72f812154fde13f3",
+     "raw": "94010137b90100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "75dbe1110b2ef61e129acfa266528ff7a2517ed2b27cb180e362edcbe36ccd44",
+     "raw": "930101bd01040a0cad0c010505010d001c120000000505010d001e130000000101043c0032a1ffffff0c0015000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "9ac5393f189ee2400004dd128cca073c81a3d6f0d325d3aa11807d0af08173c4",
+     "raw": "94010100bd0101020d00021c1c0101240000001e1e0101260000000c0001151504012c000000"
+    },
+    {
+     "dir": "<<",
+     "type": "UnlockedRecipes",
+     "sha256": "30ef220a9c0c5caf2b4d176367d17402739dfc6d845b9ffc2391de29bc3607df",
+     "len": 202
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "a763bc6f4628b8c661e889b80b01b472126a88a2d7d7f5ce66df1875ccd47b0e",
+     "raw": "930101c101010101010d001c120000000c0002110000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "849919acdc196e3f8d9f06dc51d4ff404ea58719a93177ecc3584c2fdd39a6d4",
+     "raw": "94010100c10101020d00011c1c00000000000c00010202050122000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "fbf9bd9b68c13331a47856839b4ea214664bfbb8801f5a7560c43511e1475f93",
+     "raw": "930101c501010101010d001e130000000c0002110000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "6078288cc5965401a35855ccc2087ce64e034a1767d0134fd62240410dc90cdd",
+     "raw": "94010100c50101020d00011e1e00000000000c00010202060122000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "8daf64082561ace5b1c0ef37d9fa54e5532fca31864d74013f95470567f10f63",
+     "raw": "2f06ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "d0d4599b40427a39d1ec82c8ea1e0b244773ef8f5218f7f9642b9fbf0b5b05b2",
+     "raw": "2f06f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "planks put in grid slot 28",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 6
+      },
+      {
+       "container": 13,
+       "slot": 28,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "planks put in grid slot 30",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 4
+      },
+      {
+       "container": 13,
+       "slot": 30,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "sticks crafted into the off hand",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "sticks crafted into the slot of the leggings",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "sticks crafted into slot 21",
+     "status": 0,
+     "changes": [
+      {
+       "container": 13,
+       "slot": 28,
+       "count": 1
+      },
+      {
+       "container": 13,
+       "slot": 30,
+       "count": 1
+      },
+      {
+       "container": 12,
+       "slot": 21,
+       "count": 4
+      }
+     ]
+    },
+    {
+     "label": "the planks of grid slot 28 taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 13,
+       "slot": 28,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 5
+      }
+     ]
+    },
+    {
+     "label": "the planks of grid slot 30 taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 13,
+       "slot": 30,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 6
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 4 items that match the criteria",
+    "MenuProbe has 6 items that match the criteria"
+   ]
+  },
+  {
+   "name": "crafting/result-onto-other-item",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 4",
+    "replaceitem entity MenuProbe slot.hotbar 2 oak_planks 8",
+    "replaceitem entity MenuProbe slot.hotbar 3 totem_of_undying 1"
+   ],
+   "notes": [
+    "recipe minecraft:stick netId 1581 1x2 block crafting_table",
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "6c4368070c26aadc9e4bf72ad2166b59a447d95896a21cc64691e708d8ec988b",
+     "raw": "2e07ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "cc92dd3116c938539827feb40bf8839592cb625cdd8203d0e3750310797f8ab2",
+     "raw": "930101c901010101020c0002180000000d001c000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "b31702de849dfb8b7e6a1362e2eb7d214f35dc3f6954aa1a9fcd2547edf822b5",
+     "raw": "94010100c90101020c000102020601300000000d00011c1c020134000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "19ea2f3e9440a57c379a03803a8b9b0a0d2b439594abe5669339ba92e2ebd083",
+     "raw": "930101cd01010101020c0002180000000d001e000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "569d38490832a8f6620c434c5ae8f3563151548fb80807a3075b9ca8da72bb2d",
+     "raw": "94010100cd0101020c000102020401300000000d00011e1e020136000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "1202f9abe9081c749770148f93ca2fc4ac422bb5dac560bcbe5cd41afffafe05",
+     "raw": "930101d101040a0cad0c010505010d001c1a0000000505010d001e1b0000000101043c003297ffffff0c0000170000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "11448a528ca891c5fd1d29f67584b85172005d14cc426486647d9d7b4dc39dc9",
+     "raw": "94010137d10100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "b64674e5256462a04e9c74177c64f2d615cd258c825777060a9a0eb03ec36208",
+     "raw": "930101d501010101010c000319000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "32bd69e1ff2cbed07616b48df54789a01137c6754797c6028100a616ba2dc436",
+     "raw": "31770142020100000132000a0000000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "f8d6207bc93dbcb7b6a489b1824623d3df30b1d9ef94d3c035970366606f5640",
+     "raw": "94010100d50101020c0001030300000000002200010101010132000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "b0fba9a36fe226402080b55edd8c1e04d1f824952ea404cb03f0b1f7daae5273",
+     "raw": "930101d901040a0cad0c010505010d001c1a0000000505010d001e1b0000000101043c003293ffffff220001190000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "1aced8dd844bbefd8ab968e1ea8ae5b7028d49269b4c5f693ac1cc5ea5e0cb06",
+     "raw": "94010101d90100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "613e0201ee3987535383c9115d70fd7737ec90e1cb2db024a0cba3bd220bc0a4",
+     "raw": "930101dd01010101020d001c1a0000000c0002180000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "03cc17257732974f6e6b5414ea4f7b8831bbf2a149e8efdbd91bfb0eff584463",
+     "raw": "94010100dd0101020d00011c1c00000000000c00010202060130000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "2e53de9652394c2ef7da7debdc4e5b1c899ec0aa0aea4694839ab902dc3bd517",
+     "raw": "930101e101010101020d001e1b0000000c0002180000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "e019977540a2636b866fdb51d3e1193618d5ce0f370a86078a4a77e29d447af9",
+     "raw": "94010100e10101020d00011e1e00000000000c00010202080130000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "56aceb9ae30d66a94b21c1cc1b10b2b709b99f7320816d09e0980fd1a38ca268",
+     "raw": "2f07ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "a31e88b0f828989fcdfc6ab6d0a41e8efaec58e9ce9086f56d24f4bc61ca1297",
+     "raw": "2f07f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "planks put in grid slot 28",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 6
+      },
+      {
+       "container": 13,
+       "slot": 28,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "planks put in grid slot 30",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 4
+      },
+      {
+       "container": 13,
+       "slot": 30,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "sticks crafted onto the apples",
+     "status": 55,
+     "changes": []
+    },
+    {
+     "label": "the totem placed in the off hand",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 3,
+       "count": 0
+      },
+      {
+       "container": 34,
+       "slot": 1,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "sticks crafted onto the totem of the off hand",
+     "status": 1,
+     "changes": []
+    },
+    {
+     "label": "the planks of grid slot 28 taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 13,
+       "slot": 28,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 6
+      }
+     ]
+    },
+    {
+     "label": "the planks of grid slot 30 taken back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 13,
+       "slot": 30,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 8
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 4 items that match the criteria",
+    "Could not clear the inventory of MenuProbe, no items to remove",
+    "MenuProbe has 8 items that match the criteria"
+   ]
   }
  ]
 }

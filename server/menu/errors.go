@@ -9,4 +9,9 @@ var (
 	// ErrSameSlot is the error of Move and Swap for a source and a
 	// destination that are one slot.
 	ErrSameSlot = errors.New("source and destination are the same slot")
+	// ErrSlotRefusesItem is the error of an operation that would put a
+	// stack in a slot that does not take it (inventory.Inventory.Accepts):
+	// the off hand of a player takes only some items, an armour slot only
+	// armour of its kind.
+	ErrSlotRefusesItem = errors.New("the slot does not take the item")
 )

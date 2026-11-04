@@ -106,6 +106,19 @@ func (inv *Inventory) SetItem(slot int, item item.Stack) error {
 	return nil
 }
 
+// Accepts reports whether the inventory takes the stack passed in a slot: the
+// slot is in range and its slot validator lets the stack be set there, as
+// the off hand of a player takes only some items and an armour slot only
+// armour of its kind. SetItem leaves a slot as it was for a stack it does
+// not take.
+func (inv *Inventory) Accepts(slot int, it item.Stack) bool {
+	inv.mu.RLock()
+	defer inv.mu.RUnlock()
+
+	inv.check()
+	return inv.validSlot(slot) && inv.validator(it, slot)
+}
+
 // Slots returns the all slots in the inventory as a slice. The index in the slice is the slot of the inventory that a
 // specific item.Stack is in. Note that this item.Stack might be empty.
 func (inv *Inventory) Slots() []item.Stack {

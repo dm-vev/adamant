@@ -212,6 +212,76 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 				bdsMove(&v2193.PlaceStackRequestAction{Count: 6}, s.slot, v2193.ContainerCursor, uiCursor, inv, 0),
 			},
 		},
+		{
+			capture:  "armour/apple-in-leggings-slot",
+			items:    map[int]item.Stack{0: item.NewStack(item.Apple{}, 4)},
+			statuses: true,
+			requests: []func() []v2193.StackRequestAction{
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 0, v2193.ContainerArmor, 2),
+				bdsMove(&v2193.TakeStackRequestAction{Count: 1}, s.slot, inv, 0, v2193.ContainerArmor, 2),
+				bdsSwap(s, inv, 0, v2193.ContainerArmor, 2),
+			},
+		},
+		{
+			capture:  "offhand/items",
+			items:    offHandItems(),
+			statuses: true,
+			requests: append(append([]func() []v2193.StackRequestAction{
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 0, v2193.ContainerOffhand, 1),
+				bdsMove(&v2193.TakeStackRequestAction{Count: 2}, s.slot, inv, 0, v2193.ContainerOffhand, 1),
+				bdsSwap(s, inv, 0, v2193.ContainerOffhand, 1),
+				bdsSwap(s, inv, 11, v2193.ContainerOffhand, 1),
+				bdsMove(&v2193.TakeStackRequestAction{Count: 2}, s.slot, inv, 0, v2193.ContainerCursor, uiCursor),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCursor, uiCursor, v2193.ContainerOffhand, 1),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCursor, uiCursor, inv, 0),
+			}, offHandEach(s)...),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 11, v2193.ContainerOffhand, 1),
+				bdsSwap(s, inv, 0, v2193.ContainerOffhand, 1),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 0, v2193.ContainerOffhand, 1),
+			),
+		},
+		{
+			capture:  "swap/empty-slot",
+			items:    map[int]item.Stack{0: item.NewStack(item.Apple{}, 4), 1: item.NewStack(block.Stone{}, 4)},
+			statuses: true,
+			requests: []func() []v2193.StackRequestAction{
+				bdsSwap(s, inv, 0, inv, 20),
+				bdsSwap(s, inv, 20, inv, 0),
+				bdsSwap(s, inv, 20, inv, 21),
+				bdsSwap(s, inv, 0, inv, 1),
+			},
+		},
+		{
+			capture:  "crafting/result-into-offhand",
+			items:    map[int]item.Stack{2: item.NewStack(block.Planks{Wood: block.OakWood()}, 8)},
+			statuses: true,
+			requests: []func() []v2193.StackRequestAction{
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, v2193.ContainerCraftingInput, uiInventoryGrid),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, v2193.ContainerCraftingInput, uiInventoryGrid+2),
+				stickCraft(s, v2193.ContainerOffhand, 1),
+				stickCraft(s, v2193.ContainerArmor, 2),
+				stickCraft(s, inv, 21),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid, inv, 2),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid+2, inv, 2),
+			},
+		},
+		{
+			// BDS refuses the sticks onto the apples with 55, the session
+			// with the generic error, as stacks that differ: the statuses
+			// are not compared.
+			capture: "crafting/result-onto-other-item",
+			items: map[int]item.Stack{0: item.NewStack(item.Apple{}, 4), 2: item.NewStack(block.Planks{Wood: block.OakWood()}, 8),
+				3: item.NewStack(item.Totem{}, 1)},
+			requests: []func() []v2193.StackRequestAction{
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, v2193.ContainerCraftingInput, uiInventoryGrid),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, v2193.ContainerCraftingInput, uiInventoryGrid+2),
+				stickCraft(s, inv, 0),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 3, v2193.ContainerOffhand, 1),
+				stickCraft(s, v2193.ContainerOffhand, 1),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid, inv, 2),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid+2, inv, 2),
+			},
+		},
 	}
 	if len(cases) != len(capture.Cases) {
 		t.Fatalf("%d cases replayed of the %d captured", len(cases), len(capture.Cases))
@@ -309,6 +379,12 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			}
 			var gotSlots, wantSlots []string
 			for _, ci := range got.ContainerInfo {
+				if ci.Container.ContainerID == v2193.ContainerCreatedOutput {
+					// The session names the created output a craft's
+					// result was taken from, which BDS leaves out, as
+					// TestAutoCraftMatchesBDS finds.
+					continue
+				}
 				for _, si := range ci.SlotInfo {
 					gotSlots = append(gotSlots, fmt.Sprintf("%d:%d*%d", ci.Container.ContainerID, si.Slot, si.Count))
 				}
@@ -353,6 +429,62 @@ func bdsMove(a v2193.StackRequestAction, slotOf func(container uint8, slot int) 
 			return []v2193.StackRequestAction{&v2193.TakeStackRequestAction{Count: a.Count, Source: slotOf(src, from), Destination: slotOf(dst, to)}}
 		}
 		panic(fmt.Sprintf("move of %T", a))
+	}
+}
+
+// bdsSwap returns a request of one Swap action of the capture, of slot a of
+// container ca with slot b of container cb.
+func bdsSwap(s *scenario, ca uint8, a int, cb uint8, b int) func() []v2193.StackRequestAction {
+	return func() []v2193.StackRequestAction {
+		return []v2193.StackRequestAction{&v2193.SwapStackRequestAction{Source: s.slot(ca, a), Destination: s.slot(cb, b)}}
+	}
+}
+
+// bdsOffHandItems are the items the offhand/items case of the capture puts
+// in the off hand one by one, from inventory slot 9 on, and whether BDS took
+// each.
+var bdsOffHandItems = []struct {
+	it    world.Item
+	takes bool
+}{
+	{item.Arrow{}, true}, {item.Shield{}, true}, {item.Totem{}, true}, {item.Firework{}, true}, {item.NautilusShell{}, true},
+	{item.EmptyMap{}, false}, {item.FilledMap{}, true}, {item.Compass{}, false}, {block.Torch{}, false},
+}
+
+// offHandItems returns the items of the offhand/items case of the capture,
+// by slot: two apples, and bdsOffHandItems from slot 9.
+func offHandItems() map[int]item.Stack {
+	items := map[int]item.Stack{0: item.NewStack(item.Apple{}, 2)}
+	for i, it := range bdsOffHandItems {
+		items[9+i] = item.NewStack(it.it, 1)
+	}
+	return items
+}
+
+// offHandEach returns the requests of the offhand/items case that put each
+// of bdsOffHandItems in the off hand, and take back those BDS took.
+func offHandEach(s *scenario) []func() []v2193.StackRequestAction {
+	var out []func() []v2193.StackRequestAction
+	for i, it := range bdsOffHandItems {
+		out = append(out, bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerCombinedHotBarAndInventory, 9+i, v2193.ContainerOffhand, 1))
+		if it.takes {
+			out = append(out, bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerOffhand, 1, v2193.ContainerCombinedHotBarAndInventory, 9+i))
+		}
+	}
+	return out
+}
+
+// stickCraft returns the request of the capture that crafts four sticks of
+// the planks of the first and third slot of the grid of the inventory and
+// places them in the slot passed.
+func stickCraft(s *scenario, container uint8, slot int) func() []v2193.StackRequestAction {
+	return func() []v2193.StackRequestAction {
+		return []v2193.StackRequestAction{
+			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.recipe("crafting_table", item.Stick{}, "planks"), NumberOfCrafts: 1},
+			&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiInventoryGrid)},
+			&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiInventoryGrid+2)},
+			&v2193.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(container, slot)},
+		}
 	}
 }
 

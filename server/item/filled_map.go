@@ -82,6 +82,10 @@ type FilledMap struct {
 // MaxCount returns Java's default item stack size for maps.
 func (FilledMap) MaxCount() int { return 64 }
 
+// OffHand ...
+// BDS 1.26.52.3 takes a filled map in the off hand, unlike an empty map.
+func (FilledMap) OffHand() bool { return true }
+
 func (FilledMap) EncodeItem() (name string, meta int16) {
 	return "minecraft:filled_map", 0
 }

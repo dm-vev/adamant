@@ -1,6 +1,7 @@
 package player
 
 import (
+	"errors"
 	"slices"
 	"testing"
 
@@ -171,6 +172,51 @@ func TestPlayerBeginsBatchesOfItsMenu(t *testing.T) {
 		}
 		if got, _ := p.Inventory().Item(1); got.Count() != 3 {
 			t.Errorf("the inventory holds %v after the rollback, want 3 apples", got)
+		}
+	})
+}
+
+// TestPlayerOffHandTakesWhatBDSTakes checks the items the off hand of a
+// player takes, against those BDS 1.26.52.3 takes there and refuses (55),
+// and that a batch of its menu refuses to move apples there and leaves them
+// where they were. The off hand dropped them silently while the move went
+// on: two apples moved to it vanished.
+func TestPlayerOffHandTakesWhatBDSTakes(t *testing.T) {
+	w, _ := clientTestWorld(t)
+	withClientPlayer(t, w, clienttest.New(), func(tx *world.Tx, p *Player) {
+		for _, c := range []struct {
+			it    world.Item
+			takes bool
+		}{
+			{item.Arrow{}, true},
+			{item.Shield{}, true},
+			{item.Totem{}, true},
+			{item.Firework{}, true},
+			{item.NautilusShell{}, true},
+			{item.FilledMap{}, true},
+			{item.Apple{}, false},
+			{item.EmptyMap{}, false},
+			{item.Compass{}, false},
+			{block.Torch{}, false},
+		} {
+			if got := p.offHand.Accepts(0, item.NewStack(c.it, 1)); got != c.takes {
+				name, _ := c.it.EncodeItem()
+				t.Errorf("the off hand takes %s: %v, BDS: %v", name, got, c.takes)
+			}
+		}
+
+		_ = p.Inventory().SetItem(1, item.NewStack(item.Apple{}, 2))
+		b := p.BeginMenu(func(s menu.Slot, role menu.Role) menu.Name { return menu.Name(role) })
+		err := b.Move(menu.Ref{Slot: menu.Slot{Inv: p.Inventory(), Index: 1}}, menu.Ref{Slot: menu.Slot{Inv: p.offHand}}, 2)
+		if !errors.Is(err, menu.ErrSlotRefusesItem) {
+			t.Errorf("two apples moved to the off hand: %v, want ErrSlotRefusesItem", err)
+		}
+		b.Rollback()
+		if got, _ := p.Inventory().Item(1); got.Count() != 2 {
+			t.Errorf("the inventory holds %v, want the two apples", got)
+		}
+		if got, _ := p.offHand.Item(0); !got.Empty() {
+			t.Errorf("the off hand holds %v", got)
 		}
 	})
 }

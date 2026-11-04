@@ -252,6 +252,15 @@ func (h *ItemStackRequestHandler) handleSwap(a *v2193.SwapStackRequestAction, s 
 	if err := h.verifySlots(s, tx, a.Source, a.Destination); err != nil {
 		return fmt.Errorf("slot out of sync: %w", err)
 	}
+	// BDS 1.26.52.3 swaps two stacks only: it refuses a swap of an empty
+	// source (49) or with an empty destination (50), as the client moves a
+	// stack into an empty slot with a Place or a Take.
+	if it, _ := h.batch.Item(src.Slot); it.Empty() {
+		return refusal{status: v2193.ItemStackResponseStatusFailedToValidateSrcSlot, err: fmt.Errorf("swap of the empty slot %d", src.Index)}
+	}
+	if it, _ := h.batch.Item(dst.Slot); it.Empty() {
+		return refusal{status: v2193.ItemStackResponseStatusFailedToValidateDstSlot, err: fmt.Errorf("swap with the empty slot %d", dst.Index)}
+	}
 	return h.batchOp(func() error { return h.batch.Swap(src, dst) })
 }
 
@@ -786,6 +795,8 @@ func refusalStatus(err error) uint8 {
 		return r.status
 	case errors.Is(err, menu.ErrSameSlot):
 		return v2193.ItemStackResponseStatusDstContainerAndSlotEqualToSrcContainerAndSlot
+	case errors.Is(err, menu.ErrSlotRefusesItem):
+		return v2193.ItemStackResponseStatusCannotPlaceItem
 	}
 	return v2193.ItemStackResponseStatusError
 }
