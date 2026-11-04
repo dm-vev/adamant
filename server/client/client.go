@@ -315,7 +315,9 @@ type Views interface {
 	// PlaySound plays s at pos to the client alone.
 	PlaySound(s world.Sound, pos mgl64.Vec3)
 	// StopSound stops the sound of the name passed, or every sound if all is
-	// set.
+	// set. The name is a sound name as sound.Custom has it: the ID of a Java
+	// Edition sound event or the name of a sound of a resource pack. It is
+	// empty with all.
 	StopSound(name string, all bool)
 	// ViewNamedParticle shows the particle of the name at pos in dim: a particle
 	// type of Java Edition, such as minecraft:flame, or another namespaced name a

@@ -5,7 +5,9 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// StopSound stops a named sound, or all sounds if name is empty.
+// StopSound stops a named sound, or all sounds if name is empty. The name is
+// a sound name as sound.Custom has it: the ID of a Java Edition sound event,
+// such as entity.cat.purr, or the name of a sound of a resource pack.
 func (p *Player) StopSound(name string) {
 	p.client().StopSound(name, name == "")
 }
