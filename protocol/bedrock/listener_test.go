@@ -519,6 +519,85 @@ func TestNetherNetListenerCapsAddresses(t *testing.T) {
 	}
 }
 
+// TestNetherNetListenerLetsOperatorsJoinFull checks that the listener
+// asks the Allower of the admin lists who bypasses the limit of players: a
+// server of one slot, taken, refuses a member as full and lets in the
+// operator whose entry of ops.json sets bypassesPlayerLimit.
+func TestNetherNetListenerLetsOperatorsJoinFull(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "ops.json"), []byte(`[{"name": "Mod", "bypassesPlayerLimit": true}, "Plain"]`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	uc := server.DefaultConfig()
+	uc.World.SaveData, uc.Players.SaveData = false, false
+	uc.Whitelist.File = filepath.Join(dir, "white-list.txt")
+	uc.Players.MaxCount = 1
+	conf, err := uc.Config(slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conf.Log, conf.StatusProvider = slog.New(slog.DiscardHandler), nameStatus{name: "Adamant"}
+	c := testNetherNetConfig()
+	c.Network.Address = "127.0.0.1:0"
+	c.Network.IdentityFile = filepath.Join(dir, "identity.pem")
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Proxy.Address = probe.Addr().String()
+	_ = probe.Close()
+	c.Proxy.Secret = strings.Repeat("s", minProxySecret)
+	l, err := c.netherNetListener(conf, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	link, err := proxy.Dial(c.Proxy.Address, []byte(c.Proxy.Secret))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer link.Close()
+	// status returns the status of the first PlayStatus the player of the
+	// name passed is sent.
+	status := func(name, addr string) int32 {
+		identity, _ := json.Marshal(login.Identity{DisplayName: name, Identity: "8b4ec2c6-6f3b-4d0a-9d55-3b7e0c3c3f1a", XUID: "2535400000000000"})
+		data, _ := json.Marshal(login.DefaultClientData("play.example.invalid:19132", name, v2193.Version))
+		p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, XboxLive: true, Addr: addr, Protocol: v2193.Protocol})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = p.Close() })
+		b := bedrock.NewConn(p, bedrock.Config{})
+		b.EnableCompression(bedrock.None{})
+		_ = p.SetReadDeadline(time.Now().Add(10 * time.Second))
+		for {
+			raw, err := b.ReadPacket()
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			h, fields, _ := bedrock.ReadHeader(raw)
+			if h.ID == v2193.IDPlayStatus {
+				var pk v2193.PlayStatusPacket
+				pk.Decode(wire.NewReader(fields))
+				return pk.Status
+			}
+		}
+	}
+	for _, s := range []struct {
+		name, addr string
+		want       int32
+	}{
+		{"First", "203.0.113.1:4242", v2193.PlayStatusLoginSuccess},
+		{"Second", "203.0.113.2:4242", v2193.PlayStatusLoginFailedServerFull},
+		{"Plain", "203.0.113.3:4242", v2193.PlayStatusLoginFailedServerFull},
+		{"Mod", "203.0.113.4:4242", v2193.PlayStatusLoginSuccess},
+	} {
+		if got := status(s.name, s.addr); got != s.want {
+			t.Errorf("%s: status %d, want %d", s.name, got, s.want)
+		}
+	}
+}
+
 func TestUnbounded(t *testing.T) {
 	for n, want := range map[int]int{0: math.MaxInt, -1: math.MaxInt, 4: 4} {
 		if got := unbounded(n); got != want {

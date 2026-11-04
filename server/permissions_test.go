@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/go-gl/mathgl/mgl64"
@@ -328,5 +329,51 @@ func TestPermissionCommand(t *testing.T) {
 	}
 	if got := outputLines(run(t, cmd.LevelGameMaster, "/permission list")); got != "error: "+cmd.MessageUnknown.F("permission").Error() {
 		t.Errorf("/permission list from level 2: %q", got)
+	}
+}
+
+// TestBypassesPlayerLimit checks the PlayerLimitBypasser of the admin
+// lists: an operator whose entry sets bypassesPlayerLimit bypasses the
+// limit of players, by its name on a server keyed by name and by its
+// account on one keyed by XUID; other operators and players do not.
+func TestBypassesPlayerLimit(t *testing.T) {
+	for _, s := range []struct {
+		key, ops string
+		yes, no  []client.Identity
+	}{
+		{"name", `[{"name": "Mod", "bypassesPlayerLimit": true}, "Plain"]`,
+			[]client.Identity{{Name: "mod"}, {Name: "MOD"}},
+			[]client.Identity{{Name: "Plain"}, {Name: "Member"}}},
+		{"xuid", `[{"xuid": "2535412345678901", "name": "Mod", "bypassesPlayerLimit": true}, {"xuid": "2535412345678902", "name": "Plain"}]`,
+			[]client.Identity{{Name: "Renamed", XUID: "2535412345678901", Authenticated: true}},
+			[]client.Identity{{Name: "Mod", XUID: "2535412345678901"}, {Name: "Plain", XUID: "2535412345678902", Authenticated: true},
+				{Name: "Mod", XUID: "2535412345678903", Authenticated: true}}},
+	} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "ops.json"), []byte(s.ops), 0644); err != nil {
+			t.Fatal(err)
+		}
+		uc := server.DefaultConfig()
+		uc.World.SaveData, uc.Players.SaveData = false, false
+		uc.Whitelist.File = filepath.Join(dir, "white-list.txt")
+		uc.Server.IdentityKey = s.key
+		conf, err := uc.Config(slog.New(slog.DiscardHandler))
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, ok := conf.Allower.(server.PlayerLimitBypasser)
+		if !ok {
+			t.Fatalf("the Allower of the admin lists, %T, is no PlayerLimitBypasser", conf.Allower)
+		}
+		for _, id := range s.yes {
+			if !b.BypassesPlayerLimit(id) {
+				t.Errorf("keyed by %s: %+v does not bypass the limit", s.key, id)
+			}
+		}
+		for _, id := range s.no {
+			if b.BypassesPlayerLimit(id) {
+				t.Errorf("keyed by %s: %+v bypasses the limit", s.key, id)
+			}
+		}
 	}
 }

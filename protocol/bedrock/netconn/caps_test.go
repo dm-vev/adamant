@@ -3,6 +3,8 @@ package netconn
 import (
 	"encoding/json"
 	"net"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -148,5 +150,65 @@ func TestServerFullRefusesProxiedPlayer(t *testing.T) {
 	st := readUntil(t, openProxiedFrom(t, link, "Two", "198.51.100.1:4242"), v2193.IDPlayStatus).(*v2193.PlayStatusPacket)
 	if st.Status != v2193.PlayStatusLoginFailedServerFull {
 		t.Fatalf("status %d, want the server full", st.Status)
+	}
+}
+
+// TestOperatorJoinsFullServer checks BypassesPlayerLimit: a full server
+// refuses a member once it logged in and was allowed, and lets in the
+// player the server says bypasses the limit, which then holds a slot of
+// its own.
+func TestOperatorJoinsFullServer(t *testing.T) {
+	l := listen(t, Config{MaximumPlayers: 1, BypassesPlayerLimit: func(id ourlogin.Identity, xboxLive bool) bool {
+		return id.DisplayName == "Operator" && xboxLive
+	}})
+	link := proxyLink(t, l)
+	readUntil(t, openProxiedFrom(t, link, "One", "203.0.113.7:4242"), v2193.IDResourcePacksInfo)
+	st := readUntil(t, openProxiedFrom(t, link, "Member", "198.51.100.1:4242"), v2193.IDPlayStatus).(*v2193.PlayStatusPacket)
+	if st.Status != v2193.PlayStatusLoginFailedServerFull {
+		t.Fatalf("the member: status %d, want the server full", st.Status)
+	}
+	if st := readUntil(t, openProxiedFrom(t, link, "Operator", "198.51.100.2:4242"), v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginSuccess {
+		t.Fatalf("the operator: status %d, want the login to succeed", st.Status)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for l.ServerStatus().PlayerCount != 2 {
+		if time.Now().After(deadline) {
+			t.Fatalf("%d players counted, want 2", l.ServerStatus().PlayerCount)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// TestProxiedPlayerBannedByTokenAddress checks that the address a server
+// bans a player of a proxy by is the one the proxy signed into its token,
+// as the client's, not that of the proxy: a ban of 203.0.113.7 refuses the
+// player the token says comes from it, and a ban of the proxy's own
+// address, 127.0.0.1, refuses no one.
+func TestProxiedPlayerBannedByTokenAddress(t *testing.T) {
+	banned := map[string]bool{"203.0.113.7": true, "127.0.0.1": true}
+	var seen []string
+	var mu sync.Mutex
+	l := listen(t, Config{Allow: func(addr net.Addr, _ ourlogin.Identity, _ ourlogin.ClientData, _ bool) (string, bool) {
+		host, _, _ := net.SplitHostPort(addr.String())
+		mu.Lock()
+		seen = append(seen, host)
+		mu.Unlock()
+		if banned[host] {
+			return "You are banned from this server.", false
+		}
+		return "", true
+	}})
+	link := proxyLink(t, l)
+	d := readUntil(t, openProxiedFrom(t, link, "Griefer", "203.0.113.7:4242"), v2193.IDDisconnect).(*v2193.DisconnectPacket)
+	if d.Message != "You are banned from this server." {
+		t.Errorf("the player from the banned address: %q", d.Message)
+	}
+	if st := readUntil(t, openProxiedFrom(t, link, "Player", "198.51.100.1:4242"), v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginSuccess {
+		t.Errorf("the player of another address: status %d, want the login to succeed", st.Status)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if want := []string{"203.0.113.7", "198.51.100.1"}; !slices.Equal(seen, want) {
+		t.Errorf("Allow saw %q, want the addresses of the tokens %q", seen, want)
 	}
 }

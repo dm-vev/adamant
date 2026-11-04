@@ -66,6 +66,24 @@ func (c Config) oldestProtocol() *versions.Protocol {
 	return slices.MinFunc(c.Protocols, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
 }
 
+// admissionHooks returns the Allow and BypassesPlayerLimit of netconn of
+// the Allower of the server: nil for a nil Allower, and BypassesPlayerLimit
+// nil for one that is no server.PlayerLimitBypasser.
+func admissionHooks(a server.Allower) (allow func(net.Addr, login.Identity, login.ClientData, bool) (string, bool), bypass func(login.Identity, bool) bool) {
+	if a == nil {
+		return nil, nil
+	}
+	allow = func(addr net.Addr, id login.Identity, d login.ClientData, xboxLive bool) (string, bool) {
+		return a.Allow(addr, session.IdentityOf(id, xboxLive), session.ProfileOf(d))
+	}
+	if b, ok := a.(server.PlayerLimitBypasser); ok {
+		bypass = func(id login.Identity, xboxLive bool) bool {
+			return b.BypassesPlayerLimit(session.IdentityOf(id, xboxLive))
+		}
+	}
+	return allow, bypass
+}
+
 // netherNetListener returns the connections of the NetherNet listener of
 // the server, admitted to it as the Config says. Queries are answered
 // from the server host.
@@ -78,12 +96,7 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 	if err != nil {
 		return nil, fmt.Errorf("load NetherNet identity: %w", err)
 	}
-	var allow func(net.Addr, login.Identity, login.ClientData, bool) (string, bool)
-	if conf.Allower != nil {
-		allow = func(addr net.Addr, id login.Identity, d login.ClientData, xboxLive bool) (string, bool) {
-			return conf.Allower.Allow(addr, session.IdentityOf(id, xboxLive), session.ProfileOf(d))
-		}
-	}
+	allow, bypass := admissionHooks(conf.Allower)
 	listen := nethernet.ListenConfig{
 		Key:                  key,
 		AllowAnonymous:       c.AuthDisabled,
@@ -135,9 +148,10 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 		Validate: func(id login.Identity, data login.ClientData) error {
 			return validateLogin(id, data, c.NameCheck)
 		},
-		Allow:       allow,
-		Compression: batchCompression(c.Compression),
-		Protocols:   c.Protocols,
+		Allow:               allow,
+		BypassesPlayerLimit: bypass,
+		Compression:         batchCompression(c.Compression),
+		Protocols:           c.Protocols,
 	}.Listen(listen, c.Network.Address)
 	if err != nil {
 		return nil, fmt.Errorf("create NetherNet listener: %w", err)

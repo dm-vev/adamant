@@ -94,6 +94,9 @@ type Conn struct {
 	// source is the address the client counts against for MaxPerAddress,
 	// the zero Prefix if none.
 	source netip.Prefix
+	// slot is set once the client holds a player slot, of the slots
+	// MaximumPlayers bounds.
+	slot bool
 }
 
 func newConn(l *Listener, t transport, nn *nethernet.Conn) *Conn {

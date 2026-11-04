@@ -59,8 +59,16 @@ const (
 type Config struct {
 	// Log receives what goes wrong with connections. Nil discards it.
 	Log *slog.Logger
-	// MaximumPlayers bounds the players connected. Zero means no bound.
+	// MaximumPlayers bounds the players connected. A client is told the
+	// server is full once it logged in and was allowed, unless
+	// BypassesPlayerLimit says it joins a full server. Zero means no
+	// bound.
 	MaximumPlayers int
+	// BypassesPlayerLimit reports whether a client that logged in, and was
+	// allowed, joins a server that has MaximumPlayers players, as an
+	// operator of Java's bypassesPlayerLimit does. xboxLive is as for
+	// Allow. Nil lets no one.
+	BypassesPlayerLimit func(identity bedrocklogin.Identity, xboxLive bool) bool
 	// MaxLogins bounds the clients logging in at once, from the opening
 	// of their connection to the end of their resource packs, so that
 	// connections that never log in cannot hold the server. A client over
@@ -423,9 +431,12 @@ func (l *Listener) allowed() string {
 	return strings.Join(s, ", ")
 }
 
-// left counts a client out, of its address too.
+// left counts a client out, of the players if it held a slot, and of its
+// address.
 func (l *Listener) left(c *Conn) {
-	l.players.Add(-1)
+	if c.slot {
+		l.players.Add(-1)
+	}
 	if c.source.IsValid() {
 		l.admitMu.Lock()
 		if l.addresses[c.source]--; l.addresses[c.source] <= 0 {
@@ -493,14 +504,33 @@ func addressSource(addr net.Addr) netip.Prefix {
 	return netip.PrefixFrom(ip, bits).Masked()
 }
 
+// claim takes a player slot for c, which logged in and was allowed. It
+// reports false, taking none, if MaximumPlayers players hold slots and c
+// does not bypass the limit.
+func (l *Listener) claim(c *Conn) bool {
+	checked, bypass := false, false
+	for {
+		n := l.players.Load()
+		if max := l.cfg.MaximumPlayers; max != 0 && int(n) >= max {
+			if !checked {
+				checked = true
+				bypass = l.cfg.BypassesPlayerLimit != nil && l.cfg.BypassesPlayerLimit(c.identity, c.xboxLive)
+			}
+			if !bypass {
+				return false
+			}
+		}
+		if l.players.CompareAndSwap(n, n+1) {
+			c.slot = true
+			l.updateStatus()
+			return true
+		}
+	}
+}
+
 // run logs a client in with login and queues it for Accept.
 func (l *Listener) run(c *Conn, login func(*Conn) error) {
 	loginsStarted.Inc()
-	if max := l.cfg.MaximumPlayers; max != 0 && int(l.players.Load()) >= max {
-		loginsFull.Inc()
-		c.refuse(&mc.PlayStatusPacket{Status: mc.PlayStatusLoginFailedServerFull})
-		return
-	}
 	if ok, busy := l.enter(c); !ok {
 		if busy {
 			loginsBusy.Inc()
@@ -512,7 +542,6 @@ func (l *Listener) run(c *Conn, login func(*Conn) error) {
 		return
 	}
 	defer l.loggedIn()
-	l.players.Add(1)
 	defer func() {
 		// A panic is a bug of the login, which no client may use to take
 		// the server down: the client is dropped.
@@ -521,7 +550,6 @@ func (l *Listener) run(c *Conn, login func(*Conn) error) {
 			_ = c.Close()
 		}
 	}()
-	l.updateStatus()
 	_ = c.t.SetReadDeadline(time.Now().Add(loginTimeout))
 	if err := login(c); err != nil {
 		var closed DisconnectError
@@ -697,7 +725,8 @@ func (c *Conn) authenticate(pk *mc.LoginPacket) error {
 }
 
 // admit decides whether a client that logged in, with Xbox Live or not,
-// may join: the rules of the server, Validate, then Allow.
+// may join: the rules of the server, Validate, then Allow, then whether a
+// player slot is free, or the client bypasses the limit of players.
 func (c *Conn) admit() error {
 	if validate := c.l.cfg.Validate; validate != nil {
 		if err := validate(c.identity, c.client); err != nil {
@@ -713,6 +742,11 @@ func (c *Conn) admit() error {
 			_ = c.WritePacket(&mc.DisconnectPacket{Reason: mc.DisconnectReasonKicked, Message: reason})
 			return DisconnectError("refused: " + reason)
 		}
+	}
+	if !c.l.claim(c) {
+		loginsFull.Inc()
+		_ = c.WritePacket(&mc.PlayStatusPacket{Status: mc.PlayStatusLoginFailedServerFull})
+		return DisconnectError("refused: the server is full")
 	}
 	return nil
 }

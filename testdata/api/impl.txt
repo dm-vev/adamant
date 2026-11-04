@@ -93,6 +93,7 @@ server.Server	server/cmd/builtin.serverAdapter	*
 server.Whitelist	server.Allower	*
 server.Whitelist	server.migratedList	*
 server.admission	server.Allower	value
+server.admission	server.PlayerLimitBypasser	value
 server.allower	server.Allower	value
 server.banList	server.migratedList	*
 server.operatorsList	server.migratedList	*

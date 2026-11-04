@@ -18,6 +18,16 @@ type Allower interface {
 	Allow(addr net.Addr, id client.Identity, p client.Profile) (string, bool)
 }
 
+// PlayerLimitBypasser may be implemented by an Allower that lets some
+// players join a server that is full. The Allower of the admin lists
+// implements it: an operator whose entry of ops.json sets Java's
+// bypassesPlayerLimit joins whatever Config.MaxPlayers says.
+type PlayerLimitBypasser interface {
+	// BypassesPlayerLimit reports whether the player of the identity
+	// passed, which Allow allowed, joins a server that is full.
+	BypassesPlayerLimit(id client.Identity) bool
+}
+
 // allower is the standard Allower implementation. It accepts all connections.
 type allower struct{}
 

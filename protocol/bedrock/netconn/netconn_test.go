@@ -262,6 +262,8 @@ func TestLoginProtocolMismatch(t *testing.T) {
 	}
 }
 
+// TestServerFull checks that a client of a full server is told so once it
+// logged in, and that it held no slot: the server still counts one player.
 func TestServerFull(t *testing.T) {
 	l := listen(t, Config{MaximumPlayers: 1})
 	serve(t, l)
@@ -272,9 +274,12 @@ func TestServerFull(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	b := rawClient(t, l)
-	if got := readStatus(t, b); got != mc.PlayStatusLoginFailedServerFull {
-		t.Fatalf("status %d for the second client", got)
+	_, err = ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{Identity: ourlogin.Identity{DisplayName: "Second"}})
+	if want := ourclient.StatusError(mc.PlayStatusLoginFailedServerFull); !errors.Is(err, want) {
+		t.Fatalf("the second client: %v, want %v", err, want)
+	}
+	if n := l.ServerStatus().PlayerCount; n != 1 {
+		t.Errorf("%d players counted, want 1", n)
 	}
 }
 

@@ -382,6 +382,28 @@ func (a admission) Allow(addr net.Addr, id client.Identity, p client.Profile) (s
 	return "", true
 }
 
+// BypassesPlayerLimit reports whether the player of the identity passed is
+// an operator whose entry of ops.json sets bypassesPlayerLimit: by its
+// account on a server keyed by XUID, by its name on one keyed by name. It
+// implements PlayerLimitBypasser.
+func (a admission) BypassesPlayerLimit(id client.Identity) bool {
+	if a.operators == nil {
+		return false
+	}
+	var en entry
+	var ok bool
+	if a.mode == identity.XUID {
+		k, has := accountKey(id)
+		if !has {
+			return false
+		}
+		en, ok = a.operators.entry(k)
+	} else {
+		en, ok = a.operators.match(id.Name)
+	}
+	return ok && en.op.bypass
+}
+
 // allowAccount is Allow on a server keyed by XUID.
 func (a admission) allowAccount(addr string, id client.Identity) (string, bool) {
 	k, ok := accountKey(id)
