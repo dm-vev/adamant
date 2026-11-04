@@ -62,7 +62,6 @@ server/entity/template_spawn_zombie.go prepareZombieVillagerTemplateSpawn 125
 server/item/java_nbt.go StackFromStructureNBT 117
 server/item/java_nbt.go StackToStructureNBT 117
 server/item/recipe/vanilla.go registerVanillaRecipes 160
-server/item/register.go init 229
 server/loot/entity_predicate.go matchEntityKey 111
 server/loot/loot.go applyModifiers 252
 server/loot/loot.go expand 108

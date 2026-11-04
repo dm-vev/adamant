@@ -8,6 +8,13 @@ import (
 
 // noinspection SpellCheckingInspection
 func init() {
+	registerItemsAmethystShardToGoldenHorseArmour()
+	registerItemsGoldenAppleToWrittenBook()
+	registerItemVariants()
+}
+
+// registerItemsAmethystShardToGoldenHorseArmour registers the items from amethyst shards to golden horse armour, with bundles, harnesses, cushions and buckets of mobs.
+func registerItemsAmethystShardToGoldenHorseArmour() {
 	world.RegisterItem(AmethystShard{})
 	world.RegisterItem(Apple{})
 	world.RegisterItem(Bundle{})
@@ -96,6 +103,10 @@ func init() {
 	world.RegisterItem(GoldIngot{})
 	world.RegisterItem(GoldNugget{})
 	world.RegisterItem(GoldenHorseArmour{})
+}
+
+// registerItemsGoldenAppleToWrittenBook registers the items from golden apples to written books, with boats, nautilus armour and tools.
+func registerItemsGoldenAppleToWrittenBook() {
 	world.RegisterItem(GoldenApple{})
 	world.RegisterItem(GoldenCarrot{})
 	world.RegisterItem(Gunpowder{})
@@ -189,6 +200,10 @@ func init() {
 	world.RegisterItem(WarpedFungusOnAStick{})
 	world.RegisterItem(Wheat{})
 	world.RegisterItem(WrittenBook{})
+}
+
+// registerItemVariants registers the items of each variant: spawn eggs, armour, smithing templates, banner patterns, dyes, goat horns, potions, tools, music discs, stews and pottery sherds.
+func registerItemVariants() {
 	for _, entity := range spawnEggEntities {
 		world.RegisterItem(SpawnEgg{Entity: entity})
 	}
