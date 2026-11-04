@@ -250,10 +250,12 @@ func TestMultiCraftMapsAtTheCartographyTable(t *testing.T) {
 		if !ok || result.NativeID != 43 {
 			t.Fatalf("the result is %v, want map 43", slotOf(inv.UI, menu.UIResult))
 		}
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		if locked := p.maps[43]; !locked.Locked || p.maps[42].Locked {
-			t.Errorf("map 43 locked %v, map 42 locked %v: want the new map locked", locked.Locked, p.maps[42].Locked)
+		// The new map is staged in the world until its next save, so the
+		// maps are read through the world rather than from the provider.
+		locked, err := w.MapData(43)
+		parent, parentErr := w.MapData(42)
+		if err != nil || parentErr != nil || !locked.Locked || parent.Locked {
+			t.Errorf("map 43 locked %v (err %v), map 42 locked %v (err %v): want the new map locked", locked.Locked, err, parent.Locked, parentErr)
 		}
 	})
 }

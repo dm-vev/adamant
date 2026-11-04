@@ -770,15 +770,15 @@ func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
 
 	t.Run("forged scale result does not create a map", func(t *testing.T) {
 		data := world.MapData{ID: 42, Scale: 1, Colors: make([]byte, 128*128)}
-		w, provider := mapCraftingWorld(t, data)
+		w, _ := mapCraftingWorld(t, data)
 		s := craftingTestSession()
 		input := []item.Stack{craftingMapStack(), item.NewStack(item.Paper{}, 1)}
 		setCraftingInput(t, s, input)
 		forged := craftingMapStack().WithCustomName("forged")
 		craftErr := handleCraftingRequest(t, w, craftingTestHandler(), s, multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(forged), 0, 1))
 		requireRejectedCraft(t, s, craftErr, input)
-		if _, err := provider.LoadMap(43); err == nil {
-			t.Fatal("rejected map craft persisted a new map")
+		if _, err := w.MapData(43); err == nil {
+			t.Fatal("rejected map craft made a new map")
 		}
 	})
 

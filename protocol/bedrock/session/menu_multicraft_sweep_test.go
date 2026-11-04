@@ -1,7 +1,6 @@
 package session
 
 import (
-	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -244,19 +243,20 @@ func craftMultiOnce(t *testing.T, c multiCase) string {
 			}
 		}
 		if provider != nil {
+			// The maps a craft makes are staged in the world until its next
+			// save, so every map of the provider, and every ID it allocated
+			// since, is read through the world.
 			provider.mu.Lock()
-			ids := slices.SortedFunc(func(yield func(int64) bool) {
-				for id := range provider.maps {
-					if !yield(id) {
-						return
-					}
-				}
-			}, cmp.Compare[int64])
-			for _, id := range ids {
-				m := provider.maps[id]
-				fmt.Fprintf(&b, "map %d: scale %d, locked %v, parent %d\n", id, m.Scale, m.Locked, m.ParentID)
+			first, last := c.maps.ID, provider.nextID
+			for id := range provider.maps {
+				first = min(first, id)
 			}
 			provider.mu.Unlock()
+			for id := first; id <= last; id++ {
+				if m, err := w.MapData(id); err == nil {
+					fmt.Fprintf(&b, "map %d: scale %d, locked %v, parent %d\n", id, m.Scale, m.Locked, m.ParentID)
+				}
+			}
 		}
 		outcome = b.String()
 	})
