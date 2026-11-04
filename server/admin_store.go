@@ -217,6 +217,7 @@ func (b *banList) entries(ips bool) []string {
 	}
 	return out
 }
+
 // banned reports whether the player of the name passed, or the address
 // passed, is banned, as a server keyed by name checks a player, and the
 // reason.
@@ -239,3 +240,17 @@ func (b *banList) bannedIPLocked(addr string) (string, bool) {
 	}
 	return "", false
 }
+
+// update runs f with the entries of the list, and writes the file if f
+// reports it changed them.
+func (b *banList) update(f func(e *entries) bool) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if !f(&b.players) {
+		return nil
+	}
+	return b.writeLocked()
+}
+
+// path returns the path of the file of the list.
+func (b *banList) path() string { return b.file }

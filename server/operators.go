@@ -202,3 +202,17 @@ func (o *operatorsList) writeLocked() error {
 	}
 	return writeFileAtomic(o.filePath, append(contents, '\n'), "ops")
 }
+
+// update runs f with the entries of the list, and writes the file if f
+// reports it changed them.
+func (o *operatorsList) update(f func(e *entries) bool) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !f(&o.players) {
+		return nil
+	}
+	return o.writeLocked()
+}
+
+// path returns the path of the file of the list.
+func (o *operatorsList) path() string { return o.filePath }

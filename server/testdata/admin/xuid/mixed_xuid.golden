@@ -60,6 +60,7 @@ BanPlayer("New", ""): <nil>
    "  \"ips\": []\n"
    "}\n"
 -- log
+level=INFO msg="Moved 0 of 4 names on the lists to Xbox accounts; 4 stay held by name until they join: pending (operators), alex (whitelist), xuid:12a not an account (whitelist), pending (bans)."
 level=WARN msg="Operators held by name: bound to the first Xbox account that joins with that name. Name the account with xuid:<XUID> instead." names=[pending]
 level=WARN msg="Whitelist entries held by name: bound to the first Xbox account that joins with that name." names="[alex xuid:12a not an account]"
 level=INFO msg="Bound the whitelist entry \"alex\" to xuid:2535412345678907 (alex)."

@@ -342,3 +342,17 @@ func normalizeName(name string) string {
 }
 
 var _ Allower = (*Whitelist)(nil)
+
+// update runs f with the entries of the list, and writes the file if f
+// reports it changed them.
+func (w *Whitelist) update(f func(e *entries) bool) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if !f(&w.players) {
+		return nil
+	}
+	return w.writeLocked()
+}
+
+// path returns the path of the file of the list.
+func (w *Whitelist) path() string { return w.filePath }

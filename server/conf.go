@@ -527,20 +527,27 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return conf, fmt.Errorf("load bans: %w", err)
 	}
-	a := admission{mode: conf.IdentityKey, log: log, whitelist: wl, operators: ops, bans: bans}
-	if conf.IdentityKey == identity.XUID {
-		if a.known, _, err = loadKnownPlayers(filepath.Join(baseDir, "known-players.json"), log); err != nil {
-			return conf, fmt.Errorf("load known players: %w", err)
-		}
-	}
-	a.warnHeld()
-	conf.Allower = a
 	if uc.Players.SaveData {
 		conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
 		if err != nil {
 			return conf, fmt.Errorf("create player provider: %w", err)
 		}
 	}
+	a := admission{mode: conf.IdentityKey, log: log, whitelist: wl, operators: ops, bans: bans}
+	if conf.IdentityKey == identity.XUID {
+		var existed bool
+		if a.known, existed, err = loadKnownPlayers(filepath.Join(baseDir, "known-players.json"), log); err != nil {
+			return conf, fmt.Errorf("load known players: %w", err)
+		}
+		if !existed {
+			lister, _ := conf.PlayerProvider.(player.Lister)
+			if err := moveToAccounts(a, lister); err != nil {
+				return conf, fmt.Errorf("move the lists to Xbox accounts: %w", err)
+			}
+		}
+	}
+	a.warnHeld()
+	conf.Allower = a
 	return conf, nil
 }
 

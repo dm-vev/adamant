@@ -129,6 +129,27 @@ func (k *knownPlayers) put(p knownPlayer) {
 	k.changedLocked()
 }
 
+// seed records p, as the first start of a server keyed by XUID finds it in
+// the saved data of the players, without scheduling a write. If not
+// byName, the name of p is not made its account's: two records gave it
+// to two accounts.
+func (k *knownPlayers) seed(p knownPlayer, byName bool) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.byXUID[p.XUID] = p
+	if byName {
+		k.putLocked(p)
+	}
+	k.dirty = true
+}
+
+// write writes the file now.
+func (k *knownPlayers) write() error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return k.writeLocked()
+}
+
 // changedLocked schedules a write of the file after the debounce, unless
 // one is scheduled.
 func (k *knownPlayers) changedLocked() {

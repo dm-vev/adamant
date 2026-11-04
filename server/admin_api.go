@@ -230,6 +230,7 @@ func (srv *Server) BanEntries(ip bool) ([]string, error) {
 	}
 	return srv.bans.entries(ip), nil
 }
+
 // Banned reports whether the player of the name passed, or the address
 // passed, is banned, and the reason. On a server keyed by XUID, the name is
 // that of a player online, whose account is checked, or the name of a ban

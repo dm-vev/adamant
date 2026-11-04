@@ -102,6 +102,7 @@ func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
 	}
 	return jsonData{
 		UUID:            d.UUID.String(),
+		XUID:            d.XUID,
 		Username:        d.Name,
 		Position:        d.Position,
 		Velocity:        d.Velocity,

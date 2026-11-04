@@ -20,6 +20,15 @@ type Provider interface {
 	io.Closer
 }
 
+// Lister is a Provider that can list the players it holds records of: the
+// UUID each is keyed by, and the name and the XUID the record holds. The
+// XUID of a record saved on a server with Xbox Live sign-in off is what the
+// client claimed.
+type Lister interface {
+	// Players calls yield for each record, until yield returns false.
+	Players(yield func(id uuid.UUID, name, xuid string) bool) error
+}
+
 // Compile time check to make sure NopProvider implements Provider.
 var _ Provider = (*NopProvider)(nil)
 

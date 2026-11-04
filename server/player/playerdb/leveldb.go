@@ -55,6 +55,30 @@ func (p *Provider) Load(id uuid.UUID, world func(world.Dimension) *world.World) 
 	return conf, w, nil
 }
 
+// Players calls yield with the UUID, the name and the XUID of each record
+// the provider holds, reading only those fields, until yield returns false.
+// A record that does not decode is skipped.
+func (p *Provider) Players(yield func(id uuid.UUID, name, xuid string) bool) error {
+	it := p.db.NewIterator(nil, nil)
+	defer it.Release()
+	for it.Next() {
+		key := it.Key()
+		if len(key) != len(uuid.UUID{}) {
+			continue
+		}
+		var d struct{ XUID, Username string }
+		if json.Unmarshal(it.Value(), &d) != nil {
+			continue
+		}
+		if !yield(uuid.UUID(key), d.Username, d.XUID) {
+			break
+		}
+	}
+	return it.Error()
+}
+
+var _ player.Lister = (*Provider)(nil)
+
 // Close ...
 func (p *Provider) Close() error {
 	return p.db.Close()
