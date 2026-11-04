@@ -36,8 +36,8 @@ func (impaling) Rarity() item.EnchantmentRarity {
 }
 
 // CompatibleWithEnchantment ...
-func (impaling) CompatibleWithEnchantment(item.EnchantmentType) bool {
-	return true
+func (impaling) CompatibleWithEnchantment(t item.EnchantmentType) bool {
+	return damageCompatible(Impaling, t)
 }
 
 // CompatibleWithItem ...

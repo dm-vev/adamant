@@ -39,13 +39,13 @@ func (baneOfArthropods) Addend(level int) float64             { return float64(l
 
 // damageCompatible reports whether t may join self on an item. The
 // enchantments of Java's #exclusive_set/damage (sharpness, smite, bane of
-// arthropods, density and breach) exclude each other.
+// arthropods, impaling, density and breach) exclude each other.
 func damageCompatible(self, t item.EnchantmentType) bool {
 	if t == self {
 		return true
 	}
 	switch t.(type) {
-	case sharpness, smite, baneOfArthropods, density, breach:
+	case sharpness, smite, baneOfArthropods, impaling, density, breach:
 		return false
 	}
 	return true
