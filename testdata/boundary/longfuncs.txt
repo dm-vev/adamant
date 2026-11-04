@@ -1,0 +1,138 @@
+# Hand-written functions over 100 lines that still exist.
+#
+# Each line is "<file> <func> <lines> [tag]": a file below server/, protocol/ or cmd/ that is not a test and not
+# generated, relative to the repository root and written with slashes, the function or method (as Recv.Name)
+# declared in it, and its length in lines from "func" to the closing brace. A name declared more than once in a
+# file, as init is, takes "#2", "#3", ... after the first, in the order of the file.
+#
+# The tag says why a function may stay long:
+#
+#	port	a port of Java generation under server/world/generator, which mirrors a Java method one to one and
+#		whose draw order the generation hash pins
+#	tool	a command under cmd/, which the server does not run
+#
+# This list is a ratchet. No function over 100 lines may be added and none may grow: either fails the test.
+# A function without a tag that shrank fails until its entry is lowered, and one that went or fell to 100 lines
+# or fewer fails until its entry is removed. A tagged function need not shrink: its length is a ceiling.
+# Adding an entry, or raising one, needs a justification in review.
+#
+# Regenerate it with (the tags of entries that stay are kept, and new ones are tagged by their directory):
+#
+#	go test -run TestLongFunctions -update-longfuncs .
+#
+# Blank lines and lines starting with # are ignored. Entries are sorted.
+
+cmd/loadtest/bot.go bot.play 170 tool
+cmd/loadtest/run.go run 141 tool
+cmd/vanilla-block-catalog/main.go parseCatalog 115 tool
+cmd/vanilla-probe/main.go run 112 tool
+cmd/vanilla-snbt-export/main.go export 105 tool
+cmd/vanilla-solid-export/main.go generate 240 tool
+protocol/bedrock/session/actor_appearance.go Session.writeActorAppearance 153
+protocol/bedrock/session/command.go BuildAvailableCommands 137
+protocol/bedrock/session/entity_metadata.go Session.addSpecificMetadata 393
+protocol/bedrock/session/handler_item_stack_request.go ItemStackRequestHandler.handleRequest 106
+protocol/bedrock/session/player.go debugShapeToProtocol 116
+protocol/bedrock/session/static.go newRecipeData 115
+protocol/bedrock/session/world.go Session.ViewEntity 117
+protocol/bedrock/session/world.go Session.ViewEntityAction 179
+protocol/bedrock/session/world.go Session.particlePackets 274
+protocol/bedrock/session/world.go Session.soundPackets 523
+server/block/dispenser.go Dispenser.ScheduledTick 177
+server/block/explosion.go ExplosionConfig.Explode 140
+server/block/register.go init 415
+server/block/register.go init#2 488
+server/block/slab_type.go encodeSlabBlock 164
+server/block/smelter.go smelter.tickSmelting 117
+server/block/stairs_type.go encodeStairsBlock 147
+server/block/vine.go Vines.RandomTick 116
+server/block/wall_type.go encodeWallBlock 103
+server/checkpoint.go checkpointer.checkpoint 105
+server/cmd/builtin/data_data.go dataCommand.Run 201
+server/cmd/builtin/data_execute.go executeChain 270
+server/cmd/builtin/data_execute.go executeCondition 142
+server/cmd/selector.go parseSelector 174
+server/conf.go Config.New 149
+server/conf.go UserConfig.Config 122
+server/entity/ai_behaviors.go newMoveToTargetSink 112
+server/entity/ai_behaviors_jump.go newLongJumpToPreferredBlock 111
+server/entity/goat.go newPrepareRamNearestTarget 110
+server/entity/hostile_mobs.go HostileMob.FinalizeSpawn 103
+server/entity/hostile_mobs.go hostileMobType.DecodeNBT 113
+server/entity/minecart_movement.go MinecartBehaviour.moveOnRails 108
+server/entity/natural_spawn_rules.go checkSpawnRules 107
+server/entity/piglin_ai.go newPiglinBrain 104
+server/entity/register.go init 132
+server/entity/spawn.go spawnMob 182
+server/entity/template_spawn_zombie.go prepareZombieVillagerTemplateSpawn 125
+server/item/java_nbt.go StackFromStructureNBT 141
+server/item/java_nbt.go StackToStructureNBT 117
+server/item/recipe/vanilla.go registerVanillaRecipes 160
+server/item/register.go init 229
+server/loot/entity_predicate.go matchEntityKey 111
+server/loot/loot.go applyModifiers 252
+server/loot/loot.go expand 108
+server/loot/tags.go loadTags 105
+server/menu/multicraft_result.go deriveMultiCraftResult 167
+server/menu/repair.go Tx.Repair 147
+server/menu/trade.go Tx.TakeTrade 115
+server/metrics.go Server.registerMetrics 118
+server/player/conf.go Config.Apply 171
+server/player/player.go Player.AttackEntity 207
+server/player/player.go Player.Hurt 116
+server/player/player.go Player.Tick 146
+server/world/checkpoint.go CaptureAllInto 111
+server/world/conf.go Config.New 194
+server/world/game_event.go Tx.EmitGameEvent 101
+server/world/generator/advanced/internal/structure/jigsaw_graph.go JigsawStart.Build 203 port
+server/world/generator/advanced/internal/structure/nbt_adapter.go BlockEntityPayload 232 port
+server/world/generator/advanced/internal/structure/nbt_adapter_structure.go convertStructureBlock 110 port
+server/world/generator/advanced/internal/structure/nbt_decode.go nbtReader.readPayload 112 port
+server/world/generator/advanced/nether/material.go Nether.applyNetherMaterial 123 port
+server/world/generator/advanced/nether/structures_fortress_pieces.go netherBridgeNetherStalkRoom.addComponentParts 113 port
+server/world/generator/advanced/nether/structures_portal.go netherPortalStart.place 110 port
+server/world/generator/advanced/overworld/modern_carver.go sampleInt 122 port
+server/world/generator/advanced/overworld/modern_feature.go NewModernFeatures 101 port
+server/world/generator/advanced/overworld/modern_feature.go sampleBlockState 121 port
+server/world/generator/advanced/overworld/modern_feature_cave_fossil.go placeModernFossil 116 port
+server/world/generator/advanced/overworld/modern_feature_cave_geode.go placeModernGeode 239 port
+server/world/generator/advanced/overworld/modern_feature_cave_lake.go placeModernLake 141 port
+server/world/generator/advanced/overworld/modern_feature_cave_vegetation.go placeModernVegetationPatch 145 port
+server/world/generator/advanced/overworld/modern_feature_placement.go ModernFeatures.modifyPlacement 154 port
+server/world/generator/advanced/overworld/modern_feature_region.go ModernFeatures.placeConfiguredData 166 port
+server/world/generator/advanced/overworld/modern_feature_region.go featurePredicate 129 port
+server/world/generator/advanced/overworld/modern_feature_region.go placeModernOreRegion 156 port
+server/world/generator/advanced/overworld/modern_feature_template.go placeModernTemplateFeature 158 port
+server/world/generator/advanced/overworld/modern_feature_template_fluids.go applyTemplateFluidsForStructureWrites 170 port
+server/world/generator/advanced/overworld/modern_feature_tree.go placeModernHugeFungus 121 port
+server/world/generator/advanced/overworld/modern_feature_tree.go placeModernTreeRegion 410 port
+server/world/generator/advanced/overworld/modern_feature_tree.go treeCreateFoliage 123 port
+server/world/generator/advanced/overworld/modern_feature_tree.go updateModernLeafDistance 101 port
+server/world/generator/advanced/overworld/modern_structure_jungle_temple.go modernJungleTemple.Place 203 port
+server/world/generator/advanced/overworld/modern_structure_mansion_place.go mansionPlacer.roof 153 port
+server/world/generator/advanced/overworld/modern_structure_mansion_place.go mansionPlacer.rooms 151 port
+server/world/generator/advanced/overworld/modern_structure_mineshaft.go mineGraph.branch 175 port
+server/world/generator/advanced/overworld/modern_structure_mineshaft.go minePiece.Place 276 port
+server/world/generator/advanced/overworld/modern_structure_ocean_monument.go buildModernMonumentRoomGraph 132 port
+server/world/generator/advanced/overworld/modern_structure_ocean_monument.go modernOceanMonumentPiece.Place 103 port
+server/world/generator/advanced/overworld/modern_structure_ocean_monument_main.go modernOceanMonumentPiece.modernMonumentMainBlocks 363 port
+server/world/generator/advanced/overworld/modern_structure_ocean_monument_rooms.go emitModernMonumentChild 173 port
+server/world/generator/advanced/overworld/modern_structure_ocean_ruin.go buildModernOceanRuin 102 port
+server/world/generator/advanced/overworld/modern_structure_pyramid.go modernDesertPyramid.Place 344 port
+server/world/generator/advanced/overworld/modern_structure_stronghold.go strongholdPiece.Place 428 port
+server/world/generator/advanced/overworld/modern_surface.go modernSurface.Apply 113 port
+server/world/java_state_adapter.go javaProperties 670
+server/world/java_state_adapter.go mapJavaProperty 865
+server/world/java_state_adapter.go nativeBlockState 283
+server/world/java_state_adapter.go reverseNativeState 135
+server/world/mcdb/map.go mapDataFromNBT 107
+server/world/portal/nether.go CreateNetherPortal 174
+server/world/raid.go Tx.TickRaids 111
+server/world/redstone_circuit.go redstoneEngine.tickCircuits 211
+server/world/tick.go scheduledTickQueue.tickPhase 122
+server/world/tick.go ticker.tickBlocksRandomly 189
+server/world/tick.go ticker.tickEntityHandle 132
+server/world/tick.go ticker.tickWorld 156
+server/world/world.go Tx.buildStructure 113
+server/world/world.go Tx.setBlock 135
+server/world/world.go World.loadChunk 127
