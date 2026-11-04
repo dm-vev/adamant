@@ -131,9 +131,26 @@ func TestBabiesFollowAdults(t *testing.T) {
 			w := traderTestWorld(t)
 			var adult, baby *world.EntityHandle
 			<-w.Exec(func(tx *world.Tx) { adult = spawnAnimal(t, tx, id, .5, nil) })
-			// With no player around for five seconds a cow stops strolling.
-			for range 110 {
+			// With no player around for five seconds a cow starts no more
+			// strolls, but it ends the one it is on, walking up to ten
+			// blocks away. The baby appears once the adult stood still for
+			// five ticks: chasing a strolling adult took it up to 82 ticks.
+			for range 100 {
 				w.AdvanceTick()
+			}
+			var last mgl64.Vec3
+			for i, still := 0, 0; still < 5; i++ {
+				if i == 600 {
+					t.Fatal("adult did not stand still in half a minute")
+				}
+				w.AdvanceTick()
+				<-w.Exec(func(tx *world.Tx) {
+					if pos := entityPos(tx, adult); pos == last {
+						still++
+					} else {
+						last, still = pos, 0
+					}
+				})
 			}
 			<-w.Exec(func(tx *world.Tx) {
 				// The baby appears seven blocks from where the adult strolled
