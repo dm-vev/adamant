@@ -206,14 +206,20 @@ func TestRabbitsFleeFromPlayers(t *testing.T) {
 		h = spawnAnimal(t, tx, "minecraft:rabbit", .5, nil)
 		addSurvivalPlayer(tx, playerPos)
 	})
-	for range 60 {
+	// The rabbit flees in legs to random places farther from the player
+	// than it is, and stops once beyond eight blocks, so it may stroll back
+	// later. A leg takes the rabbit there in 17 to 61 ticks in 295 of 300
+	// runs; the other five needed a second leg, done by tick 59. A rabbit
+	// that needs a fourth leg in eight seconds is about one in 200000.
+	farthest := 0.0
+	for range 160 {
 		w.AdvanceTick()
-	}
-	<-w.Exec(func(tx *world.Tx) {
-		if d := horizontalDistance(entityPos(tx, h), playerPos); d < 8 {
-			t.Fatalf("rabbit stayed %.2f blocks from a player, want it to flee beyond eight blocks", d)
+		<-w.Exec(func(tx *world.Tx) { farthest = max(farthest, horizontalDistance(entityPos(tx, h), playerPos)) })
+		if farthest >= 8 {
+			return
 		}
-	})
+	}
+	t.Fatalf("rabbit got at most %.2f blocks from a player five blocks away, want it to flee beyond eight blocks", farthest)
 }
 
 // TestBeesFollowFlowers checks the bee's TemptGoal: a calm bee flies up to a
