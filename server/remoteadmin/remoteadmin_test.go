@@ -2,6 +2,7 @@ package remoteadmin
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -37,14 +38,19 @@ type remoteTest struct {
 
 // newRemoteTest returns a server of the defaults of config.toml, with no
 // saved data, and the handler of its API, of the tokens owner (4) and
-// helper (2).
-func newRemoteTest(t *testing.T) *remoteTest {
+// helper (2), with the changes to the defaults passed, which are passed the
+// directory of the test.
+func newRemoteTest(t *testing.T, change ...func(uc *server.UserConfig, dir string)) *remoteTest {
 	t.Helper()
 	dir := t.TempDir()
 	uc := server.DefaultConfig()
 	uc.World.SaveData, uc.Players.SaveData = false, false
 	uc.World.DisableNether, uc.World.DisableEnd = true, true
 	uc.Whitelist.File = filepath.Join(dir, "white-list.txt")
+	uc.Backup.Folder = filepath.Join(dir, "backups")
+	for _, f := range change {
+		f(&uc, dir)
+	}
 	conf, err := uc.Config(slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)
@@ -322,5 +328,65 @@ func TestRemoteCommand(t *testing.T) {
 	}
 	if remote < 4 || reads < 2 {
 		t.Errorf("%d records of remote commands and %d of reads, want 4 or more and 2 or more", remote, reads)
+	}
+}
+
+// TestRemoteBackups checks GET /v1/backups: a token of level 4 reads the
+// backups, newest first, as their backup.json describes them, without
+// their paths on the disk of the server; a token of a lower level is
+// refused 403. The read is audited, and a backup folder that cannot be
+// read answers 503.
+func TestRemoteBackups(t *testing.T) {
+	rt := newRemoteTest(t, func(uc *server.UserConfig, dir string) {
+		uc.World.SaveData, uc.World.Folder = true, filepath.Join(dir, "world")
+	})
+	if w := rt.do(t, "GET", "/v1/backups", "127.0.0.1:1", ownerToken, ""); w.Code != 200 || strings.TrimSpace(w.Body.String()) != "[]" {
+		t.Errorf("GET /v1/backups of no backups: %d %s", w.Code, w.Body)
+	}
+	var made []server.BackupInfo
+	for _, reason := range []string{"first", "second"} {
+		info, err := rt.srv.Backup(context.Background(), server.Actor{Kind: server.ActorAPI, Name: "test"}, reason)
+		if err != nil {
+			t.Fatal(err)
+		}
+		made = append(made, info)
+	}
+	if w := rt.do(t, "GET", "/v1/backups", "127.0.0.1:1", helperToken, ""); w.Code != 403 {
+		t.Errorf("GET /v1/backups with the token of level 2: %d, want 403", w.Code)
+	}
+	w := rt.do(t, "GET", "/v1/backups", "127.0.0.1:1", ownerToken, "")
+	var got []map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil || w.Code != 200 {
+		t.Fatalf("GET /v1/backups: %d %s (%v)", w.Code, w.Body, err)
+	}
+	if len(got) != 2 || got[0]["name"] != made[1].Name || got[1]["name"] != made[0].Name {
+		t.Fatalf("GET /v1/backups answered %v, want %s then %s", got, made[1].Name, made[0].Name)
+	}
+	b := got[0]
+	if b["reason"] != "second" || b["by"] != "test" || b["byKind"] != "api" || b["format"] != "folder" || b["verified"] != "record" ||
+		b["files"] == float64(0) || b["checkpoint"] == nil || b["admin"] == nil {
+		t.Errorf("the newest backup is %v", b)
+	}
+	if strings.Contains(w.Body.String(), made[1].Path) || b["path"] != nil {
+		t.Errorf("GET /v1/backups shows the path of a backup: %s", w.Body)
+	}
+
+	if err := rt.srv.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(rt.audit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"action":"read","command":"GET /v1/backups","result":"ok"`) {
+		t.Errorf("the read of the backups is not audited:\n%s", data)
+	}
+
+	broken := newRemoteTest(t)
+	if err := os.WriteFile(filepath.Join(filepath.Dir(broken.tokens), "backups"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if w := broken.do(t, "GET", "/v1/backups", "127.0.0.1:1", ownerToken, ""); w.Code != 503 || !strings.Contains(w.Body.String(), `"code":"unavailable"`) {
+		t.Errorf("GET /v1/backups of a backup folder that is a file: %d %s", w.Code, w.Body)
 	}
 }

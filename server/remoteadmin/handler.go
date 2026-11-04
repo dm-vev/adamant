@@ -4,9 +4,9 @@
 // The API is versioned under /v1/. POST /v1/command runs a command as the
 // console would, at the level of the token, and answers its output, that
 // sent after the command returned included. The GET endpoints read the
-// status, the players and the lists. Every change goes through
-// /v1/command, so that it has the permission check, the audit record and
-// the output of a typed command.
+// status, the players, the lists and the backups. Every change goes
+// through /v1/command, so that it has the permission check, the audit
+// record and the output of a typed command.
 //
 // Tokens are named, each of a level, in a file of their own (see
 // GenerateTokenFile). They are compared in constant time over SHA-256, and
@@ -151,6 +151,7 @@ var routes = map[string]route{
 	"/v1/bans":        {http.MethodGet, cmd.LevelAdmin, listOf(func(s *server.Server) (any, error) { return s.BanList(false) })},
 	"/v1/ip-bans":     {http.MethodGet, cmd.LevelAdmin, listOf(func(s *server.Server) (any, error) { return s.BanList(true) })},
 	"/v1/whitelist":   {http.MethodGet, cmd.LevelAdmin, listOf(func(s *server.Server) (any, error) { return s.WhitelistEntries() })},
+	"/v1/backups":     {http.MethodGet, cmd.LevelOwner, listOf(backups)},
 }
 
 // ServeHTTP serves a request: at most MaxInFlight at once, of a Host it
@@ -430,4 +431,51 @@ func listOf(read func(*server.Server) (any, error)) func(h *Handler, w http.Resp
 		}
 		writeJSON(w, http.StatusOK, list)
 	}
+}
+
+// backupEntry is a backup of GET /v1/backups: what its backup.json says.
+type backupEntry struct {
+	Name       string            `json:"name"`
+	Created    time.Time         `json:"created"`
+	Reason     string            `json:"reason"`
+	By         string            `json:"by"`
+	ByKind     string            `json:"byKind,omitempty"`
+	Format     string            `json:"format"`
+	Checkpoint *backupCheckpoint `json:"checkpoint,omitempty"`
+	Files      int               `json:"files"`
+	Bytes      int64             `json:"bytes"`
+	Linked     int               `json:"linked"`
+	Verified   string            `json:"verified"`
+	Took       string            `json:"took"`
+	Admin      []string          `json:"admin"`
+}
+
+// backupCheckpoint is the checkpoint a backup holds.
+type backupCheckpoint struct {
+	ID   uint64    `json:"id"`
+	Time time.Time `json:"time"`
+}
+
+// backups returns the backups of the backup folder of srv, newest first,
+// as backup.json describes each. The paths on the disk of the server are
+// left out.
+func backups(srv *server.Server) (any, error) {
+	list, err := srv.Backups()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]backupEntry, 0, len(list))
+	for _, b := range list {
+		e := backupEntry{Name: b.Name, Created: b.Created, Reason: b.Reason, By: b.By.String(), ByKind: string(b.By.Kind),
+			Format: b.Format.String(), Files: b.Files, Bytes: b.Bytes, Linked: b.Linked, Verified: b.Verified,
+			Took: fmt.Sprintf("%.2fs", b.Took.Seconds()), Admin: b.Admin}
+		if e.Admin == nil {
+			e.Admin = []string{}
+		}
+		if b.Checkpoint.ID != 0 {
+			e.Checkpoint = &backupCheckpoint{ID: b.Checkpoint.ID, Time: b.Checkpoint.Time}
+		}
+		out = append(out, e)
+	}
+	return out, nil
 }

@@ -316,12 +316,14 @@ panel   3      <another token of 32 characters or more>
 | `GET /v1/status` | 0 | version, players, max players, uptime, records the audit log dropped |
 | `GET /v1/players` | 2 | name, XUID, UUID, dimension, level, role; the address for tokens of level 3 or more |
 | `GET /v1/operators`, `/v1/permissions`, `/v1/bans`, `/v1/ip-bans`, `/v1/whitelist` | 3 | the entries of the lists |
+| `GET /v1/backups` | 4 | the backups, newest first, each as its `backup.json` says: `name`, `created`, `reason`, `by`, `byKind`, `format`, `checkpoint` (`id`, `time`), `files`, `bytes`, `linked`, `verified`, `took`, `admin`; never their paths on the server's disk |
 
 Every change goes through `/v1/command`, with the same permission check, audit and output as a typed command: the
 token's level bounds the command, and one above it answers `Unknown command`, as a player is told. Output a command
 sends later (`/backup`, `/save-all`, `/backup verify`) is waited for up to `wait`; `pending: true` says it did not
 come. Errors are `{"error": "...", "code": "..."}`: 401, 403 (an endpoint above the token's level), 404, 405, 413 (a
-body over 64 KiB), 421 (an unknown `Host`), 429 with `Retry-After`, 503 (more than 8 requests in flight).
+body over 64 KiB), 421 (an unknown `Host`), 429 with `Retry-After`, 503 (more than 8 requests in flight, or a list or
+the backup folder that cannot be read).
 
 ```shell
 TOKEN=$(awk '$1 == "owner" {print $3}' admin-tokens.txt)
