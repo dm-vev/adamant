@@ -187,6 +187,8 @@ Settings live in `config.toml`.
 | `Resources` | `AutoBuildPack`, `Folder`, `Required` |
 | `Whitelist` | `Enabled`, `File` (default `white-list.txt`), `Reason` |
 | `AntiCheat` | `Enabled`, `ExemptOperators`, `ExemptPlayers`, `LogInterval`, `MaxLatencyTicks`; `[AntiCheat.Grace]`: `Join`, `Teleport`, `WorldChange`, `Respawn`, `Dismount`, `GameMode`, `Impulse`; one table a check (`MovedTooQuickly`, `Speed`, `Fly`, `Ascend`, `NoClip`, `Phase`, `EntityReach`, `BlockReach`, `BreakTime`, `Place`, `Attack`, `AttackAim`, `FastUse`, `Timer`, `Menu`), each with `Enabled`, `Action`, `ActAt`, `KickAt`, `KickMessage`, `Decay`, `ExemptGameModes` and settings of its own |
+| `Log` | `Format` (`text` default, or `json`), `RateLimit` (default 100 lines a second per component), `Levels` (a level per component; `[Server] LogLevel`, default `info`, for the rest) |
+| `Monitoring` | `Address` (default `localhost:6060`), `Health`, `Metrics`, `Pprof`, `Token`, `LiveTimeout`, `ReadyTickAge` |
 
 **Transport.** NetherNet serves HTTP signalling on `Network.Address` over TCP and uses WebRTC over UDP for gameplay. Behind NAT or a firewall, the negotiated ICE connectivity must be allowed; opening only the old RakNet UDP port is not enough. The endpoint is plain HTTP, so terminate TLS at a reverse proxy if you need it. RakNet must be selected explicitly; the server never falls back to it.
 
@@ -206,6 +208,8 @@ Settings live in `config.toml`.
 **Players.** `IdentityKey` chooses what the whitelist, the operators, the bans and the data of players are keyed by: the Xbox account with sign-in on (`auto` with `AuthEnabled = true`, or `xuid`), or the name (`auto` with sign-in off, or `name`). Without sign-in anyone can join under any name, an operator's included: keep such servers on a network you trust. The first start keyed by account moves the names on the lists to accounts, keeping the old files as `*.before-xuid`. See [`docs/identity.md`](docs/identity.md).
 
 **Anti-cheat.** The game checks what clients ask of their players: moves, breaks, places, attacks, item uses, menus and the rate of their ticks. Every check is switched on by default, and each is configured under `[AntiCheat.<Check>]`: whether it runs, what it does (`log`, `setback`, `cancel`, `throttle` or `kick`), at which violation level, and its thresholds. Operators are not exempt unless `ExemptOperators = true`. A config.toml without `[AntiCheat]` runs every check with its defaults. See [`docs/anticheat.md`](docs/anticheat.md) for the checks, their keys and defaults, and how they map to BDS and Java.
+
+**Monitoring.** The server serves Prometheus metrics on `/metrics`, the probes `/livez` and `/readyz`, and Go profiles under `/debug/pprof/`, on `localhost:6060` by default. Profiles on another address need `Monitoring.Token`. Logs go to stderr as text or JSON, with a level per component. See [`docs/operations.md`](docs/operations.md) for the metrics, the checks of the probes and a Kubernetes example.
 
 **Query.** Query requires `Network.Transport = "raknet"` and `Network.EnableQuery = true`. It is disabled by default and not served over NetherNet.
 
