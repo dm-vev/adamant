@@ -217,7 +217,18 @@ func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackReques
 	}
 	// The client takes the result of an offer from the slot of its
 	// index.
-	return h.batchOp(func() error { return h.batch.TakeTrade(int(from.Slot), int(count), dest) })
+	return tradeResult(h.batchOp(func() error { return h.batch.TakeTrade(int(from.Slot), int(count), dest) }))
+}
+
+// tradeResult returns err, the error of an operation that put the result
+// of a trade in a slot, with the status BDS 1.26.52.3 refuses the request
+// with if the slot does not take it: 50, where it refuses an item another
+// operation puts there with 55.
+func tradeResult(err error) error {
+	if errors.Is(err, menu.ErrSlotRefusesItem) {
+		return refusal{status: v2193.ItemStackResponseStatusFailedToValidateDstSlot, err: err}
+	}
+	return err
 }
 
 // handlePlace handles a Place stack request action.
@@ -237,7 +248,11 @@ func (h *ItemStackRequestHandler) handleTransfer(from, to v2193.StackRequestSlot
 	if err := h.verifySlots(s, tx, from, to); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
-	return h.batchOp(func() error { return h.batch.Move(src, dst, int(count)) })
+	err = h.batchOp(func() error { return h.batch.Move(src, dst, int(count)) })
+	if from.Container.ContainerID == v2193.ContainerCreatedOutput && s.merchantTradeOpen() {
+		return tradeResult(err)
+	}
+	return err
 }
 
 // handleSwap handles a Swap stack request action.

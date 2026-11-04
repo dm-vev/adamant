@@ -84,10 +84,12 @@ func (t *Tx) Trade(index, times int) error {
 // count items of its result in to.
 //
 // count must be the count of the result of the offer, which must have uses
-// left, and the result must fit in to. The items paid may not be locked,
-// and the HandleTake handler of the main inventory for each slot paid and
-// the HandlePlace handler of the inventory of to may cancel the trade. A
-// failure to load the offers after the trade closes the menu.
+// left, and the result must fit in to and be taken there
+// (ErrSlotRefusesItem); both are checked before anything is paid. The items
+// paid may not be locked, and the HandleTake handler of the main inventory
+// for each slot paid and the HandlePlace handler of the inventory of to may
+// cancel the trade. A failure to load the offers after the trade closes the
+// menu.
 func (t *Tx) TakeTrade(index, count int, to Ref) error {
 	tx, c := t.o.Tx, t.o.Owner
 	_, merchant, err := t.o.Menu.Merchant(tx)
@@ -150,6 +152,9 @@ func (t *Tx) TakeTrade(index, count int, to Ref) error {
 	result := offer.Output
 	if !destination.Empty() {
 		result = destination.Grow(offer.Output.Count())
+	}
+	if err := ensureAccepts(to, result); err != nil {
+		return err
 	}
 
 	context := event.C(inventory.Holder(c))

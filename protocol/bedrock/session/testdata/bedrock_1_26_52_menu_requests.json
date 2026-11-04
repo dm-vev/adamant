@@ -2641,6 +2641,458 @@
     "Could not clear the inventory of MenuProbe, no items to remove",
     "MenuProbe has 8 items that match the criteria"
    ]
+  },
+  {
+   "name": "merchant/result-into-offhand",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "kill @e[type=villager]",
+    "summon villager 0.5 -60 -1.5 0 0 minecraft:spawn_farmer",
+    "effect @e[type=villager] slowness 600 255 true",
+    "replaceitem entity MenuProbe slot.hotbar 0 stick 32",
+    "replaceitem entity MenuProbe slot.hotbar 1 stick 32"
+   ],
+   "notes": [
+    "offer 0 netId 4769 tier 0: 32 minecraft:stick + 0  -> 1 minecraft:emerald",
+    "offer 1 netId 4770 tier 0: 1 minecraft:emerald + 10 minecraft:gravel -> 10 minecraft:flint",
+    "offer 2 netId 4771 tier 1: 26 minecraft:flint + 0  -> 1 minecraft:emerald",
+    "offer 3 netId 4772 tier 1: 2 minecraft:emerald + 0  -> 1 minecraft:bow",
+    "offer 4 netId 4773 tier 2: 14 minecraft:string + 0  -> 1 minecraft:emerald",
+    "offer 5 netId 4774 tier 2: 3 minecraft:emerald + 0  -> 1 minecraft:crossbow",
+    "offer 6 netId 4775 tier 3: 24 minecraft:feather + 0  -> 1 minecraft:emerald",
+    "offer 7 netId 4776 tier 3: 16 minecraft:emerald + 0  -> 1 minecraft:bow",
+    "offer 8 netId 4777 tier 4: 8 minecraft:tripwire_hook + 0  -> 1 minecraft:emerald",
+    "offer 9 netId 4778 tier 4: 18 minecraft:emerald + 0  -> 1 minecraft:crossbow",
+    "UpdateTrade window 8 type 15",
+    "offer 0 taken: 32 minecraft:stick -> 1 minecraft:emerald",
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "2ceaccf6457dfc2f8a24600313217dd42b5299ab57301849a5a506445a7322ea",
+     "raw": "210402010000003f00006cc20000c0bf"
+    },
+    {
+     "dir": ">>",
+     "type": "InventoryTransaction",
+     "sha256": "857f2242910663db17776dd7a9deeb4030346b7bf605e49e2c2e7e78ad6e4930",
+     "raw": "1e0000030002000000000000000000000000003f1c8569c20000003f000000000000803f00000000"
+    },
+    {
+     "dir": "<<",
+     "type": "UpdateTrade",
+     "sha256": "da670f5a030ea87d56a734f188583fa10690dc409ca63f99bdb21bad743b419b",
+     "len": 2992
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "3eed65f502d8c5dbfdc8eb0166d833255e894eceacac63e0c7b591168ba3a7ef",
+     "len": 37
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "bfe853a5138c857e316aadc5fed74939a5a01eef5363e2bb17cc84b06c800f08",
+     "len": 312
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "da814275d6c79360aa043b422ba7ac94a0c2412fdf16de0d999b8e5b97cc9538",
+     "len": 53
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "2bba1d2bbc5d206763e16202caac27394deece75455121da0f2cc368434cd26b",
+     "len": 445
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "PlayerHotBar",
+     "sha256": "4f8320d91e97d546dc799848e8d218e18050af7a7964e0414de9e5479006d7e3",
+     "raw": "30000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "3eed65f502d8c5dbfdc8eb0166d833255e894eceacac63e0c7b591168ba3a7ef",
+     "len": 37
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "f0d8c84a265d775399d46a707e82f4ff4ac372ff85d3b0e01651b3f51b55c97a",
+     "len": 323
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "da814275d6c79360aa043b422ba7ac94a0c2412fdf16de0d999b8e5b97cc9538",
+     "len": 53
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "2bba1d2bbc5d206763e16202caac27394deece75455121da0f2cc368434cd26b",
+     "len": 445
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "PlayerHotBar",
+     "sha256": "4f8320d91e97d546dc799848e8d218e18050af7a7964e0414de9e5479006d7e3",
+     "raw": "30000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "3eed65f502d8c5dbfdc8eb0166d833255e894eceacac63e0c7b591168ba3a7ef",
+     "len": 37
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "dfdf0837124a6cfbbd499419b30352a96dc05e60013dae03bf771e78cff1e4a7",
+     "raw": "930101e501010101200c00001e0000002f0004000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "f6fd840676a20373e8dfdd2d63b84f54f050eebfb6354747504efd62a8c86403",
+     "raw": "94010100e50101020c0001000000000000002f0001040420013c000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "288b5f8452b8be16f5159f68b515cdcf748b9bd27bb47aa54c130a0b7e292c55",
+     "raw": "930101e901030a0ca125010505202f00041e0000000101013c00328bffffff220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "295b8a3382c176d5fd3e8133f40e8c538d5483c5606d29d00d42f5fd576911fe",
+     "raw": "94010132e90100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "090d76ee83b48e4eed68eaf35d822914096550009b7dff49b1cfd247c3feb6cc",
+     "raw": "930101ed01030a0ca125010505202f00041e0000000101013c003289ffffff060002000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "6f1116ecfcb78c210f99c5f902279af40971e809a65af01fd467879be4073761",
+     "raw": "94010132ed0100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "4e29bee20d4f3cc3217fa2aaf2747feb5b4632ff26bbba91a34850afdf5c0725",
+     "raw": "930101f101030a0ca125010505202f00041e0000000101013c003287ffffff0c0014000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "Event",
+     "sha256": "f6cbd9d3b4b3933f2ef321832968985e0c3ca3b610002eb01ce5f56bc3b31489",
+     "raw": "41fdffffff1f020101e7ffffff1f07e6010800"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "ee98ad268aab487c40217a52fb067b57c9d93e372f90a23befdbdda9746712c3",
+     "raw": "94010100f10101022f0001040400000000000c00011414010144000000"
+    },
+    {
+     "dir": "<<",
+     "type": "UnlockedRecipes",
+     "sha256": "370349ce1880037e383e7971ca6e03db6703245936c4f2e0854a55848f29c49e",
+     "len": 119
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "1c3af92b90859ee66db1022f3f7bc26ce3488dc70e99323a1b97e7163085631b",
+     "raw": "930101f501010101200c00011f0000002f0004000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "b1efaaa6923786de5f52bb1c03fe234dbf14e8951538af77f81bfd7fa0b5af41",
+     "raw": "94010100f50101020c0001010100000000002f0001040420013e000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "219a076d7bbe342c68d7059e3c817160b9df29a7bc622c95169bbf38e42812fd",
+     "raw": "930101f901030a0ca125010505202f00041f0000000101013c003283ffffff0c0016000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "Event",
+     "sha256": "f6cbd9d3b4b3933f2ef321832968985e0c3ca3b610002eb01ce5f56bc3b31489",
+     "raw": "41fdffffff1f020101e7ffffff1f07e6010800"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "809f7a9fbe12fe03d84f88b5ca321392ebdb10d857131b5eeda51054e995ad32",
+     "raw": "94010100f90101022f0001040400000000000c00011616010146000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "df60fa6025cdef1852210d1590e615036e4ed060c1a8a92f7517d6da209861d6",
+     "raw": "2f080f00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "ba14269cad0417263286799bd308b004173ed44e5b02faff48762bb772ae5840",
+     "raw": "2f08f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "the price put in the first input",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 0
+      },
+      {
+       "container": 47,
+       "slot": 4,
+       "count": 32
+      }
+     ]
+    },
+    {
+     "label": "the result placed in the off hand",
+     "status": 50,
+     "changes": []
+    },
+    {
+     "label": "the result placed in the slot of the leggings",
+     "status": 50,
+     "changes": []
+    },
+    {
+     "label": "the result placed in slot 20",
+     "status": 0,
+     "changes": [
+      {
+       "container": 47,
+       "slot": 4,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 20,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the price put in the first input again",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 1,
+       "count": 0
+      },
+      {
+       "container": 47,
+       "slot": 4,
+       "count": 32
+      }
+     ]
+    },
+    {
+     "label": "the result placed in slot 22",
+     "status": 0,
+     "changes": [
+      {
+       "container": 47,
+       "slot": 4,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 22,
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "Could not clear the inventory of MenuProbe, no items to remove",
+    "MenuProbe has 2 items that match the criteria"
+   ]
+  },
+  {
+   "name": "merchant/preview",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "kill @e[type=villager]",
+    "summon villager 0.5 -60 -1.5 0 0 minecraft:spawn_farmer",
+    "effect @e[type=villager] slowness 600 255 true",
+    "replaceitem entity MenuProbe slot.hotbar 0 clay_ball 10"
+   ],
+   "notes": [
+    "offer 0 netId 4779 tier 0: 10 minecraft:clay_ball + 0  -> 1 minecraft:emerald",
+    "offer 1 netId 4780 tier 0: 1 minecraft:emerald + 0  -> 10 minecraft:brick",
+    "offer 2 netId 4781 tier 1: 20 minecraft:stone + 0  -> 1 minecraft:emerald",
+    "offer 3 netId 4782 tier 1: 1 minecraft:emerald + 0  -> 4 minecraft:chiseled_stone_bricks",
+    "offer 4 netId 4783 tier 2: 16 minecraft:granite + 0  -> 1 minecraft:emerald",
+    "offer 5 netId 4784 tier 2: 1 minecraft:emerald + 0  -> 4 minecraft:dripstone_block",
+    "offer 6 netId 4785 tier 3: 12 minecraft:quartz + 0  -> 1 minecraft:emerald",
+    "offer 7 netId 4786 tier 3: 1 minecraft:emerald + 0  -> 1 minecraft:light_gray_terracotta",
+    "offer 8 netId 4787 tier 4: 1 minecraft:emerald + 0  -> 1 minecraft:quartz_block",
+    "UpdateTrade window 9 type 15",
+    "offer 0 taken: 10 minecraft:clay_ball -> 1 minecraft:emerald",
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "41c93ed1abd812f03cb1b223b2c7ad94ebc6cdafd91dc4239cf6960ec01dad67",
+     "raw": "210408010000003f00006cc20000c0bf"
+    },
+    {
+     "dir": ">>",
+     "type": "InventoryTransaction",
+     "sha256": "abfc7a11c4bece53a1807b69ca3f72f3c3f59d0c57e7f5920258cc12abca3cd7",
+     "raw": "1e0000030008000000000000000000000000003f1c8569c20000003f000000000000803f00000000"
+    },
+    {
+     "dir": "<<",
+     "type": "UpdateTrade",
+     "sha256": "8d3134821461b8d660644c99725d944984de9a123a42ad2d4ade0b33d19deff4",
+     "len": 2865
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "4b398e8a99117e7e28489079e463f738b9d009a2665342ca19bca950d821a9bf",
+     "len": 37
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "3016677a715d7f172523b163d9573695cfacf561e32b4a6588d707606c4a59bf",
+     "len": 312
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "da814275d6c79360aa043b422ba7ac94a0c2412fdf16de0d999b8e5b97cc9538",
+     "len": 53
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "2bba1d2bbc5d206763e16202caac27394deece75455121da0f2cc368434cd26b",
+     "len": 445
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "PlayerHotBar",
+     "sha256": "4f8320d91e97d546dc799848e8d218e18050af7a7964e0414de9e5479006d7e3",
+     "raw": "30000000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "4b398e8a99117e7e28489079e463f738b9d009a2665342ca19bca950d821a9bf",
+     "len": 37
+    },
+    {
+     "dir": "<<",
+     "type": "UnlockedRecipes",
+     "sha256": "a0134e300ed3b863acd05ca101f80b019c7f86a8bedc0338ca27a14e44ea2a7c",
+     "len": 50
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "9b820525715e25b2623492dc7450724bf39c1bf43cb8a96683a6f6752c9e6970",
+     "raw": "930101fd010100000131000000000000220001000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "ddc942367ec28e16a27590bc465a1837778db6b1357e1097247741449a658586",
+     "raw": "94010131fd0100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "2d878cc6db3b66e56df1fd87bc945bca4cb9adede24617e68cc8a587590280e2",
+     "raw": "930101810201000001310000000000000c0015000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "333bcc787e15daf60e62fdf4b4f0cbab392ee92155b0c40d0bd90e434eaadec2",
+     "raw": "94010131810200"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "1662234ba6b0be4da95db1502a1735fb67cf1f450af994a256ecdd313d720b8e",
+     "raw": "2f090f00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "c9622531bf993e096e04722a32d1280e39aa1ff5032f4d27a5ff1aaaacff9522",
+     "raw": "2f09f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "the result taken from the preview into the off hand",
+     "status": 49,
+     "changes": []
+    },
+    {
+     "label": "the result taken from the preview into slot 21",
+     "status": 49,
+     "changes": []
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 10 items that match the criteria",
+    "Could not clear the inventory of MenuProbe, no items to remove"
+   ]
   }
  ]
 }

@@ -163,12 +163,16 @@ func (t *Tx) named(s Slot, r Role) Ref {
 	return Ref{Slot: s, Name: t.o.Name(s, r)}
 }
 
-// set sets a slot to s and records the change. A slot that cannot be read
-// fails the set before anything changes. A stack put in a disabled slot of
-// the crafter of the menu enables the slot first.
+// set sets a slot to s and records the change. A slot that cannot be read,
+// or that does not take s (ErrSlotRefusesItem), fails the set before
+// anything changes: its inventory would leave it as it was. A stack put in
+// a disabled slot of the crafter of the menu enables the slot first.
 func (t *Tx) set(r Ref, s item.Stack) error {
 	before, err := r.Inv.Item(r.Index)
 	if err != nil {
+		return err
+	}
+	if err := ensureAccepts(r, s); err != nil {
 		return err
 	}
 	if m := t.o.Menu; m != nil && r.Inv == m.Inventory() && !s.Empty() {

@@ -1,6 +1,7 @@
 package menu_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/entity"
@@ -82,6 +83,55 @@ func tradeTest(t *testing.T, f func(tx *world.Tx, b *menu.Tx, inv menu.Inventori
 		v := &tradeViewer{}
 		b := menu.Begin(menu.Opts{Tx: tx, Owner: p, Inv: inv, Menu: m, Viewer: v, Name: testName})
 		f(tx, b, inv, v, villager)
+	})
+}
+
+// TestTradeIntoASlotThatRefuses checks the result of a trade put in a slot
+// that does not take it, as bread in the off hand of a player: taken from
+// the offer (TakeTrade), it is refused with ErrSlotRefusesItem before the
+// trade is made, and nothing is paid, used or changed; made with the inputs
+// (Trade), the result is refused at the move, and the rollback gives the
+// inputs back. The off hand left its slot as it was while the trade went
+// on: the bread was paid for and vanished. BDS 1.26.52.3 refuses such a
+// request (status 50).
+func TestTradeIntoASlotThatRefuses(t *testing.T) {
+	emeralds := func(n int) item.Stack { return item.NewStack(item.Emerald{}, n) }
+	shieldsOnly := func(s item.Stack, _ int) bool {
+		_, shield := s.Item().(item.Shield)
+		return s.Empty() || shield
+	}
+	tradeTest(t, func(_ *world.Tx, b *menu.Tx, inv menu.Inventories, v *tradeViewer, villager entity.Merchant) {
+		inv.OffHand.SlotValidatorFunc(shieldsOnly)
+		_ = inv.Main.SetItem(0, emeralds(5))
+		offHand := menu.Ref{Slot: menu.Slot{Inv: inv.OffHand}}
+		if err := b.TakeTrade(tradeBread, 6, offHand); !errors.Is(err, menu.ErrSlotRefusesItem) {
+			t.Fatalf("bread taken into the off hand: %v, want ErrSlotRefusesItem", err)
+		}
+		if got := uses(t, villager, tradeBread); got != 0 {
+			t.Errorf("the offer was used %d times", got)
+		}
+		if got, _ := inv.Main.Item(0); !got.Equal(emeralds(5)) {
+			t.Errorf("the inventory holds %v, want the five emeralds", got)
+		}
+		if n := len(b.Changes()); n != 0 || len(v.trades) != 0 {
+			t.Errorf("the refused trade made %d changes and showed %d offers", n, len(v.trades))
+		}
+
+		_ = inv.UI.SetItem(menu.UITradeInputA, emeralds(5))
+		if err := b.Trade(tradeBread, 1); err != nil {
+			t.Fatal(err)
+		}
+		result := menu.Ref{Slot: menu.Slot{Inv: inv.UI, Index: menu.UIResult}}
+		if err := b.Move(result, offHand, 6); !errors.Is(err, menu.ErrSlotRefusesItem) {
+			t.Fatalf("the bread of the trade moved to the off hand: %v, want ErrSlotRefusesItem", err)
+		}
+		b.Rollback()
+		if got, _ := inv.UI.Item(menu.UITradeInputA); !got.Equal(emeralds(5)) {
+			t.Errorf("the input holds %v after the rollback, want the five emeralds", got)
+		}
+		if got, _ := inv.OffHand.Item(0); !got.Empty() {
+			t.Errorf("the off hand holds %v", got)
+		}
 	})
 }
 

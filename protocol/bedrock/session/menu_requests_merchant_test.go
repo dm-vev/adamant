@@ -167,7 +167,8 @@ func (s *scenario) merchantRequestsScenario() {
 	// The preview: the inventory pays.
 	take("bread taken from the preview into an empty slot", offerBread, 6, s.slot(inv, 15), true)
 	take("bread taken from the preview onto bread", offerBread, 6, s.slot(inv, 15), true)
-	take("bread taken from the preview into the off hand", offerBread, 6, s.slot(v2193.ContainerOffhand, 1), true)
+	s.refuseWith("refused: bread taken from the preview into the off hand", v2193.ItemStackResponseStatusFailedToValidateDstSlot,
+		&v2193.TakeStackRequestAction{Count: 6, Source: preview(offerBread), Destination: s.slot(v2193.ContainerOffhand, 1)})
 	take("refused: bread of the wrong count", offerBread, 5, s.slot(inv, 16), false)
 	take("refused: the used-up offer from the preview", offerUsedUp, 1, s.slot(inv, 16), false)
 	take("refused: an offer out of range from the preview", 9, 1, s.slot(inv, 16), false)
@@ -202,6 +203,12 @@ func (s *scenario) merchantRequestsScenario() {
 	// The villager gone under the open menu.
 	s.request("emeralds put in again", nil,
 		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 5), Destination: inputA()})
+	// The trade is made at the craft and its use counted, as for any
+	// refusal after it; the refusal gives the emeralds back.
+	s.refuseWith("refused: bread bought into the off hand", v2193.ItemStackResponseStatusFailedToValidateDstSlot,
+		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: offerBread + 1, NumberOfCrafts: 1},
+		&v2193.ConsumeStackRequestAction{Count: 1, Source: inputA()},
+		&v2193.PlaceStackRequestAction{Count: 6, Source: s.created(), Destination: s.slot(v2193.ContainerOffhand, 1)})
 	s.step("the villager taken away", func(tx *world.Tx, _ *player.Player) {
 		if e, ok := villager.Entity(tx); ok {
 			tx.RemoveEntity(e)

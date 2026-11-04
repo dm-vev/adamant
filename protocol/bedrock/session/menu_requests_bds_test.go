@@ -10,12 +10,14 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // bdsMenuRequests is the capture of testdata/bedrock_1_26_52_menu_requests.json:
@@ -46,6 +48,9 @@ type bdsMenuRequests struct {
 // that fixed it.
 var menuRequestsKnownDiverging = map[string]string{
 	"offhand/place-slot-0": "the off hand is taken at slot 0, which BDS refuses (55): it holds the off hand at slot 1 only",
+	"merchant/preview": "the session takes the result of an offer from the preview of the trade screen, paid from the inventory " +
+		"(menu.Tx.TakeTrade), and refuses it into the off hand with 50; BDS refuses such a take with 49 whatever the destination, " +
+		"named by the stack ID 0 the probe sent, which is the only one tried",
 }
 
 // TestMenuRequestsAgainstBDS replays the cases of the capture on a session:
@@ -90,6 +95,13 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 		requests []func() []v2193.StackRequestAction
 		// statuses compares the status of each refusal with BDS's too.
 		statuses bool
+		// offers, if set, are the offers of a villager that stands by,
+		// whose trade screen is open for the requests.
+		offers []map[string]any
+		// knownSlots are the requests of the case, by index, whose slots
+		// differ from BDS's for a reason of their own, which they must go
+		// on doing; the rest of the case is compared.
+		knownSlots map[int]string
 	}{
 		{
 			capture: "inventory/slot-changed-twice-refused",
@@ -282,6 +294,37 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid+2, inv, 2),
 			},
 		},
+		{
+			// The villager of the capture sold an emerald for 32 sticks
+			// first.
+			capture:  "merchant/result-into-offhand",
+			items:    map[int]item.Stack{0: item.NewStack(item.Stick{}, 32), 1: item.NewStack(item.Stick{}, 32)},
+			offers:   []map[string]any{bdsOffer(item.NewStack(item.Stick{}, 32), item.NewStack(item.Emerald{}, 1))},
+			statuses: true,
+			requests: []func() []v2193.StackRequestAction{
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 32}, s.slot, inv, 0, v2193.ContainerTradeTwoIngredientOne, uiTradeInput),
+				bdsTrade(s, 32, v2193.ContainerOffhand, 1),
+				bdsTrade(s, 32, v2193.ContainerArmor, 2),
+				bdsTrade(s, 32, inv, 20),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 32}, s.slot, inv, 1, v2193.ContainerTradeTwoIngredientOne, uiTradeInput),
+				bdsTrade(s, 32, inv, 22),
+			},
+			knownSlots: map[int]string{
+				3: "the session names the second input of a trade, which stays empty, BDS does not",
+				5: "the session names the second input of a trade, which stays empty, BDS does not",
+			},
+		},
+		{
+			// The villager of the capture sold an emerald for 10 clay
+			// balls first.
+			capture: "merchant/preview",
+			items:   map[int]item.Stack{0: item.NewStack(item.ClayBall{}, 10)},
+			offers:  []map[string]any{bdsOffer(item.NewStack(item.ClayBall{}, 10), item.NewStack(item.Emerald{}, 1))},
+			requests: []func() []v2193.StackRequestAction{
+				bdsPreview(s, 1, v2193.ContainerOffhand, 1),
+				bdsPreview(s, 1, inv, 21),
+			},
+		},
 	}
 	if len(cases) != len(capture.Cases) {
 		t.Fatalf("%d cases replayed of the %d captured", len(cases), len(capture.Cases))
@@ -292,6 +335,7 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			t.Fatalf("case %d replays %s with %d requests, the capture has %s with %d", i, c.capture, len(c.requests), want.Name, len(want.Requests))
 		}
 		var diverging []string
+		var villager *world.EntityHandle
 
 		s.track(s.gather(func() {
 			s.run(func(tx *world.Tx, p *player.Player) {
@@ -308,6 +352,9 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 				if c.prepare != nil {
 					c.prepare(tx, p)
 				}
+				if c.offers != nil {
+					villager = bdsVillager(t, tx, p, c.offers)
+				}
 				if c.menu != nil {
 					tx.SetBlock(c.menu.pos, c.menu.block, nil)
 					if container, ok := tx.Block(c.menu.pos).(block.Container); ok {
@@ -320,6 +367,26 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 				}
 			})
 		}))
+
+		var trade *v2193.UpdateTradePacket
+		if villager != nil {
+			for _, pk := range s.track(s.gather(func() {
+				s.send(&v2193.InventoryTransactionPacket{TransactionData: &v2193.UseItemOnEntityTransactionData{
+					TargetEntityRuntimeID: s.runtimeID(villager),
+					ActionType:            v2193.UseItemOnEntityActionInteract,
+					HotBarSlot:            emptyHand,
+					Position:              mgl32.Vec3{0.5, -58.38, 0.5},
+					ClickedPosition:       mgl32.Vec3{0, 1, 0},
+				}})
+			})) {
+				if u, ok := pk.(*v2193.UpdateTradePacket); ok {
+					trade = u
+				}
+			}
+			if trade == nil {
+				t.Fatalf("%s: the trade screen of the villager did not open", c.capture)
+			}
+		}
 
 		var opened *v2193.ContainerOpenPacket
 		if c.menu != nil {
@@ -394,14 +461,32 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			}
 			slices.Sort(gotSlots)
 			slices.Sort(wantSlots)
-			if !slices.Equal(gotSlots, wantSlots) {
+			reason, known := c.knownSlots[j]
+			switch {
+			case !slices.Equal(gotSlots, wantSlots) && known:
+				t.Logf("%s: %q changed %v, BDS %v, as known (%s)", c.capture, bds.Label, gotSlots, wantSlots, reason)
+			case !slices.Equal(gotSlots, wantSlots):
 				diverging = append(diverging, fmt.Sprintf("%q changed %v, BDS %v", bds.Label, gotSlots, wantSlots))
+			case known:
+				t.Errorf("%s: %q now changes the slots BDS does: remove it from knownSlots (%s)", c.capture, bds.Label, reason)
 			}
 		}
 
 		if opened != nil {
 			s.track(s.gather(func() {
 				s.send(&v2193.ContainerClosePacket{WindowID: opened.WindowID, ContainerType: opened.ContainerType})
+			}))
+		}
+		if trade != nil {
+			s.track(s.gather(func() {
+				s.send(&v2193.ContainerClosePacket{WindowID: trade.WindowID, ContainerType: trade.WindowType})
+			}))
+			s.track(s.gather(func() {
+				s.run(func(tx *world.Tx, _ *player.Player) {
+					if e, ok := villager.Entity(tx); ok {
+						tx.RemoveEntity(e)
+					}
+				})
 			}))
 		}
 
@@ -485,6 +570,61 @@ func stickCraft(s *scenario, container uint8, slot int) func() []v2193.StackRequ
 			&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiInventoryGrid+2)},
 			&v2193.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(container, slot)},
 		}
+	}
+}
+
+// bdsOffer returns an offer of a villager of the capture: sell for buy, as
+// many times as a novice offer may be used, priced by no demand.
+func bdsOffer(buy, sell item.Stack) map[string]any {
+	return map[string]any{
+		"buy": item.WriteNBT(buy), "sell": item.WriteNBT(sell),
+		"uses": int32(0), "maxUses": int32(16), "xp": int32(0), "rewardExp": byte(0),
+		"demand": int32(0), "priceMultiplier": float32(0.05),
+	}
+}
+
+// bdsVillager adds a farmer of the offers passed in front of the player,
+// which stays where it stands.
+func bdsVillager(t *testing.T, tx *world.Tx, p *player.Player, offers []map[string]any) *world.EntityHandle {
+	t.Helper()
+	recipes := make([]any, len(offers))
+	for i, o := range offers {
+		recipes[i] = o
+	}
+	h, err := entity.NewFromStructureNBT(map[string]any{
+		"id":           "minecraft:villager",
+		"NoAI":         byte(1),
+		"VillagerData": map[string]any{"type": "minecraft:plains", "profession": "minecraft:farmer", "level": int32(1)},
+		"Offers":       map[string]any{"Recipes": recipes},
+	}, world.EntitySpawnOpts{Position: p.Position().Add(mgl64.Vec3{0, 0, -2}), SpawnFinalized: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx.AddEntity(h)
+	return h
+}
+
+// bdsTrade returns the request of the capture that makes the first offer of
+// the villager with the price paid from the first input, and places its
+// result, one item, in the slot passed.
+func bdsTrade(s *scenario, price int, container uint8, slot int) func() []v2193.StackRequestAction {
+	return func() []v2193.StackRequestAction {
+		return []v2193.StackRequestAction{
+			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+			&v2193.ConsumeStackRequestAction{Count: uint8(price), Source: s.slot(v2193.ContainerTradeTwoIngredientOne, uiTradeInput)},
+			&v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(container, slot)},
+		}
+	}
+}
+
+// bdsPreview returns the request of the capture that takes count items of
+// the result of the first offer of the villager from the preview of the
+// trade screen into the slot passed.
+func bdsPreview(s *scenario, count uint8, container uint8, slot int) func() []v2193.StackRequestAction {
+	return func() []v2193.StackRequestAction {
+		return []v2193.StackRequestAction{&v2193.TakeStackRequestAction{Count: count,
+			Source:      v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoResultPreview}},
+			Destination: s.slot(container, slot)}}
 	}
 }
 
