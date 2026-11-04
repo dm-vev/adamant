@@ -113,7 +113,8 @@ and copy the `*.before-xuid` files back.
 - On a server with sign-in on, `auto` now keys the lists by Xbox account, and the first start moves them.
 - The operator checks of commands, game master blocks and abilities go by the player online, so an entity of a
   plugin named after an operator is not one.
-- `cmd.SetOperatorChecker`, `cmd.IsOperator` and `client.Game.IsOperator` take a UUID;
+- `cmd.SetOperatorChecker`, `cmd.IsOperator` and `client.Game.IsOperator` (since replaced by
+  `client.Game.PermissionsOf`, the level and role of a player) take a UUID;
   `session.IdentityOf` takes whether Xbox Live vouched for the login; netconn's `Config.Allow` gains it.
 
 ## Later work
