@@ -3058,8 +3058,11 @@ func (p *Player) placeBlock(pos cube.Pos, b world.Block, ignoreBBox bool) bool {
 // If the only entity preventing the block from being placed is the player
 // itself, the second bool returned is true too.
 func (p *Player) obstructedPos(pos cube.Pos, b world.Block) (obstructed, selfOnly bool) {
-	blockBoxes := b.Model().BBox(pos, p.tx)
-	for i, box := range blockBoxes {
+	// The boxes of a model may be shared by every block of it, as those of
+	// model.Solid are: translate a copy.
+	models := b.Model().BBox(pos, p.tx)
+	blockBoxes := make([]cube.BBox, len(models))
+	for i, box := range models {
 		blockBoxes[i] = box.Translate(pos.Vec3())
 	}
 
