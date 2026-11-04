@@ -10,6 +10,7 @@
   "commands.item.description": "Заменяет и изменяет предметы в инвентарях.",
   "commands.pardon-ip.description": "Снимает блокировку с IP-адреса.",
   "commands.pardon.description": "Снимает блокировку с игрока.",
+  "commands.permission.description": "Показывает, перечитывает и задаёт уровни и роли игроков.",
   "commands.random.description": "Генерирует случайное значение.",
   "commands.return.description": "Завершает текущую функцию с результатом команды.",
   "commands.rotate.description": "Поворачивает сущность.",

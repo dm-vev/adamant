@@ -6,6 +6,7 @@ import "github.com/df-mc/dragonfly/server/cmd"
 func registerAdminCommands(srv serverAdapter) {
 	cmd.Register(newOpCommand(srv))
 	cmd.Register(newDeopCommand(srv))
+	cmd.Register(newPermissionCommand(srv))
 	cmd.Register(newBanPlayerCommand(srv))
 	cmd.Register(newBanIPCommand(srv))
 	cmd.Register(newPardonCommand(srv))

@@ -12,10 +12,13 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+// opCmd makes a player an operator: of the level /op gives, or of the
+// level passed, which Java's /op does not take.
 type opCmd struct {
 	admin
-	srv  serverAdapter
-	Name string `cmd:"player"`
+	srv   serverAdapter
+	Name  string            `cmd:"player"`
+	Level cmd.Optional[int] `cmd:"level"`
 }
 type deopCmd struct {
 	admin
@@ -28,6 +31,7 @@ type banCmd struct {
 	Name   string                    `cmd:"player"`
 	Reason cmd.Optional[cmd.Varargs] `cmd:"reason"`
 }
+
 // banIPCmd bans an address, a network such as 203.0.113.0/24, or the
 // address of a player online, as Java's /ban-ip takes either.
 type banIPCmd struct {
@@ -94,7 +98,7 @@ func reasonArg(v cmd.Optional[cmd.Varargs]) string {
 	return ""
 }
 func newOpCommand(srv serverAdapter) cmd.Command {
-	return newCommand("op", nil, opCmd{admin{}, srv, ""})
+	return newCommand("op", nil, opCmd{srv: srv})
 }
 func newDeopCommand(srv serverAdapter) cmd.Command {
 	return newCommand("deop", nil, deopCmd{admin{}, srv, ""})
@@ -138,6 +142,10 @@ func (c opCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 	if !ok {
 		return
 	}
+	if n, ok := c.Level.Load(); ok {
+		c.setLevel(src, o, t, n)
+		return
+	}
 	if own := cmd.SourceLevel(src); c.srv.OpLevel() > own {
 		// No one gives a level above their own: an admin of level 3 makes
 		// no operators of level 4.
@@ -154,6 +162,39 @@ func (c opCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Printf(pendingAdded, t.Name, t.Name, "becomes an operator")
 	default:
 		o.Printf("Made %s a server operator.", t)
+	}
+}
+
+// setLevel makes the player of t an operator of the level n, or changes
+// the level of an operator to n. No one gives a level above their own, or
+// changes the level of an operator above it.
+func (c opCmd) setLevel(src cmd.Source, o *cmd.Output, t server.Target, n int) {
+	if n < int(cmd.LevelAll) || n > int(cmd.MaxLevel) {
+		o.Errort(cmd.MessageParameterInvalid, n)
+		return
+	}
+	level, own := cmd.Level(n), cmd.SourceLevel(src)
+	if level > own {
+		o.Errorf("You can't give a level above your own (%v).", own)
+		return
+	}
+	old, wasOp := c.srv.OperatorLevel(t.Arg())
+	if wasOp && old > own {
+		o.Errorf("You can't change an operator above your own level (%v).", own)
+		return
+	}
+	changed, err := c.srv.SetOperatorLevel(t.Arg(), level)
+	switch {
+	case err != nil:
+		o.Error(err)
+	case !changed:
+		o.Printf("%s is already an operator at level %v.", t, level)
+	case t.Pending:
+		o.Printf(pendingAdded, t.Name, t.Name, fmt.Sprintf("becomes an operator at level %v", level))
+	case wasOp:
+		o.Printf("%s is now at level %v.", t, level)
+	default:
+		o.Printf("Made %s a server operator at level %v.", t, level)
 	}
 }
 func (c deopCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
@@ -279,6 +320,7 @@ func (c pardonIPCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Print("Nothing changed. That IP isn't banned")
 	}
 }
+
 // Run lists the bans as Java's /banlist does: of players and addresses, or
 // of those named, one a line, "Griefer was banned by Steve: griefing",
 // with the end of a ban for a time.

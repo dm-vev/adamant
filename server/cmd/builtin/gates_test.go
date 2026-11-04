@@ -71,12 +71,12 @@ func newGateSources(t *testing.T) gateSources {
 	}
 }
 
-// builtinNames are the names of the 75 built-in commands, sorted.
+// builtinNames are the names of the 76 built-in commands, sorted.
 var builtinNames = []string{
 	"about", "attribute", "ban", "ban-ip", "banlist", "bossbar", "clear", "clone", "damage", "data",
 	"defaultgamemode", "deop", "difficulty", "effect", "enchant", "execute", "experience", "fill", "fillbiome",
 	"forceload", "gamemode", "gamerule", "gc", "give", "help", "item", "kick", "kill", "list", "locate", "loot",
-	"me", "msg", "netstat", "op", "pardon", "pardon-ip", "particle", "place", "playsound", "random", "recipe",
+	"me", "msg", "netstat", "op", "pardon", "pardon-ip", "particle", "permission", "place", "playsound", "random", "recipe",
 	"return", "ride", "rotate", "save-all", "save-off", "save-on", "say", "scoreboard", "seed", "setblock",
 	"setidletimeout", "setworldspawn", "spawnpoint", "spectate", "spreadplayers", "status", "stop", "stopsound",
 	"summon", "tag", "team", "teammsg", "tellraw", "tick", "time", "title", "tp", "transfer", "trigger", "version",
@@ -123,7 +123,7 @@ func runnableBy(t *testing.T, commands []cmd.Command, who string, src cmd.Source
 var (
 	openCommands  = []string{"about", "help", "list", "me", "msg", "random", "status", "teammsg", "trigger"}
 	adminCommands = []string{"ban", "ban-ip", "banlist", "deop", "kick", "netstat", "op", "pardon", "pardon-ip",
-		"setidletimeout", "tick", "transfer", "whitelist"}
+		"permission", "setidletimeout", "tick", "transfer", "whitelist"}
 	ownerCommands = []string{"gc", "save-all", "save-off", "save-on", "stop"}
 )
 

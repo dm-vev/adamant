@@ -3786,6 +3786,13 @@ server/cmd/builtin.pardonCmd	server/cmd.Requirer	value
 server/cmd/builtin.pardonCmd	server/cmd.Runnable	value
 server/cmd/builtin.pardonIPCmd	server/cmd.Requirer	value
 server/cmd/builtin.pardonIPCmd	server/cmd.Runnable	value
+server/cmd/builtin.permissionListCmd	server/cmd.Requirer	value
+server/cmd/builtin.permissionListCmd	server/cmd.Runnable	value
+server/cmd/builtin.permissionReloadCmd	server/cmd.Requirer	value
+server/cmd/builtin.permissionReloadCmd	server/cmd.Runnable	value
+server/cmd/builtin.permissionRole	server/cmd.Enum	value
+server/cmd/builtin.permissionSetCmd	server/cmd.Requirer	value
+server/cmd/builtin.permissionSetCmd	server/cmd.Runnable	value
 server/cmd/builtin.placeTemplateCommand	server/cmd.Requirer	value
 server/cmd/builtin.placeTemplateCommand	server/cmd.Runnable	value
 server/cmd/builtin.playSoundCommand	server/cmd.Requirer	value

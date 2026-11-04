@@ -646,9 +646,9 @@
     | 01020223c2a772c2a765256d756c7469706c617965722e706c617965722e6a6f
     | 696e6564c2a7720106476f6c64656e000000
 -- Golden
->> AvailableCommands id=76 len=159224
+>> AvailableCommands id=76 len=159458
     AvailableCommandsPacket
-      EnumValues: []string (4184)
+      EnumValues: []string (4188)
         [0] "get"
         [1] "base"
         [2] "set"
@@ -4760,82 +4760,86 @@
         [4108] "tell"
         [4109] "w"
         [4110] "msg"
-        [4111] "template"
-        [4112] "none"
-        [4113] "clockwise_90"
-        [4114] "180"
-        [4115] "counterclockwise_90"
-        [4116] "left_right"
-        [4117] "front_back"
-        [4118] "strict"
-        [4119] "take"
-        [4120] "fail"
-        [4121] "run"
-        [4122] "mount"
-        [4123] "dismount"
-        [4124] "facing"
-        [4125] "eyes"
-        [4126] "feet"
-        [4127] "flush"
-        [4128] "objectives"
-        [4129] "dummy"
-        [4130] "trigger"
-        [4131] "health"
-        [4132] "deathCount"
-        [4133] "playerKillCount"
-        [4134] "totalKillCount"
-        [4135] "level"
-        [4136] "food"
-        [4137] "armor"
-        [4138] "setdisplay"
-        [4139] "sidebar"
-        [4140] "belowName"
-        [4141] "enable"
-        [4142] "operation"
-        [4143] "="
-        [4144] "+="
-        [4145] "-="
-        [4146] "*="
-        [4147] "/="
-        [4148] "%="
-        [4149] "<"
-        [4150] ">"
-        [4151] "><"
-        [4152] "under"
-        [4153] "join"
-        [4154] "leave"
-        [4155] "modify"
-        [4156] "displayName"
-        [4157] "prefix"
-        [4158] "suffix"
-        [4159] "friendlyFire"
-        [4160] "nametagVisibility"
-        [4161] "collisionRule"
-        [4162] "tm"
-        [4163] "teammsg"
-        [4164] "rate"
-        [4165] "freeze"
-        [4166] "unfreeze"
-        [4167] "step"
-        [4168] "stop"
-        [4169] "sprint"
-        [4170] "day"
-        [4171] "noon"
-        [4172] "night"
-        [4173] "midnight"
-        [4174] "daytime"
-        [4175] "gametime"
-        [4176] "teleport"
-        [4177] "tp"
-        [4178] "use"
-        [4179] "allowlist"
-        [4180] "whitelist"
-        [4181] "on"
-        [4182] "off"
-        [4183] "reload"
+        [4111] "reload"
+        [4112] "visitor"
+        [4113] "member"
+        [4114] "custom"
+        [4115] "default"
+        [4116] "template"
+        [4117] "none"
+        [4118] "clockwise_90"
+        [4119] "180"
+        [4120] "counterclockwise_90"
+        [4121] "left_right"
+        [4122] "front_back"
+        [4123] "strict"
+        [4124] "take"
+        [4125] "fail"
+        [4126] "run"
+        [4127] "mount"
+        [4128] "dismount"
+        [4129] "facing"
+        [4130] "eyes"
+        [4131] "feet"
+        [4132] "flush"
+        [4133] "objectives"
+        [4134] "dummy"
+        [4135] "trigger"
+        [4136] "health"
+        [4137] "deathCount"
+        [4138] "playerKillCount"
+        [4139] "totalKillCount"
+        [4140] "level"
+        [4141] "food"
+        [4142] "armor"
+        [4143] "setdisplay"
+        [4144] "sidebar"
+        [4145] "belowName"
+        [4146] "enable"
+        [4147] "operation"
+        [4148] "="
+        [4149] "+="
+        [4150] "-="
+        [4151] "*="
+        [4152] "/="
+        [4153] "%="
+        [4154] "<"
+        [4155] ">"
+        [4156] "><"
+        [4157] "under"
+        [4158] "join"
+        [4159] "leave"
+        [4160] "modify"
+        [4161] "displayName"
+        [4162] "prefix"
+        [4163] "suffix"
+        [4164] "friendlyFire"
+        [4165] "nametagVisibility"
+        [4166] "collisionRule"
+        [4167] "tm"
+        [4168] "teammsg"
+        [4169] "rate"
+        [4170] "freeze"
+        [4171] "unfreeze"
+        [4172] "step"
+        [4173] "stop"
+        [4174] "sprint"
+        [4175] "day"
+        [4176] "noon"
+        [4177] "night"
+        [4178] "midnight"
+        [4179] "daytime"
+        [4180] "gametime"
+        [4181] "teleport"
+        [4182] "tp"
+        [4183] "use"
+        [4184] "allowlist"
+        [4185] "whitelist"
+        [4186] "on"
+        [4187] "off"
       ChainedSubcommandValues: []
       Suffixes: []
-      Enums: []v2193.CommandEnum (78)
+      Enums: []v2193.CommandEnum (79)
         [0] {Type:"SubCommandget" ValueIndices:[0]}
         [1] {Type:"SubCommandbase" ValueIndices:[1]}
         [2] {Type:"SubCommandset" ValueIndices:[2]}
@@ -4878,50 +4882,51 @@
         [33] {Type:"SubCommandblock" ValueIndices:[4106]}
         [34] {Type:"SubCommandentity" ValueIndices:[4107]}
         [35] {Type:"msgAliases" ValueIndices:[4108 4109 4110]}
-        [36] {Type:"SubCommandtemplate" ValueIndices:[4111]}
-        [37] {Type:"TemplateRotation" ValueIndices:[4112 4113 4114 4115]}
-        [38] {Type:"TemplateMirror" ValueIndices:[4112 4116 4117]}
-        [39] {Type:"Strict" ValueIndices:[4118]}
-        [40] {Type:"SubCommandtake" ValueIndices:[4119]}
-        [41] {Type:"SubCommandfail" ValueIndices:[4120]}
-        [42] {Type:"SubCommandrun" ValueIndices:[4121]}
-        [43] {Type:"SubCommandmount" ValueIndices:[4122]}
-        [44] {Type:"SubCommanddismount" ValueIndices:[4123]}
-        [45] {Type:"SubCommandfacing" ValueIndices:[4124]}
-        [46] {Type:"EntityAnchor" ValueIndices:[4125 4126]}
-        [47] {Type:"SubCommandflush" ValueIndices:[4127]}
-        [48] {Type:"SubCommandobjectives" ValueIndices:[4128]}
-        [49] {Type:"scoreboard_criteria" ValueIndices:[4129 4130 4131 4132 4133 4134 4135 4136 26 50 4137]}
-        [50] {Type:"SubCommandlist" ValueIndices:[4102]}
-        [51] {Type:"SubCommandsetdisplay" ValueIndices:[4138]}
-        [52] {Type:"scoreboard_display_slot" ValueIndices:[4102 4139 4140]}
-        [53] {Type:"SubCommandplayers" ValueIndices:[8]}
-        [54] {Type:"SubCommandenable" ValueIndices:[4141]}
-        [55] {Type:"SubCommandoperation" ValueIndices:[4142]}
-        [56] {Type:"scoreboard_operation" ValueIndices:[4143 4144 4145 4146 4147 4148 4149 4150 4151]}
-        [57] {Type:"SetBlockMode" ValueIndices:[2985 2987 14]}
-        [58] {Type:"SubCommandunder" ValueIndices:[4152]}
-        [59] {Type:"SubCommandjoin" ValueIndices:[4153]}
-        [60] {Type:"SubCommandleave" ValueIndices:[4154]}
-        [61] {Type:"SubCommandmodify" ValueIndices:[4155]}
-        [62] {Type:"team_property" ValueIndices:[4156 4157 4158 12 4159 4160 4161]}
-        [63] {Type:"teammsgAliases" ValueIndices:[4162 4163]}
-        [64] {Type:"SubCommandrate" ValueIndices:[4164]}
-        [65] {Type:"SubCommandfreeze" ValueIndices:[4165]}
-        [66] {Type:"SubCommandunfreeze" ValueIndices:[4166]}
-        [67] {Type:"SubCommandstep" ValueIndices:[4167]}
-        [68] {Type:"SubCommandstop" ValueIndices:[4168]}
-        [69] {Type:"SubCommandsprint" ValueIndices:[4169]}
-        [70] {Type:"TimeSpec" ValueIndices:[4170 4171 4172 4173]}
-        [71] {Type:"timequery" ValueIndices:[4174 4175 4170]}
-        [72] {Type:"tpAliases" ValueIndices:[4176 4177]}
-        [73] {Type:"SubCommanduse" ValueIndices:[4178]}
-        [74] {Type:"whitelistAliases" ValueIndices:[4179 4180]}
-        [75] {Type:"SubCommandon" ValueIndices:[4181]}
-        [76] {Type:"SubCommandoff" ValueIndices:[4182]}
-        [77] {Type:"SubCommandreload" ValueIndices:[4183]}
+        [36] {Type:"SubCommandlist" ValueIndices:[4102]}
+        [37] {Type:"SubCommandreload" ValueIndices:[4111]}
+        [38] {Type:"permissionrole" ValueIndices:[4112 4113 4114 4115]}
+        [39] {Type:"SubCommandtemplate" ValueIndices:[4116]}
+        [40] {Type:"TemplateRotation" ValueIndices:[4117 4118 4119 4120]}
+        [41] {Type:"TemplateMirror" ValueIndices:[4117 4121 4122]}
+        [42] {Type:"Strict" ValueIndices:[4123]}
+        [43] {Type:"SubCommandtake" ValueIndices:[4124]}
+        [44] {Type:"SubCommandfail" ValueIndices:[4125]}
+        [45] {Type:"SubCommandrun" ValueIndices:[4126]}
+        [46] {Type:"SubCommandmount" ValueIndices:[4127]}
+        [47] {Type:"SubCommanddismount" ValueIndices:[4128]}
+        [48] {Type:"SubCommandfacing" ValueIndices:[4129]}
+        [49] {Type:"EntityAnchor" ValueIndices:[4130 4131]}
+        [50] {Type:"SubCommandflush" ValueIndices:[4132]}
+        [51] {Type:"SubCommandobjectives" ValueIndices:[4133]}
+        [52] {Type:"scoreboard_criteria" ValueIndices:[4134 4135 4136 4137 4138 4139 4140 4141 26 50 4142]}
+        [53] {Type:"SubCommandsetdisplay" ValueIndices:[4143]}
+        [54] {Type:"scoreboard_display_slot" ValueIndices:[4102 4144 4145]}
+        [55] {Type:"SubCommandplayers" ValueIndices:[8]}
+        [56] {Type:"SubCommandenable" ValueIndices:[4146]}
+        [57] {Type:"SubCommandoperation" ValueIndices:[4147]}
+        [58] {Type:"scoreboard_operation" ValueIndices:[4148 4149 4150 4151 4152 4153 4154 4155 4156]}
+        [59] {Type:"SetBlockMode" ValueIndices:[2985 2987 14]}
+        [60] {Type:"SubCommandunder" ValueIndices:[4157]}
+        [61] {Type:"SubCommandjoin" ValueIndices:[4158]}
+        [62] {Type:"SubCommandleave" ValueIndices:[4159]}
+        [63] {Type:"SubCommandmodify" ValueIndices:[4160]}
+        [64] {Type:"team_property" ValueIndices:[4161 4162 4163 12 4164 4165 4166]}
+        [65] {Type:"teammsgAliases" ValueIndices:[4167 4168]}
+        [66] {Type:"SubCommandrate" ValueIndices:[4169]}
+        [67] {Type:"SubCommandfreeze" ValueIndices:[4170]}
+        [68] {Type:"SubCommandunfreeze" ValueIndices:[4171]}
+        [69] {Type:"SubCommandstep" ValueIndices:[4172]}
+        [70] {Type:"SubCommandstop" ValueIndices:[4173]}
+        [71] {Type:"SubCommandsprint" ValueIndices:[4174]}
+        [72] {Type:"TimeSpec" ValueIndices:[4175 4176 4177 4178]}
+        [73] {Type:"timequery" ValueIndices:[4179 4180 4175]}
+        [74] {Type:"tpAliases" ValueIndices:[4181 4182]}
+        [75] {Type:"SubCommanduse" ValueIndices:[4183]}
+        [76] {Type:"whitelistAliases" ValueIndices:[4184 4185]}
+        [77] {Type:"SubCommandon" ValueIndices:[4186]}
+        [78] {Type:"SubCommandoff" ValueIndices:[4187]}
       ChainedSubcommands: []
-      Commands: []v2193.Command (74)
+      Commands: []v2193.Command (75)
         [0] Command
           Name: "about"
           Description: "Displays Adamant core and build information."
@@ -5436,7 +5441,7 @@
           PermissionLevel: 0
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
-          Overloads: [{Chaining:false Parameters:[{Name:"player" Type:1048632 Optional:false Options:0}]}]
+          Overloads: [{Chaining:false Parameters:[{Name:"player" Type:1048632 Optional:false Options:0} {Name:"level" Type:1048577 Optional:true Options:0}]}]
         [34] Command
           Name: "pardon"
           Description: "Removes a player ban."
@@ -5472,6 +5477,23 @@
                 [5] {Name:"mode" Type:1048632 Optional:true Options:0}
                 [6] {Name:"viewers" Type:1048584 Optional:true Options:0}
         [37] Command
+          Name: "permission"
+          Description: "Lists, reloads and sets the levels and roles of players."
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: []v2193.CommandOverload (3)
+            [0] {Chaining:false Parameters:[{Name:"list" Type:3145764 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"reload" Type:3145765 Optional:false Options:0}]}
+            [2] CommandOverload
+              Chaining: false
+              Parameters: []v2193.CommandParameter (4)
+                [0] {Name:"set" Type:3145730 Optional:false Options:0}
+                [1] {Name:"player" Type:1048632 Optional:false Options:0}
+                [2] {Name:"role" Type:3145766 Optional:false Options:0}
+                [3] {Name:"abilities" Type:1048646 Optional:true Options:0}
+        [38] Command
           Name: "place"
           Description: "commands.place.description"
           Flags: 0
@@ -5482,15 +5504,15 @@
             [0] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (8)
-                [0] {Name:"template" Type:3145764 Optional:false Options:0}
+                [0] {Name:"template" Type:3145767 Optional:false Options:0}
                 [1] {Name:"id" Type:1048632 Optional:false Options:0}
                 [2] {Name:"pos" Type:1048641 Optional:true Options:0}
-                [3] {Name:"rotation" Type:3145765 Optional:true Options:0}
-                [4] {Name:"mirror" Type:3145766 Optional:true Options:0}
+                [3] {Name:"rotation" Type:3145768 Optional:true Options:0}
+                [4] {Name:"mirror" Type:3145769 Optional:true Options:0}
                 [5] {Name:"integrity" Type:1048579 Optional:true Options:0}
                 [6] {Name:"seed" Type:1048577 Optional:true Options:0}
-                [7] {Name:"strict" Type:3145767 Optional:true Options:0}
-        [38] Command
+                [7] {Name:"strict" Type:3145770 Optional:true Options:0}
+        [39] Command
           Name: "playsound"
           Description: "commands.playsound.description"
           Flags: 0
@@ -5508,7 +5530,7 @@
                 [4] {Name:"volume" Type:1048579 Optional:true Options:0}
                 [5] {Name:"pitch" Type:1048579 Optional:true Options:0}
                 [6] {Name:"minVolume" Type:1048579 Optional:true Options:0}
-        [39] Command
+        [40] Command
           Name: "random"
           Description: "Generate a random value."
           Flags: 0
@@ -5519,7 +5541,7 @@
             [0] CommandOverload
               Chaining: false
               Parameters: [{Name:"value" Type:3145735 Optional:false Options:0} {Name:"min" Type:1048577 Optional:false Options:0} {Name:"max" Type:1048577 Optional:false Options:0}]
-        [40] Command
+        [41] Command
           Name: "recipe"
           Description: "commands.recipes.description"
           Flags: 0
@@ -5536,10 +5558,10 @@
             [1] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
-                [0] {Name:"take" Type:3145768 Optional:false Options:0}
+                [0] {Name:"take" Type:3145771 Optional:false Options:0}
                 [1] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [2] {Name:"recipe" Type:1048632 Optional:false Options:0}
-        [41] Command
+        [42] Command
           Name: "return"
           Description: "Returns from the current function with a command result."
           Flags: 0
@@ -5548,9 +5570,9 @@
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (3)
             [0] {Chaining:false Parameters:[{Name:"value" Type:1048577 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"fail" Type:3145769 Optional:false Options:0}]}
-            [2] {Chaining:false Parameters:[{Name:"run" Type:3145770 Optional:false Options:0} {Name:"command" Type:1048646 Optional:false Options:0}]}
-        [42] Command
+            [1] {Chaining:false Parameters:[{Name:"fail" Type:3145772 Optional:false Options:0}]}
+            [2] {Chaining:false Parameters:[{Name:"run" Type:3145773 Optional:false Options:0} {Name:"command" Type:1048646 Optional:false Options:0}]}
+        [43] Command
           Name: "ride"
           Description: "commands.ride.description"
           Flags: 0
@@ -5562,10 +5584,10 @@
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
                 [0] {Name:"target" Type:1048584 Optional:false Options:0}
-                [1] {Name:"mount" Type:3145771 Optional:false Options:0}
+                [1] {Name:"mount" Type:3145774 Optional:false Options:0}
                 [2] {Name:"vehicle" Type:1048584 Optional:false Options:0}
-            [1] {Chaining:false Parameters:[{Name:"target" Type:1048584 Optional:false Options:0} {Name:"dismount" Type:3145772 Optional:false Options:0}]}
-        [43] Command
+            [1] {Chaining:false Parameters:[{Name:"target" Type:1048584 Optional:false Options:0} {Name:"dismount" Type:3145775 Optional:false Options:0}]}
+        [44] Command
           Name: "rotate"
           Description: "Rotates an entity."
           Flags: 0
@@ -5580,25 +5602,25 @@
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
                 [0] {Name:"target" Type:1048584 Optional:false Options:0}
-                [1] {Name:"facing" Type:3145773 Optional:false Options:0}
+                [1] {Name:"facing" Type:3145776 Optional:false Options:0}
                 [2] {Name:"facingLocation" Type:1048641 Optional:false Options:0}
             [2] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
                 [0] {Name:"target" Type:1048584 Optional:false Options:0}
-                [1] {Name:"facing" Type:3145773 Optional:false Options:0}
+                [1] {Name:"facing" Type:3145776 Optional:false Options:0}
                 [2] {Name:"entity" Type:3145762 Optional:false Options:0}
                 [3] {Name:"facingEntity" Type:1048584 Optional:false Options:0}
-                [4] {Name:"facingAnchor" Type:3145774 Optional:true Options:0}
-        [44] Command
+                [4] {Name:"facingAnchor" Type:3145777 Optional:true Options:0}
+        [45] Command
           Name: "save-all"
           Description: "Saves the world to disk."
           Flags: 0
           PermissionLevel: 0
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
-          Overloads: [{Chaining:false Parameters:[{Name:"flush" Type:3145775 Optional:true Options:0}]}]
-        [45] Command
+          Overloads: [{Chaining:false Parameters:[{Name:"flush" Type:3145778 Optional:true Options:0}]}]
+        [46] Command
           Name: "save-off"
           Description: "Disables automatic world saving."
           Flags: 0
@@ -5606,7 +5628,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [46] Command
+        [47] Command
           Name: "save-on"
           Description: "commands.save-on.description"
           Flags: 0
@@ -5614,7 +5636,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [47] Command
+        [48] Command
           Name: "say"
           Description: "commands.say.description"
           Flags: 0
@@ -5622,7 +5644,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [48] Command
+        [49] Command
           Name: "scoreboard"
           Description: "commands.scoreboard.description"
           Flags: 0
@@ -5633,29 +5655,29 @@
             [0] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
-                [0] {Name:"objectives" Type:3145776 Optional:false Options:0}
+                [0] {Name:"objectives" Type:3145779 Optional:false Options:0}
                 [1] {Name:"add" Type:3145733 Optional:false Options:0}
                 [2] {Name:"objective" Type:1048632 Optional:false Options:0}
-                [3] {Name:"criteria" Type:3145777 Optional:false Options:0}
+                [3] {Name:"criteria" Type:3145780 Optional:false Options:0}
                 [4] {Name:"displayName" Type:1048632 Optional:true Options:0}
             [1] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
-                [0] {Name:"objectives" Type:3145776 Optional:false Options:0}
+                [0] {Name:"objectives" Type:3145779 Optional:false Options:0}
                 [1] {Name:"remove" Type:3145734 Optional:false Options:0}
                 [2] {Name:"objective" Type:1048632 Optional:false Options:0}
-            [2] {Chaining:false Parameters:[{Name:"objectives" Type:3145776 Optional:false Options:0} {Name:"list" Type:3145778 Optional:false Options:0}]}
+            [2] {Chaining:false Parameters:[{Name:"objectives" Type:3145779 Optional:false Options:0} {Name:"list" Type:3145764 Optional:false Options:0}]}
             [3] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"objectives" Type:3145776 Optional:false Options:0}
-                [1] {Name:"setdisplay" Type:3145779 Optional:false Options:0}
-                [2] {Name:"slot" Type:3145780 Optional:false Options:0}
+                [0] {Name:"objectives" Type:3145779 Optional:false Options:0}
+                [1] {Name:"setdisplay" Type:3145781 Optional:false Options:0}
+                [2] {Name:"slot" Type:3145782 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:true Options:0}
             [4] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"set" Type:3145730 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
@@ -5663,7 +5685,7 @@
             [5] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"add" Type:3145733 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
@@ -5671,7 +5693,7 @@
             [6] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"remove" Type:3145734 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
@@ -5679,41 +5701,41 @@
             [7] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"get" Type:3145728 Optional:false Options:0}
                 [2] {Name:"target" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
             [8] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"reset" Type:3145731 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:true Options:0}
             [9] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
-                [1] {Name:"list" Type:3145778 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
+                [1] {Name:"list" Type:3145764 Optional:false Options:0}
                 [2] {Name:"target" Type:1048632 Optional:true Options:0}
             [10] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
-                [1] {Name:"enable" Type:3145782 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
+                [1] {Name:"enable" Type:3145784 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
             [11] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (7)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
-                [1] {Name:"operation" Type:3145783 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
+                [1] {Name:"operation" Type:3145785 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"targetObjective" Type:1048632 Optional:false Options:0}
-                [4] {Name:"operator" Type:3145784 Optional:false Options:0}
+                [4] {Name:"operator" Type:3145786 Optional:false Options:0}
                 [5] {Name:"source" Type:1048632 Optional:false Options:0}
                 [6] {Name:"sourceObjective" Type:1048632 Optional:false Options:0}
-        [49] Command
+        [50] Command
           Name: "seed"
           Description: "Shows the world seed."
           Flags: 0
@@ -5721,7 +5743,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [50] Command
+        [51] Command
           Name: "setblock"
           Description: "commands.setblock.description"
           Flags: 0
@@ -5731,8 +5753,8 @@
           Overloads: []v2193.CommandOverload (1)
             [0] CommandOverload
               Chaining: false
-              Parameters: [{Name:"pos" Type:1048641 Optional:false Options:0} {Name:"block" Type:3145749 Optional:false Options:2} {Name:"mode" Type:3145785 Optional:true Options:0}]
-        [51] Command
+              Parameters: [{Name:"pos" Type:1048641 Optional:false Options:0} {Name:"block" Type:3145749 Optional:false Options:2} {Name:"mode" Type:3145787 Optional:true Options:0}]
+        [52] Command
           Name: "setidletimeout"
           Description: "Sets the idle timeout in minutes."
           Flags: 0
@@ -5740,7 +5762,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"minutes" Type:1048577 Optional:false Options:0}]}]
-        [52] Command
+        [53] Command
           Name: "setworldspawn"
           Description: "commands.setworldspawn.description"
           Flags: 0
@@ -5748,7 +5770,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"pos" Type:1048641 Optional:true Options:0}]}]
-        [53] Command
+        [54] Command
           Name: "spawnpoint"
           Description: "commands.spawnpoint.description"
           Flags: 0
@@ -5756,7 +5778,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:true Options:0} {Name:"position" Type:1048641 Optional:true Options:0}]}]
-        [54] Command
+        [55] Command
           Name: "spectate"
           Description: "Makes a spectator watch through the eyes of an entity."
           Flags: 0
@@ -5764,7 +5786,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"target" Type:1048584 Optional:true Options:0} {Name:"player" Type:1048584 Optional:true Options:0}]}]
-        [55] Command
+        [56] Command
           Name: "spreadplayers"
           Description: "commands.spreadplayers.description"
           Flags: 0
@@ -5786,11 +5808,11 @@
                 [0] {Name:"center" Type:1048641 Optional:false Options:0}
                 [1] {Name:"spreadDistance" Type:1048579 Optional:false Options:0}
                 [2] {Name:"maxRange" Type:1048579 Optional:false Options:0}
-                [3] {Name:"under" Type:3145786 Optional:false Options:0}
+                [3] {Name:"under" Type:3145788 Optional:false Options:0}
                 [4] {Name:"maxHeight" Type:1048577 Optional:false Options:0}
                 [5] {Name:"respectTeams" Type:3145744 Optional:false Options:0}
                 [6] {Name:"targets" Type:1048584 Optional:false Options:0}
-        [56] Command
+        [57] Command
           Name: "status"
           Description: "Displays server performance statistics."
           Flags: 0
@@ -5798,7 +5820,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [57] Command
+        [58] Command
           Name: "stop"
           Description: "commands.stop.description"
           Flags: 0
@@ -5806,7 +5828,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [58] Command
+        [59] Command
           Name: "stopsound"
           Description: "commands.stopsound.description"
           Flags: 0
@@ -5820,7 +5842,7 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"source" Type:1048632 Optional:true Options:0}
                 [2] {Name:"sound" Type:1048632 Optional:true Options:0}
-        [59] Command
+        [60] Command
           Name: "summon"
           Description: "commands.summon.description"
           Flags: 0
@@ -5828,7 +5850,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"entity" Type:1048632 Optional:false Options:0} {Name:"pos" Type:1048641 Optional:true Options:0}]}]
-        [60] Command
+        [61] Command
           Name: "tag"
           Description: "commands.tag.description"
           Flags: 0
@@ -5845,8 +5867,8 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"remove" Type:3145734 Optional:false Options:0}
                 [2] {Name:"name" Type:1048632 Optional:false Options:0}
-            [2] {Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"list" Type:3145778 Optional:false Options:0}]}
-        [61] Command
+            [2] {Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"list" Type:3145764 Optional:false Options:0}]}
+        [62] Command
           Name: "team"
           Description: "Manage scoreboard teams."
           Flags: 0
@@ -5863,24 +5885,24 @@
             [1] {Chaining:false Parameters:[{Name:"remove" Type:3145734 Optional:false Options:0} {Name:"team" Type:1048632 Optional:false Options:0}]}
             [2] CommandOverload
               Chaining: false
-              Parameters: [{Name:"join" Type:3145787 Optional:false Options:0} {Name:"team" Type:1048632 Optional:false Options:0} {Name:"members" Type:1048632 Optional:false Options:0}]
-            [3] {Chaining:false Parameters:[{Name:"leave" Type:3145788 Optional:false Options:0} {Name:"members" Type:1048632 Optional:false Options:0}]}
+              Parameters: [{Name:"join" Type:3145789 Optional:false Options:0} {Name:"team" Type:1048632 Optional:false Options:0} {Name:"members" Type:1048632 Optional:false Options:0}]
+            [3] {Chaining:false Parameters:[{Name:"leave" Type:3145790 Optional:false Options:0} {Name:"members" Type:1048632 Optional:false Options:0}]}
             [4] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"modify" Type:3145789 Optional:false Options:0}
+                [0] {Name:"modify" Type:3145791 Optional:false Options:0}
                 [1] {Name:"team" Type:1048632 Optional:false Options:0}
-                [2] {Name:"property" Type:3145790 Optional:false Options:0}
+                [2] {Name:"property" Type:3145792 Optional:false Options:0}
                 [3] {Name:"value" Type:1048646 Optional:false Options:0}
-        [62] Command
+        [63] Command
           Name: "teammsg"
           Description: "Send a message to your team."
           Flags: 0
           PermissionLevel: 0
-          AliasesOffset: 63
+          AliasesOffset: 65
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [63] Command
+        [64] Command
           Name: "tellraw"
           Description: "commands.tellraw.description"
           Flags: 0
@@ -5888,7 +5910,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [64] Command
+        [65] Command
           Name: "tick"
           Description: "Controls world ticking."
           Flags: 0
@@ -5897,14 +5919,14 @@
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (8)
             [0] {Chaining:false Parameters:[{Name:"query" Type:3145748 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"rate" Type:3145792 Optional:false Options:0} {Name:"value" Type:1048579 Optional:false Options:0}]}
-            [2] {Chaining:false Parameters:[{Name:"freeze" Type:3145793 Optional:false Options:0}]}
-            [3] {Chaining:false Parameters:[{Name:"unfreeze" Type:3145794 Optional:false Options:0}]}
-            [4] {Chaining:false Parameters:[{Name:"step" Type:3145795 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
-            [5] {Chaining:false Parameters:[{Name:"step" Type:3145795 Optional:false Options:0} {Name:"stop" Type:3145796 Optional:false Options:0}]}
-            [6] {Chaining:false Parameters:[{Name:"sprint" Type:3145797 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
-            [7] {Chaining:false Parameters:[{Name:"sprint" Type:3145797 Optional:false Options:0} {Name:"stop" Type:3145796 Optional:false Options:0}]}
-        [65] Command
+            [1] {Chaining:false Parameters:[{Name:"rate" Type:3145794 Optional:false Options:0} {Name:"value" Type:1048579 Optional:false Options:0}]}
+            [2] {Chaining:false Parameters:[{Name:"freeze" Type:3145795 Optional:false Options:0}]}
+            [3] {Chaining:false Parameters:[{Name:"unfreeze" Type:3145796 Optional:false Options:0}]}
+            [4] {Chaining:false Parameters:[{Name:"step" Type:3145797 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
+            [5] {Chaining:false Parameters:[{Name:"step" Type:3145797 Optional:false Options:0} {Name:"stop" Type:3145798 Optional:false Options:0}]}
+            [6] {Chaining:false Parameters:[{Name:"sprint" Type:3145799 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
+            [7] {Chaining:false Parameters:[{Name:"sprint" Type:3145799 Optional:false Options:0} {Name:"stop" Type:3145798 Optional:false Options:0}]}
+        [66] Command
           Name: "time"
           Description: "commands.time.description"
           Flags: 0
@@ -5913,10 +5935,10 @@
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (4)
             [0] {Chaining:false Parameters:[{Name:"set" Type:3145730 Optional:false Options:0} {Name:"value" Type:1048577 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"set" Type:3145730 Optional:false Options:0} {Name:"value" Type:3145798 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"set" Type:3145730 Optional:false Options:0} {Name:"value" Type:3145800 Optional:false Options:0}]}
             [2] {Chaining:false Parameters:[{Name:"add" Type:3145733 Optional:false Options:0} {Name:"value" Type:1048577 Optional:false Options:0}]}
-            [3] {Chaining:false Parameters:[{Name:"query" Type:3145748 Optional:false Options:0} {Name:"type" Type:3145799 Optional:false Options:0}]}
-        [66] Command
+            [3] {Chaining:false Parameters:[{Name:"query" Type:3145748 Optional:false Options:0} {Name:"type" Type:3145801 Optional:false Options:0}]}
+        [67] Command
           Name: "title"
           Description: "commands.title.description"
           Flags: 0
@@ -5930,12 +5952,12 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"action" Type:1048632 Optional:false Options:0}
                 [2] {Name:"value" Type:1048646 Optional:false Options:0}
-        [67] Command
+        [68] Command
           Name: "tp"
           Description: "commands.tp.description"
           Flags: 0
           PermissionLevel: 0
-          AliasesOffset: 72
+          AliasesOffset: 74
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (7)
             [0] {Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"destination" Type:1048584 Optional:false Options:0}]}
@@ -5954,17 +5976,17 @@
               Parameters: []v2193.CommandParameter (4)
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"position" Type:1048641 Optional:false Options:0}
-                [2] {Name:"facing" Type:3145773 Optional:false Options:0}
+                [2] {Name:"facing" Type:3145776 Optional:false Options:0}
                 [3] {Name:"location" Type:1048641 Optional:false Options:0}
             [6] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"position" Type:1048641 Optional:false Options:0}
-                [2] {Name:"facing" Type:3145773 Optional:false Options:0}
+                [2] {Name:"facing" Type:3145776 Optional:false Options:0}
                 [3] {Name:"entity" Type:3145762 Optional:false Options:0}
                 [4] {Name:"target" Type:1048584 Optional:false Options:0}
-        [68] Command
+        [69] Command
           Name: "transfer"
           Description: "commands.transferserver.description"
           Flags: 0
@@ -5978,7 +6000,7 @@
                 [0] {Name:"hostname" Type:1048632 Optional:false Options:0}
                 [1] {Name:"port" Type:1048577 Optional:true Options:0}
                 [2] {Name:"players" Type:1048584 Optional:true Options:0}
-        [69] Command
+        [70] Command
           Name: "trigger"
           Description: "commands.trigger.description"
           Flags: 0
@@ -5986,9 +6008,9 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (2)
-            [0] {Chaining:false Parameters:[{Name:"enable" Type:3145782 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"use" Type:3145801 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
-        [70] Command
+            [0] {Chaining:false Parameters:[{Name:"enable" Type:3145784 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"use" Type:3145803 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
+        [71] Command
           Name: "version"
           Description: "Displays the server version."
           Flags: 0
@@ -5996,7 +6018,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [71] Command
+        [72] Command
           Name: "weather"
           Description: "commands.weather.description"
           Flags: 0
@@ -6004,21 +6026,21 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"mode" Type:1048632 Optional:false Options:0} {Name:"duration" Type:1048577 Optional:true Options:0}]}]
-        [72] Command
+        [73] Command
           Name: "whitelist"
           Description: "commands.allowlist.description"
           Flags: 0
           PermissionLevel: 0
-          AliasesOffset: 74
+          AliasesOffset: 76
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (6)
             [0] {Chaining:false Parameters:[{Name:"add" Type:3145733 Optional:false Options:0} {Name:"player" Type:1048632 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"on" Type:3145803 Optional:false Options:0}]}
-            [2] {Chaining:false Parameters:[{Name:"off" Type:3145804 Optional:false Options:0}]}
-            [3] {Chaining:false Parameters:[{Name:"reload" Type:3145805 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"on" Type:3145805 Optional:false Options:0}]}
+            [2] {Chaining:false Parameters:[{Name:"off" Type:3145806 Optional:false Options:0}]}
+            [3] {Chaining:false Parameters:[{Name:"reload" Type:3145765 Optional:false Options:0}]}
             [4] {Chaining:false Parameters:[{Name:"remove" Type:3145734 Optional:false Options:0} {Name:"player" Type:1048632 Optional:false Options:0}]}
-            [5] {Chaining:false Parameters:[{Name:"list" Type:3145778 Optional:false Options:0}]}
-        [73] Command
+            [5] {Chaining:false Parameters:[{Name:"list" Type:3145764 Optional:false Options:0}]}
+        [74] Command
           Name: "worldborder"
           Description: "Changes world border settings."
           Flags: 0
@@ -9302,7 +9324,7 @@
         [3271] {EnumValueIndex:3868 EnumIndex:28 Constraints:0x03}
         [3272] {EnumValueIndex:3869 EnumIndex:28 Constraints:0x03}
         [3273] {EnumValueIndex:3870 EnumIndex:28 Constraints:0x03}
-    sha256 e491631adfe9ac19c0d28813358f818f2805d361ab479f4673f36a3cef92a1a5
+    sha256 986c167fc987369bd18325b259ef047bb1baa34ba64cdc832610d216f20348ed
 >> UpdateAttributes id=29 len=158
     UpdateAttributesPacket
       EntityRuntimeID: 1
@@ -9641,9 +9663,9 @@
       AbilityData: {EntityUniqueID:1 PlayerPermissions:2 CommandPermissions:1 Layers:[{Type:1 Abilities:1048575 Values:255 FlySpeed:0.05 VerticalFlySpeed:1 WalkSpeed:0.1}]}
     | 01000000000000000201010100ffff0f00ff000000cdcc4c3d0000803fcdcccc
     | 3d
->> AvailableCommands id=76 len=159224
+>> AvailableCommands id=76 len=159458
     AvailableCommandsPacket
-      EnumValues: []string (4184)
+      EnumValues: []string (4188)
         [0] "get"
         [1] "base"
         [2] "set"
@@ -13755,82 +13777,86 @@
         [4108] "tell"
         [4109] "w"
         [4110] "msg"
-        [4111] "template"
-        [4112] "none"
-        [4113] "clockwise_90"
-        [4114] "180"
-        [4115] "counterclockwise_90"
-        [4116] "left_right"
-        [4117] "front_back"
-        [4118] "strict"
-        [4119] "take"
-        [4120] "fail"
-        [4121] "run"
-        [4122] "mount"
-        [4123] "dismount"
-        [4124] "facing"
-        [4125] "eyes"
-        [4126] "feet"
-        [4127] "flush"
-        [4128] "objectives"
-        [4129] "dummy"
-        [4130] "trigger"
-        [4131] "health"
-        [4132] "deathCount"
-        [4133] "playerKillCount"
-        [4134] "totalKillCount"
-        [4135] "level"
-        [4136] "food"
-        [4137] "armor"
-        [4138] "setdisplay"
-        [4139] "sidebar"
-        [4140] "belowName"
-        [4141] "enable"
-        [4142] "operation"
-        [4143] "="
-        [4144] "+="
-        [4145] "-="
-        [4146] "*="
-        [4147] "/="
-        [4148] "%="
-        [4149] "<"
-        [4150] ">"
-        [4151] "><"
-        [4152] "under"
-        [4153] "join"
-        [4154] "leave"
-        [4155] "modify"
-        [4156] "displayName"
-        [4157] "prefix"
-        [4158] "suffix"
-        [4159] "friendlyFire"
-        [4160] "nametagVisibility"
-        [4161] "collisionRule"
-        [4162] "tm"
-        [4163] "teammsg"
-        [4164] "rate"
-        [4165] "freeze"
-        [4166] "unfreeze"
-        [4167] "step"
-        [4168] "stop"
-        [4169] "sprint"
-        [4170] "day"
-        [4171] "noon"
-        [4172] "night"
-        [4173] "midnight"
-        [4174] "daytime"
-        [4175] "gametime"
-        [4176] "teleport"
-        [4177] "tp"
-        [4178] "use"
-        [4179] "allowlist"
-        [4180] "whitelist"
-        [4181] "on"
-        [4182] "off"
-        [4183] "reload"
+        [4111] "reload"
+        [4112] "visitor"
+        [4113] "member"
+        [4114] "custom"
+        [4115] "default"
+        [4116] "template"
+        [4117] "none"
+        [4118] "clockwise_90"
+        [4119] "180"
+        [4120] "counterclockwise_90"
+        [4121] "left_right"
+        [4122] "front_back"
+        [4123] "strict"
+        [4124] "take"
+        [4125] "fail"
+        [4126] "run"
+        [4127] "mount"
+        [4128] "dismount"
+        [4129] "facing"
+        [4130] "eyes"
+        [4131] "feet"
+        [4132] "flush"
+        [4133] "objectives"
+        [4134] "dummy"
+        [4135] "trigger"
+        [4136] "health"
+        [4137] "deathCount"
+        [4138] "playerKillCount"
+        [4139] "totalKillCount"
+        [4140] "level"
+        [4141] "food"
+        [4142] "armor"
+        [4143] "setdisplay"
+        [4144] "sidebar"
+        [4145] "belowName"
+        [4146] "enable"
+        [4147] "operation"
+        [4148] "="
+        [4149] "+="
+        [4150] "-="
+        [4151] "*="
+        [4152] "/="
+        [4153] "%="
+        [4154] "<"
+        [4155] ">"
+        [4156] "><"
+        [4157] "under"
+        [4158] "join"
+        [4159] "leave"
+        [4160] "modify"
+        [4161] "displayName"
+        [4162] "prefix"
+        [4163] "suffix"
+        [4164] "friendlyFire"
+        [4165] "nametagVisibility"
+        [4166] "collisionRule"
+        [4167] "tm"
+        [4168] "teammsg"
+        [4169] "rate"
+        [4170] "freeze"
+        [4171] "unfreeze"
+        [4172] "step"
+        [4173] "stop"
+        [4174] "sprint"
+        [4175] "day"
+        [4176] "noon"
+        [4177] "night"
+        [4178] "midnight"
+        [4179] "daytime"
+        [4180] "gametime"
+        [4181] "teleport"
+        [4182] "tp"
+        [4183] "use"
+        [4184] "allowlist"
+        [4185] "whitelist"
+        [4186] "on"
+        [4187] "off"
       ChainedSubcommandValues: []
       Suffixes: []
-      Enums: []v2193.CommandEnum (78)
+      Enums: []v2193.CommandEnum (79)
         [0] {Type:"SubCommandget" ValueIndices:[0]}
         [1] {Type:"SubCommandbase" ValueIndices:[1]}
         [2] {Type:"SubCommandset" ValueIndices:[2]}
@@ -13873,50 +13899,51 @@
         [33] {Type:"SubCommandblock" ValueIndices:[4106]}
         [34] {Type:"SubCommandentity" ValueIndices:[4107]}
         [35] {Type:"msgAliases" ValueIndices:[4108 4109 4110]}
-        [36] {Type:"SubCommandtemplate" ValueIndices:[4111]}
-        [37] {Type:"TemplateRotation" ValueIndices:[4112 4113 4114 4115]}
-        [38] {Type:"TemplateMirror" ValueIndices:[4112 4116 4117]}
-        [39] {Type:"Strict" ValueIndices:[4118]}
-        [40] {Type:"SubCommandtake" ValueIndices:[4119]}
-        [41] {Type:"SubCommandfail" ValueIndices:[4120]}
-        [42] {Type:"SubCommandrun" ValueIndices:[4121]}
-        [43] {Type:"SubCommandmount" ValueIndices:[4122]}
-        [44] {Type:"SubCommanddismount" ValueIndices:[4123]}
-        [45] {Type:"SubCommandfacing" ValueIndices:[4124]}
-        [46] {Type:"EntityAnchor" ValueIndices:[4125 4126]}
-        [47] {Type:"SubCommandflush" ValueIndices:[4127]}
-        [48] {Type:"SubCommandobjectives" ValueIndices:[4128]}
-        [49] {Type:"scoreboard_criteria" ValueIndices:[4129 4130 4131 4132 4133 4134 4135 4136 26 50 4137]}
-        [50] {Type:"SubCommandlist" ValueIndices:[4102]}
-        [51] {Type:"SubCommandsetdisplay" ValueIndices:[4138]}
-        [52] {Type:"scoreboard_display_slot" ValueIndices:[4102 4139 4140]}
-        [53] {Type:"SubCommandplayers" ValueIndices:[8]}
-        [54] {Type:"SubCommandenable" ValueIndices:[4141]}
-        [55] {Type:"SubCommandoperation" ValueIndices:[4142]}
-        [56] {Type:"scoreboard_operation" ValueIndices:[4143 4144 4145 4146 4147 4148 4149 4150 4151]}
-        [57] {Type:"SetBlockMode" ValueIndices:[2985 2987 14]}
-        [58] {Type:"SubCommandunder" ValueIndices:[4152]}
-        [59] {Type:"SubCommandjoin" ValueIndices:[4153]}
-        [60] {Type:"SubCommandleave" ValueIndices:[4154]}
-        [61] {Type:"SubCommandmodify" ValueIndices:[4155]}
-        [62] {Type:"team_property" ValueIndices:[4156 4157 4158 12 4159 4160 4161]}
-        [63] {Type:"teammsgAliases" ValueIndices:[4162 4163]}
-        [64] {Type:"SubCommandrate" ValueIndices:[4164]}
-        [65] {Type:"SubCommandfreeze" ValueIndices:[4165]}
-        [66] {Type:"SubCommandunfreeze" ValueIndices:[4166]}
-        [67] {Type:"SubCommandstep" ValueIndices:[4167]}
-        [68] {Type:"SubCommandstop" ValueIndices:[4168]}
-        [69] {Type:"SubCommandsprint" ValueIndices:[4169]}
-        [70] {Type:"TimeSpec" ValueIndices:[4170 4171 4172 4173]}
-        [71] {Type:"timequery" ValueIndices:[4174 4175 4170]}
-        [72] {Type:"tpAliases" ValueIndices:[4176 4177]}
-        [73] {Type:"SubCommanduse" ValueIndices:[4178]}
-        [74] {Type:"whitelistAliases" ValueIndices:[4179 4180]}
-        [75] {Type:"SubCommandon" ValueIndices:[4181]}
-        [76] {Type:"SubCommandoff" ValueIndices:[4182]}
-        [77] {Type:"SubCommandreload" ValueIndices:[4183]}
+        [36] {Type:"SubCommandlist" ValueIndices:[4102]}
+        [37] {Type:"SubCommandreload" ValueIndices:[4111]}
+        [38] {Type:"permissionrole" ValueIndices:[4112 4113 4114 4115]}
+        [39] {Type:"SubCommandtemplate" ValueIndices:[4116]}
+        [40] {Type:"TemplateRotation" ValueIndices:[4117 4118 4119 4120]}
+        [41] {Type:"TemplateMirror" ValueIndices:[4117 4121 4122]}
+        [42] {Type:"Strict" ValueIndices:[4123]}
+        [43] {Type:"SubCommandtake" ValueIndices:[4124]}
+        [44] {Type:"SubCommandfail" ValueIndices:[4125]}
+        [45] {Type:"SubCommandrun" ValueIndices:[4126]}
+        [46] {Type:"SubCommandmount" ValueIndices:[4127]}
+        [47] {Type:"SubCommanddismount" ValueIndices:[4128]}
+        [48] {Type:"SubCommandfacing" ValueIndices:[4129]}
+        [49] {Type:"EntityAnchor" ValueIndices:[4130 4131]}
+        [50] {Type:"SubCommandflush" ValueIndices:[4132]}
+        [51] {Type:"SubCommandobjectives" ValueIndices:[4133]}
+        [52] {Type:"scoreboard_criteria" ValueIndices:[4134 4135 4136 4137 4138 4139 4140 4141 26 50 4142]}
+        [53] {Type:"SubCommandsetdisplay" ValueIndices:[4143]}
+        [54] {Type:"scoreboard_display_slot" ValueIndices:[4102 4144 4145]}
+        [55] {Type:"SubCommandplayers" ValueIndices:[8]}
+        [56] {Type:"SubCommandenable" ValueIndices:[4146]}
+        [57] {Type:"SubCommandoperation" ValueIndices:[4147]}
+        [58] {Type:"scoreboard_operation" ValueIndices:[4148 4149 4150 4151 4152 4153 4154 4155 4156]}
+        [59] {Type:"SetBlockMode" ValueIndices:[2985 2987 14]}
+        [60] {Type:"SubCommandunder" ValueIndices:[4157]}
+        [61] {Type:"SubCommandjoin" ValueIndices:[4158]}
+        [62] {Type:"SubCommandleave" ValueIndices:[4159]}
+        [63] {Type:"SubCommandmodify" ValueIndices:[4160]}
+        [64] {Type:"team_property" ValueIndices:[4161 4162 4163 12 4164 4165 4166]}
+        [65] {Type:"teammsgAliases" ValueIndices:[4167 4168]}
+        [66] {Type:"SubCommandrate" ValueIndices:[4169]}
+        [67] {Type:"SubCommandfreeze" ValueIndices:[4170]}
+        [68] {Type:"SubCommandunfreeze" ValueIndices:[4171]}
+        [69] {Type:"SubCommandstep" ValueIndices:[4172]}
+        [70] {Type:"SubCommandstop" ValueIndices:[4173]}
+        [71] {Type:"SubCommandsprint" ValueIndices:[4174]}
+        [72] {Type:"TimeSpec" ValueIndices:[4175 4176 4177 4178]}
+        [73] {Type:"timequery" ValueIndices:[4179 4180 4175]}
+        [74] {Type:"tpAliases" ValueIndices:[4181 4182]}
+        [75] {Type:"SubCommanduse" ValueIndices:[4183]}
+        [76] {Type:"whitelistAliases" ValueIndices:[4184 4185]}
+        [77] {Type:"SubCommandon" ValueIndices:[4186]}
+        [78] {Type:"SubCommandoff" ValueIndices:[4187]}
       ChainedSubcommands: []
-      Commands: []v2193.Command (74)
+      Commands: []v2193.Command (75)
         [0] Command
           Name: "about"
           Description: "Displays Adamant core and build information."
@@ -14431,7 +14458,7 @@
           PermissionLevel: 0
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
-          Overloads: [{Chaining:false Parameters:[{Name:"player" Type:1048632 Optional:false Options:0}]}]
+          Overloads: [{Chaining:false Parameters:[{Name:"player" Type:1048632 Optional:false Options:0} {Name:"level" Type:1048577 Optional:true Options:0}]}]
         [34] Command
           Name: "pardon"
           Description: "Removes a player ban."
@@ -14467,6 +14494,23 @@
                 [5] {Name:"mode" Type:1048632 Optional:true Options:0}
                 [6] {Name:"viewers" Type:1048584 Optional:true Options:0}
         [37] Command
+          Name: "permission"
+          Description: "Lists, reloads and sets the levels and roles of players."
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: []v2193.CommandOverload (3)
+            [0] {Chaining:false Parameters:[{Name:"list" Type:3145764 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"reload" Type:3145765 Optional:false Options:0}]}
+            [2] CommandOverload
+              Chaining: false
+              Parameters: []v2193.CommandParameter (4)
+                [0] {Name:"set" Type:3145730 Optional:false Options:0}
+                [1] {Name:"player" Type:1048632 Optional:false Options:0}
+                [2] {Name:"role" Type:3145766 Optional:false Options:0}
+                [3] {Name:"abilities" Type:1048646 Optional:true Options:0}
+        [38] Command
           Name: "place"
           Description: "commands.place.description"
           Flags: 0
@@ -14477,15 +14521,15 @@
             [0] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (8)
-                [0] {Name:"template" Type:3145764 Optional:false Options:0}
+                [0] {Name:"template" Type:3145767 Optional:false Options:0}
                 [1] {Name:"id" Type:1048632 Optional:false Options:0}
                 [2] {Name:"pos" Type:1048641 Optional:true Options:0}
-                [3] {Name:"rotation" Type:3145765 Optional:true Options:0}
-                [4] {Name:"mirror" Type:3145766 Optional:true Options:0}
+                [3] {Name:"rotation" Type:3145768 Optional:true Options:0}
+                [4] {Name:"mirror" Type:3145769 Optional:true Options:0}
                 [5] {Name:"integrity" Type:1048579 Optional:true Options:0}
                 [6] {Name:"seed" Type:1048577 Optional:true Options:0}
-                [7] {Name:"strict" Type:3145767 Optional:true Options:0}
-        [38] Command
+                [7] {Name:"strict" Type:3145770 Optional:true Options:0}
+        [39] Command
           Name: "playsound"
           Description: "commands.playsound.description"
           Flags: 0
@@ -14503,7 +14547,7 @@
                 [4] {Name:"volume" Type:1048579 Optional:true Options:0}
                 [5] {Name:"pitch" Type:1048579 Optional:true Options:0}
                 [6] {Name:"minVolume" Type:1048579 Optional:true Options:0}
-        [39] Command
+        [40] Command
           Name: "random"
           Description: "Generate a random value."
           Flags: 0
@@ -14514,7 +14558,7 @@
             [0] CommandOverload
               Chaining: false
               Parameters: [{Name:"value" Type:3145735 Optional:false Options:0} {Name:"min" Type:1048577 Optional:false Options:0} {Name:"max" Type:1048577 Optional:false Options:0}]
-        [40] Command
+        [41] Command
           Name: "recipe"
           Description: "commands.recipes.description"
           Flags: 0
@@ -14531,10 +14575,10 @@
             [1] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
-                [0] {Name:"take" Type:3145768 Optional:false Options:0}
+                [0] {Name:"take" Type:3145771 Optional:false Options:0}
                 [1] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [2] {Name:"recipe" Type:1048632 Optional:false Options:0}
-        [41] Command
+        [42] Command
           Name: "return"
           Description: "Returns from the current function with a command result."
           Flags: 0
@@ -14543,9 +14587,9 @@
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (3)
             [0] {Chaining:false Parameters:[{Name:"value" Type:1048577 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"fail" Type:3145769 Optional:false Options:0}]}
-            [2] {Chaining:false Parameters:[{Name:"run" Type:3145770 Optional:false Options:0} {Name:"command" Type:1048646 Optional:false Options:0}]}
-        [42] Command
+            [1] {Chaining:false Parameters:[{Name:"fail" Type:3145772 Optional:false Options:0}]}
+            [2] {Chaining:false Parameters:[{Name:"run" Type:3145773 Optional:false Options:0} {Name:"command" Type:1048646 Optional:false Options:0}]}
+        [43] Command
           Name: "ride"
           Description: "commands.ride.description"
           Flags: 0
@@ -14557,10 +14601,10 @@
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
                 [0] {Name:"target" Type:1048584 Optional:false Options:0}
-                [1] {Name:"mount" Type:3145771 Optional:false Options:0}
+                [1] {Name:"mount" Type:3145774 Optional:false Options:0}
                 [2] {Name:"vehicle" Type:1048584 Optional:false Options:0}
-            [1] {Chaining:false Parameters:[{Name:"target" Type:1048584 Optional:false Options:0} {Name:"dismount" Type:3145772 Optional:false Options:0}]}
-        [43] Command
+            [1] {Chaining:false Parameters:[{Name:"target" Type:1048584 Optional:false Options:0} {Name:"dismount" Type:3145775 Optional:false Options:0}]}
+        [44] Command
           Name: "rotate"
           Description: "Rotates an entity."
           Flags: 0
@@ -14575,25 +14619,25 @@
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
                 [0] {Name:"target" Type:1048584 Optional:false Options:0}
-                [1] {Name:"facing" Type:3145773 Optional:false Options:0}
+                [1] {Name:"facing" Type:3145776 Optional:false Options:0}
                 [2] {Name:"facingLocation" Type:1048641 Optional:false Options:0}
             [2] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
                 [0] {Name:"target" Type:1048584 Optional:false Options:0}
-                [1] {Name:"facing" Type:3145773 Optional:false Options:0}
+                [1] {Name:"facing" Type:3145776 Optional:false Options:0}
                 [2] {Name:"entity" Type:3145762 Optional:false Options:0}
                 [3] {Name:"facingEntity" Type:1048584 Optional:false Options:0}
-                [4] {Name:"facingAnchor" Type:3145774 Optional:true Options:0}
-        [44] Command
+                [4] {Name:"facingAnchor" Type:3145777 Optional:true Options:0}
+        [45] Command
           Name: "save-all"
           Description: "Saves the world to disk."
           Flags: 0
           PermissionLevel: 0
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
-          Overloads: [{Chaining:false Parameters:[{Name:"flush" Type:3145775 Optional:true Options:0}]}]
-        [45] Command
+          Overloads: [{Chaining:false Parameters:[{Name:"flush" Type:3145778 Optional:true Options:0}]}]
+        [46] Command
           Name: "save-off"
           Description: "Disables automatic world saving."
           Flags: 0
@@ -14601,7 +14645,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [46] Command
+        [47] Command
           Name: "save-on"
           Description: "commands.save-on.description"
           Flags: 0
@@ -14609,7 +14653,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [47] Command
+        [48] Command
           Name: "say"
           Description: "commands.say.description"
           Flags: 0
@@ -14617,7 +14661,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [48] Command
+        [49] Command
           Name: "scoreboard"
           Description: "commands.scoreboard.description"
           Flags: 0
@@ -14628,29 +14672,29 @@
             [0] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
-                [0] {Name:"objectives" Type:3145776 Optional:false Options:0}
+                [0] {Name:"objectives" Type:3145779 Optional:false Options:0}
                 [1] {Name:"add" Type:3145733 Optional:false Options:0}
                 [2] {Name:"objective" Type:1048632 Optional:false Options:0}
-                [3] {Name:"criteria" Type:3145777 Optional:false Options:0}
+                [3] {Name:"criteria" Type:3145780 Optional:false Options:0}
                 [4] {Name:"displayName" Type:1048632 Optional:true Options:0}
             [1] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
-                [0] {Name:"objectives" Type:3145776 Optional:false Options:0}
+                [0] {Name:"objectives" Type:3145779 Optional:false Options:0}
                 [1] {Name:"remove" Type:3145734 Optional:false Options:0}
                 [2] {Name:"objective" Type:1048632 Optional:false Options:0}
-            [2] {Chaining:false Parameters:[{Name:"objectives" Type:3145776 Optional:false Options:0} {Name:"list" Type:3145778 Optional:false Options:0}]}
+            [2] {Chaining:false Parameters:[{Name:"objectives" Type:3145779 Optional:false Options:0} {Name:"list" Type:3145764 Optional:false Options:0}]}
             [3] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"objectives" Type:3145776 Optional:false Options:0}
-                [1] {Name:"setdisplay" Type:3145779 Optional:false Options:0}
-                [2] {Name:"slot" Type:3145780 Optional:false Options:0}
+                [0] {Name:"objectives" Type:3145779 Optional:false Options:0}
+                [1] {Name:"setdisplay" Type:3145781 Optional:false Options:0}
+                [2] {Name:"slot" Type:3145782 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:true Options:0}
             [4] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"set" Type:3145730 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
@@ -14658,7 +14702,7 @@
             [5] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"add" Type:3145733 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
@@ -14666,7 +14710,7 @@
             [6] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"remove" Type:3145734 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
@@ -14674,41 +14718,41 @@
             [7] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"get" Type:3145728 Optional:false Options:0}
                 [2] {Name:"target" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
             [8] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
                 [1] {Name:"reset" Type:3145731 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:true Options:0}
             [9] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (3)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
-                [1] {Name:"list" Type:3145778 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
+                [1] {Name:"list" Type:3145764 Optional:false Options:0}
                 [2] {Name:"target" Type:1048632 Optional:true Options:0}
             [10] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
-                [1] {Name:"enable" Type:3145782 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
+                [1] {Name:"enable" Type:3145784 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"objective" Type:1048632 Optional:false Options:0}
             [11] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (7)
-                [0] {Name:"players" Type:3145781 Optional:false Options:0}
-                [1] {Name:"operation" Type:3145783 Optional:false Options:0}
+                [0] {Name:"players" Type:3145783 Optional:false Options:0}
+                [1] {Name:"operation" Type:3145785 Optional:false Options:0}
                 [2] {Name:"targets" Type:1048632 Optional:false Options:0}
                 [3] {Name:"targetObjective" Type:1048632 Optional:false Options:0}
-                [4] {Name:"operator" Type:3145784 Optional:false Options:0}
+                [4] {Name:"operator" Type:3145786 Optional:false Options:0}
                 [5] {Name:"source" Type:1048632 Optional:false Options:0}
                 [6] {Name:"sourceObjective" Type:1048632 Optional:false Options:0}
-        [49] Command
+        [50] Command
           Name: "seed"
           Description: "Shows the world seed."
           Flags: 0
@@ -14716,7 +14760,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [50] Command
+        [51] Command
           Name: "setblock"
           Description: "commands.setblock.description"
           Flags: 0
@@ -14726,8 +14770,8 @@
           Overloads: []v2193.CommandOverload (1)
             [0] CommandOverload
               Chaining: false
-              Parameters: [{Name:"pos" Type:1048641 Optional:false Options:0} {Name:"block" Type:3145749 Optional:false Options:2} {Name:"mode" Type:3145785 Optional:true Options:0}]
-        [51] Command
+              Parameters: [{Name:"pos" Type:1048641 Optional:false Options:0} {Name:"block" Type:3145749 Optional:false Options:2} {Name:"mode" Type:3145787 Optional:true Options:0}]
+        [52] Command
           Name: "setidletimeout"
           Description: "Sets the idle timeout in minutes."
           Flags: 0
@@ -14735,7 +14779,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"minutes" Type:1048577 Optional:false Options:0}]}]
-        [52] Command
+        [53] Command
           Name: "setworldspawn"
           Description: "commands.setworldspawn.description"
           Flags: 0
@@ -14743,7 +14787,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"pos" Type:1048641 Optional:true Options:0}]}]
-        [53] Command
+        [54] Command
           Name: "spawnpoint"
           Description: "commands.spawnpoint.description"
           Flags: 0
@@ -14751,7 +14795,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:true Options:0} {Name:"position" Type:1048641 Optional:true Options:0}]}]
-        [54] Command
+        [55] Command
           Name: "spectate"
           Description: "Makes a spectator watch through the eyes of an entity."
           Flags: 0
@@ -14759,7 +14803,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"target" Type:1048584 Optional:true Options:0} {Name:"player" Type:1048584 Optional:true Options:0}]}]
-        [55] Command
+        [56] Command
           Name: "spreadplayers"
           Description: "commands.spreadplayers.description"
           Flags: 0
@@ -14781,11 +14825,11 @@
                 [0] {Name:"center" Type:1048641 Optional:false Options:0}
                 [1] {Name:"spreadDistance" Type:1048579 Optional:false Options:0}
                 [2] {Name:"maxRange" Type:1048579 Optional:false Options:0}
-                [3] {Name:"under" Type:3145786 Optional:false Options:0}
+                [3] {Name:"under" Type:3145788 Optional:false Options:0}
                 [4] {Name:"maxHeight" Type:1048577 Optional:false Options:0}
                 [5] {Name:"respectTeams" Type:3145744 Optional:false Options:0}
                 [6] {Name:"targets" Type:1048584 Optional:false Options:0}
-        [56] Command
+        [57] Command
           Name: "status"
           Description: "Displays server performance statistics."
           Flags: 0
@@ -14793,7 +14837,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [57] Command
+        [58] Command
           Name: "stop"
           Description: "commands.stop.description"
           Flags: 0
@@ -14801,7 +14845,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [58] Command
+        [59] Command
           Name: "stopsound"
           Description: "commands.stopsound.description"
           Flags: 0
@@ -14815,7 +14859,7 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"source" Type:1048632 Optional:true Options:0}
                 [2] {Name:"sound" Type:1048632 Optional:true Options:0}
-        [59] Command
+        [60] Command
           Name: "summon"
           Description: "commands.summon.description"
           Flags: 0
@@ -14823,7 +14867,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"entity" Type:1048632 Optional:false Options:0} {Name:"pos" Type:1048641 Optional:true Options:0}]}]
-        [60] Command
+        [61] Command
           Name: "tag"
           Description: "commands.tag.description"
           Flags: 0
@@ -14840,8 +14884,8 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"remove" Type:3145734 Optional:false Options:0}
                 [2] {Name:"name" Type:1048632 Optional:false Options:0}
-            [2] {Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"list" Type:3145778 Optional:false Options:0}]}
-        [61] Command
+            [2] {Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"list" Type:3145764 Optional:false Options:0}]}
+        [62] Command
           Name: "team"
           Description: "Manage scoreboard teams."
           Flags: 0
@@ -14858,24 +14902,24 @@
             [1] {Chaining:false Parameters:[{Name:"remove" Type:3145734 Optional:false Options:0} {Name:"team" Type:1048632 Optional:false Options:0}]}
             [2] CommandOverload
               Chaining: false
-              Parameters: [{Name:"join" Type:3145787 Optional:false Options:0} {Name:"team" Type:1048632 Optional:false Options:0} {Name:"members" Type:1048632 Optional:false Options:0}]
-            [3] {Chaining:false Parameters:[{Name:"leave" Type:3145788 Optional:false Options:0} {Name:"members" Type:1048632 Optional:false Options:0}]}
+              Parameters: [{Name:"join" Type:3145789 Optional:false Options:0} {Name:"team" Type:1048632 Optional:false Options:0} {Name:"members" Type:1048632 Optional:false Options:0}]
+            [3] {Chaining:false Parameters:[{Name:"leave" Type:3145790 Optional:false Options:0} {Name:"members" Type:1048632 Optional:false Options:0}]}
             [4] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (4)
-                [0] {Name:"modify" Type:3145789 Optional:false Options:0}
+                [0] {Name:"modify" Type:3145791 Optional:false Options:0}
                 [1] {Name:"team" Type:1048632 Optional:false Options:0}
-                [2] {Name:"property" Type:3145790 Optional:false Options:0}
+                [2] {Name:"property" Type:3145792 Optional:false Options:0}
                 [3] {Name:"value" Type:1048646 Optional:false Options:0}
-        [62] Command
+        [63] Command
           Name: "teammsg"
           Description: "Send a message to your team."
           Flags: 0
           PermissionLevel: 0
-          AliasesOffset: 63
+          AliasesOffset: 65
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [63] Command
+        [64] Command
           Name: "tellraw"
           Description: "commands.tellraw.description"
           Flags: 0
@@ -14883,7 +14927,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [64] Command
+        [65] Command
           Name: "tick"
           Description: "Controls world ticking."
           Flags: 0
@@ -14892,14 +14936,14 @@
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (8)
             [0] {Chaining:false Parameters:[{Name:"query" Type:3145748 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"rate" Type:3145792 Optional:false Options:0} {Name:"value" Type:1048579 Optional:false Options:0}]}
-            [2] {Chaining:false Parameters:[{Name:"freeze" Type:3145793 Optional:false Options:0}]}
-            [3] {Chaining:false Parameters:[{Name:"unfreeze" Type:3145794 Optional:false Options:0}]}
-            [4] {Chaining:false Parameters:[{Name:"step" Type:3145795 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
-            [5] {Chaining:false Parameters:[{Name:"step" Type:3145795 Optional:false Options:0} {Name:"stop" Type:3145796 Optional:false Options:0}]}
-            [6] {Chaining:false Parameters:[{Name:"sprint" Type:3145797 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
-            [7] {Chaining:false Parameters:[{Name:"sprint" Type:3145797 Optional:false Options:0} {Name:"stop" Type:3145796 Optional:false Options:0}]}
-        [65] Command
+            [1] {Chaining:false Parameters:[{Name:"rate" Type:3145794 Optional:false Options:0} {Name:"value" Type:1048579 Optional:false Options:0}]}
+            [2] {Chaining:false Parameters:[{Name:"freeze" Type:3145795 Optional:false Options:0}]}
+            [3] {Chaining:false Parameters:[{Name:"unfreeze" Type:3145796 Optional:false Options:0}]}
+            [4] {Chaining:false Parameters:[{Name:"step" Type:3145797 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
+            [5] {Chaining:false Parameters:[{Name:"step" Type:3145797 Optional:false Options:0} {Name:"stop" Type:3145798 Optional:false Options:0}]}
+            [6] {Chaining:false Parameters:[{Name:"sprint" Type:3145799 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
+            [7] {Chaining:false Parameters:[{Name:"sprint" Type:3145799 Optional:false Options:0} {Name:"stop" Type:3145798 Optional:false Options:0}]}
+        [66] Command
           Name: "time"
           Description: "commands.time.description"
           Flags: 0
@@ -14908,10 +14952,10 @@
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (4)
             [0] {Chaining:false Parameters:[{Name:"set" Type:3145730 Optional:false Options:0} {Name:"value" Type:1048577 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"set" Type:3145730 Optional:false Options:0} {Name:"value" Type:3145798 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"set" Type:3145730 Optional:false Options:0} {Name:"value" Type:3145800 Optional:false Options:0}]}
             [2] {Chaining:false Parameters:[{Name:"add" Type:3145733 Optional:false Options:0} {Name:"value" Type:1048577 Optional:false Options:0}]}
-            [3] {Chaining:false Parameters:[{Name:"query" Type:3145748 Optional:false Options:0} {Name:"type" Type:3145799 Optional:false Options:0}]}
-        [66] Command
+            [3] {Chaining:false Parameters:[{Name:"query" Type:3145748 Optional:false Options:0} {Name:"type" Type:3145801 Optional:false Options:0}]}
+        [67] Command
           Name: "title"
           Description: "commands.title.description"
           Flags: 0
@@ -14925,12 +14969,12 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"action" Type:1048632 Optional:false Options:0}
                 [2] {Name:"value" Type:1048646 Optional:false Options:0}
-        [67] Command
+        [68] Command
           Name: "tp"
           Description: "commands.tp.description"
           Flags: 0
           PermissionLevel: 0
-          AliasesOffset: 72
+          AliasesOffset: 74
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (7)
             [0] {Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"destination" Type:1048584 Optional:false Options:0}]}
@@ -14949,17 +14993,17 @@
               Parameters: []v2193.CommandParameter (4)
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"position" Type:1048641 Optional:false Options:0}
-                [2] {Name:"facing" Type:3145773 Optional:false Options:0}
+                [2] {Name:"facing" Type:3145776 Optional:false Options:0}
                 [3] {Name:"location" Type:1048641 Optional:false Options:0}
             [6] CommandOverload
               Chaining: false
               Parameters: []v2193.CommandParameter (5)
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"position" Type:1048641 Optional:false Options:0}
-                [2] {Name:"facing" Type:3145773 Optional:false Options:0}
+                [2] {Name:"facing" Type:3145776 Optional:false Options:0}
                 [3] {Name:"entity" Type:3145762 Optional:false Options:0}
                 [4] {Name:"target" Type:1048584 Optional:false Options:0}
-        [68] Command
+        [69] Command
           Name: "transfer"
           Description: "commands.transferserver.description"
           Flags: 0
@@ -14973,7 +15017,7 @@
                 [0] {Name:"hostname" Type:1048632 Optional:false Options:0}
                 [1] {Name:"port" Type:1048577 Optional:true Options:0}
                 [2] {Name:"players" Type:1048584 Optional:true Options:0}
-        [69] Command
+        [70] Command
           Name: "trigger"
           Description: "commands.trigger.description"
           Flags: 0
@@ -14981,9 +15025,9 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (2)
-            [0] {Chaining:false Parameters:[{Name:"enable" Type:3145782 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"use" Type:3145801 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
-        [70] Command
+            [0] {Chaining:false Parameters:[{Name:"enable" Type:3145784 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"use" Type:3145803 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
+        [71] Command
           Name: "version"
           Description: "Displays the server version."
           Flags: 0
@@ -14991,7 +15035,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [71] Command
+        [72] Command
           Name: "weather"
           Description: "commands.weather.description"
           Flags: 0
@@ -14999,21 +15043,21 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"mode" Type:1048632 Optional:false Options:0} {Name:"duration" Type:1048577 Optional:true Options:0}]}]
-        [72] Command
+        [73] Command
           Name: "whitelist"
           Description: "commands.allowlist.description"
           Flags: 0
           PermissionLevel: 0
-          AliasesOffset: 74
+          AliasesOffset: 76
           ChainedSubcommandOffsets: []
           Overloads: []v2193.CommandOverload (6)
             [0] {Chaining:false Parameters:[{Name:"add" Type:3145733 Optional:false Options:0} {Name:"player" Type:1048632 Optional:false Options:0}]}
-            [1] {Chaining:false Parameters:[{Name:"on" Type:3145803 Optional:false Options:0}]}
-            [2] {Chaining:false Parameters:[{Name:"off" Type:3145804 Optional:false Options:0}]}
-            [3] {Chaining:false Parameters:[{Name:"reload" Type:3145805 Optional:false Options:0}]}
+            [1] {Chaining:false Parameters:[{Name:"on" Type:3145805 Optional:false Options:0}]}
+            [2] {Chaining:false Parameters:[{Name:"off" Type:3145806 Optional:false Options:0}]}
+            [3] {Chaining:false Parameters:[{Name:"reload" Type:3145765 Optional:false Options:0}]}
             [4] {Chaining:false Parameters:[{Name:"remove" Type:3145734 Optional:false Options:0} {Name:"player" Type:1048632 Optional:false Options:0}]}
-            [5] {Chaining:false Parameters:[{Name:"list" Type:3145778 Optional:false Options:0}]}
-        [73] Command
+            [5] {Chaining:false Parameters:[{Name:"list" Type:3145764 Optional:false Options:0}]}
+        [74] Command
           Name: "worldborder"
           Description: "Changes world border settings."
           Flags: 0
@@ -18297,4 +18341,4 @@
         [3271] {EnumValueIndex:3868 EnumIndex:28 Constraints:0x03}
         [3272] {EnumValueIndex:3869 EnumIndex:28 Constraints:0x03}
         [3273] {EnumValueIndex:3870 EnumIndex:28 Constraints:0x03}
-    sha256 e491631adfe9ac19c0d28813358f818f2805d361ab479f4673f36a3cef92a1a5
+    sha256 986c167fc987369bd18325b259ef047bb1baa34ba64cdc832610d216f20348ed

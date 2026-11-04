@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/audit"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
@@ -44,6 +45,14 @@ type serverAdapter interface {
 	// ReloadPermissions reads the lists of permissions again.
 	ReloadPermissions() error
 	OperatorEntries() ([]string, error)
+	// OperatorList returns the operators with their levels; RoleEntries
+	// the roles of permissions.json as the commands show them.
+	OperatorList() ([]server.OperatorInfo, error)
+	RoleEntries() ([]string, error)
+	// SetRole gives a player a role of permissions.json, and ClearRole
+	// takes its entry off it.
+	SetRole(name string, role client.Role, abilities client.Abilities) (bool, error)
+	ClearRole(name string) (bool, error)
 	BanPlayer(name, reason string) (bool, error)
 	// Ban and BanAddress ban a player and an address, recording when, by
 	// whom and until when; ActorOf is who a source is, as a ban records it.

@@ -226,3 +226,107 @@ func TestCommandLevelOverrides(t *testing.T) {
 	}()
 	strict.Listen()
 }
+
+// outputLines returns the messages and errors of o, one a line.
+func outputLines(o *cmd.Output) string {
+	var lines []string
+	for _, m := range o.Messages() {
+		lines = append(lines, m.String())
+	}
+	for _, e := range o.Errors() {
+		lines = append(lines, "error: "+e.Error())
+	}
+	return strings.Join(lines, "\n")
+}
+
+// TestOpWithLevel checks /op <player> <level>: it makes an operator of the
+// level, changes the level of an operator, says when nothing changed, and
+// refuses a level out of 0 to 4, a level above the source's own and a
+// change of an operator above it. /op without a level gives OperatorLevel
+// and writes none.
+func TestOpWithLevel(t *testing.T) {
+	dir := t.TempDir()
+	srv := permissionServer(t, dir, "")
+	builtin.Register(srv)
+	t.Cleanup(func() { cmd.SetPermissions(nil) })
+	for _, s := range []struct {
+		level      cmd.Level
+		line, want string
+	}{
+		{cmd.LevelOwner, "/op Steve 3", "Made Steve a server operator at level 3."},
+		{cmd.LevelOwner, "/op Steve 3", "Steve is already an operator at level 3."},
+		{cmd.LevelOwner, "/op Steve 2", "Steve is now at level 2."},
+		{cmd.LevelOwner, "/op Steve 5", "error: " + cmd.MessageParameterInvalid.F(5).Error()},
+		{cmd.LevelOwner, "/op Alex", "Made Alex a server operator."},
+		{cmd.LevelAdmin, "/op Mod 3", "Made Mod a server operator at level 3."},
+		{cmd.LevelAdmin, "/op Mod 4", "error: You can't give a level above your own (3)."},
+		{cmd.LevelAdmin, "/op Alex 1", "error: You can't change an operator above your own level (3)."},
+		{cmd.LevelAdmin, "/op Steve 0", "Steve is now at level 0."},
+	} {
+		if got := outputLines(run(t, s.level, s.line)); got != s.want {
+			t.Errorf("%s from level %v: %q, want %q", s.line, s.level, got, s.want)
+		}
+	}
+	for name, want := range map[string]cmd.Level{"Steve": cmd.LevelAll, "Alex": server.DefaultOperatorLevel, "Mod": cmd.LevelAdmin} {
+		if l, ok := srv.OperatorLevel(name); !ok || l != want {
+			t.Errorf("%s: level %v, %v, want %v", name, l, ok, want)
+		}
+	}
+	const want = "[\n  {\n    \"name\": \"steve\",\n    \"level\": 0\n  },\n  \"alex\",\n  {\n    \"name\": \"mod\",\n    \"level\": 3\n  }\n]\n"
+	if got := readFile(t, filepath.Join(dir, "ops.json")); got != want {
+		t.Errorf("ops.json:\n%s\nwant\n%s", got, want)
+	}
+}
+
+// TestPermissionCommand checks /permission: list shows the operators with
+// their levels and the roles of permissions.json; set gives the roles of
+// permissions.json, custom with its abilities, and default takes the entry
+// off, refusing an operator above the source's level; reload reads both
+// files again.
+func TestPermissionCommand(t *testing.T) {
+	dir := t.TempDir()
+	srv := permissionServer(t, dir, `["alex", {"name": "mod", "level": 3}]`)
+	builtin.Register(srv)
+	t.Cleanup(func() { cmd.SetPermissions(nil) })
+	for _, s := range []struct {
+		level      cmd.Level
+		line, want string
+	}{
+		{cmd.LevelAdmin, "/permission list", "There are 2 operator(s):\nalex: level 4 (OperatorLevel)\nmod: level 3\n" +
+			"There are no roles in permissions.json"},
+		{cmd.LevelAdmin, "/permission set Guest visitor", "Set the role of Guest to visitor."},
+		{cmd.LevelAdmin, "/permission set Guest visitor", "Nothing changed. Guest already has the role visitor"},
+		{cmd.LevelAdmin, "/permission set Builder custom build mine", "Set the role of Builder to custom [build mine]."},
+		{cmd.LevelAdmin, "/permission set Builder custom fly", `error: unknown ability "fly": want one of build, mine, ` +
+			`doors_and_switches, open_containers, attack_players, attack_mobs, operator_commands, teleport`},
+		{cmd.LevelAdmin, "/permission set Guest member build", "error: Only a custom role takes abilities."},
+		{cmd.LevelAdmin, "/permission set mod visitor", "Set the role of mod to visitor."},
+		{cmd.LevelAdmin, "/permission set alex visitor", "error: You can't change the role of an operator above your own level (3)."},
+		{cmd.LevelAdmin, "/permission set Builder default", "Builder has the default role again."},
+		{cmd.LevelAdmin, "/permission set Builder default", "Nothing changed. Builder has no role in permissions.json"},
+		{cmd.LevelAdmin, "/permission list", "There are 2 operator(s):\nalex: level 4 (OperatorLevel)\nmod: level 3\n" +
+			"There are 2 role(s) in permissions.json:\nguest: visitor\nmod: visitor"},
+	} {
+		if got := outputLines(run(t, s.level, s.line)); got != s.want {
+			t.Errorf("%s from level %v:\n%s\nwant\n%s", s.line, s.level, got, s.want)
+		}
+	}
+
+	// reload reads ops.json and permissions.json again.
+	if err := os.WriteFile(filepath.Join(dir, "ops.json"), []byte(`[{"name": "alex", "level": 2}]`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "permissions.json"), []byte(`[{"permission": "member", "name": "guest"}]`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if got := outputLines(run(t, cmd.LevelAdmin, "/permission reload")); got != "Permissions reloaded from file." {
+		t.Errorf("/permission reload: %q", got)
+	}
+	if got, want := outputLines(run(t, cmd.LevelAdmin, "/permission list")), "There are 1 operator(s):\nalex: level 2\n"+
+		"There are 1 role(s) in permissions.json:\nguest: member"; got != want {
+		t.Errorf("/permission list after reload:\n%s\nwant\n%s", got, want)
+	}
+	if got := outputLines(run(t, cmd.LevelGameMaster, "/permission list")); got != "error: "+cmd.MessageUnknown.F("permission").Error() {
+		t.Errorf("/permission list from level 2: %q", got)
+	}
+}

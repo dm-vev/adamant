@@ -37,6 +37,7 @@
   "commands.pardon-ip.description": "Removes an IP ban.",
   "commands.pardon.description": "Removes a player ban.",
   "commands.particle.description": "Spawns particles.",
+  "commands.permission.description": "Lists, reloads and sets the levels and roles of players.",
   "commands.place.description": "Places a structure template.",
   "commands.playsound.description": "Plays a sound.",
   "commands.random.description": "Generate a random value.",
