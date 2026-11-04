@@ -50,6 +50,9 @@ import (
 )
 
 type playerData struct {
+	// dataUUID is the UUID the record and the spawn points of the player
+	// are kept by.
+	dataUUID uuid.UUID
 	// frostWalkPos is the block Frost Walker last ran in.
 	frostWalkPos                cube.Pos
 	frostWalkPosSet             bool
@@ -381,7 +384,7 @@ func (p *Player) SetRespawnPosition(pos cube.Pos, dim world.Dimension) {
 	p.respawnDimension, p.respawnPosition = dim, pos
 	p.respawnRotation, p.hasRespawnPoint = p.Rotation(), true
 	if p.tx != nil {
-		p.tx.World().SetPlayerSpawn(p.UUID(), pos)
+		p.tx.World().SetPlayerSpawn(p.dataUUID, pos)
 	}
 	p.client().SetPlayerSpawn(pos, dim)
 }
@@ -1355,7 +1358,7 @@ func (p *Player) spawnLocation() (playerSpawn cube.Pos, w *world.World, spawnBlo
 	tx := p.tx
 	w = tx.World()
 	previousDimension = w.Dimension()
-	playerSpawn = w.PlayerSpawn(p.UUID())
+	playerSpawn = w.PlayerSpawn(p.dataUUID)
 	if b, ok := tx.Block(playerSpawn).(block.Bed); ok && b.CanRespawnOn() {
 		pos, ok := b.SafeSpawn(playerSpawn, tx)
 		if ok {
@@ -5035,6 +5038,7 @@ func (p *Player) Data() Config {
 		Skin:                p.skin,
 		XUID:                p.xuid,
 		UUID:                p.UUID(),
+		DataUUID:            p.dataUUID,
 		Name:                p.nameTag,
 		Locale:              p.locale,
 		GameMode:            p.gameMode,

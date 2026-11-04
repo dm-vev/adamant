@@ -1,6 +1,7 @@
 == the game of Golden does not start
 -- Golden
 -- player provider
+    loaded c270f44a-25ec-36bc-a9d8-3c47dff09b01: none saved
     loaded 00000000-0000-4000-8000-00000000901d: none saved
 -- server
     players online: 0 []
@@ -982,6 +983,7 @@
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
 -- player provider
+    loaded c270f44a-25ec-36bc-a9d8-3c47dff09b01: none saved
     loaded 00000000-0000-4000-8000-00000000901d: none saved
 -- server
     players online: 1 ["Golden"]

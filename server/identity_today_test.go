@@ -19,12 +19,13 @@ import (
 // changes what it pins, and those that commit changed say what they
 // pinned.
 
-// TestOfflineSameNameTwiceIsOnlineTwice pins that two clients that log in
-// without Xbox Live under one name, in two cases and with two UUIDs, are
-// both online, and both count as the operator of the name. "Key the
-// players of servers without sign-in by their names" makes the second an
-// "already logged in" of the first.
-func TestOfflineSameNameTwiceIsOnlineTwice(t *testing.T) {
+// TestOfflineSameNameIsAReconnect checks that on a server keyed by name a
+// client that logs in under the name of a player online, in another case
+// and with another UUID, logs in as that player: the server holds it to
+// its reconnect policy, which refuses it by default, and one client of the
+// name is online and its operator. It was TestOfflineSameNameTwiceIsOnline-
+// Twice, which pinned both clients online and both the operator.
+func TestOfflineSameNameIsAReconnect(t *testing.T) {
 	jt := newJoinTest(t, player.NopProvider{}, Config{})
 	var err error
 	if jt.srv.operators, err = loadOperators(filepath.Join(t.TempDir(), "ops.json")); err != nil {
@@ -36,39 +37,52 @@ func TestOfflineSameNameTwiceIsOnlineTwice(t *testing.T) {
 	jt.start()
 	first, second := joinLogin("Steve", ""), joinLogin("steve", "")
 	jt.join(t, first)
-	jt.join(t, second)
-	if n := jt.srv.PlayerCount(); n != 2 {
-		t.Errorf("%d players online, want both clients of Steve", n)
+	jt.l.Send(second)
+	awaitRejected(t, second, "Already logged in.")
+	if n := jt.srv.PlayerCount(); n != 1 {
+		t.Errorf("%d players online, want the first client of Steve alone", n)
 	}
-	if !first.Games()[0].Operator || !second.Games()[0].Operator {
-		t.Error("the clients of Steve do not both count as his operator")
+	if len(second.Games()) != 0 || len(first.Recorder().CallsTo("Disconnect")) != 0 {
+		t.Error("the second client of Steve started a game, or the first was disconnected")
 	}
-	if len(first.Recorder().CallsTo("Disconnect")) != 0 {
-		t.Error("the first client of Steve was disconnected")
+	if !jt.srv.PlayerIsOperator(first.L.Identity.UUID) || jt.srv.PlayerIsOperator(second.L.Identity.UUID) {
+		t.Error("the operator of Steve is not his first client alone")
 	}
 }
 
-// TestOfflineClientLoadsTheRecordOfTheUUIDItSends pins that the server
-// loads the record of the UUID a client sends, whatever its name: a client
-// that sends the UUID of another player plays with the data of that
-// player. "Key the players of servers without sign-in by their names"
-// loads by the name.
-func TestOfflineClientLoadsTheRecordOfTheUUIDItSends(t *testing.T) {
+// TestOfflineDataFollowsTheName checks that on a server keyed by name the
+// record of a player is that of its name: a client that sends the UUID of
+// another player does not get its data, and a player whose client sends a
+// new UUID at each login keeps its own. It was TestOfflineClientLoadsThe-
+// RecordOfTheUUIDItSends, which pinned that Mallory, sending the UUID of
+// Alice, played with her 1234 experience points.
+func TestOfflineDataFollowsTheName(t *testing.T) {
 	alice := uuid.MustParse("00000000-0000-4000-8000-0000000a11ce")
-	provider := &recordProvider{records: map[uuid.UUID]player.Config{alice: {Name: "Alice", UUID: alice, Experience: 1234}}}
+	provider := &recordProvider{records: map[uuid.UUID]player.Config{
+		alice:                         {Name: "Alice", UUID: alice, Experience: 1234},
+		identity.OfflineUUID("alice"): {Name: "Alice", UUID: alice, Experience: 77},
+	}}
 	jt := newJoinTest(t, provider, Config{})
 	jt.start()
 	mallory := joinLogin("Mallory", "")
 	mallory.L.Identity.UUID = alice
 	h := jt.join(t, mallory)
-	if got := provider.loads(); len(got) != 1 || got[0] != alice {
-		t.Errorf("loaded %v, want the UUID Mallory sent", got)
+	if got := provider.loads(); len(got) != 2 || got[0] != identity.OfflineUUID("mallory") || got[1] != alice {
+		t.Errorf("loaded %v, want the UUID of the name, then that the client sent", got)
 	}
 	xp, _ := player.Call(context.Background(), h, func(_ *world.Tx, p *player.Player) (int, error) {
 		return p.Experience(), nil
 	})
-	if xp != 1234 {
-		t.Errorf("Mallory has %d experience, want the 1234 of Alice", xp)
+	if xp != 0 {
+		t.Errorf("Mallory has %d experience, want none of Alice's", xp)
+	}
+	again := joinLogin("ALICE", "")
+	h = jt.join(t, again)
+	xp, _ = player.Call(context.Background(), h, func(_ *world.Tx, p *player.Player) (int, error) {
+		return p.Experience(), nil
+	})
+	if xp != 77 {
+		t.Errorf("Alice with a new UUID has %d experience, want the 77 of her name", xp)
 	}
 }
 

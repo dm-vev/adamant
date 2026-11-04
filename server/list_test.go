@@ -19,6 +19,7 @@ import (
 	"github.com/df-mc/dragonfly/server/client/clienttest"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
+	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
@@ -71,8 +72,9 @@ func newTwoWorlds(t *testing.T, log slog.Handler) *twoWorlds {
 		log = slog.NewTextHandler(io.Discard, nil)
 	}
 	conf := server.Config{
-		Log:            slog.New(log),
-		PlayerProvider: netherProvider{nether: map[uuid.UUID]bool{bob.L.Identity.UUID: true}},
+		Log: slog.New(log),
+		// A server without sign-in keeps the data of a player by its name.
+		PlayerProvider: netherProvider{nether: map[uuid.UUID]bool{identity.OfflineUUID("Bob"): true}},
 		DisableEnd:     true,
 		Generator:      func(world.Dimension, int64) world.Generator { return world.NopGenerator{} },
 		Listeners:      []func(server.Config, server.Host) (server.Listener, error){func(server.Config, server.Host) (server.Listener, error) { return l, nil }},

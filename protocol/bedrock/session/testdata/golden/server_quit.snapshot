@@ -974,6 +974,7 @@
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
 -- player provider
+    loaded c270f44a-25ec-36bc-a9d8-3c47dff09b01: none saved
     loaded 00000000-0000-4000-8000-00000000901d: none saved
 == Visitor joins
 -- StartGameContext of Visitor
@@ -2038,6 +2039,7 @@
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
 -- player provider
+    loaded 47adfe28-5d0f-31e3-992c-e409ace53612: none saved
     loaded 00000000-0000-4000-8000-000000005157: none saved
 -- server
     players online: 2 ["Golden" "Visitor"]
@@ -2152,7 +2154,7 @@
           PlayerColour: 0x00000000
     | 01000100400000000000005751000000000080
 -- player provider
-    saved 00000000-0000-4000-8000-000000005157: Visitor (2535400000000043, 00000000-0000-4000-8000-000000005157): in Overworld at [3.5 -60 2.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 16, held slot 0
+    saved 47adfe28-5d0f-31e3-992c-e409ace53612: Visitor (2535400000000043, 00000000-0000-4000-8000-000000005157): in Overworld at [3.5 -60 2.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 16, held slot 0
 -- server
     players online: 1 ["Golden"]
     Golden: by UUID true, by name true, by XUID true
@@ -3220,7 +3222,7 @@
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
 -- player provider
-    loaded 00000000-0000-4000-8000-000000005157: Visitor
+    loaded 47adfe28-5d0f-31e3-992c-e409ace53612: Visitor
 -- server
     players online: 2 ["Golden" "Visitor"]
     Golden: by UUID true, by name true, by XUID true

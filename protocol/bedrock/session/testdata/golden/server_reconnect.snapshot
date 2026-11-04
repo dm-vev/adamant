@@ -974,6 +974,7 @@
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
 -- player provider
+    loaded c270f44a-25ec-36bc-a9d8-3c47dff09b01: none saved
     loaded 00000000-0000-4000-8000-00000000901d: none saved
 == Golden moves and gains experience
 -- Golden
@@ -1986,8 +1987,8 @@
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
 -- player provider
-    saved 00000000-0000-4000-8000-00000000901d: Golden (2535400000000042, 00000000-0000-4000-8000-00000000901d): in Overworld at [3.5 -60 2.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 27, held slot 0
-    loaded 00000000-0000-4000-8000-00000000901d: Golden
+    saved c270f44a-25ec-36bc-a9d8-3c47dff09b01: Golden (2535400000000042, 00000000-0000-4000-8000-00000000901d): in Overworld at [3.5 -60 2.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 27, held slot 0
+    loaded c270f44a-25ec-36bc-a9d8-3c47dff09b01: Golden
 -- server
     players online: 1 ["Golden"]
     Golden: by UUID true, by name true, by XUID true

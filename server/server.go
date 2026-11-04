@@ -18,6 +18,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/identity"
+	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
@@ -25,7 +26,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 )
 
 // Server implements a Dragonfly server. It runs the main server loop and
@@ -535,10 +535,9 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 		}
 		srv.followRename(k, login.Identity.Name, previous)
 	}
-	id := login.Identity.UUID
 	// A player still online leaves before the joining one is loaded: the
 	// server then loads what it saved of the player as it left.
-	if handle, ok := srv.Player(id); ok {
+	if handle, ok := srv.online(login.Identity); ok {
 		if !srv.handleReconnect(j, login, handle) {
 			return
 		}
@@ -548,7 +547,7 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 		fallback  bool
 		requested world.Dimension
 	)
-	d, w, err := srv.conf.PlayerProvider.Load(id, func(dim world.Dimension) *world.World {
+	d, w, moved, err := srv.loadPlayer(login.Identity, func(dim world.Dimension) *world.World {
 		requested = dim
 		dest := srv.dimension(dim)
 		if dest == nil {
@@ -559,6 +558,13 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 		}
 		return dest
 	})
+	if err != nil {
+		// A record refused, such as one of another name, chose no world.
+		fallback = false
+	}
+	if moved {
+		srv.moveSpawn(login.Identity)
+	}
 	if err != nil || fallback {
 		w = srv.world
 		<-w.Exec(func(tx *world.Tx) {
@@ -607,10 +613,11 @@ func (srv *Server) game(login client.Login, d player.Config, w *world.World) cli
 }
 
 // handleReconnect holds the join of a client that logged in as a player
-// still online, handle, to the reconnect policy of the server. It reports
-// whether the client may join.
+// still online, handle, to the reconnect policy of the server: by its UUID,
+// by its name on a server keyed by name, by its account on one keyed by
+// XUID. It reports whether the client may join.
 func (srv *Server) handleReconnect(j client.Join, login client.Login, handle *world.EntityHandle) bool {
-	id := login.Identity.UUID
+	id := handle.UUID()
 	switch srv.conf.ReconnectPolicy {
 	case ReconnectKickExisting:
 		player.Do(handle, func(_ *world.Tx, p *player.Player) {
@@ -662,7 +669,8 @@ func (srv *Server) left(tx *world.Tx, c *player.Player) {
 	// Always decrement the wait group because createPlayer unconditionally increments it.
 	defer srv.pwg.Done()
 
-	if _, ok := srv.players.handle(c.UUID()); !ok {
+	online, ok := srv.players.player(c.UUID())
+	if !ok {
 		// When a player disconnects immediately after a session is started, it
 		// might not be added to the players map yet. This is expected, but we
 		// need to be careful not to crash when this happens.
@@ -675,7 +683,7 @@ func (srv *Server) left(tx *world.Tx, c *player.Player) {
 	if tx != nil {
 		// The snapshot holds inventories of its own: the player's are
 		// closed as it is torn down, while the provider may keep the data.
-		if err := srv.conf.PlayerProvider.Save(c.UUID(), c.Snapshot(), tx.World()); err != nil {
+		if err := srv.conf.PlayerProvider.Save(srv.dataKey(online.id), c.Snapshot(), tx.World()); err != nil {
 			srv.conf.Log.Error("Save player data: " + err.Error())
 		}
 	} else {
@@ -692,12 +700,13 @@ func (srv *Server) createPlayer(login client.Login, c client.Joining, conf playe
 	conf.Name = id.Name
 	conf.XUID = id.XUID
 	conf.UUID = id.UUID
+	conf.DataUUID = srv.dataKey(id)
 	conf.Locale = login.Locale
 	conf.Skin = login.Skin
 	conf.Client = c
 	conf.Left = srv.left
 	conf.QuitMessage = srv.conf.QuitMessage
-	conf.Log = srv.conf.Log.With("name", id.Name, "uuid", id.UUID.String(), "raddr", addrString(login.Addr))
+	conf.Log = srv.conf.Log.With("name", id.Name, "uuid", id.UUID.String(), "data-uuid", conf.DataUUID.String(), "raddr", addrString(login.Addr))
 
 	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id.UUID}.New(player.Type, conf)
 	c.Bind(handle, conf.Skin)

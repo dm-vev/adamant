@@ -39,9 +39,14 @@ type Config struct {
 	// player as it leaves with its client.
 	QuitMessage chat.Translation
 
-	Skin     skin.Skin
-	XUID     string
-	UUID     uuid.UUID
+	Skin skin.Skin
+	XUID string
+	UUID uuid.UUID
+	// DataUUID is the UUID the data of the player is kept by: its record
+	// and its spawn points. uuid.Nil means UUID. A server that keys its
+	// players by name keeps their data by their names, whatever UUID their
+	// clients send.
+	DataUUID uuid.UUID
 	Name     string
 	Locale   language.Tag
 	GameMode world.GameMode
@@ -144,7 +149,11 @@ func (cfg Config) Apply(data *world.EntityData) {
 		respawnRotation:     conf.RespawnRotation,
 		hasRespawnPoint:     conf.HasRespawnPoint,
 	}
-	playerUUID := conf.UUID
+	playerUUID := conf.DataUUID
+	if playerUUID == uuid.Nil {
+		playerUUID = conf.UUID
+	}
+	pdata.dataUUID = playerUUID
 	pdata.portalTravel = entity.NewPortalTravelComputer()
 	// NetherPortalBlock.getPortalTransitionTime: players wait the
 	// players_nether_portal_(creative|default)_delay ticks; end portals are

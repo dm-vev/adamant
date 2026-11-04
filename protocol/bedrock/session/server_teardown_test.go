@@ -19,6 +19,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
@@ -161,11 +162,16 @@ func TestServerContainerRemoveViewerPanicDoesNotBlockShutdown(t *testing.T) {
 func TestServerFailedJoinUnlistsPlayer(t *testing.T) {
 	closedWorld := world.Config{Log: slog.New(slog.DiscardHandler), Generator: world.NopGenerator{}}.New()
 	_ = closedWorld.Close()
+	// The server keys its players by name: each client logs in under a name
+	// of its own, and the record of the joining one is kept by the UUID of
+	// its name.
 	joining := newListConn()
+	joining.identity.DisplayName = "Joining"
 	id := uuid.MustParse(joining.identity.Identity)
-	ts := newTeardownServer(t, closedWorldProvider{id: id, w: closedWorld}, nil)
+	ts := newTeardownServer(t, closedWorldProvider{id: identity.OfflineUUID(joining.identity.DisplayName), w: closedWorld}, nil)
 
 	observer := newListConn()
+	observer.identity.DisplayName = "Observer"
 	ts.l.conns <- observer
 	ts.awaitSpawn(t)
 
@@ -176,6 +182,7 @@ func TestServerFailedJoinUnlistsPlayer(t *testing.T) {
 	observer.awaitList(t, v2193.PlayerListActionRemove, id)
 
 	later := newListConn()
+	later.identity.DisplayName = "Later"
 	ts.l.conns <- later
 	after := ts.awaitSpawn(t)
 	// The session made last is shown itself last.

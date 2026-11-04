@@ -14,6 +14,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/client/clienttest"
+	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
@@ -161,8 +162,8 @@ func TestJoinReconnectKickExisting(t *testing.T) {
 	if len(first.Recorder().CallsTo("Disconnect")) != 1 || len(first.Recorder().CallsTo("Close")) == 0 {
 		t.Error("the player online was not disconnected and closed")
 	}
-	if got := provider.saved(); !slices.Equal(got, []uuid.UUID{first.L.Identity.UUID}) {
-		t.Errorf("saved %v, want the player online once", got)
+	if got := provider.saved(); !slices.Equal(got, []uuid.UUID{identity.OfflineUUID("Alice")}) {
+		t.Errorf("saved %v, want the player online once, by its name", got)
 	}
 }
 
@@ -204,8 +205,8 @@ func TestJoinLeftSavesThePlayer(t *testing.T) {
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if got := provider.saved(); !slices.Equal(got, []uuid.UUID{j.L.Identity.UUID}) {
-		t.Errorf("saved %v, want Alice once", got)
+	if got := provider.saved(); !slices.Equal(got, []uuid.UUID{identity.OfflineUUID("Alice")}) {
+		t.Errorf("saved %v, want Alice once, by her name", got)
 	}
 	if data := provider.data(); len(data) == 1 {
 		if data[0].Inventory == live {

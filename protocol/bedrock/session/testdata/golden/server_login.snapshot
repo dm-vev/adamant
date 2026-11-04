@@ -1142,9 +1142,10 @@
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
 -- player provider
+    loaded a56aa327-2962-3cbd-acbd-060839ecc5ec: none saved
     loaded 00000000-0000-4000-8000-00000000900b: none saved
 == Member's client disconnects
 -- player provider
-    saved 00000000-0000-4000-8000-00000000900b: Member (2535400000000111, 00000000-0000-4000-8000-00000000900b): in Overworld at [0.5 -60 0.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 0, held slot 0
+    saved a56aa327-2962-3cbd-acbd-060839ecc5ec: Member (2535400000000111, 00000000-0000-4000-8000-00000000900b): in Overworld at [0.5 -60 0.5] rotation [0 0], game mode 0, health 20/20, food 20, saturation 5, experience 0, held slot 0
 -- server
     players online: 0
