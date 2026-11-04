@@ -1,0 +1,7 @@
+# What the registration of blocks and items leaves in the default registries: "<part>: <lines> <hash>".
+# The parts are those of registration_test.go. Regenerate with:
+# go test -run TestRegistrationOrder -update-registration ./server/block
+
+blocks: 23948 0731e7cc46997d7e223e45e0
+custom items: 1 c1a8a8ec508ce9a36a87b5fb
+items: 2044 ea1da809f894c47be736f7ed

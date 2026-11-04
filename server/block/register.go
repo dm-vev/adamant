@@ -11,6 +11,19 @@ import (
 
 // init registers all blocks implemented by Dragonfly.
 func init() {
+	registerBlockHooks()
+	registerBlocksAirToInfestedCobblestone()
+	registerBlocksSnowLayersToPolishedTuff()
+	registerBlocksSuspiciousToWeb()
+	registerOres()
+	registerStatesAnvilsToLooms()
+	registerStatesMelonStemsToChiseledBookshelves()
+	registerCopperAndTrialStates()
+	registerRedstoneStates()
+}
+
+// registerBlockHooks registers the functions the world calls to place fire and destroy blocks.
+func registerBlockHooks() {
 	world.RegisterFirePlacer(placeItemFire)
 	world.RegisterBlockDestroyer(func(tx *world.Tx, pos cube.Pos, drops bool) {
 		if b := tx.Block(pos); drops {
@@ -19,6 +32,10 @@ func init() {
 			breakBlockNoDrops(b, pos, tx)
 		}
 	})
+}
+
+// registerBlocksAirToInfestedCobblestone registers single blocks from air to infested cobblestone.
+func registerBlocksAirToInfestedCobblestone() {
 	world.RegisterBlock(Air{})
 	registerAll(allStrawBeds())
 	for mode := CommandBlockImpulse; mode <= CommandBlockChain; mode++ {
@@ -104,6 +121,10 @@ func init() {
 	world.RegisterBlock(Honeycomb{})
 	world.RegisterBlock(InfestedStone{})
 	world.RegisterBlock(InfestedCobblestone{})
+}
+
+// registerBlocksSnowLayersToPolishedTuff registers blocks from snow layers to polished tuff.
+func registerBlocksSnowLayersToPolishedTuff() {
 	for _, b := range allSnowLayers() {
 		world.RegisterBlock(b)
 	}
@@ -198,6 +219,10 @@ func init() {
 	world.RegisterBlock(TuffBricks{})
 	world.RegisterBlock(TuffBricks{Chiseled: true})
 	world.RegisterBlock(PolishedTuff{})
+}
+
+// registerBlocksSuspiciousToWeb registers blocks from suspicious blocks to cobwebs: plants, glass, sculk and technical blocks.
+func registerBlocksSuspiciousToWeb() {
 	registerAll(allSuspiciousBlocks())
 	world.RegisterBlock(ShortGrass{})
 	world.RegisterBlock(Fern{})
@@ -246,7 +271,10 @@ func init() {
 	world.RegisterBlock(Reserved6{})
 	world.RegisterBlock(UnknownBlock{})
 	world.RegisterBlock(Web{})
+}
 
+// registerOres registers the ores of every ore type.
+func registerOres() {
 	for _, ore := range OreTypes() {
 		world.RegisterBlock(CoalOre{Type: ore})
 		world.RegisterBlock(CopperOre{Type: ore})
@@ -258,7 +286,10 @@ func init() {
 		world.RegisterBlock(RedstoneOre{Type: ore})
 		world.RegisterBlock(RedstoneOre{Type: ore, Lit: true})
 	}
+}
 
+// registerStatesAnvilsToLooms registers every state of the blocks from anvils to looms.
+func registerStatesAnvilsToLooms() {
 	registerAll(allAnvils())
 	registerAll(allBamboos())
 	registerAll(allBambooSaplings())
@@ -336,6 +367,10 @@ func init() {
 	registerAll(allLitPumpkins())
 	registerAll(allLogs())
 	registerAll(allLooms())
+}
+
+// registerStatesMelonStemsToChiseledBookshelves registers every state of the blocks from melon stems to chiseled bookshelves.
+func registerStatesMelonStemsToChiseledBookshelves() {
 	registerAll(allMelonStems())
 	registerAll(allMuddyMangroveRoots())
 	registerAll(allNetherBricks())
@@ -390,6 +425,10 @@ func init() {
 	registerAll(allWool())
 	registerAll(allDecoratedPots())
 	registerAll(allChiseledBookshelves())
+}
+
+// registerCopperAndTrialStates registers every state of copper chests, vaults, crafters, trial spawners and copper blocks.
+func registerCopperAndTrialStates() {
 	registerAll(allCopperChests())
 	registerAll(allVaults())
 	registerAll(allCrafters())
@@ -403,6 +442,10 @@ func init() {
 	registerAll(allCopperLanterns())
 	registerAll(allCopperTorches())
 	registerAll(allCopperTrapdoors())
+}
+
+// registerRedstoneStates registers every state of iron doors and trapdoors, redstone components, rails and pistons.
+func registerRedstoneStates() {
 	registerAll(allIronDoors())
 	registerAll(allIronTrapdoors())
 	registerAll(allRedstoneWires())
@@ -427,6 +470,19 @@ func init() {
 }
 
 func init() {
+	registerItemsAirToCalcite()
+	registerItemsCarrotToShulkerBoxes()
+	registerItemsFarmlandToObsidian()
+	registerItemsPaleMossToSulfur()
+	registerItemsTargetToFern()
+	registerRedstoneAndBucketItems()
+	registerVariantItems()
+	registerItemsColouredTorchesToDeepslate()
+	registerIronAndCopperItems()
+}
+
+// registerItemsAirToCalcite registers the items of blocks from air to calcite.
+func registerItemsAirToCalcite() {
 	world.RegisterItem(Air{})
 	world.RegisterItem(StrawBed{})
 	world.RegisterItem(Amethyst{})
@@ -486,6 +542,10 @@ func init() {
 	world.RegisterItem(CactusFlower{})
 	world.RegisterItem(Cake{})
 	world.RegisterItem(Calcite{})
+}
+
+// registerItemsCarrotToShulkerBoxes registers the items of blocks from carrots to shulker boxes.
+func registerItemsCarrotToShulkerBoxes() {
 	world.RegisterItem(Carrot{})
 	world.RegisterItem(Cinnabar{})
 	world.RegisterItem(Cinnabar{Chiseled: true})
@@ -555,6 +615,10 @@ func init() {
 	for _, t := range ShulkerBoxTypes() {
 		world.RegisterItem(ShulkerBox{Type: t})
 	}
+}
+
+// registerItemsFarmlandToObsidian registers the items of blocks from farmland to obsidian.
+func registerItemsFarmlandToObsidian() {
 	world.RegisterItem(Farmland{})
 	world.RegisterItem(FletchingTable{})
 	world.RegisterItem(FloweringAzalea{})
@@ -634,6 +698,10 @@ func init() {
 	world.RegisterItem(Note{Pitch: 24})
 	world.RegisterItem(Obsidian{Crying: true})
 	world.RegisterItem(Obsidian{})
+}
+
+// registerItemsPaleMossToSulfur registers the items of blocks from pale hanging moss to polished sulfur.
+func registerItemsPaleMossToSulfur() {
 	world.RegisterItem(PaleHangingMoss{})
 	world.RegisterItem(PaleMossBlock{})
 	world.RegisterItem(PaleMossCarpet{})
@@ -704,6 +772,10 @@ func init() {
 	world.RegisterItem(Sulfur{Chiseled: true})
 	world.RegisterItem(SulfurBricks{})
 	world.RegisterItem(PolishedSulfur{})
+}
+
+// registerItemsTargetToFern registers the items of blocks from targets to ferns.
+func registerItemsTargetToFern() {
 	world.RegisterItem(Target{})
 	world.RegisterItem(TNT{})
 	world.RegisterItem(TallDryGrass{})
@@ -731,6 +803,10 @@ func init() {
 	world.RegisterItem(ShortGrass{})
 	world.RegisterItem(ShortDryGrass{})
 	world.RegisterItem(Fern{})
+}
+
+// registerRedstoneAndBucketItems registers the items of redstone components, rails, pistons, buckets and cauldrons.
+func registerRedstoneAndBucketItems() {
 	world.RegisterItem(RedstoneWire{})
 	world.RegisterItem(RedstoneTorch{})
 	world.RegisterItem(RedstoneRepeater{})
@@ -756,7 +832,10 @@ func init() {
 	world.RegisterItem(item.Bucket{Content: item.MilkBucketContent()})
 	world.RegisterItem(item.Bucket{Content: item.SolidBucketContent(PowderSnow{})})
 	world.RegisterItem(Cauldron{})
+}
 
+// registerVariantItems registers the items of blocks by their variants: light, coral, sandstone, stone bricks, anvils, colours, woods, leaves, ores, fire and elements.
+func registerVariantItems() {
 	for _, b := range allLight() {
 		world.RegisterItem(b.(world.Item))
 	}
@@ -824,6 +903,10 @@ func init() {
 	for _, e := range allElements() {
 		world.RegisterItem(e.(world.Item))
 	}
+}
+
+// registerItemsColouredTorchesToDeepslate registers the items of coloured torches, coral fans, mushroom blocks and the blocks of colours, candles, flowers, prismarine, nether bricks, froglights, skulls, slabs, walls, stairs, blackstone and deepslate.
+func registerItemsColouredTorchesToDeepslate() {
 	world.RegisterItem(ColoredTorch{Colour: BlueTorch()})
 	world.RegisterItem(ColoredTorch{Colour: GreenTorch()})
 	world.RegisterItem(ColoredTorch{Colour: PurpleTorch()})
@@ -884,6 +967,10 @@ func init() {
 	for _, t := range DeepslateTypes() {
 		world.RegisterItem(Deepslate{Type: t})
 	}
+}
+
+// registerIronAndCopperItems registers the items of iron doors and trapdoors, flower pots and copper blocks.
+func registerIronAndCopperItems() {
 	world.RegisterItem(IronDoor{})
 	world.RegisterItem(IronTrapdoor{})
 	world.RegisterItem(FlowerPot{})
