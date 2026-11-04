@@ -51,9 +51,12 @@ import (
 // lacks it, or any of its keys, runs every check with its defaults; Format
 // and the Levels of the components of [Log], whose lines a new default file
 // has, and a file that lacks them logs text, every component at LogLevel, as
-// before; and RateLimit of [Log], whose line a new default file has, and a
-// file that lacks it drops the lines of a component past 100 a second, where
-// the server dropped none before. And a file saving both its world and its
+// before; RateLimit of [Log], whose line a new default file has, and a file
+// that lacks it drops the lines of a component past 100 a second, where the
+// server dropped none before; and the [Monitoring] table, whose lines a new
+// default file has, and a file that lacks it serves metrics and profiles on
+// localhost:6060, as the program did before, and the probes of health
+// beside them, which it did not. And a file saving both its world and its
 // players now keeps the players in the world database
 // (playerdb.WorldProvider), reading the players folder only for those not
 // yet moved there, and no longer makes the folder.
@@ -143,6 +146,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
 			"SpawnTimeout": "1m0s", "SpawnTimeoutMessage": server.DefaultSpawnTimeoutMessage, "LogLevel": "INFO",
 			"Log.Format": "text", "Log.RateLimit": 100, "Log.Levels": map[string]string{},
+			"Monitoring.Address": "localhost:6060", "Monitoring.Health": true, "Monitoring.Metrics": true, "Monitoring.Pprof": true,
+			"Monitoring.Token": "", "Monitoring.LiveTimeout": "2m0s", "Monitoring.ReadyTickAge": "5s",
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
 			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0, "SaveInterval": "5m0s",
@@ -165,6 +170,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
 			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.", "LogLevel": "WARN",
+			"Monitoring.Address": "127.0.0.1:9100", "Monitoring.Health": false, "Monitoring.Metrics": false, "Monitoring.Pprof": false,
+			"Monitoring.Token": "s3cret", "Monitoring.LiveTimeout": "3m0s", "Monitoring.ReadyTickAge": "10s",
 			"Log.Format": "json", "Log.RateLimit": 0, "Log.Levels": map[string]string{
 				"anticheat": "DEBUG", "commands": "INFO", "generator": "ERROR", "network": "INFO", "player": "DEBUG",
 				"save": "WARN", "server": "ERROR", "session": "DEBUG", "world": "WARN",
@@ -237,6 +244,12 @@ func TestConfigFileErrors(t *testing.T) {
 		"[AntiCheat.Speed]\nAction = \"throttle\"\n":              `AntiCheat.Speed.Action "throttle": use "log", "setback" or "kick"`,
 		"[AntiCheat.Place]\nExemptGameModes = [\"creativ\"]\n":    `AntiCheat.Place.ExemptGameModes: unknown game mode "creativ"`,
 		"[Log]\nFormat = \"xml\"\n":                               `line 2: Log.Format = "xml": want "text" or "json"`,
+		"[Monitoring]\nAddress = \"localhost\"\n":                 `line 2: Monitoring.Address = "localhost": want a host and a port of 0 to 65535, such as ":19132" or "127.0.0.1:19132"`,
+		"[Monitoring]\nAddress = \"0.0.0.0:6060\"\n":              `line 2: Monitoring.Pprof on 0.0.0.0:6060 needs Monitoring.Token: profiles show the memory and the command line of the process`,
+		"[Monitoring]\nAddress = \":6060\"\n":                     `line 2: Monitoring.Pprof on :6060 needs Monitoring.Token: profiles show the memory and the command line of the process`,
+		"[Monitoring]\nLiveTimeout = \"30s\"\n":                   `line 2: Monitoring.LiveTimeout = 30s: want more than 1m0s, when the stacks of a stuck tick are logged`,
+		"[Monitoring]\nReadyTickAge = \"0.5s\"\n":                 `line 2: Monitoring.ReadyTickAge = 500ms: want 1s or more`,
+		"[Monitoring]\nLiveTimeout = \"soon\"\n":                  `line 2: Monitoring.LiveTimeout = "soon": want a duration such as "90s" or "5m"`,
 		"[Log]\nRateLimit = -1\n":                                 `line 2: Log.RateLimit = -1: want 0 or more`,
 		"[Log.Levels]\nSession = \"verbose\"\n":                   `line 2: Log.Levels.Session: unknown level "verbose": use "debug", "info", "warn" or "error"`,
 	} {
@@ -502,6 +515,15 @@ const everyKeyChanged = `
     Session = "debug"
     World = "warning"
 
+[Monitoring]
+  Address = "127.0.0.1:9100"
+  Health = false
+  LiveTimeout = "3m"
+  Metrics = false
+  Pprof = false
+  ReadyTickAge = "10s"
+  Token = "s3cret"
+
 [Network]
   ACMECacheDir = "certs"
   ACMEChallengeAddress = ":8080"
@@ -748,6 +770,9 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 		levels[c] = l.String()
 	}
 	m["Log.Format"], m["Log.Levels"], m["Log.RateLimit"] = logs.Format.String(), levels, logs.RateLimit
+	mc, health := f.Monitor.Monitoring, f.Monitor.health()
+	m["Monitoring.Address"], m["Monitoring.Health"], m["Monitoring.Metrics"], m["Monitoring.Pprof"] = mc.Address, mc.Health, mc.Metrics, mc.Pprof
+	m["Monitoring.Token"], m["Monitoring.LiveTimeout"], m["Monitoring.ReadyTickAge"] = mc.Token, health.LiveTimeout.String(), health.ReadyTickAge.String()
 	closeProviders(t, conf)
 	// The settings of the listeners are those of the Configs of the adapters.
 	m["AuthDisabled"], m["MuteEmoteChat"] = bc.AuthDisabled, bc.MuteEmoteChat
@@ -840,10 +865,16 @@ func TestDefaultLogLevelHidesDebug(t *testing.T) {
 // log.Println written at once do not stop; the Set in JSON, which
 // log.Print writes JSON through.
 func TestSetupLogs(t *testing.T) {
-	old, oldLevel := slog.Default(), slog.SetLogLoggerLevel(slog.LevelInfo)
+	// slog.SetDefault of a Set of JSON points log at it, and of slog's own
+	// handler back leaves log as it is: the output and the flags of log
+	// are put back by hand.
+	old, oldLevel, oldOut, oldFlags := slog.Default(), slog.SetLogLoggerLevel(slog.LevelInfo), log.Writer(), log.Flags()
+	log.SetOutput(io.Discard)
 	t.Cleanup(func() {
 		slog.SetDefault(old)
 		slog.SetLogLoggerLevel(oldLevel)
+		log.SetOutput(oldOut)
+		log.SetFlags(oldFlags)
 	})
 	var c logConfig
 	c.Server.LogLevel = "warn"

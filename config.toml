@@ -160,3 +160,21 @@
     Server = ""
     Session = ""
     World = ""
+
+[Monitoring]
+  # Address serves metrics, health and profiles over HTTP, as host:port. "" serves nothing. Keep it on localhost,
+  # or set Token: the profiles are refused on another address without one.
+  Address = "localhost:6060"
+  # Health serves /livez, /readyz and /healthz, which never need the Token.
+  Health = true
+  # LiveTimeout is how long a tick of a world may take before /livez fails. Keep it above a minute, when the
+  # stacks of a stuck tick are logged.
+  LiveTimeout = "2m"
+  # Metrics serves /metrics in the text format of Prometheus.
+  Metrics = true
+  # Pprof serves the Go profiles under /debug/pprof/.
+  Pprof = true
+  # ReadyTickAge is how long ago the last tick of a world may have ended for /readyz to pass.
+  ReadyTickAge = "5s"
+  # Token, if set, is the bearer token /metrics and /debug/pprof/ need: "Authorization: Bearer <Token>".
+  Token = ""

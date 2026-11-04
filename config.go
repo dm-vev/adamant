@@ -28,6 +28,7 @@ type fileConfig struct {
 	Java    javaadapter.UserConfig
 	Program programConfig
 	Log     logConfig
+	Monitor monitorConfig
 
 	// warnings are the problems of the file the server starts with, which
 	// compose logs.
@@ -179,30 +180,38 @@ func defaultFileConfig() fileConfig {
 	f := fileConfig{Server: server.DefaultConfig(), Bedrock: bedrockadapter.DefaultConfig(), Java: javaadapter.DefaultConfig()}
 	f.Log.Server.LogLevel = "info"
 	f.Log.Log.Format, f.Log.Log.RateLimit = "text", 100
+	f.Monitor = defaultMonitorConfig()
 	return f
 }
 
 // parts returns pointers to the parts of the file, in the order they are
 // read and composed.
 func (f *fileConfig) parts() []any {
-	return []any{&f.Server, &f.Bedrock, &f.Java, &f.Program, &f.Log}
+	return []any{&f.Server, &f.Bedrock, &f.Java, &f.Program, &f.Log, &f.Monitor}
+}
+
+// process is what config.toml says of the process beside the server: its
+// logs and what it serves to be watched.
+type process struct {
+	logs    *logging.Set
+	monitor monitorConfig
 }
 
 // readConfig reads config.toml, or writes the default file if there is none,
 // sets up the logs as it says, writing as out says, before anything is
 // logged of the file, and composes the server's Config with the listeners
 // of the adapters, logging through the logger of the server component.
-func readConfig(out logging.Options) (server.Config, *logging.Set, error) {
+func readConfig(out logging.Options) (server.Config, process, error) {
 	f, err := readConfigFile("config.toml")
 	if err != nil {
-		return server.Config{}, nil, err
+		return server.Config{}, process{}, err
 	}
 	set, err := setupLogs(f.Log, out)
 	if err != nil {
-		return server.Config{}, nil, err
+		return server.Config{}, process{}, err
 	}
 	conf, err := f.config(set.Logger(logging.Server))
-	return conf, set, err
+	return conf, process{logs: set, monitor: f.Monitor}, err
 }
 
 // readConfigFile reads the file of the path passed into the parts of a

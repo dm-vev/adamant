@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
-	"net/http"
-	_ "net/http/pprof"
 
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/df-mc/dragonfly/server/console"
@@ -18,22 +15,20 @@ func main() {
 	headless := flag.Bool("headless", false, "run without the interactive console")
 	flag.Parse()
 	chat.Global.Subscribe(chat.StdoutSubscriber{})
-	// readConfig sets up the logs as config.toml says, writing to stderr.
 	drops := newLogDrops()
 	drops.register(metrics.Default)
-	conf, _, err := readConfig(logging.Options{Dropped: drops.add})
+	// readConfig sets up the logs as config.toml says, writing to stderr.
+	conf, proc, err := readConfig(logging.Options{Dropped: drops.add})
 	if err != nil {
 		panic(err)
 	}
-	go func() {
-		// Profiles and metrics show what the process holds: serve them to
-		// this machine alone.
-		http.Handle("/metrics", metrics.Default.Handler())
-		log.Println("pprof and metrics on localhost:6060")
-		_ = http.ListenAndServe("localhost:6060", nil)
-	}()
+	// The monitor serves before the worlds are opened, so that /livez
+	// answers while they load.
+	mon := newMonitor(proc.monitor, proc.logs.Logger(logging.Server))
+	mon.serve()
 
 	srv := conf.New()
+	mon.setServer(srv)
 	builtin.Register(srv)
 	srv.CloseOnProgramEnd()
 

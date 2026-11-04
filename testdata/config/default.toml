@@ -209,6 +209,15 @@
     Session = ""
     World = ""
 
+[Monitoring]
+  Address = "localhost:6060"
+  Health = true
+  LiveTimeout = "2m"
+  Metrics = true
+  Pprof = true
+  ReadyTickAge = "5s"
+  Token = ""
+
 [Network]
   ACMECacheDir = ""
   ACMEChallengeAddress = ""
