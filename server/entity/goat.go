@@ -224,7 +224,7 @@ func newGoatBrain(g *GoatBehaviour) *Brain {
 	}, []memoryCondition{{memRamCooldownTicks, memPresent}, {memLongJumpCooldownTicks, memPresent}}, nil)
 	b.addActivityWith(activityLongJump, []prioritizedBehavior{
 		{0, newLongJumpMidJump(jumps, "entity.goat.step")},
-		{1, newLongJumpToRandomPos(jumps, 5, 5, 3.5714288, func(*Mob) string { return "" }, nil)},
+		{1, newLongJumpToRandomPos(jumps, 5, 5, 3.5714288, func(*Mob) string { return g.sound("entity.goat.long_jump", "entity.goat.screaming.long_jump") }, nil)},
 	}, []memoryCondition{{memTemptingPlayer, memAbsent}, {memBreedTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLongJumpCooldownTicks, memAbsent}}, nil)
 	b.addActivityWith(activityRam, []prioritizedBehavior{
 		{0, newGoatRamTarget(g, ramsOf)},
@@ -560,13 +560,15 @@ func (g *Goat) MilkSound() world.Sound {
 	return sound.Custom{Name: g.behaviour().sound("entity.goat.milk", "entity.goat.screaming.milk"), Volume: 1, Pitch: 1}
 }
 
-// Interact feeds the goat wheat to breed it or let a kid grow up faster.
+// Interact feeds the goat wheat to breed it or let a kid grow up faster,
+// and plays its eating sound as Goat.playEatingSound does: a screaming goat
+// eats with its own sound.
 func (g *Goat) Interact(_ *world.Tx, u item.User, c *item.UseContext) bool {
 	if !feedBreeder(g, u, c) {
 		return false
 	}
 	r := rand.Float64()*.4 + .8
-	g.tx.PlaySound(g.Position(), sound.Custom{Name: "entity.goat.eat", Volume: 1, Pitch: r})
+	g.tx.PlaySound(g.Position(), sound.Custom{Name: g.behaviour().sound("entity.goat.eat", "entity.goat.screaming.eat"), Volume: 1, Pitch: r})
 	return true
 }
 

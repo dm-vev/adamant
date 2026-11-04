@@ -311,6 +311,16 @@ var bedrockSoundNames = map[string]string{
 	"entity.zoglin.attack":                       "mob.zoglin.attack",
 	"item.bottle.empty":                          "bottle.empty",
 	"item.lead.tied":                             "leashknot.place",
+
+	// Goat.playEatingSound and GoatAi.initLongJumpActivity. Bedrock's
+	// goats have no eat.screamer level sound event, so a screaming goat eats
+	// with the sound of other goats. They long jump through
+	// behavior.jump_to_block, which plays the level sound event
+	// jump_to_block on the goat, and no Bedrock sound definition for that
+	// could be established, so Bedrock clients hear nothing, as before.
+	"entity.goat.screaming.eat":       "mob.goat.eat",
+	"entity.goat.long_jump":           "",
+	"entity.goat.screaming.long_jump": "",
 }
 
 // bedrockSoundName returns the Bedrock sound for a sound name, and false if

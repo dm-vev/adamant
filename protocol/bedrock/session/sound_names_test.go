@@ -22,6 +22,9 @@ func TestJavaSoundsPlayTheirBedrockDefinitions(t *testing.T) {
 		// Bedrock parrots cannot imitate hoglins.
 		"entity.parrot.imitate.hoglin",
 		"item.spear.lunge_2",
+		// Bedrock has no long jump sound of goats.
+		"entity.goat.long_jump",
+		"entity.goat.screaming.long_jump",
 		"entity.panda.eat",
 		"entity.strider.happy",
 		// Bedrock definitions pass through as they are.

@@ -48,6 +48,7 @@ var javaSoundDefinitions = []struct{ java, bedrock string }{
 	{"entity.goat.milk", "mob.cow.milk"},
 	{"entity.goat.prepare_ram", "mob.goat.prepare_ram"},
 	{"entity.goat.ram_impact", "mob.goat.ram_impact"},
+	{"entity.goat.screaming.eat", "mob.goat.eat"},
 	{"entity.goat.screaming.milk", "mob.goat.milk.screamer"},
 	{"entity.goat.screaming.prepare_ram", "mob.goat.prepare_ram.screamer"},
 	{"entity.goat.screaming.ram_impact", "mob.goat.ram_impact.screamer"},

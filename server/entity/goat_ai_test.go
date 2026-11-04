@@ -1,11 +1,13 @@
 package entity
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -73,45 +75,75 @@ func TestGoatsRamMobs(t *testing.T) {
 
 // TestGoatsLongJumpOffLedges checks LongJumpToRandomPos and LongJumpMidJump:
 // a goat on a pillar it cannot walk down from leaps to the ground, landing
-// without harm.
+// without harm. It leaps with the sound GoatAi.initLongJumpActivity passes,
+// entity.goat.long_jump, or entity.goat.screaming.long_jump for a screaming
+// goat.
 func TestGoatsLongJumpOffLedges(t *testing.T) {
 	t.Parallel()
-	// The goat stands four blocks up, too high to walk down but low enough
-	// to jump.
-	w, goat := goatTestWorld(t, mgl64.Vec3{.5, 68, .5}, 100000, 100000)
-	<-w.Exec(func(tx *world.Tx) {
-		for y := 64; y <= 67; y++ {
-			tx.SetBlock(cube.Pos{0, y, 0}, block.Stone{}, nil)
-		}
-	})
-	// A goat off the ground puts off its jump, so it stands on the pillar
-	// first.
-	stepTicks(t, w, 5)
-	<-w.Exec(func(tx *world.Tx) {
-		e, _ := goat.Entity(tx)
-		e.(*Goat).behaviour().br.set(memLongJumpCooldownTicks, 1)
-	})
-	jumped := false
-	for range 600 {
-		stepTicks(t, w, 1)
-		landed := false
-		<-w.Exec(func(tx *world.Tx) {
-			e, _ := goat.Entity(tx)
-			g := e.(*Goat)
-			jumped = jumped || g.JumpGoalJumping()
-			landed = g.Position()[1] < 65 && g.OnGround()
-			if g.Health() < g.MaxHealth() {
-				t.Fatal("goat was hurt by its long jump")
+	for _, c := range []struct {
+		screaming bool
+		want      string
+	}{{false, "entity.goat.long_jump"}, {true, "entity.goat.screaming.long_jump"}} {
+		t.Run(c.want, func(t *testing.T) {
+			t.Parallel()
+			// The goat stands four blocks up, too high to walk down but low
+			// enough to jump.
+			w, goat := goatTestWorld(t, mgl64.Vec3{.5, 68, .5}, 100000, 100000)
+			r := &goatJumpSoundRecorder{}
+			w.Handle(r)
+			<-w.Exec(func(tx *world.Tx) {
+				for y := 64; y <= 67; y++ {
+					tx.SetBlock(cube.Pos{0, y, 0}, block.Stone{}, nil)
+				}
+				e, _ := goat.Entity(tx)
+				e.(*Goat).behaviour().screaming = c.screaming
+			})
+			// A goat off the ground puts off its jump, so it stands on the
+			// pillar first.
+			stepTicks(t, w, 5)
+			<-w.Exec(func(tx *world.Tx) {
+				e, _ := goat.Entity(tx)
+				e.(*Goat).behaviour().br.set(memLongJumpCooldownTicks, 1)
+			})
+			jumped := false
+			for range 600 {
+				stepTicks(t, w, 1)
+				landed := false
+				<-w.Exec(func(tx *world.Tx) {
+					e, _ := goat.Entity(tx)
+					g := e.(*Goat)
+					jumped = jumped || g.JumpGoalJumping()
+					landed = g.Position()[1] < 65 && g.OnGround()
+					if g.Health() < g.MaxHealth() {
+						t.Fatal("goat was hurt by its long jump")
+					}
+				})
+				if landed {
+					if !jumped {
+						t.Fatal("goat came down without a long jump")
+					}
+					if want := []string{c.want}; !slices.Equal(r.names, want) {
+						t.Fatalf("goat leapt with %v, want %v", r.names, want)
+					}
+					return
+				}
 			}
+			t.Fatal("goat on a pillar did not long jump to the ground in half a minute")
 		})
-		if landed {
-			if !jumped {
-				t.Fatal("goat came down without a long jump")
-			}
-			return
-		}
 	}
-	t.Fatal("goat on a pillar did not long jump to the ground in half a minute")
+}
+
+// goatJumpSoundRecorder records the custom sounds a world plays, but for
+// the goat's steps.
+type goatJumpSoundRecorder struct {
+	world.NopHandler
+	names []string
+}
+
+func (r *goatJumpSoundRecorder) HandleSound(_ *world.Context, s world.Sound, _ mgl64.Vec3) {
+	if c, ok := s.(sound.Custom); ok && c.Name != "entity.goat.step" {
+		r.names = append(r.names, c.Name)
+	}
 }
 
 // TestGoatsGiveMilk checks the milking of Goat.mobInteract: adults give
