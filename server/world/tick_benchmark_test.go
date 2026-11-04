@@ -67,6 +67,7 @@ func BenchmarkTickLoaded1000Chunks(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	<-w.Exec(func(tx *Tx) {
+		defer reportCPU(b)()
 		for i := 0; i < b.N; i++ {
 			tk.tick(tx)
 		}
@@ -81,6 +82,7 @@ func BenchmarkTickLoaded1000ChunksNoRandom(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	<-w.Exec(func(tx *Tx) {
+		defer reportCPU(b)()
 		for i := 0; i < b.N; i++ {
 			tk.tick(tx)
 		}

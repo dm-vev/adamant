@@ -8,10 +8,43 @@ import (
 
 // tickChunkPrecipitation follows LevelChunk::tickImpl's randomTickSpeed
 // attempts. Zero disables these draws too, before block-actor shuffling.
-func (w *World) tickChunkPrecipitation(tx *Tx, chunk ChunkPos) {
-	for range max(w.conf.RandomTickSpeed, 0) {
-		w.tickPrecipitation(tx, chunk)
+//
+// A panic of an attempt ends it: it is blamed on the block it was at, as a
+// random tick, and the next attempt runs.
+func (w *World) tickChunkPrecipitation(tx *Tx, tick int64, chunk ChunkPos) {
+	for n := max(w.conf.RandomTickSpeed, 0); n > 0; {
+		n = w.tickPrecipitationFrom(tx, tick, chunk, n)
 	}
+}
+
+// precipitationSite is the block a precipitation attempt is at.
+type precipitationSite struct {
+	pos cube.Pos
+	b   Block
+}
+
+// tickPrecipitationFrom performs the n attempts left of the chunk and
+// returns 0 once done. A panic ends it early: the attempt is blamed on the
+// block it was at, and the attempts after it returned.
+func (w *World) tickPrecipitationFrom(tx *Tx, tick int64, chunk ChunkPos, n int) (left int) {
+	var site precipitationSite
+	defer func() {
+		if r := recover(); r != nil {
+			typ := w.blockFaultType(site.b)
+			if typ == "" {
+				// It panicked before it reached a block.
+				typ = "precipitation"
+			}
+			w.blockPanicked(FaultRandomTick, tick, site.pos, typ, r)
+			left = n - 1
+		}
+	}()
+	origin := cube.Pos{int(chunk[0]) << 4, tx.Range()[0], int(chunk[1]) << 4}
+	for ; n > 0; n-- {
+		site = precipitationSite{pos: origin}
+		w.tickPrecipitation(tx, chunk, &site)
+	}
+	return 0
 }
 
 // nextPrecipitationColumn follows the original per-chunk snow LCG. Coordinates
@@ -24,7 +57,7 @@ func nextPrecipitationColumn(state *uint32, chunk ChunkPos) (x, z int) {
 // tickPrecipitation performs one native precipitation attempt: exposed
 // water below its motion-blocking height freezes into ice in cold biomes and,
 // while it rains, snow accumulates up to max_snow_accumulation_height layers.
-func (w *World) tickPrecipitation(tx *Tx, chunk ChunkPos) {
+func (w *World) tickPrecipitation(tx *Tx, chunk ChunkPos, site *precipitationSite) {
 	column, ready := w.loadedChunk(chunk)
 	if !ready {
 		return
@@ -35,6 +68,7 @@ func (w *World) tickPrecipitation(tx *Tx, chunk ChunkPos) {
 	}
 	top := cube.Pos{x, tx.motionBlockingHeight(x, z), z}
 	below := top.Side(cube.FaceDown)
+	site.pos = below
 	if tx.shouldFreeze(below) {
 		if ice, ok := w.conf.Blocks.BlockByName("minecraft:ice", nil); ok {
 			tx.SetBlock(below, ice, nil)
@@ -46,10 +80,16 @@ func (w *World) tickPrecipitation(tx *Tx, chunk ChunkPos) {
 	if !raining || !w.Dimension().WeatherCycle() {
 		return
 	}
+	site.pos = top
 	w.accumulateSnow(tx, top)
+	site.pos = below
 	if p := tx.precipitationAt(below); p != PrecipitationNone {
-		if receiver, ok := tx.Block(below).(PrecipitationReceiver); ok {
-			receiver.HandlePrecipitation(below, tx, p)
+		b := tx.Block(below)
+		if receiver, ok := b.(PrecipitationReceiver); ok {
+			site.b = b
+			if len(w.blockFaults.m) == 0 || !w.blockQuarantined(below, b) {
+				receiver.HandlePrecipitation(below, tx, p)
+			}
 		}
 	}
 }

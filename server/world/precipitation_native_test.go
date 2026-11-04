@@ -85,7 +85,7 @@ func TestChunkSnowRandomBudgetMatchesOwnedBDS(t *testing.T) {
 			for pos, want := range states {
 				col := tx.chunk(pos)
 				if i != 0 {
-					w.tickChunkPrecipitation(tx, pos)
+					w.tickChunkPrecipitation(tx, tx.CurrentTick(), pos)
 				}
 				if col.snowRandomValue != want {
 					t.Fatalf("frame %d chunk %v snow counter %d, native %d", i, pos, col.snowRandomValue, want)

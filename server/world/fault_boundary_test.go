@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"os"
 	"os/exec"
 	"runtime"
@@ -699,4 +700,210 @@ func TestScheduledTickPanicDropsTheTick(t *testing.T) {
 	if badTicks != FaultLimit+1 {
 		t.Fatalf("the block placed again ticked %d times in all, want %d", badTicks, FaultLimit+1)
 	}
+}
+
+// randomTestBlock is a block whose random ticks call tick.
+type randomTestBlock struct{ cancelBatchTestBlock }
+
+func (b randomTestBlock) RandomTick(pos cube.Pos, tx *Tx, _ *rand.Rand) { b.tick(pos, tx) }
+
+// neighbourTestBlock is a block whose neighbour updates call tick.
+type neighbourTestBlock struct{ cancelBatchTestBlock }
+
+func (b neighbourTestBlock) NeighbourUpdateTick(pos, _ cube.Pos, tx *Tx) { b.tick(pos, tx) }
+
+// rainTestBlock is a full block that rain falling onto calls tick.
+type rainTestBlock struct{ cancelBatchTestBlock }
+
+func (rainTestBlock) Model() BlockModel                                           { return solidTestModel{} }
+func (b rainTestBlock) HandlePrecipitation(pos cube.Pos, tx *Tx, _ Precipitation) { b.tick(pos, tx) }
+
+// solidTestModel is the model of a full block.
+type solidTestModel struct{}
+
+func (solidTestModel) BBox(cube.Pos, BlockSource) []cube.BBox {
+	return []cube.BBox{cube.Box(0, 0, 0, 1, 1, 1)}
+}
+func (solidTestModel) FaceSolid(cube.Pos, cube.Face, BlockSource) bool { return true }
+
+// zeroRandom is a source of zeros: random ticks then pick the first block
+// of each sub chunk, and every precipitation attempt is made.
+type zeroRandom struct{}
+
+func (zeroRandom) Uint64() uint64 { return 0 }
+
+// testBlockRegistry returns a registry of the blocks passed.
+func testBlockRegistry(blocks ...Block) BlockRegistry {
+	registry := NewBlockRegistry()
+	for _, b := range blocks {
+		name, _ := b.EncodeBlock()
+		registry.RegisterBlockState(BlockState{Name: name, Properties: map[string]any{}})
+		registry.RegisterBlock(b)
+	}
+	return registry
+}
+
+// checkBlockQuarantine checks that the panics of the block at pos, named
+// name, of kind are those of FaultLimit panics, the last of which
+// quarantined it, with one Error line.
+func checkBlockQuarantine(t *testing.T, w *World, sink *faultSink, rec faultRecorder, kind FaultKind, pos cube.Pos, name string) {
+	t.Helper()
+	faults := sink.all(kind)
+	if len(faults) != FaultLimit {
+		t.Fatalf("faults = %v, want %d of %v", sink.all(0), FaultLimit, kind)
+	}
+	for i, f := range faults {
+		if f.Pos != pos || f.Type != name || f.Count != i+1 || f.Quarantined != (i+1 == FaultLimit) || len(f.Stack) == 0 {
+			t.Fatalf("fault %d = %+v", i, f)
+		}
+	}
+	if q := w.Quarantined(); len(q) != 1 || q[0].Pos != pos || q[0].Kind != kind || q[0].Type != name {
+		t.Fatalf("Quarantined = %v, want the block", q)
+	}
+	if lines := rec.errors(); len(lines) != 1 || lines[0].Message != kind.String()+" panicked" {
+		t.Fatalf("Error lines = %d, want 1", len(lines))
+	}
+}
+
+func TestRandomTickPanic(t *testing.T) {
+	var sink faultSink
+	rec := newFaultRecorder()
+	badPos, goodPos := cube.Pos{0, 0, 0}, cube.Pos{0, 16, 0}
+	var badTicks, goodTicks int
+	bad := randomTestBlock{cancelBatchTestBlock{name: "test:random_panicking", id: 21, tick: func(pos cube.Pos, tx *Tx) {
+		badTicks++
+		// Setting itself first, as a block changing its state does, it is
+		// still the block that panicked.
+		tx.SetBlock(pos, tx.Block(pos), nil)
+		panic("test: random tick")
+	}}}
+	good := randomTestBlock{cancelBatchTestBlock{name: "test:random_counting", id: 22, tick: func(cube.Pos, *Tx) { goodTicks++ }}}
+	other := cancelBatchTestBlock{name: "test:other", id: 23, tick: func(cube.Pos, *Tx) {}}
+	// A source of zeros has the first block of each sub chunk tick: the
+	// panicking one, then the other one in the sub chunk above.
+	conf := Config{Synchronous: true, Blocks: testBlockRegistry(bad, good, other), RandomTickSpeed: 1, RandSource: zeroRandom{}}
+	w := sink.configure(conf, rec).New()
+	defer func() { _ = w.Close() }()
+	<-w.Exec(func(tx *Tx) {
+		tx.SetBlock(badPos, bad, nil)
+		tx.SetBlock(goodPos, good, nil)
+	})
+	for range FaultLimit + 2 {
+		advance(t, w)
+	}
+	if badTicks != FaultLimit || goodTicks != FaultLimit+2 {
+		t.Fatalf("random ticks: panicking %d, other %d, want %d and %d", badTicks, goodTicks, FaultLimit, FaultLimit+2)
+	}
+	checkBlockQuarantine(t, w, &sink, rec, FaultRandomTick, badPos, "test:random_panicking")
+
+	// Replaced by another block, it is forgotten: placed again, it ticks.
+	<-w.Exec(func(tx *Tx) { tx.SetBlock(badPos, other, nil) })
+	if q := w.Quarantined(); len(q) != 0 {
+		t.Fatalf("Quarantined after the block was replaced = %v", q)
+	}
+	<-w.Exec(func(tx *Tx) { tx.SetBlock(badPos, bad, nil) })
+	advance(t, w)
+	if badTicks != FaultLimit+1 {
+		t.Fatalf("the block placed again ticked %d times in all, want %d", badTicks, FaultLimit+1)
+	}
+}
+
+func TestNeighbourUpdatePanic(t *testing.T) {
+	var sink faultSink
+	rec := newFaultRecorder()
+	// The updates of a block set at trigger reach badPos, east of it,
+	// before goodPos, west of it.
+	trigger, badPos, goodPos := cube.Pos{1, 64, 0}, cube.Pos{2, 64, 0}, cube.Pos{0, 64, 0}
+	var badTicks, goodTicks int
+	bad := neighbourTestBlock{cancelBatchTestBlock{name: "test:neighbour_panicking", id: 31, tick: func(cube.Pos, *Tx) {
+		badTicks++
+		panic("test: neighbour update")
+	}}}
+	good := neighbourTestBlock{cancelBatchTestBlock{name: "test:neighbour_counting", id: 32, tick: func(cube.Pos, *Tx) { goodTicks++ }}}
+	other := cancelBatchTestBlock{name: "test:other", id: 33, tick: func(cube.Pos, *Tx) {}}
+	w := sink.configure(Config{Synchronous: true, Blocks: testBlockRegistry(bad, good, other), RandomTickSpeed: -1}, rec).New()
+	defer func() { _ = w.Close() }()
+	quiet := &SetOpts{DisableBlockUpdates: true}
+	<-w.Exec(func(tx *Tx) {
+		tx.SetBlock(badPos, bad, quiet)
+		tx.SetBlock(goodPos, good, quiet)
+	})
+	update := func(i int) {
+		<-w.Exec(func(tx *Tx) {
+			if i%2 == 0 {
+				tx.SetBlock(trigger, other, nil)
+			} else {
+				tx.SetBlock(trigger, nil, nil)
+			}
+		})
+		advance(t, w)
+	}
+	for i := range FaultLimit + 2 {
+		update(i)
+		if w.neighbourUpdates.count != 0 {
+			t.Fatalf("%d neighbour updates left after the tick", w.neighbourUpdates.count)
+		}
+	}
+	if badTicks != FaultLimit || goodTicks != FaultLimit+2 {
+		t.Fatalf("neighbour updates: panicking %d, other %d, want %d and %d", badTicks, goodTicks, FaultLimit, FaultLimit+2)
+	}
+	checkBlockQuarantine(t, w, &sink, rec, FaultNeighbourUpdate, badPos, "test:neighbour_panicking")
+
+	// Set again as itself, it stays quarantined.
+	<-w.Exec(func(tx *Tx) { tx.SetBlock(badPos, bad, quiet) })
+	update(0)
+	if badTicks != FaultLimit {
+		t.Fatalf("the quarantined block was updated after it was set again")
+	}
+	// Unloading its chunk forgets it.
+	<-w.Exec(func(tx *Tx) { w.closeChunk(tx, ChunkPos{}, w.chunks[ChunkPos{}]) })
+	if q := w.Quarantined(); len(q) != 0 || len(w.blockFaults.m) != 0 {
+		t.Fatalf("Quarantined after the chunk unloaded = %v", q)
+	}
+}
+
+// rainTestBiome is a biome it rains in.
+type rainTestBiome struct{ unknownBiome }
+
+func (rainTestBiome) HasPrecipitation() bool { return true }
+func (rainTestBiome) String() string         { return "test:rain" }
+
+var registerRainTestBiome = sync.OnceValue(func() Biome {
+	b := rainTestBiome{unknownBiome{id: 59990}}
+	RegisterBiome(b)
+	return b
+})
+
+func TestPrecipitationPanicIsARandomTickFault(t *testing.T) {
+	var sink faultSink
+	rec := newFaultRecorder()
+	pos := cube.Pos{0, 64, 0}
+	var ticks int
+	bad := rainTestBlock{cancelBatchTestBlock{name: "test:rain_panicking", id: 41, tick: func(cube.Pos, *Tx) {
+		ticks++
+		panic("test: precipitation")
+	}}}
+	w := sink.configure(Config{Synchronous: true, Blocks: testBlockRegistry(bad), RandomTickSpeed: 1, RandSource: zeroRandom{}}, rec).New()
+	defer func() { _ = w.Close() }()
+	biome := registerRainTestBiome()
+	w.set.Lock()
+	w.set.Raining, w.set.WeatherCycle = true, false
+	w.set.Unlock()
+	<-w.Exec(func(tx *Tx) {
+		tx.SetBlock(pos, bad, nil)
+		tx.SetBiome(pos, biome)
+	})
+	for range FaultLimit + 2 {
+		// The next attempt of the chunk is at the column of the block: its
+		// state times 3 plus 0x3c6ef35f is 0.
+		<-w.Exec(func(tx *Tx) {
+			state := uint32(0x3c6ef35f)
+			tx.chunk(ChunkPos{}).snowRandomValue = -state * 0xaaaaaaab
+		})
+		advance(t, w)
+	}
+	if ticks != FaultLimit {
+		t.Fatalf("the rain fell onto the block %d times, want %d", ticks, FaultLimit)
+	}
+	checkBlockQuarantine(t, w, &sink, rec, FaultRandomTick, pos, "test:rain_panicking")
 }

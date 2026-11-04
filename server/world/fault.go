@@ -497,9 +497,34 @@ func (b *blockFaults) quarantined(pos cube.Pos, name string) bool {
 	return e != nil && e.quarantined && e.name == name
 }
 
+// blockFaultType returns the type the world keeps the panics of the block b
+// under: the type of its scheduled ticks, so that a block changing its own
+// state stays the block that panicked, or its name if the registry does not
+// know it. It returns "" for nil.
+func (w *World) blockFaultType(b Block) (typ string) {
+	if b == nil {
+		return ""
+	}
+	defer func() {
+		if recover() != nil {
+			typ, _ = b.EncodeBlock()
+		}
+	}()
+	return scheduledTickType(w.conf.Blocks, b)
+}
+
+// blockQuarantined reports whether the block b at pos is quarantined: its
+// random ticks, neighbour updates and precipitation are skipped. The
+// common path checks len(w.blockFaults.m) first.
+func (w *World) blockQuarantined(pos cube.Pos, b Block) bool {
+	e := w.blockFaults.m[pos]
+	return e != nil && e.quarantined && e.name == w.blockFaultType(b)
+}
+
 // blockPanicked blames the panic r of a tick of kind of the block name at
 // pos, at tick, on it, counting it and quarantining the block once it
-// reached FaultLimit.
+// reached FaultLimit. The panics of the scheduled ticks, random ticks and
+// neighbour updates of a block count together.
 func (w *World) blockPanicked(kind FaultKind, tick int64, pos cube.Pos, name string, r any) {
 	f := newFault(kind, r)
 	f.Type, f.Pos = name, pos
@@ -564,7 +589,7 @@ func (w *World) blockSet(pos cube.Pos, b Block) {
 	if !ok {
 		return
 	}
-	if scheduledTickType(w.conf.Blocks, b) == e.name {
+	if w.blockFaultType(b) == e.name {
 		return
 	}
 	w.forgetBlock(pos)

@@ -255,7 +255,7 @@ func (t ticker) tick(tx *Tx) {
 		w.scheduledBlockTicks.tickNonCircuits(tx, tick, loaders...)
 		w.scheduledFluidTicks.tick(tx, tick, loaders...)
 		t.tickBlocksRandomly(tx, loaders, tick)
-		t.performNeighbourUpdates(tx)
+		t.performNeighbourUpdates(tx, tick)
 		w.redstone.tick(tx, tick)
 		t.tickQueuedEntities(tx, tick)
 		t.tickEntitiesInPhase(tx, tick, true)
@@ -387,35 +387,67 @@ func (t ticker) tickInhabitedTime(w *World, loaders []*Loader) {
 }
 
 // performNeighbourUpdates performs all block updates that came as a result of a neighbouring block being changed.
-func (t ticker) performNeighbourUpdates(tx *Tx) {
+func (t ticker) performNeighbourUpdates(tx *Tx, tick int64) {
 	w := tx.World()
 	// Charge deferred entries to the same work budget: a generating chunk must
 	// not turn a bounded batch into a scan of the entire backlog.
 	deferred := w.deferredNeighbours[:0]
-	for examined := 0; examined < maxNeighbourUpdatesPerTick && w.neighbourUpdates.count != 0; examined++ {
-		update := w.neighbourUpdates.pop()
-		pos, changedNeighbour := update.pos, update.neighbour
-		b, ready := tx.BlockLoaded(pos)
-		if !ready {
-			if loaded, ready := tx.ChunkState(chunkPosFromBlockPos(pos)); loaded && !ready {
-				deferred = append(deferred, update)
-			}
-			continue
-		}
-		if ticker, ok := b.(NeighbourUpdateTicker); ok {
-			ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
-		}
-		if liquid, ok := tx.additionalLiquid(pos); ok {
-			if ticker, ok := liquid.(NeighbourUpdateTicker); ok {
-				ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
-			}
-		}
+	for examined := 0; examined >= 0; {
+		examined = neighbourUpdatesFrom(tx, tick, examined, &deferred)
 	}
 	// Leave unexamined and newly produced work ahead of generating entries.
 	for _, update := range deferred {
 		w.neighbourUpdates.push(update)
 	}
 	w.deferredNeighbours = deferred[:0]
+}
+
+// neighbourUpdatesFrom performs the neighbour updates of the queue, examined
+// of the batch done already, and returns -1 once the batch is done. A panic
+// ends it early: the update, already out of the queue, is skipped and blamed
+// on its block, and the count with it returned, so that one recover covers
+// the batch.
+func neighbourUpdatesFrom(tx *Tx, tick int64, examined int, deferred *[]neighbourUpdate) (next int) {
+	w := tx.w
+	// pos is the position of the update, ticking the block, or the liquid
+	// in it, whose update runs, nil before one does.
+	var (
+		pos     cube.Pos
+		ticking Block
+	)
+	defer func() {
+		if r := recover(); r != nil {
+			w.blockPanicked(FaultNeighbourUpdate, tick, pos, w.blockFaultType(ticking), r)
+			next = examined + 1
+		}
+	}()
+	for ; examined < maxNeighbourUpdatesPerTick && w.neighbourUpdates.count != 0; examined++ {
+		update := w.neighbourUpdates.pop()
+		changedNeighbour := update.neighbour
+		pos, ticking = update.pos, nil
+		b, ready := tx.BlockLoaded(pos)
+		if !ready {
+			if loaded, ready := tx.ChunkState(chunkPosFromBlockPos(pos)); loaded && !ready {
+				*deferred = append(*deferred, update)
+			}
+			continue
+		}
+		if ticker, ok := b.(NeighbourUpdateTicker); ok {
+			ticking = b
+			if len(w.blockFaults.m) == 0 || !w.blockQuarantined(pos, b) {
+				ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
+			}
+		}
+		if liquid, ok := tx.additionalLiquid(pos); ok {
+			if ticker, ok := liquid.(NeighbourUpdateTicker); ok {
+				ticking = liquid
+				if len(w.blockFaults.m) == 0 || !w.blockQuarantined(pos, liquid) {
+					ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
+				}
+			}
+		}
+	}
+	return -1
 }
 
 // tickBlocksRandomly executes random block ticks in loaded chunks within range of loaders. Synchronous worlds tick
@@ -553,7 +585,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 			if !w.blockTickingReady(ref.pos, c) {
 				return
 			}
-			w.tickChunkPrecipitation(tx, ref.pos)
+			w.tickChunkPrecipitation(tx, tick, ref.pos)
 			tickActors(c, ref.pos)
 		})
 		w.scratchLoaderAreas = areas[:0]
@@ -572,7 +604,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		if !w.blockTickingReady(ref.pos, c) {
 			return
 		}
-		w.tickChunkPrecipitation(tx, ref.pos)
+		w.tickChunkPrecipitation(tx, tick, ref.pos)
 
 		cx, cz := int(ref.pos[0]<<4), int(ref.pos[1]<<4)
 		subChunks := c.Sub()
@@ -598,10 +630,8 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 				}
 			}
 		}
-		for _, pos := range randomBlocks {
-			if rb, ok := tx.Block(pos).(RandomTicker); ok {
-				rb.RandomTick(pos, tx, w.r)
-			}
+		for i := 0; i >= 0; {
+			i = randomTicksFrom(tx, tick, randomBlocks, i)
 		}
 		randomBlocks = randomBlocks[:0]
 		tickActors(c, ref.pos)
@@ -610,6 +640,37 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	w.scratchLoaderAreas = areas[:0]
 	w.scratchRandom = randomBlocks[:0]
 	w.scratchBlockEntities = blockEntities[:0]
+}
+
+// randomTicksFrom runs the random ticks of the blocks at positions from i on
+// and returns -1 once done. A panic ends it early: the tick is skipped and
+// blamed on its block, and the index after it returned, so that one recover
+// covers the random ticks of a column.
+func randomTicksFrom(tx *Tx, tick int64, positions []cube.Pos, i int) (next int) {
+	w := tx.w
+	// ticking is the block whose random tick runs, nil before it does.
+	var ticking Block
+	defer func() {
+		if r := recover(); r != nil {
+			w.blockPanicked(FaultRandomTick, tick, positions[i], w.blockFaultType(ticking), r)
+			next = i + 1
+		}
+	}()
+	for ; i < len(positions); i++ {
+		pos := positions[i]
+		ticking = nil
+		b := tx.Block(pos)
+		rb, ok := b.(RandomTicker)
+		if !ok {
+			continue
+		}
+		ticking = b
+		if len(w.blockFaults.m) != 0 && w.blockQuarantined(pos, b) {
+			continue
+		}
+		rb.RandomTick(pos, tx, w.r)
+	}
+	return -1
 }
 
 // randomTickScan is a column whose blocks tick randomly this tick: its sub
