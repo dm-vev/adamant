@@ -254,3 +254,110 @@ var conf = world.EntityRegistryConfig{
 		return opts.New(FishingHookType, FishingHookConfig{Owner: owner.H(), Rod: stack})
 	},
 }
+
+// spawnTable holds the constructor of each mob that the SpawnMob of the registry config makes, by Java
+// identifier.
+var spawnTable = map[string]func(world.EntitySpawnOpts) *world.EntityHandle{
+	"minecraft:allay":       NewAllay,
+	"minecraft:armadillo":   NewArmadillo,
+	"minecraft:axolotl":     NewAxolotl,
+	"minecraft:bat":         NewBat,
+	"minecraft:blaze":       NewBlaze,
+	"minecraft:bogged":      NewBogged,
+	"minecraft:breeze":      NewBreeze,
+	"minecraft:camel":       NewCamel,
+	"minecraft:creaking":    NewCreaking,
+	"minecraft:camel_husk":  NewCamelHusk,
+	"minecraft:cat":         NewCat,
+	"minecraft:bee":         NewBee,
+	"minecraft:cave_spider": NewCaveSpider,
+	"minecraft:chicken": func(opts world.EntitySpawnOpts) *world.EntityHandle {
+		return NewChicken(opts, ChickenBehaviourConfig{})
+	},
+	"minecraft:cod":            NewCod,
+	"minecraft:cow":            NewCow,
+	"minecraft:creeper":        NewCreeper,
+	"minecraft:dolphin":        NewDolphin,
+	"minecraft:donkey":         NewDonkey,
+	"minecraft:drowned":        NewDrowned,
+	"minecraft:elder_guardian": NewElderGuardian,
+	"minecraft:ender_dragon":   NewEnderDragon,
+	"minecraft:enderman":       NewEnderman,
+	"minecraft:endermite":      NewEndermite,
+	"minecraft:evoker":         NewEvoker,
+	"minecraft:fox":            NewFox,
+	"minecraft:frog":           NewFrog,
+	"minecraft:ghast":          NewGhast,
+	"minecraft:glow_squid":     NewGlowSquid,
+	"minecraft:goat":           NewGoat,
+	"minecraft:guardian":       NewGuardian,
+	"minecraft:hoglin":         NewHoglin,
+	"minecraft:horse":          NewHorse,
+	"minecraft:husk":           NewHusk,
+	"minecraft:iron_golem":     NewIronGolem,
+	"minecraft:llama":          NewLlama,
+	"minecraft:magma_cube":     NewMagmaCube,
+	"minecraft:mooshroom":      NewMooshroom,
+	"minecraft:mule":           NewMule,
+	"minecraft:nautilus":       NewNautilus,
+	"minecraft:ocelot":         NewOcelot,
+	"minecraft:panda":          NewPanda,
+	"minecraft:parched":        NewParched,
+	"minecraft:parrot":         NewParrot,
+	"minecraft:pig":            NewPig,
+	"minecraft:piglin":         NewPiglin,
+	"minecraft:piglin_brute":   NewPiglinBrute,
+	"minecraft:pillager":       NewPillager,
+	"minecraft:polar_bear":     NewPolarBear,
+	"minecraft:pufferfish":     NewPufferfish,
+	"minecraft:phantom":        NewPhantom,
+	"minecraft:rabbit":         NewRabbit,
+	"minecraft:ravager":        NewRavager,
+	"minecraft:salmon":         NewSalmon,
+	"minecraft:sheep":          NewSheep,
+	"minecraft:silverfish":     NewSilverfish,
+	"minecraft:shulker": func(opts world.EntitySpawnOpts) *world.EntityHandle {
+		return NewShulker(opts, ShulkerBehaviourConfig{})
+	},
+	"minecraft:skeleton":         NewSkeleton,
+	"minecraft:skeleton_horse":   NewSkeletonHorse,
+	"minecraft:slime":            NewSlime,
+	"minecraft:sniffer":          NewSniffer,
+	"minecraft:snow_golem":       NewSnowGolem,
+	"minecraft:spider":           NewSpider,
+	"minecraft:squid":            NewSquid,
+	"minecraft:stray":            NewStray,
+	"minecraft:strider":          NewStrider,
+	"minecraft:sulfur_cube":      NewSulfurCube,
+	"minecraft:tadpole":          NewTadpole,
+	"minecraft:turtle":           NewTurtle,
+	"minecraft:trader_llama":     NewTraderLlama,
+	"minecraft:tropical_fish":    NewTropicalFish,
+	"minecraft:vex":              NewVex,
+	"minecraft:villager":         NewVillager,
+	"minecraft:vindicator":       NewVindicator,
+	"minecraft:wandering_trader": NewWanderingTrader,
+	"minecraft:warden":           NewWarden,
+	"minecraft:witch":            NewWitch,
+	"minecraft:wither":           NewWither,
+	"minecraft:wither_skeleton":  NewWitherSkeleton,
+	"minecraft:wolf":             func(opts world.EntitySpawnOpts) *world.EntityHandle { return NewWolf(opts, WolfBehaviourConfig{}) },
+	"minecraft:zoglin":           NewZoglin,
+	"minecraft:zombie":           NewZombie,
+	"minecraft:zombie_horse":     NewZombieHorse,
+	"minecraft:zombie_nautilus":  NewZombieNautilus,
+	"minecraft:zombie_villager":  NewZombieVillager,
+	"minecraft:zombified_piglin": NewZombifiedPiglin,
+	"minecraft:happy_ghast":      NewHappyGhast,
+	"minecraft:copper_golem":     NewCopperGolem,
+}
+
+// spawnMob routes Java entity identifiers to their concrete, registered species.
+// A nil result is an explicit missing-factory signal; callers must not substitute
+// a generic entity for an unimplemented species.
+func spawnMob(id string, opts world.EntitySpawnOpts) *world.EntityHandle {
+	if f, ok := spawnTable[id]; ok {
+		return f(opts)
+	}
+	return nil
+}

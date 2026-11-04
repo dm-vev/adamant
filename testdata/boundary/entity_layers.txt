@@ -59,7 +59,6 @@ register.go projectile newFirework
 register.go spawn decodeSharedNBT
 register.go spawn encodeSharedNBT
 register.go spawn spawnEggOffspring
-register.go spawn spawnMob
 register.go spawn spawnMobFromNBT
 register.go vehicle chestMinecartConf
 register.go vehicle hopperMinecartConf
@@ -90,7 +89,7 @@ register.go vehicle tntMinecartConf
 #	core       from object        4
 #	core       from passive      14
 #	core       from projectile    5
-#	core       from spawn         9
+#	core       from spawn         8
 #	core       from vehicle       4
 #	dragon     from ai            6
 #	dragon     from core         10

@@ -61,7 +61,6 @@ server/entity/minecart_movement.go MinecartBehaviour.moveOnRails 108
 server/entity/natural_spawn_rules.go checkSpawnRules 107
 server/entity/piglin_ai.go newPiglinBrain 104
 server/entity/register.go init 132
-server/entity/spawn.go spawnMob 182
 server/entity/template_spawn_zombie.go prepareZombieVillagerTemplateSpawn 125
 server/item/java_nbt.go StackFromStructureNBT 117
 server/item/java_nbt.go StackToStructureNBT 117
