@@ -196,6 +196,9 @@ type playerData struct {
 	// Config of the player.
 	acConf   *anticheat.Config
 	acExempt func(p *Player, c anticheat.Check) bool
+	// acState is what the anti-cheat keeps of the player, made as it is
+	// first needed; see anticheat.
+	acState *acState
 
 	prevWorld *world.World
 
@@ -3507,6 +3510,9 @@ func (p *Player) SetVelocity(velocity mgl64.Vec3) {
 		p.data.Vel = velocity
 		return
 	}
+	// The client applies the velocity within a round trip: the anti-cheat
+	// lets its moves carry it until then.
+	p.recordImpulse(velocity)
 	viewers, release := p.viewers()
 	for _, v := range viewers {
 		v.ViewEntityVelocity(p, velocity)

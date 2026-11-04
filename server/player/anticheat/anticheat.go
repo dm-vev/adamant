@@ -161,3 +161,6 @@ type Violation struct {
 	// Tick is the tick of the player the violation happened in.
 	Tick int64
 }
+
+// NumChecks is the number of checks: Check values below it are checks.
+const NumChecks = int(checkCount)

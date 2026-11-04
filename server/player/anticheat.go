@@ -45,12 +45,20 @@ func (p *Player) ClientMove(m client.Move) client.MoveResult {
 // movedTooQuickly reports a move farther than a player goes in a tick, as
 // Java judges it: by more than 10 blocks, or 17 gliding, beyond what the
 // velocity of the player covers.
+//
+// The velocity it covers is that of the last move and the largest impulse
+// the client may still apply, so that an explosion that throws a player
+// farther than 10 blocks a tick is no reason to set it back.
 func (p *Player) movedTooQuickly(delta mgl64.Vec3) bool {
 	limit := 100.0
 	if p.Gliding() {
 		limit = 300
 	}
-	return delta.LenSqr()-p.Velocity().LenSqr() > limit
+	expected := p.Velocity().Len()
+	if ac := p.anticheat(); ac != nil {
+		expected += p.pendingImpulse(ac).Len()
+	}
+	return delta.LenSqr()-expected*expected > limit
 }
 
 // DestroyBlock breaks the block at pos at once, as the client of the player
