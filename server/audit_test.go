@@ -36,14 +36,18 @@ type auditTest struct {
 }
 
 // newAuditTest returns a server keyed by name, of no saved data, whose
-// lists and audit log are in a directory of the test.
-func newAuditTest(t *testing.T) *auditTest {
+// lists and audit log are in a directory of the test, with the changes to
+// the defaults of config.toml passed.
+func newAuditTest(t *testing.T, change ...func(uc *server.UserConfig)) *auditTest {
 	t.Helper()
 	dir := t.TempDir()
 	uc := server.DefaultConfig()
 	uc.World.SaveData, uc.Players.SaveData = false, false
 	uc.World.DisableNether, uc.World.DisableEnd = true, true
 	uc.Whitelist.File = filepath.Join(dir, "white-list.txt")
+	for _, f := range change {
+		f(&uc)
+	}
 	conf, err := uc.Config(slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)

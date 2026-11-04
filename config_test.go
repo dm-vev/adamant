@@ -71,7 +71,9 @@ import (
 // default file has, and a file that lacks it refuses banned players with
 // the text it always did, and kicks them with it, where the kick had no
 // reason before, sets no cap on bans for a time, and bans the /64 of an
-// IPv6 address /ban-ip names, where it banned the address alone. And a file
+// IPv6 address /ban-ip names, where it banned the address alone; Enforce of
+// [Whitelist], whose line a new default file has, and a file that lacks it
+// kicks no one online as the whitelist turns on, as before. And a file
 // saving both its world and its players now keeps the players in the world
 // database (playerdb.WorldProvider), reading the
 // players folder only for those not yet moved there, and no longer makes
@@ -653,6 +655,7 @@ const everyKeyChanged = `
 
 [Whitelist]
   Enabled = true
+  Enforce = true
   File = "allow.txt"
   Reason = "Members only."
 

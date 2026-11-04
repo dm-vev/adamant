@@ -459,10 +459,12 @@ server	method	UserConfig.Config	func(log *log/slog.Logger) (server.Config, error
 server	method	Whitelist.Add	func(name string) (bool, error)
 server	method	Whitelist.Allow	func(_ net.Addr, id server/client.Identity, _ server/client.Profile) (string, bool)
 server	method	Whitelist.Enabled	func() bool
+server	method	Whitelist.Enforced	func() bool
 server	method	Whitelist.Players	func() []string
 server	method	Whitelist.Reload	func() error
 server	method	Whitelist.Remove	func(name string) (bool, error)
 server	method	Whitelist.SetEnabled	func(enabled bool)
+server	method	Whitelist.SetEnforce	func(enforce bool)
 server	method	Whitelist.SetKickMessage	func(msg string)
 server	type	Actor	struct{Kind server.ActorKind; Name string}
 server	type	ActorKind	string
@@ -491,8 +493,8 @@ server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomi
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
 server	type	Target	struct{Key server/identity.Key; Name string; Found server.Found; Pending bool}
-server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}; Bans struct{DefaultReason string; ExpiresMessage string; IPMessage string; IPv6Prefix int; MaxDuration string; Message string; ReasonMessage string; TimeFormat string}; Audit struct{Enabled bool; File string; Keep int; MaxSize string; MinLevel int; RecordAddresses bool}}
-server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; kickMsg string; format server.whitelistFormat}
+server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; Enforce bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}; Bans struct{DefaultReason string; ExpiresMessage string; IPMessage string; IPv6Prefix int; MaxDuration string; Message string; ReasonMessage string; TimeFormat string}; Audit struct{Enabled bool; File string; Keep int; MaxSize string; MinLevel int; RecordAddresses bool}}
+server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; enforce bool; kickMsg string; format server.whitelistFormat}
 server	var	DefaultHealthOptions	server.HealthOptions
 server	var	ErrBackupNotFound	error
 server	var	ErrBackupRunning	error

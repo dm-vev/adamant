@@ -576,6 +576,10 @@ type UserConfig struct {
 	Whitelist struct {
 		// Enabled controls if the whitelist should be enforced for players attempting to join.
 		Enabled bool
+		// Enforce kicks the players online who are not on the whitelist,
+		// nor operators, when it is turned on or reloaded, as Java's
+		// enforce-whitelist.
+		Enforce bool
 		// File is the path to the whitelist file that stores player names.
 		// Supported formats:
 		//   - .txt/.list/.enum: line-separated list, one player name per line.
@@ -1060,6 +1064,7 @@ func (uc UserConfig) admission(whitelistFile string, mode identity.Mode, log *sl
 		return admission{}, fmt.Errorf("load whitelist: %w", err)
 	}
 	wl.SetEnabled(uc.Whitelist.Enabled)
+	wl.SetEnforce(uc.Whitelist.Enforce)
 	wl.SetKickMessage(uc.Whitelist.Reason)
 
 	// Keep operator and ban data beside the configured whitelist.

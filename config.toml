@@ -114,6 +114,9 @@
 [Whitelist]
   # Enabled controls if only players listed in the whitelist file are allowed to join.
   Enabled = false
+  # Enforce kicks the players online who are neither on the whitelist nor operators when it is turned on
+  # (/whitelist on) or reloaded (/whitelist reload).
+  Enforce = false
   # File is the path to the whitelist file that stores player names.
   #
   # Supported formats:

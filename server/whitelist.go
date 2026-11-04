@@ -36,8 +36,11 @@ type Whitelist struct {
 	players  entries
 	filePath string
 	enabled  bool
-	kickMsg  string
-	format   whitelistFormat
+	// enforce kicks the players online the whitelist does not hold when it
+	// is turned on or reloaded.
+	enforce bool
+	kickMsg string
+	format  whitelistFormat
 }
 
 type whitelistFile struct {
@@ -81,6 +84,36 @@ func (w *Whitelist) SetEnabled(enabled bool) {
 	w.mu.Lock()
 	w.enabled = enabled
 	w.mu.Unlock()
+}
+
+// SetEnforce sets whether turning the whitelist on, or reloading it, kicks
+// the players online it does not hold who are not operators, as Java's
+// enforce-whitelist.
+func (w *Whitelist) SetEnforce(enforce bool) {
+	if w == nil {
+		return
+	}
+	w.mu.Lock()
+	w.enforce = enforce
+	w.mu.Unlock()
+}
+
+// Enforced reports whether the whitelist is on and enforced on the players
+// online.
+func (w *Whitelist) Enforced() bool {
+	if w == nil {
+		return false
+	}
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.enabled && w.enforce
+}
+
+// kickMessage returns the message the whitelist refuses players with.
+func (w *Whitelist) kickMessage() string {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.kickMsg
 }
 
 // SetKickMessage updates the message sent to players that are rejected by the whitelist.

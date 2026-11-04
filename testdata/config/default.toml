@@ -308,6 +308,7 @@
 
 [Whitelist]
   Enabled = false
+  Enforce = false
   File = "white-list.txt"
   Reason = "§cServer is white-listed"
 

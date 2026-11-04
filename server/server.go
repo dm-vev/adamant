@@ -245,21 +245,63 @@ func (srv *Server) WhitelistEnabled() bool {
 	return srv.whitelist.Enabled()
 }
 
-// WhitelistSetEnabled updates whether the whitelist is enforced.
+// WhitelistSetEnabled updates whether the whitelist is enforced. Turned
+// on with [Whitelist] Enforce, it kicks the players online it does not
+// hold who are not operators.
 func (srv *Server) WhitelistSetEnabled(enabled bool) error {
 	if srv.whitelist == nil {
 		return ErrWhitelistUnavailable
 	}
 	srv.whitelist.SetEnabled(enabled)
+	srv.enforceWhitelist()
 	return nil
 }
 
-// WhitelistReload refreshes the whitelist contents from disk.
+// WhitelistReload refreshes the whitelist contents from disk. With
+// [Whitelist] Enforce, it then kicks the players online it no longer holds
+// who are not operators.
 func (srv *Server) WhitelistReload() error {
 	if srv.whitelist == nil {
 		return ErrWhitelistUnavailable
 	}
-	return srv.whitelist.Reload()
+	if err := srv.whitelist.Reload(); err != nil {
+		return err
+	}
+	srv.enforceWhitelist()
+	return nil
+}
+
+// enforceWhitelist kicks the players online the whitelist does not hold
+// who are not operators, with its message, if it is on and enforced, as
+// Java's enforce-whitelist does. Each is kicked on its owner, from a
+// goroutine of its own.
+func (srv *Server) enforceWhitelist() {
+	if !srv.whitelist.Enforced() {
+		return
+	}
+	msg := srv.whitelist.kickMessage()
+	for _, p := range srv.players.snapshot() {
+		if srv.operatorOf(p.id) || srv.whitelisted(p.id) {
+			continue
+		}
+		go player.Do(p.handle, func(_ *world.Tx, p *player.Player) { p.Disconnect(msg) })
+	}
+}
+
+// whitelisted reports whether the whitelist holds the player of the
+// identity passed: by its account on a server keyed by XUID, by its name
+// otherwise.
+func (srv *Server) whitelisted(id client.Identity) bool {
+	if srv.IdentityKey() == identity.XUID {
+		k, ok := accountKey(id)
+		if !ok {
+			return false
+		}
+		_, allowed := srv.whitelist.allowAccount(k)
+		return allowed
+	}
+	_, allowed := srv.whitelist.Allow(nil, id, client.Profile{})
+	return allowed
 }
 
 // WhitelistAdd adds a player to the whitelist: by name on a server keyed
