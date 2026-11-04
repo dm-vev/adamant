@@ -2683,6 +2683,9 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	if isLiving && living.Dead() {
 		return false
 	}
+	if p.refuseAttack(ac, e) {
+		return false
+	}
 
 	var (
 		force, height  = 0.45, 0.3608

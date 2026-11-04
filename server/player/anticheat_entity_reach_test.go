@@ -3,6 +3,7 @@ package player
 import (
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client/clienttest"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
@@ -10,8 +11,9 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// withAttacker runs f with a checked player at the origin of a world, its
-// client handling input, and a cow at x on the same height.
+// withAttacker runs f with a checked player at the origin of a world,
+// looking east, its client handling input, and a cow east at x on the same
+// height.
 func withAttacker(t *testing.T, conf *anticheat.Config, x float64, f func(tx *world.Tx, p *Player, cow world.Entity, h *violationRecorder)) {
 	w, _ := clientTestWorld(t)
 	r := clienttest.New()
@@ -19,6 +21,7 @@ func withAttacker(t *testing.T, conf *anticheat.Config, x float64, f func(tx *wo
 		h := &violationRecorder{}
 		p.Handle(h)
 		cow := tx.AddEntity(entity.NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{x, 100, 0.5}}))
+		p.data.Rot = cube.Rotation{-90, 0}
 		r.SetHandlingInput(true)
 		f(tx, p, cow, h)
 	})

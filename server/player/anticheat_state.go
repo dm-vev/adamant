@@ -49,9 +49,11 @@ type acState struct {
 	// time.Now: a test sets it.
 	timer timerState
 	now   func() time.Time
-	// breaking is what BreakTime keeps, places the bucket of Place.
+	// breaking is what BreakTime keeps, places the bucket of Place, attack
+	// what Attack and AttackAim keep.
 	breaking breakState
 	places   anticheat.Bucket
+	attack   attackState
 
 	// impulses are the velocities the server gave the player that its
 	// client may still apply, each until a tick of the player.
