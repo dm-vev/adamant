@@ -156,6 +156,7 @@ func (j *join) Start(ctx context.Context, g client.Game) (client.Joining, error)
 		Protocol:       p,
 		Primary:        j.l.conf.Primary,
 		Permissions:    g.PermissionsOf,
+		RequestRole:    g.RequestRole,
 		Roster:         g.Roster,
 	}.New(j.conn), nil
 }

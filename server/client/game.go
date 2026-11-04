@@ -37,6 +37,12 @@ type Game struct {
 	// do now. Nil gives every player the permissions of a member of level
 	// 0 (MemberPermissions). It may be called from any goroutine.
 	PermissionsOf func(id uuid.UUID) Permissions
+	// RequestRole is told of the role the player online of from asks for
+	// the player online of target from the list of players of its client.
+	// The server decides whether it is given, and shows the clients what
+	// holds then. Nil ignores every request. It may be called from any
+	// goroutine, and must not wait.
+	RequestRole func(from, target uuid.UUID, r RoleRequest)
 	// Roster is the list of the players of the server. Bind lists the
 	// player on it and Close unlists it. Nil gives the client a Roster of
 	// its own, on which it lists only its own player.

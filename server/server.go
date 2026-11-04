@@ -715,6 +715,7 @@ func (srv *Server) game(login client.Login, d player.Config, w *world.World) cli
 		Permissions:    srv.permissionsOf(login.Identity),
 		MaxChunkRadius: srv.conf.MaxChunkRadius,
 		PermissionsOf:  srv.PlayerPermissions,
+		RequestRole:    srv.requestRole,
 		Roster:         &srv.players.roster,
 	}
 }

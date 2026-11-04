@@ -277,6 +277,9 @@ type Config struct {
 	// shown. If nil, players are shown the permissions of a member of level
 	// 0.
 	Permissions func(id uuid.UUID) client.Permissions
+	// RequestRole is told of the roles the player asks for others from the
+	// list of players of its client. If nil, every request is ignored.
+	RequestRole func(from, target uuid.UUID, r client.RoleRequest)
 
 	// BlockRegistry overrides the registry used for network serialization. If nil, world.DefaultBlockRegistry is used.
 	BlockRegistry world.BlockRegistry
@@ -989,6 +992,7 @@ func (s *Session) registerHandlers() {
 		mc.IDPlayerToggleCrafterSlotRequest: &CrafterSlotToggleHandler{},
 		mc.IDRequestAbility:                 &RequestAbilityHandler{},
 		mc.IDRequestChunkRadius:             &RequestChunkRadiusHandler{},
+		mc.IDRequestPermissions:             &RequestPermissionsHandler{},
 		mc.IDRespawn:                        &RespawnHandler{},
 		mc.IDSetPlayerInventoryOptions:      nil,
 		mc.IDSubChunkRequest:                &SubChunkRequestHandler{},

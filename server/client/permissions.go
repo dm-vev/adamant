@@ -139,6 +139,16 @@ type Permissions struct {
 	Abilities Abilities
 }
 
+// RoleRequest is the role a player asks for another from the list of
+// players of its client, as an operator of Bedrock Dedicated Server gives
+// roles: visitor, member, operator, or custom with the abilities passed.
+type RoleRequest struct {
+	// Role is the role asked for.
+	Role Role
+	// Abilities are those of a custom role.
+	Abilities Abilities
+}
+
 // Allows reports whether the player has the abilities passed.
 func (p Permissions) Allows(a Abilities) bool { return p.Abilities.Has(a) }
 

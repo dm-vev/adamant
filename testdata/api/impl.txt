@@ -48,6 +48,7 @@ protocol/bedrock/session.PlayerSkinHandler	protocol/bedrock/session.packetHandle
 protocol/bedrock/session.PositionTrackingDBHandler	protocol/bedrock/session.packetHandler	*
 protocol/bedrock/session.RequestAbilityHandler	protocol/bedrock/session.packetHandler	value
 protocol/bedrock/session.RequestChunkRadiusHandler	protocol/bedrock/session.packetHandler	*
+protocol/bedrock/session.RequestPermissionsHandler	protocol/bedrock/session.packetHandler	value
 protocol/bedrock/session.RespawnHandler	protocol/bedrock/session.packetHandler	*
 protocol/bedrock/session.ServerBoundDiagnosticsHandler	protocol/bedrock/session.packetHandler	*
 protocol/bedrock/session.ServerBoundLoadingScreenHandler	protocol/bedrock/session.packetHandler	*
