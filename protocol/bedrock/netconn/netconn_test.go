@@ -383,6 +383,94 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 	}
 }
 
+// converting is a protocol of the number of the model whose packets are
+// converted as a step would: a Text a client sends reaches the session in
+// capitals, one the session writes goes as two, the second marked, and a
+// Text whose message is "none" does not go at all.
+func converting() *versions.Protocol {
+	return &versions.Protocol{
+		Number: v2193.Protocol, Names: []string{"1.26.50"}, Version: "1.26.50", New: v2193.New, FromClient: v2193.FromClient,
+		In: func(pk proto.Packet) []proto.Packet {
+			if text, ok := pk.(*v2193.TextPacket); ok {
+				up := *text
+				up.Message = strings.ToUpper(text.Message)
+				return []proto.Packet{&up}
+			}
+			return []proto.Packet{pk}
+		},
+		Out: func(pk proto.Packet) []proto.Packet {
+			if st, ok := pk.(*staticText); ok {
+				pk = st.Packet
+			}
+			if text, ok := pk.(*v2193.TextPacket); ok {
+				if text.Message == "none" {
+					return nil
+				}
+				again := *text
+				again.Message += " again"
+				return []proto.Packet{text, &again}
+			}
+			return []proto.Packet{pk}
+		},
+	}
+}
+
+// TestConvertingProtocol checks a connection of a protocol other than the
+// model writes and reads through its Out and In, Statics included, which
+// are encoded once for their protocol.
+func TestConvertingProtocol(t *testing.T) {
+	p := converting()
+	l := listen(t, Config{Protocols: []*versions.Protocol{p}})
+	spawned := serve(t, l)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, "http://"+l.Addr().String(), ourclient.Config{Identity: ourlogin.Identity{DisplayName: "Bot"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
+	srv := <-spawned
+	if srv.Protocol() != p {
+		t.Fatalf("protocol %v", srv.Protocol())
+	}
+	texts := func(n int) []string {
+		var got []string
+		for len(got) < n {
+			pk, err := conn.ReadPacket()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if text, ok := pk.(*v2193.TextPacket); ok {
+				got = append(got, text.Message)
+			}
+		}
+		return got
+	}
+	_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Bot", Message: "hi"})
+	_ = conn.Flush()
+	if got := texts(2); got[0] != "echo HI" || got[1] != "echo HI again" {
+		t.Fatalf("read %q", got)
+	}
+	st := &staticText{&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "static"}}
+	for range 2 {
+		_ = srv.WritePacket(&staticText{&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "none"}})
+		_ = srv.WritePacket(st)
+		_ = srv.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "none"})
+		_ = srv.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "last"})
+		_ = srv.Flush()
+		if got := texts(4); got[0] != "static" || got[1] != "static again" || got[2] != "last" || got[3] != "last again" {
+			t.Fatalf("read %q", got)
+		}
+	}
+	l.staticMu.Lock()
+	defer l.staticMu.Unlock()
+	if msg, ok := l.statics[staticKey{pk: st, proto: p, shield: 355, alg: srv.comp.Algorithm()}]; !ok || msg == nil {
+		t.Fatalf("the Static is not kept for its protocol: %v", l.statics)
+	}
+}
+
 // TestFloodingClientIsCut reads a client that sends far more packets than
 // a game does until the read fails.
 func TestFloodingClientIsCut(t *testing.T) {
@@ -712,6 +800,35 @@ func TestReceive(t *testing.T) {
 	}
 }
 
+// TestReceiveConverts checks the packets handed to the session of a
+// connection of a protocol other than the model are those its In gives.
+func TestReceiveConverts(t *testing.T) {
+	l := listen(t, Config{Protocols: []*versions.Protocol{converting()}})
+	got := make(chan string, 16)
+	receive(l, func(pk proto.Packet, cost int) {
+		if text, ok := pk.(*v2193.TextPacket); ok {
+			got <- text.Message
+		}
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, Message: "quiet"})
+	_ = conn.Flush()
+	select {
+	case msg := <-got:
+		if msg != "QUIET" {
+			t.Fatalf("message %q", msg)
+		}
+	case <-ctx.Done():
+		t.Fatal("the packet did not arrive")
+	}
+}
+
 // receive spawns the client that connects to l next and has the packets it
 // sends handed to handle, telling on the channel returned why its
 // connection closed.
@@ -824,7 +941,7 @@ func TestDecodeCost(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		_, cost, err := decodePacket(raw)
+		_, cost, err := decodePacket(versions.Model(), raw)
 		if err != nil || uint64(cost) < n/2 || cost > maxAlloc+len(raw) {
 			t.Errorf("%s: %d bytes held, a cost of %d: %v", name, n, cost, err)
 		}

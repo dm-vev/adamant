@@ -1,11 +1,12 @@
 // Package netconn runs the Bedrock connections of the server over
 // NetherNet, and those of the players proxies open on links to it: it logs
 // a client in, hands it the resource packs and starts its game, then
-// carries the packets of its session. Packets are coded with
-// the generated codecs of protocol 2193 and batched by package bedrock of
-// the net module. A connection has no goroutine of its own once it logged in: its
-// session reads and writes on its own goroutines, and a batch goes out when
-// the session flushes.
+// carries the packets of its session. The session reads and writes the
+// packets of the model, the generated codecs it is compiled against; a
+// connection converts them to and from the protocol of its client, and
+// they are batched by package bedrock of the net module. A connection has
+// no goroutine of its own once it logged in: its session reads and writes
+// on its own goroutines, and a batch goes out when the session flushes.
 package netconn
 
 import (
@@ -78,6 +79,9 @@ type Conn struct {
 	// deferred holds packets read during the login and the spawn that the
 	// session reads first.
 	deferred [][]byte
+	// converted holds the packets of the model past the first that a
+	// packet ReadPacket read converted to, which it returns next.
+	converted []proto.Packet
 	// limits holds the buckets of packetLimits, used by the reader alone.
 	limits [len(packetLimits)]limitBucket
 
@@ -197,20 +201,34 @@ func sendQueue(st sctp.Stats) (queued, window int, rtt time.Duration) {
 	return max(0, st.Buffered-st.Flight), st.Cwnd, st.RTT
 }
 
-// WritePacket adds a packet to the batch sent at the next Flush. A Static
-// goes in a batch of its own, encoded once for every connection of its
-// compression.
+// WritePacket adds a packet of the model to the batch sent at the next
+// Flush, as the packets of the protocol of the client that carry it. A
+// Static goes in a batch of its own, encoded once for every connection of
+// its protocol and compression.
 func (c *Conn) WritePacket(pk proto.Packet) error {
 	if st, ok := pk.(Static); ok {
 		if c.comp == nil {
 			return errors.New("netconn: Static written before the login")
 		}
-		msg, err := c.l.static(st, c.shieldID.Load(), c.comp)
-		if err != nil {
+		msg, err := c.l.static(st, c.proto, c.shieldID.Load(), c.comp)
+		if err != nil || msg == nil {
 			return err
 		}
 		return c.b.SendBatch(msg)
 	}
+	if p := c.proto; p != nil && p.Out != nil {
+		for _, pk := range p.Out(pk) {
+			if err := c.write(pk); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return c.write(pk)
+}
+
+// write adds a packet of the protocol of the client to the batch.
+func (c *Conn) write(pk proto.Packet) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	c.w.B = bedrock.AppendHeader(c.w.B[:0], bedrock.Header{ID: pk.ID()})
@@ -233,6 +251,10 @@ func (c *Conn) Flush() error { return c.b.Flush() }
 // bucket of its kind is dropped.
 func (c *Conn) ReadPacket() (pk proto.Packet, err error) {
 	defer c.recoverRead(&err)
+	if len(c.converted) > 0 {
+		pk, c.converted = c.converted[0], c.converted[1:]
+		return pk, nil
+	}
 	raw, err := c.next()
 	for err == nil && c.overLimit(raw) {
 		raw, err = c.next()
@@ -240,7 +262,7 @@ func (c *Conn) ReadPacket() (pk proto.Packet, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if pk, err = DecodePacket(raw); err != nil {
+	if pk, _, err = c.decode(raw); err != nil {
 		undecodable.Inc()
 		_ = c.Close()
 		return nil, err
@@ -249,7 +271,24 @@ func (c *Conn) ReadPacket() (pk proto.Packet, err error) {
 		_ = c.Close()
 		return nil, DisconnectError(d.Message)
 	}
+	if p := c.proto; p != nil && p.In != nil {
+		if pk = c.convertIn(pk); pk == nil {
+			return c.ReadPacket()
+		}
+	}
 	return pk, nil
+}
+
+// convertIn converts a packet the client sent to the packets of the model
+// and returns the first; the rest wait in converted for ReadPacket. It
+// returns nil if the model has no such packet.
+func (c *Conn) convertIn(pk proto.Packet) proto.Packet {
+	pks := c.proto.In(pk)
+	if len(pks) == 0 {
+		return nil
+	}
+	c.converted = append(c.converted, pks[1:]...)
+	return pks[0]
 }
 
 // errStopped stops the reading of a batch once a packet of it ended the
@@ -296,7 +335,7 @@ func (c *Conn) deliver(raw []byte, handle func(pk proto.Packet, cost int), end f
 	if c.overLimit(raw) {
 		return nil
 	}
-	pk, cost, err := decodePacket(raw)
+	pk, cost, err := c.decode(raw)
 	if err != nil {
 		undecodable.Inc()
 		_ = c.Close()
@@ -307,6 +346,15 @@ func (c *Conn) deliver(raw []byte, handle func(pk proto.Packet, cost int), end f
 		_ = c.Close()
 		end(DisconnectError(d.Message))
 		return errStopped
+	}
+	if p := c.proto; p != nil && p.In != nil {
+		// The memory of the packet is charged to the first packet of the
+		// model that carries it.
+		for _, pk := range p.In(pk) {
+			handle(pk, cost)
+			cost = 0
+		}
+		return nil
 	}
 	handle(pk, cost)
 	return nil
@@ -383,12 +431,14 @@ type errUnknownPacket uint32
 
 func (e errUnknownPacket) Error() string { return fmt.Sprintf("netconn: unknown packet %d", uint32(e)) }
 
-// fromClient reports whether a client sends packets of an ID: those the
-// schema marks, from the pool of gophertunnel's listener, and the
-// Disconnect a client may send as it leaves, which that pool lacks. The
-// fields of others, such as a SubChunk, are never read: they could hold
-// dozens of times their bytes.
-func fromClient(id uint32) bool { return v2193.FromClient(id) || id == v2193.IDDisconnect }
+// fromClient reports whether a client of a protocol sends packets of an
+// ID: those the schema marks, from the pool of gophertunnel's listener,
+// and the Disconnect a client may send as it leaves, which that pool
+// lacks. The fields of others, such as a SubChunk, are never read: they
+// could hold dozens of times their bytes.
+func fromClient(p *versions.Protocol, id uint32) bool {
+	return p.FromClient(id) || id == v2193.IDDisconnect
+}
 
 // maxList bounds the elements of a list a client sends, as gophertunnel
 // bounds them for a server. A string or a byte slice takes the bytes of
@@ -402,22 +452,32 @@ const (
 )
 
 // DecodePacket decodes a packet a client sent, header first, with the
-// codecs of protocol 2193 and the limits a server keeps against a client.
+// codecs of the model and the limits a server keeps against a client.
 func DecodePacket(raw []byte) (proto.Packet, error) {
-	pk, _, err := decodePacket(raw)
+	pk, _, err := decodePacket(versions.Model(), raw)
 	return pk, err
 }
 
-// decodePacket decodes a packet as DecodePacket does and returns the bytes
-// of memory it takes: those of its fields, which its strings copy and its
-// byte slices share, and those its values take past them, as MaxAlloc
-// charged them.
-func decodePacket(raw []byte) (pk proto.Packet, cost int, err error) {
+// decode decodes a packet the client sent with the codecs of its protocol,
+// those of the model before the protocol is known, as decodePacket does.
+func (c *Conn) decode(raw []byte) (proto.Packet, int, error) {
+	p := c.proto
+	if p == nil {
+		p = versions.Model()
+	}
+	return decodePacket(p, raw)
+}
+
+// decodePacket decodes a packet a client of a protocol sent as
+// DecodePacket does and returns the bytes of memory it takes: those of its
+// fields, which its strings copy and its byte slices share, and those its
+// values take past them, as MaxAlloc charged them.
+func decodePacket(p *versions.Protocol, raw []byte) (pk proto.Packet, cost int, err error) {
 	h, fields, err := bedrock.ReadHeader(raw)
 	if err != nil {
 		return nil, 0, err
 	}
-	if pk = v2193.New(h.ID); pk == nil || !fromClient(h.ID) {
+	if pk = p.New(h.ID); pk == nil || !fromClient(p, h.ID) {
 		return nil, 0, errUnknownPacket(h.ID)
 	}
 	defer func() {
@@ -463,7 +523,7 @@ func (c *Conn) read(ids ...uint32) (pk proto.Packet, err error) {
 			return nil, err
 		}
 		if h.ID == v2193.IDDisconnect {
-			pk, err := DecodePacket(raw)
+			pk, _, err := c.decode(raw)
 			if err != nil {
 				return nil, err
 			}
@@ -471,7 +531,17 @@ func (c *Conn) read(ids ...uint32) (pk proto.Packet, err error) {
 		}
 		for _, id := range ids {
 			if h.ID == id {
-				return DecodePacket(raw)
+				pk, _, err := c.decode(raw)
+				if err == nil && c.proto != nil && c.proto.In != nil {
+					// The packets of the login are of one layout in every
+					// protocol: each is one packet of the model.
+					pks := c.proto.In(pk)
+					if len(pks) != 1 {
+						return nil, fmt.Errorf("netconn: packet %d of protocol %d is %d packets of the model", h.ID, c.proto.Number, len(pks))
+					}
+					pk = pks[0]
+				}
+				return pk, err
 			}
 		}
 		if len(c.deferred) == maxDeferred {

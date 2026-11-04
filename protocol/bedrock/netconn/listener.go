@@ -125,11 +125,13 @@ type Static interface {
 	StaticPacket()
 }
 
-// staticKey names the batch of a Static encoded with a shield ID, which
-// the items in it depend on, in the compression of alg: the clients of
-// the listener read it compressed, the players of a proxy as it is.
+// staticKey names the batch of a Static encoded for a protocol with a
+// shield ID, which the items in it depend on, in the compression of alg:
+// the clients of the listener read it compressed, the players of a proxy
+// as it is.
 type staticKey struct {
 	pk     Static
+	proto  *versions.Protocol
 	shield int32
 	alg    uint16
 }
@@ -138,23 +140,35 @@ type staticKey struct {
 // they take the best level.
 var staticCompression = bedrock.Flate{Level: flate.BestCompression, FixedBelow: -1}
 
-// static returns the batch of a Static for a connection compressing with
-// comp, encoding it the first time.
-func (l *Listener) static(pk Static, shield int32, comp bedrock.Compression) ([]byte, error) {
+// static returns the batch of a Static for a connection of a protocol
+// compressing with comp, encoding it the first time: the packets of the
+// protocol that carry it, nil if there are none.
+func (l *Listener) static(pk Static, p *versions.Protocol, shield int32, comp bedrock.Compression) ([]byte, error) {
 	l.staticMu.Lock()
 	defer l.staticMu.Unlock()
-	key := staticKey{pk: pk, shield: shield, alg: comp.Algorithm()}
+	key := staticKey{pk: pk, proto: p, shield: shield, alg: comp.Algorithm()}
 	if msg, ok := l.statics[key]; ok {
 		return msg, nil
 	}
-	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
-	pk.Encode(&w)
-	if _, ok := comp.(bedrock.Flate); ok {
-		comp = staticCompression
+	pks := []proto.Packet{pk}
+	if p != nil && p.Out != nil {
+		pks = p.Out(pk)
 	}
-	msg, err := bedrock.EncodeBatch(comp, w.B)
-	if err != nil {
-		return nil, err
+	var msg []byte
+	if len(pks) > 0 {
+		encoded := make([][]byte, len(pks))
+		for i, pk := range pks {
+			w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+			pk.Encode(&w)
+			encoded[i] = w.B
+		}
+		if _, ok := comp.(bedrock.Flate); ok {
+			comp = staticCompression
+		}
+		var err error
+		if msg, err = bedrock.EncodeBatch(comp, encoded...); err != nil {
+			return nil, err
+		}
 	}
 	if l.statics == nil {
 		l.statics = make(map[staticKey][]byte)

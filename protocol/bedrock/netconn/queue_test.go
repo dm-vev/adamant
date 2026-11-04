@@ -3,11 +3,15 @@ package netconn
 import (
 	"context"
 	"math/rand/v2"
+	"net"
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
+	"github.com/dm-vev/adamant/net/bedrock"
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
+	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/sctp"
 )
@@ -80,5 +84,34 @@ func TestSendQueue(t *testing.T) {
 			t.Fatalf("%d bytes still queued once the client took everything", queued)
 		}
 		time.Sleep(time.Millisecond)
+	}
+}
+
+// discard is a transport that takes every batch and sends nothing.
+type discard struct{}
+
+func (discard) ReadMessage() ([]byte, error)    { select {} }
+func (discard) Send([]byte) error               { return nil }
+func (discard) Close() error                    { return nil }
+func (discard) SetReadDeadline(time.Time) error { return nil }
+func (discard) SetReceiver(func(msg []byte))    {}
+func (discard) OnClose(func(error))             {}
+func (discard) RemoteAddr() net.Addr            { return &net.UDPAddr{} }
+
+// BenchmarkWritePacket writes the packets of a tick of a client that sees
+// others move, and flushes them, as a session does.
+func BenchmarkWritePacket(b *testing.B) {
+	l := &Listener{batches: bedrock.Config{Cache: bedrock.NewBatchCache()}}
+	c := newConn(l, discard{}, nil)
+	c.comp = bedrock.Flate{Level: 1}
+	c.b.EnableCompression(c.comp)
+	c.proto = versions.Model()
+	move := &v2193.MoveActorDeltaPacket{EntityRuntimeID: 7, PositionX: proto.Some[float32](1), PositionZ: proto.Some[float32](1)}
+	b.ReportAllocs()
+	for b.Loop() {
+		for range 16 {
+			_ = c.WritePacket(move)
+		}
+		_ = c.Flush()
 	}
 }
