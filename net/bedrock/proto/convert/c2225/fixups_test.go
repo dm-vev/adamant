@@ -62,15 +62,6 @@ func TestPlayFabIDMoves(t *testing.T) {
 	}
 }
 
-func TestFilteredStructureName(t *testing.T) {
-	for name, want := range map[string]proto.Optional[string]{"": {}, "x": proto.Some("x")} {
-		up := roundTrip(t, &v2193.StructureBlockUpdatePacket{FilteredStructureName: name}).(*v2225.StructureBlockUpdatePacket)
-		if up.FilteredStructureName != want {
-			t.Errorf("%q goes up as %+v", name, up.FilteredStructureName)
-		}
-	}
-}
-
 func TestSoundDataUpdate(t *testing.T) {
 	u := v2193.SoundDataUpdate{Type: v2193.SoundDataUpdateSetVolume, Volume: 0.5}
 	up := roundTrip(t, &v2193.ClientboundUpdateSoundDataPacket{ServerSoundHandle: 3, Stop: u, SetVolume: u, SetPitch: u, Fade: u, SeekTo: u, Pause: u, Resume: u}).(*v2225.ClientboundUpdateSoundDataPacket)

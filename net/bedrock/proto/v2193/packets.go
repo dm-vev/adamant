@@ -2658,7 +2658,7 @@ func (p *AddBehaviourTreePacket) Decode(r *wire.Reader) {
 type StructureBlockUpdatePacket struct {
 	Position              [3]int32
 	StructureName         string
-	FilteredStructureName string
+	FilteredStructureName proto.Optional[string]
 	DataField             string
 	IncludePlayers        bool
 	ShowBoundingBox       bool
@@ -2674,7 +2674,10 @@ func (*StructureBlockUpdatePacket) ID() uint32 { return 90 }
 func (p *StructureBlockUpdatePacket) Encode(w *wire.Writer) {
 	proto.WriteBlockPos(w, &p.Position)
 	w.String(p.StructureName)
-	w.String(p.FilteredStructureName)
+	w.Bool(p.FilteredStructureName.Set)
+	if p.FilteredStructureName.Set {
+		w.String(p.FilteredStructureName.Val)
+	}
 	w.String(p.DataField)
 	w.Bool(p.IncludePlayers)
 	w.Bool(p.ShowBoundingBox)
@@ -2688,7 +2691,10 @@ func (p *StructureBlockUpdatePacket) Encode(w *wire.Writer) {
 func (p *StructureBlockUpdatePacket) Decode(r *wire.Reader) {
 	proto.ReadBlockPos(r, &p.Position)
 	p.StructureName = r.String()
-	p.FilteredStructureName = r.String()
+	p.FilteredStructureName.Set = r.Bool()
+	if p.FilteredStructureName.Set {
+		p.FilteredStructureName.Val = r.String()
+	}
 	p.DataField = r.String()
 	p.IncludePlayers = r.Bool()
 	p.ShowBoundingBox = r.Bool()

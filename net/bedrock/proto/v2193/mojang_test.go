@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -19,6 +20,11 @@ var mojangLayouts = []struct {
 	pk   proto.Packet
 	hex  string
 }{
+	// json/StructureEditorData.json: the structure name is a
+	// json/Bedrock__Safety__RedactableString.json, the name and the name
+	// filtered, which is optional. The 45 bytes of the rest are zero.
+	{"structure name filtered", &StructureBlockUpdatePacket{StructureName: "a", FilteredStructureName: proto.Some("b")}, "000000" + "0161" + "01" + "0162" + strings.Repeat("00", 45)},
+	{"structure name not filtered", &StructureBlockUpdatePacket{StructureName: "a"}, "000000" + "0161" + "00" + strings.Repeat("00", 45)},
 	// json/PlayerVideoCapturePacketPayload.json: the index of the variant
 	// as a varuint32, Start Video Capture 0 with its frame rate (uint32)
 	// and file prefix, Stop Video Capture 1.

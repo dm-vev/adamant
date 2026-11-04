@@ -284,7 +284,7 @@ func TestSameLayoutsAgree(t *testing.T) {
 		decoded += n
 	}
 	if same < 200 {
-		t.Fatalf("Same holds for %d packets, want the 219 of the 236 of 2193 that did not change", same)
+		t.Fatalf("Same holds for %d packets, want the 220 of the 236 of 2193 that did not change", same)
 	}
 	t.Logf("%d packets of the same layout, %d samples decoded", same, decoded)
 }
@@ -311,9 +311,9 @@ func TestPacketLists(t *testing.T) {
 			t.Errorf("packet %d is in no list", id)
 		}
 	}
-	want := []uint32{11, 12, 13, 30, 44, 58, 63, 90, 93, 137, 144, 147, 164, 180, 315, 345, 348}
+	want := []uint32{11, 12, 13, 30, 44, 58, 63, 93, 137, 144, 147, 164, 180, 315, 345, 348}
 	if !slices.Equal(changed, want) {
-		t.Errorf("changed %v, want %v: the 19 packets of the design and PlayerAuthInput, which holds a stack request, but PlayerVideoCapture, CameraInstruction and CameraSpline, which v2193 coded wrongly", changed, want)
+		t.Errorf("changed %v, want %v: the 19 packets of the design and PlayerAuthInput, which holds a stack request, but StructureBlockUpdate, CameraInstruction, PlayerVideoCapture and CameraSpline, which v2193 coded wrongly", changed, want)
 	}
 }
 

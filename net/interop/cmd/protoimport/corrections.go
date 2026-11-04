@@ -23,8 +23,27 @@ type correction struct {
 	add []*decl
 }
 
-// corrections are the declarations corrected, in the order of the schema.
+// corrections are the declarations corrected.
 var corrections = []correction{
+	{
+		// Mojang's json/StructureBlockUpdatePacketPayload.json holds the
+		// block position, json/StructureEditorData.json, the trigger and
+		// the waterlogging. The editor data begins with the structure
+		// name, a json/Bedrock__Safety__RedactableString.json: the name
+		// (Unredacted, required) and the name filtered (Redacted, neither
+		// required nor of a default: optional), as StackResponseSlotInfo
+		// codes its custom name for real clients. gophertunnel v1.62.0
+		// wrote the filtered name as a string; it is the same from
+		// 1.26.40 to 1.26.61, and #545 codes it so for 2225. The rest,
+		// json/StructureSettings.json with it, is as gophertunnel codes it.
+		name: "StructureBlockUpdate",
+		wrong: []string{"Position blockpos", "StructureName string", "FilteredStructureName string", "DataField string",
+			"IncludePlayers bool", "ShowBoundingBox bool", "StructureBlockType varint32", "Settings StructureSettings",
+			"RedstoneSaveMode uint8", "ShouldTrigger bool", "Waterlogged bool"},
+		right: []string{"Position blockpos", "StructureName string", "FilteredStructureName ?string", "DataField string",
+			"IncludePlayers bool", "ShowBoundingBox bool", "StructureBlockType varint32", "Settings StructureSettings",
+			"RedstoneSaveMode uint8", "ShouldTrigger bool", "Waterlogged bool"},
+	},
 	{
 		// Mojang's json/ItemStackRequestActionCraftRecipeAuto.json lists
 		// the ingredients as json/RecipeIngredient.json: the variant of

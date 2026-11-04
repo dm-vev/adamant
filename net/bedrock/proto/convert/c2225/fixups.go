@@ -18,19 +18,6 @@ func fixDownItemStackRequest(_ *v2225.ItemStackRequest, out *v2193.ItemStackRequ
 	out.Actions = slices.DeleteFunc(out.Actions, func(a v2193.StackRequestAction) bool { return a == nil })
 }
 
-// The filtered name of a structure is optional in 2225: an empty name of
-// 2193 is none.
-
-func fixUpStructureBlockUpdatePacket(in *v2193.StructureBlockUpdatePacket, out *v2225.StructureBlockUpdatePacket) {
-	if in.FilteredStructureName != "" {
-		out.FilteredStructureName = proto.Some(in.FilteredStructureName)
-	}
-}
-
-func fixDownStructureBlockUpdatePacket(in *v2225.StructureBlockUpdatePacket, out *v2193.StructureBlockUpdatePacket) {
-	out.FilteredStructureName = in.FilteredStructureName.Val
-}
-
 // The categories of systems of diagnostics, and the position and dimension
 // of an entity timed, are optional in 2225: a client of 2193 sends them
 // all.

@@ -1,6 +1,6 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
 # 463 declarations, 13 of them manual.
-# Corrected after Mojang's protocol documentation: AutoCraftRecipeStackRequestAction, PlayerVideoCapture, CameraSplineInstruction, CameraSplineDefinition.
+# Corrected after Mojang's protocol documentation: StructureBlockUpdate, AutoCraftRecipeStackRequestAction, PlayerVideoCapture, CameraSplineInstruction, CameraSplineDefinition.
 
 type CommandEnum
 	Type string
@@ -621,7 +621,7 @@ packet 89 AddBehaviourTree
 packet 90 StructureBlockUpdate client
 	Position blockpos
 	StructureName string
-	FilteredStructureName string
+	FilteredStructureName ?string
 	DataField string
 	IncludePlayers bool
 	ShowBoundingBox bool

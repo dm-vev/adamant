@@ -28,8 +28,6 @@ func upPacket(pk proto.Packet) (proto.Packet, bool) {
 		return upLevelChunkPacket(pk), true
 	case *v2193.PlayerListPacket:
 		return upPlayerListPacket(pk), true
-	case *v2193.StructureBlockUpdatePacket:
-		return upStructureBlockUpdatePacket(pk), true
 	case *v2193.PlayerSkinPacket:
 		return upPlayerSkinPacket(pk), true
 	case *v2193.EducationSettingsPacket:
@@ -245,23 +243,6 @@ func upPlayerListPacket(in *v2193.PlayerListPacket) *v2225.PlayerListPacket {
 			out.Entries[i7] = upPlayerListEntry(&in.Entries[i7])
 		}
 	}
-	return out
-}
-
-func upStructureBlockUpdatePacket(in *v2193.StructureBlockUpdatePacket) *v2225.StructureBlockUpdatePacket {
-	out := &v2225.StructureBlockUpdatePacket{}
-	out.Position = in.Position
-	out.StructureName = in.StructureName
-	// in.FilteredStructureName changes from string to proto.Optional[string]: fixUpStructureBlockUpdatePacket converts it.
-	out.DataField = in.DataField
-	out.IncludePlayers = in.IncludePlayers
-	out.ShowBoundingBox = in.ShowBoundingBox
-	out.StructureBlockType = in.StructureBlockType
-	out.Settings = upStructureSettings(&in.Settings)
-	out.RedstoneSaveMode = in.RedstoneSaveMode
-	out.ShouldTrigger = in.ShouldTrigger
-	out.Waterlogged = in.Waterlogged
-	fixUpStructureBlockUpdatePacket(in, out)
 	return out
 }
 
@@ -746,11 +727,6 @@ func upAttributeValue(in *v2193.AttributeValue) (out v2225.AttributeValue) {
 	return out
 }
 
-func upStructureSettings(in *v2193.StructureSettings) (out v2225.StructureSettings) {
-	out = v2225.StructureSettings(*in)
-	return out
-}
-
 func upEducationExternalLinkSettings(in *v2193.EducationExternalLinkSettings) (out v2225.EducationExternalLinkSettings) {
 	out = v2225.EducationExternalLinkSettings(*in)
 	return out
@@ -948,8 +924,6 @@ func downPacket(pk proto.Packet) (proto.Packet, bool) {
 		return downLevelChunkPacket(pk), true
 	case *v2225.PlayerListPacket:
 		return downPlayerListPacket(pk), true
-	case *v2225.StructureBlockUpdatePacket:
-		return downStructureBlockUpdatePacket(pk), true
 	case *v2225.PlayerSkinPacket:
 		return downPlayerSkinPacket(pk), true
 	case *v2225.EducationSettingsPacket:
@@ -1165,23 +1139,6 @@ func downPlayerListPacket(in *v2225.PlayerListPacket) *v2193.PlayerListPacket {
 			out.Entries[i7] = downPlayerListEntry(&in.Entries[i7])
 		}
 	}
-	return out
-}
-
-func downStructureBlockUpdatePacket(in *v2225.StructureBlockUpdatePacket) *v2193.StructureBlockUpdatePacket {
-	out := &v2193.StructureBlockUpdatePacket{}
-	out.Position = in.Position
-	out.StructureName = in.StructureName
-	// in.FilteredStructureName changes from proto.Optional[string] to string: fixDownStructureBlockUpdatePacket converts it.
-	out.DataField = in.DataField
-	out.IncludePlayers = in.IncludePlayers
-	out.ShowBoundingBox = in.ShowBoundingBox
-	out.StructureBlockType = in.StructureBlockType
-	out.Settings = downStructureSettings(&in.Settings)
-	out.RedstoneSaveMode = in.RedstoneSaveMode
-	out.ShouldTrigger = in.ShouldTrigger
-	out.Waterlogged = in.Waterlogged
-	fixDownStructureBlockUpdatePacket(in, out)
 	return out
 }
 
@@ -1663,11 +1620,6 @@ func downEntityLink(in *v2225.EntityLink) (out v2193.EntityLink) {
 
 func downAttributeValue(in *v2225.AttributeValue) (out v2193.AttributeValue) {
 	out = v2193.AttributeValue(*in)
-	return out
-}
-
-func downStructureSettings(in *v2225.StructureSettings) (out v2193.StructureSettings) {
-	out = v2193.StructureSettings(*in)
 	return out
 }
 

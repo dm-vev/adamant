@@ -13,7 +13,6 @@ var reviewed = map[uint32]string{
 	44:  "Animate: Hand is new, 0 (the main hand) going up; dropped going down",
 	58:  "LevelChunk: ClientBiomeUpdate is new, false (the client keeps its biomes, as in 2193) going up; dropped going down",
 	63:  "PlayerList: the PlayFab ID moves between the skin and the entry (hand_convert.go)",
-	90:  "StructureBlockUpdate: the filtered name is optional in 2225, \"\" is none (fixups.go)",
 	93:  "PlayerSkin: the skin has no PlayFab ID in 2225: lost going up, \"\" going down (hand_convert.go)",
 	137: "EducationSettings: CanModifyBlocks is one of the agent's capabilities in 2225 (fixups.go)",
 	144: "PlayerAuthInput: the actions of its stack request are renumbered, which the codecs do, and the reserved craft " +
