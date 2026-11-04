@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -19,6 +20,14 @@ type Handler interface {
 	// HandleMove handles the movement of a player. ctx.Cancel() may be called to cancel the movement event.
 	// The new position, yaw and pitch are passed.
 	HandleMove(ctx *Context, newPos mgl64.Vec3, newRot cube.Rotation)
+	// HandleViolation handles a violation of a check of the anti-cheat by the player, before the game judges
+	// it. ctx.Cancel() may be called to ignore the violation: its level does not grow and nothing is done. The
+	// action the game takes once the level passed the threshold of the check may be changed by assigning to
+	// v.Action. An action a plugin asks of the player from a handler of a checked action of its client, such
+	// as an attack from HandleAttackEntity, is not checked; one asked from the handler of an action that is not
+	// checked, such as a chat message, while the client's packet is handled, is: ExemptAntiCheat exempts the
+	// player from it.
+	HandleViolation(ctx *Context, v *anticheat.Violation)
 	// HandleJump handles the player jumping.
 	HandleJump(p *Player)
 	// HandleTeleport handles the teleportation of a player. ctx.Cancel() may be called to cancel it.
@@ -167,6 +176,7 @@ var _ Handler = NopHandler{}
 func (NopHandler) HandleItemDrop(*Context, item.Stack)                                     {}
 func (NopHandler) HandleHeldSlotChange(*Context, int, int)                                 {}
 func (NopHandler) HandleMove(*Context, mgl64.Vec3, cube.Rotation)                          {}
+func (NopHandler) HandleViolation(*Context, *anticheat.Violation)                          {}
 func (NopHandler) HandleJump(*Player)                                                      {}
 func (NopHandler) HandleTeleport(*Context, mgl64.Vec3)                                     {}
 func (NopHandler) HandleChangeWorld(*Player, *world.World, *world.World)                   {}

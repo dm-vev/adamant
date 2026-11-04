@@ -32,6 +32,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/player"
+	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/biome"
@@ -434,6 +435,9 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	// As the Left hook and the quit message of Server.createPlayer.
 	pconf.Left = func(*world.Tx, *player.Player) { stopOnce.Do(func() { close(s.stopped) }) }
 	pconf.QuitMessage = conf.quitMessage
+	// As the anti-cheat of a Server without one: the defaults, which the
+	// snapshots hold the checks to.
+	pconf.AntiCheat = anticheat.Default()
 	if conf.player != nil {
 		conf.player(&pconf)
 	}
@@ -449,6 +453,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	s.begin("join: the session is made and the player spawned", conf.keepJoin)
 	<-w.Exec(func(tx *world.Tx) {
 		p := tx.AddEntity(s.h).(*player.Player)
+		assertDefaultAntiCheat(t, p)
 		s.sess.Spawn(p, tx)
 		// As Server.welcome.
 		chat.Global.Subscribe(p)
@@ -474,6 +479,24 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		s.drain(false)
 	}
 	return s
+}
+
+// assertDefaultAntiCheat fails the test unless the player is checked by the
+// default anti-cheat, as the players of a Server without one are: the
+// golden snapshots then hold the defaults to sending what was sent before
+// the anti-cheat.
+func assertDefaultAntiCheat(t *testing.T, p *player.Player) {
+	t.Helper()
+	got, want := p.Data().AntiCheat, anticheat.Default()
+	if got == nil || !got.Enabled {
+		t.Errorf("the player of the scenario is not checked by the anti-cheat")
+		return
+	}
+	for _, c := range anticheat.Checks() {
+		if g, w := got.Policy(c), want.Policy(c); g.Enabled != w.Enabled || g.Action != w.Action || g.ActAt != w.ActAt || g.KickAt != w.KickAt {
+			t.Errorf("the player of the scenario runs %s as %+v, not by default as %+v", c, g, w)
+		}
+	}
 }
 
 // goldenWorld returns a new world of the scenarios.

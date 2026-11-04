@@ -415,6 +415,7 @@ func (s *serverScenario) accept() {
 			joining.h = p.H()
 			p.Message(joining.nextMarkerLocked())
 		}
+		assertDefaultAntiCheat(s.t, p)
 		s.yielded = append(s.yielded, p.Name())
 		s.mu.Unlock()
 		s.spawned <- p.H()

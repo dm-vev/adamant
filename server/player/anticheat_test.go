@@ -1,6 +1,7 @@
 package player
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -14,10 +15,15 @@ import (
 )
 
 // withCheckedPlayer runs f with a player in w that has the client r and is
-// checked by the anti-cheat conf, at pos.
-func withCheckedPlayer(t *testing.T, w *world.World, r *clienttest.Recorder, conf *anticheat.Config, pos mgl64.Vec3, f func(tx *world.Tx, p *Player)) {
+// checked by the anti-cheat conf, at pos. edit, if passed, edits the Config
+// of the player first.
+func withCheckedPlayer(t *testing.T, w *world.World, r *clienttest.Recorder, conf *anticheat.Config, pos mgl64.Vec3, f func(tx *world.Tx, p *Player), edit ...func(c *Config)) {
 	t.Helper()
-	c := Config{Position: pos, GameMode: world.GameModeSurvival, Client: r, AntiCheat: conf}
+	c := Config{Position: pos, GameMode: world.GameModeSurvival, Client: r, AntiCheat: conf, Name: "Cheater", XUID: "2535400000000042",
+		Log: slog.New(slog.DiscardHandler)}
+	for _, e := range edit {
+		e(&c)
+	}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, c)
 	<-w.Exec(func(tx *world.Tx) {
 		f(tx, tx.AddEntity(handle).(*Player))

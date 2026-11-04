@@ -14,6 +14,26 @@ type acState struct {
 	conf   *anticheat.Config
 	exempt func(p *Player, c anticheat.Check) bool
 
+	// levels are the violation levels of the checks, and logs what they
+	// logged.
+	levels [anticheat.NumChecks]anticheat.Level
+	logs   [anticheat.NumChecks]violationLog
+	// exemptUntil holds the tick ExemptAntiCheat exempts the player from
+	// each check until, that of every check last.
+	exemptUntil [anticheat.NumChecks + 1]int64
+	// depth counts the checked actions running: an action a handler of one
+	// asks for is the plugin's, not the client's.
+	depth int
+
+	// graceUntil is the tick until which the movement checks skip moves.
+	// moved is set once the client moved the player, clientMove while a
+	// move of the client is applied.
+	graceUntil        int64
+	moved, clientMove bool
+	// setbackPending is set from a setback until its acknowledgement, which
+	// starts no grace.
+	setbackPending bool
+
 	// impulses are the velocities the server gave the player that its
 	// client may still apply, each until a tick of the player.
 	impulses []impulse

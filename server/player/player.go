@@ -642,6 +642,7 @@ func (p *Player) Speed() float64 {
 func (p *Player) SetFlightSpeed(flightSpeed float64) {
 	p.flightSpeed = flightSpeed
 	p.client().SendAbilities(p)
+	p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.GameMode }))
 }
 
 // FlightSpeed returns the flight speed of the player, with the value representing the base speed. The actual
@@ -656,6 +657,7 @@ func (p *Player) FlightSpeed() float64 {
 func (p *Player) SetVerticalFlightSpeed(flightSpeed float64) {
 	p.verticalFlightSpeed = flightSpeed
 	p.client().SendAbilities(p)
+	p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.GameMode }))
 }
 
 // VerticalFlightSpeed returns the flight speed of the player on the Y axis, with the value representing the
@@ -1345,6 +1347,7 @@ func (p *Player) respawn(f func(p *Player)) {
 		np.Teleport(pos)
 		np.client().SendRespawn(pos, p)
 		np.SetVisible()
+		np.startGrace(np.graceOf(func(g anticheat.Grace) int { return g.Respawn }))
 		if f != nil {
 			f(np)
 		}
@@ -1998,6 +2001,7 @@ func (p *Player) SetGameMode(mode world.GameMode) {
 	if mode != world.GameModeSpectator {
 		p.Spectate(nil)
 	}
+	p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.GameMode }))
 }
 
 // Spectate makes the camera of the player follow an entity, ported from
@@ -3301,6 +3305,7 @@ func (p *Player) teleport(pos mgl64.Vec3) {
 	p.setPosition(pos)
 	p.data.Vel = mgl64.Vec3{}
 	p.ResetFallDistance()
+	p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.Teleport }))
 }
 
 // setPosition sets the position of the player and tells its world, so that
@@ -3373,6 +3378,11 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	p.moved = true
 	if !p.client().ClientMoving() {
 		p.movedByServer = true
+	}
+	if ac := p.anticheat(); ac != nil && !ac.clientMove {
+		// The server moved a player with a client: its client moves on from
+		// where it had it until it sees the move.
+		p.startGrace(ac.conf.Grace.Teleport)
 	}
 
 	p.setPosition(res)
@@ -3486,6 +3496,7 @@ func (p *Player) Displace(deltaPos mgl64.Vec3) {
 	}
 	releaseBorrowedViewers(p.tx, viewers, release)
 	p.data.Pos, p.data.Vel = res, velocity
+	p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.Teleport }))
 	p.checkBlockCollisions(deltaPos)
 	p.onGround = p.checkOnGround(deltaPos)
 	p.emitMovementGameEvents(deltaPos)
@@ -3534,6 +3545,9 @@ func (p *Player) Riding() *world.EntityHandle {
 
 // SetRiding updates the entity handle this player is riding.
 func (p *Player) SetRiding(r *world.EntityHandle) {
+	if r == nil && p.data.Riding != nil {
+		p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.Dismount }))
+	}
 	p.data.Riding = r
 }
 
@@ -4004,6 +4018,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.client().SendHudUpdates()
 
 	if p.prevWorld != tx.World() && p.prevWorld != nil {
+		p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.WorldChange }))
 		p.Handler().HandleChangeWorld(p, p.prevWorld, tx.World())
 	}
 	p.prevWorld = tx.World()
@@ -4660,6 +4675,9 @@ func (p *Player) Scale() float64 {
 func (p *Player) SetScale(s float64) {
 	p.scale = s
 	p.updateState()
+	// The box of the player changed, which its client applies a round trip
+	// later.
+	p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.Teleport }))
 }
 
 // OnGround checks if the player is considered to be on the ground.
