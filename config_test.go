@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock"
@@ -24,7 +25,9 @@ import (
 // whichever part of the program reads a key, a new default file has the
 // bytes it always had, and a file means what it always meant. The bytes and
 // the meanings below were recorded from the readConfig that read the file
-// into a single server.UserConfig.
+// into a single server.UserConfig. The one exception is IdentityKey, added
+// since: a new default file has its line, and a file that lacks it, with
+// AuthEnabled = true, now keys players by XUID.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -107,7 +110,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 		want configMeaning
 	}{
 		{"checked in", checkedIn, configMeaning{
-			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false, "NameCheck": "lenient",
+			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false, "NameCheck": "lenient", "IdentityKey": "xuid",
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
@@ -125,7 +128,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Java.Address": "", "Java.Message": "",
 		}},
 		{"every key changed", []byte(everyKeyChanged), configMeaning{
-			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict",
+			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
 			"MaxPlayers": 7, "MaxChunkRadius": 9,
 			"Resources": 0, "ResourcesRequired": true, "DisableResourceBuilding": true,
@@ -175,15 +178,60 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 // and the transports it no longer or never knew.
 func TestConfigFileErrors(t *testing.T) {
 	for file, want := range map[string]string{
-		"[Server]\nName = 5\n":                "decode config: (2, 1): Can't convert 5(int64) to string",
-		"[Network]\nLAN = \"yes\"\n":          "decode config: (2, 1): Can't convert yes(string) to bool",
-		"[Network]\nTransport = \"raknet\"\n": `network transport "raknet" is no longer supported: players join over NetherNet`,
-		"[Network]\nTransport = \"tcp\"\n":    `unknown network transport "tcp"`,
-		"[Server]\nNameCheck = \"xbox\"\n":    `unknown name check "xbox": want "lenient", "game" or "strict"`,
+		"[Server]\nName = 5\n":                                    "decode config: (2, 1): Can't convert 5(int64) to string",
+		"[Network]\nLAN = \"yes\"\n":                              "decode config: (2, 1): Can't convert yes(string) to bool",
+		"[Network]\nTransport = \"raknet\"\n":                     `network transport "raknet" is no longer supported: players join over NetherNet`,
+		"[Network]\nTransport = \"tcp\"\n":                        `unknown network transport "tcp"`,
+		"[Server]\nNameCheck = \"xbox\"\n":                        `unknown name check "xbox": want "lenient", "game" or "strict"`,
+		"[Server]\nIdentityKey = \"uuid\"\n":                      `unknown IdentityKey "uuid": use "auto", "xuid" or "name"`,
+		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n": `IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
 			t.Errorf("%q: error %v, want %q", file, err, want)
+		}
+	}
+}
+
+// TestIdentityKeyResolves checks how compose resolves IdentityKey with
+// AuthEnabled, and what it logs: "auto" keys by XUID with sign-in and by
+// name without, in any case and with spaces around, and name mode warns.
+func TestIdentityKeyResolves(t *testing.T) {
+	for _, tc := range []struct {
+		file, want, log string
+	}{
+		{"[Server]\nAuthEnabled = true\n", "xuid", `level=INFO msg="Players are keyed by their Xbox accounts (IdentityKey = \"xuid\")."`},
+		{"[Server]\nAuthEnabled = false\n", "name", `level=WARN msg="Xbox Live sign-in is off (AuthEnabled = false): players are keyed by name, and anyone can join as any name, an operator's included. Use this only on a network you trust."`},
+		{"[Server]\nAuthEnabled = false\nIdentityKey = \" Name \"\n", "name", "sign-in is off"},
+		{"[Server]\nIdentityKey = \"XUID\"\n", "xuid", "keyed by their Xbox accounts"},
+		{"[Server]\nIdentityKey = \"\"\n", "xuid", "keyed by their Xbox accounts"},
+		{"[Server]\nAuthEnabled = true\nIdentityKey = \"name\"\n", "name", `level=WARN msg="IdentityKey = \"name\": a player who renames their Xbox account loses operator status, leaves the whitelist and escapes a ban by name."`},
+	} {
+		t.Chdir(t.TempDir())
+		if err := os.WriteFile("config.toml", []byte(tc.file), 0644); err != nil {
+			t.Fatal(err)
+		}
+		var logged bytes.Buffer
+		log := slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		}}))
+		f, err := readConfigFile("config.toml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		conf, _, _, err := f.compose(log)
+		if err != nil {
+			t.Fatalf("%q: %v", tc.file, err)
+		}
+		closeProviders(t, conf)
+		if got := conf.IdentityKey.String(); got != tc.want {
+			t.Errorf("%q: IdentityKey %s, want %s", tc.file, got, tc.want)
+		}
+		if !strings.Contains(logged.String(), tc.log) {
+			t.Errorf("%q: logged\n%s\nwant a line with %s", tc.file, logged.String(), tc.log)
 		}
 	}
 }
@@ -226,6 +274,7 @@ const everyKeyChanged = `
 [Server]
   AuthEnabled = false
   DisableJoinQuitMessages = true
+  IdentityKey = "name"
   MuteEmoteChat = true
   Name = "Changed"
   NameCheck = "strict"
@@ -282,7 +331,7 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 		}
 	}
 	return configMeaning{
-		"Name":            conf.Name,
+		"Name": conf.Name, "IdentityKey": conf.IdentityKey.String(),
 		"ReconnectPolicy": conf.ReconnectPolicy, "JoinMessage": !conf.JoinMessage.Zero(), "QuitMessage": !conf.QuitMessage.Zero(),
 		"MaxPlayers": conf.MaxPlayers, "MaxChunkRadius": conf.MaxChunkRadius,
 		"OverworldSeed": conf.OverworldSeed, "GeneratorProfile": conf.GeneratorProfile.String(),

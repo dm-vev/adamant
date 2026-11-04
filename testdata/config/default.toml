@@ -34,6 +34,7 @@
 [Server]
   AuthEnabled = true
   DisableJoinQuitMessages = false
+  IdentityKey = "auto"
   MuteEmoteChat = false
   Name = "Dragonfly Server"
   NameCheck = "lenient"

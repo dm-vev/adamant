@@ -6,12 +6,22 @@ import (
 	"slices"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 var errAdminUnavailable = errors.New("admin persistence unavailable")
+
+// IdentityKey returns what the server keys its players by: identity.XUID or
+// identity.Name, never identity.Auto, which a Server keys by name.
+func (srv *Server) IdentityKey() identity.Mode {
+	if srv.conf.IdentityKey == identity.XUID {
+		return identity.XUID
+	}
+	return identity.Name
+}
 
 func (srv *Server) IsOperator(name string) bool {
 	return srv.operators != nil && srv.operators.isOperator(name)

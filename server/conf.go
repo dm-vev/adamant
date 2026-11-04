@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/identity"
 	// The packages of the functions New calls through go:linkname must be
 	// linked in, whether or not a listener imports them.
 	_ "github.com/df-mc/dragonfly/server/item/creative"
@@ -42,6 +43,12 @@ type Config struct {
 	Allower Allower
 	// ReconnectPolicy controls what happens when a player tries to join while already connected.
 	ReconnectPolicy ReconnectPolicy
+	// IdentityKey is what the server keys its players by: identity.XUID,
+	// their Xbox accounts, for a server whose listeners admit only players
+	// Xbox Live vouched for, or identity.Name, their names. identity.Auto,
+	// the zero value, keys them by name: the program resolves it from the
+	// AuthEnabled key of config.toml as it composes the Config.
+	IdentityKey identity.Mode
 	// MaxPlayers is the maximum amount of players allowed to join the server at
 	// once.
 	MaxPlayers int
@@ -203,6 +210,10 @@ func (conf Config) New() *Server {
 	if conf.Blocks == nil {
 		conf.Blocks = world.DefaultBlockRegistry
 	}
+	if conf.IdentityKey == identity.Auto {
+		conf.Log.Info("Players are keyed by name: Config.IdentityKey is identity.Auto, which a Server keys by name.")
+		conf.IdentityKey = identity.Name
+	}
 
 	// Initialize the passed block registry and also initialize the default block registry which
 	// is used in some vanilla paths.
@@ -337,6 +348,13 @@ type UserConfig struct {
 		// ReconnectPolicy controls what happens when a player connects while already online.
 		// Valid values: "kick-joining" or "kick-existing".
 		ReconnectPolicy string
+		// IdentityKey is what the whitelist, the operators, the bans and
+		// the data of players are keyed by: "xuid", the Xbox account;
+		// "name", the name, which anyone can take without Xbox Live
+		// sign-in; "auto", "xuid" if AuthEnabled is true and "name"
+		// otherwise. The program resolves "auto" as it composes the file;
+		// Config, given "auto" or "", keys by name.
+		IdentityKey string
 	}
 	World struct {
 		// SaveData controls whether a world's data will be saved and loaded.
@@ -439,9 +457,17 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return Config{}, err
 	}
 
+	identityKey := identity.Auto
+	if value := strings.TrimSpace(uc.Server.IdentityKey); value != "" {
+		if identityKey, err = identity.ParseMode(value); err != nil {
+			return Config{}, err
+		}
+	}
+
 	conf := Config{
 		Log:                   log,
 		Name:                  uc.Server.Name,
+		IdentityKey:           identityKey,
 		ReconnectPolicy:       ReconnectKickExisting,
 		MaxPlayers:            uc.Players.MaxCount,
 		MaxChunkRadius:        uc.Players.MaximumChunkRadius,
@@ -526,6 +552,7 @@ func DefaultConfig() UserConfig {
 	c.World.Seed = 0
 	c.World.GeneratorProfile = "auto"
 	c.Server.ReconnectPolicy = "kick-existing"
+	c.Server.IdentityKey = "auto"
 	c.World.DisableOverworld = false
 	c.World.DisableNether = false
 	c.World.DisableEnd = false

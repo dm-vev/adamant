@@ -180,7 +180,7 @@ Settings live in `config.toml`.
 | Section | Keys |
 |---|---|
 | `Network` | `Address` (default `:19132`), `Transport` (`nethernet` default, or `raknet`), `IdentityFile` (default `server-key.pem`), `EnableQuery` |
-| `Server` | `Name`, `AuthEnabled`, `DisableJoinQuitMessages`, `MuteEmoteChat`, `ReconnectPolicy` |
+| `Server` | `Name`, `AuthEnabled`, `IdentityKey` (`auto` default, `xuid` or `name`), `DisableJoinQuitMessages`, `MuteEmoteChat`, `ReconnectPolicy` |
 | `World` | `Seed`, `SaveData`, `Folder`, `GeneratorProfile` (`auto`, `fast-cores`, `many-cores`), `GeneratorWorkers`, `GeneratorQueueSize` |
 | `Players` | `MaxCount`, `MaximumChunkRadius`, `SaveData`, `Folder` |
 | `Resources` | `AutoBuildPack`, `Folder`, `Required` |

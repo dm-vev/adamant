@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/protocol/java"
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/pelletier/go-toml"
 )
 
@@ -88,6 +90,11 @@ func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Con
 		return server.Config{}, bc, javaadapter.Config{}, err
 	}
 	jc := f.Java.Config()
+	key, err := identityKey(f.Server.Server.IdentityKey, !bc.AuthDisabled, log)
+	if err != nil {
+		return server.Config{}, bc, jc, err
+	}
+	f.Server.Server.IdentityKey = key.String()
 	conf, err := f.Server.Config(log)
 	if err != nil {
 		return conf, bc, jc, err
@@ -97,6 +104,41 @@ func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Con
 		conf.Listeners = append(conf.Listeners, jc.Listener)
 	}
 	return conf, bc, jc, nil
+}
+
+// identityKey resolves the IdentityKey of the [Server] table with the
+// AuthEnabled key the Bedrock adapter owns beside it: "auto" keys players by
+// XUID if Xbox Live vouches for them and by name otherwise, and "xuid" needs
+// Xbox Live sign-in, as offline the XUID of a player is a claim. It logs
+// the mode chosen, with a warning in name mode.
+func identityKey(value string, authEnabled bool, log *slog.Logger) (identity.Mode, error) {
+	mode := identity.Auto
+	if strings.TrimSpace(value) != "" {
+		var err error
+		if mode, err = identity.ParseMode(value); err != nil {
+			return mode, err
+		}
+	}
+	switch mode {
+	case identity.Auto:
+		mode = identity.Name
+		if authEnabled {
+			mode = identity.XUID
+		}
+	case identity.XUID:
+		if !authEnabled {
+			return mode, errors.New(`IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`)
+		}
+	}
+	switch {
+	case mode == identity.XUID:
+		log.Info("Players are keyed by their Xbox accounts (IdentityKey = \"xuid\").")
+	case !authEnabled:
+		log.Warn("Xbox Live sign-in is off (AuthEnabled = false): players are keyed by name, and anyone can join as any name, an operator's included. Use this only on a network you trust.")
+	default:
+		log.Warn("IdentityKey = \"name\": a player who renames their Xbox account loses operator status, leaves the whitelist and escapes a ban by name.")
+	}
+	return mode, nil
 }
 
 // marshalConfig writes the parts as one TOML document: their tables merged,

@@ -22,6 +22,10 @@
   AuthEnabled = true
   # DisableJoinQuitMessages specifies if join/quit messages should be broadcast when players join the server.
   DisableJoinQuitMessages = false
+  # IdentityKey is what the whitelist, the operators, the bans and the data of players are keyed by:
+  # "xuid", the Xbox account; "name", the name, which anyone can take without Xbox Live sign-in;
+  # "auto", "xuid" if AuthEnabled is true and "name" otherwise.
+  IdentityKey = "auto"
   # MuteEmoteChat specifies if the player emote chat should be muted or not.
   MuteEmoteChat = false
   # NameCheck sets how the names of players are checked at login. Valid values: "lenient" (a name passes if any one
