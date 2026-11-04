@@ -22713,6 +22713,7 @@ server/world/particle	method	ElectricSpark.Spawn	func(*server/world.World, githu
 server/world/particle	method	EndermanTeleport.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	method	EntityFlame.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	method	Evaporate.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
+server/world/particle	method	EyeOfEnderDeath.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	method	EyeblossomTransform.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	method	Flame.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
 server/world/particle	method	HugeExplosion.Spawn	func(*server/world.World, github.com/go-gl/mathgl/mgl64.Vec3)
@@ -22757,6 +22758,7 @@ server/world/particle	type	ElectricSpark	struct{server/world/particle.particle; 
 server/world/particle	type	EndermanTeleport	struct{server/world/particle.particle}
 server/world/particle	type	EntityFlame	struct{server/world/particle.particle}
 server/world/particle	type	Evaporate	struct{server/world/particle.particle}
+server/world/particle	type	EyeOfEnderDeath	struct{server/world/particle.particle}
 server/world/particle	type	EyeblossomTransform	struct{server/world/particle.particle; Open bool}
 server/world/particle	type	Flame	struct{server/world/particle.particle; Colour image/color.RGBA}
 server/world/particle	type	HugeExplosion	struct{server/world/particle.particle}

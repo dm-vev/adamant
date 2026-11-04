@@ -15,6 +15,9 @@ type EndermanTeleport struct{ particle }
 // SnowballPoof is a particle shown when a snowball collides with something.
 type SnowballPoof struct{ particle }
 
+// EyeOfEnderDeath is a particle shown where a thrown eye of ender shatters.
+type EyeOfEnderDeath struct{ particle }
+
 // EggSmash is a particle shown when an egg smashes on something.
 type EggSmash struct{ particle }
 

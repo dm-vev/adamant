@@ -614,6 +614,14 @@ func (s *Session) ViewParticleShared(pos mgl64.Vec3, p world.Particle, b *world.
 	s.writeBroadcast(b, func(out func(proto.Packet)) { s.particlePackets(pos, p, out) })
 }
 
+// plainParticleEvents are the level events of particles that carry nothing
+// but where they are shown.
+var plainParticleEvents = map[world.Particle]int32{
+	particle.HugeExplosion{}:    mc.LevelEventParticlesExplosion,
+	particle.EndermanTeleport{}: mc.LevelEventParticlesTeleport,
+	particle.EyeOfEnderDeath{}:  mc.LevelEventParticlesEyeOfEnderDeath,
+}
+
 // particlePackets hands out the packets that show a particle at a position.
 func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(proto.Packet)) {
 	switch pa := p.(type) {
@@ -685,11 +693,8 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 			EventData: int32(pa.Pitch),
 			Position:  mc.BlockPos{int32(pos.X()), int32(pos.Y()), int32(pos.Z())},
 		})
-	case particle.HugeExplosion:
-		out(&mc.LevelEventPacket{
-			EventType: mc.LevelEventParticlesExplosion,
-			Position:  vec64To32(pos),
-		})
+	case particle.HugeExplosion, particle.EndermanTeleport, particle.EyeOfEnderDeath:
+		out(&mc.LevelEventPacket{EventType: plainParticleEvents[p], Position: vec64To32(pos)})
 	case particle.BoneMeal:
 		out(&mc.LevelEventPacket{
 			EventType: mc.LevelEventParticleCropGrowth,
@@ -723,11 +728,6 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 	case particle.DragonDestroyBlock:
 		out(&mc.LevelEventPacket{
 			EventType: mc.LevelEventParticleLegacyEvent | mc.ParticleTypeDragonDestroyBlock,
-			Position:  vec64To32(pos),
-		})
-	case particle.EndermanTeleport:
-		out(&mc.LevelEventPacket{
-			EventType: mc.LevelEventParticlesTeleport,
 			Position:  vec64To32(pos),
 		})
 	case particle.Flame:

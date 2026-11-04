@@ -8660,6 +8660,7 @@ server/entity.evokerWololoSpellGoal	server/entity.goalStarter	*
 server/entity.evokerWololoSpellGoal	server/entity.goalStopper	*
 server/entity.evokerWololoSpellGoal	server/entity.goalTicker	*
 server/entity.experienceOrbType	server/world.EntityType	value
+server/entity.eyeOfEnderBehaviour	server/entity.Behaviour	*
 server/entity.eyeOfEnderConfig	server/world.EntityConfig	value
 server/entity.eyeOfEnderType	server/world.EntityType	value
 server/entity.fallingBlockType	protocol/bedrock/session.OffsetEntity	value
@@ -10867,6 +10868,7 @@ server/world/particle.ElectricSpark	server/world.Particle	value
 server/world/particle.EndermanTeleport	server/world.Particle	value
 server/world/particle.EntityFlame	server/world.Particle	value
 server/world/particle.Evaporate	server/world.Particle	value
+server/world/particle.EyeOfEnderDeath	server/world.Particle	value
 server/world/particle.EyeblossomTransform	server/world.Particle	value
 server/world/particle.Flame	server/world.Particle	value
 server/world/particle.HugeExplosion	server/world.Particle	value

@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -27,30 +28,40 @@ type eyeOfEnderConfig struct {
 }
 
 func (c eyeOfEnderConfig) Apply(data *world.EntityData) {
-	data.Data = &eyeOfEnderBehaviour{target: c.target, survive: c.survive}
+	data.Data = &eyeOfEnderBehaviour{target: c.target, hasTarget: true, survive: c.survive}
 }
 
 type eyeOfEnderBehaviour struct {
-	target  mgl64.Vec3
-	survive bool
-	life    int
+	target    mgl64.Vec3
+	hasTarget bool
+	survive   bool
+	life      int
 }
 
 // Tick advances the signal like Java EyeOfEnder.tick: steer towards the
 // target, then after 80 ticks drop the eye (4 in 5) or shatter it.
-func (b *eyeOfEnderBehaviour) Tick(e *Ent, tx *world.Tx) {
-	next := e.data.Pos.Add(e.data.Vel)
-	e.data.Vel = eyeOfEnderMovement(e.data.Vel, next, b.target)
+func (b *eyeOfEnderBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	prev, prevVel := e.data.Pos, e.data.Vel
+	next := prev.Add(prevVel)
+	if b.hasTarget {
+		e.data.Vel = eyeOfEnderMovement(prevVel, next, b.target)
+	}
 	e.data.Pos = next
 	b.life++
-	if b.life <= 80 {
-		return
+	if b.life > 80 {
+		tx.PlaySound(next, sound.Custom{Name: "entity.ender_eye.death"})
+		_ = e.CloseIn(tx)
+		if b.survive {
+			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: next}, item.NewStack(item.EnderEye{}, 1)))
+		} else {
+			// Java levelEvent 2003 at the block, which its client shows
+			// at the middle of the block's floor.
+			tx.AddParticle(cube.PosFromVec3(next).Vec3Middle(), particle.EyeOfEnderDeath{})
+		}
+		return nil
 	}
-	tx.PlaySound(next, sound.Custom{Name: "entity.ender_eye.death"})
-	if b.survive {
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: next}, item.NewStack(item.EnderEye{}, 1)))
-	}
-	_ = e.CloseIn(tx)
+	return &Movement{v: tx.Viewers(prev), releaseTx: tx, e: e,
+		pos: next, vel: e.data.Vel, dpos: next.Sub(prev), dvel: e.data.Vel.Sub(prevVel), rot: e.data.Rot}
 }
 
 func eyeOfEnderMovement(old, pos, target mgl64.Vec3) mgl64.Vec3 {
@@ -80,7 +91,10 @@ type EyeOfEnder struct{ *Ent }
 
 // Tick moves the eye and resolves its end of life.
 func (e *EyeOfEnder) Tick(tx *world.Tx, _ int64) {
-	e.data.Data.(*eyeOfEnderBehaviour).Tick(e.Ent, tx)
+	e.bindTx(tx)
+	if m := e.Behaviour().Tick(e.Ent, tx); m != nil {
+		m.Send()
+	}
 }
 
 // EyeOfEnderType is the entity type for the travelling eye signal.
@@ -90,7 +104,9 @@ type eyeOfEnderType struct{}
 
 func (eyeOfEnderType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		eyeOfEnderConfig{target: d.Pos}.Apply(d)
+		// A reloaded signal has no target: like Java it flies on as it
+		// was moving, and shatters.
+		d.Data = &eyeOfEnderBehaviour{}
 	}
 	return &EyeOfEnder{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
