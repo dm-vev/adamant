@@ -41,7 +41,7 @@ func (b BookAndQuill) DeletePage(page int) BookAndQuill {
 	if _, ok := b.Page(page); !ok {
 		return b
 	}
-	b.Pages = slices.Delete(b.Pages, page, page+1)
+	b.Pages = slices.Delete(slices.Clone(b.Pages), page, page+1)
 	return b
 }
 
@@ -57,7 +57,7 @@ func (b BookAndQuill) InsertPage(page int, text string) BookAndQuill {
 	if page > len(b.Pages) {
 		return b
 	}
-	b.Pages = slices.Insert(b.Pages, page, text)
+	b.Pages = slices.Insert(slices.Clone(b.Pages), page, text)
 	return b
 }
 
@@ -75,6 +75,9 @@ func (b BookAndQuill) SetPage(page int, text string) BookAndQuill {
 		pages := make([]string, page+1)
 		copy(pages, b.Pages)
 		b.Pages = pages
+	} else {
+		// Pages are shared by every copy of the book, so they are not written to.
+		b.Pages = slices.Clone(b.Pages)
 	}
 	b.Pages[page] = text
 	return b
@@ -90,6 +93,7 @@ func (b BookAndQuill) SwapPages(pageOne, pageTwo int) BookAndQuill {
 	if _, ok := b.Page(max(pageOne, pageTwo)); !ok {
 		return b
 	}
+	b.Pages = slices.Clone(b.Pages)
 	b.Pages[pageOne], b.Pages[pageTwo] = b.Pages[pageTwo], b.Pages[pageOne]
 	return b
 }
