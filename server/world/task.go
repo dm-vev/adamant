@@ -89,6 +89,24 @@ func awaitTask[T any](ctx context.Context, task *Task, result *T) (T, error) {
 	select {
 	case <-task.Done():
 		return completed()
+	default:
+	}
+	if err := checkOwnerWait("a call"); err != nil {
+		// The task runs on another owner if it started: this one does not
+		// wait for it.
+		if task.Cancel() {
+			return zero, err
+		}
+		select {
+		case <-task.Done():
+			return completed()
+		default:
+			return zero, err
+		}
+	}
+	select {
+	case <-task.Done():
+		return completed()
 	case <-ctx.Done():
 		if task.Cancel() {
 			return zero, ctx.Err()
@@ -164,15 +182,24 @@ func (t *Task) Err() error {
 	}
 }
 
-// Wait blocks until the task finishes or ctx is cancelled. Never call it from
-// a callback running on the same owner: that blocks the owner on itself, the
-// deadlock Do exists to avoid.
+// Wait blocks until the task finishes or ctx is cancelled. Called from a world
+// owner or a region worker (any scheduled callback or Handler event) for a
+// task not finished yet, it returns ErrOwnerWait at once instead of blocking:
+// the task may need the same owner, or one waiting for it.
 func (t *Task) Wait(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if t == nil || t.done == nil {
 		return ErrTaskCancelled
+	}
+	select {
+	case <-t.done:
+		return t.Err()
+	default:
+	}
+	if err := checkOwnerWait("Task.Wait"); err != nil {
+		return err
 	}
 	select {
 	case <-t.done:
@@ -314,8 +341,10 @@ func (w *World) DoAfter(delay time.Duration, f func(tx *Tx)) *Task {
 
 // Call runs f on w's owner and waits for its typed result. It is for
 // off-owner code such as tests, startup and background goroutines; if you
-// already have a *world.Tx, just use it directly. Calling it from the
-// owner itself (any scheduled callback or Handler event) deadlocks. If f
+// already have a *world.Tx, just use it directly. Called from a world owner
+// or a region worker (any scheduled callback or Handler event), it cancels
+// the call and returns ErrOwnerWait instead of waiting, unless f already ran,
+// as on a synchronous World. If f
 // panics, Call re-panics with the original value on the waiting goroutine after
 // logging the original stack through the World's Logger. Context cancellation
 // stops pending work, but Call waits for a callback that has already started.

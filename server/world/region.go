@@ -378,7 +378,14 @@ func (t ticker) tickRegionPhase(tx *Tx, tick int64, groups [][]columnRef, afterB
 			}
 			return
 		}
-		parallel.ForWorkers(len(regions), 1, tickRegion)
+		parallel.ForWorkers(len(regions), 1, func(worker, i int) {
+			// A worker on a goroutine of its own runs a transaction of the
+			// region: waiting for an owner there fails as on the owner.
+			if id, entered := enterOwner(w); entered {
+				defer leaveOwner(id)
+			}
+			tickRegion(worker, i)
+		})
 	}()
 	for _, r := range regions {
 		r.tx.closed = true

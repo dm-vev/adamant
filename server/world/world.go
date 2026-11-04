@@ -546,6 +546,9 @@ func (w *World) nextOverflowTransaction() (transaction, bool) {
 // handleTransactions continuously reads transactions from the queue and runs
 // them.
 func (w *World) handleTransactions() {
+	if id, entered := enterOwner(w); entered {
+		defer leaveOwner(id)
+	}
 	for {
 		select {
 		case tx := <-w.queue:
@@ -2355,9 +2358,14 @@ func (w *World) DefaultWorld() *World {
 	return w
 }
 
-// Save saves the World to the provider.
+// Save saves the World to the provider and waits until it reached the disk.
+// Called from a world owner or a region worker, it logs ErrOwnerWait and
+// returns without saving: use Tx.SaveWorld from a transaction.
 func (w *World) Save() {
 	if w == nil {
+		return
+	}
+	if !w.conf.Synchronous && checkOwnerWait("World.Save") != nil {
 		return
 	}
 	<-w.exec(w.save(nil))
@@ -2666,10 +2674,16 @@ func (w *World) columnLeft(pos ChunkPos) {
 	}
 }
 
-// Close closes the world and saves all chunks currently loaded.
+// Close closes the world and saves all chunks currently loaded. Called from a
+// world owner or a region worker, it returns ErrOwnerWait without closing.
 func (w *World) Close() error {
 	if w == nil {
 		return nil
+	}
+	if !w.conf.Synchronous {
+		if err := checkOwnerWait("World.Close"); err != nil {
+			return err
+		}
 	}
 	w.o.Do(w.close)
 	return nil

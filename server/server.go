@@ -106,8 +106,8 @@ func (srv *Server) Listen() {
 // yields players that join the server while blocking otherwise. The iterator
 // returned ends when the Server is closed using a call to Close. The loop body
 // runs on the player's world owner: blocking there stalls that world, and
-// calling world.Call, world.CallEntity, world.CallRef, or Task.Wait for the
-// same owner deadlocks. Players returned are only valid within the block of the
+// world.Call, world.CallEntity, world.CallRef, Task.Wait and Players(nil) fail
+// there with world.ErrOwnerWait. Players returned are only valid within the block of the
 // for loop used to iterate over them. Use p.H() with player.Do for work that
 // outlives the loop body:
 //
@@ -283,9 +283,9 @@ func (srv *Server) Online() []OnlinePlayer {
 // Without one (tx == nil), from off any world owner, it yields every player,
 // each in a transaction of its own world, one after another: each loop body
 // runs on the yielded player's world owner, so blocking stalls that world, and
-// calling world.Call, world.CallEntity, world.CallRef, or Task.Wait for the
-// same owner deadlocks. Called with nil from a world owner, it waits for the
-// owners of the players and may deadlock.
+// world.Call, world.CallEntity, world.CallRef, and Task.Wait fail there with
+// world.ErrOwnerWait. Called with nil from a world owner, it cannot wait for
+// the owners of the players and yields nothing.
 //
 // Players returned are only valid within the block of the for loop used to
 // iterate over them:
