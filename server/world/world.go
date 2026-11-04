@@ -478,8 +478,11 @@ type ExecFunc func(tx *Tx)
 
 // Exec performs a legacy blocking transaction. New off-owner code should use
 // Do or Call so scheduling cannot block the caller when the queue is full.
+//
+// A panic of f is logged as a fault of the transaction, with the caller of
+// Exec, and ends the transaction: the channel still closes.
 func (w *World) Exec(f ExecFunc) <-chan struct{} {
-	return w.exec(execFunc(f))
+	return w.execNormal(normalTransaction{f: f, caller: callerPC(0)})
 }
 
 // exec runs f on the World, bypassing the closed check that Do/DoAfter/Call
@@ -487,13 +490,24 @@ func (w *World) Exec(f ExecFunc) <-chan struct{} {
 // unload, the close transaction), which must queue work after close begins.
 // The returned channel closes when done; waiting on it from the owner deadlocks.
 func (w *World) exec(f execFunc) <-chan struct{} {
+	return w.execNormal(normalTransaction{f: f, caller: callerPC(0)})
+}
+
+// execTick runs the tick f on the World as exec does. A tick has panic
+// boundaries of its own.
+func (w *World) execTick(f execFunc) <-chan struct{} {
+	return w.execNormal(normalTransaction{f: f, tick: true})
+}
+
+// execNormal queues ntx, giving it a channel that closes once it ran.
+func (w *World) execNormal(ntx normalTransaction) <-chan struct{} {
 	c := make(chan struct{})
 	if w == nil {
 		// Nil worlds are treated as no-ops; return a closed channel so callers don't block.
 		close(c)
 		return c
 	}
-	ntx := normalTransaction{c: c, f: f}
+	ntx.c = c
 	if w.conf.Synchronous {
 		ntx.Run(w)
 		return c

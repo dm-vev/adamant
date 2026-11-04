@@ -5,6 +5,7 @@ import (
 	"io"
 	"maps"
 	"math"
+	"runtime/debug"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -419,8 +420,21 @@ func (e *EntityHandle) ResendMove() {
 // execWorld uses a sync.Cond to synchronise access to the handler's world. We
 // are dealing with a rather complicated synchronisation pattern here. The goal
 // for execWorld is to block until e.w becomes accessible. Meanwhile, World.exec
-// may also affect e.w, which execWorld needs to deal with.
-func (e *EntityHandle) execWorld(f func(tx *Tx, e Entity), weak bool, cancel <-chan struct{}, allowedCloseWorld *World) bool {
+// may also affect e.w, which execWorld needs to deal with. If opening the
+// entity for f panics, f is not called and execWorld returns the panic as a
+// *PanicError.
+func (e *EntityHandle) execWorld(f func(tx *Tx, e Entity), weak bool, cancel <-chan struct{}, allowedCloseWorld *World) (bool, error) {
+	var openErr atomic.Pointer[PanicError]
+	run := e.execWorldOpened(f, weak, cancel, allowedCloseWorld, &openErr)
+	if err := openErr.Load(); err != nil {
+		return run, err
+	}
+	return run, nil
+}
+
+// execWorldOpened is execWorld, storing a panic of opening the entity in
+// openErr.
+func (e *EntityHandle) execWorldOpened(f func(tx *Tx, e Entity), weak bool, cancel <-chan struct{}, allowedCloseWorld *World, openErr *atomic.Pointer[PanicError]) bool {
 	e.cond.L.Lock()
 	for e.w == nil || (e.w != closeWorld && (!e.worldReady || (!weak && e.weakTxActive))) {
 		if cancelled(cancel) {
@@ -477,19 +491,18 @@ func (e *EntityHandle) execWorld(f func(tx *Tx, e Entity), weak bool, cancel <-c
 	// any goroutines still awaiting e.cond.
 	var ran atomic.Bool
 	ret := e.weakExec(func(tx *Tx) {
-		e.cond.L.Lock()
-		if e.w != tx.World() {
-			e.cond.L.Unlock()
+		ent, ok, err := e.openFor(tx)
+		if err != nil {
+			// The task fails with the panic: trying again would open it
+			// again.
+			openErr.Store(err)
+			tx.w.reportFault(Fault{Kind: FaultTransaction, Type: e.t.EncodeEntity(), Pos: cube.PosFromVec3(e.data.Pos), Entity: e, Value: err.Value, Stack: err.Stack}, quarantineKey{})
+			ran.Store(true)
 			return
 		}
-		var ent Entity
-		if e.state == nil {
-			ent = e.t.Open(tx, e, &e.data)
-		} else {
-			ent = e.state.entity(tx, e)
+		if !ok {
+			return
 		}
-		e.cond.L.Unlock()
-
 		ran.Store(true)
 		f(tx, ent)
 	}, allowedCloseWorld)
@@ -507,9 +520,29 @@ func (e *EntityHandle) execWorld(f func(tx *Tx, e Entity), weak bool, cancel <-c
 		// Our weak transaction was suspended. We try again, this time with
 		// e.execWorld(f, true) to make this goroutine bypass any goroutines
 		// still awaiting e.cond.
-		return e.execWorld(f, true, cancel, allowedCloseWorld)
+		return e.execWorldOpened(f, true, cancel, allowedCloseWorld, openErr)
 	}
 	return true
+}
+
+// openFor opens the entity of the handle for a task in tx, under the lock of
+// the handle, unless the handle left the world of tx. A panic of opening it
+// is returned, the lock released.
+func (e *EntityHandle) openFor(tx *Tx) (ent Entity, ok bool, err *PanicError) {
+	e.cond.L.Lock()
+	defer e.cond.L.Unlock()
+	defer func() {
+		if r := recover(); r != nil {
+			ent, ok, err = nil, false, &PanicError{Value: r, Stack: debug.Stack()}
+		}
+	}()
+	if e.w != tx.World() {
+		return nil, false, nil
+	}
+	if e.state == nil {
+		return e.t.Open(tx, e, &e.data), true, nil
+	}
+	return e.state.entity(tx, e), true, nil
 }
 
 // weakExec performs a "weak transaction". It adds a transaction to the world

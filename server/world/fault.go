@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"runtime"
 	"runtime/debug"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,6 +118,27 @@ const (
 // function.
 func newFault(kind FaultKind, r any) Fault {
 	return Fault{Kind: kind, Value: r, Stack: debug.Stack()}
+}
+
+// panicSite returns the function that panicked, when called by a function
+// deferred while panicking: the first function below the panic that is not
+// of the runtime.
+func panicSite() string {
+	var pcs [48]uintptr
+	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs[:])])
+	panicking := false
+	for {
+		fr, more := frames.Next()
+		if panicking && !strings.HasPrefix(fr.Function, "runtime.") {
+			return fr.Function
+		}
+		if fr.Function == "runtime.gopanic" {
+			panicking = true
+		}
+		if !more {
+			return "unknown"
+		}
+	}
 }
 
 // faultCount counts the panics of one offender within FaultWindow ticks of

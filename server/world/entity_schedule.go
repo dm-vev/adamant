@@ -161,7 +161,7 @@ func (e *EntityHandle) currentWorldClosing() bool {
 // same completion model as scheduledTransaction: run, drain deferred work,
 // finish the task.
 func (e *EntityHandle) runScheduled(task *Task, f func(tx *Tx, e Entity) error, allowedCloseWorld *World) {
-	run := e.execWorld(func(tx *Tx, ent Entity) {
+	run, openErr := e.execWorld(func(tx *Tx, ent Entity) {
 		if !task.begin() {
 			return
 		}
@@ -169,6 +169,9 @@ func (e *EntityHandle) runScheduled(task *Task, f func(tx *Tx, e Entity) error, 
 		tx.runDeferred()
 		task.finish(err)
 	}, false, task.Done(), allowedCloseWorld)
+	if openErr != nil {
+		task.failIfPending(openErr)
+	}
 	if !run || task.pending() {
 		err := ErrEntityClosed
 		if e.currentWorldClosing() {

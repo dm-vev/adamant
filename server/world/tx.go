@@ -1,7 +1,9 @@
 package world
 
 import (
+	"fmt"
 	"iter"
+	"runtime"
 	"sync"
 	"time"
 
@@ -650,17 +652,53 @@ func (tx *Tx) runDeferred() {
 type normalTransaction struct {
 	c chan struct{}
 	f func(tx *Tx)
+	// tick is set for the transaction of a tick, which has panic
+	// boundaries of its own.
+	tick bool
+	// caller is the program counter of the caller of Exec or exec.
+	caller uintptr
 }
 
 // Run creates a *Tx, calls ntx.f, closes the transaction and finally closes
-// ntx.c.
+// ntx.c. A panic of ntx.f, unless ntx is a tick, is reported as a fault of
+// the transaction, which ends there: its deferred work still runs.
 func (ntx normalTransaction) Run(w *World) {
 	tx := newTx(w)
 	defer close(ntx.c)
 	defer tx.close()
-	ntx.f(tx)
+	if ntx.tick {
+		ntx.f(tx)
+	} else {
+		ntx.call(w, tx)
+	}
 	tx.close()
 	tx.runDeferred()
+}
+
+// call calls ntx.f, recovering a panic of it.
+func (ntx normalTransaction) call(w *World, tx *Tx) {
+	defer func() {
+		if r := recover(); r != nil {
+			f := newFault(FaultTransaction, r)
+			f.Type = panicSite()
+			if ntx.caller != 0 {
+				fr, _ := runtime.CallersFrames([]uintptr{ntx.caller}).Next()
+				f.Stack = fmt.Appendf(f.Stack, "\nqueued by %s\n\t%s:%d\n", fr.Function, fr.File, fr.Line)
+			}
+			w.reportFault(f, quarantineKey{})
+		}
+	}()
+	ntx.f(tx)
+}
+
+// callerPC returns the program counter of the caller of the function
+// calling callerPC, skip frames further up.
+func callerPC(skip int) uintptr {
+	var pc [1]uintptr
+	if runtime.Callers(skip+3, pc[:]) == 0 {
+		return 0
+	}
+	return pc[0]
 }
 
 // weakTransaction is a transaction that may be cancelled by its validity
@@ -674,17 +712,20 @@ type weakTransaction struct {
 
 // Run runs the transaction, first checking if it is still valid and creating a
 // *Tx if so. Afterwards, a bool indicating if the transaction was run is added
-// to wtx.c. Finally, wtx.cond.Broadcast() is called.
+// to wtx.c. Finally, wtx.cond.Broadcast() is called. A panic of wtx.f is
+// reported as a fault of the transaction: the transaction still counts as
+// run, so that it is not tried again.
 func (wtx weakTransaction) Run(w *World) {
 	valid := wtx.valid == nil || wtx.valid()
-	var panicErr any
 	if valid {
 		tx := newTx(w)
 		func() {
 			defer func() {
 				tx.close()
 				if r := recover(); r != nil {
-					panicErr = r
+					f := newFault(FaultTransaction, r)
+					f.Type = panicSite()
+					w.reportFault(f, quarantineKey{})
 				}
 			}()
 			wtx.f(tx)
@@ -698,11 +739,8 @@ func (wtx weakTransaction) Run(w *World) {
 	wtx.cond.L.Lock()
 	defer wtx.cond.L.Unlock()
 
-	wtx.c <- valid && panicErr == nil
+	wtx.c <- valid
 	wtx.cond.Broadcast()
-	if panicErr != nil {
-		panic(panicErr)
-	}
 }
 
 // fail delivers false to a weak transaction that will never run, using the

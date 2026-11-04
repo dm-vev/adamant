@@ -313,10 +313,10 @@ func (conf Config) New() *World {
 		}
 	}
 	if conf.Synchronous {
-		<-w.exec(t.tick)
+		<-w.execTick(t.tick)
 	} else {
 		c := make(chan struct{})
-		normalTransaction{c: c, f: t.tick}.Run(w)
+		normalTransaction{c: c, f: t.tick, tick: true}.Run(w)
 	}
 	if !conf.Synchronous {
 		w.queueing.Add(1)

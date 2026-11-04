@@ -105,7 +105,7 @@ func (t ticker) tickLoop(w *World) {
 				lastOverloadWarning = next
 			}
 			next = next.Add(interval)
-			<-w.exec(t.tick)
+			<-w.execTick(t.tick)
 			tc.Reset(time.Until(next))
 		case <-w.closing:
 			// World is being closed: Stop ticking and get rid of a task.
@@ -120,7 +120,7 @@ func (t ticker) tickLoop(w *World) {
 // automatically 20 times per second. Synchronous Worlds tick loaded chunks
 // even when no viewers are present.
 func (w *World) AdvanceTick() {
-	<-w.exec(ticker{}.tick)
+	<-w.execTick(ticker{}.tick)
 }
 
 // tick performs a tick on the World and updates the time, weather, blocks and

@@ -61,12 +61,13 @@ func callContext(ctx context.Context) (context.Context, error) {
 	return ctx, ctx.Err()
 }
 
-// executeWithRecovery runs f, recovering and logging any panic through w.
+// executeWithRecovery runs f, recovering any panic and reporting it as a
+// fault of the transaction of w.
 func executeWithRecovery(w *World, f func() error) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			panicErr := &PanicError{Value: r, Stack: debug.Stack()}
-			w.conf.Log.Error("scheduled task panicked", "panic", panicErr.Value, "stack", string(panicErr.Stack))
+			w.reportFault(Fault{Kind: FaultTransaction, Type: panicSite(), Value: r, Stack: panicErr.Stack}, quarantineKey{})
 			err = panicErr
 		}
 	}()
