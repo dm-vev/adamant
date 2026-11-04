@@ -42,6 +42,10 @@ var menuRequestScenarios = []struct {
 	{"menus", (*scenario).menusScenario},
 	{"refusals", (*scenario).refusalsScenario},
 	{"multicraft", (*scenario).multiCraftScenario},
+
+	// The stations of D10 to D13: the loom, the stonecutter, the beacon
+	// and merchants.
+	{"loom", (*scenario).loomRequestsScenario},
 }
 
 // TestGoldenMenuRequests runs the scenarios of item stack requests twice,

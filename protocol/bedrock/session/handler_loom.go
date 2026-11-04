@@ -20,6 +20,13 @@ const (
 
 // handleLoomCraft handles a CraftLoomRecipe stack request action made using a loom table.
 func (h *ItemStackRequestHandler) handleLoomCraft(a *v2193.CraftLoomRecipeStackRequestAction, s *Session, tx *world.Tx) error {
+	if h.batch != nil {
+		pattern, ok := block.BannerPatternByID(a.Pattern)
+		if !ok {
+			return fmt.Errorf("unknown banner pattern id %q", a.Pattern)
+		}
+		return h.batchOp(func() error { return h.batch.Weave(pattern, int(a.TimesCrafted)) })
+	}
 	// First check if there actually is a loom opened: a menu, and a loom where it was opened.
 	m := s.menu.Load()
 	if m == nil {
