@@ -1,0 +1,34 @@
+== loaded with no file
+-- white-list.toml (13 bytes)
+   "players = []\n"
+== WhitelistAdd("Steve") = true, <nil>
+-- white-list.toml (20 bytes)
+   "players = [\"steve\"]\n"
+== WhitelistAdd("ALEX") = true, <nil>
+-- white-list.toml (28 bytes)
+   "players = [\"steve\", \"alex\"]\n"
+== WhitelistAdd("steve") = false, <nil>
+-- white-list.toml (28 bytes)
+   "players = [\"steve\", \"alex\"]\n"
+== WhitelistAdd("  Alex Two  ") = true, <nil>
+-- white-list.toml (40 bytes)
+   "players = [\"steve\", \"alex\", \"alex two\"]\n"
+== WhitelistAdd("") = false, invalid player name
+-- white-list.toml (40 bytes)
+   "players = [\"steve\", \"alex\", \"alex two\"]\n"
+== WhitelistAdd("   ") = false, invalid player name
+-- white-list.toml (40 bytes)
+   "players = [\"steve\", \"alex\", \"alex two\"]\n"
+== WhitelistRemove("STEVE") = true, <nil>
+-- white-list.toml (31 bytes)
+   "players = [\"alex\", \"alex two\"]\n"
+== WhitelistRemove("nobody") = false, <nil>
+-- white-list.toml (31 bytes)
+   "players = [\"alex\", \"alex two\"]\n"
+== WhitelistRemove("") = false, invalid player name
+-- white-list.toml (31 bytes)
+   "players = [\"alex\", \"alex two\"]\n"
+== WhitelistAdd("Steve") = true, <nil>
+-- white-list.toml (40 bytes)
+   "players = [\"alex\", \"alex two\", \"steve\"]\n"
+WhitelistEntries() = ["alex" "alex two" "steve"], <nil>

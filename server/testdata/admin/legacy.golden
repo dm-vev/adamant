@@ -1,0 +1,85 @@
+== written by hand
+-- white-list.txt (45 bytes)
+   "Steve\r\n"
+   "\r\n"
+   "  alex  \n"
+   "STEVE\n"
+   "\n"
+   " Alex Two\r\n"
+   "   \r\n"
+   "last"
+-- white-list.toml (61 bytes)
+   "players = [\"Steve\", \"\", \"  \", \" ALEX \", \"steve\", \"Alex Two\"]\n"
+-- ops.json (44 bytes)
+   "[\"Steve\", \" ALEX \", \"\", \"steve\", \"Alex Two\"]"
+-- banned-players.json (283 bytes)
+   "{\"players\": [{\"name\": \"Griefer\", \"reason\": \"first\"}, {\"name\": \" GRIEFER \", \"reason\": \"second\"}, {\"name\": \"\"}, {\"name\": \"Alex\", \"ip\": \"192.0.2.1\"}],\n"
+   " \"ips\": [{\"ip\": \"192.0.2.8:19132\", \"reason\": \"abuse\"}, {\"ip\": \"bad\"}, {\"ip\": \"192.0.2.8\"}, {\"name\": \"Steve\", \"ip\": \"[2001:db8::1]:1\"}]}"
+== loaded: nothing is written back
+-- white-list.txt (45 bytes)
+   "Steve\r\n"
+   "\r\n"
+   "  alex  \n"
+   "STEVE\n"
+   "\n"
+   " Alex Two\r\n"
+   "   \r\n"
+   "last"
+-- white-list.toml (61 bytes)
+   "players = [\"Steve\", \"\", \"  \", \" ALEX \", \"steve\", \"Alex Two\"]\n"
+-- ops.json (44 bytes)
+   "[\"Steve\", \" ALEX \", \"\", \"steve\", \"Alex Two\"]"
+-- banned-players.json (283 bytes)
+   "{\"players\": [{\"name\": \"Griefer\", \"reason\": \"first\"}, {\"name\": \" GRIEFER \", \"reason\": \"second\"}, {\"name\": \"\"}, {\"name\": \"Alex\", \"ip\": \"192.0.2.1\"}],\n"
+   " \"ips\": [{\"ip\": \"192.0.2.8:19132\", \"reason\": \"abuse\"}, {\"ip\": \"bad\"}, {\"ip\": \"192.0.2.8\"}, {\"name\": \"Steve\", \"ip\": \"[2001:db8::1]:1\"}]}"
+WhitelistEntries() = ["steve" "alex" "alex two" "last"], <nil>
+toml Players() = ["steve" "alex" "alex two"]
+OperatorEntries() = ["steve" "alex" "alex two"], <nil>
+BanEntries(false) = ["griefer" "alex"], <nil>
+BanEntries(true) = ["192.0.2.8" "2001:db8::1"], <nil>
+Banned("", "griefer") = "second", true
+WhitelistAdd("New"): <nil>
+toml Add("New"): <nil>
+Op("New"): <nil>
+BanPlayer("New", ""): <nil>
+== after one change to each
+-- white-list.txt (34 bytes)
+   "steve\r\n"
+   "alex\r\n"
+   "alex two\r\n"
+   "last\r\n"
+   "new\r\n"
+-- white-list.toml (47 bytes)
+   "players = [\"steve\", \"alex\", \"alex two\", \"new\"]\n"
+-- ops.json (47 bytes)
+   "[\n"
+   "  \"steve\",\n"
+   "  \"alex\",\n"
+   "  \"alex two\",\n"
+   "  \"new\"\n"
+   "]\n"
+-- banned-players.json (291 bytes)
+   "{\n"
+   "  \"players\": [\n"
+   "    {\n"
+   "      \"name\": \"griefer\",\n"
+   "      \"reason\": \"second\"\n"
+   "    },\n"
+   "    {\n"
+   "      \"name\": \"alex\",\n"
+   "      \"ip\": \"192.0.2.1\"\n"
+   "    },\n"
+   "    {\n"
+   "      \"name\": \"new\"\n"
+   "    }\n"
+   "  ],\n"
+   "  \"ips\": [\n"
+   "    {\n"
+   "      \"ip\": \"192.0.2.8\"\n"
+   "    },\n"
+   "    {\n"
+   "      \"name\": \"Steve\",\n"
+   "      \"ip\": \"2001:db8::1\"\n"
+   "    }\n"
+   "  ]\n"
+   "}\n"

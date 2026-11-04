@@ -1,0 +1,46 @@
+== loaded with no file
+-- white-list.txt (0 bytes)
+== WhitelistAdd("Steve") = true, <nil>
+-- white-list.txt (7 bytes)
+   "steve\r\n"
+== WhitelistAdd("ALEX") = true, <nil>
+-- white-list.txt (13 bytes)
+   "steve\r\n"
+   "alex\r\n"
+== WhitelistAdd("steve") = false, <nil>
+-- white-list.txt (13 bytes)
+   "steve\r\n"
+   "alex\r\n"
+== WhitelistAdd("  Alex Two  ") = true, <nil>
+-- white-list.txt (23 bytes)
+   "steve\r\n"
+   "alex\r\n"
+   "alex two\r\n"
+== WhitelistAdd("") = false, invalid player name
+-- white-list.txt (23 bytes)
+   "steve\r\n"
+   "alex\r\n"
+   "alex two\r\n"
+== WhitelistAdd("   ") = false, invalid player name
+-- white-list.txt (23 bytes)
+   "steve\r\n"
+   "alex\r\n"
+   "alex two\r\n"
+== WhitelistRemove("STEVE") = true, <nil>
+-- white-list.txt (16 bytes)
+   "alex\r\n"
+   "alex two\r\n"
+== WhitelistRemove("nobody") = false, <nil>
+-- white-list.txt (16 bytes)
+   "alex\r\n"
+   "alex two\r\n"
+== WhitelistRemove("") = false, invalid player name
+-- white-list.txt (16 bytes)
+   "alex\r\n"
+   "alex two\r\n"
+== WhitelistAdd("Steve") = true, <nil>
+-- white-list.txt (23 bytes)
+   "alex\r\n"
+   "alex two\r\n"
+   "steve\r\n"
+WhitelistEntries() = ["alex" "alex two" "steve"], <nil>

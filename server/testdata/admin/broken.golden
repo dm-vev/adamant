@@ -1,0 +1,4 @@
+ops.json "{\"steve\": true}": load ops list: decode ops: json: cannot unmarshal object into Go value of type []string
+ops.json "not json": load ops list: decode ops: invalid character 'o' in literal null (expecting 'u')
+banned-players.json "[\"steve\"]": load bans: decode bans: json: cannot unmarshal array into Go value of type server.banFile
+white-list.toml "players = 5\n": load whitelist: decode whitelist: (1, 1): Can't convert 5(int64) to []string(slice)

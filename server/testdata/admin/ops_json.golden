@@ -1,0 +1,69 @@
+== loaded with no file
+-- ops.json (5 bytes)
+   "null\n"
+== Op("Steve") = true, <nil>
+-- ops.json (14 bytes)
+   "[\n"
+   "  \"steve\"\n"
+   "]\n"
+IsOperator: steve true, ALEX false, alex two false, "" false
+== Op("ALEX") = true, <nil>
+-- ops.json (24 bytes)
+   "[\n"
+   "  \"steve\",\n"
+   "  \"alex\"\n"
+   "]\n"
+IsOperator: steve true, ALEX true, alex two false, "" false
+== Op("steve") = false, <nil>
+-- ops.json (24 bytes)
+   "[\n"
+   "  \"steve\",\n"
+   "  \"alex\"\n"
+   "]\n"
+IsOperator: steve true, ALEX true, alex two false, "" false
+== Op(" Alex Two ") = true, <nil>
+-- ops.json (38 bytes)
+   "[\n"
+   "  \"steve\",\n"
+   "  \"alex\",\n"
+   "  \"alex two\"\n"
+   "]\n"
+IsOperator: steve true, ALEX true, alex two true, "" false
+== Op("") = false, player name must not be empty
+-- ops.json (38 bytes)
+   "[\n"
+   "  \"steve\",\n"
+   "  \"alex\",\n"
+   "  \"alex two\"\n"
+   "]\n"
+IsOperator: steve true, ALEX true, alex two true, "" false
+== Deop("STEVE") = true, <nil>
+-- ops.json (27 bytes)
+   "[\n"
+   "  \"alex\",\n"
+   "  \"alex two\"\n"
+   "]\n"
+IsOperator: steve false, ALEX true, alex two true, "" false
+== Deop("nobody") = false, <nil>
+-- ops.json (27 bytes)
+   "[\n"
+   "  \"alex\",\n"
+   "  \"alex two\"\n"
+   "]\n"
+IsOperator: steve false, ALEX true, alex two true, "" false
+== Deop("") = false, <nil>
+-- ops.json (27 bytes)
+   "[\n"
+   "  \"alex\",\n"
+   "  \"alex two\"\n"
+   "]\n"
+IsOperator: steve false, ALEX true, alex two true, "" false
+== Op("Steve") = true, <nil>
+-- ops.json (38 bytes)
+   "[\n"
+   "  \"alex\",\n"
+   "  \"alex two\",\n"
+   "  \"steve\"\n"
+   "]\n"
+IsOperator: steve true, ALEX true, alex two true, "" false
+OperatorEntries() = ["alex" "alex two" "steve"], <nil>
