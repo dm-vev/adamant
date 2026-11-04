@@ -51,7 +51,8 @@ func happyGhast(tx *world.Tx, h *world.EntityHandle) *entity.HappyGhast {
 
 // TestHappyGhastsFloatAround checks Ghast.RandomFloatAroundGoal with the
 // careful GhastMoveControl: a happy ghast floats about without touching the
-// ground.
+// ground. TestCarefulGhastsKeepABlockFromBlocks checks the places the
+// control pushes a ghast towards.
 func TestHappyGhastsFloatAround(t *testing.T) {
 	t.Parallel()
 	w := happyGhastWorld(t)
@@ -64,12 +65,14 @@ func TestHappyGhastsFloatAround(t *testing.T) {
 		<-w.Exec(func(tx *world.Tx) {
 			pos := happyGhast(tx, h).Position()
 			moved = max(moved, pos.Sub(start).Len())
-			// Careful, it keeps a block away from the ground. Nothing is
-			// beneath the stone, and a ghast that floated down past its
+			// Careful, it pushes itself only towards places a block above
+			// the ground at y 64, but its momentum may carry it most of a
+			// block lower: it never comes to rest on the ground. Nothing
+			// is beneath the stone, and a ghast that floated down past its
 			// edge may float back in under it, which is no ground: a ghast
 			// over the stone has its feet above y 55.
-			if math.Abs(pos[0]) < 18 && math.Abs(pos[2]) < 18 && pos[1] > 55 && pos[1] < 65 {
-				t.Fatalf("happy ghast sank to %v above the ground", pos)
+			if math.Abs(pos[0]) < 18 && math.Abs(pos[2]) < 18 && pos[1] > 55 && pos[1] <= 64 {
+				t.Fatalf("happy ghast came down to %v on the ground", pos)
 			}
 		})
 	}
