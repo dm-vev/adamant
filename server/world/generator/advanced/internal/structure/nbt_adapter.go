@@ -1,7 +1,6 @@
 package structure
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -172,14 +171,7 @@ func BlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string]any
 	case "lectern":
 		actor := block.Lectern{}
 		if raw, exists := data["Book"]; exists {
-			book, ok := raw.(map[string]any)
-			if !ok {
-				return nil, fmt.Errorf("lectern Book has type %T, want compound", raw)
-			}
-			stack, err := item.StackFromStructureNBT(book)
-			if err != nil {
-				return nil, fmt.Errorf("lectern Book: %w", err)
-			}
+			stack := javaStackOrEmpty(raw)
 			actor.Book = stack
 			if pages, ok := stack.Item().(interface{ TotalPages() int }); ok {
 				page := int64(0)
@@ -263,88 +255,90 @@ var blockEntityIDs = map[string]string{
 }
 
 func convertChiseledBookshelfItems(raw any) ([]any, error) {
-	count, ok := templateListLen(raw)
-	if !ok {
-		return nil, fmt.Errorf("Items has type %T, want list", raw)
-	}
 	out := make([]any, 6)
 	for slot := range out {
 		out[slot] = map[string]any{
 			"Name": "", "Count": byte(0), "Damage": int16(0), "WasPickedUp": byte(0),
 		}
 	}
-	for index := range count {
-		rawItem, _ := templateListValue(raw, index)
-		entry, ok := rawItem.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("item %d has type %T, want compound", index, rawItem)
-		}
-		slot := int64(0)
-		if rawSlot, exists := entry["Slot"]; exists {
-			var valid bool
-			slot, valid = nbtInt(rawSlot)
-			if !valid {
-				return nil, fmt.Errorf("item %d Slot has type %T, want integer", index, rawSlot)
-			}
-		}
-		slot = int64(uint8(slot))
-		if slot >= int64(len(out)) {
+	for _, entry := range javaContainerItems(raw) {
+		if entry.slot >= len(out) {
 			continue
 		}
-		stack, err := item.StackFromStructureNBT(entry)
-		if errors.Is(err, item.ErrJavaStackCount) {
-			// ContainerHelper.loadAllItems skips a stack the codec refuses.
-			continue
-		}
-		if err != nil {
-			return nil, fmt.Errorf("item %d: %w", index, err)
-		}
-		if stack.Empty() {
-			continue
-		}
-		encoded := item.WriteNBT(stack)
+		encoded := item.WriteNBT(entry.stack)
 		encoded["WasPickedUp"] = byte(0)
-		out[slot] = encoded
+		out[entry.slot] = encoded
 	}
 	return out, nil
 }
 
 func convertItems(raw any) ([]any, error) {
+	entries := javaContainerItems(raw)
+	out := make([]any, 0, len(entries))
+	for _, entry := range entries {
+		encoded := item.WriteNBT(entry.stack)
+		encoded["Slot"] = uint8(entry.slot)
+		out = append(out, encoded)
+	}
+	return out, nil
+}
+
+// javaContainerItem is a stack of the Items of a Java container and its
+// slot.
+type javaContainerItem struct {
+	slot  int
+	stack item.Stack
+}
+
+// javaContainerItems returns the stacks of raw, the Items of a Java
+// container, that are not empty, as ContainerHelper.loadAllItems reads them
+// through ValueInput.listOrEmpty with ItemStackWithSlot.CODEC: Items that
+// are no list are no items, and an entry the codec refuses is dropped and
+// the rest kept. The codec refuses an entry that is no compound, has a Slot
+// that is no number, or is a stack ItemStack.MAP_CODEC refuses: an unknown
+// ID, a count outside 1..99 or another component it cannot read. A Slot is
+// an unsigned byte (ExtraCodecs.UNSIGNED_BYTE), 0 if it is missing.
+func javaContainerItems(raw any) []javaContainerItem {
 	count, ok := templateListLen(raw)
 	if !ok {
-		return nil, fmt.Errorf("Items has type %T, want list", raw)
+		return nil
 	}
-	out := make([]any, 0, count)
+	out := make([]javaContainerItem, 0, count)
 	for i := range count {
 		value, _ := templateListValue(raw, i)
 		entry, ok := value.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("item %d has type %T, want compound", i, value)
-		}
-		stack, err := item.StackFromStructureNBT(entry)
-		if errors.Is(err, item.ErrJavaStackCount) {
-			// ContainerHelper.loadAllItems skips a stack the codec refuses.
 			continue
 		}
-		if err != nil {
-			return nil, fmt.Errorf("item %d: %w", i, err)
-		}
-		if stack.Empty() {
-			continue
-		}
-		encoded := item.WriteNBT(stack)
 		slot := int64(0)
 		if rawSlot, exists := entry["Slot"]; exists {
-			var valid bool
-			slot, valid = nbtInt(rawSlot)
-			if !valid {
-				return nil, fmt.Errorf("item %d Slot has type %T, want integer", i, rawSlot)
+			if slot, ok = nbtInt(rawSlot); !ok {
+				continue
 			}
 		}
-		encoded["Slot"] = uint8(slot)
-		out = append(out, encoded)
+		stack, err := item.StackFromStructureNBT(entry)
+		if err != nil || stack.Empty() {
+			continue
+		}
+		out = append(out, javaContainerItem{slot: int(uint8(slot)), stack: stack})
 	}
-	return out, nil
+	return out
+}
+
+// javaStackOrEmpty returns the stack data holds, or an empty one if
+// ItemStack.CODEC refuses it, as Java's input.read(key, ItemStack.CODEC).
+// orElse(ItemStack.EMPTY) loads the book of a lectern, the item of a
+// decorated pot, of a brushable block and of an item frame.
+func javaStackOrEmpty(data any) item.Stack {
+	m, ok := data.(map[string]any)
+	if !ok {
+		return item.Stack{}
+	}
+	stack, err := item.StackFromStructureNBT(m)
+	if err != nil {
+		return item.Stack{}
+	}
+	return stack
 }
 
 func convertSpawner(data map[string]any) {
@@ -575,22 +569,20 @@ func convertBrushable(data map[string]any) error {
 		data["LootTableSeed"] = seed
 	}
 	if itemData, ok := data["item"].(map[string]any); ok {
-		stack, err := item.StackFromStructureNBT(itemData)
-		if err != nil {
-			return fmt.Errorf("item: %w", err)
+		if stack := javaStackOrEmpty(itemData); !stack.Empty() {
+			data["Item"] = item.WriteNBT(stack)
 		}
-		data["Item"] = item.WriteNBT(stack)
 	}
 	return nil
 }
 
 func convertDecoratedPot(data map[string]any) error {
 	if itemData, ok := data["item"].(map[string]any); ok {
-		stack, err := item.StackFromStructureNBT(itemData)
-		if err != nil {
-			return fmt.Errorf("item: %w", err)
+		if stack := javaStackOrEmpty(itemData); !stack.Empty() {
+			data["item"] = item.WriteNBT(stack)
+		} else {
+			delete(data, "item")
 		}
-		data["item"] = item.WriteNBT(stack)
 	}
 	return nil
 }

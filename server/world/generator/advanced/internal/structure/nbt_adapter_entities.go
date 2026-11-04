@@ -6,7 +6,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -49,10 +48,7 @@ func (p Placement) AdaptItemFrameEntities() (Placement, error) {
 			frame.DropChance = chance
 		}
 		if rawItem, ok := data["Item"].(map[string]any); ok {
-			frame.Item, err = item.StackFromStructureNBT(rawItem)
-			if err != nil {
-				return Placement{}, fmt.Errorf("item frame at %v item: %w", entity.BlockPos, err)
-			}
+			frame.Item = javaStackOrEmpty(rawItem)
 		}
 		blockNBT := frame.EncodeNBT()
 		out.Blocks = append(out.Blocks, Block{
