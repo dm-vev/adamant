@@ -9,19 +9,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-type naturalSpawnCategory uint8
-
-const (
-	spawnCreature naturalSpawnCategory = iota
-	spawnMonster
-	spawnAmbient
-	spawnWaterCreature
-	spawnWaterAmbient
-	spawnUndergroundWaterCreature
-	spawnAxolotls
-	spawnMisc
-)
-
 // NaturalSpawnTick is invoked on the world owner every game tick. It uses the
 // Java legacy random stream independently of terrain and decoration generation.
 func NaturalSpawnTick(tx *world.Tx) {

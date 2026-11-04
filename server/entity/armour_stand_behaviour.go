@@ -81,6 +81,10 @@ func armourStandDropOffset(stack item.Stack) mgl64.Vec3 {
 }
 
 // Tick ...
+// pistonMovement returns the movement computer a piston moves the armour stand
+// with.
+func (a *ArmourStandBehaviour) pistonMovement() *MovementComputer { return a.passive.mc }
+
 func (a *ArmourStandBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return a.passive.Tick(e, tx)
 }

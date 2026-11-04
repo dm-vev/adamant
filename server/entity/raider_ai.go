@@ -708,3 +708,13 @@ func (b *hostileState) customServerAiStep(m *Mob) {
 }
 
 func hostileOf(m *Mob) *hostileState { return m.Behaviour().(*hostileState) }
+
+// raiderRemoveWhenFarAway ports Raider.removeWhenFarAway and
+// PatrollingMonster's: a raider in a raid stays, and a patrol unless it is
+// beyond 128 blocks.
+func raiderRemoveWhenFarAway(m *Mob, r *raiderState, distSqr float64) bool {
+	if m.tx.RaidForRaider(m.Self) != nil {
+		return false
+	}
+	return !r.patrolling || distSqr > 16384
+}

@@ -226,3 +226,9 @@ func (s *zombifiedPiglinState) afterAiStep(m *Mob) {
 		pickUpLoot(m, s, nil, nil)
 	}
 }
+
+// preventsPlayerRest ports ZombifiedPiglin.isPreventingPlayerRest:
+// NeutralMob.isAngryAt, including universal_anger.
+func (s *zombifiedPiglinState) preventsPlayerRest(e *Ent, player world.Entity) bool {
+	return s.angryAt(s.ai.Mob(e, &ZombifiedPiglin{e}), player)
+}

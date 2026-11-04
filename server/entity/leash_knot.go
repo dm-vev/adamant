@@ -54,6 +54,9 @@ func NewLeashKnot(opts world.EntitySpawnOpts, pos cube.Pos) *world.EntityHandle 
 	return opts.New(LeashKnotType, leashKnotConfig{Pos: pos})
 }
 
+// fencePos returns the position of the fence the knot is on.
+func (k *LeashKnot) fencePos() cube.Pos { return k.Behaviour().(leashKnotBehaviour).pos }
+
 // Tick removes the knot when its supporting fence is gone.
 func (k *LeashKnot) Tick(tx *world.Tx, current int64) { k.Ent.Tick(tx, current) }
 func (b leashKnotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {

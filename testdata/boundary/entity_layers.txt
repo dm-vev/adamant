@@ -18,15 +18,6 @@
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
-ai_physics.go spawn MobAI.checkDespawn
-ent.go object ArmourStandBehaviour.passive
-ent.go object ItemBehaviour.passive
-ent.go passive PassiveBehaviour.mc
-ent.go projectile arrowType
-java_rest.go nether zombifiedPiglinState
-java_rest.go nether zombifiedPiglinState.ai
-leash.go object leashKnotBehaviour
-leash.go object leashKnotBehaviour.pos
 
 # Distinct unexported identifiers that each group takes from each other, as of the last regeneration.
 # They are recorded here, not checked: only the lines above are.
@@ -45,11 +36,6 @@ leash.go object leashKnotBehaviour.pos
 #	aquatic    from passive      16
 #	aquatic    from villager      1
 #	core       from ai          167
-#	core       from nether        2
-#	core       from object        4
-#	core       from passive       1
-#	core       from projectile    1
-#	core       from spawn         1
 #	dragon     from ai            6
 #	dragon     from core         10
 #	dragon     from object        1
@@ -61,7 +47,7 @@ leash.go object leashKnotBehaviour.pos
 #	hostile    from passive      29
 #	hostile    from projectile    2
 #	hostile    from spawn         5
-#	hostile    from villager     17
+#	hostile    from villager     18
 #	nether     from ai          217
 #	nether     from core         75
 #	nether     from hostile      14
@@ -85,23 +71,24 @@ leash.go object leashKnotBehaviour.pos
 #	projectile from ai           13
 #	projectile from core          8
 #	projectile from object        1
+#	registry   from core          2
 #	registry   from dragon        2
 #	registry   from hostile       1
 #	registry   from passive       1
 #	registry   from projectile    3
-#	registry   from spawn         4
+#	registry   from spawn         2
 #	registry   from vehicle       4
-#	spawn      from ai           14
+#	spawn      from ai           10
 #	spawn      from aquatic       2
-#	spawn      from core         19
-#	spawn      from hostile      12
-#	spawn      from passive      11
-#	spawn      from villager      5
+#	spawn      from core         27
+#	spawn      from hostile       6
+#	spawn      from passive       9
+#	spawn      from villager      2
 #	vehicle    from ai           18
 #	vehicle    from core         13
 #	vehicle    from object        1
 #	villager   from ai          174
-#	villager   from core         41
+#	villager   from core         42
 #	villager   from hostile      33
 #	villager   from passive       4
-#	villager   from spawn         4
+#	villager   from spawn         3

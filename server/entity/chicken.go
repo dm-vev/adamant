@@ -282,3 +282,7 @@ func (c *Chicken) baseExperience() (int, bool) {
 	}
 	return 0, false
 }
+
+// removesWhenFarAway ports Chicken.removeWhenFarAway: a chicken jockey leaves
+// when far from players.
+func (c *Chicken) removesWhenFarAway() bool { return c.behaviour().jockey }

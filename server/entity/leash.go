@@ -103,6 +103,11 @@ func tickLeash(e *Ent, tx *world.Tx, movement *Movement) {
 	}
 }
 
+// fenceKnot is a leash knot, on the fence at fencePos.
+type fenceKnot interface {
+	fencePos() cube.Pos
+}
+
 // TieLeashedEntities creates a fence knot when the user has nearby leashable mobs.
 func TieLeashedEntities(pos cube.Pos, tx *world.Tx, user world.Entity) bool {
 	switch tx.Block(pos).(type) {
@@ -128,8 +133,8 @@ func TieLeashedEntities(pos cube.Pos, tx *world.Tx, user world.Entity) bool {
 	var knot *world.EntityHandle
 	existing := false
 	for candidate := range tx.EntitiesWithin(cube.Box(-1, -1, -1, 1, 1, 1).Translate(pos.Vec3())) {
-		if k, ok := candidate.(*LeashKnot); ok && k.Behaviour().(leashKnotBehaviour).pos == pos {
-			knot, existing = k.H(), true
+		if k, ok := candidate.(fenceKnot); ok && k.fencePos() == pos {
+			knot, existing = candidate.H(), true
 			break
 		}
 	}

@@ -4144,6 +4144,7 @@ server/entity.ArmadilloConfig	server/world.EntityConfig	value
 server/entity.ArmourStandBehaviour	protocol/bedrock/session.armourStand	*
 server/entity.ArmourStandBehaviour	protocol/bedrock/session.hurtDuration	*
 server/entity.ArmourStandBehaviour	server/entity.Behaviour	*
+server/entity.ArmourStandBehaviour	server/entity.pistonMovable	*
 server/entity.ArmourStandBehaviourConfig	server/world.EntityConfig	value
 server/entity.ArrowShakeAction	server/world.EntityAction	value
 server/entity.AttackDamageSource	server/world.DamageSource	value
@@ -4677,6 +4678,7 @@ server/entity.Chicken	server/entity.Traveller	value
 server/entity.Chicken	server/entity.ageable	*
 server/entity.Chicken	server/entity.breeder	*
 server/entity.Chicken	server/entity.experienceRewarder	*
+server/entity.Chicken	server/entity.farAwayRemover	*
 server/entity.Chicken	server/entity.knockBackable	value
 server/entity.Chicken	server/entity.moveTracked	value
 server/entity.Chicken	server/entity.passengerPositioner	*
@@ -5875,6 +5877,7 @@ server/entity.IronGolem	server/world.Prefetcher	value
 server/entity.IronGolem	server/world.TickerEntity	*
 server/entity.ItemBehaviour	server/entity.Behaviour	*
 server/entity.ItemBehaviour	server/entity.lootItem	*
+server/entity.ItemBehaviour	server/entity.pistonMovable	*
 server/entity.ItemBehaviour	server/entity.portalTravelComputerProvider	*
 server/entity.ItemBehaviourConfig	server/world.EntityConfig	value
 server/entity.ItemStackSizeAction	server/world.EntityAction	value
@@ -5901,6 +5904,7 @@ server/entity.LeashKnot	server/entity.ItemAcceptor	value
 server/entity.LeashKnot	server/entity.Leashable	value
 server/entity.LeashKnot	server/entity.Rider	value
 server/entity.LeashKnot	server/entity.Traveller	value
+server/entity.LeashKnot	server/entity.fenceKnot	*
 server/entity.LeashKnot	server/entity.knockBackable	value
 server/entity.LeashKnot	server/entity.moveTracked	value
 server/entity.LeashKnot	server/entity.seatHolder	value
@@ -8395,6 +8399,7 @@ server/entity.aquaticMobType	server/world.EntityType	value
 server/entity.areaEffectCloudType	server/world.EntityType	value
 server/entity.armadilloType	server/world.EntityType	value
 server/entity.armourStandType	server/world.EntityType	value
+server/entity.arrowType	server/entity.earlyButtonPresser	value
 server/entity.arrowType	server/world.EntityType	value
 server/entity.axolotlAttackablesSensor	server/entity.sensor	value
 server/entity.axolotlLookControl	server/entity.mobMoveControl	value
@@ -9631,6 +9636,7 @@ server/entity.zombifiedPiglinState	server/entity.mobCustomStep	*
 server/entity.zombifiedPiglinState	server/entity.mobMeleeAttacker	*
 server/entity.zombifiedPiglinState	server/entity.mobTargetListener	*
 server/entity.zombifiedPiglinState	server/entity.neutralMob	*
+server/entity.zombifiedPiglinState	server/entity.playerRestPreventer	*
 server/entity/effect.InstantDamageSource	server/world.DamageSource	value
 server/entity/effect.InstantHealingSource	server/world.HealingSource	value
 server/entity/effect.PoisonDamageSource	server/world.DamageSource	value

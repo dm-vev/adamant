@@ -1392,3 +1392,22 @@ func (b *hostileState) afterAiStep(m *Mob) {
 	}
 	pickUpLoot(m, b, wants, preferred)
 }
+
+// removeWhenFarAway ports the overrides of the hostile mobs: zombie
+// villagers that are being cured or traded stay, and so do raiders in a raid
+// and patrols unless far beyond their patrol.
+func (b *hostileState) removeWhenFarAway(m *Mob, distSqr float64) bool {
+	switch {
+	case b.kind == "minecraft:zombie_villager":
+		return b.cureTicks <= 0 && b.villagerXP == 0
+	case hostileRaidMob(b.kind):
+		return raiderRemoveWhenFarAway(m, &b.raiderState, distSqr)
+	}
+	return true
+}
+
+// requiresCustomPersistence ports Raider.requiresCustomPersistence: a
+// raider in a raid stays.
+func (b *hostileState) requiresCustomPersistence(m *Mob) bool {
+	return hostileRaidMob(b.kind) && m.tx.RaidForRaider(m.Self) != nil
+}

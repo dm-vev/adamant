@@ -10,32 +10,6 @@ import (
 // This file ports Mob.checkDespawn: when a mob far from players leaves the
 // world, and what keeps it.
 
-// mobCategories are the MobCategory of the entity types that are not MISC,
-// as EntityTypes registers them.
-var mobCategories = func() map[string]naturalSpawnCategory {
-	m := map[string]naturalSpawnCategory{}
-	for category, ids := range map[naturalSpawnCategory][]string{
-		spawnCreature: {"allay", "armadillo", "bee", "camel", "cat", "chicken", "cow", "donkey", "fox", "frog", "goat", "happy_ghast", "horse",
-			"llama", "mooshroom", "mule", "ocelot", "panda", "parrot", "pig", "polar_bear", "rabbit", "sheep", "skeleton_horse", "sniffer",
-			"strider", "tadpole", "trader_llama", "turtle", "wandering_trader", "wolf"},
-		spawnAxolotls: {"axolotl"},
-		spawnAmbient:  {"bat"},
-		spawnMonster: {"blaze", "bogged", "breeze", "camel_husk", "cave_spider", "creaking", "creeper", "drowned", "elder_guardian",
-			"ender_dragon", "enderman", "endermite", "evoker", "ghast", "giant", "guardian", "hoglin", "husk", "illusioner", "magma_cube",
-			"parched", "phantom", "piglin", "piglin_brute", "pillager", "ravager", "shulker", "silverfish", "skeleton", "slime", "spider",
-			"stray", "sulfur_cube", "vex", "vindicator", "warden", "witch", "wither", "wither_skeleton", "zoglin", "zombie", "zombie_horse",
-			"zombie_nautilus", "zombie_villager", "zombified_piglin"},
-		spawnWaterAmbient:             {"cod", "pufferfish", "salmon", "tropical_fish"},
-		spawnWaterCreature:            {"dolphin", "nautilus", "squid"},
-		spawnUndergroundWaterCreature: {"glow_squid"},
-	} {
-		for _, id := range ids {
-			m["minecraft:"+id] = category
-		}
-	}
-	return m
-}()
-
 // notInPeaceful are the entity types EntityTypes marks notInPeaceful, which
 // leave the world on peaceful.
 var notInPeaceful = func() map[string]bool {
@@ -141,6 +115,12 @@ func (ai *MobAI) checkDespawn(m *Mob) bool {
 	return false
 }
 
+// farAwayRemover is a mob whose class overrides Mob.removeWhenFarAway with
+// state of the mob, as Chicken does.
+type farAwayRemover interface {
+	removesWhenFarAway() bool
+}
+
 // mobRemoveWhenFarAway ports Mob.removeWhenFarAway and its overrides.
 func mobRemoveWhenFarAway(m *Mob, id string, distSqr float64) bool {
 	if d, ok := m.Behaviour().(mobDespawner); ok {
@@ -157,8 +137,8 @@ func mobRemoveWhenFarAway(m *Mob, id string, distSqr float64) bool {
 		// stays.
 		return !mobFromBucket(m) && m.NameTag() == ""
 	case "minecraft:chicken":
-		c, ok := m.Self.(*Chicken)
-		return ok && c.behaviour().jockey
+		r, ok := m.Self.(farAwayRemover)
+		return ok && r.removesWhenFarAway()
 	case "minecraft:cat", "minecraft:ocelot":
 		// Cat and Ocelot: strays that are not tame or trusting leave once
 		// two minutes old.
@@ -311,44 +291,4 @@ func encodeSharedNBT(data *world.EntityData) map[string]any {
 func decodeSharedNBT(data *world.EntityData, m map[string]any) {
 	decodeMobEffects(data, m)
 	decodePersistence(data, m)
-}
-
-// removeWhenFarAway ports the overrides of the hostile mobs: zombie
-// villagers that are being cured or traded stay, and so do raiders in a raid
-// and patrols unless far beyond their patrol.
-func (b *hostileState) removeWhenFarAway(m *Mob, distSqr float64) bool {
-	switch {
-	case b.kind == "minecraft:zombie_villager":
-		return b.cureTicks <= 0 && b.villagerXP == 0
-	case hostileRaidMob(b.kind):
-		return raiderRemoveWhenFarAway(m, &b.raiderState, distSqr)
-	}
-	return true
-}
-
-// removeWhenFarAway ports Raider.removeWhenFarAway for a witch.
-func (b *WitchBehaviour) removeWhenFarAway(m *Mob, distSqr float64) bool {
-	return raiderRemoveWhenFarAway(m, &b.raiderState, distSqr)
-}
-
-// requiresCustomPersistence ports Raider.requiresCustomPersistence for a
-// witch.
-func (b *WitchBehaviour) requiresCustomPersistence(m *Mob) bool {
-	return m.tx.RaidForRaider(m.Self) != nil
-}
-
-// raiderRemoveWhenFarAway ports Raider.removeWhenFarAway and
-// PatrollingMonster's: a raider in a raid stays, and a patrol unless it is
-// beyond 128 blocks.
-func raiderRemoveWhenFarAway(m *Mob, r *raiderState, distSqr float64) bool {
-	if m.tx.RaidForRaider(m.Self) != nil {
-		return false
-	}
-	return !r.patrolling || distSqr > 16384
-}
-
-// requiresCustomPersistence ports Raider.requiresCustomPersistence: a
-// raider in a raid stays.
-func (b *hostileState) requiresCustomPersistence(m *Mob) bool {
-	return hostileRaidMob(b.kind) && m.tx.RaidForRaider(m.Self) != nil
 }

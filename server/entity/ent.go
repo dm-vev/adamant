@@ -177,15 +177,18 @@ func (e *Ent) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	e.movesShown(pos, rot, e.HeadYaw())
 }
 
+// pistonMovable is the behaviour of an entity that a piston moves with the
+// movement computer of the entity, as item entities and armour stands.
+type pistonMovable interface {
+	pistonMovement() *MovementComputer
+}
+
 // MoveByPiston resolves the requested displacement against terrain. Piston
 // contact cannot move an entity through a wall beyond the moving block.
 func (e *Ent) MoveByPiston(delta mgl64.Vec3, source world.BlockSource) {
 	var c *MovementComputer
-	switch b := e.Behaviour().(type) {
-	case *ItemBehaviour:
-		c = b.passive.mc
-	case *ArmourStandBehaviour:
-		c = b.passive.mc
+	if p, ok := e.Behaviour().(pistonMovable); ok {
+		c = p.pistonMovement()
 	}
 	if c != nil {
 		previous := c.blockSource
@@ -364,10 +367,16 @@ func (e *Ent) Attack(attacker world.Entity, tx *world.Tx) {
 	}
 }
 
+// earlyButtonPresser is an entity type whose entities press the buttons they
+// touch before they move in a tick, as native arrows do.
+type earlyButtonPresser interface {
+	pressesButtonsBeforeMovement()
+}
+
 // TickBeforeBlockUpdates preserves native arrow normal-tick button contacts
 // before ProjectileSystem's later movement/collision pass.
 func (e *Ent) TickBeforeBlockUpdates(tx *world.Tx, _ int64) {
-	if _, arrow := e.handle.Type().(arrowType); arrow {
+	if _, ok := e.handle.Type().(earlyButtonPresser); ok {
 		e.bindTx(tx)
 		checkButtonContactsBeforeMovement(tx, e.living())
 	}

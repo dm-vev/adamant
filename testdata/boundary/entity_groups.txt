@@ -146,7 +146,8 @@ minecart_container.go vehicle
 minecart_movement.go vehicle
 minecart_tnt.go vehicle
 mob_breath.go core
-mob_despawn.go spawn
+mob_category.go core
+mob_despawn.go core
 mob_equipment.go core
 mob_kinetic.go core
 mob_knockback.go core

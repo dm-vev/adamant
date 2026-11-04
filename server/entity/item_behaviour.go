@@ -83,6 +83,10 @@ func (i *ItemBehaviour) Item() item.Stack {
 	return i.i
 }
 
+// pistonMovement returns the movement computer a piston moves the item entity
+// with.
+func (i *ItemBehaviour) pistonMovement() *MovementComputer { return i.passive.mc }
+
 // lootStack returns the stack of the item entity that a mob may pick up: none
 // while its pickup delay lasts.
 func (i *ItemBehaviour) lootStack() (item.Stack, bool) {

@@ -221,3 +221,14 @@ var _ world.EntityType = witchType{}
 var _ Living = (*Witch)(nil)
 
 func (b *WitchBehaviour) effectManager() *EffectManager { return b.effects }
+
+// removeWhenFarAway ports Raider.removeWhenFarAway for a witch.
+func (b *WitchBehaviour) removeWhenFarAway(m *Mob, distSqr float64) bool {
+	return raiderRemoveWhenFarAway(m, &b.raiderState, distSqr)
+}
+
+// requiresCustomPersistence ports Raider.requiresCustomPersistence for a
+// witch.
+func (b *WitchBehaviour) requiresCustomPersistence(m *Mob) bool {
+	return m.tx.RaidForRaider(m.Self) != nil
+}
