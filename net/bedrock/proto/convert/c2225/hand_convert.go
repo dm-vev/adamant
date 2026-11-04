@@ -295,7 +295,8 @@ func upPlayerListEntry(in *v2193.PlayerListEntry) v2225.PlayerListEntry {
 }
 
 // downPlayerListEntry converts an entry of the player list back: the
-// PlayFab ID of the entry goes in the skin.
+// PlayFab ID of the entry goes in the skin, or, if the entry has none, the
+// one the skin of the model keeps.
 func downPlayerListEntry(in *v2225.PlayerListEntry) v2193.PlayerListEntry {
 	out := v2193.PlayerListEntry{
 		ActionType:     in.ActionType,
@@ -311,13 +312,17 @@ func downPlayerListEntry(in *v2225.PlayerListEntry) v2193.PlayerListEntry {
 		SubClient:      in.SubClient,
 		PlayerColour:   in.PlayerColour,
 	}
-	out.Skin.PlayFabID = in.PlayFabID
+	if in.PlayFabID != "" {
+		out.Skin.PlayFabID = in.PlayFabID
+	}
 	return out
 }
 
-// upSkin converts a skin, which has no PlayFab ID in 2225.
+// upSkin converts a skin, which has no PlayFab ID on the wire of 2225: it
+// keeps that of 2193 in the field the codec of 2225 leaves out.
 func upSkin(in *v2193.Skin) v2225.Skin {
 	out := v2225.Skin{
+		PlayFabID:                 in.PlayFabID,
 		SkinID:                    in.SkinID,
 		SkinResourcePatch:         in.SkinResourcePatch,
 		SkinImageWidth:            in.SkinImageWidth,
@@ -362,10 +367,11 @@ func upSkin(in *v2193.Skin) v2225.Skin {
 	return out
 }
 
-// downSkin converts a skin back, with no PlayFab ID: that of a player
-// list entry is the entry's.
+// downSkin converts a skin back, with the PlayFab ID upSkin kept: that of
+// a player list entry is the entry's.
 func downSkin(in *v2225.Skin) v2193.Skin {
 	out := v2193.Skin{
+		PlayFabID:                 in.PlayFabID,
 		SkinID:                    in.SkinID,
 		SkinResourcePatch:         in.SkinResourcePatch,
 		SkinImageWidth:            in.SkinImageWidth,

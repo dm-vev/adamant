@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestStartGameEndsWithItsContext checks that a client that asked for its
@@ -17,10 +17,10 @@ func TestStartGameEndsWithItsContext(t *testing.T) {
 	l := listen(t, Config{})
 	link := proxyLink(t, l)
 	b := openProxiedFrom(t, link, "Slow", "203.0.113.7:4242")
-	readUntil(t, b, mc.IDResourcePacksInfo)
-	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseAllPacksDownloaded})
-	readUntil(t, b, mc.IDResourcePackStack)
-	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseCompleted})
+	readUntil(t, b, v2193.IDResourcePacksInfo)
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseAllPacksDownloaded})
+	readUntil(t, b, v2193.IDResourcePackStack)
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
 
 	c, err := l.Accept()
 	if err != nil {
@@ -33,9 +33,9 @@ func TestStartGameEndsWithItsContext(t *testing.T) {
 		defer cancel()
 		done <- c.StartGameContext(ctx, gameData())
 	}()
-	readUntil(t, b, mc.IDStartGame)
-	writeRaw(t, b, &mc.RequestChunkRadiusPacket{ChunkRadius: 8})
-	readUntil(t, b, mc.IDPlayStatus)
+	readUntil(t, b, v2193.IDStartGame)
+	writeRaw(t, b, &v2193.RequestChunkRadiusPacket{ChunkRadius: 8})
+	readUntil(t, b, v2193.IDPlayStatus)
 	select {
 	case err := <-done:
 		if !errors.Is(err, context.DeadlineExceeded) {
@@ -48,7 +48,7 @@ func TestStartGameEndsWithItsContext(t *testing.T) {
 		t.Fatal("StartGameContext waits past its context")
 	}
 	_ = l.Disconnect(c, "Timed out.")
-	if d := readUntil(t, b, mc.IDDisconnect).(*mc.DisconnectPacket); d.Message != "Timed out." {
+	if d := readUntil(t, b, v2193.IDDisconnect).(*v2193.DisconnectPacket); d.Message != "Timed out." {
 		t.Fatalf("disconnect %q", d.Message)
 	}
 }

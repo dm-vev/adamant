@@ -6,9 +6,10 @@ import (
 	"image"
 	"math"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/google/uuid"
 )
 
@@ -151,7 +152,7 @@ func skinToProtocol(s skin.Skin) mc.Skin {
 		Animations:                animations,
 		Trusted:                   true,
 		OverrideAppearance:        true,
-		GeometryDataEngineVersion: []byte(mc.CurrentVersion),
+		GeometryDataEngineVersion: []byte(versions.Default().Version),
 	}
 }
 
@@ -171,6 +172,7 @@ func (s *Session) newListEntry(sk skin.Skin) *sharedPacket {
 		EntityUniqueID: s.ent.UniqueID(),
 		Username:       s.conn.IdentityData().DisplayName,
 		XUID:           s.conn.IdentityData().XUID,
+		PlayFabID:      sk.PlayFabID,
 		BuildPlatform:  int32(mc.DeviceUnknown),
 		Skin:           skinToProtocol(sk),
 	}}}}

@@ -130,12 +130,14 @@ func TestEventSoundPackets(t *testing.T) {
 	var b strings.Builder
 	for _, tc := range eventSoundCases(t) {
 		fmt.Fprintf(&b, "== %s\n", tc.site)
-		for _, pk := range session.SoundPackets(eventSoundPos, tc.sound) {
-			raw := encode(pk)
-			fmt.Fprintf(&b, "%s id=%d len=%d\n", packetName(pk), pk.ID(), len(raw))
-			writeValue(&b, "    ", "", reflect.ValueOf(pk).Elem())
-			for off := 0; off < len(raw); off += 32 {
-				fmt.Fprintf(&b, "    | %x\n", raw[off:min(off+32, len(raw))])
+		for _, model := range session.SoundPackets(eventSoundPos, tc.sound) {
+			for _, pk := range toWire(model) {
+				raw := encode(pk)
+				fmt.Fprintf(&b, "%s id=%d len=%d\n", packetName(pk), pk.ID(), len(raw))
+				writeValue(&b, "    ", "", reflect.ValueOf(pk).Elem())
+				for off := 0; off < len(raw); off += 32 {
+					fmt.Fprintf(&b, "    | %x\n", raw[off:min(off+32, len(raw))])
+				}
 			}
 		}
 	}

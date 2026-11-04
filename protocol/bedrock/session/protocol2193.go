@@ -4,7 +4,7 @@ import (
 	"image/color"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // toMetadata returns entity metadata, which the session builds with the

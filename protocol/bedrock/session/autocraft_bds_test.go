@@ -9,14 +9,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"github.com/dm-vev/adamant/net/bedrock/wire"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // autoCraftCapture is the recipe-book crafts captured from BDS 1.26.52.3 in
@@ -64,7 +64,9 @@ func loadAutoCraftCapture(t *testing.T) autoCraftCapture {
 	return c
 }
 
-// decodeCaptured decodes a packet captured whole, header first.
+// decodeCaptured decodes a packet of protocol 2193 captured whole, header
+// first, as netconn reads it for a session: as the packet of the model it
+// carries.
 func decodeCaptured(t *testing.T, s string) any {
 	t.Helper()
 	raw, err := hex.DecodeString(s)
@@ -75,13 +77,7 @@ func decodeCaptured(t *testing.T, s string) any {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pk := mc.New(h.ID)
-	r := wire.NewReader(body)
-	pk.Decode(r)
-	if r.Err() != nil || r.Len() != 0 {
-		t.Fatalf("packet %d does not decode: %v, %d bytes left", h.ID, r.Err(), r.Len())
-	}
-	return pk
+	return readAs(t, versions.Default(), h.ID, body)
 }
 
 // stickRecipe returns the crafting-table recipe of four sticks from two

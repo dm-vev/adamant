@@ -17,7 +17,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
@@ -193,8 +193,10 @@ func (o *observed) client(c *scenario, heading string, pks ...proto.Packet) {
 	fmt.Fprintf(&o.out, "== %s\n", heading)
 	fmt.Fprintf(&o.out, "-- %s sends\n", o.names[c])
 	for _, pk := range pks {
-		raw := encode(pk)
-		o.out.WriteString(c.describe(decodeAs(o.t, pk.ID(), raw), raw, "<<"))
+		for _, w := range toWire(pk) {
+			raw := encode(w)
+			o.out.WriteString(c.describe(decodeAs(o.t, w.ID(), raw), raw, "<<"))
+		}
 		c.send(pk)
 	}
 	o.advance()

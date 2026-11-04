@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // gameValue pairs a value the game owns with the protocol's value it must stay
@@ -84,17 +86,20 @@ func TestParamOptionValuesMatchProtocol(t *testing.T) {
 }
 
 // TestVersionsMatchProtocol checks that the release the game implements is the
-// release of the protocol the session speaks, and that the NetworkVersion that
-// level.dat stores is that protocol's number.
+// release of the protocol the session speaks by default, 2193, whose content
+// the game names, and that the NetworkVersion that level.dat stores is that
+// protocol's number. The model, the codecs the session is compiled against,
+// may be newer.
 func TestVersionsMatchProtocol(t *testing.T) {
-	if version.Minecraft != mc.CurrentVersion {
-		t.Errorf("version.Minecraft = %q, protocol has %q", version.Minecraft, mc.CurrentVersion)
+	p := versions.Default()
+	if version.Minecraft != v2193.CurrentVersion || p.Number != v2193.Protocol {
+		t.Errorf("version.Minecraft = %q, protocol %d has %q", version.Minecraft, p.Number, v2193.CurrentVersion)
 	}
-	if version.Minecraft != mc.Version {
-		t.Errorf("version.Minecraft = %q, protocol has Version %q", version.Minecraft, mc.Version)
+	if version.Minecraft != p.Version {
+		t.Errorf("version.Minecraft = %q, protocol has Version %q", version.Minecraft, p.Version)
 	}
 	checkGameValues(t, []gameValue{
-		{"leveldat.NetworkVersion", leveldat.NetworkVersion, mc.CurrentProtocol},
+		{"leveldat.NetworkVersion", leveldat.NetworkVersion, int64(p.Number)},
 	})
 }
 

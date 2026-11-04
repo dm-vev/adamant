@@ -18,6 +18,7 @@ import (
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
@@ -99,12 +100,13 @@ func netconnGameData() netconn.GameData {
 		EntityRuntimeID: 1,
 		PlayerPosition:  [3]float32{0, 64, 0},
 		BaseGameVersion: v2193.Version,
-		Items:           []v2193.ItemEntry{{Name: "minecraft:shield", RuntimeID: 355}},
+		Items:           []mc.ItemEntry{{Name: "minecraft:shield", RuntimeID: 355}},
 	}
 }
 
 // netconnServe accepts one client, spawns it, writes two texts of the
-// generated codecs and answers each Text with an echo.
+// model, the codecs netconn is compiled against, and answers each Text
+// with an echo.
 func netconnServe(t *testing.T, l *netconn.Listener) <-chan *netconn.Conn {
 	spawned := make(chan *netconn.Conn, 1)
 	go func() {
@@ -119,8 +121,8 @@ func netconnServe(t *testing.T, l *netconn.Listener) <-chan *netconn.Conn {
 			_ = c.Close()
 			return
 		}
-		_ = c.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "first"})
-		_ = c.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "generated"})
+		_ = c.WritePacket(&mc.TextPacket{TextType: mc.TextTypeRaw, Message: "first"})
+		_ = c.WritePacket(&mc.TextPacket{TextType: mc.TextTypeRaw, Message: "generated"})
 		_ = c.Flush()
 		spawned <- c
 		for {
@@ -128,8 +130,8 @@ func netconnServe(t *testing.T, l *netconn.Listener) <-chan *netconn.Conn {
 			if err != nil {
 				return
 			}
-			if text, ok := pk.(*v2193.TextPacket); ok {
-				_ = c.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "echo " + text.Message})
+			if text, ok := pk.(*mc.TextPacket); ok {
+				_ = c.WritePacket(&mc.TextPacket{TextType: mc.TextTypeRaw, Message: "echo " + text.Message})
 				_ = c.Flush()
 			}
 		}

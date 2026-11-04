@@ -27,7 +27,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -279,8 +279,8 @@ type Config struct {
 	// BlockRegistry overrides the registry used for network serialization. If nil, world.DefaultBlockRegistry is used.
 	BlockRegistry world.BlockRegistry
 	// Protocol is the protocol the connection speaks, by whose names of the
-	// content of the game the session encodes it. Nil is the model, the
-	// protocol of the codecs the session is compiled against.
+	// content of the game the session encodes it. Nil is the default of
+	// the build, which a connection that does not tell its protocol speaks.
 	Protocol *versions.Protocol
 	// Roster is the list of the players of the server, on which Bind lists
 	// the player of the Session and its close unlists it. If nil, New gives

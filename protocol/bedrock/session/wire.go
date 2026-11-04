@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // wireTables are the tables a session encodes the content of the game
@@ -53,12 +53,12 @@ type tablesKey struct {
 // allTables holds the wireTables tablesOf built, by tablesKey.
 var allTables sync.Map
 
-// tablesOf returns the tables of the clients of a protocol, the model if p
-// is nil, and the blocks of a finalized registry, built the first time. The
-// registry is a key, as it is of hashesOf.
+// tablesOf returns the tables of the clients of a protocol, the default of
+// the build if p is nil, and the blocks of a finalized registry, built the
+// first time. The registry is a key, as it is of hashesOf.
 func tablesOf(p *versions.Protocol, br world.BlockRegistry) *wireTables {
 	if p == nil {
-		p = versions.Model()
+		p = versions.Default()
 	}
 	key := tablesKey{proto: p, br: br}
 	if t, ok := allTables.Load(key); ok {
@@ -74,7 +74,7 @@ func newTables(p *versions.Protocol, br world.BlockRegistry) *wireTables {
 
 // vanillaOf returns the vanilla content of a protocol. Every protocol the
 // adapter was built with has its own; one it was not, as a test makes,
-// takes that of the model.
+// takes that of the default of the build.
 func vanillaOf(p *versions.Protocol) *bedrockdata.Vanilla {
 	if v, ok := bedrockdata.VanillaOf(p.Number); ok {
 		return v
@@ -82,7 +82,7 @@ func vanillaOf(p *versions.Protocol) *bedrockdata.Vanilla {
 	if _, known := versions.ByNumber(p.Number); known {
 		panic(fmt.Sprintf("session: no vanilla data of protocol %d", p.Number))
 	}
-	v, _ := bedrockdata.VanillaOf(versions.Model().Number)
+	v, _ := bedrockdata.VanillaOf(versions.Default().Number)
 	return v
 }
 
@@ -159,13 +159,13 @@ func (s *Session) tables() *wireTables {
 	return tablesOf(s.conf.Protocol, br)
 }
 
-// protocolOf returns the protocol a connection speaks, the model for a
-// connection that does not tell.
+// protocolOf returns the protocol a connection speaks, the default of the
+// build for a connection that does not tell.
 func protocolOf(conn Conn) *versions.Protocol {
 	if c, ok := conn.(interface{ Protocol() *versions.Protocol }); ok {
 		if p := c.Protocol(); p != nil {
 			return p
 		}
 	}
-	return versions.Model()
+	return versions.Default()
 }

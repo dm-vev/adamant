@@ -21,7 +21,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
@@ -70,7 +70,7 @@ func (p bdsPacket) decode(t *testing.T) proto.Packet {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return decodeAs(t, h.ID, body)
+	return asModel(t, h.ID, body)
 }
 
 func loadBDSEntityContainers(t *testing.T) map[string]int {
@@ -228,7 +228,9 @@ func (s *scenario) gather(act func()) []proto.Packet {
 			if text, ok := pk.(*mc.TextPacket); ok && text.Message == marker {
 				return out
 			}
-			out = append(out, decodeAs(s.t, pk.ID(), encode(pk)))
+			for _, w := range toWire(pk) {
+				out = append(out, asModel(s.t, w.ID(), encode(w)))
+			}
 		case <-timer.C:
 			s.t.Fatalf("%s: the session did not send its marker", s.name)
 		}

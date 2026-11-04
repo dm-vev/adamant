@@ -12,7 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -30,7 +30,7 @@ func oldGameData(level *world.World, name string, content *startContent, pos mgl
 
 		WorldName:       name,
 		WorldSeed:       level.Seed(),
-		BaseGameVersion: mc.Version,
+		BaseGameVersion: versions.Default().Version,
 
 		Time:       int64(level.Time()),
 		Difficulty: int32(difficulty),
@@ -104,7 +104,7 @@ func TestGameDataFromGame(t *testing.T) {
 			}
 			pos, rot := mgl64.Vec3{12.25, -58.5, 3.75}, cube.Rotation{91.5, -12.25}
 			g := client.Game{Name: "Golden Server", Level: tc.level, World: tc.w, Position: pos, Rotation: rot, Operator: tc.operator}
-			got := gameData(g, tc.content, versions.Model(), tc.muted)
+			got := gameData(g, tc.content, versions.Default(), tc.muted)
 			want := oldGameData(tc.level, "Golden Server", tc.content, pos, rot, tc.w, tc.muted, tc.operator)
 			for _, d := range []*netconn.GameData{&got, &want} {
 				slices.SortFunc(d.Items, func(a, b mc.ItemEntry) int { return strings.Compare(a.Name, b.Name) })

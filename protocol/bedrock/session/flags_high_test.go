@@ -3,7 +3,7 @@ package session
 import (
 	"testing"
 
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 type highFlagEntity struct{}

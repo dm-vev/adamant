@@ -175,9 +175,15 @@ func (x *PlayerListEntry) Decode(r *wire.Reader) {
 	proto.ReadARGBBE(r, &x.PlayerColour)
 }
 
-// Skin is the skin of a player. It has no PlayFab ID in 2225: the
-// PlayerListEntry carries the player's.
+// Skin is the skin of a player. It has no PlayFab ID on the wire of 2225:
+// the PlayerListEntry carries the player's.
 type Skin struct {
+	// PlayFabID is the PlayFab ID the skins of the protocols before 2225
+	// carry, which the codec neither writes nor reads: the step down to
+	// such a protocol writes it into its skin, and the step up keeps it
+	// here, so that a skin goes between them whole. A PlayerSkin has no
+	// other place for it in 2225.
+	PlayFabID                 string `wire:"-"`
 	SkinID                    string
 	SkinResourcePatch         []byte
 	SkinImageWidth            uint32

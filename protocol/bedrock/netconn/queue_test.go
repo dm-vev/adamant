@@ -12,7 +12,8 @@ import (
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/sctp"
 )
 
@@ -75,7 +76,7 @@ func TestSendQueue(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := pk.(*mc.TextPacket); ok {
+		if _, ok := pk.(*v2193.TextPacket); ok {
 			read++
 		}
 	}
@@ -105,7 +106,9 @@ func BenchmarkWritePacket(b *testing.B) {
 	c := newConn(l, discard{}, nil)
 	c.comp = bedrock.Flate{Level: 1}
 	c.b.EnableCompression(c.comp)
-	c.proto = versions.Model()
+	// A client of the default protocol, 2193, which the step from the
+	// model converts: a move has the same layout in both.
+	c.proto = versions.Default()
 	move := &mc.MoveActorDeltaPacket{EntityRuntimeID: 7, PositionX: proto.Some[float32](1), PositionZ: proto.Some[float32](1)}
 	b.ReportAllocs()
 	for b.Loop() {

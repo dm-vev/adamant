@@ -34,7 +34,7 @@ protocol/bedrock/session/entity_metadata.go Session.addSpecificMetadata 393
 protocol/bedrock/session/handler_item_stack_request.go ItemStackRequestHandler.handleRequest 106
 protocol/bedrock/session/player.go debugShapeToProtocol 116
 protocol/bedrock/session/static.go newRecipeData 115
-protocol/bedrock/session/world.go Session.ViewEntity 117
+protocol/bedrock/session/world.go Session.ViewEntity 110
 protocol/bedrock/session/world.go Session.ViewEntityAction 179
 protocol/bedrock/session/world.go Session.particlePackets 274
 protocol/bedrock/session/world.go Session.soundPackets 523

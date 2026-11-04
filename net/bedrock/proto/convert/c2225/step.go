@@ -51,3 +51,10 @@ func Down(pk proto.Packet) []proto.Packet {
 	}
 	return nil
 }
+
+// DownKeeps reports whether Down returns a packet of 2225 as it is: one of
+// an ID that is Same that holds no value 2193 has not. It allocates
+// nothing, where Down allocates the slice it returns, so that a connection
+// can write the packets of the same layout, nearly all it writes, at no
+// cost.
+func DownKeeps(pk proto.Packet) bool { return Same(pk.ID()) && downValues(pk) }

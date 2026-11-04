@@ -19,7 +19,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
@@ -56,6 +56,20 @@ func (s *Session) entityHidden(e world.Entity) bool {
 	}
 	s.entityMutex.RUnlock()
 	return ok
+}
+
+// temporaryListEntry returns the PlayerList packet that lists a player of
+// no session, such as an NPC, for the AddPlayer after it to show its skin.
+func (s *Session) temporaryListEntry(v Controllable, e world.Entity) *mc.PlayerListPacket {
+	return &mc.PlayerListPacket{Entries: []mc.PlayerListEntry{{
+		ActionType:     mc.PlayerListActionAdd,
+		UUID:           v.UUID(),
+		EntityUniqueID: s.entityUniqueID(e),
+		Username:       v.Name(),
+		PlayFabID:      v.Skin().PlayFabID,
+		BuildPlatform:  int32(mc.DeviceUnknown),
+		Skin:           skinToProtocol(v.Skin()),
+	}}}
 }
 
 // ViewEntity ...
@@ -99,14 +113,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		_, ofSession := listed.Client.(*Session)
 		actualPlayer := ok && ofSession
 		if !actualPlayer {
-			s.writePacket(&mc.PlayerListPacket{Entries: []mc.PlayerListEntry{{
-				ActionType:     mc.PlayerListActionAdd,
-				UUID:           v.UUID(),
-				EntityUniqueID: s.entityUniqueID(e),
-				Username:       v.Name(),
-				BuildPlatform:  int32(mc.DeviceUnknown),
-				Skin:           skinToProtocol(v.Skin()),
-			}}})
+			s.writePacket(s.temporaryListEntry(v, e))
 		}
 
 		s.writePacket(&mc.AddPlayerPacket{

@@ -24,7 +24,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	bedrocklogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 	"github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
@@ -246,10 +246,10 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 }
 
 // sortProtocols returns the protocols passed oldest first, each once, or
-// the model alone if none is.
+// the default of the build alone if none is.
 func sortProtocols(ps []*versions.Protocol) []*versions.Protocol {
 	if len(ps) == 0 {
-		return []*versions.Protocol{versions.Model()}
+		return []*versions.Protocol{versions.Default()}
 	}
 	ps = slices.Clone(ps)
 	slices.SortFunc(ps, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
@@ -280,7 +280,7 @@ func (l *Listener) protocol(n int32) (*versions.Protocol, int32, bool) {
 var xboxKeys = func() (*bedrocklogin.Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	return bedrocklogin.Discover(ctx, nil, mc.Version)
+	return bedrocklogin.Discover(ctx, nil, versions.Default().Version)
 }
 
 // vouch reports whether the authorization service of the game signed the

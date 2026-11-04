@@ -11,7 +11,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
 // otherProtocol is a protocol the adapter does not speak, which tests give
@@ -19,13 +20,13 @@ import (
 var otherProtocol = &versions.Protocol{Number: 2300, Names: []string{"1.26.90"}, Version: "1.26.90", New: mc.New, FromClient: mc.FromClient}
 
 // TestTablesArePerProtocolAndRegistry checks the tables of a protocol and a
-// registry are built once and those of the model are the model's, today
-// the game's own hashes and item IDs.
+// registry are built once and those of the default protocol, 2193, are its
+// own, today the game's own hashes and item IDs.
 func TestTablesArePerProtocolAndRegistry(t *testing.T) {
 	br := world.DefaultBlockRegistry
 	model := tablesOf(nil, br)
-	if model != tablesOf(versions.Model(), br) || model.proto != versions.Model() {
-		t.Fatal("nil does not name the tables of the model")
+	if model != tablesOf(versions.Default(), br) || model.proto != versions.Default() {
+		t.Fatal("nil does not name the tables of the default protocol")
 	}
 	other := tablesOf(otherProtocol, br)
 	if other == model || other != tablesOf(otherProtocol, br) {
@@ -47,9 +48,9 @@ func TestTablesArePerProtocolAndRegistry(t *testing.T) {
 }
 
 // TestProtocolOfConnection takes the protocol a connection tells, and the
-// model from one that does not.
+// default from one that does not.
 func TestProtocolOfConnection(t *testing.T) {
-	if p := protocolOf(benchmarkConn{}); p != versions.Model() {
+	if p := protocolOf(benchmarkConn{}); p != versions.Default() {
 		t.Fatalf("protocol %v of a connection that does not tell", p)
 	}
 	if p := protocolOf(protocolConn{p: otherProtocol}); p != otherProtocol {
@@ -123,4 +124,30 @@ func TestColumnCachesHoldTheGameTables(t *testing.T) {
 	if got := other.fullChunkPayload(col); &got[0] == &want[0] || string(got) != string(want) {
 		t.Fatal("another table took the payload of the cache")
 	}
+}
+
+// readAs decodes the fields of a packet a client of a protocol sent as
+// netconn reads it, as the packet of the model it carries: as the model if
+// the layout of its ID is the model's, else with the codecs of the
+// protocol, then converted.
+func readAs(t *testing.T, p *versions.Protocol, id uint32, fields []byte) proto.Packet {
+	t.Helper()
+	codec := p
+	if p.SameLayout(id) {
+		codec = versions.Model()
+	}
+	pk := codec.New(id)
+	r := wire.NewReader(fields)
+	pk.Decode(r)
+	if r.Err() != nil || r.Len() != 0 {
+		t.Fatalf("packet %d does not decode: %v, %d bytes left", id, r.Err(), r.Len())
+	}
+	if codec == p && p.Converts() {
+		pks := p.In(pk)
+		if len(pks) != 1 {
+			t.Fatalf("packet %d of protocol %d is %d packets of the model", id, p.Number, len(pks))
+		}
+		pk = pks[0]
+	}
+	return pk
 }

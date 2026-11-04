@@ -24,7 +24,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -820,16 +820,16 @@ func (c *serverClient) take() []proto.Packet {
 func (c *serverClient) write(pks []proto.Packet, ticked bool) {
 	c.s.t.Helper()
 	for _, pk := range pks {
+		raw := wireOf(c.s.t, pk)
 		if c.gone {
-			c.rec.norm.packet(reflect.ValueOf(decodeAs(c.s.t, pk.ID(), encode(pk))).Elem())
+			c.rec.norm.packet(reflect.ValueOf(decodeAs(c.s.t, pk.ID(), raw)).Elem())
 			continue
 		}
 		if ticked && standingWeather(pk) {
 			continue
 		}
-		raw := encode(pk)
 		back := decodeAs(c.s.t, pk.ID(), raw)
-		c.rec.trackStacks(back)
+		c.rec.trackStacks(pk)
 		desc := c.rec.describe(back, raw, ">>")
 		if _, commands := pk.(*mc.AvailableCommandsPacket); c.s.brief && len(raw) > maxHexBytes && !commands {
 			// The line of the packet and that of the SHA-256 of its
@@ -882,7 +882,7 @@ func briefGameData(data netconn.GameData) string {
 	summary := func(label string, v any, n int) string {
 		var b strings.Builder
 		writeValue(&b, "", "", reflect.ValueOf(v))
-		return fmt.Sprintf("      %s: (%d) rendered sha256 %x\n", label, n, sha256Of(b.String()))
+		return fmt.Sprintf("      %s: (%d) rendered sha256 %x\n", label, n, sha256Of(asClientTypes(b.String())))
 	}
 	blocks := summary("Blocks", data.Blocks, len(data.Blocks))
 	itemLine := summary("Items", items, len(items))

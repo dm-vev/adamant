@@ -18,7 +18,8 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // movesScenario sends the requests that move, swap, drop, destroy and
@@ -442,15 +443,17 @@ var normaliseOrbs bool
 // orbs are the runtime IDs of the experience orbs the client was sent.
 var orbs = map[uint64]bool{}
 
-// orb sets the velocity of an experience orb added in the packet v to zero.
+// orb sets the velocity of an experience orb added in the packet v, of
+// goldenProtocol, to zero.
 func (n *normaliser) orb(v reflect.Value) {
-	if pk, ok := v.Addr().Interface().(*mc.AddActorPacket); ok && pk.EntityType == "minecraft:xp_orb" {
+	if pk, ok := v.Addr().Interface().(*v2193.AddActorPacket); ok && pk.EntityType == "minecraft:xp_orb" {
 		orbs[pk.EntityRuntimeID] = true
 		pk.Velocity, n.touched = [3]float32{}, true
 	}
 }
 
-// orbMotion reports whether pk moves an experience orb.
+// orbMotion reports whether pk, a packet of the model, moves an experience
+// orb.
 func orbMotion(pk proto.Packet) bool {
 	switch pk := pk.(type) {
 	case *mc.MoveActorDeltaPacket:

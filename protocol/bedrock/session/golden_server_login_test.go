@@ -17,7 +17,8 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/proxy"
 	"github.com/google/uuid"
@@ -162,11 +163,11 @@ func (s *serverScenario) proxiedAs(link *proxy.Link, name, addr string, n int, x
 	id := uuid.MustParse(fmt.Sprintf("00000000-0000-4000-8000-%012x", 0x9000+n))
 	xuid := fmt.Sprintf("25354000000%05d", 100+n)
 	identity, _ := json.Marshal(login.Identity{DisplayName: name, Identity: id.String(), XUID: xuid})
-	cd := login.DefaultClientData("golden.example.invalid:19132", name, mc.Version)
+	cd := login.DefaultClientData("golden.example.invalid:19132", name, goldenProtocol.Version)
 	// The default is drawn at random; the player list shows it.
 	cd.PlayFabID = fmt.Sprintf("%016x", 0x9000+n)
 	data, _ := json.Marshal(cd)
-	p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, XboxLive: xboxLive, Addr: addr, Protocol: mc.Protocol})
+	p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, XboxLive: xboxLive, Addr: addr, Protocol: goldenProtocol.Number})
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -196,15 +197,16 @@ func (c *proxiedClient) read() proto.Packet {
 	if err != nil {
 		c.s.t.Fatal(err)
 	}
+	model := asModel(c.s.t, h.ID, fields)
 	pk := decodeAs(c.s.t, h.ID, fields)
 	mark := false
 	switch pk := pk.(type) {
-	case *mc.StartGamePacket:
-		slices.SortFunc(pk.GameRules, func(a, b mc.GameRule) int { return strings.Compare(a.Name, b.Name) })
+	case *v2193.StartGamePacket:
+		slices.SortFunc(pk.GameRules, func(a, b v2193.GameRule) int { return strings.Compare(a.Name, b.Name) })
 		mark = true
-	case *mc.ItemRegistryPacket:
+	case *v2193.ItemRegistryPacket:
 		if len(pk.Items) > 1 {
-			slices.SortFunc(pk.Items, func(a, b mc.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
+			slices.SortFunc(pk.Items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
 			mark = true
 		}
 	}
@@ -213,7 +215,7 @@ func (c *proxiedClient) read() proto.Packet {
 	}
 	var desc string
 	switch pk.(type) {
-	case *mc.ResourcePacksInfoPacket, *mc.ResourcePackStackPacket:
+	case *v2193.ResourcePacksInfoPacket, *v2193.ResourcePackStackPacket:
 		// The UUIDs of the packs are those of the packs, not drawn at
 		// random: they are left as they are.
 		desc = describeAsIs(pk, fields, ">>")
@@ -228,7 +230,7 @@ func (c *proxiedClient) read() proto.Packet {
 		desc = briefPacket(pk, desc)
 	}
 	c.s.out.WriteString(desc)
-	return pk
+	return model
 }
 
 // describeAsIs describes a packet as the harness's describe does, without
@@ -249,7 +251,7 @@ func describeAsIs(pk proto.Packet, raw []byte, dir string) string {
 // the packet and that of the SHA-256 of their encoding.
 func briefPacket(pk proto.Packet, desc string) string {
 	lines := strings.Split(strings.TrimSuffix(desc, "\n"), "\n")
-	game, ok := pk.(*mc.StartGamePacket)
+	game, ok := pk.(*v2193.StartGamePacket)
 	if !ok {
 		return lines[0] + "\n" + lines[len(lines)-1] + "\n"
 	}
@@ -313,11 +315,9 @@ func (c *proxiedClient) spawning() *serverClient {
 				c.s.t.Errorf("%s: %s: %v", c.s.name, c.name, err)
 				return
 			}
-			pk := mc.New(h.ID)
-			r := wire.NewReader(fields)
-			pk.Decode(r)
-			if r.Err() != nil || r.Len() != 0 {
-				c.s.t.Errorf("%s: %s: packet %d does not decode: %v, %d bytes left", c.s.name, c.name, h.ID, r.Err(), r.Len())
+			pk, ok := readWire(h.ID, fields)
+			if !ok {
+				c.s.t.Errorf("%s: %s: packet %d does not decode", c.s.name, c.name, h.ID)
 				return
 			}
 			sc.conn.written <- pk
@@ -329,12 +329,14 @@ func (c *proxiedClient) spawning() *serverClient {
 // send sends a packet as the client does, and records it.
 func (c *proxiedClient) send(pk proto.Packet) {
 	c.s.t.Helper()
-	w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
-	pk.Encode(&w)
-	raw := encode(pk)
-	c.s.out.WriteString(c.rec.describe(decodeAs(c.s.t, pk.ID(), raw), raw, "<<"))
-	if err := c.b.WritePacket(w.B); err != nil {
-		c.s.t.Fatal(err)
+	for _, pk := range toWire(pk) {
+		w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: pk.ID()})}
+		pk.Encode(&w)
+		raw := encode(pk)
+		c.s.out.WriteString(c.rec.describe(decodeAs(c.s.t, pk.ID(), raw), raw, "<<"))
+		if err := c.b.WritePacket(w.B); err != nil {
+			c.s.t.Fatal(err)
+		}
 	}
 	if err := c.b.Flush(); err != nil {
 		c.s.t.Fatal(err)

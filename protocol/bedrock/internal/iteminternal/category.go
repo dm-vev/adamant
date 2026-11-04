@@ -2,7 +2,7 @@ package iteminternal
 
 import (
 	"github.com/df-mc/dragonfly/server/item/category"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // creativeCategory returns the creative category the item components of a

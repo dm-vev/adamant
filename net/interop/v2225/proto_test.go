@@ -470,6 +470,10 @@ func same(ours, theirs reflect.Value, path string) error {
 			break
 		}
 		for i := range ours.NumField() {
+			if ours.Type().Field(i).Tag.Get("wire") == "-" {
+				// A field of the model the codec leaves out.
+				continue
+			}
 			name := ours.Type().Field(i).Name
 			tf := theirs.FieldByName(name)
 			if !tf.IsValid() {

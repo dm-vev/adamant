@@ -129,8 +129,10 @@ func TestGoldenJoin(t *testing.T) {
 	head.WriteString(srv.dump)
 	head.WriteString("== written by the server after StartGameContext\n")
 	for _, pk := range srv.written {
-		raw := encode(pk)
-		head.WriteString(s.describe(decodeAs(t, pk.ID(), raw), raw, ">>"))
+		for _, w := range toWire(pk) {
+			raw := encode(w)
+			head.WriteString(s.describe(decodeAs(t, w.ID(), raw), raw, ">>"))
+		}
 	}
 	rest := s.out.String()
 	s.out.Reset()

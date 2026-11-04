@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/category"
 	"github.com/df-mc/dragonfly/server/world"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 func TestCustomItemEntriesCustomItem(t *testing.T) {
@@ -109,9 +109,10 @@ func TestBlockEntriesDefineBlocksOfData(t *testing.T) {
 }
 
 // TestBlocksOfDataAreBlocksOfTheServer checks that the server has a block
-// for each vanilla block it defines to the clients of each protocol.
+// for each vanilla block it defines to the clients of each protocol they
+// may join with.
 func TestBlocksOfDataAreBlocksOfTheServer(t *testing.T) {
-	for _, p := range versions.All() {
+	for _, p := range versions.Configurable() {
 		vanillaBlocks := tablesOf(p, world.DefaultBlockRegistry).vanilla.Blocks()
 		if len(vanillaBlocks) == 0 {
 			t.Fatalf("no vanilla blocks are defined to clients of %d", p.Number)

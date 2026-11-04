@@ -25,7 +25,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/sctp"
@@ -138,6 +138,15 @@ func (c *Conn) Stats() Stats {
 // Protocol returns the protocol the client speaks.
 func (c *Conn) Protocol() *versions.Protocol { return c.proto }
 
+// protocol returns the protocol the client speaks, the default of the
+// build before the login told it.
+func (c *Conn) protocol() *versions.Protocol {
+	if c.proto == nil {
+		return versions.Default()
+	}
+	return c.proto
+}
+
 // IdentityData returns the identity the client logged in with.
 func (c *Conn) IdentityData() login.Identity { return c.identity }
 
@@ -220,7 +229,17 @@ func (c *Conn) WritePacket(pk proto.Packet) error {
 		return c.b.SendBatch(msg)
 	}
 	if p := c.proto; p != nil && p.Out != nil {
-		for _, pk := range p.Out(Unwrap(pk)) {
+		model := Unwrap(pk)
+		if p.Keeps != nil && p.Keeps(model) {
+			// A packet of the same layout in the protocol: what wraps it,
+			// such as the bytes kept for every client, goes as it is.
+			return c.write(pk)
+		}
+		out := p.Out(model)
+		if len(out) == 1 && out[0] == model {
+			return c.write(pk)
+		}
+		for _, pk := range out {
 			if err := c.write(pk); err != nil {
 				return err
 			}
@@ -294,12 +313,21 @@ func (c *Conn) ReadPacket() (pk proto.Packet, err error) {
 		_ = c.Close()
 		return nil, DisconnectError(d.Message)
 	}
-	if p := c.proto; p != nil && p.In != nil {
+	if c.converts(pk) {
 		if pk = c.convertIn(pk); pk == nil {
 			return c.ReadPacket()
 		}
 	}
 	return pk, nil
+}
+
+// converts reports whether a packet the client sent, as decode returned
+// it, is one of its protocol that In converts to the model: the packets of
+// the IDs whose layout the protocol changed. The others decode as the
+// model.
+func (c *Conn) converts(pk proto.Packet) bool {
+	p := c.proto
+	return p != nil && p.In != nil && !p.SameLayout(pk.ID())
 }
 
 // convertIn converts a packet the client sent to the packets of the model
@@ -370,10 +398,10 @@ func (c *Conn) deliver(raw []byte, handle func(pk proto.Packet, cost int), end f
 		end(DisconnectError(d.Message))
 		return errStopped
 	}
-	if p := c.proto; p != nil && p.In != nil {
+	if c.converts(pk) {
 		// The memory of the packet is charged to the first packet of the
 		// model that carries it.
-		for _, pk := range p.In(pk) {
+		for _, pk := range c.proto.In(pk) {
 			handle(pk, cost)
 			cost = 0
 		}
@@ -486,6 +514,9 @@ func DecodePacket(raw []byte) (proto.Packet, error) {
 
 // decode decodes a packet the client sent with the codecs of its protocol,
 // those of the model before the protocol is known, as decodePacket does.
+// A packet of the model's layout in the protocol decodes as the model; one
+// whose layout the protocol changed decodes as the protocol, for In to
+// convert.
 func (c *Conn) decode(raw []byte) (proto.Packet, int, error) {
 	p := c.proto
 	if p == nil {
@@ -497,13 +528,18 @@ func (c *Conn) decode(raw []byte) (proto.Packet, int, error) {
 // decodePacket decodes a packet a client of a protocol sent as
 // DecodePacket does and returns the bytes of memory it takes: those of its
 // fields, which its strings copy and its byte slices share, and those its
-// values take past them, as MaxAlloc charged them.
+// values take past them, as MaxAlloc charged them. A packet of an ID of the
+// same layout in the protocol and the model is decoded as the model.
 func decodePacket(p *versions.Protocol, raw []byte) (pk proto.Packet, cost int, err error) {
 	h, fields, err := bedrock.ReadHeader(raw)
 	if err != nil {
 		return nil, 0, err
 	}
-	if pk = p.New(h.ID); pk == nil || !fromClient(p, h.ID) {
+	codec := p
+	if p.SameLayout(h.ID) {
+		codec = versions.Model()
+	}
+	if pk = codec.New(h.ID); pk == nil || !fromClient(p, h.ID) {
 		return nil, 0, errUnknownPacket(h.ID)
 	}
 	defer func() {
@@ -561,7 +597,7 @@ func (c *Conn) read(ids ...uint32) (pk proto.Packet, err error) {
 		for _, id := range ids {
 			if h.ID == id {
 				pk, _, err := c.decode(raw)
-				if err == nil && c.proto != nil && c.proto.In != nil {
+				if err == nil && c.converts(pk) {
 					// The packets of the login are of one layout in every
 					// protocol: each is one packet of the model.
 					pks := c.proto.In(pk)
@@ -593,8 +629,10 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 	for _, item := range data.Items {
 		if item.Name == "minecraft:shield" {
 			c.shieldID.Store(int32(item.RuntimeID))
-			// Items of the generated codecs find the shield by a process-wide ID.
-			mc.SetShieldID(int32(item.RuntimeID))
+			// Items of the generated codecs find the shield by a process-wide
+			// ID, in the codecs of the protocol of the client and those of
+			// the model, which code the packets of the same layout.
+			versions.SetShieldID(c.protocol(), int32(item.RuntimeID))
 		}
 	}
 	c.runtimeID = data.EntityRuntimeID
@@ -658,7 +696,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 // game the protocol tells its clients.
 func startGame(data GameData, p *versions.Protocol) *mc.StartGamePacket {
 	if p == nil {
-		p = versions.Model()
+		p = versions.Default()
 	}
 	return &mc.StartGamePacket{
 		Difficulty:                   data.Difficulty,

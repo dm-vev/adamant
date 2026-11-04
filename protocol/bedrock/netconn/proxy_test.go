@@ -14,7 +14,8 @@ import (
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/proxy"
 	"github.com/google/uuid"
@@ -55,7 +56,7 @@ func openProxiedAs(t *testing.T, link *proxy.Link, name string, protocol int32, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := json.Marshal(ourlogin.ClientData{GameVersion: mc.Version, LanguageCode: "ru_RU", ServerAddress: "play.example.org:19132"})
+	client, err := json.Marshal(ourlogin.ClientData{GameVersion: v2193.Version, LanguageCode: "ru_RU", ServerAddress: "play.example.org:19132"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,6 +75,13 @@ func openProxiedAs(t *testing.T, link *proxy.Link, name string, protocol int32, 
 // which it decodes as a client does.
 func readUntil(t *testing.T, b *bedrock.Conn, id uint32) proto.Packet {
 	t.Helper()
+	return readUntilAs(t, b, versions.Default(), id)
+}
+
+// readUntilAs is readUntil of a client of a protocol, whose codecs decode
+// what it is sent.
+func readUntilAs(t *testing.T, b *bedrock.Conn, p *versions.Protocol, id uint32) proto.Packet {
+	t.Helper()
 	for {
 		raw, err := b.ReadPacket()
 		if err != nil {
@@ -86,7 +94,7 @@ func readUntil(t *testing.T, b *bedrock.Conn, id uint32) proto.Packet {
 		if h.ID != id {
 			continue
 		}
-		pk := mc.New(id)
+		pk := p.New(id)
 		r := wire.NewReader(fields)
 		pk.Decode(r)
 		if r.Err() != nil {
@@ -102,21 +110,21 @@ func readUntil(t *testing.T, b *bedrock.Conn, id uint32) proto.Packet {
 func TestProxiedPlayerJoins(t *testing.T) {
 	l := listen(t, Config{})
 	spawned := serve(t, l)
-	b := openProxied(t, proxyLink(t, l), "Proxied", mc.Protocol)
+	b := openProxied(t, proxyLink(t, l), "Proxied", v2193.Protocol)
 
-	if st := readUntil(t, b, mc.IDPlayStatus).(*mc.PlayStatusPacket); st.Status != mc.PlayStatusLoginSuccess {
+	if st := readUntil(t, b, v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginSuccess {
 		t.Fatalf("status %d, want the login done", st.Status)
 	}
-	readUntil(t, b, mc.IDResourcePacksInfo)
-	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseAllPacksDownloaded})
-	readUntil(t, b, mc.IDResourcePackStack)
-	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseCompleted})
-	game := readUntil(t, b, mc.IDStartGame).(*mc.StartGamePacket)
-	writeRaw(t, b, &mc.RequestChunkRadiusPacket{ChunkRadius: 8})
-	if st := readUntil(t, b, mc.IDPlayStatus).(*mc.PlayStatusPacket); st.Status != mc.PlayStatusPlayerSpawn {
+	readUntil(t, b, v2193.IDResourcePacksInfo)
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseAllPacksDownloaded})
+	readUntil(t, b, v2193.IDResourcePackStack)
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
+	game := readUntil(t, b, v2193.IDStartGame).(*v2193.StartGamePacket)
+	writeRaw(t, b, &v2193.RequestChunkRadiusPacket{ChunkRadius: 8})
+	if st := readUntil(t, b, v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusPlayerSpawn {
 		t.Fatalf("status %d, want the spawn", st.Status)
 	}
-	writeRaw(t, b, &mc.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
+	writeRaw(t, b, &v2193.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
 
 	var c *Conn
 	select {
@@ -139,8 +147,8 @@ func TestProxiedPlayerJoins(t *testing.T) {
 	if st := c.Stats(); !st.Proxied || st.Remote.String() != "203.0.113.7:4242" {
 		t.Fatalf("stats %+v", st)
 	}
-	writeRaw(t, b, &mc.TextPacket{TextType: mc.TextTypeChat, SourceName: "Proxied", Message: "hi"})
-	if echo := readUntil(t, b, mc.IDText).(*mc.TextPacket); echo.Message != "echo hi" {
+	writeRaw(t, b, &v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Proxied", Message: "hi"})
+	if echo := readUntil(t, b, v2193.IDText).(*v2193.TextPacket); echo.Message != "echo hi" {
 		t.Fatalf("echo %q", echo.Message)
 	}
 }
@@ -157,10 +165,10 @@ func TestProxiedPlayersAdmittedAsClients(t *testing.T) {
 	}
 	l := listen(t, Config{Validate: refused})
 	link := proxyLink(t, l)
-	if st := readUntil(t, openProxied(t, link, "Old", 1), mc.IDPlayStatus).(*mc.PlayStatusPacket); st.Status != mc.PlayStatusLoginFailedClient {
+	if st := readUntil(t, openProxied(t, link, "Old", 1), v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginFailedClient {
 		t.Fatalf("status %d for an old protocol", st.Status)
 	}
-	b := openProxied(t, link, "Invalid", mc.Protocol)
+	b := openProxied(t, link, "Invalid", v2193.Protocol)
 	if _, err := b.ReadPacket(); err == nil {
 		t.Fatal("a player the rules refuse was let in")
 	}
@@ -170,10 +178,10 @@ func TestProxiedPlayersAdmittedAsClients(t *testing.T) {
 // listener allows, refused as outdated otherwise, newer or older, as it
 // was before the listener allowed more than one.
 func TestProxiedProtocols(t *testing.T) {
-	l := listen(t, Config{Protocols: []*versions.Protocol{versions.Model(), fakeProtocol}})
+	l := listen(t, Config{Protocols: []*versions.Protocol{versions.Default(), fakeProtocol}})
 	link := proxyLink(t, l)
-	for _, n := range []int32{mc.Protocol - 1, 2250, fakeProtocol.Number + 1} {
-		if st := readUntil(t, openProxied(t, link, "Refused", n), mc.IDPlayStatus).(*mc.PlayStatusPacket); st.Status != mc.PlayStatusLoginFailedClient {
+	for _, n := range []int32{v2193.Protocol - 1, 2250, fakeProtocol.Number + 1} {
+		if st := readUntil(t, openProxied(t, link, "Refused", n), v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginFailedClient {
 			t.Errorf("status %d for protocol %d", st.Status, n)
 		}
 	}
@@ -184,15 +192,15 @@ func TestProxiedProtocols(t *testing.T) {
 		}
 	}()
 	b := openProxied(t, link, "Newer", fakeProtocol.Number)
-	if st := readUntil(t, b, mc.IDPlayStatus).(*mc.PlayStatusPacket); st.Status != mc.PlayStatusLoginSuccess {
+	if st := readUntil(t, b, v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginSuccess {
 		t.Fatalf("status %d for protocol %d", st.Status, fakeProtocol.Number)
 	}
 	// The client is told the version of its own protocol.
-	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseAllPacksDownloaded})
-	if stack := readUntil(t, b, mc.IDResourcePackStack).(*mc.ResourcePackStackPacket); stack.BaseGameVersion != fakeProtocol.Version {
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseAllPacksDownloaded})
+	if stack := readUntilAs(t, b, fakeProtocol, mc.IDResourcePackStack).(*mc.ResourcePackStackPacket); stack.BaseGameVersion != fakeProtocol.Version {
 		t.Errorf("the stack of packs is of %s, not of %s", stack.BaseGameVersion, fakeProtocol.Version)
 	}
-	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseCompleted})
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
 	var c *Conn
 	select {
 	case c = <-accepted:
@@ -207,13 +215,13 @@ func TestProxiedProtocols(t *testing.T) {
 		defer cancel()
 		_ = c.StartGameContext(ctx, gameData())
 	}()
-	if game := readUntil(t, b, mc.IDStartGame).(*mc.StartGamePacket); game.GameVersion != fakeProtocol.Version || game.BaseGameVersion != mc.Version {
+	if game := readUntilAs(t, b, fakeProtocol, mc.IDStartGame).(*mc.StartGamePacket); game.GameVersion != fakeProtocol.Version || game.BaseGameVersion != v2193.Version {
 		t.Errorf("StartGame of %s on %s, want the game of %s on what the session says", game.GameVersion, game.BaseGameVersion, fakeProtocol.Version)
 	}
 	if l.Advertised() != fakeProtocol {
 		t.Errorf("the listener advertises %v, not the newest protocol it allows", l.Advertised())
 	}
-	if p := listen(t, Config{}).Advertised(); p != versions.Model() {
+	if p := listen(t, Config{}).Advertised(); p != versions.Default() {
 		t.Errorf("a listener of the model alone advertises %v", p)
 	}
 }
@@ -231,7 +239,7 @@ func TestProxiedPlayerAuthenticatedAsItsTokenSays(t *testing.T) {
 	}})
 	link := proxyLink(t, l)
 	for _, xboxLive := range []bool{true, false} {
-		b := openProxiedAs(t, link, "Proxied", mc.Protocol, xboxLive)
+		b := openProxiedAs(t, link, "Proxied", v2193.Protocol, xboxLive)
 		if _, err := b.ReadPacket(); err != nil {
 			t.Fatal(err)
 		}
@@ -273,19 +281,19 @@ func TestProxiedPlayerReadsStatics(t *testing.T) {
 		}
 	}()
 
-	b := openProxied(t, proxyLink(t, l), "Proxied", mc.Protocol)
-	readUntil(t, b, mc.IDResourcePacksInfo)
-	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseAllPacksDownloaded})
-	readUntil(t, b, mc.IDResourcePackStack)
-	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseCompleted})
-	game := readUntil(t, b, mc.IDStartGame).(*mc.StartGamePacket)
-	writeRaw(t, b, &mc.RequestChunkRadiusPacket{ChunkRadius: 8})
-	readUntil(t, b, mc.IDPlayStatus)
-	writeRaw(t, b, &mc.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
-	if text := readUntil(t, b, mc.IDText).(*mc.TextPacket); text.Message != st.Packet.(*mc.TextPacket).Message {
+	b := openProxied(t, proxyLink(t, l), "Proxied", v2193.Protocol)
+	readUntil(t, b, v2193.IDResourcePacksInfo)
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseAllPacksDownloaded})
+	readUntil(t, b, v2193.IDResourcePackStack)
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
+	game := readUntil(t, b, v2193.IDStartGame).(*v2193.StartGamePacket)
+	writeRaw(t, b, &v2193.RequestChunkRadiusPacket{ChunkRadius: 8})
+	readUntil(t, b, v2193.IDPlayStatus)
+	writeRaw(t, b, &v2193.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
+	if text := readUntil(t, b, v2193.IDText).(*v2193.TextPacket); text.Message != st.Packet.(*mc.TextPacket).Message {
 		t.Fatalf("read %q, want the static", text.Message)
 	}
-	if text := readUntil(t, b, mc.IDText).(*mc.TextPacket); text.Message != "after" {
+	if text := readUntil(t, b, v2193.IDText).(*v2193.TextPacket); text.Message != "after" {
 		t.Fatalf("read %q after the static", text.Message)
 	}
 
@@ -304,7 +312,7 @@ func TestProxiedPlayerReadsStatics(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if text, ok := pk.(*mc.TextPacket); ok {
+		if text, ok := pk.(*v2193.TextPacket); ok {
 			got = append(got, text.Message)
 		}
 	}

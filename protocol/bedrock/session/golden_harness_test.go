@@ -16,6 +16,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -27,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server/block"
@@ -39,7 +41,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/google/uuid"
@@ -636,26 +639,30 @@ func (s *scenario) client(heading string, pks ...proto.Packet) {
 	s.t.Helper()
 	s.begin(heading, true)
 	for _, pk := range pks {
-		raw := encode(pk)
-		s.out.WriteString(s.describe(decodeAs(s.t, pk.ID(), raw), raw, "<<"))
+		for _, w := range toWire(pk) {
+			raw := encode(w)
+			s.out.WriteString(s.describe(decodeAs(s.t, w.ID(), raw), raw, "<<"))
+		}
 		s.send(pk)
 	}
 	s.advance()
 	s.drain(true)
 }
 
-// send hands the session a packet as the client sends it: encoded and
-// decoded again, as the server reads it, and put in the inbox of the
-// session.
+// send hands the session a packet of the model as the client sends it: as
+// the packets of goldenProtocol that carry it, encoded and read again as
+// the server reads them, and put in the inbox of the session.
 func (s *scenario) send(pk proto.Packet) {
 	s.t.Helper()
-	back := decodeAs(s.t, pk.ID(), encode(pk))
-	select {
-	case s.conn.in <- back:
-	case <-time.After(goldenDeadline):
-		s.t.Fatalf("%s: the session does not read", s.name)
+	for _, w := range toWire(pk) {
+		back := asModel(s.t, w.ID(), encode(w))
+		select {
+		case s.conn.in <- back:
+		case <-time.After(goldenDeadline):
+			s.t.Fatalf("%s: the session does not read", s.name)
+		}
+		s.awaitReader()
 	}
-	s.awaitReader()
 }
 
 // awaitReader waits until the session reads again from its connection.
@@ -736,20 +743,25 @@ func (s *scenario) drain(keep bool) {
 // packet.
 func (s *scenario) record(pk proto.Packet, keep bool) string {
 	s.t.Helper()
-	raw := encode(pk)
-	back := decodeAs(s.t, pk.ID(), raw)
-	s.trackStacks(back)
-	if keep && normaliseOrbs && orbMotion(back) {
-		keep = false
+	name := ""
+	for _, w := range toWire(pk) {
+		raw := encode(w)
+		back := decodeAs(s.t, w.ID(), raw)
+		model := asModel(s.t, w.ID(), raw)
+		s.trackStacks(model)
+		if keep && (!normaliseOrbs || !orbMotion(model)) {
+			s.out.WriteString(s.describe(back, raw, ">>"))
+		} else {
+			// IDs seen while not recording are still named in order, so
+			// that the names of the recorded part do not depend on what is
+			// left out.
+			s.norm.packet(reflect.ValueOf(back).Elem())
+		}
+		if name == "" {
+			name = packetName(back)
+		}
 	}
-	if keep {
-		s.out.WriteString(s.describe(back, raw, ">>"))
-	} else {
-		// IDs seen while not recording are still named in order, so that
-		// the names of the recorded part do not depend on what is left out.
-		s.norm.packet(reflect.ValueOf(back).Elem())
-	}
-	return packetName(back)
+	return name
 }
 
 // describe returns a packet as the snapshot shows it: a line of the
@@ -952,12 +964,113 @@ func encode(pk proto.Packet) []byte {
 	return w.B
 }
 
-// decodeAs decodes a packet of the ID passed as a client reads it. Decoding
-// and encoding again does not give back every byte: NBT, for one, decodes
-// an empty list of compounds as an empty list of nothing.
+// goldenProtocol is the protocol the clients of the scenarios speak, the
+// default of the build, 2193, whose bytes the snapshots hold. The session
+// writes packets of the model, which go to the clients as netconn writes
+// them for a client of the protocol, and what the clients send reaches the
+// session as netconn reads it.
+var goldenProtocol = versions.Default()
+
+// toWire returns the packets of goldenProtocol that carry a packet of the
+// model, as a connection of the protocol writes them: one of the same
+// layout goes as it is, wrapper and all.
+func toWire(pk proto.Packet) []proto.Packet {
+	if !goldenProtocol.Converts() {
+		return []proto.Packet{pk}
+	}
+	model := netconn.Unwrap(pk)
+	out := goldenProtocol.Out(model)
+	if len(out) == 1 && out[0] == model {
+		return []proto.Packet{pk}
+	}
+	return out
+}
+
+// decodeAs decodes a packet of the ID passed as a client reads it, with the
+// codecs of goldenProtocol. Decoding and encoding again does not give back
+// every byte: NBT, for one, decodes an empty list of compounds as an empty
+// list of nothing.
 func decodeAs(t *testing.T, id uint32, raw []byte) proto.Packet {
 	t.Helper()
-	back := mc.New(id)
+	return decodeWith(t, goldenProtocol, id, raw)
+}
+
+// asModel decodes the bytes of a packet of goldenProtocol as netconn reads
+// them, as the packet of the model they carry: as the model if the layout
+// of the ID is the same in both, else as the protocol, then converted.
+func asModel(t *testing.T, id uint32, raw []byte) proto.Packet {
+	t.Helper()
+	if goldenProtocol.SameLayout(id) {
+		return decodeWith(t, versions.Model(), id, raw)
+	}
+	pks := goldenProtocol.In(decodeWith(t, goldenProtocol, id, raw))
+	if len(pks) != 1 {
+		t.Fatalf("packet %d of protocol %d is %d packets of the model", id, goldenProtocol.Number, len(pks))
+	}
+	return pks[0]
+}
+
+// wireBytes holds, for each packet of the model readWire read, the bytes
+// of goldenProtocol it was carried by as the client decodes them and
+// encodes them again, for wireOf.
+var wireBytes sync.Map
+
+// readWire reads the fields of a packet of goldenProtocol, as a client of it
+// reads what it is sent off its connection, as the packet of the model they
+// carry, as asModel does. It keeps their bytes for wireOf, as the client
+// decodes and encodes them again: decoding and encoding again does not
+// give back every byte, and the snapshots hold the encoding of what the
+// client decoded.
+func readWire(id uint32, fields []byte) (pk proto.Packet, ok bool) {
+	decode := func(p *versions.Protocol) proto.Packet {
+		pk := p.New(id)
+		if pk == nil {
+			return nil
+		}
+		r := wire.NewReader(fields)
+		pk.Decode(r)
+		if r.Err() != nil || r.Len() != 0 {
+			return nil
+		}
+		return pk
+	}
+	if goldenProtocol.SameLayout(id) {
+		pk = decode(versions.Model())
+	} else if wirePk := decode(goldenProtocol); wirePk != nil {
+		if pks := goldenProtocol.In(wirePk); len(pks) == 1 {
+			pk = pks[0]
+		}
+	}
+	client := decode(goldenProtocol)
+	if pk == nil || client == nil {
+		return nil, false
+	}
+	wireBytes.Store(pk, encode(client))
+	return pk, true
+}
+
+// wireOf returns the bytes of goldenProtocol a packet of the model was read
+// from by readWire, as readWire keeps them, or else those netconn writes
+// for it, which must be one packet.
+func wireOf(t *testing.T, pk proto.Packet) []byte {
+	t.Helper()
+	if raw, ok := wireBytes.LoadAndDelete(pk); ok {
+		return raw.([]byte)
+	}
+	out := toWire(pk)
+	if len(out) != 1 {
+		t.Fatalf("packet %d of the model is %d packets of protocol %d", pk.ID(), len(out), goldenProtocol.Number)
+	}
+	return encode(out[0])
+}
+
+// decodeWith decodes the bytes of a packet with the codecs of a protocol.
+func decodeWith(t *testing.T, p *versions.Protocol, id uint32, raw []byte) proto.Packet {
+	t.Helper()
+	back := p.New(id)
+	if back == nil {
+		t.Fatalf("protocol %d has no packet %d", p.Number, id)
+	}
 	r := wire.NewReader(raw)
 	back.Decode(r)
 	if r.Err() != nil || r.Len() != 0 {
@@ -1030,41 +1143,42 @@ var uuidPattern = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{
 
 var uuidType = reflect.TypeFor[uuid.UUID]()
 
-// packet normalises the fields of a packet.
+// packet normalises the fields of a packet, of goldenProtocol as the
+// client reads it.
 func (n *normaliser) packet(v reflect.Value) {
 	n.kind = strings.TrimSuffix(v.Type().Name(), "Packet")
 	if normaliseOrbs {
 		n.orb(v)
 	}
-	if hud, ok := v.Addr().Interface().(*mc.SetHudPacket); ok && len(hud.Elements) > 1 {
+	if hud, ok := v.Addr().Interface().(*v2193.SetHudPacket); ok && len(hud.Elements) > 1 {
 		slices.Sort(hud.Elements)
 		n.touched = true
 	}
-	if pk, ok := v.Addr().Interface().(*mc.LevelEventGenericPacket); ok {
+	if pk, ok := v.Addr().Interface().(*v2193.LevelEventGenericPacket); ok {
 		pk.SerialisedEventData = sortedCompound(pk.SerialisedEventData)
 		n.touched = true
 	}
-	if pk, ok := v.Addr().Interface().(*mc.UpdateTradePacket); ok {
+	if pk, ok := v.Addr().Interface().(*v2193.UpdateTradePacket); ok {
 		pk.SerialisedOffers = sortedNBT(pk.SerialisedOffers)
 		n.touched = true
 	}
-	if pk, ok := v.Addr().Interface().(*mc.ItemStackResponsePacket); ok {
+	if pk, ok := v.Addr().Interface().(*v2193.ItemStackResponsePacket); ok {
 		for _, r := range pk.Responses {
 			if len(r.ContainerInfo) > 1 {
 				n.touched = true
 			}
-			slices.SortFunc(r.ContainerInfo, func(a, b mc.StackResponseContainerInfo) int {
+			slices.SortFunc(r.ContainerInfo, func(a, b v2193.StackResponseContainerInfo) int {
 				return int(a.Container.ContainerID) - int(b.Container.ContainerID)
 			})
 			for _, c := range r.ContainerInfo {
 				if len(c.SlotInfo) > 1 {
 					n.touched = true
 				}
-				slices.SortFunc(c.SlotInfo, func(a, b mc.StackResponseSlotInfo) int { return int(a.Slot) - int(b.Slot) })
+				slices.SortFunc(c.SlotInfo, func(a, b v2193.StackResponseSlotInfo) int { return int(a.Slot) - int(b.Slot) })
 			}
 		}
 	}
-	if v.Type() == reflect.TypeFor[mc.PlayerEnchantOptionsPacket]() {
+	if v.Type() == reflect.TypeFor[v2193.PlayerEnchantOptionsPacket]() {
 		opts := v.FieldByName("Options")
 		for i := range opts.Len() {
 			opts.Index(i).FieldByName("Name").SetString("name")
@@ -1546,5 +1660,14 @@ func gameDataDump(data netconn.GameData) string {
 	data.Items = items
 	var b strings.Builder
 	writeValue(&b, "    ", "", reflect.ValueOf(data))
-	return b.String()
+	return asClientTypes(b.String())
+}
+
+// asClientTypes names the types of the model in a rendering of values of
+// the model, such as the game data, as the packages of goldenProtocol name
+// them: netconn writes those values to a client of the protocol in its
+// packets, whose renderings name the types of its own package.
+func asClientTypes(rendering string) string {
+	model, client := path.Base(reflect.TypeFor[mc.GameRule]().PkgPath()), path.Base(reflect.TypeFor[v2193.GameRule]().PkgPath())
+	return strings.ReplaceAll(rendering, "[]"+model+".", "[]"+client+".")
 }

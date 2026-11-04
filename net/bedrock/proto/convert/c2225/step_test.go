@@ -366,3 +366,24 @@ func TestChangedLayoutsDisagree(t *testing.T) {
 	}
 	t.Logf("changes no sample shows: %v", quiet)
 }
+
+// TestDownKeeps checks DownKeeps tells what Down returns as it is.
+func TestDownKeeps(t *testing.T) {
+	for _, pk := range []proto.Packet{
+		&v2225.TextPacket{Message: "hi"},
+		&v2225.LevelEventPacket{EventType: 3001},
+		&v2225.LevelEventPacket{EventType: levelEventIceBallBreak},
+		&v2225.AnimatePacket{ActionType: 1},
+		&v2225.ClientboundMatchmakingStatePacket{},
+	} {
+		out := Down(pk)
+		kept := len(out) == 1 && out[0] == pk
+		if DownKeeps(pk) != kept {
+			t.Errorf("%T: DownKeeps %v, Down returns it as it is: %v", pk, DownKeeps(pk), kept)
+		}
+	}
+	var text proto.Packet = &v2225.TextPacket{}
+	if n := testing.AllocsPerRun(100, func() { DownKeeps(text) }); n != 0 {
+		t.Errorf("DownKeeps allocates %v times", n)
+	}
+}

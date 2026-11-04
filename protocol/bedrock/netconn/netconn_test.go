@@ -24,7 +24,8 @@ import (
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/google/uuid"
@@ -47,7 +48,7 @@ func gameData() GameData {
 		EntityUniqueID:  1,
 		EntityRuntimeID: 1,
 		PlayerPosition:  [3]float32{0, 64, 0},
-		BaseGameVersion: mc.Version,
+		BaseGameVersion: v2193.Version,
 		Items:           []mc.ItemEntry{{Name: "minecraft:shield", RuntimeID: 355}},
 	}
 }
@@ -88,7 +89,7 @@ func TestLoginKeyMustMatchTransport(t *testing.T) {
 	l := listen(t, Config{})
 	serve(t, l)
 	b := rawClient(t, l)
-	writeRaw(t, b, &mc.RequestNetworkSettingsPacket{ClientProtocol: mc.Protocol})
+	writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
 	if raw, err := b.ReadPacket(); err != nil {
 		t.Fatal(err)
 	} else if h, _, _ := bedrock.ReadHeader(raw); h.ID != mc.IDNetworkSettings {
@@ -97,11 +98,11 @@ func TestLoginKeyMustMatchTransport(t *testing.T) {
 	b.EnableCompression(bedrock.Flate{})
 	other, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	request, err := ourlogin.EncodeOffline(ourlogin.Identity{DisplayName: "Replay", Identity: uuid.NewString()},
-		ourlogin.DefaultClientData("127.0.0.1:19132", "Replay", mc.Version), other, time.Now())
+		ourlogin.DefaultClientData("127.0.0.1:19132", "Replay", v2193.Version), other, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeRaw(t, b, &mc.LoginPacket{ClientProtocol: mc.Protocol, ConnectionRequest: request})
+	writeRaw(t, b, &v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: request})
 	for {
 		raw, err := b.ReadPacket()
 		if err != nil {
@@ -168,7 +169,7 @@ func readStatus(t *testing.T, b *bedrock.Conn) int32 {
 
 func TestProtocolMismatch(t *testing.T) {
 	l := listen(t, Config{})
-	for proto, want := range map[int32]int32{1: mc.PlayStatusLoginFailedClient, mc.Protocol + 1: mc.PlayStatusLoginFailedServer} {
+	for proto, want := range map[int32]int32{1: v2193.PlayStatusLoginFailedClient, v2193.Protocol + 1: v2193.PlayStatusLoginFailedServer} {
 		b := rawClient(t, l)
 		writeRaw(t, b, &mc.RequestNetworkSettingsPacket{ClientProtocol: proto})
 		if got := readStatus(t, b); got != want {
@@ -186,13 +187,13 @@ var fakeProtocol = &versions.Protocol{Number: 2300, Names: []string{"1.26.90", "
 // is told it is outdated, and a client newer than all is told the server
 // is.
 func TestProtocolNegotiation(t *testing.T) {
-	l := listen(t, Config{Protocols: []*versions.Protocol{fakeProtocol, versions.Model(), fakeProtocol}})
+	l := listen(t, Config{Protocols: []*versions.Protocol{fakeProtocol, versions.Default(), fakeProtocol}})
 	if got := l.allowed(); got != "2193, 2300" {
 		t.Fatalf("allowed %s", got)
 	}
 	for proto, want := range map[int32]int32{
 		1:                       mc.PlayStatusLoginFailedClient,
-		mc.Protocol - 1:         mc.PlayStatusLoginFailedClient,
+		v2193.Protocol - 1:      v2193.PlayStatusLoginFailedClient,
 		2250:                    mc.PlayStatusLoginFailedClient,
 		fakeProtocol.Number + 1: mc.PlayStatusLoginFailedServer,
 	} {
@@ -202,7 +203,7 @@ func TestProtocolNegotiation(t *testing.T) {
 			t.Errorf("protocol %d: status %d, want %d", proto, got, want)
 		}
 	}
-	for _, p := range []*versions.Protocol{versions.Model(), fakeProtocol} {
+	for _, p := range []*versions.Protocol{versions.Default(), fakeProtocol} {
 		b := rawClient(t, l)
 		writeRaw(t, b, &mc.RequestNetworkSettingsPacket{ClientProtocol: p.Number})
 		raw, err := b.ReadPacket()
@@ -218,17 +219,17 @@ func TestProtocolNegotiation(t *testing.T) {
 // TestLoginProtocolMismatch refuses a Login that names another protocol
 // than the RequestNetworkSettings before it, allowed or not.
 func TestLoginProtocolMismatch(t *testing.T) {
-	l := listen(t, Config{Protocols: []*versions.Protocol{versions.Model(), fakeProtocol}})
-	for _, n := range []int32{fakeProtocol.Number, mc.Protocol + 1} {
+	l := listen(t, Config{Protocols: []*versions.Protocol{versions.Default(), fakeProtocol}})
+	for _, n := range []int32{fakeProtocol.Number, v2193.Protocol + 1} {
 		b := rawClient(t, l)
-		writeRaw(t, b, &mc.RequestNetworkSettingsPacket{ClientProtocol: mc.Protocol})
+		writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
 		if _, err := b.ReadPacket(); err != nil {
 			t.Fatal(err)
 		}
 		b.EnableCompression(bedrock.Flate{})
 		key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 		request, err := ourlogin.EncodeOffline(ourlogin.Identity{DisplayName: "Mismatch", Identity: uuid.NewString()},
-			ourlogin.DefaultClientData("127.0.0.1:19132", "Mismatch", mc.Version), key, time.Now())
+			ourlogin.DefaultClientData("127.0.0.1:19132", "Mismatch", v2193.Version), key, time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -291,7 +292,7 @@ func TestOurClientJoins(t *testing.T) {
 		_ = conn.Close()
 	}()
 	for _, msg := range []string{"hello", strings.Repeat("long ", 300)} {
-		if err := conn.WritePacket(&mc.TextPacket{TextType: 1, SourceName: "Bot", Message: msg}); err != nil {
+		if err := conn.WritePacket(&v2193.TextPacket{TextType: 1, SourceName: "Bot", Message: msg}); err != nil {
 			t.Fatal(err)
 		}
 		if err := conn.Flush(); err != nil {
@@ -302,7 +303,7 @@ func TestOurClientJoins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if text, ok := pk.(*mc.TextPacket); ok {
+			if text, ok := pk.(*v2193.TextPacket); ok {
 				if text.Message != "echo "+msg {
 					t.Fatalf("echo %q", text.Message)
 				}
@@ -367,7 +368,7 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if text, ok := pk.(*mc.TextPacket); ok {
+			if text, ok := pk.(*v2193.TextPacket); ok {
 				got = append(got, text.Message)
 			}
 		}
@@ -385,33 +386,37 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 	}
 }
 
-// converting is a protocol of the number of the model whose packets are
-// converted as a step would: a Text a client sends reaches the session in
-// capitals, one the session writes goes as two, the second marked, and a
-// Text whose message is "none" does not go at all.
+// converting is protocol 2193, which the step c2225 converts, but for a
+// Text, which it converts as a step of its own would: a Text a client
+// sends reaches the session in capitals, one the session writes goes as
+// two, the second marked, and a Text whose message is "none" does not go
+// at all.
 func converting() *versions.Protocol {
-	return &versions.Protocol{
-		Number: mc.Protocol, Names: []string{"1.26.50"}, Version: "1.26.50", New: mc.New, FromClient: mc.FromClient,
-		In: func(pk proto.Packet) []proto.Packet {
-			if text, ok := pk.(*mc.TextPacket); ok {
-				up := *text
-				up.Message = strings.ToUpper(text.Message)
-				return []proto.Packet{&up}
-			}
-			return []proto.Packet{pk}
-		},
-		Out: func(pk proto.Packet) []proto.Packet {
-			if text, ok := pk.(*mc.TextPacket); ok {
-				if text.Message == "none" {
-					return nil
-				}
-				again := *text
-				again.Message += " again"
-				return []proto.Packet{text, &again}
-			}
-			return []proto.Packet{pk}
-		},
+	base := versions.Default()
+	p := *base
+	p.Same = func(id uint32) bool { return id != mc.IDText && base.Same(id) }
+	p.Keeps = func(pk proto.Packet) bool { return pk.ID() != mc.IDText && base.Keeps(pk) }
+	p.In = func(pk proto.Packet) []proto.Packet {
+		if text, ok := pk.(*v2193.TextPacket); ok {
+			up := mc.TextPacket(*text)
+			up.Message = strings.ToUpper(text.Message)
+			return []proto.Packet{&up}
+		}
+		return base.In(pk)
 	}
+	p.Out = func(pk proto.Packet) []proto.Packet {
+		if text, ok := pk.(*mc.TextPacket); ok {
+			if text.Message == "none" {
+				return nil
+			}
+			down := v2193.TextPacket(*text)
+			again := down
+			again.Message += " again"
+			return []proto.Packet{&down, &again}
+		}
+		return base.Out(pk)
+	}
+	return &p
 }
 
 // TestConvertingProtocol checks a connection of a protocol other than the
@@ -441,13 +446,13 @@ func TestConvertingProtocol(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if text, ok := pk.(*mc.TextPacket); ok {
+			if text, ok := pk.(*v2193.TextPacket); ok {
 				got = append(got, text.Message)
 			}
 		}
 		return got
 	}
-	_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, SourceName: "Bot", Message: "hi"})
+	_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Bot", Message: "hi"})
 	_ = conn.Flush()
 	if got := texts(2); got[0] != "echo HI" || got[1] != "echo HI again" {
 		t.Fatalf("read %q", got)
@@ -502,7 +507,7 @@ func TestFloodingClientIsCut(t *testing.T) {
 	defer conn.Close()
 	for range 100 {
 		for range 100 {
-			_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, SourceName: "Player", Message: "spam"})
+			_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Player", Message: "spam"})
 		}
 		if err := conn.Flush(); err != nil {
 			break
@@ -558,9 +563,9 @@ func TestChatOverItsBucketIsDropped(t *testing.T) {
 	}
 	defer conn.Close()
 	for range 100 {
-		_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, SourceName: "Player", Message: "spam"})
+		_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Player", Message: "spam"})
 	}
-	_ = conn.WritePacket(&mc.EmotePacket{EntityRuntimeID: 1, EmoteID: "wave"})
+	_ = conn.WritePacket(&v2193.EmotePacket{EntityRuntimeID: 1, EmoteID: "wave"})
 	if err := conn.Flush(); err != nil {
 		t.Fatal(err)
 	}
@@ -650,12 +655,12 @@ func loginWith(t *testing.T, l *Listener, req []byte) error {
 		_ = b.WritePacket(w.B)
 		_ = b.Flush()
 	}
-	send(&mc.RequestNetworkSettingsPacket{ClientProtocol: mc.Protocol})
+	send(&v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
 	if _, err := b.ReadPacket(); err != nil {
 		t.Fatal(err)
 	}
 	b.EnableCompression(bedrock.Flate{})
-	send(&mc.LoginPacket{ClientProtocol: mc.Protocol, ConnectionRequest: req})
+	send(&v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: req})
 	for {
 		raw, err := b.ReadPacket()
 		if err != nil {
@@ -699,7 +704,7 @@ func TestHandshakeAsBDS(t *testing.T) {
 			t.Fatal(err)
 		}
 		h, body, _ := bedrock.ReadHeader(raw)
-		pk := mc.New(h.ID)
+		pk := v2193.New(h.ID)
 		r := wire.NewReader(body)
 		pk.Decode(r)
 		if r.Err() != nil {
@@ -707,19 +712,19 @@ func TestHandshakeAsBDS(t *testing.T) {
 		}
 		return pk
 	}
-	send(&mc.RequestNetworkSettingsPacket{ClientProtocol: mc.Protocol})
-	if _, ok := next().(*mc.NetworkSettingsPacket); !ok {
+	send(&v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
+	if _, ok := next().(*v2193.NetworkSettingsPacket); !ok {
 		t.Fatal("no NetworkSettings")
 	}
 	b.EnableCompression(bedrock.Flate{})
 	req, err := ourlogin.EncodeOffline(ourlogin.Identity{DisplayName: "Bot", Identity: ourlogin.NewUUID()},
-		ourlogin.DefaultClientData(l.Addr().String(), "Bot", mc.Version), key, time.Now())
+		ourlogin.DefaultClientData(l.Addr().String(), "Bot", v2193.Version), key, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
-	send(&mc.LoginPacket{ClientProtocol: mc.Protocol, ConnectionRequest: req})
+	send(&v2193.LoginPacket{ClientProtocol: v2193.Protocol, ConnectionRequest: req})
 	pk := next()
-	hs, ok := pk.(*mc.ServerToClientHandshakePacket)
+	hs, ok := pk.(*v2193.ServerToClientHandshakePacket)
 	if !ok {
 		t.Fatalf("%T after the login, want ServerToClientHandshake", pk)
 	}
@@ -745,8 +750,8 @@ func TestHandshakeAsBDS(t *testing.T) {
 	if salt, err := base64.RawStdEncoding.DecodeString(claims.Salt); err != nil || len(salt) != 16 {
 		t.Fatalf("salt %q", claims.Salt)
 	}
-	send(&mc.ClientToServerHandshakePacket{})
-	if ps, ok := next().(*mc.PlayStatusPacket); !ok || ps.Status != 0 {
+	send(&v2193.ClientToServerHandshakePacket{})
+	if ps, ok := next().(*v2193.PlayStatusPacket); !ok || ps.Status != 0 {
 		t.Fatalf("no login success after the handshake")
 	}
 }
@@ -772,7 +777,7 @@ func TestReceive(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := range 5 {
-		_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, Message: fmt.Sprint(i)})
+		_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, Message: fmt.Sprint(i)})
 		if i%2 == 0 {
 			_ = conn.Flush()
 		}
@@ -816,7 +821,7 @@ func TestReceiveConverts(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, Message: "quiet"})
+	_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, Message: "quiet"})
 	_ = conn.Flush()
 	select {
 	case msg := <-got:
@@ -857,11 +862,11 @@ func TestReceiveEnds(t *testing.T) {
 		pk   proto.Packet
 		want func(error) bool
 	}{
-		"disconnect": {&mc.DisconnectPacket{Message: "bye"}, func(err error) bool {
+		"disconnect": {&v2193.DisconnectPacket{Message: "bye"}, func(err error) bool {
 			var d DisconnectError
 			return errors.As(err, &d) && d == "bye"
 		}},
-		"server packet": {&mc.SubChunkPacket{}, func(err error) bool { return errors.As(err, new(errUnknownPacket)) }},
+		"server packet": {&v2193.SubChunkPacket{}, func(err error) bool { return errors.As(err, new(errUnknownPacket)) }},
 	} {
 		l := listen(t, Config{})
 		handed := make(chan proto.Packet, 1)
@@ -1028,7 +1033,7 @@ func itemStackRequest(n int) []byte {
 	for range n {
 		w.Varint32(0)                 // request ID
 		w.Varuint32(1)                // one action
-		w.Bytes([]byte{17, 19})       // of craft results, deprecated
+		w.Bytes([]byte{18, 20})       // of craft results, deprecated, as 2225 numbers it
 		w.Varuint32(1024)             // results
 		w.Bytes(make([]byte, 6*1024)) // each empty
 		w.Uint8(0)                    // times crafted
@@ -1049,7 +1054,7 @@ func craftActions(n int) []byte {
 		w.Varint32(0)
 		w.Varuint32(1024)
 		for range 1024 {
-			w.Bytes([]byte{17, 19, 0, 0})
+			w.Bytes([]byte{18, 20, 0, 0})
 		}
 		w.Varuint32(0)
 		w.Int32(0)

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"reflect"
 	"testing"
 

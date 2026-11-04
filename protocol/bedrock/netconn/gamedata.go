@@ -1,6 +1,6 @@
 package netconn
 
-import mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+import mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 
 // GameData is what the server tells a client that starts the game: the
 // world and the player it spawns as. The connection fills in the rest of

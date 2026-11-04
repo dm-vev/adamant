@@ -7,7 +7,8 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // enchantingTable is where the cases of the enchanting table place it.
@@ -167,13 +168,13 @@ func (s *scenario) enchantingCreativeCases() {
 // a seed drawn at random: their costs and enchantments differ from run to
 // run.
 func randomEnchantOptions(pk proto.Packet) (changed, omit bool) {
-	opts, ok := pk.(*mc.PlayerEnchantOptionsPacket)
+	opts, ok := pk.(*v2193.PlayerEnchantOptionsPacket)
 	if !ok {
 		return false, false
 	}
 	for i := range opts.Options {
 		opts.Options[i].Cost = 0
-		opts.Options[i].Enchantments = mc.ItemEnchantments{Slot: opts.Options[i].Enchantments.Slot}
+		opts.Options[i].Enchantments = v2193.ItemEnchantments{Slot: opts.Options[i].Enchantments.Slot}
 	}
 	return true, false
 }

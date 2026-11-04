@@ -10,6 +10,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2225"
+	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
 // one converts a packet with a step function and returns the one packet it
@@ -53,12 +54,28 @@ func TestPlayFabIDMoves(t *testing.T) {
 	if e := up.Entries[0]; e.PlayFabID != "pf00" || e.Skin.SkinID != "skin" || e.Skin.FullID != "full" || e.Username != "Steve" {
 		t.Fatalf("entry %+v", e)
 	}
-	skin := one(t, Up, to, &v2193.PlayerSkinPacket{Skin: v2193.Skin{SkinID: "s", PlayFabID: "pf"}}).(*v2225.PlayerSkinPacket)
-	if skin.Skin.SkinID != "s" {
+	// The skin of 2225 keeps the PlayFab ID out of its wire, for the step
+	// down to write it again: a PlayerSkin of 2225 has no other place for
+	// it.
+	if e := Up(pk)[0].(*v2225.PlayerListPacket).Entries[0]; e.Skin.PlayFabID != "pf00" {
+		t.Fatalf("the skin of the entry keeps PlayFab ID %q", e.Skin.PlayFabID)
+	}
+	one(t, Up, to, &v2193.PlayerSkinPacket{Skin: v2193.Skin{SkinID: "s", PlayFabID: "pf"}})
+	skin := Up(&v2193.PlayerSkinPacket{Skin: v2193.Skin{SkinID: "s", PlayFabID: "pf"}})[0].(*v2225.PlayerSkinPacket)
+	if skin.Skin.SkinID != "s" || skin.Skin.PlayFabID != "pf" {
 		t.Fatalf("skin %+v", skin.Skin)
 	}
-	if down := one(t, Down, from, skin).(*v2193.PlayerSkinPacket); down.Skin.PlayFabID != "" || down.Skin.SkinID != "s" {
+	if down := one(t, Down, from, skin).(*v2193.PlayerSkinPacket); down.Skin.PlayFabID != "pf" || down.Skin.SkinID != "s" {
 		t.Fatalf("skin of 2225 back %+v", down.Skin)
+	}
+	var w wire.Writer
+	skin.Encode(&w)
+	var bare v2225.PlayerSkinPacket
+	bare.Skin.SkinID = "s"
+	var b wire.Writer
+	bare.Encode(&b)
+	if !bytes.Equal(w.B, b.B) {
+		t.Fatal("the codec of 2225 writes the PlayFab ID of a skin")
 	}
 }
 
