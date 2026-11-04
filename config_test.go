@@ -48,13 +48,15 @@ import (
 // ever before; and LogLevel of [Server], whose line a new default file has,
 // and a file that lacks it logs at info, where the program logged at debug
 // before; [AntiCheat], whose tables a new default file has, and a file that
-// lacks it, or any of its keys, runs every check with its defaults; and
-// Format and the Levels of the components of [Log], whose lines a new
-// default file has, and a file that lacks them logs text, every component at
-// LogLevel, as before. And a file saving both its world and its players now
-// keeps the players in the world database (playerdb.WorldProvider), reading
-// the players folder only for those not yet moved there, and no longer makes
-// the folder.
+// lacks it, or any of its keys, runs every check with its defaults; Format
+// and the Levels of the components of [Log], whose lines a new default file
+// has, and a file that lacks them logs text, every component at LogLevel, as
+// before; and RateLimit of [Log], whose line a new default file has, and a
+// file that lacks it drops the lines of a component past 100 a second, where
+// the server dropped none before. And a file saving both its world and its
+// players now keeps the players in the world database
+// (playerdb.WorldProvider), reading the players folder only for those not
+// yet moved there, and no longer makes the folder.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -140,7 +142,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false, "NameCheck": "lenient", "IdentityKey": "xuid",
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
 			"SpawnTimeout": "1m0s", "SpawnTimeoutMessage": server.DefaultSpawnTimeoutMessage, "LogLevel": "INFO",
-			"Log.Format": "text", "Log.Levels": map[string]string{},
+			"Log.Format": "text", "Log.RateLimit": 100, "Log.Levels": map[string]string{},
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
 			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0, "SaveInterval": "5m0s",
@@ -163,7 +165,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
 			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.", "LogLevel": "WARN",
-			"Log.Format": "json", "Log.Levels": map[string]string{
+			"Log.Format": "json", "Log.RateLimit": 0, "Log.Levels": map[string]string{
 				"anticheat": "DEBUG", "commands": "INFO", "generator": "ERROR", "network": "INFO", "player": "DEBUG",
 				"save": "WARN", "server": "ERROR", "session": "DEBUG", "world": "WARN",
 			},
@@ -235,6 +237,7 @@ func TestConfigFileErrors(t *testing.T) {
 		"[AntiCheat.Speed]\nAction = \"throttle\"\n":              `AntiCheat.Speed.Action "throttle": use "log", "setback" or "kick"`,
 		"[AntiCheat.Place]\nExemptGameModes = [\"creativ\"]\n":    `AntiCheat.Place.ExemptGameModes: unknown game mode "creativ"`,
 		"[Log]\nFormat = \"xml\"\n":                               `line 2: Log.Format = "xml": want "text" or "json"`,
+		"[Log]\nRateLimit = -1\n":                                 `line 2: Log.RateLimit = -1: want 0 or more`,
 		"[Log.Levels]\nSession = \"verbose\"\n":                   `line 2: Log.Levels.Session: unknown level "verbose": use "debug", "info", "warn" or "error"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
@@ -487,6 +490,7 @@ const everyKeyChanged = `
 
 [Log]
   Format = " JSON "
+  RateLimit = 0
   [Log.Levels]
     AntiCheat = "debug"
     Commands = "Info"
@@ -743,7 +747,7 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	for c, l := range logs.Levels {
 		levels[c] = l.String()
 	}
-	m["Log.Format"], m["Log.Levels"] = logs.Format.String(), levels
+	m["Log.Format"], m["Log.Levels"], m["Log.RateLimit"] = logs.Format.String(), levels, logs.RateLimit
 	closeProviders(t, conf)
 	// The settings of the listeners are those of the Configs of the adapters.
 	m["AuthDisabled"], m["MuteEmoteChat"] = bc.AuthDisabled, bc.MuteEmoteChat

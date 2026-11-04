@@ -61,6 +61,10 @@ type logConfig struct {
 		// server always wrote, or "json", one object per line with a
 		// "component" field. An empty value is "text".
 		Format string
+		// RateLimit is the lines a second each component may log, in
+		// bursts of ten times as many: the lines past it are dropped,
+		// counted and summed up. 0 drops none.
+		RateLimit int
 		// Levels holds the level of each component that logs at a level
 		// other than LogLevel; an empty value is LogLevel.
 		Levels logLevels
@@ -91,6 +95,7 @@ func (c logConfig) Check(p *config.Problems) {
 	_, err := c.level()
 	p.Add("Server.LogLevel", err)
 	config.OneOf(p, "Log.Format", c.Log.Format, "text", "json")
+	config.AtLeast(p, "Log.RateLimit", c.Log.RateLimit, 0)
 	for _, l := range c.Log.Levels.byComponent() {
 		if _, ok := parseLevel(l.value); !ok && strings.TrimSpace(l.value) != "" {
 			p.Errorf("Log.Levels."+l.key, `Log.Levels.%s: unknown level %q: use "debug", "info", "warn" or "error"`, l.key, strings.TrimSpace(l.value))
@@ -134,7 +139,7 @@ func (c logConfig) options() (logging.Options, error) {
 	if err != nil {
 		return logging.Options{}, err
 	}
-	o := logging.Options{Level: root, Levels: map[string]slog.Level{}}
+	o := logging.Options{Level: root, Levels: map[string]slog.Level{}, RateLimit: c.Log.RateLimit}
 	if strings.EqualFold(strings.TrimSpace(c.Log.Format), "json") {
 		o.Format = logging.JSON
 	}
@@ -173,7 +178,7 @@ func setupLogs(c logConfig, out logging.Options) (*logging.Set, error) {
 func defaultFileConfig() fileConfig {
 	f := fileConfig{Server: server.DefaultConfig(), Bedrock: bedrockadapter.DefaultConfig(), Java: javaadapter.DefaultConfig()}
 	f.Log.Server.LogLevel = "info"
-	f.Log.Log.Format = "text"
+	f.Log.Log.Format, f.Log.Log.RateLimit = "text", 100
 	return f
 }
 

@@ -145,6 +145,9 @@
   # Format is how logs are written to stderr: "text", the lines the server always wrote, or "json", one object
   # per line with a "component" field. Chat stays on stdout as text.
   Format = "text"
+  # RateLimit caps the log lines each component writes a second, in bursts of ten times as many: the lines past
+  # it are dropped, counted and summed up in a line at most every 10 seconds. 0 turns the cap off.
+  RateLimit = 100
   # Levels sets the log level of each component of the server: "debug", "info", "warn" or "error". An empty
   # value uses LogLevel of [Server].
   [Log.Levels]

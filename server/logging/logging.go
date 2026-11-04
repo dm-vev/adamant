@@ -98,6 +98,13 @@ type Options struct {
 	// Logger is what text is written through, log.Default() if nil, as the
 	// default handler of slog writes it.
 	Logger *log.Logger
+	// RateLimit is the lines a second each component may write, in bursts
+	// of ten times as many; the lines past it are dropped, counted and
+	// summed up in a line at most every 10 seconds. 0 limits nothing.
+	RateLimit int
+	// Dropped, if not nil, is called with each line the limit drops, by
+	// its component.
+	Dropped func(component string, n uint64)
 }
 
 // Set is the levels of the components of the server and the output they
@@ -118,6 +125,15 @@ type Set struct {
 	// component it knows, with the component's field.
 	json   slog.Handler
 	jsonOf map[string]slog.Handler
+
+	// rate is the RateLimit of the options, and limiters the limiter of
+	// each component, made as its first logger is.
+	rate     int
+	limiters map[string]*limiter
+	dropped  func(component string, n uint64)
+	// now and afterFunc are the clock of the limiters, for tests.
+	now       func() time.Time
+	afterFunc func(time.Duration, func())
 }
 
 // componentLevel is the level of a component: its own if own, and the
@@ -129,7 +145,9 @@ type componentLevel struct {
 
 // New returns a Set of the options passed.
 func New(o Options) *Set {
-	s := &Set{levels: map[string]*componentLevel{}, format: o.Format, logger: o.Logger}
+	s := &Set{levels: map[string]*componentLevel{}, format: o.Format, logger: o.Logger,
+		rate: o.RateLimit, limiters: map[string]*limiter{}, dropped: o.Dropped, now: time.Now,
+		afterFunc: func(d time.Duration, f func()) { time.AfterFunc(d, f) }}
 	s.root.Set(o.Level)
 	for _, c := range Components() {
 		l := &componentLevel{}
@@ -166,7 +184,7 @@ func (s *Set) Format() Format { return s.format }
 
 // Logger returns the logger of a component.
 func (s *Set) Logger(component string) *slog.Logger {
-	h := &handler{set: s, comp: component, level: s.levelOf(component)}
+	h := &handler{set: s, comp: component, level: s.levelOf(component), lim: s.limiterOf(component)}
 	h.inner = s.base(component)
 	return slog.New(h)
 }
@@ -220,6 +238,22 @@ func (s *Set) levelOf(component string) *slog.LevelVar {
 	return &s.root
 }
 
+// limiterOf returns the limiter of the lines of a component, nil if the Set
+// limits none.
+func (s *Set) limiterOf(component string) *limiter {
+	if s.rate <= 0 {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	l, ok := s.limiters[component]
+	if !ok {
+		l = s.newLimiter(component, s.rate)
+		s.limiters[component] = l
+	}
+	return l
+}
+
 // base returns the handler that formats the lines of a component with no
 // attributes.
 func (s *Set) base(component string) slog.Handler {
@@ -263,6 +297,8 @@ type handler struct {
 	// a JSON handler with the component's field, with ops applied.
 	inner slog.Handler
 	ops   []op
+	// lim is the limiter of the component, nil if there is none.
+	lim *limiter
 }
 
 // Enabled reports whether the level of the component lets l through: one
@@ -271,6 +307,9 @@ func (h *handler) Enabled(_ context.Context, l slog.Level) bool { return l >= h.
 
 // Handle writes a line.
 func (h *handler) Handle(ctx context.Context, r slog.Record) error {
+	if h.lim != nil && !h.lim.allow(ctx) {
+		return nil
+	}
 	if h.set.format == JSON {
 		return h.inner.Handle(ctx, r)
 	}
@@ -304,6 +343,7 @@ func (h *handler) sub(component string) *handler {
 	c := *h
 	c.comp = component
 	c.level = h.set.levelOf(component)
+	c.lim = h.set.limiterOf(component)
 	if h.set.format == JSON {
 		c.inner = h.set.base(component)
 		for _, o := range h.ops {

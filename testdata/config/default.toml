@@ -196,6 +196,7 @@
 
 [Log]
   Format = "text"
+  RateLimit = 100
 
   [Log.Levels]
     AntiCheat = ""
