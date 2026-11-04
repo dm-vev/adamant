@@ -197,7 +197,9 @@ Settings live in `config.toml`.
 
 **Generator.** `GeneratorProfile = "auto"` picks `many-cores` on hosts with 24 or more logical CPUs. `GeneratorQueueSize` defaults to four times `GeneratorWorkers`. If the logs warn `world generator queue saturated`, raise both values.
 
-**Whitelist.** Enable it under `[Whitelist]`, then manage it with `whitelist add <player>`, `whitelist remove <player>` and `whitelist list`.
+**Whitelist.** Enable it under `[Whitelist]`, then manage it with `whitelist add <player>`, `whitelist remove <player>` and `whitelist list`. A player is a name or `xuid:<XUID>`; `op`, `deop`, `ban` and `pardon` take the same.
+
+**Players.** `IdentityKey` chooses what the whitelist, the operators, the bans and the data of players are keyed by: the Xbox account with sign-in on (`auto` with `AuthEnabled = true`, or `xuid`), or the name (`auto` with sign-in off, or `name`). Without sign-in anyone can join under any name, an operator's included: keep such servers on a network you trust. The first start keyed by account moves the names on the lists to accounts, keeping the old files as `*.before-xuid`. See [`docs/identity.md`](docs/identity.md).
 
 **Query.** Query requires `Network.Transport = "raknet"` and `Network.EnableQuery = true`. It is disabled by default and not served over NetherNet.
 
