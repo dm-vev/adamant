@@ -129,3 +129,22 @@ func TestSweepingEdgeJavaNBT(t *testing.T) {
 		t.Fatalf("book holds %v, want Sweeping Edge III", s.Enchantments())
 	}
 }
+
+// A Java stack of the tag of before 1.20.5 may name Sweeping Edge
+// minecraft:sweeping, which Java's RenameEnchantmentsFix renamed to
+// minecraft:sweeping_edge before ItemStackComponentizationFix made the tag
+// components.
+func TestSweepingEdgeJavaLegacyTag(t *testing.T) {
+	for _, id := range []string{"minecraft:sweeping", "sweeping", "minecraft:sweeping_edge"} {
+		legacy := map[string]any{"id": "minecraft:iron_sword", "Count": int8(1), "tag": map[string]any{
+			"Enchantments": []any{map[string]any{"id": id, "lvl": int16(3)}},
+		}}
+		s, err := item.StackFromStructureNBT(legacy)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if e, ok := s.Enchantment(enchantment.SweepingEdge); !ok || e.Level() != 3 {
+			t.Errorf("%s: stack holds %v, want Sweeping Edge III", id, s.Enchantments())
+		}
+	}
+}

@@ -104,7 +104,8 @@ func javaLegacyComponents(id string, legacy map[string]any) map[string]any {
 // component as ItemStackComponentizationFix.fixEnchantments does: an entry
 // without a string id and a number lvl is dropped, the level is clamped to
 // 0..255 and a level of 0 dropped. A list that leaves none gives an
-// enchantment glint instead.
+// enchantment glint instead. The fixers before it renamed minecraft:sweeping
+// to minecraft:sweeping_edge (RenameEnchantmentsFix), which this does too.
 func javaLegacyEnchantments(take func(string) (any, bool), c map[string]any, key, component string) {
 	raw, ok := take(key)
 	if !ok {
@@ -117,6 +118,9 @@ func javaLegacyEnchantments(take func(string) (any, bool), c map[string]any, key
 		id, isString := e["id"].(string)
 		level, isInt := javaInt(e["lvl"])
 		if isString && isInt && level > 0 {
+			if javaComponentKey(id) == "minecraft:sweeping" {
+				id = "minecraft:sweeping_edge"
+			}
 			levels[id] = int32(min(level, 255))
 		}
 	}
