@@ -477,6 +477,30 @@ server	var	ErrBackupRunning	error
 server	var	ErrBackupsOff	error
 server	var	ErrWhitelistInvalidName	error
 server	var	ErrWhitelistUnavailable	error
+server/audit	const	DefaultBuffer	untyped int = 4096
+server/audit	const	KindAPI	server/audit.Kind = "api"
+server/audit	const	KindCommandBlock	server/audit.Kind = "command_block"
+server/audit	const	KindConsole	server/audit.Kind = "console"
+server/audit	const	KindPlayer	server/audit.Kind = "player"
+server/audit	const	KindRemote	server/audit.Kind = "remote"
+server/audit	const	KindServer	server/audit.Kind = "server"
+server/audit	const	MaxOutput	untyped int = 4096
+server/audit	const	ResultDenied	server/audit.Result = "denied"
+server/audit	const	ResultError	server/audit.Result = "error"
+server/audit	const	ResultOK	server/audit.Result = "ok"
+server/audit	const	ResultRefused	server/audit.Result = "refused"
+server/audit	func	Open	func(conf server/audit.Config) (*server/audit.Log, error)
+server/audit	method	Actor.String	func() string
+server/audit	method	Log.Close	func() error
+server/audit	method	Log.Dropped	func() uint64
+server/audit	method	Log.Record	func(r server/audit.Record)
+server/audit	type	Actor	struct{Kind server/audit.Kind "json:\"kind\""; Name string "json:\"name,omitempty\""; Key string "json:\"key,omitempty\""; Level int "json:\"level\""; Address string "json:\"address,omitempty\""; Token string "json:\"token,omitempty\""}
+server/audit	type	Config	struct{File string; MaxSize int64; Keep int; RecordAddresses bool; Buffer int; Log *log/slog.Logger; Now func() time.Time}
+server/audit	type	Kind	string
+server/audit	type	Log	struct{conf server/audit.Config; records chan server/audit.Record; dropped sync/atomic.Uint64; unreported sync/atomic.Uint64; closing sync.Once; stop chan struct{}; done chan struct{}; file *os.File; size int64; gate chan struct{}; err sync/atomic.Pointer[error]}
+server/audit	type	Record	struct{Time time.Time "json:\"time\""; Actor server/audit.Actor "json:\"actor\""; Where *server/audit.Where "json:\"where,omitempty\""; Action string "json:\"action\""; Command string "json:\"command,omitempty\""; Target string "json:\"target,omitempty\""; Result server/audit.Result "json:\"result,omitempty\""; Output []string "json:\"output,omitempty\""; Count uint64 "json:\"count,omitempty\""}
+server/audit	type	Result	string
+server/audit	type	Where	struct{Dimension string "json:\"dimension\""; Pos [3]float64 "json:\"pos\""}
 server/block	alias	ColoredTorch	= server/block.ColoredTorch
 server/block	alias	ColoredTorchColour	= server/block.ColoredTorchColour
 server/block	alias	Web	= server/block.Web
