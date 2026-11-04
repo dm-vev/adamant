@@ -354,6 +354,9 @@ type OnlinePlayer struct {
 	// Handle is the handle of the player's entity: use player.Do with it to
 	// act on the player in its world.
 	Handle *world.EntityHandle
+	// Addr is the address the client logged in from, nil if unknown: for a
+	// proxied client, the address its proxy signed.
+	Addr net.Addr
 }
 
 // Online returns the players online now, in the order they joined. It reads
@@ -364,7 +367,7 @@ func (srv *Server) Online() []OnlinePlayer {
 	ps := srv.players.snapshot()
 	out := make([]OnlinePlayer, len(ps))
 	for i, p := range ps {
-		out[i] = OnlinePlayer{Name: p.id.Name, XUID: p.id.XUID, UUID: p.id.UUID, Handle: p.handle}
+		out[i] = OnlinePlayer{Name: p.id.Name, XUID: p.id.XUID, UUID: p.id.UUID, Handle: p.handle, Addr: p.addr}
 	}
 	return out
 }

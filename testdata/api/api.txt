@@ -417,6 +417,7 @@ server	method	Server.Op	func(name string) (bool, error)
 server	method	Server.OpLevel	func() server/cmd.Level
 server	method	Server.OperatorEntries	func() ([]string, error)
 server	method	Server.OperatorLevel	func(name string) (server/cmd.Level, bool)
+server	method	Server.OperatorList	func() ([]server.OperatorInfo, error)
 server	method	Server.PardonIP	func(ip string) (bool, error)
 server	method	Server.PardonPlayer	func(name string) (bool, error)
 server	method	Server.Player	func(uuid github.com/google/uuid.UUID) (*server/world.EntityHandle, bool)
@@ -486,7 +487,8 @@ server	type	HealthReport	struct{OK bool; Checks []server.HealthCheck}
 server	type	Host	interface{PlayerNames() []string; Status() server.Status; WhitelistEnabled() bool; World() *server/world.World}
 server	type	List	uint8
 server	type	Listener	interface{Accept() (server/client.Join, error); io.Closer}
-server	type	OnlinePlayer	struct{Name string; XUID string; UUID github.com/google/uuid.UUID; Handle *server/world.EntityHandle}
+server	type	OnlinePlayer	struct{Name string; XUID string; UUID github.com/google/uuid.UUID; Handle *server/world.EntityHandle; Addr net.Addr}
+server	type	OperatorInfo	struct{Player string "json:\"player\""; Level server/cmd.Level "json:\"level\""; OwnLevel bool "json:\"ownLevel\""; BypassesPlayerLimit bool "json:\"bypassesPlayerLimit\""}
 server	type	PermissionConfig	struct{DefaultLevel server/cmd.Level; OperatorLevel server/cmd.Level; CommandBlockLevel server/cmd.Level; RoleLevel server/cmd.Level; DefaultRole server/client.Role; BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; Commands map[string]server/cmd.Level}
 server	type	ReconnectPolicy	uint8
 server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; roles *server.roleList; audit *server/audit.Log; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
@@ -20187,6 +20189,19 @@ server/player/title	method	Title.WithFadeInDuration	func(d time.Duration) server
 server/player/title	method	Title.WithFadeOutDuration	func(d time.Duration) server/player/title.Title
 server/player/title	method	Title.WithSubtitle	func(a ...any) server/player/title.Title
 server/player/title	type	Title	struct{text server/text.Text; subtitle server/text.Text; actionText server/text.Text; fadeInDuration time.Duration; fadeOutDuration time.Duration; duration time.Duration}
+server/remoteadmin	const	DefaultCommandTimeout	time.Duration = 10000000000
+server/remoteadmin	const	DefaultMaxFailures	untyped int = 5
+server/remoteadmin	const	GeneratedTokenLength	untyped int = 40
+server/remoteadmin	const	MaxBody	untyped int = 65536
+server/remoteadmin	const	MaxInFlight	untyped int = 8
+server/remoteadmin	const	MinTokenLength	untyped int = 32
+server/remoteadmin	func	GenerateTokenFile	func(path string) (bool, error)
+server/remoteadmin	func	New	func(srv *server.Server, conf server/remoteadmin.Config) (*server/remoteadmin.Handler, error)
+server/remoteadmin	func	TokenFileTooOpen	func(path string) (bool, error)
+server/remoteadmin	method	Handler.ServeHTTP	func(w net/http.ResponseWriter, r *net/http.Request)
+server/remoteadmin	type	Config	struct{TokenFile string; MaxFailures int; CommandTimeout time.Duration; Hosts []string; TrustedProxies []net/netip.Prefix; Log *log/slog.Logger}
+server/remoteadmin	type	Handler	struct{srv *server.Server; conf server/remoteadmin.Config; limit *server/remoteadmin.limiter; inFlight chan struct{}; now func() time.Time; reloadEvery time.Duration; tokens sync/atomic.Pointer[[]server/remoteadmin.token]; tokenMu sync.Mutex; checked time.Time; modTime time.Time}
+server/remoteadmin	type	Line	struct{Text string "json:\"text\""; Error bool "json:\"error\""}
 server/scoreboard	const	Air	server/scoreboard.Criteria = "air"
 server/scoreboard	const	Armor	server/scoreboard.Criteria = "armor"
 server/scoreboard	const	DeathCount	server/scoreboard.Criteria = "deathCount"

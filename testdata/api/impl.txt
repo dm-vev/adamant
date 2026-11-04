@@ -10491,6 +10491,12 @@ server/player/playerdb.Provider	server/player.Lister	*
 server/player/playerdb.Provider	server/player.Provider	*
 server/player/playerdb.WorldProvider	server/player.Lister	*
 server/player/playerdb.WorldProvider	server/player.Provider	*
+server/remoteadmin.source	server/cmd.Deferrer	*
+server/remoteadmin.source	server/cmd.Leveled	*
+server/remoteadmin.source	server/cmd.NamedTarget	*
+server/remoteadmin.source	server/cmd.Source	*
+server/remoteadmin.source	server/cmd.Target	*
+server/remoteadmin.source	server/cmd/builtin.namedSource	*
 server/world.BasicBlockRegistry	server/world.BlockRegistry	*
 server/world.BasicBlockRegistry	server/world/chunk.BlockRegistry	*
 server/world.BasicBlockRegistry	server/world/chunk.LightRegistry	*

@@ -289,3 +289,31 @@ func (srv *Server) CommandBlockLevel() cmd.Level {
 }
 
 var _ cmd.Permissions = (*Server)(nil)
+
+// OperatorInfo is an operator of ops.json, as the remote admin API lists it.
+type OperatorInfo struct {
+	// Player is the operator, as the commands show it.
+	Player string `json:"player"`
+	// Level is the level of the operator: its own, or OperatorLevel.
+	Level cmd.Level `json:"level"`
+	// OwnLevel reports whether the entry sets the level.
+	OwnLevel bool `json:"ownLevel"`
+	// BypassesPlayerLimit is Java's: the operator joins a full server.
+	BypassesPlayerLimit bool `json:"bypassesPlayerLimit"`
+}
+
+// OperatorList returns the operators of ops.json, in the order of the file.
+func (srv *Server) OperatorList() ([]OperatorInfo, error) {
+	if srv.operators == nil {
+		return nil, errAdminUnavailable
+	}
+	var out []OperatorInfo
+	srv.operators.view(func(e *entries) {
+		out = make([]OperatorInfo, 0, len(e.order))
+		for _, en := range e.order {
+			out = append(out, OperatorInfo{Player: Target{Key: en.key, Name: en.name}.String(), Level: srv.entryLevel(en),
+				OwnLevel: en.op.hasLevel, BypassesPlayerLimit: en.op.bypass})
+		}
+	})
+	return out, nil
+}
