@@ -2602,7 +2602,9 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 // within range of the player.
 // If the item held in the main hand of the player does nothing when used on an entity, nothing will happen.
 func (p *Player) UseItemOnEntity(e world.Entity) bool {
-	if !p.canReach(e.Position()) {
+	ac, end := p.beginAction()
+	defer end()
+	if !p.canReachEntity(ac, e, nil) {
 		return false
 	}
 	ctx := NewEventContext(p.tx, p)
@@ -2655,6 +2657,8 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 // have.
 // If the player cannot reach the target or a dragon part along the look ray, the method returns immediately.
 func (p *Player) AttackEntity(e world.Entity) bool {
+	ac, end := p.beginAction()
+	defer end()
 	held, _ := p.HeldItems()
 	_, piercing := held.Item().(item.PiercingWeapon)
 	reach := 8.0
@@ -2665,10 +2669,10 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		PartHitFrom(mgl64.Vec3, mgl64.Vec3, float64) (string, mgl64.Vec3, bool)
 	}); ok {
 		_, hitPos, hit := target.PartHitFrom(entity.EyePosition(p), p.Rotation().Vec3(), reach)
-		if !hit || (!piercing && !p.canReach(hitPos)) {
+		if !hit || (!piercing && !p.canReachEntity(ac, e, &hitPos)) {
 			return false
 		}
-	} else if !piercing && !p.canReach(e.Position()) {
+	} else if !piercing && !p.canReachEntity(ac, e, nil) {
 		return false
 	}
 	if _, isPlayer := e.(*Player); isPlayer && !p.tx.World().GameRuleBool("pvp") {

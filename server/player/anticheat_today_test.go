@@ -69,9 +69,10 @@ func TestAntiCheatTodayMenuStaysOpenFarAway(t *testing.T) {
 }
 
 // TestAntiCheatTodayAttackReachesFar pins that an attack lands on a cow
-// whose box is 7.3 blocks from the eyes of the player, as the reach is 8 to
-// the position of the target. "Measure the reach to entities as Java does"
-// refuses it: Java's reach is 6 to the box.
+// whose box is 7.3 blocks from the eyes of a player the anti-cheat does not
+// check, as the reach is 8 to the position of the target. Since "Measure
+// the reach to entities as Java does", EntityReach refuses it of a checked
+// player: Java's reach is 6 to the box (TestEntityReachIsJavas).
 func TestAntiCheatTodayAttackReachesFar(t *testing.T) {
 	w, _ := clientTestWorld(t)
 	withClientPlayer(t, w, clienttest.New(), func(tx *world.Tx, p *Player) {

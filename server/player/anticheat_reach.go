@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -88,4 +89,38 @@ func (p *Player) canReachPoint(pos mgl64.Vec3) bool {
 // blockOf returns the block a point is in.
 func blockOf(v mgl64.Vec3) cube.Pos {
 	return cube.Pos{int(math.Floor(v[0])), int(math.Floor(v[1])), int(math.Floor(v[2]))}
+}
+
+// canReachEntity reports whether the player reaches the entity e, at the
+// point passed if not nil (a part of an ender dragon its look hits), for an
+// action of its client that ac checks, nil for others. By EntityReach, the
+// eyes are within the reach of the game mode of the nearest point of the
+// box of e, Java's 3 and 5 blocks with a buffer of 3; with Measure
+// "position", of the position of e. Out of reach is a violation, which by
+// default cancels the action. A plugin's action, and the action of a player
+// that is not checked or exempt, or with EntityReach off, reaches as before
+// the anti-cheat: 8 blocks to the position of e, 14 in creative.
+func (p *Player) canReachEntity(ac *acState, e world.Entity, point *mgl64.Vec3) bool {
+	target := e.Position()
+	if point != nil {
+		target = *point
+	}
+	if !p.checks(ac, anticheat.EntityReach) {
+		return p.canReach(target)
+	}
+	if p.Dead() || !p.GameMode().AllowsInteraction() {
+		return false
+	}
+	eyes := entity.EyePosition(p)
+	s := ac.conf.EntityReach
+	dist := eyes.Sub(target).Len()
+	if s.Measure == "box" && point == nil {
+		dist = distanceToBox(eyes, e.H().Type().BBox(e).Translate(e.Position()))
+	}
+	reach := p.reachOf(s)
+	if dist <= reach {
+		return true
+	}
+	name := e.H().Type().EncodeEntity()
+	return p.violate(ac, anticheat.EntityReach, "distance", dist-reach, fmt.Sprintf("%.2f > %.2f to %s", dist, reach, name)) == anticheat.Log
 }
