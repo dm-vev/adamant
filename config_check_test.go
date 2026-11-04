@@ -62,7 +62,7 @@ func TestConfigUnknownKeys(t *testing.T) {
 `
 	want := []string{
 		"line 2: unknown key Players.MaxChunkRaduis: nothing reads it, did you mean MaximumChunkRadius?",
-		"line 5: unknown table AntiCheet: nothing reads it",
+		"line 5: unknown table AntiCheet: nothing reads it, did you mean AntiCheat?",
 		"line 11: unknown table World.Extra: nothing reads it",
 		"line 14: unknown table Hooks: nothing reads it",
 	}

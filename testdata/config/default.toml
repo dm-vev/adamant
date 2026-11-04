@@ -1,4 +1,195 @@
 
+[AntiCheat]
+  Enabled = true
+  ExemptOperators = false
+  ExemptPlayers = []
+  LogInterval = 20
+  MaxLatencyTicks = 20
+
+  [AntiCheat.Ascend]
+    ActAt = 0.0
+    Action = "log"
+    Decay = 1.0
+    Enabled = true
+    Epsilon = 0.05
+    ExemptGameModes = ["spectator"]
+    KickAt = 0.0
+    KickMessage = ""
+    StepHeight = 0.6
+
+  [AntiCheat.Attack]
+    ActAt = 0.0
+    Action = "log"
+    Burst = 10
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    KickAt = 0.0
+    KickMessage = ""
+    PerSecond = 20.0
+    TargetsPerTick = 1
+
+  [AntiCheat.AttackAim]
+    ActAt = 0.0
+    Action = "log"
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    KickAt = 0.0
+    KickMessage = ""
+    LineOfSight = true
+    MinCos = 0.85
+
+  [AntiCheat.BlockReach]
+    ActAt = 0.0
+    Action = "cancel"
+    Buffer = 0.0
+    Creative = 14.0
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    KickAt = 0.0
+    KickMessage = ""
+    Measure = "centre"
+    Survival = 8.0
+
+  [AntiCheat.BreakTime]
+    ActAt = 0.0
+    Action = "cancel"
+    Decay = 1.0
+    Delay = false
+    Enabled = true
+    ExemptGameModes = []
+    InstantBurst = 5
+    InstantPerSecond = 20.0
+    KickAt = 0.0
+    KickMessage = ""
+    Tolerance = 0.7
+
+  [AntiCheat.EntityReach]
+    ActAt = 0.0
+    Action = "cancel"
+    Buffer = 3.0
+    Creative = 5.0
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    KickAt = 0.0
+    KickMessage = ""
+    Measure = "box"
+    Survival = 3.0
+
+  [AntiCheat.FastUse]
+    ActAt = 0.0
+    Action = "log"
+    Burst = 2
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    KickAt = 0.0
+    KickMessage = ""
+    MinTicks = 4
+
+  [AntiCheat.Fly]
+    ActAt = 0.0
+    Action = "setback"
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = ["spectator"]
+    HoverDescent = 0.03125
+    HoverTicks = 80
+    KickAt = 0.0
+    KickMessage = ""
+    ResendSupport = true
+
+  [AntiCheat.Grace]
+    Dismount = 10
+    GameMode = 10
+    Impulse = 10
+    Join = 60
+    Respawn = 20
+    Teleport = 10
+    WorldChange = 40
+
+  [AntiCheat.Menu]
+    ActAt = 0.0
+    Action = "cancel"
+    Buffer = 4.0
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    KickAt = 0.0
+    KickMessage = ""
+    RequestsPerTick = 64
+
+  [AntiCheat.MovedTooQuickly]
+    ActAt = 0.0
+    Action = "setback"
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    KickAt = 0.0
+    KickMessage = ""
+    Limit = 10.0
+    LimitGliding = 17.32
+
+  [AntiCheat.NoClip]
+    ActAt = 1.0
+    Action = "setback"
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = ["spectator"]
+    KickAt = 0.0
+    KickMessage = ""
+    MinDepth = 0.1
+    ResendFirst = true
+
+  [AntiCheat.Phase]
+    ActAt = 0.0
+    Action = "log"
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = ["spectator"]
+    KickAt = 0.0
+    KickMessage = ""
+    Tolerance = 0.25
+
+  [AntiCheat.Place]
+    ActAt = 0.0
+    Action = "log"
+    Burst = 10
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    FaceEpsilon = 0.5
+    KickAt = 0.0
+    KickMessage = ""
+    LineOfSight = false
+    PerSecond = 20.0
+
+  [AntiCheat.Speed]
+    ActAt = 0.0
+    Action = "log"
+    Decay = 1.0
+    Enabled = true
+    Epsilon = 0.05
+    ExemptGameModes = ["spectator"]
+    KickAt = 0.0
+    KickMessage = ""
+    Tolerance = 0.3
+
+  [AntiCheat.Timer]
+    ActAt = 0.0
+    Action = "throttle"
+    Decay = 1.0
+    Enabled = true
+    ExemptGameModes = []
+    KickAt = 0.0
+    KickMessage = ""
+    MaxBalance = 40
+    MaxQueue = 40
+    Tolerance = 10
+
 [Java]
   Address = ""
   Message = ""

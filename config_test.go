@@ -17,6 +17,8 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/player/anticheat"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml"
 )
@@ -41,7 +43,8 @@ import (
 // file that lacks them gives a client a minute to spawn, where it had for
 // ever before; and LogLevel of [Server], whose line a new default file has,
 // and a file that lacks it logs at info, where the program logged at debug
-// before.
+// before; and [AntiCheat], whose tables a new default file has, and a file
+// that lacks it, or any of its keys, runs every check with its defaults.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -123,7 +126,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 		file []byte
 		want configMeaning
 	}{
-		{"checked in", checkedIn, configMeaning{
+		{"checked in", checkedIn, withMeaning(defaultAntiCheat, configMeaning{
 			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false, "NameCheck": "lenient", "IdentityKey": "xuid",
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
 			"SpawnTimeout": "1m0s", "SpawnTimeoutMessage": server.DefaultSpawnTimeoutMessage, "LogLevel": "INFO",
@@ -144,8 +147,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Xbox.Enabled": false, "Xbox.TokenFile": "xbox-token.json", "Xbox.AcceptFriends": true, "Xbox.LegacySignaling": false,
 			"Proxy.Address": "", "Proxy.Secret": "",
 			"Java.Address": "", "Java.Message": "",
-		}},
-		{"every key changed", []byte(everyKeyChanged), configMeaning{
+		})},
+		{"every key changed", []byte(everyKeyChanged), withMeaning(changedAntiCheat, configMeaning{
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
 			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.", "LogLevel": "WARN",
@@ -167,7 +170,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Xbox.Enabled": true, "Xbox.TokenFile": "token.json", "Xbox.AcceptFriends": false, "Xbox.LegacySignaling": true,
 			"Proxy.Address": "127.0.0.1:19133", "Proxy.Secret": "0123456789abcdef0123456789abcdef",
 			"Java.Address": ":25565", "Java.Message": "Use Bedrock.",
-		}},
+		})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := loadMeaning(t, tc.file)
@@ -214,6 +217,8 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Network]\nProtocols = \"1.26.50\"\n":                    "decode config: (2, 1): Can't convert 1.26.50(string) to []string(slice)",
 		"[Server]\nSpawnTimeout = \"soon\"\n":                     `line 2: Server.SpawnTimeout = "soon": want a duration such as "90s" or "5m"`,
 		"[Server]\nLogLevel = \"loud\"\n":                         `line 2: Server.LogLevel: unknown LogLevel "loud": use "debug", "info", "warn" or "error"`,
+		"[AntiCheat.Speed]\nAction = \"throttle\"\n":              `AntiCheat.Speed.Action "throttle": use "log", "setback" or "kick"`,
+		"[AntiCheat.Place]\nExemptGameModes = [\"creativ\"]\n":    `AntiCheat.Place.ExemptGameModes: unknown game mode "creativ"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -268,6 +273,197 @@ func TestIdentityKeyResolves(t *testing.T) {
 // everyKeyChanged is a config.toml with every key set to a value other than
 // its default.
 const everyKeyChanged = `
+[AntiCheat]
+  Enabled = false
+  ExemptOperators = true
+  ExemptPlayers = ["Steve", "xuid:2535400000000001"]
+  LogInterval = 40
+  MaxLatencyTicks = 10
+
+  [AntiCheat.Ascend]
+    ActAt = 2.5
+    Action = "cancel"
+    Decay = 0.5
+    Enabled = false
+    Epsilon = 0.1
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    StepHeight = 1.0
+
+  [AntiCheat.Attack]
+    ActAt = 2.5
+    Action = "cancel"
+    Burst = 5
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    PerSecond = 15.0
+    TargetsPerTick = 2
+
+  [AntiCheat.AttackAim]
+    ActAt = 2.5
+    Action = "cancel"
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    LineOfSight = false
+    MinCos = 0.5
+
+  [AntiCheat.BlockReach]
+    ActAt = 2.5
+    Action = "log"
+    Buffer = 1.0
+    Creative = 5.0
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    Measure = "box"
+    Survival = 4.5
+
+  [AntiCheat.BreakTime]
+    ActAt = 2.5
+    Action = "log"
+    Decay = 0.5
+    Delay = true
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    InstantBurst = 3
+    InstantPerSecond = 10.0
+    KickAt = 9.0
+    KickMessage = "Bye."
+    Tolerance = 0.9
+
+  [AntiCheat.EntityReach]
+    ActAt = 2.5
+    Action = "log"
+    Buffer = 1.0
+    Creative = 6.0
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    Measure = " Position "
+    Survival = 4.0
+
+  [AntiCheat.FastUse]
+    ActAt = 2.5
+    Action = "cancel"
+    Burst = 3
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    MinTicks = 6
+
+  [AntiCheat.Fly]
+    ActAt = 2.5
+    Action = "log"
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    HoverDescent = 0.05
+    HoverTicks = 100
+    KickAt = 9.0
+    KickMessage = "Bye."
+    ResendSupport = false
+
+  [AntiCheat.Grace]
+    Dismount = 1
+    GameMode = 2
+    Impulse = 3
+    Join = 4
+    Respawn = 5
+    Teleport = 6
+    WorldChange = 7
+
+  [AntiCheat.Menu]
+    ActAt = 2.5
+    Action = "log"
+    Buffer = 2.0
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    RequestsPerTick = 32
+
+  [AntiCheat.MovedTooQuickly]
+    ActAt = 2.5
+    Action = "kick"
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    Limit = 12.0
+    LimitGliding = 20.0
+
+  [AntiCheat.NoClip]
+    ActAt = 2.5
+    Action = "log"
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    MinDepth = 0.2
+    ResendFirst = false
+
+  [AntiCheat.Phase]
+    ActAt = 2.5
+    Action = "kick"
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    Tolerance = 0.5
+
+  [AntiCheat.Place]
+    ActAt = 2.5
+    Action = "cancel"
+    Burst = 5
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    FaceEpsilon = 0.25
+    KickAt = 9.0
+    KickMessage = "Bye."
+    LineOfSight = true
+    PerSecond = 10.0
+
+  [AntiCheat.Speed]
+    ActAt = 2.5
+    Action = "SETBACK"
+    Decay = 0.5
+    Enabled = false
+    Epsilon = 0.1
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    Tolerance = 0.5
+
+  [AntiCheat.Timer]
+    ActAt = 2.5
+    Action = "setback"
+    Decay = 0.5
+    Enabled = false
+    ExemptGameModes = ["creative"]
+    KickAt = 9.0
+    KickMessage = "Bye."
+    MaxBalance = 20
+    MaxQueue = 30
+    Tolerance = 5
+
 [Java]
   Address = ":25565"
   Message = "Use Bedrock."
@@ -374,7 +570,7 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 			whitelist = name
 		}
 	}
-	return configMeaning{
+	return withMeaning(antiCheatMeaning(conf.AntiCheat), configMeaning{
 		"Name": conf.Name, "IdentityKey": conf.IdentityKey.String(),
 		"ReconnectPolicy": conf.ReconnectPolicy, "JoinMessage": !conf.JoinMessage.Zero(), "QuitMessage": !conf.QuitMessage.Zero(),
 		"SpawnTimeout": conf.SpawnTimeout.String(), "SpawnTimeoutMessage": conf.SpawnTimeoutMessage,
@@ -387,7 +583,88 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 		"PlayerProvider": fmt.Sprintf("%T", conf.PlayerProvider), "PlayerFolder": exists("players") || exists("people"),
 		"WhitelistFile": whitelist, "Stranger": stranger,
 		"Query": query.Enabled(), "QueryPlugins": query.PluginListingEnabled(),
+	})
+}
+
+// antiCheatMeaning returns the meaning of the anti-cheat of a Config: its
+// global settings, and each check by its table.
+func antiCheatMeaning(ac *anticheat.Config) configMeaning {
+	if ac == nil {
+		return configMeaning{"AntiCheat": "<nil>"}
 	}
+	players := make([]string, len(ac.ExemptPlayers))
+	for i, k := range ac.ExemptPlayers {
+		players[i] = k.String()
+	}
+	m := configMeaning{"AntiCheat": fmt.Sprintf("on=%v ops=%v players=%v log=%d latency=%d grace=%+v",
+		ac.Enabled, ac.ExemptOperators, players, ac.LogInterval, ac.MaxLatencyTicks, ac.Grace)}
+	settings := map[anticheat.Check]any{
+		anticheat.MovedTooQuickly: ac.MovedTooQuickly, anticheat.Speed: ac.Speed, anticheat.Fly: ac.Fly,
+		anticheat.Ascend: ac.Ascend, anticheat.NoClip: ac.NoClip, anticheat.Phase: ac.Phase,
+		anticheat.EntityReach: ac.EntityReach, anticheat.BlockReach: ac.BlockReach, anticheat.BreakTime: ac.BreakTime,
+		anticheat.Place: ac.Place, anticheat.Attack: ac.Attack, anticheat.AttackAim: ac.AttackAim,
+		anticheat.FastUse: ac.FastUse, anticheat.Timer: ac.Timer, anticheat.Menu: ac.Menu,
+	}
+	modeNames := map[world.GameMode]string{world.GameModeSurvival: "survival", world.GameModeCreative: "creative",
+		world.GameModeAdventure: "adventure", world.GameModeSpectator: "spectator"}
+	for _, c := range anticheat.Checks() {
+		p := ac.Policy(c)
+		modes := make([]string, len(p.ExemptGameModes))
+		for i, mode := range p.ExemptGameModes {
+			modes[i] = modeNames[mode]
+		}
+		m["AntiCheat."+c.String()] = fmt.Sprintf("on=%v %s act>%v kick=%v decay=%v exempt=%v msg=%q %+v",
+			p.Enabled, p.Action, p.ActAt, p.KickAt, p.Decay, modes, p.KickMessage.Plain(), settings[c])
+	}
+	return m
+}
+
+// withMeaning returns m with the settings of extra added.
+func withMeaning(extra, m configMeaning) configMeaning {
+	for k, v := range extra {
+		m[k] = v
+	}
+	return m
+}
+
+// defaultAntiCheat is the meaning of the defaults of [AntiCheat].
+var defaultAntiCheat = configMeaning{
+	"AntiCheat":                 "on=true ops=false players=[] log=20 latency=20 grace={Dismount:10 GameMode:10 Impulse:10 Join:60 Respawn:20 Teleport:10 WorldChange:40}",
+	"AntiCheat.MovedTooQuickly": "on=true setback act>0 kick=0 decay=1 exempt=[] msg=\"Invalid move player packet received\" {Limit:10 LimitGliding:17.32}",
+	"AntiCheat.Speed":           "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Tolerance:0.3 Epsilon:0.05}",
+	"AntiCheat.Fly":             "on=true setback act>0 kick=0 decay=1 exempt=[spectator] msg=\"Flying is not enabled on this server\" {HoverTicks:80 HoverDescent:0.03125 ResendSupport:true}",
+	"AntiCheat.Ascend":          "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Epsilon:0.05 StepHeight:0.6}",
+	"AntiCheat.NoClip":          "on=true setback act>1 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {MinDepth:0.1 ResendFirst:true}",
+	"AntiCheat.Phase":           "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Tolerance:0.25}",
+	"AntiCheat.EntityReach":     "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Attempted to attack an invalid entity\" {Measure:box Survival:3 Creative:5 Buffer:3}",
+	"AntiCheat.BlockReach":      "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {Measure:centre Survival:8 Creative:14 Buffer:0}",
+	"AntiCheat.BreakTime":       "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {Tolerance:0.7 Delay:false InstantPerSecond:20 InstantBurst:5}",
+	"AntiCheat.Place":           "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {PerSecond:20 Burst:10 FaceEpsilon:0.5 LineOfSight:false}",
+	"AntiCheat.Attack":          "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Attempted to attack an invalid entity\" {PerSecond:20 Burst:10 TargetsPerTick:1}",
+	"AntiCheat.AttackAim":       "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Attempted to attack an invalid entity\" {MinCos:0.85 LineOfSight:true}",
+	"AntiCheat.FastUse":         "on=true log act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {MinTicks:4 Burst:2}",
+	"AntiCheat.Timer":           "on=true throttle act>0 kick=0 decay=1 exempt=[] msg=\"Invalid move player packet received\" {Tolerance:10 MaxBalance:40 MaxQueue:40}",
+	"AntiCheat.Menu":            "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {Buffer:4 RequestsPerTick:64}",
+}
+
+// changedAntiCheat is the meaning of the [AntiCheat] of everyKeyChanged.
+var changedAntiCheat = configMeaning{
+	"AntiCheat":                 "on=false ops=true players=[steve xuid:2535400000000001] log=40 latency=10 grace={Dismount:1 GameMode:2 Impulse:3 Join:4 Respawn:5 Teleport:6 WorldChange:7}",
+	"AntiCheat.MovedTooQuickly": "on=false kick act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Limit:12 LimitGliding:20}",
+	"AntiCheat.Speed":           "on=false setback act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Tolerance:0.5 Epsilon:0.1}",
+	"AntiCheat.Fly":             "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {HoverTicks:100 HoverDescent:0.05 ResendSupport:false}",
+	"AntiCheat.Ascend":          "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Epsilon:0.1 StepHeight:1}",
+	"AntiCheat.NoClip":          "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {MinDepth:0.2 ResendFirst:false}",
+	"AntiCheat.Phase":           "on=false kick act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Tolerance:0.5}",
+	"AntiCheat.EntityReach":     "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Measure:position Survival:4 Creative:6 Buffer:1}",
+	"AntiCheat.BlockReach":      "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Measure:box Survival:4.5 Creative:5 Buffer:1}",
+	"AntiCheat.BreakTime":       "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Tolerance:0.9 Delay:true InstantPerSecond:10 InstantBurst:3}",
+	"AntiCheat.Place":           "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {PerSecond:10 Burst:5 FaceEpsilon:0.25 LineOfSight:true}",
+	"AntiCheat.Attack":          "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {PerSecond:15 Burst:5 TargetsPerTick:2}",
+	"AntiCheat.AttackAim":       "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {MinCos:0.5 LineOfSight:false}",
+	"AntiCheat.FastUse":         "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {MinTicks:6 Burst:3}",
+	"AntiCheat.Timer":           "on=false setback act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Tolerance:5 MaxBalance:20 MaxQueue:30}",
+	"AntiCheat.Menu":            "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Buffer:2 RequestsPerTick:32}",
 }
 
 // exists reports whether a file of the name passed exists.

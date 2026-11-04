@@ -121,3 +121,22 @@
   # Reason is the message sent to players that are rejected by the whitelist.
   # If empty, a safe default is used.
   Reason = "§cServer is white-listed"
+
+[AntiCheat]
+  # Enabled switches the anti-cheat on or off: the checks the game runs on what the clients of players ask.
+  # Each check has a table of its own, [AntiCheat.<Check>], with the keys Enabled, Action ("log", "setback" for
+  # the movement checks, "cancel" for the others, "throttle" for Timer, or "kick"), ActAt and KickAt (the
+  # violation levels it acts and kicks at; KickAt 0 never kicks), KickMessage, Decay (the level lost each second)
+  # and ExemptGameModes, and settings of its own. A table, or a key, left out keeps its default; the default
+  # config.toml lists them all.
+  Enabled = true
+  # ExemptOperators has operators skip every check.
+  ExemptOperators = false
+  # ExemptPlayers are players who skip every check: names, or XUIDs written "xuid:<XUID>".
+  ExemptPlayers = []
+
+  # Speed only logs by default, as Bedrock's physics is not Java's. To put back players faster than Java's
+  # physics allows, after two violations in quick succession:
+  # [AntiCheat.Speed]
+  #   Action = "setback"
+  #   ActAt = 2.0

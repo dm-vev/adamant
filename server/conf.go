@@ -17,6 +17,7 @@ import (
 	_ "github.com/df-mc/dragonfly/server/item/creative"
 	_ "github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/player"
+	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/playerdb"
 	"github.com/df-mc/dragonfly/server/world"
@@ -164,6 +165,15 @@ type Config struct {
 	// For a non-default registry, set this to world.NewBlockRegistry(), register blocks on that instance, and ensure
 	// it is finalized before use.
 	Blocks world.BlockRegistry
+	// AntiCheat is what the players of the server are checked by: the
+	// checks the game runs on what their clients ask. If nil,
+	// anticheat.Default() is used, every check with its defaults.
+	AntiCheat *anticheat.Config
+	// AntiCheatExempt, if not nil, is asked whether a player skips a check,
+	// anticheat.All standing for every check. It is where a permission
+	// system plugs in, with nodes such as adamant.anticheat.bypass and
+	// adamant.anticheat.bypass.<check>.
+	AntiCheatExempt func(p *player.Player, c anticheat.Check) bool
 }
 
 // DefaultSpawnTimeout is the SpawnTimeout of a Config that sets none: a
@@ -247,6 +257,9 @@ func (conf Config) New() *Server {
 	}
 	if conf.Blocks == nil {
 		conf.Blocks = world.DefaultBlockRegistry
+	}
+	if conf.AntiCheat == nil {
+		conf.AntiCheat = anticheat.Default()
 	}
 	if conf.IdentityKey == identity.Auto {
 		conf.Log.Info("Players are keyed by name: Config.IdentityKey is identity.Auto, which a Server keys by name.")
@@ -500,6 +513,9 @@ type UserConfig struct {
 		// If empty, a safe default is used.
 		Reason string
 	}
+	// AntiCheat is the anti-cheat: each check on or off, what it does, its
+	// thresholds and exemptions. See docs/anticheat.md.
+	AntiCheat anticheat.UserConfig
 }
 
 // maxChunkRadius is the largest Players.MaximumChunkRadius a UserConfig
@@ -610,6 +626,10 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	antiCheat, err := uc.AntiCheat.Config(log)
+	if err != nil {
+		return Config{}, err
+	}
 
 	identityKey := identity.Auto
 	if value := strings.TrimSpace(uc.Server.IdentityKey); value != "" {
@@ -639,6 +659,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		DisableEnd:            uc.World.DisableEnd,
 		DefaultDimension:      defaultDim,
 		PortalDisabledMessage: uc.World.PortalDisabledMessage,
+		AntiCheat:             antiCheat,
 	}
 	whitelistFile := whitelistPath(uc.Whitelist.File)
 	if !uc.Server.DisableJoinQuitMessages {
@@ -768,6 +789,7 @@ func DefaultConfig() UserConfig {
 	c.Players.Folder = "players"
 	c.Whitelist.File = "white-list.txt"
 	c.Whitelist.Reason = defaultWhitelistKickMessage
+	c.AntiCheat = anticheat.DefaultUserConfig()
 	return c
 }
 

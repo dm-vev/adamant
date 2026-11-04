@@ -732,6 +732,7 @@ func (srv *Server) createPlayer(login client.Login, c client.Joining, conf playe
 	conf.Client = c
 	conf.Left = srv.left
 	conf.QuitMessage = srv.conf.QuitMessage
+	conf.AntiCheat, conf.AntiCheatExempt = srv.conf.AntiCheat, srv.conf.AntiCheatExempt
 	conf.Log = srv.conf.Log.With("name", id.Name, "uuid", id.UUID.String(), "data-uuid", conf.DataUUID.String(), "raddr", addrString(login.Addr))
 
 	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id.UUID}.New(player.Type, conf)

@@ -30,6 +30,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
+	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/debug"
@@ -191,6 +192,10 @@ type playerData struct {
 	// of the player.
 	leftHook    func(tx *world.Tx, p *Player)
 	quitMessage chat.Translation
+	// acConf and acExempt are the AntiCheat and AntiCheatExempt of the
+	// Config of the player.
+	acConf   *anticheat.Config
+	acExempt func(p *Player, c anticheat.Check) bool
 
 	prevWorld *world.World
 
@@ -5066,6 +5071,8 @@ func (p *Player) Data() Config {
 		Log:                 p.log,
 		Left:                p.leftHook,
 		QuitMessage:         p.quitMessage,
+		AntiCheat:           p.acConf,
+		AntiCheatExempt:     p.acExempt,
 		Skin:                p.skin,
 		XUID:                p.xuid,
 		UUID:                p.UUID(),

@@ -18,6 +18,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
+	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
@@ -64,6 +65,11 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	})
 	if conf.QuitMessage != chat.MessageQuit || conf.Left == nil {
 		t.Error("the player of Alice does not carry the quit message and the Left hook of the server")
+	}
+	// A Config without AntiCheat runs the default checks, which the player
+	// is checked by.
+	if conf.AntiCheat == nil || conf.AntiCheat != jt.srv.conf.AntiCheat || !conf.AntiCheat.Active(anticheat.Speed) {
+		t.Errorf("the player of Alice is checked by %p, want the default anti-cheat of the server", conf.AntiCheat)
 	}
 	// The server welcomed Bob after his client spawned him: Alice, already
 	// subscribed to the chat, was told he joined.

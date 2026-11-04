@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
@@ -38,6 +39,13 @@ type Config struct {
 	// QuitMessage, unless zero, is written to the chat with the name of the
 	// player as it leaves with its client.
 	QuitMessage chat.Translation
+	// AntiCheat is what the player is checked by: the checks the game runs
+	// on what its client asks. If nil, the player is not checked, as a
+	// player made without a server is not; a Server passes its own.
+	AntiCheat *anticheat.Config
+	// AntiCheatExempt, if not nil, is asked whether the player skips a
+	// check, anticheat.All standing for every check.
+	AntiCheatExempt func(p *Player, c anticheat.Check) bool
 
 	Skin skin.Skin
 	XUID string
@@ -125,6 +133,8 @@ func (cfg Config) Apply(data *world.EntityData) {
 		log:                 conf.Log,
 		leftHook:            conf.Left,
 		quitMessage:         conf.QuitMessage,
+		acConf:              conf.AntiCheat,
+		acExempt:            conf.AntiCheatExempt,
 		h:                   NopHandler{},
 		speed:               0.1,
 		flightSpeed:         0.05,
