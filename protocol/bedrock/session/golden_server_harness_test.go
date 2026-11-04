@@ -156,12 +156,19 @@ type goldenPlayers struct {
 	saved  map[uuid.UUID]player.Config
 	log    []string
 	closed bool
-	// saves receives the name of each player saved.
-	saves chan string
+	// saves receives each player saved.
+	saves chan playerSaved
+}
+
+// playerSaved is a player the provider saved: its name and the world it
+// was saved in.
+type playerSaved struct {
+	name string
+	w    *world.World
 }
 
 func newGoldenPlayers() *goldenPlayers {
-	return &goldenPlayers{saved: map[uuid.UUID]player.Config{}, saves: make(chan string, 16)}
+	return &goldenPlayers{saved: map[uuid.UUID]player.Config{}, saves: make(chan playerSaved, 16)}
 }
 
 func (p *goldenPlayers) Save(id uuid.UUID, data player.Config, w *world.World) error {
@@ -169,7 +176,7 @@ func (p *goldenPlayers) Save(id uuid.UUID, data player.Config, w *world.World) e
 	p.saved[id] = data
 	p.log = append(p.log, fmt.Sprintf("saved %s: %s", id, savedLine(data, w)))
 	p.mu.Unlock()
-	p.saves <- data.Name
+	p.saves <- playerSaved{name: data.Name, w: w}
 	return nil
 }
 
@@ -691,16 +698,34 @@ func (s *serverScenario) server() {
 	s.l.mu.Unlock()
 }
 
-// awaitSave waits until the player provider saved the player of the name.
+// awaitSave waits until the player provider saved the player of the name,
+// as the player left, and the player is gone.
+//
+// The server saves a player in its Left hook, in the transaction of the
+// world the player leaves, and counts it online until the save returns:
+// the hook removes it from the players online after, and the rest of the
+// teardown of the player (its removal from the world, the Close of its
+// client, which unlists it from the Roster, and the closing of its handle)
+// follows in the same transaction. What the provider is handed is seen
+// before all of that, so awaitSave then waits for that transaction to end,
+// with one of its own on the same world.
 func (s *serverScenario) awaitSave(name string) {
 	s.t.Helper()
+	deadline := time.NewTimer(goldenDeadline)
+	defer deadline.Stop()
+	var got playerSaved
 	select {
-	case got := <-s.players.saves:
-		if got != name {
-			s.t.Fatalf("%s: the server saved %s, not %s", s.name, got, name)
+	case got = <-s.players.saves:
+		if got.name != name {
+			s.t.Fatalf("%s: the server saved %s, not %s", s.name, got.name, name)
 		}
-	case <-time.After(goldenDeadline):
+	case <-deadline.C:
 		s.t.Fatalf("%s: the server did not save %s", s.name, name)
+	}
+	select {
+	case <-got.w.Exec(func(*world.Tx) {}):
+	case <-deadline.C:
+		s.t.Fatalf("%s: the world of %s did not end the transaction that saved it", s.name, name)
 	}
 }
 
