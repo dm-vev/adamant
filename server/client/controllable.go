@@ -120,6 +120,7 @@ type Controllable interface {
 	EditJigsaw(pos cube.Pos, edited block.Jigsaw) error
 	EditCommandBlock(pos cube.Pos, edit block.CommandBlockEdit) error
 	EditCommandMinecart(e world.Entity, edit block.CommandBlockEdit) error
+	EditStructureBlock(pos cube.Pos, edit block.StructureBlockEdit, trigger bool) error
 
 	EditBook(slot int, edit item.BookEdit) error
 

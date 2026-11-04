@@ -45,9 +45,6 @@ protocol/bedrock/session/handler_player_auth_input.go (entity.VehicleJumpInput).
 protocol/bedrock/session/handler_player_auth_input.go (interface).Dash
 protocol/bedrock/session/handler_player_auth_input.go (interface).Dismount
 protocol/bedrock/session/handler_player_auth_input.go (interface).RideJump
-protocol/bedrock/session/handler_structure_block.go (*world.Tx).SetBlock
-protocol/bedrock/session/handler_structure_block.go (block.StructureBlock).Load
-protocol/bedrock/session/handler_structure_block.go (block.StructureBlock).Save
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc

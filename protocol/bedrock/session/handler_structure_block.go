@@ -10,10 +10,6 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
-// structureLimits are the largest sizes, and offsets in either direction, the
-// Bedrock structure editor accepts along the X, Y and Z axes.
-var structureLimits = [3]int{64, 384, 64}
-
 // StructureBlockUpdateHandler applies the settings of the structure block
 // editor, and saves or loads the structure when the client asks to.
 type StructureBlockUpdateHandler struct{}
@@ -31,38 +27,34 @@ func (StructureBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.
 	if pk.StructureBlockType < 0 || pk.StructureBlockType > int32(block.StructureBlockExport) {
 		return fmt.Errorf("invalid structure block mode %d", pk.StructureBlockType)
 	}
-	b, ok := tx.Block(pos).(block.StructureBlock)
-	if !ok {
+	if _, ok := tx.Block(pos).(block.StructureBlock); !ok {
 		s.conf.Log.Debug("no structure block at position of structure block update", "pos", pos.String())
 		return nil
 	}
 	settings := pk.Settings
-	b.Mode = block.StructureBlockMode(pk.StructureBlockType)
-	b.Name, b.DataField = pk.StructureName, pk.DataField
-	b.IncludePlayers, b.ShowBoundingBox = pk.IncludePlayers, pk.ShowBoundingBox
-	b.IgnoreEntities, b.RemoveBlocks = settings.IgnoreEntities, settings.IgnoreBlocks
-	for axis, limit := range structureLimits {
-		b.Size[axis] = min(max(int(settings.Size[axis]), 0), limit)
-		b.Offset[axis] = min(max(int(settings.Offset[axis]), -limit), limit)
+	edit := block.StructureBlockEdit{
+		Mode:                block.StructureBlockMode(pk.StructureBlockType),
+		Name:                pk.StructureName,
+		DataField:           pk.DataField,
+		IncludePlayers:      pk.IncludePlayers,
+		ShowBoundingBox:     pk.ShowBoundingBox,
+		IgnoreEntities:      settings.IgnoreEntities,
+		RemoveBlocks:        settings.IgnoreBlocks,
+		Rotation:            settings.Rotation,
+		Mirror:              settings.Mirror,
+		Integrity:           settings.Integrity,
+		Seed:                int64(settings.Seed),
+		AnimationMode:       settings.AnimationMode,
+		AnimationSeconds:    settings.AnimationDuration,
+		RedstoneSaveMode:    pk.RedstoneSaveMode,
+		LastTouchedPlayerID: settings.LastEditingPlayerUniqueID,
 	}
-	b.Rotation, b.Mirror = settings.Rotation%4, settings.Mirror%4
-	b.Integrity = min(max(settings.Integrity, 0), 100)
-	b.Seed = int64(settings.Seed)
-	b.AnimationMode, b.AnimationSeconds = settings.AnimationMode%3, max(settings.AnimationDuration, 0)
-	b.RedstoneSaveMode = int32(pk.RedstoneSaveMode % 2)
-	b.LastTouchedPlayerID = settings.LastEditingPlayerUniqueID
-	tx.SetBlock(pos, b, nil)
-	if !pk.ShouldTrigger {
-		return nil
+	for axis := range edit.Size {
+		edit.Size[axis], edit.Offset[axis] = int(settings.Size[axis]), int(settings.Offset[axis])
 	}
-	switch b.Mode {
-	case block.StructureBlockSave:
-		// The editor's save button always writes to the world save.
-		b.Save(pos, tx, true)
-	case block.StructureBlockLoad:
-		b.Load(pos, tx)
-	}
-	return nil
+	// The player checks again, bounds the edit, writes the block and saves
+	// or loads its structure.
+	return c.EditStructureBlock(pos, edit, pk.ShouldTrigger)
 }
 
 // StructureTemplateDataRequestHandler answers the structure editor asking for
@@ -85,7 +77,7 @@ func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx
 		}
 		var size [3]int
 		var offset cube.Pos
-		for axis, limit := range structureLimits {
+		for axis, limit := range block.StructureLimits {
 			size[axis] = min(max(int(pk.Settings.Size[axis]), 0), limit)
 			offset[axis] = min(max(int(pk.Settings.Offset[axis]), -limit), limit)
 		}
