@@ -226,7 +226,10 @@ func openRelayed(t *testing.T, l *Listener, id uint64) relayedConn {
 // once it closed. A connection that opens through the relay from an
 // address its offer did not name holds the permission of that address.
 func TestRelayPermissionFollowsMove(t *testing.T) {
-	l := listen(t, ListenConfig{AllowAnonymous: true})
+	// The socket of the listener hands a datagram RFC 7983 leaves to
+	// others to Datagram once it dispatched those it read before.
+	barrier := make(chan struct{}, 1)
+	l := listen(t, ListenConfig{AllowAnonymous: true, Datagram: func([]byte, netip.AddrPort, func([]byte)) { barrier <- struct{}{} }})
 	r := newRelay(l, turn.Config{Server: netip.MustParseAddrPort("127.0.0.1:3478")})
 	l.relay.Store(r)
 	held := func() map[netip.Addr]int {
@@ -266,6 +269,15 @@ func TestRelayPermissionFollowsMove(t *testing.T) {
 	out, outBatch := cli.out, cli.outBatch
 	cli.out, cli.outBatch = func([]byte, netip.AddrPort) {}, nil
 	cli.mu.Unlock()
+	// What the client sent before, as the SCTP packets that end its
+	// opening, would move the connection back once they reach the
+	// listener: it is past them once the socket read a datagram sent after.
+	out([]byte{192}, cli.Stats().Remote)
+	select {
+	case <-barrier:
+	case <-ctx.Done():
+		t.Fatal("the listener did not read what the client sent last")
+	}
 	var msg stun.Message
 	relayed := netip.MustParseAddrPort("192.0.2.7:5000")
 	l.dispatch(nomination, relayed, r, &msg)
