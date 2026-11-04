@@ -179,6 +179,24 @@ func TestProtocolMismatch(t *testing.T) {
 	}
 }
 
+// TestClientOfANewerProtocolIsRefused joins a listener that allows 2193
+// alone, the default, as a client of 2225: it is told the server is
+// outdated, PlayStatus LoginFailedServer, as BDS 1.26.52 tells it
+// (TestBDSRefusesOtherProtocols of the client).
+func TestClientOfANewerProtocolIsRefused(t *testing.T) {
+	l := listen(t, Config{})
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{Protocol: codec.V2225})
+	var status ourclient.StatusError
+	if !errors.As(err, &status) || int32(status) != mc.PlayStatusLoginFailedServer {
+		t.Fatalf("a client of 2225: %v", err)
+	}
+	if conn != nil {
+		_ = conn.Close()
+	}
+}
+
 // fakeProtocol is a protocol newer than the model with the codecs of the
 // model, as a listener may allow two protocols apart.
 var fakeProtocol = &versions.Protocol{Codec: codec.Codec{Number: 2300, Version: "1.26.90", New: mc.New, FromClient: mc.FromClient}, Names: []string{"1.26.90", "26.90"}}

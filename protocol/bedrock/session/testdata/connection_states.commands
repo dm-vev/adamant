@@ -1,0 +1,24 @@
+# The blocks of the capture of the connection states of 1.26.60 (design R1),
+# placed by cmd/vanilla-probe -commands around the player, on a floor of
+# stone: redstone wire in a line with a corner and a step up onto a block,
+# an isolated dot, fire beside an oak log, and a chorus plant with a branch
+# on end stone. TestConnectionStatesOfBDS finds them by the first wire,
+# placed at ~2 ~ ~.
+gamerule dofiretick false
+gamerule domobspawning false
+gamerule doweathercycle false
+fill ~-4 ~-1 ~-4 ~8 ~-1 ~8 stone
+fill ~-4 ~ ~-4 ~8 ~4 ~8 air
+setblock ~2 ~ ~ redstone_wire
+setblock ~3 ~ ~ redstone_wire
+setblock ~4 ~ ~ redstone_wire
+setblock ~4 ~ ~1 redstone_wire
+setblock ~5 ~ ~ stone
+setblock ~5 ~1 ~ redstone_wire
+setblock ~2 ~ ~6 redstone_wire
+setblock ~0 ~ ~4 oak_log
+setblock ~1 ~ ~4 fire
+setblock ~4 ~-1 ~4 end_stone
+setblock ~4 ~ ~4 chorus_plant
+setblock ~4 ~1 ~4 chorus_plant
+setblock ~5 ~1 ~4 chorus_plant

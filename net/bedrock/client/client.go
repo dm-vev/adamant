@@ -87,6 +87,15 @@ type DisconnectError string
 
 func (e DisconnectError) Error() string { return "client: disconnected: " + string(e) }
 
+// StatusError is the status of a PlayStatus that refused the login: 1
+// (LoginFailedClient) to a client older than the server, 2
+// (LoginFailedServer) to one newer, 7 to one of a full server.
+type StatusError int32
+
+func (e StatusError) Error() string {
+	return fmt.Sprintf("client: login failed with status %d", int32(e))
+}
+
 // Dial joins the server at address, a signaling URL or host:port, and
 // returns once the player spawned.
 func Dial(ctx context.Context, address string, cfg Config) (*Conn, error) {
@@ -168,6 +177,9 @@ func (c *Conn) join(cfg Config, request []byte) error {
 		return err
 	}
 	settings, ok := pk.(*mc.NetworkSettingsPacket)
+	if status, refused := pk.(*mc.PlayStatusPacket); refused {
+		return StatusError(status.Status)
+	}
 	if !ok {
 		return fmt.Errorf("client: %T instead of NetworkSettings", pk)
 	}
@@ -199,7 +211,7 @@ func (c *Conn) join(cfg Config, request []byte) error {
 				}
 				return c.send(&mc.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: c.game.EntityRuntimeID})
 			default:
-				return fmt.Errorf("client: login failed with status %d", pk.Status)
+				return StatusError(pk.Status)
 			}
 		case *mc.ServerToClientHandshakePacket:
 			// BDS asks for the handshake that turns encryption on over RakNet

@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"reflect"
 	"sort"
@@ -195,4 +196,40 @@ func TestBDSCorpus(t *testing.T) {
 	// What the SCTP of BDS offered in its INIT ACK: 0x40 among the
 	// extensions would be I-DATA.
 	t.Logf("SCTP of BDS: %+v", st.SCTP.Peer)
+}
+
+// TestBDSRefusesOtherProtocols joins the BDS whose signaling URL is
+// BDS_ADDR, of the protocol BDS_PROTOCOL (2193 if unset), as a client of
+// each other protocol of the codecs: BDS refuses an older client with
+// PlayStatus LoginFailedClient (1) and a newer one with LoginFailedServer
+// (2), as netconn refuses them.
+func TestBDSRefusesOtherProtocols(t *testing.T) {
+	addr := os.Getenv("BDS_ADDR")
+	if addr == "" {
+		t.Skip("BDS_ADDR is not set")
+	}
+	speaks := int32(2193)
+	if s := os.Getenv("BDS_PROTOCOL"); s != "" {
+		n, _ := strconv.Atoi(s)
+		speaks = int32(n)
+	}
+	for _, p := range codec.All() {
+		if p.Number == speaks {
+			continue
+		}
+		want := StatusError(1)
+		if p.Number > speaks {
+			want = 2
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		c, err := Dial(ctx, addr, Config{Identity: login.Identity{DisplayName: "Refused"}, Protocol: p})
+		cancel()
+		var status StatusError
+		if !errors.As(err, &status) || status != want {
+			t.Errorf("a client of %d against BDS of %d: %v, want status %d", p.Number, speaks, err, want)
+		}
+		if c != nil {
+			_ = c.Close()
+		}
+	}
 }

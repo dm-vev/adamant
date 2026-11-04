@@ -64,6 +64,8 @@ type options struct {
 	creative     string
 	crafting     string
 	waitMessage  string
+	commands     string
+	capture      string
 }
 
 // parseOptions parses the flags of the probe.
@@ -81,12 +83,15 @@ func parseOptions(args []string) (options, error) {
 	fs.StringVar(&o.creative, "creative", "", "write the creative inventory, items by name, as JSON to PATH (must not already exist)")
 	fs.StringVar(&o.crafting, "crafting", "", "write the recipes, items by name, as JSON to PATH (must not already exist)")
 	fs.StringVar(&o.waitMessage, "wait-message", "", "after spawning, wait for this exact server text before disconnecting")
+	fs.StringVar(&o.commands, "commands", "", "with -capture, run the commands of FILE, one a line, as the player")
+	fs.StringVar(&o.capture, "capture", "", "write what the server sends of the fields 2225 added and of the blocks the commands place as JSON to PATH (must not already exist)")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
 	if o.address == "" || fs.NArg() != 0 || o.timeout <= 0 {
 		return o, errors.New("use -address http://host:port [-protocol N] [-auth] [-timeout 5m] [-items-nbt PATH] [-blocks-nbt PATH] " +
-			"[-biomes-packet PATH] [-entities PATH] [-creative PATH] [-crafting PATH] [-wait-message TEXT]; timeout must be positive")
+			"[-biomes-packet PATH] [-entities PATH] [-creative PATH] [-crafting PATH] [-wait-message TEXT] [-commands FILE -capture PATH]; " +
+			"timeout must be positive")
 	}
 	var ok bool
 	if o.protocol, ok = codec.ByNumber(int32(*number)); !ok {
@@ -115,6 +120,11 @@ func run(ctx context.Context, args []string, stdout io.Writer) error {
 	}
 	if err := write(conn, o, got); err != nil {
 		return err
+	}
+	if o.capture != "" {
+		if err := captureCommands(conn, o); err != nil {
+			return err
+		}
 	}
 	return report(conn, o, got, stdout)
 }
