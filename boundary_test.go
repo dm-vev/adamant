@@ -53,15 +53,15 @@ func under(p, dir string) bool {
 // importing file relative to the repository root. If the import breaks a rule, violation returns the name of the
 // rule and true.
 //
-//   - R1: the game knows no protocol. Files under server/ import neither net/ (apart from the neutral net/nbt)
-//     nor protocol/.
+//   - R1: the game knows no protocol. Files under server/ import neither net/ (apart from the neutral net/nbt
+//     and net/metrics) nor protocol/.
 //   - R2: adapters stay apart. A file under protocol/<a>/ imports no protocol/<b> with b other than a.
 //   - R3: protocol libraries know no game. Files under net/ import nothing from the root module.
 func violation(file, importPath string) (rule string, bad bool) {
 	switch {
 	case under(file, "server"):
 		switch {
-		case under(importPath, netModule) && !under(importPath, netModule+"/nbt"):
+		case under(importPath, netModule) && !under(importPath, netModule+"/nbt") && !under(importPath, netModule+"/metrics"):
 			return "R1", true
 		case under(importPath, rootModule+"/protocol"):
 			return "R1", true
@@ -90,7 +90,7 @@ func violation(file, importPath string) (rule string, bad bool) {
 
 // ruleHints holds a one-line hint for each rule.
 var ruleHints = map[string]string{
-	"R1": "the game core must not depend on a protocol: move the code to the adapter or use a neutral contract (net/nbt is the only net/ package allowed)",
+	"R1": "the game core must not depend on a protocol: move the code to the adapter or use a neutral contract (net/nbt and net/metrics are the only net/ packages allowed)",
 	"R2": "protocol adapters must not import each other: share code through the game or through net/",
 	"R3": "protocol libraries in net/ must not depend on the game: pass the data in through the library's own types",
 }
@@ -237,6 +237,8 @@ func TestBoundaryRules(t *testing.T) {
 		{"net/nbt from the game", "server/world/chunk.go", nbt, ""},
 		{"below net/nbt from the game", "server/world/chunk.go", nbt + "/sub", ""},
 		{"net/nbt prefix of another segment", "server/world/chunk.go", nbt + "x", "R1"},
+		{"net/metrics from the game", "server/world/stats.go", netModule + "/metrics", ""},
+		{"net/metrics prefix of another segment", "server/world/stats.go", netModule + "/metricsx", "R1"},
 		{"net/bedrock/text from server/item", "server/item/diamond.go", bedrockTxt, "R1"},
 		{"net module root from the game", "server/server.go", netModule, "R1"},
 		{"file in server/session is not exempt", "server/session/session.go", netModule + "/bedrock/proto/v2193", "R1"},

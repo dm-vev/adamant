@@ -17,7 +17,7 @@ Game logic and the server must not depend on any network protocol or transport. 
 
 | Rule | Files | Must not import |
 | --- | --- | --- |
-| R1: the game knows no protocol | `server/` | anything below `github.com/dm-vev/adamant/net` except `net/nbt`; `protocol/` and anything below it |
+| R1: the game knows no protocol | `server/` | anything below `github.com/dm-vev/adamant/net` except `net/nbt` and `net/metrics`; `protocol/` and anything below it |
 | R2: adapters stay apart | `protocol/<a>/` | `protocol/<b>` for any b other than a (the adapter's own subtree is fine) |
 | R3: protocol libraries know no game | `net/` | `github.com/df-mc/dragonfly` and anything below it |
 
@@ -50,7 +50,7 @@ The ratchet, `testdata/boundary/mutations.txt`, lists the uses that remain as `<
 
 ## The one neutral library
 
-The game may import `net/nbt` (and the packages below it). It reads and writes NBT for the disk (little-endian) and the wire (big-endian and little-endian variants) and knows nothing of any protocol, so worlds, items and entities use it directly. It is the only package of `net/` the game may import.
+The game may import `net/nbt` (and the packages below it). It reads and writes NBT for the disk (little-endian) and the wire (big-endian and little-endian variants) and knows nothing of any protocol, so worlds, items and entities use it directly. The game may also import `net/metrics`, the registry of counters, gauges and histograms that serves the text format of Prometheus: it imports the standard library alone and knows no protocol, and the worlds and the server count what they do in it. These are the only packages of `net/` the game may import.
 
 ## Decisions taken
 
