@@ -14,4 +14,3 @@
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
-protocol/bedrock/session/handler_emote.go (world.Viewer).ViewEmote

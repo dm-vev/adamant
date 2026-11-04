@@ -15,7 +15,7 @@ type EmoteHandler struct {
 }
 
 // Handle ...
-func (h *EmoteHandler) Handle(p proto.Packet, _ *Session, tx *world.Tx, c Controllable) error {
+func (h *EmoteHandler) Handle(p proto.Packet, _ *Session, _ *world.Tx, c Controllable) error {
 	pk := p.(*v2193.EmotePacket)
 
 	if pk.EntityRuntimeID != selfEntityRuntimeID {
@@ -29,12 +29,6 @@ func (h *EmoteHandler) Handle(p proto.Packet, _ *Session, tx *world.Tx, c Contro
 	if err != nil {
 		return err
 	}
-	viewers := tx.Viewers(c.Position())
-	// Emotes are cosmetic but frequent; reusing the viewer slice prevents busy lobbies from generating a stream of
-	// temporary allocations as players spam emotes.
-	for _, viewer := range viewers {
-		viewer.ViewEmote(c, emote)
-	}
-	tx.ReleaseViewers(viewers)
+	c.Emote(emote)
 	return nil
 }

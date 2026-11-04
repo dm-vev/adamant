@@ -68,6 +68,7 @@ type Controllable interface {
 	DropFromInventory(slot, count int) error
 	SwingArm()
 	PunchAir()
+	Emote(emote uuid.UUID)
 
 	Health() float64
 	MaxHealth() float64

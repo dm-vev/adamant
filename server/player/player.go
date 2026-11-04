@@ -4702,6 +4702,20 @@ func (p *Player) SwingArm() {
 	releaseBorrowedViewers(p.tx, viewers, release)
 }
 
+// Emote makes the player perform the emote with the UUID passed. The viewers
+// of the position of the player are shown the emote, the client of the
+// player too if it views that position: the player itself is not left out.
+func (p *Player) Emote(emote uuid.UUID) {
+	viewers := p.tx.Viewers(p.Position())
+	// Emotes are cosmetic but frequent; reusing the viewer slice prevents busy
+	// lobbies from generating a stream of temporary allocations as players
+	// spam emotes.
+	for _, viewer := range viewers {
+		viewer.ViewEmote(p, emote)
+	}
+	p.tx.ReleaseViewers(viewers)
+}
+
 // PunchAir makes the player punch the air and plays the sound for attacking with no damage.
 func (p *Player) PunchAir() {
 	if p.Dead() {
