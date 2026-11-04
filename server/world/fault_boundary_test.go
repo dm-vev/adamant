@@ -564,3 +564,56 @@ func TestTickFaulterHandlesItsPanicsOnTheOwner(t *testing.T) {
 		t.Fatalf("faults = %d, want %d, not counted", len(faults), FaultLimit+2)
 	}
 }
+
+func TestBlockEntityTickPanicQuarantinesIt(t *testing.T) {
+	var sink faultSink
+	rec := newFaultRecorder()
+	w := sink.configure(Config{Synchronous: true, RandomTickSpeed: -1, RandSource: actorIdentityRandom{}}, rec).New()
+	defer func() { _ = w.Close() }()
+
+	badPos, goodPos := cube.Pos{0, 4, 0}, cube.Pos{1, 4, 0}
+	bad, good := &actorIdentityTicker{}, &actorIdentityTicker{}
+	bad.callback = func(*Tx) { panic("test: block entity tick") }
+	var col *Column
+	<-w.Exec(func(tx *Tx) {
+		col = tx.chunk(ChunkPos{})
+		// The panicking one first: the pass goes on after it.
+		col.updateBlockEntity(badPos, bad)
+		col.updateBlockEntity(goodPos, good)
+	})
+	for range FaultLimit + 2 {
+		advance(t, w)
+	}
+	if bad.ticks != FaultLimit || good.ticks != FaultLimit+2 {
+		t.Fatalf("ticks: panicking %d, other %d, want %d and %d", bad.ticks, good.ticks, FaultLimit, FaultLimit+2)
+	}
+	faults := sink.all(FaultBlockEntity)
+	if len(faults) != FaultLimit || faults[0].Pos != badPos || faults[0].Type != "dragonfly:test_ticker" || !faults[FaultLimit-1].Quarantined || faults[0].Quarantined {
+		t.Fatalf("faults = %v", faults)
+	}
+	if q := w.Quarantined(); len(q) != 1 || q[0].Pos != badPos || q[0].Kind != FaultBlockEntity {
+		t.Fatalf("Quarantined = %v, want the block entity", q)
+	}
+	if lines := rec.errors(); len(lines) != 1 {
+		t.Fatalf("Error lines = %d, want 1", len(lines))
+	}
+
+	// Its data changing keeps it quarantined: it is the same block entity.
+	<-w.Exec(func(*Tx) { col.updateBlockEntity(badPos, bad) })
+	advance(t, w)
+	if bad.ticks != FaultLimit {
+		t.Fatalf("the quarantined block entity ticked after its data changed")
+	}
+	// Removed by a block set there, it is no longer quarantined, and the
+	// block entity placed there next ticks.
+	<-w.Exec(func(tx *Tx) { tx.SetBlock(badPos, nil, nil) })
+	if q := w.Quarantined(); len(q) != 0 {
+		t.Fatalf("Quarantined after the block entity was removed = %v", q)
+	}
+	replacement := &actorIdentityTicker{}
+	<-w.Exec(func(*Tx) { col.updateBlockEntity(badPos, replacement) })
+	advance(t, w)
+	if replacement.ticks != 1 {
+		t.Fatalf("the block entity replacing the quarantined one ticked %d times, want 1", replacement.ticks)
+	}
+}

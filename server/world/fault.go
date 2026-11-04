@@ -404,6 +404,71 @@ func (tx *Tx) guard() *tickGuard {
 	return &tx.w.guard
 }
 
+// actorFault is what a column keeps of the panics of the block entity at a
+// position: the version of the block entity that panicked, which a block
+// entity replacing it does not have.
+type actorFault struct {
+	version     uint64
+	faults      faultCount
+	quarantined bool
+}
+
+// blockEntityPanicked blames the panic r of a tick of the block entity of
+// ref at tick on it, counting it and quarantining the block entity once it
+// reached FaultLimit. A block entity replaced before it panicked is not
+// counted.
+func (w *World) blockEntityPanicked(tick int64, ref blockEntityTickRef, r any) {
+	f := newFault(FaultBlockEntity, r)
+	f.Pos = ref.pos
+	c := w.chunks[chunkPosFromBlockPos(ref.pos)]
+	if c == nil || c.tickerBlockEntityVersions[ref.pos] != ref.version {
+		w.reportFault(f, quarantineKey{})
+		return
+	}
+	if be, ok := c.BlockEntities[ref.pos]; ok {
+		f.Type, _ = be.EncodeBlock()
+	}
+	a := c.faultyActors[ref.pos]
+	if a == nil || a.version != ref.version {
+		if c.faultyActors == nil {
+			c.faultyActors = make(map[cube.Pos]*actorFault)
+		}
+		a = &actorFault{version: ref.version}
+		c.faultyActors[ref.pos] = a
+	}
+	if a.faults.count(&f, tick) {
+		a.quarantined = true
+	}
+	w.reportFault(f, quarantineKey{pos: ref.pos, blockEntity: true})
+}
+
+// actorQuarantined reports whether the block entity of ref, in c, is
+// quarantined. What c keeps of a block entity since replaced is dropped.
+func (w *World) actorQuarantined(c *Column, ref blockEntityTickRef) bool {
+	a, ok := c.faultyActors[ref.pos]
+	if !ok {
+		return false
+	}
+	if a.version != ref.version {
+		w.forgetActor(c, ref.pos)
+		return false
+	}
+	return a.quarantined
+}
+
+// forgetActor drops what c keeps of the panics of the block entity at pos,
+// taking it out of quarantine.
+func (w *World) forgetActor(c *Column, pos cube.Pos) {
+	a, ok := c.faultyActors[pos]
+	if !ok {
+		return
+	}
+	delete(c.faultyActors, pos)
+	if a.quarantined {
+		w.release(quarantineKey{pos: pos, blockEntity: true})
+	}
+}
+
 // TickFaulter is an entity that handles a panic of its own tick or of its
 // controller, instead of being quarantined. Player implements it by
 // disconnecting with an internal error, which saves it.

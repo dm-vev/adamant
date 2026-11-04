@@ -699,18 +699,41 @@ func appendShuffledBlockEntities[T any](dst, positions []T, r interface{ Uint32(
 	return dst
 }
 
+// tickBlockEntityRefs ticks the block entities of refs. A panic of one is
+// blamed on it and the pass goes on with the next, so that one recover
+// covers the pass of a column.
 func tickBlockEntityRefs(tx *Tx, tick int64, refs []blockEntityTickRef) {
-	for _, ref := range refs {
+	for i := 0; i >= 0; {
+		i = tickBlockEntityRefsFrom(tx, tick, refs, i)
+	}
+}
+
+// tickBlockEntityRefsFrom ticks the block entities of refs from i on and
+// returns -1 once done. A panic ends it early: the block entity is blamed
+// and the index after it returned.
+func tickBlockEntityRefsFrom(tx *Tx, tick int64, refs []blockEntityTickRef, i int) (next int) {
+	defer func() {
+		if r := recover(); r != nil {
+			tx.w.blockEntityPanicked(tick, refs[i], r)
+			next = i + 1
+		}
+	}()
+	for ; i < len(refs); i++ {
+		ref := refs[i]
 		c := tx.chunk(chunkPosFromBlockPos(ref.pos))
 		// Native storage rechecks the saved actor component pointer after the
 		// shuffle. An actor replaced during an earlier callback waits a tick.
 		if c.tickerBlockEntityVersions[ref.pos] != ref.version {
 			continue
 		}
+		if len(c.faultyActors) != 0 && tx.w.actorQuarantined(c, ref) {
+			continue
+		}
 		if tb, ok := c.BlockEntities[ref.pos].(TickerBlock); ok {
 			tb.Tick(tick, ref.pos, tx)
 		}
 	}
+	return -1
 }
 
 func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {

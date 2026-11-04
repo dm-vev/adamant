@@ -996,6 +996,12 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		c.updateBlockEntity(pos, nil)
 		c.invalidateBlockEntityPayloads()
 	}
+	if len(c.faultyActors) != 0 {
+		if a, ok := c.faultyActors[pos]; ok && c.tickerBlockEntityVersions[pos] != a.version {
+			// The block entity that panicked was removed or replaced.
+			w.forgetActor(c, pos)
+		}
+	}
 
 	if !opts.DisableLiquidDisplacement {
 		var secondLayer Block
@@ -2689,6 +2695,9 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 	// closing it saves it.
 	w.restoreFailedSaves()
 	w.persistChunk(tx, pos, c, false)
+	if len(c.faultyActors) != 0 {
+		w.releaseChunk(pos)
+	}
 	delete(w.unsettled, pos)
 	w.scheduledBlockTicks.removeChunk(pos)
 	w.scheduledFluidTicks.removeChunk(pos)
@@ -3821,6 +3830,9 @@ type Column struct {
 	cachedTickerBlockEntities       []blockEntityTickRef
 	tickerBlockEntityVersions       map[cube.Pos]uint64
 	nextTickerBlockEntityVersion    uint64
+	// faultyActors holds what the column keeps of the block entities whose
+	// ticks panicked, by position.
+	faultyActors                    map[cube.Pos]*actorFault
 	subChunkHeightMaps              map[int16]cachedSubChunkHeightMap
 	networkBiomePayload             cachedBlockEntityPayload
 	networkSubChunkPayloads         map[int16]cachedBlockEntityPayload
