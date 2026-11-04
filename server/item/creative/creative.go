@@ -103,12 +103,24 @@ type creativeItemEntry struct {
 	GroupIndex      int32          `nbt:"group_index,omitempty"`
 }
 
+// vanillaOnce makes registerCreativeItems register the vanilla groups and
+// items once per process.
+var vanillaOnce sync.Once
+
 // registerCreativeItems initialises the creative items, registering all creative items that have also been registered as
-// normal items and are present in vanilla.
+// normal items and are present in vanilla. Server.New calls it for every server, but only the first call registers
+// them: a second server in the process, or one started again, would otherwise add every group and item a second
+// time, after the first, and send them all twice in CreativeContent.
 // noinspection GoUnusedFunction
 //
 //lint:ignore U1000 Function is used through compiler directives.
 func registerCreativeItems() {
+	vanillaOnce.Do(registerVanillaCreativeItems)
+}
+
+// registerVanillaCreativeItems registers the creative groups and items of
+// creative_items.nbt, in its order.
+func registerVanillaCreativeItems() {
 	var m struct {
 		Groups []creativeGroupEntry `nbt:"groups"`
 		Items  []creativeItemEntry  `nbt:"items"`

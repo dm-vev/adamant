@@ -3,7 +3,6 @@ package player
 import (
 	"reflect"
 	"slices"
-	"sync"
 	"testing"
 	_ "unsafe"
 
@@ -13,21 +12,18 @@ import (
 )
 
 // registerVanillaRecipes is the vanilla recipe registration a server runs
-// on start.
+// on start. It registers the recipes once per process, however often it
+// is called.
 //
 //go:linkname registerVanillaRecipes github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
 func registerVanillaRecipes()
-
-var vanillaRecipesOnce sync.Once
 
 // TestUnlockRecipesKeepsKnownIDs checks that a player keeps the recipe
 // unlocks of the IDs of registered recipes, whatever its client shows, and
 // shows its client every ID passed, in order.
 func TestUnlockRecipesKeepsKnownIDs(t *testing.T) {
-	vanillaRecipesOnce.Do(func() {
-		world.DefaultBlockRegistry.Finalize()
-		registerVanillaRecipes()
-	})
+	world.DefaultBlockRegistry.Finalize()
+	registerVanillaRecipes()
 	ids := []string{"minecraft:torch", "minecraft:not_a_recipe", "minecraft:stick", "minecraft:torch"}
 	for _, id := range []string{"minecraft:torch", "minecraft:stick"} {
 		if !recipe.KnownJavaID(id) {

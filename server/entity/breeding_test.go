@@ -3,7 +3,6 @@ package entity_test
 import (
 	"encoding/binary"
 	"math/rand/v2"
-	"sync"
 	"testing"
 	_ "unsafe"
 
@@ -237,18 +236,15 @@ func TestSniffersLayAnEggInsteadOfABaby(t *testing.T) {
 }
 
 // registerVanillaRecipes is the vanilla recipe registration the server runs
-// on start.
+// on start. It registers the recipes once per process, however often it
+// is called.
 //
 //go:linkname registerVanillaRecipes github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
 func registerVanillaRecipes()
 
-var registerRecipesOnce sync.Once
-
 func TestLambFleeceMixesParentDyes(t *testing.T) {
-	registerRecipesOnce.Do(func() {
-		world.DefaultBlockRegistry.Finalize()
-		registerVanillaRecipes()
-	})
+	world.DefaultBlockRegistry.Finalize()
+	registerVanillaRecipes()
 	// The recipes are registered for the whole process: only once they
 	// are does the test run alongside others.
 	t.Parallel()

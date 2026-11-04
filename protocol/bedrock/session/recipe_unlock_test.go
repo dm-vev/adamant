@@ -4,7 +4,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"sync"
 	"testing"
 	_ "unsafe"
 
@@ -14,12 +13,11 @@ import (
 )
 
 // registerVanillaRecipes is the vanilla recipe registration a server runs
-// on start.
+// on start. It registers the recipes once per process, however often it
+// is called.
 //
 //go:linkname registerVanillaRecipes github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
 func registerVanillaRecipes()
-
-var vanillaRecipesOnce sync.Once
 
 // TestRecipeUnlockPacketsUnchanged holds the recipe unlocks the game keeps
 // to those the session accepted when it decided them. For the vanilla
@@ -29,10 +27,8 @@ var vanillaRecipesOnce sync.Once
 // IDs the game keeps beyond them, of kinds Bedrock does not show, send
 // nothing.
 func TestRecipeUnlockPacketsUnchanged(t *testing.T) {
-	vanillaRecipesOnce.Do(func() {
-		world.DefaultBlockRegistry.Finalize()
-		registerVanillaRecipes()
-	})
+	world.DefaultBlockRegistry.Finalize()
+	registerVanillaRecipes()
 	var known []string
 	for _, r := range recipe.Recipes() {
 		known = append(known, recipe.JavaRecipeIDs(r)...)

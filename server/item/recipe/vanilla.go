@@ -2,6 +2,7 @@ package recipe
 
 import (
 	_ "embed"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -52,11 +53,24 @@ type potionContainerChangeRecipe struct {
 	Output  string    `nbt:"output"`
 }
 
-// registerVanilla can be called to register all vanilla recipes from the generated data files.
+// vanillaOnce makes registerVanilla register the vanilla recipes once per
+// process.
+var vanillaOnce sync.Once
+
+// registerVanilla can be called to register all vanilla recipes from the generated data files. Server.New calls it
+// for every server, but only the first call registers them: a second server in the process, or one started again,
+// would otherwise add every recipe a second time, after the first, with network IDs of its own, and send them all
+// twice in CraftingData.
 // noinspection GoUnusedFunction
 //
 //lint:ignore U1000 Function is used through compiler directives.
 func registerVanilla() {
+	vanillaOnce.Do(registerVanillaRecipes)
+}
+
+// registerVanillaRecipes registers the recipes of the generated data files,
+// in their order.
+func registerVanillaRecipes() {
 	var craftingRecipes struct {
 		Shaped            []shapedRecipe    `nbt:"shaped"`
 		Shapeless         []shapelessRecipe `nbt:"shapeless"`

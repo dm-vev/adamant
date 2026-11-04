@@ -1,7 +1,6 @@
 package block
 
 import (
-	"sync"
 	"testing"
 	_ "unsafe"
 
@@ -13,19 +12,16 @@ import (
 )
 
 // registerVanillaRecipes is the vanilla recipe registration the server runs
-// on start.
+// on start. It registers the recipes once per process, however often it
+// is called.
 //
 //go:linkname registerVanillaRecipes github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
 func registerVanillaRecipes()
 
-var brewingRecipesOnce sync.Once
-
 func brewingTestStand(t *testing.T) *brewer {
 	t.Helper()
-	brewingRecipesOnce.Do(func() {
-		world.DefaultBlockRegistry.Finalize()
-		registerVanillaRecipes()
-	})
+	world.DefaultBlockRegistry.Finalize()
+	registerVanillaRecipes()
 	return newBrewer()
 }
 

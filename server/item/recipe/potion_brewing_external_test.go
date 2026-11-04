@@ -1,7 +1,6 @@
 package recipe_test
 
 import (
-	"sync"
 	"testing"
 	_ "unsafe"
 
@@ -13,18 +12,15 @@ import (
 )
 
 // registerVanilla is the vanilla recipe registration the server runs on
-// start.
+// start. It registers the recipes once per process, however often it is
+// called.
 //
 //go:linkname registerVanilla github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
 func registerVanilla()
 
-var registerVanillaOnce sync.Once
-
 func TestAwkwardPotionBrewsTrialPotions(t *testing.T) {
-	registerVanillaOnce.Do(func() {
-		world.DefaultBlockRegistry.Finalize()
-		registerVanilla()
-	})
+	world.DefaultBlockRegistry.Finalize()
+	registerVanilla()
 	cases := []struct {
 		reagent world.Item
 		want    potion.Potion

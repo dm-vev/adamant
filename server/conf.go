@@ -334,6 +334,9 @@ func (conf Config) New() *Server {
 		srv.listeners = append(srv.listeners, l)
 	}
 
+	// Both register the vanilla content once per process: a second server
+	// keeps the creative items and recipes, and their network IDs, of the
+	// first.
 	creative_registerCreativeItems()
 	recipe_registerVanilla()
 
