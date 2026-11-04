@@ -25,6 +25,14 @@ func NewArmour(f func(slot int, before, after item.Stack)) *Armour {
 	return &Armour{inv: inv}
 }
 
+// Clone returns a copy of the armour inventory holding the same items, which
+// calls no function when its slots change.
+func (a *Armour) Clone() *Armour {
+	inv := a.inv.Clone(nil)
+	inv.validator = canAddArmour
+	return &Armour{inv: inv}
+}
+
 // canAddArmour checks if the item passed can be worn as armour in the slot passed.
 func canAddArmour(s item.Stack, slot int) bool {
 	if s.Empty() {

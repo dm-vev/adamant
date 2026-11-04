@@ -5074,6 +5074,22 @@ func (p *Player) Data() Config {
 	}
 }
 
+// Snapshot returns the data of p as Data does, detached from p: its
+// inventory, off hand, armour and ender chest are copies, so that p changing
+// after Snapshot returned changes nothing in it, and a provider may encode
+// it on another goroutine after the transaction ended. The rest of what Data
+// returns is copied already or never changed in place: the shoulder entities
+// are replaced, never changed, and the client, logger, Left hook and skin are
+// not saved.
+func (p *Player) Snapshot() Config {
+	conf := p.Data()
+	conf.Inventory = conf.Inventory.Clone(nil)
+	conf.OffHand = conf.OffHand.Clone(nil)
+	conf.Armour = conf.Armour.Clone()
+	conf.EnderChestInventory = conf.EnderChestInventory.Clone(nil)
+	return conf
+}
+
 func (p *Player) unlockedRecipeIDs() []string {
 	ids := make([]string, 0, len(p.unlockedRecipes))
 	for id := range p.unlockedRecipes {

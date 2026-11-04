@@ -625,7 +625,9 @@ func (srv *Server) left(tx *world.Tx, c *player.Player) {
 	defer srv.players.remove(c.UUID())
 
 	if tx != nil {
-		if err := srv.conf.PlayerProvider.Save(c.UUID(), c.Data(), tx.World()); err != nil {
+		// The snapshot holds inventories of its own: the player's are
+		// closed as it is torn down, while the provider may keep the data.
+		if err := srv.conf.PlayerProvider.Save(c.UUID(), c.Snapshot(), tx.World()); err != nil {
 			srv.conf.Log.Error("Save player data: " + err.Error())
 		}
 	} else {

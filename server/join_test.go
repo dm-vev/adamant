@@ -14,6 +14,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/client/clienttest"
+	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
@@ -184,8 +186,9 @@ func TestJoinStartFailureRejects(t *testing.T) {
 }
 
 // TestJoinLeftSavesThePlayer checks that the Left hook the server gives a
-// player, which it calls as it leaves, saves the player and stops counting
-// it online, and that the client unlists it.
+// player, which it calls as it leaves, saves the player, in inventories of
+// the data saved and not its own, and stops counting it online, and that
+// the client unlists it.
 func TestJoinLeftSavesThePlayer(t *testing.T) {
 	provider := &joinSaveProvider{}
 	jt := newJoinTest(t, provider, Config{})
@@ -193,11 +196,24 @@ func TestJoinLeftSavesThePlayer(t *testing.T) {
 	j := joinLogin("Alice", "")
 	handle := jt.join(t, j)
 
-	if err := player.Do(handle, func(_ *world.Tx, p *player.Player) { p.Disconnect("bye") }).Wait(context.Background()); err != nil {
+	var live *inventory.Inventory
+	if err := player.Do(handle, func(_ *world.Tx, p *player.Player) {
+		live = p.Inventory()
+		_ = live.SetItem(4, item.NewStack(item.Diamond{}, 10))
+		p.Disconnect("bye")
+	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if got := provider.saved(); !slices.Equal(got, []uuid.UUID{j.L.Identity.UUID}) {
 		t.Errorf("saved %v, want Alice once", got)
+	}
+	if data := provider.data(); len(data) == 1 {
+		if data[0].Inventory == live {
+			t.Error("saved the live inventory of Alice")
+		}
+		if it, _ := data[0].Inventory.Item(4); it.Count() != 10 {
+			t.Errorf("saved %v in slot 4, want the 10 diamonds of Alice", it)
+		}
 	}
 	if _, ok := jt.srv.Player(j.L.Identity.UUID); ok {
 		t.Error("Alice is online after she left")
@@ -301,13 +317,22 @@ type joinSaveProvider struct {
 	player.NopProvider
 	mu    sync.Mutex
 	saves []uuid.UUID
+	confs []player.Config
 }
 
-func (p *joinSaveProvider) Save(id uuid.UUID, _ player.Config, _ *world.World) error {
+func (p *joinSaveProvider) Save(id uuid.UUID, conf player.Config, _ *world.World) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.saves = append(p.saves, id)
+	p.confs = append(p.confs, conf)
 	return nil
+}
+
+// data returns the data of the players saved, in the order they were.
+func (p *joinSaveProvider) data() []player.Config {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return slices.Clone(p.confs)
 }
 
 func (p *joinSaveProvider) saved() []uuid.UUID {
