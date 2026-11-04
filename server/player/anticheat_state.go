@@ -49,6 +49,8 @@ type acState struct {
 	// time.Now: a test sets it.
 	timer timerState
 	now   func() time.Time
+	// breaking is what BreakTime keeps.
+	breaking breakState
 
 	// impulses are the velocities the server gave the player that its
 	// client may still apply, each until a tick of the player.

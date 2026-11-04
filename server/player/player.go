@@ -2901,6 +2901,7 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 	}
 
 	p.breaking, p.breakingFace = true, face
+	p.startBreakTime()
 	p.SwingArm()
 
 	if p.GameMode().CreativeInventory() {
@@ -2946,9 +2947,16 @@ func (p *Player) breakContext() block.BreakContext {
 // FinishBreaking makes the player finish breaking the block it is currently breaking, or returns immediately
 // if the player isn't breaking anything.
 // FinishBreaking will stop the animation and break the block.
+//
+// A finish the client asks for earlier than the block takes is refused by
+// BreakTime of the anti-cheat: the block is resent, or breaks once its time
+// is served.
 func (p *Player) FinishBreaking() {
 	if !p.breaking {
 		p.resendNearbyBlock(p.breakingPos)
+		return
+	}
+	if p.finishBreakEarly() {
 		return
 	}
 	p.AbortBreaking()
@@ -2975,6 +2983,9 @@ func (p *Player) AbortBreaking() {
 // The face passed is used to display particles on the side of the block broken.
 func (p *Player) ContinueBreaking(face cube.Face) {
 	if !p.breaking {
+		return
+	}
+	if p.continueBreakTime() {
 		return
 	}
 	pos := p.breakingPos

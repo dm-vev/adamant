@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/world"
@@ -185,12 +184,6 @@ func (p *Player) movedTooQuickly(ac *acState, delta mgl64.Vec3) (tooQuick bool, 
 	}
 	dist = delta.Len()
 	return delta.LenSqr()-expected*expected > limit*limit, dist, math.Sqrt(limit*limit + expected*expected)
-}
-
-// DestroyBlock breaks the block at pos at once, as the client of the player
-// did: in creative, or a block that breaks in a tick.
-func (p *Player) DestroyBlock(pos cube.Pos) {
-	p.BreakBlock(pos)
 }
 
 // clientInput reports whether what the player is asked comes from its

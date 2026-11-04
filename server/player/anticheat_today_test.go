@@ -16,7 +16,9 @@ import (
 
 // TestAntiCheatTodayBreakBlockIsInstant pins that the instant break a
 // client asks for (UseItemActionBreakBlock, DestroyBlock) breaks stone at
-// once in survival. "Break blocks in the time they take" refuses it.
+// once in survival for a player the anti-cheat does not check. Since
+// "Break blocks in the time they take", BreakTime refuses it of a checked
+// player (TestBreakTimeDestroyBlock).
 func TestAntiCheatTodayBreakBlockIsInstant(t *testing.T) {
 	w, _ := clientTestWorld(t)
 	withClientPlayer(t, w, clienttest.New(), func(tx *world.Tx, p *Player) {
@@ -30,8 +32,10 @@ func TestAntiCheatTodayBreakBlockIsInstant(t *testing.T) {
 }
 
 // TestAntiCheatTodayFinishBreakingIsInstant pins that FinishBreaking right
-// after StartBreaking breaks obsidian by hand at once. "Break blocks in the
-// time they take" refuses it.
+// after StartBreaking breaks obsidian by hand at once for a player the
+// anti-cheat does not check. Since "Break blocks in the time they take",
+// BreakTime refuses it of a checked player
+// (TestBreakTimeRefusesEarlyFinishes).
 func TestAntiCheatTodayFinishBreakingIsInstant(t *testing.T) {
 	w, _ := clientTestWorld(t)
 	withClientPlayer(t, w, clienttest.New(), func(tx *world.Tx, p *Player) {
