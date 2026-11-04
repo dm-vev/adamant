@@ -6318,6 +6318,7 @@ server/cmd	type	BlockSource	struct{pos server/block/cube.Pos; world *server/worl
 server/cmd	type	Command	struct{v []reflect.Value; name string; description string; descriptionTranslation server/player/chat.Translation; usage string; aliases []string}
 server/cmd	type	ConstrainedEnum	interface{Constraints(option string) []server/cmd.EnumConstraint; server/cmd.Enum}
 server/cmd	type	ContextSource	struct{server/cmd.Source; Context server/cmd.ExecutionContext}
+server/cmd	type	Deferrer	interface{Defer() (done func())}
 server/cmd	type	DynamicEnum	interface{Dynamic() bool; server/cmd.Enum}
 server/cmd	type	Enum	interface{Options(source server/cmd.Source) []string; Type() string}
 server/cmd	type	EnumConstraint	uint8

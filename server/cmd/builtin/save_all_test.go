@@ -74,3 +74,39 @@ func TestSaveAllPrintsOnceSaved(t *testing.T) {
 		t.Errorf("the player was sent %+v, want \"Saved the world.\"", out)
 	}
 }
+
+// deferring is a source that is no entity, records its outputs and counts
+// the outputs it was told will follow and those it was told were sent.
+type deferring struct {
+	outputs
+	deferred, done int
+}
+
+func (d *deferring) Defer() func() {
+	d.deferred++
+	return func() { d.done++ }
+}
+
+// TestDeferredOutput checks that a cmd.Deferrer is told, as /save-all
+// runs, that output follows, and once it was sent, after it was, also
+// through /execute; a source that is no Deferrer, as the console, is sent
+// the output as before.
+func TestDeferredOutput(t *testing.T) {
+	srv := &saveAllTestAdapter{}
+	c := saveAllCmd{srv: srv}
+	src := &deferring{}
+	c.Run(cmd.WithContext(src, cmd.ExecutionContext{}), &cmd.Output{}, nil)
+	if src.deferred != 1 || src.done != 0 || len(src.got) != 0 {
+		t.Fatalf("after Run: deferred %d, done %d, %d outputs; want 1, 0, 0", src.deferred, src.done, len(src.got))
+	}
+	srv.done(nil, nil)
+	if src.done != 1 || len(src.got) != 1 || src.got[0].Messages()[0].String() != "Saved the world." {
+		t.Fatalf("after the save: done %d, outputs %v", src.done, src.got)
+	}
+	console := &outputs{}
+	c.Run(console, &cmd.Output{}, nil)
+	srv.done(nil, nil)
+	if len(console.got) != 1 {
+		t.Fatalf("the console was sent %d outputs, want one", len(console.got))
+	}
+}

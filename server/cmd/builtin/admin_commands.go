@@ -285,20 +285,25 @@ func (c saveAllCmd) Run(src cmd.Source, _ *cmd.Output, tx *world.Tx) {
 }
 
 // outputLater returns a function that sends output to src from a later
-// transaction, or from none, once the transaction of the command ended. A
-// source that is an entity, as a player, is valid only in the transaction of
-// the command: it is found again by its handle, wherever it is then.
+// transaction, or from none, once the transaction of the command ended, to
+// be called once. A source that is an entity, as a player, is valid only in
+// the transaction of the command: it is found again by its handle,
+// wherever it is then. A source that is a cmd.Deferrer is told output
+// follows, and that it was sent once it was.
 func outputLater(src cmd.Source) func(tx *world.Tx, o *cmd.Output) {
 	base := src
-unwrap:
 	for {
-		switch s := base.(type) {
-		case cmd.ContextSource:
-			base = s.Source
-		case *storeSource:
-			base = s.Source
-		default:
-			break unwrap
+		w, ok := base.(cmd.Wrapper)
+		if !ok {
+			break
+		}
+		base = w.Unwrap()
+	}
+	if d, ok := base.(cmd.Deferrer); ok {
+		done := d.Defer()
+		return func(_ *world.Tx, o *cmd.Output) {
+			defer done()
+			base.SendCommandOutput(o)
 		}
 	}
 	e, ok := base.(world.Entity)
