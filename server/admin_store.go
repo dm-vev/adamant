@@ -208,36 +208,53 @@ func (b *banList) banAddress(key, reason string, f banFields) (BanChange, error)
 // infos returns the bans of players, or of addresses if ips, as /banlist
 // shows them, the players shown by show.
 func (b *banList) infos(ips bool, show func(entry) string) []BanInfo {
-	when := func(t time.Time) string {
-		if t.IsZero() {
-			return ""
-		}
-		return t.Local().Format(b.messages.TimeFormat)
-	}
-	source := func(s string) string {
-		if s == "" {
-			return "(Unknown)"
-		}
-		return s
-	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	var out []BanInfo
 	if !ips {
 		for _, en := range b.players.order {
-			out = append(out, BanInfo{Target: show(en), Reason: en.reason, Source: source(en.ban.source),
-				Created: en.ban.created, Expires: en.ban.expires, Until: when(en.ban.expires)})
+			out = append(out, b.info(show(en), false, en.reason, en.ban))
 		}
 		return out
 	}
 	for _, k := range b.ipOrder {
 		if e, ok := b.ips[k]; ok {
-			f := e.fields()
-			out = append(out, BanInfo{Target: e.IP, IP: true, Reason: e.Reason, Source: source(f.source),
-				Created: f.created, Expires: f.expires, Until: when(f.expires)})
+			out = append(out, b.info(e.IP, true, e.Reason, e.fields()))
 		}
 	}
 	return out
+}
+
+// infoOf returns the ban of the player of the key passed, shown by show,
+// or, if ip is not empty, of the address or network of that key, and
+// reports whether there is one.
+func (b *banList) infoOf(k identity.Key, ip string, show func(entry) string) (BanInfo, bool) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if ip != "" {
+		e, ok := b.ips[ip]
+		if !ok {
+			return BanInfo{}, false
+		}
+		return b.info(e.IP, true, e.Reason, e.fields()), true
+	}
+	en, ok := b.players.get(k)
+	if !ok {
+		return BanInfo{}, false
+	}
+	return b.info(show(en), false, en.reason, en.ban), true
+}
+
+// info returns a ban as /banlist shows it.
+func (b *banList) info(target string, ip bool, reason string, f banFields) BanInfo {
+	until, source := "", f.source
+	if !f.expires.IsZero() {
+		until = f.expires.Local().Format(b.messages.TimeFormat)
+	}
+	if source == "" {
+		source = "(Unknown)"
+	}
+	return BanInfo{Target: target, IP: ip, Reason: reason, Source: source, Created: f.created, Expires: f.expires, Until: until}
 }
 
 // remove pardons the player of the key passed and writes the file.

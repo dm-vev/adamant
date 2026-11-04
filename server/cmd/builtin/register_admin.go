@@ -9,6 +9,8 @@ func registerAdminCommands(srv serverAdapter) {
 	cmd.Register(newPermissionCommand(srv))
 	cmd.Register(newBanPlayerCommand(srv))
 	cmd.Register(newBanIPCommand(srv))
+	cmd.Register(newTempBanCommand(srv))
+	cmd.Register(newTempBanIPCommand(srv))
 	cmd.Register(newPardonCommand(srv))
 	cmd.Register(newPardonIPCommand(srv))
 	cmd.Register(newBanListCommand(srv))

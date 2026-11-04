@@ -59,3 +59,66 @@ func TestBanIPOfPlayerOnline(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+// TestTempBanCommands checks /tempban and /tempban-ip: a ban for the time
+// typed, told with its end as [Bans] TimeFormat writes it; a ban for a
+// time over a ban moves its end; a duration under a minute or over
+// MaxDuration is refused; an IPv6 address bans its /64; level 2 is told
+// the commands do not exist.
+func TestTempBanCommands(t *testing.T) {
+	a := newAuditTest(t, func(uc *server.UserConfig) { uc.Bans.MaxDuration = "30d" })
+	day := 24 * time.Hour
+	until := func(target string, ip bool, d time.Duration) string {
+		t.Helper()
+		b, ok := a.srv.BanOf(target, ip)
+		if !ok {
+			t.Fatalf("%s is not banned", target)
+		}
+		if got := b.Expires.Sub(b.Created); got != d {
+			t.Errorf("the ban of %s lasts %v, want %v", target, got, d)
+		}
+		return b.Until
+	}
+	for _, s := range []struct {
+		level  cmd.Level
+		line   string
+		want   func() string
+		target string
+		ip     bool
+	}{
+		{cmd.LevelAdmin, "/tempban Griefer 7d griefing", func() string {
+			return "Banned Griefer until " + until("Griefer", false, 7*day) + ": griefing"
+		}, "Griefer", false},
+		{cmd.LevelAdmin, "/tempban Griefer 1w2d again", func() string {
+			return "The ban of Griefer now ends on " + until("Griefer", false, 9*day) + "."
+		}, "Griefer", false},
+		{cmd.LevelAdmin, "/tempban Spammer 90m", func() string {
+			return "Banned Spammer until " + until("Spammer", false, 90*time.Minute) + "."
+		}, "Spammer", false},
+		{cmd.LevelAdmin, "/tempban Quick 5s", func() string {
+			return `error: duration "5s": a ban lasts a minute at least`
+		}, "", false},
+		{cmd.LevelAdmin, "/tempban Long 31d", func() string {
+			return "error: a ban lasts 720h0m0s at most ([Bans] MaxDuration), not 744h0m0s"
+		}, "", false},
+		{cmd.LevelAdmin, "/tempban-ip 203.0.113.7 12h alts", func() string {
+			return "Banned IP 203.0.113.7 until " + until("203.0.113.7", true, 12*time.Hour) + ": alts"
+		}, "203.0.113.7", true},
+		{cmd.LevelAdmin, "/tempban-ip 2001:db8:1:2::5 1d", func() string {
+			return "Banned IP 2001:db8:1:2::/64 until " + until("2001:db8:1:2::/64", true, day) + "."
+		}, "2001:db8:1:2::/64", true},
+		{cmd.LevelAdmin, "/tempban-ip 203.0.113.7 2d", func() string {
+			return "The ban of IP 203.0.113.7 now ends on " + until("203.0.113.7", true, 2*day) + "."
+		}, "203.0.113.7", true},
+		{cmd.LevelGameMaster, "/tempban Other 1d", func() string {
+			return "error: " + cmd.MessageUnknown.F("tempban").Error()
+		}, "", false},
+	} {
+		if got, want := outputLines(run(t, s.level, s.line)), s.want(); got != want {
+			t.Errorf("%s from level %v:\n%s\nwant\n%s", s.line, s.level, got, want)
+		}
+	}
+	if _, ok := a.srv.BanOf("Quick", false); ok {
+		t.Error("a ban of 5 seconds was made")
+	}
+}

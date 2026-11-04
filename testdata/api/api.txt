@@ -392,6 +392,7 @@ server	method	Server.BanAddress	func(ip string, o server.BanOptions) (server.Ban
 server	method	Server.BanEntries	func(ip bool) ([]string, error)
 server	method	Server.BanIP	func(ip string, reason string) (bool, error)
 server	method	Server.BanList	func(ips bool) ([]server.BanInfo, error)
+server	method	Server.BanOf	func(target string, ip bool) (server.BanInfo, bool)
 server	method	Server.BanPlayer	func(name string, reason string) (bool, error)
 server	method	Server.BanTarget	func(target string) (string, error)
 server	method	Server.Banned	func(addr string, name string) (string, bool)

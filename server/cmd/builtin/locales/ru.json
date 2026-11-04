@@ -22,6 +22,8 @@
   "commands.status.description": "Показывает статистику производительности сервера.",
   "commands.team.description": "Управляет командами игроков.",
   "commands.teammsg.description": "Отправляет сообщение участникам вашей команды.",
+  "commands.tempban-ip.description": "Блокирует IP-адрес на время.",
+  "commands.tempban.description": "Блокирует игрока на время.",
   "commands.tick.description": "Управляет игровыми тактами мира.",
   "commands.version.description": "Показывает версию сервера.",
   "commands.worldborder.description": "Изменяет параметры границы мира."

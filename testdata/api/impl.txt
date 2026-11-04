@@ -3910,6 +3910,10 @@ server/cmd/builtin.teleportSelfPositionCommand	server/cmd.Requirer	value
 server/cmd/builtin.teleportSelfPositionCommand	server/cmd.Runnable	value
 server/cmd/builtin.tellRawCommand	server/cmd.Requirer	value
 server/cmd/builtin.tellRawCommand	server/cmd.Runnable	value
+server/cmd/builtin.tempBanCmd	server/cmd.Requirer	value
+server/cmd/builtin.tempBanCmd	server/cmd.Runnable	value
+server/cmd/builtin.tempBanIPCmd	server/cmd.Requirer	value
+server/cmd/builtin.tempBanIPCmd	server/cmd.Runnable	value
 server/cmd/builtin.templateMirror	server/cmd.Enum	value
 server/cmd/builtin.templateRotation	server/cmd.Enum	value
 server/cmd/builtin.templateStrictOption	server/cmd.Enum	value

@@ -58,8 +58,10 @@ type serverAdapter interface {
 	// whom and until when; ActorOf is who a source is, as a ban records it.
 	Ban(name string, o server.BanOptions) (server.BanChange, error)
 	BanAddress(ip string, o server.BanOptions) (server.BanChange, error)
-	// BanList returns the bans of players, or of addresses if ips.
+	// BanList returns the bans of players, or of addresses if ips; BanOf
+	// the ban of a player, or of an address if ip.
 	BanList(ips bool) ([]server.BanInfo, error)
+	BanOf(target string, ip bool) (server.BanInfo, bool)
 	// BanTarget is the address or network a ban of an address, a network
 	// or a player online is kept by; PlayersAt the players online it
 	// covers.

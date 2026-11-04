@@ -300,6 +300,25 @@ func (srv *Server) BanList(ips bool) ([]BanInfo, error) {
 	srv.bans.prune()
 	return srv.bans.infos(ips, func(en entry) string { return Target{Key: en.key, Name: en.name}.String() }), nil
 }
+
+// BanOf returns the ban of the player of the name passed, or
+// "xuid:<XUID>", as Pardon finds it, or, if ip, of the address or network
+// passed, as BanTarget writes it, as /banlist shows it, and reports
+// whether there is one.
+func (srv *Server) BanOf(target string, ip bool) (BanInfo, bool) {
+	if srv.bans == nil {
+		return BanInfo{}, false
+	}
+	show := func(en entry) string { return Target{Key: en.key, Name: en.name}.String() }
+	if ip {
+		return srv.bans.infoOf(identity.Key{}, target, show)
+	}
+	t, err := srv.ResolveEntry(Banned, target)
+	if err != nil {
+		return BanInfo{}, false
+	}
+	return srv.bans.infoOf(t.Key, "", show)
+}
 func (srv *Server) PardonIP(ip string) (bool, error) {
 	if srv.bans == nil {
 		return false, errAdminUnavailable

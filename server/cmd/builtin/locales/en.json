@@ -65,6 +65,8 @@
   "commands.team.description": "Manage scoreboard teams.",
   "commands.teammsg.description": "Send a message to your team.",
   "commands.tellraw.description": "Sends a JSON message to players.",
+  "commands.tempban-ip.description": "Bans an IP address from the server for a time.",
+  "commands.tempban.description": "Bans a player from the server for a time.",
   "commands.tick.description": "Controls world ticking.",
   "commands.time.description": "Adjusts or queries the world time.",
   "commands.title.description": "Controls titles sent to players.",
