@@ -43,6 +43,8 @@ type Pair
 	self[1] Changed
 type Hand
 	manual coded by hand
+type Loose
+	Z uint8
 enum e
 	0 zero
 	1 one
@@ -81,6 +83,9 @@ type Pair
 	self[1] Changed
 type Hand
 	manual coded by hand
+type Loose
+	Z uint8
+	Extra uint8
 enum e
 	0 zero
 	1 one
@@ -110,6 +115,9 @@ import (
 )
 
 var sameHand = []string{"Hand"}
+
+// Loose is held by no packet but by what the package codes by hand.
+var convertTypes = []string{"Loose"}
 
 func upItemStack(in *a.ItemStack) b.ItemStack   { return b.ItemStack{N: in.N * 10} }
 func downItemStack(in *b.ItemStack) a.ItemStack { return a.ItemStack{N: in.N / 10} }
@@ -184,6 +192,9 @@ func TestConvert(t *testing.T) {
 
 	if up, _ := upPacket(&a.StackPacket{I: a.ItemStack{N: 3}}); up.(*b.StackPacket).I.N != 30 {
 		t.Fatalf("the hand converter of the item stack was not used: %+v", up)
+	}
+	if loose := upLoose(&a.Loose{Z: 3}); loose != (b.Loose{Z: 3}) || downLoose(&b.Loose{Z: 3, Extra: 1}) != (a.Loose{Z: 3}) {
+		t.Fatalf("loose %+v", loose)
 	}
 	if up, _ := upPacket(&a.EnumPacket{E: 1}); up.(*b.EnumPacket).E != 1 {
 		t.Fatalf("enum %+v", up)
@@ -337,6 +348,35 @@ func TestNodesEqual(t *testing.T) {
 	} {
 		if nodesEqual(body(base), body(other)) {
 			t.Errorf("equal to\n%s", other)
+		}
+	}
+}
+
+// TestStepsAreCurrent generates the step packages from the schemas of
+// their protocols: their same_gen.go and convert_gen.go must be what go
+// generate wrote.
+func TestStepsAreCurrent(t *testing.T) {
+	for _, c := range []struct{ dir, from, to string }{
+		{"../convert/c2225", "v2193", "v2225"},
+	} {
+		const proto = "github.com/dm-vev/adamant/net/bedrock/proto/"
+		st, err := newStep("../"+c.from+"/schema.txt", "../"+c.to+"/schema.txt", proto+c.from, proto+c.to, c.dir, "same_gen.go", "convert_gen.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		pkg := filepath.Base(c.dir)
+		same, err := st.writeSame(pkg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		convert, err := st.writeConvert(pkg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for name, src := range map[string][]byte{"same_gen.go": same, "convert_gen.go": convert} {
+			if want, err := os.ReadFile(filepath.Join(c.dir, name)); err != nil || string(want) != string(src) {
+				t.Errorf("%s/%s is not what the schemas generate (%v): run go generate", pkg, name, err)
+			}
 		}
 	}
 }

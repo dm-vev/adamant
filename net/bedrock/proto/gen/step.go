@@ -36,9 +36,12 @@ import (
 // dropped, lists, arrays and optionals are converted element by element
 // and integers converted to the type of the target. A converter the
 // package writes by hand is not written; one of a declaration or a wire
-// type coded by hand must be. After it copies the fields of up<X> or
-// down<X>, a converter calls fixUp<X> or fixDown<X>(in, out) if the
-// package writes one, for what a copy by name gets wrong. A field whose
+// type coded by hand must be. The package names in its convertTypes, a
+// []string variable as sameHand, the types its converters written by hand
+// need the converters of, such as the actions of a stack request, if both
+// schemas have them. After it copies the fields of up<X> or down<X>, a
+// converter calls fixUp<X> or fixDown<X>(in, out) if the package writes
+// one, for what a copy by name gets wrong. A field whose
 // type changes otherwise than between integers needs such a fix.
 
 // step is the comparison of the schemas of two adjacent protocols.
@@ -51,6 +54,9 @@ type step struct {
 	// sameHand holds what is coded by hand and has the same layout in
 	// both: names of declarations and Go names of special wire types.
 	sameHand map[string]bool
+	// convertTypes are the types the converters written by hand need the
+	// converters of.
+	convertTypes []string
 	// funcs holds the functions written by hand in the output package.
 	funcs map[string]bool
 	// diff holds the keys of what differs: "P:id" of a packet, "T:name" of
@@ -112,20 +118,28 @@ func (st *step) readHand(dir string, outputs []string) error {
 			case *ast.GenDecl:
 				for _, spec := range d.Specs {
 					vs, ok := spec.(*ast.ValueSpec)
-					if !ok || len(vs.Names) != 1 || vs.Names[0].Name != "sameHand" || len(vs.Values) != 1 {
+					if !ok || len(vs.Names) != 1 || len(vs.Values) != 1 {
+						continue
+					}
+					name := vs.Names[0].Name
+					if name != "sameHand" && name != "convertTypes" {
 						continue
 					}
 					lit, ok := vs.Values[0].(*ast.CompositeLit)
 					if !ok {
-						return fmt.Errorf("%s: sameHand is not a []string literal", f)
+						return fmt.Errorf("%s: %s is not a []string literal", f, name)
 					}
 					for _, e := range lit.Elts {
 						bl, ok := e.(*ast.BasicLit)
 						if !ok || bl.Kind != token.STRING {
-							return fmt.Errorf("%s: an element of sameHand is not a string", f)
+							return fmt.Errorf("%s: an element of %s is not a string", f, name)
 						}
 						s, _ := strconv.Unquote(bl.Value)
-						st.sameHand[s] = true
+						if name == "sameHand" {
+							st.sameHand[s] = true
+						} else {
+							st.convertTypes = append(st.convertTypes, s)
+						}
 					}
 				}
 			}
@@ -408,6 +422,16 @@ func (st *step) writeConvert(pkg string) ([]byte, error) {
 		g.p("}")
 		g.p("return nil, false")
 		g.p("}")
+		for _, name := range st.convertTypes {
+			// A type of one protocol alone has no converter: the hand
+			// code that converts what holds it converts it too.
+			switch t := d.src.byName[name]; {
+			case t != nil && d.dst.byName[name] != nil:
+				c.need(t)
+			case st.from.byName[name] == nil && st.to.byName[name] == nil:
+				return nil, fmt.Errorf("convertTypes names %s, a type of neither schema", name)
+			}
+		}
 		for len(c.queue) > 0 {
 			next := c.queue[0]
 			c.queue = c.queue[1:]
