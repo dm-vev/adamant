@@ -58,10 +58,7 @@ func (bb *structureBB) offset(x, y, z int) {
 	bb.maxZ += z
 }
 
-func (bb structureBB) xSize() int { return bb.maxX - bb.minX + 1 }
 func (bb structureBB) ySize() int { return bb.maxY - bb.minY + 1 }
-func (bb structureBB) zSize() int { return bb.maxZ - bb.minZ + 1 }
-
 func componentBB(structMinX, structMinY, structMinZ, xMin, yMin, zMin, xMax, yMax, zMax int, facing cube.Direction) structureBB {
 	switch facing {
 	case cube.North:

@@ -8,9 +8,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
 
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
@@ -800,79 +798,6 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 
 func (c *modernStructureContext) AdjustDensity(x, y, z int32) float32 {
 	return c.beardifier.AdjustDensity(x, y, z)
-}
-
-type modernStructurePayloads struct {
-	blockEntities []chunk.BlockEntity
-	entities      []structure.Entity
-}
-
-func (p *modernStructurePayloads) GenerationData() world.GenerationResult {
-	if p == nil {
-		return world.GenerationResult{}
-	}
-	result := world.GenerationResult{
-		BlockEntities: make([]chunk.BlockEntity, len(p.blockEntities)),
-	}
-	for index, payload := range p.blockEntities {
-		result.BlockEntities[index] = chunk.BlockEntity{
-			Pos:  payload.Pos,
-			Data: cloneStructureNBT(payload.Data),
-		}
-	}
-	entities := make([]structure.Entity, len(p.entities))
-	for index, raw := range p.entities {
-		entities[index] = raw
-		entities[index].NBT = cloneStructureNBT(raw.NBT)
-	}
-	handles, err := (structure.Placement{Entities: entities}).NewEntityHandles(entity.NewFromStructureNBT)
-	if err != nil {
-		panic(err)
-	}
-	result.Entities = handles
-	return result
-}
-
-func cloneStructureNBT(source map[string]any) map[string]any {
-	if source == nil {
-		return nil
-	}
-	cloned := make(map[string]any, len(source))
-	for key, value := range source {
-		cloned[key] = cloneStructureNBTValue(value)
-	}
-	return cloned
-}
-
-func cloneStructureNBTValue(value any) any {
-	switch value := value.(type) {
-	case map[string]any:
-		return cloneStructureNBT(value)
-	case []any:
-		cloned := make([]any, len(value))
-		for index, element := range value {
-			cloned[index] = cloneStructureNBTValue(element)
-		}
-		return cloned
-	case []byte:
-		return append([]byte(nil), value...)
-	case []int8:
-		return append([]int8(nil), value...)
-	case []int16:
-		return append([]int16(nil), value...)
-	case []int32:
-		return append([]int32(nil), value...)
-	case []int64:
-		return append([]int64(nil), value...)
-	case []float32:
-		return append([]float32(nil), value...)
-	case []float64:
-		return append([]float64(nil), value...)
-	case []string:
-		return append([]string(nil), value...)
-	default:
-		return value
-	}
 }
 
 func intersectsChunk(box structure.Box, pos world.ChunkPos) bool {

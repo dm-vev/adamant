@@ -183,11 +183,6 @@ func (g *Nether) fillBiomes(chunkX, chunkZ int, c *chunk.Chunk) {
 	}
 }
 
-func (g *Nether) biomeIndexAt(x, y, z int32) int {
-	quartX, _, quartZ := vanilla.FiddledBiomeQuart(g.biomeZoomSeed, x, y, z)
-	return netherBiomeIndex(g.biomes.Biome(quartX*4, quartZ*4))
-}
-
 func netherBiomeIndex(name string) int {
 	switch name {
 	case "minecraft:soul_sand_valley":

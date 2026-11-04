@@ -64,25 +64,6 @@ func treeCanBeReplaced(region *featureRegion, p featurePos) bool {
 	}
 	return shape.Replaceable
 }
-func treeSet(region *featureRegion, p featurePos, provider any, r *vanilla.Random) bool {
-	state, actor, ok := region.SampleNativeState(provider, p, r)
-	return ok && region.SetNativeBlock(p, state, actor)
-}
-func treeSetAt(region *featureRegion, p, samplePos featurePos, provider any, r *vanilla.Random) bool {
-	state, actor, ok := region.SampleNativeState(provider, samplePos, r)
-	return ok && region.SetNativeBlock(p, state, actor)
-}
-func treeSetNamed(region *featureRegion, p featurePos, name string, props map[string]any) bool {
-	if !strings.Contains(name, ":") {
-		name = "minecraft:" + name
-	}
-	provider := map[string]any{"id": name}
-	if len(props) > 0 {
-		provider["properties"] = props
-	}
-	state, actor, ok := region.SampleNativeState(provider, p, &vanilla.Random{})
-	return ok && region.SetNativeBlock(p, state, actor)
-}
 func treeWaterSource(region *featureRegion, p featurePos) bool {
 	return featureFluidTagContains("minecraft:water", featureFluidName(region, p, nil))
 }
@@ -1397,24 +1378,6 @@ func treeDecoratorPositions(positions []featurePos) []featurePos {
 	return ordered
 }
 
-func treeSolid(region *featureRegion, p featurePos) bool {
-	n, _ := region.State(p)
-	name := normalizeResource(n)
-	if name == "lava" || name == "water" {
-		return false
-	}
-	return treeSturdyUp(region, p)
-}
-func treeSturdyUp(region *featureRegion, p featurePos) bool {
-	block := region.Block(p)
-	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
-	return block.Model().FaceSolid(pos, cube.FaceUp, featureRegionBlockSource{region})
-}
-func treeSturdyDown(region *featureRegion, p featurePos) bool {
-	block := region.Block(p)
-	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
-	return block.Model().FaceSolid(pos, cube.FaceDown, featureRegionBlockSource{region})
-}
 func treeSolidRender(region *featureRegion, p featurePos) bool {
 	state, err := region.BlockStateID(cube.Pos{int(p.x), int(p.y), int(p.z)})
 	if err != nil {

@@ -416,12 +416,6 @@ func (r *featureRegion) markAboveForPostProcessing(p featurePos) {
 		r.markPostProcessing(cube.Pos{int(marked.x), int(marked.y), int(marked.z)})
 	}
 }
-func (r *featureRegion) scheduledBlockID(state world.NativeState) uint32 {
-	if state.Block == r.c.BlockRegistry().AirRuntimeID() {
-		return state.Liquid
-	}
-	return state.Block
-}
 
 // PlaceValue executes a configured Feature holder, never a PlacedFeature holder.
 func (r *featureRegion) PlaceValue(value any, origin featurePos, random *vanilla.Random) bool {

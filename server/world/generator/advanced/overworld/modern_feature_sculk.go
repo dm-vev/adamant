@@ -508,10 +508,6 @@ func sculkAvailableFaces(name string, props map[string]any) uint8 {
 	}
 	return faces
 }
-func sculkFaceSet(region *featureRegion, pos featurePos, d string) bool {
-	n, p := region.State(pos)
-	return n == "minecraft:sculk_vein" && p[d] == true
-}
 func sculkCanAttach(region *featureRegion, pos featurePos, face string) bool {
 	return sculkShapeAt(region, sculkOffset(pos, face)).Attachment&sculkFaceBit(sculkOpposite(face)) != 0
 }

@@ -154,11 +154,6 @@ func lakeGridEdge(grid *[16 * 16 * 8]bool, x, y, z int) bool {
 	return x < 15 && grid[((x+1)*16+z)*8+y] || x > 0 && grid[((x-1)*16+z)*8+y] || z < 15 && grid[(x*16+z+1)*8+y] || z > 0 && grid[(x*16+z-1)*8+y] || y < 7 && grid[(x*16+z)*8+y+1] || y > 0 && grid[(x*16+z)*8+y-1]
 }
 
-type featureRegionBlockSource struct{ region *featureRegion }
-
-func (s featureRegionBlockSource) Block(pos cube.Pos) world.Block {
-	return s.region.Block(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])})
-}
 func featureRegionSolid(region *featureRegion, p featurePos) bool {
 	state := region.nativeState(p)
 	solid, ok := gamedata.BlockStateIsSolid(state.CanonicalID(region.c.BlockRegistry()))

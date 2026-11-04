@@ -18,11 +18,6 @@ var biomeFrozenTemperatureLayers = func() [3]*vanilla.SimplexNoise {
 	}
 }()
 
-func (r *featureRegion) biomeTemperature(p featurePos) float32 {
-	biome := normalizeResource(r.f.source.BiomeAt(p.x, p.y, p.z))
-	return r.biomeTemperatureFor(biome, p)
-}
-
 func (r *featureRegion) biomeTemperatureFor(biome string, p featurePos) float32 {
 	biome = normalizeResource(biome)
 	return heightAdjustedTemperature(float32(r.f.temperatures[biome]), r.f.biomes[biome].frozenTemperature, p.x, p.y, p.z, r.f.source.SeaLevel())

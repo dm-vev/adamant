@@ -51,11 +51,6 @@ func TransformPosition(pos [3]int32, mirror Mirror, rotation Rotation) [3]int32 
 	}
 }
 
-// TransformState applies Java's horizontal block-state rotation/mirror properties without modifying the input.
-func TransformState(state world.BlockState, mirror Mirror, rotation Rotation) world.BlockState {
-	return world.TransformState(state, mirror, rotation)
-}
-
 // ProcessContext provides the stable template-space and world-space coordinates and deterministic placement seed.
 type ProcessContext struct {
 	Origin, Position, RelativePosition [3]int32

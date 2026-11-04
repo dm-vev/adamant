@@ -442,11 +442,3 @@ func abs(v int) int {
 	}
 	return v
 }
-
-func mustStateRID(name string, props map[string]any) uint32 {
-	rid, ok := chunk.StateToRuntimeID(name, props)
-	if !ok {
-		panic("mc112: missing runtime ID for " + name)
-	}
-	return rid
-}
