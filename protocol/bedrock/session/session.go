@@ -586,6 +586,15 @@ func (s *Session) CloseConnection() {
 	})
 }
 
+// ViewFailed closes the connection of the session, which panicked as it was
+// shown a change of its world: its player leaves on the next tick.
+func (s *Session) ViewFailed() {
+	s.CloseConnection()
+}
+
+// A session viewing a world closes when it panics as it is shown a change.
+var _ world.FailingViewer = (*Session)(nil)
+
 // Addr returns the net.Addr of the client.
 func (s *Session) Addr() net.Addr {
 	return s.conn.RemoteAddr()
@@ -664,10 +673,29 @@ func (s *Session) Control(tx *world.Tx, e world.Entity) {
 		s.closeControllable(c)
 		return
 	}
+	if err := s.updateSafely(tx, c); err != nil {
+		s.conf.Log.Debug("update session: " + err.Error())
+		s.closeControllable(c)
+	}
+}
+
+// updateSafely sends the session what changed for it after the packets of a
+// tick: its commands, the entities and the chunks around it. A panic of it,
+// as of encoding a chunk or of a loader, is turned into an error that closes
+// the session, as one handling a packet is, rather than taking down the tick
+// of the world.
+func (s *Session) updateSafely(tx *world.Tx, c Controllable) (err error) {
+	defer func() {
+		if v := recover(); v != nil {
+			s.conf.Log.Error("panic updating a session", "panic", v, "stack", string(runtimedebug.Stack()))
+			err = fmt.Errorf("panic: %v", v)
+		}
+	}()
 	s.commandState.update(s, c)
 	s.updateCongestion(tx)
 	s.updateInterest(tx, c.Position())
 	s.sendChunks(tx, c)
+	return nil
 }
 
 // handleInbox handles the packets taken from the inbox, clearing them, and

@@ -166,8 +166,9 @@ func (e *EntityHandle) runScheduled(task *Task, f func(tx *Tx, e Entity) error, 
 			return
 		}
 		err := executeWithRecovery(tx.w, func() error { return f(tx, ent) })
+		// The task finishes even if the work it deferred panics.
+		defer task.finish(err)
 		tx.runDeferred()
-		task.finish(err)
 	}, false, task.Done(), allowedCloseWorld)
 	if openErr != nil {
 		task.failIfPending(openErr)

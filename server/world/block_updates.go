@@ -92,7 +92,18 @@ func (w *World) flushBlockUpdates() {
 		p.updates = nil
 		clear(p.index)
 		for v := range c.viewers {
-			v.ViewBlockUpdates(u)
+			w.viewBlockUpdates(v, u)
 		}
 	}
+}
+
+// viewBlockUpdates shows u to v. A panic of v is blamed on it, so that the
+// other viewers of the column are still shown u and the transaction ends.
+func (w *World) viewBlockUpdates(v Viewer, u *BlockUpdates) {
+	defer func() {
+		if r := recover(); r != nil {
+			w.viewerPanicked(v, r)
+		}
+	}()
+	v.ViewBlockUpdates(u)
 }

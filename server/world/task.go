@@ -415,7 +415,8 @@ func (st scheduledTransaction) Run(w *World) {
 	}
 	tx := newTx(w)
 	err := executeWithRecovery(w, func() error { return st.f(tx) })
+	// The task finishes even if the work it deferred panics.
+	defer st.task.finish(err)
 	tx.close()
 	tx.runDeferred()
-	st.task.finish(err)
 }

@@ -43,6 +43,8 @@ const (
 	FaultSave
 	// FaultGeneration is a panic of a generator worker or a light fill.
 	FaultGeneration
+	// FaultViewer is a panic of a Viewer shown a change of the world.
+	FaultViewer
 	// FaultFatal is a panic the tick could not blame on anything.
 	FaultFatal
 )
@@ -70,6 +72,8 @@ func (k FaultKind) String() string {
 		return "save"
 	case FaultGeneration:
 		return "generation"
+	case FaultViewer:
+		return "viewer"
 	case FaultFatal:
 		return "fatal"
 	}
@@ -668,6 +672,38 @@ func (w *World) forgetChunk(pos ChunkPos) {
 		}
 	}
 	w.releaseChunk(pos)
+}
+
+// FailingViewer is a Viewer told when it panicked as it was shown a change
+// of the world, as the changes of the blocks of a column. A session closes
+// its connection. A Viewer that is not one is left as it is once the panic
+// was logged.
+type FailingViewer interface {
+	Viewer
+	// ViewFailed is called on the owner of the world, after the panic of
+	// the viewer was logged.
+	ViewFailed()
+}
+
+// viewerPanicked blames the panic r of the viewer v on it, and tells it if
+// it is a FailingViewer. It is called by a function deferred while v
+// panics, so that the fault has the stack of the panic.
+func (w *World) viewerPanicked(v Viewer, r any) {
+	f := newFault(FaultViewer, r)
+	f.Type = fmt.Sprintf("%T", v)
+	w.reportFault(f, quarantineKey{})
+	fv, ok := v.(FailingViewer)
+	if !ok {
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			g := newFault(FaultViewer, r)
+			g.Type = fmt.Sprintf("%T", v)
+			w.reportFault(g, quarantineKey{})
+		}
+	}()
+	fv.ViewFailed()
 }
 
 // TickFaulter is an entity that handles a panic of its own tick or of its

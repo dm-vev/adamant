@@ -1070,3 +1070,76 @@ func TestRedstonePanicDropsItsInput(t *testing.T) {
 		t.Fatalf("%d positions left to evaluate after the panic", n)
 	}
 }
+
+// failingTestViewer is a viewer whose ViewBlockUpdates panics, counting
+// the times it was told it failed.
+type failingTestViewer struct {
+	NopViewer
+	failed *atomic.Int32
+}
+
+func (failingTestViewer) ViewBlockUpdates(*BlockUpdates) { panic("test: view block updates") }
+func (v failingTestViewer) ViewFailed()                  { v.failed.Add(1) }
+
+// countingTestViewer counts the changes of blocks it is shown.
+type countingTestViewer struct {
+	NopViewer
+	updates *atomic.Int32
+}
+
+func (v countingTestViewer) ViewBlockUpdates(u *BlockUpdates) { v.updates.Add(int32(len(u.Updates))) }
+
+func TestViewerPanicFailsTheViewer(t *testing.T) {
+	isolated(t, func(t *testing.T) {
+		var sink faultSink
+		rec := newFaultRecorder()
+		other := cancelBatchTestBlock{name: "test:other", id: 81, tick: func(cube.Pos, *Tx) {}}
+		w := sink.configure(Config{Provider: NopProvider{}, Blocks: testBlockRegistry(other), RandomTickSpeed: -1}, rec).New()
+		defer func() { _ = w.Close() }()
+		failed, updates := new(atomic.Int32), new(atomic.Int32)
+		loaders := []*Loader{NewLoader(1, w, failingTestViewer{failed: failed}), NewLoader(1, w, countingTestViewer{updates: updates})}
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
+			for _, l := range loaders {
+				l.Move(tx, mgl64.Vec3{8, 64, 8})
+			}
+		}), "moving the loaders")
+		waitFor(t, 30*time.Second, "loading the columns", func() bool {
+			<-w.Exec(func(tx *Tx) {
+				for _, l := range loaders {
+					l.Load(tx, 16)
+				}
+			})
+			for _, l := range loaders {
+				l.mu.RLock()
+				n := len(l.loadQueue)
+				l.mu.RUnlock()
+				if n != 0 {
+					return false
+				}
+			}
+			return true
+		})
+
+		// An entity task sets a block, which the work after it shows to
+		// the viewers of the column: the panicking viewer is told, the
+		// other shown the block, and the task ends.
+		h := probe(mgl64.Vec3{8.5, 64, 8.5}, func(*Tx, *testEntity) {})
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) { tx.AddEntity(h) }), "adding the entity")
+		task := h.Do(func(tx *Tx, _ Entity) { tx.SetBlock(cube.Pos{1, 64, 1}, other, nil) })
+		within(t, 10*time.Second, task.Done(), "the entity task did not end")
+		// So does a task of the world.
+		task = w.Do(func(tx *Tx) { tx.SetBlock(cube.Pos{2, 64, 1}, other, nil) })
+		within(t, 10*time.Second, task.Done(), "the task of the world did not end")
+
+		if n := failed.Load(); n != 2 {
+			t.Fatalf("the panicking viewer was told it failed %d times, want 2", n)
+		}
+		if n := updates.Load(); n != 2 {
+			t.Fatalf("the other viewer was shown %d changes of blocks, want 2", n)
+		}
+		faults := sink.all(FaultViewer)
+		if len(faults) != 2 || faults[0].Type != "world.failingTestViewer" || faults[0].Value != "test: view block updates" || !strings.Contains(string(faults[0].Stack), "fault_boundary_test.go") {
+			t.Fatalf("faults = %v, want two of the viewer", sink.all(0))
+		}
+	})
+}
