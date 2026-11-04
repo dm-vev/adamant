@@ -19,8 +19,6 @@ protocol/bedrock/session/handler_anvil.go (*world.Tx).PlaySound
 protocol/bedrock/session/handler_anvil.go (*world.Tx).PlaySound
 protocol/bedrock/session/handler_anvil.go (*world.Tx).SetBlock
 protocol/bedrock/session/handler_beacon.go (*world.Tx).SetBlock
-protocol/bedrock/session/handler_crafter.go (*world.Tx).SetBlock
-protocol/bedrock/session/handler_crafter.go (block.Crafter).NotifySlotState
 protocol/bedrock/session/handler_crafting.go (*world.Tx).LockMap
 protocol/bedrock/session/handler_crafting.go (*world.Tx).ScaleMap
 protocol/bedrock/session/handler_emote.go (world.Viewer).ViewEmote

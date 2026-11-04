@@ -127,6 +127,7 @@ type Controllable interface {
 	EditCommandBlock(pos cube.Pos, edit block.CommandBlockEdit) error
 	EditCommandMinecart(e world.Entity, edit block.CommandBlockEdit) error
 	EditStructureBlock(pos cube.Pos, edit block.StructureBlockEdit, trigger bool) error
+	SetCrafterSlotDisabled(pos cube.Pos, slot int, disabled bool) error
 
 	EditBook(slot int, edit item.BookEdit) error
 
