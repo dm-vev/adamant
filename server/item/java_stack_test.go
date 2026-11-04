@@ -2,6 +2,7 @@ package item_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/item"
@@ -176,6 +177,47 @@ func TestJavaStackCount(t *testing.T) {
 	} {
 		if _, err := item.StackFromStructureNBT(data); !errors.Is(err, item.ErrJavaStackCount) {
 			t.Errorf("%v: error %v, want ErrJavaStackCount", data, err)
+		}
+	}
+}
+
+// Java parses component and enchantment IDs as Identifiers, so damage is
+// minecraft:damage and unbreaking is minecraft:unbreaking. Encoding writes
+// each once, in full: a short ID beside its full form is a duplicate key,
+// which ItemEnchantments.CODEC and DataComponentPatch.CODEC refuse.
+func TestJavaStackIDsWithoutNamespace(t *testing.T) {
+	for name, tc := range map[string]struct {
+		component    string
+		enchantments map[string]any
+	}{
+		"full component":  {"minecraft:enchantments", map[string]any{"unbreaking": int32(2), "minecraft:sharpness": int32(1)}},
+		"short component": {"enchantments", map[string]any{"unbreaking": int32(2), "minecraft:sharpness": int32(1)}},
+		"levels":          {"minecraft:enchantments", map[string]any{"levels": map[string]any{"unbreaking": int32(2), "minecraft:sharpness": int32(1)}}},
+		"both forms":      {"minecraft:enchantments", map[string]any{"unbreaking": int32(1), "minecraft:unbreaking": int32(2), "minecraft:sharpness": int32(1)}},
+	} {
+		s, err := item.StackFromStructureNBT(map[string]any{
+			"id":         "minecraft:diamond_sword",
+			"components": map[string]any{tc.component: tc.enchantments, "damage": int32(5), "minecraft:custom_data": map[string]any{"a": int32(1)}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if e, ok := s.Enchantment(enchantment.Unbreaking); !ok || e.Level() != 2 || s.Durability() != 1556 {
+			t.Fatalf("%s: enchantments %v, durability %d", name, s.Enchantments(), s.Durability())
+		}
+		encoded, err := item.StackToStructureNBT(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		components := encoded["components"].(map[string]any)
+		for k := range components {
+			if !strings.Contains(k, ":") {
+				t.Errorf("%s: component %q written without a namespace in %v", name, k, components)
+			}
+		}
+		levels, _ := components["minecraft:enchantments"].(map[string]any)
+		if len(levels) != 2 || levels["minecraft:unbreaking"] == nil || levels["minecraft:sharpness"] == nil {
+			t.Errorf("%s: enchantments written as %v, want minecraft:unbreaking and minecraft:sharpness", name, levels)
 		}
 	}
 }

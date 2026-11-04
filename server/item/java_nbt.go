@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/world"
@@ -47,7 +48,7 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 	components := make(map[string]any)
 	if source, ok := data["components"].(map[string]any); ok {
 		for k, v := range source {
-			components[k] = v
+			components[javaComponentKey(k)] = javaComponentValue(javaComponentKey(k), v)
 		}
 	}
 	if legacy, ok := data["tag"].(map[string]any); ok {
@@ -271,6 +272,43 @@ func StackToStructureNBT(stack Stack) (map[string]any, error) {
 	}
 	return data, nil
 }
+// javaComponentKey returns the ID of a component as Java parses it, an
+// Identifier in the minecraft namespace unless it names another: damage
+// is minecraft:damage. Kept as it came, the short form would be written
+// back beside the full one, and Java refuses the duplicate.
+func javaComponentKey(k string) string {
+	if strings.Contains(k, ":") {
+		return k
+	}
+	return "minecraft:" + k
+}
+
+// javaComponentValue returns the value of the component k with the
+// enchantment IDs of an enchantments or stored_enchantments component in
+// full, as ItemEnchantments.CODEC parses them: unbreaking is
+// minecraft:unbreaking. Of an ID given in both forms the full one is kept.
+func javaComponentValue(k string, v any) any {
+	if k != "minecraft:enchantments" && k != "minecraft:stored_enchantments" {
+		return v
+	}
+	m, ok := v.(map[string]any)
+	if !ok {
+		return v
+	}
+	if levels, ok := m["levels"].(map[string]any); ok {
+		out := maps.Clone(m)
+		out["levels"] = javaComponentValue(k, levels)
+		return out
+	}
+	out := make(map[string]any, len(m))
+	for id, level := range m {
+		if full := javaComponentKey(id); full == id || out[full] == nil {
+			out[full] = level
+		}
+	}
+	return out
+}
+
 // javaCount returns the count of a Java stack: count, or Count before
 // 1.20.5, 1 if neither is set. ItemStack.CODEC reads it as an
 // intRange(1, 99).
