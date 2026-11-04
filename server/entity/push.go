@@ -78,20 +78,28 @@ func TickEntityCollisions(tx *world.Tx) {
 		if len(others) == 0 {
 			continue
 		}
-		if maxCramming > 0 && len(others) > maxCramming-1 && rand.IntN(4) == 0 {
-			count := 0
-			for _, other := range others {
-				if !isPassenger(other) {
-					count++
-				}
-			}
-			if count > maxCramming-1 {
-				entry.e.(Living).Hurt(6, CrammingDamageSource{})
-			}
-		}
+		// Java pushes in the tick of the entity, LivingEntity.pushEntities:
+		// a panic of it is the entity's.
+		tx.ActOn(entry.e, func() { pushEntities(tx, entry.e, others, maxCramming) })
+	}
+}
+
+// pushEntities ports the end of LivingEntity.pushEntities for the entity e
+// overlapping others: cramming damage beyond maxCramming, then the pushes.
+func pushEntities(tx *world.Tx, e world.Entity, others []world.Entity, maxCramming int) {
+	if maxCramming > 0 && len(others) > maxCramming-1 && rand.IntN(4) == 0 {
+		count := 0
 		for _, other := range others {
-			pushApart(tx, entry.e, other)
+			if !isPassenger(other) {
+				count++
+			}
 		}
+		if count > maxCramming-1 {
+			e.(Living).Hurt(6, CrammingDamageSource{})
+		}
+	}
+	for _, other := range others {
+		pushApart(tx, e, other)
 	}
 }
 

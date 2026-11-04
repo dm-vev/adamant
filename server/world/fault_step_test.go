@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -233,5 +234,52 @@ func TestViewerPanicShowingTheTimeFailsTheViewer(t *testing.T) {
 	}
 	if faults := sink.all(0); len(faults) != 2 || faults[0].Kind != FaultViewer || faults[0].Type != "world.timeTestViewer" || faults[0].Value != "test: view time" {
 		t.Fatalf("faults = %v, want two of the viewer", briefFaults(faults))
+	}
+}
+
+// barTestType is a test entity listed as a player, whose boss bars panic.
+type barTestType struct{ testEntityType }
+
+func (barTestType) Open(tx *Tx, handle *EntityHandle, data *EntityData) Entity {
+	return barTestEntity{testEntity: testEntityType{}.Open(tx, handle, data).(*testEntity)}
+}
+
+func (barTestType) EncodeEntity() string { return "minecraft:player" }
+
+type barTestEntity struct{ *testEntity }
+
+func (barTestEntity) SendBossBar(bossbar.BossBar) { panic("test: boss bar") }
+func (barTestEntity) RemoveBossBarID(string)      { panic("test: boss bar") }
+
+// A panic showing a player the bar of a raid, in the step of the tick that
+// ticks raids, is blamed on the player, not on the step: it is counted and
+// quarantined at the limit (a real player is disconnected), and the world
+// never fails, though the bar is shown every tick.
+func TestRaidBarPanicIsBlamedOnThePlayer(t *testing.T) {
+	var sink faultSink
+	w := sink.configure(Config{Synchronous: true, RandomTickSpeed: -1}, newFaultRecorder()).New()
+	defer func() { _ = w.Close() }()
+	h := EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}}.New(barTestType{}, regionProbeConfig{tick: func(*Tx, *testEntity) {}})
+	<-w.Exec(func(tx *Tx) {
+		tx.AddEntity(h)
+		w.raids[1] = &Raid{id: 1, status: RaidVictory, members: map[uuid.UUID]struct{}{}, heroes: map[uuid.UUID]struct{}{}}
+	})
+	for range stepFaultLimit + 5 {
+		advance(t, w)
+	}
+	faults := sink.all(0)
+	if len(faults) != FaultLimit {
+		t.Fatalf("faults = %v, want %d of the player", briefFaults(faults), FaultLimit)
+	}
+	for i, f := range faults {
+		if f.Kind != FaultEntity || f.Entity != h || f.Value != "test: boss bar" || f.Count != i+1 {
+			t.Fatalf("fault %d = %v, want one of the player", i, briefFaults([]Fault{f}))
+		}
+	}
+	if !faults[FaultLimit-1].Quarantined {
+		t.Fatal("the player was not quarantined")
+	}
+	if f := sink.fatals(); len(f) != 0 {
+		t.Fatalf("the world failed: %v", briefFaults(f))
 	}
 }

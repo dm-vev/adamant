@@ -202,3 +202,65 @@ func TestNightSkipPanicWakingDisconnectsTheSleeper(t *testing.T) {
 		t.Fatalf("faults after the player left = %d, want 1", len(faults))
 	}
 }
+
+// healthPanicClient is a client whose health, which hurting its player
+// shows, panics once armed.
+type healthPanicClient struct {
+	*clienttest.Recorder
+	armed *atomic.Bool
+}
+
+func (c healthPanicClient) SendHealth(health, max, absorption float64) {
+	if c.armed.Load() {
+		panic("test: health")
+	}
+	c.Recorder.SendHealth(health, max, absorption)
+}
+
+// A panic hurting a crammed player, in the step of the tick that pushes
+// entities apart, is blamed on the player, as Java pushes in the player's
+// own tick: it is disconnected (D2), and the world goes on.
+func TestCrammingPanicDisconnectsThePlayer(t *testing.T) {
+	var faults []world.Fault
+	left := 0
+	armed := new(atomic.Bool)
+	c := healthPanicClient{Recorder: clienttest.New(), armed: armed}
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Log: slog.New(slog.DiscardHandler), Entities: entity.DefaultRegistry, Fault: func(f world.Fault) {
+		faults = append(faults, f)
+	}}.New()
+	loader := world.NewLoader(2, w, clienttest.New())
+	t.Cleanup(func() {
+		<-w.Exec(func(tx *world.Tx) { loader.Close(tx) })
+		_ = w.Close()
+	})
+	if err := w.SetGameRule("max_entity_cramming", 1); err != nil {
+		t.Fatal(err)
+	}
+	pos := mgl64.Vec3{0.5, 65, 0.5}
+	crammed := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, Config{Name: "Alex", Position: pos, GameMode: world.GameModeSurvival, Client: c, Left: func(*world.Tx, *Player) { left++ }})
+	other := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, Config{Name: "Steve", Position: pos, GameMode: world.GameModeCreative, Client: clienttest.New()})
+	<-w.Exec(func(tx *world.Tx) {
+		loader.Move(tx, pos)
+		loader.Load(tx, 25)
+		tx.SetBlock(cube.PosFromVec3(pos).Side(cube.FaceDown), block.Stone{}, nil)
+		tx.AddEntity(crammed)
+		tx.AddEntity(other)
+	})
+	armed.Store(true)
+	for range 200 {
+		advance(t, w)
+		if len(faults) != 0 {
+			break
+		}
+	}
+	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != crammed || faults[0].Value != "test: health" {
+		t.Fatalf("faults = %v, want one of the crammed player", brief(faults))
+	}
+	checkDisconnected(t, w, c.Recorder, crammed, left)
+	advance(t, w)
+	<-w.Exec(func(tx *world.Tx) {
+		if _, ok := other.Entity(tx); !ok {
+			t.Error("the other player left the world")
+		}
+	})
+}

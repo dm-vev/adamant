@@ -381,21 +381,26 @@ func (tx *Tx) TickRaids() {
 				r.postRaidTicks++
 			} else {
 				r.status, r.active = RaidVictory, false
-				for hero := range r.heroes {
-					for player := range tx.Players() {
-						if player.H().UUID() == hero {
-							if reward, ok := player.(interface{ GrantHeroOfTheVillage(*Tx, int) }); ok {
-								reward.GrantHeroOfTheVillage(tx, 48000)
-							}
-						}
-					}
-				}
+				tx.rewardRaidHeroes(r)
 			}
 		}
 		if r.status != RaidOngoing {
 			continue
 		}
 		tx.updateRaidBar(r)
+	}
+}
+
+// rewardRaidHeroes gives the heroes of the raid r in the world Hero of the
+// Village. Rewarding a player is its own: a panic of it is blamed on it.
+func (tx *Tx) rewardRaidHeroes(r *Raid) {
+	for player := range tx.Players() {
+		if _, hero := r.heroes[player.H().UUID()]; !hero {
+			continue
+		}
+		if reward, ok := player.(interface{ GrantHeroOfTheVillage(*Tx, int) }); ok {
+			tx.ActOn(player, func() { reward.GrantHeroOfTheVillage(tx, 48000) })
+		}
 	}
 }
 
@@ -563,11 +568,14 @@ func (tx *Tx) updateRaidBar(r *Raid) {
 			SendBossBar(bossbar.BossBar)
 			RemoveBossBarID(string)
 		}); ok {
-			if distance <= float64(raidVillageRadius*raidVillageRadius) {
-				viewer.SendBossBar(bar)
-			} else {
-				viewer.RemoveBossBarID(id)
-			}
+			// Showing a player the bar is its own: a panic of it is blamed on it.
+			tx.ActOn(player, func() {
+				if distance <= float64(raidVillageRadius*raidVillageRadius) {
+					viewer.SendBossBar(bar)
+				} else {
+					viewer.RemoveBossBarID(id)
+				}
+			})
 		}
 	}
 }
@@ -576,7 +584,7 @@ func (tx *Tx) hideRaidBar(r *Raid) {
 	id := fmt.Sprintf("%s%d", raidIDBossBarPrefix, r.id)
 	for player := range tx.Players() {
 		if viewer, ok := player.(interface{ RemoveBossBarID(string) }); ok {
-			viewer.RemoveBossBarID(id)
+			tx.ActOn(player, func() { viewer.RemoveBossBarID(id) })
 		}
 	}
 }

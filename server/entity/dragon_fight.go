@@ -114,6 +114,10 @@ func (f *dragonFight) Tick(tx *world.Tx) {
 	}
 }
 
+// updatePlayers shows the bar of the fight to the players near the arena
+// and hides it from those who left. Showing a player the bar is its own: a
+// panic of it is blamed on the player (Tx.ActOn), as in setVisible and as
+// the health of the dragon is shown.
 func (f *dragonFight) updatePlayers(tx *world.Tx) {
 	f.playerGeneration++
 	for e := range tx.Players() {
@@ -125,7 +129,7 @@ func (f *dragonFight) updatePlayers(tx *world.Tx) {
 			continue
 		}
 		if _, present := f.players[e.H()]; !present && f.visible {
-			p.SendBossBar(f.bar)
+			tx.ActOn(e, func() { p.SendBossBar(f.bar) })
 		}
 		f.players[e.H()] = f.playerGeneration
 	}
@@ -137,7 +141,7 @@ func (f *dragonFight) updatePlayers(tx *world.Tx) {
 		id := f.bar.ID()
 		if e, ok := handle.Entity(tx); ok {
 			if p, ok := e.(dragonFightViewer); ok {
-				p.RemoveBossBarID(id)
+				tx.ActOn(e, func() { p.RemoveBossBarID(id) })
 			}
 		} else {
 			handle.Do(func(_ *world.Tx, e world.Entity) {
@@ -157,11 +161,13 @@ func (f *dragonFight) setVisible(tx *world.Tx, visible bool) {
 	for handle := range f.players {
 		if e, ok := handle.Entity(tx); ok {
 			if p, ok := e.(dragonFightViewer); ok {
-				if visible {
-					p.SendBossBar(f.bar)
-				} else {
-					p.RemoveBossBarID(f.bar.ID())
-				}
+				tx.ActOn(e, func() {
+					if visible {
+						p.SendBossBar(f.bar)
+					} else {
+						p.RemoveBossBarID(f.bar.ID())
+					}
+				})
 			}
 		}
 	}
@@ -255,7 +261,7 @@ func (f *dragonFight) UpdateDragon(tx *world.Tx, e world.Entity) {
 	for handle := range f.players {
 		if p, present := handle.Entity(tx); present {
 			if viewer, ok := p.(dragonFightViewer); ok {
-				viewer.SendBossBar(f.bar)
+				tx.ActOn(p, func() { viewer.SendBossBar(f.bar) })
 			}
 		}
 	}
