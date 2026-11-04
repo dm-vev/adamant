@@ -42,8 +42,8 @@ func (respiration) CompatibleWithEnchantment(item.EnchantmentType) bool {
 	return true
 }
 
-// CompatibleWithItem ...
+// CompatibleWithItem reports if i is head armour, #enchantable/head_armor, the
+// supported_items of data/minecraft/enchantment/respiration.json.
 func (respiration) CompatibleWithItem(i world.Item) bool {
-	h, ok := i.(item.HelmetType)
-	return ok && h.Helmet()
+	return headArmour(i)
 }

@@ -35,8 +35,8 @@ func (aquaAffinity) CompatibleWithEnchantment(item.EnchantmentType) bool {
 	return true
 }
 
-// CompatibleWithItem ...
+// CompatibleWithItem reports if i is head armour, #enchantable/head_armor, the
+// supported_items of data/minecraft/enchantment/aqua_affinity.json.
 func (aquaAffinity) CompatibleWithItem(i world.Item) bool {
-	h, ok := i.(item.HelmetType)
-	return ok && h.Helmet()
+	return headArmour(i)
 }

@@ -41,6 +41,6 @@ func (curseOfBinding) MaxLevel() int                                       { ret
 func (curseOfBinding) Cost(int) (int, int)                                 { return 25, 50 }
 func (curseOfBinding) Rarity() item.EnchantmentRarity                      { return item.EnchantmentRarityVeryRare }
 func (curseOfBinding) CompatibleWithEnchantment(item.EnchantmentType) bool { return true }
-func (curseOfBinding) CompatibleWithItem(i world.Item) bool                { _, ok := i.(item.Armour); return ok }
+func (curseOfBinding) CompatibleWithItem(i world.Item) bool                { return equippable(i) }
 func (curseOfBinding) Treasure() bool                                      { return true }
 func (curseOfBinding) Curse() bool                                         { return true }

@@ -38,7 +38,7 @@ func (curseOfVanishing) CompatibleWithEnchantment(_ item.EnchantmentType) bool {
 
 // CompatibleWithItem ...
 func (curseOfVanishing) CompatibleWithItem(i world.Item) bool {
-	_, arm := i.(item.Armour)
+	arm := equippable(i)
 	_, com := i.(item.Compass)
 	_, dur := i.(item.Durable)
 	_, rec := i.(item.RecoveryCompass)

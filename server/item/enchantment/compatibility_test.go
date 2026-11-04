@@ -3,6 +3,7 @@ package enchantment_test
 import (
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
@@ -166,6 +167,68 @@ func TestSpearsTakeMeleeWeaponEnchantments(t *testing.T) {
 			if !e.CompatibleWithItem(spear) || !item.IsPrimaryItem(e, spear) {
 				t.Errorf("%s does not go on a %s spear, or a table does not offer it", e.Name(), tier.Name)
 			}
+		}
+	}
+}
+
+// Java's #enchantable/armor item tag holds #head_armor, #chest_armor,
+// #leg_armor and #foot_armor: the helmets, the turtle shell, chestplates,
+// leggings and boots. The elytra, skulls, carved pumpkins and the armour of
+// animals are worn but are not in it, so the protections and Thorns, whose
+// supported_items it is, do not go on them; nor do Respiration and Aqua
+// Affinity (#enchantable/head_armor) on a skull or a carved pumpkin. Curse
+// of Binding (#enchantable/equippable) and Curse of Vanishing
+// (#enchantable/vanishing) go on the elytra, skulls and carved pumpkins, and
+// not on the armour of animals or a pumpkin.
+func TestArmourTagsLeaveOutTheElytra(t *testing.T) {
+	diamond := item.ArmourTierDiamond{}
+	pieces := []world.Item{
+		item.Helmet{Tier: diamond}, item.TurtleShell{}, item.Chestplate{Tier: diamond},
+		item.Leggings{Tier: diamond}, item.Boots{Tier: diamond},
+	}
+	skull, carved, pumpkin := block.Skull{Type: block.ZombieHead()}, block.Pumpkin{Carved: true}, block.Pumpkin{}
+	worn := []world.Item{item.Elytra{}, skull, carved, pumpkin, item.IronHorseArmour{}, item.WolfArmor{}, item.NautilusArmor{}}
+	for _, e := range []item.EnchantmentType{
+		enchantment.Protection, enchantment.FireProtection, enchantment.BlastProtection,
+		enchantment.ProjectileProtection, enchantment.Thorns,
+	} {
+		for _, i := range pieces {
+			if !e.CompatibleWithItem(i) {
+				t.Errorf("%s does not go on %T", e.Name(), i)
+			}
+		}
+		for _, i := range worn {
+			if e.CompatibleWithItem(i) {
+				t.Errorf("%s goes on %T %v", e.Name(), i, i)
+			}
+		}
+	}
+	for _, e := range []item.EnchantmentType{enchantment.Respiration, enchantment.AquaAffinity} {
+		for _, i := range []world.Item{item.Helmet{Tier: diamond}, item.TurtleShell{}} {
+			if !e.CompatibleWithItem(i) {
+				t.Errorf("%s does not go on %T", e.Name(), i)
+			}
+		}
+		for _, i := range []world.Item{skull, carved} {
+			if e.CompatibleWithItem(i) {
+				t.Errorf("%s goes on %T %v", e.Name(), i, i)
+			}
+		}
+	}
+	for _, i := range append(pieces, item.Elytra{}, skull, carved) {
+		if !enchantment.CurseOfBinding.CompatibleWithItem(i) || !enchantment.CurseOfVanishing.CompatibleWithItem(i) {
+			t.Errorf("a curse does not go on %T %v", i, i)
+		}
+	}
+	for _, i := range []world.Item{pumpkin, item.IronHorseArmour{}, item.WolfArmor{}, item.NautilusArmor{}} {
+		if enchantment.CurseOfBinding.CompatibleWithItem(i) {
+			t.Errorf("Curse of Binding goes on %T %v", i, i)
+		}
+	}
+	// Wolf armour takes Curse of Vanishing as an item.Durable.
+	for _, i := range []world.Item{pumpkin, item.IronHorseArmour{}, item.NautilusArmor{}} {
+		if enchantment.CurseOfVanishing.CompatibleWithItem(i) {
+			t.Errorf("Curse of Vanishing goes on %T %v", i, i)
 		}
 	}
 }

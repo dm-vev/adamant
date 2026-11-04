@@ -36,10 +36,10 @@ func (thorns) CompatibleWithEnchantment(item.EnchantmentType) bool {
 	return true
 }
 
-// CompatibleWithItem ...
+// CompatibleWithItem reports if i is armour, #enchantable/armor, the
+// supported_items of data/minecraft/enchantment/thorns.json.
 func (thorns) CompatibleWithItem(i world.Item) bool {
-	_, ok := i.(item.Armour)
-	return ok
+	return armour(i)
 }
 
 // PrimaryItem reports if i is a chestplate: an enchanting table offers

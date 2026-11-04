@@ -162,6 +162,10 @@ func TestRepairRefused(t *testing.T) {
 		{"a sword and a stick", block.Anvil{}, 30, ironSword.Damage(10), item.NewStack(item.Stick{}, 1), nil},
 		{"no work", block.Anvil{}, 30, ironSword, item.Stack{}, nil},
 		{"a book of sharpness on a mace", block.Anvil{}, 30, item.NewStack(item.Mace{}, 1), item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.Sharpness, 1)), nil},
+		// #enchantable/armor, the supported_items of protection.json and
+		// thorns.json, does not hold the elytra.
+		{"a book of protection on an elytra", block.Anvil{}, 30, item.NewStack(item.Elytra{}, 1), item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.Protection, 1)), nil},
+		{"a book of thorns on an elytra", block.Anvil{}, 30, item.NewStack(item.Elytra{}, 1), item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.Thorns, 1)), nil},
 		{"a name of 51 characters", block.Anvil{}, 30, ironSword, item.Stack{}, name(strings.Repeat("a", item.MaxCustomNameLength+1))},
 		{"a name not of UTF-8", block.Anvil{}, 30, ironSword, item.Stack{}, name("a\xffb")},
 		{"levels short", block.Anvil{}, 1, ironSword.Damage(100), item.NewStack(item.IronIngot{}, 3), nil},

@@ -42,8 +42,8 @@ func (projectileProtection) CompatibleWithEnchantment(t item.EnchantmentType) bo
 	return t != BlastProtection && t != FireProtection && t != Protection
 }
 
-// CompatibleWithItem ...
+// CompatibleWithItem reports if i is armour, #enchantable/armor, the
+// supported_items of data/minecraft/enchantment/projectile_protection.json.
 func (projectileProtection) CompatibleWithItem(i world.Item) bool {
-	_, ok := i.(item.Armour)
-	return ok
+	return armour(i)
 }
