@@ -160,6 +160,33 @@ func TestJavaStackDamageAtMaximum(t *testing.T) {
 	}
 }
 
+// ItemStack.CODEC reads minecraft:damage as a NON_NEGATIVE_INT
+// (DataComponents.DAMAGE) on any item, so it refuses a stack whose damage is
+// negative or no number, in full or short form, or as the Damage of a stack
+// before 1.20.5, which ItemStackComponentizationFix moves to
+// minecraft:damage. A float is read as its int.
+func TestJavaStackNegativeDamage(t *testing.T) {
+	for _, data := range []map[string]any{
+		{"id": "minecraft:diamond_sword", "count": int32(1), "components": map[string]any{"minecraft:damage": int32(-1)}},
+		{"id": "minecraft:diamond_sword", "count": int32(1), "components": map[string]any{"damage": int32(-1)}},
+		{"id": "minecraft:diamond_sword", "Count": int8(1), "tag": map[string]any{"Damage": int32(-5)}},
+		{"id": "minecraft:stone", "count": int32(1), "components": map[string]any{"minecraft:damage": int32(-1)}},
+		{"id": "minecraft:diamond_sword", "count": int32(1), "components": map[string]any{"minecraft:damage": "3"}},
+	} {
+		if s, err := item.StackFromStructureNBT(data); err == nil {
+			t.Errorf("%v: decoded %v, want it refused", data, s)
+		}
+	}
+	for damage, want := range map[any]int{int32(0): 1561, int16(3): 1558, float32(3.7): 1558} {
+		s, err := item.StackFromStructureNBT(map[string]any{
+			"id": "minecraft:diamond_sword", "count": int32(1), "components": map[string]any{"minecraft:damage": damage},
+		})
+		if err != nil || s.Durability() != want {
+			t.Errorf("damage %v: decoded %v with durability %d, %v; want %d", damage, s, s.Durability(), err, want)
+		}
+	}
+}
+
 // ItemStack.CODEC reads the count as an intRange(1, 99) and does not
 // compare it with the max stack size: Java keeps a stack of 99 swords or 65
 // stone and refuses one of 100.

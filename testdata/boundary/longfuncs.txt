@@ -64,7 +64,7 @@ server/entity/piglin_ai.go newPiglinBrain 104
 server/entity/register.go init 132
 server/entity/spawn.go spawnMob 182
 server/entity/template_spawn_zombie.go prepareZombieVillagerTemplateSpawn 125
-server/item/java_nbt.go StackFromStructureNBT 131
+server/item/java_nbt.go StackFromStructureNBT 130
 server/item/java_nbt.go StackToStructureNBT 117
 server/item/recipe/vanilla.go registerVanillaRecipes 160
 server/item/register.go init 229

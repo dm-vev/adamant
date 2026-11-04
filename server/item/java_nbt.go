@@ -26,9 +26,7 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 	if !ok || id == "" {
 		return Stack{}, fmt.Errorf("Java item stack has no string id")
 	}
-	if !strings.Contains(id, ":") {
-		id = "minecraft:" + id
-	}
+	id = javaComponentKey(id)
 	var it world.Item
 	if variant, mapID := FilledMapVariantFromJavaItemID(id); mapID {
 		it = FilledMap{Variant: variant}
@@ -61,7 +59,9 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 	for key, value := range components {
 		switch key {
 		case "minecraft:damage", "damage", "Damage":
-			s = withJavaDamage(s, value)
+			if s, err = withJavaDamage(s, value); err != nil {
+				return Stack{}, fmt.Errorf("item %q: %w", id, err)
+			}
 		case "minecraft:custom_name", "minecraft:item_name", "custom_name", "item_name":
 			if name, ok := javaText(value); ok {
 				s = s.WithCustomName(name)
@@ -137,8 +137,7 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 				}
 				s = s.WithItem(horn)
 			}
-	}
-
+		}
 	}
 	if len(components) != 0 {
 		if encoded, err := json.Marshal(components); err == nil {
@@ -327,15 +326,28 @@ func javaCount(data map[string]any) (int, error) {
 }
 
 // withJavaDamage applies a damage component to a durable stack.
-// ItemStack.getDamageValue clamps the damage to the max_damage, and the
-// codec keeps a stack at or past it. A durability of 0 breaks a stack here,
-// so such a stack keeps one point, which its next use takes.
-func withJavaDamage(s Stack, value any) Stack {
+// ItemStack.CODEC reads minecraft:damage as a NON_NEGATIVE_INT
+// (DataComponents.DAMAGE), on any item: it refuses a negative damage or one
+// that is no number, which withJavaDamage returns an error for. A float is
+// read as its int (Number.intValue). ItemStack.getDamageValue clamps the
+// damage to the max_damage, and the codec keeps a stack at or past it. A
+// durability of 0 breaks a stack here, so such a stack keeps one point,
+// which its next use takes.
+func withJavaDamage(s Stack, value any) (Stack, error) {
 	d, ok := javaInt(value)
-	if maxDamage := s.MaxDurability(); ok && maxDamage > 0 {
-		return s.WithDurability(maxDamage - int(min(d, int64(maxDamage-1))))
+	switch f := value.(type) {
+	case float32:
+		d, ok = int64(f), true
+	case float64:
+		d, ok = int64(f), true
 	}
-	return s
+	if !ok || d < 0 {
+		return Stack{}, fmt.Errorf("damage %v is not a non-negative integer", value)
+	}
+	if maxDamage := s.MaxDurability(); maxDamage > 0 {
+		return s.WithDurability(maxDamage - int(min(d, int64(maxDamage-1)))), nil
+	}
+	return s, nil
 }
 
 // applyJavaEnchantments applies an enchantments component: a map of IDs to
