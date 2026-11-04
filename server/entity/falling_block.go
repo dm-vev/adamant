@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/world"
@@ -38,7 +39,10 @@ func (fallingBlockType) BBox(world.Entity) cube.BBox {
 
 func (fallingBlockType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := fallingBlockConf
-	conf.Block = nbtconv.Block(m, "FallingBlock")
+	if conf.Block = nbtconv.Block(m, "FallingBlock"); conf.Block == nil {
+		// Java FallingBlockEntity reads a missing or unknown block as sand.
+		conf.Block = block.Sand{}
+	}
 	conf.DistanceFallen = nbtconv.Float64(m, "FallDistance")
 	b := conf.New()
 	if nbtconv.Bool(m, "HurtEntities") {

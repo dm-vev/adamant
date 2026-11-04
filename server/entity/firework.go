@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -48,7 +50,13 @@ func (fireworkType) BBox(world.Entity) cube.BBox { return cube.BBox{} }
 
 func (fireworkType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := fireworkConf
-	conf.Firework = item.MapNBT(m, "Item").Item().(item.Firework)
+	// Java FireworkRocketEntity reads a missing item as a plain rocket of
+	// flight 1.
+	firework, ok := item.MapNBT(m, "Item").Item().(item.Firework)
+	if !ok {
+		firework = item.Firework{Duration: time.Second / 2}
+	}
+	conf.Firework = firework
 	conf.ExistenceDuration = conf.Firework.RandomisedDuration()
 
 	data.Data = conf.New()
