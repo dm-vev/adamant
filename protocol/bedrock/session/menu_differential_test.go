@@ -47,6 +47,7 @@ var menuRequestScenarios = []struct {
 	// and merchants.
 	{"loom", (*scenario).loomRequestsScenario},
 	{"stonecutter", (*scenario).stonecutterRequestsScenario},
+	{"beacon", (*scenario).beaconRequestsScenario},
 }
 
 // TestGoldenMenuRequests runs the scenarios of item stack requests twice,

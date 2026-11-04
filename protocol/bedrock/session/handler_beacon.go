@@ -16,6 +16,23 @@ const beaconInputSlot = 0x1b
 // handleBeaconPayment handles the selection of effects in a beacon and the removal of the item used to pay
 // for those effects.
 func (h *ItemStackRequestHandler) handleBeaconPayment(a *v2193.BeaconPaymentStackRequestAction, s *Session, tx *world.Tx) error {
+	if h.batch != nil {
+		primary, err := beaconEffect(a.PrimaryEffect)
+		if err != nil {
+			return fmt.Errorf("primary effect selected is not allowed: %w", err)
+		}
+		secondary, err := beaconEffect(a.SecondaryEffect)
+		if err != nil {
+			return fmt.Errorf("secondary effect selected is not allowed: %w", err)
+		}
+		if err := h.batchOp(func() error { return h.batch.PayBeacon(primary, secondary) }); err != nil {
+			return err
+		}
+		// The client will send a Destroy action after this action, which
+		// is ignored: the payment is gone already.
+		h.ignoreDestroy = true
+		return nil
+	}
 	slot := v2193.StackRequestSlotInfo{
 		Container: v2193.FullContainerName{ContainerID: v2193.ContainerBeaconPayment},
 		Slot:      beaconInputSlot,
@@ -77,4 +94,21 @@ func (h *ItemStackRequestHandler) validBeaconEffect(id int32, beacon block.Beaco
 		return true
 	}
 	return false
+}
+
+// beaconEffect returns the lasting effect of the ID of a beacon payment, nil
+// for 0, no effect. An ID of no effect, or of an instant one, fails.
+func beaconEffect(id int32) (effect.LastingType, error) {
+	if id == 0 {
+		return nil, nil
+	}
+	e, ok := effect.ByID(int(id))
+	if !ok {
+		return nil, fmt.Errorf("unknown effect %v", id)
+	}
+	lasting, ok := e.(effect.LastingType)
+	if !ok {
+		return nil, fmt.Errorf("effect %v is not lasting", id)
+	}
+	return lasting, nil
 }
