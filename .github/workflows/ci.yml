@@ -117,18 +117,12 @@ jobs:
           # server/world/... without the world generators.
           - name: world
             packages: world
-          # TestGoldenJoin waits a fixed 5 s for the session to resend the
-          # abilities of the player; under -race that takes longer, and the
-          # test fails though nothing races (it passes with a 30 s wait). The
-          # golden job runs it without -race.
           - name: session
             packages: ./protocol/bedrock/session
-            skip: ^TestGoldenJoin$
           - name: menu, player
             packages: ./server/menu ./server/player/...
     env:
       PACKAGES: ${{ matrix.packages }}
-      SKIP: ${{ matrix.skip }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -142,9 +136,6 @@ jobs:
             set -- $(go list ./server/world/... | grep -v -E '^github.com/df-mc/dragonfly/server/world/generator(/|$)')
           else
             set -- $PACKAGES
-          fi
-          if [ -n "$SKIP" ]; then
-            set -- -skip "$SKIP" "$@"
           fi
           go test -race -timeout 40m "$@"
 

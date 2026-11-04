@@ -225,7 +225,7 @@ func (o *observed) quit(c *scenario, heading string) {
 	_ = c.conn.Close()
 	select {
 	case <-c.conn.eof:
-	case <-time.After(5 * time.Second):
+	case <-time.After(goldenDeadline):
 		o.t.Fatalf("%s: the session of %s did not read the end of its connection", heading, o.names[c])
 	}
 	// The session marks its inbox closed right after it read the end.
@@ -233,7 +233,7 @@ func (o *observed) quit(c *scenario, heading string) {
 	o.advance()
 	select {
 	case <-c.stopped:
-	case <-time.After(5 * time.Second):
+	case <-time.After(goldenDeadline):
 		o.t.Fatalf("%s: the session of %s did not stop in the tick after its connection closed", heading, o.names[c])
 	}
 	for i, other := range o.clients {

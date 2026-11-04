@@ -362,7 +362,7 @@ func (s *serverScenario) preload() {
 		s.loader.Move(tx, spawn)
 	})
 	centre := world.ChunkPos{int32(spawn[0]) >> 4, int32(spawn[2]) >> 4}
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(goldenDeadline)
 	for {
 		ready := true
 		<-w.Exec(func(tx *world.Tx) {
@@ -509,7 +509,7 @@ func (s *serverScenario) awaitSpawn(heading string) *world.EntityHandle {
 	select {
 	case h := <-s.spawned:
 		return h
-	case <-time.After(10 * time.Second):
+	case <-time.After(goldenDeadline):
 		s.t.Fatalf("%s: %s: the server did not spawn the player", s.name, heading)
 		return nil
 	}
@@ -567,7 +567,7 @@ func (s *serverScenario) awaitReader(c *serverClient) {
 	s.t.Helper()
 	select {
 	case <-c.conn.ready:
-	case <-time.After(10 * time.Second):
+	case <-time.After(goldenDeadline):
 		s.t.Fatalf("%s: the session of %s does not read", s.name, c.who.name)
 	}
 }
@@ -578,7 +578,7 @@ func (s *serverScenario) settle() {
 	s.t.Helper()
 	w := s.srv.World()
 	start := w.CurrentTick()
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(goldenDeadline)
 	for w.CurrentTick() < start+settleTicks {
 		if time.Now().After(deadline) {
 			s.t.Fatalf("%s: the world does not tick", s.name)
@@ -698,7 +698,7 @@ func (s *serverScenario) awaitSave(name string) {
 		if got != name {
 			s.t.Fatalf("%s: the server saved %s, not %s", s.name, got, name)
 		}
-	case <-time.After(10 * time.Second):
+	case <-time.After(goldenDeadline):
 		s.t.Fatalf("%s: the server did not save %s", s.name, name)
 	}
 }
@@ -722,7 +722,7 @@ func (c *serverClient) readMarker() {
 // done reports true for a packet read.
 func (c *serverClient) readUntil(done func(pk proto.Packet) bool) {
 	c.s.t.Helper()
-	timer := time.NewTimer(10 * time.Second)
+	timer := time.NewTimer(goldenDeadline)
 	defer timer.Stop()
 	for {
 		select {
@@ -748,7 +748,7 @@ func (c *serverClient) readClosed() {
 	c.s.t.Helper()
 	select {
 	case <-c.conn.closed:
-	case <-time.After(10 * time.Second):
+	case <-time.After(goldenDeadline):
 		c.s.t.Fatalf("%s: the server did not close the connection of %s", c.s.name, c.who.name)
 	}
 	// A flusher that saw the connection open may still be writing to it.

@@ -508,7 +508,7 @@ func (s *scenario) close() {
 	}
 	select {
 	case <-s.stopped:
-	case <-time.After(5 * time.Second):
+	case <-time.After(goldenDeadline):
 		s.t.Errorf("%s: the session did not stop", s.name)
 	}
 	if s.ownsWorld {
@@ -625,7 +625,7 @@ func (s *scenario) send(pk proto.Packet) {
 	back := decodeAs(s.t, pk.ID(), encode(pk))
 	select {
 	case s.conn.in <- back:
-	case <-time.After(5 * time.Second):
+	case <-time.After(goldenDeadline):
 		s.t.Fatalf("%s: the session does not read", s.name)
 	}
 	s.awaitReader()
@@ -636,7 +636,7 @@ func (s *scenario) awaitReader() {
 	s.t.Helper()
 	select {
 	case <-s.conn.ready:
-	case <-time.After(5 * time.Second):
+	case <-time.After(goldenDeadline):
 		s.t.Fatalf("%s: the session does not read", s.name)
 	}
 }
@@ -648,7 +648,7 @@ func (s *scenario) awaitReader() {
 // once it was sent the timer is given a moment more to end it.
 func (s *scenario) awaitPacket(name string, keep bool) {
 	s.t.Helper()
-	timer := time.NewTimer(5 * time.Second)
+	timer := time.NewTimer(goldenDeadline)
 	defer timer.Stop()
 	for {
 		select {
@@ -662,6 +662,13 @@ func (s *scenario) awaitPacket(name string, keep bool) {
 		}
 	}
 }
+
+// goldenDeadline is how long the harnesses wait for what a step needs
+// before they fail it: the session reading, the server accepting, spawning
+// or saving a player, a packet of a timer. Only a failing step waits it out,
+// so it is long enough for a runner under load or the race detector, where
+// 5 or 10 seconds were not.
+const goldenDeadline = 30 * time.Second
 
 // timerSettle is how long a transaction of a timer of the session is given
 // to end once it sent what was waited for. It orders nothing recorded:
@@ -682,7 +689,7 @@ func (s *scenario) drain(keep bool) {
 	s.markers++
 	marker := fmt.Sprintf("golden marker %d", s.markers)
 	s.run(func(_ *world.Tx, p *player.Player) { p.Message(marker) })
-	timer := time.NewTimer(5 * time.Second)
+	timer := time.NewTimer(goldenDeadline)
 	defer timer.Stop()
 	for {
 		select {

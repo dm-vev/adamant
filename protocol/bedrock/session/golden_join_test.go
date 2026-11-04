@@ -90,7 +90,7 @@ var joinServer = sync.OnceValue(func() goldenServer {
 	}()
 	select {
 	case <-accepted:
-	case <-time.After(10 * time.Second):
+	case <-time.After(goldenDeadline):
 		out.err = errors.New("the server did not accept the player")
 		return out
 	}
