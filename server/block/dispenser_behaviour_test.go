@@ -727,3 +727,22 @@ func readDispenseGolden(t *testing.T) (defaults, items map[string]map[string]str
 	}
 	return defaults, items
 }
+
+// TestDispenseBehavioursMatchSwitch dispenses every registered item in every
+// scenario by the behaviours and by the switch they replace, and requires
+// the same outcome, with the full NBT of each entity.
+func TestDispenseBehavioursMatchSwitch(t *testing.T) {
+	t.Parallel()
+	var mu sync.Mutex
+	forEachDispensed(dispenseDomain(), func(_ int, it world.Item) {
+		got := dispenseAll(t, it, scheduledDispenseTick, describer{})
+		want := dispenseAll(t, it, block.ScheduledTickBySwitch, describer{})
+		for slot := range got {
+			if g, w := got[slot].String(), want[slot].String(); g != w {
+				mu.Lock()
+				t.Errorf("%s in %s:\nbehaviours:\n%s\nswitch:\n%s", describeValue(it), dispenseSlotName(slot), g, w)
+				mu.Unlock()
+			}
+		}
+	})
+}
