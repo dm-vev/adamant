@@ -17,6 +17,9 @@ func (h *ItemStackRequestHandler) handleStonecutting(a *v2193.CraftRecipeStackRe
 	if !ok {
 		return fmt.Errorf("recipe with network id %v does not exist", a.RecipeNetworkID)
 	}
+	if h.batch != nil {
+		return h.batchOp(func() error { return h.batch.Cut(craft, int(a.NumberOfCrafts)) })
+	}
 	if _, shapeless := craft.(recipe.Shapeless); !shapeless {
 		return fmt.Errorf("recipe with network id %v is not a shapeless recipe", a.RecipeNetworkID)
 	}
