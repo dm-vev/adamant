@@ -138,8 +138,7 @@ func (s Slab) Model() world.BlockModel {
 
 // EncodeItem ...
 func (s Slab) EncodeItem() (string, int16) {
-	name, suffix := encodeSlabBlock(s.Block, false)
-	return "minecraft:" + name + suffix, 0
+	return "minecraft:" + slabName(s.Block, false), 0
 }
 
 // EncodeBlock ...
@@ -148,8 +147,7 @@ func (s Slab) EncodeBlock() (string, map[string]any) {
 	if s.Top {
 		side = "top"
 	}
-	name, suffix := encodeSlabBlock(s.Block, s.Double)
-	return "minecraft:" + name + suffix, map[string]any{"minecraft:vertical_half": side}
+	return "minecraft:" + slabName(s.Block, s.Double), map[string]any{"minecraft:vertical_half": side}
 }
 
 // allSlabs ...

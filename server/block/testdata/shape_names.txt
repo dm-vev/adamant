@@ -1,0 +1,104 @@
+# The names of the slab, double slab, stairs and wall of each material, without the namespace, or - for none.
+# Regenerate with: go test -run TestShapeNamesMatch -update-shape-names ./server/block
+
+block.Andesite{solid:{} bassDrum:{} Polished:true} slab=polished_andesite_slab double=polished_andesite_double_slab stairs=polished_andesite wall=-
+block.Andesite{solid:{} bassDrum:{} Polished:false} slab=andesite_slab double=andesite_double_slab stairs=andesite wall=andesite
+block.BambooMosaic{solid:{} bass:{}} slab=bamboo_mosaic_slab double=bamboo_mosaic_double_slab stairs=bamboo_mosaic wall=-
+block.Blackstone{solid:{} bassDrum:{} Type:polished_blackstone} slab=polished_blackstone_slab double=polished_blackstone_double_slab stairs=polished_blackstone wall=polished_blackstone
+block.Blackstone{solid:{} bassDrum:{} Type:blackstone} slab=blackstone_slab double=blackstone_double_slab stairs=blackstone wall=blackstone
+block.Bricks{solid:{} bassDrum:{}} slab=brick_slab double=brick_double_slab stairs=brick wall=brick
+block.Cinnabar{solid:{} bassDrum:{} Chiseled:false} slab=cinnabar_slab double=cinnabar_double_slab stairs=cinnabar wall=cinnabar
+block.CinnabarBricks{solid:{} bassDrum:{}} slab=cinnabar_brick_slab double=cinnabar_brick_double_slab stairs=cinnabar_brick wall=cinnabar_brick
+block.Cobblestone{solid:{} bassDrum:{} Mossy:true} slab=mossy_cobblestone_slab double=mossy_cobblestone_double_slab stairs=mossy_cobblestone wall=mossy_cobblestone
+block.Cobblestone{solid:{} bassDrum:{} Mossy:false} slab=cobblestone_slab double=cobblestone_double_slab stairs=stone wall=cobblestone
+block.DeepslateBricks{solid:{} bassDrum:{} Cracked:false} slab=deepslate_brick_slab double=deepslate_brick_double_slab stairs=deepslate_brick wall=deepslate_brick
+block.DeepslateTiles{solid:{} bassDrum:{} Cracked:false} slab=deepslate_tile_slab double=deepslate_tile_double_slab stairs=deepslate_tile wall=deepslate_tile
+block.Deepslate{solid:{} bassDrum:{} Type:cobbled_deepslate Axis:y} slab=cobbled_deepslate_slab double=cobbled_deepslate_double_slab stairs=cobbled_deepslate wall=cobbled_deepslate
+block.Deepslate{solid:{} bassDrum:{} Type:polished_deepslate Axis:y} slab=polished_deepslate_slab double=polished_deepslate_double_slab stairs=polished_deepslate wall=polished_deepslate
+block.Diorite{solid:{} bassDrum:{} Polished:true} slab=polished_diorite_slab double=polished_diorite_double_slab stairs=polished_diorite wall=-
+block.Diorite{solid:{} bassDrum:{} Polished:false} slab=diorite_slab double=diorite_double_slab stairs=diorite wall=diorite
+block.EndBricks{solid:{} bassDrum:{}} slab=end_stone_brick_slab double=end_stone_brick_double_slab stairs=end_brick wall=end_stone_brick
+block.Granite{solid:{} bassDrum:{} Polished:true} slab=polished_granite_slab double=polished_granite_double_slab stairs=polished_granite wall=-
+block.Granite{solid:{} bassDrum:{} Polished:false} slab=granite_slab double=granite_double_slab stairs=granite wall=granite
+block.MudBricks{solid:{} bassDrum:{}} slab=mud_brick_slab double=mud_brick_double_slab stairs=mud_brick wall=mud_brick
+block.NetherBricks{solid:{} bassDrum:{} Type:red_nether_brick} slab=red_nether_brick_slab double=red_nether_brick_double_slab stairs=red_nether_brick wall=red_nether_brick
+block.NetherBricks{solid:{} bassDrum:{} Type:nether_brick} slab=nether_brick_slab double=nether_brick_double_slab stairs=nether_brick wall=nether_brick
+block.PolishedBlackstoneBrick{solid:{} bassDrum:{} Cracked:false} slab=polished_blackstone_brick_slab double=polished_blackstone_brick_double_slab stairs=polished_blackstone_brick wall=polished_blackstone_brick
+block.PolishedCinnabar{solid:{} bassDrum:{}} slab=polished_cinnabar_slab double=polished_cinnabar_double_slab stairs=polished_cinnabar wall=polished_cinnabar
+block.PolishedSulfur{solid:{} bassDrum:{}} slab=polished_sulfur_slab double=polished_sulfur_double_slab stairs=polished_sulfur wall=polished_sulfur
+block.PolishedTuff{solid:{} bassDrum:{}} slab=polished_tuff_slab double=polished_tuff_double_slab stairs=polished_tuff wall=polished_tuff
+block.Purpur{solid:{} bassDrum:{} Axis:y} slab=purpur_slab double=purpur_double_slab stairs=purpur wall=-
+block.Quartz{solid:{} bassDrum:{} Smooth:true Axis:y} slab=smooth_quartz_slab double=smooth_quartz_double_slab stairs=smooth_quartz wall=-
+block.Quartz{solid:{} bassDrum:{} Smooth:false Axis:y} slab=quartz_slab double=quartz_double_slab stairs=quartz wall=-
+block.ResinBricks{solid:{} bassDrum:{} Chiseled:false} slab=resin_brick_slab double=resin_brick_double_slab stairs=resin_brick wall=resin_brick
+block.StoneBricks{solid:{} bassDrum:{} Type:mossy_stone_bricks} slab=mossy_stone_brick_slab double=mossy_stone_brick_double_slab stairs=mossy_stone_brick wall=mossy_stone_brick
+block.StoneBricks{solid:{} bassDrum:{} Type:stone_bricks} slab=stone_brick_slab double=stone_brick_double_slab stairs=stone_brick wall=stone_brick
+block.Stone{solid:{} bassDrum:{} Smooth:true} slab=smooth_stone_slab double=smooth_stone_double_slab stairs=- wall=-
+block.Stone{solid:{} bassDrum:{} Smooth:false} slab=normal_stone_slab double=normal_stone_double_slab stairs=normal_stone wall=-
+block.Sulfur{solid:{} bassDrum:{} Chiseled:false} slab=sulfur_slab double=sulfur_double_slab stairs=sulfur wall=sulfur
+block.SulfurBricks{solid:{} bassDrum:{}} slab=sulfur_brick_slab double=sulfur_brick_double_slab stairs=sulfur_brick wall=sulfur_brick
+block.Tuff{solid:{} bassDrum:{} Chiseled:false} slab=tuff_slab double=tuff_double_slab stairs=tuff wall=tuff
+block.TuffBricks{solid:{} bassDrum:{} Chiseled:false} slab=tuff_brick_slab double=tuff_brick_double_slab stairs=tuff_brick wall=tuff_brick
+block.Prismarine{solid:{} bassDrum:{} Type:prismarine} slab=prismarine_slab double=prismarine_double_slab stairs=prismarine wall=prismarine
+block.Prismarine{solid:{} bassDrum:{} Type:dark_prismarine} slab=dark_prismarine_slab double=dark_prismarine_double_slab stairs=dark_prismarine wall=-
+block.Prismarine{solid:{} bassDrum:{} Type:prismarine_bricks} slab=prismarine_brick_slab double=prismarine_brick_double_slab stairs=prismarine_bricks wall=-
+block.Sandstone{solid:{} bassDrum:{} Type:default Red:false} slab=sandstone_slab double=sandstone_double_slab stairs=sandstone wall=sandstone
+block.Sandstone{solid:{} bassDrum:{} Type:default Red:true} slab=red_sandstone_slab double=red_sandstone_double_slab stairs=red_sandstone wall=red_sandstone
+block.Sandstone{solid:{} bassDrum:{} Type:cut Red:false} slab=cut_sandstone_slab double=cut_sandstone_double_slab stairs=- wall=-
+block.Sandstone{solid:{} bassDrum:{} Type:cut Red:true} slab=cut_red_sandstone_slab double=cut_red_sandstone_double_slab stairs=- wall=-
+block.Sandstone{solid:{} bassDrum:{} Type:smooth Red:false} slab=smooth_sandstone_slab double=smooth_sandstone_double_slab stairs=smooth_sandstone wall=-
+block.Sandstone{solid:{} bassDrum:{} Type:smooth Red:true} slab=smooth_red_sandstone_slab double=smooth_red_sandstone_double_slab stairs=smooth_red_sandstone wall=-
+block.Planks{solid:{} bass:{} Wood:oak} slab=oak_slab double=oak_double_slab stairs=oak wall=-
+block.Planks{solid:{} bass:{} Wood:spruce} slab=spruce_slab double=spruce_double_slab stairs=spruce wall=-
+block.Planks{solid:{} bass:{} Wood:birch} slab=birch_slab double=birch_double_slab stairs=birch wall=-
+block.Planks{solid:{} bass:{} Wood:jungle} slab=jungle_slab double=jungle_double_slab stairs=jungle wall=-
+block.Planks{solid:{} bass:{} Wood:acacia} slab=acacia_slab double=acacia_double_slab stairs=acacia wall=-
+block.Planks{solid:{} bass:{} Wood:dark_oak} slab=dark_oak_slab double=dark_oak_double_slab stairs=dark_oak wall=-
+block.Planks{solid:{} bass:{} Wood:crimson} slab=crimson_slab double=crimson_double_slab stairs=crimson wall=-
+block.Planks{solid:{} bass:{} Wood:warped} slab=warped_slab double=warped_double_slab stairs=warped wall=-
+block.Planks{solid:{} bass:{} Wood:mangrove} slab=mangrove_slab double=mangrove_double_slab stairs=mangrove wall=-
+block.Planks{solid:{} bass:{} Wood:cherry} slab=cherry_slab double=cherry_double_slab stairs=cherry wall=-
+block.Planks{solid:{} bass:{} Wood:pale_oak} slab=pale_oak_slab double=pale_oak_double_slab stairs=pale_oak wall=-
+block.Planks{solid:{} bass:{} Wood:bamboo} slab=bamboo_slab double=bamboo_double_slab stairs=bamboo wall=-
+block.Planks{solid:{} bass:{} Wood:poplar} slab=poplar_slab double=poplar_double_slab stairs=poplar wall=-
+block.Wool{solid:{} Colour:white} slab=white_wool_slab double=white_wool_double_slab stairs=white_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:white} slab=white_concrete_slab double=white_concrete_double_slab stairs=white_concrete wall=-
+block.Wool{solid:{} Colour:orange} slab=orange_wool_slab double=orange_wool_double_slab stairs=orange_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:orange} slab=orange_concrete_slab double=orange_concrete_double_slab stairs=orange_concrete wall=-
+block.Wool{solid:{} Colour:magenta} slab=magenta_wool_slab double=magenta_wool_double_slab stairs=magenta_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:magenta} slab=magenta_concrete_slab double=magenta_concrete_double_slab stairs=magenta_concrete wall=-
+block.Wool{solid:{} Colour:light_blue} slab=light_blue_wool_slab double=light_blue_wool_double_slab stairs=light_blue_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:light_blue} slab=light_blue_concrete_slab double=light_blue_concrete_double_slab stairs=light_blue_concrete wall=-
+block.Wool{solid:{} Colour:yellow} slab=yellow_wool_slab double=yellow_wool_double_slab stairs=yellow_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:yellow} slab=yellow_concrete_slab double=yellow_concrete_double_slab stairs=yellow_concrete wall=-
+block.Wool{solid:{} Colour:lime} slab=lime_wool_slab double=lime_wool_double_slab stairs=lime_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:lime} slab=lime_concrete_slab double=lime_concrete_double_slab stairs=lime_concrete wall=-
+block.Wool{solid:{} Colour:pink} slab=pink_wool_slab double=pink_wool_double_slab stairs=pink_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:pink} slab=pink_concrete_slab double=pink_concrete_double_slab stairs=pink_concrete wall=-
+block.Wool{solid:{} Colour:gray} slab=gray_wool_slab double=gray_wool_double_slab stairs=gray_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:gray} slab=gray_concrete_slab double=gray_concrete_double_slab stairs=gray_concrete wall=-
+block.Wool{solid:{} Colour:light_gray} slab=light_gray_wool_slab double=light_gray_wool_double_slab stairs=light_gray_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:light_gray} slab=light_gray_concrete_slab double=light_gray_concrete_double_slab stairs=light_gray_concrete wall=-
+block.Wool{solid:{} Colour:cyan} slab=cyan_wool_slab double=cyan_wool_double_slab stairs=cyan_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:cyan} slab=cyan_concrete_slab double=cyan_concrete_double_slab stairs=cyan_concrete wall=-
+block.Wool{solid:{} Colour:purple} slab=purple_wool_slab double=purple_wool_double_slab stairs=purple_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:purple} slab=purple_concrete_slab double=purple_concrete_double_slab stairs=purple_concrete wall=-
+block.Wool{solid:{} Colour:blue} slab=blue_wool_slab double=blue_wool_double_slab stairs=blue_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:blue} slab=blue_concrete_slab double=blue_concrete_double_slab stairs=blue_concrete wall=-
+block.Wool{solid:{} Colour:brown} slab=brown_wool_slab double=brown_wool_double_slab stairs=brown_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:brown} slab=brown_concrete_slab double=brown_concrete_double_slab stairs=brown_concrete wall=-
+block.Wool{solid:{} Colour:green} slab=green_wool_slab double=green_wool_double_slab stairs=green_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:green} slab=green_concrete_slab double=green_concrete_double_slab stairs=green_concrete wall=-
+block.Wool{solid:{} Colour:red} slab=red_wool_slab double=red_wool_double_slab stairs=red_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:red} slab=red_concrete_slab double=red_concrete_double_slab stairs=red_concrete wall=-
+block.Wool{solid:{} Colour:black} slab=black_wool_slab double=black_wool_double_slab stairs=black_wool wall=-
+block.Concrete{solid:{} bassDrum:{} Colour:black} slab=black_concrete_slab double=black_concrete_double_slab stairs=black_concrete wall=-
+block.PetrifiedOak{solid:{}} slab=petrified_oak_slab double=petrified_oak_double_slab stairs=- wall=-
+block.Copper{solid:{} bassDrum:{} Type:cut Oxidation: Waxed:false} slab=cut_copper_slab double=double_cut_copper_slab stairs=cut_copper wall=-
+block.Copper{solid:{} bassDrum:{} Type:cut Oxidation: Waxed:true} slab=waxed_cut_copper_slab double=waxed_double_cut_copper_slab stairs=waxed_cut_copper wall=-
+block.Copper{solid:{} bassDrum:{} Type:cut Oxidation:exposed Waxed:false} slab=exposed_cut_copper_slab double=exposed_double_cut_copper_slab stairs=exposed_cut_copper wall=-
+block.Copper{solid:{} bassDrum:{} Type:cut Oxidation:exposed Waxed:true} slab=waxed_exposed_cut_copper_slab double=waxed_exposed_double_cut_copper_slab stairs=waxed_exposed_cut_copper wall=-
+block.Copper{solid:{} bassDrum:{} Type:cut Oxidation:weathered Waxed:false} slab=weathered_cut_copper_slab double=weathered_double_cut_copper_slab stairs=weathered_cut_copper wall=-
+block.Copper{solid:{} bassDrum:{} Type:cut Oxidation:weathered Waxed:true} slab=waxed_weathered_cut_copper_slab double=waxed_weathered_double_cut_copper_slab stairs=waxed_weathered_cut_copper wall=-
+block.Copper{solid:{} bassDrum:{} Type:cut Oxidation:oxidized Waxed:false} slab=oxidized_cut_copper_slab double=oxidized_double_cut_copper_slab stairs=oxidized_cut_copper wall=-
+block.Copper{solid:{} bassDrum:{} Type:cut Oxidation:oxidized Waxed:true} slab=waxed_oxidized_cut_copper_slab double=waxed_oxidized_double_cut_copper_slab stairs=waxed_oxidized_cut_copper wall=-
