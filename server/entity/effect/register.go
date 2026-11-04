@@ -2,9 +2,10 @@ package effect
 
 import "sync"
 
-// Register registers an Effect with a specific ID to translate from and to on disk and network. An Effect
-// instance may be created by creating a struct instance in this package like
-// effect.regeneration{}.
+// Register registers an Effect with a specific ID, Bedrock's numbering of
+// effects, which the world format saves effects by and Bedrock clients are
+// sent. An Effect instance may be created by creating a struct instance in
+// this package like effect.regeneration{}.
 func Register(id int, e Type) {
 	effectMu.Lock()
 	defer effectMu.Unlock()

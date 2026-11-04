@@ -26,7 +26,11 @@ type fallingBlockType struct{}
 func (t fallingBlockType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
 	return &Ent{tx: tx, handle: handle, data: data}
 }
-func (fallingBlockType) EncodeEntity() string   { return "minecraft:falling_block" }
+func (fallingBlockType) EncodeEntity() string { return "minecraft:falling_block" }
+
+// NetworkOffset returns the height of the origin of a Bedrock actor of the
+// type above its feet, which the world format and the physics ported from
+// BDS use.
 func (fallingBlockType) NetworkOffset() float64 { return 0.5 }
 func (fallingBlockType) BBox(world.Entity) cube.BBox {
 	return cube.Box(-0.49, 0, -0.49, 0.49, 0.98, 0.49)

@@ -22,9 +22,10 @@ type EntityType interface {
 	// Open returns an Entity implementation in a transaction.
 	Open(tx *Tx, handle *EntityHandle, data *EntityData) Entity
 
-	// EncodeEntity converts the Entity to its encoded representation: It
-	// returns the type of the Minecraft Entity, for example
-	// 'minecraft:falling_block'.
+	// EncodeEntity returns the name the type is registered and compared by,
+	// for example 'minecraft:falling_block'. Vanilla types are named by
+	// their Bedrock identifiers, except where BedrockEntityIdentifier gives
+	// the identifier the world format saves the type by.
 	EncodeEntity() string
 	// BBox returns the bounding box of an Entity with this EntityType.
 	BBox(e Entity) cube.BBox
@@ -350,8 +351,9 @@ func (e *EntityHandle) UUID() uuid.UUID {
 	return e.id
 }
 
-// UniqueID returns the signed Bedrock actor identity used by the world provider.
-// It is distinct from a session's entity runtime ID.
+// UniqueID returns the identity of the entity in the world format: the signed
+// actor ID that Bedrock's world format saves it by. It is distinct from
+// RuntimeID.
 func (e *EntityHandle) UniqueID() int64 {
 	return int64(binary.LittleEndian.Uint64(e.id[8:]))
 }
@@ -359,9 +361,9 @@ func (e *EntityHandle) UniqueID() int64 {
 // runtimeIDs counts the runtime IDs handed out.
 var runtimeIDs atomic.Uint64
 
-// RuntimeID returns the number the EntityHandle is known by on the network,
-// the same for every viewer and never handed out again, as BDS numbers the
-// actors of a level.
+// RuntimeID returns a number any adapter may know the EntityHandle by, the
+// same for every viewer and never handed out again, as BDS numbers the actors
+// of a level. An adapter may also number entities itself.
 func (e *EntityHandle) RuntimeID() uint64 {
 	if id := e.runtimeID.Load(); id != 0 {
 		return id

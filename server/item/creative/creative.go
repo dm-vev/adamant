@@ -1,3 +1,6 @@
+// Package creative holds the items and groups of the creative inventory. A
+// feature of Bedrock Edition: adapters of other editions may show nothing of
+// it.
 package creative
 
 import (

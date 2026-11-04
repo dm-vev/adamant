@@ -1,3 +1,5 @@
+// Package debug holds the debug shapes a player may be shown. A feature of
+// Bedrock Edition: adapters of other editions may show nothing of it.
 package debug
 
 // Renderer represents an interface for a renderer that can manage debug shapes.

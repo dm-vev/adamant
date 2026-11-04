@@ -189,7 +189,8 @@ func (b *AquaticMobBehaviour) bedrockVariantNBT() map[string]any {
 }
 
 // BedrockVariant returns the variant, mark variant and colours that Bedrock
-// draws the mob by.
+// draws the mob by, which the world format saves and Bedrock clients are
+// sent.
 func (a *AquaticMob) BedrockVariant() (variant, mark int32, color, color2 byte) {
 	m := a.behaviour().bedrockVariantNBT()
 	return m["Variant"].(int32), m["MarkVariant"].(int32), m["Color"].(byte), m["Color2"].(byte)

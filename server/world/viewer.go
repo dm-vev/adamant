@@ -73,7 +73,8 @@ type Viewer interface {
 	// ViewBlockAction views an action performed by a block. Available actions may be found in the `action`
 	// package, and include things such as a chest opening.
 	ViewBlockAction(pos cube.Pos, a BlockAction)
-	// ViewEmote views an emote being performed by another Entity.
+	// ViewEmote views an emote being performed by another Entity. Emotes are a
+	// feature of Bedrock Edition: adapters of other editions may show nothing.
 	ViewEmote(e Entity, emote uuid.UUID)
 	// ViewSkin views the current skin of a player.
 	ViewSkin(e Entity)

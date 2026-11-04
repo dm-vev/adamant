@@ -1,3 +1,6 @@
+// Package skin holds the skins of players: their textures, models,
+// animations and capes. A feature of Bedrock Edition: adapters of other
+// editions may show nothing of it.
 package skin
 
 import (

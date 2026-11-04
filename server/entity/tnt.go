@@ -113,7 +113,11 @@ func (t tntType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Enti
 	return &TNT{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 
-func (tntType) EncodeEntity() string   { return "minecraft:tnt" }
+func (tntType) EncodeEntity() string { return "minecraft:tnt" }
+
+// NetworkOffset returns the height of the origin of a Bedrock actor of the
+// type above its feet, which the world format and the physics ported from
+// BDS use.
 func (tntType) NetworkOffset() float64 { return 0.49 }
 func (tntType) BBox(world.Entity) cube.BBox {
 	return cube.Box(-0.49, 0, -0.49, 0.49, 0.98, 0.49)

@@ -41,7 +41,8 @@ type SignText struct {
 	// Glowing specifies if the Sign has glowing text on the current side. If set to true, the text will be visible even
 	// in the dark, and it will have an outline to improve visibility.
 	Glowing bool
-	// Owner holds the XUID of the player that most recently edited this side of the sign.
+	// Owner holds the XUID of the player that most recently edited this side of the sign, as the
+	// world format saves it. It is empty for players without an XUID.
 	Owner string
 }
 

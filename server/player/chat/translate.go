@@ -56,6 +56,9 @@ type Texter interface {
 // In the fallback of a translation with parameters, %v is read as %s, as
 // fallbacks were written before; that of a translation without parameters
 // is shown exactly as it is.
+//
+// Keys are those of the language files of Bedrock Edition. Adapters of other
+// editions map them to keys of their own.
 func Translate(str TranslationString, params int, fallback string) Translation {
 	if params == 0 {
 		fallback = strings.ReplaceAll(fallback, "%", "%%")

@@ -116,6 +116,9 @@ type PigBehaviour struct {
 	steering itemBasedSteering
 }
 
+// Variant returns the climate variant of the pig, 0 temperate, 1 warm and 2
+// cold, as the world format saves it besides the name and Bedrock clients are
+// sent it.
 func (p *PigBehaviour) Variant() int32 { return int32(p.variant) }
 func (p *PigBehaviour) Baby() bool     { return p.age < 0 }
 

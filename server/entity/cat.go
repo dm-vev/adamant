@@ -198,6 +198,8 @@ type CatBehaviour struct {
 // catShownState are the flags of a cat viewers were last shown.
 type catShownState struct{ sitting, lying, crouching, sprinting bool }
 
+// Variant returns the variant of the cat by the index of catVariantNames, the
+// order of Java's cat variants. BedrockVariant gives Bedrock's number.
 func (c *CatBehaviour) Variant() int32 { return int32(c.variant) }
 func (c *CatBehaviour) Baby() bool     { return c.ageTicks < 0 }
 
@@ -280,7 +282,11 @@ func (c *Cat) hasEffect(t effect.Type) bool { _, ok := c.b().effects.Effect(t); 
 func (c *Cat) Tamed() bool                  { return c.b().tamed }
 func (c *Cat) OwnerUUID() string            { return c.b().ownerUUID }
 func (c *Cat) Variant() int                 { return c.b().variant }
-func (c *Cat) BedrockVariant() int32        { return bedrockCatVariants[c.b().variant] }
+
+// BedrockVariant returns Bedrock's number of the variant of the cat, which the
+// world format saves and Bedrock clients are sent.
+func (c *Cat) BedrockVariant() int32 { return bedrockCatVariants[c.b().variant] }
+
 func (c *Cat) SetVariant(v int) {
 	c.b().variant = max(0, min(v, len(catVariantNames)-1))
 	c.updateState()

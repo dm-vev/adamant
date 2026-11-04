@@ -114,7 +114,8 @@ type SculkChargePop struct{ particle }
 type SculkSoul struct{ particle }
 
 // ElectricSpark is the spark of lightning striking a lightning rod or cleaning
-// copper. Data is the protocol event payload; Bedrock rod hits use zero.
+// copper. Data is the axis of the spark, or -1 for none, as both editions send
+// it: rod hits use 0.
 type ElectricSpark struct {
 	particle
 	Data int32

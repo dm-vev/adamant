@@ -116,7 +116,8 @@ func (f *Frog) FinalizeSpawn(_ string, r *vanilla.Random) {
 	b.br.set(memLongJumpCooldownTicks, frogTimeBetweenLongJumps.min+int(r.NextInt(int32(frogTimeBetweenLongJumps.max-frogTimeBetweenLongJumps.min+1))))
 }
 
-// Variant returns the Bedrock variant of the frog: 0 temperate, 1 cold, 2 warm.
+// Variant returns the variant of the frog by Bedrock's number, which the world
+// format saves and Bedrock clients are sent: 0 temperate, 1 cold, 2 warm.
 func (f *Frog) Variant() int32 { return int32(f.behaviour().variant) }
 
 // LootComponents exposes the frog variant (Bedrock 0 temperate, 1 cold, 2 warm)

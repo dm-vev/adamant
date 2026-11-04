@@ -1,7 +1,7 @@
 package world
 
 // EntityAnimation represents an animation that may be played on an entity from an active resource pack on
-// the client.
+// the client. A feature of Bedrock Edition: adapters of other editions may show nothing of it.
 type EntityAnimation struct {
 	name          string
 	nextState     string

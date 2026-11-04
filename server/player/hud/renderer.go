@@ -1,3 +1,6 @@
+// Package hud holds the elements of the HUD of a player that may be hidden
+// and shown. A feature of Bedrock Edition: adapters of other editions may
+// show nothing of it.
 package hud
 
 // Renderer represents an interface that can manage HUD elements for a player.

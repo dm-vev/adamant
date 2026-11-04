@@ -464,8 +464,11 @@ func (w *Wolf) SetSitting(sit bool)          { w.behaviour().orderedToSit = sit 
 
 // Interested reports if the wolf tilts its head at a player holding a bone
 // or its food.
-func (w *Wolf) Interested() bool      { return w.behaviour().interested }
-func (w *Wolf) Variant() uint8        { return w.behaviour().variant }
+func (w *Wolf) Interested() bool { return w.behaviour().interested }
+func (w *Wolf) Variant() uint8   { return w.behaviour().variant }
+
+// BedrockVariant returns Bedrock's number of the variant of the wolf, which the
+// world format saves and Bedrock clients are sent.
 func (w *Wolf) BedrockVariant() int32 { return bedrockWolfVariants[w.behaviour().variant] }
 func (w *Wolf) SoundVariant() string  { return w.behaviour().soundVariant }
 func (w *Wolf) CollarColor() uint8    { return w.behaviour().collarColor }

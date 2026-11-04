@@ -12,8 +12,9 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// PaintingMotive is a painting canvas. Name is the Bedrock motive ID sent in
-// AddPainting and stored as the actor's Motif.
+// PaintingMotive is a painting canvas. Name is the Bedrock motive ID, which the
+// world format saves as the actor's Motif and Bedrock clients are sent in
+// AddPainting.
 type PaintingMotive struct {
 	Name          string
 	Width, Height int

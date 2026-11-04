@@ -1,8 +1,8 @@
 package world
 
-// javaEntityNames maps the Java identifiers of the entity types registered
-// by their Bedrock identifiers to those, so that Java NBT and spawners find
-// them.
+// javaEntityNames maps the Java identifiers of entity types to the names the
+// types are registered by where the two differ, so that Java NBT and spawners
+// find them. bedrockToJavaEntity goes the other way.
 var javaEntityNames = map[string]string{
 	"minecraft:zombified_piglin": "minecraft:zombie_pigman",
 	"minecraft:end_crystal":      "minecraft:ender_crystal",
@@ -35,7 +35,8 @@ var registeredEntityNames = func() map[string]string {
 }()
 
 // BedrockEntityIdentifier returns the Bedrock identifier of the entity type
-// registered as name, which saves and clients use.
+// registered as name: the identifier the world format saves the type by,
+// which Bedrock clients spawn it by as well.
 func BedrockEntityIdentifier(name string) string {
 	if id, ok := bedrockEntityIdentifiers[name]; ok {
 		return id
@@ -43,8 +44,8 @@ func BedrockEntityIdentifier(name string) string {
 	return name
 }
 
-// bedrockToJavaEntity maps Bedrock actor identifiers whose Java entity type
-// differs.
+// bedrockToJavaEntity maps the Bedrock identifiers of entity types, as the
+// world format saves them, to their Java identifiers where the two differ.
 var bedrockToJavaEntity = map[string]string{
 	"minecraft:zombie_pigman":          "minecraft:zombified_piglin",
 	"minecraft:ender_crystal":          "minecraft:end_crystal",

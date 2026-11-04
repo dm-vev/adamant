@@ -22,7 +22,9 @@ const (
 	boatSinkingMaxSpeed   = 0.005
 	boatGravity           = 0.04
 	boatWaterDrag         = 0.9
-	boatNetworkOffset     = 0.375
+	// boatNetworkOffset is the height of the origin of a Bedrock boat above
+	// its feet, which the world format and the physics ported from BDS use.
+	boatNetworkOffset = 0.375
 )
 
 // NewBoat creates a new boat entity with the variant passed.
@@ -194,7 +196,8 @@ func (b *BoatBehaviour) reseatPassengers(e *Ent, tx *world.Tx) {
 	}
 }
 
-// Variant returns the boat variant metadata value.
+// Variant returns the wood of the boat by Bedrock's number, which the world
+// format saves and Bedrock clients are sent.
 func (b *BoatBehaviour) Variant() int32 {
 	return b.variant
 }

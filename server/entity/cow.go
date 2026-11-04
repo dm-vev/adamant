@@ -154,6 +154,8 @@ type CowBehaviour struct {
 	dead bool
 }
 
+// Variant returns the climate variant of the cow, 0 temperate, 1 warm and 2
+// cold, as Bedrock clients are sent it. The world format saves its name.
 func (c *CowBehaviour) Variant() int32 { return int32(c.variant) }
 func (c *CowBehaviour) Baby() bool     { return c.ageTicks < 0 }
 

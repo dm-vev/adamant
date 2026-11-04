@@ -886,10 +886,14 @@ func (m *Mount) Strength() int                                                  
 // Temper returns how used to riders an untamed horse is.
 func (m *Mount) Temper() int { return m.b().temper }
 
-// Variant returns the colour of a horse or llama.
+// Variant returns the colour of a horse or llama by Bedrock's number, which
+// the world format saves in the low byte of the variant and Bedrock clients
+// are sent.
 func (m *Mount) Variant() int32 { return int32(m.b().variant & 0xff) }
 
-// MarkVariant returns the markings of a horse.
+// MarkVariant returns the markings of a horse by Bedrock's number, which the
+// world format saves in the second byte of the variant and Bedrock clients
+// are sent.
 func (m *Mount) MarkVariant() int32 {
 	if m.b().kind != mountHorse {
 		return 0

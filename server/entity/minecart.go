@@ -14,7 +14,10 @@ const (
 	minecartDefaultMaxSpeed = 0.4
 	minecartDisplayOffset   = 6
 	minecartSeatOffset      = 0.75
-	minecartNetworkOffset   = float64(float32(0.35))
+	// minecartNetworkOffset is the height of the origin of a Bedrock
+	// minecart above its feet, which the world format and the physics ported
+	// from BDS use.
+	minecartNetworkOffset = float64(float32(0.35))
 )
 
 var minecartMatrix = [10][2][3]int{

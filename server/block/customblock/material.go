@@ -1,3 +1,6 @@
+// Package customblock holds the materials, render methods and permutations
+// of custom blocks, which a resource pack draws. A feature of Bedrock
+// Edition: adapters of other editions may show nothing of it.
 package customblock
 
 // Material represents a single material used for rendering part of a custom block.

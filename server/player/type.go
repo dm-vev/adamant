@@ -45,6 +45,9 @@ func (t ptype) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Entity
 
 func (ptype) EncodeEntity() string { return "minecraft:player" }
 
+// NetworkOffset returns the height of the origin of a Bedrock actor of the
+// type above its feet, which the world format and the physics ported from
+// BDS use.
 func (ptype) NetworkOffset() float64 { return 1.62001 }
 func (ptype) BBox(e world.Entity) cube.BBox {
 	p := e.(*Player)

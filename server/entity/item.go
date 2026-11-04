@@ -67,8 +67,10 @@ func (itemType) EncodeEntity() string { return "minecraft:item" }
 // after block actors restore their completed piston payloads.
 func (itemType) TickAfterBlocks() bool { return true }
 
-// NetworkOffset is the native ItemActor height offset: half its 0.25-block
-// collision height. The client adds visual bobbing independently of this origin.
+// NetworkOffset returns the height of the origin of a Bedrock ItemActor above
+// its feet, which the world format and the physics ported from BDS use: half
+// its 0.25-block collision height. The client adds visual bobbing
+// independently of this origin.
 func (itemType) NetworkOffset() float64 { return 0.125 }
 
 // CollisionWidth returns the stored physical width, independently of rounding

@@ -33,7 +33,9 @@ type MapData struct {
 }
 
 // MapDecoration is a map icon. X/Z are signed map-pixel offsets from the map
-// center. The block location and key type preserve Bedrock's tracked key data.
+// center. Type numbers the icon as the world format saves it, Bedrock's
+// numbering. The block location and key type keep the tracked key data of
+// Bedrock's world format.
 type MapDecoration struct {
 	Type, Rotation byte
 	X, Z int8
@@ -42,7 +44,8 @@ type MapDecoration struct {
 	KeyType int32
 	NativeNBT map[string]any
 }
-// MapTrackedObject is transient Bedrock packet state for a carried entity or frame.
+// MapTrackedObject is an entity or item frame whose icon a map tracks, which
+// a player's view of the map holds and the world format does not save.
 type MapTrackedObject struct {
 	Entity *EntityHandle
 	Block  *cube.Pos

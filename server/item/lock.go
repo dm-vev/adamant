@@ -1,6 +1,8 @@
 package item
 
-// LockMode describes the Bedrock item_lock mode applied to an item stack.
+// LockMode describes the item_lock mode applied to an item stack, a feature of
+// Bedrock Edition that the world format saves. Clients of other editions may
+// show nothing of the lock.
 type LockMode uint8
 
 const (

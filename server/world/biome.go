@@ -24,7 +24,8 @@ type Biome interface {
 	Tags() []string
 	// String returns the biome name as a string.
 	String() string
-	// EncodeBiome encodes the biome into an int value that is used to identify the biome over the network.
+	// EncodeBiome returns the ID the world format saves the biome by, Bedrock's
+	// numbering of biomes, which Bedrock clients are sent as well.
 	EncodeBiome() int
 }
 
