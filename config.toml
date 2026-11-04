@@ -13,6 +13,12 @@
   # QueryPlugins controls whether plugin metadata is included in the long query response.
   # When disabled, the query `plugins` field only contains the engine label.
   QueryPlugins = false
+  # Protocols lists the protocols of Bedrock Edition clients may join with, each by one of its versions:
+  # "1.26.50" (or "26.50", "26.51", "26.52", "2193") names protocol 2193, of 1.26.50 to 1.26.52.
+  Protocols = ["1.26.50"]
+  # PrimaryProtocol is the protocol the server speaks, one of Protocols: clients of the others get its packets
+  # converted to theirs.
+  PrimaryProtocol = "1.26.50"
 
 [Server]
   # The name as it shows up in the server list. Minecraft colour codes may be used in this name to format the

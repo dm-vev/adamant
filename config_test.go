@@ -25,11 +25,13 @@ import (
 // whichever part of the program reads a key, a new default file has the
 // bytes it always had, and a file means what it always meant. The bytes and
 // the meanings below were recorded from the readConfig that read the file
-// into a single server.UserConfig. The one exception is IdentityKey, added
-// since: a new default file has its line, and a file that lacks it, with
-// AuthEnabled = true, now keys players by XUID. SaveChunks of [World] was
-// added since too: a new default file has its line, and a file that lacks it
-// saves the chunks that changed, as the server did before the key.
+// into a single server.UserConfig. The exceptions are the keys added since:
+// IdentityKey, whose line a new default file has, and a file that lacks it,
+// with AuthEnabled = true, now keys players by XUID; SaveChunks of [World],
+// whose line a new default file has, and a file that lacks it saves the
+// chunks that changed, as the server did before the key; and Protocols and
+// PrimaryProtocol of [Network], whose lines a new default file has, and a
+// file that lacks them allows and speaks protocol 2193, as before.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -125,6 +127,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Network.Address": ":19132", "Network.IdentityFile": "server-key.pem", "Network.EnableQuery": false,
 			"Network.LAN": false, "Network.HTTPSDomain": "", "Network.ACMEEmail": "", "Network.ACMECacheDir": "",
 			"Network.ACMEDirectory": "", "Network.ACMEChallengeAddress": "",
+			"Network.Protocols": []int32{2193}, "Network.PrimaryProtocol": int32(2193),
 			"Xbox.Enabled": false, "Xbox.TokenFile": "xbox-token.json", "Xbox.AcceptFriends": true, "Xbox.LegacySignaling": false,
 			"Proxy.Address": "", "Proxy.Secret": "",
 			"Java.Address": "", "Java.Message": "",
@@ -144,7 +147,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Network.LAN": true, "Network.HTTPSDomain": "play.example.invalid", "Network.ACMEEmail": "ops@example.invalid",
 			"Network.ACMECacheDir": "certs", "Network.ACMEDirectory": "https://acme.example.invalid/directory",
 			"Network.ACMEChallengeAddress": ":8080",
-			"Xbox.Enabled":                 true, "Xbox.TokenFile": "token.json", "Xbox.AcceptFriends": false, "Xbox.LegacySignaling": true,
+			"Network.Protocols":            []int32{2193}, "Network.PrimaryProtocol": int32(2193),
+			"Xbox.Enabled": true, "Xbox.TokenFile": "token.json", "Xbox.AcceptFriends": false, "Xbox.LegacySignaling": true,
 			"Proxy.Address": "127.0.0.1:19133", "Proxy.Secret": "0123456789abcdef0123456789abcdef",
 			"Java.Address": ":25565", "Java.Message": "Use Bedrock.",
 		}},
@@ -184,6 +188,9 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Network]\nLAN = \"yes\"\n":                              "decode config: (2, 1): Can't convert yes(string) to bool",
 		"[Network]\nTransport = \"raknet\"\n":                     `network transport "raknet" is no longer supported: players join over NetherNet`,
 		"[Network]\nTransport = \"tcp\"\n":                        `unknown network transport "tcp"`,
+		"[Network]\nProtocols = [\"1.26.40\"]\n":                  `[Network] Protocols: protocol "1.26.40" is not supported: this build supports 1.26.50 (26.50–26.52)`,
+		"[Network]\nPrimaryProtocol = \"26.70\"\n":                `[Network] PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52)`,
+		"[Network]\nProtocols = \"1.26.50\"\n":                    "decode config: (2, 1): Can't convert 1.26.50(string) to []string(slice)",
 		"[Server]\nNameCheck = \"xbox\"\n":                        `unknown name check "xbox": want "lenient", "game" or "strict"`,
 		"[Server]\nIdentityKey = \"uuid\"\n":                      `unknown IdentityKey "uuid": use "auto", "xuid" or "name"`,
 		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n": `IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
@@ -257,6 +264,8 @@ const everyKeyChanged = `
   HTTPSDomain = "play.example.invalid"
   IdentityFile = "id.pem"
   LAN = true
+  PrimaryProtocol = "2193"
+  Protocols = ["26.52"]
   QueryPlugins = true
   Transport = " NetherNet "
 
@@ -400,6 +409,11 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	m["Network.Address"], m["Network.IdentityFile"], m["Network.EnableQuery"] = n.Address, n.IdentityFile, n.EnableQuery
 	m["Network.LAN"], m["Network.HTTPSDomain"], m["Network.ACMEEmail"], m["Network.ACMECacheDir"] = n.LAN, n.HTTPSDomain, n.ACMEEmail, n.ACMECacheDir
 	m["Network.ACMEDirectory"], m["Network.ACMEChallengeAddress"] = n.ACMEDirectory, n.ACMEChallengeAddress
+	var protocols []int32
+	for _, p := range bc.Protocols {
+		protocols = append(protocols, p.Number)
+	}
+	m["Network.Protocols"], m["Network.PrimaryProtocol"] = protocols, bc.Primary.Number
 	m["Xbox.Enabled"], m["Xbox.TokenFile"], m["Xbox.AcceptFriends"], m["Xbox.LegacySignaling"] = x.Enabled, x.TokenFile, x.AcceptFriends, x.LegacySignaling
 	m["Proxy.Address"], m["Proxy.Secret"] = p.Address, p.Secret
 	m["Java.Address"], m["Java.Message"] = j.Address, j.Message

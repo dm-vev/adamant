@@ -13,6 +13,8 @@
   HTTPSDomain = ""
   IdentityFile = "server-key.pem"
   LAN = false
+  PrimaryProtocol = "1.26.50"
+  Protocols = ["1.26.50"]
   QueryPlugins = false
   Transport = "nethernet"
 

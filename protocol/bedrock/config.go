@@ -1,12 +1,15 @@
 package bedrockadapter
 
 import (
+	"cmp"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
@@ -97,6 +100,17 @@ type NetworkConfig struct {
 	// the authority, which asks on port 80: another address suits a port
 	// forwarded to it. An empty value uses ":80".
 	ACMEChallengeAddress string
+	// Protocols lists the protocols of Bedrock Edition clients may join
+	// with, by a version of each: "1.26.50" (or "26.50", "26.51", "26.52",
+	// "1.26.52", "2193") names protocol 2193. Several names of one protocol
+	// count once. An empty list allows the primary protocol alone.
+	Protocols []string
+	// PrimaryProtocol is the protocol the server speaks, one of Protocols:
+	// the packets and fields it uses are those of that protocol, and clients
+	// of the other protocols get them converted. An empty value is the
+	// oldest of Protocols, or the default of the build if Protocols is
+	// empty too.
+	PrimaryProtocol string
 }
 
 // XboxConfig holds the publishing of the server on Xbox Live: the [Xbox]
@@ -143,6 +157,11 @@ type Config struct {
 	Network NetworkConfig
 	Xbox    XboxConfig
 	Proxy   ProxyConfig
+	// Protocols are the protocols clients may join with, oldest first, and
+	// Primary is the one of them the server speaks, as Network names them.
+	// No protocols allow the default of the build alone.
+	Protocols []*versions.Protocol
+	Primary   *versions.Protocol
 	// Resources are the resource packs offered to clients, and
 	// ResourcesRequired makes clients take them.
 	Resources         []*resource.Pack
@@ -186,6 +205,10 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	protocols, primary, err := parseProtocols(uc.Network.Protocols, uc.Network.PrimaryProtocol, versions.Parse, versions.Default(), versions.Model())
+	if err != nil {
+		return Config{}, err
+	}
 	query.SetEnabled(uc.Network.EnableQuery)
 	query.SetPluginListingEnabled(uc.Network.QueryPlugins)
 
@@ -193,6 +216,8 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		Network:                 uc.Network,
 		Xbox:                    uc.Xbox,
 		Proxy:                   uc.Proxy,
+		Protocols:               protocols,
+		Primary:                 primary,
 		ResourcesRequired:       uc.Resources.Required,
 		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
 		AuthDisabled:            !uc.Server.AuthEnabled,
@@ -204,6 +229,55 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return c, fmt.Errorf("load resources: %w", err)
 	}
 	return c, nil
+}
+
+// parseProtocols returns the protocols the keys Protocols and
+// PrimaryProtocol name by parse, oldest first and each once, and the
+// primary: with def, the default of the build, for both keys empty, and
+// model, the protocol of the codecs the session is compiled against, which
+// bounds the primary.
+func parseProtocols(names []string, primaryName string, parse func(string) (*versions.Protocol, error), def, model *versions.Protocol) ([]*versions.Protocol, *versions.Protocol, error) {
+	var protocols []*versions.Protocol
+	for _, name := range names {
+		p, err := parse(name)
+		if err != nil {
+			return nil, nil, fmt.Errorf("[Network] Protocols: %w", err)
+		}
+		protocols = append(protocols, p)
+	}
+	slices.SortFunc(protocols, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
+	protocols = slices.Compact(protocols)
+
+	primary := def
+	if len(protocols) > 0 {
+		primary = protocols[0]
+	}
+	if strings.TrimSpace(primaryName) != "" {
+		p, err := parse(primaryName)
+		if err != nil {
+			return nil, nil, fmt.Errorf("[Network] PrimaryProtocol: %w", err)
+		}
+		primary = p
+	}
+	if len(protocols) == 0 {
+		protocols = []*versions.Protocol{primary}
+	}
+	if !slices.Contains(protocols, primary) {
+		return nil, nil, fmt.Errorf("[Network] PrimaryProtocol %s must be one of Protocols (%s)", primary, protocolList(protocols))
+	}
+	if primary.Number > model.Number {
+		return nil, nil, fmt.Errorf("[Network] PrimaryProtocol %s needs a build whose session speaks %s: this one speaks %s", primary, primary, model)
+	}
+	return protocols, primary, nil
+}
+
+// protocolList lists protocols by the version each tells its clients.
+func protocolList(ps []*versions.Protocol) string {
+	s := make([]string, len(ps))
+	for i, p := range ps {
+		s[i] = p.Version
+	}
+	return strings.Join(s, ", ")
 }
 
 // loadResources loads all resource packs found in a directory passed.
@@ -234,6 +308,8 @@ func DefaultConfig() UserConfig {
 	c.Xbox.AcceptFriends = true
 	c.Network.EnableQuery = false
 	c.Network.QueryPlugins = false
+	c.Network.Protocols = []string{versions.Default().Version}
+	c.Network.PrimaryProtocol = versions.Default().Version
 	c.Server.AuthEnabled = true
 	c.Server.NameCheck = "lenient"
 	c.Resources.AutoBuildPack = true

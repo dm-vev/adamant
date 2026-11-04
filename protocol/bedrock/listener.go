@@ -118,6 +118,7 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 		},
 		Allow:       allow,
 		Compression: batchCompression(c.Compression),
+		Protocols:   c.Protocols,
 	}.Listen(listen, c.Network.Address)
 	if err != nil {
 		return nil, fmt.Errorf("create NetherNet listener: %w", err)
