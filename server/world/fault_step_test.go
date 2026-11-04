@@ -1,6 +1,8 @@
 package world
 
 import (
+	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -9,6 +11,16 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
+
+// briefFaults returns the kind, type, value, count and quarantine of each
+// fault, without its stack.
+func briefFaults(faults []Fault) []string {
+	out := make([]string, len(faults))
+	for i, f := range faults {
+		out[i] = fmt.Sprintf("%v %v %v count=%d quarantined=%v", f.Kind, f.Type, f.Value, f.Count, f.Quarantined)
+	}
+	return out
+}
 
 // sleeperTestState is the state of a sleeperTestEntity, shared by every
 // transaction it is opened in.
@@ -85,15 +97,15 @@ func TestSleeperWakePanicIsBlamedOnTheSleeper(t *testing.T) {
 		}
 		faults := sink.all(0)
 		if len(faults) != night {
-			t.Fatalf("night %d: faults = %v, want %d", night, faults, night)
+			t.Fatalf("night %d: faults = %v, want %d", night, briefFaults(faults), night)
 		}
 		f := faults[night-1]
 		if f.Kind != FaultEntity || f.Entity != badHandle || f.Type != "dragonfly:test_sleeper" || f.Value != "test: wake" || f.Count != night || f.Quarantined != (night == FaultLimit) {
-			t.Fatalf("night %d: fault = %+v, want one of the sleeper, counted %d", night, f, night)
+			t.Fatalf("night %d: fault = %v, want one of the sleeper, counted %d", night, briefFaults([]Fault{f}), night)
 		}
 	}
 	if q := w.Quarantined(); len(q) != 1 || q[0].Entity != badHandle {
-		t.Fatalf("Quarantined = %v, want the sleeper", q)
+		t.Fatalf("Quarantined = %v, want the sleeper", briefFaults(q))
 	}
 	// A sleeper in quarantine is no longer woken, and the nights still pass.
 	w.SetTime(int(w.Time()/TimeFull*TimeFull + 18000))
@@ -104,9 +116,122 @@ func TestSleeperWakePanicIsBlamedOnTheSleeper(t *testing.T) {
 		t.Fatalf("after quarantine: woken %d times, want %d; the other sleeps: %v; time %d", bad.wakes, FaultLimit, good.sleeping, w.Time())
 	}
 	if f := sink.fatals(); len(f) != 0 {
-		t.Fatalf("the world failed: %v", f)
+		t.Fatalf("the world failed: %v", briefFaults(f))
 	}
 	if n := len(sink.all(FaultSubsystem)); n != 0 {
 		t.Fatalf("%d faults of a subsystem, want none", n)
+	}
+}
+
+// A panic advancing the clock of the world (its tick, time, weather,
+// border and sleep), which nothing can be blamed for, fails the world (D3)
+// and releases the lock of its settings: the world still closes and saves,
+// and what reads its settings does not wait forever.
+func TestClockPanicFailsTheWorldAndReleasesItsSettings(t *testing.T) {
+	isolated(t, func(t *testing.T) {
+		var sink faultSink
+		rec := newFaultRecorder()
+		prov := &storeCountingProvider{}
+		other := cancelBatchTestBlock{name: "test:other", id: 52, tick: func(cube.Pos, *Tx) {}}
+		w := sink.configure(Config{Provider: prov, Blocks: testBlockRegistry(other), RandomTickSpeed: -1}, rec).New()
+		closed := false
+		defer func() {
+			if !closed {
+				_ = w.Close()
+			}
+		}()
+		loadAround(t, w, mgl64.Vec3{}, 1)
+		var ticks atomic.Int32
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
+			tx.SetBlock(cube.Pos{0, 64, 0}, other, nil)
+			w.testClockHook = func() {
+				if ticks.Add(1) == 3 {
+					panic("test: clock")
+				}
+			}
+		}), "arming the hook")
+		waitFor(t, 10*time.Second, "the world failing", func() bool { return len(sink.fatals()) != 0 })
+		if fatal := sink.fatals(); len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Value != "test: clock" {
+			t.Fatalf("Config.Fatal calls = %v, want one for the panic of the clock", briefFaults(fatal))
+		}
+		done := make(chan struct{})
+		go func() {
+			_ = w.Time()
+			_ = w.Border()
+			close(done)
+		}()
+		within(t, 10*time.Second, done, "reading the settings of the failed world")
+
+		stored := prov.stores.Load()
+		closed = true
+		closing := make(chan struct{})
+		go func() {
+			if err := w.Close(); err != nil {
+				t.Errorf("close: %v", err)
+			}
+			close(closing)
+		}()
+		within(t, 30*time.Second, closing, "closing the failed world")
+		if prov.stores.Load() <= stored {
+			t.Fatal("closing the failed world saved no column")
+		}
+	})
+}
+
+// timeTestViewer is a viewer counting the times it is shown the time, and
+// told it failed. Once panics is set, being shown the time panics.
+type timeTestViewer struct {
+	NopViewer
+	panics        *atomic.Bool
+	shown, failed *atomic.Int32
+}
+
+func (v timeTestViewer) ViewTime(int) {
+	if v.panics.Load() {
+		panic("test: view time")
+	}
+	v.shown.Add(1)
+}
+func (v timeTestViewer) ViewFailed() { v.failed.Add(1) }
+
+// A viewer that panics as the tick shows it the time or the weather is
+// blamed for it, as one shown the blocks of a column is, and told
+// (FailingViewer): the world does not fail, and the other viewers are still
+// shown the time.
+func TestViewerPanicShowingTheTimeFailsTheViewer(t *testing.T) {
+	var sink faultSink
+	w := sink.configure(Config{Synchronous: true, RandomTickSpeed: -1}, newFaultRecorder()).New()
+	defer func() { _ = w.Close() }()
+	bad := timeTestViewer{panics: new(atomic.Bool), shown: new(atomic.Int32), failed: new(atomic.Int32)}
+	good := timeTestViewer{panics: new(atomic.Bool), shown: new(atomic.Int32), failed: new(atomic.Int32)}
+	loaders := []*Loader{NewLoader(1, w, bad), NewLoader(1, w, good)}
+	<-w.Exec(func(tx *Tx) {
+		for _, l := range loaders {
+			l.Move(tx, mgl64.Vec3{8, 64, 8})
+		}
+	})
+	defer func() {
+		<-w.Exec(func(tx *Tx) {
+			for _, l := range loaders {
+				l.Close(tx)
+			}
+		})
+	}()
+	shown := good.shown.Load()
+	bad.panics.Store(true)
+	for range 40 {
+		advance(t, w)
+	}
+	if f := sink.fatals(); len(f) != 0 {
+		t.Fatalf("the world failed: %v", briefFaults(f))
+	}
+	if n := good.shown.Load() - shown; n != 2 {
+		t.Fatalf("the other viewer was shown the time %d times, want 2", n)
+	}
+	if n := bad.failed.Load(); n != 2 {
+		t.Fatalf("the panicking viewer was told it failed %d times, want 2", n)
+	}
+	if faults := sink.all(0); len(faults) != 2 || faults[0].Kind != FaultViewer || faults[0].Type != "world.timeTestViewer" || faults[0].Value != "test: view time" {
+		t.Fatalf("faults = %v, want two of the viewer", briefFaults(faults))
 	}
 }

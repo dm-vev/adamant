@@ -160,14 +160,14 @@ func (t ticker) tickWorld(tx *Tx) {
 	defer w.flushLight()
 	defer w.releaseViewers(viewers)
 	for _, v := range viewers {
-		if b, ok := v.(BatchViewer); ok {
-			b.BeginBatch()
+		if _, ok := v.(BatchViewer); ok {
+			w.view(v, beginBatch)
 		}
 	}
 	defer func() {
 		for _, v := range viewers {
-			if b, ok := v.(BatchViewer); ok {
-				b.EndBatch()
+			if _, ok := v.(BatchViewer); ok {
+				w.view(v, endBatch)
 			}
 		}
 	}()
@@ -200,56 +200,14 @@ func (t ticker) tickWorld(tx *Tx) {
 		return
 	}
 
-	var spawnX, spawnZ int
-	resolveSpawnY := false
-	w.set.Lock()
-	if s := w.set.Spawn; s[1] > tx.Range()[1] && w.Dimension() == Overworld {
-		spawnX, spawnZ = s[0], s[2]
-		resolveSpawnY = true
-	}
-	w.set.Unlock()
-
-	if resolveSpawnY {
-		// Vanilla will set the spawn position's Y value to max to indicate that
-		// the player should spawn at the highest position in the world.
-		y := tx.highestObstructingBlock(spawnX, spawnZ) + 1
-		w.set.Lock()
-		if s := w.set.Spawn; s[0] == spawnX && s[2] == spawnZ && s[1] > tx.Range()[1] && w.Dimension() == Overworld {
-			w.set.Spawn[1] = y
-		}
-		w.set.Unlock()
-	}
-
-	w.set.Lock()
-	if len(viewers) == 0 && w.set.CurrentTick != 0 && !w.conf.Synchronous && len(w.forcedChunks) == 0 && w.sprintTicks.Load() == 0 && !runStep {
+	t.resolveSpawnY(tx)
+	idle := len(viewers) == 0 && !w.conf.Synchronous && len(w.forcedChunks) == 0 && w.sprintTicks.Load() == 0 && !runStep
+	clock, ok := t.advanceClock(w, idle, runStep)
+	if !ok {
 		// Don't continue ticking if no viewers or forced chunks are in the world.
-		w.set.Unlock()
 		return
 	}
-	if w.advance {
-		w.set.CurrentTick++
-		if w.set.TimeCycle {
-			w.set.Time++
-		}
-		if w.set.WeatherCycle {
-			w.advanceWeather()
-		}
-	} else {
-		w.tick++
-	}
-	if runStep {
-		w.stepTicks.Add(-1)
-	}
-	w.border.tick()
-	rain, thunder, tick, tim := w.set.Raining, w.set.Thundering && w.set.Raining, w.currentTickLocked(), int(w.set.Time)
-	timeCycle := w.set.TimeCycle
-
-	tryAdvanceDay := false
-	if w.set.RequiredSleepTicks > 0 {
-		w.set.RequiredSleepTicks--
-		tryAdvanceDay = w.set.RequiredSleepTicks <= 0
-	}
-	w.set.Unlock()
+	tick := clock.tick
 	// Contact and other simulation callbacks use this tick's queue clock.
 	// Player block interactions retain the last processed queue clock through
 	// Tx.WithBlockInteraction, before the next scheduled block pass.
@@ -258,23 +216,25 @@ func (t ticker) tickWorld(tx *Tx) {
 	t.tickInhabitedTime(w, loaders)
 	w.step(tx, tick, "generation promotion", func(tx *Tx) { t.promoteGeneration(tx, loaders) })
 
-	if tryAdvanceDay {
-		w.step(tx, tick, "sleeping", func(tx *Tx) { t.tryAdvanceDay(tx, timeCycle) })
+	if clock.tryAdvanceDay {
+		w.step(tx, tick, "sleeping", func(tx *Tx) { t.tryAdvanceDay(tx, clock.timeCycle) })
 	}
 
 	if tick%20 == 0 {
-		dimensionTimeCycle := w.Dimension().TimeCycle()
+		showTime, showWeather := w.Dimension().TimeCycle() && clock.timeCycle, w.Dimension().WeatherCycle()
 		for _, viewer := range viewers {
-			if dimensionTimeCycle && timeCycle {
-				viewer.ViewTime(tim)
-			}
-			if w.Dimension().WeatherCycle() {
-				viewer.ViewWeather(rain, thunder)
-			}
+			w.view(viewer, func(v Viewer) {
+				if showTime {
+					v.ViewTime(clock.time)
+				}
+				if showWeather {
+					v.ViewWeather(clock.rain, clock.thunder)
+				}
+			})
 		}
 	}
 	if !w.tickFrozen.Load() || runStep {
-		if thunder {
+		if clock.thunder {
 			w.step(tx, tick, "lightning", w.tickLightning)
 		}
 		if w.dragonFight != nil {
@@ -304,6 +264,78 @@ func (t ticker) tickWorld(tx *Tx) {
 	}
 
 }
+
+// resolveSpawnY sets the height of a spawn of the Overworld at the top of
+// the world, as vanilla marks one to be found, to the highest block at it.
+func (ticker) resolveSpawnY(tx *Tx) {
+	w := tx.World()
+	if w.Dimension() != Overworld {
+		return
+	}
+	w.set.Lock()
+	s := w.set.Spawn
+	w.set.Unlock()
+	if s[1] <= tx.Range()[1] {
+		return
+	}
+	y := tx.highestObstructingBlock(s[0], s[2]) + 1
+	w.set.Lock()
+	defer w.set.Unlock()
+	if now := w.set.Spawn; now[0] == s[0] && now[2] == s[2] && now[1] > tx.Range()[1] {
+		w.set.Spawn[1] = y
+	}
+}
+
+// tickClock is what a tick reads of the settings of its world once
+// advanceClock advanced them.
+type tickClock struct {
+	tick          int64
+	time          int
+	rain, thunder bool
+	timeCycle     bool
+	tryAdvanceDay bool
+}
+
+// advanceClock advances the tick, the time, the weather, the border and the
+// sleep of w, under the lock of its settings, and returns what the rest of
+// the tick reads of them. It returns false, changing nothing, for an idle
+// tick of a world that has ticked before. A panic releases the lock, so that
+// the world failing for it can still be closed and saved.
+func (ticker) advanceClock(w *World, idle, runStep bool) (c tickClock, ok bool) {
+	w.set.Lock()
+	defer w.set.Unlock()
+	if idle && w.set.CurrentTick != 0 {
+		return c, false
+	}
+	if h := w.testClockHook; h != nil {
+		h()
+	}
+	if w.advance {
+		w.set.CurrentTick++
+		if w.set.TimeCycle {
+			w.set.Time++
+		}
+		if w.set.WeatherCycle {
+			w.advanceWeather()
+		}
+	} else {
+		w.tick++
+	}
+	if runStep {
+		w.stepTicks.Add(-1)
+	}
+	w.border.tick()
+	c = tickClock{tick: w.currentTickLocked(), time: int(w.set.Time), rain: w.set.Raining, thunder: w.set.Thundering && w.set.Raining, timeCycle: w.set.TimeCycle}
+	if w.set.RequiredSleepTicks > 0 {
+		w.set.RequiredSleepTicks--
+		c.tryAdvanceDay = w.set.RequiredSleepTicks <= 0
+	}
+	return c, true
+}
+
+// beginBatch and endBatch begin and end the batch of a BatchViewer.
+func beginBatch(v Viewer) { v.(BatchViewer).BeginBatch() }
+func endBatch(v Viewer)   { v.(BatchViewer).EndBatch() }
 
 // controlPlayers has the controllers of the players in the world act. A
 // controller may take its player out of the world, or others in.

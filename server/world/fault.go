@@ -685,6 +685,17 @@ type FailingViewer interface {
 	ViewFailed()
 }
 
+// view shows v a change of the world through f, blaming a panic of f on v
+// (viewerPanicked) instead of on the tick that showed it.
+func (w *World) view(v Viewer, f func(v Viewer)) {
+	defer func() {
+		if r := recover(); r != nil {
+			w.viewerPanicked(v, r)
+		}
+	}()
+	f(v)
+}
+
 // viewerPanicked blames the panic r of the viewer v on it, and tells it if
 // it is a FailingViewer. It is called by a function deferred while v
 // panics, so that the fault has the stack of the panic.

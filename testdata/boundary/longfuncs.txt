@@ -127,7 +127,7 @@ server/world/redstone_circuit.go redstoneEngine.tickCircuits 211
 server/world/tick.go scheduledTickQueue.tickPhase 122
 server/world/tick.go ticker.tickBlocksRandomly 189
 server/world/tick.go ticker.tickEntityHandle 132
-server/world/tick.go ticker.tickWorld 156
+server/world/tick.go ticker.tickWorld 116
 server/world/world.go Tx.buildStructure 113
 server/world/world.go Tx.setBlock 135
 server/world/world.go World.loadChunk 127

@@ -288,6 +288,9 @@ type World struct {
 	// before anything else of the world runs: tests make the bookkeeping
 	// of the tick panic with it.
 	testTickHook func(tx *Tx)
+	// testClockHook, if not nil, is called by each tick that advances the
+	// clock of the world, under the lock of its settings: a test panics in it.
+	testClockHook func()
 }
 
 // currentTickLocked returns the tick used to update this world. The caller
