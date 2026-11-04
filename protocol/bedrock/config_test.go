@@ -8,15 +8,16 @@ import (
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/config"
+	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
 )
 
 // TestParseProtocols checks the protocols and the primary the keys of
 // [Network] name, against a build of three protocols whose session speaks
 // the second: the order, the defaults and the refusals.
 func TestParseProtocols(t *testing.T) {
-	a := &versions.Protocol{Number: 10, Names: []string{"1.0", "a"}, Version: "1.0"}
-	b := &versions.Protocol{Number: 20, Names: []string{"2.0", "b"}, Version: "2.0"}
-	c := &versions.Protocol{Number: 30, Names: []string{"3.0", "c"}, Version: "3.0"}
+	a := &versions.Protocol{Codec: codec.Codec{Number: 10, Version: "1.0"}, Names: []string{"1.0", "a"}}
+	b := &versions.Protocol{Codec: codec.Codec{Number: 20, Version: "2.0"}, Names: []string{"2.0", "b"}}
+	c := &versions.Protocol{Codec: codec.Codec{Number: 30, Version: "3.0"}, Names: []string{"3.0", "c"}}
 	parse := func(name string) (*versions.Protocol, error) {
 		for _, p := range []*versions.Protocol{a, b, c} {
 			if slices.Contains(p.Names, strings.TrimSpace(name)) {
@@ -58,9 +59,9 @@ func TestParseProtocols(t *testing.T) {
 // TestCheckProtocols checks the problems config.toml is reported for its
 // protocols, each under its key, against the build of TestParseProtocols.
 func TestCheckProtocols(t *testing.T) {
-	a := &versions.Protocol{Number: 10, Names: []string{"a"}, Version: "1.0"}
-	b := &versions.Protocol{Number: 20, Names: []string{"b"}, Version: "2.0"}
-	c := &versions.Protocol{Number: 30, Names: []string{"c"}, Version: "3.0"}
+	a := &versions.Protocol{Codec: codec.Codec{Number: 10, Version: "1.0"}, Names: []string{"a"}}
+	b := &versions.Protocol{Codec: codec.Codec{Number: 20, Version: "2.0"}, Names: []string{"b"}}
+	c := &versions.Protocol{Codec: codec.Codec{Number: 30, Version: "3.0"}, Names: []string{"c"}}
 	parse := func(name string) (*versions.Protocol, error) {
 		for _, p := range []*versions.Protocol{a, b, c} {
 			if slices.Contains(p.Names, strings.TrimSpace(name)) {
@@ -111,8 +112,8 @@ func TestDefaultProtocols(t *testing.T) {
 // TestOldestProtocol checks the built resource pack is for the oldest
 // protocol clients may join with, the default of the build without any.
 func TestOldestProtocol(t *testing.T) {
-	a := &versions.Protocol{Number: 10, Version: "1.0"}
-	b := &versions.Protocol{Number: 20, Version: "2.0"}
+	a := &versions.Protocol{Codec: codec.Codec{Number: 10, Version: "1.0"}}
+	b := &versions.Protocol{Codec: codec.Codec{Number: 20, Version: "2.0"}}
 	if p := (Config{Protocols: []*versions.Protocol{b, a}}).oldestProtocol(); p != a {
 		t.Errorf("oldest of 20 and 10: %v", p)
 	}

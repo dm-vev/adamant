@@ -312,7 +312,7 @@ func TestProxiedPlayerReadsStatics(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if text, ok := pk.(*v2193.TextPacket); ok {
+		if text, ok := pk.(*mc.TextPacket); ok {
 			got = append(got, text.Message)
 		}
 	}

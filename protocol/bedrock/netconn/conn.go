@@ -228,23 +228,10 @@ func (c *Conn) WritePacket(pk proto.Packet) error {
 		}
 		return c.b.SendBatch(msg)
 	}
-	if p := c.proto; p != nil && p.Out != nil {
-		model := Unwrap(pk)
-		if p.Keeps != nil && p.Keeps(model) {
-			// A packet of the same layout in the protocol: what wraps it,
-			// such as the bytes kept for every client, goes as it is.
-			return c.write(pk)
-		}
-		out := p.Out(model)
-		if len(out) == 1 && out[0] == model {
-			return c.write(pk)
-		}
-		for _, pk := range out {
-			if err := c.write(pk); err != nil {
-				return err
-			}
-		}
-		return nil
+	if p := c.proto; p != nil {
+		// A packet of the same layout in the protocol goes as it is, with
+		// what wraps it, such as the bytes kept for every client.
+		return p.Encode(pk, Unwrap(pk), c.write)
 	}
 	return c.write(pk)
 }
@@ -535,11 +522,7 @@ func decodePacket(p *versions.Protocol, raw []byte) (pk proto.Packet, cost int, 
 	if err != nil {
 		return nil, 0, err
 	}
-	codec := p
-	if p.SameLayout(h.ID) {
-		codec = versions.Model()
-	}
-	if pk = codec.New(h.ID); pk == nil || !fromClient(p, h.ID) {
+	if pk = p.Decoder(h.ID).New(h.ID); pk == nil || !fromClient(p, h.ID) {
 		return nil, 0, errUnknownPacket(h.ID)
 	}
 	defer func() {

@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 
 // encodeBlocksNBT keeps the block definitions of StartGame, the vanilla
 // blocks the game defines by data, as a map of their properties by name.
-func encodeBlocksNBT(entries []v2193.BlockEntry) ([]byte, error) {
+func encodeBlocksNBT(entries []mc.BlockEntry) ([]byte, error) {
 	blocks := make(map[string]map[string]any, len(entries))
 	for _, entry := range entries {
 		if entry.Name == "" {

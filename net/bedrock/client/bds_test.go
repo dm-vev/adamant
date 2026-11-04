@@ -14,7 +14,8 @@ import (
 
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
@@ -40,10 +41,11 @@ var corpusCommands = []string{
 	"inputpermission set @s jump disabled", "inputpermission set @s jump enabled", "gamemode survival",
 }
 
-// TestBDSCorpus joins the BDS whose signaling URL is BDS_ADDR, walks for
-// BDS_SECONDS (30 if unset) while it runs corpusCommands, or the commands
-// of the file BDS_COMMANDS, one a line, and checks that
-// every packet the server sends decodes with nothing left over and
+// TestBDSCorpus joins the BDS whose signaling URL is BDS_ADDR as a client
+// of the protocol BDS_PROTOCOL (2193 if unset), walks for BDS_SECONDS (30
+// if unset) while it runs corpusCommands, or the commands of the file
+// BDS_COMMANDS, one a line, and checks that every packet the server sends
+// decodes with the codecs of the protocol with nothing left over and
 // encodes back to the same bytes. NBT compounds encode with their keys in
 // order: a server that writes them in another order, as gophertunnel does,
 // passes when what is encoded decodes to the same packet.
@@ -56,9 +58,17 @@ func TestBDSCorpus(t *testing.T) {
 	if s := os.Getenv("BDS_SECONDS"); s != "" {
 		seconds, _ = strconv.Atoi(s)
 	}
+	p := codec.V2193
+	if s := os.Getenv("BDS_PROTOCOL"); s != "" {
+		n, _ := strconv.Atoi(s)
+		var ok bool
+		if p, ok = codec.ByNumber(int32(n)); !ok {
+			t.Fatalf("no codecs of protocol %s", s)
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	c, err := Dial(ctx, addr, Config{Identity: login.Identity{DisplayName: "Corpus"}})
+	c, err := Dial(ctx, addr, Config{Identity: login.Identity{DisplayName: "Corpus"}, Protocol: p})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,11 +100,11 @@ func TestBDSCorpus(t *testing.T) {
 		for tick := uint64(1); time.Now().Before(stop); tick++ {
 			time.Sleep(50 * time.Millisecond)
 			pos[0] += 0.2
-			_ = c.WritePacket(&v2193.PlayerAuthInputPacket{Position: pos, Delta: [3]float32{0.2, 0, 0}, InputMode: 1, Tick: tick})
+			_ = c.WritePacket(&mc.PlayerAuthInputPacket{Position: pos, Delta: [3]float32{0.2, 0, 0}, InputMode: 1, Tick: tick})
 			if tick%5 == 0 && len(commands) > 0 {
-				_ = c.WritePacket(&v2193.CommandRequestPacket{
+				_ = c.WritePacket(&mc.CommandRequestPacket{
 					CommandLine:   "/" + commands[0],
-					CommandOrigin: v2193.CommandOrigin{PlayerUniqueID: c.game.EntityUniqueID},
+					CommandOrigin: mc.CommandOrigin{PlayerUniqueID: c.game.EntityUniqueID},
 					Version:       "latest",
 				})
 				commands = commands[1:]
@@ -119,7 +129,7 @@ func TestBDSCorpus(t *testing.T) {
 			stats[h.ID] = s
 		}
 		s.n++
-		pk := v2193.New(h.ID)
+		pk := p.New(h.ID)
 		if pk == nil {
 			s.failed++
 			return
@@ -135,7 +145,7 @@ func TestBDSCorpus(t *testing.T) {
 		var w wire.Writer
 		pk.Encode(&w)
 		if !bytes.Equal(w.B, body) {
-			again := v2193.New(h.ID)
+			again := p.New(h.ID)
 			r := wire.NewReader(w.B)
 			again.Decode(r)
 			if r.Err() == nil && reflect.DeepEqual(again, pk) {
@@ -175,7 +185,7 @@ func TestBDSCorpus(t *testing.T) {
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, id := range ids {
 		s := stats[id]
-		t.Logf("%4d %-40T %6d packets, %d did not decode, %d encode back differently, %d with NBT reordered", id, v2193.New(id), s.n, s.failed, s.changed, s.reordered)
+		t.Logf("%4d %-40T %6d packets, %d did not decode, %d encode back differently, %d with NBT reordered", id, p.New(id), s.n, s.failed, s.changed, s.reordered)
 	}
 	t.Logf("%d packets of %d kinds", total, len(ids))
 	// Whether BDS sends anything on the unreliable channel, which the game

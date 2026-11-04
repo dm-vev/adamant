@@ -25,7 +25,6 @@
 cmd/loadtest/bot.go bot.play 170 tool
 cmd/loadtest/run.go run 141 tool
 cmd/vanilla-block-catalog/main.go parseCatalog 115 tool
-cmd/vanilla-probe/main.go run 112 tool
 cmd/vanilla-snbt-export/main.go export 105 tool
 cmd/vanilla-solid-export/main.go generate 240 tool
 protocol/bedrock/session/actor_appearance.go Session.writeActorAppearance 153

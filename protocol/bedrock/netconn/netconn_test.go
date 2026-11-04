@@ -24,6 +24,7 @@ import (
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
@@ -180,7 +181,7 @@ func TestProtocolMismatch(t *testing.T) {
 
 // fakeProtocol is a protocol newer than the model with the codecs of the
 // model, as a listener may allow two protocols apart.
-var fakeProtocol = &versions.Protocol{Number: 2300, Names: []string{"1.26.90", "26.90"}, Version: "1.26.90", New: mc.New, FromClient: mc.FromClient}
+var fakeProtocol = &versions.Protocol{Codec: codec.Codec{Number: 2300, Version: "1.26.90", New: mc.New, FromClient: mc.FromClient}, Names: []string{"1.26.90", "26.90"}}
 
 // TestProtocolNegotiation checks the refusals of protocols a listener does
 // not allow: a client older than every protocol allowed, or between two,
@@ -292,7 +293,7 @@ func TestOurClientJoins(t *testing.T) {
 		_ = conn.Close()
 	}()
 	for _, msg := range []string{"hello", strings.Repeat("long ", 300)} {
-		if err := conn.WritePacket(&v2193.TextPacket{TextType: 1, SourceName: "Bot", Message: msg}); err != nil {
+		if err := conn.WritePacket(&mc.TextPacket{TextType: 1, SourceName: "Bot", Message: msg}); err != nil {
 			t.Fatal(err)
 		}
 		if err := conn.Flush(); err != nil {
@@ -303,7 +304,7 @@ func TestOurClientJoins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if text, ok := pk.(*v2193.TextPacket); ok {
+			if text, ok := pk.(*mc.TextPacket); ok {
 				if text.Message != "echo "+msg {
 					t.Fatalf("echo %q", text.Message)
 				}
@@ -368,7 +369,7 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if text, ok := pk.(*v2193.TextPacket); ok {
+			if text, ok := pk.(*mc.TextPacket); ok {
 				got = append(got, text.Message)
 			}
 		}
@@ -446,13 +447,13 @@ func TestConvertingProtocol(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if text, ok := pk.(*v2193.TextPacket); ok {
+			if text, ok := pk.(*mc.TextPacket); ok {
 				got = append(got, text.Message)
 			}
 		}
 		return got
 	}
-	_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Bot", Message: "hi"})
+	_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, SourceName: "Bot", Message: "hi"})
 	_ = conn.Flush()
 	if got := texts(2); got[0] != "echo HI" || got[1] != "echo HI again" {
 		t.Fatalf("read %q", got)
@@ -507,7 +508,7 @@ func TestFloodingClientIsCut(t *testing.T) {
 	defer conn.Close()
 	for range 100 {
 		for range 100 {
-			_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Player", Message: "spam"})
+			_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, SourceName: "Player", Message: "spam"})
 		}
 		if err := conn.Flush(); err != nil {
 			break
@@ -563,9 +564,9 @@ func TestChatOverItsBucketIsDropped(t *testing.T) {
 	}
 	defer conn.Close()
 	for range 100 {
-		_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, SourceName: "Player", Message: "spam"})
+		_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, SourceName: "Player", Message: "spam"})
 	}
-	_ = conn.WritePacket(&v2193.EmotePacket{EntityRuntimeID: 1, EmoteID: "wave"})
+	_ = conn.WritePacket(&mc.EmotePacket{EntityRuntimeID: 1, EmoteID: "wave"})
 	if err := conn.Flush(); err != nil {
 		t.Fatal(err)
 	}
@@ -777,7 +778,7 @@ func TestReceive(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := range 5 {
-		_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, Message: fmt.Sprint(i)})
+		_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, Message: fmt.Sprint(i)})
 		if i%2 == 0 {
 			_ = conn.Flush()
 		}
@@ -821,7 +822,7 @@ func TestReceiveConverts(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	_ = conn.WritePacket(&v2193.TextPacket{TextType: v2193.TextTypeChat, Message: "quiet"})
+	_ = conn.WritePacket(&mc.TextPacket{TextType: mc.TextTypeChat, Message: "quiet"})
 	_ = conn.Flush()
 	select {
 	case msg := <-got:
@@ -862,11 +863,11 @@ func TestReceiveEnds(t *testing.T) {
 		pk   proto.Packet
 		want func(error) bool
 	}{
-		"disconnect": {&v2193.DisconnectPacket{Message: "bye"}, func(err error) bool {
+		"disconnect": {&mc.DisconnectPacket{Message: "bye"}, func(err error) bool {
 			var d DisconnectError
 			return errors.As(err, &d) && d == "bye"
 		}},
-		"server packet": {&v2193.SubChunkPacket{}, func(err error) bool { return errors.As(err, new(errUnknownPacket)) }},
+		"server packet": {&mc.SubChunkPacket{}, func(err error) bool { return errors.As(err, new(errUnknownPacket)) }},
 	} {
 		l := listen(t, Config{})
 		handed := make(chan proto.Packet, 1)

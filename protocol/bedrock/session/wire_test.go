@@ -11,13 +11,14 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
+	"github.com/dm-vev/adamant/net/bedrock/proto/codec"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
 // otherProtocol is a protocol the adapter does not speak, which tests give
 // tables of their own.
-var otherProtocol = &versions.Protocol{Number: 2300, Names: []string{"1.26.90"}, Version: "1.26.90", New: mc.New, FromClient: mc.FromClient}
+var otherProtocol = &versions.Protocol{Codec: codec.Codec{Number: 2300, Version: "1.26.90", New: mc.New, FromClient: mc.FromClient}, Names: []string{"1.26.90"}}
 
 // TestTablesArePerProtocolAndRegistry checks the tables of a protocol and a
 // registry are built once and those of the default protocol, 2193, are its

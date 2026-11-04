@@ -4,12 +4,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 
 func TestEncodeBlocksNBTRoundTrip(t *testing.T) {
-	entries := []v2193.BlockEntry{
+	entries := []mc.BlockEntry{
 		{Name: "minecraft:white_wool_stairs", Properties: map[string]any{
 			"blockTags":     []any{"minecraft:is_shears_item_destructible"},
 			"molangVersion": int32(13),
@@ -42,10 +42,10 @@ func TestEncodeBlocksNBTRoundTrip(t *testing.T) {
 func TestEncodeBlocksNBTRejectsBadNames(t *testing.T) {
 	for _, test := range []struct {
 		name    string
-		entries []v2193.BlockEntry
+		entries []mc.BlockEntry
 	}{
-		{name: "empty", entries: []v2193.BlockEntry{{Name: ""}}},
-		{name: "duplicate", entries: []v2193.BlockEntry{{Name: "minecraft:red_shrub"}, {Name: "minecraft:red_shrub"}}},
+		{name: "empty", entries: []mc.BlockEntry{{Name: ""}}},
+		{name: "duplicate", entries: []mc.BlockEntry{{Name: "minecraft:red_shrub"}, {Name: "minecraft:red_shrub"}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := encodeBlocksNBT(test.entries); err == nil {

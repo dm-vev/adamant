@@ -12,7 +12,6 @@ import (
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/sctp"
 )
@@ -76,7 +75,7 @@ func TestSendQueue(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := pk.(*v2193.TextPacket); ok {
+		if _, ok := pk.(*mc.TextPacket); ok {
 			read++
 		}
 	}
