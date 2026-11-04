@@ -208,7 +208,9 @@ func (p *Player) checkMove(ac *acState, m client.Move, delta mgl64.Vec3, st anti
 	if !p.movementChecked(ac, m) {
 		return moveVerdict{}
 	}
-	if p.checkSpeed(ac, m, delta, st) || p.checkFly(ac, m, delta) {
+	// NoClip first: a move into blocks is set back before it is judged by
+	// how fast it went.
+	if p.checkNoClip(ac, m) || p.checkSpeed(ac, m, delta, st) || p.checkFly(ac, m, delta) {
 		return moveVerdict{refused: true}
 	}
 	return p.checkAscend(ac, m, delta, st)
@@ -420,4 +422,88 @@ func (p *Player) refuseFlightToggle() {
 		return
 	}
 	p.violate(ac, anticheat.Fly, "toggle", 1, "flight asked for in a game mode without it")
+}
+
+// clipBox returns the box of the player that NoClip and Phase judge a move
+// of the client m with: that of its pose, or the lower one the client
+// claims to start in the move, as the flags of a move are handled after it.
+func (p *Player) clipBox(m client.Move) cube.BBox {
+	box := p.H().Type().BBox(p)
+	s := p.Scale()
+	switch {
+	case m.Crawling || m.Swimming || m.Gliding:
+		box = cube.Box(-0.3*s, 0, -0.3*s, 0.3*s, min(box.Max()[1], 0.6*s), 0.3*s)
+	case m.Sneaking:
+		box = cube.Box(-0.3*s, 0, -0.3*s, 0.3*s, min(box.Max()[1], 1.49*s), 0.3*s)
+	}
+	return box
+}
+
+// solidBoxes calls f with the collision boxes of the blocks within box that
+// NoClip and Phase judge, translated to the world, and the position of
+// their block. Blocks whose shape depends on who touches them (scaffolding,
+// powder snow, cobweb), blocks without collision and blocks a piston moves
+// are left out, and so are unloaded blocks. f returns false to stop.
+func (p *Player) solidBoxes(box cube.BBox, f func(pos cube.Pos, bb cube.BBox) bool) {
+	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	for x := low[0]; x <= high[0]; x++ {
+		for y := low[1]; y <= high[1]; y++ {
+			for z := low[2]; z <= high[2]; z++ {
+				pos := cube.Pos{x, y, z}
+				b, loaded := p.tx.BlockLoaded(pos)
+				if !loaded {
+					continue
+				}
+				switch b.(type) {
+				case block.Air, block.Scaffolding, block.PowderSnow, block.Cobweb, block.MovingBlock:
+					continue
+				}
+				for _, bb := range b.Model().BBox(pos, p.tx) {
+					if !f(pos, bb.Translate(pos.Vec3())) {
+						return
+					}
+				}
+			}
+		}
+	}
+}
+
+// checkNoClip refuses a move into blocks: as Java's
+// isEntityCollidingWithAnythingNew, a move whose box, shrunk by MinDepth,
+// enters the box of a block the box before the move, shrunk alike, was not
+// in. With
+// ResendFirst, the blocks entered are resent, so that a client that walked
+// into a block it did not have is shown it: while the level is at most
+// ActAt, the move is only logged, and a cheat is set back from the next
+// violation. A player without collision is not judged.
+func (p *Player) checkNoClip(ac *acState, m client.Move) (refused bool) {
+	if !p.checks(ac, anticheat.NoClip) || !p.GameMode().HasCollision() {
+		return false
+	}
+	// Both boxes shrink by MinDepth: a box that was in a block by less than
+	// that did not enter it, and its next move in may.
+	shape := p.clipBox(m)
+	before := shape.Translate(p.Position()).Grow(-ac.conf.NoClip.MinDepth)
+	after := shape.Translate(m.Position).Grow(-ac.conf.NoClip.MinDepth)
+	if after.Width() <= 0 || after.Height() <= 0 || after.Length() <= 0 {
+		return false
+	}
+	var entered []cube.Pos
+	p.solidBoxes(after, func(pos cube.Pos, bb cube.BBox) bool {
+		if bb.IntersectsWith(after) && !bb.IntersectsWith(before) && (len(entered) == 0 || entered[len(entered)-1] != pos) {
+			entered = append(entered, pos)
+		}
+		return true
+	})
+	if len(entered) == 0 {
+		return false
+	}
+	name, _ := p.tx.Block(entered[0]).EncodeBlock()
+	act := p.violate(ac, anticheat.NoClip, "enter", float64(len(entered)), fmt.Sprintf("into %s at %v", name, entered[0]))
+	if ac.conf.NoClip.ResendFirst {
+		for _, pos := range entered {
+			p.resendNearbyBlock(pos)
+		}
+	}
+	return p.actOnMove(ac, m, act, p.Position())
 }

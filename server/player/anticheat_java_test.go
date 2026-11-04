@@ -49,6 +49,8 @@ type javaInput struct {
 	yaw             float64
 	sprint, jump    bool
 	sneak           bool
+	// crawl slows the input as sneaking does, Java's crawling.
+	crawl bool
 	// speed is the movement speed attribute, 0.1 if 0; sprinting adds 30%.
 	speed       float64
 	levitation  int
@@ -87,8 +89,8 @@ func (j *javaMover) step(tx *world.Tx, body world.Entity, in javaInput) mgl64.Ve
 		speed *= 1.3
 	}
 	strafe, forward := in.strafe*0.98, in.forward*0.98
-	if in.sneak {
-		// Player's sneaking speed modifier of 0.3.
+	if in.sneak || in.crawl {
+		// Player's sneaking speed modifier of 0.3, which crawling takes too.
 		strafe, forward = strafe*0.3, forward*0.3
 	}
 	water := j.inWater(tx)

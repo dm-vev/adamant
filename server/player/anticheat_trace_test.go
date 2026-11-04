@@ -53,8 +53,10 @@ var (
 	// wall is a wall one block thick across X = 10, from Z 38 to 42 and
 	// three high.
 	wall = cube.Pos{10, floorY, 40}
-	// tunnel is a tunnel two blocks high along X, at Z 44.
+	// tunnel is a tunnel two blocks high along X, at Z 44, and the gap one
+	// block high along X at Z 46.
 	tunnelZ = 44
+	gapZ    = 46
 )
 
 // traceWorld returns a synchronous world with the courses of the traces:
@@ -130,6 +132,7 @@ func traceWorld(t testing.TB) *world.World {
 		}
 		for x := -10; x <= 10; x++ {
 			tx.SetBlock(cube.Pos{x, floorY + 2, tunnelZ}, block.Stone{}, nil)
+			tx.SetBlock(cube.Pos{x, floorY + 1, gapZ}, block.Stone{}, nil)
 		}
 	})
 	return w
@@ -229,7 +232,7 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 				pos = j.step(tx, p, in)
 			}
 			m := client.Move{Position: pos, Rotation: cube.Rotation{in.yaw, 0}, Tick: uint64(i + 1), Jumping: in.jump, Sprinting: in.sprint, Sneaking: in.sneak,
-				Riding: p.Riding() != nil}
+				Crawling: in.crawl, Riding: p.Riding() != nil}
 			if j.acknowledge {
 				m.Acknowledged, j.acknowledge = true, false
 			}
@@ -323,6 +326,9 @@ func legitimateTraces() []acTrace {
 		acTrace{name: "walking through cobweb", start: mgl64.Vec3{float64(cobweb[0]) - 2.5, floorY, float64(cobweb[2]) + 0.5}, ticks: 80, input: forward(east, false, false)},
 		acTrace{name: "walking into powder snow", start: mgl64.Vec3{float64(powderSnow[0]) - 2.5, floorY, float64(powderSnow[2]) + 0.5}, ticks: 80, input: forward(east, false, false)},
 		acTrace{name: "jumping in the tunnel", start: mgl64.Vec3{-9.5, floorY, float64(tunnelZ) + 0.5}, ticks: 80, input: forward(east, true, true)},
+		acTrace{name: "crawling through a gap", start: mgl64.Vec3{-9.5, floorY, float64(gapZ) + 0.5}, ticks: 120,
+			setup: func(_ *world.Tx, p *Player, _ *javaMover) { p.StartCrawling() },
+			input: func(int, *javaMover) javaInput { return javaInput{forward: 1, yaw: east, crawl: true} }},
 		acTrace{name: "Levitation V", start: laneStart(laneStone), ticks: 100, input: func(int, *javaMover) javaInput {
 			return javaInput{levitation: 5, forward: 1, yaw: east}
 		}, setup: withEffect(effectLevitation(5))},
