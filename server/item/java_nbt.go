@@ -20,7 +20,8 @@ var ErrJavaStackCount = errors.New("count outside 1..99")
 
 // StackFromStructureNBT decodes a Java 1.20.5+ item stack compound into a Dragonfly
 // stack. Unknown item identifiers are rejected rather than silently discarded.
-// A count of 0 gives an empty stack.
+// A count of 0 gives an empty stack. The tag of a stack from before 1.20.5 is
+// turned into components as Java's data fixer does (javaLegacyComponents).
 func StackFromStructureNBT(data map[string]any) (Stack, error) {
 	id, ok := data["id"].(string)
 	if !ok || id == "" {
@@ -50,7 +51,7 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 		}
 	}
 	if legacy, ok := data["tag"].(map[string]any); ok {
-		for k, v := range legacy {
+		for k, v := range javaLegacyComponents(id, legacy) {
 			if _, exists := components[k]; !exists {
 				components[k] = v
 			}
@@ -58,15 +59,15 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 	}
 	for key, value := range components {
 		switch key {
-		case "minecraft:damage", "damage", "Damage":
+		case "minecraft:damage":
 			if s, err = withJavaDamage(s, value); err != nil {
 				return Stack{}, fmt.Errorf("item %q: %w", id, err)
 			}
-		case "minecraft:custom_name", "minecraft:item_name", "custom_name", "item_name":
+		case "minecraft:custom_name", "minecraft:item_name":
 			if name, ok := javaText(value); ok {
 				s = s.WithCustomName(name)
 			}
-		case "minecraft:lore", "lore":
+		case "minecraft:lore":
 			if lines, ok := value.([]any); ok {
 				lore := make([]string, 0, len(lines))
 				for _, line := range lines {
@@ -76,20 +77,7 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 				}
 				s = s.WithLore(lore...)
 			}
-		case "display":
-			if display, ok := value.(map[string]any); ok {
-				if name, ok := javaText(display["Name"]); ok {
-					s = s.WithCustomName(name)
-				}
-				if lore, ok := display["Lore"].([]any); ok {
-					lines := make([]string, 0, len(lore))
-					for _, line := range lore {
-						if text, ok := javaText(line); ok { lines = append(lines, text) }
-					}
-					s = s.WithLore(lines...)
-				}
-			}
-		case "minecraft:repair_cost", "RepairCost":
+		case "minecraft:repair_cost":
 			if cost, ok := javaInt(value); ok { s = s.WithAnvilCost(int(cost)) }
 		case "minecraft:ominous_bottle_amplifier":
 			amplifier, ok := javaInt(value)
@@ -123,11 +111,11 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 			}
 			book.Recipes = recipes
 			s = s.WithItem(book)
-		case "minecraft:unbreakable", "Unbreakable":
+		case "minecraft:unbreakable":
 			if unbreakable(value) { s = s.AsUnbreakable() }
-		case "minecraft:enchantments", "minecraft:stored_enchantments", "ench", "Enchantments", "StoredEnchantments":
+		case "minecraft:enchantments", "minecraft:stored_enchantments":
 			applyJavaEnchantments(&s, value)
-		case "minecraft:potion_contents", "Potion":
+		case "minecraft:potion_contents":
 			s = javaPotionContents(s, value)
 		case "minecraft:instrument":
 			if horn, ok := s.Item().(GoatHorn); ok {
