@@ -1,11 +1,11 @@
 package item
 
 import (
-	"github.com/df-mc/dragonfly/server/world"
-	"maps"
+	"cmp"
 	"slices"
-	"sort"
 	"sync"
+
+	"github.com/df-mc/dragonfly/server/world"
 )
 
 // Enchantment is an enchantment that can be applied to a Stack. It holds an EnchantmentType and level that influences
@@ -69,12 +69,17 @@ func RegisterEnchantment(id int, enchantment EnchantmentType) {
 
 	enchantmentsMap[id] = enchantment
 	enchantmentIDs[enchantment] = id
+	enchantmentsSorted = sortedEnchantments()
 }
 
 var (
 	enchantmentMu   sync.RWMutex
 	enchantmentsMap = map[int]EnchantmentType{}
 	enchantmentIDs  = map[EnchantmentType]int{}
+	// enchantmentsSorted holds the registered enchantments as Enchantments
+	// returns them. RegisterEnchantment builds it again; it is never
+	// changed otherwise, and Enchantments returns copies of it.
+	enchantmentsSorted []EnchantmentType
 )
 
 // EnchantmentByID attempts to return an enchantment by the ID it was registered with. If found, the enchantment found
@@ -97,18 +102,35 @@ func EnchantmentID(e EnchantmentType) (int, bool) {
 	return id, ok
 }
 
-// Enchantments returns a slice of all registered enchantments.
+// Enchantments returns a slice of all registered enchantments, ordered by
+// the IDs they were registered with. The slice is the caller's.
 func Enchantments() []EnchantmentType {
 	enchantmentMu.RLock()
-	e := slices.Collect(maps.Values(enchantmentsMap))
-	ids := make(map[EnchantmentType]int, len(e))
-	for _, enchantment := range e {
-		ids[enchantment] = enchantmentIDs[enchantment]
-	}
-	enchantmentMu.RUnlock()
+	defer enchantmentMu.RUnlock()
+	return slices.Clone(enchantmentsSorted)
+}
 
-	sort.Slice(e, func(i, j int) bool {
-		return ids[e[i]] < ids[e[j]]
+// sortedEnchantments returns the enchantments of enchantmentsMap ordered by
+// the ID enchantmentIDs holds for each, the ID it was registered with last.
+// An enchantment registered with more than one ID is in it once for each.
+// Enchantments of the same ID, which only one registered with several IDs
+// and one registered later with its last can be, are ordered by the IDs
+// that hold them in enchantmentsMap. The caller holds enchantmentMu.
+func sortedEnchantments() []EnchantmentType {
+	type entry struct {
+		e      EnchantmentType
+		id, at int
+	}
+	entries := make([]entry, 0, len(enchantmentsMap))
+	for at, e := range enchantmentsMap {
+		entries = append(entries, entry{e: e, id: enchantmentIDs[e], at: at})
+	}
+	slices.SortFunc(entries, func(a, b entry) int {
+		return cmp.Or(cmp.Compare(a.id, b.id), cmp.Compare(a.at, b.at))
 	})
+	e := make([]EnchantmentType, len(entries))
+	for i, entry := range entries {
+		e[i] = entry.e
+	}
 	return e
 }
