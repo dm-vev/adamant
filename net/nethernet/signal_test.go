@@ -132,6 +132,66 @@ func TestServeSignaling(t *testing.T) {
 	}
 }
 
+// flakySignaling is a signaling service whose first writes fail, as the
+// answer to a LAN peer the listener has no address for does.
+type flakySignaling struct {
+	in       chan Signal
+	out      chan Signal
+	failures int
+}
+
+func (s *flakySignaling) ReadSignal() (Signal, error) {
+	sig, ok := <-s.in
+	if !ok {
+		return Signal{}, io.EOF
+	}
+	return sig, nil
+}
+
+func (s *flakySignaling) WriteSignal(sig Signal) error {
+	if s.failures > 0 {
+		s.failures--
+		return errors.New("no address for the peer")
+	}
+	s.out <- sig
+	return nil
+}
+
+// TestServeOutlivesFailedAnswer has a listener answer the offers after an
+// answer it could not send: one peer it cannot reach does not end the
+// signaling of all others. Serve returns only once the signaling ends.
+func TestServeOutlivesFailedAnswer(t *testing.T) {
+	l := listen(t, ListenConfig{})
+	s := &flakySignaling{in: make(chan Signal), out: make(chan Signal, 1), failures: 1}
+	served := make(chan error, 1)
+	go func() { served <- l.Serve(s) }()
+
+	s.in <- Signal{Type: SignalOffer, ConnectionID: 1, Data: "not sdp", NetworkID: "1"}
+	select {
+	case s.in <- Signal{Type: SignalOffer, ConnectionID: 2, Data: "not sdp", NetworkID: "2"}:
+	case err := <-served:
+		t.Fatalf("Serve returned %v after an answer it could not send", err)
+	}
+	select {
+	case reply := <-s.out:
+		if reply.Type != SignalError || reply.ConnectionID != 2 {
+			t.Fatalf("reply to the second offer: %+v", reply)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the second offer was not answered")
+	}
+
+	close(s.in)
+	select {
+	case err := <-served:
+		if !errors.Is(err, io.EOF) {
+			t.Fatalf("Serve returned %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Serve did not return once the signaling ended")
+	}
+}
+
 // FuzzParseSignal parses arbitrary text: what parses formats back to the
 // same signal.
 func FuzzParseSignal(f *testing.F) {

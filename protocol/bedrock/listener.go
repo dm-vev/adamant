@@ -257,7 +257,8 @@ func publishLAN(l *netconn.Listener, c Config, log *slog.Logger, addr string) *l
 		_ = ll.Close()
 	}()
 	go func() {
-		if err := l.Serve(ll); err != nil && !errors.Is(err, net.ErrClosed) {
+		// Serve returns only once the signaling ends, never with nil.
+		if err := l.Serve(ll); !errors.Is(err, net.ErrClosed) {
 			log.Warn("LAN signaling ended.", "err", err)
 		}
 	}()

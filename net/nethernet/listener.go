@@ -444,10 +444,16 @@ func (l *Listener) hold(r *relay, c *Conn, addr netip.Addr) {
 }
 
 // Serve answers the offers that arrive over a signaling service until it
-// ends, and returns the error it ended with. Each offer is answered with
-// the candidates of the server, as one over HTTP is, which clients of Xbox
-// Live take as well; candidates the clients trickle only let them through
-// the relay, as the server learns their addresses from their checks.
+// ends, and returns the error it ended with, which is never nil. Each offer
+// is answered with the candidates of the server, as one over HTTP is, which
+// clients of Xbox Live take as well; candidates the clients trickle only
+// let them through the relay, as the server learns their addresses from
+// their checks.
+//
+// An answer that cannot be sent is lost, as one the peer does not receive
+// is: it fails that peer alone, like a LAN peer the service has no address
+// for, and leaves the signaling to the others. A service that is gone
+// fails its next read.
 func (l *Listener) Serve(s Signaling) error {
 	for {
 		sig, err := s.ReadSignal()
@@ -458,9 +464,7 @@ func (l *Listener) Serve(s Signaling) error {
 		case SignalCandidate:
 			l.permitCandidate(sig)
 		case SignalOffer:
-			if err := s.WriteSignal(l.answerSignal(sig)); err != nil {
-				return err
-			}
+			_ = s.WriteSignal(l.answerSignal(sig))
 		}
 	}
 }
