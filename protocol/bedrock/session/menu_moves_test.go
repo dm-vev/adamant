@@ -64,7 +64,7 @@ func (s *scenario) movesScenario() {
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(inv, 2)})
 	s.refuse("refused move: seven apples of six",
 		&v2193.PlaceStackRequestAction{Count: 7, Source: s.slot(inv, 1), Destination: s.slot(inv, 21)})
-	s.attempt("move: an apple onto its own slot",
+	s.refuseWith("refused move: an apple onto its own slot", v2193.ItemStackResponseStatusDstContainerAndSlotEqualToSrcContainerAndSlot,
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: s.slot(inv, 1)})
 	s.request("move: the apples locked in the inventory to the cursor", nil,
 		&v2193.TakeStackRequestAction{Count: 2, Source: s.slot(inv, 4), Destination: cursor()})
@@ -74,7 +74,7 @@ func (s *scenario) movesScenario() {
 		&v2193.TakeStackRequestAction{Count: 1, Source: s.slot(inv, 5), Destination: cursor()})
 	s.refuse("refused move: the cursed helmet taken off",
 		&v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerArmor, 0), Destination: cursor()})
-	s.attempt("move: the cursed helmet onto its own slot",
+	s.refuseWith("refused move: the cursed helmet onto its own slot", v2193.ItemStackResponseStatusDstContainerAndSlotEqualToSrcContainerAndSlot,
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerArmor, 0), Destination: s.slot(v2193.ContainerArmor, 0)})
 	s.request("move: the chestplate put on", nil,
 		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 6), Destination: s.slot(v2193.ContainerArmor, 1)})
@@ -132,7 +132,7 @@ func (s *scenario) movesScenario() {
 		&v2193.SwapStackRequestAction{Source: s.slot(inv, 3), Destination: s.slot(v2193.ContainerArmor, 1)})
 	s.attempt("swap: apples and the slot of the leggings",
 		&v2193.SwapStackRequestAction{Source: s.slot(inv, 4), Destination: s.slot(v2193.ContainerArmor, 2)})
-	s.attempt("swap: a slot with itself",
+	s.refuseWith("refused swap: a slot with itself", v2193.ItemStackResponseStatusDstContainerAndSlotEqualToSrcContainerAndSlot,
 		&v2193.SwapStackRequestAction{Source: s.slot(inv, 0), Destination: s.slot(inv, 0)})
 	s.clearInventory("the inventory emptied")
 

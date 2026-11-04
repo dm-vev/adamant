@@ -53,9 +53,9 @@ var menuRequestsKnownDiverging = map[string]string{
 // requests, named by the stack IDs this server gave. It compares whether
 // each request was accepted and, when it was, the slots of the response;
 // and the type a block's window opened with. BDS's own statuses of refusal
-// are not compared: the session refuses with the generic error. The
-// inventory screen, which BDS needs open for inventory requests, is not
-// opened: the session does not track it.
+// are compared for the cases that say so: elsewhere the session refuses
+// with the generic error. The inventory screen, which BDS needs open for
+// inventory requests, is not opened: the session does not track it.
 func TestMenuRequestsAgainstBDS(t *testing.T) {
 	b, err := os.ReadFile("testdata/bedrock_1_26_52_menu_requests.json")
 	if err != nil {
@@ -82,10 +82,14 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 		block world.Block
 	}
 	cases := []struct {
-		capture  string
-		items    map[int]item.Stack
+		capture string
+		items   map[int]item.Stack
+		// prepare, if set, readies the player further, after its items.
+		prepare  func(tx *world.Tx, p *player.Player)
 		menu     *menu
 		requests []func() []v2193.StackRequestAction
+		// statuses compares the status of each refusal with BDS's too.
+		statuses bool
 	}{
 		{
 			capture: "inventory/slot-changed-twice-refused",
@@ -179,6 +183,35 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			menu:     &menu{cube.Pos{2, -60, 2}, block.NewDropper()},
 			requests: []func() []v2193.StackRequestAction{levelEntityPlace(s, 0)},
 		},
+		{
+			capture: "inventory/move-onto-own-slot",
+			items:   map[int]item.Stack{0: item.NewStack(item.Apple{}, 6), 1: item.NewStack(item.Apple{}, 10)},
+			prepare: func(_ *world.Tx, p *player.Player) {
+				p.Armour().SetHelmet(item.NewStack(item.Helmet{Tier: item.ArmourTierLeather{}}, 1))
+			},
+			statuses: true,
+			requests: []func() []v2193.StackRequestAction{
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 1, inv, 1),
+				bdsMove(&v2193.TakeStackRequestAction{Count: 1}, s.slot, inv, 1, inv, 1),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 10}, s.slot, inv, 1, inv, 1),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerHotBar, 1, inv, 1),
+				func() []v2193.StackRequestAction {
+					return []v2193.StackRequestAction{&v2193.SwapStackRequestAction{Source: s.slot(inv, 0), Destination: s.slot(inv, 0)}}
+				},
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerArmor, 0, v2193.ContainerArmor, 0),
+				func() []v2193.StackRequestAction {
+					stale := v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: inv}, Slot: 1, StackNetworkID: 9999}
+					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: stale}}
+				},
+				func() []v2193.StackRequestAction {
+					stale := v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: inv}, Slot: 1, StackNetworkID: 9999}
+					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 1)}}
+				},
+				bdsMove(&v2193.TakeStackRequestAction{Count: 6}, s.slot, inv, 0, v2193.ContainerCursor, uiCursor),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerCursor, uiCursor, v2193.ContainerCursor, uiCursor),
+				bdsMove(&v2193.PlaceStackRequestAction{Count: 6}, s.slot, v2193.ContainerCursor, uiCursor, inv, 0),
+			},
+		},
 	}
 	if len(cases) != len(capture.Cases) {
 		t.Fatalf("%d cases replayed of the %d captured", len(cases), len(capture.Cases))
@@ -194,10 +227,16 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			s.run(func(tx *world.Tx, p *player.Player) {
 				p.Inventory().Clear()
 				p.SetHeldItems(item.Stack{}, item.Stack{})
+				p.Armour().Clear()
+				_, _, _, ui, _ := s.sess.Inventories()
+				ui.Clear()
 				for slot, it := range c.items {
 					if err := p.Inventory().SetItem(slot, it); err != nil {
 						t.Fatal(err)
 					}
+				}
+				if c.prepare != nil {
+					c.prepare(tx, p)
 				}
 				if c.menu != nil {
 					tx.SetBlock(c.menu.pos, c.menu.block, nil)
@@ -263,7 +302,8 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 				t.Fatalf("%s: request %d was not answered", c.capture, j)
 			}
 			bds := want.Requests[j]
-			if (got.Status == v2193.ItemStackResponseStatusOK) != (bds.Status == v2193.ItemStackResponseStatusOK) {
+			if (got.Status == v2193.ItemStackResponseStatusOK) != (bds.Status == v2193.ItemStackResponseStatusOK) ||
+				c.statuses && got.Status != bds.Status {
 				diverging = append(diverging, fmt.Sprintf("%q answered %d, BDS %d", bds.Label, got.Status, bds.Status))
 				continue
 			}
@@ -298,6 +338,21 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 		case isKnown:
 			t.Logf("%s differs from BDS, as known (%s): %s", c.capture, known, strings.Join(diverging, "; "))
 		}
+	}
+}
+
+// bdsMove returns a request of one Place or Take action of the capture, a
+// copy of a with the count it has, from slot from of container src to slot
+// to of container dst, each named by the stack ID slotOf gives it.
+func bdsMove(a v2193.StackRequestAction, slotOf func(container uint8, slot int) v2193.StackRequestSlotInfo, src uint8, from int, dst uint8, to int) func() []v2193.StackRequestAction {
+	return func() []v2193.StackRequestAction {
+		switch a := a.(type) {
+		case *v2193.PlaceStackRequestAction:
+			return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: a.Count, Source: slotOf(src, from), Destination: slotOf(dst, to)}}
+		case *v2193.TakeStackRequestAction:
+			return []v2193.StackRequestAction{&v2193.TakeStackRequestAction{Count: a.Count, Source: slotOf(src, from), Destination: slotOf(dst, to)}}
+		}
+		panic(fmt.Sprintf("move of %T", a))
 	}
 }
 

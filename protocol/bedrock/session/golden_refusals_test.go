@@ -148,6 +148,16 @@ func (s *scenario) refuse(heading string, actions ...v2193.StackRequestAction) {
 	}
 }
 
+// refuseWith sends an item stack request of the actions passed and fails
+// the test unless the server refused it with the status passed, the status
+// BDS 1.26.52.3 refuses the request with.
+func (s *scenario) refuseWith(heading string, status uint8, actions ...v2193.StackRequestAction) {
+	s.t.Helper()
+	if got, ok := s.attempt(heading, actions...); ok && got != status {
+		s.t.Errorf("%s: answered with status %d, want %d", heading, got, status)
+	}
+}
+
 // attempt sends an item stack request of the actions passed and returns
 // the status the server answered with, whatever it is.
 func (s *scenario) attempt(heading string, actions ...v2193.StackRequestAction) (uint8, bool) {

@@ -1,6 +1,7 @@
 package menu_test
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
@@ -79,6 +80,47 @@ func TestMove(t *testing.T) {
 			})
 		})
 	}
+}
+
+// TestMoveOntoItsOwnSlot checks that a move or a swap of a slot with
+// itself is refused with ErrSameSlot and changes nothing: a slot of the
+// inventory, of the armour, the off hand and the cursor, part or all of
+// what it holds. A move onto its own slot took the items out of it and
+// added them to what it held before: six apples became seven. BDS
+// 1.26.52.3 refuses such a request (status 48), whatever the slot.
+func TestMoveOntoItsOwnSlot(t *testing.T) {
+	inTx(t, func(tx *world.Tx) {
+		b, inv := ownerBatch(tx, nil, &fakeOwner{mode: world.GameModeSurvival})
+		_ = inv.Main.SetItem(1, apples(6))
+		_ = inv.OffHand.SetItem(0, item.NewStack(item.Totem{}, 1))
+		inv.Armour.SetHelmet(cursed)
+		_ = inv.UI.SetItem(menu.UICursor, apples(3))
+		for _, c := range []struct {
+			name  string
+			slot  menu.Ref
+			count int
+		}{
+			{"an apple of the inventory", ref(inv.Main, 1, 1), 1},
+			{"all the apples of the inventory", ref(inv.Main, 1, 1), 6},
+			{"the totem of the off hand", ref(inv.OffHand, 0, 2), 1},
+			{"the cursed helmet", ref(inv.Armour.Inventory(), 0, 3), 1},
+			{"an apple of the cursor", ref(inv.UI, menu.UICursor, 4), 1},
+		} {
+			before, _ := c.slot.Inv.Item(c.slot.Index)
+			if err := b.Move(c.slot, c.slot, c.count); !errors.Is(err, menu.ErrSameSlot) {
+				t.Errorf("%s moved onto its own slot: %v, want ErrSameSlot", c.name, err)
+			}
+			if err := b.Swap(c.slot, c.slot); !errors.Is(err, menu.ErrSameSlot) {
+				t.Errorf("%s swapped with itself: %v, want ErrSameSlot", c.name, err)
+			}
+			if after, _ := c.slot.Inv.Item(c.slot.Index); !after.Equal(before) {
+				t.Errorf("%s: the slot holds %v, held %v", c.name, after, before)
+			}
+		}
+		if n := len(b.Changes()); n != 0 {
+			t.Errorf("moves onto their own slot made %d changes", n)
+		}
+	})
 }
 
 // TestMoveBundles checks moves into and out of bundles: what fits goes in
@@ -196,8 +238,8 @@ func TestMoveAndSwapCallHandlers(t *testing.T) {
 
 // TestMoveLocks checks the locks of items: an item locked in the inventory
 // moves among the slots of the player and the cursor only, an item locked
-// in its slot not at all but to its own slot, and neither is dropped or
-// destroyed.
+// in its slot not at all (its own slot is no move: ErrSameSlot), and
+// neither is dropped or destroyed.
 func TestMoveLocks(t *testing.T) {
 	inTx(t, func(tx *world.Tx) {
 		o := &fakeOwner{mode: world.GameModeCreative}
@@ -222,8 +264,8 @@ func TestMoveLocks(t *testing.T) {
 		if err := b.Swap(ref(inv.Main, 2, 0), ref(inv.Main, 1, 0)); err == nil {
 			t.Error("an item locked in its slot was swapped away")
 		}
-		if err := b.Swap(ref(inv.Main, 1, 0), ref(inv.Main, 1, 0)); err != nil {
-			t.Errorf("an item locked in its slot was not swapped with itself: %v", err)
+		if err := b.Swap(ref(inv.Main, 1, 0), ref(inv.Main, 1, 0)); !errors.Is(err, menu.ErrSameSlot) {
+			t.Errorf("an item locked in its slot swapped with itself: %v, want ErrSameSlot", err)
 		}
 		if err := b.Drop(ref(inv.Main, 1, 0), 1); err == nil {
 			t.Error("an item locked in its slot was dropped")
@@ -243,8 +285,8 @@ func TestMoveLocks(t *testing.T) {
 }
 
 // TestBinding checks the curse of binding: outside creative, an item of it
-// leaves its armour slot for that slot only, whether moved, swapped or
-// dropped; in creative it leaves.
+// does not leave its armour slot, whether moved, swapped or dropped (its own
+// slot is no move: ErrSameSlot); in creative it leaves.
 func TestBinding(t *testing.T) {
 	for _, mode := range []world.GameMode{world.GameModeSurvival, world.GameModeCreative} {
 		inTx(t, func(tx *world.Tx) {
@@ -252,8 +294,8 @@ func TestBinding(t *testing.T) {
 			inv.Armour.SetHelmet(cursed)
 			helmet := ref(inv.Armour.Inventory(), 0, 0)
 			free := mode.CreativeInventory()
-			if err := b.Move(helmet, helmet, 0); err != nil {
-				t.Errorf("%T: the cursed helmet did not move to its own slot: %v", mode, err)
+			if err := b.Move(helmet, helmet, 1); !errors.Is(err, menu.ErrSameSlot) {
+				t.Errorf("%T: the cursed helmet moved to its own slot: %v, want ErrSameSlot", mode, err)
 			}
 			if err := b.Swap(ref(inv.Main, 0, 0), helmet); (err == nil) != free {
 				t.Errorf("%T: swapped off: %v", mode, err)

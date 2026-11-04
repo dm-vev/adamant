@@ -881,6 +881,260 @@
    "counts_after": [
     "MenuProbe has 15 items that match the criteria"
    ]
+  },
+  {
+   "name": "inventory/move-onto-own-slot",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "replaceitem entity MenuProbe slot.hotbar 0 apple 6",
+    "replaceitem entity MenuProbe slot.hotbar 1 apple 10",
+    "replaceitem entity MenuProbe slot.armor.head 0 leather_helmet 1"
+   ],
+   "notes": [
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": ">>",
+     "type": "Interact",
+     "sha256": "5b019849175705557875534b2658443de9eeaf5c602a1ad8f753e15a15617823",
+     "raw": "21060100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "5d0bdecc4fcbf830ca2bfb399f3058174aab548969fe79426e63bf4ea0a6922c",
+     "raw": "2e02ff00750001"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "bb37f7e986fd4fc0b3d4e041a66552265be98f386ceb45c33223be2f4a35e268",
+     "raw": "93010101010101010c0001020000000c0001020000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "31206f2b5a86fbe77fab7bec5b34fce41f60f8ffad701739f5b7b76f71cb346a",
+     "raw": "940101300100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d8c3247e0bbf6c06ce379633531a61b20c106a64af2791219fe42fde80f96053",
+     "raw": "93010105010000010c0001020000000c0001020000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "3231ed591f712b59ee4ef0b6be4f5ac238c877f4ca2fa8c78125e2935b508ad6",
+     "raw": "940101300500"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "f75990f08ce2608703662dc95338c0b53458e2c51db754841265f96a0827c1d8",
+     "raw": "930101090101010a0c0001020000000c0001020000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "803fcd0a7246789fb522e624882860bcd2c5ccf7c36eb81cf501b1e20bf8e1fa",
+     "raw": "940101300900"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "fa2827b251d2ee81ecdd6d3e5e6cdff93f3f08872195fcd1ba88bac6d0badf9f",
+     "raw": "9301010d010101011c0001020000000c0001020000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "146e562e2a93a349a834e84501132a735f06b61e9b1f8281fc8d339c699c61bd",
+     "raw": "940101300d00"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d15b9d06e5e1bd2ddc5f1bed94b26e3fcc5d7da0ca8cb52dd4e719d486f1310f",
+     "raw": "930101110102020c0000010000000c0000010000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "fbe6653bd8d3e90753cea07fa356cb81f5ccc1e44177d70bcb6a94668d2d5134",
+     "raw": "940101301100"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "f175c0c754455f96991f4e4459eedda36932b3ded8feef8c6c9b9d9c73d7407c",
+     "raw": "930101150101010106000003000000060000030000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "99394705f095ba06f3c64d8fa24aedc787ceab60820180d6940b72e05b6b6018",
+     "raw": "940101301500"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "10bb07f2ad11bff6d7cb1d772625afa85b398207aaff4f79c7eb2ec2a24e31fc",
+     "raw": "93010119010101010c00010f2700000c00010f2700000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "4cbc757bfd01f34400e50c2cd507bc5c0471235f5976ae26249727b9bca2a0ed",
+     "raw": "940101301900"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "154b4b335d1b1518c62dd40ff502382b1bc9c0ddc77ad42a2076c5c8590d3880",
+     "raw": "9301011d010101010c00010f2700000c0001020000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "5b4e2a46b6b5f888b771a45b9dffcd8cbb9a795fdf328b0047c27b2be8814ce9",
+     "raw": "940101301d00"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "3994b5baa9c3c3d9bc27092423f7ab7143c1cebc47531ea0332e642d1a495535",
+     "raw": "93010121010000060c0000010000003b0000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "60df98a0750584edb1ac2cabdb29f77fe68d887f43cc65c61417c7cca3863b66",
+     "raw": "940101002101020c0001000000000000003b00010000060102000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "99202f7532a9933264386493afef9f6dfd725f31539a4ca0b14b5f09009b1bc0",
+     "raw": "93010125010101013b0000efffffff3b0000efffffff0000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "eef0582db04156944b32f4d4fab405bc61d02f82978e1bd2d8cdcdf5264bce86",
+     "raw": "940101302500"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "eb9943eb792a56667ea7a82f04b6bd707940fdb303b5a6a50771549ac09d31c5",
+     "raw": "93010129010101063b0000010000000c0000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "ab43108eb6f06525240610deefa740668d19c27ff59ad59604c21b2766b3a527",
+     "raw": "940101002901023b0001000000000000000c00010000060102000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "fb54d0be7836368ba92273a03ad4b6810a83a7b3dca5b2e3e03f5c164bc0fefd",
+     "raw": "2f02ff00"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "abe73ce65647bce71eb6a6cc3edea27dc11f4b7462e3388dc6eb0c191f0876d3",
+     "raw": "2f02f700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "an apple placed from slot 1 onto slot 1",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "an apple taken from slot 1 onto slot 1",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "all ten apples placed from slot 1 onto slot 1",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "an apple placed from hot bar slot 1 (container 28) onto slot 1 (container 12)",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "slot 0 swapped with itself",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "the helmet placed from its slot onto its slot",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "an apple placed from slot 1 onto slot 1, both named by a stale stack ID",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "an apple placed from slot 1 onto slot 1, the source named by a stale stack ID",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "six apples of slot 0 taken to the cursor",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 0
+      },
+      {
+       "container": 59,
+       "slot": 0,
+       "count": 6
+      }
+     ]
+    },
+    {
+     "label": "an apple placed from the cursor onto the cursor",
+     "status": 48,
+     "changes": []
+    },
+    {
+     "label": "the six apples of the cursor put back in slot 0",
+     "status": 0,
+     "changes": [
+      {
+       "container": 59,
+       "slot": 0,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 6
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "MenuProbe has 16 items that match the criteria",
+    "MenuProbe has 1 items that match the criteria"
+   ]
   }
  ]
 }

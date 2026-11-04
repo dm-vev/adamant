@@ -15,11 +15,17 @@ import (
 // into an empty slot or onto a stack of the same item, or into or out of a
 // bundle. It calls the HandleTake handler of the source's inventory and the
 // HandlePlace handler of the destination's, and fails if either cancels. It
-// refuses to take a stack cursed with binding out of an
-// armour slot (outside creative), and an item locked in the inventory or in
-// its slot out of it. Taking the result of a furnace, blast furnace or
-// smoker drops the experience it collected at the player's feet.
+// refuses a destination that is the source (ErrSameSlot), to take a stack
+// cursed with binding out of an armour slot (outside creative), and an item
+// locked in the inventory or in its slot out of it. Taking the result of a
+// furnace, blast furnace or smoker drops the experience it collected at the
+// player's feet.
 func (t *Tx) Move(from, to Ref, count int) error {
+	if t.sameSlot(from.Slot, to.Slot) {
+		// The items would be taken out of the slot and added to what it
+		// held before.
+		return fmt.Errorf("move %v items: %w", count, ErrSameSlot)
+	}
 	i, _ := t.Item(from.Slot)
 	if err := t.ensureBindingAllowsRemoval(i, from.Slot, to.Slot); err != nil {
 		return err
@@ -128,6 +134,9 @@ func (t *Tx) moveOutOfBundle(from, to Ref, count int, bundleStack, destination i
 // handlers of both inventories are called for the take and the place of
 // both stacks, and fail it if any cancels.
 func (t *Tx) Swap(a, b Ref) error {
+	if t.sameSlot(a.Slot, b.Slot) {
+		return fmt.Errorf("swap: %w", ErrSameSlot)
+	}
 	i, _ := t.Item(a.Slot)
 	dest, _ := t.Item(b.Slot)
 	if err := t.ensureBindingAllowsRemoval(i, a.Slot, b.Slot); err != nil {

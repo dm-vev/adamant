@@ -1,6 +1,7 @@
 package session
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -97,7 +98,7 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 	defer func() {
 		h.multiCraft, h.autoCraft = nil, nil
 		if err != nil {
-			h.reject(req.RequestID, s)
+			h.reject(req.RequestID, s, refusalStatus(err))
 			return
 		}
 		h.batch.Commit()
@@ -226,26 +227,46 @@ func (h *ItemStackRequestHandler) handlePlace(a *v2193.PlaceStackRequestAction, 
 
 // handleTransfer handles the transferring of x count from a source slot to a destination slot.
 func (h *ItemStackRequestHandler) handleTransfer(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx) error {
-	if err := h.verifySlots(s, tx, from, to); err != nil {
-		return fmt.Errorf("source slot out of sync: %w", err)
-	}
 	src, dst, err := s.refPair(from, to, tx)
 	if err != nil {
 		return err
+	}
+	if err := sameSlot(src, dst); err != nil {
+		return err
+	}
+	if err := h.verifySlots(s, tx, from, to); err != nil {
+		return fmt.Errorf("source slot out of sync: %w", err)
 	}
 	return h.batchOp(func() error { return h.batch.Move(src, dst, int(count)) })
 }
 
 // handleSwap handles a Swap stack request action.
 func (h *ItemStackRequestHandler) handleSwap(a *v2193.SwapStackRequestAction, s *Session, tx *world.Tx) error {
-	if err := h.verifySlots(s, tx, a.Source, a.Destination); err != nil {
-		return fmt.Errorf("slot out of sync: %w", err)
-	}
 	src, dst, err := s.refPair(a.Source, a.Destination, tx)
 	if err != nil {
 		return err
 	}
+	if err := sameSlot(src, dst); err != nil {
+		return err
+	}
+	if err := h.verifySlots(s, tx, a.Source, a.Destination); err != nil {
+		return fmt.Errorf("slot out of sync: %w", err)
+	}
 	return h.batchOp(func() error { return h.batch.Swap(src, dst) })
+}
+
+// sameSlot refuses a source and a destination that are one slot, however
+// the client names it: as the hot bar or the inventory, the off hand at
+// any index. BDS 1.26.52.3 refuses them (48) before it checks the stack
+// IDs that name them.
+func sameSlot(src, dst menu.Ref) error {
+	if src.Slot != dst.Slot {
+		return nil
+	}
+	return refusal{
+		status: v2193.ItemStackResponseStatusDstContainerAndSlotEqualToSrcContainerAndSlot,
+		err:    fmt.Errorf("slot %d is both the source and the destination: %w", src.Index, menu.ErrSameSlot),
+	}
 }
 
 // refPair returns the slots of a source and a destination of an item stack
@@ -745,11 +766,36 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 	h.changes = map[byte]map[byte]changeInfo{}
 }
 
-// reject rejects the item stack request sent by the client so that it is reverted client-side.
-func (h *ItemStackRequestHandler) reject(id int32, s *Session) {
+// refusal is an error that refuses a request with a status of its own: the
+// one BDS 1.26.52.3 refuses the request with.
+type refusal struct {
+	status uint8
+	err    error
+}
+
+func (r refusal) Error() string { return r.err.Error() }
+func (r refusal) Unwrap() error { return r.err }
+
+// refusalStatus returns the status of the response that refuses a request
+// for err: that of the refusal it wraps, BDS's for the reasons of the menu
+// it names, or else the generic error.
+func refusalStatus(err error) uint8 {
+	var r refusal
+	switch {
+	case errors.As(err, &r):
+		return r.status
+	case errors.Is(err, menu.ErrSameSlot):
+		return v2193.ItemStackResponseStatusDstContainerAndSlotEqualToSrcContainerAndSlot
+	}
+	return v2193.ItemStackResponseStatusError
+}
+
+// reject rejects the item stack request sent by the client so that it is
+// reverted client-side, with the status passed.
+func (h *ItemStackRequestHandler) reject(id int32, s *Session, status uint8) {
 	s.writePacket(&v2193.ItemStackResponsePacket{
 		Responses: []v2193.ItemStackResponse{{
-			Status:    v2193.ItemStackResponseStatusError,
+			Status:    status,
 			RequestID: id,
 		}},
 	})
