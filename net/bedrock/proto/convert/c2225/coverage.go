@@ -22,7 +22,8 @@ var reviewed = map[uint32]string{
 	180: "DimensionData: CloudHeight and RenderClouds are new, 0 and false going up (the session sends dimensions of " +
 		"its own; BDS 1.26.61 tells its defaults, open question Q2); dropped going down",
 	315: "ServerBoundDiagnostics: the system categories and the position and dimension of a timed entity are optional " +
-		"in 2225 (fixups.go); the memory categories have the same values in both, by Mojang's JSON",
+		"in 2225 (fixups.go); the memory categories have the same values in both, by Mojang's JSON, and Executable " +
+		"(110) of 2225 goes down as it is, a category 2193 does not name",
 	345: "ClientBoundAttributeLayerSync: the payload of an environment attribute is a variant in 2225 and the noise is " +
 		"named by its settings (fixups.go); a transition's clock is lost going down",
 	348: "ClientboundUpdateSoundData: 2193 writes the update seven times, 2225 once (fixups.go)",
