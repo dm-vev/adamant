@@ -1,6 +1,6 @@
 package netconn
 
-import "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+import mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 
 // GameData is what the server tells a client that starts the game: the
 // world and the player it spawns as. The connection fills in the rest of
@@ -43,22 +43,22 @@ type GameData struct {
 	// XBLBroadcastMode is who sees the game on Xbox Live.
 	XBLBroadcastMode int32
 	// GameRules are the game rules the client knows of.
-	GameRules []v2193.GameRule
+	GameRules []mc.GameRule
 	// Time is the time of the world.
 	Time int64
 	// DayCycleLockTime is the time the day cycle stopped at.
 	DayCycleLockTime int32
 	// Blocks are the blocks the client learns from the server: the vanilla
 	// blocks the game defines by data and the blocks the server adds.
-	Blocks []v2193.BlockEntry
+	Blocks []mc.BlockEntry
 	// Items are all items of the game, vanilla and custom.
-	Items []v2193.ItemEntry
+	Items []mc.ItemEntry
 	// PlayerMovementSettings sets how movement is authoritative.
-	PlayerMovementSettings v2193.PlayerMovementSettings
+	PlayerMovementSettings mc.PlayerMovementSettings
 	// ServerAuthoritativeInventory makes the server own the inventory.
 	ServerAuthoritativeInventory bool
 	// Experiments are the experiments of the world.
-	Experiments []v2193.ExperimentData
+	Experiments []mc.ExperimentData
 	// PlayerPermissions is the permission level of the player.
 	PlayerPermissions uint8
 	// ChunkRadius, if not zero, is the chunk radius the client gets,
@@ -76,7 +76,7 @@ type GameData struct {
 	// PropertyData are the properties of the player entity.
 	PropertyData map[string]any
 	// Dimensions are the dimensions the server adds to the game.
-	Dimensions []v2193.DimensionDefinition
+	Dimensions []mc.DimensionDefinition
 }
 
 // ServerStatus is the status of the server that clients look up before

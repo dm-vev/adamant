@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // BlockActorDataHandler handles an incoming BlockActorData packet from the client, sent for some block entities like
@@ -16,7 +16,7 @@ type BlockActorDataHandler struct{}
 
 // Handle ...
 func (b BlockActorDataHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*v2193.BlockActorDataPacket)
+	pk := p.(*mc.BlockActorDataPacket)
 	if id, ok := pk.NBTData["id"]; ok {
 		pos := blockPosFromProtocol(pk.Position)
 		if !c.CanReach(pos.Vec3Middle()) {
@@ -38,7 +38,7 @@ func (b BlockActorDataHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, 
 // handleJigsaw ports ServerGamePacketListenerImpl.handleSetJigsawBlock: the
 // jigsaw editor of an operator in creative mode sets the names, pool, final
 // state, joint and priorities of a jigsaw.
-func (b BlockActorDataHandler) handleJigsaw(pk *v2193.BlockActorDataPacket, pos cube.Pos, s *Session, tx *world.Tx, c Controllable) error {
+func (b BlockActorDataHandler) handleJigsaw(pk *mc.BlockActorDataPacket, pos cube.Pos, s *Session, tx *world.Tx, c Controllable) error {
 	if !c.CanUseGameMasterBlocks() {
 		return fmt.Errorf("only creative operators may edit jigsaw blocks")
 	}
@@ -54,7 +54,7 @@ func (b BlockActorDataHandler) handleJigsaw(pk *v2193.BlockActorDataPacket, pos 
 
 // handleSign handles the BlockActorData packet sent when editing a sign and validates the expected sign variant.
 func (b BlockActorDataHandler) handleSign(
-	pk *v2193.BlockActorDataPacket,
+	pk *mc.BlockActorDataPacket,
 	pos cube.Pos,
 	s *Session,
 	tx *world.Tx,

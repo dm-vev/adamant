@@ -2,13 +2,14 @@ package session
 
 import (
 	"bytes"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestUnhandledPacketLog checks how a session logs a packet it has no
@@ -16,7 +17,7 @@ import (
 // at debug its type and size, never its fields, once a second at most,
 // counting the packets left out.
 func TestUnhandledPacketLog(t *testing.T) {
-	pk := &v2193.TextPacket{TextType: v2193.TextTypeChat, Message: "a secret of the client"}
+	pk := &mc.TextPacket{TextType: mc.TextTypeChat, Message: "a secret of the client"}
 
 	var info bytes.Buffer
 	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(&info, &slog.HandlerOptions{Level: slog.LevelInfo}))}}
@@ -39,7 +40,7 @@ func TestUnhandledPacketLog(t *testing.T) {
 		t.Fatalf("logged %d lines of 3 packets within a second, want 1:\n%s", len(lines), debug.String())
 	}
 	size := "size=" + strconv.Itoa(packetSize(pk))
-	for _, want := range []string{"level=DEBUG", `msg="unhandled packet"`, "packet=*v2193.TextPacket", size, "skipped=0"} {
+	for _, want := range []string{"level=DEBUG", `msg="unhandled packet"`, fmt.Sprintf("packet=%T", pk), size, "skipped=0"} {
 		if !strings.Contains(lines[0], want) {
 			t.Errorf("line %q lacks %q", lines[0], want)
 		}

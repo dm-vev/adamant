@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -25,7 +25,7 @@ func TestViewNamedParticleDimension(t *testing.T) {
 		if len(pks) != 1 {
 			t.Fatalf("%v: %d packets, want 1", c.dim, len(pks))
 		}
-		want := &v2193.SpawnParticleEffectPacket{Dimension: c.want, EntityUniqueID: -1, Position: vec64To32(mgl64.Vec3{1, 2, 3}), ParticleName: "minecraft:heart_particle"}
+		want := &mc.SpawnParticleEffectPacket{Dimension: c.want, EntityUniqueID: -1, Position: vec64To32(mgl64.Vec3{1, 2, 3}), ParticleName: "minecraft:heart_particle"}
 		if !reflect.DeepEqual(pks[0], want) {
 			t.Errorf("%v: %#v, want %#v", c.dim, pks[0], want)
 		}
@@ -42,12 +42,12 @@ func TestStopSoundNames(t *testing.T) {
 		all  bool
 		want []proto.Packet
 	}{
-		{"block.pumpkin.carve", false, []proto.Packet{&v2193.StopSoundPacket{SoundName: "pumpkin.carve"}}},
-		{"random.click", false, []proto.Packet{&v2193.StopSoundPacket{SoundName: "random.click"}}},
-		{"custom.pack.sound", false, []proto.Packet{&v2193.StopSoundPacket{SoundName: "custom.pack.sound"}}},
+		{"block.pumpkin.carve", false, []proto.Packet{&mc.StopSoundPacket{SoundName: "pumpkin.carve"}}},
+		{"random.click", false, []proto.Packet{&mc.StopSoundPacket{SoundName: "random.click"}}},
+		{"custom.pack.sound", false, []proto.Packet{&mc.StopSoundPacket{SoundName: "custom.pack.sound"}}},
 		{"block.growing_plant.crop", false, nil},
-		{"", true, []proto.Packet{&v2193.StopSoundPacket{StopAll: true}}},
-		{"block.growing_plant.crop", true, []proto.Packet{&v2193.StopSoundPacket{StopAll: true}}},
+		{"", true, []proto.Packet{&mc.StopSoundPacket{StopAll: true}}},
+		{"block.growing_plant.crop", true, []proto.Packet{&mc.StopSoundPacket{StopAll: true}}},
 	} {
 		s := newCaptureSession()
 		s.StopSound(c.name, c.all)

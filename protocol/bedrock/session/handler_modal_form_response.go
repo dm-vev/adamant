@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/form"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // ModalFormResponseHandler handles the ModalFormResponse packet.
@@ -20,7 +20,7 @@ type ModalFormResponseHandler struct {
 
 // Handle ...
 func (h *ModalFormResponseHandler) Handle(p proto.Packet, _ *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*v2193.ModalFormResponsePacket)
+	pk := p.(*mc.ModalFormResponsePacket)
 
 	h.mu.Lock()
 	f, ok := h.forms[pk.FormID]

@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
@@ -18,16 +18,16 @@ func TestUseItemTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 		useItem   func(*Session)
 		wantCount uint16
 	}{
-		{name: "cancelled", count: 1, useItem: func(s *Session) { s.writePacket(&v2193.TextPacket{Message: "cancelled use-item"}) }, wantCount: 1},
+		{name: "cancelled", count: 1, useItem: func(s *Session) { s.writePacket(&mc.TextPacket{Message: "cancelled use-item"}) }, wantCount: 1},
 		{name: "successful", count: 2, useItem: func(s *Session) {
-			s.writePacket(&v2193.TextPacket{Message: "successful use-item"})
+			s.writePacket(&mc.TextPacket{Message: "successful use-item"})
 			_ = s.inv.SetItem(0, item.NewStack(item.Apple{}, 1))
 		}, wantCount: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			s := transactionTestSession(test.count)
 			c := transactionControllable{useItem: func() { test.useItem(s) }}
-			if err := new(InventoryTransactionHandler).handleUseItemTransaction(&v2193.UseItemTransactionData{ActionType: v2193.UseItemActionClickAir}, s, c); err != nil {
+			if err := new(InventoryTransactionHandler).handleUseItemTransaction(&mc.UseItemTransactionData{ActionType: mc.UseItemActionClickAir}, s, c); err != nil {
 				t.Fatal(err)
 			}
 			assertActionThenHeldSlot(t, s, test.wantCount)
@@ -46,12 +46,12 @@ func TestUseItemOnEntityTransactionResyncsHeldSlotAfterAction(t *testing.T) {
 		tx.AddEntity(target)
 		s.entities[2] = target
 		c := transactionControllable{useItemOnEntity: func(world.Entity) bool {
-			s.writePacket(&v2193.TextPacket{Message: "cancelled use-on-entity"})
+			s.writePacket(&mc.TextPacket{Message: "cancelled use-on-entity"})
 			return false
 		}}
-		err := new(InventoryTransactionHandler).handleUseItemOnEntityTransaction(&v2193.UseItemOnEntityTransactionData{
+		err := new(InventoryTransactionHandler).handleUseItemOnEntityTransaction(&mc.UseItemOnEntityTransactionData{
 			TargetEntityRuntimeID: 2,
-			ActionType:            v2193.UseItemOnEntityActionInteract,
+			ActionType:            mc.UseItemOnEntityActionInteract,
 		}, s, tx, c)
 		if err != nil {
 			t.Fatal(err)
@@ -73,14 +73,14 @@ func transactionTestSession(count int) *Session {
 
 func assertActionThenHeldSlot(t *testing.T, s *Session, wantCount uint16) {
 	t.Helper()
-	if _, ok := (s.testPacket()).(*v2193.TextPacket); !ok {
+	if _, ok := (s.testPacket()).(*mc.TextPacket); !ok {
 		t.Fatal("action packet was not sent before the inventory resync")
 	}
-	slot, ok := (s.testPacket()).(*v2193.InventorySlotPacket)
+	slot, ok := (s.testPacket()).(*mc.InventorySlotPacket)
 	if !ok {
 		t.Fatal("held slot was not resynced")
 	}
-	if slot.WindowID != v2193.WindowIDInventory || slot.Slot != 0 || slot.NewItem.Stack.Count != wantCount {
+	if slot.WindowID != mc.WindowIDInventory || slot.Slot != 0 || slot.NewItem.Stack.Count != wantCount {
 		t.Fatalf("held slot = %+v, want inventory slot 0 with count %d", slot, wantCount)
 	}
 	if len(s.heldPackets) != 0 {

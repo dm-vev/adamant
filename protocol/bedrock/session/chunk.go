@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nbt"
 )
 
@@ -42,13 +42,13 @@ func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, col *world.
 // ViewSubChunks sends the sub-chunks at the offsets from centre and returns
 // the bytes of their payloads: to a client that caches them, those of the
 // block entities, as the blobs go when it asks for them.
-func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChunkOffset, tx *world.Tx) int {
+func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []mc.SubChunkOffset, tx *world.Tx) int {
 	if s.chunkLoader == nil {
 		// The chunk loader is initialised during Spawn, so return an empty response for early requests.
 		dim, _ := world.DimensionID(tx.World().Dimension())
-		s.writePacket(&v2193.SubChunkPacket{
+		s.writePacket(&mc.SubChunkPacket{
 			Dimension:       int32(dim),
-			Position:        v2193.SubChunkPos(centre),
+			Position:        mc.SubChunkPos(centre),
 			CacheEnabled:    s.conn.ClientCacheEnabled(),
 			SubChunkEntries: nil,
 		})
@@ -60,13 +60,13 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 	}
 	r := tx.Range()
 
-	entries := make([]v2193.SubChunkEntry, 0, len(offsets))
+	entries := make([]mc.SubChunkEntry, 0, len(offsets))
 	transaction := make(map[uint64]struct{})
 	size := 0
 	for _, offset := range offsets {
 		ind := int16(centre.Y()) + int16(offset[1]) - int16(r[0])>>4
 		if ind < 0 || ind > int16(r.Height()>>4) {
-			entries = append(entries, v2193.SubChunkEntry{Result: v2193.SubChunkResultIndexOutOfBounds, Offset: offset})
+			entries = append(entries, mc.SubChunkEntry{Result: mc.SubChunkResultIndexOutOfBounds, Offset: offset})
 			continue
 		}
 		col, ok := s.chunkLoader.Chunk(world.ChunkPos{
@@ -74,7 +74,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 			centre.Z() + int32(offset[2]),
 		})
 		if !ok {
-			entries = append(entries, v2193.SubChunkEntry{Result: v2193.SubChunkResultChunkNotFound, Offset: offset})
+			entries = append(entries, mc.SubChunkEntry{Result: mc.SubChunkResultChunkNotFound, Offset: offset})
 			continue
 		}
 		entry := s.subChunkEntry(offset, ind, col, transaction)
@@ -87,20 +87,20 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []v2193.SubChu
 		s.blobMu.Unlock()
 	}
 	dim, _ := world.DimensionID(tx.World().Dimension())
-	s.writePacket(&v2193.SubChunkPacket{
+	s.writePacket(&mc.SubChunkPacket{
 		Dimension:       int32(dim),
-		Position:        v2193.SubChunkPos(centre),
+		Position:        mc.SubChunkPos(centre),
 		CacheEnabled:    s.conn.ClientCacheEnabled(),
 		SubChunkEntries: entries,
 	})
 	return size
 }
 
-func (s *Session) subChunkEntry(offset v2193.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) v2193.SubChunkEntry {
+func (s *Session) subChunkEntry(offset mc.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) mc.SubChunkEntry {
 	subMapType, subMap := subChunkHeightMap(col, ind)
-	var subMapData proto.Optional[v2193.HeightMap]
+	var subMapData proto.Optional[mc.HeightMap]
 	if subMap != nil {
-		var heightMap v2193.HeightMap
+		var heightMap mc.HeightMap
 		for z := range heightMap {
 			copy(heightMap[z][:], subMap[z*16:(z+1)*16])
 		}
@@ -109,8 +109,8 @@ func (s *Session) subChunkEntry(offset v2193.SubChunkOffset, ind int16, col *wor
 
 	sub := col.Sub()[ind]
 	if sub.Empty() {
-		return v2193.SubChunkEntry{
-			Result:              v2193.SubChunkResultSuccessAllAir,
+		return mc.SubChunkEntry{
+			Result:              mc.SubChunkResultSuccessAllAir,
 			HeightMapType:       subMapType,
 			HeightMapData:       subMapData,
 			RenderHeightMapType: subMapType,
@@ -121,8 +121,8 @@ func (s *Session) subChunkEntry(offset v2193.SubChunkOffset, ind int16, col *wor
 	serialisedSubChunk := s.tables().networkSubChunkPayload(col, ind)
 	blockEntityPayload := subChunkBlockEntityPayload(col, ind)
 
-	entry := v2193.SubChunkEntry{
-		Result:              v2193.SubChunkResultSuccess,
+	entry := mc.SubChunkEntry{
+		Result:              mc.SubChunkResultSuccess,
 		RawPayload:          proto.Some(joinPayloads(serialisedSubChunk, blockEntityPayload)),
 		HeightMapType:       subMapType,
 		HeightMapData:       subMapData,
@@ -146,7 +146,7 @@ func subChunkHeightMap(col *world.Column, ind int16) (byte, []int8) {
 	}
 
 	chunkMap := col.HeightMap()
-	subMapType, subMap := byte(v2193.HeightMapDataHasData), make([]int8, 256)
+	subMapType, subMap := byte(mc.HeightMapDataHasData), make([]int8, 256)
 	higher, lower := true, true
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
@@ -164,9 +164,9 @@ func subChunkHeightMap(col *world.Column, ind int16) (byte, []int8) {
 		}
 	}
 	if higher {
-		subMapType, subMap = v2193.HeightMapDataTooHigh, nil
+		subMapType, subMap = mc.HeightMapDataTooHigh, nil
 	} else if lower {
-		subMapType, subMap = v2193.HeightMapDataTooLow, nil
+		subMapType, subMap = mc.HeightMapDataTooLow, nil
 	}
 
 	col.CacheSubChunkHeightMap(ind, subMapType, subMap)
@@ -186,10 +186,10 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 	if subChunkRequests {
 		biomes := s.tables().networkBiomePayload(col)
 		if hash := xxhash.Sum64(biomes); s.trackBlob(hash, biomes) {
-			s.writePacket(&v2193.LevelChunkPacket{
+			s.writePacket(&mc.LevelChunkPacket{
 				Dimension:     s.dimensionID(dim),
 				SubChunkCount: 0,
-				Position:      v2193.ChunkPos(pos),
+				Position:      mc.ChunkPos(pos),
 				SubChunkLimit: proto.Some(int32(c.HighestFilledSubChunk())),
 				BlobHashes:    []uint64{hash},
 				RawPayload:    []byte{0},
@@ -228,9 +228,9 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 
 	raw := chunkBlockEntityPayload(col, false)
 
-	s.writePacket(&v2193.LevelChunkPacket{
+	s.writePacket(&mc.LevelChunkPacket{
 		Dimension:     s.dimensionID(dim),
-		Position:      v2193.ChunkPos{pos.X(), pos.Z()},
+		Position:      mc.ChunkPos{pos.X(), pos.Z()},
 		SubChunkCount: count,
 		CacheEnabled:  true,
 		BlobHashes:    hashes,
@@ -242,19 +242,19 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col *world.Column) {
 	c := col.Chunk
 	if subChunkRequests {
-		s.writePacket(&v2193.LevelChunkPacket{
+		s.writePacket(&mc.LevelChunkPacket{
 			Dimension:     s.dimensionID(dim),
 			SubChunkCount: 0,
-			Position:      v2193.ChunkPos(pos),
+			Position:      mc.ChunkPos(pos),
 			SubChunkLimit: proto.Some(int32(c.HighestFilledSubChunk())),
 			RawPayload:    s.tables().limitedChunkPayload(col),
 		})
 		return
 	}
 
-	s.writePacket(&v2193.LevelChunkPacket{
+	s.writePacket(&mc.LevelChunkPacket{
 		Dimension:     s.dimensionID(dim),
-		Position:      v2193.ChunkPos{pos.X(), pos.Z()},
+		Position:      mc.ChunkPos{pos.X(), pos.Z()},
 		SubChunkCount: uint32(len(c.Sub())),
 		RawPayload:    s.tables().fullChunkPayload(col),
 	})

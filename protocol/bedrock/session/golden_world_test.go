@@ -13,7 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -98,14 +98,14 @@ func TestGoldenWorld(t *testing.T) {
 	// position of its eyes.
 	for i := 1; i <= 3; i++ {
 		x := 0.5 + 0.2*float32(i)
-		s.client(fmt.Sprintf("the client walks east, input %d", i), &v2193.PlayerAuthInputPacket{
+		s.client(fmt.Sprintf("the client walks east, input %d", i), &mc.PlayerAuthInputPacket{
 			Yaw: -90, HeadYaw: -90,
 			Position:   [3]float32{x, -58.38, 0.5},
 			MoveVector: [2]float32{0, 1},
 			Delta:      [3]float32{0.2, 0, 0},
 			Tick:       uint64(i),
-			InputMode:  v2193.InputModeMouse,
-			PlayMode:   v2193.PlayModeNormal,
+			InputMode:  mc.InputModeMouse,
+			PlayMode:   mc.PlayModeNormal,
 		})
 	}
 
@@ -116,7 +116,7 @@ func TestGoldenWorld(t *testing.T) {
 	s.step("the player opens it", func(tx *world.Tx, p *player.Player) {
 		p.OpenBlockContainer(chest, tx)
 	})
-	s.client("the client closes it", &v2193.ContainerClosePacket{WindowID: 1, ContainerType: v2193.ContainerTypeContainer, ServerSide: false})
+	s.client("the client closes it", &mc.ContainerClosePacket{WindowID: 1, ContainerType: mc.ContainerTypeContainer, ServerSide: false})
 	s.tick("after it closed", 1)
 
 	s.step("sounds", func(tx *world.Tx, p *player.Player) {
@@ -145,6 +145,6 @@ func TestGoldenWorld(t *testing.T) {
 		mapID = data.ID
 		_ = p.Inventory().SetItem(0, item.NewStack(item.FilledMap{NativeID: data.ID, HasNativeID: true}, 1))
 	})
-	s.client("the client asks for the map", &v2193.MapInfoRequestPacket{MapID: mapID})
+	s.client("the client asks for the map", &mc.MapInfoRequestPacket{MapID: mapID})
 	s.snapshot()
 }

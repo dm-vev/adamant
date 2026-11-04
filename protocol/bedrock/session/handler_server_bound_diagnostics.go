@@ -3,7 +3,7 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // ServerBoundDiagnosticsHandler handles diagnostic updates from the client.
@@ -11,7 +11,7 @@ type ServerBoundDiagnosticsHandler struct{}
 
 // Handle ...
 func (h *ServerBoundDiagnosticsHandler) Handle(p proto.Packet, _ *Session, _ *world.Tx, c Controllable) error {
-	pk := p.(*v2193.ServerBoundDiagnosticsPacket)
+	pk := p.(*mc.ServerBoundDiagnosticsPacket)
 	c.UpdateDiagnostics(Diagnostics{
 		AverageFramesPerSecond:        float64(pk.AverageFramesPerSecond),
 		AverageServerSimTickTime:      float64(pk.AverageServerSimTickTime),

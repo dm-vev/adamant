@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/item/creative"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // bedrockCreativeCategory returns the creative category CreativeContent sends
@@ -11,13 +11,13 @@ import (
 func bedrockCreativeCategory(c creative.Category) uint8 {
 	switch c {
 	case creative.ConstructionCategory():
-		return v2193.CreativeCategoryConstruction
+		return mc.CreativeCategoryConstruction
 	case creative.NatureCategory():
-		return v2193.CreativeCategoryNature
+		return mc.CreativeCategoryNature
 	case creative.EquipmentCategory():
-		return v2193.CreativeCategoryEquipment
+		return mc.CreativeCategoryEquipment
 	case creative.ItemsCategory():
-		return v2193.CreativeCategoryItems
+		return mc.CreativeCategoryItems
 	}
-	return v2193.CreativeCategoryAll
+	return mc.CreativeCategoryAll
 }

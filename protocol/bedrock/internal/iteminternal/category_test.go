@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/item/category"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestCreativeCategoryValues holds the creative category of each category of
@@ -17,11 +17,11 @@ func TestCreativeCategoryValues(t *testing.T) {
 		category  category.Category
 		want, was int32
 	}{
-		{"Construction", category.Construction(), v2193.CreativeCategoryConstruction, 1},
-		{"Nature", category.Nature(), v2193.CreativeCategoryNature, 2},
-		{"Equipment", category.Equipment(), v2193.CreativeCategoryEquipment, 3},
-		{"Items", category.Items(), v2193.CreativeCategoryItems, 4},
-		{"Category{}", category.Category{}, v2193.CreativeCategoryAll, 0},
+		{"Construction", category.Construction(), mc.CreativeCategoryConstruction, 1},
+		{"Nature", category.Nature(), mc.CreativeCategoryNature, 2},
+		{"Equipment", category.Equipment(), mc.CreativeCategoryEquipment, 3},
+		{"Items", category.Items(), mc.CreativeCategoryItems, 4},
+		{"Category{}", category.Category{}, mc.CreativeCategoryAll, 0},
 	} {
 		for _, group := range []string{"", "sword"} {
 			got := creativeCategory(c.category.WithGroup(group))
@@ -37,7 +37,7 @@ func TestCreativeCategoryValues(t *testing.T) {
 func TestComponentsNameCreativeCategory(t *testing.T) {
 	m := NewComponentBuilder("Test", "test:item", category.Equipment().WithGroup("sword")).Construct()
 	props := m["components"].(map[string]any)["item_properties"].(map[string]any)
-	if props["creative_category"] != int32(v2193.CreativeCategoryEquipment) || props["creative_group"] != "itemGroup.name.sword" {
+	if props["creative_category"] != int32(mc.CreativeCategoryEquipment) || props["creative_group"] != "itemGroup.name.sword" {
 		t.Errorf("creative_category %v, creative_group %v", props["creative_category"], props["creative_group"])
 	}
 }

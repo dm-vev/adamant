@@ -8,7 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 )
 
@@ -46,7 +46,7 @@ func ClientSkin(data login.ClientData) skin.Skin {
 }
 
 // protocolToSkin returns the skin a PlayerSkin packet carries.
-func protocolToSkin(sk v2193.Skin) skin.Skin {
+func protocolToSkin(sk mc.Skin) skin.Skin {
 	s := skin.FromPixels(int(sk.SkinImageWidth), int(sk.SkinImageHeight), sk.SkinData, sk.PersonaSkin)
 	if json.Valid(sk.SkinGeometry) {
 		s.Model = append([]byte(nil), sk.SkinGeometry...)
@@ -72,11 +72,11 @@ func protocolToSkin(sk v2193.Skin) skin.Skin {
 // one the game does not know.
 func animationType(t int64) (skin.AnimationType, bool) {
 	switch t {
-	case v2193.SkinAnimationHead:
+	case mc.SkinAnimationHead:
 		return skin.AnimationHead, true
-	case v2193.SkinAnimationBody32x32:
+	case mc.SkinAnimationBody32x32:
 		return skin.AnimationBody32x32, true
-	case v2193.SkinAnimationBody128x128:
+	case mc.SkinAnimationBody128x128:
 		return skin.AnimationBody128x128, true
 	}
 	return 0, false
@@ -94,13 +94,13 @@ func frameCount(f float64) int {
 // skinToProtocol returns a skin as the protocol holds it. A texture whose
 // pixels do not fill it, which a skin changed by hand may have, goes as
 // the empty one, so that what goes to a client is always one it can read.
-func skinToProtocol(s skin.Skin) v2193.Skin {
-	var animations []v2193.SkinAnimation
+func skinToProtocol(s skin.Skin) mc.Skin {
+	var animations []mc.SkinAnimation
 	for _, animation := range s.Animations {
 		if !fills(animation.Bounds(), animation.Pix) {
 			continue
 		}
-		protocolAnim := v2193.SkinAnimation{
+		protocolAnim := mc.SkinAnimation{
 			ImageWidth:     uint32(animation.Bounds().Dx()),
 			ImageHeight:    uint32(animation.Bounds().Dy()),
 			ImageData:      animation.Pix,
@@ -109,11 +109,11 @@ func skinToProtocol(s skin.Skin) v2193.Skin {
 		}
 		switch animation.Type() {
 		case skin.AnimationHead:
-			protocolAnim.AnimationType = v2193.SkinAnimationHead
+			protocolAnim.AnimationType = mc.SkinAnimationHead
 		case skin.AnimationBody32x32:
-			protocolAnim.AnimationType = v2193.SkinAnimationBody32x32
+			protocolAnim.AnimationType = mc.SkinAnimationBody32x32
 		case skin.AnimationBody128x128:
-			protocolAnim.AnimationType = v2193.SkinAnimationBody128x128
+			protocolAnim.AnimationType = mc.SkinAnimationBody128x128
 		}
 		animations = append(animations, protocolAnim)
 	}
@@ -134,7 +134,7 @@ func skinToProtocol(s skin.Skin) v2193.Skin {
 	if len(model) == 0 {
 		model = []byte("{}")
 	}
-	return v2193.Skin{
+	return mc.Skin{
 		PlayFabID:                 s.PlayFabID,
 		SkinID:                    uuid.New().String(),
 		SkinResourcePatch:         s.ModelConfig.Encode(),
@@ -151,7 +151,7 @@ func skinToProtocol(s skin.Skin) v2193.Skin {
 		Animations:                animations,
 		Trusted:                   true,
 		OverrideAppearance:        true,
-		GeometryDataEngineVersion: []byte(v2193.CurrentVersion),
+		GeometryDataEngineVersion: []byte(mc.CurrentVersion),
 	}
 }
 
@@ -165,13 +165,13 @@ func fills(b image.Rectangle, pix []byte) bool {
 // newListEntry returns the PlayerList packet adding the player of the
 // session with a skin, for every session.
 func (s *Session) newListEntry(sk skin.Skin) *sharedPacket {
-	return &sharedPacket{Packet: &v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
-		ActionType:     v2193.PlayerListActionAdd,
+	return &sharedPacket{Packet: &mc.PlayerListPacket{Entries: []mc.PlayerListEntry{{
+		ActionType:     mc.PlayerListActionAdd,
 		UUID:           s.ent.UUID(),
 		EntityUniqueID: s.ent.UniqueID(),
 		Username:       s.conn.IdentityData().DisplayName,
 		XUID:           s.conn.IdentityData().XUID,
-		BuildPlatform:  int32(v2193.DeviceUnknown),
+		BuildPlatform:  int32(mc.DeviceUnknown),
 		Skin:           skinToProtocol(sk),
 	}}}}
 }
@@ -194,7 +194,7 @@ func (s *Session) ShowSkin(sk skin.Skin) {
 		return
 	}
 	s.listEntry.Store(s.newListEntry(sk))
-	pk := &sharedPacket{Packet: &v2193.PlayerSkinPacket{UUID: s.ent.UUID(), Skin: skinToProtocol(sk)}}
+	pk := &sharedPacket{Packet: &mc.PlayerSkinPacket{UUID: s.ent.UUID(), Skin: skinToProtocol(sk)}}
 	for _, p := range s.roster().Players() {
 		if other, ok := p.Client.(*Session); ok {
 			other.writePacket(pk)

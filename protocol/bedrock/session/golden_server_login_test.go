@@ -17,7 +17,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/proxy"
 	"github.com/google/uuid"
@@ -108,24 +108,24 @@ func TestGoldenServerLogin(t *testing.T) {
 
 	s.out.WriteString("== an operator not on the whitelist: Operator from 203.0.113.1:4242\n")
 	op := s.proxied(link, "Operator", "203.0.113.1:4242", 10)
-	op.readUntil(v2193.IDResourcePacksInfo)
+	op.readUntil(mc.IDResourcePacksInfo)
 	_ = op.b.Close()
 	s.noPlayers()
 
 	s.out.WriteString("== a client on the whitelist: Member from 203.0.113.1:4242\n")
 	m := s.proxied(link, "Member", "203.0.113.1:4242", 11)
-	m.readUntil(v2193.IDResourcePacksInfo)
-	m.send(&v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseAllPacksDownloaded})
-	m.readUntil(v2193.IDResourcePackStack)
-	m.send(&v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
-	game := m.readUntil(v2193.IDStartGame, v2193.IDItemRegistry).(*v2193.StartGamePacket)
-	m.send(&v2193.RequestChunkRadiusPacket{ChunkRadius: goldenRadius})
-	m.readUntil(v2193.IDChunkRadiusUpdated, v2193.IDPlayStatus, v2193.IDCreativeContent)
+	m.readUntil(mc.IDResourcePacksInfo)
+	m.send(&mc.ResourcePackClientResponsePacket{Response: mc.PackResponseAllPacksDownloaded})
+	m.readUntil(mc.IDResourcePackStack)
+	m.send(&mc.ResourcePackClientResponsePacket{Response: mc.PackResponseCompleted})
+	game := m.readUntil(mc.IDStartGame, mc.IDItemRegistry).(*mc.StartGamePacket)
+	m.send(&mc.RequestChunkRadiusPacket{ChunkRadius: goldenRadius})
+	m.readUntil(mc.IDChunkRadiusUpdated, mc.IDPlayStatus, mc.IDCreativeContent)
 	// From here on the client is recorded as those of the test's listener
 	// are: what the spawn sent it up to the marker Accept writes, then what
 	// the ticks after sent up to a marker of a step.
 	member := m.spawning()
-	m.send(&v2193.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
+	m.send(&mc.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
 	s.awaitSpawn("Member")
 	fmt.Fprintf(&s.out, "-- Accept yielded %s\n", s.lastYielded())
 	s.spawnSent(member, nil)
@@ -162,11 +162,11 @@ func (s *serverScenario) proxiedAs(link *proxy.Link, name, addr string, n int, x
 	id := uuid.MustParse(fmt.Sprintf("00000000-0000-4000-8000-%012x", 0x9000+n))
 	xuid := fmt.Sprintf("25354000000%05d", 100+n)
 	identity, _ := json.Marshal(login.Identity{DisplayName: name, Identity: id.String(), XUID: xuid})
-	cd := login.DefaultClientData("golden.example.invalid:19132", name, v2193.Version)
+	cd := login.DefaultClientData("golden.example.invalid:19132", name, mc.Version)
 	// The default is drawn at random; the player list shows it.
 	cd.PlayFabID = fmt.Sprintf("%016x", 0x9000+n)
 	data, _ := json.Marshal(cd)
-	p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, XboxLive: xboxLive, Addr: addr, Protocol: v2193.Protocol})
+	p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, XboxLive: xboxLive, Addr: addr, Protocol: mc.Protocol})
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -199,12 +199,12 @@ func (c *proxiedClient) read() proto.Packet {
 	pk := decodeAs(c.s.t, h.ID, fields)
 	mark := false
 	switch pk := pk.(type) {
-	case *v2193.StartGamePacket:
-		slices.SortFunc(pk.GameRules, func(a, b v2193.GameRule) int { return strings.Compare(a.Name, b.Name) })
+	case *mc.StartGamePacket:
+		slices.SortFunc(pk.GameRules, func(a, b mc.GameRule) int { return strings.Compare(a.Name, b.Name) })
 		mark = true
-	case *v2193.ItemRegistryPacket:
+	case *mc.ItemRegistryPacket:
 		if len(pk.Items) > 1 {
-			slices.SortFunc(pk.Items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
+			slices.SortFunc(pk.Items, func(a, b mc.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
 			mark = true
 		}
 	}
@@ -213,7 +213,7 @@ func (c *proxiedClient) read() proto.Packet {
 	}
 	var desc string
 	switch pk.(type) {
-	case *v2193.ResourcePacksInfoPacket, *v2193.ResourcePackStackPacket:
+	case *mc.ResourcePacksInfoPacket, *mc.ResourcePackStackPacket:
 		// The UUIDs of the packs are those of the packs, not drawn at
 		// random: they are left as they are.
 		desc = describeAsIs(pk, fields, ">>")
@@ -249,7 +249,7 @@ func describeAsIs(pk proto.Packet, raw []byte, dir string) string {
 // the packet and that of the SHA-256 of their encoding.
 func briefPacket(pk proto.Packet, desc string) string {
 	lines := strings.Split(strings.TrimSuffix(desc, "\n"), "\n")
-	game, ok := pk.(*v2193.StartGamePacket)
+	game, ok := pk.(*mc.StartGamePacket)
 	if !ok {
 		return lines[0] + "\n" + lines[len(lines)-1] + "\n"
 	}
@@ -313,7 +313,7 @@ func (c *proxiedClient) spawning() *serverClient {
 				c.s.t.Errorf("%s: %s: %v", c.s.name, c.name, err)
 				return
 			}
-			pk := v2193.New(h.ID)
+			pk := mc.New(h.ID)
 			r := wire.NewReader(fields)
 			pk.Decode(r)
 			if r.Err() != nil || r.Len() != 0 {

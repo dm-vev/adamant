@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestLoadingScreenAcknowledgementOrdering(t *testing.T) {
@@ -25,7 +25,7 @@ func TestLoadingScreenAcknowledgementOrdering(t *testing.T) {
 			s.changingDimension.Store(true)
 			h := &ServerBoundLoadingScreenHandler{}
 			h.expectedID.Store(test.expected)
-			err := h.Handle(&v2193.ServerBoundLoadingScreenPacket{Type: v2193.LoadingScreenTypeEnd, LoadingScreenID: proto.Some(test.received)}, s, nil, nil)
+			err := h.Handle(&mc.ServerBoundLoadingScreenPacket{Type: mc.LoadingScreenTypeEnd, LoadingScreenID: proto.Some(test.received)}, s, nil, nil)
 			if (err != nil) != test.invalid {
 				t.Fatalf("acknowledgement error = %v, invalid = %v", err, test.invalid)
 			}

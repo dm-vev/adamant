@@ -5,7 +5,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"time"
 )
 
@@ -20,7 +20,7 @@ type blockUpdateKey struct {
 }
 
 type blockUpdateData struct {
-	pos               v2193.BlockPos
+	pos               mc.BlockPos
 	runtimeID         uint32
 	layer             uint32
 	flags             uint32
@@ -34,13 +34,13 @@ type blockUpdateData struct {
 
 func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	update := blockUpdateData{
-		pos:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+		pos:       mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 		runtimeID: s.blockHash(b),
 		layer:     uint32(layer),
-		flags:     v2193.BlockUpdateNetwork,
+		flags:     mc.BlockUpdateNetwork,
 	}
 	if _, bell := b.(block.Bell); bell {
-		update.flags |= v2193.BlockUpdateNeighbours
+		update.flags |= mc.BlockUpdateNeighbours
 	}
 	if v, ok := clientBlockActor(b); ok {
 		if updater, ok := v.(world.UpdateNBTer); ok {
@@ -103,24 +103,24 @@ func (s *Session) flushBlockUpdates() {
 			return
 		}
 		if !update.actorOnly {
-			s.writePacket(&v2193.UpdateBlockPacket{
+			s.writePacket(&mc.UpdateBlockPacket{
 				Position:          update.pos,
 				NewBlockRuntimeID: update.runtimeID,
 				Flags:             update.flags,
 				Layer:             update.layer,
 			})
 			if update.repeatBlockUpdate {
-				s.writePacket(&v2193.UpdateBlockPacket{Position: update.pos, NewBlockRuntimeID: update.runtimeID, Flags: v2193.BlockUpdateNeighbours, Layer: update.layer})
+				s.writePacket(&mc.UpdateBlockPacket{Position: update.pos, NewBlockRuntimeID: update.runtimeID, Flags: mc.BlockUpdateNeighbours, Layer: update.layer})
 			}
 			if update.nbt != nil {
-				s.writePacket(&v2193.BlockActorDataPacket{
+				s.writePacket(&mc.BlockActorDataPacket{
 					Position: update.pos,
 					NBTData:  update.nbt,
 				})
 			}
 		}
 		for _, data := range update.actors {
-			s.writePacket(&v2193.BlockActorDataPacket{Position: update.pos, NBTData: data})
+			s.writePacket(&mc.BlockActorDataPacket{Position: update.pos, NBTData: data})
 		}
 		for _, p := range update.afterPackets {
 			s.writePacket(p)
@@ -164,7 +164,7 @@ func (s *Session) enqueuePacketAfterBlock(pos cube.Pos, p proto.Packet) {
 			s.logBlockUpdateDrop()
 			return
 		}
-		update = blockUpdateData{pos: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, actorOnly: true}
+		update = blockUpdateData{pos: mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, actorOnly: true}
 	}
 	if len(update.afterPackets) >= maxBlockUpdatesPerTick {
 		s.logBlockUpdateDrop()
@@ -192,9 +192,9 @@ func (s *Session) enqueueBellRingUpdate(pos cube.Pos, bell block.Bell) {
 		}
 		// The ordinary network update was already flushed. Only the second,
 		// neighbour-only update remains, followed by the actor pair.
-		update = blockUpdateData{pos: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, runtimeID: s.blockHash(bell), flags: v2193.BlockUpdateNeighbours}
+		update = blockUpdateData{pos: mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, runtimeID: s.blockHash(bell), flags: mc.BlockUpdateNeighbours}
 	} else {
-		update.flags = v2193.BlockUpdateNetwork | v2193.BlockUpdateNeighbours
+		update.flags = mc.BlockUpdateNetwork | mc.BlockUpdateNeighbours
 		update.repeatBlockUpdate = true
 	}
 	if len(update.actors)+2 > maxBlockUpdatesPerTick {
@@ -222,9 +222,9 @@ func (s *Session) enqueueBellUseRejection(pos cube.Pos, bell block.Bell) {
 	// animation by sending another idle actor compound.
 	// Preserve animation/effects from an earlier accepted ring that has
 	// not yet passed the backlog; this rejection adds no new actor data.
-	update.pos = v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	update.pos = mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	update.runtimeID = s.blockHash(bell)
-	update.flags = v2193.BlockUpdateNetwork | v2193.BlockUpdateNeighbours
+	update.flags = mc.BlockUpdateNetwork | mc.BlockUpdateNeighbours
 	update.actorOnly = false
 	s.blockUpdates[key] = update
 }
@@ -245,7 +245,7 @@ func (s *Session) enqueueBlockActorUpdate(pos, parent cube.Pos, data map[string]
 			s.logBlockUpdateDrop()
 			return
 		}
-		update = blockUpdateData{pos: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, actorOnly: true}
+		update = blockUpdateData{pos: mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, actorOnly: true}
 	}
 	if len(update.actors) >= maxBlockUpdatesPerTick {
 		s.logBlockUpdateDrop()

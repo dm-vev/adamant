@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"testing"
 
 	"github.com/df-mc/dragonfly/internal/testfixture"
@@ -80,9 +80,9 @@ func testBellInteractionNative(t *testing.T, split, projectile bool) {
 				Actor map[string]any
 			}
 			Packets []struct {
-				Update *v2193.UpdateBlockPacket    `json:"block_update"`
-				Actor  *v2193.BlockActorDataPacket `json:"block_actor"`
-				Sound  *v2193.LevelSoundEventPacket
+				Update *mc.UpdateBlockPacket    `json:"block_update"`
+				Actor  *mc.BlockActorDataPacket `json:"block_actor"`
+				Sound  *mc.LevelSoundEventPacket
 			}
 		}
 	}
@@ -117,21 +117,21 @@ func testBellInteractionNative(t *testing.T, split, projectile bool) {
 			defer func() { <-w.Exec(func(tx *world.Tx) { loader.Close(tx) }); _ = w.Close() }()
 			_ = w.SetGameRule("spawn_mobs", false)
 			var got []proto.Packet
-			position := v2193.BlockPos{int32(trace.Base[0]), int32(trace.Base[1]), int32(trace.Base[2])}
+			position := mc.BlockPos{int32(trace.Base[0]), int32(trace.Base[1]), int32(trace.Base[2])}
 			collect := func() {
 				s.flushBlockUpdates()
 				for len(s.heldPackets) > 0 {
 					p := s.testPacket()
 					switch v := p.(type) {
-					case *v2193.UpdateBlockPacket:
+					case *mc.UpdateBlockPacket:
 						if v.Position == position && v.Layer == 0 {
 							got = append(got, p)
 						}
-					case *v2193.BlockActorDataPacket:
+					case *mc.BlockActorDataPacket:
 						if v.Position == position {
 							got = append(got, p)
 						}
-					case *v2193.LevelSoundEventPacket:
+					case *mc.LevelSoundEventPacket:
 						if v.Position == vec64To32(trace.Base.Vec3()) {
 							got = append(got, p)
 						}

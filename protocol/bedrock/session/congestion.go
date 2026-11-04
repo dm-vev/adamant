@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -157,7 +157,7 @@ func (s *Session) updateCongestion(tx *world.Tx) {
 		}
 		s.writePacket(absoluteMove(id, e, e.Position(), e.Rotation(), onGround, false))
 		if v, ok := e.(interface{ Velocity() mgl64.Vec3 }); ok {
-			s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: id, Velocity: vec64To32(v.Velocity())})
+			s.writePacket(&mc.SetActorMotionPacket{EntityRuntimeID: id, Velocity: vec64To32(v.Velocity())})
 		}
 		staleShown.Inc()
 	}

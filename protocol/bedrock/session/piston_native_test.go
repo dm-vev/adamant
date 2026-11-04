@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"reflect"
 	"testing"
 
@@ -99,7 +99,7 @@ func testPistonNativePackets(t *testing.T, file string, actorCount int) {
 		s.flushBlockUpdates()
 		for len(s.heldPackets) > 0 {
 			switch pk := s.testPacket().(type) {
-			case *v2193.BlockActorDataPacket:
+			case *mc.BlockActorDataPacket:
 				if pk.NBTData["id"] != "PistonArm" && pk.NBTData["id"] != "MovingBlock" {
 					continue
 				}
@@ -122,7 +122,7 @@ func testPistonNativePackets(t *testing.T, file string, actorCount int) {
 				pos := cube.Pos{int(pk.Position[0]), int(pk.Position[1]), int(pk.Position[2])}
 				gotActors[pos] = append(gotActors[pos], normalized)
 				gotActorTicks[pos] = append(gotActorTicks[pos], tick)
-			case *v2193.LevelSoundEventPacket:
+			case *mc.LevelSoundEventPacket:
 				encoded, err := json.Marshal(pk)
 				if err != nil {
 					t.Fatal(err)

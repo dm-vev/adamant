@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // StructureBlockUpdateHandler applies the settings of the structure block
@@ -16,7 +16,7 @@ type StructureBlockUpdateHandler struct{}
 
 // Handle ...
 func (StructureBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*v2193.StructureBlockUpdatePacket)
+	pk := p.(*mc.StructureBlockUpdatePacket)
 	if !c.CanUseGameMasterBlocks() {
 		return fmt.Errorf("only creative operators may edit structure blocks")
 	}
@@ -63,14 +63,14 @@ type StructureTemplateDataRequestHandler struct{}
 
 // Handle ...
 func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*v2193.StructureTemplateDataRequestPacket)
+	pk := p.(*mc.StructureTemplateDataRequestPacket)
 	if !c.CanUseGameMasterBlocks() {
 		return fmt.Errorf("only creative operators may request structures")
 	}
 	var template *world.StructureTemplate
-	responseType := byte(v2193.StructureTemplateResponseExport)
+	responseType := byte(mc.StructureTemplateResponseExport)
 	switch pk.RequestType {
-	case v2193.StructureTemplateRequestExportFromSave:
+	case mc.StructureTemplateRequestExportFromSave:
 		pos := blockPosFromProtocol(pk.Position)
 		if !c.CanReach(pos.Vec3Middle()) {
 			return fmt.Errorf("structure block at %v is not within reach", pos)
@@ -82,9 +82,9 @@ func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx
 			offset[axis] = min(max(int(pk.Settings.Offset[axis]), -limit), limit)
 		}
 		template = tx.CaptureStructure(pos.Add(offset), size, !pk.Settings.IgnoreEntities)
-	case v2193.StructureTemplateRequestExportFromLoad, v2193.StructureTemplateRequestQuerySavedStructure:
-		if pk.RequestType == v2193.StructureTemplateRequestQuerySavedStructure {
-			responseType = v2193.StructureTemplateResponseQuery
+	case mc.StructureTemplateRequestExportFromLoad, mc.StructureTemplateRequestQuerySavedStructure:
+		if pk.RequestType == mc.StructureTemplateRequestQuerySavedStructure {
+			responseType = mc.StructureTemplateResponseQuery
 		}
 		t, ok, err := tx.World().StructureTemplate(pk.StructureName)
 		if err != nil {
@@ -96,7 +96,7 @@ func (StructureTemplateDataRequestHandler) Handle(p proto.Packet, s *Session, tx
 	default:
 		return fmt.Errorf("unknown structure template request type %d", pk.RequestType)
 	}
-	response := &v2193.StructureTemplateDataResponsePacket{StructureName: pk.StructureName, ResponseType: responseType}
+	response := &mc.StructureTemplateDataResponsePacket{StructureName: pk.StructureName, ResponseType: responseType}
 	if template != nil {
 		response.Success, response.StructureTemplate = true, template.EncodeNBT()
 	}

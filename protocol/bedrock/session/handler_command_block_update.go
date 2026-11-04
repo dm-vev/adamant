@@ -7,15 +7,15 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // CommandBlockUpdateHandler applies command-block editor changes.
 type CommandBlockUpdateHandler struct{}
 
 func (CommandBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*v2193.CommandBlockUpdatePacket)
-	if pk.Mode > v2193.CommandBlockChain {
+	pk := p.(*mc.CommandBlockUpdatePacket)
+	if pk.Mode > mc.CommandBlockChain {
 		return fmt.Errorf("invalid command block mode %d", pk.Mode)
 	}
 	edit := block.CommandBlockEdit{

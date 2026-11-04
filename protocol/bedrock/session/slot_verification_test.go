@@ -6,7 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestVerifySlotResyncsStaleCount(t *testing.T) {
@@ -21,8 +21,8 @@ func TestVerifySlotResyncsStaleCount(t *testing.T) {
 	if err := s.VerifySlot(0, actual.Grow(-1)); err != nil {
 		t.Fatalf("stale client count rejected: %v", err)
 	}
-	pk, ok := (s.testPacket()).(*v2193.InventorySlotPacket)
-	if !ok || pk.WindowID != v2193.WindowIDInventory || pk.Slot != 0 || pk.NewItem.Stack.Count != 5 {
+	pk, ok := (s.testPacket()).(*mc.InventorySlotPacket)
+	if !ok || pk.WindowID != mc.WindowIDInventory || pk.Slot != 0 || pk.NewItem.Stack.Count != 5 {
 		t.Fatalf("slot correction = %#v, want five beef in inventory slot zero", pk)
 	}
 	if got, _ := s.inv.Item(0); !got.Equal(actual) {

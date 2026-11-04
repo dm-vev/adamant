@@ -11,7 +11,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
@@ -27,7 +27,7 @@ func TestSessionPacketBurstPreservesOrder(t *testing.T) {
 	const burst = 4096
 	want := make([]proto.Packet, 0, 2*burst)
 	for i := range burst {
-		pk := &v2193.AddItemActorPacket{EntityRuntimeID: uint64(i + 2)}
+		pk := &mc.AddItemActorPacket{EntityRuntimeID: uint64(i + 2)}
 		want = append(want, pk)
 		s.writePacket(pk)
 	}
@@ -39,7 +39,7 @@ func TestSessionPacketBurstPreservesOrder(t *testing.T) {
 	// New movement must stay behind the already queued spawns as the writer
 	// drains the backlog. This also exercises compaction and FIFO handoff.
 	for i := range burst {
-		pk := &v2193.MoveActorAbsolutePacket{EntityRuntimeID: uint64(i + 2)}
+		pk := &mc.MoveActorAbsolutePacket{EntityRuntimeID: uint64(i + 2)}
 		want = append(want, pk)
 		s.writePacket(pk)
 	}
@@ -49,7 +49,7 @@ func TestSessionPacketBurstPreservesOrder(t *testing.T) {
 		select {
 		case pk := <-c.written:
 			switch pk.(type) {
-			case *v2193.AddItemActorPacket, *v2193.MoveActorAbsolutePacket:
+			case *mc.AddItemActorPacket, *mc.MoveActorAbsolutePacket:
 				if pk != want[i] {
 					t.Fatalf("packet %d = %v, want %v", i, pk, want[i])
 				}
@@ -77,10 +77,10 @@ func TestSessionPacketBacklogBounded(t *testing.T) {
 	waitQueueSignal(t, c.started, "packet writer to start")
 
 	for range maxQueuedPackets + 1 {
-		s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: 2})
+		s.writePacket(&mc.SetActorMotionPacket{EntityRuntimeID: 2})
 	}
 	waitQueueSignal(t, c.closed, "overloaded connection to close")
-	s.writePacket(&v2193.TextPacket{Message: "after close"})
+	s.writePacket(&mc.TextPacket{Message: "after close"})
 	s.packetsMu.Lock()
 	defer s.packetsMu.Unlock()
 	if len(s.pendingPackets) != 0 {
@@ -115,7 +115,7 @@ func TestSessionPacketQueueConcurrentProducers(t *testing.T) {
 	for producer := range producers {
 		wg.Go(func() {
 			for i := range perProducer {
-				s.writePacket(&v2193.TextPacket{Message: strconv.Itoa(producer*perProducer + i)})
+				s.writePacket(&mc.TextPacket{Message: strconv.Itoa(producer*perProducer + i)})
 			}
 		})
 	}
@@ -126,7 +126,7 @@ func TestSessionPacketQueueConcurrentProducers(t *testing.T) {
 	for received := 0; received < producers*perProducer; {
 		select {
 		case raw := <-c.written:
-			pk, ok := raw.(*v2193.TextPacket)
+			pk, ok := raw.(*mc.TextPacket)
 			if !ok {
 				continue
 			}
@@ -155,7 +155,7 @@ func TestSessionPacketsHeldDuringBatch(t *testing.T) {
 	t.Cleanup(s.CloseConnection)
 	close(c.release)
 
-	text := func(i int) *v2193.TextPacket { return &v2193.TextPacket{Message: strconv.Itoa(i)} }
+	text := func(i int) *mc.TextPacket { return &mc.TextPacket{Message: strconv.Itoa(i)} }
 	next := 0
 	expect := func(upTo int) {
 		t.Helper()
@@ -164,7 +164,7 @@ func TestSessionPacketsHeldDuringBatch(t *testing.T) {
 		for next < upTo {
 			select {
 			case raw := <-c.written:
-				pk, ok := raw.(*v2193.TextPacket)
+				pk, ok := raw.(*mc.TextPacket)
 				if !ok {
 					continue
 				}
@@ -218,7 +218,7 @@ func TestSessionHeldPacketsBounded(t *testing.T) {
 
 	s.BeginBatch()
 	for range maxQueuedPackets + 1 {
-		s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: 2})
+		s.writePacket(&mc.SetActorMotionPacket{EntityRuntimeID: 2})
 	}
 	waitQueueSignal(t, c.closed, "overloaded connection to close")
 	s.EndBatch()
@@ -295,8 +295,8 @@ func TestSessionDropsPacketThatDoesNotEncode(t *testing.T) {
 	c := newQueueTestConn()
 	s := (Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 8}).New(marshalConn{c})
 	t.Cleanup(s.CloseConnection)
-	s.writePacket(&v2193.GameRulesChangedPacket{GameRules: []v2193.GameRule{{Name: "rule", Value: struct{}{}}}})
-	want := &v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "after"}
+	s.writePacket(&mc.GameRulesChangedPacket{GameRules: []mc.GameRule{{Name: "rule", Value: struct{}{}}}})
+	want := &mc.TextPacket{TextType: mc.TextTypeRaw, Message: "after"}
 	s.writePacket(want)
 	close(c.release)
 	timer := time.NewTimer(5 * time.Second)
@@ -322,7 +322,7 @@ func TestEmptyMessageShowsAnEmptyLine(t *testing.T) {
 	t.Parallel()
 	s := &Session{holdPackets: 1}
 	s.SendMessage(text.Literal(""))
-	if text, ok := (s.testPacket()).(*v2193.TextPacket); !ok || text.Message != " " {
+	if text, ok := (s.testPacket()).(*mc.TextPacket); !ok || text.Message != " " {
 		t.Fatalf("sent %+v, want a Text of one space", text)
 	}
 }

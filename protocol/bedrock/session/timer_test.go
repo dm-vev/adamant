@@ -11,7 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -43,7 +43,7 @@ func TestTimerDefersInputsAhead(t *testing.T) {
 	at := func(i int) mgl64.Vec3 { return pos.Add(mgl64.Vec3{0.1 * float64(i), 0, 0}) }
 	for i := 1; i <= 20; i++ {
 		eyes := at(i).Add(mgl64.Vec3{0, player.Type.NetworkOffset(), 0})
-		handle(&v2193.PlayerAuthInputPacket{Position: [3]float32{float32(eyes[0]), float32(eyes[1]), float32(eyes[2])}, Tick: uint64(i)}, 200)
+		handle(&mc.PlayerAuthInputPacket{Position: [3]float32{float32(eyes[0]), float32(eyes[1]), float32(eyes[2])}, Tick: uint64(i)}, 200)
 	}
 	position := func() mgl64.Vec3 {
 		var p mgl64.Vec3

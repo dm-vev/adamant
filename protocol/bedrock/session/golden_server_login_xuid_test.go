@@ -10,7 +10,7 @@ import (
 
 	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/server"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/proxy"
 )
 
@@ -95,7 +95,7 @@ func TestGoldenServerLoginXUID(t *testing.T) {
 	for _, a := range admitted {
 		fmt.Fprintf(&s.out, "== %s: %s, %s\n", a.heading, a.name, xuid(a.n))
 		c := s.proxiedAs(link, a.name, "203.0.113.1:4242", a.n, true)
-		c.readUntil(v2193.IDResourcePacksInfo)
+		c.readUntil(mc.IDResourcePacksInfo)
 		_ = c.b.Close()
 		s.noPlayers()
 	}

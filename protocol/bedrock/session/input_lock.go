@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/player/input"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // bedrockLock returns the bit of UpdateClientInputLocks that locks the input
@@ -10,27 +10,27 @@ import (
 func bedrockLock(l input.Lock) uint32 {
 	switch l {
 	case input.Camera():
-		return v2193.ClientInputLockCamera
+		return mc.ClientInputLockCamera
 	case input.Movement():
-		return v2193.ClientInputLockMovement
+		return mc.ClientInputLockMovement
 	case input.LateralMovement():
-		return v2193.ClientInputLockLateralMovement
+		return mc.ClientInputLockLateralMovement
 	case input.Sneak():
-		return v2193.ClientInputLockSneak
+		return mc.ClientInputLockSneak
 	case input.Jump():
-		return v2193.ClientInputLockJump
+		return mc.ClientInputLockJump
 	case input.Mount():
-		return v2193.ClientInputLockMount
+		return mc.ClientInputLockMount
 	case input.Dismount():
-		return v2193.ClientInputLockDismount
+		return mc.ClientInputLockDismount
 	case input.MoveForward():
-		return v2193.ClientInputLockMoveForward
+		return mc.ClientInputLockMoveForward
 	case input.MoveBackward():
-		return v2193.ClientInputLockMoveBackward
+		return mc.ClientInputLockMoveBackward
 	case input.MoveLeft():
-		return v2193.ClientInputLockMoveLeft
+		return mc.ClientInputLockMoveLeft
 	case input.MoveRight():
-		return v2193.ClientInputLockMoveRight
+		return mc.ClientInputLockMoveRight
 	}
 	return 0
 }

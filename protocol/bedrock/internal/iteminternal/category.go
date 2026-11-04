@@ -2,7 +2,7 @@ package iteminternal
 
 import (
 	"github.com/df-mc/dragonfly/server/item/category"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // creativeCategory returns the creative category the item components of a
@@ -11,13 +11,13 @@ import (
 func creativeCategory(c category.Category) int32 {
 	switch c.WithGroup("") {
 	case category.Construction():
-		return v2193.CreativeCategoryConstruction
+		return mc.CreativeCategoryConstruction
 	case category.Nature():
-		return v2193.CreativeCategoryNature
+		return mc.CreativeCategoryNature
 	case category.Equipment():
-		return v2193.CreativeCategoryEquipment
+		return mc.CreativeCategoryEquipment
 	case category.Items():
-		return v2193.CreativeCategoryItems
+		return mc.CreativeCategoryItems
 	}
-	return v2193.CreativeCategoryAll
+	return mc.CreativeCategoryAll
 }

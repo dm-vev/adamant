@@ -24,7 +24,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	bedrocklogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 	"github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
@@ -269,9 +269,9 @@ func (l *Listener) protocol(n int32) (*versions.Protocol, int32, bool) {
 		}
 	}
 	if n > l.protocols[len(l.protocols)-1].Number {
-		return nil, v2193.PlayStatusLoginFailedServer, false
+		return nil, mc.PlayStatusLoginFailedServer, false
 	}
-	return nil, v2193.PlayStatusLoginFailedClient, false
+	return nil, mc.PlayStatusLoginFailedClient, false
 }
 
 // xboxKeys returns the keys of the authorization service of the game,
@@ -280,7 +280,7 @@ func (l *Listener) protocol(n int32) (*versions.Protocol, int32, bool) {
 var xboxKeys = func() (*bedrocklogin.Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	return bedrocklogin.Discover(ctx, nil, v2193.Version)
+	return bedrocklogin.Discover(ctx, nil, mc.Version)
 }
 
 // vouch reports whether the authorization service of the game signed the
@@ -304,7 +304,7 @@ func (l *Listener) Accept() (*Conn, error) {
 // Disconnect disconnects a client with a message; an empty message hides
 // the screen of the disconnection.
 func (l *Listener) Disconnect(c *Conn, message string) error {
-	_ = c.WritePacket(&v2193.DisconnectPacket{HideDisconnectionScreen: message == "", Message: message})
+	_ = c.WritePacket(&mc.DisconnectPacket{HideDisconnectionScreen: message == "", Message: message})
 	_ = c.Flush()
 	return c.Close()
 }
@@ -498,16 +498,16 @@ func (l *Listener) run(c *Conn, login func(*Conn) error) {
 	loginsStarted.Inc()
 	if max := l.cfg.MaximumPlayers; max != 0 && int(l.players.Load()) >= max {
 		loginsFull.Inc()
-		c.refuse(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedServerFull})
+		c.refuse(&mc.PlayStatusPacket{Status: mc.PlayStatusLoginFailedServerFull})
 		return
 	}
 	if ok, busy := l.enter(c); !ok {
 		if busy {
 			loginsBusy.Inc()
-			c.refuse(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedServerFull})
+			c.refuse(&mc.PlayStatusPacket{Status: mc.PlayStatusLoginFailedServerFull})
 		} else {
 			loginsAddress.Inc()
-			c.refuse(&v2193.DisconnectPacket{Message: errAddressBusy})
+			c.refuse(&mc.DisconnectPacket{Message: errAddressBusy})
 		}
 		return
 	}
@@ -559,17 +559,17 @@ func (c *Conn) refuse(pk proto.Packet) {
 // login runs the login of a client: network settings, the login request,
 // the resource packs.
 func (c *Conn) login() error {
-	pk, err := c.read(v2193.IDRequestNetworkSettings)
+	pk, err := c.read(mc.IDRequestNetworkSettings)
 	if err != nil {
 		return err
 	}
 	// The layout of RequestNetworkSettings, NetworkSettings, Login and
 	// PlayStatus is the same in every protocol: the protocol of a client is
 	// read before it is known.
-	n := pk.(*v2193.RequestNetworkSettingsPacket).ClientProtocol
+	n := pk.(*mc.RequestNetworkSettingsPacket).ClientProtocol
 	p, status, ok := c.l.protocol(n)
 	if !ok {
-		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: status})
+		_ = c.WritePacket(&mc.PlayStatusPacket{Status: status})
 		_ = c.Flush()
 		return fmt.Errorf("netconn: client speaks protocol %d, not one of %s", n, c.l.allowed())
 	}
@@ -578,7 +578,7 @@ func (c *Conn) login() error {
 	if threshold == 0 {
 		threshold = 256
 	}
-	_ = c.WritePacket(&v2193.NetworkSettingsPacket{
+	_ = c.WritePacket(&mc.NetworkSettingsPacket{
 		CompressionThreshold: uint16(threshold),
 		CompressionAlgorithm: c.l.cfg.Compression.Algorithm(),
 	})
@@ -588,17 +588,17 @@ func (c *Conn) login() error {
 	c.comp = c.l.cfg.Compression
 	c.b.EnableCompression(c.comp)
 
-	if pk, err = c.read(v2193.IDLogin); err != nil {
+	if pk, err = c.read(mc.IDLogin); err != nil {
 		return err
 	}
-	if n := pk.(*v2193.LoginPacket).ClientProtocol; n != c.proto.Number {
+	if n := pk.(*mc.LoginPacket).ClientProtocol; n != c.proto.Number {
 		// BDS cannot be asked what it sends a client whose Login names
 		// another protocol than it asked for: it is refused as outdated.
-		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedClient})
+		_ = c.WritePacket(&mc.PlayStatusPacket{Status: mc.PlayStatusLoginFailedClient})
 		_ = c.Flush()
 		return fmt.Errorf("netconn: client logs in with protocol %d, not %d", n, c.proto.Number)
 	}
-	if err := c.authenticate(pk.(*v2193.LoginPacket)); err != nil {
+	if err := c.authenticate(pk.(*mc.LoginPacket)); err != nil {
 		_ = c.Flush()
 		return err
 	}
@@ -615,7 +615,7 @@ func (c *Conn) loginProxied(t proxy.Token) error {
 	c.b.EnableCompression(c.comp)
 	p, _, ok := c.l.protocol(t.Protocol)
 	if !ok {
-		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedClient})
+		_ = c.WritePacket(&mc.PlayStatusPacket{Status: mc.PlayStatusLoginFailedClient})
 		_ = c.Flush()
 		return fmt.Errorf("netconn: proxied client speaks protocol %d, not one of %s", t.Protocol, c.l.allowed())
 	}
@@ -637,7 +637,7 @@ func (c *Conn) loginProxied(t proxy.Token) error {
 // join tells a client that logged in that it did and hands it the
 // resource packs.
 func (c *Conn) join() error {
-	_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginSuccess})
+	_ = c.WritePacket(&mc.PlayStatusPacket{Status: mc.PlayStatusLoginSuccess})
 	_ = c.WritePacket(c.l.packsInfo())
 	if err := c.Flush(); err != nil {
 		return err
@@ -655,11 +655,11 @@ func (c *Conn) handshake() error {
 	if err != nil {
 		return err
 	}
-	_ = c.WritePacket(&v2193.ServerToClientHandshakePacket{JWT: []byte(token)})
+	_ = c.WritePacket(&mc.ServerToClientHandshakePacket{JWT: []byte(token)})
 	if err := c.Flush(); err != nil {
 		return err
 	}
-	_, err = c.read(v2193.IDClientToServerHandshake)
+	_, err = c.read(mc.IDClientToServerHandshake)
 	return err
 }
 
@@ -668,7 +668,7 @@ func (c *Conn) handshake() error {
 // The request is read by package login of the net module, which trusts
 // none of it; the identity and the client data then pass the rules of the
 // server, Validate.
-func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
+func (c *Conn) authenticate(pk *mc.LoginPacket) error {
 	ctx, cancel := context.WithTimeout(context.Background(), keysTimeout)
 	defer cancel()
 	l, err := bedrocklogin.Parse(ctx, pk.ConnectionRequest, c.l.keys, time.Now())
@@ -689,7 +689,7 @@ func (c *Conn) authenticate(pk *v2193.LoginPacket) error {
 	c.client.ServerAddress = l.ClientData.ServerAddress
 	if pub := c.nn.PublicKey(); pub != nil && !l.Key.Equal(pub) {
 		// The transport proved another key: a login replayed elsewhere.
-		_ = c.WritePacket(&v2193.DisconnectPacket{Reason: v2193.DisconnectReasonNotAuthenticated})
+		_ = c.WritePacket(&mc.DisconnectPacket{Reason: mc.DisconnectReasonNotAuthenticated})
 		return errors.New("netconn: login key is not the key of the transport identity")
 	}
 	c.xboxLive = l.XboxLive
@@ -705,12 +705,12 @@ func (c *Conn) admit() error {
 		}
 	}
 	if !c.xboxLive && !c.l.cfg.AuthenticationDisabled {
-		_ = c.WritePacket(&v2193.DisconnectPacket{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})
+		_ = c.WritePacket(&mc.DisconnectPacket{Message: text.Colourf("<red>You must be logged in with XBOX Live to join.</red>")})
 		return errors.New("netconn: client is not logged in with Xbox Live")
 	}
 	if allow := c.l.cfg.Allow; allow != nil {
 		if reason, ok := allow(c.RemoteAddr(), c.identity, c.client, c.xboxLive); !ok {
-			_ = c.WritePacket(&v2193.DisconnectPacket{Reason: v2193.DisconnectReasonKicked, Message: reason})
+			_ = c.WritePacket(&mc.DisconnectPacket{Reason: mc.DisconnectReasonKicked, Message: reason})
 			return DisconnectError("refused: " + reason)
 		}
 	}
@@ -718,10 +718,10 @@ func (c *Conn) admit() error {
 }
 
 // packsInfo returns the resource packs offered.
-func (l *Listener) packsInfo() *v2193.ResourcePacksInfoPacket {
-	pk := &v2193.ResourcePacksInfoPacket{TexturePackRequired: l.cfg.TexturePacksRequired}
+func (l *Listener) packsInfo() *mc.ResourcePacksInfoPacket {
+	pk := &mc.ResourcePacksInfoPacket{TexturePackRequired: l.cfg.TexturePacksRequired}
 	for _, pack := range l.cfg.ResourcePacks {
-		info := v2193.TexturePackInfo{UUID: pack.UUID(), Version: pack.Version(), Size: uint64(pack.Len()), DownloadURL: pack.DownloadURL()}
+		info := mc.TexturePackInfo{UUID: pack.UUID(), Version: pack.Version(), Size: uint64(pack.Len()), DownloadURL: pack.DownloadURL()}
 		if pack.Encrypted() {
 			info.ContentKey = pack.ContentKey()
 			info.ContentIdentity = pack.Manifest().Header.UUID.String()
@@ -745,7 +745,7 @@ func (c *Conn) sendPacks() error {
 		}
 		current, offset, queue = queue[0], 0, queue[1:]
 		checksum := current.Checksum()
-		_ = c.WritePacket(&v2193.ResourcePackDataInfoPacket{
+		_ = c.WritePacket(&mc.ResourcePackDataInfoPacket{
 			UUID:          current.UUID().String() + "_" + current.Version(),
 			DataChunkSize: packChunkSize,
 			ChunkCount:    uint32(current.DataChunkCount(packChunkSize)),
@@ -756,35 +756,35 @@ func (c *Conn) sendPacks() error {
 		return c.Flush()
 	}
 	for {
-		pk, err := c.read(v2193.IDResourcePackClientResponse, v2193.IDClientCacheStatus, v2193.IDResourcePackChunkRequest)
+		pk, err := c.read(mc.IDResourcePackClientResponse, mc.IDClientCacheStatus, mc.IDResourcePackChunkRequest)
 		if err != nil {
 			return err
 		}
 		switch pk := pk.(type) {
-		case *v2193.ClientCacheStatusPacket:
+		case *mc.ClientCacheStatusPacket:
 			c.cacheEnabled.Store(pk.Enabled)
-		case *v2193.ResourcePackClientResponsePacket:
+		case *mc.ResourcePackClientResponsePacket:
 			switch pk.Response {
-			case v2193.PackResponseRefused:
+			case mc.PackResponseRefused:
 				return DisconnectError("refused the resource packs")
-			case v2193.PackResponseSendPacks:
+			case mc.PackResponseSendPacks:
 				if queue, err = c.l.packs(pk.PacksToDownload); err != nil {
 					return err
 				}
 				if err := next(); err != nil {
 					return err
 				}
-			case v2193.PackResponseAllPacksDownloaded:
+			case mc.PackResponseAllPacksDownloaded:
 				_ = c.WritePacket(c.l.packStack(c.proto))
 				if err := c.Flush(); err != nil {
 					return err
 				}
-			case v2193.PackResponseCompleted:
+			case mc.PackResponseCompleted:
 				return nil
 			default:
 				return fmt.Errorf("netconn: unknown resource pack response %d", pk.Response)
 			}
-		case *v2193.ResourcePackChunkRequestPacket:
+		case *mc.ResourcePackChunkRequestPacket:
 			id, _, _ := strings.Cut(pk.UUID, "_")
 			if pk.ChunkIndex < 0 || current == nil || current.UUID().String() != id || uint64(pk.ChunkIndex)*packChunkSize != offset {
 				return fmt.Errorf("netconn: unexpected request for chunk %d of resource pack %s", pk.ChunkIndex, pk.UUID)
@@ -794,7 +794,7 @@ func (c *Conn) sendPacks() error {
 			if err != nil && n == 0 {
 				return fmt.Errorf("netconn: read resource pack: %w", err)
 			}
-			_ = c.WritePacket(&v2193.ResourcePackChunkDataPacket{UUID: pk.UUID, ChunkIndex: uint32(pk.ChunkIndex), DataOffset: offset, Data: data[:n]})
+			_ = c.WritePacket(&mc.ResourcePackChunkDataPacket{UUID: pk.UUID, ChunkIndex: uint32(pk.ChunkIndex), DataOffset: offset, Data: data[:n]})
 			if err := c.Flush(); err != nil {
 				return err
 			}
@@ -830,13 +830,13 @@ func (l *Listener) packs(ids []string) ([]*resource.Pack, error) {
 // packStack returns the stack of resource packs a client of a protocol is
 // sent: the server's, then the ones every client has, as gophertunnel lists
 // them, on the version of the game the protocol tells its clients.
-func (l *Listener) packStack(p *versions.Protocol) *v2193.ResourcePackStackPacket {
-	pk := &v2193.ResourcePackStackPacket{BaseGameVersion: p.Version, Experiments: []v2193.ExperimentData{{Name: "cameras", Enabled: true}}}
+func (l *Listener) packStack(p *versions.Protocol) *mc.ResourcePackStackPacket {
+	pk := &mc.ResourcePackStackPacket{BaseGameVersion: p.Version, Experiments: []mc.ExperimentData{{Name: "cameras", Enabled: true}}}
 	for _, pack := range l.cfg.ResourcePacks {
-		pk.TexturePacks = append(pk.TexturePacks, v2193.StackResourcePack{UUID: pack.UUID().String(), Version: pack.Version()})
+		pk.TexturePacks = append(pk.TexturePacks, mc.StackResourcePack{UUID: pack.UUID().String(), Version: pack.Version()})
 	}
 	for _, p := range builtinPacks {
-		pk.TexturePacks = append(pk.TexturePacks, v2193.StackResourcePack{UUID: p[0], Version: p[1]})
+		pk.TexturePacks = append(pk.TexturePacks, mc.StackResourcePack{UUID: p[0], Version: p[1]})
 	}
 	return pk
 }
@@ -859,13 +859,13 @@ var builtinPacks = [][2]string{
 func packType(pack *resource.Pack) byte {
 	switch {
 	case pack.HasWorldTemplate():
-		return v2193.ResourcePackTypeWorldTemplate
+		return mc.ResourcePackTypeWorldTemplate
 	case pack.HasTextures() && (pack.HasBehaviours() || pack.HasScripts()):
-		return v2193.ResourcePackTypeAddon
+		return mc.ResourcePackTypeAddon
 	case !pack.HasTextures() && (pack.HasBehaviours() || pack.HasScripts()):
-		return v2193.ResourcePackTypeBehaviour
+		return mc.ResourcePackTypeBehaviour
 	case pack.HasTextures():
-		return v2193.ResourcePackTypeResources
+		return mc.ResourcePackTypeResources
 	}
-	return v2193.ResourcePackTypeSkins
+	return mc.ResourcePackTypeSkins
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/dialogue"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // NPCRequestHandler handles the NPCRequest packet.
@@ -22,7 +22,7 @@ type NPCRequestHandler struct {
 
 // Handle ...
 func (h *NPCRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk := p.(*v2193.NPCRequestPacket)
+	pk := p.(*mc.NPCRequestPacket)
 	h.mu.Lock()
 	dialoguePtr := h.dialogue
 	entityRuntimeID := h.entityRuntimeID
@@ -33,11 +33,11 @@ func (h *NPCRequestHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c C
 	}
 	dialogue := *dialoguePtr
 	switch pk.RequestType {
-	case v2193.NPCRequestActionExecuteAction:
+	case mc.NPCRequestActionExecuteAction:
 		if err := dialogue.Submit(uint(pk.ActionType), c, tx); err != nil {
 			return fmt.Errorf("error submitting dialogue: %w", err)
 		}
-	case v2193.NPCRequestActionExecuteClosingCommands:
+	case mc.NPCRequestActionExecuteClosingCommands:
 		dialogue.Close(c, tx)
 		h.mu.Lock()
 		if h.dialogue == dialoguePtr {

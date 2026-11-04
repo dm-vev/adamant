@@ -6,7 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // PlayerActionHandler handles the PlayerAction packet.
@@ -14,22 +14,22 @@ type PlayerActionHandler struct{}
 
 // Handle ...
 func (*PlayerActionHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllable) error {
-	pk := p.(*v2193.PlayerActionPacket)
+	pk := p.(*mc.PlayerActionPacket)
 
 	return handlePlayerAction(pk.ActionType, pk.BlockFace, pk.BlockPosition, pk.EntityRuntimeID, s, c)
 }
 
 // handlePlayerAction handles an action performed by a player, found in the PlayerAction and PlayerAuthInput packets.
-func handlePlayerAction(action int32, face int32, pos v2193.BlockPos, entityRuntimeID uint64, s *Session, c Controllable) error {
+func handlePlayerAction(action int32, face int32, pos mc.BlockPos, entityRuntimeID uint64, s *Session, c Controllable) error {
 	if entityRuntimeID != selfEntityRuntimeID {
 		return errSelfRuntimeID
 	}
 	switch action {
-	case v2193.PlayerActionStartSleeping, v2193.PlayerActionRespawn, v2193.PlayerActionDimensionChangeDone:
+	case mc.PlayerActionStartSleeping, mc.PlayerActionRespawn, mc.PlayerActionDimensionChangeDone:
 		// Don't do anything for these actions.
-	case v2193.PlayerActionStopSleeping:
+	case mc.PlayerActionStopSleeping:
 		c.Wake()
-	case v2193.PlayerActionStartBreak, v2193.PlayerActionContinueDestroyBlock:
+	case mc.PlayerActionStartBreak, mc.PlayerActionContinueDestroyBlock:
 		blockFace, err := parseBlockFace(face)
 		if err != nil {
 			return err
@@ -39,24 +39,24 @@ func handlePlayerAction(action int32, face int32, pos v2193.BlockPos, entityRunt
 
 		s.breakingPos = cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
 		c.StartBreaking(s.breakingPos, blockFace)
-	case v2193.PlayerActionAbortBreak:
+	case mc.PlayerActionAbortBreak:
 		c.AbortBreaking()
-	case v2193.PlayerActionPredictDestroyBlock, v2193.PlayerActionStopBreak:
+	case mc.PlayerActionPredictDestroyBlock, mc.PlayerActionStopBreak:
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)
 		c.FinishBreaking()
-	case v2193.PlayerActionCrackBreak:
+	case mc.PlayerActionCrackBreak:
 		// Don't do anything for this action. It is no longer used. Block
 		// cracking is done fully server-side.
-	case v2193.PlayerActionStartItemUseOn:
+	case mc.PlayerActionStartItemUseOn:
 		// TODO: Properly utilize these actions.
-	case v2193.PlayerActionStopItemUseOn:
+	case mc.PlayerActionStopItemUseOn:
 		c.ReleaseItem()
-	case v2193.PlayerActionInteractWithBlock:
+	case mc.PlayerActionInteractWithBlock:
 		// Item interaction data carries the actual block interaction.
-	case v2193.PlayerActionCreativePlayerDestroyBlock:
+	case mc.PlayerActionCreativePlayerDestroyBlock:
 		// Don't do anything for this action.
-	case v2193.PlayerActionMissedSwing:
+	case mc.PlayerActionMissedSwing:
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)
 		c.PunchAir()

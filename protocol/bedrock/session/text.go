@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/scoreboard"
 	"github.com/df-mc/dragonfly/server/text"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // SendMessage shows t in the chat. A text that holds a translation is sent
@@ -19,8 +19,8 @@ import (
 func (s *Session) SendMessage(t text.Text) {
 	message, params, translated := bedrocktext.Message(t)
 	if translated {
-		s.writePacket(&v2193.TextPacket{
-			TextType:         v2193.TextTypeTranslation,
+		s.writePacket(&mc.TextPacket{
+			TextType:         mc.TextTypeTranslation,
 			NeedsTranslation: true,
 			Message:          message,
 			Parameters:       params,
@@ -32,47 +32,47 @@ func (s *Session) SendMessage(t text.Text) {
 		// empty line Java shows.
 		message = " "
 	}
-	s.writePacket(&v2193.TextPacket{
-		TextType: v2193.TextTypeRaw,
+	s.writePacket(&mc.TextPacket{
+		TextType: mc.TextTypeRaw,
 		Message:  message,
 	})
 }
 
 // SendTip ...
 func (s *Session) SendTip(t text.Text) {
-	s.writePacket(&v2193.TextPacket{
-		TextType: v2193.TextTypeTip,
+	s.writePacket(&mc.TextPacket{
+		TextType: mc.TextTypeTip,
 		Message:  bedrocktext.String(t),
 	})
 }
 
 // SendAnnouncement ...
 func (s *Session) SendAnnouncement(message string) {
-	s.writePacket(&v2193.TextPacket{
-		TextType: v2193.TextTypeAnnouncement,
+	s.writePacket(&mc.TextPacket{
+		TextType: mc.TextTypeAnnouncement,
 		Message:  message,
 	})
 }
 
 // SendPopup ...
 func (s *Session) SendPopup(t text.Text) {
-	s.writePacket(&v2193.TextPacket{
-		TextType: v2193.TextTypePopup,
+	s.writePacket(&mc.TextPacket{
+		TextType: mc.TextTypePopup,
 		Message:  bedrocktext.String(t),
 	})
 }
 
 // SendJukeboxPopup ...
 func (s *Session) SendJukeboxPopup(t text.Text) {
-	s.writePacket(&v2193.TextPacket{
-		TextType: v2193.TextTypeJukeboxPopup,
+	s.writePacket(&mc.TextPacket{
+		TextType: mc.TextTypeJukeboxPopup,
 		Message:  bedrocktext.String(t),
 	})
 }
 
 // SendToast ...
 func (s *Session) SendToast(title, message text.Text) {
-	s.writePacket(&v2193.ToastRequestPacket{
+	s.writePacket(&mc.ToastRequestPacket{
 		Title:   bedrocktext.String(title),
 		Message: bedrocktext.String(message),
 	})
@@ -100,24 +100,24 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 
 	if currentName != name {
 		s.RemoveScoreboard()
-		pk := &v2193.SetDisplayObjectivePacket{
+		pk := &mc.SetDisplayObjectivePacket{
 			DisplaySlot:   "sidebar",
 			ObjectiveName: name,
 			DisplayName:   name,
 			CriteriaName:  "dummy",
 		}
 		if sb.Descending() {
-			pk.SortOrder = v2193.ScoreboardSortOrderDescending
+			pk.SortOrder = mc.ScoreboardSortOrderDescending
 		} else {
-			pk.SortOrder = v2193.ScoreboardSortOrderAscending
+			pk.SortOrder = mc.ScoreboardSortOrderAscending
 		}
 		s.writePacket(pk)
 	} else {
 		// Remove all current lines from the scoreboard. We can't replace them without removing them.
-		pk := &v2193.SetScorePacket{}
+		pk := &mc.SetScorePacket{}
 		for i := range currentLines {
-			pk.Entries = append(pk.Entries, v2193.ScoreboardEntry{
-				IdentityType:  v2193.ScoreboardIdentityRemove,
+			pk.Entries = append(pk.Entries, mc.ScoreboardEntry{
+				IdentityType:  mc.ScoreboardIdentityRemove,
 				EntryID:       int64(i),
 				ObjectiveName: currentName,
 				Score:         int32(i),
@@ -127,18 +127,18 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 			s.writePacket(pk)
 		}
 	}
-	pk := &v2193.SetScorePacket{}
+	pk := &mc.SetScorePacket{}
 	displayLines := make([]string, len(lines))
 	for k, line := range lines {
 		if len(line) == 0 {
 			line = "§" + colours[k]
 		}
 		displayLines[k] = line
-		pk.Entries = append(pk.Entries, v2193.ScoreboardEntry{
+		pk.Entries = append(pk.Entries, mc.ScoreboardEntry{
 			EntryID:       int64(k),
 			ObjectiveName: name,
 			Score:         int32(k),
-			IdentityType:  v2193.ScoreboardIdentityFakePlayer,
+			IdentityType:  mc.ScoreboardIdentityFakePlayer,
 			DisplayName:   line,
 		})
 	}
@@ -185,7 +185,7 @@ func (s *Session) RemoveScoreboard() {
 	if current == nil {
 		return
 	}
-	s.writePacket(&v2193.RemoveObjectivePacket{ObjectiveName: *current})
+	s.writePacket(&mc.RemoveObjectivePacket{ObjectiveName: *current})
 	var name string
 	var lines []string
 	s.currentScoreboard.Store(&name)
@@ -200,9 +200,9 @@ func (s *Session) SendBossBar(title text.Text, colour bossbar.Colour, healthPerc
 // SendBossBarID shows or updates the independently identified boss bar: title above a bar of the colour
 // passed, filled to healthPercentage.
 func (s *Session) SendBossBarID(id string, title text.Text, colour bossbar.Colour, healthPercentage float64) {
-	s.writePacket(&v2193.BossEventPacket{
+	s.writePacket(&mc.BossEventPacket{
 		BossEntityUniqueID: s.bossBarEntityID(id),
-		EventType:          v2193.BossEventShow,
+		EventType:          mc.BossEventShow,
 		BossBarTitle:       bedrocktext.String(title),
 		HealthPercentage:   float32(healthPercentage),
 		Colour:             bedrockBossBarColour(colour),
@@ -214,9 +214,9 @@ func (s *Session) RemoveBossBar() { s.RemoveBossBarID("default") }
 
 // RemoveBossBarID hides only the boss bar identified by id.
 func (s *Session) RemoveBossBarID(id string) {
-	s.writePacket(&v2193.BossEventPacket{
+	s.writePacket(&mc.BossEventPacket{
 		BossEntityUniqueID: s.bossBarEntityID(id),
-		EventType:          v2193.BossEventHide,
+		EventType:          mc.BossEventHide,
 	})
 }
 
@@ -243,8 +243,8 @@ const tickLength = time.Second / 20
 
 // SetTitleDurations ...
 func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDuration time.Duration) {
-	s.writePacket(&v2193.SetTitlePacket{
-		ActionType:      v2193.TitleActionSetDurations,
+	s.writePacket(&mc.SetTitlePacket{
+		ActionType:      mc.TitleActionSetDurations,
 		FadeInDuration:  int32(fadeInDuration / tickLength),
 		RemainDuration:  int32(remainDuration / tickLength),
 		FadeOutDuration: int32(fadeOutDuration / tickLength),
@@ -253,15 +253,15 @@ func (s *Session) SetTitleDurations(fadeInDuration, remainDuration, fadeOutDurat
 
 // SendTitle ...
 func (s *Session) SendTitle(t text.Text) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetTitle, Text: bedrocktext.String(t)})
+	s.writePacket(&mc.SetTitlePacket{ActionType: mc.TitleActionSetTitle, Text: bedrocktext.String(t)})
 }
 
 // SendSubtitle ...
 func (s *Session) SendSubtitle(t text.Text) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetSubtitle, Text: bedrocktext.String(t)})
+	s.writePacket(&mc.SetTitlePacket{ActionType: mc.TitleActionSetSubtitle, Text: bedrocktext.String(t)})
 }
 
 // SendActionBarMessage ...
 func (s *Session) SendActionBarMessage(t text.Text) {
-	s.writePacket(&v2193.SetTitlePacket{ActionType: v2193.TitleActionSetActionBar, Text: bedrocktext.String(t)})
+	s.writePacket(&mc.SetTitlePacket{ActionType: mc.TitleActionSetActionBar, Text: bedrocktext.String(t)})
 }

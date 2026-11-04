@@ -39,7 +39,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/google/uuid"
@@ -321,7 +321,7 @@ type scenario struct {
 	stacks map[stackSlot]int32
 	// chunks are the positions of the chunks the client was sent, in
 	// order, which it then asks the sub-chunks of.
-	chunks []v2193.ChunkPos
+	chunks []mc.ChunkPos
 	// responses are the statuses of the item stack requests the client
 	// was answered, in order.
 	responses []uint8
@@ -334,8 +334,8 @@ type scenario struct {
 	// crafting are the recipes the client was sent, which its requests
 	// name by their network IDs, and enchantOptions the options of the
 	// enchanting table it was last sent.
-	crafting       *v2193.CraftingDataPacket
-	enchantOptions []v2193.EnchantmentOption
+	crafting       *mc.CraftingDataPacket
+	enchantOptions []mc.EnchantmentOption
 	// normalise, if set, normalises a packet the client was sent before it
 	// is recorded, and reports whether it changed any of it, or whether to
 	// leave it out of the record. Only the scenarios of
@@ -721,7 +721,7 @@ func (s *scenario) drain(keep bool) {
 	for {
 		select {
 		case pk := <-s.conn.written:
-			if text, ok := pk.(*v2193.TextPacket); ok && text.Message == marker {
+			if text, ok := pk.(*mc.TextPacket); ok && text.Message == marker {
 				return
 			}
 			s.record(pk, keep)
@@ -800,15 +800,15 @@ const maxHexBytes = 4096
 // requests of the client name.
 func (s *scenario) trackStacks(pk proto.Packet) {
 	switch pk := pk.(type) {
-	case *v2193.InventoryContentPacket:
+	case *mc.InventoryContentPacket:
 		for i, it := range pk.Content {
 			s.stacks[stackSlot{pk.WindowID, int32(i)}] = it.StackNetworkID
 		}
-	case *v2193.InventorySlotPacket:
+	case *mc.InventorySlotPacket:
 		s.stacks[stackSlot{pk.WindowID, int32(pk.Slot)}] = pk.NewItem.StackNetworkID
-	case *v2193.LevelChunkPacket:
+	case *mc.LevelChunkPacket:
 		s.chunks = append(s.chunks, pk.Position)
-	case *v2193.ItemStackResponsePacket:
+	case *mc.ItemStackResponsePacket:
 		for _, r := range pk.Responses {
 			s.responses = append(s.responses, r.Status)
 			for _, c := range r.ContainerInfo {
@@ -817,11 +817,11 @@ func (s *scenario) trackStacks(pk proto.Packet) {
 				}
 			}
 		}
-	case *v2193.ContainerOpenPacket:
+	case *mc.ContainerOpenPacket:
 		s.window, s.windowType = uint32(pk.WindowID), pk.ContainerType
-	case *v2193.CraftingDataPacket:
+	case *mc.CraftingDataPacket:
 		s.crafting = pk
-	case *v2193.PlayerEnchantOptionsPacket:
+	case *mc.PlayerEnchantOptionsPacket:
 		s.enchantOptions = pk.Options
 	}
 }
@@ -831,25 +831,25 @@ func (s *scenario) trackStacks(pk proto.Packet) {
 // container opened, or else the UI.
 func (s *scenario) windowOf(container uint8) uint32 {
 	switch container {
-	case v2193.ContainerHotBar, v2193.ContainerInventory, v2193.ContainerCombinedHotBarAndInventory:
-		return v2193.WindowIDInventory
-	case v2193.ContainerOffhand:
-		return v2193.WindowIDOffHand
-	case v2193.ContainerArmor:
-		return v2193.WindowIDArmour
-	case v2193.ContainerLevelEntity, v2193.ContainerShulkerBox, v2193.ContainerBarrel, v2193.ContainerCrafterLevelEntity,
-		v2193.ContainerFurnaceIngredient, v2193.ContainerFurnaceFuel, v2193.ContainerFurnaceResult:
+	case mc.ContainerHotBar, mc.ContainerInventory, mc.ContainerCombinedHotBarAndInventory:
+		return mc.WindowIDInventory
+	case mc.ContainerOffhand:
+		return mc.WindowIDOffHand
+	case mc.ContainerArmor:
+		return mc.WindowIDArmour
+	case mc.ContainerLevelEntity, mc.ContainerShulkerBox, mc.ContainerBarrel, mc.ContainerCrafterLevelEntity,
+		mc.ContainerFurnaceIngredient, mc.ContainerFurnaceFuel, mc.ContainerFurnaceResult:
 		return s.window
 	}
-	return v2193.WindowIDUI
+	return mc.WindowIDUI
 }
 
 // again returns a slot of a container that an earlier action of the item
 // stack request being made changed: the client names it by the ID of the
 // request, as the stack it holds has an ID the client was not yet sent.
-func (s *scenario) again(container uint8, slot int) v2193.StackRequestSlotInfo {
-	return v2193.StackRequestSlotInfo{
-		Container:      v2193.FullContainerName{ContainerID: container},
+func (s *scenario) again(container uint8, slot int) mc.StackRequestSlotInfo {
+	return mc.StackRequestSlotInfo{
+		Container:      mc.FullContainerName{ContainerID: container},
 		Slot:           uint8(slot),
 		StackNetworkID: s.nextRequest,
 	}
@@ -857,9 +857,9 @@ func (s *scenario) again(container uint8, slot int) v2193.StackRequestSlotInfo {
 
 // slot returns a slot of a container of item stack requests with the stack
 // network ID the client was last sent for it.
-func (s *scenario) slot(container uint8, slot int) v2193.StackRequestSlotInfo {
-	return v2193.StackRequestSlotInfo{
-		Container:      v2193.FullContainerName{ContainerID: container},
+func (s *scenario) slot(container uint8, slot int) mc.StackRequestSlotInfo {
+	return mc.StackRequestSlotInfo{
+		Container:      mc.FullContainerName{ContainerID: container},
 		Slot:           uint8(slot),
 		StackNetworkID: s.stacks[s.stackKey(container, slot)],
 	}
@@ -869,7 +869,7 @@ func (s *scenario) slot(container uint8, slot int) v2193.StackRequestSlotInfo {
 // container of item stack requests is. The off hand is a window of one
 // slot, which requests name as slot 1.
 func (s *scenario) stackKey(container uint8, slot int) stackSlot {
-	if container == v2193.ContainerOffhand {
+	if container == mc.ContainerOffhand {
 		slot = 0
 	}
 	return stackSlot{s.windowOf(container), int32(slot)}
@@ -957,7 +957,7 @@ func encode(pk proto.Packet) []byte {
 // an empty list of compounds as an empty list of nothing.
 func decodeAs(t *testing.T, id uint32, raw []byte) proto.Packet {
 	t.Helper()
-	back := v2193.New(id)
+	back := mc.New(id)
 	r := wire.NewReader(raw)
 	back.Decode(r)
 	if r.Err() != nil || r.Len() != 0 {
@@ -1036,35 +1036,35 @@ func (n *normaliser) packet(v reflect.Value) {
 	if normaliseOrbs {
 		n.orb(v)
 	}
-	if hud, ok := v.Addr().Interface().(*v2193.SetHudPacket); ok && len(hud.Elements) > 1 {
+	if hud, ok := v.Addr().Interface().(*mc.SetHudPacket); ok && len(hud.Elements) > 1 {
 		slices.Sort(hud.Elements)
 		n.touched = true
 	}
-	if pk, ok := v.Addr().Interface().(*v2193.LevelEventGenericPacket); ok {
+	if pk, ok := v.Addr().Interface().(*mc.LevelEventGenericPacket); ok {
 		pk.SerialisedEventData = sortedCompound(pk.SerialisedEventData)
 		n.touched = true
 	}
-	if pk, ok := v.Addr().Interface().(*v2193.UpdateTradePacket); ok {
+	if pk, ok := v.Addr().Interface().(*mc.UpdateTradePacket); ok {
 		pk.SerialisedOffers = sortedNBT(pk.SerialisedOffers)
 		n.touched = true
 	}
-	if pk, ok := v.Addr().Interface().(*v2193.ItemStackResponsePacket); ok {
+	if pk, ok := v.Addr().Interface().(*mc.ItemStackResponsePacket); ok {
 		for _, r := range pk.Responses {
 			if len(r.ContainerInfo) > 1 {
 				n.touched = true
 			}
-			slices.SortFunc(r.ContainerInfo, func(a, b v2193.StackResponseContainerInfo) int {
+			slices.SortFunc(r.ContainerInfo, func(a, b mc.StackResponseContainerInfo) int {
 				return int(a.Container.ContainerID) - int(b.Container.ContainerID)
 			})
 			for _, c := range r.ContainerInfo {
 				if len(c.SlotInfo) > 1 {
 					n.touched = true
 				}
-				slices.SortFunc(c.SlotInfo, func(a, b v2193.StackResponseSlotInfo) int { return int(a.Slot) - int(b.Slot) })
+				slices.SortFunc(c.SlotInfo, func(a, b mc.StackResponseSlotInfo) int { return int(a.Slot) - int(b.Slot) })
 			}
 		}
 	}
-	if v.Type() == reflect.TypeFor[v2193.PlayerEnchantOptionsPacket]() {
+	if v.Type() == reflect.TypeFor[mc.PlayerEnchantOptionsPacket]() {
 		opts := v.FieldByName("Options")
 		for i := range opts.Len() {
 			opts.Index(i).FieldByName("Name").SetString("name")
@@ -1109,7 +1109,7 @@ func (n *normaliser) value(v reflect.Value, name string) {
 		// Maps of the packets the scenarios send hold no IDs: metadata and
 		// NBT. Strings in them that are UUIDs are left as they are.
 		if name == "EntityMetadata" && v.Type().Key().Kind() == reflect.Uint32 {
-			key := reflect.ValueOf(uint32(v2193.EntityDataKeyVisibleMobEffects))
+			key := reflect.ValueOf(uint32(mc.EntityDataKeyVisibleMobEffects))
 			if packed := v.MapIndex(key); packed.IsValid() && packed.Elem().Kind() == reflect.Int64 && packed.Elem().Int() >= 1<<7 {
 				v.SetMapIndex(key, reflect.ValueOf(sortedEffects(packed.Elem().Int())))
 				n.touched = true
@@ -1539,10 +1539,10 @@ func sortedKeys(v reflect.Value) []reflect.Value {
 // maps: they are in no order, so they are sorted by name.
 func gameDataDump(data netconn.GameData) string {
 	rules := slices.Clone(data.GameRules)
-	slices.SortFunc(rules, func(a, b v2193.GameRule) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(rules, func(a, b mc.GameRule) int { return strings.Compare(a.Name, b.Name) })
 	data.GameRules = rules
 	items := slices.Clone(data.Items)
-	slices.SortFunc(items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(items, func(a, b mc.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
 	data.Items = items
 	var b strings.Builder
 	writeValue(&b, "    ", "", reflect.ValueOf(data))

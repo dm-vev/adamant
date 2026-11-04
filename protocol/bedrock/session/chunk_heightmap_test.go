@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestSubChunkHeightMapPreservesXZCoordinates(t *testing.T) {
@@ -17,8 +17,8 @@ func TestSubChunkHeightMapPreservesXZCoordinates(t *testing.T) {
 	c.SetBlock(2, 6, 5, 0, stone)
 	c.SetBlock(5, 10, 2, 0, stone)
 	col := &world.Column{Chunk: c}
-	entry := benchmarkSession(false).subChunkEntry(v2193.SubChunkOffset{}, 0, col, make(map[uint64]struct{}))
-	if entry.HeightMapType != v2193.HeightMapDataHasData {
+	entry := benchmarkSession(false).subChunkEntry(mc.SubChunkOffset{}, 0, col, make(map[uint64]struct{}))
+	if entry.HeightMapType != mc.HeightMapDataHasData {
 		t.Fatalf("heightmap type = %d, expected surface data", entry.HeightMapType)
 	}
 	heights, ok := entry.HeightMapData.Value()

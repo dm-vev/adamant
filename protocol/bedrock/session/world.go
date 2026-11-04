@@ -19,7 +19,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
@@ -99,17 +99,17 @@ func (s *Session) ViewEntity(e world.Entity) {
 		_, ofSession := listed.Client.(*Session)
 		actualPlayer := ok && ofSession
 		if !actualPlayer {
-			s.writePacket(&v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
-				ActionType:     v2193.PlayerListActionAdd,
+			s.writePacket(&mc.PlayerListPacket{Entries: []mc.PlayerListEntry{{
+				ActionType:     mc.PlayerListActionAdd,
 				UUID:           v.UUID(),
 				EntityUniqueID: s.entityUniqueID(e),
 				Username:       v.Name(),
-				BuildPlatform:  int32(v2193.DeviceUnknown),
+				BuildPlatform:  int32(mc.DeviceUnknown),
 				Skin:           skinToProtocol(v.Skin()),
 			}}})
 		}
 
-		s.writePacket(&v2193.AddPlayerPacket{
+		s.writePacket(&mc.AddPlayerPacket{
 			EntityMetadata:  toMetadata(metadata),
 			EntityRuntimeID: runtimeID,
 			GameType:        GameTypeFromMode(v.GameMode()),
@@ -120,12 +120,12 @@ func (s *Session) ViewEntity(e world.Entity) {
 			Username:        v.Name(),
 			Yaw:             float32(yaw),
 			EntityLinks:     links,
-			BuildPlatform:   int32(v2193.DeviceUnknown),
+			BuildPlatform:   int32(mc.DeviceUnknown),
 			AbilityData:     s.abilityData(v, s.entityUniqueID(e)),
 		})
 		if !actualPlayer {
-			s.writePacket(&v2193.PlayerListPacket{Entries: []v2193.PlayerListEntry{{
-				ActionType: v2193.PlayerListActionRemove,
+			s.writePacket(&mc.PlayerListPacket{Entries: []mc.PlayerListEntry{{
+				ActionType: mc.PlayerListActionRemove,
 				UUID:       v.UUID(),
 			}}})
 		}
@@ -138,7 +138,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 	case *entity.Ent:
 		switch e.H().Type() {
 		case entity.ItemType:
-			s.writePacket(&v2193.AddItemActorPacket{
+			s.writePacket(&mc.AddItemActorPacket{
 				EntityUniqueID:  s.entityUniqueID(e),
 				EntityRuntimeID: runtimeID,
 				Item:            instanceFromItem(s.tables(), v.Behaviour().(*entity.ItemBehaviour).Item()),
@@ -148,9 +148,9 @@ func (s *Session) ViewEntity(e world.Entity) {
 			})
 			return
 		case entity.TextType:
-			metadata[v2193.EntityDataKeyVariant] = int32(s.blockHash(block.Air{}))
+			metadata[mc.EntityDataKeyVariant] = int32(s.blockHash(block.Air{}))
 		case entity.FallingBlockType:
-			metadata[v2193.EntityDataKeyVariant] = int32(s.blockHash(v.Behaviour().(*entity.FallingBlockBehaviour).Block()))
+			metadata[mc.EntityDataKeyVariant] = int32(s.blockHash(v.Behaviour().(*entity.FallingBlockBehaviour).Block()))
 		}
 	}
 	id = networkID(e.H().Type())
@@ -160,7 +160,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		vel = v.Velocity()
 	}
 
-	s.writePacket(&v2193.AddActorPacket{
+	s.writePacket(&mc.AddActorPacket{
 		EntityUniqueID:   s.entityUniqueID(e),
 		EntityRuntimeID:  runtimeID,
 		EntityType:       id,
@@ -194,16 +194,16 @@ type mobHealth interface {
 
 // mobAttributes returns the attributes the dedicated server sends of a mob:
 // its health, its movement speed and the jump strength of horses.
-func mobAttributes(e world.Entity) []v2193.AttributeValue {
-	var attributes []v2193.AttributeValue
+func mobAttributes(e world.Entity) []mc.AttributeValue {
+	var attributes []mc.AttributeValue
 	if h, ok := e.(mobHealth); ok {
-		attributes = append(attributes, v2193.AttributeValue{Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth())})
+		attributes = append(attributes, mc.AttributeValue{Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth())})
 	}
 	if s, ok := e.(interface{ Speed() float64 }); ok {
-		attributes = append(attributes, v2193.AttributeValue{Name: "minecraft:movement", Value: float32(s.Speed()), Max: math.MaxFloat32})
+		attributes = append(attributes, mc.AttributeValue{Name: "minecraft:movement", Value: float32(s.Speed()), Max: math.MaxFloat32})
 	}
 	if j, ok := e.(interface{ JumpStrength() float64 }); ok {
-		attributes = append(attributes, v2193.AttributeValue{Name: "minecraft:horse.jump_strength", Value: float32(j.JumpStrength()), Max: math.MaxFloat32})
+		attributes = append(attributes, mc.AttributeValue{Name: "minecraft:horse.jump_strength", Value: float32(j.JumpStrength()), Max: math.MaxFloat32})
 	}
 	return attributes
 }
@@ -214,9 +214,9 @@ func (s *Session) viewMobHealth(e world.Entity) {
 	if !ok || e.H().Type().EncodeEntity() == "minecraft:player" {
 		return
 	}
-	s.writePacket(&v2193.UpdateAttributesPacket{
+	s.writePacket(&mc.UpdateAttributesPacket{
 		EntityRuntimeID: s.entityRuntimeID(e),
-		Attributes: []v2193.Attribute{{
+		Attributes: []mc.Attribute{{
 			Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth()),
 			DefaultMax: float32(h.MaxHealth()),
 			Default:    float32(h.MaxHealth()),
@@ -239,16 +239,16 @@ func (s *Session) ViewEntityLinkType(ridden, rider *world.EntityHandle, linkType
 	if riddenID == 0 || riderID == 0 {
 		return
 	}
-	pkType := byte(v2193.EntityLinkRemove)
+	pkType := byte(mc.EntityLinkRemove)
 	if mounted {
 		switch linkType {
 		case entity.LinkPassenger:
-			pkType = byte(v2193.EntityLinkPassenger)
+			pkType = byte(mc.EntityLinkPassenger)
 		default:
-			pkType = byte(v2193.EntityLinkRider)
+			pkType = byte(mc.EntityLinkRider)
 		}
 	}
-	s.writePacket(&v2193.SetActorLinkPacket{EntityLink: v2193.EntityLink{
+	s.writePacket(&mc.SetActorLinkPacket{EntityLink: mc.EntityLink{
 		RiddenEntityUniqueID: s.handleUniqueID(ridden),
 		RiderEntityUniqueID:  s.handleUniqueID(rider),
 		Type:                 pkType,
@@ -270,17 +270,17 @@ func (s *Session) handleUniqueID(h *world.EntityHandle) int64 {
 // ViewElderGuardianCurse shows the ghost of an elder guardian, as BDS does
 // for the mining fatigue it gives.
 func (s *Session) ViewElderGuardianCurse(pos mgl64.Vec3) {
-	s.writePacket(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticleSoundGuardianGhost, Position: vec64To32(pos)})
+	s.writePacket(&mc.LevelEventPacket{EventType: mc.LevelEventParticleSoundGuardianGhost, Position: vec64To32(pos)})
 }
 
 // ViewSpectatedEntity attaches the camera of the client to an entity, as BDS
 // does for /camera attach_to_entity, or detaches it again if e is nil.
 func (s *Session) ViewSpectatedEntity(e world.Entity) {
 	if e == nil {
-		s.writePacket(&v2193.CameraInstructionPacket{DetachFromEntity: proto.Some(true)})
+		s.writePacket(&mc.CameraInstructionPacket{DetachFromEntity: proto.Some(true)})
 		return
 	}
-	s.writePacket(&v2193.CameraInstructionPacket{AttachToEntity: proto.Some(s.entityUniqueID(e))})
+	s.writePacket(&mc.CameraInstructionPacket{AttachToEntity: proto.Some(s.entityUniqueID(e))})
 }
 
 // ViewEntityGameMode ...
@@ -292,7 +292,7 @@ func (s *Session) ViewEntityGameMode(e world.Entity) {
 	if !ok {
 		return
 	}
-	s.writePacket(&v2193.UpdatePlayerGameTypePacket{
+	s.writePacket(&mc.UpdatePlayerGameTypePacket{
 		GameType:       GameTypeFromMode(c.GameMode()),
 		PlayerUniqueID: s.entityUniqueID(c),
 	})
@@ -326,7 +326,7 @@ func (s *Session) HideEntity(e world.Entity) {
 		// model before its death animation had a chance to render.
 		return
 	}
-	s.writePacket(&v2193.RemoveActorPacket{EntityUniqueID: s.handleUniqueID(e.H())})
+	s.writePacket(&mc.RemoveActorPacket{EntityUniqueID: s.handleUniqueID(e.H())})
 }
 
 // ViewEntityMovement ...
@@ -352,15 +352,15 @@ func (s *Session) viewEntityAbsoluteMovement(id uint64, e world.Entity, pos mgl6
 }
 
 // absoluteMove returns the MoveActorAbsolute of an entity at a position.
-func absoluteMove(id uint64, e world.Entity, pos mgl64.Vec3, rot cube.Rotation, onGround, authoritative bool) *v2193.MoveActorAbsolutePacket {
+func absoluteMove(id uint64, e world.Entity, pos mgl64.Vec3, rot cube.Rotation, onGround, authoritative bool) *mc.MoveActorAbsolutePacket {
 	flags := byte(0)
 	if onGround {
-		flags |= v2193.MoveFlagOnGround
+		flags |= mc.MoveFlagOnGround
 	}
 	if authoritative {
-		flags |= v2193.MoveFlagTeleport
+		flags |= mc.MoveFlagTeleport
 	}
-	return &v2193.MoveActorAbsolutePacket{
+	return &mc.MoveActorAbsolutePacket{
 		EntityRuntimeID: id,
 		Position:        vec64To32(entityNetworkPosition(e, pos)),
 		Rotation:        vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), entityHeadYaw(e, rot.Yaw())}),
@@ -373,7 +373,7 @@ func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 	if s.entityHidden(e) || s.keepBack(e) {
 		return
 	}
-	s.writePacket(&v2193.SetActorMotionPacket{
+	s.writePacket(&mc.SetActorMotionPacket{
 		EntityRuntimeID: s.entityRuntimeID(e),
 		Velocity:        vec64To32(velocity),
 	})
@@ -404,17 +404,17 @@ func entityBasePosition(e world.Entity, pos mgl32.Vec3) mgl32.Vec3 {
 
 // ViewTime ...
 func (s *Session) ViewTime(time int) {
-	s.writePacket(&v2193.SetTimePacket{Time: int32(time)})
+	s.writePacket(&mc.SetTimePacket{Time: int32(time)})
 }
 
 // ViewTimeCycle ...
 func (s *Session) ViewTimeCycle(doDayLightCycle bool) {
-	s.sendGameRules([]v2193.GameRule{{Name: "dodaylightcycle", Value: doDayLightCycle}})
+	s.sendGameRules([]mc.GameRule{{Name: "dodaylightcycle", Value: doDayLightCycle}})
 }
 
 // ViewFallDamage controls whether fall damage is enabled for this viewer.
 func (s *Session) ViewFallDamage(enabled bool) {
-	s.sendGameRules([]v2193.GameRule{{Name: "falldamage", Value: enabled}})
+	s.sendGameRules([]mc.GameRule{{Name: "falldamage", Value: enabled}})
 }
 
 // ViewEntityTeleport ...
@@ -429,26 +429,26 @@ func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 		s.teleportPos.Store(&position)
 	}
 
-	s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: id})
+	s.writePacket(&mc.SetActorMotionPacket{EntityRuntimeID: id})
 	if _, ok := e.(Controllable); ok {
-		s.writePacket(&v2193.MovePlayerPacket{
+		s.writePacket(&mc.MovePlayerPacket{
 			EntityRuntimeID: id,
 			Position:        vec64To32(entityNetworkPosition(e, position)),
 			Pitch:           float32(pitch),
 			Yaw:             float32(yaw),
 			HeadYaw:         float32(yaw),
-			Mode:            v2193.MoveModeTeleport,
-			TeleportData: proto.Some(v2193.TeleportData{
-				TeleportCause: v2193.TeleportCauseUnknown,
+			Mode:            mc.MoveModeTeleport,
+			TeleportData: proto.Some(mc.TeleportData{
+				TeleportCause: mc.TeleportCauseUnknown,
 			}),
 		})
 		return
 	}
-	s.writePacket(&v2193.MoveActorAbsolutePacket{
+	s.writePacket(&mc.MoveActorAbsolutePacket{
 		EntityRuntimeID: id,
 		Position:        vec64To32(entityNetworkPosition(e, position)),
 		Rotation:        vec64To32(mgl64.Vec3{pitch, yaw, yaw}),
-		Flags:           v2193.MoveFlagTeleport,
+		Flags:           mc.MoveFlagTeleport,
 	})
 }
 
@@ -480,17 +480,17 @@ func (s *Session) ViewEntityItems(e world.Entity) {
 
 	// Show the main hand item.
 	if !shown || !mainHand.Empty() {
-		s.writePacket(&v2193.MobEquipmentPacket{
+		s.writePacket(&mc.MobEquipmentPacket{
 			EntityRuntimeID: runtimeID,
 			NewItem:         instanceFromItem(s.tables(), mainHand),
 		})
 	}
 	// Show the off-hand item.
 	if !shown || !offHand.Empty() {
-		s.writePacket(&v2193.MobEquipmentPacket{
+		s.writePacket(&mc.MobEquipmentPacket{
 			EntityRuntimeID: runtimeID,
 			NewItem:         instanceFromItem(s.tables(), offHand),
-			WindowID:        v2193.WindowIDOffHand,
+			WindowID:        mc.WindowIDOffHand,
 		})
 	}
 }
@@ -549,7 +549,7 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 	}
 
 	// Show the entity's armour and body equipment.
-	s.writePacket(&v2193.MobArmourEquipmentPacket{
+	s.writePacket(&mc.MobArmourEquipmentPacket{
 		EntityRuntimeID: runtimeID,
 		Helmet:          instanceFromItem(s.tables(), helm),
 		Chestplate:      instanceFromItem(s.tables(), chestplate),
@@ -566,7 +566,7 @@ func (s *Session) ViewItemCooldown(item world.Item, duration time.Duration) {
 	if _, suffix, ok := strings.Cut(name, ":"); ok && suffix != "" {
 		category = suffix
 	}
-	s.writePacket(&v2193.ClientStartItemCooldownPacket{
+	s.writePacket(&mc.ClientStartItemCooldownPacket{
 		Category: category,
 		Duration: int32(duration.Milliseconds() / 50),
 	})
@@ -583,8 +583,8 @@ func (s *Session) ViewSleepingPlayers(sleeping, max int) {
 
 	eventData := buf.Bytes()
 
-	s.writePacket(&v2193.LevelEventGenericPacket{
-		EventID:             v2193.LevelEventSleepingPlayers,
+	s.writePacket(&mc.LevelEventGenericPacket{
+		EventID:             mc.LevelEventSleepingPlayers,
 		SerialisedEventData: eventData[2 : len(eventData)-1],
 	})
 }
@@ -623,8 +623,8 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 			"HeartZ":         float32(pa.Heart.Z()),
 		})
 		data := buf.Bytes()
-		out(&v2193.LevelEventGenericPacket{
-			EventID:             v2193.LevelEventParticleCreakingHeartTrail,
+		out(&mc.LevelEventGenericPacket{
+			EventID:             mc.LevelEventParticleCreakingHeartTrail,
 			SerialisedEventData: data[2 : len(data)-1],
 		})
 	case particle.VibrationSignal:
@@ -651,8 +651,8 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 			TimeToLive: float32(max(0, pa.TravelTicks)) / 20,
 		})
 		data := buf.Bytes()
-		out(&v2193.LevelEventGenericPacket{
-			EventID:             v2193.LevelEventParticlesVibrationSignal,
+		out(&mc.LevelEventGenericPacket{
+			EventID:             mc.LevelEventParticlesVibrationSignal,
 			SerialisedEventData: data[2 : len(data)-1],
 		})
 	case particle.DragonEggTeleport:
@@ -667,89 +667,89 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 			zSign = 1 << 26
 		}
 
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesDragonEgg,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesDragonEgg,
 			Position:  vec64To32(pos),
 			EventData: int32((((((abs(pa.Diff.X()) << 16) | (abs(pa.Diff.Y()) << 8)) | abs(pa.Diff.Z())) | xSign) | ySign) | zSign),
 		})
 	case particle.Note:
-		out(&v2193.BlockEventPacket{
+		out(&mc.BlockEventPacket{
 			EventType: bedrockInstrument(pa.Instrument),
 			EventData: int32(pa.Pitch),
-			Position:  v2193.BlockPos{int32(pos.X()), int32(pos.Y()), int32(pos.Z())},
+			Position:  mc.BlockPos{int32(pos.X()), int32(pos.Y()), int32(pos.Z())},
 		})
 	case particle.HugeExplosion:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesExplosion,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.BoneMeal:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleCropGrowth,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleCropGrowth,
 			Position:  vec64To32(pos),
 			EventData: int32(boolByte(pa.Area)),
 		})
 	case particle.BlockForceField:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleDenyBlock,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleDenyBlock,
 			Position:  vec64To32(pos),
 		})
 	case particle.DispenserSmoke:
 		direction := cube.Pos{}.Side(pa.Face)
-		s.writePacket(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesShoot,
+		s.writePacket(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesShoot,
 			Position:  vec64To32(pos),
 			EventData: int32(direction[0] + 1 + (direction[2]+1)*3),
 		})
 	case particle.BlockBreak:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesDestroyBlock,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesDestroyBlock,
 			Position:  vec64To32(pos),
 			EventData: int32(s.blockHash(pa.Block)),
 		})
 	case particle.PunchBlock:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesCrackBlock,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesCrackBlock,
 			Position:  vec64To32(pos),
 			EventData: int32(s.blockHash(pa.Block)) | (int32(pa.Face) << 24),
 		})
 	case particle.DragonDestroyBlock:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | v2193.ParticleTypeDragonDestroyBlock,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | mc.ParticleTypeDragonDestroyBlock,
 			Position:  vec64To32(pos),
 		})
 	case particle.EndermanTeleport:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesTeleport,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesTeleport,
 			Position:  vec64To32(pos),
 		})
 	case particle.Flame:
 		if pa.Colour != (color.RGBA{}) {
-			out(&v2193.LevelEventPacket{
-				EventType: v2193.LevelEventParticleLegacyEvent | 57,
+			out(&mc.LevelEventPacket{
+				EventType: mc.LevelEventParticleLegacyEvent | 57,
 				Position:  vec64To32(pos),
 				EventData: int32FromRGBA(pa.Colour),
 			})
 			return
 		}
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 8,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 8,
 			Position:  vec64To32(pos),
 		})
 	case particle.Evaporate:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesEvaporateWater,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesEvaporateWater,
 			Position:  vec64To32(pos),
 		})
 	case particle.SnowballPoof:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 15,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 15,
 			Position:  vec64To32(pos),
 		})
 	case particle.EggSmash:
 		rid, meta, _ := s.tables().itemRuntimeID(item.Egg{})
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 14,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 14,
 			EventData: (rid << 16) | int32(meta),
 			Position:  vec64To32(pos),
 		})
@@ -757,168 +757,168 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 		if (pa.Colour == color.RGBA{}) {
 			pa.Colour, _ = effect.ResultingColour(nil)
 		}
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesPotionSplash,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesPotionSplash,
 			EventData: (int32(pa.Colour.A) << 24) | (int32(pa.Colour.R) << 16) | (int32(pa.Colour.G) << 8) | int32(pa.Colour.B),
 			Position:  vec64To32(pos),
 		})
 	case particle.MobGrowth:
-		t := v2193.ParticleTypeResetMobGrowth
+		t := mc.ParticleTypeResetMobGrowth
 		if pa.Paused {
-			t = v2193.ParticleTypePauseMobGrowth
+			t = mc.ParticleTypePauseMobGrowth
 		}
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | int32(t),
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | int32(t),
 			Position:  vec64To32(pos),
 		})
 	case particle.SonicExplosion:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSonicExplosion,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSonicExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.WindBurst:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesWindExplosion,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesWindExplosion,
 			Position:  vec64To32(pos),
 		})
 	case particle.Effect:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 34,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 34,
 			EventData: (int32(pa.Colour.A) << 24) | (int32(pa.Colour.R) << 16) | (int32(pa.Colour.G) << 8) | int32(pa.Colour.B),
 			Position:  vec64To32(pos),
 		})
 	case particle.EntityFlame:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 19,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 19,
 			Position:  vec64To32(pos),
 		})
 	case particle.Dust:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 33,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 33,
 			Position:  vec64To32(pos),
 			EventData: int32FromRGBA(pa.Colour),
 		})
 	case particle.WaterDrip:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 28,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 28,
 			Position:  vec64To32(pos),
 		})
 	case particle.LavaDrip:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 29,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 29,
 			Position:  vec64To32(pos),
 		})
 	case particle.Lava:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 10,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 10,
 			Position:  vec64To32(pos),
 		})
 	case particle.DustPlume:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | 88,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | 88,
 			Position:  vec64To32(pos),
 		})
 	case particle.SculkCharge, particle.SculkChargePop:
 		block := cube.PosFromVec3(pos)
 		data := map[string]any{"x": int32(block.X()), "y": int32(block.Y()), "z": int32(block.Z())}
-		event := int32(v2193.LevelEventSculkChargePop)
+		event := int32(mc.LevelEventSculkChargePop)
 		if charge, ok := pa.(particle.SculkCharge); ok {
-			event = v2193.LevelEventSculkCharge
+			event = mc.LevelEventSculkCharge
 			data["charge"], data["facing"] = int16(charge.Charge), int16(charge.Faces)
 		}
 		buf := bytes.NewBuffer(nil)
 		_ = nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian).Encode(data)
 		encoded := buf.Bytes()
-		out(&v2193.LevelEventGenericPacket{EventID: event, SerialisedEventData: encoded[2 : len(encoded)-1]})
+		out(&mc.LevelEventGenericPacket{EventID: event, SerialisedEventData: encoded[2 : len(encoded)-1]})
 	case particle.SculkSoul:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | v2193.ParticleTypeSculkSoul,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | mc.ParticleTypeSculkSoul,
 			Position:  vec64To32(pos),
 		})
 	case particle.CauldronEffect:
-		out(&v2193.LevelEventPacket{
+		out(&mc.LevelEventPacket{
 			EventType: cauldronLevelEvents[pa.Kind],
 			Position:  vec64To32(pos),
 			EventData: int32FromRGBA(pa.Colour),
 		})
 	case particle.DripstoneDrip:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
 	case particle.PointedDripstoneLand:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventSoundPointedDripstoneLand, Position: vec64To32(pos)})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventSoundPointedDripstoneLand, Position: vec64To32(pos)})
 	case particle.EggCrack:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticleTurtleEgg, Position: vec64To32(pos)})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticleTurtleEgg, Position: vec64To32(pos)})
 	case particle.ElectricSpark:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticlesElectricSpark,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticlesElectricSpark,
 			Position:  vec64To32(pos),
 			EventData: pa.Data,
 		})
 	case particle.EyeblossomTransform:
-		kind := int32(v2193.ParticleTypeEyeblossomClose)
+		kind := int32(mc.ParticleTypeEyeblossomClose)
 		if pa.Open {
-			kind = v2193.ParticleTypeEyeblossomOpen
+			kind = mc.ParticleTypeEyeblossomOpen
 		}
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventParticleLegacyEvent | kind,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventParticleLegacyEvent | kind,
 			Position:  vec64To32(pos),
 		})
 	case particle.TrialSpawnerDetection:
-		event := int32(v2193.LevelEventParticlesTrialSpawnerDetection)
+		event := int32(mc.LevelEventParticlesTrialSpawnerDetection)
 		if pa.Ominous {
-			event = v2193.LevelEventParticlesTrialSpawnerDetectionCharged
+			event = mc.LevelEventParticlesTrialSpawnerDetectionCharged
 		}
-		out(&v2193.LevelEventPacket{EventType: event, Position: vec64To32(pos), EventData: int32(pa.Players)})
+		out(&mc.LevelEventPacket{EventType: event, Position: vec64To32(pos), EventData: int32(pa.Players)})
 	case particle.TrialSpawnerSpawning:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerSpawning, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticlesTrialSpawnerSpawning, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.TrialSpawnerEjecting:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerEjecting, Position: vec64To32(pos)})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticlesTrialSpawnerEjecting, Position: vec64To32(pos)})
 	case particle.TrialSpawnerBecomeOminous:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventParticlesTrialSpawnerBecomeCharged, Position: vec64To32(pos)})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventParticlesTrialSpawnerBecomeCharged, Position: vec64To32(pos)})
 	case particle.VaultActivate:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultActivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventAnimationVaultActivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.VaultDeactivate:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultDeactivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventAnimationVaultDeactivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
 	case particle.VaultEjectItem:
-		out(&v2193.LevelEventPacket{EventType: v2193.LevelEventAnimationVaultEjectItem, Position: vec64To32(pos)})
+		out(&mc.LevelEventPacket{EventType: mc.LevelEventAnimationVaultEjectItem, Position: vec64To32(pos)})
 	}
 }
 
 // cauldronLevelEvents maps cauldron effects to their Bedrock level events.
 var cauldronLevelEvents = [...]int32{
-	particle.CauldronExplode:        v2193.LevelEventCauldronExplode,
-	particle.CauldronDyeArmour:      v2193.LevelEventCauldronDyeArmor,
-	particle.CauldronCleanArmour:    v2193.LevelEventCauldronCleanArmor,
-	particle.CauldronFillPotion:     v2193.LevelEventCauldronFillPotion,
-	particle.CauldronTakePotion:     v2193.LevelEventCauldronTakePotion,
-	particle.CauldronFillWater:      v2193.LevelEventCauldronFillWater,
-	particle.CauldronTakeWater:      v2193.LevelEventCauldronTakeWater,
-	particle.CauldronAddDye:         v2193.LevelEventCauldronAddDye,
-	particle.CauldronCleanBanner:    v2193.LevelEventCauldronCleanBanner,
-	particle.CauldronFillLava:       v2193.LevelEventCauldronFillLava,
-	particle.CauldronTakeLava:       v2193.LevelEventCauldronTakeLava,
-	particle.CauldronFillPowderSnow: v2193.LevelEventCauldronFillPowderSnow,
-	particle.CauldronTakePowderSnow: v2193.LevelEventCauldronTakePowderSnow,
+	particle.CauldronExplode:        mc.LevelEventCauldronExplode,
+	particle.CauldronDyeArmour:      mc.LevelEventCauldronDyeArmor,
+	particle.CauldronCleanArmour:    mc.LevelEventCauldronCleanArmor,
+	particle.CauldronFillPotion:     mc.LevelEventCauldronFillPotion,
+	particle.CauldronTakePotion:     mc.LevelEventCauldronTakePotion,
+	particle.CauldronFillWater:      mc.LevelEventCauldronFillWater,
+	particle.CauldronTakeWater:      mc.LevelEventCauldronTakeWater,
+	particle.CauldronAddDye:         mc.LevelEventCauldronAddDye,
+	particle.CauldronCleanBanner:    mc.LevelEventCauldronCleanBanner,
+	particle.CauldronFillLava:       mc.LevelEventCauldronFillLava,
+	particle.CauldronTakeLava:       mc.LevelEventCauldronTakeLava,
+	particle.CauldronFillPowderSnow: mc.LevelEventCauldronFillPowderSnow,
+	particle.CauldronTakePowderSnow: mc.LevelEventCauldronTakePowderSnow,
 }
 
 // tierToSoundEvent converts an item.ArmourTier to a sound event associated with equipping it.
 func tierToSoundEvent(tier item.ArmourTier) string {
 	switch tier.(type) {
 	case item.ArmourTierLeather:
-		return v2193.SoundEventEquipLeather
+		return mc.SoundEventEquipLeather
 	case item.ArmourTierCopper:
-		return v2193.SoundEventEquipCopper
+		return mc.SoundEventEquipCopper
 	case item.ArmourTierGold:
-		return v2193.SoundEventEquipGold
+		return mc.SoundEventEquipGold
 	case item.ArmourTierChain:
-		return v2193.SoundEventEquipChain
+		return mc.SoundEventEquipChain
 	case item.ArmourTierIron:
-		return v2193.SoundEventEquipIron
+		return mc.SoundEventEquipIron
 	case item.ArmourTierDiamond:
-		return v2193.SoundEventEquipDiamond
+		return mc.SoundEventEquipDiamond
 	case item.ArmourTierNetherite:
-		return v2193.SoundEventEquipNetherite
+		return mc.SoundEventEquipNetherite
 	}
-	return v2193.SoundEventEquipGeneric
+	return mc.SoundEventEquipGeneric
 }
 
 // entitylessEventTypes holds the entity type a sound.Event of no entity is
@@ -942,7 +942,7 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 // soundPackets hands out the packets that play a sound at a position, the
 // same for every viewer.
 func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bool, out func(proto.Packet)) {
-	pk := &v2193.LevelSoundEventPacket{
+	pk := &mc.LevelSoundEventPacket{
 		Position:              vec64To32(pos),
 		EntityType:            ":",
 		ExtraData:             -1,
@@ -966,7 +966,7 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		pk.SoundType, pk.EntityType = "block.creaking_heart.trail", ""
 		pk.ExtraData = int32((float32(so.Progress)*2 - 1) * 1000)
 	case sound.LodestoneCompassLink:
-		pk.SoundType = v2193.SoundEventLinkCompassToLodestone
+		pk.SoundType = mc.SoundEventLinkCompassToLodestone
 	case sound.EquipItem:
 		switch i := so.Item.(type) {
 		case item.Helmet:
@@ -978,429 +978,429 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		case item.Boots:
 			pk.SoundType = tierToSoundEvent(i.Tier)
 		case item.Elytra:
-			pk.SoundType = v2193.SoundEventEquipElytra
+			pk.SoundType = mc.SoundEventEquipElytra
 		default:
-			pk.SoundType = v2193.SoundEventEquipGeneric
+			pk.SoundType = mc.SoundEventEquipGeneric
 		}
 	case sound.Note:
-		pk.SoundType = v2193.SoundEventNote
+		pk.SoundType = mc.SoundEventNote
 		pk.ExtraData = (bedrockInstrument(so.Instrument) << 8) | int32(so.Pitch)
 		pk.EntityType = ""
 	case sound.DoorCrash:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundZombieDoorCrash,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundZombieDoorCrash,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.Explosion:
-		pk.SoundType = v2193.SoundEventExplode
+		pk.SoundType = mc.SoundEventExplode
 	case sound.Thunder:
-		pk.SoundType, pk.EntityType = v2193.SoundEventThunder, "minecraft:lightning_bolt"
+		pk.SoundType, pk.EntityType = mc.SoundEventThunder, "minecraft:lightning_bolt"
 	case sound.Click:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundClick,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundClick,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.SignWaxed:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventWaxOn,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventWaxOn,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.WaxedSignFailedInteraction:
-		pk.SoundType = v2193.SoundEventWaxedSignInteractFail
+		pk.SoundType = mc.SoundEventWaxedSignInteractFail
 	case sound.WaxRemoved:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventWaxOff,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventWaxOff,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.CopperScraped:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventScrape,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventScrape,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.Pop:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundInfinityArrowPickup,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundInfinityArrowPickup,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.Teleport:
-		pk.SoundType = v2193.SoundEventTeleport
+		pk.SoundType = mc.SoundEventTeleport
 	case sound.ItemAdd:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundAddItem,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundAddItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ItemFrameRemove:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundItemFrameRemoveItem,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundItemFrameRemoveItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ItemFrameRotate:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundItemFrameRotateItem,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundItemFrameRotateItem,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.HangingPlace:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundItemFramePlace,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundItemFramePlace,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.HangingBreak:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundItemFrameBreak,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundItemFrameBreak,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.GhastWarning:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundGhastWarning,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundGhastWarning,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.GhastShoot:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundGhastFireball,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundGhastFireball,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.TNT:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundFuse,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundFuse,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.FireworkLaunch:
-		pk.SoundType = v2193.SoundEventLaunch
+		pk.SoundType = mc.SoundEventLaunch
 	case sound.FireworkHugeBlast:
-		pk.SoundType = v2193.SoundEventLargeBlast
+		pk.SoundType = mc.SoundEventLargeBlast
 	case sound.FireworkBlast:
-		pk.SoundType = v2193.SoundEventBlast
+		pk.SoundType = mc.SoundEventBlast
 	case sound.FireworkTwinkle:
-		pk.SoundType = v2193.SoundEventTwinkle
+		pk.SoundType = mc.SoundEventTwinkle
 	case sound.FurnaceCrackle:
-		pk.SoundType = v2193.SoundEventFurnaceUse
+		pk.SoundType = mc.SoundEventFurnaceUse
 	case sound.CampfireCrackle:
-		pk.SoundType = v2193.SoundEventCampfireCrackle
+		pk.SoundType = mc.SoundEventCampfireCrackle
 	case sound.BlastFurnaceCrackle:
-		pk.SoundType = v2193.SoundEventBlastFurnaceUse
+		pk.SoundType = mc.SoundEventBlastFurnaceUse
 	case sound.SmokerCrackle:
-		pk.SoundType = v2193.SoundEventSmokerUse
+		pk.SoundType = mc.SoundEventSmokerUse
 	case sound.PotionBrewed:
-		pk.SoundType = v2193.SoundEventPotionBrewed
+		pk.SoundType = mc.SoundEventPotionBrewed
 	case sound.UseSpyglass:
-		pk.SoundType = v2193.SoundEventUseSpyglass
+		pk.SoundType = mc.SoundEventUseSpyglass
 	case sound.StopUsingSpyglass:
-		pk.SoundType = v2193.SoundEventStopUsingSpyglass
+		pk.SoundType = mc.SoundEventStopUsingSpyglass
 	case sound.RespawnAnchorAmbient:
-		pk.SoundType = v2193.SoundEventRespawnAnchorAmbient
+		pk.SoundType = mc.SoundEventRespawnAnchorAmbient
 		pk.ExtraData = int32(so.Charge)
 	case sound.RespawnAnchorCharge:
-		pk.SoundType = v2193.SoundEventRespawnAnchorCharge
+		pk.SoundType = mc.SoundEventRespawnAnchorCharge
 		pk.ExtraData = int32(so.Charge)
 	case sound.RespawnAnchorDeplete:
-		pk.SoundType = v2193.SoundEventRespawnAnchorDeplete
+		pk.SoundType = mc.SoundEventRespawnAnchorDeplete
 		pk.ExtraData = int32(so.Charge)
 	case sound.GoatHorn:
 		switch so.Horn {
 		case sound.Ponder():
-			pk.SoundType = v2193.SoundEventGoatCall0
+			pk.SoundType = mc.SoundEventGoatCall0
 		case sound.Sing():
-			pk.SoundType = v2193.SoundEventGoatCall1
+			pk.SoundType = mc.SoundEventGoatCall1
 		case sound.Seek():
-			pk.SoundType = v2193.SoundEventGoatCall2
+			pk.SoundType = mc.SoundEventGoatCall2
 		case sound.Feel():
-			pk.SoundType = v2193.SoundEventGoatCall3
+			pk.SoundType = mc.SoundEventGoatCall3
 		case sound.Admire():
-			pk.SoundType = v2193.SoundEventGoatCall4
+			pk.SoundType = mc.SoundEventGoatCall4
 		case sound.Call():
-			pk.SoundType = v2193.SoundEventGoatCall5
+			pk.SoundType = mc.SoundEventGoatCall5
 		case sound.Yearn():
-			pk.SoundType = v2193.SoundEventGoatCall6
+			pk.SoundType = mc.SoundEventGoatCall6
 		case sound.Dream():
-			pk.SoundType = v2193.SoundEventGoatCall7
+			pk.SoundType = mc.SoundEventGoatCall7
 		}
 	case sound.FireExtinguish:
-		pk.SoundType = v2193.SoundEventExtinguishFire
+		pk.SoundType = mc.SoundEventExtinguishFire
 	case sound.Ignite:
-		pk.SoundType = v2193.SoundEventIgnite
+		pk.SoundType = mc.SoundEventIgnite
 	case sound.EnderEyePlaced:
-		pk.SoundType = v2193.SoundEventEnderEyePlaced
+		pk.SoundType = mc.SoundEventEnderEyePlaced
 	case sound.EndPortalCreated:
-		pk.SoundType = v2193.SoundEventEndPortalCreated
+		pk.SoundType = mc.SoundEventEndPortalCreated
 	case sound.Burning:
-		pk.SoundType = v2193.SoundEventPlayerHurtOnFire
+		pk.SoundType = mc.SoundEventPlayerHurtOnFire
 	case sound.Drowning:
-		pk.SoundType = v2193.SoundEventPlayerHurtDrown
+		pk.SoundType = mc.SoundEventPlayerHurtDrown
 	case sound.Fall:
 		pk.EntityType = "minecraft:player"
 		if so.Distance > 4 {
-			pk.SoundType = v2193.SoundEventFallBig
+			pk.SoundType = mc.SoundEventFallBig
 			break
 		}
-		pk.SoundType = v2193.SoundEventFallSmall
+		pk.SoundType = mc.SoundEventFallSmall
 	case sound.Burp:
-		pk.SoundType = v2193.SoundEventBurp
+		pk.SoundType = mc.SoundEventBurp
 	case sound.DoorOpen:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventDoorOpen, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventDoorOpen, int32(s.blockHash(so.Block))
 	case sound.DoorClose:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventDoorClose, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventDoorClose, int32(s.blockHash(so.Block))
 	case sound.TrapdoorOpen:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventTrapdoorOpen, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventTrapdoorOpen, int32(s.blockHash(so.Block))
 	case sound.TrapdoorClose:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventTrapdoorClose, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventTrapdoorClose, int32(s.blockHash(so.Block))
 	case sound.FenceGateOpen:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventFenceGateOpen, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventFenceGateOpen, int32(s.blockHash(so.Block))
 	case sound.FenceGateClose:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventFenceGateClose, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventFenceGateClose, int32(s.blockHash(so.Block))
 	case sound.PistonIn:
-		pk.SoundType, pk.EntityType = v2193.SoundEventPistonIn, ""
+		pk.SoundType, pk.EntityType = mc.SoundEventPistonIn, ""
 	case sound.PistonOut:
-		pk.SoundType, pk.EntityType = v2193.SoundEventPistonOut, ""
+		pk.SoundType, pk.EntityType = mc.SoundEventPistonOut, ""
 	case sound.Deny:
-		pk.SoundType = v2193.SoundEventDeny
+		pk.SoundType = mc.SoundEventDeny
 	case sound.BlockPlace:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventPlace, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventPlace, int32(s.blockHash(so.Block))
 	case sound.AnvilLand:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundAnvilLand,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundAnvilLand,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.AnvilUse:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundAnvilUsed,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundAnvilUsed,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.AnvilBreak:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundAnvilBroken,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundAnvilBroken,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ChestClose:
-		pk.SoundType = v2193.SoundEventChestClosed
+		pk.SoundType = mc.SoundEventChestClosed
 	case sound.ChestOpen:
-		pk.SoundType = v2193.SoundEventChestOpen
+		pk.SoundType = mc.SoundEventChestOpen
 	case sound.EnderChestClose:
-		pk.SoundType = v2193.SoundEventEnderChestClosed
+		pk.SoundType = mc.SoundEventEnderChestClosed
 	case sound.EnderChestOpen:
-		pk.SoundType = v2193.SoundEventEnderChestOpen
+		pk.SoundType = mc.SoundEventEnderChestOpen
 	case sound.BarrelClose:
-		pk.SoundType = v2193.SoundEventBarrelClose
+		pk.SoundType = mc.SoundEventBarrelClose
 	case sound.BarrelOpen:
-		pk.SoundType = v2193.SoundEventBarrelOpen
+		pk.SoundType = mc.SoundEventBarrelOpen
 	case sound.BellRing:
-		pk.SoundType = v2193.SoundEventBell
+		pk.SoundType = mc.SoundEventBell
 		pk.EntityType = ""
 	case sound.BlockBreaking:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventHit, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventHit, int32(s.blockHash(so.Block))
 	case sound.ItemBreak:
-		pk.SoundType = v2193.SoundEventBreak
+		pk.SoundType = mc.SoundEventBreak
 	case sound.ItemUseOn:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventItemUseOn, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventItemUseOn, int32(s.blockHash(so.Block))
 	case sound.BlockBounce:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventBounce, int32(s.blockHash(so.Block))
+		pk.SoundType, pk.ExtraData = mc.SoundEventBounce, int32(s.blockHash(so.Block))
 	case sound.GeyserEruptionStart:
-		pk.SoundType = v2193.SoundEventGeyserEruptionStart
+		pk.SoundType = mc.SoundEventGeyserEruptionStart
 		if so.Continuous {
-			pk.SoundType = v2193.SoundEventGeyserContinuousEruptionStart
+			pk.SoundType = mc.SoundEventGeyserContinuousEruptionStart
 		}
 	case sound.MobGrowth:
-		pk.SoundType = v2193.SoundEventResetGrowth
+		pk.SoundType = mc.SoundEventResetGrowth
 		if so.Paused {
-			pk.SoundType = v2193.SoundEventPauseGrowth
+			pk.SoundType = mc.SoundEventPauseGrowth
 		}
 	case sound.FrogSpawnHatch:
-		pk.SoundType = v2193.SoundEventFrogspawnHatched
+		pk.SoundType = mc.SoundEventFrogspawnHatched
 	case sound.WindChargeImpact:
-		pk.SoundType = v2193.SoundEventWindChargeBurst
+		pk.SoundType = mc.SoundEventWindChargeBurst
 	case sound.BreezeWindChargeBurst:
-		pk.SoundType = v2193.SoundEventBreezeWindChargeBurst
+		pk.SoundType = mc.SoundEventBreezeWindChargeBurst
 	case sound.WindChargeShoot:
-		pk.SoundType, pk.EntityType = v2193.SoundEventThrow, "minecraft:player"
+		pk.SoundType, pk.EntityType = mc.SoundEventThrow, "minecraft:player"
 	case sound.Fizz:
-		pk.SoundType = v2193.SoundEventFizz
+		pk.SoundType = mc.SoundEventFizz
 	case sound.PointedDripstoneCauldronDrip:
-		pk.SoundType = v2193.SoundEventPointedDripstoneCauldronDripWater
+		pk.SoundType = mc.SoundEventPointedDripstoneCauldronDripWater
 		if so.Lava {
-			pk.SoundType = v2193.SoundEventPointedDripstoneCauldronDripLava
+			pk.SoundType = mc.SoundEventPointedDripstoneCauldronDripLava
 		}
 	case sound.BigDripleafTilt:
-		pk.SoundType = v2193.SoundEventBigDripleafTiltDown
+		pk.SoundType = mc.SoundEventBigDripleafTiltDown
 		if so.Up {
-			pk.SoundType = v2193.SoundEventBigDripleafTiltUp
+			pk.SoundType = mc.SoundEventBigDripleafTiltUp
 		}
 	case sound.GlassBreak:
-		pk.SoundType = v2193.SoundEventGlass
+		pk.SoundType = mc.SoundEventGlass
 	case sound.Attack:
-		pk.SoundType, pk.EntityType = v2193.SoundEventAttackStrong, "minecraft:player"
+		pk.SoundType, pk.EntityType = mc.SoundEventAttackStrong, "minecraft:player"
 		if !so.Damage {
-			pk.SoundType = v2193.SoundEventAttackNoDamage
+			pk.SoundType = mc.SoundEventAttackNoDamage
 		}
 	case sound.BucketFill:
 		if _, water := so.Liquid.(block.Water); water {
-			pk.SoundType = v2193.SoundEventBucketFillWater
+			pk.SoundType = mc.SoundEventBucketFillWater
 			break
 		}
-		pk.SoundType = v2193.SoundEventBucketFillLava
+		pk.SoundType = mc.SoundEventBucketFillLava
 	case sound.BucketEmpty:
 		if _, water := so.Liquid.(block.Water); water {
-			pk.SoundType = v2193.SoundEventBucketEmptyWater
+			pk.SoundType = mc.SoundEventBucketEmptyWater
 			break
 		}
-		pk.SoundType = v2193.SoundEventBucketEmptyLava
+		pk.SoundType = mc.SoundEventBucketEmptyLava
 	case sound.BowShoot:
-		pk.SoundType = v2193.SoundEventBow
+		pk.SoundType = mc.SoundEventBow
 	case sound.ShieldBlock:
-		pk.SoundType = v2193.SoundEventShieldBlock
+		pk.SoundType = mc.SoundEventShieldBlock
 	case sound.CrossbowLoad:
 		switch so.Stage {
 		case sound.CrossbowLoadingStart:
-			pk.SoundType = v2193.SoundEventCrossbowLoadingStart
+			pk.SoundType = mc.SoundEventCrossbowLoadingStart
 			if so.QuickCharge {
-				pk.SoundType = v2193.SoundEventCrossbowQuickChargeStart
+				pk.SoundType = mc.SoundEventCrossbowQuickChargeStart
 			}
 		case sound.CrossbowLoadingMiddle:
-			pk.SoundType = v2193.SoundEventCrossbowLoadingMiddle
+			pk.SoundType = mc.SoundEventCrossbowLoadingMiddle
 			if so.QuickCharge {
-				pk.SoundType = v2193.SoundEventCrossbowQuickChargeMiddle
+				pk.SoundType = mc.SoundEventCrossbowQuickChargeMiddle
 			}
 		case sound.CrossbowLoadingEnd:
-			pk.SoundType = v2193.SoundEventCrossbowLoadingEnd
+			pk.SoundType = mc.SoundEventCrossbowLoadingEnd
 			if so.QuickCharge {
-				pk.SoundType = v2193.SoundEventCrossbowQuickChargeEnd
+				pk.SoundType = mc.SoundEventCrossbowQuickChargeEnd
 			}
 		default:
 			// Invalid stages should not crash the server; skip the sound instead.
 			return
 		}
 	case sound.CrossbowShoot:
-		pk.SoundType = v2193.SoundEventCrossbowShoot
+		pk.SoundType = mc.SoundEventCrossbowShoot
 	case sound.ArrowHit:
-		pk.SoundType = v2193.SoundEventBowHit
+		pk.SoundType = mc.SoundEventBowHit
 	case sound.TridentThrow:
-		pk.SoundType = v2193.SoundEventTridentThrow
+		pk.SoundType = mc.SoundEventTridentThrow
 	case sound.TridentHit:
-		pk.SoundType = v2193.SoundEventTridentHit
+		pk.SoundType = mc.SoundEventTridentHit
 	case sound.TridentReturn:
-		pk.SoundType = v2193.SoundEventTridentReturn
+		pk.SoundType = mc.SoundEventTridentReturn
 	case sound.TridentChanneling:
-		pk.SoundType = v2193.SoundEventTridentThunder
+		pk.SoundType = mc.SoundEventTridentThunder
 	case sound.TridentRiptide:
 		switch so.Level {
 		case 3:
-			pk.SoundType = v2193.SoundEventTridentRiptide3
+			pk.SoundType = mc.SoundEventTridentRiptide3
 		case 2:
-			pk.SoundType = v2193.SoundEventTridentRiptide2
+			pk.SoundType = mc.SoundEventTridentRiptide2
 		default:
-			pk.SoundType = v2193.SoundEventTridentRiptide1
+			pk.SoundType = mc.SoundEventTridentRiptide1
 		}
 	case sound.ItemThrow:
-		pk.SoundType, pk.EntityType = v2193.SoundEventThrow, "minecraft:player"
+		pk.SoundType, pk.EntityType = mc.SoundEventThrow, "minecraft:player"
 	case sound.LevelUp:
-		pk.SoundType, pk.ExtraData = v2193.SoundEventLevelUp, 0x10000000
+		pk.SoundType, pk.ExtraData = mc.SoundEventLevelUp, 0x10000000
 	case sound.Experience:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundExperienceOrbPickup,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundExperienceOrbPickup,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.MusicDiscPlay:
 		switch so.DiscType {
 		case sound.Disc13():
-			pk.SoundType = v2193.SoundEventRecord13
+			pk.SoundType = mc.SoundEventRecord13
 		case sound.DiscCat():
-			pk.SoundType = v2193.SoundEventRecordCat
+			pk.SoundType = mc.SoundEventRecordCat
 		case sound.DiscBlocks():
-			pk.SoundType = v2193.SoundEventRecordBlocks
+			pk.SoundType = mc.SoundEventRecordBlocks
 		case sound.DiscChirp():
-			pk.SoundType = v2193.SoundEventRecordChirp
+			pk.SoundType = mc.SoundEventRecordChirp
 		case sound.DiscFar():
-			pk.SoundType = v2193.SoundEventRecordFar
+			pk.SoundType = mc.SoundEventRecordFar
 		case sound.DiscMall():
-			pk.SoundType = v2193.SoundEventRecordMall
+			pk.SoundType = mc.SoundEventRecordMall
 		case sound.DiscMellohi():
-			pk.SoundType = v2193.SoundEventRecordMellohi
+			pk.SoundType = mc.SoundEventRecordMellohi
 		case sound.DiscStal():
-			pk.SoundType = v2193.SoundEventRecordStal
+			pk.SoundType = mc.SoundEventRecordStal
 		case sound.DiscStrad():
-			pk.SoundType = v2193.SoundEventRecordStrad
+			pk.SoundType = mc.SoundEventRecordStrad
 		case sound.DiscWard():
-			pk.SoundType = v2193.SoundEventRecordWard
+			pk.SoundType = mc.SoundEventRecordWard
 		case sound.Disc11():
-			pk.SoundType = v2193.SoundEventRecord11
+			pk.SoundType = mc.SoundEventRecord11
 		case sound.DiscWait():
-			pk.SoundType = v2193.SoundEventRecordWait
+			pk.SoundType = mc.SoundEventRecordWait
 		case sound.DiscOtherside():
-			pk.SoundType = v2193.SoundEventRecordOtherside
+			pk.SoundType = mc.SoundEventRecordOtherside
 		case sound.DiscPigstep():
-			pk.SoundType = v2193.SoundEventRecordPigstep
+			pk.SoundType = mc.SoundEventRecordPigstep
 		case sound.Disc5():
-			pk.SoundType = v2193.SoundEventRecord5
+			pk.SoundType = mc.SoundEventRecord5
 		case sound.DiscRelic():
-			pk.SoundType = v2193.SoundEventRecordRelic
+			pk.SoundType = mc.SoundEventRecordRelic
 		case sound.DiscCreator():
-			pk.SoundType = v2193.SoundEventRecordCreator
+			pk.SoundType = mc.SoundEventRecordCreator
 		case sound.DiscCreatorMusicBox():
-			pk.SoundType = v2193.SoundEventRecordCreatorMusicBox
+			pk.SoundType = mc.SoundEventRecordCreatorMusicBox
 		case sound.DiscPrecipice():
-			pk.SoundType = v2193.SoundEventRecordPrecipice
+			pk.SoundType = mc.SoundEventRecordPrecipice
 		case sound.DiscTears():
-			pk.SoundType = v2193.SoundEventRecordTears
+			pk.SoundType = mc.SoundEventRecordTears
 		case sound.DiscLavaChicken():
-			pk.SoundType = v2193.SoundEventRecordLavaChicken
+			pk.SoundType = mc.SoundEventRecordLavaChicken
 		default:
 			// Unknown disc types should not crash the server; skip the sound instead.
 			return
 		}
 	case sound.MusicDiscEnd:
-		pk.SoundType = v2193.SoundEventRecordNull
+		pk.SoundType = mc.SoundEventRecordNull
 	case sound.FireCharge:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundBlazeFireball,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundBlazeFireball,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ConduitAttack:
-		pk.SoundType = v2193.SoundEventConduitAttack
+		pk.SoundType = mc.SoundEventConduitAttack
 	case sound.ComposterEmpty:
-		pk.SoundType = v2193.SoundEventComposterEmpty
+		pk.SoundType = mc.SoundEventComposterEmpty
 	case sound.BottleFill:
-		pk.SoundType = v2193.SoundEventBottleFill
+		pk.SoundType = mc.SoundEventBottleFill
 	case sound.ComposterFill:
-		pk.SoundType = v2193.SoundEventComposterFill
+		pk.SoundType = mc.SoundEventComposterFill
 	case sound.ComposterFillLayer:
-		pk.SoundType = v2193.SoundEventComposterFillLayer
+		pk.SoundType = mc.SoundEventComposterFillLayer
 	case sound.ComposterReady:
-		pk.SoundType = v2193.SoundEventComposterReady
+		pk.SoundType = mc.SoundEventComposterReady
 	case sound.PowerOn:
-		pk.SoundType = v2193.SoundEventPowerOn
+		pk.SoundType = mc.SoundEventPowerOn
 	case sound.PowerOff:
-		pk.SoundType = v2193.SoundEventPowerOff
+		pk.SoundType = mc.SoundEventPowerOff
 	case sound.LecternBookPlace:
-		pk.SoundType = v2193.SoundEventLecternBookPlace
+		pk.SoundType = mc.SoundEventLecternBookPlace
 	case sound.Totem:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundTotemUsed,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundTotemUsed,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ShulkerBoxClose:
-		pk.SoundType = v2193.SoundEventShulkerBoxClosed
+		pk.SoundType = mc.SoundEventShulkerBoxClosed
 	case sound.ShulkerBoxOpen:
-		pk.SoundType = v2193.SoundEventShulkerBoxOpen
+		pk.SoundType = mc.SoundEventShulkerBoxOpen
 	case sound.DecoratedPotInserted:
-		out(&v2193.PlaySoundPacket{
+		out(&mc.PlaySoundPacket{
 			SoundName: "block.decorated_pot.insert",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1408,13 +1408,13 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		})
 		return
 	case sound.DecoratedPotInsertFailed:
-		pk.SoundType = v2193.SoundEventDecoratedPotInsertFail
+		pk.SoundType = mc.SoundEventDecoratedPotInsertFail
 	case sound.Custom:
 		name, ok := bedrockSoundName(so.Name)
 		if !ok {
 			return
 		}
-		out(&v2193.PlaySoundPacket{
+		out(&mc.PlaySoundPacket{
 			SoundName: name,
 			Position:  vec64To32(pos),
 			Volume:    float32(so.Volume),
@@ -1422,7 +1422,7 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		})
 		return
 	case sound.LightningExplode:
-		out(&v2193.PlaySoundPacket{
+		out(&mc.PlaySoundPacket{
 			SoundName: "ambient.weather.lightning.impact",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1430,7 +1430,7 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		})
 		return
 	case sound.LightningThunder:
-		out(&v2193.PlaySoundPacket{
+		out(&mc.PlaySoundPacket{
 			SoundName: "ambient.weather.thunder",
 			Position:  vec64To32(pos),
 			Volume:    1,
@@ -1438,26 +1438,26 @@ func (s *Session) soundPackets(pos mgl64.Vec3, t world.Sound, disableRelative bo
 		})
 		return
 	case sound.ArmourStandHit:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundArmorStandHit,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundArmorStandHit,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandBreak:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundArmorStandBreak,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundArmorStandBreak,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandPlace:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundArmorStandPlace,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundArmorStandPlace,
 			Position:  vec64To32(pos),
 		})
 		return
 	case sound.ArmourStandLand:
-		out(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventSoundArmorStandLand,
+		out(&mc.LevelEventPacket{
+			EventType: mc.LevelEventSoundArmorStandLand,
 			Position:  vec64To32(pos),
 		})
 		return
@@ -1484,8 +1484,8 @@ func (s *Session) ViewSound(pos mgl64.Vec3, soundType world.Sound) {
 
 // OpenSign ...
 func (s *Session) OpenSign(pos cube.Pos, frontSide bool) {
-	blockPos := v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	s.writePacket(&v2193.OpenSignPacket{
+	blockPos := mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	s.writePacket(&mc.OpenSignPacket{
 		Position:  blockPos,
 		FrontSide: frontSide,
 	})
@@ -1495,25 +1495,25 @@ func (s *Session) OpenSign(pos cube.Pos, frontSide bool) {
 // Fuel values are UI-scaled and use the per-item cook requirement as the duration baseline.
 func (s *Session) ViewFurnaceUpdate(prevCookTime, cookTime, prevRemainingFuelTime, remainingFuelTime, prevMaxFuelTime, maxFuelTime time.Duration) {
 	if prevCookTime != cookTime {
-		s.writePacket(&v2193.ContainerSetDataPacket{
+		s.writePacket(&mc.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
-			Key:      v2193.ContainerDataFurnaceTickCount,
+			Key:      mc.ContainerDataFurnaceTickCount,
 			Value:    int32(cookTime.Milliseconds() / 50),
 		})
 	}
 
 	if prevRemainingFuelTime != remainingFuelTime {
-		s.writePacket(&v2193.ContainerSetDataPacket{
+		s.writePacket(&mc.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
-			Key:      v2193.ContainerDataFurnaceLitTime,
+			Key:      mc.ContainerDataFurnaceLitTime,
 			Value:    int32(remainingFuelTime.Milliseconds() / 50),
 		})
 	}
 
 	if prevMaxFuelTime != maxFuelTime {
-		s.writePacket(&v2193.ContainerSetDataPacket{
+		s.writePacket(&mc.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
-			Key:      v2193.ContainerDataFurnaceLitDuration,
+			Key:      mc.ContainerDataFurnaceLitDuration,
 			Value:    int32(maxFuelTime.Milliseconds() / 50),
 		})
 	}
@@ -1522,25 +1522,25 @@ func (s *Session) ViewFurnaceUpdate(prevCookTime, cookTime, prevRemainingFuelTim
 // ViewBrewingUpdate updates a brewing stand for the associated session based on previous times.
 func (s *Session) ViewBrewingUpdate(prevBrewTime, brewTime time.Duration, prevFuelAmount, fuelAmount, prevFuelTotal, fuelTotal int32) {
 	if prevBrewTime != brewTime {
-		s.writePacket(&v2193.ContainerSetDataPacket{
+		s.writePacket(&mc.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
-			Key:      v2193.ContainerDataBrewingStandBrewTime,
+			Key:      mc.ContainerDataBrewingStandBrewTime,
 			Value:    int32(brewTime.Milliseconds() / 50),
 		})
 	}
 
 	if prevFuelAmount != fuelAmount {
-		s.writePacket(&v2193.ContainerSetDataPacket{
+		s.writePacket(&mc.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
-			Key:      v2193.ContainerDataBrewingStandFuelAmount,
+			Key:      mc.ContainerDataBrewingStandFuelAmount,
 			Value:    fuelAmount,
 		})
 	}
 
 	if prevFuelTotal != fuelTotal {
-		s.writePacket(&v2193.ContainerSetDataPacket{
+		s.writePacket(&mc.ContainerSetDataPacket{
 			WindowID: byte(s.openedWindowID.Load()),
-			Key:      v2193.ContainerDataBrewingStandFuelTotal,
+			Key:      mc.ContainerDataBrewingStandFuelTotal,
 			Value:    fuelTotal,
 		})
 	}
@@ -1554,28 +1554,28 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			if s.entityRuntimeID(e) == selfEntityRuntimeID && s.swingingArm.Load() {
 				return
 			}
-			s.writePacket(&v2193.AnimatePacket{
-				ActionType:      v2193.AnimateActionSwingArm,
+			s.writePacket(&mc.AnimatePacket{
+				ActionType:      mc.AnimateActionSwingArm,
 				EntityRuntimeID: s.entityRuntimeID(e),
 			})
 			return
 		}
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventStartAttacking,
+			EventType:       mc.ActorEventStartAttacking,
 		})
 	case entity.HurtAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventHurt,
+			EventType:       mc.ActorEventHurt,
 		})
 		s.viewMobHealth(e)
 	case entity.CriticalHitAction:
 		if act.Count <= 0 {
 			act.Count = 55
 		}
-		s.writePacket(&v2193.AnimatePacket{
-			ActionType:      v2193.AnimateActionCriticalHit,
+		s.writePacket(&mc.AnimatePacket{
+			ActionType:      mc.AnimateActionCriticalHit,
 			EntityRuntimeID: s.entityRuntimeID(e),
 			Data:            float32(act.Count),
 		})
@@ -1583,15 +1583,15 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		if act.Count <= 0 {
 			act.Count = 15
 		}
-		s.writePacket(&v2193.AnimatePacket{
-			ActionType:      v2193.AnimateActionMagicCriticalHit,
+		s.writePacket(&mc.AnimatePacket{
+			ActionType:      mc.AnimateActionMagicCriticalHit,
 			EntityRuntimeID: s.entityRuntimeID(e),
 			Data:            float32(act.Count),
 		})
 	case entity.DragonDeathAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventDragonStartDeathAnim,
+			EventType:       mc.ActorEventDragonStartDeathAnim,
 		})
 	case entity.DeathAction:
 		s.entityMutex.Lock()
@@ -1606,47 +1606,47 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		if !visible {
 			return
 		}
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: id,
-			EventType:       v2193.ActorEventDeath,
+			EventType:       mc.ActorEventDeath,
 		})
 	case entity.WitchMagicAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventWitchHatMagic,
+			EventType:       mc.ActorEventWitchHatMagic,
 		})
 	case entity.SilverfishMergeAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventSilverfishMergeAnimation,
+			EventType:       mc.ActorEventSilverfishMergeAnimation,
 		})
 	case entity.PickedUpAction:
-		s.writePacket(&v2193.TakeItemActorPacket{
+		s.writePacket(&mc.TakeItemActorPacket{
 			ItemEntityRuntimeID:  s.entityRuntimeID(e),
 			TakerEntityRuntimeID: s.entityRuntimeID(act.Collector),
 		})
 	case entity.ItemStackSizeAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventUpdateStackSize,
+			EventType:       mc.ActorEventUpdateStackSize,
 			EventData:       int32(act.Count),
 		})
 	case entity.WolfShakeAction:
-		s.writePacket(&v2193.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: v2193.ActorEventShakeWetness})
+		s.writePacket(&mc.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: mc.ActorEventShakeWetness})
 	case entity.VibrationDetectedAction:
-		s.writePacket(&v2193.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: v2193.ActorEventVibrationDetected})
+		s.writePacket(&mc.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: mc.ActorEventVibrationDetected})
 	case entity.SquidInkAction:
-		s.writePacket(&v2193.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: v2193.ActorEventSquidFleeing})
+		s.writePacket(&mc.ActorEventPacket{EntityRuntimeID: s.entityRuntimeID(e), EventType: mc.ActorEventSquidFleeing})
 	case entity.ArrowShakeAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventShake,
+			EventType:       mc.ActorEventShake,
 			EventData:       int32(act.Duration.Milliseconds() / 50),
 		})
 	case entity.FireworkExplosionAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventFireworksExplode,
+			EventType:       mc.ActorEventFireworksExplode,
 		})
 	case entity.EatAction:
 		if user, ok := e.(item.User); ok {
@@ -1661,61 +1661,61 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 				return
 			}
 			rid, meta, _ := s.tables().itemRuntimeID(it)
-			s.writePacket(&v2193.ActorEventPacket{
+			s.writePacket(&mc.ActorEventPacket{
 				EntityRuntimeID: s.entityRuntimeID(e),
-				EventType:       v2193.ActorEventFeed,
+				EventType:       mc.ActorEventFeed,
 				// It's a little weird how the runtime ID is still shifted 16 bits to the left here, given the
 				// runtime ID already includes the meta, but it seems to work.
 				EventData: (rid << 16) | int32(meta),
 			})
 		}
 	case entity.TotemUseAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventTalismanActivate,
+			EventType:       mc.ActorEventTalismanActivate,
 		})
 	case entity.FishHookBubbleAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventFishhookBubble,
+			EventType:       mc.ActorEventFishhookBubble,
 		})
 	case entity.FishHookBiteAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventFishhookHookTime,
+			EventType:       mc.ActorEventFishhookHookTime,
 		})
 	case entity.FishHookTeaseAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventFishhookTease,
+			EventType:       mc.ActorEventFishhookTease,
 		})
 	case entity.TameAction:
-		event := byte(v2193.ActorEventTamingFailed)
+		event := byte(mc.ActorEventTamingFailed)
 		if act.Succeeded {
-			event = v2193.ActorEventTamingSucceeded
+			event = mc.ActorEventTamingSucceeded
 		}
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       event,
 		})
 	case entity.DrinkAction:
-		event := byte(v2193.ActorEventDrinkPotion)
+		event := byte(mc.ActorEventDrinkPotion)
 		if act.Milk {
-			event = v2193.ActorEventDrinkMilk
+			event = mc.ActorEventDrinkMilk
 		}
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       event,
 		})
 	case entity.EatGrassAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventEatGrass,
+			EventType:       mc.ActorEventEatGrass,
 		})
 	case entity.LoveHeartsAction:
-		s.writePacket(&v2193.ActorEventPacket{
+		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       v2193.ActorEventInLoveHearts,
+			EventType:       mc.ActorEventInLoveHearts,
 		})
 	case entity.OfferFlowerAction:
 		// Bedrock plays the iron golem's flower as an animation of its
@@ -1740,7 +1740,7 @@ func clientRemovesDyingMob(e world.Entity) bool {
 
 // ViewEntityState ...
 func (s *Session) ViewEntityState(e world.Entity) {
-	s.writePacket(&v2193.SetActorDataPacket{
+	s.writePacket(&mc.SetActorDataPacket{
 		EntityRuntimeID:  s.entityRuntimeID(e),
 		EntityMetadata:   toMetadata(s.entityMetadata(e)),
 		EntityProperties: entityProperties(e),
@@ -1753,7 +1753,7 @@ func (s *Session) ViewEntityState(e world.Entity) {
 
 // entityMetadata returns the metadata of an entity as viewed by the session, including any overrides
 // applied through its ViewLayer.
-func (s *Session) entityMetadata(e world.Entity) v2193.Metadata {
+func (s *Session) entityMetadata(e world.Entity) mc.Metadata {
 	metadata := s.parseEntityMetadata(e)
 	if s.viewLayer == nil {
 		return metadata
@@ -1771,13 +1771,13 @@ func (s *Session) entityMetadata(e world.Entity) v2193.Metadata {
 		writeNameTagMetadata(metadata, nameTag, alwaysShow)
 	}
 	if st, ok := s.viewLayer.ScoreTag(e); ok {
-		metadata[v2193.EntityDataKeyScore] = st
+		metadata[mc.EntityDataKeyScore] = st
 	}
 	if visibility := s.viewLayer.Visibility(e); visibility.EnforceVisibility() {
 		if visibility == world.EnforceInvisible() {
-			metadata.SetFlag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagInvisible)
+			metadata.SetFlag(mc.EntityDataKeyFlags, mc.EntityDataFlagInvisible)
 		} else {
-			metadata.UnsetFlag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagInvisible)
+			metadata.UnsetFlag(mc.EntityDataKeyFlags, mc.EntityDataFlagInvisible)
 		}
 	}
 	return metadata
@@ -1797,8 +1797,8 @@ var offerFlowerAnimation = world.NewEntityAnimation("animation.iron_golem.offer_
 
 // animationPacket returns the packet that plays an animation on the entity
 // of a runtime ID.
-func animationPacket(id uint64, a world.EntityAnimation) *v2193.AnimateEntityPacket {
-	return &v2193.AnimateEntityPacket{
+func animationPacket(id uint64, a world.EntityAnimation) *mc.AnimateEntityPacket {
+	return &mc.AnimateEntityPacket{
 		Animation:        a.Name(),
 		NextState:        a.NextState(),
 		StopCondition:    a.StopCondition(),
@@ -1865,33 +1865,33 @@ func (s *Session) OpenMenu(m *menu.Menu, tx *world.Tx) {
 		if m.ContainerKind() == entity.ContainerMount {
 			// BDS opens the inventory of a mount with UpdateEquip, which names the
 			// slots of its screen, and no ContainerOpen.
-			s.writePacket(&v2193.UpdateEquipPacket{
+			s.writePacket(&mc.UpdateEquipPacket{
 				WindowID:                nextID,
 				WindowType:              containerType,
 				EntityUniqueID:          s.handleUniqueID(m.Entity()),
 				SerialisedInventoryData: mountEquipDataOf(e),
 			})
 		} else {
-			s.writePacket(&v2193.ContainerOpenPacket{
+			s.writePacket(&mc.ContainerOpenPacket{
 				WindowID:                nextID,
 				ContainerType:           containerType,
-				ContainerPosition:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+				ContainerPosition:       mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 				ContainerEntityUniqueID: s.handleUniqueID(m.Entity()),
 			})
 		}
 		s.sendInv(m.Inventory(), uint32(nextID))
 	case menu.Merchant:
-		s.writePacket(&v2193.ContainerOpenPacket{
+		s.writePacket(&mc.ContainerOpenPacket{
 			WindowID:                nextID,
 			ContainerType:           containerType,
-			ContainerPosition:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+			ContainerPosition:       mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 			ContainerEntityUniqueID: s.handleUniqueID(m.Entity()),
 		})
 	default:
-		s.writePacket(&v2193.ContainerOpenPacket{
+		s.writePacket(&mc.ContainerOpenPacket{
 			WindowID:                nextID,
 			ContainerType:           containerType,
-			ContainerPosition:       v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+			ContainerPosition:       mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 			ContainerEntityUniqueID: -1,
 		})
 		if blockContainer(m.Kind()) || m.Kind() == menu.EnderChest {
@@ -1936,50 +1936,50 @@ func windowType(m *menu.Menu, tx *world.Tx) byte {
 		case block.Dispenser:
 			// BDS 1.26.52.3 opens a dispenser as type 6 and a dropper as 7
 			// (testdata/bedrock_1_26_52_menu_requests.json).
-			return v2193.ContainerTypeDispenser
+			return mc.ContainerTypeDispenser
 		case block.Dropper:
-			return v2193.ContainerTypeDropper
+			return mc.ContainerTypeDropper
 		}
 	case menu.Furnace:
-		return v2193.ContainerTypeFurnace
+		return mc.ContainerTypeFurnace
 	case menu.BrewingStand:
-		return v2193.ContainerTypeBrewingStand
+		return mc.ContainerTypeBrewingStand
 	case menu.BlastFurnace:
-		return v2193.ContainerTypeBlastFurnace
+		return mc.ContainerTypeBlastFurnace
 	case menu.Smoker:
-		return v2193.ContainerTypeSmoker
+		return mc.ContainerTypeSmoker
 	case menu.Hopper:
-		return v2193.ContainerTypeHopper
+		return mc.ContainerTypeHopper
 	case menu.Crafter:
-		return v2193.ContainerTypeCrafter
+		return mc.ContainerTypeCrafter
 	case menu.Crafting:
-		return v2193.ContainerTypeWorkbench
+		return mc.ContainerTypeWorkbench
 	case menu.Enchantment:
-		return v2193.ContainerTypeEnchantment
+		return mc.ContainerTypeEnchantment
 	case menu.Anvil:
-		return v2193.ContainerTypeAnvil
+		return mc.ContainerTypeAnvil
 	case menu.Beacon:
-		return v2193.ContainerTypeBeacon
+		return mc.ContainerTypeBeacon
 	case menu.Lectern:
-		return v2193.ContainerTypeLectern
+		return mc.ContainerTypeLectern
 	case menu.Loom:
-		return v2193.ContainerTypeLoom
+		return mc.ContainerTypeLoom
 	case menu.Grindstone:
-		return v2193.ContainerTypeGrindstone
+		return mc.ContainerTypeGrindstone
 	case menu.Cartography:
-		return v2193.ContainerTypeCartography
+		return mc.ContainerTypeCartography
 	case menu.Stonecutter:
-		return v2193.ContainerTypeStonecutter
+		return mc.ContainerTypeStonecutter
 	case menu.Smithing:
-		return v2193.ContainerTypeSmithingTable
+		return mc.ContainerTypeSmithingTable
 	case menu.Entity:
 		t, _ := entityContainerType(m.ContainerKind())
 		return t
 	case menu.Merchant:
-		return v2193.ContainerTypeTrade
+		return mc.ContainerTypeTrade
 	}
 	// A chest, a barrel, an ender chest and any other block.
-	return v2193.ContainerTypeContainer
+	return mc.ContainerTypeContainer
 }
 
 // CloseMenu closes the window of the menu m: the client closed it itself if
@@ -1997,11 +1997,11 @@ func (s *Session) CloseMenu(_ *menu.Menu, clientRequested bool) {
 func entityContainerType(kind entity.ContainerKind) (byte, bool) {
 	switch kind {
 	case entity.ContainerMount:
-		return v2193.ContainerTypeHorse, true
+		return mc.ContainerTypeHorse, true
 	case entity.ContainerChestBoat, entity.ContainerMinecartChest:
-		return v2193.ContainerTypeContainer, true
+		return mc.ContainerTypeContainer, true
 	case entity.ContainerMinecartHopper:
-		return v2193.ContainerTypeHopper, true
+		return mc.ContainerTypeHopper, true
 	}
 	return 0, false
 }
@@ -2024,7 +2024,7 @@ func (s *Session) sendMerchantOffers(e *world.EntityHandle, merchant entity.Merc
 	if level < 0 {
 		level = 0
 	}
-	s.writePacket(&v2193.UpdateTradePacket{
+	s.writePacket(&mc.UpdateTradePacket{
 		WindowID:          byte(s.openedWindowID.Load()),
 		WindowType:        15,
 		Size:              int32(len(offers)),
@@ -2086,7 +2086,7 @@ func (s *Session) ViewSlotChange(slot int, newItem item.Stack) {
 		// Don't send slot changes to the player itself.
 		return
 	}
-	s.writePacket(&v2193.InventorySlotPacket{
+	s.writePacket(&mc.InventorySlotPacket{
 		WindowID: s.openedWindowID.Load(),
 		Slot:     uint32(slot),
 		NewItem:  instanceFromItem(s.tables(), newItem),
@@ -2095,31 +2095,31 @@ func (s *Session) ViewSlotChange(slot int, newItem item.Stack) {
 
 // ViewCrafterSlotState sends the disabled/enabled state for one native Crafter slot.
 func (s *Session) ViewCrafterSlotState(slot int, disabled bool) {
-	if s.menu.Load() == nil || s.openedContainerID.Load() != uint32(v2193.ContainerTypeCrafter) {
+	if s.menu.Load() == nil || s.openedContainerID.Load() != uint32(mc.ContainerTypeCrafter) {
 		return
 	}
 	value := int32(0)
 	if disabled {
 		value = 1
 	}
-	s.writePacket(&v2193.ContainerSetDataPacket{WindowID: byte(s.openedWindowID.Load()), Key: int32(slot), Value: value})
+	s.writePacket(&mc.ContainerSetDataPacket{WindowID: byte(s.openedWindowID.Load()), Key: int32(slot), Value: value})
 }
 
 // ViewCrafterTriggered sends the native Crafter's redstone data property.
 func (s *Session) ViewCrafterTriggered(triggered bool) {
-	if s.menu.Load() == nil || s.openedContainerID.Load() != uint32(v2193.ContainerTypeCrafter) {
+	if s.menu.Load() == nil || s.openedContainerID.Load() != uint32(mc.ContainerTypeCrafter) {
 		return
 	}
 	value := int32(0)
 	if triggered {
 		value = 1
 	}
-	s.writePacket(&v2193.ContainerSetDataPacket{WindowID: byte(s.openedWindowID.Load()), Key: 9, Value: value})
+	s.writePacket(&mc.ContainerSetDataPacket{WindowID: byte(s.openedWindowID.Load()), Key: 9, Value: value})
 }
 
 // ViewBlockAction ...
 func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
-	blockPos := v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	blockPos := mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	switch t := a.(type) {
 	case block.BellRingAction:
 		s.enqueueBellRingUpdate(pos, t.Bell)
@@ -2128,41 +2128,41 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 	case block.MovingBlockUpdateAction:
 		s.enqueueBlockActorUpdate(pos, t.MovingBlock.PistonPos, clientActorNBT(t.MovingBlock.EncodeNBT(), pos))
 	case world.PositionTrackingUpdateAction:
-		s.writePacket(&v2193.PositionTrackingDBServerBroadcastPacket{
-			BroadcastAction: v2193.PositionTrackingDBBroadcastActionUpdate,
+		s.writePacket(&mc.PositionTrackingDBServerBroadcastPacket{
+			BroadcastAction: mc.PositionTrackingDBBroadcastActionUpdate,
 			TrackingID:      t.Handle,
 			Payload:         positionTrackingPayload(t.Handle, t.Position, t.Dimension, positionTrackingStatusTracked),
 		})
 	case world.PositionTrackingDestroyAction:
-		s.writePacket(&v2193.PositionTrackingDBServerBroadcastPacket{
-			BroadcastAction: v2193.PositionTrackingDBBroadcastActionDestroy,
+		s.writePacket(&mc.PositionTrackingDBServerBroadcastPacket{
+			BroadcastAction: mc.PositionTrackingDBBroadcastActionDestroy,
 			TrackingID:      t.Handle,
 			Payload:         positionTrackingPayload(t.Handle, cube.Pos{}, 0, positionTrackingStatusMissing),
 		})
 	case block.OpenAction:
-		s.writePacket(&v2193.BlockEventPacket{
+		s.writePacket(&mc.BlockEventPacket{
 			Position:  blockPos,
-			EventType: v2193.BlockEventChangeChestState,
+			EventType: mc.BlockEventChangeChestState,
 			EventData: 1,
 		})
 	case block.CloseAction:
-		s.writePacket(&v2193.BlockEventPacket{
+		s.writePacket(&mc.BlockEventPacket{
 			Position:  blockPos,
-			EventType: v2193.BlockEventChangeChestState,
+			EventType: mc.BlockEventChangeChestState,
 		})
 	case block.StartCrackAction:
 		if t.BreakTime <= 0 {
 			// An instant break has no cracking to animate, and encoding the crack speed would divide by zero.
 			break
 		}
-		s.writePacket(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventStartBlockCracking,
+		s.writePacket(&mc.LevelEventPacket{
+			EventType: mc.LevelEventStartBlockCracking,
 			Position:  vec64To32(pos.Vec3()),
 			EventData: int32(65535 / (t.BreakTime.Seconds() * 20)),
 		})
 	case block.StopCrackAction:
-		s.writePacket(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventStopBlockCracking,
+		s.writePacket(&mc.LevelEventPacket{
+			EventType: mc.LevelEventStopBlockCracking,
 			Position:  vec64To32(pos.Vec3()),
 			EventData: 0,
 		})
@@ -2170,15 +2170,15 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 		if t.BreakTime <= 0 {
 			break
 		}
-		s.writePacket(&v2193.LevelEventPacket{
-			EventType: v2193.LevelEventUpdateBlockCracking,
+		s.writePacket(&mc.LevelEventPacket{
+			EventType: mc.LevelEventUpdateBlockCracking,
 			Position:  vec64To32(pos.Vec3()),
 			EventData: int32(65535 / (t.BreakTime.Seconds() * 20)),
 		})
 	case block.DecoratedPotWobbleAction:
 		nbt := clientActorNBT(t.DecoratedPot.EncodeNBT(), pos)
 		nbt["animation"] = boolByte(t.Success) + 1
-		s.writePacket(&v2193.BlockActorDataPacket{
+		s.writePacket(&mc.BlockActorDataPacket{
 			Position: blockPos,
 			NBTData:  nbt,
 		})
@@ -2187,11 +2187,11 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 
 // ViewEmote ...
 func (s *Session) ViewEmote(player world.Entity, emote uuid.UUID) {
-	flags := byte(v2193.EmoteFlagServerSide)
+	flags := byte(mc.EmoteFlagServerSide)
 	if s.emoteChatMuted {
-		flags |= v2193.EmoteFlagMuteChat
+		flags |= mc.EmoteFlagMuteChat
 	}
-	s.writePacket(&v2193.EmotePacket{
+	s.writePacket(&mc.EmotePacket{
 		EntityRuntimeID: s.entityRuntimeID(player),
 		EmoteID:         emote.String(),
 		Flags:           flags,
@@ -2201,7 +2201,7 @@ func (s *Session) ViewEmote(player world.Entity, emote uuid.UUID) {
 // ViewSkin ...
 func (s *Session) ViewSkin(e world.Entity) {
 	if v, ok := e.(Controllable); ok {
-		s.writePacket(&v2193.PlayerSkinPacket{
+		s.writePacket(&mc.PlayerSkinPacket{
 			UUID: v.UUID(),
 			Skin: skinToProtocol(v.Skin()),
 		})
@@ -2210,11 +2210,11 @@ func (s *Session) ViewSkin(e world.Entity) {
 
 // ViewWorldSpawn ...
 func (s *Session) ViewWorldSpawn(pos cube.Pos) {
-	blockPos := v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	s.writePacket(&v2193.SetSpawnPositionPacket{
-		SpawnType:     v2193.SpawnTypeWorld,
+	blockPos := mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	s.writePacket(&mc.SetSpawnPositionPacket{
+		SpawnType:     mc.SpawnTypeWorld,
 		Position:      blockPos,
-		Dimension:     v2193.DimensionOverworld,
+		Dimension:     mc.DimensionOverworld,
 		SpawnPosition: blockPos,
 	})
 }
@@ -2225,9 +2225,9 @@ func (s *Session) SetPlayerSpawn(pos cube.Pos, dim world.Dimension) {
 		return
 	}
 	id, _ := world.DimensionID(dim)
-	blockPos := v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	s.writePacket(&v2193.SetSpawnPositionPacket{
-		SpawnType:     v2193.SpawnTypePlayer,
+	blockPos := mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	s.writePacket(&mc.SetSpawnPositionPacket{
+		SpawnType:     mc.SpawnTypePlayer,
 		Position:      blockPos,
 		Dimension:     int32(id),
 		SpawnPosition: blockPos,
@@ -2236,28 +2236,28 @@ func (s *Session) SetPlayerSpawn(pos cube.Pos, dim world.Dimension) {
 
 // ViewWeather ...
 func (s *Session) ViewWeather(raining, thunder bool) {
-	pk := &v2193.LevelEventPacket{
-		EventType: v2193.LevelEventStopRaining,
+	pk := &mc.LevelEventPacket{
+		EventType: mc.LevelEventStopRaining,
 	}
 	if raining {
-		pk.EventType, pk.EventData = v2193.LevelEventStartRaining, int32(rand.IntN(50000)+10000)
+		pk.EventType, pk.EventData = mc.LevelEventStartRaining, int32(rand.IntN(50000)+10000)
 	}
 	s.writePacket(pk)
 
-	pk = &v2193.LevelEventPacket{
-		EventType: v2193.LevelEventStopThunderstorm,
+	pk = &mc.LevelEventPacket{
+		EventType: mc.LevelEventStopThunderstorm,
 	}
 	if thunder {
-		pk.EventType, pk.EventData = v2193.LevelEventStartThunderstorm, int32(rand.IntN(50000)+10000)
+		pk.EventType, pk.EventData = mc.LevelEventStartThunderstorm, int32(rand.IntN(50000)+10000)
 	}
 	s.writePacket(pk)
 }
 
 // ViewEntityWake ...
 func (s *Session) ViewEntityWake(e world.Entity) {
-	s.writePacket(&v2193.AnimatePacket{
+	s.writePacket(&mc.AnimatePacket{
 		EntityRuntimeID: s.entityRuntimeID(e),
-		ActionType:      v2193.AnimateActionStopSleep,
+		ActionType:      mc.AnimateActionStopSleep,
 	})
 }
 
@@ -2279,7 +2279,7 @@ func (s *Session) closeWindow(clientRequested bool) bool {
 	windowID := byte(s.openedWindowID.Load())
 	s.openedContainerID.Store(0)
 	if !clientRequested {
-		s.writePacket(&v2193.ContainerClosePacket{
+		s.writePacket(&mc.ContainerClosePacket{
 			WindowID:      windowID,
 			ContainerType: containerType,
 			ServerSide:    true,
@@ -2288,7 +2288,7 @@ func (s *Session) closeWindow(clientRequested bool) bool {
 	return true
 }
 
-func (s *Session) entityLinks(e world.Entity) []v2193.EntityLink {
+func (s *Session) entityLinks(e world.Entity) []mc.EntityLink {
 	var links []entity.Link
 	if linker, ok := e.(entity.Linker); ok {
 		links = append(links, linker.Links()...)
@@ -2306,7 +2306,7 @@ func (s *Session) entityLinks(e world.Entity) []v2193.EntityLink {
 	if len(links) == 0 {
 		return nil
 	}
-	out := make([]v2193.EntityLink, 0, len(links))
+	out := make([]mc.EntityLink, 0, len(links))
 	for _, link := range links {
 		if link.Ridden == nil || link.Rider == nil {
 			continue
@@ -2316,14 +2316,14 @@ func (s *Session) entityLinks(e world.Entity) []v2193.EntityLink {
 		if riddenID == 0 || riderID == 0 {
 			continue
 		}
-		linkType := byte(v2193.EntityLinkRemove)
+		linkType := byte(mc.EntityLinkRemove)
 		switch link.Type {
 		case entity.LinkRider:
-			linkType = byte(v2193.EntityLinkRider)
+			linkType = byte(mc.EntityLinkRider)
 		case entity.LinkPassenger:
-			linkType = byte(v2193.EntityLinkPassenger)
+			linkType = byte(mc.EntityLinkPassenger)
 		}
-		out = append(out, v2193.EntityLink{
+		out = append(out, mc.EntityLink{
 			RiddenEntityUniqueID:   s.handleUniqueID(link.Ridden),
 			RiderEntityUniqueID:    s.handleUniqueID(link.Rider),
 			Type:                   linkType,
@@ -2390,7 +2390,7 @@ func vec2To32(vec2 mgl64.Vec2) mgl32.Vec2 {
 }
 
 // blockPosFromProtocol ...
-func blockPosFromProtocol(pos v2193.BlockPos) cube.Pos {
+func blockPosFromProtocol(pos mc.BlockPos) cube.Pos {
 	return cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
 }
 

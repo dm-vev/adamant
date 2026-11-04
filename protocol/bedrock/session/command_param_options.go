@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // paramOptionFlags pairs each option of a command parameter with the flag
@@ -11,9 +11,9 @@ var paramOptionFlags = [...]struct {
 	option cmd.ParamOption
 	flag   byte
 }{
-	{cmd.ParamOptionCollapseEnum, v2193.ParamOptionCollapseEnum},
-	{cmd.ParamOptionHasSemanticConstraint, v2193.ParamOptionHasSemanticConstraint},
-	{cmd.ParamOptionAsChainedCommand, v2193.ParamOptionAsChainedCommand},
+	{cmd.ParamOptionCollapseEnum, mc.ParamOptionCollapseEnum},
+	{cmd.ParamOptionHasSemanticConstraint, mc.ParamOptionHasSemanticConstraint},
+	{cmd.ParamOptionAsChainedCommand, mc.ParamOptionAsChainedCommand},
 }
 
 // paramOptions returns the flags AvailableCommands sends for the options of a
@@ -43,11 +43,11 @@ func enumConstraints(constraints []cmd.EnumConstraint) []byte {
 	for _, c := range constraints {
 		switch c {
 		case cmd.EnumConstraintCheatsEnabled:
-			ids = append(ids, v2193.CommandEnumConstraintCheatsEnabled)
+			ids = append(ids, mc.CommandEnumConstraintCheatsEnabled)
 		case cmd.EnumConstraintOperatorPermissions:
-			ids = append(ids, v2193.CommandEnumConstraintOperatorPermissions)
+			ids = append(ids, mc.CommandEnumConstraintOperatorPermissions)
 		case cmd.EnumConstraintHostPermissions:
-			ids = append(ids, v2193.CommandEnumConstraintHostPermissions)
+			ids = append(ids, mc.CommandEnumConstraintHostPermissions)
 		case cmd.EnumConstraintAllowAliases:
 			ids = append(ids, enumConstraintRequiresAllowAliases)
 		}

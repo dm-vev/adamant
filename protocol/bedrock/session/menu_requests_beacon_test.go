@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // beaconRequestsScenario pays beacons of a pyramid of four levels and of
@@ -21,9 +21,9 @@ import (
 // payment after a payment is ignored, after a refused one not reached.
 // What each beacon has is recorded after each step that pays it.
 func (s *scenario) beaconRequestsScenario() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	payment := func() v2193.StackRequestSlotInfo {
-		return s.slot(v2193.ContainerBeaconPayment, uiBeaconPayment)
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	payment := func() mc.StackRequestSlotInfo {
+		return s.slot(mc.ContainerBeaconPayment, uiBeaconPayment)
 	}
 	high, low := cube.Pos{2, -60, -2}, cube.Pos{-5, -60, 5}
 	recordBeacon := func(pos cube.Pos) {
@@ -38,9 +38,9 @@ func (s *scenario) beaconRequestsScenario() {
 	}
 	pay := func(heading string, pos cube.Pos, primary, secondary int32, accept bool) {
 		s.t.Helper()
-		actions := []v2193.StackRequestAction{
-			&v2193.BeaconPaymentStackRequestAction{PrimaryEffect: primary, SecondaryEffect: secondary},
-			&v2193.DestroyStackRequestAction{Count: 1, Source: payment()},
+		actions := []mc.StackRequestAction{
+			&mc.BeaconPaymentStackRequestAction{PrimaryEffect: primary, SecondaryEffect: secondary},
+			&mc.DestroyStackRequestAction{Count: 1, Source: payment()},
 		}
 		if accept {
 			s.request(heading, nil, actions...)
@@ -52,7 +52,7 @@ func (s *scenario) beaconRequestsScenario() {
 	putIngot := func(from int) {
 		s.t.Helper()
 		s.request("an iron ingot put in the beacon", nil,
-			&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, from), Destination: payment()})
+			&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, from), Destination: payment()})
 	}
 
 	s.step("the empty slot held", func(_ *world.Tx, p *player.Player) {
@@ -89,9 +89,9 @@ func (s *scenario) beaconRequestsScenario() {
 	// The apples put in the payment slot by the request itself: the
 	// refusal takes them out again.
 	s.refuse("refused: an apple put in and paid for speed",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: payment()},
-		&v2193.BeaconPaymentStackRequestAction{PrimaryEffect: 1},
-		&v2193.DestroyStackRequestAction{Count: 1, Source: s.again(v2193.ContainerBeaconPayment, uiBeaconPayment)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: payment()},
+		&mc.BeaconPaymentStackRequestAction{PrimaryEffect: 1},
+		&mc.DestroyStackRequestAction{Count: 1, Source: s.again(mc.ContainerBeaconPayment, uiBeaconPayment)})
 	recordBeacon(high)
 	pay("refused: speed paid with nothing", high, 1, 0, false)
 	putIngot(0)
@@ -107,7 +107,7 @@ func (s *scenario) beaconRequestsScenario() {
 	putIngot(0)
 	pay("no effects paid: the beacon keeps its own", high, 0, 0, true)
 	s.request("an emerald put in the beacon", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: payment()})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: payment()})
 	pay("jump boost paid with an emerald", high, 8, 0, true)
 	s.closeContainer("the client closes the beacon of four levels")
 

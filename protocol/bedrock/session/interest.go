@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -189,7 +189,7 @@ func (s *Session) hideFar(e world.Entity) {
 	s.hidesFar.Store(true)
 	s.entityMutex.Unlock()
 	if shown {
-		s.writePacket(&v2193.RemoveActorPacket{EntityUniqueID: s.handleUniqueID(e.H())})
+		s.writePacket(&mc.RemoveActorPacket{EntityUniqueID: s.handleUniqueID(e.H())})
 	}
 }
 

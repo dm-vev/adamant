@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"reflect"
 	"testing"
 
@@ -16,9 +16,9 @@ import (
 )
 
 type nativeNotePacket struct {
-	Event    *v2193.BlockEventPacket `json:"block_event"`
-	Sound    *v2193.LevelSoundEventPacket
-	Particle *v2193.LevelEventPacket `json:"level_event"`
+	Event    *mc.BlockEventPacket `json:"block_event"`
+	Sound    *mc.LevelSoundEventPacket
+	Particle *mc.LevelEventPacket `json:"level_event"`
 }
 
 func TestNoteEventsMatchOwnedBDS(t *testing.T) {
@@ -175,7 +175,7 @@ func replayNativeNotes(t *testing.T, filename string, count int, timed, load boo
 					tx.SetBlock(trace.Base.Side(cube.FaceUp), lookup(c.Above), nil)
 				}
 			})
-			byTick := map[int64][]v2193.BlockEventPacket{}
+			byTick := map[int64][]mc.BlockEventPacket{}
 			if timed {
 				for _, cp := range native.Checkpoints {
 					for _, e := range cp.Events {
@@ -187,7 +187,7 @@ func replayNativeNotes(t *testing.T, filename string, count int, timed, load boo
 							if e.Data != int32(wantPitch) {
 								t.Fatal("native note event pitch differs")
 							}
-							byTick[cp.Tick] = append(byTick[cp.Tick], v2193.BlockEventPacket{Position: v2193.BlockPos{int32(e.Position[0]), int32(e.Position[1]), int32(e.Position[2])}, EventType: e.Type, EventData: e.Data})
+							byTick[cp.Tick] = append(byTick[cp.Tick], mc.BlockEventPacket{Position: mc.BlockPos{int32(e.Position[0]), int32(e.Position[1]), int32(e.Position[2])}, EventType: e.Type, EventData: e.Data})
 						}
 					}
 				}
@@ -233,11 +233,11 @@ func replayNativeNotes(t *testing.T, filename string, count int, timed, load boo
 						}
 					}
 				})
-				var events []v2193.BlockEventPacket
+				var events []mc.BlockEventPacket
 				for len(s.heldPackets) > 0 {
 					p := s.testPacket()
 					got = append(got, p)
-					if e, ok := p.(*v2193.BlockEventPacket); ok {
+					if e, ok := p.(*mc.BlockEventPacket); ok {
 						events = append(events, *e)
 					}
 				}

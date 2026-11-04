@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -19,7 +19,7 @@ func TestTeleportAcknowledgementClearedForUnchangedMovement(t *testing.T) {
 	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
 	s.teleportPos.Store(&expected)
 	c := newUnchangedControllable()
-	pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, expected))}
+	pk := &mc.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, expected))}
 
 	if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
 		t.Fatalf("handle movement: %v", err)
@@ -64,7 +64,7 @@ func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
 
 			s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
 			s.teleportPos.Store(&pos)
-			pk := &v2193.PlayerAuthInputPacket{Position: [3]float32{float32(math.NaN()), float32(math.Inf(1)), float32(math.Inf(-1))}}
+			pk := &mc.PlayerAuthInputPacket{Position: [3]float32{float32(math.NaN()), float32(math.Inf(1)), float32(math.Inf(-1))}}
 			if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
 				t.Fatalf("handle movement: %v", err)
 			}
@@ -101,7 +101,7 @@ func TestAuthInputIsClampedToTheWorld(t *testing.T) {
 		c := newUnchangedControllable()
 		c.position = start
 		s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
-		pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, tc.to)), Tick: 7}
+		pk := &mc.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, tc.to)), Tick: 7}
 		if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -123,7 +123,7 @@ func TestAuthInputAwaitingTeleport(t *testing.T) {
 	expected := mgl64.Vec3{10, 64, 10}
 	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
 	s.teleportPos.Store(&expected)
-	pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, mgl64.Vec3{1, 0, 0}))}
+	pk := &mc.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, mgl64.Vec3{1, 0, 0}))}
 	if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
 		t.Fatal(err)
 	}
@@ -143,18 +143,18 @@ func TestFlightInputFlags(t *testing.T) {
 	c := newFlightControllable(world.GameModeSurvival)
 	s := newFlightTestSession()
 	h := PlayerAuthInputHandler{}
-	h.handleInputFlags(inputFlags(v2193.InputFlagStartFlying), s, nil, c)
+	h.handleInputFlags(inputFlags(mc.InputFlagStartFlying), s, nil, c)
 	if !c.askedToFly {
 		t.Fatal("the session did not ask the game to start flying")
 	}
 	c.flying = true
-	h.handleInputFlags(inputFlags(v2193.InputFlagStopFlying), s, nil, c)
+	h.handleInputFlags(inputFlags(mc.InputFlagStopFlying), s, nil, c)
 	if c.flying {
 		t.Fatal("the session did not ask the game to stop flying")
 	}
 }
 
-func inputFlags(flag int) v2193.InputFlags { return v2193.InputFlags{int32(flag)} }
+func inputFlags(flag int) mc.InputFlags { return mc.InputFlags{int32(flag)} }
 
 func newFlightTestSession() *Session {
 	return &Session{

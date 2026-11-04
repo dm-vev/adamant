@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestMapDecorationTypesAreProtocolTypes checks the map decorations of
@@ -13,22 +13,22 @@ import (
 func TestMapDecorationTypesAreProtocolTypes(t *testing.T) {
 	t.Parallel()
 	for name, want := range map[string]byte{
-		"minecraft:red_x":            v2193.MapDecorationTypeCrossWhite,
-		"minecraft:woodland_mansion": v2193.MapDecorationTypeMansion,
-		"minecraft:monument":         v2193.MapDecorationTypeMonument,
-		"minecraft:village_desert":   v2193.MapDecorationTypeVillageDesert,
-		"minecraft:village_plains":   v2193.MapDecorationTypeVillagePlains,
-		"minecraft:village_savanna":  v2193.MapDecorationTypeVillageSavanna,
-		"minecraft:village_snowy":    v2193.MapDecorationTypeVillageSnowy,
-		"minecraft:village_taiga":    v2193.MapDecorationTypeVillageTaiga,
-		"minecraft:jungle_temple":    v2193.MapDecorationTypeJungleTemple,
-		"minecraft:swamp_hut":        v2193.MapDecorationTypeWitchHut,
-		"minecraft:trial_chambers":   v2193.MapDecorationTypeTrialChambers,
-		"minecraft:abandoned_camp":   v2193.MapDecorationTypeAbandonedCamp,
-		"minecraft:ancient_city":     v2193.MapDecorationTypeBuriedAncientCity,
-		"minecraft:mineshaft":        v2193.MapDecorationTypeBuriedMineshaft,
-		"minecraft:desert_pyramid":   v2193.MapDecorationTypeDesertPyramid,
-		"minecraft:ocean_ruin_warm":  v2193.MapDecorationTypeWarmOceanRuins,
+		"minecraft:red_x":            mc.MapDecorationTypeCrossWhite,
+		"minecraft:woodland_mansion": mc.MapDecorationTypeMansion,
+		"minecraft:monument":         mc.MapDecorationTypeMonument,
+		"minecraft:village_desert":   mc.MapDecorationTypeVillageDesert,
+		"minecraft:village_plains":   mc.MapDecorationTypeVillagePlains,
+		"minecraft:village_savanna":  mc.MapDecorationTypeVillageSavanna,
+		"minecraft:village_snowy":    mc.MapDecorationTypeVillageSnowy,
+		"minecraft:village_taiga":    mc.MapDecorationTypeVillageTaiga,
+		"minecraft:jungle_temple":    mc.MapDecorationTypeJungleTemple,
+		"minecraft:swamp_hut":        mc.MapDecorationTypeWitchHut,
+		"minecraft:trial_chambers":   mc.MapDecorationTypeTrialChambers,
+		"minecraft:abandoned_camp":   mc.MapDecorationTypeAbandonedCamp,
+		"minecraft:ancient_city":     mc.MapDecorationTypeBuriedAncientCity,
+		"minecraft:mineshaft":        mc.MapDecorationTypeBuriedMineshaft,
+		"minecraft:desert_pyramid":   mc.MapDecorationTypeDesertPyramid,
+		"minecraft:ocean_ruin_warm":  mc.MapDecorationTypeWarmOceanRuins,
 	} {
 		if got, ok := world.MapDecorationTypeFromJava(name); !ok || got != want {
 			t.Errorf("%s: %d, %v; want %d", name, got, ok, want)

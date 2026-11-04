@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestGoldenRefusals records what a client is sent for item stack requests
@@ -32,7 +32,7 @@ func TestGoldenRefusals(t *testing.T) {
 
 // refusalsScenario runs the steps of TestGoldenRefusals.
 func (s *scenario) refusalsScenario() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 
 	s.step("items given", func(_ *world.Tx, p *player.Player) {
 		inv := p.Inventory()
@@ -60,30 +60,30 @@ func (s *scenario) refusalsScenario() {
 	// before an action names the apples by a stack ID they do not have. BDS
 	// refuses it (49) and then gives all eight planks of slot 2 to the
 	// cursor.
-	stale := v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: inv}, Slot: 0, StackNetworkID: 9999}
+	stale := mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: inv}, Slot: 0, StackNetworkID: 9999}
 	s.refuse("refused: slot 2 changed twice, then a stale stack ID",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(inv, 20)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.again(inv, 2), Destination: s.slot(inv, 21)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(inv, 20)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.again(inv, 2), Destination: s.slot(inv, 21)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)})
 	s.attempt("the eight planks of slot 2 taken to the cursor",
-		&v2193.TakeStackRequestAction{Count: 8, Source: s.slot(inv, 2), Destination: s.slot(v2193.ContainerCursor, uiCursor)})
+		&mc.TakeStackRequestAction{Count: 8, Source: s.slot(inv, 2), Destination: s.slot(mc.ContainerCursor, uiCursor)})
 	s.attempt("the planks of the cursor put back",
-		&v2193.PlaceStackRequestAction{Count: 8, Source: s.slot(v2193.ContainerCursor, uiCursor), Destination: s.slot(inv, 2)})
+		&mc.PlaceStackRequestAction{Count: 8, Source: s.slot(mc.ContainerCursor, uiCursor), Destination: s.slot(inv, 2)})
 
 	// The client names the off hand as slot 1, the only slot BDS accepts.
 	// BDS refuses the request (49) and then takes a totem in the off hand.
 	s.refuse("refused: a shield put in the off hand, then a stale stack ID",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(v2193.ContainerOffhand, 1)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(mc.ContainerOffhand, 1)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)})
 	s.attempt("a totem put in the off hand",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 4), Destination: s.slot(v2193.ContainerOffhand, 1)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 4), Destination: s.slot(mc.ContainerOffhand, 1)})
 
 	// No menu was opened yet. BDS refuses the craft (7).
 	s.refuse("refused: a loom craft with no menu open",
-		&v2193.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerLoomInput, uiLoomInput)},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerLoomDye, uiLoomDye)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.again(v2193.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(inv, 7)})
+		&mc.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerLoomInput, uiLoomInput)},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerLoomDye, uiLoomDye)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.again(mc.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(inv, 7)})
 
 	// An anvil and a crafting table hold no items of their own: BDS refuses
 	// an item put in container 7 (50), at slot 0 and at slot 1.
@@ -99,15 +99,15 @@ func (s *scenario) refusalsScenario() {
 		s.clickBlock("the client opens "+menu.name, menu.pos)
 		for _, slot := range []int{0, 1} {
 			s.attempt("an apple put in the container of "+menu.name+fmt.Sprintf(", slot %d", slot),
-				&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerLevelEntity, slot)})
+				&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(mc.ContainerLevelEntity, slot)})
 		}
 		if _, ok := menu.b.(block.CraftingTable); ok {
 			// Each write of the UI sends the whole of it: the undo sends the
 			// grid as it was before the second plank, then before the first.
 			s.refuse("refused: two planks put in the grid, then a stale stack ID",
-				&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)},
-				&v2193.PlaceStackRequestAction{Count: 1, Source: s.again(inv, 2), Destination: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid+3)},
-				&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)})
+				&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(mc.ContainerCraftingInput, uiCraftingGrid)},
+				&mc.PlaceStackRequestAction{Count: 1, Source: s.again(inv, 2), Destination: s.slot(mc.ContainerCraftingInput, uiCraftingGrid+3)},
+				&mc.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)})
 		}
 		s.closeContainer("the client closes " + menu.name)
 	}
@@ -134,16 +134,16 @@ func (s *scenario) refusalsScenario() {
 		})
 		s.clickBlock("the client opens "+menu.name, menu.pos)
 		s.request("an apple put in "+menu.name, nil,
-			&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerLevelEntity, 0)})
+			&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(mc.ContainerLevelEntity, 0)})
 		s.closeContainer("the client closes " + menu.name)
 	}
 }
 
 // refuse sends an item stack request of the actions passed and fails the
 // test unless the server refused it.
-func (s *scenario) refuse(heading string, actions ...v2193.StackRequestAction) {
+func (s *scenario) refuse(heading string, actions ...mc.StackRequestAction) {
 	s.t.Helper()
-	if status, ok := s.attempt(heading, actions...); ok && status == v2193.ItemStackResponseStatusOK {
+	if status, ok := s.attempt(heading, actions...); ok && status == mc.ItemStackResponseStatusOK {
 		s.t.Errorf("%s: the request was accepted", heading)
 	}
 }
@@ -151,7 +151,7 @@ func (s *scenario) refuse(heading string, actions ...v2193.StackRequestAction) {
 // refuseWith sends an item stack request of the actions passed and fails
 // the test unless the server refused it with the status passed, the status
 // BDS 1.26.52.3 refuses the request with.
-func (s *scenario) refuseWith(heading string, status uint8, actions ...v2193.StackRequestAction) {
+func (s *scenario) refuseWith(heading string, status uint8, actions ...mc.StackRequestAction) {
 	s.t.Helper()
 	if got, ok := s.attempt(heading, actions...); ok && got != status {
 		s.t.Errorf("%s: answered with status %d, want %d", heading, got, status)
@@ -160,12 +160,12 @@ func (s *scenario) refuseWith(heading string, status uint8, actions ...v2193.Sta
 
 // attempt sends an item stack request of the actions passed and returns
 // the status the server answered with, whatever it is.
-func (s *scenario) attempt(heading string, actions ...v2193.StackRequestAction) (uint8, bool) {
+func (s *scenario) attempt(heading string, actions ...mc.StackRequestAction) (uint8, bool) {
 	s.t.Helper()
 	id := s.nextRequest
 	s.nextRequest -= 2
 	before := len(s.responses)
-	s.client(heading, &v2193.ItemStackRequestPacket{Requests: []v2193.ItemStackRequest{{RequestID: id, Actions: actions}}})
+	s.client(heading, &mc.ItemStackRequestPacket{Requests: []mc.ItemStackRequest{{RequestID: id, Actions: actions}}})
 	if len(s.responses) == before {
 		s.t.Errorf("%s: the request was not answered", heading)
 		return 0, false

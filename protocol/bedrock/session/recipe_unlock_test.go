@@ -9,7 +9,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // registerVanillaRecipes is the vanilla recipe registration a server runs
@@ -62,7 +62,7 @@ func TestRecipeUnlockPacketsUnchanged(t *testing.T) {
 	got := s.taken()
 	s.ViewRecipesUnlocked(mapped)
 	want := s.taken()
-	if len(want) != 1 || want[0].(*v2193.UnlockedRecipesPacket).UnlockType != v2193.UnlockedRecipesTypeNewlyUnlocked {
+	if len(want) != 1 || want[0].(*mc.UnlockedRecipesPacket).UnlockType != mc.UnlockedRecipesTypeNewlyUnlocked {
 		t.Fatalf("the unlock of the mapped IDs sent %#v, want one packet of newly unlocked recipes", want)
 	}
 	if !reflect.DeepEqual(got, want) {

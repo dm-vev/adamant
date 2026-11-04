@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/player/scoreboard"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // oldScoreboard is scoreboard.Scoreboard as it was, holding strings: the
@@ -84,23 +84,23 @@ func oldSendScoreboard(s *Session, sb *oldScoreboard) {
 
 	if currentName != name {
 		s.RemoveScoreboard()
-		pk := &v2193.SetDisplayObjectivePacket{
+		pk := &mc.SetDisplayObjectivePacket{
 			DisplaySlot:   "sidebar",
 			ObjectiveName: name,
 			DisplayName:   name,
 			CriteriaName:  "dummy",
 		}
 		if sb.descending {
-			pk.SortOrder = v2193.ScoreboardSortOrderDescending
+			pk.SortOrder = mc.ScoreboardSortOrderDescending
 		} else {
-			pk.SortOrder = v2193.ScoreboardSortOrderAscending
+			pk.SortOrder = mc.ScoreboardSortOrderAscending
 		}
 		s.writePacket(pk)
 	} else {
-		pk := &v2193.SetScorePacket{}
+		pk := &mc.SetScorePacket{}
 		for i := range currentLines {
-			pk.Entries = append(pk.Entries, v2193.ScoreboardEntry{
-				IdentityType:  v2193.ScoreboardIdentityRemove,
+			pk.Entries = append(pk.Entries, mc.ScoreboardEntry{
+				IdentityType:  mc.ScoreboardIdentityRemove,
 				EntryID:       int64(i),
 				ObjectiveName: currentName,
 				Score:         int32(i),
@@ -110,18 +110,18 @@ func oldSendScoreboard(s *Session, sb *oldScoreboard) {
 			s.writePacket(pk)
 		}
 	}
-	pk := &v2193.SetScorePacket{}
+	pk := &mc.SetScorePacket{}
 	displayLines := make([]string, len(lines))
 	for k, line := range lines {
 		if len(line) == 0 {
 			line = "§" + colours[k]
 		}
 		displayLines[k] = line
-		pk.Entries = append(pk.Entries, v2193.ScoreboardEntry{
+		pk.Entries = append(pk.Entries, mc.ScoreboardEntry{
 			EntryID:       int64(k),
 			ObjectiveName: name,
 			Score:         int32(k),
-			IdentityType:  v2193.ScoreboardIdentityFakePlayer,
+			IdentityType:  mc.ScoreboardIdentityFakePlayer,
 			DisplayName:   line,
 		})
 	}

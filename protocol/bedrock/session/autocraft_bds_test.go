@@ -15,7 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
@@ -75,7 +75,7 @@ func decodeCaptured(t *testing.T, s string) any {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pk := v2193.New(h.ID)
+	pk := mc.New(h.ID)
 	r := wire.NewReader(body)
 	pk.Decode(r)
 	if r.Err() != nil || r.Len() != 0 {
@@ -102,7 +102,7 @@ func stickRecipe(t *testing.T) recipe.Recipe {
 // it. The stack network IDs of the request are BDS's: they are put in the
 // place of the session's. The session handles the request in a transaction
 // of w.
-func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCase, w *world.World) (error, map[[2]byte]int, *v2193.ItemStackResponsePacket) {
+func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCase, w *world.World) (map[[2]byte]int, *mc.ItemStackResponsePacket, error) {
 	t.Helper()
 	s := craftingTestSession()
 	screen, _, _ := strings.Cut(c.Name, "/")
@@ -111,12 +111,12 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 		s.invOpened = true
 	case "table":
 		openTestMenu(t, s, block.CraftingTable{})
-		s.openedContainerID.Store(uint32(v2193.ContainerTypeWorkbench))
+		s.openedContainerID.Store(uint32(mc.ContainerTypeWorkbench))
 	case "crafter":
 		// A menu open in a window of the type of a crafter: the screen
 		// gate reads no more.
 		openTestMenu(t, s, block.CraftingTable{})
-		s.openedContainerID.Store(uint32(v2193.ContainerTypeCrafter))
+		s.openedContainerID.Store(uint32(mc.ContainerTypeCrafter))
 	case "closed":
 	default:
 		t.Fatalf("%s: unknown screen", c.Name)
@@ -127,7 +127,7 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 	for _, slot := range c.Before {
 		stack := item.NewStack(block.Planks{Wood: block.OakWood()}, slot.Count)
 		inv := s.inv
-		if slot.Container == v2193.ContainerCraftingInput {
+		if slot.Container == mc.ContainerCraftingInput {
 			inv = s.ui
 		}
 		if err := inv.SetItem(int(slot.Slot), stack); err != nil {
@@ -136,24 +136,24 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 		placed, _ := inv.Item(int(slot.Slot))
 		ids[slot.StackID] = item_id(placed)
 	}
-	pk := decodeCaptured(t, c.Request).(*v2193.ItemStackRequestPacket)
+	pk := decodeCaptured(t, c.Request).(*mc.ItemStackRequestPacket)
 	if len(pk.Requests) != 1 {
 		t.Fatalf("%s: %d requests", c.Name, len(pk.Requests))
 	}
 	req := pk.Requests[0]
-	ours := func(info *v2193.StackRequestSlotInfo) {
+	ours := func(info *mc.StackRequestSlotInfo) {
 		if info.StackNetworkID > 0 {
 			info.StackNetworkID = ids[info.StackNetworkID]
 		}
 	}
 	for _, a := range req.Actions {
 		switch a := a.(type) {
-		case *v2193.ConsumeStackRequestAction:
+		case *mc.ConsumeStackRequestAction:
 			ours(&a.Source)
-		case *v2193.PlaceStackRequestAction:
+		case *mc.PlaceStackRequestAction:
 			ours(&a.Source)
 			ours(&a.Destination)
-		case *v2193.TakeStackRequestAction:
+		case *mc.TakeStackRequestAction:
 			ours(&a.Source)
 			ours(&a.Destination)
 		}
@@ -165,21 +165,21 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 	slots := map[[2]byte]int{}
 	for slot, stack := range s.inv.Slots() {
 		if !stack.Empty() {
-			slots[[2]byte{v2193.ContainerCombinedHotBarAndInventory, byte(slot)}] = stack.Count()
+			slots[[2]byte{mc.ContainerCombinedHotBarAndInventory, byte(slot)}] = stack.Count()
 		}
 	}
 	for slot := menu.UICraftingSmall; slot < menu.UICraftingLarge+9; slot++ {
 		if stack, _ := s.ui.Item(slot); !stack.Empty() {
-			slots[[2]byte{v2193.ContainerCraftingInput, byte(slot)}] = stack.Count()
+			slots[[2]byte{mc.ContainerCraftingInput, byte(slot)}] = stack.Count()
 		}
 	}
-	var resp *v2193.ItemStackResponsePacket
+	var resp *mc.ItemStackResponsePacket
 	for _, p := range s.heldPackets {
-		if r, ok := p.(*v2193.ItemStackResponsePacket); ok {
+		if r, ok := p.(*mc.ItemStackResponsePacket); ok {
 			resp = r
 		}
 	}
-	return err, slots, resp
+	return slots, resp, err
 }
 
 // TestAutoCraftMatchesBDS replays the recipe-book crafts captured from BDS
@@ -201,12 +201,12 @@ func TestAutoCraftMatchesBDS(t *testing.T) {
 // matchAutoCraft replays a captured case in a transaction of w, and
 // compares the outcome with BDS's.
 func matchAutoCraft(t *testing.T, capture autoCraftCapture, craft recipe.Recipe, c autoCraftCase, w *world.World) {
-	bds := decodeCaptured(t, c.Response).(*v2193.ItemStackResponsePacket)
+	bds := decodeCaptured(t, c.Response).(*mc.ItemStackResponsePacket)
 	if len(bds.Responses) != 1 || bds.Responses[0].Status != c.Status {
 		t.Fatalf("captured response does not decode to status %d", c.Status)
 	}
-	err, slots, resp := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c, w)
-	if accepted := c.Status == v2193.ItemStackResponseStatusOK; accepted != (err == nil) {
+	slots, resp, err := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c, w)
+	if accepted := c.Status == mc.ItemStackResponseStatusOK; accepted != (err == nil) {
 		t.Fatalf("BDS answered status %d, the session: %v", c.Status, err)
 	}
 	want := map[[2]byte]int{}
@@ -232,7 +232,7 @@ func matchAutoCraft(t *testing.T, capture autoCraftCapture, craft recipe.Recipe,
 	// compared.
 	var got, expected []string
 	for _, info := range resp.Responses[0].ContainerInfo {
-		if info.Container.ContainerID == v2193.ContainerCreatedOutput {
+		if info.Container.ContainerID == mc.ContainerCreatedOutput {
 			continue
 		}
 		for _, slot := range info.SlotInfo {
@@ -260,12 +260,12 @@ func TestAutoCraftOutcomeIsStable(t *testing.T) {
 	t.Cleanup(func() { _ = w.Close() })
 	runs := 0
 	for _, c := range capture.Cases {
-		if c.Status != v2193.ItemStackResponseStatusOK || len(c.Before) < 2 {
+		if c.Status != mc.ItemStackResponseStatusOK || len(c.Before) < 2 {
 			continue
 		}
 		var first string
 		for i := range 200 {
-			err, slots, _ := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c, w)
+			slots, _, err := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c, w)
 			if err != nil {
 				t.Fatalf("%s, run %d: %v", c.Name, i, err)
 			}

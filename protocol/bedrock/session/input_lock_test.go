@@ -8,7 +8,7 @@ import (
 
 // TestBedrockLocks holds every input lock to the bit of
 // UpdateClientInputLocks it was before locks had values of their own: the
-// v2193 constants, in the order of input.All.
+// constants of the model, in the order of input.All.
 func TestBedrockLocks(t *testing.T) {
 	want := []uint32{2, 4, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096}
 	all := input.All()

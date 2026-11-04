@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"reflect"
 	"testing"
 
@@ -58,8 +58,8 @@ func TestDispenserEffectsMatchNativePackets(t *testing.T) {
 				Outputs     int
 			}
 			Packets []struct {
-				Sound *v2193.LevelSoundEventPacket
-				Event *v2193.LevelEventPacket `json:"level_event"`
+				Sound *mc.LevelSoundEventPacket
+				Event *mc.LevelEventPacket `json:"level_event"`
 			}
 		}
 	}

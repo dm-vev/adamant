@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // anvilPos is where the cases of the anvil place it.
@@ -23,11 +23,11 @@ var undamagedAnvil = block.Anvil{Type: block.UndamagedAnvil()}
 // repair returns the actions of a request that takes the result of the
 // anvil, renamed to the filter string at index if any, and puts it in a
 // slot of the inventory.
-func (s *scenario) repair(index int32, to int) []v2193.StackRequestAction {
-	return []v2193.StackRequestAction{
-		&v2193.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: 0, FilterStringIndex: index},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerAnvilInput, uiAnvilInput)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, to)},
+func (s *scenario) repair(index int32, to int) []mc.StackRequestAction {
+	return []mc.StackRequestAction{
+		&mc.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: 0, FilterStringIndex: index},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerAnvilInput, uiAnvilInput)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, to)},
 	}
 }
 
@@ -36,13 +36,13 @@ func (s *scenario) repair(index int32, to int) []v2193.StackRequestAction {
 // left out if its slot is -1.
 func (s *scenario) anvilInputs(heading string, input, material, count int) {
 	s.t.Helper()
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	var actions []v2193.StackRequestAction
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	var actions []mc.StackRequestAction
 	if input >= 0 {
-		actions = append(actions, &v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, input), Destination: s.slot(v2193.ContainerAnvilInput, uiAnvilInput)})
+		actions = append(actions, &mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, input), Destination: s.slot(mc.ContainerAnvilInput, uiAnvilInput)})
 	}
 	if material >= 0 {
-		actions = append(actions, &v2193.PlaceStackRequestAction{Count: byte(count), Source: s.slot(inv, material), Destination: s.slot(v2193.ContainerAnvilMaterial, uiAnvilMaterial)})
+		actions = append(actions, &mc.PlaceStackRequestAction{Count: byte(count), Source: s.slot(inv, material), Destination: s.slot(mc.ContainerAnvilMaterial, uiAnvilMaterial)})
 	}
 	s.request(heading, nil, actions...)
 }
@@ -52,13 +52,13 @@ func (s *scenario) anvilInputs(heading string, input, material, count int) {
 // if its slot is -1.
 func (s *scenario) anvilBack(heading string, input, material, count int) {
 	s.t.Helper()
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	var actions []v2193.StackRequestAction
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	var actions []mc.StackRequestAction
 	if input >= 0 {
-		actions = append(actions, &v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerAnvilInput, uiAnvilInput), Destination: s.slot(inv, input)})
+		actions = append(actions, &mc.TakeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerAnvilInput, uiAnvilInput), Destination: s.slot(inv, input)})
 	}
 	if material >= 0 {
-		actions = append(actions, &v2193.TakeStackRequestAction{Count: byte(count), Source: s.slot(v2193.ContainerAnvilMaterial, uiAnvilMaterial), Destination: s.slot(inv, material)})
+		actions = append(actions, &mc.TakeStackRequestAction{Count: byte(count), Source: s.slot(mc.ContainerAnvilMaterial, uiAnvilMaterial), Destination: s.slot(inv, material)})
 	}
 	s.request(heading, nil, actions...)
 }
@@ -69,18 +69,18 @@ func (s *scenario) anvilBack(heading string, input, material, count int) {
 // state 12% of the time, drawn from the global random source: the record
 // of the step leaves out the UpdateBlock of the anvil, which must have
 // been sent if and only if the anvil wore, and the anvil is then set back.
-func (s *scenario) wornRequest(heading string, filter []string, accept bool, actions ...v2193.StackRequestAction) {
+func (s *scenario) wornRequest(heading string, filter []string, accept bool, actions ...mc.StackRequestAction) {
 	s.t.Helper()
 	from := s.out.Len()
 	id := s.nextRequest
 	s.nextRequest -= 2
 	before := len(s.responses)
-	s.client(heading, &v2193.ItemStackRequestPacket{Requests: []v2193.ItemStackRequest{{
+	s.client(heading, &mc.ItemStackRequestPacket{Requests: []mc.ItemStackRequest{{
 		RequestID: id, Actions: actions, FilterStrings: filter,
 	}}})
 	if len(s.responses) == before {
 		s.t.Errorf("%s: the request was not answered", heading)
-	} else if ok := s.responses[len(s.responses)-1] == v2193.ItemStackResponseStatusOK; ok != accept {
+	} else if ok := s.responses[len(s.responses)-1] == mc.ItemStackResponseStatusOK; ok != accept {
 		s.t.Errorf("%s: accepted %v, want %v", heading, ok, accept)
 	}
 
@@ -213,9 +213,9 @@ func (s *scenario) anvilCases() {
 	// is undone.
 	s.anvilInputs("a golden sword put in it", 12, -1, 0)
 	s.wornRequest("refused: two renames in a request", []string{"First"}, false,
-		&v2193.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: 0, FilterStringIndex: 0},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCombinedHotBarAndInventory, 13), Destination: s.again(v2193.ContainerAnvilInput, uiAnvilInput)},
-		&v2193.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: 0, FilterStringIndex: 0},
+		&mc.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: 0, FilterStringIndex: 0},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCombinedHotBarAndInventory, 13), Destination: s.again(mc.ContainerAnvilInput, uiAnvilInput)},
+		&mc.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: 0, FilterStringIndex: 0},
 	)
 	s.anvilBack("the golden sword taken back", 12, -1, 0)
 
@@ -229,8 +229,8 @@ func (s *scenario) anvilCases() {
 		tx.SetBlock(anvilPos, block.Stone{}, nil)
 	})
 	s.refuse("refused: the wooden sword renamed with no anvil",
-		&v2193.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: 0, FilterStringIndex: 0})
+		&mc.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: 0, FilterStringIndex: 0})
 	s.attempt("the wooden sword taken back",
-		&v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerAnvilInput, uiAnvilInput), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, 13)})
+		&mc.TakeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerAnvilInput, uiAnvilInput), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, 13)})
 	s.closeContainer("the client closes the anvil")
 }

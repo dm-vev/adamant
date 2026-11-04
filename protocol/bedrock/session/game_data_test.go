@@ -12,7 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -30,19 +30,19 @@ func oldGameData(level *world.World, name string, content *startContent, pos mgl
 
 		WorldName:       name,
 		WorldSeed:       level.Seed(),
-		BaseGameVersion: v2193.Version,
+		BaseGameVersion: mc.Version,
 
 		Time:       int64(level.Time()),
 		Difficulty: int32(difficulty),
 
 		WorldGameMode:     mode,
 		PlayerGameMode:    mode,
-		PlayerPermissions: v2193.PermissionLevelMember,
+		PlayerPermissions: mc.PermissionLevelMember,
 		PlayerPosition:    vec64To32(level.Spawn().Vec3Centre().Add(mgl64.Vec3{0, player.Type.NetworkOffset()})),
 
 		Items:  content.Items(),
 		Blocks: content.Blocks(),
-		GameRules: append([]v2193.GameRule{
+		GameRules: append([]mc.GameRule{
 			{Name: "naturalregeneration", Value: false},
 			{Name: "locatorBar", Value: false},
 			{Name: "falldamage", Value: level.FallDamage()},
@@ -50,7 +50,7 @@ func oldGameData(level *world.World, name string, content *startContent, pos mgl
 
 		ServerAuthoritativeInventory: true,
 		UseBlockNetworkIDHashes:      true,
-		PlayerMovementSettings: v2193.PlayerMovementSettings{
+		PlayerMovementSettings: mc.PlayerMovementSettings{
 			ServerAuthoritativeBlockBreaking: true,
 		},
 		Dimensions: content.Dimensions(),
@@ -63,7 +63,7 @@ func oldGameData(level *world.World, name string, content *startContent, pos mgl
 
 	data.EmoteChatMuted = muted
 	if operator {
-		data.PlayerPermissions = v2193.PermissionLevelOperator
+		data.PlayerPermissions = mc.PermissionLevelOperator
 	}
 	return data
 }
@@ -107,8 +107,8 @@ func TestGameDataFromGame(t *testing.T) {
 			got := gameData(g, tc.content, versions.Model(), tc.muted)
 			want := oldGameData(tc.level, "Golden Server", tc.content, pos, rot, tc.w, tc.muted, tc.operator)
 			for _, d := range []*netconn.GameData{&got, &want} {
-				slices.SortFunc(d.Items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
-				slices.SortStableFunc(d.GameRules, func(a, b v2193.GameRule) int { return strings.Compare(a.Name, b.Name) })
+				slices.SortFunc(d.Items, func(a, b mc.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
+				slices.SortStableFunc(d.GameRules, func(a, b mc.GameRule) int { return strings.Compare(a.Name, b.Name) })
 			}
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("game data differs from the oracle:\n got %+v\nwant %+v", withoutContent(got), withoutContent(want))

@@ -3,7 +3,7 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // actorProperty is an actor property as BDS declares it in SyncActorProperty.
@@ -107,31 +107,31 @@ func (s *Session) sendActorProperties(w *world.World) {
 		for i, p := range props {
 			declarations[i] = p.declaration()
 		}
-		s.writePacket(&v2193.SyncActorPropertyPacket{PropertyData: map[string]any{"type": id, "properties": declarations}})
+		s.writePacket(&mc.SyncActorPropertyPacket{PropertyData: map[string]any{"type": id, "properties": declarations}})
 	}
 }
 
 // entityProperties returns the values of all properties of the type of an
 // entity.
-func entityProperties(e world.Entity) v2193.EntityProperties {
+func entityProperties(e world.Entity) mc.EntityProperties {
 	props, ok := actorPropertyTypes[networkID(e.H().Type())]
 	if !ok {
-		return v2193.EntityProperties{}
+		return mc.EntityProperties{}
 	}
 	values := make(map[string]any)
 	actorPropertyValues(e, values)
 	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
 		actorPropertyValues(beh.Behaviour(), values)
 	}
-	integers := make([]v2193.IntegerEntityProperty, len(props))
+	integers := make([]mc.IntegerEntityProperty, len(props))
 	for i, p := range props {
 		v := p.def
 		if reported, ok := values[p.name]; ok {
 			v = p.value(reported)
 		}
-		integers[i] = v2193.IntegerEntityProperty{Index: uint32(i), Value: v}
+		integers[i] = mc.IntegerEntityProperty{Index: uint32(i), Value: v}
 	}
-	return v2193.EntityProperties{IntegerProperties: integers}
+	return mc.EntityProperties{IntegerProperties: integers}
 }
 
 type creakingState interface {

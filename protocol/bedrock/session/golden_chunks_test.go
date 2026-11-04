@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -43,9 +43,9 @@ func TestGoldenChunks(t *testing.T) {
 func (s *scenario) subChunkRequests() []proto.Packet {
 	var out []proto.Packet
 	for _, pos := range s.chunks {
-		out = append(out, &v2193.SubChunkRequestPacket{
-			Position: v2193.SubChunkPos{pos[0], -4, pos[1]},
-			Offsets:  []v2193.SubChunkOffset{{0, 0, 0}, {0, 1, 0}},
+		out = append(out, &mc.SubChunkRequestPacket{
+			Position: mc.SubChunkPos{pos[0], -4, pos[1]},
+			Offsets:  []mc.SubChunkOffset{{0, 0, 0}, {0, 1, 0}},
 		})
 	}
 	s.chunks = nil

@@ -5,7 +5,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -40,19 +40,19 @@ const (
 // and the villager gone under the open menu. The price of bread falls as
 // the player trades: it is paid by the scan of the inventory as priced.
 func (s *scenario) merchantRequestsScenario() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	inputA := func() v2193.StackRequestSlotInfo {
-		return s.slot(v2193.ContainerTradeTwoIngredientOne, uiTradeInput)
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	inputA := func() mc.StackRequestSlotInfo {
+		return s.slot(mc.ContainerTradeTwoIngredientOne, uiTradeInput)
 	}
-	inputB := func() v2193.StackRequestSlotInfo {
-		return s.slot(v2193.ContainerTradeTwoIngredientTwo, uiTradeInput+1)
+	inputB := func() mc.StackRequestSlotInfo {
+		return s.slot(mc.ContainerTradeTwoIngredientTwo, uiTradeInput+1)
 	}
 	trade := func(heading string, offer, times, count, to int, accept bool) {
 		s.t.Helper()
-		actions := []v2193.StackRequestAction{
-			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: uint32(offer + 1), NumberOfCrafts: uint8(times)},
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: inputA()},
-			&v2193.PlaceStackRequestAction{Count: uint8(count), Source: s.created(), Destination: s.slot(inv, to)},
+		actions := []mc.StackRequestAction{
+			&mc.CraftRecipeStackRequestAction{RecipeNetworkID: uint32(offer + 1), NumberOfCrafts: uint8(times)},
+			&mc.ConsumeStackRequestAction{Count: 1, Source: inputA()},
+			&mc.PlaceStackRequestAction{Count: uint8(count), Source: s.created(), Destination: s.slot(inv, to)},
 		}
 		if accept {
 			s.request(heading, nil, actions...)
@@ -60,12 +60,12 @@ func (s *scenario) merchantRequestsScenario() {
 			s.refuse(heading, actions...)
 		}
 	}
-	preview := func(offer int) v2193.StackRequestSlotInfo {
-		return v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeResultPreview}, Slot: uint8(offer)}
+	preview := func(offer int) mc.StackRequestSlotInfo {
+		return mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: mc.ContainerTradeResultPreview}, Slot: uint8(offer)}
 	}
-	take := func(heading string, offer, count int, to v2193.StackRequestSlotInfo, accept bool) {
+	take := func(heading string, offer, count int, to mc.StackRequestSlotInfo, accept bool) {
 		s.t.Helper()
-		action := &v2193.TakeStackRequestAction{Count: uint8(count), Source: preview(offer), Destination: to}
+		action := &mc.TakeStackRequestAction{Count: uint8(count), Source: preview(offer), Destination: to}
 		if accept {
 			s.request(heading, nil, action)
 		} else {
@@ -120,9 +120,9 @@ func (s *scenario) merchantRequestsScenario() {
 		tx.AddEntity(h)
 	})
 	openTrades := func(heading string) {
-		s.client(heading, &v2193.InventoryTransactionPacket{TransactionData: &v2193.UseItemOnEntityTransactionData{
+		s.client(heading, &mc.InventoryTransactionPacket{TransactionData: &mc.UseItemOnEntityTransactionData{
 			TargetEntityRuntimeID: s.runtimeID(villager),
-			ActionType:            v2193.UseItemOnEntityActionInteract,
+			ActionType:            mc.UseItemOnEntityActionInteract,
 			HotBarSlot:            emptyHand,
 			Position:              mgl32.Vec3{0.5, -58.38, 0.5},
 			ClickedPosition:       mgl32.Vec3{0, 1, 0},
@@ -132,7 +132,7 @@ func (s *scenario) merchantRequestsScenario() {
 
 	// The trade screen: the inputs put in pay.
 	s.request("nine emeralds put in", nil,
-		&v2193.PlaceStackRequestAction{Count: 9, Source: s.slot(inv, 0), Destination: inputA()})
+		&mc.PlaceStackRequestAction{Count: 9, Source: s.slot(inv, 0), Destination: inputA()})
 	trade("bread bought for two emeralds, its demand", offerBread, 1, 6, 10, true)
 	trade("bread bought twice at once", offerBread, 2, 12, 11, true)
 	trade("refused: an offer out of range", 9, 1, 1, 12, false)
@@ -140,16 +140,16 @@ func (s *scenario) merchantRequestsScenario() {
 	trade("refused: the used-up offer", offerUsedUp, 1, 1, 12, false)
 	trade("refused: a sword without its stick", offerSword, 1, 1, 12, false)
 	s.request("a stick put in", nil,
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 1), Destination: inputB()})
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 1), Destination: inputB()})
 	trade("refused: two swords, which do not stack", offerSword, 2, 1, 12, false)
 	trade("a sword bought for an emerald and a stick", offerSword, 1, 1, 12, true)
 	// One of the two emeralds left taken out first: one does not pay.
 	s.refuse("refused: an emerald taken out, then bread",
-		&v2193.TakeStackRequestAction{Count: 1, Source: inputA(), Destination: s.slot(inv, 0)},
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: offerBread + 1, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.again(v2193.ContainerTradeTwoIngredientOne, uiTradeInput)})
+		&mc.TakeStackRequestAction{Count: 1, Source: inputA(), Destination: s.slot(inv, 0)},
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: offerBread + 1, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.again(mc.ContainerTradeTwoIngredientOne, uiTradeInput)})
 	s.request("two emeralds more put in", nil,
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: inputA()})
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: inputA()})
 	// The first of the two trades uses the offer up: the second fails, and
 	// the use of the first stays.
 	trade("refused: two cookies of the last use", offerLastUse, 2, 2, 13, false)
@@ -167,15 +167,15 @@ func (s *scenario) merchantRequestsScenario() {
 	// The preview: the inventory pays.
 	take("bread taken from the preview into an empty slot", offerBread, 6, s.slot(inv, 15), true)
 	take("bread taken from the preview onto bread", offerBread, 6, s.slot(inv, 15), true)
-	s.refuseWith("refused: bread taken from the preview into the off hand", v2193.ItemStackResponseStatusFailedToValidateDstSlot,
-		&v2193.TakeStackRequestAction{Count: 6, Source: preview(offerBread), Destination: s.slot(v2193.ContainerOffhand, 1)})
+	s.refuseWith("refused: bread taken from the preview into the off hand", mc.ItemStackResponseStatusFailedToValidateDstSlot,
+		&mc.TakeStackRequestAction{Count: 6, Source: preview(offerBread), Destination: s.slot(mc.ContainerOffhand, 1)})
 	take("refused: bread of the wrong count", offerBread, 5, s.slot(inv, 16), false)
 	take("refused: the used-up offer from the preview", offerUsedUp, 1, s.slot(inv, 16), false)
 	take("refused: an offer out of range from the preview", 9, 1, s.slot(inv, 16), false)
 	take("refused: bread onto apples", offerBread, 6, s.slot(inv, 3), false)
 	take("refused: bread onto 60 bread", offerBread, 6, s.slot(inv, 2), false)
 	take("refused: bread into a slot out of range", offerBread, 6, s.slot(inv, 40), false)
-	take("refused: bread into no container", offerBread, 6, s.slot(v2193.ContainerAnvilInput, 1), false)
+	take("refused: bread into no container", offerBread, 6, s.slot(mc.ContainerAnvilInput, 1), false)
 	// Bread paid with the emerald of slot 0 and that of slot 4.
 	s.step("emeralds taken but one", func(_ *world.Tx, p *player.Player) {
 		_ = p.Inventory().SetItem(0, emeralds(1))
@@ -190,8 +190,8 @@ func (s *scenario) merchantRequestsScenario() {
 	take("refused: a sword with no emerald left", offerSword, 1, s.slot(inv, 18), false)
 	// The apples put away first: the refusal puts them back.
 	s.refuse("refused: the apples moved, then a sword with no emerald",
-		&v2193.PlaceStackRequestAction{Count: 4, Source: s.slot(inv, 3), Destination: s.slot(inv, 19)},
-		&v2193.TakeStackRequestAction{Count: 1, Source: preview(offerSword), Destination: s.slot(inv, 18)})
+		&mc.PlaceStackRequestAction{Count: 4, Source: s.slot(inv, 3), Destination: s.slot(inv, 19)},
+		&mc.TakeStackRequestAction{Count: 1, Source: preview(offerSword), Destination: s.slot(inv, 18)})
 	s.step("a locked emerald given", func(_ *world.Tx, p *player.Player) {
 		_ = p.Inventory().SetItem(5, emeralds(2).WithLockMode(item.LockInSlot))
 	})
@@ -202,13 +202,13 @@ func (s *scenario) merchantRequestsScenario() {
 
 	// The villager gone under the open menu.
 	s.request("emeralds put in again", nil,
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 5), Destination: inputA()})
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 5), Destination: inputA()})
 	// The trade is made at the craft and its use counted, as for any
 	// refusal after it; the refusal gives the emeralds back.
-	s.refuseWith("refused: bread bought into the off hand", v2193.ItemStackResponseStatusFailedToValidateDstSlot,
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: offerBread + 1, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: inputA()},
-		&v2193.PlaceStackRequestAction{Count: 6, Source: s.created(), Destination: s.slot(v2193.ContainerOffhand, 1)})
+	s.refuseWith("refused: bread bought into the off hand", mc.ItemStackResponseStatusFailedToValidateDstSlot,
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: offerBread + 1, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: inputA()},
+		&mc.PlaceStackRequestAction{Count: 6, Source: s.created(), Destination: s.slot(mc.ContainerOffhand, 1)})
 	s.step("the villager taken away", func(tx *world.Tx, _ *player.Player) {
 		if e, ok := villager.Entity(tx); ok {
 			tx.RemoveEntity(e)

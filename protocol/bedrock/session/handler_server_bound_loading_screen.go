@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // ServerBoundLoadingScreenHandler handles loading screen updates from the clients. It is used to ensure that
@@ -18,7 +18,7 @@ type ServerBoundLoadingScreenHandler struct {
 
 // Handle ...
 func (h *ServerBoundLoadingScreenHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Controllable) error {
-	pk := p.(*v2193.ServerBoundLoadingScreenPacket)
+	pk := p.(*mc.ServerBoundLoadingScreenPacket)
 	v, ok := pk.LoadingScreenID.Value()
 	expected := h.expectedID.Load()
 
@@ -31,7 +31,7 @@ func (h *ServerBoundLoadingScreenHandler) Handle(p proto.Packet, s *Session, _ *
 		return nil
 	case v != expected:
 		return fmt.Errorf("expected loading screen ID %d, got %d", expected, v)
-	case pk.Type == v2193.LoadingScreenTypeEnd:
+	case pk.Type == mc.LoadingScreenTypeEnd:
 		s.changingDimension.Store(false)
 		h.expectedID.Store(0)
 	}

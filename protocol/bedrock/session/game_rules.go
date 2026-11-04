@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // clientGameRules maps stored gamerules onto the Bedrock gamerule names the
@@ -39,11 +39,11 @@ var clientGameRules = map[string]string{
 
 // ClientGameRules returns the Bedrock client view of the world's gamerules,
 // used in the StartGame packet.
-func ClientGameRules(w *world.World) []v2193.GameRule {
-	rules := make([]v2193.GameRule, 0, len(clientGameRules))
+func ClientGameRules(w *world.World) []mc.GameRule {
+	rules := make([]mc.GameRule, 0, len(clientGameRules))
 	for name, client := range clientGameRules {
 		if v, ok := w.GameRule(name); ok {
-			rules = append(rules, v2193.GameRule{Name: client, Value: clientGameRuleValue(v)})
+			rules = append(rules, mc.GameRule{Name: client, Value: clientGameRuleValue(v)})
 		}
 	}
 	return rules
@@ -53,7 +53,7 @@ func ClientGameRules(w *world.World) []v2193.GameRule {
 // equivalent.
 func (s *Session) ViewGameRule(name string, value any) {
 	if client, ok := clientGameRules[name]; ok {
-		s.sendGameRules([]v2193.GameRule{{Name: client, Value: clientGameRuleValue(value)}})
+		s.sendGameRules([]mc.GameRule{{Name: client, Value: clientGameRuleValue(value)}})
 	}
 }
 

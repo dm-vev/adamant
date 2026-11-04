@@ -9,7 +9,7 @@ import (
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	nettext "github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/go-gl/mathgl/mgl64"
 	"golang.org/x/text/language"
@@ -22,10 +22,10 @@ func (s *Session) SendCommandOutput(o client.CommandOutput) {
 	if s == Nop {
 		return
 	}
-	messages := make([]v2193.CommandOutputMessage, 0, len(o.Messages))
+	messages := make([]mc.CommandOutputMessage, 0, len(o.Messages))
 	successes := uint32(0)
 	for _, m := range o.Messages {
-		om := v2193.CommandOutputMessage{Success: m.Success}
+		om := mc.CommandOutputMessage{Success: m.Success}
 		om.Message, om.Parameters, _ = bedrocktext.Message(m.Text)
 		if m.Success {
 			successes++
@@ -33,26 +33,26 @@ func (s *Session) SendCommandOutput(o client.CommandOutput) {
 		messages = append(messages, om)
 	}
 
-	s.writePacket(&v2193.CommandOutputPacket{
+	s.writePacket(&mc.CommandOutputPacket{
 		CommandOrigin:  s.commandOriginSnapshot(),
-		OutputType:     v2193.CommandOutputTypeAllOutput,
+		OutputType:     mc.CommandOutputTypeAllOutput,
 		SuccessCount:   successes,
 		OutputMessages: messages,
 	})
 }
 
 // setCommandOrigin records the latest command origin so command output can be correlated with the request.
-func (s *Session) setCommandOrigin(origin v2193.CommandOrigin) {
+func (s *Session) setCommandOrigin(origin mc.CommandOrigin) {
 	copied := origin
 	s.commandOrigin.Store(&copied)
 }
 
 // commandOriginSnapshot returns the most recently stored command origin.
-func (s *Session) commandOriginSnapshot() v2193.CommandOrigin {
+func (s *Session) commandOriginSnapshot() mc.CommandOrigin {
 	if origin := s.commandOrigin.Load(); origin != nil {
 		return *origin
 	}
-	return v2193.CommandOrigin{}
+	return mc.CommandOrigin{}
 }
 
 // BuildAvailableCommands builds an AvailableCommands packet and the runnable command map for the Source
@@ -62,10 +62,10 @@ func BuildAvailableCommands(
 	commands map[string]cmd.Command,
 	src cmd.Source,
 	softEnums map[string]struct{},
-) (*v2193.AvailableCommandsPacket, map[string]map[int]cmd.Runnable) {
+) (*mc.AvailableCommandsPacket, map[string]map[int]cmd.Runnable) {
 	m := make(map[string]map[int]cmd.Runnable, len(commands))
 
-	pk := &v2193.AvailableCommandsPacket{}
+	pk := &mc.AvailableCommandsPacket{}
 
 	var enums []commandEnum
 	enumIndices := map[string]uint32{}
@@ -91,7 +91,7 @@ func BuildAvailableCommands(
 		}
 
 		params := c.Params(src)
-		overloads := make([]v2193.CommandOverload, len(params))
+		overloads := make([]mc.CommandOverload, len(params))
 
 		aliasesIndex := uint32(math.MaxUint32)
 		if len(c.Aliases()) > 0 {
@@ -116,9 +116,9 @@ func BuildAvailableCommands(
 						suffixIndices[suffix] = index
 						pk.Suffixes = append(pk.Suffixes, suffix)
 					}
-					t = v2193.CommandArgSuffixed | index
+					t = mc.CommandArgSuffixed | index
 				} else {
-					t |= v2193.CommandArgValid
+					t |= mc.CommandArgValid
 					if len(enum.Options) > 0 || enum.Type != "" {
 						dynamic := enum.Dynamic
 						if !dynamic {
@@ -133,7 +133,7 @@ func BuildAvailableCommands(
 								enumIndices[enum.Type] = index
 								enums = append(enums, enum)
 							}
-							t |= v2193.CommandArgEnum | index
+							t |= mc.CommandArgEnum | index
 						} else {
 							index, ok := dynamicEnumIndices[enum.Type]
 							if !ok {
@@ -141,11 +141,11 @@ func BuildAvailableCommands(
 								dynamicEnumIndices[enum.Type] = index
 								dynamicEnums = append(dynamicEnums, enum)
 							}
-							t |= v2193.CommandArgSoftEnum | index
+							t |= mc.CommandArgSoftEnum | index
 						}
 					}
 				}
-				overloads[i].Parameters = append(overloads[i].Parameters, v2193.CommandParameter{
+				overloads[i].Parameters = append(overloads[i].Parameters, mc.CommandParameter{
 					Name:     paramInfo.Name,
 					Type:     t,
 					Optional: paramInfo.Optional,
@@ -153,26 +153,26 @@ func BuildAvailableCommands(
 				})
 			}
 		}
-		pk.Commands = append(pk.Commands, v2193.Command{
+		pk.Commands = append(pk.Commands, mc.Command{
 			Name:            c.Name(),
 			Description:     commandDescription(c, src),
 			AliasesOffset:   aliasesIndex,
-			PermissionLevel: v2193.CommandPermissionLevelAny,
+			PermissionLevel: mc.CommandPermissionLevelAny,
 			Overloads:       overloads,
 		})
 	}
 
-	pk.DynamicEnums = make([]v2193.DynamicEnum, 0, len(dynamicEnums))
+	pk.DynamicEnums = make([]mc.DynamicEnum, 0, len(dynamicEnums))
 	for _, e := range dynamicEnums {
-		pk.DynamicEnums = append(pk.DynamicEnums, v2193.DynamicEnum{Type: e.Type, Values: e.Options})
+		pk.DynamicEnums = append(pk.DynamicEnums, mc.DynamicEnum{Type: e.Type, Values: e.Options})
 	}
 
 	enumValueIndices := make(map[string]uint32, len(enums)*3)
 	pk.EnumValues = make([]string, 0, len(enumValueIndices))
 
-	pk.Enums = make([]v2193.CommandEnum, 0, len(enums))
+	pk.Enums = make([]mc.CommandEnum, 0, len(enums))
 	for enumIndex, enum := range enums {
-		protoEnum := v2193.CommandEnum{Type: enum.Type}
+		protoEnum := mc.CommandEnum{Type: enum.Type}
 		for _, opt := range enum.Options {
 			index, ok := enumValueIndices[opt]
 			if !ok {
@@ -183,7 +183,7 @@ func BuildAvailableCommands(
 			protoEnum.ValueIndices = append(protoEnum.ValueIndices, index)
 			if enum.Constraints != nil {
 				if constraints := enumConstraints(enum.Constraints(opt)); len(constraints) > 0 {
-					pk.Constraints = append(pk.Constraints, v2193.CommandEnumConstraint{
+					pk.Constraints = append(pk.Constraints, mc.CommandEnumConstraint{
 						EnumValueIndex: index,
 						EnumIndex:      uint32(enumIndex),
 						Constraints:    constraints,
@@ -239,22 +239,22 @@ type commandEnum struct {
 func valueToParamType(i cmd.ParamInfo, source cmd.Source) (t uint32, enum commandEnum) {
 	switch i.Value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		return v2193.CommandArgTypeInt, enum
+		return mc.CommandArgTypeInt, enum
 	case float32, float64:
-		return v2193.CommandArgTypeFloat, enum
+		return mc.CommandArgTypeFloat, enum
 	case string:
-		return v2193.CommandArgTypeString, enum
+		return mc.CommandArgTypeString, enum
 	case cmd.Varargs:
-		return v2193.CommandArgTypeRawText, enum
+		return mc.CommandArgTypeRawText, enum
 	case cmd.Target, []cmd.Target:
-		return v2193.CommandArgTypeTarget, enum
+		return mc.CommandArgTypeTarget, enum
 	case bool:
 		return 0, commandEnum{
 			Type:    "Boolean",
 			Options: []string{"true", "false"},
 		}
 	case mgl64.Vec3:
-		return v2193.CommandArgTypePosition, enum
+		return mc.CommandArgTypePosition, enum
 	case cmd.SubCommand:
 		return 0, commandEnum{
 			Type:    "SubCommand" + i.Name,
@@ -274,7 +274,7 @@ func valueToParamType(i cmd.ParamInfo, source cmd.Source) (t uint32, enum comman
 		}
 		return 0, ce
 	}
-	return v2193.CommandArgTypeRValue, enum
+	return mc.CommandArgTypeRValue, enum
 }
 
 // resendCommands resends all commands that a Session has access to if the map of runnable commands passed does not
@@ -366,7 +366,7 @@ func (s *Session) resendEnums(
 		}
 
 		if _, dynamic := softEnums[name]; dynamic {
-			s.writePacket(&v2193.UpdateSoftEnumPacket{EnumType: name, Options: values, ActionType: v2193.SoftEnumActionSet})
+			s.writePacket(&mc.UpdateSoftEnumPacket{EnumType: name, Options: values, ActionType: mc.SoftEnumActionSet})
 		} else {
 			softEnums[name] = struct{}{}
 			r = s.sendAvailableCommands(c, softEnums)

@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/blockinternal"
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/iteminternal"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // startContent is the content of the game the client is defined in
@@ -16,10 +16,10 @@ import (
 // custom items and the custom dimensions, made into their Bedrock entries
 // of a protocol once. A nil startContent holds no entries.
 type startContent struct {
-	blocks       []v2193.BlockEntry
+	blocks       []mc.BlockEntry
 	vanillaItems map[string]bedrockdata.ItemEntry
-	customItems  []v2193.ItemEntry
-	dimensions   []v2193.DimensionDefinition
+	customItems  []mc.ItemEntry
+	dimensions   []mc.DimensionDefinition
 }
 
 // newStartContent makes the entries of the content of the game, as the
@@ -37,7 +37,7 @@ func newStartContent(w *wireTables, items []world.CustomItem, dims []world.Dimen
 }
 
 // Blocks returns the block entries of StartGame.
-func (c *startContent) Blocks() []v2193.BlockEntry {
+func (c *startContent) Blocks() []mc.BlockEntry {
 	if c == nil {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (c *startContent) Blocks() []v2193.BlockEntry {
 }
 
 // Dimensions returns the dimension definitions of StartGame.
-func (c *startContent) Dimensions() []v2193.DimensionDefinition {
+func (c *startContent) Dimensions() []mc.DimensionDefinition {
 	if c == nil {
 		return nil
 	}
@@ -54,11 +54,11 @@ func (c *startContent) Dimensions() []v2193.DimensionDefinition {
 
 // Items returns the item entries of StartGame: the vanilla items, in no
 // order, then the custom items. It makes a new slice on every call.
-func (c *startContent) Items() []v2193.ItemEntry {
+func (c *startContent) Items() []mc.ItemEntry {
 	vanillaItems := c.vanilla()
-	entries := make([]v2193.ItemEntry, 0, len(vanillaItems))
+	entries := make([]mc.ItemEntry, 0, len(vanillaItems))
 	for name, e := range vanillaItems {
-		entries = append(entries, v2193.ItemEntry{
+		entries = append(entries, mc.ItemEntry{
 			Name:           name,
 			RuntimeID:      int16(e.RuntimeID),
 			ComponentBased: e.ComponentBased,
@@ -83,11 +83,11 @@ func (c *startContent) vanilla() map[string]bedrockdata.ItemEntry {
 
 // ItemRegistry returns the entries of the ItemRegistry written after
 // StartGame, the custom items, in a new slice.
-func (c *startContent) ItemRegistry() []v2193.ItemEntry {
+func (c *startContent) ItemRegistry() []mc.ItemEntry {
 	if c == nil {
-		return []v2193.ItemEntry{}
+		return []mc.ItemEntry{}
 	}
-	items := make([]v2193.ItemEntry, len(c.customItems))
+	items := make([]mc.ItemEntry, len(c.customItems))
 	copy(items, c.customItems)
 	return items
 }
@@ -95,16 +95,16 @@ func (c *startContent) ItemRegistry() []v2193.ItemEntry {
 // blockEntries returns the definitions of blocks the client gets at spawn:
 // the vanilla blocks the game defines by data, as BDS sends them, and the
 // custom blocks of br.
-func blockEntries(vanillaBlocks map[string]map[string]any, br world.BlockRegistry) []v2193.BlockEntry {
+func blockEntries(vanillaBlocks map[string]map[string]any, br world.BlockRegistry) []mc.BlockEntry {
 	custom := slices.Collect(maps.Values(br.CustomBlocks()))
-	entries := make([]v2193.BlockEntry, 0, len(vanillaBlocks)+len(custom))
+	entries := make([]mc.BlockEntry, 0, len(vanillaBlocks)+len(custom))
 
 	for _, name := range slices.Sorted(maps.Keys(vanillaBlocks)) {
-		entries = append(entries, v2193.BlockEntry{Name: name, Properties: vanillaBlocks[name]})
+		entries = append(entries, mc.BlockEntry{Name: name, Properties: vanillaBlocks[name]})
 	}
 	for i, b := range custom {
 		name, _ := b.EncodeBlock()
-		entries = append(entries, v2193.BlockEntry{
+		entries = append(entries, mc.BlockEntry{
 			Name:       name,
 			Properties: blockinternal.Components(name, b, 10000+int32(i)),
 		})
@@ -114,7 +114,7 @@ func blockEntries(vanillaBlocks map[string]map[string]any, br world.BlockRegistr
 
 // customItemEntries returns the entries of the custom items passed that
 // are no block items, and of the block items of the custom blocks of br.
-func customItemEntries(w *wireTables, custom []world.CustomItem) []v2193.ItemEntry {
+func customItemEntries(w *wireTables, custom []world.CustomItem) []mc.ItemEntry {
 	br := w.br
 	items := make([]world.CustomItem, 0, len(custom)+len(br.CustomBlocks()))
 	for _, it := range custom {
@@ -128,7 +128,7 @@ func customItemEntries(w *wireTables, custom []world.CustomItem) []v2193.ItemEnt
 		}
 	}
 
-	entries := make([]v2193.ItemEntry, 0, len(items))
+	entries := make([]mc.ItemEntry, 0, len(items))
 
 	for _, it := range items {
 		name, _ := it.EncodeItem()
@@ -137,11 +137,11 @@ func customItemEntries(w *wireTables, custom []world.CustomItem) []v2193.ItemEnt
 			continue
 		}
 		_, isCustomBlock := it.(world.CustomBlock)
-		entryVersion := v2193.ItemEntryVersionDataDriven
+		entryVersion := mc.ItemEntryVersionDataDriven
 		if isCustomBlock {
-			entryVersion = v2193.ItemEntryVersionNone
+			entryVersion = mc.ItemEntryVersionNone
 		}
-		entries = append(entries, v2193.ItemEntry{
+		entries = append(entries, mc.ItemEntry{
 			Name:           name,
 			ComponentBased: !isCustomBlock,
 			RuntimeID:      int16(rid),
@@ -154,15 +154,15 @@ func customItemEntries(w *wireTables, custom []world.CustomItem) []v2193.ItemEnt
 
 // dimensionDefinitions returns the definitions of the custom dimensions
 // passed.
-func dimensionDefinitions(dimensions []world.DimensionRegistration) []v2193.DimensionDefinition {
-	defs := make([]v2193.DimensionDefinition, 0, len(dimensions))
+func dimensionDefinitions(dimensions []world.DimensionRegistration) []mc.DimensionDefinition {
+	defs := make([]mc.DimensionDefinition, 0, len(dimensions))
 	for _, registration := range dimensions {
 		r := registration.Dimension.Range()
-		defs = append(defs, v2193.DimensionDefinition{
+		defs = append(defs, mc.DimensionDefinition{
 			Name:          registration.Name,
 			MinimumY:      int32(r.Min()),
 			HeightRange:   int32(r.Height() + 1),
-			Generator:     v2193.GeneratorVoid,
+			Generator:     mc.GeneratorVoid,
 			DimensionType: int32(registration.ID),
 		})
 	}

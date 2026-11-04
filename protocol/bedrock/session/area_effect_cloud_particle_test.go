@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestAreaEffectCloudParticleMetadata checks the particle the actor data of
@@ -21,9 +21,9 @@ func TestAreaEffectCloudParticleMetadata(t *testing.T) {
 		{entity.CloudParticleDragonBreath, int32(47)},
 		{entity.CloudParticle(68), int32(68)},
 	} {
-		m := v2193.NewMetadata()
+		m := mc.NewMetadata()
 		s.addSpecificMetadata(entity.AreaEffectCloudBehaviourConfig{Particle: c.particle}.New(), m)
-		got, ok := m[v2193.EntityDataKeyDataParticle]
+		got, ok := m[mc.EntityDataKeyDataParticle]
 		if c.want == nil {
 			if ok {
 				t.Errorf("particle %d: actor data names particle %v, want none", c.particle, got)

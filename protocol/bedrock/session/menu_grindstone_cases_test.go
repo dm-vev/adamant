@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // grindstonePos is where the cases of the grindstone place it.
@@ -17,11 +17,11 @@ var grindstonePos = cube.Pos{0, -60, 2}
 
 // grind returns the actions of a request that takes the result of the
 // grindstone and puts it in a slot of the inventory.
-func (s *scenario) grind(to int) []v2193.StackRequestAction {
-	return []v2193.StackRequestAction{
-		&v2193.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerGrindstoneInput, uiGrindstoneFirst)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, to)},
+func (s *scenario) grind(to int) []mc.StackRequestAction {
+	return []mc.StackRequestAction{
+		&mc.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerGrindstoneInput, uiGrindstoneFirst)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, to)},
 	}
 }
 
@@ -29,13 +29,13 @@ func (s *scenario) grind(to int) []v2193.StackRequestAction {
 // grindstone, either left out if its slot is -1.
 func (s *scenario) grindInputs(heading string, first, second int) {
 	s.t.Helper()
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	var actions []v2193.StackRequestAction
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	var actions []mc.StackRequestAction
 	if first >= 0 {
-		actions = append(actions, &v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, first), Destination: s.slot(v2193.ContainerGrindstoneInput, uiGrindstoneFirst)})
+		actions = append(actions, &mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, first), Destination: s.slot(mc.ContainerGrindstoneInput, uiGrindstoneFirst)})
 	}
 	if second >= 0 {
-		actions = append(actions, &v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, second), Destination: s.slot(v2193.ContainerGrindstoneAdditional, uiGrindstoneSecond)})
+		actions = append(actions, &mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, second), Destination: s.slot(mc.ContainerGrindstoneAdditional, uiGrindstoneSecond)})
 	}
 	s.request(heading, nil, actions...)
 }
@@ -44,13 +44,13 @@ func (s *scenario) grindInputs(heading string, first, second int) {
 // of the inventory, either left out if its slot is -1.
 func (s *scenario) grindBack(heading string, first, second int) {
 	s.t.Helper()
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	var actions []v2193.StackRequestAction
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	var actions []mc.StackRequestAction
 	if first >= 0 {
-		actions = append(actions, &v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerGrindstoneInput, uiGrindstoneFirst), Destination: s.slot(inv, first)})
+		actions = append(actions, &mc.TakeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerGrindstoneInput, uiGrindstoneFirst), Destination: s.slot(inv, first)})
 	}
 	if second >= 0 {
-		actions = append(actions, &v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerGrindstoneAdditional, uiGrindstoneSecond), Destination: s.slot(inv, second)})
+		actions = append(actions, &mc.TakeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerGrindstoneAdditional, uiGrindstoneSecond), Destination: s.slot(inv, second)})
 	}
 	s.request(heading, nil, actions...)
 }
@@ -81,15 +81,15 @@ func stationOrbMotion() func(pk proto.Packet) (changed, omit bool) {
 	orbs := map[uint64]bool{}
 	return func(pk proto.Packet) (changed, omit bool) {
 		switch pk := pk.(type) {
-		case *v2193.AddActorPacket:
+		case *mc.AddActorPacket:
 			if pk.EntityType == "minecraft:xp_orb" {
 				orbs[pk.EntityRuntimeID] = true
 				pk.Velocity = [3]float32{}
 				return true, false
 			}
-		case *v2193.SetActorMotionPacket:
+		case *mc.SetActorMotionPacket:
 			return false, orbs[pk.EntityRuntimeID]
-		case *v2193.MoveActorDeltaPacket:
+		case *mc.MoveActorDeltaPacket:
 			return false, orbs[pk.EntityRuntimeID]
 		}
 		return false, false
@@ -146,8 +146,8 @@ func (s *scenario) grindstoneCases() {
 	s.request("the stick ground", nil, s.grind(20)...)
 	s.grindInputs("shears put in the second slot", -1, 7)
 	s.request("the shears ground from the second slot", nil,
-		&v2193.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, 21)})
+		&mc.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, 21)})
 	s.grindInputs("two damaged pickaxes put in it, the first of efficiency and vanishing", 0, 1)
 	s.request("the pickaxes merged", nil, s.grind(22)...)
 	s.takeOrbs("the orbs taken away", 1)
@@ -159,16 +159,16 @@ func (s *scenario) grindstoneCases() {
 	// both dropped their experience, and the first is undone.
 	s.grindInputs("the merged pickaxe put in it", 22, -1)
 	s.refuse("refused: a result ground twice in a request",
-		&v2193.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCombinedHotBarAndInventory, 9), Destination: s.again(v2193.ContainerGrindstoneInput, uiGrindstoneFirst)},
-		&v2193.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1})
+		&mc.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCombinedHotBarAndInventory, 9), Destination: s.again(mc.ContainerGrindstoneInput, uiGrindstoneFirst)},
+		&mc.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1})
 	s.takeOrbs("the orbs taken away", 0)
 
 	s.step("the grindstone broken under the open menu", func(tx *world.Tx, _ *player.Player) {
 		tx.SetBlock(grindstonePos, block.Stone{}, nil)
 	})
-	s.refuse("refused: the pickaxe ground with no grindstone", &v2193.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1})
+	s.refuse("refused: the pickaxe ground with no grindstone", &mc.CraftGrindstoneRecipeStackRequestAction{NumberOfCrafts: 1})
 	s.attempt("the pickaxe taken back",
-		&v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerGrindstoneInput, uiGrindstoneFirst), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, 22)})
+		&mc.TakeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerGrindstoneInput, uiGrindstoneFirst), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, 22)})
 	s.closeContainer("the client closes the grindstone")
 }

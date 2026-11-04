@@ -7,7 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -56,7 +56,7 @@ func TestCongestedClientGetsFreshState(t *testing.T) {
 		}
 		// The player of the session is shown its own moves still.
 		s.ViewEntityMove(movingEntity{h: s.ent}, &world.EntityMove{Pos: mgl64.Vec3{5, 64, 5}, Absolute: true})
-		if _, ok := (s.testPacket()).(*v2193.MoveActorAbsolutePacket); !ok {
+		if _, ok := (s.testPacket()).(*mc.MoveActorAbsolutePacket); !ok {
 			t.Fatal("a move of the player itself was kept back")
 		}
 
@@ -68,12 +68,12 @@ func TestCongestedClientGetsFreshState(t *testing.T) {
 		}
 		buffered.Store(0)
 		s.updateCongestion(tx)
-		abs, ok := (s.testPacket()).(*v2193.MoveActorAbsolutePacket)
+		abs, ok := (s.testPacket()).(*mc.MoveActorAbsolutePacket)
 		if !ok || abs.EntityRuntimeID != handle.RuntimeID() || abs.Position[0] != float32(mob.Position()[0]) {
 			t.Fatalf("shown %+v once caught up, want the entity where it is", abs)
 		}
 		for pk := s.testPacket(); pk != nil; pk = s.testPacket() {
-			if _, ok := pk.(*v2193.MoveActorAbsolutePacket); ok {
+			if _, ok := pk.(*mc.MoveActorAbsolutePacket); ok {
 				t.Fatal("the entity was shown twice")
 			}
 		}

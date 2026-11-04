@@ -6,7 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // uiLoomPattern is the UI slot of the pattern item of the loom.
@@ -19,19 +19,19 @@ const uiLoomPattern = 11
 // illager banner, no dye, too few banners, no crafts, locked inputs, and
 // the loom broken under the open menu.
 func (s *scenario) loomRequestsScenario() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	loomInput := func() v2193.StackRequestSlotInfo { return s.slot(v2193.ContainerLoomInput, uiLoomInput) }
-	loomDye := func() v2193.StackRequestSlotInfo { return s.slot(v2193.ContainerLoomDye, uiLoomDye) }
-	loomPattern := func() v2193.StackRequestSlotInfo {
-		return s.slot(v2193.ContainerLoomMaterial, uiLoomPattern)
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	loomInput := func() mc.StackRequestSlotInfo { return s.slot(mc.ContainerLoomInput, uiLoomInput) }
+	loomDye := func() mc.StackRequestSlotInfo { return s.slot(mc.ContainerLoomDye, uiLoomDye) }
+	loomPattern := func() mc.StackRequestSlotInfo {
+		return s.slot(mc.ContainerLoomMaterial, uiLoomPattern)
 	}
 	weave := func(heading, pattern string, times int, to int, accept bool) {
 		s.t.Helper()
-		actions := []v2193.StackRequestAction{
-			&v2193.CraftLoomRecipeStackRequestAction{Pattern: pattern, TimesCrafted: uint8(times)},
-			&v2193.ConsumeStackRequestAction{Count: uint8(max(times, 1)), Source: loomInput()},
-			&v2193.ConsumeStackRequestAction{Count: uint8(max(times, 1)), Source: loomDye()},
-			&v2193.PlaceStackRequestAction{Count: uint8(max(times, 1)), Source: s.created(), Destination: s.slot(inv, to)},
+		actions := []mc.StackRequestAction{
+			&mc.CraftLoomRecipeStackRequestAction{Pattern: pattern, TimesCrafted: uint8(times)},
+			&mc.ConsumeStackRequestAction{Count: uint8(max(times, 1)), Source: loomInput()},
+			&mc.ConsumeStackRequestAction{Count: uint8(max(times, 1)), Source: loomDye()},
+			&mc.PlaceStackRequestAction{Count: uint8(max(times, 1)), Source: s.created(), Destination: s.slot(inv, to)},
 		}
 		if accept {
 			s.request(heading, nil, actions...)
@@ -56,8 +56,8 @@ func (s *scenario) loomRequestsScenario() {
 	s.place("a loom is placed", loom, block.Loom{})
 	s.clickBlock("the client opens the loom", loom)
 	s.request("three banners and three dyes put in it", nil,
-		&v2193.PlaceStackRequestAction{Count: 3, Source: s.slot(inv, 0), Destination: loomInput()},
-		&v2193.PlaceStackRequestAction{Count: 3, Source: s.slot(inv, 1), Destination: loomDye()})
+		&mc.PlaceStackRequestAction{Count: 3, Source: s.slot(inv, 0), Destination: loomInput()},
+		&mc.PlaceStackRequestAction{Count: 3, Source: s.slot(inv, 1), Destination: loomDye()})
 
 	weave("a border woven", "bo", 1, 10, true)
 	weave("refused: an unknown pattern", "zzz", 1, 11, false)
@@ -66,32 +66,32 @@ func (s *scenario) loomRequestsScenario() {
 	weave("refused: three borders of two banners", "bo", 3, 11, false)
 
 	s.request("the creeper pattern item put in it", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: loomPattern()})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: loomPattern()})
 	weave("refused: a flower of the creeper pattern item", "flo", 1, 11, false)
 	weave("a creeper woven, the pattern item kept", "cre", 1, 11, true)
 
 	// The pattern item taken out first: the refusal puts it back.
 	s.refuse("refused: the pattern item taken out, then a creeper",
-		&v2193.TakeStackRequestAction{Count: 1, Source: loomPattern(), Destination: s.slot(inv, 2)},
-		&v2193.CraftLoomRecipeStackRequestAction{Pattern: "cre", TimesCrafted: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: loomInput()},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: loomDye()})
+		&mc.TakeStackRequestAction{Count: 1, Source: loomPattern(), Destination: s.slot(inv, 2)},
+		&mc.CraftLoomRecipeStackRequestAction{Pattern: "cre", TimesCrafted: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: loomInput()},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: loomDye()})
 	// The dye swapped for an apple first: no dye.
 	s.refuse("refused: the dye swapped for apples, then a border",
-		&v2193.SwapStackRequestAction{Source: loomDye(), Destination: s.slot(inv, 4)},
-		&v2193.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: loomInput()})
+		&mc.SwapStackRequestAction{Source: loomDye(), Destination: s.slot(inv, 4)},
+		&mc.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: loomInput()})
 	// The banner swapped for the illager banner first.
 	s.refuse("refused: the banner swapped for an illager banner, then a border",
-		&v2193.SwapStackRequestAction{Source: loomInput(), Destination: s.slot(inv, 3)},
-		&v2193.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: loomInput()})
+		&mc.SwapStackRequestAction{Source: loomInput(), Destination: s.slot(inv, 3)},
+		&mc.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: loomInput()})
 
 	s.request("two more banners and dyes put in it", nil,
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: loomInput()},
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 1), Destination: loomDye()})
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: loomInput()},
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 1), Destination: loomDye()})
 	s.request("the creeper pattern item taken out", nil,
-		&v2193.TakeStackRequestAction{Count: 1, Source: loomPattern(), Destination: s.slot(inv, 2)})
+		&mc.TakeStackRequestAction{Count: 1, Source: loomPattern(), Destination: s.slot(inv, 2)})
 	weave("two borders woven at once", "bo", 2, 12, true)
 
 	// Locked inputs, set as the server sets them.
@@ -117,22 +117,22 @@ func (s *scenario) loomRequestsScenario() {
 	// by its request.
 	first, second := s.nextRequest, s.nextRequest-2
 	s.nextRequest -= 4
-	s.client("a border woven and the banner moved, in one packet", &v2193.ItemStackRequestPacket{Requests: []v2193.ItemStackRequest{
-		{RequestID: first, Actions: []v2193.StackRequestAction{
-			&v2193.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: loomInput()},
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: loomDye()},
-			&v2193.PlaceStackRequestAction{Count: 1, Source: v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCreatedOutput}, Slot: uiCreatedOutput, StackNetworkID: first}, Destination: s.slot(inv, 13)},
+	s.client("a border woven and the banner moved, in one packet", &mc.ItemStackRequestPacket{Requests: []mc.ItemStackRequest{
+		{RequestID: first, Actions: []mc.StackRequestAction{
+			&mc.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
+			&mc.ConsumeStackRequestAction{Count: 1, Source: loomInput()},
+			&mc.ConsumeStackRequestAction{Count: 1, Source: loomDye()},
+			&mc.PlaceStackRequestAction{Count: 1, Source: mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: mc.ContainerCreatedOutput}, Slot: uiCreatedOutput, StackNetworkID: first}, Destination: s.slot(inv, 13)},
 		}},
-		{RequestID: second, Actions: []v2193.StackRequestAction{
-			&v2193.PlaceStackRequestAction{Count: 1, Source: v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: inv}, Slot: 13, StackNetworkID: first}, Destination: s.slot(inv, 14)},
+		{RequestID: second, Actions: []mc.StackRequestAction{
+			&mc.PlaceStackRequestAction{Count: 1, Source: mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: inv}, Slot: 13, StackNetworkID: first}, Destination: s.slot(inv, 14)},
 		}},
 	}})
 
 	// The loom broken under the open menu.
 	s.request("a banner and a dye put in it again", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: loomInput()},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: loomDye()})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: loomInput()},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: loomDye()})
 	s.place("the loom replaced by stone", loom, block.Stone{})
 	weave("refused: a border with no loom", "bo", 1, 15, false)
 	s.closeContainer("the client closes the loom")

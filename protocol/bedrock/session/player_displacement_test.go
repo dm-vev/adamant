@@ -14,7 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -63,7 +63,7 @@ func TestPlayerDisplacementRejectsStaleAuthInput(t *testing.T) {
 		p.Displace(mgl64.Vec3{0.2})
 		displaced := p.Position()
 
-		pk := &v2193.PlayerAuthInputPacket{Position: mgl32.Vec3{float32(origin[0]), float32(origin[1] + player.Type.NetworkOffset()), float32(origin[2])}}
+		pk := &mc.PlayerAuthInputPacket{Position: mgl32.Vec3{float32(origin[0]), float32(origin[1] + player.Type.NetworkOffset()), float32(origin[2])}}
 		if err := (session.PlayerAuthInputHandler{}).Handle(pk, sess, tx, p); err != nil {
 			t.Fatalf("handle stale auth input: %v", err)
 		}

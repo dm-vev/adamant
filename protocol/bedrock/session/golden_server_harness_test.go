@@ -24,7 +24,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -559,9 +559,9 @@ func (s *serverScenario) spawnSent(c *serverClient, others []*serverClient) {
 	chunks, resent := 0, 0
 	c.readUntil(func(pk proto.Packet) bool {
 		switch pk.(type) {
-		case *v2193.LevelChunkPacket:
+		case *mc.LevelChunkPacket:
 			chunks++
-		case *v2193.UpdateAbilitiesPacket:
+		case *mc.UpdateAbilitiesPacket:
 			resent++
 		}
 		return chunks >= serverChunks && resent >= 1
@@ -639,7 +639,7 @@ func (s *serverScenario) endStep(clients []*serverClient, resend bool) {
 		var resent []proto.Packet
 		if resend {
 			pks = slices.DeleteFunc(pks, func(pk proto.Packet) bool {
-				if _, ok := pk.(*v2193.UpdateAbilitiesPacket); ok {
+				if _, ok := pk.(*mc.UpdateAbilitiesPacket); ok {
 					resent = append(resent, pk)
 					return true
 				}
@@ -735,7 +735,7 @@ func (c *serverClient) readMarker() {
 	c.s.t.Helper()
 	marker := c.currentMarker()
 	c.readUntil(func(pk proto.Packet) bool {
-		text, ok := pk.(*v2193.TextPacket)
+		text, ok := pk.(*mc.TextPacket)
 		if ok && text.Message == marker {
 			c.pending = c.pending[:len(c.pending)-1]
 			return true
@@ -831,14 +831,14 @@ func (c *serverClient) write(pks []proto.Packet, ticked bool) {
 		back := decodeAs(c.s.t, pk.ID(), raw)
 		c.rec.trackStacks(back)
 		desc := c.rec.describe(back, raw, ">>")
-		if _, commands := pk.(*v2193.AvailableCommandsPacket); c.s.brief && len(raw) > maxHexBytes && !commands {
+		if _, commands := pk.(*mc.AvailableCommandsPacket); c.s.brief && len(raw) > maxHexBytes && !commands {
 			// The line of the packet and that of the SHA-256 of its
 			// encoding.
 			lines := strings.Split(strings.TrimSuffix(desc, "\n"), "\n")
 			desc = lines[0] + "\n" + lines[len(lines)-1] + "\n"
 		}
 		c.s.out.WriteString(desc)
-		if _, ok := pk.(*v2193.DisconnectPacket); ok {
+		if _, ok := pk.(*mc.DisconnectPacket); ok {
 			c.s.mu.Lock()
 			c.gone = true
 			c.s.mu.Unlock()
@@ -849,11 +849,11 @@ func (c *serverClient) write(pks []proto.Packet, ticked bool) {
 // standingWeather reports whether a packet is half of the weather the world
 // shows its viewers every twenty ticks while it neither rains nor thunders.
 func standingWeather(pk proto.Packet) bool {
-	ev, ok := pk.(*v2193.LevelEventPacket)
+	ev, ok := pk.(*mc.LevelEventPacket)
 	if !ok || ev.EventData != 0 || ev.Position != ([3]float32{}) {
 		return false
 	}
-	return ev.EventType == v2193.LevelEventStopRaining || ev.EventType == v2193.LevelEventStopThunderstorm
+	return ev.EventType == mc.LevelEventStopRaining || ev.EventType == mc.LevelEventStopThunderstorm
 }
 
 // close closes the server if the scenario did not.
@@ -878,7 +878,7 @@ func (s *serverScenario) snapshot() {
 // rendering.
 func briefGameData(data netconn.GameData) string {
 	items := slices.Clone(data.Items)
-	slices.SortFunc(items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(items, func(a, b mc.ItemEntry) int { return strings.Compare(a.Name, b.Name) })
 	summary := func(label string, v any, n int) string {
 		var b strings.Builder
 		writeValue(&b, "", "", reflect.ValueOf(v))

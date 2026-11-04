@@ -9,7 +9,7 @@ import (
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server/world/sound"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -38,7 +38,7 @@ func TestJavaSoundsPlayTheirBedrockDefinitions(t *testing.T) {
 	for len(got) < len(want)+1 {
 		select {
 		case pk := <-conn.packets:
-			if p, ok := pk.(*v2193.PlaySoundPacket); ok {
+			if p, ok := pk.(*mc.PlaySoundPacket); ok {
 				got = append(got, p.SoundName)
 			}
 		case <-timeout:

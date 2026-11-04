@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // bedrockShape is the collision box and scale BDS gives a vanilla actor.
@@ -22,26 +22,26 @@ type bedrockShapes [2]bedrockShape
 // writeActorShape writes the shape a Bedrock client draws a vanilla actor
 // with and the flags BDS sets on every actor of its type, in place of the
 // Java collision box and the generic flags.
-func writeActorShape(e world.Entity, id string, m v2193.Metadata) {
+func writeActorShape(e world.Entity, id string, m mc.Metadata) {
 	if flags, ok := bedrockActorFlags[id]; ok {
-		m[v2193.EntityDataKeyFlags], m[v2193.EntityDataKeyFlagsTwo] = int64(0), int64(0)
+		m[mc.EntityDataKeyFlags], m[mc.EntityDataKeyFlagsTwo] = int64(0), int64(0)
 		for _, f := range flags {
 			setActorFlag(m, f)
 		}
 	}
 	if shape, ok := actorShape(e, id); ok {
-		m[v2193.EntityDataKeyWidth], m[v2193.EntityDataKeyHeight] = shape.width, shape.height
-		m[v2193.EntityDataKeyScale] = shape.scale
+		m[mc.EntityDataKeyWidth], m[mc.EntityDataKeyHeight] = shape.width, shape.height
+		m[mc.EntityDataKeyScale] = shape.scale
 	}
 }
 
 // setActorFlag sets a flag in whichever of the two flag fields holds it.
-func setActorFlag(m v2193.Metadata, flag uint8) {
+func setActorFlag(m mc.Metadata, flag uint8) {
 	if flag < 64 {
-		m.SetFlag(v2193.EntityDataKeyFlags, flag)
+		m.SetFlag(mc.EntityDataKeyFlags, flag)
 		return
 	}
-	m.SetFlag(v2193.EntityDataKeyFlagsTwo, flag-64)
+	m.SetFlag(mc.EntityDataKeyFlagsTwo, flag-64)
 }
 
 func actorShape(e world.Entity, id string) (bedrockShape, bool) {
@@ -110,105 +110,105 @@ var bedrockVillagerTypes = map[string]int32{"plains": 0, "desert": 1, "jungle": 
 
 // writeActorAppearance writes the variants, colours and states Bedrock
 // clients draw vanilla mobs by, converted from the Java state Adamant keeps.
-func (s *Session) writeActorAppearance(e world.Entity, m v2193.Metadata) {
+func (s *Session) writeActorAppearance(e world.Entity, m mc.Metadata) {
 	switch e := e.(type) {
 	case *entity.Pig, *entity.Cow, *entity.Chicken:
 		// The climate variant property colours these.
-		m[v2193.EntityDataKeyVariant] = int32(0)
+		m[mc.EntityDataKeyVariant] = int32(0)
 	case *entity.Cat:
-		m[v2193.EntityDataKeyVariant] = e.BedrockVariant()
+		m[mc.EntityDataKeyVariant] = e.BedrockVariant()
 		writeTameMetadata(m, e.Tamed(), e.Sitting(), e.CollarColor())
 		if e.Lying() {
-			setActorFlag(m, v2193.EntityDataFlagLayingDown)
+			setActorFlag(m, mc.EntityDataFlagLayingDown)
 		}
 		if e.Crouching() {
-			setActorFlag(m, v2193.EntityDataFlagSneaking)
+			setActorFlag(m, mc.EntityDataFlagSneaking)
 		}
 	case *entity.PolarBear:
 		if e.Standing() {
-			setActorFlag(m, v2193.EntityDataFlagStanding)
+			setActorFlag(m, mc.EntityDataFlagStanding)
 		}
 	case *entity.Turtle:
 		if e.HasEgg() {
-			setActorFlag(m, v2193.EntityDataFlagPregnant)
+			setActorFlag(m, mc.EntityDataFlagPregnant)
 		}
 		if e.LayingEgg() {
-			setActorFlag(m, v2193.EntityDataFlagLayingEgg)
+			setActorFlag(m, mc.EntityDataFlagLayingEgg)
 		}
 	case *entity.Ocelot:
 		if e.Trusting() {
-			setActorFlag(m, v2193.EntityDataFlagTrusting)
+			setActorFlag(m, mc.EntityDataFlagTrusting)
 		}
 		if e.Crouching() {
-			setActorFlag(m, v2193.EntityDataFlagSneaking)
+			setActorFlag(m, mc.EntityDataFlagSneaking)
 		}
 	case *entity.Wolf:
-		m[v2193.EntityDataKeyVariant] = e.BedrockVariant()
+		m[mc.EntityDataKeyVariant] = e.BedrockVariant()
 		writeTameMetadata(m, e.Tamed(), e.Sitting(), e.CollarColor())
 		if e.Angry() {
-			setActorFlag(m, v2193.EntityDataFlagAngry)
+			setActorFlag(m, mc.EntityDataFlagAngry)
 		}
 		if e.Interested() {
-			setActorFlag(m, v2193.EntityDataFlagInterested)
+			setActorFlag(m, mc.EntityDataFlagInterested)
 		}
 	case *entity.Rabbit:
 		// Bedrock has no killer bunny.
 		if v := e.Variant(); v <= 5 {
-			m[v2193.EntityDataKeyVariant] = int32(v)
+			m[mc.EntityDataKeyVariant] = int32(v)
 		} else {
-			m[v2193.EntityDataKeyVariant] = int32(0)
+			m[mc.EntityDataKeyVariant] = int32(0)
 		}
 	case *entity.Fox:
-		m[v2193.EntityDataKeyVariant] = int32(e.Variant())
+		m[mc.EntityDataKeyVariant] = int32(e.Variant())
 		if e.Sitting() {
-			setActorFlag(m, v2193.EntityDataFlagSitting)
+			setActorFlag(m, mc.EntityDataFlagSitting)
 		}
 		if e.Sleeping() {
-			setActorFlag(m, v2193.EntityDataFlagSleeping)
+			setActorFlag(m, mc.EntityDataFlagSleeping)
 		}
 		if e.Crouching() {
-			setActorFlag(m, v2193.EntityDataFlagStalking)
+			setActorFlag(m, mc.EntityDataFlagStalking)
 		}
 		if e.Interested() {
-			setActorFlag(m, v2193.EntityDataFlagInterested)
+			setActorFlag(m, mc.EntityDataFlagInterested)
 		}
 	case *entity.Mooshroom:
-		m[v2193.EntityDataKeyVariant] = int32(e.Variant())
-		m[v2193.EntityDataKeyMarkVariant] = int32(-1)
+		m[mc.EntityDataKeyVariant] = int32(e.Variant())
+		m[mc.EntityDataKeyMarkVariant] = int32(-1)
 	case *entity.Panda:
-		m[v2193.EntityDataKeyVariant] = int32(e.Variant())
+		m[mc.EntityDataKeyVariant] = int32(e.Variant())
 		for flag, set := range map[uint8]bool{
-			v2193.EntityDataFlagSitting: e.Sitting(), v2193.EntityDataFlagRolling: e.Rolling(),
-			v2193.EntityDataFlagLayingDown: e.LyingOnBack(), v2193.EntityDataFlagSneezing: e.Sneezing(),
-			v2193.EntityDataFlagEating: e.Eating(), v2193.EntityDataFlagScared: e.Scared(),
+			mc.EntityDataFlagSitting: e.Sitting(), mc.EntityDataFlagRolling: e.Rolling(),
+			mc.EntityDataFlagLayingDown: e.LyingOnBack(), mc.EntityDataFlagSneezing: e.Sneezing(),
+			mc.EntityDataFlagEating: e.Eating(), mc.EntityDataFlagScared: e.Scared(),
 		} {
 			if set {
 				setActorFlag(m, flag)
 			}
 		}
 	case *entity.Axolotl:
-		m[v2193.EntityDataKeyVariant], _, _, _ = e.BedrockVariant()
+		m[mc.EntityDataKeyVariant], _, _, _ = e.BedrockVariant()
 	case *entity.TropicalFish:
 		variant, mark, color, color2 := e.BedrockVariant()
-		m[v2193.EntityDataKeyVariant], m[v2193.EntityDataKeyMarkVariant] = variant, mark
-		m[v2193.EntityDataKeyColorIndex], m[v2193.EntityDataKeyColorTwoIndex] = color, color2
+		m[mc.EntityDataKeyVariant], m[mc.EntityDataKeyMarkVariant] = variant, mark
+		m[mc.EntityDataKeyColorIndex], m[mc.EntityDataKeyColorTwoIndex] = color, color2
 	case *entity.Salmon:
 		// The scale sets the size of a salmon.
-		m[v2193.EntityDataKeyVariant] = int32(0)
+		m[mc.EntityDataKeyVariant] = int32(0)
 	case *entity.Slime:
-		m[v2193.EntityDataKeyVariant] = int32(e.Size())
+		m[mc.EntityDataKeyVariant] = int32(e.Size())
 	case *entity.MagmaCube:
-		m[v2193.EntityDataKeyVariant] = int32(e.Size())
+		m[mc.EntityDataKeyVariant] = int32(e.Size())
 	case *entity.SulfurCube:
-		m[v2193.EntityDataKeyVariant] = int32(e.Size())
+		m[mc.EntityDataKeyVariant] = int32(e.Size())
 	case *entity.Goat:
 		left, right := e.Horns()
-		m[v2193.EntityDataKeyGoatHornCount] = int32(boolByte(left) + boolByte(right))
+		m[mc.EntityDataKeyGoatHornCount] = int32(boolByte(left) + boolByte(right))
 		if e.Screaming() {
-			m[v2193.EntityDataKeyVariant] = int32(1)
+			m[mc.EntityDataKeyVariant] = int32(1)
 		}
 	case *entity.TraderLlama:
-		m[v2193.EntityDataKeyMarkVariant] = int32(1)
+		m[mc.EntityDataKeyMarkVariant] = int32(1)
 	case *entity.Piglin:
 		// Piglins with a crossbow are ranged units, the others melee units.
 		variant := int32(1)
@@ -217,70 +217,70 @@ func (s *Session) writeActorAppearance(e world.Entity, m v2193.Metadata) {
 				variant = 0
 			}
 		}
-		m[v2193.EntityDataKeyVariant] = variant
+		m[mc.EntityDataKeyVariant] = variant
 	case *entity.PiglinBrute:
-		m[v2193.EntityDataKeyVariant] = int32(1)
+		m[mc.EntityDataKeyVariant] = int32(1)
 	case *entity.WitherSkeleton:
-		m[v2193.EntityDataKeyVariant] = int32(1)
+		m[mc.EntityDataKeyVariant] = int32(1)
 	case *entity.Stray, *entity.Husk:
-		m[v2193.EntityDataKeyVariant] = int32(2)
+		m[mc.EntityDataKeyVariant] = int32(2)
 	case *entity.Bogged:
-		m[v2193.EntityDataKeyVariant] = int32(3)
+		m[mc.EntityDataKeyVariant] = int32(3)
 	case *entity.Parched:
-		m[v2193.EntityDataKeyVariant] = int32(4)
+		m[mc.EntityDataKeyVariant] = int32(4)
 	case *entity.Pillager:
-		m[v2193.EntityDataKeyVariant] = int32(boolByte(e.IsCaptain()))
+		m[mc.EntityDataKeyVariant] = int32(boolByte(e.IsCaptain()))
 	case *entity.Vindicator:
-		m[v2193.EntityDataKeyVariant] = int32(boolByte(e.IsCaptain()))
+		m[mc.EntityDataKeyVariant] = int32(boolByte(e.IsCaptain()))
 		// Bedrock vindicators are angry while they have a target, and only
 		// then raise their axe.
 		if e.Aggressive() {
-			setActorFlag(m, v2193.EntityDataFlagAngry)
+			setActorFlag(m, mc.EntityDataFlagAngry)
 		}
 	case *entity.Villager:
 		writeVillagerMetadata(m, e.Profession(), e.Variant())
-		m[v2193.EntityDataKeyTradeTier] = int32(max(e.MerchantLevel()-1, 0))
-		m[v2193.EntityDataKeySkinID] = int32(e.H().UUID()[15] % 6)
+		m[mc.EntityDataKeyTradeTier] = int32(max(e.MerchantLevel()-1, 0))
+		m[mc.EntityDataKeySkinID] = int32(e.H().UUID()[15] % 6)
 	case *entity.ZombieVillager:
 		profession, villagerType := e.VillagerData()
 		writeVillagerMetadata(m, profession, villagerType)
 	case *entity.ZombifiedPiglin:
 		if e.Angry() {
-			setActorFlag(m, v2193.EntityDataFlagAngry)
+			setActorFlag(m, mc.EntityDataFlagAngry)
 		}
 	case *entity.Bee:
 		if e.Angry() {
-			setActorFlag(m, v2193.EntityDataFlagAngry)
+			setActorFlag(m, mc.EntityDataFlagAngry)
 		}
 	case *entity.Enderman:
 		carried, ok := e.CarriedBlock()
 		if !ok {
 			carried = block.Air{}
 		}
-		m[v2193.EntityDataKeyCarryBlockRuntimeID] = int32(s.blockHash(carried))
+		m[mc.EntityDataKeyCarryBlockRuntimeID] = int32(s.blockHash(carried))
 		if e.Angry() {
-			setActorFlag(m, v2193.EntityDataFlagAngry)
+			setActorFlag(m, mc.EntityDataFlagAngry)
 		}
 	}
 }
 
 // writeTameMetadata writes the state of a cat or wolf that may be tamed. Only
 // a tamed one shows its collar.
-func writeTameMetadata(m v2193.Metadata, tamed, sitting bool, collar uint8) {
+func writeTameMetadata(m mc.Metadata, tamed, sitting bool, collar uint8) {
 	if tamed {
-		setActorFlag(m, v2193.EntityDataFlagTamed)
-		m[v2193.EntityDataKeyColorIndex] = collar
+		setActorFlag(m, mc.EntityDataFlagTamed)
+		m[mc.EntityDataKeyColorIndex] = collar
 	}
 	if sitting {
-		setActorFlag(m, v2193.EntityDataFlagSitting)
+		setActorFlag(m, mc.EntityDataFlagSitting)
 	}
 }
 
 // writeVillagerMetadata writes the profession and biome type of a villager or
 // zombie villager.
-func writeVillagerMetadata(m v2193.Metadata, profession, villagerType string) {
-	m[v2193.EntityDataKeyVariant] = bedrockProfessions[strings.TrimPrefix(profession, "minecraft:")]
-	m[v2193.EntityDataKeyMarkVariant] = bedrockVillagerTypes[strings.TrimPrefix(villagerType, "minecraft:")]
+func writeVillagerMetadata(m mc.Metadata, profession, villagerType string) {
+	m[mc.EntityDataKeyVariant] = bedrockProfessions[strings.TrimPrefix(profession, "minecraft:")]
+	m[mc.EntityDataKeyMarkVariant] = bedrockVillagerTypes[strings.TrimPrefix(villagerType, "minecraft:")]
 }
 
 var bedrockActorShapes = map[string]bedrockShapes{
@@ -379,109 +379,109 @@ var bedrockActorShapes = map[string]bedrockShapes{
 }
 
 var bedrockActorFlags = map[string][]uint8{
-	"minecraft:allay":              {v2193.EntityDataFlagFly, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:armadillo":          {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:axolotl":            {v2193.EntityDataFlagSwim, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:bat":                {v2193.EntityDataFlagFly, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:bee":                {v2193.EntityDataFlagFly, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:blaze":              {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:boat":               {v2193.EntityDataFlagStackable, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagCollidable},
-	"minecraft:bogged":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:breeze":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:camel":              {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:camel_husk":         {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:cat":                {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:cave_spider":        {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRenderWhenInvisible},
-	"minecraft:chest_boat":         {v2193.EntityDataFlagStackable, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagCollidable},
-	"minecraft:chest_minecart":     {v2193.EntityDataFlagStackable, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:chicken":            {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:cod":                {v2193.EntityDataFlagSwim, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:cow":                {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:creaking":           {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRenderWhenInvisible},
-	"minecraft:creeper":            {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:dolphin":            {v2193.EntityDataFlagClimb, v2193.EntityDataFlagSwim, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:donkey":             {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:drowned":            {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRotationLockedToVehicle},
-	"minecraft:elder_guardian":     {v2193.EntityDataFlagSwim, v2193.EntityDataFlagElder, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:enderman":           {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRenderWhenInvisible},
-	"minecraft:endermite":          {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:evocation_illager":  {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:fox":                {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:frog":               {v2193.EntityDataFlagSwim, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:ghast":              {v2193.EntityDataFlagFly, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:glow_squid":         {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:goat":               {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:guardian":           {v2193.EntityDataFlagSwim, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:happy_ghast":        {v2193.EntityDataFlagFly, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRenderWhenInvisible, v2193.EntityDataFlagBodyRotationAlwaysFollowsHead},
-	"minecraft:hoglin":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:hopper_minecart":    {v2193.EntityDataFlagStackable, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:horse":              {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:husk":               {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRotationLockedToVehicle},
-	"minecraft:iron_golem":         {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:llama":              {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:magma_cube":         {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:minecart":           {v2193.EntityDataFlagStackable, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:mooshroom":          {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:mule":               {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:nautilus":           {v2193.EntityDataFlagSwim, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:ocelot":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:panda":              {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:parched":            {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:parrot":             {v2193.EntityDataFlagFly, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:phantom":            {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRenderWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:pig":                {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:piglin":             {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagDoorOpener, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:piglin_brute":       {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagDoorOpener, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:pillager":           {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:polar_bear":         {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:pufferfish":         {v2193.EntityDataFlagSwim, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:rabbit":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:ravager":            {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:salmon":             {v2193.EntityDataFlagSwim, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:sheep":              {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:shulker":            {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRenderWhenInvisible, v2193.EntityDataFlagCollidable, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:silverfish":         {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:skeleton":           {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRotationLockedToVehicle},
-	"minecraft:skeleton_horse":     {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:slime":              {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:sniffer":            {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:snow_golem":         {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:spider":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRenderWhenInvisible},
-	"minecraft:squid":              {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:stray":              {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:strider":            {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:sulfur_cube":        {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRenderWhenInvisible},
-	"minecraft:tadpole":            {v2193.EntityDataFlagBaby, v2193.EntityDataFlagSwim, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:tnt_minecart":       {v2193.EntityDataFlagStackable, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:trader_llama":       {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:tropicalfish":       {v2193.EntityDataFlagSwim, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:turtle":             {v2193.EntityDataFlagSwim, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:vex":                {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:villager_v2":        {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagDoorOpener, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:vindicator":         {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:wandering_trader":   {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:warden":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:witch":              {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:wither_skeleton":    {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:wolf":               {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:zoglin":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:zombie":             {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible, v2193.EntityDataFlagRotationLockedToVehicle},
-	"minecraft:zombie_horse":       {v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:zombie_nautilus":    {v2193.EntityDataFlagSwim, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:zombie_pigman":      {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:zombie_villager_v2": {v2193.EntityDataFlagClimb, v2193.EntityDataFlagWalk, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:allay":              {mc.EntityDataFlagFly, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:armadillo":          {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:axolotl":            {mc.EntityDataFlagSwim, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:bat":                {mc.EntityDataFlagFly, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:bee":                {mc.EntityDataFlagFly, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:blaze":              {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:boat":               {mc.EntityDataFlagStackable, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagCollidable},
+	"minecraft:bogged":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:breeze":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:camel":              {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:camel_husk":         {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:cat":                {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:cave_spider":        {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRenderWhenInvisible},
+	"minecraft:chest_boat":         {mc.EntityDataFlagStackable, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagCollidable},
+	"minecraft:chest_minecart":     {mc.EntityDataFlagStackable, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:chicken":            {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:cod":                {mc.EntityDataFlagSwim, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:cow":                {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:creaking":           {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRenderWhenInvisible},
+	"minecraft:creeper":            {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:dolphin":            {mc.EntityDataFlagClimb, mc.EntityDataFlagSwim, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:donkey":             {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:drowned":            {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRotationLockedToVehicle},
+	"minecraft:elder_guardian":     {mc.EntityDataFlagSwim, mc.EntityDataFlagElder, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:enderman":           {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRenderWhenInvisible},
+	"minecraft:endermite":          {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:evocation_illager":  {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:fox":                {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:frog":               {mc.EntityDataFlagSwim, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:ghast":              {mc.EntityDataFlagFly, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:glow_squid":         {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:goat":               {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:guardian":           {mc.EntityDataFlagSwim, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:happy_ghast":        {mc.EntityDataFlagFly, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRenderWhenInvisible, mc.EntityDataFlagBodyRotationAlwaysFollowsHead},
+	"minecraft:hoglin":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:hopper_minecart":    {mc.EntityDataFlagStackable, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:horse":              {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:husk":               {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRotationLockedToVehicle},
+	"minecraft:iron_golem":         {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:llama":              {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:magma_cube":         {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:minecart":           {mc.EntityDataFlagStackable, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:mooshroom":          {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:mule":               {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:nautilus":           {mc.EntityDataFlagSwim, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:ocelot":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:panda":              {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:parched":            {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:parrot":             {mc.EntityDataFlagFly, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:phantom":            {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRenderWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:pig":                {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:piglin":             {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagDoorOpener, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:piglin_brute":       {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagDoorOpener, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:pillager":           {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:polar_bear":         {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:pufferfish":         {mc.EntityDataFlagSwim, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:rabbit":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:ravager":            {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:salmon":             {mc.EntityDataFlagSwim, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:sheep":              {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:shulker":            {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRenderWhenInvisible, mc.EntityDataFlagCollidable, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:silverfish":         {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:skeleton":           {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRotationLockedToVehicle},
+	"minecraft:skeleton_horse":     {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:slime":              {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:sniffer":            {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:snow_golem":         {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:spider":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRenderWhenInvisible},
+	"minecraft:squid":              {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:stray":              {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:strider":            {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:sulfur_cube":        {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRenderWhenInvisible},
+	"minecraft:tadpole":            {mc.EntityDataFlagBaby, mc.EntityDataFlagSwim, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:tnt_minecart":       {mc.EntityDataFlagStackable, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:trader_llama":       {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:tropicalfish":       {mc.EntityDataFlagSwim, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:turtle":             {mc.EntityDataFlagSwim, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:vex":                {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:villager_v2":        {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagDoorOpener, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:vindicator":         {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:wandering_trader":   {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:warden":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:witch":              {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:wither_skeleton":    {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:wolf":               {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:zoglin":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:zombie":             {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible, mc.EntityDataFlagRotationLockedToVehicle},
+	"minecraft:zombie_horse":       {mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:zombie_nautilus":    {mc.EntityDataFlagSwim, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:zombie_pigman":      {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:zombie_villager_v2": {mc.EntityDataFlagClimb, mc.EntityDataFlagWalk, mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
 	// Actors other than mobs.
-	"minecraft:armor_stand":            {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagHiddenWhenInvisible},
-	"minecraft:arrow":                  {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:egg":                    {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:ender_crystal":          {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagFireImmune, v2193.EntityDataFlagUsesLegacyFriction},
+	"minecraft:armor_stand":            {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:arrow":                  {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:egg":                    {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:ender_crystal":          {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagFireImmune, mc.EntityDataFlagUsesLegacyFriction},
 	"minecraft:evocation_fang":         {},
-	"minecraft:falling_block":          {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:fireworks_rocket":       {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:lightning_bolt":         {v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:snowball":               {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:splash_potion":          {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:tnt":                    {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagUsesLegacyFriction},
-	"minecraft:wind_charge_projectile": {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity},
-	"minecraft:xp_orb":                 {v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHasGravity, v2193.EntityDataFlagUsesLegacyFriction},
+	"minecraft:falling_block":          {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:fireworks_rocket":       {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:lightning_bolt":         {mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:snowball":               {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:splash_potion":          {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:tnt":                    {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagUsesLegacyFriction},
+	"minecraft:wind_charge_projectile": {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity},
+	"minecraft:xp_orb":                 {mc.EntityDataFlagHasCollision, mc.EntityDataFlagHasGravity, mc.EntityDataFlagUsesLegacyFriction},
 }

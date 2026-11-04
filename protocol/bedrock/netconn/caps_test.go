@@ -8,7 +8,7 @@ import (
 
 	"github.com/dm-vev/adamant/net/bedrock"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/proxy"
 	"github.com/google/uuid"
 )
@@ -18,8 +18,8 @@ import (
 func openProxiedFrom(t *testing.T, link *proxy.Link, name, addr string) *bedrock.Conn {
 	t.Helper()
 	identity, _ := json.Marshal(ourlogin.Identity{DisplayName: name, Identity: uuid.NewString(), XUID: "2535400000000000"})
-	client, _ := json.Marshal(ourlogin.ClientData{GameVersion: v2193.Version, LanguageCode: "en_US"})
-	p, err := link.Open(proxy.Token{Identity: identity, ClientData: client, XboxLive: true, Addr: addr, Protocol: v2193.Protocol})
+	client, _ := json.Marshal(ourlogin.ClientData{GameVersion: mc.Version, LanguageCode: "en_US"})
+	p, err := link.Open(proxy.Token{Identity: identity, ClientData: client, XboxLive: true, Addr: addr, Protocol: mc.Protocol})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,24 +33,24 @@ func openProxiedFrom(t *testing.T, link *proxy.Link, name, addr string) *bedrock
 // spawnProxied takes a proxied player from its login to its spawn.
 func spawnProxied(t *testing.T, b *bedrock.Conn) {
 	t.Helper()
-	if st := readUntil(t, b, v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginSuccess {
+	if st := readUntil(t, b, mc.IDPlayStatus).(*mc.PlayStatusPacket); st.Status != mc.PlayStatusLoginSuccess {
 		t.Fatalf("status %d, want the login done", st.Status)
 	}
-	readUntil(t, b, v2193.IDResourcePacksInfo)
-	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseAllPacksDownloaded})
-	readUntil(t, b, v2193.IDResourcePackStack)
-	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
-	game := readUntil(t, b, v2193.IDStartGame).(*v2193.StartGamePacket)
-	writeRaw(t, b, &v2193.RequestChunkRadiusPacket{ChunkRadius: 8})
-	readUntil(t, b, v2193.IDPlayStatus)
-	writeRaw(t, b, &v2193.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
+	readUntil(t, b, mc.IDResourcePacksInfo)
+	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseAllPacksDownloaded})
+	readUntil(t, b, mc.IDResourcePackStack)
+	writeRaw(t, b, &mc.ResourcePackClientResponsePacket{Response: mc.PackResponseCompleted})
+	game := readUntil(t, b, mc.IDStartGame).(*mc.StartGamePacket)
+	writeRaw(t, b, &mc.RequestChunkRadiusPacket{ChunkRadius: 8})
+	readUntil(t, b, mc.IDPlayStatus)
+	writeRaw(t, b, &mc.SetLocalPlayerAsInitialisedPacket{EntityRuntimeID: game.EntityRuntimeID})
 }
 
 // refusedForAddress reads the packets of a client until the Disconnect
 // that refuses it for its address.
 func refusedForAddress(t *testing.T, b *bedrock.Conn) {
 	t.Helper()
-	if d := readUntil(t, b, v2193.IDDisconnect).(*v2193.DisconnectPacket); d.Message != errAddressBusy {
+	if d := readUntil(t, b, mc.IDDisconnect).(*mc.DisconnectPacket); d.Message != errAddressBusy {
 		t.Fatalf("disconnect %q, want %q", d.Message, errAddressBusy)
 	}
 }
@@ -62,10 +62,10 @@ func TestMaxPerAddressRefusesLogins(t *testing.T) {
 	link := proxyLink(t, l)
 	for _, name := range []string{"One", "Two"} {
 		// Each stops at the resource packs, logging in.
-		readUntil(t, openProxiedFrom(t, link, name, "203.0.113.7:4242"), v2193.IDResourcePacksInfo)
+		readUntil(t, openProxiedFrom(t, link, name, "203.0.113.7:4242"), mc.IDResourcePacksInfo)
 	}
 	refusedForAddress(t, openProxiedFrom(t, link, "Three", "203.0.113.7:4343"))
-	readUntil(t, openProxiedFrom(t, link, "Other", "198.51.100.1:4242"), v2193.IDResourcePacksInfo)
+	readUntil(t, openProxiedFrom(t, link, "Other", "198.51.100.1:4242"), mc.IDResourcePacksInfo)
 }
 
 // TestMaxPerAddressHoldsPlayers checks that a client that joined still
@@ -84,7 +84,7 @@ func TestMaxPerAddressHoldsPlayers(t *testing.T) {
 	refusedForAddress(t, openProxiedFrom(t, link, "Second", "[2001:db8:1:2::8]:4242"))
 
 	_ = c.Close()
-	readUntil(t, openProxiedFrom(t, link, "Third", "[2001:db8:1:2::9]:4242"), v2193.IDResourcePacksInfo)
+	readUntil(t, openProxiedFrom(t, link, "Third", "[2001:db8:1:2::9]:4242"), mc.IDResourcePacksInfo)
 }
 
 // TestMaxLoginsRefusesLogins checks that the clients logging in at once are
@@ -94,15 +94,15 @@ func TestMaxLoginsRefusesLogins(t *testing.T) {
 	l := listen(t, Config{MaxLogins: 1})
 	first := rawClient(t, l)
 	waitLogins(t, l, 1)
-	if got := readStatus(t, rawClient(t, l)); got != v2193.PlayStatusLoginFailedServerFull {
+	if got := readStatus(t, rawClient(t, l)); got != mc.PlayStatusLoginFailedServerFull {
 		t.Fatalf("status %d for a login over MaxLogins", got)
 	}
-	writeRaw(t, first, &v2193.RequestNetworkSettingsPacket{ClientProtocol: 1})
+	writeRaw(t, first, &mc.RequestNetworkSettingsPacket{ClientProtocol: 1})
 	readStatus(t, first)
 	waitLogins(t, l, 0)
 	b := rawClient(t, l)
-	writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: 1})
-	if got := readStatus(t, b); got != v2193.PlayStatusLoginFailedClient {
+	writeRaw(t, b, &mc.RequestNetworkSettingsPacket{ClientProtocol: 1})
+	if got := readStatus(t, b); got != mc.PlayStatusLoginFailedClient {
 		t.Fatalf("status %d for a login after the first ended", got)
 	}
 }
@@ -144,9 +144,9 @@ func TestAddressSource(t *testing.T) {
 func TestServerFullRefusesProxiedPlayer(t *testing.T) {
 	l := listen(t, Config{MaximumPlayers: 1})
 	link := proxyLink(t, l)
-	readUntil(t, openProxiedFrom(t, link, "One", "203.0.113.7:4242"), v2193.IDResourcePacksInfo)
-	st := readUntil(t, openProxiedFrom(t, link, "Two", "198.51.100.1:4242"), v2193.IDPlayStatus).(*v2193.PlayStatusPacket)
-	if st.Status != v2193.PlayStatusLoginFailedServerFull {
+	readUntil(t, openProxiedFrom(t, link, "One", "203.0.113.7:4242"), mc.IDResourcePacksInfo)
+	st := readUntil(t, openProxiedFrom(t, link, "Two", "198.51.100.1:4242"), mc.IDPlayStatus).(*mc.PlayStatusPacket)
+	if st.Status != mc.PlayStatusLoginFailedServerFull {
 		t.Fatalf("status %d, want the server full", st.Status)
 	}
 }

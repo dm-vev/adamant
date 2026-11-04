@@ -17,7 +17,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
@@ -36,7 +36,7 @@ func TestGoldenObserved(t *testing.T) {
 	o := newObserved(t)
 	g := o.join("Golden joins", nil)
 	o.join("Visitor joins", &visitorIdentity)
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 
 	chest := cube.Pos{2, -60, 0}
 	o.step("a chest is placed with apples in it", func(tx *world.Tx) {
@@ -47,7 +47,7 @@ func TestGoldenObserved(t *testing.T) {
 		}
 	})
 	o.client(g, "Golden opens the chest", clickPacket(chest))
-	o.client(g, "Golden closes the chest", &v2193.ContainerClosePacket{WindowID: byte(g.window), ContainerType: g.windowType})
+	o.client(g, "Golden closes the chest", &mc.ContainerClosePacket{WindowID: byte(g.window), ContainerType: g.windowType})
 
 	o.step("Golden is given a sword and a helmet", func(tx *world.Tx) {
 		p := g.player(tx)
@@ -55,16 +55,16 @@ func TestGoldenObserved(t *testing.T) {
 		_ = p.Inventory().SetItem(1, item.NewStack(item.Helmet{Tier: item.ArmourTierIron{}}, 1))
 	})
 	o.request(g, "Golden puts the sword in the slot it holds",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: g.slot(inv, 0), Destination: g.slot(inv, emptyHand)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: g.slot(inv, 0), Destination: g.slot(inv, emptyHand)})
 	o.request(g, "Golden puts the helmet on",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: g.slot(inv, 1), Destination: g.slot(v2193.ContainerArmor, 0)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: g.slot(inv, 1), Destination: g.slot(mc.ContainerArmor, 0)})
 	o.request(g, "Golden takes the sword out of the slot it holds",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: g.slot(inv, emptyHand), Destination: g.slot(inv, 0)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: g.slot(inv, emptyHand), Destination: g.slot(inv, 0)})
 
 	o.client(g, "Golden opens the chest again", clickPacket(chest))
 	o.request(g, "Golden drops the apples out of the chest",
-		&v2193.DropStackRequestAction{Count: 5, Source: g.slot(v2193.ContainerLevelEntity, 0)})
-	o.client(g, "Golden closes the chest", &v2193.ContainerClosePacket{WindowID: byte(g.window), ContainerType: g.windowType})
+		&mc.DropStackRequestAction{Count: 5, Source: g.slot(mc.ContainerLevelEntity, 0)})
+	o.client(g, "Golden closes the chest", &mc.ContainerClosePacket{WindowID: byte(g.window), ContainerType: g.windowType})
 	o.tick("the tick after", 1)
 	o.step("the apples taken away", removeItems)
 
@@ -74,13 +74,13 @@ func TestGoldenObserved(t *testing.T) {
 		_ = g.player(tx).Inventory().SetItem(2, item.NewStack(block.Planks{Wood: block.OakWood()}, 9))
 	})
 	o.client(g, "Golden opens the crafting table", clickPacket(table))
-	var fill []v2193.StackRequestAction
+	var fill []mc.StackRequestAction
 	for i := range 9 {
 		source := g.slot(inv, 2)
 		if i > 0 {
 			source = g.again(inv, 2)
 		}
-		fill = append(fill, &v2193.PlaceStackRequestAction{Count: 1, Source: source, Destination: g.slot(v2193.ContainerCraftingInput, uiCraftingGrid+i)})
+		fill = append(fill, &mc.PlaceStackRequestAction{Count: 1, Source: source, Destination: g.slot(mc.ContainerCraftingInput, uiCraftingGrid+i)})
 	}
 	o.request(g, "Golden fills the grid with planks", fill...)
 	o.step("the inventory of Golden is filled with stone", func(tx *world.Tx) {
@@ -91,7 +91,7 @@ func TestGoldenObserved(t *testing.T) {
 			}
 		}
 	})
-	o.client(g, "Golden closes the crafting table: the planks of the grid fall out", &v2193.ContainerClosePacket{WindowID: byte(g.window), ContainerType: g.windowType})
+	o.client(g, "Golden closes the crafting table: the planks of the grid fall out", &mc.ContainerClosePacket{WindowID: byte(g.window), ContainerType: g.windowType})
 	o.tick("the tick after", 1)
 	o.step("the planks taken away and the inventory of Golden emptied", func(tx *world.Tx) {
 		removeItems(tx)
@@ -203,15 +203,15 @@ func (o *observed) client(c *scenario, heading string, pks ...proto.Packet) {
 
 // request sends an item stack request of the client c and fails the test
 // unless the server accepted it.
-func (o *observed) request(c *scenario, heading string, actions ...v2193.StackRequestAction) {
+func (o *observed) request(c *scenario, heading string, actions ...mc.StackRequestAction) {
 	o.t.Helper()
 	id := c.nextRequest
 	c.nextRequest -= 2
 	before := len(c.responses)
-	o.client(c, heading, &v2193.ItemStackRequestPacket{Requests: []v2193.ItemStackRequest{{RequestID: id, Actions: actions}}})
+	o.client(c, heading, &mc.ItemStackRequestPacket{Requests: []mc.ItemStackRequest{{RequestID: id, Actions: actions}}})
 	if len(c.responses) == before {
 		o.t.Errorf("%s: the request was not answered", heading)
-	} else if status := c.responses[len(c.responses)-1]; status != v2193.ItemStackResponseStatusOK {
+	} else if status := c.responses[len(c.responses)-1]; status != mc.ItemStackResponseStatusOK {
 		o.t.Errorf("%s: the request was refused with status %d", heading, status)
 	}
 }
@@ -284,15 +284,15 @@ func (o *observed) snapshot() {
 // clickPacket returns what a client sends when its player clicks the top of
 // a block with the empty hand, as scenario.clickBlock sends it.
 func clickPacket(pos cube.Pos) proto.Packet {
-	return &v2193.InventoryTransactionPacket{TransactionData: &v2193.UseItemTransactionData{
-		ActionType:       v2193.UseItemActionClickBlock,
-		TriggerType:      v2193.TriggerTypePlayerInput,
+	return &mc.InventoryTransactionPacket{TransactionData: &mc.UseItemTransactionData{
+		ActionType:       mc.UseItemActionClickBlock,
+		TriggerType:      mc.TriggerTypePlayerInput,
 		BlockPosition:    [3]int32{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 		BlockFace:        int32(cube.FaceUp),
 		HotBarSlot:       emptyHand,
 		Position:         mgl32.Vec3{0.5, -58.38, 0.5},
 		ClickedPosition:  mgl32.Vec3{0.5, 1, 0.5},
-		ClientPrediction: v2193.ClientPredictionSuccess,
+		ClientPrediction: mc.ClientPredictionSuccess,
 	}}
 }
 

@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // queueConn is a connection that queues for its client as much as a test
@@ -27,10 +27,10 @@ func (c queueConn) SendQueue() (queued, window int, rtt time.Duration) {
 func (queueConn) ClientCacheEnabled() bool { return false }
 
 // subChunkRequest asks for the sub-chunk at the bottom of y 0 of a column.
-func subChunkRequest(pos world.ChunkPos) *v2193.SubChunkRequestPacket {
-	return &v2193.SubChunkRequestPacket{
-		Position: v2193.SubChunkPos{pos[0], 0, pos[1]},
-		Offsets:  []v2193.SubChunkOffset{{0, 0, 0}},
+func subChunkRequest(pos world.ChunkPos) *mc.SubChunkRequestPacket {
+	return &mc.SubChunkRequestPacket{
+		Position: mc.SubChunkPos{pos[0], 0, pos[1]},
+		Offsets:  []mc.SubChunkOffset{{0, 0, 0}},
 	}
 }
 
@@ -85,10 +85,10 @@ func TestChunksWaitForRoom(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		s.writePacket(&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: "still here"})
+		s.writePacket(&mc.TextPacket{TextType: mc.TextTypeRaw, Message: "still here"})
 		s.loadChunks(tx)
 	})
-	if _, ok := s.testPacket().(*v2193.TextPacket); !ok {
+	if _, ok := s.testPacket().(*mc.TextPacket); !ok {
 		t.Fatal("a packet of the game waited with the chunks")
 	}
 	if pk := s.testPacket(); pk != nil {
@@ -104,11 +104,11 @@ func TestChunksWaitForRoom(t *testing.T) {
 	queued.Store(16<<10 - 1)
 	for _, pos := range columns {
 		do(t, w, s.loadChunks)
-		sub, ok := s.testPacket().(*v2193.SubChunkPacket)
-		if !ok || sub.Position != (v2193.SubChunkPos{pos[0], 0, pos[1]}) {
+		sub, ok := s.testPacket().(*mc.SubChunkPacket)
+		if !ok || sub.Position != (mc.SubChunkPos{pos[0], 0, pos[1]}) {
 			t.Fatalf("sent %+v, want the sub-chunk of %v", sub, pos)
 		}
-		if len(sub.SubChunkEntries) != 1 || sub.SubChunkEntries[0].Result != v2193.SubChunkResultSuccess {
+		if len(sub.SubChunkEntries) != 1 || sub.SubChunkEntries[0].Result != mc.SubChunkResultSuccess {
 			t.Fatalf("sub-chunk of %v: %+v", pos, sub.SubChunkEntries)
 		}
 		if pk := s.testPacket(); pk != nil {
@@ -122,7 +122,7 @@ func TestChunksWaitForRoom(t *testing.T) {
 	}
 	queued.Store(0)
 	do(t, w, s.loadChunks)
-	if _, ok := s.testPacket().(*v2193.LevelChunkPacket); !ok {
+	if _, ok := s.testPacket().(*mc.LevelChunkPacket); !ok {
 		t.Fatal("no chunk loaded once the queue drained")
 	}
 }
@@ -143,11 +143,11 @@ func TestSubChunkAnswer(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	s, _ := gatedSession(t, w, []world.ChunkPos{{0, 0}})
-	pk := &v2193.SubChunkRequestPacket{Offsets: []v2193.SubChunkOffset{{0, 0, 0}, {0, 100, 0}, {5, 0, 0}}}
+	pk := &mc.SubChunkRequestPacket{Offsets: []mc.SubChunkOffset{{0, 0, 0}, {0, 100, 0}, {5, 0, 0}}}
 	var size int
 	do(t, w, func(tx *world.Tx) { size = s.answerSubChunks(pk, tx) })
-	sub := s.testPacket().(*v2193.SubChunkPacket)
-	results := []byte{v2193.SubChunkResultSuccess, v2193.SubChunkResultIndexOutOfBounds, v2193.SubChunkResultChunkNotFound}
+	sub := s.testPacket().(*mc.SubChunkPacket)
+	results := []byte{mc.SubChunkResultSuccess, mc.SubChunkResultIndexOutOfBounds, mc.SubChunkResultChunkNotFound}
 	for i, e := range sub.SubChunkEntries {
 		if e.Result != results[i] || e.Offset != pk.Offsets[i] {
 			t.Fatalf("entry %d: %+v", i, e)
@@ -157,15 +157,15 @@ func TestSubChunkAnswer(t *testing.T) {
 		t.Fatalf("%d bytes counted for a payload of %d", size, len(payload))
 	}
 
-	many := &v2193.SubChunkRequestPacket{Offsets: make([]v2193.SubChunkOffset, maxSubChunkOffsets+1)}
+	many := &mc.SubChunkRequestPacket{Offsets: make([]mc.SubChunkOffset, maxSubChunkOffsets+1)}
 	do(t, w, func(tx *world.Tx) { s.answerSubChunks(many, tx) })
-	if sub := s.testPacket().(*v2193.SubChunkPacket); len(sub.SubChunkEntries) != maxSubChunkOffsets {
+	if sub := s.testPacket().(*mc.SubChunkPacket); len(sub.SubChunkEntries) != maxSubChunkOffsets {
 		t.Fatalf("%d sub-chunks answered of %d asked", len(sub.SubChunkEntries), len(many.Offsets))
 	}
 
 	s.conn, s.blobs = cacheConn{s.conn.(queueConn)}, map[uint64][]byte{}
 	do(t, w, func(tx *world.Tx) { size = s.answerSubChunks(pk, tx) })
-	e := s.testPacket().(*v2193.SubChunkPacket).SubChunkEntries[0]
+	e := s.testPacket().(*mc.SubChunkPacket).SubChunkEntries[0]
 	if !e.BlobHash.Set || len(s.blobs[e.BlobHash.Val]) == 0 || len(s.openChunkTransactions) != 1 {
 		t.Fatalf("cached sub-chunk %+v sent with %d transactions open", e, len(s.openChunkTransactions))
 	}
@@ -226,10 +226,10 @@ func TestSubChunkQueueBounded(t *testing.T) {
 	queued := new(atomic.Int64)
 	queued.Store(1 << 20)
 	s.conn = queueConn{testConn: s.conn.(testConn), queued: queued}
-	offsets := make([]v2193.SubChunkOffset, 1024)
+	offsets := make([]mc.SubChunkOffset, 1024)
 	do(t, w, func(tx *world.Tx) {
 		for i := range 18 {
-			pk := &v2193.SubChunkRequestPacket{Position: v2193.SubChunkPos{int32(i), 0, 0}, Offsets: offsets}
+			pk := &mc.SubChunkRequestPacket{Position: mc.SubChunkPos{int32(i), 0, 0}, Offsets: offsets}
 			if err := (&SubChunkRequestHandler{}).Handle(pk, s, tx, nil); err != nil {
 				t.Fatal(err)
 			}
@@ -237,7 +237,7 @@ func TestSubChunkQueueBounded(t *testing.T) {
 		s.loadChunks(tx)
 	})
 	for i := range int32(2) {
-		if sub, ok := s.testPacket().(*v2193.SubChunkPacket); !ok || sub.Position[0] != i {
+		if sub, ok := s.testPacket().(*mc.SubChunkPacket); !ok || sub.Position[0] != i {
 			t.Fatalf("answered %+v, want request %d", sub, i)
 		}
 	}
@@ -254,10 +254,10 @@ func TestSubChunkRequestInParts(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	s, _ := gatedSession(t, w, []world.ChunkPos{{0, 0}})
-	pk := &v2193.SubChunkRequestPacket{Offsets: make([]v2193.SubChunkOffset, 2*maxSubChunkOffsets+1)}
+	pk := &mc.SubChunkRequestPacket{Offsets: make([]mc.SubChunkOffset, 2*maxSubChunkOffsets+1)}
 	for i := range pk.Offsets {
 		// The parts ask for columns 0, 1 and 2 east.
-		pk.Offsets[i] = v2193.SubChunkOffset{int8(i / maxSubChunkOffsets), 0, 0}
+		pk.Offsets[i] = mc.SubChunkOffset{int8(i / maxSubChunkOffsets), 0, 0}
 	}
 	do(t, w, func(tx *world.Tx) {
 		if err := (&SubChunkRequestHandler{}).Handle(pk, s, tx, nil); err != nil {
@@ -267,7 +267,7 @@ func TestSubChunkRequestInParts(t *testing.T) {
 	})
 	for part, want := range []int{maxSubChunkOffsets, maxSubChunkOffsets, 1} {
 		got := s.testPacket()
-		sub, ok := got.(*v2193.SubChunkPacket)
+		sub, ok := got.(*mc.SubChunkPacket)
 		if !ok {
 			t.Fatalf("answered part %d with %T", part, packetOf(got))
 		}
@@ -300,7 +300,7 @@ func TestOutdatedSubChunkRequest(t *testing.T) {
 		}
 		s.loadChunks(tx)
 	})
-	sub, ok := s.testPacket().(*v2193.SubChunkPacket)
+	sub, ok := s.testPacket().(*mc.SubChunkPacket)
 	if !ok || sub.Dimension != 1 || sub.Position != pk.Position || sub.SubChunkEntries == nil || len(sub.SubChunkEntries) != 0 {
 		t.Fatalf("answered %+v, want no sub-chunks of dimension 1", sub)
 	}
@@ -317,14 +317,14 @@ func TestChunkRoomCountsChunksOwed(t *testing.T) {
 	if room := s.chunkRoom(100 << 10); room != 100<<10-11<<10 {
 		t.Fatalf("room %d with 33 KiB of blobs owed", room)
 	}
-	status := &v2193.ClientCacheBlobStatusPacket{MissHashes: []uint64{1}, HitHashes: []uint64{2}}
+	status := &mc.ClientCacheBlobStatusPacket{MissHashes: []uint64{1}, HitHashes: []uint64{2}}
 	if err := (&ClientCacheBlobStatusHandler{}).Handle(status, s, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if room := s.chunkRoom(100 << 10); room != 100<<10-10<<10 {
 		t.Fatalf("room %d with 30 KiB of blobs written", room)
 	}
-	if resp, ok := s.testPacket().(*v2193.ClientCacheMissResponsePacket); !ok || len(resp.Blobs) != 1 {
+	if resp, ok := s.testPacket().(*mc.ClientCacheMissResponsePacket); !ok || len(resp.Blobs) != 1 {
 		t.Fatalf("sent %+v, want the blob missed", resp)
 	}
 }

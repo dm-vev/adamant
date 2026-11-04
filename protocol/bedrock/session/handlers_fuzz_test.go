@@ -18,7 +18,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -96,7 +96,7 @@ func FuzzHandlePacket(f *testing.F) {
 	// Every packet of no fields set seeds the fuzzer, but those that have
 	// no wire form then, as a transaction of no data.
 	for id := uint32(0); id < 1024; id++ {
-		if pk := v2193.New(id); pk != nil {
+		if pk := mc.New(id); pk != nil {
 			func() {
 				defer func() { _ = recover() }()
 				var wr wire.Writer
@@ -106,7 +106,7 @@ func FuzzHandlePacket(f *testing.F) {
 		}
 	}
 	f.Fuzz(func(t *testing.T, id uint16, b []byte) {
-		pk := v2193.New(uint32(id) & 0x3ff)
+		pk := mc.New(uint32(id) & 0x3ff)
 		if pk == nil {
 			return
 		}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // subChunkBlocksAt is the number of changes of a sub-chunk shown together
@@ -63,7 +63,7 @@ func (s *Session) ViewBlockUpdates(u *world.BlockUpdates) {
 	}
 	for _, a := range shared.actors {
 		if data := s.blockActorUpdateNBT(a.Pos, a.Block); data != nil {
-			s.writePacket(&v2193.BlockActorDataPacket{Position: blockPos(a.Pos), NBTData: data})
+			s.writePacket(&mc.BlockActorDataPacket{Position: blockPos(a.Pos), NBTData: data})
 		}
 	}
 }
@@ -91,14 +91,14 @@ func blockUpdatePackets(w *wireTables, updates []world.BlockUpdate) *sharedBlock
 			}
 		}
 	}
-	var many map[cube.Pos]*v2193.UpdateSubChunkBlocksPacket
+	var many map[cube.Pos]*mc.UpdateSubChunkBlocksPacket
 	for _, u := range updates {
 		sub := subChunkOf(u.Pos)
 		if counts[sub] < subChunkBlocksAt {
-			shared.packets = append(shared.packets, &sharedPacket{Packet: &v2193.UpdateBlockPacket{
+			shared.packets = append(shared.packets, &sharedPacket{Packet: &mc.UpdateBlockPacket{
 				Position:          blockPos(u.Pos),
 				NewBlockRuntimeID: hashes.blockID(br, u.Block),
-				Flags:             v2193.BlockUpdateNetwork,
+				Flags:             mc.BlockUpdateNetwork,
 				Layer:             uint32(u.Layer),
 			}})
 			continue
@@ -106,16 +106,16 @@ func blockUpdatePackets(w *wireTables, updates []world.BlockUpdate) *sharedBlock
 		pk := many[sub]
 		if pk == nil {
 			if many == nil {
-				many = make(map[cube.Pos]*v2193.UpdateSubChunkBlocksPacket)
+				many = make(map[cube.Pos]*mc.UpdateSubChunkBlocksPacket)
 			}
-			pk = &v2193.UpdateSubChunkBlocksPacket{Position: [3]int32{int32(sub[0] << 4), int32(sub[1] << 4), int32(sub[2] << 4)}}
+			pk = &mc.UpdateSubChunkBlocksPacket{Position: [3]int32{int32(sub[0] << 4), int32(sub[1] << 4), int32(sub[2] << 4)}}
 			many[sub] = pk
 			shared.packets = append(shared.packets, &sharedPacket{Packet: pk})
 		}
-		entry := v2193.BlockChangeEntry{
+		entry := mc.BlockChangeEntry{
 			BlockPos:       blockPos(u.Pos),
 			BlockRuntimeID: hashes.blockID(br, u.Block),
-			Flags:          v2193.BlockUpdateNetwork,
+			Flags:          mc.BlockUpdateNetwork,
 			// BDS sends -1: the change syncs no entity.
 			SyncedUpdateEntityUniqueID: math.MaxUint64,
 		}

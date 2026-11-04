@@ -16,7 +16,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	v2193 "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func init() {
@@ -62,7 +62,7 @@ func BenchmarkSubChunkEntry(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				transaction := make(map[uint64]struct{}, 1)
-				_ = session.subChunkEntry(v2193.SubChunkOffset{}, ind, col, transaction)
+				_ = session.subChunkEntry(mc.SubChunkOffset{}, ind, col, transaction)
 			}
 		})
 	}

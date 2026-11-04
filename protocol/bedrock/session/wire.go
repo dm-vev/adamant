@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // wireTables are the tables a session encodes the content of the game
@@ -136,7 +136,7 @@ func (w *wireTables) itemByRuntimeID(rid int32, meta int16) (world.Item, bool) {
 
 // biomes returns the definitions of the biomes registered the clients of
 // the tables know, and the strings their names and tags index.
-func (w *wireTables) biomes() ([]v2193.BiomeDefinition, []string) {
+func (w *wireTables) biomes() ([]mc.BiomeDefinition, []string) {
 	return biomeDefinitions()
 }
 

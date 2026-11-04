@@ -7,7 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -20,7 +20,7 @@ func TestOfferFlowerAnimation(t *testing.T) {
 	defer w.Close()
 	if err := w.Do(func(tx *world.Tx) {
 		golem := tx.AddEntity(entity.NewIronGolem(world.EntitySpawnOpts{Position: mgl64.Vec3{8.5, 65, 8.5}}))
-		want := &v2193.AnimateEntityPacket{Animation: "animation.iron_golem.offer_flower", EntityRuntimeIDs: []uint64{golem.H().RuntimeID()}}
+		want := &mc.AnimateEntityPacket{Animation: "animation.iron_golem.offer_flower", EntityRuntimeIDs: []uint64{golem.H().RuntimeID()}}
 
 		s := testSession("flower")
 		s.ViewEntityAction(golem, entity.OfferFlowerAction{})

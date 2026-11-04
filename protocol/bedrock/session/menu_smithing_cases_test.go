@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // smithingPos is where the cases of the smithing table place it.
@@ -32,13 +32,13 @@ func (s *scenario) trimRecipe(template world.Item) uint32 {
 
 // smith returns the actions of a request that takes the result of a recipe
 // of the smithing table and puts it in a slot of the inventory.
-func (s *scenario) smith(id uint32, to int) []v2193.StackRequestAction {
-	return []v2193.StackRequestAction{
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: id, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerSmithingTableTemplate, uiSmithingTemplate)},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerSmithingTableInput, uiSmithingInput)},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerSmithingTableMaterial, uiSmithingMaterial)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, to)},
+func (s *scenario) smith(id uint32, to int) []mc.StackRequestAction {
+	return []mc.StackRequestAction{
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: id, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerSmithingTableTemplate, uiSmithingTemplate)},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerSmithingTableInput, uiSmithingInput)},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerSmithingTableMaterial, uiSmithingMaterial)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, to)},
 	}
 }
 
@@ -50,9 +50,9 @@ type smithingSlot struct {
 }
 
 var (
-	smithingTemplate = smithingSlot{v2193.ContainerSmithingTableTemplate, uiSmithingTemplate}
-	smithingInput    = smithingSlot{v2193.ContainerSmithingTableInput, uiSmithingInput}
-	smithingMaterial = smithingSlot{v2193.ContainerSmithingTableMaterial, uiSmithingMaterial}
+	smithingTemplate = smithingSlot{mc.ContainerSmithingTableTemplate, uiSmithingTemplate}
+	smithingInput    = smithingSlot{mc.ContainerSmithingTableInput, uiSmithingInput}
+	smithingMaterial = smithingSlot{mc.ContainerSmithingTableMaterial, uiSmithingMaterial}
 )
 
 // smithingMove moves count items between a slot of the inventory and a
@@ -63,13 +63,13 @@ func (s *scenario) smithingMove(heading string, in bool, moves ...struct {
 	count int
 }) {
 	s.t.Helper()
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	var actions []v2193.StackRequestAction
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	var actions []mc.StackRequestAction
 	for _, m := range moves {
 		if in {
-			actions = append(actions, &v2193.PlaceStackRequestAction{Count: byte(m.count), Source: s.slot(inv, m.inv), Destination: s.slot(m.at.container, m.at.slot)})
+			actions = append(actions, &mc.PlaceStackRequestAction{Count: byte(m.count), Source: s.slot(inv, m.inv), Destination: s.slot(m.at.container, m.at.slot)})
 		} else {
-			actions = append(actions, &v2193.TakeStackRequestAction{Count: byte(m.count), Source: s.slot(m.at.container, m.at.slot), Destination: s.slot(inv, m.inv)})
+			actions = append(actions, &mc.TakeStackRequestAction{Count: byte(m.count), Source: s.slot(m.at.container, m.at.slot), Destination: s.slot(inv, m.inv)})
 		}
 	}
 	s.request(heading, nil, actions...)
@@ -121,7 +121,7 @@ func (s *scenario) smithingCases() {
 	// An upgrade with a slot of the table empty, as BDS refuses it: 38
 	// (MissingInputItem) for an empty input or material, 35 for the
 	// template alone.
-	var missing, noTemplate uint8 = v2193.ItemStackResponseStatusMissingInputItem, v2193.ItemStackResponseStatusMismatchedRecipeForInputGridItems
+	var missing, noTemplate uint8 = mc.ItemStackResponseStatusMissingInputItem, mc.ItemStackResponseStatusMismatchedRecipeForInputGridItems
 	s.refuseWith("refused: an upgrade with the table empty", missing, s.smith(sword, 20)...)
 	s.smithingMove("the template put in", true, move(0, smithingTemplate, 1))
 	s.refuseWith("refused: an upgrade of the template alone", missing, s.smith(sword, 20)...)
@@ -166,9 +166,9 @@ func (s *scenario) smithingCases() {
 	s.smithingMove("two templates and two ingots put in", true, move(0, smithingTemplate, 2), move(2, smithingMaterial, 2))
 	s.smithingMove("a diamond sword put in", true, move(9, smithingInput, 1))
 	s.refuse("refused: two upgrades in a request",
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: sword, NumberOfCrafts: 1},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCombinedHotBarAndInventory, 10), Destination: s.again(v2193.ContainerSmithingTableInput, uiSmithingInput)},
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: sword, NumberOfCrafts: 1})
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: sword, NumberOfCrafts: 1},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCombinedHotBarAndInventory, 10), Destination: s.again(mc.ContainerSmithingTableInput, uiSmithingInput)},
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: sword, NumberOfCrafts: 1})
 	s.smithingMove("the sword, the template and the ingot taken back", false,
 		move(9, smithingInput, 1), move(0, smithingTemplate, 2), move(2, smithingMaterial, 2))
 
@@ -180,9 +180,9 @@ func (s *scenario) smithingCases() {
 	s.step("the smithing table broken under the open menu", func(tx *world.Tx, _ *player.Player) {
 		tx.SetBlock(smithingPos, block.Stone{}, nil)
 	})
-	s.refuse("refused: the sword upgraded with no table", &v2193.CraftRecipeStackRequestAction{RecipeNetworkID: sword, NumberOfCrafts: 1})
+	s.refuse("refused: the sword upgraded with no table", &mc.CraftRecipeStackRequestAction{RecipeNetworkID: sword, NumberOfCrafts: 1})
 	s.attempt("the sword and the template taken back",
-		&v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerSmithingTableInput, uiSmithingInput), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, 9)},
-		&v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerSmithingTableTemplate, uiSmithingTemplate), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, 0)})
+		&mc.TakeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerSmithingTableInput, uiSmithingInput), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, 9)},
+		&mc.TakeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerSmithingTableTemplate, uiSmithingTemplate), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, 0)})
 	s.closeContainer("the client closes the smithing table")
 }

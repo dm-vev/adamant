@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -100,7 +100,7 @@ func (s *Session) HandlingInput() bool {
 func (s *Session) CorrectMove(c Controllable, pos, vel mgl64.Vec3, _ uint64) {
 	s.ViewEntityTeleport(c, pos)
 	if vel != (mgl64.Vec3{}) {
-		s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: selfEntityRuntimeID, Velocity: vec64To32(vel)})
+		s.writePacket(&mc.SetActorMotionPacket{EntityRuntimeID: selfEntityRuntimeID, Velocity: vec64To32(vel)})
 	}
 }
 
@@ -108,7 +108,7 @@ func (s *Session) CorrectMove(c Controllable, pos, vel mgl64.Vec3, _ uint64) {
 // SetActorMotion of its velocity if those parts hold it.
 func moveActorDelta(id uint64, e world.Entity, m *world.EntityMove, parts world.MoveParts) (delta, motion proto.Packet) {
 	pos := vec64To32(entityNetworkPosition(e, m.Pos))
-	pk := &v2193.MoveActorDeltaPacket{EntityRuntimeID: id, OnGround: m.OnGround, Ticks: uint64(m.Ticks)}
+	pk := &mc.MoveActorDeltaPacket{EntityRuntimeID: id, OnGround: m.OnGround, Ticks: uint64(m.Ticks)}
 	if parts&world.MoveX != 0 {
 		pk.PositionX = proto.Some(pos[0])
 	}
@@ -128,7 +128,7 @@ func moveActorDelta(id uint64, e world.Entity, m *world.EntityMove, parts world.
 		pk.RotationYHead = proto.Some(float32(m.HeadYaw))
 	}
 	if parts&world.MoveVelocity != 0 {
-		motion = &v2193.SetActorMotionPacket{EntityRuntimeID: id, Velocity: vec64To32(m.Vel)}
+		motion = &mc.SetActorMotionPacket{EntityRuntimeID: id, Velocity: vec64To32(m.Vel)}
 	}
 	return pk, motion
 }

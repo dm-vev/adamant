@@ -12,7 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestRegistryArgumentsMatchBDSMetadata(t *testing.T) {
@@ -65,7 +65,7 @@ func TestRegistryArgumentsMatchBDSMetadata(t *testing.T) {
 						continue
 					}
 					count++
-					if parameter.Type&(v2193.CommandArgValid|v2193.CommandArgEnum|v2193.CommandArgSoftEnum) != v2193.CommandArgValid|v2193.CommandArgEnum {
+					if parameter.Type&(mc.CommandArgValid|mc.CommandArgEnum|mc.CommandArgSoftEnum) != mc.CommandArgValid|mc.CommandArgEnum {
 						t.Fatalf("%s.%s is not a native hard enum: %#x", tt.command, tt.parameter, parameter.Type)
 					}
 					enum := decoded.Enums[parameter.Type&0xfffff]
@@ -142,7 +142,7 @@ func TestRegistryArgumentsMatchBDSMetadata(t *testing.T) {
 	}
 }
 
-func decodeRegistryCommands(t *testing.T, pk *v2193.AvailableCommandsPacket) (v2193.AvailableCommandsPacket, []byte) {
+func decodeRegistryCommands(t *testing.T, pk *mc.AvailableCommandsPacket) (mc.AvailableCommandsPacket, []byte) {
 	t.Helper()
 	encoded := encodePacket(pk)
 	return decodeCommands(t, encoded), encoded

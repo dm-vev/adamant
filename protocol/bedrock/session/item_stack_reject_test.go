@@ -6,17 +6,17 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // staleApples names inventory slot 0 by a stack ID it does not hold, which
 // refuses the request it ends.
-var staleApples = &v2193.PlaceStackRequestAction{Count: 1,
-	Source:      v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCombinedHotBarAndInventory}, Slot: 0, StackNetworkID: 9999},
-	Destination: v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCombinedHotBarAndInventory}, Slot: 22}}
+var staleApples = &mc.PlaceStackRequestAction{Count: 1,
+	Source:      mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: mc.ContainerCombinedHotBarAndInventory}, Slot: 0, StackNetworkID: 9999},
+	Destination: mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: mc.ContainerCombinedHotBarAndInventory}, Slot: 22}}
 
-func invSlot(container byte, slot int, id int32) v2193.StackRequestSlotInfo {
-	return v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: container}, Slot: byte(slot), StackNetworkID: id}
+func invSlot(container byte, slot int, id int32) mc.StackRequestSlotInfo {
+	return mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: container}, Slot: byte(slot), StackNetworkID: id}
 }
 
 // TestRefusedRequestRestoresSlotChangedTwice refuses a request that took
@@ -24,15 +24,15 @@ func invSlot(container byte, slot int, id int32) v2193.StackRequestSlotInfo {
 // testdata/bedrock_1_26_52_menu_requests.json: the slot must hold all
 // eight again, under each of the container IDs that name it.
 func TestRefusedRequestRestoresSlotChangedTwice(t *testing.T) {
-	for _, second := range []byte{v2193.ContainerCombinedHotBarAndInventory, v2193.ContainerHotBar} {
+	for _, second := range []byte{mc.ContainerCombinedHotBarAndInventory, mc.ContainerHotBar} {
 		s := craftingTestSession()
 		planks := item.NewStack(block.Planks{Wood: block.OakWood()}, 8)
 		_ = s.inv.SetItem(0, item.NewStack(item.Apple{}, 16))
 		_ = s.inv.SetItem(2, planks)
 		h := craftingTestHandler()
-		err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
-			&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(v2193.ContainerCombinedHotBarAndInventory, 2, item_id(planks)), Destination: invSlot(v2193.ContainerCombinedHotBarAndInventory, 20, 0)},
-			&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(second, 2, -1), Destination: invSlot(v2193.ContainerCombinedHotBarAndInventory, 21, 0)},
+		err := handleCraftingRequest(t, nil, h, s, mc.ItemStackRequest{RequestID: -1, Actions: []mc.StackRequestAction{
+			&mc.PlaceStackRequestAction{Count: 1, Source: invSlot(mc.ContainerCombinedHotBarAndInventory, 2, item_id(planks)), Destination: invSlot(mc.ContainerCombinedHotBarAndInventory, 20, 0)},
+			&mc.PlaceStackRequestAction{Count: 1, Source: invSlot(second, 2, -1), Destination: invSlot(mc.ContainerCombinedHotBarAndInventory, 21, 0)},
 			staleApples,
 		}})
 		if err == nil {
@@ -55,8 +55,8 @@ func TestRefusedRequestRestoresOffHand(t *testing.T) {
 	_ = s.inv.SetItem(0, item.NewStack(item.Apple{}, 16))
 	_ = s.inv.SetItem(3, shield)
 	h := craftingTestHandler()
-	err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
-		&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(v2193.ContainerCombinedHotBarAndInventory, 3, item_id(shield)), Destination: invSlot(v2193.ContainerOffhand, 1, 0)},
+	err := handleCraftingRequest(t, nil, h, s, mc.ItemStackRequest{RequestID: -1, Actions: []mc.StackRequestAction{
+		&mc.PlaceStackRequestAction{Count: 1, Source: invSlot(mc.ContainerCombinedHotBarAndInventory, 3, item_id(shield)), Destination: invSlot(mc.ContainerOffhand, 1, 0)},
 		staleApples,
 	}})
 	if err == nil {
@@ -83,9 +83,9 @@ func TestRefusedRequestUndoesInReverse(t *testing.T) {
 		var writes []int
 		s.ui.SlotFunc(func(slot int, _, _ item.Stack) { writes = append(writes, slot) })
 		h := craftingTestHandler()
-		err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
-			&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(v2193.ContainerCombinedHotBarAndInventory, 2, item_id(planks)), Destination: invSlot(v2193.ContainerCraftingInput, 28, 0)},
-			&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(v2193.ContainerCombinedHotBarAndInventory, 2, -1), Destination: invSlot(v2193.ContainerCraftingInput, 29, 0)},
+		err := handleCraftingRequest(t, nil, h, s, mc.ItemStackRequest{RequestID: -1, Actions: []mc.StackRequestAction{
+			&mc.PlaceStackRequestAction{Count: 1, Source: invSlot(mc.ContainerCombinedHotBarAndInventory, 2, item_id(planks)), Destination: invSlot(mc.ContainerCraftingInput, 28, 0)},
+			&mc.PlaceStackRequestAction{Count: 1, Source: invSlot(mc.ContainerCombinedHotBarAndInventory, 2, -1), Destination: invSlot(mc.ContainerCraftingInput, 29, 0)},
 			staleApples,
 		}})
 		if err == nil {
@@ -104,8 +104,8 @@ func TestLoomCraftWithNoMenuOpen(t *testing.T) {
 	s := craftingTestSession()
 	h := craftingTestHandler()
 	// The position of the last menu opened, none here, is not read.
-	err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
-		&v2193.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
+	err := handleCraftingRequest(t, nil, h, s, mc.ItemStackRequest{RequestID: -1, Actions: []mc.StackRequestAction{
+		&mc.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
 	}})
 	if err == nil {
 		t.Fatal("the loom craft with no menu open was accepted")

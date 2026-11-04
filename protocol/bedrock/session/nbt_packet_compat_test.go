@@ -8,15 +8,15 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
 func TestBlockActorDataNBTBytes(t *testing.T) {
 	t.Parallel()
-	pk := &v2193.BlockActorDataPacket{
-		Position: v2193.BlockPos{12, 64, -7},
+	pk := &mc.BlockActorDataPacket{
+		Position: mc.BlockPos{12, 64, -7},
 		NBTData:  block.EnchantingTable{}.EncodeNBT(),
 	}
 	got := marshalPacketBytes(t, pk)
@@ -31,31 +31,31 @@ func TestBlockActorDataNBTBytes(t *testing.T) {
 
 func TestEndCrystalMetadataPacket(t *testing.T) {
 	t.Parallel()
-	m := v2193.NewMetadata()
+	m := mc.NewMetadata()
 	(&Session{}).addSpecificMetadata(endCrystalMetadataStub{
 		showBase:  true,
 		target:    mgl64.Vec3{12.9, 64.1, -7.1},
 		hasTarget: true,
 	}, m)
 
-	if got, want := m[v2193.EntityDataKeyBlockTarget], (v2193.BlockPos{12, 64, -8}); got != want {
+	if got, want := m[mc.EntityDataKeyBlockTarget], (mc.BlockPos{12, 64, -8}); got != want {
 		t.Fatalf("block target = %#v, want %#v", got, want)
 	}
-	if !m.Flag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagShowBottom) {
+	if !m.Flag(mc.EntityDataKeyFlags, mc.EntityDataFlagShowBottom) {
 		t.Fatal("show-bottom flag is not set")
 	}
-	for _, key := range []uint32{v2193.EntityDataKeyTargetA, v2193.EntityDataKeyTargetB, v2193.EntityDataKeyTargetC} {
+	for _, key := range []uint32{mc.EntityDataKeyTargetA, mc.EntityDataKeyTargetB, mc.EntityDataKeyTargetC} {
 		if _, ok := m[key]; ok {
 			t.Fatalf("legacy target metadata key %d is set", key)
 		}
 	}
-	if got := marshalPacketBytes(t, &v2193.SetActorDataPacket{EntityRuntimeID: 1, EntityMetadata: v2193.Metadata(m)}); len(got) == 0 {
+	if got := marshalPacketBytes(t, &mc.SetActorDataPacket{EntityRuntimeID: 1, EntityMetadata: mc.Metadata(m)}); len(got) == 0 {
 		t.Fatal("empty SetActorData packet")
 	}
 
-	withoutTarget := v2193.NewMetadata()
+	withoutTarget := mc.NewMetadata()
 	(&Session{}).addSpecificMetadata(endCrystalMetadataStub{}, withoutTarget)
-	if _, ok := withoutTarget[v2193.EntityDataKeyBlockTarget]; ok {
+	if _, ok := withoutTarget[mc.EntityDataKeyBlockTarget]; ok {
 		t.Fatal("nil beam target was encoded")
 	}
 }

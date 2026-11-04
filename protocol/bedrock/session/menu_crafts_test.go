@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // craftsScenario sends the requests that craft recipes of the crafting
@@ -21,8 +21,8 @@ import (
 // limited_crafting and unlocked, and the table replaced under its menu.
 func (s *scenario) craftsScenario() {
 	const (
-		inv  = v2193.ContainerCombinedHotBarAndInventory
-		grid = v2193.ContainerCraftingInput
+		inv  = mc.ContainerCombinedHotBarAndInventory
+		grid = mc.ContainerCraftingInput
 	)
 	planks := block.Planks{Wood: block.OakWood()}
 	sticks := s.recipe("crafting_table", item.Stick{}, "planks")
@@ -32,14 +32,14 @@ func (s *scenario) craftsScenario() {
 	blueBox := block.NewShulkerBox()
 	blueBox.Type = block.BlueShulkerBox()
 	dyeBox := s.userDataRecipe(blueBox, "red_shulker_box")
-	craft := func(id uint32, times int) *v2193.CraftRecipeStackRequestAction {
-		return &v2193.CraftRecipeStackRequestAction{RecipeNetworkID: id, NumberOfCrafts: byte(times)}
+	craft := func(id uint32, times int) *mc.CraftRecipeStackRequestAction {
+		return &mc.CraftRecipeStackRequestAction{RecipeNetworkID: id, NumberOfCrafts: byte(times)}
 	}
-	consume := func(slot, count int) *v2193.ConsumeStackRequestAction {
-		return &v2193.ConsumeStackRequestAction{Count: byte(count), Source: s.slot(grid, slot)}
+	consume := func(slot, count int) *mc.ConsumeStackRequestAction {
+		return &mc.ConsumeStackRequestAction{Count: byte(count), Source: s.slot(grid, slot)}
 	}
-	take := func(count, to int) *v2193.PlaceStackRequestAction {
-		return &v2193.PlaceStackRequestAction{Count: byte(count), Source: s.created(), Destination: s.slot(inv, to)}
+	take := func(count, to int) *mc.PlaceStackRequestAction {
+		return &mc.PlaceStackRequestAction{Count: byte(count), Source: s.created(), Destination: s.slot(inv, to)}
 	}
 	clearGrid := func(heading string) {
 		s.step(heading, func(*world.Tx, *player.Player) {
@@ -69,8 +69,8 @@ func (s *scenario) craftsScenario() {
 		consume(uiInventoryGrid, 1), consume(uiInventoryGrid+1, 1), consume(uiInventoryGrid+2, 1), consume(uiInventoryGrid+3, 1),
 		take(1, 9))
 	s.request("two planks each put in two slots of the grid", nil,
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: s.slot(grid, uiInventoryGrid)},
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.again(inv, 0), Destination: s.slot(grid, uiInventoryGrid+2)})
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: s.slot(grid, uiInventoryGrid)},
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.again(inv, 0), Destination: s.slot(grid, uiInventoryGrid+2)})
 	s.request("sticks crafted twice", nil,
 		craft(sticks, 2), consume(uiInventoryGrid, 2), consume(uiInventoryGrid+2, 2), take(8, 10))
 	s.refuse("refused: sticks of an empty grid", craft(sticks, 1))
@@ -78,15 +78,15 @@ func (s *scenario) craftsScenario() {
 		[2]int{0, uiInventoryGrid}, [2]int{3, uiInventoryGrid + 1}, [2]int{0, uiInventoryGrid + 2})
 	s.refuse("refused: sticks of a grid with an apple in it", craft(sticks, 1))
 	s.request("the apple taken out of the grid", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(grid, uiInventoryGrid+1), Destination: s.slot(inv, 3)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(grid, uiInventoryGrid+1), Destination: s.slot(inv, 3)})
 	s.refuse("refused: sticks crafted no times", craft(sticks, 0))
 	s.refuse("refused: sticks crafted twice of one plank each", craft(sticks, 2))
 	s.refuse("refused: a recipe of the stonecutter", craft(stoneBricks, 1))
 	s.refuse("refused: sticks crafted, then a stale stack ID",
 		craft(sticks, 1), consume(uiInventoryGrid, 1), consume(uiInventoryGrid+2, 1), take(4, 11),
-		&v2193.PlaceStackRequestAction{Count: 1, Source: v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: inv}, Slot: 0, StackNetworkID: 9999}, Destination: s.slot(inv, 12)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: inv}, Slot: 0, StackNetworkID: 9999}, Destination: s.slot(inv, 12)})
 	s.refuse("refused: sticks crafted, then their single result created",
-		craft(sticks, 1), &v2193.CreateStackRequestAction{ResultsSlot: 0})
+		craft(sticks, 1), &mc.CreateStackRequestAction{ResultsSlot: 0})
 	s.request("sticks crafted", nil,
 		craft(sticks, 1), consume(uiInventoryGrid, 1), consume(uiInventoryGrid+2, 1), take(4, 11))
 	s.closeInventory("the client closes its inventory", 0)
@@ -96,15 +96,15 @@ func (s *scenario) craftsScenario() {
 	s.place("a crafting table is placed", table, block.CraftingTable{})
 	s.clickBlock("the client opens the crafting table", table)
 	s.request("seventeen logs put in the grid", nil,
-		&v2193.PlaceStackRequestAction{Count: 17, Source: s.slot(inv, 1), Destination: s.slot(grid, uiCraftingGrid+4)})
+		&mc.PlaceStackRequestAction{Count: 17, Source: s.slot(inv, 1), Destination: s.slot(grid, uiCraftingGrid+4)})
 	s.request("planks crafted seventeen times: two results, created one by one", nil,
 		craft(oakPlanks, 17), consume(uiCraftingGrid+4, 17),
-		&v2193.CreateStackRequestAction{ResultsSlot: 0}, take(64, 13),
-		&v2193.CreateStackRequestAction{ResultsSlot: 1}, take(4, 14))
+		&mc.CreateStackRequestAction{ResultsSlot: 0}, take(64, 13),
+		&mc.CreateStackRequestAction{ResultsSlot: 1}, take(4, 14))
 	s.request("a log put in the grid", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: s.slot(grid, uiCraftingGrid)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: s.slot(grid, uiCraftingGrid)})
 	s.refuse("refused: planks, a result created that is not there",
-		craft(oakPlanks, 1), &v2193.CreateStackRequestAction{ResultsSlot: 5})
+		craft(oakPlanks, 1), &mc.CreateStackRequestAction{ResultsSlot: 5})
 	s.request("planks crafted", nil, craft(oakPlanks, 1), consume(uiCraftingGrid, 1), take(4, 15))
 
 	// A shulker box dyed keeps what it holds and its name.

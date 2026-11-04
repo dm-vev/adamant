@@ -26,7 +26,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -43,8 +43,8 @@ func TestServerStartGameUsesDefaultSpectatorProtocolGameType(t *testing.T) {
 	ts.l.conns <- conn
 	data := <-conn.started
 	ts.awaitSpawn(t)
-	if data.PlayerGameMode != v2193.GameTypeSpectator {
-		t.Fatalf("StartGame player game type = %d, want spectator %d", data.PlayerGameMode, v2193.GameTypeSpectator)
+	if data.PlayerGameMode != mc.GameTypeSpectator {
+		t.Fatalf("StartGame player game type = %d, want spectator %d", data.PlayerGameMode, mc.GameTypeSpectator)
 	}
 }
 
@@ -178,15 +178,15 @@ func TestServerFailedJoinUnlistsPlayer(t *testing.T) {
 	// The player of joining is loaded in a world that closed: Accept cannot
 	// spawn it there.
 	ts.l.conns <- joining
-	observer.awaitList(t, v2193.PlayerListActionAdd, id)
-	observer.awaitList(t, v2193.PlayerListActionRemove, id)
+	observer.awaitList(t, mc.PlayerListActionAdd, id)
+	observer.awaitList(t, mc.PlayerListActionRemove, id)
 
 	later := newListConn()
 	later.identity.DisplayName = "Later"
 	ts.l.conns <- later
 	after := ts.awaitSpawn(t)
 	// The session made last is shown itself last.
-	later.awaitList(t, v2193.PlayerListActionAdd, after.UUID())
+	later.awaitList(t, mc.PlayerListActionAdd, after.UUID())
 	for _, e := range later.listed() {
 		if e == id {
 			t.Fatal("a session made after the failed join was shown its player")
@@ -438,7 +438,7 @@ func (c *teardownConn) StartGameContext(_ context.Context, data netconn.GameData
 type listConn struct {
 	*teardownConn
 	mu      sync.Mutex
-	entries []v2193.PlayerListEntry
+	entries []mc.PlayerListEntry
 	written chan struct{}
 }
 
@@ -454,7 +454,7 @@ func (c *listConn) WritePacket(pk proto.Packet) error {
 			pk, _ = inner.Interface().(proto.Packet)
 		}
 	}
-	if list, ok := pk.(*v2193.PlayerListPacket); ok {
+	if list, ok := pk.(*mc.PlayerListPacket); ok {
 		c.mu.Lock()
 		c.entries = append(c.entries, list.Entries...)
 		c.mu.Unlock()
@@ -473,7 +473,7 @@ func (c *listConn) listed() []uuid.UUID {
 	defer c.mu.Unlock()
 	var out []uuid.UUID
 	for _, e := range c.entries {
-		if e.ActionType == v2193.PlayerListActionRemove {
+		if e.ActionType == mc.PlayerListActionRemove {
 			out = slices.DeleteFunc(out, func(id uuid.UUID) bool { return id == uuid.UUID(e.UUID) })
 			continue
 		}
@@ -489,7 +489,7 @@ func (c *listConn) awaitList(t *testing.T, action byte, id uuid.UUID) {
 	timeout := time.After(2 * time.Second)
 	for {
 		c.mu.Lock()
-		found := slices.ContainsFunc(c.entries, func(e v2193.PlayerListEntry) bool {
+		found := slices.ContainsFunc(c.entries, func(e mc.PlayerListEntry) bool {
 			return e.ActionType == action && uuid.UUID(e.UUID) == id
 		})
 		c.mu.Unlock()

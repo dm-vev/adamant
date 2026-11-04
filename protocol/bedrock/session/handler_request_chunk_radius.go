@@ -3,7 +3,7 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // RequestChunkRadiusHandler handles the RequestChunkRadius packet.
@@ -11,7 +11,7 @@ type RequestChunkRadiusHandler struct{}
 
 // Handle ...
 func (*RequestChunkRadiusHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, _ Controllable) error {
-	pk := p.(*v2193.RequestChunkRadiusPacket)
+	pk := p.(*mc.RequestChunkRadiusPacket)
 
 	chunkRadius := pk.ChunkRadius
 	if chunkRadius < 0 {
@@ -27,6 +27,6 @@ func (*RequestChunkRadiusHandler) Handle(p proto.Packet, s *Session, tx *world.T
 		s.chunkLoader.ChangeRadius(tx, int(chunkRadius))
 	}
 
-	s.writePacket(&v2193.ChunkRadiusUpdatedPacket{ChunkRadius: chunkRadius})
+	s.writePacket(&mc.ChunkRadiusUpdatedPacket{ChunkRadius: chunkRadius})
 	return nil
 }

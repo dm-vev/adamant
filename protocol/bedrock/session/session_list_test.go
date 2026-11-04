@@ -16,7 +16,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -80,9 +80,9 @@ func TestRosterListsAndUnlistsConcurrently(t *testing.T) {
 		t.Fatalf("roster contains removed session: %v", remaining)
 	}
 
-	first := packetOf(existing.testPacket()).(*v2193.PlayerListPacket)
-	second := packetOf(existing.testPacket()).(*v2193.PlayerListPacket)
-	if first.Entries[0].ActionType != v2193.PlayerListActionAdd || second.Entries[0].ActionType != v2193.PlayerListActionRemove {
+	first := packetOf(existing.testPacket()).(*mc.PlayerListPacket)
+	second := packetOf(existing.testPacket()).(*mc.PlayerListPacket)
+	if first.Entries[0].ActionType != mc.PlayerListActionAdd || second.Entries[0].ActionType != mc.PlayerListActionRemove {
 		t.Fatalf("player list updates out of order: %v then %v", first.Entries[0].ActionType, second.Entries[0].ActionType)
 	}
 }
@@ -187,12 +187,12 @@ func TestPlayerListEntryIsShared(t *testing.T) {
 	if pa != pb || pa != proto.Packet(c.listEntry.Load()) {
 		t.Fatal("the sessions were not given the same entry of the new session")
 	}
-	if e := packetOf(pa).(*v2193.PlayerListPacket).Entries[0]; e.UUID != c.ent.UUID() || e.Skin.PlayFabID != "c-skin" {
+	if e := packetOf(pa).(*mc.PlayerListPacket).Entries[0]; e.UUID != c.ent.UUID() || e.Skin.PlayFabID != "c-skin" {
 		t.Fatalf("entry %+v", e)
 	}
 	seen := map[uuid.UUID]bool{}
 	for range 3 {
-		seen[packetOf(c.testPacket()).(*v2193.PlayerListPacket).Entries[0].UUID] = true
+		seen[packetOf(c.testPacket()).(*mc.PlayerListPacket).Entries[0].UUID] = true
 	}
 	if !seen[a.ent.UUID()] || !seen[b.ent.UUID()] || !seen[c.ent.UUID()] {
 		t.Fatalf("the new session listed %v", seen)
@@ -221,10 +221,10 @@ func TestShowSkinReachesEverySession(t *testing.T) {
 			t.Fatal("the sessions were not given the same PlayerSkin")
 		}
 	}
-	if pk, ok := packetOf(first).(*v2193.PlayerSkinPacket); !ok || pk.UUID != a.ent.UUID() || pk.Skin.PlayFabID != "new-skin" {
+	if pk, ok := packetOf(first).(*mc.PlayerSkinPacket); !ok || pk.UUID != a.ent.UUID() || pk.Skin.PlayFabID != "new-skin" {
 		t.Fatalf("skin packet %+v", packetOf(first))
 	}
-	if e := a.playerListEntry().Packet.(*v2193.PlayerListPacket).Entries[0]; e.Skin.PlayFabID != "new-skin" {
+	if e := a.playerListEntry().Packet.(*mc.PlayerListPacket).Entries[0]; e.Skin.PlayFabID != "new-skin" {
 		t.Fatalf("later sessions would list the player with %q", e.Skin.PlayFabID)
 	}
 }
@@ -255,7 +255,7 @@ func TestRosterMatchesSessionList(t *testing.T) {
 			out[i].listEntry.Store(entries[i])
 		}
 		// b has abilities, which the others are sent with its entry.
-		out[1].abilities.Store(&v2193.AbilityData{EntityUniqueID: handles[1].UniqueID(), PlayerPermissions: v2193.PermissionLevelOperator})
+		out[1].abilities.Store(&mc.AbilityData{EntityUniqueID: handles[1].UniqueID(), PlayerPermissions: mc.PermissionLevelOperator})
 		return out
 	}
 
@@ -389,7 +389,7 @@ func (l *oracleSessionList) Remove(s *Session) {
 func (l *oracleSessionList) sendSessionTo(s, to *Session) {
 	to.writePacket(s.playerListEntry())
 	if data := s.abilities.Load(); data != nil && s != to {
-		to.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: *data})
+		to.writePacket(&mc.UpdateAbilitiesPacket{AbilityData: *data})
 	}
 }
 
@@ -416,9 +416,9 @@ func (l *oracleSessionList) unsendSessionFrom(s, from *Session) {
 	}
 	from.entityMutex.Unlock()
 
-	from.writePacket(&v2193.PlayerListPacket{
-		Entries: []v2193.PlayerListEntry{{
-			ActionType: v2193.PlayerListActionRemove,
+	from.writePacket(&mc.PlayerListPacket{
+		Entries: []mc.PlayerListEntry{{
+			ActionType: mc.PlayerListActionRemove,
 			UUID:       s.ent.UUID(),
 		}},
 	})

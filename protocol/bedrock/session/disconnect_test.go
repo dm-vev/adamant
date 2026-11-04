@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"golang.org/x/text/language"
 )
 
@@ -17,13 +17,13 @@ func TestDisconnectReasons(t *testing.T) {
 	for _, c := range []struct {
 		name string
 		t    text.Text
-		want v2193.DisconnectPacket
+		want mc.DisconnectPacket
 	}{
-		{"shutdown en", chat.MessageServerDisconnect.F().Text(language.English), v2193.DisconnectPacket{Message: "§r§e%disconnect.disconnected§r"}},
-		{"shutdown ru", chat.MessageServerDisconnect.F().Text(language.Russian), v2193.DisconnectPacket{Message: "§r§e%disconnect.disconnected§r"}},
-		{"closed", text.Literal("Connection closed."), v2193.DisconnectPacket{Message: "Connection closed."}},
-		{"banned", text.ParseLegacy("§cYou are banned"), v2193.DisconnectPacket{Message: "§cYou are banned"}},
-		{"empty", text.Literal(""), v2193.DisconnectPacket{HideDisconnectionScreen: true}},
+		{"shutdown en", chat.MessageServerDisconnect.F().Text(language.English), mc.DisconnectPacket{Message: "§r§e%disconnect.disconnected§r"}},
+		{"shutdown ru", chat.MessageServerDisconnect.F().Text(language.Russian), mc.DisconnectPacket{Message: "§r§e%disconnect.disconnected§r"}},
+		{"closed", text.Literal("Connection closed."), mc.DisconnectPacket{Message: "Connection closed."}},
+		{"banned", text.ParseLegacy("§cYou are banned"), mc.DisconnectPacket{Message: "§cYou are banned"}},
+		{"empty", text.Literal(""), mc.DisconnectPacket{HideDisconnectionScreen: true}},
 	} {
 		s := newCaptureSession()
 		s.Disconnect(c.t)
@@ -31,7 +31,7 @@ func TestDisconnectReasons(t *testing.T) {
 		if len(pks) != 1 {
 			t.Fatalf("%s: %d packets, want 1", c.name, len(pks))
 		}
-		if got, ok := pks[0].(*v2193.DisconnectPacket); !ok || *got != c.want {
+		if got, ok := pks[0].(*mc.DisconnectPacket); !ok || *got != c.want {
 			t.Errorf("%s: %#v, want %#v", c.name, pks[0], c.want)
 		}
 	}

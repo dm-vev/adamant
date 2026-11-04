@@ -12,7 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -33,15 +33,15 @@ type textMethod struct {
 var textMethods = []textMethod{
 	{"SendMessage", func(s *Session, t text.Text) { s.SendMessage(t) }, oldSendMessage},
 	{"Disconnect", func(s *Session, t text.Text) { s.Disconnect(t) }, oldDisconnect},
-	{"SendTip", func(s *Session, t text.Text) { s.SendTip(t) }, oldTextPacket(v2193.TextTypeTip)},
-	{"SendPopup", func(s *Session, t text.Text) { s.SendPopup(t) }, oldTextPacket(v2193.TextTypePopup)},
-	{"SendJukeboxPopup", func(s *Session, t text.Text) { s.SendJukeboxPopup(t) }, oldTextPacket(v2193.TextTypeJukeboxPopup)},
+	{"SendTip", func(s *Session, t text.Text) { s.SendTip(t) }, oldTextPacket(mc.TextTypeTip)},
+	{"SendPopup", func(s *Session, t text.Text) { s.SendPopup(t) }, oldTextPacket(mc.TextTypePopup)},
+	{"SendJukeboxPopup", func(s *Session, t text.Text) { s.SendJukeboxPopup(t) }, oldTextPacket(mc.TextTypeJukeboxPopup)},
 	{"SendToast", func(s *Session, t text.Text) { s.SendToast(t, t) }, func(s *Session, str string) { oldSendToast(s, str, str) }},
 	{"SendToast title", func(s *Session, t text.Text) { s.SendToast(t, text.Literal("message")) }, func(s *Session, str string) { oldSendToast(s, str, "message") }},
 	{"SendToast message", func(s *Session, t text.Text) { s.SendToast(text.ParseLegacy("§aTitle"), t) }, func(s *Session, str string) { oldSendToast(s, "§aTitle", str) }},
-	{"SendTitle", func(s *Session, t text.Text) { s.SendTitle(t) }, oldSetTitle(v2193.TitleActionSetTitle)},
-	{"SendSubtitle", func(s *Session, t text.Text) { s.SendSubtitle(t) }, oldSetTitle(v2193.TitleActionSetSubtitle)},
-	{"SendActionBarMessage", func(s *Session, t text.Text) { s.SendActionBarMessage(t) }, oldSetTitle(v2193.TitleActionSetActionBar)},
+	{"SendTitle", func(s *Session, t text.Text) { s.SendTitle(t) }, oldSetTitle(mc.TitleActionSetTitle)},
+	{"SendSubtitle", func(s *Session, t text.Text) { s.SendSubtitle(t) }, oldSetTitle(mc.TitleActionSetSubtitle)},
+	{"SendActionBarMessage", func(s *Session, t text.Text) { s.SendActionBarMessage(t) }, oldSetTitle(mc.TitleActionSetActionBar)},
 	{"SendBossBarID", sendBossBars, oldSendBossBars},
 }
 
@@ -64,9 +64,9 @@ func sendBossBars(s *Session, t text.Text) {
 // oldSendBossBars is sendBossBars with SendBossBarID as it was for a string.
 func oldSendBossBars(s *Session, title string) {
 	oldSendBossBarID := func(id, text string, colour uint8, healthPercentage float64) {
-		s.writePacket(&v2193.BossEventPacket{
+		s.writePacket(&mc.BossEventPacket{
 			BossEntityUniqueID: s.bossBarEntityID(id),
-			EventType:          v2193.BossEventShow,
+			EventType:          mc.BossEventShow,
 			BossBarTitle:       text,
 			HealthPercentage:   float32(healthPercentage),
 			Colour:             colour,
@@ -84,7 +84,7 @@ func oldSendBossBars(s *Session, title string) {
 // a string: a Text of the type passed.
 func oldTextPacket(textType byte) func(s *Session, message string) {
 	return func(s *Session, message string) {
-		s.writePacket(&v2193.TextPacket{
+		s.writePacket(&mc.TextPacket{
 			TextType: textType,
 			Message:  message,
 		})
@@ -93,7 +93,7 @@ func oldTextPacket(textType byte) func(s *Session, message string) {
 
 // oldSendToast is SendToast as it was for strings.
 func oldSendToast(s *Session, title, message string) {
-	s.writePacket(&v2193.ToastRequestPacket{
+	s.writePacket(&mc.ToastRequestPacket{
 		Title:   title,
 		Message: message,
 	})
@@ -103,7 +103,7 @@ func oldSendToast(s *Session, title, message string) {
 // was for a string: a SetTitle of the action passed.
 func oldSetTitle(action int32) func(s *Session, message string) {
 	return func(s *Session, message string) {
-		s.writePacket(&v2193.SetTitlePacket{ActionType: action, Text: message})
+		s.writePacket(&mc.SetTitlePacket{ActionType: action, Text: message})
 	}
 }
 
@@ -111,7 +111,7 @@ func oldSetTitle(action int32) func(s *Session, message string) {
 func oldDisconnect(s *Session, message string) {
 	if s != Nop {
 		s.connWriteMu.Lock()
-		_ = s.conn.WritePacket(&v2193.DisconnectPacket{
+		_ = s.conn.WritePacket(&mc.DisconnectPacket{
 			HideDisconnectionScreen: message == "",
 			Message:                 message,
 		})
@@ -125,8 +125,8 @@ func oldSendMessage(s *Session, message string) {
 	if message == "" {
 		message = " "
 	}
-	s.writePacket(&v2193.TextPacket{
-		TextType: v2193.TextTypeRaw,
+	s.writePacket(&mc.TextPacket{
+		TextType: mc.TextTypeRaw,
 		Message:  message,
 	})
 }

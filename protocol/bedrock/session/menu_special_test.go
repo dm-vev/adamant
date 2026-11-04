@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // specialScenario sends the requests that craft special recipes, Bedrock's
@@ -20,24 +20,24 @@ import (
 // table, and with the cartography table replaced under its menu.
 func (s *scenario) specialScenario() {
 	const (
-		inv  = v2193.ContainerCombinedHotBarAndInventory
-		grid = v2193.ContainerCraftingInput
+		inv  = mc.ContainerCombinedHotBarAndInventory
+		grid = mc.ContainerCraftingInput
 	)
 	bow := func(durability int) item.Stack { return item.NewStack(item.Bow{}, 1).WithDurability(durability) }
-	resultOf := func(it item.Stack, times int) *v2193.CraftResultsDeprecatedStackRequestAction {
+	resultOf := func(it item.Stack, times int) *mc.CraftResultsDeprecatedStackRequestAction {
 		name, meta := it.Item().EncodeItem()
-		return &v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: byte(times), ResultItems: []v2193.StackRequestItem{{
+		return &mc.CraftResultsDeprecatedStackRequestAction{TimesCrafted: byte(times), ResultItems: []mc.StackRequestItem{{
 			Identifier: name, MetadataValue: uint32(meta), Count: uint16(it.Count()), NBTData: session.NetworkItemNBT(it),
 		}}}
 	}
-	craft := func(id string, times int) *v2193.CraftRecipeStackRequestAction {
-		return &v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe(id), NumberOfCrafts: byte(times)}
+	craft := func(id string, times int) *mc.CraftRecipeStackRequestAction {
+		return &mc.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe(id), NumberOfCrafts: byte(times)}
 	}
-	consume := func(container uint8, slot, count int) *v2193.ConsumeStackRequestAction {
-		return &v2193.ConsumeStackRequestAction{Count: byte(count), Source: s.slot(container, slot)}
+	consume := func(container uint8, slot, count int) *mc.ConsumeStackRequestAction {
+		return &mc.ConsumeStackRequestAction{Count: byte(count), Source: s.slot(container, slot)}
 	}
-	take := func(count, to int) *v2193.PlaceStackRequestAction {
-		return &v2193.PlaceStackRequestAction{Count: byte(count), Source: s.slot(v2193.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(inv, to)}
+	take := func(count, to int) *mc.PlaceStackRequestAction {
+		return &mc.PlaceStackRequestAction{Count: byte(count), Source: s.slot(mc.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(inv, to)}
 	}
 	clearUI := func(heading string) {
 		s.step(heading, func(*world.Tx, *player.Player) {
@@ -71,17 +71,17 @@ func (s *scenario) specialScenario() {
 		consume(grid, uiInventoryGrid+1, 1), consume(grid, uiInventoryGrid, 1))
 	s.request("the repaired bow taken", nil, take(1, 0))
 	s.fill("the repaired bow and a bow put in the grid", grid, [2]int{0, uiInventoryGrid}, [2]int{5, uiInventoryGrid + 1})
-	both := func() []v2193.StackRequestAction {
-		return []v2193.StackRequestAction{consume(grid, uiInventoryGrid, 1), consume(grid, uiInventoryGrid+1, 1)}
+	both := func() []mc.StackRequestAction {
+		return []mc.StackRequestAction{consume(grid, uiInventoryGrid, 1), consume(grid, uiInventoryGrid+1, 1)}
 	}
 	again := bow(min(item.NewStack(item.Bow{}, 1).MaxDurability(), repaired.Durability()+30+item.NewStack(item.Bow{}, 1).MaxDurability()/20))
-	s.refuse("refused: no result named", append([]v2193.StackRequestAction{craft(multiRepair, 1)}, both()...)...)
-	s.refuse("refused: two results named", append([]v2193.StackRequestAction{craft(multiRepair, 1), resultOf(again, 1), resultOf(again, 1)}, both()...)...)
-	s.refuse("refused: the result named for two crafts", append([]v2193.StackRequestAction{craft(multiRepair, 1), resultOf(again, 2)}, both()...)...)
-	s.refuse("refused: a result of no items", craft(multiRepair, 1), &v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{{Identifier: "minecraft:bow"}}})
-	s.refuse("refused: two bows of one repair", append([]v2193.StackRequestAction{craft(multiRepair, 1), resultOf(again.Grow(1), 1)}, both()...)...)
+	s.refuse("refused: no result named", append([]mc.StackRequestAction{craft(multiRepair, 1)}, both()...)...)
+	s.refuse("refused: two results named", append([]mc.StackRequestAction{craft(multiRepair, 1), resultOf(again, 1), resultOf(again, 1)}, both()...)...)
+	s.refuse("refused: the result named for two crafts", append([]mc.StackRequestAction{craft(multiRepair, 1), resultOf(again, 2)}, both()...)...)
+	s.refuse("refused: a result of no items", craft(multiRepair, 1), &mc.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []mc.StackRequestItem{{Identifier: "minecraft:bow"}}})
+	s.refuse("refused: two bows of one repair", append([]mc.StackRequestAction{craft(multiRepair, 1), resultOf(again.Grow(1), 1)}, both()...)...)
 	s.refuse("refused: the repair crafted no times", craft(multiRepair, 0))
-	s.refuse("refused: the repair crafted twice", append([]v2193.StackRequestAction{craft(multiRepair, 2), resultOf(again, 2)}, both()...)...)
+	s.refuse("refused: the repair crafted twice", append([]mc.StackRequestAction{craft(multiRepair, 2), resultOf(again, 2)}, both()...)...)
 	s.refuse("refused: one bow of two consumed", craft(multiRepair, 1), resultOf(again, 1), consume(grid, uiInventoryGrid, 1))
 	s.refuse("refused: a bow consumed twice", craft(multiRepair, 1), resultOf(again, 1), consume(grid, uiInventoryGrid, 1), consume(grid, uiInventoryGrid, 1))
 	s.refuse("refused: no bow consumed", craft(multiRepair, 1), resultOf(again, 1))
@@ -93,14 +93,14 @@ func (s *scenario) specialScenario() {
 	s.refuse("refused: an empty slot of the grid consumed",
 		craft(multiRepair, 1), resultOf(again, 1), consume(grid, uiInventoryGrid, 1), consume(grid, uiInventoryGrid+1, 1), consume(grid, uiInventoryGrid+2, 1))
 	s.refuse("refused: a bow of a stale stack ID", craft(multiRepair, 1), resultOf(again, 1),
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: grid}, Slot: uiInventoryGrid, StackNetworkID: 9999}})
+		&mc.ConsumeStackRequestAction{Count: 1, Source: mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: grid}, Slot: uiInventoryGrid, StackNetworkID: 9999}})
 	s.refuse("refused: the repair, then an item moved",
-		append(append([]v2193.StackRequestAction{craft(multiRepair, 1), resultOf(again, 1)}, both()...), take(1, 9))...)
+		append(append([]mc.StackRequestAction{craft(multiRepair, 1), resultOf(again, 1)}, both()...), take(1, 9))...)
 	s.request("an apple put in the grid with the bows", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(grid, uiInventoryGrid+2)})
-	s.refuse("refused: the bows repaired, the apple left in the grid", append([]v2193.StackRequestAction{craft(multiRepair, 1), resultOf(again, 1)}, both()...)...)
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(grid, uiInventoryGrid+2)})
+	s.refuse("refused: the bows repaired, the apple left in the grid", append([]mc.StackRequestAction{craft(multiRepair, 1), resultOf(again, 1)}, both()...)...)
 	s.refuse("refused: the bows and the apple repaired",
-		append(append([]v2193.StackRequestAction{craft(multiRepair, 1), resultOf(again, 1)}, both()...), consume(grid, uiInventoryGrid+2, 1))...)
+		append(append([]mc.StackRequestAction{craft(multiRepair, 1), resultOf(again, 1)}, both()...), consume(grid, uiInventoryGrid+2, 1))...)
 	s.refuse("refused: the apple and a bow consumed", craft(multiRepair, 1), resultOf(again, 1), consume(grid, uiInventoryGrid+1, 1), consume(grid, uiInventoryGrid+2, 1))
 	s.closeInventory("the client closes its inventory", 0)
 
@@ -110,8 +110,8 @@ func (s *scenario) specialScenario() {
 	s.clickBlock("the client opens the crafting table", table)
 	firework := item.NewStack(item.Firework{Duration: 1000 * time.Millisecond, Explosions: []item.FireworkExplosion{}}, 6)
 	s.request("paper and gunpowder put in the grid, two each", nil,
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 3), Destination: s.slot(grid, uiCraftingGrid)},
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 4), Destination: s.slot(grid, uiCraftingGrid+4)})
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 3), Destination: s.slot(grid, uiCraftingGrid)},
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 4), Destination: s.slot(grid, uiCraftingGrid+4)})
 	s.refuse("refused: fireworks crafted twice, one of each consumed",
 		craft(multiFirework, 2), resultOf(firework, 2), consume(grid, uiCraftingGrid, 1), consume(grid, uiCraftingGrid+4, 1))
 	s.refuse("refused: fireworks crafted once, two of each consumed",
@@ -147,7 +147,7 @@ func (s *scenario) specialScenario() {
 		slotStack{12, item.NewStack(item.EmptyMap{}, 3)},
 		slotStack{13, item.NewStack(block.GlassPane{}, 2)},
 	)
-	s.fill("a map and two empty maps put in the grid", v2193.ContainerCraftingInput,
+	s.fill("a map and two empty maps put in the grid", mc.ContainerCraftingInput,
 		[2]int{11, uiCraftingGrid}, [2]int{12, uiCraftingGrid + 1}, [2]int{12, uiCraftingGrid + 2})
 	s.refuse("refused: the map locked at the crafting table",
 		craft(multiMapLock, 1), resultOf(source, 1), consume(grid, uiCraftingGrid, 1), consume(grid, uiCraftingGrid+1, 1), consume(grid, uiCraftingGrid+2, 1))
@@ -160,24 +160,24 @@ func (s *scenario) specialScenario() {
 	s.place("a cartography table is placed", cartography, block.CartographyTable{})
 	s.clickBlock("the client opens the cartography table", cartography)
 	s.request("a map and a glass pane put in the cartography table", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 11), Destination: s.slot(v2193.ContainerCartographyInput, uiCartographyInput)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 13), Destination: s.slot(v2193.ContainerCartographyAdditional, uiCartographyAddition)})
-	cart := func() []v2193.StackRequestAction {
-		return []v2193.StackRequestAction{consume(v2193.ContainerCartographyInput, uiCartographyInput, 1), consume(v2193.ContainerCartographyAdditional, uiCartographyAddition, 1)}
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 11), Destination: s.slot(mc.ContainerCartographyInput, uiCartographyInput)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 13), Destination: s.slot(mc.ContainerCartographyAdditional, uiCartographyAddition)})
+	cart := func() []mc.StackRequestAction {
+		return []mc.StackRequestAction{consume(mc.ContainerCartographyInput, uiCartographyInput, 1), consume(mc.ContainerCartographyAdditional, uiCartographyAddition, 1)}
 	}
-	s.refuse("refused: the repair at the cartography table", append([]v2193.StackRequestAction{craft(multiRepair, 1), resultOf(source, 1)}, cart()...)...)
-	s.refuse("refused: the map extended of a glass pane", append([]v2193.StackRequestAction{craft(multiMapExtendCartograph, 1), resultOf(source, 1)}, cart()...)...)
+	s.refuse("refused: the repair at the cartography table", append([]mc.StackRequestAction{craft(multiRepair, 1), resultOf(source, 1)}, cart()...)...)
+	s.refuse("refused: the map extended of a glass pane", append([]mc.StackRequestAction{craft(multiMapExtendCartograph, 1), resultOf(source, 1)}, cart()...)...)
 	s.refuse("refused: the glass pane named as the map's slot",
-		craft(multiMapLock, 1), resultOf(source, 1), consume(v2193.ContainerCartographyInput, uiCartographyInput, 1), consume(v2193.ContainerCartographyInput, uiCartographyAddition, 1))
+		craft(multiMapLock, 1), resultOf(source, 1), consume(mc.ContainerCartographyInput, uiCartographyInput, 1), consume(mc.ContainerCartographyInput, uiCartographyAddition, 1))
 	s.refuse("refused: a slot of the grid consumed at the cartography table",
-		craft(multiMapLock, 1), resultOf(source, 1), consume(v2193.ContainerCartographyInput, uiCartographyInput, 1), consume(grid, uiCraftingGrid, 1))
-	s.refuse("refused: the map locked into two maps", append([]v2193.StackRequestAction{craft(multiMapLock, 1), resultOf(source.Grow(1), 1)}, cart()...)...)
-	s.request("the map locked at the cartography table", nil, append([]v2193.StackRequestAction{craft(multiMapLock, 1), resultOf(source, 1)}, cart()...)...)
+		craft(multiMapLock, 1), resultOf(source, 1), consume(mc.ContainerCartographyInput, uiCartographyInput, 1), consume(grid, uiCraftingGrid, 1))
+	s.refuse("refused: the map locked into two maps", append([]mc.StackRequestAction{craft(multiMapLock, 1), resultOf(source.Grow(1), 1)}, cart()...)...)
+	s.request("the map locked at the cartography table", nil, append([]mc.StackRequestAction{craft(multiMapLock, 1), resultOf(source, 1)}, cart()...)...)
 	s.request("the locked map taken", nil, take(1, 15))
 	s.request("a map and a glass pane put in the cartography table again", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 11), Destination: s.slot(v2193.ContainerCartographyInput, uiCartographyInput)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 13), Destination: s.slot(v2193.ContainerCartographyAdditional, uiCartographyAddition)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 11), Destination: s.slot(mc.ContainerCartographyInput, uiCartographyInput)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 13), Destination: s.slot(mc.ContainerCartographyAdditional, uiCartographyAddition)})
 	s.place("the cartography table replaced by stone", cartography, block.Stone{})
-	s.refuse("refused: the map locked at the stone", append([]v2193.StackRequestAction{craft(multiMapLock, 1), resultOf(source, 1)}, cart()...)...)
+	s.refuse("refused: the map locked at the stone", append([]mc.StackRequestAction{craft(multiMapLock, 1), resultOf(source, 1)}, cart()...)...)
 	s.closeContainer("the client closes the stone")
 }

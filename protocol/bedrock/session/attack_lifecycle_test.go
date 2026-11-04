@@ -23,7 +23,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -93,19 +93,19 @@ func TestMeleeHitStopsUpdatingRemovedTarget(t *testing.T) {
 				criticals, deaths := 0, 0
 				for _, pk := range conn.packets {
 					switch pk := pk.(type) {
-					case *v2193.AnimatePacket:
+					case *mc.AnimatePacket:
 						if pk.EntityRuntimeID == 0 {
 							t.Error("animation targets runtime ID zero")
 						}
-						if pk.ActionType == v2193.AnimateActionCriticalHit {
+						if pk.ActionType == mc.AnimateActionCriticalHit {
 							criticals++
 						}
-					case *v2193.SetActorDataPacket:
+					case *mc.SetActorDataPacket:
 						if pk.EntityRuntimeID == 0 {
 							t.Error("metadata targets runtime ID zero")
 						}
-					case *v2193.ActorEventPacket:
-						if pk.EventType == v2193.ActorEventDeath {
+					case *mc.ActorEventPacket:
+						if pk.EventType == mc.ActorEventDeath {
 							deaths++
 						}
 					}
@@ -184,7 +184,7 @@ func (c *attackTestConn) waitForMessage(t *testing.T, marker string) {
 	for time.Now().Before(deadline) {
 		c.mu.Lock()
 		for _, pk := range c.packets {
-			if text, ok := pk.(*v2193.TextPacket); ok && text.Message == marker {
+			if text, ok := pk.(*mc.TextPacket); ok && text.Message == marker {
 				c.mu.Unlock()
 				return
 			}

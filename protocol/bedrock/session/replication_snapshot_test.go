@@ -23,7 +23,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -67,7 +67,7 @@ func TestReplicationSnapshot(t *testing.T) {
 			select {
 			case raw := <-conn.packets:
 				pk := decoded(t, raw.(proto.Packet))
-				if text, ok := pk.(*v2193.TextPacket); ok && text.Message == marker {
+				if text, ok := pk.(*mc.TextPacket); ok && text.Message == marker {
 					return
 				}
 				if keep {
@@ -157,7 +157,7 @@ func decoded(t *testing.T, pk proto.Packet) proto.Packet {
 	t.Helper()
 	var w wire.Writer
 	pk.Encode(&w)
-	back := v2193.New(pk.ID())
+	back := mc.New(pk.ID())
 	r := wire.NewReader(w.B)
 	back.Decode(r)
 	if r.Err() != nil || r.Len() != 0 {

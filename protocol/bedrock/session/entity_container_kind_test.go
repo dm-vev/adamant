@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestEntityContainerTypes holds every entity.ContainerKind to the container
@@ -43,9 +43,9 @@ func TestActorContainerTypesMatchProtocol(t *testing.T) {
 		kind      entity.ContainerKind
 		want, was int64
 	}{
-		{entity.ContainerChestBoat, v2193.ContainerTypeChestBoat, 34},
-		{entity.ContainerMinecartChest, v2193.ContainerTypeCartChest, 10},
-		{entity.ContainerMinecartHopper, v2193.ContainerTypeCartHopper, 11},
+		{entity.ContainerChestBoat, mc.ContainerTypeChestBoat, 34},
+		{entity.ContainerMinecartChest, mc.ContainerTypeCartChest, 10},
+		{entity.ContainerMinecartHopper, mc.ContainerTypeCartHopper, 11},
 	} {
 		typ, ok := actorContainerType(c.kind)
 		if !ok {

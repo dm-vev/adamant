@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
@@ -20,7 +20,7 @@ func startGame(ctx context.Context, conn Conn, g client.Game, c *startContent, e
 	if err := conn.StartGameContext(ctx, gameData(g, c, protocolOf(conn), emoteChatMuted)); err != nil {
 		return err
 	}
-	_ = conn.WritePacket(&v2193.ItemRegistryPacket{Items: c.ItemRegistry()})
+	_ = conn.WritePacket(&mc.ItemRegistryPacket{Items: c.ItemRegistry()})
 	return nil
 }
 
@@ -30,9 +30,9 @@ func startGame(ctx context.Context, conn Conn, g client.Game, c *startContent, e
 func gameData(g client.Game, c *startContent, p *versions.Protocol, emoteChatMuted bool) netconn.GameData {
 	mode := GameTypeFromMode(g.Level.DefaultGameMode())
 	difficulty, _ := world.DifficultyID(g.Level.Difficulty())
-	permissions := v2193.PermissionLevelMember
+	permissions := mc.PermissionLevelMember
 	if g.Operator {
-		permissions = v2193.PermissionLevelOperator
+		permissions = mc.PermissionLevelOperator
 	}
 	dim, _ := world.DimensionID(g.World.Dimension())
 	return netconn.GameData{
@@ -58,7 +58,7 @@ func gameData(g client.Game, c *startContent, p *versions.Protocol, emoteChatMut
 
 		Items:  c.Items(),
 		Blocks: c.Blocks(),
-		GameRules: append([]v2193.GameRule{
+		GameRules: append([]mc.GameRule{
 			{Name: "naturalregeneration", Value: false},
 			{Name: "locatorBar", Value: false},
 			{Name: "falldamage", Value: g.Level.FallDamage()},
@@ -68,7 +68,7 @@ func gameData(g client.Game, c *startContent, p *versions.Protocol, emoteChatMut
 		// Like BDS, name blocks by network block hash so clients resolve every
 		// state by its contents instead of by its index in their own palette.
 		UseBlockNetworkIDHashes: true,
-		PlayerMovementSettings: v2193.PlayerMovementSettings{
+		PlayerMovementSettings: mc.PlayerMovementSettings{
 			ServerAuthoritativeBlockBreaking: true,
 		},
 		Dimensions: c.Dimensions(),

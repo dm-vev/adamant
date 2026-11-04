@@ -25,7 +25,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/sctp"
@@ -290,7 +290,7 @@ func (c *Conn) ReadPacket() (pk proto.Packet, err error) {
 		_ = c.Close()
 		return nil, err
 	}
-	if d, ok := pk.(*v2193.DisconnectPacket); ok {
+	if d, ok := pk.(*mc.DisconnectPacket); ok {
 		_ = c.Close()
 		return nil, DisconnectError(d.Message)
 	}
@@ -365,7 +365,7 @@ func (c *Conn) deliver(raw []byte, handle func(pk proto.Packet, cost int), end f
 		end(err)
 		return errStopped
 	}
-	if d, ok := pk.(*v2193.DisconnectPacket); ok {
+	if d, ok := pk.(*mc.DisconnectPacket); ok {
 		_ = c.Close()
 		end(DisconnectError(d.Message))
 		return errStopped
@@ -391,10 +391,10 @@ var packetLimits = [...]struct {
 	ids        []uint32
 	rate, size float64
 }{
-	{[]uint32{v2193.IDRequestNetworkSettings, v2193.IDClientToServerHandshake}, 0.0013, 1},
-	{[]uint32{v2193.IDText, v2193.IDBookEdit}, 10, 50},
-	{[]uint32{v2193.IDPlayerSkin}, 10, 50},
-	{[]uint32{v2193.IDPositionTrackingDBClientRequest}, 20, 60},
+	{[]uint32{mc.IDRequestNetworkSettings, mc.IDClientToServerHandshake}, 0.0013, 1},
+	{[]uint32{mc.IDText, mc.IDBookEdit}, 10, 50},
+	{[]uint32{mc.IDPlayerSkin}, 10, 50},
+	{[]uint32{mc.IDPositionTrackingDBClientRequest}, 20, 60},
 }
 
 // limitGroup maps a packet ID to its group in packetLimits plus one, zero
@@ -460,7 +460,7 @@ func (e errUnknownPacket) Error() string { return fmt.Sprintf("netconn: unknown 
 // lacks. The fields of others, such as a SubChunk, are never read: they
 // could hold dozens of times their bytes.
 func fromClient(p *versions.Protocol, id uint32) bool {
-	return p.FromClient(id) || id == v2193.IDDisconnect
+	return p.FromClient(id) || id == mc.IDDisconnect
 }
 
 // maxList bounds the elements of a list a client sends, as gophertunnel
@@ -515,7 +515,7 @@ func decodePacket(p *versions.Protocol, raw []byte) (pk proto.Packet, cost int, 
 	}()
 	r := wire.NewReader(fields)
 	r.MaxList, r.MaxString, r.MaxAlloc = maxList, maxString, maxAlloc
-	if h.ID == v2193.IDSubChunkRequest {
+	if h.ID == mc.IDSubChunkRequest {
 		r.MaxList = 0
 	}
 	pk.Decode(r)
@@ -551,12 +551,12 @@ func (c *Conn) read(ids ...uint32) (pk proto.Packet, err error) {
 		if err != nil {
 			return nil, err
 		}
-		if h.ID == v2193.IDDisconnect {
+		if h.ID == mc.IDDisconnect {
 			pk, _, err := c.decode(raw)
 			if err != nil {
 				return nil, err
 			}
-			return nil, DisconnectError(pk.(*v2193.DisconnectPacket).Message)
+			return nil, DisconnectError(pk.(*mc.DisconnectPacket).Message)
 		}
 		for _, id := range ids {
 			if h.ID == id {
@@ -594,22 +594,22 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 		if item.Name == "minecraft:shield" {
 			c.shieldID.Store(int32(item.RuntimeID))
 			// Items of the generated codecs find the shield by a process-wide ID.
-			v2193.SetShieldID(int32(item.RuntimeID))
+			mc.SetShieldID(int32(item.RuntimeID))
 		}
 	}
 	c.runtimeID = data.EntityRuntimeID
 	if len(data.Dimensions) > 0 {
-		_ = c.WritePacket(&v2193.DimensionDataPacket{Definitions: data.Dimensions})
+		_ = c.WritePacket(&mc.DimensionDataPacket{Definitions: data.Dimensions})
 	}
-	_ = c.WritePacket(&v2193.JigsawStructureDataPacket{StructureData: map[string]any{
+	_ = c.WritePacket(&mc.JigsawStructureDataPacket{StructureData: map[string]any{
 		"processors":     make([]map[string]any, 0),
 		"template_pools": make([]map[string]any, 0),
 		"jigsaws":        make([]map[string]any, 0),
 		"structure_sets": make([]map[string]any, 0),
 	}})
-	_ = c.WritePacket(&v2193.VoxelShapesPacket{})
+	_ = c.WritePacket(&mc.VoxelShapesPacket{})
 	_ = c.WritePacket(startGame(data, c.proto))
-	_ = c.WritePacket(&v2193.ItemRegistryPacket{Items: data.Items})
+	_ = c.WritePacket(&mc.ItemRegistryPacket{Items: data.Items})
 	if err := c.Flush(); err != nil {
 		return err
 	}
@@ -621,7 +621,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 		_ = c.t.SetReadDeadline(time.Time{})
 	}()
 	for {
-		pk, err := c.read(v2193.IDRequestChunkRadius, v2193.IDSetLocalPlayerAsInitialised)
+		pk, err := c.read(mc.IDRequestChunkRadius, mc.IDSetLocalPlayerAsInitialised)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -629,7 +629,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 			return err
 		}
 		switch pk := pk.(type) {
-		case *v2193.RequestChunkRadiusPacket:
+		case *mc.RequestChunkRadiusPacket:
 			if pk.ChunkRadius < 1 {
 				return fmt.Errorf("netconn: chunk radius %d", pk.ChunkRadius)
 			}
@@ -638,13 +638,13 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 				radius = data.ChunkRadius
 			}
 			c.chunkRadius.Store(pk.ChunkRadius)
-			_ = c.WritePacket(&v2193.ChunkRadiusUpdatedPacket{ChunkRadius: radius})
-			_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusPlayerSpawn})
-			_ = c.WritePacket(&v2193.CreativeContentPacket{})
+			_ = c.WritePacket(&mc.ChunkRadiusUpdatedPacket{ChunkRadius: radius})
+			_ = c.WritePacket(&mc.PlayStatusPacket{Status: mc.PlayStatusPlayerSpawn})
+			_ = c.WritePacket(&mc.CreativeContentPacket{})
 			if err := c.Flush(); err != nil {
 				return err
 			}
-		case *v2193.SetLocalPlayerAsInitialisedPacket:
+		case *mc.SetLocalPlayerAsInitialisedPacket:
 			if pk.EntityRuntimeID != c.runtimeID {
 				return fmt.Errorf("netconn: client initialised runtime ID %d, not %d", pk.EntityRuntimeID, c.runtimeID)
 			}
@@ -656,11 +656,11 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 // startGame returns the StartGame packet of the game data for a client of
 // a protocol, filled as gophertunnel fills it and naming the version of the
 // game the protocol tells its clients.
-func startGame(data GameData, p *versions.Protocol) *v2193.StartGamePacket {
+func startGame(data GameData, p *versions.Protocol) *mc.StartGamePacket {
 	if p == nil {
 		p = versions.Model()
 	}
-	return &v2193.StartGamePacket{
+	return &mc.StartGamePacket{
 		Difficulty:                   data.Difficulty,
 		EntityUniqueID:               data.EntityUniqueID,
 		EntityRuntimeID:              data.EntityRuntimeID,

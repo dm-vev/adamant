@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/client"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -27,7 +27,7 @@ func TestAntiCheatTodayAdapterAppliesEveryInput(t *testing.T) {
 	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
 	for i := 1; i <= 5; i++ {
 		to := mgl64.Vec3{0.2 * float64(i), 0, 0}
-		pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, to)), Tick: uint64(i)}
+		pk := &mc.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, to)), Tick: uint64(i)}
 		if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
 			t.Fatal(err)
 		}
@@ -36,7 +36,7 @@ func TestAntiCheatTodayAdapterAppliesEveryInput(t *testing.T) {
 		t.Fatalf("five inputs in one tick moved the player %d times, want 5", moves)
 	}
 	c.result = client.MoveDeferred
-	pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, mgl64.Vec3{2, 0, 0})), Tick: 6}
+	pk := &mc.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, mgl64.Vec3{2, 0, 0})), Tick: 6}
 	before := *pk
 	if err := (PlayerAuthInputHandler{}).Handle(pk, s, nil, c); !errors.Is(err, errInputDeferred) {
 		t.Fatalf("a deferred input: %v, want errInputDeferred", err)

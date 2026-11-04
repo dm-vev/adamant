@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -40,7 +40,7 @@ func TestEntityMoveIsEncodedOnce(t *testing.T) {
 	if !bytes.Equal(wa.B, wb.B) {
 		t.Fatal("the shared packet encoded differently")
 	}
-	var got v2193.MoveActorDeltaPacket
+	var got mc.MoveActorDeltaPacket
 	got.Decode(wire.NewReader(wa.B))
 	if !got.PositionX.Set || got.PositionY.Set || got.PositionZ.Set || got.RotationY.Set || got.Ticks != 3 || got.EntityRuntimeID != e.h.RuntimeID() {
 		t.Fatalf("move %+v, want x over 3 ticks", got)
@@ -52,13 +52,13 @@ func TestEntityMoveIsEncodedOnce(t *testing.T) {
 		t.Fatal("the move of the jump is not shared")
 	}
 	motion := (a.testPacket()).(*sharedPacket)
-	if pk, ok := motion.Packet.(*v2193.SetActorMotionPacket); !ok || pk.Velocity != [3]float32{0, 0.42, 0} {
+	if pk, ok := motion.Packet.(*mc.SetActorMotionPacket); !ok || pk.Velocity != [3]float32{0, 0.42, 0} {
 		t.Fatalf("motion %+v", motion.Packet)
 	}
 	// A velocity alone goes without a delta.
 	push := &world.EntityMove{Pos: mgl64.Vec3{1.3, 64.4, 1}, Vel: mgl64.Vec3{0.5, 0, 0}, Changed: world.MoveVelocity}
 	a.ViewEntityMove(e, push)
-	if pk, ok := (a.testPacket()).(*sharedPacket); !ok || pk.Packet.(*v2193.SetActorMotionPacket).Velocity != [3]float32{0.5, 0, 0} {
+	if pk, ok := (a.testPacket()).(*sharedPacket); !ok || pk.Packet.(*mc.SetActorMotionPacket).Velocity != [3]float32{0.5, 0, 0} {
 		t.Fatalf("push shown as %+v, want the velocity", pk)
 	}
 	if pk := a.testPacket(); pk != nil {
@@ -89,12 +89,12 @@ func TestAbsoluteMoveIsEncodedOnce(t *testing.T) {
 	}
 	var w wire.Writer
 	pa.Encode(&w)
-	var got v2193.MoveActorAbsolutePacket
+	var got mc.MoveActorAbsolutePacket
 	got.Decode(wire.NewReader(w.B))
-	if got.EntityRuntimeID != own.ent.RuntimeID() || got.Flags != v2193.MoveFlagOnGround || got.Position[1] != 64 || got.Rotation[1] != 90 {
+	if got.EntityRuntimeID != own.ent.RuntimeID() || got.Flags != mc.MoveFlagOnGround || got.Position[1] != 64 || got.Rotation[1] != 90 {
 		t.Fatalf("viewer shown %+v", got)
 	}
-	if self := (own.testPacket()).(*v2193.MoveActorAbsolutePacket); self.EntityRuntimeID != selfEntityRuntimeID {
+	if self := (own.testPacket()).(*mc.MoveActorAbsolutePacket); self.EntityRuntimeID != selfEntityRuntimeID {
 		t.Fatalf("own session shown %+v", self)
 	}
 	own.moving.Store(true)
@@ -115,7 +115,7 @@ func (p countingPacket) Encode(w *wire.Writer) { *p.n++; p.Packet.Encode(w) }
 func TestSharedPacketEncodesOnce(t *testing.T) {
 	t.Parallel()
 	n := 0
-	p := &sharedPacket{Packet: countingPacket{&v2193.SetActorMotionPacket{EntityRuntimeID: 9}, &n}}
+	p := &sharedPacket{Packet: countingPacket{&mc.SetActorMotionPacket{EntityRuntimeID: 9}, &n}}
 	for range 5 {
 		var w wire.Writer
 		p.Encode(&w)

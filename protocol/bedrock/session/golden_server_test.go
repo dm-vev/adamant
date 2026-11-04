@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -71,7 +71,7 @@ func (s *serverScenario) permissions(heading string, c *serverClient, f func()) 
 	fmt.Fprintf(&s.out, "== %s\n", heading)
 	f()
 	c.readUntil(func(pk proto.Packet) bool {
-		_, ok := pk.(*v2193.UpdateAbilitiesPacket)
+		_, ok := pk.(*mc.UpdateAbilitiesPacket)
 		return ok
 	})
 	s.endStep(s.online(), false)
@@ -255,11 +255,11 @@ func TestGoldenServerClose(t *testing.T) {
 func withoutDepartures(pks []proto.Packet) []proto.Packet {
 	return slices.DeleteFunc(pks, func(pk proto.Packet) bool {
 		switch pk := pk.(type) {
-		case *v2193.PlayerListPacket:
-			return len(pk.Entries) > 0 && pk.Entries[0].ActionType == v2193.PlayerListActionRemove
-		case *v2193.RemoveActorPacket:
+		case *mc.PlayerListPacket:
+			return len(pk.Entries) > 0 && pk.Entries[0].ActionType == mc.PlayerListActionRemove
+		case *mc.RemoveActorPacket:
 			return true
-		case *v2193.TextPacket:
+		case *mc.TextPacket:
 			return strings.Contains(pk.Message, "multiplayer.player.left")
 		}
 		return false

@@ -14,7 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 )
 
@@ -179,19 +179,19 @@ func craftMultiOnce(t *testing.T, c multiCase) string {
 	var outcome string
 	<-w.Exec(func(tx *world.Tx) {
 		offset := menu.UICraftingSmall
-		container := []byte{v2193.ContainerCraftingInput}
+		container := []byte{mc.ContainerCraftingInput}
 		switch c.screen {
 		case "table":
 			tx.SetBlock(cube.Pos{}, block.CraftingTable{}, nil)
 			s.menu.Store(menu.OpenBlock(tx, cube.Pos{}, s, nil))
-			s.openedContainerID.Store(uint32(v2193.ContainerTypeWorkbench))
+			s.openedContainerID.Store(uint32(mc.ContainerTypeWorkbench))
 			offset = menu.UICraftingLarge
 		case "cartography":
 			tx.SetBlock(cube.Pos{}, block.CartographyTable{}, nil)
 			s.menu.Store(menu.OpenBlock(tx, cube.Pos{}, s, nil))
-			s.openedContainerID.Store(uint32(v2193.ContainerTypeCartography))
+			s.openedContainerID.Store(uint32(mc.ContainerTypeCartography))
 			offset = menu.UICartographyInput
-			container = []byte{v2193.ContainerCartographyInput, v2193.ContainerCartographyAdditional}
+			container = []byte{mc.ContainerCartographyInput, mc.ContainerCartographyAdditional}
 		}
 		for i, it := range c.input {
 			_ = s.ui.SetItem(offset+i, it)
@@ -199,9 +199,9 @@ func craftMultiOnce(t *testing.T, c multiCase) string {
 		s.recipes[1] = recipeOfUUID(c.id)
 		times := max(c.times, 1)
 		name, meta := c.result.Item().EncodeItem()
-		actions := []v2193.StackRequestAction{
-			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: byte(times)},
-			&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: byte(times), ResultItems: []v2193.StackRequestItem{{
+		actions := []mc.StackRequestAction{
+			&mc.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: byte(times)},
+			&mc.CraftResultsDeprecatedStackRequestAction{TimesCrafted: byte(times), ResultItems: []mc.StackRequestItem{{
 				Identifier: name, MetadataValue: uint32(meta), Count: uint16(c.result.Count()), NBTData: networkItemNBT(c.result),
 			}}},
 		}
@@ -214,12 +214,12 @@ func craftMultiOnce(t *testing.T, c multiCase) string {
 		}
 		for _, i := range c.consumes {
 			stack, _ := s.ui.Item(offset + i)
-			actions = append(actions, &v2193.ConsumeStackRequestAction{Count: byte(count), Source: v2193.StackRequestSlotInfo{
-				Container: v2193.FullContainerName{ContainerID: container[min(i, len(container)-1)]}, Slot: byte(offset + i), StackNetworkID: item_id(stack),
+			actions = append(actions, &mc.ConsumeStackRequestAction{Count: byte(count), Source: mc.StackRequestSlotInfo{
+				Container: mc.FullContainerName{ContainerID: container[min(i, len(container)-1)]}, Slot: byte(offset + i), StackNetworkID: item_id(stack),
 			}})
 		}
 		h := craftingTestHandler()
-		err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: actions}, s, tx, batchController{tx: tx, s: s})
+		err := h.handleRequest(mc.ItemStackRequest{RequestID: -1, Actions: actions}, s, tx, batchController{tx: tx, s: s})
 
 		var b strings.Builder
 		fmt.Fprintf(&b, "accepted %v\n", err == nil)
@@ -229,7 +229,7 @@ func craftMultiOnce(t *testing.T, c multiCase) string {
 			}
 		}
 		for _, p := range s.heldPackets {
-			if r, ok := p.(*v2193.ItemStackResponsePacket); ok {
+			if r, ok := p.(*mc.ItemStackResponsePacket); ok {
 				for _, resp := range r.Responses {
 					var slots []string
 					for _, info := range resp.ContainerInfo {

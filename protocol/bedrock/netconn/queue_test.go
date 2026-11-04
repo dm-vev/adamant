@@ -12,7 +12,7 @@ import (
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/sctp"
 )
 
@@ -58,7 +58,7 @@ func TestSendQueue(t *testing.T) {
 	for i := range letters {
 		letters[i] = byte('a' + rand.IntN(26))
 	}
-	text := &staticText{&v2193.TextPacket{TextType: v2193.TextTypeRaw, Message: string(letters)}}
+	text := &staticText{&mc.TextPacket{TextType: mc.TextTypeRaw, Message: string(letters)}}
 	texts, queued, window, rtt := 0, 0, 0, time.Duration(0)
 	for queued == 0 && texts < 16 {
 		if err := srv.WritePacket(text); err != nil {
@@ -75,7 +75,7 @@ func TestSendQueue(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := pk.(*v2193.TextPacket); ok {
+		if _, ok := pk.(*mc.TextPacket); ok {
 			read++
 		}
 	}
@@ -106,7 +106,7 @@ func BenchmarkWritePacket(b *testing.B) {
 	c.comp = bedrock.Flate{Level: 1}
 	c.b.EnableCompression(c.comp)
 	c.proto = versions.Model()
-	move := &v2193.MoveActorDeltaPacket{EntityRuntimeID: 7, PositionX: proto.Some[float32](1), PositionZ: proto.Some[float32](1)}
+	move := &mc.MoveActorDeltaPacket{EntityRuntimeID: 7, PositionX: proto.Some[float32](1), PositionZ: proto.Some[float32](1)}
 	b.ReportAllocs()
 	for b.Loop() {
 		for range 16 {

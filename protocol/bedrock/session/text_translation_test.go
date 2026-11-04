@@ -11,7 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"golang.org/x/text/language"
 )
 
@@ -77,8 +77,8 @@ func filled(n int, arg any) []any {
 // translated Text whatever it resolves to.
 func oldSendTranslation(s *Session, t chat.Translation, l language.Tag, a []any) {
 	message, params, _ := bedrocktext.Message(t.F(a...).Text(l))
-	s.writePacket(&v2193.TextPacket{
-		TextType:         v2193.TextTypeTranslation,
+	s.writePacket(&mc.TextPacket{
+		TextType:         mc.TextTypeTranslation,
 		NeedsTranslation: true,
 		Message:          message,
 		Parameters:       params,
@@ -125,24 +125,24 @@ func TestMessagetPackets(t *testing.T) {
 // oldSendCommandOutput is SendCommandOutput as it was, handed the
 // cmd.Output and the language of the player.
 func oldSendCommandOutput(s *Session, output *cmd.Output, l language.Tag) {
-	messages := make([]v2193.CommandOutputMessage, 0, output.MessageCount()+output.ErrorCount())
+	messages := make([]mc.CommandOutputMessage, 0, output.MessageCount()+output.ErrorCount())
 	for _, message := range output.Messages() {
-		om := v2193.CommandOutputMessage{Success: true, Message: message.String()}
+		om := mc.CommandOutputMessage{Success: true, Message: message.String()}
 		if t, ok := message.(chat.Texter); ok {
 			om.Message, om.Parameters, _ = bedrocktext.Message(t.Text(l))
 		}
 		messages = append(messages, om)
 	}
 	for _, err := range output.Errors() {
-		om := v2193.CommandOutputMessage{Message: err.Error()}
+		om := mc.CommandOutputMessage{Message: err.Error()}
 		if t, ok := err.(chat.Texter); ok {
 			om.Message, om.Parameters, _ = bedrocktext.Message(t.Text(l))
 		}
 		messages = append(messages, om)
 	}
-	s.writePacket(&v2193.CommandOutputPacket{
+	s.writePacket(&mc.CommandOutputPacket{
 		CommandOrigin:  s.commandOriginSnapshot(),
-		OutputType:     v2193.CommandOutputTypeAllOutput,
+		OutputType:     mc.CommandOutputTypeAllOutput,
 		SuccessCount:   uint32(output.MessageCount()),
 		OutputMessages: messages,
 	})
@@ -156,7 +156,7 @@ func checkCommandOutput(t *testing.T, what string, o *cmd.Output) {
 	for _, out := range []*cmd.Output{o, o.WithoutMessages()} {
 		for _, l := range textLocales {
 			nw, old := newCaptureSession(), newCaptureSession()
-			origin := v2193.CommandOrigin{Origin: v2193.CommandOriginPlayer, RequestID: "r", PlayerUniqueID: 7}
+			origin := mc.CommandOrigin{Origin: mc.CommandOriginPlayer, RequestID: "r", PlayerUniqueID: 7}
 			nw.setCommandOrigin(origin)
 			old.setCommandOrigin(origin)
 			nw.SendCommandOutput(client.CommandOutputOf(out, l))

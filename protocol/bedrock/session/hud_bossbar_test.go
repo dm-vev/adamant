@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/hud"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestHudElementValuesMatchProtocol holds every HUD element of hud.All, and
@@ -14,10 +14,10 @@ import (
 // the protocol's ID.
 func TestHudElementValuesMatchProtocol(t *testing.T) {
 	want := []int64{
-		v2193.HudElementPaperDoll, v2193.HudElementArmour, v2193.HudElementToolTips, v2193.HudElementTouchControls,
-		v2193.HudElementCrosshair, v2193.HudElementHotBar, v2193.HudElementHealth, v2193.HudElementProgressBar,
-		v2193.HudElementHunger, v2193.HudElementAirBubbles, v2193.HudElementHorseHealth, v2193.HudElementStatusEffects,
-		v2193.HudElementItemText,
+		mc.HudElementPaperDoll, mc.HudElementArmour, mc.HudElementToolTips, mc.HudElementTouchControls,
+		mc.HudElementCrosshair, mc.HudElementHotBar, mc.HudElementHealth, mc.HudElementProgressBar,
+		mc.HudElementHunger, mc.HudElementAirBubbles, mc.HudElementHorseHealth, mc.HudElementStatusEffects,
+		mc.HudElementItemText,
 	}
 	all := hud.All()
 	if len(all) != len(want) {
@@ -27,7 +27,7 @@ func TestHudElementValuesMatchProtocol(t *testing.T) {
 	for i, e := range all {
 		values = append(values, gameValue{name: fmt.Sprintf("hud.All()[%d]", i), game: int64(bedrockHudElement(e)), want: want[i]})
 	}
-	values = append(values, gameValue{"hud.Element{}", int64(bedrockHudElement(hud.Element{})), v2193.HudElementPaperDoll})
+	values = append(values, gameValue{"hud.Element{}", int64(bedrockHudElement(hud.Element{})), mc.HudElementPaperDoll})
 	checkGameValues(t, values)
 }
 

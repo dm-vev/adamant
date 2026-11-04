@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -35,16 +35,16 @@ func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
 	w := open()
 	viewer := testSession("prepared-villager")
 	viewer.br = world.DefaultBlockRegistry
-	assertBaby := func(metadata v2193.Metadata, want bool) {
+	assertBaby := func(metadata mc.Metadata, want bool) {
 		t.Helper()
-		if got := v2193.Metadata(metadata).Flag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagBaby); got != want {
+		if got := mc.Metadata(metadata).Flag(mc.EntityDataKeyFlags, mc.EntityDataFlagBaby); got != want {
 			t.Errorf("client Baby=%t, want %t", got, want)
 		}
 	}
 	if err := w.Do(func(tx *world.Tx) {
 		villager := tx.AddEntity(handle).(*entity.Villager)
 		viewer.ViewEntity(villager)
-		added, ok := (viewer.testPacket()).(*v2193.AddActorPacket)
+		added, ok := (viewer.testPacket()).(*mc.AddActorPacket)
 		if !ok {
 			t.Fatal("villager did not produce an AddActor packet")
 		}
@@ -71,18 +71,18 @@ func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
 			t.Fatal("prepared villager missing after MCDB reload")
 		}
 		viewer.ViewEntity(villager)
-		added := (viewer.testPacket()).(*v2193.AddActorPacket)
+		added := (viewer.testPacket()).(*mc.AddActorPacket)
 		assertBaby(added.EntityMetadata, true)
 		villager.Tick(tx, 1)
 		if got := villager.Age(); got != 0 {
 			t.Fatalf("age after growth tick=%d, want 0", got)
 		}
 		viewer.ViewEntityState(villager)
-		grown := (viewer.testPacket()).(*v2193.SetActorDataPacket)
+		grown := (viewer.testPacket()).(*mc.SetActorDataPacket)
 		assertBaby(grown.EntityMetadata, false)
 		villager.SetAge(2400)
 		viewer.ViewEntityState(villager)
-		cooldown := (viewer.testPacket()).(*v2193.SetActorDataPacket)
+		cooldown := (viewer.testPacket()).(*mc.SetActorDataPacket)
 		assertBaby(cooldown.EntityMetadata, false)
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)

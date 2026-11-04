@@ -11,7 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/text"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"golang.org/x/text/language"
@@ -58,7 +58,7 @@ func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
 	output.Printt(native.DescriptionTranslation())
 	output.Printt(localized.DescriptionTranslation())
 	s.SendCommandOutput(client.CommandOutputOf(output, language.Russian))
-	pk := (s.testPacket()).(*v2193.CommandOutputPacket)
+	pk := (s.testPacket()).(*mc.CommandOutputPacket)
 	if text.Clean(pk.OutputMessages[0].Message) != "%commands.gamemode.description" || text.Clean(pk.OutputMessages[1].Message) != "Русское описание" {
 		t.Fatalf("translated output = %#v", pk.OutputMessages)
 	}
@@ -69,9 +69,9 @@ func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
 
 // decodeCommands decodes AvailableCommands as a client reads it: all of
 // it, with nothing left over.
-func decodeCommands(t *testing.T, b []byte) v2193.AvailableCommandsPacket {
+func decodeCommands(t *testing.T, b []byte) mc.AvailableCommandsPacket {
 	t.Helper()
-	var pk v2193.AvailableCommandsPacket
+	var pk mc.AvailableCommandsPacket
 	r := wire.NewReader(b)
 	pk.Decode(r)
 	if r.Err() != nil || r.Len() != 0 {
@@ -138,7 +138,7 @@ func TestAvailableCommandsStableWireRegistry(t *testing.T) {
 		params := alpha.Overloads[0].Parameters
 		for _, param := range params[:3] {
 			index := param.Type & 0xfffff
-			if param.Type&(v2193.CommandArgValid|v2193.CommandArgEnum) != v2193.CommandArgValid|v2193.CommandArgEnum || int(index) >= len(decoded.Enums) {
+			if param.Type&(mc.CommandArgValid|mc.CommandArgEnum) != mc.CommandArgValid|mc.CommandArgEnum || int(index) >= len(decoded.Enums) {
 				t.Fatalf("invalid enum reference for %s: %#x", param.Name, param.Type)
 			}
 		}
@@ -146,11 +146,11 @@ func TestAvailableCommandsStableWireRegistry(t *testing.T) {
 		if len(choices.ValueIndices) != 260 || decoded.EnumValues[choices.ValueIndices[259]] != "choice259" {
 			t.Fatal("large enum lost completion values")
 		}
-		if params[3].Type&v2193.CommandArgSuffixed == 0 || decoded.Suffixes[params[3].Type&0xfffff] != "s" {
+		if params[3].Type&mc.CommandArgSuffixed == 0 || decoded.Suffixes[params[3].Type&0xfffff] != "s" {
 			t.Fatal("integer suffix was not preserved")
 		}
 		soft := decoded.Commands[1].Overloads[0].Parameters[0]
-		if soft.Type&(v2193.CommandArgValid|v2193.CommandArgSoftEnum) != v2193.CommandArgValid|v2193.CommandArgSoftEnum || !slices.Equal(decoded.DynamicEnums[soft.Type&0xfffff].Values, []string{"one", "two"}) {
+		if soft.Type&(mc.CommandArgValid|mc.CommandArgSoftEnum) != mc.CommandArgValid|mc.CommandArgSoftEnum || !slices.Equal(decoded.DynamicEnums[soft.Type&0xfffff].Values, []string{"one", "two"}) {
 			t.Fatal("soft enum was not preserved")
 		}
 	}

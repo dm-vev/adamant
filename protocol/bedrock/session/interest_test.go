@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -28,13 +28,13 @@ func TestEntitiesShownWithinRange(t *testing.T) {
 
 		s.updateInterest(tx, mgl64.Vec3{0, 64, 0})
 		s.ViewEntity(near)
-		if _, ok := (s.testPacket()).(*v2193.AddItemActorPacket); !ok {
+		if _, ok := (s.testPacket()).(*mc.AddItemActorPacket); !ok {
 			t.Fatal("an item within range was not shown")
 		}
 		s.ViewEntity(far)
 		s.ViewEntity(farMob)
 		// The text is within the default range of 8 chunks.
-		if _, ok := (s.testPacket()).(*v2193.AddActorPacket); !ok {
+		if _, ok := (s.testPacket()).(*mc.AddActorPacket); !ok {
 			t.Fatal("an entity within the default range was not shown")
 		}
 		if pk := s.testPacket(); pk != nil {
@@ -54,9 +54,9 @@ func TestEntitiesShownWithinRange(t *testing.T) {
 		var removed, added bool
 		for pk := s.testPacket(); pk != nil; pk = s.testPacket() {
 			switch p := pk.(type) {
-			case *v2193.RemoveActorPacket:
+			case *mc.RemoveActorPacket:
 				removed = true
-			case *v2193.AddItemActorPacket:
+			case *mc.AddItemActorPacket:
 				added = p.EntityRuntimeID == far.H().RuntimeID()
 			}
 		}

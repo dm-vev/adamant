@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -65,10 +65,10 @@ func TestEquipmentOfShownEntities(t *testing.T) {
 	if len(pks) != 2 {
 		t.Fatalf("an entity with a sword and a helmet was sent %d packets, want 2", len(pks))
 	}
-	if eq, ok := pks[0].(*v2193.MobEquipmentPacket); !ok || eq.WindowID != 0 {
+	if eq, ok := pks[0].(*mc.MobEquipmentPacket); !ok || eq.WindowID != 0 {
 		t.Fatalf("first packet %+v, want the main hand", pks[0])
 	}
-	if _, ok := pks[1].(*v2193.MobArmourEquipmentPacket); !ok {
+	if _, ok := pks[1].(*mc.MobArmourEquipmentPacket); !ok {
 		t.Fatalf("second packet %T, want the armour", pks[1])
 	}
 }

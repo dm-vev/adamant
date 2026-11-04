@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -24,10 +24,10 @@ func TestBellSharedSoundFollowsStateForEveryViewer(t *testing.T) {
 		state, sounds := false, 0
 		for pk := s.testPacket(); pk != nil; pk = s.testPacket() {
 			switch p := pk.(type) {
-			case *v2193.UpdateBlockPacket:
+			case *mc.UpdateBlockPacket:
 				state = true
-			case *v2193.LevelSoundEventPacket:
-				if !state || p.SoundType != v2193.SoundEventBell {
+			case *mc.LevelSoundEventPacket:
+				if !state || p.SoundType != mc.SoundEventBell {
 					t.Fatal("bell sound preceded its block state")
 				}
 				sounds++
@@ -63,22 +63,22 @@ func TestBellRepeatedUsesRetainSoundAndAnimationThroughBacklog(t *testing.T) {
 		s.flushBlockUpdates()
 		for len(s.heldPackets) > 0 {
 			switch p := s.testPacket().(type) {
-			case *v2193.UpdateBlockPacket:
-				if p.Position == (v2193.BlockPos{4, 65, 4}) {
+			case *mc.UpdateBlockPacket:
+				if p.Position == (mc.BlockPos{4, 65, 4}) {
 					if p.Flags != 3 || p.NewBlockRuntimeID != networkBlockID(s.br, bell) {
 						t.Fatal("bell confirmation lost the latest state")
 					}
 					state = true
 				}
-			case *v2193.BlockActorDataPacket:
-				if p.Position == (v2193.BlockPos{4, 65, 4}) {
+			case *mc.BlockActorDataPacket:
+				if p.Position == (mc.BlockPos{4, 65, 4}) {
 					if !state || p.NBTData["Ringing"] != uint8(1) || p.NBTData["Ticks"] != int32(0) {
 						t.Fatal("bell animation lost its state/animation origin")
 					}
 					actors++
 				}
-			case *v2193.LevelSoundEventPacket:
-				if !state || actors != 1 || p.SoundType != v2193.SoundEventBell {
+			case *mc.LevelSoundEventPacket:
+				if !state || actors != 1 || p.SoundType != mc.SoundEventBell {
 					t.Fatal("bell sound preceded its state/actor publication")
 				}
 				sounds++
@@ -108,12 +108,12 @@ func TestBellActorPairSurvivesBlockBacklog(t *testing.T) {
 		s.flushBlockUpdates()
 		for len(s.heldPackets) > 0 {
 			switch p := s.testPacket().(type) {
-			case *v2193.UpdateBlockPacket:
-				if p.Position == (v2193.BlockPos{4, 65, 4}) {
+			case *mc.UpdateBlockPacket:
+				if p.Position == (mc.BlockPos{4, 65, 4}) {
 					flags = append(flags, p.Flags)
 				}
-			case *v2193.BlockActorDataPacket:
-				if p.Position == (v2193.BlockPos{4, 65, 4}) {
+			case *mc.BlockActorDataPacket:
+				if p.Position == (mc.BlockPos{4, 65, 4}) {
 					if len(flags) != 2 || p.NBTData["Ticks"] != int32(0) || p.NBTData["Ringing"] != uint8(1) {
 						t.Fatal("bell actor preceded its state pair or lost animation origin")
 					}
@@ -148,16 +148,16 @@ func TestMovingActorWaitsForParentThroughBlockBacklog(t *testing.T) {
 		batch := 0
 		for len(s.heldPackets) > 0 {
 			switch pk := s.testPacket().(type) {
-			case *v2193.UpdateBlockPacket:
+			case *mc.UpdateBlockPacket:
 				batch++
 				blocks++
-				if pk.Position == (v2193.BlockPos{1, 65, 1}) {
+				if pk.Position == (mc.BlockPos{1, 65, 1}) {
 					parentSent = true
 				}
-				if pk.Position == (v2193.BlockPos{2, 65, 1}) {
+				if pk.Position == (mc.BlockPos{2, 65, 1}) {
 					childSent = true
 				}
-			case *v2193.BlockActorDataPacket:
+			case *mc.BlockActorDataPacket:
 				if pk.NBTData["id"] == "MovingBlock" {
 					if !parentSent || !childSent {
 						t.Fatal("moving actor arrived before its parent or containing block")
@@ -200,7 +200,7 @@ func TestMovingActorNotificationDoesNotResendBlock(t *testing.T) {
 	if len(s.heldPackets) != 1 {
 		t.Fatalf("actor-only publication sent %d packets, want 1", len(s.heldPackets))
 	}
-	if _, ok := s.testPacket().(*v2193.BlockActorDataPacket); !ok {
+	if _, ok := s.testPacket().(*mc.BlockActorDataPacket); !ok {
 		t.Fatal("actor-only publication sent a block replacement")
 	}
 }

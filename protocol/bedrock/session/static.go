@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 )
 
@@ -50,14 +50,14 @@ func (w *wireTables) recipeData() *recipeData {
 func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 	d := &recipeData{count: len(all), recipes: make(map[uint32]recipe.Recipe, len(all)), javaIDs: make(map[string][]string)}
 	var (
-		shapedRecipes            []v2193.ShapedRecipe
-		shapelessRecipes         []v2193.ShapelessRecipe
-		userDataShapelessRecipes []v2193.UserDataShapelessRecipe
-		multiRecipes             []v2193.MultiRecipe
-		smithingTransformRecipes []v2193.SmithingTransformRecipe
-		smithingTrimRecipes      []v2193.SmithingTrimRecipe
-		potionRecipes            []v2193.PotionRecipe
-		potionContainerChange    []v2193.PotionContainerChangeRecipe
+		shapedRecipes            []mc.ShapedRecipe
+		shapelessRecipes         []mc.ShapelessRecipe
+		userDataShapelessRecipes []mc.UserDataShapelessRecipe
+		multiRecipes             []mc.MultiRecipe
+		smithingTransformRecipes []mc.SmithingTransformRecipe
+		smithingTrimRecipes      []mc.SmithingTrimRecipe
+		potionRecipes            []mc.PotionRecipe
+		potionContainerChange    []mc.PotionContainerChangeRecipe
 	)
 
 	for index, i := range all {
@@ -66,7 +66,7 @@ func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 
 		switch i := i.(type) {
 		case recipe.Shapeless:
-			shapelessRecipes = append(shapelessRecipes, v2193.ShapelessRecipe{
+			shapelessRecipes = append(shapelessRecipes, mc.ShapelessRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Priority:        int32(i.Priority()),
 				Input:           stacksToIngredientItems(i.Input()),
@@ -75,7 +75,7 @@ func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 				RecipeNetworkID: networkID,
 			})
 		case recipe.UserDataShapeless:
-			userDataShapelessRecipes = append(userDataShapelessRecipes, v2193.UserDataShapelessRecipe{ShapelessRecipe: v2193.ShapelessRecipe{
+			userDataShapelessRecipes = append(userDataShapelessRecipes, mc.UserDataShapelessRecipe{ShapelessRecipe: mc.ShapelessRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Priority:        int32(i.Priority()),
 				Input:           stacksToIngredientItems(i.Input()),
@@ -85,12 +85,12 @@ func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 			}})
 		case recipe.Multi:
 			d.registerJavaMultiID(i)
-			multiRecipes = append(multiRecipes, v2193.MultiRecipe{
+			multiRecipes = append(multiRecipes, mc.MultiRecipe{
 				UUID:            i.UUID(),
 				RecipeNetworkID: networkID,
 			})
 		case recipe.Shaped:
-			shapedRecipes = append(shapedRecipes, v2193.ShapedRecipe{
+			shapedRecipes = append(shapedRecipes, mc.ShapedRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Priority:        int32(i.Priority()),
 				Width:           int32(i.Shape().Width()),
@@ -103,7 +103,7 @@ func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 			})
 		case recipe.SmithingTransform:
 			input, output := stacksToIngredientItems(i.Input()), stacksToRecipeStacks(w, i.Output())
-			smithingTransformRecipes = append(smithingTransformRecipes, v2193.SmithingTransformRecipe{
+			smithingTransformRecipes = append(smithingTransformRecipes, mc.SmithingTransformRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Base:            input[0],
 				Addition:        input[1],
@@ -114,7 +114,7 @@ func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 			})
 		case recipe.SmithingTrim:
 			input := stacksToIngredientItems(i.Input())
-			smithingTrimRecipes = append(smithingTrimRecipes, v2193.SmithingTrimRecipe{
+			smithingTrimRecipes = append(smithingTrimRecipes, mc.SmithingTrimRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Base:            input[0],
 				Addition:        input[1],
@@ -127,7 +127,7 @@ func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 			reagentRuntimeID, reagentMeta, _ := w.itemRuntimeID(i.Input()[1].(item.Stack).Item())
 			outputRuntimeID, outputMeta, _ := w.itemRuntimeID(i.Output()[0].Item())
 
-			potionRecipes = append(potionRecipes, v2193.PotionRecipe{
+			potionRecipes = append(potionRecipes, mc.PotionRecipe{
 				InputPotionID:        inputRuntimeID,
 				InputPotionMetadata:  int32(inputMeta),
 				ReagentItemID:        reagentRuntimeID,
@@ -141,14 +141,14 @@ func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 			reagentRuntimeID, _, _ := w.itemRuntimeID(i.Input()[1].(item.Stack).Item())
 			outputRuntimeID, _, _ := w.itemRuntimeID(i.Output()[0].Item())
 
-			potionContainerChange = append(potionContainerChange, v2193.PotionContainerChangeRecipe{
+			potionContainerChange = append(potionContainerChange, mc.PotionContainerChangeRecipe{
 				InputItemID:   inputRuntimeID,
 				ReagentItemID: reagentRuntimeID,
 				OutputItemID:  outputRuntimeID,
 			})
 		}
 	}
-	recipes := v2193.CraftingDataPacket{
+	recipes := mc.CraftingDataPacket{
 		ShapedRecipes:                shapedRecipes,
 		ShapelessRecipes:             shapelessRecipes,
 		MultiRecipes:                 multiRecipes,
@@ -210,10 +210,10 @@ func (w *wireTables) creativePacket() proto.Packet {
 
 // creativeContent returns the creative groups and the items in them as
 // protocol item stacks.
-func creativeContent(w *wireTables, groups []creative.Group, items []creative.Item) *v2193.CreativeContentPacket {
-	pk := &v2193.CreativeContentPacket{Groups: make([]v2193.CreativeGroup, 0, len(groups)), Items: make([]v2193.CreativeItem, 0, len(items))}
+func creativeContent(w *wireTables, groups []creative.Group, items []creative.Item) *mc.CreativeContentPacket {
+	pk := &mc.CreativeContentPacket{Groups: make([]mc.CreativeGroup, 0, len(groups)), Items: make([]mc.CreativeItem, 0, len(items))}
 	for _, group := range groups {
-		pk.Groups = append(pk.Groups, v2193.CreativeGroup{
+		pk.Groups = append(pk.Groups, mc.CreativeGroup{
 			Category: bedrockCreativeCategory(group.Category),
 			Name:     group.Name,
 			Icon:     deleteDamage(stackFromItem(w, group.Icon)),
@@ -226,7 +226,7 @@ func creativeContent(w *wireTables, groups []creative.Group, items []creative.It
 		if group < 0 {
 			continue
 		}
-		pk.Items = append(pk.Items, v2193.CreativeItem{
+		pk.Items = append(pk.Items, mc.CreativeItem{
 			CreativeItemNetworkID: uint32(index) + 1,
 			Item:                  deleteDamage(stackFromItem(w, i.Stack)),
 			GroupIndex:            uint32(group),

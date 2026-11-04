@@ -11,7 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // fuzzMenuPos is where FuzzMenuRequests places the block of its menu.
@@ -28,22 +28,22 @@ type fuzzSlot struct {
 // also as the hot bar, the cursor, the off hand, the armour and the
 // created output. The other 8 are of the menu.
 var fuzzCommonSlots = []fuzzSlot{
-	{v2193.ContainerCombinedHotBarAndInventory, 0},
-	{v2193.ContainerCombinedHotBarAndInventory, 1},
-	{v2193.ContainerCombinedHotBarAndInventory, 2},
-	{v2193.ContainerCombinedHotBarAndInventory, 3},
-	{v2193.ContainerCombinedHotBarAndInventory, 5},
-	{v2193.ContainerCombinedHotBarAndInventory, 9},
-	{v2193.ContainerCombinedHotBarAndInventory, 13},
-	{v2193.ContainerCombinedHotBarAndInventory, 19},
-	{v2193.ContainerCombinedHotBarAndInventory, 20},
-	{v2193.ContainerCombinedHotBarAndInventory, 21},
-	{v2193.ContainerHotBar, 1},
-	{v2193.ContainerCursor, uiCursor},
-	{v2193.ContainerOffhand, 1},
-	{v2193.ContainerArmor, 0},
-	{v2193.ContainerArmor, 1},
-	{v2193.ContainerCreatedOutput, uiCreatedOutput},
+	{mc.ContainerCombinedHotBarAndInventory, 0},
+	{mc.ContainerCombinedHotBarAndInventory, 1},
+	{mc.ContainerCombinedHotBarAndInventory, 2},
+	{mc.ContainerCombinedHotBarAndInventory, 3},
+	{mc.ContainerCombinedHotBarAndInventory, 5},
+	{mc.ContainerCombinedHotBarAndInventory, 9},
+	{mc.ContainerCombinedHotBarAndInventory, 13},
+	{mc.ContainerCombinedHotBarAndInventory, 19},
+	{mc.ContainerCombinedHotBarAndInventory, 20},
+	{mc.ContainerCombinedHotBarAndInventory, 21},
+	{mc.ContainerHotBar, 1},
+	{mc.ContainerCursor, uiCursor},
+	{mc.ContainerOffhand, 1},
+	{mc.ContainerArmor, 0},
+	{mc.ContainerArmor, 1},
+	{mc.ContainerCreatedOutput, uiCreatedOutput},
 }
 
 // fuzzInventory returns the slots of the inventory of its own the slots of
@@ -51,7 +51,7 @@ var fuzzCommonSlots = []fuzzSlot{
 func fuzzInventory(slots ...int) []fuzzSlot {
 	out := make([]fuzzSlot, len(slots))
 	for i, slot := range slots {
-		out[i] = fuzzSlot{v2193.ContainerCombinedHotBarAndInventory, slot}
+		out[i] = fuzzSlot{mc.ContainerCombinedHotBarAndInventory, slot}
 	}
 	return out
 }
@@ -74,44 +74,44 @@ type fuzzMenu struct {
 // goes in the grindstone, whose experience is drawn at random.
 var fuzzMenus = []fuzzMenu{
 	{name: "inventory", slots: append([]fuzzSlot{
-		{v2193.ContainerCraftingInput, uiInventoryGrid}, {v2193.ContainerCraftingInput, uiInventoryGrid + 1},
-		{v2193.ContainerCraftingInput, uiInventoryGrid + 2}, {v2193.ContainerCraftingInput, uiInventoryGrid + 3},
+		{mc.ContainerCraftingInput, uiInventoryGrid}, {mc.ContainerCraftingInput, uiInventoryGrid + 1},
+		{mc.ContainerCraftingInput, uiInventoryGrid + 2}, {mc.ContainerCraftingInput, uiInventoryGrid + 3},
 	}, fuzzInventory(4, 6, 7, 18)...)},
 	{name: "crafting table", block: func() world.Block { return block.CraftingTable{} }, slots: append([]fuzzSlot{
-		{v2193.ContainerCraftingInput, uiCraftingGrid}, {v2193.ContainerCraftingInput, uiCraftingGrid + 1},
-		{v2193.ContainerCraftingInput, uiCraftingGrid + 3}, {v2193.ContainerCraftingInput, uiCraftingGrid + 4},
-		{v2193.ContainerCraftingInput, uiCraftingGrid + 8},
+		{mc.ContainerCraftingInput, uiCraftingGrid}, {mc.ContainerCraftingInput, uiCraftingGrid + 1},
+		{mc.ContainerCraftingInput, uiCraftingGrid + 3}, {mc.ContainerCraftingInput, uiCraftingGrid + 4},
+		{mc.ContainerCraftingInput, uiCraftingGrid + 8},
 	}, fuzzInventory(4, 6, 18)...)},
 	{name: "chest", block: func() world.Block { return block.NewChest() }, fill: []slotStack{{0, item.NewStack(item.Apple{}, 4)}}, slots: append([]fuzzSlot{
-		{v2193.ContainerLevelEntity, 0}, {v2193.ContainerLevelEntity, 1}, {v2193.ContainerLevelEntity, 26},
+		{mc.ContainerLevelEntity, 0}, {mc.ContainerLevelEntity, 1}, {mc.ContainerLevelEntity, 26},
 	}, fuzzInventory(4, 6, 7, 18, 16)...)},
 	{name: "furnace", block: func() world.Block { return block.NewFurnace(cube.North) }, fill: []slotStack{{1, item.NewStack(item.Coal{}, 2)}, {2, item.NewStack(item.IronIngot{}, 3)}}, slots: append([]fuzzSlot{
-		{v2193.ContainerFurnaceIngredient, 0}, {v2193.ContainerFurnaceFuel, 1}, {v2193.ContainerFurnaceResult, 2},
+		{mc.ContainerFurnaceIngredient, 0}, {mc.ContainerFurnaceFuel, 1}, {mc.ContainerFurnaceResult, 2},
 	}, fuzzInventory(15, 16, 4, 6, 18)...)},
 	{name: "anvil", block: func() world.Block { return undamagedAnvil }, creative: true, slots: append([]fuzzSlot{
-		{v2193.ContainerAnvilInput, uiAnvilInput}, {v2193.ContainerAnvilMaterial, uiAnvilMaterial},
+		{mc.ContainerAnvilInput, uiAnvilInput}, {mc.ContainerAnvilMaterial, uiAnvilMaterial},
 	}, fuzzInventory(4, 13, 17, 11, 12, 18)...)},
 	{name: "enchanting table", block: func() world.Block { return block.EnchantingTable{} }, slots: append([]fuzzSlot{
-		{v2193.ContainerEnchantingInput, uiEnchantingInput}, {v2193.ContainerEnchantingMaterial, uiEnchantingLapis},
+		{mc.ContainerEnchantingInput, uiEnchantingInput}, {mc.ContainerEnchantingMaterial, uiEnchantingLapis},
 	}, fuzzInventory(17, 13, 4, 6, 18, 12)...)},
 	{name: "grindstone", block: func() world.Block { return block.Grindstone{} }, slots: append([]fuzzSlot{
-		{v2193.ContainerGrindstoneInput, uiGrindstoneFirst}, {v2193.ContainerGrindstoneAdditional, uiGrindstoneSecond},
+		{mc.ContainerGrindstoneInput, uiGrindstoneFirst}, {mc.ContainerGrindstoneAdditional, uiGrindstoneSecond},
 	}, fuzzInventory(13, 17, 4, 6, 18, 12)...)},
 	{name: "smithing table", block: func() world.Block { return block.SmithingTable{} }, slots: append([]fuzzSlot{
-		{v2193.ContainerSmithingTableInput, uiSmithingInput}, {v2193.ContainerSmithingTableMaterial, uiSmithingMaterial},
-		{v2193.ContainerSmithingTableTemplate, uiSmithingTemplate},
+		{mc.ContainerSmithingTableInput, uiSmithingInput}, {mc.ContainerSmithingTableMaterial, uiSmithingMaterial},
+		{mc.ContainerSmithingTableTemplate, uiSmithingTemplate},
 	}, fuzzInventory(11, 12, 13, 4, 6)...)},
 	{name: "loom", block: func() world.Block { return block.Loom{} }, slots: append([]fuzzSlot{
-		{v2193.ContainerLoomInput, uiLoomInput}, {v2193.ContainerLoomDye, uiLoomDye},
+		{mc.ContainerLoomInput, uiLoomInput}, {mc.ContainerLoomDye, uiLoomDye},
 	}, fuzzInventory(7, 9, 4, 6, 18, 12)...)},
 	{name: "stonecutter", block: func() world.Block { return block.Stonecutter{} }, slots: append([]fuzzSlot{
-		{v2193.ContainerStonecutterInput, uiStonecutterInput},
+		{mc.ContainerStonecutterInput, uiStonecutterInput},
 	}, fuzzInventory(6, 4, 18, 1, 12, 16, 7)...)},
 	{name: "beacon", block: func() world.Block { return block.Beacon{} }, slots: append([]fuzzSlot{
-		{v2193.ContainerBeaconPayment, uiBeaconPayment},
+		{mc.ContainerBeaconPayment, uiBeaconPayment},
 	}, fuzzInventory(4, 6, 18, 1, 12, 16, 7)...)},
 	{name: "cartography table", block: func() world.Block { return block.CartographyTable{} }, slots: append([]fuzzSlot{
-		{v2193.ContainerCartographyInput, uiCartographyInput}, {v2193.ContainerCartographyAdditional, uiCartographyAddition},
+		{mc.ContainerCartographyInput, uiCartographyInput}, {mc.ContainerCartographyAdditional, uiCartographyAddition},
 	}, fuzzInventory(10, 4, 6, 18, 12, 16)...)},
 }
 
@@ -350,7 +350,7 @@ func (s *scenario) sendFuzzRequests(in fuzzMenuInput) int {
 	}
 	creativeIDs = append(creativeIDs, 0, uint32(len(creative.Items())+1))
 
-	var pk *v2193.ItemStackRequestPacket
+	var pk *mc.ItemStackRequestPacket
 	flush := func() {
 		if pk != nil {
 			s.client("the requests", pk)
@@ -364,10 +364,10 @@ func (s *scenario) sendFuzzRequests(in fuzzMenuInput) int {
 		}
 		id := s.nextRequest
 		s.nextRequest -= 2
-		var actions []v2193.StackRequestAction
+		var actions []mc.StackRequestAction
 		for _, a := range r.actions {
 			action := s.fuzzStackAction(a, id, slots, recipes, creativeIDs)
-			if _, ok := action.(*v2193.CraftRecipeStackRequestAction); ok {
+			if _, ok := action.(*mc.CraftRecipeStackRequestAction); ok {
 				if in.menu.name == "enchanting table" {
 					// A second option would be of the seed drawn at
 					// random after the first.
@@ -379,20 +379,20 @@ func (s *scenario) sendFuzzRequests(in fuzzMenuInput) int {
 			}
 			actions = append(actions, action)
 		}
-		req := v2193.ItemStackRequest{RequestID: id, Actions: actions, FilterStrings: []string{"Fuzz"}}
+		req := mc.ItemStackRequest{RequestID: id, Actions: actions, FilterStrings: []string{"Fuzz"}}
 		sent++
 		if r.authInput {
-			s.client("a request in an input", &v2193.PlayerAuthInputPacket{
+			s.client("a request in an input", &mc.PlayerAuthInputPacket{
 				Position:         [3]float32{0.5, -58.38, 0.5},
-				InputData:        v2193.InputFlags{v2193.InputFlagPerformItemStackRequest},
-				InputMode:        v2193.InputModeMouse,
-				PlayMode:         v2193.PlayModeNormal,
+				InputData:        mc.InputFlags{mc.InputFlagPerformItemStackRequest},
+				InputMode:        mc.InputModeMouse,
+				PlayMode:         mc.PlayModeNormal,
 				ItemStackRequest: proto.Some(req),
 			})
 			continue
 		}
 		if pk == nil {
-			pk = &v2193.ItemStackRequestPacket{}
+			pk = &mc.ItemStackRequestPacket{}
 		}
 		pk.Requests = append(pk.Requests, req)
 	}
@@ -418,45 +418,45 @@ func (s *scenario) fuzzRecipes() []uint32 {
 
 // fuzzStackAction returns the action of item stack request id that a
 // fuzzAction is.
-func (s *scenario) fuzzStackAction(a fuzzAction, id int32, slots []fuzzSlot, recipes, creativeIDs []uint32) v2193.StackRequestAction {
+func (s *scenario) fuzzStackAction(a fuzzAction, id int32, slots []fuzzSlot, recipes, creativeIDs []uint32) mc.StackRequestAction {
 	src, dst := s.fuzzSlotInfo(slots, a.src, a.mode, id), s.fuzzSlotInfo(slots, a.dst, a.mode>>3, id)
 	switch (a.kind & 0x1f) % 16 {
 	case 0:
-		return &v2193.TakeStackRequestAction{Count: a.count, Source: src, Destination: dst}
+		return &mc.TakeStackRequestAction{Count: a.count, Source: src, Destination: dst}
 	case 1:
-		return &v2193.PlaceStackRequestAction{Count: a.count, Source: src, Destination: dst}
+		return &mc.PlaceStackRequestAction{Count: a.count, Source: src, Destination: dst}
 	case 2:
-		return &v2193.SwapStackRequestAction{Source: src, Destination: dst}
+		return &mc.SwapStackRequestAction{Source: src, Destination: dst}
 	case 3:
-		return &v2193.DropStackRequestAction{Count: a.count, Source: src, Randomly: a.mode&0x40 != 0}
+		return &mc.DropStackRequestAction{Count: a.count, Source: src, Randomly: a.mode&0x40 != 0}
 	case 4:
-		return &v2193.DestroyStackRequestAction{Count: a.count, Source: src}
+		return &mc.DestroyStackRequestAction{Count: a.count, Source: src}
 	case 5:
-		return &v2193.ConsumeStackRequestAction{Count: a.count, Source: src}
+		return &mc.ConsumeStackRequestAction{Count: a.count, Source: src}
 	case 6:
-		return &v2193.CreateStackRequestAction{ResultsSlot: a.count % 3}
+		return &mc.CreateStackRequestAction{ResultsSlot: a.count % 3}
 	case 7:
-		return &v2193.CraftRecipeStackRequestAction{RecipeNetworkID: recipes[int(a.src)%len(recipes)], NumberOfCrafts: a.count % 4}
+		return &mc.CraftRecipeStackRequestAction{RecipeNetworkID: recipes[int(a.src)%len(recipes)], NumberOfCrafts: a.count % 4}
 	case 8:
-		return &v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: recipes[int(a.src)%len(recipes)], NumberOfCrafts: a.count % 4}
+		return &mc.AutoCraftRecipeStackRequestAction{RecipeNetworkID: recipes[int(a.src)%len(recipes)], NumberOfCrafts: a.count % 4}
 	case 9:
-		return &v2193.CraftCreativeStackRequestAction{CreativeItemNetworkID: creativeIDs[int(a.src)%len(creativeIDs)], NumberOfCrafts: a.count % 3}
+		return &mc.CraftCreativeStackRequestAction{CreativeItemNetworkID: creativeIDs[int(a.src)%len(creativeIDs)], NumberOfCrafts: a.count % 3}
 	case 10:
-		return &v2193.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: recipes[int(a.src)%len(recipes)], FilterStringIndex: int32(a.count%3) - 1}
+		return &mc.CraftRecipeOptionalStackRequestAction{RecipeNetworkID: recipes[int(a.src)%len(recipes)], FilterStringIndex: int32(a.count%3) - 1}
 	case 11:
-		return &v2193.CraftGrindstoneRecipeStackRequestAction{RecipeNetworkID: recipes[int(a.src)%len(recipes)], NumberOfCrafts: a.count % 3}
+		return &mc.CraftGrindstoneRecipeStackRequestAction{RecipeNetworkID: recipes[int(a.src)%len(recipes)], NumberOfCrafts: a.count % 3}
 	case 12:
-		return &v2193.CraftLoomRecipeStackRequestAction{Pattern: fuzzPatterns[int(a.src)%len(fuzzPatterns)], TimesCrafted: a.count % 3}
+		return &mc.CraftLoomRecipeStackRequestAction{Pattern: fuzzPatterns[int(a.src)%len(fuzzPatterns)], TimesCrafted: a.count % 3}
 	case 13:
-		return &v2193.BeaconPaymentStackRequestAction{
+		return &mc.BeaconPaymentStackRequestAction{
 			PrimaryEffect: fuzzEffects[int(a.src)%len(fuzzEffects)], SecondaryEffect: fuzzEffects[int(a.dst)%len(fuzzEffects)],
 		}
 	case 14:
-		return &v2193.MineBlockStackRequestAction{HotbarSlot: int32(a.src % 9), PredictedDurability: int32(a.count), StackNetworkID: src.StackNetworkID}
+		return &mc.MineBlockStackRequestAction{HotbarSlot: int32(a.src % 9), PredictedDurability: int32(a.count), StackNetworkID: src.StackNetworkID}
 	default:
 		result := fuzzResults[int(a.src)%len(fuzzResults)]
 		name, meta := result.Item().EncodeItem()
-		return &v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: a.count % 3, ResultItems: []v2193.StackRequestItem{{
+		return &mc.CraftResultsDeprecatedStackRequestAction{TimesCrafted: a.count % 3, ResultItems: []mc.StackRequestItem{{
 			Identifier: name, MetadataValue: uint32(meta), Count: uint16(result.Count()),
 		}}}
 	}
@@ -466,7 +466,7 @@ func (s *scenario) fuzzStackAction(a fuzzAction, id int32, slots []fuzzSlot, rec
 // the three low bits of mode pick: the ID the client was last sent for it
 // (0 to 4), that of request id itself (5), that of the request before (6)
 // or one it never was (7).
-func (s *scenario) fuzzSlotInfo(slots []fuzzSlot, i, mode byte, id int32) v2193.StackRequestSlotInfo {
+func (s *scenario) fuzzSlotInfo(slots []fuzzSlot, i, mode byte, id int32) mc.StackRequestSlotInfo {
 	sl := slots[int(i)%len(slots)]
 	info := s.slot(sl.container, sl.slot)
 	switch mode & 7 {

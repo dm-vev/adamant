@@ -14,7 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -120,75 +120,75 @@ func (s *scenario) clearInventory(heading string) {
 
 // created returns the slot of the created output the client takes the
 // result of the request being made from.
-func (s *scenario) created() v2193.StackRequestSlotInfo {
-	return v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCreatedOutput}, Slot: uiCreatedOutput, StackNetworkID: s.nextRequest}
+func (s *scenario) created() mc.StackRequestSlotInfo {
+	return mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: mc.ContainerCreatedOutput}, Slot: uiCreatedOutput, StackNetworkID: s.nextRequest}
 }
 
 // openInventory sends what the client sends when the player opens its
 // inventory screen.
 func (s *scenario) openInventory(heading string) {
 	s.t.Helper()
-	s.client(heading, &v2193.InteractPacket{ActionType: v2193.InteractActionOpenInventory, TargetEntityRuntimeID: 1})
+	s.client(heading, &mc.InteractPacket{ActionType: mc.InteractActionOpenInventory, TargetEntityRuntimeID: 1})
 }
 
 // recipeBookSteps crafts sticks of planks with the recipe book, from the
 // inventory screen and the crafting table, paid from the grid, the
 // inventory or both, and once with no screen open, which is refused.
 func (s *scenario) recipeBookSteps() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 	sticks := s.recipe("crafting_table", item.Stick{}, "planks")
-	result := func(n int) *v2193.CraftResultsDeprecatedStackRequestAction {
-		return &v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: byte(n / 4), ResultItems: []v2193.StackRequestItem{{Identifier: "minecraft:stick", Count: uint16(n)}}}
+	result := func(n int) *mc.CraftResultsDeprecatedStackRequestAction {
+		return &mc.CraftResultsDeprecatedStackRequestAction{TimesCrafted: byte(n / 4), ResultItems: []mc.StackRequestItem{{Identifier: "minecraft:stick", Count: uint16(n)}}}
 	}
 	s.give("planks given", slotStack{0, item.NewStack(block.Planks{Wood: block.OakWood()}, 16)})
 
 	s.openInventory("the client opens its inventory")
 	// inventory/grid-empty of the capture.
 	s.request("recipe book, inventory screen: two planks of the inventory", nil,
-		&v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 2, Source: s.slot(inv, 0)},
+		&mc.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 2, Source: s.slot(inv, 0)},
 		result(4),
-		&v2193.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(inv, 9)})
+		&mc.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(inv, 9)})
 	s.request("a plank put in the grid of the inventory", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerCraftingInput, uiInventoryGrid)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(mc.ContainerCraftingInput, uiInventoryGrid)})
 	// inventory/consume-grid-then-inventory of the capture.
 	s.request("recipe book, inventory screen: the plank of the grid, then one of the inventory", nil,
-		&v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiInventoryGrid)},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(inv, 0)},
+		&mc.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiInventoryGrid)},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(inv, 0)},
 		result(4),
-		&v2193.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(inv, 9)})
+		&mc.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(inv, 9)})
 	s.closeInventory("the client closes its inventory", 0)
 
 	table := cube.Pos{2, -60, 0}
 	s.place("a crafting table is placed", table, block.CraftingTable{})
 	s.clickBlock("the client opens the crafting table", table)
 	s.request("a plank put in the grid of the table", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(mc.ContainerCraftingInput, uiCraftingGrid)})
 	// table/consume-inventory-then-grid of the capture.
 	s.request("recipe book, table: one plank of the inventory, then that of the grid", nil,
-		&v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(inv, 0)},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)},
+		&mc.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(inv, 0)},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiCraftingGrid)},
 		result(4),
-		&v2193.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(inv, 9)})
+		&mc.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(inv, 9)})
 	s.request("a plank put in the grid of the table again", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(mc.ContainerCraftingInput, uiCraftingGrid)})
 	// table/times-2-mixed of the capture.
 	s.request("recipe book, table: two crafts, the plank of the grid and three of the inventory", nil,
-		&v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 2},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)},
-		&v2193.ConsumeStackRequestAction{Count: 3, Source: s.slot(inv, 0)},
+		&mc.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 2},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiCraftingGrid)},
+		&mc.ConsumeStackRequestAction{Count: 3, Source: s.slot(inv, 0)},
 		result(8),
-		&v2193.PlaceStackRequestAction{Count: 8, Source: s.created(), Destination: s.slot(inv, 10)})
+		&mc.PlaceStackRequestAction{Count: 8, Source: s.created(), Destination: s.slot(inv, 10)})
 	s.closeContainer("the client closes the crafting table")
 
 	// closed/grid-empty of the capture: BDS refuses it (7).
 	s.refuse("refused: recipe book with no screen open",
-		&v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 2, Source: s.slot(inv, 0)},
+		&mc.AutoCraftRecipeStackRequestAction{RecipeNetworkID: sticks, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 2, Source: s.slot(inv, 0)},
 		result(4),
-		&v2193.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(inv, 11)})
+		&mc.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(inv, 11)})
 	s.clearInventory("the inventory emptied")
 }
 
@@ -197,36 +197,36 @@ func (s *scenario) recipeBookSteps() {
 // as window 0xff.
 func (s *scenario) closeInventory(heading string, window byte) {
 	s.t.Helper()
-	s.client(heading, &v2193.ContainerClosePacket{WindowID: window, ContainerType: 0xff})
+	s.client(heading, &mc.ContainerClosePacket{WindowID: window, ContainerType: 0xff})
 }
 
 // multiCraft sends the request of a special recipe of the UUID passed whose
 // result is the stack passed, consuming one of each of the slots of the
 // containers passed, and then the request that takes its result to a slot
 // of the inventory.
-func (s *scenario) multiCraft(heading, id string, result item.Stack, to int, from ...v2193.StackRequestSlotInfo) {
+func (s *scenario) multiCraft(heading, id string, result item.Stack, to int, from ...mc.StackRequestSlotInfo) {
 	s.t.Helper()
 	name, meta := result.Item().EncodeItem()
-	actions := []v2193.StackRequestAction{
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe(id), NumberOfCrafts: 1},
-		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{{
+	actions := []mc.StackRequestAction{
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe(id), NumberOfCrafts: 1},
+		&mc.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []mc.StackRequestItem{{
 			Identifier: name, MetadataValue: uint32(meta), Count: uint16(result.Count()), NBTData: session.NetworkItemNBT(result),
 		}}},
 	}
 	for _, slot := range from {
-		actions = append(actions, &v2193.ConsumeStackRequestAction{Count: 1, Source: slot})
+		actions = append(actions, &mc.ConsumeStackRequestAction{Count: 1, Source: slot})
 	}
 	s.request(heading, nil, actions...)
 	s.request(heading+": the result taken", nil,
-		&v2193.PlaceStackRequestAction{Count: byte(result.Count()), Source: s.slot(v2193.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, to)})
+		&mc.PlaceStackRequestAction{Count: byte(result.Count()), Source: s.slot(mc.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, to)})
 }
 
 // fill sends the request that puts one item of each slot of the inventory
 // passed in the slot of the container passed after it.
 func (s *scenario) fill(heading string, container uint8, pairs ...[2]int) {
 	s.t.Helper()
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	var actions []v2193.StackRequestAction
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	var actions []mc.StackRequestAction
 	taken := map[int]bool{}
 	for _, p := range pairs {
 		source := s.slot(inv, p[0])
@@ -234,7 +234,7 @@ func (s *scenario) fill(heading string, container uint8, pairs ...[2]int) {
 			source = s.again(inv, p[0])
 		}
 		taken[p[0]] = true
-		actions = append(actions, &v2193.PlaceStackRequestAction{Count: 1, Source: source, Destination: s.slot(container, p[1])})
+		actions = append(actions, &mc.PlaceStackRequestAction{Count: 1, Source: source, Destination: s.slot(container, p[1])})
 	}
 	s.request(heading, nil, actions...)
 }
@@ -243,7 +243,7 @@ func (s *scenario) fill(heading string, container uint8, pairs ...[2]int) {
 // the repair, which the multicraft scenario records, and those of the
 // cartography table.
 func (s *scenario) specialRecipeSteps() {
-	const grid = v2193.ContainerCraftingInput
+	const grid = mc.ContainerCraftingInput
 	var source item.Stack
 	s.step("a map is made of the land around", func(tx *world.Tx, _ *player.Player) {
 		data, err := tx.CreateMap(cube.Pos{0, -60, 0}, 0)
@@ -284,7 +284,7 @@ func (s *scenario) specialRecipeSteps() {
 		paper = append(paper, [2]int{2, uiCraftingGrid + i})
 	}
 	s.fill("a map in the middle of eight paper", grid, paper...)
-	var all []v2193.StackRequestSlotInfo
+	var all []mc.StackRequestSlotInfo
 	for i := range 9 {
 		all = append(all, s.slot(grid, uiCraftingGrid+i))
 	}
@@ -316,11 +316,11 @@ func (s *scenario) specialRecipeSteps() {
 	s.clickBlock("the client opens the cartography table", cartography)
 	cart := func(addition int) {
 		s.request("a map and its addition put in the cartography table", nil,
-			&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCombinedHotBarAndInventory, 0), Destination: s.slot(v2193.ContainerCartographyInput, uiCartographyInput)},
-			&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCombinedHotBarAndInventory, addition), Destination: s.slot(v2193.ContainerCartographyAdditional, uiCartographyAddition)})
+			&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCombinedHotBarAndInventory, 0), Destination: s.slot(mc.ContainerCartographyInput, uiCartographyInput)},
+			&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCombinedHotBarAndInventory, addition), Destination: s.slot(mc.ContainerCartographyAdditional, uiCartographyAddition)})
 	}
-	both := func() []v2193.StackRequestSlotInfo {
-		return []v2193.StackRequestSlotInfo{s.slot(v2193.ContainerCartographyInput, uiCartographyInput), s.slot(v2193.ContainerCartographyAdditional, uiCartographyAddition)}
+	both := func() []mc.StackRequestSlotInfo {
+		return []mc.StackRequestSlotInfo{s.slot(mc.ContainerCartographyInput, uiCartographyInput), s.slot(mc.ContainerCartographyAdditional, uiCartographyAddition)}
 	}
 	cart(1)
 	s.multiCraft("the map cloned at the cartography table", multiMapCloneCartograph, source.Grow(1), 26, both()...)
@@ -336,7 +336,7 @@ func (s *scenario) specialRecipeSteps() {
 // creative item, destroys the creative item, and pays a beacon with the
 // Destroy the client sends after, which the server ignores.
 func (s *scenario) craftSteps() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 	s.give("wolf armour, dye and honey given",
 		slotStack{0, item.NewStack(item.WolfArmor{}, 1)},
 		slotStack{1, item.NewStack(item.Dye{Colour: item.ColourLime()}, 1)},
@@ -345,24 +345,24 @@ func (s *scenario) craftSteps() {
 	)
 	table := cube.Pos{2, -60, 0}
 	s.clickBlock("the client opens the crafting table", table)
-	s.fill("wolf armour and dye put in the grid", v2193.ContainerCraftingInput, [2]int{0, uiCraftingGrid}, [2]int{1, uiCraftingGrid + 1})
+	s.fill("wolf armour and dye put in the grid", mc.ContainerCraftingInput, [2]int{0, uiCraftingGrid}, [2]int{1, uiCraftingGrid + 1})
 	// The client names a dynamic recipe by no ID the server sent.
 	s.request("the wolf armour dyed, a dynamic recipe", nil,
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 0xffff, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid+1)},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(inv, 0)})
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: 0xffff, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiCraftingGrid)},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiCraftingGrid+1)},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(inv, 0)})
 
 	// A honey bottle makes three sugar and gives the bottle back: the client
 	// creates each of the two results before it takes it.
-	s.fill("a honey bottle put in the grid", v2193.ContainerCraftingInput, [2]int{2, uiCraftingGrid})
+	s.fill("a honey bottle put in the grid", mc.ContainerCraftingInput, [2]int{2, uiCraftingGrid})
 	s.request("sugar crafted: two results, created one by one", nil,
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.twoResultRecipe(item.Sugar{}), NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)},
-		&v2193.CreateStackRequestAction{ResultsSlot: 0},
-		&v2193.PlaceStackRequestAction{Count: 3, Source: s.created(), Destination: s.slot(inv, 4)},
-		&v2193.CreateStackRequestAction{ResultsSlot: 1},
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(inv, 5)})
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: s.twoResultRecipe(item.Sugar{}), NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiCraftingGrid)},
+		&mc.CreateStackRequestAction{ResultsSlot: 0},
+		&mc.PlaceStackRequestAction{Count: 3, Source: s.created(), Destination: s.slot(inv, 4)},
+		&mc.CreateStackRequestAction{ResultsSlot: 1},
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(inv, 5)})
 	s.closeContainer("the client closes the crafting table")
 
 	// The beacon takes no pyramid to be paid without an effect; the client
@@ -372,10 +372,10 @@ func (s *scenario) craftSteps() {
 	s.place("a beacon is placed", beacon, block.Beacon{})
 	s.clickBlock("the client opens the beacon", beacon)
 	s.request("an iron ingot put in the beacon", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(v2193.ContainerBeaconPayment, uiBeaconPayment)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(mc.ContainerBeaconPayment, uiBeaconPayment)})
 	s.request("the beacon paid, the payment then destroyed", nil,
-		&v2193.BeaconPaymentStackRequestAction{},
-		&v2193.DestroyStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerBeaconPayment, uiBeaconPayment)})
+		&mc.BeaconPaymentStackRequestAction{},
+		&mc.DestroyStackRequestAction{Count: 1, Source: s.slot(mc.ContainerBeaconPayment, uiBeaconPayment)})
 	s.closeContainer("the client closes the beacon")
 
 	stone := 0
@@ -392,10 +392,10 @@ func (s *scenario) craftSteps() {
 		p.SetGameMode(world.GameModeCreative)
 	})
 	s.request("creative: a stack of stone taken", nil,
-		&v2193.CraftCreativeStackRequestAction{CreativeItemNetworkID: uint32(stone), NumberOfCrafts: 1},
-		&v2193.PlaceStackRequestAction{Count: 64, Source: s.created(), Destination: s.slot(inv, 6)})
+		&mc.CraftCreativeStackRequestAction{CreativeItemNetworkID: uint32(stone), NumberOfCrafts: 1},
+		&mc.PlaceStackRequestAction{Count: 64, Source: s.created(), Destination: s.slot(inv, 6)})
 	s.request("creative: the stone destroyed", nil,
-		&v2193.DestroyStackRequestAction{Count: 64, Source: s.slot(inv, 6)})
+		&mc.DestroyStackRequestAction{Count: 64, Source: s.slot(inv, 6)})
 	s.gameModeStep("game mode: survival", 1, func(_ *world.Tx, p *player.Player) {
 		p.SetGameMode(world.GameModeSurvival)
 	})
@@ -404,22 +404,22 @@ func (s *scenario) craftSteps() {
 
 // bundleSteps puts apples in a bundle and takes one out again.
 func (s *scenario) bundleSteps() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 	s.give("a bundle and apples given",
 		slotStack{0, item.NewStack(item.Bundle{}, 1)},
 		slotStack{1, item.NewStack(item.Apple{}, 16)},
 	)
 	s.request("four apples put in the bundle", nil,
-		&v2193.PlaceStackRequestAction{Count: 4, Source: s.slot(inv, 1), Destination: s.slot(inv, 0)})
+		&mc.PlaceStackRequestAction{Count: 4, Source: s.slot(inv, 1), Destination: s.slot(inv, 0)})
 	s.request("an apple taken out of the bundle onto the apples", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(inv, 1)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(inv, 1)})
 	s.clearInventory("the inventory emptied")
 }
 
 // tradePreviewSteps buys from a villager by taking the result of the
 // preview, which pays from the inventory.
 func (s *scenario) tradePreviewSteps() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 	s.give("emeralds given", slotStack{0, item.NewStack(item.Emerald{}, 3)})
 	var villager *world.EntityHandle
 	s.step("a villager stands by", func(tx *world.Tx, p *player.Player) {
@@ -440,15 +440,15 @@ func (s *scenario) tradePreviewSteps() {
 		villager = h
 		tx.AddEntity(h)
 	})
-	s.client("the client opens the trade screen", &v2193.InventoryTransactionPacket{TransactionData: &v2193.UseItemOnEntityTransactionData{
+	s.client("the client opens the trade screen", &mc.InventoryTransactionPacket{TransactionData: &mc.UseItemOnEntityTransactionData{
 		TargetEntityRuntimeID: s.runtimeID(villager),
-		ActionType:            v2193.UseItemOnEntityActionInteract,
+		ActionType:            mc.UseItemOnEntityActionInteract,
 		HotBarSlot:            emptyHand,
 		Position:              mgl32.Vec3{0.5, -58.38, 0.5},
 		ClickedPosition:       mgl32.Vec3{0, 1, 0},
 	}})
 	s.request("bread taken from the preview of the first offer", nil,
-		&v2193.TakeStackRequestAction{Count: 6, Source: v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeResultPreview}, Slot: 0}, Destination: s.slot(inv, 1)})
+		&mc.TakeStackRequestAction{Count: 6, Source: mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: mc.ContainerTradeResultPreview}, Slot: 0}, Destination: s.slot(inv, 1)})
 	s.closeContainer("the client closes the trade screen")
 	s.step("the villager taken away", func(tx *world.Tx, _ *player.Player) {
 		if e, ok := villager.Entity(tx); ok {
@@ -462,7 +462,7 @@ func (s *scenario) tradePreviewSteps() {
 // and closes them; a comparator reads the chest. A furnace is opened with
 // items in it and its input taken.
 func (s *scenario) containerSteps() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 	s.give("apples given", slotStack{0, item.NewStack(item.Apple{}, 16)})
 
 	chest := cube.Pos{1, -60, -2}
@@ -477,18 +477,18 @@ func (s *scenario) containerSteps() {
 		b         world.Block
 		container uint8
 	}{
-		{"the chest", chest, nil, v2193.ContainerLevelEntity},
-		{"a barrel", cube.Pos{-1, -60, -2}, block.NewBarrel(), v2193.ContainerBarrel},
-		{"a shulker box", cube.Pos{-2, -60, -1}, shulkerBox, v2193.ContainerShulkerBox},
-		{"a hopper", cube.Pos{-2, -60, 1}, block.NewHopper(), v2193.ContainerLevelEntity},
-		{"an ender chest", cube.Pos{1, -60, 2}, block.NewEnderChest(), v2193.ContainerLevelEntity},
+		{"the chest", chest, nil, mc.ContainerLevelEntity},
+		{"a barrel", cube.Pos{-1, -60, -2}, block.NewBarrel(), mc.ContainerBarrel},
+		{"a shulker box", cube.Pos{-2, -60, -1}, shulkerBox, mc.ContainerShulkerBox},
+		{"a hopper", cube.Pos{-2, -60, 1}, block.NewHopper(), mc.ContainerLevelEntity},
+		{"an ender chest", cube.Pos{1, -60, 2}, block.NewEnderChest(), mc.ContainerLevelEntity},
 	} {
 		if c.b != nil {
 			s.place(c.name+" is placed", c.pos, c.b)
 		}
 		s.clickBlock("the client opens "+c.name, c.pos)
 		s.request("an apple put in "+c.name, nil,
-			&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(c.container, 0)})
+			&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(c.container, 0)})
 		s.tick("the tick after", 2)
 		s.closeContainer("the client closes " + c.name)
 		s.tick("the ticks after it closed", 2)
@@ -506,7 +506,7 @@ func (s *scenario) containerSteps() {
 	})
 	s.clickBlock("the client opens the furnace", furnace)
 	s.request("the iron ore taken out of the furnace", nil,
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(v2193.ContainerFurnaceIngredient, 0), Destination: s.slot(inv, 1)})
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(mc.ContainerFurnaceIngredient, 0), Destination: s.slot(inv, 1)})
 	s.closeContainer("the client closes the furnace")
 	s.clearInventory("the inventory emptied")
 }
@@ -514,20 +514,20 @@ func (s *scenario) containerSteps() {
 // crafterSteps opens a crafter, turns its first slot off and fills it, which
 // turns it on again.
 func (s *scenario) crafterSteps() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 	s.give("planks given", slotStack{0, item.NewStack(block.Planks{Wood: block.OakWood()}, 4)})
 	crafter := cube.Pos{2, -60, 2}
 	s.place("a crafter is placed", crafter, block.NewCrafter())
 	s.clickBlock("the client opens the crafter", crafter)
 	toggle := func(heading string, slot uint8, disabled bool) {
-		s.client(heading, &v2193.PlayerToggleCrafterSlotRequestPacket{PosX: int32(crafter[0]), PosY: int32(crafter[1]), PosZ: int32(crafter[2]), Slot: slot, Disabled: disabled})
+		s.client(heading, &mc.PlayerToggleCrafterSlotRequestPacket{PosX: int32(crafter[0]), PosY: int32(crafter[1]), PosZ: int32(crafter[2]), Slot: slot, Disabled: disabled})
 	}
 	toggle("the client turns the first slot of the crafter off", 0, true)
 	toggle("the client turns it off again", 0, true)
 	toggle("the client turns the second slot off", 1, true)
 	toggle("the client turns the second slot on", 1, false)
 	s.request("a plank put in the slot turned off", nil,
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerCrafterLevelEntity, 0)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(mc.ContainerCrafterLevelEntity, 0)})
 	s.closeContainer("the client closes the crafter")
 	s.clearInventory("the inventory emptied")
 }
@@ -539,7 +539,7 @@ func (s *scenario) lecternSteps() {
 	book := item.NewStack(item.WrittenBook{Title: "Lectern", Author: goldenName, Pages: []string{"one", "two", "three"}}, 1)
 	s.place("a lectern is placed with a book on it", lectern, block.Lectern{Book: book})
 	s.clickBlock("the client opens the lectern", lectern)
-	s.client("the client turns to the second page", &v2193.LecternUpdatePacket{Page: 1, PageCount: 3, Position: [3]int32{int32(lectern[0]), int32(lectern[1]), int32(lectern[2])}})
+	s.client("the client turns to the second page", &mc.LecternUpdatePacket{Page: 1, PageCount: 3, Position: [3]int32{int32(lectern[0]), int32(lectern[1]), int32(lectern[2])}})
 	s.tick("the tick after", 1)
 
 	s.openInventory("the client opens its inventory")
@@ -549,7 +549,7 @@ func (s *scenario) lecternSteps() {
 // menuRefusalSteps sends the requests the server refuses that the refusals
 // scenario leaves out.
 func (s *scenario) menuRefusalSteps() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
+	const inv = mc.ContainerCombinedHotBarAndInventory
 	sword := item.Sword{Tier: item.ToolTierWood}
 	s.give("a locked apple, apples and damaged swords given",
 		slotStack{0, item.NewStack(item.Apple{}, 1).WithLockMode(item.LockInSlot)},
@@ -561,28 +561,28 @@ func (s *scenario) menuRefusalSteps() {
 		p.Armour().SetHelmet(item.NewStack(item.Helmet{Tier: item.ArmourTierLeather{}}, 1).WithEnchantments(item.NewEnchantment(enchantment.CurseOfBinding, 1)))
 	})
 	s.refuse("refused: the locked apple dropped",
-		&v2193.DropStackRequestAction{Count: 1, Source: s.slot(inv, 0)})
+		&mc.DropStackRequestAction{Count: 1, Source: s.slot(inv, 0)})
 	s.refuse("refused: the locked apple moved",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(inv, 9)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: s.slot(inv, 9)})
 	s.refuse("refused: the cursed helmet taken off",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerArmor, 0), Destination: s.slot(inv, 9)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(mc.ContainerArmor, 0), Destination: s.slot(inv, 9)})
 	s.refuse("refused: twenty apples taken of sixteen",
-		&v2193.PlaceStackRequestAction{Count: 20, Source: s.slot(inv, 1), Destination: s.slot(inv, 9)})
+		&mc.PlaceStackRequestAction{Count: 20, Source: s.slot(inv, 1), Destination: s.slot(inv, 9)})
 	s.refuse("refused: an apple put in a furnace not open",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: s.slot(v2193.ContainerFurnaceIngredient, 0)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 1), Destination: s.slot(mc.ContainerFurnaceIngredient, 0)})
 
 	table := cube.Pos{2, -60, 0}
 	s.clickBlock("the client opens the crafting table", table)
-	s.fill("the swords put in the grid", v2193.ContainerCraftingInput, [2]int{2, uiCraftingGrid}, [2]int{3, uiCraftingGrid + 1})
+	s.fill("the swords put in the grid", mc.ContainerCraftingInput, [2]int{2, uiCraftingGrid}, [2]int{3, uiCraftingGrid + 1})
 	forged := item.NewStack(sword, 1)
 	name, meta := forged.Item().EncodeItem()
 	s.refuse("refused: the swords repaired to a sword as good as new",
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe(multiRepair), NumberOfCrafts: 1},
-		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{{
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe(multiRepair), NumberOfCrafts: 1},
+		&mc.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []mc.StackRequestItem{{
 			Identifier: name, MetadataValue: uint32(meta), Count: 1, NBTData: session.NetworkItemNBT(forged),
 		}}},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid+1)})
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiCraftingGrid)},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiCraftingGrid+1)})
 	s.closeContainer("the client closes the crafting table")
 }
 

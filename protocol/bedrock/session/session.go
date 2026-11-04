@@ -27,7 +27,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -76,10 +76,10 @@ type Session struct {
 	closing            atomic.Bool
 
 	// commandOrigin holds the last command origin so output can match request metadata.
-	commandOrigin atomic.Pointer[v2193.CommandOrigin]
+	commandOrigin atomic.Pointer[mc.CommandOrigin]
 	commandsDirty atomic.Bool
 	// abilities is an immutable snapshot for clients joining the player list.
-	abilities atomic.Pointer[v2193.AbilityData]
+	abilities atomic.Pointer[mc.AbilityData]
 
 	currentScoreboard atomic.Pointer[string]
 	currentLines      atomic.Pointer[[]string]
@@ -181,7 +181,7 @@ type Session struct {
 	// yet, oldest first, and subChunkOffsets the offsets they ask for;
 	// chunkBytes counts the bytes of chunks written this tick. The world of
 	// the player reads and writes them: see loadChunks.
-	subChunkQueue   []*v2193.SubChunkRequestPacket
+	subChunkQueue   []*mc.SubChunkRequestPacket
 	subChunkOffsets int
 	chunkBytes      int
 
@@ -303,7 +303,7 @@ func (conf Config) New(conn Conn) *Session {
 		r = maxChunkRadius
 	}
 	if r != requestedRadius {
-		_ = conn.WritePacket(&v2193.ChunkRadiusUpdatedPacket{ChunkRadius: int32(r)})
+		_ = conn.WritePacket(&mc.ChunkRadiusUpdatedPacket{ChunkRadius: int32(r)})
 	}
 	if conf.Log == nil {
 		conf.Log = slog.Default()
@@ -345,7 +345,7 @@ func (conf Config) New(conn Conn) *Session {
 	var scoreboardLines []string
 	s.currentScoreboard.Store(&scoreboardName)
 	s.currentLines.Store(&scoreboardLines)
-	var origin v2193.CommandOrigin
+	var origin mc.CommandOrigin
 	s.commandOrigin.Store(&origin)
 
 	if conf.BlockRegistry == nil {
@@ -412,8 +412,8 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	chunkRadius := s.chunkRadius.Load()
 	s.chunkLoader = world.NewLoader(int(chunkRadius), tx.World(), s)
 	s.chunkLoader.Move(tx, pos)
-	s.writePacket(&v2193.NetworkChunkPublisherUpdatePacket{
-		Position: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+	s.writePacket(&mc.NetworkChunkPublisherUpdatePacket{
+		Position: mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 		Radius:   uint32(chunkRadius) << 4,
 	})
 
@@ -426,10 +426,10 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	}
 	s.ViewEntityState(c)
 
-	s.sendInv(s.inv, v2193.WindowIDInventory)
-	s.sendInv(s.ui, v2193.WindowIDUI)
-	s.sendInv(s.offHand, v2193.WindowIDOffHand)
-	s.sendInv(s.armour.Inventory(), v2193.WindowIDArmour)
+	s.sendInv(s.inv, mc.WindowIDInventory)
+	s.sendInv(s.ui, mc.WindowIDUI)
+	s.sendInv(s.offHand, mc.WindowIDOffHand)
+	s.sendInv(s.armour.Inventory(), mc.WindowIDArmour)
 
 	// What the client sends waits in the inbox for the next tick of the
 	// world of the player, which hands it to Control.
@@ -849,8 +849,8 @@ func (s *Session) sendChunks(tx *world.Tx, c Controllable) {
 	chunkPos := world.ChunkPos{int32(blockPos[0] >> 4), int32(blockPos[2] >> 4)}
 	if s.lastChunkPos != chunkPos || worldSwitched {
 		s.lastChunkPos = chunkPos
-		s.writePacket(&v2193.NetworkChunkPublisherUpdatePacket{
-			Position: v2193.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+		s.writePacket(&mc.NetworkChunkPublisherUpdatePacket{
+			Position: mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 			Radius:   uint32(chunkRadius) << 4,
 		})
 	}
@@ -899,23 +899,23 @@ func (s *Session) handleWorldSwitch(w *world.World, tx *world.Tx, c Controllable
 // immediately.
 func (s *Session) changeDimension(dim int32, silent bool, c Controllable) {
 	s.changingDimension.Store(true)
-	h := s.handlers[v2193.IDServerBoundLoadingScreen].(*ServerBoundLoadingScreenHandler)
+	h := s.handlers[mc.IDServerBoundLoadingScreen].(*ServerBoundLoadingScreenHandler)
 	id := h.currentID.Add(1)
 	h.expectedID.Store(id)
 
-	s.writePacket(&v2193.ChangeDimensionPacket{
+	s.writePacket(&mc.ChangeDimensionPacket{
 		Dimension:       dim,
 		Position:        vec64To32(entityNetworkPosition(c, c.Position())),
 		LoadingScreenID: proto.Some(id),
 	})
-	s.writePacket(&v2193.StopSoundPacket{StopAll: silent})
-	s.writePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusPlayerSpawn})
+	s.writePacket(&mc.StopSoundPacket{StopAll: silent})
+	s.writePacket(&mc.PlayStatusPacket{Status: mc.PlayStatusPlayerSpawn})
 
 	// As of v1.19.50, the dimension ack that is meant to be sent by the client is now sent by the server. The client
 	// still sends the ack, but after the server has sent it. Thanks to Mojang for another groundbreaking change.
-	s.writePacket(&v2193.PlayerActionPacket{
+	s.writePacket(&mc.PlayerActionPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		ActionType:      v2193.PlayerActionDimensionChangeDone,
+		ActionType:      mc.PlayerActionDimensionChangeDone,
 	})
 }
 
@@ -953,46 +953,46 @@ func (s *Session) handlePacket(pk proto.Packet, tx *world.Tx, c Controllable) (e
 // registerHandlers registers all packet handlers found in the packetHandler package.
 func (s *Session) registerHandlers() {
 	s.handlers = map[uint32]packetHandler{
-		v2193.IDActorEvent:                     nil,
-		v2193.IDAdventureSettings:              nil, // Deprecated, the client still sends this though.
-		v2193.IDAnimate:                        nil,
-		v2193.IDAnvilDamage:                    nil,
-		v2193.IDBlockActorData:                 &BlockActorDataHandler{},
-		v2193.IDBlockPickRequest:               &BlockPickRequestHandler{},
-		v2193.IDBookEdit:                       &BookEditHandler{},
-		v2193.IDBossEvent:                      nil,
-		v2193.IDClientCacheBlobStatus:          &ClientCacheBlobStatusHandler{},
-		v2193.IDCommandRequest:                 &CommandRequestHandler{},
-		v2193.IDCommandBlockUpdate:             &CommandBlockUpdateHandler{},
-		v2193.IDContainerClose:                 &ContainerCloseHandler{},
-		v2193.IDEmote:                          &EmoteHandler{},
-		v2193.IDEmoteList:                      nil,
-		v2193.IDFilterText:                     nil,
-		v2193.IDInteract:                       &InteractHandler{},
-		v2193.IDInventoryTransaction:           &InventoryTransactionHandler{},
-		v2193.IDItemStackRequest:               &ItemStackRequestHandler{changes: map[byte]map[byte]changeInfo{}, responseChanges: map[int32]map[*inventory.Inventory]map[byte]responseChange{}},
-		v2193.IDLecternUpdate:                  &LecternUpdateHandler{},
-		v2193.IDMobEquipment:                   &MobEquipmentHandler{},
-		v2193.IDModalFormResponse:              &ModalFormResponseHandler{forms: make(map[uint32]form.Form)},
-		v2193.IDMovePlayer:                     nil,
-		v2193.IDNPCRequest:                     &NPCRequestHandler{},
-		v2193.IDPlayerAction:                   &PlayerActionHandler{},
-		v2193.IDPlayerAuthInput:                &PlayerAuthInputHandler{},
-		v2193.IDPlayerSkin:                     &PlayerSkinHandler{},
-		v2193.IDMapInfoRequest:                 &MapInfoRequestHandler{},
-		v2193.IDPlayerToggleCrafterSlotRequest: &CrafterSlotToggleHandler{},
-		v2193.IDRequestAbility:                 &RequestAbilityHandler{},
-		v2193.IDRequestChunkRadius:             &RequestChunkRadiusHandler{},
-		v2193.IDRespawn:                        &RespawnHandler{},
-		v2193.IDSetPlayerInventoryOptions:      nil,
-		v2193.IDSubChunkRequest:                &SubChunkRequestHandler{},
-		v2193.IDStructureBlockUpdate:           &StructureBlockUpdateHandler{},
-		v2193.IDStructureTemplateDataRequest:   &StructureTemplateDataRequestHandler{},
-		v2193.IDText:                           &TextHandler{},
-		v2193.IDServerBoundLoadingScreen:       &ServerBoundLoadingScreenHandler{},
-		v2193.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},
+		mc.IDActorEvent:                     nil,
+		mc.IDAdventureSettings:              nil, // Deprecated, the client still sends this though.
+		mc.IDAnimate:                        nil,
+		mc.IDAnvilDamage:                    nil,
+		mc.IDBlockActorData:                 &BlockActorDataHandler{},
+		mc.IDBlockPickRequest:               &BlockPickRequestHandler{},
+		mc.IDBookEdit:                       &BookEditHandler{},
+		mc.IDBossEvent:                      nil,
+		mc.IDClientCacheBlobStatus:          &ClientCacheBlobStatusHandler{},
+		mc.IDCommandRequest:                 &CommandRequestHandler{},
+		mc.IDCommandBlockUpdate:             &CommandBlockUpdateHandler{},
+		mc.IDContainerClose:                 &ContainerCloseHandler{},
+		mc.IDEmote:                          &EmoteHandler{},
+		mc.IDEmoteList:                      nil,
+		mc.IDFilterText:                     nil,
+		mc.IDInteract:                       &InteractHandler{},
+		mc.IDInventoryTransaction:           &InventoryTransactionHandler{},
+		mc.IDItemStackRequest:               &ItemStackRequestHandler{changes: map[byte]map[byte]changeInfo{}, responseChanges: map[int32]map[*inventory.Inventory]map[byte]responseChange{}},
+		mc.IDLecternUpdate:                  &LecternUpdateHandler{},
+		mc.IDMobEquipment:                   &MobEquipmentHandler{},
+		mc.IDModalFormResponse:              &ModalFormResponseHandler{forms: make(map[uint32]form.Form)},
+		mc.IDMovePlayer:                     nil,
+		mc.IDNPCRequest:                     &NPCRequestHandler{},
+		mc.IDPlayerAction:                   &PlayerActionHandler{},
+		mc.IDPlayerAuthInput:                &PlayerAuthInputHandler{},
+		mc.IDPlayerSkin:                     &PlayerSkinHandler{},
+		mc.IDMapInfoRequest:                 &MapInfoRequestHandler{},
+		mc.IDPlayerToggleCrafterSlotRequest: &CrafterSlotToggleHandler{},
+		mc.IDRequestAbility:                 &RequestAbilityHandler{},
+		mc.IDRequestChunkRadius:             &RequestChunkRadiusHandler{},
+		mc.IDRespawn:                        &RespawnHandler{},
+		mc.IDSetPlayerInventoryOptions:      nil,
+		mc.IDSubChunkRequest:                &SubChunkRequestHandler{},
+		mc.IDStructureBlockUpdate:           &StructureBlockUpdateHandler{},
+		mc.IDStructureTemplateDataRequest:   &StructureTemplateDataRequestHandler{},
+		mc.IDText:                           &TextHandler{},
+		mc.IDServerBoundLoadingScreen:       &ServerBoundLoadingScreenHandler{},
+		mc.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},
 	}
-	s.handlers[v2193.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
+	s.handlers[mc.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
 }
 
 // actorIdentifier represents the structure of an actor identifier sent over the network.
@@ -1014,6 +1014,6 @@ func (s *Session) sendAvailableEntities(w *world.World) {
 		s.conf.Log.Error("failed to marshal entity identifiers", "err", err)
 		return
 	}
-	s.writePacket(&v2193.AvailableActorIdentifiersPacket{SerialisedEntityIdentifiers: serialisedEntityData})
+	s.writePacket(&mc.AvailableActorIdentifiersPacket{SerialisedEntityIdentifiers: serialisedEntityData})
 	s.sendActorProperties(w)
 }

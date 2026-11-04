@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -25,8 +25,8 @@ func TestMobDeathAnimationSurvivesRemoval(t *testing.T) {
 		viewer.ViewEntityAction(e, entity.DeathAction{})
 		viewer.HideEntity(e)
 		viewer.HideEntity(e)
-		pk, ok := (viewer.testPacket()).(*v2193.ActorEventPacket)
-		if !ok || pk.EventType != v2193.ActorEventDeath || pk.EntityRuntimeID != 2 {
+		pk, ok := (viewer.testPacket()).(*mc.ActorEventPacket)
+		if !ok || pk.EventType != mc.ActorEventDeath || pk.EntityRuntimeID != 2 {
 			t.Errorf("death packet = %#v, want actor 2 death event", pk)
 		}
 		if pk := viewer.testPacket(); pk != nil {
@@ -59,7 +59,7 @@ func TestForcedHideStillRemovesDyingMob(t *testing.T) {
 		viewer.ViewEntityAction(e, entity.DeathAction{})
 		viewer.testPacket()
 		viewer.StopShowingEntity(e)
-		if pk, ok := (viewer.testPacket()).(*v2193.RemoveActorPacket); !ok || pk.EntityUniqueID != e.H().UniqueID() {
+		if pk, ok := (viewer.testPacket()).(*mc.RemoveActorPacket); !ok || pk.EntityUniqueID != e.H().UniqueID() {
 			t.Errorf("forced-hide packet = %#v, want RemoveActor", pk)
 		}
 	}).Wait(context.Background()); err != nil {
@@ -90,7 +90,7 @@ func TestSpecialDeathSequencesStillSendRemoveActor(t *testing.T) {
 				viewer.ViewEntityAction(e, entity.DeathAction{})
 				viewer.testPacket()
 				viewer.HideEntity(e)
-				if pk, ok := (viewer.testPacket()).(*v2193.RemoveActorPacket); !ok || pk.EntityUniqueID != h.UniqueID() {
+				if pk, ok := (viewer.testPacket()).(*mc.RemoveActorPacket); !ok || pk.EntityUniqueID != h.UniqueID() {
 					t.Errorf("special-death removal = %#v, want RemoveActor", pk)
 				}
 			}).Wait(context.Background()); err != nil {
@@ -145,11 +145,11 @@ func TestKilledMobSendsDeathWithoutImmediateRemoveActor(t *testing.T) {
 			deaths := 0
 			for len(viewer.heldPackets) > 0 {
 				switch pk := (viewer.testPacket()).(type) {
-				case *v2193.ActorEventPacket:
-					if pk.EntityRuntimeID == runtimeID && pk.EventType == v2193.ActorEventDeath {
+				case *mc.ActorEventPacket:
+					if pk.EntityRuntimeID == runtimeID && pk.EventType == mc.ActorEventDeath {
 						deaths++
 					}
-				case *v2193.RemoveActorPacket:
+				case *mc.RemoveActorPacket:
 					if pk.EntityUniqueID == uniqueID {
 						t.Error("lethal hit immediately removed the dying actor")
 					}
@@ -183,7 +183,7 @@ func TestMobRemovalWithoutDeathStillSendsRemoveActor(t *testing.T) {
 		viewer.entityRuntimeIDs[e.H()] = 2
 		viewer.entities[2] = e.H()
 		viewer.HideEntity(e)
-		pk, ok := (viewer.testPacket()).(*v2193.RemoveActorPacket)
+		pk, ok := (viewer.testPacket()).(*mc.RemoveActorPacket)
 		if !ok || pk.EntityUniqueID != e.H().UniqueID() {
 			t.Errorf("removal packet = %#v, want RemoveActor for %d", pk, e.H().UniqueID())
 		}

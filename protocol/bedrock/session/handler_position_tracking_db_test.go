@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestPositionTrackingDBHandlerMissingAndTracked(t *testing.T) {
@@ -21,21 +21,21 @@ func TestPositionTrackingDBHandlerMissingAndTracked(t *testing.T) {
 	h := &PositionTrackingDBHandler{}
 
 	w.Do(func(tx *world.Tx) {
-		if err := h.Handle(&v2193.PositionTrackingDBClientRequestPacket{TrackingID: handle}, s, tx, c); err != nil {
+		if err := h.Handle(&mc.PositionTrackingDBClientRequestPacket{TrackingID: handle}, s, tx, c); err != nil {
 			t.Fatal(err)
 		}
 		c.held = item.NewStack(item.Compass{TrackingHandle: handle}, 1)
-		if err := h.Handle(&v2193.PositionTrackingDBClientRequestPacket{TrackingID: handle}, s, tx, c); err != nil {
+		if err := h.Handle(&mc.PositionTrackingDBClientRequestPacket{TrackingID: handle}, s, tx, c); err != nil {
 			t.Fatal(err)
 		}
 	})
 
-	missing := (s.testPacket()).(*v2193.PositionTrackingDBServerBroadcastPacket)
-	if missing.BroadcastAction != v2193.PositionTrackingDBBroadcastActionNotFound || missing.Payload["status"] != byte(positionTrackingStatusMissing) {
+	missing := (s.testPacket()).(*mc.PositionTrackingDBServerBroadcastPacket)
+	if missing.BroadcastAction != mc.PositionTrackingDBBroadcastActionNotFound || missing.Payload["status"] != byte(positionTrackingStatusMissing) {
 		t.Fatalf("missing response = %#v", missing)
 	}
-	tracked := (s.testPacket()).(*v2193.PositionTrackingDBServerBroadcastPacket)
-	if tracked.BroadcastAction != v2193.PositionTrackingDBBroadcastActionUpdate || tracked.Payload["dim"] != int32(0) {
+	tracked := (s.testPacket()).(*mc.PositionTrackingDBServerBroadcastPacket)
+	if tracked.BroadcastAction != mc.PositionTrackingDBBroadcastActionUpdate || tracked.Payload["dim"] != int32(0) {
 		t.Fatalf("tracked response = %#v", tracked)
 	}
 	if got := tracked.Payload["pos"]; !equalPositionPayload(got, pos) {

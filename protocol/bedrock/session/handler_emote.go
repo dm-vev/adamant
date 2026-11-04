@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
 )
 
@@ -16,7 +16,7 @@ type EmoteHandler struct {
 
 // Handle ...
 func (h *EmoteHandler) Handle(p proto.Packet, _ *Session, _ *world.Tx, c Controllable) error {
-	pk := p.(*v2193.EmotePacket)
+	pk := p.(*mc.EmotePacket)
 
 	if pk.EntityRuntimeID != selfEntityRuntimeID {
 		return errSelfRuntimeID

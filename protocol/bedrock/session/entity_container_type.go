@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // actorContainerType returns the container type the actor data of a vehicle
@@ -14,11 +14,11 @@ import (
 func actorContainerType(kind entity.ContainerKind) (byte, bool) {
 	switch kind {
 	case entity.ContainerChestBoat:
-		return v2193.ContainerTypeChestBoat, true
+		return mc.ContainerTypeChestBoat, true
 	case entity.ContainerMinecartChest:
-		return v2193.ContainerTypeCartChest, true
+		return mc.ContainerTypeCartChest, true
 	case entity.ContainerMinecartHopper:
-		return v2193.ContainerTypeCartHopper, true
+		return mc.ContainerTypeCartHopper, true
 	}
 	return 0, false
 }

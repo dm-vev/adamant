@@ -2,38 +2,38 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/player/hud"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // bedrockHudElement returns the ID SetHud sends for a HUD element.
 func bedrockHudElement(e hud.Element) int32 {
 	switch e {
 	case hud.PaperDoll():
-		return v2193.HudElementPaperDoll
+		return mc.HudElementPaperDoll
 	case hud.Armour():
-		return v2193.HudElementArmour
+		return mc.HudElementArmour
 	case hud.ToolTips():
-		return v2193.HudElementToolTips
+		return mc.HudElementToolTips
 	case hud.TouchControls():
-		return v2193.HudElementTouchControls
+		return mc.HudElementTouchControls
 	case hud.Crosshair():
-		return v2193.HudElementCrosshair
+		return mc.HudElementCrosshair
 	case hud.HotBar():
-		return v2193.HudElementHotBar
+		return mc.HudElementHotBar
 	case hud.Health():
-		return v2193.HudElementHealth
+		return mc.HudElementHealth
 	case hud.ProgressBar():
-		return v2193.HudElementProgressBar
+		return mc.HudElementProgressBar
 	case hud.Hunger():
-		return v2193.HudElementHunger
+		return mc.HudElementHunger
 	case hud.AirBubbles():
-		return v2193.HudElementAirBubbles
+		return mc.HudElementAirBubbles
 	case hud.HorseHealth():
-		return v2193.HudElementHorseHealth
+		return mc.HudElementHorseHealth
 	case hud.StatusEffects():
-		return v2193.HudElementStatusEffects
+		return mc.HudElementStatusEffects
 	case hud.ItemText():
-		return v2193.HudElementItemText
+		return mc.HudElementItemText
 	}
-	return v2193.HudElementPaperDoll
+	return mc.HudElementPaperDoll
 }

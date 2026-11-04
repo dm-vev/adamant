@@ -11,7 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
@@ -37,7 +37,7 @@ func TestBuiltinCommandRegistryKeepsNativeHelpLocal(t *testing.T) {
 	builtin.Register((*server.Server)(nil))
 	pk, runnable := session.BuildAvailableCommands(cmd.Commands(), nil, make(map[string]struct{}))
 	decoded := decodeCommands(t, encodePacket(pk))
-	commands := make(map[string]v2193.Command)
+	commands := make(map[string]mc.Command)
 	for _, command := range decoded.Commands {
 		commands[command.Name] = command
 	}
@@ -61,7 +61,7 @@ func TestBuiltinCommandRegistryKeepsNativeHelpLocal(t *testing.T) {
 		}
 	}
 	mode := commands["gamemode"].Overloads[0].Parameters[0]
-	if mode.Type&(v2193.CommandArgValid|v2193.CommandArgEnum) != v2193.CommandArgValid|v2193.CommandArgEnum {
+	if mode.Type&(mc.CommandArgValid|mc.CommandArgEnum) != mc.CommandArgValid|mc.CommandArgEnum {
 		t.Fatalf("gamemode argument is not a hard enum: %#x", mode.Type)
 	}
 	var choices []string
@@ -101,9 +101,9 @@ func (s *metadataHelpSource) SendCommandOutput(output *cmd.Output) { s.output = 
 // encodePacket encodes a packet of the generated codecs.
 // decodeCommands decodes AvailableCommands as a client reads it: all of
 // it, with nothing left over.
-func decodeCommands(t *testing.T, b []byte) v2193.AvailableCommandsPacket {
+func decodeCommands(t *testing.T, b []byte) mc.AvailableCommandsPacket {
 	t.Helper()
-	var pk v2193.AvailableCommandsPacket
+	var pk mc.AvailableCommandsPacket
 	r := wire.NewReader(b)
 	pk.Decode(r)
 	if r.Err() != nil || r.Len() != 0 {

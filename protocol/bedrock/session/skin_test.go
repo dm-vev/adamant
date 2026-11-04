@@ -8,14 +8,14 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
 // encodable checks a skin as it goes to clients: each texture holds the
 // pixels of its size, which gophertunnel's encoder panicked over in the
 // session writer and the client refuses, and it encodes and decodes back.
-func encodable(t *testing.T, name string, s v2193.Skin) {
+func encodable(t *testing.T, name string, s mc.Skin) {
 	t.Helper()
 	if int(s.SkinImageWidth)*int(s.SkinImageHeight)*4 != len(s.SkinData) {
 		t.Fatalf("%s: skin %dx%d of %d bytes", name, s.SkinImageWidth, s.SkinImageHeight, len(s.SkinData))
@@ -30,7 +30,7 @@ func encodable(t *testing.T, name string, s v2193.Skin) {
 	}
 	var w wire.Writer
 	s.Encode(&w)
-	var back v2193.Skin
+	var back mc.Skin
 	r := wire.NewReader(w.B)
 	back.Decode(r)
 	if r.Err() != nil || r.Len() != 0 {
@@ -96,15 +96,15 @@ func TestClientSkinTrustsNothing(t *testing.T) {
 	d.CapeImageWidth, d.CapeImageHeight, d.CapeData = 64, 32, base64.StdEncoding.EncodeToString(make([]byte, 64*32*4))
 	frame := base64.StdEncoding.EncodeToString(make([]byte, 32*64*4))
 	for range skin.MaxAnimations + 2 {
-		d.AnimatedImageData = append(d.AnimatedImageData, login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: v2193.SkinAnimationHead})
+		d.AnimatedImageData = append(d.AnimatedImageData, login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: mc.SkinAnimationHead})
 	}
 	d.AnimatedImageData = append(d.AnimatedImageData[:0:0],
-		login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 32, Type: v2193.SkinAnimationHead},
-		login.SkinAnimation{Frames: 1e300, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: v2193.SkinAnimationHead},
+		login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 32, Type: mc.SkinAnimationHead},
+		login.SkinAnimation{Frames: 1e300, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: mc.SkinAnimationHead},
 		login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: 1 << 32},
 	)
 	for range skin.MaxAnimations + 2 {
-		d.AnimatedImageData = append(d.AnimatedImageData, login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: v2193.SkinAnimationHead})
+		d.AnimatedImageData = append(d.AnimatedImageData, login.SkinAnimation{Frames: 2, Image: frame, ImageWidth: 32, ImageHeight: 64, Type: mc.SkinAnimationHead})
 	}
 	s := ClientSkin(d)
 	if s.Cape.Bounds().Dx() != 64 || len(s.Cape.Pix) != 64*32*4 {
@@ -121,14 +121,14 @@ func TestClientSkinTrustsNothing(t *testing.T) {
 // can read.
 func TestPlayerSkinTrustsNothing(t *testing.T) {
 	t.Parallel()
-	persona := protocolToSkin(v2193.Skin{SkinImageWidth: 256, SkinImageHeight: 256, SkinData: make([]byte, 256*256*4), PersonaSkin: true, SkinGeometry: []byte("{}")})
+	persona := protocolToSkin(mc.Skin{SkinImageWidth: 256, SkinImageHeight: 256, SkinData: make([]byte, 256*256*4), PersonaSkin: true, SkinGeometry: []byte("{}")})
 	if persona.Bounds().Dx() != 256 || len(persona.Pix) != 256*256*4 {
 		t.Fatalf("persona skin %v", persona.Bounds())
 	}
-	animated := protocolToSkin(v2193.Skin{SkinImageWidth: 64, SkinImageHeight: 64, SkinData: make([]byte, 64*64*4), Animations: []v2193.SkinAnimation{
+	animated := protocolToSkin(mc.Skin{SkinImageWidth: 64, SkinImageHeight: 64, SkinData: make([]byte, 64*64*4), Animations: []mc.SkinAnimation{
 		// The texture of an animation holds every frame.
-		{ImageWidth: 32, ImageHeight: 64, ImageData: make([]byte, 32*64*4), AnimationType: v2193.SkinAnimationHead, FrameCount: 2},
-		{ImageWidth: 32, ImageHeight: 32, ImageData: make([]byte, 32*64*4), AnimationType: v2193.SkinAnimationHead, FrameCount: 2},
+		{ImageWidth: 32, ImageHeight: 64, ImageData: make([]byte, 32*64*4), AnimationType: mc.SkinAnimationHead, FrameCount: 2},
+		{ImageWidth: 32, ImageHeight: 32, ImageData: make([]byte, 32*64*4), AnimationType: mc.SkinAnimationHead, FrameCount: 2},
 	}})
 	if len(animated.Animations) != 1 || animated.Animations[0].FrameCount != 2 {
 		t.Fatalf("animations %+v", animated.Animations)
@@ -146,10 +146,10 @@ func TestPlayerSkinTrustsNothing(t *testing.T) {
 		return make([]byte, rng.IntN(1<<16))
 	}
 	for i := range 2000 {
-		sk := v2193.Skin{SkinImageWidth: size(), SkinImageHeight: size(), CapeImageWidth: size(), CapeImageHeight: size(), PersonaSkin: rng.IntN(2) == 0}
+		sk := mc.Skin{SkinImageWidth: size(), SkinImageHeight: size(), CapeImageWidth: size(), CapeImageHeight: size(), PersonaSkin: rng.IntN(2) == 0}
 		sk.SkinData, sk.CapeData = data(sk.SkinImageWidth, sk.SkinImageHeight), data(sk.CapeImageWidth, sk.CapeImageHeight)
 		for range rng.IntN(4) {
-			a := v2193.SkinAnimation{ImageWidth: size(), ImageHeight: size(), AnimationType: uint32(rng.IntN(5)), FrameCount: float32(rng.NormFloat64() * 1e6)}
+			a := mc.SkinAnimation{ImageWidth: size(), ImageHeight: size(), AnimationType: uint32(rng.IntN(5)), FrameCount: float32(rng.NormFloat64() * 1e6)}
 			a.ImageData = data(a.ImageWidth, a.ImageHeight)
 			sk.Animations = append(sk.Animations, a)
 		}

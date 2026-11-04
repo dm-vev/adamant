@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/category"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 func TestCustomItemEntriesCustomItem(t *testing.T) {
@@ -131,8 +131,8 @@ func TestDimensionDefinitions(t *testing.T) {
 		{ID: 3, Name: "adamant:test", Dimension: world.Overworld},
 	}).Dimensions()
 	r := world.Overworld.Range()
-	want := v2193.DimensionDefinition{Name: "adamant:test", MinimumY: int32(r.Min()), HeightRange: int32(r.Height() + 1), Generator: v2193.GeneratorVoid, DimensionType: 3}
+	want := mc.DimensionDefinition{Name: "adamant:test", MinimumY: int32(r.Min()), HeightRange: int32(r.Height() + 1), Generator: mc.GeneratorVoid, DimensionType: 3}
 	if len(defs) != 1 || defs[0] != want {
-		t.Fatalf("dimensions = %#v, want %#v", defs, []v2193.DimensionDefinition{want})
+		t.Fatalf("dimensions = %#v, want %#v", defs, []mc.DimensionDefinition{want})
 	}
 }

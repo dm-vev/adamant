@@ -18,7 +18,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -48,8 +48,8 @@ func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
 		t.Fatalf("spawn player: %v", err)
 	}
 
-	conn.packets <- &v2193.TextPacket{
-		TextType:   v2193.TextTypeChat,
+	conn.packets <- &mc.TextPacket{
+		TextType:   mc.TextTypeChat,
 		SourceName: conn.identity.DisplayName,
 		Message:    "panic",
 		XUID:       conn.identity.XUID,
@@ -243,7 +243,7 @@ func (c *packetPanicConn) disconnected() bool {
 	c.writesMu.Lock()
 	defer c.writesMu.Unlock()
 	for _, pk := range c.writes {
-		if _, ok := pk.(*v2193.DisconnectPacket); ok {
+		if _, ok := pk.(*mc.DisconnectPacket); ok {
 			return true
 		}
 	}

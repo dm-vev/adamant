@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/client"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // The players of the clients a session lists are those of the Roster of
@@ -53,11 +53,11 @@ func (s *Session) UnlistPlayer(p client.Listed) {
 
 // sendAbilities updates player-list permissions even for clients in another
 // dimension. The payload was built on the target player's world owner.
-func (s *Session) sendAbilities(data v2193.AbilityData) {
+func (s *Session) sendAbilities(data mc.AbilityData) {
 	s.roster().Update(func(players []client.Listed) {
 		for _, p := range players {
 			if other, ok := p.Client.(*Session); ok && other != s {
-				other.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: data})
+				other.writePacket(&mc.UpdateAbilitiesPacket{AbilityData: data})
 			}
 		}
 	})
@@ -68,7 +68,7 @@ func (s *Session) sendAbilities(data v2193.AbilityData) {
 func sendSessionTo(s, to *Session) {
 	to.writePacket(s.playerListEntry())
 	if data := s.abilities.Load(); data != nil && s != to {
-		to.writePacket(&v2193.UpdateAbilitiesPacket{AbilityData: *data})
+		to.writePacket(&mc.UpdateAbilitiesPacket{AbilityData: *data})
 	}
 }
 
@@ -99,9 +99,9 @@ func unsendSessionFrom(s, from *Session) {
 	}
 	from.entityMutex.Unlock()
 
-	from.writePacket(&v2193.PlayerListPacket{
-		Entries: []v2193.PlayerListEntry{{
-			ActionType: v2193.PlayerListActionRemove,
+	from.writePacket(&mc.PlayerListPacket{
+		Entries: []mc.PlayerListEntry{{
+			ActionType: mc.PlayerListActionRemove,
 			UUID:       s.ent.UUID(),
 		}},
 	})

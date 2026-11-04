@@ -6,7 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // stonecutterRequestsScenario cuts stone at the stonecutter as
@@ -17,9 +17,9 @@ import (
 // the crafting table, no cuts, too little stone, the wrong input, a locked
 // input, and the stonecutter replaced under the open menu.
 func (s *scenario) stonecutterRequestsScenario() {
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	input := func() v2193.StackRequestSlotInfo {
-		return s.slot(v2193.ContainerStonecutterInput, uiStonecutterInput)
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	input := func() mc.StackRequestSlotInfo {
+		return s.slot(mc.ContainerStonecutterInput, uiStonecutterInput)
 	}
 	bricks := s.recipe("stonecutter", block.StoneBricks{}, "minecraft:stone\"")
 	slabs := s.recipe("stonecutter", block.Slab{Block: block.Stone{}}, "minecraft:stone\"")
@@ -27,10 +27,10 @@ func (s *scenario) stonecutterRequestsScenario() {
 	redDye := s.recipe("crafting_table", item.Dye{Colour: item.ColourRed()}, "poppy")
 	cut := func(heading string, recipe uint32, times, count, to int, accept bool) {
 		s.t.Helper()
-		actions := []v2193.StackRequestAction{
-			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: recipe, NumberOfCrafts: uint8(times)},
-			&v2193.ConsumeStackRequestAction{Count: uint8(max(times, 1)), Source: input()},
-			&v2193.PlaceStackRequestAction{Count: uint8(count), Source: s.created(), Destination: s.slot(inv, to)},
+		actions := []mc.StackRequestAction{
+			&mc.CraftRecipeStackRequestAction{RecipeNetworkID: recipe, NumberOfCrafts: uint8(times)},
+			&mc.ConsumeStackRequestAction{Count: uint8(max(times, 1)), Source: input()},
+			&mc.PlaceStackRequestAction{Count: uint8(count), Source: s.created(), Destination: s.slot(inv, to)},
 		}
 		if accept {
 			s.request(heading, nil, actions...)
@@ -52,7 +52,7 @@ func (s *scenario) stonecutterRequestsScenario() {
 	s.place("a stonecutter is placed", stonecutter, block.Stonecutter{})
 	s.clickBlock("the client opens the stonecutter", stonecutter)
 	s.request("four stone put in it", nil,
-		&v2193.PlaceStackRequestAction{Count: 4, Source: s.slot(inv, 0), Destination: input()})
+		&mc.PlaceStackRequestAction{Count: 4, Source: s.slot(inv, 0), Destination: input()})
 
 	cut("stone bricks cut", bricks, 1, 1, 10, true)
 	cut("two stone bricks cut at once", bricks, 2, 2, 10, true)
@@ -64,32 +64,32 @@ func (s *scenario) stonecutterRequestsScenario() {
 
 	// More stone put in first: the refusal takes it out again.
 	s.refuse("refused: stone put in, then three bricks of it",
-		&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: input()},
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: bricks, NumberOfCrafts: 3},
-		&v2193.ConsumeStackRequestAction{Count: 3, Source: s.again(v2193.ContainerStonecutterInput, uiStonecutterInput)})
+		&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 0), Destination: input()},
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: bricks, NumberOfCrafts: 3},
+		&mc.ConsumeStackRequestAction{Count: 3, Source: s.again(mc.ContainerStonecutterInput, uiStonecutterInput)})
 	// The stone swapped for granite first: the wrong input.
 	s.refuse("refused: the stone swapped for granite, then bricks",
-		&v2193.SwapStackRequestAction{Source: input(), Destination: s.slot(inv, 1)},
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: bricks, NumberOfCrafts: 1},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.again(v2193.ContainerStonecutterInput, uiStonecutterInput)})
+		&mc.SwapStackRequestAction{Source: input(), Destination: s.slot(inv, 1)},
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: bricks, NumberOfCrafts: 1},
+		&mc.ConsumeStackRequestAction{Count: 1, Source: s.again(mc.ContainerStonecutterInput, uiStonecutterInput)})
 
 	// 33 cuts make 66 slabs, two stacks, which the client creates one by
 	// one.
 	s.request("33 stone put in it", nil,
-		&v2193.PlaceStackRequestAction{Count: 33, Source: s.slot(inv, 0), Destination: input()})
+		&mc.PlaceStackRequestAction{Count: 33, Source: s.slot(inv, 0), Destination: input()})
 	s.request("66 slabs cut: two results, created one by one", nil,
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: slabs, NumberOfCrafts: 33},
-		&v2193.ConsumeStackRequestAction{Count: 33, Source: input()},
-		&v2193.CreateStackRequestAction{ResultsSlot: 0},
-		&v2193.PlaceStackRequestAction{Count: 64, Source: s.created(), Destination: s.slot(inv, 12)},
-		&v2193.CreateStackRequestAction{ResultsSlot: 1},
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.created(), Destination: s.slot(inv, 13)})
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: slabs, NumberOfCrafts: 33},
+		&mc.ConsumeStackRequestAction{Count: 33, Source: input()},
+		&mc.CreateStackRequestAction{ResultsSlot: 0},
+		&mc.PlaceStackRequestAction{Count: 64, Source: s.created(), Destination: s.slot(inv, 12)},
+		&mc.CreateStackRequestAction{ResultsSlot: 1},
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.created(), Destination: s.slot(inv, 13)})
 	s.refuse("refused: four slabs cut, their one result created again",
-		&v2193.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: input()},
-		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: slabs, NumberOfCrafts: 2},
-		&v2193.ConsumeStackRequestAction{Count: 2, Source: s.again(v2193.ContainerStonecutterInput, uiStonecutterInput)},
-		&v2193.CreateStackRequestAction{ResultsSlot: 0},
-		&v2193.CreateStackRequestAction{ResultsSlot: 0})
+		&mc.PlaceStackRequestAction{Count: 2, Source: s.slot(inv, 0), Destination: input()},
+		&mc.CraftRecipeStackRequestAction{RecipeNetworkID: slabs, NumberOfCrafts: 2},
+		&mc.ConsumeStackRequestAction{Count: 2, Source: s.again(mc.ContainerStonecutterInput, uiStonecutterInput)},
+		&mc.CreateStackRequestAction{ResultsSlot: 0},
+		&mc.CreateStackRequestAction{ResultsSlot: 0})
 
 	s.step("a locked stone in the stonecutter", func(_ *world.Tx, _ *player.Player) {
 		_, _, _, ui, _ := s.sess.Inventories()

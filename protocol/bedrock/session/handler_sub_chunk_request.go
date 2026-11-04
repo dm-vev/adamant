@@ -3,7 +3,7 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // SubChunkRequestHandler handles sub-chunk requests from the client. The server will respond with a packet containing
@@ -13,7 +13,7 @@ type SubChunkRequestHandler struct{}
 
 // Handle ...
 func (*SubChunkRequestHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Controllable) error {
-	pk := p.(*v2193.SubChunkRequestPacket)
+	pk := p.(*mc.SubChunkRequestPacket)
 	for len(pk.Offsets) > maxSubChunkOffsets {
 		part, rest := *pk, *pk
 		part.Offsets, rest.Offsets = pk.Offsets[:maxSubChunkOffsets:maxSubChunkOffsets], pk.Offsets[maxSubChunkOffsets:]
@@ -28,14 +28,14 @@ func (*SubChunkRequestHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _
 
 // answerSubChunks answers a sub-chunk request of the client with the
 // sub-chunks as they are now, and returns the bytes of chunks it took.
-func (s *Session) answerSubChunks(pk *v2193.SubChunkRequestPacket, tx *world.Tx) int {
+func (s *Session) answerSubChunks(pk *mc.SubChunkRequestPacket, tx *world.Tx) int {
 	if dimID, _ := world.DimensionID(tx.World().Dimension()); pk.Dimension != int32(dimID) {
 		// Outdated sub chunk request from a previous dimension.
-		s.writePacket(&v2193.SubChunkPacket{
+		s.writePacket(&mc.SubChunkPacket{
 			Dimension:       pk.Dimension,
 			Position:        pk.Position,
 			CacheEnabled:    s.conn.ClientCacheEnabled(),
-			SubChunkEntries: []v2193.SubChunkEntry{},
+			SubChunkEntries: []mc.SubChunkEntry{},
 		})
 		return 0
 	}

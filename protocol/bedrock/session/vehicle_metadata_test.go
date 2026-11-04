@@ -7,13 +7,13 @@ import (
 
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
 // vehicleKeys are the keys of the actor data of vehicles that the entity
 // package once filled itself.
-var vehicleKeys = []uint32{v2193.EntityDataKeyInteractText, v2193.EntityDataKeyIsBuoyant, v2193.EntityDataKeyBuoyancyData, v2193.EntityDataKeyControllingSeatIndex}
+var vehicleKeys = []uint32{mc.EntityDataKeyInteractText, mc.EntityDataKeyIsBuoyant, mc.EntityDataKeyBuoyancyData, mc.EntityDataKeyControllingSeatIndex}
 
 // boatBuoyancy is the buoyancy data BDS sends of boats.
 const boatBuoyancy = "{\"apply_gravity\":true,\"base_buoyancy\":1.0,\"big_wave_probability\":0.02999999932944775,\"big_wave_speed\":10.0,\"drag_down_on_buoyancy_removed\":0.0,\"liquid_blocks\":[\"minecraft:water\",\"minecraft:flowing_water\"],\"simulate_waves\":true}"

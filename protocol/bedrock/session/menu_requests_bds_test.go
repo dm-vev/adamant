@@ -15,7 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -80,8 +80,8 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 		}
 	})
 
-	const inv = v2193.ContainerCombinedHotBarAndInventory
-	stale := v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: inv}, Slot: 0, StackNetworkID: 9999}
+	const inv = mc.ContainerCombinedHotBarAndInventory
+	stale := mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: inv}, Slot: 0, StackNetworkID: 9999}
 	type menu struct {
 		pos   cube.Pos
 		block world.Block
@@ -92,7 +92,7 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 		// prepare, if set, readies the player further, after its items.
 		prepare  func(tx *world.Tx, p *player.Player)
 		menu     *menu
-		requests []func() []v2193.StackRequestAction
+		requests []func() []mc.StackRequestAction
 		// statuses compares the status of each refusal with BDS's too.
 		statuses bool
 		// offers, if set, are the offers of a villager that stands by,
@@ -106,68 +106,68 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 		{
 			capture: "inventory/slot-changed-twice-refused",
 			items:   map[int]item.Stack{0: item.NewStack(item.Apple{}, 16), 2: item.NewStack(block.Planks{Wood: block.OakWood()}, 8)},
-			requests: []func() []v2193.StackRequestAction{
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{
-						&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(inv, 20)},
-						&v2193.PlaceStackRequestAction{Count: 1, Source: s.again(inv, 2), Destination: s.slot(inv, 21)},
-						&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)},
+			requests: []func() []mc.StackRequestAction{
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{
+						&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(inv, 20)},
+						&mc.PlaceStackRequestAction{Count: 1, Source: s.again(inv, 2), Destination: s.slot(inv, 21)},
+						&mc.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)},
 					}
 				},
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{&v2193.TakeStackRequestAction{Count: 8, Source: s.slot(inv, 2), Destination: s.slot(v2193.ContainerCursor, uiCursor)}}
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{&mc.TakeStackRequestAction{Count: 8, Source: s.slot(inv, 2), Destination: s.slot(mc.ContainerCursor, uiCursor)}}
 				},
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 8, Source: s.slot(v2193.ContainerCursor, uiCursor), Destination: s.slot(inv, 2)}}
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: 8, Source: s.slot(mc.ContainerCursor, uiCursor), Destination: s.slot(inv, 2)}}
 				},
 			},
 		},
 		{
 			capture: "offhand/place-slot-0",
 			items:   map[int]item.Stack{3: item.NewStack(item.Shield{}, 1)},
-			requests: []func() []v2193.StackRequestAction{
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(v2193.ContainerOffhand, 0)}}
+			requests: []func() []mc.StackRequestAction{
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(mc.ContainerOffhand, 0)}}
 				},
 			},
 		},
 		{
 			capture: "offhand/place-slot-1",
 			items:   map[int]item.Stack{3: item.NewStack(item.Shield{}, 1)},
-			requests: []func() []v2193.StackRequestAction{
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(v2193.ContainerOffhand, 1)}}
+			requests: []func() []mc.StackRequestAction{
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(mc.ContainerOffhand, 1)}}
 				},
 			},
 		},
 		{
 			capture: "offhand/changed-refused",
 			items:   map[int]item.Stack{0: item.NewStack(item.Apple{}, 16), 3: item.NewStack(item.Shield{}, 1), 4: item.NewStack(item.Totem{}, 1)},
-			requests: []func() []v2193.StackRequestAction{
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{
-						&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(v2193.ContainerOffhand, 1)},
-						&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)},
+			requests: []func() []mc.StackRequestAction{
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{
+						&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(mc.ContainerOffhand, 1)},
+						&mc.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)},
 					}
 				},
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{
-						&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(v2193.ContainerOffhand, 0)},
-						&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)},
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{
+						&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 3), Destination: s.slot(mc.ContainerOffhand, 0)},
+						&mc.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 22)},
 					}
 				},
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 4), Destination: s.slot(v2193.ContainerOffhand, 1)}}
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 4), Destination: s.slot(mc.ContainerOffhand, 1)}}
 				},
 			},
 		},
 		{
 			capture: "loom/no-screen-open",
 			items:   map[int]item.Stack{5: item.NewStack(block.Banner{Colour: item.ColourWhite()}, 1), 6: item.NewStack(item.Dye{Colour: item.ColourRed()}, 1)},
-			requests: []func() []v2193.StackRequestAction{
+			requests: []func() []mc.StackRequestAction{
 				loomCraft(s), loomCraft(s),
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 5), Destination: s.slot(v2193.ContainerLoomInput, uiLoomInput)}}
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 5), Destination: s.slot(mc.ContainerLoomInput, uiLoomInput)}}
 				},
 			},
 		},
@@ -175,25 +175,25 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			capture:  "anvil/level-entity-place",
 			items:    map[int]item.Stack{0: item.NewStack(item.Apple{}, 16)},
 			menu:     &menu{cube.Pos{-2, -60, 0}, block.Anvil{Type: block.UndamagedAnvil()}},
-			requests: []func() []v2193.StackRequestAction{levelEntityPlace(s, 0), levelEntityPlace(s, 1)},
+			requests: []func() []mc.StackRequestAction{levelEntityPlace(s, 0), levelEntityPlace(s, 1)},
 		},
 		{
 			capture:  "crafting_table/level-entity-place",
 			items:    map[int]item.Stack{0: item.NewStack(item.Apple{}, 16)},
 			menu:     &menu{cube.Pos{-2, -60, 2}, block.CraftingTable{}},
-			requests: []func() []v2193.StackRequestAction{levelEntityPlace(s, 0), levelEntityPlace(s, 1)},
+			requests: []func() []mc.StackRequestAction{levelEntityPlace(s, 0), levelEntityPlace(s, 1)},
 		},
 		{
 			capture:  "dispenser/open",
 			items:    map[int]item.Stack{0: item.NewStack(item.Apple{}, 16)},
 			menu:     &menu{cube.Pos{2, -60, 0}, block.NewDispenser()},
-			requests: []func() []v2193.StackRequestAction{levelEntityPlace(s, 0)},
+			requests: []func() []mc.StackRequestAction{levelEntityPlace(s, 0)},
 		},
 		{
 			capture:  "dropper/open",
 			items:    map[int]item.Stack{0: item.NewStack(item.Apple{}, 16)},
 			menu:     &menu{cube.Pos{2, -60, 2}, block.NewDropper()},
-			requests: []func() []v2193.StackRequestAction{levelEntityPlace(s, 0)},
+			requests: []func() []mc.StackRequestAction{levelEntityPlace(s, 0)},
 		},
 		{
 			capture: "inventory/move-onto-own-slot",
@@ -202,61 +202,61 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 				p.Armour().SetHelmet(item.NewStack(item.Helmet{Tier: item.ArmourTierLeather{}}, 1))
 			},
 			statuses: true,
-			requests: []func() []v2193.StackRequestAction{
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 1, inv, 1),
-				bdsMove(&v2193.TakeStackRequestAction{Count: 1}, s.slot, inv, 1, inv, 1),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 10}, s.slot, inv, 1, inv, 1),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerHotBar, 1, inv, 1),
-				func() []v2193.StackRequestAction {
-					return []v2193.StackRequestAction{&v2193.SwapStackRequestAction{Source: s.slot(inv, 0), Destination: s.slot(inv, 0)}}
+			requests: []func() []mc.StackRequestAction{
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, inv, 1, inv, 1),
+				bdsMove(&mc.TakeStackRequestAction{Count: 1}, s.slot, inv, 1, inv, 1),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 10}, s.slot, inv, 1, inv, 1),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, mc.ContainerHotBar, 1, inv, 1),
+				func() []mc.StackRequestAction {
+					return []mc.StackRequestAction{&mc.SwapStackRequestAction{Source: s.slot(inv, 0), Destination: s.slot(inv, 0)}}
 				},
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerArmor, 0, v2193.ContainerArmor, 0),
-				func() []v2193.StackRequestAction {
-					stale := v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: inv}, Slot: 1, StackNetworkID: 9999}
-					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: stale}}
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, mc.ContainerArmor, 0, mc.ContainerArmor, 0),
+				func() []mc.StackRequestAction {
+					stale := mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: inv}, Slot: 1, StackNetworkID: 9999}
+					return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: 1, Source: stale, Destination: stale}}
 				},
-				func() []v2193.StackRequestAction {
-					stale := v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: inv}, Slot: 1, StackNetworkID: 9999}
-					return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 1)}}
+				func() []mc.StackRequestAction {
+					stale := mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: inv}, Slot: 1, StackNetworkID: 9999}
+					return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: 1, Source: stale, Destination: s.slot(inv, 1)}}
 				},
-				bdsMove(&v2193.TakeStackRequestAction{Count: 6}, s.slot, inv, 0, v2193.ContainerCursor, uiCursor),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerCursor, uiCursor, v2193.ContainerCursor, uiCursor),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 6}, s.slot, v2193.ContainerCursor, uiCursor, inv, 0),
+				bdsMove(&mc.TakeStackRequestAction{Count: 6}, s.slot, inv, 0, mc.ContainerCursor, uiCursor),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, mc.ContainerCursor, uiCursor, mc.ContainerCursor, uiCursor),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 6}, s.slot, mc.ContainerCursor, uiCursor, inv, 0),
 			},
 		},
 		{
 			capture:  "armour/apple-in-leggings-slot",
 			items:    map[int]item.Stack{0: item.NewStack(item.Apple{}, 4)},
 			statuses: true,
-			requests: []func() []v2193.StackRequestAction{
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 0, v2193.ContainerArmor, 2),
-				bdsMove(&v2193.TakeStackRequestAction{Count: 1}, s.slot, inv, 0, v2193.ContainerArmor, 2),
-				bdsSwap(s, inv, 0, v2193.ContainerArmor, 2),
+			requests: []func() []mc.StackRequestAction{
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, inv, 0, mc.ContainerArmor, 2),
+				bdsMove(&mc.TakeStackRequestAction{Count: 1}, s.slot, inv, 0, mc.ContainerArmor, 2),
+				bdsSwap(s, inv, 0, mc.ContainerArmor, 2),
 			},
 		},
 		{
 			capture:  "offhand/items",
 			items:    offHandItems(),
 			statuses: true,
-			requests: append(append([]func() []v2193.StackRequestAction{
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 0, v2193.ContainerOffhand, 1),
-				bdsMove(&v2193.TakeStackRequestAction{Count: 2}, s.slot, inv, 0, v2193.ContainerOffhand, 1),
-				bdsSwap(s, inv, 0, v2193.ContainerOffhand, 1),
-				bdsSwap(s, inv, 11, v2193.ContainerOffhand, 1),
-				bdsMove(&v2193.TakeStackRequestAction{Count: 2}, s.slot, inv, 0, v2193.ContainerCursor, uiCursor),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCursor, uiCursor, v2193.ContainerOffhand, 1),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCursor, uiCursor, inv, 0),
+			requests: append(append([]func() []mc.StackRequestAction{
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, inv, 0, mc.ContainerOffhand, 1),
+				bdsMove(&mc.TakeStackRequestAction{Count: 2}, s.slot, inv, 0, mc.ContainerOffhand, 1),
+				bdsSwap(s, inv, 0, mc.ContainerOffhand, 1),
+				bdsSwap(s, inv, 11, mc.ContainerOffhand, 1),
+				bdsMove(&mc.TakeStackRequestAction{Count: 2}, s.slot, inv, 0, mc.ContainerCursor, uiCursor),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, mc.ContainerCursor, uiCursor, mc.ContainerOffhand, 1),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, mc.ContainerCursor, uiCursor, inv, 0),
 			}, offHandEach(s)...),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 11, v2193.ContainerOffhand, 1),
-				bdsSwap(s, inv, 0, v2193.ContainerOffhand, 1),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 0, v2193.ContainerOffhand, 1),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, inv, 11, mc.ContainerOffhand, 1),
+				bdsSwap(s, inv, 0, mc.ContainerOffhand, 1),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, inv, 0, mc.ContainerOffhand, 1),
 			),
 		},
 		{
 			capture:  "swap/empty-slot",
 			items:    map[int]item.Stack{0: item.NewStack(item.Apple{}, 4), 1: item.NewStack(block.Stone{}, 4)},
 			statuses: true,
-			requests: []func() []v2193.StackRequestAction{
+			requests: []func() []mc.StackRequestAction{
 				bdsSwap(s, inv, 0, inv, 20),
 				bdsSwap(s, inv, 20, inv, 0),
 				bdsSwap(s, inv, 20, inv, 21),
@@ -267,14 +267,14 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			capture:  "crafting/result-into-offhand",
 			items:    map[int]item.Stack{2: item.NewStack(block.Planks{Wood: block.OakWood()}, 8)},
 			statuses: true,
-			requests: []func() []v2193.StackRequestAction{
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, v2193.ContainerCraftingInput, uiInventoryGrid),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, v2193.ContainerCraftingInput, uiInventoryGrid+2),
-				stickCraft(s, v2193.ContainerOffhand, 1),
-				stickCraft(s, v2193.ContainerArmor, 2),
+			requests: []func() []mc.StackRequestAction{
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, mc.ContainerCraftingInput, uiInventoryGrid),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, mc.ContainerCraftingInput, uiInventoryGrid+2),
+				stickCraft(s, mc.ContainerOffhand, 1),
+				stickCraft(s, mc.ContainerArmor, 2),
 				stickCraft(s, inv, 21),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid, inv, 2),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid+2, inv, 2),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, mc.ContainerCraftingInput, uiInventoryGrid, inv, 2),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, mc.ContainerCraftingInput, uiInventoryGrid+2, inv, 2),
 			},
 		},
 		{
@@ -284,14 +284,14 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			capture: "crafting/result-onto-other-item",
 			items: map[int]item.Stack{0: item.NewStack(item.Apple{}, 4), 2: item.NewStack(block.Planks{Wood: block.OakWood()}, 8),
 				3: item.NewStack(item.Totem{}, 1)},
-			requests: []func() []v2193.StackRequestAction{
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, v2193.ContainerCraftingInput, uiInventoryGrid),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, v2193.ContainerCraftingInput, uiInventoryGrid+2),
+			requests: []func() []mc.StackRequestAction{
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, mc.ContainerCraftingInput, uiInventoryGrid),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, inv, 2, mc.ContainerCraftingInput, uiInventoryGrid+2),
 				stickCraft(s, inv, 0),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, 3, v2193.ContainerOffhand, 1),
-				stickCraft(s, v2193.ContainerOffhand, 1),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid, inv, 2),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 2}, s.slot, v2193.ContainerCraftingInput, uiInventoryGrid+2, inv, 2),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, inv, 3, mc.ContainerOffhand, 1),
+				stickCraft(s, mc.ContainerOffhand, 1),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, mc.ContainerCraftingInput, uiInventoryGrid, inv, 2),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 2}, s.slot, mc.ContainerCraftingInput, uiInventoryGrid+2, inv, 2),
 			},
 		},
 		{
@@ -301,12 +301,12 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			items:    map[int]item.Stack{0: item.NewStack(item.Stick{}, 32), 1: item.NewStack(item.Stick{}, 32)},
 			offers:   []map[string]any{bdsOffer(item.NewStack(item.Stick{}, 32), item.NewStack(item.Emerald{}, 1))},
 			statuses: true,
-			requests: []func() []v2193.StackRequestAction{
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 32}, s.slot, inv, 0, v2193.ContainerTradeTwoIngredientOne, uiTradeInput),
-				bdsTrade(s, 32, v2193.ContainerOffhand, 1),
-				bdsTrade(s, 32, v2193.ContainerArmor, 2),
+			requests: []func() []mc.StackRequestAction{
+				bdsMove(&mc.PlaceStackRequestAction{Count: 32}, s.slot, inv, 0, mc.ContainerTradeTwoIngredientOne, uiTradeInput),
+				bdsTrade(s, 32, mc.ContainerOffhand, 1),
+				bdsTrade(s, 32, mc.ContainerArmor, 2),
 				bdsTrade(s, 32, inv, 20),
-				bdsMove(&v2193.PlaceStackRequestAction{Count: 32}, s.slot, inv, 1, v2193.ContainerTradeTwoIngredientOne, uiTradeInput),
+				bdsMove(&mc.PlaceStackRequestAction{Count: 32}, s.slot, inv, 1, mc.ContainerTradeTwoIngredientOne, uiTradeInput),
 				bdsTrade(s, 32, inv, 22),
 			},
 			knownSlots: map[int]string{
@@ -320,8 +320,8 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			capture: "merchant/preview",
 			items:   map[int]item.Stack{0: item.NewStack(item.ClayBall{}, 10)},
 			offers:  []map[string]any{bdsOffer(item.NewStack(item.ClayBall{}, 10), item.NewStack(item.Emerald{}, 1))},
-			requests: []func() []v2193.StackRequestAction{
-				bdsPreview(s, 1, v2193.ContainerOffhand, 1),
+			requests: []func() []mc.StackRequestAction{
+				bdsPreview(s, 1, mc.ContainerOffhand, 1),
 				bdsPreview(s, 1, inv, 21),
 			},
 		},
@@ -382,18 +382,18 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			})
 		}))
 
-		var trade *v2193.UpdateTradePacket
+		var trade *mc.UpdateTradePacket
 		if villager != nil {
 			for _, pk := range s.track(s.gather(func() {
-				s.send(&v2193.InventoryTransactionPacket{TransactionData: &v2193.UseItemOnEntityTransactionData{
+				s.send(&mc.InventoryTransactionPacket{TransactionData: &mc.UseItemOnEntityTransactionData{
 					TargetEntityRuntimeID: s.runtimeID(villager),
-					ActionType:            v2193.UseItemOnEntityActionInteract,
+					ActionType:            mc.UseItemOnEntityActionInteract,
 					HotBarSlot:            emptyHand,
 					Position:              mgl32.Vec3{0.5, -58.38, 0.5},
 					ClickedPosition:       mgl32.Vec3{0, 1, 0},
 				}})
 			})) {
-				if u, ok := pk.(*v2193.UpdateTradePacket); ok {
+				if u, ok := pk.(*mc.UpdateTradePacket); ok {
 					trade = u
 				}
 			}
@@ -402,29 +402,29 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			}
 		}
 
-		var opened *v2193.ContainerOpenPacket
+		var opened *mc.ContainerOpenPacket
 		if c.menu != nil {
 			pos := c.menu.pos
 			for _, pk := range s.track(s.gather(func() {
-				s.send(&v2193.InventoryTransactionPacket{TransactionData: &v2193.UseItemTransactionData{
-					ActionType:       v2193.UseItemActionClickBlock,
-					TriggerType:      v2193.TriggerTypePlayerInput,
+				s.send(&mc.InventoryTransactionPacket{TransactionData: &mc.UseItemTransactionData{
+					ActionType:       mc.UseItemActionClickBlock,
+					TriggerType:      mc.TriggerTypePlayerInput,
 					BlockPosition:    [3]int32{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 					BlockFace:        int32(cube.FaceUp),
 					HotBarSlot:       emptyHand,
 					Position:         mgl32.Vec3{0.5, -58.38, 0.5},
 					ClickedPosition:  mgl32.Vec3{0.5, 1, 0.5},
-					ClientPrediction: v2193.ClientPredictionSuccess,
+					ClientPrediction: mc.ClientPredictionSuccess,
 				}})
 			})) {
-				if o, ok := pk.(*v2193.ContainerOpenPacket); ok {
+				if o, ok := pk.(*mc.ContainerOpenPacket); ok {
 					opened = o
 				}
 			}
-			var bdsOpen *v2193.ContainerOpenPacket
+			var bdsOpen *mc.ContainerOpenPacket
 			for _, p := range want.Packets {
 				if p.Type == "ContainerOpen" {
-					bdsOpen = p.decode(t).(*v2193.ContainerOpenPacket)
+					bdsOpen = p.decode(t).(*mc.ContainerOpenPacket)
 				}
 			}
 			switch {
@@ -440,12 +440,12 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 			// named by its ID.
 			id, actions := s.nextRequest, build()
 			s.nextRequest -= 2
-			var got *v2193.ItemStackResponse
+			var got *mc.ItemStackResponse
 			pks := s.track(s.gather(func() {
-				s.send(&v2193.ItemStackRequestPacket{Requests: []v2193.ItemStackRequest{{RequestID: id, Actions: actions}}})
+				s.send(&mc.ItemStackRequestPacket{Requests: []mc.ItemStackRequest{{RequestID: id, Actions: actions}}})
 			}))
 			for _, pk := range pks {
-				if r, ok := pk.(*v2193.ItemStackResponsePacket); ok && len(r.Responses) == 1 && r.Responses[0].RequestID == id {
+				if r, ok := pk.(*mc.ItemStackResponsePacket); ok && len(r.Responses) == 1 && r.Responses[0].RequestID == id {
 					got = &r.Responses[0]
 				}
 			}
@@ -453,14 +453,14 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 				t.Fatalf("%s: request %d was not answered", c.capture, j)
 			}
 			bds := want.Requests[j]
-			if (got.Status == v2193.ItemStackResponseStatusOK) != (bds.Status == v2193.ItemStackResponseStatusOK) ||
+			if (got.Status == mc.ItemStackResponseStatusOK) != (bds.Status == mc.ItemStackResponseStatusOK) ||
 				c.statuses && got.Status != bds.Status {
 				diverging = append(diverging, fmt.Sprintf("%q answered %d, BDS %d", bds.Label, got.Status, bds.Status))
 				continue
 			}
 			var gotSlots, wantSlots []string
 			for _, ci := range got.ContainerInfo {
-				if ci.Container.ContainerID == v2193.ContainerCreatedOutput {
+				if ci.Container.ContainerID == mc.ContainerCreatedOutput {
 					// The session names the created output a craft's
 					// result was taken from, which BDS leaves out, as
 					// TestAutoCraftMatchesBDS finds.
@@ -488,12 +488,12 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 
 		if opened != nil {
 			s.track(s.gather(func() {
-				s.send(&v2193.ContainerClosePacket{WindowID: opened.WindowID, ContainerType: opened.ContainerType})
+				s.send(&mc.ContainerClosePacket{WindowID: opened.WindowID, ContainerType: opened.ContainerType})
 			}))
 		}
 		if trade != nil {
 			s.track(s.gather(func() {
-				s.send(&v2193.ContainerClosePacket{WindowID: trade.WindowID, ContainerType: trade.WindowType})
+				s.send(&mc.ContainerClosePacket{WindowID: trade.WindowID, ContainerType: trade.WindowType})
 			}))
 			s.track(s.gather(func() {
 				s.run(func(tx *world.Tx, _ *player.Player) {
@@ -519,13 +519,13 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 // bdsMove returns a request of one Place or Take action of the capture, a
 // copy of a with the count it has, from slot from of container src to slot
 // to of container dst, each named by the stack ID slotOf gives it.
-func bdsMove(a v2193.StackRequestAction, slotOf func(container uint8, slot int) v2193.StackRequestSlotInfo, src uint8, from int, dst uint8, to int) func() []v2193.StackRequestAction {
-	return func() []v2193.StackRequestAction {
+func bdsMove(a mc.StackRequestAction, slotOf func(container uint8, slot int) mc.StackRequestSlotInfo, src uint8, from int, dst uint8, to int) func() []mc.StackRequestAction {
+	return func() []mc.StackRequestAction {
 		switch a := a.(type) {
-		case *v2193.PlaceStackRequestAction:
-			return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: a.Count, Source: slotOf(src, from), Destination: slotOf(dst, to)}}
-		case *v2193.TakeStackRequestAction:
-			return []v2193.StackRequestAction{&v2193.TakeStackRequestAction{Count: a.Count, Source: slotOf(src, from), Destination: slotOf(dst, to)}}
+		case *mc.PlaceStackRequestAction:
+			return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: a.Count, Source: slotOf(src, from), Destination: slotOf(dst, to)}}
+		case *mc.TakeStackRequestAction:
+			return []mc.StackRequestAction{&mc.TakeStackRequestAction{Count: a.Count, Source: slotOf(src, from), Destination: slotOf(dst, to)}}
 		}
 		panic(fmt.Sprintf("move of %T", a))
 	}
@@ -533,9 +533,9 @@ func bdsMove(a v2193.StackRequestAction, slotOf func(container uint8, slot int) 
 
 // bdsSwap returns a request of one Swap action of the capture, of slot a of
 // container ca with slot b of container cb.
-func bdsSwap(s *scenario, ca uint8, a int, cb uint8, b int) func() []v2193.StackRequestAction {
-	return func() []v2193.StackRequestAction {
-		return []v2193.StackRequestAction{&v2193.SwapStackRequestAction{Source: s.slot(ca, a), Destination: s.slot(cb, b)}}
+func bdsSwap(s *scenario, ca uint8, a int, cb uint8, b int) func() []mc.StackRequestAction {
+	return func() []mc.StackRequestAction {
+		return []mc.StackRequestAction{&mc.SwapStackRequestAction{Source: s.slot(ca, a), Destination: s.slot(cb, b)}}
 	}
 }
 
@@ -562,12 +562,12 @@ func offHandItems() map[int]item.Stack {
 
 // offHandEach returns the requests of the offhand/items case that put each
 // of bdsOffHandItems in the off hand, and take back those BDS took.
-func offHandEach(s *scenario) []func() []v2193.StackRequestAction {
-	var out []func() []v2193.StackRequestAction
+func offHandEach(s *scenario) []func() []mc.StackRequestAction {
+	var out []func() []mc.StackRequestAction
 	for i, it := range bdsOffHandItems {
-		out = append(out, bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerCombinedHotBarAndInventory, 9+i, v2193.ContainerOffhand, 1))
+		out = append(out, bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, mc.ContainerCombinedHotBarAndInventory, 9+i, mc.ContainerOffhand, 1))
 		if it.takes {
-			out = append(out, bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, v2193.ContainerOffhand, 1, v2193.ContainerCombinedHotBarAndInventory, 9+i))
+			out = append(out, bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, mc.ContainerOffhand, 1, mc.ContainerCombinedHotBarAndInventory, 9+i))
 		}
 	}
 	return out
@@ -576,13 +576,13 @@ func offHandEach(s *scenario) []func() []v2193.StackRequestAction {
 // stickCraft returns the request of the capture that crafts four sticks of
 // the planks of the first and third slot of the grid of the inventory and
 // places them in the slot passed.
-func stickCraft(s *scenario, container uint8, slot int) func() []v2193.StackRequestAction {
-	return func() []v2193.StackRequestAction {
-		return []v2193.StackRequestAction{
-			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.recipe("crafting_table", item.Stick{}, "planks"), NumberOfCrafts: 1},
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiInventoryGrid)},
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiInventoryGrid+2)},
-			&v2193.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(container, slot)},
+func stickCraft(s *scenario, container uint8, slot int) func() []mc.StackRequestAction {
+	return func() []mc.StackRequestAction {
+		return []mc.StackRequestAction{
+			&mc.CraftRecipeStackRequestAction{RecipeNetworkID: s.recipe("crafting_table", item.Stick{}, "planks"), NumberOfCrafts: 1},
+			&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiInventoryGrid)},
+			&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerCraftingInput, uiInventoryGrid+2)},
+			&mc.PlaceStackRequestAction{Count: 4, Source: s.created(), Destination: s.slot(container, slot)},
 		}
 	}
 }
@@ -621,12 +621,12 @@ func bdsVillager(t *testing.T, tx *world.Tx, p *player.Player, offers []map[stri
 // bdsTrade returns the request of the capture that makes the first offer of
 // the villager with the price paid from the first input, and places its
 // result, one item, in the slot passed.
-func bdsTrade(s *scenario, price int, container uint8, slot int) func() []v2193.StackRequestAction {
-	return func() []v2193.StackRequestAction {
-		return []v2193.StackRequestAction{
-			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
-			&v2193.ConsumeStackRequestAction{Count: uint8(price), Source: s.slot(v2193.ContainerTradeTwoIngredientOne, uiTradeInput)},
-			&v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(container, slot)},
+func bdsTrade(s *scenario, price int, container uint8, slot int) func() []mc.StackRequestAction {
+	return func() []mc.StackRequestAction {
+		return []mc.StackRequestAction{
+			&mc.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+			&mc.ConsumeStackRequestAction{Count: uint8(price), Source: s.slot(mc.ContainerTradeTwoIngredientOne, uiTradeInput)},
+			&mc.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(container, slot)},
 		}
 	}
 }
@@ -634,10 +634,10 @@ func bdsTrade(s *scenario, price int, container uint8, slot int) func() []v2193.
 // bdsPreview returns the request of the capture that takes count items of
 // the result of the first offer of the villager from the preview of the
 // trade screen into the slot passed.
-func bdsPreview(s *scenario, count uint8, container uint8, slot int) func() []v2193.StackRequestAction {
-	return func() []v2193.StackRequestAction {
-		return []v2193.StackRequestAction{&v2193.TakeStackRequestAction{Count: count,
-			Source:      v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoResultPreview}},
+func bdsPreview(s *scenario, count uint8, container uint8, slot int) func() []mc.StackRequestAction {
+	return func() []mc.StackRequestAction {
+		return []mc.StackRequestAction{&mc.TakeStackRequestAction{Count: count,
+			Source:      mc.StackRequestSlotInfo{Container: mc.FullContainerName{ContainerID: mc.ContainerTradeTwoResultPreview}},
 			Destination: s.slot(container, slot)}}
 	}
 }
@@ -646,33 +646,33 @@ func bdsPreview(s *scenario, count uint8, container uint8, slot int) func() []v2
 // of the capture: crafts at a smithing table with its slots empty in each
 // way, and with all three filled, with the moves of items in and out of it
 // between them.
-func smithingEmptyRequests(s *scenario) []func() []v2193.StackRequestAction {
+func smithingEmptyRequests(s *scenario) []func() []mc.StackRequestAction {
 	const (
-		inv      = v2193.ContainerCombinedHotBarAndInventory
-		input    = v2193.ContainerSmithingTableInput
-		material = v2193.ContainerSmithingTableMaterial
-		template = v2193.ContainerSmithingTableTemplate
+		inv      = mc.ContainerCombinedHotBarAndInventory
+		input    = mc.ContainerSmithingTableInput
+		material = mc.ContainerSmithingTableMaterial
+		template = mc.ContainerSmithingTableTemplate
 	)
 	slots := map[uint8]int{input: uiSmithingInput, material: uiSmithingMaterial, template: uiSmithingTemplate}
-	put := func(from int, c uint8) func() []v2193.StackRequestAction {
-		return bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, from, c, slots[c])
+	put := func(from int, c uint8) func() []mc.StackRequestAction {
+		return bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, inv, from, c, slots[c])
 	}
-	takeOut := func(c uint8, to int) func() []v2193.StackRequestAction {
-		return bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, c, slots[c], inv, to)
+	takeOut := func(c uint8, to int) func() []mc.StackRequestAction {
+		return bdsMove(&mc.PlaceStackRequestAction{Count: 1}, s.slot, c, slots[c], inv, to)
 	}
 	sword := func() uint32 { return s.smithingRecipe(item.Sword{Tier: item.ToolTierNetherite}) }
 	trim := func() uint32 { return s.trimRecipe(item.SmithingTemplate{Template: item.TemplateCoast()}) }
-	craft := func(recipe func() uint32, to int, consumed ...uint8) func() []v2193.StackRequestAction {
-		return func() []v2193.StackRequestAction {
-			actions := []v2193.StackRequestAction{&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: recipe(), NumberOfCrafts: 1}}
+	craft := func(recipe func() uint32, to int, consumed ...uint8) func() []mc.StackRequestAction {
+		return func() []mc.StackRequestAction {
+			actions := []mc.StackRequestAction{&mc.CraftRecipeStackRequestAction{RecipeNetworkID: recipe(), NumberOfCrafts: 1}}
 			for _, c := range consumed {
-				actions = append(actions, &v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(c, slots[c])})
+				actions = append(actions, &mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(c, slots[c])})
 			}
-			return append(actions, &v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(inv, to)})
+			return append(actions, &mc.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(inv, to)})
 		}
 	}
 	all := []uint8{input, material, template}
-	return []func() []v2193.StackRequestAction{
+	return []func() []mc.StackRequestAction{
 		craft(sword, 10, all...),
 		put(0, input),
 		craft(sword, 10, all...),
@@ -709,13 +709,13 @@ func smithingEmptyRequests(s *scenario) []func() []v2193.StackRequestAction {
 
 // loomCraft returns the request of the capture that puts a border on a
 // banner in a loom.
-func loomCraft(s *scenario) func() []v2193.StackRequestAction {
-	return func() []v2193.StackRequestAction {
-		return []v2193.StackRequestAction{
-			&v2193.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerLoomInput, uiLoomInput)},
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerLoomDye, uiLoomDye)},
-			&v2193.PlaceStackRequestAction{Count: 1, Source: s.again(v2193.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(v2193.ContainerCombinedHotBarAndInventory, 7)},
+func loomCraft(s *scenario) func() []mc.StackRequestAction {
+	return func() []mc.StackRequestAction {
+		return []mc.StackRequestAction{
+			&mc.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
+			&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerLoomInput, uiLoomInput)},
+			&mc.ConsumeStackRequestAction{Count: 1, Source: s.slot(mc.ContainerLoomDye, uiLoomDye)},
+			&mc.PlaceStackRequestAction{Count: 1, Source: s.again(mc.ContainerCreatedOutput, uiCreatedOutput), Destination: s.slot(mc.ContainerCombinedHotBarAndInventory, 7)},
 		}
 	}
 }
@@ -723,11 +723,11 @@ func loomCraft(s *scenario) func() []v2193.StackRequestAction {
 // levelEntityPlace returns the request of the capture that puts an apple of
 // inventory slot 0 in container 7, the container of the block opened, at
 // the slot passed.
-func levelEntityPlace(s *scenario, slot int) func() []v2193.StackRequestAction {
-	return func() []v2193.StackRequestAction {
-		return []v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1,
-			Source:      s.slot(v2193.ContainerCombinedHotBarAndInventory, 0),
-			Destination: s.slot(v2193.ContainerLevelEntity, slot)}}
+func levelEntityPlace(s *scenario, slot int) func() []mc.StackRequestAction {
+	return func() []mc.StackRequestAction {
+		return []mc.StackRequestAction{&mc.PlaceStackRequestAction{Count: 1,
+			Source:      s.slot(mc.ContainerCombinedHotBarAndInventory, 0),
+			Destination: s.slot(mc.ContainerLevelEntity, slot)}}
 	}
 }
 

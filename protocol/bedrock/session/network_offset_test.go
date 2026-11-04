@@ -20,7 +20,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -186,20 +186,20 @@ func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
 		select {
 		case raw := <-conn.packets:
 			switch pk := raw.(type) {
-			case *v2193.AddItemActorPacket:
+			case *mc.AddItemActorPacket:
 				spawns++
 				if pk.Item.Stack.Count == 3 {
 					survivorID = pk.EntityRuntimeID
 				}
-			case *v2193.ActorEventPacket:
-				if pk.EventType == v2193.ActorEventUpdateStackSize {
+			case *mc.ActorEventPacket:
+				if pk.EventType == mc.ActorEventUpdateStackSize {
 					updates++
 					updatedID = pk.EntityRuntimeID
 					if pk.EventData != 4 {
 						t.Errorf("stack size event=%d, want 4", pk.EventData)
 					}
 				}
-			case *v2193.TextPacket:
+			case *mc.TextPacket:
 				if pk.Message == marker {
 					if spawns != 2 || updates != 1 || survivorID == 0 || updatedID != survivorID {
 						t.Fatalf("spawns=%d updates=%d updated actor=%d, want two spawns and one update of actor %d", spawns, updates, updatedID, survivorID)
@@ -221,22 +221,22 @@ func entityPacketPositions(t *testing.T, packets <-chan any, entityType string) 
 		select {
 		case pk := <-packets:
 			switch pk := pk.(type) {
-			case *v2193.AddPlayerPacket:
+			case *mc.AddPlayerPacket:
 				if entityType == "player" {
 					spawn = pk.Position
 				}
-			case *v2193.AddItemActorPacket:
+			case *mc.AddItemActorPacket:
 				if entityType == "item" {
 					spawn = pk.Position
 				}
-			case *v2193.AddActorPacket:
+			case *mc.AddActorPacket:
 				if pk.EntityType == "minecraft:"+entityType {
 					spawn = pk.Position
 				}
-			case *v2193.MovePlayerPacket:
+			case *mc.MovePlayerPacket:
 				teleport = pk.Position
-			case *v2193.MoveActorAbsolutePacket:
-				if pk.Flags&v2193.MoveFlagTeleport != 0 {
+			case *mc.MoveActorAbsolutePacket:
+				if pk.Flags&mc.MoveFlagTeleport != 0 {
 					teleport = pk.Position
 				} else {
 					move = pk.Position

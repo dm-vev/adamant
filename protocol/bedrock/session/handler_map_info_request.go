@@ -6,14 +6,14 @@ import (
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // MapInfoRequestHandler returns the persistent map texture and fixed decorations requested by a client.
 type MapInfoRequestHandler struct{}
 
 func (*MapInfoRequestHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, c Controllable) error {
-	request := p.(*v2193.MapInfoRequestPacket)
+	request := p.(*mc.MapInfoRequestPacket)
 	data, err := c.ExploreMap(request.MapID)
 	if err != nil {
 		return fmt.Errorf("update map %d: %w", request.MapID, err)
@@ -47,31 +47,31 @@ func (s *Session) ViewMapData(data world.MapData) error {
 			pixels[i] = world.MapColourRGBA(packed)
 		}
 	}
-	decorations := make([]v2193.MapDecoration, len(data.Decorations))
+	decorations := make([]mc.MapDecoration, len(data.Decorations))
 	for i, d := range data.Decorations {
-		decorations[i] = v2193.MapDecoration{Type: d.Type, Rotation: d.Rotation, X: byte(d.X), Y: byte(d.Z), Label: d.Label, Colour: toColour(color.RGBA{A: 0xff})}
+		decorations[i] = mc.MapDecoration{Type: d.Type, Rotation: d.Rotation, X: byte(d.X), Y: byte(d.Z), Label: d.Label, Colour: toColour(color.RGBA{A: 0xff})}
 	}
-	trackedObjects := make([]v2193.MapTrackedObject, 0, len(data.TrackedObjects))
+	trackedObjects := make([]mc.MapTrackedObject, 0, len(data.TrackedObjects))
 	for _, object := range data.TrackedObjects {
 		if object.Entity != nil {
 			if id := s.handleRuntimeID(object.Entity); id != 0 {
-				trackedObjects = append(trackedObjects, v2193.MapTrackedObject{
-					Type: v2193.MapObjectTypeEntity, EntityUniqueID: proto.Some(s.handleUniqueID(object.Entity)),
+				trackedObjects = append(trackedObjects, mc.MapTrackedObject{
+					Type: mc.MapObjectTypeEntity, EntityUniqueID: proto.Some(s.handleUniqueID(object.Entity)),
 				})
 			}
 		} else if object.Block != nil {
 			pos := *object.Block
-			trackedObjects = append(trackedObjects, v2193.MapTrackedObject{
-				Type:          v2193.MapObjectTypeBlock,
+			trackedObjects = append(trackedObjects, mc.MapTrackedObject{
+				Type:          mc.MapObjectTypeBlock,
 				BlockPosition: proto.Some([3]int32{int32(pos[0]), int32(pos[1]), int32(pos[2])}),
 			})
 		}
 	}
-	pk := &v2193.ClientBoundMapItemDataPacket{
+	pk := &mc.ClientBoundMapItemDataPacket{
 		MapID:          data.ID,
 		Dimension:      byte(data.Dimension),
 		LockedMap:      data.Locked,
-		Origin:         v2193.BlockPos{int32(data.CenterX), 0, int32(data.CenterZ)},
+		Origin:         mc.BlockPos{int32(data.CenterX), 0, int32(data.CenterZ)},
 		TrackedObjects: proto.Some(trackedObjects),
 		Scale:          proto.Some(data.Scale),
 		Decorations:    proto.Some(decorations),

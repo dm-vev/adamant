@@ -5,14 +5,14 @@ import (
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // biomeDefinitions returns the definitions of the biomes registered, in the
 // order of world.BiomeIDs, and the strings their names and tags index.
 // A biome that is not one of the game's own carries its ID, a vanilla one
 // -1.
-func biomeDefinitions() ([]v2193.BiomeDefinition, []string) {
+func biomeDefinitions() ([]mc.BiomeDefinition, []string) {
 	var (
 		internedStrings     []string
 		internedStringIndex = make(map[string]int)
@@ -30,7 +30,7 @@ func biomeDefinitions() ([]v2193.BiomeDefinition, []string) {
 
 	// The order of biomes in this packet must be deterministic across server runs.
 	ids := world.BiomeIDs()
-	encodedBiomes := make([]v2193.BiomeDefinition, 0, len(ids))
+	encodedBiomes := make([]mc.BiomeDefinition, 0, len(ids))
 	for _, id := range ids {
 		b, _ := world.BiomeByID(id)
 		name := b.String()
@@ -51,7 +51,7 @@ func biomeDefinitions() ([]v2193.BiomeDefinition, []string) {
 		}
 		water := b.WaterColour()
 
-		def := v2193.BiomeDefinition{
+		def := mc.BiomeDefinition{
 			NameIndex:      int16(nameIndex),
 			BiomeID:        biomeID,
 			Temperature:    float32(b.Temperature()),

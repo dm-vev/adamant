@@ -21,7 +21,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
@@ -172,9 +172,9 @@ func TestEntityContainersAgainstBDS(t *testing.T) {
 
 		// The client clicks the entity.
 		got := s.gather(func() {
-			s.send(&v2193.InventoryTransactionPacket{TransactionData: &v2193.UseItemOnEntityTransactionData{
+			s.send(&mc.InventoryTransactionPacket{TransactionData: &mc.UseItemOnEntityTransactionData{
 				TargetEntityRuntimeID: h.RuntimeID(),
-				ActionType:            v2193.UseItemOnEntityActionInteract,
+				ActionType:            mc.UseItemOnEntityActionInteract,
 				HotBarSlot:            emptyHand,
 				Position:              mgl32.Vec3{float32(pos[0] - 2), float32(pos[1]), float32(pos[2])},
 				ClickedPosition:       mgl32.Vec3{0, 0.8, 0},
@@ -188,11 +188,11 @@ func TestEntityContainersAgainstBDS(t *testing.T) {
 		// The client closes the window; BDS answers with the window it
 		// closed.
 		closed := s.gather(func() {
-			s.send(&v2193.ContainerClosePacket{WindowID: window, ContainerType: windowType})
+			s.send(&mc.ContainerClosePacket{WindowID: window, ContainerType: windowType})
 		})
-		var echo *v2193.ContainerClosePacket
+		var echo *mc.ContainerClosePacket
 		for _, pk := range closed {
-			if cl, ok := pk.(*v2193.ContainerClosePacket); ok {
+			if cl, ok := pk.(*mc.ContainerClosePacket); ok {
 				echo = cl
 			}
 		}
@@ -225,7 +225,7 @@ func (s *scenario) gather(act func()) []proto.Packet {
 	for {
 		select {
 		case pk := <-s.conn.written:
-			if text, ok := pk.(*v2193.TextPacket); ok && text.Message == marker {
+			if text, ok := pk.(*mc.TextPacket); ok && text.Message == marker {
 				return out
 			}
 			out = append(out, decodeAs(s.t, pk.ID(), encode(pk)))
@@ -251,9 +251,9 @@ func entityInventory(t *testing.T, e world.Entity) *inventory.Inventory {
 // modifier of the entity the client was sent, and their types, with BDS's.
 func checkContainerData(t *testing.T, name string, pks []proto.Packet, rid uint64, typ *uint8, size, strength *int32, types string) {
 	t.Helper()
-	var meta v2193.Metadata
+	var meta mc.Metadata
 	for _, pk := range pks {
-		if add, ok := pk.(*v2193.AddActorPacket); ok && add.EntityRuntimeID == rid {
+		if add, ok := pk.(*mc.AddActorPacket); ok && add.EntityRuntimeID == rid {
 			meta = add.EntityMetadata
 		}
 	}
@@ -262,7 +262,7 @@ func checkContainerData(t *testing.T, name string, pks []proto.Packet, rid uint6
 		return
 	}
 	var gotTypes []string
-	for _, k := range []uint32{v2193.EntityDataKeyContainerType, v2193.EntityDataKeyContainerSize, v2193.EntityDataKeyContainerStrengthModifier} {
+	for _, k := range []uint32{mc.EntityDataKeyContainerType, mc.EntityDataKeyContainerSize, mc.EntityDataKeyContainerStrengthModifier} {
 		if v, ok := meta[k]; ok {
 			gotTypes = append(gotTypes, fmt.Sprintf("%d:%T", k, v))
 		}
@@ -271,14 +271,14 @@ func checkContainerData(t *testing.T, name string, pks []proto.Packet, rid uint6
 	if strings.Join(gotTypes, " ") != types {
 		t.Errorf("%s: container data of types %v, BDS sends %s", name, gotTypes, types)
 	}
-	if typ != nil && meta[v2193.EntityDataKeyContainerType] != *typ {
-		t.Errorf("%s: container type %v in the actor data, BDS sends %d", name, meta[v2193.EntityDataKeyContainerType], *typ)
+	if typ != nil && meta[mc.EntityDataKeyContainerType] != *typ {
+		t.Errorf("%s: container type %v in the actor data, BDS sends %d", name, meta[mc.EntityDataKeyContainerType], *typ)
 	}
-	if size != nil && meta[v2193.EntityDataKeyContainerSize] != *size {
-		t.Errorf("%s: container size %v in the actor data, BDS sends %d", name, meta[v2193.EntityDataKeyContainerSize], *size)
+	if size != nil && meta[mc.EntityDataKeyContainerSize] != *size {
+		t.Errorf("%s: container size %v in the actor data, BDS sends %d", name, meta[mc.EntityDataKeyContainerSize], *size)
 	}
-	if strength != nil && meta[v2193.EntityDataKeyContainerStrengthModifier] != *strength {
-		t.Errorf("%s: strength modifier %v in the actor data, BDS sends %d", name, meta[v2193.EntityDataKeyContainerStrengthModifier], *strength)
+	if strength != nil && meta[mc.EntityDataKeyContainerStrengthModifier] != *strength {
+		t.Errorf("%s: strength modifier %v in the actor data, BDS sends %d", name, meta[mc.EntityDataKeyContainerStrengthModifier], *strength)
 	}
 }
 
@@ -289,7 +289,7 @@ func checkOpen(t *testing.T, name string, got []proto.Packet, want []bdsPacket, 
 	var opener proto.Packet
 	for _, pk := range got {
 		switch pk.(type) {
-		case *v2193.ContainerOpenPacket, *v2193.UpdateEquipPacket:
+		case *mc.ContainerOpenPacket, *mc.UpdateEquipPacket:
 			if opener != nil {
 				t.Errorf("%s: two windows opened: %T and %T", name, opener, pk)
 			}
@@ -307,8 +307,8 @@ func checkOpen(t *testing.T, name string, got []proto.Packet, want []bdsPacket, 
 		return 0, 0
 	}
 	switch o := opener.(type) {
-	case *v2193.UpdateEquipPacket:
-		b := bds.(*v2193.UpdateEquipPacket)
+	case *mc.UpdateEquipPacket:
+		b := bds.(*mc.UpdateEquipPacket)
 		if o.WindowType != b.WindowType || o.Size != b.Size || o.EntityUniqueID != h.UniqueID() {
 			t.Errorf("%s: UpdateEquip of window type %d, size %d, entity %d; BDS: type %d, size %d, entity %d", name,
 				o.WindowType, o.Size, o.EntityUniqueID, b.WindowType, b.Size, h.UniqueID())
@@ -320,8 +320,8 @@ func checkOpen(t *testing.T, name string, got []proto.Packet, want []bdsPacket, 
 			t.Errorf("%s: equip slots %v, BDS: %v", name, g, w)
 		}
 		return o.WindowID, o.WindowType
-	case *v2193.ContainerOpenPacket:
-		b := bds.(*v2193.ContainerOpenPacket)
+	case *mc.ContainerOpenPacket:
+		b := bds.(*mc.ContainerOpenPacket)
 		block := [3]int32{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 		if o.ContainerType != b.ContainerType || o.ContainerEntityUniqueID != h.UniqueID() || o.ContainerPosition != block {
 			t.Errorf("%s: ContainerOpen of type %d at %v, entity %d; BDS: type %d at the entity's block %v, entity %d", name,
@@ -388,7 +388,7 @@ func checkContents(t *testing.T, name string, got []proto.Packet, window byte, w
 		}
 	}
 	for _, pk := range got {
-		c, ok := pk.(*v2193.InventoryContentPacket)
+		c, ok := pk.(*mc.InventoryContentPacket)
 		if !ok || c.WindowID != uint32(window) {
 			continue
 		}

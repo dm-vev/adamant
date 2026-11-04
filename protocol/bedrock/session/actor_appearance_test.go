@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -29,40 +29,40 @@ func TestActorMetadataMatchesBDS(t *testing.T) {
 		props []int32
 	}{
 		{name: "baby pig", nbt: map[string]any{"id": "minecraft:pig", "Age": int32(-24000), "variant": "minecraft:warm", "sound_variant": "minecraft:big"},
-			want:  map[uint32]any{v2193.EntityDataKeyWidth: float32(0.9), v2193.EntityDataKeyHeight: float32(0.9), v2193.EntityDataKeyScale: float32(0.5), v2193.EntityDataKeyVariant: int32(0)},
-			flags: []uint8{v2193.EntityDataFlagBaby, v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagWalk}, props: []int32{1, 1}},
+			want:  map[uint32]any{mc.EntityDataKeyWidth: float32(0.9), mc.EntityDataKeyHeight: float32(0.9), mc.EntityDataKeyScale: float32(0.5), mc.EntityDataKeyVariant: int32(0)},
+			flags: []uint8{mc.EntityDataFlagBaby, mc.EntityDataFlagHasCollision, mc.EntityDataFlagWalk}, props: []int32{1, 1}},
 		{name: "baby zombie", nbt: map[string]any{"id": "minecraft:zombie", "IsBaby": byte(1)},
-			want: map[uint32]any{v2193.EntityDataKeyWidth: float32(0.98), v2193.EntityDataKeyHeight: float32(1.96), v2193.EntityDataKeyScale: float32(0.5)}},
+			want: map[uint32]any{mc.EntityDataKeyWidth: float32(0.98), mc.EntityDataKeyHeight: float32(1.96), mc.EntityDataKeyScale: float32(0.5)}},
 		{name: "wither skeleton", nbt: map[string]any{"id": "minecraft:wither_skeleton"},
-			want:  map[uint32]any{v2193.EntityDataKeyWidth: float32(0.72), v2193.EntityDataKeyHeight: float32(2.01), v2193.EntityDataKeyScale: float32(1.2), v2193.EntityDataKeyVariant: int32(1)},
-			flags: []uint8{v2193.EntityDataFlagFireImmune}},
-		{name: "elder guardian", nbt: map[string]any{"id": "minecraft:elder_guardian"}, flags: []uint8{v2193.EntityDataFlagElder}},
-		{name: "boat", nbt: map[string]any{"id": "minecraft:boat"}, flags: []uint8{v2193.EntityDataFlagStackable, v2193.EntityDataFlagCollidable},
-			want: map[uint32]any{v2193.EntityDataKeyStructuralIntegrity: int32(0), v2193.EntityDataKeyControllingSeatIndex: byte(0)}},
-		{name: "armor stand", nbt: map[string]any{"id": "minecraft:armor_stand"}, want: map[uint32]any{v2193.EntityDataKeyHurt: int32(0)},
-			flags: []uint8{v2193.EntityDataFlagHasCollision, v2193.EntityDataFlagHiddenWhenInvisible}},
+			want:  map[uint32]any{mc.EntityDataKeyWidth: float32(0.72), mc.EntityDataKeyHeight: float32(2.01), mc.EntityDataKeyScale: float32(1.2), mc.EntityDataKeyVariant: int32(1)},
+			flags: []uint8{mc.EntityDataFlagFireImmune}},
+		{name: "elder guardian", nbt: map[string]any{"id": "minecraft:elder_guardian"}, flags: []uint8{mc.EntityDataFlagElder}},
+		{name: "boat", nbt: map[string]any{"id": "minecraft:boat"}, flags: []uint8{mc.EntityDataFlagStackable, mc.EntityDataFlagCollidable},
+			want: map[uint32]any{mc.EntityDataKeyStructuralIntegrity: int32(0), mc.EntityDataKeyControllingSeatIndex: byte(0)}},
+		{name: "armor stand", nbt: map[string]any{"id": "minecraft:armor_stand"}, want: map[uint32]any{mc.EntityDataKeyHurt: int32(0)},
+			flags: []uint8{mc.EntityDataFlagHasCollision, mc.EntityDataFlagHiddenWhenInvisible}},
 		{name: "tabby cat", nbt: map[string]any{"id": "minecraft:cat", "variant": "minecraft:tabby", "Tame": byte(1), "Sitting": byte(1), "CollarColor": byte(11)},
-			want:  map[uint32]any{v2193.EntityDataKeyVariant: int32(8), v2193.EntityDataKeyColorIndex: byte(11), v2193.EntityDataKeyScale: float32(0.8)},
-			flags: []uint8{v2193.EntityDataFlagTamed, v2193.EntityDataFlagSitting}, props: []int32{0}},
+			want:  map[uint32]any{mc.EntityDataKeyVariant: int32(8), mc.EntityDataKeyColorIndex: byte(11), mc.EntityDataKeyScale: float32(0.8)},
+			flags: []uint8{mc.EntityDataFlagTamed, mc.EntityDataFlagSitting}, props: []int32{0}},
 		{name: "striped wolf", nbt: map[string]any{"id": "minecraft:wolf", "variant": "minecraft:striped", "sound_variant": "minecraft:angry"},
-			want: map[uint32]any{v2193.EntityDataKeyVariant: int32(7)}, props: []int32{4}},
+			want: map[uint32]any{mc.EntityDataKeyVariant: int32(7)}, props: []int32{4}},
 		{name: "librarian", nbt: map[string]any{"id": "minecraft:villager", "VillagerData": map[string]any{"profession": "minecraft:librarian", "type": "minecraft:desert", "level": int32(3)}},
-			want: map[uint32]any{v2193.EntityDataKeyVariant: int32(5), v2193.EntityDataKeyMarkVariant: int32(1), v2193.EntityDataKeyTradeTier: int32(2)}},
+			want: map[uint32]any{mc.EntityDataKeyVariant: int32(5), mc.EntityDataKeyMarkVariant: int32(1), mc.EntityDataKeyTradeTier: int32(2)}},
 		{name: "large slime", nbt: map[string]any{"id": "minecraft:slime", "Size": int32(3)},
-			want: map[uint32]any{v2193.EntityDataKeyVariant: int32(4), v2193.EntityDataKeyWidth: float32(2.08), v2193.EntityDataKeyHeight: float32(2.08)}},
+			want: map[uint32]any{mc.EntityDataKeyVariant: int32(4), mc.EntityDataKeyWidth: float32(2.08), mc.EntityDataKeyHeight: float32(2.08)}},
 		{name: "medium magma cube", nbt: map[string]any{"id": "minecraft:magma_cube", "Size": int32(1)},
-			want: map[uint32]any{v2193.EntityDataKeyVariant: int32(2), v2193.EntityDataKeyWidth: float32(1.04), v2193.EntityDataKeyHeight: float32(1.02)}},
+			want: map[uint32]any{mc.EntityDataKeyVariant: int32(2), mc.EntityDataKeyWidth: float32(1.04), mc.EntityDataKeyHeight: float32(1.02)}},
 		{name: "clownfish", nbt: map[string]any{"id": "minecraft:tropical_fish", "Variant": int32(1 << 16)},
-			want: map[uint32]any{v2193.EntityDataKeyVariant: int32(0), v2193.EntityDataKeyMarkVariant: int32(0), v2193.EntityDataKeyColorIndex: byte(1), v2193.EntityDataKeyColorTwoIndex: byte(0), v2193.EntityDataKeyScale: float32(1.3)}},
+			want: map[uint32]any{mc.EntityDataKeyVariant: int32(0), mc.EntityDataKeyMarkVariant: int32(0), mc.EntityDataKeyColorIndex: byte(1), mc.EntityDataKeyColorTwoIndex: byte(0), mc.EntityDataKeyScale: float32(1.3)}},
 		{name: "wild axolotl", nbt: map[string]any{"id": "minecraft:axolotl", "Variant": int32(1)},
-			want: map[uint32]any{v2193.EntityDataKeyVariant: int32(3)}},
+			want: map[uint32]any{mc.EntityDataKeyVariant: int32(3)}},
 		{name: "large salmon", nbt: map[string]any{"id": "minecraft:salmon", "Variant": int32(2)},
-			want: map[uint32]any{v2193.EntityDataKeyVariant: int32(0), v2193.EntityDataKeyScale: float32(1.5)}},
+			want: map[uint32]any{mc.EntityDataKeyVariant: int32(0), mc.EntityDataKeyScale: float32(1.5)}},
 		{name: "rabbit", nbt: map[string]any{"id": "minecraft:rabbit", "RabbitType": int32(4)},
-			want: map[uint32]any{v2193.EntityDataKeyVariant: int32(4), v2193.EntityDataKeyWidth: float32(0.81666666), v2193.EntityDataKeyScale: float32(0.6)}},
-		{name: "trader llama", nbt: map[string]any{"id": "minecraft:trader_llama"}, want: map[uint32]any{v2193.EntityDataKeyMarkVariant: int32(1)}},
+			want: map[uint32]any{mc.EntityDataKeyVariant: int32(4), mc.EntityDataKeyWidth: float32(0.81666666), mc.EntityDataKeyScale: float32(0.6)}},
+		{name: "trader llama", nbt: map[string]any{"id": "minecraft:trader_llama"}, want: map[uint32]any{mc.EntityDataKeyMarkVariant: int32(1)}},
 		{name: "cold chicken", nbt: map[string]any{"id": "minecraft:chicken", "variant": "minecraft:cold"}, props: []int32{2, 0}},
-		{name: "tadpole", nbt: map[string]any{"id": "minecraft:tadpole"}, flags: []uint8{v2193.EntityDataFlagBaby}},
+		{name: "tadpole", nbt: map[string]any{"id": "minecraft:tadpole"}, flags: []uint8{mc.EntityDataFlagBaby}},
 		{name: "happy ghast", nbt: map[string]any{"id": "minecraft:happy_ghast"}, props: []int32{1}},
 	}
 	<-w.Exec(func(tx *world.Tx) {
@@ -79,9 +79,9 @@ func TestActorMetadataMatchesBDS(t *testing.T) {
 				}
 			}
 			for _, flag := range tc.flags {
-				key := uint32(v2193.EntityDataKeyFlags)
+				key := uint32(mc.EntityDataKeyFlags)
 				if flag >= 64 {
-					key, flag = v2193.EntityDataKeyFlagsTwo, flag-64
+					key, flag = mc.EntityDataKeyFlagsTwo, flag-64
 				}
 				if !m.Flag(key, flag) {
 					t.Errorf("%s: flag %d not set", tc.name, flag)
@@ -110,11 +110,11 @@ func TestEndermanCarriesBlockOnClient(t *testing.T) {
 	viewer.br = world.DefaultBlockRegistry
 	<-w.Exec(func(tx *world.Tx) {
 		e := tx.AddEntity(entity.NewEnderman(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 100, 0.5}})).(*entity.Enderman)
-		if got, want := viewer.parseEntityMetadata(e)[v2193.EntityDataKeyCarryBlockRuntimeID], int32(networkBlockID(viewer.br, block.Air{})); got != want {
+		if got, want := viewer.parseEntityMetadata(e)[mc.EntityDataKeyCarryBlockRuntimeID], int32(networkBlockID(viewer.br, block.Air{})); got != want {
 			t.Fatalf("empty-handed enderman carries %v, want air %v", got, want)
 		}
 		e.CarryBlock(block.Grass{})
-		if got, want := viewer.parseEntityMetadata(e)[v2193.EntityDataKeyCarryBlockRuntimeID], int32(networkBlockID(viewer.br, block.Grass{})); got != want {
+		if got, want := viewer.parseEntityMetadata(e)[mc.EntityDataKeyCarryBlockRuntimeID], int32(networkBlockID(viewer.br, block.Grass{})); got != want {
 			t.Fatalf("enderman carries %v, want grass %v", got, want)
 		}
 	})
@@ -139,7 +139,7 @@ func TestVindicatorAngryWhileAttacking(t *testing.T) {
 		}
 		e := tx.AddEntity(entity.NewVindicator(world.EntitySpawnOpts{Position: mgl64.Vec3{6.5, 65, 0.5}}))
 		vindicator = e.H()
-		if viewer.parseEntityMetadata(e).Flag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagAngry) {
+		if viewer.parseEntityMetadata(e).Flag(mc.EntityDataKeyFlags, mc.EntityDataFlagAngry) {
 			t.Error("idle vindicator is angry")
 		}
 		tx.AddEntity(entity.NewVillager(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 65, 0.5}}))
@@ -150,7 +150,7 @@ func TestVindicatorAngryWhileAttacking(t *testing.T) {
 		<-w.Exec(func(tx *world.Tx) {
 			e, _ := vindicator.Entity(tx)
 			if v := e.(*entity.Vindicator); v.Aggressive() {
-				angry = viewer.parseEntityMetadata(v).Flag(v2193.EntityDataKeyFlags, v2193.EntityDataFlagAngry)
+				angry = viewer.parseEntityMetadata(v).Flag(mc.EntityDataKeyFlags, mc.EntityDataFlagAngry)
 			}
 		})
 		if angry {

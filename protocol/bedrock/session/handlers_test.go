@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 )
 
@@ -22,8 +22,8 @@ func TestHandledPacketsDecode(t *testing.T) {
 	s.registerHandlers()
 	// Packets whose zero value has no encoding.
 	samples := map[uint32]proto.Packet{
-		v2193.IDInventoryTransaction: &v2193.InventoryTransactionPacket{TransactionData: &v2193.NormalTransactionData{}},
-		v2193.IDRequestAbility:       &v2193.RequestAbilityPacket{Value: true},
+		mc.IDInventoryTransaction: &mc.InventoryTransactionPacket{TransactionData: &mc.NormalTransactionData{}},
+		mc.IDRequestAbility:       &mc.RequestAbilityPacket{Value: true},
 	}
 	if len(s.handlers) == 0 {
 		t.Fatal("no packet handled")
@@ -31,7 +31,7 @@ func TestHandledPacketsDecode(t *testing.T) {
 	for id := range s.handlers {
 		pk := samples[id]
 		if pk == nil {
-			pk = v2193.New(id)
+			pk = mc.New(id)
 		}
 		w := wire.Writer{B: bedrock.AppendHeader(nil, bedrock.Header{ID: id})}
 		pk.Encode(&w)
@@ -108,7 +108,7 @@ func TestInboxMemoryBound(t *testing.T) {
 	t.Parallel()
 	s, closed := inboxSession()
 	for range 64 {
-		s.receive(&v2193.BlockActorDataPacket{}, 4<<20)
+		s.receive(&mc.BlockActorDataPacket{}, 4<<20)
 	}
 	if n, cost, cut := s.inboxState(); !cut || n != 8 || cost != 32<<20 {
 		t.Fatalf("holds %d packets of %d bytes, cut %v", n, cost, cut)
@@ -125,10 +125,10 @@ func TestInboxMemoryBound(t *testing.T) {
 	const shulkers = 4441926
 	s, _ = inboxSession()
 	for range maxInbox - 7 {
-		s.receive(&v2193.PlayerAuthInputPacket{}, 200)
+		s.receive(&mc.PlayerAuthInputPacket{}, 200)
 	}
 	for range 7 {
-		s.receive(&v2193.InventoryTransactionPacket{}, shulkers)
+		s.receive(&mc.InventoryTransactionPacket{}, shulkers)
 	}
 	if n, cost, cut := s.inboxState(); cut || n != maxInbox {
 		t.Fatalf("ordinary traffic: %d packets of %d bytes, cut %v", n, cost, cut)

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/item/creative"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // TestCreativeCategoryValues holds the category CreativeContent sends for
@@ -18,11 +18,11 @@ func TestCreativeCategoryValues(t *testing.T) {
 		category  creative.Category
 		want, was int64
 	}{
-		{"ConstructionCategory", creative.ConstructionCategory(), v2193.CreativeCategoryConstruction, 1},
-		{"NatureCategory", creative.NatureCategory(), v2193.CreativeCategoryNature, 2},
-		{"EquipmentCategory", creative.EquipmentCategory(), v2193.CreativeCategoryEquipment, 3},
-		{"ItemsCategory", creative.ItemsCategory(), v2193.CreativeCategoryItems, 4},
-		{"Category{}", creative.Category{}, v2193.CreativeCategoryAll, 0},
+		{"ConstructionCategory", creative.ConstructionCategory(), mc.CreativeCategoryConstruction, 1},
+		{"NatureCategory", creative.NatureCategory(), mc.CreativeCategoryNature, 2},
+		{"EquipmentCategory", creative.EquipmentCategory(), mc.CreativeCategoryEquipment, 3},
+		{"ItemsCategory", creative.ItemsCategory(), mc.CreativeCategoryItems, 4},
+		{"Category{}", creative.Category{}, mc.CreativeCategoryAll, 0},
 	} {
 		got := int64(bedrockCreativeCategory(c.category))
 		values = append(values, gameValue{c.name, got, c.want}, gameValue{c.name + " (Uint8)", got, c.was})

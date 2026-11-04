@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // cloudParticleType returns the particle type the actor data of an area effect
@@ -13,7 +13,7 @@ func cloudParticleType(p entity.CloudParticle) (int32, bool) {
 	case entity.CloudParticlePotion:
 		return 0, false
 	case entity.CloudParticleDragonBreath:
-		return v2193.ParticleTypeDragonBreath, true
+		return mc.ParticleTypeDragonBreath, true
 	}
 	// A cloud read from a world keeps the ParticleId stored for it, which the
 	// world format numbers as the protocol does.

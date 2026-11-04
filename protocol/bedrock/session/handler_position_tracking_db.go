@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 const (
@@ -21,22 +21,22 @@ type PositionTrackingDBHandler struct{}
 
 // Handle responds with the tracked position, or marks the target as unavailable.
 func (*PositionTrackingDBHandler) Handle(p proto.Packet, s *Session, tx *world.Tx, c Controllable) error {
-	pk, ok := p.(*v2193.PositionTrackingDBClientRequestPacket)
+	pk, ok := p.(*mc.PositionTrackingDBClientRequestPacket)
 	if !ok {
-		return fmt.Errorf("expected *v2193.PositionTrackingDBClientRequestPacket, got %T", p)
+		return fmt.Errorf("expected %T, got %T", (*mc.PositionTrackingDBClientRequestPacket)(nil), p)
 	}
-	if pk.RequestAction != v2193.PositionTrackingDBRequestActionQuery {
+	if pk.RequestAction != mc.PositionTrackingDBRequestActionQuery {
 		return fmt.Errorf("unknown position tracking request action %d", pk.RequestAction)
 	}
 	pos, dim, found := cube.Pos{}, 0, false
 	if holdsTrackingCompass(c, pk.TrackingID) {
 		pos, dim, found = tx.World().TrackedPosition(pk.TrackingID)
 	}
-	action, status := byte(v2193.PositionTrackingDBBroadcastActionUpdate), byte(positionTrackingStatusTracked)
+	action, status := byte(mc.PositionTrackingDBBroadcastActionUpdate), byte(positionTrackingStatusTracked)
 	if !found {
-		action, status = v2193.PositionTrackingDBBroadcastActionNotFound, positionTrackingStatusMissing
+		action, status = mc.PositionTrackingDBBroadcastActionNotFound, positionTrackingStatusMissing
 	}
-	s.writePacket(&v2193.PositionTrackingDBServerBroadcastPacket{
+	s.writePacket(&mc.PositionTrackingDBServerBroadcastPacket{
 		BroadcastAction: action,
 		TrackingID:      pk.TrackingID,
 		Payload:         positionTrackingPayload(pk.TrackingID, pos, dim, status),

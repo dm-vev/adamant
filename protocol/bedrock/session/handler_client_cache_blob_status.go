@@ -3,7 +3,7 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // ClientCacheBlobStatusHandler handles the ClientCacheBlobStatus packet.
@@ -12,9 +12,9 @@ type ClientCacheBlobStatusHandler struct {
 
 // Handle ...
 func (c *ClientCacheBlobStatusHandler) Handle(p proto.Packet, s *Session, _ *world.Tx, _ Controllable) error {
-	pk := p.(*v2193.ClientCacheBlobStatusPacket)
+	pk := p.(*mc.ClientCacheBlobStatusPacket)
 
-	resp := &v2193.ClientCacheMissResponsePacket{Blobs: make([]v2193.CacheBlob, 0, len(pk.MissHashes))}
+	resp := &mc.ClientCacheMissResponsePacket{Blobs: make([]mc.CacheBlob, 0, len(pk.MissHashes))}
 
 	s.blobMu.Lock()
 	for _, hit := range pk.HitHashes {
@@ -23,7 +23,7 @@ func (c *ClientCacheBlobStatusHandler) Handle(p proto.Packet, s *Session, _ *wor
 	for _, miss := range pk.MissHashes {
 		blob, ok := s.blobs[miss]
 		if ok {
-			resp.Blobs = append(resp.Blobs, v2193.CacheBlob{Hash: miss, Payload: blob})
+			resp.Blobs = append(resp.Blobs, mc.CacheBlob{Hash: miss, Payload: blob})
 			s.chunkBytes += len(blob)
 		} else {
 			// A missing blob can happen when identical hashes are reused or cache state is reset. We still resolve the
