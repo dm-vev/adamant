@@ -203,6 +203,13 @@ func TestConfigBounds(t *testing.T) {
 			{`"member"`, ""}, {`" Visitor "`, ""}, {`""`, ""},
 			{`"operator"`, `Permissions.DefaultRole = "operator": want "member" or "visitor"`},
 		}},
+		{table: "Bans", key: "Message", values: []value{
+			{`"Gone. {reason}"`, ""}, {`""`, "Bans.Message is empty: want the text a banned player is refused with"},
+			{`"Gone {why}"`, "Bans.Message holds {why}: want only {reason}, {source}, {created}, {expires}"},
+		}},
+		{table: "Bans", key: "TimeFormat", values: []value{
+			{`"2006-01-02"`, ""}, {`"yesterday"`, `Bans.TimeFormat = "yesterday": want a layout of Go's package time, such as "2006-01-02 at 15:04:05 MST"`},
+		}},
 		{table: "Audit", key: "MaxSize", values: []value{
 			{`"64MiB"`, ""}, {`"1GB"`, ""}, {`"0"`, ""}, {`"512"`, ""}, {`" 2 gib "`, ""},
 			{`"big"`, `Audit.MaxSize = "big": want a size such as "512MiB" or "1GiB"`},

@@ -176,6 +176,20 @@
   # Commands sets the level a command needs, by its name or an alias, such as kick = 2 or version = 2.
   [Permissions.Commands]
 
+[Bans]
+  # The texts a banned player is refused at login and kicked with: Message for a ban of the player, IPMessage for
+  # a ban of its address, then ReasonMessage if the ban has a reason (or DefaultReason is set), then ExpiresMessage
+  # if it expires. Each may hold {reason}, {source}, {created} and {expires}; "\n" starts a line. Java Edition's
+  # texts are Message = "You are banned from this server.", ReasonMessage = "\nReason: {reason}" and
+  # DefaultReason = "Banned by an operator.".
+  DefaultReason = ""
+  ExpiresMessage = "\nYour ban will be removed on {expires}"
+  IPMessage = "You are banned from this server."
+  Message = "You are banned from this server."
+  ReasonMessage = " Reason: {reason}"
+  # TimeFormat writes {created} and {expires}, as a layout of Go's package time, in the server's time zone.
+  TimeFormat = "2006-01-02 at 15:04:05 MST"
+
 [Audit]
   # Enabled writes audit.log: who ran which admin command, changed a list or made a backup, when and where, with
   # the result. Records are JSON Lines; the file is made with mode 0600.

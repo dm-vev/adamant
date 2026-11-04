@@ -30,6 +30,9 @@ type entry struct {
 	ip string
 	// op is what an entry of ops.json holds beside the player.
 	op opFields
+	// ban is what an entry of banned-players.json holds beside the player
+	// and the reason.
+	ban banFields
 	// role is what an entry of permissions.json holds beside the player.
 	role roleFields
 }
@@ -366,8 +369,8 @@ func (a admission) Allow(addr net.Addr, id client.Identity, p client.Profile) (s
 		return a.allowAccount(addrString, id)
 	}
 	if a.bans != nil {
-		if reason, ok := a.bans.banned(addrString, id.Name); ok {
-			return bannedMessage(reason), false
+		if hit, ok := a.bans.banned(addrString, id.Name); ok {
+			return a.bans.message(hit), false
 		}
 	}
 	if a.operators != nil && a.operators.isOperator(id.Name) {
@@ -387,8 +390,8 @@ func (a admission) allowAccount(addr string, id client.Identity) (string, bool) 
 	}
 	a.bind(k, id.Name)
 	if a.bans != nil {
-		if reason, ok := a.bans.bannedAccount(addr, k); ok {
-			return bannedMessage(reason), false
+		if hit, ok := a.bans.bannedAccount(addr, k); ok {
+			return a.bans.message(hit), false
 		}
 	}
 	if a.operators.hasKey(k) {
@@ -437,15 +440,6 @@ func (a admission) logger() *slog.Logger {
 		return slog.Default()
 	}
 	return a.log
-}
-
-// bannedMessage returns what a banned player is refused with.
-func bannedMessage(reason string) string {
-	msg := "You are banned from this server."
-	if reason != "" {
-		msg += " Reason: " + reason
-	}
-	return msg
 }
 
 // warnHeld logs, at the start of a server, the entries of its lists that a

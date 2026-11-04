@@ -67,10 +67,13 @@ import (
 // operator the role of members, as before; [Audit], whose table a new
 // default file has, and a file that lacks it writes audit.log beside
 // ops.json, which the server did not, and the feedback of console commands
-// is shown to operators online, which it was not. And a file saving both
-// its world and its players now keeps the players in the world database
-// (playerdb.WorldProvider), reading the players folder only for those not
-// yet moved there, and no longer makes the folder.
+// is shown to operators online, which it was not; [Bans], whose table a new
+// default file has, and a file that lacks it refuses banned players with
+// the text it always did, and kicks them with it, where the kick had no
+// reason before. And a file saving both its world and its players now keeps
+// the players in the world database (playerdb.WorldProvider), reading the
+// players folder only for those not yet moved there, and no longer makes
+// the folder.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -180,6 +183,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Java.Address": "", "Java.Message": "",
 			"Permissions": "default=0 op=4 blocks=2 roles=3 role=member console=true remote=true commands=map[]",
 			"Audit":       "file=audit.log size=67108864 keep=10 min=2 addresses=true",
+			"Bans":        "Banned: You are banned from this server. Reason: griefing\nYour ban will be removed on " + meaningBanEnd + " | You are banned from this server.",
 		})},
 		{"every key changed", []byte(everyKeyChanged), withMeaning(changedAntiCheat, configMeaning{
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
@@ -213,6 +217,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Java.Address": ":25565", "Java.Message": "Use Bedrock.",
 			"Permissions": "default=1 op=3 blocks=0 roles=4 role=visitor console=false remote=false commands=map[kick:2 teleport:3]",
 			"Audit":       "<nil>",
+			"Bans":        "Banned: Gone. Why: griefing, by Console\nBack on " + time.Date(2026, 11, 11, 14, 20, 31, 0, time.UTC).Local().Format("2006-01-02") + " | Address gone. Why: Rules., by (Unknown)",
 		})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -585,6 +590,14 @@ const everyKeyChanged = `
   QueryPlugins = true
   Transport = " NetherNet "
 
+[Bans]
+  DefaultReason = "Rules."
+  ExpiresMessage = "\nBack on {expires}"
+  IPMessage = "Address gone."
+  Message = "Gone."
+  ReasonMessage = " Why: {reason}, by {source}"
+  TimeFormat = "2006-01-02"
+
 [Audit]
   Enabled = false
   File = "logs/audit.jsonl"
@@ -704,7 +717,7 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 		"Backup.Folder": conf.Backup.Folder, "Backup.Format": conf.Backup.Format.String(), "Backup.Interval": conf.Backup.Interval.String(),
 		"Backup.Keep": conf.Backup.Keep, "Backup.MaxAge": conf.Backup.MaxAge.String(), "Backup.MinFreeSpace": conf.Backup.MinFreeSpace,
 		"Backup.SaveFirst": conf.Backup.SaveFirst, "Backup.Verify": verificationName(conf.Backup.Verify),
-		"Permissions": permissionsMeaning(conf.Permissions), "Audit": auditMeaning(conf.Audit),
+		"Permissions": permissionsMeaning(conf.Permissions), "Audit": auditMeaning(conf.Audit), "Bans": bansMeaning(conf),
 	})
 }
 
@@ -721,6 +734,26 @@ func permissionsMeaning(p *server.PermissionConfig) string {
 	return fmt.Sprintf("default=%v op=%v blocks=%v roles=%v role=%v console=%v remote=%v commands=%v",
 		p.DefaultLevel, p.OperatorLevel, p.CommandBlockLevel, p.RoleLevel, p.DefaultRole,
 		p.BroadcastConsoleToOps, p.BroadcastRemoteToOps, p.Commands)
+}
+
+// meaningBans is the banned-players.json of the directory the files of
+// TestConfigFileKeepsItsMeaning are read in: Banned, by the console, for
+// griefing, until meaningBanEnd, and the address 192.0.2.7, for no reason.
+const meaningBans = `{"players":[{"name":"Banned","reason":"griefing","source":"Console","expires":"2026-11-11T14:20:31Z"}],` +
+	`"ips":[{"ip":"192.0.2.7"}]}`
+
+// meaningBanEnd is when the ban of Banned of meaningBans ends, as [Bans]
+// TimeFormat writes it by default, in the time zone of the test.
+var meaningBanEnd = time.Date(2026, 11, 11, 14, 20, 31, 0, time.UTC).Local().Format("2006-01-02 at 15:04:05 MST")
+
+// bansMeaning returns the meaning of [Bans] of a Config: the texts Banned
+// of meaningBans, and a player from its address, are refused with.
+func bansMeaning(conf server.Config) string {
+	banned := client.Identity{Name: "Banned", UUID: uuid.New(), XUID: "2535400000000777", Authenticated: true}
+	other := client.Identity{Name: "Other", UUID: uuid.New(), XUID: "2535400000000778", Authenticated: true}
+	msg, _ := conf.Allower.Allow(&net.UDPAddr{IP: net.IPv4(198, 51, 100, 1)}, banned, client.Profile{})
+	ip, _ := conf.Allower.Allow(&net.UDPAddr{IP: net.IPv4(192, 0, 2, 7)}, other, client.Profile{})
+	return "Banned: " + msg + " | " + ip
 }
 
 // auditMeaning returns the meaning of the audit log of a Config, its file
@@ -837,6 +870,9 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	t.Helper()
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("config.toml", data, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("banned-players.json", []byte(meaningBans), 0644); err != nil {
 		t.Fatal(err)
 	}
 	log := slog.New(slog.DiscardHandler)

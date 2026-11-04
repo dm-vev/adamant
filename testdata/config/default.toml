@@ -209,6 +209,14 @@
   SaveFirst = true
   Verify = "record"
 
+[Bans]
+  DefaultReason = ""
+  ExpiresMessage = "\nYour ban will be removed on {expires}"
+  IPMessage = "You are banned from this server."
+  Message = "You are banned from this server."
+  ReasonMessage = " Reason: {reason}"
+  TimeFormat = "2006-01-02 at 15:04:05 MST"
+
 [Java]
   Address = ""
   Message = ""

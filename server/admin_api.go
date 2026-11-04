@@ -140,7 +140,28 @@ func (srv *Server) OperatorEntries() ([]string, error) {
 	}
 	return srv.entryStrings(srv.operators.view), nil
 }
+// BanPlayer bans the player of the name passed, or "xuid:<XUID>", as
+// ResolvePlayer resolves it, for the reason passed, for ever, recording no
+// time or source, as the server always banned. A player online of the ban
+// is kicked with the text of [Bans]. Ban records when, by whom and until
+// when.
 func (srv *Server) BanPlayer(name, reason string) (bool, error) {
+	return srv.banPlayer(name, reason, banFields{})
+}
+
+// Ban bans the player of the name passed, or "xuid:<XUID>", as
+// ResolvePlayer resolves it, as the options say, recording when the ban
+// was made, by whom (o.By, or "API"), and until when (o.Expires, or for
+// ever). A name no account is known by on a server keyed by XUID is held
+// until an account joins with it, and the ban keeps its expiry. A player
+// online of the ban is kicked with the text of [Bans].
+func (srv *Server) Ban(name string, o BanOptions) (bool, error) {
+	return srv.banPlayer(name, o.Reason, o.fields(srv.bansNow()))
+}
+
+// banPlayer bans the player of the name passed for the reason passed, with
+// the fields passed, and kicks it if online.
+func (srv *Server) banPlayer(name, reason string, f banFields) (bool, error) {
 	if srv.bans == nil {
 		return false, errAdminUnavailable
 	}
@@ -148,13 +169,23 @@ func (srv *Server) BanPlayer(name, reason string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	en.ban = f
 	added, err := srv.bans.add(en, reason)
 	if added {
 		if h, ok := srv.playerOf(en); ok {
-			go player.Do(h, func(_ *world.Tx, p *player.Player) { p.Disconnect("You are banned from this server.") })
+			msg := srv.bans.message(banHit{reason: reason, fields: f})
+			go player.Do(h, func(_ *world.Tx, p *player.Player) { p.Disconnect(msg) })
 		}
 	}
 	return added, err
+}
+
+// bansNow returns the time of the clock the bans expire by.
+func (srv *Server) bansNow() time.Time {
+	if srv.bans == nil || srv.bans.now == nil {
+		return time.Now()
+	}
+	return srv.bans.now()
 }
 
 // playerOf returns the handle of the player online an entry is of: the
@@ -181,17 +212,35 @@ func (srv *Server) PardonPlayer(name string) (bool, error) {
 	}
 	return srv.bans.remove(k)
 }
+// BanIP bans the address passed for the reason passed, for ever,
+// recording no time or source, as the server always banned. The players
+// online from the address are kicked with the text of [Bans]. BanAddress
+// records when, by whom and until when.
 func (srv *Server) BanIP(ip, reason string) (bool, error) {
+	return srv.banAddress(ip, reason, banFields{})
+}
+
+// BanAddress bans the address passed as the options say, recording when
+// the ban was made, by whom and until when, as Ban does. The players
+// online from the address are kicked with the text of [Bans].
+func (srv *Server) BanAddress(ip string, o BanOptions) (bool, error) {
+	return srv.banAddress(ip, o.Reason, o.fields(srv.bansNow()))
+}
+
+// banAddress bans an address for the reason passed, with the fields
+// passed, and kicks the players online from it.
+func (srv *Server) banAddress(ip, reason string, f banFields) (bool, error) {
 	if srv.bans == nil {
 		return false, errAdminUnavailable
 	}
-	added, err := srv.bans.addIP(ip, reason)
+	added, err := srv.bans.addAddress(ip, reason, f)
 	if added {
 		target := normalizeIP(ip)
+		msg := srv.bans.message(banHit{reason: reason, fields: f, ip: true})
 		go func() {
 			for p := range srv.Players(nil) {
 				if p.Addr() != nil && normalizeIP(p.Addr().String()) == target {
-					p.Disconnect("Your IP address is banned from this server.")
+					p.Disconnect(msg)
 				}
 			}
 		}()
@@ -222,11 +271,15 @@ func (srv *Server) Banned(addr, name string) (string, bool) {
 	if srv.bans == nil {
 		return "", false
 	}
+	var hit banHit
+	var ok bool
 	if srv.IdentityKey() != identity.XUID {
-		return srv.bans.banned(addr, name)
+		hit, ok = srv.bans.banned(addr, name)
+	} else {
+		t, _ := srv.ResolvePlayer(name)
+		hit, ok = srv.bans.bannedAccount(addr, t.Key)
 	}
-	t, _ := srv.ResolvePlayer(name)
-	return srv.bans.bannedAccount(addr, t.Key)
+	return hit.reason, ok
 }
 
 // SaveAll saves a checkpoint of the server, as Java's save-all saves

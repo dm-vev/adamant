@@ -171,12 +171,12 @@ func (c deopCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Printf("Removed %s from the server operators.", t)
 	}
 }
-func (c banCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+func (c banCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 	t, ok := addTarget(c.srv, o, c.Name)
 	if !ok {
 		return
 	}
-	added, err := c.srv.BanPlayer(t.Arg(), reasonArg(c.Reason))
+	added, err := c.srv.Ban(t.Arg(), server.BanOptions{Reason: reasonArg(c.Reason), By: c.srv.ActorOf(src)})
 	switch {
 	case err != nil:
 		o.Error(err)
@@ -215,8 +215,8 @@ func removeTarget(srv serverAdapter, o *cmd.Output, list server.List, name strin
 	}
 	return t, true
 }
-func (c banIPCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	added, err := c.srv.BanIP(c.IP, reasonArg(c.Reason))
+func (c banIPCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
+	added, err := c.srv.BanAddress(c.IP, server.BanOptions{Reason: reasonArg(c.Reason), By: c.srv.ActorOf(src)})
 	if err != nil {
 		o.Error(err)
 	} else if added {

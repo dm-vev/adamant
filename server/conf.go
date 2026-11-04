@@ -328,8 +328,8 @@ func (conf Config) New() *Server {
 			conf.Log.Info("Players are saved apart from the world: each checkpoint commits the worlds at once, then saves the players.")
 		}
 	}
-	srv.adoptLists()
 	srv.openAudit()
+	srv.adoptLists()
 	for _, lf := range conf.Listeners {
 		l, err := lf(conf, srv)
 		if err != nil {
@@ -385,7 +385,8 @@ func (conf Config) New() *Server {
 }
 
 // adoptLists takes the admin lists of the Allower of the Config, as
-// UserConfig.Config made them, for the admin API of the server.
+// UserConfig.Config made them, for the admin API of the server. It runs
+// once the audit log is open.
 func (srv *Server) adoptLists() {
 	conf := srv.conf
 	if wl, ok := conf.Allower.(*Whitelist); ok {
@@ -400,6 +401,20 @@ func (srv *Server) adoptLists() {
 	}
 	if access, ok := conf.Allower.(interface{ knownAccess() *knownPlayers }); ok && conf.IdentityKey == identity.XUID {
 		srv.known = access.knownAccess()
+	}
+	if srv.bans != nil {
+		// A list of bans an embedder made has the clock and the texts of
+		// the server.
+		if srv.bans.now == nil {
+			srv.bans.now = time.Now
+		}
+		if srv.bans.messages == (BanMessages{}) {
+			srv.bans.messages = DefaultBanMessages()
+		}
+		// The bans that expired while the server was off are taken off,
+		// and recorded, as those that expire later are.
+		srv.bans.expired = srv.recordBanExpiry
+		srv.bans.prune()
 	}
 }
 
@@ -626,6 +641,24 @@ type UserConfig struct {
 		// aliases, such as kick = 2 or version = 2.
 		Commands map[string]int
 	}
+	// Bans are the texts a banned player is refused and kicked with. Each
+	// may hold {reason}, {source}, {created} and {expires}.
+	Bans struct {
+		// DefaultReason is the reason shown of a ban that has none; empty
+		// shows no reason.
+		DefaultReason string
+		// ExpiresMessage follows the text of a ban that expires.
+		ExpiresMessage string
+		// IPMessage is the text of a ban of the address of the player.
+		IPMessage string
+		// Message is the text of a ban of the player.
+		Message string
+		// ReasonMessage follows the text of a ban that has a reason.
+		ReasonMessage string
+		// TimeFormat is how {created} and {expires} are written, a layout
+		// of Go's package time, in the time zone of the server.
+		TimeFormat string
+	}
 	// Audit is the audit log of admin actions: who ran which admin
 	// command, changed a list or made a backup, when and where.
 	Audit struct {
@@ -709,6 +742,14 @@ func (uc UserConfig) Check(p *config.Problems) {
 	uc.checkBackup(p)
 	uc.checkPermissions(p)
 	uc.checkAudit(p)
+	checkBanMessages(p, uc.banMessages())
+}
+
+// banMessages returns the BanMessages of [Bans].
+func (uc UserConfig) banMessages() BanMessages {
+	b := uc.Bans
+	return BanMessages{Message: b.Message, IPMessage: b.IPMessage, ReasonMessage: b.ReasonMessage,
+		ExpiresMessage: b.ExpiresMessage, DefaultReason: b.DefaultReason, TimeFormat: b.TimeFormat}
 }
 
 // checkBackup adds the problems of the [Backup] table of uc to p.
@@ -1004,6 +1045,7 @@ func (uc UserConfig) admission(whitelistFile string, mode identity.Mode, log *sl
 	if err != nil {
 		return admission{}, fmt.Errorf("load bans: %w", err)
 	}
+	bans.messages = uc.banMessages()
 	roles, moved, err := loadRoles(filepath.Join(baseDir, "permissions.json"))
 	if err != nil {
 		return admission{}, fmt.Errorf("load permissions: %w", err)
@@ -1120,6 +1162,9 @@ func DefaultConfig() UserConfig {
 	c.Permissions.BroadcastConsoleToOps, c.Permissions.BroadcastRemoteToOps = true, true
 	c.Audit.Enabled, c.Audit.File, c.Audit.Keep, c.Audit.MaxSize = true, "audit.log", 10, "64MiB"
 	c.Audit.MinLevel, c.Audit.RecordAddresses = int(cmd.LevelGameMaster), true
+	m := DefaultBanMessages()
+	c.Bans.DefaultReason, c.Bans.ExpiresMessage, c.Bans.IPMessage = m.DefaultReason, m.ExpiresMessage, m.IPMessage
+	c.Bans.Message, c.Bans.ReasonMessage, c.Bans.TimeFormat = m.Message, m.ReasonMessage, m.TimeFormat
 	c.Permissions.Commands = map[string]int{}
 	return c
 }

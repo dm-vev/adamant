@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/identity"
 )
@@ -38,6 +39,10 @@ func (s targetAdapter) Deop(name string) (bool, error) { return s.record("Deop "
 func (s targetAdapter) BanPlayer(name, reason string) (bool, error) {
 	return s.record("BanPlayer " + name + " " + reason)
 }
+func (s targetAdapter) Ban(name string, o server.BanOptions) (bool, error) {
+	return s.record("Ban " + name + " " + o.Reason + " by " + o.By.String())
+}
+func (targetAdapter) ActorOf(cmd.Source) audit.Actor { return audit.Actor{Kind: audit.KindConsole} }
 func (s targetAdapter) PardonPlayer(name string) (bool, error) {
 	return s.record("PardonPlayer " + name)
 }
@@ -103,10 +108,10 @@ deop, account, unchanged: "Steve (xuid:2535412345678901) is not an operator." ["
 deop, held by name: "Removed Steve from the server operators." ["Deop Steve"]
 deop, by name: "Removed Steve from the server operators." ["Deop Steve"]
 deop, unresolved: "several entries of the list had the name Steve: name one with xuid:<XUID>" []
-ban, account: "Banned Steve (xuid:2535412345678901)." ["BanPlayer xuid:2535412345678901 griefing"]
-ban, account, unchanged: "Steve (xuid:2535412345678901) is already banned." ["BanPlayer xuid:2535412345678901 griefing"]
-ban, held by name: "Steve has not joined this server: the first Xbox account that joins as Steve is banned. Name the account with xuid:<XUID> instead." ["BanPlayer Steve griefing"]
-ban, by name: "Banned Steve." ["BanPlayer Steve griefing"]
+ban, account: "Banned Steve (xuid:2535412345678901)." ["Ban xuid:2535412345678901 griefing by Console"]
+ban, account, unchanged: "Steve (xuid:2535412345678901) is already banned." ["Ban xuid:2535412345678901 griefing by Console"]
+ban, held by name: "Steve has not joined this server: the first Xbox account that joins as Steve is banned. Name the account with xuid:<XUID> instead." ["Ban Steve griefing by Console"]
+ban, by name: "Banned Steve." ["Ban Steve griefing by Console"]
 ban, unresolved: "several entries of the list had the name Steve: name one with xuid:<XUID>" []
 pardon, account: "Unbanned Steve (xuid:2535412345678901)." ["PardonPlayer xuid:2535412345678901"]
 pardon, account, unchanged: "Steve (xuid:2535412345678901) is not banned." ["PardonPlayer xuid:2535412345678901"]

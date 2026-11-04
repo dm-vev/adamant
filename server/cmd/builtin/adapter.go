@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
@@ -44,6 +45,11 @@ type serverAdapter interface {
 	ReloadPermissions() error
 	OperatorEntries() ([]string, error)
 	BanPlayer(name, reason string) (bool, error)
+	// Ban and BanAddress ban a player and an address, recording when, by
+	// whom and until when; ActorOf is who a source is, as a ban records it.
+	Ban(name string, o server.BanOptions) (bool, error)
+	BanAddress(ip string, o server.BanOptions) (bool, error)
+	ActorOf(src cmd.Source) audit.Actor
 	PardonPlayer(name string) (bool, error)
 	BanIP(ip, reason string) (bool, error)
 	PardonIP(ip string) (bool, error)

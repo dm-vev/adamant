@@ -88,7 +88,7 @@ func (srv *Server) ObserveCommand(e cmd.Execution) {
 	if srv == nil {
 		return
 	}
-	actor := srv.actorOf(e.Source)
+	actor := srv.ActorOf(e.Source)
 	srv.broadcastFeedback(e, actor)
 	if srv.audit == nil || (actor.Kind != audit.KindRemote && e.Level < srv.conf.Audit.MinLevel) {
 		return
@@ -177,10 +177,11 @@ func unwrapSource(src cmd.Source) cmd.Source {
 	}
 }
 
-// actorOf returns the actor of the audit log a source of commands is: a
+// ActorOf returns the actor of the audit log a source of commands is: a
 // player online, a command block, a source that says which it is (the
-// console, a remote client), or else code calling the server.
-func (srv *Server) actorOf(src cmd.Source) audit.Actor {
+// console, a remote client), or else code calling the server. It is also
+// the source of a ban the source makes.
+func (srv *Server) ActorOf(src cmd.Source) audit.Actor {
 	src = unwrapSource(src)
 	level := int(cmd.SourceLevel(src))
 	switch s := src.(type) {
@@ -246,4 +247,20 @@ func hostOf(addr net.Addr) string {
 		return host
 	}
 	return s
+}
+
+// recordBanExpiry logs and records the bans that expired, which the list
+// of bans took off.
+func (srv *Server) recordBanExpiry(players []entry, ips []banEntry) {
+	var targets []string
+	for _, en := range players {
+		targets = append(targets, Target{Key: en.key, Name: en.name}.String())
+	}
+	for _, e := range ips {
+		targets = append(targets, e.IP)
+	}
+	for _, t := range targets {
+		logging.Sub(srv.conf.Log, logging.Server).Info("The ban of " + t + " expired.")
+		srv.audit.Record(audit.Record{Actor: audit.Actor{Kind: audit.KindServer}, Action: "ban-expired", Target: t, Result: audit.ResultOK})
+	}
 }

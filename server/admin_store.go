@@ -3,11 +3,13 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/identity"
 )
@@ -19,6 +21,22 @@ type banEntry struct {
 	Name   string `json:"name,omitempty"`
 	IP     string `json:"ip,omitempty"`
 	Reason string `json:"reason,omitempty"`
+	// Created, Source and Expires are Java's: when the ban was made, by
+	// whom, and until when, left out if unknown or for ever.
+	Created banTime `json:"created,omitzero"`
+	Source  string  `json:"source,omitempty"`
+	Expires banTime `json:"expires,omitzero"`
+}
+
+// fields returns the fields of the ban of the entry.
+func (e banEntry) fields() banFields {
+	return banFields{created: e.Created.Time, source: e.Source, expires: e.Expires.Time}
+}
+
+// withFields returns e with the fields of the ban passed.
+func (e banEntry) withFields(f banFields) banEntry {
+	e.Created, e.Source, e.Expires = banTime{f.created}, f.source, banTime{f.expires}
+	return e
 }
 
 type banFile struct {
@@ -32,10 +50,17 @@ type banList struct {
 	players entries
 	ips     map[string]banEntry
 	ipOrder []string
+	// now is the clock the bans expire by.
+	now func() time.Time
+	// messages are the texts banned players are refused with.
+	messages BanMessages
+	// expired, if not nil, is told of the bans that expired, which were
+	// taken off the list; it must not wait.
+	expired func(players []entry, ips []banEntry)
 }
 
 func loadBans(path string) (*banList, error) {
-	b := &banList{file: path, ips: map[string]banEntry{}}
+	b := &banList{file: path, ips: map[string]banEntry{}, now: time.Now, messages: DefaultBanMessages()}
 	contents, err := os.ReadFile(path)
 	if errNotExist(err) {
 		if err = b.writeLocked(); err != nil {
@@ -62,7 +87,7 @@ func loadBans(path string) (*banList, error) {
 		}
 		// A ban of a name written twice keeps its place and the fields of
 		// the last.
-		en.reason, en.ip = e.Reason, e.IP
+		en.reason, en.ip, en.ban = e.Reason, e.IP, e.fields()
 		b.players.put(en)
 	}
 	for _, e := range data.IPs {
@@ -93,7 +118,7 @@ func normalizeIP(value string) string {
 func (b *banList) writeLocked() error {
 	data := banFile{Players: make([]banEntry, 0, len(b.players.order)), IPs: make([]banEntry, 0, len(b.ipOrder))}
 	for _, en := range b.players.order {
-		e := banEntry{Name: en.key.String(), IP: en.ip, Reason: en.reason}
+		e := banEntry{Name: en.key.String(), IP: en.ip, Reason: en.reason}.withFields(en.ban)
 		if x, ok := en.key.XUID(); ok {
 			e.XUID, e.Name = x, en.name
 		}
@@ -118,8 +143,8 @@ func (b *banList) addPlayer(name, reason string) (bool, error) {
 	return b.add(en, reason)
 }
 
-// add bans the player of en for the reason passed and writes the file,
-// unless the player is banned.
+// add bans the player of en for the reason passed, with the fields of en,
+// and writes the file, unless the player is banned.
 func (b *banList) add(en entry, reason string) (bool, error) {
 	en.reason = reason
 	b.mu.Lock()
@@ -167,18 +192,84 @@ func (b *banList) bind(x identity.Key, name string) (entry, bool, error) {
 	return pending, true, b.writeLocked()
 }
 
+// banHit is a ban a player is refused by: its reason, its fields, and
+// whether it is of the address.
+type banHit struct {
+	reason string
+	fields banFields
+	ip     bool
+}
+
+// message returns the text the player of the ban is refused with.
+func (b *banList) message(h banHit) string {
+	return b.messages.format(h.reason, h.fields, h.ip)
+}
+
 // bannedAccount reports whether the account of the key passed, or the
 // address passed, is banned, as a server keyed by XUID checks a player,
-// and the reason.
-func (b *banList) bannedAccount(addr string, k identity.Key) (string, bool) {
+// and the ban. A ban that expired applies no more, and is taken off.
+func (b *banList) bannedAccount(addr string, k identity.Key) (banHit, bool) {
+	return b.check(func() (banHit, bool, bool) {
+		if e, ok := b.players.get(k); ok {
+			return banHit{reason: e.reason, fields: e.ban}, true, e.ban.expired(b.now())
+		}
+		return b.bannedIPLocked(addr)
+	})
+}
+
+// check runs find under the read lock: a ban that it finds and that
+// expired applies no more, and the expired bans are taken off once the
+// lock is released.
+func (b *banList) check(find func() (banHit, bool, bool)) (banHit, bool) {
 	b.mu.RLock()
-	defer b.mu.RUnlock()
-	if e, ok := b.players.get(k); ok {
-		return e.reason, true
+	h, ok, expired := find()
+	b.mu.RUnlock()
+	if ok && expired {
+		b.prune()
+		return banHit{}, false
 	}
-	return b.bannedIPLocked(addr)
+	return h, ok
+}
+
+// prune takes the bans that expired off the list, writes the file if any
+// did, and tells expired of them.
+func (b *banList) prune() {
+	now := b.now()
+	var players []entry
+	var ips []banEntry
+	b.mu.Lock()
+	for _, en := range slices.Clone(b.players.order) {
+		if en.ban.expired(now) {
+			b.players.remove(en.key)
+			players = append(players, en)
+		}
+	}
+	for _, k := range slices.Clone(b.ipOrder) {
+		if e, ok := b.ips[k]; ok && e.fields().expired(now) {
+			delete(b.ips, k)
+			b.ipOrder = slices.DeleteFunc(b.ipOrder, func(v string) bool { return v == k })
+			ips = append(ips, e)
+		}
+	}
+	var err error
+	if len(players)+len(ips) > 0 {
+		err = b.writeLocked()
+	}
+	b.mu.Unlock()
+	if err != nil {
+		slog.Default().Error("Write the bans without those that expired: " + err.Error())
+	}
+	if f := b.expired; f != nil && len(players)+len(ips) > 0 {
+		f(players, ips)
+	}
 }
 func (b *banList) addIP(ip, reason string) (bool, error) {
+	return b.addAddress(ip, reason, banFields{})
+}
+
+// addAddress bans the address passed for the reason passed, with the
+// fields passed, and writes the file, unless the address is banned.
+func (b *banList) addAddress(ip, reason string, f banFields) (bool, error) {
 	key := normalizeIP(ip)
 	if key == "" {
 		return false, fmt.Errorf("invalid IP address %q", ip)
@@ -188,7 +279,7 @@ func (b *banList) addIP(ip, reason string) (bool, error) {
 	if _, ok := b.ips[key]; ok {
 		return false, nil
 	}
-	b.ips[key] = banEntry{IP: key, Reason: reason}
+	b.ips[key] = banEntry{IP: key, Reason: reason}.withFields(f)
 	b.ipOrder = append(b.ipOrder, key)
 	return true, b.writeLocked()
 }
@@ -220,25 +311,25 @@ func (b *banList) entries(ips bool) []string {
 
 // banned reports whether the player of the name passed, or the address
 // passed, is banned, as a server keyed by name checks a player, and the
-// reason.
-func (b *banList) banned(addr, name string) (string, bool) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	if e, ok := b.players.match(name); ok {
-		return e.reason, true
-	}
-	return b.bannedIPLocked(addr)
+// ban. A ban that expired applies no more, and is taken off.
+func (b *banList) banned(addr, name string) (banHit, bool) {
+	return b.check(func() (banHit, bool, bool) {
+		if e, ok := b.players.match(name); ok {
+			return banHit{reason: e.reason, fields: e.ban}, true, e.ban.expired(b.now())
+		}
+		return b.bannedIPLocked(addr)
+	})
 }
 
-// bannedIPLocked reports whether the address passed is banned, and the
-// reason.
-func (b *banList) bannedIPLocked(addr string) (string, bool) {
+// bannedIPLocked reports whether the address passed is banned, the ban,
+// and whether it expired.
+func (b *banList) bannedIPLocked(addr string) (banHit, bool, bool) {
 	if ip := normalizeIP(addr); ip != "" {
 		if e, ok := b.ips[ip]; ok {
-			return e.Reason, true
+			return banHit{reason: e.Reason, fields: e.fields(), ip: true}, true, e.fields().expired(b.now())
 		}
 	}
-	return "", false
+	return banHit{}, false, false
 }
 
 // update runs f with the entries of the list, and writes the file if f
