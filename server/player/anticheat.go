@@ -51,18 +51,24 @@ func (p *Player) ClientMove(m client.Move) client.MoveResult {
 	// A client sends a move every tick, moved or not: the movement checks
 	// judge each, as hovering in place moves nothing.
 	st := p.moveState(ac, delta)
-	judged := p.speedJudged(ac, m)
-	if p.checkMove(ac, m, delta, st) {
+	speed, ascend := p.speedJudged(ac, m), p.ascendJudged(ac, m)
+	verdict := p.checkMove(ac, m, delta, st)
+	if verdict.refused {
 		return client.MoveRefused
 	}
 	if unchanged {
-		ac.recordMove(delta, st, judged)
+		ac.recordMove(delta, st, speed, ascend)
 		return client.MoveIgnored
 	}
+	fall := p.fallDistance
 	ac.clientMove = true
 	p.Move(delta, deltaYaw, deltaPitch)
 	ac.clientMove = false
-	ac.recordMove(delta, st, judged)
+	if verdict.keepFall {
+		// Ascend cancels an up-blip: it does not reset the fall distance.
+		p.fallDistance = fall
+	}
+	ac.recordMove(delta, st, speed, ascend)
 	return client.MoveApplied
 }
 

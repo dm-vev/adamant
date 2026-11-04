@@ -8,14 +8,17 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
 // lastMove is what the movement checks keep of the move the client made
-// before: its parts, and the state of the player before it.
+// before: its parts, the vertical part of the one before it, and the state
+// of the player before it.
 type lastMove struct {
 	horizontal, vertical float64
+	prevVertical         float64
 	ground, liquid       bool
 	friction             float64
 }
@@ -37,8 +40,122 @@ func (p *Player) moveState(ac *acState, delta mgl64.Vec3) anticheat.State {
 		PrevFriction:   ac.last.friction,
 		PrevLiquid:     ac.last.liquid,
 		PrevVertical:   ac.last.vertical,
+		Climbing:       p.climbing(pos),
+		Bubbles:        p.upwardBubbles(pos),
+		JumpBoost:      p.heldEffect(ac, &ac.jumpBoost, effect.JumpBoost),
+		Levitation:     p.heldEffect(ac, &ac.levitation, effect.Levitation),
+		JumpFactor:     p.jumpFactorAt(pos),
+		SlowFalling:    p.hasEffect(effect.SlowFalling),
+		Bounce:         p.bounce(ac, pos),
+		Step:           ac.conf.Ascend.StepHeight,
 		Impulse:        p.pendingImpulse(ac),
 	}
+}
+
+// hasEffect reports whether the player has an effect of the type passed.
+func (p *Player) hasEffect(t effect.Type) bool {
+	_, ok := p.Effect(t)
+	return ok
+}
+
+// climbing reports whether a player at pos climbs: on a ladder, a vine or
+// another climbable block, in scaffolding, or in powder snow in leather
+// boots.
+func (p *Player) climbing(pos mgl64.Vec3) bool {
+	if p.onClimbable() {
+		return true
+	}
+	b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(pos))
+	if !loaded {
+		return false
+	}
+	switch b.(type) {
+	case block.Scaffolding:
+		return true
+	case block.PowderSnow:
+		boots, ok := p.Armour().Boots().Item().(item.Boots)
+		_, leather := boots.Tier.(item.ArmourTierLeather)
+		return ok && leather
+	}
+	return false
+}
+
+// upwardBubbles reports whether a player at pos is in or on an upward
+// bubble column.
+func (p *Player) upwardBubbles(pos mgl64.Vec3) bool {
+	feet := cube.PosFromVec3(pos)
+	for _, at := range []cube.Pos{feet, feet.Side(cube.FaceDown)} {
+		if b, loaded := p.tx.BlockLoaded(at); loaded {
+			if c, ok := b.(block.BubbleColumn); ok && !c.DragDown {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// jumpFactorAt returns what the block a player at pos is in or stands on
+// scales its jump by: 0.5 for honey, 1 otherwise.
+func (p *Player) jumpFactorAt(pos mgl64.Vec3) float64 {
+	for _, at := range []mgl64.Vec3{pos, pos.Sub(mgl64.Vec3{0, 0.5000001, 0})} {
+		if b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(at)); loaded {
+			if _, honey := b.(block.HoneyBlock); honey {
+				return 0.5
+			}
+		}
+	}
+	return 1
+}
+
+// bounce returns the speed a bouncy block below a player at pos throws it
+// up at, from the speed it fell with in the two moves before: slime gives
+// it back whole to a player that does not sneak, a bed two thirds of it.
+func (p *Player) bounce(ac *acState, pos mgl64.Vec3) float64 {
+	if !p.onGround || p.sneaking {
+		return 0
+	}
+	b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(pos.Sub(mgl64.Vec3{0, 0.5000001, 0})))
+	if !loaded {
+		return 0
+	}
+	restitution := 0.0
+	switch b.(type) {
+	case block.Slime:
+		restitution = 1
+	case block.Bed:
+		restitution = 2.0 / 3
+	default:
+		return 0
+	}
+	fell := max(-ac.last.vertical, -ac.last.prevVertical, 0)
+	if fell == 0 {
+		return 0
+	}
+	return (fell + anticheat.Gravity) * restitution
+}
+
+// groundAt reports whether a player at pos stands on a block: the box below
+// its feet, 0.05 deep, holds the box of a block.
+func (p *Player) groundAt(pos mgl64.Vec3) bool {
+	box := p.H().Type().BBox(p).Translate(pos).Extend(mgl64.Vec3{0, -0.05, 0})
+	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	for x := low[0]; x <= high[0]; x++ {
+		for z := low[2]; z <= high[2]; z++ {
+			for y := low[1]; y <= high[1]; y++ {
+				bp := cube.Pos{x, y, z}
+				b, loaded := p.tx.BlockLoaded(bp)
+				if !loaded {
+					return true
+				}
+				for _, bb := range b.Model().BBox(bp, p.tx) {
+					if bb.Translate(bp.Vec3()).IntersectsWith(box) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // frictionBelow returns the friction of the block below pos that the
@@ -77,15 +194,67 @@ func (p *Player) movementChecked(ac *acState, m client.Move) bool {
 	return true
 }
 
+// moveVerdict is what the movement checks made of a move: refused, the
+// client set back or the player kicked; keepFall, the move is applied but
+// does not reset the fall distance.
+type moveVerdict struct {
+	refused, keepFall bool
+}
+
 // checkMove runs the movement checks on a move of delta of the client,
-// whose state before it is st, and reports whether the move was refused:
-// the client set back, or the player kicked. The first setback stops the
-// checks; those that only log go on.
-func (p *Player) checkMove(ac *acState, m client.Move, delta mgl64.Vec3, st anticheat.State) (refused bool) {
+// whose state before it is st. The first setback stops the checks; those
+// that only log go on.
+func (p *Player) checkMove(ac *acState, m client.Move, delta mgl64.Vec3, st anticheat.State) moveVerdict {
 	if !p.movementChecked(ac, m) {
-		return false
+		return moveVerdict{}
 	}
-	return p.checkSpeed(ac, m, delta, st) || p.checkFly(ac, m, delta)
+	if p.checkSpeed(ac, m, delta, st) || p.checkFly(ac, m, delta) {
+		return moveVerdict{refused: true}
+	}
+	return p.checkAscend(ac, m, delta, st)
+}
+
+// ascendJudged reports whether Ascend judges a move m of the player: the
+// movement checks do, the player is not exempt, and it may not fly and
+// neither flies nor glides.
+func (p *Player) ascendJudged(ac *acState, m client.Move) bool {
+	return p.movementChecked(ac, m) && p.checks(ac, anticheat.Ascend) && !p.GameMode().AllowsFlying() && !p.Flying() && !p.Gliding()
+}
+
+// checkAscend holds the vertical part of a move to the envelope of a jump,
+// a step, a climb, a rise in a liquid, a bounce or an impulse, with the
+// epsilon of Ascend, and catches the up-blips of NoFall: a rise while
+// nothing holds the player up and gravity has it fall. A move that ends on
+// the ground may step up StepHeight, as Java steps up a falling player
+// that lands. With the action cancel, the move is applied but does not
+// reset the fall distance, as a NoFall up-blip would.
+func (p *Player) checkAscend(ac *acState, m client.Move, delta mgl64.Vec3, st anticheat.State) moveVerdict {
+	dy := delta[1]
+	if dy <= 0 || !p.ascendJudged(ac, m) {
+		return moveVerdict{}
+	}
+	eps := ac.conf.Ascend.Epsilon
+	allowed := anticheat.VerticalAllowance(st)
+	landed := dy <= st.Step && p.groundAt(m.Position)
+	if landed {
+		allowed = max(allowed, st.Step)
+	}
+	var act anticheat.Action
+	switch {
+	case dy > allowed+eps:
+		act = p.violate(ac, anticheat.Ascend, "envelope", dy-allowed-eps, fmt.Sprintf("%.3f > %.3f", dy, allowed+eps))
+	case !landed && !st.Supported() && st.Impulse[1] <= 0 && anticheat.AirborneVertical(st) < -eps:
+		act = p.violate(ac, anticheat.Ascend, "blip", dy, fmt.Sprintf("+%.3f falling at %.3f", dy, anticheat.AirborneVertical(st)))
+	default:
+		return moveVerdict{}
+	}
+	switch act {
+	case anticheat.Cancel:
+		return moveVerdict{keepFall: true}
+	case anticheat.Setback, anticheat.Kick:
+		return moveVerdict{refused: p.actOnMove(ac, m, act, p.Position())}
+	}
+	return moveVerdict{}
 }
 
 // speedJudged reports whether Speed judges a move m of the player: the
@@ -124,23 +293,27 @@ func (p *Player) actOnMove(ac *acState, m client.Move, act anticheat.Action, pos
 }
 
 // recordMove keeps what the movement checks need of a move of delta the
-// client made, from the state st before it. If the envelope judged the move
-// (judged), the next move carries what physics allowed of it at most, its
-// envelope with no tolerance: a move past the envelope that was only logged
-// does not lift the envelopes after it, so that the tolerance does not
-// compound tick after tick. A move the envelope did not judge, as in flight
-// or in a grace period, is carried as it was.
-func (ac *acState) recordMove(delta mgl64.Vec3, st anticheat.State, judged bool) {
-	h := math.Hypot(delta[0], delta[2])
-	if judged {
+// client made, from the state st before it. If an envelope judged the move
+// (speed, ascend), the next move carries what physics allowed of it at
+// most, the envelope with no tolerance: a move past it that was only
+// logged does not lift the envelopes after it, so that the tolerance does
+// not compound tick after tick. A move the envelope did not judge, as in
+// flight or in a grace period, is carried as it was.
+func (ac *acState) recordMove(delta mgl64.Vec3, st anticheat.State, speed, ascend bool) {
+	h, v := math.Hypot(delta[0], delta[2]), delta[1]
+	if speed {
 		h = min(h, anticheat.HorizontalAllowance(st))
 	}
+	if ascend && v > 0 {
+		v = min(v, max(anticheat.VerticalAllowance(st), st.Step))
+	}
 	ac.last = lastMove{
-		horizontal: h,
-		vertical:   delta[1],
-		ground:     st.Ground,
-		liquid:     st.Liquid,
-		friction:   st.Friction,
+		horizontal:   h,
+		vertical:     v,
+		prevVertical: ac.last.vertical,
+		ground:       st.Ground,
+		liquid:       st.Liquid,
+		friction:     st.Friction,
 	}
 }
 

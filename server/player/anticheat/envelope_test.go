@@ -202,6 +202,7 @@ func TestVerticalAllowance(t *testing.T) {
 		{"on a ladder", State{Climbing: true, PrevVertical: 0.2}, 0.42},
 		{"Levitation V", State{Levitation: 5, PrevVertical: 0}, 0.25},
 		{"in water", State{Liquid: true}, 0.7},
+		{"leaving the water", State{PrevLiquid: true, PrevVertical: 0.1178}, 0.1178 * 0.8},
 		{"in a bubble column", State{Bubbles: true}, 1.8},
 		{"a bounce", State{Bounce: 1.5}, 1.5},
 		{"knocked up while falling", State{PrevVertical: -1, Impulse: mgl64.Vec3{0, 0.4, 0}}, 0.4},

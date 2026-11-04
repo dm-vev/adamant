@@ -29,8 +29,9 @@ const (
 	// Gravity is the acceleration of gravity, and SlowFallingGravity that
 	// under Slow Falling.
 	Gravity, SlowFallingGravity = 0.08, 0.01
-	// VerticalDrag is what the vertical velocity keeps each tick.
-	VerticalDrag = 0.98
+	// VerticalDrag is what the vertical velocity keeps each tick, and
+	// LiquidVerticalDrag what it keeps in a liquid.
+	VerticalDrag, LiquidVerticalDrag = 0.98, 0.8
 	// JumpPower is the vertical velocity of a jump, and JumpBoostPower what
 	// a level of Jump Boost adds to it.
 	JumpPower, JumpBoostPower = 0.42, 0.1
@@ -167,13 +168,18 @@ func (s State) Supported() bool {
 
 // AirborneVertical returns the vertical move gravity leaves a player of
 // state s that nothing holds up: Java's (vy − g) × 0.98 from the move
-// before, which may be negative.
+// before, which may be negative. A move before that began in a liquid
+// leaves what the drag of the liquid keeps of it, 0.8, as a swimmer
+// leaving the water at its surface carries.
 func AirborneVertical(s State) float64 {
 	g := Gravity
 	if s.SlowFalling {
 		g = SlowFallingGravity
 	}
 	vy := (s.PrevVertical - g) * VerticalDrag
+	if s.PrevLiquid {
+		vy = max(vy, s.PrevVertical*LiquidVerticalDrag)
+	}
 	if s.Levitation > 0 {
 		vy = max(vy, s.PrevVertical, LevitationPower*float64(s.Levitation))
 	}
