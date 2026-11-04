@@ -34,9 +34,12 @@ import (
 // file that lacks them allows and speaks protocol 2193, as before;
 // StrictConfig of [Server], whose line a new default file has, and a file
 // that lacks it warns of the keys nothing reads, which the server ignored
-// before; and the connection caps of [Network], whose lines a new default
-// file has, and a file that lacks them takes their defaults, where the
-// server had the NetherNet defaults and no other caps before.
+// before; the connection caps of [Network], whose lines a new default file
+// has, and a file that lacks them takes their defaults, where the server had
+// the NetherNet defaults and no other caps before; and SpawnTimeout and
+// SpawnTimeoutMessage of [Server], whose lines a new default file has, and a
+// file that lacks them gives a client a minute to spawn, where it had for
+// ever before.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -121,6 +124,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 		{"checked in", checkedIn, configMeaning{
 			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false, "NameCheck": "lenient", "IdentityKey": "xuid",
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
+			"SpawnTimeout": "1m0s", "SpawnTimeoutMessage": server.DefaultSpawnTimeoutMessage,
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
 			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0, "SaveInterval": "5m0s",
@@ -142,6 +146,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 		{"every key changed", []byte(everyKeyChanged), configMeaning{
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
+			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.",
 			"MaxPlayers": 7, "MaxChunkRadius": 9,
 			"Resources": 0, "ResourcesRequired": true, "DisableResourceBuilding": true,
 			"OverworldSeed": int64(42), "GeneratorProfile": "many-cores", "GeneratorWorkers": 3, "GeneratorQueueSize": 5, "SaveInterval": "1m30s",
@@ -205,6 +210,7 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Network]\nProtocols = [\"1.26.40\"]\n":                  `line 2: Network.Protocols: protocol "1.26.40" is not supported: this build supports 1.26.50 (26.50–26.52)`,
 		"[Network]\nPrimaryProtocol = \"26.70\"\n":                `line 2: Network.PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52)`,
 		"[Network]\nProtocols = \"1.26.50\"\n":                    "decode config: (2, 1): Can't convert 1.26.50(string) to []string(slice)",
+		"[Server]\nSpawnTimeout = \"soon\"\n":                     `line 2: Server.SpawnTimeout = "soon": want a duration such as "90s" or "5m"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -306,6 +312,8 @@ const everyKeyChanged = `
   Name = "Changed"
   NameCheck = "strict"
   ReconnectPolicy = "kick-joining"
+  SpawnTimeout = "15s"
+  SpawnTimeoutMessage = "Spawn faster."
   StrictConfig = true
 
 [Whitelist]
@@ -365,6 +373,7 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 	return configMeaning{
 		"Name": conf.Name, "IdentityKey": conf.IdentityKey.String(),
 		"ReconnectPolicy": conf.ReconnectPolicy, "JoinMessage": !conf.JoinMessage.Zero(), "QuitMessage": !conf.QuitMessage.Zero(),
+		"SpawnTimeout": conf.SpawnTimeout.String(), "SpawnTimeoutMessage": conf.SpawnTimeoutMessage,
 		"MaxPlayers": conf.MaxPlayers, "MaxChunkRadius": conf.MaxChunkRadius,
 		"OverworldSeed": conf.OverworldSeed, "GeneratorProfile": conf.GeneratorProfile.String(),
 		"GeneratorWorkers": conf.GeneratorWorkers, "GeneratorQueueSize": conf.GeneratorQueueSize, "SaveInterval": conf.SaveInterval.String(),

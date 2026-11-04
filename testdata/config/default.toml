@@ -46,6 +46,8 @@
   Name = "Dragonfly Server"
   NameCheck = "lenient"
   ReconnectPolicy = "kick-existing"
+  SpawnTimeout = "1m"
+  SpawnTimeoutMessage = "Timed out while joining the game."
   StrictConfig = false
 
 [Whitelist]

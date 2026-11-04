@@ -588,8 +588,21 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 		}
 	}
 
-	c, err := j.Start(ctx, srv.game(login, d, w))
+	start, cancel := ctx, context.CancelFunc(func() {})
+	if srv.conf.SpawnTimeout > 0 {
+		start, cancel = context.WithTimeout(ctx, srv.conf.SpawnTimeout)
+	}
+	c, err := j.Start(start, srv.game(login, d, w))
+	timedOut := errors.Is(start.Err(), context.DeadlineExceeded) && ctx.Err() == nil
+	cancel()
 	if err != nil {
+		if timedOut {
+			// The client never told it spawned: it holds the slot of a
+			// player and its session no longer.
+			j.Reject(text.Literal(srv.conf.SpawnTimeoutMessage))
+			srv.conf.Log.Debug("spawn failed: timed out", "raddr", login.Addr, "timeout", srv.conf.SpawnTimeout.String())
+			return
+		}
 		j.Reject(text.Literal("Connection timeout."))
 
 		srv.conf.Log.Debug("spawn failed: "+err.Error(), "raddr", login.Addr)

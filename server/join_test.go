@@ -186,6 +186,49 @@ func TestJoinStartFailureRejects(t *testing.T) {
 	jt.join(t, &clienttest.Join{L: j.L})
 }
 
+// TestJoinSpawnTimeoutRejects checks that a client that never spawns is
+// rejected with SpawnTimeoutMessage once SpawnTimeout passed, holding no
+// player, and that its player then joins from another client.
+func TestJoinSpawnTimeoutRejects(t *testing.T) {
+	jt := newJoinTest(t, player.NopProvider{}, Config{SpawnTimeout: 50 * time.Millisecond, SpawnTimeoutMessage: "Too slow."})
+	jt.start()
+	j := joinLogin("Alice", "")
+	j.Stall = true
+	began := time.Now()
+	jt.l.Send(j)
+	awaitRejected(t, j, "Too slow.")
+	if waited := time.Since(began); waited < 50*time.Millisecond {
+		t.Errorf("rejected after %v, before the timeout", waited)
+	}
+	if n := jt.srv.PlayerCount(); n != 0 {
+		t.Errorf("%d players online, want none", n)
+	}
+	jt.join(t, &clienttest.Join{L: j.L})
+}
+
+// TestJoinSpawnTimeoutDefaults checks the SpawnTimeout and its message of a
+// Config that sets neither.
+func TestJoinSpawnTimeoutDefaults(t *testing.T) {
+	jt := newJoinTest(t, player.NopProvider{}, Config{})
+	jt.start()
+	t.Cleanup(func() { _ = jt.srv.Close() })
+	if jt.srv.conf.SpawnTimeout != DefaultSpawnTimeout || jt.srv.conf.SpawnTimeoutMessage != DefaultSpawnTimeoutMessage {
+		t.Errorf("SpawnTimeout %v with %q, want %v with %q", jt.srv.conf.SpawnTimeout, jt.srv.conf.SpawnTimeoutMessage, DefaultSpawnTimeout, DefaultSpawnTimeoutMessage)
+	}
+}
+
+// TestParseSpawnTimeout checks how Server.SpawnTimeout of config.toml reads.
+func TestParseSpawnTimeout(t *testing.T) {
+	for s, want := range map[string]time.Duration{"": 0, " 1m ": time.Minute, "90s": 90 * time.Second, "0s": -1, "-5s": -1} {
+		if got, err := parseSpawnTimeout(s); err != nil || got != want {
+			t.Errorf("parseSpawnTimeout(%q) = %v, %v, want %v", s, got, err, want)
+		}
+	}
+	if _, err := parseSpawnTimeout("soon"); err == nil {
+		t.Error("parseSpawnTimeout took \"soon\"")
+	}
+}
+
 // TestJoinLeftSavesThePlayer checks that the Left hook the server gives a
 // player, which it calls as it leaves, saves the player, in inventories of
 // the data saved and not its own, and stops counting it online, and that

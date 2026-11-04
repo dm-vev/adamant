@@ -44,6 +44,16 @@ type Config struct {
 	Allower Allower
 	// ReconnectPolicy controls what happens when a player tries to join while already connected.
 	ReconnectPolicy ReconnectPolicy
+	// SpawnTimeout bounds the time a client that logged in takes to spawn,
+	// from the start of its game to the client telling it spawned, so that
+	// one that never does holds no slot and no session: it is then
+	// rejected with SpawnTimeoutMessage. By default, SpawnTimeout is
+	// DefaultSpawnTimeout. Setting it to a negative number waits for ever.
+	SpawnTimeout time.Duration
+	// SpawnTimeoutMessage is the message of a client rejected for it did
+	// not spawn within SpawnTimeout. It is DefaultSpawnTimeoutMessage if
+	// empty.
+	SpawnTimeoutMessage string
 	// IdentityKey is what the server keys its players by: identity.XUID,
 	// their Xbox accounts, for a server whose listeners admit only players
 	// Xbox Live vouched for, or identity.Name, their names. identity.Auto,
@@ -156,6 +166,14 @@ type Config struct {
 	Blocks world.BlockRegistry
 }
 
+// DefaultSpawnTimeout is the SpawnTimeout of a Config that sets none: a
+// minute, as long as a client may take to log in.
+const DefaultSpawnTimeout = time.Minute
+
+// DefaultSpawnTimeoutMessage is the SpawnTimeoutMessage of a Config that
+// sets none.
+const DefaultSpawnTimeoutMessage = "Timed out while joining the game."
+
 // DefaultSaveInterval is the SaveInterval of a Config that sets none: five
 // minutes, as Java's autosave.
 const DefaultSaveInterval = 5 * time.Minute
@@ -214,6 +232,12 @@ func (conf Config) New() *Server {
 	}
 	if conf.SaveInterval == 0 {
 		conf.SaveInterval = DefaultSaveInterval
+	}
+	if conf.SpawnTimeout == 0 {
+		conf.SpawnTimeout = DefaultSpawnTimeout
+	}
+	if conf.SpawnTimeoutMessage == "" {
+		conf.SpawnTimeoutMessage = DefaultSpawnTimeoutMessage
 	}
 	if conf.ShutdownMessage.Zero() {
 		conf.ShutdownMessage = chat.MessageServerDisconnect
@@ -378,6 +402,14 @@ type UserConfig struct {
 		// otherwise. The program resolves "auto" as it composes the file;
 		// Config, given "auto" or "", keys by name.
 		IdentityKey string
+		// SpawnTimeout bounds the time a client that logged in takes to
+		// spawn, as a duration such as "1m": one that has not by then is
+		// disconnected with SpawnTimeoutMessage. "0s" waits for ever; an
+		// empty value is a minute.
+		SpawnTimeout string
+		// SpawnTimeoutMessage is the message of a client disconnected for it
+		// did not spawn within SpawnTimeout.
+		SpawnTimeoutMessage string
 	}
 	World struct {
 		// SaveData controls whether a world's data will be saved and loaded.
@@ -496,6 +528,9 @@ func (uc UserConfig) Check(p *config.Problems) {
 		}
 	}
 
+	// "0s" or less waits for ever for a client to spawn.
+	config.Duration(p, "Server.SpawnTimeout", uc.Server.SpawnTimeout)
+
 	if uc.World.SaveData {
 		config.Folder(p, "World.Folder", uc.World.Folder)
 	}
@@ -571,6 +606,11 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return Config{}, err
 	}
 
+	spawnTimeout, err := parseSpawnTimeout(uc.Server.SpawnTimeout)
+	if err != nil {
+		return Config{}, err
+	}
+
 	identityKey := identity.Auto
 	if value := strings.TrimSpace(uc.Server.IdentityKey); value != "" {
 		if identityKey, err = identity.ParseMode(value); err != nil {
@@ -583,6 +623,8 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		Name:                  uc.Server.Name,
 		IdentityKey:           identityKey,
 		ReconnectPolicy:       ReconnectKickExisting,
+		SpawnTimeout:          spawnTimeout,
+		SpawnTimeoutMessage:   uc.Server.SpawnTimeoutMessage,
 		MaxPlayers:            uc.Players.MaxCount,
 		MaxChunkRadius:        uc.Players.MaximumChunkRadius,
 		OverworldSeed:         uc.World.Seed,
@@ -670,6 +712,24 @@ func parseSaveInterval(s string) (time.Duration, error) {
 	return d, nil
 }
 
+// parseSpawnTimeout parses the Server.SpawnTimeout of a UserConfig into the
+// SpawnTimeout of a Config: the default if it is empty, and a negative
+// timeout, which waits for ever, if it is zero or less.
+func parseSpawnTimeout(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, fmt.Errorf("Server.SpawnTimeout: %w", err)
+	}
+	if d <= 0 {
+		return -1, nil
+	}
+	return d, nil
+}
+
 // defaultGenerator constructs a dimension generator using the resolved seed.
 // Every dimension generates with its Java 26.3 generator of generator/advanced.
 func defaultGenerator(dim world.Dimension, seed int64) world.Generator {
@@ -696,6 +756,8 @@ func DefaultConfig() UserConfig {
 	c.World.GeneratorProfile = "auto"
 	c.Server.ReconnectPolicy = "kick-existing"
 	c.Server.IdentityKey = "auto"
+	c.Server.SpawnTimeout = "1m"
+	c.Server.SpawnTimeoutMessage = DefaultSpawnTimeoutMessage
 	c.World.DisableOverworld = false
 	c.World.DisableNether = false
 	c.World.DisableEnd = false

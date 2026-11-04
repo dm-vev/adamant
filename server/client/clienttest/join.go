@@ -17,6 +17,9 @@ import (
 type Join struct {
 	L   client.Login
 	Err error
+	// Stall has Start wait for its context to end and return its error, as
+	// the Join of a client that never spawns.
+	Stall bool
 
 	mu       sync.Mutex
 	games    []client.Game
@@ -31,11 +34,18 @@ var _ client.Join = (*Join)(nil)
 func (j *Join) Login() client.Login { return j.L }
 
 // Start records g and returns Err if it is set, or the error of ctx if ctx
-// is done. Otherwise it returns a new Recorder that keeps g.
+// is done, once it is if Stall is set. Otherwise it returns a new Recorder
+// that keeps g.
 func (j *Join) Start(ctx context.Context, g client.Game) (client.Joining, error) {
 	j.mu.Lock()
-	defer j.mu.Unlock()
 	j.games = append(j.games, g)
+	stall := j.Stall
+	j.mu.Unlock()
+	if stall {
+		<-ctx.Done()
+	}
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	if j.Err != nil {
 		return nil, j.Err
 	}
