@@ -523,7 +523,10 @@ func qualify(s *schema, t, pkg string) string {
 	for _, loc := range identifiers.FindAllStringIndex(t, -1) {
 		b.WriteString(t[last:loc[0]])
 		id := t[loc[0]:loc[1]]
-		if !(loc[0] > 0 && t[loc[0]-1] == '.' || loc[1] < len(t) && t[loc[1]] == '.') && (s.byName[id] != nil || isSpecial(id)) {
+		// An identifier with a dot before or after it is a field or names
+		// a package already.
+		dotted := loc[0] > 0 && t[loc[0]-1] == '.' || loc[1] < len(t) && t[loc[1]] == '.'
+		if !dotted && (s.byName[id] != nil || isSpecial(id)) {
 			b.WriteString(pkg + ".")
 		}
 		b.WriteString(id)
@@ -562,18 +565,19 @@ func (c *converter) write(d *decl) error {
 	} else {
 		g.p("func %s(in *%s) (out %s) {", name, in, out)
 	}
-	if len(srcFields) == 1 && srcFields[0].name == "self" && len(dstFields) == 1 && dstFields[0].name == "self" {
+	switch {
+	case len(srcFields) == 1 && srcFields[0].name == "self" && len(dstFields) == 1 && dstFields[0].name == "self":
 		if err := c.value(srcFields[0].goType, dstFields[0].goType, "(*in)", "out", fix, hasFix); err != nil {
 			return err
 		}
-	} else if c.plainStruct(srcFields, dstFields) {
+	case c.plainStruct(srcFields, dstFields):
 		// The structs are alike and hold values of built-in types alone.
 		if d.packet {
 			g.p("*out = %s(*in)", out)
 		} else {
 			g.p("out = %s(*in)", out)
 		}
-	} else {
+	default:
 		for _, f := range dstFields {
 			i := slices.IndexFunc(srcFields, func(s field) bool { return s.name == f.name })
 			if i < 0 {

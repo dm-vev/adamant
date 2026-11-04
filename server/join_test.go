@@ -219,7 +219,11 @@ func TestJoinSpawnTimeoutDefaults(t *testing.T) {
 
 // TestParseSpawnTimeout checks how Server.SpawnTimeout of config.toml reads.
 func TestParseSpawnTimeout(t *testing.T) {
-	for s, want := range map[string]time.Duration{"": 0, " 1m ": time.Minute, "90s": 90 * time.Second, "0s": -1, "-5s": -1} {
+	for _, tc := range []struct {
+		s    string
+		want time.Duration
+	}{{"", 0}, {" 1m ", time.Minute}, {"90s", 90 * time.Second}, {"0s", -1}, {"-5s", -1}} {
+		s, want := tc.s, tc.want
 		if got, err := parseSpawnTimeout(s); err != nil || got != want {
 			t.Errorf("parseSpawnTimeout(%q) = %v, %v, want %v", s, got, err, want)
 		}

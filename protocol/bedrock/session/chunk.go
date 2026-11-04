@@ -344,7 +344,7 @@ func (w *wireTables) networkSubChunkPayload(col *world.Column, ind int16) []byte
 	if payload, ok := col.CachedNetworkSubChunkPayload(ind); ok && cache {
 		return payload
 	}
-	payload := encodeSubChunk(col.Chunk, int(ind), w.blocksOf(col.Chunk.BlockRegistry()))
+	payload := encodeSubChunk(col.Chunk, int(ind), w.blocksOf(col.BlockRegistry()))
 	if cache {
 		col.CacheNetworkSubChunkPayload(ind, payload)
 	}

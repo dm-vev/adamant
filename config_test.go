@@ -456,10 +456,14 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 // TestLogLevel checks how LogLevel of [Server] reads: in any case, with
 // spaces around, info if empty.
 func TestLogLevel(t *testing.T) {
-	for value, want := range map[string]slog.Level{
-		"": slog.LevelInfo, "info": slog.LevelInfo, " DEBUG ": slog.LevelDebug, "Warn": slog.LevelWarn,
-		"warning": slog.LevelWarn, "error": slog.LevelError,
+	for _, tc := range []struct {
+		value string
+		want  slog.Level
+	}{
+		{"", slog.LevelInfo}, {"info", slog.LevelInfo}, {" DEBUG ", slog.LevelDebug}, {"Warn", slog.LevelWarn},
+		{"warning", slog.LevelWarn}, {"error", slog.LevelError},
 	} {
+		value, want := tc.value, tc.want
 		var c logConfig
 		c.Server.LogLevel = value
 		if got, err := c.level(); err != nil || got != want {
