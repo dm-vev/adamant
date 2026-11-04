@@ -310,6 +310,8 @@ Cobwebs in the open air came from chunks generated before the cobweb fix above. 
 
 The kernel is wired into the modern Overworld generator, but end-to-end surface, structure, carver and placed-feature parity is not yet established. Kernel comparisons alone do not establish complete generation or gameplay parity.
 
+`TestGenerationIsUnchanged` in `server/world/generator/advanced` keeps refactors of the generators and the kernel byte-identical: it hashes both block layers, biomes, entity counts, block entities, scheduled ticks and post-processing entries of the seed-12345 chunks around five Overworld centres (radius 3) and three Nether and End centres (radius 2), against `testdata/genhash.txt`, and a failure names the dimension and centre that changed. The normal run generates the first centre of each dimension (about 20 s of CPU); `ADAMANT_GENHASH_FULL=1` generates all of them and checks the totals (about 85 s). `-update-genhash` rewrites the file and is only for a deliberate change of generation, with the reason in the commit.
+
 Verification against executed Java 26.3 classes:
 
 - 707 random/noise comparisons cover both random algorithms, Gaussian sampling, normal and legacy Nether noise, simplex noise, blended terrain, biome-seed hashing and ridge folding.
