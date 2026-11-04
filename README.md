@@ -213,6 +213,20 @@ go test ./...
 make lint
 ```
 
+`make lint` runs golangci-lint v2.15.0 with `.golangci.yml` and reports every finding, including the ones the code already had.
+
+### Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request:
+
+- **vet:** `go vet` in each module.
+- **test:** `go test` for the root module and `net/`. `server/entity`, `server/block` and the Overworld generator each run as their own job.
+- **race:** `go test -race` on `server/world/...` without the generators, `protocol/bedrock/session`, `server/menu` and `server/player/...`. `TestGoldenJoin` is skipped there: its fixed 5 s wait is too short under `-race`.
+- **lint:** golangci-lint fails only on findings that are new since the merge base (`--new-from-rev`).
+- **golden:** the protocol golden snapshots and the import, mutation and wait boundary rules.
+
+The head comment of the workflow lists the known flaky tests.
+
 ### Repository layout
 
 | Path | Contents |

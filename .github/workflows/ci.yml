@@ -1,0 +1,227 @@
+# Checks every push and pull request, on every branch.
+#
+# Jobs and their rough wall time on a 4-core GitHub runner, with a warm cache:
+#   vet     ~3 min per module          go vet in each module
+#   test    ~5-10 min per entry        go test, the heavy packages each in their own entry
+#   race    ~10-20 min per entry       go test -race on the world, session, menu and player packages
+#   lint    ~3-5 min per module        golangci-lint, new issues only
+#   golden  ~3 min                     protocol golden snapshots and the root boundary rules
+#
+# Known flaky tests in server/entity: some tests of foxes (TestFoxes*), villagers
+# fleeing zombies (TestVillagersRunFromZombies), happy ghasts (TestHappyGhasts*),
+# rabbits (TestRabbits*) and frogs (TestFrog*, TestFrogs*) depend on random AI
+# choices and fail now and then. They are being made deterministic and are not
+# skipped here. A red "test (server/entity)" run whose only failures are among
+# them is most likely such a flake: re-run the job before you look further.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  # Superseded runs are cancelled, except on the default branch, where every
+  # commit keeps its own result.
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+env:
+  # Use exactly the toolchain setup-go installs from go.mod, never download another.
+  GOTOOLCHAIN: local
+
+jobs:
+  vet:
+    name: vet (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # fixes/ is an empty module that only keeps its directory out of the
+        # root module; it has no packages to vet.
+        module: [., net, net/interop, scripts/redstone_client]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            net/interop/go.sum
+            scripts/redstone_client/go.sum
+      - name: go vet
+        working-directory: ${{ matrix.module }}
+        run: go vet ./...
+
+  test:
+    name: test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Every package of the root module except the heavy ones below.
+          - name: main
+            module: .
+            packages: rest
+          # The three slowest packages, so that they run side by side.
+          - name: server/entity
+            module: .
+            packages: ./server/entity
+          - name: server/block
+            module: .
+            packages: ./server/block
+          - name: overworld generator
+            module: .
+            packages: ./server/world/generator/advanced/overworld/...
+          - name: net
+            module: net
+            packages: ./...
+    env:
+      # The packages the heavy entries above test. Keep in sync with them.
+      HEAVY: '^github.com/df-mc/dragonfly/server/(entity|block)$|^github.com/df-mc/dragonfly/server/world/generator/advanced/overworld(/|$)'
+      PACKAGES: ${{ matrix.packages }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+      - name: go test
+        working-directory: ${{ matrix.module }}
+        run: |
+          if [ "$PACKAGES" = rest ]; then
+            set -- $(go list ./... | grep -v -E "$HEAVY")
+          else
+            set -- $PACKAGES
+          fi
+          go test -timeout 40m "$@"
+
+  race:
+    name: race (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # server/world/... without the world generators.
+          - name: world
+            packages: world
+          # TestGoldenJoin waits a fixed 5 s for the session to resend the
+          # abilities of the player; under -race that takes longer, and the
+          # test fails though nothing races (it passes with a 30 s wait). The
+          # golden job runs it without -race.
+          - name: session
+            packages: ./protocol/bedrock/session
+            skip: ^TestGoldenJoin$
+          - name: menu, player
+            packages: ./server/menu ./server/player/...
+    env:
+      PACKAGES: ${{ matrix.packages }}
+      SKIP: ${{ matrix.skip }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+      - name: go test -race
+        run: |
+          if [ "$PACKAGES" = world ]; then
+            set -- $(go list ./server/world/... | grep -v -E '^github.com/df-mc/dragonfly/server/world/generator(/|$)')
+          else
+            set -- $PACKAGES
+          fi
+          if [ -n "$SKIP" ]; then
+            set -- -skip "$SKIP" "$@"
+          fi
+          go test -race -timeout 40m "$@"
+
+  # golangci-lint v2.15.0 is the newest release; v2.13.0 was the first to support
+  # Go 1.27. The settings are those of .golangci.yml; nested modules find it in
+  # the repository root.
+  #
+  # The code base has about a hundred findings already, so only new issues fail
+  # the job (--new-from-rev). The base revision is the merge base with the
+  # previous state of what is being checked:
+  #   pull request        the merge base with the base branch
+  #   push to a branch    the merge base with the commit the branch pointed at before
+  #   push of a new branch the merge base with the default branch
+  # This was chosen over a baseline file because a baseline has to be kept in
+  # step with every change that moves or fixes a finding, and over the action's
+  # only-new-issues because that one reads the diff from the GitHub API, which
+  # has size limits, and on a push only sees the commits of that push. Run golangci-lint without --new-from-rev to see
+  # every finding.
+  lint:
+    name: lint (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [., net, net/interop]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            net/interop/go.sum
+      - name: Find the base revision
+        id: base
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          rev=
+          if [ "$EVENT" = pull_request ]; then
+            rev=$(git merge-base "origin/$BASE_REF" HEAD) || rev=
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ] \
+              && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            rev=$(git merge-base "$BEFORE" HEAD) || rev=
+          fi
+          if [ -z "$rev" ]; then
+            rev=$(git merge-base "origin/$DEFAULT_BRANCH" HEAD) || rev=
+          fi
+          if [ -z "$rev" ] || [ "$rev" = "$(git rev-parse HEAD)" ]; then
+            rev=$(git rev-parse HEAD~1)
+          fi
+          echo "Linting the changes since $rev"
+          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          working-directory: ${{ matrix.module }}
+          args: --new-from-rev=${{ steps.base.outputs.rev }} --max-issues-per-linter=0 --max-same-issues=0 --timeout=20m
+
+  golden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Protocol golden snapshots
+        run: go test -count=1 -run 'TestGolden|BDS' ./protocol/bedrock/session
+      - name: Boundary rules
+        run: go test -count=1 -run 'TestImportBoundary|TestBoundaryRules|TestAdaptersKeepOffTheWorld|TestMutationRules|TestWaitRules|TestOwnersDoNotWait' .
