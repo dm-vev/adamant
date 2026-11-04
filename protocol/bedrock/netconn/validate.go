@@ -103,15 +103,24 @@ func ValidateClientData(data login.ClientData) error {
 }
 
 // validateServerAddress checks the address a client names the server by:
-// a URL of the signaling with the port after it, or a host and a port.
+// a URL of the signaling, or a host and a port. A client before 1.26.60
+// repeats the port of the URL after it, https://host:port:port, and one of
+// 1.26.60 does not, https://host:port (gophertunnel #544). Either is
+// taken, from a client of any protocol; a repeated port that differs is
+// not.
 func validateServerAddress(addr string) error {
 	if strings.Contains(addr, "://") {
-		i := strings.LastIndex(addr, ":")
-		u, err := url.Parse(addr[:i])
+		s := addr
+		if i := strings.LastIndex(s, ":"); i > 0 {
+			if v, err := url.Parse(s[:i]); err == nil && v.Port() != "" && v.Port() == s[i+1:] {
+				s = s[:i]
+			}
+		}
+		u, err := url.Parse(s)
 		if err != nil {
 			return fmt.Errorf("ServerAddress must be a URL, but got %v", addr)
 		}
-		if u.Host == "" || u.Port() == "" || u.Port() != addr[i+1:] || u.Scheme != "https" && u.Scheme != "http" {
+		if _, _, err := net.SplitHostPort(u.Host); err != nil || u.Hostname() == "" || u.Port() == "" || u.Scheme != "https" && u.Scheme != "http" {
 			return fmt.Errorf("ServerAddress is invalid: %v", addr)
 		}
 		return nil

@@ -37,6 +37,42 @@ func TestValidateClientData(t *testing.T) {
 	}
 }
 
+// TestValidateServerAddress takes the address of a NetherNet server by URL
+// in the form of clients before 1.26.60, the port repeated after the URL,
+// and in that of 1.26.60, which a Windows client sends (gophertunnel
+// #544), and refuses a repeated port that differs.
+func TestValidateServerAddress(t *testing.T) {
+	for addr, ok := range map[string]bool{
+		"https://example.com:19132:19132": true,
+		"https://example.com:19132":       true,
+		"http://127.0.0.1:19132:19132":    true,
+		"http://127.0.0.1:19132":          true,
+		"https://[::1]:19132:19132":       true,
+		"https://[::1]:19132":             true,
+		"https://example.com:19132/x":     true,
+		"play.example.com:19132":          true,
+		"[::1]:19132":                     true,
+
+		"https://example.com:19132:19133":       false,
+		"https://example.com:19132:19132:19132": false,
+		"https://example.com:19132:":            false,
+		"https://example.com":                   false,
+		"https://example.com:":                  false,
+		"https://example.com:port":              false,
+		"https://:19132":                        false,
+		"https://:19132:19132":                  false,
+		"ftp://example.com:19132":               false,
+		"ftp://example.com:19132:19132":         false,
+		"https://exa mple.com:19132":            false,
+		"example.com":                           false,
+		"example.com:65536":                     false,
+	} {
+		if err := validateServerAddress(addr); (err == nil) != ok {
+			t.Errorf("%s: %v, want accepted %v", addr, err, ok)
+		}
+	}
+}
+
 // TestValidateIdentity keeps the IDs of logins to the forms gophertunnel
 // kept them to.
 func TestValidateIdentity(t *testing.T) {
