@@ -44,6 +44,8 @@ var menuRequestScenarios = []struct {
 	{"multicraft", (*scenario).multiCraftScenario},
 	// D2: Move, Swap, Drop, Destroy, Touch and CreateCreative.
 	{"moves", (*scenario).movesScenario},
+	// D3: Craft and CraftDynamic.
+	{"crafts", (*scenario).craftsScenario},
 
 	// The stations of D10 to D13: the loom, the stonecutter, the beacon
 	// and merchants.

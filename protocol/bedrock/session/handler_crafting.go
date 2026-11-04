@@ -58,6 +58,12 @@ func (h *ItemStackRequestHandler) handleCraft(a *v2193.CraftRecipeStackRequestAc
 	if multi, ok := craft.(recipe.Multi); ok {
 		return h.beginMultiCraft(multi, int(a.NumberOfCrafts), s)
 	}
+	if h.batch != nil {
+		if err := h.batchOp(func() error { return h.batch.Craft(craft, int(a.NumberOfCrafts)) }); err != nil {
+			return fmt.Errorf("recipe with network id %v: %w", a.RecipeNetworkID, err)
+		}
+		return nil
+	}
 	_, shaped := craft.(recipe.Shaped)
 	_, shapeless := craft.(recipe.Shapeless)
 	_, userDataShapeless := craft.(recipe.UserDataShapeless)
@@ -1005,6 +1011,9 @@ func grow(i recipe.Item, count int) recipe.Item {
 
 // tryDynamicCraft attempts to match the items in the crafting grid with any registered dynamic recipes.
 func (h *ItemStackRequestHandler) tryDynamicCraft(s *Session, tx *world.Tx, timesCrafted int) error {
+	if h.batch != nil {
+		return h.batchOp(func() error { return h.batch.CraftDynamic(timesCrafted) })
+	}
 	if timesCrafted < 1 {
 		return fmt.Errorf("times crafted must be at least 1")
 	}
