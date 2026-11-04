@@ -7,7 +7,7 @@ import (
 )
 
 type giveCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target      `cmd:"targets"`
 	Item    itemArgument      `cmd:"item"`
 	Count   cmd.Optional[int] `cmd:"count"`

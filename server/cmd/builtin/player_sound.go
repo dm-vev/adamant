@@ -18,7 +18,7 @@ func registerPlayerSoundCommands(_ serverAdapter) {
 }
 
 type playSoundCommand struct {
-	opGate
+	gameMaster
 	Sound     string                     `cmd:"sound"`
 	Source    cmd.Optional[string]       `cmd:"source"`
 	Targets   cmd.Optional[[]cmd.Target] `cmd:"targets"`
@@ -52,7 +52,7 @@ func (p playSoundCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 }
 
 type stopSoundCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target         `cmd:"targets"`
 	Source  cmd.Optional[string] `cmd:"source"`
 	Sound   cmd.Optional[string] `cmd:"sound"`
@@ -71,7 +71,7 @@ func (s stopSoundCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 }
 
 type spawnParticleCommand struct {
-	opGate
+	gameMaster
 	Name     string                     `cmd:"name"`
 	Position cmd.Optional[mgl64.Vec3]   `cmd:"pos"`
 	Delta    cmd.Optional[mgl64.Vec3]   `cmd:"delta"`

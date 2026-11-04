@@ -3,7 +3,6 @@ package builtin
 import (
 	"context"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -14,58 +13,88 @@ import (
 )
 
 // gateTestAdapter is a server whose operators are the players of the UUIDs
-// it holds.
+// it holds, at the levels it holds, and whose command blocks run at
+// cmd.LevelGameMaster.
 type gateTestAdapter struct {
 	serverAdapter
-	ops map[uuid.UUID]bool
+	ops map[uuid.UUID]cmd.Level
 }
 
-func (s gateTestAdapter) PlayerIsOperator(id uuid.UUID) bool { return s.ops[id] }
+func (s gateTestAdapter) PlayerIsOperator(id uuid.UUID) bool {
+	_, ok := s.ops[id]
+	return ok
+}
+func (s gateTestAdapter) PlayerLevel(id uuid.UUID) cmd.Level { return s.ops[id] }
+func (gateTestAdapter) CommandLevel(_ string, declared cmd.Level) cmd.Level {
+	return declared
+}
+func (gateTestAdapter) CommandBlockLevel() cmd.Level { return cmd.LevelGameMaster }
 
-// gateSources are the sources TestCommandGatesToday asks every command
-// about, by name.
+// gateSources are the sources TestCommandGates asks every command about,
+// by name.
 type gateSources map[string]cmd.Source
 
-// newGateSources registers the built-ins on a server of one operator and
-// returns the sources of the test: a member and an operator online, the
-// console, a command block, and /execute run by the member and by the
-// operator.
+// newGateSources registers the built-ins on a server of three operators,
+// of the levels 2, 3 and 4, and returns the sources of the test: a member
+// and the operators online, the console, a command block, and /execute run
+// by the member and by the operator of level 4.
 func newGateSources(t *testing.T) gateSources {
 	t.Helper()
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
-	var member, op *player.Player
-	hm := world.EntitySpawnOpts{}.New(player.Type, player.Config{Name: "Member", UUID: uuid.New()})
-	ho := world.EntitySpawnOpts{}.New(player.Type, player.Config{Name: "Op", UUID: uuid.New()})
+	names := []string{"Member", "GameMaster", "Admin", "Owner"}
+	players := make([]*player.Player, len(names))
 	if err := w.Do(func(tx *world.Tx) {
-		member = tx.AddEntity(hm).(*player.Player)
-		op = tx.AddEntity(ho).(*player.Player)
+		for i, name := range names {
+			h := world.EntitySpawnOpts{}.New(player.Type, player.Config{Name: name, UUID: uuid.New()})
+			players[i] = tx.AddEntity(h).(*player.Player)
+		}
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	Register(gateTestAdapter{ops: map[uuid.UUID]bool{op.UUID(): true}})
+	member, gm, adm, op := players[0], players[1], players[2], players[3]
+	Register(gateTestAdapter{ops: map[uuid.UUID]cmd.Level{
+		gm.UUID(): cmd.LevelGameMaster, adm.UUID(): cmd.LevelAdmin, op.UUID(): cmd.LevelOwner,
+	}})
+	t.Cleanup(func() { cmd.SetPermissions(nil) })
+	stored := func(src cmd.Source) cmd.Source { return &storeSource{Source: src, store: func(bool, int) {}} }
 	return gateSources{
 		"member":           member,
-		"operator":         op,
+		"operator 2":       gm,
+		"operator 3":       adm,
+		"operator 4":       op,
 		"console":          consoleTestSource{out: &cmd.Output{}},
 		"command block":    cmd.NewBlockSource(cube.Pos{0, 64, 0}, w, ""),
 		"execute member":   cmd.WithContext(member, cmd.ExecutionContext{Executor: member}),
 		"execute operator": cmd.WithContext(op, cmd.ExecutionContext{Executor: op}),
+		"store member":     stored(cmd.WithContext(member, cmd.ExecutionContext{Executor: member})),
 	}
 }
 
-// builtinCommands returns the built-in commands registered, by name, each
-// once, sorted.
-func builtinCommands() []cmd.Command {
-	seen := map[string]cmd.Command{}
-	for _, c := range cmd.Commands() {
-		seen[c.Name()] = c
-	}
-	out := make([]cmd.Command, 0, len(seen))
-	for _, c := range seen {
+// builtinNames are the names of the 75 built-in commands, sorted.
+var builtinNames = []string{
+	"about", "attribute", "ban", "ban-ip", "banlist", "bossbar", "clear", "clone", "damage", "data",
+	"defaultgamemode", "deop", "difficulty", "effect", "enchant", "execute", "experience", "fill", "fillbiome",
+	"forceload", "gamemode", "gamerule", "gc", "give", "help", "item", "kick", "kill", "list", "locate", "loot",
+	"me", "msg", "netstat", "op", "pardon", "pardon-ip", "particle", "place", "playsound", "random", "recipe",
+	"return", "ride", "rotate", "save-all", "save-off", "save-on", "say", "scoreboard", "seed", "setblock",
+	"setidletimeout", "setworldspawn", "spawnpoint", "spectate", "spreadplayers", "status", "stop", "stopsound",
+	"summon", "tag", "team", "teammsg", "tellraw", "tick", "time", "title", "tp", "transfer", "trigger", "version",
+	"weather", "whitelist", "worldborder",
+}
+
+// builtinCommands returns the built-in commands, in the order of
+// builtinNames, and fails for any that is not registered.
+func builtinCommands(t *testing.T) []cmd.Command {
+	t.Helper()
+	out := make([]cmd.Command, 0, len(builtinNames))
+	for _, name := range builtinNames {
+		c, ok := cmd.ByAlias(name)
+		if !ok || c.Name() != name {
+			t.Fatalf("/%s is not registered", name)
+		}
 		out = append(out, c)
 	}
-	slices.SortFunc(out, func(a, b cmd.Command) int { return strings.Compare(a.Name(), b.Name()) })
 	return out
 }
 
@@ -89,43 +118,64 @@ func runnableBy(t *testing.T, commands []cmd.Command, who string, src cmd.Source
 	return names
 }
 
-// openCommandsToday are the commands any player may run before the
-// permission levels.
-var openCommandsToday = []string{"about", "help", "list", "me", "msg", "random", "status", "teammsg", "trigger", "version"}
+// Commands by the level Java 26.3 requires of them, as the built-ins
+// declare it; version stays open, as it has been.
+var (
+	openCommands  = []string{"about", "help", "list", "me", "msg", "random", "status", "teammsg", "trigger", "version"}
+	adminCommands = []string{"ban", "ban-ip", "banlist", "deop", "kick", "netstat", "op", "pardon", "pardon-ip",
+		"setidletimeout", "tick", "transfer", "whitelist"}
+	ownerCommands = []string{"gc", "save-all", "save-off", "save-on", "stop"}
+)
 
-// TestCommandGatesToday pins who may run each built-in command: a player
-// who is no operator runs ten, an operator all but /stop, which refuses
-// every player, and every source that is no player, the console and a
-// command block among them, all. /execute keeps the rights of the source
-// that ran it, but for /stop, whose check does not unwrap it.
-func TestCommandGatesToday(t *testing.T) {
+// TestCommandGates checks who may run each built-in command, by the level
+// the command needs: Java 26.3's, with /version open to everyone. A player
+// who is no operator runs the ten open commands; an operator, the commands
+// of its level and below, but /stop, which refuses every player; the
+// console, all; a command block, those of level 2. /execute, also with
+// store, keeps the level of the source that ran it, and no longer lets
+// "execute run stop" pass.
+func TestCommandGates(t *testing.T) {
 	sources := newGateSources(t)
-	commands := builtinCommands()
-	if len(commands) != 75 {
-		t.Errorf("%d built-in commands, want 75", len(commands))
+	commands := builtinCommands(t)
+	without := func(names []string, drop ...[]string) []string {
+		return slices.DeleteFunc(slices.Clone(names), func(n string) bool {
+			for _, d := range drop {
+				if slices.Contains(d, n) {
+					return true
+				}
+			}
+			return false
+		})
 	}
-	all := make([]string, 0, len(commands))
-	for _, c := range commands {
-		all = append(all, c.Name())
-	}
-	without := func(names []string, name string) []string {
-		return slices.DeleteFunc(slices.Clone(names), func(n string) bool { return n == name })
-	}
-	with := func(names []string, name string) []string {
-		out := append(slices.Clone(names), name)
-		slices.Sort(out)
-		return out
-	}
+	stop := []string{"stop"}
 	for who, want := range map[string][]string{
-		"member":           openCommandsToday,
-		"operator":         without(all, "stop"),
-		"console":          all,
-		"command block":    all,
-		"execute member":   with(openCommandsToday, "stop"),
-		"execute operator": all,
+		"member":           openCommands,
+		"operator 2":       without(builtinNames, adminCommands, ownerCommands),
+		"operator 3":       without(builtinNames, ownerCommands),
+		"operator 4":       without(builtinNames, stop),
+		"console":          builtinNames,
+		"command block":    without(builtinNames, adminCommands, ownerCommands),
+		"execute member":   openCommands,
+		"execute operator": without(builtinNames, stop),
+		"store member":     openCommands,
 	} {
 		if got := runnableBy(t, commands, who, sources[who]); !slices.Equal(got, want) {
 			t.Errorf("%s may run %v\nwant %v", who, got, want)
 		}
 	}
+}
+
+// TestDeniedCommandIsUnknown checks that a source below the level of a
+// command is told the command does not exist, as Java tells it.
+func TestDeniedCommandIsUnknown(t *testing.T) {
+	sources := newGateSources(t)
+	c, _ := cmd.ByAlias("ban")
+	out := &cmd.Output{}
+	src := cmd.NewBlockSource(cube.Pos{}, nil, "")
+	c.Execute("Steve", src, nil)
+	*out = *src.Output()
+	if errs := out.Errors(); len(errs) != 1 || errs[0].Error() != cmd.MessageUnknown.F("ban").Error() {
+		t.Errorf("/ban from a command block: %v, want %q", errs, cmd.MessageUnknown.F("ban").Error())
+	}
+	_ = sources
 }

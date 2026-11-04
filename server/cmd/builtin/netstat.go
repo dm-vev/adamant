@@ -11,7 +11,7 @@ import (
 // round trip and the queues on both sides, then what the client of each
 // tells of its transport, such as the protocol and the congestion of SCTP.
 type netstatCommand struct {
-	opGate
+	admin
 	Targets []cmd.Target `cmd:"target"`
 }
 

@@ -4,10 +4,19 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/google/uuid"
 )
 
-// registerTestAdapter satisfies serverAdapter; constructors must not call it.
+// registerTestAdapter satisfies serverAdapter; constructors must not call
+// it. Under its permissions, which Register installs, players have
+// cmd.LevelAll.
 type registerTestAdapter struct{ serverAdapter }
+
+func (registerTestAdapter) PlayerLevel(uuid.UUID) cmd.Level { return cmd.LevelAll }
+func (registerTestAdapter) CommandLevel(_ string, declared cmd.Level) cmd.Level {
+	return declared
+}
+func (registerTestAdapter) CommandBlockLevel() cmd.Level { return cmd.LevelGameMaster }
 
 // Every runnable is validated by cmd.New at registration; an invalid parameter
 // layout panics there and would abort server startup.

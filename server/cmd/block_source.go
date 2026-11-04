@@ -29,6 +29,10 @@ func (s *BlockSource) Name() string {
 }
 func (s *BlockSource) SendCommandOutput(o *Output) { s.output = o }
 
+// PermissionLevel returns the level command blocks run commands at, as the
+// server sets it: LevelGameMaster by default, as Java fixes it.
+func (s *BlockSource) PermissionLevel() Level { return CommandBlockLevel() }
+
 // Output returns the result captured from the last executed command.
 func (s *BlockSource) Output() *Output {
 	if s.output == nil {

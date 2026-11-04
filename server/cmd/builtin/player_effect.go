@@ -15,7 +15,7 @@ import (
 )
 
 type effectCommand struct {
-	opGate
+	gameMaster
 	Give      cmd.SubCommand       `cmd:"give"`
 	Targets   []cmd.Target         `cmd:"targets"`
 	Effect    string               `cmd:"effect"`
@@ -24,7 +24,7 @@ type effectCommand struct {
 	Hide      cmd.Optional[bool]   `cmd:"hideParticles"`
 }
 type clearEffectCommand struct {
-	opGate
+	gameMaster
 	Clear   cmd.SubCommand             `cmd:"clear"`
 	Targets cmd.Optional[[]cmd.Target] `cmd:"targets"`
 	Effect  cmd.Optional[string]       `cmd:"effect"`
@@ -141,7 +141,6 @@ func enchantmentType(name string) item.EnchantmentType {
 	}
 	return nil
 }
-func (c enchantCommand) Allow(src cmd.Source) bool { return c.worldOpCommand.Allow(src) }
 func (c enchantCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	e := enchantmentType(c.Enchantment)
 	if e == nil {

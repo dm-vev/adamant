@@ -19,7 +19,7 @@ import (
 // executeCommand ports Java ExecuteCommand. Modifiers fork or narrow the
 // execution context; `run` executes a nested command with that context.
 type executeCommand struct {
-	opGate
+	gameMaster
 	Args cmd.Varargs
 }
 
@@ -437,6 +437,10 @@ type storeSource struct {
 	cmd.Source
 	store func(success bool, result int)
 }
+
+// Unwrap returns the source of the command, whose level the storeSource
+// has.
+func (s *storeSource) Unwrap() cmd.Source { return s.Source }
 
 func (s *storeSource) SendCommandOutput(o *cmd.Output) {
 	s.store(o.Success(), o.Result())

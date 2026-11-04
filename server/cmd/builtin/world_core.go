@@ -16,33 +16,9 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-type worldOpCommand struct{ srv serverAdapter }
-
-func (c worldOpCommand) Allow(src cmd.Source) bool { return operatorAllowed(c.srv, src) }
-
-// commandServer is the adapter passed to Register; opGate consults it so
-// runnables can require Java permission level 2 without carrying the adapter.
+// commandServer is the adapter passed to Register, which /execute finds the
+// dimensions by.
 var commandServer serverAdapter
-
-// opGate restricts a runnable to operators and non-player sources.
-type opGate struct{}
-
-func (opGate) Allow(src cmd.Source) bool { return operatorAllowed(commandServer, src) }
-
-// operatorAllowed unwraps execute contexts to the originating source. Player
-// sources need operator status; console and other sources are trusted.
-func operatorAllowed(srv serverAdapter, src cmd.Source) bool {
-	for {
-		switch source := src.(type) {
-		case *player.Player:
-			return srv != nil && srv.PlayerIsOperator(source.UUID())
-		case cmd.ContextSource:
-			src = source.Source
-		default:
-			return true
-		}
-	}
-}
 
 type setBlockCommand struct {
 	worldOpCommand

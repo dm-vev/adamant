@@ -33,8 +33,8 @@ type teleportSelfCommand struct {
 	Destination []cmd.Target `cmd:"destination"`
 }
 
-func (c teleportCommand) Allow(src cmd.Source) bool     { return worldOpCommand{c.srv}.Allow(src) }
-func (c teleportSelfCommand) Allow(src cmd.Source) bool { return worldOpCommand{c.srv}.Allow(src) }
+func (teleportCommand) RequiredLevel() cmd.Level     { return cmd.LevelGameMaster }
+func (teleportSelfCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 
 func (c teleportCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	teleportToEntity(c.Targets, c.Destination, o)
@@ -84,10 +84,8 @@ type teleportSelfPositionCommand struct {
 	Position mgl64.Vec3 `cmd:"position"`
 }
 
-func (c teleportPositionCommand) Allow(src cmd.Source) bool { return worldOpCommand{c.srv}.Allow(src) }
-func (c teleportSelfPositionCommand) Allow(src cmd.Source) bool {
-	return worldOpCommand{c.srv}.Allow(src)
-}
+func (teleportPositionCommand) RequiredLevel() cmd.Level     { return cmd.LevelGameMaster }
+func (teleportSelfPositionCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 
 func (c teleportPositionCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	teleportToPosition(c.Targets, c.Position, o, src, tx)
@@ -145,7 +143,7 @@ type teleportRotationCommand struct {
 	Pitch    float64      `cmd:"pitch"`
 }
 
-func (c teleportRotationCommand) Allow(src cmd.Source) bool { return worldOpCommand{c.srv}.Allow(src) }
+func (teleportRotationCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c teleportRotationCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	if len(c.Targets) == 0 {
 		o.Errort(cmd.MessageNoTargets)
@@ -165,9 +163,7 @@ type teleportFacingPositionCommand struct {
 	LookAt   mgl64.Vec3     `cmd:"location"`
 }
 
-func (c teleportFacingPositionCommand) Allow(src cmd.Source) bool {
-	return worldOpCommand{c.srv}.Allow(src)
-}
+func (teleportFacingPositionCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c teleportFacingPositionCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	if len(c.Targets) == 0 {
 		o.Errort(cmd.MessageNoTargets)
@@ -189,9 +185,7 @@ type teleportFacingEntityCommand struct {
 	LookAt   []cmd.Target   `cmd:"target"`
 }
 
-func (c teleportFacingEntityCommand) Allow(src cmd.Source) bool {
-	return worldOpCommand{c.srv}.Allow(src)
-}
+func (teleportFacingEntityCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c teleportFacingEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	if len(c.Targets) == 0 {
 		o.Errort(cmd.MessageNoTargets)
@@ -241,7 +235,7 @@ type spawnpointCommand struct {
 	Position cmd.Optional[mgl64.Vec3]   `cmd:"position"`
 }
 
-func (c spawnpointCommand) Allow(src cmd.Source) bool { return worldOpCommand{c.srv}.Allow(src) }
+func (spawnpointCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c spawnpointCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	targets, ok := c.Targets.Load()
 	if !ok {
@@ -270,7 +264,7 @@ type rideCommand struct {
 	Vehicle []cmd.Target   `cmd:"vehicle"`
 }
 
-func (c rideCommand) Allow(src cmd.Source) bool { return worldOpCommand{c.srv}.Allow(src) }
+func (rideCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c rideCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	target, ok := singleTarget(c.Target, o)
 	if !ok {
@@ -303,7 +297,7 @@ type dismountCommand struct {
 	Dismount cmd.SubCommand `cmd:"dismount"`
 }
 
-func (c dismountCommand) Allow(src cmd.Source) bool { return worldOpCommand{c.srv}.Allow(src) }
+func (dismountCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c dismountCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	target, ok := singleTarget(c.Target, o)
 	if !ok {
@@ -342,13 +336,11 @@ type spreadPlayersUnderCommand struct {
 	Targets        []cmd.Target   `cmd:"targets"`
 }
 
-func (c spreadPlayersCommand) Allow(src cmd.Source) bool { return worldOpCommand{c.srv}.Allow(src) }
+func (spreadPlayersCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c spreadPlayersCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	spreadPlayers(tx, o, c.Center, c.SpreadDistance, c.MaxRange, tx.Range().Max(), c.Targets)
 }
-func (c spreadPlayersUnderCommand) Allow(src cmd.Source) bool {
-	return worldOpCommand{c.srv}.Allow(src)
-}
+func (spreadPlayersUnderCommand) RequiredLevel() cmd.Level { return cmd.LevelGameMaster }
 func (c spreadPlayersUnderCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	spreadPlayers(tx, o, c.Center, c.SpreadDistance, c.MaxRange, c.MaxHeight, c.Targets)
 }

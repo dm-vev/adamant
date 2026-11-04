@@ -8,25 +8,25 @@ import (
 )
 
 type timeSetValueCommand struct {
-	opGate
+	gameMaster
 	Set   cmd.SubCommand `cmd:"set"`
 	Value int            `cmd:"value"`
 }
 
 type timeSetPresetCommand struct {
-	opGate
+	gameMaster
 	Set   cmd.SubCommand `cmd:"set"`
 	Value timeSetPreset  `cmd:"value"`
 }
 
 type timeAddCommand struct {
-	opGate
+	gameMaster
 	Add   cmd.SubCommand `cmd:"add"`
 	Value int            `cmd:"value"`
 }
 
 type timeQueryCommand struct {
-	opGate
+	gameMaster
 	Query cmd.SubCommand `cmd:"query"`
 	Type  timeQueryType  `cmd:"type"`
 }

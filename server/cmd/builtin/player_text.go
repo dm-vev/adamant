@@ -19,7 +19,7 @@ func registerPlayerTextCommands(srv serverAdapter) {
 }
 
 type textCommand struct {
-	opGate
+	gameMaster
 	srv     serverAdapter
 	Targets []cmd.Target `cmd:"targets"`
 	Action  string       `cmd:"action"`
@@ -75,7 +75,7 @@ func (c textCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 }
 
 type tellRawCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target `cmd:"targets"`
 	JSON    cmd.Varargs  `cmd:"message"`
 }

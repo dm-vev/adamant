@@ -12,7 +12,7 @@ import (
 )
 
 type dataCommand struct {
-	opGate
+	gameMaster
 	Args cmd.Varargs
 }
 

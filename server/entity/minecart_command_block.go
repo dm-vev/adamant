@@ -60,13 +60,14 @@ func (m *MinecartCommandBlock) Inventory() *inventory.Inventory {
 
 func (b *commandBlockMinecartBehaviour) Base() *MinecartBehaviour { return b.MinecartBehaviour }
 
-// Interact opens the command-block editor only for creative operators.
+// Interact opens the command-block editor only for creative players of the
+// level of game masters.
 func (m *MinecartCommandBlock) Interact(_ *world.Tx, user item.User, _ *item.UseContext) bool {
 	player, ok := user.(interface {
 		UUID() uuid.UUID
 		GameMode() world.GameMode
 	})
-	return ok && player.GameMode().CreativeInventory() && cmd.IsOperator(player.UUID())
+	return ok && player.GameMode().CreativeInventory() && cmd.HasLevel(player.UUID(), cmd.LevelGameMaster)
 }
 
 func (m *MinecartCommandBlock) Tick(tx *world.Tx, tick int64) {

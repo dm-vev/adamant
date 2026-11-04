@@ -13,39 +13,39 @@ import (
 )
 
 type tickQueryCommand struct {
-	worldOpCommand
+	worldAdminCommand
 	Query cmd.SubCommand `cmd:"query"`
 }
 type tickRateCommand struct {
-	worldOpCommand
+	worldAdminCommand
 	Rate  cmd.SubCommand `cmd:"rate"`
 	Value float64        `cmd:"value"`
 }
 type tickFreezeCommand struct {
-	worldOpCommand
+	worldAdminCommand
 	Freeze cmd.SubCommand `cmd:"freeze"`
 }
 type tickUnfreezeCommand struct {
-	worldOpCommand
+	worldAdminCommand
 	Unfreeze cmd.SubCommand `cmd:"unfreeze"`
 }
 type tickStepCommand struct {
-	worldOpCommand
+	worldAdminCommand
 	Step  cmd.SubCommand    `cmd:"step"`
 	Ticks cmd.Optional[int] `cmd:"ticks"`
 }
 type tickStepStopCommand struct {
-	worldOpCommand
+	worldAdminCommand
 	Step cmd.SubCommand `cmd:"step"`
 	Stop cmd.SubCommand `cmd:"stop"`
 }
 type tickSprintCommand struct {
-	worldOpCommand
+	worldAdminCommand
 	Sprint cmd.SubCommand    `cmd:"sprint"`
 	Ticks  cmd.Optional[int] `cmd:"ticks"`
 }
 type tickSprintStopCommand struct {
-	worldOpCommand
+	worldAdminCommand
 	Sprint cmd.SubCommand `cmd:"sprint"`
 	Stop   cmd.SubCommand `cmd:"stop"`
 }
@@ -85,7 +85,7 @@ type fillBiomeCommand struct {
 	Biome string     `cmd:"biome"`
 }
 type fillBiomeReplaceCommand struct {
-	opGate
+	gameMaster
 	fillBiomeCommand
 	Replace cmd.SubCommand `cmd:"replace"`
 	Filter  string         `cmd:"filter"`
@@ -93,11 +93,12 @@ type fillBiomeReplaceCommand struct {
 
 func registerWorldTickCommands(srv serverAdapter) {
 	guard := worldOpCommand{srv: srv}
+	tick := worldAdminCommand{guard}
 	cmd.Register(newCommand("tick", nil,
-		tickQueryCommand{worldOpCommand: guard}, tickRateCommand{worldOpCommand: guard},
-		tickFreezeCommand{worldOpCommand: guard}, tickUnfreezeCommand{worldOpCommand: guard},
-		tickStepCommand{worldOpCommand: guard}, tickStepStopCommand{worldOpCommand: guard},
-		tickSprintCommand{worldOpCommand: guard}, tickSprintStopCommand{worldOpCommand: guard},
+		tickQueryCommand{worldAdminCommand: tick}, tickRateCommand{worldAdminCommand: tick},
+		tickFreezeCommand{worldAdminCommand: tick}, tickUnfreezeCommand{worldAdminCommand: tick},
+		tickStepCommand{worldAdminCommand: tick}, tickStepStopCommand{worldAdminCommand: tick},
+		tickSprintCommand{worldAdminCommand: tick}, tickSprintStopCommand{worldAdminCommand: tick},
 	))
 	cmd.Register(newCommand("forceload", nil,
 		forceLoadAddCommand{worldOpCommand: guard}, forceLoadRemoveCommand{worldOpCommand: guard},

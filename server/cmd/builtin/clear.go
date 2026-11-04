@@ -8,7 +8,7 @@ import (
 )
 
 type clearCommand struct {
-	opGate
+	gameMaster
 	Targets cmd.Optional[[]cmd.Target] `cmd:"target"`
 }
 

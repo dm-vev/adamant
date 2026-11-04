@@ -24,11 +24,11 @@ func (p *Player) CanReach(pos mgl64.Vec3) bool {
 }
 
 // CanUseGameMasterBlocks reports whether the player may use the blocks of
-// game masters, such as command, structure and jigsaw blocks: it is an
-// operator in a game mode with the creative inventory, as
+// game masters, such as command, structure and jigsaw blocks: it has the
+// level of game masters, in a game mode with the creative inventory, as
 // Player.canUseGameMasterBlocks of Java.
 func (p *Player) CanUseGameMasterBlocks() bool {
-	return p.GameMode().CreativeInventory() && cmd.IsOperator(p.UUID())
+	return p.GameMode().CreativeInventory() && cmd.HasLevel(p.UUID(), cmd.LevelGameMaster)
 }
 
 // EditJigsaw sets the names, pool, final state, joint and priorities of the

@@ -7,17 +7,12 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/google/uuid"
 )
 
-type operatorTestAdapter struct {
-	serverAdapter
-	operator bool
-}
-
-func (s operatorTestAdapter) PlayerIsOperator(uuid.UUID) bool { return s.operator }
-
-func TestAdminPermissionTracksOperatorStatusAndExecuteContext(t *testing.T) {
+// TestAdminCommandsNeedAdminLevelAlsoThroughExecute checks that /ban runs
+// for a player of cmd.LevelAdmin, not for one of cmd.LevelGameMaster, and
+// that /execute gives the player no more.
+func TestAdminCommandsNeedAdminLevelAlsoThroughExecute(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	var p *player.Player
@@ -25,16 +20,19 @@ func TestAdminPermissionTracksOperatorStatusAndExecuteContext(t *testing.T) {
 	if err := w.Do(func(tx *world.Tx) { p = tx.AddEntity(h).(*player.Player) }).Wait(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-
-	if (adminPermission{srv: operatorTestAdapter{}}).Allow(p) {
-		t.Fatal("non-operator allowed to run an admin command")
-	}
-	operator := adminPermission{srv: operatorTestAdapter{operator: true}}
-	if !operator.Allow(p) {
-		t.Fatal("operator denied an admin command")
-	}
+	ban := newBanPlayerCommand(registerTestAdapter{})
 	wrapped := cmd.WithContext(p, cmd.ExecutionContext{Executor: p})
-	if (adminPermission{srv: operatorTestAdapter{}}).Allow(wrapped) {
-		t.Fatal("execute context bypassed admin command permission")
+	stored := &storeSource{Source: wrapped, store: func(bool, int) {}}
+	playersAtLevel(t, cmd.LevelGameMaster)
+	for _, src := range []cmd.Source{p, wrapped, stored} {
+		if len(ban.Runnables(src)) != 0 {
+			t.Fatalf("%T of a game master may run /ban", src)
+		}
+	}
+	playersAtLevel(t, cmd.LevelAdmin)
+	for _, src := range []cmd.Source{p, wrapped, stored} {
+		if len(ban.Runnables(src)) == 0 {
+			t.Fatalf("%T of an admin may not run /ban", src)
+		}
 	}
 }

@@ -8,7 +8,11 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+// stopCommand needs cmd.LevelOwner, and refuses every player, as it always
+// has on this server, also through /execute: it runs from the console and
+// from the other sources of the level of owners.
 type stopCommand struct {
+	owner
 	srv serverAdapter
 }
 
@@ -26,6 +30,13 @@ func (s stopCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 }
 
 func (stopCommand) Allow(src cmd.Source) bool {
+	for {
+		w, ok := src.(cmd.Wrapper)
+		if !ok {
+			break
+		}
+		src = w.Unwrap()
+	}
 	_, isPlayer := src.(*player.Player)
 	return !isPlayer
 }

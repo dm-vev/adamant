@@ -19,19 +19,19 @@ type tagTarget interface {
 	SetCommandTags([]string)
 }
 type tagAddCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target   `cmd:"targets"`
 	Add     cmd.SubCommand `cmd:"add"`
 	Name    string         `cmd:"name"`
 }
 type tagRemoveCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target   `cmd:"targets"`
 	Remove  cmd.SubCommand `cmd:"remove"`
 	Name    string         `cmd:"name"`
 }
 type tagListCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target   `cmd:"targets"`
 	List    cmd.SubCommand `cmd:"list"`
 }
@@ -97,21 +97,21 @@ func commandTargetName(target cmd.Target) string {
 }
 
 type attributeGetCommand struct {
-	opGate
+	gameMaster
 	Target    []cmd.Target          `cmd:"target"`
 	Attribute string                `cmd:"attribute"`
 	Get       cmd.SubCommand        `cmd:"get"`
 	Scale     cmd.Optional[float64] `cmd:"scale"`
 }
 type attributeBaseGetCommand struct {
-	opGate
+	gameMaster
 	Target    []cmd.Target   `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Base      cmd.SubCommand `cmd:"base"`
 	Get       cmd.SubCommand `cmd:"get"`
 }
 type attributeBaseSetCommand struct {
-	opGate
+	gameMaster
 	Target    []cmd.Target   `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Base      cmd.SubCommand `cmd:"base"`
@@ -119,14 +119,14 @@ type attributeBaseSetCommand struct {
 	Value     float64        `cmd:"value"`
 }
 type attributeBaseResetCommand struct {
-	opGate
+	gameMaster
 	Target    []cmd.Target   `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Base      cmd.SubCommand `cmd:"base"`
 	Reset     cmd.SubCommand `cmd:"reset"`
 }
 type attributeModifierAddCommand struct {
-	opGate
+	gameMaster
 	Target    []cmd.Target   `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Modifier  cmd.SubCommand `cmd:"modifier"`
@@ -136,7 +136,7 @@ type attributeModifierAddCommand struct {
 	Operation string         `cmd:"operation"`
 }
 type attributeModifierRemoveCommand struct {
-	opGate
+	gameMaster
 	Target    []cmd.Target   `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Modifier  cmd.SubCommand `cmd:"modifier"`
@@ -144,7 +144,7 @@ type attributeModifierRemoveCommand struct {
 	ID        string         `cmd:"id"`
 }
 type attributeModifierValueCommand struct {
-	opGate
+	gameMaster
 	Target    []cmd.Target   `cmd:"target"`
 	Attribute string         `cmd:"attribute"`
 	Modifier  cmd.SubCommand `cmd:"modifier"`

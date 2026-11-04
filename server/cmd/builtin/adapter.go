@@ -4,11 +4,15 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
 )
 
 type serverAdapter interface {
+	// Permissions are the levels of the players online and of the
+	// commands, which Register installs.
+	cmd.Permissions
 	// Online returns the players online, in the order they joined, without
 	// waiting for any world.
 	Online() []server.OnlinePlayer

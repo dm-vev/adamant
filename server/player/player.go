@@ -505,6 +505,12 @@ func (p *Player) Transfer(address string) error {
 	return nil
 }
 
+// PermissionLevel returns the level of the player, as the server says: the
+// level of its entry of ops.json for an operator, the level of players who
+// are not operators otherwise. It is the level of the commands the player
+// may run.
+func (p *Player) PermissionLevel() cmd.Level { return cmd.PlayerLevel(p.UUID()) }
+
 // SendCommandOutput sends the output of a command the player ran. It ports
 // CommandSourceStack.sendSuccess: success messages reach the player only
 // with send_command_feedback on, and with log_admin_commands on they are

@@ -12,39 +12,35 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-type adminPermission struct{ srv serverAdapter }
-
-func (a adminPermission) Allow(src cmd.Source) bool { return operatorAllowed(a.srv, src) }
-
 type opCmd struct {
-	adminPermission
+	admin
 	srv  serverAdapter
 	Name string `cmd:"player"`
 }
 type deopCmd struct {
-	adminPermission
+	admin
 	srv  serverAdapter
 	Name string `cmd:"player"`
 }
 type banCmd struct {
-	adminPermission
+	admin
 	srv    serverAdapter
 	Name   string                    `cmd:"player"`
 	Reason cmd.Optional[cmd.Varargs] `cmd:"reason"`
 }
 type banIPCmd struct {
-	adminPermission
+	admin
 	srv    serverAdapter
 	IP     string                    `cmd:"address"`
 	Reason cmd.Optional[cmd.Varargs] `cmd:"reason"`
 }
 type pardonCmd struct {
-	adminPermission
+	admin
 	srv  serverAdapter
 	Name string `cmd:"player"`
 }
 type pardonIPCmd struct {
-	adminPermission
+	admin
 	srv serverAdapter
 	IP  string `cmd:"address"`
 }
@@ -54,32 +50,36 @@ func (banListTarget) Type() string                { return "banlisttarget" }
 func (banListTarget) Options(cmd.Source) []string { return []string{"players", "ips"} }
 
 type banListCmd struct {
-	adminPermission
+	admin
 	srv  serverAdapter
 	Type cmd.Optional[banListTarget] `cmd:"type"`
 }
 type saveAllCmd struct {
-	adminPermission
+	owner
 	srv   serverAdapter
 	Flush cmd.Optional[cmd.SubCommand] `cmd:"flush"`
 }
 type saveToggleCmd struct {
-	adminPermission
+	owner
 	srv     serverAdapter
 	enabled bool
 }
 type idleTimeoutCmd struct {
-	adminPermission
+	admin
 	srv     serverAdapter
 	Minutes int `cmd:"minutes"`
 }
 type transferCmd struct {
-	adminPermission
+	admin
 	srv      serverAdapter
 	Hostname string                     `cmd:"hostname"`
 	Port     cmd.Optional[int]          `cmd:"port"`
 	Targets  cmd.Optional[[]cmd.Target] `cmd:"players"`
 }
+
+// versionCmd is open to every player, as it has always been on this
+// server. Java's needs cmd.LevelGameMaster on a dedicated server, which the
+// server may set by the name of the command.
 type versionCmd struct{ srv serverAdapter }
 
 func reasonArg(v cmd.Optional[cmd.Varargs]) string {
@@ -89,40 +89,40 @@ func reasonArg(v cmd.Optional[cmd.Varargs]) string {
 	return ""
 }
 func newOpCommand(srv serverAdapter) cmd.Command {
-	return newCommand("op", nil, opCmd{adminPermission{srv}, srv, ""})
+	return newCommand("op", nil, opCmd{admin{}, srv, ""})
 }
 func newDeopCommand(srv serverAdapter) cmd.Command {
-	return newCommand("deop", nil, deopCmd{adminPermission{srv}, srv, ""})
+	return newCommand("deop", nil, deopCmd{admin{}, srv, ""})
 }
 func newBanPlayerCommand(srv serverAdapter) cmd.Command {
-	return newCommand("ban", nil, banCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("ban", nil, banCmd{srv: srv})
 }
 func newBanIPCommand(srv serverAdapter) cmd.Command {
-	return newCommand("ban-ip", nil, banIPCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("ban-ip", nil, banIPCmd{srv: srv})
 }
 func newPardonCommand(srv serverAdapter) cmd.Command {
-	return newCommand("pardon", nil, pardonCmd{adminPermission{srv}, srv, ""})
+	return newCommand("pardon", nil, pardonCmd{admin{}, srv, ""})
 }
 func newPardonIPCommand(srv serverAdapter) cmd.Command {
-	return newCommand("pardon-ip", nil, pardonIPCmd{adminPermission{srv}, srv, ""})
+	return newCommand("pardon-ip", nil, pardonIPCmd{admin{}, srv, ""})
 }
 func newBanListCommand(srv serverAdapter) cmd.Command {
-	return newCommand("banlist", nil, banListCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("banlist", nil, banListCmd{srv: srv})
 }
 func newSaveAllCommand(srv serverAdapter) cmd.Command {
-	return newCommand("save-all", nil, saveAllCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("save-all", nil, saveAllCmd{srv: srv})
 }
 func newSaveOffCommand(srv serverAdapter) cmd.Command {
-	return newCommand("save-off", nil, saveToggleCmd{adminPermission{srv}, srv, false})
+	return newCommand("save-off", nil, saveToggleCmd{owner{}, srv, false})
 }
 func newSaveOnCommand(srv serverAdapter) cmd.Command {
-	return newCommand("save-on", nil, saveToggleCmd{adminPermission{srv}, srv, true})
+	return newCommand("save-on", nil, saveToggleCmd{owner{}, srv, true})
 }
 func newIdleTimeoutCommand(srv serverAdapter) cmd.Command {
-	return newCommand("setidletimeout", nil, idleTimeoutCmd{adminPermission{srv}, srv, 0})
+	return newCommand("setidletimeout", nil, idleTimeoutCmd{admin{}, srv, 0})
 }
 func newTransferCommand(srv serverAdapter) cmd.Command {
-	return newCommand("transfer", nil, transferCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("transfer", nil, transferCmd{srv: srv})
 }
 func newVersionCommand(srv serverAdapter) cmd.Command {
 	return newCommand("version", nil, versionCmd{srv})

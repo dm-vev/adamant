@@ -8,7 +8,7 @@ import (
 )
 
 type itemReplaceEntityCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target      `cmd:"targets"`
 	Slot    int               `cmd:"slot"`
 	Item    itemArgument      `cmd:"item"`
@@ -16,7 +16,7 @@ type itemReplaceEntityCommand struct {
 }
 
 type itemModifyEntityCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target `cmd:"targets"`
 	Slot    int          `cmd:"slot"`
 	Name    string       `cmd:"name"`

@@ -23,7 +23,7 @@ func (killDamageSource) IgnoreTotem() bool             { return true }
 func (killDamageSource) BypassesInvulnerability() bool { return true }
 
 type killCommand struct {
-	opGate
+	gameMaster
 	Targets cmd.Optional[[]cmd.Target] `cmd:"targets"`
 }
 
@@ -59,13 +59,13 @@ func (k killCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 // damageCommand ports Java DamageCommand:
 // damage <targets> <amount> [<type>] [at <location> | by <entity> [from <cause>]].
 type damageCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target         `cmd:"targets"`
 	Amount  float64              `cmd:"amount"`
 	Type    cmd.Optional[string] `cmd:"damageType"`
 }
 type damageAtCommand struct {
-	opGate
+	gameMaster
 	Targets  []cmd.Target   `cmd:"targets"`
 	Amount   float64        `cmd:"amount"`
 	Type     string         `cmd:"damageType"`
@@ -73,7 +73,7 @@ type damageAtCommand struct {
 	Location mgl64.Vec3     `cmd:"location"`
 }
 type damageByCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target   `cmd:"targets"`
 	Amount  float64        `cmd:"amount"`
 	Type    string         `cmd:"damageType"`
@@ -81,7 +81,7 @@ type damageByCommand struct {
 	Entity  []cmd.Target   `cmd:"entity"`
 }
 type damageByFromCommand struct {
-	opGate
+	gameMaster
 	Targets []cmd.Target   `cmd:"targets"`
 	Amount  float64        `cmd:"amount"`
 	Type    string         `cmd:"damageType"`

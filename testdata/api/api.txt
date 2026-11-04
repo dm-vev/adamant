@@ -345,6 +345,8 @@ server	const	BackupFolder	server.BackupFormat = 0
 server	const	BackupZip	server.BackupFormat = 1
 server	const	Banned	server.List = 2
 server	const	DefaultBackupKeep	untyped int = 10
+server	const	DefaultCommandBlockLevel	server/cmd.Level = 2
+server	const	DefaultOperatorLevel	server/cmd.Level = 4
 server	const	DefaultSaveInterval	time.Duration = 300000000000
 server	const	DefaultSpawnTimeout	time.Duration = 60000000000
 server	const	DefaultSpawnTimeoutMessage	untyped string = "Timed out while joining the game."
@@ -377,6 +379,8 @@ server	method	Server.BanPlayer	func(name string, reason string) (bool, error)
 server	method	Server.Banned	func(addr string, name string) (string, bool)
 server	method	Server.Close	func() error
 server	method	Server.CloseOnProgramEnd	func()
+server	method	Server.CommandBlockLevel	func() server/cmd.Level
+server	method	Server.CommandLevel	func(_ string, declared server/cmd.Level) server/cmd.Level
 server	method	Server.Deop	func(name string) (bool, error)
 server	method	Server.End	func() *server/world.World
 server	method	Server.IdentityKey	func() server/identity.Mode
@@ -398,6 +402,7 @@ server	method	Server.PlayerByName	func(name string) (*server/world.EntityHandle,
 server	method	Server.PlayerByXUID	func(xuid string) (*server/world.EntityHandle, bool)
 server	method	Server.PlayerCount	func() int
 server	method	Server.PlayerIsOperator	func(id github.com/google/uuid.UUID) bool
+server	method	Server.PlayerLevel	func(id github.com/google/uuid.UUID) server/cmd.Level
 server	method	Server.PlayerNames	func() []string
 server	method	Server.Players	func(tx *server/world.Tx) iter.Seq[*server/player.Player]
 server	method	Server.Ready	func(o server.HealthOptions) server.HealthReport
@@ -6193,26 +6198,39 @@ server/cmd	const	EnumConstraintHostPermissions	server/cmd.EnumConstraint = 2
 server/cmd	const	EnumConstraintOperatorPermissions	server/cmd.EnumConstraint = 1
 server/cmd	const	Eyes	server/cmd.Anchor = 1
 server/cmd	const	Feet	server/cmd.Anchor = 0
+server/cmd	const	LevelAdmin	server/cmd.Level = 3
+server/cmd	const	LevelAll	server/cmd.Level = 0
+server/cmd	const	LevelGameMaster	server/cmd.Level = 2
+server/cmd	const	LevelModerator	server/cmd.Level = 1
+server/cmd	const	LevelOwner	server/cmd.Level = 4
+server/cmd	const	MaxLevel	server/cmd.Level = 4
 server/cmd	const	ParamOptionAsChainedCommand	server/cmd.ParamOption = 4
 server/cmd	const	ParamOptionCollapseEnum	server/cmd.ParamOption = 1
 server/cmd	const	ParamOptionHasSemanticConstraint	server/cmd.ParamOption = 2
 server/cmd	func	ByAlias	func(alias string) (server/cmd.Command, bool)
+server/cmd	func	CommandBlockLevel	func() server/cmd.Level
 server/cmd	func	Commands	func() map[string]server/cmd.Command
 server/cmd	func	ExecuteLine	func(source server/cmd.Source, commandLine string, tx *server/world.Tx, before func(server/cmd.Command, []string) bool)
 server/cmd	func	ExecutionContextOf	func(src server/cmd.Source) (server/cmd.ExecutionContext, bool)
+server/cmd	func	HasLevel	func(id github.com/google/uuid.UUID, l server/cmd.Level) bool
 server/cmd	func	IsOperator	func(id github.com/google/uuid.UUID) bool
 server/cmd	func	New	func(name string, description string, aliases []string, r ...server/cmd.Runnable) server/cmd.Command
 server/cmd	func	NewBlockSource	func(pos server/block/cube.Pos, w *server/world.World, name string) *server/cmd.BlockSource
 server/cmd	func	ParseNumber	func(s string, bitSize int) (float64, error)
+server/cmd	func	PlayerLevel	func(id github.com/google/uuid.UUID) server/cmd.Level
 server/cmd	func	Register	func(command server/cmd.Command)
+server/cmd	func	RequiredLevel	func(c server/cmd.Command, r server/cmd.Runnable) server/cmd.Level
 server/cmd	func	ResolveCoordinates	func(args []string, src server/cmd.Source) (github.com/go-gl/mathgl/mgl64.Vec3, error)
 server/cmd	func	ResolveTargets	func(selector string, src server/cmd.Source, tx *server/world.Tx) ([]server/cmd.Target, error)
 server/cmd	func	ScoreHolderName	func(t server/cmd.Target) string
 server/cmd	func	SetOperatorChecker	func(f func(id github.com/google/uuid.UUID) bool)
+server/cmd	func	SetPermissions	func(p server/cmd.Permissions)
+server/cmd	func	SourceLevel	func(src server/cmd.Source) server/cmd.Level
 server/cmd	func	WithContext	func(src server/cmd.Source, context server/cmd.ExecutionContext) server/cmd.ContextSource
 server/cmd	method	BlockSource.BlockPosition	func() server/block/cube.Pos
 server/cmd	method	BlockSource.Name	func() string
 server/cmd	method	BlockSource.Output	func() *server/cmd.Output
+server/cmd	method	BlockSource.PermissionLevel	func() server/cmd.Level
 server/cmd	method	BlockSource.Position	func() github.com/go-gl/mathgl/mgl64.Vec3
 server/cmd	method	BlockSource.SendCommandOutput	func(o *server/cmd.Output)
 server/cmd	method	BlockSource.Text	func() string
@@ -6230,6 +6248,8 @@ server/cmd	method	Command.WithDescriptionTranslation	func(description server/pla
 server/cmd	method	ContextSource.CommandExecutionContext	func() server/cmd.ExecutionContext
 server/cmd	method	ContextSource.Position	func() github.com/go-gl/mathgl/mgl64.Vec3
 server/cmd	method	ContextSource.SendCommandOutput	func(o *server/cmd.Output)
+server/cmd	method	ContextSource.Unwrap	func() server/cmd.Source
+server/cmd	method	Level.String	func() string
 server/cmd	method	Line.Leftover	func() []string
 server/cmd	method	Line.Len	func() int
 server/cmd	method	Line.Next	func() (string, bool)
@@ -6264,6 +6284,8 @@ server/cmd	type	DynamicEnum	interface{Dynamic() bool; server/cmd.Enum}
 server/cmd	type	Enum	interface{Options(source server/cmd.Source) []string; Type() string}
 server/cmd	type	EnumConstraint	uint8
 server/cmd	type	ExecutionContext	struct{Executor server/world.Entity; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; World *server/world.World; Anchor server/cmd.Anchor}
+server/cmd	type	Level	uint8
+server/cmd	type	Leveled	interface{PermissionLevel() server/cmd.Level}
 server/cmd	type	Line	struct{args []string; seen []string; src server/cmd.Source; cmd server/cmd.Command}
 server/cmd	type	NamedTarget	interface{Name() string; server/cmd.Target}
 server/cmd	type	Optional	struct{val T; set bool}
@@ -6273,11 +6295,14 @@ server/cmd	type	ParamInfo	struct{Name string; Value any; Optional bool; Suffix s
 server/cmd	type	ParamOption	uint8
 server/cmd	type	ParamOptioner	interface{ParamOptions() server/cmd.ParamOption}
 server/cmd	type	Parameter	interface{Parse(line *server/cmd.Line, v reflect.Value) error; Type() string}
+server/cmd	type	Permissions	interface{CommandBlockLevel() server/cmd.Level; CommandLevel(command string, declared server/cmd.Level) server/cmd.Level; PlayerLevel(id github.com/google/uuid.UUID) server/cmd.Level}
+server/cmd	type	Requirer	interface{RequiredLevel() server/cmd.Level}
 server/cmd	type	Runnable	interface{Run(src server/cmd.Source, o *server/cmd.Output, tx *server/world.Tx)}
 server/cmd	type	Source	interface{SendCommandOutput(o *server/cmd.Output); server/cmd.Target}
 server/cmd	type	SubCommand	struct{}
 server/cmd	type	Target	interface{Position() github.com/go-gl/mathgl/mgl64.Vec3}
 server/cmd	type	Varargs	string
+server/cmd	type	Wrapper	interface{Unwrap() server/cmd.Source}
 server/cmd	var	MessageBooleanInvalid	server/player/chat.Translation
 server/cmd	var	MessageNoTargets	server/player/chat.Translation
 server/cmd	var	MessageNumberInvalid	server/player/chat.Translation
@@ -19524,6 +19549,7 @@ server/player	method	Player.OpenBlockContainer	func(pos server/block/cube.Pos, t
 server/player	method	Player.OpenEntityContainer	func(e server/world.Entity, inv *server/item/inventory.Inventory, kind server/entity.ContainerKind, tx *server/world.Tx)
 server/player	method	Player.OpenMerchant	func(e server/world.Entity, merchant server/entity.Merchant, tx *server/world.Tx)
 server/player	method	Player.OpenSign	func(pos server/block/cube.Pos, frontSide bool)
+server/player	method	Player.PermissionLevel	func() server/cmd.Level
 server/player	method	Player.PickBlock	func(pos server/block/cube.Pos)
 server/player	method	Player.PlaceBlock	func(pos server/block/cube.Pos, b server/world.Block, ctx *server/item.UseContext)
 server/player	method	Player.PlaySound	func(sound server/world.Sound)

@@ -12,29 +12,29 @@ import (
 )
 
 type teamAdd struct {
-	adminPermission
+	gameMaster
 	Add     cmd.SubCommand `cmd:"add"`
 	Name    string         `cmd:"team"`
 	Display string         `cmd:"displayName"`
 }
 type teamRemove struct {
-	adminPermission
+	gameMaster
 	Remove cmd.SubCommand `cmd:"remove"`
 	Name   string         `cmd:"team"`
 }
 type teamJoin struct {
-	adminPermission
+	gameMaster
 	Join    cmd.SubCommand `cmd:"join"`
 	Name    string         `cmd:"team"`
 	Members string         `cmd:"members"`
 }
 type teamLeave struct {
-	adminPermission
+	gameMaster
 	Leave   cmd.SubCommand `cmd:"leave"`
 	Members string         `cmd:"members"`
 }
 type teamModify struct {
-	adminPermission
+	gameMaster
 	Modify   cmd.SubCommand `cmd:"modify"`
 	Name     string         `cmd:"team"`
 	Property teamProperty   `cmd:"property"`
@@ -207,7 +207,7 @@ func (c randomValue) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 }
 
 type bossbarSet struct {
-	adminPermission
+	gameMaster
 	Set      cmd.SubCommand  `cmd:"set"`
 	ID       string          `cmd:"id"`
 	Property bossbarProperty `cmd:"property"`
@@ -236,13 +236,13 @@ func (c bossbarSet) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 }
 
 type bossbarAdd struct {
-	adminPermission
+	gameMaster
 	Add  cmd.SubCommand `cmd:"add"`
 	ID   string         `cmd:"id"`
 	Name string         `cmd:"name"`
 }
 type bossbarRemove struct {
-	adminPermission
+	gameMaster
 	Remove cmd.SubCommand `cmd:"remove"`
 	ID     string         `cmd:"id"`
 }

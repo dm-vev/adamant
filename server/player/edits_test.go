@@ -185,19 +185,45 @@ const operatorName = "edits operator"
 
 var (
 	installOperators sync.Once
-	// operatorIDs are the UUIDs of the players withOperator made operators.
+	// operatorIDs are the levels of the players withLevel made operators,
+	// by their UUIDs.
 	operatorIDs sync.Map
 )
 
-// withOperator runs f with a player in w named operatorName, an operator in
-// the game mode passed, unless op is false.
+// operatorPermissions are the levels of the players of operatorIDs.
+type operatorPermissions struct{}
+
+func (operatorPermissions) PlayerLevel(id uuid.UUID) cmd.Level {
+	if l, ok := operatorIDs.Load(id); ok {
+		return l.(cmd.Level)
+	}
+	return cmd.LevelAll
+}
+func (operatorPermissions) CommandLevel(_ string, declared cmd.Level) cmd.Level { return declared }
+func (operatorPermissions) CommandBlockLevel() cmd.Level                        { return cmd.LevelGameMaster }
+
+// withOperator runs f with a player in w named operatorName, an operator of
+// cmd.LevelOwner in the game mode passed, unless op is false.
 func withOperator(t *testing.T, w *world.World, mode world.GameMode, op bool, f func(tx *world.Tx, p *Player)) {
+	t.Helper()
+	if !op {
+		withLevel(t, w, mode, false, cmd.LevelAll, f)
+		return
+	}
+	withLevel(t, w, mode, true, cmd.LevelOwner, f)
+}
+
+// withLevel runs f with a player in w in the game mode passed: named
+// operatorName, an operator of the level passed, if op, a player of
+// cmd.LevelAll otherwise.
+func withLevel(t *testing.T, w *world.World, mode world.GameMode, op bool, level cmd.Level, f func(tx *world.Tx, p *Player)) {
 	t.Helper()
 	installOperators.Do(func() {
 		cmd.SetOperatorChecker(func(id uuid.UUID) bool {
 			_, ok := operatorIDs.Load(id)
 			return ok
 		})
+		cmd.SetPermissions(operatorPermissions{})
 	})
 	name := operatorName
 	if !op {
@@ -206,11 +232,31 @@ func withOperator(t *testing.T, w *world.World, mode world.GameMode, op bool, f 
 	pos := mgl64.Vec3{0.5, 100, 0.5}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(Type, Config{Name: name, Position: pos, GameMode: mode})
 	if op {
-		operatorIDs.Store(handle.UUID(), struct{}{})
+		operatorIDs.Store(handle.UUID(), level)
 	}
 	<-w.Exec(func(tx *world.Tx) {
 		f(tx, tx.AddEntity(handle).(*Player))
 	})
+}
+
+// TestGameMasterBlocksNeedLevel2 checks that an operator in creative may
+// use the blocks of game masters from cmd.LevelGameMaster on, as Java's
+// canUseGameMasterBlocks asks for COMMANDS_GAMEMASTER: not at level 0 or
+// 1.
+func TestGameMasterBlocksNeedLevel2(t *testing.T) {
+	for _, c := range []struct {
+		level cmd.Level
+		want  bool
+	}{
+		{cmd.LevelAll, false}, {cmd.LevelModerator, false}, {cmd.LevelGameMaster, true}, {cmd.LevelAdmin, true}, {cmd.LevelOwner, true},
+	} {
+		w, _ := clientTestWorld(t)
+		withLevel(t, w, world.GameModeCreative, true, c.level, func(tx *world.Tx, p *Player) {
+			if got := p.CanUseGameMasterBlocks(); got != c.want {
+				t.Errorf("an operator of level %v: CanUseGameMasterBlocks() = %v, want %v", c.level, got, c.want)
+			}
+		})
+	}
 }
 
 func TestPlayerCanUseGameMasterBlocks(t *testing.T) {

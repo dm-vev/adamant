@@ -36,7 +36,7 @@ func (o *outputs) SendCommandOutput(out *cmd.Output) { o.got = append(o.got, out
 // the command, found again by its handle in the transaction of done.
 func TestSaveAllPrintsOnceSaved(t *testing.T) {
 	srv := &saveAllTestAdapter{}
-	c := saveAllCmd{adminPermission: adminPermission{srv}, srv: srv}
+	c := saveAllCmd{srv: srv}
 
 	src := &outputs{}
 	c.Run(cmd.WithContext(src, cmd.ExecutionContext{}), &cmd.Output{}, nil)

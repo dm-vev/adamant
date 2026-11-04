@@ -14,21 +14,21 @@ func registerPlayerExperienceCommands(srv serverAdapter) {
 }
 
 type experienceAddCommand struct {
-	opGate
+	gameMaster
 	Add     cmd.SubCommand               `cmd:"add"`
 	Targets []cmd.Target                 `cmd:"targets"`
 	Amount  int                          `cmd:"amount"`
 	Unit    cmd.Optional[experienceUnit] `cmd:"unit"`
 }
 type experienceSetCommand struct {
-	opGate
+	gameMaster
 	Set     cmd.SubCommand               `cmd:"set"`
 	Targets []cmd.Target                 `cmd:"targets"`
 	Amount  int                          `cmd:"amount"`
 	Unit    cmd.Optional[experienceUnit] `cmd:"unit"`
 }
 type experienceQueryCommand struct {
-	opGate
+	gameMaster
 	Query  cmd.SubCommand `cmd:"query"`
 	Target []cmd.Target   `cmd:"target"`
 	Unit   experienceUnit `cmd:"unit"`
@@ -106,13 +106,13 @@ func unitName(u experienceUnit) string {
 }
 
 type recipeGiveCommand struct {
-	opGate
+	gameMaster
 	Give    cmd.SubCommand `cmd:"give"`
 	Targets []cmd.Target   `cmd:"targets"`
 	Recipe  string         `cmd:"recipe"`
 }
 type recipeTakeCommand struct {
-	opGate
+	gameMaster
 	Take    cmd.SubCommand `cmd:"take"`
 	Targets []cmd.Target   `cmd:"targets"`
 	Recipe  string         `cmd:"recipe"`

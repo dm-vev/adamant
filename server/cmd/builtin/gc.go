@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-type gcCommand struct{ opGate }
+type gcCommand struct{ owner }
 
 func newGCCommand(_ serverAdapter) cmd.Command {
 	return newCommand("gc", nil, gcCommand{})

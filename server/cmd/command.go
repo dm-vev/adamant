@@ -38,7 +38,7 @@ type Runnable interface {
 }
 
 // Allower may be implemented by a type also implementing Runnable to limit the sources that may run the
-// command.
+// command, beside the level it needs (see Requirer).
 type Allower interface {
 	// Allow checks if the Source passed is allowed to execute the command. True is returned if the Source is
 	// allowed to execute the command.
@@ -205,7 +205,7 @@ type ParamInfo struct {
 func (cmd Command) Params(src Source) [][]ParamInfo {
 	params := make([][]ParamInfo, 0, len(cmd.v))
 	for _, runnable := range cmd.v {
-		if allower, ok := runnable.Interface().(Allower); ok && !allower.Allow(src) {
+		if !cmd.allows(src, runnable.Interface().(Runnable)) {
 			// This source cannot execute this runnable.
 			continue
 		}
@@ -234,12 +234,14 @@ func (cmd Command) Params(src Source) [][]ParamInfo {
 	return params
 }
 
-// Runnables returns a map of all Runnable implementations of the Command that a Source can execute.
+// Runnables returns a map of all Runnable implementations of the Command
+// that a Source can execute: those whose level it has (see SourceLevel and
+// RequiredLevel) and that allow it, if they are an Allower.
 func (cmd Command) Runnables(src Source) map[int]Runnable {
 	m := make(map[int]Runnable, len(cmd.v))
 	for i, runnable := range cmd.v {
 		v := runnable.Interface().(Runnable)
-		if allower, ok := v.(Allower); !ok || allower.Allow(src) {
+		if cmd.allows(src, v) {
 			m[i] = v
 		}
 	}
@@ -256,7 +258,9 @@ func (cmd Command) String() string {
 // parsing was not successful or the Runnable could not be run by this source, an error is returned, and the
 // leftover command line.
 func (cmd Command) executeRunnable(v reflect.Value, args string, source Source, output *Output, tx *world.Tx) (*Line, error) {
-	if a, ok := v.Interface().(Allower); ok && !a.Allow(source) {
+	if !cmd.allows(source, v.Interface().(Runnable)) {
+		// A source below the level of the command is told it does not
+		// exist, as Java tells it.
 		return nil, MessageUnknown.F(cmd.name)
 	}
 

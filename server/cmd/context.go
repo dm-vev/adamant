@@ -45,6 +45,9 @@ func ExecutionContextOf(src Source) (ExecutionContext, bool) {
 	return context.CommandExecutionContext(), true
 }
 
+// Unwrap returns the original source, whose level the ContextSource has.
+func (s ContextSource) Unwrap() Source { return s.Source }
+
 // CommandExecutionContext implements the context accessor used by nested commands.
 func (s ContextSource) CommandExecutionContext() ExecutionContext { return s.Context }
 

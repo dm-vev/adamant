@@ -17,17 +17,17 @@ type ReturnCommandHandler interface {
 }
 
 type returnValueCommand struct {
-	opGate
+	gameMaster
 	Value int `cmd:"value"`
 }
 
 type returnFailCommand struct {
-	opGate
+	gameMaster
 	Fail cmd.SubCommand `cmd:"fail"`
 }
 
 type returnRunCommand struct {
-	opGate
+	gameMaster
 	Subcommand cmd.SubCommand `cmd:"run"`
 	Command    cmd.Varargs    `cmd:"command"`
 }

@@ -20,7 +20,7 @@ import (
 // replace block <pos> <slot> | replace entity <targets> <slot>, each followed
 // by the `loot <table>` source.
 type lootGiveCommand struct {
-	opGate
+	gameMaster
 	Give    cmd.SubCommand `cmd:"give"`
 	Targets []cmd.Target   `cmd:"players"`
 	Loot    cmd.SubCommand `cmd:"loot"`
@@ -28,7 +28,7 @@ type lootGiveCommand struct {
 }
 
 type lootSpawnCommand struct {
-	opGate
+	gameMaster
 	Spawn    cmd.SubCommand `cmd:"spawn"`
 	Position mgl64.Vec3     `cmd:"position"`
 	Loot     cmd.SubCommand `cmd:"loot"`
@@ -36,7 +36,7 @@ type lootSpawnCommand struct {
 }
 
 type lootInsertCommand struct {
-	opGate
+	gameMaster
 	Insert   cmd.SubCommand `cmd:"insert"`
 	Position mgl64.Vec3     `cmd:"position"`
 	Loot     cmd.SubCommand `cmd:"loot"`
@@ -44,7 +44,7 @@ type lootInsertCommand struct {
 }
 
 type lootReplaceBlockCommand struct {
-	opGate
+	gameMaster
 	Replace  cmd.SubCommand `cmd:"replace"`
 	Block    cmd.SubCommand `cmd:"block"`
 	Position mgl64.Vec3     `cmd:"position"`
@@ -54,7 +54,7 @@ type lootReplaceBlockCommand struct {
 }
 
 type lootReplaceEntityCommand struct {
-	opGate
+	gameMaster
 	Replace cmd.SubCommand `cmd:"replace"`
 	Entity  cmd.SubCommand `cmd:"entity"`
 	Targets []cmd.Target   `cmd:"targets"`

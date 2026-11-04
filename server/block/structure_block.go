@@ -157,14 +157,15 @@ func (b StructureBlock) Activate(_ cube.Pos, _ cube.Face, _ *world.Tx, u item.Us
 	return canUseGameMasterBlocks(u)
 }
 
-// canUseGameMasterBlocks ports Player.canUseGameMasterBlocks: operators in
-// creative mode may edit structure, jigsaw and command blocks.
+// canUseGameMasterBlocks ports Player.canUseGameMasterBlocks: players of
+// the level of game masters in creative mode may edit structure, jigsaw and
+// command blocks.
 func canUseGameMasterBlocks(u item.User) bool {
 	player, ok := u.(interface {
 		UUID() uuid.UUID
 		GameMode() world.GameMode
 	})
-	return ok && player.GameMode().CreativeInventory() && cmd.IsOperator(player.UUID())
+	return ok && player.GameMode().CreativeInventory() && cmd.HasLevel(player.UUID(), cmd.LevelGameMaster)
 }
 
 // RedstonePowerUpdate ...

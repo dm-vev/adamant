@@ -8,6 +8,7 @@ import (
 func Register(srv serverAdapter) {
 	commandServer = srv
 	cmd.SetOperatorChecker(srv.PlayerIsOperator)
+	cmd.SetPermissions(srv)
 	cmd.Register(newAboutCommand(srv))
 	cmd.Register(newHelpCommand())
 	cmd.Register(newListCommand(srv))

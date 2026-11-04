@@ -10,7 +10,7 @@ import (
 const defaultKickReason = "Kicked by an operator."
 
 type kickCommand struct {
-	opGate
+	admin
 	Targets []cmd.Target              `cmd:"target"`
 	Reason  cmd.Optional[cmd.Varargs] `cmd:"reason"`
 }

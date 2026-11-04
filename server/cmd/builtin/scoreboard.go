@@ -11,7 +11,7 @@ import (
 
 // Objective subcommands follow Java syntax: scoreboard objectives add|remove|list.
 type scoreboardObjectiveAdd struct {
-	adminPermission
+	gameMaster
 	Objectives cmd.SubCommand       `cmd:"objectives"`
 	Add        cmd.SubCommand       `cmd:"add"`
 	Name       string               `cmd:"objective"`
@@ -19,18 +19,18 @@ type scoreboardObjectiveAdd struct {
 	Display    cmd.Optional[string] `cmd:"displayName"`
 }
 type scoreboardObjectiveRemove struct {
-	adminPermission
+	gameMaster
 	Objectives cmd.SubCommand `cmd:"objectives"`
 	Remove     cmd.SubCommand `cmd:"remove"`
 	Name       string         `cmd:"objective"`
 }
 type scoreboardObjectiveList struct {
-	adminPermission
+	gameMaster
 	Objectives cmd.SubCommand `cmd:"objectives"`
 	List       cmd.SubCommand `cmd:"list"`
 }
 type scoreboardScoreSet struct {
-	adminPermission
+	gameMaster
 	Players   cmd.SubCommand `cmd:"players"`
 	Set       cmd.SubCommand `cmd:"set"`
 	Holder    string         `cmd:"targets"`
@@ -38,7 +38,7 @@ type scoreboardScoreSet struct {
 	Value     int            `cmd:"score"`
 }
 type scoreboardScoreAdd struct {
-	adminPermission
+	gameMaster
 	Players   cmd.SubCommand `cmd:"players"`
 	Add       cmd.SubCommand `cmd:"add"`
 	Holder    string         `cmd:"targets"`
@@ -46,7 +46,7 @@ type scoreboardScoreAdd struct {
 	Value     int            `cmd:"score"`
 }
 type scoreboardScoreRemove struct {
-	adminPermission
+	gameMaster
 	Players   cmd.SubCommand `cmd:"players"`
 	Remove    cmd.SubCommand `cmd:"remove"`
 	Holder    string         `cmd:"targets"`
@@ -54,34 +54,34 @@ type scoreboardScoreRemove struct {
 	Value     int            `cmd:"score"`
 }
 type scoreboardScoreGet struct {
-	adminPermission
+	gameMaster
 	Players   cmd.SubCommand `cmd:"players"`
 	Get       cmd.SubCommand `cmd:"get"`
 	Holder    string         `cmd:"target"`
 	Objective string         `cmd:"objective"`
 }
 type scoreboardScoreReset struct {
-	adminPermission
+	gameMaster
 	Players   cmd.SubCommand       `cmd:"players"`
 	Reset     cmd.SubCommand       `cmd:"reset"`
 	Holder    string               `cmd:"targets"`
 	Objective cmd.Optional[string] `cmd:"objective"`
 }
 type scoreboardScoreList struct {
-	adminPermission
+	gameMaster
 	Players cmd.SubCommand       `cmd:"players"`
 	List    cmd.SubCommand       `cmd:"list"`
 	Holder  cmd.Optional[string] `cmd:"target"`
 }
 type scoreboardScoreEnable struct {
-	adminPermission
+	gameMaster
 	Players   cmd.SubCommand `cmd:"players"`
 	Enable    cmd.SubCommand `cmd:"enable"`
 	Holder    string         `cmd:"targets"`
 	Objective string         `cmd:"objective"`
 }
 type scoreboardScoreOperation struct {
-	adminPermission
+	gameMaster
 	Players         cmd.SubCommand      `cmd:"players"`
 	Operation       cmd.SubCommand      `cmd:"operation"`
 	Target          string              `cmd:"targets"`
@@ -365,19 +365,18 @@ func scoreboardModel(tx *world.Tx) *scoreboard.Model {
 }
 
 func newScoreboardCommand(srv serverAdapter) cmd.Command {
-	permission := adminPermission{srv}
 	return newCommand("scoreboard", nil,
-		scoreboardObjectiveAdd{adminPermission: permission},
-		scoreboardObjectiveRemove{adminPermission: permission},
-		scoreboardObjectiveList{adminPermission: permission},
-		scoreboardSetDisplay{adminPermission: permission},
-		scoreboardScoreSet{adminPermission: permission},
-		scoreboardScoreAdd{adminPermission: permission},
-		scoreboardScoreRemove{adminPermission: permission},
-		scoreboardScoreGet{adminPermission: permission},
-		scoreboardScoreReset{adminPermission: permission},
-		scoreboardScoreList{adminPermission: permission},
-		scoreboardScoreEnable{adminPermission: permission},
-		scoreboardScoreOperation{adminPermission: permission},
+		scoreboardObjectiveAdd{},
+		scoreboardObjectiveRemove{},
+		scoreboardObjectiveList{},
+		scoreboardSetDisplay{},
+		scoreboardScoreSet{},
+		scoreboardScoreAdd{},
+		scoreboardScoreRemove{},
+		scoreboardScoreGet{},
+		scoreboardScoreReset{},
+		scoreboardScoreList{},
+		scoreboardScoreEnable{},
+		scoreboardScoreOperation{},
 	)
 }
