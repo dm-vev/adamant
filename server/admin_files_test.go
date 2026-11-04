@@ -149,9 +149,9 @@ func adminServer(t *testing.T, conf Config) *Server {
 		srv.whitelist = holder.underlyingWhitelist()
 	}
 	if access, ok := conf.Allower.(interface {
-		adminAccess() (*operatorsList, *banList)
+		adminAccess() (*operatorsList, *banList, *roleList)
 	}); ok {
-		srv.operators, srv.bans = access.adminAccess()
+		srv.operators, srv.bans, srv.roles = access.adminAccess()
 	}
 	if srv.whitelist == nil || srv.operators == nil || srv.bans == nil {
 		t.Fatal("the Allower of the Config does not hold the admin lists")

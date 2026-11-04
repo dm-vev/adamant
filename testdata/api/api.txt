@@ -360,6 +360,7 @@ server	const	FoundPending	server.Found = 4
 server	const	Operators	server.List = 0
 server	const	ReconnectKickExisting	server.ReconnectPolicy = 1
 server	const	ReconnectKickJoining	server.ReconnectPolicy = 0
+server	const	Roles	server.List = 3
 server	const	Whitelisted	server.List = 1
 server	func	DefaultConfig	func() server.UserConfig
 server	func	DefaultPermissionConfig	func() server.PermissionConfig
@@ -379,6 +380,7 @@ server	method	Server.BanEntries	func(ip bool) ([]string, error)
 server	method	Server.BanIP	func(ip string, reason string) (bool, error)
 server	method	Server.BanPlayer	func(name string, reason string) (bool, error)
 server	method	Server.Banned	func(addr string, name string) (string, bool)
+server	method	Server.ClearRole	func(name string) (bool, error)
 server	method	Server.Close	func() error
 server	method	Server.CloseOnProgramEnd	func()
 server	method	Server.CommandBlockLevel	func() server/cmd.Level
@@ -408,17 +410,20 @@ server	method	Server.PlayerCount	func() int
 server	method	Server.PlayerIsOperator	func(id github.com/google/uuid.UUID) bool
 server	method	Server.PlayerLevel	func(id github.com/google/uuid.UUID) server/cmd.Level
 server	method	Server.PlayerNames	func() []string
+server	method	Server.PlayerPermissions	func(id github.com/google/uuid.UUID) server/client.Permissions
 server	method	Server.Players	func(tx *server/world.Tx) iter.Seq[*server/player.Player]
 server	method	Server.Ready	func(o server.HealthOptions) server.HealthReport
 server	method	Server.ReloadPermissions	func() error
 server	method	Server.ResolveEntry	func(list server.List, s string) (server.Target, error)
 server	method	Server.ResolvePlayer	func(s string) (server.Target, error)
+server	method	Server.RoleEntries	func() ([]string, error)
 server	method	Server.SaveAll	func() error
 server	method	Server.SaveAllFrom	func(tx *server/world.Tx, done func(tx *server/world.Tx, err error))
 server	method	Server.SaveEnabled	func(enabled bool)
 server	method	Server.SaveEnabledState	func() bool
 server	method	Server.SetIdleTimeout	func(minutes int)
 server	method	Server.SetOperatorLevel	func(name string, level server/cmd.Level) (bool, error)
+server	method	Server.SetRole	func(name string, role server/client.Role, abilities server/client.Abilities) (bool, error)
 server	method	Server.StartTime	func() time.Time
 server	method	Server.Status	func() server.Status
 server	method	Server.VerifyBackup	func(name string, full bool) (server.BackupInfo, error)
@@ -458,13 +463,13 @@ server	type	Host	interface{PlayerNames() []string; Status() server.Status; White
 server	type	List	uint8
 server	type	Listener	interface{Accept() (server/client.Join, error); io.Closer}
 server	type	OnlinePlayer	struct{Name string; XUID string; UUID github.com/google/uuid.UUID; Handle *server/world.EntityHandle}
-server	type	PermissionConfig	struct{DefaultLevel server/cmd.Level; OperatorLevel server/cmd.Level; CommandBlockLevel server/cmd.Level; RoleLevel server/cmd.Level; Commands map[string]server/cmd.Level}
+server	type	PermissionConfig	struct{DefaultLevel server/cmd.Level; OperatorLevel server/cmd.Level; CommandBlockLevel server/cmd.Level; RoleLevel server/cmd.Level; DefaultRole server/client.Role; Commands map[string]server/cmd.Level}
 server	type	ReconnectPolicy	uint8
-server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
+server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; roles *server.roleList; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
 server	type	Target	struct{Key server/identity.Key; Name string; Found server.Found; Pending bool}
-server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; Commands map[string]int}}
+server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}}
 server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; kickMsg string; format server.whitelistFormat}
 server	var	DefaultHealthOptions	server.HealthOptions
 server	var	ErrBackupNotFound	error
@@ -648,7 +653,9 @@ server/block	func	HalfVerticalRightBannerPattern	func() server/block.BannerPatte
 server/block	func	HangingBellAttachment	func() server/block.BellAttachment
 server/block	func	HangingGrindstoneAttachment	func() server/block.GrindstoneAttachment
 server/block	func	HornCoral	func() server/block.CoralType
+server/block	func	IsContainer	func(b server/world.Block) bool
 server/block	func	IsRail	func(b server/world.Block) bool
+server/block	func	IsSwitch	func(b server/world.Block) bool
 server/block	func	JungleLeaves	func() server/block.LeavesType
 server/block	func	JungleWood	func() server/block.WoodType
 server/block	func	LeavesTypes	func() []server/block.LeavesType
@@ -5894,11 +5901,30 @@ server/block/model	type	Thin	struct{North bool; East bool; South bool; West bool
 server/block/model	type	TilledGrass	struct{}
 server/block/model	type	Trapdoor	struct{Facing server/block/cube.Direction; Open bool; Top bool}
 server/block/model	type	Wall	struct{NorthConnection float64; EastConnection float64; SouthConnection float64; WestConnection float64; Post bool}
+server/client	const	AbilitiesOfMembers	server/client.Abilities = 63
+server/client	const	AbilitiesOfOperators	server/client.Abilities = 255
+server/client	const	AbilityAttackMobs	server/client.Abilities = 32
+server/client	const	AbilityAttackPlayers	server/client.Abilities = 16
+server/client	const	AbilityBuild	server/client.Abilities = 1
+server/client	const	AbilityDoorsAndSwitches	server/client.Abilities = 4
+server/client	const	AbilityMine	server/client.Abilities = 2
+server/client	const	AbilityOpenContainers	server/client.Abilities = 8
+server/client	const	AbilityOperatorCommands	server/client.Abilities = 64
+server/client	const	AbilityTeleport	server/client.Abilities = 128
 server/client	const	MoveApplied	server/client.MoveResult = 0
 server/client	const	MoveDeferred	server/client.MoveResult = 3
 server/client	const	MoveIgnored	server/client.MoveResult = 1
 server/client	const	MoveRefused	server/client.MoveResult = 2
+server/client	const	RoleCustom	server/client.Role = 3
+server/client	const	RoleMember	server/client.Role = 0
+server/client	const	RoleOperator	server/client.Role = 2
+server/client	const	RoleVisitor	server/client.Role = 1
 server/client	func	CommandOutputOf	func(o *server/cmd.Output, l golang.org/x/text/language.Tag) server/client.CommandOutput
+server/client	func	MemberPermissions	func() server/client.Permissions
+server/client	func	ParseAbilities	func(names []string) (server/client.Abilities, error)
+server/client	func	ParseRole	func(s string) (server/client.Role, error)
+server/client	method	Abilities.Has	func(of server/client.Abilities) bool
+server/client	method	Abilities.Names	func() []string
 server/client	method	Nop.AddDebugShape	func(server/player/debug.Shape)
 server/client	method	Nop.Addr	func() net.Addr
 server/client	method	Nop.ChunkRadius	func() int32
@@ -6021,11 +6047,14 @@ server/client	method	Nop.ViewVisibility	func(server/world.Entity, server/world.V
 server/client	method	Nop.ViewWeather	func(bool, bool)
 server/client	method	Nop.ViewWorldSpawn	func(server/block/cube.Pos)
 server/client	method	Nop.VisibleDebugShapes	func() []server/player/debug.Shape
+server/client	method	Permissions.Allows	func(a server/client.Abilities) bool
+server/client	method	Role.String	func() string
 server/client	method	Roster.List	func(p server/client.Listed)
 server/client	method	Roster.Player	func(id github.com/google/uuid.UUID) (server/client.Listed, bool)
 server/client	method	Roster.Players	func() []server/client.Listed
 server/client	method	Roster.Unlist	func(c server/client.Joining)
 server/client	method	Roster.Update	func(f func(players []server/client.Listed))
+server/client	type	Abilities	uint16
 server/client	type	Client	interface{server/world.Viewer; server/client.MapViewer; server/client.Connection; server/client.Messenger; server/client.Screens; server/client.HUD; server/client.Self; server/client.Views}
 server/client	type	CommandMessage	struct{Text server/text.Text; Success bool}
 server/client	type	CommandOutput	struct{Messages []server/client.CommandMessage}
@@ -6046,8 +6075,10 @@ server/client	type	Move	struct{Position github.com/go-gl/mathgl/mgl64.Vec3; Rota
 server/client	type	MoveResult	uint8
 server/client	type	NetStats	struct{Addr net.Addr; Latency time.Duration; Queued int; Inbox int; Transport []string}
 server/client	type	Nop	struct{server/world.NopViewer}
+server/client	type	Permissions	struct{Level uint8; Operator bool; Role server/client.Role; Abilities server/client.Abilities}
 server/client	type	PlayerList	interface{ListPlayer(p server/client.Listed); UnlistPlayer(p server/client.Listed)}
 server/client	type	Profile	struct{DeviceID string; DeviceModel string; SelfSignedID string}
+server/client	type	Role	uint8
 server/client	type	Roster	struct{op sync.Mutex; mu sync.Mutex; players []server/client.Listed}
 server/client	type	Screens	interface{CloseDialogue(); CloseForm(); CloseMenu(m *server/menu.Menu, clientRequested bool); OpenMenu(m *server/menu.Menu, tx *server/world.Tx); OpenSign(pos server/block/cube.Pos, frontSide bool); SendDialogue(d server/player/dialogue.Dialogue, e server/world.Entity); SendForm(f server/player/form.Form); ViewCrafterSlotState(slot int, disabled bool); ViewCrafterTriggered(triggered bool); ViewEnchantmentOptions(options [3]server/menu.EnchantmentOption); ViewSlotChange(slot int, newItem server/item.Stack); ViewTrades(m *server/menu.Menu, merchant server/entity.Merchant, offers []server/entity.MerchantOffer)}
 server/client	type	Self	interface{CorrectMove(c server/client.Controllable, pos github.com/go-gl/mathgl/mgl64.Vec3, vel github.com/go-gl/mathgl/mgl64.Vec3, tick uint64); ResyncInventory(); SendAbilities(c server/client.Controllable); SendChargeItemComplete(); SendEffect(e server/entity/effect.Effect); SendEffectModification(e server/entity/effect.Effect); SendEffectRemoval(t server/entity/effect.Type); SendExperience(level int, progress float64); SendFood(food int, saturation float64, exhaustion float64); SendGameMode(c server/client.Controllable); SendHealth(health float64, max float64, absorption float64); SendHeldSlot(slot int, c server/client.Controllable, force bool); SendPermissions(c server/client.Controllable); SendPlayerSpawn(pos github.com/go-gl/mathgl/mgl64.Vec3); SendRespawn(pos github.com/go-gl/mathgl/mgl64.Vec3, c server/client.Controllable); SendSpeed(speed float64); SetPlayerSpawn(pos server/block/cube.Pos, dim server/world.Dimension); ShowSkin(sk server/player/skin.Skin); ViewRecipesUnlocked(javaIDs []string)}
@@ -19558,6 +19589,7 @@ server/player	method	Player.OpenEntityContainer	func(e server/world.Entity, inv 
 server/player	method	Player.OpenMerchant	func(e server/world.Entity, merchant server/entity.Merchant, tx *server/world.Tx)
 server/player	method	Player.OpenSign	func(pos server/block/cube.Pos, frontSide bool)
 server/player	method	Player.PermissionLevel	func() server/cmd.Level
+server/player	method	Player.Permissions	func() server/client.Permissions
 server/player	method	Player.PickBlock	func(pos server/block/cube.Pos)
 server/player	method	Player.PlaceBlock	func(pos server/block/cube.Pos, b server/world.Block, ctx *server/item.UseContext)
 server/player	method	Player.PlaySound	func(sound server/world.Sound)
@@ -19710,7 +19742,7 @@ server/player	method	Player.WardenSpawnTracker	func() *server/world.WardenSpawnT
 server/player	method	Player.WardenSpectator	func() bool
 server/player	method	Player.WearingCreakingDisguise	func() bool
 server/player	method	Player.XUID	func() string
-server/player	type	Config	struct{Client server/client.Client; Log *log/slog.Logger; Left func(tx *server/world.Tx, p *server/player.Player); QuitMessage server/player/chat.Translation; AntiCheat *server/player/anticheat.Config; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool; Skin server/player/skin.Skin; XUID string; UUID github.com/google/uuid.UUID; DataUUID github.com/google/uuid.UUID; Name string; Locale golang.org/x/text/language.Tag; GameMode server/world.GameMode; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; Velocity github.com/go-gl/mathgl/mgl64.Vec3; Health float64; MaxHealth float64; FoodTick int; Food int; Exhaustion float64; Saturation float64; AirSupply int; MaxAirSupply int; TimeSinceRest int32; EnchantmentSeed int64; Experience int; HeldSlot int; Inventory *server/item/inventory.Inventory; OffHand *server/item/inventory.Inventory; Armour *server/item/inventory.Armour; EnderChestInventory *server/item/inventory.Inventory; FireTicks int64; FallDistance float64; Effects []server/entity/effect.Effect; UnlockedRecipes []string; RaidOmenPosition server/block/cube.Pos; HasRaidOmenPosition bool; ShoulderLeft map[string]any; ShoulderRight map[string]any; JavaState map[string]any; RespawnDimension server/world.Dimension; RespawnPosition server/block/cube.Pos; RespawnRotation server/block/cube.Rotation; HasRespawnPoint bool}
+server/player	type	Config	struct{Client server/client.Client; Log *log/slog.Logger; Left func(tx *server/world.Tx, p *server/player.Player); QuitMessage server/player/chat.Translation; AntiCheat *server/player/anticheat.Config; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool; Permissions func(p *server/player.Player) server/client.Permissions; Skin server/player/skin.Skin; XUID string; UUID github.com/google/uuid.UUID; DataUUID github.com/google/uuid.UUID; Name string; Locale golang.org/x/text/language.Tag; GameMode server/world.GameMode; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; Velocity github.com/go-gl/mathgl/mgl64.Vec3; Health float64; MaxHealth float64; FoodTick int; Food int; Exhaustion float64; Saturation float64; AirSupply int; MaxAirSupply int; TimeSinceRest int32; EnchantmentSeed int64; Experience int; HeldSlot int; Inventory *server/item/inventory.Inventory; OffHand *server/item/inventory.Inventory; Armour *server/item/inventory.Armour; EnderChestInventory *server/item/inventory.Inventory; FireTicks int64; FallDistance float64; Effects []server/entity/effect.Effect; UnlockedRecipes []string; RaidOmenPosition server/block/cube.Pos; HasRaidOmenPosition bool; ShoulderLeft map[string]any; ShoulderRight map[string]any; JavaState map[string]any; RespawnDimension server/world.Dimension; RespawnPosition server/block/cube.Pos; RespawnRotation server/block/cube.Rotation; HasRespawnPoint bool}
 server/player	type	Context	struct{*server/world.Context; p *server/player.Player}
 server/player	type	Handler	interface{HandleAttackEntity(ctx *server/player.Context, e server/world.Entity, force *float64, height *float64, critical *bool); HandleBlockBreak(ctx *server/player.Context, pos server/block/cube.Pos, drops *[]server/item.Stack, xp *int); HandleBlockPick(ctx *server/player.Context, pos server/block/cube.Pos, b server/world.Block); HandleBlockPlace(ctx *server/player.Context, pos server/block/cube.Pos, b server/world.Block); HandleChangeWorld(p *server/player.Player, before *server/world.World, after *server/world.World); HandleChat(ctx *server/player.Context, message *string); HandleCommandExecution(ctx *server/player.Context, command server/cmd.Command, args []string); HandleDeath(p *server/player.Player, src server/world.DamageSource, keepInv *bool); HandleDiagnostics(p *server/player.Player, d server/client.Diagnostics); HandleExperienceGain(ctx *server/player.Context, amount *int); HandleFireExtinguish(ctx *server/player.Context, pos server/block/cube.Pos); HandleFoodLoss(ctx *server/player.Context, from int, to *int); HandleHeal(ctx *server/player.Context, health *float64, src server/world.HealingSource); HandleHeldSlotChange(ctx *server/player.Context, from int, to int); HandleHurt(ctx *server/player.Context, damage *float64, immune bool, attackImmunity *time.Duration, src server/world.DamageSource); HandleItemConsume(ctx *server/player.Context, item server/item.Stack); HandleItemDamage(ctx *server/player.Context, i server/item.Stack, damage *int); HandleItemDrop(ctx *server/player.Context, s server/item.Stack); HandleItemPickup(ctx *server/player.Context, i *server/item.Stack); HandleItemRelease(ctx *server/player.Context, item server/item.Stack, dur time.Duration); HandleItemUse(ctx *server/player.Context); HandleItemUseOnBlock(ctx *server/player.Context, pos server/block/cube.Pos, face server/block/cube.Face, clickPos github.com/go-gl/mathgl/mgl64.Vec3); HandleItemUseOnEntity(ctx *server/player.Context, e server/world.Entity); HandleJump(p *server/player.Player); HandleLecternPageTurn(ctx *server/player.Context, pos server/block/cube.Pos, oldPage int, newPage *int); HandleMove(ctx *server/player.Context, newPos github.com/go-gl/mathgl/mgl64.Vec3, newRot server/block/cube.Rotation); HandlePunchAir(ctx *server/player.Context); HandleQuit(p *server/player.Player); HandleRespawn(p *server/player.Player, pos *github.com/go-gl/mathgl/mgl64.Vec3, w **server/world.World); HandleSetOnFire(ctx *server/player.Context, duration *time.Duration); HandleSignEdit(ctx *server/player.Context, pos server/block/cube.Pos, frontSide bool, oldText string, newText string); HandleSkinChange(ctx *server/player.Context, skin *server/player/skin.Skin); HandleSleep(ctx *server/player.Context, sendReminder *bool); HandleStartBreak(ctx *server/player.Context, pos server/block/cube.Pos); HandleTeleport(ctx *server/player.Context, pos github.com/go-gl/mathgl/mgl64.Vec3); HandleToggleSneak(ctx *server/player.Context, after bool); HandleToggleSprint(ctx *server/player.Context, after bool); HandleTransfer(ctx *server/player.Context, addr *net.UDPAddr); HandleViolation(ctx *server/player.Context, v *server/player/anticheat.Violation)}
 server/player	type	Lister	interface{Players(yield func(id github.com/google/uuid.UUID, name string, xuid string) bool) error}

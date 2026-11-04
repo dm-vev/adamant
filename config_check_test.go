@@ -199,6 +199,10 @@ func TestConfigBounds(t *testing.T) {
 		{table: "Permissions", key: "RoleLevel", values: []value{
 			{"3", ""}, {"7", "Permissions.RoleLevel = 7: want 0 to 4"},
 		}},
+		{table: "Permissions", key: "DefaultRole", values: []value{
+			{`"member"`, ""}, {`" Visitor "`, ""}, {`""`, ""},
+			{`"operator"`, `Permissions.DefaultRole = "operator": want "member" or "visitor"`},
+		}},
 		{table: "Permissions.Commands", key: "kick", values: []value{
 			{"0", ""}, {"4", ""}, {"5", "Permissions.Commands.kick = 5: want 0 to 4"},
 		}},

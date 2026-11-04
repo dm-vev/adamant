@@ -20,8 +20,12 @@ const clickEpsilon = 1e-7
 // Java does, and is no violation. A click on a face the eyes are behind by
 // more than FaceEpsilon, or, with LineOfSight, on a point the eyes cannot
 // see past full blocks, is a violation of Place. It reports whether the use
-// is refused.
+// is refused. The role of the player may refuse it first, as
+// roleRefusesUse says.
 func (p *Player) refuseUseOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3) bool {
+	if p.roleRefusesUse(pos) {
+		return true
+	}
 	ac, end := p.beginAction()
 	defer end()
 	if !p.checks(ac, anticheat.Place) {

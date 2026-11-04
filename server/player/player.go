@@ -197,6 +197,8 @@ type playerData struct {
 	// Config of the player.
 	acConf   *anticheat.Config
 	acExempt func(p *Player, c anticheat.Check) bool
+	// permissions is the Permissions of the Config of the player.
+	permissions func(p *Player) client.Permissions
 	// acState is what the anti-cheat keeps of the player, made as it is
 	// first needed; see anticheat.
 	acState *acState
@@ -2615,7 +2617,7 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 func (p *Player) UseItemOnEntity(e world.Entity) bool {
 	ac, end := p.beginAction()
 	defer end()
-	if !p.canReachEntity(ac, e, nil) {
+	if !p.canReachEntity(ac, e, nil) || p.roleRefusesEntity(e) {
 		return false
 	}
 	ctx := NewEventContext(p.tx, p)
@@ -2888,8 +2890,9 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 		return
 	}
 	p.AbortBreaking()
-	if _, air := p.tx.Block(pos).(block.Air); air || !p.canReachBlock(pos) {
-		// The block was either out of range or air, so it can't be broken by the player.
+	if _, air := p.tx.Block(pos).(block.Air); air || !p.canReachBlock(pos) || !p.Permissions().Allows(client.AbilityMine) {
+		// The block was either out of range or air, or the role of the
+		// player does not mine, so it can't be broken by the player.
 		return
 	}
 	if _, ok := p.tx.Block(pos.Side(face)).(block.Fire); ok {
@@ -3048,7 +3051,7 @@ func (p *Player) PlaceBlock(pos cube.Pos, b world.Block, ctx *item.UseContext) {
 // placeBlock makes the player place the block passed at the position passed, granted it is within the range
 // of the player. A bool is returned indicating if a block was placed successfully.
 func (p *Player) placeBlock(pos cube.Pos, b world.Block, ignoreBBox bool) bool {
-	if !p.canReachBlock(pos) || !p.GameMode().AllowsEditing() {
+	if !p.canReachBlock(pos) || !p.GameMode().AllowsEditing() || !p.Permissions().Allows(client.AbilityBuild) {
 		p.resendNearbyBlocks(pos, cube.Faces()...)
 		return false
 	}
@@ -3114,7 +3117,7 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 		// Don't do anything if the position broken is already air.
 		return
 	}
-	if !p.canReachBlock(pos) || !p.GameMode().AllowsEditing() {
+	if !p.canReachBlock(pos) || !p.GameMode().AllowsEditing() || !p.Permissions().Allows(client.AbilityMine) {
 		p.resendNearbyBlocks(pos)
 		return
 	}
@@ -5153,6 +5156,7 @@ func (p *Player) Data() Config {
 		QuitMessage:         p.quitMessage,
 		AntiCheat:           p.acConf,
 		AntiCheatExempt:     p.acExempt,
+		Permissions:         p.permissions,
 		Skin:                p.skin,
 		XUID:                p.xuid,
 		UUID:                p.UUID(),

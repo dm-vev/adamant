@@ -65,23 +65,9 @@ func moveToAccounts(a admission, lister player.Lister) error {
 		a.known.seed(knownPlayer{XUID: r.xuid, Name: r.name, UUID: r.id}, len(accounts[identity.Normalize(r.name)]) == 1)
 	}
 
-	type list struct {
-		what string
-		list migratedList
-	}
-	var lists []list
-	if a.operators != nil {
-		lists = append(lists, list{"operators", a.operators})
-	}
-	if a.whitelist != nil {
-		lists = append(lists, list{"whitelist", a.whitelist})
-	}
-	if a.bans != nil {
-		lists = append(lists, list{"bans", a.bans})
-	}
 	var total, moved int
 	var held []string
-	for _, l := range lists {
+	for _, l := range a.migratedLists() {
 		var names []string
 		l.list.view(func(e *entries) { names = e.pending() })
 		if len(names) == 0 {
@@ -132,6 +118,32 @@ func moveToAccounts(a admission, lister player.Lister) error {
 		a.logger().Warn("The names were moved to the accounts by the XUIDs saved with the data of the players. If this server ever ran with AuthEnabled = false, those XUIDs are what clients claimed: review the lists. The files before the move are kept as *" + backupSuffix + ".")
 	}
 	return nil
+}
+
+// namedList is a list the move to accounts goes through, and what the log
+// calls it.
+type namedList struct {
+	what string
+	list migratedList
+}
+
+// migratedLists returns the lists of the admission the move to accounts
+// goes through: the operators, the whitelist, the bans and the roles.
+func (a admission) migratedLists() []namedList {
+	var lists []namedList
+	if a.operators != nil {
+		lists = append(lists, namedList{"operators", a.operators})
+	}
+	if a.whitelist != nil {
+		lists = append(lists, namedList{"whitelist", a.whitelist})
+	}
+	if a.bans != nil {
+		lists = append(lists, namedList{"bans", a.bans})
+	}
+	if a.roles != nil {
+		lists = append(lists, namedList{"roles", a.roles})
+	}
+	return lists
 }
 
 // backup copies the file at path to path+".before-xuid", unless that file

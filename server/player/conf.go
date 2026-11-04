@@ -46,6 +46,11 @@ type Config struct {
 	// AntiCheatExempt, if not nil, is asked whether the player skips a
 	// check, anticheat.All standing for every check.
 	AntiCheatExempt func(p *Player, c anticheat.Check) bool
+	// Permissions, if not nil, returns what the player may do: its level and
+	// the abilities of its role, which the player is held to as it builds,
+	// mines, uses switches, opens containers and attacks. If nil, the player
+	// has the permissions of a member, client.MemberPermissions.
+	Permissions func(p *Player) client.Permissions
 
 	Skin skin.Skin
 	XUID string
@@ -102,10 +107,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 	data.Name, data.Pos, data.Rot = conf.Name, conf.Position, conf.Rotation
 	slot := new(uint32)
 	atomic.StoreUint32(slot, uint32(conf.HeldSlot))
-	unlockedRecipes := make(map[string]struct{}, len(conf.UnlockedRecipes))
-	for _, id := range conf.UnlockedRecipes {
-		unlockedRecipes[id] = struct{}{}
-	}
+	unlockedRecipes := recipeSet(conf.UnlockedRecipes)
 	var raidOmenPos *cube.Pos
 	if conf.HasRaidOmenPosition {
 		pos := conf.RaidOmenPosition
@@ -135,6 +137,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		quitMessage:         conf.QuitMessage,
 		acConf:              conf.AntiCheat,
 		acExempt:            conf.AntiCheatExempt,
+		permissions:         conf.Permissions,
 		h:                   NopHandler{},
 		speed:               0.1,
 		flightSpeed:         0.05,
@@ -266,6 +269,15 @@ func (cfg Config) Apply(data *world.EntityData) {
 	pdata.hunger.setState(conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation)
 	pdata.experience.Add(conf.Experience)
 	data.Data = pdata
+}
+
+// recipeSet returns the set of the recipes of the IDs passed.
+func recipeSet(ids []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		set[id] = struct{}{}
+	}
+	return set
 }
 
 // fillDefaults fills empty fields in a Config with reasonable default values.

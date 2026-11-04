@@ -30,6 +30,8 @@ type entry struct {
 	ip string
 	// op is what an entry of ops.json holds beside the player.
 	op opFields
+	// role is what an entry of permissions.json holds beside the player.
+	role roleFields
 }
 
 // opFields are the fields of an operator beside the player, as Java's
@@ -331,6 +333,8 @@ type admission struct {
 	whitelist *Whitelist
 	operators *operatorsList
 	bans      *banList
+	// roles is permissions.json, the roles of players.
+	roles *roleList
 	// known are the accounts a server keyed by XUID has seen; nil on one
 	// keyed by name.
 	known *knownPlayers
@@ -411,6 +415,7 @@ func (a admission) bind(k identity.Key, name string) {
 		{"ban", a.bans, a.bans != nil},
 		{"operator entry", a.operators, a.operators != nil},
 		{"whitelist entry", a.whitelist, a.whitelist != nil},
+		{"role", a.roles, a.roles != nil},
 	} {
 		if !l.ok {
 			continue
@@ -484,8 +489,10 @@ func (a admission) warnHeld() {
 
 // adminAccess and underlyingWhitelist hand Config.New the lists of the
 // admission, which the Server changes through its admin API.
-func (a admission) adminAccess() (*operatorsList, *banList) { return a.operators, a.bans }
-func (a admission) underlyingWhitelist() *Whitelist         { return a.whitelist }
-func (a admission) knownAccess() *knownPlayers              { return a.known }
+func (a admission) adminAccess() (*operatorsList, *banList, *roleList) {
+	return a.operators, a.bans, a.roles
+}
+func (a admission) underlyingWhitelist() *Whitelist { return a.whitelist }
+func (a admission) knownAccess() *knownPlayers      { return a.known }
 
 var _ Allower = admission{}

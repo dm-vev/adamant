@@ -19,6 +19,8 @@ const (
 	Whitelisted
 	// Banned is the list of the players banned, banned-players.json.
 	Banned
+	// Roles is the list of the roles of players, permissions.json.
+	Roles
 )
 
 // Found says how the server found the player an admin named.
@@ -219,6 +221,8 @@ func listWhat(list List) string {
 		return "an operator"
 	case Whitelisted:
 		return "on the whitelist"
+	case Roles:
+		return "given a role"
 	default:
 		return "banned"
 	}
@@ -239,6 +243,10 @@ func (srv *Server) listView(list List) (func(func(*entries)), bool) {
 	case Banned:
 		if srv.bans != nil {
 			return srv.bans.view, true
+		}
+	case Roles:
+		if srv.roles != nil {
+			return srv.roles.view, true
 		}
 	}
 	return nil, false

@@ -160,6 +160,10 @@
   CommandBlockLevel = 2
   # DefaultLevel is the level of players who are not operators.
   DefaultLevel = 0
+  # DefaultRole is what players who are neither operators nor in permissions.json may do: "member", or
+  # "visitor", who can walk and look around but not build, mine, open containers, use doors or attack. The roles
+  # of players are in permissions.json, beside ops.json, in the format of Bedrock Dedicated Server.
+  DefaultRole = "member"
   # OperatorLevel is the level /op gives, and that of operators with no level of their own in ops.json.
   OperatorLevel = 4
   # RoleLevel is the level an operator needs to change the roles of players from the game's player list.

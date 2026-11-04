@@ -14,6 +14,7 @@ import (
 
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -330,9 +331,9 @@ func (conf Config) New() *Server {
 		srv.whitelist = holder.underlyingWhitelist()
 	}
 	if access, ok := conf.Allower.(interface {
-		adminAccess() (*operatorsList, *banList)
+		adminAccess() (*operatorsList, *banList, *roleList)
 	}); ok {
-		srv.operators, srv.bans = access.adminAccess()
+		srv.operators, srv.bans, srv.roles = access.adminAccess()
 	}
 	if access, ok := conf.Allower.(interface{ knownAccess() *knownPlayers }); ok && conf.IdentityKey == identity.XUID {
 		srv.known = access.knownAccess()
@@ -602,6 +603,10 @@ type UserConfig struct {
 		// RoleLevel is the level an operator needs to change the roles of
 		// players from the player list of the game.
 		RoleLevel int
+		// DefaultRole is what players who are neither operators nor on
+		// permissions.json may do: "member", or "visitor", who walks and
+		// looks around but builds, mines, opens and attacks nothing.
+		DefaultRole string
 		// Commands sets the level a command needs, by its name or one of its
 		// aliases, such as kick = 2 or version = 2.
 		Commands map[string]int
@@ -739,6 +744,7 @@ func (uc UserConfig) checkPermissions(p *config.Problems) {
 	config.Range(p, "Permissions.DefaultLevel", uc.Permissions.DefaultLevel, 0, top)
 	config.Range(p, "Permissions.OperatorLevel", uc.Permissions.OperatorLevel, 0, top)
 	config.Range(p, "Permissions.RoleLevel", uc.Permissions.RoleLevel, 0, top)
+	config.OneOf(p, "Permissions.DefaultRole", uc.Permissions.DefaultRole, "member", "visitor")
 	for _, name := range slices.Sorted(maps.Keys(uc.Permissions.Commands)) {
 		config.Range(p, "Permissions.Commands."+name, uc.Permissions.Commands[name], 0, top)
 	}
@@ -752,6 +758,9 @@ func (uc UserConfig) permissionConfig() *PermissionConfig {
 		OperatorLevel:     cmd.Level(uc.Permissions.OperatorLevel),
 		CommandBlockLevel: cmd.Level(uc.Permissions.CommandBlockLevel),
 		RoleLevel:         cmd.Level(uc.Permissions.RoleLevel),
+	}
+	if role, err := client.ParseRole(uc.Permissions.DefaultRole); err == nil {
+		conf.DefaultRole = role
 	}
 	if len(uc.Permissions.Commands) > 0 {
 		conf.Commands = make(map[string]cmd.Level, len(uc.Permissions.Commands))
@@ -910,7 +919,14 @@ func (uc UserConfig) admission(whitelistFile string, mode identity.Mode, log *sl
 	if err != nil {
 		return admission{}, fmt.Errorf("load bans: %w", err)
 	}
-	return admission{mode: mode, log: log, whitelist: wl, operators: ops, bans: bans}, nil
+	roles, moved, err := loadRoles(filepath.Join(baseDir, "permissions.json"))
+	if err != nil {
+		return admission{}, fmt.Errorf("load permissions: %w", err)
+	}
+	if err := moveOperatorRoles(roles, ops, moved, log); err != nil {
+		return admission{}, fmt.Errorf("move the operators of permissions.json: %w", err)
+	}
+	return admission{mode: mode, log: log, whitelist: wl, operators: ops, bans: bans, roles: roles}, nil
 }
 
 // worldPlayers returns the player provider of a server saving both its
@@ -1015,6 +1031,7 @@ func DefaultConfig() UserConfig {
 	c.Permissions.CommandBlockLevel = int(DefaultCommandBlockLevel)
 	c.Permissions.OperatorLevel = int(DefaultOperatorLevel)
 	c.Permissions.RoleLevel = int(DefaultRoleLevel)
+	c.Permissions.DefaultRole = client.RoleMember.String()
 	c.Permissions.Commands = map[string]int{}
 	return c
 }

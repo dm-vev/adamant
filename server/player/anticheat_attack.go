@@ -28,8 +28,12 @@ type attackState struct {
 // look, to the direction of the nearest point of the box of e, a cosine of
 // MinCos (0.85) at least, beyond a block, and, with LineOfSight, the eyes
 // to a sight of the centre of e past full blocks. It reports whether the
-// attack is refused.
+// attack is refused. The role of the player may refuse it first, as
+// roleRefusesAttack says.
 func (p *Player) refuseAttack(ac *acState, e world.Entity) bool {
+	if p.roleRefusesAttack(e) {
+		return true
+	}
 	if ac == nil {
 		return false
 	}

@@ -40,6 +40,10 @@ type PermissionConfig struct {
 	// RoleLevel is the level an operator needs to change the roles of
 	// players from the player list of the game.
 	RoleLevel cmd.Level
+	// DefaultRole is the role of the players who are neither operators nor
+	// on permissions.json: client.RoleMember, the zero value, or
+	// client.RoleVisitor.
+	DefaultRole client.Role
 	// Commands sets the level a command needs, by its name or one of its
 	// aliases, in place of the level it declares.
 	Commands map[string]cmd.Level
@@ -218,7 +222,8 @@ func (srv *Server) SetOperatorLevel(name string, level cmd.Level) (bool, error) 
 	return changed, err
 }
 
-// ReloadPermissions reads ops.json again, as /permission reload does, and
+// ReloadPermissions reads ops.json and permissions.json again, as
+// /permission reload does, and
 // refreshes the permissions of every player online. A file that cannot be
 // read leaves the list as it was.
 func (srv *Server) ReloadPermissions() error {
@@ -227,6 +232,11 @@ func (srv *Server) ReloadPermissions() error {
 	}
 	if err := srv.operators.reload(); err != nil {
 		return err
+	}
+	if srv.roles != nil {
+		if err := srv.roles.reload(); err != nil {
+			return err
+		}
 	}
 	srv.refreshAllPermissions()
 	return nil

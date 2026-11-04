@@ -50,6 +50,8 @@ type Server struct {
 	whitelist *Whitelist
 	operators *operatorsList
 	bans      *banList
+	// roles is permissions.json, the roles of players.
+	roles *roleList
 	// commandLevels are the levels of [Permissions.Commands] by the names
 	// of the commands, which Listen resolves.
 	commandLevels atomic.Pointer[map[string]cmd.Level]
@@ -767,6 +769,7 @@ func (srv *Server) createPlayer(login client.Login, c client.Joining, conf playe
 	conf.Left = srv.left
 	conf.QuitMessage = srv.conf.QuitMessage
 	conf.AntiCheat, conf.AntiCheatExempt = srv.conf.AntiCheat, srv.conf.AntiCheatExempt
+	conf.Permissions = func(*player.Player) client.Permissions { return srv.permissionsOf(id) }
 	conf.Log = srv.conf.Log.With("name", id.Name, "uuid", id.UUID.String(), "data-uuid", conf.DataUUID.String(), "raddr", addrString(login.Addr))
 
 	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id.UUID}.New(player.Type, conf)

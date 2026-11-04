@@ -252,6 +252,7 @@
 [Permissions]
   CommandBlockLevel = 2
   DefaultLevel = 0
+  DefaultRole = "member"
   OperatorLevel = 4
   RoleLevel = 3
 

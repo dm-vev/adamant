@@ -59,12 +59,13 @@ import (
 // localhost:6060, as the program did before, and the probes of health
 // beside them, which it did not; the [Backup] table, whose lines a new
 // default file has, and a file that lacks it backs the server up into
-// backups every 6 hours, keeping 10, which it did not before; [Permissions],
-// whose table a new default file has, and a file that lacks it gives
-// operators level 4 and every other player level 0, with every command at
-// the level it declares, Java 26.3's, and command blocks at level 2, where
-// they ran every command before. And a file saving both its world and its
-// players now keeps the players in the world database
+// backups every 6 hours, keeping 10, which it did not before;
+// [Permissions], whose table a new default file has, and a file that lacks
+// it gives operators level 4 and every other player level 0, with every
+// command at the level it declares, Java 26.3's, and command blocks at
+// level 2, where they ran every command before, and every player who is no
+// operator the role of members, as before. And a file saving both its world
+// and its players now keeps the players in the world database
 // (playerdb.WorldProvider), reading the players folder only for those not
 // yet moved there, and no longer makes the folder.
 
@@ -174,7 +175,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Xbox.Enabled": false, "Xbox.TokenFile": "xbox-token.json", "Xbox.AcceptFriends": true, "Xbox.LegacySignaling": false,
 			"Proxy.Address": "", "Proxy.Secret": "",
 			"Java.Address": "", "Java.Message": "",
-			"Permissions": "default=0 op=4 blocks=2 roles=3 commands=map[]",
+			"Permissions": "default=0 op=4 blocks=2 roles=3 role=member commands=map[]",
 		})},
 		{"every key changed", []byte(everyKeyChanged), withMeaning(changedAntiCheat, configMeaning{
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
@@ -206,7 +207,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Xbox.Enabled": true, "Xbox.TokenFile": "token.json", "Xbox.AcceptFriends": false, "Xbox.LegacySignaling": true,
 			"Proxy.Address": "127.0.0.1:19133", "Proxy.Secret": "0123456789abcdef0123456789abcdef",
 			"Java.Address": ":25565", "Java.Message": "Use Bedrock.",
-			"Permissions": "default=1 op=3 blocks=0 roles=4 commands=map[kick:2 teleport:3]",
+			"Permissions": "default=1 op=3 blocks=0 roles=4 role=visitor commands=map[kick:2 teleport:3]",
 		})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -582,6 +583,7 @@ const everyKeyChanged = `
 [Permissions]
   CommandBlockLevel = 0
   DefaultLevel = 1
+  DefaultRole = "Visitor"
   OperatorLevel = 3
   RoleLevel = 4
 
@@ -701,8 +703,8 @@ func permissionsMeaning(p *server.PermissionConfig) string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("default=%v op=%v blocks=%v roles=%v commands=%v",
-		p.DefaultLevel, p.OperatorLevel, p.CommandBlockLevel, p.RoleLevel, p.Commands)
+	return fmt.Sprintf("default=%v op=%v blocks=%v roles=%v role=%v commands=%v",
+		p.DefaultLevel, p.OperatorLevel, p.CommandBlockLevel, p.RoleLevel, p.DefaultRole, p.Commands)
 }
 
 // antiCheatMeaning returns the meaning of the anti-cheat of a Config: its

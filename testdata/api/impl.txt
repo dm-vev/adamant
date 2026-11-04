@@ -94,6 +94,7 @@ server.admission	server.Allower	value
 server.allower	server.Allower	value
 server.banList	server.migratedList	*
 server.operatorsList	server.migratedList	*
+server.roleList	server.migratedList	*
 server.statusProvider	server.StatusProvider	value
 server/block.ActivatorRail	server/block.Breakable	value
 server/block.ActivatorRail	server/block.LightDiffuser	value
