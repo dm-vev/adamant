@@ -2223,6 +2223,10 @@ func (p *Player) UseItem() {
 			p.PlaySound(sound.Custom{Name: name, Volume: 1, Pitch: 1})
 		}
 	case item.Usable:
+		if _, cooldown := it.(item.Cooldown); !cooldown && p.refuseFastUse(it) {
+			p.resyncInventory()
+			return
+		}
 		useCtx := p.useContext()
 		if !usable.Use(p.tx, p, useCtx) {
 			// An item used in no other way may still be consumed, as a milk
