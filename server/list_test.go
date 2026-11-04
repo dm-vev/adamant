@@ -274,3 +274,52 @@ func TestOnlineNeverWaits(t *testing.T) {
 		t.Fatal("Online or Players(tx) waited for the owner of the Nether")
 	}
 }
+
+// TestSaveAllFromDoesNotWait checks that SaveAllFrom, from inside a
+// transaction of the Overworld, returns at once while the owner of the
+// Nether is held, and runs done in the Overworld once the Nether, released,
+// was saved too.
+func TestSaveAllFromDoesNotWait(t *testing.T) {
+	tw := newTwoWorlds(t, nil)
+	defer tw.srv.Close()
+
+	release, blocked := make(chan struct{}), make(chan struct{})
+	tw.srv.Nether().Do(func(*world.Tx) {
+		close(blocked)
+		<-release
+	})
+	<-blocked
+
+	returned := make(chan struct{})
+	done := make(chan *world.World, 1)
+	player.Do(tw.alice, func(tx *world.Tx, _ *player.Player) {
+		tw.srv.SaveAllFrom(tx, func(tx *world.Tx, err error) {
+			if err != nil {
+				t.Errorf("SaveAllFrom: %v", err)
+			}
+			done <- tx.World()
+		})
+		close(returned)
+	})
+	select {
+	case <-returned:
+	case <-time.After(3 * time.Second):
+		close(release)
+		t.Fatal("SaveAllFrom waited for the owner of the Nether")
+	}
+	select {
+	case <-done:
+		close(release)
+		t.Fatal("SaveAllFrom ran done before the Nether was saved")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case w := <-done:
+		if w != tw.srv.World() {
+			t.Errorf("done ran in %v, want the Overworld, the world of the transaction", w.Dimension())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("done did not run once the worlds were saved")
+	}
+}

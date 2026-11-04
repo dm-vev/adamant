@@ -206,12 +206,58 @@ func (c banListCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Print(strings.Join(entries, ", "))
 	}
 }
-func (c saveAllCmd) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	if err := c.srv.SaveAll(tx); err != nil {
-		o.Error(err)
-		return
+
+// Run saves every dimension off the command's world, whose owner it would
+// otherwise have to wait for, and tells the source once they were saved.
+func (c saveAllCmd) Run(src cmd.Source, _ *cmd.Output, tx *world.Tx) {
+	send := outputLater(src)
+	c.srv.SaveAllFrom(tx, func(tx *world.Tx, err error) {
+		o := &cmd.Output{}
+		if err != nil {
+			o.Error(err)
+		} else {
+			o.Print("Saved the world.")
+		}
+		send(tx, o)
+	})
+}
+
+// outputLater returns a function that sends output to src from a later
+// transaction, or from none, once the transaction of the command ended. A
+// source that is an entity, as a player, is valid only in the transaction of
+// the command: it is found again by its handle, wherever it is then.
+func outputLater(src cmd.Source) func(tx *world.Tx, o *cmd.Output) {
+	base := src
+unwrap:
+	for {
+		switch s := base.(type) {
+		case cmd.ContextSource:
+			base = s.Source
+		case *storeSource:
+			base = s.Source
+		default:
+			break unwrap
+		}
 	}
-	o.Print("Saved the world.")
+	e, ok := base.(world.Entity)
+	if !ok {
+		return func(_ *world.Tx, o *cmd.Output) { base.SendCommandOutput(o) }
+	}
+	h := e.H()
+	sendTo := func(e world.Entity, o *cmd.Output) {
+		if s, ok := e.(cmd.Source); ok {
+			s.SendCommandOutput(o)
+		}
+	}
+	return func(tx *world.Tx, o *cmd.Output) {
+		if tx != nil {
+			if e, ok := h.Entity(tx); ok {
+				sendTo(e, o)
+				return
+			}
+		}
+		h.Do(func(_ *world.Tx, e world.Entity) { sendTo(e, o) })
+	}
 }
 func (c saveToggleCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	c.srv.SaveEnabled(c.enabled)

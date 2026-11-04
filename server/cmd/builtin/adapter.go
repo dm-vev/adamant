@@ -33,9 +33,10 @@ type serverAdapter interface {
 	PardonIP(ip string) (bool, error)
 	BanEntries(ip bool) ([]string, error)
 	Banned(addr string, name string) (string, bool)
-	// SaveAll saves every dimension. tx is the transaction the command runs
-	// in, nil from the console.
-	SaveAll(tx *world.Tx) error
+	// SaveAllFrom saves every dimension without waiting for it in tx, the
+	// transaction the command runs in; done runs in tx's world once they
+	// were saved.
+	SaveAllFrom(tx *world.Tx, done func(tx *world.Tx, err error))
 	SaveEnabled(enabled bool)
 	SaveEnabledState() bool
 	SetIdleTimeout(minutes int)

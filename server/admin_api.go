@@ -127,11 +127,10 @@ func (srv *Server) Banned(addr, name string) (string, bool) {
 	return srv.bans.banned(addr, name)
 }
 
-// SaveAll saves every dimension. tx is the transaction a command runs in, or
-// nil: its own world is saved through it, as Save would wait for the world
-// goroutine running the command, and the others are saved without waiting,
-// as one of them may be waiting for this world.
-func (srv *Server) SaveAll(tx *world.Tx) error {
+// SaveAll saves every dimension and waits until they reach the disk. It waits
+// for the owners of the worlds: call it off any world owner only, such as from
+// a goroutine of the console. From a transaction, use SaveAllFrom.
+func (srv *Server) SaveAll() error {
 	seen := map[*world.World]struct{}{}
 	for _, w := range srv.dimensions {
 		if w == nil {
@@ -141,16 +140,32 @@ func (srv *Server) SaveAll(tx *world.Tx) error {
 			continue
 		}
 		seen[w] = struct{}{}
-		switch {
-		case tx == nil:
-			w.Save()
-		case tx.World() == w:
-			tx.SaveWorld()
-		default:
-			go w.Save()
-		}
+		w.Save()
 	}
 	return nil
+}
+
+// SaveAllFrom saves every dimension like SaveAll for code running in tx, such
+// as a command, and returns at once: the worlds are saved from a goroutine of
+// their own, as tx's world cannot be saved while tx runs and the owner of
+// another may be waiting for it. done, if not nil, runs in a transaction of
+// tx's world once every dimension was saved, with the error of SaveAll. If tx
+// is nil, done runs with a nil transaction on that goroutine.
+func (srv *Server) SaveAllFrom(tx *world.Tx, done func(tx *world.Tx, err error)) {
+	var w *world.World
+	if tx != nil {
+		w = tx.World()
+	}
+	go func() {
+		err := srv.SaveAll()
+		switch {
+		case done == nil:
+		case w == nil:
+			done(nil, err)
+		default:
+			w.Do(func(tx *world.Tx) { done(tx, err) })
+		}
+	}()
 }
 func (srv *Server) SaveEnabled(enabled bool) {
 	seen := map[*world.World]struct{}{}
