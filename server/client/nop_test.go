@@ -52,7 +52,7 @@ func TestNopAnswersAsNoClient(t *testing.T) {
 	}
 	// Close must not touch the world: a player without a client removes
 	// itself.
-	c.Close(nil, nil)
+	c.Close(nil)
 }
 
 // Returning Nop as a Client must not allocate: a player without a client

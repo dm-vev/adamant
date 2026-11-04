@@ -306,8 +306,8 @@ func TestPlayerNetStats(t *testing.T) {
 	})
 }
 
-// Disconnect tells the client why, then closes its session with the player
-// and its connection; the client removes the player from the world.
+// Disconnect tells the client why, closes its connection, and the player
+// leaves: it removes itself from the world, then closes the client.
 func TestPlayerDisconnectClosesClient(t *testing.T) {
 	w, _ := clientTestWorld(t)
 	r := clienttest.New()
@@ -323,14 +323,14 @@ func TestPlayerDisconnectClosesClient(t *testing.T) {
 				lifecycle = append(lifecycle, c)
 			}
 		}
-		if got, want := methods(lifecycle), []string{"Disconnect", "Close", "CloseConnection"}; !slices.Equal(got, want) {
+		if got, want := methods(lifecycle), []string{"Disconnect", "CloseConnection", "Close"}; !slices.Equal(got, want) {
 			t.Fatalf("calls = %v, want %v", got, want)
 		}
 		if got := argText(t, lifecycle[0], 0); !text.Equal(got, text.ParseLegacy("§cbye")) {
 			t.Errorf("Disconnect message = %q, want §cbye", got.Legacy())
 		}
-		if lifecycle[1].Args[0] != tx || lifecycle[1].Args[1] != client.Controllable(p) {
-			t.Errorf("Close args = %v, want the transaction and the player", lifecycle[1].Args)
+		if lifecycle[2].Args[0] != tx {
+			t.Errorf("Close args = %v, want the transaction", lifecycle[2].Args)
 		}
 	})
 	if err := handle.Do(func(*world.Tx, world.Entity) {}).Wait(t.Context()); !errors.Is(err, world.ErrEntityClosed) {

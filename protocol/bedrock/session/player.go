@@ -732,6 +732,8 @@ func (s *Session) EnableInstantRespawn(enable bool) {
 func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, enderChest, ui *inventory.Inventory, armour *inventory.Armour, heldSlot *uint32) {
 	// Store the held slot pointer before attaching callbacks to avoid races with concurrent inventory updates.
 	s.heldSlot.Store(heldSlot)
+	// The teardown unlists c from the view layers of other sessions.
+	s.control.Store(&c)
 	s.inv = inv
 	// Use tx-less broadcast functions that schedule work on the entity's world transaction.
 	s.inv.SlotFunc(s.broadcastInvFunc(c))

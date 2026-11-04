@@ -72,45 +72,50 @@ func TestJoinStartFails(t *testing.T) {
 	}
 }
 
-// The Close of a Recorder that Start returned calls the Left hook of its
-// Game once, with the player still in the world, then removes the player.
-func TestJoinRecorderCloseCallsLeft(t *testing.T) {
+// The Close of a Recorder that Start returned unlists its player from the
+// Roster of its Game once, and leaves the player and its handle alone: the
+// player removes itself and closes its handle as it leaves.
+func TestJoinRecorderCloseUnlistsOnce(t *testing.T) {
 	w := world.Config{Log: slog.New(slog.DiscardHandler)}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var left int
-	var inWorld bool
+	roster := new(client.Roster)
 	j := &clienttest.Join{}
-	c, err := j.Start(ctx, client.Game{Left: func(tx *world.Tx, p client.Controllable) {
-		left++
-		_, inWorld = p.H().Entity(tx)
-	}})
+	c, err := j.Start(ctx, client.Game{Roster: roster})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pos := mgl64.Vec3{0.5, 64, 0.5}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(player.Type, player.Config{Position: pos, Client: c})
 	c.Bind(handle, skin.Skin{})
+	if len(roster.Players()) != 1 {
+		t.Fatal("Bind did not list the player")
+	}
 	if err := w.Do(func(tx *world.Tx) {
 		p := tx.AddEntity(handle).(*player.Player)
 		c.Spawn(p, tx)
-		c.Close(tx, p)
-		c.Close(tx, p)
-		if _, ok := handle.Entity(tx); ok {
-			t.Error("the player is in the world after Close")
+		c.Close(tx)
+		c.Close(tx)
+		if _, ok := handle.Entity(tx); !ok {
+			t.Error("Close removed the player from the world")
 		}
+		tx.RemoveEntity(p)
 	}).Wait(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if left != 1 || !inWorld {
-		t.Errorf("Left was called %d times, the player in the world: %t; want once, in the world", left, inWorld)
+	if len(roster.Players()) != 0 {
+		t.Error("the player is listed after Close")
+	}
+	if handle.Closed() {
+		t.Error("Close closed the handle of the player")
 	}
 	r := j.Recorder()
-	if len(r.CallsTo("Bind")) != 1 || len(r.CallsTo("Spawn")) != 1 {
-		t.Error("Bind and Spawn were not recorded")
+	if len(r.CallsTo("Bind")) != 1 || len(r.CallsTo("Spawn")) != 1 || len(r.CallsTo("Close")) != 2 {
+		t.Error("Bind, Spawn and both Closes were not recorded")
 	}
+	_ = handle.Close()
 }
 
 // Accept yields the Joins sent, in order, and fails once the Listener is

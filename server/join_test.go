@@ -43,7 +43,7 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	alice.L.Locale = language.BritishEnglish
 	handle := jt.join(t, alice)
 	bob := joinLogin("Bob", "")
-	jt.join(t, bob)
+	bobHandle := jt.join(t, bob)
 
 	games := alice.Games()
 	if len(games) != 1 {
@@ -56,8 +56,11 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	if !g.Operator || g.IsOperator == nil || !g.IsOperator("alice") || g.IsOperator("bob") {
 		t.Error("the Game of Alice does not hold her an operator")
 	}
-	if g.QuitMessage != chat.MessageQuit || g.Left == nil {
-		t.Error("the Game does not carry the quit message and the Left hook of the server")
+	conf, _ := player.Call(context.Background(), handle, func(_ *world.Tx, p *player.Player) (player.Config, error) {
+		return p.Data(), nil
+	})
+	if conf.QuitMessage != chat.MessageQuit || conf.Left == nil {
+		t.Error("the player of Alice does not carry the quit message and the Left hook of the server")
 	}
 	// The server welcomed Bob after his client spawned him: Alice, already
 	// subscribed to the chat, was told he joined.
@@ -102,6 +105,22 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	})
 	if locale != language.BritishEnglish {
 		t.Errorf("Alice plays in %v, want the locale she logged in with", locale)
+	}
+
+	// Bob, leaving, has the quit message of the server written to the chat:
+	// Alice, still subscribed, is told he left.
+	if err := player.Do(bobHandle, func(_ *world.Tx, p *player.Player) { p.Disconnect("bye") }).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	want = chat.MessageQuit.F("Bob").Text(language.BritishEnglish).Legacy()
+	told = false
+	for _, c := range alice.Recorder().CallsTo("SendMessage") {
+		if msg, ok := c.Args[0].(text.Text); ok && msg.Legacy() == want {
+			told = true
+		}
+	}
+	if !told {
+		t.Errorf("Alice was not told %q", want)
 	}
 }
 
@@ -164,9 +183,9 @@ func TestJoinStartFailureRejects(t *testing.T) {
 	jt.join(t, &clienttest.Join{L: j.L})
 }
 
-// TestJoinLeftSavesThePlayer checks that the Left hook of the Game, which
-// the client calls as it closes, saves the player and stops counting it
-// online, and that the client unlists it.
+// TestJoinLeftSavesThePlayer checks that the Left hook the server gives a
+// player, which it calls as it leaves, saves the player and stops counting
+// it online, and that the client unlists it.
 func TestJoinLeftSavesThePlayer(t *testing.T) {
 	provider := &joinSaveProvider{}
 	jt := newJoinTest(t, provider, Config{})

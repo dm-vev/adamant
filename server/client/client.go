@@ -102,20 +102,14 @@ type Connection interface {
 	// screen. It does not end the session of the client with its player:
 	// Close does.
 	Disconnect(message text.Text)
-	// Close ends the session of the client with its player c as the player
-	// quits. tx is the transaction of the world c is in, nil if it is in
-	// none. In this order, Close closes the connection and the screens of
-	// the client, calls the Left hook of its Game, clears the inventories
-	// of c, writes the QuitMessage of the Game, unsubscribes c from the
-	// chat, removes c from the world of tx if tx is not nil, closes the
-	// entity handle of c, and, last, unlists c from the Roster of its Game.
-	// Player relies on it to do so, and does none of it itself when it has
-	// a client. Only the first call does anything; later calls, including
-	// those from callbacks that Close runs, return at once.
-	//
-	// Transitional: removing the player and the rest of its teardown are
-	// game logic, and move into the game in phase 4.
-	Close(tx *world.Tx, c Controllable)
+	// Close ends the session of the client after its player left: in this
+	// order, it closes the view layer, closes the chunk loader if tx is not
+	// nil, and unlists the player from the Roster of its Game. tx is the
+	// transaction of the world the player was in, nil if it was in none.
+	// The player calls it once, after it removed itself from the world of
+	// tx and before it closes its entity handle. Only the first call does
+	// anything.
+	Close(tx *world.Tx)
 	// CloseConnection closes the connection of the client, which ends its
 	// session eventually. It may be called from any goroutine, any number of
 	// times.

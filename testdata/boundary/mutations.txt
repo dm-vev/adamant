@@ -44,10 +44,3 @@ protocol/bedrock/session/player.go (*world.Tx).PlaySound
 protocol/bedrock/session/player.go (world.Viewer).ViewEntityArmour
 protocol/bedrock/session/player.go (world.Viewer).ViewEntityItems
 protocol/bedrock/session/player.go (world.Viewer).ViewEntityItems
-protocol/bedrock/session/session.go (*chat.Chat).Unsubscribe
-protocol/bedrock/session/session.go (*chat.Chat).Writet
-protocol/bedrock/session/session.go (*inventory.Armour).Close
-protocol/bedrock/session/session.go (*inventory.Inventory).Close
-protocol/bedrock/session/session.go (*inventory.Inventory).Close
-protocol/bedrock/session/session.go (*world.EntityHandle).Close
-protocol/bedrock/session/session.go (*world.Tx).RemoveEntity

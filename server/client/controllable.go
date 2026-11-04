@@ -160,4 +160,11 @@ type Controllable interface {
 	SetSkin(skin.Skin)
 
 	UpdateDiagnostics(Diagnostics)
+
+	// Leave ends the session of the player with its client in tx, the
+	// transaction of the world it is in, nil if it is in none, unless it has
+	// ended: the player tears itself down as quitting does after its quit
+	// handler ran, and closes the client. An adapter calls it when its client
+	// went away and the player did not quit at once.
+	Leave(tx *world.Tx)
 }

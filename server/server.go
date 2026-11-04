@@ -489,9 +489,7 @@ func (srv *Server) game(login client.Login, d player.Config, w *world.World) cli
 		Rotation:       d.Rotation,
 		Operator:       srv.IsOperator(login.Identity.Name),
 		MaxChunkRadius: srv.conf.MaxChunkRadius,
-		QuitMessage:    srv.conf.QuitMessage,
 		IsOperator:     srv.IsOperator,
-		Left:           srv.left,
 		Roster:         &srv.players.roster,
 	}
 }
@@ -545,10 +543,10 @@ func (srv *Server) dimension(dimension world.Dimension) *world.World {
 	return srv.world
 }
 
-// left handles the player c leaving, as its client closes: the server saves
-// it and stops counting it online. It is the Left hook of the Game of every
-// client.
-func (srv *Server) left(tx *world.Tx, c client.Controllable) {
+// left handles the player c leaving with its client: the server saves it
+// and stops counting it online. It is the Left hook of every player the
+// server makes.
+func (srv *Server) left(tx *world.Tx, c *player.Player) {
 	// Always decrement the wait group because createPlayer unconditionally increments it.
 	defer srv.pwg.Done()
 
@@ -563,7 +561,7 @@ func (srv *Server) left(tx *world.Tx, c client.Controllable) {
 	defer srv.players.remove(c.UUID())
 
 	if tx != nil {
-		if err := srv.conf.PlayerProvider.Save(c.UUID(), c.(*player.Player).Data(), tx.World()); err != nil {
+		if err := srv.conf.PlayerProvider.Save(c.UUID(), c.Data(), tx.World()); err != nil {
 			srv.conf.Log.Error("Save player data: " + err.Error())
 		}
 	} else {
@@ -583,6 +581,8 @@ func (srv *Server) createPlayer(login client.Login, c client.Joining, conf playe
 	conf.Locale = login.Locale
 	conf.Skin = login.Skin
 	conf.Client = c
+	conf.Left = srv.left
+	conf.QuitMessage = srv.conf.QuitMessage
 	conf.Log = srv.conf.Log.With("name", id.Name, "uuid", id.UUID.String(), "raddr", addrString(login.Addr))
 
 	handle := world.EntitySpawnOpts{Position: conf.Position, ID: id.UUID}.New(player.Type, conf)

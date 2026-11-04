@@ -30,17 +30,16 @@ func TestQuitAndSessionStopMayCloseAgain(t *testing.T) {
 		}
 	}
 	stops, quits := 0, 0
-	var sess *session.Session
-	sess = session.Config{
-		Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1,
-		HandleStop: func(tx *world.Tx, c session.Controllable) {
-			stops++
-			reenter("HandleStop", func() { sess.Close(tx, c) })
-		},
-	}.New(conn)
+	sess := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1}.New(conn)
 	defer sess.CloseConnection()
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := player.Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
+	cfg := player.Config{
+		Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName,
+		Left: func(tx *world.Tx, p *player.Player) {
+			stops++
+			reenter("Left", func() { p.Leave(tx) })
+		},
+	}
 	handle := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
 	sess.Bind(handle, cfg.Skin)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

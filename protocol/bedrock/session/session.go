@@ -19,7 +19,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
-	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/form"
 	"github.com/df-mc/dragonfly/server/player/hud"
@@ -40,8 +39,12 @@ type Session struct {
 	teardownStarted atomic.Bool
 	connOnce        sync.Once
 
-	ent  *world.EntityHandle
-	conn Conn
+	ent *world.EntityHandle
+	// control is the Controllable the inventories of the session were last
+	// handed with (HandleInventories): the player of ent in its current
+	// world.
+	control atomic.Pointer[Controllable]
+	conn    Conn
 	// connWriteMu serializes connection writes to avoid concurrent WritePacket/Flush calls.
 	connWriteMu   sync.Mutex
 	handlers      map[uint32]packetHandler
@@ -270,14 +273,6 @@ type Config struct {
 	// If nil, players receive member permissions.
 	IsOperator func(name string) bool
 
-	// QuitMessage, unless zero, is written to the chat with the name of the
-	// player as it quits.
-	QuitMessage chat.Translation
-
-	// HandleStop is called once when the Session is closed. The transaction is
-	// nil if the Controllable could not be restored to any world, such as when
-	// both its current world and respawn destination closed during teardown.
-	HandleStop func(*world.Tx, Controllable)
 	// BlockRegistry overrides the registry used for network serialization. If nil, world.DefaultBlockRegistry is used.
 	BlockRegistry world.BlockRegistry
 	// Roster is the list of the players of the server, on which Bind lists
@@ -507,87 +502,60 @@ func (s *Session) readPackets() {
 	}
 }
 
-// Close closes the session, which in turn closes the controllable and the connection that the session
-// manages. Close ensures the method only runs code on the first call.
-// Calls made after teardown has started return without waiting, so teardown
-// callbacks may close the session again.
-// A nil transaction may be passed for a Controllable that is no longer in any
-// world; world-bound teardown (container close, chunk loader, entity removal)
-// is then skipped.
-func (s *Session) Close(tx *world.Tx, c Controllable) {
-	if s.teardownStarted.CompareAndSwap(false, true) {
-		s.close(tx, c)
+// Close ends the session after its player left, as client.Client says: it
+// closes the view layer, the chunk loader, if tx is not nil, and then
+// unlists the player and forgets the entities the client was shown. tx is
+// the transaction of the world the player was in, nil if it was in none.
+// Only the first call does anything, and later calls, such as those of
+// callbacks of the teardown, return at once. Each step runs if an earlier
+// one panics, after which the first panic propagates.
+func (s *Session) Close(tx *world.Tx) {
+	if !s.teardownStarted.CompareAndSwap(false, true) {
+		return
+	}
+	// The player closed the connection before it left; this only makes
+	// sure the workers and the writers stop.
+	s.CloseConnection()
+
+	var panicValue any
+	run := func(f func()) {
+		defer func() {
+			if r := recover(); r != nil && panicValue == nil {
+				panicValue = r
+			}
+		}()
+		f()
+	}
+	if s.viewLayer != nil {
+		run(func() { _ = s.viewLayer.Close() })
+	}
+	if tx != nil && s.chunkLoader != nil {
+		run(func() { s.chunkLoader.Close(tx) })
+	}
+	// This should always be called last due to the timing of the removal of
+	// entity runtime IDs.
+	if s.ent != nil {
+		run(func() { s.unlist(s.controlled()) })
+		run(func() {
+			s.entityMutex.Lock()
+			clear(s.entityRuntimeIDs)
+			clear(s.entities)
+			clear(s.deathAnimations)
+			s.entityMutex.Unlock()
+		})
+	}
+	if panicValue != nil {
+		panic(panicValue)
 	}
 }
 
-// close closes the session, which in turn closes the controllable and the connection that the session
-// manages.
-func (s *Session) close(tx *world.Tx, c Controllable) {
-	// Install all teardown before calling user- or entity-owned code. Each step
-	// still runs if an earlier one panics, after which the first panic propagates.
-	defer func() {
-		panicValue := recover()
-		run := func(f func()) {
-			defer func() {
-				if r := recover(); r != nil && panicValue == nil {
-					panicValue = r
-				}
-			}()
-			f()
-		}
-
-		if tx != nil {
-			run(c.MoveItemsToInventory)
-			run(func() { c.CloseMenu(false) })
-		}
-		if s.viewLayer != nil {
-			run(func() { _ = s.viewLayer.Close() })
-		}
-		if s.conf.HandleStop != nil {
-			run(func() { s.conf.HandleStop(tx, c) })
-		}
-
-		// Clear the inventories so that they no longer hold references to the connection.
-		run(func() { _ = s.inv.Close() })
-		run(func() { _ = s.offHand.Close() })
-		run(func() { _ = s.armour.Close() })
-
-		if !s.conf.QuitMessage.Zero() {
-			run(func() { chat.Global.Writet(s.conf.QuitMessage, s.conn.IdentityData().DisplayName) })
-		}
-		run(func() { chat.Global.Unsubscribe(c) })
-
-		// Remove the controllable before closing its loader. Closing the last
-		// loader may unload the chunk and close its remaining entities.
-		if tx != nil {
-			run(func() { tx.RemoveEntity(c) })
-		}
-		if tx != nil && s.chunkLoader != nil {
-			run(func() { s.chunkLoader.Close(tx) })
-		}
-		if s.ent != nil {
-			run(func() { _ = s.ent.Close() })
-		}
-
-		// This should always be called last due to the timing of the removal of
-		// entity runtime IDs.
-		if s.ent != nil {
-			run(func() { s.unlist(c) })
-			run(func() {
-				s.entityMutex.Lock()
-				clear(s.entityRuntimeIDs)
-				clear(s.entities)
-				clear(s.deathAnimations)
-				s.entityMutex.Unlock()
-			})
-		}
-		if panicValue != nil {
-			panic(panicValue)
-		}
-	}()
-
-	// Ensure background workers and packet writers stop even if the network read loop exited first.
-	s.CloseConnection()
+// controlled returns the Controllable the inventories of the session were
+// last handed with, nil if none.
+func (s *Session) controlled() Controllable {
+	if c := s.control.Load(); c != nil {
+		return *c
+	}
+	return nil
 }
 
 // CloseConnection closes the underlying connection of the session so that the session ends up being closed
@@ -750,8 +718,9 @@ func (s *Session) handlePacketSafely(pk proto.Packet, tx *world.Tx, c Controllab
 }
 
 // closeControllable closes the Controllable of a session whose connection
-// closed. A player closes the session itself, possibly after it respawned
-// in another world; the session is closed in any case once that is done.
+// closed. A player leaves and closes the session itself, possibly after it
+// respawned in another world; if it did not, such as when its quit handler
+// panicked, it is made to leave once that is done.
 func (s *Session) closeControllable(c Controllable) {
 	s.CloseConnection()
 	func() {
@@ -769,9 +738,9 @@ func (s *Session) closeControllable(c Controllable) {
 	}
 	go func() {
 		// The Controllable might no longer be in the same world after
-		// closing, so the session closes in a transaction of its own.
+		// closing, so it leaves in a transaction of its own.
 		if err := s.callControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
-			s.Close(tx, c)
+			c.Leave(tx)
 			return nil
 		}); err != nil && !sessionOwnerStopped(err) {
 			s.conf.Log.Debug("close session: " + err.Error())

@@ -30,17 +30,14 @@ func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
 
 	conn := newPacketPanicConn()
 	stopped := make(chan *world.World, 1)
-	sess := session.Config{
-		Log:            log,
-		MaxChunkRadius: 1,
-		HandleStop: func(tx *world.Tx, _ session.Controllable) {
-			stopped <- tx.World()
-		},
-	}.New(conn)
+	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(conn)
 	t.Cleanup(sess.CloseConnection)
 
 	pos := mgl64.Vec3{0.5, 64, 0.5}
-	cfg := player.Config{Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName}
+	cfg := player.Config{
+		Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName,
+		Left: func(tx *world.Tx, _ *player.Player) { stopped <- tx.World() },
+	}
 	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
 	sess.Bind(h, cfg.Skin)
 	if err := w.Do(func(tx *world.Tx) {
@@ -61,7 +58,7 @@ func TestPacketHandlerPanicClosesOnlySession(t *testing.T) {
 	select {
 	case owner := <-stopped:
 		if owner != w {
-			t.Fatalf("HandleStop owner = %p, want %p", owner, w)
+			t.Fatalf("Left owner = %p, want %p", owner, w)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("session was not stopped after packet handler panic")
@@ -96,13 +93,7 @@ func TestHandleQuitPanicCompletesSessionTeardown(t *testing.T) {
 
 	conn := newPacketPanicConn()
 	stopped := make(chan struct{}, 1)
-	sess := session.Config{
-		Log:            log,
-		MaxChunkRadius: 1,
-		HandleStop: func(*world.Tx, session.Controllable) {
-			stopped <- struct{}{}
-		},
-	}.New(conn)
+	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(conn)
 	t.Cleanup(sess.CloseConnection)
 
 	inv := inventory.New(36, nil)
@@ -116,6 +107,7 @@ func TestHandleQuitPanicCompletesSessionTeardown(t *testing.T) {
 	cfg := player.Config{
 		Client: sess, Position: pos, UUID: uuid.MustParse(conn.identity.Identity), Name: conn.identity.DisplayName,
 		Inventory: inv, OffHand: offHand, Armour: armour,
+		Left: func(*world.Tx, *player.Player) { stopped <- struct{}{} },
 	}
 	h := world.EntitySpawnOpts{Position: pos, ID: cfg.UUID}.New(player.Type, cfg)
 	sess.Bind(h, cfg.Skin)
@@ -132,7 +124,7 @@ func TestHandleQuitPanicCompletesSessionTeardown(t *testing.T) {
 	select {
 	case <-stopped:
 	case <-time.After(5 * time.Second):
-		t.Fatal("HandleStop was not called after HandleQuit panic")
+		t.Fatal("Left was not called after HandleQuit panic")
 	}
 	select {
 	case <-conn.closed:

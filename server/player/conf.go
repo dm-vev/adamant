@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -28,7 +29,16 @@ type Config struct {
 	Client client.Client
 	// Log is the logger of the player, which it logs errors of its game
 	// through. If nil, slog.Default() is used.
-	Log      *slog.Logger
+	Log *slog.Logger
+	// Left, if not nil, is called once as the player leaves with its
+	// client: after it closed its menu and before its inventories are
+	// cleared. The server then saves the player and stops counting it
+	// online. tx is nil if the player is no longer in any world.
+	Left func(tx *world.Tx, p *Player)
+	// QuitMessage, unless zero, is written to the chat with the name of the
+	// player as it leaves with its client.
+	QuitMessage chat.Translation
+
 	Skin     skin.Skin
 	XUID     string
 	UUID     uuid.UUID
@@ -108,6 +118,8 @@ func (cfg Config) Apply(data *world.EntityData) {
 		enchantSeed:         conf.EnchantmentSeed,
 		c:                   conf.Client,
 		log:                 conf.Log,
+		leftHook:            conf.Left,
+		quitMessage:         conf.QuitMessage,
 		h:                   NopHandler{},
 		speed:               0.1,
 		flightSpeed:         0.05,

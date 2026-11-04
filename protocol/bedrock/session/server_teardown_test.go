@@ -47,7 +47,7 @@ func TestServerStartGameUsesDefaultSpectatorProtocolGameType(t *testing.T) {
 	}
 }
 
-func TestServerHandleStopPanicCompletesSessionTeardown(t *testing.T) {
+func TestServerLeftPanicCompletesSessionTeardown(t *testing.T) {
 	inv := inventory.New(36, nil)
 	offHand := inventory.New(1, nil)
 	armour := inventory.NewArmour(nil)
@@ -76,12 +76,12 @@ func TestServerHandleStopPanicCompletesSessionTeardown(t *testing.T) {
 	select {
 	case <-conn.closed:
 	case <-time.After(time.Second):
-		t.Fatal("connection was not closed after HandleStop panic")
+		t.Fatal("connection was not closed after Left panicked")
 	}
 	waitForAnySessionViewer(t, ts.srv.World(), pos, false)
 
 	if _, ok := ts.srv.Player(id); ok {
-		t.Fatal("player remained registered after HandleStop panic")
+		t.Fatal("player remained registered after Left panicked")
 	}
 	for name, got := range map[string]int{
 		"inventory": len(inv.Items()),
@@ -89,7 +89,7 @@ func TestServerHandleStopPanicCompletesSessionTeardown(t *testing.T) {
 		"armour":    len(armour.Inventory().Items()),
 	} {
 		if got != 0 {
-			t.Errorf("%s retained %d items after HandleStop panic", name, got)
+			t.Errorf("%s retained %d items after Left panicked", name, got)
 		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -98,7 +98,7 @@ func TestServerHandleStopPanicCompletesSessionTeardown(t *testing.T) {
 		t.Fatalf("closed player task error = %v, want ErrEntityClosed", err)
 	}
 	if err := ts.srv.World().Do(func(*world.Tx) {}).Wait(ctx); err != nil {
-		t.Fatalf("world owner stopped after HandleStop panic: %v", err)
+		t.Fatalf("world owner stopped after Left panicked: %v", err)
 	}
 
 	// Close waits for every player the server made to leave.
@@ -110,7 +110,7 @@ func TestServerHandleStopPanicCompletesSessionTeardown(t *testing.T) {
 	select {
 	case <-closed:
 	case <-time.After(5 * time.Second):
-		t.Fatal("server player waitgroup was not released after HandleStop panic")
+		t.Fatal("server player waitgroup was not released after Left panicked")
 	}
 }
 

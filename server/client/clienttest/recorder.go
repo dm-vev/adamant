@@ -66,12 +66,11 @@ type Answers struct {
 // the viewers of a player with a Recorder are not shown its held items and
 // armour change.
 //
-// Close does for the world what a client must: on its first call it removes
-// the player from the world of tx, if tx is not nil, and closes its entity
-// handle, outside the lock of the Recorder. A Recorder that Join.Start
-// returned keeps the Game it was started with: its Bind lists its player on
-// the Roster of the Game, one of its own if the Game has none, and its Close
-// first calls the Left hook of the Game and last unlists the player.
+// Close leaves the world alone: the player removes itself and closes its
+// entity handle as it leaves. A Recorder that Join.Start returned keeps the
+// Game it was started with: its Bind lists its player on the Roster of the
+// Game, one of its own if the Game has none, and the first call to its Close
+// unlists the player.
 //
 // As a client.Joining, the Recorder records Bind, Spawn, ListPlayer and
 // UnlistPlayer and does nothing else for them.
@@ -218,28 +217,18 @@ func (r *Recorder) ViewLayer() *world.ViewLayer {
 	return r.layer
 }
 
-// Close records the call and, on the first call, calls the Left hook of
-// the Game of the Recorder, if it has one, removes c from the world of tx,
-// if tx is not nil, and closes the entity handle of c. It does so outside
-// the lock: removing the entity calls viewers, the Recorder among them.
-func (r *Recorder) Close(tx *world.Tx, c client.Controllable) {
+// Close records the call and, on the first call, unlists its player from
+// the Roster of the Game of the Recorder, if it has one, outside the lock:
+// the Roster calls the Recorder. The player removes itself from the world
+// and closes its handle.
+func (r *Recorder) Close(tx *world.Tx) {
 	r.mu.Lock()
-	r.recordLocked("Close", tx, c)
+	r.recordLocked("Close", tx)
 	first := !r.closed
 	r.closed = true
 	game := r.game
 	r.mu.Unlock()
-	if !first {
-		return
-	}
-	if game != nil && game.Left != nil {
-		game.Left(tx, c)
-	}
-	if tx != nil {
-		tx.RemoveEntity(c)
-	}
-	_ = c.H().Close()
-	if game != nil {
+	if first && game != nil {
 		game.Roster.Unlist(r)
 	}
 }

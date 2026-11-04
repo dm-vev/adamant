@@ -138,8 +138,6 @@ func (j *join) Start(ctx context.Context, g client.Game) (client.Joining, error)
 		Log:            j.l.conf.Log,
 		MaxChunkRadius: g.MaxChunkRadius,
 		EmoteChatMuted: j.l.conf.EmoteChatMuted,
-		QuitMessage:    g.QuitMessage,
-		HandleStop:     g.Left,
 		BlockRegistry:  g.World.BlockRegistry(),
 		IsOperator:     g.IsOperator,
 		Roster:         g.Roster,

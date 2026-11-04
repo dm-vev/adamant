@@ -39,17 +39,17 @@ var _ Client = Nop{}
 
 func (Nop) ViewMapData(world.MapData) error { return nil }
 
-func (Nop) Profile() Profile              { return Profile{} }
-func (Nop) Addr() net.Addr                { return nil }
-func (Nop) Latency() time.Duration        { return 0 }
-func (Nop) NetStats() NetStats            { return NetStats{} }
-func (Nop) LastActivity() time.Time       { return time.Unix(0, 0) }
-func (Nop) ChunkRadius() int32            { return 0 }
-func (Nop) ClientMoving() bool            { return false }
-func (Nop) Transfer(net.IP, int)          {}
-func (Nop) Disconnect(text.Text)          {}
-func (Nop) Close(*world.Tx, Controllable) {}
-func (Nop) CloseConnection()              {}
+func (Nop) Profile() Profile        { return Profile{} }
+func (Nop) Addr() net.Addr          { return nil }
+func (Nop) Latency() time.Duration  { return 0 }
+func (Nop) NetStats() NetStats      { return NetStats{} }
+func (Nop) LastActivity() time.Time { return time.Unix(0, 0) }
+func (Nop) ChunkRadius() int32      { return 0 }
+func (Nop) ClientMoving() bool      { return false }
+func (Nop) Transfer(net.IP, int)    {}
+func (Nop) Disconnect(text.Text)    {}
+func (Nop) Close(*world.Tx)         {}
+func (Nop) CloseConnection()        {}
 func (Nop) HandleInventories(*world.Tx, Controllable, *inventory.Inventory, *inventory.Inventory, *inventory.Inventory, *inventory.Inventory, *inventory.Armour, *uint32) {
 }
 

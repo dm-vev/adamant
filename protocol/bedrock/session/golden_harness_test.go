@@ -369,6 +369,9 @@ type scenarioConfig struct {
 	// joinMessage, unless zero, is written to the chat as the player
 	// spawns, as the server writes its join message.
 	joinMessage chat.Translation
+	// quitMessage, unless zero, is written to the chat as the player
+	// leaves, as the server's QuitMessage.
+	quitMessage chat.Translation
 	// norm is the normaliser of another scenario to name IDs with, so that
 	// the record of either names an ID alike.
 	norm *normaliser
@@ -408,7 +411,6 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	sconf := session.Config{
 		Log:            goldenLog(),
 		MaxChunkRadius: goldenRadius,
-		HandleStop:     func(*world.Tx, session.Controllable) { stopOnce.Do(func() { close(s.stopped) }) },
 		BlockRegistry:  w.BlockRegistry(),
 		IsOperator:     func(string) bool { return false },
 	}
@@ -432,6 +434,9 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	pconf.Skin = session.ClientSkin(conn.ClientData())
 	// The seed of the enchanting table is otherwise random.
 	pconf.EnchantmentSeed = 7
+	// As the Left hook and the quit message of Server.createPlayer.
+	pconf.Left = func(*world.Tx, *player.Player) { stopOnce.Do(func() { close(s.stopped) }) }
+	pconf.QuitMessage = conf.quitMessage
 	if conf.player != nil {
 		conf.player(&pconf)
 	}

@@ -2,7 +2,6 @@ package client
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -32,18 +31,9 @@ type Game struct {
 	// MaxChunkRadius bounds the radius, in chunks, of the world around the
 	// player that the client is shown.
 	MaxChunkRadius int
-	// QuitMessage, unless zero, is written to the chat with the name of the
-	// player as it quits. The server writes the join message itself, as the
-	// player spawns.
-	QuitMessage chat.Translation
 	// IsOperator reports whether the player of the name passed is an
 	// operator now. Nil means none is. It may be called from any goroutine.
 	IsOperator func(name string) bool
-	// Left, if not nil, is called once as the player c leaves, during
-	// Client.Close: after the client closed its screens and before the
-	// inventories of c are cleared. The server then saves c and stops
-	// counting it online. tx is nil if c is no longer in any world.
-	Left func(tx *world.Tx, c Controllable)
 	// Roster is the list of the players of the server. Bind lists the
 	// player on it and Close unlists it. Nil gives the client a Roster of
 	// its own, on which it lists only its own player.

@@ -2,7 +2,6 @@ package clienttest_test
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"slices"
 	"testing"
@@ -113,9 +112,9 @@ func TestRecorderQueriesAgreeWithState(t *testing.T) {
 	}
 }
 
-// Close removes the player from the world and closes its handle once; a
-// second call, such as one from a callback of the first, only records.
-func TestRecorderCloseRemovesThePlayerOnce(t *testing.T) {
+// Close only records for a Recorder of no Game: the player removes itself
+// and closes its handle as it leaves.
+func TestRecorderCloseOnlyRecords(t *testing.T) {
 	w := world.Config{Log: slog.New(slog.DiscardHandler)}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -125,19 +124,17 @@ func TestRecorderCloseRemovesThePlayerOnce(t *testing.T) {
 	pos := mgl64.Vec3{0.5, 64, 0.5}
 	handle := world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(player.Type, player.Config{Position: pos})
 	if err := w.Do(func(tx *world.Tx) {
-		p := tx.AddEntity(handle).(*player.Player)
-		r.Close(tx, p)
-		r.Close(tx, p)
-		for e := range tx.Players() {
-			if e.H() == handle {
-				t.Error("world still lists the player after Close")
-			}
+		tx.AddEntity(handle)
+		r.Close(tx)
+		r.Close(nil)
+		if _, ok := handle.Entity(tx); !ok {
+			t.Error("Close removed the player from the world")
 		}
 	}).Wait(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if err := handle.Do(func(*world.Tx, world.Entity) {}).Wait(ctx); !errors.Is(err, world.ErrEntityClosed) {
-		t.Errorf("handle after Close: err = %v, want %v", err, world.ErrEntityClosed)
+	if handle.Closed() {
+		t.Error("Close closed the handle of the player")
 	}
 	if got := r.CallsTo("Close"); len(got) != 2 {
 		t.Errorf("CallsTo(Close) = %d calls, want 2", len(got))
