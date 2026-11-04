@@ -9,7 +9,6 @@ import (
 	"go/types"
 	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -360,61 +359,31 @@ func importedPackages(roots []*types.Package) map[string]*types.Package {
 	return byPath
 }
 
-// adapterUses loads the adapter packages of the repository at root and returns their uses of the world, sorted.
-func adapterUses(root string) ([]mutationUse, error) {
-	abs, err := filepath.Abs(root)
+// adapterUses returns the uses of the world by the adapter packages of the repository, sorted. The module is
+// loaded once for R4 and R5 (loadModule).
+func adapterUses() ([]mutationUse, error) {
+	m, err := loadModule()
 	if err != nil {
 		return nil, err
 	}
-	var patterns []string
-	for _, zone := range adapterZones {
-		if _, err := os.Stat(filepath.Join(abs, zone)); err == nil {
-			patterns = append(patterns, "./"+zone+"/...")
-		}
-	}
-	conf := &packages.Config{
-		Mode:  packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps,
-		Dir:   abs,
-		Tests: false,
-	}
-	pkgs, err := packages.Load(conf, patterns...)
-	if err != nil {
-		return nil, err
-	}
-	var errs []string
-	var roots []*types.Package
-	for _, p := range pkgs {
-		for _, e := range p.Errors {
-			errs = append(errs, e.Error())
-		}
-		roots = append(roots, p.Types)
-	}
-	if len(errs) > 0 {
-		return nil, fmt.Errorf("load the adapters: %s", strings.Join(errs, "; "))
-	}
-	byPath := importedPackages(roots)
-	checker := newMutationChecker(func(path string) *types.Package { return byPath[path] })
+	checker := newMutationChecker(func(path string) *types.Package { return m.byPath[path] })
 
 	var out []mutationUse
-	for _, p := range pkgs {
-		for _, f := range p.Syntax {
-			rel, err := filepath.Rel(abs, p.Fset.Position(f.Pos()).Filename)
-			if err != nil {
-				return nil, err
-			}
-			rel = filepath.ToSlash(rel)
-			if !inAdapter(rel) || strings.HasSuffix(rel, "_test.go") {
-				continue
-			}
+	err = m.files(func(rel string, f *ast.File, p *packages.Package) error {
+		if inAdapter(rel) {
 			out = append(out, checker.uses(rel, f, p.TypesInfo)...)
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	slices.SortFunc(out, func(a, b mutationUse) int { return strings.Compare(a.line(), b.line()) })
 	return out, nil
 }
 
 func TestAdaptersKeepOffTheWorld(t *testing.T) {
-	current, err := adapterUses(".")
+	current, err := adapterUses()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -521,23 +490,12 @@ func TestMutationRules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The packages the fixture imports, from their export data.
-	var paths []string
-	for _, spec := range f.Imports {
-		paths = append(paths, strings.Trim(spec.Path.Value, `"`))
-	}
-	pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedName | packages.NeedTypes | packages.NeedImports | packages.NeedDeps}, paths...)
+	// The packages the fixture imports, from the module loaded for R4 and R5.
+	m, err := loadModule()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var roots []*types.Package
-	for _, p := range pkgs {
-		for _, e := range p.Errors {
-			t.Errorf("load %s: %v", p.PkgPath, e)
-		}
-		roots = append(roots, p.Types)
-	}
-	imported := importedPackages(roots)
+	imported := m.byPath
 	conf := types.Config{Importer: importerFunc(func(path string) (*types.Package, error) {
 		if p := imported[path]; p != nil {
 			return p, nil

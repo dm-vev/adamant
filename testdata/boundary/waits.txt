@@ -1,0 +1,18 @@
+# Waits for a world owner inside a transaction that still exist (R5).
+#
+# Each line is "<file> <callee>": a file below server/, protocol/ or cmd/, relative to the repository root and
+# written with slashes, followed by the function it calls with a transaction in scope that waits for a world
+# owner (see wait_test.go). The owner it waits for may be the one running the transaction, or one waiting for
+# it: either deadlocks, and any other stalls the world of the transaction. There is one line for each use.
+#
+# This list is a ratchet. It may only shrink: an entry that is no longer used fails the test until it is
+# removed. Adding an entry needs a justification in review.
+#
+# Regenerate it with:
+#
+#	go test -run TestOwnersDoNotWait -update-waits .
+#
+# Blank lines and lines starting with # are ignored. Entries are sorted.
+
+server/admin_api.go (*github.com/df-mc/dragonfly/server/world.World).Save
+server/server.go github.com/df-mc/dragonfly/server/player.Call
