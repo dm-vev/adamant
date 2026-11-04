@@ -21,6 +21,9 @@ const (
 
 // handleGrindstoneCraft handles a CraftGrindstoneRecipe stack request action made using a grindstone.
 func (h *ItemStackRequestHandler) handleGrindstoneCraft(s *Session, tx *world.Tx, c Controllable) error {
+	if h.batch != nil {
+		return h.batchOp(h.batch.Grind)
+	}
 	// First check if there actually is a grindstone opened.
 	m := s.menu.Load()
 	if m == nil {

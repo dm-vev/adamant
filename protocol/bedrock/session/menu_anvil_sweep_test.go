@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // levelController is a player of a game mode and a level, for the sweeps
@@ -28,6 +29,7 @@ func (c *levelController) GameMode() world.GameMode     { return c.mode }
 func (c *levelController) ExperienceLevel() int         { return c.level }
 func (c *levelController) SetExperienceLevel(level int) { c.level = level }
 func (c *levelController) UnlockedRecipeIDs() []string  { return nil }
+func (c *levelController) Position() mgl64.Vec3         { return mgl64.Vec3{} }
 
 // stationOutcome is what a request of a menu left: whether it was
 // refused, the UI slots of the menu and the level of the player.

@@ -49,6 +49,7 @@ var menuRequestScenarios = []struct {
 	{"enchanting twice", (*scenario).enchantingTwiceCases},
 	{"enchanting in creative", (*scenario).enchantingCreativeCases},
 	{"anvil", (*scenario).anvilCases},
+	{"grindstone", (*scenario).grindstoneCases},
 	// D2: Move, Swap, Drop, Destroy, Touch and CreateCreative.
 	{"moves", (*scenario).movesScenario},
 	// D3: Craft and CraftDynamic.
