@@ -24,6 +24,12 @@
   DisableJoinQuitMessages = false
   # MuteEmoteChat specifies if the player emote chat should be muted or not.
   MuteEmoteChat = false
+  # NameCheck sets how the names of players are checked at login. Valid values: "lenient" (a name passes if any one
+  # of its characters is one Bedrock allows, so that §aSteve and Steve! join), "game" (also refuse names with a
+  # character other than a letter, a digit, a space or an underscore) or "strict" (refuse names with any character
+  # Bedrock does not allow: other than Latin letters, digits and spaces with Xbox Live, letters, digits and spaces
+  # without).
+  NameCheck = "lenient"
   # ReconnectPolicy controls what happens when the same player joins while already online.
   # Valid values: "kick-joining" (disconnect the new connection) or "kick-existing" (disconnect the existing player).
   ReconnectPolicy = "kick-existing"

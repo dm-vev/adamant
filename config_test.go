@@ -12,6 +12,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/client"
@@ -106,7 +107,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 		want configMeaning
 	}{
 		{"checked in", checkedIn, configMeaning{
-			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false,
+			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false, "NameCheck": "lenient",
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
@@ -124,7 +125,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Java.Address": "", "Java.Message": "",
 		}},
 		{"every key changed", []byte(everyKeyChanged), configMeaning{
-			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true,
+			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict",
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
 			"MaxPlayers": 7, "MaxChunkRadius": 9,
 			"Resources": 0, "ResourcesRequired": true, "DisableResourceBuilding": true,
@@ -178,6 +179,7 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Network]\nLAN = \"yes\"\n":          "decode config: (2, 1): Can't convert yes(string) to bool",
 		"[Network]\nTransport = \"raknet\"\n": `network transport "raknet" is no longer supported: players join over NetherNet`,
 		"[Network]\nTransport = \"tcp\"\n":    `unknown network transport "tcp"`,
+		"[Server]\nNameCheck = \"xbox\"\n":    `unknown name check "xbox": want "lenient", "game" or "strict"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -226,6 +228,7 @@ const everyKeyChanged = `
   DisableJoinQuitMessages = true
   MuteEmoteChat = true
   Name = "Changed"
+  NameCheck = "strict"
   ReconnectPolicy = "kick-joining"
 
 [Whitelist]
@@ -332,6 +335,9 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	closeProviders(t, conf)
 	// The settings of the listeners are those of the Configs of the adapters.
 	m["AuthDisabled"], m["MuteEmoteChat"] = bc.AuthDisabled, bc.MuteEmoteChat
+	m["NameCheck"] = map[bedrockadapter.NameCheck]string{
+		bedrockadapter.NameCheckLenient: "lenient", bedrockadapter.NameCheckGame: "game", bedrockadapter.NameCheckStrict: "strict",
+	}[bc.NameCheck]
 	m["Resources"], m["ResourcesRequired"], m["DisableResourceBuilding"] = len(bc.Resources), bc.ResourcesRequired, bc.DisableResourceBuilding
 	n, x, p, j := bc.Network, bc.Xbox, bc.Proxy, jc
 	m["Network.Address"], m["Network.IdentityFile"], m["Network.EnableQuery"] = n.Address, n.IdentityFile, n.EnableQuery

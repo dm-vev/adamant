@@ -2,50 +2,35 @@ package server
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/df-mc/dragonfly/server/client"
 )
 
-// Characters the names of players may hold: Latin letters, digits and
-// spaces for players of Xbox Live, any letters for others.
-var (
-	onlineNameChar  = regexp.MustCompile("[A-Za-z0-9 ]").MatchString
-	offlineNameChar = regexp.MustCompile(`[\p{L}0-9 ]`).MatchString
-)
-
-// ValidateName holds the name of a player that logged in to the rules the
-// server keeps it to, those gophertunnel kept it to: one of the game's form,
-// of at most 15 characters for a player of Xbox Live, one with an XUID, and
-// 16 for others, with no space first or last, no digit first and no two
-// spaces in a row, of Latin letters, digits and spaces for a player of Xbox
-// Live and of any letters, digits and spaces for others.
+// ValidateName holds the name a player logged in with to the rules of the
+// game: 1 to 16 characters, each a letter, a digit, a space or an
+// underscore, with no space first or last and no two spaces in a row.
+// Adapters hold names to the rules of their edition first. The game keys
+// the whitelist, operators, bans, selectors and chat by names, which
+// commands must be able to parse: a listener that admits names past this
+// rule admits names those may not name.
 func ValidateName(id client.Identity) error {
-	nameLimit := 15
-	if id.XUID == "" {
-		// Clients without an account may take one more character.
-		nameLimit = 16
-	}
 	name := id.Name
-	if len(name) == 0 || len(name) > nameLimit {
-		return fmt.Errorf("DisplayName must not be empty or longer than %d characters, but got %v characters", nameLimit, len(name))
+	if n := utf8.RuneCountInString(name); n == 0 || n > 16 {
+		return fmt.Errorf("name must be of 1 to 16 characters, but got %d characters", n)
+	}
+	for _, r := range name {
+		if !unicode.IsLetter(r) && (r < '0' || r > '9') && r != ' ' && r != '_' {
+			return fmt.Errorf("name must only hold letters, digits, spaces and underscores, but got %q", name)
+		}
 	}
 	if name[0] == ' ' || name[len(name)-1] == ' ' {
-		return fmt.Errorf("DisplayName may not have a space as first/last character, but got %v", name)
-	}
-	if name[0] >= '0' && name[0] <= '9' {
-		return fmt.Errorf("DisplayName may not have a number as first character, but got %v", name)
-	}
-	if id.XUID != "" {
-		if !onlineNameChar(name) {
-			return fmt.Errorf("DisplayName for authorized client must only contain numbers, Latin letters and spaces, but got %v", name)
-		}
-	} else if !offlineNameChar(name) {
-		return fmt.Errorf("DisplayName for unauthorized client must only contain numbers, letters and spaces, but got %v", name)
+		return fmt.Errorf("name may not have a space first or last, but got %q", name)
 	}
 	if strings.Contains(name, "  ") {
-		return fmt.Errorf("DisplayName must only have single spaces, but got %v", name)
+		return fmt.Errorf("name must only have single spaces, but got %q", name)
 	}
 	return nil
 }

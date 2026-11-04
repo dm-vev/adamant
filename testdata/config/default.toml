@@ -36,6 +36,7 @@
   DisableJoinQuitMessages = false
   MuteEmoteChat = false
   Name = "Dragonfly Server"
+  NameCheck = "lenient"
   ReconnectPolicy = "kick-existing"
 
 [Whitelist]

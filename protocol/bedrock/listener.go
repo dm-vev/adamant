@@ -113,9 +113,11 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 		AuthenticationDisabled: c.AuthDisabled,
 		ResourcePacks:          c.Resources,
 		TexturePacksRequired:   c.ResourcesRequired,
-		Validate:               validateLogin,
-		Allow:                  allow,
-		Compression:            batchCompression(c.Compression),
+		Validate: func(id login.Identity, data login.ClientData) error {
+			return validateLogin(id, data, c.NameCheck)
+		},
+		Allow:       allow,
+		Compression: batchCompression(c.Compression),
 	}.Listen(listen, c.Network.Address)
 	if err != nil {
 		return nil, fmt.Errorf("create NetherNet listener: %w", err)
@@ -337,15 +339,16 @@ func decodeServerIdentityKey(data []byte) (*ecdsa.PrivateKey, error) {
 
 // validateLogin holds the identity and the client data of a client that
 // logged in to the rules the server keeps them to, those gophertunnel kept
-// them to: a valid UUID and XUID, a name of the game's form, a device and a
-// language that exist, skins of the sizes they claim. The address the
+// them to: a valid UUID and XUID, a name of Bedrock's form, checked as
+// check says, a device and a language that exist, skins of the sizes they
+// claim. The address the
 // client names the server by is read, not resolved: a lookup of a name a
 // client chose would let it hold the login on a slow resolver.
-func validateLogin(id login.Identity, data login.ClientData) error {
+func validateLogin(id login.Identity, data login.ClientData, check NameCheck) error {
 	if err := netconn.ValidateIdentity(id); err != nil {
 		return err
 	}
-	if err := server.ValidateName(session.IdentityOf(id)); err != nil {
+	if err := validateName(session.IdentityOf(id), check); err != nil {
 		return err
 	}
 	return netconn.ValidateClientData(data)

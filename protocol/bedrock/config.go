@@ -13,8 +13,9 @@ import (
 )
 
 // UserConfig is the part of config.toml the adapter owns: the [Network],
-// [Xbox], [Proxy] and [Resources] tables, and the AuthEnabled and
-// MuteEmoteChat keys of [Server], whose other keys the server owns. It may
+// [Xbox], [Proxy] and [Resources] tables, and the AuthEnabled,
+// MuteEmoteChat and NameCheck keys of [Server], whose other keys the server
+// owns. It may
 // be serialised and is converted to a Config by UserConfig.Config.
 type UserConfig struct {
 	// Network holds settings related to network aspects of the server.
@@ -31,6 +32,14 @@ type UserConfig struct {
 		AuthEnabled bool
 		// MuteEmoteChat specifies if the player emote chat should be muted or not.
 		MuteEmoteChat bool
+		// NameCheck sets how the names players log in with are checked:
+		// "lenient" admits a name if any one of its characters is one
+		// Bedrock allows, as the server always did, so that §aSteve and
+		// Steve! join; "game" also refuses names with a character other than
+		// a letter, a digit, a space or an underscore, the names commands
+		// can name; "strict" refuses names with any character Bedrock does
+		// not allow. An empty value is "lenient".
+		NameCheck string
 	}
 	Resources struct {
 		// AutoBuildPack is if the server should automatically generate a
@@ -148,13 +157,18 @@ type Config struct {
 	AuthDisabled bool
 	// MuteEmoteChat mutes the emote chat of players.
 	MuteEmoteChat bool
+	// NameCheck is how strictly the names players log in with are held to
+	// the rules of Bedrock Edition and of the game. The zero value is
+	// NameCheckLenient.
+	NameCheck NameCheck
 	// Compression compresses the batches of the connections: bedrock.Flate
 	// (at level 1 if nil) or bedrock.None.
 	Compression bedrock.Compression
 }
 
 // Config converts a UserConfig to a Config. An error is returned if the
-// transport is not NetherNet or loading resources failed. It sets whether
+// transport is not NetherNet, the name check is unknown or loading
+// resources failed. It sets whether
 // queries are answered, and with plugins, as the [Network] table says.
 func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	transport := strings.ToLower(strings.TrimSpace(uc.Network.Transport))
@@ -168,6 +182,10 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return Config{}, fmt.Errorf("unknown network transport %q", uc.Network.Transport)
 	}
 	uc.Network.Transport = transport
+	nameCheck, err := parseNameCheck(uc.Server.NameCheck)
+	if err != nil {
+		return Config{}, err
+	}
 	query.SetEnabled(uc.Network.EnableQuery)
 	query.SetPluginListingEnabled(uc.Network.QueryPlugins)
 
@@ -179,8 +197,8 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
 		AuthDisabled:            !uc.Server.AuthEnabled,
 		MuteEmoteChat:           uc.Server.MuteEmoteChat,
+		NameCheck:               nameCheck,
 	}
-	var err error
 	c.Resources, err = loadResources(uc.Resources.Folder)
 	if err != nil {
 		return c, fmt.Errorf("load resources: %w", err)
@@ -217,6 +235,7 @@ func DefaultConfig() UserConfig {
 	c.Network.EnableQuery = false
 	c.Network.QueryPlugins = false
 	c.Server.AuthEnabled = true
+	c.Server.NameCheck = "lenient"
 	c.Resources.AutoBuildPack = true
 	c.Resources.Folder = "resources"
 	c.Resources.Required = false

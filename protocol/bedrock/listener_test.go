@@ -387,7 +387,7 @@ func TestNetherNetListenerServesHTTPS(t *testing.T) {
 func TestValidateLogin(t *testing.T) {
 	id := login.Identity{DisplayName: "Steve", Identity: "8b4ec2c6-6f3b-4d0a-9d55-3b7e0c3c3f1a"}
 	data := login.DefaultClientData("play.example.invalid:19132", "Steve", "1.26.50")
-	if err := validateLogin(id, data); err != nil {
+	if err := validateLogin(id, data, NameCheckLenient); err != nil {
 		t.Fatalf("a login the game makes refused: %v", err)
 	}
 	for name, tc := range map[string]struct {
@@ -407,8 +407,19 @@ func TestValidateLogin(t *testing.T) {
 	} {
 		i, d := id, data
 		tc.change(&i, &d)
-		if err := validateLogin(i, d); err == nil || !strings.Contains(err.Error(), tc.want) {
+		if err := validateLogin(i, d, NameCheckLenient); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%s: validateLogin = %v, want an error of %q", name, err, tc.want)
+		}
+	}
+	// The name check of the config decides on names of characters the
+	// game does not take.
+	id.DisplayName = "§aSteve"
+	if err := validateLogin(id, data, NameCheckLenient); err != nil {
+		t.Errorf("lenient check refused %q: %v", id.DisplayName, err)
+	}
+	for _, check := range []NameCheck{NameCheckGame, NameCheckStrict} {
+		if err := validateLogin(id, data, check); err == nil {
+			t.Errorf("check %d admitted %q", check, id.DisplayName)
 		}
 	}
 }
