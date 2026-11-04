@@ -21,9 +21,13 @@ import (
 const From, To = v2193.Protocol, v2225.Protocol
 
 // Up converts a packet of 2193 to the packets of 2225 that carry it, none
-// if 2225 has no such packet. A packet of an ID that is Same is returned as
-// it is: its bytes are valid in both.
+// if 2225 has no such packet or no such value of an enum the packet holds
+// (noForm lists them). A packet of an ID that is Same is returned as it
+// is: its bytes are valid in both.
 func Up(pk proto.Packet) []proto.Packet {
+	if !upValues(pk) {
+		return nil
+	}
 	if Same(pk.ID()) {
 		return []proto.Packet{pk}
 	}
@@ -34,8 +38,11 @@ func Up(pk proto.Packet) []proto.Packet {
 }
 
 // Down converts a packet of 2225 to the packets of 2193 that carry it, none
-// if 2193 has no such packet, as Up converts the other way.
+// if 2193 has no such packet or value, as Up converts the other way.
 func Down(pk proto.Packet) []proto.Packet {
+	if !downValues(pk) {
+		return nil
+	}
 	if Same(pk.ID()) {
 		return []proto.Packet{pk}
 	}

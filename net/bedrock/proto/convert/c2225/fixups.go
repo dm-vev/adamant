@@ -175,3 +175,135 @@ func fixDownEnvironmentAttributeData(in *v2225.EnvironmentAttributeData, out *v2
 	out.ToAttribute = proto.Some(downAttributeData(&in.ToAttribute))
 	out.Attribute = downAttributeData(&in.ToAttribute)
 }
+
+// The fixes of what a copy by name gets wrong with the types alike.
+
+// A video capture starts with action 1 and stops with 0 in the v2193 of
+// gophertunnel v1.62.0, and starts with variant 0 and stops with 1 in
+// v2225 (gophertunnel #545). Mojang's JSON numbers the variant as v2225
+// does in 1.26.50 already: v2193 codes the packet as gophertunnel v1.62.0
+// did, and the fixes keep what its Action means.
+
+func fixUpPlayerVideoCapturePacket(in *v2193.PlayerVideoCapturePacket, out *v2225.PlayerVideoCapturePacket) {
+	switch in.Action {
+	case v2193.PlayerVideoCaptureActionStart:
+		out.Action = v2225.PlayerVideoCaptureActionStart
+	case v2193.PlayerVideoCaptureActionStop:
+		out.Action = v2225.PlayerVideoCaptureActionStop
+	}
+}
+
+func fixDownPlayerVideoCapturePacket(in *v2225.PlayerVideoCapturePacket, out *v2193.PlayerVideoCapturePacket) {
+	switch in.Action {
+	case v2225.PlayerVideoCaptureActionStart:
+		out.Action = v2193.PlayerVideoCaptureActionStart
+	case v2225.PlayerVideoCaptureActionStop:
+		out.Action = v2193.PlayerVideoCaptureActionStop
+	}
+}
+
+// 2193 writes the update of a sound seven times, once per kind, and the
+// client takes the last (Mojang's note
+// clientbound_update_sound_data_packet_tagged_variant; gophertunnel). 2225
+// writes it once, tagged with its kind.
+
+func fixUpClientboundUpdateSoundDataPacket(in *v2193.ClientboundUpdateSoundDataPacket, out *v2225.ClientboundUpdateSoundDataPacket) {
+	out.Update = upSoundDataUpdate(&in.Resume)
+}
+
+func fixDownClientboundUpdateSoundDataPacket(in *v2225.ClientboundUpdateSoundDataPacket, out *v2193.ClientboundUpdateSoundDataPacket) {
+	u := downSoundDataUpdate(&in.Update)
+	out.Stop, out.SetVolume, out.SetPitch, out.Fade, out.SeekTo, out.Pause, out.Resume = u, u, u, u, u, u, u
+}
+
+// debugMarker is the type of a debug renderer that adds a marker, which
+// 2193 follows with its fields and 2225 with an optional DebugMarkerData,
+// its colour as bytes rather than as floats from 0 to 1.
+const debugMarker = 1
+
+func fixUpClientBoundDebugRendererPacket(in *v2193.ClientBoundDebugRendererPacket, out *v2225.ClientBoundDebugRendererPacket) {
+	if in.Type != debugMarker {
+		return
+	}
+	channel := func(f float32) uint8 { return uint8(min(max(f, 0), 1)*255 + 0.5) }
+	out.Data = proto.Some(v2225.DebugMarkerData{
+		Text:     in.Text,
+		Position: in.Position,
+		Colour:   proto.Color{channel(in.Red), channel(in.Green), channel(in.Blue), channel(in.Alpha)},
+		Duration: in.Duration,
+	})
+}
+
+func fixDownClientBoundDebugRendererPacket(in *v2225.ClientBoundDebugRendererPacket, out *v2193.ClientBoundDebugRendererPacket) {
+	if !in.Data.Set {
+		return
+	}
+	d := in.Data.Val
+	out.Text, out.Position, out.Duration = d.Text, d.Position, d.Duration
+	out.Red, out.Green, out.Blue, out.Alpha = float32(d.Colour[0])/255, float32(d.Colour[1])/255, float32(d.Colour[2])/255, float32(d.Colour[3])/255
+}
+
+// Whether the agent of Education Edition may modify blocks is one of its
+// capabilities in 2225.
+
+func fixUpEducationSettingsPacket(in *v2193.EducationSettingsPacket, out *v2225.EducationSettingsPacket) {
+	if in.CanModifyBlocks.Set {
+		out.AgentCapabilities = proto.Some(v2225.EducationAgentCapabilities{CanModifyBlocks: in.CanModifyBlocks})
+	}
+}
+
+func fixDownEducationSettingsPacket(in *v2225.EducationSettingsPacket, out *v2193.EducationSettingsPacket) {
+	if in.AgentCapabilities.Set {
+		out.CanModifyBlocks = in.AgentCapabilities.Val.CanModifyBlocks
+	}
+}
+
+// The noise of a layer of attributes is named by the settings of each
+// noise transition in 2225, by the layer in 2193.
+
+func fixUpAttributeLayerData(in *v2193.AttributeLayerData, out *v2225.AttributeLayerData) {
+	for i := range out.EnvironmentAttributes {
+		if a := &out.EnvironmentAttributes[i]; a.PayloadType == attributeNoiseTransition {
+			a.NoiseTransitionSettings.NoiseName = in.NoiseName.Val
+		}
+	}
+}
+
+func fixDownAttributeLayerData(in *v2225.AttributeLayerData, out *v2193.AttributeLayerData) {
+	for _, a := range in.EnvironmentAttributes {
+		if a.PayloadType == attributeNoiseTransition && a.NoiseTransitionSettings.NoiseName != "" {
+			out.NoiseName = proto.Some(a.NoiseTransitionSettings.NoiseName)
+			return
+		}
+	}
+}
+
+// The values of enums 2225 changed, in packets of the same layout.
+const (
+	// levelEventRemovedFirst to Last are the level events 2225 removed
+	// (Mojang's note bug_1598758): the sounds of placing and breaking a
+	// painting and the cleaning and dyeing of a shulker box in a cauldron.
+	levelEventRemovedFirst, levelEventRemovedLast = 9817, 9820
+	// levelEventIceBallBreak is the level event of the particles of the
+	// break of an ice ball, of particle type 105, which 2225 adds: the
+	// particles of type t are the event LevelEventParticleLegacyEvent | t.
+	levelEventIceBallBreak = v2225.LevelEventParticleLegacyEvent | 105
+)
+
+// upValues returns false for a packet of 2193 that holds a value of an
+// enum 2225 has not, which it leaves out.
+func upValues(pk proto.Packet) bool {
+	if e, ok := pk.(*v2193.LevelEventPacket); ok {
+		return e.EventType < levelEventRemovedFirst || e.EventType > levelEventRemovedLast
+	}
+	return true
+}
+
+// downValues returns false for a packet of 2225 that holds a value of an
+// enum 2193 has not, which it leaves out.
+func downValues(pk proto.Packet) bool {
+	if e, ok := pk.(*v2225.LevelEventPacket); ok {
+		return e.EventType != levelEventIceBallBreak
+	}
+	return true
+}

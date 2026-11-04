@@ -35,5 +35,5 @@ var convertTypes = []string{
 	"InvalidItemDescriptor", "DefaultItemDescriptor", "MoLangItemDescriptor", "ItemTagItemDescriptor",
 	"SystemCategory", "CameraProgressOption", "CameraRotationOption",
 	"CameraSplineProgressKeyFrame", "CameraSplineRotationKeyFrame",
-	"AttributeTransitionSettings", "AttributeNoiseTransitionSettings", "NoiseAlignment",
+	"AttributeTransitionSettings", "AttributeNoiseTransitionSettings", "NoiseAlignment", "SoundDataUpdate",
 }

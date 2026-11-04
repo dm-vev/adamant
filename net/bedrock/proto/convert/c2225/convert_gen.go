@@ -296,6 +296,7 @@ func upEducationSettingsPacket(in *v2193.EducationSettingsPacket) *v2225.Educati
 		out.ExternalLinkSettings.Val = upEducationExternalLinkSettings(&in.ExternalLinkSettings.Val)
 	}
 	// CanModifyBlocks is not in v2225.
+	fixUpEducationSettingsPacket(in, out)
 	return out
 }
 
@@ -361,6 +362,7 @@ func upClientBoundDebugRendererPacket(in *v2193.ClientBoundDebugRendererPacket) 
 	// Blue is not in v2225.
 	// Alpha is not in v2225.
 	// Duration is not in v2225.
+	fixUpClientBoundDebugRendererPacket(in, out)
 	return out
 }
 
@@ -449,6 +451,7 @@ func upPlayerVideoCapturePacket(in *v2193.PlayerVideoCapturePacket) *v2225.Playe
 	out.Action = uint32(in.Action)
 	out.FrameRate = in.FrameRate
 	out.FilePrefix = in.FilePrefix
+	fixUpPlayerVideoCapturePacket(in, out)
 	return out
 }
 
@@ -496,6 +499,7 @@ func upClientboundUpdateSoundDataPacket(in *v2193.ClientboundUpdateSoundDataPack
 	// SeekTo is not in v2225.
 	// Pause is not in v2225.
 	// Resume is not in v2225.
+	fixUpClientboundUpdateSoundDataPacket(in, out)
 	return out
 }
 
@@ -719,6 +723,16 @@ func upCameraRotationOption(in *v2193.CameraRotationOption) (out v2225.CameraRot
 
 func upNoiseAlignment(in *v2193.NoiseAlignment) (out v2225.NoiseAlignment) {
 	out = v2225.NoiseAlignment(*in)
+	return out
+}
+
+func upSoundDataUpdate(in *v2193.SoundDataUpdate) (out v2225.SoundDataUpdate) {
+	out.Type = uint8(in.Type)
+	out.Volume = in.Volume
+	out.Pitch = in.Pitch
+	out.Duration = in.Duration
+	out.TargetVolume = in.TargetVolume
+	out.Seconds = in.Seconds
 	return out
 }
 
@@ -975,6 +989,7 @@ func upAttributeLayerData(in *v2193.AttributeLayerData) (out v2225.AttributeLaye
 		}
 	}
 	// NoiseName is not in v2225.
+	fixUpAttributeLayerData(in, &out)
 	return out
 }
 
@@ -1344,6 +1359,7 @@ func downEducationSettingsPacket(in *v2225.EducationSettingsPacket) *v2193.Educa
 		out.ExternalLinkSettings.Val = downEducationExternalLinkSettings(&in.ExternalLinkSettings.Val)
 	}
 	// AgentCapabilities is not in v2193.
+	fixDownEducationSettingsPacket(in, out)
 	return out
 }
 
@@ -1409,6 +1425,7 @@ func downClientBoundDebugRendererPacket(in *v2225.ClientBoundDebugRendererPacket
 	// Alpha is new in v2193.
 	// Duration is new in v2193.
 	// Data is not in v2193.
+	fixDownClientBoundDebugRendererPacket(in, out)
 	return out
 }
 
@@ -1497,6 +1514,7 @@ func downPlayerVideoCapturePacket(in *v2225.PlayerVideoCapturePacket) *v2193.Pla
 	out.Action = uint8(in.Action)
 	out.FrameRate = in.FrameRate
 	out.FilePrefix = in.FilePrefix
+	fixDownPlayerVideoCapturePacket(in, out)
 	return out
 }
 
@@ -1544,6 +1562,7 @@ func downClientboundUpdateSoundDataPacket(in *v2225.ClientboundUpdateSoundDataPa
 	// Pause is new in v2193.
 	// Resume is new in v2193.
 	// Update is not in v2193.
+	fixDownClientboundUpdateSoundDataPacket(in, out)
 	return out
 }
 
@@ -1767,6 +1786,16 @@ func downCameraRotationOption(in *v2225.CameraRotationOption) (out v2193.CameraR
 
 func downNoiseAlignment(in *v2225.NoiseAlignment) (out v2193.NoiseAlignment) {
 	out = v2193.NoiseAlignment(*in)
+	return out
+}
+
+func downSoundDataUpdate(in *v2225.SoundDataUpdate) (out v2193.SoundDataUpdate) {
+	out.Type = uint32(in.Type)
+	out.Volume = in.Volume
+	out.Pitch = in.Pitch
+	out.Duration = in.Duration
+	out.TargetVolume = in.TargetVolume
+	out.Seconds = in.Seconds
 	return out
 }
 
@@ -2024,6 +2053,7 @@ func downAttributeLayerData(in *v2225.AttributeLayerData) (out v2193.AttributeLa
 			out.EnvironmentAttributes[i28] = downEnvironmentAttributeData(&in.EnvironmentAttributes[i28])
 		}
 	}
+	fixDownAttributeLayerData(in, &out)
 	return out
 }
 
