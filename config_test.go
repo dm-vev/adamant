@@ -76,7 +76,9 @@ import (
 // kick had no reason before, sets no cap on bans for a time, and bans the
 // /64 of an IPv6 address /ban-ip names, where it banned the address alone;
 // Enforce of [Whitelist], whose line a new default file has, and a file
-// that lacks it kicks no one online as the whitelist turns on, as before.
+// that lacks it kicks no one online as the whitelist turns on, as before;
+// [RemoteAdmin], whose table a new default file has, and a file that lacks
+// it serves no remote admin API, as before.
 // And a file saving both its world and its players now keeps the players
 // in the world database (playerdb.WorldProvider), reading the players
 // folder only for those not yet moved there, and no longer makes the
@@ -188,6 +190,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Xbox.Enabled": false, "Xbox.TokenFile": "xbox-token.json", "Xbox.AcceptFriends": true, "Xbox.LegacySignaling": false,
 			"Proxy.Address": "", "Proxy.Secret": "",
 			"Java.Address": "", "Java.Message": "",
+			"RemoteAdmin": "enabled=false addr=localhost:19140 plaintext=false hosts=[] tls=, timeout=10s failures=5 tokens=admin-tokens.txt proxies=[]",
 			"Permissions": "default=0 op=4 blocks=2 roles=3 role=member console=true remote=true commands=map[]",
 			"Audit":       "file=audit.log size=67108864 keep=10 min=2 addresses=true",
 			"Bans": "Banned: You are banned from this server.\nReason: griefing\nYour ban will be removed on " + meaningBanEnd +
@@ -223,6 +226,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Xbox.Enabled": true, "Xbox.TokenFile": "token.json", "Xbox.AcceptFriends": false, "Xbox.LegacySignaling": true,
 			"Proxy.Address": "127.0.0.1:19133", "Proxy.Secret": "0123456789abcdef0123456789abcdef",
 			"Java.Address": ":25565", "Java.Message": "Use Bedrock.",
+			"RemoteAdmin": "enabled=true addr=0.0.0.0:19141 plaintext=true hosts=[admin.example.invalid] tls=cert.pem,key.pem timeout=30s " +
+				"failures=3 tokens=remote-tokens.txt proxies=[10.0.0.0/8 192.0.2.1]",
 			"Permissions": "default=1 op=3 blocks=0 roles=4 role=visitor console=false remote=false commands=map[kick:2 teleport:3]",
 			"Audit":       "<nil>",
 			"Bans":        "Banned: Gone. Why: griefing, by Console\nBack on " + time.Date(2026, 11, 11, 14, 20, 31, 0, time.UTC).Local().Format("2006-01-02") + " | Address gone. Why: Rules., by (Unknown)",
@@ -259,31 +264,35 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 // and the transports it no longer or never knew.
 func TestConfigFileErrors(t *testing.T) {
 	for file, want := range map[string]string{
-		"[Server]\nName = 5\n":                                    "decode config: (2, 1): Can't convert 5(int64) to string",
-		"[Network]\nLAN = \"yes\"\n":                              "decode config: (2, 1): Can't convert yes(string) to bool",
-		"[Network]\nTransport = \"raknet\"\n":                     `line 2: Network.Transport: network transport "raknet" is no longer supported: players join over NetherNet`,
-		"[Network]\nTransport = \"tcp\"\n":                        `line 2: Network.Transport: unknown network transport "tcp"`,
-		"[Server]\nNameCheck = \"xbox\"\n":                        `line 2: Server.NameCheck: unknown name check "xbox": want "lenient", "game" or "strict"`,
-		"[Server]\nIdentityKey = \"uuid\"\n":                      `line 2: Server.IdentityKey: unknown IdentityKey "uuid": use "auto", "xuid" or "name"`,
-		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n": `line 3: IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
-		"[World]\nSaveChunks = \"changed\"\n":                     `line 2: World.SaveChunks: unknown SaveChunks "changed": use "modified" or "all"`,
-		"[World]\nSaveInterval = \"often\"\n":                     `line 2: World.SaveInterval = "often": want a duration such as "90s" or "5m"`,
-		"[Network]\nProtocols = [\"1.26.40\"]\n":                  `line 2: Network.Protocols: protocol "1.26.40" is not supported: this build supports 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.61)`,
-		"[Network]\nPrimaryProtocol = \"26.70\"\n":                `line 2: Network.PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.61)`,
-		"[Network]\nProtocols = \"1.26.50\"\n":                    "decode config: (2, 1): Can't convert 1.26.50(string) to []string(slice)",
-		"[Server]\nSpawnTimeout = \"soon\"\n":                     `line 2: Server.SpawnTimeout = "soon": want a duration such as "90s" or "5m"`,
-		"[Server]\nLogLevel = \"loud\"\n":                         `line 2: Server.LogLevel: unknown LogLevel "loud": use "debug", "info", "warn" or "error"`,
-		"[AntiCheat.Speed]\nAction = \"throttle\"\n":              `AntiCheat.Speed.Action "throttle": use "log", "setback" or "kick"`,
-		"[AntiCheat.Place]\nExemptGameModes = [\"creativ\"]\n":    `AntiCheat.Place.ExemptGameModes: unknown game mode "creativ"`,
-		"[Log]\nFormat = \"xml\"\n":                               `line 2: Log.Format = "xml": want "text" or "json"`,
-		"[Monitoring]\nAddress = \"localhost\"\n":                 `line 2: Monitoring.Address = "localhost": want a host and a port of 0 to 65535, such as ":19132" or "127.0.0.1:19132"`,
-		"[Monitoring]\nAddress = \"0.0.0.0:6060\"\n":              `line 2: Monitoring.Pprof on 0.0.0.0:6060 needs Monitoring.Token: profiles show the memory and the command line of the process`,
-		"[Monitoring]\nAddress = \":6060\"\n":                     `line 2: Monitoring.Pprof on :6060 needs Monitoring.Token: profiles show the memory and the command line of the process`,
-		"[Monitoring]\nLiveTimeout = \"30s\"\n":                   `line 2: Monitoring.LiveTimeout = 30s: want more than 1m0s, when the stacks of a stuck tick are logged`,
-		"[Monitoring]\nReadyTickAge = \"0.5s\"\n":                 `line 2: Monitoring.ReadyTickAge = 500ms: want 1s or more`,
-		"[Monitoring]\nLiveTimeout = \"soon\"\n":                  `line 2: Monitoring.LiveTimeout = "soon": want a duration such as "90s" or "5m"`,
-		"[Log]\nRateLimit = -1\n":                                 `line 2: Log.RateLimit = -1: want 0 or more`,
-		"[Log.Levels]\nSession = \"verbose\"\n":                   `line 2: Log.Levels.Session: unknown level "verbose": use "debug", "info", "warn" or "error"`,
+		"[Server]\nName = 5\n":                                                            "decode config: (2, 1): Can't convert 5(int64) to string",
+		"[Network]\nLAN = \"yes\"\n":                                                      "decode config: (2, 1): Can't convert yes(string) to bool",
+		"[Network]\nTransport = \"raknet\"\n":                                             `line 2: Network.Transport: network transport "raknet" is no longer supported: players join over NetherNet`,
+		"[Network]\nTransport = \"tcp\"\n":                                                `line 2: Network.Transport: unknown network transport "tcp"`,
+		"[Server]\nNameCheck = \"xbox\"\n":                                                `line 2: Server.NameCheck: unknown name check "xbox": want "lenient", "game" or "strict"`,
+		"[Server]\nIdentityKey = \"uuid\"\n":                                              `line 2: Server.IdentityKey: unknown IdentityKey "uuid": use "auto", "xuid" or "name"`,
+		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n":                         `line 3: IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
+		"[World]\nSaveChunks = \"changed\"\n":                                             `line 2: World.SaveChunks: unknown SaveChunks "changed": use "modified" or "all"`,
+		"[World]\nSaveInterval = \"often\"\n":                                             `line 2: World.SaveInterval = "often": want a duration such as "90s" or "5m"`,
+		"[Network]\nProtocols = [\"1.26.40\"]\n":                                          `line 2: Network.Protocols: protocol "1.26.40" is not supported: this build supports 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.61)`,
+		"[Network]\nPrimaryProtocol = \"26.70\"\n":                                        `line 2: Network.PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.61)`,
+		"[Network]\nProtocols = \"1.26.50\"\n":                                            "decode config: (2, 1): Can't convert 1.26.50(string) to []string(slice)",
+		"[Server]\nSpawnTimeout = \"soon\"\n":                                             `line 2: Server.SpawnTimeout = "soon": want a duration such as "90s" or "5m"`,
+		"[Server]\nLogLevel = \"loud\"\n":                                                 `line 2: Server.LogLevel: unknown LogLevel "loud": use "debug", "info", "warn" or "error"`,
+		"[AntiCheat.Speed]\nAction = \"throttle\"\n":                                      `AntiCheat.Speed.Action "throttle": use "log", "setback" or "kick"`,
+		"[AntiCheat.Place]\nExemptGameModes = [\"creativ\"]\n":                            `AntiCheat.Place.ExemptGameModes: unknown game mode "creativ"`,
+		"[Log]\nFormat = \"xml\"\n":                                                       `line 2: Log.Format = "xml": want "text" or "json"`,
+		"[Monitoring]\nAddress = \"localhost\"\n":                                         `line 2: Monitoring.Address = "localhost": want a host and a port of 0 to 65535, such as ":19132" or "127.0.0.1:19132"`,
+		"[Monitoring]\nAddress = \"0.0.0.0:6060\"\n":                                      `line 2: Monitoring.Pprof on 0.0.0.0:6060 needs Monitoring.Token: profiles show the memory and the command line of the process`,
+		"[Monitoring]\nAddress = \":6060\"\n":                                             `line 2: Monitoring.Pprof on :6060 needs Monitoring.Token: profiles show the memory and the command line of the process`,
+		"[Monitoring]\nLiveTimeout = \"30s\"\n":                                           `line 2: Monitoring.LiveTimeout = 30s: want more than 1m0s, when the stacks of a stuck tick are logged`,
+		"[Monitoring]\nReadyTickAge = \"0.5s\"\n":                                         `line 2: Monitoring.ReadyTickAge = 500ms: want 1s or more`,
+		"[Monitoring]\nLiveTimeout = \"soon\"\n":                                          `line 2: Monitoring.LiveTimeout = "soon": want a duration such as "90s" or "5m"`,
+		"[Log]\nRateLimit = -1\n":                                                         `line 2: Log.RateLimit = -1: want 0 or more`,
+		"[RemoteAdmin]\nEnabled = true\nAddress = \"0.0.0.0:19140\"\n":                    `line 3: RemoteAdmin.Address on 0.0.0.0:19140 needs CertFile and KeyFile: tokens would cross the network in clear`,
+		"[RemoteAdmin]\nEnabled = true\nAddress = \":19140\"\n":                           `line 3: RemoteAdmin.Address on :19140 needs CertFile and KeyFile: tokens would cross the network in clear`,
+		"[RemoteAdmin]\nEnabled = true\nCertFile = \"none.pem\"\nKeyFile = \"key.pem\"\n": `line 3: RemoteAdmin.CertFile and KeyFile: open none.pem: no such file or directory`,
+		"[RemoteAdmin]\nCertFile = \"cert.pem\"\n":                                        `line 2: RemoteAdmin.CertFile and RemoteAdmin.KeyFile go together: set both, or neither`,
+		"[Log.Levels]\nSession = \"verbose\"\n":                                           `line 2: Log.Levels.Session: unknown level "verbose": use "debug", "info", "warn" or "error"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -639,6 +648,18 @@ const everyKeyChanged = `
   Address = "127.0.0.1:19133"
   Secret = "0123456789abcdef0123456789abcdef"
 
+[RemoteAdmin]
+  Address = "0.0.0.0:19141"
+  AllowPlaintext = true
+  AllowedHosts = ["admin.example.invalid"]
+  CertFile = "cert.pem"
+  CommandTimeout = "30s"
+  Enabled = true
+  KeyFile = "key.pem"
+  MaxFailures = 3
+  TokenFile = "remote-tokens.txt"
+  TrustedProxies = ["10.0.0.0/8", "192.0.2.1"]
+
 [Resources]
   AutoBuildPack = false
   Folder = "packs"
@@ -745,6 +766,17 @@ func permissionsMeaning(p *server.PermissionConfig) string {
 	return fmt.Sprintf("default=%v op=%v blocks=%v roles=%v role=%v console=%v remote=%v commands=%v",
 		p.DefaultLevel, p.OperatorLevel, p.CommandBlockLevel, p.RoleLevel, p.DefaultRole,
 		p.BroadcastConsoleToOps, p.BroadcastRemoteToOps, p.Commands)
+}
+
+// remoteMeaning returns the meaning of the [RemoteAdmin] table of a file:
+// whether and where the API is served, with what, and the file of its
+// tokens, beside ops.json.
+func remoteMeaning(f fileConfig) string {
+	r := f.RemoteAdmin.RemoteAdmin
+	timeout, _ := time.ParseDuration(r.CommandTimeout)
+	return fmt.Sprintf("enabled=%t addr=%s plaintext=%t hosts=%v tls=%s,%s timeout=%v failures=%d tokens=%s proxies=%v",
+		r.Enabled, r.Address, r.AllowPlaintext, r.AllowedHosts, r.CertFile, r.KeyFile, timeout, r.MaxFailures,
+		f.RemoteAdmin.TokenPath(f.adminDir()), r.TrustedProxies)
 }
 
 // meaningBans is the banned-players.json of the directory the files of
@@ -887,6 +919,8 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	if err := os.WriteFile("banned-players.json", []byte(meaningBans), 0644); err != nil {
 		t.Fatal(err)
 	}
+	// The certificate of [RemoteAdmin], which a table that serves loads.
+	writeTestCertificate(t, ".")
 	log := slog.New(slog.DiscardHandler)
 	f, err := readConfigFile("config.toml")
 	if err != nil {
@@ -911,6 +945,7 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	mc, health := f.Monitor.Monitoring, f.Monitor.health()
 	m["Monitoring.Address"], m["Monitoring.Health"], m["Monitoring.Metrics"], m["Monitoring.Pprof"] = mc.Address, mc.Health, mc.Metrics, mc.Pprof
 	m["Monitoring.Token"], m["Monitoring.LiveTimeout"], m["Monitoring.ReadyTickAge"] = mc.Token, health.LiveTimeout.String(), health.ReadyTickAge.String()
+	m["RemoteAdmin"] = remoteMeaning(f)
 	closeProviders(t, conf)
 	// The settings of the listeners are those of the Configs of the adapters.
 	m["AuthDisabled"], m["MuteEmoteChat"] = bc.AuthDisabled, bc.MuteEmoteChat

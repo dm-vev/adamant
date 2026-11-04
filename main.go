@@ -30,6 +30,7 @@ func main() {
 	srv := conf.New()
 	mon.setServer(srv)
 	builtin.Register(srv)
+	serveRemoteAdmin(proc, srv)
 	srv.CloseOnProgramEnd()
 
 	if !*headless {

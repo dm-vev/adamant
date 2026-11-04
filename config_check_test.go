@@ -233,6 +233,27 @@ func TestConfigBounds(t *testing.T) {
 		{table: "Audit", key: "File", values: []value{
 			{`"audit.log"`, ""}, {`"keys"`, `Audit.File = "keys": it is a folder, want a file`},
 		}, setup: func(t *testing.T) { mkdir(t, "keys") }},
+		{table: "RemoteAdmin", key: "CommandTimeout", values: []value{
+			{`"1s"`, ""}, {`"5m"`, ""}, {`"10s"`, ""},
+			{`"0.5s"`, "RemoteAdmin.CommandTimeout = 500ms: want 1s to 5m0s"},
+			{`"6m"`, "RemoteAdmin.CommandTimeout = 6m0s: want 1s to 5m0s"},
+			{`"soon"`, `RemoteAdmin.CommandTimeout = "soon": want a duration such as "90s" or "5m"`},
+		}},
+		{table: "RemoteAdmin", key: "MaxFailures", values: []value{
+			{"1", ""}, {"100", ""}, {"0", "RemoteAdmin.MaxFailures = 0: want 1 or more"},
+		}},
+		{table: "RemoteAdmin", key: "Address", values: []value{
+			{`"localhost:19140"`, ""}, {`"[::1]:19140"`, ""}, {`"0.0.0.0:19140"`, ""},
+			{`"19140"`, `RemoteAdmin.Address = "19140": want a host and a port of 0 to 65535, such as ":19132" or "127.0.0.1:19132"`},
+		}},
+		{table: "RemoteAdmin", key: "TrustedProxies", values: []value{
+			{`["10.0.0.0/8", "192.0.2.1", "::1", "2001:db8::/32"]`, ""},
+			{`["proxy"]`, `RemoteAdmin.TrustedProxies holds "proxy": want an address or a network, such as "10.0.0.1" or "10.0.0.0/8"`},
+		}},
+		{table: "RemoteAdmin", key: "TokenFile", values: []value{
+			{`"admin-tokens.txt"`, ""},
+			{`""`, `RemoteAdmin.TokenFile is empty: want the file of the tokens, such as "admin-tokens.txt"`},
+		}},
 		{table: "Permissions.Commands", key: "kick", values: []value{
 			{"0", ""}, {"4", ""}, {"5", "Permissions.Commands.kick = 5: want 0 to 4"},
 		}},

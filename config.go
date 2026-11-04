@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/df-mc/dragonfly/server/remoteadmin"
 	"github.com/pelletier/go-toml"
 )
 
@@ -29,6 +31,9 @@ type fileConfig struct {
 	Program programConfig
 	Log     logConfig
 	Monitor monitorConfig
+	// RemoteAdmin is the [RemoteAdmin] table: the remote admin API, which
+	// listens apart from Monitor, of other trust.
+	RemoteAdmin remoteadmin.UserConfig
 
 	// warnings are the problems of the file the server starts with, which
 	// compose logs.
@@ -181,20 +186,24 @@ func defaultFileConfig() fileConfig {
 	f.Log.Server.LogLevel = "info"
 	f.Log.Log.Format, f.Log.Log.RateLimit = "text", 100
 	f.Monitor = defaultMonitorConfig()
+	f.RemoteAdmin = remoteadmin.DefaultConfig()
 	return f
 }
 
 // parts returns pointers to the parts of the file, in the order they are
 // read and composed.
 func (f *fileConfig) parts() []any {
-	return []any{&f.Server, &f.Bedrock, &f.Java, &f.Program, &f.Log, &f.Monitor}
+	return []any{&f.Server, &f.Bedrock, &f.Java, &f.Program, &f.Log, &f.Monitor, &f.RemoteAdmin}
 }
 
 // process is what config.toml says of the process beside the server: its
-// logs and what it serves to be watched.
+// logs, what it serves to be watched, and the remote admin API, whose
+// relative files are in adminDir, beside ops.json.
 type process struct {
-	logs    *logging.Set
-	monitor monitorConfig
+	logs     *logging.Set
+	monitor  monitorConfig
+	remote   remoteadmin.UserConfig
+	adminDir string
 }
 
 // readConfig reads config.toml, or writes the default file if there is none,
@@ -211,7 +220,7 @@ func readConfig(out logging.Options) (server.Config, process, error) {
 		return server.Config{}, process{}, err
 	}
 	conf, err := f.config(set.Logger(logging.Server))
-	return conf, process{logs: set, monitor: f.Monitor}, err
+	return conf, process{logs: set, monitor: f.Monitor, remote: f.RemoteAdmin, adminDir: f.adminDir()}, err
 }
 
 // readConfigFile reads the file of the path passed into the parts of a
@@ -286,6 +295,28 @@ func readConfigFile(path string) (fileConfig, error) {
 func (f fileConfig) check(p *config.Problems) {
 	if mode, err := identity.ParseMode(f.Server.Server.IdentityKey); err == nil && mode == identity.XUID && !f.Bedrock.Server.AuthEnabled {
 		p.Errorf("Server.IdentityKey", "%v", errIdentityXUIDOffline)
+	}
+	f.checkTokenFile(p)
+}
+
+// adminDir returns the folder of the admin lists, beside the whitelist,
+// which the relative files of the remote admin API are in.
+func (f fileConfig) adminDir() string { return filepath.Dir(f.Server.Whitelist.File) }
+
+// checkTokenFile checks the file of the tokens of the remote admin API,
+// beside ops.json, if the API is enabled: a file the server may write, or
+// make, and that no one but its owner may read, which is warned of, and
+// refused with StrictConfig.
+func (f fileConfig) checkTokenFile(p *config.Problems) {
+	if !f.RemoteAdmin.RemoteAdmin.Enabled || strings.TrimSpace(f.RemoteAdmin.RemoteAdmin.TokenFile) == "" {
+		return
+	}
+	path := f.RemoteAdmin.TokenPath(f.adminDir())
+	if !config.File(p, "RemoteAdmin.TokenFile", path) {
+		return
+	}
+	if open, err := remoteadmin.TokenFileTooOpen(path); err == nil && open {
+		p.Warnf("RemoteAdmin.TokenFile", "RemoteAdmin.TokenFile %s may be read by others than its owner: chmod 600 it", path)
 	}
 }
 

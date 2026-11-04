@@ -200,6 +200,30 @@
   # TimeFormat writes {created} and {expires}, as a layout of Go's package time, in the server's time zone.
   TimeFormat = "2006-01-02 at 15:04:05 MST"
 
+[RemoteAdmin]
+  # The remote admin API: admin commands and reads of the lists over HTTP, as JSON, for panels and scripts. It is
+  # off by default, and listens apart from [Monitoring]. See docs/admin.md.
+  # Address is where it listens. Keep it on localhost: on any other address, CertFile and KeyFile are needed.
+  Address = "localhost:19140"
+  # AllowPlaintext serves without TLS on an address other than localhost. Tokens then cross the network in clear.
+  AllowPlaintext = false
+  # AllowedHosts are the host names requests may name besides the host of Address and localhost.
+  AllowedHosts = []
+  # CertFile and KeyFile are the certificate and the key of TLS 1.2 or newer, in PEM: both, or neither.
+  CertFile = ""
+  # CommandTimeout bounds how long a request waits for the output of its command, 1s to 5m.
+  CommandTimeout = "10s"
+  # Enabled serves the API.
+  Enabled = false
+  KeyFile = ""
+  # MaxFailures is how many failed sign-ins an address gets a minute before it is refused for a minute.
+  MaxFailures = 5
+  # TokenFile holds the tokens, one a line: name, level (0 to 4), token. A relative path is beside ops.json. It is
+  # made, mode 0600, with one token of level 4 when the API is first served; the token is never logged.
+  TokenFile = "admin-tokens.txt"
+  # TrustedProxies are the addresses and networks whose X-Forwarded-For is believed.
+  TrustedProxies = []
+
 [Audit]
   # Enabled writes audit.log: who ran which admin command, changed a list or made a backup, when and where, with
   # the result. Records are JSON Lines; the file is made with mode 0600.

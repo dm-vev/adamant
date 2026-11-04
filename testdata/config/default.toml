@@ -288,6 +288,18 @@
   Address = ""
   Secret = ""
 
+[RemoteAdmin]
+  Address = "localhost:19140"
+  AllowPlaintext = false
+  AllowedHosts = []
+  CertFile = ""
+  CommandTimeout = "10s"
+  Enabled = false
+  KeyFile = ""
+  MaxFailures = 5
+  TokenFile = "admin-tokens.txt"
+  TrustedProxies = []
+
 [Resources]
   AutoBuildPack = true
   Folder = "resources"

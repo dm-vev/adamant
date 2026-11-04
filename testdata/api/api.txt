@@ -20205,19 +20205,31 @@ server/player/title	method	Title.WithFadeInDuration	func(d time.Duration) server
 server/player/title	method	Title.WithFadeOutDuration	func(d time.Duration) server/player/title.Title
 server/player/title	method	Title.WithSubtitle	func(a ...any) server/player/title.Title
 server/player/title	type	Title	struct{text server/text.Text; subtitle server/text.Text; actionText server/text.Text; fadeInDuration time.Duration; fadeOutDuration time.Duration; duration time.Duration}
+server/remoteadmin	const	DefaultAddress	untyped string = "localhost:19140"
 server/remoteadmin	const	DefaultCommandTimeout	time.Duration = 10000000000
 server/remoteadmin	const	DefaultMaxFailures	untyped int = 5
+server/remoteadmin	const	DefaultTokenFile	untyped string = "admin-tokens.txt"
 server/remoteadmin	const	GeneratedTokenLength	untyped int = 40
 server/remoteadmin	const	MaxBody	untyped int = 65536
 server/remoteadmin	const	MaxInFlight	untyped int = 8
 server/remoteadmin	const	MinTokenLength	untyped int = 32
+server/remoteadmin	func	DefaultConfig	func() server/remoteadmin.UserConfig
 server/remoteadmin	func	GenerateTokenFile	func(path string) (bool, error)
+server/remoteadmin	func	Loopback	func(addr string) bool
 server/remoteadmin	func	New	func(srv *server.Server, conf server/remoteadmin.Config) (*server/remoteadmin.Handler, error)
 server/remoteadmin	func	TokenFileTooOpen	func(path string) (bool, error)
 server/remoteadmin	method	Handler.ServeHTTP	func(w net/http.ResponseWriter, r *net/http.Request)
+server/remoteadmin	method	Listener.Addr	func() net.Addr
+server/remoteadmin	method	Listener.Close	func() error
+server/remoteadmin	method	UserConfig.Check	func(p *server/config.Problems)
+server/remoteadmin	method	UserConfig.Listen	func(srv *server.Server, o server/remoteadmin.ListenOptions) (*server/remoteadmin.Listener, error)
+server/remoteadmin	method	UserConfig.TokenPath	func(dir string) string
 server/remoteadmin	type	Config	struct{TokenFile string; MaxFailures int; CommandTimeout time.Duration; Hosts []string; TrustedProxies []net/netip.Prefix; Log *log/slog.Logger}
 server/remoteadmin	type	Handler	struct{srv *server.Server; conf server/remoteadmin.Config; limit *server/remoteadmin.limiter; inFlight chan struct{}; now func() time.Time; reloadEvery time.Duration; tokens sync/atomic.Pointer[[]server/remoteadmin.token]; tokenMu sync.Mutex; checked time.Time; modTime time.Time}
 server/remoteadmin	type	Line	struct{Text string "json:\"text\""; Error bool "json:\"error\""}
+server/remoteadmin	type	ListenOptions	struct{Dir string; Log *log/slog.Logger}
+server/remoteadmin	type	Listener	struct{hs *net/http.Server; ln net.Listener}
+server/remoteadmin	type	UserConfig	struct{RemoteAdmin struct{Address string; AllowPlaintext bool; AllowedHosts []string; CertFile string; CommandTimeout string; Enabled bool; KeyFile string; MaxFailures int; TokenFile string; TrustedProxies []string}}
 server/scoreboard	const	Air	server/scoreboard.Criteria = "air"
 server/scoreboard	const	Armor	server/scoreboard.Criteria = "armor"
 server/scoreboard	const	DeathCount	server/scoreboard.Criteria = "deathCount"
