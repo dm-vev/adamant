@@ -805,9 +805,16 @@ func (r refusal) Unwrap() error { return r.err }
 // it names, or else the generic error.
 func refusalStatus(err error) uint8 {
 	var r refusal
+	var missing menu.MissingInputError
 	switch {
 	case errors.As(err, &r):
 		return r.status
+	case errors.As(err, &missing) && missing.Role == menu.RoleSmithingTemplate:
+		// The input and the material are there: BDS finds no recipe of
+		// what the table holds.
+		return v2193.ItemStackResponseStatusMismatchedRecipeForInputGridItems
+	case errors.As(err, &missing):
+		return v2193.ItemStackResponseStatusMissingInputItem
 	case errors.Is(err, menu.ErrSameSlot):
 		return v2193.ItemStackResponseStatusDstContainerAndSlotEqualToSrcContainerAndSlot
 	case errors.Is(err, menu.ErrSlotRefusesItem):

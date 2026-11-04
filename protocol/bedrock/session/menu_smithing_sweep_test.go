@@ -11,23 +11,15 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// recovered runs f and returns its error, or one of the panic it raised.
-func recovered(f func() error) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
-		}
-	}()
-	return f()
-}
-
 // TestSmithAsTheSessionDid sweeps menu.Tx.Smith over what the handler of
 // the smithing table of the session was swept against: smithing transforms
 // and trims as the game registers them, and a recipe of another block, over
 // inputs, materials and templates that match and that do not, a locked
 // input and empty slots. The result, the inputs left and the verdict must
-// be those the session's handler gave (testdata/frozen/smith.txt); a slot
-// left empty that a recipe names panics in both (matchingStacks).
+// be those the session's handler gave (testdata/frozen/smith.txt). A slot
+// left empty that a recipe names panicked in both (matchingStacks), which
+// the sweep recovered as a refusal: the craft is refused now, the verdict
+// alike, and a panic fails the sweep.
 func TestSmithAsTheSessionDid(t *testing.T) {
 	t.Parallel()
 	// The recipes as recipe.registerVanilla registers them, which only a
@@ -82,7 +74,7 @@ func TestSmithAsTheSessionDid(t *testing.T) {
 						cases++
 						ui := map[int]item.Stack{menu.UISmithingInput: input, menu.UISmithingMaterial: material, menu.UISmithingTemplate: template}
 						o := stationRun(t, tx, block.SmithingTable{}, ui, world.GameModeSurvival, 0,
-							func(bt *menu.Tx) error { return recovered(func() error { return bt.Smith(r) }) },
+							func(bt *menu.Tx) error { return bt.Smith(r) },
 							menu.UISmithingInput, menu.UISmithingMaterial, menu.UISmithingTemplate, menu.UIResult)
 						if !o.refused {
 							accepted++

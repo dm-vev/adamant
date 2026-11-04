@@ -279,13 +279,12 @@ func fuzzMenuSeeds() [][]byte {
 // session, as a panic of a handler does. Until the handlers the session had
 // were gone, it compared the two paths; now it has the one.
 //
-// Two bugs recorded to fix would end the session, and what reaches them is
-// left out. Smithing crafts with a slot of the table empty panic in
-// matchingStacks. And on a synchronous world, as the scenarios', the world
-// rebinds the player to each transaction H().Do runs at once from a slot
-// function, and leaves it bound to that one once it ended, as
-// Player.BeginMenu and Player.CloseMenu find it: a request after one that
-// may do that is sent in a tick of its own.
+// A bug recorded to fix would end the session, and what reaches it is left
+// out: on a synchronous world, as the scenarios', the world rebinds the
+// player to each transaction H().Do runs at once from a slot function, and
+// leaves it bound to that one once it ended, as Player.BeginMenu and
+// Player.CloseMenu find it: a request after one that may do that is sent in
+// a tick of its own.
 func FuzzMenuRequests(f *testing.F) {
 	for _, b := range fuzzMenuSeeds() {
 		f.Add(b)
@@ -384,9 +383,9 @@ func (s *scenario) sendFuzzRequests(in fuzzMenuInput) int {
 		id := s.nextRequest
 		s.nextRequest -= 2
 		var actions []v2193.StackRequestAction
-		for i, a := range r.actions {
+		for _, a := range r.actions {
 			action := s.fuzzStackAction(a, id, slots, recipes, creativeIDs)
-			if craft, ok := action.(*v2193.CraftRecipeStackRequestAction); ok {
+			if _, ok := action.(*v2193.CraftRecipeStackRequestAction); ok {
 				switch in.menu.name {
 				case "enchanting table":
 					// A second option would be of the seed drawn at
@@ -395,10 +394,6 @@ func (s *scenario) sendFuzzRequests(in fuzzMenuInput) int {
 						continue
 					}
 					enchanted = true
-				case "smithing table":
-					if s.fuzzSmithingRecipe(craft.RecipeNetworkID) && (i != 0 || pk != nil || !s.smithingSlotsFilled()) {
-						continue
-					}
 				}
 			}
 			actions = append(actions, action)
@@ -462,37 +457,6 @@ func (s *scenario) fuzzRecipes() []uint32 {
 		s.multiRecipe(multiBannerDuplicate),
 		0, 1, 2, 60000,
 	}
-}
-
-// fuzzSmithingRecipe reports whether the network ID is that of a smithing
-// recipe.
-func (s *scenario) fuzzSmithingRecipe(id uint32) bool {
-	for _, r := range s.crafting.SmithingTransformRecipes {
-		if r.RecipeNetworkID == id {
-			return true
-		}
-	}
-	for _, r := range s.crafting.SmithingTrimRecipes {
-		if r.RecipeNetworkID == id {
-			return true
-		}
-	}
-	return false
-}
-
-// smithingSlotsFilled reports whether the input, material and template of
-// the smithing table hold any item.
-func (s *scenario) smithingSlotsFilled() bool {
-	filled := true
-	s.run(func(*world.Tx, *player.Player) {
-		_, _, _, ui, _ := s.sess.Inventories()
-		for _, slot := range []int{uiSmithingInput, uiSmithingMaterial, uiSmithingTemplate} {
-			if it, _ := ui.Item(slot); it.Empty() {
-				filled = false
-			}
-		}
-	})
-	return filled
 }
 
 // fuzzStackAction returns the action of item stack request id that a

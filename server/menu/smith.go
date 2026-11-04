@@ -13,6 +13,9 @@ import (
 // must match the inputs of the recipe and are taken one each. A transform
 // makes the input the output of the recipe, keeping what the input holds;
 // a trim puts the trim of the template and the material on the input.
+// An empty slot fails it with a MissingInputError: of the input or the
+// material, the first empty, before the template, as BDS 1.26.52.3 tells
+// them.
 func (t *Tx) Smith(craft recipe.Recipe) error {
 	m := t.o.Menu
 	if m == nil {
@@ -32,23 +35,32 @@ func (t *Tx) Smith(craft recipe.Recipe) error {
 		return fmt.Errorf("recipe is not a smithing recipe")
 	}
 
+	input, _ := t.Item(Slot{Inv: t.o.Inv.UI, Index: UISmithingInput})
+	material, _ := t.Item(Slot{Inv: t.o.Inv.UI, Index: UISmithingMaterial})
+	template, _ := t.Item(Slot{Inv: t.o.Inv.UI, Index: UISmithingTemplate})
+	for _, in := range [...]struct {
+		stack item.Stack
+		role  Role
+	}{{input, RoleSmithingInput}, {material, RoleSmithingMaterial}, {template, RoleSmithingTemplate}} {
+		if in.stack.Empty() {
+			return MissingInputError{Role: in.role}
+		}
+	}
+
 	// Check if the input item and material item match what the recipe requires.
 	expectedInputs := craft.Input()
-	input, _ := t.Item(Slot{Inv: t.o.Inv.UI, Index: UISmithingInput})
 	if err := ensureUnlockedForCrafting(input); err != nil {
 		return err
 	}
 	if !matchingStacks(input, expectedInputs[0]) {
 		return fmt.Errorf("input item is not the same as expected input")
 	}
-	material, _ := t.Item(Slot{Inv: t.o.Inv.UI, Index: UISmithingMaterial})
 	if err := ensureUnlockedForCrafting(material); err != nil {
 		return err
 	}
 	if !matchingStacks(material, expectedInputs[1]) {
 		return fmt.Errorf("material item is not the same as expected material")
 	}
-	template, _ := t.Item(Slot{Inv: t.o.Inv.UI, Index: UISmithingTemplate})
 	if err := ensureUnlockedForCrafting(template); err != nil {
 		return err
 	}

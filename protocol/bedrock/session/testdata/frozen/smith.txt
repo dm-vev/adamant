@@ -6,7 +6,12 @@
 #
 # Record them again with -update-frozen only once a change of the outcomes
 # is meant, and review the diff.
-0 0	25 cases sha256:149f15b263f64649fc3e5874afcc3ad44c849e6d4a8392d27678ca8140a80287
+#
+# 0 0 and 1 3 were recorded again when the crafts with a slot of the table
+# empty came to be refused, as BDS 1.26.52.3 refuses them: the handlers
+# made a netherite sword of an empty input, and a netherite chestplate with
+# no ingot or no template.
+0 0	25 cases sha256:bdd8ea04cd45c2e64f12ea6fe7b4b77ca6104110cac3a5a54a978d1f955cf7b3
 0 1	25 cases sha256:64b7b92a8acdf6cd83d3424d58178cdab2d5f9787ee65e5ec8dcfc4beb1125de
 0 2	25 cases sha256:515ebc01c7336784d3041e2daea7563e2b0391e15b9947e3beaacf0ff1f42922
 0 3	25 cases sha256:ce563fe2627497c435925d60ce7f659a94ff6ad27fdc1bb995aee72dd9d85693
@@ -16,7 +21,7 @@
 1 0	25 cases sha256:94d21c63d86db8a42ca44dcfd4b663327533ca2f00966f3121457c87f5f61825
 1 1	25 cases sha256:a1173c71e46ebe8ca902ce869ccde49f701612bb09232e3cecdbe1bb4ffac0f4
 1 2	25 cases sha256:a76ae4d10b91e67eed0162b493d8a0bec9fe443616eb2826e76246666efd329a
-1 3	25 cases sha256:880c8384fd2e288e23c97c2709fc6d9b92c992f5ac4b8918887087f4d6d65e68
+1 3	25 cases sha256:4efba7c56ad82c4c79cb44721b7f6ebc3a4af58241ad4c3d99e2eb3aa3fd18f6
 1 4	25 cases sha256:89048ab1be22e97e5d2bb01eceb03f98847241b48543cab29468561fa2d5a789
 1 5	25 cases sha256:bc375498c96773ed7c0b1d66896632a40f415f30019825fdbca63aadd957e5de
 1 6	25 cases sha256:baa5d79851314d6fcc51a619109a187feecf8a4eb7839204b209c4f8d9e117b0

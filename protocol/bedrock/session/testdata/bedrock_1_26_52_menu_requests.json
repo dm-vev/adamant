@@ -3093,6 +3093,850 @@
     "MenuProbe has 10 items that match the criteria",
     "Could not clear the inventory of MenuProbe, no items to remove"
    ]
+  },
+  {
+   "name": "smithing/empty-slot",
+   "setup": [
+    "clear MenuProbe",
+    "tp MenuProbe 0.5 -60 0.5",
+    "setblock -2 -60 0 smithing_table",
+    "replaceitem entity MenuProbe slot.hotbar 0 diamond_sword 1",
+    "replaceitem entity MenuProbe slot.hotbar 1 netherite_ingot 2",
+    "replaceitem entity MenuProbe slot.hotbar 2 netherite_upgrade_smithing_template 2",
+    "replaceitem entity MenuProbe slot.hotbar 3 diamond_chestplate 1",
+    "replaceitem entity MenuProbe slot.hotbar 4 coast_armor_trim_smithing_template 1",
+    "replaceitem entity MenuProbe slot.hotbar 5 iron_ingot 2"
+   ],
+   "notes": [
+    "trim recipe minecraft:smithing_armor_trim netId 1558",
+    "netherite sword recipe netId 1567 of 12 transforms",
+    "ContainerOpen window 10 type 33",
+    "Captured 2026-11-04 with the probe of the cases above extended (fixprobe), on a fresh FLAT world; a second run on another fresh world answered alike, but for the price of the random trade of the villager."
+   ],
+   "packets": [
+    {
+     "dir": "<<",
+     "type": "ContainerOpen",
+     "sha256": "410bef8fc3ad25262b6d25daa03e3be3da728fa266e7969d198db8c573789588",
+     "raw": "2e0a2103770001"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "23d2a7b85441df2d5476424e2beea86864a6af089ba205dcb214905022e135d5",
+     "len": 37
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "a4b0ac1c1dec276d86b97dbaae4097e2a9cedf784c07836442e58602ac16ffd8",
+     "len": 403
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "da814275d6c79360aa043b422ba7ac94a0c2412fdf16de0d999b8e5b97cc9538",
+     "len": 53
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "2bba1d2bbc5d206763e16202caac27394deece75455121da0f2cc368434cd26b",
+     "len": 445
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "72f490538e05596aba2fda8f5efd57873596813d75caab97019527650dba91af",
+     "raw": "317701000000000000000000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "PlayerHotBar",
+     "sha256": "a225a83f3455dcaf96b69ba6fe105c5ba29d201ffa84dd0a2933bae83341867a",
+     "raw": "30080000"
+    },
+    {
+     "dir": "<<",
+     "type": "InventoryContent",
+     "sha256": "23d2a7b85441df2d5476424e2beea86864a6af089ba205dcb214905022e135d5",
+     "len": 37
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d320683d54a4b7f74d62788fe0e11a9117b741a95dd29086ba0d1cbca11d5499",
+     "raw": "9301018502050a0c9f0c0105050103003300000000050501040034000000000505013d0035000000000101013c00327dffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "141da029fdd979ae06963a872c981e8f234cc8aa1dda285ea64625a4b76882bd",
+     "raw": "94010126850200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "c684c863e9b6d8120ba175146b0bec0581ee5fad028d186efa6379caa9b2e03b",
+     "raw": "9301018902010101010c000025000000030033000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "710ffd58753542f8a82879edee3360bd06615f3690f3acc5c02c02f00477eaa8",
+     "raw": "94010100890201020c000100000000000000030001333301014a000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "b20b955ef28a73192544b1d467d0d7e9928ca6f8a0d8edba068d8e8b15f2c14a",
+     "raw": "9301018d02050a0c9f0c0105050103003325000000050501040034000000000505013d0035000000000101013c003279ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "4afa2bf8f9de788edf5e3d705c97ab434f5be3496272700c7c2695058ffa160d",
+     "raw": "940101268d0200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "5c314417f7c91a3e827f814f6f692602adc8aa0e4c5efcbb60b6abbd89d9cda2",
+     "raw": "9301019102010101010c0002270000003d0035000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "2cfc618bc475c32f53ac929d8c476a68df439c81d5df96638a9658277ca2d68f",
+     "raw": "94010100910201020c0001020201014e0000003d00013535010156000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "dd802b2c33b1d0ffc63c328575cf12dfc29b7918d13fa03cb5247e8e35af5e71",
+     "raw": "9301019502040a0c9f0c01050501030033250000000505013d00352b0000000101013c003275ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "801fec0bdca993771170ea67da125a7085fd0e490bd95e51c6de03b9a64d0a67",
+     "raw": "94010126950200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "bbd3bbfd4658881b5c931557934c44d290088f54e0ee2a65cab3ba50ae5dc063",
+     "raw": "9301019902050a0c9f0c0105050103003325000000050501040034000000000505013d00352b0000000101013c003273ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "b1b1372641f460844a4e37daa4852dce9dc49598b6c91d022ba65b7b67cd2cf8",
+     "raw": "94010126990200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "46efeef0f3515e6918cf8a1aeae4614764a2a9ce803e3d9143c28c0c1289c7d7",
+     "raw": "9301019d02020a0c9f0c010101013c003271ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "30cef08271c10e86df218322c459c9cdb4b2e53a79709374a3f3f9009803b91c",
+     "raw": "940101269d0200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d81f4a7fb45f2153af6b7dd66f074f0affc0684f1b706973523b609823a5a319",
+     "raw": "930101a102010101010c000126000000040034000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "c3cbd32bc9439408c59c9b5b4d900af6114296d01aee34ce1be4c8557f8aea11",
+     "raw": "94010100a10201020c0001010101014c0000000400013434010158000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "ed12661b1e59cf685887f561de2cda28d1d25d961b342603d54b927dcf46ca5e",
+     "raw": "930101a502010101013d00352b0000000c0002270000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "5e124451048b4d9289534b7b553833a009e2bea948c3a0d7be033d420d107a43",
+     "raw": "94010100a50201023d0001353500000000000c0001020202014e000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "eb5703f5165f5b767b3c14bdcacf0a45727085fd1e6b3c1e49ba16ac193d2cb8",
+     "raw": "930101a902040a0c9f0c01050501030033250000000505010400342c0000000101013c00326bffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "44f5b2c5a0308c19d4f21eae4d9f76b791602987ca2d14869ba42e76c44d84a2",
+     "raw": "94010123a90200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "d0dc37d13452420138cd334de849307948ac24854f957f7b0dcecb7c01530a90",
+     "raw": "930101ad02050a0c9f0c01050501030033250000000505010400342c0000000505013d0035000000000101013c003269ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "9b6e6ae77f9aae601bafa5526c5242594cfa5ea756cea9125947b171cae19a68",
+     "raw": "94010123ad0200"
+    },
+    {
+     "dir": "<<",
+     "type": "SyncWorldClocks",
+     "sha256": "059de101765d7db620a9bed174dc5417a7d9f0f0737f31a9a64324d6f5fadaf3",
+     "raw": "d802000196f2e3e1f3bcfbeb63d00f00"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "37044fdca392aed7eb9843a6bd4703583333b8b2b8a1893f1d245c76ba89fb33",
+     "raw": "930101b102010101010c0002270000003d0035000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "ec82a946a0935e851adedf33143c924f2242531275decdbe6a6f37aea6a828e5",
+     "raw": "94010100b10201020c0001020201014e0000003d0001353501015a000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "bfd35c54cd89f976201f351da12bddb71f141a7c86cabb9dcf797ce2417e918e",
+     "raw": "930101b50201010101030033250000000c0000000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "8faf4279509c5c6000703a1f75eacf05916e3abdd63dadc35ae7785d77acca4d",
+     "raw": "94010100b5020102030001333300000000000c0001000001014a000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "af9d4c38740e992ae4a0ca792412528f8ec823d7c844860de96d7ed6592fc8aa",
+     "raw": "930101b902040a0c9f0c010505010400342c0000000505013d00352d0000000101013c003263ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "09e3668687e2a7f1a534aecf5bb2d3811746470db9bcc4a48a3578ddfeaf9d7f",
+     "raw": "94010126b90200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "92d439ccae2e0b6c510c38e042d96478240e31aaf0ee75d410d1793723877482",
+     "raw": "930101bd02050a0c9f0c01050501030033000000000505010400342c0000000505013d00352d0000000101013c003261ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "e17ab542a54f462518b01c24986e31df55d1761832913dfb5214ec2b2a52d969",
+     "raw": "94010126bd0200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "975efb92a06b52da0159b0893559b278ab326cb79b3759b9f80efaadcf9c800a",
+     "raw": "930101c102010101013d00352d0000000c0002270000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "d77407920431a5b31cfeb3dcb4a0e87323ea0c6b24e89ddedcc921eda0271fea",
+     "raw": "94010100c10201023d0001353500000000000c0001020202014e000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "481107cc23efa40e23244cc90a193069dbfe68350081e8888c2d69d01ae56df2",
+     "raw": "930101c502050a0c9f0c01050501030033000000000505010400342c0000000505013d0035000000000101013c00325dffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "598815dc64f5af25b771b15d06eede7c1ccd71f3dec37d356bb8af3c43b6c2ac",
+     "raw": "94010126c50200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "9b69cd12c81cc3e4cfb8b4cc5485a65b3ba6eacb2ee9a7190f43f0da41174922",
+     "raw": "930101c902010101010400342c0000000c0001260000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "165195c42c5cc8fcf159fb079f7071bce076b579f104de27002c428e8370b0d1",
+     "raw": "94010100c9020102040001343400000000000c0001010102014c000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "7b23c88cabbad5402fba6c2ef92a098e932c3c36636b0028777201aa10fe9dfc",
+     "raw": "930101cd02010101010c0002270000003d0035000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "1154b357e5ef3b4f52f8004eaabb8b7a33c7d1825bdfd52118904d2c82174317",
+     "raw": "94010100cd0201020c0001020201014e0000003d0001353501015c000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "ff7a4afed286f7e44c30ad9613451efc901dc664d42692077f19100000ae5ab5",
+     "raw": "930101d102050a0c9f0c0105050103003300000000050501040034000000000505013d00352e0000000101013c003257ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "a5b1b2af811534234f5755b417333dcdb646645cc5037d4430c01446ab5c8f10",
+     "raw": "94010126d10200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "de42b0a9c0708e42fabf314b57adbab53c39e66a4f2e719fbe7b18bce1bd02a4",
+     "raw": "930101d502010101013d00352e0000000c0002270000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "c132279743935d2723e26050b6cff6582e229b6a452f2b8118b63f6f7aaa447e",
+     "raw": "94010100d50201023d0001353500000000000c0001020202014e000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "4175fdf70e1274010fa07c6492c10e780374cc93e0ff81faebd0e0e4d9840d06",
+     "raw": "930101d902010101010c000328000000030033000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "4ca6871f8a8a5b783a363fba0095879e9c661d9b07e61503f2d45737067a4f79",
+     "raw": "94010100d90201020c0001030300000000000300013333010150000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "233879008b77ea59d894194acda60d2d58875ea00622acfab109c29259cf8dfa",
+     "raw": "930101dd02010101010c0004290000003d0035000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "e7e34e022de1843350da97e37cab310e94bff5d0703d718a6308946fada1cefd",
+     "raw": "94010100dd0201020c0001040400000000003d00013535010152000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "f3ab18818568e03ef10aaa8762c03fde948eb23e55a272c1eff273fe21b711ce",
+     "raw": "930101e102040a0c960c01050501030033280000000505013d0035290000000101013c00324fffffff0c000b000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "591048d9aa1d56c14037e3694d3b291f0d7bd8b7983da4197e174ad65362b248",
+     "raw": "94010126e10200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "5e9dd41e183a7cb47b2e1d4c1c76ffe11345b8d85be609b4c742367a9449b7db",
+     "raw": "930101e502050a0c960c0105050103003328000000050501040034000000000505013d0035290000000101013c00324dffffff0c000b000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "6c539419457b9d693459fbcd76b84a496222e673d2fe45253a712e1bc8fc6c20",
+     "raw": "94010126e50200"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "dbc1efdcff9e92d09bf5652e52e8bb09050cb6ba18f5a3c5c3b8c2d95b4b7a68",
+     "raw": "930101e902010101010c00052a000000040034000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "02fec915bf21cd28d689ce05eeb86390e742ec3e212f3625027def0c867cddbe",
+     "raw": "94010100e90201020c00010505010154000000040001343401015e000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "511c32ea6589128a7886a0087a7d85ae11b8d99ce1b250bad2ff6179490dec0b",
+     "raw": "930101ed02050a0c960c01050501030033280000000505010400342f0000000505013d0035290000000101013c003249ffffff0c000b000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "7fa950eb6ab931303d7ab6741ee8095a422987b8a1501d5e6231209dfcc9dbce",
+     "raw": "94010100ed02010403000133330000000000040001343400000000003d0001353500000000000c00010b0b010160000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "19d944d2655f6f3833974bafe5c540a8a553988efe67674a217fe97dc184437f",
+     "raw": "930101f102010101010c000025000000030033000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "ca3e67225d835bf1043a4cbefb3fb10fa8e1c30b5244d01ac2f2ecde6578d604",
+     "raw": "94010100f10201020c000100000000000000030001333301014a000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "6434eb1ba240da2b61d196bb8bfc3dc8ac17869e2e4f3e9d518f2b99153e2a7d",
+     "raw": "930101f502010101010c000126000000040034000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "842f8c3dbce7f9062fe7d6c4ba4616bb040e12c1c3c75a7775c431cff097cf3d",
+     "raw": "94010100f50201020c0001010101014c0000000400013434010162000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "76072f6e0535e7a7ff2e774e9941bc251203f87952556fd53a9cacb07d911d0f",
+     "raw": "930101f902010101010c0002270000003d0035000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "15f7aada0f38500bcc8ce168af8ac66c1f797a9412f129f337516f74b8700d0d",
+     "raw": "94010100f90201020c0001020201014e0000003d00013535010164000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ItemStackRequest",
+     "sha256": "01682de97d2c3f989744376bd10d5158d494715ee27cb324da4d6b0a87a48590",
+     "raw": "930101fd02050a0c9f0c0105050103003325000000050501040034310000000505013d0035320000000101013c003241ffffff0c000a000000000000000000"
+    },
+    {
+     "dir": "<<",
+     "type": "ItemStackResponse",
+     "sha256": "604d5e81f05e1d55cd24e827e9b3c17621cfd96db29f7607b60698f858010770",
+     "raw": "94010100fd02010403000133330000000000040001343400000000003d0001353500000000000c00010a0a010166000000"
+    },
+    {
+     "dir": ">>",
+     "type": "ContainerClose",
+     "sha256": "27d71b4e474177e5956b660c7dbec9a73ecb6d7320e38b3c64f478596f5eef03",
+     "raw": "2f0a2100"
+    },
+    {
+     "dir": "<<",
+     "type": "ContainerClose",
+     "sha256": "eae2bfbfe1bd0e1ed26ec9c422c61a958af3a19000b7ec915d771a0791009e4a",
+     "raw": "2f0af700"
+    }
+   ],
+   "requests": [
+    {
+     "label": "the netherite sword crafted, all three slots empty",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the sword put in the input",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 0
+      },
+      {
+       "container": 3,
+       "slot": 51,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the netherite sword crafted, the material and template slots empty",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the template put in the template slot",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 1
+      },
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the netherite sword crafted, the material slot empty, consumed from the input and template",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the netherite sword crafted, the material slot empty, consumed from all three",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the netherite sword crafted, the material slot empty, nothing consumed",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "an ingot put in the material slot",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 1,
+       "count": 1
+      },
+      {
+       "container": 4,
+       "slot": 52,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the template taken out",
+     "status": 0,
+     "changes": [
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "the netherite sword crafted, the template slot empty, consumed from the input and material",
+     "status": 35,
+     "changes": []
+    },
+    {
+     "label": "the netherite sword crafted, the template slot empty, consumed from all three",
+     "status": 35,
+     "changes": []
+    },
+    {
+     "label": "the template put back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 1
+      },
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the sword taken out",
+     "status": 0,
+     "changes": [
+      {
+       "container": 3,
+       "slot": 51,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the netherite sword crafted, the input slot empty, consumed from the material and template",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the netherite sword crafted, the input slot empty, consumed from all three",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the netherite template taken out",
+     "status": 0,
+     "changes": [
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "the netherite sword crafted, the input and template slots empty",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the ingot taken out",
+     "status": 0,
+     "changes": [
+      {
+       "container": 4,
+       "slot": 52,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 1,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "the netherite template put back",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 1
+      },
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the netherite sword crafted, the input and material slots empty",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the netherite template taken out again",
+     "status": 0,
+     "changes": [
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 2
+      }
+     ]
+    },
+    {
+     "label": "the chestplate put in the input",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 3,
+       "count": 0
+      },
+      {
+       "container": 3,
+       "slot": 51,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the coast template put in",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 4,
+       "count": 0
+      },
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the chestplate trimmed, the material slot empty, consumed from the input and template",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "the chestplate trimmed, the material slot empty, consumed from all three",
+     "status": 38,
+     "changes": []
+    },
+    {
+     "label": "an iron ingot put in the material slot",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 5,
+       "count": 1
+      },
+      {
+       "container": 4,
+       "slot": 52,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the chestplate trimmed with iron",
+     "status": 0,
+     "changes": [
+      {
+       "container": 3,
+       "slot": 51,
+       "count": 0
+      },
+      {
+       "container": 4,
+       "slot": 52,
+       "count": 0
+      },
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 11,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the sword put in the input",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 0,
+       "count": 0
+      },
+      {
+       "container": 3,
+       "slot": 51,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "an ingot put in the material slot",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 1,
+       "count": 1
+      },
+      {
+       "container": 4,
+       "slot": 52,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the netherite template put in",
+     "status": 0,
+     "changes": [
+      {
+       "container": 12,
+       "slot": 2,
+       "count": 1
+      },
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 1
+      }
+     ]
+    },
+    {
+     "label": "the netherite sword crafted",
+     "status": 0,
+     "changes": [
+      {
+       "container": 3,
+       "slot": 51,
+       "count": 0
+      },
+      {
+       "container": 4,
+       "slot": 52,
+       "count": 0
+      },
+      {
+       "container": 61,
+       "slot": 53,
+       "count": 0
+      },
+      {
+       "container": 12,
+       "slot": 10,
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "counts_after": [
+    "Could not clear the inventory of MenuProbe, no items to remove",
+    "MenuProbe has 1 items that match the criteria",
+    "MenuProbe has 1 items that match the criteria",
+    "MenuProbe has 1 items that match the criteria",
+    "MenuProbe has 1 items that match the criteria",
+    "Could not clear the inventory of MenuProbe, no items to remove",
+    "MenuProbe has 1 items that match the criteria"
+   ]
   }
  ]
 }

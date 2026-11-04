@@ -90,7 +90,7 @@ func move(inv int, at smithingSlot, count int) struct {
 
 // smithingCases are requests of the smithing table: refused for a recipe
 // that is none, one of another block, an input, material or template that
-// does not match and a locked input; a netherite upgrade and an armour
+// is empty or does not match, and a locked input; a netherite upgrade and an armour
 // trim; an upgrade taken twice in a request, which fails after it took its
 // inputs; and a request once the table is gone from under the open menu.
 func (s *scenario) smithingCases() {
@@ -118,8 +118,20 @@ func (s *scenario) smithingCases() {
 	sword := s.smithingRecipe(item.Sword{Tier: item.ToolTierNetherite})
 	trim := s.trimRecipe(coast)
 
-	// An upgrade with a slot of the table empty panics in matchingStacks,
-	// which the session and the menu share, and closes the session.
+	// An upgrade with a slot of the table empty, as BDS refuses it: 38
+	// (MissingInputItem) for an empty input or material, 35 for the
+	// template alone.
+	var missing, noTemplate uint8 = v2193.ItemStackResponseStatusMissingInputItem, v2193.ItemStackResponseStatusMismatchedRecipeForInputGridItems
+	s.refuseWith("refused: an upgrade with the table empty", missing, s.smith(sword, 20)...)
+	s.smithingMove("the template put in", true, move(0, smithingTemplate, 1))
+	s.refuseWith("refused: an upgrade of the template alone", missing, s.smith(sword, 20)...)
+	s.smithingMove("a diamond sword put in", true, move(10, smithingInput, 1))
+	s.refuseWith("refused: an upgrade with no material", missing, s.smith(sword, 20)...)
+	s.smithingMove("the template taken back", false, move(0, smithingTemplate, 1))
+	s.smithingMove("an ingot put in", true, move(2, smithingMaterial, 1))
+	s.refuseWith("refused: an upgrade with no template", noTemplate, s.smith(sword, 20)...)
+	s.refuseWith("refused: a trim with no template", noTemplate, s.smith(trim, 20)...)
+	s.smithingMove("the sword and the ingot taken back", false, move(10, smithingInput, 1), move(2, smithingMaterial, 1))
 	s.smithingMove("the template, an iron sword and an ingot put in it", true,
 		move(0, smithingTemplate, 1), move(3, smithingInput, 1), move(2, smithingMaterial, 1))
 	s.refuse("refused: a recipe that is none", s.smith(99999, 20)...)
@@ -150,8 +162,7 @@ func (s *scenario) smithingCases() {
 	s.request("the diamond sword upgraded, its name and damage kept", nil, s.smith(sword, 20)...)
 
 	// The second upgrade takes the result of the first again: it is
-	// refused after it took its inputs, and the first is undone. (Each
-	// slot holds enough for both: an empty one panics, as above.)
+	// refused after it took its inputs, and the first is undone.
 	s.smithingMove("two templates and two ingots put in", true, move(0, smithingTemplate, 2), move(2, smithingMaterial, 2))
 	s.smithingMove("a diamond sword put in", true, move(9, smithingInput, 1))
 	s.refuse("refused: two upgrades in a request",

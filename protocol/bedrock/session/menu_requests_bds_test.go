@@ -325,6 +325,20 @@ func TestMenuRequestsAgainstBDS(t *testing.T) {
 				bdsPreview(s, 1, inv, 21),
 			},
 		},
+		{
+			capture: "smithing/empty-slot",
+			items: map[int]item.Stack{
+				0: item.NewStack(item.Sword{Tier: item.ToolTierDiamond}, 1),
+				1: item.NewStack(item.NetheriteIngot{}, 2),
+				2: item.NewStack(item.SmithingTemplate{Template: item.TemplateNetheriteUpgrade()}, 2),
+				3: item.NewStack(item.Chestplate{Tier: item.ArmourTierDiamond{}}, 1),
+				4: item.NewStack(item.SmithingTemplate{Template: item.TemplateCoast()}, 1),
+				5: item.NewStack(item.IronIngot{}, 2),
+			},
+			menu:     &menu{cube.Pos{-2, -60, 0}, block.SmithingTable{}},
+			statuses: true,
+			requests: smithingEmptyRequests(s),
+		},
 	}
 	if len(cases) != len(capture.Cases) {
 		t.Fatalf("%d cases replayed of the %d captured", len(cases), len(capture.Cases))
@@ -625,6 +639,71 @@ func bdsPreview(s *scenario, count uint8, container uint8, slot int) func() []v2
 		return []v2193.StackRequestAction{&v2193.TakeStackRequestAction{Count: count,
 			Source:      v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoResultPreview}},
 			Destination: s.slot(container, slot)}}
+	}
+}
+
+// smithingEmptyRequests returns the requests of the smithing/empty-slot case
+// of the capture: crafts at a smithing table with its slots empty in each
+// way, and with all three filled, with the moves of items in and out of it
+// between them.
+func smithingEmptyRequests(s *scenario) []func() []v2193.StackRequestAction {
+	const (
+		inv      = v2193.ContainerCombinedHotBarAndInventory
+		input    = v2193.ContainerSmithingTableInput
+		material = v2193.ContainerSmithingTableMaterial
+		template = v2193.ContainerSmithingTableTemplate
+	)
+	slots := map[uint8]int{input: uiSmithingInput, material: uiSmithingMaterial, template: uiSmithingTemplate}
+	put := func(from int, c uint8) func() []v2193.StackRequestAction {
+		return bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, inv, from, c, slots[c])
+	}
+	takeOut := func(c uint8, to int) func() []v2193.StackRequestAction {
+		return bdsMove(&v2193.PlaceStackRequestAction{Count: 1}, s.slot, c, slots[c], inv, to)
+	}
+	sword := func() uint32 { return s.smithingRecipe(item.Sword{Tier: item.ToolTierNetherite}) }
+	trim := func() uint32 { return s.trimRecipe(item.SmithingTemplate{Template: item.TemplateCoast()}) }
+	craft := func(recipe func() uint32, to int, consumed ...uint8) func() []v2193.StackRequestAction {
+		return func() []v2193.StackRequestAction {
+			actions := []v2193.StackRequestAction{&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: recipe(), NumberOfCrafts: 1}}
+			for _, c := range consumed {
+				actions = append(actions, &v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(c, slots[c])})
+			}
+			return append(actions, &v2193.PlaceStackRequestAction{Count: 1, Source: s.created(), Destination: s.slot(inv, to)})
+		}
+	}
+	all := []uint8{input, material, template}
+	return []func() []v2193.StackRequestAction{
+		craft(sword, 10, all...),
+		put(0, input),
+		craft(sword, 10, all...),
+		put(2, template),
+		craft(sword, 10, input, template),
+		craft(sword, 10, all...),
+		craft(sword, 10),
+		put(1, material),
+		takeOut(template, 2),
+		craft(sword, 10, input, material),
+		craft(sword, 10, all...),
+		put(2, template),
+		takeOut(input, 0),
+		craft(sword, 10, material, template),
+		craft(sword, 10, all...),
+		takeOut(template, 2),
+		craft(sword, 10, all...),
+		takeOut(material, 1),
+		put(2, template),
+		craft(sword, 10, all...),
+		takeOut(template, 2),
+		put(3, input),
+		put(4, template),
+		craft(trim, 11, input, template),
+		craft(trim, 11, all...),
+		put(5, material),
+		craft(trim, 11, all...),
+		put(0, input),
+		put(1, material),
+		put(2, template),
+		craft(sword, 10, all...),
 	}
 }
 

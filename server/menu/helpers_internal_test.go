@@ -21,6 +21,33 @@ type helperOwner struct {
 func (o *helperOwner) GameMode() world.GameMode    { return o.mode }
 func (o *helperOwner) UnlockedRecipeIDs() []string { return o.unlocked }
 
+// TestMatchingStacksOfAnEmptySlot checks that the stack of an empty slot
+// matches no input of a recipe but the blank of a shaped one: a stack of an
+// item, of variants of it, or a tag. The first matched, the two last
+// panicked: the empty stack has no item to name.
+func TestMatchingStacksOfAnEmptySlot(t *testing.T) {
+	t.Parallel()
+	if !matchingStacks(item.Stack{}, item.Stack{}) {
+		t.Error("an empty slot does not match the blank of a shaped recipe")
+	}
+	for _, expected := range []recipe.Item{
+		item.NewStack(item.Sword{Tier: item.ToolTierDiamond}, 1),
+		item.NewStack(item.Chestplate{Tier: item.ArmourTierDiamond{}}, 1).WithValue("variants", true),
+		recipe.NewItemTag("minecraft:trimmable_armors", 1),
+	} {
+		func() {
+			defer func() {
+				if p := recover(); p != nil {
+					t.Errorf("matchingStacks of an empty slot and %v panicked: %v", expected, p)
+				}
+			}()
+			if matchingStacks(item.Stack{}, expected) {
+				t.Errorf("an empty slot matches %v", expected)
+			}
+		}()
+	}
+}
+
 // The tests below were the session's, of its own copies of these helpers,
 // before they moved here.
 

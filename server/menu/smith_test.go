@@ -1,6 +1,8 @@
 package menu_test
 
 import (
+	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -81,6 +83,67 @@ func TestSmith(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+// TestSmithWithASlotEmpty checks a smithing craft with the input, the
+// material or the template empty, or several of them: it is refused with
+// a menu.MissingInputError of the input or the material, the first empty,
+// else of the template, and changes nothing. A recipe of a stack of
+// variants, as the game registers the netherite upgrades of armour, or of
+// tags, as it registers trims, panicked in matchingStacks for an empty
+// slot. BDS 1.26.52.3 refuses such a craft with 38 (MissingInputItem) for
+// an empty input or material, whatever else is empty, and with 35 for the
+// template alone.
+func TestSmithWithASlotEmpty(t *testing.T) {
+	chestplate := recipe.NewSmithingTransform(item.NewStack(item.Chestplate{Tier: item.ArmourTierDiamond{}}, 1).WithValue("variants", true),
+		item.NewStack(item.NetheriteIngot{}, 1), upgradeTemplate, item.NewStack(item.Chestplate{Tier: item.ArmourTierNetherite{}}, 1), "smithing_table")
+	for _, r := range []struct {
+		name                      string
+		r                         recipe.Recipe
+		input, material, template item.Stack
+	}{
+		{"a netherite sword", netheriteSword, item.NewStack(item.Sword{Tier: item.ToolTierDiamond}, 1), item.NewStack(item.NetheriteIngot{}, 1), upgradeTemplate},
+		{"a netherite chestplate, of variants", chestplate, item.NewStack(item.Chestplate{Tier: item.ArmourTierDiamond{}}, 1), item.NewStack(item.NetheriteIngot{}, 1), upgradeTemplate},
+		{"a coast trim, of tags", coastTrim, item.NewStack(item.Chestplate{Tier: item.ArmourTierDiamond{}}, 1), item.NewStack(item.IronIngot{}, 1), coastTemplate},
+	} {
+		for empty := 1; empty < 8; empty++ {
+			input, material, template := r.input, r.material, r.template
+			want := menu.RoleSmithingTemplate
+			if empty&4 != 0 {
+				template = item.Stack{}
+			}
+			if empty&2 != 0 {
+				material, want = item.Stack{}, menu.RoleSmithingMaterial
+			}
+			if empty&1 != 0 {
+				input, want = item.Stack{}, menu.RoleSmithingInput
+			}
+			t.Run(fmt.Sprintf("%s, empty %03b", r.name, empty), func(t *testing.T) {
+				w, _ := newWorld(t)
+				<-w.Exec(func(tx *world.Tx) {
+					b, _ := stationBatch(t, tx, cube.Pos{}, block.SmithingTable{}, &stationOwner{}, map[int]item.Stack{
+						menu.UISmithingInput: input, menu.UISmithingMaterial: material, menu.UISmithingTemplate: template,
+					})
+					var err error
+					func() {
+						defer func() {
+							if p := recover(); p != nil {
+								t.Fatalf("Smith panicked: %v", p)
+							}
+						}()
+						err = b.Smith(r.r)
+					}()
+					var missing menu.MissingInputError
+					if !errors.As(err, &missing) || missing.Role != want {
+						t.Errorf("Smith: %v, want a MissingInputError of role %d", err, want)
+					}
+					if len(b.Changes()) != 0 {
+						t.Errorf("the refusal changed %d slots", len(b.Changes()))
+					}
+				})
+			})
+		}
 	}
 }
 

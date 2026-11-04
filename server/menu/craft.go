@@ -191,6 +191,11 @@ func (t *Tx) recipeLocked(r recipe.Recipe) bool {
 
 // matchingStacks returns true if the two stacks are the same in a crafting scenario.
 func matchingStacks(has, expected recipe.Item) bool {
+	if s, ok := has.(item.Stack); ok && s.Empty() {
+		// The stack of an empty slot has no item to name: it matches the
+		// blank of a shaped recipe only.
+		return expected.Empty()
+	}
 	switch expected := expected.(type) {
 	case item.Stack:
 		switch has := has.(type) {
