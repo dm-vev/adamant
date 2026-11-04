@@ -45,7 +45,7 @@ jobs:
       matrix:
         # fixes/ is an empty module that only keeps its directory out of the
         # root module; it has no packages to vet.
-        module: [., net, net/interop, scripts/redstone_client]
+        module: [., net, net/interop, net/interop/v2225, scripts/redstone_client]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -55,6 +55,7 @@ jobs:
           cache-dependency-path: |
             go.sum
             net/interop/go.sum
+            net/interop/v2225/go.sum
             scripts/redstone_client/go.sum
       - name: go vet
         working-directory: ${{ matrix.module }}
@@ -84,6 +85,11 @@ jobs:
             packages: ./server/world/generator/advanced/overworld/...
           - name: net
             module: net
+            packages: ./...
+          # The packets of protocol 2225 against the gophertunnel that
+          # speaks it, in a module of its own.
+          - name: net/interop/v2225
+            module: net/interop/v2225
             packages: ./...
     env:
       # The packages the heavy entries above test. Keep in sync with them.

@@ -1,13 +1,16 @@
 // Command constimport writes the constants of gophertunnel's protocol and
-// packet packages, protocol 2193, into the v2193 package of the net module
-// with their values, so that the server names them without gophertunnel:
+// packet packages into a codec package of the net module, vNNNN, with their
+// values, so that the server names them without gophertunnel. The
+// gophertunnel is that of the module it runs in: v1.62.0, protocol 2193, in
+// net/interop, and the one of protocol 2225 in net/interop/v2225:
 //
 //	cd net/interop && go run ./cmd/constimport -o ../bedrock/proto/v2193/consts.go
+//	cd net/interop/v2225 && go tool constimport -pkg v2225 -o ../../bedrock/proto/v2225/consts.go
 //
-// Constants v2193 already declares with the same value are left out; one
-// with another value stops it. The abilities, bits in protocol and the
-// indices of RequestAbility in packet, take the suffix Index for the
-// latter.
+// Constants the package already declares by hand with the same value are
+// left out; one with another value stops it. The abilities, bits in
+// protocol and the indices of RequestAbility in packet, take the suffix
+// Index for the latter.
 package main
 
 import (
@@ -30,7 +33,8 @@ import (
 const (
 	protocolPath = "github.com/sandertv/gophertunnel/minecraft/protocol"
 	packetPath   = "github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	v2193Path    = "github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	// protoPath is the path of the codec packages of the net module.
+	protoPath = "github.com/dm-vev/adamant/net/bedrock/proto/"
 )
 
 type entry struct {
@@ -40,11 +44,23 @@ type entry struct {
 
 func main() {
 	out := flag.String("o", "", "file to write")
+	pkg := flag.String("pkg", "v2193", "codec package of the net module to write the constants of, vNNNN")
 	flag.Parse()
-	pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedTypes | packages.NeedName | packages.NeedSyntax | packages.NeedTypesInfo}, protocolPath, packetPath, v2193Path)
+	number, ok := strings.CutPrefix(*pkg, "v")
+	if _, err := strconv.Atoi(number); !ok || err != nil {
+		log.Fatalf("package %q is not of the form vNNNN", *pkg)
+	}
+	target := protoPath + *pkg
+	// The types of the packages are checked from source, which takes the
+	// types of their imports too: without them, go/packages fails with
+	// "package math/big without types was imported".
+	mode := packages.NeedTypes | packages.NeedName | packages.NeedSyntax | packages.NeedTypesInfo |
+		packages.NeedImports | packages.NeedDeps | packages.NeedModule
+	pkgs, err := packages.Load(&packages.Config{Mode: mode}, protocolPath, packetPath, target)
 	if err != nil {
 		log.Fatal(err)
 	}
+	from := "gophertunnel"
 	var existing *types.Scope
 	var declaredElsewhere func(obj types.Object) bool
 	entries := map[string]entry{}
@@ -52,13 +68,19 @@ func main() {
 		if len(p.Errors) > 0 {
 			log.Fatalf("%s: %v", p.PkgPath, p.Errors)
 		}
-		if p.PkgPath == v2193Path {
+		switch {
+		case p.PkgPath == target:
 			existing = p.Types.Scope()
 			declaredElsewhere = handWritten(p)
+		case p.PkgPath == protocolPath && p.Module != nil:
+			from += " " + p.Module.Version
 		}
 	}
+	if existing == nil {
+		log.Fatalf("no package %s", target)
+	}
 	for _, p := range pkgs {
-		if p.PkgPath == v2193Path {
+		if p.PkgPath == target {
 			continue
 		}
 		scope := p.Types.Scope()
@@ -87,7 +109,7 @@ func main() {
 				if v, ok := obj.(*types.Const); ok && constant.Compare(v.Val(), token.EQL, e.val) {
 					continue
 				}
-				log.Fatalf("v2193 already declares %s otherwise", e.name)
+				log.Fatalf("%s already declares %s otherwise", *pkg, e.name)
 			}
 			entries[e.name] = e
 		}
@@ -98,8 +120,8 @@ func main() {
 	}
 	sort.Strings(names)
 	var b bytes.Buffer
-	b.WriteString(header + " from gophertunnel v1.62.0; DO NOT EDIT.\n\npackage v2193\n\n")
-	b.WriteString("// Constants of protocol 2193: identifiers of packets, kinds of their\n// fields and values their fields take.\nconst (\n")
+	fmt.Fprintf(&b, "%s from %s; DO NOT EDIT.\n\npackage %s\n\n", header, from, *pkg)
+	fmt.Fprintf(&b, "// Constants of protocol %s: identifiers of packets, kinds of their\n// fields and values their fields take.\nconst (\n", number)
 	for _, n := range names {
 		e := entries[n]
 		if e.typ == "" {
