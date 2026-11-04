@@ -368,8 +368,7 @@ func (s *scenario) sendFuzzRequests(in fuzzMenuInput) int {
 		for _, a := range r.actions {
 			action := s.fuzzStackAction(a, id, slots, recipes, creativeIDs)
 			if _, ok := action.(*v2193.CraftRecipeStackRequestAction); ok {
-				switch in.menu.name {
-				case "enchanting table":
+				if in.menu.name == "enchanting table" {
 					// A second option would be of the seed drawn at
 					// random after the first.
 					if enchanted {

@@ -78,6 +78,8 @@ func (t Target) Arg() string {
 
 // errKeyedByName is the error of "xuid:<XUID>" added to a list of a server
 // keyed by name.
+//
+//nolint:staticcheck // ST1005: the admin reads it as it is, as the output of the command.
 var errKeyedByName = errors.New(`This server keys players by name (IdentityKey = "name"): name the player.`)
 
 // ResolvePlayer resolves a player an admin names to add to a list, by

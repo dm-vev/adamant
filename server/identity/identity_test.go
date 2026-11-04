@@ -137,7 +137,11 @@ func TestOfflineUUID(t *testing.T) {
 }
 
 func TestParseMode(t *testing.T) {
-	for in, want := range map[string]Mode{"auto": Auto, " XUID ": XUID, "Name": Name} {
+	for _, tc := range []struct {
+		in   string
+		want Mode
+	}{{"auto", Auto}, {" XUID ", XUID}, {"Name", Name}} {
+		in, want := tc.in, tc.want
 		if got, err := ParseMode(in); err != nil || got != want {
 			t.Errorf("ParseMode(%q) = %v, %v; want %v", in, got, err, want)
 		}

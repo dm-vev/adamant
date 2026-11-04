@@ -79,9 +79,12 @@ func TestNameChecks(t *testing.T) {
 
 // TestParseNameCheck reads the values of the NameCheck key.
 func TestParseNameCheck(t *testing.T) {
-	for s, want := range map[string]NameCheck{"": NameCheckLenient, "lenient": NameCheckLenient, " Game ": NameCheckGame, "strict": NameCheckStrict} {
-		if got, err := parseNameCheck(s); err != nil || got != want {
-			t.Errorf("parseNameCheck(%q) = %v, %v, want %v", s, got, err, want)
+	for _, tc := range []struct {
+		s    string
+		want NameCheck
+	}{{"", NameCheckLenient}, {"lenient", NameCheckLenient}, {" Game ", NameCheckGame}, {"strict", NameCheckStrict}} {
+		if got, err := parseNameCheck(tc.s); err != nil || got != tc.want {
+			t.Errorf("parseNameCheck(%q) = %v, %v, want %v", tc.s, got, err, tc.want)
 		}
 	}
 	if _, err := parseNameCheck("xbox"); err == nil {

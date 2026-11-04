@@ -252,10 +252,14 @@ func TestSaveChunksSkipsGenerationCutShort(t *testing.T) {
 
 // TestParseChunkSaving checks the values SaveChunks takes.
 func TestParseChunkSaving(t *testing.T) {
-	for in, want := range map[string]world.ChunkSaving{
-		"": world.ChunkSavingModified, "modified": world.ChunkSavingModified, " Modified ": world.ChunkSavingModified,
-		"all": world.ChunkSavingAll, "ALL": world.ChunkSavingAll,
+	for _, tc := range []struct {
+		in   string
+		want world.ChunkSaving
+	}{
+		{"", world.ChunkSavingModified}, {"modified", world.ChunkSavingModified}, {" Modified ", world.ChunkSavingModified},
+		{"all", world.ChunkSavingAll}, {"ALL", world.ChunkSavingAll},
 	} {
+		in, want := tc.in, tc.want
 		if got, err := world.ParseChunkSaving(in); err != nil || got != want {
 			t.Errorf("ParseChunkSaving(%q) = %v, %v; want %v", in, got, err, want)
 		}
