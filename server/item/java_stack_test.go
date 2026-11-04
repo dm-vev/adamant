@@ -133,6 +133,31 @@ func TestJavaEnchantmentLevels(t *testing.T) {
 	}
 }
 
+// ItemStack.getDamageValue clamps the damage component to max_damage, and
+// ItemStack.CODEC keeps a stack whose damage is at or past it: the stack is
+// not lost on load. Here it keeps the last point of durability, which
+// survives a save in the Bedrock NBT, and its next use breaks it.
+func TestJavaStackDamageAtMaximum(t *testing.T) {
+	for _, damage := range []int32{1560, 1561, 5000} {
+		s, err := item.StackFromStructureNBT(map[string]any{
+			"id":         "minecraft:diamond_sword",
+			"components": map[string]any{"minecraft:damage": damage},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := s.Item().(item.Sword); !ok || s.Durability() != 1 {
+			t.Fatalf("damage %d: decoded %v with durability %d, want a sword with 1", damage, s.Item(), s.Durability())
+		}
+		if back := item.ReadNBT(item.WriteNBT(s)); back.Durability() != 1 {
+			t.Fatalf("damage %d: %v after a Bedrock save, want durability 1", damage, back)
+		}
+		if broken := s.Damage(1); !broken.Empty() {
+			t.Fatalf("damage %d: %v after one use, want the sword broken", damage, broken)
+		}
+	}
+}
+
 func TestJavaStackErrors(t *testing.T) {
 	for name, data := range map[string]map[string]any{
 		"no id":          {"count": int32(1)},

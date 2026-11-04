@@ -57,11 +57,7 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 	for key, value := range components {
 		switch key {
 		case "minecraft:damage", "damage", "Damage":
-			if d, ok := javaInt(value); ok {
-				if maxDamage := s.MaxDurability(); maxDamage > 0 {
-					s = s.WithDurability(maxDamage - int(d))
-				}
-			}
+			s = withJavaDamage(s, value)
 		case "minecraft:custom_name", "minecraft:item_name", "custom_name", "item_name":
 			if name, ok := javaText(value); ok {
 				s = s.WithCustomName(name)
@@ -272,6 +268,18 @@ func StackToStructureNBT(stack Stack) (map[string]any, error) {
 	}
 	return data, nil
 }
+// withJavaDamage applies a damage component to a durable stack.
+// ItemStack.getDamageValue clamps the damage to the max_damage, and the
+// codec keeps a stack at or past it. A durability of 0 breaks a stack here,
+// so such a stack keeps one point, which its next use takes.
+func withJavaDamage(s Stack, value any) Stack {
+	d, ok := javaInt(value)
+	if maxDamage := s.MaxDurability(); ok && maxDamage > 0 {
+		return s.WithDurability(maxDamage - int(min(d, int64(maxDamage-1))))
+	}
+	return s
+}
+
 // applyJavaEnchantments applies an enchantments component: a map of IDs to
 // levels, optionally under "levels", or the list of {id, lvl} compounds of
 // the tag of stacks before 1.20.5.
