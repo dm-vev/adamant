@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
@@ -162,6 +163,38 @@ func TestProxiedPlayersAdmittedAsClients(t *testing.T) {
 	b := openProxied(t, link, "Invalid", v2193.Protocol)
 	if _, err := b.ReadPacket(); err == nil {
 		t.Fatal("a player the rules refuse was let in")
+	}
+}
+
+// TestProxiedProtocols checks the protocol of a proxied player is one the
+// listener allows, refused as outdated otherwise, newer or older, as it
+// was before the listener allowed more than one.
+func TestProxiedProtocols(t *testing.T) {
+	l := listen(t, Config{Protocols: []*versions.Protocol{versions.Model(), fakeProtocol}})
+	link := proxyLink(t, l)
+	for _, n := range []int32{v2193.Protocol - 1, 2250, fakeProtocol.Number + 1} {
+		if st := readUntil(t, openProxied(t, link, "Refused", n), v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginFailedClient {
+			t.Errorf("status %d for protocol %d", st.Status, n)
+		}
+	}
+	accepted := make(chan *Conn, 1)
+	go func() {
+		if c, err := l.Accept(); err == nil {
+			accepted <- c
+		}
+	}()
+	b := openProxied(t, link, "Newer", fakeProtocol.Number)
+	if st := readUntil(t, b, v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginSuccess {
+		t.Fatalf("status %d for protocol %d", st.Status, fakeProtocol.Number)
+	}
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
+	select {
+	case c := <-accepted:
+		if c.Protocol() != fakeProtocol || c.Stats().Protocol != fakeProtocol.Number {
+			t.Fatalf("protocol %v, stats %d", c.Protocol(), c.Stats().Protocol)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the proxied player was not accepted")
 	}
 }
 

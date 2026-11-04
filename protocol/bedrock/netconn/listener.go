@@ -1,6 +1,7 @@
 package netconn
 
 import (
+	"cmp"
 	"compress/flate"
 	"context"
 	"crypto/ecdsa"
@@ -11,11 +12,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	bedrocklogin "github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -81,6 +85,9 @@ type Config struct {
 	// 2048 packets and 16 MiB.
 	Batches     bedrock.Config
 	Compression bedrock.Compression
+	// Protocols are the protocols clients may join with. Empty allows the
+	// model alone, the protocol the session is compiled against.
+	Protocols []*versions.Protocol
 }
 
 // Listener accepts the clients of a nethernet.Listener and logs them in.
@@ -89,7 +96,9 @@ type Config struct {
 type Listener struct {
 	cfg     Config
 	batches bedrock.Config
-	nn      *nethernet.Listener
+	// protocols are those of Config.Protocols, oldest first, each once.
+	protocols []*versions.Protocol
+	nn        *nethernet.Listener
 	// keys verify the tokens of Xbox Live logins; nil without Xbox Live.
 	keys     *bedrocklogin.Keys
 	incoming chan *Conn
@@ -166,7 +175,7 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	if cfg.Compression == nil {
 		cfg.Compression = bedrock.Flate{Level: 1}
 	}
-	l := &Listener{cfg: cfg, batches: cfg.Batches, incoming: make(chan *Conn), done: make(chan struct{})}
+	l := &Listener{cfg: cfg, batches: cfg.Batches, protocols: sortProtocols(cfg.Protocols), incoming: make(chan *Conn), done: make(chan struct{})}
 	if l.batches.PacketRate == 0 {
 		l.batches.PacketRate, l.batches.PacketBurst = defaultPacketRate, defaultPacketBurst
 	}
@@ -202,6 +211,35 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	go l.accept()
 	go l.refreshStatus()
 	return l, nil
+}
+
+// sortProtocols returns the protocols passed oldest first, each once, or
+// the model alone if none is.
+func sortProtocols(ps []*versions.Protocol) []*versions.Protocol {
+	if len(ps) == 0 {
+		return []*versions.Protocol{versions.Model()}
+	}
+	ps = slices.Clone(ps)
+	slices.SortFunc(ps, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
+	return slices.CompactFunc(ps, func(a, b *versions.Protocol) bool { return a.Number == b.Number })
+}
+
+// protocol returns the protocol of a number clients may join with, or the
+// status of the PlayStatus that refuses a client of another: as BDS
+// refuses a client of a protocol other than its own, LoginFailedServer if
+// the protocol is newer than every protocol allowed, and LoginFailedClient
+// if it is older than the oldest or between two, as such a client may
+// update to one allowed.
+func (l *Listener) protocol(n int32) (*versions.Protocol, int32, bool) {
+	for _, p := range l.protocols {
+		if p.Number == n {
+			return p, 0, true
+		}
+	}
+	if n > l.protocols[len(l.protocols)-1].Number {
+		return nil, v2193.PlayStatusLoginFailedServer, false
+	}
+	return nil, v2193.PlayStatusLoginFailedClient, false
 }
 
 // xboxKeys returns the keys of the authorization service of the game,
@@ -335,6 +373,15 @@ func (l *Listener) updateStatus() {
 	})
 }
 
+// allowed lists the numbers of the protocols clients may join with.
+func (l *Listener) allowed() string {
+	s := make([]string, len(l.protocols))
+	for i, p := range l.protocols {
+		s[i] = strconv.Itoa(int(p.Number))
+	}
+	return strings.Join(s, ", ")
+}
+
 // left counts a client out.
 func (l *Listener) left() {
 	l.players.Add(-1)
@@ -388,15 +435,17 @@ func (c *Conn) login() error {
 	if err != nil {
 		return err
 	}
-	if proto := pk.(*v2193.RequestNetworkSettingsPacket).ClientProtocol; proto != v2193.Protocol {
-		status := v2193.PlayStatusLoginFailedClient
-		if proto > v2193.Protocol {
-			status = v2193.PlayStatusLoginFailedServer
-		}
+	// The layout of RequestNetworkSettings, NetworkSettings, Login and
+	// PlayStatus is the same in every protocol: the protocol of a client is
+	// read before it is known.
+	n := pk.(*v2193.RequestNetworkSettingsPacket).ClientProtocol
+	p, status, ok := c.l.protocol(n)
+	if !ok {
 		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: status})
 		_ = c.Flush()
-		return fmt.Errorf("netconn: client speaks protocol %d, not %d", proto, v2193.Protocol)
+		return fmt.Errorf("netconn: client speaks protocol %d, not one of %s", n, c.l.allowed())
 	}
+	c.proto = p
 	threshold := c.l.batches.Threshold
 	if threshold == 0 {
 		threshold = 256
@@ -414,6 +463,13 @@ func (c *Conn) login() error {
 	if pk, err = c.read(v2193.IDLogin); err != nil {
 		return err
 	}
+	if n := pk.(*v2193.LoginPacket).ClientProtocol; n != c.proto.Number {
+		// BDS cannot be asked what it sends a client whose Login names
+		// another protocol than it asked for: it is refused as outdated.
+		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedClient})
+		_ = c.Flush()
+		return fmt.Errorf("netconn: client logs in with protocol %d, not %d", n, c.proto.Number)
+	}
 	if err := c.authenticate(pk.(*v2193.LoginPacket)); err != nil {
 		_ = c.Flush()
 		return err
@@ -429,11 +485,13 @@ func (c *Conn) login() error {
 func (c *Conn) loginProxied(t proxy.Token) error {
 	c.comp = bedrock.None{}
 	c.b.EnableCompression(c.comp)
-	if t.Protocol != v2193.Protocol {
+	p, _, ok := c.l.protocol(t.Protocol)
+	if !ok {
 		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedClient})
 		_ = c.Flush()
-		return fmt.Errorf("netconn: proxied client speaks protocol %d, not %d", t.Protocol, v2193.Protocol)
+		return fmt.Errorf("netconn: proxied client speaks protocol %d, not one of %s", t.Protocol, c.l.allowed())
 	}
+	c.proto = p
 	if err := json.Unmarshal(t.Identity, &c.identity); err != nil {
 		return fmt.Errorf("netconn: identity of proxied client: %w", err)
 	}

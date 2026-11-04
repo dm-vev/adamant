@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
@@ -60,6 +61,9 @@ type Conn struct {
 	// comp is the compression of b, set by the login before any Static
 	// is written: that of the listener, none for a player of a proxy.
 	comp bedrock.Compression
+	// proto is the protocol the client speaks, set by the login before it
+	// reads past RequestNetworkSettings, or past the token of a proxy.
+	proto *versions.Protocol
 
 	identity login.Identity
 	// xboxLive reports that Xbox Live vouched for identity: it signed the
@@ -110,7 +114,7 @@ type Stats struct {
 
 // Stats returns the state of the connection.
 func (c *Conn) Stats() Stats {
-	st := Stats{Protocol: v2193.Protocol, Connected: c.connected}
+	st := Stats{Protocol: c.proto.Number, Connected: c.connected}
 	if c.nn == nil {
 		st.Proxied = true
 		if a, ok := c.t.RemoteAddr().(*net.UDPAddr); ok {
@@ -123,6 +127,9 @@ func (c *Conn) Stats() Stats {
 	st.Relayed = c.l.nn.Relayed(st.Remote)
 	return st
 }
+
+// Protocol returns the protocol the client speaks.
+func (c *Conn) Protocol() *versions.Protocol { return c.proto }
 
 // IdentityData returns the identity the client logged in with.
 func (c *Conn) IdentityData() login.Identity { return c.identity }

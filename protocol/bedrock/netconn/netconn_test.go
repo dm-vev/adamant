@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
@@ -172,6 +173,71 @@ func TestProtocolMismatch(t *testing.T) {
 		writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: proto})
 		if got := readStatus(t, b); got != want {
 			t.Fatalf("protocol %d: status %d, want %d", proto, got, want)
+		}
+	}
+}
+
+// fakeProtocol is a protocol newer than the model with the codecs of the
+// model, as a listener may allow two protocols apart.
+var fakeProtocol = &versions.Protocol{Number: 2300, Names: []string{"1.26.90", "26.90"}, Version: "1.26.90", New: v2193.New, FromClient: v2193.FromClient}
+
+// TestProtocolNegotiation checks the refusals of protocols a listener does
+// not allow: a client older than every protocol allowed, or between two,
+// is told it is outdated, and a client newer than all is told the server
+// is.
+func TestProtocolNegotiation(t *testing.T) {
+	l := listen(t, Config{Protocols: []*versions.Protocol{fakeProtocol, versions.Model(), fakeProtocol}})
+	if got := l.allowed(); got != "2193, 2300" {
+		t.Fatalf("allowed %s", got)
+	}
+	for proto, want := range map[int32]int32{
+		1:                       v2193.PlayStatusLoginFailedClient,
+		v2193.Protocol - 1:      v2193.PlayStatusLoginFailedClient,
+		2250:                    v2193.PlayStatusLoginFailedClient,
+		fakeProtocol.Number + 1: v2193.PlayStatusLoginFailedServer,
+	} {
+		b := rawClient(t, l)
+		writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: proto})
+		if got := readStatus(t, b); got != want {
+			t.Errorf("protocol %d: status %d, want %d", proto, got, want)
+		}
+	}
+	for _, p := range []*versions.Protocol{versions.Model(), fakeProtocol} {
+		b := rawClient(t, l)
+		writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: p.Number})
+		raw, err := b.ReadPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if h, _, _ := bedrock.ReadHeader(raw); h.ID != v2193.IDNetworkSettings {
+			t.Errorf("protocol %d: packet %d instead of NetworkSettings", p.Number, h.ID)
+		}
+	}
+}
+
+// TestLoginProtocolMismatch refuses a Login that names another protocol
+// than the RequestNetworkSettings before it, allowed or not.
+func TestLoginProtocolMismatch(t *testing.T) {
+	l := listen(t, Config{Protocols: []*versions.Protocol{versions.Model(), fakeProtocol}})
+	for _, n := range []int32{fakeProtocol.Number, v2193.Protocol + 1} {
+		b := rawClient(t, l)
+		writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
+		if _, err := b.ReadPacket(); err != nil {
+			t.Fatal(err)
+		}
+		b.EnableCompression(bedrock.Flate{})
+		key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		request, err := ourlogin.EncodeOffline(ourlogin.Identity{DisplayName: "Mismatch", Identity: uuid.NewString()},
+			ourlogin.DefaultClientData("127.0.0.1:19132", "Mismatch", v2193.Version), key, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeRaw(t, b, &v2193.LoginPacket{ClientProtocol: n, ConnectionRequest: request})
+		if got := readStatus(t, b); got != v2193.PlayStatusLoginFailedClient {
+			t.Errorf("Login of protocol %d after 2193: status %d", n, got)
+		}
+		if _, err := b.ReadPacket(); err == nil {
+			t.Errorf("Login of protocol %d after 2193: the connection goes on", n)
 		}
 	}
 }
