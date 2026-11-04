@@ -380,9 +380,9 @@ There is no RCON: its password crosses the network in clear and it has no levels
 | `time` | UTC, to the millisecond |
 | `actor` | `kind` (`player`, `console`, `remote`, `command_block`, `server`, `api`), `name`, `key` (`xuid:…` or the name), `level` at the time, `address` (left out with `RecordAddresses = false`), `token` for remote clients |
 | `where` | dimension and position, for players and command blocks |
-| `action` | the command (aliases resolved), or `role`, `ban-expired`, `read`, `auth-failed`, `audit-dropped` |
+| `action` | the command (aliases resolved), or `role`, `ban-expired`, `backup`, `backup-delete`, `read`, `auth-failed`, `audit-dropped` |
 | `command` | the line as typed; for `role`, what the player list asked |
-| `target` | the player or address, for list changes |
+| `target` | the player or address, for list changes; the backup, for `backup` and `backup-delete` |
 | `result` | `ok`, `error`, `denied` (level too low) or `refused` (a rule, such as a level above one's own) |
 | `output` | the messages and errors, 4 KiB at most |
 
@@ -392,11 +392,17 @@ What is recorded:
   trying `/op` is recorded;
 - every command of a remote client, at any level, its reads of level 3 or more, and failed sign-ins (summarised);
 - roles changed from the player list, granted or not;
+- every backup, scheduled or asked for by `/backup`, a remote client or code calling `Server.Backup`, as `backup` by
+  whoever asked (`server` for the schedule), with how it ended: `ok` and a summary, `error` and why, or `refused`:
+  backups off, one running, the server closing, too little free space (`MinFreeSpace`), or, for a scheduled one,
+  saving off;
+- backups that retention deleted, as `backup-delete` by `server`, with why (`Keep`, `MaxAge`, or room for a new
+  backup on a full disk); they come before the record of the backup that deleted them;
 - bans that expired.
 
 Code that changes the lists through the methods of `server.Server` records what it does with `Server.Audit`; the
-commands that call those methods are recorded once, as commands. Scheduled backups are logged (component `save`),
-not audited; `/backup` is audited as a command.
+commands that call those methods are recorded once, as commands. Backups are the exception: `/backup` is recorded as
+a command when typed, and its backup as `backup` when it ends, as every backup is.
 
 **Writing.** No world waits for the log: records go through a buffer of 4,096, and a full buffer drops a record,
 counts it, and writes `{"action":"audit-dropped","count":N}` before the next one (the count is also in

@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/identity"
@@ -477,6 +478,108 @@ func TestBackupSchedule(t *testing.T) {
 	}
 	if _, err := jt.srv.Backup(context.Background(), Actor{Kind: ActorConsole}, ""); err != nil {
 		t.Errorf("a backup asked for while saving is off: %v", err)
+	}
+
+	if err := jt.srv.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var scheduled, skipped int
+	for _, r := range readAudit(t, filepath.Join(dir, "audit.log")) {
+		switch {
+		case r.Action != "backup" || r.Actor.Kind != audit.KindServer:
+		case r.Result == audit.ResultOK && len(r.Output) == 1 && strings.Contains(r.Output[0], "done (autosave)"):
+			scheduled++
+		case r.Result == audit.ResultRefused && slices.Equal(r.Output, []string{"Backup (autosave) refused: saving is off."}):
+			skipped++
+		}
+	}
+	if scheduled < 2 || skipped == 0 {
+		t.Errorf("the audit log records %d scheduled backups and %d skipped, want 2 or more and 1 or more", scheduled, skipped)
+	}
+}
+
+// readAudit returns the records of the audit log at path.
+func readAudit(t *testing.T, path string) []audit.Record {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []audit.Record
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		var r audit.Record
+		if err := json.Unmarshal([]byte(line), &r); err != nil {
+			t.Fatalf("%s: %v", line, err)
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
+// TestBackupAudited checks that every backup is recorded in the audit log
+// with how it ended, by the actor that asked for it: those made, the
+// backups that retention deleted, and those refused for the space of the
+// disk or as backups are off.
+func TestBackupAudited(t *testing.T) {
+	dir := t.TempDir()
+	conf := backupConfig(t, dir, BackupConfig{Keep: 1})
+	jt := newJoinTest(t, conf.PlayerProvider, conf)
+	jt.start()
+	srv := jt.srv
+	clock := time.Date(2026, 11, 4, 0, 0, 0, 0, time.UTC)
+	srv.backups.now = func() time.Time { return clock }
+	backup := func(by Actor, reason string) (BackupInfo, error) {
+		clock = clock.Add(time.Hour)
+		return srv.Backup(context.Background(), by, reason)
+	}
+	first, err := backup(Actor{Kind: ActorRemote, Name: "remote:panel"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := backup(Actor{Kind: ActorServer, Name: "Server"}, "autosave")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.conf.Backup.MinFreeSpace = 1 << 30
+	srv.backups.free = func(string) (uint64, bool, error) { return 1 << 20, true, nil }
+	if _, err := backup(Actor{Kind: ActorConsole, Name: "Console"}, ""); err == nil {
+		t.Fatal("a backup on a full disk was not refused")
+	}
+	srv.conf.Backup.Folder = ""
+	if _, err := backup(Actor{}, "plugin"); !errors.Is(err, ErrBackupsOff) {
+		t.Fatalf("a backup with backups off: %v", err)
+	}
+	if err := srv.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	type rec struct {
+		kind          audit.Kind
+		token, action string
+		target        string
+		result        audit.Result
+		output        string
+	}
+	var got []rec
+	for _, r := range readAudit(t, filepath.Join(dir, "audit.log")) {
+		if strings.HasPrefix(r.Action, "backup") {
+			got = append(got, rec{r.Actor.Kind, r.Actor.Token, r.Action, r.Target, r.Result, strings.Join(r.Output, "|")})
+		}
+	}
+	want := []rec{
+		{audit.KindRemote, "panel", "backup", first.Name, audit.ResultOK, "Backup " + first.Name + " done (manual): "},
+		{audit.KindServer, "", "backup-delete", first.Name, audit.ResultOK, "Deleted: more than Keep = 1 backups."},
+		{audit.KindServer, "", "backup", second.Name, audit.ResultOK, "Backup " + second.Name + " done (autosave): "},
+		{audit.KindConsole, "", "backup", "", audit.ResultRefused, "Backup (manual) refused: backup refused: 1.0 MiB free on "},
+		{audit.KindAPI, "", "backup", "", audit.ResultRefused, "Backup (plugin) refused: " + ErrBackupsOff.Error()},
+	}
+	ok := len(got) == len(want)
+	for i := 0; ok && i < len(want); i++ {
+		g, w := got[i], want[i]
+		ok = g.kind == w.kind && g.token == w.token && g.action == w.action && g.target == w.target && g.result == w.result && strings.HasPrefix(g.output, w.output)
+	}
+	if !ok {
+		t.Errorf("the audit log records the backups as\n%+v\nwant\n%+v", got, want)
 	}
 }
 

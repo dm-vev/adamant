@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 )
 
@@ -100,9 +101,15 @@ func (b *backups) retain(newest string) {
 // delete deletes the backup of info, for the reason passed. A backup in the
 // folder format frees only the tables no other backup and not the world
 // links.
+//
+// The deletion is recorded in the audit log as action "backup-delete" by
+// the server, with why it was deleted.
 func (b *backups) delete(info BackupInfo, why string) {
+	r := audit.Record{Actor: audit.Actor{Kind: audit.KindServer}, Action: "backup-delete", Target: info.Name, Result: audit.ResultOK, Output: []string{"Deleted: " + why + "."}}
+	defer func() { b.srv.audit.Record(r) }()
 	if err := os.RemoveAll(info.Path); err != nil {
 		b.log().Error("Delete a backup: "+err.Error(), "name", info.Name)
+		r.Result, r.Output = audit.ResultError, []string{"Not deleted (" + why + "): " + err.Error()}
 		return
 	}
 	b.log().Info("Deleted a backup.", "name", info.Name, "why", why)
@@ -139,7 +146,7 @@ func (b *backups) checkSpace(dir string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("backup refused: %s free on %s, and the backup needs about %s, under MinFreeSpace %s", formatBytes(int64(min(free, 1<<62))), conf.Folder, formatBytes(need), formatBytes(conf.MinFreeSpace))
+	return refusedError{fmt.Errorf("backup refused: %s free on %s, and the backup needs about %s, under MinFreeSpace %s", formatBytes(int64(min(free, 1<<62))), conf.Folder, formatBytes(need), formatBytes(conf.MinFreeSpace))}
 }
 
 // fits reports whether need bytes leave at least minFree of free.

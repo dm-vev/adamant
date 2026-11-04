@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/version"
@@ -243,6 +244,8 @@ func (b *backups) run() {
 		}
 		if !b.srv.SaveEnabledState() {
 			b.log().Info("Skipped a scheduled backup: saving is off. /backup makes one anyway.")
+			b.srv.audit.Record(audit.Record{Actor: audit.Actor{Kind: audit.KindServer}, Action: "backup", Result: audit.ResultRefused,
+				Output: []string{"Backup (autosave) refused: saving is off."}})
 			b.mu.Lock()
 			b.lastEnd = time.Now()
 			b.mu.Unlock()
@@ -315,18 +318,41 @@ func (srv *Server) BackupStatus() BackupStatus {
 // less than BackupConfig.MinFreeSpace free is refused. A backup that fails,
 // or is cancelled by ctx or by the close of the server, leaves nothing in
 // the folder.
+//
+// Every call is recorded in the audit log, as action "backup", with how it
+// ended: "ok", "refused" (backups off, one running, the server closing, too
+// little space) or "error".
 func (srv *Server) Backup(ctx context.Context, by Actor, reason string) (BackupInfo, error) {
 	b := &srv.backups
-	conf := srv.conf.Backup
-	if conf.Folder == "" {
-		return BackupInfo{}, ErrBackupsOff
+	info, err := b.start(ctx, by, reason)
+	b.record(by, reason, info, err)
+	if err != nil {
+		b.log().Error("Backup failed: "+err.Error(), "by", by.String(), "reason", backupReason(reason))
+		return BackupInfo{}, err
+	}
+	b.log().Info("Backup done.", "name", info.Name, "bytes", info.Bytes, "files", info.Files, "linked", info.Linked, "checkpoint", info.Checkpoint.ID, "verified", info.Verified, "took", info.Took.Round(time.Millisecond))
+	return info, nil
+}
+
+// refusedError is the error of a backup refused before it wrote anything.
+type refusedError struct{ error }
+
+// Unwrap returns the error refusedError wraps.
+func (e refusedError) Unwrap() error { return e.error }
+
+// start makes the backup of Server.Backup, unless it is refused, and
+// returns what it made of it, the name included, even if it failed.
+func (b *backups) start(ctx context.Context, by Actor, reason string) (BackupInfo, error) {
+	srv := b.srv
+	if srv.conf.Backup.Folder == "" {
+		return BackupInfo{}, refusedError{ErrBackupsOff}
 	}
 	snap, ok := srv.conf.WorldProvider.(worldSnapshotter)
 	if !ok {
-		return BackupInfo{}, fmt.Errorf("backup: the world provider %T cannot copy its world while it runs", srv.conf.WorldProvider)
+		return BackupInfo{}, refusedError{fmt.Errorf("backup: the world provider %T cannot copy its world while it runs", srv.conf.WorldProvider)}
 	}
 	if err := b.begin(by); err != nil {
-		return BackupInfo{}, fmt.Errorf("backup: %w", err)
+		return BackupInfo{}, refusedError{fmt.Errorf("backup: %w", err)}
 	}
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
@@ -338,12 +364,24 @@ func (srv *Server) Backup(ctx context.Context, by Actor, reason string) (BackupI
 		err = fmt.Errorf("backup cancelled: %w", context.Cause(ctx))
 	}
 	b.end(info, err)
-	if err != nil {
-		b.log().Error("Backup failed: "+err.Error(), "by", by.String(), "reason", info.Reason)
-		return BackupInfo{}, err
+	return info, err
+}
+
+// record writes to the audit log how the backup by the actor passed, for
+// reason, ended: it made info, or failed or was refused with err.
+func (b *backups) record(by Actor, reason string, info BackupInfo, err error) {
+	r := audit.Record{Actor: by.auditActor(), Action: "backup", Target: info.Name, Result: audit.ResultOK}
+	switch {
+	case err == nil:
+		r.Output = []string{fmt.Sprintf("Backup %s done (%s): %s, %d files (%d linked), checkpoint %d, verified (%s), took %.2f s.",
+			info.Name, info.Reason, formatBytes(info.Bytes), info.Files, info.Linked, info.Checkpoint.ID, info.Verified, info.Took.Seconds())}
+	case errors.As(err, new(refusedError)):
+		// A backup refused for its space had a name, of no backup made.
+		r.Target, r.Result, r.Output = "", audit.ResultRefused, []string{fmt.Sprintf("Backup (%s) refused: %v", backupReason(reason), err)}
+	default:
+		r.Result, r.Output = audit.ResultError, []string{fmt.Sprintf("Backup (%s) failed: %v", backupReason(reason), err)}
 	}
-	b.log().Info("Backup done.", "name", info.Name, "bytes", info.Bytes, "files", info.Files, "linked", info.Linked, "checkpoint", info.Checkpoint.ID, "verified", info.Verified, "took", info.Took.Round(time.Millisecond))
-	return info, nil
+	b.srv.audit.Record(r)
 }
 
 // backup makes the backup of Server.Backup.
