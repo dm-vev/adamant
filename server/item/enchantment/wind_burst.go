@@ -22,8 +22,8 @@ func (windBurst) MaxLevel() int {
 
 // Cost ...
 func (windBurst) Cost(level int) (int, int) {
-	minCost := 30 + (level-1)*12
-	return minCost, minCost + 25
+	minCost := 15 + (level-1)*9
+	return minCost, minCost + 50
 }
 
 // Rarity ...

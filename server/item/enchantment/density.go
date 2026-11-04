@@ -22,7 +22,7 @@ func (density) MaxLevel() int {
 
 // Cost ...
 func (density) Cost(level int) (int, int) {
-	minCost := 15 + (level-1)*9
+	minCost := 5 + (level-1)*8
 	return minCost, minCost + 20
 }
 

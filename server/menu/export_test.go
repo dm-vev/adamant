@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -17,3 +18,7 @@ func (t *Tx) AddResults(results ...item.Stack) error { return t.createResults(re
 // OfferedByTable reports if an enchanting table may offer e for it, for the
 // tests of the enchantments a table offers.
 func OfferedByTable(e item.EnchantmentType, it world.Item) bool { return offeredByTable(e, it) }
+
+// Bookshelves returns the number of bookshelves that power the enchanting
+// table at pos, for the tests of how a table counts them.
+func Bookshelves(tx *world.Tx, pos cube.Pos) int { return searchBookshelves(tx, pos) }

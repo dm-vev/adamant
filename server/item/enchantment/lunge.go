@@ -22,7 +22,7 @@ func (lunge) Cost(level int) (int, int) {
 }
 
 // Rarity returns the enchantment weight.
-func (lunge) Rarity() item.EnchantmentRarity { return item.EnchantmentRarityCommon }
+func (lunge) Rarity() item.EnchantmentRarity { return item.EnchantmentRarityUncommon }
 
 // CompatibleWithEnchantment reports whether Lunge can coexist with another enchantment.
 func (lunge) CompatibleWithEnchantment(item.EnchantmentType) bool { return true }

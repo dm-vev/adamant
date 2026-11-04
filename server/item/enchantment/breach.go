@@ -23,8 +23,8 @@ func (breach) MaxLevel() int {
 
 // Cost ...
 func (breach) Cost(level int) (int, int) {
-	minCost := 25 + (level-1)*10
-	return minCost, minCost + 25
+	minCost := 15 + (level-1)*9
+	return minCost, minCost + 50
 }
 
 // Rarity ...

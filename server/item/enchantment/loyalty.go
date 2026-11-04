@@ -22,13 +22,12 @@ func (loyalty) MaxLevel() int {
 
 // Cost ...
 func (loyalty) Cost(level int) (int, int) {
-	minCost := 12 + (level-1)*7
-	return minCost, minCost + 50
+	return 12 + (level-1)*7, 50
 }
 
 // Rarity ...
 func (loyalty) Rarity() item.EnchantmentRarity {
-	return item.EnchantmentRarityRare
+	return item.EnchantmentRarityUncommon
 }
 
 // CompatibleWithEnchantment ...

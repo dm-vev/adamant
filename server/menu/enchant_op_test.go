@@ -13,8 +13,9 @@ import (
 )
 
 // TestEnchant takes each option of an enchanting table for an iron pickaxe
-// with the seed 7 and no bookshelves, whose options the session offered as
-// they are fixed here: the option costs its index plus one in levels and
+// with the seed 2491 and no bookshelves, whose options Java offers as they
+// are fixed here (and as the session offered them for the seed 7 before
+// the table followed Java's draws): the option costs its index plus one in levels and
 // lapis, the seed is reset, and the input goes to the result slot with the
 // enchantments of the option. In creative mode nothing is paid.
 func TestEnchant(t *testing.T) {
@@ -39,7 +40,7 @@ func TestEnchant(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			w, _ := newWorld(t)
 			<-w.Exec(func(tx *world.Tx) {
-				o := &stationOwner{mode: tc.mode, level: 30, seed: 7}
+				o := &stationOwner{mode: tc.mode, level: 30, seed: 2491}
 				b, inv := stationBatch(t, tx, cube.Pos{}, block.EnchantingTable{}, o, map[int]item.Stack{
 					menu.UIEnchantingInput: pickaxe,
 					menu.UIEnchantingLapis: item.NewStack(item.LapisLazuli{}, 5),
@@ -103,7 +104,7 @@ func TestEnchantRefused(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			w, _ := newWorld(t)
 			<-w.Exec(func(tx *world.Tx) {
-				o := &stationOwner{mode: world.GameModeSurvival, level: tc.level, seed: 7}
+				o := &stationOwner{mode: world.GameModeSurvival, level: tc.level, seed: 2491}
 				b, _ := stationBatch(t, tx, cube.Pos{}, tc.b, o, tc.ui)
 				if err := b.Enchant(tc.option); err == nil {
 					t.Fatal("the enchantment was not refused")
@@ -114,6 +115,23 @@ func TestEnchantRefused(t *testing.T) {
 			})
 		})
 	}
+	t.Run("an option not offered", func(t *testing.T) {
+		// EnchantmentMenu.clickMenuButton refuses an option of cost 0:
+		// with the seed -1 the second costs 1, less than its slot+1.
+		w, _ := newWorld(t)
+		<-w.Exec(func(tx *world.Tx) {
+			o := &stationOwner{mode: world.GameModeSurvival, level: 30, seed: -1}
+			b, _ := stationBatch(t, tx, cube.Pos{}, block.EnchantingTable{}, o, map[int]item.Stack{
+				menu.UIEnchantingInput: pickaxe, menu.UIEnchantingLapis: lapis,
+			})
+			if err := b.Enchant(1); err == nil {
+				t.Fatal("the enchantment was not refused")
+			}
+			if o.level != 30 || o.resets != 0 || len(b.Changes()) != 0 {
+				t.Errorf("the refusal paid: level %d, %d resets, %d changes", o.level, o.resets, len(b.Changes()))
+			}
+		})
+	})
 	t.Run("no menu", func(t *testing.T) {
 		w, _ := newWorld(t)
 		<-w.Exec(func(tx *world.Tx) {
@@ -130,7 +148,7 @@ func TestEnchantRefused(t *testing.T) {
 func TestEnchantTwice(t *testing.T) {
 	w, _ := newWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
-		o := &stationOwner{mode: world.GameModeSurvival, level: 30, seed: 7}
+		o := &stationOwner{mode: world.GameModeSurvival, level: 30, seed: 2491}
 		b, inv := stationBatch(t, tx, cube.Pos{}, block.EnchantingTable{}, o, map[int]item.Stack{
 			menu.UIEnchantingInput: item.NewStack(item.Pickaxe{Tier: item.ToolTierIron}, 1),
 			menu.UIEnchantingLapis: item.NewStack(item.LapisLazuli{}, 5),

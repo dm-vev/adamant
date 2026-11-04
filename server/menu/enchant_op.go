@@ -51,6 +51,11 @@ func (t *Tx) Enchant(option int) error {
 	cost := option + 1
 	requirement := options[option].Cost
 	enchants := options[option].Enchantments
+	// EnchantmentMenu.clickMenuButton takes no option the table does not
+	// offer, and changes nothing for one of no enchantments.
+	if requirement <= 0 || len(enchants) == 0 {
+		return fmt.Errorf("enchanting table option %d is not offered", option)
+	}
 
 	// If we don't have infinite resources, we need to deduct Lapis Lazuli and experience.
 	if !c.GameMode().CreativeInventory() {

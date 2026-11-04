@@ -443,8 +443,10 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 	pconf.UUID = id
 	pconf.Locale, _ = language.Parse(strings.Replace(conn.ClientData().LanguageCode, "_", "-", 1))
 	pconf.Skin = session.ClientSkin(conn.ClientData())
-	// The seed of the enchanting table is otherwise random.
-	pconf.EnchantmentSeed = 7
+	// The seed of the enchanting table is otherwise random. Java offers an
+	// iron pickaxe with no bookshelves the same options for 2491 as the
+	// session offered for 7 before its table followed Java's draws.
+	pconf.EnchantmentSeed = 2491
 	// As the Left hook and the quit message of Server.createPlayer.
 	pconf.Left = func(*world.Tx, *player.Player) { stopOnce.Do(func() { close(s.stopped) }) }
 	pconf.QuitMessage = conf.quitMessage

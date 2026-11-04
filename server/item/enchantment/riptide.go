@@ -22,8 +22,7 @@ func (riptide) MaxLevel() int {
 
 // Cost ...
 func (riptide) Cost(level int) (int, int) {
-	minCost := 17 + (level-1)*7
-	return minCost, minCost + 50
+	return 17 + (level-1)*7, 50
 }
 
 // Rarity ...
