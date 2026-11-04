@@ -118,6 +118,8 @@ type Controllable interface {
 	EditSign(pos cube.Pos, hanging bool, frontText, backText string) error
 	TurnLecternPage(pos cube.Pos, page int) error
 	EditJigsaw(pos cube.Pos, edited block.Jigsaw) error
+	EditCommandBlock(pos cube.Pos, edit block.CommandBlockEdit) error
+	EditCommandMinecart(e world.Entity, edit block.CommandBlockEdit) error
 
 	EditBook(slot int, edit item.BookEdit) error
 

@@ -2,7 +2,6 @@ package session
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -19,12 +18,24 @@ func (CommandBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.Tx
 	if pk.Mode > v2193.CommandBlockChain {
 		return fmt.Errorf("invalid command block mode %d", pk.Mode)
 	}
-	pos := cube.Pos{int(pk.Position[0]), int(pk.Position[1]), int(pk.Position[2])}
+	edit := block.CommandBlockEdit{
+		Mode:               block.CommandBlockMode(pk.Mode),
+		Conditional:        pk.Conditional,
+		NeedsRedstone:      pk.NeedsRedstone,
+		Command:            pk.Command,
+		Name:               pk.Name,
+		LastOutput:         pk.LastOutput,
+		TrackOutput:        pk.ShouldTrackOutput,
+		TickDelay:          int(pk.TickDelay),
+		ExecuteOnFirstTick: pk.ExecuteOnFirstTick,
+	}
+	// The player checks these again. They come first, before the minecart
+	// is looked up, as the refusals did.
 	if !c.CanUseGameMasterBlocks() {
 		return fmt.Errorf("only creative operators may edit command blocks")
 	}
-	if len(pk.Command) > maxNBTString || len(pk.Name) > maxNBTString || len(pk.LastOutput) > maxNBTString {
-		return fmt.Errorf("command block text over %d bytes", maxNBTString)
+	if !edit.ValidText() {
+		return fmt.Errorf("command block text over %d bytes", block.MaxCommandBlockText)
 	}
 	if !pk.Block {
 		handle, ok := s.entityFromRuntimeID(pk.MinecartEntityRuntimeID)
@@ -32,39 +43,10 @@ func (CommandBlockUpdateHandler) Handle(p proto.Packet, s *Session, tx *world.Tx
 			return fmt.Errorf("command minecart not found")
 		}
 		e, ok := handle.Entity(tx)
-		if !ok || c.Position().Sub(e.Position()).Len() > 8 {
+		if !ok {
 			return fmt.Errorf("command minecart is unavailable or out of reach")
 		}
-		updater, ok := e.(interface {
-			UpdateCommandBlock(string, string, string, bool, uint32, bool)
-		})
-		if !ok {
-			return fmt.Errorf("entity is not a command minecart")
-		}
-		updater.UpdateCommandBlock(pk.Command, pk.Name, pk.LastOutput, pk.ShouldTrackOutput, pk.TickDelay, pk.ExecuteOnFirstTick)
-		return nil
+		return c.EditCommandMinecart(e, edit)
 	}
-	if c.Position().Sub(pos.Vec3Centre()).Len() > 8 {
-		return fmt.Errorf("command block is out of reach")
-	}
-	b, ok := tx.Block(pos).(block.CommandBlock)
-	if !ok {
-		return fmt.Errorf("no command block at requested position")
-	}
-	wasAuto := !b.NeedsRedstone
-	b.Mode = block.CommandBlockMode(pk.Mode)
-	b.Conditional, b.NeedsRedstone = pk.Conditional, pk.NeedsRedstone
-	b.Command, b.CustomName, b.TrackOutput = pk.Command, pk.Name, pk.ShouldTrackOutput
-	b.TickDelay, b.ExecuteOnFirstTick = int(pk.TickDelay), pk.ExecuteOnFirstTick
-	if !b.TrackOutput {
-		b.LastOutput = ""
-	}
-	b.Powered = tx.RedstonePower(pos) > 0
-	tx.SetBlock(pos, b, nil)
-	// Like CommandBlockEntity.setAutomatic, switching an unpowered impulse
-	// block to always active runs it once on the next tick.
-	if b.Mode == block.CommandBlockImpulse && !b.NeedsRedstone && !wasAuto && !b.Powered {
-		tx.ScheduleBlockUpdate(pos, b, time.Second/20)
-	}
-	return nil
+	return c.EditCommandBlock(cube.Pos{int(pk.Position[0]), int(pk.Position[1]), int(pk.Position[2])}, edit)
 }

@@ -19,9 +19,6 @@ protocol/bedrock/session/handler_anvil.go (*world.Tx).PlaySound
 protocol/bedrock/session/handler_anvil.go (*world.Tx).PlaySound
 protocol/bedrock/session/handler_anvil.go (*world.Tx).SetBlock
 protocol/bedrock/session/handler_beacon.go (*world.Tx).SetBlock
-protocol/bedrock/session/handler_command_block_update.go (*world.Tx).ScheduleBlockUpdate
-protocol/bedrock/session/handler_command_block_update.go (*world.Tx).SetBlock
-protocol/bedrock/session/handler_command_block_update.go (interface).UpdateCommandBlock
 protocol/bedrock/session/handler_crafter.go (*world.Tx).SetBlock
 protocol/bedrock/session/handler_crafter.go (block.Crafter).NotifySlotState
 protocol/bedrock/session/handler_crafting.go (*world.Tx).LockMap
