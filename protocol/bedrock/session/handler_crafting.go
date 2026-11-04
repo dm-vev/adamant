@@ -744,6 +744,23 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *v2193.AutoCraftRecipeStackR
 		// Try dynamic recipes if no static recipe matches
 		return h.tryDynamicCraft(s, tx, int(a.NumberOfCrafts))
 	}
+	if h.batch != nil {
+		ac, err := h.batch.BeginAutoCraft(craft, int(a.NumberOfCrafts))
+		if err != nil {
+			return fmt.Errorf("recipe with network id %v: %w", a.RecipeNetworkID, err)
+		}
+		// BDS refuses a recipe-book craft unless the inventory or a
+		// crafting table is open, with a crafter open too.
+		if s.menu.Load() != nil {
+			if s.openedContainerID.Load() != uint32(v2193.ContainerTypeWorkbench) {
+				return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
+			}
+		} else if !s.invOpened {
+			return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
+		}
+		h.autoCraft = &autoCraft{batch: ac, id: a.RecipeNetworkID, consumed: make(map[v2193.StackRequestSlotInfo]bool)}
+		return nil
+	}
 	_, shaped := craft.(recipe.Shaped)
 	_, shapeless := craft.(recipe.Shapeless)
 	_, userDataShapeless := craft.(recipe.UserDataShapeless)
@@ -817,12 +834,43 @@ type autoCraft struct {
 	remaining []int
 	consumed  map[v2193.StackRequestSlotInfo]bool
 	taken     []item.Stack
+	// batch is the craft of the batch of the request if the session uses
+	// menu requests: it keeps what is owed and taken, and the session the
+	// slots the client named.
+	batch *menu.AutoCraft
 }
 
 // handleAutoCraftConsume pays for the recipe-book craft in progress with
 // the slot a Consume action names.
 func (h *ItemStackRequestHandler) handleAutoCraftConsume(a *v2193.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
 	craft := h.autoCraft
+	if ac := craft.batch; ac != nil {
+		switch a.Source.Container.ContainerID {
+		case v2193.ContainerCombinedHotBarAndInventory:
+		case v2193.ContainerCraftingInput:
+			if !ac.InGrid(menu.Slot{Inv: s.ui, Index: int(a.Source.Slot)}) {
+				return fmt.Errorf("recipe %v: consumed slot %v outside the crafting grid", craft.id, a.Source.Slot)
+			}
+		default:
+			return fmt.Errorf("recipe %v: cannot consume from container %v", craft.id, a.Source.Container.ContainerID)
+		}
+		key := v2193.StackRequestSlotInfo{Container: a.Source.Container, Slot: a.Source.Slot}
+		if craft.consumed[key] {
+			return fmt.Errorf("recipe %v: consumed slot %v of container %v more than once", craft.id, a.Source.Slot, a.Source.Container.ContainerID)
+		}
+		craft.consumed[key] = true
+		if err := h.verifySlot(a.Source, s, tx); err != nil {
+			return err
+		}
+		r, ok := s.ref(a.Source, tx)
+		if !ok {
+			return fmt.Errorf("unknown container %v", a.Source.Container.ContainerID)
+		}
+		if err := h.batchOp(func() error { return ac.Pay(r, int(a.Count)) }); err != nil {
+			return fmt.Errorf("recipe %v: %w", craft.id, err)
+		}
+		return nil
+	}
 	switch a.Source.Container.ContainerID {
 	case v2193.ContainerCombinedHotBarAndInventory:
 	case v2193.ContainerCraftingInput:
@@ -875,6 +923,12 @@ func (h *ItemStackRequestHandler) handleAutoCraftConsume(a *v2193.ConsumeStackRe
 func (h *ItemStackRequestHandler) finishAutoCraft(s *Session, tx *world.Tx) error {
 	craft := h.autoCraft
 	h.autoCraft = nil
+	if ac := craft.batch; ac != nil {
+		if err := h.batchOp(ac.Finish); err != nil {
+			return fmt.Errorf("recipe %v: %w", craft.id, err)
+		}
+		return nil
+	}
 	for i, expected := range craft.inputs {
 		if craft.remaining[i] != 0 {
 			return fmt.Errorf("recipe %v: could not consume expected item: %v", craft.id, expected)

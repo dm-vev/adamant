@@ -103,8 +103,9 @@ func (autoCraftController) GameMode() world.GameMode { return world.GameModeSurv
 // state BDS was in, and returns the error of the request and the slots of
 // the inventory (container 12) and the crafting grid (container 13) after
 // it. The stack network IDs of the request are BDS's: they are put in the
-// place of the session's.
-func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCase) (error, map[[2]byte]int, *v2193.ItemStackResponsePacket) {
+// place of the session's. With a world, the session handles the request
+// with menu requests, in a transaction of the world.
+func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCase, w *world.World) (error, map[[2]byte]int, *v2193.ItemStackResponsePacket) {
 	t.Helper()
 	s := craftingTestSession()
 	screen, _, _ := strings.Cut(c.Name, "/")
@@ -143,7 +144,7 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 		t.Fatalf("%s: %d requests", c.Name, len(pk.Requests))
 	}
 	req := pk.Requests[0]
-	if _, plain := req.Actions[0].(*v2193.CraftRecipeStackRequestAction); plain && s.menu.Load() != nil {
+	if _, plain := req.Actions[0].(*v2193.CraftRecipeStackRequestAction); plain && s.menu.Load() != nil && w == nil {
 		// A plain craft in a block's screen looks the block up in the
 		// world, which this session has not.
 		t.Skip("a plain craft in a crafting table needs a world")
@@ -167,7 +168,13 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 	}
 
 	h := craftingTestHandler()
-	err := h.handleRequest(req, s, nil, autoCraftController{})
+	var err error
+	if w == nil {
+		err = h.handleRequest(req, s, nil, autoCraftController{})
+	} else {
+		s.menuRequests = true
+		<-w.Exec(func(tx *world.Tx) { err = h.handleRequest(req, s, tx, batchController{tx: tx, s: s}) })
+	}
 	slots := map[[2]byte]int{}
 	for slot, stack := range s.inv.Slots() {
 		if !stack.Empty() {
@@ -191,70 +198,86 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 // TestAutoCraftMatchesBDS replays the recipe-book crafts captured from BDS
 // 1.26.52.3: the session takes the inputs from exactly the slots the
 // Consume actions name, in the grid or the inventory, as BDS does, and
-// refuses the requests BDS refuses.
+// refuses the requests BDS refuses. It does so with its own handlers, and,
+// in the subtests under menu, with menu requests, where menu.AutoCraft pays
+// for the craft; there the plain crafts in a crafting table run too.
 func TestAutoCraftMatchesBDS(t *testing.T) {
 	t.Parallel()
 	capture := loadAutoCraftCapture(t)
 	craft := stickRecipe(t)
-	for _, c := range capture.Cases {
-		t.Run(c.Name, func(t *testing.T) {
-			bds := decodeCaptured(t, c.Response).(*v2193.ItemStackResponsePacket)
-			if len(bds.Responses) != 1 || bds.Responses[0].Status != c.Status {
-				t.Fatalf("captured response does not decode to status %d", c.Status)
-			}
-			err, slots, resp := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c)
-			if accepted := c.Status == v2193.ItemStackResponseStatusOK; accepted != (err == nil) {
-				t.Fatalf("BDS answered status %d, the session: %v", c.Status, err)
-			}
-			want := map[[2]byte]int{}
-			for _, slot := range c.Before {
-				want[[2]byte{slot.Container, slot.Slot}] = slot.Count
-			}
-			for _, change := range c.Changes {
-				key := [2]byte{change.Container, change.Slot}
-				if change.Count == 0 {
-					delete(want, key)
-				} else {
-					want[key] = change.Count
-				}
-			}
-			if fmt.Sprint(slots) != fmt.Sprint(want) {
-				t.Fatalf("slots after the request: %v, BDS: %v", slots, want)
-			}
-			if err != nil {
-				return
-			}
-			// The response names the slots BDS names, in the inventory and
-			// the grid. The created output, which BDS leaves out, is not
-			// compared.
-			var got, expected []string
-			for _, info := range resp.Responses[0].ContainerInfo {
-				if info.Container.ContainerID == v2193.ContainerCreatedOutput {
-					continue
-				}
-				for _, slot := range info.SlotInfo {
-					got = append(got, fmt.Sprintf("%d:%d=%d", info.Container.ContainerID, slot.Slot, slot.Count))
-				}
-			}
-			for _, change := range c.Changes {
-				expected = append(expected, fmt.Sprintf("%d:%d=%d", change.Container, change.Slot, change.Count))
-			}
-			slices.Sort(got)
-			slices.Sort(expected)
-			if !slices.Equal(got, expected) {
-				t.Fatalf("response changes %v, BDS: %v", got, expected)
-			}
-		})
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	for _, mode := range []struct {
+		name string
+		w    *world.World
+	}{{"session", nil}, {"menu", w}} {
+		for _, c := range capture.Cases {
+			t.Run(mode.name+"/"+c.Name, func(t *testing.T) { matchAutoCraft(t, capture, craft, c, mode.w) })
+		}
+	}
+}
+
+// matchAutoCraft replays a captured case, through the session's handlers
+// or, with a world, with menu requests, and compares the outcome with BDS's.
+func matchAutoCraft(t *testing.T, capture autoCraftCapture, craft recipe.Recipe, c autoCraftCase, w *world.World) {
+	bds := decodeCaptured(t, c.Response).(*v2193.ItemStackResponsePacket)
+	if len(bds.Responses) != 1 || bds.Responses[0].Status != c.Status {
+		t.Fatalf("captured response does not decode to status %d", c.Status)
+	}
+	err, slots, resp := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c, w)
+	if accepted := c.Status == v2193.ItemStackResponseStatusOK; accepted != (err == nil) {
+		t.Fatalf("BDS answered status %d, the session: %v", c.Status, err)
+	}
+	want := map[[2]byte]int{}
+	for _, slot := range c.Before {
+		want[[2]byte{slot.Container, slot.Slot}] = slot.Count
+	}
+	for _, change := range c.Changes {
+		key := [2]byte{change.Container, change.Slot}
+		if change.Count == 0 {
+			delete(want, key)
+		} else {
+			want[key] = change.Count
+		}
+	}
+	if fmt.Sprint(slots) != fmt.Sprint(want) {
+		t.Fatalf("slots after the request: %v, BDS: %v", slots, want)
+	}
+	if err != nil {
+		return
+	}
+	// The response names the slots BDS names, in the inventory and
+	// the grid. The created output, which BDS leaves out, is not
+	// compared.
+	var got, expected []string
+	for _, info := range resp.Responses[0].ContainerInfo {
+		if info.Container.ContainerID == v2193.ContainerCreatedOutput {
+			continue
+		}
+		for _, slot := range info.SlotInfo {
+			got = append(got, fmt.Sprintf("%d:%d=%d", info.Container.ContainerID, slot.Slot, slot.Count))
+		}
+	}
+	for _, change := range c.Changes {
+		expected = append(expected, fmt.Sprintf("%d:%d=%d", change.Container, change.Slot, change.Count))
+	}
+	slices.Sort(got)
+	slices.Sort(expected)
+	if !slices.Equal(got, expected) {
+		t.Fatalf("response changes %v, BDS: %v", got, expected)
 	}
 }
 
 // TestAutoCraftOutcomeIsStable replays the captured crafts that have planks
-// both in the grid and in the inventory many times: which slots pay for the
-// craft no longer depends on the order of a Go map.
+// both in the grid and in the inventory many times, by turns through the
+// session's handlers and with menu requests: which slots pay for the craft
+// no longer depends on the order of a Go map, and is the same either way.
 func TestAutoCraftOutcomeIsStable(t *testing.T) {
 	t.Parallel()
 	capture := loadAutoCraftCapture(t)
 	craft := stickRecipe(t)
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
 	runs := 0
 	for _, c := range capture.Cases {
 		if c.Status != v2193.ItemStackResponseStatusOK || len(c.Before) < 2 {
@@ -262,7 +285,11 @@ func TestAutoCraftOutcomeIsStable(t *testing.T) {
 		}
 		var first string
 		for i := range 200 {
-			err, slots, _ := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c)
+			mode := w
+			if i%2 == 0 {
+				mode = nil
+			}
+			err, slots, _ := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c, mode)
 			if err != nil {
 				t.Fatalf("%s, run %d: %v", c.Name, i, err)
 			}

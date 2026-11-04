@@ -48,6 +48,8 @@ var menuRequestScenarios = []struct {
 	{"crafts", (*scenario).craftsScenario},
 	// D4: MultiCraft at the crafting and cartography tables.
 	{"special", (*scenario).specialScenario},
+	// D5: AutoCraft, the crafts of the recipe book.
+	{"autocraft", (*scenario).autoCraftScenario},
 
 	// The stations of D10 to D13: the loom, the stonecutter, the beacon
 	// and merchants.
