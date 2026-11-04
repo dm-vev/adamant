@@ -64,8 +64,11 @@ func TestHappyGhastsFloatAround(t *testing.T) {
 		<-w.Exec(func(tx *world.Tx) {
 			pos := happyGhast(tx, h).Position()
 			moved = max(moved, pos.Sub(start).Len())
-			// Careful, it keeps a block away from the ground.
-			if math.Abs(pos[0]) < 18 && math.Abs(pos[2]) < 18 && pos[1] < 65 {
+			// Careful, it keeps a block away from the ground. Nothing is
+			// beneath the stone, and a ghast that floated down past its
+			// edge may float back in under it, which is no ground: a ghast
+			// over the stone has its feet above y 55.
+			if math.Abs(pos[0]) < 18 && math.Abs(pos[2]) < 18 && pos[1] > 55 && pos[1] < 65 {
 				t.Fatalf("happy ghast sank to %v above the ground", pos)
 			}
 		})
