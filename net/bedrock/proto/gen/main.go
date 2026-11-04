@@ -1,6 +1,8 @@
 // Command gen writes the packet codecs of one protocol version from its
 // schema: a struct per packet and type, with Encode and Decode methods over
-// package wire that allocate only what they decode.
+// package wire that allocate only what they decode. With -compare, it
+// writes what converts the packets of two adjacent versions instead (see
+// step.go).
 //
 // The schema lists declarations: "packet ID Name", "packet ID Name client"
 // for a packet a client sends, or "type Name", then one line per field
@@ -79,7 +81,17 @@ func main() {
 	in := flag.String("schema", "", "schema file")
 	out := flag.String("o", "", "Go file to write")
 	pkg := flag.String("pkg", "", "package name")
+	compare := flag.String("compare", "", "schema of the protocol before that of -schema: write the Same of a step package to -o (see step.go)")
+	convert := flag.String("convert", "", "with -compare, Go file to write the converters of the step to")
+	fromPath := flag.String("from", "", "with -compare, import path of the codec package of the protocol of -compare")
+	toPath := flag.String("to", "", "with -compare, import path of the codec package of the protocol of -schema")
 	flag.Parse()
+	if *compare != "" {
+		if err := runStep(*compare, *in, *fromPath, *toPath, *pkg, *out, *convert); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	s, err := parse(*in)
 	if err != nil {
 		log.Fatal(err)
