@@ -95,6 +95,40 @@ func TestRepair(t *testing.T) {
 			wantLevel: 29,
 		},
 		{
+			// AnvilMenu.createResult counts every enchantment of the
+			// material as compatible for a player with infinite
+			// materials: a mace takes Sharpness, a sword Protection.
+			name: "a book of sharpness and protection on a mace in creative", mode: world.GameModeCreative,
+			input: item.NewStack(item.Mace{}, 1),
+			material: item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(
+				item.NewEnchantment(enchantment.Sharpness, 2), item.NewEnchantment(enchantment.Protection, 3)),
+			wantLevel: 30,
+			check: func(t *testing.T, res item.Stack) {
+				s, sharp := res.Enchantment(enchantment.Sharpness)
+				p, prot := res.Enchantment(enchantment.Protection)
+				if _, mace := res.Item().(item.Mace); !mace || !sharp || !prot || s.Level() != 2 || p.Level() != 3 {
+					t.Errorf("%v with %v, want a mace of sharpness II and protection III", res.Item(), res.Enchantments())
+				}
+			},
+		},
+		{
+			// It still refuses an enchantment beside one exclusive with
+			// it, areCompatible: Smite stays off a sword of Sharpness,
+			// and Power goes on beside it.
+			name: "a book of smite and power on a sword of sharpness in creative", mode: world.GameModeCreative,
+			input: ironSword.WithEnchantments(item.NewEnchantment(enchantment.Sharpness, 1)),
+			material: item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(
+				item.NewEnchantment(enchantment.Smite, 1), item.NewEnchantment(enchantment.Power, 1)),
+			wantLevel: 30,
+			check: func(t *testing.T, res item.Stack) {
+				_, smite := res.Enchantment(enchantment.Smite)
+				_, power := res.Enchantment(enchantment.Power)
+				if smite || !power || len(res.Enchantments()) != 2 {
+					t.Errorf("enchantments %v, want sharpness and power", res.Enchantments())
+				}
+			},
+		},
+		{
 			name: "a cost of 40 or more in creative", mode: world.GameModeCreative,
 			input: ironSword.WithAnvilCost(39), material: sharpness,
 			wantLevel: 30,

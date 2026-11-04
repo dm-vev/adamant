@@ -48,6 +48,8 @@ func (t *Tx) Repair(name *string) (err error) {
 		}
 	}
 	result := input
+	co := t.o.Owner
+	c := co.GameMode().CreativeInventory()
 
 	// The sum of the input's anvil cost as well as the material's anvil cost.
 	anvilCost := input.AnvilCost()
@@ -83,7 +85,7 @@ func (t *Tx) Repair(name *string) (err error) {
 
 			// Merge enchantments on the material item onto the result item.
 			var hasCompatible, hasIncompatible bool
-			result, hasCompatible, hasIncompatible, actionCost = mergeEnchantments(input, material, result, actionCost, enchantedBook)
+			result, hasCompatible, hasIncompatible, actionCost = mergeEnchantments(input, material, result, actionCost, enchantedBook, c)
 
 			// If we don't have any compatible enchantments and the input item isn't durable, then this is an invalid
 			// scenario, and we should return an error.
@@ -115,8 +117,6 @@ func (t *Tx) Repair(name *string) (err error) {
 	}
 
 	// We can bypass the "impossible cost" limit if we're in creative mode.
-	co := t.o.Owner
-	c := co.GameMode().CreativeInventory()
 	if cost >= 40 && !c {
 		return fmt.Errorf("impossible cost")
 	}
@@ -201,12 +201,14 @@ func repairItemWithDurable(input item.Stack, durable item.Stack, result item.Sta
 
 // mergeEnchantments merges the enchantments of the material item stack onto the result item stack and returns the result
 // item stack, booleans indicating whether the enchantments had any compatible or incompatible enchantments, and the cost.
-func mergeEnchantments(input item.Stack, material item.Stack, result item.Stack, cost int, enchantedBook bool) (item.Stack, bool, bool, int) {
+// In creative, an enchantment goes on any input, as AnvilMenu.createResult
+// takes any enchantment from a player with infinite materials.
+func mergeEnchantments(input item.Stack, material item.Stack, result item.Stack, cost int, enchantedBook, creative bool) (item.Stack, bool, bool, int) {
 	var hasCompatible, hasIncompatible bool
 	for _, enchant := range material.Enchantments() {
 		// First ensure that the enchantment type is compatible with the input item.
 		enchantType := enchant.Type()
-		compatible := enchantType.CompatibleWithItem(input.Item())
+		compatible := creative || enchantType.CompatibleWithItem(input.Item())
 		if _, ok := input.Item().(item.EnchantedBook); ok {
 			compatible = true
 		}
@@ -254,7 +256,7 @@ func mergeEnchantments(input item.Stack, material item.Stack, result item.Stack,
 		}
 
 		// Update the result item with the new enchantment.
-		result = result.WithEnchantments(item.NewEnchantment(enchantType, resultLevel))
+		result = withEnchantment(result, item.NewEnchantment(enchantType, resultLevel))
 
 		// Update the cost appropriately.
 		cost += rarityCost * levelCost
@@ -263,6 +265,21 @@ func mergeEnchantments(input item.Stack, material item.Stack, result item.Stack,
 		}
 	}
 	return result, hasCompatible, hasIncompatible, cost
+}
+
+// withEnchantment returns s with e, as Stack.WithEnchantments does, except
+// that it keeps e on an item e does not go on, which an anvil in creative
+// allows. s still refuses e beside an enchantment exclusive with it.
+func withEnchantment(s item.Stack, e item.Enchantment) item.Stack {
+	if _, book := s.Item().(item.EnchantedBook); book || e.Type().CompatibleWithItem(s.Item()) {
+		return s.WithEnchantments(e)
+	}
+	for _, other := range s.Enchantments() {
+		if o := other.Type(); o != e.Type() && (!o.CompatibleWithEnchantment(e.Type()) || !e.Type().CompatibleWithEnchantment(o)) {
+			return s
+		}
+	}
+	return s.WithForcedEnchantments(e)
 }
 
 // ensureUnlockedForAnvil refuses a stack locked in the inventory or in its
