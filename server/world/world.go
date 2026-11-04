@@ -2512,7 +2512,7 @@ func (w *World) saveChunks(tx *Tx, commit Commit) int {
 		col := w.columnTo(p.c, p.pos)
 		saved := w.markSaved(p.c)
 		if w.saver == nil {
-			var to Provider = w.conf.Provider
+			to := w.conf.Provider
 			if commit != nil {
 				to = commit
 			}
@@ -2601,7 +2601,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 		w.saver.stage(pos, col, saved)
 		return
 	}
-	col.Chunk = c.Chunk.Clone()
+	col.Chunk = c.Chunk.Clone() //nolint:staticcheck // QF1008: the chunk of the column is cloned, not the column.
 	col.PostProcessing = clonePostProcessing(col.PostProcessing)
 	w.saver.store(pos, col, saved, nil)
 }

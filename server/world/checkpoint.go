@@ -103,7 +103,7 @@ func (cp *Checkpoint) write(flush bool) error {
 			errs = append(errs, err)
 		}
 	}
-	var to Provider = w.conf.Provider
+	to := w.conf.Provider
 	if cp.commit != nil {
 		to = cp.commit
 	}

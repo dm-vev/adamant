@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"image/color"
@@ -268,7 +269,7 @@ func (w *World) CreateMap(pos cube.Pos, scale uint8) (MapData, error) {
 	var data MapData
 	var createErr error
 	task := w.Do(func(tx *Tx) { data, createErr = tx.CreateMap(pos, scale) })
-	if err := task.Wait(nil); err != nil {
+	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
 	return data, createErr
@@ -331,7 +332,7 @@ func (w *World) ScaleMap(id int64) (MapData, error) {
 	var data MapData
 	var scaleErr error
 	task := w.Do(func(tx *Tx) { data, scaleErr = tx.ScaleMap(id) })
-	if err := task.Wait(nil); err != nil {
+	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
 	return data, scaleErr
@@ -345,7 +346,7 @@ func (w *World) LockMap(id int64) (MapData, error) {
 	var data MapData
 	var lockErr error
 	task := w.Do(func(tx *Tx) { data, lockErr = tx.LockMap(id) })
-	if err := task.Wait(nil); err != nil {
+	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
 	return data, lockErr
@@ -465,7 +466,7 @@ func (w *World) UpdateMap(id int64, player cube.Pos) (MapData, error) {
 	var data MapData
 	var updateErr error
 	task := w.Do(func(tx *Tx) { data, updateErr = tx.UpdateMap(id, player) })
-	if err := task.Wait(nil); err != nil {
+	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
 	return data, updateErr
@@ -640,7 +641,7 @@ func (w *World) RenderMapBiomePreview(id int64) (MapData, error) {
 	var data MapData
 	var updateErr error
 	task := w.Do(func(tx *Tx) { data, updateErr = tx.RenderMapBiomePreview(id) })
-	if err := task.Wait(nil); err != nil {
+	if err := task.Wait(context.Background()); err != nil {
 		return MapData{}, err
 	}
 	return data, updateErr
