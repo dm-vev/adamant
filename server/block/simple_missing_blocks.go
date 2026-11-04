@@ -406,11 +406,6 @@ func (f Fungus) EncodeBlock() (string, map[string]any) {
 	return "minecraft:crimson_fungus", nil
 }
 
-// allFungus returns all fungus variants.
-func allFungus() []world.Block {
-	return []world.Block{Fungus{}, Fungus{Warped: true}}
-}
-
 // LegacyStonecutter is the old stonecutter block kept for compatibility with old worlds.
 type LegacyStonecutter struct {
 	solid

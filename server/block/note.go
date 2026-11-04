@@ -54,16 +54,6 @@ func (n Note) EncodeNBT() map[string]any {
 	return map[string]any{"id": "Music", "note": byte(n.Pitch)}
 }
 
-// javaActorState returns the server-only Java state a block actor keeps
-// under adamant:java, or the actor itself if it was saved before that state
-// moved there.
-func javaActorState(data map[string]any) map[string]any {
-	if state, ok := data["adamant:java"].(map[string]any); ok {
-		return state
-	}
-	return data
-}
-
 func (n Note) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *item.UseContext) bool {
 	if !n.canPlay(pos, tx) {
 		return false

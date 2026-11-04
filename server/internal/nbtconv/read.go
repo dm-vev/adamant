@@ -5,7 +5,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl64"
 	"golang.org/x/exp/constraints"
 )
 
@@ -84,11 +83,6 @@ func Float32(m map[string]any, k string) float32 {
 	return v
 }
 
-// Rotation reads a cube.Rotation from the map passed.
-func Rotation(m map[string]any) cube.Rotation {
-	return cube.Rotation{float64(Float32(m, "Yaw")), float64(Float32(m, "Pitch"))}
-}
-
 // Float64 reads a float64 value from a map at key k.
 func Float64(m map[string]any, k string) float64 {
 	v, _ := m[k].(float64)
@@ -108,32 +102,6 @@ func Slice(m map[string]any, k string) []any {
 		return out
 	}
 	return nil
-}
-
-// Vec3 converts x, y and z values in an NBT map to an mgl64.Vec3.
-func Vec3(x map[string]any, k string) mgl64.Vec3 {
-	if i, ok := x[k].([]any); ok {
-		if len(i) != 3 {
-			return mgl64.Vec3{}
-		}
-		var v mgl64.Vec3
-		for index, f := range i {
-			f32, _ := f.(float32)
-			v[index] = float64(f32)
-		}
-		return v
-	} else if i, ok := x[k].([]float32); ok {
-		if len(i) != 3 {
-			return mgl64.Vec3{}
-		}
-		return mgl64.Vec3{float64(i[0]), float64(i[1]), float64(i[2])}
-	}
-	return mgl64.Vec3{}
-}
-
-// Vec3ToFloat32Slice converts an mgl64.Vec3 to a []float32 with 3 elements.
-func Vec3ToFloat32Slice(x mgl64.Vec3) []float32 {
-	return []float32{float32(x[0]), float32(x[1]), float32(x[2])}
 }
 
 // Pos converts x, y and z values in an NBT map to a cube.Pos.

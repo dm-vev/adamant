@@ -133,23 +133,6 @@ func (RedstoneTorch) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, _ wor
 	}
 }
 
-// attachmentPowered reports whether the block the torch is attached to is powered.
-func (t RedstoneTorch) attachmentPowered(pos cube.Pos, tx *world.Tx) bool {
-	if tx == nil {
-		return false
-	}
-	attached := pos.Side(t.facing())
-	attachedBlock := tx.Block(attached)
-	if source, ok := attachedBlock.(world.RedstonePowerSource); ok {
-		for _, face := range cube.Faces() {
-			if world.ClampRedstonePower(source.RedstonePower(attached, tx, face)) > 0 {
-				return true
-			}
-		}
-	}
-	return world.RedstoneFullPowerConductor(attached, attachedBlock, tx) && tx.RedstoneConductivePower(attached) > 0
-}
-
 func (RedstoneTorch) EncodeItem() (name string, meta int16) {
 	return "minecraft:redstone_torch", 0
 }

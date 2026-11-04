@@ -94,54 +94,6 @@ func (p *Player) movementOnPos(offset float32) cube.Pos {
 	return pos
 }
 
-func (p *Player) updateMovementSupport(delta mgl64.Vec3) {
-	if !p.onGround {
-		p.hasMovementSupport, p.onGroundNoBlocks = false, false
-		return
-	}
-	bounds := Type.BBox(p).Translate(p.Position())
-	low, high := bounds.Min(), bounds.Max()
-	high[1], low[1] = low[1], low[1]-1e-6
-	area := cube.Box(low[0], low[1], low[2], high[0], high[1], high[2])
-	pos, found := p.findMovementSupport(area)
-	if !found && !p.onGroundNoBlocks {
-		pos, found = p.findMovementSupport(area.Translate(mgl64.Vec3{-delta[0], 0, -delta[2]}))
-	}
-	p.movementSupport, p.hasMovementSupport, p.onGroundNoBlocks = pos, found, !found
-}
-
-// findMovementSupport uses the nearest colliding block centre, with Java's
-// descending Y/Z/X BlockPos tie-break, rather than the first footprint corner.
-func (p *Player) findMovementSupport(area cube.BBox) (cube.Pos, bool) {
-	low := cube.PosFromVec3(area.Min().Sub(mgl64.Vec3{1, 1, 1}))
-	high := cube.PosFromVec3(area.Max().Add(mgl64.Vec3{1, 1, 1}))
-	var best cube.Pos
-	found, bestDistance := false, math.MaxFloat64
-	for x := low[0]; x <= high[0]; x++ {
-		for z := low[2]; z <= high[2]; z++ {
-			for y := low[1]; y <= high[1]; y++ {
-				pos := cube.Pos{x, y, z}
-				distance := pos.Vec3Centre().Sub(p.Position()).LenSqr()
-				after := pos[1] > best[1] || pos[1] == best[1] && (pos[2] > best[2] || pos[2] == best[2] && pos[0] > best[0])
-				if found && (distance > bestDistance || distance == bestDistance && !after) {
-					continue
-				}
-				b, loaded := p.tx.BlockLoaded(pos)
-				if !loaded {
-					continue
-				}
-				for _, box := range b.Model().BBox(pos, p.tx) {
-					if box.Translate(pos.Vec3()).IntersectsWith(area) {
-						best, bestDistance, found = pos, distance, true
-						break
-					}
-				}
-			}
-		}
-	}
-	return best, found
-}
-
 func (p *Player) movementTouchesWater() bool {
 	bounds := Type.BBox(p).Translate(p.Position()).Grow(-0.001)
 	low, high := cube.PosFromVec3(bounds.Min()), cube.PosFromVec3(bounds.Max())

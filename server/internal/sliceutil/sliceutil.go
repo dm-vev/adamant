@@ -1,7 +1,5 @@
 package sliceutil
 
-import "slices"
-
 // Convert converts a slice of type B to a slice of type A. Convert panics if B
 // cannot be type asserted to type A.
 func Convert[A, B any, S ~[]B](v S) []A {
@@ -10,19 +8,6 @@ func Convert[A, B any, S ~[]B](v S) []A {
 		a[i] = (any)(b).(A)
 	}
 	return a
-}
-
-// SearchValue iterates through slice v, calling function f for every element.
-// If true is returned in this function, the respective element is returned and
-// ok is true. If the function f does not return true for any element, false is
-// returned.
-func SearchValue[A any, S ~[]A](v S, f func(a A) bool) (a A, ok bool) {
-	for _, val := range v {
-		if f(val) {
-			return val, true
-		}
-	}
-	return
 }
 
 // Filter iterates over elements of collection, returning an array of all
@@ -35,15 +20,4 @@ func Filter[E any](s []E, c func(E) bool) []E {
 		}
 	}
 	return a
-}
-
-// DeleteVal deletes the first occurrence of a value in a slice of the type E
-// and returns a new slice without the value. E must be comparable.
-func DeleteVal[E comparable](s []E, v E) []E {
-	for i, vs := range s {
-		if (any)(v) == (any)(vs) {
-			return slices.Delete(s, i, i+1)
-		}
-	}
-	return s
 }

@@ -53,30 +53,6 @@ func newBrewer() *brewer {
 	return b
 }
 
-// brewingPotionInput reports if a stack goes in a potion slot, as
-// PotionIngredient.isPotionInput: a potion, splash or lingering potion or a
-// glass bottle.
-func brewingPotionInput(s item.Stack) bool {
-	switch s.Item().(type) {
-	case item.Potion, item.SplashPotion, item.LingeringPotion, item.GlassBottle:
-		return true
-	}
-	return false
-}
-
-// brewingCanPlace ports BrewingStandBlockEntity.canPlaceItem for a slot.
-func (b *brewer) brewingCanPlace(slot int, s item.Stack) bool {
-	switch slot {
-	case 4:
-		_, ok := s.Item().(item.BlazePowder)
-		return ok
-	case 0:
-		return recipe.ValidBrewingReagent(s.Item())
-	}
-	held, _ := b.inventory.Item(slot)
-	return brewingPotionInput(s) && held.Empty()
-}
-
 // InsertItem inserts an item from a hopper as the brewing stand's
 // WorldlyContainer accepts it: a hopper above fills the ingredient slot, one
 // at the side the first empty potion slot or the fuel slot.

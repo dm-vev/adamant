@@ -194,10 +194,6 @@ func (p Piston) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	tx.SetBlockEntity(pos, p)
 }
 
-func (p Piston) shouldExtend(pos cube.Pos, tx *world.Tx) bool {
-	return p.inputPower(pos, tx) > 0
-}
-
 func (p Piston) inputPower(pos cube.Pos, tx *world.Tx) int {
 	power := 0
 	for _, face := range cube.Faces() {
@@ -207,17 +203,6 @@ func (p Piston) inputPower(pos cube.Pos, tx *world.Tx) int {
 		power = max(power, tx.RedstonePowerFrom(pos, face))
 	}
 	return power
-}
-
-func (p Piston) extended(pos cube.Pos, tx *world.Tx) bool {
-	front := tx.Block(pos.Side(p.Facing))
-	if head, ok := front.(PistonHead); ok {
-		return head.Facing == p.Facing && head.Sticky == p.Sticky
-	}
-	if moving, ok := front.(MovingBlock); ok {
-		return moving.PistonPos == pos
-	}
-	return false
 }
 
 func (p Piston) doMove(pos cube.Pos, tx *world.Tx, extending bool) bool {

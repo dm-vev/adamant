@@ -1,7 +1,5 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
-
 // PetrifiedOak is a marker block used for petrified oak slabs.
 type PetrifiedOak struct {
 	solid
@@ -20,9 +18,4 @@ func (PetrifiedOak) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (PetrifiedOak) EncodeBlock() (string, map[string]any) {
 	return "minecraft:petrified_oak", nil
-}
-
-// allPetrifiedOak returns a slice used for slab encoding.
-func allPetrifiedOak() []world.Block {
-	return []world.Block{PetrifiedOak{}}
 }

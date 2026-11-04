@@ -59,11 +59,3 @@ func (Chain) Hash() (uint64, uint64) {
 func (c Chain) Model() world.BlockModel {
 	return model.Chain{Axis: c.Axis}
 }
-
-// allChains ...
-func allChains() (chains []world.Block) {
-	for _, axis := range cube.Axes() {
-		chains = append(chains, Chain{Axis: axis})
-	}
-	return
-}

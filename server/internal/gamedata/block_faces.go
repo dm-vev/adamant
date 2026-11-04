@@ -161,34 +161,6 @@ func generationStateIndexID(id uint32, block int) (int, bool) {
 	return stateIndex, true
 }
 
-// GenerationCollisionFacesOcclude implements Shapes.mergedFaceOccludes for two
-// fresh-generation source states. direction follows Minecraft Direction ordinal:
-// DOWN, UP, NORTH, SOUTH, WEST, EAST. It combines the exact union of boundary
-// rectangles, so complementary partial faces can fully occlude without either
-// state having a full face. The successful path allocates no memory.
-func GenerationCollisionFacesOcclude(source string, sourceProperties map[string]any, target string, targetProperties map[string]any, direction int) (bool, error) {
-	if direction < 0 || direction >= 6 {
-		return false, fmt.Errorf("generation faces: invalid direction %d", direction)
-	}
-	sourceIndex, err := generationBlockIndex(source)
-	if err != nil {
-		return false, err
-	}
-	targetIndex, err := generationBlockIndex(target)
-	if err != nil {
-		return false, err
-	}
-	sourceState, err := generationStateIndex(sourceIndex, sourceProperties)
-	if err != nil {
-		return false, err
-	}
-	targetState, err := generationStateIndex(targetIndex, targetProperties)
-	if err != nil {
-		return false, err
-	}
-	return generationCollisionFacesOcclude(sourceIndex, sourceState, targetIndex, targetState, direction), nil
-}
-
 // GenerationCollisionFacesOccludeIDs is the allocation-free canonical-state-ID
 // variant of GenerationCollisionFacesOcclude.
 func GenerationCollisionFacesOccludeIDs(sourceID, targetID uint32, direction int) (bool, error) {
@@ -339,14 +311,6 @@ func BlockRedstoneConductorID(id uint32) (bool, error) {
 	return shape.RedstoneConductor, nil
 }
 
-func BlockRedstoneConductorPredicateOwnerID(id uint32) (string, error) {
-	block, ok := blockStateIndex(id)
-	if !ok {
-		return "", fmt.Errorf("generation faces: invalid source state ID %d", id)
-	}
-	return blockConductorPredicateOwners[block], nil
-}
-
 // BlockCanBurnID matches FireBlock.canBurn(state), including its waterlogged
 // source-state check and pinned FireBlock ignition-odds registry.
 func BlockCanBurnID(id uint32) (bool, error) {
@@ -446,18 +410,6 @@ func collisionRectanglesCover(first, second []generationCollisionRect) bool {
 		x = nextX
 	}
 	return true
-}
-
-// BlockUpdateShapeOwner returns the Java declaring class that implements this
-// block's updateShape dispatch. The exact
-// net.minecraft.world.level.block.state.BlockBehaviour owner identifies the
-// inherited identity handler; every other value is a concrete override.
-func BlockUpdateShapeOwner(name string) (string, error) {
-	index, err := generationBlockIndex(name)
-	if err != nil {
-		return "", err
-	}
-	return blockUpdateShapeOwners[index], nil
 }
 
 // BlockUpdateShapeOwnerID returns the updateShape declaring class for a

@@ -267,4 +267,3 @@ func mixStafford13(z uint64) uint64 {
 	z = (z ^ (z >> 27)) * uint64(0x94d049bb133111eb)
 	return z ^ (z >> 31)
 }
-func floor(v float64) int64 { return int64(math.Floor(v)) }
