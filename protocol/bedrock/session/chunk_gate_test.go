@@ -246,6 +246,45 @@ func TestSubChunkQueueBounded(t *testing.T) {
 	}
 }
 
+// TestSubChunkRequestInParts asks for more sub-chunks than an answer
+// holds, as a client that sees far does: they are answered in order, in
+// parts of maxSubChunkOffsets, each its own packet, and none is left out.
+func TestSubChunkRequestInParts(t *testing.T) {
+	t.Parallel()
+	w := world.Config{Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	s, _ := gatedSession(t, w, []world.ChunkPos{{0, 0}})
+	pk := &v2193.SubChunkRequestPacket{Offsets: make([]v2193.SubChunkOffset, 2*maxSubChunkOffsets+1)}
+	for i := range pk.Offsets {
+		// The parts ask for columns 0, 1 and 2 east.
+		pk.Offsets[i] = v2193.SubChunkOffset{int8(i / maxSubChunkOffsets), 0, 0}
+	}
+	do(t, w, func(tx *world.Tx) {
+		if err := (&SubChunkRequestHandler{}).Handle(pk, s, tx, nil); err != nil {
+			t.Fatal(err)
+		}
+		s.sendSubChunks(tx, math.MaxInt32)
+	})
+	for part, want := range []int{maxSubChunkOffsets, maxSubChunkOffsets, 1} {
+		got := s.testPacket()
+		sub, ok := got.(*v2193.SubChunkPacket)
+		if !ok {
+			t.Fatalf("answered part %d with %T", part, packetOf(got))
+		}
+		if len(sub.SubChunkEntries) != want {
+			t.Fatalf("answered part %d with %d sub-chunks, want %d", part, len(sub.SubChunkEntries), want)
+		}
+		for _, e := range sub.SubChunkEntries {
+			if e.Offset[0] != int8(part) {
+				t.Fatalf("part %d answered offset %v", part, e.Offset)
+			}
+		}
+	}
+	if pk := s.testPacket(); pk != nil || s.subChunkOffsets != 0 || len(s.subChunkQueue) != 0 {
+		t.Fatalf("%T sent past the parts, %d offsets left in %d requests", packetOf(pk), s.subChunkOffsets, len(s.subChunkQueue))
+	}
+}
+
 // TestOutdatedSubChunkRequest answers a request queued for a dimension the
 // player is no longer in with no sub-chunks, as the client expects.
 func TestOutdatedSubChunkRequest(t *testing.T) {
