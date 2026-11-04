@@ -23,6 +23,9 @@ const (
 
 // handleEnchant handles the enchantment of an item using the CraftRecipe stack request action.
 func (h *ItemStackRequestHandler) handleEnchant(a *v2193.CraftRecipeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+	if h.batch != nil {
+		return h.batchOp(func() error { return h.batch.Enchant(int(a.RecipeNetworkID)) })
+	}
 	// First ensure that the selected slot is not out of bounds.
 	if a.RecipeNetworkID > 2 {
 		return fmt.Errorf("invalid recipe network id: %d", a.RecipeNetworkID)

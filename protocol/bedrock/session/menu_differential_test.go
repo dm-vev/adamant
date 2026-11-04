@@ -42,6 +42,12 @@ var menuRequestScenarios = []struct {
 	{"menus", (*scenario).menusScenario},
 	{"refusals", (*scenario).refusalsScenario},
 	{"multicraft", (*scenario).multiCraftScenario},
+
+	// D6–D9: the enchanting table, the anvil, the grindstone and the
+	// smithing table.
+	{"enchanting", (*scenario).enchantingCases},
+	{"enchanting twice", (*scenario).enchantingTwiceCases},
+	{"enchanting in creative", (*scenario).enchantingCreativeCases},
 	// D2: Move, Swap, Drop, Destroy, Touch and CreateCreative.
 	{"moves", (*scenario).movesScenario},
 	// D3: Craft and CraftDynamic.

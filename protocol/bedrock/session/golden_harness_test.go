@@ -331,6 +331,11 @@ type scenario struct {
 	// enchanting table it was last sent.
 	crafting       *v2193.CraftingDataPacket
 	enchantOptions []v2193.EnchantmentOption
+	// normalise, if set, normalises a packet the client was sent before it
+	// is recorded, and reports whether it changed any of it. Only the
+	// scenarios of TestGoldenMenuRequests set it, for what they draw at
+	// random.
+	normalise func(pk proto.Packet) bool
 	// stopped is closed once the session stopped.
 	stopped chan struct{}
 	// ownsWorld is set if the scenario made its world, which it then closes.
@@ -720,6 +725,9 @@ func (s *scenario) record(pk proto.Packet, keep bool) string {
 func (s *scenario) describe(pk proto.Packet, raw []byte, dir string) string {
 	v := reflect.ValueOf(pk).Elem()
 	s.norm.touched = false
+	if s.normalise != nil && s.normalise(pk) {
+		s.norm.touched = true
+	}
 	s.norm.packet(v)
 	mark := ""
 	if s.norm.touched {
