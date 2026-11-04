@@ -10338,6 +10338,7 @@ server/item/enchantment.unbreaking	server/cmd/builtin.namedSource	value
 server/item/enchantment.unbreaking	server/item.EnchantmentType	value
 server/item/enchantment.windBurst	server/cmd/builtin.namedSource	value
 server/item/enchantment.windBurst	server/item.EnchantmentType	value
+server/item/enchantment.windBurst	server/menu.treasureEnchantment	value
 server/item/inventory.NopHandler	server/item/inventory.Handler	value
 server/item/potion.Potion	protocol/bedrock/session.effectBearer	value
 server/item/recipe.DecoratedPotRecipe	server/item/recipe.DynamicRecipe	value

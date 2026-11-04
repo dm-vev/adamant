@@ -31,6 +31,12 @@ func (windBurst) Rarity() item.EnchantmentRarity {
 	return item.EnchantmentRarityRare
 }
 
+// Treasure reports that Wind Burst is a treasure enchantment, which an
+// enchanting table never offers (data/minecraft/tags/enchantment/treasure.json).
+func (windBurst) Treasure() bool {
+	return true
+}
+
 // CompatibleWithEnchantment ...
 func (windBurst) CompatibleWithEnchantment(item.EnchantmentType) bool {
 	return true
