@@ -48,6 +48,9 @@
   # default LevelDB data provider and if false, an empty provider will be used. To use your
   # own provider, turn this value to false, as you will still be able to pass your own provider.
   SaveData = true
+  # How often the worlds and the players in them are saved, all at one instant, as a duration such as "5m"
+  # or "90s". /save-all and stopping the server save them too. Set this to "0s" to save only then.
+  SaveInterval = "5m"
   # SaveChunks selects which loaded chunks a save or an unload writes to disk. "modified" writes the chunks
   # generated or changed since they were last saved, and those holding entities or block entities. "all"
   # writes every loaded chunk, changed or not, at every save: use it while pregenerating a world.

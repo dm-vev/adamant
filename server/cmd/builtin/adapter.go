@@ -41,9 +41,9 @@ type serverAdapter interface {
 	// name or by "xuid:<XUID>", to add to a list and to remove from one.
 	ResolvePlayer(s string) (server.Target, error)
 	ResolveEntry(list server.List, s string) (server.Target, error)
-	// SaveAllFrom saves every dimension without waiting for it in tx, the
-	// transaction the command runs in; done runs in tx's world once they
-	// were saved.
+	// SaveAllFrom saves every dimension and the players in them, at one
+	// instant, without waiting for it in tx, the transaction the command
+	// runs in; done runs in tx's world once they were saved.
 	SaveAllFrom(tx *world.Tx, done func(tx *world.Tx, err error))
 	SaveEnabled(enabled bool)
 	SaveEnabledState() bool

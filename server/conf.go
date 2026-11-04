@@ -115,11 +115,13 @@ type Config struct {
 	// left as 0, the RandomTickSpeed will default to a speed of 3 blocks per
 	// sub chunk per tick (normal ticking speed).
 	RandomTickSpeed int
-	// SaveInterval specifies how often a World should be automatically saved to
-	// disk. This includes chunks, entities and level.dat data. If ReadOnlyWorld
-	// is set to true, changing SaveInterval will have no effect.
-	// By default, SaveInterval is set to 10 minutes. Setting SaveInterval to
-	// a negative number disables automatic saving entirely.
+	// SaveInterval is how often the server saves a checkpoint while saving is
+	// on: its worlds, with their chunks, entities and level.dat, and the
+	// players in them, captured at one instant. It runs from the end of the
+	// last checkpoint. /save-all and closing the server save one too. The
+	// worlds of a ReadOnlyWorld are not saved, but the players are. By
+	// default, SaveInterval is DefaultSaveInterval, as Java's autosave. Setting
+	// it to a negative number saves checkpoints only on /save-all and close.
 	SaveInterval time.Duration
 	// ChunkUnloadInterval specifies how often unused chunks should be unloaded
 	// from memory when no longer in use. By default, this is set to 2 minutes.
@@ -152,6 +154,10 @@ type Config struct {
 	// it is finalized before use.
 	Blocks world.BlockRegistry
 }
+
+// DefaultSaveInterval is the SaveInterval of a Config that sets none: five
+// minutes, as Java's autosave.
+const DefaultSaveInterval = 5 * time.Minute
 
 // ReconnectPolicy controls how the server handles duplicate logins for the same player.
 type ReconnectPolicy uint8
@@ -205,6 +211,9 @@ func (conf Config) New() *Server {
 	if conf.MaxChunkRadius == 0 {
 		conf.MaxChunkRadius = 12
 	}
+	if conf.SaveInterval == 0 {
+		conf.SaveInterval = DefaultSaveInterval
+	}
 	if conf.ShutdownMessage.Zero() {
 		conf.ShutdownMessage = chat.MessageServerDisconnect
 	}
@@ -239,6 +248,7 @@ func (conf Config) New() *Server {
 		dimensions: make(map[world.Dimension]*world.World),
 		idleStop:   make(chan struct{}),
 	}
+	srv.checkpoints.srv, srv.checkpoints.stop, srv.checkpoints.done = srv, make(chan struct{}), make(chan struct{})
 	if wl, ok := conf.Allower.(*Whitelist); ok {
 		srv.whitelist = wl
 	} else if holder, ok := conf.Allower.(interface{ underlyingWhitelist() *Whitelist }); ok {
@@ -386,6 +396,11 @@ type UserConfig struct {
 		// Seed selects the generation seed for a new world in all dimensions.
 		// Existing level.dat metadata takes precedence, including seed zero.
 		Seed int64
+		// SaveInterval is how often the server saves its worlds and the
+		// players in them, all at one instant, as a duration such as "5m"
+		// or "90s". Set it to "0s" to save only on /save-all and when the
+		// server stops.
+		SaveInterval string
 		// GeneratorProfile tunes chunk generation for the CPU of the host:
 		// "fast-cores" for a few fast cores (desktop CPUs), "many-cores" for
 		// many slower cores (multi-socket servers), or "auto" to pick one from
@@ -474,6 +489,10 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	saveInterval, err := parseSaveInterval(uc.World.SaveInterval)
+	if err != nil {
+		return Config{}, err
+	}
 
 	saveChunks, err := world.ParseChunkSaving(uc.World.SaveChunks)
 	if err != nil {
@@ -495,6 +514,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		MaxPlayers:            uc.Players.MaxCount,
 		MaxChunkRadius:        uc.Players.MaximumChunkRadius,
 		OverworldSeed:         uc.World.Seed,
+		SaveInterval:          saveInterval,
 		GeneratorProfile:      generatorProfile,
 		SaveChunks:            saveChunks,
 		GeneratorWorkers:      uc.World.GeneratorWorkers,
@@ -567,6 +587,24 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	return conf, nil
 }
 
+// parseSaveInterval parses the World.SaveInterval of a UserConfig into the
+// SaveInterval of a Config: the default if it is empty, and a negative
+// interval, which saves no periodic checkpoints, if it is zero or less.
+func parseSaveInterval(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, fmt.Errorf("World.SaveInterval: %w", err)
+	}
+	if d <= 0 {
+		return -1, nil
+	}
+	return d, nil
+}
+
 // defaultGenerator constructs a dimension generator using the resolved seed.
 // The overworld, nether and end still utilise Java 1.12 style generators.
 func defaultGenerator(dim world.Dimension, seed int64) world.Generator {
@@ -589,6 +627,7 @@ func DefaultConfig() UserConfig {
 	c.World.Folder = "world"
 	c.World.SaveChunks = "modified"
 	c.World.Seed = 0
+	c.World.SaveInterval = "5m"
 	c.World.GeneratorProfile = "auto"
 	c.Server.ReconnectPolicy = "kick-existing"
 	c.Server.IdentityKey = "auto"

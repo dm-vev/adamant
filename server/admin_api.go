@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -228,30 +229,22 @@ func (srv *Server) Banned(addr, name string) (string, bool) {
 	return srv.bans.bannedAccount(addr, t.Key)
 }
 
-// SaveAll saves every dimension and waits until they reach the disk. It waits
-// for the owners of the worlds: call it off any world owner only, such as from
-// a goroutine of the console. From a transaction, use SaveAllFrom.
+// SaveAll saves a checkpoint of the server, as Java's save-all saves
+// everything: every dimension and the players in them, captured at one
+// instant, and waits until they were written, the worlds first, then the
+// players, then level.dat. It saves even while saving is off. It waits for
+// the owners of the worlds: call it off any world owner only, such as from a
+// goroutine of the console. From a transaction, use SaveAllFrom.
 func (srv *Server) SaveAll() error {
-	seen := map[*world.World]struct{}{}
-	for _, w := range srv.dimensions {
-		if w == nil {
-			continue
-		}
-		if _, ok := seen[w]; ok {
-			continue
-		}
-		seen[w] = struct{}{}
-		w.Save()
-	}
-	return nil
+	return srv.checkpoints.checkpoint(context.Background(), "save-all")
 }
 
-// SaveAllFrom saves every dimension like SaveAll for code running in tx, such
-// as a command, and returns at once: the worlds are saved from a goroutine of
-// their own, as tx's world cannot be saved while tx runs and the owner of
+// SaveAllFrom saves a checkpoint like SaveAll for code running in tx, such
+// as a command, and returns at once: the checkpoint is saved from a goroutine
+// of its own, as tx's world cannot be captured while tx runs and the owner of
 // another may be waiting for it. done, if not nil, runs in a transaction of
-// tx's world once every dimension was saved, with the error of SaveAll. If tx
-// is nil, done runs with a nil transaction on that goroutine.
+// tx's world once the checkpoint was written, with the error of SaveAll. If
+// tx is nil, done runs with a nil transaction on that goroutine.
 func (srv *Server) SaveAllFrom(tx *world.Tx, done func(tx *world.Tx, err error)) {
 	var w *world.World
 	if tx != nil {
@@ -268,6 +261,10 @@ func (srv *Server) SaveAllFrom(tx *world.Tx, done func(tx *world.Tx, err error))
 		}
 	}()
 }
+
+// SaveEnabled turns the periodic checkpoints of the server on or off, as
+// save-on and save-off do. /save-all and closing the server save a
+// checkpoint either way.
 func (srv *Server) SaveEnabled(enabled bool) {
 	seen := map[*world.World]struct{}{}
 	for _, w := range srv.dimensions {

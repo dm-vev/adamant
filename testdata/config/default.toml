@@ -58,6 +58,7 @@
   Regions = false
   SaveChunks = "modified"
   SaveData = true
+  SaveInterval = "5m"
   Seed = 0
 
 [Xbox]

@@ -39,6 +39,16 @@ type Provider interface {
 	StoreColumn(pos ChunkPos, dim Dimension, col *chunk.Column) error
 }
 
+// SettingsWriter is a Provider that keeps the settings given to SaveSettings
+// in memory, and writes them to disk only when it closes or when asked to
+// with WriteSettings, as mcdb keeps level.dat. A server asks it once each of
+// its checkpoints wrote the worlds and the players, so that the settings on
+// disk are never those of a later instant than the rest.
+type SettingsWriter interface {
+	// WriteSettings writes the settings last saved to disk.
+	WriteSettings() error
+}
+
 // WorldDataMemory stores provider-owned namespaced payloads in memory.
 // It provides process-lifetime persistence only, as appropriate for NopProvider.
 type WorldDataMemory struct {

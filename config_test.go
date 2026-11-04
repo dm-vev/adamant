@@ -116,7 +116,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
-			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0,
+			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0, "SaveInterval": "5m0s",
 			"Regions": false, "DisableOverworld": false, "DisableNether": false, "DisableEnd": false,
 			"DefaultDimension": "Overworld", "PortalDisabledMessage": "The %s dimension is disabled on this server.", "SaveChunks": "modified",
 			"WorldProvider": "*mcdb.DB", "WorldFolder": true, "PlayerProvider": "*playerdb.Provider", "PlayerFolder": true,
@@ -134,7 +134,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
 			"MaxPlayers": 7, "MaxChunkRadius": 9,
 			"Resources": 0, "ResourcesRequired": true, "DisableResourceBuilding": true,
-			"OverworldSeed": int64(42), "GeneratorProfile": "many-cores", "GeneratorWorkers": 3, "GeneratorQueueSize": 5,
+			"OverworldSeed": int64(42), "GeneratorProfile": "many-cores", "GeneratorWorkers": 3, "GeneratorQueueSize": 5, "SaveInterval": "1m30s",
 			"Regions": true, "DisableOverworld": true, "DisableNether": true, "DisableEnd": false,
 			"DefaultDimension": "End", "PortalDisabledMessage": "Closed.", "SaveChunks": "all",
 			"WorldProvider": "<nil>", "WorldFolder": false, "PlayerProvider": "<nil>", "PlayerFolder": false,
@@ -188,6 +188,7 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Server]\nIdentityKey = \"uuid\"\n":                      `unknown IdentityKey "uuid": use "auto", "xuid" or "name"`,
 		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n": `IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
 		"[World]\nSaveChunks = \"changed\"\n":                     `unknown SaveChunks "changed": use "modified" or "all"`,
+		"[World]\nSaveInterval = \"often\"\n":                     `World.SaveInterval: time: invalid duration "often"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -301,6 +302,7 @@ const everyKeyChanged = `
   Regions = true
   SaveChunks = " All "
   SaveData = false
+  SaveInterval = "90s"
   Seed = 42
 
 [Xbox]
@@ -341,7 +343,7 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 		"ReconnectPolicy": conf.ReconnectPolicy, "JoinMessage": !conf.JoinMessage.Zero(), "QuitMessage": !conf.QuitMessage.Zero(),
 		"MaxPlayers": conf.MaxPlayers, "MaxChunkRadius": conf.MaxChunkRadius,
 		"OverworldSeed": conf.OverworldSeed, "GeneratorProfile": conf.GeneratorProfile.String(),
-		"GeneratorWorkers": conf.GeneratorWorkers, "GeneratorQueueSize": conf.GeneratorQueueSize,
+		"GeneratorWorkers": conf.GeneratorWorkers, "GeneratorQueueSize": conf.GeneratorQueueSize, "SaveInterval": conf.SaveInterval.String(),
 		"Regions": conf.Regions, "DisableOverworld": conf.DisableOverworld, "DisableNether": conf.DisableNether, "DisableEnd": conf.DisableEnd,
 		"DefaultDimension": fmt.Sprint(conf.DefaultDimension), "PortalDisabledMessage": conf.PortalDisabledMessage, "SaveChunks": conf.SaveChunks.String(),
 		"WorldProvider": fmt.Sprintf("%T", conf.WorldProvider), "WorldFolder": exists("world") || exists("realm"),

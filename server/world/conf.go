@@ -83,7 +83,8 @@ type Config struct {
 	// disk. This includes chunks, entities and level.dat data. If ReadOnly is
 	// set to false, changing SaveInterval will have no effect.
 	// By default, SaveInterval is set to 10 minutes. Setting SaveInterval to
-	// a negative number disables automatic saving entirely.
+	// a negative number disables automatic saving entirely, as a server does
+	// for its worlds, which it saves with its checkpoints (CaptureAll).
 	SaveInterval time.Duration
 	// ChunkUnloadInterval specifies how often unused chunks should be unloaded
 	// from memory when no longer in use. By default, this is set to 2 minutes.

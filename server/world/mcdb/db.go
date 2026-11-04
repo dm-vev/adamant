@@ -33,6 +33,9 @@ type DB struct {
 	dir  string
 	ldat *leveldat.Data
 	lmu  sync.Mutex
+	// wmu serialises the writes of level.dat, which happen outside lmu.
+	// It is taken before lmu.
+	wmu sync.Mutex
 	// emu serialises column stores, which read the stored entity lists
 	// and records of other chunks to decide what to delete.
 	emu      sync.Mutex
@@ -901,22 +904,62 @@ func (db *DB) NewColumnIterator(r *IteratorRange) *ColumnIterator {
 	return newColumnIterator(db, r)
 }
 
+// WriteSettings writes the settings last passed to SaveSettings to
+// level.dat at once, atomically and keeping level.dat_old, as Close does,
+// and the name of the world to levelname.txt. It implements
+// world.SettingsWriter.
+func (db *DB) WriteSettings() error {
+	db.wmu.Lock()
+	defer db.wmu.Unlock()
+	db.lmu.Lock()
+	ldat, name, err := db.marshalLevelDat()
+	db.lmu.Unlock()
+	if err != nil {
+		return fmt.Errorf("write settings: %w", err)
+	}
+	if err := db.writeLevelDat(ldat, name); err != nil {
+		return fmt.Errorf("write settings: %w", err)
+	}
+	return nil
+}
+
+// marshalLevelDat encodes the level.dat held in memory, with the time it was
+// last played set to now, and returns it with the name of the world. The
+// caller holds lmu.
+func (db *DB) marshalLevelDat() (*leveldat.LevelDat, string, error) {
+	db.ldat.LastPlayed = time.Now().Unix()
+	var ldat leveldat.LevelDat
+	if err := ldat.Marshal(*db.ldat); err != nil {
+		return nil, "", err
+	}
+	return &ldat, db.ldat.LevelName, nil
+}
+
+// writeLevelDat writes ldat to level.dat and name to levelname.txt. The
+// caller holds wmu.
+func (db *DB) writeLevelDat(ldat *leveldat.LevelDat, name string) error {
+	if err := ldat.WriteFile(filepath.Join(db.dir, "level.dat")); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(db.dir, "levelname.txt"), []byte(name), 0644); err != nil {
+		return fmt.Errorf("write levelname.txt: %w", err)
+	}
+	return nil
+}
+
 // Close closes the provider, saving any file that might need to be saved, such as the level.dat.
 func (db *DB) Close() error {
+	db.wmu.Lock()
+	defer db.wmu.Unlock()
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
 
-	db.ldat.LastPlayed = time.Now().Unix()
-
-	var ldat leveldat.LevelDat
-	if err := ldat.Marshal(*db.ldat); err != nil {
+	ldat, name, err := db.marshalLevelDat()
+	if err != nil {
 		return fmt.Errorf("close: %w", err)
 	}
-	if err := ldat.WriteFile(filepath.Join(db.dir, "level.dat")); err != nil {
+	if err := db.writeLevelDat(ldat, name); err != nil {
 		return fmt.Errorf("close: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join(db.dir, "levelname.txt"), []byte(db.ldat.LevelName), 0644); err != nil {
-		return fmt.Errorf("close: write levelname.txt: %w", err)
 	}
 	return db.ldb.Close()
 }

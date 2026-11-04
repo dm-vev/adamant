@@ -57,6 +57,10 @@ type Server struct {
 	// playersSkipped is set once Players(tx) skipped a player of another
 	// world, which it warns of once.
 	playersSkipped atomic.Bool
+	// checkpoints saves the worlds and the players at one instant, and
+	// playerSaves orders the saves of each player.
+	checkpoints checkpointer
+	playerSaves playerSaves
 	// pwg is a sync.WaitGroup used to wait for all players to be disconnected
 	// before server shutdown, so that their data is saved properly.
 	pwg sync.WaitGroup
@@ -105,6 +109,7 @@ func (srv *Server) Listen() {
 	srv.startListening()
 	go srv.wait()
 	go srv.idleTimeoutLoop()
+	go srv.checkpoints.run(srv.conf.SaveInterval)
 }
 
 // Accept accepts incoming players into the server, returning an iterator that
@@ -435,6 +440,12 @@ func (srv *Server) close() {
 	}
 	srv.pwg.Wait()
 
+	// The players saved as they left: the last checkpoint saves the worlds
+	// before they close, and level.dat with them.
+	srv.checkpoints.close()
+	srv.conf.Log.Debug("Saving checkpoint...")
+	_ = srv.checkpoints.checkpoint(context.Background(), "close")
+
 	srv.conf.Log.Debug("Closing player provider...")
 	if err := srv.conf.PlayerProvider.Close(); err != nil {
 		srv.conf.Log.Error("Close player provider: " + err.Error())
@@ -683,7 +694,9 @@ func (srv *Server) left(tx *world.Tx, c *player.Player) {
 	if tx != nil {
 		// The snapshot holds inventories of its own: the player's are
 		// closed as it is torn down, while the provider may keep the data.
-		if err := srv.conf.PlayerProvider.Save(srv.dataKey(online.id), c.Snapshot(), tx.World()); err != nil {
+		// It is newer than any a checkpoint captured and may still write.
+		p := capturedPlayer{key: srv.dataKey(online.id), seq: srv.playerSaves.next(), data: c.Snapshot()}
+		if _, err := srv.playerSaves.save(srv.conf.PlayerProvider, p, tx.World()); err != nil {
 			srv.conf.Log.Error("Save player data: " + err.Error())
 		}
 	} else {
@@ -743,7 +756,7 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 		RandomTickSpeed:     srv.conf.RandomTickSpeed,
 		ReadOnly:            srv.conf.ReadOnlyWorld,
 		SaveChunks:          srv.conf.SaveChunks,
-		SaveInterval:        srv.conf.SaveInterval,
+		SaveInterval:        -1, // The checkpoints of the server save the world.
 		ChunkUnloadInterval: srv.conf.ChunkUnloadInterval,
 		Entities:            srv.conf.Entities,
 		Blocks:              srv.conf.Blocks,
