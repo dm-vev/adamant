@@ -746,6 +746,38 @@ func (w *World) blameEntity(tx *Tx, tick int64, handle *EntityHandle, f Fault) {
 	w.reportFault(f, quarantineKey{entity: handle})
 }
 
+// ActOn runs f, in which a step of the tick of the world acts on the entity
+// e alone, as waking a sleeper or pushing a mob does, and reports whether f
+// ended without a panic. A panic of f is blamed on e, as one of its own
+// tick: a player is disconnected (D2), and another entity counts towards
+// its quarantine (D1). The step goes on with its next entity. An entity in
+// quarantine is not acted on, and ActOn returns false for it.
+func (tx *Tx) ActOn(e Entity, f func()) (ok bool) {
+	handle := e.H()
+	if s := handle.state; s != nil && s.quarantined {
+		return false
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.actPanicked(handle, r)
+		}
+	}()
+	f()
+	return true
+}
+
+// actPanicked blames the panic r of ActOn on the entity of handle. In a
+// region holding the state regions share, the panic goes on to the guard of
+// the region, which releases the state before it blames anyone.
+func (tx *Tx) actPanicked(handle *EntityHandle, r any) {
+	if rg := tx.region; rg != nil && rg.locked != 0 {
+		panic(r)
+	}
+	f := newFault(FaultEntity, r)
+	f.Type, f.Pos, f.Entity = handle.t.EncodeEntity(), cube.PosFromVec3(handle.data.Pos), handle
+	tx.w.blameEntity(tx, tx.CurrentTick(), handle, f)
+}
+
 // tickPanicked has the entity of handle, a TickFaulter, handle the fault f.
 // A panic of it is reported as a fault of the transaction.
 func (w *World) tickPanicked(tx *Tx, handle *EntityHandle, state *entityState, f Fault) {

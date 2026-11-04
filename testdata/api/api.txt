@@ -19320,6 +19320,7 @@ server/player	func	DoAfter	func(h *server/world.EntityHandle, delay time.Duratio
 server/player	func	NewEventContext	func(tx *server/world.Tx, p *server/player.Player) *server/player.Context
 server/player	func	NewRef	func(h *server/world.EntityHandle) server/player.Ref
 server/player	method	Config.Apply	func(data *server/world.EntityData)
+server/player	method	Context.ActOn	func(e server/world.Entity, f func()) (ok bool)
 server/player	method	Context.AddEntity	func(e *server/world.EntityHandle) server/world.Entity
 server/player	method	Context.AddMapDecoration	func(id int64, decoration server/world.MapDecoration) error
 server/player	method	Context.AddMapDecorationAt	func(id int64, typ byte, rotation byte, keyType int32, target server/block/cube.Pos, label string) error
@@ -20643,6 +20644,7 @@ server/world	method	ColumnCache.CacheNetworkSubChunkPayload	func(ind int16, payl
 server/world	method	ColumnCache.CachedFullChunkPayload	func() ([]byte, bool)
 server/world	method	ColumnCache.CachedNetworkSubChunkPayload	func(ind int16) ([]byte, bool)
 server/world	method	Config.New	func() *server/world.World
+server/world	method	Context.ActOn	func(e server/world.Entity, f func()) (ok bool)
 server/world	method	Context.AddEntity	func(e *server/world.EntityHandle) server/world.Entity
 server/world	method	Context.AddMapDecoration	func(id int64, decoration server/world.MapDecoration) error
 server/world	method	Context.AddMapDecorationAt	func(id int64, typ byte, rotation byte, keyType int32, target server/block/cube.Pos, label string) error
@@ -20968,6 +20970,7 @@ server/world	method	Task.OnDone	func(f func(err error))
 server/world	method	Task.Wait	func(ctx context.Context) error
 server/world	method	Transfer.Cancel	func()
 server/world	method	Transfer.Remove	func(tx *server/world.Tx, e server/world.Entity) *server/world.EntityHandle
+server/world	method	Tx.ActOn	func(e server/world.Entity, f func()) (ok bool)
 server/world	method	Tx.AddEntity	func(e *server/world.EntityHandle) server/world.Entity
 server/world	method	Tx.AddMapDecoration	func(id int64, decoration server/world.MapDecoration) error
 server/world	method	Tx.AddMapDecorationAt	func(id int64, typ byte, rotation byte, keyType int32, target server/block/cube.Pos, label string) error

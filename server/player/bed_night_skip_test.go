@@ -2,6 +2,7 @@ package player
 
 import (
 	"log/slog"
+	"sync/atomic"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -136,5 +137,68 @@ func TestNightSkipWakesBesideBlocksWithoutJavaState(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+// wakePanicClient is a client whose sleeping indicator, which waking its
+// player shows, panics once armed.
+type wakePanicClient struct {
+	*clienttest.Recorder
+	armed *atomic.Bool
+}
+
+func (c wakePanicClient) ViewSleepingPlayers(sleeping, max int) {
+	if c.armed.Load() {
+		panic("test: wake")
+	}
+	c.Recorder.ViewSleepingPlayers(sleeping, max)
+}
+
+// A panic waking a sleeper as the night is skipped, a step of the tick of
+// the world, is blamed on the sleeper, as a panic of its own tick is: the
+// player is disconnected with an internal error, which saves it (D2). The
+// world goes on, and the night is still skipped.
+func TestNightSkipPanicWakingDisconnectsTheSleeper(t *testing.T) {
+	var faults []world.Fault
+	left := 0
+	armed := new(atomic.Bool)
+	c := wakePanicClient{Recorder: clienttest.New(), armed: armed}
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Log: slog.New(slog.DiscardHandler), Entities: entity.DefaultRegistry, Fault: func(f world.Fault) {
+		faults = append(faults, f)
+	}}.New()
+	loader := world.NewLoader(2, w, clienttest.New())
+	t.Cleanup(func() {
+		<-w.Exec(func(tx *world.Tx) { loader.Close(tx) })
+		_ = w.Close()
+	})
+	w.SetTime(18000)
+	foot, head := cube.Pos{0, 65, 0}, cube.Pos{0, 65, -1}
+	handle := world.EntitySpawnOpts{Position: foot.Vec3Middle(), ID: uuid.New()}.New(Type, Config{Name: "Alex", Position: foot.Vec3Middle(), GameMode: world.GameModeSurvival, Client: c, Left: func(*world.Tx, *Player) { left++ }})
+	<-w.Exec(func(tx *world.Tx) {
+		loader.Move(tx, foot.Vec3Middle())
+		loader.Load(tx, 25)
+		tx.SetBlock(foot.Side(cube.FaceDown), block.Stone{}, nil)
+		tx.SetBlock(head.Side(cube.FaceDown), block.Stone{}, nil)
+		tx.SetBlock(foot, block.Bed{Facing: cube.North}, nil)
+		tx.SetBlock(head, block.Bed{Facing: cube.North, Head: true}, nil)
+		tx.AddEntity(handle).(*Player).Sleep(head)
+	})
+	armed.Store(true)
+	for range 200 {
+		advance(t, w)
+		if len(faults) != 0 {
+			break
+		}
+	}
+	if len(faults) != 1 || faults[0].Kind != world.FaultPlayer || faults[0].Entity != handle || faults[0].Value != "test: wake" || faults[0].Quarantined {
+		t.Fatalf("faults = %v, want one of the player, not quarantined", brief(faults))
+	}
+	checkDisconnected(t, w, c.Recorder, handle, left)
+	if w.Time()%world.TimeFull >= 18000 {
+		t.Fatalf("time = %d: the night was not skipped", w.Time())
+	}
+	advance(t, w)
+	if len(faults) != 1 {
+		t.Fatalf("faults after the player left = %d, want 1", len(faults))
 	}
 }

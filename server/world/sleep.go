@@ -36,8 +36,10 @@ func (ticker) tryAdvanceDay(tx *Tx, timeCycle bool) {
 		}
 	}
 
+	// Waking a sleeper is its own: a panic of it is blamed on the sleeper, and
+	// the others still wake.
 	for s := range sleepers {
-		s.Wake()
+		tx.ActOn(s, s.Wake)
 	}
 
 	totalTime := tx.w.Time()
