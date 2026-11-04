@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client/clienttest"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -32,6 +33,12 @@ func TestPlayerSetCrafterSlotDisabled(t *testing.T) {
 		viewer := newCrafterView()
 		crafter.AddViewer(viewer, tx, signPos)
 		tx.SetBlock(signPos, crafter, nil)
+		// The client of the player views the crafter it opens, as the
+		// session does.
+		p.OpenBlockContainer(signPos, tx)
+		if m := p.Menu(); m == nil || m.Kind() != menu.Crafter {
+			t.Fatalf("the player has %v open, want the crafter", m)
+		}
 
 		if err := p.SetCrafterSlotDisabled(signPos, 3, true); err != nil {
 			t.Fatalf("SetCrafterSlotDisabled: %v", err)
@@ -39,30 +46,55 @@ func TestPlayerSetCrafterSlotDisabled(t *testing.T) {
 		if got := tx.Block(signPos).(block.Crafter); got.DisabledSlots != 1<<3 {
 			t.Fatalf("the crafter has slots %09b disabled, want slot 3", got.DisabledSlots)
 		}
-		if len(viewer.states) != 1 || viewer.states[0] != [2]any{3, true} || len(c.states) != 0 {
-			t.Fatalf("the viewer was shown %v and the client %v, want slot 3 disabled to the viewer", viewer.states, c.states)
+		if len(viewer.states) != 1 || viewer.states[0] != [2]any{3, true} || len(c.states) != 1 || c.states[0] != [2]any{3, true} {
+			t.Fatalf("the viewer was shown %v and the client %v, want slot 3 disabled to both", viewer.states, c.states)
 		}
 
 		// A toggle that changes nothing shows the client the slot again.
 		if err := p.SetCrafterSlotDisabled(signPos, 3, true); err != nil {
 			t.Fatalf("SetCrafterSlotDisabled: %v", err)
 		}
-		if len(c.states) != 1 || c.states[0] != [2]any{3, true} || len(viewer.states) != 1 {
-			t.Fatalf("the client was shown %v and the viewer %v, want slot 3 disabled to the client", c.states, viewer.states)
+		if len(c.states) != 2 || c.states[1] != [2]any{3, true} || len(viewer.states) != 1 {
+			t.Fatalf("the client was shown %v and the viewer %v, want slot 3 disabled to the client again", c.states, viewer.states)
 		}
 	})
 }
 
 func TestPlayerSetCrafterSlotDisabledRefuses(t *testing.T) {
+	const (
+		noMenu  = "no matching Crafter container opened"
+		badSlot = "invalid or unreachable Crafter slot request"
+		noBlock = "Crafter block no longer exists"
+	)
+	openCrafter := func(pos cube.Pos) func(tx *world.Tx, p *Player) {
+		return func(tx *world.Tx, p *Player) { p.OpenBlockContainer(pos, tx) }
+	}
 	for _, c := range []struct {
-		name string
-		pos  cube.Pos
-		slot int
+		name  string
+		open  func(tx *world.Tx, p *Player)
+		pos   cube.Pos
+		slot  int
+		error string
 	}{
-		{"slot 9", signPos, 9},
-		{"negative slot", signPos, -1},
-		{"out of reach", farPos, 0},
-		{"no crafter", signPos.Side(cube.FaceUp), 0},
+		{"no menu", func(*world.Tx, *Player) {}, signPos, 0, noMenu},
+		{"crafter elsewhere", openCrafter(farPos), signPos, 0, noMenu},
+		{"menu of another kind", func(tx *world.Tx, p *Player) {
+			// The chest menu stays open at the position of the crafter.
+			tx.SetBlock(signPos, block.NewChest(), nil)
+			p.OpenBlockContainer(signPos, tx)
+			tx.SetBlock(signPos, block.NewCrafter(), nil)
+		}, signPos, 0, noMenu},
+		{"menu closed", func(tx *world.Tx, p *Player) {
+			p.OpenBlockContainer(signPos, tx)
+			p.CloseMenu(true)
+		}, signPos, 0, noMenu},
+		{"slot 9", openCrafter(signPos), signPos, 9, badSlot},
+		{"negative slot", openCrafter(signPos), signPos, -1, badSlot},
+		{"out of reach", openCrafter(farPos), farPos, 0, badSlot},
+		{"no crafter", func(tx *world.Tx, p *Player) {
+			p.OpenBlockContainer(signPos, tx)
+			tx.SetBlock(signPos, nil, nil)
+		}, signPos, 0, noBlock},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			w, _ := clientTestWorld(t)
@@ -70,11 +102,13 @@ func TestPlayerSetCrafterSlotDisabledRefuses(t *testing.T) {
 			withClientPlayer(t, w, view, func(tx *world.Tx, p *Player) {
 				tx.SetBlock(signPos, block.NewCrafter(), nil)
 				tx.SetBlock(farPos, block.NewCrafter(), nil)
-				if err := p.SetCrafterSlotDisabled(c.pos, c.slot, true); err == nil {
-					t.Fatal("SetCrafterSlotDisabled succeeded")
+				c.open(tx, p)
+				err := p.SetCrafterSlotDisabled(c.pos, c.slot, true)
+				if err == nil || err.Error() != c.error {
+					t.Fatalf("SetCrafterSlotDisabled = %v, want %q", err, c.error)
 				}
 				for _, pos := range []cube.Pos{signPos, farPos} {
-					if got := tx.Block(pos).(block.Crafter); got.DisabledSlots != 0 {
+					if got, ok := tx.Block(pos).(block.Crafter); ok && got.DisabledSlots != 0 {
 						t.Fatalf("a refused toggle disabled slots %09b", got.DisabledSlots)
 					}
 				}
