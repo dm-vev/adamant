@@ -1,6 +1,7 @@
 package session
 
 import (
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"reflect"
 	"slices"
 	"strings"
@@ -103,7 +104,7 @@ func TestGameDataFromGame(t *testing.T) {
 			}
 			pos, rot := mgl64.Vec3{12.25, -58.5, 3.75}, cube.Rotation{91.5, -12.25}
 			g := client.Game{Name: "Golden Server", Level: tc.level, World: tc.w, Position: pos, Rotation: rot, Operator: tc.operator}
-			got := gameData(g, tc.content, tc.muted)
+			got := gameData(g, tc.content, versions.Model(), tc.muted)
 			want := oldGameData(tc.level, "Golden Server", tc.content, pos, rot, tc.w, tc.muted, tc.operator)
 			for _, d := range []*netconn.GameData{&got, &want} {
 				slices.SortFunc(d.Items, func(a, b v2193.ItemEntry) int { return strings.Compare(a.Name, b.Name) })

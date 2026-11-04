@@ -599,7 +599,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 		"structure_sets": make([]map[string]any, 0),
 	}})
 	_ = c.WritePacket(&v2193.VoxelShapesPacket{})
-	_ = c.WritePacket(startGame(data))
+	_ = c.WritePacket(startGame(data, c.proto))
 	_ = c.WritePacket(&v2193.ItemRegistryPacket{Items: data.Items})
 	if err := c.Flush(); err != nil {
 		return err
@@ -644,9 +644,13 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 	}
 }
 
-// startGame returns the StartGame packet of the game data, filled as
-// gophertunnel fills it.
-func startGame(data GameData) *v2193.StartGamePacket {
+// startGame returns the StartGame packet of the game data for a client of
+// a protocol, filled as gophertunnel fills it and naming the version of the
+// game the protocol tells its clients.
+func startGame(data GameData, p *versions.Protocol) *v2193.StartGamePacket {
+	if p == nil {
+		p = versions.Model()
+	}
 	return &v2193.StartGamePacket{
 		Difficulty:                   data.Difficulty,
 		EntityUniqueID:               data.EntityUniqueID,
@@ -687,7 +691,7 @@ func startGame(data GameData) *v2193.StartGamePacket {
 		ChatRestrictionLevel:         data.ChatRestrictionLevel,
 		DisablePlayerInteractions:    data.DisablePlayerInteractions,
 		BaseGameVersion:              data.BaseGameVersion,
-		GameVersion:                  v2193.Version,
+		GameVersion:                  p.Version,
 		UseBlockNetworkIDHashes:      data.UseBlockNetworkIDHashes,
 		PropertyData:                 data.PropertyData,
 	}

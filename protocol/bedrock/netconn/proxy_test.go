@@ -187,14 +187,34 @@ func TestProxiedProtocols(t *testing.T) {
 	if st := readUntil(t, b, v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginSuccess {
 		t.Fatalf("status %d for protocol %d", st.Status, fakeProtocol.Number)
 	}
+	// The client is told the version of its own protocol.
+	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseAllPacksDownloaded})
+	if stack := readUntil(t, b, v2193.IDResourcePackStack).(*v2193.ResourcePackStackPacket); stack.BaseGameVersion != fakeProtocol.Version {
+		t.Errorf("the stack of packs is of %s, not of %s", stack.BaseGameVersion, fakeProtocol.Version)
+	}
 	writeRaw(t, b, &v2193.ResourcePackClientResponsePacket{Response: v2193.PackResponseCompleted})
+	var c *Conn
 	select {
-	case c := <-accepted:
+	case c = <-accepted:
 		if c.Protocol() != fakeProtocol || c.Stats().Protocol != fakeProtocol.Number {
 			t.Fatalf("protocol %v, stats %d", c.Protocol(), c.Stats().Protocol)
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the proxied player was not accepted")
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = c.StartGameContext(ctx, gameData())
+	}()
+	if game := readUntil(t, b, v2193.IDStartGame).(*v2193.StartGamePacket); game.GameVersion != fakeProtocol.Version || game.BaseGameVersion != v2193.Version {
+		t.Errorf("StartGame of %s on %s, want the game of %s on what the session says", game.GameVersion, game.BaseGameVersion, fakeProtocol.Version)
+	}
+	if l.Advertised() != fakeProtocol {
+		t.Errorf("the listener advertises %v, not the newest protocol it allows", l.Advertised())
+	}
+	if p := listen(t, Config{}).Advertised(); p != versions.Model() {
+		t.Errorf("a listener of the model alone advertises %v", p)
 	}
 }
 

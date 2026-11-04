@@ -376,16 +376,25 @@ func (l *Listener) status() ServerStatus {
 
 func (l *Listener) updateStatus() {
 	s := l.status()
+	p := l.Advertised()
 	l.nn.SetStatus(nethernet.Status{
 		ServerName:     s.ServerName,
-		Protocol:       v2193.Protocol,
-		Version:        v2193.Version,
+		Protocol:       int(p.Number),
+		Version:        p.Version,
 		LevelName:      s.ServerSubName,
 		PlayerCount:    s.PlayerCount,
 		MaxPlayerCount: s.MaxPlayers,
 		GameType:       1,
 	})
 }
+
+// Advertised returns the protocol the listener shows clients that look the
+// server up, in its status and on LAN and Xbox Live: the newest it allows,
+// as clients update themselves.
+func (l *Listener) Advertised() *versions.Protocol { return l.protocols[len(l.protocols)-1] }
+
+// Protocols returns the protocols clients may join with, oldest first.
+func (l *Listener) Protocols() []*versions.Protocol { return slices.Clone(l.protocols) }
 
 // allowed lists the numbers of the protocols clients may join with.
 func (l *Listener) allowed() string {
@@ -661,7 +670,7 @@ func (c *Conn) sendPacks() error {
 					return err
 				}
 			case v2193.PackResponseAllPacksDownloaded:
-				_ = c.WritePacket(c.l.packStack())
+				_ = c.WritePacket(c.l.packStack(c.proto))
 				if err := c.Flush(); err != nil {
 					return err
 				}
@@ -713,10 +722,11 @@ func (l *Listener) packs(ids []string) ([]*resource.Pack, error) {
 	return out, nil
 }
 
-// packStack returns the stack of resource packs: the server's, then the
-// ones every client has, as gophertunnel lists them.
-func (l *Listener) packStack() *v2193.ResourcePackStackPacket {
-	pk := &v2193.ResourcePackStackPacket{BaseGameVersion: v2193.Version, Experiments: []v2193.ExperimentData{{Name: "cameras", Enabled: true}}}
+// packStack returns the stack of resource packs a client of a protocol is
+// sent: the server's, then the ones every client has, as gophertunnel lists
+// them, on the version of the game the protocol tells its clients.
+func (l *Listener) packStack(p *versions.Protocol) *v2193.ResourcePackStackPacket {
+	pk := &v2193.ResourcePackStackPacket{BaseGameVersion: p.Version, Experiments: []v2193.ExperimentData{{Name: "cameras", Enabled: true}}}
 	for _, pack := range l.cfg.ResourcePacks {
 		pk.TexturePacks = append(pk.TexturePacks, v2193.StackResourcePack{UUID: pack.UUID().String(), Version: pack.Version()})
 	}

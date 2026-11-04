@@ -2,6 +2,7 @@ package bedrockadapter
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/packbuilder"
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
@@ -29,7 +31,6 @@ import (
 	"github.com/dm-vev/adamant/net/acme"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/login"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
 	"github.com/dm-vev/adamant/net/proxy"
@@ -43,7 +44,7 @@ import (
 func (c Config) Listener(conf server.Config, host server.Host) (server.Listener, error) {
 	packs := slices.Clone(c.Resources)
 	if !c.DisableResourceBuilding {
-		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks); ok {
+		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks, c.oldestProtocol().Version); ok {
 			packs = append(packs, pack)
 		}
 	}
@@ -53,6 +54,15 @@ func (c Config) Listener(conf server.Config, host server.Host) (server.Listener,
 		return nil, err
 	}
 	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat, Blocks: conf.Blocks}), nil
+}
+
+// oldestProtocol returns the oldest protocol clients may join with: the
+// built resource pack must not need a newer game, or its clients refuse it.
+func (c Config) oldestProtocol() *versions.Protocol {
+	if len(c.Protocols) == 0 {
+		return versions.Default()
+	}
+	return slices.MinFunc(c.Protocols, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
 }
 
 // netherNetListener returns the connections of the NetherNet listener of
@@ -215,11 +225,11 @@ func serveProxies(l *netconn.Listener, addr, secret string, log *slog.Logger) er
 // out of the LAN tab.
 func publishLAN(l *netconn.Listener, c Config, log *slog.Logger, addr string) *lan.Listener {
 	ll, err := lan.Config{Addr: addr, Data: func() lan.ServerData {
-		st := l.ServerStatus()
+		st, p := l.ServerStatus(), l.Advertised()
 		return lan.ServerData{
 			ServerName:            st.ServerName,
-			Protocol:              v2193.Protocol,
-			Version:               v2193.Version,
+			Protocol:              p.Number,
+			Version:               p.Version,
 			LevelName:             st.ServerSubName,
 			PlayerCount:           int32(st.PlayerCount),
 			MaxPlayerCount:        int32(st.MaxPlayers),

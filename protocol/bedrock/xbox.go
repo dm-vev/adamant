@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/turn"
 	"github.com/dm-vev/adamant/net/xbox/auth"
@@ -305,12 +304,12 @@ func keepXboxSession(ctx context.Context, l *netconn.Listener, s *auth.Session, 
 	t := time.NewTicker(xboxUpdateInterval)
 	defer t.Stop()
 	for {
-		st := l.ServerStatus()
+		st, p := l.ServerStatus(), l.Advertised()
 		status := mpsd.Status{
 			HostName:       st.ServerName,
 			WorldName:      st.ServerSubName,
-			Version:        v2193.Version,
-			Protocol:       v2193.Protocol,
+			Version:        p.Version,
+			Protocol:       int(p.Number),
 			MemberCount:    st.PlayerCount,
 			MaxMemberCount: st.MaxPlayers,
 		}

@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
@@ -16,16 +17,17 @@ import (
 // emoteChatMuted is set, then the ItemRegistry of the custom items. It
 // returns the error of StartGame, after which nothing is written.
 func startGame(ctx context.Context, conn Conn, g client.Game, c *startContent, emoteChatMuted bool) error {
-	if err := conn.StartGameContext(ctx, gameData(g, c, emoteChatMuted)); err != nil {
+	if err := conn.StartGameContext(ctx, gameData(g, c, protocolOf(conn), emoteChatMuted)); err != nil {
 		return err
 	}
 	_ = conn.WritePacket(&v2193.ItemRegistryPacket{Items: c.ItemRegistry()})
 	return nil
 }
 
-// gameData returns the netconn.GameData that shows a client the game g,
-// with the content c defines.
-func gameData(g client.Game, c *startContent, emoteChatMuted bool) netconn.GameData {
+// gameData returns the netconn.GameData that shows a client of a protocol
+// the game g, with the content c defines, on the version of the game the
+// protocol tells its clients.
+func gameData(g client.Game, c *startContent, p *versions.Protocol, emoteChatMuted bool) netconn.GameData {
 	mode := GameTypeFromMode(g.Level.DefaultGameMode())
 	difficulty, _ := world.DifficultyID(g.Level.Difficulty())
 	permissions := v2193.PermissionLevelMember
@@ -40,7 +42,7 @@ func gameData(g client.Game, c *startContent, emoteChatMuted bool) netconn.GameD
 
 		WorldName:       g.Name,
 		WorldSeed:       g.Level.Seed(),
-		BaseGameVersion: v2193.Version,
+		BaseGameVersion: p.Version,
 
 		Time:       int64(g.Level.Time()),
 		Difficulty: int32(difficulty),

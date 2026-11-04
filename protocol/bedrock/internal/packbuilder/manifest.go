@@ -8,15 +8,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 	"github.com/google/uuid"
 )
 
 // buildManifest creates a JSON manifest file for the client to be able to read the resource pack. It creates
-// basic information and writes it to the pack.
-func buildManifest(dir string, headerUUID, moduleUUID uuid.UUID) error {
-	version, err := parseVersion(v2193.Version)
+// basic information and writes it to the pack, which needs a game of minGameVersion or newer.
+func buildManifest(dir string, headerUUID, moduleUUID uuid.UUID, minGameVersion string) error {
+	version, err := parseVersion(minGameVersion)
 	if err != nil {
 		return fmt.Errorf("parse game version: %w", err)
 	}

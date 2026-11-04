@@ -67,3 +67,16 @@ func TestDefaultProtocols(t *testing.T) {
 		t.Fatalf("protocols %v, primary %v", ps, primary)
 	}
 }
+
+// TestOldestProtocol checks the built resource pack is for the oldest
+// protocol clients may join with, the default of the build without any.
+func TestOldestProtocol(t *testing.T) {
+	a := &versions.Protocol{Number: 10, Version: "1.0"}
+	b := &versions.Protocol{Number: 20, Version: "2.0"}
+	if p := (Config{Protocols: []*versions.Protocol{b, a}}).oldestProtocol(); p != a {
+		t.Errorf("oldest of 20 and 10: %v", p)
+	}
+	if p := (Config{}).oldestProtocol(); p != versions.Default() {
+		t.Errorf("oldest of none: %v", p)
+	}
+}
