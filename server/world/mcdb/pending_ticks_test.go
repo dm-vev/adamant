@@ -24,7 +24,7 @@ func loadNativePendingTicks(t *testing.T, db *DB) []chunk.SavedScheduledTick {
 	if err := db.ldb.Put(key.Sum(keyPendingScheduledTicks), data, nil); err != nil {
 		t.Fatal(err)
 	}
-	ticks, err := db.scheduledUpdates(key)
+	ticks, err := db.scheduledUpdates(ldbGetter{db}, key)
 	if err != nil {
 		t.Fatal(err)
 	}

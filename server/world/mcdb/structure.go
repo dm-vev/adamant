@@ -40,7 +40,7 @@ func (db *DB) SaveStructureTemplate(name string, data map[string]any) error {
 	}
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
-	if err := db.ldb.Put([]byte(keyStructureTemplate+name), b, nil); err != nil {
+	if err := db.putDirect([]byte(keyStructureTemplate+name), b); err != nil {
 		return fmt.Errorf("save structure template %q: %w", name, err)
 	}
 	return nil

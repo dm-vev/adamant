@@ -75,6 +75,33 @@ func (m *WorldDataMemory) save(namespace string, data []byte) {
 	m.data[namespace] = slices.Clone(data)
 }
 
+// Committer is a Provider that saves a checkpoint of its worlds at once:
+// BeginCommit opens a Commit, which holds the writes of a checkpoint until
+// it writes them all together. A server commits each checkpoint so, when
+// its worlds and players are saved through one Committer (mcdb.DB).
+type Committer interface {
+	Provider
+	// BeginCommit opens a Commit of the provider.
+	BeginCommit() Commit
+}
+
+// Commit holds the writes of one checkpoint: it is a Provider whose writes
+// are held, and read back through it, until Commit writes them all, or
+// none. The worlds captured for it (CaptureAllInto) write their columns,
+// data, maps, settings and position tracking through it, and their ticks
+// with SaveTick. A Commit is safe for use by several goroutines.
+type Commit interface {
+	Provider
+	// SaveTick records the current tick of a dimension the checkpoint
+	// saves.
+	SaveTick(dim Dimension, tick int64)
+	// Commit writes the writes held, as checkpoint number id, all together,
+	// and syncs them to disk. If it fails, none was written.
+	Commit(id uint64) error
+	// Discard drops the writes held.
+	Discard()
+}
+
 type positionTrackingProvider interface {
 	LoadPositionTrackingData() (PositionTrackingData, error)
 	SavePositionTrackingData(PositionTrackingData) error

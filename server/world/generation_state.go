@@ -31,23 +31,23 @@ func loadGenerationState(provider Provider, generator Generator, dim Dimension) 
 }
 
 // encodeGenerationState encodes the state of generator for a save of the
-// world of the dimension passed, and returns the function that stores it.
-// Both are nil if the generator keeps no state.
-func encodeGenerationState(provider Provider, generator Generator, dim Dimension) (func() error, error) {
+// world of the dimension passed, and returns the function that stores it
+// through a provider, that of the world or a commit of it. Both are nil if
+// the generator keeps no state.
+func encodeGenerationState(provider Provider, generator Generator, dim Dimension) (func(p Provider) error, error) {
 	persistent, ok := generator.(PersistentGenerator)
 	if !ok {
 		return nil, nil
 	}
-	store, ok := provider.(worldDataProvider)
-	if !ok {
+	if _, ok := provider.(worldDataProvider); !ok {
 		return nil, fmt.Errorf("persistent generator requires provider world data storage")
 	}
 	data, err := persistent.SaveGenerationState()
 	if err != nil {
 		return nil, fmt.Errorf("encode %s: %w", generationStateNamespace(dim), err)
 	}
-	return func() error {
-		if err := store.SaveWorldData(generationStateNamespace(dim), data); err != nil {
+	return func(p Provider) error {
+		if err := saveWorldData(p, generationStateNamespace(dim), data); err != nil {
 			return fmt.Errorf("store %s: %w", generationStateNamespace(dim), err)
 		}
 		return nil

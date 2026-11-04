@@ -2455,7 +2455,7 @@ func (w *World) Save() {
 		return
 	}
 	var cp *Checkpoint
-	<-w.exec(func(tx *Tx) { cp = w.capture(tx, false) })
+	<-w.exec(func(tx *Tx) { cp = w.capture(tx, false, nil) })
 	if cp != nil {
 		_ = cp.Write()
 	}
@@ -2470,7 +2470,7 @@ func (tx *Tx) SaveWorld() {
 		tx.deferToOwner(func(tx *Tx) { tx.SaveWorld() })
 		return
 	}
-	_ = tx.World().capture(tx, false).write(false)
+	_ = tx.World().capture(tx, false, nil).write(false)
 }
 
 // saveChunk saves a chunk and its entities to disk after compacting the chunk.
@@ -2478,11 +2478,12 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 	w.persistChunk(tx, pos, c, true)
 }
 
-// saveChunks saves every loaded chunk as saveChunk does and returns how many
-// it saved. Compacting and copying the blocks of each chunk only touch that
-// chunk, so they are done on all cores while the owner waits; the entities
-// and block entities are then encoded and handed to the saver on the owner.
-func (w *World) saveChunks(tx *Tx) int {
+// saveChunks saves every loaded chunk as saveChunk does, into commit if not
+// nil, and returns how many it saved. Compacting and copying the blocks of
+// each chunk only touch that chunk, so they are done on all cores while the
+// owner waits; the entities and block entities are then encoded and handed
+// to the saver on the owner.
+func (w *World) saveChunks(tx *Tx, commit Commit) int {
 	type persisted struct {
 		pos ChunkPos
 		c   *Column
@@ -2511,14 +2512,18 @@ func (w *World) saveChunks(tx *Tx) int {
 		col := w.columnTo(p.c, p.pos)
 		saved := w.markSaved(p.c)
 		if w.saver == nil {
-			if w.writeColumn(p.pos, col) != nil {
+			var to Provider = w.conf.Provider
+			if commit != nil {
+				to = commit
+			}
+			if w.writeColumn(to, p.pos, col) != nil {
 				p.c.modified = true
 			}
 			continue
 		}
 		col.Chunk = clones[i]
 		col.PostProcessing = clonePostProcessing(col.PostProcessing)
-		w.saver.store(p.pos, col, saved)
+		w.saver.store(p.pos, col, saved, commit)
 	}
 	return len(columns)
 }
@@ -2587,7 +2592,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	col := w.columnTo(c, pos)
 	saved := w.markSaved(c)
 	if w.saver == nil {
-		if w.writeColumn(pos, col) != nil {
+		if w.writeColumn(w.conf.Provider, pos, col) != nil {
 			c.modified = true
 		}
 		return
@@ -2598,7 +2603,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	}
 	col.Chunk = c.Chunk.Clone()
 	col.PostProcessing = clonePostProcessing(col.PostProcessing)
-	w.saver.store(pos, col, saved)
+	w.saver.store(pos, col, saved, nil)
 }
 
 // failedLoad reports whether c stands in for a column that failed to load,
@@ -2625,10 +2630,10 @@ func (w *World) failedLoad(pos ChunkPos, c *Column) bool {
 // unloaded.
 var errGenerationPanicked = errors.New("generation panicked")
 
-// writeColumn stores col through the provider, logging the error it fails
-// with.
-func (w *World) writeColumn(pos ChunkPos, col *chunk.Column) error {
-	err := w.conf.Provider.StoreColumn(pos, w.conf.Dim, col)
+// writeColumn stores col through p, the provider of the world or a commit
+// of it, logging the error it fails with.
+func (w *World) writeColumn(p Provider, pos ChunkPos, col *chunk.Column) error {
+	err := p.StoreColumn(pos, w.conf.Dim, col)
 	if err != nil {
 		w.conf.Log.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 	}
@@ -2813,7 +2818,7 @@ func (w *World) close() {
 			}
 		} else {
 			// The saver writes the columns closed before it stops below.
-			_ = w.capture(tx, true).write(false)
+			_ = w.capture(tx, true, nil).write(false)
 		}
 	})
 	if w.saver != nil {
@@ -3065,13 +3070,17 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 	var (
 		column *chunk.Column
 		staged bool
+		from   Provider
 		err    error
 	)
 	if w.saver != nil {
-		column, staged, err = w.saver.takeStaged(pos)
+		column, staged, from, err = w.saver.takeStaged(pos)
 	}
 	if !staged {
-		column, err = w.conf.Provider.LoadColumn(pos, w.conf.Dim)
+		if from == nil {
+			from = w.conf.Provider
+		}
+		column, err = from.LoadColumn(pos, w.conf.Dim)
 	}
 
 	switch {

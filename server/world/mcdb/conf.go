@@ -52,6 +52,17 @@ func (conf Config) Open(dir string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
+	ldb, err := leveldb.OpenFile(filepath.Join(dir, "db"), conf.LDBOptions)
+	if err != nil {
+		return nil, fmt.Errorf("open db: leveldb: %w", err)
+	}
+	db.ldb = ldb
+	// level.dat is written after each checkpoint is committed: a crash in
+	// between leaves it older than the checkpoint's copy of it.
+	if found, err = db.reconcile(found); err != nil {
+		_ = ldb.Close()
+		return nil, fmt.Errorf("open db: %w", err)
+	}
 	newWorld := !found
 	if newWorld {
 		// A level.dat was not currently present for the world.
@@ -59,11 +70,6 @@ func (conf Config) Open(dir string) (*DB, error) {
 	}
 	db.set = db.ldat.Settings()
 	db.set.SeedSet = !newWorld
-	ldb, err := leveldb.OpenFile(filepath.Join(dir, "db"), conf.LDBOptions)
-	if err != nil {
-		return nil, fmt.Errorf("open db: leveldb: %w", err)
-	}
-	db.ldb = ldb
 	return db, nil
 }
 

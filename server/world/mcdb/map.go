@@ -22,9 +22,19 @@ const mapNativeJavaKeyPrefix = "adamant:map_native_java_"
 // LoadMap decodes a Bedrock map record. Its signed long mapId is shared by the
 // map record, map item component, and MapInfo packets.
 func (db *DB) LoadMap(id int64) (world.MapData, error) {
+	s := db.direct()
+	data, err := db.loadMap(s, id)
+	if err == nil && s.batch.Len() != 0 {
+		err = s.flush()
+	}
+	return data, err
+}
+
+// loadMap reads a map from s, persisting its Java ID in s if it has none.
+func (db *DB) loadMap(s store, id int64) (world.MapData, error) {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
-	b, err := db.ldb.Get(mapRecordKey(id), nil)
+	b, err := s.get(mapRecordKey(id))
 	if err != nil {
 		return world.MapData{}, fmt.Errorf("load map %d: %w", id, err)
 	}
@@ -36,7 +46,7 @@ func (db *DB) LoadMap(id int64) (world.MapData, error) {
 	if err != nil {
 		return world.MapData{}, err
 	}
-	data.JavaID, err = db.javaMapIDLocked(id)
+	data.JavaID, err = db.javaMapIDLocked(s, id)
 	if err != nil {
 		return world.MapData{}, err
 	}
@@ -47,6 +57,18 @@ func (db *DB) LoadMap(id int64) (world.MapData, error) {
 // StoreMap updates native map fields while retaining unknown root and nested
 // decoration tags from the existing Bedrock record.
 func (db *DB) StoreMap(data world.MapData) error {
+	s := db.direct()
+	if err := db.storeMap(s, data); err != nil {
+		return err
+	}
+	if err := s.flush(); err != nil {
+		return fmt.Errorf("store map %d: %w", data.ID, err)
+	}
+	return nil
+}
+
+// storeMap stores a map in s.
+func (db *DB) storeMap(s store, data world.MapData) error {
 	if !data.HasJavaID {
 		return fmt.Errorf("store map %d: Java map ID presence is required", data.ID)
 	}
@@ -60,7 +82,7 @@ func (db *DB) StoreMap(data world.MapData) error {
 	if root == nil {
 		root = map[string]any{}
 	}
-	b, err := db.ldb.Get(key, nil)
+	b, err := s.get(key)
 	if err == nil {
 		root, err = decodeMapRecord(b)
 		if err != nil {
@@ -76,16 +98,12 @@ func (db *DB) StoreMap(data world.MapData) error {
 	if err != nil {
 		return fmt.Errorf("encode map %d: %w", data.ID, err)
 	}
-	if err := db.persistJavaMapMapping(data.ID, data.JavaID); err != nil {
+	if err := db.persistJavaMapMapping(s, data.ID, data.JavaID); err != nil {
 		return fmt.Errorf("store map %d Java ID %d: %w", data.ID, data.JavaID, err)
 	}
-	batch := new(leveldb.Batch)
-	batch.Put(key, encoded)
-	batch.Put(javaMapKey(data.JavaID), int64Bytes(data.ID))
-	batch.Put(nativeJavaMapKey(data.ID), int32Bytes(data.JavaID))
-	if err := db.ldb.Write(batch, nil); err != nil {
-		return fmt.Errorf("store map %d: %w", data.ID, err)
-	}
+	s.put(key, encoded)
+	s.put(javaMapKey(data.JavaID), int64Bytes(data.ID))
+	s.put(nativeJavaMapKey(data.ID), int32Bytes(data.JavaID))
 	return nil
 }
 
@@ -127,7 +145,7 @@ func (db *DB) AllocateMapID() (int64, error) {
 	}
 	next := make([]byte, 8)
 	binary.LittleEndian.PutUint64(next, uint64(candidate-1))
-	if err := db.ldb.Put([]byte(mapNextIDKey), next, nil); err != nil {
+	if err := db.putDirect([]byte(mapNextIDKey), next); err != nil {
 		return 0, fmt.Errorf("allocate map ID: persist reservation: %w", err)
 	}
 	return candidate, nil
@@ -137,17 +155,22 @@ func (db *DB) AllocateMapID() (int64, error) {
 func (db *DB) JavaMapID(nativeID int64) (int32, error) {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
-	return db.javaMapIDLocked(nativeID)
+	s := db.direct()
+	id, err := db.javaMapIDLocked(s, nativeID)
+	if err == nil && s.batch.Len() != 0 {
+		err = s.flush()
+	}
+	return id, err
 }
 
-func (db *DB) javaMapIDLocked(nativeID int64) (int32, error) {
-	b, err := db.ldb.Get(nativeJavaMapKey(nativeID), nil)
+func (db *DB) javaMapIDLocked(s store, nativeID int64) (int32, error) {
+	b, err := s.get(nativeJavaMapKey(nativeID))
 	if err == nil {
 		if len(b) != 4 {
 			return 0, fmt.Errorf("invalid Java map ID mapping for native ID %d: length %d", nativeID, len(b))
 		}
 		javaID := int32(binary.LittleEndian.Uint32(b))
-		if err := db.persistJavaMapMapping(nativeID, javaID); err != nil {
+		if err := db.persistJavaMapMapping(s, nativeID, javaID); err != nil {
 			return 0, err
 		}
 		return javaID, nil
@@ -155,7 +178,7 @@ func (db *DB) javaMapIDLocked(nativeID int64) (int32, error) {
 	if !errors.Is(err, leveldb.ErrNotFound) {
 		return 0, fmt.Errorf("read Java map ID mapping: %w", err)
 	}
-	counter, err := db.ldb.Get([]byte(mapNextJavaIDKey), nil)
+	counter, err := s.get([]byte(mapNextJavaIDKey))
 	var next int64
 	switch {
 	case err == nil:
@@ -172,7 +195,7 @@ func (db *DB) javaMapIDLocked(nativeID int64) (int32, error) {
 		return 0, fmt.Errorf("Java map ID space exhausted")
 	}
 	javaID := int32(next)
-	if err := db.persistJavaMapMapping(nativeID, javaID); err != nil {
+	if err := db.persistJavaMapMapping(s, nativeID, javaID); err != nil {
 		return 0, err
 	}
 	return javaID, nil
@@ -192,15 +215,15 @@ func (db *DB) NativeMapID(javaID int32) (int64, error) {
 	return int64(binary.LittleEndian.Uint64(b)), nil
 }
 
-func (db *DB) persistJavaMapMapping(nativeID int64, javaID int32) error {
-	forward, err := db.ldb.Get(javaMapKey(javaID), nil)
+func (db *DB) persistJavaMapMapping(s store, nativeID int64, javaID int32) error {
+	forward, err := s.get(javaMapKey(javaID))
 	if err == nil && (len(forward) != 8 || int64(binary.LittleEndian.Uint64(forward)) != nativeID) {
 		return fmt.Errorf("Java map ID %d already maps to another native ID", javaID)
 	}
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return err
 	}
-	reverse, err := db.ldb.Get(nativeJavaMapKey(nativeID), nil)
+	reverse, err := s.get(nativeJavaMapKey(nativeID))
 	if err == nil && (len(reverse) != 4 || int32(binary.LittleEndian.Uint32(reverse)) != javaID) {
 		return fmt.Errorf("native map ID %d already maps to another Java ID", nativeID)
 	}
@@ -208,7 +231,7 @@ func (db *DB) persistJavaMapMapping(nativeID int64, javaID int32) error {
 		return err
 	}
 	next := int64(0)
-	counter, err := db.ldb.Get([]byte(mapNextJavaIDKey), nil)
+	counter, err := s.get([]byte(mapNextJavaIDKey))
 	if err == nil {
 		if len(counter) != 8 {
 			return fmt.Errorf("invalid Java map ID counter length %d", len(counter))
@@ -224,11 +247,10 @@ func (db *DB) persistJavaMapMapping(nativeID int64, javaID int32) error {
 		// reading the map writes nothing.
 		return nil
 	}
-	batch := new(leveldb.Batch)
-	batch.Put(javaMapKey(javaID), int64Bytes(nativeID))
-	batch.Put(nativeJavaMapKey(nativeID), int32Bytes(javaID))
-	batch.Put([]byte(mapNextJavaIDKey), int64Bytes(next))
-	return db.ldb.Write(batch, nil)
+	s.put(javaMapKey(javaID), int64Bytes(nativeID))
+	s.put(nativeJavaMapKey(nativeID), int32Bytes(javaID))
+	s.put([]byte(mapNextJavaIDKey), int64Bytes(next))
+	return nil
 }
 
 func javaMapKey(id int32) []byte {

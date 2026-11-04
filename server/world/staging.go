@@ -19,9 +19,10 @@ import (
 // taken by a capture and not yet written, before what the provider holds.
 //
 // The next capture of any world of the provider takes the writes staged,
-// and its Checkpoint writes them before the data it captured. A write that
-// fails is staged again, unless a newer one of the same data was staged
-// since. The reservations of map IDs (MapDataProvider.AllocateMapID and
+// and its Checkpoint writes them before the data it captured, into the
+// commit of the checkpoint if it has one. A write that fails, or whose
+// commit fails, is staged again, unless a newer one of the same data was
+// staged since. The reservations of map IDs (MapDataProvider.AllocateMapID and
 // JavaMapID) are not staged: an ID reserved on disk is never handed out
 // twice, even if the map it was reserved for is lost in a crash, while a
 // reservation staged and lost could hand out an ID the record of a player
@@ -143,7 +144,18 @@ func (s *Staging) write(provider Provider, sw *stagedWrites) error {
 	if sw == nil {
 		return nil
 	}
+	retry, err := s.writeTo(provider, sw)
+	s.finish(sw, retry)
+	return err
+}
+
+// writeTo writes sw, taken by take, through provider, that of the worlds or
+// a commit of it, and returns the writes that failed, to pass to finish,
+// and the errors they failed with. A write of data a newer set taken wrote
+// already is left out.
+func (s *Staging) writeTo(provider Provider, sw *stagedWrites) (*stagedWrites, error) {
 	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	var errs, failed []error
 	retry := &stagedWrites{data: map[string][]byte{}, maps: map[int64]MapData{}}
 	newer := func(key string) bool {
@@ -184,8 +196,13 @@ func (s *Staging) write(provider Provider, sw *stagedWrites) error {
 			retry.maps[id] = data
 		}
 	}
-	s.writeMu.Unlock()
+	return retry, errors.Join(append(errs, failed...)...)
+}
 
+// finish ends the write of sw, taken by take: it is no longer read, and the
+// writes of retry, which failed, are staged again, unless a newer write of
+// the same data was staged since.
+func (s *Staging) finish(sw, retry *stagedWrites) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if i := slices.Index(s.taken, sw); i >= 0 {
@@ -196,20 +213,20 @@ func (s *Staging) write(provider Provider, sw *stagedWrites) error {
 		s.written = nil
 		s.writeMu.Unlock()
 	}
-	if !retry.empty() {
-		cur := s.current()
-		for namespace, data := range retry.data {
-			if _, ok := cur.data[namespace]; !ok {
-				cur.data[namespace] = data
-			}
-		}
-		for id, data := range retry.maps {
-			if _, ok := cur.maps[id]; !ok {
-				cur.maps[id] = data
-			}
+	if retry.empty() {
+		return
+	}
+	cur := s.current()
+	for namespace, data := range retry.data {
+		if _, ok := cur.data[namespace]; !ok {
+			cur.data[namespace] = data
 		}
 	}
-	return errors.Join(append(errs, failed...)...)
+	for id, data := range retry.maps {
+		if _, ok := cur.maps[id]; !ok {
+			cur.maps[id] = data
+		}
+	}
 }
 
 // cloneMapData returns a copy of data that shares no buffer with it.

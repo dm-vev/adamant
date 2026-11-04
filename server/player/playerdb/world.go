@@ -98,6 +98,9 @@ func (p *WorldProvider) Players(yield func(id uuid.UUID, name, xuid string) bool
 	})
 }
 
+// Records returns the database the provider keeps its records in.
+func (p *WorldProvider) Records() Records { return p.db }
+
 // Close closes the fallback, if any.
 func (p *WorldProvider) Close() error {
 	if p.fallback == nil {

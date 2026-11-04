@@ -49,6 +49,11 @@ type chunkSaver struct {
 	// panicked counts, by position, the writes in a row that panicked: a
 	// save whose write panicked is tried once more, then dropped.
 	panicked map[ChunkPos]int
+	// committing holds the writes made into each commit not yet
+	// committed, and inCommit the commit holding the last write of each
+	// position, read back through it until it is committed (committed).
+	committing map[Commit][]pendingColumn
+	inCommit   map[ChunkPos]Commit
 	// writing is the position being written, valid while busy.
 	writing ChunkPos
 	busy    bool
@@ -59,14 +64,17 @@ type chunkSaver struct {
 // pendingColumn is a column waiting to be written, as a column or, if it
 // was staged and encoded since, as its encoding. A pendingColumn with
 // neither was taken by the world goroutine, which wrote it itself. saved is
-// the savedIn of the column saved. A pendingColumn with stage set is no
-// write but the encoding of that staged column.
+// the savedIn of the column saved. commit, if not nil, is the commit of the
+// checkpoint the column is written into, instead of the provider. A
+// pendingColumn with stage set is no write but the encoding of that staged
+// column.
 type pendingColumn struct {
-	pos   ChunkPos
-	col   *chunk.Column
-	enc   *encodedColumn
-	saved uint64
-	stage *stagedColumn
+	pos    ChunkPos
+	col    *chunk.Column
+	enc    *encodedColumn
+	saved  uint64
+	commit Commit
+	stage  *stagedColumn
 }
 
 // stagedColumn is a column unloaded since the world was last captured: the
@@ -169,45 +177,67 @@ func (enc *encodedColumn) decode(br BlockRegistry, r cube.Range) (*chunk.Column,
 
 func newChunkSaver(w *World) *chunkSaver {
 	s := &chunkSaver{
-		w:        w,
-		waiting:  make(map[ChunkPos]*pendingColumn),
-		staged:   make(map[ChunkPos]*stagedColumn),
-		failed:   make(map[ChunkPos]pendingColumn),
-		panicked: make(map[ChunkPos]int),
-		done:     make(chan struct{}),
+		w:          w,
+		waiting:    make(map[ChunkPos]*pendingColumn),
+		staged:     make(map[ChunkPos]*stagedColumn),
+		failed:     make(map[ChunkPos]pendingColumn),
+		panicked:   make(map[ChunkPos]int),
+		committing: make(map[Commit][]pendingColumn),
+		inCommit:   make(map[ChunkPos]Commit),
+		done:       make(chan struct{}),
 	}
 	s.cond.L = &s.mu
 	go s.run()
 	return s
 }
 
-// store queues col, the save numbered saved, to be written for pos. It
-// replaces a save of pos that failed to write.
-func (s *chunkSaver) store(pos ChunkPos, col *chunk.Column, saved uint64) {
+// store queues col, the save numbered saved, to be written for pos, into
+// commit if not nil. It replaces a save of pos that failed to write.
+func (s *chunkSaver) store(pos ChunkPos, col *chunk.Column, saved uint64, commit Commit) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.storeLocked(pendingColumn{pos: pos, col: col, saved: saved})
+	s.storeLocked(pendingColumn{pos: pos, col: col, saved: saved, commit: commit})
 }
 
 // storeLocked queues the write of p, replacing a write of its position
-// still waiting or that failed. The caller holds mu.
+// still waiting or that failed. A write into a commit replacing one
+// waiting goes into that commit; a write into none replacing one into a
+// commit goes into the commit too, which then holds a column newer than
+// its checkpoint rather than none. The caller holds mu.
 func (s *chunkSaver) storeLocked(p pendingColumn) {
 	delete(s.failed, p.pos)
 	if w, ok := s.waiting[p.pos]; ok {
 		w.col, w.enc, w.saved = p.col, p.enc, p.saved
+		if p.commit != nil {
+			w.commit = p.commit
+		}
 		return
 	}
-	q := &pendingColumn{pos: p.pos, col: p.col, enc: p.enc, saved: p.saved}
+	q := &pendingColumn{pos: p.pos, col: p.col, enc: p.enc, saved: p.saved, commit: p.commit}
 	s.waiting[p.pos] = q
 	s.queue = append(s.queue, q)
 	s.cond.Broadcast()
 }
 
-// restore queues again the write of p, which failed.
+// restore stages again the save p of a column unloaded, which failed to
+// write, for the next capture to write, unless the column was staged again
+// since.
 func (s *chunkSaver) restore(p pendingColumn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.storeLocked(p)
+	if _, ok := s.staged[p.pos]; ok {
+		return
+	}
+	s.stagedSeq++
+	sc := &stagedColumn{pos: p.pos, seq: s.stagedSeq, saved: p.saved, col: p.col, enc: p.enc}
+	if sc.enc != nil {
+		s.stagedBytes += sc.enc.size
+	}
+	s.staged[p.pos] = sc
+	if sc.enc == nil {
+		s.queue = append(s.queue, &pendingColumn{pos: p.pos, stage: sc})
+		s.cond.Broadcast()
+	}
 }
 
 // stage stages col, the column at pos as it unloaded, the save numbered
@@ -225,11 +255,12 @@ func (s *chunkSaver) stage(pos ChunkPos, col *chunk.Column, saved uint64) {
 	s.cond.Broadcast()
 }
 
-// commitStaged queues the columns staged to be written, in the order they
-// were staged, before any column saved after: the world calls it when it is
-// captured, so that the columns unloaded since the last capture are written
-// with this one. It waits for a staged column being encoded.
-func (s *chunkSaver) commitStaged() int {
+// commitStaged queues the columns staged to be written, into commit if not
+// nil, in the order they were staged, before any column saved after: the
+// world calls it when it is captured, so that the columns unloaded since
+// the last capture are written with this one. It waits for a staged column
+// being encoded.
+func (s *chunkSaver) commitStaged(commit Commit) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for s.encoding != nil {
@@ -241,7 +272,7 @@ func (s *chunkSaver) commitStaged() int {
 	}
 	slices.SortFunc(staged, func(a, b *stagedColumn) int { return compareSeq(a.seq, b.seq) })
 	for _, sc := range staged {
-		s.storeLocked(pendingColumn{pos: sc.pos, col: sc.col, enc: sc.enc, saved: sc.saved})
+		s.storeLocked(pendingColumn{pos: sc.pos, col: sc.col, enc: sc.enc, saved: sc.saved, commit: commit})
 	}
 	clear(s.staged)
 	s.stagedBytes, s.full = 0, false
@@ -262,8 +293,9 @@ func compareSeq(a, b uint64) int {
 // provider would read it back, for the world goroutine loading pos again.
 // It reports false if pos has no column staged: a write of pos still
 // waiting, or the last that failed, is then written first, for the world
-// to read the column back from the provider.
-func (s *chunkSaver) takeStaged(pos ChunkPos) (*chunk.Column, bool, error) {
+// to read the column back from the Provider returned: the commit that holds
+// it, if a commit not yet committed does, or nil for the world's provider.
+func (s *chunkSaver) takeStaged(pos ChunkPos) (*chunk.Column, bool, Provider, error) {
 	s.mu.Lock()
 	// The saver encodes a staged column it owns: it lands first.
 	for s.encoding != nil && s.encoding.pos == pos {
@@ -278,27 +310,31 @@ func (s *chunkSaver) takeStaged(pos ChunkPos) (*chunk.Column, bool, error) {
 	}
 	s.mu.Unlock()
 	if !ok {
-		s.writeNow(pos)
-		return nil, false, nil
+		var from Provider
+		if c := s.writeNow(pos); c != nil {
+			from = c
+		}
+		return nil, false, from, nil
 	}
 	enc := sc.enc
 	if enc == nil {
 		var err error
 		if enc, err = encodeColumn(sc.col); err != nil {
-			return nil, true, fmt.Errorf("load staged column: %w", err)
+			return nil, true, nil, fmt.Errorf("load staged column: %w", err)
 		}
 	}
 	col, err := enc.decode(s.w.conf.Blocks, s.w.Range())
 	if err != nil {
-		return nil, true, fmt.Errorf("load staged column: %w", err)
+		return nil, true, nil, fmt.Errorf("load staged column: %w", err)
 	}
-	return col, true, nil
+	return col, true, nil, nil
 }
 
 // writeNow writes the save of pos still waiting, if any, or else the last
 // one that failed to write, before the world goroutine reads the column back
-// from the provider.
-func (s *chunkSaver) writeNow(pos ChunkPos) {
+// from the provider. It returns the commit not yet committed that holds the
+// last write of pos, which the column is to be read back through.
+func (s *chunkSaver) writeNow(pos ChunkPos) Commit {
 	s.mu.Lock()
 	p, ok := s.waiting[pos]
 	var now pendingColumn
@@ -321,17 +357,20 @@ func (s *chunkSaver) writeNow(pos ChunkPos) {
 	if ok {
 		_, _ = s.write(now)
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.inCommit[pos]
 }
 
 // saveAttempts is how many writes of a save in a row may panic before the
 // saver drops it.
 const saveAttempts = 2
 
-// write writes the column of p through the provider, decoding it first if
-// it is encoded. A panic of it, of decoding the column or of the provider,
-// is reported as a fault of saving and returned as an error, so that the
-// saver goes on with the next column and flush does not wait for it
-// forever.
+// write writes the column of p through the provider, or into its commit,
+// decoding it first if it is encoded. A panic of it, of decoding the column
+// or of the provider, is reported as a fault of saving and returned as an
+// error, so that the saver goes on with the next column and flush does not
+// wait for it forever.
 func (s *chunkSaver) write(p pendingColumn) (panicked bool, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -349,7 +388,34 @@ func (s *chunkSaver) write(p pendingColumn) (panicked bool, err error) {
 			return false, decodeErr
 		}
 	}
-	return false, s.w.writeColumn(p.pos, col)
+	if p.commit == nil {
+		return false, s.w.writeColumn(s.w.conf.Provider, p.pos, col)
+	}
+	err = s.w.writeColumn(p.commit, p.pos, col)
+	if err == nil {
+		s.mu.Lock()
+		s.committing[p.commit] = append(s.committing[p.commit], pendingColumn{pos: p.pos, col: col, saved: p.saved})
+		s.inCommit[p.pos] = p.commit
+		s.mu.Unlock()
+	}
+	return false, err
+}
+
+// committed tells the saver that commit was committed, or failed to, with
+// err: the columns written into it are then read back from the provider,
+// and, if it failed, are failed saves, written again by the next capture.
+func (s *chunkSaver) committed(commit Commit, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, p := range s.committing[commit] {
+		if s.inCommit[p.pos] == commit {
+			delete(s.inCommit, p.pos)
+		}
+		if _, again := s.waiting[p.pos]; err != nil && !again {
+			s.failed[p.pos] = p
+		}
+	}
+	delete(s.committing, commit)
 }
 
 // takeFailed returns the saves that failed to write and were not saved
@@ -376,7 +442,7 @@ func (s *chunkSaver) flush() {
 
 // close writes the columns still waiting or staged and stops the saver.
 func (s *chunkSaver) close() {
-	s.commitStaged()
+	s.commitStaged(nil)
 	s.mu.Lock()
 	s.closed = true
 	s.cond.Broadcast()
@@ -410,7 +476,7 @@ func (s *chunkSaver) run() {
 			s.encodeStaged(sc)
 			continue
 		}
-		col, enc, saved := p.col, p.enc, p.saved
+		col, enc, saved, commit := p.col, p.enc, p.saved, p.commit
 		if col != nil || enc != nil {
 			delete(s.waiting, p.pos)
 			s.writing, s.busy = p.pos, true
@@ -420,7 +486,7 @@ func (s *chunkSaver) run() {
 		if col == nil && enc == nil {
 			continue
 		}
-		panicked, err := s.write(pendingColumn{pos: p.pos, col: col, enc: enc})
+		panicked, err := s.write(pendingColumn{pos: p.pos, col: col, enc: enc, saved: saved, commit: commit})
 		s.mu.Lock()
 		dropped := false
 		if panicked {

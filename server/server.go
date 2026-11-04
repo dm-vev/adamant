@@ -58,6 +58,10 @@ type Server struct {
 	// world, which it warns of once.
 	playersSkipped atomic.Bool
 	// checkpoints saves the worlds and the players at one instant, and
+	// playersInWorld is set if the player provider keeps the records of
+	// players in the world provider's database, which then commits them
+	// with the worlds at each checkpoint.
+	playersInWorld bool
 	// playerSaves orders the saves of each player.
 	checkpoints checkpointer
 	playerSaves playerSaves

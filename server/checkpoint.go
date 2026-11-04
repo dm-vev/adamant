@@ -93,6 +93,14 @@ func (c *checkpointer) close() {
 //     on disk, such as the blocks a player stands on or its bed;
 //  3. level.dat, through world.SettingsWriter.
 //
+// A world provider that is a world.Committer, as mcdb.DB is, commits the
+// worlds as one write that lands whole or not at all, with the players if
+// the player provider keeps them in the same database
+// (playerdb.WorldProvider): a crash then leaves exactly the last checkpoint
+// committed, and level.dat, written after, is restored from it if it is
+// older. A failed commit leaves the worlds to save their columns and data
+// again at the next checkpoint, and level.dat as it was.
+//
 // No entity is between two worlds while they are captured: transfers out of
 // them are held, and those under way land first (world.HoldTransfers). If
 // the worlds cannot be captured within world.CaptureTimeout, nothing is
@@ -110,14 +118,26 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
 	ctx, cancel := context.WithTimeout(ctx, world.CaptureTimeout)
 	defer cancel()
 	worlds := srv.distinctWorlds()
+	// A provider that commits a checkpoint at once (mcdb) takes the writes
+	// of the worlds, and of the players if it keeps them, in one commit.
+	var commit world.Commit
+	if committer, ok := srv.conf.WorldProvider.(world.Committer); ok && !srv.conf.ReadOnlyWorld {
+		commit = committer.BeginCommit()
+	}
 	release, err := world.HoldTransfers(ctx, worlds)
 	if err != nil {
+		if commit != nil {
+			commit.Discard()
+		}
 		srv.conf.Log.Error("Save checkpoint: "+err.Error(), "reason", reason)
 		return err
 	}
-	cps, err := world.CaptureAll(ctx, worlds, srv.capturePlayers)
+	cps, err := world.CaptureAllInto(ctx, worlds, commit, srv.capturePlayers)
 	release()
 	if len(cps) == 0 && err != nil {
+		if commit != nil {
+			commit.Discard()
+		}
 		srv.conf.Log.Error("Save checkpoint: "+err.Error(), "reason", reason)
 		return err
 	}
@@ -132,18 +152,39 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
 		errs = append(errs, cp.Write())
 	}
 	players := 0
-	for _, cp := range cps {
-		for _, p := range cp.Extra.([]capturedPlayer) {
-			saved, err := srv.playerSaves.save(srv.conf.PlayerProvider, p, cp.World())
-			if err != nil {
-				srv.conf.Log.Error("Save player data: "+err.Error(), "key", p.key)
-				errs = append(errs, err)
-			} else if saved {
-				players++
+	savePlayers := func() {
+		for _, cp := range cps {
+			for _, p := range cp.Extra.([]capturedPlayer) {
+				saved, err := srv.playerSaves.save(srv.conf.PlayerProvider, p, cp.World())
+				if err != nil {
+					srv.conf.Log.Error("Save player data: "+err.Error(), "key", p.key)
+					errs = append(errs, err)
+				} else if saved {
+					players++
+				}
 			}
 		}
 	}
-	if w, ok := srv.conf.WorldProvider.(world.SettingsWriter); ok && settings {
+	// The players go into the commit if their provider keeps them in the
+	// world database, and are saved after it otherwise.
+	inCommit := commit != nil && srv.playersInWorld
+	if inCommit {
+		savePlayers()
+	}
+	var commitErr error
+	if commit != nil {
+		if commitErr = commit.Commit(c.id); commitErr != nil {
+			srv.conf.Log.Error("Save checkpoint: "+commitErr.Error(), "reason", reason)
+			errs = append(errs, commitErr)
+		}
+		for _, cp := range cps {
+			cp.Committed(commitErr)
+		}
+	}
+	if !inCommit {
+		savePlayers()
+	}
+	if w, ok := srv.conf.WorldProvider.(world.SettingsWriter); ok && settings && commitErr == nil {
 		if err := w.WriteSettings(); err != nil {
 			srv.conf.Log.Error("Save checkpoint: " + err.Error())
 			errs = append(errs, err)

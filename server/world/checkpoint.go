@@ -21,8 +21,14 @@ type Checkpoint struct {
 	data     []worldData
 	tracking *positionTrackingCapture
 	// staged holds the writes staged by the worlds of the provider since
-	// the last capture, taken by this one, written before data.
+	// the last capture, taken by this one, written before data. retry
+	// holds those that failed to write into commit, staged again by
+	// Committed.
 	staged *stagedWrites
+	retry  *stagedWrites
+	// commit, if not nil, is the commit of the provider the checkpoint is
+	// written into (CaptureAllInto).
+	commit Commit
 
 	// Extra is what the function passed to CaptureAll returned in the
 	// transaction the world was captured in, such as the players in it.
@@ -30,9 +36,10 @@ type Checkpoint struct {
 }
 
 // worldData is a part of a world saved beside its columns, encoded when the
-// world was captured. write stores it and returns the error, as logged.
+// world was captured. write stores it through p, the provider of the world
+// or a commit of it, and returns the error, as logged.
 type worldData struct {
-	write func() error
+	write func(p Provider) error
 }
 
 // World returns the world captured.
@@ -46,16 +53,40 @@ func (cp *Checkpoint) Columns() int { return cp.columns }
 // the world is read-only and nothing was captured.
 func (cp *Checkpoint) Settings() *Settings { return cp.settings }
 
-// Write writes the checkpoint through the provider of its world and waits
-// for the columns captured to be written: it writes the data and maps the
-// worlds of the provider staged since the last capture (Staging), gives the provider the settings captured and writes the data
-// saved beside the columns, then waits for the columns and writes the
-// position tracking data. It logs every error and
-// returns them joined. The data of a capture older than one already written
-// is not written: the newer holds it. Write waits for the background saver
-// of the world: call it off any world owner.
+// Write writes the checkpoint through the provider of its world, or into
+// the commit it was captured for (CaptureAllInto), and waits for the
+// columns captured to be written: it writes the data and maps the worlds of
+// the provider staged since the last capture (Staging), gives the provider
+// the settings captured and writes the data saved beside the columns, then
+// waits for the columns and writes the position tracking data. It logs
+// every error and returns them joined. The data of a capture older than one
+// already written is not written: the newer holds it. Write waits for the
+// background saver of the world: call it off any world owner. A checkpoint
+// written into a commit is told the commit's outcome with Committed.
 func (cp *Checkpoint) Write() error {
 	return cp.write(true)
+}
+
+// Committed tells the checkpoint, written into a commit by Write, that the
+// commit was committed, or failed to with err: if it failed, the columns
+// and the data staged it held are saved again by the next capture, as
+// failed writes are.
+func (cp *Checkpoint) Committed(err error) {
+	if cp.commit == nil {
+		return
+	}
+	w := cp.w
+	if w.saver != nil {
+		w.saver.committed(cp.commit, err)
+	}
+	if cp.staged != nil {
+		retry := cp.retry
+		if err != nil {
+			retry = cp.staged
+		}
+		w.providerUse.staging.finish(cp.staged, retry)
+		cp.staged, cp.retry = nil, nil
+	}
 }
 
 // write writes cp, waiting for its columns to be written first if flush is
@@ -72,14 +103,29 @@ func (cp *Checkpoint) write(flush bool) error {
 			errs = append(errs, err)
 		}
 	}
-	fail(w.providerUse.staging.write(w.conf.Provider, cp.staged))
-	cp.staged = nil
+	var to Provider = w.conf.Provider
+	if cp.commit != nil {
+		to = cp.commit
+	}
+	if cp.staged != nil {
+		retry, err := w.providerUse.staging.writeTo(to, cp.staged)
+		fail(err)
+		if cp.commit == nil {
+			w.providerUse.staging.finish(cp.staged, retry)
+			cp.staged = nil
+		} else {
+			cp.retry = retry
+		}
+	}
 	w.dataMu.Lock()
 	if cp.seq > w.dataWritten {
 		w.dataWritten = cp.seq
-		w.conf.Provider.SaveSettings(cp.settings)
+		to.SaveSettings(cp.settings)
+		if c, ok := to.(Commit); ok {
+			c.SaveTick(w.conf.Dim, cp.settings.CurrentTick)
+		}
 		for _, d := range cp.data {
-			fail(d.write())
+			fail(d.write(to))
 		}
 	}
 	w.dataMu.Unlock()
@@ -87,7 +133,7 @@ func (cp *Checkpoint) write(flush bool) error {
 		w.saver.flush()
 	}
 	if cp.tracking != nil {
-		if err := w.providerUse.writePositionTracker(w.conf.Provider, cp.tracking); err != nil {
+		if err := w.providerUse.writePositionTracker(to, cp.tracking); err != nil {
 			fail(fmt.Errorf("save position tracking data: %w", err))
 		}
 	}
@@ -103,9 +149,10 @@ func (cp *Checkpoint) write(flush bool) error {
 // that a column unloaded after the capture is never written before it; the
 // rest is left to the Checkpoint returned. Closing captures no position
 // tracking data, which the provider saves as it closes. A read-only world
-// captures nothing.
-func (w *World) capture(tx *Tx, closing bool) *Checkpoint {
-	cp := &Checkpoint{w: w}
+// captures nothing. The columns of a capture for a commit, if not nil, are
+// written into it.
+func (w *World) capture(tx *Tx, closing bool, commit Commit) *Checkpoint {
+	cp := &Checkpoint{w: w, commit: commit}
 	if w.conf.ReadOnly {
 		return cp
 	}
@@ -121,10 +168,10 @@ func (w *World) capture(tx *Tx, closing bool) *Checkpoint {
 	// The columns unloaded since the last capture are written with this
 	// one, before the columns it captures.
 	if w.saver != nil {
-		cp.columns = w.saver.commitStaged()
+		cp.columns = w.saver.commitStaged(commit)
 	}
 	if !closing {
-		cp.columns += w.saveChunks(tx)
+		cp.columns += w.saveChunks(tx, commit)
 	}
 	w.conf.Log.Debug("Updating level.dat values...")
 	cp.settings = w.set.Snapshot()
@@ -147,7 +194,7 @@ func (w *World) capture(tx *Tx, closing bool) *Checkpoint {
 // the state of the generator and the scoreboard, whose writes fail.
 func (w *World) captureData() []worldData {
 	var data []worldData
-	store, stores := w.conf.Provider.(worldDataProvider)
+	_, stores := w.conf.Provider.(worldDataProvider)
 	add := func(what, namespace string, encode func() ([]byte, error)) {
 		if !stores {
 			return
@@ -157,8 +204,8 @@ func (w *World) captureData() []worldData {
 			w.conf.Log.Error("encode " + what + ": " + err.Error())
 			return
 		}
-		data = append(data, worldData{write: func() error {
-			if err := store.SaveWorldData(namespace, b); err != nil {
+		data = append(data, worldData{write: func(p Provider) error {
+			if err := saveWorldData(p, namespace, b); err != nil {
 				return fmt.Errorf("save %s: %w", what, err)
 			}
 			return nil
@@ -167,9 +214,13 @@ func (w *World) captureData() []worldData {
 	add("village POI data", w.villageDataNamespace(), w.encodeVillagePOIs)
 	add("raid data", w.raidDataNamespace(), w.encodeRaids)
 	if w.dragonFight != nil {
-		if provider, ok := w.conf.Provider.(DragonFightProvider); ok {
+		if _, ok := w.conf.Provider.(DragonFightProvider); ok {
 			fight := w.captureDragonFight()
-			data = append(data, worldData{write: func() error {
+			data = append(data, worldData{write: func(p Provider) error {
+				provider, ok := p.(DragonFightProvider)
+				if !ok {
+					return fmt.Errorf("save End dragon fight: provider %T stores none", p)
+				}
 				if err := provider.SaveDragonFightData(fight); err != nil {
 					return fmt.Errorf("save End dragon fight: %w", err)
 				}
@@ -183,10 +234,10 @@ func (w *World) captureData() []worldData {
 	generation, err := encodeGenerationState(w.conf.Provider, w.conf.Generator, w.conf.Dim)
 	switch {
 	case err != nil:
-		data = append(data, worldData{write: func() error { return fmt.Errorf("save generation state: %w", err) }})
+		data = append(data, worldData{write: func(Provider) error { return fmt.Errorf("save generation state: %w", err) }})
 	case generation != nil:
-		data = append(data, worldData{write: func() error {
-			if err := generation(); err != nil {
+		data = append(data, worldData{write: func(p Provider) error {
+			if err := generation(p); err != nil {
 				return fmt.Errorf("save generation state: %w", err)
 			}
 			return nil
@@ -196,8 +247,8 @@ func (w *World) captureData() []worldData {
 	if scoreboard, err := w.encodeScoreboard(); err != nil {
 		w.conf.Log.Error("encode scoreboard: " + err.Error())
 	} else {
-		data = append(data, worldData{write: func() error {
-			if err := w.writeWorldData(scoreboardNamespace, scoreboard); err != nil {
+		data = append(data, worldData{write: func(p Provider) error {
+			if err := saveWorldData(p, scoreboardNamespace, scoreboard); err != nil {
 				return fmt.Errorf("save scoreboard: %w", err)
 			}
 			return nil
@@ -233,6 +284,16 @@ const CaptureTimeout = 5 * time.Second
 // Called from a world owner or a region worker with a world that is not
 // synchronous, CaptureAll returns ErrOwnerWait without capturing.
 func CaptureAll(ctx context.Context, worlds []*World, extra func(tx *Tx) any) ([]*Checkpoint, error) {
+	return CaptureAllInto(ctx, worlds, nil, extra)
+}
+
+// CaptureAllInto captures the worlds passed at one instant as CaptureAll
+// does, for a checkpoint written into commit, a Commit of their provider,
+// all together: the Checkpoints returned write their columns, data and
+// settings into it. The checkpoint is committed once they were written, and
+// each is then told the outcome with Committed. A nil commit captures as
+// CaptureAll does.
+func CaptureAllInto(ctx context.Context, worlds []*World, commit Commit, extra func(tx *Tx) any) ([]*Checkpoint, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -266,7 +327,7 @@ func CaptureAll(ctx context.Context, worlds []*World, extra func(tx *Tx) any) ([
 	ran := make([]bool, n)
 	capture := func(i int, tx *Tx) {
 		w := distinct[i]
-		cp := w.capture(tx, false)
+		cp := w.capture(tx, false, commit)
 		if extra != nil {
 			cp.Extra = extra(tx)
 		}

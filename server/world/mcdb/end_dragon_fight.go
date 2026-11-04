@@ -65,9 +65,26 @@ func (db *DB) LoadDragonFightData() (world.DragonFightData, bool, error) {
 
 // SaveDragonFightData saves native fields while preserving unrelated native NBT.
 func (db *DB) SaveDragonFightData(d world.DragonFightData) error {
+	s := db.direct()
+	root, err := db.encodeDragonFight(s, d)
+	if err != nil {
+		return err
+	}
+	if err := s.flush(); err != nil {
+		return fmt.Errorf("save End dragon fight: %w", err)
+	}
 	db.lmu.Lock()
-	defer db.lmu.Unlock()
+	db.endFight = root
+	db.lmu.Unlock()
+	return nil
+}
+
+// encodeDragonFight stores the dragon fight in s, keeping the native NBT of
+// the last one saved, and returns its root to keep.
+func (db *DB) encodeDragonFight(s store, d world.DragonFightData) (map[string]any, error) {
+	db.lmu.Lock()
 	root := cloneCompound(db.endFight)
+	db.lmu.Unlock()
 	if root == nil { root = map[string]any{} }
 	dataRoot, ok := root["data"].(map[string]any)
 	if !ok { dataRoot = map[string]any{}; root["data"] = dataRoot }
@@ -86,10 +103,9 @@ func (db *DB) SaveDragonFightData(d world.DragonFightData) error {
 		"RespawnTime": d.RespawnTime, "RespawnCrystalIDs": append([]int64(nil), d.RespawnCrystalIDs...),
 	}
 	encoded, err := nbt.MarshalEncoding(root, nbt.LittleEndian)
-	if err != nil { return fmt.Errorf("encode End dragon fight: %w", err) }
-	if err := db.ldb.Put([]byte("TheEnd"), encoded, nil); err != nil { return fmt.Errorf("save End dragon fight: %w", err) }
-	db.endFight = cloneCompound(root)
-	return nil
+	if err != nil { return nil, fmt.Errorf("encode End dragon fight: %w", err) }
+	s.put([]byte("TheEnd"), encoded)
+	return cloneCompound(root), nil
 }
 
 func boolValue(v any) bool {

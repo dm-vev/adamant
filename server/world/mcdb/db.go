@@ -20,7 +20,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
-	"github.com/df-mc/goleveldb/leveldb/util"
 	"github.com/dm-vev/adamant/net/nbt"
 	"github.com/google/uuid"
 )
@@ -41,7 +40,22 @@ type DB struct {
 	emu      sync.Mutex
 	set      *world.Settings
 	endFight map[string]any
+
+	// cmu guards open, the commit open, if any (BeginCommit). A commit
+	// holds it while it writes.
+	cmu  sync.Mutex
+	open *Commit
+	// directWrite, if not nil, is called before each write to the
+	// database outside a commit, for tests.
+	directWrite func()
 }
+
+// getter reads the database, or a commit of it.
+type getter interface {
+	get(key []byte) ([]byte, error)
+}
+
+func worldDataKey(namespace string) []byte { return []byte("adamant:data:" + namespace) }
 
 // Open creates a new provider reading and writing from/to files under the path
 // passed using default options. If a world is present at the path, Open will
@@ -79,14 +93,14 @@ func (db *DB) SaveSettings(s *world.Settings) {
 func (db *DB) LoadWorldData(namespace string) ([]byte, error) {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
-	return db.ldb.Get([]byte("adamant:data:"+namespace), nil)
+	return db.ldb.Get(worldDataKey(namespace), nil)
 }
 
 // SaveWorldData writes an opaque Adamant-owned namespaced payload.
 func (db *DB) SaveWorldData(namespace string, data []byte) error {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
-	return db.ldb.Put([]byte("adamant:data:"+namespace), data, nil)
+	return db.putDirect(worldDataKey(namespace), data)
 }
 
 type positionTrackLastID struct {
@@ -106,15 +120,17 @@ type positionTrackEntry struct {
 func (db *DB) LoadPositionTrackingData() (world.PositionTrackingData, error) {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
+	return db.loadPositionTracking(db.direct())
+}
 
-	b, err := db.ldb.Get([]byte(keyPositionTrackLast), nil)
+// loadPositionTracking reads the position tracking database from s. The
+// caller holds lmu, or s is a commit.
+func (db *DB) loadPositionTracking(s store) (world.PositionTrackingData, error) {
+	b, err := s.get([]byte(keyPositionTrackLast))
 	if errors.Is(err, leveldb.ErrNotFound) {
-		iter := db.ldb.NewIterator(util.BytesPrefix([]byte(keyPositionTrackEntry)), nil)
-		hasEntries := iter.Next()
-		iterErr := iter.Error()
-		iter.Release()
-		if iterErr != nil {
-			return world.PositionTrackingData{}, fmt.Errorf("iterate position tracking entries: %w", iterErr)
+		hasEntries := false
+		if err := s.keys([]byte(keyPositionTrackEntry), func([]byte) { hasEntries = true }); err != nil {
+			return world.PositionTrackingData{}, fmt.Errorf("iterate position tracking entries: %w", err)
 		}
 		if hasEntries {
 			return world.PositionTrackingData{}, errors.New("position tracking entries exist without a last ID")
@@ -132,19 +148,25 @@ func (db *DB) LoadPositionTrackingData() (world.PositionTrackingData, error) {
 		return world.PositionTrackingData{}, fmt.Errorf("decode position tracking last ID: %w", err)
 	}
 	data := world.PositionTrackingData{Next: next}
-	iter := db.ldb.NewIterator(util.BytesPrefix([]byte(keyPositionTrackEntry)), nil)
-	defer iter.Release()
-	for iter.Next() {
-		n, err := strconv.ParseUint(strings.TrimPrefix(string(iter.Key()), keyPositionTrackEntry), 16, 31)
+	var keys [][]byte
+	if err := s.keys([]byte(keyPositionTrackEntry), func(key []byte) { keys = append(keys, key) }); err != nil {
+		return world.PositionTrackingData{}, fmt.Errorf("iterate position tracking entries: %w", err)
+	}
+	for _, key := range keys {
+		value, err := s.get(key)
 		if err != nil {
-			return world.PositionTrackingData{}, fmt.Errorf("decode position tracking entry key %q: %w", iter.Key(), err)
+			return world.PositionTrackingData{}, fmt.Errorf("read position tracking entry %q: %w", key, err)
+		}
+		n, err := strconv.ParseUint(strings.TrimPrefix(string(key), keyPositionTrackEntry), 16, 31)
+		if err != nil {
+			return world.PositionTrackingData{}, fmt.Errorf("decode position tracking entry key %q: %w", key, err)
 		}
 		handle := int32(n)
 		if handle == 0 || handle > next {
 			return world.PositionTrackingData{}, fmt.Errorf("position tracking entry handle %d exceeds last ID %d", handle, next)
 		}
 		var entry positionTrackEntry
-		if err := nbt.UnmarshalEncoding(iter.Value(), &entry, nbt.LittleEndian); err != nil {
+		if err := nbt.UnmarshalEncoding(value, &entry, nbt.LittleEndian); err != nil {
 			return world.PositionTrackingData{}, fmt.Errorf("decode position tracking entry %d: %w", handle, err)
 		}
 		if len(entry.Position) != 3 {
@@ -162,9 +184,6 @@ func (db *DB) LoadPositionTrackingData() (world.PositionTrackingData, error) {
 			Dimension: int(entry.Dimension), Active: entry.Status == 0,
 		})
 	}
-	if err := iter.Error(); err != nil {
-		return world.PositionTrackingData{}, fmt.Errorf("iterate position tracking entries: %w", err)
-	}
 	return data, nil
 }
 
@@ -172,23 +191,27 @@ func (db *DB) LoadPositionTrackingData() (world.PositionTrackingData, error) {
 func (db *DB) SavePositionTrackingData(data world.PositionTrackingData) error {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
-
-	batch := new(leveldb.Batch)
-	iter := db.ldb.NewIterator(util.BytesPrefix([]byte(keyPositionTrackEntry)), nil)
-	for iter.Next() {
-		batch.Delete(slices.Clone(iter.Key()))
+	s := db.direct()
+	if err := db.savePositionTracking(s, data); err != nil {
+		return err
 	}
-	if err := iter.Error(); err != nil {
-		iter.Release()
+	if err := s.flush(); err != nil {
+		return fmt.Errorf("write position tracking data: %w", err)
+	}
+	return nil
+}
+
+// savePositionTracking stores the position tracking database in s.
+func (db *DB) savePositionTracking(s store, data world.PositionTrackingData) error {
+	if err := s.keys([]byte(keyPositionTrackEntry), s.delete); err != nil {
 		return fmt.Errorf("iterate position tracking entries: %w", err)
 	}
-	iter.Release()
 
 	last, err := nbt.MarshalEncoding(positionTrackLastID{ID: positionTrackID(data.Next), Version: 1}, nbt.LittleEndian)
 	if err != nil {
 		return fmt.Errorf("encode position tracking last ID: %w", err)
 	}
-	batch.Put([]byte(keyPositionTrackLast), last)
+	s.put([]byte(keyPositionTrackLast), last)
 	for _, tracked := range data.Entries {
 		if tracked.Handle <= 0 {
 			continue
@@ -205,10 +228,7 @@ func (db *DB) SavePositionTrackingData(data world.PositionTrackingData) error {
 		if err != nil {
 			return fmt.Errorf("encode position tracking entry %d: %w", tracked.Handle, err)
 		}
-		batch.Put(positionTrackKey(tracked.Handle), entry)
-	}
-	if err := db.ldb.Write(batch, nil); err != nil {
-		return fmt.Errorf("write position tracking data: %w", err)
+		s.put(positionTrackKey(tracked.Handle), entry)
 	}
 	return nil
 }
@@ -284,7 +304,7 @@ func (db *DB) SavePlayerSpawnPosition(id uuid.UUID, pos cube.Pos) error {
 		if err != nil {
 			return fmt.Errorf("marshal player data (uuid=%v): %w", id, err)
 		}
-		if err := db.ldb.Put([]byte("player_"+id.String()), data, nil); err != nil {
+		if err := db.putDirect([]byte("player_"+id.String()), data); err != nil {
 			return fmt.Errorf("write player data (uuid=%v): %w", id, err)
 		}
 	} else if d, k, _, err = db.loadPlayerData(id); err != nil {
@@ -296,7 +316,7 @@ func (db *DB) SavePlayerSpawnPosition(id uuid.UUID, pos cube.Pos) error {
 	if err != nil {
 		return fmt.Errorf("marshal server data for player %v: %w", id, err)
 	}
-	if err = db.ldb.Put([]byte(k), data, nil); err != nil {
+	if err = db.putDirect([]byte(k), data); err != nil {
 		return fmt.Errorf("write server data for player %v: %w", id, err)
 	}
 	return nil
@@ -307,7 +327,7 @@ func (db *DB) SavePlayerSpawnPosition(id uuid.UUID, pos cube.Pos) error {
 // leveldb.ErrNotFound) equals true.
 func (db *DB) LoadColumn(pos world.ChunkPos, dim world.Dimension) (*chunk.Column, error) {
 	k := dbKey{pos: pos, dim: dim}
-	col, err := db.column(k)
+	col, err := db.column(ldbGetter{db}, k)
 	if err != nil {
 		return nil, fmt.Errorf("load column %v (%v): %w", pos, dim, err)
 	}
@@ -316,24 +336,24 @@ func (db *DB) LoadColumn(pos world.ChunkPos, dim world.Dimension) (*chunk.Column
 
 const chunkVersion = 42
 
-func (db *DB) column(k dbKey) (*chunk.Column, error) {
+func (db *DB) column(g getter, k dbKey) (*chunk.Column, error) {
 	var cdata chunk.SerialisedData
 	col := new(chunk.Column)
 
-	ver, err := db.version(k)
+	ver, err := db.version(g, k)
 	if err != nil {
 		return nil, fmt.Errorf("read version: %w", err)
 	}
 	if ver != chunkVersion {
 		db.conf.Log.Debug("column: unsupported chunk version, trying to load anyway", "X", k.pos[0], "Z", k.pos[1], "dimension", fmt.Sprint(k.dim), "ver", ver)
 	}
-	cdata.Biomes, err = db.biomes(k)
+	cdata.Biomes, err = db.biomes(g, k)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		// Some chunks still use 2D chunk data and might not have this field, in
 		// which case we can just move on.
 		return nil, fmt.Errorf("read biomes: %w", err)
 	}
-	cdata.SubChunks, err = db.subChunks(k)
+	cdata.SubChunks, err = db.subChunks(g, k)
 	if err != nil {
 		return nil, fmt.Errorf("read sub chunks: %w", err)
 	}
@@ -341,28 +361,28 @@ func (db *DB) column(k dbKey) (*chunk.Column, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode chunk data: %w", err)
 	}
-	col.Entities, err = db.entities(k)
+	col.Entities, err = db.entities(g, k)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		// Not all chunks need to have entities, so an ErrNotFound is fine here.
 		return nil, fmt.Errorf("read entities: %w", err)
 	}
-	col.BlockEntities, err = db.blockEntities(k)
+	col.BlockEntities, err = db.blockEntities(g, k)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		// Same as with entities, an ErrNotFound is fine here.
 		return nil, fmt.Errorf("read block entities: %w", err)
 	}
-	col.ScheduledTicks, err = db.scheduledUpdates(k)
+	col.ScheduledTicks, err = db.scheduledUpdates(g, k)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return nil, fmt.Errorf("read scheduled updates: %w", err)
 	}
-	col.PostProcessing, err = db.postProcessing(k)
+	col.PostProcessing, err = db.postProcessing(g, k)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return nil, fmt.Errorf("read Adamant post-processing markers: %w", err)
 	}
 	if errors.Is(err, leveldb.ErrNotFound) {
 		col.PostProcessing = nil
 	}
-	inhabitedTime, err := db.ldb.Get(k.Sum([]byte(keyAdamantInhabitedTime)...), nil)
+	inhabitedTime, err := g.get(k.Sum([]byte(keyAdamantInhabitedTime)...))
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return nil, fmt.Errorf("read Adamant inhabited time: %w", err)
 	}
@@ -376,8 +396,8 @@ func (db *DB) column(k dbKey) (*chunk.Column, error) {
 	return col, nil
 }
 
-func (db *DB) postProcessing(k dbKey) ([][]uint16, error) {
-	data, err := db.ldb.Get(k.Sum([]byte(keyAdamantPostProcessing)...), nil)
+func (db *DB) postProcessing(g getter, k dbKey) ([][]uint16, error) {
+	data, err := g.get(k.Sum([]byte(keyAdamantPostProcessing)...))
 	if err != nil {
 		return nil, err
 	}
@@ -472,12 +492,12 @@ func encodePostProcessing(markers [][]uint16, dim world.Dimension) ([]byte, erro
 	return data, nil
 }
 
-func (db *DB) version(k dbKey) (byte, error) {
-	p, err := db.ldb.Get(k.Sum(keyVersion), nil)
+func (db *DB) version(g getter, k dbKey) (byte, error) {
+	p, err := g.get(k.Sum(keyVersion))
 	if errors.Is(err, leveldb.ErrNotFound) {
 		// Although the version at `keyVersion` may not be found, there is
 		// another `keyVersionOld` where the version may be found.
-		if p, err = db.ldb.Get(k.Sum(keyVersionOld), nil); err != nil {
+		if p, err = g.get(k.Sum(keyVersionOld)); err != nil {
 			return 0, err
 		}
 	}
@@ -490,8 +510,8 @@ func (db *DB) version(k dbKey) (byte, error) {
 	return p[0], nil
 }
 
-func (db *DB) biomes(k dbKey) ([]byte, error) {
-	biomes, err := db.ldb.Get(k.Sum(key3DData), nil)
+func (db *DB) biomes(g getter, k dbKey) ([]byte, error) {
+	biomes, err := g.get(k.Sum(key3DData))
 	if err != nil {
 		return nil, err
 	}
@@ -503,14 +523,14 @@ func (db *DB) biomes(k dbKey) ([]byte, error) {
 	return biomes[512:], nil
 }
 
-func (db *DB) subChunks(k dbKey) ([][]byte, error) {
+func (db *DB) subChunks(g getter, k dbKey) ([][]byte, error) {
 	r := k.dim.Range()
 	sub := make([][]byte, (r.Height()>>4)+1)
 
 	var err error
 	for i := range sub {
 		y := uint8(i + (r[0] >> 4))
-		sub[i], err = db.ldb.Get(k.Sum(keySubChunkData, y), nil)
+		sub[i], err = g.get(k.Sum(keySubChunkData, y))
 		if errors.Is(err, leveldb.ErrNotFound) {
 			// No sub chunk present at this Y level. We skip this one and move
 			// to the next, which might still be present.
@@ -522,17 +542,17 @@ func (db *DB) subChunks(k dbKey) ([][]byte, error) {
 	return sub, nil
 }
 
-func (db *DB) entities(k dbKey) ([]chunk.Entity, error) {
+func (db *DB) entities(g getter, k dbKey) ([]chunk.Entity, error) {
 	// https://learn.microsoft.com/en-us/minecraft/creator/documents/actorstorage
-	ids, err := db.ldb.Get(append([]byte(keyEntityIdentifiers), index(k.pos, k.dim)...), nil)
+	ids, err := g.get(append([]byte(keyEntityIdentifiers), index(k.pos, k.dim)...))
 	if err != nil {
 		// Key not found, try old method of loading entities.
-		return db.entitiesOld(k)
+		return db.entitiesOld(g, k)
 	}
 	entities := make([]chunk.Entity, 0, len(ids)/8)
 	for i := 0; i < len(ids); i += 8 {
 		id := int64(binary.LittleEndian.Uint64(ids[i : i+8]))
-		data, err := db.ldb.Get(entityIndex(id), nil)
+		data, err := g.get(entityIndex(id))
 		if errors.Is(err, leveldb.ErrNotFound) {
 			// A world saved before ownership checks may list an entity whose
 			// record another chunk's save removed. The entity is gone, so the
@@ -553,8 +573,8 @@ func (db *DB) entities(k dbKey) ([]chunk.Entity, error) {
 	return entities, nil
 }
 
-func (db *DB) entitiesOld(k dbKey) ([]chunk.Entity, error) {
-	data, err := db.ldb.Get(k.Sum(keyEntitiesOld), nil)
+func (db *DB) entitiesOld(g getter, k dbKey) ([]chunk.Entity, error) {
+	data, err := g.get(k.Sum(keyEntitiesOld))
 	if err != nil {
 		return nil, err
 	}
@@ -578,10 +598,10 @@ func (db *DB) entitiesOld(k dbKey) ([]chunk.Entity, error) {
 	return entities, nil
 }
 
-func (db *DB) blockEntities(k dbKey) ([]chunk.BlockEntity, error) {
+func (db *DB) blockEntities(g getter, k dbKey) ([]chunk.BlockEntity, error) {
 	var blockEntities []chunk.BlockEntity
 
-	data, err := db.ldb.Get(k.Sum(keyBlockEntities), nil)
+	data, err := g.get(k.Sum(keyBlockEntities))
 	if err != nil {
 		return blockEntities, err
 	}
@@ -600,8 +620,8 @@ func (db *DB) blockEntities(k dbKey) ([]chunk.BlockEntity, error) {
 	return blockEntities, nil
 }
 
-func (db *DB) scheduledUpdates(k dbKey) ([]chunk.SavedScheduledTick, error) {
-	data, err := db.ldb.Get(k.Sum(keyPendingScheduledTicks), nil)
+func (db *DB) scheduledUpdates(g getter, k dbKey) ([]chunk.SavedScheduledTick, error) {
+	data, err := g.get(k.Sum(keyPendingScheduledTicks))
 	if err != nil {
 		return nil, err
 	}
@@ -658,70 +678,74 @@ func (db *DB) scheduledUpdates(k dbKey) ([]chunk.SavedScheduledTick, error) {
 // error is returned if storing was unsuccessful.
 func (db *DB) StoreColumn(pos world.ChunkPos, dim world.Dimension, col *chunk.Column) error {
 	k := dbKey{pos: pos, dim: dim}
-	if err := db.storeColumn(k, col); err != nil {
+	s := db.direct()
+	if err := db.storeColumn(s, k, col); err != nil {
+		return fmt.Errorf("store column %v (%v): %w", pos, dim, err)
+	}
+	if err := s.flush(); err != nil {
 		return fmt.Errorf("store column %v (%v): %w", pos, dim, err)
 	}
 	return nil
 }
 
-func (db *DB) storeColumn(k dbKey, col *chunk.Column) error {
+// storeColumn stores col in s. The entities it no longer holds are deleted
+// unless another column stored them since, as s reads back: within a
+// commit, a column stored before in the same commit.
+func (db *DB) storeColumn(s store, k dbKey, col *chunk.Column) error {
 	postProcessing, err := encodePostProcessing(col.PostProcessing, k.dim)
 	if err != nil {
 		return fmt.Errorf("encode Adamant post-processing markers: %w", err)
 	}
 	data := chunk.Encode(col.Chunk, chunk.DiskEncoding)
-	n := 9 + len(data.SubChunks) + len(col.Entities)
-	batch := leveldb.MakeBatch(n)
 
-	db.storeVersion(batch, k, chunkVersion)
-	db.storeBiomes(batch, k, data.Biomes)
-	db.storeSubChunks(batch, k, data.SubChunks, col.Chunk.Range())
-	db.storeFinalisation(batch, k, finalisationPopulated)
+	db.storeVersion(s, k, chunkVersion)
+	db.storeBiomes(s, k, data.Biomes)
+	db.storeSubChunks(s, k, data.SubChunks, col.Chunk.Range())
+	db.storeFinalisation(s, k, finalisationPopulated)
 	db.emu.Lock()
 	defer db.emu.Unlock()
-	db.storeEntities(batch, k, col.Entities)
-	db.storeBlockEntities(batch, k, col.BlockEntities)
-	db.storeScheduledUpdates(batch, k, col.ScheduledTicks)
+	db.storeEntities(s, k, col.Entities)
+	db.storeBlockEntities(s, k, col.BlockEntities)
+	db.storeScheduledUpdates(s, k, col.ScheduledTicks)
 	if len(postProcessing) == 0 {
-		batch.Delete(k.Sum([]byte(keyAdamantPostProcessing)...))
+		s.delete(k.Sum([]byte(keyAdamantPostProcessing)...))
 	} else {
-		batch.Put(k.Sum([]byte(keyAdamantPostProcessing)...), postProcessing)
+		s.put(k.Sum([]byte(keyAdamantPostProcessing)...), postProcessing)
 	}
 	inhabitedTime := make([]byte, 8)
 	binary.LittleEndian.PutUint64(inhabitedTime, col.InhabitedTime)
-	batch.Put(k.Sum([]byte(keyAdamantInhabitedTime)...), inhabitedTime)
-
-	return db.ldb.Write(batch, nil)
+	s.put(k.Sum([]byte(keyAdamantInhabitedTime)...), inhabitedTime)
+	return nil
 }
 
-func (db *DB) storeVersion(batch *leveldb.Batch, k dbKey, ver uint8) {
-	batch.Put(k.Sum(keyVersion), []byte{ver})
+func (db *DB) storeVersion(s store, k dbKey, ver uint8) {
+	s.put(k.Sum(keyVersion), []byte{ver})
 }
 
 var emptyHeightmap = make([]byte, 512)
 
-func (db *DB) storeBiomes(batch *leveldb.Batch, k dbKey, biomes []byte) {
-	batch.Put(k.Sum(key3DData), append(emptyHeightmap, biomes...))
+func (db *DB) storeBiomes(s store, k dbKey, biomes []byte) {
+	s.put(k.Sum(key3DData), append(emptyHeightmap, biomes...))
 }
 
-func (db *DB) storeSubChunks(batch *leveldb.Batch, k dbKey, subChunks [][]byte, r cube.Range) {
+func (db *DB) storeSubChunks(s store, k dbKey, subChunks [][]byte, r cube.Range) {
 	for i, sub := range subChunks {
-		batch.Put(k.Sum(keySubChunkData, byte(i+(r[0]>>4))), sub)
+		s.put(k.Sum(keySubChunkData, byte(i+(r[0]>>4))), sub)
 	}
 }
 
-func (db *DB) storeFinalisation(batch *leveldb.Batch, k dbKey, finalisation uint32) {
+func (db *DB) storeFinalisation(s store, k dbKey, finalisation uint32) {
 	p := make([]byte, 4)
 	binary.LittleEndian.PutUint32(p, finalisation)
-	batch.Put(k.Sum(keyFinalisation), p)
+	s.put(k.Sum(keyFinalisation), p)
 }
 
-func (db *DB) storeEntities(batch *leveldb.Batch, k dbKey, entities []chunk.Entity) {
+func (db *DB) storeEntities(s store, k dbKey, entities []chunk.Entity) {
 	idsKey := append([]byte(keyEntityIdentifiers), index(k.pos, k.dim)...)
 
 	// load the ids of the previous entities
 	var previousIDs []int64
-	digpPrev, err := db.ldb.Get(idsKey, nil)
+	digpPrev, err := s.get(idsKey)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		db.conf.Log.Error("store entities: read chunk entity IDs: " + err.Error())
 	}
@@ -741,30 +765,30 @@ func (db *DB) storeEntities(batch *leveldb.Batch, k dbKey, entities []chunk.Enti
 			db.conf.Log.Error("store entities: encode NBT: " + err.Error())
 			continue
 		}
-		batch.Put(entityIndex(e.ID), b)
+		s.put(entityIndex(e.ID), b)
 		newIDs = append(newIDs, e.ID)
 	}
 
 	// Remove entities that left the chunk, unless another chunk already
 	// stored them after they moved there.
 	for _, uniqueID := range previousIDs {
-		if !slices.Contains(newIDs, uniqueID) && db.ownsEntity(k, uniqueID) {
-			batch.Delete(entityIndex(uniqueID))
+		if !slices.Contains(newIDs, uniqueID) && db.ownsEntity(s, k, uniqueID) {
+			s.delete(entityIndex(uniqueID))
 		}
 	}
 	if len(entities) == 0 {
-		batch.Delete(idsKey)
+		s.delete(idsKey)
 	} else {
 		// Save the index of entities in the chunk.
 		ids := make([]byte, 0, 8*len(newIDs))
 		for _, uniqueID := range newIDs {
 			ids = binary.LittleEndian.AppendUint64(ids, uint64(uniqueID))
 		}
-		batch.Put(idsKey, ids)
+		s.put(idsKey, ids)
 	}
 
 	// Remove old entity data for this chunk.
-	batch.Delete(k.Sum(keyEntitiesOld))
+	s.delete(k.Sum(keyEntitiesOld))
 }
 
 // entityOwnerKey is the entity record field naming the chunk whose entity
@@ -780,8 +804,8 @@ func entityOwner(k dbKey) map[string]any {
 // ownsEntity reports whether the stored record of the entity belongs to the
 // chunk k. Records without an owner field, written before it existed, belong
 // to the chunk holding their position.
-func (db *DB) ownsEntity(k dbKey, id int64) bool {
-	data, err := db.ldb.Get(entityIndex(id), nil)
+func (db *DB) ownsEntity(s store, k dbKey, id int64) bool {
+	data, err := s.get(entityIndex(id))
 	if err != nil {
 		return false
 	}
@@ -809,9 +833,9 @@ func entityIndex(id int64) []byte {
 	return binary.LittleEndian.AppendUint64([]byte(keyEntity), uint64(id))
 }
 
-func (db *DB) storeBlockEntities(batch *leveldb.Batch, k dbKey, blockEntities []chunk.BlockEntity) {
+func (db *DB) storeBlockEntities(s store, k dbKey, blockEntities []chunk.BlockEntity) {
 	if len(blockEntities) == 0 {
-		batch.Delete(k.Sum(keyBlockEntities))
+		s.delete(k.Sum(keyBlockEntities))
 		return
 	}
 
@@ -827,12 +851,12 @@ func (db *DB) storeBlockEntities(batch *leveldb.Batch, k dbKey, blockEntities []
 			db.conf.Log.Error("store block entities: encode nbt: " + err.Error())
 		}
 	}
-	batch.Put(k.Sum(keyBlockEntities), buf.Bytes())
+	s.put(k.Sum(keyBlockEntities), buf.Bytes())
 }
 
-func (db *DB) storeScheduledUpdates(batch *leveldb.Batch, k dbKey, updates []chunk.SavedScheduledTick) {
+func (db *DB) storeScheduledUpdates(s store, k dbKey, updates []chunk.SavedScheduledTick) {
 	if len(updates) == 0 {
-		batch.Delete(k.Sum(keyPendingScheduledTicks))
+		s.delete(k.Sum(keyPendingScheduledTicks))
 		return
 	}
 	entries := make([]scheduledTickNBT, len(updates))
@@ -861,7 +885,7 @@ func (db *DB) storeScheduledUpdates(batch *leveldb.Batch, k dbKey, updates []chu
 		db.conf.Log.Error("store scheduled updates: encode nbt: " + err.Error())
 		return
 	}
-	batch.Put(k.Sum(keyPendingScheduledTicks), data)
+	s.put(k.Sum(keyPendingScheduledTicks), data)
 }
 
 type scheduledTickNBT struct {

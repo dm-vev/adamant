@@ -300,6 +300,14 @@ func (conf Config) New() *Server {
 		idleStop:   make(chan struct{}),
 	}
 	srv.checkpoints.srv, srv.checkpoints.stop, srv.checkpoints.done = srv, make(chan struct{}), make(chan struct{})
+	if wp, ok := conf.PlayerProvider.(interface{ Records() playerdb.Records }); ok {
+		srv.playersInWorld = any(wp.Records()) == any(conf.WorldProvider)
+	}
+	if _, ok := conf.WorldProvider.(world.Committer); ok && !srv.playersInWorld {
+		if _, nop := conf.PlayerProvider.(player.NopProvider); !nop {
+			conf.Log.Info("Players are saved apart from the world: each checkpoint commits the worlds at once, then saves the players.")
+		}
+	}
 	if wl, ok := conf.Allower.(*Whitelist); ok {
 		srv.whitelist = wl
 	} else if holder, ok := conf.Allower.(interface{ underlyingWhitelist() *Whitelist }); ok {

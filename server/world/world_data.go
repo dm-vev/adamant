@@ -38,10 +38,11 @@ func (w *World) SaveWorldData(namespace string, data []byte) error {
 	return nil
 }
 
-// writeWorldData writes a namespaced payload to the provider at once, as a
-// save of the world does with the data it captured.
-func (w *World) writeWorldData(namespace string, data []byte) error {
-	store, ok := w.conf.Provider.(worldDataProvider)
+// saveWorldData writes a namespaced payload through p, the provider of a
+// world or a commit of it, at once, as a save of the world does with the
+// data it captured.
+func saveWorldData(p Provider, namespace string, data []byte) error {
+	store, ok := p.(worldDataProvider)
 	if !ok {
 		return errors.New("world provider does not support namespaced data")
 	}
