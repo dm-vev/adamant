@@ -249,6 +249,14 @@
   QueryPlugins = false
   Transport = "nethernet"
 
+[Permissions]
+  CommandBlockLevel = 2
+  DefaultLevel = 0
+  OperatorLevel = 4
+  RoleLevel = 3
+
+  [Permissions.Commands]
+
 [Players]
   Folder = "players"
   MaxCount = 0

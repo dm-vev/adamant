@@ -323,6 +323,7 @@ func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Con
 	if err != nil {
 		return conf, bc, jc, err
 	}
+	conf.StrictConfig = f.Program.Server.StrictConfig
 	conf.Listeners = append(conf.Listeners, bc.Listener)
 	if jc.Address != "" {
 		conf.Listeners = append(conf.Listeners, jc.Listener)

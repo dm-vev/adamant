@@ -347,6 +347,7 @@ server	const	Banned	server.List = 2
 server	const	DefaultBackupKeep	untyped int = 10
 server	const	DefaultCommandBlockLevel	server/cmd.Level = 2
 server	const	DefaultOperatorLevel	server/cmd.Level = 4
+server	const	DefaultRoleLevel	server/cmd.Level = 3
 server	const	DefaultSaveInterval	time.Duration = 300000000000
 server	const	DefaultSpawnTimeout	time.Duration = 60000000000
 server	const	DefaultSpawnTimeoutMessage	untyped string = "Timed out while joining the game."
@@ -361,6 +362,7 @@ server	const	ReconnectKickExisting	server.ReconnectPolicy = 1
 server	const	ReconnectKickJoining	server.ReconnectPolicy = 0
 server	const	Whitelisted	server.List = 1
 server	func	DefaultConfig	func() server.UserConfig
+server	func	DefaultPermissionConfig	func() server.PermissionConfig
 server	func	LoadWhitelist	func(path string) (*server.Whitelist, error)
 server	func	New	func() *server.Server
 server	func	ReservedName	func(name string) error
@@ -380,7 +382,7 @@ server	method	Server.Banned	func(addr string, name string) (string, bool)
 server	method	Server.Close	func() error
 server	method	Server.CloseOnProgramEnd	func()
 server	method	Server.CommandBlockLevel	func() server/cmd.Level
-server	method	Server.CommandLevel	func(_ string, declared server/cmd.Level) server/cmd.Level
+server	method	Server.CommandLevel	func(name string, declared server/cmd.Level) server/cmd.Level
 server	method	Server.Deop	func(name string) (bool, error)
 server	method	Server.End	func() *server/world.World
 server	method	Server.IdentityKey	func() server/identity.Mode
@@ -447,7 +449,7 @@ server	type	BackupConfig	struct{Folder string; Format server.BackupFormat; Inter
 server	type	BackupFormat	uint8
 server	type	BackupInfo	struct{Name string; Path string; Created time.Time; Took time.Duration; Reason string; By server.Actor; Format server.BackupFormat; Checkpoint server/world/mcdb.CheckpointRecord; Files int; Bytes int64; Linked int; Verified string; Admin []string}
 server	type	BackupStatus	struct{Running bool; Started time.Time; By server.Actor; Last *server.BackupInfo; LastErr error; LastErrAt time.Time; Next time.Time}
-server	type	Config	struct{Log *log/slog.Logger; Listeners []func(conf server.Config, host server.Host) (server.Listener, error); Name string; Allower server.Allower; ReconnectPolicy server.ReconnectPolicy; SpawnTimeout time.Duration; SpawnTimeoutMessage string; IdentityKey server/identity.Mode; MaxPlayers int; MaxChunkRadius int; JoinMessage server/player/chat.Translation; QuitMessage server/player/chat.Translation; ShutdownMessage server/player/chat.Translation; StatusProvider server.StatusProvider; PlayerProvider server/player.Provider; WorldProvider server/world.Provider; ReadOnlyWorld bool; SaveChunks server/world.ChunkSaving; Generator func(dim server/world.Dimension, seed int64) server/world.Generator; GeneratorProfile server/world.GeneratorProfile; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; OverworldSeed int64; RandomTickSpeed int; SaveInterval time.Duration; StagingLimit int; ChunkUnloadInterval time.Duration; Entities server/world.EntityRegistry; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension server/world.Dimension; PortalDisabledMessage string; CrashReports string; Blocks server/world.BlockRegistry; AntiCheat *server/player/anticheat.Config; Backup server.BackupConfig; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool}
+server	type	Config	struct{Log *log/slog.Logger; Listeners []func(conf server.Config, host server.Host) (server.Listener, error); Name string; Allower server.Allower; ReconnectPolicy server.ReconnectPolicy; SpawnTimeout time.Duration; SpawnTimeoutMessage string; IdentityKey server/identity.Mode; MaxPlayers int; MaxChunkRadius int; JoinMessage server/player/chat.Translation; QuitMessage server/player/chat.Translation; ShutdownMessage server/player/chat.Translation; StatusProvider server.StatusProvider; PlayerProvider server/player.Provider; WorldProvider server/world.Provider; ReadOnlyWorld bool; SaveChunks server/world.ChunkSaving; Generator func(dim server/world.Dimension, seed int64) server/world.Generator; GeneratorProfile server/world.GeneratorProfile; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; OverworldSeed int64; RandomTickSpeed int; SaveInterval time.Duration; StagingLimit int; ChunkUnloadInterval time.Duration; Entities server/world.EntityRegistry; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension server/world.Dimension; PortalDisabledMessage string; CrashReports string; Blocks server/world.BlockRegistry; AntiCheat *server/player/anticheat.Config; Backup server.BackupConfig; Permissions *server.PermissionConfig; StrictConfig bool; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool}
 server	type	Found	uint8
 server	type	HealthCheck	struct{Name string; OK bool; Detail string}
 server	type	HealthOptions	struct{LiveTimeout time.Duration; ReadyTickAge time.Duration}
@@ -456,12 +458,13 @@ server	type	Host	interface{PlayerNames() []string; Status() server.Status; White
 server	type	List	uint8
 server	type	Listener	interface{Accept() (server/client.Join, error); io.Closer}
 server	type	OnlinePlayer	struct{Name string; XUID string; UUID github.com/google/uuid.UUID; Handle *server/world.EntityHandle}
+server	type	PermissionConfig	struct{DefaultLevel server/cmd.Level; OperatorLevel server/cmd.Level; CommandBlockLevel server/cmd.Level; RoleLevel server/cmd.Level; Commands map[string]server/cmd.Level}
 server	type	ReconnectPolicy	uint8
-server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
+server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
 server	type	Target	struct{Key server/identity.Key; Name string; Found server.Found; Pending bool}
-server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig}
+server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; Commands map[string]int}}
 server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; kickMsg string; format server.whitelistFormat}
 server	var	DefaultHealthOptions	server.HealthOptions
 server	var	ErrBackupNotFound	error
@@ -6320,6 +6323,7 @@ server/cmd/builtin	type	ReturnCommandHandler	interface{ReturnCommand(result int,
 server/config	func	Address	func(p *server/config.Problems, key string, network string, value string) bool
 server/config	func	AtLeast	func[T server/config.Ordered](p *server/config.Problems, key string, v T, min T) bool
 server/config	func	AtMost	func[T server/config.Ordered](p *server/config.Problems, key string, v T, max T) bool
+server/config	func	Closest	func(name string, candidates []string) string
 server/config	func	Duration	func(p *server/config.Problems, key string, value string) (time.Duration, bool)
 server/config	func	File	func(p *server/config.Problems, key string, path string) bool
 server/config	func	Folder	func(p *server/config.Problems, key string, path string) bool

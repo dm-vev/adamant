@@ -153,6 +153,21 @@
   # also reads every key of the world (as long as reading the whole world), "off" does not check.
   Verify = "record"
 
+[Permissions]
+  # The levels of players and commands, as Java Edition numbers them: 0 anyone (help, list, msg, me), 1 moderator,
+  # 2 game master (give, tp, gamemode, command blocks), 3 admin (ban, kick, op, whitelist), 4 owner (stop, save-all).
+  # CommandBlockLevel is the level command blocks run commands at.
+  CommandBlockLevel = 2
+  # DefaultLevel is the level of players who are not operators.
+  DefaultLevel = 0
+  # OperatorLevel is the level /op gives, and that of operators with no level of their own in ops.json.
+  OperatorLevel = 4
+  # RoleLevel is the level an operator needs to change the roles of players from the game's player list.
+  RoleLevel = 3
+
+  # Commands sets the level a command needs, by its name or an alias, such as kick = 2 or version = 2.
+  [Permissions.Commands]
+
 [AntiCheat]
   # Enabled switches the anti-cheat on or off: the checks the game runs on what the clients of players ask.
   # Each check has a table of its own, [AntiCheat.<Check>], with the keys Enabled, Action ("log", "setback" for

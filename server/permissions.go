@@ -2,9 +2,13 @@ package server
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
@@ -18,6 +22,94 @@ const DefaultOperatorLevel = cmd.LevelOwner
 // DefaultCommandBlockLevel is the level command blocks run commands at,
 // as Java fixes it: cmd.LevelGameMaster.
 const DefaultCommandBlockLevel = cmd.LevelGameMaster
+
+// DefaultRoleLevel is the level an operator needs to change the roles of
+// players from the player list of the game.
+const DefaultRoleLevel = cmd.LevelAdmin
+
+// PermissionConfig are the levels of the players and of the commands of a
+// server, as [Permissions] of config.toml sets them.
+type PermissionConfig struct {
+	// DefaultLevel is the level of the players who are not operators.
+	DefaultLevel cmd.Level
+	// OperatorLevel is the level /op gives, and that of the operators
+	// whose entry of ops.json sets none.
+	OperatorLevel cmd.Level
+	// CommandBlockLevel is the level command blocks run commands at.
+	CommandBlockLevel cmd.Level
+	// RoleLevel is the level an operator needs to change the roles of
+	// players from the player list of the game.
+	RoleLevel cmd.Level
+	// Commands sets the level a command needs, by its name or one of its
+	// aliases, in place of the level it declares.
+	Commands map[string]cmd.Level
+}
+
+// DefaultPermissionConfig returns Java's levels: players who are not
+// operators at 0, operators at 4, command blocks at 2, and every command at
+// the level it declares.
+func DefaultPermissionConfig() PermissionConfig {
+	return PermissionConfig{
+		OperatorLevel:     DefaultOperatorLevel,
+		CommandBlockLevel: DefaultCommandBlockLevel,
+		RoleLevel:         DefaultRoleLevel,
+	}
+}
+
+// permissionConfig returns the PermissionConfig of the server.
+func (srv *Server) permissionConfig() PermissionConfig {
+	if srv.conf.Permissions == nil {
+		return DefaultPermissionConfig()
+	}
+	return *srv.conf.Permissions
+}
+
+// resolveCommandLevels resolves the names of PermissionConfig.Commands to
+// the commands registered, which may be aliases, so that CommandLevel
+// finds them by the name of the command. A name no command has is a
+// warning naming the closest command, and with Config.StrictConfig an
+// error, of which Listen panics: it runs once the commands of the server
+// are registered.
+func (srv *Server) resolveCommandLevels() {
+	conf := srv.permissionConfig()
+	if len(conf.Commands) == 0 {
+		return
+	}
+	registered := cmd.Commands()
+	known := make([]string, 0, len(registered))
+	for name := range registered {
+		known = append(known, name)
+	}
+	slices.Sort(known)
+	levels := make(map[string]cmd.Level, len(conf.Commands))
+	var unknown []string
+	names := slices.Sorted(maps.Keys(conf.Commands))
+	for _, name := range names {
+		c, ok := registered[normalizeCommandName(name)]
+		if !ok {
+			msg := fmt.Sprintf("Permissions.Commands.%s: no command is named %s", name, name)
+			if guess := config.Closest(normalizeCommandName(name), known); guess != "" {
+				msg += ", did you mean " + guess + "?"
+			}
+			unknown = append(unknown, msg)
+			continue
+		}
+		levels[c.Name()] = conf.Commands[name]
+	}
+	srv.commandLevels.Store(&levels)
+	for _, msg := range unknown {
+		if srv.conf.StrictConfig {
+			panic("config.toml: " + msg)
+		}
+		srv.conf.Log.Warn("config.toml: " + msg)
+	}
+}
+
+// normalizeCommandName returns the name a command is registered by of a
+// name config.toml writes: lower case, without a leading slash.
+func normalizeCommandName(name string) string {
+	return strings.ToLower(strings.TrimPrefix(strings.TrimSpace(name), "/"))
+}
 
 // PlayerLevel returns the level of the player online of the UUID passed:
 // the level of an operator, by its account on a server keyed by XUID and
@@ -37,12 +129,13 @@ func (srv *Server) PlayerLevel(id uuid.UUID) cmd.Level {
 
 // levelOf returns the level of the player of the identity passed: that of
 // its entry of ops.json, by its account on a server keyed by XUID and by
-// its name on one keyed by name, or cmd.LevelAll if it is no operator.
+// its name on one keyed by name, or the DefaultLevel of players who are no
+// operators.
 func (srv *Server) levelOf(id client.Identity) cmd.Level {
 	if en, ok := srv.operatorEntry(id); ok {
 		return srv.entryLevel(en)
 	}
-	return cmd.LevelAll
+	return srv.permissionConfig().DefaultLevel
 }
 
 // operatorEntry returns the entry of ops.json of the player of the
@@ -72,7 +165,10 @@ func (srv *Server) entryLevel(en entry) cmd.Level {
 // OpLevel returns the level /op gives, and that of the operators whose
 // entry of ops.json sets none.
 func (srv *Server) OpLevel() cmd.Level {
-	return DefaultOperatorLevel
+	if srv == nil {
+		return DefaultOperatorLevel
+	}
+	return srv.permissionConfig().OperatorLevel
 }
 
 // OperatorLevel returns the level of the operator of the name passed, or
@@ -145,15 +241,33 @@ func (srv *Server) refreshAllPermissions() {
 }
 
 // CommandLevel returns the level a runnable of the command of the name
-// passed needs: the level it declares. It implements cmd.Permissions.
-func (srv *Server) CommandLevel(_ string, declared cmd.Level) cmd.Level {
+// passed needs: the level [Permissions.Commands] of config.toml sets for
+// the command, by its name or an alias, or else the level it declares. It
+// implements cmd.Permissions.
+func (srv *Server) CommandLevel(name string, declared cmd.Level) cmd.Level {
+	if srv == nil {
+		return declared
+	}
+	if levels := srv.commandLevels.Load(); levels != nil {
+		if l, ok := (*levels)[name]; ok {
+			return l
+		}
+		return declared
+	}
+	// Before Listen resolves the names of aliases, the names of commands.
+	if l, ok := srv.permissionConfig().Commands[name]; ok {
+		return l
+	}
 	return declared
 }
 
 // CommandBlockLevel returns the level command blocks and command-block
 // minecarts run commands at. It implements cmd.Permissions.
 func (srv *Server) CommandBlockLevel() cmd.Level {
-	return DefaultCommandBlockLevel
+	if srv == nil {
+		return DefaultCommandBlockLevel
+	}
+	return srv.permissionConfig().CommandBlockLevel
 }
 
 var _ cmd.Permissions = (*Server)(nil)

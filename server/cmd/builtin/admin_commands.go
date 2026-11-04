@@ -78,8 +78,8 @@ type transferCmd struct {
 }
 
 // versionCmd is open to every player, as it has always been on this
-// server. Java's needs cmd.LevelGameMaster on a dedicated server, which the
-// server may set by the name of the command.
+// server. Java's needs cmd.LevelGameMaster on a dedicated server, which
+// [Permissions.Commands] of config.toml sets with version = 2.
 type versionCmd struct{ srv serverAdapter }
 
 func reasonArg(v cmd.Optional[cmd.Varargs]) string {

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/identity"
 	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 	"github.com/df-mc/dragonfly/server/player"
@@ -49,6 +50,9 @@ type Server struct {
 	whitelist *Whitelist
 	operators *operatorsList
 	bans      *banList
+	// commandLevels are the levels of [Permissions.Commands] by the names
+	// of the commands, which Listen resolves.
+	commandLevels atomic.Pointer[map[string]cmd.Level]
 	// known are the accounts the server has seen join, if it is keyed by
 	// XUID.
 	known       *knownPlayers
@@ -107,6 +111,9 @@ func New() *Server {
 // until the listeners are closed using a call to Close. Once Listen is called,
 // players may be accepted using Server.Accept().
 func (srv *Server) Listen() {
+	// A problem of the config found only now, as a level set for a command
+	// that no one registered, panics before the server starts.
+	srv.resolveCommandLevels()
 	t := time.Now()
 	if !srv.started.CompareAndSwap(nil, &t) {
 		panic("start server: already started")

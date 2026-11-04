@@ -186,6 +186,22 @@ func TestConfigBounds(t *testing.T) {
 		// setup prepares the directory the file is read in.
 		setup func(t *testing.T)
 	}{
+		{table: "Permissions", key: "OperatorLevel", values: []value{
+			{"-1", "Permissions.OperatorLevel = -1: want 0 to 4"}, {"0", ""}, {"4", ""},
+			{"5", "Permissions.OperatorLevel = 5: want 0 to 4"},
+		}},
+		{table: "Permissions", key: "DefaultLevel", values: []value{
+			{"0", ""}, {"4", ""}, {"5", "Permissions.DefaultLevel = 5: want 0 to 4"},
+		}},
+		{table: "Permissions", key: "CommandBlockLevel", values: []value{
+			{"0", ""}, {"2", ""}, {"-1", "Permissions.CommandBlockLevel = -1: want 0 to 4"},
+		}},
+		{table: "Permissions", key: "RoleLevel", values: []value{
+			{"3", ""}, {"7", "Permissions.RoleLevel = 7: want 0 to 4"},
+		}},
+		{table: "Permissions.Commands", key: "kick", values: []value{
+			{"0", ""}, {"4", ""}, {"5", "Permissions.Commands.kick = 5: want 0 to 4"},
+		}},
 		{table: "Players", key: "MaxCount", values: []value{
 			{"-1", "Players.MaxCount = -1: want 0 or more"}, {"0", ""}, {"1000000", ""},
 		}},

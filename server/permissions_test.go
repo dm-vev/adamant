@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -173,4 +174,55 @@ func TestOpCannotGrantAboveOwnLevel(t *testing.T) {
 	if out := run(t, cmd.LevelOwner, "/deop Steve"); len(out.Errors()) != 0 || srv.IsOperator("Steve") {
 		t.Errorf("/deop from level 4: %v", out.Errors())
 	}
+}
+
+// TestCommandLevelOverrides checks [Permissions.Commands]: kick = 2 lets a
+// source of level 2 run /kick; teleport = 3, an alias, sets the level of
+// /tp; a name no command has is a warning at Listen naming the closest
+// command, and with StrictConfig Listen panics of it.
+func TestCommandLevelOverrides(t *testing.T) {
+	newServer := func(strict bool, log *slog.Logger) *server.Server {
+		uc := server.DefaultConfig()
+		uc.World.SaveData, uc.Players.SaveData = false, false
+		uc.Whitelist.File = filepath.Join(t.TempDir(), "white-list.txt")
+		uc.Permissions.Commands = map[string]int{"kick": 2, "teleport": 3, "kik": 1}
+		conf, err := uc.Config(slog.New(slog.DiscardHandler))
+		if err != nil {
+			t.Fatal(err)
+		}
+		conf.Log, conf.StrictConfig = log, strict
+		return conf.New()
+	}
+	var logged strings.Builder
+	srv := newServer(false, slog.New(slog.NewTextHandler(&logged, nil)))
+	builtin.Register(srv)
+	t.Cleanup(func() { cmd.SetPermissions(nil) })
+	srv.Listen()
+	t.Cleanup(func() { _ = srv.Close() })
+	if want := "config.toml: Permissions.Commands.kik: no command is named kik, did you mean kick?"; !strings.Contains(logged.String(), want) {
+		t.Errorf("logged\n%s\nwant %q", logged.String(), want)
+	}
+	if l := srv.CommandLevel("kick", cmd.LevelAdmin); l != cmd.LevelGameMaster {
+		t.Errorf("/kick needs level %v, want 2", l)
+	}
+	if l := srv.CommandLevel("tp", cmd.LevelGameMaster); l != cmd.LevelAdmin {
+		t.Errorf("/tp, set as teleport, needs level %v, want 3", l)
+	}
+	kick, _ := cmd.ByAlias("kick")
+	if len(kick.Runnables(levelSource{level: cmd.LevelGameMaster, out: &cmd.Output{}})) == 0 {
+		t.Error("a source of level 2 may not run /kick of level 2")
+	}
+	tp, _ := cmd.ByAlias("teleport")
+	if len(tp.Runnables(levelSource{level: cmd.LevelGameMaster, out: &cmd.Output{}})) != 0 {
+		t.Error("a source of level 2 may run /tp of level 3")
+	}
+
+	// The server the panic leaves unstarted cannot be closed.
+	strict := newServer(true, slog.New(slog.DiscardHandler))
+	defer func() {
+		if r := recover(); r == nil || !strings.Contains(fmt.Sprint(r), "Permissions.Commands.kik: no command is named kik") {
+			t.Errorf("Listen with StrictConfig: recovered %v", r)
+		}
+	}()
+	strict.Listen()
 }

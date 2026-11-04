@@ -4,14 +4,17 @@ import (
 	"cmp"
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"time"
 	_ "unsafe"
 
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/identity"
@@ -187,6 +190,14 @@ type Config struct {
 	// Backup is how the server backs up its world (Server.Backup). With no
 	// Folder, it makes no backups.
 	Backup BackupConfig
+	// Permissions are the levels of the players and of the commands of the
+	// server. If nil, DefaultPermissionConfig() is used: Java's levels.
+	Permissions *PermissionConfig
+	// StrictConfig refuses, as config.toml's StrictConfig of [Server]
+	// does, the problems of the config found only once the commands are
+	// registered, as a name of Permissions.Commands that no command has:
+	// Listen panics of them, rather than warn.
+	StrictConfig bool
 	// AntiCheatExempt, if not nil, is asked whether a player skips a check,
 	// anticheat.All standing for every check. It is where a permission
 	// system plugs in, with nodes such as adamant.anticheat.bypass and
@@ -578,6 +589,23 @@ type UserConfig struct {
 	// AntiCheat is the anti-cheat: each check on or off, what it does, its
 	// thresholds and exemptions. See docs/anticheat.md.
 	AntiCheat anticheat.UserConfig
+	// Permissions are the levels of players and commands, as Java Edition
+	// numbers them: 0 anyone, 1 moderator, 2 game master, 3 admin, 4 owner.
+	Permissions struct {
+		// CommandBlockLevel is the level command blocks run commands at.
+		CommandBlockLevel int
+		// DefaultLevel is the level of the players who are not operators.
+		DefaultLevel int
+		// OperatorLevel is the level /op gives, and that of the operators
+		// whose entry of ops.json sets none.
+		OperatorLevel int
+		// RoleLevel is the level an operator needs to change the roles of
+		// players from the player list of the game.
+		RoleLevel int
+		// Commands sets the level a command needs, by its name or one of its
+		// aliases, such as kick = 2 or version = 2.
+		Commands map[string]int
+	}
 }
 
 // maxChunkRadius is the largest Players.MaximumChunkRadius a UserConfig
@@ -641,6 +669,7 @@ func (uc UserConfig) Check(p *config.Problems) {
 	// The operators and the bans are kept in the folder of the whitelist.
 	config.File(p, "Whitelist.File", whitelistPath(uc.Whitelist.File))
 	uc.checkBackup(p)
+	uc.checkPermissions(p)
 }
 
 // checkBackup adds the problems of the [Backup] table of uc to p.
@@ -697,6 +726,38 @@ func (uc UserConfig) backupConfig() BackupConfig {
 		conf.Verify = mcdb.VerifyFull
 	case "off":
 		conf.Verify = mcdb.VerifyOff
+	}
+	return conf
+}
+
+// checkPermissions adds the problems of [Permissions] to p: every level is
+// one of Java's, 0 to 4. A name of Commands no command has is found once
+// the commands are registered, by Server.Listen.
+func (uc UserConfig) checkPermissions(p *config.Problems) {
+	top := int(cmd.MaxLevel)
+	config.Range(p, "Permissions.CommandBlockLevel", uc.Permissions.CommandBlockLevel, 0, top)
+	config.Range(p, "Permissions.DefaultLevel", uc.Permissions.DefaultLevel, 0, top)
+	config.Range(p, "Permissions.OperatorLevel", uc.Permissions.OperatorLevel, 0, top)
+	config.Range(p, "Permissions.RoleLevel", uc.Permissions.RoleLevel, 0, top)
+	for _, name := range slices.Sorted(maps.Keys(uc.Permissions.Commands)) {
+		config.Range(p, "Permissions.Commands."+name, uc.Permissions.Commands[name], 0, top)
+	}
+}
+
+// permissionConfig returns the PermissionConfig of [Permissions], whose
+// values Check found in range.
+func (uc UserConfig) permissionConfig() *PermissionConfig {
+	conf := &PermissionConfig{
+		DefaultLevel:      cmd.Level(uc.Permissions.DefaultLevel),
+		OperatorLevel:     cmd.Level(uc.Permissions.OperatorLevel),
+		CommandBlockLevel: cmd.Level(uc.Permissions.CommandBlockLevel),
+		RoleLevel:         cmd.Level(uc.Permissions.RoleLevel),
+	}
+	if len(uc.Permissions.Commands) > 0 {
+		conf.Commands = make(map[string]cmd.Level, len(uc.Permissions.Commands))
+		for name, l := range uc.Permissions.Commands {
+			conf.Commands[name] = cmd.Level(l)
+		}
 	}
 	return conf
 }
@@ -781,6 +842,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		PortalDisabledMessage: uc.World.PortalDisabledMessage,
 		AntiCheat:             antiCheat,
 		Backup:                uc.backupConfig(),
+		Permissions:           uc.permissionConfig(),
 	}
 	whitelistFile := whitelistPath(uc.Whitelist.File)
 	if !uc.Server.DisableJoinQuitMessages {
@@ -795,23 +857,11 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 			return conf, fmt.Errorf("create world provider: %w", err)
 		}
 	}
-	wl, err := LoadWhitelist(whitelistFile)
+	a, err := uc.admission(whitelistFile, conf.IdentityKey, log)
 	if err != nil {
-		return conf, fmt.Errorf("load whitelist: %w", err)
+		return conf, err
 	}
-	wl.SetEnabled(uc.Whitelist.Enabled)
-	wl.SetKickMessage(uc.Whitelist.Reason)
-
-	// Keep operator and ban data beside the configured whitelist.
 	baseDir := filepath.Dir(whitelistFile)
-	ops, err := loadOperators(filepath.Join(baseDir, "ops.json"))
-	if err != nil {
-		return conf, fmt.Errorf("load ops list: %w", err)
-	}
-	bans, err := loadBans(filepath.Join(baseDir, "banned-players.json"))
-	if err != nil {
-		return conf, fmt.Errorf("load bans: %w", err)
-	}
 	if uc.Players.SaveData {
 		if db, ok := conf.WorldProvider.(*mcdb.DB); ok {
 			conf.PlayerProvider, err = worldPlayers(db, uc.Players.Folder, log)
@@ -822,7 +872,6 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 			return conf, fmt.Errorf("create player provider: %w", err)
 		}
 	}
-	a := admission{mode: conf.IdentityKey, log: log, whitelist: wl, operators: ops, bans: bans}
 	if conf.IdentityKey == identity.XUID {
 		var existed bool
 		if a.known, existed, err = loadKnownPlayers(filepath.Join(baseDir, "known-players.json"), log); err != nil {
@@ -838,6 +887,30 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	a.warnHeld()
 	conf.Allower = a
 	return conf, nil
+}
+
+// admission returns the admission of the admin lists of a server keyed in
+// the mode passed: the whitelist of the file passed, as [Whitelist] sets
+// it, and the operators and the bans beside it.
+func (uc UserConfig) admission(whitelistFile string, mode identity.Mode, log *slog.Logger) (admission, error) {
+	wl, err := LoadWhitelist(whitelistFile)
+	if err != nil {
+		return admission{}, fmt.Errorf("load whitelist: %w", err)
+	}
+	wl.SetEnabled(uc.Whitelist.Enabled)
+	wl.SetKickMessage(uc.Whitelist.Reason)
+
+	// Keep operator and ban data beside the configured whitelist.
+	baseDir := filepath.Dir(whitelistFile)
+	ops, err := loadOperators(filepath.Join(baseDir, "ops.json"))
+	if err != nil {
+		return admission{}, fmt.Errorf("load ops list: %w", err)
+	}
+	bans, err := loadBans(filepath.Join(baseDir, "banned-players.json"))
+	if err != nil {
+		return admission{}, fmt.Errorf("load bans: %w", err)
+	}
+	return admission{mode: mode, log: log, whitelist: wl, operators: ops, bans: bans}, nil
 }
 
 // worldPlayers returns the player provider of a server saving both its
@@ -939,6 +1012,10 @@ func DefaultConfig() UserConfig {
 	c.Backup.Enabled, c.Backup.Folder, c.Backup.Format, c.Backup.Interval = true, "backups", "folder", "6h"
 	c.Backup.Keep, c.Backup.MaxAge, c.Backup.MinFreeSpace = DefaultBackupKeep, "0s", "1GiB"
 	c.Backup.SaveFirst, c.Backup.Verify = true, "record"
+	c.Permissions.CommandBlockLevel = int(DefaultCommandBlockLevel)
+	c.Permissions.OperatorLevel = int(DefaultOperatorLevel)
+	c.Permissions.RoleLevel = int(DefaultRoleLevel)
+	c.Permissions.Commands = map[string]int{}
 	return c
 }
 

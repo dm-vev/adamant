@@ -105,6 +105,12 @@ func (s *keyScan) walk(tree *toml.Tree, types []reflect.Type, path, canon []stri
 		case *toml.Tree:
 			if next, ok := tableTypes(fieldTypes, false); ok {
 				s.walk(v, next, at, name)
+			} else {
+				// The keys of a table read into a map are all known: their
+				// lines locate the problems a Check adds of their values.
+				for _, sub := range v.Keys() {
+					s.lines[strings.Join(appendPath(name, sub), ".")] = v.GetPositionPath([]string{sub}).Line
+				}
 			}
 		case []*toml.Tree:
 			if next, ok := tableTypes(fieldTypes, true); ok {
