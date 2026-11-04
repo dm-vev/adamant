@@ -65,7 +65,7 @@ func javaFluidStateAt(c *javaShapeContext, pos cube.Pos) (javaFluidBlock, javaFl
 	if !ok {
 		return state, javaFluidState{}
 	}
-	kind := javaFluidEmpty
+	var kind javaFluidKind
 	switch liquid.LiquidType() {
 	case "water":
 		kind = javaFluidWater

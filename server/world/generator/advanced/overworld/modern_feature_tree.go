@@ -2076,7 +2076,7 @@ func placeTreeBeeNest(region *featureRegion, d map[string]any, trunks, leaves []
 	if len(trunks) == 0 || r.NextFloat() >= treeProbability(d, "probability", 0) {
 		return
 	}
-	hiveY := trunks[0].y + 1
+	var hiveY int32
 	if len(leaves) > 0 {
 		hiveY = max(leaves[0].y-1, trunks[0].y+1)
 	} else {

@@ -39,7 +39,8 @@ func perform(start, end mgl64.Vec3, tx *world.Tx, box cube.BBox, filter EntityFi
 		b := tx.Block(pos)
 
 		// Check if we collide with the block's model.
-		result, intersects := BlockResult{}, false
+		var result BlockResult
+		var intersects bool
 		if collider, custom := b.(world.ProjectileCollider); projectile != nil && custom {
 			result, intersects = blockBoxesIntercept(pos, collider.ProjectileBBox(pos, tx, projectile), start, end)
 		} else {

@@ -74,7 +74,7 @@ func javaFluidForState(id uint32) javaFluidState {
 	if water, _ := gamedata.BlockStateBool(id, "waterlogged"); water {
 		return javaFluidState{kind: javaFluidWater, amount: 8, falling: strings.Contains(name, "copper_grate"), source: true}
 	}
-	kind := javaFluidEmpty
+	var kind javaFluidKind
 	switch name {
 	case "minecraft:water", "minecraft:bubble_column",
 		"minecraft:seagrass", "minecraft:kelp", "minecraft:kelp_plant", "minecraft:tall_seagrass":

@@ -107,7 +107,6 @@ func (s *Session) ViewEntity(e world.Entity) {
 	metadata := s.entityMetadata(e)
 	links := s.entityLinks(e)
 
-	id := e.H().Type().EncodeEntity()
 	switch v := e.(type) {
 	case Controllable:
 		listed, ok := s.roster().Player(v.UUID())
@@ -161,7 +160,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			metadata[mc.EntityDataKeyVariant] = int32(s.blockHash(v.Behaviour().(*entity.FallingBlockBehaviour).Block()))
 		}
 	}
-	id = networkID(e.H().Type())
+	id := networkID(e.H().Type())
 
 	var vel mgl64.Vec3
 	if v, ok := e.(interface{ Velocity() mgl64.Vec3 }); ok {

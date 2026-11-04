@@ -276,7 +276,7 @@ func runScatteredNativeCase(f scatteredSourceCase) ([]scatteredNativeCall, error
 		if state.GroundHeightSet {
 			hPos = state.GroundHeight
 		}
-		m := map[string]bool{}
+		var m map[string]bool
 		if f.Piece == "jungle_temple" {
 			m = map[string]bool{"placedMainChest": state.LootPlaced&jungleTempleMainChest != 0, "placedHiddenChest": state.LootPlaced&jungleTempleHiddenChest != 0, "placedTrap1": state.LootPlaced&jungleTempleTrap1 != 0, "placedTrap2": state.LootPlaced&jungleTempleTrap2 != 0}
 		} else {

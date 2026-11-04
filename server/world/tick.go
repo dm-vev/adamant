@@ -1302,7 +1302,7 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		// on bindTx being invoked every time we service the entity. The previous implementation called
 		// state.entity each tick; keep that contract so that helpers never observe a stale, closed Tx.
 		if entity == nil {
-			entity = state.entity(tx, handle)
+			state.entity(tx, handle)
 		}
 	}
 	if state.isTicker && state.ticker != nil {

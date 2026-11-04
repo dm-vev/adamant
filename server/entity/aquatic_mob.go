@@ -70,7 +70,7 @@ func (t aquaticMobType) BBox(e world.Entity) cube.BBox {
 	}
 	if t.id == "minecraft:pufferfish" && e != nil {
 		if mob, ok := e.(interface{ behaviour() *AquaticMobBehaviour }); ok {
-			scale := .5
+			var scale float64
 			if state := mob.behaviour().puffState; state == 0 {
 				scale = .5
 			} else if state == 1 {
