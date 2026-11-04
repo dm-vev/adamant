@@ -20,7 +20,7 @@ import (
 	"github.com/dm-vev/adamant/net/nbt"
 )
 
-//go:embed v*/items.nbt v*/blocks.nbt v*/entities.txt v*/biomes.txt
+//go:embed v*/items.nbt v*/blocks.nbt v*/entities.txt v*/biomes.txt v2225/blocks.json v2225/fallbacks.json
 var files embed.FS
 
 // protocols are the protocols with data, oldest first.

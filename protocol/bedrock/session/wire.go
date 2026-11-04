@@ -2,6 +2,9 @@ package session
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -118,11 +121,59 @@ func slotOf(p *versions.Protocol) *world.SlotKey {
 }
 
 // blockTable returns the network hashes the clients of a protocol know the
-// runtime IDs of a finalized registry by. Every protocol names the blocks
-// of the game as the game does, so these are the hashes of the registry
-// itself.
-func blockTable(_ *versions.Protocol, br chunk.BlockRegistry) *blockHashes {
-	return hashesOf(br)
+// runtime IDs of a finalized registry by: the hashes of the registry
+// itself for a protocol that names blocks as the game does, else those of
+// each state of the game as the protocol names it (bedrockdata.MapState).
+func blockTable(p *versions.Protocol, br chunk.BlockRegistry) *blockHashes {
+	if p == nil || bedrockdata.NamesBlocksAsTheGame(p.Number) {
+		return hashesOf(br)
+	}
+	key := protocolTableKey{p.Number, br}
+	if h, ok := protocolTables.Load(key); ok {
+		return h.(*blockHashes)
+	}
+	h, _ := protocolTables.LoadOrStore(key, buildProtocolHashes(p.Number, br))
+	return h.(*blockHashes)
+}
+
+// protocolTableKey names the hashes of a protocol and a registry.
+type protocolTableKey struct {
+	protocol int32
+	br       chunk.BlockRegistry
+}
+
+// protocolTables holds the hashes blockTable built for protocols that name
+// blocks otherwise than the game, by protocolTableKey.
+var protocolTables sync.Map
+
+// buildProtocolHashes hashes every runtime ID of a finalized registry as
+// the clients of a protocol name its state: the hashes of the registry,
+// but for the states the protocol names otherwise, which the inverse maps
+// back to their runtime IDs in place of the game's names of them. A state
+// the protocol names otherwise in no state of the game, such as redstone
+// wire that connects to the side in 2225, has no runtime ID, as a hash no
+// client should send has none.
+func buildProtocolHashes(p int32, br chunk.BlockRegistry) *blockHashes {
+	game := hashesOf(br)
+	h := &blockHashes{hash: slices.Clone(game.hash), rid: maps.Clone(game.rid)}
+	scratch := make([]byte, 0, 0xff)
+	for i := range br.BlockCount() {
+		rid := uint32(i)
+		name, properties, _ := br.RuntimeIDToState(rid)
+		mapped, props := bedrockdata.MapState(p, name, properties)
+		if mapped == name && maps.EqualFunc(props, properties, func(a, b any) bool { return a == b }) {
+			continue
+		}
+		var netHash uint32
+		netHash, scratch = networkBlockHash(mapped, props, scratch)
+		if other, ok := h.rid[netHash]; ok && other != rid {
+			panic(fmt.Sprintf("network block hash collision of protocol %d for runtime IDs %d and %d", p, rid, other))
+		}
+		delete(h.rid, game.hash[rid])
+		h.rid[netHash] = rid
+		h.hash[rid] = netHash
+	}
+	return h
 }
 
 // blocksOf returns the network hashes the clients of the tables know the
@@ -156,13 +207,25 @@ func (w *wireTables) itemByRuntimeID(rid int32, meta int16) (world.Item, bool) {
 // biomes returns the definitions of the biomes registered the clients of
 // the tables know, and the strings their names and tags index.
 func (w *wireTables) biomes() ([]mc.BiomeDefinition, []string) {
-	return biomeDefinitions()
+	return biomeDefinitions(w.knows(w.vanilla.Biomes))
 }
 
 // entities returns the identifiers of the entity types of a list that the
-// clients of the tables know, in the order of the list.
+// clients of the tables know, in the order of the list: every one but the
+// vanilla types BDS of their protocol does not list.
 func (w *wireTables) entities(ids []string) []string {
-	return ids
+	known := w.knows(w.vanilla.Entities)
+	return slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return !known(id) })
+}
+
+// knows returns whether the clients of the tables know a vanilla
+// identifier, one of the namespace minecraft, by the list of those BDS of
+// their protocol knows. Every other identifier, of content of the server's
+// own, they are told of.
+func (w *wireTables) knows(vanilla []string) func(id string) bool {
+	return func(id string) bool {
+		return !strings.HasPrefix(id, "minecraft:") || slices.Contains(vanilla, id)
+	}
 }
 
 // tables returns the tables of the session, those of its protocol and

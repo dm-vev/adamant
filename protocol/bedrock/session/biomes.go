@@ -9,10 +9,10 @@ import (
 )
 
 // biomeDefinitions returns the definitions of the biomes registered, in the
-// order of world.BiomeIDs, and the strings their names and tags index.
-// A biome that is not one of the game's own carries its ID, a vanilla one
-// -1.
-func biomeDefinitions() ([]mc.BiomeDefinition, []string) {
+// order of world.BiomeIDs, and the strings their names and tags index, but
+// for the vanilla biomes known reports false of. A biome that is not one of
+// the game's own carries its ID, a vanilla one -1.
+func biomeDefinitions(known func(name string) bool) ([]mc.BiomeDefinition, []string) {
 	var (
 		internedStrings     []string
 		internedStringIndex = make(map[string]int)
@@ -36,6 +36,9 @@ func biomeDefinitions() ([]mc.BiomeDefinition, []string) {
 		name := b.String()
 		if !strings.Contains(name, ":") {
 			name = "minecraft:" + name
+		}
+		if world.VanillaBiome(id) && !known(name) {
+			continue
 		}
 		nameIndex := intern(name)
 

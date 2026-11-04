@@ -354,3 +354,98 @@ func TestRecipesAndCreativeOfBDS(t *testing.T) {
 		t.Errorf("%d recipes of 2193; 2225 adds %d: %.300v", len(a), len(added), added)
 	}
 }
+
+// parseState returns the name and properties of a state of a palette, as
+// stateOf wrote them: the values of properties as strings.
+func parseState(s state) (string, map[string]string) {
+	parts := strings.Fields(string(s))
+	props := make(map[string]string, len(parts)-1)
+	for _, p := range parts[1:] {
+		k, v, _ := strings.Cut(p, "=")
+		props[k] = v
+	}
+	return parts[0], props
+}
+
+// typed returns the properties of a state of the game, of the types the
+// game holds them in, from those of a palette.
+func typed(t *testing.T, props map[string]string, like map[string]any) map[string]any {
+	t.Helper()
+	out := make(map[string]any, len(props))
+	for k, v := range props {
+		out[k] = v
+		if _, ok := like[k].(uint8); ok {
+			var n uint8
+			fmt.Sscan(v, &n)
+			out[k] = n
+		}
+	}
+	return out
+}
+
+// TestMapStateTo2225 maps every state of the game to 2225: each is a state
+// of 2225's palette, and only the 33 of redstone wire, fire and chorus
+// plants change, gaining their connections as none.
+func TestMapStateTo2225(t *testing.T) {
+	if !bedrockdata.NamesBlocksAsTheGame(2193) || bedrockdata.NamesBlocksAsTheGame(2225) {
+		t.Fatal("the protocols that name blocks as the game does are not 2193 alone")
+	}
+	newer := map[state]bool{}
+	for _, s := range palette(t, 2225) {
+		newer[s] = true
+	}
+	changed := map[string]int{}
+	for _, s := range gameStates(t) {
+		name, props := parseState(s)
+		in := make(map[string]any, len(props))
+		for k, v := range props {
+			in[k] = v
+		}
+		if step, _ := bedrockdata.BlockStepOf(2225); step.Added[name] != nil {
+			in = typed(t, props, step.Added[name])
+		}
+		outName, out := bedrockdata.MapState(2225, name, in)
+		up := stateOf(outName, out)
+		if !newer[up] && name != "minecraft:chalkboard" {
+			t.Errorf("%s is %s in 2225, no state of its palette", s, up)
+		}
+		if up != s {
+			changed[name]++
+		}
+	}
+	if fmt.Sprint(changed) != "map[minecraft:chorus_plant:1 minecraft:fire:16 minecraft:redstone_wire:16]" {
+		t.Errorf("the states 2225 names otherwise: %v", changed)
+	}
+}
+
+// TestBlockStepDownTo2193 takes every state of 2225's palette back through
+// the step: each is a state of 2193's palette, the three blocks 2193 lacks
+// through their fallbacks.
+func TestBlockStepDownTo2193(t *testing.T) {
+	step, ok := bedrockdata.BlockStepOf(2225)
+	if _, first := bedrockdata.BlockStepOf(2193); !ok || first {
+		t.Fatal("2225 has no step, or 2193 has one")
+	}
+	older := map[state]bool{}
+	for _, s := range palette(t, 2193) {
+		older[s] = true
+	}
+	fallen := map[string]bool{}
+	for _, s := range palette(t, 2225) {
+		name, props := parseState(s)
+		in := make(map[string]any, len(props))
+		for k, v := range props {
+			in[k] = v
+		}
+		outName, out := step.Down(name, in)
+		if _, ok := step.Fallbacks[name]; ok {
+			fallen[name] = true
+		}
+		if down := stateOf(outName, out); !older[down] {
+			t.Errorf("%s of 2225 is %s, no state of 2193", s, down)
+		}
+	}
+	if fmt.Sprint(fallen) != "map[minecraft:disc_press:true minecraft:ice_crystal:true minecraft:icicle:true]" {
+		t.Errorf("fallbacks taken for %v", fallen)
+	}
+}

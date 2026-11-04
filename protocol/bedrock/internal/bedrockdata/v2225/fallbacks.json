@@ -1,0 +1,5 @@
+{
+  "minecraft:disc_press": {"name": "minecraft:stonecutter_block", "states": {"minecraft:cardinal_direction": "north"}},
+  "minecraft:ice_crystal": {"name": "minecraft:blue_ice", "states": {}},
+  "minecraft:icicle": {"name": "minecraft:pointed_dripstone", "states": {"dripstone_thickness": "tip", "hanging": 1}}
+}
