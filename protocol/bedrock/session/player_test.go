@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1048,15 +1049,50 @@ func handleCraftingRequest(t testing.TB, w *world.World, h *ItemStackRequestHand
 // menu the player of s has open.
 func openTestMenu(t testing.TB, s *Session, b world.Block) *menu.Menu {
 	t.Helper()
-	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
-	t.Cleanup(func() { _ = w.Close() })
+	w, pos := testMenuWorld(t)
 	var m *menu.Menu
 	<-w.Exec(func(tx *world.Tx) {
-		tx.SetBlock(cube.Pos{}, b, nil)
-		m = menu.OpenBlock(tx, cube.Pos{}, s, s.enderChest)
+		tx.SetBlock(pos, b, nil)
+		m = menu.OpenBlock(tx, pos, s, s.enderChest)
 	})
 	s.menu.Store(m)
 	return m
+}
+
+// testMenuWorlds holds the world openTestMenu places the blocks of a test in,
+// one world for each test, and the number of blocks placed in it. A test
+// that opens hundreds of menus, as TestAutoCraftOutcomeIsStable does, kept as
+// many worlds until it ended, which took gigabytes under the race detector.
+var testMenuWorlds sync.Map // testing.TB → *testMenuWorldOf
+
+type testMenuWorldOf struct {
+	w *world.World
+	n atomic.Int32
+}
+
+// testMenuWorld returns the world of the menus of t and a position in it no
+// menu of t was opened at, so that the menus of a test stay apart as they
+// did in worlds of their own.
+func testMenuWorld(t testing.TB) (*world.World, cube.Pos) {
+	t.Helper()
+	v, ok := testMenuWorlds.Load(t)
+	if !ok {
+		mw := &testMenuWorldOf{w: world.Config{Synchronous: true, RandomTickSpeed: -1}.New()}
+		var loaded bool
+		if v, loaded = testMenuWorlds.LoadOrStore(t, mw); loaded {
+			_ = mw.w.Close()
+		} else {
+			t.Cleanup(func() {
+				testMenuWorlds.Delete(t)
+				_ = mw.w.Close()
+			})
+		}
+	}
+	mw := v.(*testMenuWorldOf)
+	// The blocks of a test are placed each at a position of its own, eight
+	// to a row, two blocks apart.
+	i := int(mw.n.Add(1)) - 1
+	return mw.w, cube.Pos{(i % 8) * 2, 0, (i / 8) * 2}
 }
 
 // largeCraftingTestSession returns a session with a crafting table open, of

@@ -116,17 +116,18 @@ func itemNBTCorpusDump(it world.Item) string {
 }
 
 // itemNBTCorpusHashes returns the hash of the corpus dump of every registered
-// item by its name and metadata, and the dumps themselves.
-func itemNBTCorpusHashes() (map[string]string, map[string]string) {
-	hashes, dumps := map[string]string{}, map[string]string{}
+// item by its name and metadata, and the items themselves.
+func itemNBTCorpusHashes() (map[string]string, map[string]world.Item) {
+	hashes, items := map[string]string{}, map[string]world.Item{}
 	for _, it := range world.Items() {
 		name, meta := it.EncodeItem()
 		key := fmt.Sprintf("%s %d", name, meta)
-		dump := itemNBTCorpusDump(it)
-		sum := sha256.Sum256([]byte(dump))
-		hashes[key], dumps[key] = hex.EncodeToString(sum[:16]), dump
+		// Only the hash is kept: the dumps of every item at once take
+		// gigabytes under the race detector. A failure dumps its item again.
+		sum := sha256.Sum256([]byte(itemNBTCorpusDump(it)))
+		hashes[key], items[key] = hex.EncodeToString(sum[:16]), it
 	}
-	return hashes, dumps
+	return hashes, items
 }
 
 // TestItemNBTCorpus holds the item NBT of Bedrock's wire, which the adapter
@@ -136,7 +137,7 @@ func itemNBTCorpusHashes() (map[string]string, map[string]string) {
 // locks, unbreakable, an anvil cost and dragonfly data, encoded and read back.
 // ADAMANT_RECORD_ITEM_NBT=1 records the corpus anew.
 func TestItemNBTCorpus(t *testing.T) {
-	hashes, dumps := itemNBTCorpusHashes()
+	hashes, items := itemNBTCorpusHashes()
 	keys := make([]string, 0, len(hashes))
 	for k := range hashes {
 		keys = append(keys, k)
@@ -180,7 +181,7 @@ func TestItemNBTCorpus(t *testing.T) {
 			t.Errorf("%s is not in the corpus", k)
 		} else if w != hashes[k] {
 			if failed++; failed <= 3 {
-				t.Errorf("%s: corpus hash %s, recorded %s; now:\n%s", k, hashes[k], w, dumps[k])
+				t.Errorf("%s: corpus hash %s, recorded %s; now:\n%s", k, hashes[k], w, itemNBTCorpusDump(items[k]))
 			} else {
 				t.Errorf("%s: corpus hash %s, recorded %s", k, hashes[k], w)
 			}
