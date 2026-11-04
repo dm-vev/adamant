@@ -35,6 +35,11 @@ type Server struct {
 
 	once    sync.Once
 	started atomic.Pointer[time.Time]
+	// closing is set as the server begins to close, when it is no longer
+	// ready for players.
+	closing atomic.Bool
+	// clock, if not nil, is the clock of the probes of health, for tests.
+	clock func() time.Time
 
 	world *world.World
 	// dimensions holds the loaded dimensions keyed by their identifiers.
@@ -443,6 +448,7 @@ func (srv *Server) Close() error {
 
 // close stops the server, storing player and world data to disk.
 func (srv *Server) close() {
+	srv.closing.Store(true)
 	close(srv.idleStop)
 
 	srv.conf.Log.Debug("Disconnecting players...")
