@@ -39,6 +39,8 @@ type Session struct {
 	conf            Config
 	teardownStarted atomic.Bool
 	connOnce        sync.Once
+	// unhandled paces the lines logged of packets with no handler.
+	unhandled unhandledLog
 
 	ent *world.EntityHandle
 	// control is the Controllable the inventories of the session were last
@@ -889,7 +891,7 @@ func (s *Session) handlePacket(pk proto.Packet, tx *world.Tx, c Controllable) (e
 	s.lastActivity.Store(time.Now().UnixNano())
 	handler, ok := s.handlers[pk.ID()]
 	if !ok {
-		s.conf.Log.Debug("unhandled packet", "packet", fmt.Sprintf("%T", pk), "data", fmt.Sprintf("%+v", pk)[1:])
+		s.logUnhandled(pk)
 		return nil
 	}
 	if handler == nil {

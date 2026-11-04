@@ -26,6 +26,7 @@ type fileConfig struct {
 	Bedrock bedrockadapter.UserConfig
 	Java    javaadapter.UserConfig
 	Program programConfig
+	Log     logConfig
 
 	// warnings are the problems of the file the server starts with, which
 	// compose logs.
@@ -43,22 +44,70 @@ type programConfig struct {
 	}
 }
 
+// logConfig is the part of config.toml the program itself owns: how it
+// logs, the LogLevel key of [Server]. Further settings of the logs, such
+// as their format, belong beside it.
+type logConfig struct {
+	Server struct {
+		// LogLevel is the least level of the messages logged: "debug",
+		// "info", "warn" or "error", in any case. An empty value is
+		// "info".
+		LogLevel string
+	}
+}
+
+// Check adds the problem of a LogLevel the program does not know to p.
+func (c logConfig) Check(p *config.Problems) {
+	_, err := c.level()
+	p.Add("Server.LogLevel", err)
+}
+
+// level returns the slog.Level of LogLevel.
+func (c logConfig) level() (slog.Level, error) {
+	s := strings.TrimSpace(c.Server.LogLevel)
+	if s == "" {
+		return slog.LevelInfo, nil
+	}
+	switch strings.ToLower(s) {
+	case "debug":
+		return slog.LevelDebug, nil
+	case "info":
+		return slog.LevelInfo, nil
+	case "warn", "warning":
+		return slog.LevelWarn, nil
+	case "error":
+		return slog.LevelError, nil
+	}
+	return 0, fmt.Errorf(`unknown LogLevel %q: use "debug", "info", "warn" or "error"`, s)
+}
+
 // defaultFileConfig returns the file of the default settings of every part.
 func defaultFileConfig() fileConfig {
-	return fileConfig{Server: server.DefaultConfig(), Bedrock: bedrockadapter.DefaultConfig(), Java: javaadapter.DefaultConfig()}
+	f := fileConfig{Server: server.DefaultConfig(), Bedrock: bedrockadapter.DefaultConfig(), Java: javaadapter.DefaultConfig()}
+	f.Log.Server.LogLevel = "info"
+	return f
 }
 
 // parts returns pointers to the parts of the file, in the order they are
 // read and composed.
-func (f *fileConfig) parts() []any { return []any{&f.Server, &f.Bedrock, &f.Java, &f.Program} }
+func (f *fileConfig) parts() []any {
+	return []any{&f.Server, &f.Bedrock, &f.Java, &f.Program, &f.Log}
+}
 
 // readConfig reads config.toml, or writes the default file if there is none,
-// and composes the server's Config with the listeners of the adapters.
+// sets the level of the default logger of slog as LogLevel says, before
+// anything is logged of the file, and composes the server's Config with
+// the listeners of the adapters.
 func readConfig(log *slog.Logger) (server.Config, error) {
 	f, err := readConfigFile("config.toml")
 	if err != nil {
 		return server.Config{}, err
 	}
+	level, err := f.Log.level()
+	if err != nil {
+		return server.Config{}, err
+	}
+	slog.SetLogLoggerLevel(level)
 	return f.config(log)
 }
 
@@ -151,6 +200,9 @@ func (f fileConfig) config(log *slog.Logger) (server.Config, error) {
 func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Config, javaadapter.Config, error) {
 	for _, w := range f.warnings {
 		log.Warn("config.toml: " + w.String())
+	}
+	if _, err := f.Log.level(); err != nil {
+		return server.Config{}, bedrockadapter.Config{}, javaadapter.Config{}, err
 	}
 	// The adapters' parts come first: a bad Transport is reported before the
 	// world is opened, as UserConfig.Config reported it before.

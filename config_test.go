@@ -39,7 +39,9 @@ import (
 // the NetherNet defaults and no other caps before; and SpawnTimeout and
 // SpawnTimeoutMessage of [Server], whose lines a new default file has, and a
 // file that lacks them gives a client a minute to spawn, where it had for
-// ever before.
+// ever before; and LogLevel of [Server], whose line a new default file has,
+// and a file that lacks it logs at info, where the program logged at debug
+// before.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -124,7 +126,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 		{"checked in", checkedIn, configMeaning{
 			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false, "NameCheck": "lenient", "IdentityKey": "xuid",
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
-			"SpawnTimeout": "1m0s", "SpawnTimeoutMessage": server.DefaultSpawnTimeoutMessage,
+			"SpawnTimeout": "1m0s", "SpawnTimeoutMessage": server.DefaultSpawnTimeoutMessage, "LogLevel": "INFO",
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
 			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0, "SaveInterval": "5m0s",
@@ -146,7 +148,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 		{"every key changed", []byte(everyKeyChanged), configMeaning{
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
-			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.",
+			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.", "LogLevel": "WARN",
 			"MaxPlayers": 7, "MaxChunkRadius": 9,
 			"Resources": 0, "ResourcesRequired": true, "DisableResourceBuilding": true,
 			"OverworldSeed": int64(42), "GeneratorProfile": "many-cores", "GeneratorWorkers": 3, "GeneratorQueueSize": 5, "SaveInterval": "1m30s",
@@ -211,6 +213,7 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Network]\nPrimaryProtocol = \"26.70\"\n":                `line 2: Network.PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52)`,
 		"[Network]\nProtocols = \"1.26.50\"\n":                    "decode config: (2, 1): Can't convert 1.26.50(string) to []string(slice)",
 		"[Server]\nSpawnTimeout = \"soon\"\n":                     `line 2: Server.SpawnTimeout = "soon": want a duration such as "90s" or "5m"`,
+		"[Server]\nLogLevel = \"loud\"\n":                         `line 2: Server.LogLevel: unknown LogLevel "loud": use "debug", "info", "warn" or "error"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -308,6 +311,7 @@ const everyKeyChanged = `
   AuthEnabled = false
   DisableJoinQuitMessages = true
   IdentityKey = "name"
+  LogLevel = "Warn"
   MuteEmoteChat = true
   Name = "Changed"
   NameCheck = "strict"
@@ -422,6 +426,8 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 		return nil, err
 	}
 	m := serverMeaning(t, conf, log)
+	level, _ := f.Log.level()
+	m["LogLevel"] = level.String()
 	closeProviders(t, conf)
 	// The settings of the listeners are those of the Configs of the adapters.
 	m["AuthDisabled"], m["MuteEmoteChat"] = bc.AuthDisabled, bc.MuteEmoteChat
@@ -445,4 +451,57 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	m["Proxy.Address"], m["Proxy.Secret"] = p.Address, p.Secret
 	m["Java.Address"], m["Java.Message"] = j.Address, j.Message
 	return m, nil
+}
+
+// TestLogLevel checks how LogLevel of [Server] reads: in any case, with
+// spaces around, info if empty.
+func TestLogLevel(t *testing.T) {
+	for value, want := range map[string]slog.Level{
+		"": slog.LevelInfo, "info": slog.LevelInfo, " DEBUG ": slog.LevelDebug, "Warn": slog.LevelWarn,
+		"warning": slog.LevelWarn, "error": slog.LevelError,
+	} {
+		var c logConfig
+		c.Server.LogLevel = value
+		if got, err := c.level(); err != nil || got != want {
+			t.Errorf("LogLevel %q = %v, %v, want %v", value, got, err, want)
+		}
+	}
+}
+
+// TestDefaultLogLevelHidesDebug checks that readConfig of the default file
+// sets the default logger of slog to info, which leaves out the debug
+// lines, as of packets the server has no handler for, and that a file of
+// LogLevel = "debug" logs them.
+func TestDefaultLogLevelHidesDebug(t *testing.T) {
+	old := slog.SetLogLoggerLevel(slog.LevelDebug)
+	t.Cleanup(func() { slog.SetLogLoggerLevel(old) })
+	t.Chdir(t.TempDir())
+	conf, err := readConfig(slog.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeProviders(t, conf)
+	if slog.Default().Enabled(t.Context(), slog.LevelDebug) || !slog.Default().Enabled(t.Context(), slog.LevelInfo) {
+		t.Fatal("the default config.toml does not log at info")
+	}
+	if !conf.Log.Enabled(t.Context(), slog.LevelInfo) || conf.Log.Enabled(t.Context(), slog.LevelDebug) {
+		t.Fatal("the logger of the server does not log at info")
+	}
+
+	data, err := os.ReadFile("config.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = bytes.Replace(data, []byte(`LogLevel = "info"`), []byte(`LogLevel = "debug"`), 1)
+	if err := os.WriteFile("config.toml", data, 0644); err != nil {
+		t.Fatal(err)
+	}
+	conf, err = readConfig(slog.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeProviders(t, conf)
+	if !conf.Log.Enabled(t.Context(), slog.LevelDebug) {
+		t.Fatal(`LogLevel = "debug" does not log debug lines`)
+	}
 }

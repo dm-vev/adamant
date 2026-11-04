@@ -17,8 +17,8 @@ import (
 func main() {
 	headless := flag.Bool("headless", false, "run without the interactive console")
 	flag.Parse()
-	slog.SetLogLoggerLevel(slog.LevelDebug)
 	chat.Global.Subscribe(chat.StdoutSubscriber{})
+	// readConfig sets the level of slog.Default() as LogLevel says.
 	conf, err := readConfig(slog.Default())
 	if err != nil {
 		panic(err)
