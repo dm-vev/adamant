@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -21,7 +21,7 @@ func TestTorchClusterNativeTraversalExplainsPhase(t *testing.T) {
 }
 
 func testTorchNativeTraversal(t *testing.T, filename string, scenarios int) {
-	data, err := os.ReadFile("testdata/" + filename)
+	data, err := testfixture.Read("testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestTorchClusterWorldHistoryMatchesNativeCapture(t *testing.T) {
 }
 
 func testTorchClusterWorldHistory(t *testing.T, filename string, scenarios int) {
-	data, err := os.ReadFile("testdata/" + filename)
+	data, err := testfixture.Read("testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -31,7 +31,7 @@ func (s *ejectionNativeWords) Uint64() uint64 {
 
 func TestItemEjectionVelocityMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_ejection_velocities.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_ejection_velocities.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestItemEjectionVelocityMatchesExecutedClient(t *testing.T) {
 
 func TestCrafterEjectionOriginMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_ejection_velocities.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_ejection_velocities.json")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -28,7 +28,7 @@ func (u *torchPlacementTestUser) PlaceBlock(pos cube.Pos, b world.Block, ctx *it
 // by directly installing the expected lit block in this replay.
 func TestTorchPlacementMatchesNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_placement.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_torch_placement.json")
 	if err != nil {
 		t.Fatal(err)
 	}

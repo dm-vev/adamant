@@ -2,16 +2,16 @@ package block
 
 import (
 	"encoding/json"
-	"os"
 	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
 func TestTorchCacheMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_cache.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_torch_cache.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestTorchCacheMatchesExecutedClient(t *testing.T) {
 
 func TestTorchEvaluatorMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_evaluators.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_redstone_evaluators.json")
 	if err != nil {
 		t.Fatal(err)
 	}

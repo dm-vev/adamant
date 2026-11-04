@@ -3,11 +3,11 @@ package entity
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	_ "unsafe"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -105,7 +105,7 @@ func TestHopperBrewingExtractionsMatchBDS(t *testing.T) {
 }
 
 func replayContainerActionsBDS(t *testing.T, filename string, count, changes int) {
-	data, err := os.ReadFile("../block/testdata/" + filename)
+	data, err := testfixture.Read("../block/testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}

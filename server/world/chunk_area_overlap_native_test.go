@@ -3,11 +3,11 @@ package world
 import (
 	"encoding/json"
 	"math/bits"
-	"os"
 	"reflect"
 	"sort"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
@@ -48,7 +48,7 @@ func TestPlayerAreaDispatcherMatchesOwnedBDSCircle(t *testing.T) {
 
 func replayNativeChunkAreaDispatcher(t *testing.T, file string, frames, chunkCount int, regions []nativeAreaReplayRegion) {
 	t.Helper()
-	data, err := os.ReadFile("../block/testdata/" + file)
+	data, err := testfixture.Read("../block/testdata/" + file)
 	if err != nil {
 		t.Fatal(err)
 	}

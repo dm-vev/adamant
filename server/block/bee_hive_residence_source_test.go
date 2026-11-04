@@ -3,9 +3,9 @@ package block_test
 import (
 	"encoding/json"
 	"math/rand/v2"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -14,7 +14,7 @@ import (
 
 func TestHiveResidenceMatchesJava263Source(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/java263_beehive_residence_source.json")
+	data, err := testfixture.Read("testdata/java263_beehive_residence_source.json")
 	if err != nil {
 		t.Fatal(err)
 	}

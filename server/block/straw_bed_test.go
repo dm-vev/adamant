@@ -2,10 +2,10 @@ package block_test
 
 import (
 	"encoding/json"
-	"os"
 	"reflect"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -22,7 +22,7 @@ func TestStrawBedCollisionMatchesJava263Source(t *testing.T) {
 			Boxes  []struct{ Min, Max [3]float64 } `json:"boxes"`
 		} `json:"cases"`
 	}
-	data, err := os.ReadFile("testdata/java263_straw_bed_geometry.json")
+	data, err := testfixture.Read("testdata/java263_straw_bed_geometry.json")
 	if err != nil {
 		t.Fatal(err)
 	}

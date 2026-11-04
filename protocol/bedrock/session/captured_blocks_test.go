@@ -5,12 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"maps"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -157,7 +157,7 @@ func capturedBlockHashes(t *testing.T) map[int32]bool {
 	t.Helper()
 	hashes := map[int32]bool{}
 	for _, c := range blockCaptures {
-		data, err := os.ReadFile("../../../server/block/testdata/" + c.name)
+		data, err := testfixture.Read("../../../server/block/testdata/" + c.name)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -217,12 +217,12 @@ func TestCapturedBlockHashes(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(capturedBlocksPath, append(data, '\n'), 0o644); err != nil {
+		if err := testfixture.Write(capturedBlocksPath, append(data, '\n')); err != nil {
 			t.Fatal(err)
 		}
 		return
 	}
-	data, err := os.ReadFile(capturedBlocksPath)
+	data, err := testfixture.Read(capturedBlocksPath)
 	if err != nil {
 		t.Fatal(err)
 	}

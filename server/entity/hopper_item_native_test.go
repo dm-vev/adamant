@@ -3,9 +3,9 @@ package entity
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -35,7 +35,7 @@ func TestHopperItemCollectionWithCoverMatchesBDS(t *testing.T) {
 }
 
 func replayHopperItemsBDS(t *testing.T, filename string, count int) {
-	data, err := os.ReadFile("../block/testdata/" + filename)
+	data, err := testfixture.Read("../block/testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}

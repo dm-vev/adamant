@@ -2,15 +2,15 @@ package world
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
 func TestPrecipitationColumnsMatchExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_precipitation_column_random.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_precipitation_column_random.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func (r *precipitationDrawCounter) Uint64() uint64 { r.count++; return 8 }
 
 func TestChunkSnowRandomBudgetMatchesOwnedBDS(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_chunk_snow_random.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_chunk_snow_random.json")
 	if err != nil {
 		t.Fatal(err)
 	}

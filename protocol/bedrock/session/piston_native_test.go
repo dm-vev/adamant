@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"os"
 	"reflect"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -50,7 +50,7 @@ func TestPistonUpdatesMatchNativePackets(t *testing.T) {
 }
 
 func testPistonNativePackets(t *testing.T, file string, actorCount int) {
-	data, err := os.ReadFile("../../../server/block/testdata/" + file)
+	data, err := testfixture.Read("../../../server/block/testdata/" + file)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -41,7 +41,7 @@ func TestBellEffectsMatchNativePackets(t *testing.T) {
 
 func testBellEffectsNativePackets(t *testing.T, split bool) {
 	t.Helper()
-	data, err := os.ReadFile("../../../server/block/testdata/bedrock_1_26_51_bell_packets.json")
+	data, err := testfixture.Read("../../../server/block/testdata/bedrock_1_26_51_bell_packets.json")
 	if err != nil {
 		t.Fatal(err)
 	}

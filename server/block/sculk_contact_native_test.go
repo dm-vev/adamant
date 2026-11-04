@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	_ "github.com/df-mc/dragonfly/server/world/biome"
@@ -36,7 +36,7 @@ func TestPressurePlateContextMatchesBDS(t *testing.T) {
 
 func testSculkNativeContacts(t *testing.T, name string, count int) {
 	t.Helper()
-	data, err := os.ReadFile("testdata/" + name)
+	data, err := testfixture.Read("testdata/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}

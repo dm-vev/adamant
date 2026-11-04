@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -40,7 +40,7 @@ func compareTorchNetworkBlock(t *testing.T, tx *world.Tx, tick int64, pos cube.P
 
 func TestTorchNetworksMatchNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_network.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_torch_network.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestTorchClusterExactPhaseMatchesNativeCapture(t *testing.T) {
 
 func testTorchClusters(t *testing.T, filename string, scenarios, frames int, exact bool) {
 
-	data, err := os.ReadFile("testdata/" + filename)
+	data, err := testfixture.Read("testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}

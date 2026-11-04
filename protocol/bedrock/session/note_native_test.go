@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"os"
 	"reflect"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -42,7 +42,7 @@ func TestNoteUnsealedWaterCommandSceneMatchesBDS(t *testing.T) {
 
 func replayNativeNotes(t *testing.T, filename string, count int, timed, load bool) {
 	t.Helper()
-	data, err := os.ReadFile("../../../server/block/testdata/" + filename)
+	data, err := testfixture.Read("../../../server/block/testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}

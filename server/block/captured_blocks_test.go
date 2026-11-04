@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -21,7 +21,7 @@ import (
 // blocks for Bedrock clients.
 func capturedBlocks(t testing.TB) map[int32]string {
 	t.Helper()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_captured_blocks.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_captured_blocks.json")
 	if err != nil {
 		t.Fatal(err)
 	}

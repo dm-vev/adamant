@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -14,7 +14,7 @@ import (
 // through a solid block. It does not assert initial publication timing.
 func TestTorchOutputFacesMatchNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_torch_faces.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_torch_faces.json")
 	if err != nil {
 		t.Fatal(err)
 	}

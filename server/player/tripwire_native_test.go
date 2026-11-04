@@ -3,9 +3,9 @@ package player
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -80,7 +80,7 @@ func compareTripwireBreakNative(t *testing.T, tx *world.Tx, tick int64, pos cube
 // removal callback. Input timing comes from native absolute game time.
 func TestTripwirePlayerBreakMatchesNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_tripwire_break.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_tripwire_break.json")
 	if err != nil {
 		t.Fatal(err)
 	}

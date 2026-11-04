@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -45,7 +45,7 @@ func testBellInteractionNative(t *testing.T, split, projectile bool) {
 	if projectile {
 		file, snapshots, packets, successes = "bedrock_1_26_51_bell_projectile_packets.json", 5120, 320, 64
 	}
-	data, err := os.ReadFile("../../../server/block/testdata/" + file)
+	data, err := testfixture.Read("../../../server/block/testdata/" + file)
 	if err != nil {
 		t.Fatal(err)
 	}

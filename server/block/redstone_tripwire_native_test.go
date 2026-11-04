@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -18,7 +18,7 @@ type nativeTripwireBlock struct {
 
 func TestTripwireCollisionMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_tripwire_geometry.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_tripwire_geometry.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func compareNativeTripwireBlock(t *testing.T, tx *world.Tx, tick int64, pos cube
 
 func TestTripwireContactsMatchNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_tripwire_contacts.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_tripwire_contacts.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestTripwireContactsMatchNativeCapture(t *testing.T) {
 
 func TestTripwireLinesMatchNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_tripwire_lines.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_tripwire_lines.json")
 	if err != nil {
 		t.Fatal(err)
 	}

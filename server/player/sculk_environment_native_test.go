@@ -3,10 +3,10 @@ package player
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -36,7 +36,7 @@ func TestSculkAdjacentSwitchFilteringMatchesBDS(t *testing.T) {
 
 func testSculkNativeEnvironment(t *testing.T, name string, count int) {
 	t.Helper()
-	data, err := os.ReadFile("../block/testdata/" + name)
+	data, err := testfixture.Read("../block/testdata/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}

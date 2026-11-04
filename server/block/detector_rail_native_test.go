@@ -2,15 +2,15 @@ package block
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
 func TestDetectorRailQueryMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_detector_query.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_detector_query.json")
 	if err != nil {
 		t.Fatal(err)
 	}

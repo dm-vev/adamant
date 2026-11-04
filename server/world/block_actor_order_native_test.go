@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
-	"os"
 	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
@@ -27,7 +27,7 @@ func (s *nativeActorDraws) Uint64() uint64 {
 
 func TestBlockActorShuffleMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_actor_order.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_actor_order.json")
 	if err != nil {
 		t.Fatal(err)
 	}

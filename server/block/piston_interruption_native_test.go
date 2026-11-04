@@ -3,10 +3,10 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -23,7 +23,7 @@ func TestPistonHeadRemovalMatchesBDS(t *testing.T) {
 }
 
 func testPistonInterruptionNative(t *testing.T, file string) {
-	data, err := os.ReadFile("testdata/" + file)
+	data, err := testfixture.Read("testdata/" + file)
 	if err != nil {
 		t.Fatal(err)
 	}

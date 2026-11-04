@@ -3,10 +3,10 @@ package world
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
@@ -34,7 +34,7 @@ func TestLightningSearchDoesNotLoadAnUnloadedIndexedRod(t *testing.T) {
 
 func TestLightningCylinderAndOrderingMatchExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_lightning_search.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_lightning_search.json")
 	if err != nil {
 		t.Fatal(err)
 	}

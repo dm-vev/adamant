@@ -3,9 +3,9 @@ package player
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -120,7 +120,7 @@ func TestSculkComparatorSamplingMatchesNativeHeap(t *testing.T) {
 
 func readSculkNativeCapture(t *testing.T, name string, count int) sculkNativeCapture {
 	t.Helper()
-	data, err := os.ReadFile("../block/testdata/" + name)
+	data, err := testfixture.Read("../block/testdata/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}

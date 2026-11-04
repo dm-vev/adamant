@@ -2,9 +2,9 @@ package entity
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -13,7 +13,7 @@ import (
 
 func TestHopperActorTransferClockMatchesBDS(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_hopper_actor_clock.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_hopper_actor_clock.json")
 	if err != nil {
 		t.Fatal(err)
 	}

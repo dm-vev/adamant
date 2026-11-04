@@ -3,10 +3,10 @@ package world
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
@@ -27,7 +27,7 @@ func TestCircuitTraversalMatchesNativeCapture(t *testing.T) {
 }
 
 func testCircuitTraversalCapture(t *testing.T, filename string, scenarios int) {
-	data, err := os.ReadFile("../block/testdata/" + filename)
+	data, err := testfixture.Read("../block/testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}

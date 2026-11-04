@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -21,7 +21,7 @@ func TestPoweredRailPublicationEditsMatchBDS(t *testing.T) {
 }
 
 func testPoweredRailLifecycleNative(t *testing.T, name string, count int) {
-	data, err := os.ReadFile("testdata/" + name)
+	data, err := testfixture.Read("testdata/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}

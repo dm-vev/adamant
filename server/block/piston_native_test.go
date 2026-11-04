@@ -3,10 +3,10 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
@@ -96,7 +96,7 @@ type nativePistonDrop struct {
 
 func TestPistonSortMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_piston_sort.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_piston_sort.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestPistonSortMatchesExecutedClient(t *testing.T) {
 
 func testPistonNativeTrace(t *testing.T, fixture string, count, frames, changes int) {
 	t.Helper()
-	data, err := os.ReadFile(fixture)
+	data, err := testfixture.Read(fixture)
 	if err != nil {
 		t.Fatal(err)
 	}

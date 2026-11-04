@@ -3,16 +3,16 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 func TestRedstoneWorldMatchesNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_world.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_redstone_world.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestRedstoneWorldMatchesNativeCapture(t *testing.T) {
 
 func TestComparatorArithmeticMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_evaluators.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_redstone_evaluators.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestComparatorArithmeticMatchesExecutedClient(t *testing.T) {
 
 func TestSimpleCircuitsMatchExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_evaluators.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_redstone_evaluators.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestSimpleCircuitsMatchExecutedClient(t *testing.T) {
 
 func TestRepeaterSideLockMatchesNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_repeater_lock.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_repeater_lock.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestRepeaterSideLockMatchesNativeCapture(t *testing.T) {
 
 func TestRepeaterPipelineMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_redstone_evaluators.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_redstone_evaluators.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func TestRepeaterDelayMatchesNativeCapture(t *testing.T) {
 
 func testRepeaterNativeTiming(t *testing.T, fixture string, count int) {
 	t.Helper()
-	data, err := os.ReadFile(fixture)
+	data, err := testfixture.Read(fixture)
 	if err != nil {
 		t.Fatal(err)
 	}

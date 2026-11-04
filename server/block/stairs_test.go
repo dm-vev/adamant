@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/block/model"
@@ -41,7 +41,7 @@ func referenceStair(t *testing.T, name string, facing int, upsideDown bool) Stai
 
 func TestStairCornersMatchBDS(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bds_stairs_1.26.52.3.json")
+	data, err := testfixture.Read("testdata/bds_stairs_1.26.52.3.json")
 	if err != nil {
 		t.Fatal(err)
 	}

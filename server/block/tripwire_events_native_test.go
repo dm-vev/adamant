@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -25,7 +25,7 @@ func (o *hookEventSoundObserver) HandleSound(ctx *world.Context, s world.Sound, 
 
 func TestTripwireHookEventsMatchExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_hook_events.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_hook_events.json")
 	if err != nil {
 		t.Fatal(err)
 	}

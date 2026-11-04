@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -37,7 +37,7 @@ func TestDaylightInitialProducersMatchNativeCapture(t *testing.T) {
 }
 
 func testDaylightDetectorCapture(t *testing.T, filename string, count int) {
-	data, err := os.ReadFile("testdata/" + filename)
+	data, err := testfixture.Read("testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func testDaylightDetectorCapture(t *testing.T, filename string, count int) {
 
 func TestDaylightFullDayWeatherMatchesNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_daylight_cycle.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_daylight_cycle.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestDaylightFullDayWeatherMatchesNativeCapture(t *testing.T) {
 
 func TestDaylightBodyMatchesInspectedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_daylight_methods.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_daylight_methods.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +293,7 @@ func TestDaylightBodyMatchesInspectedClient(t *testing.T) {
 
 func TestDaylightPlayerInversionMatchesNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_daylight_use.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_daylight_use.json")
 	if err != nil {
 		t.Fatal(err)
 	}

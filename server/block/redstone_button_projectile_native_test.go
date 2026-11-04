@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -17,7 +17,7 @@ import (
 // the real projectile collision path as well.
 func TestButtonProjectileSignalsMatchNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_button_projectiles.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_button_projectiles.json")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -17,7 +17,7 @@ import (
 
 func TestItemEscapeMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_piston_item_escape.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_piston_item_escape.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestItemEscapeMatchesExecutedClient(t *testing.T) {
 
 func TestItemEscapeFlagsMatchBDS(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_entity_physics.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_entity_physics.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestItemSpawnInsideBlockMatchesBDS(t *testing.T) {
 
 func testItemNativePhysics(t *testing.T, index int) {
 	t.Helper()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_entity_physics.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_entity_physics.json")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,10 +3,10 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -21,7 +21,7 @@ func TestTorchWorldTimingMatchesNativeCapture(t *testing.T) {
 }
 
 func testTorchWorldCapture(t *testing.T, filename string, cases, samples int) {
-	data, err := os.ReadFile("testdata/" + filename)
+	data, err := testfixture.Read("testdata/" + filename)
 	if err != nil {
 		t.Fatal(err)
 	}

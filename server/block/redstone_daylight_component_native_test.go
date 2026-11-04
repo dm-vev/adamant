@@ -2,16 +2,16 @@ package block
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 func TestDaylightProducerRegistrationMatchesNativeHeap(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_daylight_components.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_daylight_components.json")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,15 +2,15 @@ package block
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 func TestBellShapesMatchExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/client_1_26_51_bell_shapes.json")
+	data, err := testfixture.Read("testdata/client_1_26_51_bell_shapes.json")
 	if err != nil {
 		t.Fatal(err)
 	}

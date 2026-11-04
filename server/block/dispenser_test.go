@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"math/rand/v2"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -17,7 +17,7 @@ import (
 // the actor; the fixture supplies the subsequent speed/Gaussian stream.
 func newDispenserFallbackTestWorld(t *testing.T, entities world.EntityRegistry) (*world.World, world.EntitySpawnOpts) {
 	t.Helper()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_ejection_velocities.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_ejection_velocities.json")
 	if err != nil {
 		t.Fatal(err)
 	}

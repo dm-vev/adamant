@@ -3,16 +3,16 @@ package entity
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
 func TestPistonSweepMatchesExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_piston_sweep.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_piston_sweep.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestPistonSweepMatchesExecutedClient(t *testing.T) {
 
 func TestDepenetrationLimitsMatchExecutedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_piston_sweep.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_piston_sweep.json")
 	if err != nil {
 		t.Fatal(err)
 	}

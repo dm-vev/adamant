@@ -3,10 +3,10 @@ package entity
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -45,7 +45,7 @@ func TestPistonVanillaRidersMatchBDS(t *testing.T) {
 }
 
 func testPistonVanillaEntitiesNative(t *testing.T, name string, count int) {
-	data, err := os.ReadFile("../block/testdata/" + name)
+	data, err := testfixture.Read("../block/testdata/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}

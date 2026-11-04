@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -22,7 +22,7 @@ func compareComparatorNativeBlock(t *testing.T, tx *world.Tx, tick int64, pos cu
 
 func TestComparatorModeMatchesNativeCapture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_comparator_mode.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_comparator_mode.json")
 	if err != nil {
 		t.Fatal(err)
 	}

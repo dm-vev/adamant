@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"math/rand/v2"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -13,7 +13,7 @@ import (
 
 func TestLightningRodBodyMatchesInspectedClient(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_lightning_methods.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_lightning_methods.json")
 	if err != nil {
 		t.Fatal(err)
 	}

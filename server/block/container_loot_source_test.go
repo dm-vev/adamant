@@ -2,9 +2,9 @@ package block
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -26,7 +26,7 @@ func TestContainerLootFillMatchesJava263Source(t *testing.T) {
 			Slots    []slot `json:"slots"`
 		} `json:"cases"`
 	}
-	data, err := os.ReadFile("testdata/java263_container_loot_source.json")
+	data, err := testfixture.Read("testdata/java263_container_loot_source.json")
 	if err != nil {
 		t.Fatal(err)
 	}

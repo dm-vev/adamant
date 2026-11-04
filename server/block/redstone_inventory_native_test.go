@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
@@ -24,7 +24,7 @@ func TestInventorySignalsMatchNativeCapture(t *testing.T) {
 
 func testInventorySignalCapture(t *testing.T, filename string, count int) {
 	t.Helper()
-	data, err := os.ReadFile(filename)
+	data, err := testfixture.Read(filename)
 	if err != nil {
 		t.Fatal(err)
 	}

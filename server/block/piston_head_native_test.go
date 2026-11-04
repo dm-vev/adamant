@@ -3,9 +3,9 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -17,7 +17,7 @@ type nativePistonHeadSnapshot struct {
 
 func TestPistonHeadSurvivalMatchesBDS(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("testdata/bedrock_1_26_51_piston_head_survival.json")
+	data, err := testfixture.Read("testdata/bedrock_1_26_51_piston_head_survival.json")
 	if err != nil {
 		t.Fatal(err)
 	}

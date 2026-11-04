@@ -2,10 +2,10 @@ package entity_test
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/internal/testfixture"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -15,7 +15,7 @@ import (
 
 func TestSkeletonTrapLightningSelectionMatchesBDS(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../block/testdata/bedrock_1_26_51_lightning_traps.json")
+	data, err := testfixture.Read("../block/testdata/bedrock_1_26_51_lightning_traps.json")
 	if err != nil {
 		t.Fatal(err)
 	}
