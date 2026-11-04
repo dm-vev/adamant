@@ -15,16 +15,16 @@ import (
 // anti-cheat: each says which commit of the anti-cheat changes it.
 
 // TestAntiCheatTodayBreakBlockIsInstant pins that the instant break a
-// client asks for (UseItemActionBreakBlock) breaks stone at once in
-// survival. "Break blocks in the time they take" refuses it.
+// client asks for (UseItemActionBreakBlock, DestroyBlock) breaks stone at
+// once in survival. "Break blocks in the time they take" refuses it.
 func TestAntiCheatTodayBreakBlockIsInstant(t *testing.T) {
 	w, _ := clientTestWorld(t)
 	withClientPlayer(t, w, clienttest.New(), func(tx *world.Tx, p *Player) {
 		pos := cube.Pos{0, 100, 2}
 		tx.SetBlock(pos, block.Stone{}, nil)
-		p.BreakBlock(pos)
+		p.DestroyBlock(pos)
 		if _, air := tx.Block(pos).(block.Air); !air {
-			t.Fatalf("stone after BreakBlock in survival: %T", tx.Block(pos))
+			t.Fatalf("stone after DestroyBlock in survival: %T", tx.Block(pos))
 		}
 	})
 }
@@ -99,10 +99,9 @@ func TestAntiCheatTodayUpBlipResetsFallDistance(t *testing.T) {
 }
 
 // TestAntiCheatTodayMoveIsUnchecked pins that Player.Move takes the player
-// 11 blocks in one move: only the Bedrock adapter refuses such a move of
-// its client (TestMoveTooFarIsRefused). "Let the client move the player
-// through the game" moves the refusal into Player.ClientMove; Move stays
-// the unchecked API of plugins.
+// 11 blocks in one move: Player.ClientMove refuses such a move of its
+// client (TestMoveTooFarIsRefused); Move stays the unchecked API of
+// plugins.
 func TestAntiCheatTodayMoveIsUnchecked(t *testing.T) {
 	w, _ := clientTestWorld(t)
 	withClientPlayer(t, w, clienttest.New(), func(tx *world.Tx, p *Player) {

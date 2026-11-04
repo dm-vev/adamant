@@ -158,6 +158,11 @@ type Session struct {
 	changingDimension atomic.Bool
 	// moving is set while applying client-driven movement to avoid echoing it back to the same client.
 	moving atomic.Bool
+	// handlingInput is set while a packet of the client is handled: what
+	// the player is asked then comes from its client. handlingArrived is
+	// when the packet handled from the inbox arrived.
+	handlingInput   atomic.Bool
+	handlingArrived time.Time
 	// noWindow is the inventory window returns while no menu with items of its own is open: none, a crafting
 	// table, an anvil, a merchant and the like. Requests cannot name it.
 	noWindow *inventory.Inventory
@@ -448,6 +453,8 @@ type receiver interface {
 type received struct {
 	pk   proto.Packet
 	cost int
+	// at is when the packet arrived.
+	at time.Time
 }
 
 // maxInbox bounds the packets a client may send ahead of the world of its
@@ -477,7 +484,7 @@ func (s *Session) receive(pk proto.Packet, cost int) {
 		go s.CloseConnection()
 		return
 	}
-	s.inbox = append(s.inbox, received{pk, cost})
+	s.inbox = append(s.inbox, received{pk: pk, cost: cost, at: time.Now()})
 	s.inboxCost += cost
 }
 
@@ -669,6 +676,7 @@ func (s *Session) Control(tx *world.Tx, e world.Entity) {
 func (s *Session) handleInbox(packets []received, tx *world.Tx, c Controllable) (failed, left bool) {
 	for i, r := range packets {
 		packets[i] = received{}
+		s.handlingArrived = r.at
 		if err := s.handlePacketSafely(r.pk, tx, c); err != nil {
 			s.conf.Log.Debug("process packet: " + err.Error())
 			clear(packets[i+1:])
@@ -898,6 +906,8 @@ func (s *Session) handlePacket(pk proto.Packet, tx *world.Tx, c Controllable) (e
 		// A nil handler means it was explicitly unhandled.
 		return nil
 	}
+	s.handlingInput.Store(true)
+	defer s.handlingInput.Store(false)
 	if err := handler.Handle(pk, s, tx, c); err != nil {
 		return fmt.Errorf("%T: %w", pk, err)
 	}

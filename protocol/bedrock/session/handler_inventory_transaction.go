@@ -182,7 +182,7 @@ func (h *InventoryTransactionHandler) handleUseItemTransaction(data *v2193.UseIt
 
 	switch data.ActionType {
 	case v2193.UseItemActionBreakBlock:
-		c.BreakBlock(pos)
+		c.DestroyBlock(pos)
 	case v2193.UseItemActionClickBlock:
 		face, err := parseBlockFace(data.BlockFace)
 		if err != nil {

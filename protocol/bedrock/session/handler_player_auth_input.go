@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -46,44 +47,57 @@ func (h PlayerAuthInputHandler) handleMovement(pk *v2193.PlayerAuthInputPacket, 
 
 	newPos := clampToWorld(vec32To64(pk.Position))
 	deltaPos, deltaYaw, deltaPitch := newPos.Sub(pos), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch
+	m := clientMove(pk, newPos, s)
 
 	if expected := s.teleportPos.Load(); expected != nil {
 		if teleportAcknowledged(newPos, *expected) {
 			s.teleportPos.Store(nil)
-		} else {
-			if !mgl64.FloatEqual(deltaPos.Len(), 0) || !mgl64.FloatEqual(deltaYaw, 0) || !mgl64.FloatEqual(deltaPitch, 0) {
-				// The player has moved before it received the teleport packet. Ignore this movement entirely and
-				// wait for the client to sync itself back to the server. Once we get a movement that is close
-				// enough to the teleport position, we'll allow the player to move around again.
-				return nil
-			}
+			m.Acknowledged = true
+		} else if !mgl64.FloatEqual(deltaPos.Len(), 0) || !mgl64.FloatEqual(deltaYaw, 0) || !mgl64.FloatEqual(deltaPitch, 0) {
+			// The player has moved before it received the teleport packet. The game ignores this movement
+			// and waits for the client to sync itself back to the server. Once we get a movement that is
+			// close enough to the teleport position, the player may move around again.
+			m.AwaitingTeleport = true
 		}
 	}
-
-	jumping := pk.InputData.Has(v2193.InputFlagJumping) || pk.InputData.Has(v2193.InputFlagJumpDown)
-	if c.SteerVehicle(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]), jumping) {
+	if !m.AwaitingTeleport {
 		// The player steers what it rides rather than move itself.
-		deltaPos = mgl64.Vec3{}
-	}
-	if mgl64.FloatEqual(deltaPos.Len(), 0) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0) {
-		// The PlayerAuthInput packet is sent every tick, so don't do anything if the position and rotation
-		// were unchanged.
-		return nil
-	}
-
-	if movedTooQuickly(c, deltaPos) {
-		// As Java does, a move no player makes in a tick puts the client back
-		// where the server has it, rather than taking it anywhere.
-		s.conf.Log.Debug("process packet: PlayerAuthInput: moved too quickly", "delta", fmt.Sprint(deltaPos))
-		s.ViewEntityTeleport(c, pos)
-		return nil
+		m.Riding = c.SteerVehicle(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]), m.Jumping)
 	}
 
 	// Mark client-originated movement so we don't echo it back to the same client.
 	s.moving.Store(true)
-	c.Move(deltaPos, deltaYaw, deltaPitch)
+	c.ClientMove(m)
 	s.moving.Store(false)
 	return nil
+}
+
+// clientMove returns the client.Move of a PlayerAuthInput packet, at the
+// position passed: the feet of the player, clamped to the world.
+func clientMove(pk *v2193.PlayerAuthInputPacket, pos mgl64.Vec3, s *Session) client.Move {
+	flags := pk.InputData
+	m := client.Move{
+		Position:       pos,
+		Rotation:       cube.Rotation{float64(pk.Yaw), float64(pk.Pitch)},
+		HeadYaw:        float64(pk.HeadYaw),
+		Tick:           pk.Tick,
+		Arrived:        s.handlingArrived,
+		Input:          mgl64.Vec2{float64(pk.MoveVector[0]), float64(pk.MoveVector[1])},
+		ClientVelocity: vec32To64(pk.Delta),
+		Sprinting:      flags.Has(v2193.InputFlagSprinting),
+		Sneaking:       flags.Has(v2193.InputFlagSneaking),
+		Jumping:        flags.Has(v2193.InputFlagJumping) || flags.Has(v2193.InputFlagJumpDown),
+		Swimming:       flags.Has(v2193.InputFlagStartSwimming),
+		Crawling:       flags.Has(v2193.InputFlagStartCrawling),
+		Gliding:        flags.Has(v2193.InputFlagStartGliding),
+		SpinAttack:     flags.Has(v2193.InputFlagStartSpinAttack),
+		ClaimsGround:   flags.Has(v2193.InputFlagVerticalCollision),
+		Loading:        s.changingDimension.Load(),
+	}
+	if pk.InteractYaw != 0 || pk.InteractPitch != 0 {
+		m.Aim = cube.Rotation{float64(pk.InteractYaw), float64(pk.InteractPitch)}.Vec3()
+	}
+	return m
 }
 
 // clampToWorld clamps a position a client sends to the bounds of a world,
@@ -96,21 +110,6 @@ func clampToWorld(p mgl64.Vec3) mgl64.Vec3 {
 		max(-vertical, min(p[1], vertical)),
 		max(-horizontal, min(p[2], horizontal)),
 	}
-}
-
-// movedTooQuickly reports a move farther than a player goes in a tick, as
-// Java judges it: by more than 10 blocks, or 17 gliding, beyond what the
-// velocity of the player covers.
-func movedTooQuickly(c Controllable, delta mgl64.Vec3) bool {
-	limit := 100.0
-	if c.Gliding() {
-		limit = 300
-	}
-	var vel float64
-	if v, ok := c.(interface{ Velocity() mgl64.Vec3 }); ok {
-		vel = v.Velocity().LenSqr()
-	}
-	return delta.LenSqr()-vel > limit
 }
 
 func teleportAcknowledged(pos, expected mgl64.Vec3) bool {
@@ -205,21 +204,12 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags v2193.InputFlags, s *Sess
 		defer s.swingingArm.Store(false)
 		c.PunchAir()
 	}
+	// The game refuses a flight the game mode does not allow, and a stop in a mode that flies for good.
 	if flags.Has(v2193.InputFlagStartFlying) {
-		if !c.GameMode().AllowsFlying() {
-			s.conf.Log.Debug("process packet: PlayerAuthInput: flying flag enabled while unable to fly")
-			s.SendAbilities(c)
-		} else {
-			c.StartFlying()
-		}
+		c.StartFlying()
 	}
 	if flags.Has(v2193.InputFlagStopFlying) {
-		if !c.GameMode().HasCollision() {
-			// Modes without collision fly permanently, so correct the client that tried to stop.
-			s.SendAbilities(c)
-		} else {
-			c.StopFlying()
-		}
+		c.StopFlying()
 	}
 }
 
@@ -247,7 +237,7 @@ func (h PlayerAuthInputHandler) handleUseItemData(data v2193.PlayerInventoryActi
 	// Seems like this is only used for breaking blocks at the moment.
 	switch data.ActionType {
 	case v2193.UseItemActionBreakBlock:
-		c.BreakBlock(pos)
+		c.DestroyBlock(pos)
 	default:
 		return fmt.Errorf("unhandled UseItem ActionType for PlayerAuthInput packet %v", data.ActionType)
 	}

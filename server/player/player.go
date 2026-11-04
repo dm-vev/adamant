@@ -1564,9 +1564,16 @@ func (p *Player) StopGliding() {
 }
 
 // StartFlying makes the player start flying if they aren't already. It requires the player to be in a gamemode which
-// allows flying.
+// allows flying. A client that asks to fly in a game mode without flight is shown its abilities again.
 func (p *Player) StartFlying() {
-	if !p.GameMode().AllowsFlying() || p.Flying() {
+	if !p.GameMode().AllowsFlying() {
+		if p.clientInput() {
+			p.log.Debug("client asked to fly in a game mode without flight")
+			p.client().SendAbilities(p)
+		}
+		return
+	}
+	if p.Flying() {
 		return
 	}
 	p.flying = true
@@ -1578,8 +1585,13 @@ func (p *Player) Flying() bool {
 	return p.flying
 }
 
-// StopFlying makes the player stop flying if it currently is.
+// StopFlying makes the player stop flying if it currently is. A client that asks to stop in a game mode without
+// collision, which flies for good, is shown its abilities again.
 func (p *Player) StopFlying() {
+	if p.clientInput() && !p.GameMode().HasCollision() {
+		p.client().SendAbilities(p)
+		return
+	}
 	if !p.flying {
 		return
 	}

@@ -25,7 +25,7 @@ import (
 // Nop is a Client that does nothing: the client of a player that has none.
 // Its queries answer as a client that is not there would: the zero Profile,
 // a nil address, a latency of 0, zero NetStats, a chunk radius of 0, no move
-// of its own, no hidden HUD elements, no debug shapes, no input locks, no
+// of its own, no input it handles, no hidden HUD elements, no debug shapes, no input locks, no
 // recipes accepted, no ViewLayer and no error. LastActivity returns
 // time.Unix(0, 0), the answer a player without a client always gave.
 //
@@ -45,6 +45,7 @@ func (Nop) NetStats() NetStats      { return NetStats{} }
 func (Nop) LastActivity() time.Time { return time.Unix(0, 0) }
 func (Nop) ChunkRadius() int32      { return 0 }
 func (Nop) ClientMoving() bool      { return false }
+func (Nop) HandlingInput() bool     { return false }
 func (Nop) Transfer(net.IP, int)    {}
 func (Nop) Disconnect(text.Text)    {}
 func (Nop) Close(*world.Tx)         {}
@@ -99,24 +100,25 @@ func (Nop) SendInputLocks()                   {}
 func (Nop) EnableCoordinates(bool)            {}
 func (Nop) EnableInstantRespawn(bool)         {}
 
-func (Nop) SendHealth(float64, float64, float64)     {}
-func (Nop) SendFood(int, float64, float64)           {}
-func (Nop) SendExperience(int, float64)              {}
-func (Nop) SendEffect(effect.Effect)                 {}
-func (Nop) SendEffectModification(effect.Effect)     {}
-func (Nop) SendEffectRemoval(effect.Type)            {}
-func (Nop) SendSpeed(float64)                        {}
-func (Nop) SendAbilities(Controllable)               {}
-func (Nop) SendGameMode(Controllable)                {}
-func (Nop) SendPermissions(Controllable)             {}
-func (Nop) SendHeldSlot(int, Controllable, bool)     {}
-func (Nop) SendRespawn(mgl64.Vec3, Controllable)     {}
-func (Nop) SendPlayerSpawn(mgl64.Vec3)               {}
-func (Nop) SetPlayerSpawn(cube.Pos, world.Dimension) {}
-func (Nop) SendChargeItemComplete()                  {}
-func (Nop) ResyncInventory()                         {}
-func (Nop) ViewRecipesUnlocked([]string)             {}
-func (Nop) ShowSkin(skin.Skin)                       {}
+func (Nop) SendHealth(float64, float64, float64)                     {}
+func (Nop) SendFood(int, float64, float64)                           {}
+func (Nop) SendExperience(int, float64)                              {}
+func (Nop) SendEffect(effect.Effect)                                 {}
+func (Nop) SendEffectModification(effect.Effect)                     {}
+func (Nop) SendEffectRemoval(effect.Type)                            {}
+func (Nop) SendSpeed(float64)                                        {}
+func (Nop) SendAbilities(Controllable)                               {}
+func (Nop) SendGameMode(Controllable)                                {}
+func (Nop) SendPermissions(Controllable)                             {}
+func (Nop) SendHeldSlot(int, Controllable, bool)                     {}
+func (Nop) SendRespawn(mgl64.Vec3, Controllable)                     {}
+func (Nop) SendPlayerSpawn(mgl64.Vec3)                               {}
+func (Nop) SetPlayerSpawn(cube.Pos, world.Dimension)                 {}
+func (Nop) SendChargeItemComplete()                                  {}
+func (Nop) ResyncInventory()                                         {}
+func (Nop) CorrectMove(Controllable, mgl64.Vec3, mgl64.Vec3, uint64) {}
+func (Nop) ViewRecipesUnlocked([]string)                             {}
+func (Nop) ShowSkin(skin.Skin)                                       {}
 
 func (Nop) ViewSleepingPlayers(int, int)                          {}
 func (Nop) ViewElderGuardianCurse(mgl64.Vec3)                     {}

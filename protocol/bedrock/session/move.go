@@ -7,6 +7,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // sharedPacket is a packet that goes alike to every client it is written
@@ -85,6 +86,22 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 // made, which the client is not shown again.
 func (s *Session) ClientMoving() bool {
 	return s != Nop && s.moving.Load()
+}
+
+// HandlingInput reports whether the session is handling a packet of its
+// client.
+func (s *Session) HandlingInput() bool {
+	return s != Nop && s.handlingInput.Load()
+}
+
+// CorrectMove puts the player of the session back at pos, moving at vel: a
+// teleport, which the client acknowledges with a move to pos before its
+// moves count again.
+func (s *Session) CorrectMove(c Controllable, pos, vel mgl64.Vec3, _ uint64) {
+	s.ViewEntityTeleport(c, pos)
+	if vel != (mgl64.Vec3{}) {
+		s.writePacket(&v2193.SetActorMotionPacket{EntityRuntimeID: selfEntityRuntimeID, Velocity: vec64To32(vel)})
+	}
 }
 
 // moveActorDelta returns the MoveActorDelta of the parts of a move, and the

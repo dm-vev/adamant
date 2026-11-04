@@ -471,7 +471,7 @@ func use(tx *world.Tx, h *world.EntityHandle, l *world.Loader, c client.Controll
 	_ = tx.Block(pos)
 	_, _ = h.Entity(tx)
 	l.Move(tx, mgl64.Vec3{})
-	c.BreakBlock(pos)
+	c.DestroyBlock(pos)
 	m.Close(tx, h)
 	own.ViewEmote(c, [16]byte{})
 	_ = tx.World().Dimension()

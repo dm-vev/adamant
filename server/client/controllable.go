@@ -25,6 +25,10 @@ import (
 // player, such as a Bedrock Edition session, may ask of the player as it
 // handles what the client sends. *player.Player implements it. Methods are
 // added as clients need them.
+//
+// The game checks what a client asks: ClientMove and DestroyBlock may
+// refuse, and the other actions refuse as they refuse a plugin out of
+// reach.
 type Controllable interface {
 	Name() string
 	world.Entity
@@ -42,7 +46,9 @@ type Controllable interface {
 	SetHeldItems(right, left item.Stack)
 	SetHeldSlot(slot int) error
 
-	Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64)
+	// ClientMove moves the player as its client moved it in a tick, unless
+	// the game refuses the move, and reports what it made of it.
+	ClientMove(m Move) MoveResult
 
 	Speed() float64
 	FlightSpeed() float64
@@ -61,7 +67,9 @@ type Controllable interface {
 	ReleaseItem()
 	UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3)
 	UseItemOnEntity(e world.Entity) bool
-	BreakBlock(pos cube.Pos)
+	// DestroyBlock breaks the block at pos at once, as the client did:
+	// in creative, or a block that breaks in a tick.
+	DestroyBlock(pos cube.Pos)
 	PickBlock(pos cube.Pos)
 	AttackEntity(e world.Entity) bool
 	Drop(s item.Stack) (n int)

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -26,6 +26,9 @@ func TestTeleportAcknowledgementClearedForUnchangedMovement(t *testing.T) {
 	}
 	if s.teleportPos.Load() != nil {
 		t.Fatal("unchanged teleport acknowledgement left teleport pending")
+	}
+	if len(c.moves) != 1 || !c.moves[0].Acknowledged || c.moves[0].AwaitingTeleport {
+		t.Fatalf("the game was handed %+v, want one move that acknowledged the teleport", c.moves)
 	}
 }
 
@@ -58,8 +61,6 @@ func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
 			pos := mgl64.Vec3{29_999_999, 100, -29_999_999}
 			c := newUnchangedControllable()
 			c.position, c.sleeping = pos, test.sleeping
-			var delta mgl64.Vec3
-			c.move = func(d mgl64.Vec3) { delta = d }
 
 			s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
 			s.teleportPos.Store(&pos)
@@ -69,11 +70,14 @@ func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
 			}
 
 			want := vec32To64(entityBasePosition(c, vec64To32(entityNetworkPosition(c, pos))))
-			if got := pos.Add(delta); got != want {
+			if len(c.moves) != 1 {
+				t.Fatalf("the game was handed %d moves, want 1", len(c.moves))
+			}
+			if got := c.moves[0].Position; got != want {
 				t.Fatalf("fallback position = %v, want %v", got, want)
 			}
-			if delta[1] != 0 {
-				t.Fatalf("fallback changed base Y by %v", delta[1])
+			if got := c.moves[0].Position[1]; got != pos[1] {
+				t.Fatalf("fallback changed base Y to %v", got)
 			}
 			if s.teleportPos.Load() != nil {
 				t.Fatal("malformed teleport acknowledgement left teleport pending")
@@ -82,83 +86,71 @@ func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
 	}
 }
 
-// TestMoveTooFarIsRefused moves a client farther than a player goes in a
-// tick, as far as a float32 goes: the move is refused, and the client put
-// back, rather than taking the player there, which froze its world as it
-// looked for ground along the whole way.
-func TestMoveTooFarIsRefused(t *testing.T) {
+// TestAuthInputIsClampedToTheWorld moves a client as far as a float32
+// goes: the session hands the game the move clamped to the world, as Java
+// clamps it, and the game refuses it (TestMoveTooFarIsRefused of package
+// player).
+func TestAuthInputIsClampedToTheWorld(t *testing.T) {
 	t.Parallel()
 	start := mgl64.Vec3{0.5, 64, 0.5}
-	for name, to := range map[string]mgl64.Vec3{
-		"far below": {0.5, -1e37, 0.5},
-		"far out":   {3e38, 64, 0.5},
-		"11 blocks": {11.5, 64, 0.5},
+	for name, tc := range map[string]struct{ to, want mgl64.Vec3 }{
+		"far below": {mgl64.Vec3{0.5, -1e37, 0.5}, mgl64.Vec3{0.5, -2e7, 0.5}},
+		"far out":   {mgl64.Vec3{3e38, 64, 0.5}, mgl64.Vec3{3e7, 64, 0.5}},
+		"5 blocks":  {mgl64.Vec3{5.5, 64, 0.5}, mgl64.Vec3{5.5, 64, 0.5}},
 	} {
 		c := newUnchangedControllable()
 		c.position = start
-		moved := false
-		c.move = func(mgl64.Vec3) { moved = true }
 		s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
-		pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, to))}
+		pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, tc.to)), Tick: 7}
 		if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		if moved {
-			t.Errorf("%s: the player moved", name)
+		if len(c.moves) != 1 || !c.moves[0].Position.ApproxEqualThreshold(tc.want, 1e-3*max(1, tc.want.Len())) || c.moves[0].Tick != 7 {
+			t.Errorf("%s: the game was handed %+v, want a move to %v of tick 7", name, c.moves, tc.want)
 		}
-	}
-	c := newUnchangedControllable()
-	c.position = start
-	var delta mgl64.Vec3
-	c.move = func(d mgl64.Vec3) { delta = d }
-	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
-	pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, start.Add(mgl64.Vec3{5, 0, 0})))}
-	if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil || math.Abs(delta[0]-5) > 1e-3 {
-		t.Fatalf("a move of 5 blocks: %v, moved by %v", err, delta)
 	}
 	if got := clampToWorld(mgl64.Vec3{-1e30, 1e30, 5}); got != (mgl64.Vec3{-3e7, 2e7, 5}) {
 		t.Fatalf("clamped to %v", got)
 	}
 }
 
+// TestAuthInputAwaitingTeleport checks that a move before the client
+// acknowledged a teleport is handed to the game as awaiting it, and does
+// not steer what the player rides.
+func TestAuthInputAwaitingTeleport(t *testing.T) {
+	t.Parallel()
+	c := newUnchangedControllable()
+	expected := mgl64.Vec3{10, 64, 10}
+	s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
+	s.teleportPos.Store(&expected)
+	pk := &v2193.PlayerAuthInputPacket{Position: vec64To32(entityNetworkPosition(c, mgl64.Vec3{1, 0, 0}))}
+	if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.moves) != 1 || !c.moves[0].AwaitingTeleport || c.steered {
+		t.Fatalf("the game was handed %+v, steered %v; want one move awaiting the teleport, no steering", c.moves, c.steered)
+	}
+	if s.teleportPos.Load() == nil {
+		t.Fatal("the teleport is no longer awaited")
+	}
+}
+
+// TestFlightInputFlags checks that the session asks the game to start and
+// stop flying as its client does: the game refuses what the game mode does
+// not allow (TestClientFlightIsRefused of package player).
 func TestFlightInputFlags(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name        string
-		mode        world.GameMode
-		startFlying bool
-		stopFlying  bool
-	}{
-		{name: "spectator", mode: world.GameModeSpectator, startFlying: true},
-		{name: "survival", mode: world.GameModeSurvival, stopFlying: true},
-		{name: "creative", mode: world.GameModeCreative, startFlying: true, stopFlying: true},
+	c := newFlightControllable(world.GameModeSurvival)
+	s := newFlightTestSession()
+	h := PlayerAuthInputHandler{}
+	h.handleInputFlags(inputFlags(v2193.InputFlagStartFlying), s, nil, c)
+	if !c.askedToFly {
+		t.Fatal("the session did not ask the game to start flying")
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := newFlightControllable(test.mode)
-			s := newFlightTestSession()
-			h := PlayerAuthInputHandler{}
-
-			h.handleInputFlags(inputFlags(v2193.InputFlagStartFlying), s, nil, c)
-			if c.flying != test.startFlying {
-				t.Fatalf("start flying = %v, want %v", c.flying, test.startFlying)
-			}
-			if !test.mode.AllowsFlying() {
-				assertFlightAbilities(t, s.testPacket(), test.mode, false)
-			}
-
-			c.flying = true
-			h.handleInputFlags(inputFlags(v2193.InputFlagStopFlying), s, nil, c)
-			if c.flying != !test.stopFlying {
-				t.Fatalf("stop flying = %v, want %v", c.flying, !test.stopFlying)
-			}
-			if test.mode == world.GameModeSpectator {
-				for range 2 {
-					s.testPacket()
-				}
-				assertFlightAbilities(t, s.testPacket(), test.mode, true)
-			}
-		})
+	c.flying = true
+	h.handleInputFlags(inputFlags(v2193.InputFlagStopFlying), s, nil, c)
+	if c.flying {
+		t.Fatal("the session did not ask the game to stop flying")
 	}
 }
 
@@ -171,26 +163,12 @@ func newFlightTestSession() *Session {
 	}
 }
 
-func assertFlightAbilities(t *testing.T, pk proto.Packet, mode world.GameMode, flying bool) {
-	t.Helper()
-	abilities, ok := pk.(*v2193.UpdateAbilitiesPacket)
-	if !ok {
-		t.Fatalf("packet type = %T, want *v2193.UpdateAbilitiesPacket", pk)
-	}
-	values := abilities.AbilityData.Layers[0].Values
-	if got := values&v2193.AbilityFlying != 0; got != flying {
-		t.Fatalf("flying ability = %v, want %v", got, flying)
-	}
-	if got := values&v2193.AbilityNoClip != 0; got != !mode.HasCollision() {
-		t.Fatalf("no-clip ability = %v, want %v", got, !mode.HasCollision())
-	}
-}
-
 type flightControllable struct {
 	Controllable
-	handle *world.EntityHandle
-	mode   world.GameMode
-	flying bool
+	handle     *world.EntityHandle
+	mode       world.GameMode
+	flying     bool
+	askedToFly bool
 }
 
 func newFlightControllable(mode world.GameMode) *flightControllable {
@@ -200,16 +178,12 @@ func newFlightControllable(mode world.GameMode) *flightControllable {
 	}
 }
 
-func (c *flightControllable) H() *world.EntityHandle   { return c.handle }
-func (*flightControllable) Position() mgl64.Vec3       { return mgl64.Vec3{} }
-func (*flightControllable) Rotation() cube.Rotation    { return cube.Rotation{} }
-func (c *flightControllable) GameMode() world.GameMode { return c.mode }
-func (*flightControllable) Sneaking() bool             { return false }
-func (c *flightControllable) StartFlying() {
-	if c.mode.AllowsFlying() {
-		c.flying = true
-	}
-}
+func (c *flightControllable) H() *world.EntityHandle     { return c.handle }
+func (*flightControllable) Position() mgl64.Vec3         { return mgl64.Vec3{} }
+func (*flightControllable) Rotation() cube.Rotation      { return cube.Rotation{} }
+func (c *flightControllable) GameMode() world.GameMode   { return c.mode }
+func (*flightControllable) Sneaking() bool               { return false }
+func (c *flightControllable) StartFlying()               { c.askedToFly = true }
 func (c *flightControllable) Flying() bool               { return c.flying }
 func (c *flightControllable) StopFlying()                { c.flying = false }
 func (*flightControllable) FlightSpeed() float64         { return 0.05 }
@@ -221,6 +195,10 @@ type unchangedControllable struct {
 	position mgl64.Vec3
 	sleeping bool
 	move     func(mgl64.Vec3)
+	// moves are the moves the game was handed, steered whether the session
+	// steered what the controllable rides.
+	moves   []client.Move
+	steered bool
 }
 
 func newUnchangedControllable() *unchangedControllable {
@@ -232,18 +210,27 @@ func (c *unchangedControllable) Position() mgl64.Vec3   { return c.position }
 func (*unchangedControllable) Rotation() cube.Rotation {
 	return cube.Rotation{}
 }
-func (c *unchangedControllable) Move(delta mgl64.Vec3, _, _ float64) {
-	if c.move != nil {
-		c.move(delta)
-		return
+
+// ClientMove records the move and, unless it awaits a teleport, passes its
+// delta to move.
+func (c *unchangedControllable) ClientMove(m client.Move) client.MoveResult {
+	c.moves = append(c.moves, m)
+	if m.AwaitingTeleport {
+		return client.MoveIgnored
 	}
-	panic("Move called for unchanged movement")
+	if c.move != nil {
+		c.move(m.Position.Sub(c.position))
+	}
+	return client.MoveApplied
 }
 func (c *unchangedControllable) Sleeping() (cube.Pos, bool) { return cube.Pos{}, c.sleeping }
 func (*unchangedControllable) Gliding() bool                { return false }
 
 // SteerVehicle reports that the controllable rides nothing.
-func (*unchangedControllable) SteerVehicle(float64, float64, bool) bool { return false }
+func (c *unchangedControllable) SteerVehicle(float64, float64, bool) bool {
+	c.steered = true
+	return false
+}
 
 type offsetTestType struct{}
 

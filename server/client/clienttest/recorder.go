@@ -47,6 +47,9 @@ type Answers struct {
 	ChunkRadius  int32
 	// ClientMoving is what ClientMoving reports.
 	ClientMoving bool
+	// HandlingInput is what HandlingInput reports: set, the player takes
+	// what it is asked as asked by its client, and checks it.
+	HandlingInput bool
 }
 
 // Recorder is a client.Client that records every call made to it, those of
@@ -187,6 +190,22 @@ func (r *Recorder) ClientMoving() bool {
 	defer r.mu.Unlock()
 	r.recordLocked("ClientMoving")
 	return r.Answers.ClientMoving
+}
+
+// HandlingInput is not recorded: the player asks it of every action it
+// may check.
+func (r *Recorder) HandlingInput() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.Answers.HandlingInput
+}
+
+// SetHandlingInput sets what HandlingInput reports, as an adapter sets it
+// around what its client sent.
+func (r *Recorder) SetHandlingInput(handling bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Answers.HandlingInput = handling
 }
 
 func (r *Recorder) ViewRecipesUnlocked(javaIDs []string) {
@@ -444,8 +463,11 @@ func (r *Recorder) SendPlayerSpawn(a0 mgl64.Vec3) { r.record("SendPlayerSpawn", 
 func (r *Recorder) SetPlayerSpawn(a0 cube.Pos, a1 world.Dimension) {
 	r.record("SetPlayerSpawn", a0, a1)
 }
-func (r *Recorder) SendChargeItemComplete()              { r.record("SendChargeItemComplete") }
-func (r *Recorder) ResyncInventory()                     { r.record("ResyncInventory") }
+func (r *Recorder) SendChargeItemComplete() { r.record("SendChargeItemComplete") }
+func (r *Recorder) ResyncInventory()        { r.record("ResyncInventory") }
+func (r *Recorder) CorrectMove(a0 client.Controllable, a1, a2 mgl64.Vec3, a3 uint64) {
+	r.record("CorrectMove", a0, a1, a2, a3)
+}
 func (r *Recorder) ShowSkin(a0 skin.Skin)                { r.record("ShowSkin", a0) }
 func (r *Recorder) ViewSleepingPlayers(a0 int, a1 int)   { r.record("ViewSleepingPlayers", a0, a1) }
 func (r *Recorder) ViewElderGuardianCurse(a0 mgl64.Vec3) { r.record("ViewElderGuardianCurse", a0) }

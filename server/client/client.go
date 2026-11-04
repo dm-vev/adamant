@@ -86,6 +86,11 @@ type Connection interface {
 	// ClientMoving reports whether the player is being moved as its client
 	// moved it: a move the client made, which it is not shown again.
 	ClientMoving() bool
+	// HandlingInput reports whether the adapter is handling what the client
+	// sent, so that what the player is asked comes from its client: the
+	// game checks such asks, and leaves those of plugins and of the server
+	// alone.
+	HandlingInput() bool
 	// ViewInventories hands the client the inventories of its player c, as c
 	// opens in tx, and returns what the client shows of their changes.
 	// heldSlot points at the index of the slot held. Player installs the
@@ -292,6 +297,11 @@ type Self interface {
 	// ResyncInventory shows the inventories of the player again, after the
 	// client predicted a change the player did not make.
 	ResyncInventory()
+	// CorrectMove puts the player c back at pos, where the server has it,
+	// moving at vel, for the move of the client tick passed: the client's
+	// next moves start from pos once it acknowledges the correction, and
+	// those it sent before are not applied.
+	CorrectMove(c Controllable, pos, vel mgl64.Vec3, tick uint64)
 	// ViewRecipesUnlocked shows the recipes of the Java Edition IDs passed
 	// as newly unlocked, those of them the client has a recipe for.
 	ViewRecipesUnlocked(javaIDs []string)

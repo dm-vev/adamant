@@ -21,8 +21,8 @@ func TestNopAnswersAsNoClient(t *testing.T) {
 	if c.Addr() != nil {
 		t.Errorf("Addr() = %v, want nil", c.Addr())
 	}
-	if c.Latency() != 0 || c.ChunkRadius() != 0 || c.ClientMoving() {
-		t.Errorf("Latency, ChunkRadius, ClientMoving = %v, %v, %v; want zero", c.Latency(), c.ChunkRadius(), c.ClientMoving())
+	if c.Latency() != 0 || c.ChunkRadius() != 0 || c.ClientMoving() || c.HandlingInput() {
+		t.Errorf("Latency, ChunkRadius, ClientMoving, HandlingInput = %v, %v, %v, %v; want zero", c.Latency(), c.ChunkRadius(), c.ClientMoving(), c.HandlingInput())
 	}
 	if s := c.NetStats(); s.Addr != nil || s.Latency != 0 || s.Queued != 0 || s.Inbox != 0 || s.Transport != nil {
 		t.Errorf("NetStats() = %+v, want zero", s)
