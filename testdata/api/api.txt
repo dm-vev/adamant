@@ -446,7 +446,7 @@ server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomi
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
 server	type	Target	struct{Key server/identity.Key; Name string; Found server.Found; Pending bool}
-server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; AntiCheat server/player/anticheat.UserConfig}
+server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig}
 server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; kickMsg string; format server.whitelistFormat}
 server	var	DefaultHealthOptions	server.HealthOptions
 server	var	ErrBackupNotFound	error
@@ -6292,6 +6292,7 @@ server/config	func	OneOf	func(p *server/config.Problems, key string, value strin
 server/config	func	Quoted	func(values ...string) string
 server/config	func	Range	func[T server/config.Ordered](p *server/config.Problems, key string, v T, min T, max T) bool
 server/config	func	ReadFolder	func(p *server/config.Problems, key string, path string) bool
+server/config	func	Size	func(p *server/config.Problems, key string, value string) (int64, bool)
 server/config	method	Error.Error	func() string
 server/config	method	Problem.String	func() string
 server/config	method	Problems.Add	func(key string, err error) bool

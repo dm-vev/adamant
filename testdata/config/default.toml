@@ -190,6 +190,17 @@
     MaxQueue = 40
     Tolerance = 10
 
+[Backup]
+  Enabled = true
+  Folder = "backups"
+  Format = "folder"
+  Interval = "6h"
+  Keep = 10
+  MaxAge = "0s"
+  MinFreeSpace = "1GiB"
+  SaveFirst = true
+  Verify = "record"
+
 [Java]
   Address = ""
   Message = ""

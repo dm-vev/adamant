@@ -38,6 +38,22 @@ func TestHelpers(t *testing.T) {
 		want string
 	}{ok, `A.Every = "soon": want a duration such as "90s" or "5m"`})
 
+	for v, n := range map[string]int64{
+		"": 0, "0": 0, " 512MiB ": 512 << 20, "1GiB": 1 << 30, "1 gib": 1 << 30, "1.5GiB": 3 << 29,
+		"2048": 2048, "10B": 10, "4KiB": 4096, "1TiB": 1 << 40, "1KB": 1000, "5 MB": 5e6, "2GB": 2e9, "1TB": 1e12,
+	} {
+		if got, ok := Size(&p, "A.Size", v); !ok || got != n {
+			t.Errorf("Size of %q = %v, %v, want %v", v, got, ok, n)
+		}
+	}
+	for _, v := range []string{"lots", "GiB", "1 GiBs", "-1GiB", "1e3", "1.2.3MB", "9000000TiB"} {
+		_, ok := Size(&p, "A.Size", v)
+		checks = append(checks, struct {
+			ok   bool
+			want string
+		}{ok, "A.Size = \"" + v + "\": want a size such as \"512MiB\" or \"1GiB\""})
+	}
+
 	var want []string
 	for i, c := range checks {
 		if c.ok != (c.want == "") {

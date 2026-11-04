@@ -133,6 +133,10 @@ type backups struct {
 	running *runningBackup
 	closed  bool
 	last    BackupStatus
+	// lastEnd is when the last backup ended, or the schedule started, by
+	// the clock of the machine: the next scheduled backup is due an
+	// interval after it.
+	lastEnd time.Time
 
 	// now and free, if not nil, replace the clock and diskFree, for tests.
 	now  func() time.Time
@@ -181,13 +185,69 @@ func (b *backups) clock() time.Time {
 }
 
 // close cancels the backup running, waits for it to end, as it deletes what
-// it wrote, and refuses backups from then on. It also ends the schedule.
+// it wrote, and refuses backups from then on. It also ends the schedule,
+// which Server.Listen started.
 func (b *backups) close() {
 	b.mu.Lock()
 	b.closed = true
 	b.mu.Unlock()
 	b.cancel(errServerClosing)
 	b.wg.Wait()
+	<-b.done
+}
+
+// run makes a backup every BackupConfig.Interval, from the end of the last
+// backup, scheduled or not, until the server closes. The first is due an
+// interval after the start, so that a server that crashes as it starts does
+// not fill the disk. One due while saving is off is skipped. It first
+// deletes the backups a crash left unfinished.
+func (b *backups) run() {
+	defer close(b.done)
+	b.sweepAtStart()
+	conf := b.srv.conf.Backup
+	if conf.Interval <= 0 || conf.Folder == "" {
+		<-b.ctx.Done()
+		return
+	}
+	if _, ok := b.srv.conf.WorldProvider.(worldSnapshotter); !ok {
+		b.log().Info("Backups are not scheduled: the world provider cannot copy its world while it runs.")
+		<-b.ctx.Done()
+		return
+	}
+	b.mu.Lock()
+	b.lastEnd = time.Now()
+	b.mu.Unlock()
+	for {
+		due := b.due(conf.Interval)
+		t := time.NewTimer(time.Until(due))
+		select {
+		case <-b.ctx.Done():
+			t.Stop()
+			return
+		case <-t.C:
+		}
+		if b.due(conf.Interval).After(time.Now()) {
+			// A backup ended meanwhile.
+			continue
+		}
+		if !b.srv.SaveEnabledState() {
+			b.log().Info("Skipped a scheduled backup: saving is off. /backup makes one anyway.")
+			b.mu.Lock()
+			b.lastEnd = time.Now()
+			b.mu.Unlock()
+			continue
+		}
+		_, _ = b.srv.Backup(b.ctx, Actor{Kind: ActorServer, Name: "Server"}, "autosave")
+	}
+}
+
+// due returns when the next scheduled backup is due, an interval after the
+// last ended, and records it as BackupStatus.Next.
+func (b *backups) due(interval time.Duration) time.Time {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.last.Next = b.lastEnd.Add(interval)
+	return b.last.Next
 }
 
 // begin starts a backup by the actor passed, or fails if one is running or
@@ -210,7 +270,7 @@ func (b *backups) begin(by Actor) error {
 func (b *backups) end(info BackupInfo, err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.running = nil
+	b.running, b.lastEnd = nil, time.Now()
 	if err != nil {
 		b.last.LastErr, b.last.LastErrAt = err, b.clock()
 	} else {

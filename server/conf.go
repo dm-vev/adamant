@@ -1,6 +1,7 @@
 package server
 
 import (
+	"cmp"
 	"fmt"
 	"log/slog"
 	"os"
@@ -546,6 +547,34 @@ type UserConfig struct {
 		// If empty, a safe default is used.
 		Reason string
 	}
+	Backup struct {
+		// Enabled makes a backup every Interval. /backup works either way.
+		Enabled bool
+		// Folder holds the backups. It must not lie inside the folder of
+		// the world.
+		Folder string
+		// Format is how a backup is written: "folder", a copy of the world
+		// that shares the files that did not change with the world and the
+		// other backups on the same disk.
+		Format string
+		// Interval is the time between scheduled backups, from the end of
+		// one, such as "6h". "0s" schedules none.
+		Interval string
+		// Keep is how many backups are kept.
+		Keep int
+		// MaxAge also deletes the backups older than it, but the newest.
+		// "0s" deletes none for its age.
+		MaxAge string
+		// MinFreeSpace refuses a backup that would leave less free space
+		// than this on the disk of Folder, such as "1GiB".
+		MinFreeSpace string
+		// SaveFirst saves a checkpoint before each backup, so that it holds
+		// the world as of that moment.
+		SaveFirst bool
+		// Verify is how each backup is checked: "record" opens it and reads
+		// its checkpoint, "full" also reads every key, "off" does not.
+		Verify string
+	}
 	// AntiCheat is the anti-cheat: each check on or off, what it does, its
 	// thresholds and exemptions. See docs/anticheat.md.
 	AntiCheat anticheat.UserConfig
@@ -611,6 +640,62 @@ func (uc UserConfig) Check(p *config.Problems) {
 
 	// The operators and the bans are kept in the folder of the whitelist.
 	config.File(p, "Whitelist.File", whitelistPath(uc.Whitelist.File))
+	uc.checkBackup(p)
+}
+
+// checkBackup adds the problems of the [Backup] table of uc to p.
+func (uc UserConfig) checkBackup(p *config.Problems) {
+	b := uc.Backup
+	if config.Folder(p, "Backup.Folder", b.Folder) && uc.World.SaveData && inside(b.Folder, uc.World.Folder) {
+		p.Errorf("Backup.Folder", "Backup.Folder = %q: it lies inside World.Folder %q, whose copies would hold the backups", b.Folder, uc.World.Folder)
+	}
+	config.OneOf(p, "Backup.Format", b.Format, backupFormats...)
+	// More than one a minute would back up all the time.
+	if d, ok := config.Duration(p, "Backup.Interval", b.Interval); ok && d != 0 && d < time.Minute {
+		p.Errorf("Backup.Interval", `Backup.Interval = %q: want 1m or more, or "0s" to schedule none`, b.Interval)
+	}
+	config.AtLeast(p, "Backup.Keep", b.Keep, 1)
+	if d, ok := config.Duration(p, "Backup.MaxAge", b.MaxAge); ok {
+		config.AtLeast(p, "Backup.MaxAge", d, 0)
+	}
+	if n, ok := config.Size(p, "Backup.MinFreeSpace", b.MinFreeSpace); ok {
+		config.AtLeast(p, "Backup.MinFreeSpace", n, 0)
+	}
+	config.OneOf(p, "Backup.Verify", b.Verify, "record", "full", "off")
+}
+
+// backupFormats are the values of Backup.Format.
+var backupFormats = []string{"folder"}
+
+// inside reports whether the path sub is dir or lies inside it.
+func inside(sub, dir string) bool {
+	s, errS := filepath.Abs(cmp.Or(sub, "."))
+	d, errD := filepath.Abs(cmp.Or(dir, "."))
+	if errS != nil || errD != nil {
+		return false
+	}
+	rel, err := filepath.Rel(d, s)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// backupConfig returns the BackupConfig of the [Backup] table of uc, which
+// Check passed.
+func (uc UserConfig) backupConfig() BackupConfig {
+	b := uc.Backup
+	conf := BackupConfig{Folder: cmp.Or(strings.TrimSpace(b.Folder), "backups"), Keep: b.Keep, SaveFirst: b.SaveFirst}
+	if b.Enabled {
+		conf.Interval, _ = time.ParseDuration(cmp.Or(strings.TrimSpace(b.Interval), "0s"))
+	}
+	conf.MaxAge, _ = time.ParseDuration(cmp.Or(strings.TrimSpace(b.MaxAge), "0s"))
+	var p config.Problems
+	conf.MinFreeSpace, _ = config.Size(&p, "", b.MinFreeSpace)
+	switch strings.ToLower(strings.TrimSpace(b.Verify)) {
+	case "full":
+		conf.Verify = mcdb.VerifyFull
+	case "off":
+		conf.Verify = mcdb.VerifyOff
+	}
+	return conf
 }
 
 // whitelistPath returns the path of the whitelist of the Whitelist.File
@@ -635,7 +720,6 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err := problems.Err(false); err != nil {
 		return Config{}, err
 	}
-	var err error
 	defaultDim := world.Dimension(world.Overworld)
 	if parsed, ok := parseDimension(strings.TrimSpace(uc.World.DefaultDimension)); ok {
 		defaultDim = parsed
@@ -693,6 +777,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		DefaultDimension:      defaultDim,
 		PortalDisabledMessage: uc.World.PortalDisabledMessage,
 		AntiCheat:             antiCheat,
+		Backup:                uc.backupConfig(),
 	}
 	whitelistFile := whitelistPath(uc.Whitelist.File)
 	if !uc.Server.DisableJoinQuitMessages {
@@ -848,6 +933,9 @@ func DefaultConfig() UserConfig {
 	c.Whitelist.File = "white-list.txt"
 	c.Whitelist.Reason = defaultWhitelistKickMessage
 	c.AntiCheat = anticheat.DefaultUserConfig()
+	c.Backup.Enabled, c.Backup.Folder, c.Backup.Format, c.Backup.Interval = true, "backups", "folder", "6h"
+	c.Backup.Keep, c.Backup.MaxAge, c.Backup.MinFreeSpace = DefaultBackupKeep, "0s", "1GiB"
+	c.Backup.SaveFirst, c.Backup.Verify = true, "record"
 	return c
 }
 

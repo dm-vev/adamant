@@ -128,7 +128,7 @@ func (srv *Server) Listen() {
 	go srv.wait()
 	go srv.idleTimeoutLoop()
 	go srv.checkpoints.run(srv.conf.SaveInterval)
-	go srv.backups.sweepAtStart()
+	go srv.backups.run()
 }
 
 // Accept accepts incoming players into the server, returning an iterator that

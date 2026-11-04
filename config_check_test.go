@@ -249,6 +249,36 @@ func TestConfigBounds(t *testing.T) {
 			{`"allow.txt"`, ""}, {`"file.txt"`, ""},
 			{`"keys"`, `Whitelist.File = "keys": it is a folder, want a file`},
 		}, setup: func(t *testing.T) { mkdir(t, "keys"); writeFile(t, "file.txt") }},
+		{table: "Backup", key: "Keep", values: []value{
+			{"0", "Backup.Keep = 0: want 1 or more"}, {"1", ""}, {"1000", ""},
+		}},
+		{table: "Backup", key: "Interval", values: []value{
+			{`"59s"`, `Backup.Interval = "59s": want 1m or more, or "0s" to schedule none`},
+			{`"-1h"`, `Backup.Interval = "-1h": want 1m or more, or "0s" to schedule none`},
+			{`"1m"`, ""}, {`"0s"`, ""}, {`""`, ""}, {`"168h"`, ""},
+			{`"daily"`, `Backup.Interval = "daily": want a duration such as "90s" or "5m"`},
+		}},
+		{table: "Backup", key: "MaxAge", values: []value{
+			{`"0s"`, ""}, {`"720h"`, ""}, {`"-1h"`, "Backup.MaxAge = -1h0m0s: want 0s or more"},
+		}},
+		{table: "Backup", key: "MinFreeSpace", values: []value{
+			{`"0"`, ""}, {`"512MiB"`, ""}, {`"1 GB"`, ""}, {`""`, ""},
+			{`"lots"`, `Backup.MinFreeSpace = "lots": want a size such as "512MiB" or "1GiB"`},
+			{`"-1GiB"`, `Backup.MinFreeSpace = "-1GiB": want a size such as "512MiB" or "1GiB"`},
+		}},
+		{table: "Backup", key: "Format", values: []value{
+			{`"folder"`, ""}, {`"tar"`, `Backup.Format = "tar": want "folder"`},
+		}},
+		{table: "Backup", key: "Verify", values: []value{
+			{`"record"`, ""}, {`" FULL "`, ""}, {`"off"`, ""},
+			{`"deep"`, `Backup.Verify = "deep": want "record", "full" or "off"`},
+		}},
+		{table: "Backup", key: "Folder", values: []value{
+			{`"archive"`, ""}, {`"../backups"`, ""}, {`"worlds"`, ""},
+			{`"world"`, `Backup.Folder = "world": it lies inside World.Folder "world", whose copies would hold the backups`},
+			{`"world/backups"`, `Backup.Folder = "world/backups": it lies inside World.Folder "world", whose copies would hold the backups`},
+			{`"file.txt"`, `Backup.Folder = "file.txt": it is a file, want a folder`},
+		}, setup: func(t *testing.T) { writeFile(t, "file.txt") }},
 		{table: "Resources", key: "Folder", values: []value{
 			{`"packs"`, ""}, {`"file.txt"`, `Resources.Folder = "file.txt": it is a file, want a folder`},
 		}, setup: func(t *testing.T) { writeFile(t, "file.txt") }},

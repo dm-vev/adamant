@@ -23,6 +23,7 @@ import (
 	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml"
 )
@@ -56,7 +57,10 @@ import (
 // server dropped none before; and the [Monitoring] table, whose lines a new
 // default file has, and a file that lacks it serves metrics and profiles on
 // localhost:6060, as the program did before, and the probes of health
-// beside them, which it did not. And a file saving both its world and its
+// beside them, which it did not; and the [Backup] table, whose lines a new
+// default file has, and a file that lacks it backs the server up into
+// backups every 6 hours, keeping 10, which it did not before. And a file
+// saving both its world and its
 // players now keeps the players in the world database
 // (playerdb.WorldProvider), reading the players folder only for those not
 // yet moved there, and no longer makes the folder.
@@ -148,6 +152,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Log.Format": "text", "Log.RateLimit": 100, "Log.Levels": map[string]string{},
 			"Monitoring.Address": "localhost:6060", "Monitoring.Health": true, "Monitoring.Metrics": true, "Monitoring.Pprof": true,
 			"Monitoring.Token": "", "Monitoring.LiveTimeout": "2m0s", "Monitoring.ReadyTickAge": "5s",
+			"Backup.Folder": "backups", "Backup.Format": "folder", "Backup.Interval": "6h0m0s", "Backup.Keep": 10,
+			"Backup.MaxAge": "0s", "Backup.MinFreeSpace": int64(1 << 30), "Backup.SaveFirst": true, "Backup.Verify": "record",
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
 			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0, "SaveInterval": "5m0s",
@@ -172,6 +178,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.", "LogLevel": "WARN",
 			"Monitoring.Address": "127.0.0.1:9100", "Monitoring.Health": false, "Monitoring.Metrics": false, "Monitoring.Pprof": false,
 			"Monitoring.Token": "s3cret", "Monitoring.LiveTimeout": "3m0s", "Monitoring.ReadyTickAge": "10s",
+			"Backup.Folder": "archive", "Backup.Format": "folder", "Backup.Interval": "0s", "Backup.Keep": 3,
+			"Backup.MaxAge": "720h0m0s", "Backup.MinFreeSpace": int64(512 << 20), "Backup.SaveFirst": false, "Backup.Verify": "full",
 			"Log.Format": "json", "Log.RateLimit": 0, "Log.Levels": map[string]string{
 				"anticheat": "DEBUG", "commands": "INFO", "generator": "ERROR", "network": "INFO", "player": "DEBUG",
 				"save": "WARN", "server": "ERROR", "session": "DEBUG", "world": "WARN",
@@ -497,6 +505,17 @@ const everyKeyChanged = `
     MaxQueue = 30
     Tolerance = 5
 
+[Backup]
+  Enabled = false
+  Folder = "archive"
+  Format = " Folder "
+  Interval = "12h"
+  Keep = 3
+  MaxAge = "720h"
+  MinFreeSpace = "512 MiB"
+  SaveFirst = false
+  Verify = " Full "
+
 [Java]
   Address = ":25565"
   Message = "Use Bedrock."
@@ -639,7 +658,15 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 		"PlayerProvider": fmt.Sprintf("%T", conf.PlayerProvider), "PlayerFolder": exists("players") || exists("people"),
 		"WhitelistFile": whitelist, "Stranger": stranger,
 		"Query": query.Enabled(), "QueryPlugins": query.PluginListingEnabled(),
+		"Backup.Folder": conf.Backup.Folder, "Backup.Format": conf.Backup.Format.String(), "Backup.Interval": conf.Backup.Interval.String(),
+		"Backup.Keep": conf.Backup.Keep, "Backup.MaxAge": conf.Backup.MaxAge.String(), "Backup.MinFreeSpace": conf.Backup.MinFreeSpace,
+		"Backup.SaveFirst": conf.Backup.SaveFirst, "Backup.Verify": verificationName(conf.Backup.Verify),
 	})
+}
+
+// verificationName returns the name of v in config.toml.
+func verificationName(v mcdb.Verification) string {
+	return map[mcdb.Verification]string{mcdb.VerifyRecord: "record", mcdb.VerifyFull: "full", mcdb.VerifyOff: "off"}[v]
 }
 
 // antiCheatMeaning returns the meaning of the anti-cheat of a Config: its

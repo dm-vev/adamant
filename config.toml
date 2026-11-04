@@ -122,6 +122,34 @@
   # If empty, a safe default is used.
   Reason = "§cServer is white-listed"
 
+[Backup]
+  # Enabled makes a backup every Interval. /backup makes one either way. A backup copies the world while the
+  # server runs, without stopping it, with the admin lists, then checks the copy.
+  Enabled = true
+  # Folder holds the backups, relative to the working directory. It must not lie inside the world folder. Keep a
+  # copy of it off this machine: a backup on the same disk does not survive the disk.
+  Folder = "backups"
+  # Format is how a backup is written: "folder", a copy of the world that opens as it is and shares the files
+  # that did not change with the world and the other backups on the same disk, so that ten cost little more
+  # than one. Treat the backups as read-only: their files are those of the world.
+  Format = "folder"
+  # Interval is the time between scheduled backups, from the end of the last, such as "6h". The first is made
+  # an interval after the server starts. "0s" schedules none.
+  Interval = "6h"
+  # Keep is how many backups are kept: the oldest are deleted after each backup.
+  Keep = 10
+  # MaxAge also deletes the backups older than it, but the newest, such as "720h". "0s" deletes none for its
+  # age.
+  MaxAge = "0s"
+  # MinFreeSpace refuses a backup that would leave less free space than this on the disk of Folder, such as
+  # "512MiB" or "1GiB".
+  MinFreeSpace = "1GiB"
+  # SaveFirst saves the worlds and the players before each backup, so that it holds them as of that moment.
+  SaveFirst = true
+  # Verify is how each backup is checked before it counts: "record" opens it and reads its last save, "full"
+  # also reads every key of the world (as long as reading the whole world), "off" does not check.
+  Verify = "record"
+
 [AntiCheat]
   # Enabled switches the anti-cheat on or off: the checks the game runs on what the clients of players ask.
   # Each check has a table of its own, [AntiCheat.<Check>], with the keys Enabled, Action ("log", "setback" for

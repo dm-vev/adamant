@@ -433,3 +433,46 @@ func BenchmarkBackupStall(b *testing.B) {
 		})
 	}
 }
+
+// TestBackupSchedule runs the schedule with an interval of 100 ms: backups
+// by the server for autosave, the next one due an interval after the last
+// ended, and none while saving is off.
+func TestBackupSchedule(t *testing.T) {
+	dir := t.TempDir()
+	conf := backupConfig(t, dir, BackupConfig{Interval: 100 * time.Millisecond, Keep: 100})
+	jt := newJoinTest(t, conf.PlayerProvider, conf)
+	start := time.Now()
+	jt.start()
+	defer jt.srv.Close()
+	var list []BackupInfo
+	for deadline := time.Now().Add(30 * time.Second); len(list) < 2; time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("%d scheduled backups in 30s, want 2", len(list))
+		}
+		var err error
+		if list, err = jt.srv.Backups(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first := list[len(list)-1]
+	if first.Reason != "autosave" || first.By.Kind != ActorServer || first.Created.Sub(start) < 100*time.Millisecond {
+		t.Errorf("the first scheduled backup is %+v, want one for autosave by the server an interval after the start", first)
+	}
+	s := jt.srv.BackupStatus()
+	if s.Last == nil || s.Next.IsZero() {
+		t.Errorf("status %+v, want the last backup and the next one due", s)
+	}
+
+	jt.srv.SaveEnabled(false)
+	// Let the backup due or running end.
+	time.Sleep(300 * time.Millisecond)
+	before, _ := jt.srv.Backups()
+	time.Sleep(500 * time.Millisecond)
+	after, _ := jt.srv.Backups()
+	if len(after) != len(before) {
+		t.Errorf("%d backups scheduled while saving was off", len(after)-len(before))
+	}
+	if _, err := jt.srv.Backup(context.Background(), Actor{Kind: ActorConsole}, ""); err != nil {
+		t.Errorf("a backup asked for while saving is off: %v", err)
+	}
+}

@@ -15,6 +15,9 @@
 //			config.Range(p, "World.Interval", d, time.Second, time.Hour)
 //		}
 //		config.Address(p, "Network.Address", "udp", uc.Network.Address)
+//		if n, ok := config.Size(p, "Backup.MinFreeSpace", uc.Backup.MinFreeSpace); ok {
+//			config.AtLeast(p, "Backup.MinFreeSpace", n, 0)
+//		}
 //		config.Folder(p, "World.Folder", uc.World.Folder)
 //	}
 //
@@ -240,6 +243,49 @@ func Duration(p *Problems, key, value string) (time.Duration, bool) {
 		return 0, false
 	}
 	return d, true
+}
+
+// Size checks that the value of the key passed is a size of bytes, such as
+// "512MiB" or "1GiB", and returns it: a number of bytes, whole or not,
+// followed by a unit, if any, of B, KiB, MiB, GiB or TiB (powers of 1024), or
+// of KB, MB, GB or TB (powers of 1000), in any case and with or without a
+// space before it. An empty value passes as 0. Bound the size returned with
+// Range or AtLeast.
+func Size(p *Problems, key, value string) (int64, bool) {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return 0, true
+	}
+	n, ok := parseSize(v)
+	if !ok {
+		p.Errorf(key, "%s = %q: want a size such as \"512MiB\" or \"1GiB\"", key, value)
+		return 0, false
+	}
+	return n, true
+}
+
+// sizeUnits are the units of Size, by their names in lower case.
+var sizeUnits = map[string]float64{
+	"": 1, "b": 1,
+	"kib": 1 << 10, "mib": 1 << 20, "gib": 1 << 30, "tib": 1 << 40,
+	"kb": 1e3, "mb": 1e6, "gb": 1e9, "tb": 1e12,
+}
+
+// parseSize parses a size of Size.
+func parseSize(v string) (int64, bool) {
+	i := strings.IndexFunc(v, func(r rune) bool { return (r < '0' || r > '9') && r != '.' })
+	if i < 0 {
+		i = len(v)
+	}
+	unit, ok := sizeUnits[strings.ToLower(strings.TrimSpace(v[i:]))]
+	if !ok || i == 0 {
+		return 0, false
+	}
+	n, err := strconv.ParseFloat(v[:i], 64)
+	if err != nil || n*unit >= 1<<62 {
+		return 0, false
+	}
+	return int64(n * unit), true
 }
 
 // Address checks that the value of the key passed is an address the
