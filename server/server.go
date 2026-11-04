@@ -528,10 +528,12 @@ func (srv *Server) join(ctx context.Context, j client.Join) {
 			srv.conf.Log.Debug("spawn failed: no Xbox Live account vouched for", "raddr", login.Addr)
 			return
 		}
+		previous := ""
 		if srv.known != nil {
 			x, _ := k.XUID()
-			srv.known.seen(x, login.Identity.Name, login.Identity.UUID)
+			previous = srv.known.seen(x, login.Identity.Name, login.Identity.UUID)
 		}
+		srv.followRename(k, login.Identity.Name, previous)
 	}
 	id := login.Identity.UUID
 	// A player still online leaves before the joining one is loaded: the
