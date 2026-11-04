@@ -77,9 +77,9 @@ server/menu/repair.go Tx.Repair 147
 server/menu/trade.go Tx.TakeTrade 115
 server/metrics.go Server.registerMetrics 118
 server/player/conf.go Config.Apply 169
-server/player/player.go Player.AttackEntity 207
+server/player/player.go Player.AttackEntity 199
 server/player/player.go Player.Hurt 116
-server/player/player.go Player.Tick 146
+server/player/player.go Player.Tick 140
 server/world/checkpoint.go CaptureAllInto 111
 server/world/conf.go Config.New 194
 server/world/game_event.go Tx.EmitGameEvent 101

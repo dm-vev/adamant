@@ -137,6 +137,15 @@ type playerData struct {
 	// cooldownsMu guards the cooldowns map, which is accessed from gameplay and
 	// network goroutines.
 	cooldownsMu sync.Mutex
+	// attackStrengthTicks counts the ticks since the player last attacked,
+	// punched the air or came to hold another item in its main hand, as
+	// Java's Player.attackStrengthTicker (tickAttackStrength), and
+	// lastMainHand is that item, by name and meta.
+	attackStrengthTicks int
+	lastMainHand        struct {
+		name string
+		meta int16
+	}
 
 	speed               float64
 	flightSpeed         float64
@@ -2733,6 +2742,7 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 
 	p.SwingArm()
+	strength := p.takeAttackStrength()
 
 	i, left := p.HeldItems()
 	if isAttackable {
@@ -2796,6 +2806,7 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	if weakness, ok := p.Effect(effect.Weakness); ok {
 		dmg -= dmg * effect.Weakness.Multiplier(weakness.Level())
 	}
+	base := dmg
 	if s, ok := i.Enchantment(enchantment.Sharpness); ok {
 		dmg += enchantment.Sharpness.Addend(s.Level())
 		viewers, release := borrowViewers(p.tx, living.Position())
@@ -2849,17 +2860,12 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	if !vulnerable {
 		return true
 	}
+	p.sweepAttack(e, i, base, strength, critical)
 	p.Exhaust(0.1)
 	if living.H().Closed() {
 		// Hurt may synchronously kill and remove the mob. Its viewers no
 		// longer have a runtime ID for subsequent hit effects or metadata.
 		return true
-	}
-	if _, ok := i.Enchantment(enchantment.BaneOfArthropods); ok && arthropodEntity(target) {
-		if slowed, ok := living.(interface{ AddEffect(effect.Effect) }); ok {
-			duration := time.Duration((1.5 + rand.Float64()*2) * float64(time.Second))
-			slowed.AddEffect(effect.New(effect.Slowness, 4, duration))
-		}
 	}
 	if critical {
 		viewers, release := borrowViewers(p.tx, living.Position())
@@ -2872,12 +2878,7 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 
 	living.KnockBack(p.Position(), force, height)
-
-	if f, ok := i.Enchantment(enchantment.FireAspect); ok {
-		if flammable, ok := living.(entity.Flammable); ok {
-			flammable.SetOnFire(enchantment.FireAspect.Duration(f.Level()))
-		}
-	}
+	p.postAttackEffects(i, living)
 	return true
 }
 
@@ -4057,14 +4058,8 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	}
 	p.checkMenuReach()
 
-	now := time.Now()
-	p.cooldownsMu.Lock()
-	for it, ti := range p.cooldowns {
-		if now.After(ti) {
-			delete(p.cooldowns, it)
-		}
-	}
-	p.cooldownsMu.Unlock()
+	p.expireCooldowns()
+	p.tickAttackStrength()
 
 	p.client().SendDebugShapes(tx.World().Dimension())
 	p.client().SendHudUpdates()
@@ -4089,6 +4084,18 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	}
 
 	p.portalTravel.StopPortalContact()
+}
+
+// expireCooldowns removes the cooldowns of items that have run out.
+func (p *Player) expireCooldowns() {
+	now := time.Now()
+	p.cooldownsMu.Lock()
+	defer p.cooldownsMu.Unlock()
+	for it, ti := range p.cooldowns {
+		if now.After(ti) {
+			delete(p.cooldowns, it)
+		}
+	}
 }
 
 // SetEntityOnShoulder ports ServerPlayer.setEntityOnShoulder: a player on
@@ -4853,6 +4860,8 @@ func (p *Player) PunchAir() {
 		return
 	}
 	p.SwingArm()
+	// ServerGamePacketListenerImpl.handlePunch restarts the attack strength.
+	p.attackStrengthTicks = 0
 	p.tx.PlaySound(p.Position(), sound.Attack{})
 }
 
