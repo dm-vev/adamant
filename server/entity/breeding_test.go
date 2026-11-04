@@ -330,7 +330,18 @@ func TestOnlyTamedPetsBreedTamedYoung(t *testing.T) {
 }
 
 // frogPond builds a stone floor at y 63 with a strip of water at x 3 to 5.
+// frogPond fills the pen of breedingTestWorld with a pond and raises its
+// wall to three blocks. A frog long jumps to places up to two blocks above
+// it, as Java's LongJumpToPreferredBlock does, and the top of a wall two
+// blocks high is one. The arc to it from beside the wall, aimed at the
+// centre of the block above the wall, is still rising there, so the frog
+// flies on over the wall into the void.
 func frogPond(tx *world.Tx) {
+	for i := -9; i <= 9; i++ {
+		for _, pos := range []cube.Pos{{i, 66, -9}, {i, 66, 9}, {-9, 66, i}, {9, 66, i}} {
+			tx.SetBlock(pos, block.Stone{}, nil)
+		}
+	}
 	for x := -4; x <= 8; x++ {
 		for z := -4; z <= 4; z++ {
 			tx.SetBlock(cube.Pos{x, 62, z}, block.Stone{}, nil)
