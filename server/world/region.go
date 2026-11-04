@@ -81,7 +81,12 @@ type region struct {
 	// locked counts the lockShared calls of the region not unlocked yet.
 	locked int
 	// deferred is what the owner does for the region after the phase.
-	deferred []func(tx *Tx)
+	deferred []regionWork
+	// guard is the tick guard of the transaction of the region.
+	guard tickGuard
+	// fatal is set if an entity of the region panicked holding the shared
+	// lock: the region stopped, and the world fails after the phase.
+	fatal *Fault
 	// javaRandom and lootSequences are the streams the region draws from in
 	// place of the world's, seeded from them.
 	javaRandom    *vanilla.Random
@@ -92,6 +97,19 @@ type region struct {
 	// playersElsewhere is set if players that are not spectators are in
 	// other regions or in none.
 	playersElsewhere bool
+}
+
+// regionWork is work a region left to the owner, and the entity it is
+// blamed on if it panics, if any.
+type regionWork struct {
+	f  func(tx *Tx)
+	by *EntityHandle
+}
+
+// deferWork leaves f to the owner after the phase, blamed on the entity of
+// by if it panics.
+func (r *region) deferWork(f func(tx *Tx), by *EntityHandle) {
+	r.deferred = append(r.deferred, regionWork{f: f, by: by})
 }
 
 // regionState is what a world keeps for its region phases.
@@ -152,7 +170,7 @@ func (tx *Tx) WholeWorld(f func(tx *Tx)) {
 // is one, or after the region phase otherwise.
 func (tx *Tx) deferToOwner(f func(tx *Tx)) {
 	if r := tx.region; r != nil {
-		r.deferred = append(r.deferred, f)
+		r.deferWork(f, r.guard.ticking)
 		return
 	}
 	f(tx)
@@ -363,6 +381,11 @@ func (t ticker) tickRegionPhase(tx *Tx, tick int64, groups [][]columnRef, afterB
 			r := regions[i]
 			r.locals = w.workerLocals[worker]
 			for _, ref := range r.refs {
+				if r.fatal != nil {
+					// An entity panicked holding the shared lock: the region
+					// stops.
+					break
+				}
 				t.tickEntityColumn(r.tx, tick, ref.pos, ref.col, true, afterBlocks)
 			}
 			if r.locked != 0 {
@@ -389,11 +412,38 @@ func (t ticker) tickRegionPhase(tx *Tx, tick int64, groups [][]columnRef, afterB
 	}()
 	for _, r := range regions {
 		r.tx.closed = true
-		for _, f := range r.deferred {
-			f(tx)
+		if r.fatal != nil {
+			// What the regions share may be half changed.
+			tx.w.fatal(*r.fatal)
+		}
+		for i := 0; i >= 0; {
+			i = t.runRegionWorkFrom(tx, tick, r.deferred, i)
 		}
 		tx.deferred = append(tx.deferred, r.tx.deferred...)
 	}
+}
+
+// runRegionWorkFrom runs the work a region left to the owner from i on and
+// returns -1 once done. A panic ends it early: it is blamed on the entity
+// the work is of, if any, and the index after it returned.
+func (t ticker) runRegionWorkFrom(tx *Tx, tick int64, work []regionWork, i int) (next int) {
+	defer func() {
+		if r := recover(); r != nil {
+			next = i + 1
+			f := newFault(FaultEntity, r)
+			if by := work[i].by; by != nil {
+				f.Type, f.Pos, f.Entity = by.t.EncodeEntity(), cube.PosFromVec3(by.data.Pos), by
+				tx.w.blameEntity(tick, by, f)
+				return
+			}
+			f.Kind, f.Type = FaultTransaction, panicSite()
+			tx.w.reportFault(f, quarantineKey{})
+		}
+	}()
+	for ; i < len(work); i++ {
+		work[i].f(tx)
+	}
+	return -1
 }
 
 // regionPhasesOf groups the columns ticking actively passed into regions

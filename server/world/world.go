@@ -254,6 +254,8 @@ type World struct {
 	// faults holds the log of the panics recovered in the world and the
 	// offenders quarantined.
 	faults faults
+	// guard is the tick guard of the transactions of the owner.
+	guard tickGuard
 }
 
 // currentTickLocked returns the tick used to update this world. The caller
@@ -296,6 +298,10 @@ type entityState struct {
 	isTicker      bool
 	tickerChecked bool
 	ticker        TickerEntity
+	// faults counts the panics of the entity, which no longer ticks once
+	// quarantined.
+	faults      faultCount
+	quarantined bool
 	// binds records whether ent rebinds to each transaction it is used in,
 	// so that it may be handed out again instead of a fresh view.
 	binds            bool
@@ -1657,7 +1663,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 			handle.finalizeSpawn(e)
 			w.Handler().HandleEntitySpawn(tx, e)
 			handle.markWorldReady(w)
-			r.deferred = append(r.deferred, func(tx *Tx) {
+			r.deferWork(func(tx *Tx) {
 				if handle.state != state || handle.w != w {
 					return
 				}
@@ -1666,7 +1672,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 				for v := range c.viewers {
 					showEntity(e, v)
 				}
-			})
+			}, handle)
 			return e
 		}
 	}
@@ -1745,6 +1751,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 		}
 	}
 	w.removePendingRider(handle)
+	w.forgetEntity(handle, state)
 	delete(w.entities, handle)
 	w.untrackPlayer(handle)
 	delete(w.entitiesByUUID, handle.id)
@@ -2667,8 +2674,9 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			continue
 		}
 		if c.removeEntity(e) {
-			if _, ok := w.entities[e]; ok {
+			if state, ok := w.entities[e]; ok {
 				w.removePendingRider(e)
+				w.forgetEntity(e, state)
 				delete(w.entities, e)
 				w.untrackPlayer(e)
 				delete(w.entitiesByUUID, e.id)
@@ -2714,8 +2722,9 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		for v := range c.viewers {
 			v.HideEntity(ent)
 		}
-		if _, ok := w.entities[e]; ok {
+		if state, ok := w.entities[e]; ok {
 			w.removePendingRider(e)
+			w.forgetEntity(e, state)
 			delete(w.entities, e)
 			w.untrackPlayer(e)
 			delete(w.entitiesByUUID, e.id)

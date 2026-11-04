@@ -288,16 +288,31 @@ func (t ticker) tickFrozenPlayers(tx *Tx, tick int64) {
 		if col == nil || !col.Ready() {
 			continue
 		}
-		for index := 0; index < len(col.Entities); {
-			handle := col.Entities[index]
-			if handle.Type().EncodeEntity() == "minecraft:player" {
-				t.tickEntityHandle(tx, tick, handle, entityChunkRef{col: col, pos: ref.pos}, true)
-			}
-			if index < len(col.Entities) && col.Entities[index] == handle {
-				index++
-			}
+		for index := 0; index >= 0; {
+			index = t.tickFrozenPlayersFrom(tx, tick, ref.pos, col, index)
 		}
 	}
+}
+
+// tickFrozenPlayersFrom ticks the players of col from index on, as
+// tickEntityColumnFrom ticks entities.
+func (t ticker) tickFrozenPlayersFrom(tx *Tx, tick int64, pos ChunkPos, col *Column, index int) (next int) {
+	var handle *EntityHandle
+	defer func() {
+		if r := recover(); r != nil {
+			next = t.entityPanicked(tx, tick, col, index, handle, r)
+		}
+	}()
+	for index < len(col.Entities) {
+		handle = col.Entities[index]
+		if handle.Type().EncodeEntity() == "minecraft:player" {
+			t.tickEntityHandle(tx, tick, handle, entityChunkRef{col: col, pos: pos}, true)
+		}
+		if index < len(col.Entities) && col.Entities[index] == handle {
+			index++
+		}
+	}
+	return -1
 }
 
 type inhabitedTimePlayer struct {
@@ -842,7 +857,7 @@ func (t ticker) prefetchEntities(tx *Tx) {
 		}
 		for _, handle := range col.Entities {
 			state := handle.state
-			if state == nil {
+			if state == nil || state.quarantined {
 				continue
 			}
 			if p, ok := state.entity(tx, handle).(Prefetcher); ok {
@@ -888,7 +903,24 @@ func (t ticker) tickQueuedEntities(tx *Tx, tick int64) {
 	w := tx.World()
 	queued := w.queuedEntityTicks
 	w.queuedEntityTicks = nil
-	for _, handle := range queued {
+	for i := 0; i >= 0; {
+		i = t.tickQueuedEntitiesFrom(tx, tick, queued, i)
+	}
+}
+
+// tickQueuedEntitiesFrom ticks the entities queued from i on and returns
+// -1 once done. A panic ends it early: the entity is blamed and the index
+// after it returned.
+func (t ticker) tickQueuedEntitiesFrom(tx *Tx, tick int64, queued []*EntityHandle, i int) (next int) {
+	w := tx.World()
+	defer func() {
+		if r := recover(); r != nil {
+			t.entityPanicked(tx, tick, nil, i, queued[i], r)
+			next = i + 1
+		}
+	}()
+	for ; i < len(queued); i++ {
+		handle := queued[i]
 		state := w.entities[handle]
 		if state == nil || state.lastProcessedTick == tick {
 			continue
@@ -900,23 +932,46 @@ func (t ticker) tickQueuedEntities(tx *Tx, tick int64) {
 		active := w.conf.Synchronous || len(col.viewers) > 0
 		t.tickEntityHandle(tx, tick, handle, entityChunkRef{col: col, pos: state.pos, waiting: active && !w.entityTickingReady(state.pos)}, active)
 	}
+	return -1
 }
 
+// tickEntityColumn ticks the entities of col. A panic of one is blamed on it
+// and the column goes on with the entity after it, so that one recover
+// covers the whole column.
 func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, active, afterBlocks bool) {
+	for index := 0; index >= 0; {
+		index = t.tickEntityColumnFrom(tx, tick, pos, col, active, afterBlocks, index)
+	}
+}
+
+// tickEntityColumnFrom ticks the entities of col from index on and returns
+// -1 once done. A panic ends it early: the entity is blamed and the index
+// to go on from returned.
+func (t ticker) tickEntityColumnFrom(tx *Tx, tick int64, pos ChunkPos, col *Column, active, afterBlocks bool, index int) (next int) {
+	var handle *EntityHandle
+	defer func() {
+		if r := recover(); r != nil {
+			next = t.entityPanicked(tx, tick, col, index, handle, r)
+		}
+	}()
 	ref := entityChunkRef{col: col, pos: pos, waiting: active && !tx.World().entityTickingReady(pos)}
-	for index := 0; index < len(col.Entities); {
-		handle := col.Entities[index]
+	for index < len(col.Entities) {
+		handle = col.Entities[index]
 		phase, phased := handle.Type().(interface{ TickAfterBlocks() bool })
 		if (phased && phase.TickAfterBlocks()) != afterBlocks {
 			// Native normal-tick contacts can precede the block/circuit pass
 			// even when the entity's ECS movement runs afterwards.
 			if !afterBlocks && active && !ref.waiting {
 				state := handle.state
-				if state != nil && state.lastPreBlockTick != tick {
+				if state != nil && !state.quarantined && state.lastPreBlockTick != tick {
 					state.entity(tx, handle)
 					state.lastPreBlockTick = tick
 					if state.preBlockTicker != nil {
+						g := tx.guard()
+						prev := g.ticking
+						g.ticking = handle
 						state.preBlockTicker.TickBeforeBlockUpdates(tx, tick)
+						g.ticking = prev
 					}
 				}
 			}
@@ -924,10 +979,14 @@ func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, 
 			// without repeating their movement, ageing or normal entity tick.
 			if afterBlocks && active && !ref.waiting {
 				state := handle.state
-				if state != nil && state.lastTick == tick && state.lastProcessedTick == tick && state.lastPostBlockTick != tick && state.postBlockTicker != nil {
+				if state != nil && !state.quarantined && state.lastTick == tick && state.lastProcessedTick == tick && state.lastPostBlockTick != tick && state.postBlockTicker != nil {
 					state.lastPostBlockTick = tick
 					state.entity(tx, handle)
+					g := tx.guard()
+					prev := g.ticking
+					g.ticking = handle
 					state.postBlockTicker.TickAfterBlockUpdates(tx, tick)
+					g.ticking = prev
 				}
 			}
 			if index < len(col.Entities) && col.Entities[index] == handle {
@@ -940,6 +999,39 @@ func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, 
 			index++
 		}
 	}
+	return -1
+}
+
+// entityPanicked handles the panic r of a loop ticking entities, at index
+// of col (nil for a list of its own) while it ticked handle: it blames the
+// innermost entity whose behaviour ran, or else handle, whose bookkeeping
+// panicked, and returns the index of col to go on from, or -1 if the loop
+// cannot go on. A panic of a region holding the state regions share stops
+// the region: the world fails once the phase ended.
+func (t ticker) entityPanicked(tx *Tx, tick int64, col *Column, index int, handle *EntityHandle, r any) int {
+	g := tx.guard()
+	blamed := g.ticking
+	g.ticking = nil
+	if blamed == nil {
+		blamed = handle
+	}
+	if blamed == nil {
+		// Nothing of the loop ran for an entity: the loop itself panicked.
+		panic(r)
+	}
+	f := newFault(FaultEntity, r)
+	f.Type, f.Pos, f.Entity = blamed.t.EncodeEntity(), cube.PosFromVec3(blamed.data.Pos), blamed
+	if rg := tx.region; rg != nil && rg.locked != 0 {
+		rg.locked = 0
+		tx.w.regions.mu.Unlock()
+		rg.fatal = &f
+		return -1
+	}
+	tx.w.blameEntity(tick, blamed, f)
+	if col != nil && index < len(col.Entities) && col.Entities[index] == handle {
+		return index + 1
+	}
+	return index
 }
 
 func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref entityChunkRef, active bool) {
@@ -955,6 +1047,11 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	}
 	state.firstTickPending = false
 	state.lastProcessedTick = tick
+	if state.quarantined {
+		// An entity in quarantine keeps still, ageing and burning as one far
+		// from players does.
+		active = false
+	}
 	// Java ticks the vehicle before its passengers. Marking first also stops
 	// malformed cyclic saved links from recursing indefinitely.
 	if active && handle.data.Riding != nil {
@@ -1062,7 +1159,11 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		}
 	}
 	if state.isTicker && state.ticker != nil {
+		g := tx.guard()
+		prev := g.ticking
+		g.ticking = handle
 		state.ticker.Tick(tx, tick)
+		g.ticking = prev
 	}
 }
 
@@ -1079,14 +1180,14 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 		tx.lockShared()
 		defer tx.unlockShared()
 		if _, ok := r.loaded(w, chunkPos); !ok {
-			r.deferred = append(r.deferred, func(tx *Tx) {
+			r.deferWork(func(tx *Tx) {
 				if handle.state != state || handle.w != w {
 					return
 				}
 				if now := chunkPosFromVec3(handle.data.Pos); now != state.pos {
 					w.moveEntityChunk(tx, handle, state, now, entityChunkRef{pos: state.pos, col: w.chunks[state.pos]})
 				}
-			})
+			}, handle)
 			return nil, false
 		}
 	}

@@ -8,11 +8,15 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // isolatedEnv names the test a process runs the body of, for isolated.
@@ -216,5 +220,284 @@ func TestTaskPanicIsAFaultOfTheTransaction(t *testing.T) {
 	<-w.Exec(func(*Tx) { panic("test: exec panic") })
 	if n := len(sink.all(FaultTransaction)); n != 2 {
 		t.Fatalf("faults of the transaction = %d, want 2", n)
+	}
+}
+
+// tickLog records the ticks something happened in.
+type tickLog struct {
+	mu    sync.Mutex
+	ticks []int64
+}
+
+func (l *tickLog) add(tick int64) {
+	l.mu.Lock()
+	l.ticks = append(l.ticks, tick)
+	l.mu.Unlock()
+}
+
+func (l *tickLog) all() []int64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.ticks)
+}
+
+// probe returns an entity at pos calling tick in its tick.
+func probe(pos mgl64.Vec3, tick func(tx *Tx, e *testEntity)) *EntityHandle {
+	return EntitySpawnOpts{Position: pos}.New(testEntityType{}, regionProbeConfig{tick: tick})
+}
+
+// waitFor polls cond until it holds, ending the process after d as within
+// does.
+func waitFor(t *testing.T, d time.Duration, what string, cond func() bool) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		for !cond() {
+			time.Sleep(5 * time.Millisecond)
+		}
+		close(done)
+	}()
+	within(t, d, done, what)
+}
+
+// loadAround loads the columns within radius of pos for a loader of its
+// own, which keeps their entities ticking.
+func loadAround(t *testing.T, w *World, pos mgl64.Vec3, radius int) {
+	t.Helper()
+	l := NewLoader(radius, w, NopViewer{})
+	within(t, 10*time.Second, w.Exec(func(tx *Tx) { l.Move(tx, pos) }), "moving a loader")
+	waitFor(t, 30*time.Second, "loading the columns", func() bool {
+		<-w.Exec(func(tx *Tx) { l.Load(tx, 256) })
+		l.mu.RLock()
+		defer l.mu.RUnlock()
+		return len(l.loadQueue) == 0
+	})
+}
+
+// containsAll reports whether every tick of want is in got.
+func containsAll(got, want []int64) bool {
+	for _, tick := range want {
+		if !slices.Contains(got, tick) {
+			return false
+		}
+	}
+	return true
+}
+
+func TestEntityTickPanicKeepsTheWorld(t *testing.T) {
+	isolated(t, func(t *testing.T) {
+		var sink faultSink
+		rec := newFaultRecorder()
+		w := sink.configure(Config{Provider: NopProvider{}, RandomTickSpeed: -1}, rec).New()
+		defer func() { _ = w.Close() }()
+		loadAround(t, w, mgl64.Vec3{}, 5)
+
+		var panicked, counted tickLog
+		bad := probe(mgl64.Vec3{1.5, 64, 1.5}, func(tx *Tx, _ *testEntity) {
+			panicked.add(tx.CurrentTick())
+			panic("test: entity tick")
+		})
+		// The second entity is in the same column, after the first: the
+		// column goes on after the panic.
+		good := probe(mgl64.Vec3{2.5, 64, 2.5}, func(tx *Tx, _ *testEntity) { counted.add(tx.CurrentTick()) })
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
+			tx.AddEntity(bad)
+			tx.AddEntity(good)
+		}), "adding the entities")
+
+		waitFor(t, 30*time.Second, "the good entity ticking 40 times after the quarantine", func() bool {
+			p := panicked.all()
+			return len(p) >= FaultLimit && len(counted.all()) >= len(p)+40
+		})
+		if p := panicked.all(); len(p) != FaultLimit {
+			t.Fatalf("the entity ticked %d times, want %d: it is not quarantined", len(p), FaultLimit)
+		} else if !containsAll(counted.all(), p) {
+			t.Fatalf("the other entity did not tick in the ticks of the panics %v", p)
+		}
+		faults := sink.all(FaultEntity)
+		if len(faults) != FaultLimit {
+			t.Fatalf("faults = %d, want %d", len(faults), FaultLimit)
+		}
+		for i, f := range faults {
+			if f.Entity != bad || f.Count != i+1 || f.Quarantined != (i+1 == FaultLimit) || f.Type != "dragonfly:test_entity" || f.Pos != (cube.Pos{1, 64, 1}) {
+				t.Fatalf("fault %d = %+v", i, f)
+			}
+		}
+		if lines := rec.errors(); len(lines) != 1 || lines[0].Message != "entity panicked" || !strings.Contains(attr(lines[0], "stack"), "TestEntityTickPanicKeepsTheWorld") || attr(lines[0], "uuid") != bad.UUID().String() {
+			t.Fatalf("Error lines = %d, want 1 with the stack and UUID, the 2 others suppressed", len(lines))
+		}
+		if q := w.Quarantined(); len(q) != 1 || q[0].Entity != bad {
+			t.Fatalf("Quarantined = %v, want the entity", q)
+		}
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
+			if _, ok := bad.Entity(tx); !ok {
+				t.Error("the quarantined entity left the world")
+			}
+			pos := ChunkPos{0, 0}
+			saved := false
+			for _, e := range w.columnTo(w.chunks[pos], pos).Entities {
+				saved = saved || e.ID == bad.UniqueID()
+			}
+			if !saved {
+				t.Error("the quarantined entity is not saved with its column")
+			}
+			tx.RemoveEntity(bad.mustEntity(tx))
+		}), "checking the quarantined entity")
+		if q := w.Quarantined(); len(q) != 0 {
+			t.Fatalf("Quarantined after the entity left = %v", q)
+		}
+	})
+}
+
+// regionWorld returns an asynchronous world ticking its entities in
+// regions, with loaders at the two positions far apart passed.
+func regionWorld(t *testing.T, sink *faultSink, rec faultRecorder, a, b mgl64.Vec3) *World {
+	t.Helper()
+	w := sink.configure(Config{Provider: NopProvider{}, RandomTickSpeed: -1, Regions: true}, rec).New()
+	loadAround(t, w, a, 4)
+	loadAround(t, w, b, 4)
+	return w
+}
+
+func TestRegionEntityPanicStaysInItsRegion(t *testing.T) {
+	isolated(t, func(t *testing.T) {
+		var sink faultSink
+		rec := newFaultRecorder()
+		a, b := mgl64.Vec3{8.5, 64, 8.5}, mgl64.Vec3{40*16 + 8.5, 64, 8.5}
+		w := regionWorld(t, &sink, rec, a, b)
+		defer func() { _ = w.Close() }()
+
+		var panicked, sameRegion, otherRegion tickLog
+		var regions sync.Map
+		bad := probe(a, func(tx *Tx, _ *testEntity) {
+			regions.Store("bad", tx.region)
+			panicked.add(tx.CurrentTick())
+			panic("test: region entity tick")
+		})
+		next := probe(a.Add(mgl64.Vec3{1, 0, 1}), func(tx *Tx, _ *testEntity) { sameRegion.add(tx.CurrentTick()) })
+		far := probe(b, func(tx *Tx, _ *testEntity) {
+			regions.Store("far", tx.region)
+			otherRegion.add(tx.CurrentTick())
+		})
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
+			tx.AddEntity(bad)
+			tx.AddEntity(next)
+			tx.AddEntity(far)
+		}), "adding the entities")
+
+		waitFor(t, 30*time.Second, "the other entities ticking 20 times after the quarantine", func() bool {
+			p := panicked.all()
+			return len(p) >= FaultLimit && len(otherRegion.all()) >= len(p)+20 && len(sameRegion.all()) >= len(p)+20
+		})
+		p := panicked.all()
+		if len(p) != FaultLimit {
+			t.Fatalf("the entity ticked %d times, want %d", len(p), FaultLimit)
+		}
+		if !containsAll(otherRegion.all(), p) || !containsAll(sameRegion.all(), p) {
+			t.Fatalf("the other entities did not tick in the ticks of the panics %v", p)
+		}
+		badRegion, _ := regions.Load("bad")
+		farRegion, _ := regions.Load("far")
+		if badRegion.(*region) == nil || farRegion.(*region) == nil || badRegion == farRegion {
+			t.Fatalf("the entities ticked in regions %v and %v, want two", badRegion, farRegion)
+		}
+		if f := sink.fatals(); len(f) != 0 {
+			t.Fatalf("fatal faults = %v, want none", f)
+		}
+		if faults := sink.all(FaultEntity); len(faults) != FaultLimit || !faults[FaultLimit-1].Quarantined || faults[0].Entity != bad {
+			t.Fatalf("faults = %v", sink.all(0))
+		}
+		if w.RegionPhases() == 0 {
+			t.Fatal("no region phase ran")
+		}
+	})
+}
+
+func TestRegionPanicHoldingTheSharedLockIsFatal(t *testing.T) {
+	isolated(t, func(t *testing.T) {
+		var sink faultSink
+		rec := newFaultRecorder()
+		a, b := mgl64.Vec3{8.5, 64, 8.5}, mgl64.Vec3{40*16 + 8.5, 64, 8.5}
+		w := regionWorld(t, &sink, rec, a, b)
+		defer func() { _ = w.Close() }()
+
+		var panicked, otherRegion tickLog
+		bad := probe(a, func(tx *Tx, _ *testEntity) {
+			if len(panicked.all()) >= FaultLimit {
+				return
+			}
+			panicked.add(tx.CurrentTick())
+			tx.lockShared()
+			panic("test: panic holding the shared lock")
+		})
+		far := probe(b, func(tx *Tx, _ *testEntity) { otherRegion.add(tx.CurrentTick()) })
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
+			tx.AddEntity(bad)
+			tx.AddEntity(far)
+		}), "adding the entities")
+
+		waitFor(t, 30*time.Second, "the other region ticking 20 times after the panics", func() bool {
+			p := panicked.all()
+			return len(p) >= FaultLimit && len(otherRegion.all()) >= len(p)+20
+		})
+		fatal := sink.fatals()
+		if len(fatal) != 1 || fatal[0].Kind != FaultFatal || fatal[0].Entity != bad || fatal[0].Value != "test: panic holding the shared lock" {
+			t.Fatalf("Config.Fatal calls = %v, want one, blamed on the entity", fatal)
+		}
+		if faults := sink.all(FaultEntity); len(faults) != 0 {
+			t.Fatalf("entity faults = %v: a panic holding the shared lock is not the entity's alone", faults)
+		}
+		within(t, 10*time.Second, w.Exec(func(tx *Tx) {
+			if !w.regions.mu.TryLock() {
+				t.Error("the shared lock is still held")
+				return
+			}
+			w.regions.mu.Unlock()
+		}), "checking the shared lock")
+		if n := len(rec.errors()); n != FaultLimit {
+			t.Fatalf("Error lines = %d, want one for each fatal panic", n)
+		}
+	})
+}
+
+// advance ticks the synchronous world w, failing the test if the tick
+// panicked.
+func advance(t *testing.T, w *World) {
+	t.Helper()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("the tick panicked: %v", r)
+		}
+	}()
+	w.AdvanceTick()
+}
+
+func TestRegionWorkPanicIsBlamedOnItsEntity(t *testing.T) {
+	var sink faultSink
+	rec := newFaultRecorder()
+	w := sink.configure(Config{Synchronous: true, Regions: true}, rec).New()
+	defer func() { _ = w.Close() }()
+
+	var ran []string
+	a := probe(mgl64.Vec3{8.5, 4, 8.5}, func(tx *Tx, _ *testEntity) {
+		// Left to the owner after the phase, which runs the work after it
+		// anyway.
+		tx.WholeWorld(func(*Tx) { panic("test: region work") })
+		tx.WholeWorld(func(*Tx) { ran = append(ran, "after") })
+	})
+	b := probe(mgl64.Vec3{1024 + 8.5, 4, 8.5}, func(*Tx, *testEntity) {})
+	<-w.Exec(func(tx *Tx) {
+		tx.AddEntity(a)
+		tx.AddEntity(b)
+	})
+	advance(t, w)
+	if w.RegionPhases() != 1 {
+		t.Fatalf("%d region phases, want 1", w.RegionPhases())
+	}
+	if len(ran) != 1 {
+		t.Fatalf("the work after the panic ran %d times, want once", len(ran))
+	}
+	if faults := sink.all(0); len(faults) != 1 || faults[0].Kind != FaultEntity || faults[0].Entity != a || faults[0].Count != 1 {
+		t.Fatalf("faults = %v, want one blamed on the entity", faults)
 	}
 }

@@ -387,3 +387,36 @@ func (w *World) fatal(f Fault) {
 		hook(f)
 	}
 }
+
+// tickGuard is the guard of a transaction ticking entities: the owner's, or
+// a region's, as each region has its own transaction.
+type tickGuard struct {
+	// ticking is the innermost entity whose behaviour runs, nil between
+	// entities.
+	ticking *EntityHandle
+}
+
+// guard returns the tick guard of tx.
+func (tx *Tx) guard() *tickGuard {
+	if r := tx.region; r != nil {
+		return &r.guard
+	}
+	return &tx.w.guard
+}
+
+// blameEntity counts the fault f, of a panic at tick, against the entity
+// of handle, quarantining it once it reached FaultLimit, and reports it.
+func (w *World) blameEntity(tick int64, handle *EntityHandle, f Fault) {
+	if state := handle.state; state != nil && state.faults.count(&f, tick) {
+		state.quarantined = true
+	}
+	w.reportFault(f, quarantineKey{entity: handle})
+}
+
+// forgetEntity takes the entity of handle, whose state in the world is
+// state, out of quarantine, as it leaves the world.
+func (w *World) forgetEntity(handle *EntityHandle, state *entityState) {
+	if state != nil && state.quarantined {
+		w.release(quarantineKey{entity: handle})
+	}
+}

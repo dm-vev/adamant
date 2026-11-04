@@ -90,11 +90,41 @@ func BenchmarkTickEntities20000Active(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	<-w.Exec(func(tx *Tx) {
+		defer reportCPU(b)()
 		for i := 0; i < b.N; i++ {
 			tk.tickEntities(tx, int64(i+1))
 		}
 	})
 	b.StopTimer()
+}
+
+// BenchmarkTickEntities20000Tickers ticks 20,000 entities that implement
+// TickerEntity, 16 in each of 1,250 columns, with a tick doing almost
+// nothing: the case where the cost of the entity loop itself shows most.
+func BenchmarkTickEntities20000Tickers(b *testing.B) {
+	w := setupTickerBenchmarkWorld(b, tickBenchmarkEntityCount, 16)
+	tk := ticker{interval: time.Second / 20}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	<-w.Exec(func(tx *Tx) {
+		defer reportCPU(b)()
+		for i := 0; i < b.N; i++ {
+			tk.tickEntities(tx, int64(i+1))
+		}
+	})
+	b.StopTimer()
+}
+
+// reportCPU starts measuring the CPU time of the process and returns the
+// function that reports it as cpu-ns/op, where it is measured.
+func reportCPU(b *testing.B) func() {
+	start := processCPUTime()
+	return func() {
+		if used := processCPUTime() - start; used > 0 {
+			b.ReportMetric(float64(used.Nanoseconds())/float64(b.N), "cpu-ns/op")
+		}
+	}
 }
 
 func BenchmarkScheduledTickQueue4096(b *testing.B) {
@@ -241,6 +271,40 @@ func setupEntityBenchmarkWorld(b *testing.B, entityCount int) *World {
 	return w
 }
 
+// setupTickerBenchmarkWorld returns a synchronous world, whose columns
+// all tick their entities, with entityCount ticker entities, perColumn in
+// each column of a square of columns.
+func setupTickerBenchmarkWorld(b *testing.B, entityCount, perColumn int) *World {
+	b.Helper()
+	w := Config{
+		Dim:             Overworld,
+		Provider:        NopProvider{},
+		Generator:       NopGenerator{},
+		RandomTickSpeed: -1,
+		Synchronous:     true,
+	}.New()
+	b.Cleanup(func() {
+		if err := w.Close(); err != nil {
+			b.Fatalf("failed closing ticker benchmark world: %v", err)
+		}
+	})
+	columns := (entityCount + perColumn - 1) / perColumn
+	side := int(math.Ceil(math.Sqrt(float64(columns))))
+	<-w.Exec(func(tx *Tx) {
+		for c := range columns {
+			tx.chunk(ChunkPos{int32(c % side), int32(c / side)})
+		}
+		for i := range entityCount {
+			c, j := i/perColumn, i%perColumn
+			x := float64((c%side)*16+(j%4)*4) + 0.5
+			z := float64((c/side)*16+(j/4%4)*4) + 0.5
+			tx.AddEntity(EntitySpawnOpts{Position: mgl64.Vec3{x, 64, z}}.New(benchmarkTickerType{}, benchmarkEntityConfig{}))
+		}
+	})
+	b.Logf("ticker benchmark world ready: entities=%d columns=%d", entityCount, columns)
+	return w
+}
+
 func setupScheduledQueueBenchmarkWorld(b *testing.B) *World {
 	b.Helper()
 
@@ -309,6 +373,20 @@ func (e benchmarkEntity) Close() error            { return nil }
 func (e benchmarkEntity) H() *EntityHandle        { return e.handle }
 func (e benchmarkEntity) Position() mgl64.Vec3    { return e.data.Pos }
 func (e benchmarkEntity) Rotation() cube.Rotation { return e.data.Rot }
+
+// benchmarkTickerType is an entity type whose entities tick, doing almost
+// nothing.
+type benchmarkTickerType struct{ benchmarkEntityType }
+
+func (benchmarkTickerType) Open(_ *Tx, handle *EntityHandle, data *EntityData) Entity {
+	return benchmarkTicker{benchmarkEntity{handle: handle, data: data}}
+}
+
+func (benchmarkTickerType) EncodeEntity() string { return "benchmark:ticker" }
+
+type benchmarkTicker struct{ benchmarkEntity }
+
+func (e benchmarkTicker) Tick(_ *Tx, tick int64) { e.data.Age += time.Duration(tick & 1) }
 
 type benchmarkEntityConfig struct{}
 
