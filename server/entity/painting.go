@@ -354,7 +354,3 @@ func (b *paintingBehaviour) breakPainting(e *Ent, tx *world.Tx, causer world.Ent
 	}
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos.Add(cube.Pos{}.Side(b.facing.Face()).Vec3().Mul(0.15))}, stack))
 }
-
-func isPlayerEntity(e world.Entity) bool {
-	return e.H().Type().EncodeEntity() == "minecraft:player"
-}

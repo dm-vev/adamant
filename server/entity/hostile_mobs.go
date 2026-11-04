@@ -1,12 +1,13 @@
 package entity
 
 import (
-	"github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/google/uuid"
 	"hash/fnv"
 	"maps"
 	"math/rand/v2"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/google/uuid"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -1226,40 +1227,6 @@ func (m *HostileMob) finalizeHuskCamel(reason string, r *vanilla.Random) {
 		seatRider(parched, camel)
 		parched.state().ridingLinkPending = true
 	}
-}
-func hostileNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
-	entry := mountNativeStack(s, previous)
-	if banner, ok := s.Item().(block.Banner); ok {
-		if entry.Raw == nil {
-			entry.Raw = make(map[string]any)
-		}
-		for key, value := range banner.EncodeNBT() {
-			if key != "id" {
-				entry.Raw[key] = value
-			}
-		}
-	}
-	return entry
-}
-func hostileStackFromNative(native NativeMobItem) item.Stack {
-	if native.Name == "" || native.Count == 0 {
-		return item.Stack{}
-	}
-	it, ok := world.ItemByName(native.Name, int16(native.Damage))
-	if !ok {
-		return item.Stack{}
-	}
-	if banner, ok := it.(block.Banner); ok {
-		raw := native.Raw
-		if tag, ok := native.Raw["tag"].(map[string]any); ok {
-			raw = tag
-		}
-		if _, patterns := raw["Patterns"]; patterns {
-			banner = banner.DecodeNBT(raw).(block.Banner)
-		}
-		it = banner
-	}
-	return item.NewStack(it, int(native.Count))
 }
 
 func ominousBannerStack() item.Stack {

@@ -3,7 +3,6 @@ package entity
 import (
 	"time"
 
-	"encoding/json"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -237,7 +236,6 @@ func decodeOceanStack(equipment map[string]any, slot string) item.Stack {
 	stack, _ := item.StackFromStructureNBT(raw)
 	return stack
 }
-func oceanNumber(value any) float64 { v, _ := oceanFloat(value); return v }
 func oceanBool(data map[string]any, key string) bool {
 	switch value := data[key].(type) {
 	case bool:
@@ -247,19 +245,6 @@ func oceanBool(data map[string]any, key string) bool {
 	default:
 		return nbtconv.Bool(data, key)
 	}
-}
-func oceanFloat(value any) (float64, bool) {
-	switch v := value.(type) {
-	case float32:
-		return float64(v), true
-	case float64:
-		return v, true
-	case int32:
-		return float64(v), true
-	case int64:
-		return float64(v), true
-	}
-	return 0, false
 }
 func oceanAttributeValue(base float64, raw any) float64 {
 	modifiers, ok := raw.([]any)
@@ -830,72 +815,6 @@ func (m *oceanMob) dropEquipment(slot string, stack item.Stack, killedByPlayer b
 	dropMobEquipment(m.tx, m, stack, m.dropChance(slot), killedByPlayer, looting)
 }
 
-// dropMobEquipment ports one slot of Mob.dropCustomDeathLoot: a worn item
-// rolls its drop chance, raised by looting, when a player killed the mob or
-// the chance exceeds 1 (a preserved item, which also keeps its durability).
-func dropMobEquipment(tx *world.Tx, e world.Entity, stack item.Stack, chance float32, killedByPlayer bool, looting int) {
-	if stack.Empty() {
-		return
-	}
-	preserve := chance > 1
-	if chance == 0 || (!killedByPlayer && !preserve) {
-		return
-	}
-	if oceanStackEnchantmentLevel(stack, "Curse of Vanishing", "minecraft:vanishing_curse") > 0 {
-		return
-	}
-	random := e.H().RegionRandom()
-	if random.NextFloat() >= oceanEquipmentDropChance(chance, looting) {
-		return
-	}
-	if !preserve {
-		if durable, ok := stack.Item().(item.Durable); ok {
-			maxDamage := durable.DurabilityInfo().MaxDurability
-			if maxDamage > 0 {
-				remaining := random.NextInt(1 + random.NextInt(int32(max(maxDamage-3, 1))))
-				stack = stack.WithDurability(int(remaining))
-			}
-		}
-	}
-	tx.AddEntity(NewItemDrop(world.EntitySpawnOpts{Position: e.Position()}, stack))
-}
-func oceanEquipmentDropChance(chance float32, looting int) float32 {
-	if looting > 0 {
-		chance += float32(looting) * float32(.01)
-	}
-	return chance
-}
-
-func oceanStackEnchantmentLevel(main item.Stack, nativeName, sourceID string) int {
-	if main.Empty() {
-		return 0
-	}
-	level := 0
-	for _, enchantment := range main.Enchantments() {
-		if enchantment.Type().Name() == nativeName && enchantment.Level() > level {
-			level = enchantment.Level()
-		}
-	}
-	if raw, ok := main.Value("java_components_json"); ok {
-		if encoded, ok := raw.(string); ok {
-			var components map[string]any
-			if json.Unmarshal([]byte(encoded), &components) == nil {
-				if enchantments, ok := components["minecraft:enchantments"].(map[string]any); ok {
-					levels, _ := enchantments["levels"].(map[string]any)
-					if levels == nil {
-						levels = enchantments
-					}
-					if rawLevel, ok := levels[sourceID]; ok {
-						if n, ok := oceanFloat(rawLevel); ok && int(n) > level {
-							level = int(n)
-						}
-					}
-				}
-			}
-		}
-	}
-	return level
-}
 func (m *oceanMob) CanEquipBodyArmor(user world.Entity) bool {
 	b := m.b()
 	return (b.kind == oceanNautilus || b.kind == oceanZombieNautilus) && b.tamed && b.age >= 0 && b.bodyArmorMaterial < 0 && user != nil

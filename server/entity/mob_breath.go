@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // This file ports what LivingEntity.baseTick does to a mob's breath: a mob
@@ -123,4 +124,13 @@ func mobInWall(m *Mob) bool {
 		}
 	}
 	return false
+}
+
+// eyeInWater reports if the eyes of a mob are under water, as
+// Entity.isEyeInFluid for water.
+func eyeInWater(m *Mob) bool {
+	eye := mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}
+	pos := cube.PosFromVec3(eye)
+	l, ok := m.tx.Liquid(pos)
+	return ok && l.LiquidType() == "water" && eye[1] < float64(pos.Y())+liquidHeight(m.tx, pos, l)
 }

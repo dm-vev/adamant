@@ -222,15 +222,6 @@ func randomSwimmablePosWithin(m *Mob, horizontal, vertical int) (mgl64.Vec3, boo
 	return pos, ok
 }
 
-// eyeInWater reports if the eyes of a mob are under water, as
-// Entity.isEyeInFluid for water.
-func eyeInWater(m *Mob) bool {
-	eye := mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}
-	pos := cube.PosFromVec3(eye)
-	l, ok := m.tx.Liquid(pos)
-	return ok && l.LiquidType() == "water" && eye[1] < float64(pos.Y())+liquidHeight(m.tx, pos, l)
-}
-
 // fishMoveControl ports AbstractFish.FishMoveControl: a fish under water
 // floats up a little, and swims towards where it wants to go while its
 // navigation has a path.

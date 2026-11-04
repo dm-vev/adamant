@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/rand/v2"
 
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -42,4 +43,16 @@ func knockBackResisted(e knockBackable, src mgl64.Vec3, force, height, resistanc
 		y = math.Min(height, v[1]/2+height*scale)
 	}
 	e.SetVelocity(mgl64.Vec3{v[0]/2 + xd/l*push, y, v[2]/2 + zd/l*push})
+}
+
+// entityKnockbackResistance returns the knockback resistance attribute of an
+// entity.
+func entityKnockbackResistance(e world.Entity) float64 {
+	if k, ok := e.(interface{ KnockbackResistance() float64 }); ok {
+		return k.KnockbackResistance()
+	}
+	if a, ok := e.(interface{ Armour() *inventory.Armour }); ok {
+		return a.Armour().KnockBackResistance()
+	}
+	return 0
 }

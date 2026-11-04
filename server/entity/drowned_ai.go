@@ -303,18 +303,6 @@ type drownedSwimUpGoal struct {
 
 func drownedSeaLevel(m *Mob) float64 { return float64(seaLevel(m.tx)) }
 
-// seaLevel ports Level.getSeaLevel: the sea level of the noise settings of
-// the dimension.
-func seaLevel(tx *world.Tx) int {
-	switch tx.World().Dimension() {
-	case world.Nether:
-		return 32
-	case world.End:
-		return 0
-	}
-	return 63
-}
-
 func (g *drownedSwimUpGoal) CanUse(m *Mob) bool {
 	return !brightOutside(m.tx) && m.InWater() && m.data.Pos[1] < drownedSeaLevel(m)-2
 }

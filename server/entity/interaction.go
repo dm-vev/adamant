@@ -4,7 +4,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 // Interactable represents an entity that can be interacted with by a user.
@@ -16,19 +15,6 @@ type Interactable interface {
 type Rider interface {
 	Riding() *world.EntityHandle
 	SetRiding(*world.EntityHandle)
-}
-
-// passengerPositioner supplies the vehicle's source attachment minus the
-// passenger's attachment. Locomotion uses it instead of independent physics.
-type passengerPositioner interface {
-	PassengerPosition(passenger world.Entity) mgl64.Vec3
-}
-
-func vehicleAttachmentPoint(passenger world.Entity) mgl64.Vec3 {
-	if attached, ok := passenger.(interface{ VehicleAttachmentPoint() mgl64.Vec3 }); ok {
-		return attached.VehicleAttachmentPoint()
-	}
-	return mgl64.Vec3{}
 }
 
 // VehicleInput represents an entity that can be controlled by rider input.

@@ -2,21 +2,7 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/world"
 )
-
-// mobEffectDamage ports the effect checks of LivingEntity.hurtServer: Fire
-// Resistance makes fire harmless and Resistance reduces the damage. It
-// returns the damage left and whether the mob takes it.
-func mobEffectDamage(m *EffectManager, damage float64, src world.DamageSource) (float64, bool) {
-	if _, ok := m.Effect(effect.FireResistance); ok && src.Fire() {
-		return 0, false
-	}
-	if r, ok := m.Effect(effect.Resistance); ok {
-		damage *= effect.Resistance.Multiplier(src, r.Level())
-	}
-	return damage, true
-}
 
 // AddEffect adds an effect to the pig.
 func (p *Pig) AddEffect(e effect.Effect) { p.behaviour().effects.Add(e, p) }

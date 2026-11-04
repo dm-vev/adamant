@@ -5,9 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -99,20 +97,6 @@ func explosionKnockbackResistance(e world.Entity) float64 {
 		}
 	}
 	return min(1, max(0, resistance))
-}
-
-// wornArmour returns the armour pieces e wears.
-func wornArmour(e world.Entity) []item.Stack {
-	switch a := e.(type) {
-	case interface{ Armour() *inventory.Armour }:
-		return a.Armour().Items()
-	case interface {
-		EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack)
-	}:
-		head, chest, legs, feet := a.EquipmentArmour()
-		return []item.Stack{head, chest, legs, feet}
-	}
-	return nil
 }
 
 // WindBurst ports the explosion of the Wind Burst enchantment of a mace after

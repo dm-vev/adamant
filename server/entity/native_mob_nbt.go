@@ -339,3 +339,36 @@ func nativeNBTInt(value any) (int, bool) {
 	}
 	return 0, false
 }
+
+// boolByte returns 1 if the bool passed is true, or 0 if it is false.
+func boolByte(b bool) uint8 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func oceanNumber(value any) float64 { v, _ := oceanFloat(value); return v }
+
+func oceanFloat(value any) (float64, bool) {
+	switch v := value.(type) {
+	case float32:
+		return float64(v), true
+	case float64:
+		return v, true
+	case int32:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	}
+	return 0, false
+}
+
+func nativeMobAttribute(data map[string]any, name string) (NativeMobAttribute, bool) {
+	for _, attribute := range ReadNativeMobAttributes(data) {
+		if attribute.Name == name {
+			return attribute, true
+		}
+	}
+	return NativeMobAttribute{}, false
+}

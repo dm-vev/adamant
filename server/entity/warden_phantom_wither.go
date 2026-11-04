@@ -441,30 +441,6 @@ func (w *Wither) viewAction(a world.EntityAction) {
 func (p *Phantom) dropSourceLoot(src world.DamageSource) { dropAllDeathLoot(p.tx, p, src) }
 func (w *Wither) dropSourceLoot(src world.DamageSource)  { dropAllDeathLoot(w.tx, w, src) }
 
-// DamageSourceKiller returns the entity credited with a kill: the attacker of
-// a melee source or the owner of a projectile.
-func DamageSourceKiller(src world.DamageSource) world.Entity { return mobKiller(src) }
-
-func mobKiller(src world.DamageSource) world.Entity {
-	switch s := src.(type) {
-	case AttackDamageSource:
-		return s.Attacker
-	case SpearDamageSource:
-		return s.Attacker
-	case MaceSmashDamageSource:
-		return s.Attacker
-	case ProjectileDamageSource:
-		return s.Owner
-	case WindChargeDamageSource:
-		return s.Owner
-	case SonicBoomDamageSource:
-		return s.Attacker
-	}
-	return nil
-}
-func mobGriefingDisabled(tx *world.Tx) bool {
-	return !tx.World().GameRuleBool("mob_griefing")
-}
 func nativeBossMovementSpeed(n map[string]any, fallback float64) float64 {
 	attributes, _ := n["Attributes"].([]any)
 	for _, value := range attributes {

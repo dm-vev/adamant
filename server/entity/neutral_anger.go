@@ -94,3 +94,15 @@ func (n *neutralAnger) forgiveAnger(ai *MobAI, id string) {
 		ai.target = nil
 	}
 }
+
+// validPlayerTarget ports NeutralMob.isValidPlayerTarget.
+func validPlayerTarget(tx *world.Tx, x world.Entity) bool {
+	if !isPlayerEntity(x) || tx.World().Difficulty() == world.DifficultyPeaceful {
+		return false
+	}
+	if m, ok := x.(interface{ GameMode() world.GameMode }); ok {
+		mode := m.GameMode()
+		return mode != world.GameModeCreative && mode != world.GameModeSpectator
+	}
+	return true
+}

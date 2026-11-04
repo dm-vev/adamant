@@ -127,16 +127,3 @@ func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *vanilla.Rand
 		}
 	}
 }
-
-// difficultyID is Difficulty.getId.
-func difficultyID(d world.Difficulty) int {
-	switch d {
-	case world.DifficultyEasy:
-		return 1
-	case world.DifficultyNormal:
-		return 2
-	case world.DifficultyHard:
-		return 3
-	}
-	return 0
-}

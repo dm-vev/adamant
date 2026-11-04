@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"sync"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -10,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -485,45 +483,6 @@ func stackName(stack item.Stack) (string, bool) {
 	}
 	name, _ := stack.Item().EncodeItem()
 	return name, true
-}
-
-// itemTagSets caches the Bedrock items of the Java item tags looked up.
-var itemTagSets struct {
-	sync.Mutex
-	sets map[string]map[itemKey]struct{}
-}
-
-// itemKey is the name and metadata an item encodes as.
-type itemKey struct {
-	name string
-	meta int16
-}
-
-// inItemTag reports if the item of the stack is one of the Java item tag
-// passed.
-func inItemTag(stack item.Stack, tag string) bool {
-	if stack.Empty() {
-		return false
-	}
-	itemTagSets.Lock()
-	set, ok := itemTagSets.sets[tag]
-	if !ok {
-		set = make(map[itemKey]struct{})
-		for _, id := range loot.ItemTagMembers(tag) {
-			if it, ok := item.JavaItem(id); ok {
-				name, meta := it.EncodeItem()
-				set[itemKey{name, meta}] = struct{}{}
-			}
-		}
-		if itemTagSets.sets == nil {
-			itemTagSets.sets = make(map[string]map[itemKey]struct{})
-		}
-		itemTagSets.sets[tag] = set
-	}
-	itemTagSets.Unlock()
-	name, meta := stack.Item().EncodeItem()
-	_, ok = set[itemKey{name, meta}]
-	return ok
 }
 
 func (s *SulfurCube) RequiresCustomPersistence() bool {

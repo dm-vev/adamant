@@ -84,15 +84,6 @@ func (cowType) EncodeNBT(data *world.EntityData) map[string]any {
 	return MergeNativeMobJavaState(native, javaState)
 }
 
-func nativeMobAttribute(data map[string]any, name string) (NativeMobAttribute, bool) {
-	for _, attribute := range ReadNativeMobAttributes(data) {
-		if attribute.Name == name {
-			return attribute, true
-		}
-	}
-	return NativeMobAttribute{}, false
-}
-
 func cowVariant(value string) int {
 	switch strings.TrimPrefix(value, "minecraft:") {
 	case "warm":

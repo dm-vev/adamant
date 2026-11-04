@@ -2,12 +2,13 @@ package entity
 
 import (
 	"fmt"
-	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/world"
 	"maps"
 	"reflect"
 	"slices"
 	"sync"
+
+	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/world"
 )
 
 // EffectManager manages the effects of an entity. The effect manager will only store effects that last for
@@ -143,7 +144,9 @@ func (m *EffectManager) Tick(entity Living, tx *world.Tx) {
 		eff.Type().(effect.LastingType).End(entity, eff.Level())
 	}
 	for _, eff := range toApply {
-		if contextual, ok := eff.Type().(interface{ ApplyWithTx(world.Entity, effect.Effect, *world.Tx) }); ok {
+		if contextual, ok := eff.Type().(interface {
+			ApplyWithTx(world.Entity, effect.Effect, *world.Tx)
+		}); ok {
 			contextual.ApplyWithTx(entity, eff, tx)
 		} else {
 			eff.Type().Apply(entity, eff)
@@ -257,4 +260,17 @@ func (m *EffectManager) applyAction(entity Living, action effectAction) {
 	if r, ok := action.restarted.(interface{ Restart(world.Entity, int) }); ok {
 		r.Restart(entity, action.restartedLevel)
 	}
+}
+
+// mobEffectDamage ports the effect checks of LivingEntity.hurtServer: Fire
+// Resistance makes fire harmless and Resistance reduces the damage. It
+// returns the damage left and whether the mob takes it.
+func mobEffectDamage(m *EffectManager, damage float64, src world.DamageSource) (float64, bool) {
+	if _, ok := m.Effect(effect.FireResistance); ok && src.Fire() {
+		return 0, false
+	}
+	if r, ok := m.Effect(effect.Resistance); ok {
+		damage *= effect.Resistance.Multiplier(src, r.Level())
+	}
+	return damage, true
 }

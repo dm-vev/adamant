@@ -53,3 +53,7 @@ type Living interface {
 	// SetSpeed sets the speed of an entity to a new value.
 	SetSpeed(float64)
 }
+
+func isPlayerEntity(e world.Entity) bool {
+	return e.H().Type().EncodeEntity() == "minecraft:player"
+}

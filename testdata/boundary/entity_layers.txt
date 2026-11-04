@@ -18,17 +18,11 @@
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
-ai_physics.go object passengerPositioner
-ai_physics.go object vehicleAttachmentPoint
-ai_physics.go passive blockInTag
 ai_physics.go spawn MobAI.checkDespawn
-ai_prefetch.go spawn difficultyID
-command_tags.go passive nativeMobAttribute
 conversion.go aquatic oceanBehaviour
 conversion.go aquatic oceanBehaviour.canPickupLoot
 conversion.go hostile hostileState
 conversion.go hostile hostileState.canPickupLoot
-death_registry.go object isPlayerEntity
 effect_persistence.go aquatic AquaticMobBehaviour.effects
 effect_persistence.go aquatic frogBehaviour
 effect_persistence.go aquatic frogBehaviour.effects
@@ -94,12 +88,10 @@ effect_persistence.go passive polarBearState
 effect_persistence.go passive polarBearState.effects
 effect_persistence.go passive speciesState
 effect_persistence.go passive speciesState.effects
-effect_persistence.go projectile boolByte
 effect_persistence.go villager VillagerBehaviour.effects
 effect_persistence.go villager WitchBehaviour.effects
 effect_persistence.go villager wanderingTraderBehaviour
 effect_persistence.go villager wanderingTraderBehaviour.effects
-effect_triggers.go hostile mobGriefingDisabled
 effect_triggers.go passive slimeSpecies
 effect_triggers.go passive speciesConfig
 effect_triggers.go passive speciesConfig.kind
@@ -122,8 +114,6 @@ fluid_current.go aquatic oceanDrowned
 fluid_current.go aquatic oceanNautilus
 fluid_current.go aquatic oceanWildlifeBehaviour
 fluid_current.go aquatic oceanZombieNautilus
-fluid_current.go nether javaNormalize
-fluid_current.go passive blockInTag
 forgive.go nether ZombifiedPiglin.z
 forgive.go nether zombifiedPiglinState.ai
 forgive.go passive Bee.state
@@ -134,8 +124,6 @@ forgive.go passive speciesMob.s
 forgive.go passive speciesState.ai
 freeze.go hostile SulfurCube.b
 freeze.go hostile SulfurCubeBehaviour.bodyItem
-freeze.go projectile wornArmour
-java_attribute.go aquatic oceanNumber
 java_attribute.go hostile HostileMob.state
 java_attribute.go hostile hostileState
 java_attribute.go hostile hostileState.attrs
@@ -155,19 +143,14 @@ java_rest.go nether zombifiedPiglinState
 java_rest.go nether zombifiedPiglinState.ai
 leash.go object leashKnotBehaviour
 leash.go object leashKnotBehaviour.pos
-mob_breath.go aquatic eyeInWater
 mob_breath.go aquatic oceanBehaviour
 mob_breath.go aquatic oceanWildlifeBehaviour
 mob_breath.go hostile SulfurCubeBehaviour.bodyItem
-mob_breath.go spawn blockShape
-mob_breath.go villager entityTypeInTag
-mob_equipment.go aquatic dropMobEquipment
 mob_equipment.go aquatic oceanBehaviour
 mob_equipment.go aquatic oceanBehaviour.canPickupLoot
 mob_equipment.go aquatic oceanBehaviour.dead
 mob_equipment.go aquatic oceanBehaviour.kind
 mob_equipment.go aquatic oceanDrowned
-mob_equipment.go aquatic oceanFloat
 mob_equipment.go hostile hostileConfig
 mob_equipment.go hostile hostileConfig.chest
 mob_equipment.go hostile hostileConfig.feet
@@ -175,9 +158,7 @@ mob_equipment.go hostile hostileConfig.head
 mob_equipment.go hostile hostileConfig.legs
 mob_equipment.go hostile hostileConfig.main
 mob_equipment.go hostile hostileConfig.off
-mob_equipment.go hostile hostileNativeStack
 mob_equipment.go hostile hostileRaidMob
-mob_equipment.go hostile hostileStackFromNative
 mob_equipment.go hostile hostileState
 mob_equipment.go hostile hostileState.canPickupLoot
 mob_equipment.go hostile hostileState.chest
@@ -190,11 +171,8 @@ mob_equipment.go hostile hostileState.kind
 mob_equipment.go hostile hostileState.legs
 mob_equipment.go hostile hostileState.main
 mob_equipment.go hostile hostileState.off
-mob_equipment.go hostile inItemTag
-mob_equipment.go hostile mobGriefingDisabled
 mob_equipment.go hostile pickableItem
 mob_equipment.go hostile takeItemEntity
-mob_equipment.go nether mobCanReplaceItem
 mob_equipment.go nether piglinState
 mob_equipment.go nether piglinState.armor
 mob_equipment.go nether piglinState.guaranteedMain
@@ -203,17 +181,12 @@ mob_equipment.go nether piglinState.main
 mob_equipment.go nether piglinState.off
 mob_equipment.go nether zombifiedPiglinState
 mob_equipment.go nether zombifiedPiglinState.dead
-mob_equipment.go projectile boolByte
 mob_equipment.go villager ominousBanner
 mob_equipment.go villager raiderPickUpItem
-mob_knockback.go nether entityKnockbackResistance
 mob_loot.go aquatic axolotlSupportKiller
-mob_loot.go hostile mobKiller
 mob_loot.go passive Chicken.behaviour
 mob_loot.go passive ChickenBehaviour.jockey
 mob_loot.go passive Wolf.behaviour
-neutral_anger.go nether validPlayerTarget
-neutral_anger.go object isPlayerEntity
 register.go dragon endCrystalConf
 register.go dragon newDragonFight
 register.go hostile trySpawnWitherPattern
@@ -235,89 +208,77 @@ register.go vehicle tntMinecartConf
 # They are recorded here, not checked: only the lines above are.
 #
 #	ai         from aquatic       1
-#	ai         from core         50
-#	ai         from hostile      27
+#	ai         from core         59
+#	ai         from hostile      24
 #	ai         from nether        1
-#	ai         from object        5
-#	ai         from passive      90
-#	ai         from villager     14
+#	ai         from object        3
+#	ai         from passive      88
+#	ai         from villager     12
 #	aquatic    from ai          161
-#	aquatic    from core         31
-#	aquatic    from hostile      21
-#	aquatic    from object        3
-#	aquatic    from passive      19
-#	aquatic    from projectile    1
-#	aquatic    from villager      2
+#	aquatic    from core         45
+#	aquatic    from hostile      17
+#	aquatic    from object        1
+#	aquatic    from passive      16
+#	aquatic    from villager      1
 #	core       from ai          171
-#	core       from aquatic      19
+#	core       from aquatic      15
 #	core       from dragon        2
-#	core       from hostile      47
-#	core       from nether       24
-#	core       from object        7
-#	core       from passive      53
-#	core       from projectile    7
-#	core       from spawn        16
+#	core       from hostile      42
+#	core       from nether       20
+#	core       from object        4
+#	core       from passive      51
+#	core       from projectile    5
+#	core       from spawn        14
 #	core       from vehicle       4
-#	core       from villager      7
+#	core       from villager      6
 #	dragon     from ai            6
-#	dragon     from core          6
-#	dragon     from hostile       1
-#	dragon     from nether        1
+#	dragon     from core         10
 #	dragon     from object        1
-#	dragon     from passive       4
-#	dragon     from projectile    1
+#	dragon     from passive       3
 #	hostile    from ai          191
-#	hostile    from aquatic      25
-#	hostile    from core         76
+#	hostile    from aquatic      24
+#	hostile    from core         91
 #	hostile    from dragon        1
-#	hostile    from nether        2
-#	hostile    from object        3
-#	hostile    from passive      32
-#	hostile    from projectile    3
+#	hostile    from object        2
+#	hostile    from passive      28
+#	hostile    from projectile    2
 #	hostile    from spawn         1
-#	hostile    from villager     16
+#	hostile    from villager     15
 #	nether     from ai          217
-#	nether     from aquatic       1
-#	nether     from core         53
-#	nether     from hostile      20
-#	nether     from object        4
-#	nether     from passive      23
-#	nether     from projectile    2
+#	nether     from core         69
+#	nether     from hostile      16
+#	nether     from object        2
+#	nether     from passive      19
+#	nether     from projectile    1
 #	nether     from villager      5
 #	object     from ai           23
-#	object     from core         12
-#	object     from nether        1
+#	object     from core         14
 #	object     from passive       3
 #	object     from projectile    1
 #	passive    from ai          259
-#	passive    from aquatic       3
-#	passive    from core         51
-#	passive    from hostile      33
+#	passive    from aquatic       2
+#	passive    from core         65
+#	passive    from hostile      30
 #	passive    from nether       11
-#	passive    from object        4
-#	passive    from projectile    2
+#	passive    from object        2
+#	passive    from projectile    1
 #	passive    from spawn         4
-#	passive    from villager      3
+#	passive    from villager      1
 #	projectile from ai           14
-#	projectile from core          4
-#	projectile from hostile       3
-#	projectile from nether        2
-#	projectile from object        2
+#	projectile from core         10
+#	projectile from hostile       2
+#	projectile from object        1
 #	spawn      from ai           14
 #	spawn      from aquatic       2
-#	spawn      from core         13
-#	spawn      from hostile      13
-#	spawn      from passive      12
-#	spawn      from projectile    1
-#	spawn      from villager      6
+#	spawn      from core         19
+#	spawn      from hostile      12
+#	spawn      from passive      11
+#	spawn      from villager      5
 #	vehicle    from ai           18
-#	vehicle    from core         12
+#	vehicle    from core         13
 #	vehicle    from object        1
-#	vehicle    from projectile    1
 #	villager   from ai          174
-#	villager   from core         31
-#	villager   from hostile      37
-#	villager   from object        1
-#	villager   from passive       6
-#	villager   from projectile    1
+#	villager   from core         40
+#	villager   from hostile      34
+#	villager   from passive       4
 #	villager   from spawn         4

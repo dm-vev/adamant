@@ -3,7 +3,6 @@ package entity
 import (
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/recipe"
@@ -321,20 +320,6 @@ func viewBreederState(a breeder) {
 	tx.ReleaseViewers(viewers)
 }
 
-// itemNamed reports whether the stack holds an item with one of the names.
-func itemNamed(stack item.Stack, names ...string) bool {
-	if stack.Empty() {
-		return false
-	}
-	name, _ := stack.Item().EncodeItem()
-	for _, n := range names {
-		if name == n {
-			return true
-		}
-	}
-	return false
-}
-
 // mixedDyeColour ports DyeColor.getMixedColor: the colour of the dye a
 // crafting recipe of exactly two dyes of the colours passed makes, or either
 // colour if no recipe does.
@@ -372,14 +357,4 @@ func recipeDyeColour(i recipe.Item) (item.Colour, bool) {
 func blockItemInTag(stack item.Stack, tag string) bool {
 	b, ok := stack.Item().(world.Block)
 	return ok && !stack.Empty() && blockInTag(b, tag)
-}
-
-// blockInTag reports whether the block is in the vanilla block tag.
-func blockInTag(b world.Block, tag string) bool {
-	state, err := world.CanonicalStateOf(b)
-	if err != nil {
-		return false
-	}
-	in, _ := gamedata.BlockTagContains(tag, state.Name)
-	return in
 }

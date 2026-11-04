@@ -226,3 +226,25 @@ func damageAfterArmour(d float64, src world.DamageSource, defence, toughness flo
 	real := min(max(points-float32(d)/t, points*0.2), 20)
 	return d * float64(1-real/25)
 }
+
+// DamageSourceKiller returns the entity credited with a kill: the attacker of
+// a melee source or the owner of a projectile.
+func DamageSourceKiller(src world.DamageSource) world.Entity { return mobKiller(src) }
+
+func mobKiller(src world.DamageSource) world.Entity {
+	switch s := src.(type) {
+	case AttackDamageSource:
+		return s.Attacker
+	case SpearDamageSource:
+		return s.Attacker
+	case MaceSmashDamageSource:
+		return s.Attacker
+	case ProjectileDamageSource:
+		return s.Owner
+	case WindChargeDamageSource:
+		return s.Owner
+	case SonicBoomDamageSource:
+		return s.Attacker
+	}
+	return nil
+}

@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"encoding/json"
 	"math"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -509,4 +511,199 @@ func (s *piglinState) setDropChance(slot int, chance float32) {
 	case slotOffhand:
 		s.guaranteedOff = chance > 1
 	}
+}
+
+// wornArmour returns the armour pieces e wears.
+func wornArmour(e world.Entity) []item.Stack {
+	switch a := e.(type) {
+	case interface{ Armour() *inventory.Armour }:
+		return a.Armour().Items()
+	case interface {
+		EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack)
+	}:
+		head, chest, legs, feet := a.EquipmentArmour()
+		return []item.Stack{head, chest, legs, feet}
+	}
+	return nil
+}
+
+// armourSlot returns the armour slot, head first, a stack is worn in.
+func armourSlot(stack item.Stack) (int, bool) {
+	switch stack.Item().(type) {
+	case item.HelmetType:
+		return 0, true
+	case item.ChestplateType:
+		return 1, true
+	case item.LeggingsType:
+		return 2, true
+	case item.BootsType:
+		return 3, true
+	}
+	return 0, false
+}
+
+// mobCanReplaceItem ports Mob.canReplaceCurrentItem for an item in a slot that
+// holds current: better armour and weapons, the preferred weapons first.
+func mobCanReplaceItem(stack, current item.Stack, preferred func(item.Stack) bool) bool {
+	if current.Empty() {
+		return true
+	}
+	if _, armour := armourSlot(stack); armour {
+		na, _ := stack.Item().(item.Armour)
+		ca, _ := current.Item().(item.Armour)
+		if na == nil || ca == nil {
+			return false
+		}
+		if na.DefencePoints() != ca.DefencePoints() {
+			return na.DefencePoints() > ca.DefencePoints()
+		}
+		if na.Toughness() != ca.Toughness() {
+			return na.Toughness() > ca.Toughness()
+		}
+		return mobCanReplaceEqualItem(stack, current)
+	}
+	if preferred != nil {
+		if preferred(current) && !preferred(stack) {
+			return false
+		}
+		if !preferred(current) && preferred(stack) {
+			return true
+		}
+	}
+	nd, cd := stack.AttackDamage(), current.AttackDamage()
+	if nd != cd {
+		return nd > cd
+	}
+	return mobCanReplaceEqualItem(stack, current)
+}
+
+// mobCanReplaceEqualItem ports Mob.canReplaceEqualItem.
+func mobCanReplaceEqualItem(stack, current item.Stack) bool {
+	if n, c := len(stack.Enchantments()), len(current.Enchantments()); n != c {
+		return n > c
+	}
+	damage := func(st item.Stack) int { return st.MaxDurability() - st.Durability() }
+	if damage(stack) != damage(current) {
+		return damage(stack) < damage(current)
+	}
+	return stack.CustomName() != "" && current.CustomName() == ""
+}
+
+// dropMobEquipment ports one slot of Mob.dropCustomDeathLoot: a worn item
+// rolls its drop chance, raised by looting, when a player killed the mob or
+// the chance exceeds 1 (a preserved item, which also keeps its durability).
+func dropMobEquipment(tx *world.Tx, e world.Entity, stack item.Stack, chance float32, killedByPlayer bool, looting int) {
+	if stack.Empty() {
+		return
+	}
+	preserve := chance > 1
+	if chance == 0 || (!killedByPlayer && !preserve) {
+		return
+	}
+	if oceanStackEnchantmentLevel(stack, "Curse of Vanishing", "minecraft:vanishing_curse") > 0 {
+		return
+	}
+	random := e.H().RegionRandom()
+	if random.NextFloat() >= oceanEquipmentDropChance(chance, looting) {
+		return
+	}
+	if !preserve {
+		if durable, ok := stack.Item().(item.Durable); ok {
+			maxDamage := durable.DurabilityInfo().MaxDurability
+			if maxDamage > 0 {
+				remaining := random.NextInt(1 + random.NextInt(int32(max(maxDamage-3, 1))))
+				stack = stack.WithDurability(int(remaining))
+			}
+		}
+	}
+	tx.AddEntity(NewItemDrop(world.EntitySpawnOpts{Position: e.Position()}, stack))
+}
+
+func oceanEquipmentDropChance(chance float32, looting int) float32 {
+	if looting > 0 {
+		chance += float32(looting) * float32(.01)
+	}
+	return chance
+}
+
+func oceanStackEnchantmentLevel(main item.Stack, nativeName, sourceID string) int {
+	if main.Empty() {
+		return 0
+	}
+	level := 0
+	for _, enchantment := range main.Enchantments() {
+		if enchantment.Type().Name() == nativeName && enchantment.Level() > level {
+			level = enchantment.Level()
+		}
+	}
+	if raw, ok := main.Value("java_components_json"); ok {
+		if encoded, ok := raw.(string); ok {
+			var components map[string]any
+			if json.Unmarshal([]byte(encoded), &components) == nil {
+				if enchantments, ok := components["minecraft:enchantments"].(map[string]any); ok {
+					levels, _ := enchantments["levels"].(map[string]any)
+					if levels == nil {
+						levels = enchantments
+					}
+					if rawLevel, ok := levels[sourceID]; ok {
+						if n, ok := oceanFloat(rawLevel); ok && int(n) > level {
+							level = int(n)
+						}
+					}
+				}
+			}
+		}
+	}
+	return level
+}
+
+func hostileNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
+	entry := mountNativeStack(s, previous)
+	if banner, ok := s.Item().(block.Banner); ok {
+		if entry.Raw == nil {
+			entry.Raw = make(map[string]any)
+		}
+		for key, value := range banner.EncodeNBT() {
+			if key != "id" {
+				entry.Raw[key] = value
+			}
+		}
+	}
+	return entry
+}
+
+func hostileStackFromNative(native NativeMobItem) item.Stack {
+	if native.Name == "" || native.Count == 0 {
+		return item.Stack{}
+	}
+	it, ok := world.ItemByName(native.Name, int16(native.Damage))
+	if !ok {
+		return item.Stack{}
+	}
+	if banner, ok := it.(block.Banner); ok {
+		raw := native.Raw
+		if tag, ok := native.Raw["tag"].(map[string]any); ok {
+			raw = tag
+		}
+		if _, patterns := raw["Patterns"]; patterns {
+			banner = banner.DecodeNBT(raw).(block.Banner)
+		}
+		it = banner
+	}
+	return item.NewStack(it, int(native.Count))
+}
+
+func mountNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
+	out := NativeMobItem{Raw: previous.Raw, Slot: previous.Slot}
+	if s.Empty() {
+		return out
+	}
+	name, damage := s.Item().EncodeItem()
+	out.Name = name
+	out.Count = byte(s.Count())
+	out.Damage = int32(damage)
+	if s.MaxDurability() > 0 {
+		out.Damage = int32(s.MaxDurability() - s.Durability())
+	}
+	return out
 }

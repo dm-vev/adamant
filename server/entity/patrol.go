@@ -102,26 +102,3 @@ func spawnPatrolMember(tx *world.Tx, pos cube.Pos, leader bool, random *vanilla.
 	tx.AddEntity(h)
 	return true
 }
-
-// brightOutside ports Level.isBrightOutside: the sky darkening from the
-// time of day, rain and thunder stays below 4.
-func brightOutside(tx *world.Tx) bool {
-	w := tx.World()
-	if !w.Dimension().TimeCycle() {
-		return false
-	}
-	d := math.Mod(float64(w.Time())/24000-0.25, 1)
-	if d < 0 {
-		d++
-	}
-	timeOfDay := (d*2 + (0.5 - math.Cos(d*math.Pi)/2)) / 3
-	v := 1 - (math.Cos(timeOfDay*2*math.Pi)*2 + 0.5)
-	v = 1 - min(max(v, 0), 1)
-	if tx.Raining() {
-		v *= 1 - 5.0/16
-	}
-	if tx.Thundering() {
-		v *= 1 - 5.0/16
-	}
-	return int((1-v)*11) < 4
-}

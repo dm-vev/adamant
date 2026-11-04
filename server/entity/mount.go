@@ -3,8 +3,9 @@ package entity
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/loot"
 	"math/rand/v2"
+
+	"github.com/df-mc/dragonfly/server/loot"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -1135,20 +1136,6 @@ func (t mountType) EncodeNBT(d *world.EntityData) map[string]any {
 		state["DespawnDelay"] = int32(b.traderDespawn)
 	}
 	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, native), state)
-}
-func mountNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
-	out := NativeMobItem{Raw: previous.Raw, Slot: previous.Slot}
-	if s.Empty() {
-		return out
-	}
-	name, damage := s.Item().EncodeItem()
-	out.Name = name
-	out.Count = byte(s.Count())
-	out.Damage = int32(damage)
-	if s.MaxDurability() > 0 {
-		out.Damage = int32(s.MaxDurability() - s.Durability())
-	}
-	return out
 }
 func mountStackFromNative(items []NativeMobItem) item.Stack {
 	for _, v := range items {

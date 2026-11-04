@@ -5,7 +5,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -65,16 +64,6 @@ func spawnPositionOk(tx *world.Tx, id string, pos cube.Pos) bool {
 		return ok && l.LiquidType() == "lava"
 	}
 	return true
-}
-
-// blockShape returns the source shape metadata of the block at pos.
-func blockShape(tx *world.Tx, pos cube.Pos) (gamedata.GenerationShape, bool) {
-	id, err := tx.BlockStateID(pos)
-	if err != nil {
-		return gamedata.GenerationShape{}, false
-	}
-	shape, err := gamedata.BlockGenerationShapeID(id)
-	return shape, err == nil
 }
 
 func redstoneConductorAt(tx *world.Tx, pos cube.Pos) bool {

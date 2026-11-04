@@ -69,3 +69,16 @@ func reseatRider(rider any, vehicle world.Entity) {
 		holder.SetRiderSeat(seater.RiderSeat(e))
 	}
 }
+
+// passengerPositioner supplies the vehicle's source attachment minus the
+// passenger's attachment. Locomotion uses it instead of independent physics.
+type passengerPositioner interface {
+	PassengerPosition(passenger world.Entity) mgl64.Vec3
+}
+
+func vehicleAttachmentPoint(passenger world.Entity) mgl64.Vec3 {
+	if attached, ok := passenger.(interface{ VehicleAttachmentPoint() mgl64.Vec3 }); ok {
+		return attached.VehicleAttachmentPoint()
+	}
+	return mgl64.Vec3{}
+}

@@ -666,21 +666,6 @@ func (s *piglinState) slotFor(stack item.Stack) item.Stack {
 	return s.main
 }
 
-// armourSlot returns the armour slot, head first, a stack is worn in.
-func armourSlot(stack item.Stack) (int, bool) {
-	switch stack.Item().(type) {
-	case item.HelmetType:
-		return 0, true
-	case item.ChestplateType:
-		return 1, true
-	case item.LeggingsType:
-		return 2, true
-	case item.BootsType:
-		return 3, true
-	}
-	return 0, false
-}
-
 // canReplaceCurrentItem ports Piglin.canReplaceCurrentItem and Mob's: loved
 // items and preferred weapons go first, then better armour and weapons.
 func (s *piglinState) canReplaceCurrentItem(stack, current item.Stack) bool {
@@ -699,53 +684,6 @@ func (s *piglinState) canReplaceCurrentItem(stack, current item.Stack) bool {
 		return false
 	}
 	return mobCanReplaceItem(stack, current, preferred)
-}
-
-// mobCanReplaceItem ports Mob.canReplaceCurrentItem for an item in a slot that
-// holds current: better armour and weapons, the preferred weapons first.
-func mobCanReplaceItem(stack, current item.Stack, preferred func(item.Stack) bool) bool {
-	if current.Empty() {
-		return true
-	}
-	if _, armour := armourSlot(stack); armour {
-		na, _ := stack.Item().(item.Armour)
-		ca, _ := current.Item().(item.Armour)
-		if na == nil || ca == nil {
-			return false
-		}
-		if na.DefencePoints() != ca.DefencePoints() {
-			return na.DefencePoints() > ca.DefencePoints()
-		}
-		if na.Toughness() != ca.Toughness() {
-			return na.Toughness() > ca.Toughness()
-		}
-		return mobCanReplaceEqualItem(stack, current)
-	}
-	if preferred != nil {
-		if preferred(current) && !preferred(stack) {
-			return false
-		}
-		if !preferred(current) && preferred(stack) {
-			return true
-		}
-	}
-	nd, cd := stack.AttackDamage(), current.AttackDamage()
-	if nd != cd {
-		return nd > cd
-	}
-	return mobCanReplaceEqualItem(stack, current)
-}
-
-// mobCanReplaceEqualItem ports Mob.canReplaceEqualItem.
-func mobCanReplaceEqualItem(stack, current item.Stack) bool {
-	if n, c := len(stack.Enchantments()), len(current.Enchantments()); n != c {
-		return n > c
-	}
-	damage := func(st item.Stack) int { return st.MaxDurability() - st.Durability() }
-	if damage(stack) != damage(current) {
-		return damage(stack) < damage(current)
-	}
-	return stack.CustomName() != "" && current.CustomName() == ""
 }
 
 // equipItemIfPossible ports Mob.equipItemIfPossible: the piglin equips the

@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -311,18 +310,6 @@ func hoglinThrowTarget(m *Mob, target world.Entity) {
 	cos, sin := math.Cos(angle), math.Sin(angle)
 	push := mgl64.Vec3{d[0]*cos + d[2]*sin, power * float64(r.NextFloat()) * .5, d[2]*cos - d[0]*sin}
 	v.SetVelocity(v.Velocity().Add(push))
-}
-
-// entityKnockbackResistance returns the knockback resistance attribute of an
-// entity.
-func entityKnockbackResistance(e world.Entity) float64 {
-	if k, ok := e.(interface{ KnockbackResistance() float64 }); ok {
-		return k.KnockbackResistance()
-	}
-	if a, ok := e.(interface{ Armour() *inventory.Armour }); ok {
-		return a.Armour().KnockBackResistance()
-	}
-	return 0
 }
 
 // KnockbackResistance returns the knockback resistance of the hoglin.

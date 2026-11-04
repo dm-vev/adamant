@@ -105,18 +105,6 @@ func (z *ZombifiedPiglin) z() *zombifiedPiglinState      { return z.Behaviour().
 func (z *ZombifiedPiglin) SpeciesType() world.EntityType { return ZombifiedPiglinType{} }
 func (z *ZombifiedPiglin) Tick(tx *world.Tx, n int64)    { z.z().effects.Tick(z, tx); z.Ent.Tick(tx, n) }
 
-// validPlayerTarget ports NeutralMob.isValidPlayerTarget.
-func validPlayerTarget(tx *world.Tx, x world.Entity) bool {
-	if !isPlayerEntity(x) || tx.World().Difficulty() == world.DifficultyPeaceful {
-		return false
-	}
-	if m, ok := x.(interface{ GameMode() world.GameMode }); ok {
-		mode := m.GameMode()
-		return mode != world.GameModeCreative && mode != world.GameModeSpectator
-	}
-	return true
-}
-
 func (z *ZombifiedPiglin) Health() float64        { return z.z().health.Health() }
 func (z *ZombifiedPiglin) MaxHealth() float64     { return z.z().health.MaxHealth() }
 func (z *ZombifiedPiglin) SetMaxHealth(v float64) { z.z().health.SetMaxHealth(v) }

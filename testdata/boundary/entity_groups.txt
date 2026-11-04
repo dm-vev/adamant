@@ -131,6 +131,7 @@ java_nbt.go core
 java_rest.go core
 leash.go core
 leash_knot.go object
+level.go core
 lightning.go object
 lingering_potion.go projectile
 living.go core
@@ -215,6 +216,7 @@ strider_ai.go nether
 structure_spawn.go spawn
 sulfur_cube.go hostile
 sulfur_cube_ai.go hostile
+tags.go core
 tamable_ai.go ai
 template_spawn.go spawn
 template_spawn_native.go spawn
