@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
@@ -48,17 +49,17 @@ func TestEntityMoveIsEncodedOnce(t *testing.T) {
 	// In the air, the velocity goes with the move.
 	jump := &world.EntityMove{Pos: mgl64.Vec3{1.3, 64.4, 1}, Vel: mgl64.Vec3{0, 0.42, 0}, Changed: world.MoveY | world.MoveVelocity}
 	a.ViewEntityMove(e, jump)
-	if _, ok := (a.testPacket()).(*sharedPacket); !ok {
+	if _, ok := (a.testPacket()).(*netconn.Shared); !ok {
 		t.Fatal("the move of the jump is not shared")
 	}
-	motion := (a.testPacket()).(*sharedPacket)
+	motion := (a.testPacket()).(*netconn.Shared)
 	if pk, ok := motion.Packet.(*mc.SetActorMotionPacket); !ok || pk.Velocity != [3]float32{0, 0.42, 0} {
 		t.Fatalf("motion %+v", motion.Packet)
 	}
 	// A velocity alone goes without a delta.
 	push := &world.EntityMove{Pos: mgl64.Vec3{1.3, 64.4, 1}, Vel: mgl64.Vec3{0.5, 0, 0}, Changed: world.MoveVelocity}
 	a.ViewEntityMove(e, push)
-	if pk, ok := (a.testPacket()).(*sharedPacket); !ok || pk.Packet.(*mc.SetActorMotionPacket).Velocity != [3]float32{0.5, 0, 0} {
+	if pk, ok := (a.testPacket()).(*netconn.Shared); !ok || pk.Packet.(*mc.SetActorMotionPacket).Velocity != [3]float32{0.5, 0, 0} {
 		t.Fatalf("push shown as %+v, want the velocity", pk)
 	}
 	if pk := a.testPacket(); pk != nil {
@@ -115,7 +116,7 @@ func (p countingPacket) Encode(w *wire.Writer) { *p.n++; p.Packet.Encode(w) }
 func TestSharedPacketEncodesOnce(t *testing.T) {
 	t.Parallel()
 	n := 0
-	p := &sharedPacket{Packet: countingPacket{&mc.SetActorMotionPacket{EntityRuntimeID: 9}, &n}}
+	p := &netconn.Shared{Packet: countingPacket{&mc.SetActorMotionPacket{EntityRuntimeID: 9}, &n}}
 	for range 5 {
 		var w wire.Writer
 		p.Encode(&w)

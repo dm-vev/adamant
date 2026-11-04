@@ -216,7 +216,8 @@ func sendQueue(st sctp.Stats) (queued, window int, rtt time.Duration) {
 // WritePacket adds a packet of the model to the batch sent at the next
 // Flush, as the packets of the protocol of the client that carry it. A
 // Static goes in a batch of its own, encoded once for every connection of
-// its protocol and compression.
+// its protocol and compression, and a Shared is encoded once for every
+// connection of its class of wire.
 func (c *Conn) WritePacket(pk proto.Packet) error {
 	if st, ok := pk.(Static); ok {
 		if c.comp == nil {
@@ -227,6 +228,14 @@ func (c *Conn) WritePacket(pk proto.Packet) error {
 			return err
 		}
 		return c.b.SendBatch(msg)
+	}
+	if sh, ok := pk.(*Shared); ok {
+		for _, raw := range sh.encoded(c.proto) {
+			if err := c.b.WritePacket(raw); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	if p := c.proto; p != nil {
 		// A packet of the same layout in the protocol goes as it is, with

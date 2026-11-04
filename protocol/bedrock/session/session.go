@@ -136,7 +136,7 @@ type Session struct {
 	// listEntry is the PlayerList packet adding the player of the session
 	// with its current skin, encoded once for every session it goes to, as
 	// the skin goes nowhere else when another player sees the player.
-	listEntry atomic.Pointer[sharedPacket]
+	listEntry atomic.Pointer[netconn.Shared]
 
 	blockUpdatesMu     sync.Mutex
 	blockUpdates       map[blockUpdateKey]blockUpdateData

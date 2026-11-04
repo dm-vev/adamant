@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -51,9 +52,9 @@ func TestBlockUpdatesAreEncodedOnce(t *testing.T) {
 			t.Fatalf("packet %d is not shared", i)
 		}
 	}
-	single, ok := pa[0].(*sharedPacket).Packet.(*mc.UpdateBlockPacket)
+	single, ok := pa[0].(*netconn.Shared).Packet.(*mc.UpdateBlockPacket)
 	if !ok || single.Position != [3]int32{1, 70, 1} || single.NewBlockRuntimeID != networkBlockID(world.DefaultBlockRegistry, block.Stone{}) {
-		t.Fatalf("first packet %+v, want the stone", pa[0].(*sharedPacket).Packet)
+		t.Fatalf("first packet %+v, want the stone", pa[0].(*netconn.Shared).Packet)
 	}
 	var w wire.Writer
 	pa[2].Encode(&w)

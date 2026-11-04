@@ -1,41 +1,17 @@
 package session
 
 import (
-	"sync"
-
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
-	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/go-gl/mathgl/mgl64"
 )
-
-// sharedPacket is a packet that goes alike to every client it is written
-// to: the first connection to write it encodes it, the others copy those
-// bytes, so that what many clients are shown is encoded once.
-type sharedPacket struct {
-	proto.Packet
-	once sync.Once
-	b    []byte
-}
-
-// Unwrap returns the packet, which a connection that converts packets
-// converts and encodes for its client instead of the bytes kept.
-func (p *sharedPacket) Unwrap() proto.Packet { return p.Packet }
-
-func (p *sharedPacket) Encode(w *wire.Writer) {
-	p.once.Do(func() {
-		var e wire.Writer
-		p.Packet.Encode(&e)
-		p.b = e.B
-	})
-	w.B = append(w.B, p.b...)
-}
 
 // sharedMove is what the viewers of a world.EntityMove share of it: its
 // packets, encoded once, either of which may be nil.
 type sharedMove struct {
-	delta, motion *sharedPacket
+	delta, motion *netconn.Shared
 }
 
 // ViewEntityMove ...
@@ -52,9 +28,9 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 	}
 	id := s.entityRuntimeID(e)
 	if m.Absolute {
-		shared, _ := m.Shared.(*sharedPacket)
+		shared, _ := m.Shared.(*netconn.Shared)
 		if shared == nil {
-			shared = &sharedPacket{Packet: absoluteMove(id, e, m.Pos, m.Rot, m.OnGround, false)}
+			shared = &netconn.Shared{Packet: absoluteMove(id, e, m.Pos, m.Rot, m.OnGround, false)}
 			m.Shared = shared
 		}
 		s.writePacket(shared)
@@ -67,10 +43,10 @@ func (s *Session) ViewEntityMove(e world.Entity, m *world.EntityMove) {
 		pk, motion := moveActorDelta(id, e, m, m.Changed)
 		shared = &sharedMove{}
 		if delta {
-			shared.delta = &sharedPacket{Packet: pk}
+			shared.delta = &netconn.Shared{Packet: pk}
 		}
 		if motion != nil {
-			shared.motion = &sharedPacket{Packet: motion}
+			shared.motion = &netconn.Shared{Packet: motion}
 		}
 		m.Shared = shared
 	}

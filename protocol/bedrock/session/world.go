@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -1842,9 +1843,9 @@ func (s *Session) ViewEntityAnimationShared(e world.Entity, a world.EntityAnimat
 // writeBroadcast writes the packets of a broadcast: those the first viewer
 // made, encoded once for all, or makes them with build.
 func (s *Session) writeBroadcast(b *world.Broadcast, build func(out func(proto.Packet))) {
-	pks, ok := b.Load().([]*sharedPacket)
+	pks, ok := b.Load().([]*netconn.Shared)
 	if !ok {
-		build(func(pk proto.Packet) { pks = append(pks, &sharedPacket{Packet: pk}) })
+		build(func(pk proto.Packet) { pks = append(pks, &netconn.Shared{Packet: pk}) })
 		b.Store(pks)
 	}
 	for _, pk := range pks {

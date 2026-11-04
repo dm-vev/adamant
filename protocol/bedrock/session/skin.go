@@ -6,6 +6,7 @@ import (
 	"image"
 	"math"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
@@ -165,8 +166,8 @@ func fills(b image.Rectangle, pix []byte) bool {
 
 // newListEntry returns the PlayerList packet adding the player of the
 // session with a skin, for every session.
-func (s *Session) newListEntry(sk skin.Skin) *sharedPacket {
-	return &sharedPacket{Packet: &mc.PlayerListPacket{Entries: []mc.PlayerListEntry{{
+func (s *Session) newListEntry(sk skin.Skin) *netconn.Shared {
+	return &netconn.Shared{Packet: &mc.PlayerListPacket{Entries: []mc.PlayerListEntry{{
 		ActionType:     mc.PlayerListActionAdd,
 		UUID:           s.ent.UUID(),
 		EntityUniqueID: s.ent.UniqueID(),
@@ -180,7 +181,7 @@ func (s *Session) newListEntry(sk skin.Skin) *sharedPacket {
 
 // playerListEntry returns the PlayerList packet adding the player of the
 // session, made with an empty skin for a session that never set one.
-func (s *Session) playerListEntry() *sharedPacket {
+func (s *Session) playerListEntry() *netconn.Shared {
 	if p := s.listEntry.Load(); p != nil {
 		return p
 	}
@@ -196,7 +197,7 @@ func (s *Session) ShowSkin(sk skin.Skin) {
 		return
 	}
 	s.listEntry.Store(s.newListEntry(sk))
-	pk := &sharedPacket{Packet: &mc.PlayerSkinPacket{UUID: s.ent.UUID(), Skin: skinToProtocol(sk, s.primary().Version)}}
+	pk := &netconn.Shared{Packet: &mc.PlayerSkinPacket{UUID: s.ent.UUID(), Skin: skinToProtocol(sk, s.primary().Version)}}
 	for _, p := range s.roster().Players() {
 		if other, ok := p.Client.(*Session); ok {
 			other.writePacket(pk)

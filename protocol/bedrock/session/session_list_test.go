@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/player/skin"
@@ -162,7 +163,7 @@ func (c testConn) IdentityData() login.Identity { return c.identity }
 // packetOf returns the packet a session was given, unwrapping one shared
 // with other sessions.
 func packetOf(pk proto.Packet) proto.Packet {
-	if s, ok := pk.(*sharedPacket); ok {
+	if s, ok := pk.(*netconn.Shared); ok {
 		return s.Packet
 	}
 	return pk
@@ -244,7 +245,7 @@ func TestRosterMatchesSessionList(t *testing.T) {
 	}
 	// The entry of a player draws the IDs of its skin at random: the two
 	// sessions of a player share one.
-	entries := make([]*sharedPacket, len(names))
+	entries := make([]*netconn.Shared, len(names))
 	for i, name := range names {
 		entries[i] = testSessionOf(name, handles[i], ids[i]).newListEntry(skin.Skin{})
 	}

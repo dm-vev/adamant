@@ -21,6 +21,7 @@ protocol/bedrock/netconn.Conn	protocol/bedrock/session.receiver	*
 protocol/bedrock/netconn.Conn	protocol/bedrock/session.sendBatcher	*
 protocol/bedrock/netconn.Conn	protocol/bedrock/session.sendQueue	*
 protocol/bedrock/netconn.Listener	protocol/bedrock.xboxListener	*
+protocol/bedrock/netconn.Shared	protocol/bedrock/netconn.Wrapper	*
 protocol/bedrock/netconn.statusProvider	protocol/bedrock/netconn.StatusProvider	value
 protocol/bedrock/query.replyWriter	protocol/bedrock/query.writerTo	value
 protocol/bedrock/session.BlockActorDataHandler	protocol/bedrock/session.packetHandler	value
@@ -81,7 +82,6 @@ protocol/bedrock/session.StructureTemplateDataRequestHandler	protocol/bedrock/se
 protocol/bedrock/session.SubChunkRequestHandler	protocol/bedrock/session.packetHandler	*
 protocol/bedrock/session.TextHandler	protocol/bedrock/session.packetHandler	value
 protocol/bedrock/session.join	server/client.Join	*
-protocol/bedrock/session.sharedPacket	protocol/bedrock/netconn.Wrapper	*
 protocol/bedrock/session.staticPacket	protocol/bedrock/netconn.Static	*
 protocol/bedrock/session.staticPacket	protocol/bedrock/netconn.Wrapper	*
 protocol/java.statusListener	server.Listener	*

@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
@@ -29,7 +30,7 @@ func TestOfferFlowerAnimation(t *testing.T) {
 		}
 		old := testSession("animation")
 		old.ViewEntityAnimationShared(golem, world.NewEntityAnimation("animation.iron_golem.offer_flower"), &world.Broadcast{})
-		if got := old.testPacket(); !reflect.DeepEqual(got.(*sharedPacket).Packet, want) {
+		if got := old.testPacket(); !reflect.DeepEqual(got.(*netconn.Shared).Packet, want) {
 			t.Errorf("the animation of before sent %#v, want %#v", got, want)
 		}
 

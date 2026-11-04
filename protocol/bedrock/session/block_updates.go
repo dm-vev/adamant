@@ -3,6 +3,7 @@ package session
 import (
 	"math"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
@@ -33,7 +34,7 @@ func (s *Session) blockHash(b world.Block) uint32 {
 // hashes of one table; a viewer of another makes its own.
 type sharedBlockUpdates struct {
 	blocks  *blockHashes
-	packets []*sharedPacket
+	packets []*netconn.Shared
 	actors  []world.BlockUpdate
 }
 
@@ -95,7 +96,7 @@ func blockUpdatePackets(w *wireTables, updates []world.BlockUpdate) *sharedBlock
 	for _, u := range updates {
 		sub := subChunkOf(u.Pos)
 		if counts[sub] < subChunkBlocksAt {
-			shared.packets = append(shared.packets, &sharedPacket{Packet: &mc.UpdateBlockPacket{
+			shared.packets = append(shared.packets, &netconn.Shared{Packet: &mc.UpdateBlockPacket{
 				Position:          blockPos(u.Pos),
 				NewBlockRuntimeID: hashes.blockID(br, u.Block),
 				Flags:             mc.BlockUpdateNetwork,
@@ -110,7 +111,7 @@ func blockUpdatePackets(w *wireTables, updates []world.BlockUpdate) *sharedBlock
 			}
 			pk = &mc.UpdateSubChunkBlocksPacket{Position: [3]int32{int32(sub[0] << 4), int32(sub[1] << 4), int32(sub[2] << 4)}}
 			many[sub] = pk
-			shared.packets = append(shared.packets, &sharedPacket{Packet: pk})
+			shared.packets = append(shared.packets, &netconn.Shared{Packet: pk})
 		}
 		entry := mc.BlockChangeEntry{
 			BlockPos:       blockPos(u.Pos),
