@@ -5,7 +5,8 @@
 #   test    ~5-10 min per entry        go test, the heavy packages each in their own entry
 #   race    ~10-20 min per entry       go test -race on the world, session, menu and player packages
 #   lint    ~3-5 min per module        golangci-lint, new issues only
-#   golden  ~3 min                     protocol golden snapshots and the root boundary rules
+#   golden  ~5 min                     protocol golden snapshots, the root boundary rules and
+#                                      the full generation hash
 #
 # Known flaky tests in server/entity: some tests of foxes (TestFoxes*), villagers
 # fleeing zombies (TestVillagersRunFromZombies), happy ghasts (TestHappyGhasts*),
@@ -221,4 +222,10 @@ jobs:
       - name: Protocol golden snapshots
         run: go test -count=1 -run 'TestGolden|BDS' ./protocol/bedrock/session
       - name: Boundary rules
-        run: go test -count=1 -run 'TestImportBoundary|TestBoundaryRules|TestAdaptersKeepOffTheWorld|TestMutationRules|TestWaitRules|TestOwnersDoNotWait' .
+        run: go test -count=1 -run 'TestImportBoundary|TestBoundaryRules|TestAdaptersKeepOffTheWorld|TestMutationRules|TestWaitRules|TestOwnersDoNotWait|TestExportedAPI|TestLongFunctions|TestLongFunctionRules' .
+      # Every centre of every dimension, and the totals: about 85 s of CPU. The
+      # test jobs generate only the first centre of each dimension.
+      - name: Generation hash
+        env:
+          ADAMANT_GENHASH_FULL: "1"
+        run: go test -count=1 -run '^TestGenerationIsUnchanged$' ./server/world/generator/advanced
