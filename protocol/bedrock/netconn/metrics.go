@@ -12,6 +12,10 @@ var (
 		"Clients whose login failed or that left during it.")
 	loginsFull = metrics.Default.Counter("adamant_logins_refused_full_total",
 		"Clients refused for the server was full.")
+	loginsBusy = metrics.Default.Counter("adamant_logins_refused_busy_total",
+		"Clients refused for MaxLogins clients were logging in already.")
+	loginsAddress = metrics.Default.Counter("adamant_logins_refused_address_total",
+		"Clients refused for their address held MaxPerAddress clients already.")
 	loginSeconds = metrics.Default.Histogram("adamant_login_seconds",
 		"Time from the connection opening to the client logged in.",
 		0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30)

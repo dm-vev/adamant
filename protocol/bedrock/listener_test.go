@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"log/slog"
+	"math"
 	"math/big"
 	"net"
 	"net/http"
@@ -465,4 +466,63 @@ type nameStatus struct{ name string }
 
 func (s nameStatus) ServerStatus(playerCount, maxPlayers int) server.Status {
 	return server.Status{Name: s.name, PlayerCount: playerCount, MaxPlayers: maxPlayers}
+}
+
+// TestNetherNetListenerCapsAddresses checks that MaxConnectionsPerIP of the
+// [Network] table reaches the listener: a second player of one address is
+// refused while the first logs in.
+func TestNetherNetListenerCapsAddresses(t *testing.T) {
+	c := testNetherNetConfig()
+	c.Network.Address = "127.0.0.1:0"
+	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
+	c.Network.MaxConnectionsPerIP = 1
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Proxy.Address = probe.Addr().String()
+	_ = probe.Close()
+	c.Proxy.Secret = strings.Repeat("s", minProxySecret)
+	l, err := c.netherNetListener(server.Config{Log: slog.New(slog.DiscardHandler), StatusProvider: nameStatus{name: "Adamant"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	link, err := proxy.Dial(c.Proxy.Address, []byte(c.Proxy.Secret))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer link.Close()
+	open := func(name string) uint32 {
+		identity, _ := json.Marshal(login.Identity{DisplayName: name, Identity: "8b4ec2c6-6f3b-4d0a-9d55-3b7e0c3c3f1a"})
+		data, _ := json.Marshal(login.DefaultClientData("play.example.invalid:19132", name, v2193.Version))
+		p, err := link.Open(proxy.Token{Identity: identity, ClientData: data, Addr: "203.0.113.7:4242", Protocol: v2193.Protocol})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = p.Close() })
+		b := bedrock.NewConn(p, bedrock.Config{})
+		b.EnableCompression(bedrock.None{})
+		_ = p.SetReadDeadline(time.Now().Add(10 * time.Second))
+		raw, err := b.ReadPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		h, _, _ := bedrock.ReadHeader(raw)
+		return h.ID
+	}
+	if id := open("First"); id != v2193.IDPlayStatus {
+		t.Fatalf("packet %d to the first player, want the login done", id)
+	}
+	if id := open("Second"); id != v2193.IDDisconnect {
+		t.Fatalf("packet %d to the second player of the address, want a disconnect", id)
+	}
+}
+
+func TestUnbounded(t *testing.T) {
+	for n, want := range map[int]int{0: math.MaxInt, -1: math.MaxInt, 4: 4} {
+		if got := unbounded(n); got != want {
+			t.Errorf("unbounded(%d) = %d, want %d", n, got, want)
+		}
+	}
 }

@@ -13,6 +13,11 @@
   HTTPSDomain = ""
   IdentityFile = "server-key.pem"
   LAN = false
+  MaxConnectionsPerIP = 8
+  MaxPendingConnections = 256
+  MaxPendingConnectionsPerIP = 4
+  MaxPendingConnectionsPerNetwork = 32
+  MaxPendingLogins = 64
   PrimaryProtocol = "1.26.50"
   Protocols = ["1.26.50"]
   QueryPlugins = false

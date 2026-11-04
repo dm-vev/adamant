@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
@@ -60,6 +61,17 @@ type Config struct {
 	Log *slog.Logger
 	// MaximumPlayers bounds the players connected. Zero means no bound.
 	MaximumPlayers int
+	// MaxLogins bounds the clients logging in at once, from the opening
+	// of their connection to the end of their resource packs, so that
+	// connections that never log in cannot hold the server. A client over
+	// it is told the server is full. Zero means no bound.
+	MaxLogins int
+	// MaxPerAddress bounds the clients of one address, logging in or
+	// joined: an IPv4 address, or an IPv6 /64 taken as one. A client over
+	// it is disconnected with a message that says so. A player of a proxy
+	// counts against the address the proxy saw it at. Loopback and
+	// clients of no address count against none. Zero means no bound.
+	MaxPerAddress int
 	// StatusProvider gives the status of the server clients look up.
 	StatusProvider StatusProvider
 	// AuthenticationDisabled lets clients join without Xbox Live.
@@ -104,8 +116,14 @@ type Listener struct {
 	incoming chan *Conn
 	players  atomic.Int32
 	done     chan struct{}
-	once     sync.Once
-	wg       sync.WaitGroup
+
+	// admitMu guards logins and addresses: the clients logging in, and
+	// those of each address, logging in or joined.
+	admitMu   sync.Mutex
+	logins    int
+	addresses map[netip.Prefix]int
+	once      sync.Once
+	wg        sync.WaitGroup
 
 	staticMu sync.Mutex
 	statics  map[staticKey][]byte
@@ -189,7 +207,7 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	if cfg.Compression == nil {
 		cfg.Compression = bedrock.Flate{Level: 1}
 	}
-	l := &Listener{cfg: cfg, batches: cfg.Batches, protocols: sortProtocols(cfg.Protocols), incoming: make(chan *Conn), done: make(chan struct{})}
+	l := &Listener{cfg: cfg, batches: cfg.Batches, protocols: sortProtocols(cfg.Protocols), incoming: make(chan *Conn), done: make(chan struct{}), addresses: make(map[netip.Prefix]int)}
 	if l.batches.PacketRate == 0 {
 		l.batches.PacketRate, l.batches.PacketBurst = defaultPacketRate, defaultPacketBurst
 	}
@@ -405,10 +423,74 @@ func (l *Listener) allowed() string {
 	return strings.Join(s, ", ")
 }
 
-// left counts a client out.
-func (l *Listener) left() {
+// left counts a client out, of its address too.
+func (l *Listener) left(c *Conn) {
 	l.players.Add(-1)
+	if c.source.IsValid() {
+		l.admitMu.Lock()
+		if l.addresses[c.source]--; l.addresses[c.source] <= 0 {
+			delete(l.addresses, c.source)
+		}
+		l.admitMu.Unlock()
+	}
 	l.updateStatus()
+}
+
+// errAddressBusy is the message of a client refused for its address holds
+// MaxPerAddress clients already.
+const errAddressBusy = "Too many connections from your address."
+
+// enter counts a client that begins to log in among the logins and the
+// clients of its address. It reports false, counting it nowhere, if
+// either is full, and busy if the logins are.
+func (l *Listener) enter(c *Conn) (ok, busy bool) {
+	source := addressSource(c.t.RemoteAddr())
+	l.admitMu.Lock()
+	defer l.admitMu.Unlock()
+	if max := l.cfg.MaxLogins; max != 0 && l.logins >= max {
+		return false, true
+	}
+	if max := l.cfg.MaxPerAddress; max != 0 && source.IsValid() && l.addresses[source] >= max {
+		return false, false
+	}
+	l.logins++
+	if source.IsValid() {
+		l.addresses[source]++
+		c.source = source
+	}
+	return true, false
+}
+
+// loggedIn counts a client out of the logins, its login done or failed.
+func (l *Listener) loggedIn() {
+	l.admitMu.Lock()
+	l.logins--
+	l.admitMu.Unlock()
+}
+
+// addressSource returns what a client of addr counts against for
+// MaxPerAddress: its IPv4 address, or its IPv6 /64. It is the zero Prefix
+// for loopback, where a proxy on the host stands for every client, and
+// for no address.
+func addressSource(addr net.Addr) netip.Prefix {
+	var ip netip.Addr
+	switch a := addr.(type) {
+	case *net.UDPAddr:
+		ip, _ = netip.AddrFromSlice(a.IP)
+	case *net.TCPAddr:
+		ip, _ = netip.AddrFromSlice(a.IP)
+	default:
+		return netip.Prefix{}
+	}
+	ip = ip.Unmap()
+	if !ip.IsValid() || ip.IsUnspecified() || ip.IsLoopback() {
+		return netip.Prefix{}
+	}
+	bits := 32
+	if ip.Is6() {
+		bits = 64
+	}
+	return netip.PrefixFrom(ip, bits).Masked()
 }
 
 // run logs a client in with login and queues it for Accept.
@@ -416,11 +498,20 @@ func (l *Listener) run(c *Conn, login func(*Conn) error) {
 	loginsStarted.Inc()
 	if max := l.cfg.MaximumPlayers; max != 0 && int(l.players.Load()) >= max {
 		loginsFull.Inc()
-		_ = c.WritePacket(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedServerFull})
-		_ = c.Flush()
-		_ = c.t.Close()
+		c.refuse(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedServerFull})
 		return
 	}
+	if ok, busy := l.enter(c); !ok {
+		if busy {
+			loginsBusy.Inc()
+			c.refuse(&v2193.PlayStatusPacket{Status: v2193.PlayStatusLoginFailedServerFull})
+		} else {
+			loginsAddress.Inc()
+			c.refuse(&v2193.DisconnectPacket{Message: errAddressBusy})
+		}
+		return
+	}
+	defer l.loggedIn()
 	l.players.Add(1)
 	defer func() {
 		// A panic is a bug of the login, which no client may use to take
@@ -449,6 +540,20 @@ func (l *Listener) run(c *Conn, login func(*Conn) error) {
 	case <-l.done:
 		_ = c.Close()
 	}
+}
+
+// refuse refuses a client before its login began with pk and closes its
+// transport, counted in nowhere. A player of a proxy reads batches
+// uncompressed from the first, a client of its own before the network
+// settings.
+func (c *Conn) refuse(pk proto.Packet) {
+	if c.nn == nil {
+		c.comp = bedrock.None{}
+		c.b.EnableCompression(c.comp)
+	}
+	_ = c.WritePacket(pk)
+	_ = c.Flush()
+	_ = c.t.Close()
 }
 
 // login runs the login of a client: network settings, the login request,

@@ -31,10 +31,12 @@ import (
 // whose line a new default file has, and a file that lacks it saves the
 // chunks that changed, as the server did before the key; Protocols and
 // PrimaryProtocol of [Network], whose lines a new default file has, and a
-// file that lacks them allows and speaks protocol 2193, as before; and
+// file that lacks them allows and speaks protocol 2193, as before;
 // StrictConfig of [Server], whose line a new default file has, and a file
 // that lacks it warns of the keys nothing reads, which the server ignored
-// before.
+// before; and the connection caps of [Network], whose lines a new default
+// file has, and a file that lacks them takes their defaults, where the
+// server had the NetherNet defaults and no other caps before.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -131,6 +133,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Network.LAN": false, "Network.HTTPSDomain": "", "Network.ACMEEmail": "", "Network.ACMECacheDir": "",
 			"Network.ACMEDirectory": "", "Network.ACMEChallengeAddress": "",
 			"Network.Protocols": []int32{2193}, "Network.PrimaryProtocol": int32(2193),
+			"Network.MaxPendingConnections": 256, "Network.MaxPendingConnectionsPerIP": 4, "Network.MaxPendingConnectionsPerNetwork": 32,
+			"Network.MaxPendingLogins": 64, "Network.MaxConnectionsPerIP": 8,
 			"Xbox.Enabled": false, "Xbox.TokenFile": "xbox-token.json", "Xbox.AcceptFriends": true, "Xbox.LegacySignaling": false,
 			"Proxy.Address": "", "Proxy.Secret": "",
 			"Java.Address": "", "Java.Message": "",
@@ -151,6 +155,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Network.ACMECacheDir": "certs", "Network.ACMEDirectory": "https://acme.example.invalid/directory",
 			"Network.ACMEChallengeAddress": ":8080",
 			"Network.Protocols":            []int32{2193}, "Network.PrimaryProtocol": int32(2193),
+			"Network.MaxPendingConnections": 100, "Network.MaxPendingConnectionsPerIP": 2, "Network.MaxPendingConnectionsPerNetwork": 0,
+			"Network.MaxPendingLogins": 10, "Network.MaxConnectionsPerIP": 3,
 			"Xbox.Enabled": true, "Xbox.TokenFile": "token.json", "Xbox.AcceptFriends": false, "Xbox.LegacySignaling": true,
 			"Proxy.Address": "127.0.0.1:19133", "Proxy.Secret": "0123456789abcdef0123456789abcdef",
 			"Java.Address": ":25565", "Java.Message": "Use Bedrock.",
@@ -267,6 +273,11 @@ const everyKeyChanged = `
   HTTPSDomain = "play.example.invalid"
   IdentityFile = "id.pem"
   LAN = true
+  MaxConnectionsPerIP = 3
+  MaxPendingConnections = 100
+  MaxPendingConnectionsPerIP = 2
+  MaxPendingConnectionsPerNetwork = 0
+  MaxPendingLogins = 10
   PrimaryProtocol = "2193"
   Protocols = ["26.52"]
   QueryPlugins = true
@@ -418,6 +429,9 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 		protocols = append(protocols, p.Number)
 	}
 	m["Network.Protocols"], m["Network.PrimaryProtocol"] = protocols, bc.Primary.Number
+	m["Network.MaxPendingConnections"], m["Network.MaxPendingConnectionsPerIP"] = n.MaxPendingConnections, n.MaxPendingConnectionsPerIP
+	m["Network.MaxPendingConnectionsPerNetwork"], m["Network.MaxPendingLogins"] = n.MaxPendingConnectionsPerNetwork, n.MaxPendingLogins
+	m["Network.MaxConnectionsPerIP"] = n.MaxConnectionsPerIP
 	m["Xbox.Enabled"], m["Xbox.TokenFile"], m["Xbox.AcceptFriends"], m["Xbox.LegacySignaling"] = x.Enabled, x.TokenFile, x.AcceptFriends, x.LegacySignaling
 	m["Proxy.Address"], m["Proxy.Secret"] = p.Address, p.Secret
 	m["Java.Address"], m["Java.Message"] = j.Address, j.Message

@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"net/netip"
@@ -83,7 +84,13 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 			return conf.Allower.Allow(addr, session.IdentityOf(id, xboxLive), session.ProfileOf(d))
 		}
 	}
-	listen := nethernet.ListenConfig{Key: key, AllowAnonymous: c.AuthDisabled}
+	listen := nethernet.ListenConfig{
+		Key:                  key,
+		AllowAnonymous:       c.AuthDisabled,
+		MaxPending:           unbounded(c.Network.MaxPendingConnections),
+		MaxPendingPerAddress: unbounded(c.Network.MaxPendingConnectionsPerIP),
+		MaxPendingPerNetwork: unbounded(c.Network.MaxPendingConnectionsPerNetwork),
+	}
 	var certs *acme.Manager
 	if domain := c.Network.HTTPSDomain; domain != "" {
 		cacheDir := c.Network.ACMECacheDir
@@ -119,6 +126,8 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 	l, err := netconn.Config{
 		Log:                    conf.Log,
 		MaximumPlayers:         conf.MaxPlayers,
+		MaxLogins:              max(c.Network.MaxPendingLogins, 0),
+		MaxPerAddress:          max(c.Network.MaxConnectionsPerIP, 0),
 		StatusProvider:         netconnStatusProvider(conf.StatusProvider),
 		AuthenticationDisabled: c.AuthDisabled,
 		ResourcePacks:          c.Resources,
@@ -253,6 +262,16 @@ func publishLAN(l *netconn.Listener, c Config, log *slog.Logger, addr string) *l
 		}
 	}()
 	return ll
+}
+
+// unbounded returns a bound of the NetherNet listener as the [Network]
+// table gives it, where zero, or less, means no bound: the listener takes
+// zero for its default.
+func unbounded(n int) int {
+	if n <= 0 {
+		return math.MaxInt
+	}
+	return n
 }
 
 // batchCompression returns the compression of the batches: flate at level

@@ -114,6 +114,25 @@ type NetworkConfig struct {
 	// oldest of Protocols, or the default of the build if Protocols is
 	// empty too.
 	PrimaryProtocol string
+	// MaxPendingConnections bounds the NetherNet connections that did not
+	// open yet, offers of clients still checking their way to the server:
+	// once they are all taken, a new offer displaces the oldest offer
+	// that never connected. Zero means no bound.
+	MaxPendingConnections int
+	// MaxPendingConnectionsPerIP and MaxPendingConnectionsPerNetwork
+	// bound the connections not open yet of one source: an IPv4 address
+	// or an IPv6 /64, and an IPv4 /24 or an IPv6 /48. Loopback is not
+	// bounded. Zero means no bound.
+	MaxPendingConnectionsPerIP, MaxPendingConnectionsPerNetwork int
+	// MaxPendingLogins bounds the clients logging in at once, from the
+	// opening of their connection to the end of their resource packs: a
+	// client over it is told the server is full. Zero means no bound.
+	MaxPendingLogins int
+	// MaxConnectionsPerIP bounds the clients of one address, logging in or
+	// playing: an IPv4 address or an IPv6 /64. A player of a proxy counts
+	// against the address the proxy saw it at; loopback is not bounded.
+	// Zero means no bound.
+	MaxConnectionsPerIP int
 }
 
 // XboxConfig holds the publishing of the server on Xbox Live: the [Xbox]
@@ -358,6 +377,12 @@ func (uc UserConfig) Check(p *config.Problems) {
 	_, err = parseNameCheck(uc.Server.NameCheck)
 	p.Add("Server.NameCheck", err)
 	checkProtocols(p, n.Protocols, n.PrimaryProtocol, versions.Parse, versions.Model())
+	// The caps of connections take 0 for none, and nothing below.
+	config.AtLeast(p, "Network.MaxPendingConnections", n.MaxPendingConnections, 0)
+	config.AtLeast(p, "Network.MaxPendingConnectionsPerIP", n.MaxPendingConnectionsPerIP, 0)
+	config.AtLeast(p, "Network.MaxPendingConnectionsPerNetwork", n.MaxPendingConnectionsPerNetwork, 0)
+	config.AtLeast(p, "Network.MaxPendingLogins", n.MaxPendingLogins, 0)
+	config.AtLeast(p, "Network.MaxConnectionsPerIP", n.MaxConnectionsPerIP, 0)
 	config.ReadFolder(p, "Resources.Folder", uc.Resources.Folder)
 }
 
@@ -404,6 +429,11 @@ func DefaultConfig() UserConfig {
 	c.Network.QueryPlugins = false
 	c.Network.Protocols = []string{versions.Default().Version}
 	c.Network.PrimaryProtocol = versions.Default().Version
+	c.Network.MaxPendingConnections = 256
+	c.Network.MaxPendingConnectionsPerIP = 4
+	c.Network.MaxPendingConnectionsPerNetwork = 32
+	c.Network.MaxPendingLogins = 64
+	c.Network.MaxConnectionsPerIP = 8
 	c.Server.AuthEnabled = true
 	c.Server.NameCheck = "lenient"
 	c.Resources.AutoBuildPack = true

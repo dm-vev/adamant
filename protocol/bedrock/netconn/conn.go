@@ -91,6 +91,9 @@ type Conn struct {
 
 	closeOnce sync.Once
 	connected time.Time
+	// source is the address the client counts against for MaxPerAddress,
+	// the zero Prefix if none.
+	source netip.Prefix
 }
 
 func newConn(l *Listener, t transport, nn *nethernet.Conn) *Conn {
@@ -702,7 +705,7 @@ func startGame(data GameData, p *versions.Protocol) *v2193.StartGamePacket {
 func (c *Conn) Close() error {
 	c.closeOnce.Do(func() {
 		_ = c.t.Close()
-		c.l.left()
+		c.l.left(c)
 	})
 	return nil
 }
