@@ -30,7 +30,7 @@ func (t ptype) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Entity
 	})
 
 	if pd.c != nil {
-		pd.c.HandleInventories(tx, p, pd.inv, pd.offHand, pd.enderChest, pd.ui, pd.armour, pd.heldSlot)
+		viewInventories(tx, p)
 	} else {
 		pd.inv.SlotFunc(func(slot int, before, after item.Stack) {
 			if slot == int(atomic.LoadUint32(p.heldSlot)) {

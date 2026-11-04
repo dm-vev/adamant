@@ -121,6 +121,7 @@ func TestPlayerQuitLeavesInOrder(t *testing.T) {
 		p.OpenBlockContainer(signPos, tx)
 		_ = p.ui.SetItem(0, item.NewStack(item.Apple{}, 1))
 		_ = p.inv.SetItem(0, item.NewStack(item.Apple{}, 1))
+		rebind(tx, p)
 		if p.Menu() == nil {
 			t.Fatal("the player has no menu open")
 		}
@@ -164,6 +165,7 @@ func TestPlayerLeavePanickingLeftCompletesTeardown(t *testing.T) {
 		_ = p.inv.SetItem(0, item.NewStack(item.Apple{}, 1))
 		_ = p.offHand.SetItem(0, item.NewStack(item.Shield{}, 1))
 		p.armour.SetHelmet(item.NewStack(item.Helmet{Tier: item.ArmourTierIron{}}, 1))
+		rebind(tx, p)
 
 		var got any
 		func() {
@@ -209,4 +211,12 @@ func TestPlayerLeaveRunsOnce(t *testing.T) {
 			t.Error("the handle of the player is open after it left")
 		}
 	})
+}
+
+// rebind binds p to tx again. On a synchronous world, the slot functions of
+// the held slot, the off hand and the armour run the Do of their broadcast at
+// once, in a transaction of its own, which leaves p bound to that
+// transaction once it ends; the teardown would then run in it.
+func rebind(tx *world.Tx, p *Player) {
+	_, _ = p.H().Entity(tx)
 }

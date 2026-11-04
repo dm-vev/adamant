@@ -145,7 +145,10 @@ func TestPlayerBeginsBatchesOfItsMenu(t *testing.T) {
 		tx.SetBlock(chest, block.NewChest(), nil)
 		p.OpenBlockContainer(chest, tx)
 		m := p.Menu()
-		_ = p.Inventory().SetItem(0, item.NewStack(item.Apple{}, 3))
+		// Not in the slot held: a change of it shows the viewers the items
+		// held in a transaction of their own, which a synchronous world runs
+		// at once and leaves the player bound to once it ended.
+		_ = p.Inventory().SetItem(1, item.NewStack(item.Apple{}, 3))
 
 		names := func(s menu.Slot, role menu.Role) menu.Name { return menu.Name(role) }
 		b := p.BeginMenu(names)
@@ -153,7 +156,7 @@ func TestPlayerBeginsBatchesOfItsMenu(t *testing.T) {
 			t.Fatal("no batch runs after BeginMenu")
 		}
 		// An apple of the inventory put in the chest.
-		if err := b.Move(menu.Ref{Slot: menu.Slot{Inv: p.Inventory(), Index: 0}}, menu.Ref{Slot: menu.Slot{Inv: m.Inventory(), Index: 4}}, 1); err != nil {
+		if err := b.Move(menu.Ref{Slot: menu.Slot{Inv: p.Inventory(), Index: 1}}, menu.Ref{Slot: menu.Slot{Inv: m.Inventory(), Index: 4}}, 1); err != nil {
 			t.Fatal(err)
 		}
 		if got, _ := m.Inventory().Item(4); got.Count() != 1 {
@@ -166,7 +169,7 @@ func TestPlayerBeginsBatchesOfItsMenu(t *testing.T) {
 		if got, _ := m.Inventory().Item(4); !got.Empty() {
 			t.Errorf("the chest holds %v after the rollback", got)
 		}
-		if got, _ := p.Inventory().Item(0); got.Count() != 3 {
+		if got, _ := p.Inventory().Item(1); got.Count() != 3 {
 			t.Errorf("the inventory holds %v after the rollback, want 3 apples", got)
 		}
 	})

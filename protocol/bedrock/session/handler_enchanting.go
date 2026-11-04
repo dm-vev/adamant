@@ -3,31 +3,14 @@ package session
 import (
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/menu"
-	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
-
-// enchantingInputSlot is the slot index of the input item in the enchanting table.
-const enchantingInputSlot = 0x0e
 
 // handleEnchant handles the enchantment of an item using the CraftRecipe stack request action.
 func (h *ItemStackRequestHandler) handleEnchant(a *v2193.CraftRecipeStackRequestAction) error {
 	return h.batchOp(func() error { return h.batch.Enchant(int(a.RecipeNetworkID)) })
-}
-
-// sendEnchantmentOptions sends a list of available enchantments to the client based on the client's enchantment seed
-// and nearby bookshelves.
-func (s *Session) sendEnchantmentOptions(tx *world.Tx, c Controllable, pos cube.Pos, stack item.Stack) {
-	// First determine the available enchantments for the given item stack.
-	options, ok := menu.EnchantmentOptions(tx, c.EnchantmentSeed(), pos, stack)
-	if !ok {
-		// No available enchantments.
-		return
-	}
-	s.ViewEnchantmentOptions(options)
 }
 
 // ViewEnchantmentOptions shows the client the three options of the

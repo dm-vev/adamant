@@ -8,14 +8,13 @@ import (
 	"math"
 	"net"
 	"slices"
-	"sync/atomic"
 	"time"
 	_ "unsafe" // Imported for compiler directives.
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
 	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
@@ -28,7 +27,6 @@ import (
 	"github.com/df-mc/dragonfly/server/player/input"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl32"
@@ -719,53 +717,50 @@ func (s *Session) EnableInstantRespawn(enable bool) {
 	s.sendGameRules([]v2193.GameRule{{Name: "doimmediaterespawn", Value: enable}})
 }
 
-// HandleInventories starts handling the inventories of the Controllable entity of the session. It sends packets when
-// slots in the inventory are changed.
-func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, enderChest, ui *inventory.Inventory, armour *inventory.Armour, heldSlot *uint32) {
-	// Store the held slot pointer before attaching callbacks to avoid races with concurrent inventory updates.
+// ViewInventories takes the inventories of the Controllable entity of the
+// session, and returns what the client is shown of their changes: the slots
+// changed, unless an item stack request changed them, whose response shows
+// them, the slots of an ender chest open, and the whole UI inventory.
+func (s *Session) ViewInventories(tx *world.Tx, c Controllable, inv menu.Inventories, heldSlot *uint32) client.InventoryViews {
+	// Store the held slot pointer before the slot functions are installed to avoid races with concurrent inventory
+	// updates.
 	s.heldSlot.Store(heldSlot)
 	// The teardown unlists c from the view layers of other sessions.
 	s.control.Store(&c)
-	s.inv = inv
-	// Use tx-less broadcast functions that schedule work on the entity's world transaction.
-	s.inv.SlotFunc(s.broadcastInvFunc(c))
-	s.offHand = offHand
-	s.offHand.SlotFunc(s.broadcastOffHandFunc(c))
-	s.enderChest = enderChest
-	s.enderChest.SlotFunc(s.broadcastEnderChestFunc(c))
-	s.armour = armour
-	s.armour.Inventory().SlotFunc(s.broadcastArmourFunc(c))
-	s.ui = ui
-	s.ui.SlotFunc(s.uiInventoryFunc(c))
+	s.inv, s.offHand, s.enderChest, s.ui, s.armour = inv.Main, inv.OffHand, inv.EnderChest, inv.UI, inv.Armour
 	if unlocker, ok := c.(interface{ UnlockedRecipeIDs() []string }); ok {
 		s.SendInitiallyUnlockedRecipes(unlocker.UnlockedRecipeIDs())
 	}
-}
-
-func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {
-	return func(slot int, _, after item.Stack) {
-		heldSlot := s.heldSlot.Load()
-		if heldSlot != nil && slot == int(atomic.LoadUint32(heldSlot)) {
-			// Acquire viewers within a fresh transaction to avoid using a stale tx. Schedule this asynchronously
-			// to prevent re-entrancy deadlocks when the inventory update originates from an existing world
-			// transaction.
-			c.H().Do(func(tx *world.Tx, e world.Entity) {
-				viewers := tx.Viewers(e.Position())
-				// Equipment updates are extremely frequent; using the pooled slice keeps hotbar spam from
-				// producing unnecessary garbage.
-				for _, viewer := range viewers {
-					viewer.ViewEntityItems(e)
-				}
-				tx.ReleaseViewers(viewers)
-			})
-		}
-		if !s.inTransaction.Load() {
-			s.sendItem(after, slot, v2193.WindowIDInventory)
-		}
+	return client.InventoryViews{
+		Main: func(slot int, _, after item.Stack) {
+			if !s.inTransaction.Load() {
+				s.sendItem(after, slot, v2193.WindowIDInventory)
+			}
+		},
+		OffHand: func(int, item.Stack, item.Stack) {
+			if !s.inTransaction.Load() {
+				i, _ := s.offHand.Item(0)
+				s.writePacket(&v2193.InventoryContentPacket{
+					WindowID: v2193.WindowIDOffHand,
+					Content:  []v2193.ItemInstance{instanceFromItem(s.br, i)},
+				})
+			}
+		},
+		EnderChest: s.enderChestView(c),
+		UI: func(int, item.Stack, item.Stack) {
+			s.sendInv(s.ui, v2193.WindowIDUI)
+		},
+		Armour: func(slot int, _, after item.Stack) {
+			if !s.inTransaction.Load() {
+				s.sendItem(after, slot, v2193.WindowIDArmour)
+			}
+		},
 	}
 }
 
-func (s *Session) broadcastEnderChestFunc(c Controllable) inventory.SlotFunc {
+// enderChestView returns what the client is shown of a change of the ender
+// chest of c: the slot changed, if an ender chest is open.
+func (s *Session) enderChestView(c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
 		m := s.menu.Load()
 		if s.inTransaction.Load() || m == nil {
@@ -782,72 +777,6 @@ func (s *Session) broadcastEnderChestFunc(c Controllable) inventory.SlotFunc {
 				s.ViewSlotChange(slot, after)
 			}
 		})
-	}
-}
-
-func (s *Session) broadcastOffHandFunc(c Controllable) inventory.SlotFunc {
-	return func(slot int, _, after item.Stack) {
-		// Broadcast off-hand changes within a valid transaction. Run asynchronously to avoid blocking existing
-		// world transactions that triggered the inventory update.
-		c.H().Do(func(tx *world.Tx, e world.Entity) {
-			viewers := tx.Viewers(e.Position())
-			// Off-hand sync leverages the same pooled viewer slice so rapidly switching totems or shields remains
-			// allocation free.
-			for _, viewer := range viewers {
-				viewer.ViewEntityItems(e)
-			}
-			tx.ReleaseViewers(viewers)
-		})
-		if !s.inTransaction.Load() {
-			i, _ := s.offHand.Item(0)
-			s.writePacket(&v2193.InventoryContentPacket{
-				WindowID: v2193.WindowIDOffHand,
-				Content:  []v2193.ItemInstance{instanceFromItem(s.br, i)},
-			})
-		}
-	}
-}
-
-func (s *Session) broadcastArmourFunc(c Controllable) inventory.SlotFunc {
-	return func(slot int, before, after item.Stack) {
-		inTransaction := s.inTransaction.Load()
-		if !inTransaction {
-			s.sendItem(after, slot, v2193.WindowIDArmour)
-		}
-		if before.Comparable(after) && before.Empty() == after.Empty() {
-			// Only send armour if the item type actually changed.
-			return
-		}
-		// Broadcast armour changes within a valid transaction. Schedule asynchronously to prevent blocking the
-		// caller when the update occurs inside an existing world transaction.
-		c.H().Do(func(tx *world.Tx, e world.Entity) {
-			viewers := tx.Viewers(e.Position())
-			// Armour broadcasts also borrow the pooled buffer. Players often spam armour swaps in PvP; the pool keeps
-			// the resulting updates cheap.
-			for _, viewer := range viewers {
-				viewer.ViewEntityArmour(e)
-			}
-			if !after.Empty() && inTransaction {
-				tx.PlaySound(entity.EyePosition(e), sound.EquipItem{Item: after.Item()})
-			}
-			tx.ReleaseViewers(viewers)
-		})
-	}
-}
-
-// uiInventoryFunc handles an update to the UI inventory, used for updating enchantment options and possibly more
-// in the future.
-func (s *Session) uiInventoryFunc(c Controllable) inventory.SlotFunc {
-	return func(slot int, _, after item.Stack) {
-		if m := s.menu.Load(); slot == enchantingInputSlot && m != nil {
-			pos := m.Pos()
-			c.H().Do(func(tx *world.Tx, _ world.Entity) {
-				if _, enchanting := tx.Block(pos).(block.EnchantingTable); enchanting {
-					s.sendEnchantmentOptions(tx, c, pos, after)
-				}
-			})
-		}
-		s.sendInv(s.ui, v2193.WindowIDUI)
 	}
 }
 

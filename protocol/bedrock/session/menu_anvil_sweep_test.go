@@ -27,6 +27,8 @@ func (c *levelController) GameMode() world.GameMode     { return c.mode }
 func (c *levelController) ExperienceLevel() int         { return c.level }
 func (c *levelController) SetExperienceLevel(level int) { c.level = level }
 func (c *levelController) UnlockedRecipeIDs() []string  { return nil }
+func (c *levelController) EnchantmentSeed() int64       { return 0 }
+func (c *levelController) ResetEnchantmentSeed()        {}
 func (c *levelController) Position() mgl64.Vec3         { return mgl64.Vec3{} }
 
 // stationOutcome is what a request of a menu left: whether it was

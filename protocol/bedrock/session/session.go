@@ -41,7 +41,7 @@ type Session struct {
 
 	ent *world.EntityHandle
 	// control is the Controllable the inventories of the session were last
-	// handed with (HandleInventories): the player of ent in its current
+	// handed with (ViewInventories): the player of ent in its current
 	// world.
 	control atomic.Pointer[Controllable]
 	conn    Conn

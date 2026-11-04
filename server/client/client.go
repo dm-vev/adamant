@@ -86,15 +86,13 @@ type Connection interface {
 	// ClientMoving reports whether the player is being moved as its client
 	// moved it: a move the client made, which it is not shown again.
 	ClientMoving() bool
-	// HandleInventories hands the client the inventories of its player c, as
-	// c opens in tx. The client takes over their slot functions: it shows the
-	// client what changes in them. heldSlot points at the index of the slot
-	// held.
-	//
-	// Transitional: the client also shows the viewers of the player the items
-	// it holds and the armour it wears, as Player does itself when it has no
-	// client. That broadcast is game logic and moves into the game in phase 4.
-	HandleInventories(tx *world.Tx, c Controllable, inv, offHand, enderChest, ui *inventory.Inventory, armour *inventory.Armour, heldSlot *uint32)
+	// ViewInventories hands the client the inventories of its player c, as c
+	// opens in tx, and returns what the client shows of their changes.
+	// heldSlot points at the index of the slot held. Player installs the
+	// slot functions of the inventories, which show the viewers of the player
+	// the items it holds and the armour it wears, and call the functions
+	// returned.
+	ViewInventories(tx *world.Tx, c Controllable, inv menu.Inventories, heldSlot *uint32) InventoryViews
 	// Transfer has the client leave for the server at ip and port.
 	Transfer(ip net.IP, port int)
 	// Disconnect shows the client message as the reason it is disconnected
@@ -114,6 +112,13 @@ type Connection interface {
 	// session eventually. It may be called from any goroutine, any number of
 	// times.
 	CloseConnection()
+}
+
+// InventoryViews are what a client shows of the changes of the inventories
+// of its player, which the slot functions of the inventories call. A nil
+// function shows nothing.
+type InventoryViews struct {
+	Main, OffHand, EnderChest, UI, Armour inventory.SlotFunc
 }
 
 // Messenger shows text to the client: in the chat, on the screen, in boss

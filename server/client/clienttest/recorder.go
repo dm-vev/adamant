@@ -15,7 +15,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/debug"
@@ -62,9 +61,9 @@ type Answers struct {
 // and RemoveAllDebugShapes what VisibleDebugShapes returns, in the order of
 // their IDs. ViewLayer returns a layer of its own; ViewNameTag and the other
 // view-layer methods are only recorded and do not change it.
-// HandleInventories is only recorded too: it installs no slot functions, so
-// the viewers of a player with a Recorder are not shown its held items and
-// armour change.
+// ViewInventories is only recorded too, and shows nothing of the changes of
+// the inventories: the viewers of the player are shown them, as Player
+// installs the slot functions itself.
 //
 // Close leaves the world alone: the player removes itself and closes its
 // entity handle as it leaves. A Recorder that Join.Start returned keeps the
@@ -390,8 +389,9 @@ func (r *Recorder) ViewFurnaceUpdate(a0 time.Duration, a1 time.Duration, a2 time
 func (r *Recorder) Transfer(a0 net.IP, a1 int) { r.record("Transfer", a0, a1) }
 func (r *Recorder) Disconnect(a0 text.Text)    { r.record("Disconnect", a0) }
 func (r *Recorder) CloseConnection()           { r.record("CloseConnection") }
-func (r *Recorder) HandleInventories(a0 *world.Tx, a1 client.Controllable, a2 *inventory.Inventory, a3 *inventory.Inventory, a4 *inventory.Inventory, a5 *inventory.Inventory, a6 *inventory.Armour, a7 *uint32) {
-	r.record("HandleInventories", a0, a1, a2, a3, a4, a5, a6, a7)
+func (r *Recorder) ViewInventories(a0 *world.Tx, a1 client.Controllable, a2 menu.Inventories, a3 *uint32) client.InventoryViews {
+	r.record("ViewInventories", a0, a1, a2, a3)
+	return client.InventoryViews{}
 }
 func (r *Recorder) SendMessage(a0 text.Text)             { r.record("SendMessage", a0) }
 func (r *Recorder) SendTip(a0 text.Text)                 { r.record("SendTip", a0) }

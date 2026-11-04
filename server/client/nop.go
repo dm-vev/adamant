@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/debug"
@@ -50,7 +49,8 @@ func (Nop) Transfer(net.IP, int)    {}
 func (Nop) Disconnect(text.Text)    {}
 func (Nop) Close(*world.Tx)         {}
 func (Nop) CloseConnection()        {}
-func (Nop) HandleInventories(*world.Tx, Controllable, *inventory.Inventory, *inventory.Inventory, *inventory.Inventory, *inventory.Inventory, *inventory.Armour, *uint32) {
+func (Nop) ViewInventories(*world.Tx, Controllable, menu.Inventories, *uint32) InventoryViews {
+	return InventoryViews{}
 }
 
 func (Nop) SendMessage(text.Text)                                         {}

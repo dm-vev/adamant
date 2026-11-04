@@ -15,12 +15,3 @@
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
 protocol/bedrock/session/handler_emote.go (world.Viewer).ViewEmote
-protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
-protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
-protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
-protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
-protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
-protocol/bedrock/session/player.go (*world.Tx).PlaySound
-protocol/bedrock/session/player.go (world.Viewer).ViewEntityArmour
-protocol/bedrock/session/player.go (world.Viewer).ViewEntityItems
-protocol/bedrock/session/player.go (world.Viewer).ViewEntityItems

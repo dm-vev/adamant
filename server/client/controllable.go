@@ -76,10 +76,6 @@ type Controllable interface {
 
 	ExperienceLevel() int
 	ExperienceProgress() float64
-	SetExperienceLevel(level int)
-
-	EnchantmentSeed() int64
-	ResetEnchantmentSeed()
 
 	Respawn() *world.EntityHandle
 	Dead() bool
