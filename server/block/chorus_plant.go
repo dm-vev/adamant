@@ -46,6 +46,21 @@ func (ChorusPlant) BreakInfo() BreakInfo {
 	})
 }
 
+// ReconstructMissingState connects a plant saved without its connections,
+// as by 1.26.50, to the blocks around it: BDS 1.26.61 connects the blocks
+// of a world of 1.26.52 once it loads it.
+func (c ChorusPlant) ReconstructMissingState(pos cube.Pos, missing []string, bs world.BlockSource) world.Block {
+	for _, side := range [...]string{"north", "east", "south", "west", "up", "down"} {
+		if hasMissingProperty(missing, "minecraft:connection_"+side) {
+			return chorusPlantAt(bs, pos)
+		}
+	}
+	return c
+}
+
+// ReconstructionOrder ...
+func (ChorusPlant) ReconstructionOrder() int { return 0 }
+
 // NeighbourUpdateTick breaks a plant that cannot survive, and connects the
 // rest to the block that changed, as ChorusPlantBlock.updateShape does.
 func (c ChorusPlant) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) {

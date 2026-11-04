@@ -191,6 +191,9 @@ func (bpe BlockPaletteEncoding) decodeBlockState(m map[string]any) (uint32, []st
 	if !ok {
 		return 0, nil, blockEntry{}, fmt.Errorf("invalid state in block entry")
 	}
+	// The upgrade fills these in place: what the saved state lacked of them
+	// is to be derived from the neighbours of its blocks.
+	lacked := lackedDerivedProperties(name, state)
 
 	// Upgrade the block state if necessary.
 	upgraded := blockupgrader.Upgrade(blockupgrader.BlockState{
@@ -207,7 +210,7 @@ func (bpe BlockPaletteEncoding) decodeBlockState(m map[string]any) (uint32, []st
 	var missing []string
 	if found {
 		for key := range canonical {
-			if _, supplied := upgraded.Properties[key]; !supplied {
+			if _, supplied := upgraded.Properties[key]; !supplied || slices.Contains(lacked, key) {
 				missing = append(missing, key)
 			}
 		}

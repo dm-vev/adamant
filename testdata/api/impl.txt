@@ -691,6 +691,7 @@ server/block.ChorusPlant	server/block.LiquidRemovable	value
 server/block.ChorusPlant	server/item.UsableOnBlock	value
 server/block.ChorusPlant	server/world.Block	value
 server/block.ChorusPlant	server/world.Item	value
+server/block.ChorusPlant	server/world.MissingStateReconstructor	value
 server/block.ChorusPlant	server/world.NeighbourUpdateTicker	value
 server/block.ChorusPlant	server/world.lightDiffuser	value
 server/block.ChorusPlant	server/world.redstoneLightDiffuser	value
@@ -1387,6 +1388,7 @@ server/block.Fire	server/block.Replaceable	value
 server/block.Fire	server/entity.replaceable	value
 server/block.Fire	server/item.replaceable	value
 server/block.Fire	server/world.Block	value
+server/block.Fire	server/world.MissingStateReconstructor	value
 server/block.Fire	server/world.NeighbourUpdateTicker	value
 server/block.Fire	server/world.RandomTicker	value
 server/block.Fire	server/world.ScheduledTicker	value
@@ -2553,6 +2555,7 @@ server/block.RedstoneWire	server/item.UsableOnBlock	value
 server/block.RedstoneWire	server/world.Block	value
 server/block.RedstoneWire	server/world.IndirectShaper	value
 server/block.RedstoneWire	server/world.Item	value
+server/block.RedstoneWire	server/world.MissingStateReconstructor	value
 server/block.RedstoneWire	server/world.NeighbourUpdateTicker	value
 server/block.RedstoneWire	server/world.RedstoneCircuitComponent	value
 server/block.RedstoneWire	server/world.RedstonePowerConsumer	value

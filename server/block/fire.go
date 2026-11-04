@@ -46,6 +46,21 @@ func (f Fire) shaped(src world.BlockSource, pos cube.Pos) Fire {
 	return f
 }
 
+// ReconstructMissingState gives fire saved without the sides it burns on,
+// as by 1.26.50, those it takes when it is placed: BDS 1.26.61 connects the
+// blocks of a world of 1.26.52 once it loads it.
+func (f Fire) ReconstructMissingState(pos cube.Pos, missing []string, bs world.BlockSource) world.Block {
+	for _, side := range [...]string{"north", "east", "south", "west", "up"} {
+		if hasMissingProperty(missing, "minecraft:connection_"+side) {
+			return f.shaped(bs, pos)
+		}
+	}
+	return f
+}
+
+// ReconstructionOrder ...
+func (Fire) ReconstructionOrder() int { return 0 }
+
 // flammableBlock returns true if a block is flammable.
 func flammableBlock(block world.Block) bool {
 	flammable, ok := block.(Flammable)

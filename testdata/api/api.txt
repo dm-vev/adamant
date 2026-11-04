@@ -1669,6 +1669,8 @@ server/block	method	ChorusPlant.Hash	func() (uint64, uint64)
 server/block	method	ChorusPlant.LightDiffusionLevel	func() uint8
 server/block	method	ChorusPlant.Model	func() server/world.BlockModel
 server/block	method	ChorusPlant.NeighbourUpdateTick	func(pos server/block/cube.Pos, changedNeighbour server/block/cube.Pos, tx *server/world.Tx)
+server/block	method	ChorusPlant.ReconstructMissingState	func(pos server/block/cube.Pos, missing []string, bs server/world.BlockSource) server/world.Block
+server/block	method	ChorusPlant.ReconstructionOrder	func() int
 server/block	method	ChorusPlant.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) bool
 server/block	method	Cinnabar.BreakInfo	func() server/block.BreakInfo
 server/block	method	Cinnabar.EncodeBlock	func() (string, map[string]any)
@@ -2580,6 +2582,8 @@ server/block	method	Fire.Model	func() server/world.BlockModel
 server/block	method	Fire.NeighbourUpdateTick	func(pos server/block/cube.Pos, changedNeighbour server/block/cube.Pos, tx *server/world.Tx)
 server/block	method	Fire.Place	func(pos server/block/cube.Pos, w *server/world.World) bool
 server/block	method	Fire.RandomTick	func(pos server/block/cube.Pos, tx *server/world.Tx, r *math/rand/v2.Rand)
+server/block	method	Fire.ReconstructMissingState	func(pos server/block/cube.Pos, missing []string, bs server/world.BlockSource) server/world.Block
+server/block	method	Fire.ReconstructionOrder	func() int
 server/block	method	Fire.ReplaceableBy	func(server/world.Block) bool
 server/block	method	Fire.ScheduledTick	func(pos server/block/cube.Pos, tx *server/world.Tx, r *math/rand/v2.Rand)
 server/block	method	Fire.Start	func(tx *server/world.Tx, pos server/block/cube.Pos)
@@ -4099,6 +4103,8 @@ server/block	method	RedstoneWire.LightDiffusionLevel	func() uint8
 server/block	method	RedstoneWire.MaterialColour	func() server/text.Colour
 server/block	method	RedstoneWire.Model	func() server/world.BlockModel
 server/block	method	RedstoneWire.NeighbourUpdateTick	func(pos server/block/cube.Pos, changedNeighbour server/block/cube.Pos, tx *server/world.Tx)
+server/block	method	RedstoneWire.ReconstructMissingState	func(pos server/block/cube.Pos, missing []string, bs server/world.BlockSource) server/world.Block
+server/block	method	RedstoneWire.ReconstructionOrder	func() int
 server/block	method	RedstoneWire.RedstoneCircuit	func() server/world.RedstoneCircuitState
 server/block	method	RedstoneWire.RedstoneCircuitOutput	func(output server/world.Block) server/world.Block
 server/block	method	RedstoneWire.RedstonePower	func(pos server/block/cube.Pos, tx *server/world.Tx, face server/block/cube.Face) int

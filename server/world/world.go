@@ -780,7 +780,10 @@ func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
 			continue
 		}
 		source := &loadedWorldSource{w: w, complete: true, order: candidate.order}
-		updated := reconstructor.ReconstructMissingState(candidate.pos, candidate.properties, source)
+		updated, retained := w.retainedJavaBlock(candidate.column, candidate.pos, current)
+		if !retained {
+			updated = reconstructor.ReconstructMissingState(candidate.pos, candidate.properties, source)
+		}
 		if updated == nil || !source.complete {
 			continue
 		}

@@ -45,11 +45,11 @@ func TestRedstoneWireConnectsAsJava(t *testing.T) {
 	runWorld(w, func(tx *world.Tx) {
 		connectionStatesFloor(tx)
 		for _, pos := range []cube.Pos{{2, 64, 0}, {3, 64, 0}, {4, 64, 0}, {4, 64, 1}} {
-			tx.SetBlock(pos, redstoneWirePlaced(tx, pos), nil)
+			tx.SetBlock(pos, redstoneWirePlaced(tx, pos, 0), nil)
 		}
 		tx.SetBlock(cube.Pos{5, 64, 0}, Stone{}, nil)
 		for _, pos := range []cube.Pos{{5, 65, 0}, {2, 64, 6}} {
-			tx.SetBlock(pos, redstoneWirePlaced(tx, pos), nil)
+			tx.SetBlock(pos, redstoneWirePlaced(tx, pos, 0), nil)
 		}
 	})
 	w.AdvanceTick()
@@ -85,7 +85,7 @@ func TestRedstoneWireShapesTheWireItClimbsTo(t *testing.T) {
 	low, block, high := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}, cube.Pos{1, 65, 0}
 	runWorld(w, func(tx *world.Tx) {
 		connectionStatesFloor(tx)
-		tx.SetBlock(low, redstoneWirePlaced(tx, low), nil)
+		tx.SetBlock(low, redstoneWirePlaced(tx, low, 0), nil)
 		tx.SetBlock(block, Stone{}, nil)
 	})
 	w.AdvanceTick()
@@ -93,7 +93,7 @@ func TestRedstoneWireShapesTheWireItClimbsTo(t *testing.T) {
 		if got := tx.Block(low); got != wire("ssss") {
 			t.Fatalf("wire alone = %#v, want it running to all four sides", got)
 		}
-		tx.SetBlock(high, redstoneWirePlaced(tx, high), nil)
+		tx.SetBlock(high, redstoneWirePlaced(tx, high, 0), nil)
 	})
 	w.AdvanceTick()
 	runWorld(w, func(tx *world.Tx) {

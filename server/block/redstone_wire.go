@@ -34,21 +34,38 @@ func (r RedstoneWire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 	if !used || !redstoneWireSupported(tx, pos) {
 		return false
 	}
-	place(tx, pos, redstoneWirePlaced(tx, pos), user, ctx)
+	place(tx, pos, redstoneWirePlaced(tx, pos, 0), user, ctx)
 	return placed(ctx)
 }
 
-// redstoneWirePlaced ports RedstoneWireBlock.getStateForPlacement: the
-// wire placed at pos, shaped from wire that runs to all four sides by the
-// blocks around it.
-func redstoneWirePlaced(src world.BlockSource, pos cube.Pos) RedstoneWire {
-	if shaped, ok := world.ShapeFromNeighbours(src, pos, redstoneCross); ok {
+// redstoneWirePlaced ports RedstoneWireBlock.getStateForPlacement: wire of
+// a power placed at pos, shaped from wire that runs to all four sides by
+// the blocks around it.
+func redstoneWirePlaced(src world.BlockSource, pos cube.Pos, power int) RedstoneWire {
+	cross := redstoneCross
+	cross.Power = power
+	if shaped, ok := world.ShapeFromNeighbours(src, pos, cross); ok {
 		if w, ok := shaped.(RedstoneWire); ok {
 			return w
 		}
 	}
-	return redstoneCross
+	return cross
 }
+
+// ReconstructMissingState connects wire saved without its connections, as
+// by 1.26.50, as it is placed: BDS 1.26.61 does so once it loads a world of
+// 1.26.52.
+func (r RedstoneWire) ReconstructMissingState(pos cube.Pos, missing []string, bs world.BlockSource) world.Block {
+	for _, side := range [...]string{"redstone_north", "redstone_east", "redstone_south", "redstone_west"} {
+		if hasMissingProperty(missing, side) {
+			return redstoneWirePlaced(bs, pos, r.Power)
+		}
+	}
+	return r
+}
+
+// ReconstructionOrder ...
+func (RedstoneWire) ReconstructionOrder() int { return 0 }
 
 // ShapesIndirectNeighbours reports that wire shapes the wire diagonally
 // above and below it, which it climbs to and descends to.

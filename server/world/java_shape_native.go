@@ -227,3 +227,26 @@ func (s *loadedWorldSource) javaStateID(pos cube.Pos) (uint32, bool) {
 	}
 	return s.w.javaStateIDInColumn(s.w.chunks[chunkPosFromBlockPos(pos)], pos), true
 }
+
+// retainedJavaBlock returns the block of the Java state retained at pos of
+// a column, if the native palette now holds that state exactly and it is of
+// the block there: as for redstone wire, fire and chorus plants of a world
+// saved before the palette held their connections, whose Java states kept
+// them. Such a block is taken as the Java state was rather than shaped
+// anew from its neighbours.
+func (w *World) retainedJavaBlock(c *Column, pos cube.Pos, current Block) (Block, bool) {
+	id := c.StateID(uint8(pos[0]&15), int16(pos[1]), uint8(pos[2]&15))
+	if id == 0 {
+		return nil, false
+	}
+	native, ok := resolveJavaStateID(w.conf.Blocks, id)
+	if !ok || native.StateID != 0 || native.Liquid != w.conf.Blocks.AirRuntimeID() || w.conf.Blocks.NBTBlock(native.Block) {
+		return nil, false
+	}
+	b := w.conf.Blocks.BlockByRuntimeIDOrAir(native.Block)
+	name, _ := b.EncodeBlock()
+	if currentName, _ := current.EncodeBlock(); name != currentName {
+		return nil, false
+	}
+	return b, true
+}
