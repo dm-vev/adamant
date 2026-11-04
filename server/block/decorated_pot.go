@@ -1,7 +1,6 @@
 package block
 
 import (
-	"log/slog"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
@@ -50,7 +49,7 @@ func (p DecoratedPot) withLoot(pos cube.Pos, tx *world.Tx) DecoratedPot {
 	}
 	inv := inventory.New(1, nil)
 	if err := fillContainerLoot(tx, pos, inv, p.lootTable, p.lootSeed, "minecraft:decorated_pot"); err != nil {
-		slog.Error("decorated pot loot table", "table", p.lootTable, "pos", pos, "error", err)
+		tx.World().Log().Error("decorated pot loot table", "table", p.lootTable, "pos", pos, "error", err)
 	}
 	p.Item, _ = inv.Item(0)
 	p.lootTable, p.lootSeed = "", 0

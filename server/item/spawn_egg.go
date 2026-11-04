@@ -1,7 +1,6 @@
 package item
 
 import (
-	"log/slog"
 	"math"
 	"math/rand/v2"
 
@@ -127,7 +126,7 @@ func (s SpawnEgg) EncodeItem() (name string, meta int16) {
 func (s SpawnEgg) spawn(tx *world.Tx, user User, spawnPos cube.Pos, reason string, tryMoveDown, movedUp bool) world.Entity {
 	t, ok := tx.World().EntityRegistry().Lookup(s.Entity)
 	if !ok {
-		slog.Default().Info("spawn_egg: unknown entity", "entity", s.Entity)
+		tx.World().Log().Info("spawn_egg: unknown entity", "entity", s.Entity)
 		return nil
 	}
 	pos := mgl64.Vec3{float64(spawnPos[0]) + 0.5, float64(spawnPos[1]), float64(spawnPos[2]) + 0.5}

@@ -1,7 +1,6 @@
 package item
 
 import (
-	"log/slog"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -184,7 +183,7 @@ func (ChestBoat) MaxCount() int {
 // collide with something.
 func placeBoat(_ cube.Pos, _ cube.Face, tx *world.Tx, user User, ctx *UseContext, variant BoatVariant, create func(world.EntitySpawnOpts, int) *world.EntityHandle, name string) bool {
 	if create == nil {
-		slog.Default().Info("boat: missing entity factory", "name", name, "world", tx.World().Name())
+		tx.World().Log().Info("boat: missing entity factory", "name", name, "world", tx.World().Name())
 		return false
 	}
 	hit, _, _, ok := povHit(tx, user, povAnyFluid)

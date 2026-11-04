@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"log/slog"
 	"maps"
 	"math"
 	"math/rand/v2"
@@ -421,6 +422,15 @@ func (w *World) Seed() int64 {
 		return 0
 	}
 	return w.conf.Seed
+}
+
+// Log returns the logger of the world, which game code that runs in it, as
+// the blocks and items of a transaction, logs through.
+func (w *World) Log() *slog.Logger {
+	if w == nil {
+		return slog.Default()
+	}
+	return w.conf.Log
 }
 
 // Dimension returns the Dimension assigned to the World in world.New. The sky

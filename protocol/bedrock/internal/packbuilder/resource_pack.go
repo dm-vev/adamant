@@ -16,11 +16,14 @@ var packIcon []byte
 // BuildResourcePack builds a resource pack based on custom features that have been registered to the server.
 // It creates a UUID based on the hash of the directory so the client will only be prompted to download it
 // once it is changed.
-// Errors are logged and cause the resource pack to be skipped so the server can keep running.
+// Errors are logged to log, slog.Default() if nil, and cause the resource pack to be skipped so the
+// server can keep running.
 // minGameVersion is the oldest version of the game the pack is for, such as "1.26.50": the
 // oldest version clients may join with, as a client refuses a pack that needs a newer game.
-func BuildResourcePack(reg world.BlockRegistry, minGameVersion string) (*resource.Pack, bool) {
-	log := slog.Default()
+func BuildResourcePack(reg world.BlockRegistry, minGameVersion string, log *slog.Logger) (*resource.Pack, bool) {
+	if log == nil {
+		log = slog.Default()
+	}
 	dir, err := os.MkdirTemp("", "dragonfly_resource_pack-")
 	if err != nil {
 		log.Error("resource pack: create temp dir failed", "err", err)

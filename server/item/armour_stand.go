@@ -1,7 +1,6 @@
 package item
 
 import (
-	"log/slog"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -21,7 +20,7 @@ type ArmourStand struct{}
 func (ArmourStand) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	create := tx.World().EntityRegistry().Config().ArmourStand
 	if create == nil {
-		slog.Default().Info("armour_stand: missing entity factory", "world", tx.World().Name())
+		tx.World().Log().Info("armour_stand: missing entity factory", "world", tx.World().Name())
 		return false
 	}
 	if face == cube.FaceDown {

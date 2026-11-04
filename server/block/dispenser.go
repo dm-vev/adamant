@@ -2,7 +2,6 @@ package block
 
 import (
 	"fmt"
-	"log/slog"
 	"math"
 	"math/rand/v2"
 	"strings"
@@ -68,7 +67,7 @@ func (d Dispenser) generateLoot(tx *world.Tx, pos cube.Pos) Dispenser {
 		return d
 	}
 	if err := fillContainerLoot(tx, pos, d.inventory, d.lootTable, d.lootSeed, "minecraft:dispenser"); err != nil {
-		slog.Error("dispenser loot table", "table", d.lootTable, "pos", pos, "error", err)
+		tx.World().Log().Error("dispenser loot table", "table", d.lootTable, "pos", pos, "error", err)
 	}
 	d.lootTable, d.lootSeed = "", 0
 	if _, ok := tx.Block(pos).(Dispenser); ok {

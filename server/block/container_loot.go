@@ -1,7 +1,6 @@
 package block
 
 import (
-	"log/slog"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -80,7 +79,7 @@ func fillContainerLoot(tx *world.Tx, pos cube.Pos, inv *inventory.Inventory, tab
 	}
 	for _, stack := range parts {
 		if len(free) == 0 {
-			slog.Warn("Tried to over-fill a container")
+			tx.World().Log().Warn("Tried to over-fill a container")
 			return nil
 		}
 		slot := free[len(free)-1]

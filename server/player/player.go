@@ -29,6 +29,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
@@ -516,7 +517,7 @@ func (p *Player) SendCommandOutput(output *cmd.Output) {
 	w := p.tx.World()
 	if output.MessageCount() > 0 && w.GameRuleBool("log_admin_commands") {
 		for _, msg := range output.Messages() {
-			slog.Default().Info(fmt.Sprintf("[%s: %s]", p.Name(), msg))
+			logging.Sub(p.log, logging.Commands).Info(fmt.Sprintf("[%s: %s]", p.Name(), msg))
 			for e := range p.tx.Players() {
 				if other, ok := e.(*Player); ok && other != p && cmd.IsOperator(other.UUID()) {
 					other.Messaget(chat.MessageAdminCommand, p.Name(), msg.String())

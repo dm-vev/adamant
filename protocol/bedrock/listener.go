@@ -45,7 +45,7 @@ import (
 func (c Config) Listener(conf server.Config, host server.Host) (server.Listener, error) {
 	packs := slices.Clone(c.Resources)
 	if !c.DisableResourceBuilding {
-		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks, c.oldestProtocol().Version); ok {
+		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks, c.oldestProtocol().Version, conf.Log); ok {
 			packs = append(packs, pack)
 		}
 	}

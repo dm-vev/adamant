@@ -1,7 +1,6 @@
 package block
 
 import (
-	"log/slog"
 	"math/rand/v2"
 	"sync/atomic"
 
@@ -91,7 +90,7 @@ func (m MobSpawner) spawnOnce(pos cube.Pos, tx *world.Tx) bool {
 	}
 	t, ok := tx.World().EntityRegistry().Lookup(m.entity)
 	if !ok {
-		slog.Default().Info("mob_spawner: unknown entity", "entity", m.entity)
+		tx.World().Log().Info("mob_spawner: unknown entity", "entity", m.entity)
 		return false
 	}
 

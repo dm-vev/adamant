@@ -1,7 +1,6 @@
 package item
 
 import (
-	"log/slog"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -93,7 +92,7 @@ func spawnMinecartOnRail(pos cube.Pos, tx *world.Tx, user User, ctx *UseContext,
 		return false
 	}
 	if create == nil {
-		slog.Default().Info("minecart: missing entity factory", "name", name, "world", tx.World().Name())
+		tx.World().Log().Info("minecart: missing entity factory", "name", name, "world", tx.World().Name())
 		return false
 	}
 	// MinecartItem::_useOn requests the actor at the binary32 block centre,
