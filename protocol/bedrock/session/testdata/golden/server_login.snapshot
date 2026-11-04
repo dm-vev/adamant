@@ -814,7 +814,7 @@
     | 01020223c2a772c2a765256d756c7469706c617965722e706c617965722e6a6f
     | 696e6564c2a77201064d656d626572000000
 -- Member
->> AvailableCommands id=76 len=790
+>> AvailableCommands id=76 len=739
     AvailableCommandsPacket
       EnumValues: ["players" "list" "tell" "w" "msg" "value" "tm" "teammsg" "enable" "use"]
       ChainedSubcommandValues: []
@@ -827,7 +827,7 @@
         [4] {Type:"SubCommandenable" ValueIndices:[8]}
         [5] {Type:"SubCommanduse" ValueIndices:[9]}
       ChainedSubcommands: []
-      Commands: []v2193.Command (9)
+      Commands: []v2193.Command (8)
         [0] Command
           Name: "about"
           Description: "Displays Adamant core and build information."
@@ -897,14 +897,6 @@
           Overloads: []v2193.CommandOverload (2)
             [0] {Chaining:false Parameters:[{Name:"enable" Type:3145732 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
             [1] {Chaining:false Parameters:[{Name:"use" Type:3145733 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
-        [8] Command
-          Name: "version"
-          Description: "Displays the server version."
-          Flags: 0
-          PermissionLevel: 0
-          AliasesOffset: 4294967295
-          ChainedSubcommandOffsets: []
-          Overloads: [{Chaining:false Parameters:[]}]
       DynamicEnums: []
       Constraints: []
     | 0a07706c6179657273046c6973740474656c6c0177036d73670576616c756502
@@ -912,7 +904,7 @@
     | 617365730200000000010000000a6d7367416c69617365730302000000030000
     | 00040000000f537562436f6d6d616e6476616c756501050000000e7465616d6d
     | 7367416c696173657302060000000700000010537562436f6d6d616e64656e61
-    | 626c6501080000000d537562436f6d6d616e6475736501090000000009056162
+    | 626c6501080000000d537562436f6d6d616e6475736501090000000008056162
     | 6f75742c446973706c617973204164616d616e7420636f726520616e64206275
     | 696c6420696e666f726d6174696f6e2e000003616e79ffffffff00010000046c
     | 69737419636f6d6d616e64732e6c6973742e6465736372697074696f6e000003
@@ -930,8 +922,7 @@
     | 6d6d616e64732e747269676765722e6465736372697074696f6e000003616e79
     | ffffffff0002000206656e61626c65040030000000096f626a65637469766538
     | 0010000000000203757365050030000000096f626a6563746976653800100000
-    | 000776657273696f6e1c446973706c6179732074686520736572766572207665
-    | 7273696f6e2e000003616e79ffffffff000100000000
+    | 000000
 >> UpdateAttributes id=29 len=158
     UpdateAttributesPacket
       EntityRuntimeID: 1

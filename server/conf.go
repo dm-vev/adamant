@@ -642,7 +642,7 @@ type UserConfig struct {
 		// looks around but builds, mines, opens and attacks nothing.
 		DefaultRole string
 		// Commands sets the level a command needs, by its name or one of its
-		// aliases, such as kick = 2 or version = 2.
+		// aliases, such as kick = 2 or version = 0.
 		Commands map[string]int
 	}
 	// Bans are the texts a banned player is refused and kicked with. Each

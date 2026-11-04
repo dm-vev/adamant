@@ -176,7 +176,7 @@
   # RoleLevel is the level an operator needs to change the roles of players from the game's player list.
   RoleLevel = 3
 
-  # Commands sets the level a command needs, by its name or an alias, such as kick = 2 or version = 2.
+  # Commands sets the level a command needs, by its name or an alias, such as kick = 2 or version = 0.
   [Permissions.Commands]
 
 [Bans]

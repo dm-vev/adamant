@@ -646,7 +646,7 @@
     | 01020223c2a772c2a765256d756c7469706c617965722e706c617965722e6a6f
     | 696e6564c2a7720106476f6c64656e000000
 -- Golden
->> AvailableCommands id=76 len=159179
+>> AvailableCommands id=76 len=159224
     AvailableCommandsPacket
       EnumValues: []string (4184)
         [0] "get"
@@ -4921,7 +4921,7 @@
         [76] {Type:"SubCommandoff" ValueIndices:[4182]}
         [77] {Type:"SubCommandreload" ValueIndices:[4183]}
       ChainedSubcommands: []
-      Commands: []v2193.Command (73)
+      Commands: []v2193.Command (74)
         [0] Command
           Name: "about"
           Description: "Displays Adamant core and build information."
@@ -5799,6 +5799,14 @@
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
         [57] Command
+          Name: "stop"
+          Description: "commands.stop.description"
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[]}]
+        [58] Command
           Name: "stopsound"
           Description: "commands.stopsound.description"
           Flags: 0
@@ -5812,7 +5820,7 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"source" Type:1048632 Optional:true Options:0}
                 [2] {Name:"sound" Type:1048632 Optional:true Options:0}
-        [58] Command
+        [59] Command
           Name: "summon"
           Description: "commands.summon.description"
           Flags: 0
@@ -5820,7 +5828,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"entity" Type:1048632 Optional:false Options:0} {Name:"pos" Type:1048641 Optional:true Options:0}]}]
-        [59] Command
+        [60] Command
           Name: "tag"
           Description: "commands.tag.description"
           Flags: 0
@@ -5838,7 +5846,7 @@
                 [1] {Name:"remove" Type:3145734 Optional:false Options:0}
                 [2] {Name:"name" Type:1048632 Optional:false Options:0}
             [2] {Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"list" Type:3145778 Optional:false Options:0}]}
-        [60] Command
+        [61] Command
           Name: "team"
           Description: "Manage scoreboard teams."
           Flags: 0
@@ -5864,7 +5872,7 @@
                 [1] {Name:"team" Type:1048632 Optional:false Options:0}
                 [2] {Name:"property" Type:3145790 Optional:false Options:0}
                 [3] {Name:"value" Type:1048646 Optional:false Options:0}
-        [61] Command
+        [62] Command
           Name: "teammsg"
           Description: "Send a message to your team."
           Flags: 0
@@ -5872,7 +5880,7 @@
           AliasesOffset: 63
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [62] Command
+        [63] Command
           Name: "tellraw"
           Description: "commands.tellraw.description"
           Flags: 0
@@ -5880,7 +5888,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [63] Command
+        [64] Command
           Name: "tick"
           Description: "Controls world ticking."
           Flags: 0
@@ -5896,7 +5904,7 @@
             [5] {Chaining:false Parameters:[{Name:"step" Type:3145795 Optional:false Options:0} {Name:"stop" Type:3145796 Optional:false Options:0}]}
             [6] {Chaining:false Parameters:[{Name:"sprint" Type:3145797 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
             [7] {Chaining:false Parameters:[{Name:"sprint" Type:3145797 Optional:false Options:0} {Name:"stop" Type:3145796 Optional:false Options:0}]}
-        [64] Command
+        [65] Command
           Name: "time"
           Description: "commands.time.description"
           Flags: 0
@@ -5908,7 +5916,7 @@
             [1] {Chaining:false Parameters:[{Name:"set" Type:3145730 Optional:false Options:0} {Name:"value" Type:3145798 Optional:false Options:0}]}
             [2] {Chaining:false Parameters:[{Name:"add" Type:3145733 Optional:false Options:0} {Name:"value" Type:1048577 Optional:false Options:0}]}
             [3] {Chaining:false Parameters:[{Name:"query" Type:3145748 Optional:false Options:0} {Name:"type" Type:3145799 Optional:false Options:0}]}
-        [65] Command
+        [66] Command
           Name: "title"
           Description: "commands.title.description"
           Flags: 0
@@ -5922,7 +5930,7 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"action" Type:1048632 Optional:false Options:0}
                 [2] {Name:"value" Type:1048646 Optional:false Options:0}
-        [66] Command
+        [67] Command
           Name: "tp"
           Description: "commands.tp.description"
           Flags: 0
@@ -5956,7 +5964,7 @@
                 [2] {Name:"facing" Type:3145773 Optional:false Options:0}
                 [3] {Name:"entity" Type:3145762 Optional:false Options:0}
                 [4] {Name:"target" Type:1048584 Optional:false Options:0}
-        [67] Command
+        [68] Command
           Name: "transfer"
           Description: "commands.transferserver.description"
           Flags: 0
@@ -5970,7 +5978,7 @@
                 [0] {Name:"hostname" Type:1048632 Optional:false Options:0}
                 [1] {Name:"port" Type:1048577 Optional:true Options:0}
                 [2] {Name:"players" Type:1048584 Optional:true Options:0}
-        [68] Command
+        [69] Command
           Name: "trigger"
           Description: "commands.trigger.description"
           Flags: 0
@@ -5980,7 +5988,7 @@
           Overloads: []v2193.CommandOverload (2)
             [0] {Chaining:false Parameters:[{Name:"enable" Type:3145782 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
             [1] {Chaining:false Parameters:[{Name:"use" Type:3145801 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
-        [69] Command
+        [70] Command
           Name: "version"
           Description: "Displays the server version."
           Flags: 0
@@ -5988,7 +5996,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [70] Command
+        [71] Command
           Name: "weather"
           Description: "commands.weather.description"
           Flags: 0
@@ -5996,7 +6004,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"mode" Type:1048632 Optional:false Options:0} {Name:"duration" Type:1048577 Optional:true Options:0}]}]
-        [71] Command
+        [72] Command
           Name: "whitelist"
           Description: "commands.allowlist.description"
           Flags: 0
@@ -6010,7 +6018,7 @@
             [3] {Chaining:false Parameters:[{Name:"reload" Type:3145805 Optional:false Options:0}]}
             [4] {Chaining:false Parameters:[{Name:"remove" Type:3145734 Optional:false Options:0} {Name:"player" Type:1048632 Optional:false Options:0}]}
             [5] {Chaining:false Parameters:[{Name:"list" Type:3145778 Optional:false Options:0}]}
-        [72] Command
+        [73] Command
           Name: "worldborder"
           Description: "Changes world border settings."
           Flags: 0
@@ -9294,7 +9302,7 @@
         [3271] {EnumValueIndex:3868 EnumIndex:28 Constraints:0x03}
         [3272] {EnumValueIndex:3869 EnumIndex:28 Constraints:0x03}
         [3273] {EnumValueIndex:3870 EnumIndex:28 Constraints:0x03}
-    sha256 9749b485bb06dfe30d1c1f7bbbb4d7839345717a17c3727cda242840d1a6bb66
+    sha256 e491631adfe9ac19c0d28813358f818f2805d361ab479f4673f36a3cef92a1a5
 >> UpdateAttributes id=29 len=158
     UpdateAttributesPacket
       EntityRuntimeID: 1
@@ -9517,7 +9525,7 @@
       AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:63 FlySpeed:0.05 VerticalFlySpeed:1 WalkSpeed:0.1}]}
     | 01000000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc
     | 3d
->> AvailableCommands id=76 len=790
+>> AvailableCommands id=76 len=739
     AvailableCommandsPacket
       EnumValues: ["players" "list" "tell" "w" "msg" "value" "tm" "teammsg" "enable" "use"]
       ChainedSubcommandValues: []
@@ -9530,7 +9538,7 @@
         [4] {Type:"SubCommandenable" ValueIndices:[8]}
         [5] {Type:"SubCommanduse" ValueIndices:[9]}
       ChainedSubcommands: []
-      Commands: []v2193.Command (9)
+      Commands: []v2193.Command (8)
         [0] Command
           Name: "about"
           Description: "Displays Adamant core and build information."
@@ -9600,14 +9608,6 @@
           Overloads: []v2193.CommandOverload (2)
             [0] {Chaining:false Parameters:[{Name:"enable" Type:3145732 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
             [1] {Chaining:false Parameters:[{Name:"use" Type:3145733 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
-        [8] Command
-          Name: "version"
-          Description: "Displays the server version."
-          Flags: 0
-          PermissionLevel: 0
-          AliasesOffset: 4294967295
-          ChainedSubcommandOffsets: []
-          Overloads: [{Chaining:false Parameters:[]}]
       DynamicEnums: []
       Constraints: []
     | 0a07706c6179657273046c6973740474656c6c0177036d73670576616c756502
@@ -9615,7 +9615,7 @@
     | 617365730200000000010000000a6d7367416c69617365730302000000030000
     | 00040000000f537562436f6d6d616e6476616c756501050000000e7465616d6d
     | 7367416c696173657302060000000700000010537562436f6d6d616e64656e61
-    | 626c6501080000000d537562436f6d6d616e6475736501090000000009056162
+    | 626c6501080000000d537562436f6d6d616e6475736501090000000008056162
     | 6f75742c446973706c617973204164616d616e7420636f726520616e64206275
     | 696c6420696e666f726d6174696f6e2e000003616e79ffffffff00010000046c
     | 69737419636f6d6d616e64732e6c6973742e6465736372697074696f6e000003
@@ -9633,8 +9633,7 @@
     | 6d6d616e64732e747269676765722e6465736372697074696f6e000003616e79
     | ffffffff0002000206656e61626c65040030000000096f626a65637469766538
     | 0010000000000203757365050030000000096f626a6563746976653800100000
-    | 000776657273696f6e1c446973706c6179732074686520736572766572207665
-    | 7273696f6e2e000003616e79ffffffff000100000000
+    | 000000
 == Golden is made an operator again
 -- Golden
 >> UpdateAbilities id=187 len=33
@@ -9642,7 +9641,7 @@
       AbilityData: {EntityUniqueID:1 PlayerPermissions:2 CommandPermissions:1 Layers:[{Type:1 Abilities:1048575 Values:255 FlySpeed:0.05 VerticalFlySpeed:1 WalkSpeed:0.1}]}
     | 01000000000000000201010100ffff0f00ff000000cdcc4c3d0000803fcdcccc
     | 3d
->> AvailableCommands id=76 len=159179
+>> AvailableCommands id=76 len=159224
     AvailableCommandsPacket
       EnumValues: []string (4184)
         [0] "get"
@@ -13917,7 +13916,7 @@
         [76] {Type:"SubCommandoff" ValueIndices:[4182]}
         [77] {Type:"SubCommandreload" ValueIndices:[4183]}
       ChainedSubcommands: []
-      Commands: []v2193.Command (73)
+      Commands: []v2193.Command (74)
         [0] Command
           Name: "about"
           Description: "Displays Adamant core and build information."
@@ -14795,6 +14794,14 @@
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
         [57] Command
+          Name: "stop"
+          Description: "commands.stop.description"
+          Flags: 0
+          PermissionLevel: 0
+          AliasesOffset: 4294967295
+          ChainedSubcommandOffsets: []
+          Overloads: [{Chaining:false Parameters:[]}]
+        [58] Command
           Name: "stopsound"
           Description: "commands.stopsound.description"
           Flags: 0
@@ -14808,7 +14815,7 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"source" Type:1048632 Optional:true Options:0}
                 [2] {Name:"sound" Type:1048632 Optional:true Options:0}
-        [58] Command
+        [59] Command
           Name: "summon"
           Description: "commands.summon.description"
           Flags: 0
@@ -14816,7 +14823,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"entity" Type:1048632 Optional:false Options:0} {Name:"pos" Type:1048641 Optional:true Options:0}]}]
-        [59] Command
+        [60] Command
           Name: "tag"
           Description: "commands.tag.description"
           Flags: 0
@@ -14834,7 +14841,7 @@
                 [1] {Name:"remove" Type:3145734 Optional:false Options:0}
                 [2] {Name:"name" Type:1048632 Optional:false Options:0}
             [2] {Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"list" Type:3145778 Optional:false Options:0}]}
-        [60] Command
+        [61] Command
           Name: "team"
           Description: "Manage scoreboard teams."
           Flags: 0
@@ -14860,7 +14867,7 @@
                 [1] {Name:"team" Type:1048632 Optional:false Options:0}
                 [2] {Name:"property" Type:3145790 Optional:false Options:0}
                 [3] {Name:"value" Type:1048646 Optional:false Options:0}
-        [61] Command
+        [62] Command
           Name: "teammsg"
           Description: "Send a message to your team."
           Flags: 0
@@ -14868,7 +14875,7 @@
           AliasesOffset: 63
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [62] Command
+        [63] Command
           Name: "tellraw"
           Description: "commands.tellraw.description"
           Flags: 0
@@ -14876,7 +14883,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"targets" Type:1048584 Optional:false Options:0} {Name:"message" Type:1048646 Optional:false Options:0}]}]
-        [63] Command
+        [64] Command
           Name: "tick"
           Description: "Controls world ticking."
           Flags: 0
@@ -14892,7 +14899,7 @@
             [5] {Chaining:false Parameters:[{Name:"step" Type:3145795 Optional:false Options:0} {Name:"stop" Type:3145796 Optional:false Options:0}]}
             [6] {Chaining:false Parameters:[{Name:"sprint" Type:3145797 Optional:false Options:0} {Name:"ticks" Type:1048577 Optional:true Options:0}]}
             [7] {Chaining:false Parameters:[{Name:"sprint" Type:3145797 Optional:false Options:0} {Name:"stop" Type:3145796 Optional:false Options:0}]}
-        [64] Command
+        [65] Command
           Name: "time"
           Description: "commands.time.description"
           Flags: 0
@@ -14904,7 +14911,7 @@
             [1] {Chaining:false Parameters:[{Name:"set" Type:3145730 Optional:false Options:0} {Name:"value" Type:3145798 Optional:false Options:0}]}
             [2] {Chaining:false Parameters:[{Name:"add" Type:3145733 Optional:false Options:0} {Name:"value" Type:1048577 Optional:false Options:0}]}
             [3] {Chaining:false Parameters:[{Name:"query" Type:3145748 Optional:false Options:0} {Name:"type" Type:3145799 Optional:false Options:0}]}
-        [65] Command
+        [66] Command
           Name: "title"
           Description: "commands.title.description"
           Flags: 0
@@ -14918,7 +14925,7 @@
                 [0] {Name:"targets" Type:1048584 Optional:false Options:0}
                 [1] {Name:"action" Type:1048632 Optional:false Options:0}
                 [2] {Name:"value" Type:1048646 Optional:false Options:0}
-        [66] Command
+        [67] Command
           Name: "tp"
           Description: "commands.tp.description"
           Flags: 0
@@ -14952,7 +14959,7 @@
                 [2] {Name:"facing" Type:3145773 Optional:false Options:0}
                 [3] {Name:"entity" Type:3145762 Optional:false Options:0}
                 [4] {Name:"target" Type:1048584 Optional:false Options:0}
-        [67] Command
+        [68] Command
           Name: "transfer"
           Description: "commands.transferserver.description"
           Flags: 0
@@ -14966,7 +14973,7 @@
                 [0] {Name:"hostname" Type:1048632 Optional:false Options:0}
                 [1] {Name:"port" Type:1048577 Optional:true Options:0}
                 [2] {Name:"players" Type:1048584 Optional:true Options:0}
-        [68] Command
+        [69] Command
           Name: "trigger"
           Description: "commands.trigger.description"
           Flags: 0
@@ -14976,7 +14983,7 @@
           Overloads: []v2193.CommandOverload (2)
             [0] {Chaining:false Parameters:[{Name:"enable" Type:3145782 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
             [1] {Chaining:false Parameters:[{Name:"use" Type:3145801 Optional:false Options:0} {Name:"objective" Type:1048632 Optional:false Options:0}]}
-        [69] Command
+        [70] Command
           Name: "version"
           Description: "Displays the server version."
           Flags: 0
@@ -14984,7 +14991,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[]}]
-        [70] Command
+        [71] Command
           Name: "weather"
           Description: "commands.weather.description"
           Flags: 0
@@ -14992,7 +14999,7 @@
           AliasesOffset: 4294967295
           ChainedSubcommandOffsets: []
           Overloads: [{Chaining:false Parameters:[{Name:"mode" Type:1048632 Optional:false Options:0} {Name:"duration" Type:1048577 Optional:true Options:0}]}]
-        [71] Command
+        [72] Command
           Name: "whitelist"
           Description: "commands.allowlist.description"
           Flags: 0
@@ -15006,7 +15013,7 @@
             [3] {Chaining:false Parameters:[{Name:"reload" Type:3145805 Optional:false Options:0}]}
             [4] {Chaining:false Parameters:[{Name:"remove" Type:3145734 Optional:false Options:0} {Name:"player" Type:1048632 Optional:false Options:0}]}
             [5] {Chaining:false Parameters:[{Name:"list" Type:3145778 Optional:false Options:0}]}
-        [72] Command
+        [73] Command
           Name: "worldborder"
           Description: "Changes world border settings."
           Flags: 0
@@ -18290,4 +18297,4 @@
         [3271] {EnumValueIndex:3868 EnumIndex:28 Constraints:0x03}
         [3272] {EnumValueIndex:3869 EnumIndex:28 Constraints:0x03}
         [3273] {EnumValueIndex:3870 EnumIndex:28 Constraints:0x03}
-    sha256 9749b485bb06dfe30d1c1f7bbbb4d7839345717a17c3727cda242840d1a6bb66
+    sha256 e491631adfe9ac19c0d28813358f818f2805d361ab479f4673f36a3cef92a1a5

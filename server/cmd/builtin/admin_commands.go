@@ -79,10 +79,13 @@ type transferCmd struct {
 	Targets  cmd.Optional[[]cmd.Target] `cmd:"players"`
 }
 
-// versionCmd is open to every player, as it has always been on this
-// server. Java's needs cmd.LevelGameMaster on a dedicated server, which
-// [Permissions.Commands] of config.toml sets with version = 2.
-type versionCmd struct{ srv serverAdapter }
+// versionCmd needs cmd.LevelGameMaster, as Java's /version does on a
+// dedicated server; [Permissions.Commands] of config.toml opens it to
+// everyone with version = 0.
+type versionCmd struct {
+	gameMaster
+	srv serverAdapter
+}
 
 func reasonArg(v cmd.Optional[cmd.Varargs]) string {
 	if r, ok := v.Load(); ok {
@@ -127,7 +130,7 @@ func newTransferCommand(srv serverAdapter) cmd.Command {
 	return newCommand("transfer", nil, transferCmd{srv: srv})
 }
 func newVersionCommand(srv serverAdapter) cmd.Command {
-	return newCommand("version", nil, versionCmd{srv})
+	return newCommand("version", nil, versionCmd{srv: srv})
 }
 
 func (c opCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {

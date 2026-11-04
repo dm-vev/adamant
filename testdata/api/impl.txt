@@ -3860,7 +3860,6 @@ server/cmd/builtin.spreadPlayersCommand	server/cmd.Runnable	value
 server/cmd/builtin.spreadPlayersUnderCommand	server/cmd.Requirer	value
 server/cmd/builtin.spreadPlayersUnderCommand	server/cmd.Runnable	value
 server/cmd/builtin.statusCommand	server/cmd.Runnable	value
-server/cmd/builtin.stopCommand	server/cmd.Allower	value
 server/cmd/builtin.stopCommand	server/cmd.Requirer	value
 server/cmd/builtin.stopCommand	server/cmd.Runnable	value
 server/cmd/builtin.stopSoundCommand	server/cmd.Requirer	value
@@ -3939,6 +3938,7 @@ server/cmd/builtin.transferCmd	server/cmd.Requirer	value
 server/cmd/builtin.transferCmd	server/cmd.Runnable	value
 server/cmd/builtin.triggerEnable	server/cmd.Runnable	value
 server/cmd/builtin.triggerUse	server/cmd.Runnable	value
+server/cmd/builtin.versionCmd	server/cmd.Requirer	value
 server/cmd/builtin.versionCmd	server/cmd.Runnable	value
 server/cmd/builtin.weatherCommand	server/cmd.Requirer	value
 server/cmd/builtin.weatherCommand	server/cmd.Runnable	value

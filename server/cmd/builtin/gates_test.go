@@ -119,21 +119,19 @@ func runnableBy(t *testing.T, commands []cmd.Command, who string, src cmd.Source
 }
 
 // Commands by the level Java 26.3 requires of them, as the built-ins
-// declare it; version stays open, as it has been.
+// declare it.
 var (
-	openCommands  = []string{"about", "help", "list", "me", "msg", "random", "status", "teammsg", "trigger", "version"}
+	openCommands  = []string{"about", "help", "list", "me", "msg", "random", "status", "teammsg", "trigger"}
 	adminCommands = []string{"ban", "ban-ip", "banlist", "deop", "kick", "netstat", "op", "pardon", "pardon-ip",
 		"setidletimeout", "tick", "transfer", "whitelist"}
 	ownerCommands = []string{"gc", "save-all", "save-off", "save-on", "stop"}
 )
 
 // TestCommandGates checks who may run each built-in command, by the level
-// the command needs: Java 26.3's, with /version open to everyone. A player
-// who is no operator runs the ten open commands; an operator, the commands
-// of its level and below, but /stop, which refuses every player; the
-// console, all; a command block, those of level 2. /execute, also with
-// store, keeps the level of the source that ran it, and no longer lets
-// "execute run stop" pass.
+// the command needs: Java 26.3's. A player who is no operator runs the nine
+// open commands; an operator, the commands of its level and below, /stop
+// at level 4; the console, all; a command block, those of level 2.
+// /execute, also with store, keeps the level of the source that ran it.
 func TestCommandGates(t *testing.T) {
 	sources := newGateSources(t)
 	commands := builtinCommands(t)
@@ -147,16 +145,15 @@ func TestCommandGates(t *testing.T) {
 			return false
 		})
 	}
-	stop := []string{"stop"}
 	for who, want := range map[string][]string{
 		"member":           openCommands,
 		"operator 2":       without(builtinNames, adminCommands, ownerCommands),
 		"operator 3":       without(builtinNames, ownerCommands),
-		"operator 4":       without(builtinNames, stop),
+		"operator 4":       builtinNames,
 		"console":          builtinNames,
 		"command block":    without(builtinNames, adminCommands, ownerCommands),
 		"execute member":   openCommands,
-		"execute operator": without(builtinNames, stop),
+		"execute operator": builtinNames,
 		"store member":     openCommands,
 	} {
 		if got := runnableBy(t, commands, who, sources[who]); !slices.Equal(got, want) {
