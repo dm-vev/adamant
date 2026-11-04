@@ -377,3 +377,24 @@ func TestMovedTooQuicklyFollowsTheGameRules(t *testing.T) {
 		})
 	}
 }
+
+// TestGraceOfAWorldChange checks that a change of world, which Tick sees,
+// starts the grace of the movement checks and the clock of the timer
+// again.
+func TestGraceOfAWorldChange(t *testing.T) {
+	w, _ := clientTestWorld(t)
+	other := world.Config{Synchronous: true}.New()
+	t.Cleanup(func() { _ = other.Close() })
+	withCheckedPlayer(t, w, clienttest.New(), anticheat.Default(), mgl64.Vec3{0.5, 100, 0.5}, func(tx *world.Tx, p *Player) {
+		standThroughJoin(tx, p)
+		ac := p.anticheat()
+		if p.inGrace(ac) || !ac.timer.clock.Started() {
+			t.Fatal("in grace, or no clock, after the join")
+		}
+		p.prevWorld = other
+		p.Tick(tx, p.tickCount)
+		if !p.inGrace(ac) || ac.timer.clock.Started() {
+			t.Fatalf("after a change of world: grace %v, clock started %v; want grace, a clock to start", p.inGrace(ac), ac.timer.clock.Started())
+		}
+	})
+}
