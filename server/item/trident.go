@@ -40,9 +40,13 @@ func (Trident) EnchantmentValue() int {
 
 // DurabilityInfo returns the durability configuration for the trident.
 func (Trident) DurabilityInfo() DurabilityInfo {
+	// TridentItem: Weapon(1) costs 1 per melee hit, and its Tool has a
+	// damagePerBlock of 2.
 	return DurabilityInfo{
-		MaxDurability: 250,
-		BrokenItem:    simpleItem(Stack{}),
+		MaxDurability:    250,
+		BrokenItem:       simpleItem(Stack{}),
+		AttackDurability: 1,
+		BreakDurability:  2,
 	}
 }
 

@@ -77,7 +77,7 @@ func TestStackWithDurability(t *testing.T) {
 
 // The durability items lose per use follow their Java weapon and tool
 // components: Weapon.itemDamagePerAttack and Tool.damagePerBlock. Swords and
-// maces take 1 per hit and 2 per block, digging tools 2 per hit and 1 per
+// maces and tridents take 1 per hit and 2 per block, digging tools 2 per hit and 1 per
 // block, shears 1 per block only.
 func TestDurabilityPerUse(t *testing.T) {
 	for _, c := range []struct {
@@ -92,6 +92,7 @@ func TestDurabilityPerUse(t *testing.T) {
 		{Shovel{Tier: ToolTierIron}, 250, 2, 1},
 		{Hoe{Tier: ToolTierDiamond}, 1561, 2, 1},
 		{Mace{}, 500, 1, 2},
+		{Trident{}, 250, 1, 2},
 		{Shears{}, 238, 0, 1},
 		{Bow{}, 384, 0, 0},
 		{FishingRod{}, 64, 0, 0},
