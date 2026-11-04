@@ -18,8 +18,7 @@ import (
 // type of the armour the armour, and the sound of it put on while a batch
 // of a menu runs; and an item put in an open enchanting table shows the
 // client the options of the table. Each step runs in a transaction of its
-// own: on a synchronous world, the transactions of the slot functions run
-// at once and leave the player bound to them.
+// own.
 func TestPlayerShowsWhatItHolds(t *testing.T) {
 	w, viewer := clientTestWorld(t)
 	r := clienttest.New()

@@ -299,6 +299,8 @@ type entityState struct {
 	postBlockTicker  interface{ TickAfterBlockUpdates(*Tx, int64) }
 	preBlockTicker   interface{ TickBeforeBlockUpdates(*Tx, int64) }
 	lastPreBlockTick int64
+	// bound is the transaction binder was bound to last.
+	bound *Tx
 }
 
 func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
@@ -322,9 +324,25 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 		s.preBlockTicker, _ = s.ent.(interface{ TickBeforeBlockUpdates(*Tx, int64) })
 	}
 	if s.binds {
-		s.binder.BindTransaction(tx)
+		s.bind(tx)
 	}
 	return s.ent
+}
+
+// bind binds the entity of s to tx. A synchronous World runs a transaction
+// started in another at once, as EntityHandle.Do, World.Exec and Call do
+// from a transaction: if tx is such a transaction and the entity was bound
+// to the one it runs in, tx binds it back to that one as it closes, so that
+// the transaction it ran in goes on using the entity. It would otherwise be
+// left bound to tx, which ended.
+func (s *entityState) bind(tx *Tx) {
+	if prev := s.bound; prev != tx {
+		if prev != nil && prev.nests(tx) {
+			tx.rebound = append(tx.rebound, rebinding{s: s, prev: prev})
+		}
+		s.bound = tx
+	}
+	s.binder.BindTransaction(tx)
 }
 
 type generationTask struct {

@@ -16,6 +16,9 @@ type Tx struct {
 	w        *World
 	closed   bool
 	deferred []scheduledTransaction
+	// rebound are the entities tx bound that were bound to a transaction
+	// tx runs in (entityState.bind): close binds them back to it.
+	rebound []rebinding
 	// region is the region the transaction ticks the entities of in a
 	// region phase, or nil for a transaction of the world owner.
 	region    *region
@@ -596,12 +599,38 @@ func (tx *Tx) CurrentTick() int64 {
 	return w.currentTickLocked()
 }
 
-// close finishes the Tx, causing any following call on the Tx to panic.
+// close finishes the Tx, causing any following call on the Tx to panic. The
+// entities it bound that were bound to a transaction it ran in are bound
+// back to it, the last bound first.
 func (tx *Tx) close() {
 	if !tx.closed {
 		tx.w.flushLight()
 	}
 	tx.closed = true
+	for i := len(tx.rebound) - 1; i >= 0; i-- {
+		r := tx.rebound[i]
+		if r.s.bound == tx && !r.prev.closed {
+			r.s.bound = r.prev
+			r.s.binder.BindTransaction(r.prev)
+		}
+	}
+	tx.rebound = nil
+}
+
+// rebinding is an entity a transaction bound, and the transaction it was
+// bound to before, which the first runs in.
+type rebinding struct {
+	s    *entityState
+	prev *Tx
+}
+
+// nests reports whether inner may run inside tx, which it then binds the
+// entities it uses back to as it closes: on a synchronous World, which runs
+// a transaction started from a transaction at once, inner is of the same
+// World and tx did not end. Regions tick in transactions of their own, which
+// are none of these.
+func (tx *Tx) nests(inner *Tx) bool {
+	return !tx.closed && tx.w == inner.w && tx.w.conf.Synchronous && tx.region == nil && inner.region == nil
 }
 
 func (tx *Tx) runDeferred() {

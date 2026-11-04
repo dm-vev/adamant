@@ -278,13 +278,6 @@ func fuzzMenuSeeds() [][]byte {
 // server/menu. Each request must be answered, once, and nothing may end the
 // session, as a panic of a handler does. Until the handlers the session had
 // were gone, it compared the two paths; now it has the one.
-//
-// A bug recorded to fix would end the session, and what reaches it is left
-// out: on a synchronous world, as the scenarios', the world rebinds the
-// player to each transaction H().Do runs at once from a slot function, and
-// leaves it bound to that one once it ended, as Player.BeginMenu and
-// Player.CloseMenu find it: a request after one that may do that is sent in
-// a tick of its own.
 func FuzzMenuRequests(f *testing.F) {
 	for _, b := range fuzzMenuSeeds() {
 		f.Add(b)
@@ -342,14 +335,6 @@ func runFuzzMenuInput(t *testing.T, in fuzzMenuInput) {
 		t.Errorf("%s: %d requests sent, %d answered", in.menu.name, sent, answered)
 	}
 
-	s.run(func(tx *world.Tx, p *player.Player) {
-		// Closing the menu as the player quits moves what the inputs hold
-		// to the inventory, which on a synchronous world leaves
-		// Player.CloseMenu with a transaction that ended (recorded to fix):
-		// the inputs are emptied first.
-		_, _, _, ui, _ := s.sess.Inventories()
-		_ = ui.Clear()
-	})
 }
 
 // sendFuzzRequests sends the requests of an input of FuzzMenuRequests, those
@@ -366,18 +351,15 @@ func (s *scenario) sendFuzzRequests(in fuzzMenuInput) int {
 	creativeIDs = append(creativeIDs, 0, uint32(len(creative.Items())+1))
 
 	var pk *v2193.ItemStackRequestPacket
-	// nested is set if a request of pk may make the world run a
-	// transaction of the player at once.
-	nested := false
 	flush := func() {
 		if pk != nil {
 			s.client("the requests", pk)
-			pk, nested = nil, false
+			pk = nil
 		}
 	}
 	enchanted, sent := false, 0
 	for _, r := range in.requests {
-		if r.ownPacket || nested {
+		if r.ownPacket {
 			flush()
 		}
 		id := s.nextRequest
@@ -414,33 +396,9 @@ func (s *scenario) sendFuzzRequests(in fuzzMenuInput) int {
 			pk = &v2193.ItemStackRequestPacket{}
 		}
 		pk.Requests = append(pk.Requests, req)
-		nested = nested || r.nests(in.menu, len(slots))
 	}
 	flush()
 	return sent
-}
-
-// nests reports whether a request of FuzzMenuRequests may change a slot
-// whose slot function has the world run a transaction of the player with
-// H().Do: the held item, which MineBlock damages, the off hand, the armour,
-// or the input of an enchanting table, which any option taken empties.
-func (r fuzzRequest) nests(m fuzzMenu, slots int) bool {
-	if m.name == "enchanting table" {
-		return true
-	}
-	for _, a := range r.actions {
-		if (a.kind&0x1f)%16 == 14 {
-			return true
-		}
-		for _, i := range []byte{a.src, a.dst} {
-			if j := int(i) % slots; j < len(fuzzCommonSlots) {
-				if c := fuzzCommonSlots[j].container; c == v2193.ContainerOffhand || c == v2193.ContainerArmor {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
 
 // fuzzRecipes are the recipes the crafts of FuzzMenuRequests name: sticks of

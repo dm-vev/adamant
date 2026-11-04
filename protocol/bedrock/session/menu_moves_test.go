@@ -88,6 +88,7 @@ func (s *scenario) movesScenario() {
 		&v2193.TakeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerOffhand, 1), Destination: cursor()})
 	s.request("move: the totem of the cursor back", nil,
 		&v2193.PlaceStackRequestAction{Count: 1, Source: cursor(), Destination: s.slot(v2193.ContainerOffhand, 1)})
+
 	s.clearInventory("the inventory emptied")
 
 	// Bundles.
@@ -262,10 +263,11 @@ func (s *scenario) movesScenario() {
 	s.clearInventory("the inventory emptied")
 
 	// A chest, and a furnace that has experience to give.
-	s.give("stone, apples and locked apples given",
+	s.give("stone, apples, locked apples and a totem given",
 		slotStack{0, item.NewStack(block.Stone{}, 4)},
 		slotStack{2, item.NewStack(item.Apple{}, 5)},
 		slotStack{4, inInventory},
+		slotStack{6, item.NewStack(item.Totem{}, 1)},
 	)
 	chest := cube.Pos{1, -60, -2}
 	s.place("a chest is placed", chest, block.NewChest())
@@ -278,6 +280,22 @@ func (s *scenario) movesScenario() {
 		&v2193.PlaceStackRequestAction{Count: 1, Source: cursor(), Destination: s.slot(v2193.ContainerLevelEntity, 1)})
 	s.request("move: the locked apples put back", nil,
 		&v2193.PlaceStackRequestAction{Count: 2, Source: cursor(), Destination: s.slot(inv, 4)})
+	// Requests of a packet after one that changes the off hand, whose slot
+	// function has the synchronous world of the scenario run a transaction
+	// of the player at once: it left the player bound to it once it ended,
+	// and the batch of the next, moving an apple into the chest, reached the
+	// world through it and panicked.
+	first := s.nextRequest
+	byFirst := func(container uint8, slot int) v2193.StackRequestSlotInfo {
+		return v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: container}, Slot: uint8(slot), StackNetworkID: first}
+	}
+	s.requests("move: the totem put in the off hand, an apple in the chest and the totem taken back, requests of a packet",
+		[]v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 6), Destination: s.slot(v2193.ContainerOffhand, 1)}},
+		[]v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: s.slot(inv, 2), Destination: s.slot(v2193.ContainerLevelEntity, 1)}},
+		[]v2193.StackRequestAction{&v2193.PlaceStackRequestAction{Count: 1, Source: byFirst(v2193.ContainerOffhand, 1), Destination: byFirst(inv, 6)}})
+	if n := len(s.responses); n < 3 || slices.ContainsFunc(s.responses[n-3:], func(st uint8) bool { return st != v2193.ItemStackResponseStatusOK }) {
+		s.t.Errorf("the requests of the packet were answered %v", s.responses[max(0, n-3):])
+	}
 	s.request("swap: the stone and the apples of the chest", nil,
 		&v2193.SwapStackRequestAction{Source: s.slot(inv, 0), Destination: s.slot(v2193.ContainerLevelEntity, 0)})
 	s.request("drop: a stone of the chest", nil,
