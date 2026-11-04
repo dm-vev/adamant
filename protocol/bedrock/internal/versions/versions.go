@@ -70,9 +70,13 @@ var p2225 = &Protocol{
 var all = []*Protocol{p2193, p2225}
 
 // configurable holds the protocols a config may name, oldest first: those
-// whose content the adapter serves. 2225 joins them once its vanilla data
-// and tables are in; until then the server speaks it only as the model.
-var configurable = []*Protocol{p2193}
+// whose content the adapter serves.
+var configurable = []*Protocol{p2193, p2225}
+
+// newestPrimary is the newest protocol a config may name as the primary:
+// the session speaks the features of no newer one yet, though the model
+// is newer.
+var newestPrimary = p2193
 
 // All returns the protocols the adapter was built with, oldest first.
 func All() []*Protocol { return slices.Clone(all) }
@@ -83,6 +87,10 @@ func Configurable() []*Protocol { return slices.Clone(configurable) }
 // Model returns the protocol of the codec package the session and netconn
 // are compiled against.
 func Model() *Protocol { return p2225 }
+
+// NewestPrimary returns the newest protocol a config may name as the
+// primary, the protocol the session speaks: no newer than the model.
+func NewestPrimary() *Protocol { return newestPrimary }
 
 // SetShieldID sets the network ID of the shield for the codecs a
 // connection of a protocol encodes and decodes with, as codec.SetShieldID.

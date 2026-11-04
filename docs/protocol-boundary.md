@@ -8,7 +8,7 @@ Game logic and the server must not depend on any network protocol or transport. 
 
 ## Layers and directories
 
-- `net/`: protocol and transport libraries (Bedrock protocol 2193, wire, login, text, NetherNet, Java framing, nbt, xbox and others), a separate module, `github.com/dm-vev/adamant/net`. No game code.
+- `net/`: protocol and transport libraries (the codecs of Bedrock protocols 2193 and 2225 and the step between them, wire, login, text, NetherNet, Java framing, nbt, xbox and others), a separate module, `github.com/dm-vev/adamant/net`. No game code.
 - `server/`: the game core: worlds, players, blocks, items, entities, commands and the server loop. It depends on no protocol. Neutral contracts between the game and its clients live in `server/client`, and neutral structured text in `server/text`.
 - `protocol/<name>/`: protocol adapters inside the main module. `protocol/bedrock` holds the Bedrock adapter: its configuration and NetherNet listener, Xbox Live publishing, the session (`protocol/bedrock/session`), the connections (`protocol/bedrock/netconn`), the query protocol (`protocol/bedrock/query`) and the adapter's own data below `protocol/bedrock/internal`. `protocol/java` shows the server to Java Edition clients and grows into the full adapter in phase 6. An adapter may import the game and `net/`. The game never imports an adapter, and adapters never import each other.
 - `main.go` and `cmd/`: the composition root and tools. They are unrestricted.

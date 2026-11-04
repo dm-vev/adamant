@@ -20,20 +20,27 @@ func TestParse(t *testing.T) {
 			t.Errorf("Parse(%q) = %d, want 2193", name, p.Number)
 		}
 	}
-	for _, name := range []string{"", "1.26.40", "26.4", "1.26", "26.60", "1.26.60", "2225", "2192", "v1.26.50", "1.26.50.5", "0x891"} {
+	for _, name := range []string{"1.26.60", "26.60", "1.26.61", "26.61", "2225"} {
+		if p, err := Parse(name); err != nil || p != Model() {
+			t.Errorf("Parse(%q) = %v, %v, want 2225", name, p, err)
+		}
+	}
+	if NewestPrimary() != Default() {
+		t.Errorf("the session speaks %v as its primary", NewestPrimary())
+	}
+	for _, name := range []string{"", "1.26.40", "26.4", "1.26", "26.70", "1.26.70", "2250", "2192", "v1.26.50", "1.26.50.5", "0x891"} {
 		p, err := Parse(name)
 		if err == nil {
 			t.Errorf("Parse(%q) = %d, want an error", name, p.Number)
 			continue
 		}
-		if want := "this build supports 1.26.50 (26.50–26.52)"; !strings.Contains(err.Error(), want) {
+		if want := "this build supports 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.61)"; !strings.Contains(err.Error(), want) {
 			t.Errorf("Parse(%q): %q does not name the protocols supported (%q)", name, err, want)
 		}
 	}
 }
 
-// TestByNumber finds every protocol the adapter was built with, 2225 too,
-// which a config may not name yet: Parse refuses it.
+// TestByNumber finds every protocol the adapter was built with.
 func TestByNumber(t *testing.T) {
 	if p, ok := ByNumber(2193); !ok || p != Default() {
 		t.Fatalf("ByNumber(2193) = %v, %v", p, ok)

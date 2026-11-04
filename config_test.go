@@ -196,7 +196,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Network.LAN": true, "Network.HTTPSDomain": "play.example.invalid", "Network.ACMEEmail": "ops@example.invalid",
 			"Network.ACMECacheDir": "certs", "Network.ACMEDirectory": "https://acme.example.invalid/directory",
 			"Network.ACMEChallengeAddress": ":8080",
-			"Network.Protocols":            []int32{2193}, "Network.PrimaryProtocol": int32(2193),
+			"Network.Protocols":            []int32{2193, 2225}, "Network.PrimaryProtocol": int32(2193),
 			"Network.MaxPendingConnections": 100, "Network.MaxPendingConnectionsPerIP": 2, "Network.MaxPendingConnectionsPerNetwork": 0,
 			"Network.MaxPendingLogins": 10, "Network.MaxConnectionsPerIP": 3,
 			"Xbox.Enabled": true, "Xbox.TokenFile": "token.json", "Xbox.AcceptFriends": false, "Xbox.LegacySignaling": true,
@@ -244,8 +244,8 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n": `line 3: IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
 		"[World]\nSaveChunks = \"changed\"\n":                     `line 2: World.SaveChunks: unknown SaveChunks "changed": use "modified" or "all"`,
 		"[World]\nSaveInterval = \"often\"\n":                     `line 2: World.SaveInterval = "often": want a duration such as "90s" or "5m"`,
-		"[Network]\nProtocols = [\"1.26.40\"]\n":                  `line 2: Network.Protocols: protocol "1.26.40" is not supported: this build supports 1.26.50 (26.50–26.52)`,
-		"[Network]\nPrimaryProtocol = \"26.70\"\n":                `line 2: Network.PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52)`,
+		"[Network]\nProtocols = [\"1.26.40\"]\n":                  `line 2: Network.Protocols: protocol "1.26.40" is not supported: this build supports 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.61)`,
+		"[Network]\nPrimaryProtocol = \"26.70\"\n":                `line 2: Network.PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52), 1.26.60 (26.60–26.61)`,
 		"[Network]\nProtocols = \"1.26.50\"\n":                    "decode config: (2, 1): Can't convert 1.26.50(string) to []string(slice)",
 		"[Server]\nSpawnTimeout = \"soon\"\n":                     `line 2: Server.SpawnTimeout = "soon": want a duration such as "90s" or "5m"`,
 		"[Server]\nLogLevel = \"loud\"\n":                         `line 2: Server.LogLevel: unknown LogLevel "loud": use "debug", "info", "warn" or "error"`,
@@ -260,6 +260,17 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Monitoring]\nLiveTimeout = \"soon\"\n":                  `line 2: Monitoring.LiveTimeout = "soon": want a duration such as "90s" or "5m"`,
 		"[Log]\nRateLimit = -1\n":                                 `line 2: Log.RateLimit = -1: want 0 or more`,
 		"[Log.Levels]\nSession = \"verbose\"\n":                   `line 2: Log.Levels.Session: unknown level "verbose": use "debug", "info", "warn" or "error"`,
+	} {
+		_, err := loadMeaning(t, []byte(file))
+		if err == nil || err.Error() != want {
+			t.Errorf("%q: error %v, want %q", file, err, want)
+		}
+	}
+	// 1.26.60 may be allowed, but not spoken: the session speaks 1.26.50
+	// alone as its primary.
+	for file, want := range map[string]string{
+		"[Network]\nProtocols = [\"1.26.50\", \"1.26.60\"]\nPrimaryProtocol = \"1.26.60\"\n": `line 3: Network.PrimaryProtocol = "1.26.60": this build's session speaks 1.26.50`,
+		"[Network]\nProtocols = [\"26.61\"]\nPrimaryProtocol = \"\"\n":                       `line 2: Network.Protocols: the oldest, 1.26.60, is the primary, and this build's session speaks 1.26.50`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -559,7 +570,7 @@ const everyKeyChanged = `
   MaxPendingConnectionsPerNetwork = 0
   MaxPendingLogins = 10
   PrimaryProtocol = "2193"
-  Protocols = ["26.52"]
+  Protocols = ["26.61", "26.52", "1.26.60"]
   QueryPlugins = true
   Transport = " NetherNet "
 

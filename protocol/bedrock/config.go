@@ -105,14 +105,15 @@ type NetworkConfig struct {
 	ACMEChallengeAddress string
 	// Protocols lists the protocols of Bedrock Edition clients may join
 	// with, by a version of each: "1.26.50" (or "26.50", "26.51", "26.52",
-	// "1.26.52", "2193") names protocol 2193. Several names of one protocol
-	// count once. An empty list allows the primary protocol alone.
+	// "1.26.52", "2193") names protocol 2193, "1.26.60" (or "26.60",
+	// "26.61", "1.26.61", "2225") protocol 2225. Several names of one
+	// protocol count once. An empty list allows the primary protocol alone.
 	Protocols []string
 	// PrimaryProtocol is the protocol the server speaks, one of Protocols:
 	// the packets and fields it uses are those of that protocol, and clients
 	// of the other protocols get them converted. An empty value is the
 	// oldest of Protocols, or the default of the build if Protocols is
-	// empty too.
+	// empty too. This build speaks 2193 alone as its primary.
 	PrimaryProtocol string
 	// MaxPendingConnections bounds the NetherNet connections that did not
 	// open yet, offers of clients still checking their way to the server:
@@ -226,7 +227,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	protocols, primary, err := parseProtocols(uc.Network.Protocols, uc.Network.PrimaryProtocol, versions.Parse, versions.Default(), versions.Model())
+	protocols, primary, err := parseProtocols(uc.Network.Protocols, uc.Network.PrimaryProtocol, versions.Parse, versions.Default(), versions.NewestPrimary())
 	if err != nil {
 		return Config{}, err
 	}
@@ -255,8 +256,8 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 // parseProtocols returns the protocols the keys Protocols and
 // PrimaryProtocol name by parse, oldest first and each once, and the
 // primary: with def, the default of the build, for both keys empty, and
-// model, the protocol of the codecs the session is compiled against, which
-// bounds the primary.
+// model, the newest protocol the session speaks as its primary
+// (versions.NewestPrimary), which bounds the primary.
 func parseProtocols(names []string, primaryName string, parse func(string) (*versions.Protocol, error), def, model *versions.Protocol) ([]*versions.Protocol, *versions.Protocol, error) {
 	var protocols []*versions.Protocol
 	for _, name := range names {
@@ -294,8 +295,8 @@ func parseProtocols(names []string, primaryName string, parse func(string) (*ver
 
 // checkProtocols adds the problems of the keys Protocols and PrimaryProtocol
 // to p, each under its key: a protocol the build does not support, a primary
-// that is none of Protocols, and a primary newer than model, the protocol of
-// the codecs the session is compiled against, which is the oldest of
+// that is none of Protocols, and a primary newer than model, the newest
+// protocol the session speaks as its primary, which is the oldest of
 // Protocols when PrimaryProtocol is empty.
 func checkProtocols(p *config.Problems, names []string, primaryName string, parse func(string) (*versions.Protocol, error), model *versions.Protocol) {
 	var protocols []*versions.Protocol
@@ -376,7 +377,7 @@ func (uc UserConfig) Check(p *config.Problems) {
 
 	_, err = parseNameCheck(uc.Server.NameCheck)
 	p.Add("Server.NameCheck", err)
-	checkProtocols(p, n.Protocols, n.PrimaryProtocol, versions.Parse, versions.Model())
+	checkProtocols(p, n.Protocols, n.PrimaryProtocol, versions.Parse, versions.NewestPrimary())
 	// The caps of connections take 0 for none, and nothing below.
 	config.AtLeast(p, "Network.MaxPendingConnections", n.MaxPendingConnections, 0)
 	config.AtLeast(p, "Network.MaxPendingConnectionsPerIP", n.MaxPendingConnectionsPerIP, 0)
