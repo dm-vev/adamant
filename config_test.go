@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"net"
 	"os"
@@ -11,12 +12,15 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
@@ -44,10 +48,13 @@ import (
 // ever before; and LogLevel of [Server], whose line a new default file has,
 // and a file that lacks it logs at info, where the program logged at debug
 // before; [AntiCheat], whose tables a new default file has, and a file that
-// lacks it, or any of its keys, runs every check with its defaults. And a
-// file saving both its world and its players now keeps the players in the
-// world database (playerdb.WorldProvider), reading the players folder only
-// for those not yet moved there, and no longer makes the folder.
+// lacks it, or any of its keys, runs every check with its defaults; and
+// Format and the Levels of the components of [Log], whose lines a new
+// default file has, and a file that lacks them logs text, every component at
+// LogLevel, as before. And a file saving both its world and its players now
+// keeps the players in the world database (playerdb.WorldProvider), reading
+// the players folder only for those not yet moved there, and no longer makes
+// the folder.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -57,7 +64,7 @@ func TestDefaultConfigFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(t.TempDir())
-	conf, err := readConfig(slog.New(slog.DiscardHandler))
+	conf, _, err := readConfig(discardLogs())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +140,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Name": "Dragonfly Server", "AuthDisabled": false, "MuteEmoteChat": false, "NameCheck": "lenient", "IdentityKey": "xuid",
 			"ReconnectPolicy": server.ReconnectKickExisting, "JoinMessage": true, "QuitMessage": true,
 			"SpawnTimeout": "1m0s", "SpawnTimeoutMessage": server.DefaultSpawnTimeoutMessage, "LogLevel": "INFO",
+			"Log.Format": "text", "Log.Levels": map[string]string{},
 			"MaxPlayers": 0, "MaxChunkRadius": 32,
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
 			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0, "SaveInterval": "5m0s",
@@ -155,6 +163,10 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
 			"ReconnectPolicy": server.ReconnectKickJoining, "JoinMessage": false, "QuitMessage": false,
 			"SpawnTimeout": "15s", "SpawnTimeoutMessage": "Spawn faster.", "LogLevel": "WARN",
+			"Log.Format": "json", "Log.Levels": map[string]string{
+				"anticheat": "DEBUG", "commands": "INFO", "generator": "ERROR", "network": "INFO", "player": "DEBUG",
+				"save": "WARN", "server": "ERROR", "session": "DEBUG", "world": "WARN",
+			},
 			"MaxPlayers": 7, "MaxChunkRadius": 9,
 			"Resources": 0, "ResourcesRequired": true, "DisableResourceBuilding": true,
 			"OverworldSeed": int64(42), "GeneratorProfile": "many-cores", "GeneratorWorkers": 3, "GeneratorQueueSize": 5, "SaveInterval": "1m30s",
@@ -222,6 +234,8 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Server]\nLogLevel = \"loud\"\n":                         `line 2: Server.LogLevel: unknown LogLevel "loud": use "debug", "info", "warn" or "error"`,
 		"[AntiCheat.Speed]\nAction = \"throttle\"\n":              `AntiCheat.Speed.Action "throttle": use "log", "setback" or "kick"`,
 		"[AntiCheat.Place]\nExemptGameModes = [\"creativ\"]\n":    `AntiCheat.Place.ExemptGameModes: unknown game mode "creativ"`,
+		"[Log]\nFormat = \"xml\"\n":                               `line 2: Log.Format = "xml": want "text" or "json"`,
+		"[Log.Levels]\nSession = \"verbose\"\n":                   `line 2: Log.Levels.Session: unknown level "verbose": use "debug", "info", "warn" or "error"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -471,6 +485,19 @@ const everyKeyChanged = `
   Address = ":25565"
   Message = "Use Bedrock."
 
+[Log]
+  Format = " JSON "
+  [Log.Levels]
+    AntiCheat = "debug"
+    Commands = "Info"
+    Generator = "error"
+    Network = " info "
+    Player = "DEBUG"
+    Save = "warn"
+    Server = "error"
+    Session = "debug"
+    World = "warning"
+
 [Network]
   ACMECacheDir = "certs"
   ACMEChallengeAddress = ":8080"
@@ -708,6 +735,15 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	m := serverMeaning(t, conf, log)
 	level, _ := f.Log.level()
 	m["LogLevel"] = level.String()
+	logs, err := f.Log.options()
+	if err != nil {
+		return nil, err
+	}
+	levels := map[string]string{}
+	for c, l := range logs.Levels {
+		levels[c] = l.String()
+	}
+	m["Log.Format"], m["Log.Levels"] = logs.Format.String(), levels
 	closeProviders(t, conf)
 	// The settings of the listeners are those of the Configs of the adapters.
 	m["AuthDisabled"], m["MuteEmoteChat"] = bc.AuthDisabled, bc.MuteEmoteChat
@@ -731,6 +767,11 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 	m["Proxy.Address"], m["Proxy.Secret"] = p.Address, p.Secret
 	m["Java.Address"], m["Java.Message"] = j.Address, j.Message
 	return m, nil
+}
+
+// discardLogs returns the output of logs that writes nothing.
+func discardLogs() logging.Options {
+	return logging.Options{Output: io.Discard, Logger: log.New(io.Discard, "", 0)}
 }
 
 // TestLogLevel checks how LogLevel of [Server] reads: in any case, with
@@ -760,7 +801,7 @@ func TestDefaultLogLevelHidesDebug(t *testing.T) {
 	old := slog.SetLogLoggerLevel(slog.LevelDebug)
 	t.Cleanup(func() { slog.SetLogLoggerLevel(old) })
 	t.Chdir(t.TempDir())
-	conf, err := readConfig(slog.Default())
+	conf, _, err := readConfig(discardLogs())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -780,12 +821,71 @@ func TestDefaultLogLevelHidesDebug(t *testing.T) {
 	if err := os.WriteFile("config.toml", data, 0644); err != nil {
 		t.Fatal(err)
 	}
-	conf, err = readConfig(slog.Default())
+	conf, _, err = readConfig(discardLogs())
 	if err != nil {
 		t.Fatal(err)
 	}
 	closeProviders(t, conf)
 	if !conf.Log.Enabled(t.Context(), slog.LevelDebug) {
 		t.Fatal(`LogLevel = "debug" does not log debug lines`)
+	}
+}
+
+// TestSetupLogs checks the default logger of slog that setupLogs leaves:
+// the default handler, at LogLevel, in text, which lines of the Set and of
+// log.Println written at once do not stop; the Set in JSON, which
+// log.Print writes JSON through.
+func TestSetupLogs(t *testing.T) {
+	old, oldLevel := slog.Default(), slog.SetLogLoggerLevel(slog.LevelInfo)
+	t.Cleanup(func() {
+		slog.SetDefault(old)
+		slog.SetLogLoggerLevel(oldLevel)
+	})
+	var c logConfig
+	c.Server.LogLevel = "warn"
+	var text bytes.Buffer
+	set, err := setupLogs(c, logging.Options{Logger: log.New(&text, "", 0)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slog.Default() != old || slog.Default().Enabled(t.Context(), slog.LevelInfo) || !slog.Default().Enabled(t.Context(), slog.LevelWarn) {
+		t.Fatal("in text, the default logger is not slog's own at LogLevel")
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		var wg sync.WaitGroup
+		for range 4 {
+			wg.Go(func() {
+				for range 100 {
+					log.New(io.Discard, "", 0).Println("x")
+					log.Println("print")
+					set.Logger(logging.World).Warn("line")
+				}
+			})
+		}
+		wg.Wait()
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("lines of the Set and log.Println did not end")
+	}
+	if n := strings.Count(text.String(), "WARN line\n"); n != 400 {
+		t.Errorf("%d lines of the Set, want 400", n)
+	}
+
+	c.Log.Format = "json"
+	var js bytes.Buffer
+	if _, err := setupLogs(c, logging.Options{Output: &js}); err != nil {
+		t.Fatal(err)
+	}
+	c.Server.LogLevel = "info"
+	if _, err := setupLogs(c, logging.Options{Output: &js}); err != nil {
+		t.Fatal(err)
+	}
+	log.Print("pprof and metrics on localhost:6060")
+	if !strings.Contains(js.String(), `"level":"INFO","msg":"pprof and metrics on localhost:6060","component":"default"`) {
+		t.Errorf("log.Print in JSON wrote %q", js.String())
 	}
 }

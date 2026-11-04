@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/pelletier/go-toml"
 )
 
@@ -44,9 +45,10 @@ type programConfig struct {
 	}
 }
 
-// logConfig is the part of config.toml the program itself owns: how it
-// logs, the LogLevel key of [Server]. Further settings of the logs, such
-// as their format, belong beside it.
+// logConfig is the part of config.toml the program itself owns about its
+// logs: the LogLevel key of [Server], the level of every component, and the
+// [Log] table, of the format of the logs and of the levels of components
+// that differ.
 type logConfig struct {
 	Server struct {
 		// LogLevel is the least level of the messages logged: "debug",
@@ -54,12 +56,46 @@ type logConfig struct {
 		// "info".
 		LogLevel string
 	}
+	Log struct {
+		// Format is how logs are written to stderr: "text", the lines the
+		// server always wrote, or "json", one object per line with a
+		// "component" field. An empty value is "text".
+		Format string
+		// Levels holds the level of each component that logs at a level
+		// other than LogLevel; an empty value is LogLevel.
+		Levels logLevels
+	}
 }
 
-// Check adds the problem of a LogLevel the program does not know to p.
+// logLevels holds a level for each component of the logs of the server,
+// as package server/logging names them.
+type logLevels struct {
+	AntiCheat, Commands, Generator, Network, Player, Save, Server, Session, World string
+}
+
+// byComponent returns the levels of logLevels by the components of
+// package server/logging, with the key of each in the file.
+func (l logLevels) byComponent() []struct{ component, key, value string } {
+	return []struct{ component, key, value string }{
+		{logging.AntiCheat, "AntiCheat", l.AntiCheat}, {logging.Commands, "Commands", l.Commands},
+		{logging.Generator, "Generator", l.Generator}, {logging.Network, "Network", l.Network},
+		{logging.Player, "Player", l.Player}, {logging.Save, "Save", l.Save},
+		{logging.Server, "Server", l.Server}, {logging.Session, "Session", l.Session},
+		{logging.World, "World", l.World},
+	}
+}
+
+// Check adds the problems of the levels and of the format the program does
+// not know to p.
 func (c logConfig) Check(p *config.Problems) {
 	_, err := c.level()
 	p.Add("Server.LogLevel", err)
+	config.OneOf(p, "Log.Format", c.Log.Format, "text", "json")
+	for _, l := range c.Log.Levels.byComponent() {
+		if _, ok := parseLevel(l.value); !ok && strings.TrimSpace(l.value) != "" {
+			p.Errorf("Log.Levels."+l.key, `Log.Levels.%s: unknown level %q: use "debug", "info", "warn" or "error"`, l.key, strings.TrimSpace(l.value))
+		}
+	}
 }
 
 // level returns the slog.Level of LogLevel.
@@ -68,23 +104,76 @@ func (c logConfig) level() (slog.Level, error) {
 	if s == "" {
 		return slog.LevelInfo, nil
 	}
-	switch strings.ToLower(s) {
-	case "debug":
-		return slog.LevelDebug, nil
-	case "info":
-		return slog.LevelInfo, nil
-	case "warn", "warning":
-		return slog.LevelWarn, nil
-	case "error":
-		return slog.LevelError, nil
+	if l, ok := parseLevel(s); ok {
+		return l, nil
 	}
 	return 0, fmt.Errorf(`unknown LogLevel %q: use "debug", "info", "warn" or "error"`, s)
+}
+
+// parseLevel returns the level a value of config.toml names: "debug",
+// "info", "warn" (or "warning") or "error", in any case, with spaces
+// around.
+func parseLevel(s string) (slog.Level, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "debug":
+		return slog.LevelDebug, true
+	case "info":
+		return slog.LevelInfo, true
+	case "warn", "warning":
+		return slog.LevelWarn, true
+	case "error":
+		return slog.LevelError, true
+	}
+	return 0, false
+}
+
+// options returns the options of the Set of loggers that logConfig
+// configures, without its output.
+func (c logConfig) options() (logging.Options, error) {
+	root, err := c.level()
+	if err != nil {
+		return logging.Options{}, err
+	}
+	o := logging.Options{Level: root, Levels: map[string]slog.Level{}}
+	if strings.EqualFold(strings.TrimSpace(c.Log.Format), "json") {
+		o.Format = logging.JSON
+	}
+	for _, l := range c.Log.Levels.byComponent() {
+		if v, ok := parseLevel(l.value); ok {
+			o.Levels[l.component] = v
+		}
+	}
+	return o, nil
+}
+
+// setupLogs makes the Set of loggers that logConfig configures, writing as
+// out says, and makes the default logger of slog log as it: at LogLevel in
+// text, through the default handler of slog, which the Set writes as; in
+// JSON, through the Set itself, so that log.Print and the code that logs
+// through slog.Default() write JSON too, the lines of log.Print at info.
+func setupLogs(c logConfig, out logging.Options) (*logging.Set, error) {
+	o, err := c.options()
+	if err != nil {
+		return nil, err
+	}
+	o.Output, o.Logger = out.Output, out.Logger
+	set := logging.New(o)
+	if set.Format() == logging.JSON {
+		// A Set of text must never be the default: it writes through the
+		// default logger of log, which would write through it.
+		slog.SetLogLoggerLevel(slog.LevelInfo)
+		slog.SetDefault(set.Logger("default"))
+		return set, nil
+	}
+	slog.SetLogLoggerLevel(o.Level)
+	return set, nil
 }
 
 // defaultFileConfig returns the file of the default settings of every part.
 func defaultFileConfig() fileConfig {
 	f := fileConfig{Server: server.DefaultConfig(), Bedrock: bedrockadapter.DefaultConfig(), Java: javaadapter.DefaultConfig()}
 	f.Log.Server.LogLevel = "info"
+	f.Log.Log.Format = "text"
 	return f
 }
 
@@ -95,20 +184,20 @@ func (f *fileConfig) parts() []any {
 }
 
 // readConfig reads config.toml, or writes the default file if there is none,
-// sets the level of the default logger of slog as LogLevel says, before
-// anything is logged of the file, and composes the server's Config with
-// the listeners of the adapters.
-func readConfig(log *slog.Logger) (server.Config, error) {
+// sets up the logs as it says, writing as out says, before anything is
+// logged of the file, and composes the server's Config with the listeners
+// of the adapters, logging through the logger of the server component.
+func readConfig(out logging.Options) (server.Config, *logging.Set, error) {
 	f, err := readConfigFile("config.toml")
 	if err != nil {
-		return server.Config{}, err
+		return server.Config{}, nil, err
 	}
-	level, err := f.Log.level()
+	set, err := setupLogs(f.Log, out)
 	if err != nil {
-		return server.Config{}, err
+		return server.Config{}, nil, err
 	}
-	slog.SetLogLoggerLevel(level)
-	return f.config(log)
+	conf, err := f.config(set.Logger(logging.Server))
+	return conf, set, err
 }
 
 // readConfigFile reads the file of the path passed into the parts of a

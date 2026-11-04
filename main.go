@@ -4,12 +4,12 @@ import (
 	"context"
 	"flag"
 	"log"
-	"log/slog"
 	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/df-mc/dragonfly/server/console"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/dm-vev/adamant/net/metrics"
 )
@@ -18,8 +18,8 @@ func main() {
 	headless := flag.Bool("headless", false, "run without the interactive console")
 	flag.Parse()
 	chat.Global.Subscribe(chat.StdoutSubscriber{})
-	// readConfig sets the level of slog.Default() as LogLevel says.
-	conf, err := readConfig(slog.Default())
+	// readConfig sets up the logs as config.toml says, writing to stderr.
+	conf, _, err := readConfig(logging.Options{})
 	if err != nil {
 		panic(err)
 	}

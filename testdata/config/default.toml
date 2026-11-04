@@ -194,6 +194,20 @@
   Address = ""
   Message = ""
 
+[Log]
+  Format = "text"
+
+  [Log.Levels]
+    AntiCheat = ""
+    Commands = ""
+    Generator = ""
+    Network = ""
+    Player = ""
+    Save = ""
+    Server = ""
+    Session = ""
+    World = ""
+
 [Network]
   ACMECacheDir = ""
   ACMEChallengeAddress = ""

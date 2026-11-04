@@ -140,3 +140,20 @@
   # [AntiCheat.Speed]
   #   Action = "setback"
   #   ActAt = 2.0
+
+[Log]
+  # Format is how logs are written to stderr: "text", the lines the server always wrote, or "json", one object
+  # per line with a "component" field. Chat stays on stdout as text.
+  Format = "text"
+  # Levels sets the log level of each component of the server: "debug", "info", "warn" or "error". An empty
+  # value uses LogLevel of [Server].
+  [Log.Levels]
+    AntiCheat = ""
+    Commands = ""
+    Generator = ""
+    Network = ""
+    Player = ""
+    Save = ""
+    Server = ""
+    Session = ""
+    World = ""
