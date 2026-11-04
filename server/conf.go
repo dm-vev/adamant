@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 	_ "unsafe"
 
@@ -333,6 +334,8 @@ func (conf Config) New() *Server {
 		}
 		srv.listeners = append(srv.listeners, l)
 	}
+	srv.listening = make([]atomic.Bool, len(srv.listeners))
+	srv.registerMetrics()
 
 	// Both register the vanilla content once per process: a second server
 	// keeps the creative items and recipes, and their network IDs, of the

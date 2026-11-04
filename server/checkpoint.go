@@ -33,6 +33,9 @@ type checkpointer struct {
 	// early is set while a checkpoint asked for by a world whose staged
 	// chunks exceed the limit is waiting or running.
 	early atomic.Bool
+	// lastSuccess is the Unix time in nanoseconds the last checkpoint that
+	// wrote everything ended, 0 if none did.
+	lastSuccess atomic.Int64
 }
 
 // run saves a checkpoint every interval while saving is on, until stop is
@@ -106,7 +109,7 @@ func (c *checkpointer) close() {
 // the worlds cannot be captured within world.CaptureTimeout, nothing is
 // written and the error is returned. reason is logged. It waits for the
 // world owners: call it off any of them.
-func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
+func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closed {
@@ -115,6 +118,15 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
 	c.closed = reason == "close"
 	srv := c.srv
 	start := time.Now()
+	stats, reasonAt := &srv.stats, reasonIndex(reason)
+	defer func() {
+		stats.checkpoints[reasonAt].Inc()
+		if err != nil {
+			stats.checkpointFailures[reasonAt].Inc()
+			return
+		}
+		c.lastSuccess.Store(time.Now().UnixNano())
+	}()
 	ctx, cancel := context.WithTimeout(ctx, world.CaptureTimeout)
 	defer cancel()
 	worlds := srv.distinctWorlds()
@@ -143,6 +155,7 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
 	}
 	c.id++
 	captured := time.Now()
+	stats.capture.Observe(captured.Sub(start).Seconds())
 	errs := []error{err}
 
 	chunks, settings := 0, false
@@ -195,6 +208,9 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
 		online[srv.dataKey(p.id)] = true
 	}
 	srv.playerSaves.forget(online)
+	stats.write.Observe(time.Since(captured).Seconds())
+	stats.lastChunks.Store(int64(chunks))
+	stats.lastPlayers.Store(int64(players))
 	srv.conf.Log.Debug("Saved checkpoint.", "checkpoint", c.id, "reason", reason, "chunks", chunks, "players", players, "captured", captured.Sub(start), "written", time.Since(captured))
 	return errors.Join(errs...)
 }

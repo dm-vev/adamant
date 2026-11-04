@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/debug"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -24,6 +23,7 @@ import (
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -50,7 +50,14 @@ type Server struct {
 	idleTimeout atomic.Int64
 	idleStop    chan struct{}
 	listeners   []Listener
-	incoming    chan incoming
+	// listening holds, for each listener, whether its accept loop runs.
+	listening []atomic.Bool
+	incoming  chan incoming
+
+	// metrics is the registry of the metrics of the server, and stats what
+	// it counts of itself for them.
+	metrics *metrics.Registry
+	stats   serverStats
 
 	// players holds the players online.
 	players players
@@ -485,12 +492,13 @@ func (srv *Server) close() {
 // passed. This may be used to listen for players on different interfaces.
 // Note that the maximum player count of additional Listeners added is not
 // enforced automatically. The limit must be enforced by the Listener.
-func (srv *Server) listen(l Listener) {
+func (srv *Server) listen(i int, l Listener) {
 	wg := new(sync.WaitGroup)
 	ctx, cancel := context.WithCancel(context.Background())
 	for {
 		j, err := l.Accept()
 		if err != nil {
+			srv.listening[i].Store(false)
 			// Cancel the context so that any Join.Start is cancelled
 			// rapidly.
 			cancel()
@@ -515,8 +523,9 @@ func (srv *Server) listen(l Listener) {
 // connections from players.
 func (srv *Server) startListening() {
 	srv.wg.Add(len(srv.listeners))
-	for _, l := range srv.listeners {
-		go srv.listen(l)
+	for i, l := range srv.listeners {
+		srv.listening[i].Store(true)
+		go srv.listen(i, l)
 	}
 }
 
@@ -696,6 +705,7 @@ func (srv *Server) dimension(dimension world.Dimension) *world.World {
 func (srv *Server) left(tx *world.Tx, c *player.Player) {
 	// Always decrement the wait group because createPlayer unconditionally increments it.
 	defer srv.pwg.Done()
+	srv.stats.leaves.Inc()
 
 	online, ok := srv.players.player(c.UUID())
 	if !ok {
@@ -725,6 +735,7 @@ func (srv *Server) left(tx *world.Tx, c *player.Player) {
 // that logged in as login says, and binds c to it.
 func (srv *Server) createPlayer(login client.Login, c client.Joining, conf player.Config, w *world.World) incoming {
 	srv.pwg.Add(1)
+	srv.stats.joins.Inc()
 
 	id := login.Identity
 	conf.Name = id.Name
@@ -756,7 +767,8 @@ func addrString(addr net.Addr) string {
 // in the Config. The nether and end dimensions point to the worlds that players
 // are moved to when passing through the respective portals.
 func (srv *Server) createWorld(dim world.Dimension) *world.World {
-	logger := srv.conf.Log.With("dimension", strings.ToLower(fmt.Sprint(dim)))
+	logger := srv.conf.Log.With("dimension", dimensionLabel(dim))
+	faults, countFault := srv.stats.faultCounter()
 	logger.Debug("Loading dimension...")
 
 	gen := srv.conf.Generator(dim, srv.conf.OverworldSeed)
@@ -810,8 +822,15 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 			return srv.world
 		},
 		Fatal: srv.crash,
+		Fault: countFault,
 	}
 	w := conf.New()
+	srv.stats.faultsMu.Lock()
+	if srv.stats.faults == nil {
+		srv.stats.faults = map[*world.World]*[world.FaultFatal + 1]metrics.Counter{}
+	}
+	srv.stats.faults[w] = faults
+	srv.stats.faultsMu.Unlock()
 	if binder, ok := gen.(interface{ BindWorld(*world.World) }); ok {
 		binder.BindWorld(w)
 	}
