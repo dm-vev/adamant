@@ -238,8 +238,8 @@ func ruleIndex(r *propertyRule) int {
 	return -1
 }
 
-// resolveJavaStateByRules is resolveJavaState by the rules.
-func resolveJavaStateByRules(registry chunk.BlockRegistry, state BlockState) (NativeState, error) {
+// resolveJavaState maps a Java state to the native palette by the rules.
+func resolveJavaState(registry chunk.BlockRegistry, state BlockState) (NativeState, error) {
 	if registry == nil {
 		return NativeState{}, fmt.Errorf("java state codec: nil block registry")
 	}
@@ -249,7 +249,7 @@ func resolveJavaStateByRules(registry chunk.BlockRegistry, state BlockState) (Na
 	}
 	properties := gamedata.BlockPropertiesWithDefaults(javaName, state.Properties)
 	paletteName, paletteProperties := javaActorPaletteState(javaName, properties)
-	name, props, err := nativeBlockStateByRules(registry, paletteName, paletteProperties)
+	name, props, err := nativeBlockState(registry, paletteName, paletteProperties)
 	if err != nil {
 		return NativeState{}, err
 	}
@@ -267,9 +267,9 @@ func resolveJavaStateByRules(registry chunk.BlockRegistry, state BlockState) (Na
 	return NativeState{Block: block, Liquid: liquid}, nil
 }
 
-// nativeBlockStateByRules names the native block of a Java state and maps its
+// nativeBlockState names the native block of a Java state and maps its
 // properties.
-func nativeBlockStateByRules(registry chunk.BlockRegistry, javaName string, javaProps map[string]any) (string, map[string]any, error) {
+func nativeBlockState(registry chunk.BlockRegistry, javaName string, javaProps map[string]any) (string, map[string]any, error) {
 	name, err := nativeBlockNameOf(registry, javaName, javaProps)
 	if err != nil {
 		return "", nil, err
@@ -386,8 +386,8 @@ func hasProperty(props map[string]any, key string) bool {
 	return ok
 }
 
-// reverseNativeStateByRules is reverseNativeState by the rules.
-func reverseNativeStateByRules(registry chunk.BlockRegistry, state NativeState) (BlockState, error) {
+// reverseNativeState maps a native state to Java by the rules.
+func reverseNativeState(registry chunk.BlockRegistry, state NativeState) (BlockState, error) {
 	if registry == nil {
 		return BlockState{}, fmt.Errorf("java state codec: nil block registry")
 	}
@@ -406,6 +406,11 @@ func reverseNativeStateByRules(registry chunk.BlockRegistry, state NativeState) 
 		return BlockState{}, fmt.Errorf("java state codec: invalid native block runtime ID %d", state.Block)
 	}
 	javaName := javaBlockOfNative(name, properties)
+	if name == "minecraft:melon_stem" || name == "minecraft:pumpkin_stem" {
+		// A grown stem facing sideways is attached, a Java block of its own.
+		// Scheduled ticks name the stem by its type alone.
+		javaName = nativePlantStemJavaType(name, properties)
+	}
 	var whole func(string, map[string]any) (map[string]any, error)
 	for i := range blockRules {
 		r := &blockRules[i]
@@ -426,7 +431,7 @@ func reverseNativeStateByRules(registry chunk.BlockRegistry, state NativeState) 
 	if whole != nil {
 		javaProps, err = whole(name, properties)
 	} else {
-		javaProps, err = javaPropertiesByRules(name, javaName, properties)
+		javaProps, err = javaProperties(name, javaName, properties)
 	}
 	if err != nil {
 		return BlockState{}, err
@@ -459,28 +464,11 @@ func reverseNativeStateByRules(registry chunk.BlockRegistry, state NativeState) 
 	return BlockState{Name: javaName, Properties: javaProps}, nil
 }
 
-// javaBlocksOfNativeNames names the Java blocks of the native blocks that
-// tell part of a Java state by their name.
-var javaBlocksOfNativeNames = map[string]string{
-	"minecraft:standing_sign":              "minecraft:oak_sign",
-	"minecraft:wall_sign":                  "minecraft:oak_wall_sign",
-	"minecraft:golden_rail":                "minecraft:powered_rail",
-	"minecraft:powered_repeater":           "minecraft:repeater",
-	"minecraft:unpowered_repeater":         "minecraft:repeater",
-	"minecraft:powered_comparator":         "minecraft:comparator",
-	"minecraft:unpowered_comparator":       "minecraft:comparator",
-	"minecraft:lit_redstone_torch":         "minecraft:redstone_torch",
-	"minecraft:unlit_redstone_torch":       "minecraft:redstone_torch",
-	"minecraft:lit_redstone_lamp":          "minecraft:redstone_lamp",
-	"minecraft:lit_redstone_ore":           "minecraft:redstone_ore",
-	"minecraft:lit_deepslate_redstone_ore": "minecraft:deepslate_redstone_ore",
-}
-
 func isFreeFluid(name string) bool {
 	return name == "minecraft:water" || name == "minecraft:flowing_water" || name == "minecraft:lava" || name == "minecraft:flowing_lava"
 }
 
-// javaBlockOfNative names the Java block of a native state.
+// javaBlockOfNative names the Java block type of a native state.
 func javaBlockOfNative(name string, properties map[string]any) string {
 	for i := range blockRules {
 		r := &blockRules[i]
@@ -497,9 +485,6 @@ func javaBlockOfNative(name string, properties map[string]any) string {
 // alone.
 func javaBaseNameOfNative(name string) string {
 	if javaName := nativeToJavaBlockNames[name]; javaName != "" {
-		return javaName
-	}
-	if javaName := javaBlocksOfNativeNames[name]; javaName != "" {
 		return javaName
 	}
 	if wood, ok := strings.CutSuffix(name, "_standing_sign"); ok {
@@ -523,8 +508,8 @@ func javaBaseNameOfNative(name string) string {
 	return name
 }
 
-// javaPropertiesByRules maps the properties of a native state to Java.
-func javaPropertiesByRules(nativeName, javaName string, nativeProps map[string]any) (map[string]any, error) {
+// javaProperties maps the properties of a native state to Java.
+func javaProperties(nativeName, javaName string, nativeProps map[string]any) (map[string]any, error) {
 	out := make(map[string]any, len(nativeProps)+2)
 	c := ruleCtx{java: javaName, native: nativeName, nativeProps: nativeProps, out: out}
 	for key, value := range nativeProps {
@@ -1862,7 +1847,6 @@ var blockRules = []blockRule{
 				return fmt.Errorf("java state codec: invalid native torch orientation %q", facing)
 			}
 		}},
-	{native: blocks("melon_stem", "pumpkin_stem"), typ: nativePlantStemJavaType},
 }
 
 func (s javaSel) and(other javaSel) javaSel {

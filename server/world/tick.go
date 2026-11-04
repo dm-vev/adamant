@@ -1963,7 +1963,7 @@ func scheduledTickType(registry BlockRegistry, b Block) string {
 	if !ok {
 		panic("scheduled tick: registry cannot resolve block runtime ID")
 	}
-	return javaBlockTypeForNative(name, properties)
+	return javaBlockOfNative(name, properties)
 }
 
 func scheduledFluidTickType(liquid Liquid) string {
