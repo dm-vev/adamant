@@ -83,7 +83,7 @@ func TestMonitoringServes(t *testing.T) {
 	if addr == nil {
 		t.Fatalf("not served: %s", logged.String())
 	}
-	t.Cleanup(func() { _ = m.close() })
+	t.Cleanup(func() { _ = m.Close() })
 	if !strings.Contains(logged.String(), `level=INFO msg="Monitoring served." addr=`+addr.String()+` paths="/metrics /livez /readyz /healthz /debug/pprof/"`) {
 		t.Errorf("logged %q", logged.String())
 	}

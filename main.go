@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 
+	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/df-mc/dragonfly/server/console"
 	"github.com/df-mc/dragonfly/server/logging"
@@ -22,15 +23,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// The monitor serves before the worlds are opened, so that /livez
-	// answers while they load.
-	mon := newMonitor(proc.monitor, proc.logs.Logger(logging.Server))
-	mon.serve()
-
-	srv := conf.New()
-	mon.setServer(srv)
-	builtin.Register(srv)
-	serveRemoteAdmin(proc, srv)
+	srv := start(conf, proc)
 	srv.CloseOnProgramEnd()
 
 	if !*headless {
@@ -39,8 +32,22 @@ func main() {
 		go console.New(srv, conf.Log).Run(ctx)
 	}
 
-	srv.Listen()
 	for p := range srv.Accept() {
 		_ = p
 	}
+}
+
+// start makes the server of conf, with the monitor and the remote admin
+// API of proc as its services, registers the commands and starts it. The
+// monitor serves before the worlds are opened, so that /livez answers
+// while they load. Closing the server closes both, freeing their ports.
+func start(conf server.Config, proc process) *server.Server {
+	mon := newMonitor(proc.monitor, proc.logs.Logger(logging.Server))
+	mon.serve()
+	conf.Services = append(conf.Services, mon, remoteAdminService(proc))
+
+	srv := conf.New()
+	builtin.Register(srv)
+	srv.Listen()
+	return srv
 }

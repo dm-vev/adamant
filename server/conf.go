@@ -197,6 +197,13 @@ type Config struct {
 	// Audit is how the server keeps its audit log of admin actions. If nil,
 	// it keeps none.
 	Audit *AuditConfig
+	// Services run beside the game for as long as the server runs, as the
+	// remote admin API (remoteadmin.UserConfig.Service) does: Server.Listen
+	// starts them in order, and Server.Close closes them, the last first,
+	// once the players left and the worlds closed. A program that closes a
+	// Server and starts another in one process passes its services here
+	// rather than start them itself, so that none outlives its Server.
+	Services []Service
 	// StrictConfig refuses, as config.toml's StrictConfig of [Server]
 	// does, the problems of the config found only once the commands are
 	// registered, as a name of Permissions.Commands that no command has:

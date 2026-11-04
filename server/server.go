@@ -64,6 +64,8 @@ type Server struct {
 	idleTimeout atomic.Int64
 	idleStop    chan struct{}
 	listeners   []Listener
+	// services are the services of the Config that started.
+	services []Service
 	// listening holds, for each listener, whether its accept loop runs.
 	listening []atomic.Bool
 	incoming  chan incoming
@@ -136,6 +138,7 @@ func (srv *Server) Listen() {
 	}
 
 	srv.conf.Log.Info("Dragonfly server started.", "mc-version", version.Minecraft, "go-version", info.GoVersion, "commit", revision)
+	srv.startServices()
 	srv.startListening()
 	go srv.wait()
 	go srv.idleTimeoutLoop()
@@ -485,12 +488,20 @@ func (srv *Server) PlayerByXUID(xuid string) (*world.EntityHandle, bool) {
 }
 
 // CloseOnProgramEnd closes the server right before the program ends, so that
-// all data of the server are saved properly.
+// all data of the server are saved properly: on SIGINT or SIGTERM. Once the
+// server closed, by them or otherwise, it no longer catches them, and the
+// goroutine that waited for them ends.
 func (srv *Server) CloseOnProgramEnd() {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		<-c
+		defer signal.Stop(c)
+		select {
+		case <-c:
+		case <-srv.idleStop:
+			// The server closes.
+			return
+		}
 		if err := srv.Close(); err != nil {
 			srv.conf.Log.Error("close server: " + err.Error())
 		}
@@ -555,6 +566,8 @@ func (srv *Server) close() {
 			srv.conf.Log.Error("Close listener: " + err.Error())
 		}
 	}
+	srv.conf.Log.Debug("Closing services...")
+	srv.closeServices()
 	srv.closeAudit()
 }
 

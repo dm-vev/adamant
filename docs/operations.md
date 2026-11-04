@@ -89,7 +89,9 @@ the server at start, as the profiles show the memory and the command line of the
 machine without a token are warned of. The token sits in `config.toml` beside `Proxy.Secret`: keep the file
 private.
 
-If the address cannot be listened on, the server logs an error and runs without the monitor.
+If the address cannot be listened on, the server logs an error and runs without the monitor. The monitor serves from
+before the worlds are opened, so that `/livez` answers while they load, and stops when the server closes, freeing its
+port.
 
 ## Health
 

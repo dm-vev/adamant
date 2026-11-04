@@ -102,8 +102,10 @@ type monitor struct {
 	// srv is the server once it was made: until then, /readyz fails as
 	// starting and /livez passes.
 	srv atomic.Pointer[server.Server]
-	// hs is the HTTP server of the monitor once it serves.
-	hs *http.Server
+	// hs is the HTTP server of the monitor once it serves, and done is
+	// closed once the goroutine that serves it ended.
+	hs   *http.Server
+	done chan struct{}
 }
 
 // newMonitor returns the monitor of the table c, logging through log.
@@ -114,6 +116,16 @@ func newMonitor(c monitorConfig, log *slog.Logger) *monitor {
 // setServer makes the server the one the monitor serves the metrics and the
 // health of.
 func (m *monitor) setServer(srv *server.Server) { m.srv.Store(srv) }
+
+// Start makes srv the server the monitor serves, as a service of srv
+// (server.Config.Services): the monitor serves from before srv is made,
+// so that /livez answers while the worlds load.
+func (m *monitor) Start(srv *server.Server) error {
+	m.setServer(srv)
+	return nil
+}
+
+var _ server.Service = (*monitor)(nil)
 
 // handler returns the handler of the paths the table turns on, and the
 // paths.
@@ -168,17 +180,24 @@ func (m *monitor) serve() net.Addr {
 		WriteTimeout: time.Minute,
 		ErrorLog:     slog.NewLogLogger(m.log.Handler(), slog.LevelDebug),
 	}
-	m.hs = hs
-	go func() { _ = hs.Serve(ln) }()
+	m.hs, m.done = hs, make(chan struct{})
+	go func() {
+		defer close(m.done)
+		_ = hs.Serve(ln)
+	}()
 	return ln.Addr()
 }
 
-// close stops serving.
-func (m *monitor) close() error {
+// Close stops serving, as the server it serves closes, and returns once
+// the port is free and the goroutine that served ended.
+func (m *monitor) Close() error {
 	if m.hs == nil {
 		return nil
 	}
-	return m.hs.Close()
+	err := m.hs.Close()
+	<-m.done
+	m.hs = nil
+	return err
 }
 
 // auth returns h behind the token of the table, if it has one: a request

@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/df-mc/dragonfly/server"
@@ -149,13 +150,75 @@ func (c UserConfig) TokenPath(dir string) string {
 type Listener struct {
 	hs *http.Server
 	ln net.Listener
+	// done is closed once the goroutine that serves ended.
+	done chan struct{}
 }
 
 // Addr returns the address the listener listens on.
 func (l *Listener) Addr() net.Addr { return l.ln.Addr() }
 
-// Close stops serving, ending the requests being served.
-func (l *Listener) Close() error { return l.hs.Close() }
+// Close stops serving, ending the requests being served, and returns once
+// the port is free and the goroutine that accepted connections ended.
+func (l *Listener) Close() error {
+	err := l.hs.Close()
+	<-l.done
+	return err
+}
+
+// Service is the remote admin API as a service of a server
+// (server.Config.Services): the server starts it as it starts, and closes
+// it, freeing its port, as it closes.
+type Service struct {
+	conf UserConfig
+	opts ListenOptions
+
+	mu sync.Mutex
+	l  *Listener
+}
+
+// Service returns the service that serves the API as the table says, to
+// pass in server.Config.Services. It serves nothing if the API is not
+// enabled. Check must have passed, as for Listen.
+func (c UserConfig) Service(o ListenOptions) *Service {
+	return &Service{conf: c, opts: o}
+}
+
+// Start serves the API of srv, as Listen does.
+func (s *Service) Start(srv *server.Server) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.l != nil {
+		return errors.New("remote admin: already serving")
+	}
+	l, err := s.conf.Listen(srv, s.opts)
+	s.l = l
+	return err
+}
+
+// Addr returns the address the service listens on, nil while it does not.
+func (s *Service) Addr() net.Addr {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.l == nil {
+		return nil
+	}
+	return s.l.Addr()
+}
+
+// Close stops serving, as Listener.Close does. The service may be started
+// again, for another server.
+func (s *Service) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.l == nil {
+		return nil
+	}
+	err := s.l.Close()
+	s.l = nil
+	return err
+}
+
+var _ server.Service = (*Service)(nil)
 
 // ListenOptions are what the program adds to the table to serve the API.
 type ListenOptions struct {
@@ -170,6 +233,10 @@ type ListenOptions struct {
 // token, then listens on Address, with TLS 1.2 or newer if CertFile is
 // set. It returns nil and no error if the API is not enabled. Check must
 // have passed: a table it refuses may serve what it would not.
+//
+// The caller closes the Listener: it outlives srv otherwise. Service
+// serves the API as a service of srv instead, which srv closes as it
+// closes.
 func (c UserConfig) Listen(srv *server.Server, o ListenOptions) (*Listener, error) {
 	r := c.RemoteAdmin
 	if !r.Enabled {
@@ -227,11 +294,13 @@ func (c UserConfig) Listen(srv *server.Server, o ListenOptions) (*Listener, erro
 	if hs.TLSConfig != nil {
 		ln = tls.NewListener(ln, hs.TLSConfig)
 	}
+	l := &Listener{hs: hs, ln: ln, done: make(chan struct{})}
 	go func() {
+		defer close(l.done)
 		if err := hs.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("Remote admin stopped serving: "+err.Error(), "addr", r.Address)
 		}
 	}()
 	log.Info("Remote admin served.", "addr", ln.Addr().String(), "tls", hs.TLSConfig != nil)
-	return &Listener{hs: hs, ln: ln}, nil
+	return l, nil
 }

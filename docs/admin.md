@@ -329,6 +329,26 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:19140/v1/status
 curl -s -H "Authorization: Bearer $TOKEN" -d '{"command": "backup", "wait": "60s"}' http://localhost:19140/v1/command
 ```
 
+### Lifecycle and embedding
+
+The API is a service of the server (`server.Config.Services`): `Server.Listen` starts it, and `Server.Close` closes
+it once the players left and the worlds closed, before the audit log closes. When `Close` returns, its port is free
+and its goroutines ended, so a program that embeds the server may close it and start another in the same process, on
+the same address. A program that builds `server.Config` itself passes the API the same way:
+
+```go
+conf.Services = append(conf.Services, remoteConf.Service(remoteadmin.ListenOptions{Dir: adminDir, Log: log}))
+srv := conf.New()
+builtin.Register(srv)
+srv.Listen()
+// ...
+_ = srv.Close() // stops the API too
+```
+
+`remoteadmin.UserConfig.Listen` still serves the API apart from the server, for a program that closes the
+`Listener` itself. An API that cannot listen is logged (`Service not started: remote admin: ...`), and the server runs
+without it.
+
 ### Threat model
 
 | Threat | Mitigation |

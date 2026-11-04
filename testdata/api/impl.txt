@@ -10529,6 +10529,7 @@ server/player/playerdb.Provider	server/player.Lister	*
 server/player/playerdb.Provider	server/player.Provider	*
 server/player/playerdb.WorldProvider	server/player.Lister	*
 server/player/playerdb.WorldProvider	server/player.Provider	*
+server/remoteadmin.Service	server.Service	*
 server/remoteadmin.source	server/cmd.Deferrer	*
 server/remoteadmin.source	server/cmd.Leveled	*
 server/remoteadmin.source	server/cmd.NamedTarget	*
