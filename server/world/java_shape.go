@@ -3,6 +3,7 @@ package world
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
@@ -138,18 +139,39 @@ func javaDefault(name string) uint32 {
 	return id
 }
 
+// at returns the Java block state the shapes read at pos. Generation holds
+// Java states only. The world may hold any native state: at reads it as
+// game logic does (Tx.JavaBlockState), and a block of no Java block at all
+// by its collision shape (javaStandIn), never failing on world data.
 func (c *javaShapeContext) at(pos cube.Pos) uint32 {
-	var id uint32
-	var err error
 	if c.generation != nil {
-		id, err = c.generation.BlockStateID(pos)
-	} else {
-		id, err = c.tx.BlockStateID(pos)
+		id, err := c.generation.BlockStateID(pos)
+		if err != nil {
+			panic(err)
+		}
+		return id
 	}
-	if err != nil {
-		panic(err)
+	if id, ok := c.tx.JavaBlockState(pos); ok {
+		return id
 	}
-	return id
+	return c.tx.javaStandIn(pos)
+}
+
+// javaAir and javaBedrock are the Java states javaStandIn stands in with.
+var (
+	javaAir     = sync.OnceValue(func() uint32 { return javaDefault("minecraft:air") })
+	javaBedrock = sync.OnceValue(func() uint32 { return javaDefault("minecraft:bedrock") })
+)
+
+// javaStandIn returns the Java block state that stands in for the block at
+// pos, of no Java block at all, in the shapes and survival of its
+// neighbours: air if nothing collides with it, else bedrock, a full block in
+// no tag that shapes or survival read.
+func (tx *Tx) javaStandIn(pos cube.Pos) uint32 {
+	if len(tx.Block(pos).Model().BBox(pos, tx)) == 0 {
+		return javaAir()
+	}
+	return javaBedrock()
 }
 
 func (c *javaShapeContext) tag(id uint32, tag string) bool {

@@ -75,14 +75,16 @@ func (tx *Tx) BlockStateID(pos cube.Pos) (uint32, error) {
 }
 
 // JavaBlockState returns the Java block state that game logic reads at pos.
-// Unlike BlockStateID it never fails on world data:
+// Unlike BlockStateID it never fails on world data (gameJavaState):
 //   - a block holding a liquid Java cannot waterlog it with, as a door or a
 //     carpet in water, reads as the block alone, which is the block Java
 //     has there;
-//   - a native state of no Java block state at all, as a torch facing
-//     "unknown" or a ceiling skull, returns ok false. Game logic reads such a
-//     block by its collision shape, in no tag and harmless, as Java reads no
-//     block of its own differently.
+//   - a native state Java has no state like, as a torch facing "unknown" or
+//     a ceiling skull, reads as the default state of the Java block of the
+//     same name, which has its tags;
+//   - a block of no Java block at all, as an Education Edition torch or a
+//     block the registry does not know, returns ok false. Game logic reads
+//     such a block by its collision shape, in no tag and harmless.
 //
 // Like Block, it may load its column. Out-of-height positions are air.
 func (tx *Tx) JavaBlockState(pos cube.Pos) (id uint32, ok bool) {
@@ -91,19 +93,34 @@ func (tx *Tx) JavaBlockState(pos cube.Pos) (id uint32, ok bool) {
 		c = tx.chunk(chunkPosFromBlockPos(pos))
 	}
 	w := tx.World()
-	if id = w.javaStateIDInColumn(c, pos); validJavaState(id) {
+	if id = w.javaStateIDInColumn(c, pos); validJavaState(id) || c == nil {
+		return id, validJavaState(id)
+	}
+	return gameJavaState(w.conf.Blocks, NativeStateAt(c.Chunk, uint8(pos[0]&15), int16(pos[1]), uint8(pos[2]&15)))
+}
+
+// gameJavaState returns the Java block state that game logic reads for a
+// native state, as JavaBlockState describes: its canonical state, else that
+// of its block without the liquid it holds, else the default state of the
+// Java block of the same name. ok is false for a block of no Java block.
+func gameJavaState(registry chunk.BlockRegistry, state NativeState) (uint32, bool) {
+	if id := state.CanonicalID(registry); validJavaState(id) {
 		return id, true
 	}
-	if c == nil {
-		return 0, false
-	}
-	state := NativeStateAt(c.Chunk, uint8(pos[0]&15), int16(pos[1]), uint8(pos[2]&15))
-	if air := w.conf.Blocks.AirRuntimeID(); state.Liquid != air {
-		if id = nativeJavaStateID(w.conf.Blocks, NativeState{Block: state.Block, Liquid: air}); validJavaState(id) {
+	if air := registry.AirRuntimeID(); state.Liquid != air {
+		if id := nativeJavaStateID(registry, NativeState{Block: state.Block, Liquid: air}); validJavaState(id) {
 			return id, true
 		}
 	}
-	return 0, false
+	name, _, found := registry.RuntimeIDToState(state.Block)
+	if !found {
+		return 0, false
+	}
+	if java, renamed := nativeToJavaBlockNames[name]; renamed {
+		name = java
+	}
+	id, err := gamedata.BlockStateID(name, nil)
+	return id, err == nil
 }
 
 // validJavaState reports whether id is a Java block state gamedata knows.

@@ -144,6 +144,12 @@ func (w *World) postProcessGeneration(tx *Tx, pos ChunkPos, col *Column) {
 	for section, positions := range col.postProcessing {
 		for _, packed := range positions {
 			context.pos = cube.Pos{int(pos[0])<<4 | int(packed&15), tx.Range().Min() + section*16 + int(packed>>4&15), int(pos[1])<<4 | int(packed>>8&15)}
+			if !validJavaState(tx.javaBlockStateID(context.pos)) {
+				// A native state, as one set before the column was promoted,
+				// is not the source's to shape: shaping the Java state it reads
+				// as would replace it.
+				continue
+			}
 			// The source captures this state before ticking its fluid. Do not
 			// replace it with a second read after the fluid has mutated the cell.
 			state := context.at(context.pos)

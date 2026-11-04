@@ -1,6 +1,7 @@
 package world
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -31,14 +32,7 @@ func (tx *Tx) JavaMotionBlockingHeight(x, z int, noLeaves bool) int {
 			}
 			matches, known := cache.load(rid)
 			if !known {
-				state, err := CanonicalState(registry, NativeState{Block: rid, Liquid: air})
-				if err != nil {
-					panic(err)
-				}
-				matches, err = gamedata.BlockTagContains(tag, state.Name)
-				if err != nil {
-					panic(err)
-				}
+				matches = javaBlocksMotion(tx, registry, rid, tag)
 				cache.store(rid, matches)
 			}
 			if matches {
@@ -55,4 +49,21 @@ func WaterSourceRuntimeID(registry chunk.BlockRegistry) (uint32, bool) {
 		return 0, false
 	}
 	return registry.StateToRuntimeID("minecraft:water", waterSourceProperties)
+}
+
+// javaBlocksMotion reports whether the native block rid is in the heightmap
+// tag, as game logic reads its Java block (gameJavaState). A block of no
+// Java block blocks motion if anything collides with it.
+func javaBlocksMotion(tx *Tx, registry BlockRegistry, rid uint32, tag string) bool {
+	id, ok := gameJavaState(registry, NativeState{Block: rid, Liquid: registry.AirRuntimeID()})
+	if !ok {
+		b, _ := registry.BlockByRuntimeID(rid)
+		return b != nil && len(b.Model().BBox(cube.Pos{}, tx)) != 0
+	}
+	name, _ := gamedata.BlockStateName(id)
+	matches, err := gamedata.BlockTagContains(tag, name)
+	if err != nil {
+		panic(err)
+	}
+	return matches
 }
