@@ -2514,7 +2514,7 @@ func (p *Player) SetBlockingDelay(duration time.Duration) {
 // returns immediately.
 // UseItemOnBlock does nothing if the block at the cube.Pos passed is of the type block.Air.
 func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3) {
-	if _, ok := p.tx.Block(pos).(block.Air); ok || !p.canReachBlock(pos) {
+	if _, ok := p.tx.Block(pos).(block.Air); ok || !p.canReachBlock(pos) || p.refuseUseOnBlock(pos, face, clickPos) {
 		// The client used its item on a block that does not exist server-side or one it couldn't reach. Stop trying
 		// to use the item immediately.
 		p.resendNearbyBlocks(pos, face)
@@ -2581,6 +2581,10 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 			replacedPos = pos.Side(face)
 		}
 		if replaceable, ok := p.tx.Block(replacedPos).(block.Replaceable); !ok || !replaceable.ReplaceableBy(ib) || replacedPos.OutOfBounds(p.tx.Range()) {
+			return
+		}
+		if p.refusePlaceRate(replacedPos) {
+			p.resendNearbyBlocks(replacedPos, cube.Faces()...)
 			return
 		}
 		if !p.placeBlock(replacedPos, ib, false) {
