@@ -578,12 +578,23 @@ func dispenseSlotName(slot int) string {
 // registered item in each scenario.
 const dispenseGoldenPath = "testdata/dispense_behaviours.golden"
 
+// dispenseFullEnv set to 1 makes the dispense tests run every registered
+// item. Without it they run the first item of each Go type, as the behaviour
+// of an item is that of its type: the whole set takes minutes and gigabytes,
+// more than a CI runner gives a package.
+const dispenseFullEnv = "ADAMANT_DISPENSE_FULL"
+
+// dispenseFull reports whether the dispense tests run every registered item:
+// with ADAMANT_DISPENSE_FULL=1, or to rewrite the golden file.
+func dispenseFull() bool {
+	return os.Getenv(dispenseFullEnv) == "1" || *updateDispenseGolden
+}
+
 // dispenseDomain returns the items the dispense tests run: every registered
-// item, or with -short the first of each Go type, as the behaviour of an
-// item is that of its type.
+// item if dispenseFull, or else the first of each Go type.
 func dispenseDomain() []world.Item {
 	items := dispenseItems()
-	if !testing.Short() {
+	if dispenseFull() {
 		return items
 	}
 	seen := map[reflect.Type]bool{}
@@ -613,9 +624,6 @@ func TestDispenseBehavioursGolden(t *testing.T) {
 		}
 	})
 	if *updateDispenseGolden {
-		if testing.Short() {
-			t.Fatal("-update-dispense needs every item: run without -short")
-		}
 		writeDispenseGolden(t, items, summaries)
 		return
 	}
@@ -634,7 +642,7 @@ func TestDispenseBehavioursGolden(t *testing.T) {
 		}
 		delete(want, desc)
 	}
-	if !testing.Short() {
+	if dispenseFull() {
 		for desc := range want {
 			t.Errorf("%s is in %s but no longer registered", desc, dispenseGoldenPath)
 		}
