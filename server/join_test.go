@@ -57,8 +57,11 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	if g.Name != "Join Test" || g.Level != jt.srv.World() || g.World != jt.srv.World() || g.MaxChunkRadius != 3 {
 		t.Errorf("Game = %+v, want the server's name, world and chunk radius", g)
 	}
-	if !g.Operator || g.IsOperator == nil || !g.IsOperator(handle.UUID()) || g.IsOperator(bobHandle.UUID()) {
-		t.Error("the Game of Alice does not hold her an operator")
+	if p := g.Permissions; !p.Operator || p.Role != client.RoleOperator || p.Level != uint8(DefaultOperatorLevel) {
+		t.Errorf("the Game of Alice starts her with %+v, want an operator of level %v", p, DefaultOperatorLevel)
+	}
+	if g.PermissionsOf == nil || !g.PermissionsOf(handle.UUID()).Operator || g.PermissionsOf(bobHandle.UUID()).Operator {
+		t.Error("the PermissionsOf of the Game of Alice do not hold her an operator, and Bob none")
 	}
 	conf, _ := player.Call(context.Background(), handle, func(_ *world.Tx, p *player.Player) (player.Config, error) {
 		return p.Data(), nil
@@ -83,8 +86,8 @@ func TestJoinStartsTheGameOfThePlayer(t *testing.T) {
 	if !told {
 		t.Errorf("Alice was not told %q", want)
 	}
-	if bob.Games()[0].Operator {
-		t.Error("the Game of Bob holds him an operator")
+	if p := bob.Games()[0].Permissions; p != client.MemberPermissions() {
+		t.Errorf("the Game of Bob starts him with %+v, want a member of level 0", p)
 	}
 	if g.Roster != &jt.srv.players.roster || bob.Games()[0].Roster != g.Roster {
 		t.Error("the Games do not share the Roster of the server")

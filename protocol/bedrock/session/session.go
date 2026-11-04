@@ -272,9 +272,11 @@ type Config struct {
 	MaxChunkRadius int
 
 	EmoteChatMuted bool
-	// IsOperator reports the current operator status of a player online
-	// by its UUID. If nil, players receive member permissions.
-	IsOperator func(id uuid.UUID) bool
+	// Permissions returns what a player online may do now, by its UUID: its
+	// level, its role and the abilities of the role, which the client is
+	// shown. If nil, players are shown the permissions of a member of level
+	// 0.
+	Permissions func(id uuid.UUID) client.Permissions
 
 	// BlockRegistry overrides the registry used for network serialization. If nil, world.DefaultBlockRegistry is used.
 	BlockRegistry world.BlockRegistry

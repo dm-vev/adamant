@@ -103,7 +103,11 @@ func TestGameDataFromGame(t *testing.T) {
 				tc.w = tc.level
 			}
 			pos, rot := mgl64.Vec3{12.25, -58.5, 3.75}, cube.Rotation{91.5, -12.25}
-			g := client.Game{Name: "Golden Server", Level: tc.level, World: tc.w, Position: pos, Rotation: rot, Operator: tc.operator}
+			perms := client.MemberPermissions()
+			if tc.operator {
+				perms = client.Permissions{Level: 4, Operator: true, Role: client.RoleOperator, Abilities: client.AbilitiesOfOperators}
+			}
+			g := client.Game{Name: "Golden Server", Level: tc.level, World: tc.w, Position: pos, Rotation: rot, Permissions: perms}
 			got := gameData(g, tc.content, versions.Default(), tc.muted)
 			want := oldGameData(tc.level, "Golden Server", tc.content, pos, rot, tc.w, tc.muted, tc.operator)
 			for _, d := range []*netconn.GameData{&got, &want} {

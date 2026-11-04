@@ -609,21 +609,15 @@ func (s *Session) abilityData(c Controllable, uniqueID int64) mc.AbilityData {
 	if mode.CreativeInventory() {
 		abilities |= mc.AbilityInstantBuild
 	}
-	if mode.AllowsEditing() {
-		abilities |= mc.AbilityBuild | mc.AbilityMine
+	perms := client.MemberPermissions()
+	if s.conf.Permissions != nil {
+		perms = s.conf.Permissions(c.UUID())
 	}
-	if mode.AllowsInteraction() {
-		abilities |= mc.AbilityDoorsAndSwitches | mc.AbilityOpenContainers | mc.AbilityAttackPlayers | mc.AbilityAttackMobs
-	}
-	playerPermissions, commandPermissions := byte(mc.PermissionLevelMember), byte(mc.CommandPermissionLevelAny)
-	if s.conf.IsOperator != nil && s.conf.IsOperator(c.UUID()) {
-		playerPermissions, commandPermissions = mc.PermissionLevelOperator, mc.CommandPermissionLevelGameDirectors
-		abilities |= mc.AbilityOperatorCommands | mc.AbilityTeleport
-	}
+	abilities |= roleAbilities(mode, perms)
 	return mc.AbilityData{
 		EntityUniqueID:     uniqueID,
-		PlayerPermissions:  playerPermissions,
-		CommandPermissions: commandPermissions,
+		PlayerPermissions:  permissionLevel(perms.Role),
+		CommandPermissions: commandLevel(perms.Level),
 		Layers: []mc.AbilityLayer{
 			{
 				Type:             mc.AbilityLayerTypeBase,

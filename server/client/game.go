@@ -26,16 +26,17 @@ type Game struct {
 	// Rotation is where it looks.
 	Position mgl64.Vec3
 	Rotation cube.Rotation
-	// Operator is set if the player was an operator when the server
-	// started its game. IsOperator tells its status later.
-	Operator bool
+	// Permissions are what the player may do as the server starts its
+	// game: the level of its commands, its role and the abilities of the
+	// role. PermissionsOf tells them later.
+	Permissions Permissions
 	// MaxChunkRadius bounds the radius, in chunks, of the world around the
 	// player that the client is shown.
 	MaxChunkRadius int
-	// IsOperator reports whether the player online of the UUID passed is
-	// an operator now. Nil means none is. It may be called from any
-	// goroutine.
-	IsOperator func(id uuid.UUID) bool
+	// PermissionsOf returns what the player online of the UUID passed may
+	// do now. Nil gives every player the permissions of a member of level
+	// 0 (MemberPermissions). It may be called from any goroutine.
+	PermissionsOf func(id uuid.UUID) Permissions
 	// Roster is the list of the players of the server. Bind lists the
 	// player on it and Close unlists it. Nil gives the client a Roster of
 	// its own, on which it lists only its own player.

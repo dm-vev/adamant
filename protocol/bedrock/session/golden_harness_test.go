@@ -34,6 +34,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/chat"
@@ -426,7 +427,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		Log:            goldenLog(),
 		MaxChunkRadius: goldenRadius,
 		BlockRegistry:  w.BlockRegistry(),
-		IsOperator:     func(uuid.UUID) bool { return false },
+		Permissions:    func(uuid.UUID) client.Permissions { return client.MemberPermissions() },
 	}
 	if conf.session != nil {
 		conf.session(&sconf)

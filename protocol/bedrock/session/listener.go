@@ -155,7 +155,7 @@ func (j *join) Start(ctx context.Context, g client.Game) (client.Joining, error)
 		BlockRegistry:  g.World.BlockRegistry(),
 		Protocol:       p,
 		Primary:        j.l.conf.Primary,
-		IsOperator:     g.IsOperator,
+		Permissions:    g.PermissionsOf,
 		Roster:         g.Roster,
 	}.New(j.conn), nil
 }

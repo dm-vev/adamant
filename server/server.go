@@ -712,9 +712,9 @@ func (srv *Server) game(login client.Login, d player.Config, w *world.World) cli
 		World:          w,
 		Position:       d.Position,
 		Rotation:       d.Rotation,
-		Operator:       srv.operatorOf(login.Identity),
+		Permissions:    srv.permissionsOf(login.Identity),
 		MaxChunkRadius: srv.conf.MaxChunkRadius,
-		IsOperator:     srv.PlayerIsOperator,
+		PermissionsOf:  srv.PlayerPermissions,
 		Roster:         &srv.players.roster,
 	}
 }
