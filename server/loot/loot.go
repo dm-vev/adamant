@@ -1265,13 +1265,9 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 // applyModifiers runs loot functions on an item given by its Java id, count
 // and components, and returns the native stack they leave.
 func applyModifiers(id string, count int, components map[string]any, mods []modifier, c *Context) (item.Stack, error) {
-	setEnchantmentsApplied := false
-	// The stew effect, exploration map and filters replace the item once it
-	// exists.
-	var stew *item.StewType
-	var exploration map[string]any
-	var filters []map[string]any
-	for _, m := range mods {
+	it := lootItem{id: id, count: count, components: components}
+	for i := range mods {
+		m := &mods[i]
 		if m.Condition != nil {
 			ok, err := testCondition(*m.Condition, c)
 			if err != nil {
@@ -1288,233 +1284,18 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 		if !ok {
 			continue
 		}
-		switch m.Type {
-		case "minecraft:set_count":
-			n, err := integerNumber(m.Count, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			// SetItemCountFunction adds to the count when add is set.
-			if m.Add != nil && *m.Add {
-				n += count
-			}
-			count = n
-		case "minecraft:limit_count":
-			lo, err := integerNumber(m.Min, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			hi, err := integerNumber(m.Max, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			if count < lo {
-				count = lo
-			}
-			if hi > 0 && count > hi {
-				count = hi
-			}
-		case "minecraft:explosion_decay":
-			if c.ExplosionRadius > 0 {
-				kept := 0
-				probability := float32(1 / c.ExplosionRadius)
-				for range max(0, count) {
-					if c.Random.NextFloat() <= probability {
-						kept++
-					}
-				}
-				count = kept
-			}
-		case "minecraft:apply_bonus":
-			count = applyBonus(count, m, c)
-		case "minecraft:enchanted_count_increase":
-			level := 0
-			if m.Enchantment == "minecraft:looting" || m.Enchantment == "minecraft:fortune" {
-				level = lootEnchantmentLevel(c.ToolStack, m.Enchantment)
-			}
-			if level > 0 {
-				count += int(c.Random.NextInt(int32(level + 1)))
-			}
-		case "minecraft:set_damage":
-			value, err := number(m.Damage, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			damage, ok, err := lootSetDamage(id, components, float32(value), m.Add != nil && *m.Add)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			if ok {
-				components["minecraft:damage"] = damage
-			}
-		case "minecraft:set_components":
-			for k, v := range m.Components {
-				if k == "minecraft:enchantments" || k == "minecraft:stored_enchantments" {
-					raw, ok := v.(map[string]any)
-					if !ok {
-						return item.Stack{}, fmt.Errorf("invalid enchantment component %T", v)
-					}
-					levels := make(map[string]any, len(raw))
-					for id, value := range raw {
-						level, err := integerNumber(value, c)
-						if err != nil {
-							return item.Stack{}, err
-						}
-						levels[id] = int32(level)
-					}
-					v = levels
-				}
-				components[k] = v
-			}
-		case "minecraft:set_enchantments":
-			add := m.Add != nil && *m.Add
-			levels := map[string]any{}
-			if existing, ok := components["minecraft:enchantments"].(map[string]any); ok {
-				for id, level := range existing {
-					levels[id] = level
-				}
-			}
-			for id, provider := range m.Enchantments {
-				if _, ok := registeredEnchantmentType(id); !ok {
-					return item.Stack{}, fmt.Errorf("set_enchantments references unsupported enchantment %q", id)
-				}
-				level, err := integerNumber(provider, c)
-				if err != nil {
-					return item.Stack{}, err
-				}
-				if add {
-					previous, err := integerNumber(levels[normalize(id)], c)
-					if err != nil {
-						return item.Stack{}, err
-					}
-					level += previous
-				}
-				level = max(0, min(255, level))
-				if level == 0 {
-					delete(levels, normalize(id))
-				} else {
-					levels[normalize(id)] = int32(level)
-				}
-			}
-			components["minecraft:enchantments"] = levels
-			setEnchantmentsApplied = true
-		case "minecraft:copy_components":
-			if err := lootCopyComponents(m.Raw, components, c); err != nil {
-				return item.Stack{}, err
-			}
-		case "minecraft:set_potion":
-			components["minecraft:potion_contents"] = map[string]any{"potion": m.Potion}
-		case "minecraft:set_name":
-			components["minecraft:custom_name"] = m.Name
-		case "minecraft:enchant_randomly":
-			var err error
-			id, count, components, err = applyRandomEnchantment(id, count, components, m, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-		case "minecraft:enchant_with_levels":
-			cost, err := integerNumber(m.Levels, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			base, err := item.StackFromStructureNBT(map[string]any{"id": id, "count": int32(count), "components": components})
-			if err != nil {
-				return item.Stack{}, err
-			}
-			enchanted, err := enchantWithLevels(base, cost, m.randomEnchantmentOptions, c.Random)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			result, err := item.StackToStructureNBT(enchanted)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			if result == nil {
-				return item.Stack{}, nil
-			}
-			id = result["id"].(string)
-			count = int(result["count"].(int32))
-			components, _ = result["components"].(map[string]any)
-			if components == nil {
-				components = make(map[string]any)
-			}
-		case "minecraft:furnace_smelt":
-			// SmeltItemFunction: the item becomes its furnace product, keeping
-			// the count; unsmeltable items are left unchanged.
-			base, err := item.StackFromStructureNBT(map[string]any{"id": id, "count": int32(max(count, 1)), "components": components})
-			if err != nil {
-				return item.Stack{}, err
-			}
-			recipe, ok := item.CookingRecipeFor(item.Smelting, base.Item())
-			if !ok {
-				break
-			}
-			result, err := item.StackToStructureNBT(item.NewStack(recipe.Product.Item(), max(count, 1)))
-			if err != nil {
-				return item.Stack{}, err
-			}
-			id = result["id"].(string)
-			components, _ = result["components"].(map[string]any)
-			if components == nil {
-				components = make(map[string]any)
-			}
-		case "minecraft:set_ominous_bottle_amplifier":
-			// SetOminousBottleAmplifierFunction: amplifier clamped to 0..4.
-			amplifier, err := integerNumber(m.Amplifier, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			components["minecraft:ominous_bottle_amplifier"] = int32(max(0, min(4, amplifier)))
-		case "minecraft:set_stew_effect":
-			chosen, err := lootStewEffect(m, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			stew = chosen
-		case "minecraft:exploration_map":
-			exploration = m.Raw
-		case "minecraft:copy_state":
-			if err := lootCopyState(m.Raw, components, c); err != nil {
-				return item.Stack{}, err
-			}
-		case "minecraft:set_instrument":
-			instrument, err := lootInstrument(m.Options, c)
-			if err != nil {
-				return item.Stack{}, err
-			}
-			if instrument != "" {
-				components["minecraft:instrument"] = instrument
-			}
-		case "minecraft:filtered":
-			filters = append(filters, m.Raw)
-		default:
+		f, ok := lootFunctions[m.Type]
+		if !ok {
 			return item.Stack{}, fmt.Errorf("unsupported loot modifier %q", m.Type)
 		}
-	}
-	if count <= 0 {
-		return item.Stack{}, nil
-	}
-	native, err := item.StackFromStructureNBT(map[string]any{"id": id, "count": int32(count), "components": components})
-	if err != nil {
-		return item.Stack{}, fmt.Errorf("decode loot item %q: %w", id, err)
-	}
-	if setEnchantmentsApplied && id == "minecraft:book" {
-		native = native.WithItem(item.EnchantedBook{})
-	}
-	if _, ok := native.Item().(item.SuspiciousStew); ok && stew != nil {
-		native = item.NewSuspiciousStewStack(*stew).Grow(native.Count() - 1)
-	}
-	if exploration != nil {
-		if native, err = lootExplorationMap(native, exploration, c); err != nil {
+		if it, err = f(it, m, c); err != nil {
 			return item.Stack{}, err
 		}
-	}
-	for _, filter := range filters {
-		if native, err = lootFiltered(native, filter); err != nil || native.Empty() {
-			return item.Stack{}, err
+		if it.dropped {
+			return item.Stack{}, nil
 		}
 	}
-	return native, nil
+	return it.make(c)
 }
 
 // lootFiltered ports FilteredFunction for its use after exploration maps:
