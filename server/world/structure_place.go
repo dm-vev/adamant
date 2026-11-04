@@ -237,6 +237,9 @@ func (tx *Tx) placeStructureEntities(t *StructureTemplate, pos cube.Pos, mirror 
 		}
 		delete(data, "LinksTag")
 		h := w.entityFromNBT(typ, rand.Int64(), data)
+		if h == nil {
+			continue
+		}
 		h.data.Pos = pos.Vec3().Add(transformStructureVec3(t.structureEntityPos(source), mirror, rotation))
 		h.data.Rot[0] = transformStructureYaw(h.data.Rot[0], mirror, rotation)
 		tx.AddEntity(h)

@@ -237,8 +237,12 @@ func NewEntity(t EntityType, conf EntityConfig) *EntityHandle {
 }
 
 // entityFromData reads an entity from the decoded NBT data passed and returns
-// an EntityHandle.
+// an EntityHandle, or nil if the data has a position or rotation Java
+// Entity.load refuses to load the entity with.
 func entityFromData(t EntityType, id int64, data map[string]any) *EntityHandle {
+	if !entityNBTLoadable(data) {
+		return nil
+	}
 	handle := &EntityHandle{
 		t:         t,
 		cond:      sync.NewCond(&sync.Mutex{}),
@@ -646,8 +650,16 @@ func (e *EntityHandle) notifyWorldChangedLocked() {
 // name tag of an entity.
 func (e *EntityHandle) decodeNBT(m map[string]any) {
 	e.data.NativeNBT = CloneNativeEntityNBT(m)
-	e.data.Pos = readVec3(m, "Pos")
+	e.data.Pos = clampEntityPos(readVec3(m, "Pos"))
 	e.data.Vel = readVec3(m, "Motion")
+	for i, v := range e.data.Vel {
+		// Java Entity.load drops a motion over 10 blocks a tick, which
+		// would sweep the collision of the entity over that many blocks.
+		// One that is not a number goes the same way.
+		if !(math.Abs(v) <= 10) {
+			e.data.Vel[i] = 0
+		}
+	}
 	e.data.Rot = readRotation(m)
 	e.data.Age = time.Duration(readInt16(m, "Age")) * (time.Second / 20)
 	e.data.FireDuration = time.Duration(readInt16(m, "Fire")) * time.Second / 20
@@ -675,6 +687,34 @@ func (e *EntityHandle) decodeNBT(m map[string]any) {
 			}
 		}
 	}
+}
+
+// clampEntityPos clamps the position of an entity being loaded into the
+// bounds Java Entity.load holds it to.
+func clampEntityPos(pos mgl64.Vec3) mgl64.Vec3 {
+	bounds := [3]float64{3.0000512e7, 2e7, 3.0000512e7}
+	for i, bound := range bounds {
+		// Like Mth.clamp, a position that is not a number stays so.
+		if pos[i] < -bound {
+			pos[i] = -bound
+		} else if pos[i] > bound {
+			pos[i] = bound
+		}
+	}
+	return pos
+}
+
+// entityNBTLoadable reports whether Java Entity.load would load an entity
+// with the native NBT passed: it refuses a position that is not a number, or
+// a rotation that is not finite.
+func entityNBTLoadable(m map[string]any) bool {
+	pos, rot := clampEntityPos(readVec3(m, "Pos")), readRotation(m)
+	for _, v := range [...]float64{pos[0], pos[1], pos[2], rot[0], rot[1]} {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return false
+		}
+	}
+	return true
 }
 
 // encodeNBT encodes the position, velocity, rotation, age, on-fire duration and

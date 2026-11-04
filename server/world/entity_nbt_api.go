@@ -26,6 +26,9 @@ func (h *EntityHandle) MergeNBT(tx *Tx, patch map[string]any) error {
 	before := h.encodeNBT()
 	merged := CloneNativeEntityNBT(before)
 	mergeNBTMaps(merged, patch)
+	if !entityNBTLoadable(merged) {
+		return errors.New("entity has an invalid position or rotation")
+	}
 	// Keep the engine-owned Bedrock actor identifier. It is not command NBT.
 	if id, ok := before["UniqueID"]; ok {
 		merged["UniqueID"] = id

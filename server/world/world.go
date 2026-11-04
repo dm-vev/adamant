@@ -4461,10 +4461,14 @@ func (w *World) EntityNBT(e *EntityHandle) map[string]any {
 }
 
 // entityFromNBT decodes an entity of a type from the native NBT it was saved
-// with, giving it the unique ID passed.
+// with, giving it the unique ID passed. It returns nil for NBT that Java
+// Entity.load refuses, which drops the entity.
 func (w *World) entityFromNBT(t EntityType, id int64, data map[string]any) *EntityHandle {
 	return withBlockRegistryNBT(data, w.conf.Blocks, func() *EntityHandle {
 		h := entityFromData(t, id, data)
+		if h == nil {
+			return nil
+		}
 		if decode := w.conf.Entities.Config().DecodeSharedNBT; decode != nil {
 			decode(&h.data, data)
 		}
@@ -4539,7 +4543,12 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos, ready bool) *Column {
 			w.conf.Log.Error("read column: unknown entity type", "ID", e.ID, "type", eid)
 			continue
 		}
-		col.addEntity(w.entityFromNBT(t, e.ID, e.Data))
+		h := w.entityFromNBT(t, e.ID, e.Data)
+		if h == nil {
+			w.conf.Log.Error("read column: entity has an invalid position or rotation", "ID", e.ID, "type", eid)
+			continue
+		}
+		col.addEntity(h)
 	}
 	w.decodeBlockEntities(col, w.dropStaleBlockEntities(col, c.BlockEntities))
 	blockTicks := make([]scheduledTick, 0, len(c.ScheduledTicks))
