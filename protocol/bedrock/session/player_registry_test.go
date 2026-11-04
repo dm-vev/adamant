@@ -23,7 +23,7 @@ func TestStackToItemUsesBlockRegistryForNestedNBT(t *testing.T) {
 	if err := chest.Inventory(nil, cube.Pos{}).SetItem(0, item.NewStack(custom, 2)); err != nil {
 		t.Fatal(err)
 	}
-	got := stackToItem(registry, stackFromItem(registry, item.NewStack(chest, 1)))
+	got := stackToItem(tablesOf(nil, registry), stackFromItem(tablesOf(nil, registry), item.NewStack(chest, 1)))
 	decoded, ok := got.Item().(block.Chest)
 	if !ok {
 		t.Fatalf("item = %#v, want block.Chest", got.Item())
@@ -39,9 +39,9 @@ func TestStackToItemUsesBlockRegistryForNestedNBT(t *testing.T) {
 
 func TestStackToItemClearsMissingLodestoneHandle(t *testing.T) {
 	t.Parallel()
-	stack := stackFromItem(world.DefaultBlockRegistry, item.NewStack(item.Compass{TrackingHandle: 1}, 1))
+	stack := stackFromItem(tablesOf(nil, world.DefaultBlockRegistry), item.NewStack(item.Compass{TrackingHandle: 1}, 1))
 	stack.NBTData = nil
-	got := stackToItem(world.DefaultBlockRegistry, stack)
+	got := stackToItem(tablesOf(nil, world.DefaultBlockRegistry), stack)
 	compass, ok := got.Item().(item.Compass)
 	if !ok || compass.TrackingHandle != 0 {
 		t.Fatalf("decoded compass = %#v, want an unlinked compass", got.Item())

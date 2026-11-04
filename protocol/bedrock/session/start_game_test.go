@@ -13,7 +13,7 @@ import (
 )
 
 func TestCustomItemEntriesCustomItem(t *testing.T) {
-	entries := customItemEntries(world.DefaultBlockRegistry, []world.CustomItem{customItem{}})
+	entries := customItemEntries(tablesOf(nil, world.DefaultBlockRegistry), []world.CustomItem{customItem{}})
 	if len(entries) != 1 {
 		t.Fatalf("got %d item entries, want 1", len(entries))
 	}
@@ -44,7 +44,7 @@ func TestCustomItemEntriesUseServerBlockRegistry(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			names := map[string]bool{}
-			for _, entry := range customItemEntries(test.br, global) {
+			for _, entry := range customItemEntries(tablesOf(nil, test.br), global) {
 				if entry.RuntimeID == 0 {
 					t.Fatalf("entry %q has invalid runtime ID 0", entry.Name)
 				}
@@ -89,7 +89,7 @@ func (customBlockItem) Category() category.Category             { return categor
 // wool stairs, stood invisible over their fences.
 func TestBlockEntriesDefineBlocksOfData(t *testing.T) {
 	blocks := map[string]map[string]any{}
-	for _, b := range newStartContent(world.DefaultBlockRegistry, nil, nil).Blocks() {
+	for _, b := range newStartContent(tablesOf(nil, world.DefaultBlockRegistry), nil, nil).Blocks() {
 		blocks[b.Name] = b.Properties
 	}
 	for _, colour := range item.Colours() {
@@ -123,7 +123,7 @@ func TestBlocksOfDataAreBlocksOfTheServer(t *testing.T) {
 // TestDimensionDefinitions checks that the client is defined the custom
 // dimensions of the game by name, range and ID, generated as void.
 func TestDimensionDefinitions(t *testing.T) {
-	defs := newStartContent(world.DefaultBlockRegistry, nil, []world.DimensionRegistration{
+	defs := newStartContent(tablesOf(nil, world.DefaultBlockRegistry), nil, []world.DimensionRegistration{
 		{ID: 3, Name: "adamant:test", Dimension: world.Overworld},
 	}).Dimensions()
 	r := world.Overworld.Range()

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/text"
@@ -51,10 +52,11 @@ type Listener struct {
 	l    ConnListener
 	conf ListenConfig
 
-	// once makes content, the content of the game the clients are defined,
-	// as the first client starts its game.
-	once    sync.Once
-	content *startContent
+	// contentMu guards content, the content of the game the clients of
+	// each protocol are defined, made as the first client of the protocol
+	// starts its game.
+	contentMu sync.Mutex
+	content   map[*versions.Protocol]*startContent
 }
 
 // Listen returns a Listener of the connections l accepts.
@@ -63,7 +65,7 @@ func Listen(l ConnListener, conf ListenConfig) *Listener {
 		conf.Log = slog.Default()
 	}
 	if conf.Blocks != nil {
-		hashesOf(conf.Blocks)
+		tablesOf(nil, conf.Blocks).hashes()
 	}
 	return &Listener{l: l, conf: conf}
 }
@@ -91,14 +93,22 @@ func (l *Listener) Close() error {
 	return l.l.Close()
 }
 
-// contentOf returns the content of the game the clients of l are
-// defined: that of level, the default world of the server, made as the
-// first client starts its game.
-func (l *Listener) contentOf(level *world.World) *startContent {
-	l.once.Do(func() {
-		l.content = newStartContent(level.BlockRegistry(), world.CustomItems(), world.CustomDimensions())
-	})
-	return l.content
+// contentOf returns the content of the game the clients of l of a protocol
+// are defined: that of level, the default world of the server, as the
+// protocol names it, made as the first client of the protocol starts its
+// game.
+func (l *Listener) contentOf(level *world.World, p *versions.Protocol) *startContent {
+	l.contentMu.Lock()
+	defer l.contentMu.Unlock()
+	c, ok := l.content[p]
+	if !ok {
+		c = newStartContent(tablesOf(p, level.BlockRegistry()), world.CustomItems(), world.CustomDimensions())
+		if l.content == nil {
+			l.content = make(map[*versions.Protocol]*startContent)
+		}
+		l.content[p] = c
+	}
+	return c
 }
 
 // join is the client.Join of a connection of a Listener.
@@ -131,7 +141,8 @@ func (j *join) Login() client.Login {
 // StartGame, then the ItemRegistry of the custom items, and makes the
 // session of the player.
 func (j *join) Start(ctx context.Context, g client.Game) (client.Joining, error) {
-	if err := startGame(ctx, j.conn, g, j.l.contentOf(g.Level), j.l.conf.EmoteChatMuted); err != nil {
+	p := protocolOf(j.conn)
+	if err := startGame(ctx, j.conn, g, j.l.contentOf(g.Level, p), j.l.conf.EmoteChatMuted); err != nil {
 		return nil, err
 	}
 	return Config{
@@ -139,6 +150,7 @@ func (j *join) Start(ctx context.Context, g client.Game) (client.Joining, error)
 		MaxChunkRadius: g.MaxChunkRadius,
 		EmoteChatMuted: j.l.conf.EmoteChatMuted,
 		BlockRegistry:  g.World.BlockRegistry(),
+		Protocol:       p,
 		IsOperator:     g.IsOperator,
 		Roster:         g.Roster,
 	}.New(j.conn), nil

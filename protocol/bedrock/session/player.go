@@ -11,7 +11,6 @@ import (
 	"time"
 	_ "unsafe" // Imported for compiler directives.
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/client"
@@ -91,7 +90,7 @@ func (s *Session) SendPlayerSpawn(pos mgl64.Vec3) {
 
 // sendBiomes sends all the vanilla biomes to the session.
 func (s *Session) sendBiomes() {
-	definitions, stringList := biomeDefinitions()
+	definitions, stringList := s.tables().biomes()
 	s.writePacket(&v2193.BiomeDefinitionListPacket{
 		BiomeDefinitions: definitions,
 		StringList:       stringList,
@@ -100,7 +99,7 @@ func (s *Session) sendBiomes() {
 
 // sendRecipes sends the current crafting recipes to the session.
 func (s *Session) sendRecipes() {
-	d := recipesFor(s.br)
+	d := s.tables().recipeData()
 	s.recipes = maps.Clone(d.recipes)
 	s.javaRecipeIDs = maps.Clone(d.javaIDs)
 	s.writePacket(d.packet)
@@ -185,7 +184,7 @@ func (s *Session) sendInv(inv *inventory.Inventory, windowID uint32) {
 		Content:  make([]v2193.ItemInstance, 0, inv.Size()),
 	}
 	for _, i := range inv.Slots() {
-		pk.Content = append(pk.Content, instanceFromItem(s.br, i))
+		pk.Content = append(pk.Content, instanceFromItem(s.tables(), i))
 	}
 	s.writePacket(pk)
 }
@@ -195,7 +194,7 @@ func (s *Session) sendItem(item item.Stack, slot int, windowID uint32) {
 	s.writePacket(&v2193.InventorySlotPacket{
 		WindowID: windowID,
 		Slot:     uint32(slot),
-		NewItem:  instanceFromItem(s.br, item),
+		NewItem:  instanceFromItem(s.tables(), item),
 	})
 }
 
@@ -741,7 +740,7 @@ func (s *Session) ViewInventories(tx *world.Tx, c Controllable, inv menu.Invento
 				i, _ := s.offHand.Item(0)
 				s.writePacket(&v2193.InventoryContentPacket{
 					WindowID: v2193.WindowIDOffHand,
-					Content:  []v2193.ItemInstance{instanceFromItem(s.br, i)},
+					Content:  []v2193.ItemInstance{instanceFromItem(s.tables(), i)},
 				})
 			}
 		},
@@ -787,7 +786,7 @@ func (s *Session) SendHeldSlot(slot int, c Controllable, force bool) {
 	mainHand, _ := c.HeldItems()
 	s.writePacket(&v2193.MobEquipmentPacket{
 		EntityRuntimeID: selfEntityRuntimeID,
-		NewItem:         instanceFromItem(s.br, mainHand),
+		NewItem:         instanceFromItem(s.tables(), mainHand),
 		InventorySlot:   byte(slot),
 		HotBarSlot:      byte(slot),
 	})
@@ -1206,18 +1205,19 @@ func valueOrDefault[T comparable](v, def T) T {
 	return v
 }
 
-// stackFromItem converts an item.Stack to its network ItemStack representation.
-func stackFromItem(br world.BlockRegistry, it item.Stack) v2193.ItemStack {
+// stackFromItem converts an item.Stack to its network ItemStack representation,
+// with the item and block IDs of the tables passed.
+func stackFromItem(w *wireTables, it item.Stack) v2193.ItemStack {
 	if it.Empty() {
 		return v2193.ItemStack{}
 	}
 
 	var blockRuntimeID uint32
 	if b, ok := it.Item().(world.Block); ok {
-		blockRuntimeID = networkBlockID(br, b)
+		blockRuntimeID = w.blockID(b)
 	}
 
-	rid, meta, _ := bedrockdata.ItemRuntimeID(it.Item())
+	rid, meta, _ := w.itemRuntimeID(it.Item())
 
 	return v2193.ItemStack{
 		NetworkID:      rid,
@@ -1228,9 +1228,11 @@ func stackFromItem(br world.BlockRegistry, it item.Stack) v2193.ItemStack {
 	}
 }
 
-// stackToItem converts a network ItemStack representation back to an item.Stack.
-func stackToItem(br world.BlockRegistry, it v2193.ItemStack) item.Stack {
-	t, ok := bedrockdata.ItemByRuntimeID(it.NetworkID, int16(it.MetadataValue))
+// stackToItem converts a network ItemStack representation back to an item.Stack,
+// by the item and block IDs of the tables passed.
+func stackToItem(w *wireTables, it v2193.ItemStack) item.Stack {
+	br := w.br
+	t, ok := w.itemByRuntimeID(it.NetworkID, int16(it.MetadataValue))
 	if !ok {
 		t = block.Air{}
 	}
@@ -1238,7 +1240,7 @@ func stackToItem(br world.BlockRegistry, it v2193.ItemStack) item.Stack {
 		// Clients name the block of a block item by its network block hash. An
 		// unknown hash or a block that is no item leaves air.
 		t = block.Air{}
-		if rid, known := hashesOf(br).hashToRuntimeID(uint32(it.BlockRuntimeID)); known {
+		if rid, known := w.hashes().hashToRuntimeID(uint32(it.BlockRuntimeID)); known {
 			if b, found := br.BlockByRuntimeID(rid); found {
 				if blockItem, isItem := b.(world.Item); isItem {
 					t = blockItem
@@ -1258,24 +1260,24 @@ func stackToItem(br world.BlockRegistry, it v2193.ItemStack) item.Stack {
 }
 
 // instanceFromItem converts an item.Stack to its network ItemInstance representation.
-func instanceFromItem(br world.BlockRegistry, it item.Stack) v2193.ItemInstance {
+func instanceFromItem(w *wireTables, it item.Stack) v2193.ItemInstance {
 	return v2193.ItemInstance{
 		StackNetworkID: item_id(it),
-		Stack:          stackFromItem(br, it),
+		Stack:          stackFromItem(w, it),
 	}
 }
 
 // stacksToRecipeStacks converts a list of item.Stacks to their protocol representation with damage stripped for recipes.
-func stacksToRecipeStacks(br world.BlockRegistry, inputs []item.Stack) []v2193.ItemStack {
+func stacksToRecipeStacks(w *wireTables, inputs []item.Stack) []v2193.ItemStack {
 	items := make([]v2193.ItemStack, 0, len(inputs))
 	for _, i := range inputs {
-		items = append(items, deleteDamage(stackFromItem(br, i)))
+		items = append(items, deleteDamage(stackFromItem(w, i)))
 	}
 	return items
 }
 
 // stacksToIngredientItems converts a list of item.Stacks to recipe ingredient items used over the network.
-func stacksToIngredientItems(_ world.BlockRegistry, inputs []recipe.Item) []v2193.ItemDescriptorCount {
+func stacksToIngredientItems(inputs []recipe.Item) []v2193.ItemDescriptorCount {
 	items := make([]v2193.ItemDescriptorCount, 0, len(inputs))
 	for _, i := range inputs {
 		var d v2193.ItemDescriptor = &v2193.InvalidItemDescriptor{}

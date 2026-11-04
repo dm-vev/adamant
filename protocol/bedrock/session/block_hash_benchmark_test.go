@@ -37,11 +37,11 @@ func BenchmarkEncodeSubChunkPalette(b *testing.B) {
 	}
 	c.Compact()
 	// The hashes of the registry are built as the server starts, not here.
-	_ = encodeSubChunk(c, 0)
+	_ = encodeSubChunk(c, 0, hashesOf(c.BlockRegistry()))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		_ = encodeSubChunk(c, 0)
+		_ = encodeSubChunk(c, 0, hashesOf(c.BlockRegistry()))
 	}
 }
 
@@ -59,11 +59,11 @@ func BenchmarkBlockUpdatePackets(b *testing.B) {
 		for i := range updates {
 			updates[i] = world.BlockUpdate{Pos: cube.Pos{i % 16, i / 16, 0}, Block: states[i%len(states)]}
 		}
-		_ = blockUpdatePackets(world.DefaultBlockRegistry, updates)
+		_ = blockUpdatePackets(tablesOf(nil, world.DefaultBlockRegistry), updates)
 		b.Run(tc.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				_ = blockUpdatePackets(world.DefaultBlockRegistry, updates)
+				_ = blockUpdatePackets(tablesOf(nil, world.DefaultBlockRegistry), updates)
 			}
 		})
 	}

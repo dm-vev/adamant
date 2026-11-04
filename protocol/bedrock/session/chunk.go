@@ -118,7 +118,7 @@ func (s *Session) subChunkEntry(offset v2193.SubChunkOffset, ind int16, col *wor
 			Offset:              offset,
 		}
 	}
-	serialisedSubChunk := networkSubChunkPayload(col, ind)
+	serialisedSubChunk := s.tables().networkSubChunkPayload(col, ind)
 	blockEntityPayload := subChunkBlockEntityPayload(col, ind)
 
 	entry := v2193.SubChunkEntry{
@@ -184,7 +184,7 @@ func (s *Session) dimensionID(dim world.Dimension) int32 {
 func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *world.Column) {
 	c := col.Chunk
 	if subChunkRequests {
-		biomes := networkBiomePayload(col)
+		biomes := s.tables().networkBiomePayload(col)
 		if hash := xxhash.Sum64(biomes); s.trackBlob(hash, biomes) {
 			s.writePacket(&v2193.LevelChunkPacket{
 				Dimension:     s.dimensionID(dim),
@@ -201,7 +201,7 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 	}
 
 	var (
-		data   = networkChunkData(col)
+		data   = s.tables().networkChunkData(col)
 		count  = uint32(len(data.SubChunks))
 		blobs  = append(data.SubChunks, data.Biomes)
 		hashes = make([]uint64, len(blobs))
@@ -247,7 +247,7 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col 
 			SubChunkCount: 0,
 			Position:      v2193.ChunkPos(pos),
 			SubChunkLimit: proto.Some(int32(c.HighestFilledSubChunk())),
-			RawPayload:    limitedChunkPayload(col),
+			RawPayload:    s.tables().limitedChunkPayload(col),
 		})
 		return
 	}
@@ -256,7 +256,7 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col 
 		Dimension:     s.dimensionID(dim),
 		Position:      v2193.ChunkPos{pos.X(), pos.Z()},
 		SubChunkCount: uint32(len(c.Sub())),
-		RawPayload:    fullChunkPayload(col),
+		RawPayload:    s.tables().fullChunkPayload(col),
 	})
 }
 
@@ -299,53 +299,79 @@ func joinPayloads(first, second []byte) []byte {
 	return raw
 }
 
-func networkChunkData(col *world.Column) chunk.SerialisedData {
+// The payloads of a column are kept in the caches of the column, which
+// hold one encoding of each: that of the tables whose blocks are the
+// game's own, which every protocol the adapter speaks has today. Tables of
+// another class encode the payloads anew until the caches are keyed by
+// the class of their tables.
+
+// cachesColumn reports whether the payloads of the tables may be kept in
+// the caches of a column: whether they name blocks as the game does, which
+// is so of the tables of a protocol for every registry or for none.
+func (w *wireTables) cachesColumn() bool {
+	if w.blocks.Load() == nil {
+		w.hashes()
+	}
+	return w.game.Load()
+}
+
+func (w *wireTables) networkChunkData(col *world.Column) chunk.SerialisedData {
 	sub := col.Chunk.Sub()
 	data := chunk.SerialisedData{
 		SubChunks: make([][]byte, len(sub)),
-		Biomes:    networkBiomePayload(col),
+		Biomes:    w.networkBiomePayload(col),
 	}
 	for i := range sub {
-		data.SubChunks[i] = networkSubChunkPayload(col, int16(i))
+		data.SubChunks[i] = w.networkSubChunkPayload(col, int16(i))
 	}
 	return data
 }
 
-func networkBiomePayload(col *world.Column) []byte {
-	if payload, ok := col.CachedNetworkBiomePayload(); ok {
+func (w *wireTables) networkBiomePayload(col *world.Column) []byte {
+	cache := w.cachesColumn()
+	if payload, ok := col.CachedNetworkBiomePayload(); ok && cache {
 		return payload
 	}
 	payload := encodeBiomes(col.Chunk)
-	col.CacheNetworkBiomePayload(payload)
+	if cache {
+		col.CacheNetworkBiomePayload(payload)
+	}
 	return payload
 }
 
-func networkSubChunkPayload(col *world.Column, ind int16) []byte {
-	if payload, ok := col.CachedNetworkSubChunkPayload(ind); ok {
+func (w *wireTables) networkSubChunkPayload(col *world.Column, ind int16) []byte {
+	cache := w.cachesColumn()
+	if payload, ok := col.CachedNetworkSubChunkPayload(ind); ok && cache {
 		return payload
 	}
-	payload := encodeSubChunk(col.Chunk, int(ind))
-	col.CacheNetworkSubChunkPayload(ind, payload)
+	payload := encodeSubChunk(col.Chunk, int(ind), w.blocksOf(col.Chunk.BlockRegistry()))
+	if cache {
+		col.CacheNetworkSubChunkPayload(ind, payload)
+	}
 	return payload
 }
 
-func limitedChunkPayload(col *world.Column) []byte {
-	if payload, ok := col.CachedLimitedChunkPayload(); ok {
+func (w *wireTables) limitedChunkPayload(col *world.Column) []byte {
+	cache := w.cachesColumn()
+	if payload, ok := col.CachedLimitedChunkPayload(); ok && cache {
 		return payload
 	}
-	biomes := networkBiomePayload(col)
+	biomes := w.networkBiomePayload(col)
 	raw := make([]byte, len(biomes)+1)
 	copy(raw, biomes)
-	col.CacheLimitedChunkPayload(raw)
+	if cache {
+		col.CacheLimitedChunkPayload(raw)
+	}
 	return raw
 }
 
-func fullChunkPayload(col *world.Column) []byte {
-	if payload, ok := col.CachedFullChunkPayload(); ok {
+func (w *wireTables) fullChunkPayload(col *world.Column) []byte {
+	cache := w.cachesColumn()
+	if payload, ok := col.CachedFullChunkPayload(); ok && cache {
 		return payload
 	}
 
-	data := networkChunkData(col)
+	data := w.networkChunkData(col)
 	totalLen := 1 + len(data.Biomes)
 	for _, subChunk := range data.SubChunks {
 		totalLen += len(subChunk)
@@ -360,7 +386,9 @@ func fullChunkPayload(col *world.Column) []byte {
 	raw = append(raw, data.Biomes...)
 	raw = append(raw, 0)
 	raw = append(raw, blockEntityPayload...)
-	col.CacheFullChunkPayload(raw)
+	if cache {
+		col.CacheFullChunkPayload(raw)
+	}
 	return raw
 }
 

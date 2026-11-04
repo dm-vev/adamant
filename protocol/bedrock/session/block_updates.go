@@ -13,27 +13,26 @@ import (
 // each, which costs less until then.
 const subChunkBlocksAt = 8
 
-// networkBlockID returns the ID clients know a block by: its network block
-// hash, as BDS sends block IDs with block network ID hashes enabled. A
-// session has the hashes of its registry at hand, see Session.blockHash.
+// networkBlockID returns the ID clients of the model know a block by: its
+// network block hash, as BDS sends block IDs with block network ID hashes
+// enabled. A session has the tables of its protocol at hand, see
+// Session.blockHash.
 func networkBlockID(br world.BlockRegistry, b world.Block) uint32 {
-	return hashesOf(br).blockID(br, b)
+	return tablesOf(nil, br).blockID(b)
 }
 
-// blockHash returns the ID clients know a block by, as networkBlockID, from
-// the hashes of the registry of the session.
+// blockHash returns the ID the client of the session knows a block by, as
+// networkBlockID, from the tables of its protocol and registry.
 func (s *Session) blockHash(b world.Block) uint32 {
-	h := s.hashes
-	if h == nil {
-		h = hashesOf(s.br)
-	}
-	return h.blockID(s.br, b)
+	return s.tables().blockID(b)
 }
 
 // sharedBlockUpdates is what the viewers of a world.BlockUpdates share of it:
 // its packets, encoded once, and the changes that carry a block actor, whose
-// data each viewer is sent as it sees it.
+// data each viewer is sent as it sees it. The packets name blocks by the
+// hashes of one table; a viewer of another makes its own.
 type sharedBlockUpdates struct {
+	blocks  *blockHashes
 	packets []*sharedPacket
 	actors  []world.BlockUpdate
 }
@@ -52,9 +51,12 @@ func (s *Session) ViewBlockUpdates(u *world.BlockUpdates) {
 		}
 	}
 	shared, _ := u.Shared.(*sharedBlockUpdates)
-	if shared == nil {
-		shared = blockUpdatePackets(s.br, u.Updates)
-		u.Shared = shared
+	if shared == nil || shared.blocks != s.tables().hashes() {
+		mine := blockUpdatePackets(s.tables(), u.Updates)
+		if shared == nil {
+			u.Shared = mine
+		}
+		shared = mine
 	}
 	for _, pk := range shared.packets {
 		s.writePacket(pk)
@@ -77,9 +79,9 @@ func (s *Session) ViewBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 // UpdateBlock for each change of a sub-chunk with few, an
 // UpdateSubChunkBlocks for the changes of one with many, as BDS sends those
 // of a fill.
-func blockUpdatePackets(br world.BlockRegistry, updates []world.BlockUpdate) *sharedBlockUpdates {
-	shared := &sharedBlockUpdates{}
-	hashes := hashesOf(br)
+func blockUpdatePackets(w *wireTables, updates []world.BlockUpdate) *sharedBlockUpdates {
+	br, hashes := w.br, w.hashes()
+	shared := &sharedBlockUpdates{blocks: hashes}
 	counts := make(map[cube.Pos]int, 4)
 	for _, u := range updates {
 		counts[subChunkOf(u.Pos)]++

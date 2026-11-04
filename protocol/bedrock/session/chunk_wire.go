@@ -19,15 +19,15 @@ var chunkWireBufferPool = sync.Pool{
 }
 
 // encodeSubChunk returns the sub-chunk at index ind of the chunk passed as
-// Bedrock clients read it: the sub-chunk version, the count of its layers and
-// its Y, then each layer as a paletted storage whose palette holds network
-// block hashes, as BDS sends them with block network ID hashes enabled.
+// Bedrock clients that know blocks by the hashes passed read it: the
+// sub-chunk version, the count of its layers and its Y, then each layer as
+// a paletted storage whose palette holds network block hashes, as BDS
+// sends them with block network ID hashes enabled.
 // Clients resolve a hash by its state, not by where the state sits in their
 // own palette.
-func encodeSubChunk(c *chunk.Chunk, ind int) []byte {
+func encodeSubChunk(c *chunk.Chunk, ind int, hashes *blockHashes) []byte {
 	buf := chunkWireBufferPool.Get().(*[]byte)
 	layers := c.Sub()[ind].Layers()
-	hashes := hashesOf(c.BlockRegistry())
 	b := append((*buf)[:0], chunk.SubChunkVersion, byte(len(layers)), uint8(ind+(c.Range()[0]>>4)))
 	for _, storage := range layers {
 		var palette bool

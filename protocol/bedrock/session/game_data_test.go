@@ -76,8 +76,8 @@ func TestGameDataFromGame(t *testing.T) {
 		t.Cleanup(func() { _ = w.Close() })
 		return w
 	}
-	plain := newStartContent(world.DefaultBlockRegistry, nil, nil)
-	custom := newStartContent(world.DefaultBlockRegistry, nil, []world.DimensionRegistration{{ID: 3, Name: "adamant:test", Dimension: world.Overworld}})
+	plain := newStartContent(tablesOf(nil, world.DefaultBlockRegistry), nil, nil)
+	custom := newStartContent(tablesOf(nil, world.DefaultBlockRegistry), nil, []world.DimensionRegistration{{ID: 3, Name: "adamant:test", Dimension: world.Overworld}})
 
 	survival := newWorld(world.Overworld, world.GameModeSurvival, true)
 	nether := newWorld(world.Nether, world.GameModeSurvival, true)

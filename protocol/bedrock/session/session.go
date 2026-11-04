@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client"
@@ -205,9 +206,9 @@ type Session struct {
 	inputLocks   uint32
 
 	br world.BlockRegistry
-	// hashes are the network block hashes of br, by which the session sends
-	// blocks.
-	hashes *blockHashes
+	// wire holds the tables of the protocol of the connection and of br,
+	// by which the session encodes blocks, items, biomes and entities.
+	wire *wireTables
 }
 
 // debugShapeUpdate represents a pending debug shape mutation. A nil shape removes the matching ID.
@@ -270,6 +271,10 @@ type Config struct {
 
 	// BlockRegistry overrides the registry used for network serialization. If nil, world.DefaultBlockRegistry is used.
 	BlockRegistry world.BlockRegistry
+	// Protocol is the protocol the connection speaks, by whose names of the
+	// content of the game the session encodes it. Nil is the model, the
+	// protocol of the codecs the session is compiled against.
+	Protocol *versions.Protocol
 	// Roster is the list of the players of the server, on which Bind lists
 	// the player of the Session and its close unlists it. If nil, New gives
 	// the Session a Roster of its own, on which it lists only its own
@@ -341,11 +346,12 @@ func (conf Config) New(conn Conn) *Session {
 	} else {
 		s.br = conf.BlockRegistry
 	}
-	s.hashes = hashesOf(s.br)
+	s.wire = tablesOf(conf.Protocol, s.br)
+	s.wire.hashes()
 
 	s.registerHandlers()
 	s.sendBiomes()
-	s.writePacket(creativePacket(s.br))
+	s.writePacket(s.wire.creativePacket())
 	s.sendRecipes()
 	s.sendArmourTrimData()
 	s.SendSpeed(0.1)
@@ -951,7 +957,7 @@ type actorIdentifier struct {
 // order BDS lists them (see actorTypesInOrder).
 func (s *Session) sendAvailableEntities(w *world.World) {
 	var identifiers []actorIdentifier
-	for _, id := range actorTypesInOrder(w.EntityRegistry(), bdsActorIdentifierRank) {
+	for _, id := range s.tables().entities(actorTypesInOrder(w.EntityRegistry(), bdsActorIdentifierRank)) {
 		identifiers = append(identifiers, actorIdentifier{ID: id})
 	}
 	serialisedEntityData, err := nbt.Marshal(map[string]any{"idlist": identifiers})

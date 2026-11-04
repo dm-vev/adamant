@@ -217,7 +217,7 @@ func (c *Conn) WritePacket(pk proto.Packet) error {
 		return c.b.SendBatch(msg)
 	}
 	if p := c.proto; p != nil && p.Out != nil {
-		for _, pk := range p.Out(pk) {
+		for _, pk := range p.Out(Unwrap(pk)) {
 			if err := c.write(pk); err != nil {
 				return err
 			}
@@ -225,6 +225,26 @@ func (c *Conn) WritePacket(pk proto.Packet) error {
 		return nil
 	}
 	return c.write(pk)
+}
+
+// Wrapper is a packet of the model that wraps another to be written in its
+// stead, such as one that keeps its bytes once encoded for every client it
+// goes to. A connection that converts packets converts the one wrapped.
+type Wrapper interface {
+	proto.Packet
+	Unwrap() proto.Packet
+}
+
+// Unwrap returns the packet a packet wraps, through every Wrapper, or the
+// packet itself.
+func Unwrap(pk proto.Packet) proto.Packet {
+	for {
+		w, ok := pk.(Wrapper)
+		if !ok {
+			return pk
+		}
+		pk = w.Unwrap()
+	}
 }
 
 // write adds a packet of the protocol of the client to the batch.

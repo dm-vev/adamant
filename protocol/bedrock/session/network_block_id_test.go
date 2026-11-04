@@ -29,7 +29,7 @@ func TestChunksNameBlocksByNetworkHash(t *testing.T) {
 	c.SetBlock(0, 0, 0, 0, stone)
 	c.SetBlock(1, 0, 0, 0, grass)
 	index := int(-world.Overworld.Range().Min() >> 4)
-	payload := encodeSubChunk(c, index)
+	payload := encodeSubChunk(c, index, hashesOf(c.BlockRegistry()))
 
 	r := wire.NewReader(payload[3:])
 	bits := int(r.Uint8() >> 1)
@@ -53,17 +53,17 @@ func TestChunksNameBlocksByNetworkHash(t *testing.T) {
 func TestItemStacksNameBlocksByNetworkHash(t *testing.T) {
 	t.Parallel()
 	br := world.DefaultBlockRegistry
-	stack := stackFromItem(br, item.NewStack(block.Stone{}, 3))
+	stack := stackFromItem(tablesOf(nil, br), item.NewStack(block.Stone{}, 3))
 	if uint32(stack.BlockRuntimeID) != bdsStoneNetworkID {
 		t.Fatalf("stone item has block ID %d, BDS sends %d", uint32(stack.BlockRuntimeID), uint32(bdsStoneNetworkID))
 	}
-	back := stackToItem(br, stack)
+	back := stackToItem(tablesOf(nil, br), stack)
 	if _, ok := back.Item().(block.Stone); !ok || back.Count() != 3 {
 		t.Fatalf("stone item read back as %v", back)
 	}
 	unknown := stack
 	unknown.BlockRuntimeID = int32(binary.LittleEndian.Uint32([]byte{1, 2, 3, 4}))
-	if !stackToItem(br, unknown).Empty() {
+	if !stackToItem(tablesOf(nil, br), unknown).Empty() {
 		t.Fatal("an unknown network block ID resolved to a block")
 	}
 }

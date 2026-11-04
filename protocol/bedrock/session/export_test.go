@@ -31,8 +31,10 @@ func (s *Session) Window() (m *menu.Menu, id, containerType uint32) {
 
 // EncodeSubChunk and EncodeBiomes encode the parts of a chunk as the session
 // sends them, for the tests of the encoding.
-func EncodeSubChunk(c *chunk.Chunk, ind int) []byte { return encodeSubChunk(c, ind) }
-func EncodeBiomes(c *chunk.Chunk) []byte            { return encodeBiomes(c) }
+func EncodeSubChunk(c *chunk.Chunk, ind int) []byte {
+	return encodeSubChunk(c, ind, hashesOf(c.BlockRegistry()))
+}
+func EncodeBiomes(c *chunk.Chunk) []byte { return encodeBiomes(c) }
 
 // NetworkItemNBT returns the item NBT ItemStack sends for a stack, for the
 // tests that build the stacks clients send.

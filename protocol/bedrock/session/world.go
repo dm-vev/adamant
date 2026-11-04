@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -142,7 +141,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			s.writePacket(&v2193.AddItemActorPacket{
 				EntityUniqueID:  s.entityUniqueID(e),
 				EntityRuntimeID: runtimeID,
-				Item:            instanceFromItem(s.br, v.Behaviour().(*entity.ItemBehaviour).Item()),
+				Item:            instanceFromItem(s.tables(), v.Behaviour().(*entity.ItemBehaviour).Item()),
 				Position:        vec64To32(entityNetworkPosition(e, v.Position())),
 				Velocity:        vec64To32(v.Velocity()),
 				EntityMetadata:  toMetadata(metadata),
@@ -483,14 +482,14 @@ func (s *Session) ViewEntityItems(e world.Entity) {
 	if !shown || !mainHand.Empty() {
 		s.writePacket(&v2193.MobEquipmentPacket{
 			EntityRuntimeID: runtimeID,
-			NewItem:         instanceFromItem(s.br, mainHand),
+			NewItem:         instanceFromItem(s.tables(), mainHand),
 		})
 	}
 	// Show the off-hand item.
 	if !shown || !offHand.Empty() {
 		s.writePacket(&v2193.MobEquipmentPacket{
 			EntityRuntimeID: runtimeID,
-			NewItem:         instanceFromItem(s.br, offHand),
+			NewItem:         instanceFromItem(s.tables(), offHand),
 			WindowID:        v2193.WindowIDOffHand,
 		})
 	}
@@ -552,11 +551,11 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 	// Show the entity's armour and body equipment.
 	s.writePacket(&v2193.MobArmourEquipmentPacket{
 		EntityRuntimeID: runtimeID,
-		Helmet:          instanceFromItem(s.br, helm),
-		Chestplate:      instanceFromItem(s.br, chestplate),
-		Leggings:        instanceFromItem(s.br, leggings),
-		Boots:           instanceFromItem(s.br, boots),
-		Body:            instanceFromItem(s.br, body),
+		Helmet:          instanceFromItem(s.tables(), helm),
+		Chestplate:      instanceFromItem(s.tables(), chestplate),
+		Leggings:        instanceFromItem(s.tables(), leggings),
+		Boots:           instanceFromItem(s.tables(), boots),
+		Body:            instanceFromItem(s.tables(), body),
 	})
 }
 
@@ -748,7 +747,7 @@ func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(pro
 			Position:  vec64To32(pos),
 		})
 	case particle.EggSmash:
-		rid, meta, _ := bedrockdata.ItemRuntimeID(item.Egg{})
+		rid, meta, _ := s.tables().itemRuntimeID(item.Egg{})
 		out(&v2193.LevelEventPacket{
 			EventType: v2193.LevelEventParticleLegacyEvent | 14,
 			EventData: (rid << 16) | int32(meta),
@@ -1661,7 +1660,7 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 				// Not consumable, refer to the comment above.
 				return
 			}
-			rid, meta, _ := bedrockdata.ItemRuntimeID(it)
+			rid, meta, _ := s.tables().itemRuntimeID(it)
 			s.writePacket(&v2193.ActorEventPacket{
 				EntityRuntimeID: s.entityRuntimeID(e),
 				EventType:       v2193.ActorEventFeed,
@@ -2090,7 +2089,7 @@ func (s *Session) ViewSlotChange(slot int, newItem item.Stack) {
 	s.writePacket(&v2193.InventorySlotPacket{
 		WindowID: s.openedWindowID.Load(),
 		Slot:     uint32(slot),
-		NewItem:  instanceFromItem(s.br, newItem),
+		NewItem:  instanceFromItem(s.tables(), newItem),
 	})
 }
 

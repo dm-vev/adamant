@@ -57,17 +57,17 @@ func (h *InventoryTransactionHandler) Handle(p proto.Packet, s *Session, tx *wor
 		h.resendInventories(s)
 		return
 	case *v2193.UseItemOnEntityTransactionData:
-		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.br, data.HeldItem.Stack), c); err != nil {
+		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.tables(), data.HeldItem.Stack), c); err != nil {
 			return
 		}
 		return h.handleUseItemOnEntityTransaction(data, s, tx, c)
 	case *v2193.UseItemTransactionData:
-		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.br, data.HeldItem.Stack), c); err != nil {
+		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.tables(), data.HeldItem.Stack), c); err != nil {
 			return
 		}
 		return h.handleUseItemTransaction(data, s, c)
 	case *v2193.ReleaseItemTransactionData:
-		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.br, data.HeldItem.Stack), c); err != nil {
+		if err = s.VerifyAndSetHeldSlot(int(data.HotBarSlot), stackToItem(s.tables(), data.HeldItem.Stack), c); err != nil {
 			return
 		}
 		return h.handleReleaseItemTransaction(c)
@@ -110,12 +110,12 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *v2193.Inventor
 		windowID, hasWindowID := action.WindowID.Value()
 		switch {
 		case action.SourceType == v2193.InventoryActionSourceWorld && action.InventorySlot == 0:
-			if old := stackToItem(s.br, action.OldItem.Stack); !old.Empty() {
+			if old := stackToItem(s.tables(), action.OldItem.Stack); !old.Empty() {
 				return fmt.Errorf("unexpected non-empty old item in transaction action: %#v", action.OldItem)
 			}
 			count = int(action.NewItem.Stack.Count)
 		case action.SourceType == v2193.InventoryActionSourceContainer && hasWindowID && windowID == v2193.WindowIDInventory:
-			if expected = stackToItem(s.br, action.OldItem.Stack); expected.Empty() {
+			if expected = stackToItem(s.tables(), action.OldItem.Stack); expected.Empty() {
 				return fmt.Errorf("unexpected empty old item in transaction action: %#v", action.OldItem)
 			}
 			slot = int(action.InventorySlot)

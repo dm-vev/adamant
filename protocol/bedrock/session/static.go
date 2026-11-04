@@ -1,15 +1,11 @@
 package session
 
 import (
-	"reflect"
 	"slices"
-	"sync"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/google/uuid"
@@ -23,8 +19,13 @@ type staticPacket struct{ proto.Packet }
 // StaticPacket marks the packet as static.
 func (*staticPacket) StaticPacket() {}
 
+// Unwrap returns the packet, which a connection that converts packets
+// converts for its protocol.
+func (p *staticPacket) Unwrap() proto.Packet { return p.Packet }
+
 // recipeData is what sendRecipes sends and what a session keeps of it,
-// the same for every session of a block registry, so made once.
+// the same for every session of a protocol and a block registry, so made
+// once.
 type recipeData struct {
 	// count is the number of recipes registered when it was made.
 	count   int
@@ -33,32 +34,20 @@ type recipeData struct {
 	javaIDs map[string][]string
 }
 
-var recipeCache struct {
-	sync.Mutex
-	data map[world.BlockRegistry]*recipeData
-}
-
-// recipesFor returns the recipe data of a block registry, made again once
-// more recipes were registered.
-func recipesFor(br world.BlockRegistry) *recipeData {
+// recipeData returns the recipe data of the tables, made again once more
+// recipes were registered.
+func (w *wireTables) recipeData() *recipeData {
 	all := recipe.Recipes()
-	if !reflect.TypeOf(br).Comparable() {
-		return newRecipeData(br, all)
-	}
-	recipeCache.Lock()
-	defer recipeCache.Unlock()
-	if d := recipeCache.data[br]; d != nil && d.count == len(all) {
+	w.recipesMu.Lock()
+	defer w.recipesMu.Unlock()
+	if d := w.recipes; d != nil && d.count == len(all) {
 		return d
 	}
-	d := newRecipeData(br, all)
-	if recipeCache.data == nil {
-		recipeCache.data = make(map[world.BlockRegistry]*recipeData)
-	}
-	recipeCache.data[br] = d
-	return d
+	w.recipes = newRecipeData(w, all)
+	return w.recipes
 }
 
-func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
+func newRecipeData(w *wireTables, all []recipe.Recipe) *recipeData {
 	d := &recipeData{count: len(all), recipes: make(map[uint32]recipe.Recipe, len(all)), javaIDs: make(map[string][]string)}
 	var (
 		shapedRecipes            []v2193.ShapedRecipe
@@ -80,8 +69,8 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			shapelessRecipes = append(shapelessRecipes, v2193.ShapelessRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Priority:        int32(i.Priority()),
-				Input:           stacksToIngredientItems(br, i.Input()),
-				Output:          stacksToRecipeStacks(br, i.Output()),
+				Input:           stacksToIngredientItems(i.Input()),
+				Output:          stacksToRecipeStacks(w, i.Output()),
 				Block:           i.Block(),
 				RecipeNetworkID: networkID,
 			})
@@ -89,8 +78,8 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			userDataShapelessRecipes = append(userDataShapelessRecipes, v2193.UserDataShapelessRecipe{ShapelessRecipe: v2193.ShapelessRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Priority:        int32(i.Priority()),
-				Input:           stacksToIngredientItems(br, i.Input()),
-				Output:          stacksToRecipeStacks(br, i.Output()),
+				Input:           stacksToIngredientItems(i.Input()),
+				Output:          stacksToRecipeStacks(w, i.Output()),
 				Block:           i.Block(),
 				RecipeNetworkID: networkID,
 			}})
@@ -106,14 +95,14 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 				Priority:        int32(i.Priority()),
 				Width:           int32(i.Shape().Width()),
 				Height:          int32(i.Shape().Height()),
-				Input:           stacksToIngredientItems(br, i.Input()),
-				Output:          stacksToRecipeStacks(br, i.Output()),
+				Input:           stacksToIngredientItems(i.Input()),
+				Output:          stacksToRecipeStacks(w, i.Output()),
 				Block:           i.Block(),
 				AssumeSymmetry:  true,
 				RecipeNetworkID: networkID,
 			})
 		case recipe.SmithingTransform:
-			input, output := stacksToIngredientItems(br, i.Input()), stacksToRecipeStacks(br, i.Output())
+			input, output := stacksToIngredientItems(i.Input()), stacksToRecipeStacks(w, i.Output())
 			smithingTransformRecipes = append(smithingTransformRecipes, v2193.SmithingTransformRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Base:            input[0],
@@ -124,7 +113,7 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 				RecipeNetworkID: networkID,
 			})
 		case recipe.SmithingTrim:
-			input := stacksToIngredientItems(br, i.Input())
+			input := stacksToIngredientItems(i.Input())
 			smithingTrimRecipes = append(smithingTrimRecipes, v2193.SmithingTrimRecipe{
 				RecipeID:        d.registerJavaID(i),
 				Base:            input[0],
@@ -134,9 +123,9 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 				RecipeNetworkID: networkID,
 			})
 		case recipe.Potion:
-			inputRuntimeID, inputMeta, _ := bedrockdata.ItemRuntimeID(i.Input()[0].(item.Stack).Item())
-			reagentRuntimeID, reagentMeta, _ := bedrockdata.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
-			outputRuntimeID, outputMeta, _ := bedrockdata.ItemRuntimeID(i.Output()[0].Item())
+			inputRuntimeID, inputMeta, _ := w.itemRuntimeID(i.Input()[0].(item.Stack).Item())
+			reagentRuntimeID, reagentMeta, _ := w.itemRuntimeID(i.Input()[1].(item.Stack).Item())
+			outputRuntimeID, outputMeta, _ := w.itemRuntimeID(i.Output()[0].Item())
 
 			potionRecipes = append(potionRecipes, v2193.PotionRecipe{
 				InputPotionID:        inputRuntimeID,
@@ -148,9 +137,9 @@ func newRecipeData(br world.BlockRegistry, all []recipe.Recipe) *recipeData {
 			})
 
 		case recipe.PotionContainerChange:
-			inputRuntimeID, _, _ := bedrockdata.ItemRuntimeID(i.Input()[0].(item.Stack).Item())
-			reagentRuntimeID, _, _ := bedrockdata.ItemRuntimeID(i.Input()[1].(item.Stack).Item())
-			outputRuntimeID, _, _ := bedrockdata.ItemRuntimeID(i.Output()[0].Item())
+			inputRuntimeID, _, _ := w.itemRuntimeID(i.Input()[0].(item.Stack).Item())
+			reagentRuntimeID, _, _ := w.itemRuntimeID(i.Input()[1].(item.Stack).Item())
+			outputRuntimeID, _, _ := w.itemRuntimeID(i.Output()[0].Item())
 
 			potionContainerChange = append(potionContainerChange, v2193.PotionContainerChangeRecipe{
 				InputItemID:   inputRuntimeID,
@@ -197,7 +186,8 @@ func (d *recipeData) registerJavaMultiID(r recipe.Multi) {
 	}
 }
 
-// creativeData is the CreativeContent of a block registry.
+// creativeData is the CreativeContent of the tables of a protocol and a
+// block registry.
 type creativeData struct {
 	// groups and items are the numbers of creative groups and items
 	// registered when it was made.
@@ -205,40 +195,28 @@ type creativeData struct {
 	packet        *staticPacket
 }
 
-var creativeCache struct {
-	sync.Mutex
-	data map[world.BlockRegistry]*creativeData
-}
-
-// creativePacket returns the CreativeContent of a block registry, made
-// again once more creative groups or items were registered.
-func creativePacket(br world.BlockRegistry) proto.Packet {
+// creativePacket returns the CreativeContent of the tables, made again
+// once more creative groups or items were registered.
+func (w *wireTables) creativePacket() proto.Packet {
 	groups, items := creative.Groups(), creative.Items()
-	if !reflect.TypeOf(br).Comparable() {
-		return creativeContent(br, groups, items)
-	}
-	creativeCache.Lock()
-	defer creativeCache.Unlock()
-	if d := creativeCache.data[br]; d != nil && d.groups == len(groups) && d.items == len(items) {
+	w.creativeMu.Lock()
+	defer w.creativeMu.Unlock()
+	if d := w.creative; d != nil && d.groups == len(groups) && d.items == len(items) {
 		return d.packet
 	}
-	d := &creativeData{groups: len(groups), items: len(items), packet: &staticPacket{creativeContent(br, groups, items)}}
-	if creativeCache.data == nil {
-		creativeCache.data = make(map[world.BlockRegistry]*creativeData)
-	}
-	creativeCache.data[br] = d
-	return d.packet
+	w.creative = &creativeData{groups: len(groups), items: len(items), packet: &staticPacket{creativeContent(w, groups, items)}}
+	return w.creative.packet
 }
 
 // creativeContent returns the creative groups and the items in them as
 // protocol item stacks.
-func creativeContent(br world.BlockRegistry, groups []creative.Group, items []creative.Item) *v2193.CreativeContentPacket {
+func creativeContent(w *wireTables, groups []creative.Group, items []creative.Item) *v2193.CreativeContentPacket {
 	pk := &v2193.CreativeContentPacket{Groups: make([]v2193.CreativeGroup, 0, len(groups)), Items: make([]v2193.CreativeItem, 0, len(items))}
 	for _, group := range groups {
 		pk.Groups = append(pk.Groups, v2193.CreativeGroup{
 			Category: bedrockCreativeCategory(group.Category),
 			Name:     group.Name,
-			Icon:     deleteDamage(stackFromItem(br, group.Icon)),
+			Icon:     deleteDamage(stackFromItem(w, group.Icon)),
 		})
 	}
 	for index, i := range items {
@@ -250,7 +228,7 @@ func creativeContent(br world.BlockRegistry, groups []creative.Group, items []cr
 		}
 		pk.Items = append(pk.Items, v2193.CreativeItem{
 			CreativeItemNetworkID: uint32(index) + 1,
-			Item:                  deleteDamage(stackFromItem(br, i.Stack)),
+			Item:                  deleteDamage(stackFromItem(w, i.Stack)),
 			GroupIndex:            uint32(group),
 		})
 	}

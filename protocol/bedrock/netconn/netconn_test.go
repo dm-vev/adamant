@@ -328,6 +328,8 @@ type staticText struct{ proto.Packet }
 
 func (*staticText) StaticPacket() {}
 
+func (p *staticText) Unwrap() proto.Packet { return p.Packet }
+
 // TestStaticPacketsEncodeOnce sends one Static to two clients: both read
 // it, from a batch encoded once.
 func TestStaticPacketsEncodeOnce(t *testing.T) {
@@ -399,9 +401,6 @@ func converting() *versions.Protocol {
 			return []proto.Packet{pk}
 		},
 		Out: func(pk proto.Packet) []proto.Packet {
-			if st, ok := pk.(*staticText); ok {
-				pk = st.Packet
-			}
 			if text, ok := pk.(*v2193.TextPacket); ok {
 				if text.Message == "none" {
 					return nil

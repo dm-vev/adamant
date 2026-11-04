@@ -42,7 +42,7 @@ func TestRecipeUnlockPacketsUnchanged(t *testing.T) {
 
 	s := newCaptureSession()
 	s.br = world.DefaultBlockRegistry
-	s.javaRecipeIDs = maps.Clone(recipesFor(s.br).javaIDs)
+	s.javaRecipeIDs = maps.Clone(tablesOf(nil, s.br).recipeData().javaIDs)
 	mapped := slices.Sorted(maps.Keys(s.javaRecipeIDs))
 	if len(mapped) == 0 {
 		t.Fatal("the session maps no Java recipe ID")

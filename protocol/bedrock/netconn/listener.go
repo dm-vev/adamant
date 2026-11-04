@@ -152,7 +152,7 @@ func (l *Listener) static(pk Static, p *versions.Protocol, shield int32, comp be
 	}
 	pks := []proto.Packet{pk}
 	if p != nil && p.Out != nil {
-		pks = p.Out(pk)
+		pks = p.Out(Unwrap(pk))
 	}
 	var msg []byte
 	if len(pks) > 0 {

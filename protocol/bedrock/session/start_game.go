@@ -23,14 +23,15 @@ type startContent struct {
 	dimensions  []v2193.DimensionDefinition
 }
 
-// newStartContent makes the entries of the content of the game: the vanilla
-// blocks the game defines by data and the custom blocks of br, the custom
-// items and the block items of the custom blocks of br, and the custom
-// dimensions passed.
-func newStartContent(br world.BlockRegistry, items []world.CustomItem, dims []world.DimensionRegistration) *startContent {
+// newStartContent makes the entries of the content of the game, as the
+// clients of the tables passed know it: the vanilla blocks the game defines
+// by data and the custom blocks of the registry of the tables, the custom
+// items and the block items of its custom blocks, and the custom dimensions
+// passed.
+func newStartContent(w *wireTables, items []world.CustomItem, dims []world.DimensionRegistration) *startContent {
 	return &startContent{
-		blocks:      blockEntries(br),
-		customItems: customItemEntries(br, items),
+		blocks:      blockEntries(w.br),
+		customItems: customItemEntries(w, items),
 		dimensions:  dimensionDefinitions(dims),
 	}
 }
@@ -103,7 +104,8 @@ func blockEntries(br world.BlockRegistry) []v2193.BlockEntry {
 
 // customItemEntries returns the entries of the custom items passed that
 // are no block items, and of the block items of the custom blocks of br.
-func customItemEntries(br world.BlockRegistry, custom []world.CustomItem) []v2193.ItemEntry {
+func customItemEntries(w *wireTables, custom []world.CustomItem) []v2193.ItemEntry {
+	br := w.br
 	items := make([]world.CustomItem, 0, len(custom)+len(br.CustomBlocks()))
 	for _, it := range custom {
 		if _, blockItem := it.(world.CustomBlock); !blockItem {
@@ -120,7 +122,7 @@ func customItemEntries(br world.BlockRegistry, custom []world.CustomItem) []v219
 
 	for _, it := range items {
 		name, _ := it.EncodeItem()
-		rid, _, ok := bedrockdata.ItemRuntimeID(it)
+		rid, _, ok := w.itemRuntimeID(it)
 		if !ok {
 			continue
 		}

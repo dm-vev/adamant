@@ -18,6 +18,10 @@ type sharedPacket struct {
 	b    []byte
 }
 
+// Unwrap returns the packet, which a connection that converts packets
+// converts and encodes for its client instead of the bytes kept.
+func (p *sharedPacket) Unwrap() proto.Packet { return p.Packet }
+
 func (p *sharedPacket) Encode(w *wire.Writer) {
 	p.once.Do(func() {
 		var e wire.Writer

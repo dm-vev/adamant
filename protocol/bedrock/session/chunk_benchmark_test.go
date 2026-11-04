@@ -70,76 +70,80 @@ func BenchmarkSubChunkEntry(b *testing.B) {
 
 func BenchmarkNetworkBiomePayload(b *testing.B) {
 	baseCol, _ := benchmarkColumnWithBlockEntities(b, 32)
+	w := tablesOf(nil, world.DefaultBlockRegistry)
 	b.Run("cold", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			col := &world.Column{Chunk: baseCol.Chunk, BlockEntities: baseCol.BlockEntities}
-			_ = networkBiomePayload(col)
+			_ = w.networkBiomePayload(col)
 		}
 	})
 	b.Run("warm", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = networkBiomePayload(baseCol)
+			_ = w.networkBiomePayload(baseCol)
 		}
 	})
 }
 
 func BenchmarkNetworkSubChunkPayload(b *testing.B) {
 	baseCol, ind := benchmarkColumnWithBlockEntities(b, 32)
+	w := tablesOf(nil, world.DefaultBlockRegistry)
 	b.Run("cold", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			col := &world.Column{Chunk: baseCol.Chunk, BlockEntities: baseCol.BlockEntities}
-			_ = networkSubChunkPayload(col, ind)
+			_ = w.networkSubChunkPayload(col, ind)
 		}
 	})
 	b.Run("warm", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = networkSubChunkPayload(baseCol, ind)
+			_ = w.networkSubChunkPayload(baseCol, ind)
 		}
 	})
 }
 
 func BenchmarkLimitedChunkPayload(b *testing.B) {
 	baseCol, _ := benchmarkColumnWithBlockEntities(b, 32)
+	w := tablesOf(nil, world.DefaultBlockRegistry)
 	b.Run("cold", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			col := &world.Column{Chunk: baseCol.Chunk, BlockEntities: baseCol.BlockEntities}
-			_ = limitedChunkPayload(col)
+			_ = w.limitedChunkPayload(col)
 		}
 	})
 	b.Run("warm", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = limitedChunkPayload(baseCol)
+			_ = w.limitedChunkPayload(baseCol)
 		}
 	})
 }
 
 func BenchmarkFullChunkPayload(b *testing.B) {
 	baseCol, _ := benchmarkColumnWithBlockEntities(b, 32)
+	w := tablesOf(nil, world.DefaultBlockRegistry)
 	b.Run("cold", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			col := &world.Column{Chunk: baseCol.Chunk, BlockEntities: baseCol.BlockEntities}
-			_ = fullChunkPayload(col)
+			_ = w.fullChunkPayload(col)
 		}
 	})
 	b.Run("warm", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = fullChunkPayload(baseCol)
+			_ = w.fullChunkPayload(baseCol)
 		}
 	})
 }
