@@ -191,6 +191,11 @@ type World struct {
 	tps              atomic.Uint64
 	// stats is what the world counts of itself, for metrics.
 	stats *Stats
+	// tickEnded is when the last tick the tick loop waited for ended, in
+	// nanoseconds since the Unix epoch, beside tickStarted: see TickState.
+	// made is when the world was made.
+	tickEnded atomic.Int64
+	made      time.Time
 
 	// Scheduled updates are partitioned by native registry: blocks drain before
 	// fluids, and each queue owns ticks by their scheduled position.

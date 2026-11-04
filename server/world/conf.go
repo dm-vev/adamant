@@ -287,6 +287,7 @@ func (conf Config) New() *World {
 		queue:               make(chan transaction, 128),
 		generatorQueue:      newGenerationQueue(),
 		stats:               newStats(),
+		made:                time.Now(),
 		r:                   rand.New(conf.RandSource),
 		conf:                conf,
 		ra:                  conf.Dim.Range(),

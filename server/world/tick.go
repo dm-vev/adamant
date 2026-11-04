@@ -112,6 +112,7 @@ func (t ticker) tickLoop(w *World) {
 			w.tickStarted.Store(time.Now().UnixNano())
 			<-w.execTick(t.tick)
 			w.tickStarted.Store(0)
+			w.tickEnded.Store(time.Now().UnixNano())
 			tc.Reset(time.Until(next))
 		case <-w.closing:
 			// World is being closed: Stop ticking and get rid of a task.
