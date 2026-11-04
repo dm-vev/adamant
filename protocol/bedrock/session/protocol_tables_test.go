@@ -12,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
 // TestTablesOf2193 checks the tables of the clients of 2193, now that the
@@ -126,5 +127,52 @@ func TestChunksOf2193(t *testing.T) {
 	}
 	if again := old.networkSubChunkPayload(col, 0); &again[0] != &a[0] {
 		t.Fatal("2193 encoded its sub-chunk again")
+	}
+}
+
+// TestDiscPressOf2193 checks the disc press of 1.26.60 reaches the clients
+// of 2193, which lack it, as a stonecutter: the hash of its block and the
+// runtime ID of its item are a stonecutter's, while 2225's clients know its
+// own; and the registry enums of commands leave it out for 2193 alone.
+func TestDiscPressOf2193(t *testing.T) {
+	br := world.DefaultBlockRegistry
+	old, now := tablesOf(versions.Default(), br), tablesOf(versions.Model(), br)
+	press, cutter := block.DiscPress{Facing: cube.South}, block.Stonecutter{Facing: cube.North}
+	if a, b := old.blockID(press), old.blockID(cutter); a != b {
+		t.Errorf("2193 hashes a disc press as %d, a stonecutter as %d", a, b)
+	}
+	if now.blockID(press) == now.blockID(cutter) {
+		t.Error("2225 hashes a disc press as a stonecutter")
+	}
+	ridA, _, okA := old.itemRuntimeID(press)
+	ridB, _, okB := old.itemRuntimeID(cutter)
+	if !okA || !okB || ridA != ridB {
+		t.Errorf("2193 knows the disc press item as %d (%v), the stonecutter as %d (%v)", ridA, okA, ridB, okB)
+	}
+	if rid, _, ok := now.itemRuntimeID(press); !ok || rid == ridB {
+		t.Errorf("2225 knows the disc press item as %d (%v)", rid, ok)
+	}
+	for _, tc := range []struct {
+		tables *wireTables
+		want   bool
+	}{{old, false}, {now, true}} {
+		pk := &mc.AvailableCommandsPacket{
+			EnumValues: []string{"stone", "disc_press", "minecraft:disc_press", "apple"},
+			Enums: []mc.CommandEnum{
+				{Type: "Block", ValueIndices: []uint32{0, 1, 2}},
+				{Type: "Item", ValueIndices: []uint32{3, 1, 2}},
+			},
+			Constraints: []mc.CommandEnumConstraint{{EnumValueIndex: 2, EnumIndex: 0}, {EnumValueIndex: 3, EnumIndex: 1}},
+		}
+		tc.tables.dropUnknownEnumOptions(pk)
+		listed := slices.Contains(pk.EnumValues, "disc_press")
+		if listed != tc.want {
+			t.Errorf("protocol %d lists the disc press: %v, want %v", tc.tables.proto.Number, listed, tc.want)
+		}
+		if !tc.want {
+			if fmt.Sprint(pk.EnumValues, pk.Enums, pk.Constraints) != "[stone apple] [{Block [0]} {Item [1]}] [{1 1 []}]" {
+				t.Errorf("2193's enums are %v %v %v", pk.EnumValues, pk.Enums, pk.Constraints)
+			}
+		}
 	}
 }

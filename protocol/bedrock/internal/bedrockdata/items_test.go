@@ -30,20 +30,32 @@ func (customItem) Texture() image.Image          { return image.NewRGBA(image.Re
 func (customItem) Category() category.Category   { return category.Items() }
 
 // TestEveryRegisteredItemHasARuntimeID checks every item the game registers
-// has a runtime ID, which Bedrock Edition finds it back by.
+// has a runtime ID in each protocol, which Bedrock Edition finds it back by,
+// but the items of blocks a protocol lacks, as 2193 lacks the disc press of
+// 1.26.60: the item of the block its clients are shown in their place, a
+// stonecutter for the disc press, has one.
 func TestEveryRegisteredItemHasARuntimeID(t *testing.T) {
-	for _, it := range world.Items() {
-		name, meta := it.EncodeItem()
-		rid, gotMeta, ok := bedrockdata.ItemRuntimeID(it)
-		if !ok {
-			t.Errorf("item %v:%v has no runtime ID", name, meta)
-			continue
-		}
-		if gotMeta != meta {
-			t.Errorf("item %v:%v has metadata %v", name, meta, gotMeta)
-		}
-		if back, ok := bedrockdata.ItemByRuntimeID(rid, meta); !ok || !reflect.DeepEqual(back, it) {
-			t.Errorf("item %v:%v of runtime ID %v is found back as %#v, %v", name, meta, rid, back, ok)
+	for _, p := range bedrockdata.Protocols() {
+		v, _ := bedrockdata.VanillaOf(p)
+		for _, it := range world.Items() {
+			name, meta := it.EncodeItem()
+			rid, gotMeta, ok := v.ItemRuntimeID(it)
+			if !ok {
+				if fallback, lacks := bedrockdata.BlockFallback(p, name); lacks {
+					if _, known := v.Items()[fallback]; !known {
+						t.Errorf("%d: the fallback %s of item %v has no runtime ID", p, fallback, name)
+					}
+					continue
+				}
+				t.Errorf("%d: item %v:%v has no runtime ID", p, name, meta)
+				continue
+			}
+			if gotMeta != meta {
+				t.Errorf("%d: item %v:%v has metadata %v", p, name, meta, gotMeta)
+			}
+			if back, ok := v.ItemByRuntimeID(rid, meta); !ok || !reflect.DeepEqual(back, it) {
+				t.Errorf("%d: item %v:%v of runtime ID %v is found back as %#v, %v", p, name, meta, rid, back, ok)
+			}
 		}
 	}
 	if _, _, ok := bedrockdata.ItemRuntimeID(customItem{name: "adamant:unregistered"}); ok {

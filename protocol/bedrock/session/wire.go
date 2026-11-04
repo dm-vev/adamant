@@ -213,9 +213,23 @@ func (w *wireTables) blockID(b world.Block) uint32 {
 }
 
 // itemRuntimeID returns the runtime ID and metadata the clients of the
-// tables know an item by, and false for an item they do not know.
+// tables know an item by, and false for an item they do not know. The item
+// of a block their protocol lacks is that of the block they are shown in
+// its place, as 2193's clients are shown the item of a stonecutter for a
+// disc press.
 func (w *wireTables) itemRuntimeID(i world.Item) (rid int32, meta int16, ok bool) {
-	return w.vanilla.ItemRuntimeID(i)
+	if rid, meta, ok = w.vanilla.ItemRuntimeID(i); ok {
+		return rid, meta, ok
+	}
+	if b, isBlock := i.(world.Block); isBlock {
+		name, _ := b.EncodeBlock()
+		if fallback, lacks := bedrockdata.BlockFallback(w.proto.Number, name); lacks {
+			if e, known := w.vanilla.Items()[fallback]; known {
+				return e.RuntimeID, 0, true
+			}
+		}
+	}
+	return rid, meta, ok
 }
 
 // itemByRuntimeID returns the item the clients of the tables name by a

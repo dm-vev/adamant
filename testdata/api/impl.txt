@@ -1167,6 +1167,11 @@ server/block.DirtWithRoots	server/block.Soil	value
 server/block.DirtWithRoots	server/item.BoneMealAffected	value
 server/block.DirtWithRoots	server/world.Block	value
 server/block.DirtWithRoots	server/world.Item	value
+server/block.DiscPress	server/block.Breakable	value
+server/block.DiscPress	server/block.HasFacing	value
+server/block.DiscPress	server/item.UsableOnBlock	value
+server/block.DiscPress	server/world.Block	value
+server/block.DiscPress	server/world.Item	value
 server/block.Dispenser	server/block.Activatable	value
 server/block.Dispenser	server/block.Breakable	value
 server/block.Dispenser	server/block.Container	value

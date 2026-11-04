@@ -208,15 +208,24 @@ func GameState(p int32, name string, props map[string]any) (string, map[string]a
 // the game of a name: false for a block the steps between GameBlocks and p
 // replace by a fallback, as 2193 does the disc press of 1.26.60.
 func KnowsBlock(p int32, name string) bool {
+	_, lacks := BlockFallback(p, name)
+	return !lacks
+}
+
+// BlockFallback returns the name of the block the clients of protocol p are
+// shown in place of a block of the game they lack, as 2193's clients are
+// shown a stonecutter for the disc press; false for a block they know.
+func BlockFallback(p int32, name string) (string, bool) {
+	lacks := false
 	i, j := slices.Index(protocols, GameBlocks), slices.Index(protocols, p)
 	for ; i > j && j >= 0; i-- {
 		if s, ok := BlockStepOf(protocols[i]); ok {
-			if _, lacks := s.Fallbacks[name]; lacks {
-				return false
+			if f, ok := s.Fallbacks[name]; ok {
+				name, lacks = f.Name, true
 			}
 		}
 	}
-	return true
+	return name, lacks
 }
 
 // NamesBlocksAsTheGame reports whether the clients of protocol p name every

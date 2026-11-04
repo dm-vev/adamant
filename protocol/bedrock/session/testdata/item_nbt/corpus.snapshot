@@ -1,4 +1,4 @@
-# item NBT corpus: 2043 items
+# item NBT corpus: 2044 items
 adamant:knowledge_book 0 5089b742341e8261cf7027bb6e78211c
 minecraft:acacia_boat 0 4e8eb982d08131fd56b391b738efa394
 minecraft:acacia_button 0 42ca275d8b013811394fa77e861831fd
@@ -557,6 +557,7 @@ minecraft:diorite_wall 0 cd735987503c26a883d6e50f1873eb16
 minecraft:dirt 0 53f339865e178803af81a8d89342078f
 minecraft:dirt_with_roots 0 6dc9a3cc0193d335a49fdee583b52da4
 minecraft:disc_fragment_5 0 28f4e13a4cd263d4d500d8fc030e09c6
+minecraft:disc_press 0 a4d1a94f2e48cb1c6b7a51f67db88ba7
 minecraft:dispenser 0 7958a4dbf4b7c9a1ed57a6fd107ed386
 minecraft:dolphin_spawn_egg 0 ca7441e1510d061611e3c6fc7c9b4e94
 minecraft:donkey_spawn_egg 0 5c9af266ec5e843e4e52edb84fe22ff8

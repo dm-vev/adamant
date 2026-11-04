@@ -2310,6 +2310,15 @@ server/block	method	DirtWithRoots.EncodeItem	func() (name string, meta int16)
 server/block	method	DirtWithRoots.Hash	func() (uint64, uint64)
 server/block	method	DirtWithRoots.Model	func() server/world.BlockModel
 server/block	method	DirtWithRoots.SoilFor	func(block server/world.Block) bool
+server/block	method	DiscPress.BreakInfo	func() server/block.BreakInfo
+server/block	method	DiscPress.EncodeBlock	func() (string, map[string]any)
+server/block	method	DiscPress.EncodeItem	func() (name string, meta int16)
+server/block	method	DiscPress.FacingDirection	func() server/block/cube.Direction
+server/block	method	DiscPress.Hash	func() (uint64, uint64)
+server/block	method	DiscPress.Instrument	func() server/world/sound.Instrument
+server/block	method	DiscPress.Model	func() server/world.BlockModel
+server/block	method	DiscPress.UseOnBlock	func(pos server/block/cube.Pos, face server/block/cube.Face, _ github.com/go-gl/mathgl/mgl64.Vec3, tx *server/world.Tx, user server/item.User, ctx *server/item.UseContext) (used bool)
+server/block	method	DiscPress.WithFacing	func(facing server/block/cube.Direction) server/world.Block
 server/block	method	Dispenser.Activate	func(pos server/block/cube.Pos, _ server/block/cube.Face, tx *server/world.Tx, u server/item.User, _ *server/item.UseContext) bool
 server/block	method	Dispenser.AddViewer	func(v server/block.ContainerViewer, _ *server/world.Tx, _ server/block/cube.Pos)
 server/block	method	Dispenser.BreakInfo	func() server/block.BreakInfo
@@ -5353,6 +5362,7 @@ server/block	type	Diorite	struct{server/block.solid; server/block.bassDrum; Poli
 server/block	type	Dirt	struct{server/block.solid; Coarse bool}
 server/block	type	DirtPath	struct{server/block.tilledGrass; server/block.transparent}
 server/block	type	DirtWithRoots	struct{server/block.solid}
+server/block	type	DiscPress	struct{server/block.solid; server/block.bassDrum; Facing server/block/cube.Direction}
 server/block	type	Dispenser	struct{server/block.solid; server/block.bass; Facing server/block/cube.Face; Triggered bool; CustomName string; inventory *server/item/inventory.Inventory; viewerMu *sync.RWMutex; viewers map[server/block.ContainerViewer]struct{}; lootTable string; lootSeed int64}
 server/block	type	DoubleFlower	struct{server/block.transparent; server/block.empty; UpperPart bool; Type server/block.DoubleFlowerType}
 server/block	type	DoubleFlowerType	struct{server/block.doubleFlower}
