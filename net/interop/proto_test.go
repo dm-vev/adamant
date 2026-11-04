@@ -236,7 +236,9 @@ func marshal(pk packet.Packet) (b []byte, ok bool) {
 // therefore codes otherwise than gophertunnel v1.62.0: TestMojangLayouts
 // of v2193 checks them.
 var mojangLayouts = map[uint32]string{
+	300: "CameraInstruction",
 	324: "PlayerVideoCapture",
+	338: "CameraSpline",
 }
 
 // TestGeneratedCodecsMatchGophertunnel decodes what gophertunnel encodes

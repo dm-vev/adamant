@@ -49,6 +49,45 @@ var corrections = []correction{
 		wrong: []string{"Action uint8", "if Action == 1", "\tFrameRate int32", "\tFilePrefix string"},
 		right: []string{"Action varuint32", "if Action == 0", "\tFrameRate int32", "\tFilePrefix string"},
 	},
+	{
+		// Mojang's json/CameraInstruction__SplineInstruction.json requires
+		// totalTime, type (uint8), curve, progressKeyFrames and
+		// rotationOption, and gives splineIdentifier ("") and loadFromJson
+		// (false) defaults: a field of a default always goes, as the
+		// Message of json/MessageOnly.json of the Text packet and the
+		// RequestId of json/CommandOriginData.json do, and only one of
+		// neither is optional, as the Redacted name of
+		// json/Bedrock__Safety__RedactableString.json, which
+		// StackResponseSlotInfo codes so. gophertunnel v1.62.0 made the
+		// type, identifier and flag optional; it is the same in 1.26.40 to
+		// 1.26.61, and #545 codes it so for 2225.
+		name: "CameraSplineInstruction",
+		wrong: []string{"TotalTime float32", "SplineType ?uint8", "Curve []vec3", "ProgressKeyFrames []CameraProgressOption",
+			"RotationOptions []CameraRotationOption", "SplineIdentifier ?string", "LoadFromJson ?bool"},
+		right: []string{"TotalTime float32", "SplineType uint8", "Curve []vec3", "ProgressKeyFrames []CameraProgressOption",
+			"RotationOptions []CameraRotationOption", "SplineIdentifier string", "LoadFromJson bool"},
+	},
+	{
+		// Mojang's json/CameraSplineDefinition.json gives spline_type a
+		// default ("catmullrom"), so it always goes, and its key frames
+		// are json/CameraSplineProgressKeyFrame.json and
+		// json/CameraSplineRotationKeyFrame.json: a progress (float) or a
+		// rotation (Vec3), a time (float) and an easing neither required
+		// nor of a default, optional (as above). gophertunnel v1.62.0 made
+		// the type optional and coded the key frames as those of a spline
+		// instruction, of an easing always; it is the same in 1.26.40 to
+		// 1.26.61, and #545 codes it so for 2225, with these names.
+		name: "CameraSplineDefinition",
+		wrong: []string{"Name string", "TotalTime float32", "SplineType ?string", "ControlPoints []vec3",
+			"ProgressKeyFrames []CameraProgressOption", "RotationKeyFrames []CameraRotationOption"},
+		right: []string{"Name string", "TotalTime float32", "SplineType string", "ControlPoints []vec3",
+			"ProgressKeyFrames []CameraSplineProgressKeyFrame", "RotationKeyFrames []CameraSplineRotationKeyFrame"},
+		add: []*decl{
+			{name: "Optional", manual: "coded by hand: the easing of a key frame of a camera spline, if any, by its name"},
+			{name: "CameraSplineProgressKeyFrame", lines: []string{"Value float32", "Time float32", "EaseType Optional"}},
+			{name: "CameraSplineRotationKeyFrame", lines: []string{"Value vec3", "Time float32", "EaseType Optional"}},
+		},
+	},
 }
 
 // correct applies the corrections to the declarations imported, and

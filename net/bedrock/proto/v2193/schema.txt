@@ -1,6 +1,6 @@
 # Bedrock protocol, imported by protoimport from gophertunnel.
-# 460 declarations, 12 of them manual.
-# Corrected after Mojang's protocol documentation: AutoCraftRecipeStackRequestAction, PlayerVideoCapture.
+# 463 declarations, 13 of them manual.
+# Corrected after Mojang's protocol documentation: AutoCraftRecipeStackRequestAction, PlayerVideoCapture, CameraSplineInstruction, CameraSplineDefinition.
 
 type CommandEnum
 	Type string
@@ -1542,12 +1542,12 @@ type CameraInstructionFieldOfView
 
 type CameraSplineInstruction
 	TotalTime float32
-	SplineType ?uint8
+	SplineType uint8
 	Curve []vec3
 	ProgressKeyFrames []CameraProgressOption
 	RotationOptions []CameraRotationOption
-	SplineIdentifier ?string
-	LoadFromJson ?bool
+	SplineIdentifier string
+	LoadFromJson bool
 
 type CameraPreset
 	Name string
@@ -1575,13 +1575,26 @@ type CameraPreset
 	ApplyInheritedStartingRotation bool
 	StartingRotation ?vec2
 
+type Optional
+	manual coded by hand: the easing of a key frame of a camera spline, if any, by its name
+
+type CameraSplineProgressKeyFrame
+	Value float32
+	Time float32
+	EaseType Optional
+
+type CameraSplineRotationKeyFrame
+	Value vec3
+	Time float32
+	EaseType Optional
+
 type CameraSplineDefinition
 	Name string
 	TotalTime float32
-	SplineType ?string
+	SplineType string
 	ControlPoints []vec3
-	ProgressKeyFrames []CameraProgressOption
-	RotationKeyFrames []CameraRotationOption
+	ProgressKeyFrames []CameraSplineProgressKeyFrame
+	RotationKeyFrames []CameraSplineRotationKeyFrame
 
 type AttributeLayerData
 	Name string

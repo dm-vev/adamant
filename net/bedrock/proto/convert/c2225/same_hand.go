@@ -5,9 +5,8 @@ package c2225
 // shows: declarations of the schemas by name, special wire types by the
 // name of their Go type. The rest of what is coded by hand changed: the
 // Skin and the PlayerListEntry (the PlayFab ID), the actions of a stack
-// request (the reserved craft is 18), the data of an inventory transaction
-// and the transaction (the Hand of two of its kinds), and Optional, the
-// easing of a spline key frame, new in 2225.
+// request (the reserved craft is 18), and the data of an inventory
+// transaction and the transaction (the Hand of two of its kinds).
 var sameHand = []string{
 	// Special wire types.
 	"Metadata", "ItemStack", "ItemInstance", "StackRequestItem", "ItemDescriptorCount", "MaterialReducer",
@@ -15,7 +14,7 @@ var sameHand = []string{
 	"InputFlags", "Bitset",
 	// Declarations coded by hand.
 	"Text", "ResourcePackClientResponse", "PlayerUpdateEntityOverrides", "ScoreboardEntry", "HeightMap",
-	"PersonaPieceTintColour", "RecipeIngredient",
+	"PersonaPieceTintColour", "RecipeIngredient", "Optional",
 }
 
 // convertTypes lists the types the converters of hand_convert.go convert,
@@ -33,7 +32,6 @@ var convertTypes = []string{
 	"CraftLoomRecipeStackRequestAction", "CraftReservedStackRequestAction",
 	"CraftNonImplementedStackRequestAction", "CraftResultsDeprecatedStackRequestAction",
 	"InvalidItemDescriptor", "DefaultItemDescriptor", "MoLangItemDescriptor", "ItemTagItemDescriptor",
-	"SystemCategory", "CameraProgressOption", "CameraRotationOption",
-	"CameraSplineProgressKeyFrame", "CameraSplineRotationKeyFrame",
+	"SystemCategory",
 	"AttributeTransitionSettings", "AttributeNoiseTransitionSettings", "NoiseAlignment", "SoundDataUpdate",
 }

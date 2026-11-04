@@ -7023,20 +7023,17 @@ func (p *CameraInstructionFieldOfView) Decode(r *wire.Reader) {
 
 type CameraSplineInstruction struct {
 	TotalTime         float32
-	SplineType        proto.Optional[uint8]
+	SplineType        uint8
 	Curve             [][3]float32
 	ProgressKeyFrames []CameraProgressOption
 	RotationOptions   []CameraRotationOption
-	SplineIdentifier  proto.Optional[string]
-	LoadFromJson      proto.Optional[bool]
+	SplineIdentifier  string
+	LoadFromJson      bool
 }
 
 func (p *CameraSplineInstruction) Encode(w *wire.Writer) {
 	w.Float32(p.TotalTime)
-	w.Bool(p.SplineType.Set)
-	if p.SplineType.Set {
-		w.Uint8(p.SplineType.Val)
-	}
+	w.Uint8(p.SplineType)
 	w.Varuint32(uint32(len(p.Curve)))
 	for v341 := range p.Curve {
 		proto.WriteVec3(w, &p.Curve[v341])
@@ -7049,22 +7046,13 @@ func (p *CameraSplineInstruction) Encode(w *wire.Writer) {
 	for v343 := range p.RotationOptions {
 		p.RotationOptions[v343].Encode(w)
 	}
-	w.Bool(p.SplineIdentifier.Set)
-	if p.SplineIdentifier.Set {
-		w.String(p.SplineIdentifier.Val)
-	}
-	w.Bool(p.LoadFromJson.Set)
-	if p.LoadFromJson.Set {
-		w.Bool(p.LoadFromJson.Val)
-	}
+	w.String(p.SplineIdentifier)
+	w.Bool(p.LoadFromJson)
 }
 
 func (p *CameraSplineInstruction) Decode(r *wire.Reader) {
 	p.TotalTime = r.Float32()
-	p.SplineType.Set = r.Bool()
-	if p.SplineType.Set {
-		p.SplineType.Val = r.Uint8()
-	}
+	p.SplineType = r.Uint8()
 	v345 := int(r.Varuint32())
 	p.Curve = wire.Slice[[3]float32](r, v345)
 	for v344 := range p.Curve {
@@ -7080,14 +7068,8 @@ func (p *CameraSplineInstruction) Decode(r *wire.Reader) {
 	for v348 := range p.RotationOptions {
 		p.RotationOptions[v348].Decode(r)
 	}
-	p.SplineIdentifier.Set = r.Bool()
-	if p.SplineIdentifier.Set {
-		p.SplineIdentifier.Val = r.String()
-	}
-	p.LoadFromJson.Set = r.Bool()
-	if p.LoadFromJson.Set {
-		p.LoadFromJson.Val = r.Bool()
-	}
+	p.SplineIdentifier = r.String()
+	p.LoadFromJson = r.Bool()
 }
 
 type CameraPreset struct {
@@ -7297,22 +7279,55 @@ func (p *CameraPreset) Decode(r *wire.Reader) {
 	}
 }
 
+type CameraSplineProgressKeyFrame struct {
+	Value    float32
+	Time     float32
+	EaseType Optional
+}
+
+func (p *CameraSplineProgressKeyFrame) Encode(w *wire.Writer) {
+	w.Float32(p.Value)
+	w.Float32(p.Time)
+	p.EaseType.Encode(w)
+}
+
+func (p *CameraSplineProgressKeyFrame) Decode(r *wire.Reader) {
+	p.Value = r.Float32()
+	p.Time = r.Float32()
+	p.EaseType.Decode(r)
+}
+
+type CameraSplineRotationKeyFrame struct {
+	Value    [3]float32
+	Time     float32
+	EaseType Optional
+}
+
+func (p *CameraSplineRotationKeyFrame) Encode(w *wire.Writer) {
+	proto.WriteVec3(w, &p.Value)
+	w.Float32(p.Time)
+	p.EaseType.Encode(w)
+}
+
+func (p *CameraSplineRotationKeyFrame) Decode(r *wire.Reader) {
+	proto.ReadVec3(r, &p.Value)
+	p.Time = r.Float32()
+	p.EaseType.Decode(r)
+}
+
 type CameraSplineDefinition struct {
 	Name              string
 	TotalTime         float32
-	SplineType        proto.Optional[string]
+	SplineType        string
 	ControlPoints     [][3]float32
-	ProgressKeyFrames []CameraProgressOption
-	RotationKeyFrames []CameraRotationOption
+	ProgressKeyFrames []CameraSplineProgressKeyFrame
+	RotationKeyFrames []CameraSplineRotationKeyFrame
 }
 
 func (p *CameraSplineDefinition) Encode(w *wire.Writer) {
 	w.String(p.Name)
 	w.Float32(p.TotalTime)
-	w.Bool(p.SplineType.Set)
-	if p.SplineType.Set {
-		w.String(p.SplineType.Val)
-	}
+	w.String(p.SplineType)
 	w.Varuint32(uint32(len(p.ControlPoints)))
 	for v350 := range p.ControlPoints {
 		proto.WriteVec3(w, &p.ControlPoints[v350])
@@ -7330,22 +7345,19 @@ func (p *CameraSplineDefinition) Encode(w *wire.Writer) {
 func (p *CameraSplineDefinition) Decode(r *wire.Reader) {
 	p.Name = r.String()
 	p.TotalTime = r.Float32()
-	p.SplineType.Set = r.Bool()
-	if p.SplineType.Set {
-		p.SplineType.Val = r.String()
-	}
+	p.SplineType = r.String()
 	v354 := int(r.Varuint32())
 	p.ControlPoints = wire.Slice[[3]float32](r, v354)
 	for v353 := range p.ControlPoints {
 		proto.ReadVec3(r, &p.ControlPoints[v353])
 	}
 	v356 := int(r.Varuint32())
-	p.ProgressKeyFrames = wire.Slice[CameraProgressOption](r, v356)
+	p.ProgressKeyFrames = wire.Slice[CameraSplineProgressKeyFrame](r, v356)
 	for v355 := range p.ProgressKeyFrames {
 		p.ProgressKeyFrames[v355].Decode(r)
 	}
 	v358 := int(r.Varuint32())
-	p.RotationKeyFrames = wire.Slice[CameraRotationOption](r, v358)
+	p.RotationKeyFrames = wire.Slice[CameraSplineRotationKeyFrame](r, v358)
 	for v357 := range p.RotationKeyFrames {
 		p.RotationKeyFrames[v357].Decode(r)
 	}

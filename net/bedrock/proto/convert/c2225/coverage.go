@@ -22,10 +22,8 @@ var reviewed = map[uint32]string{
 	164: "ClientBoundDebugRenderer: the fields of a marker are a DebugMarkerData in 2225, its colour bytes (fixups.go)",
 	180: "DimensionData: CloudHeight and RenderClouds are new, 0 and false going up (the session sends dimensions of " +
 		"its own; BDS 1.26.61 tells its defaults, open question Q2); dropped going down",
-	300: "CameraInstruction: the type, identifier and JSON flag of a spline always go in 2225 (fixups.go)",
 	315: "ServerBoundDiagnostics: the system categories and the position and dimension of a timed entity are optional " +
 		"in 2225 (fixups.go); the memory categories have the same values in both, by Mojang's JSON",
-	338: "CameraSpline: the type of a spline always goes and the easing of a key frame is optional in 2225 (fixups.go)",
 	345: "ClientBoundAttributeLayerSync: the payload of an environment attribute is a variant in 2225 and the noise is " +
 		"named by its settings (fixups.go); a transition's clock is lost going down",
 	348: "ClientboundUpdateSoundData: 2193 writes the update seven times, 2225 once (fixups.go)",

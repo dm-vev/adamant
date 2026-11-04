@@ -588,3 +588,23 @@ const (
 	PermissionLevelOperator
 	PermissionLevelCustom
 )
+
+// Optional is the easing of a key frame of a camera spline, if it has
+// one: an easing type, which goes as its name, as one of the type
+// easingType names (Mojang's json/CameraSplineProgressKeyFrame.json).
+// It has the name protoimport gives it for v2225, after gophertunnel's
+// Optional[string], in which the name goes.
+type Optional proto.Optional[int32]
+
+func (x *Optional) Encode(w *wire.Writer) {
+	w.Bool(x.Set)
+	if x.Set {
+		w.String(easingTypeName(int64(x.Val)))
+	}
+}
+
+func (x *Optional) Decode(r *wire.Reader) {
+	if x.Set = r.Bool(); x.Set {
+		x.Val = int32(easingTypeValue(r, r.String()))
+	}
+}

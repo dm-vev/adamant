@@ -42,12 +42,8 @@ func upPacket(pk proto.Packet) (proto.Packet, bool) {
 		return upClientBoundDebugRendererPacket(pk), true
 	case *v2193.DimensionDataPacket:
 		return upDimensionDataPacket(pk), true
-	case *v2193.CameraInstructionPacket:
-		return upCameraInstructionPacket(pk), true
 	case *v2193.ServerBoundDiagnosticsPacket:
 		return upServerBoundDiagnosticsPacket(pk), true
-	case *v2193.CameraSplinePacket:
-		return upCameraSplinePacket(pk), true
 	case *v2193.ClientBoundAttributeLayerSyncPacket:
 		return upClientBoundAttributeLayerSyncPacket(pk), true
 	case *v2193.ClientboundUpdateSoundDataPacket:
@@ -375,35 +371,6 @@ func upDimensionDataPacket(in *v2193.DimensionDataPacket) *v2225.DimensionDataPa
 	return out
 }
 
-func upCameraInstructionPacket(in *v2193.CameraInstructionPacket) *v2225.CameraInstructionPacket {
-	out := &v2225.CameraInstructionPacket{}
-	out.Set.Set = in.Set.Set
-	if in.Set.Set {
-		out.Set.Val = upCameraInstructionSet(&in.Set.Val)
-	}
-	out.Clear = in.Clear
-	out.Fade.Set = in.Fade.Set
-	if in.Fade.Set {
-		out.Fade.Val = upCameraInstructionFade(&in.Fade.Val)
-	}
-	out.Target.Set = in.Target.Set
-	if in.Target.Set {
-		out.Target.Val = upCameraInstructionTarget(&in.Target.Val)
-	}
-	out.RemoveTarget = in.RemoveTarget
-	out.FieldOfView.Set = in.FieldOfView.Set
-	if in.FieldOfView.Set {
-		out.FieldOfView.Val = upCameraInstructionFieldOfView(&in.FieldOfView.Val)
-	}
-	out.Spline.Set = in.Spline.Set
-	if in.Spline.Set {
-		out.Spline.Val = upCameraSplineInstruction(&in.Spline.Val)
-	}
-	out.AttachToEntity = in.AttachToEntity
-	out.DetachFromEntity = in.DetachFromEntity
-	return out
-}
-
 func upServerBoundDiagnosticsPacket(in *v2193.ServerBoundDiagnosticsPacket) *v2225.ServerBoundDiagnosticsPacket {
 	out := &v2225.ServerBoundDiagnosticsPacket{}
 	out.AverageFramesPerSecond = in.AverageFramesPerSecond
@@ -444,24 +411,13 @@ func upServerBoundDiagnosticsPacket(in *v2193.ServerBoundDiagnosticsPacket) *v22
 	return out
 }
 
-func upCameraSplinePacket(in *v2193.CameraSplinePacket) *v2225.CameraSplinePacket {
-	out := &v2225.CameraSplinePacket{}
-	if in.Splines != nil {
-		out.Splines = make([]v2225.CameraSplineDefinition, len(in.Splines))
-		for i15 := range in.Splines {
-			out.Splines[i15] = upCameraSplineDefinition(&in.Splines[i15])
-		}
-	}
-	return out
-}
-
 func upClientBoundAttributeLayerSyncPacket(in *v2193.ClientBoundAttributeLayerSyncPacket) *v2225.ClientBoundAttributeLayerSyncPacket {
 	out := &v2225.ClientBoundAttributeLayerSyncPacket{}
 	out.PayloadType = in.PayloadType
 	if in.Layers != nil {
 		out.Layers = make([]v2225.AttributeLayerData, len(in.Layers))
-		for i16 := range in.Layers {
-			out.Layers[i16] = upAttributeLayerData(&in.Layers[i16])
+		for i15 := range in.Layers {
+			out.Layers[i15] = upAttributeLayerData(&in.Layers[i15])
 		}
 	}
 	out.LayerName = in.LayerName
@@ -469,8 +425,8 @@ func upClientBoundAttributeLayerSyncPacket(in *v2193.ClientBoundAttributeLayerSy
 	out.Settings = upAttributeLayerSettings(&in.Settings)
 	if in.EnvironmentAttributes != nil {
 		out.EnvironmentAttributes = make([]v2225.EnvironmentAttributeData, len(in.EnvironmentAttributes))
-		for i17 := range in.EnvironmentAttributes {
-			out.EnvironmentAttributes[i17] = upEnvironmentAttributeData(&in.EnvironmentAttributes[i17])
+		for i16 := range in.EnvironmentAttributes {
+			out.EnvironmentAttributes[i16] = upEnvironmentAttributeData(&in.EnvironmentAttributes[i16])
 		}
 	}
 	out.RemoveAttributeNames = in.RemoveAttributeNames
@@ -632,8 +588,8 @@ func upAutoCraftRecipeStackRequestAction(in *v2193.AutoCraftRecipeStackRequestAc
 	out.NumberOfCrafts = in.NumberOfCrafts
 	if in.Ingredients != nil {
 		out.Ingredients = make([]v2225.RecipeIngredient, len(in.Ingredients))
-		for i18 := range in.Ingredients {
-			out.Ingredients[i18] = upRecipeIngredient(&in.Ingredients[i18])
+		for i17 := range in.Ingredients {
+			out.Ingredients[i17] = upRecipeIngredient(&in.Ingredients[i17])
 		}
 	}
 	return out
@@ -667,8 +623,8 @@ func upCraftNonImplementedStackRequestAction(in *v2193.CraftNonImplementedStackR
 func upCraftResultsDeprecatedStackRequestAction(in *v2193.CraftResultsDeprecatedStackRequestAction) (out v2225.CraftResultsDeprecatedStackRequestAction) {
 	if in.ResultItems != nil {
 		out.ResultItems = make([]v2225.StackRequestItem, len(in.ResultItems))
-		for i19 := range in.ResultItems {
-			out.ResultItems[i19] = upStackRequestItem(&in.ResultItems[i19])
+		for i18 := range in.ResultItems {
+			out.ResultItems[i18] = upStackRequestItem(&in.ResultItems[i18])
 		}
 	}
 	out.TimesCrafted = in.TimesCrafted
@@ -697,16 +653,6 @@ func upItemTagItemDescriptor(in *v2193.ItemTagItemDescriptor) (out v2225.ItemTag
 
 func upSystemCategory(in *v2193.SystemCategory) (out v2225.SystemCategory) {
 	out = v2225.SystemCategory(*in)
-	return out
-}
-
-func upCameraProgressOption(in *v2193.CameraProgressOption) (out v2225.CameraProgressOption) {
-	out = v2225.CameraProgressOption(*in)
-	return out
-}
-
-func upCameraRotationOption(in *v2193.CameraRotationOption) (out v2225.CameraRotationOption) {
-	out = v2225.CameraRotationOption(*in)
 	return out
 }
 
@@ -764,14 +710,14 @@ func upServerJoinInformation(in *v2193.ServerJoinInformation) (out v2225.ServerJ
 func upEntityProperties(in *v2193.EntityProperties) (out v2225.EntityProperties) {
 	if in.IntegerProperties != nil {
 		out.IntegerProperties = make([]v2225.IntegerEntityProperty, len(in.IntegerProperties))
-		for i20 := range in.IntegerProperties {
-			out.IntegerProperties[i20] = upIntegerEntityProperty(&in.IntegerProperties[i20])
+		for i19 := range in.IntegerProperties {
+			out.IntegerProperties[i19] = upIntegerEntityProperty(&in.IntegerProperties[i19])
 		}
 	}
 	if in.FloatProperties != nil {
 		out.FloatProperties = make([]v2225.FloatEntityProperty, len(in.FloatProperties))
-		for i21 := range in.FloatProperties {
-			out.FloatProperties[i21] = upFloatEntityProperty(&in.FloatProperties[i21])
+		for i20 := range in.FloatProperties {
+			out.FloatProperties[i20] = upFloatEntityProperty(&in.FloatProperties[i20])
 		}
 	}
 	return out
@@ -783,8 +729,8 @@ func upAbilityData(in *v2193.AbilityData) (out v2225.AbilityData) {
 	out.CommandPermissions = in.CommandPermissions
 	if in.Layers != nil {
 		out.Layers = make([]v2225.AbilityLayer, len(in.Layers))
-		for i22 := range in.Layers {
-			out.Layers[i22] = upAbilityLayer(&in.Layers[i22])
+		for i21 := range in.Layers {
+			out.Layers[i21] = upAbilityLayer(&in.Layers[i21])
 		}
 	}
 	return out
@@ -816,15 +762,15 @@ func upPlayerInventoryAction(in *v2193.PlayerInventoryAction) (out v2225.PlayerI
 	if in.LegacySetItemSlots.Set {
 		if in.LegacySetItemSlots.Val != nil {
 			out.LegacySetItemSlots.Val = make([]v2225.LegacySetItemSlot, len(in.LegacySetItemSlots.Val))
-			for i23 := range in.LegacySetItemSlots.Val {
-				out.LegacySetItemSlots.Val[i23] = upLegacySetItemSlot(&in.LegacySetItemSlots.Val[i23])
+			for i22 := range in.LegacySetItemSlots.Val {
+				out.LegacySetItemSlots.Val[i22] = upLegacySetItemSlot(&in.LegacySetItemSlots.Val[i22])
 			}
 		}
 	}
 	if in.Actions != nil {
 		out.Actions = make([]v2225.InventoryAction, len(in.Actions))
-		for i24 := range in.Actions {
-			out.Actions[i24] = upInventoryAction(&in.Actions[i24])
+		for i23 := range in.Actions {
+			out.Actions[i23] = upInventoryAction(&in.Actions[i23])
 		}
 	}
 	out.ActionType = in.ActionType
@@ -846,8 +792,8 @@ func upItemStackRequest(in *v2193.ItemStackRequest) (out v2225.ItemStackRequest)
 	out.RequestID = in.RequestID
 	if in.Actions != nil {
 		out.Actions = make([]v2225.StackRequestAction, len(in.Actions))
-		for i25 := range in.Actions {
-			out.Actions[i25] = upStackRequestAction(&in.Actions[i25])
+		for i24 := range in.Actions {
+			out.Actions[i24] = upStackRequestAction(&in.Actions[i24])
 		}
 	}
 	out.FilterStrings = in.FilterStrings
@@ -870,63 +816,6 @@ func upDimensionDefinition(in *v2193.DimensionDefinition) (out v2225.DimensionDe
 	out.DefaultBiome = in.DefaultBiome
 	// CloudHeight is new in v2225.
 	// RenderClouds is new in v2225.
-	return out
-}
-
-func upCameraInstructionSet(in *v2193.CameraInstructionSet) (out v2225.CameraInstructionSet) {
-	out.Preset = in.Preset
-	out.Ease.Set = in.Ease.Set
-	if in.Ease.Set {
-		out.Ease.Val = upCameraEase(&in.Ease.Val)
-	}
-	out.Position = in.Position
-	out.Rotation = in.Rotation
-	out.Facing = in.Facing
-	out.ViewOffset = in.ViewOffset
-	out.EntityOffset = in.EntityOffset
-	out.Default = in.Default
-	out.IgnoreStartingValuesComponent = in.IgnoreStartingValuesComponent
-	return out
-}
-
-func upCameraInstructionFade(in *v2193.CameraInstructionFade) (out v2225.CameraInstructionFade) {
-	out.TimeData.Set = in.TimeData.Set
-	if in.TimeData.Set {
-		out.TimeData.Val = upCameraFadeTimeData(&in.TimeData.Val)
-	}
-	out.Colour = in.Colour
-	return out
-}
-
-func upCameraInstructionTarget(in *v2193.CameraInstructionTarget) (out v2225.CameraInstructionTarget) {
-	out = v2225.CameraInstructionTarget(*in)
-	return out
-}
-
-func upCameraInstructionFieldOfView(in *v2193.CameraInstructionFieldOfView) (out v2225.CameraInstructionFieldOfView) {
-	out = v2225.CameraInstructionFieldOfView(*in)
-	return out
-}
-
-func upCameraSplineInstruction(in *v2193.CameraSplineInstruction) (out v2225.CameraSplineInstruction) {
-	out.TotalTime = in.TotalTime
-	// in.SplineType changes from proto.Optional[uint8] to uint8: fixUpCameraSplineInstruction converts it.
-	out.Curve = in.Curve
-	if in.ProgressKeyFrames != nil {
-		out.ProgressKeyFrames = make([]v2225.CameraProgressOption, len(in.ProgressKeyFrames))
-		for i26 := range in.ProgressKeyFrames {
-			out.ProgressKeyFrames[i26] = upCameraProgressOption(&in.ProgressKeyFrames[i26])
-		}
-	}
-	if in.RotationOptions != nil {
-		out.RotationOptions = make([]v2225.CameraRotationOption, len(in.RotationOptions))
-		for i27 := range in.RotationOptions {
-			out.RotationOptions[i27] = upCameraRotationOption(&in.RotationOptions[i27])
-		}
-	}
-	// in.SplineIdentifier changes from proto.Optional[string] to string: fixUpCameraSplineInstruction converts it.
-	// in.LoadFromJson changes from proto.Optional[bool] to bool: fixUpCameraSplineInstruction converts it.
-	fixUpCameraSplineInstruction(in, &out)
 	return out
 }
 
@@ -956,25 +845,14 @@ func upWhiskerScopeDataSummary(in *v2193.WhiskerScopeDataSummary) (out v2225.Whi
 	return out
 }
 
-func upCameraSplineDefinition(in *v2193.CameraSplineDefinition) (out v2225.CameraSplineDefinition) {
-	out.Name = in.Name
-	out.TotalTime = in.TotalTime
-	// in.SplineType changes from proto.Optional[string] to string: fixUpCameraSplineDefinition converts it.
-	out.ControlPoints = in.ControlPoints
-	// in.ProgressKeyFrames changes from []CameraProgressOption to []CameraSplineProgressKeyFrame: fixUpCameraSplineDefinition converts it.
-	// in.RotationKeyFrames changes from []CameraRotationOption to []CameraSplineRotationKeyFrame: fixUpCameraSplineDefinition converts it.
-	fixUpCameraSplineDefinition(in, &out)
-	return out
-}
-
 func upAttributeLayerData(in *v2193.AttributeLayerData) (out v2225.AttributeLayerData) {
 	out.Name = in.Name
 	out.DimensionID = in.DimensionID
 	out.Settings = upAttributeLayerSettings(&in.Settings)
 	if in.EnvironmentAttributes != nil {
 		out.EnvironmentAttributes = make([]v2225.EnvironmentAttributeData, len(in.EnvironmentAttributes))
-		for i28 := range in.EnvironmentAttributes {
-			out.EnvironmentAttributes[i28] = upEnvironmentAttributeData(&in.EnvironmentAttributes[i28])
+		for i25 := range in.EnvironmentAttributes {
+			out.EnvironmentAttributes[i25] = upEnvironmentAttributeData(&in.EnvironmentAttributes[i25])
 		}
 	}
 	// NoiseName is not in v2225.
@@ -1042,16 +920,6 @@ func upAbilityLayer(in *v2193.AbilityLayer) (out v2225.AbilityLayer) {
 	return out
 }
 
-func upCameraEase(in *v2193.CameraEase) (out v2225.CameraEase) {
-	out = v2225.CameraEase(*in)
-	return out
-}
-
-func upCameraFadeTimeData(in *v2193.CameraFadeTimeData) (out v2225.CameraFadeTimeData) {
-	out = v2225.CameraFadeTimeData(*in)
-	return out
-}
-
 func upAttributeData(in *v2193.AttributeData) (out v2225.AttributeData) {
 	out = v2225.AttributeData(*in)
 	return out
@@ -1094,12 +962,8 @@ func downPacket(pk proto.Packet) (proto.Packet, bool) {
 		return downClientBoundDebugRendererPacket(pk), true
 	case *v2225.DimensionDataPacket:
 		return downDimensionDataPacket(pk), true
-	case *v2225.CameraInstructionPacket:
-		return downCameraInstructionPacket(pk), true
 	case *v2225.ServerBoundDiagnosticsPacket:
 		return downServerBoundDiagnosticsPacket(pk), true
-	case *v2225.CameraSplinePacket:
-		return downCameraSplinePacket(pk), true
 	case *v2225.ClientBoundAttributeLayerSyncPacket:
 		return downClientBoundAttributeLayerSyncPacket(pk), true
 	case *v2225.ClientboundUpdateSoundDataPacket:
@@ -1427,35 +1291,6 @@ func downDimensionDataPacket(in *v2225.DimensionDataPacket) *v2193.DimensionData
 	return out
 }
 
-func downCameraInstructionPacket(in *v2225.CameraInstructionPacket) *v2193.CameraInstructionPacket {
-	out := &v2193.CameraInstructionPacket{}
-	out.Set.Set = in.Set.Set
-	if in.Set.Set {
-		out.Set.Val = downCameraInstructionSet(&in.Set.Val)
-	}
-	out.Clear = in.Clear
-	out.Fade.Set = in.Fade.Set
-	if in.Fade.Set {
-		out.Fade.Val = downCameraInstructionFade(&in.Fade.Val)
-	}
-	out.Target.Set = in.Target.Set
-	if in.Target.Set {
-		out.Target.Val = downCameraInstructionTarget(&in.Target.Val)
-	}
-	out.RemoveTarget = in.RemoveTarget
-	out.FieldOfView.Set = in.FieldOfView.Set
-	if in.FieldOfView.Set {
-		out.FieldOfView.Val = downCameraInstructionFieldOfView(&in.FieldOfView.Val)
-	}
-	out.Spline.Set = in.Spline.Set
-	if in.Spline.Set {
-		out.Spline.Val = downCameraSplineInstruction(&in.Spline.Val)
-	}
-	out.AttachToEntity = in.AttachToEntity
-	out.DetachFromEntity = in.DetachFromEntity
-	return out
-}
-
 func downServerBoundDiagnosticsPacket(in *v2225.ServerBoundDiagnosticsPacket) *v2193.ServerBoundDiagnosticsPacket {
 	out := &v2193.ServerBoundDiagnosticsPacket{}
 	out.AverageFramesPerSecond = in.AverageFramesPerSecond
@@ -1496,24 +1331,13 @@ func downServerBoundDiagnosticsPacket(in *v2225.ServerBoundDiagnosticsPacket) *v
 	return out
 }
 
-func downCameraSplinePacket(in *v2225.CameraSplinePacket) *v2193.CameraSplinePacket {
-	out := &v2193.CameraSplinePacket{}
-	if in.Splines != nil {
-		out.Splines = make([]v2193.CameraSplineDefinition, len(in.Splines))
-		for i15 := range in.Splines {
-			out.Splines[i15] = downCameraSplineDefinition(&in.Splines[i15])
-		}
-	}
-	return out
-}
-
 func downClientBoundAttributeLayerSyncPacket(in *v2225.ClientBoundAttributeLayerSyncPacket) *v2193.ClientBoundAttributeLayerSyncPacket {
 	out := &v2193.ClientBoundAttributeLayerSyncPacket{}
 	out.PayloadType = in.PayloadType
 	if in.Layers != nil {
 		out.Layers = make([]v2193.AttributeLayerData, len(in.Layers))
-		for i16 := range in.Layers {
-			out.Layers[i16] = downAttributeLayerData(&in.Layers[i16])
+		for i15 := range in.Layers {
+			out.Layers[i15] = downAttributeLayerData(&in.Layers[i15])
 		}
 	}
 	out.LayerName = in.LayerName
@@ -1521,8 +1345,8 @@ func downClientBoundAttributeLayerSyncPacket(in *v2225.ClientBoundAttributeLayer
 	out.Settings = downAttributeLayerSettings(&in.Settings)
 	if in.EnvironmentAttributes != nil {
 		out.EnvironmentAttributes = make([]v2193.EnvironmentAttributeData, len(in.EnvironmentAttributes))
-		for i17 := range in.EnvironmentAttributes {
-			out.EnvironmentAttributes[i17] = downEnvironmentAttributeData(&in.EnvironmentAttributes[i17])
+		for i16 := range in.EnvironmentAttributes {
+			out.EnvironmentAttributes[i16] = downEnvironmentAttributeData(&in.EnvironmentAttributes[i16])
 		}
 	}
 	out.RemoveAttributeNames = in.RemoveAttributeNames
@@ -1684,8 +1508,8 @@ func downAutoCraftRecipeStackRequestAction(in *v2225.AutoCraftRecipeStackRequest
 	out.NumberOfCrafts = in.NumberOfCrafts
 	if in.Ingredients != nil {
 		out.Ingredients = make([]v2193.RecipeIngredient, len(in.Ingredients))
-		for i18 := range in.Ingredients {
-			out.Ingredients[i18] = downRecipeIngredient(&in.Ingredients[i18])
+		for i17 := range in.Ingredients {
+			out.Ingredients[i17] = downRecipeIngredient(&in.Ingredients[i17])
 		}
 	}
 	return out
@@ -1719,8 +1543,8 @@ func downCraftNonImplementedStackRequestAction(in *v2225.CraftNonImplementedStac
 func downCraftResultsDeprecatedStackRequestAction(in *v2225.CraftResultsDeprecatedStackRequestAction) (out v2193.CraftResultsDeprecatedStackRequestAction) {
 	if in.ResultItems != nil {
 		out.ResultItems = make([]v2193.StackRequestItem, len(in.ResultItems))
-		for i19 := range in.ResultItems {
-			out.ResultItems[i19] = downStackRequestItem(&in.ResultItems[i19])
+		for i18 := range in.ResultItems {
+			out.ResultItems[i18] = downStackRequestItem(&in.ResultItems[i18])
 		}
 	}
 	out.TimesCrafted = in.TimesCrafted
@@ -1749,16 +1573,6 @@ func downItemTagItemDescriptor(in *v2225.ItemTagItemDescriptor) (out v2193.ItemT
 
 func downSystemCategory(in *v2225.SystemCategory) (out v2193.SystemCategory) {
 	out = v2193.SystemCategory(*in)
-	return out
-}
-
-func downCameraProgressOption(in *v2225.CameraProgressOption) (out v2193.CameraProgressOption) {
-	out = v2193.CameraProgressOption(*in)
-	return out
-}
-
-func downCameraRotationOption(in *v2225.CameraRotationOption) (out v2193.CameraRotationOption) {
-	out = v2193.CameraRotationOption(*in)
 	return out
 }
 
@@ -1816,14 +1630,14 @@ func downServerJoinInformation(in *v2225.ServerJoinInformation) (out v2193.Serve
 func downEntityProperties(in *v2225.EntityProperties) (out v2193.EntityProperties) {
 	if in.IntegerProperties != nil {
 		out.IntegerProperties = make([]v2193.IntegerEntityProperty, len(in.IntegerProperties))
-		for i20 := range in.IntegerProperties {
-			out.IntegerProperties[i20] = downIntegerEntityProperty(&in.IntegerProperties[i20])
+		for i19 := range in.IntegerProperties {
+			out.IntegerProperties[i19] = downIntegerEntityProperty(&in.IntegerProperties[i19])
 		}
 	}
 	if in.FloatProperties != nil {
 		out.FloatProperties = make([]v2193.FloatEntityProperty, len(in.FloatProperties))
-		for i21 := range in.FloatProperties {
-			out.FloatProperties[i21] = downFloatEntityProperty(&in.FloatProperties[i21])
+		for i20 := range in.FloatProperties {
+			out.FloatProperties[i20] = downFloatEntityProperty(&in.FloatProperties[i20])
 		}
 	}
 	return out
@@ -1835,8 +1649,8 @@ func downAbilityData(in *v2225.AbilityData) (out v2193.AbilityData) {
 	out.CommandPermissions = in.CommandPermissions
 	if in.Layers != nil {
 		out.Layers = make([]v2193.AbilityLayer, len(in.Layers))
-		for i22 := range in.Layers {
-			out.Layers[i22] = downAbilityLayer(&in.Layers[i22])
+		for i21 := range in.Layers {
+			out.Layers[i21] = downAbilityLayer(&in.Layers[i21])
 		}
 	}
 	return out
@@ -1868,15 +1682,15 @@ func downPlayerInventoryAction(in *v2225.PlayerInventoryAction) (out v2193.Playe
 	if in.LegacySetItemSlots.Set {
 		if in.LegacySetItemSlots.Val != nil {
 			out.LegacySetItemSlots.Val = make([]v2193.LegacySetItemSlot, len(in.LegacySetItemSlots.Val))
-			for i23 := range in.LegacySetItemSlots.Val {
-				out.LegacySetItemSlots.Val[i23] = downLegacySetItemSlot(&in.LegacySetItemSlots.Val[i23])
+			for i22 := range in.LegacySetItemSlots.Val {
+				out.LegacySetItemSlots.Val[i22] = downLegacySetItemSlot(&in.LegacySetItemSlots.Val[i22])
 			}
 		}
 	}
 	if in.Actions != nil {
 		out.Actions = make([]v2193.InventoryAction, len(in.Actions))
-		for i24 := range in.Actions {
-			out.Actions[i24] = downInventoryAction(&in.Actions[i24])
+		for i23 := range in.Actions {
+			out.Actions[i23] = downInventoryAction(&in.Actions[i23])
 		}
 	}
 	out.ActionType = in.ActionType
@@ -1898,8 +1712,8 @@ func downItemStackRequest(in *v2225.ItemStackRequest) (out v2193.ItemStackReques
 	out.RequestID = in.RequestID
 	if in.Actions != nil {
 		out.Actions = make([]v2193.StackRequestAction, len(in.Actions))
-		for i25 := range in.Actions {
-			out.Actions[i25] = downStackRequestAction(&in.Actions[i25])
+		for i24 := range in.Actions {
+			out.Actions[i24] = downStackRequestAction(&in.Actions[i24])
 		}
 	}
 	out.FilterStrings = in.FilterStrings
@@ -1923,63 +1737,6 @@ func downDimensionDefinition(in *v2225.DimensionDefinition) (out v2193.Dimension
 	out.DefaultBiome = in.DefaultBiome
 	// CloudHeight is not in v2193.
 	// RenderClouds is not in v2193.
-	return out
-}
-
-func downCameraInstructionSet(in *v2225.CameraInstructionSet) (out v2193.CameraInstructionSet) {
-	out.Preset = in.Preset
-	out.Ease.Set = in.Ease.Set
-	if in.Ease.Set {
-		out.Ease.Val = downCameraEase(&in.Ease.Val)
-	}
-	out.Position = in.Position
-	out.Rotation = in.Rotation
-	out.Facing = in.Facing
-	out.ViewOffset = in.ViewOffset
-	out.EntityOffset = in.EntityOffset
-	out.Default = in.Default
-	out.IgnoreStartingValuesComponent = in.IgnoreStartingValuesComponent
-	return out
-}
-
-func downCameraInstructionFade(in *v2225.CameraInstructionFade) (out v2193.CameraInstructionFade) {
-	out.TimeData.Set = in.TimeData.Set
-	if in.TimeData.Set {
-		out.TimeData.Val = downCameraFadeTimeData(&in.TimeData.Val)
-	}
-	out.Colour = in.Colour
-	return out
-}
-
-func downCameraInstructionTarget(in *v2225.CameraInstructionTarget) (out v2193.CameraInstructionTarget) {
-	out = v2193.CameraInstructionTarget(*in)
-	return out
-}
-
-func downCameraInstructionFieldOfView(in *v2225.CameraInstructionFieldOfView) (out v2193.CameraInstructionFieldOfView) {
-	out = v2193.CameraInstructionFieldOfView(*in)
-	return out
-}
-
-func downCameraSplineInstruction(in *v2225.CameraSplineInstruction) (out v2193.CameraSplineInstruction) {
-	out.TotalTime = in.TotalTime
-	// in.SplineType changes from uint8 to proto.Optional[uint8]: fixDownCameraSplineInstruction converts it.
-	out.Curve = in.Curve
-	if in.ProgressKeyFrames != nil {
-		out.ProgressKeyFrames = make([]v2193.CameraProgressOption, len(in.ProgressKeyFrames))
-		for i26 := range in.ProgressKeyFrames {
-			out.ProgressKeyFrames[i26] = downCameraProgressOption(&in.ProgressKeyFrames[i26])
-		}
-	}
-	if in.RotationOptions != nil {
-		out.RotationOptions = make([]v2193.CameraRotationOption, len(in.RotationOptions))
-		for i27 := range in.RotationOptions {
-			out.RotationOptions[i27] = downCameraRotationOption(&in.RotationOptions[i27])
-		}
-	}
-	// in.SplineIdentifier changes from string to proto.Optional[string]: fixDownCameraSplineInstruction converts it.
-	// in.LoadFromJson changes from bool to proto.Optional[bool]: fixDownCameraSplineInstruction converts it.
-	fixDownCameraSplineInstruction(in, &out)
 	return out
 }
 
@@ -2009,17 +1766,6 @@ func downWhiskerScopeDataSummary(in *v2225.WhiskerScopeDataSummary) (out v2193.W
 	return out
 }
 
-func downCameraSplineDefinition(in *v2225.CameraSplineDefinition) (out v2193.CameraSplineDefinition) {
-	out.Name = in.Name
-	out.TotalTime = in.TotalTime
-	// in.SplineType changes from string to proto.Optional[string]: fixDownCameraSplineDefinition converts it.
-	out.ControlPoints = in.ControlPoints
-	// in.ProgressKeyFrames changes from []CameraSplineProgressKeyFrame to []CameraProgressOption: fixDownCameraSplineDefinition converts it.
-	// in.RotationKeyFrames changes from []CameraSplineRotationKeyFrame to []CameraRotationOption: fixDownCameraSplineDefinition converts it.
-	fixDownCameraSplineDefinition(in, &out)
-	return out
-}
-
 func downAttributeLayerData(in *v2225.AttributeLayerData) (out v2193.AttributeLayerData) {
 	out.Name = in.Name
 	// NoiseName is new in v2193.
@@ -2027,8 +1773,8 @@ func downAttributeLayerData(in *v2225.AttributeLayerData) (out v2193.AttributeLa
 	out.Settings = downAttributeLayerSettings(&in.Settings)
 	if in.EnvironmentAttributes != nil {
 		out.EnvironmentAttributes = make([]v2193.EnvironmentAttributeData, len(in.EnvironmentAttributes))
-		for i28 := range in.EnvironmentAttributes {
-			out.EnvironmentAttributes[i28] = downEnvironmentAttributeData(&in.EnvironmentAttributes[i28])
+		for i25 := range in.EnvironmentAttributes {
+			out.EnvironmentAttributes[i25] = downEnvironmentAttributeData(&in.EnvironmentAttributes[i25])
 		}
 	}
 	fixDownAttributeLayerData(in, &out)
@@ -2092,16 +1838,6 @@ func downFloatEntityProperty(in *v2225.FloatEntityProperty) (out v2193.FloatEnti
 
 func downAbilityLayer(in *v2225.AbilityLayer) (out v2193.AbilityLayer) {
 	out = v2193.AbilityLayer(*in)
-	return out
-}
-
-func downCameraEase(in *v2225.CameraEase) (out v2193.CameraEase) {
-	out = v2193.CameraEase(*in)
-	return out
-}
-
-func downCameraFadeTimeData(in *v2225.CameraFadeTimeData) (out v2193.CameraFadeTimeData) {
-	out = v2193.CameraFadeTimeData(*in)
 	return out
 }
 

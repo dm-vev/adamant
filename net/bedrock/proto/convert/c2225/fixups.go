@@ -62,52 +62,6 @@ func fixDownEntityDiagnosticTimingInfo(in *v2225.EntityDiagnosticTimingInfo, out
 	out.Position, out.Dimension = in.Position.Val, in.Dimension.Val
 }
 
-// The type, identifier and loading from JSON of a spline of 2225 always go;
-// 2193 marks each present. A key frame of a spline definition has an
-// optional easing in 2225, which 2193 always gives.
-
-func fixUpCameraSplineInstruction(in *v2193.CameraSplineInstruction, out *v2225.CameraSplineInstruction) {
-	out.SplineType, out.SplineIdentifier, out.LoadFromJson = in.SplineType.Val, in.SplineIdentifier.Val, in.LoadFromJson.Val
-}
-
-func fixDownCameraSplineInstruction(in *v2225.CameraSplineInstruction, out *v2193.CameraSplineInstruction) {
-	out.SplineType, out.SplineIdentifier, out.LoadFromJson = proto.Some(in.SplineType), proto.Some(in.SplineIdentifier), proto.Some(in.LoadFromJson)
-}
-
-func fixUpCameraSplineDefinition(in *v2193.CameraSplineDefinition, out *v2225.CameraSplineDefinition) {
-	out.SplineType = in.SplineType.Val
-	if in.ProgressKeyFrames != nil {
-		out.ProgressKeyFrames = make([]v2225.CameraSplineProgressKeyFrame, len(in.ProgressKeyFrames))
-		for i, f := range in.ProgressKeyFrames {
-			out.ProgressKeyFrames[i] = v2225.CameraSplineProgressKeyFrame{Value: f.Value, Time: f.Time, EaseType: v2225.Optional(proto.Some(f.EaseType))}
-		}
-	}
-	if in.RotationKeyFrames != nil {
-		out.RotationKeyFrames = make([]v2225.CameraSplineRotationKeyFrame, len(in.RotationKeyFrames))
-		for i, f := range in.RotationKeyFrames {
-			out.RotationKeyFrames[i] = v2225.CameraSplineRotationKeyFrame{Value: f.Value, Time: f.Time, EaseType: v2225.Optional(proto.Some(f.EaseType))}
-		}
-	}
-}
-
-// fixDownCameraSplineDefinition gives a key frame of no easing the first
-// easing type, linear.
-func fixDownCameraSplineDefinition(in *v2225.CameraSplineDefinition, out *v2193.CameraSplineDefinition) {
-	out.SplineType = proto.Some(in.SplineType)
-	if in.ProgressKeyFrames != nil {
-		out.ProgressKeyFrames = make([]v2193.CameraProgressOption, len(in.ProgressKeyFrames))
-		for i, f := range in.ProgressKeyFrames {
-			out.ProgressKeyFrames[i] = v2193.CameraProgressOption{Value: f.Value, Time: f.Time, EaseType: f.EaseType.Val}
-		}
-	}
-	if in.RotationKeyFrames != nil {
-		out.RotationKeyFrames = make([]v2193.CameraRotationOption, len(in.RotationKeyFrames))
-		for i, f := range in.RotationKeyFrames {
-			out.RotationKeyFrames[i] = v2193.CameraRotationOption{Value: f.Value, Time: f.Time, EaseType: f.EaseType.Val}
-		}
-	}
-}
-
 // The payload of an environment attribute of 2225 is a variant: a
 // constant (0), a transition from one value to another (1) or a noise
 // transition (2), the last two with their settings. 2193 sends the values

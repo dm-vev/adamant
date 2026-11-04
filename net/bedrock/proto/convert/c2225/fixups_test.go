@@ -142,21 +142,6 @@ func TestEnvironmentAttributes(t *testing.T) {
 	}
 }
 
-func TestCameraSplines(t *testing.T) {
-	def := v2193.CameraSplineDefinition{Name: "s", SplineType: proto.Some("catmull_rom"),
-		ProgressKeyFrames: []v2193.CameraProgressOption{{Value: 0.5, Time: 1, EaseType: 2}},
-		RotationKeyFrames: []v2193.CameraRotationOption{{Value: [3]float32{1, 2, 3}, Time: 2, EaseType: 1}}}
-	up := roundTrip(t, &v2193.CameraSplinePacket{Splines: []v2193.CameraSplineDefinition{def}}).(*v2225.CameraSplinePacket)
-	s := up.Splines[0]
-	if s.SplineType != "catmull_rom" || s.ProgressKeyFrames[0].EaseType != v2225.Optional(proto.Some[int32](2)) || s.RotationKeyFrames[0].Value != [3]float32{1, 2, 3} {
-		t.Fatalf("spline %+v", s)
-	}
-	frames := v2225.CameraSplinePacket{Splines: []v2225.CameraSplineDefinition{{Name: "s", ProgressKeyFrames: []v2225.CameraSplineProgressKeyFrame{{Value: 1}}}}}
-	if down := one(t, Down, from, &frames).(*v2193.CameraSplinePacket); down.Splines[0].ProgressKeyFrames[0].EaseType != 0 {
-		t.Fatalf("a key frame of no easing goes down as %+v", down.Splines[0].ProgressKeyFrames[0])
-	}
-}
-
 func TestDiagnostics(t *testing.T) {
 	pk := &v2193.ServerBoundDiagnosticsPacket{
 		SystemCategories:  []v2193.SystemCategory{{CategoryName: "c", SystemIndex: 2}},
