@@ -1,6 +1,7 @@
 {
   "commands.about.description": "Показывает информацию о ядре Adamant и сборке.",
   "commands.attribute.description": "Показывает и изменяет атрибуты сущностей.",
+  "commands.backup.description": "Создаёт резервные копии сервера, показывает и проверяет их.",
   "commands.banlist.description": "Показывает список заблокированных игроков или IP-адресов.",
   "commands.data.description": "Показывает и изменяет данные блоков и хранилищ.",
   "commands.fillbiome.description": "Заполняет область указанным биомом.",
@@ -14,6 +15,7 @@
   "commands.random.description": "Генерирует случайное значение.",
   "commands.return.description": "Завершает текущую функцию с результатом команды.",
   "commands.rotate.description": "Поворачивает сущность.",
+  "commands.save.description": "Готовит копию мира для резервного копирования, как Bedrock Dedicated Server.",
   "commands.save-all.description": "Сохраняет мир на диск.",
   "commands.save-off.description": "Отключает автоматическое сохранение мира.",
   "commands.seed.description": "Показывает ключ генерации мира.",

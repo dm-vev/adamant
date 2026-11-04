@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"context"
 	"time"
 
 	"github.com/df-mc/dragonfly/server"
@@ -81,6 +82,18 @@ type serverAdapter interface {
 	// instant, without waiting for it in tx, the transaction the command
 	// runs in; done runs in tx's world once they were saved.
 	SaveAllFrom(tx *world.Tx, done func(tx *world.Tx, err error))
+	// Backup backs the server up, Backups lists the backups, BackupStatus
+	// tells whether one runs, and VerifyBackup verifies one; none must be
+	// called in a transaction.
+	Backup(ctx context.Context, by server.Actor, reason string) (server.BackupInfo, error)
+	Backups() ([]server.BackupInfo, error)
+	BackupStatus() server.BackupStatus
+	VerifyBackup(name string, full bool) (server.BackupInfo, error)
+	// HoldSave, QuerySave and ResumeSave are BDS's save hold, query and
+	// resume; ResumeSave must not be called in a transaction.
+	HoldSave(by server.Actor) error
+	QuerySave() server.SaveHold
+	ResumeSave() error
 	SaveEnabled(enabled bool)
 	SaveEnabledState() bool
 	SetIdleTimeout(minutes int)

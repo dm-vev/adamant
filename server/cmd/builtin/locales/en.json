@@ -1,6 +1,7 @@
 {
   "commands.about.description": "Displays Adamant core and build information.",
   "commands.attribute.description": "Queries and changes entity attributes.",
+  "commands.backup.description": "Backs the server up, and lists and verifies its backups.",
   "commands.ban-ip.description": "Bans an IP address from the server.",
   "commands.ban.description": "Bans a player from the server.",
   "commands.banlist.description": "Lists banned players or IP addresses.",
@@ -45,6 +46,7 @@
   "commands.return.description": "Returns from the current function with a command result.",
   "commands.ride.description": "Makes an entity ride another entity.",
   "commands.rotate.description": "Rotates an entity.",
+  "commands.save.description": "Holds a copy of the world to back up, as Bedrock Dedicated Server does.",
   "commands.save-all.description": "Saves the world to disk.",
   "commands.save-off.description": "Disables automatic world saving.",
   "commands.save-on.description": "Enables automatic world saving.",

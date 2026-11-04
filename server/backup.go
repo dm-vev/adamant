@@ -140,8 +140,10 @@ type backups struct {
 
 	mu      sync.Mutex
 	running *runningBackup
-	closed  bool
-	last    BackupStatus
+	// hold is the save /save hold holds, nil if none.
+	hold   *saveHold
+	closed bool
+	last   BackupStatus
 	// lastEnd is when the last backup ended, or the schedule started, by
 	// the clock of the machine: the next scheduled backup is due an
 	// interval after it.

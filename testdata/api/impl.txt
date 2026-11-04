@@ -3655,6 +3655,14 @@ server/cmd/builtin.attributeModifierRemoveCommand	server/cmd.Requirer	value
 server/cmd/builtin.attributeModifierRemoveCommand	server/cmd.Runnable	value
 server/cmd/builtin.attributeModifierValueCommand	server/cmd.Requirer	value
 server/cmd/builtin.attributeModifierValueCommand	server/cmd.Runnable	value
+server/cmd/builtin.backupCmd	server/cmd.Requirer	value
+server/cmd/builtin.backupCmd	server/cmd.Runnable	value
+server/cmd/builtin.backupListCmd	server/cmd.Requirer	value
+server/cmd/builtin.backupListCmd	server/cmd.Runnable	value
+server/cmd/builtin.backupStatusCmd	server/cmd.Requirer	value
+server/cmd/builtin.backupStatusCmd	server/cmd.Runnable	value
+server/cmd/builtin.backupVerifyCmd	server/cmd.Requirer	value
+server/cmd/builtin.backupVerifyCmd	server/cmd.Runnable	value
 server/cmd/builtin.banCmd	server/cmd.Requirer	value
 server/cmd/builtin.banCmd	server/cmd.Runnable	value
 server/cmd/builtin.banIPCmd	server/cmd.Requirer	value
@@ -3820,6 +3828,12 @@ server/cmd/builtin.rotateFacingEntityCommand	server/cmd.Requirer	value
 server/cmd/builtin.rotateFacingEntityCommand	server/cmd.Runnable	value
 server/cmd/builtin.saveAllCmd	server/cmd.Requirer	value
 server/cmd/builtin.saveAllCmd	server/cmd.Runnable	value
+server/cmd/builtin.saveHoldCmd	server/cmd.Requirer	value
+server/cmd/builtin.saveHoldCmd	server/cmd.Runnable	value
+server/cmd/builtin.saveQueryCmd	server/cmd.Requirer	value
+server/cmd/builtin.saveQueryCmd	server/cmd.Runnable	value
+server/cmd/builtin.saveResumeCmd	server/cmd.Requirer	value
+server/cmd/builtin.saveResumeCmd	server/cmd.Runnable	value
 server/cmd/builtin.saveToggleCmd	server/cmd.Requirer	value
 server/cmd/builtin.saveToggleCmd	server/cmd.Runnable	value
 server/cmd/builtin.sayCommand	server/cmd.Requirer	value

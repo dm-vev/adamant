@@ -15,6 +15,8 @@ func registerAdminCommands(srv serverAdapter) {
 	cmd.Register(newPardonIPCommand(srv))
 	cmd.Register(newBanListCommand(srv))
 	cmd.Register(newSaveAllCommand(srv))
+	cmd.Register(newSaveCommand(srv))
+	cmd.Register(newBackupCommand(srv))
 	cmd.Register(newSaveOffCommand(srv))
 	cmd.Register(newSaveOnCommand(srv))
 	cmd.Register(newIdleTimeoutCommand(srv))

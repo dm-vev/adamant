@@ -71,16 +71,16 @@ func newGateSources(t *testing.T) gateSources {
 	}
 }
 
-// builtinNames are the names of the 78 built-in commands, sorted.
+// builtinNames are the names of the 80 built-in commands, sorted.
 var builtinNames = []string{
-	"about", "attribute", "ban", "ban-ip", "banlist", "bossbar", "clear", "clone", "damage", "data",
+	"about", "attribute", "backup", "ban", "ban-ip", "banlist", "bossbar", "clear", "clone", "damage", "data",
 	"defaultgamemode", "deop", "difficulty", "effect", "enchant", "execute", "experience", "fill", "fillbiome",
 	"forceload", "gamemode", "gamerule", "gc", "give", "help", "item", "kick", "kill", "list", "locate", "loot",
-	"me", "msg", "netstat", "op", "pardon", "pardon-ip", "particle", "permission", "place", "playsound", "random", "recipe",
-	"return", "ride", "rotate", "save-all", "save-off", "save-on", "say", "scoreboard", "seed", "setblock",
-	"setidletimeout", "setworldspawn", "spawnpoint", "spectate", "spreadplayers", "status", "stop", "stopsound",
-	"summon", "tag", "team", "teammsg", "tellraw", "tempban", "tempban-ip", "tick", "time", "title", "tp", "transfer", "trigger", "version",
-	"weather", "whitelist", "worldborder",
+	"me", "msg", "netstat", "op", "pardon", "pardon-ip", "particle", "permission", "place", "playsound", "random",
+	"recipe", "return", "ride", "rotate", "save", "save-all", "save-off", "save-on", "say", "scoreboard", "seed",
+	"setblock", "setidletimeout", "setworldspawn", "spawnpoint", "spectate", "spreadplayers", "status", "stop",
+	"stopsound", "summon", "tag", "team", "teammsg", "tellraw", "tempban", "tempban-ip", "tick", "time", "title",
+	"tp", "transfer", "trigger", "version", "weather", "whitelist", "worldborder",
 }
 
 // builtinCommands returns the built-in commands, in the order of
@@ -124,7 +124,7 @@ var (
 	openCommands  = []string{"about", "help", "list", "me", "msg", "random", "status", "teammsg", "trigger"}
 	adminCommands = []string{"ban", "ban-ip", "banlist", "deop", "kick", "netstat", "op", "pardon", "pardon-ip",
 		"permission", "setidletimeout", "tempban", "tempban-ip", "tick", "transfer", "whitelist"}
-	ownerCommands = []string{"gc", "save-all", "save-off", "save-on", "stop"}
+	ownerCommands = []string{"backup", "gc", "save", "save-all", "save-off", "save-on", "stop"}
 )
 
 // TestCommandGates checks who may run each built-in command, by the level

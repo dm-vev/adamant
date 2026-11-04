@@ -405,6 +405,7 @@ server	method	Server.CommandBlockLevel	func() server/cmd.Level
 server	method	Server.CommandLevel	func(name string, declared server/cmd.Level) server/cmd.Level
 server	method	Server.Deop	func(name string) (bool, error)
 server	method	Server.End	func() *server/world.World
+server	method	Server.HoldSave	func(by server.Actor) error
 server	method	Server.IdentityKey	func() server/identity.Mode
 server	method	Server.IdleTimeout	func() int
 server	method	Server.IsOperator	func(name string) bool
@@ -433,10 +434,12 @@ server	method	Server.PlayerNames	func() []string
 server	method	Server.PlayerPermissions	func(id github.com/google/uuid.UUID) server/client.Permissions
 server	method	Server.Players	func(tx *server/world.Tx) iter.Seq[*server/player.Player]
 server	method	Server.PlayersAt	func(key string) []string
+server	method	Server.QuerySave	func() server.SaveHold
 server	method	Server.Ready	func(o server.HealthOptions) server.HealthReport
 server	method	Server.ReloadPermissions	func() error
 server	method	Server.ResolveEntry	func(list server.List, s string) (server.Target, error)
 server	method	Server.ResolvePlayer	func(s string) (server.Target, error)
+server	method	Server.ResumeSave	func() error
 server	method	Server.RoleEntries	func() ([]string, error)
 server	method	Server.SaveAll	func() error
 server	method	Server.SaveAllFrom	func(tx *server/world.Tx, done func(tx *server/world.Tx, err error))
@@ -487,6 +490,7 @@ server	type	Found	uint8
 server	type	HealthCheck	struct{Name string; OK bool; Detail string}
 server	type	HealthOptions	struct{LiveTimeout time.Duration; ReadyTickAge time.Duration}
 server	type	HealthReport	struct{OK bool; Checks []server.HealthCheck}
+server	type	HoldFile	struct{Path string; Size int64}
 server	type	Host	interface{PlayerNames() []string; Status() server.Status; WhitelistEnabled() bool; World() *server/world.World}
 server	type	List	uint8
 server	type	Listener	interface{Accept() (server/client.Join, error); io.Closer}
@@ -495,6 +499,7 @@ server	type	OperatorInfo	struct{Player string "json:\"player\""; Level server/cm
 server	type	PermissionConfig	struct{DefaultLevel server/cmd.Level; OperatorLevel server/cmd.Level; CommandBlockLevel server/cmd.Level; RoleLevel server/cmd.Level; DefaultRole server/client.Role; BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; Commands map[string]server/cmd.Level}
 server	type	PlayerLimitBypasser	interface{BypassesPlayerLimit(id server/client.Identity) bool}
 server	type	ReconnectPolicy	uint8
+server	type	SaveHold	struct{Held bool; Ready bool; Err error; Folder string; Files []server.HoldFile; Checkpoint server/world/mcdb.CheckpointRecord}
 server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; roles *server.roleList; audit *server/audit.Log; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
@@ -505,6 +510,7 @@ server	var	DefaultHealthOptions	server.HealthOptions
 server	var	ErrBackupNotFound	error
 server	var	ErrBackupRunning	error
 server	var	ErrBackupsOff	error
+server	var	ErrSaveHeld	error
 server	var	ErrWhitelistInvalidName	error
 server	var	ErrWhitelistUnavailable	error
 server/audit	const	DefaultBuffer	untyped int = 4096

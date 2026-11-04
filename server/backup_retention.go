@@ -239,14 +239,21 @@ func (srv *Server) VerifyBackup(name string, full bool) (BackupInfo, error) {
 }
 
 // sweepAtStart deletes the backups a crash left unpublished, unless a
-// backup runs, which sweeps itself.
+// backup runs, which sweeps itself, and the save a stop left held, unless
+// one is held already.
 func (b *backups) sweepAtStart() {
 	if b.srv.conf.Backup.Folder == "" {
 		return
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.running == nil && !b.closed {
+	if b.closed {
+		return
+	}
+	if b.running == nil {
 		b.sweep(partialPrefix, verifyPrefix)
+	}
+	if b.hold == nil {
+		b.sweep(holdFolder)
 	}
 }
