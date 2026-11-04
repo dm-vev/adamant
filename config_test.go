@@ -635,7 +635,7 @@ var defaultAntiCheat = configMeaning{
 	"AntiCheat.Fly":             "on=true setback act>0 kick=0 decay=1 exempt=[spectator] msg=\"Flying is not enabled on this server\" {HoverTicks:80 HoverDescent:0.03125 ResendSupport:true}",
 	"AntiCheat.Ascend":          "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Epsilon:0.05 StepHeight:0.6}",
 	"AntiCheat.NoClip":          "on=true setback act>1 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {MinDepth:0.1 ResendFirst:true}",
-	"AntiCheat.Phase":           "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Tolerance:0.25}",
+	"AntiCheat.Phase":           "on=true log act>0 kick=0 decay=1 exempt=[creative spectator] msg=\"Invalid move player packet received\" {Tolerance:0.25}",
 	"AntiCheat.EntityReach":     "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Attempted to attack an invalid entity\" {Measure:box Survival:3 Creative:5 Buffer:3}",
 	"AntiCheat.BlockReach":      "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {Measure:centre Survival:8 Creative:14 Buffer:0}",
 	"AntiCheat.BreakTime":       "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Kicked by the anti-cheat\" {Tolerance:0.7 Delay:false InstantPerSecond:20 InstantBurst:5}",

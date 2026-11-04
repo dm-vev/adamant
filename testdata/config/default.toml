@@ -149,7 +149,7 @@
     Action = "log"
     Decay = 1.0
     Enabled = true
-    ExemptGameModes = ["spectator"]
+    ExemptGameModes = ["creative", "spectator"]
     KickAt = 0.0
     KickMessage = ""
     Tolerance = 0.25

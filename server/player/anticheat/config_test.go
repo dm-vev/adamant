@@ -55,6 +55,9 @@ func TestDefault(t *testing.T) {
 		if p.Exempts(world.GameModeSurvival) {
 			t.Errorf("%s exempts survival", ch)
 		}
+		if creative := p.Exempts(world.GameModeCreative); creative != (ch == Phase) {
+			t.Errorf("%s exempts creative: %v", ch, creative)
+		}
 	}
 	if c.Policy(NoClip).ActAt != 1 || c.Policy(Speed).ActAt != 0 {
 		t.Errorf("ActAt of NoClip %v, of Speed %v", c.Policy(NoClip).ActAt, c.Policy(Speed).ActAt)

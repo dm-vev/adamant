@@ -213,7 +213,11 @@ func (p *Player) checkMove(ac *acState, m client.Move, delta mgl64.Vec3, st anti
 	if p.checkNoClip(ac, m) || p.checkSpeed(ac, m, delta, st) || p.checkFly(ac, m, delta) {
 		return moveVerdict{refused: true}
 	}
-	return p.checkAscend(ac, m, delta, st)
+	verdict := p.checkAscend(ac, m, delta, st)
+	if verdict.refused || p.checkPhase(ac, m, delta) {
+		return moveVerdict{refused: true}
+	}
+	return verdict
 }
 
 // ascendJudged reports whether Ascend judges a move m of the player: the
@@ -506,4 +510,52 @@ func (p *Player) checkNoClip(ac *acState, m client.Move) (refused bool) {
 		}
 	}
 	return p.actOnMove(ac, m, act, p.Position())
+}
+
+// checkPhase finds a move through what blocks its path, as Java's "moved
+// wrongly": the collisions of the path, swept from where the server has the
+// player, stop it farther than Tolerance from where it moved, horizontally,
+// though the box before the move was free. A player on the ground may step
+// up StepHeight on the way. It runs only on moves longer than 0.05 that
+// NoClip let through, and not while an impulse the client may still apply
+// pushes the player, Java's post-impulse grace.
+func (p *Player) checkPhase(ac *acState, m client.Move, delta mgl64.Vec3) (refused bool) {
+	if !p.checks(ac, anticheat.Phase) || !p.GameMode().HasCollision() || delta.Len() <= 0.05 ||
+		p.pendingImpulse(ac) != (mgl64.Vec3{}) {
+		return false
+	}
+	pos := p.Position()
+	before := p.H().Type().BBox(p).Translate(pos).Grow(-1e-5)
+	free := true
+	p.solidBoxes(before, func(_ cube.Pos, bb cube.BBox) bool {
+		free = !bb.IntersectsWith(before)
+		return free
+	})
+	if !free {
+		return false
+	}
+	got := p.sweep(ac, pos, delta)
+	miss := math.Hypot(delta[0]-got[0], delta[2]-got[2])
+	if miss <= ac.conf.Phase.Tolerance {
+		return false
+	}
+	return p.actOnMove(ac, m, p.violate(ac, anticheat.Phase, "path", miss, fmt.Sprintf("stopped %.2f short", miss)), pos)
+}
+
+// sweep returns how far a move of delta from pos gets through the
+// collisions of the blocks: straight, or stepping up StepHeight if the
+// player stood on the ground and that goes farther.
+func (p *Player) sweep(ac *acState, pos, delta mgl64.Vec3) mgl64.Vec3 {
+	got, _ := ac.mc.CheckCollision(p.tx, p, pos, delta)
+	if !p.onGround || (math.Abs(got[0]-delta[0]) < 1e-7 && math.Abs(got[2]-delta[2]) < 1e-7) {
+		return got
+	}
+	step := ac.conf.Ascend.StepHeight
+	up, _ := ac.mc.CheckCollision(p.tx, p, pos, mgl64.Vec3{0, step, 0})
+	across, _ := ac.mc.CheckCollision(p.tx, p, pos.Add(up), mgl64.Vec3{delta[0], 0, delta[2]})
+	down, _ := ac.mc.CheckCollision(p.tx, p, pos.Add(up).Add(across), mgl64.Vec3{0, -up[1] + min(delta[1], 0), 0})
+	if stepped := up.Add(across).Add(down); stepped[0]*stepped[0]+stepped[2]*stepped[2] > got[0]*got[0]+got[2]*got[2] {
+		return stepped
+	}
+	return got
 }

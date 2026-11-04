@@ -3,6 +3,7 @@ package player
 import (
 	"time"
 
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/go-gl/mathgl/mgl64"
@@ -42,6 +43,8 @@ type acState struct {
 	support       mgl64.Vec3
 	supported     bool
 	supportResent int64
+	// mc sweeps the paths of moves through the blocks for Phase.
+	mc entity.MovementComputer
 
 	// impulses are the velocities the server gave the player that its
 	// client may still apply, each until a tick of the player.

@@ -374,6 +374,8 @@ func DefaultUserConfig() UserConfig {
 	for _, c := range []Check{Speed, Fly, Ascend, NoClip, Phase} {
 		uc.rule(c).ExemptGameModes = []string{"spectator"}
 	}
+	// Java does not judge how creative players move through blocks either.
+	uc.rule(Phase).ExemptGameModes = []string{"creative", "spectator"}
 	uc.rule(NoClip).ActAt = 1
 	return uc
 }
