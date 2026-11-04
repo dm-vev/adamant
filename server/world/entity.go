@@ -74,6 +74,9 @@ type EntityHandle struct {
 	runtimeID atomic.Uint64
 	// controller controls the entity of a player from outside the world.
 	controller atomic.Pointer[Controller]
+	// transfer is the transfer of the entity under way, if it was removed
+	// from a world by one, until it is added to a world or closed.
+	transfer atomic.Pointer[Transfer]
 
 	data           EntityData
 	spawnReason    string
@@ -394,6 +397,7 @@ func (e *EntityHandle) Close() error {
 	e.closeOnce.Do(func() {
 		e.setAndUnlockWorld(closeWorld)
 		close(e.closed)
+		e.endTransfer()
 	})
 	return nil
 }

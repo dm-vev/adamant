@@ -156,6 +156,10 @@ func (t *PortalTravelComputer) hasPendingPortalTravel() bool {
 	return t.pending != nil
 }
 
+// finishPendingPortalTravel travels to the destination queued, if any, and
+// reports whether it did: false if a checkpoint holds the transfer, in
+// which case the entity stays and travels at its next contact with the
+// portal.
 func (t *PortalTravelComputer) finishPendingPortalTravel(e Traveller, tx *world.Tx) bool {
 	t.mu.Lock()
 	destination := t.pending
@@ -164,8 +168,7 @@ func (t *PortalTravelComputer) finishPendingPortalTravel(e Traveller, tx *world.
 	if destination == nil {
 		return false
 	}
-	t.travel(e, tx, destination)
-	return true
+	return t.travel(e, tx, destination)
 }
 
 // StopPortalContact resets the portal timer if the entity was not inside a portal this tick.
@@ -182,22 +185,32 @@ func (t *PortalTravelComputer) StopPortalContact() {
 	t.timedOut, t.awaitingTravel, t.deniedActive = false, false, false
 }
 
-func (t *PortalTravelComputer) travel(e Traveller, tx *world.Tx, destination *world.World) {
+// travel moves e to destination through the portal it is in. It reports
+// false, leaving e where it is, if a checkpoint holds transfers out of the
+// world of tx: e then travels at its next contact with the portal, without
+// waiting for the portal's delay again.
+func (t *PortalTravelComputer) travel(e Traveller, tx *world.Tx, destination *world.World) bool {
 	source := tx.World()
 	if destination == nil || destination == source {
-		return
+		return true
 	}
 	sourceDim, destinationDim := source.Dimension(), destination.Dimension()
 	origin := capturePortalTravelOrigin(e)
 	pos := translatePortalPosition(cube.PosFromVec3(origin.position), sourceDim, destinationDim)
 
+	transfer, ok := world.BeginTransfer(tx)
+	if !ok {
+		t.holdTravel()
+		return false
+	}
 	t.beginTravel()
-	handle := tx.RemoveEntity(e)
+	handle := transfer.Remove(tx, e)
 	if handle == nil {
 		t.resetFailedTravel()
-		return
+		return true
 	}
 	go t.transfer(handle, source, destination, origin, pos, sourceDim, destinationDim)
+	return true
 }
 
 func (t *PortalTravelComputer) travelQueued(e Traveller, tx *world.Tx, destination *world.World) {
@@ -217,7 +230,12 @@ func (t *PortalTravelComputer) travelQueued(e Traveller, tx *world.Tx, destinati
 			t.resetFailedTravel()
 			return
 		}
-		handle := tx.RemoveEntity(e)
+		transfer, ok := world.BeginTransfer(tx)
+		if !ok {
+			t.holdTravel()
+			return
+		}
+		handle := transfer.Remove(tx, e)
 		if handle == nil {
 			t.resetFailedTravel()
 			return
@@ -235,6 +253,16 @@ func (t *PortalTravelComputer) beginTravel() {
 func (t *PortalTravelComputer) resetFailedTravel() {
 	t.mu.Lock()
 	t.travelling, t.timedOut = false, false
+	t.mu.Unlock()
+}
+
+// holdTravel leaves the entity, whose travel a checkpoint held, ready to
+// travel at its next contact with the portal: its delay already passed.
+// Leaving the portal first resets it, as StopPortalContact does.
+func (t *PortalTravelComputer) holdTravel() {
+	t.mu.Lock()
+	t.travelling, t.timedOut = false, false
+	t.awaitingTravel, t.start = true, time.Time{}
 	t.mu.Unlock()
 }
 

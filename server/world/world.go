@@ -229,9 +229,14 @@ type World struct {
 	// goroutine. dataWritten is the count of the last capture whose data
 	// was written, under dataMu: the data of a capture is written off the
 	// world goroutine, and that of an older one never after a newer one.
-	captures                     uint64
-	dataMu                       sync.Mutex
-	dataWritten                  uint64
+	captures    uint64
+	dataMu      sync.Mutex
+	dataWritten uint64
+	// holds is the number of HoldTransfers holding transfers out of the
+	// world, and transfersOut the number under way, both under the mutex of
+	// transfers.
+	holds                        int
+	transfersOut                 int
 	scratchInhabitedPlayers      []inhabitedTimePlayer
 	scratchPostProcessingColumns []columnRef
 
@@ -1643,6 +1648,8 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	tx.lockShared()
 	defer tx.unlockShared()
 	handle.setAndUnlockWorld(w)
+	// An entity transferred is in a world again.
+	handle.endTransfer()
 	pos := chunkPosFromVec3(handle.data.Pos)
 	w.set.Lock()
 	currentTick := w.currentTickLocked()

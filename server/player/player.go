@@ -1264,8 +1264,24 @@ func (p *Player) Respawn() *world.EntityHandle {
 // non-nil, runs with the player once it is back in a world — normally the
 // respawn destination, otherwise the world it died in — so a quit callback
 // from close always completes the player's teardown.
+//
+// The player is in no world between leaving the one it died in and entering
+// the next, even if they are the same: while a checkpoint holds transfers
+// out of its world, respawn tries again a tick later. A player quitting
+// respawns at once anyway: it is saved as it quits, not by the checkpoint.
 func (p *Player) respawn(f func(p *Player)) {
 	position, w, spawnObstructed, previousDimension, worldSpawn := p.spawnLocation()
+	transfer, ok := world.BeginTransfer(p.tx)
+	if !ok && f == nil {
+		if p.Dead() && p.hasClient() {
+			p.H().DoAfter(transferRetryDelay, func(_ *world.Tx, e world.Entity) {
+				if p, ok := e.(*Player); ok {
+					p.respawn(nil)
+				}
+			})
+		}
+		return
+	}
 	if spawnObstructed {
 		switch previousDimension {
 		case world.Nether:
@@ -1278,6 +1294,7 @@ func (p *Player) respawn(f func(p *Player)) {
 	pos := position.Vec3Middle()
 
 	if !p.Dead() || !p.hasClient() {
+		transfer.Cancel()
 		return
 	}
 
@@ -1296,7 +1313,7 @@ func (p *Player) respawn(f func(p *Player)) {
 		entity.TriggerDeathEffects(p.tx, p, *p.deathPos, p.deathEffects)
 	}
 	p.deathEffects = nil
-	handle := p.tx.RemoveEntity(p)
+	handle := transfer.Remove(p.tx, p)
 	// restore re-adds the player through tx and finishes with f or the normal
 	// quit path; the fallback branches below share it.
 	restore := func(tx *world.Tx) {
@@ -3215,13 +3232,23 @@ func (p *Player) Teleport(pos mgl64.Vec3) {
 // TeleportToWorld transfers the player to destination and places them at pos,
 // as a teleport command run in another dimension does. The caller must own
 // the player's current world transaction. If the destination is closed, the
-// player stays where they were.
+// player stays where they were. While a checkpoint holds transfers out of
+// the player's world, the player is moved a tick later.
 func (p *Player) TeleportToWorld(tx *world.Tx, destination *world.World, pos mgl64.Vec3) {
 	if destination == nil || destination == tx.World() {
 		p.Teleport(pos)
 		return
 	}
-	handle := tx.RemoveEntity(p)
+	transfer, ok := world.BeginTransfer(tx)
+	if !ok {
+		p.H().DoAfter(transferRetryDelay, func(tx *world.Tx, e world.Entity) {
+			if p, ok := e.(*Player); ok {
+				p.TeleportToWorld(tx, destination, pos)
+			}
+		})
+		return
+	}
+	handle := transfer.Remove(tx, p)
 	task := destination.Do(func(destinationTx *world.Tx) {
 		np := destinationTx.AddEntity(handle).(*Player)
 		np.Teleport(pos)
@@ -3232,6 +3259,10 @@ func (p *Player) TeleportToWorld(tx *world.Tx, destination *world.World, pos mgl
 		tx.AddEntity(handle)
 	}
 }
+
+// transferRetryDelay is how long a respawn or a teleport to another world
+// waits before trying again while a checkpoint holds transfers: a tick.
+const transferRetryDelay = time.Second / 20
 
 // forceTeleport teleports the player without calling the Handler.
 func (p *Player) forceTeleport(pos mgl64.Vec3) {

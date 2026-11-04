@@ -67,7 +67,9 @@ func (c *checkpointer) close() {
 //     on disk, such as the blocks a player stands on or its bed;
 //  3. level.dat, through world.SettingsWriter.
 //
-// If the worlds cannot be captured within world.CaptureTimeout, nothing is
+// No entity is between two worlds while they are captured: transfers out of
+// them are held, and those under way land first (world.HoldTransfers). If
+// the worlds cannot be captured within world.CaptureTimeout, nothing is
 // written and the error is returned. reason is logged. It waits for the
 // world owners: call it off any of them.
 func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
@@ -75,7 +77,16 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) error {
 	defer c.mu.Unlock()
 	srv := c.srv
 	start := time.Now()
-	cps, err := world.CaptureAll(ctx, srv.distinctWorlds(), srv.capturePlayers)
+	ctx, cancel := context.WithTimeout(ctx, world.CaptureTimeout)
+	defer cancel()
+	worlds := srv.distinctWorlds()
+	release, err := world.HoldTransfers(ctx, worlds)
+	if err != nil {
+		srv.conf.Log.Error("Save checkpoint: "+err.Error(), "reason", reason)
+		return err
+	}
+	cps, err := world.CaptureAll(ctx, worlds, srv.capturePlayers)
+	release()
 	if len(cps) == 0 && err != nil {
 		srv.conf.Log.Error("Save checkpoint: "+err.Error(), "reason", reason)
 		return err

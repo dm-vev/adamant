@@ -30,7 +30,7 @@ The allowlist, `testdata/boundary/allowlist.txt`, is a ratchet. It lists the vio
 | Rule | Files | Must not |
 | --- | --- | --- |
 | R4: adapters do not change the world | adapter code: `protocol/`; test files excepted | change the state of the game or set off its effects (sounds, particles, animations, chat broadcasts): mutations go through `client.Controllable` and `server/menu` |
-| R5: no owner waits inside a transaction | `server/`, `protocol/`, `cmd/`; test files excepted | wait for a world owner (`world.Call`, `CallEntity`, `CallRef`, `player.Call`, `Task.Wait`, `World.Save`/`Close`/`AdvanceTick`, `world.CaptureAll`, a receive from `World.Exec`, or a function without a transaction that does) with a transaction, an entity or an event context in scope; enforced by `wait_test.go` with the ratchet `testdata/boundary/waits.txt` |
+| R5: no owner waits inside a transaction | `server/`, `protocol/`, `cmd/`; test files excepted | wait for a world owner (`world.Call`, `CallEntity`, `CallRef`, `player.Call`, `Task.Wait`, `World.Save`/`Close`/`AdvanceTick`, `world.CaptureAll`/`HoldTransfers`, a receive from `World.Exec`, or a function without a transaction that does) with a transaction, an entity or an event context in scope; enforced by `wait_test.go` with the ratchet `testdata/boundary/waits.txt` |
 
 Its ratchet, `testdata/boundary/mutations.txt` (below), has been empty since phase 4.
 
