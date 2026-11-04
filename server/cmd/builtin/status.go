@@ -31,11 +31,7 @@ func (s statusCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Printf("Uptime: %s", time.Since(start).Round(time.Second))
 	}
 
-	playerCount := 0
-	for range s.srv.Players(tx) {
-		playerCount++
-	}
-	o.Printf("Players: %d/%d", playerCount, s.srv.MaxPlayerCount())
+	o.Printf("Players: %d/%d", len(s.srv.Online()), s.srv.MaxPlayerCount())
 	o.Printf("World: %s | Chunks: %d | Entities: %d", w.Name(), w.LoadedChunkCount(), w.EntityCount())
 
 	if tps := w.TPS(); tps > 0 {

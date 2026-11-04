@@ -1,6 +1,8 @@
 package server
 
 import (
+	"cmp"
+	"slices"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/client"
@@ -14,8 +16,8 @@ import (
 //     of a player, as the server makes the player, until the client
 //     unlists it, last in its Close. The adapters of the clients read it
 //     to replicate it.
-//   - online, the players of Players, PlayerCount and the lookups by UUID,
-//     name and XUID: from Accept, which spawns the player, until it leaves
+//   - online, the players of Online, Players, PlayerCount and the lookups
+//     by UUID, name and XUID: from Accept, which spawns the player, until it leaves
 //     and is saved.
 //
 // The zero players holds none.
@@ -24,6 +26,9 @@ type players struct {
 
 	mu     sync.RWMutex
 	online map[uuid.UUID]*onlinePlayer
+	// joins counts the players put online, so that each knows when it
+	// joined among the others.
+	joins uint64
 }
 
 // onlinePlayer is a player online: its entity handle and the identity its
@@ -31,6 +36,8 @@ type players struct {
 type onlinePlayer struct {
 	handle *world.EntityHandle
 	id     client.Identity
+	// joined orders the players online by when they were put online.
+	joined uint64
 }
 
 // add puts p online, keyed by the UUID of its handle.
@@ -40,6 +47,8 @@ func (r *players) add(p *onlinePlayer) {
 	if r.online == nil {
 		r.online = make(map[uuid.UUID]*onlinePlayer)
 	}
+	r.joins++
+	p.joined = r.joins
 	r.online[p.handle.UUID()] = p
 }
 
@@ -102,13 +111,25 @@ func (r *players) byKey(key string) *world.EntityHandle {
 	return nil
 }
 
-// handles returns the handles of the players online, in no order.
-func (r *players) handles() []*world.EntityHandle {
+// snapshot returns the players online, in the order they were put online.
+func (r *players) snapshot() []onlinePlayer {
 	r.mu.RLock()
-	defer r.mu.RUnlock()
-	out := make([]*world.EntityHandle, 0, len(r.online))
+	out := make([]onlinePlayer, 0, len(r.online))
 	for _, p := range r.online {
-		out = append(out, p.handle)
+		out = append(out, *p)
+	}
+	r.mu.RUnlock()
+	slices.SortFunc(out, func(a, b onlinePlayer) int { return cmp.Compare(a.joined, b.joined) })
+	return out
+}
+
+// handles returns the handles of the players online, in the order they
+// were put online.
+func (r *players) handles() []*world.EntityHandle {
+	ps := r.snapshot()
+	out := make([]*world.EntityHandle, len(ps))
+	for i, p := range ps {
+		out[i] = p.handle
 	}
 	return out
 }

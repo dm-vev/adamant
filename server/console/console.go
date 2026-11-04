@@ -319,10 +319,13 @@ func (c *Console) suggestionsForParam(p cmd.ParamInfo, src cmd.Source) []prompt.
 	return nil
 }
 
+// playerNames returns the names of the players online, sorted, from the
+// server's list: completing a line never waits for a world.
 func (c *Console) playerNames() []string {
-	names := make([]string, 0)
-	for p := range c.srv.Players(nil) {
-		names = append(names, p.Name())
+	online := c.srv.Online()
+	names := make([]string, 0, len(online))
+	for _, p := range online {
+		names = append(names, p.Name)
 	}
 	slices.Sort(names)
 	return names

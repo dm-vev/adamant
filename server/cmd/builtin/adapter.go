@@ -1,15 +1,16 @@
 package builtin
 
 import (
-	"iter"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/player"
+	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 type serverAdapter interface {
-	Players(tx *world.Tx) iter.Seq[*player.Player]
+	// Online returns the players online, in the order they joined, without
+	// waiting for any world.
+	Online() []server.OnlinePlayer
 	MaxPlayerCount() int
 	Close() error
 	World() *world.World

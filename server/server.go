@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -48,6 +49,9 @@ type Server struct {
 
 	// players holds the players online.
 	players players
+	// playersSkipped is set once Players(tx) skipped a player of another
+	// world, which it warns of once.
+	playersSkipped atomic.Bool
 	// pwg is a sync.WaitGroup used to wait for all players to be disconnected
 	// before server shutdown, so that their data is saved properly.
 	pwg sync.WaitGroup
@@ -241,14 +245,48 @@ func (srv *Server) WhitelistEntries() ([]string, error) {
 	return srv.whitelist.Players(), nil
 }
 
-// Players returns an iterator that yields players currently online. If Players
-// is called from within a transaction, the respective transaction should be
-// passed. Passing nil is otherwise valid. Each loop body runs on the yielded
-// player's world owner, so blocking stalls that world and calling world.Call,
-// world.CallEntity, world.CallRef, or Task.Wait for the same owner deadlocks.
-// Players in other worlds are yielded by blocking on those owners sequentially;
-// mirrored handlers in two worlds can therefore deadlock each other. For
-// fan-out, collect Player.H values and schedule each with player.Do instead.
+// OnlinePlayer is a player online, as the server knows it without asking its
+// world: the identity its client logged in as and its handle.
+type OnlinePlayer struct {
+	// Name, XUID and UUID are those the client of the player logged in
+	// with. Name is what Player.Name returns.
+	Name, XUID string
+	UUID       uuid.UUID
+	// Handle is the handle of the player's entity: use player.Do with it to
+	// act on the player in its world.
+	Handle *world.EntityHandle
+}
+
+// Online returns the players online now, in the order they joined. It reads
+// the server's list only and never waits for a world: call it from anywhere,
+// including from inside a transaction, to name or count the players of every
+// world.
+func (srv *Server) Online() []OnlinePlayer {
+	ps := srv.players.snapshot()
+	out := make([]OnlinePlayer, len(ps))
+	for i, p := range ps {
+		out[i] = OnlinePlayer{Name: p.id.Name, XUID: p.id.XUID, UUID: p.id.UUID, Handle: p.handle}
+	}
+	return out
+}
+
+// Players returns an iterator over the players online, in the order they
+// joined.
+//
+// With a transaction, it yields the players of tx's world only, at once and
+// in tx: the players of other worlds are not reachable from a transaction
+// without waiting for their owners, which may be waiting for this one. Use
+// Online for the names and the count of every player, and player.Do with
+// their handles to act on them. The first time Players skips a player of
+// another world, the server logs a warning naming the caller.
+//
+// Without one (tx == nil), from off any world owner, it yields every player,
+// each in a transaction of its own world, one after another: each loop body
+// runs on the yielded player's world owner, so blocking stalls that world, and
+// calling world.Call, world.CallEntity, world.CallRef, or Task.Wait for the
+// same owner deadlocks. Called with nil from a world owner, it waits for the
+// owners of the players and may deadlock.
+//
 // Players returned are only valid within the block of the for loop used to
 // iterate over them:
 //
@@ -265,29 +303,55 @@ func (srv *Server) WhitelistEntries() ([]string, error) {
 // will be finished. Use Player.H(), player.NewRef, or player.Do when a
 // player must be referenced after the iterator callback returns.
 func (srv *Server) Players(tx *world.Tx) iter.Seq[*player.Player] {
+	if tx == nil {
+		return srv.everyPlayer
+	}
 	handles := srv.players.handles()
-
 	return func(yield func(*player.Player) bool) {
 		for _, handle := range handles {
-			if tx != nil {
-				if e, ok := handle.Entity(tx); ok {
-					if !yield(e.(*player.Player)) {
-						break
-					}
-					continue
-				}
-			}
-			ret, err := player.Call(context.Background(), handle, func(_ *world.Tx, p *player.Player) (bool, error) {
-				return !yield(p), nil
-			})
-			if err != nil {
+			e, ok := handle.Entity(tx)
+			if !ok {
+				srv.warnPlayersSkipped()
 				continue
 			}
-			if ret {
-				break
+			if !yield(e.(*player.Player)) {
+				return
 			}
 		}
 	}
+}
+
+// everyPlayer yields every player online, each in a transaction of its own
+// world: Players(nil). It waits for the owners of their worlds, one after
+// another, and so must not run inside a transaction.
+func (srv *Server) everyPlayer(yield func(*player.Player) bool) {
+	for _, handle := range srv.players.handles() {
+		ret, err := player.Call(context.Background(), handle, func(_ *world.Tx, p *player.Player) (bool, error) {
+			return !yield(p), nil
+		})
+		if err != nil {
+			continue
+		}
+		if ret {
+			return
+		}
+	}
+}
+
+// warnPlayersSkipped logs, the first time only, that Players(tx) skipped a
+// player of another world than that of tx, naming the code that ranged over
+// it: code that relied on Players reaching every world.
+func (srv *Server) warnPlayersSkipped() {
+	if !srv.playersSkipped.CompareAndSwap(false, true) {
+		return
+	}
+	caller := "unknown"
+	// 0 is this function, 1 the iterator of Players and 2 the function
+	// ranging over it.
+	if pc, file, line, ok := runtime.Caller(2); ok {
+		caller = fmt.Sprintf("%s (%s:%d)", runtime.FuncForPC(pc).Name(), file, line)
+	}
+	srv.conf.Log.Warn("Server.Players(tx) yields the players of the world of tx only: use Server.Online for every player.", "caller", caller)
 }
 
 // Player looks for a player on the server with the UUID passed. If found, the

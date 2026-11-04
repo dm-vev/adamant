@@ -15,4 +15,3 @@
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
 server/admin_api.go (*github.com/df-mc/dragonfly/server/world.World).Save
-server/server.go github.com/df-mc/dragonfly/server/player.Call
