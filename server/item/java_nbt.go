@@ -272,11 +272,23 @@ func StackToStructureNBT(stack Stack) (map[string]any, error) {
 	}
 	return data, nil
 }
+// applyJavaEnchantments applies an enchantments component: a map of IDs to
+// levels, optionally under "levels", or the list of {id, lvl} compounds of
+// the tag of stacks before 1.20.5.
 func applyJavaEnchantments(s *Stack, value any) {
 	component, _ := value.(map[string]any)
 	levels, _ := component["levels"].(map[string]any)
 	if levels == nil {
 		levels = component
+	}
+	if list, ok := value.([]any); ok {
+		levels = make(map[string]any, len(list))
+		for _, entry := range list {
+			e, _ := entry.(map[string]any)
+			if id, ok := e["id"].(string); ok {
+				levels[id] = e["lvl"]
+			}
+		}
 	}
 	byName := make(map[string]EnchantmentType)
 	for _, enchantment := range Enchantments() {

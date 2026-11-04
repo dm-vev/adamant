@@ -148,3 +148,38 @@ func TestJavaStackErrors(t *testing.T) {
 		t.Errorf("empty stack encoded as %v, %v", data, err)
 	}
 }
+
+// Before 1.20.5 a stack kept its data in "tag", with enchantments as a list
+// of {id, lvl} compounds (DataFixers' ItemStackComponentizationFix reads
+// Enchantments and StoredEnchantments this way).
+func TestJavaLegacyStackTag(t *testing.T) {
+	s, err := item.StackFromStructureNBT(map[string]any{
+		"id":    "minecraft:iron_sword",
+		"Count": int8(1),
+		"tag": map[string]any{
+			"Damage":       int32(10),
+			"RepairCost":   int32(2),
+			"Unbreakable":  int8(1),
+			"Enchantments": []any{map[string]any{"id": "minecraft:sharpness", "lvl": int16(2)}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Durability() != 240 || s.AnvilCost() != 2 || !s.Unbreakable() {
+		t.Fatalf("durability %d, cost %d, unbreakable %v", s.Durability(), s.AnvilCost(), s.Unbreakable())
+	}
+	if e, ok := s.Enchantment(enchantment.Sharpness); !ok || e.Level() != 2 {
+		t.Fatalf("legacy enchantments %v, want sharpness 2", s.Enchantments())
+	}
+	book, err := item.StackFromStructureNBT(map[string]any{
+		"id":  "minecraft:enchanted_book",
+		"tag": map[string]any{"StoredEnchantments": []any{map[string]any{"id": "minecraft:mending", "lvl": int16(1)}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := book.Enchantment(enchantment.Mending); !ok {
+		t.Fatalf("legacy stored enchantments %v, want mending", book.Enchantments())
+	}
+}
