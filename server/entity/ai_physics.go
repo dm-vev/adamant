@@ -699,7 +699,7 @@ func (ai *MobAI) collide(m *Mob, movement mgl64.Vec3) mgl64.Vec3 {
 	}
 	defer func() {
 		if colliders != nil {
-			blockBBoxPool.Put(colliders[:0])
+			blockBBoxPool.Put(colliders[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
 		}
 	}()
 	result := movement

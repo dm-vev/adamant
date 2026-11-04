@@ -149,7 +149,7 @@ func (c *MovementComputer) checkNativeCollision(tx *world.Tx, e world.Entity, po
 		}
 	}
 	if boxes != nil {
-		blockBBoxPool.Put(boxes[:0])
+		blockBBoxPool.Put(boxes[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
 	}
 	requested := mgl32.Vec3{float32(vel[0]), float32(vel[1]), float32(vel[2])}
 	result := pistonSweep([]mgl32.Vec3{{0, requested[1], 0}, {requested[0], 0, 0}, {0, 0, requested[2]}},

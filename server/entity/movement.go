@@ -364,10 +364,10 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 		vel[2] = 0
 	}
 	if blocks != nil {
-		blockBBoxPool.Put(blocks[:0])
+		blockBBoxPool.Put(blocks[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
 	}
 	if c.CollideEntities {
-		entityBBoxPool.Put(entities[:0])
+		entityBBoxPool.Put(entities[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of entityBBoxsAround.
 	}
 	return mgl64.Vec3{deltaX, deltaY, deltaZ}, vel
 }
@@ -405,7 +405,7 @@ func blockBBoxsAround(source world.BlockSource, box cube.BBox) []cube.BBox {
 				if blockBBoxs == nil {
 					blockBBoxs = blockBBoxPool.Get().([]cube.BBox)
 					if cap(blockBBoxs) < predicted {
-						blockBBoxPool.Put(blockBBoxs[:0])
+						blockBBoxPool.Put(blockBBoxs[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
 						blockBBoxs = make([]cube.BBox, 0, predicted)
 					} else {
 						blockBBoxs = blockBBoxs[:0]

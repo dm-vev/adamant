@@ -195,7 +195,7 @@ func (c *collisionPrefetch) boxesAround(tx *world.Tx, box cube.BBox) ([]cube.BBo
 			predicted := (hi[0]-lo[0])*(hi[1]-lo[1])*(hi[2]-lo[2]) + 2
 			out = blockBBoxPool.Get().([]cube.BBox)
 			if cap(out) < predicted {
-				blockBBoxPool.Put(out[:0])
+				blockBBoxPool.Put(out[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
 				out = make([]cube.BBox, 0, predicted)
 			} else {
 				out = out[:0]

@@ -122,7 +122,7 @@ func boxCollidesWithBlocks(tx *world.Tx, box cube.BBox) bool {
 	boxes := blockBBoxsAround(tx, box)
 	defer func() {
 		if boxes != nil {
-			blockBBoxPool.Put(boxes[:0])
+			blockBBoxPool.Put(boxes[:0]) //nolint:staticcheck // SA6002: boxing the slice costs 24 bytes, less than the boxes it reuses; pointers would change every caller of blockBBoxsAround.
 		}
 	}()
 	for _, b := range boxes {
