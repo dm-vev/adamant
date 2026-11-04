@@ -866,20 +866,6 @@ func oceanEquipmentDropChance(chance float32, looting int) float32 {
 	return chance
 }
 
-func oceanLootingLevel(src world.DamageSource) int {
-	if !oceanKilledByPlayer(src) {
-		return 0
-	}
-	attacker := oceanDamageSourceAttacker(src)
-	living, ok := attacker.(interface {
-		HeldItems() (item.Stack, item.Stack)
-	})
-	if !ok {
-		return 0
-	}
-	main, _ := living.HeldItems()
-	return oceanStackEnchantmentLevel(main, "Looting", "minecraft:looting")
-}
 func oceanStackEnchantmentLevel(main item.Stack, nativeName, sourceID string) int {
 	if main.Empty() {
 		return 0
@@ -909,29 +895,6 @@ func oceanStackEnchantmentLevel(main item.Stack, nativeName, sourceID string) in
 		}
 	}
 	return level
-}
-func oceanDamageSourceAttacker(src world.DamageSource) world.Entity {
-	switch source := src.(type) {
-	case AttackDamageSource:
-		return source.Attacker
-	case SpearDamageSource:
-		return source.Attacker
-	case MaceSmashDamageSource:
-		return source.Attacker
-	case ProjectileDamageSource:
-		return source.Owner
-	case WindChargeDamageSource:
-		return source.Owner
-	case ExplosionDamageSource:
-		if source, ok := source.Source.(world.EntityExplosionSource); ok {
-			return source.Entity
-		}
-	}
-	return nil
-}
-func oceanKilledByPlayer(src world.DamageSource) bool {
-	attacker := oceanDamageSourceAttacker(src)
-	return attacker != nil && attacker.H() != nil && attacker.H().Type().EncodeEntity() == "minecraft:player"
 }
 func (m *oceanMob) CanEquipBodyArmor(user world.Entity) bool {
 	b := m.b()

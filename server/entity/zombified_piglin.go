@@ -220,7 +220,6 @@ func (z *ZombifiedPiglin) experienceEquipment() int {
 	}
 	return n
 }
-func (z *ZombifiedPiglin) hasEffect(t effect.Type) bool { _, ok := z.z().effects.Effect(t); return ok }
 
 var _ world.EntityType = ZombifiedPiglinType{}
 var _ Living = (*ZombifiedPiglin)(nil)

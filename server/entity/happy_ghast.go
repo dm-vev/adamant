@@ -750,12 +750,11 @@ func (h *HappyGhast) Hurt(v float64, src world.DamageSource) (float64, bool) {
 func (h *HappyGhast) KnockBack(src mgl64.Vec3, f, height float64) {
 	knockBack(h, src, f, height)
 }
-func (h *HappyGhast) Speed() float64               { return h.state().speed }
-func (h *HappyGhast) SetSpeed(v float64)           { h.state().speed = v }
-func (h *HappyGhast) AddEffect(e effect.Effect)    { h.state().effects.Add(e, h) }
-func (h *HappyGhast) RemoveEffect(t effect.Type)   { h.state().effects.Remove(t, h) }
-func (h *HappyGhast) Effects() []effect.Effect     { return h.state().effects.Effects() }
-func (h *HappyGhast) hasEffect(t effect.Type) bool { _, ok := h.state().effects.Effect(t); return ok }
+func (h *HappyGhast) Speed() float64             { return h.state().speed }
+func (h *HappyGhast) SetSpeed(v float64)         { h.state().speed = v }
+func (h *HappyGhast) AddEffect(e effect.Effect)  { h.state().effects.Add(e, h) }
+func (h *HappyGhast) RemoveEffect(t effect.Type) { h.state().effects.Remove(t, h) }
+func (h *HappyGhast) Effects() []effect.Effect   { return h.state().effects.Effects() }
 
 // SetAge sets the age of the happy ghast in ticks; negative ages are
 // ghastlings growing up.

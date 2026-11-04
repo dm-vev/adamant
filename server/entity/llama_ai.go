@@ -76,16 +76,6 @@ func caravanLeashed(tx *world.Tx, m *Mount, depth int) bool {
 	return false
 }
 
-// combatTargetable ports TargetingConditions.forCombat's rule on targets:
-// living and, for players, in a game mode that takes damage.
-func combatTargetable(e world.Entity) bool {
-	if l, ok := e.(Living); ok && l.Dead() {
-		return false
-	}
-	g, ok := e.(interface{ GameMode() world.GameMode })
-	return !ok || g.GameMode().AllowsTakingDamage()
-}
-
 // spit ports Llama.spit: a llama spit flies from in front of the llama at a
 // third of the target's height with an uncertainty of 10.
 func (m *Mount) spit(tx *world.Tx, target world.Entity) {

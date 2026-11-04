@@ -527,12 +527,11 @@ func (c *CopperGolem) Heal(h float64, _ world.HealingSource) float64 {
 func (c *CopperGolem) KnockBack(s mgl64.Vec3, f, h float64) {
 	knockBack(c, s, f, h)
 }
-func (c *CopperGolem) AddEffect(e effect.Effect)    { c.b().effects.Add(e, c) }
-func (c *CopperGolem) RemoveEffect(t effect.Type)   { c.b().effects.Remove(t, c) }
-func (c *CopperGolem) Effects() []effect.Effect     { return c.b().effects.Effects() }
-func (c *CopperGolem) Speed() float64               { return c.b().speed }
-func (c *CopperGolem) SetSpeed(v float64)           { c.b().speed = v }
-func (c *CopperGolem) hasEffect(t effect.Type) bool { _, ok := c.b().effects.Effect(t); return ok }
+func (c *CopperGolem) AddEffect(e effect.Effect)  { c.b().effects.Add(e, c) }
+func (c *CopperGolem) RemoveEffect(t effect.Type) { c.b().effects.Remove(t, c) }
+func (c *CopperGolem) Effects() []effect.Effect   { return c.b().effects.Effects() }
+func (c *CopperGolem) Speed() float64             { return c.b().speed }
+func (c *CopperGolem) SetSpeed(v float64)         { c.b().speed = v }
 func (c *CopperGolem) viewAction(a world.EntityAction) {
 	vs := c.tx.Viewers(c.Position())
 	for _, v := range vs {

@@ -100,13 +100,6 @@ func (m *Movement) sendTracked(t *world.MoveTracker, interval int) {
 	}
 }
 
-// apply stores the result of the movement as the position, velocity and
-// rotation of e and returns the movement.
-func (m *Movement) apply(e *Ent) *Movement {
-	e.data.Pos, e.data.Vel, e.data.Rot = m.pos, m.vel, m.rot
-	return m
-}
-
 func (m *Movement) releaseViewers() {
 	if m.releaseTx != nil {
 		m.releaseTx.ReleaseViewers(m.v)

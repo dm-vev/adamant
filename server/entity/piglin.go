@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"hash/fnv"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -233,7 +232,6 @@ func dimensionByName(name string) world.Dimension {
 }
 
 func (PiglinType) EncodeNBT(d *world.EntityData) map[string]any { return encodePiglinNBT(d) }
-func fnv64(b []byte) uint64                                     { h := fnv.New64a(); _, _ = h.Write(b); return h.Sum64() }
 func NewPiglin(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(PiglinType{}, piglinConfig{})
 }
@@ -419,8 +417,6 @@ func (p *Piglin) CrossbowCharged() bool {
 // CanHunt ports AbstractPiglin.canHunt: piglins hunt hoglins unless they were
 // born of a hunt, brutes never.
 func (p *Piglin) CanHunt() bool { s := p.p(); return !s.brute && !s.cannotHunt }
-
-func (p *Piglin) hasEffect(t effect.Type) bool { _, ok := p.p().effects.Effect(t); return ok }
 
 // finishConversion ports AbstractPiglin.finishConversion and Piglin's: the
 // piglin drops what it carries and becomes a zombified piglin, sick for ten

@@ -150,12 +150,6 @@ func netherEntryAllowed(tx *world.Tx, target world.Dimension) bool {
 	return target != world.Nether || tx.World().GameRuleBool("allow_entering_nether_using_portals")
 }
 
-func (t *PortalTravelComputer) hasPendingPortalTravel() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.pending != nil
-}
-
 // finishPendingPortalTravel travels to the destination queued, if any, and
 // reports whether it did: false if a checkpoint holds the transfer, in
 // which case the entity stays and travels at its next contact with the

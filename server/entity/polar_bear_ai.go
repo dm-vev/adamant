@@ -10,8 +10,6 @@ import (
 
 func (s *polarBearState) mobAI() *MobAI { return &s.ai }
 
-func polarBearOf(m *Mob) *polarBearState { return m.Behaviour().(*polarBearState) }
-
 // registerGoals ports PolarBear.registerGoals.
 func (s *polarBearState) registerGoals(m *Mob) {
 	ai := m.AI

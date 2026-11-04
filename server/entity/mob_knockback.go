@@ -43,21 +43,3 @@ func knockBackResisted(e knockBackable, src mgl64.Vec3, force, height, resistanc
 	}
 	e.SetVelocity(mgl64.Vec3{v[0]/2 + xd/l*push, y, v[2]/2 + zd/l*push})
 }
-
-// gustKnockBack pushes a living entity away from a gust of wind. A gust
-// pushes as an explosion does rather than as LivingEntity.knockback, so the
-// entity is lifted in the air as well; players are pushed by their own
-// KnockBack.
-func gustKnockBack(l Living, src mgl64.Vec3, force, height float64) {
-	if _, player := l.(interface{ GameMode() world.GameMode }); player {
-		l.KnockBack(src, force, height)
-		return
-	}
-	d := l.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height
-	l.SetVelocity(d)
-}

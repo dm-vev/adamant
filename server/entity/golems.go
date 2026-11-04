@@ -237,10 +237,6 @@ func newGolemSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.Ent
 	}
 	return opts.New(SnowballType, conf)
 }
-func hurtGolem(e *Ent, b *golemState, d float64, src world.DamageSource) {
-	m := golemLiving{Ent: e, b: b}
-	m.Hurt(d, src)
-}
 
 type golemFireDamage struct{}
 

@@ -257,21 +257,6 @@ func (s *netherState) jumpInLiquid(m *Mob, lava bool) bool {
 	m.data.Vel[1] = .22 + float64(s.size)*.05
 	return true
 }
-func lineVisible(e *Ent, tx *world.Tx, t world.Entity) bool {
-	d := t.Position().Sub(e.Position())
-	length := d.Len()
-	if length == 0 {
-		return true
-	}
-	for traveled := .25; traveled < length; traveled += .25 {
-		p := cube.PosFromVec3(e.Position().Add(d.Mul(traveled / length)))
-		b := tx.Block(p)
-		if len(b.Model().BBox(p, tx)) > 0 {
-			return false
-		}
-	}
-	return true
-}
 func (s *netherState) Hurt(e *Ent, self world.Entity, d float64, src world.DamageSource) (float64, bool) {
 	if s.dead || d <= 0 {
 		return 0, false

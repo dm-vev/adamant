@@ -3,7 +3,6 @@ package entity
 import (
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
@@ -144,20 +143,6 @@ func setAge(a breeder, v int) {
 	}
 }
 
-// tickBreeding ports the ageing of AgeableMob.aiStep, the love countdown of
-// Animal.aiStep and BreedGoal. It returns the partner to walk to while the
-// breeder is looking to mate.
-func tickBreeding(a breeder, tx *world.Tx) (mgl64.Vec3, bool) {
-	tickAgeing(a, tx)
-	if panicking(a) {
-		// PanicGoal outranks BreedGoal, which stops and forgets its partner.
-		b := a.breedingState()
-		b.partner, b.loveTime = nil, 0
-		return mgl64.Vec3{}, false
-	}
-	return breedGoal(a, tx)
-}
-
 // tickAgeing ports the ageing of AgeableMob.aiStep and the love countdown of
 // Animal.aiStep.
 func tickAgeing(a breeder, tx *world.Tx) {
@@ -200,62 +185,10 @@ func resetLove(a breeder) {
 	}
 }
 
-// breedGoal ports BreedGoal: an animal in love looks for the nearest partner
-// in love within 8 blocks, walks to it, and breeds once it spent 3 seconds
-// doing so and is within 3 blocks.
-func breedGoal(a breeder, tx *world.Tx) (mgl64.Vec3, bool) {
-	b := a.breedingState()
-	// Sitting pets and camels, and rolling pandas, keep their move flag busy,
-	// so the goal cannot run.
-	if s, ok := a.(interface{ moveFlagHeld() bool }); ok && s.moveFlagHeld() {
-		b.partner, b.loveTime = nil, 0
-		return mgl64.Vec3{}, false
-	}
-	partner := b.goalPartner(tx)
-	if partner != nil && (!partner.InLove() || b.loveTime >= 60 || panicking(partner)) {
-		b.partner, b.loveTime, partner = nil, 0, nil
-	}
-	if partner == nil {
-		if !b.InLove() {
-			return mgl64.Vec3{}, false
-		}
-		if partner = freePartner(a, tx); partner == nil {
-			return mgl64.Vec3{}, false
-		}
-		if s, ok := a.(breedGoalStarter); ok && !s.canStartBreeding(tx) {
-			return mgl64.Vec3{}, false
-		}
-		b.partner = partner.H()
-	}
-	b.loveTime++
-	if b.loveTime >= 60 && a.Position().Sub(partner.Position()).LenSqr() < 9 {
-		breed(a, partner, tx)
-		b.partner, b.loveTime = nil, 0
-		return mgl64.Vec3{}, false
-	}
-	return partner.Position(), true
-}
-
 // breedGoalStarter is a breeder whose BreedGoal has conditions to start
 // beyond finding a partner, like pandas that need bamboo nearby.
 type breedGoalStarter interface {
 	canStartBreeding(tx *world.Tx) bool
-}
-
-// goalPartner returns the loaded, living partner of the running BreedGoal.
-func (b *breeding) goalPartner(tx *world.Tx) breeder {
-	if b.partner == nil {
-		return nil
-	}
-	e, ok := b.partner.Entity(tx)
-	if !ok {
-		return nil
-	}
-	p, ok := e.(breeder)
-	if !ok || p.Dead() {
-		return nil
-	}
-	return p
 }
 
 // freePartner ports BreedGoal.getFreePartner: the nearest animal that the
@@ -350,12 +283,6 @@ func randomParent[T any](a, b T) T {
 		return a
 	}
 	return b
-}
-
-// navigateToPartner keeps the navigator routed to the partner the breed goal
-// walks to.
-func navigateToPartner(n *Navigator, e *Ent, tx *world.Tx, target mgl64.Vec3) {
-	n.MoveTo(tx, cube.PosFromVec3(e.Position()), cube.PosFromVec3(target), GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
 }
 
 // encodeNBT adds the Java InLove, LoveCause, ForcedAge and AgeLocked tags.

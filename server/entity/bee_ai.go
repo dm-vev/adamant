@@ -17,8 +17,6 @@ import (
 
 // This file ports the goals of Java's Bee.
 
-func beeOf(m *Mob) *beeBehaviour { return m.Behaviour().(*beeBehaviour) }
-
 // registerGoals ports Bee.registerGoals and the navigation, move control and
 // look control of its constructor.
 func (b *beeBehaviour) registerGoals(m *Mob) {

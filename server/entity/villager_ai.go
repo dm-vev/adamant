@@ -1733,8 +1733,6 @@ func villagerTargetValid(m *Mob, mem memoryType) *Villager {
 	return v
 }
 
-func villagerMob(v *Villager) *Mob { return v.behaviour().ai.Mob(v.Ent, v) }
-
 // newTradeWithVillager ports TradeWithVillager: villagers that meet gossip,
 // and share their spare food, wheat and the items the other's profession
 // wants.

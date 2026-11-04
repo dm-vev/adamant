@@ -107,11 +107,6 @@ func (h *pathHeapQueue) insert(n *pathNodeData) {
 	h.upHeap(n.heapIdx)
 }
 
-func (h *pathHeapQueue) clear() {
-	clear(h.heap)
-	h.heap = h.heap[:0]
-}
-
 func (h *pathHeapQueue) pop() *pathNodeData {
 	popped := h.heap[0]
 	last := len(h.heap) - 1

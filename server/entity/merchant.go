@@ -3,7 +3,6 @@ package entity
 import (
 	"math"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -100,14 +99,4 @@ func (t *tradingPlayer) tick(tx *world.Tx, pos mgl64.Vec3) (world.Entity, bool) 
 		return nil, false
 	}
 	return user, true
-}
-
-// faceTowards returns rot turned to look from pos at target.
-func faceTowards(rot cube.Rotation, pos, target mgl64.Vec3) cube.Rotation {
-	d := target.Sub(pos)
-	horizontal := math.Hypot(d[0], d[2])
-	if horizontal == 0 && d[1] == 0 {
-		return rot
-	}
-	return cube.Rotation{math.Atan2(-d[0], d[2]) * 180 / math.Pi, -math.Atan2(d[1], horizontal) * 180 / math.Pi}
 }

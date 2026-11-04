@@ -413,12 +413,3 @@ func horseMaxHealth(random *vanilla.Random) float64 {
 func horseJumpStrength(random *vanilla.Random) float64 {
 	return float64(float32(.4)) + random.NextDouble()*.2 + random.NextDouble()*.2 + random.NextDouble()*.2
 }
-
-// rider returns the first passenger of the mount.
-func (b *MountBehaviour) rider(tx *world.Tx) world.Entity {
-	if b.passengers[0] == nil {
-		return nil
-	}
-	e, _ := b.passengers[0].Entity(tx)
-	return e
-}

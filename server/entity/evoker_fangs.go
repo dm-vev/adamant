@@ -4,7 +4,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 // EvokerFangsType is the delayed, damaging spell entity created by Evokers.
@@ -68,21 +67,6 @@ func NewEvokerFangs(opts world.EntitySpawnOpts, owner world.Entity, warmup int) 
 		h = owner.H()
 	}
 	return opts.New(EvokerFangsType, &evokerFangsBehaviour{owner: h, warmup: warmup})
-}
-
-func spawnEvokerFangs(e *Ent, tx *world.Tx, target mgl64.Vec3) {
-	origin := e.Position()
-	delta := target.Sub(origin)
-	delta[1] = 0
-	if delta.Len() == 0 {
-		return
-	}
-	direction := delta.Normalize()
-	for i := 1; i <= 5; i++ {
-		pos := origin.Add(direction.Mul(float64(i)))
-		opts := world.EntitySpawnOpts{Position: pos}
-		tx.AddEntity(NewEvokerFangs(opts, e, (i-1)*2))
-	}
 }
 
 var _ world.EntityType = evokerFangsType{}

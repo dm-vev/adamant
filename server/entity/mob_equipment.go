@@ -69,10 +69,6 @@ func equipmentSlotFor(stack item.Stack) int {
 	return slotMainhand
 }
 
-// armourSlotIndex maps an equipment slot to the head-first index of the
-// armour lists Bedrock saves and sends.
-func armourSlotIndex(slot int) int { return slotHead - slot }
-
 // populateDefaultArmour ports Mob.populateDefaultEquipmentSlots: with a
 // chance growing with the local difficulty a mob spawns in a set of armour
 // of one material, the better ones rarer, which on hard is less often cut

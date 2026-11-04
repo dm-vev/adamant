@@ -55,15 +55,6 @@ func (b *WolfBehaviour) registerGoals(m *Mob) {
 	ai.Targets.Add(8, &resetUniversalAngerTargetGoal{lastHurtByPlayer: -1, alertSameType: true})
 }
 
-// isAbstractSkeleton reports if an entity extends Java's AbstractSkeleton.
-func isAbstractSkeleton(e world.Entity) bool {
-	switch e.H().Type().EncodeEntity() {
-	case "minecraft:skeleton", "minecraft:stray", "minecraft:wither_skeleton", "minecraft:bogged", "minecraft:parched":
-		return true
-	}
-	return false
-}
-
 // turtleBabyOnLand ports Turtle.BABY_ON_LAND_SELECTOR.
 func turtleBabyOnLand(m *Mob, e world.Entity) bool {
 	t, ok := e.(*Turtle)

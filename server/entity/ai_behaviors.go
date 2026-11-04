@@ -308,11 +308,6 @@ func newSetEntityLookTarget(filter func(world.Entity) bool, maxDist float64) *on
 	})
 }
 
-// isType returns a filter for entities of the type passed.
-func isType(t world.EntityType) func(world.Entity) bool {
-	return func(e world.Entity) bool { return e.H().Type() == t }
-}
-
 // isPlayerType is a filter for players.
 func isPlayerType(e world.Entity) bool { return isPlayerEntity(e) }
 

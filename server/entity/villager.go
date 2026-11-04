@@ -783,12 +783,11 @@ func (v *Villager) Variant() string    { return v.behaviour().villagerType }
 func (v *Villager) KnockBack(src mgl64.Vec3, force, height float64) {
 	knockBack(v, src, force, height)
 }
-func (v *Villager) AddEffect(e effect.Effect)    { v.behaviour().effects.Add(e, v) }
-func (v *Villager) RemoveEffect(t effect.Type)   { v.behaviour().effects.Remove(t, v) }
-func (v *Villager) Effects() []effect.Effect     { return v.behaviour().effects.Effects() }
-func (v *Villager) Speed() float64               { return v.behaviour().speed }
-func (v *Villager) SetSpeed(speed float64)       { v.behaviour().speed = speed }
-func (v *Villager) hasEffect(t effect.Type) bool { _, ok := v.behaviour().effects.Effect(t); return ok }
+func (v *Villager) AddEffect(e effect.Effect)  { v.behaviour().effects.Add(e, v) }
+func (v *Villager) RemoveEffect(t effect.Type) { v.behaviour().effects.Remove(t, v) }
+func (v *Villager) Effects() []effect.Effect   { return v.behaviour().effects.Effects() }
+func (v *Villager) Speed() float64             { return v.behaviour().speed }
+func (v *Villager) SetSpeed(speed float64)     { v.behaviour().speed = speed }
 
 // MerchantName returns the Bedrock trade screen title of the profession.
 func (v *Villager) MerchantName() string {
@@ -958,39 +957,6 @@ func (b *VillagerBehaviour) tickGossip(current int64) {
 	}
 	b.lastGossipDecay = current
 }
-func villagerWorkstationForProfession(profession string) string {
-	switch profession {
-	case "minecraft:armorer":
-		return "minecraft:blast_furnace"
-	case "minecraft:butcher":
-		return "minecraft:smoker"
-	case "minecraft:cartographer":
-		return "minecraft:cartography_table"
-	case "minecraft:cleric":
-		return "minecraft:brewing_stand"
-	case "minecraft:farmer":
-		return "minecraft:composter"
-	case "minecraft:fisherman":
-		return "minecraft:barrel"
-	case "minecraft:fletcher":
-		return "minecraft:fletching_table"
-	case "minecraft:leatherworker":
-		return "minecraft:cauldron"
-	case "minecraft:librarian":
-		return "minecraft:lectern"
-	case "minecraft:mason":
-		return "minecraft:stonecutter"
-	case "minecraft:shepherd":
-		return "minecraft:loom"
-	case "minecraft:toolsmith":
-		return "minecraft:smithing_table"
-	case "minecraft:weaponsmith":
-		return "minecraft:grindstone"
-	default:
-		return ""
-	}
-}
-
 func villagerProfessionForWorkstation(poi string) string {
 	switch poi {
 	case "minecraft:blast_furnace":
@@ -1022,10 +988,6 @@ func villagerProfessionForWorkstation(poi string) string {
 	default:
 		return ""
 	}
-}
-
-func villagerPOIMatchesProfession(poi, profession string) bool {
-	return villagerWorkstationForProfession(profession) == poi
 }
 
 // shouldRestock ports Villager.shouldRestock: a villager restocks twice a
@@ -1066,18 +1028,6 @@ func (v *Villager) restock() {
 		b.lastRestock = v.tx.CurrentTick()
 	}
 	b.restocksToday++
-}
-func villagerOwnsPOI(poi world.POI, owner uuid.UUID) bool {
-	for _, existing := range poi.Owners {
-		if existing == owner {
-			return true
-		}
-	}
-	return len(poi.Owners) == 0 && poi.HasOwner && poi.Owner == owner
-}
-func villagerHasWorkstation(tx *world.Tx, pos cube.Pos, profession string, owner uuid.UUID) bool {
-	poi, ok := tx.POI(pos)
-	return ok && poi.Kind == world.Workstation && villagerOwnsPOI(poi, owner) && villagerPOIMatchesProfession(poi.Type, profession)
 }
 
 // Interact ports Villager.mobInteract: a player trades with a grown villager

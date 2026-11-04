@@ -562,13 +562,12 @@ func (a *Allay) Heal(h float64, _ world.HealingSource) float64 {
 func (a *Allay) KnockBack(s mgl64.Vec3, f, h float64) {
 	knockBack(a, s, f, h)
 }
-func (a *Allay) AddEffect(e effect.Effect)    { a.b().effects.Add(e, a) }
-func (a *Allay) RemoveEffect(t effect.Type)   { a.b().effects.Remove(t, a) }
-func (a *Allay) Effects() []effect.Effect     { return a.b().effects.Effects() }
-func (a *Allay) Speed() float64               { return a.b().speed }
-func (a *Allay) SetSpeed(v float64)           { a.b().speed = v }
-func (a *Allay) hasEffect(t effect.Type) bool { _, ok := a.b().effects.Effect(t); return ok }
-func (a *Allay) Dancing() bool                { return a.b().dancing }
+func (a *Allay) AddEffect(e effect.Effect)  { a.b().effects.Add(e, a) }
+func (a *Allay) RemoveEffect(t effect.Type) { a.b().effects.Remove(t, a) }
+func (a *Allay) Effects() []effect.Effect   { return a.b().effects.Effects() }
+func (a *Allay) Speed() float64             { return a.b().speed }
+func (a *Allay) SetSpeed(v float64)         { a.b().speed = v }
+func (a *Allay) Dancing() bool              { return a.b().dancing }
 
 // SetDancing ports Allay.setDancing: a panicking allay does not dance.
 func (a *Allay) SetDancing(v bool) {

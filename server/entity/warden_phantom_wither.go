@@ -462,11 +462,6 @@ func mobKiller(src world.DamageSource) world.Entity {
 	}
 	return nil
 }
-func mobKilledByPlayer(src world.DamageSource) bool {
-	killer := mobKiller(src)
-	return killer != nil && killer.H().Type().EncodeEntity() == "minecraft:player"
-}
-
 func mobGriefingDisabled(tx *world.Tx) bool {
 	return !tx.World().GameRuleBool("mob_griefing")
 }
