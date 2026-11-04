@@ -240,20 +240,8 @@ func (w *World) loadBorder() error {
 	w.border.apply(settings)
 	return nil
 }
-func (w *World) saveBorder() {
-	if w.conf.ReadOnly {
-		return
-	}
-	store, ok := w.conf.Provider.(worldDataProvider)
-	if !ok {
-		return
-	}
-	data, err := json.Marshal(w.Border())
-	if err != nil {
-		w.conf.Log.Error("encode world border: " + err.Error())
-		return
-	}
-	if err = store.SaveWorldData(w.borderNamespace(), data); err != nil {
-		w.conf.Log.Error("save world border: " + err.Error())
-	}
+
+// encodeBorder encodes the world border for a save.
+func (w *World) encodeBorder() ([]byte, error) {
+	return json.Marshal(w.Border())
 }

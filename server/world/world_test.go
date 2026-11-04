@@ -98,7 +98,7 @@ func TestTickRaidsPrunesStoppedRaids(t *testing.T) {
 	if _, exists := w.raidByRaider[member]; exists {
 		t.Fatal("stopped raid retained its raider index")
 	}
-	w.saveRaids()
+	w.Save()
 	data, err := memory.load(w.raidDataNamespace())
 	if err != nil {
 		t.Fatal(err)

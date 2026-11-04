@@ -3,6 +3,7 @@ package world
 import (
 	"fmt"
 	"iter"
+	"slices"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
@@ -105,15 +106,17 @@ func (w *World) loadDragonFight() error {
 	return nil
 }
 
-func (w *World) saveDragonFight() {
-	if w.dragonFight == nil || w.conf.ReadOnly {
-		return
+// captureDragonFight returns a copy of the state of the dragon fight of the
+// world for a save, sharing nothing with the fight.
+func (w *World) captureDragonFight() DragonFightData {
+	data := w.dragonFight.Data()
+	if data.ExitPortal != nil {
+		pos := *data.ExitPortal
+		data.ExitPortal = &pos
 	}
-	if provider, ok := w.conf.Provider.(DragonFightProvider); ok {
-		if err := provider.SaveDragonFightData(w.dragonFight.Data()); err != nil {
-			w.conf.Log.Error("save End dragon fight", "error", err)
-		}
-	}
+	data.Gateways = slices.Clone(data.Gateways)
+	data.RespawnCrystalIDs = slices.Clone(data.RespawnCrystalIDs)
+	return data
 }
 
 // LoadDragonArena holds the source 17-by-17 chunk arena while players participate.

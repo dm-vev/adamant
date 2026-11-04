@@ -137,13 +137,45 @@ func (r *providerRef) loadPositionTrackerLocked(provider Provider) error {
 	return nil
 }
 
-func (r *providerRef) savePositionTracker(provider Provider) error {
+// positionTrackingCapture is the position tracking data of a provider as a
+// save captured it, and the version of the tracker it was taken at.
+type positionTrackingCapture struct {
+	version uint64
+	data    PositionTrackingData
+}
+
+// capturePositionTracker captures the position tracking data for a save,
+// loading it first if it was never loaded, so that the save does not replace
+// what the provider holds with nothing. It returns nil if the provider keeps
+// no such data or was closed.
+func (r *providerRef) capturePositionTracker(provider Provider) (*positionTrackingCapture, error) {
+	if _, ok := provider.(positionTrackingProvider); !ok {
+		return nil, nil
+	}
 	r.trackerMu.Lock()
 	defer r.trackerMu.Unlock()
 	if r.providerClosed {
+		return nil, nil
+	}
+	if err := r.loadPositionTrackerLocked(provider); err != nil {
+		return nil, err
+	}
+	return &positionTrackingCapture{version: r.trackerVersion.Load(), data: r.tracker.data()}, nil
+}
+
+// writePositionTracker writes the position tracking data captured, unless
+// the provider was closed or data captured later was written already.
+func (r *providerRef) writePositionTracker(provider Provider, c *positionTrackingCapture) error {
+	r.trackerMu.Lock()
+	defer r.trackerMu.Unlock()
+	if r.providerClosed || c.version < r.trackerSaved.Load() {
 		return nil
 	}
-	return r.savePositionTrackerLocked(provider)
+	if err := provider.(positionTrackingProvider).SavePositionTrackingData(c.data); err != nil {
+		return err
+	}
+	r.trackerSaved.Store(c.version)
+	return nil
 }
 
 func (r *providerRef) savePositionTrackerLocked(provider Provider) error {

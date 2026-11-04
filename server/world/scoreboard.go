@@ -30,17 +30,9 @@ func (w *World) Scoreboard() *scoreboard.Model {
 	return w.scoreboardModel
 }
 
-func (w *World) saveScoreboard() {
-	if w == nil || w.conf.ReadOnly {
-		return
-	}
+// encodeScoreboard encodes the scoreboard of the world for a save, a new
+// one if it was never used.
+func (w *World) encodeScoreboard() ([]byte, error) {
 	w.scoreboardOnce.Do(func() { w.scoreboardModel = scoreboard.NewModel() })
-	data, err := json.Marshal(w.scoreboardModel)
-	if err != nil {
-		w.conf.Log.Error("encode scoreboard: " + err.Error())
-		return
-	}
-	if err = w.SaveWorldData(scoreboardNamespace, data); err != nil {
-		w.conf.Log.Error("save scoreboard: " + err.Error())
-	}
+	return json.Marshal(w.scoreboardModel)
 }

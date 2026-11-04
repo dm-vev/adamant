@@ -79,13 +79,12 @@ func (w *World) loadLootRandomSequences() {
 	}
 }
 
-func (w *World) saveLootRandomSequences() {
-	if w.conf.ReadOnly { return }
-	provider, ok := w.conf.Provider.(worldDataProvider)
-	if !ok { return }
+// encodeLootRandomSequences encodes the loot random sequences of the world
+// for a save.
+func (w *World) encodeLootRandomSequences() ([]byte, error) {
 	saved := lootSequenceData{Sequences: make(map[string]vanilla.State, len(w.lootSequences))}
-	for id, random := range w.lootSequences { saved.Sequences[id] = random.State() }
-	data, err := json.Marshal(saved)
-	if err != nil { w.conf.Log.Error("encode loot random sequences: " + err.Error()); return }
-	if err := provider.SaveWorldData(w.lootRandomSequenceNamespace(), data); err != nil { w.conf.Log.Error("save loot random sequences: " + err.Error()) }
+	for id, random := range w.lootSequences {
+		saved.Sequences[id] = random.State()
+	}
+	return json.Marshal(saved)
 }

@@ -73,3 +73,10 @@ func RegionGroups(columns []ChunkPos) [][]ChunkPos {
 	}
 	return out
 }
+
+// ColumnModified reports whether the loaded column at pos changed since it
+// was last saved.
+func (tx *Tx) ColumnModified(pos ChunkPos) bool {
+	c, ok := tx.World().chunks[pos]
+	return ok && c.modified
+}

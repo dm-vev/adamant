@@ -145,6 +145,7 @@ var waitPrimitives = map[string]bool{
 	"(*" + worldPkg + ".World).Save":        true,
 	"(*" + worldPkg + ".World).Close":       true,
 	"(*" + worldPkg + ".World).AdvanceTick": true,
+	worldPkg + ".CaptureAll":                true,
 	playerPkg + ".Call":                     true,
 }
 

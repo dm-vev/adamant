@@ -224,7 +224,14 @@ type World struct {
 	// saves counts the columns saved, on the world goroutine. A column saved
 	// takes the count as its savedIn, which tells a failed write of that
 	// save from a later save of the column.
-	saves                        uint64
+	saves uint64
+	// captures counts the captures of the world for a save, on the world
+	// goroutine. dataWritten is the count of the last capture whose data
+	// was written, under dataMu: the data of a capture is written off the
+	// world goroutine, and that of an older one never after a newer one.
+	captures                     uint64
+	dataMu                       sync.Mutex
+	dataWritten                  uint64
 	scratchInhabitedPlayers      []inhabitedTimePlayer
 	scratchPostProcessingColumns []columnRef
 
@@ -2416,9 +2423,12 @@ func (w *World) DefaultWorld() *World {
 	return w
 }
 
-// Save saves the World to the provider and waits until it reached the disk.
-// Called from a world owner or a region worker, it logs ErrOwnerWait and
-// returns without saving: use Tx.SaveWorld from a transaction.
+// Save saves the World to the provider and waits until it reached the disk:
+// it captures the world in a transaction, then writes what it captured. It
+// saves this world alone, outside the checkpoints of a server, which save
+// all its worlds and players at one instant (CaptureAll). Called from a
+// world owner or a region worker, it logs ErrOwnerWait and returns without
+// saving: use Tx.SaveWorld from a transaction.
 func (w *World) Save() {
 	if w == nil {
 		return
@@ -2426,8 +2436,11 @@ func (w *World) Save() {
 	if !w.conf.Synchronous && checkOwnerWait("World.Save") != nil {
 		return
 	}
-	<-w.exec(w.save(nil))
-	w.finishSave()
+	var cp *Checkpoint
+	<-w.exec(func(tx *Tx) { cp = w.capture(tx, false) })
+	if cp != nil {
+		_ = cp.Write()
+	}
 }
 
 // SaveWorld saves the world of the transaction like World.Save, from within
@@ -2439,66 +2452,7 @@ func (tx *Tx) SaveWorld() {
 		tx.deferToOwner(func(tx *Tx) { tx.SaveWorld() })
 		return
 	}
-	w := tx.World()
-	w.save(nil)(tx)
-	if !w.conf.ReadOnly {
-		w.savePositionTracking()
-	}
-}
-
-// finishSave waits for the chunks saved to reach the disk, as saving did when
-// it wrote them itself, and saves the position tracking data.
-func (w *World) finishSave() {
-	if w.saver != nil {
-		w.saver.flush()
-	}
-	if !w.conf.ReadOnly {
-		w.savePositionTracking()
-	}
-}
-
-func (w *World) saveGenerationState() {
-	if w.conf.ReadOnly {
-		return
-	}
-	if err := saveGenerationState(w.conf.Provider, w.conf.Generator, w.conf.Dim); err != nil {
-		w.conf.Log.Error("save generation state: " + err.Error())
-	}
-}
-
-func (w *World) savePositionTracking() {
-	if err := w.providerUse.savePositionTracker(w.conf.Provider); err != nil {
-		w.conf.Log.Error("save position tracking data: " + err.Error())
-	}
-}
-
-// save saves all loaded chunks to the World's provider.
-// save returns a transaction doing f for every loaded chunk, or saveChunks
-// if f is nil, and saving the rest of the world.
-func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
-	return func(tx *Tx) {
-		if w.conf.ReadOnly {
-			return
-		}
-		w.conf.Log.Debug("Saving chunks in memory to disk...")
-		w.restoreFailedSaves()
-		if f == nil {
-			w.saveChunks(tx)
-		} else {
-			for pos, c := range w.chunks {
-				f(tx, pos, c)
-			}
-		}
-		w.conf.Log.Debug("Updating level.dat values...")
-		w.conf.Provider.SaveSettings(w.set)
-		w.saveVillagePOIs()
-		w.saveRaids()
-		w.saveDragonFight()
-		w.saveLootRandomSequences()
-		w.saveBorder()
-		w.saveGenerationState()
-		w.saveScoreboard()
-	}
+	_ = tx.World().capture(tx, false).write(false)
 }
 
 // saveChunk saves a chunk and its entities to disk after compacting the chunk.
@@ -2506,11 +2460,11 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 	w.persistChunk(tx, pos, c, true)
 }
 
-// saveChunks saves every loaded chunk as saveChunk does. Compacting and
-// copying the blocks of each chunk only touch that chunk, so they are done
-// on all cores while the owner waits; the entities and block entities are
-// then encoded and handed to the saver on the owner.
-func (w *World) saveChunks(tx *Tx) {
+// saveChunks saves every loaded chunk as saveChunk does and returns how many
+// it saved. Compacting and copying the blocks of each chunk only touch that
+// chunk, so they are done on all cores while the owner waits; the entities
+// and block entities are then encoded and handed to the saver on the owner.
+func (w *World) saveChunks(tx *Tx) int {
 	type persisted struct {
 		pos ChunkPos
 		c   *Column
@@ -2548,6 +2502,7 @@ func (w *World) saveChunks(tx *Tx) {
 		col.PostProcessing = clonePostProcessing(col.PostProcessing)
 		w.saver.store(p.pos, col, saved)
 	}
+	return len(columns)
 }
 
 // needsSave reports whether c may hold changes the provider lacks. Entities
@@ -2825,10 +2780,9 @@ func (w *World) close() {
 				w.closeChunk(tx, pos, c)
 			}
 		} else {
-			w.save(w.closeChunk)(tx)
+			// The saver writes the columns closed before it stops below.
+			_ = w.capture(tx, true).write(false)
 		}
-		w.saveLootRandomSequences()
-		w.saveScoreboard()
 	})
 	if w.saver != nil {
 		w.saver.close()

@@ -423,22 +423,13 @@ func (w *World) loadVillagePOIs() {
 	}
 }
 
-func (w *World) saveVillagePOIs() {
-	provider, ok := w.conf.Provider.(worldDataProvider)
-	if !ok {
-		return
-	}
+// encodeVillagePOIs encodes the village points of interest of the world for
+// a save.
+func (w *World) encodeVillagePOIs() ([]byte, error) {
 	records := make([]villagePOI, 0, len(w.pois))
 	for pos, poi := range w.pois {
 		records = append(records, villagePOI{Pos: pos, POI: poi})
 	}
 	sort.Slice(records, func(i, j int) bool { return posLess(records[i].Pos, records[j].Pos) })
-	data, err := json.Marshal(records)
-	if err != nil {
-		w.conf.Log.Error("encode village POI data: " + err.Error())
-		return
-	}
-	if err := provider.SaveWorldData(w.villageDataNamespace(), data); err != nil {
-		w.conf.Log.Error("save village POI data: " + err.Error())
-	}
+	return json.Marshal(records)
 }

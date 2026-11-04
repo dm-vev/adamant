@@ -650,11 +650,8 @@ func (w *World) loadRaids() {
 	}
 }
 
-func (w *World) saveRaids() {
-	provider, ok := w.conf.Provider.(worldDataProvider)
-	if !ok {
-		return
-	}
+// encodeRaids encodes the raids of the world for a save.
+func (w *World) encodeRaids() ([]byte, error) {
 	ids := make([]int64, 0, len(w.raids))
 	for id := range w.raids {
 		ids = append(ids, id)
@@ -681,12 +678,5 @@ func (w *World) saveRaids() {
 			Members: members, Heroes: heroes,
 		})
 	}
-	data, err := json.Marshal(records)
-	if err != nil {
-		w.conf.Log.Error("encode raid data: " + err.Error())
-		return
-	}
-	if err := provider.SaveWorldData(w.raidDataNamespace(), data); err != nil {
-		w.conf.Log.Error("save raid data: " + err.Error())
-	}
+	return json.Marshal(records)
 }
