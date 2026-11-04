@@ -678,6 +678,14 @@ func (s *Session) handleInbox(packets []received, tx *world.Tx, c Controllable) 
 		packets[i] = received{}
 		s.handlingArrived = r.at
 		if err := s.handlePacketSafely(r.pk, tx, c); err != nil {
+			if errors.Is(err, errInputDeferred) {
+				// The client is ahead of time, as the game judges it: its
+				// input and what came after it wait for a later tick, in
+				// their order.
+				s.requeue(append([]received{r}, packets[i+1:]...))
+				clear(packets[i+1:])
+				return false, false
+			}
 			s.conf.Log.Debug("process packet: " + err.Error())
 			clear(packets[i+1:])
 			return true, false

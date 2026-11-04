@@ -13,8 +13,10 @@ import (
 
 // ClientMove moves the player as its client moved it in one of its ticks:
 // to m.Position, looking along m.Rotation, unless the anti-cheat refuses
-// the move. A move awaiting the acknowledgement of a teleport, or that
-// changes nothing, is ignored; a player that rides only turns.
+// the move, or defers it: a client ahead of time hands the move again, with
+// what came after it, in a later tick. A move awaiting the acknowledgement
+// of a teleport, or that changes nothing, is ignored; a player that rides
+// only turns.
 //
 // The game refuses a move no player makes in a tick, farther than 10
 // blocks (17 gliding) beyond the velocity the server knows, as Java does,
@@ -26,6 +28,15 @@ func (p *Player) ClientMove(m client.Move) client.MoveResult {
 	ac := p.anticheat()
 	if ac != nil {
 		p.noteClientMove(ac, m)
+		if m.Loading {
+			// The clock starts again in the new world.
+			ac.timer = timerState{}
+		}
+		if m.AwaitingTeleport {
+			p.countTimer(ac, m)
+		} else if res, decided := p.checkTimer(ac, m); decided {
+			return res
+		}
 	}
 	if m.AwaitingTeleport {
 		return client.MoveIgnored

@@ -4020,6 +4020,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 
 	if p.prevWorld != tx.World() && p.prevWorld != nil {
 		p.startGrace(p.graceOf(func(g anticheat.Grace) int { return g.WorldChange }))
+		p.resetTimer()
 		p.Handler().HandleChangeWorld(p, p.prevWorld, tx.World())
 	}
 	p.prevWorld = tx.World()

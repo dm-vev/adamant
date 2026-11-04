@@ -1,6 +1,7 @@
 package session
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -24,14 +25,24 @@ func (h PlayerAuthInputHandler) Handle(p proto.Packet, s *Session, tx *world.Tx,
 	return h.handleActions(pk, s, tx, c)
 }
 
+// errInputDeferred is returned for a PlayerAuthInput of a client ahead of
+// time: the packet and those after it wait for a later tick.
+var errInputDeferred = errors.New("input deferred: the client is ahead of time")
+
 // handleMovement handles the movement part of the PlayerAuthInput packet.
+// It leaves the packet as it was, as a packet the game defers is handled
+// again in a later tick.
 func (h PlayerAuthInputHandler) handleMovement(pk *v2193.PlayerAuthInputPacket, s *Session, tx *world.Tx, c Controllable) error {
 	yaw, pitch := c.Rotation().Elem()
 	pos := c.Position()
 	networkPos := entityNetworkPosition(c, pos)
 
+	in := struct {
+		pitch, yaw, headYaw float32
+		position            [3]float32
+	}{pk.Pitch, pk.Yaw, pk.HeadYaw, pk.Position}
 	reference := []float64{pitch, yaw, yaw, networkPos[0], networkPos[1], networkPos[2]}
-	for i, v := range [...]*float32{&pk.Pitch, &pk.Yaw, &pk.HeadYaw, &pk.Position[0], &pk.Position[1], &pk.Position[2]} {
+	for i, v := range [...]*float32{&in.pitch, &in.yaw, &in.headYaw, &in.position[0], &in.position[1], &in.position[2]} {
 		f := float64(*v)
 		if math.IsNaN(f) || math.IsInf(f, 1) || math.IsInf(f, 0) {
 			// Sometimes, the PlayerAuthInput packet is in fact sent with NaN/INF after being teleported (to another
@@ -43,13 +54,13 @@ func (h PlayerAuthInputHandler) handleMovement(pk *v2193.PlayerAuthInputPacket, 
 		}
 	}
 
-	pk.Position = entityBasePosition(c, pk.Position)
-
-	newPos := clampToWorld(vec32To64(pk.Position))
-	deltaPos, deltaYaw, deltaPitch := newPos.Sub(pos), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch
+	newPos := clampToWorld(vec32To64(entityBasePosition(c, in.position)))
+	deltaPos, deltaYaw, deltaPitch := newPos.Sub(pos), float64(in.yaw)-yaw, float64(in.pitch)-pitch
 	m := clientMove(pk, newPos, s)
+	m.Rotation, m.HeadYaw = cube.Rotation{float64(in.yaw), float64(in.pitch)}, float64(in.headYaw)
 
-	if expected := s.teleportPos.Load(); expected != nil {
+	expected := s.teleportPos.Load()
+	if expected != nil {
 		if teleportAcknowledged(newPos, *expected) {
 			s.teleportPos.Store(nil)
 			m.Acknowledged = true
@@ -67,8 +78,15 @@ func (h PlayerAuthInputHandler) handleMovement(pk *v2193.PlayerAuthInputPacket, 
 
 	// Mark client-originated movement so we don't echo it back to the same client.
 	s.moving.Store(true)
-	c.ClientMove(m)
+	res := c.ClientMove(m)
 	s.moving.Store(false)
+	if res == client.MoveDeferred {
+		if m.Acknowledged {
+			// The acknowledgement comes again with the packet.
+			s.teleportPos.CompareAndSwap(nil, expected)
+		}
+		return errInputDeferred
+	}
 	return nil
 }
 

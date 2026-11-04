@@ -146,8 +146,11 @@ type acTrace struct {
 	// latency is the latency of the client, half its round trip.
 	latency time.Duration
 	// perTick is how many moves the server handles a tick, as a lagging
-	// server does: 1 if 0.
+	// server does: 1 if 0. The server ticks every perTick × 50 ms.
 	perTick int
+	// arrival, if set, is when move i of the trace reaches the server,
+	// after the trace began; by default (i + 1) × 50 ms, a move a tick.
+	arrival func(i int) time.Duration
 	// setup prepares the player and the mover before the trace.
 	setup func(tx *world.Tx, p *Player, j *javaMover)
 	// input is what the client holds down in tick i of the trace.
@@ -168,11 +171,16 @@ type traceResult struct {
 	violations  []anticheat.Violation
 	corrections int
 	refused     int
+	deferred    int
 }
 
 // runTrace feeds the trace tr to a new player of w, checked by the default
 // anti-cheat as edited by tr.conf, after it stood still through the grace
-// of its join, as a client sends a move every tick.
+// of its join, as a client sends a move every tick. The moves reach the
+// server when tr.arrival says, and the server ticks every perTick × 50 ms
+// of its wall clock, handling the moves that arrived in order: a move the
+// game defers waits, with those after it, for the next tick, as the
+// session holds them.
 func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 	t.Helper()
 	r := clienttest.New()
@@ -189,17 +197,21 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 		p := tx.AddEntity(handle).(*Player)
 		defer func() { _ = p.Close() }()
 		p.Handle(h)
+		wall := time.Unix(1_000_000, 0)
+		p.anticheat().now = func() time.Time { return wall }
+		perTick := max(tr.perTick, 1)
 		current := int64(0)
-		tick := func() {
+		tick := func(d time.Duration) {
 			current++
+			wall = wall.Add(d)
 			p.Tick(tx, current)
 		}
 		rtt := int(math.Ceil(float64(2*tr.latency) / float64(anticheatTick)))
 		j := &javaMover{pos: tr.start, onGround: math.Abs(tr.start[1]-floorY) < 1e-9}
 		// The client stands still through the grace of its join.
 		for range conf.Grace.Join + 1 {
-			p.ClientMove(client.Move{Position: p.Position(), Rotation: p.Rotation()})
-			tick()
+			p.ClientMove(client.Move{Position: p.Position(), Rotation: p.Rotation(), Arrived: wall})
+			tick(anticheatTick)
 		}
 		if tr.setup != nil {
 			tr.setup(tx, p, j)
@@ -208,52 +220,79 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 		if tr.positions != nil {
 			positions = tr.positions(tx)
 		}
-		perTick := max(tr.perTick, 1)
 		corrections := len(r.CallsTo("CorrectMove"))
 		ticks := tr.ticks
 		if positions != nil {
 			ticks = len(positions)
 		}
-		for i := range ticks {
-			if tr.event != nil {
-				tr.event(i, tx, p, j, rtt)
+		arrival := tr.arrival
+		if arrival == nil {
+			arrival = func(i int) time.Duration { return time.Duration(i+1) * anticheatTick }
+		}
+		begin := wall
+		type sent struct {
+			m  client.Move
+			in javaInput
+		}
+		var queue []sent
+		next := 0
+		for extra := 0; (next < ticks || len(queue) > 0) && extra < 400; {
+			// The moves the client sent that reached the server by now.
+			for next < ticks && !begin.Add(arrival(next)).After(wall) {
+				i := next
+				next++
+				if tr.event != nil {
+					tr.event(i, tx, p, j, rtt)
+				}
+				var in javaInput
+				if tr.input != nil {
+					in = tr.input(i, j)
+				}
+				var pos mgl64.Vec3
+				if positions != nil {
+					pos = positions[i]
+				} else {
+					pos = j.step(tx, p, in)
+				}
+				m := client.Move{Position: pos, Rotation: cube.Rotation{in.yaw, 0}, Tick: uint64(i + 1), Jumping: in.jump, Sprinting: in.sprint, Sneaking: in.sneak,
+					Crawling: in.crawl, Riding: p.Riding() != nil, Arrived: begin.Add(arrival(i))}
+				if j.acknowledge {
+					m.Acknowledged, j.acknowledge = true, false
+				}
+				queue = append(queue, sent{m: m, in: in})
+			}
+			for len(queue) > 0 && !p.Dead() && !p.closing.Load() {
+				m, in := queue[0].m, queue[0].in
+				// As the session does: the move, then the flags of the input.
+				r.SetHandlingInput(true)
+				result := p.ClientMove(m)
+				if result == client.MoveDeferred {
+					r.SetHandlingInput(false)
+					res.deferred++
+					break
+				}
+				queue = queue[1:]
+				if result == client.MoveRefused {
+					res.refused++
+				}
+				if in.sprint && !p.Sprinting() {
+					p.StartSprinting()
+				} else if !in.sprint && p.Sprinting() {
+					p.StopSprinting()
+				}
+				if in.sneak && !p.Sneaking() {
+					p.StartSneaking()
+				} else if !in.sneak && p.Sneaking() {
+					p.StopSneaking()
+				}
+				r.SetHandlingInput(false)
 			}
 			if p.Dead() || p.closing.Load() {
 				break
 			}
-			var in javaInput
-			if tr.input != nil {
-				in = tr.input(i, j)
-			}
-			var pos mgl64.Vec3
-			if positions != nil {
-				pos = positions[i]
-			} else {
-				pos = j.step(tx, p, in)
-			}
-			m := client.Move{Position: pos, Rotation: cube.Rotation{in.yaw, 0}, Tick: uint64(i + 1), Jumping: in.jump, Sprinting: in.sprint, Sneaking: in.sneak,
-				Crawling: in.crawl, Riding: p.Riding() != nil}
-			if j.acknowledge {
-				m.Acknowledged, j.acknowledge = true, false
-			}
-			// As the session does: the move, then the flags of the input.
-			r.SetHandlingInput(true)
-			if p.ClientMove(m) == client.MoveRefused {
-				res.refused++
-			}
-			if in.sprint && !p.Sprinting() {
-				p.StartSprinting()
-			} else if !in.sprint && p.Sprinting() {
-				p.StopSprinting()
-			}
-			if in.sneak && !p.Sneaking() {
-				p.StartSneaking()
-			} else if !in.sneak && p.Sneaking() {
-				p.StopSneaking()
-			}
-			r.SetHandlingInput(false)
-			if (i+1)%perTick == 0 {
-				tick()
+			tick(time.Duration(perTick) * anticheatTick)
+			if next >= ticks {
+				extra++
 			}
 		}
 		res.corrections = len(r.CallsTo("CorrectMove")) - corrections
@@ -481,6 +520,23 @@ func conditionTraces() []acTrace {
 				}
 			}},
 		{name: "a lagging server: three moves a tick", start: laneStart(laneStone), ticks: 150, perTick: 3, input: forward(east, true, true)},
+		{name: "jitter: bursts of five after 250 ms", start: laneStart(laneStone), ticks: 200, input: forward(east, true, false),
+			arrival: func(i int) time.Duration { return time.Duration(i/5+1) * 250 * time.Millisecond }},
+		{name: "jitter of 200 ms", start: laneStart(laneStone), ticks: 200, input: forward(east, true, false),
+			arrival: func(i int) time.Duration {
+				d := time.Duration(i+1) * anticheatTick
+				if i%4 == 1 {
+					d += 200 * time.Millisecond
+				}
+				return d
+			}},
+		{name: "a stall of 2.5 s and its burst", start: laneStart(laneStone), ticks: 200, input: forward(east, false, false),
+			arrival: func(i int) time.Duration {
+				if i >= 60 && i < 110 {
+					return 110 * anticheatTick
+				}
+				return time.Duration(i+1) * anticheatTick
+			}},
 		{name: "riding, then dismounting", start: laneStart(laneStone), ticks: 80,
 			setup: func(tx *world.Tx, p *Player, _ *javaMover) {
 				pig := tx.AddEntity(entity.NewPig(world.EntitySpawnOpts{Position: p.Position()}))

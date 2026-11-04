@@ -199,6 +199,8 @@ type unchangedControllable struct {
 	// steered what the controllable rides.
 	moves   []client.Move
 	steered bool
+	// result is what ClientMove returns of a move it applies.
+	result client.MoveResult
 }
 
 func newUnchangedControllable() *unchangedControllable {
@@ -217,6 +219,9 @@ func (c *unchangedControllable) ClientMove(m client.Move) client.MoveResult {
 	c.moves = append(c.moves, m)
 	if m.AwaitingTeleport {
 		return client.MoveIgnored
+	}
+	if c.result != client.MoveApplied {
+		return c.result
 	}
 	if c.move != nil {
 		c.move(m.Position.Sub(c.position))

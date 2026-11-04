@@ -45,6 +45,10 @@ type acState struct {
 	supportResent int64
 	// mc sweeps the paths of moves through the blocks for Phase.
 	mc entity.MovementComputer
+	// timer is what Timer keeps, and now the wall clock it reads, nil for
+	// time.Now: a test sets it.
+	timer timerState
+	now   func() time.Time
 
 	// impulses are the velocities the server gave the player that its
 	// client may still apply, each until a tick of the player.
