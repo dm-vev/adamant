@@ -404,13 +404,61 @@ func (tx *Tx) guard() *tickGuard {
 	return &tx.w.guard
 }
 
+// TickFaulter is an entity that handles a panic of its own tick or of its
+// controller, instead of being quarantined. Player implements it by
+// disconnecting with an internal error, which saves it.
+type TickFaulter interface {
+	// TickPanicked is called with the fault of the panic, on the owner of
+	// the world, after it was logged.
+	TickPanicked(tx *Tx, f Fault)
+}
+
 // blameEntity counts the fault f, of a panic at tick, against the entity
-// of handle, quarantining it once it reached FaultLimit, and reports it.
-func (w *World) blameEntity(tick int64, handle *EntityHandle, f Fault) {
-	if state := handle.state; state != nil && state.faults.count(&f, tick) {
+// of handle, quarantining it once it reached FaultLimit, and reports it. An
+// entity that is a TickFaulter handles the fault itself instead, on the
+// owner: at once in a transaction of the owner, after the phase in one of
+// a region.
+func (w *World) blameEntity(tx *Tx, tick int64, handle *EntityHandle, f Fault) {
+	state := handle.state
+	if state == nil {
+		w.reportFault(f, quarantineKey{})
+		return
+	}
+	if _, ok := state.ent.(TickFaulter); ok {
+		if f.Type == "minecraft:player" {
+			f.Kind = FaultPlayer
+		}
+		w.reportFault(f, quarantineKey{})
+		tx.deferToOwner(func(tx *Tx) {
+			if handle.state != state {
+				// It left the world in the meantime.
+				return
+			}
+			w.tickPanicked(tx, handle, state, f)
+		})
+		return
+	}
+	if state.faults.count(&f, tick) {
 		state.quarantined = true
 	}
 	w.reportFault(f, quarantineKey{entity: handle})
+}
+
+// tickPanicked has the entity of handle, a TickFaulter, handle the fault f.
+// A panic of it is reported as a fault of the transaction.
+func (w *World) tickPanicked(tx *Tx, handle *EntityHandle, state *entityState, f Fault) {
+	defer func() {
+		if r := recover(); r != nil {
+			g := newFault(FaultTransaction, r)
+			g.Type = panicSite()
+			w.reportFault(g, quarantineKey{})
+		}
+	}()
+	// Bound to tx, as the transaction the entity panicked in, a region's
+	// perhaps, may have ended.
+	if tf, ok := state.entity(tx, handle).(TickFaulter); ok {
+		tf.TickPanicked(tx, f)
+	}
 }
 
 // forgetEntity takes the entity of handle, whose state in the world is

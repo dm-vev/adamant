@@ -501,3 +501,66 @@ func TestRegionWorkPanicIsBlamedOnItsEntity(t *testing.T) {
 		t.Fatalf("faults = %v, want one blamed on the entity", faults)
 	}
 }
+
+// faulterEntity is a testEntity that handles the panics of its tick, as
+// players do.
+type faulterEntity struct {
+	*testEntity
+	panicked *[]*Tx
+}
+
+func (e faulterEntity) TickPanicked(tx *Tx, f Fault) {
+	*e.panicked = append(*e.panicked, tx)
+	if f.Entity != e.handle {
+		panic("fault of another entity")
+	}
+}
+
+type faulterType struct {
+	testEntityType
+	panicked *[]*Tx
+}
+
+func (t faulterType) Open(tx *Tx, handle *EntityHandle, data *EntityData) Entity {
+	return faulterEntity{testEntity: t.testEntityType.Open(tx, handle, data).(*testEntity), panicked: t.panicked}
+}
+
+// A TickFaulter handles the panics of its tick on the owner, after the
+// phase if it ticked in a region, and is never quarantined.
+func TestTickFaulterHandlesItsPanicsOnTheOwner(t *testing.T) {
+	var sink faultSink
+	w := sink.configure(Config{Synchronous: true, Regions: true}, newFaultRecorder()).New()
+	defer func() { _ = w.Close() }()
+
+	var panicked []*Tx
+	ticks := 0
+	a := EntitySpawnOpts{Position: mgl64.Vec3{8.5, 4, 8.5}}.New(faulterType{panicked: &panicked}, regionProbeConfig{tick: func(tx *Tx, _ *testEntity) {
+		ticks++
+		if tx.region == nil {
+			t.Error("the entity ticked outside a region")
+		}
+		panic("test: faulter tick")
+	}})
+	b := probe(mgl64.Vec3{1024 + 8.5, 4, 8.5}, func(*Tx, *testEntity) {})
+	<-w.Exec(func(tx *Tx) {
+		tx.AddEntity(a)
+		tx.AddEntity(b)
+	})
+	for range FaultLimit + 2 {
+		advance(t, w)
+	}
+	if ticks != FaultLimit+2 || len(panicked) != ticks {
+		t.Fatalf("ticked %d times, handled %d panics: want %d of each, never quarantined", ticks, len(panicked), FaultLimit+2)
+	}
+	for _, tx := range panicked {
+		if tx.region != nil {
+			t.Fatal("TickPanicked ran in a region")
+		}
+	}
+	if q := w.Quarantined(); len(q) != 0 {
+		t.Fatalf("Quarantined = %v", q)
+	}
+	if faults := sink.all(FaultEntity); len(faults) != FaultLimit+2 || faults[0].Count != 0 {
+		t.Fatalf("faults = %d, want %d, not counted", len(faults), FaultLimit+2)
+	}
+}

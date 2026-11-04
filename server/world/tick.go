@@ -269,15 +269,39 @@ func (t ticker) tick(tx *Tx) {
 // controlPlayers has the controllers of the players in the world act. A
 // controller may take its player out of the world, or others in.
 func (w *World) controlPlayers(tx *Tx) {
-	for _, h := range w.playerList {
+	list := w.playerList
+	for i := 0; i >= 0; {
+		i = w.controlPlayersFrom(tx, list, i)
+	}
+}
+
+// controlPlayersFrom has the controllers of the players of list from i on
+// act and returns -1 once done. A panic ends it early: it is blamed on the
+// player, and the index after it returned.
+func (w *World) controlPlayersFrom(tx *Tx, list []*EntityHandle, i int) (next int) {
+	defer func() {
+		if r := recover(); r != nil {
+			h := list[i]
+			f := newFault(FaultPlayer, r)
+			f.Type, f.Pos, f.Entity = h.t.EncodeEntity(), cube.PosFromVec3(h.data.Pos), h
+			w.blameEntity(tx, tx.CurrentTick(), h, f)
+			next = i + 1
+		}
+	}()
+	for ; i < len(list); i++ {
+		h := list[i]
 		c := h.controller.Load()
 		if c == nil {
+			continue
+		}
+		if s := h.state; s != nil && s.quarantined {
 			continue
 		}
 		if e, ok := h.Entity(tx); ok {
 			(*c).Control(tx, e)
 		}
 	}
+	return -1
 }
 
 // tickFrozenPlayers preserves player-side processing while suppressing world simulation.
@@ -1027,7 +1051,7 @@ func (t ticker) entityPanicked(tx *Tx, tick int64, col *Column, index int, handl
 		rg.fatal = &f
 		return -1
 	}
-	tx.w.blameEntity(tick, blamed, f)
+	tx.w.blameEntity(tx, tick, blamed, f)
 	if col != nil && index < len(col.Entities) && col.Entities[index] == handle {
 		return index + 1
 	}

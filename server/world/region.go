@@ -433,7 +433,7 @@ func (t ticker) runRegionWorkFrom(tx *Tx, tick int64, work []regionWork, i int) 
 			f := newFault(FaultEntity, r)
 			if by := work[i].by; by != nil {
 				f.Type, f.Pos, f.Entity = by.t.EncodeEntity(), cube.PosFromVec3(by.data.Pos), by
-				tx.w.blameEntity(tick, by, f)
+				tx.w.blameEntity(tx, tick, by, f)
 				return
 			}
 			f.Kind, f.Type = FaultTransaction, panicSite()
