@@ -320,107 +320,233 @@ func checkSpawnRules(tx *world.Tx, id string, pos cube.Pos, r *vanilla.Random) b
 	if peaceful && notInPeaceful[id] {
 		return false
 	}
-	below := pos.Side(cube.FaceDown)
-	switch id {
-	case "minecraft:axolotl":
-		return blockInTag(tx.Block(below), "axolotls_spawnable_on")
-	case "minecraft:cod", "minecraft:pufferfish", "minecraft:salmon", "minecraft:dolphin", "minecraft:squid":
-		return checkSurfaceWaterSpawnRules(tx, pos, 13, 0)
-	case "minecraft:tropical_fish":
-		return waterAt(tx, below) && waterBlockAt(tx, pos.Side(cube.FaceUp)) &&
-			(biomeHasTag(tx, pos, "allows_tropical_fish_spawns_at_any_height") || checkSurfaceWaterSpawnRules(tx, pos, 13, 0))
-	case "minecraft:nautilus":
-		return checkSurfaceWaterSpawnRules(tx, pos, 25, 5)
-	case "minecraft:glow_squid":
-		return pos[1] <= seaLevel(tx)-33 && tx.RawBrightness(pos) == 0 && waterBlockAt(tx, pos)
-	case "minecraft:drowned":
-		return checkDrownedSpawnRules(tx, pos, r)
-	case "minecraft:guardian", "minecraft:elder_guardian":
-		return (r.NextInt(20) == 0 || !canSeeSkyFromBelowWater(tx, pos)) && !peaceful && waterAt(tx, pos) && waterAt(tx, below)
-	case "minecraft:armadillo":
-		return checkAnimalSpawnRules(tx, pos, "armadillo_spawnable_on")
-	case "minecraft:bat":
-		if pos[1] >= tx.HighestBlock(pos[0], pos[2])+1 || r.NextBoolean() || tx.RawBrightness(pos) > int(r.NextInt(4)) {
-			return false
-		}
-		return blockInTag(tx.Block(below), "bats_spawnable_on") && checkMobSpawnRules(tx, id, pos)
-	case "minecraft:blaze", "minecraft:breeze", "minecraft:zoglin":
-		return checkMobSpawnRules(tx, id, pos)
-	case "minecraft:camel":
-		return checkAnimalSpawnRules(tx, pos, "camels_spawnable_on")
-	case "minecraft:camel_husk", "minecraft:husk", "minecraft:parched":
-		return checkMonsterSpawnRules(tx, id, pos, r) && canSeeSky(tx, pos)
-	case "minecraft:chicken", "minecraft:cow", "minecraft:donkey", "minecraft:happy_ghast", "minecraft:horse", "minecraft:llama",
-		"minecraft:mule", "minecraft:pig", "minecraft:sheep", "minecraft:cat", "minecraft:panda", "minecraft:trader_llama", "minecraft:skeleton_horse":
-		return checkAnimalSpawnRules(tx, pos, "animals_spawnable_on")
-	case "minecraft:endermite", "minecraft:silverfish":
-		return checkMobSpawnRules(tx, id, pos) && !nearestPlayerWithin(tx, pos, 5)
-	case "minecraft:ender_dragon", "minecraft:iron_golem", "minecraft:snow_golem", "minecraft:villager", "minecraft:phantom",
-		"minecraft:shulker", "minecraft:wandering_trader":
-		return checkMobSpawnRules(tx, id, pos)
-	case "minecraft:frog":
-		return checkAnimalSpawnRules(tx, pos, "frogs_spawnable_on")
-	case "minecraft:ghast":
-		return !peaceful && r.NextInt(20) == 0 && checkMobSpawnRules(tx, id, pos)
-	case "minecraft:goat":
-		return checkAnimalSpawnRules(tx, pos, "goats_spawnable_on")
-	case "minecraft:magma_cube":
-		return !peaceful
-	case "minecraft:sulfur_cube":
-		return true
-	case "minecraft:mooshroom":
-		return checkAnimalSpawnRules(tx, pos, "mooshrooms_spawnable_on")
-	case "minecraft:ocelot":
-		return r.NextInt(3) != 0
-	case "minecraft:parrot":
-		return checkAnimalSpawnRules(tx, pos, "parrots_spawnable_on")
-	case "minecraft:hoglin", "minecraft:piglin":
-		_, wart := tx.Block(below).(block.NetherWartBlock)
-		return !wart
-	case "minecraft:zombified_piglin":
-		_, wart := tx.Block(below).(block.NetherWartBlock)
-		return !peaceful && !wart
-	case "minecraft:pillager":
-		return tx.BlockLight(pos) <= 8 && checkMobSpawnRules(tx, id, pos)
-	case "minecraft:polar_bear":
-		if !biomeHasTag(tx, pos, "polar_bears_spawn_on_alternate_blocks") {
-			return checkAnimalSpawnRules(tx, pos, "animals_spawnable_on")
-		}
-		return isBrightEnoughToSpawn(tx, pos) && blockInTag(tx.Block(below), "polar_bears_spawnable_on_alternate")
-	case "minecraft:rabbit":
-		return checkAnimalSpawnRules(tx, pos, "rabbits_spawnable_on")
-	case "minecraft:slime":
-		return checkSlimeSpawnRules(tx, pos, r)
-	case "minecraft:stray":
-		sky := pos
-		for {
-			sky = sky.Side(cube.FaceUp)
-			if _, snow := tx.Block(sky).(block.PowderSnow); !snow {
-				break
-			}
-		}
-		return checkMonsterSpawnRules(tx, id, pos, r) && canSeeSky(tx, sky.Side(cube.FaceDown))
-	case "minecraft:strider":
-		check := pos
-		for {
-			check = check.Side(cube.FaceUp)
-			if !lavaAt(tx, check) {
-				break
-			}
-		}
-		_, air := tx.Block(check).(block.Air)
-		return air
-	case "minecraft:turtle":
-		return pos[1] < seaLevel(tx)+4 && blockInTag(tx.Block(below), "sand") && isBrightEnoughToSpawn(tx, pos)
-	case "minecraft:wolf":
-		return checkAnimalSpawnRules(tx, pos, "wolves_spawnable_on")
-	case "minecraft:fox":
-		return checkAnimalSpawnRules(tx, pos, "foxes_spawnable_on")
+	if rule, ok := spawnRules[id]; ok {
+		return rule.check(tx, id, pos, r, peaceful)
 	}
 	if mobCategories[id] == spawnMonster {
 		return checkMonsterSpawnRules(tx, id, pos, r)
 	}
 	return true
+}
+
+// spawnPredicate is a spawn predicate of SpawnPlacements: what Java registers for an entity type with
+// SpawnPlacements.register, mostly a static check* method of the entity's class.
+type spawnPredicate uint8
+
+const (
+	// spawnOnBlock: the block below is in the tag of the rule (Axolotl.checkAxolotlSpawnRules).
+	spawnOnBlock spawnPredicate = iota + 1
+	// spawnSurfaceWater: WaterAnimal.checkSurfaceWaterAnimalSpawnRules, with the depth and ceiling of the rule.
+	spawnSurfaceWater
+	// spawnTropicalFish: TropicalFish.checkTropicalFishSpawnRules.
+	spawnTropicalFish
+	// spawnGlowSquid: GlowSquid.checkGlowSquidSpawnRules.
+	spawnGlowSquid
+	// spawnDrowned: Drowned.checkDrownedSpawnRules.
+	spawnDrowned
+	// spawnGuardian: Guardian.checkGuardianSpawnRules.
+	spawnGuardian
+	// spawnAnimal: Animal.checkAnimalSpawnRules, on the block tag of the rule.
+	spawnAnimal
+	// spawnBat: Bat.checkBatSpawnRules.
+	spawnBat
+	// spawnAsMob: Mob.checkMobSpawnRules.
+	spawnAsMob
+	// spawnMonsterUnderSky: Monster.checkMonsterSpawnRules where the sky is seen (Husk, Parched, CamelHusk).
+	spawnMonsterUnderSky
+	// spawnAwayFromPlayers: Mob.checkMobSpawnRules with no player within 5 blocks (Endermite, Silverfish).
+	spawnAwayFromPlayers
+	// spawnGhast: Ghast.checkGhastSpawnRules.
+	spawnGhast
+	// spawnNotPeaceful: MagmaCube.checkMagmaCubeSpawnRules.
+	spawnNotPeaceful
+	// spawnAlways: a predicate that always passes (SulfurCube).
+	spawnAlways
+	// spawnOcelot: Ocelot.checkOcelotSpawnRules.
+	spawnOcelot
+	// spawnNotOnWart: Hoglin.checkHoglinSpawnRules and Piglin.checkPiglinSpawnRules.
+	spawnNotOnWart
+	// spawnZombifiedPiglin: ZombifiedPiglin.checkZombifiedPiglinSpawnRules.
+	spawnZombifiedPiglin
+	// spawnPillager: PatrollingMonster.checkPatrollingMonsterSpawnRules.
+	spawnPillager
+	// spawnPolarBear: PolarBear.checkPolarBearSpawnRules.
+	spawnPolarBear
+	// spawnSlime: Slime.checkSlimeSpawnRules.
+	spawnSlime
+	// spawnStray: Stray.checkStraySpawnRules.
+	spawnStray
+	// spawnStrider: Strider.checkStriderSpawnRules.
+	spawnStrider
+	// spawnTurtle: Turtle.checkTurtleSpawnRules.
+	spawnTurtle
+)
+
+// spawnRule is the spawn predicate of an entity type with its arguments.
+type spawnRule struct {
+	predicate spawnPredicate
+	// tag is the block tag of spawnOnBlock and spawnAnimal.
+	tag string
+	// depth and ceiling are those of spawnSurfaceWater.
+	depth, ceiling int
+}
+
+// spawnRules holds the spawn predicate of each entity type that registers one, by Java identifier. A monster
+// without one checks Monster.checkMonsterSpawnRules, and any other type always passes.
+var spawnRules = map[string]spawnRule{
+	"minecraft:axolotl":          {predicate: spawnOnBlock, tag: "axolotls_spawnable_on"},
+	"minecraft:cod":              {predicate: spawnSurfaceWater, depth: 13},
+	"minecraft:pufferfish":       {predicate: spawnSurfaceWater, depth: 13},
+	"minecraft:salmon":           {predicate: spawnSurfaceWater, depth: 13},
+	"minecraft:dolphin":          {predicate: spawnSurfaceWater, depth: 13},
+	"minecraft:squid":            {predicate: spawnSurfaceWater, depth: 13},
+	"minecraft:tropical_fish":    {predicate: spawnTropicalFish},
+	"minecraft:nautilus":         {predicate: spawnSurfaceWater, depth: 25, ceiling: 5},
+	"minecraft:glow_squid":       {predicate: spawnGlowSquid},
+	"minecraft:drowned":          {predicate: spawnDrowned},
+	"minecraft:guardian":         {predicate: spawnGuardian},
+	"minecraft:elder_guardian":   {predicate: spawnGuardian},
+	"minecraft:armadillo":        {predicate: spawnAnimal, tag: "armadillo_spawnable_on"},
+	"minecraft:bat":              {predicate: spawnBat},
+	"minecraft:blaze":            {predicate: spawnAsMob},
+	"minecraft:breeze":           {predicate: spawnAsMob},
+	"minecraft:zoglin":           {predicate: spawnAsMob},
+	"minecraft:camel":            {predicate: spawnAnimal, tag: "camels_spawnable_on"},
+	"minecraft:camel_husk":       {predicate: spawnMonsterUnderSky},
+	"minecraft:husk":             {predicate: spawnMonsterUnderSky},
+	"minecraft:parched":          {predicate: spawnMonsterUnderSky},
+	"minecraft:chicken":          {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:cow":              {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:donkey":           {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:happy_ghast":      {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:horse":            {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:llama":            {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:mule":             {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:pig":              {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:sheep":            {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:cat":              {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:panda":            {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:trader_llama":     {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:skeleton_horse":   {predicate: spawnAnimal, tag: "animals_spawnable_on"},
+	"minecraft:endermite":        {predicate: spawnAwayFromPlayers},
+	"minecraft:silverfish":       {predicate: spawnAwayFromPlayers},
+	"minecraft:ender_dragon":     {predicate: spawnAsMob},
+	"minecraft:iron_golem":       {predicate: spawnAsMob},
+	"minecraft:snow_golem":       {predicate: spawnAsMob},
+	"minecraft:villager":         {predicate: spawnAsMob},
+	"minecraft:phantom":          {predicate: spawnAsMob},
+	"minecraft:shulker":          {predicate: spawnAsMob},
+	"minecraft:wandering_trader": {predicate: spawnAsMob},
+	"minecraft:frog":             {predicate: spawnAnimal, tag: "frogs_spawnable_on"},
+	"minecraft:ghast":            {predicate: spawnGhast},
+	"minecraft:goat":             {predicate: spawnAnimal, tag: "goats_spawnable_on"},
+	"minecraft:magma_cube":       {predicate: spawnNotPeaceful},
+	"minecraft:sulfur_cube":      {predicate: spawnAlways},
+	"minecraft:mooshroom":        {predicate: spawnAnimal, tag: "mooshrooms_spawnable_on"},
+	"minecraft:ocelot":           {predicate: spawnOcelot},
+	"minecraft:parrot":           {predicate: spawnAnimal, tag: "parrots_spawnable_on"},
+	"minecraft:hoglin":           {predicate: spawnNotOnWart},
+	"minecraft:piglin":           {predicate: spawnNotOnWart},
+	"minecraft:zombified_piglin": {predicate: spawnZombifiedPiglin},
+	"minecraft:pillager":         {predicate: spawnPillager},
+	"minecraft:polar_bear":       {predicate: spawnPolarBear},
+	"minecraft:rabbit":           {predicate: spawnAnimal, tag: "rabbits_spawnable_on"},
+	"minecraft:slime":            {predicate: spawnSlime},
+	"minecraft:stray":            {predicate: spawnStray},
+	"minecraft:strider":          {predicate: spawnStrider},
+	"minecraft:turtle":           {predicate: spawnTurtle},
+	"minecraft:wolf":             {predicate: spawnAnimal, tag: "wolves_spawnable_on"},
+	"minecraft:fox":              {predicate: spawnAnimal, tag: "foxes_spawnable_on"},
+}
+
+// check runs the spawn predicate of the rule for a mob of id at pos.
+func (rule spawnRule) check(tx *world.Tx, id string, pos cube.Pos, r *vanilla.Random, peaceful bool) bool {
+	below := pos.Side(cube.FaceDown)
+	switch rule.predicate {
+	case spawnOnBlock:
+		return blockInTag(tx.Block(below), rule.tag)
+	case spawnSurfaceWater:
+		return checkSurfaceWaterSpawnRules(tx, pos, rule.depth, rule.ceiling)
+	case spawnTropicalFish:
+		return waterAt(tx, below) && waterBlockAt(tx, pos.Side(cube.FaceUp)) &&
+			(biomeHasTag(tx, pos, "allows_tropical_fish_spawns_at_any_height") || checkSurfaceWaterSpawnRules(tx, pos, 13, 0))
+	case spawnGlowSquid:
+		return pos[1] <= seaLevel(tx)-33 && tx.RawBrightness(pos) == 0 && waterBlockAt(tx, pos)
+	case spawnDrowned:
+		return checkDrownedSpawnRules(tx, pos, r)
+	case spawnGuardian:
+		return (r.NextInt(20) == 0 || !canSeeSkyFromBelowWater(tx, pos)) && !peaceful && waterAt(tx, pos) && waterAt(tx, below)
+	case spawnAnimal:
+		return checkAnimalSpawnRules(tx, pos, rule.tag)
+	case spawnBat:
+		if pos[1] >= tx.HighestBlock(pos[0], pos[2])+1 || r.NextBoolean() || tx.RawBrightness(pos) > int(r.NextInt(4)) {
+			return false
+		}
+		return blockInTag(tx.Block(below), "bats_spawnable_on") && checkMobSpawnRules(tx, id, pos)
+	case spawnAsMob:
+		return checkMobSpawnRules(tx, id, pos)
+	case spawnMonsterUnderSky:
+		return checkMonsterSpawnRules(tx, id, pos, r) && canSeeSky(tx, pos)
+	case spawnAwayFromPlayers:
+		return checkMobSpawnRules(tx, id, pos) && !nearestPlayerWithin(tx, pos, 5)
+	case spawnGhast:
+		return !peaceful && r.NextInt(20) == 0 && checkMobSpawnRules(tx, id, pos)
+	case spawnNotPeaceful:
+		return !peaceful
+	case spawnAlways:
+		return true
+	case spawnOcelot:
+		return r.NextInt(3) != 0
+	case spawnNotOnWart:
+		_, wart := tx.Block(below).(block.NetherWartBlock)
+		return !wart
+	case spawnZombifiedPiglin:
+		_, wart := tx.Block(below).(block.NetherWartBlock)
+		return !peaceful && !wart
+	case spawnPillager:
+		return tx.BlockLight(pos) <= 8 && checkMobSpawnRules(tx, id, pos)
+	case spawnPolarBear:
+		if !biomeHasTag(tx, pos, "polar_bears_spawn_on_alternate_blocks") {
+			return checkAnimalSpawnRules(tx, pos, "animals_spawnable_on")
+		}
+		return isBrightEnoughToSpawn(tx, pos) && blockInTag(tx.Block(below), "polar_bears_spawnable_on_alternate")
+	case spawnSlime:
+		return checkSlimeSpawnRules(tx, pos, r)
+	case spawnStray:
+		return checkStraySpawnRules(tx, id, pos, r)
+	case spawnStrider:
+		return checkStriderSpawnRules(tx, pos)
+	case spawnTurtle:
+		return pos[1] < seaLevel(tx)+4 && blockInTag(tx.Block(below), "sand") && isBrightEnoughToSpawn(tx, pos)
+	}
+	// A rule without a predicate passes, as a type without a rule that is no monster does.
+	return true
+}
+
+// checkStraySpawnRules ports Stray.checkStraySpawnRules: a monster where the sky is seen from the top of the
+// powder snow it is in.
+func checkStraySpawnRules(tx *world.Tx, id string, pos cube.Pos, r *vanilla.Random) bool {
+	sky := pos
+	for {
+		sky = sky.Side(cube.FaceUp)
+		if _, snow := tx.Block(sky).(block.PowderSnow); !snow {
+			break
+		}
+	}
+	return checkMonsterSpawnRules(tx, id, pos, r) && canSeeSky(tx, sky.Side(cube.FaceDown))
+}
+
+// checkStriderSpawnRules ports Strider.checkStriderSpawnRules: air above the lava the strider is in.
+func checkStriderSpawnRules(tx *world.Tx, pos cube.Pos) bool {
+	check := pos
+	for {
+		check = check.Side(cube.FaceUp)
+		if !lavaAt(tx, check) {
+			break
+		}
+	}
+	_, air := tx.Block(check).(block.Air)
+	return air
 }
 
 // checkDrownedSpawnRules ports Drowned.checkDrownedSpawnRules for natural
