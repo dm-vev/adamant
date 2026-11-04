@@ -69,8 +69,8 @@ func patrolSpawnTick(tx *world.Tx, random *vanilla.Random) {
 		if !spawnPatrolMember(tx, pos, i == 0, random) && i == 0 {
 			break
 		}
-		pos[0] += int(random.NextInt(5)) - int(random.NextInt(5))
-		pos[2] += int(random.NextInt(5)) - int(random.NextInt(5))
+		pos[0] += int(random.NextInt(5)) - int(random.NextInt(5)) //nolint:staticcheck // SA4000: two draws of the random source, as Java's PatrolSpawner.tick does.
+		pos[2] += int(random.NextInt(5)) - int(random.NextInt(5)) //nolint:staticcheck // SA4000: two draws of the random source, as Java's PatrolSpawner.tick does.
 	}
 }
 

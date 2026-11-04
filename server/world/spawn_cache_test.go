@@ -103,7 +103,7 @@ func TestEntityTickingStopsWhenANeighbourCloses(t *testing.T) {
 				tx.chunk(ChunkPos{x, z})
 			}
 		}
-		if !w.entityTickingReady(ChunkPos{}) || !w.entityTickingReady(ChunkPos{}) {
+		if !w.entityTickingReady(ChunkPos{}) || !w.entityTickingReady(ChunkPos{}) { //nolint:staticcheck // SA4000: the first call remembers, the second reads what it remembered.
 			t.Fatal("chunk with every chunk within two loaded is not entity ticking")
 		}
 		corner := ChunkPos{2, -2}
@@ -113,7 +113,7 @@ func TestEntityTickingStopsWhenANeighbourCloses(t *testing.T) {
 		}
 
 		// Blocks tick once the chunks within one are ready, until one closes.
-		if !w.generationNeighbourhoodReady(ChunkPos{}) || !w.generationNeighbourhoodReady(ChunkPos{}) {
+		if !w.generationNeighbourhoodReady(ChunkPos{}) || !w.generationNeighbourhoodReady(ChunkPos{}) { //nolint:staticcheck // SA4000: the first call remembers, the second reads what it remembered.
 			t.Fatal("blocks of a chunk with every chunk within one loaded do not tick")
 		}
 		beside := ChunkPos{1, 1}

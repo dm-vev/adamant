@@ -102,7 +102,7 @@ func TestRecorderQueriesAgreeWithState(t *testing.T) {
 		t.Errorf("VisibleDebugShapes() after RemoveAllDebugShapes = %v, want none", got)
 	}
 
-	if r.ViewLayer() == nil || r.ViewLayer() != r.ViewLayer() {
+	if r.ViewLayer() == nil || r.ViewLayer() != r.ViewLayer() { //nolint:staticcheck // SA4000: two calls must return the same layer.
 		t.Error("ViewLayer() is not a layer of the Recorder's own")
 	}
 }

@@ -448,8 +448,8 @@ func (s *spawnState) spawnCategoryForPosition(c naturalSpawnCategory, chunk worl
 		maxCount := int(math.Ceil(float64(r.NextFloat() * 4)))
 		groupSize := 0
 		for ll := 0; ll < maxCount; ll++ {
-			x += int(r.NextInt(6)) - int(r.NextInt(6))
-			z += int(r.NextInt(6)) - int(r.NextInt(6))
+			x += int(r.NextInt(6)) - int(r.NextInt(6)) //nolint:staticcheck // SA4000: two draws of the random source, as Java's NaturalSpawner.spawnCategoryForPosition does.
+			z += int(r.NextInt(6)) - int(r.NextInt(6)) //nolint:staticcheck // SA4000: two draws of the random source, as Java's NaturalSpawner.spawnCategoryForPosition does.
 			pos := cube.Pos{x, start[1], z}
 			xx, zz := float64(x)+.5, float64(z)+.5
 			dist, ok := s.nearestPlayerDistSqr(mgl64.Vec3{xx, float64(start[1]), zz})

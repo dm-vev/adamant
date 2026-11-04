@@ -419,7 +419,7 @@ func sampleInt(provider any, r *vanilla.Random) int32 {
 			panic("overworld: invalid trapezoid IntProvider")
 		}
 		if plateau == 0 && maximum == -minimum {
-			return r.NextInt(maximum+1) - r.NextInt(maximum+1)
+			return r.NextInt(maximum+1) - r.NextInt(maximum+1) //nolint:staticcheck // SA4000: two draws of the random source, as Java's TrapezoidInt.sample does.
 		}
 		width := maximum - minimum
 		if plateau == width {

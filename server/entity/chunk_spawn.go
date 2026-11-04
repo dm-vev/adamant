@@ -83,7 +83,9 @@ func SpawnOriginalMobs(tx *world.Tx, chunk world.ChunkPos) {
 						success = true
 					}
 				}
+				//nolint:staticcheck // SA4000: two draws of the random source, as Java's NaturalSpawner.spawnMobsForChunkGeneration does.
 				x += int(r.NextInt(5)) - int(r.NextInt(5))
+				//nolint:staticcheck // SA4000: two draws of the random source, as Java's NaturalSpawner.spawnMobsForChunkGeneration does.
 				for z += int(r.NextInt(5)) - int(r.NextInt(5)); x < xo || x >= xo+16 || z < zo || z >= zo+16; z = startZ + int(r.NextInt(5)) - int(r.NextInt(5)) {
 					x = startX + int(r.NextInt(5)) - int(r.NextInt(5))
 				}
