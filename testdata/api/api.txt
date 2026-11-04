@@ -18748,6 +18748,7 @@ server/item	var	EnchantmentRarityCommon	server/item.enchantmentRarityCommon
 server/item	var	EnchantmentRarityRare	server/item.enchantmentRarityRare
 server/item	var	EnchantmentRarityUncommon	server/item.enchantmentRarityUncommon
 server/item	var	EnchantmentRarityVeryRare	server/item.enchantmentRarityVeryRare
+server/item	var	ErrJavaStackCount	error
 server/item	var	ToolTierCopper	server/item.ToolTier
 server/item	var	ToolTierDiamond	server/item.ToolTier
 server/item	var	ToolTierGold	server/item.ToolTier

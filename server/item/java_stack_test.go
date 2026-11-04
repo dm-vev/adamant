@@ -1,6 +1,7 @@
 package item_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/item"
@@ -154,6 +155,27 @@ func TestJavaStackDamageAtMaximum(t *testing.T) {
 		}
 		if broken := s.Damage(1); !broken.Empty() {
 			t.Fatalf("damage %d: %v after one use, want the sword broken", damage, broken)
+		}
+	}
+}
+
+// ItemStack.CODEC reads the count as an intRange(1, 99) and does not
+// compare it with the max stack size: Java keeps a stack of 99 swords or 65
+// stone and refuses one of 100.
+func TestJavaStackCount(t *testing.T) {
+	for id, count := range map[string]int32{"minecraft:diamond_sword": 99, "minecraft:stone": 65} {
+		s, err := item.StackFromStructureNBT(map[string]any{"id": id, "count": count})
+		if err != nil || s.Count() != int(count) {
+			t.Errorf("%s x%d: decoded %v, %v", id, count, s, err)
+		}
+	}
+	for _, data := range []map[string]any{
+		{"id": "minecraft:stone", "count": int32(100)},
+		{"id": "minecraft:stone", "Count": int8(-1)},
+		{"id": "minecraft:diamond_sword", "count": int32(1 << 20)},
+	} {
+		if _, err := item.StackFromStructureNBT(data); !errors.Is(err, item.ErrJavaStackCount) {
+			t.Errorf("%v: error %v, want ErrJavaStackCount", data, err)
 		}
 	}
 }

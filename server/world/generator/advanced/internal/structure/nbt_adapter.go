@@ -1,6 +1,7 @@
 package structure
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -291,6 +292,10 @@ func convertChiseledBookshelfItems(raw any) ([]any, error) {
 			continue
 		}
 		stack, err := item.StackFromStructureNBT(entry)
+		if errors.Is(err, item.ErrJavaStackCount) {
+			// ContainerHelper.loadAllItems skips a stack the codec refuses.
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("item %d: %w", index, err)
 		}
@@ -317,6 +322,10 @@ func convertItems(raw any) ([]any, error) {
 			return nil, fmt.Errorf("item %d has type %T, want compound", i, value)
 		}
 		stack, err := item.StackFromStructureNBT(entry)
+		if errors.Is(err, item.ErrJavaStackCount) {
+			// ContainerHelper.loadAllItems skips a stack the codec refuses.
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("item %d: %w", i, err)
 		}

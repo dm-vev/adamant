@@ -2,6 +2,7 @@ package item
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -9,8 +10,16 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 )
 
+// ErrJavaStackCount is the error StackFromStructureNBT wraps for a stack
+// whose count ItemStack.CODEC refuses, a negative one or one above 99. A
+// count above the max stack size of the item is not refused, as Java keeps
+// such a stack. Java drops a refused stack from a list of stacks it loads,
+// such as the items of a container, and loads the rest.
+var ErrJavaStackCount = errors.New("count outside 1..99")
+
 // StackFromStructureNBT decodes a Java 1.20.5+ item stack compound into a Dragonfly
 // stack. Unknown item identifiers are rejected rather than silently discarded.
+// A count of 0 gives an empty stack.
 func StackFromStructureNBT(data map[string]any) (Stack, error) {
 	id, ok := data["id"].(string)
 	if !ok || id == "" {
@@ -30,15 +39,9 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 			return Stack{}, fmt.Errorf("unsupported Java item %q", id)
 		}
 	}
-	count := 1
-	if n, ok := javaInt(data["count"]); ok {
-		count = int(n)
-	}
-	if n, ok := javaInt(data["Count"]); ok {
-		count = int(n)
-	}
-	if count < 0 {
-		return Stack{}, fmt.Errorf("Java item %q has negative count %d", id, count)
+	count, err := javaCount(data)
+	if err != nil {
+		return Stack{}, fmt.Errorf("item %q: %w", id, err)
 	}
 	s := NewStack(it, count)
 	components := make(map[string]any)
@@ -268,6 +271,23 @@ func StackToStructureNBT(stack Stack) (map[string]any, error) {
 	}
 	return data, nil
 }
+// javaCount returns the count of a Java stack: count, or Count before
+// 1.20.5, 1 if neither is set. ItemStack.CODEC reads it as an
+// intRange(1, 99).
+func javaCount(data map[string]any) (int, error) {
+	count := int64(1)
+	if n, ok := javaInt(data["count"]); ok {
+		count = n
+	}
+	if n, ok := javaInt(data["Count"]); ok {
+		count = n
+	}
+	if count < 0 || count > 99 {
+		return 0, fmt.Errorf("count %d: %w", count, ErrJavaStackCount)
+	}
+	return int(count), nil
+}
+
 // withJavaDamage applies a damage component to a durable stack.
 // ItemStack.getDamageValue clamps the damage to the max_damage, and the
 // codec keeps a stack at or past it. A durability of 0 breaks a stack here,
