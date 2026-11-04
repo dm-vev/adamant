@@ -64,8 +64,11 @@ import (
 // it gives operators level 4 and every other player level 0, with every
 // command at the level it declares, Java 26.3's, and command blocks at
 // level 2, where they ran every command before, and every player who is no
-// operator the role of members, as before. And a file saving both its world
-// and its players now keeps the players in the world database
+// operator the role of members, as before; [Audit], whose table a new
+// default file has, and a file that lacks it writes audit.log beside
+// ops.json, which the server did not, and the feedback of console commands
+// is shown to operators online, which it was not. And a file saving both
+// its world and its players now keeps the players in the world database
 // (playerdb.WorldProvider), reading the players folder only for those not
 // yet moved there, and no longer makes the folder.
 
@@ -175,7 +178,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Xbox.Enabled": false, "Xbox.TokenFile": "xbox-token.json", "Xbox.AcceptFriends": true, "Xbox.LegacySignaling": false,
 			"Proxy.Address": "", "Proxy.Secret": "",
 			"Java.Address": "", "Java.Message": "",
-			"Permissions": "default=0 op=4 blocks=2 roles=3 role=member commands=map[]",
+			"Permissions": "default=0 op=4 blocks=2 roles=3 role=member console=true remote=true commands=map[]",
+			"Audit":       "file=audit.log size=67108864 keep=10 min=2 addresses=true",
 		})},
 		{"every key changed", []byte(everyKeyChanged), withMeaning(changedAntiCheat, configMeaning{
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",
@@ -207,7 +211,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Xbox.Enabled": true, "Xbox.TokenFile": "token.json", "Xbox.AcceptFriends": false, "Xbox.LegacySignaling": true,
 			"Proxy.Address": "127.0.0.1:19133", "Proxy.Secret": "0123456789abcdef0123456789abcdef",
 			"Java.Address": ":25565", "Java.Message": "Use Bedrock.",
-			"Permissions": "default=1 op=3 blocks=0 roles=4 role=visitor commands=map[kick:2 teleport:3]",
+			"Permissions": "default=1 op=3 blocks=0 roles=4 role=visitor console=false remote=false commands=map[kick:2 teleport:3]",
+			"Audit":       "<nil>",
 		})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -580,7 +585,17 @@ const everyKeyChanged = `
   QueryPlugins = true
   Transport = " NetherNet "
 
+[Audit]
+  Enabled = false
+  File = "logs/audit.jsonl"
+  Keep = 3
+  MaxSize = "1GB"
+  MinLevel = 0
+  RecordAddresses = false
+
 [Permissions]
+  BroadcastConsoleToOps = false
+  BroadcastRemoteToOps = false
   CommandBlockLevel = 0
   DefaultLevel = 1
   DefaultRole = "Visitor"
@@ -689,7 +704,7 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 		"Backup.Folder": conf.Backup.Folder, "Backup.Format": conf.Backup.Format.String(), "Backup.Interval": conf.Backup.Interval.String(),
 		"Backup.Keep": conf.Backup.Keep, "Backup.MaxAge": conf.Backup.MaxAge.String(), "Backup.MinFreeSpace": conf.Backup.MinFreeSpace,
 		"Backup.SaveFirst": conf.Backup.SaveFirst, "Backup.Verify": verificationName(conf.Backup.Verify),
-		"Permissions": permissionsMeaning(conf.Permissions),
+		"Permissions": permissionsMeaning(conf.Permissions), "Audit": auditMeaning(conf.Audit),
 	})
 }
 
@@ -703,8 +718,18 @@ func permissionsMeaning(p *server.PermissionConfig) string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("default=%v op=%v blocks=%v roles=%v role=%v commands=%v",
-		p.DefaultLevel, p.OperatorLevel, p.CommandBlockLevel, p.RoleLevel, p.DefaultRole, p.Commands)
+	return fmt.Sprintf("default=%v op=%v blocks=%v roles=%v role=%v console=%v remote=%v commands=%v",
+		p.DefaultLevel, p.OperatorLevel, p.CommandBlockLevel, p.RoleLevel, p.DefaultRole,
+		p.BroadcastConsoleToOps, p.BroadcastRemoteToOps, p.Commands)
+}
+
+// auditMeaning returns the meaning of the audit log of a Config, its file
+// relative to the working directory.
+func auditMeaning(a *server.AuditConfig) string {
+	if a == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("file=%s size=%d keep=%d min=%v addresses=%v", a.File, a.MaxSize, a.Keep, a.MinLevel, a.RecordAddresses)
 }
 
 // antiCheatMeaning returns the meaning of the anti-cheat of a Config: its

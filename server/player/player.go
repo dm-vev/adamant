@@ -526,6 +526,10 @@ func (p *Player) SendCommandOutput(output *cmd.Output) {
 	if output.MessageCount() > 0 && w.GameRuleBool("log_admin_commands") {
 		for _, msg := range output.Messages() {
 			logging.Sub(p.log, logging.Commands).Info(fmt.Sprintf("[%s: %s]", p.Name(), msg))
+			if cmd.AdminFeedback(p, p.Name(), msg.String()) {
+				// The server shows it to the operators of every world.
+				continue
+			}
 			for e := range p.tx.Players() {
 				if other, ok := e.(*Player); ok && other != p && cmd.IsOperator(other.UUID()) {
 					other.Messaget(chat.MessageAdminCommand, p.Name(), msg.String())

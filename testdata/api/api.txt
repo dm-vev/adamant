@@ -373,6 +373,9 @@ server	method	BackupFormat.String	func() string
 server	method	Config.New	func() *server.Server
 server	method	HealthReport.String	func(verbose bool) string
 server	method	Server.Accept	func() iter.Seq[*server/player.Player]
+server	method	Server.AdminFeedback	func(src server/cmd.Source, name string, message string) bool
+server	method	Server.Audit	func(r server/audit.Record)
+server	method	Server.AuditDropped	func() uint64
 server	method	Server.Backup	func(ctx context.Context, by server.Actor, reason string) (server.BackupInfo, error)
 server	method	Server.BackupStatus	func() server.BackupStatus
 server	method	Server.Backups	func() ([]server.BackupInfo, error)
@@ -396,6 +399,7 @@ server	method	Server.Live	func(o server.HealthOptions) server.HealthReport
 server	method	Server.MaxPlayerCount	func() int
 server	method	Server.Metrics	func() *github.com/dm-vev/adamant/net/metrics.Registry
 server	method	Server.Nether	func() *server/world.World
+server	method	Server.ObserveCommand	func(e server/cmd.Execution)
 server	method	Server.Online	func() []server.OnlinePlayer
 server	method	Server.Op	func(name string) (bool, error)
 server	method	Server.OpLevel	func() server/cmd.Level
@@ -450,11 +454,12 @@ server	method	Whitelist.SetKickMessage	func(msg string)
 server	type	Actor	struct{Kind server.ActorKind; Name string}
 server	type	ActorKind	string
 server	type	Allower	interface{Allow(addr net.Addr, id server/client.Identity, p server/client.Profile) (string, bool)}
+server	type	AuditConfig	struct{File string; MaxSize int64; Keep int; MinLevel server/cmd.Level; RecordAddresses bool}
 server	type	BackupConfig	struct{Folder string; Format server.BackupFormat; Interval time.Duration; Keep int; MaxAge time.Duration; MinFreeSpace int64; SaveFirst bool; Verify server/world/mcdb.Verification}
 server	type	BackupFormat	uint8
 server	type	BackupInfo	struct{Name string; Path string; Created time.Time; Took time.Duration; Reason string; By server.Actor; Format server.BackupFormat; Checkpoint server/world/mcdb.CheckpointRecord; Files int; Bytes int64; Linked int; Verified string; Admin []string}
 server	type	BackupStatus	struct{Running bool; Started time.Time; By server.Actor; Last *server.BackupInfo; LastErr error; LastErrAt time.Time; Next time.Time}
-server	type	Config	struct{Log *log/slog.Logger; Listeners []func(conf server.Config, host server.Host) (server.Listener, error); Name string; Allower server.Allower; ReconnectPolicy server.ReconnectPolicy; SpawnTimeout time.Duration; SpawnTimeoutMessage string; IdentityKey server/identity.Mode; MaxPlayers int; MaxChunkRadius int; JoinMessage server/player/chat.Translation; QuitMessage server/player/chat.Translation; ShutdownMessage server/player/chat.Translation; StatusProvider server.StatusProvider; PlayerProvider server/player.Provider; WorldProvider server/world.Provider; ReadOnlyWorld bool; SaveChunks server/world.ChunkSaving; Generator func(dim server/world.Dimension, seed int64) server/world.Generator; GeneratorProfile server/world.GeneratorProfile; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; OverworldSeed int64; RandomTickSpeed int; SaveInterval time.Duration; StagingLimit int; ChunkUnloadInterval time.Duration; Entities server/world.EntityRegistry; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension server/world.Dimension; PortalDisabledMessage string; CrashReports string; Blocks server/world.BlockRegistry; AntiCheat *server/player/anticheat.Config; Backup server.BackupConfig; Permissions *server.PermissionConfig; StrictConfig bool; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool}
+server	type	Config	struct{Log *log/slog.Logger; Listeners []func(conf server.Config, host server.Host) (server.Listener, error); Name string; Allower server.Allower; ReconnectPolicy server.ReconnectPolicy; SpawnTimeout time.Duration; SpawnTimeoutMessage string; IdentityKey server/identity.Mode; MaxPlayers int; MaxChunkRadius int; JoinMessage server/player/chat.Translation; QuitMessage server/player/chat.Translation; ShutdownMessage server/player/chat.Translation; StatusProvider server.StatusProvider; PlayerProvider server/player.Provider; WorldProvider server/world.Provider; ReadOnlyWorld bool; SaveChunks server/world.ChunkSaving; Generator func(dim server/world.Dimension, seed int64) server/world.Generator; GeneratorProfile server/world.GeneratorProfile; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; OverworldSeed int64; RandomTickSpeed int; SaveInterval time.Duration; StagingLimit int; ChunkUnloadInterval time.Duration; Entities server/world.EntityRegistry; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension server/world.Dimension; PortalDisabledMessage string; CrashReports string; Blocks server/world.BlockRegistry; AntiCheat *server/player/anticheat.Config; Backup server.BackupConfig; Permissions *server.PermissionConfig; Audit *server.AuditConfig; StrictConfig bool; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool}
 server	type	Found	uint8
 server	type	HealthCheck	struct{Name string; OK bool; Detail string}
 server	type	HealthOptions	struct{LiveTimeout time.Duration; ReadyTickAge time.Duration}
@@ -463,13 +468,13 @@ server	type	Host	interface{PlayerNames() []string; Status() server.Status; White
 server	type	List	uint8
 server	type	Listener	interface{Accept() (server/client.Join, error); io.Closer}
 server	type	OnlinePlayer	struct{Name string; XUID string; UUID github.com/google/uuid.UUID; Handle *server/world.EntityHandle}
-server	type	PermissionConfig	struct{DefaultLevel server/cmd.Level; OperatorLevel server/cmd.Level; CommandBlockLevel server/cmd.Level; RoleLevel server/cmd.Level; DefaultRole server/client.Role; Commands map[string]server/cmd.Level}
+server	type	PermissionConfig	struct{DefaultLevel server/cmd.Level; OperatorLevel server/cmd.Level; CommandBlockLevel server/cmd.Level; RoleLevel server/cmd.Level; DefaultRole server/client.Role; BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; Commands map[string]server/cmd.Level}
 server	type	ReconnectPolicy	uint8
-server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; roles *server.roleList; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
+server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; roles *server.roleList; audit *server/audit.Log; commandLevels sync/atomic.Pointer[map[string]server/cmd.Level]; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
 server	type	Target	struct{Key server/identity.Key; Name string; Found server.Found; Pending bool}
-server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}}
+server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}; Audit struct{Enabled bool; File string; Keep int; MaxSize string; MinLevel int; RecordAddresses bool}}
 server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; kickMsg string; format server.whitelistFormat}
 server	var	DefaultHealthOptions	server.HealthOptions
 server	var	ErrBackupNotFound	error
@@ -6269,6 +6274,7 @@ server/cmd	const	MaxLevel	server/cmd.Level = 4
 server/cmd	const	ParamOptionAsChainedCommand	server/cmd.ParamOption = 4
 server/cmd	const	ParamOptionCollapseEnum	server/cmd.ParamOption = 1
 server/cmd	const	ParamOptionHasSemanticConstraint	server/cmd.ParamOption = 2
+server/cmd	func	AdminFeedback	func(src server/cmd.Source, name string, message string) bool
 server/cmd	func	ByAlias	func(alias string) (server/cmd.Command, bool)
 server/cmd	func	CommandBlockLevel	func() server/cmd.Level
 server/cmd	func	Commands	func() map[string]server/cmd.Command
@@ -6285,6 +6291,8 @@ server/cmd	func	RequiredLevel	func(c server/cmd.Command, r server/cmd.Runnable) 
 server/cmd	func	ResolveCoordinates	func(args []string, src server/cmd.Source) (github.com/go-gl/mathgl/mgl64.Vec3, error)
 server/cmd	func	ResolveTargets	func(selector string, src server/cmd.Source, tx *server/world.Tx) ([]server/cmd.Target, error)
 server/cmd	func	ScoreHolderName	func(t server/cmd.Target) string
+server/cmd	func	SetAdminFeedback	func(f func(src server/cmd.Source, name string, message string) bool)
+server/cmd	func	SetObserver	func(f func(server/cmd.Execution))
 server/cmd	func	SetOperatorChecker	func(f func(id github.com/google/uuid.UUID) bool)
 server/cmd	func	SetPermissions	func(p server/cmd.Permissions)
 server/cmd	func	SourceLevel	func(src server/cmd.Source) server/cmd.Level
@@ -6346,6 +6354,7 @@ server/cmd	type	Deferrer	interface{Defer() (done func())}
 server/cmd	type	DynamicEnum	interface{Dynamic() bool; server/cmd.Enum}
 server/cmd	type	Enum	interface{Options(source server/cmd.Source) []string; Type() string}
 server/cmd	type	EnumConstraint	uint8
+server/cmd	type	Execution	struct{Source server/cmd.Source; Command server/cmd.Command; Args string; Output *server/cmd.Output; Level server/cmd.Level; Denied bool}
 server/cmd	type	ExecutionContext	struct{Executor server/world.Entity; Position github.com/go-gl/mathgl/mgl64.Vec3; Rotation server/block/cube.Rotation; World *server/world.World; Anchor server/cmd.Anchor}
 server/cmd	type	Level	uint8
 server/cmd	type	Leveled	interface{PermissionLevel() server/cmd.Level}

@@ -44,6 +44,11 @@ type PermissionConfig struct {
 	// on permissions.json: client.RoleMember, the zero value, or
 	// client.RoleVisitor.
 	DefaultRole client.Role
+	// BroadcastConsoleToOps and BroadcastRemoteToOps show the operators
+	// online the feedback of the commands of the console and of remote
+	// clients, with the game rule log_admin_commands on, as Java's
+	// broadcast-console-to-ops and broadcast-rcon-to-ops.
+	BroadcastConsoleToOps, BroadcastRemoteToOps bool
 	// Commands sets the level a command needs, by its name or one of its
 	// aliases, in place of the level it declares.
 	Commands map[string]cmd.Level
@@ -51,12 +56,15 @@ type PermissionConfig struct {
 
 // DefaultPermissionConfig returns Java's levels: players who are not
 // operators at 0, operators at 4, command blocks at 2, and every command at
-// the level it declares.
+// the level it declares, with the feedback of the console and of remote
+// clients shown to operators.
 func DefaultPermissionConfig() PermissionConfig {
 	return PermissionConfig{
-		OperatorLevel:     DefaultOperatorLevel,
-		CommandBlockLevel: DefaultCommandBlockLevel,
-		RoleLevel:         DefaultRoleLevel,
+		OperatorLevel:         DefaultOperatorLevel,
+		CommandBlockLevel:     DefaultCommandBlockLevel,
+		RoleLevel:             DefaultRoleLevel,
+		BroadcastConsoleToOps: true,
+		BroadcastRemoteToOps:  true,
 	}
 }
 

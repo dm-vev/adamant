@@ -203,6 +203,21 @@ func TestConfigBounds(t *testing.T) {
 			{`"member"`, ""}, {`" Visitor "`, ""}, {`""`, ""},
 			{`"operator"`, `Permissions.DefaultRole = "operator": want "member" or "visitor"`},
 		}},
+		{table: "Audit", key: "MaxSize", values: []value{
+			{`"64MiB"`, ""}, {`"1GB"`, ""}, {`"0"`, ""}, {`"512"`, ""}, {`" 2 gib "`, ""},
+			{`"big"`, `Audit.MaxSize = "big": want a size such as "512MiB" or "1GiB"`},
+			{`"64Mb/s"`, `Audit.MaxSize = "64Mb/s": want a size such as "512MiB" or "1GiB"`},
+			{`"-1MiB"`, `Audit.MaxSize = "-1MiB": want a size such as "512MiB" or "1GiB"`},
+		}},
+		{table: "Audit", key: "Keep", values: []value{
+			{"0", ""}, {"10", ""}, {"-1", "Audit.Keep = -1: want 0 or more"},
+		}},
+		{table: "Audit", key: "MinLevel", values: []value{
+			{"0", ""}, {"4", ""}, {"5", "Audit.MinLevel = 5: want 0 to 4"},
+		}},
+		{table: "Audit", key: "File", values: []value{
+			{`"audit.log"`, ""}, {`"keys"`, `Audit.File = "keys": it is a folder, want a file`},
+		}, setup: func(t *testing.T) { mkdir(t, "keys") }},
 		{table: "Permissions.Commands", key: "kick", values: []value{
 			{"0", ""}, {"4", ""}, {"5", "Permissions.Commands.kick = 5: want 0 to 4"},
 		}},

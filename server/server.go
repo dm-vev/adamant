@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/identity"
@@ -52,6 +53,8 @@ type Server struct {
 	bans      *banList
 	// roles is permissions.json, the roles of players.
 	roles *roleList
+	// audit is the audit log, nil if the server keeps none.
+	audit *audit.Log
 	// commandLevels are the levels of [Permissions.Commands] by the names
 	// of the commands, which Listen resolves.
 	commandLevels atomic.Pointer[map[string]cmd.Level]
@@ -507,6 +510,7 @@ func (srv *Server) close() {
 			srv.conf.Log.Error("Close listener: " + err.Error())
 		}
 	}
+	srv.closeAudit()
 }
 
 // listen makes the Server listen for the joins of clients from the Listener

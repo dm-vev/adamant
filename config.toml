@@ -154,6 +154,10 @@
   Verify = "record"
 
 [Permissions]
+  # BroadcastConsoleToOps and BroadcastRemoteToOps show the feedback of console and remote admin commands to
+  # operators in the game, as "[Console: ...]", with the game rule log_admin_commands on.
+  BroadcastConsoleToOps = true
+  BroadcastRemoteToOps = true
   # The levels of players and commands, as Java Edition numbers them: 0 anyone (help, list, msg, me), 1 moderator,
   # 2 game master (give, tp, gamemode, command blocks), 3 admin (ban, kick, op, whitelist), 4 owner (stop, save-all).
   # CommandBlockLevel is the level command blocks run commands at.
@@ -171,6 +175,22 @@
 
   # Commands sets the level a command needs, by its name or an alias, such as kick = 2 or version = 2.
   [Permissions.Commands]
+
+[Audit]
+  # Enabled writes audit.log: who ran which admin command, changed a list or made a backup, when and where, with
+  # the result. Records are JSON Lines; the file is made with mode 0600.
+  Enabled = true
+  # File is the audit log; a relative path is beside ops.json.
+  File = "audit.log"
+  # Keep is how many rotated audit files are kept.
+  Keep = 10
+  # MaxSize rotates the file at this size, such as "64MiB", "1GiB" or "0" for never.
+  MaxSize = "64MiB"
+  # MinLevel records the commands that need this level or more (0 records every command), denied attempts
+  # included. Remote requests are recorded at any level.
+  MinLevel = 2
+  # RecordAddresses records the IP address of players and remote clients.
+  RecordAddresses = true
 
 [AntiCheat]
   # Enabled switches the anti-cheat on or off: the checks the game runs on what the clients of players ask.

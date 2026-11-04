@@ -14,6 +14,7 @@ import (
 	prompt "github.com/c-bata/go-prompt"
 
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -409,6 +410,14 @@ type consoleSource struct {
 func (c *consoleSource) Position() mgl64.Vec3 { return mgl64.Vec3{} }
 
 func (c *consoleSource) Name() string { return "Console" }
+
+// PermissionLevel returns the level of the console: every command.
+func (c *consoleSource) PermissionLevel() cmd.Level { return cmd.LevelOwner }
+
+// AuditActor returns the console as the audit log records it.
+func (c *consoleSource) AuditActor() audit.Actor {
+	return audit.Actor{Kind: audit.KindConsole, Name: "Console", Level: int(cmd.LevelOwner)}
+}
 
 func (c *consoleSource) SendCommandOutput(o *cmd.Output) {
 	for _, msg := range o.Messages() {

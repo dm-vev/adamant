@@ -194,6 +194,9 @@ type Config struct {
 	// Permissions are the levels of the players and of the commands of the
 	// server. If nil, DefaultPermissionConfig() is used: Java's levels.
 	Permissions *PermissionConfig
+	// Audit is how the server keeps its audit log of admin actions. If nil,
+	// it keeps none.
+	Audit *AuditConfig
 	// StrictConfig refuses, as config.toml's StrictConfig of [Server]
 	// does, the problems of the config found only once the commands are
 	// registered, as a name of Permissions.Commands that no command has:
@@ -325,19 +328,8 @@ func (conf Config) New() *Server {
 			conf.Log.Info("Players are saved apart from the world: each checkpoint commits the worlds at once, then saves the players.")
 		}
 	}
-	if wl, ok := conf.Allower.(*Whitelist); ok {
-		srv.whitelist = wl
-	} else if holder, ok := conf.Allower.(interface{ underlyingWhitelist() *Whitelist }); ok {
-		srv.whitelist = holder.underlyingWhitelist()
-	}
-	if access, ok := conf.Allower.(interface {
-		adminAccess() (*operatorsList, *banList, *roleList)
-	}); ok {
-		srv.operators, srv.bans, srv.roles = access.adminAccess()
-	}
-	if access, ok := conf.Allower.(interface{ knownAccess() *knownPlayers }); ok && conf.IdentityKey == identity.XUID {
-		srv.known = access.knownAccess()
-	}
+	srv.adoptLists()
+	srv.openAudit()
 	for _, lf := range conf.Listeners {
 		l, err := lf(conf, srv)
 		if err != nil {
@@ -390,6 +382,25 @@ func (conf Config) New() *Server {
 	}
 
 	return srv
+}
+
+// adoptLists takes the admin lists of the Allower of the Config, as
+// UserConfig.Config made them, for the admin API of the server.
+func (srv *Server) adoptLists() {
+	conf := srv.conf
+	if wl, ok := conf.Allower.(*Whitelist); ok {
+		srv.whitelist = wl
+	} else if holder, ok := conf.Allower.(interface{ underlyingWhitelist() *Whitelist }); ok {
+		srv.whitelist = holder.underlyingWhitelist()
+	}
+	if access, ok := conf.Allower.(interface {
+		adminAccess() (*operatorsList, *banList, *roleList)
+	}); ok {
+		srv.operators, srv.bans, srv.roles = access.adminAccess()
+	}
+	if access, ok := conf.Allower.(interface{ knownAccess() *knownPlayers }); ok && conf.IdentityKey == identity.XUID {
+		srv.known = access.knownAccess()
+	}
 }
 
 func (conf Config) portalDisabledMessage(dim world.Dimension) string {
@@ -593,6 +604,10 @@ type UserConfig struct {
 	// Permissions are the levels of players and commands, as Java Edition
 	// numbers them: 0 anyone, 1 moderator, 2 game master, 3 admin, 4 owner.
 	Permissions struct {
+		// BroadcastConsoleToOps and BroadcastRemoteToOps show operators the
+		// feedback of the commands of the console and of remote clients,
+		// with the game rule log_admin_commands on.
+		BroadcastConsoleToOps, BroadcastRemoteToOps bool
 		// CommandBlockLevel is the level command blocks run commands at.
 		CommandBlockLevel int
 		// DefaultLevel is the level of the players who are not operators.
@@ -610,6 +625,24 @@ type UserConfig struct {
 		// Commands sets the level a command needs, by its name or one of its
 		// aliases, such as kick = 2 or version = 2.
 		Commands map[string]int
+	}
+	// Audit is the audit log of admin actions: who ran which admin
+	// command, changed a list or made a backup, when and where.
+	Audit struct {
+		// Enabled writes the audit log.
+		Enabled bool
+		// File is the audit log, JSON Lines; a relative path is beside
+		// ops.json.
+		File string
+		// Keep is how many rotated files are kept.
+		Keep int
+		// MaxSize rotates the file at this size, such as "64MiB".
+		MaxSize string
+		// MinLevel records the commands that need this level or more.
+		MinLevel int
+		// RecordAddresses records the addresses of players and remote
+		// clients.
+		RecordAddresses bool
 	}
 }
 
@@ -675,6 +708,7 @@ func (uc UserConfig) Check(p *config.Problems) {
 	config.File(p, "Whitelist.File", whitelistPath(uc.Whitelist.File))
 	uc.checkBackup(p)
 	uc.checkPermissions(p)
+	uc.checkAudit(p)
 }
 
 // checkBackup adds the problems of the [Backup] table of uc to p.
@@ -750,6 +784,42 @@ func (uc UserConfig) checkPermissions(p *config.Problems) {
 	}
 }
 
+// checkAudit adds the problems of [Audit] to p.
+func (uc UserConfig) checkAudit(p *config.Problems) {
+	if uc.Audit.Enabled {
+		config.File(p, "Audit.File", uc.auditPath())
+	}
+	config.AtLeast(p, "Audit.Keep", uc.Audit.Keep, 0)
+	config.Size(p, "Audit.MaxSize", uc.Audit.MaxSize)
+	config.Range(p, "Audit.MinLevel", uc.Audit.MinLevel, 0, int(cmd.MaxLevel))
+}
+
+// auditPath returns the path of the audit log of [Audit] File: beside
+// ops.json, in the folder of the whitelist, if relative.
+func (uc UserConfig) auditPath() string {
+	file := strings.TrimSpace(uc.Audit.File)
+	if file == "" {
+		file = "audit.log"
+	}
+	if filepath.IsAbs(file) {
+		return file
+	}
+	return filepath.Join(filepath.Dir(whitelistPath(uc.Whitelist.File)), file)
+}
+
+// auditConfig returns the AuditConfig of [Audit], nil if it is off.
+func (uc UserConfig) auditConfig() *AuditConfig {
+	if !uc.Audit.Enabled {
+		return nil
+	}
+	var p config.Problems
+	size, _ := config.Size(&p, "Audit.MaxSize", uc.Audit.MaxSize)
+	return &AuditConfig{
+		File: uc.auditPath(), MaxSize: size, Keep: uc.Audit.Keep,
+		MinLevel: cmd.Level(uc.Audit.MinLevel), RecordAddresses: uc.Audit.RecordAddresses,
+	}
+}
+
 // permissionConfig returns the PermissionConfig of [Permissions], whose
 // values Check found in range.
 func (uc UserConfig) permissionConfig() *PermissionConfig {
@@ -762,6 +832,7 @@ func (uc UserConfig) permissionConfig() *PermissionConfig {
 	if role, err := client.ParseRole(uc.Permissions.DefaultRole); err == nil {
 		conf.DefaultRole = role
 	}
+	conf.BroadcastConsoleToOps, conf.BroadcastRemoteToOps = uc.Permissions.BroadcastConsoleToOps, uc.Permissions.BroadcastRemoteToOps
 	if len(uc.Permissions.Commands) > 0 {
 		conf.Commands = make(map[string]cmd.Level, len(uc.Permissions.Commands))
 		for name, l := range uc.Permissions.Commands {
@@ -852,6 +923,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		AntiCheat:             antiCheat,
 		Backup:                uc.backupConfig(),
 		Permissions:           uc.permissionConfig(),
+		Audit:                 uc.auditConfig(),
 	}
 	whitelistFile := whitelistPath(uc.Whitelist.File)
 	if !uc.Server.DisableJoinQuitMessages {
@@ -871,15 +943,8 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return conf, err
 	}
 	baseDir := filepath.Dir(whitelistFile)
-	if uc.Players.SaveData {
-		if db, ok := conf.WorldProvider.(*mcdb.DB); ok {
-			conf.PlayerProvider, err = worldPlayers(db, uc.Players.Folder, log)
-		} else {
-			conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
-		}
-		if err != nil {
-			return conf, fmt.Errorf("create player provider: %w", err)
-		}
+	if conf.PlayerProvider, err = uc.playerProvider(conf.WorldProvider, log); err != nil {
+		return conf, err
 	}
 	if conf.IdentityKey == identity.XUID {
 		var existed bool
@@ -896,6 +961,26 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	a.warnHeld()
 	conf.Allower = a
 	return conf, nil
+}
+
+// playerProvider returns the player provider of [Players]: none without
+// SaveData, the records of players in the world database if the world is
+// saved too, the players folder otherwise.
+func (uc UserConfig) playerProvider(wp world.Provider, log *slog.Logger) (player.Provider, error) {
+	if !uc.Players.SaveData {
+		return nil, nil
+	}
+	var p player.Provider
+	var err error
+	if db, ok := wp.(*mcdb.DB); ok {
+		p, err = worldPlayers(db, uc.Players.Folder, log)
+	} else {
+		p, err = playerdb.NewProvider(uc.Players.Folder)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("create player provider: %w", err)
+	}
+	return p, nil
 }
 
 // admission returns the admission of the admin lists of a server keyed in
@@ -1032,6 +1117,9 @@ func DefaultConfig() UserConfig {
 	c.Permissions.OperatorLevel = int(DefaultOperatorLevel)
 	c.Permissions.RoleLevel = int(DefaultRoleLevel)
 	c.Permissions.DefaultRole = client.RoleMember.String()
+	c.Permissions.BroadcastConsoleToOps, c.Permissions.BroadcastRemoteToOps = true, true
+	c.Audit.Enabled, c.Audit.File, c.Audit.Keep, c.Audit.MaxSize = true, "audit.log", 10, "64MiB"
+	c.Audit.MinLevel, c.Audit.RecordAddresses = int(cmd.LevelGameMaster), true
 	c.Permissions.Commands = map[string]int{}
 	return c
 }

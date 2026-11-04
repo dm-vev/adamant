@@ -190,6 +190,14 @@
     MaxQueue = 40
     Tolerance = 10
 
+[Audit]
+  Enabled = true
+  File = "audit.log"
+  Keep = 10
+  MaxSize = "64MiB"
+  MinLevel = 2
+  RecordAddresses = true
+
 [Backup]
   Enabled = true
   Folder = "backups"
@@ -250,6 +258,8 @@
   Transport = "nethernet"
 
 [Permissions]
+  BroadcastConsoleToOps = true
+  BroadcastRemoteToOps = true
   CommandBlockLevel = 2
   DefaultLevel = 0
   DefaultRole = "member"

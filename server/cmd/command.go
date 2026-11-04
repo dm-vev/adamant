@@ -154,6 +154,13 @@ func (cmd Command) Execute(args string, source Source, tx *world.Tx) {
 		panic("execute: invalid command source: source must not be nil")
 	}
 	output := &Output{}
+	// ran is the runnable that ran, if any.
+	var ran Runnable
+	if observer.Load() != nil {
+		e := Execution{Source: source, Command: cmd, Args: args, Output: output}
+		// Deferred first, the observer runs after the output was sent.
+		defer func() { observe(cmd.observed(e, ran)) }()
+	}
 	defer source.SendCommandOutput(output)
 
 	var leastErroneous error
@@ -166,6 +173,7 @@ func (cmd Command) Execute(args string, source Source, tx *world.Tx) {
 		if err == nil {
 			// Command was executed successfully: We won't execute any of the other Runnable values passed, as
 			// we've already found an overload that works.
+			ran = v.Interface().(Runnable)
 			return
 		}
 		if line == nil {
@@ -189,6 +197,33 @@ func (cmd Command) Execute(args string, source Source, tx *world.Tx) {
 		output.Error(leastArgsLeft.SyntaxError())
 	}
 	output.Error(leastErroneous)
+}
+
+// observed returns e with the level the command needed and whether its
+// source was denied it, once it ran: the level of ran, the runnable that
+// ran, or else the least level of those the source may run, or of all if
+// it may run none.
+func (cmd Command) observed(e Execution, ran Runnable) Execution {
+	if ran != nil {
+		e.Level = RequiredLevel(cmd, ran)
+		return e
+	}
+	least, allowed := MaxLevel, MaxLevel
+	e.Denied = true
+	for _, v := range cmd.v {
+		r := v.Interface().(Runnable)
+		l := RequiredLevel(cmd, r)
+		least = min(least, l)
+		if cmd.allows(e.Source, r) {
+			e.Denied = false
+			allowed = min(allowed, l)
+		}
+	}
+	e.Level = least
+	if !e.Denied {
+		e.Level = allowed
+	}
+	return e
 }
 
 // ParamInfo holds the information of a parameter in a Runnable. Information of a parameter may be obtained

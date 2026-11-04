@@ -87,6 +87,7 @@ protocol/bedrock/session.staticPacket	protocol/bedrock/netconn.Wrapper	*
 protocol/java.statusListener	server.Listener	*
 server.Server	server.Host	*
 server.Server	server/cmd.Permissions	*
+server.Server	server/cmd/builtin.commandObserver	*
 server.Server	server/cmd/builtin.serverAdapter	*
 server.Whitelist	server.Allower	*
 server.Whitelist	server.migratedList	*
@@ -3955,6 +3956,7 @@ server/cmd/builtin.whitelistRemoveCommand	server/cmd.Requirer	value
 server/cmd/builtin.whitelistRemoveCommand	server/cmd.Runnable	value
 server/cmd/builtin.worldAdminCommand	server/cmd.Requirer	value
 server/cmd/builtin.worldOpCommand	server/cmd.Requirer	value
+server/console.consoleSource	server/cmd.Leveled	*
 server/console.consoleSource	server/cmd.NamedTarget	*
 server/console.consoleSource	server/cmd.Source	*
 server/console.consoleSource	server/cmd.Target	*
