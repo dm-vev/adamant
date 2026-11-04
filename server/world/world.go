@@ -2486,7 +2486,7 @@ func (w *World) saveChunks(tx *Tx) {
 			continue
 		}
 		w.finishGeneration(tx, c)
-		if !c.needsSave() || w.failedLoad(pos, c) {
+		if !w.storesColumn(pos, c) {
 			continue
 		}
 		columns = append(columns, persisted{pos: pos, c: c})
@@ -2570,7 +2570,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 		return
 	}
 	w.finishGeneration(tx, c)
-	if w.conf.ReadOnly || !c.needsSave() || w.failedLoad(pos, c) {
+	if w.conf.ReadOnly || !w.storesColumn(pos, c) {
 		return
 	}
 	c.compact()
@@ -3045,6 +3045,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// publishes it once it did, as it does a column generated.
 		async := !w.conf.Synchronous
 		col := w.columnFrom(column, pos, !async)
+		col.complete = true
 		col.fillingLight = async
 		if !async {
 			col.fillLight(pos)
@@ -3375,7 +3376,7 @@ func (w *World) runGenerationTask(task generationTask) {
 	task.col.invalidateNetworkBiomePayload()
 	task.col.invalidateNetworkSubChunkPayloads()
 	task.col.invalidateBlockEntityPayloads()
-	task.col.modified = true
+	task.col.modified, task.col.complete = true, true
 }
 
 // generatedBlockEntities produces default block entity data for NBT blocks in a newly generated chunk.
@@ -3724,6 +3725,11 @@ type Column struct {
 	// again, unless it was saved again since.
 	modified bool
 	savedIn  uint64
+	// complete is set on a column read from the provider or generated in
+	// full. A column whose generation was cut short, by the world closing or
+	// a panic of the generator, holds air and is not complete, nor is the
+	// one standing in for a column that failed to load.
+	complete bool
 	// loadErr is the error loading the column from the provider failed
 	// with, if the column is the empty one standing in for it. Such a column
 	// is never saved: it would overwrite what the provider holds, which may

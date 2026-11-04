@@ -79,6 +79,10 @@ type Config struct {
 	// ReadOnlyWorld specifies if the standard worlds should be read only. If
 	// set to true, the WorldProvider won't be saved to at all.
 	ReadOnlyWorld bool
+	// SaveChunks selects which loaded chunks the worlds store when they save
+	// and unload them: only those generated or changed since their last save,
+	// the default, or all of them. See world.Config.SaveChunks.
+	SaveChunks world.ChunkSaving
 	// Generator constructs each dimension's generator using the resolved world
 	// seed. Existing provider metadata takes precedence over OverworldSeed.
 	// If nil, the built-in generators are used for all three dimensions.
@@ -373,6 +377,12 @@ type UserConfig struct {
 		SaveData bool
 		// Folder is the folder that the data of the world resides in.
 		Folder string
+		// SaveChunks selects which loaded chunks a save or an unload stores:
+		// "modified", the default, stores those generated or changed since
+		// they were last saved and those holding entities or block entities;
+		// "all" stores every chunk loaded, changed or not, as pregenerating
+		// a world wants. Any other value stops the server at start.
+		SaveChunks string
 		// Seed selects the generation seed for a new world in all dimensions.
 		// Existing level.dat metadata takes precedence, including seed zero.
 		Seed int64
@@ -465,6 +475,11 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return Config{}, err
 	}
 
+	saveChunks, err := world.ParseChunkSaving(uc.World.SaveChunks)
+	if err != nil {
+		return Config{}, err
+	}
+
 	identityKey := identity.Auto
 	if value := strings.TrimSpace(uc.Server.IdentityKey); value != "" {
 		if identityKey, err = identity.ParseMode(value); err != nil {
@@ -481,6 +496,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		MaxChunkRadius:        uc.Players.MaximumChunkRadius,
 		OverworldSeed:         uc.World.Seed,
 		GeneratorProfile:      generatorProfile,
+		SaveChunks:            saveChunks,
 		GeneratorWorkers:      uc.World.GeneratorWorkers,
 		GeneratorQueueSize:    uc.World.GeneratorQueueSize,
 		Regions:               uc.World.Regions,
@@ -571,6 +587,7 @@ func DefaultConfig() UserConfig {
 	c.Server.Name = "Dragonfly Server"
 	c.World.SaveData = true
 	c.World.Folder = "world"
+	c.World.SaveChunks = "modified"
 	c.World.Seed = 0
 	c.World.GeneratorProfile = "auto"
 	c.Server.ReconnectPolicy = "kick-existing"

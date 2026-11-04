@@ -742,6 +742,7 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 		Regions:             srv.conf.Regions,
 		RandomTickSpeed:     srv.conf.RandomTickSpeed,
 		ReadOnly:            srv.conf.ReadOnlyWorld,
+		SaveChunks:          srv.conf.SaveChunks,
 		SaveInterval:        srv.conf.SaveInterval,
 		ChunkUnloadInterval: srv.conf.ChunkUnloadInterval,
 		Entities:            srv.conf.Entities,

@@ -73,6 +73,12 @@ type Config struct {
 	// ReadOnly specifies if the World should be read-only, meaning no new data
 	// will be written to the Provider.
 	ReadOnly bool
+	// SaveChunks selects which loaded columns a save or an unload stores:
+	// the zero value, ChunkSavingModified, stores only those the provider may
+	// lack, while ChunkSavingAll stores every column read or generated, as
+	// for pregenerating a world. A column standing in for one that failed to
+	// load is never stored.
+	SaveChunks ChunkSaving
 	// SaveInterval specifies how often a World should be automatically saved to
 	// disk. This includes chunks, entities and level.dat data. If ReadOnly is
 	// set to false, changing SaveInterval will have no effect.

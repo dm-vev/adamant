@@ -56,6 +56,7 @@
   GeneratorWorkers = 0
   PortalDisabledMessage = "The %s dimension is disabled on this server."
   Regions = false
+  SaveChunks = "modified"
   SaveData = true
   Seed = 0
 

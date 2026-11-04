@@ -48,6 +48,10 @@
   # default LevelDB data provider and if false, an empty provider will be used. To use your
   # own provider, turn this value to false, as you will still be able to pass your own provider.
   SaveData = true
+  # SaveChunks selects which loaded chunks a save or an unload writes to disk. "modified" writes the chunks
+  # generated or changed since they were last saved, and those holding entities or block entities. "all"
+  # writes every loaded chunk, changed or not, at every save: use it while pregenerating a world.
+  SaveChunks = "modified"
   # GeneratorWorkers controls how many background workers are dedicated to generating chunks.
   # Set this to 0 to automatically use the number of logical CPU cores available. Under heavy
   # world generation load you may need to increase both this value and GeneratorQueueSize to avoid

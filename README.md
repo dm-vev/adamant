@@ -181,7 +181,7 @@ Settings live in `config.toml`.
 |---|---|
 | `Network` | `Address` (default `:19132`), `Transport` (`nethernet` default, or `raknet`), `IdentityFile` (default `server-key.pem`), `EnableQuery` |
 | `Server` | `Name`, `AuthEnabled`, `IdentityKey` (`auto` default, `xuid` or `name`), `DisableJoinQuitMessages`, `MuteEmoteChat`, `ReconnectPolicy` |
-| `World` | `Seed`, `SaveData`, `Folder`, `GeneratorProfile` (`auto`, `fast-cores`, `many-cores`), `GeneratorWorkers`, `GeneratorQueueSize` |
+| `World` | `Seed`, `SaveData`, `SaveChunks` (`modified` default, or `all`), `Folder`, `GeneratorProfile` (`auto`, `fast-cores`, `many-cores`), `GeneratorWorkers`, `GeneratorQueueSize` |
 | `Players` | `MaxCount`, `MaximumChunkRadius`, `SaveData`, `Folder` |
 | `Resources` | `AutoBuildPack`, `Folder`, `Required` |
 | `Whitelist` | `Enabled`, `File` (default `white-list.txt`), `Reason` |
@@ -196,6 +196,8 @@ Settings live in `config.toml`.
 > Adamant versions before the seed fix wrote a timestamp to `level.dat.RandomSeed`. Back up such worlds and restore their original generation seed before upgrading. See [World seed and saved settings](docs/verification.md#world-seed-and-saved-settings).
 
 **Generator.** `GeneratorProfile = "auto"` picks `many-cores` on hosts with 24 or more logical CPUs. `GeneratorQueueSize` defaults to four times `GeneratorWorkers`. If the logs warn `world generator queue saturated`, raise both values.
+
+**Saving chunks.** `SaveChunks = "modified"` writes a chunk when it was generated or changed since its last save, or holds entities or block entities. `SaveChunks = "all"` writes every loaded chunk at every save and unload, changed or not, for pregenerating a world. A chunk that failed to load is never written over in either mode.
 
 **Whitelist.** Enable it under `[Whitelist]`, then manage it with `whitelist add <player>`, `whitelist remove <player>` and `whitelist list`. A player is a name or `xuid:<XUID>`; `op`, `deop`, `ban` and `pardon` take the same.
 

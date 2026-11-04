@@ -27,7 +27,9 @@ import (
 // the meanings below were recorded from the readConfig that read the file
 // into a single server.UserConfig. The one exception is IdentityKey, added
 // since: a new default file has its line, and a file that lacks it, with
-// AuthEnabled = true, now keys players by XUID.
+// AuthEnabled = true, now keys players by XUID. SaveChunks of [World] was
+// added since too: a new default file has its line, and a file that lacks it
+// saves the chunks that changed, as the server did before the key.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -116,7 +118,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Resources": 0, "ResourcesRequired": false, "DisableResourceBuilding": false,
 			"OverworldSeed": int64(0), "GeneratorProfile": "auto", "GeneratorWorkers": 0, "GeneratorQueueSize": 0,
 			"Regions": false, "DisableOverworld": false, "DisableNether": false, "DisableEnd": false,
-			"DefaultDimension": "Overworld", "PortalDisabledMessage": "The %s dimension is disabled on this server.",
+			"DefaultDimension": "Overworld", "PortalDisabledMessage": "The %s dimension is disabled on this server.", "SaveChunks": "modified",
 			"WorldProvider": "*mcdb.DB", "WorldFolder": true, "PlayerProvider": "*playerdb.Provider", "PlayerFolder": true,
 			"WhitelistFile": "white-list.txt", "Stranger": "allowed",
 			"Query": false, "QueryPlugins": false,
@@ -134,7 +136,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Resources": 0, "ResourcesRequired": true, "DisableResourceBuilding": true,
 			"OverworldSeed": int64(42), "GeneratorProfile": "many-cores", "GeneratorWorkers": 3, "GeneratorQueueSize": 5,
 			"Regions": true, "DisableOverworld": true, "DisableNether": true, "DisableEnd": false,
-			"DefaultDimension": "End", "PortalDisabledMessage": "Closed.",
+			"DefaultDimension": "End", "PortalDisabledMessage": "Closed.", "SaveChunks": "all",
 			"WorldProvider": "<nil>", "WorldFolder": false, "PlayerProvider": "<nil>", "PlayerFolder": false,
 			"WhitelistFile": "allow.txt", "Stranger": "Members only.",
 			"Query": true, "QueryPlugins": true,
@@ -185,6 +187,7 @@ func TestConfigFileErrors(t *testing.T) {
 		"[Server]\nNameCheck = \"xbox\"\n":                        `unknown name check "xbox": want "lenient", "game" or "strict"`,
 		"[Server]\nIdentityKey = \"uuid\"\n":                      `unknown IdentityKey "uuid": use "auto", "xuid" or "name"`,
 		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n": `IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
+		"[World]\nSaveChunks = \"changed\"\n":                     `unknown SaveChunks "changed": use "modified" or "all"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -296,6 +299,7 @@ const everyKeyChanged = `
   GeneratorWorkers = 3
   PortalDisabledMessage = "Closed."
   Regions = true
+  SaveChunks = " All "
   SaveData = false
   Seed = 42
 
@@ -339,7 +343,7 @@ func serverMeaning(t *testing.T, conf server.Config, log *slog.Logger) configMea
 		"OverworldSeed": conf.OverworldSeed, "GeneratorProfile": conf.GeneratorProfile.String(),
 		"GeneratorWorkers": conf.GeneratorWorkers, "GeneratorQueueSize": conf.GeneratorQueueSize,
 		"Regions": conf.Regions, "DisableOverworld": conf.DisableOverworld, "DisableNether": conf.DisableNether, "DisableEnd": conf.DisableEnd,
-		"DefaultDimension": fmt.Sprint(conf.DefaultDimension), "PortalDisabledMessage": conf.PortalDisabledMessage,
+		"DefaultDimension": fmt.Sprint(conf.DefaultDimension), "PortalDisabledMessage": conf.PortalDisabledMessage, "SaveChunks": conf.SaveChunks.String(),
 		"WorldProvider": fmt.Sprintf("%T", conf.WorldProvider), "WorldFolder": exists("world") || exists("realm"),
 		"PlayerProvider": fmt.Sprintf("%T", conf.PlayerProvider), "PlayerFolder": exists("players") || exists("people"),
 		"WhitelistFile": whitelist, "Stranger": stranger,
