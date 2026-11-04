@@ -3,6 +3,7 @@ package session_test
 import (
 	"testing"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -54,7 +55,7 @@ func (s *scenario) multiCraftScenario() {
 	s.request("the swords repaired", nil,
 		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe("00000000-0000-0000-0000-000000000001"), NumberOfCrafts: 1},
 		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{{
-			Identifier: name, MetadataValue: uint32(meta), Count: 1, NBTData: item.WriteNBT(result, false),
+			Identifier: name, MetadataValue: uint32(meta), Count: 1, NBTData: session.NetworkItemNBT(result),
 		}}},
 		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid+1)},
 		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)})

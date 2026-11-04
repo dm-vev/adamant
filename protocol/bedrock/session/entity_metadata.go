@@ -207,7 +207,7 @@ func (s *Session) addSpecificMetadata(e any, m v2193.Metadata) {
 		m[v2193.EntityDataKeyValue] = int32(o.Experience())
 	}
 	if f, ok := e.(firework); ok {
-		m[v2193.EntityDataKeyDisplayFirework] = item.WriteNBT(item.NewStack(f.Firework(), 1), false)
+		m[v2193.EntityDataKeyDisplayFirework] = networkItemNBT(item.NewStack(f.Firework(), 1))
 		if o, ok := e.(owned); ok && f.Attached() && o.Owner() != nil {
 			m[v2193.EntityDataKeyCustomDisplay] = s.handleUniqueID(o.Owner())
 		}

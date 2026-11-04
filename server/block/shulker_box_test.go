@@ -186,8 +186,8 @@ func TestShulkerBoxDropRoundTripNBT(t *testing.T) {
 	}
 
 	drop := box.itemStackForDrop()
-	data := item.WriteNBT(drop, true)
-	restored := item.ReadNBT(data, nil)
+	data := item.WriteNBT(drop)
+	restored := item.ReadNBT(data)
 
 	restoredBox, ok := restored.Item().(ShulkerBox)
 	if !ok {

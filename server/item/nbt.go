@@ -9,10 +9,22 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-// WriteNBT encodes a Stack into a map that can be encoded using NBT. disk
-// selects the disk format over the network one, which differ in how an item's
-// damage is written and in whether the stack is wrapped with its name and count.
-func WriteNBT(s Stack, disk bool) map[string]any {
+// WriteNBT encodes a Stack in the world format into a map that can be
+// encoded using NBT: the name, metadata value, count and block of its item,
+// with the compound of WriteTag under "tag" when it is not empty.
+func WriteNBT(s Stack) map[string]any {
+	data := make(map[string]any)
+	if s.Empty() {
+		return data
+	}
+	writeItemStack(data, WriteTag(s), s)
+	return data
+}
+
+// WriteTag encodes the tag compound of a Stack in the world format: the NBT
+// of its item, its damage, name and lore, enchantments, lock, anvil cost,
+// unbreakable tag and dragonfly data.
+func WriteTag(s Stack) map[string]any {
 	tag := make(map[string]any)
 	if s.Empty() {
 		return tag
@@ -23,48 +35,37 @@ func WriteNBT(s Stack, disk bool) map[string]any {
 		}
 	}
 	writeAnvilCost(tag, s)
-	writeDamage(tag, s, disk)
+	writeDamage(tag, s)
 	writeDisplay(tag, s)
 	writeDragonflyData(tag, s)
 	writeEnchantments(tag, s)
 	writeItemLock(tag, s)
 	writeUnbreakable(tag, s)
-
-	data := make(map[string]any)
-	if disk {
-		writeItemStack(data, tag, s)
-	} else {
-		for k, v := range tag {
-			data[k] = v
-		}
-	}
-	return data
+	return tag
 }
 
-// ReadNBT decodes the data of an item into an item stack. A nil s selects the
-// disk format, in which the item's name and count are read from data itself;
-// otherwise the tags are applied to the stack passed.
-func ReadNBT(data map[string]any, s *Stack, registries ...world.BlockRegistry) Stack {
-	disk, tag := s == nil, data
-	if disk {
-		t, ok := data["tag"].(map[string]any)
-		if !ok {
-			t = map[string]any{}
-		}
-		tag = t
-
-		a := readItemStack(data, tag, registries...)
-		s = &a
+// ReadNBT decodes data of the world format, as WriteNBT encodes it, into an
+// item stack, whose item's name and count it reads from data itself.
+func ReadNBT(data map[string]any, registries ...world.BlockRegistry) Stack {
+	tag, ok := data["tag"].(map[string]any)
+	if !ok {
+		tag = map[string]any{}
 	}
+	return ReadTag(tag, readItemStack(data, tag, registries...))
+}
 
-	readAnvilCost(tag, s)
-	readDamage(tag, s, disk)
-	readDisplay(tag, s)
-	readDragonflyData(tag, s)
-	readEnchantments(tag, s)
-	readItemLock(tag, s)
-	readUnbreakable(tag, s)
-	return *s
+// ReadTag applies a tag compound of the world format, as WriteTag encodes it,
+// to the stack passed and returns the result. It does not decode the NBT of
+// the item, which ReadNBT does.
+func ReadTag(tag map[string]any, s Stack) Stack {
+	readAnvilCost(tag, &s)
+	readDamage(tag, &s)
+	readDisplay(tag, &s)
+	readDragonflyData(tag, &s)
+	readEnchantments(tag, &s)
+	readItemLock(tag, &s)
+	readUnbreakable(tag, &s)
+	return s
 }
 
 // MapNBT converts an item's name, count, damage (and properties when it is a
@@ -74,7 +75,7 @@ func MapNBT(x map[string]any, k string, registries ...world.BlockRegistry) Stack
 		if len(registries) == 0 {
 			registries = []world.BlockRegistry{world.BlockRegistryFromNBT(x)}
 		}
-		return ReadNBT(m, nil, registries...)
+		return ReadNBT(m, registries...)
 	}
 	return Stack{}
 }
@@ -164,9 +165,9 @@ func writeDisplay(m map[string]any, s Stack) {
 	}
 }
 
-// writeDamage writes the damage to a Stack (either an int16 for disk or int32 for network) to a map for NBT
-// encoding.
-func writeDamage(m map[string]any, s Stack, disk bool) {
+// writeDamage writes the damage of a durable Stack as an int16 to a map for NBT
+// encoding, unless the NBT of its item holds a damage other than zero.
+func writeDamage(m map[string]any, s Stack) {
 	if v, ok := m["Damage"]; ok {
 		if known, zero := isZeroNumber(v); !known || !zero {
 			return
@@ -175,12 +176,7 @@ func writeDamage(m map[string]any, s Stack, disk bool) {
 	if _, ok := s.Item().(Durable); !ok {
 		return
 	}
-	damage := s.MaxDurability() - s.Durability()
-	if disk {
-		m["Damage"] = int16(damage)
-		return
-	}
-	m["Damage"] = int32(damage)
+	m["Damage"] = int16(s.MaxDurability() - s.Durability())
 }
 
 // writeAnvilCost ...
@@ -224,12 +220,8 @@ func readItemStack(m, t map[string]any, registries ...world.BlockRegistry) Stack
 }
 
 // readDamage reads the damage value stored in the NBT with the Damage tag and saves it to the Stack passed.
-func readDamage(m map[string]any, s *Stack, disk bool) {
-	if disk {
-		*s = s.Damage(int(nbtInt16(m, "Damage")))
-		return
-	}
-	*s = s.Damage(int(nbtInt32(m, "Damage")))
+func readDamage(m map[string]any, s *Stack) {
+	*s = s.Damage(int(nbtInt16(m, "Damage")))
 }
 
 // readAnvilCost ...

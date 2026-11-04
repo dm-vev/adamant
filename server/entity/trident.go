@@ -219,7 +219,7 @@ func (t tridentType) EncodeNBT(data *world.EntityData) map[string]any {
 		"returning":  boolByte(behaviour.returning),
 	}
 	if !behaviour.item.Empty() {
-		m["Item"] = item.WriteNBT(behaviour.item, true)
+		m["Item"] = item.WriteNBT(behaviour.item)
 	}
 	if behaviour.collided {
 		m["StuckToBlockPos"] = nbtconv.PosToInt32Slice(behaviour.collisionPos)

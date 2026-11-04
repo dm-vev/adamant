@@ -84,7 +84,7 @@ func trialEquipmentSlot(it world.Item) int {
 }
 
 func nativeMobEquipmentItem(stack item.Stack) (NativeMobItem, error) {
-	raw := item.WriteNBT(stack, true)
+	raw := item.WriteNBT(stack)
 	name, ok := raw["Name"].(string)
 	if !ok || name == "" { return NativeMobItem{}, fmt.Errorf("trial equipment item has no native Bedrock name") }
 	return NativeMobItem{Name: name, Count: nativeNBTByte(raw["Count"]), Damage: int32(nbtconv.Int32(raw, "Damage")), WasPickedUp: 0, Raw: raw}, nil

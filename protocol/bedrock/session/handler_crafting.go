@@ -503,7 +503,7 @@ func requestedMultiResultMatches(want item.Stack, got v2193.StackRequestItem) bo
 	if got.Identifier != name || got.MetadataValue > math.MaxInt16 || int16(got.MetadataValue) != meta || int(got.Count) != want.Count() {
 		return false
 	}
-	wantNBT := item.WriteNBT(want, false)
+	wantNBT := networkItemNBT(want)
 	return len(wantNBT) == 0 && len(got.NBTData) == 0 || reflect.DeepEqual(wantNBT, got.NBTData)
 }
 

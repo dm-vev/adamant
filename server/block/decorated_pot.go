@@ -246,7 +246,7 @@ func (p DecoratedPot) EncodeNBT() map[string]any {
 		"item":      map[string]any{"Name": "", "Count": uint8(0), "Damage": int16(0), "WasPickedUp": uint8(0)},
 	}
 	if !p.Item.Empty() {
-		m["item"] = item.WriteNBT(p.Item, true)
+		m["item"] = item.WriteNBT(p.Item)
 	}
 	if p.lootTable != "" {
 		m["LootTable"], m["LootTableSeed"] = loot.BedrockTablePath(p.lootTable), p.lootSeed

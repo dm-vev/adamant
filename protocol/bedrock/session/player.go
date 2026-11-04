@@ -1302,7 +1302,7 @@ func stackFromItem(br world.BlockRegistry, it item.Stack) v2193.ItemStack {
 		MetadataValue:  uint32(meta),
 		Count:          uint16(it.Count()),
 		BlockRuntimeID: int32(blockRuntimeID),
-		NBTData:        item.WriteNBT(it, false),
+		NBTData:        networkItemNBT(it),
 	}
 }
 
@@ -1332,7 +1332,7 @@ func stackToItem(br world.BlockRegistry, it v2193.ItemStack) item.Stack {
 		t = world.DecodeNBT(nbter, it.NBTData, br).(world.Item)
 	}
 	s := item.NewStack(t, int(it.Count))
-	return item.ReadNBT(it.NBTData, &s, br)
+	return readNetworkItemNBT(it.NBTData, s)
 }
 
 // instanceFromItem converts an item.Stack to its network ItemInstance representation.

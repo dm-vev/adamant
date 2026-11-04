@@ -178,5 +178,5 @@ func writeSlots(b *strings.Builder, name string, inv *inventory.Inventory) {
 
 // stackState returns a stack as the state holds it: its count and its NBT.
 func stackState(it item.Stack) string {
-	return fmt.Sprintf("%d %v", it.Count(), item.WriteNBT(it, true))
+	return fmt.Sprintf("%d %v", it.Count(), item.WriteNBT(it))
 }

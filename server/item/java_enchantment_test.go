@@ -31,7 +31,7 @@ func TestJava263EnchantmentComponentsSurviveInventoryNBT(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			binary, err := nbt.MarshalEncoding(item.WriteNBT(stack, true), nbt.LittleEndian)
+			binary, err := nbt.MarshalEncoding(item.WriteNBT(stack), nbt.LittleEndian)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -39,7 +39,7 @@ func TestJava263EnchantmentComponentsSurviveInventoryNBT(t *testing.T) {
 			if err = nbt.UnmarshalEncoding(binary, &decoded, nbt.LittleEndian); err != nil {
 				t.Fatal(err)
 			}
-			restored := item.ReadNBT(decoded, nil)
+			restored := item.ReadNBT(decoded)
 			encoded, err := item.StackToStructureNBT(restored)
 			if err != nil {
 				t.Fatal(err)

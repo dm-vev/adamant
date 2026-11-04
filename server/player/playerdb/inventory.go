@@ -80,7 +80,7 @@ func encodeItem(stack item.Stack) []byte {
 	}
 
 	var b bytes.Buffer
-	itemNBT := item.WriteNBT(stack, true)
+	itemNBT := item.WriteNBT(stack)
 	encoder := nbt.NewEncoderWithEncoding(&b, nbt.LittleEndian)
 	err := encoder.Encode(itemNBT)
 	if err != nil {
@@ -96,5 +96,5 @@ func decodeItem(data []byte, br world.BlockRegistry) item.Stack {
 	if err != nil {
 		return item.Stack{}
 	}
-	return item.ReadNBT(itemNBT, nil, br)
+	return item.ReadNBT(itemNBT, br)
 }

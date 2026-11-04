@@ -55,5 +55,5 @@ func (fireworkType) DecodeNBT(m map[string]any, data *world.EntityData) {
 }
 
 func (fireworkType) EncodeNBT(data *world.EntityData) map[string]any {
-	return map[string]any{"Item": item.WriteNBT(item.NewStack(data.Data.(*FireworkBehaviour).Firework(), 1), true)}
+	return map[string]any{"Item": item.WriteNBT(item.NewStack(data.Data.(*FireworkBehaviour).Firework(), 1))}
 }

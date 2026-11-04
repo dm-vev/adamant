@@ -41,7 +41,7 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 	if !ok {
 		t.Fatalf("native wolf body armor is not a compound: %#v", armorList[4])
 	}
-	restoredArmor := item.ReadNBT(armor, nil, world.DefaultBlockRegistry)
+	restoredArmor := item.ReadNBT(armor, world.DefaultBlockRegistry)
 	if _, ok := restoredArmor.Item().(item.WolfArmor); !ok || restoredArmor.Count() != 1 || restoredArmor.Durability() != item.NewStack(item.WolfArmor{}, 1).Durability()-7 {
 		t.Fatalf("native wolf body armor did not restore its item/count/durability: %v", restoredArmor)
 	}

@@ -534,9 +534,9 @@ func encodeSulfurCubeStack(stack item.Stack) map[string]any {
 	if stack.Empty() {
 		return nil
 	}
-	return item.WriteNBT(stack, true)
+	return item.WriteNBT(stack)
 }
-func decodeSulfurCubeStack(data map[string]any) item.Stack { return item.ReadNBT(data, nil) }
+func decodeSulfurCubeStack(data map[string]any) item.Stack { return item.ReadNBT(data) }
 
 // sulfurCubeKnockback is the knockback a cube holding a block takes, sideways and
 // up, as SulfurCube.knockback works it out.

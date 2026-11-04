@@ -143,7 +143,7 @@ func allayNativeStack(s NativeMobItem) (item.Stack, bool) {
 	return item.NewStack(i, int(s.Count)), true
 }
 func allayWriteStack(s item.Stack) map[string]any {
-	raw := item.WriteNBT(s, true)
+	raw := item.WriteNBT(s)
 	id, ok := raw["Name"].(string)
 	if !ok || s.Empty() {
 		return map[string]any{}

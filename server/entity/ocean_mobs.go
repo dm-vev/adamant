@@ -125,20 +125,20 @@ func (t oceanEntityType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if _, native := m["Mainhand"]; native {
 		c.mainHand = item.Stack{}
 		if len(nativeEquipment.Mainhand) != 0 {
-			c.mainHand = item.ReadNBT(nativeEquipment.Mainhand[0].Raw, nil)
+			c.mainHand = item.ReadNBT(nativeEquipment.Mainhand[0].Raw)
 		}
 	}
 	if _, native := m["Offhand"]; native {
 		c.offHand = item.Stack{}
 		if len(nativeEquipment.Offhand) != 0 {
-			c.offHand = item.ReadNBT(nativeEquipment.Offhand[0].Raw, nil)
+			c.offHand = item.ReadNBT(nativeEquipment.Offhand[0].Raw)
 		}
 	}
 	if _, native := m["Armor"]; native {
 		for i, slot := range []*item.Stack{&c.head, &c.chest, &c.legs, &c.feet} {
 			*slot = item.Stack{}
 			if i < len(nativeEquipment.Armor) {
-				*slot = item.ReadNBT(nativeEquipment.Armor[i].Raw, nil)
+				*slot = item.ReadNBT(nativeEquipment.Armor[i].Raw)
 			}
 		}
 	}
@@ -151,10 +151,10 @@ func (t oceanEntityType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		}
 	}
 	if saddle, ok := m["Saddle"].(map[string]any); ok && !c.saddle {
-		c.saddle = !item.ReadNBT(saddle, nil).Empty()
+		c.saddle = !item.ReadNBT(saddle).Empty()
 	}
 	if armor, ok := m["BodyArmor"].(map[string]any); ok && !c.armorSet {
-		if stack := item.ReadNBT(armor, nil); !stack.Empty() {
+		if stack := item.ReadNBT(armor); !stack.Empty() {
 			if a, ok := stack.Item().(item.NautilusArmor); ok {
 				c.bodyArmorMaterial, c.armorSet = int(a.Material), true
 			}
@@ -222,7 +222,7 @@ func (t oceanEntityType) EncodeNBT(d *world.EntityData) map[string]any {
 		if b.bodyArmorMaterial >= 0 {
 			armor = item.NewStack(item.NautilusArmor{Material: item.NautilusArmorMaterial(b.bodyArmorMaterial)}, 1)
 		}
-		encoded["Saddle"], encoded["BodyArmor"] = item.WriteNBT(saddle, true), item.WriteNBT(armor, true)
+		encoded["Saddle"], encoded["BodyArmor"] = item.WriteNBT(saddle), item.WriteNBT(armor)
 	}
 	return encoded
 }

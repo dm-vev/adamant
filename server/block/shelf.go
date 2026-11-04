@@ -434,7 +434,7 @@ func (s Shelf) EncodeNBT() map[string]any {
 		if stack.Empty() {
 			continue
 		}
-		data := item.WriteNBT(stack, true)
+		data := item.WriteNBT(stack)
 		data["Slot"] = byte(slot)
 		items = append(items, data)
 	}
@@ -448,7 +448,7 @@ func (s Shelf) DecodeNBT(data map[string]any) any {
 	for _, entry := range nbtconv.Slice(data, "Items") {
 		m, _ := entry.(map[string]any)
 		slot := int(nbtconv.Uint8(m, "Slot"))
-		if stack := item.ReadNBT(m, nil, registry); !stack.Empty() && slot < len(s.Items) {
+		if stack := item.ReadNBT(m, registry); !stack.Empty() && slot < len(s.Items) {
 			s.Items[slot] = stack
 		}
 	}

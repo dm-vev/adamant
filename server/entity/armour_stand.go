@@ -74,7 +74,7 @@ func (armourStandType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		if !ok {
 			continue
 		}
-		it := item.ReadNBT(itemMap, nil, world.BlockRegistryFromNBT(m))
+		it := item.ReadNBT(itemMap, world.BlockRegistryFromNBT(m))
 
 		switch i {
 		case 0:
@@ -96,13 +96,13 @@ func (armourStandType) EncodeNBT(data *world.EntityData) map[string]any {
 		return map[string]any{}
 	}
 	return map[string]any{
-		"MainHand": item.WriteNBT(a.conf.MainHand, true),
-		"Offhand":  item.WriteNBT(a.conf.OffHand, true),
+		"MainHand": item.WriteNBT(a.conf.MainHand),
+		"Offhand":  item.WriteNBT(a.conf.OffHand),
 		"Armor": []map[string]any{
-			item.WriteNBT(a.Armour().Helmet(), true),
-			item.WriteNBT(a.Armour().Chestplate(), true),
-			item.WriteNBT(a.Armour().Leggings(), true),
-			item.WriteNBT(a.Armour().Boots(), true),
+			item.WriteNBT(a.Armour().Helmet()),
+			item.WriteNBT(a.Armour().Chestplate()),
+			item.WriteNBT(a.Armour().Leggings()),
+			item.WriteNBT(a.Armour().Boots()),
 		},
 		"PoseIndex": int32(a.conf.PoseIndex),
 	}

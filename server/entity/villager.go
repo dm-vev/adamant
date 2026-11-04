@@ -76,7 +76,7 @@ func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 		if !ok {
 			continue
 		}
-		stack := item.ReadNBT(row, nil)
+		stack := item.ReadNBT(row)
 		slot := int(nbtconv.Uint8(row, "Slot"))
 		if slot >= 0 && slot < 8 && !stack.Empty() {
 			c.Inventory = append(c.Inventory, villagerInventorySlot{Slot: slot, Stack: stack})
@@ -125,7 +125,7 @@ func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 		if stack.Empty() {
 			continue
 		}
-		row := item.WriteNBT(stack, true)
+		row := item.WriteNBT(stack)
 		row["Slot"] = uint8(slot)
 		inventoryRows = append(inventoryRows, row)
 	}
@@ -274,7 +274,7 @@ func villagerStack(raw any) (item.Stack, error) {
 	if !ok {
 		return item.Stack{}, nil
 	}
-	stack := item.ReadNBT(m, nil)
+	stack := item.ReadNBT(m)
 	if mapItem, ok := stack.Item().(item.FilledMap); ok {
 		if raw, exists := stack.Value("adamant:java_map_variant"); exists {
 			switch variant := raw.(type) {
@@ -294,7 +294,7 @@ func villagerWriteStack(s item.Stack) map[string]any {
 	if mapItem, ok := s.Item().(item.FilledMap); ok {
 		s = s.WithValue("adamant:java_map_variant", int32(mapItem.Variant))
 	}
-	return item.WriteNBT(s, true)
+	return item.WriteNBT(s)
 }
 func villagerUUIDString(raw any) string {
 	if id, ok := raw.(string); ok {

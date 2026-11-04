@@ -279,9 +279,9 @@ func (b Bundle) DecodeNBT(data map[string]any) any {
 
 }
 func encodeBundleStack(stack Stack) map[string]any {
-	return WriteNBT(stack, true)
+	return WriteNBT(stack)
 }
 
 func decodeBundleStack(data map[string]any, registry world.BlockRegistry) Stack {
-	return ReadNBT(data, nil, registry)
+	return ReadNBT(data, registry)
 }

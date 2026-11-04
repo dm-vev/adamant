@@ -1017,7 +1017,7 @@ func multiResultItem(stack item.Stack) v2193.StackRequestItem {
 		Identifier:    name,
 		MetadataValue: uint32(meta),
 		Count:         uint16(stack.Count()),
-		NBTData:       item.WriteNBT(stack, false),
+		NBTData:       networkItemNBT(stack),
 	}
 }
 

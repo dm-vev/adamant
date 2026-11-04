@@ -116,7 +116,7 @@ func encodeBrushableNBT(name, table string, seed int64, stack item.Stack, brushC
 		data["LootTable"] = loot.BedrockTablePath(table)
 		data["LootTableSeed"] = seed
 	} else if !stack.Empty() {
-		data["item"] = item.WriteNBT(stack, true)
+		data["item"] = item.WriteNBT(stack)
 	}
 	return data
 }
@@ -134,7 +134,7 @@ func decodeBrushableNBT(data map[string]any) (string, int64, item.Stack, cube.Fa
 			raw, ok = data["Item"].(map[string]any)
 		}
 		if ok && len(raw) > 0 {
-			stack = item.ReadNBT(raw, nil, world.BlockRegistryFromNBT(data))
+			stack = item.ReadNBT(raw, world.BlockRegistryFromNBT(data))
 		}
 	}
 	direction, hasDirection := cube.FaceUp, false

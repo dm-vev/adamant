@@ -460,7 +460,7 @@ func TestIglooPostProcessMatchesReference(t *testing.T) {
 					if !ok {
 						t.Fatalf("Source brewing stand item=%T", items[0])
 					}
-					stack := item.ReadNBT(data, nil, world.DefaultBlockRegistry)
+					stack := item.ReadNBT(data, world.DefaultBlockRegistry)
 					sourceItem, err := item.StackToStructureNBT(stack)
 					if err != nil {
 						t.Fatal(err)

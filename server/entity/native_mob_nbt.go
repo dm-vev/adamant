@@ -34,7 +34,7 @@ type NativeMobEquipment struct {
 }
 
 func nativeMobItemFromStack(stack item.Stack) NativeMobItem {
-	raw := item.WriteNBT(stack, true)
+	raw := item.WriteNBT(stack)
 	if stack.Empty() {
 		return NativeMobItem{Raw: raw}
 	}

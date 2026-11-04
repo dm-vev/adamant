@@ -150,7 +150,7 @@ func (l Lectern) EncodeNBT() map[string]any {
 		"BlockEntityVersion": int32(0),
 	}
 	if !l.Book.Empty() {
-		m["book"] = item.WriteNBT(l.Book, true)
+		m["book"] = item.WriteNBT(l.Book)
 	}
 	if r, ok := l.Book.Item().(readableBook); ok {
 		m["hasBook"] = uint8(1)

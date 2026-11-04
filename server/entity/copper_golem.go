@@ -39,10 +39,10 @@ func (copperGolemType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := CopperGolemBehaviourConfig{WeatherState: copperWeatherFromName(nbtconv.String(m, "weather_state")), State: copperStateFromName(nbtconv.String(m, "State")), NextWeatheringTick: nextWeatheringTick}
 	c.Waxed = nextWeatheringTick == -2
 	if antenna, ok := m["Antenna"].(map[string]any); ok {
-		c.Antenna = item.ReadNBT(antenna, nil)
+		c.Antenna = item.ReadNBT(antenna)
 	}
 	if held, ok := m["CarriedItem"].(map[string]any); ok {
-		c.Carried = item.ReadNBT(held, nil)
+		c.Carried = item.ReadNBT(held)
 	}
 	if _, ok := m["Health"]; ok {
 		c.Health = float64(nbtconv.Float32(m, "Health"))
@@ -57,10 +57,10 @@ func (copperGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*CopperGolemBehaviour)
 	m := map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "weather_state": copperWeatherNames[b.weather], "State": copperStates[b.state], "Waxed": boolByte(b.waxed), "next_weather_age": b.nextWeatheringTick}
 	if !b.antenna.Empty() {
-		m["Antenna"] = item.WriteNBT(b.antenna, true)
+		m["Antenna"] = item.WriteNBT(b.antenna)
 	}
 	if !b.carried.Empty() {
-		m["CarriedItem"] = item.WriteNBT(b.carried, true)
+		m["CarriedItem"] = item.WriteNBT(b.carried)
 	}
 	return m
 }

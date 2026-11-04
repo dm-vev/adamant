@@ -21,15 +21,15 @@ func TestBlockItemNBTRoundTripUsesRegistry(t *testing.T) {
 	registry.Finalize()
 
 	want := NewStack(registryBlockItem{Powered: true}, 3).WithForcedEnchantments(NewEnchantment(testEnchantment{}, 3))
-	encoded := WriteNBT(want, true)
-	got := ReadNBT(encoded, nil, registry)
+	encoded := WriteNBT(want)
+	got := ReadNBT(encoded, registry)
 	if got.Count() != want.Count() {
 		t.Fatalf("count = %d, want %d", got.Count(), want.Count())
 	}
 	if gotItem, ok := got.Item().(registryBlockItem); !ok || !gotItem.Powered {
 		t.Fatalf("item = %#v, want powered registryBlockItem", got.Item())
 	}
-	if reencoded := WriteNBT(got, true); !reflect.DeepEqual(reencoded, encoded) {
+	if reencoded := WriteNBT(got); !reflect.DeepEqual(reencoded, encoded) {
 		t.Fatalf("round-trip NBT differs\ngot:  %#v\nwant: %#v", reencoded, encoded)
 	}
 }
@@ -73,7 +73,12 @@ func TestReadNBTClampsInvalidEnchantmentLevels(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got := ReadNBT(test.data, test.stack)
+			var got Stack
+			if test.stack != nil {
+				got = ReadTag(test.data, *test.stack)
+			} else {
+				got = ReadNBT(test.data)
+			}
 			enchantments := got.Enchantments()
 			if len(enchantments) != 1 || enchantments[0].Level() != 1 {
 				t.Fatalf("enchantments = %#v, want level 1 after clamping %d", enchantments, test.level)

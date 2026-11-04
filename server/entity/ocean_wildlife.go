@@ -75,7 +75,7 @@ func (t oceanWildlifeType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		d.Data.(*oceanWildlifeBehaviour).breeding.decodeNBT(m)
 	}
 	if equipment := ReadNativeMobEquipment(m); t.id == "minecraft:dolphin" && len(equipment.Mainhand) > 0 {
-		d.Data.(*oceanWildlifeBehaviour).held = item.ReadNBT(equipment.Mainhand[0].Raw, nil)
+		d.Data.(*oceanWildlifeBehaviour).held = item.ReadNBT(equipment.Mainhand[0].Raw)
 	}
 }
 
@@ -102,7 +102,7 @@ func (t oceanWildlifeType) EncodeNBT(d *world.EntityData) map[string]any {
 		m = MergeNativeMobNBT(m, map[string]any{"GotFish": boolByte(b.gotFish), "HasTreasure": boolByte(b.hasTreasure), "TreasurePosX": int32(b.treasureX), "TreasurePosY": int32(b.treasureY), "TreasurePosZ": int32(b.treasureZ), "Moistness": int32(b.moistness)})
 		if !b.held.Empty() {
 			name, damage := b.held.Item().EncodeItem()
-			equipment := NativeMobEquipment{Mainhand: []NativeMobItem{{Name: name, Count: byte(b.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(b.held, true)}}}
+			equipment := NativeMobEquipment{Mainhand: []NativeMobItem{{Name: name, Count: byte(b.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(b.held)}}}
 			m = MergeNativeMobNBT(m, EncodeNativeMobEquipment(equipment))
 		}
 	}

@@ -217,7 +217,7 @@ func (b ChiseledBookshelf) EncodeNBT() map[string]any {
 		for slot, stack := range b.Items {
 			entry := map[string]any{"Name": "", "Count": byte(0), "Damage": int16(0), "WasPickedUp": byte(0)}
 			if !stack.Empty() {
-				entry = item.WriteNBT(stack, true)
+				entry = item.WriteNBT(stack)
 				entry["WasPickedUp"] = byte(0)
 			}
 			items[slot] = entry
@@ -241,7 +241,7 @@ func (b ChiseledBookshelf) DecodeNBT(data map[string]any) any {
 			continue
 		}
 		entry, _ := items[slot].(map[string]any)
-		stack := item.ReadNBT(entry, nil, registry)
+		stack := item.ReadNBT(entry, registry)
 		if stack.Empty() {
 			continue
 		}

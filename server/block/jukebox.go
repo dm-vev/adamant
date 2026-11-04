@@ -171,7 +171,7 @@ func (j Jukebox) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
 func (j Jukebox) EncodeNBT() map[string]any {
 	m := map[string]any{"id": "Jukebox"}
 	if _, hasDisc := j.Disc(); hasDisc {
-		m["RecordItem"] = item.WriteNBT(j.Item, true)
+		m["RecordItem"] = item.WriteNBT(j.Item)
 	}
 	return m
 }

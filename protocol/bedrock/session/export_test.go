@@ -1,6 +1,7 @@
 package session
 
 import (
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
@@ -37,6 +38,10 @@ func (s *Session) Window() (m *menu.Menu, id, containerType uint32) {
 // sends them, for the tests of the encoding.
 func EncodeSubChunk(c *chunk.Chunk, ind int) []byte { return encodeSubChunk(c, ind) }
 func EncodeBiomes(c *chunk.Chunk) []byte            { return encodeBiomes(c) }
+
+// NetworkItemNBT returns the item NBT ItemStack sends for a stack, for the
+// tests that build the stacks clients send.
+func NetworkItemNBT(s item.Stack) map[string]any { return networkItemNBT(s) }
 
 // SoundPackets returns the packets a session on the default block registry
 // hands out to play a sound at a position, for the tests of the mapping of

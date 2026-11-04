@@ -22,7 +22,7 @@ func actorItemNBT(s item.Stack) map[string]any {
 	if s.Empty() {
 		return map[string]any{"Name": "", "Count": byte(0), "Damage": int16(0), "WasPickedUp": byte(0)}
 	}
-	m := item.WriteNBT(s, true)
+	m := item.WriteNBT(s)
 	m["WasPickedUp"] = byte(0)
 	return m
 }
@@ -41,7 +41,7 @@ func readActorItem(v any) item.Stack {
 	if name, _ := m["Name"].(string); name == "" {
 		return item.Stack{}
 	}
-	return item.ReadNBT(m, nil)
+	return item.ReadNBT(m)
 }
 
 // actorItemsNBT encodes stacks as a list of block actor items. BDS writes an

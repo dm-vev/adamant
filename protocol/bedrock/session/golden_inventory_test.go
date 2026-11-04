@@ -253,8 +253,8 @@ func (s *scenario) menuSteps() {
 			"NoAI":         byte(1),
 			"VillagerData": map[string]any{"type": "minecraft:plains", "profession": "minecraft:farmer", "level": int32(1)},
 			"Offers": map[string]any{"Recipes": []any{map[string]any{
-				"buy":  item.WriteNBT(item.NewStack(item.Emerald{}, 1), true),
-				"sell": item.WriteNBT(item.NewStack(item.Bread{}, 6), true),
+				"buy":  item.WriteNBT(item.NewStack(item.Emerald{}, 1)),
+				"sell": item.WriteNBT(item.NewStack(item.Bread{}, 6)),
 				// No experience rewarded: its orbs fly off at random.
 				"maxUses": int32(16), "xp": int32(2), "rewardExp": byte(0), "priceMultiplier": float32(0.05),
 			}}},

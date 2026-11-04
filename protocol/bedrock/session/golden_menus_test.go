@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/bedrockdata"
+	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -209,7 +210,7 @@ func (s *scenario) multiCraft(heading, id string, result item.Stack, to int, fro
 	actions := []v2193.StackRequestAction{
 		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe(id), NumberOfCrafts: 1},
 		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{{
-			Identifier: name, MetadataValue: uint32(meta), Count: uint16(result.Count()), NBTData: item.WriteNBT(result, false),
+			Identifier: name, MetadataValue: uint32(meta), Count: uint16(result.Count()), NBTData: session.NetworkItemNBT(result),
 		}}},
 	}
 	for _, slot := range from {
@@ -427,8 +428,8 @@ func (s *scenario) tradePreviewSteps() {
 			"NoAI":         byte(1),
 			"VillagerData": map[string]any{"type": "minecraft:plains", "profession": "minecraft:farmer", "level": int32(1)},
 			"Offers": map[string]any{"Recipes": []any{map[string]any{
-				"buy":  item.WriteNBT(item.NewStack(item.Emerald{}, 1), true),
-				"sell": item.WriteNBT(item.NewStack(item.Bread{}, 6), true),
+				"buy":  item.WriteNBT(item.NewStack(item.Emerald{}, 1)),
+				"sell": item.WriteNBT(item.NewStack(item.Bread{}, 6)),
 				// No experience rewarded: its orbs fly off at random.
 				"maxUses": int32(16), "xp": int32(2), "rewardExp": byte(0), "priceMultiplier": float32(0.05),
 			}}},
@@ -578,7 +579,7 @@ func (s *scenario) menuRefusalSteps() {
 	s.refuse("refused: the swords repaired to a sword as good as new",
 		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: s.multiRecipe(multiRepair), NumberOfCrafts: 1},
 		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{{
-			Identifier: name, MetadataValue: uint32(meta), Count: 1, NBTData: item.WriteNBT(forged, false),
+			Identifier: name, MetadataValue: uint32(meta), Count: 1, NBTData: session.NetworkItemNBT(forged),
 		}}},
 		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid)},
 		&v2193.ConsumeStackRequestAction{Count: 1, Source: s.slot(v2193.ContainerCraftingInput, uiCraftingGrid+1)})

@@ -93,7 +93,7 @@ func (foxType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	state := d.Data.(*foxState)
 	state.breeding.decodeNBT(s)
 	if equipment := ReadNativeMobEquipment(n); len(equipment.Mainhand) > 0 {
-		state.held = item.ReadNBT(equipment.Mainhand[0].Raw, nil)
+		state.held = item.ReadNBT(equipment.Mainhand[0].Raw)
 	}
 }
 func (foxType) EncodeNBT(d *world.EntityData) map[string]any {
@@ -103,7 +103,7 @@ func (foxType) EncodeNBT(d *world.EntityData) map[string]any {
 	canonical := map[string]any{"Attributes": attrs}
 	if !s.held.Empty() {
 		name, damage := s.held.Item().EncodeItem()
-		equipment := NativeMobEquipment{Mainhand: []NativeMobItem{{Name: name, Count: byte(s.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(s.held, true)}}}
+		equipment := NativeMobEquipment{Mainhand: []NativeMobItem{{Name: name, Count: byte(s.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(s.held)}}}
 		for key, value := range EncodeNativeMobEquipment(equipment) {
 			canonical[key] = value
 		}

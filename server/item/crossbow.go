@@ -232,7 +232,7 @@ func (c Crossbow) DecodeNBT(data map[string]any) any {
 // EncodeNBT ...
 func (c Crossbow) EncodeNBT() map[string]any {
 	if !c.Item.Empty() {
-		return map[string]any{"chargedItem": WriteNBT(c.Item, true)}
+		return map[string]any{"chargedItem": WriteNBT(c.Item)}
 	}
 	return nil
 }

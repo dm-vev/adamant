@@ -15,7 +15,7 @@ func InvFromNBT(inv *inventory.Inventory, items []any, context ...map[string]any
 	}
 	for _, itemData := range items {
 		data, _ := itemData.(map[string]any)
-		it := item.ReadNBT(data, nil, registry)
+		it := item.ReadNBT(data, registry)
 		if it.Empty() {
 			continue
 		}
@@ -30,7 +30,7 @@ func InvToNBT(inv *inventory.Inventory) []map[string]any {
 		if i.Empty() {
 			continue
 		}
-		data := item.WriteNBT(i, true)
+		data := item.WriteNBT(i)
 		data["Slot"] = byte(index)
 		items = append(items, data)
 	}

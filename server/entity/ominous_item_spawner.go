@@ -47,7 +47,7 @@ func (ominousItemSpawnerType) DecodeNBT(nbt map[string]any, data *world.EntityDa
 }
 func (ominousItemSpawnerType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*ominousItemSpawnerBehaviour)
-	return MergeNativeMobNBT(data.NativeNBT, map[string]any{"item": item.WriteNBT(b.item, true), "spawn_item_after_ticks": b.delay})
+	return MergeNativeMobNBT(data.NativeNBT, map[string]any{"item": item.WriteNBT(b.item), "spawn_item_after_ticks": b.delay})
 }
 
 // OminousItemSpawner exposes the stack used by native entity metadata.

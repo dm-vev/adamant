@@ -129,7 +129,7 @@ func piglinNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
 func piglinStackFromNative(items []NativeMobItem) item.Stack {
 	for _, v := range items {
 		if v.Name != "" && v.Count > 0 {
-			return item.ReadNBT(v.Raw, nil)
+			return item.ReadNBT(v.Raw)
 		}
 	}
 	return item.Stack{}

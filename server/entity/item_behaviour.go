@@ -40,7 +40,7 @@ func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBeha
 	if i.Count() > i.MaxCount() {
 		i = i.Grow(i.MaxCount() - i.Count())
 	}
-	i = item.ReadNBT(item.WriteNBT(i, true), nil, registries...)
+	i = item.ReadNBT(item.WriteNBT(i), registries...)
 
 	if conf.PickupDelay == 0 {
 		conf.PickupDelay = time.Second / 2

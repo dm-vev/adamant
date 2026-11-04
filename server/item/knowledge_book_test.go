@@ -17,13 +17,13 @@ func TestKnowledgeBookNativePersistenceRetainsJavaIdentity(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	registered, _ := world.ItemByName(stack.Item().EncodeItem())
 	if _, ok := registered.(KnowledgeBook); !ok { t.Fatalf("knowledge book was not registered as a distinct item: %#v", registered) }
-	native := WriteNBT(stack, true)
+	native := WriteNBT(stack)
 	if native["Name"] != "adamant:knowledge_book" { t.Fatalf("native item identifier: %v", native["Name"]) }
 	encoded, err := nbt.Marshal(native)
 	if err != nil { t.Fatal(err) }
 	var decoded map[string]any
 	if err := nbt.Unmarshal(encoded, &decoded); err != nil { t.Fatal(err) }
-	restored := ReadNBT(decoded, nil)
+	restored := ReadNBT(decoded)
 	book, ok := restored.Item().(KnowledgeBook)
 	if !ok || !slices.Equal(book.Recipes, recipes) { t.Fatalf("restored item: %#v", restored.Item()) }
 	source, err := StackToStructureNBT(restored)

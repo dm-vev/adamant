@@ -143,13 +143,13 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	if _, native := n["Mainhand"]; native {
 		c.main = item.Stack{}
 		if len(equipment.Mainhand) > 0 {
-			c.main = item.ReadNBT(equipment.Mainhand[0].Raw, nil)
+			c.main = item.ReadNBT(equipment.Mainhand[0].Raw)
 		}
 	}
 	if _, native := n["Offhand"]; native {
 		c.off = item.Stack{}
 		if len(equipment.Offhand) > 0 {
-			c.off = item.ReadNBT(equipment.Offhand[0].Raw, nil)
+			c.off = item.ReadNBT(equipment.Offhand[0].Raw)
 		}
 	}
 	for i, native := range equipment.Armor {

@@ -145,7 +145,7 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 	}
 	equipment.Armor[4] = NativeMobItem{Raw: equipment.Armor[4].Raw}
 	if !b.bodyArmor.Empty() {
-		raw := item.WriteNBT(b.bodyArmor, true)
+		raw := item.WriteNBT(b.bodyArmor)
 		name, _ := raw["Name"].(string)
 		count, _ := raw["Count"].(byte)
 		damage, _ := nativeNBTInt(raw["Damage"])
@@ -189,7 +189,7 @@ func nativeWolfArmorStack(armor NativeMobItem) (item.Stack, bool) {
 		return item.Stack{}, false
 	}
 	if armor.Raw != nil {
-		stack := item.ReadNBT(armor.Raw, nil)
+		stack := item.ReadNBT(armor.Raw)
 		if !stack.Empty() {
 			return stack, true
 		}

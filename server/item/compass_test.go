@@ -4,8 +4,8 @@ import "testing"
 
 func TestLodestoneCompassNBTRoundTrip(t *testing.T) {
 	want := Compass{TrackingHandle: 42}
-	data := WriteNBT(NewStack(want, 1), true)
-	got := ReadNBT(data, nil)
+	data := WriteNBT(NewStack(want, 1))
+	got := ReadNBT(data)
 	compass, ok := got.Item().(Compass)
 	if !ok || compass != want {
 		t.Fatalf("decoded compass = %#v, want %#v", got.Item(), want)

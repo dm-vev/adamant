@@ -297,7 +297,7 @@ func convertChiseledBookshelfItems(raw any) ([]any, error) {
 		if stack.Empty() {
 			continue
 		}
-		encoded := item.WriteNBT(stack, true)
+		encoded := item.WriteNBT(stack)
 		encoded["WasPickedUp"] = byte(0)
 		out[slot] = encoded
 	}
@@ -323,7 +323,7 @@ func convertItems(raw any) ([]any, error) {
 		if stack.Empty() {
 			continue
 		}
-		encoded := item.WriteNBT(stack, true)
+		encoded := item.WriteNBT(stack)
 		slot := int64(0)
 		if rawSlot, exists := entry["Slot"]; exists {
 			var valid bool
@@ -570,7 +570,7 @@ func convertBrushable(data map[string]any) error {
 		if err != nil {
 			return fmt.Errorf("item: %w", err)
 		}
-		data["Item"] = item.WriteNBT(stack, true)
+		data["Item"] = item.WriteNBT(stack)
 	}
 	return nil
 }
@@ -581,7 +581,7 @@ func convertDecoratedPot(data map[string]any) error {
 		if err != nil {
 			return fmt.Errorf("item: %w", err)
 		}
-		data["item"] = item.WriteNBT(stack, true)
+		data["item"] = item.WriteNBT(stack)
 	}
 	return nil
 }

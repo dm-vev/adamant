@@ -149,7 +149,7 @@ func (i ItemFrame) EncodeNBT() map[string]any {
 		m["id"] = "GlowItemFrame"
 	}
 	if !i.Item.Empty() {
-		m["Item"] = item.WriteNBT(i.Item, true)
+		m["Item"] = item.WriteNBT(i.Item)
 	}
 	return m
 }
