@@ -161,6 +161,11 @@ type Config struct {
 	// formatting directive such as %s, the name of the target dimension is passed as the
 	// first argument. Set this to an empty string to disable the notification entirely.
 	PortalDisabledMessage string
+	// CrashReports is the directory a crash report is written to when a
+	// world fails, on a panic it could not blame on part of the game, before
+	// the server stops in order. If empty, it is crash-reports in the
+	// working directory, beside the config.toml the program reads.
+	CrashReports string
 	// Blocks is the BlockRegistry template used for newly created worlds. If nil, world.DefaultBlockRegistry is used.
 	// For a non-default registry, set this to world.NewBlockRegistry(), register blocks on that instance, and ensure
 	// it is finalized before use.

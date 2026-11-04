@@ -803,6 +803,7 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 		DefaultWorld: func() *world.World {
 			return srv.world
 		},
+		Fatal: srv.crash,
 	}
 	w := conf.New()
 	if binder, ok := gen.(interface{ BindWorld(*world.World) }); ok {
