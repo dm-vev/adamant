@@ -167,3 +167,5 @@ func (p *PolarBear) view(a world.EntityAction) {
 
 var _ Living = (*PolarBear)(nil)
 var _ world.EntityType = polarBearType{}
+
+func (b *polarBearState) effectManager() *EffectManager { return b.effects }

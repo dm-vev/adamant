@@ -23,10 +23,6 @@ type ownAirSupply interface {
 	keepsOwnAirSupply()
 }
 
-func (*oceanBehaviour) keepsOwnAirSupply()         {}
-func (*oceanWildlifeBehaviour) keepsOwnAirSupply() {}
-func (*AquaticMobBehaviour) keepsOwnAirSupply()    {}
-
 // tickBreath ports the breathing half of LivingEntity.baseTick for a mob.
 func (ai *MobAI) tickBreath(m *Mob) {
 	if !m.Alive() {

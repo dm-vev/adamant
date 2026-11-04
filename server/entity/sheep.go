@@ -311,3 +311,5 @@ func sheepNBTColor(v any) int {
 		return 0
 	}
 }
+
+func (b *SheepBehaviour) effectManager() *EffectManager { return b.effects }

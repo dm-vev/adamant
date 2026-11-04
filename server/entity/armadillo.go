@@ -514,3 +514,5 @@ var _ Interactable = (*Armadillo)(nil)
 func (b *ArmadilloBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
 	return animalWalkTargetValue(m, pos)
 }
+
+func (b *ArmadilloBehaviour) effectManager() *EffectManager { return b.effects }

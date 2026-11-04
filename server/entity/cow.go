@@ -317,3 +317,5 @@ func (c *Cow) FinalizeSpawn(_ string, random *vanilla.Random) {
 		c.behaviour().soundVariant = "moody"
 	}
 }
+
+func (b *CowBehaviour) effectManager() *EffectManager { return b.effects }

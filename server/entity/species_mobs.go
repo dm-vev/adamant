@@ -524,3 +524,7 @@ var _ world.EntityType = silverfishType{}
 var _ world.EntityType = endermiteType{}
 var _ world.EntityType = slimeType{}
 var _ Living = (*speciesMob)(nil)
+
+func (b *speciesState) effectManager() *EffectManager { return b.effects }
+
+func (e *Enderman) forgive(id string) { s := e.s(); s.forgiveAnger(&s.ai, id) }

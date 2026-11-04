@@ -447,3 +447,5 @@ var _ world.EntityType = ghastFireballType{}
 var _ Living = (*Ghast)(nil)
 var _ Living = (*Blaze)(nil)
 var _ Living = (*MagmaCube)(nil)
+
+func (b *netherState) effectManager() *EffectManager { return b.effects }

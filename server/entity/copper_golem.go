@@ -543,3 +543,5 @@ func (c *CopperGolem) viewAction(a world.EntityAction) {
 var _ Living = (*CopperGolem)(nil)
 var _ Interactable = (*CopperGolem)(nil)
 var _ = sound.Custom{}
+
+func (b *CopperGolemBehaviour) effectManager() *EffectManager { return b.effects }

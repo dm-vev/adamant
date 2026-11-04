@@ -294,3 +294,7 @@ func (b *Bee) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
 
 var _ world.EntityType = beeType{}
 var _ Living = (*Bee)(nil)
+
+func (b *beeBehaviour) effectManager() *EffectManager { return b.effects }
+
+func (b *Bee) forgive(id string) { s := b.state(); s.forgiveAnger(&s.ai, id) }

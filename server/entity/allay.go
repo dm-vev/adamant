@@ -698,3 +698,5 @@ var _ Living = (*Allay)(nil)
 var _ item.Carrier = (*Allay)(nil)
 var _ ItemAcceptor = (*Allay)(nil)
 var _ world.EntityVibrationListener = (*Allay)(nil)
+
+func (b *AllayBehaviour) effectManager() *EffectManager { return b.effects }

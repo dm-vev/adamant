@@ -266,3 +266,5 @@ func batBool(v bool) byte {
 	}
 	return 0
 }
+
+func (b *batBehaviour) effectManager() *EffectManager { return b.effects }

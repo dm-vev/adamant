@@ -416,3 +416,5 @@ func (c *Cat) die(src world.DamageSource) {
 
 var _ Living = (*Cat)(nil)
 var _ ItemAcceptor = (*Cat)(nil)
+
+func (b *CatBehaviour) effectManager() *EffectManager { return b.effects }

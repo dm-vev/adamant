@@ -256,3 +256,5 @@ func (b *Breeze) DeflectProjectile(projectile *Ent, movement *Movement, velocity
 
 var _ Living = (*Breeze)(nil)
 var _ world.EntityType = breezeType{}
+
+func (b *breezeState) effectManager() *EffectManager { return b.effects }

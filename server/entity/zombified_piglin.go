@@ -214,3 +214,15 @@ var _ Living = (*ZombifiedPiglin)(nil)
 
 // UsingItem reports if the zombified piglin holds its spear out.
 func (z *ZombifiedPiglin) UsingItem() bool { return !z.z().ai.useItem.Empty() }
+
+func (b *zombifiedPiglinState) effectManager() *EffectManager { return b.effects }
+
+func (z *ZombifiedPiglin) forgive(id string) { s := z.z(); s.forgiveAnger(&s.ai, id) }
+
+// afterAiStep picks up loot as Mob.aiStep does for zombified piglins that
+// may.
+func (s *zombifiedPiglinState) afterAiStep(m *Mob) {
+	if s.pickUpLoot && !s.dead {
+		pickUpLoot(m, s, nil, nil)
+	}
+}

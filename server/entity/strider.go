@@ -452,3 +452,5 @@ var _ VehicleController = (*Strider)(nil)
 var _ PassengerDismounter = (*Strider)(nil)
 var _ Linker = (*Strider)(nil)
 var _ item.ItemSteerable = (*Strider)(nil)
+
+func (b *striderState) effectManager() *EffectManager { return b.effects }

@@ -813,3 +813,5 @@ func playCreakingSoundAt(e *Ent, tx *world.Tx, soundType string, position mgl64.
 
 var _ Living = (*Creaking)(nil)
 var _ world.EntityType = creakingType{}
+
+func (b *creakingState) effectManager() *EffectManager { return b.effects }

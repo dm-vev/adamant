@@ -544,3 +544,11 @@ func NewTropicalFish(opts world.EntitySpawnOpts) *world.EntityHandle {
 var _ world.EntityType = aquaticMobType{}
 var _ Bucketable = (*AquaticMob)(nil)
 var _ Living = (*AquaticMob)(nil)
+
+func (b *AquaticMobBehaviour) effectManager() *EffectManager { return b.effects }
+
+// pushedByFluid ports the AbstractFish and Axolotl overrides of
+// Entity.isPushedByFluid.
+func (*AquaticMobBehaviour) pushedByFluid(*Mob) bool { return false }
+
+func (*AquaticMobBehaviour) keepsOwnAirSupply() {}

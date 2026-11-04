@@ -1068,3 +1068,5 @@ var _ Living = (*Villager)(nil)
 var _ Merchant = (*Villager)(nil)
 var _ Interactable = (*Villager)(nil)
 var _ Collector = (*Villager)(nil)
+
+func (b *VillagerBehaviour) effectManager() *EffectManager { return b.effects }

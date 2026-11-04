@@ -396,3 +396,11 @@ func (t *Turtle) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 var _ world.EntityType = oceanWildlifeType{}
 var _ Living = (*oceanWildlife)(nil)
 var _ Interactable = (*oceanWildlife)(nil)
+
+func (b *oceanWildlifeBehaviour) effectManager() *EffectManager { return b.effects }
+
+// pushedByFluid ports the WaterAnimal, AgeableWaterCreature and Turtle
+// overrides of Entity.isPushedByFluid.
+func (*oceanWildlifeBehaviour) pushedByFluid(*Mob) bool { return false }
+
+func (*oceanWildlifeBehaviour) keepsOwnAirSupply() {}

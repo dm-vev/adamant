@@ -466,3 +466,26 @@ func (s *piglinState) movementSpeed() float64 {
 
 // UsingItem reports if the piglin holds its spear out.
 func (p *Piglin) UsingItem() bool { return !p.p().ai.useItem.Empty() }
+
+func (b *piglinState) effectManager() *EffectManager { return b.effects }
+
+func (s *piglinState) equipment(slot int) *item.Stack {
+	return [...]*item.Stack{&s.main, &s.off, &s.armor[3], &s.armor[2], &s.armor[1], &s.armor[0]}[slot]
+}
+
+func (s *piglinState) dropChance(slot int) float32 {
+	switch {
+	case slot == slotMainhand && s.guaranteedMain, slot == slotOffhand && s.guaranteedOff:
+		return 2
+	}
+	return defaultDropChance
+}
+
+func (s *piglinState) setDropChance(slot int, chance float32) {
+	switch slot {
+	case slotMainhand:
+		s.guaranteedMain = chance > 1
+	case slotOffhand:
+		s.guaranteedOff = chance > 1
+	}
+}

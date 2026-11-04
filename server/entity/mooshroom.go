@@ -243,3 +243,5 @@ func (m *Mooshroom) FinalizeSpawn(_ string, r *vanilla.Random) {
 		m.behaviour().variant = 1
 	}
 }
+
+func (b *MooshroomBehaviour) effectManager() *EffectManager { return b.effects }

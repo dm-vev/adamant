@@ -250,3 +250,5 @@ func (p *Parrot) viewAction(a world.EntityAction) {
 
 var _ Living = (*Parrot)(nil)
 var _ Interactable = (*Parrot)(nil)
+
+func (b *parrotBehaviour) effectManager() *EffectManager { return b.effects }

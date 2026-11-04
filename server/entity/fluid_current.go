@@ -172,26 +172,3 @@ func liquidSolidFace(tx blockReader, pos cube.Pos, face cube.Face, l world.Liqui
 		return b.Model().FaceSolid(pos, face, tx)
 	}
 }
-
-// pushedByFluid ports the WaterAnimal, AgeableWaterCreature and Turtle
-// overrides of Entity.isPushedByFluid.
-func (*oceanWildlifeBehaviour) pushedByFluid(*Mob) bool { return false }
-
-// pushedByFluid ports the AbstractFish and Axolotl overrides of
-// Entity.isPushedByFluid.
-func (*AquaticMobBehaviour) pushedByFluid(*Mob) bool { return false }
-
-// pushedByFluid ports Frog.isPushedByFluid.
-func (*frogBehaviour) pushedByFluid(*Mob) bool { return false }
-
-// pushedByFluid ports Drowned.isPushedByFluid and AbstractNautilus's
-// override; guardians are pushed as every monster is.
-func (b *oceanBehaviour) pushedByFluid(*Mob) bool {
-	switch b.kind {
-	case oceanDrowned:
-		return !b.swimming
-	case oceanNautilus, oceanZombieNautilus:
-		return false
-	}
-	return true
-}

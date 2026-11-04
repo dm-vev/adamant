@@ -589,3 +589,5 @@ var _ Bucketable = (*SulfurCube)(nil)
 var _ BodyArmorable = (*SulfurCube)(nil)
 var _ ItemAcceptor = (*SulfurCube)(nil)
 var _ Interactable = (*SulfurCube)(nil)
+
+func (b *SulfurCubeBehaviour) effectManager() *EffectManager { return b.effects }

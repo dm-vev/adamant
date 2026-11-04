@@ -838,3 +838,5 @@ func (shulkerBulletType) DecodeNBT(_ map[string]any, data *world.EntityData) {
 	shulkerBulletConf{}.Apply(data)
 }
 func (shulkerBulletType) EncodeNBT(*world.EntityData) map[string]any { return nil }
+
+func (b *ShulkerBehaviour) effectManager() *EffectManager { return b.effects }

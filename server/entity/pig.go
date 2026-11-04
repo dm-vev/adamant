@@ -475,3 +475,5 @@ var _ VehicleController = (*Pig)(nil)
 var _ PassengerDismounter = (*Pig)(nil)
 var _ Linker = (*Pig)(nil)
 var _ Interactable = (*Pig)(nil)
+
+func (b *PigBehaviour) effectManager() *EffectManager { return b.effects }

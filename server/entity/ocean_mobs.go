@@ -1,9 +1,8 @@
 package entity
 
 import (
-	"time"
-
 	"math"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -1071,4 +1070,33 @@ func (b *oceanBehaviour) setDropChance(slot int, chance float32) {
 		b.dropChances = make(map[string]float64)
 	}
 	b.dropChances[equipmentSlotNames[slot]] = float64(chance)
+}
+
+func (b *oceanBehaviour) canPickUpLoot() bool { return b.canPickupLoot }
+
+func (b *oceanBehaviour) setCanPickUpLoot(v bool) { b.canPickupLoot = v }
+
+func (b *oceanBehaviour) effectManager() *EffectManager { return b.effects }
+
+// pushedByFluid ports Drowned.isPushedByFluid and AbstractNautilus's
+// override; guardians are pushed as every monster is.
+func (b *oceanBehaviour) pushedByFluid(*Mob) bool {
+	switch b.kind {
+	case oceanDrowned:
+		return !b.swimming
+	case oceanNautilus, oceanZombieNautilus:
+		return false
+	}
+	return true
+}
+
+func (*oceanBehaviour) keepsOwnAirSupply() {}
+
+// afterAiStep picks up loot as Mob.aiStep does for drowned that may, which
+// prefer tridents and leave spears.
+func (b *oceanBehaviour) afterAiStep(m *Mob) {
+	if b.kind != oceanDrowned || !b.canPickupLoot || b.dead {
+		return
+	}
+	pickUpLoot(m, b, notSpear, func(s item.Stack) bool { return inItemTag(s, "drowned_preferred_weapons") })
 }

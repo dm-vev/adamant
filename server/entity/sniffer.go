@@ -1,10 +1,9 @@
 package entity
 
 import (
-	"slices"
-
 	"math"
 	"math/rand/v2"
+	"slices"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -589,3 +588,5 @@ func (s *Sniffer) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 }
 
 var _ Interactable = (*Sniffer)(nil)
+
+func (b *SnifferBehaviour) effectManager() *EffectManager { return b.effects }

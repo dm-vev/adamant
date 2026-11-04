@@ -1,12 +1,7 @@
 package entity
 
 import (
-	"math"
 	"slices"
-
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
-	"github.com/df-mc/dragonfly/server/world"
 )
 
 // javaAttribute ports an AttributeInstance: a base value and the modifiers
@@ -140,92 +135,4 @@ func (m javaAttributes) encode() []any {
 		out = append(out, entry)
 	}
 	return out
-}
-
-// handleZombieAttributes ports Zombie.handleAttributes: a zombie spawns with
-// a small chance to call reinforcements, a knockback resistance and follow
-// range bonus, and now and then as a leader with more health, a greater
-// chance of reinforcements and the strength to break doors.
-func (b *hostileState) handleZombieAttributes(m *HostileMob, special float32, r *vanilla.Random) {
-	b.attrs.get("minecraft:spawn_reinforcements", 0).Base = r.NextDouble() * float64(float32(.1))
-	b.attrs.get("minecraft:knockback_resistance", 0).setModifier("minecraft:random_spawn_bonus", r.NextDouble()*float64(float32(.05)), "add_value")
-	if bonus := r.NextDouble() * 1.5 * float64(special); bonus > 1 {
-		b.attrs.get("minecraft:follow_range", 0).setModifier("minecraft:zombie_random_spawn_bonus", bonus, "add_multiplied_total")
-	}
-	if r.NextFloat() < special*.05 {
-		b.attrs.get("minecraft:spawn_reinforcements", 0).setModifier("minecraft:leader_zombie_bonus", r.NextDouble()*.25+.5, "add_value")
-		health := b.attrs.get("minecraft:max_health", 20)
-		health.setModifier("minecraft:leader_zombie_bonus", r.NextDouble()*3+1, "add_multiplied_total")
-		maxHealth := health.value(1, 1024)
-		b.health.SetMaxHealth(maxHealth)
-		b.health.AddHealth(maxHealth)
-		b.canBreakDoors = true
-	}
-}
-
-// zombieKind reports whether a hostile mob kind is a Zombie in Java.
-func zombieKind(kind string) bool {
-	return kind == "minecraft:zombie" || kind == "minecraft:husk" || kind == "minecraft:zombie_villager"
-}
-
-// callReinforcements ports the reinforcements of Zombie.hurtServer: on hard,
-// a zombie fighting a target may call another zombie of its kind to a spot
-// seven to forty blocks away out of sight of players, each call lowering
-// the chance of the next for both.
-func (m *HostileMob) callReinforcements(src world.DamageSource) {
-	b := m.state()
-	tx := m.tx
-	mob, ok := mobOf(m)
-	if !ok {
-		return
-	}
-	target := mob.Target()
-	if target == nil {
-		if attacker := damageAttacker(src); attacker != nil {
-			if _, living := attacker.(Living); living {
-				target = attacker
-			}
-		}
-	}
-	r := mob.Random()
-	chance := b.attrs.get("minecraft:spawn_reinforcements", 0)
-	if target == nil || tx.World().Difficulty() != world.DifficultyHard || float64(r.NextFloat()) >= chance.value(0, 1) || !tx.World().SpawnMobsEnabled() {
-		return
-	}
-	spawn := tx.World().EntityRegistry().Config().SpawnMob
-	if spawn == nil {
-		return
-	}
-	p := m.Position()
-	x, y, z := int(math.Floor(p[0])), int(math.Floor(p[1])), int(math.Floor(p[2]))
-	nextInt := func(lo, hi int) int { return lo + int(r.NextInt(int32(hi-lo+1))) }
-	t, ok := tx.World().EntityRegistry().Lookup(b.kind)
-	if !ok {
-		return
-	}
-	for range 50 {
-		pos := cube.Pos{x + nextInt(7, 40)*nextInt(-1, 1), y + nextInt(7, 40)*nextInt(-1, 1), z + nextInt(7, 40)*nextInt(-1, 1)}
-		if !spawnPositionOk(tx, b.kind, pos) || !checkSpawnRules(tx, b.kind, pos, r) {
-			continue
-		}
-		at := pos.Vec3()
-		box := t.BBox(nil).Translate(at)
-		if nearbyAlivePlayer(tx, at, 7) || livingEntityIn(tx, box) || !spawnNoCollision(tx, box) || liquidIn(tx, box) {
-			continue
-		}
-		handle := spawn(b.kind, world.EntitySpawnOpts{Position: at, SpawnReason: "reinforcement", SpawnSeed: r.NextLong()})
-		if handle == nil {
-			return
-		}
-		called := tx.AddEntity(handle)
-		if cm, ok := mobOf(called); ok {
-			cm.SetTarget(target)
-		}
-		charge, _ := chance.modifier("minecraft:reinforcement_caller_charge")
-		chance.setModifier("minecraft:reinforcement_caller_charge", charge-.05, "add_value")
-		if h, ok := called.(interface{ state() *hostileState }); ok {
-			h.state().attrs.get("minecraft:spawn_reinforcements", 0).setModifier("minecraft:reinforcement_callee_charge", -.05, "add_value")
-		}
-		return
-	}
 }

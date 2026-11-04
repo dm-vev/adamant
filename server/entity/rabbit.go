@@ -284,3 +284,5 @@ func (r *Rabbit) FinalizeSpawn(reason string, j *vanilla.Random) {
 		group.Data = b.variant
 	}
 }
+
+func (b *RabbitBehaviour) effectManager() *EffectManager { return b.effects }

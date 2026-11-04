@@ -19,79 +19,6 @@
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
 ai_physics.go spawn MobAI.checkDespawn
-conversion.go aquatic oceanBehaviour
-conversion.go aquatic oceanBehaviour.canPickupLoot
-conversion.go hostile hostileState
-conversion.go hostile hostileState.canPickupLoot
-effect_persistence.go aquatic AquaticMobBehaviour.effects
-effect_persistence.go aquatic frogBehaviour
-effect_persistence.go aquatic frogBehaviour.effects
-effect_persistence.go aquatic oceanBehaviour
-effect_persistence.go aquatic oceanBehaviour.effects
-effect_persistence.go aquatic oceanWildlifeBehaviour
-effect_persistence.go aquatic oceanWildlifeBehaviour.effects
-effect_persistence.go hostile ShulkerBehaviour.effects
-effect_persistence.go hostile SulfurCubeBehaviour.effects
-effect_persistence.go hostile breezeState
-effect_persistence.go hostile breezeState.effects
-effect_persistence.go hostile creakingState
-effect_persistence.go hostile creakingState.effects
-effect_persistence.go hostile hostileState
-effect_persistence.go hostile hostileState.effects
-effect_persistence.go hostile phantomState
-effect_persistence.go hostile phantomState.effects
-effect_persistence.go hostile wardenState
-effect_persistence.go hostile wardenState.effects
-effect_persistence.go hostile witherState
-effect_persistence.go hostile witherState.effects
-effect_persistence.go nether happyGhastBehaviour
-effect_persistence.go nether happyGhastBehaviour.effects
-effect_persistence.go nether netherBeastState
-effect_persistence.go nether netherBeastState.effects
-effect_persistence.go nether netherState
-effect_persistence.go nether netherState.effects
-effect_persistence.go nether piglinState
-effect_persistence.go nether piglinState.effects
-effect_persistence.go nether striderState
-effect_persistence.go nether striderState.effects
-effect_persistence.go nether zombifiedPiglinState
-effect_persistence.go nether zombifiedPiglinState.effects
-effect_persistence.go passive AllayBehaviour.effects
-effect_persistence.go passive ArmadilloBehaviour.effects
-effect_persistence.go passive CatBehaviour.effects
-effect_persistence.go passive ChickenBehaviour.effects
-effect_persistence.go passive CopperGolemBehaviour.effects
-effect_persistence.go passive CowBehaviour.effects
-effect_persistence.go passive GoatBehaviour.effects
-effect_persistence.go passive MooshroomBehaviour.effects
-effect_persistence.go passive MountBehaviour.effects
-effect_persistence.go passive PigBehaviour.effects
-effect_persistence.go passive RabbitBehaviour.effects
-effect_persistence.go passive SheepBehaviour.effects
-effect_persistence.go passive SnifferBehaviour.effects
-effect_persistence.go passive WolfBehaviour.effects
-effect_persistence.go passive batBehaviour
-effect_persistence.go passive batBehaviour.effects
-effect_persistence.go passive beeBehaviour
-effect_persistence.go passive beeBehaviour.effects
-effect_persistence.go passive foxState
-effect_persistence.go passive foxState.effects
-effect_persistence.go passive golemState
-effect_persistence.go passive golemState.effects
-effect_persistence.go passive ocelotBehaviour
-effect_persistence.go passive ocelotBehaviour.effects
-effect_persistence.go passive pandaState
-effect_persistence.go passive pandaState.effects
-effect_persistence.go passive parrotBehaviour
-effect_persistence.go passive parrotBehaviour.effects
-effect_persistence.go passive polarBearState
-effect_persistence.go passive polarBearState.effects
-effect_persistence.go passive speciesState
-effect_persistence.go passive speciesState.effects
-effect_persistence.go villager VillagerBehaviour.effects
-effect_persistence.go villager WitchBehaviour.effects
-effect_persistence.go villager wanderingTraderBehaviour
-effect_persistence.go villager wanderingTraderBehaviour.effects
 effect_triggers.go passive slimeSpecies
 effect_triggers.go passive speciesConfig
 effect_triggers.go passive speciesConfig.kind
@@ -106,36 +33,8 @@ fall.go passive speciesState
 fall.go passive speciesState.fuse
 fall.go passive speciesState.kind
 fall.go passive speciesState.swell
-fluid_current.go aquatic frogBehaviour
-fluid_current.go aquatic oceanBehaviour
-fluid_current.go aquatic oceanBehaviour.kind
-fluid_current.go aquatic oceanBehaviour.swimming
-fluid_current.go aquatic oceanDrowned
-fluid_current.go aquatic oceanNautilus
-fluid_current.go aquatic oceanWildlifeBehaviour
-fluid_current.go aquatic oceanZombieNautilus
-forgive.go nether ZombifiedPiglin.z
-forgive.go nether zombifiedPiglinState.ai
-forgive.go passive Bee.state
-forgive.go passive IronGolem.b
-forgive.go passive Wolf.behaviour
-forgive.go passive golemState.ai
-forgive.go passive speciesMob.s
-forgive.go passive speciesState.ai
 freeze.go hostile SulfurCube.b
 freeze.go hostile SulfurCubeBehaviour.bodyItem
-java_attribute.go hostile HostileMob.state
-java_attribute.go hostile hostileState
-java_attribute.go hostile hostileState.attrs
-java_attribute.go hostile hostileState.canBreakDoors
-java_attribute.go hostile hostileState.health
-java_attribute.go hostile hostileState.kind
-java_attribute.go passive nearbyAlivePlayer
-java_attribute.go spawn checkSpawnRules
-java_attribute.go spawn liquidIn
-java_attribute.go spawn livingEntityIn
-java_attribute.go spawn spawnNoCollision
-java_attribute.go spawn spawnPositionOk
 java_nbt.go spawn applyTrialEquipment
 java_nbt.go spawn decodePersistence
 java_nbt.go spawn projectTemplateMobNBT
@@ -143,46 +42,9 @@ java_rest.go nether zombifiedPiglinState
 java_rest.go nether zombifiedPiglinState.ai
 leash.go object leashKnotBehaviour
 leash.go object leashKnotBehaviour.pos
-mob_breath.go aquatic oceanBehaviour
-mob_breath.go aquatic oceanWildlifeBehaviour
 mob_breath.go hostile SulfurCubeBehaviour.bodyItem
-mob_equipment.go aquatic oceanBehaviour
-mob_equipment.go aquatic oceanBehaviour.canPickupLoot
-mob_equipment.go aquatic oceanBehaviour.dead
-mob_equipment.go aquatic oceanBehaviour.kind
-mob_equipment.go aquatic oceanDrowned
-mob_equipment.go hostile hostileConfig
-mob_equipment.go hostile hostileConfig.chest
-mob_equipment.go hostile hostileConfig.feet
-mob_equipment.go hostile hostileConfig.head
-mob_equipment.go hostile hostileConfig.legs
-mob_equipment.go hostile hostileConfig.main
-mob_equipment.go hostile hostileConfig.off
-mob_equipment.go hostile hostileRaidMob
-mob_equipment.go hostile hostileState
-mob_equipment.go hostile hostileState.canPickupLoot
-mob_equipment.go hostile hostileState.chest
-mob_equipment.go hostile hostileState.dead
-mob_equipment.go hostile hostileState.dropChances
-mob_equipment.go hostile hostileState.feet
-mob_equipment.go hostile hostileState.head
-mob_equipment.go hostile hostileState.headDropGuaranteed
-mob_equipment.go hostile hostileState.kind
-mob_equipment.go hostile hostileState.legs
-mob_equipment.go hostile hostileState.main
-mob_equipment.go hostile hostileState.off
 mob_equipment.go hostile pickableItem
 mob_equipment.go hostile takeItemEntity
-mob_equipment.go nether piglinState
-mob_equipment.go nether piglinState.armor
-mob_equipment.go nether piglinState.guaranteedMain
-mob_equipment.go nether piglinState.guaranteedOff
-mob_equipment.go nether piglinState.main
-mob_equipment.go nether piglinState.off
-mob_equipment.go nether zombifiedPiglinState
-mob_equipment.go nether zombifiedPiglinState.dead
-mob_equipment.go villager ominousBanner
-mob_equipment.go villager raiderPickUpItem
 mob_loot.go aquatic axolotlSupportKiller
 mob_loot.go passive Chicken.behaviour
 mob_loot.go passive ChickenBehaviour.jockey
@@ -215,37 +77,36 @@ register.go vehicle tntMinecartConf
 #	ai         from passive      88
 #	ai         from villager     12
 #	aquatic    from ai          161
-#	aquatic    from core         45
+#	aquatic    from core         47
 #	aquatic    from hostile      17
 #	aquatic    from object        1
 #	aquatic    from passive      16
 #	aquatic    from villager      1
-#	core       from ai          171
-#	core       from aquatic      15
+#	core       from ai          168
+#	core       from aquatic       1
 #	core       from dragon        2
-#	core       from hostile      42
-#	core       from nether       20
+#	core       from hostile       5
+#	core       from nether        2
 #	core       from object        4
-#	core       from passive      51
+#	core       from passive      14
 #	core       from projectile    5
-#	core       from spawn        14
+#	core       from spawn         9
 #	core       from vehicle       4
-#	core       from villager      6
 #	dragon     from ai            6
 #	dragon     from core         10
 #	dragon     from object        1
 #	dragon     from passive       3
-#	hostile    from ai          191
+#	hostile    from ai          192
 #	hostile    from aquatic      24
-#	hostile    from core         91
+#	hostile    from core         88
 #	hostile    from dragon        1
 #	hostile    from object        2
-#	hostile    from passive      28
+#	hostile    from passive      29
 #	hostile    from projectile    2
-#	hostile    from spawn         1
-#	hostile    from villager     15
+#	hostile    from spawn         5
+#	hostile    from villager     17
 #	nether     from ai          217
-#	nether     from core         69
+#	nether     from core         73
 #	nether     from hostile      16
 #	nether     from object        2
 #	nether     from passive      19
@@ -257,7 +118,7 @@ register.go vehicle tntMinecartConf
 #	object     from projectile    1
 #	passive    from ai          259
 #	passive    from aquatic       2
-#	passive    from core         65
+#	passive    from core         66
 #	passive    from hostile      30
 #	passive    from nether       11
 #	passive    from object        2
@@ -278,7 +139,7 @@ register.go vehicle tntMinecartConf
 #	vehicle    from core         13
 #	vehicle    from object        1
 #	villager   from ai          174
-#	villager   from core         40
-#	villager   from hostile      34
+#	villager   from core         39
+#	villager   from hostile      35
 #	villager   from passive       4
 #	villager   from spawn         4

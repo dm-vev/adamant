@@ -567,3 +567,5 @@ var (
 	_ Interactable    = (*WanderingTrader)(nil)
 	_ TradingMerchant = (*WanderingTrader)(nil)
 )
+
+func (b *wanderingTraderBehaviour) effectManager() *EffectManager { return b.effects }

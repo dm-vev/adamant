@@ -3,11 +3,9 @@ package entity
 import (
 	"hash/fnv"
 	"maps"
+	"math"
 	"math/rand/v2"
 	"time"
-
-	"github.com/df-mc/dragonfly/server/item/enchantment"
-	"github.com/google/uuid"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -15,9 +13,11 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 type hostileMobType struct {
@@ -1241,3 +1241,154 @@ func ominousBannerStack() item.Stack {
 
 var _ world.EntityType = hostileMobType{}
 var _ Living = (*HostileMob)(nil)
+
+func (b *hostileState) canPickUpLoot() bool { return b.canPickupLoot }
+
+func (b *hostileState) setCanPickUpLoot(v bool) { b.canPickupLoot = v }
+
+func (b *hostileState) effectManager() *EffectManager { return b.effects }
+
+// handleZombieAttributes ports Zombie.handleAttributes: a zombie spawns with
+// a small chance to call reinforcements, a knockback resistance and follow
+// range bonus, and now and then as a leader with more health, a greater
+// chance of reinforcements and the strength to break doors.
+func (b *hostileState) handleZombieAttributes(m *HostileMob, special float32, r *vanilla.Random) {
+	b.attrs.get("minecraft:spawn_reinforcements", 0).Base = r.NextDouble() * float64(float32(.1))
+	b.attrs.get("minecraft:knockback_resistance", 0).setModifier("minecraft:random_spawn_bonus", r.NextDouble()*float64(float32(.05)), "add_value")
+	if bonus := r.NextDouble() * 1.5 * float64(special); bonus > 1 {
+		b.attrs.get("minecraft:follow_range", 0).setModifier("minecraft:zombie_random_spawn_bonus", bonus, "add_multiplied_total")
+	}
+	if r.NextFloat() < special*.05 {
+		b.attrs.get("minecraft:spawn_reinforcements", 0).setModifier("minecraft:leader_zombie_bonus", r.NextDouble()*.25+.5, "add_value")
+		health := b.attrs.get("minecraft:max_health", 20)
+		health.setModifier("minecraft:leader_zombie_bonus", r.NextDouble()*3+1, "add_multiplied_total")
+		maxHealth := health.value(1, 1024)
+		b.health.SetMaxHealth(maxHealth)
+		b.health.AddHealth(maxHealth)
+		b.canBreakDoors = true
+	}
+}
+
+// zombieKind reports whether a hostile mob kind is a Zombie in Java.
+func zombieKind(kind string) bool {
+	return kind == "minecraft:zombie" || kind == "minecraft:husk" || kind == "minecraft:zombie_villager"
+}
+
+// callReinforcements ports the reinforcements of Zombie.hurtServer: on hard,
+// a zombie fighting a target may call another zombie of its kind to a spot
+// seven to forty blocks away out of sight of players, each call lowering
+// the chance of the next for both.
+func (m *HostileMob) callReinforcements(src world.DamageSource) {
+	b := m.state()
+	tx := m.tx
+	mob, ok := mobOf(m)
+	if !ok {
+		return
+	}
+	target := mob.Target()
+	if target == nil {
+		if attacker := damageAttacker(src); attacker != nil {
+			if _, living := attacker.(Living); living {
+				target = attacker
+			}
+		}
+	}
+	r := mob.Random()
+	chance := b.attrs.get("minecraft:spawn_reinforcements", 0)
+	if target == nil || tx.World().Difficulty() != world.DifficultyHard || float64(r.NextFloat()) >= chance.value(0, 1) || !tx.World().SpawnMobsEnabled() {
+		return
+	}
+	spawn := tx.World().EntityRegistry().Config().SpawnMob
+	if spawn == nil {
+		return
+	}
+	p := m.Position()
+	x, y, z := int(math.Floor(p[0])), int(math.Floor(p[1])), int(math.Floor(p[2]))
+	nextInt := func(lo, hi int) int { return lo + int(r.NextInt(int32(hi-lo+1))) }
+	t, ok := tx.World().EntityRegistry().Lookup(b.kind)
+	if !ok {
+		return
+	}
+	for range 50 {
+		pos := cube.Pos{x + nextInt(7, 40)*nextInt(-1, 1), y + nextInt(7, 40)*nextInt(-1, 1), z + nextInt(7, 40)*nextInt(-1, 1)}
+		if !spawnPositionOk(tx, b.kind, pos) || !checkSpawnRules(tx, b.kind, pos, r) {
+			continue
+		}
+		at := pos.Vec3()
+		box := t.BBox(nil).Translate(at)
+		if nearbyAlivePlayer(tx, at, 7) || livingEntityIn(tx, box) || !spawnNoCollision(tx, box) || liquidIn(tx, box) {
+			continue
+		}
+		handle := spawn(b.kind, world.EntitySpawnOpts{Position: at, SpawnReason: "reinforcement", SpawnSeed: r.NextLong()})
+		if handle == nil {
+			return
+		}
+		called := tx.AddEntity(handle)
+		if cm, ok := mobOf(called); ok {
+			cm.SetTarget(target)
+		}
+		charge, _ := chance.modifier("minecraft:reinforcement_caller_charge")
+		chance.setModifier("minecraft:reinforcement_caller_charge", charge-.05, "add_value")
+		if h, ok := called.(interface{ state() *hostileState }); ok {
+			h.state().attrs.get("minecraft:spawn_reinforcements", 0).setModifier("minecraft:reinforcement_callee_charge", -.05, "add_value")
+		}
+		return
+	}
+}
+
+func (c *hostileConfig) equipment(slot int) *item.Stack {
+	return [...]*item.Stack{&c.main, &c.off, &c.feet, &c.legs, &c.chest, &c.head}[slot]
+}
+
+func (b *hostileState) equipment(slot int) *item.Stack {
+	return [...]*item.Stack{&b.main, &b.off, &b.feet, &b.legs, &b.chest, &b.head}[slot]
+}
+
+func (b *hostileState) dropChance(slot int) float32 {
+	if slot == slotHead && b.headDropGuaranteed {
+		return 2
+	}
+	if chance, ok := b.dropChances[slot]; ok {
+		return chance
+	}
+	return defaultDropChance
+}
+
+func (b *hostileState) setDropChance(slot int, chance float32) {
+	if b.dropChances == nil {
+		b.dropChances = make(map[int]float32)
+	}
+	b.dropChances[slot] = chance
+}
+
+// afterAiStep picks up loot as Mob.aiStep does for the zombies and
+// skeletons that may. Raiders pick up loot of their own accord.
+func (b *hostileState) afterAiStep(m *Mob) {
+	if !b.canPickupLoot || b.dead || b.kind == "minecraft:vex" || b.kind == "minecraft:witch" {
+		return
+	}
+	if hostileRaidMob(b.kind) {
+		// Pillager.pickUpItem: a raider that may pick up loot takes the
+		// banners lying near, which make it captain of its wave.
+		if mobGriefingDisabled(m.tx) {
+			return
+		}
+		box := m.BBox().GrowVec3(mgl64.Vec3{1, 0, 1})
+		for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
+			if stack, ok := pickableItem(e); ok && ominousBanner(stack) && e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
+				raiderPickUpItem(m, e)
+			}
+		}
+		return
+	}
+	var wants, preferred func(item.Stack) bool
+	switch {
+	case b.kind == "minecraft:wither_skeleton":
+		// WitherSkeleton.getPreferredWeaponType is null.
+		wants = notSpear
+	case hostileSkeleton(b.kind):
+		wants = notSpear
+		preferred = func(s item.Stack) bool { return inItemTag(s, "skeleton_preferred_weapons") }
+	}
+	pickUpLoot(m, b, wants, preferred)
+}

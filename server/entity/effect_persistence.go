@@ -13,51 +13,6 @@ type effectHolder interface {
 	effectManager() *EffectManager
 }
 
-func (b *AllayBehaviour) effectManager() *EffectManager           { return b.effects }
-func (b *AquaticMobBehaviour) effectManager() *EffectManager      { return b.effects }
-func (b *ArmadilloBehaviour) effectManager() *EffectManager       { return b.effects }
-func (b *batBehaviour) effectManager() *EffectManager             { return b.effects }
-func (b *beeBehaviour) effectManager() *EffectManager             { return b.effects }
-func (b *breezeState) effectManager() *EffectManager              { return b.effects }
-func (b *CatBehaviour) effectManager() *EffectManager             { return b.effects }
-func (b *ChickenBehaviour) effectManager() *EffectManager         { return b.effects }
-func (b *CopperGolemBehaviour) effectManager() *EffectManager     { return b.effects }
-func (b *CowBehaviour) effectManager() *EffectManager             { return b.effects }
-func (b *creakingState) effectManager() *EffectManager            { return b.effects }
-func (b *foxState) effectManager() *EffectManager                 { return b.effects }
-func (b *frogBehaviour) effectManager() *EffectManager            { return b.effects }
-func (b *GoatBehaviour) effectManager() *EffectManager            { return b.effects }
-func (b *golemState) effectManager() *EffectManager               { return b.effects }
-func (b *happyGhastBehaviour) effectManager() *EffectManager      { return b.effects }
-func (b *hostileState) effectManager() *EffectManager             { return b.effects }
-func (b *MooshroomBehaviour) effectManager() *EffectManager       { return b.effects }
-func (b *MountBehaviour) effectManager() *EffectManager           { return b.effects }
-func (b *netherBeastState) effectManager() *EffectManager         { return b.effects }
-func (b *netherState) effectManager() *EffectManager              { return b.effects }
-func (b *oceanBehaviour) effectManager() *EffectManager           { return b.effects }
-func (b *oceanWildlifeBehaviour) effectManager() *EffectManager   { return b.effects }
-func (b *ocelotBehaviour) effectManager() *EffectManager          { return b.effects }
-func (b *pandaState) effectManager() *EffectManager               { return b.effects }
-func (b *parrotBehaviour) effectManager() *EffectManager          { return b.effects }
-func (b *PigBehaviour) effectManager() *EffectManager             { return b.effects }
-func (b *piglinState) effectManager() *EffectManager              { return b.effects }
-func (b *polarBearState) effectManager() *EffectManager           { return b.effects }
-func (b *RabbitBehaviour) effectManager() *EffectManager          { return b.effects }
-func (b *SheepBehaviour) effectManager() *EffectManager           { return b.effects }
-func (b *ShulkerBehaviour) effectManager() *EffectManager         { return b.effects }
-func (b *SnifferBehaviour) effectManager() *EffectManager         { return b.effects }
-func (b *speciesState) effectManager() *EffectManager             { return b.effects }
-func (b *striderState) effectManager() *EffectManager             { return b.effects }
-func (b *SulfurCubeBehaviour) effectManager() *EffectManager      { return b.effects }
-func (b *VillagerBehaviour) effectManager() *EffectManager        { return b.effects }
-func (b *wanderingTraderBehaviour) effectManager() *EffectManager { return b.effects }
-func (b *wardenState) effectManager() *EffectManager              { return b.effects }
-func (b *phantomState) effectManager() *EffectManager             { return b.effects }
-func (b *witherState) effectManager() *EffectManager              { return b.effects }
-func (b *WitchBehaviour) effectManager() *EffectManager           { return b.effects }
-func (b *WolfBehaviour) effectManager() *EffectManager            { return b.effects }
-func (b *zombifiedPiglinState) effectManager() *EffectManager     { return b.effects }
-
 // encodeMobEffects writes the status effects of a mob as Bedrock's
 // ActiveEffects. Mobs without effects write an empty list, so that effects
 // kept in the native NBT of the entity do not come back.

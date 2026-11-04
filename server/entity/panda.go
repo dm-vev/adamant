@@ -365,3 +365,5 @@ func pandaVariant(main, hidden int) int {
 var _ Living = (*Panda)(nil)
 var _ Interactable = (*Panda)(nil)
 var _ world.EntityType = pandaType{}
+
+func (b *pandaState) effectManager() *EffectManager { return b.effects }

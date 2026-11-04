@@ -1,11 +1,8 @@
 package entity
 
 import (
-	"time"
-
 	"math/rand/v2"
-
-	"github.com/df-mc/dragonfly/server/loot"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -14,6 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -1368,3 +1366,5 @@ func (llamaSpitType) DecodeNBT(_ map[string]any, d *world.EntityData) {
 	d.Data = ProjectileBehaviourConfig{Gravity: .03, Drag: .01, Damage: 1}.New()
 }
 func (llamaSpitType) EncodeNBT(*world.EntityData) map[string]any { return nil }
+
+func (b *MountBehaviour) effectManager() *EffectManager { return b.effects }

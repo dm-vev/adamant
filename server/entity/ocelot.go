@@ -232,3 +232,5 @@ func (o *Ocelot) viewAction(a world.EntityAction) {
 
 var _ Living = (*Ocelot)(nil)
 var _ Interactable = (*Ocelot)(nil)
+
+func (b *ocelotBehaviour) effectManager() *EffectManager { return b.effects }

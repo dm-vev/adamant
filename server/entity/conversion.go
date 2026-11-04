@@ -164,8 +164,3 @@ func lootPickerOf(e world.Entity) (lootPicker, bool) {
 	p, ok := ent.Behaviour().(lootPicker)
 	return p, ok
 }
-
-func (b *hostileState) canPickUpLoot() bool       { return b.canPickupLoot }
-func (b *hostileState) setCanPickUpLoot(v bool)   { b.canPickupLoot = v }
-func (b *oceanBehaviour) canPickUpLoot() bool     { return b.canPickupLoot }
-func (b *oceanBehaviour) setCanPickUpLoot(v bool) { b.canPickupLoot = v }

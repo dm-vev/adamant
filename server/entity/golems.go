@@ -476,3 +476,7 @@ var _ Living = (*IronGolem)(nil)
 var _ Living = (*SnowGolem)(nil)
 var _ world.EntityType = ironGolemType{}
 var _ world.EntityType = snowGolemType{}
+
+func (b *golemState) effectManager() *EffectManager { return b.effects }
+
+func (m *IronGolem) forgive(id string) { b := m.b(); b.forgiveAnger(&b.ai, id) }

@@ -484,3 +484,7 @@ var _ world.EntityType = witherType{}
 var _ Living = (*Warden)(nil)
 var _ Living = (*Phantom)(nil)
 var _ Living = (*Wither)(nil)
+
+func (b *phantomState) effectManager() *EffectManager { return b.effects }
+
+func (b *witherState) effectManager() *EffectManager { return b.effects }

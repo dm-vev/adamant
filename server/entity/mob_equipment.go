@@ -305,72 +305,6 @@ func encodeDropChances(chances map[int]float32) map[string]any {
 	return out
 }
 
-func (c *hostileConfig) equipment(slot int) *item.Stack {
-	return [...]*item.Stack{&c.main, &c.off, &c.feet, &c.legs, &c.chest, &c.head}[slot]
-}
-
-func (b *hostileState) equipment(slot int) *item.Stack {
-	return [...]*item.Stack{&b.main, &b.off, &b.feet, &b.legs, &b.chest, &b.head}[slot]
-}
-
-func (b *hostileState) dropChance(slot int) float32 {
-	if slot == slotHead && b.headDropGuaranteed {
-		return 2
-	}
-	if chance, ok := b.dropChances[slot]; ok {
-		return chance
-	}
-	return defaultDropChance
-}
-
-func (b *hostileState) setDropChance(slot int, chance float32) {
-	if b.dropChances == nil {
-		b.dropChances = make(map[int]float32)
-	}
-	b.dropChances[slot] = chance
-}
-
-// afterAiStep picks up loot as Mob.aiStep does for the zombies and
-// skeletons that may. Raiders pick up loot of their own accord.
-func (b *hostileState) afterAiStep(m *Mob) {
-	if !b.canPickupLoot || b.dead || b.kind == "minecraft:vex" || b.kind == "minecraft:witch" {
-		return
-	}
-	if hostileRaidMob(b.kind) {
-		// Pillager.pickUpItem: a raider that may pick up loot takes the
-		// banners lying near, which make it captain of its wave.
-		if mobGriefingDisabled(m.tx) {
-			return
-		}
-		box := m.BBox().GrowVec3(mgl64.Vec3{1, 0, 1})
-		for e := range m.tx.EntitiesOfTypesWithin(box.Grow(1), itemEntityTypes) {
-			if stack, ok := pickableItem(e); ok && ominousBanner(stack) && e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
-				raiderPickUpItem(m, e)
-			}
-		}
-		return
-	}
-	var wants, preferred func(item.Stack) bool
-	switch {
-	case b.kind == "minecraft:wither_skeleton":
-		// WitherSkeleton.getPreferredWeaponType is null.
-		wants = notSpear
-	case hostileSkeleton(b.kind):
-		wants = notSpear
-		preferred = func(s item.Stack) bool { return inItemTag(s, "skeleton_preferred_weapons") }
-	}
-	pickUpLoot(m, b, wants, preferred)
-}
-
-// afterAiStep picks up loot as Mob.aiStep does for drowned that may, which
-// prefer tridents and leave spears.
-func (b *oceanBehaviour) afterAiStep(m *Mob) {
-	if b.kind != oceanDrowned || !b.canPickupLoot || b.dead {
-		return
-	}
-	pickUpLoot(m, b, notSpear, func(s item.Stack) bool { return inItemTag(s, "drowned_preferred_weapons") })
-}
-
 // notSpear ports the wantsToPickUp of AbstractSkeleton and Drowned, which
 // leave spears.
 func notSpear(s item.Stack) bool { return !inItemTag(s, "spears") }
@@ -482,35 +416,6 @@ func (g *mobGear) encodeGear(previous, out map[string]any) map[string]any {
 		java["drop_chances"] = encodeDropChances(g.dropChances)
 	}
 	return java
-}
-
-// afterAiStep picks up loot as Mob.aiStep does for zombified piglins that
-// may.
-func (s *zombifiedPiglinState) afterAiStep(m *Mob) {
-	if s.pickUpLoot && !s.dead {
-		pickUpLoot(m, s, nil, nil)
-	}
-}
-
-func (s *piglinState) equipment(slot int) *item.Stack {
-	return [...]*item.Stack{&s.main, &s.off, &s.armor[3], &s.armor[2], &s.armor[1], &s.armor[0]}[slot]
-}
-
-func (s *piglinState) dropChance(slot int) float32 {
-	switch {
-	case slot == slotMainhand && s.guaranteedMain, slot == slotOffhand && s.guaranteedOff:
-		return 2
-	}
-	return defaultDropChance
-}
-
-func (s *piglinState) setDropChance(slot int, chance float32) {
-	switch slot {
-	case slotMainhand:
-		s.guaranteedMain = chance > 1
-	case slotOffhand:
-		s.guaranteedOff = chance > 1
-	}
 }
 
 // wornArmour returns the armour pieces e wears.

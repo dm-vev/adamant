@@ -725,3 +725,5 @@ func NewZoglin(o world.EntitySpawnOpts) *world.EntityHandle {
 var _ world.EntityType = netherBeastType{}
 var _ Living = (*Hoglin)(nil)
 var _ Living = (*Zoglin)(nil)
+
+func (b *netherBeastState) effectManager() *EffectManager { return b.effects }

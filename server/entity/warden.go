@@ -1009,3 +1009,5 @@ func (a *angerManagement) activeEntity(tx *world.Tx, filter func(world.Entity) b
 }
 
 var _ world.EntityVibrationListener = (*Warden)(nil)
+
+func (b *wardenState) effectManager() *EffectManager { return b.effects }

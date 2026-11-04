@@ -709,3 +709,7 @@ func wolfVariantIn(biome string) uint8 {
 }
 
 type wolfPackSpawnGroup struct{ variant uint8 }
+
+func (b *WolfBehaviour) effectManager() *EffectManager { return b.effects }
+
+func (w *Wolf) forgive(id string) { b := w.behaviour(); b.forgiveAnger(&b.ai, id) }

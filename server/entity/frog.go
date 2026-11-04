@@ -636,3 +636,8 @@ func (f *Frog) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 func (b *frogBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
 	return animalWalkTargetValue(m, pos)
 }
+
+func (b *frogBehaviour) effectManager() *EffectManager { return b.effects }
+
+// pushedByFluid ports Frog.isPushedByFluid.
+func (*frogBehaviour) pushedByFluid(*Mob) bool { return false }

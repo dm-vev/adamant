@@ -805,3 +805,5 @@ var _ PassengerDismounter = (*HappyGhast)(nil)
 var _ Harnessable = (*HappyGhast)(nil)
 var _ Interactable = (*HappyGhast)(nil)
 var _ breeder = (*HappyGhast)(nil)
+
+func (b *happyGhastBehaviour) effectManager() *EffectManager { return b.effects }

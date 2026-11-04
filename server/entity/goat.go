@@ -626,3 +626,5 @@ func uuidHashCode(id [16]byte) int32 {
 func (b *GoatBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
 	return animalWalkTargetValue(m, pos)
 }
+
+func (b *GoatBehaviour) effectManager() *EffectManager { return b.effects }

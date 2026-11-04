@@ -358,3 +358,5 @@ var _ Living = (*Fox)(nil)
 var _ Interactable = (*Fox)(nil)
 var _ world.EntityType = foxType{}
 var _ Collector = (*Fox)(nil)
+
+func (b *foxState) effectManager() *EffectManager { return b.effects }

@@ -219,3 +219,5 @@ func (w *Witch) viewAction(a world.EntityAction) {
 
 var _ world.EntityType = witchType{}
 var _ Living = (*Witch)(nil)
+
+func (b *WitchBehaviour) effectManager() *EffectManager { return b.effects }

@@ -271,3 +271,5 @@ func (c *Chicken) breedingFood(stack item.Stack) bool {
 func (c *Chicken) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	return babyAt(c).New(ChickenType, ChickenBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(c.behaviour().variant, partner.(*Chicken).behaviour().variant)})
 }
+
+func (b *ChickenBehaviour) effectManager() *EffectManager { return b.effects }
