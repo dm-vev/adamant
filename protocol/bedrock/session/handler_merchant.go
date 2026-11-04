@@ -35,6 +35,11 @@ func (s *Session) openedMerchant(tx *world.Tx) (world.Entity, entity.Merchant, e
 // inputs must satisfy the offer as MerchantOffer.satisfiedBy requires, the
 // first input slot paying the priced first cost and the second the second.
 func (h *ItemStackRequestHandler) handleMerchantCraft(a *v2193.CraftRecipeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+	if h.batch != nil {
+		// The client names the offer by its network ID, its index plus one.
+		index, times := int(a.RecipeNetworkID)-1, max(int(a.NumberOfCrafts), 1)
+		return h.batchOp(func() error { return h.batch.Trade(index, times) })
+	}
 	target, merchant, err := s.openedMerchant(tx)
 	if err != nil {
 		return err

@@ -206,6 +206,15 @@ func (h *ItemStackRequestHandler) handleTake(a *v2193.TakeStackRequestAction, s 
 }
 
 func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
+	if h.batch != nil {
+		dest, ok := s.ref(to, tx)
+		if !ok {
+			return fmt.Errorf("unknown trade result destination %v", to.Container.ContainerID)
+		}
+		// The client takes the result of an offer from the slot of its
+		// index.
+		return h.batchOp(func() error { return h.batch.TakeTrade(int(from.Slot), int(count), dest) })
+	}
 	target, merchant, err := s.openedMerchant(tx)
 	if err != nil {
 		return err
