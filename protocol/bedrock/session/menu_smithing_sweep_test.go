@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // recovered runs f and returns its error, or one of the panic it raised.
@@ -22,13 +21,14 @@ func recovered(f func() error) (err error) {
 	return f()
 }
 
-// TestSmithMatchesTheSession sweeps menu.Tx.Smith against the handler of
-// the smithing table of the session: smithing transforms and trims as the
-// game registers them, and a recipe of another block, over inputs, materials and
-// templates that match and that do not, a locked input and empty slots.
-// The result, the inputs left and the verdict must be the same; a slot
+// TestSmithAsTheSessionDid sweeps menu.Tx.Smith over what the handler of
+// the smithing table of the session was swept against: smithing transforms
+// and trims as the game registers them, and a recipe of another block, over
+// inputs, materials and templates that match and that do not, a locked
+// input and empty slots. The result, the inputs left and the verdict must
+// be those the session's handler gave (testdata/frozen/smith.txt); a slot
 // left empty that a recipe names panics in both (matchingStacks).
-func TestSmithMatchesTheSession(t *testing.T) {
+func TestSmithAsTheSessionDid(t *testing.T) {
 	t.Parallel()
 	// The recipes as recipe.registerVanilla registers them, which only a
 	// server does: transforms of stacks, the base of one of variants, and
@@ -70,31 +70,24 @@ func TestSmithMatchesTheSession(t *testing.T) {
 		item.NewStack(item.SmithingTemplate{Template: item.TemplateSentry()}, 1),
 		item.NewStack(item.Stick{}, 1),
 	}
+	frozen := &frozenSweep{name: "smith", fields: 2}
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
 		cases, accepted := 0, 0
-		for _, r := range recipes {
-			for _, input := range inputs {
-				for _, material := range materials {
-					for _, template := range templates {
+		for ri, r := range recipes {
+			for i, input := range inputs {
+				for j, material := range materials {
+					for k, template := range templates {
 						cases++
 						ui := map[int]item.Stack{menu.UISmithingInput: input, menu.UISmithingMaterial: material, menu.UISmithingTemplate: template}
-						old, new := stationRun(t, tx, block.SmithingTable{}, ui, world.GameModeSurvival, 0,
-							func(h *ItemStackRequestHandler, s *Session, c *levelController) error {
-								s.recipes[1] = r
-								return recovered(func() error {
-									return h.handleSmithing(&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1}, s, tx)
-								})
-							},
+						o := stationRun(t, tx, block.SmithingTable{}, ui, world.GameModeSurvival, 0,
 							func(bt *menu.Tx) error { return recovered(func() error { return bt.Smith(r) }) },
 							menu.UISmithingInput, menu.UISmithingMaterial, menu.UISmithingTemplate, menu.UIResult)
-						if !old.refused {
+						if !o.refused {
 							accepted++
 						}
-						if fmt.Sprint(old) != fmt.Sprint(new) {
-							t.Errorf("%T of %v: %v, %v and %v:\nthe session: %v\nthe menu:    %v", r, r.Input(), input, material, template, old, new)
-						}
+						frozen.add(fmt.Sprintf("%d %d %d %d", ri, i, j, k), fmt.Sprint(o))
 					}
 				}
 			}
@@ -104,4 +97,5 @@ func TestSmithMatchesTheSession(t *testing.T) {
 			t.Errorf("only %d of %d cases accepted", accepted, cases)
 		}
 	})
+	frozen.check(t)
 }

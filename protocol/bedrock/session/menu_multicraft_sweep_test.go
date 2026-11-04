@@ -19,19 +19,39 @@ import (
 	"github.com/google/uuid"
 )
 
-// batchController is a player whose batches the differential tests begin
-// over the inventories of a session: BeginMenu is all of Controllable that
-// the handlers of crafts call.
+// The UUIDs of the special recipes of the tests, as server/menu crafts them.
+const (
+	repairMultiRecipe                  = "00000000-0000-0000-0000-000000000001"
+	fireworkMultiRecipe                = "00000000-0000-0000-0000-000000000002"
+	mapCloningCartographyMultiRecipe   = "442d85ed-8272-4543-a6f1-418f90ded05d"
+	mapLockingMultiRecipe              = "602234e4-cac1-4353-8bb7-b1ebff70024b"
+	mapCloningMultiRecipe              = "85939755-ba10-4d9d-a4cc-efb7a8e943c4"
+	mapExtendingCartographyMultiRecipe = "8b36268c-1829-483c-a0f1-993b7156a8f2"
+	bannerDuplicateMultiRecipe         = "b5c5d105-75a2-4076-af2b-923ea2bf4bf0"
+	bookCloningMultiRecipe             = "d1ca6b84-338e-4f2f-9c6b-76cc8b4bd98d"
+	mapExtendingMultiRecipe            = "d392b075-4ba1-40ae-8789-af868d56f6ce"
+	bannerAddPatternMultiRecipe        = "d81aaeaf-e172-4440-9225-868df030d27b"
+)
+
+// batchController is a player whose batches the tests begin over the
+// inventories of a session in tx: BeginMenu, and the game mode, are all of
+// Controllable that the requests use. The owner of the batches is owner, or
+// craftOwner if nil.
 type batchController struct {
 	Controllable
-	tx *world.Tx
-	s  *Session
+	tx    *world.Tx
+	s     *Session
+	owner menu.Owner
 }
 
 func (c batchController) GameMode() world.GameMode { return world.GameModeSurvival }
 func (c batchController) BeginMenu(n menu.Namer) *menu.Tx {
 	inv := menu.Inventories{Main: c.s.inv, OffHand: c.s.offHand, UI: c.s.ui, Armour: inventory.NewArmour(nil)}
-	return menu.Begin(menu.Opts{Tx: c.tx, Owner: craftOwner{}, Inv: inv, Menu: c.s.menu.Load(), Name: n})
+	owner := c.owner
+	if owner == nil {
+		owner = craftOwner{}
+	}
+	return menu.Begin(menu.Opts{Tx: c.tx, Owner: owner, Inv: inv, Menu: c.s.menu.Load(), Viewer: c.s, Name: n})
 }
 
 // multiCase is a special recipe crafted of a grid, or of the two inputs of
@@ -51,14 +71,13 @@ type multiCase struct {
 	maps *world.MapData
 }
 
-// TestMultiCraftsMatchTheSession crafts the special recipes of the
-// session's tests both ways: as the session's handlers craft them, and
-// through the session with menu requests, where menu.MultiCraft keeps the
-// snapshot, counts the consumption, derives and checks the result and
-// changes the map. Each case runs in a world of its own, the same for both,
-// and what each left must be the same: the verdict, the UI, the response
-// and the maps of the world.
-func TestMultiCraftsMatchTheSession(t *testing.T) {
+// TestMultiCraftsAsTheSessionDid crafts the special recipes of the
+// session's tests as requests, where menu.MultiCraft keeps the snapshot,
+// counts the consumption, derives and checks the result and changes the
+// map. Each case runs in a world of its own, and what it left must be what
+// the session's handlers left (testdata/frozen/multicrafts.txt): the
+// verdict, the UI, the response and the maps of the world.
+func TestMultiCraftsAsTheSessionDid(t *testing.T) {
 	t.Parallel()
 	bow := item.NewStack(item.Bow{}, 1)
 	base := block.Banner{Colour: item.ColourWhite()}
@@ -130,25 +149,24 @@ func TestMultiCraftsMatchTheSession(t *testing.T) {
 		{name: "repair at the cartography table", id: repairMultiRecipe, screen: "cartography", input: []item.Stack{bow, bow}, result: bow, consumes: []int{0, 1}},
 		{name: "map locked in the grid", id: mapLockingMultiRecipe, input: []item.Stack{craftingMapStack(), glass}, result: craftingMapStack(), consumes: []int{0, 1}, maps: &mapData},
 	}
+	frozen := &frozenSweep{name: "multicrafts"}
 	accepted := 0
 	for _, c := range cases {
-		old := craftMultiOnce(t, c, false)
-		moved := craftMultiOnce(t, c, true)
-		if old != moved {
-			t.Errorf("%s:\nthe session: %s\nthrough the menu: %s", c.name, old, moved)
-		}
-		if strings.HasPrefix(old, "accepted true") {
+		outcome := craftMultiOnce(t, c)
+		frozen.add(c.name, fmt.Sprintf("%q", outcome))
+		if strings.HasPrefix(outcome, "accepted true") {
 			accepted++
 		}
 	}
 	if accepted < 10 {
 		t.Fatalf("%d cases of %d accepted", accepted, len(cases))
 	}
+	frozen.check(t)
 }
 
-// craftMultiOnce crafts c in a world of its own, through the session's
-// handlers or with menu requests, and returns what it left.
-func craftMultiOnce(t *testing.T, c multiCase, menuRequests bool) string {
+// craftMultiOnce crafts c in a world of its own as a request, and returns
+// what it left.
+func craftMultiOnce(t *testing.T, c multiCase) string {
 	t.Helper()
 	var w *world.World
 	var provider *mapCraftingProvider
@@ -159,22 +177,21 @@ func craftMultiOnce(t *testing.T, c multiCase, menuRequests bool) string {
 		t.Cleanup(func() { _ = w.Close() })
 	}
 	s := craftingTestSession()
-	s.sessionRequests = !menuRequests
 	var outcome string
 	<-w.Exec(func(tx *world.Tx) {
-		offset := craftingGridSmallOffset
+		offset := menu.UICraftingSmall
 		container := []byte{v2193.ContainerCraftingInput}
 		switch c.screen {
 		case "table":
 			tx.SetBlock(cube.Pos{}, block.CraftingTable{}, nil)
 			s.menu.Store(menu.OpenBlock(tx, cube.Pos{}, s, nil))
 			s.openedContainerID.Store(uint32(v2193.ContainerTypeWorkbench))
-			offset = craftingGridLargeOffset
+			offset = menu.UICraftingLarge
 		case "cartography":
 			tx.SetBlock(cube.Pos{}, block.CartographyTable{}, nil)
 			s.menu.Store(menu.OpenBlock(tx, cube.Pos{}, s, nil))
 			s.openedContainerID.Store(uint32(v2193.ContainerTypeCartography))
-			offset = cartographyInputSlot
+			offset = menu.UICartographyInput
 			container = []byte{v2193.ContainerCartographyInput, v2193.ContainerCartographyAdditional}
 		}
 		for i, it := range c.input {
@@ -207,7 +224,7 @@ func craftMultiOnce(t *testing.T, c multiCase, menuRequests bool) string {
 
 		var b strings.Builder
 		fmt.Fprintf(&b, "accepted %v\n", err == nil)
-		for slot := cartographyInputSlot; slot <= craftingResult; slot++ {
+		for slot := menu.UICartographyInput; slot <= menu.UIResult; slot++ {
 			if it, _ := s.ui.Item(slot); !it.Empty() {
 				fmt.Fprintf(&b, "ui %d: %d %v\n", slot, it.Count(), item.WriteNBT(it))
 			}

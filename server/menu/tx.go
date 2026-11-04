@@ -158,25 +158,6 @@ func (t *Tx) createResults(results ...item.Stack) error {
 	return t.TakeResult(0)
 }
 
-// SetSlot sets a slot to s as an operation does, with the change in the
-// journal.
-//
-// Transitional: the code of the Bedrock adapter whose operations have not
-// moved into the menu yet writes slots with it while it runs within a
-// batch. It goes once that code moved.
-func (t *Tx) SetSlot(r Ref, s item.Stack) error {
-	return t.set(r, s)
-}
-
-// AddResults adds the results of a craft to the batch, as a craft of the
-// menu does: a single result is put in the result slot at once.
-//
-// Transitional, as SetSlot: for the crafts of the Bedrock adapter that have
-// not moved into the menu yet.
-func (t *Tx) AddResults(results ...item.Stack) error {
-	return t.createResults(results...)
-}
-
 // named returns the slot s named by the Namer of the batch for the role r.
 func (t *Tx) named(s Slot, r Role) Ref {
 	return Ref{Slot: s, Name: t.o.Name(s, r)}

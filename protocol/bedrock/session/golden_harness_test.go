@@ -334,7 +334,7 @@ type scenario struct {
 	// normalise, if set, normalises a packet the client was sent before it
 	// is recorded, and reports whether it changed any of it, or whether to
 	// leave it out of the record. Only the scenarios of
-	// TestGoldenMenuRequests set it, for what they draw at random.
+	// TestMenuRequestScenarios set it, for what they draw at random.
 	normalise func(pk proto.Packet) (changed, omit bool)
 	// stopped is closed once the session stopped.
 	stopped chan struct{}
@@ -375,9 +375,6 @@ type scenarioConfig struct {
 	// norm is the normaliser of another scenario to name IDs with, so that
 	// the record of either names an ID alike.
 	norm *normaliser
-	// sessionRequests has the session handle item stack requests through
-	// its own handlers, as useSessionRequests does for every scenario.
-	sessionRequests bool
 }
 
 // warmupTicks are the ticks that send every chunk in goldenRadius around
@@ -421,9 +418,6 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		conf.session(&sconf)
 	}
 	s.sess = sconf.New(conn)
-	if useSessionRequests || conf.sessionRequests {
-		session.UseSessionRequests(s.sess)
-	}
 
 	// As Server.join for a player the provider does not know, then
 	// Server.createPlayer.

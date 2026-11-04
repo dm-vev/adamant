@@ -12,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
@@ -89,22 +90,18 @@ func stickRecipe(t *testing.T) recipe.Recipe {
 	t.Helper()
 	planks := recipe.NewItemTag("minecraft:planks", 1)
 	r := recipe.NewShaped([]recipe.Item{planks, planks}, item.NewStack(item.Stick{}, 4), recipe.Shape{1, 2}, "crafting_table")
-	if !matchingCraftingStacks(item.NewStack(block.Planks{Wood: block.OakWood()}, 1), planks, false) {
+	if name, _ := (block.Planks{Wood: block.OakWood()}).EncodeItem(); !planks.Contains(name) {
 		t.Fatal("oak planks do not match the planks tag")
 	}
 	return r
 }
 
-type autoCraftController struct{ Controllable }
-
-func (autoCraftController) GameMode() world.GameMode { return world.GameModeSurvival }
-
 // replayAutoCraft sends the request of a captured case to a session in the
 // state BDS was in, and returns the error of the request and the slots of
 // the inventory (container 12) and the crafting grid (container 13) after
 // it. The stack network IDs of the request are BDS's: they are put in the
-// place of the session's. With a world, the session handles the request
-// with menu requests, in a transaction of the world.
+// place of the session's. The session handles the request in a transaction
+// of w.
 func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCase, w *world.World) (error, map[[2]byte]int, *v2193.ItemStackResponsePacket) {
 	t.Helper()
 	s := craftingTestSession()
@@ -144,11 +141,6 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 		t.Fatalf("%s: %d requests", c.Name, len(pk.Requests))
 	}
 	req := pk.Requests[0]
-	if _, plain := req.Actions[0].(*v2193.CraftRecipeStackRequestAction); plain && s.menu.Load() != nil && w == nil {
-		// A plain craft in a block's screen looks the block up in the
-		// world, which this session has not.
-		t.Skip("a plain craft in a crafting table needs a world")
-	}
 	ours := func(info *v2193.StackRequestSlotInfo) {
 		if info.StackNetworkID > 0 {
 			info.StackNetworkID = ids[info.StackNetworkID]
@@ -169,19 +161,14 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 
 	h := craftingTestHandler()
 	var err error
-	if w == nil {
-		err = h.handleRequest(req, s, nil, autoCraftController{})
-	} else {
-		s.sessionRequests = false
-		<-w.Exec(func(tx *world.Tx) { err = h.handleRequest(req, s, tx, batchController{tx: tx, s: s}) })
-	}
+	<-w.Exec(func(tx *world.Tx) { err = h.handleRequest(req, s, tx, batchController{tx: tx, s: s}) })
 	slots := map[[2]byte]int{}
 	for slot, stack := range s.inv.Slots() {
 		if !stack.Empty() {
 			slots[[2]byte{v2193.ContainerCombinedHotBarAndInventory, byte(slot)}] = stack.Count()
 		}
 	}
-	for slot := craftingGridSmallOffset; slot < craftingGridLargeOffset+9; slot++ {
+	for slot := menu.UICraftingSmall; slot < menu.UICraftingLarge+9; slot++ {
 		if stack, _ := s.ui.Item(slot); !stack.Empty() {
 			slots[[2]byte{v2193.ContainerCraftingInput, byte(slot)}] = stack.Count()
 		}
@@ -198,27 +185,21 @@ func replayAutoCraft(t *testing.T, craft recipe.Recipe, id uint32, c autoCraftCa
 // TestAutoCraftMatchesBDS replays the recipe-book crafts captured from BDS
 // 1.26.52.3: the session takes the inputs from exactly the slots the
 // Consume actions name, in the grid or the inventory, as BDS does, and
-// refuses the requests BDS refuses. It does so with its own handlers, and,
-// in the subtests under menu, with menu requests, where menu.AutoCraft pays
-// for the craft; there the plain crafts in a crafting table run too.
+// refuses the requests BDS refuses, where menu.AutoCraft pays for the
+// craft; the plain crafts in a crafting table run too.
 func TestAutoCraftMatchesBDS(t *testing.T) {
 	t.Parallel()
 	capture := loadAutoCraftCapture(t)
 	craft := stickRecipe(t)
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
-	for _, mode := range []struct {
-		name string
-		w    *world.World
-	}{{"session", nil}, {"menu", w}} {
-		for _, c := range capture.Cases {
-			t.Run(mode.name+"/"+c.Name, func(t *testing.T) { matchAutoCraft(t, capture, craft, c, mode.w) })
-		}
+	for _, c := range capture.Cases {
+		t.Run(c.Name, func(t *testing.T) { matchAutoCraft(t, capture, craft, c, w) })
 	}
 }
 
-// matchAutoCraft replays a captured case, through the session's handlers
-// or, with a world, with menu requests, and compares the outcome with BDS's.
+// matchAutoCraft replays a captured case in a transaction of w, and
+// compares the outcome with BDS's.
 func matchAutoCraft(t *testing.T, capture autoCraftCapture, craft recipe.Recipe, c autoCraftCase, w *world.World) {
 	bds := decodeCaptured(t, c.Response).(*v2193.ItemStackResponsePacket)
 	if len(bds.Responses) != 1 || bds.Responses[0].Status != c.Status {
@@ -269,9 +250,8 @@ func matchAutoCraft(t *testing.T, capture autoCraftCapture, craft recipe.Recipe,
 }
 
 // TestAutoCraftOutcomeIsStable replays the captured crafts that have planks
-// both in the grid and in the inventory many times, by turns through the
-// session's handlers and with menu requests: which slots pay for the craft
-// no longer depends on the order of a Go map, and is the same either way.
+// both in the grid and in the inventory many times: which slots pay for the
+// craft does not depend on the order of a Go map.
 func TestAutoCraftOutcomeIsStable(t *testing.T) {
 	t.Parallel()
 	capture := loadAutoCraftCapture(t)
@@ -285,11 +265,7 @@ func TestAutoCraftOutcomeIsStable(t *testing.T) {
 		}
 		var first string
 		for i := range 200 {
-			mode := w
-			if i%2 == 0 {
-				mode = nil
-			}
-			err, slots, _ := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c, mode)
+			err, slots, _ := replayAutoCraft(t, craft, capture.Recipe.NetworkID, c, w)
 			if err != nil {
 				t.Fatalf("%s, run %d: %v", c.Name, i, err)
 			}

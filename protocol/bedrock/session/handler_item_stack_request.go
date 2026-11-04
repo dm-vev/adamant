@@ -3,40 +3,34 @@ package session
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/event"
+	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
 // ItemStackRequestHandler handles the ItemStackRequest packet. It handles the actions done within the
-// inventory.
+// inventory: each request is a batch of server/menu, whose operations the actions name.
 type ItemStackRequestHandler struct {
 	currentRequest int32
 
 	changes         map[byte]map[byte]changeInfo
 	responseChanges map[int32]map[*inventory.Inventory]map[byte]responseChange
-	// undo holds the content of each slot before every change of the request
-	// being handled, in the order of the changes.
-	undo []slotUndo
 
-	pendingResults []item.Stack
-	multiCraft     *multiCraft
 	// batch is the batch of server/menu that the request being handled
-	// runs as, nil if the session uses its own handlers (UseSessionRequests
-	// in its tests). Its journal then takes the place of undo and its
-	// results that of pendingResults.
-	batch     *menu.Tx
-	autoCraft *autoCraft
+	// runs as. Its journal holds the changes the response reports and that
+	// a refusal undoes, and its results those of the crafts of the request.
+	batch      *menu.Tx
+	multiCraft *multiCraft
+	autoCraft  *autoCraft
 
 	current       time.Time
 	ignoreDestroy bool
@@ -55,12 +49,26 @@ type changeInfo struct {
 	after v2193.StackResponseSlotInfo
 }
 
-// slotUndo is a change of an item stack request to undo if the request is refused: the inventory and the index
-// of the slot changed, and what the slot held before.
-type slotUndo struct {
-	inv    *inventory.Inventory
-	slot   int
-	before item.Stack
+// multiCraft is a special recipe being crafted by the request being handled.
+// The craft of the batch keeps the snapshot of its inputs; the session keeps
+// the slots the client consumed and the result it named.
+type multiCraft struct {
+	batch    *menu.MultiCraft
+	times    int
+	consumed map[byte]int
+	result   *v2193.StackRequestItem
+}
+
+// autoCraft is a recipe-book craft in progress. Its inputs are paid from
+// the slots the client names in the Consume actions that follow the
+// AutoCraftRecipe action, in the crafting grid or the inventory: BDS
+// 1.26.52.3 takes exactly those slots and refuses a craft whose Consume
+// actions do not pay for all of its inputs. The craft of the batch keeps
+// what is owed and taken; the session keeps the slots the client named.
+type autoCraft struct {
+	batch    *menu.AutoCraft
+	id       uint32
+	consumed map[v2193.StackRequestSlotInfo]bool
 }
 
 // Handle ...
@@ -85,21 +93,15 @@ func (h *ItemStackRequestHandler) Handle(p proto.Packet, s *Session, tx *world.T
 func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (err error) {
 	h.currentRequest = req.RequestID
 	h.multiCraft, h.autoCraft = nil, nil
-	if !s.sessionRequests {
-		h.batch = c.BeginMenu(s.nameSlot)
-	}
+	h.batch = c.BeginMenu(s.nameSlot)
 	defer func() {
 		h.multiCraft, h.autoCraft = nil, nil
 		if err != nil {
-			h.reject(req.RequestID, s, tx)
+			h.reject(req.RequestID, s)
 			return
 		}
-		if h.batch != nil {
-			h.batch.Commit()
-			h.batch = nil
-		} else {
-			h.notifyContainerRedstone(s, tx)
-		}
+		h.batch.Commit()
+		h.batch = nil
 		h.resolve(req.RequestID, s)
 		h.ignoreDestroy = false
 	}()
@@ -115,59 +117,59 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 		if _, consume := action.(*v2193.ConsumeStackRequestAction); h.autoCraft != nil && !consume {
 			// The Consume actions of a recipe-book craft have all come:
 			// what follows takes its results.
-			if err = h.finishAutoCraft(s, tx); err != nil {
+			if err = h.finishAutoCraft(); err != nil {
 				err = fmt.Errorf("%T: %w", action, err)
 				return
 			}
 		}
 		switch a := action.(type) {
 		case *v2193.TakeStackRequestAction:
-			err = h.handleTake(a, s, tx, c)
+			err = h.handleTake(a, s, tx)
 		case *v2193.PlaceStackRequestAction:
-			err = h.handlePlace(a, s, tx, c)
+			err = h.handlePlace(a, s, tx)
 		case *v2193.SwapStackRequestAction:
-			err = h.handleSwap(a, s, tx, c)
+			err = h.handleSwap(a, s, tx)
 		case *v2193.DestroyStackRequestAction:
 			err = h.handleDestroy(a, s, tx, c)
 		case *v2193.DropStackRequestAction:
-			err = h.handleDrop(a, s, tx, c)
+			err = h.handleDrop(a, s, tx)
 		case *v2193.BeaconPaymentStackRequestAction:
-			err = h.handleBeaconPayment(a, s, tx)
+			err = h.handleBeaconPayment(a)
 		case *v2193.CraftRecipeStackRequestAction:
 			if s.merchantTradeOpen() {
-				err = h.handleMerchantCraft(a, s, tx, c)
+				err = h.handleMerchantCraft(a)
 				break
 			}
 			if m := s.menu.Load(); m != nil {
 				var special bool
 				switch tx.Block(m.Pos()).(type) {
 				case block.SmithingTable:
-					err, special = h.handleSmithing(a, s, tx), true
+					err, special = h.handleSmithing(a, s), true
 				case block.Stonecutter:
-					err, special = h.handleStonecutting(a, s, tx), true
+					err, special = h.handleStonecutting(a, s), true
 				case block.EnchantingTable:
-					err, special = h.handleEnchant(a, s, tx, c), true
+					err, special = h.handleEnchant(a), true
 				}
 				if special {
 					// This was a "special action" and was handled, so we can move onto the next action.
 					break
 				}
 			}
-			err = h.handleCraft(a, s, tx)
+			err = h.handleCraft(a, s)
 		case *v2193.AutoCraftRecipeStackRequestAction:
-			err = h.handleAutoCraft(a, s, tx)
+			err = h.handleAutoCraft(a, s)
 		case *v2193.CraftRecipeOptionalStackRequestAction:
-			err = h.handleCraftRecipeOptional(a, s, req.FilterStrings, c, tx)
+			err = h.handleCraftRecipeOptional(a, req.FilterStrings)
 		case *v2193.CraftLoomRecipeStackRequestAction:
-			err = h.handleLoomCraft(a, s, tx)
+			err = h.handleLoomCraft(a)
 		case *v2193.CraftGrindstoneRecipeStackRequestAction:
-			err = h.handleGrindstoneCraft(s, tx, c)
+			err = h.batchOp(h.batch.Grind)
 		case *v2193.CraftCreativeStackRequestAction:
-			err = h.handleCreativeCraft(a, s, tx, c)
+			err = h.handleCreativeCraft(a, c)
 		case *v2193.MineBlockStackRequestAction:
 			err = h.handleMineBlock(a, s, tx)
 		case *v2193.CreateStackRequestAction:
-			err = h.handleCreate(a, s, tx)
+			err = h.batchOp(func() error { return h.batch.TakeResult(int(a.ResultsSlot)) })
 		case *v2193.ConsumeStackRequestAction:
 			if h.multiCraft != nil {
 				err = h.handleMultiConsume(a, s, tx)
@@ -176,7 +178,7 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 			}
 		case *v2193.CraftResultsDeprecatedStackRequestAction:
 			if h.multiCraft != nil {
-				err = h.handleMultiResult(a, s, tx)
+				err = h.handleMultiResult(a)
 			}
 		default:
 			return fmt.Errorf("unhandled stack request action %#v", action)
@@ -187,350 +189,63 @@ func (h *ItemStackRequestHandler) handleRequest(req v2193.ItemStackRequest, s *S
 		}
 	}
 	if h.multiCraft != nil {
-		return h.finishMultiCraft(s, tx)
+		return h.finishMultiCraft()
 	}
 	if h.autoCraft != nil {
-		return h.finishAutoCraft(s, tx)
+		return h.finishAutoCraft()
 	}
 	return
 }
 
 // handleTake handles a Take stack request action.
-func (h *ItemStackRequestHandler) handleTake(a *v2193.TakeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleTake(a *v2193.TakeStackRequestAction, s *Session, tx *world.Tx) error {
 	switch a.Source.Container.ContainerID {
 	case v2193.ContainerTradeResultPreview, v2193.ContainerTradeTwoResultPreview:
-		return h.handleMerchantTrade(a.Source, a.Destination, a.Count, s, tx, c)
+		return h.handleMerchantTrade(a.Source, a.Destination, a.Count, s, tx)
 	default:
-		return h.handleTransfer(a.Source, a.Destination, a.Count, s, tx, c)
+		return h.handleTransfer(a.Source, a.Destination, a.Count, s, tx)
 	}
 }
 
-func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
-	if h.batch != nil {
-		dest, ok := s.ref(to, tx)
-		if !ok {
-			return fmt.Errorf("unknown trade result destination %v", to.Container.ContainerID)
-		}
-		// The client takes the result of an offer from the slot of its
-		// index.
-		return h.batchOp(func() error { return h.batch.TakeTrade(int(from.Slot), int(count), dest) })
-	}
-	target, merchant, err := s.openedMerchant(tx)
-	if err != nil {
-		return err
-	}
-	offers, err := merchantOffersFor(merchant, c)
-	if err != nil {
-		s.notifyMerchantError(c, "failed to load merchant offers for trade", err)
-		return err
-	}
-	index := int(from.Slot)
-	if index < 0 || index >= len(offers) {
-		return fmt.Errorf("merchant offer %d is out of range", index)
-	}
-	offer := offers[index]
-	if offer.Uses >= offer.MaxUses || offer.Input.Empty() || offer.Output.Empty() || int(count) != offer.Output.Count() {
-		return fmt.Errorf("merchant offer %d is unavailable", index)
-	}
-
-	originals := s.inv.Slots()
-	remaining := append([]item.Stack(nil), originals...)
-	inputA := offer.CostA()
-	for _, cost := range [2]item.Stack{inputA, offer.SecondaryInput} {
-		if cost.Empty() {
-			continue
-		}
-		needed := cost.Count()
-		for slot, stack := range remaining {
-			if stack.Empty() || !stack.Comparable(cost) {
-				continue
-			}
-			removed := min(needed, stack.Count())
-			remaining[slot] = stack.Grow(-removed)
-			needed -= removed
-			if needed == 0 {
-				break
-			}
-		}
-		if needed != 0 {
-			return fmt.Errorf("merchant trade inputs are missing")
-		}
-	}
-
-	destInventory, ok := s.invByID(int32(to.Container.ContainerID), tx)
+// handleMerchantTrade takes the result of an offer of the merchant of the
+// trade screen, which the client names by its index, to a slot.
+func (h *ItemStackRequestHandler) handleMerchantTrade(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx) error {
+	dest, ok := s.ref(to, tx)
 	if !ok {
 		return fmt.Errorf("unknown trade result destination %v", to.Container.ContainerID)
 	}
-	destination, err := h.itemInSlot(to, s, tx)
-	if err != nil {
-		return err
-	}
-	if destInventory == s.inv {
-		slot := int(to.Slot)
-		if slot < 0 || slot >= len(remaining) {
-			return fmt.Errorf("trade destination slot is out of range")
-		}
-		destination = remaining[slot]
-	}
-	if !destination.Empty() && (!destination.Comparable(offer.Output) || destination.Count()+offer.Output.Count() > destination.MaxCount()) {
-		return fmt.Errorf("merchant result does not fit in destination")
-	}
-	result := offer.Output
-	if !destination.Empty() {
-		result = destination.Grow(offer.Output.Count())
-	}
-
-	context := event.C(inventory.Holder(c))
-	for slot, after := range remaining {
-		before := originals[slot]
-		if before.Equal(after) {
-			continue
-		}
-		taken := before.Grow(-after.Count())
-		if err := ensureUnlockedForCrafting(taken); err != nil {
-			return err
-		}
-		if err := call(context, slot, taken, s.inv.Handler().HandleTake); err != nil {
-			return err
-		}
-	}
-	if err := call(context, int(to.Slot), offer.Output, destInventory.Handler().HandlePlace); err != nil {
-		return err
-	}
-	completed, err := merchant.CompleteMerchantTrade(tx, c, index)
-	if err != nil {
-		s.notifyMerchantError(c, "failed to complete merchant trade", err)
-		return err
-	}
-	if !completed {
-		return fmt.Errorf("merchant rejected offer %d", index)
-	}
-	for slot, after := range remaining {
-		if originals[slot].Equal(after) {
-			continue
-		}
-		source := v2193.StackRequestSlotInfo{
-			Container: v2193.FullContainerName{ContainerID: v2193.ContainerCombinedHotBarAndInventory},
-			Slot:      uint8(slot),
-		}
-		if err := h.setItemInSlot(source, after, s, tx); err != nil {
-			return err
-		}
-	}
-	if err := h.setItemInSlot(to, result, s, tx); err != nil {
-		return err
-	}
-	updatedOffers, err := merchantOffersFor(merchant, c)
-	if err != nil {
-		s.notifyMerchantError(c, "failed to reload merchant offers", err)
-		c.CloseMenu(false)
-		return nil
-	}
-	serializedOffers, err := serializeMerchantOffers(updatedOffers)
-	if err != nil {
-		s.notifyMerchantError(c, "failed to serialize updated merchant offers", err)
-		c.CloseMenu(false)
-		return nil
-	}
-	s.sendMerchantOffers(target.H(), merchant, c.H(), updatedOffers, serializedOffers)
-	return nil
+	// The client takes the result of an offer from the slot of its
+	// index.
+	return h.batchOp(func() error { return h.batch.TakeTrade(int(from.Slot), int(count), dest) })
 }
 
 // handlePlace handles a Place stack request action.
-func (h *ItemStackRequestHandler) handlePlace(a *v2193.PlaceStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
-	return h.handleTransfer(a.Source, a.Destination, a.Count, s, tx, c)
+func (h *ItemStackRequestHandler) handlePlace(a *v2193.PlaceStackRequestAction, s *Session, tx *world.Tx) error {
+	return h.handleTransfer(a.Source, a.Destination, a.Count, s, tx)
 }
 
 // handleTransfer handles the transferring of x count from a source slot to a destination slot.
-func (h *ItemStackRequestHandler) handleTransfer(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleTransfer(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx) error {
 	if err := h.verifySlots(s, tx, from, to); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
-	if h.batch != nil {
-		src, dst, err := s.refPair(from, to, tx)
-		if err != nil {
-			return err
-		}
-		return h.batchOp(func() error { return h.batch.Move(src, dst, int(count)) })
-	}
-	i, _ := h.itemInSlot(from, s, tx)
-	if err := ensureBindingAllowsRemoval(i, from, to, c); err != nil {
-		return err
-	}
-	if i.Count() < int(count) {
-		return fmt.Errorf("client tried subtracting %v from item count, but there are only %v", count, i.Count())
-	}
-	dest, _ := h.itemInSlot(to, s, tx)
-	if err := ensureUnlockedForInventoryMove(i, from, to, s, tx); err != nil {
-		return err
-	}
-	if destinationBundle, ok := dest.Item().(item.Bundle); ok {
-		return h.handleBundleInsert(from, to, count, s, tx, c, i, dest, destinationBundle)
-	}
-	if sourceBundle, ok := i.Item().(item.Bundle); ok && !dest.Empty() {
-		return h.handleBundleExtract(from, to, count, s, tx, c, i, dest, sourceBundle)
-	}
-	if !i.Comparable(dest) {
-		return fmt.Errorf("client tried transferring %v to %v, but the stacks are incomparable", i, dest)
-	}
-	if i.Count() < int(count) {
-		return fmt.Errorf("client tried subtracting %v from item count, but there are only %v", count, i.Count())
-	}
-	if (dest.Count()+int(count) > dest.MaxCount()) && !dest.Empty() {
-		return fmt.Errorf("client tried adding %v to item count %v, but max is %v", count, dest.Count(), dest.MaxCount())
-	}
-	if dest.Empty() {
-		dest = i.Grow(-math.MaxInt32)
-	}
-
-	invA, ok := s.invByID(int32(from.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown source container %v", from.Container.ContainerID)
-	}
-	invB, ok := s.invByID(int32(to.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown destination container %v", to.Container.ContainerID)
-	}
-
-	ctx := event.C(inventory.Holder(c))
-	_ = call(ctx, int(from.Slot), i.Grow(int(count)-i.Count()), invA.Handler().HandleTake)
-	err := call(ctx, int(to.Slot), i.Grow(int(count)-i.Count()), invB.Handler().HandlePlace)
+	src, dst, err := s.refPair(from, to, tx)
 	if err != nil {
 		return err
 	}
-
-	if err := h.setItemInSlot(from, i.Grow(-int(count)), s, tx); err != nil {
-		return err
-	}
-	if err := h.setItemInSlot(to, dest.Grow(int(count)), s, tx); err != nil {
-		return err
-	}
-	h.collectRewards(s, invA, int(from.Slot), tx, c)
-	return nil
-}
-func (h *ItemStackRequestHandler) handleBundleInsert(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable, incoming, bundleStack item.Stack, bundle item.Bundle) error {
-	updated, remaining := bundle.Insert(bundleStack, incoming, int(count))
-	if remaining.Count() == incoming.Count() {
-		return fmt.Errorf("item does not fit in bundle")
-	}
-	moved := incoming.Grow(-remaining.Count())
-	invA, ok := s.invByID(int32(from.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown source container %v", from.Container.ContainerID)
-	}
-	invB, ok := s.invByID(int32(to.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown destination container %v", to.Container.ContainerID)
-	}
-	ctx := event.C(inventory.Holder(c))
-	_ = call(ctx, int(from.Slot), moved, invA.Handler().HandleTake)
-	if err := call(ctx, int(to.Slot), moved, invB.Handler().HandlePlace); err != nil {
-		return err
-	}
-	if err := h.setItemInSlot(from, remaining, s, tx); err != nil {
-		return err
-	}
-	if err := h.setItemInSlot(to, updated, s, tx); err != nil {
-		return err
-	}
-	tx.PlaySound(c.Position(), sound.Custom{Name: "item.bundle.insert", Volume: 0.8, Pitch: 1})
-	h.collectRewards(s, invA, int(from.Slot), tx, c)
-	return nil
-}
-
-func (h *ItemStackRequestHandler) handleBundleExtract(from, to v2193.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable, bundleStack, destination item.Stack, bundle item.Bundle) error {
-	updated, extracted, ok := bundle.RemoveFirstCount(bundleStack, int(count))
-	if !ok {
-		return fmt.Errorf("bundle is empty")
-	}
-	if !destination.Empty() && !destination.Comparable(extracted) {
-		return fmt.Errorf("bundle content is incomparable with destination stack")
-	}
-	if !destination.Empty() && destination.Count()+extracted.Count() > destination.MaxCount() {
-		return fmt.Errorf("bundle content exceeds destination stack limit")
-	}
-	placed := extracted
-	if !destination.Empty() {
-		placed = destination.Grow(extracted.Count())
-	}
-	invA, ok := s.invByID(int32(from.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown source container %v", from.Container.ContainerID)
-	}
-	invB, ok := s.invByID(int32(to.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown destination container %v", to.Container.ContainerID)
-	}
-	ctx := event.C(inventory.Holder(c))
-	_ = call(ctx, int(from.Slot), extracted, invA.Handler().HandleTake)
-	if err := call(ctx, int(to.Slot), extracted, invB.Handler().HandlePlace); err != nil {
-		return err
-	}
-	if err := h.setItemInSlot(from, updated, s, tx); err != nil {
-		return err
-	}
-	if err := h.setItemInSlot(to, placed, s, tx); err != nil {
-		return err
-	}
-	tx.PlaySound(c.Position(), sound.Custom{Name: "item.bundle.remove_one", Volume: 0.8, Pitch: 1})
-	h.collectRewards(s, invA, int(from.Slot), tx, c)
-	return nil
+	return h.batchOp(func() error { return h.batch.Move(src, dst, int(count)) })
 }
 
 // handleSwap handles a Swap stack request action.
-func (h *ItemStackRequestHandler) handleSwap(a *v2193.SwapStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleSwap(a *v2193.SwapStackRequestAction, s *Session, tx *world.Tx) error {
 	if err := h.verifySlots(s, tx, a.Source, a.Destination); err != nil {
 		return fmt.Errorf("slot out of sync: %w", err)
 	}
-	if h.batch != nil {
-		src, dst, err := s.refPair(a.Source, a.Destination, tx)
-		if err != nil {
-			return err
-		}
-		return h.batchOp(func() error { return h.batch.Swap(src, dst) })
-	}
-	i, _ := h.itemInSlot(a.Source, s, tx)
-	dest, _ := h.itemInSlot(a.Destination, s, tx)
-	if err := ensureBindingAllowsRemoval(i, a.Source, a.Destination, c); err != nil {
-		return err
-	}
-	if err := ensureBindingAllowsRemoval(dest, a.Destination, a.Source, c); err != nil {
-		return err
-	}
-	if err := ensureUnlockedForInventoryMove(i, a.Source, a.Destination, s, tx); err != nil {
-		return err
-	}
-	if err := ensureUnlockedForInventoryMove(dest, a.Destination, a.Source, s, tx); err != nil {
-		return err
-	}
-
-	invA, ok := s.invByID(int32(a.Source.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
-	}
-	invB, ok := s.invByID(int32(a.Destination.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown destination container %v", a.Destination.Container.ContainerID)
-	}
-
-	ctx := event.C(inventory.Holder(c))
-	_ = call(ctx, int(a.Source.Slot), i, invA.Handler().HandleTake)
-	_ = call(ctx, int(a.Source.Slot), dest, invA.Handler().HandlePlace)
-	_ = call(ctx, int(a.Destination.Slot), dest, invB.Handler().HandleTake)
-	err := call(ctx, int(a.Destination.Slot), i, invB.Handler().HandlePlace)
+	src, dst, err := s.refPair(a.Source, a.Destination, tx)
 	if err != nil {
 		return err
 	}
-
-	if err := h.setItemInSlot(a.Source, dest, s, tx); err != nil {
-		return err
-	}
-	if err := h.setItemInSlot(a.Destination, i, s, tx); err != nil {
-		return err
-	}
-	h.collectRewards(s, invA, int(a.Source.Slot), tx, c)
-	h.collectRewards(s, invB, int(a.Destination.Slot), tx, c)
-	return nil
+	return h.batchOp(func() error { return h.batch.Swap(src, dst) })
 }
 
 // refPair returns the slots of a source and a destination of an item stack
@@ -547,20 +262,6 @@ func (s *Session) refPair(from, to v2193.StackRequestSlotInfo, tx *world.Tx) (sr
 	return src, dst, nil
 }
 
-// collectRewards checks if the source inventory has rewards for the player, for example, experience rewards when
-// smelting. If it does, it will drop the rewards at the player's location.
-func (h *ItemStackRequestHandler) collectRewards(s *Session, inv *inventory.Inventory, slot int, tx *world.Tx, c Controllable) {
-	if m := s.menu.Load(); inv == s.window() && m != nil && slot == inv.Size()-1 {
-		if f, ok := tx.Block(m.Pos()).(smelter); ok {
-			// AbstractFurnaceBlockEntity.awardUsedRecipesAndPopExperience
-			// spawns the orbs at the player's feet.
-			for _, o := range entity.NewExperienceOrbs(c.Position(), f.ResetExperience()) {
-				tx.AddEntity(o)
-			}
-		}
-	}
-}
-
 // handleDestroy handles the destroying of an item by moving it into the creative inventory.
 func (h *ItemStackRequestHandler) handleDestroy(a *v2193.DestroyStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	if h.ignoreDestroy {
@@ -572,64 +273,24 @@ func (h *ItemStackRequestHandler) handleDestroy(a *v2193.DestroyStackRequestActi
 	if err := h.verifySlot(a.Source, s, tx); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
-	if h.batch != nil {
-		from, ok := s.ref(a.Source, tx)
-		if !ok {
-			return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
-		}
-		return h.batchOp(func() error { return h.batch.Destroy(from, int(a.Count)) })
+	from, ok := s.ref(a.Source, tx)
+	if !ok {
+		return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
 	}
-	i, _ := h.itemInSlot(a.Source, s, tx)
-	if err := ensureUnlockedForInventoryRemoval(i, a.Source); err != nil {
-		return err
-	}
-	if i.Count() < int(a.Count) {
-		return fmt.Errorf("client attempted to destroy %v items, but only %v present", a.Count, i.Count())
-	}
-
-	if err := h.setItemInSlot(a.Source, i.Grow(-int(a.Count)), s, tx); err != nil {
-		return err
-	}
-	return nil
+	return h.batchOp(func() error { return h.batch.Destroy(from, int(a.Count)) })
 }
 
 // handleDrop handles the dropping of an item by moving it outside the inventory while having the
 // inventory opened.
-func (h *ItemStackRequestHandler) handleDrop(a *v2193.DropStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
+func (h *ItemStackRequestHandler) handleDrop(a *v2193.DropStackRequestAction, s *Session, tx *world.Tx) error {
 	if err := h.verifySlot(a.Source, s, tx); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
-	if h.batch != nil {
-		from, ok := s.ref(a.Source, tx)
-		if !ok {
-			return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
-		}
-		return h.batchOp(func() error { return h.batch.Drop(from, int(a.Count)) })
-	}
-	i, _ := h.itemInSlot(a.Source, s, tx)
-	if err := ensureBindingAllowsRemoval(i, a.Source, v2193.StackRequestSlotInfo{}, c); err != nil {
-		return err
-	}
-	if err := ensureUnlockedForInventoryRemoval(i, a.Source); err != nil {
-		return err
-	}
-	if i.Count() < int(a.Count) {
-		return fmt.Errorf("client attempted to drop %v items, but only %v present", a.Count, i.Count())
-	}
-
-	inv, ok := s.invByID(int32(a.Source.Container.ContainerID), tx)
+	from, ok := s.ref(a.Source, tx)
 	if !ok {
 		return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
 	}
-	if err := call(event.C(inventory.Holder(c)), int(a.Source.Slot), i.Grow(int(a.Count)-i.Count()), inv.Handler().HandleDrop); err != nil {
-		return err
-	}
-
-	n := c.Drop(i.Grow(int(a.Count) - i.Count()))
-	if err := h.setItemInSlot(a.Source, i.Grow(-n), s, tx); err != nil {
-		return err
-	}
-	return nil
+	return h.batchOp(func() error { return h.batch.Drop(from, int(a.Count)) })
 }
 
 // handleMineBlock handles the action associated with a block being mined by the player. This seems to be a workaround
@@ -643,64 +304,273 @@ func (h *ItemStackRequestHandler) handleMineBlock(a *v2193.MineBlockStackRequest
 	if err := h.verifySlot(slot, s, tx); err != nil {
 		return err
 	}
-	if h.batch != nil {
-		r, ok := s.ref(slot, tx)
-		if !ok {
-			return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
+	r, ok := s.ref(slot, tx)
+	if !ok {
+		return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
+	}
+	return h.batchOp(func() error { return h.batch.Touch(r) })
+}
+
+// handleCraft handles the CraftRecipe request action.
+func (h *ItemStackRequestHandler) handleCraft(a *v2193.CraftRecipeStackRequestAction, s *Session) error {
+	craft, ok := s.recipes[a.RecipeNetworkID]
+	if !ok {
+		// Try dynamic recipes if no static recipe matches
+		return h.craftDynamic(int(a.NumberOfCrafts))
+	}
+	if multi, ok := craft.(recipe.Multi); ok {
+		mc, err := h.batch.BeginMultiCraft(multi, int(a.NumberOfCrafts))
+		if err != nil {
+			return err
 		}
-		return h.batchOp(func() error { return h.batch.Touch(r) })
-	}
-
-	// Update the slots through ItemStackResponses, don't actually do anything special with this action.
-	i, _ := h.itemInSlot(slot, s, tx)
-	if err := h.setItemInSlot(slot, i, s, tx); err != nil {
-		return err
-	}
-	return nil
-}
-
-// handleCreate handles the CreateStackRequestAction sent by the client when a recipe outputs more than one item. It
-// contains a result slot, which should map to one of the output items. From there, the server should create the relevant
-// output as usual.
-func (h *ItemStackRequestHandler) handleCreate(a *v2193.CreateStackRequestAction, s *Session, tx *world.Tx) error {
-	if h.batch != nil {
-		return h.batchOp(func() error { return h.batch.TakeResult(int(a.ResultsSlot)) })
-	}
-	slot := int(a.ResultsSlot)
-	if slot < 0 || slot >= len(h.pendingResults) {
-		// ResultsSlot is client-controlled; reject out-of-range values to avoid panics.
-		return fmt.Errorf("invalid pending result slot: %v", a.ResultsSlot)
-	}
-
-	res := h.pendingResults[slot]
-	if res.Empty() {
-		return fmt.Errorf("tried duplicating created result: %v", slot)
-	}
-	h.pendingResults[slot] = item.Stack{}
-
-	if err := h.setItemInSlot(v2193.StackRequestSlotInfo{
-		Container: v2193.FullContainerName{ContainerID: v2193.ContainerCreatedOutput},
-		Slot:      craftingResult,
-	}, res, s, tx); err != nil {
-		return err
-	}
-	return nil
-}
-
-// defaultCreation represents the CreateStackRequestAction used for single-result crafts.
-var defaultCreation = &v2193.CreateStackRequestAction{}
-
-// createResults creates a new craft result and adds it to the list of pending craft results.
-func (h *ItemStackRequestHandler) createResults(s *Session, tx *world.Tx, result ...item.Stack) error {
-	if h.batch != nil {
-		return h.batchOp(func() error { return h.batch.AddResults(result...) })
-	}
-	h.pendingResults = append(h.pendingResults, result...)
-	if len(result) > 1 {
-		// With multiple results, the client notifies the server on when to create the results.
+		h.multiCraft = &multiCraft{batch: mc, times: int(a.NumberOfCrafts), consumed: make(map[byte]int)}
 		return nil
 	}
-	return h.handleCreate(defaultCreation, s, tx)
+	if err := h.batchOp(func() error { return h.batch.Craft(craft, int(a.NumberOfCrafts)) }); err != nil {
+		return fmt.Errorf("recipe with network id %v: %w", a.RecipeNetworkID, err)
+	}
+	return nil
+}
+
+// craftDynamic crafts the dynamic recipe that the crafting grid matches.
+func (h *ItemStackRequestHandler) craftDynamic(timesCrafted int) error {
+	return h.batchOp(func() error { return h.batch.CraftDynamic(timesCrafted) })
+}
+
+// handleMultiConsume consumes a slot of the input of the special recipe
+// being crafted.
+func (h *ItemStackRequestHandler) handleMultiConsume(a *v2193.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
+	mc := h.multiCraft.batch
+	inputs := mc.Inputs()
+	inputSlot := int(a.Source.Slot) - inputs[0].Index
+	if inputSlot < 0 || inputSlot >= len(inputs) {
+		return fmt.Errorf("multi recipe consumed slot outside the crafting grid")
+	}
+	if container, _ := nameParts(inputs[inputSlot].Name); a.Source.Container.ContainerID != container || a.Count == 0 {
+		return fmt.Errorf("multi recipe consumed invalid crafting input")
+	}
+	if _, ok := h.multiCraft.consumed[a.Source.Slot]; ok {
+		return fmt.Errorf("multi recipe consumed crafting slot %v more than once", a.Source.Slot)
+	}
+	if err := h.verifySlot(a.Source, s, tx); err != nil {
+		return err
+	}
+	if err := mc.Consume(inputs[inputSlot], int(a.Count)); err != nil {
+		return err
+	}
+	h.multiCraft.consumed[a.Source.Slot] = int(a.Count)
+	return nil
+}
+
+// handleMultiResult keeps the result the client names for the special
+// recipe being crafted.
+func (h *ItemStackRequestHandler) handleMultiResult(a *v2193.CraftResultsDeprecatedStackRequestAction) error {
+	craft := h.multiCraft
+	if craft.result != nil || int(a.TimesCrafted) != craft.times || len(a.ResultItems) != 1 {
+		return fmt.Errorf("multi recipe supplied invalid result metadata")
+	}
+	result := a.ResultItems[0]
+	if result.Count == 0 {
+		return fmt.Errorf("multi recipe result count must be at least 1")
+	}
+	craft.result = &result
+	return nil
+}
+
+// finishMultiCraft finishes the special recipe being crafted, whose result
+// must be the one the client named.
+func (h *ItemStackRequestHandler) finishMultiCraft() error {
+	craft := h.multiCraft
+	if craft.result == nil {
+		return fmt.Errorf("multi recipe requires one result and all consumed inputs")
+	}
+	requested := *craft.result
+	return h.batchOp(func() error {
+		return craft.batch.Finish(func(result item.Stack) bool { return requestedMultiResultMatches(result, requested) })
+	})
+}
+
+// requestedMultiResultMatches reports whether the result a client names for
+// a special recipe is the stack the recipe makes.
+func requestedMultiResultMatches(want item.Stack, got v2193.StackRequestItem) bool {
+	name, meta := want.Item().EncodeItem()
+	if got.Identifier != name || got.MetadataValue > math.MaxInt16 || int16(got.MetadataValue) != meta || int(got.Count) != want.Count() {
+		return false
+	}
+	wantNBT := networkItemNBT(want)
+	return len(wantNBT) == 0 && len(got.NBTData) == 0 || reflect.DeepEqual(wantNBT, got.NBTData)
+}
+
+// handleAutoCraft handles the AutoCraftRecipe request action.
+func (h *ItemStackRequestHandler) handleAutoCraft(a *v2193.AutoCraftRecipeStackRequestAction, s *Session) error {
+	craft, ok := s.recipes[a.RecipeNetworkID]
+	if !ok {
+		// Try dynamic recipes if no static recipe matches
+		return h.craftDynamic(int(a.NumberOfCrafts))
+	}
+	ac, err := h.batch.BeginAutoCraft(craft, int(a.NumberOfCrafts))
+	if err != nil {
+		return fmt.Errorf("recipe with network id %v: %w", a.RecipeNetworkID, err)
+	}
+	// BDS refuses a recipe-book craft unless the inventory or a
+	// crafting table is open, with a crafter open too.
+	if s.menu.Load() != nil {
+		if s.openedContainerID.Load() != uint32(v2193.ContainerTypeWorkbench) {
+			return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
+		}
+	} else if !s.invOpened {
+		return fmt.Errorf("recipe with network id %v crafted outside a crafting screen", a.RecipeNetworkID)
+	}
+	h.autoCraft = &autoCraft{batch: ac, id: a.RecipeNetworkID, consumed: make(map[v2193.StackRequestSlotInfo]bool)}
+	return nil
+}
+
+// handleAutoCraftConsume pays for the recipe-book craft in progress with
+// the slot a Consume action names.
+func (h *ItemStackRequestHandler) handleAutoCraftConsume(a *v2193.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
+	craft := h.autoCraft
+	switch a.Source.Container.ContainerID {
+	case v2193.ContainerCombinedHotBarAndInventory:
+	case v2193.ContainerCraftingInput:
+		if !craft.batch.InGrid(menu.Slot{Inv: s.ui, Index: int(a.Source.Slot)}) {
+			return fmt.Errorf("recipe %v: consumed slot %v outside the crafting grid", craft.id, a.Source.Slot)
+		}
+	default:
+		return fmt.Errorf("recipe %v: cannot consume from container %v", craft.id, a.Source.Container.ContainerID)
+	}
+	key := v2193.StackRequestSlotInfo{Container: a.Source.Container, Slot: a.Source.Slot}
+	if craft.consumed[key] {
+		return fmt.Errorf("recipe %v: consumed slot %v of container %v more than once", craft.id, a.Source.Slot, a.Source.Container.ContainerID)
+	}
+	craft.consumed[key] = true
+	if err := h.verifySlot(a.Source, s, tx); err != nil {
+		return err
+	}
+	r, ok := s.ref(a.Source, tx)
+	if !ok {
+		return fmt.Errorf("unknown container %v", a.Source.Container.ContainerID)
+	}
+	if err := h.batchOp(func() error { return craft.batch.Pay(r, int(a.Count)) }); err != nil {
+		return fmt.Errorf("recipe %v: %w", craft.id, err)
+	}
+	return nil
+}
+
+// finishAutoCraft creates the results of the recipe-book craft in progress
+// once the client has named all the slots that pay for it.
+func (h *ItemStackRequestHandler) finishAutoCraft() error {
+	craft := h.autoCraft
+	h.autoCraft = nil
+	if err := h.batchOp(craft.batch.Finish); err != nil {
+		return fmt.Errorf("recipe %v: %w", craft.id, err)
+	}
+	return nil
+}
+
+// handleCreativeCraft handles the CreativeCraft request action.
+func (h *ItemStackRequestHandler) handleCreativeCraft(a *v2193.CraftCreativeStackRequestAction, c Controllable) error {
+	if !c.GameMode().CreativeInventory() {
+		return fmt.Errorf("can only craft creative items in gamemode creative/spectator")
+	}
+	if a.CreativeItemNetworkID == 0 {
+		return fmt.Errorf("creative item network ID must be at least 1")
+	}
+	return h.batchOp(func() error { return h.batch.CreateCreative(int(a.CreativeItemNetworkID - 1)) })
+}
+
+// handleCraftRecipeOptional handles the CraftRecipeOptional request action, sent when taking a result from an anvil
+// menu. It also contains information such as the new name of the item and the multi-recipe network ID.
+func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *v2193.CraftRecipeOptionalStackRequestAction, filterStrings []string) error {
+	var name *string
+	if len(filterStrings) > 0 {
+		// Guard against client-provided indexes that would otherwise panic when slicing.
+		index := int64(a.FilterStringIndex)
+		if index < 0 || index >= int64(len(filterStrings)) {
+			return fmt.Errorf("filter string index %v is out of bounds", a.FilterStringIndex)
+		}
+		name = &filterStrings[index]
+	}
+	return h.batchOp(func() error { return h.batch.Repair(name) })
+}
+
+// handleSmithing handles a CraftRecipe stack request action made using a smithing table.
+func (h *ItemStackRequestHandler) handleSmithing(a *v2193.CraftRecipeStackRequestAction, s *Session) error {
+	craft, ok := s.recipes[a.RecipeNetworkID]
+	if !ok {
+		return fmt.Errorf("recipe with network id %v does not exist", a.RecipeNetworkID)
+	}
+	return h.batchOp(func() error { return h.batch.Smith(craft) })
+}
+
+// handleStonecutting handles a CraftRecipe stack request action made using a stonecutter.
+func (h *ItemStackRequestHandler) handleStonecutting(a *v2193.CraftRecipeStackRequestAction, s *Session) error {
+	craft, ok := s.recipes[a.RecipeNetworkID]
+	if !ok {
+		return fmt.Errorf("recipe with network id %v does not exist", a.RecipeNetworkID)
+	}
+	return h.batchOp(func() error { return h.batch.Cut(craft, int(a.NumberOfCrafts)) })
+}
+
+// handleLoomCraft handles a CraftLoomRecipe stack request action made using a loom table.
+func (h *ItemStackRequestHandler) handleLoomCraft(a *v2193.CraftLoomRecipeStackRequestAction) error {
+	pattern, ok := block.BannerPatternByID(a.Pattern)
+	if !ok {
+		return fmt.Errorf("unknown banner pattern id %q", a.Pattern)
+	}
+	return h.batchOp(func() error { return h.batch.Weave(pattern, int(a.TimesCrafted)) })
+}
+
+// handleBeaconPayment handles the selection of effects in a beacon and the removal of the item used to pay
+// for those effects.
+func (h *ItemStackRequestHandler) handleBeaconPayment(a *v2193.BeaconPaymentStackRequestAction) error {
+	primary, err := beaconEffect(a.PrimaryEffect)
+	if err != nil {
+		return fmt.Errorf("primary effect selected is not allowed: %w", err)
+	}
+	secondary, err := beaconEffect(a.SecondaryEffect)
+	if err != nil {
+		return fmt.Errorf("secondary effect selected is not allowed: %w", err)
+	}
+	if err := h.batchOp(func() error { return h.batch.PayBeacon(primary, secondary) }); err != nil {
+		return err
+	}
+	// The client will send a Destroy action after this action, which
+	// is ignored: the payment is gone already.
+	h.ignoreDestroy = true
+	return nil
+}
+
+// beaconEffect returns the lasting effect of the ID of a beacon payment, nil
+// for 0, no effect. An ID of no effect, or of an instant one, fails.
+func beaconEffect(id int32) (effect.LastingType, error) {
+	if id == 0 {
+		return nil, nil
+	}
+	e, ok := effect.ByID(int(id))
+	if !ok {
+		return nil, fmt.Errorf("unknown effect %v", id)
+	}
+	lasting, ok := e.(effect.LastingType)
+	if !ok {
+		return nil, fmt.Errorf("effect %v is not lasting", id)
+	}
+	return lasting, nil
+}
+
+// merchantTradeOpen reports if the session has a trade screen open.
+func (s *Session) merchantTradeOpen() bool {
+	m := s.menu.Load()
+	return m != nil && m.Kind() == menu.Merchant
+}
+
+// handleMerchantCraft handles the trade request the Bedrock trade screen
+// sends: a CraftRecipe action naming the offer by its network ID, which is
+// its index plus one, followed by Consume actions for the inputs the player
+// put in the two input slots and the taking of the created output.
+func (h *ItemStackRequestHandler) handleMerchantCraft(a *v2193.CraftRecipeStackRequestAction) error {
+	// The client names the offer by its network ID, its index plus one.
+	index, times := int(a.RecipeNetworkID)-1, max(int(a.NumberOfCrafts), 1)
+	return h.batchOp(func() error { return h.batch.Trade(index, times) })
 }
 
 // verifySlots verifies a list of slots passed.
@@ -811,47 +681,6 @@ func (h *ItemStackRequestHandler) itemInSlot(slot v2193.StackRequestSlotInfo, s 
 	return i, nil
 }
 
-// setItemInSlot sets an item stack in the slot of a container present in the slot info.
-func (h *ItemStackRequestHandler) setItemInSlot(slot v2193.StackRequestSlotInfo, i item.Stack, s *Session, tx *world.Tx) error {
-	if h.batch != nil {
-		ref, ok := s.ref(slot, tx)
-		if !ok {
-			return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
-		}
-		return h.batchOp(func() error { return h.batch.SetSlot(ref, i) })
-	}
-	inv, ok := s.invByID(int32(slot.Container.ContainerID), tx)
-	if !ok {
-		return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
-	}
-
-	sl := int(slot.Slot)
-	if inv == s.offHand {
-		sl = 0
-	}
-
-	// Fetch and set with error checks so invalid slots don't desync client/server state.
-	before, err := inv.Item(sl)
-	if err != nil {
-		return err
-	}
-	if m := s.menu.Load(); inv == s.window() && !i.Empty() && m != nil {
-		pos := m.Pos()
-		if crafter, ok := tx.Block(pos).(block.Crafter); ok && crafter.DisabledSlots&(1<<sl) != 0 {
-			crafter.DisabledSlots &^= 1 << sl
-			tx.SetBlock(pos, crafter, nil)
-			crafter.NotifySlotState(sl)
-		}
-	}
-	if err := inv.SetItem(sl, i); err != nil {
-		return err
-	}
-
-	h.recordChange(slot.Container.ContainerID, slot.Slot, inv, i)
-	h.undo = append(h.undo, slotUndo{inv: inv, slot: sl, before: before})
-	return nil
-}
-
 // recordChange records that the slot of the container ID passed, of the
 // inventory inv, was set to i: the response to the request shows it, and a
 // later request may name the stack by the ID of this one.
@@ -882,9 +711,8 @@ func (h *ItemStackRequestHandler) recordChange(container, slot byte, inv *invent
 }
 
 // batchOp runs op, an operation of the batch of the request, and records
-// the changes it made, those before it failed too, as setItemInSlot
-// records each slot it set: a later request may name their stacks even if
-// this one is refused.
+// the changes it made, those before it failed too: the response shows them,
+// and a later request may name their stacks even if this one is refused.
 func (h *ItemStackRequestHandler) batchOp(op func() error) error {
 	from := len(h.batch.Changes())
 	err := op()
@@ -893,38 +721,6 @@ func (h *ItemStackRequestHandler) batchOp(op func() error) error {
 		h.recordChange(container, slot, c.Ref.Inv, c.After)
 	}
 	return err
-}
-
-func (h *ItemStackRequestHandler) notifyContainerRedstone(s *Session, tx *world.Tx) {
-	m := s.menu.Load()
-	if m == nil {
-		return
-	}
-	openedPos := m.Pos()
-	openedInv := s.window()
-	if openedInv == nil {
-		return
-	}
-	for containerID := range h.changes {
-		inv, ok := s.invByID(int32(containerID), tx)
-		if !ok || inv != openedInv {
-			continue
-		}
-		openedBlock := tx.Block(openedPos)
-		if _, ok := openedBlock.(block.Container); !ok {
-			return
-		}
-		block.NotifyComparatorUpdate(openedPos, tx)
-		if paired, ok := openedBlock.(interface{ Paired() bool }); ok && paired.Paired() {
-			for _, face := range cube.HorizontalFaces() {
-				sidePos := openedPos.Side(face)
-				if _, ok := tx.Block(sidePos).(interface{ Paired() bool }); ok {
-					block.NotifyComparatorUpdate(sidePos, tx)
-				}
-			}
-		}
-		return
-	}
 }
 
 // resolve resolves the request with the ID passed.
@@ -947,12 +743,10 @@ func (h *ItemStackRequestHandler) resolve(id int32, s *Session) {
 	}}})
 
 	h.changes = map[byte]map[byte]changeInfo{}
-	h.undo = nil
-	h.pendingResults = nil
 }
 
 // reject rejects the item stack request sent by the client so that it is reverted client-side.
-func (h *ItemStackRequestHandler) reject(id int32, s *Session, tx *world.Tx) {
+func (h *ItemStackRequestHandler) reject(id int32, s *Session) {
 	s.writePacket(&v2193.ItemStackResponsePacket{
 		Responses: []v2193.ItemStackResponse{{
 			Status:    v2193.ItemStackResponseStatusError,
@@ -961,31 +755,8 @@ func (h *ItemStackRequestHandler) reject(id int32, s *Session, tx *world.Tx) {
 	})
 
 	// Undo the changes made for the actions that were valid, the last first, so that a slot changed more than
-	// once ends up with what it held before the request. Each slot is set in the inventory and at the index
-	// it was changed at: the off hand at 0, whatever slot the client named it by.
-	if h.batch != nil {
-		h.batch.Rollback()
-		h.batch = nil
-	}
-	for i := len(h.undo) - 1; i >= 0; i-- {
-		u := h.undo[i]
-		_ = u.inv.SetItem(u.slot, u.before)
-	}
-
+	// once ends up with what it held before the request.
+	h.batch.Rollback()
+	h.batch = nil
 	h.changes = map[byte]map[byte]changeInfo{}
-	h.undo = nil
-	h.pendingResults = nil
-}
-
-// call uses an event.Context, slot and item.Stack to call the event handler function passed. An error is returned if
-// the event.Context was cancelled either before or after the call.
-func call(ctx *inventory.Context, slot int, it item.Stack, f func(ctx *inventory.Context, slot int, it item.Stack)) error {
-	if ctx.Cancelled() {
-		return fmt.Errorf("action was cancelled")
-	}
-	f(ctx, slot, it)
-	if ctx.Cancelled() {
-		return fmt.Errorf("action was cancelled")
-	}
-	return nil
 }

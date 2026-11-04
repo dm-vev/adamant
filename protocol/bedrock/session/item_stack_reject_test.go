@@ -6,7 +6,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
 
@@ -31,11 +30,11 @@ func TestRefusedRequestRestoresSlotChangedTwice(t *testing.T) {
 		_ = s.inv.SetItem(0, item.NewStack(item.Apple{}, 16))
 		_ = s.inv.SetItem(2, planks)
 		h := craftingTestHandler()
-		err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 			&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(v2193.ContainerCombinedHotBarAndInventory, 2, item_id(planks)), Destination: invSlot(v2193.ContainerCombinedHotBarAndInventory, 20, 0)},
 			&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(second, 2, -1), Destination: invSlot(v2193.ContainerCombinedHotBarAndInventory, 21, 0)},
 			staleApples,
-		}}, s, nil, merchantTestUser{mode: world.GameModeSurvival})
+		}})
 		if err == nil {
 			t.Fatal("the request with a stale stack ID was accepted")
 		}
@@ -56,10 +55,10 @@ func TestRefusedRequestRestoresOffHand(t *testing.T) {
 	_ = s.inv.SetItem(0, item.NewStack(item.Apple{}, 16))
 	_ = s.inv.SetItem(3, shield)
 	h := craftingTestHandler()
-	err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+	err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 		&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(v2193.ContainerCombinedHotBarAndInventory, 3, item_id(shield)), Destination: invSlot(v2193.ContainerOffhand, 1, 0)},
 		staleApples,
-	}}, s, nil, merchantTestUser{mode: world.GameModeSurvival})
+	}})
 	if err == nil {
 		t.Fatal("the request with a stale stack ID was accepted")
 	}
@@ -84,11 +83,11 @@ func TestRefusedRequestUndoesInReverse(t *testing.T) {
 		var writes []int
 		s.ui.SlotFunc(func(slot int, _, _ item.Stack) { writes = append(writes, slot) })
 		h := craftingTestHandler()
-		err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 			&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(v2193.ContainerCombinedHotBarAndInventory, 2, item_id(planks)), Destination: invSlot(v2193.ContainerCraftingInput, 28, 0)},
 			&v2193.PlaceStackRequestAction{Count: 1, Source: invSlot(v2193.ContainerCombinedHotBarAndInventory, 2, -1), Destination: invSlot(v2193.ContainerCraftingInput, 29, 0)},
 			staleApples,
-		}}, s, nil, merchantTestUser{mode: world.GameModeSurvival})
+		}})
 		if err == nil {
 			t.Fatal("the request with a stale stack ID was accepted")
 		}
@@ -104,10 +103,10 @@ func TestRefusedRequestUndoesInReverse(t *testing.T) {
 func TestLoomCraftWithNoMenuOpen(t *testing.T) {
 	s := craftingTestSession()
 	h := craftingTestHandler()
-	// No world is passed: reading a block would panic.
-	err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+	// The position of the last menu opened, none here, is not read.
+	err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 		&v2193.CraftLoomRecipeStackRequestAction{Pattern: "bo", TimesCrafted: 1},
-	}}, s, nil, merchantTestUser{mode: world.GameModeSurvival})
+	}})
 	if err == nil {
 		t.Fatal("the loom craft with no menu open was accepted")
 	}

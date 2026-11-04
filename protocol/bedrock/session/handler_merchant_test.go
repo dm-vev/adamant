@@ -36,7 +36,8 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 
 		s := craftingTestSession()
 		handler := craftingTestHandler()
-		user := merchantTestUser{mode: world.GameModeSurvival, handle: entity.NewItem(world.EntitySpawnOpts{}, item.NewStack(item.Emerald{}, 1))}
+		user := merchantTestUser{handle: entity.NewItem(world.EntitySpawnOpts{}, item.NewStack(item.Emerald{}, 1))}
+		player := batchController{tx: tx, s: s, owner: user}
 		m, ok := menu.OpenMerchant(v, v, user.handle)
 		if !ok {
 			t.Fatal("the farmer does not trade")
@@ -49,27 +50,27 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 		place := &v2193.PlaceStackRequestAction{}
 		place.Count = byte(price.Count())
 		place.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCombinedHotBarAndInventory}, Slot: 0, StackNetworkID: item_id(price)}
-		place.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA}
-		if err := handler.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{place}}, s, tx, user); err != nil {
+		place.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoIngredientOne}, Slot: menu.UITradeInputA}
+		if err := handler.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{place}}, s, tx, player); err != nil {
 			t.Fatalf("placing the price in the trade input: %v", err)
 		}
 
-		input, _ := s.ui.Item(merchantInputSlotA)
+		input, _ := s.ui.Item(menu.UITradeInputA)
 		consume := &v2193.ConsumeStackRequestAction{}
 		consume.Count = byte(price.Count())
-		consume.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoIngredientOne}, Slot: merchantInputSlotA, StackNetworkID: item_id(input)}
+		consume.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerTradeTwoIngredientOne}, Slot: menu.UITradeInputA, StackNetworkID: item_id(input)}
 		take := &v2193.PlaceStackRequestAction{}
 		take.Count = byte(offer.Output.Count())
-		take.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCreatedOutput}, Slot: craftingResult, StackNetworkID: -3}
+		take.Source = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCreatedOutput}, Slot: menu.UIResult, StackNetworkID: -3}
 		take.Destination = v2193.StackRequestSlotInfo{Container: v2193.FullContainerName{ContainerID: v2193.ContainerCombinedHotBarAndInventory}, Slot: 1}
 		if err := handler.handleRequest(v2193.ItemStackRequest{RequestID: -3, Actions: []v2193.StackRequestAction{
 			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 			consume,
 			take,
-		}}, s, tx, user); err != nil {
+		}}, s, tx, player); err != nil {
 			t.Fatalf("trading: %v", err)
 		}
-		if left, _ := s.ui.Item(merchantInputSlotA); !left.Empty() {
+		if left, _ := s.ui.Item(menu.UITradeInputA); !left.Empty() {
 			t.Fatalf("trade input keeps %v", left)
 		}
 		if got, _ := s.inv.Item(1); !got.Comparable(offer.Output) || got.Count() != offer.Output.Count() {
@@ -81,15 +82,14 @@ func TestMerchantTradeFollowsTheTradeScreen(t *testing.T) {
 	})
 }
 
-// merchantTestUser is a survival player as far as trading asks.
+// merchantTestUser is a survival player as far as trading asks: the owner of
+// the batches of its requests.
 type merchantTestUser struct {
-	Controllable
-	mode   world.GameMode
+	craftOwner
 	handle *world.EntityHandle
 }
 
-func (u merchantTestUser) GameMode() world.GameMode { return u.mode }
-func (u merchantTestUser) H() *world.EntityHandle   { return u.handle }
+func (u merchantTestUser) H() *world.EntityHandle { return u.handle }
 
 // TestMerchantOffersNameTheirNetworkIDs checks the offers the trade screen
 // receives carry the netId its trade requests name and the levels' experience.

@@ -27,8 +27,8 @@ const (
 	offerLastUse
 )
 
-// merchantRequestsScenario trades with a villager as TestGoldenMenuRequests
-// compares it: through the inputs of the trade screen, once, twice at once
+// merchantRequestsScenario trades with a villager as TestMenuRequestScenarios
+// runs it: through the inputs of the trade screen, once, twice at once
 // and with a second cost, and by taking the result of an offer, which pays
 // from the inventory, into an empty slot, onto bread, into the off hand,
 // paid from two slots, and into the slot of the stick that pays for it; and

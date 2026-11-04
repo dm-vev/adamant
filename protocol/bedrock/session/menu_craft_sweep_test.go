@@ -12,12 +12,10 @@ import (
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// craftOwner is the player of the batches of the differential tests of
-// crafts: a player in survival that unlocked no recipe.
+// craftOwner is the player of the batches of the tests of crafts: a player in survival that unlocked no recipe.
 type craftOwner struct{}
 
 func (craftOwner) Close() error                { return nil }
@@ -41,7 +39,7 @@ func (craftOwner) CloseMenu(bool)              {}
 func craftOutcome(err error, ui *inventory.Inventory, results []item.Stack, named map[string]int) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "accepted %v\n", err == nil)
-	for slot := craftingGridSmallOffset; slot <= craftingResult; slot++ {
+	for slot := menu.UICraftingSmall; slot <= menu.UIResult; slot++ {
 		if it, _ := ui.Item(slot); !it.Empty() {
 			fmt.Fprintf(&b, "ui %d: %d %v\n", slot, it.Count(), item.WriteNBT(it))
 		}
@@ -53,15 +51,16 @@ func craftOutcome(err error, ui *inventory.Inventory, results []item.Stack, name
 	return b.String()
 }
 
-// TestCraftsMatchTheSession crafts recipes of the crafting table and
-// dynamic recipes the session's way, handleCraft and tryDynamicCraft, and
-// as menu.Tx.Craft and CraftDynamic, from the same grids, and compares what
-// each left: a shaped recipe of a tag, a shapeless one, which makes two
-// results past 16 crafts, a user-data recipe, one of the stonecutter, and
-// wolf armour dyed, each in the grid of the inventory and of a crafting table, crafted
+// TestCraftsAsTheSessionDid crafts recipes of the crafting table and
+// dynamic recipes as menu.Tx.Craft and CraftDynamic, from the grids the
+// session's handleCraft and tryDynamicCraft crafted them of, and compares
+// what each left with what the session's left (testdata/frozen/crafts.txt):
+// a shaped recipe of a tag, a shapeless one, which makes two results past
+// 16 crafts, a user-data recipe, one of the stonecutter, and wolf armour
+// dyed, each in the grid of the inventory and of a crafting table, crafted
 // 0 to 3 and 17 times, of grids that hold what the recipe takes, too little,
 // more, a locked item, or the inputs where the other grid has them.
-func TestCraftsMatchTheSession(t *testing.T) {
+func TestCraftsAsTheSessionDid(t *testing.T) {
 	t.Parallel()
 	planks := func(n int) item.Stack { return item.NewStack(block.Planks{Wood: block.OakWood()}, n) }
 	box := func(t block.ShulkerBoxType) block.ShulkerBox {
@@ -89,6 +88,7 @@ func TestCraftsMatchTheSession(t *testing.T) {
 			[][]item.Stack{{item.NewStack(item.WolfArmor{}, 1), item.NewStack(item.Dye{Colour: item.ColourLime()}, 3)}, {item.NewStack(item.Dye{Colour: item.ColourLime()}, 3)}, {item.NewStack(item.WolfArmor{}, 1).WithLockMode(item.LockInInventory), item.NewStack(item.Dye{Colour: item.ColourLime()}, 1)}}},
 	}
 
+	frozen := &frozenSweep{name: "crafts"}
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	cases, accepted := 0, 0
@@ -97,14 +97,11 @@ func TestCraftsMatchTheSession(t *testing.T) {
 			for _, table := range []bool{false, true} {
 				for _, times := range []int{0, 1, 2, 3, 17} {
 					name := fmt.Sprintf("%s, grid %d, table %v, %d times", rc.name, g, table, times)
-					old := craftTheSessionsWay(w, rc.r, grid, table, times)
-					var moved string
-					<-w.Exec(func(tx *world.Tx) { moved = craftTheMenusWay(tx, rc.r, grid, table, times) })
-					if old != moved {
-						t.Errorf("%s:\nthe session: %s\nthe menu: %s", name, old, moved)
-					}
+					var outcome string
+					<-w.Exec(func(tx *world.Tx) { outcome = craftTheMenusWay(tx, rc.r, grid, table, times) })
+					frozen.add(name, fmt.Sprintf("%q", outcome))
 					cases++
-					if strings.HasPrefix(old, "accepted true") {
+					if strings.HasPrefix(outcome, "accepted true") {
 						accepted++
 					}
 				}
@@ -114,52 +111,19 @@ func TestCraftsMatchTheSession(t *testing.T) {
 	if cases < 100 || accepted < 20 {
 		t.Fatalf("%d cases, %d accepted", cases, accepted)
 	}
+	frozen.check(t)
 }
 
 // placeGrid puts grid in the grid of ui that a crafting table or the
 // inventory has.
 func placeGrid(ui *inventory.Inventory, grid []item.Stack, table bool) {
-	offset := craftingGridSmallOffset
+	offset := menu.UICraftingSmall
 	if table {
-		offset = craftingGridLargeOffset
+		offset = menu.UICraftingLarge
 	}
 	for i, it := range grid {
 		_ = ui.SetItem(offset+i, it)
 	}
-}
-
-// craftTheSessionsWay crafts r, or a dynamic recipe if r is nil, as the
-// session's handlers do.
-func craftTheSessionsWay(w *world.World, r recipe.Recipe, grid []item.Stack, table bool, times int) string {
-	s := craftingTestSession()
-	if table {
-		<-w.Exec(func(tx *world.Tx) {
-			tx.SetBlock(cube.Pos{}, block.CraftingTable{}, nil)
-			s.menu.Store(menu.OpenBlock(tx, cube.Pos{}, s, nil))
-		})
-		s.openedContainerID.Store(uint32(v2193.ContainerTypeWorkbench))
-	}
-	placeGrid(s.ui, grid, table)
-	h := craftingTestHandler()
-	h.currentRequest = -1
-	var err error
-	if r == nil {
-		err = h.tryDynamicCraft(s, nil, times)
-	} else {
-		s.recipes[1] = r
-		err = h.handleCraft(&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: byte(times)}, s, nil)
-	}
-	results := h.pendingResults
-	if len(results) == 1 {
-		results = nil
-	}
-	named := map[string]int{}
-	for c, slots := range h.changes {
-		for slot, info := range slots {
-			named[fmt.Sprintf("%d:%d", c, slot)] = int(info.after.Count)
-		}
-	}
-	return craftOutcome(err, s.ui, results, named)
 }
 
 // craftTheMenusWay crafts r, or a dynamic recipe if r is nil, as a batch of
@@ -185,13 +149,13 @@ func craftTheMenusWay(tx *world.Tx, r recipe.Recipe, grid []item.Stack, table bo
 		named[fmt.Sprintf("%d:%d", container, slot)] = c.After.Count()
 	}
 	var results []item.Stack
-	if err == nil && len(b.Changes()) > 0 && slotIsEmpty(s.ui, craftingResult) {
+	if err == nil && len(b.Changes()) > 0 && slotIsEmpty(s.ui, menu.UIResult) {
 		// Several results wait in the batch for the client to take them.
 		for i := 0; b.TakeResult(i) == nil; i++ {
-			it, _ := s.ui.Item(craftingResult)
+			it, _ := s.ui.Item(menu.UIResult)
 			results = append(results, it)
 		}
-		_ = s.ui.SetItem(craftingResult, item.Stack{})
+		_ = s.ui.SetItem(menu.UIResult, item.Stack{})
 	}
 	b.Commit()
 	return craftOutcome(err, s.ui, results, named)

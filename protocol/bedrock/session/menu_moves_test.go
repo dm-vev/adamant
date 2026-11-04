@@ -22,7 +22,7 @@ import (
 )
 
 // movesScenario sends the requests that move, swap, drop, destroy and
-// touch items and craft creative items, for TestGoldenMenuRequests: each
+// touch items and craft creative items, for TestMenuRequestScenarios: each
 // accepted, and refused for every check of the operation, in the inventory
 // screen, a chest and a furnace, in survival and in creative. Handlers of
 // the inventories record what they are called with, and cancel some of it.
@@ -412,7 +412,7 @@ func (h recordingHandler) note(ctx *inventory.Context, kind string, slot int, it
 // normaliseOrbs has the scenarios leave out the random motion of the
 // experience orbs the client is sent: their velocity when added is set to
 // zero, and the packets that move them after are not recorded. Only
-// TestGoldenMenuRequests sets it, in the scenarios that make orbs.
+// TestMenuRequestScenarios sets it, in the scenarios that make orbs.
 var normaliseOrbs bool
 
 // orbs are the runtime IDs of the experience orbs the client was sent.

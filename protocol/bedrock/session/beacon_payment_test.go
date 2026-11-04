@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -23,9 +24,10 @@ func (*beaconTestViewer) ViewTrades(*menu.Menu, entity.Merchant, []entity.Mercha
 // TestBeaconPaymentByType checks that a beacon payment of every effect ID,
 // as the primary and as the secondary effect, at every level of the
 // pyramid, gets the same verdict from the IDs the session turns into
-// effect types and menu.Tx.PayBeacon as from validBeaconEffect.
+// effect types and menu.Tx.PayBeacon as the session gave by ID before
+// (testdata/frozen/beacon.txt).
 func TestBeaconPaymentByType(t *testing.T) {
-	h := &ItemStackRequestHandler{}
+	frozen := &frozenSweep{name: "beacon"}
 	pos := cube.Pos{0, 64, 0}
 	for level := 0; level <= 4; level++ {
 		w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
@@ -46,8 +48,6 @@ func TestBeaconPaymentByType(t *testing.T) {
 			m := menu.OpenBlock(tx, pos, &beaconTestViewer{}, nil)
 			for id := int32(-2); id <= 40; id++ {
 				for _, ids := range [][2]int32{{id, 0}, {1, id}} {
-					old := h.validBeaconEffect(ids[0], beacon) && h.validBeaconEffect(ids[1], beacon) && (beacon.Level() >= 4 || ids[1] == 0)
-
 					paid := false
 					primary, errP := beaconEffect(ids[0])
 					secondary, errS := beaconEffect(ids[1])
@@ -59,12 +59,11 @@ func TestBeaconPaymentByType(t *testing.T) {
 						b.Rollback()
 						tx.SetBlock(pos, beacon, nil)
 					}
-					if paid != old {
-						t.Errorf("level %d, effects %v: paid %v by type, %v by ID", level, ids, paid, old)
-					}
+					frozen.add(fmt.Sprintf("%d %d %d", level, ids[0], ids[1]), fmt.Sprint(paid))
 				}
 			}
 		})
 		_ = w.Close()
 	}
+	frozen.check(t)
 }

@@ -143,11 +143,6 @@ type Session struct {
 	breakingPos cube.Pos
 
 	inTransaction atomic.Bool
-	// sessionRequests has item stack requests run through the handlers of
-	// the session, as they ran before they moved into server/menu, rather
-	// than as batches of the menu. Its tests set it (UseSessionRequests) to
-	// compare both.
-	sessionRequests bool
 	// menu is the menu the player has open as the client shows it, nil if
 	// none; a lectern, which the client sends no close for, is never one.
 	// openedWindowID is the ID of the window last opened and

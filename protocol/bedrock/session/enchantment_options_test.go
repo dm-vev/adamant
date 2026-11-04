@@ -1,7 +1,11 @@
 package session
 
 import (
+	"cmp"
+	"fmt"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -12,30 +16,30 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// seedController is a player with a fixed enchantment seed.
-type seedController struct {
-	Controllable
-	seed int64
-}
-
-func (c seedController) EnchantmentSeed() int64 { return c.seed }
-
-// TestEnchantmentOptionsMatchTheSession sweeps menu.EnchantmentOptions
-// against the copy the session used before it: for 200 seeds and a few far
-// ones, an item of every enchantable type and every tier, a book, an item
-// enchanted already and one that cannot be, around an enchanting table with
-// no bookshelves, five and fifteen. The options must be the same, and so
-// must the verdict on the input. (item.Enchantments sorts the enchantments
+// TestEnchantmentOptionsAsTheSessionDid sweeps menu.EnchantmentOptions over
+// what the copy the session used before it was swept against: for 200 seeds
+// and a few far ones, an item of every enchantable type and every tier, a
+// book, an item enchanted already and one that cannot be, around an
+// enchanting table with no bookshelves, five and fifteen. The options, and
+// the verdict on the input, must be those of the session's copy
+// (testdata/frozen/enchant.txt). (item.Enchantments sorts the enchantments
 // on every call, which makes each draw cost: a sweep of 1,000 seeds passed
 // once, in two minutes.)
-func TestEnchantmentOptionsMatchTheSession(t *testing.T) {
+func TestEnchantmentOptionsAsTheSessionDid(t *testing.T) {
 	t.Parallel()
 	// One item of each enchantable type: the variants of a type, its
 	// tiers and colours, differ in their enchantment value at most, which
 	// the tiers of swords and armour cover.
 	var inputs []item.Stack
 	seen := map[reflect.Type]bool{}
-	for _, it := range world.Items() {
+	items := world.Items()
+	// In a fixed order, which the frozen outcomes name the inputs by.
+	slices.SortFunc(items, func(a, b world.Item) int {
+		an, am := a.EncodeItem()
+		bn, bm := b.EncodeItem()
+		return cmp.Or(strings.Compare(an, bn), cmp.Compare(am, bm))
+	})
+	for _, it := range items {
 		if _, ok := it.(item.Enchantable); ok && !seen[reflect.TypeOf(it)] {
 			seen[reflect.TypeOf(it)] = true
 			inputs = append(inputs, item.NewStack(it, 1))
@@ -60,33 +64,32 @@ func TestEnchantmentOptionsMatchTheSession(t *testing.T) {
 		seeds = append(seeds, seed)
 	}
 
+	frozen := &frozenSweep{name: "enchant", fields: 2}
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
-	s := &Session{}
 	for _, shelves := range []int{0, 5, 15} {
 		<-w.Exec(func(tx *world.Tx) {
 			pos := cube.Pos{0, 64, 0}
 			placeBookshelves(tx, pos, shelves)
 			tx.SetBlock(pos, block.EnchantingTable{}, nil)
-			for _, input := range inputs {
+			for i, input := range inputs {
 				for _, seed := range seeds {
-					costs, enchants := s.determineAvailableEnchantments(tx, seedController{seed: seed}, pos, input)
-					options, ok := menu.EnchantmentOptions(tx, seed, pos, input)
-					if ok != (len(enchants) != 0) {
-						t.Fatalf("%d shelves, %v, seed %d: ok = %v, the session found %d options", shelves, input, seed, ok, len(enchants))
-					}
-					if !ok {
-						continue
-					}
-					for i, option := range options {
-						if option.Cost != costs[i] || !reflect.DeepEqual(option.Enchantments, enchants[i]) {
-							t.Fatalf("%d shelves, %v, seed %d, option %d: %d %v, the session %d %v", shelves, input, seed, i, option.Cost, option.Enchantments, costs[i], enchants[i])
+					var b strings.Builder
+					if options, ok := menu.EnchantmentOptions(tx, seed, pos, input); ok {
+						for _, option := range options {
+							fmt.Fprintf(&b, "%d:", option.Cost)
+							for _, e := range option.Enchantments {
+								fmt.Fprintf(&b, " %s %d", e.Type().Name(), e.Level())
+							}
+							b.WriteString(";")
 						}
 					}
+					frozen.add(fmt.Sprintf("%d %d %d", shelves, i, seed), b.String())
 				}
 			}
 		})
 	}
+	frozen.check(t)
 }
 
 // placeBookshelves places n bookshelves, at most 16, two blocks away from

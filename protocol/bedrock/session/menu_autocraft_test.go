@@ -10,7 +10,7 @@ import (
 )
 
 // autoCraftScenario sends the requests of recipe-book crafts for
-// TestGoldenMenuRequests, beyond those of the menus scenario: paid from the
+// TestMenuRequestScenarios, beyond those of the menus scenario: paid from the
 // grid, the inventory or both, in the inventory screen and at a crafting
 // table, crafted many times, of two results, of a user-data recipe and of a
 // dynamic one, and refused for every check of the craft and its payments,

@@ -10,7 +10,7 @@ import (
 )
 
 // stonecutterRequestsScenario cuts stone at the stonecutter as
-// TestGoldenMenuRequests compares it: one cut, two at once, slabs of more
+// TestMenuRequestScenarios runs it: one cut, two at once, slabs of more
 // than a stack that the client creates one stack at a time, and the cuts
 // the stonecutter refuses, some after actions of the same request that the
 // refusal undoes: an unknown recipe, a shaped recipe and a shapeless one of

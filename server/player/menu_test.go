@@ -152,11 +152,12 @@ func TestPlayerBeginsBatchesOfItsMenu(t *testing.T) {
 		if !p.menuTx.Load() {
 			t.Fatal("no batch runs after BeginMenu")
 		}
-		if err := b.SetSlot(menu.Ref{Slot: menu.Slot{Inv: m.Inventory(), Index: 4}}, item.NewStack(item.Apple{}, 1)); err != nil {
+		// An apple of the inventory put in the chest.
+		if err := b.Move(menu.Ref{Slot: menu.Slot{Inv: p.Inventory(), Index: 0}}, menu.Ref{Slot: menu.Slot{Inv: m.Inventory(), Index: 4}}, 1); err != nil {
 			t.Fatal(err)
 		}
-		if err := b.SetSlot(menu.Ref{Slot: menu.Slot{Inv: p.Inventory(), Index: 0}}, item.NewStack(item.Apple{}, 2)); err != nil {
-			t.Fatal(err)
+		if got, _ := m.Inventory().Item(4); got.Count() != 1 {
+			t.Fatalf("the chest holds %v after the move, want an apple", got)
 		}
 		b.Rollback()
 		if p.menuTx.Load() {

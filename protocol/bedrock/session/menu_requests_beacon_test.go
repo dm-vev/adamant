@@ -12,7 +12,7 @@ import (
 )
 
 // beaconRequestsScenario pays beacons of a pyramid of four levels and of
-// one as TestGoldenMenuRequests compares them: a primary and a secondary
+// one as TestMenuRequestScenarios runs them: a primary and a secondary
 // effect, the same effect twice, no effects, and the payments the beacon
 // refuses: a payment that is no payment, put in by the same request, which
 // the refusal undoes; an unknown effect, an instant one and one no beacon

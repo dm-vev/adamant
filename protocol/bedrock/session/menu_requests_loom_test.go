@@ -12,8 +12,8 @@ import (
 // uiLoomPattern is the UI slot of the pattern item of the loom.
 const uiLoomPattern = 11
 
-// loomRequestsScenario weaves banners at the loom as TestGoldenMenuRequests
-// compares them: patterns without and with a pattern item, two at once, and
+// loomRequestsScenario weaves banners at the loom as
+// TestMenuRequestScenarios runs them: patterns without and with a pattern item, two at once, and
 // the crafts the loom refuses, some after actions of the same request that
 // the refusal undoes: an unknown pattern, the wrong or no pattern item, an
 // illager banner, no dye, too few banners, no crafts, locked inputs, and

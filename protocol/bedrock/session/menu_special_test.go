@@ -13,7 +13,7 @@ import (
 )
 
 // specialScenario sends the requests that craft special recipes, Bedrock's
-// multi recipes, for TestGoldenMenuRequests, beyond those of the menus and
+// multi recipes, for TestMenuRequestScenarios, beyond those of the menus and
 // multicraft scenarios: crafted in the grid of the inventory, more than
 // once, and refused for every check of the consumption, the result the
 // client names and the snapshot, at the crafting table and the cartography

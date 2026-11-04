@@ -14,7 +14,7 @@ import (
 )
 
 // craftsScenario sends the requests that craft recipes of the crafting
-// table and dynamic recipes, for TestGoldenMenuRequests: shaped, shapeless
+// table and dynamic recipes, for TestMenuRequestScenarios: shaped, shapeless
 // and user-data recipes, crafted once and many times, of one result and of
 // two the client creates one by one, in the grid of the inventory and of a
 // crafting table, refused for every check of the craft, a recipe locked by

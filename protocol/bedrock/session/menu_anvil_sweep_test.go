@@ -12,13 +12,11 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// levelController is a player of a game mode and a level, for the sweeps
-// of the handlers of the session against the menu. It is the owner of the
-// batch of the menu as well.
+// levelController is a player of a game mode and a level, the owner of the
+// batches of the sweeps of the menus.
 type levelController struct {
 	Controllable
 	mode  world.GameMode
@@ -48,59 +46,43 @@ func stationSlots(ui *inventory.Inventory, slots ...int) []string {
 	return s
 }
 
-// stationRun runs a request of the menu of b both ways in tx, from the same
-// UI slots and a player of the game mode and level passed: through the
-// handler of the session, old, and as a batch of the menu, new. Each runs
-// with b placed anew, as one may change it.
+// stationRun runs an operation of the menu of b as a batch in tx, from the
+// UI slots passed and a player of the game mode and level passed, with b
+// placed anew, as one may change it. The batch is rolled back if refused.
 func stationRun(t *testing.T, tx *world.Tx, b world.Block, ui map[int]item.Stack, mode world.GameMode, level int,
-	old func(h *ItemStackRequestHandler, s *Session, c *levelController) error,
-	new func(bt *menu.Tx) error, slots ...int) (stationOutcome, stationOutcome) {
+	op func(bt *menu.Tx) error, slots ...int) stationOutcome {
 	t.Helper()
 	pos := cube.Pos{}
-	run := func(f func(s *Session, c *levelController) error) stationOutcome {
-		tx.SetBlock(pos, b, nil)
-		s := craftingTestSession()
-		s.ui = inventory.New(54, nil)
-		for slot, it := range ui {
-			_ = s.ui.SetItem(slot, it)
-		}
-		s.menu.Store(menu.OpenBlock(tx, pos, s, nil))
-		c := &levelController{mode: mode, level: level}
-		err := f(s, c)
-		return stationOutcome{refused: err != nil, slots: stationSlots(s.ui, slots...), level: c.level}
+	tx.SetBlock(pos, b, nil)
+	s := craftingTestSession()
+	s.ui = inventory.New(54, nil)
+	for slot, it := range ui {
+		_ = s.ui.SetItem(slot, it)
 	}
-	o := run(func(s *Session, c *levelController) error {
-		h := craftingTestHandler()
-		err := old(h, s, c)
-		if err != nil {
-			h.reject(0, s, tx)
-		}
-		return err
+	s.menu.Store(menu.OpenBlock(tx, pos, s, nil))
+	c := &levelController{mode: mode, level: level}
+	bt := menu.Begin(menu.Opts{
+		Tx: tx, Owner: c, Menu: s.menu.Load(), Name: s.nameSlot,
+		Inv: menu.Inventories{Main: s.inv, OffHand: s.offHand, UI: s.ui},
 	})
-	n := run(func(s *Session, c *levelController) error {
-		bt := menu.Begin(menu.Opts{
-			Tx: tx, Owner: c, Menu: s.menu.Load(), Name: s.nameSlot,
-			Inv: menu.Inventories{Main: s.inv, OffHand: s.offHand, UI: s.ui},
-		})
-		err := new(bt)
-		if err != nil {
-			bt.Rollback()
-		} else {
-			bt.Commit()
-		}
-		return err
-	})
-	return o, n
+	err := op(bt)
+	if err != nil {
+		bt.Rollback()
+	} else {
+		bt.Commit()
+	}
+	return stationOutcome{refused: err != nil, slots: stationSlots(s.ui, slots...), level: c.level}
 }
 
-// TestRepairMatchesTheSession sweeps menu.Tx.Repair against the handler of
-// the anvil of the session: swords of every tier, whole, damaged and
-// almost broken, bare, enchanted and worked before; materials of their
-// repair, other swords, enchanted books, a stick and none; a rename, none
-// and one too long; in survival and creative, with too few levels and
-// enough. The result, the inputs left and the levels paid must be the same,
-// and so must the verdict.
-func TestRepairMatchesTheSession(t *testing.T) {
+// TestRepairAsTheSessionDid sweeps menu.Tx.Repair over the inputs the
+// handler of the anvil of the session was swept against: swords of every
+// tier, whole, damaged and almost broken, bare, enchanted and worked
+// before; materials of their repair, other swords, enchanted books, a stick
+// and none; a rename, none and one too long; in survival and creative, with
+// too few levels and enough. The result, the inputs left, the levels paid
+// and the verdict must be those the session's handler gave
+// (testdata/frozen/repair.txt).
+func TestRepairAsTheSessionDid(t *testing.T) {
 	t.Parallel()
 	var inputs, materials []item.Stack
 	for _, tier := range item.ToolTiers() {
@@ -132,14 +114,15 @@ func TestRepairMatchesTheSession(t *testing.T) {
 	)
 	names := [][]string{nil, {"Blade"}, {strings.Repeat("a", 51)}}
 
+	frozen := &frozenSweep{name: "repair", fields: 1}
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *world.Tx) {
 		cases, accepted := 0, 0
-		for _, input := range inputs {
-			for _, material := range materials {
-				for _, filter := range names {
-					for _, mode := range []world.GameMode{world.GameModeSurvival, world.GameModeCreative} {
+		for i, input := range inputs {
+			for j, material := range materials {
+				for k, filter := range names {
+					for m, mode := range []world.GameMode{world.GameModeSurvival, world.GameModeCreative} {
 						for _, level := range []int{2, 39} {
 							cases++
 							ui := map[int]item.Stack{menu.UIAnvilInput: input, menu.UIAnvilMaterial: material}
@@ -147,18 +130,13 @@ func TestRepairMatchesTheSession(t *testing.T) {
 							if filter != nil {
 								name = &filter[0]
 							}
-							old, new := stationRun(t, tx, block.Anvil{Type: block.UndamagedAnvil()}, ui, mode, level,
-								func(h *ItemStackRequestHandler, s *Session, c *levelController) error {
-									return h.handleCraftRecipeOptional(&v2193.CraftRecipeOptionalStackRequestAction{}, s, filter, c, tx)
-								},
+							o := stationRun(t, tx, block.Anvil{Type: block.UndamagedAnvil()}, ui, mode, level,
 								func(bt *menu.Tx) error { return bt.Repair(name) },
 								menu.UIAnvilInput, menu.UIAnvilMaterial, menu.UIResult)
-							if !old.refused {
+							if !o.refused {
 								accepted++
 							}
-							if fmt.Sprint(old) != fmt.Sprint(new) {
-								t.Errorf("%v on %v, rename %q, %T at level %d:\nthe session: %v\nthe menu:    %v", input, material, filter, mode, level, old, new)
-							}
+							frozen.add(fmt.Sprintf("%d %d %d %d %d", i, j, k, m, level), fmt.Sprint(o))
 						}
 					}
 				}
@@ -169,4 +147,5 @@ func TestRepairMatchesTheSession(t *testing.T) {
 			t.Errorf("only %d of %d cases accepted", accepted, cases)
 		}
 	})
+	frozen.check(t)
 }

@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -274,15 +275,17 @@ func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
 
 func TestCraftingAcceptsUserDataShapelessRecipes(t *testing.T) {
 	t.Parallel()
-	s := &Session{recipes: map[uint32]recipe.Recipe{
-		1: recipe.NewUserDataShapeless(nil, item.Stack{}, "crafting_table"),
-	}}
-	h := &ItemStackRequestHandler{}
+	s := craftingTestSession()
+	s.recipes[1] = recipe.NewUserDataShapeless(nil, item.Stack{}, "crafting_table")
 	const want = "times crafted must be at least 1"
-	if err := h.handleCraft(&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
+	if err := handleCraftingRequest(t, nil, craftingTestHandler(), s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1},
+	}}); err == nil || !strings.HasSuffix(err.Error(), want) {
 		t.Fatalf("normal craft error = %v, want %q", err, want)
 	}
-	if err := h.handleAutoCraft(&v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
+	if err := handleCraftingRequest(t, nil, craftingTestHandler(), s, v2193.ItemStackRequest{RequestID: -3, Actions: []v2193.StackRequestAction{
+		&v2193.AutoCraftRecipeStackRequestAction{RecipeNetworkID: 1},
+	}}); err == nil || !strings.HasSuffix(err.Error(), want) {
 		t.Fatalf("auto craft error = %v, want %q", err, want)
 	}
 }
@@ -292,26 +295,26 @@ func TestMultiRecipeCraftsServerValidatedResult(t *testing.T) {
 	s := craftingTestSession()
 	first := item.NewStack(item.Bow{}, 1).WithDurability(10)
 	second := item.NewStack(item.Bow{}, 1).WithDurability(20)
-	_ = s.ui.SetItem(craftingGridSmallOffset, first)
-	_ = s.ui.SetItem(craftingGridSmallOffset+1, second)
+	_ = s.ui.SetItem(menu.UICraftingSmall, first)
+	_ = s.ui.SetItem(menu.UICraftingSmall+1, second)
 	s.recipes[1] = recipe.NewMulti(uuid.MustParse("00000000-0000-0000-0000-000000000001"))
 
 	h := craftingTestHandler()
 	expected := item.NewStack(item.Bow{}, 1).WithDurability(49)
-	err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+	err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{multiResultItem(expected)}},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset, item_id(first))},
-		&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset+1, item_id(second))},
-	}}, s, nil, nil)
+		&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(menu.UICraftingSmall, item_id(first))},
+		&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(menu.UICraftingSmall+1, item_id(second))},
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _ := s.ui.Item(craftingResult)
+	result, _ := s.ui.Item(menu.UIResult)
 	if _, ok := result.Item().(item.Bow); !ok || result.Durability() != 49 {
 		t.Fatalf("multi repair result = %v, want bow with 49 durability", result)
 	}
-	for _, slot := range []int{craftingGridSmallOffset, craftingGridSmallOffset + 1} {
+	for _, slot := range []int{menu.UICraftingSmall, menu.UICraftingSmall + 1} {
 		if input, _ := s.ui.Item(slot); !input.Empty() {
 			t.Fatalf("multi recipe input slot %d was not consumed", slot)
 		}
@@ -326,8 +329,8 @@ func TestUserDataShapelessPreservesServerSourceNBT(t *testing.T) {
 	_ = sourceBox.Inventory(nil, cube.Pos{}).SetItem(0, item.NewStack(item.Apple{}, 3))
 	source := item.NewStack(sourceBox, 1).WithCustomName("Supplies")
 	dye := item.NewStack(item.Dye{Colour: item.ColourBlue()}, 1)
-	_ = s.ui.SetItem(craftingGridSmallOffset, source)
-	_ = s.ui.SetItem(craftingGridSmallOffset+1, dye)
+	_ = s.ui.SetItem(menu.UICraftingSmall, source)
+	_ = s.ui.SetItem(menu.UICraftingSmall+1, dye)
 
 	expectedBox := block.NewShulkerBox()
 	expectedBox.Type = block.RedShulkerBox()
@@ -336,18 +339,18 @@ func TestUserDataShapelessPreservesServerSourceNBT(t *testing.T) {
 	s.recipes[1] = recipe.NewUserDataShapeless([]recipe.Item{item.NewStack(expectedBox, 1), dye}, item.NewStack(outputBox, 1), "crafting_table")
 
 	h := craftingTestHandler()
-	err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+	err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{{
 			Identifier: "minecraft:blue_shulker_box",
 			Count:      1,
 			NBTData:    map[string]any{"CustomName": "injected"},
 		}}},
-	}}, s, nil, nil)
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _ := s.ui.Item(craftingResult)
+	result, _ := s.ui.Item(menu.UIResult)
 	box, ok := result.Item().(block.ShulkerBox)
 	if !ok {
 		t.Fatalf("result item = %T, want block.ShulkerBox", result.Item())
@@ -424,9 +427,9 @@ func TestMultiRecipeRejectsUntrustedConsumption(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			s := craftingTestSession()
 			for slot, stack := range test.input {
-				_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
+				_ = s.ui.SetItem(menu.UICraftingSmall+slot, stack)
 			}
-			err := craftingTestHandler().handleRequest(multiCraftingRequest(s, test.id, test.result, test.consumes...), s, nil, nil)
+			err := handleCraftingRequest(t, nil, craftingTestHandler(), s, multiCraftingRequest(s, test.id, test.result, test.consumes...))
 			requireRejectedCraft(t, s, err, test.input)
 		})
 	}
@@ -434,11 +437,11 @@ func TestMultiRecipeRejectsUntrustedConsumption(t *testing.T) {
 		s := craftingTestSession()
 		input := []item.Stack{item.NewStack(item.Paper{}, 2), item.NewStack(item.Gunpowder{}, 1)}
 		for slot, stack := range input {
-			_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
+			_ = s.ui.SetItem(menu.UICraftingSmall+slot, stack)
 		}
 		req := multiCraftingRequest(s, fireworkMultiRecipe, v2193.StackRequestItem{Identifier: "minecraft:firework_rocket", Count: 3}, 0, 1)
 		req.Actions[2].(*v2193.ConsumeStackRequestAction).Count = 2
-		err := craftingTestHandler().handleRequest(req, s, nil, nil)
+		err := handleCraftingRequest(t, nil, craftingTestHandler(), s, req)
 		requireRejectedCraft(t, s, err, input)
 	})
 }
@@ -454,15 +457,15 @@ func TestUserDataShapelessRejectsExtraGridItem(t *testing.T) {
 		item.NewStack(item.Apple{}, 1),
 	}
 	for slot, stack := range input {
-		_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
+		_ = s.ui.SetItem(menu.UICraftingSmall+slot, stack)
 	}
 	output := block.NewShulkerBox()
 	output.Type = block.BlueShulkerBox()
 	s.recipes[1] = recipe.NewUserDataShapeless([]recipe.Item{item.NewStack(box, 1), input[1]}, item.NewStack(output, 1), "crafting_table")
 
-	err := craftingTestHandler().handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+	err := handleCraftingRequest(t, nil, craftingTestHandler(), s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
-	}}, s, nil, nil)
+	}})
 	requireRejectedCraft(t, s, err, input)
 }
 
@@ -544,7 +547,7 @@ func TestMultiRecipeValidRepresentatives(t *testing.T) {
 func TestBannerMultiRecipeDerivesPatternFromGrid(t *testing.T) {
 	t.Parallel()
 	t.Run("border arrangement", func(t *testing.T) {
-		s := largeCraftingTestSession()
+		s := largeCraftingTestSession(t)
 		base := block.Banner{Colour: item.ColourWhite()}
 		input := make([]item.Stack, 9)
 		for slot := range input {
@@ -629,10 +632,10 @@ func TestBannerMultiRecipeRejectsForgedPatterns(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			s := craftingTestSession()
 			if test.large {
-				s.openedContainerID.Store(1)
+				openCraftingTable(t, s)
 			}
 			setCraftingInput(t, s, test.input)
-			err := craftingTestHandler().handleRequest(multiCraftingRequest(s, bannerAddPatternMultiRecipe, test.result, nonEmptySlots(test.input)...), s, nil, nil)
+			err := handleCraftingRequest(t, nil, craftingTestHandler(), s, multiCraftingRequest(s, bannerAddPatternMultiRecipe, test.result, nonEmptySlots(test.input)...))
 			requireRejectedCraft(t, s, err, test.input)
 		})
 	}
@@ -643,7 +646,7 @@ func TestBannerMultiRecipeRejectsForgedPatterns(t *testing.T) {
 		setCraftingInput(t, s, input)
 		result := multiResultItem(patterned(block.CreeperBannerPattern()))
 		result.NBTData["forged"] = int32(1)
-		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, bannerAddPatternMultiRecipe, result, 0, 1, 2), s, nil, nil)
+		err := handleCraftingRequest(t, nil, craftingTestHandler(), s, multiCraftingRequest(s, bannerAddPatternMultiRecipe, result, 0, 1, 2))
 		requireRejectedCraft(t, s, err, input)
 	})
 
@@ -653,7 +656,7 @@ func TestBannerMultiRecipeRejectsForgedPatterns(t *testing.T) {
 		patternedBanner.Patterns = []block.BannerPatternLayer{{Type: block.BorderBannerPattern(), Colour: item.ColourRed()}}
 		input := []item.Stack{item.NewStack(base, 1), item.NewStack(patternedBanner, 1)}
 		setCraftingInput(t, s, input)
-		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, bannerDuplicateMultiRecipe, multiResultItem(input[1].Grow(1)), 0, 1), s, nil, nil)
+		err := handleCraftingRequest(t, nil, craftingTestHandler(), s, multiCraftingRequest(s, bannerDuplicateMultiRecipe, multiResultItem(input[1].Grow(1)), 0, 1))
 		requireRejectedCraft(t, s, err, input)
 	})
 }
@@ -740,12 +743,7 @@ func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
 		s := craftingTestSession()
 		input := []item.Stack{craftingMapStack(), item.NewStack(item.Paper{}, 1)}
 		setCraftingInput(t, s, input)
-		var craftErr error
-		if err := w.Do(func(tx *world.Tx) {
-			craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1), s, tx, nil)
-		}).Wait(context.Background()); err != nil {
-			t.Fatal(err)
-		}
+		craftErr := handleCraftingRequest(t, w, craftingTestHandler(), s, multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1))
 		requireRejectedCraft(t, s, craftErr, input)
 	})
 
@@ -755,12 +753,7 @@ func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
 		s := craftingTestSession()
 		input := []item.Stack{craftingMapStack(), item.NewStack(item.Paper{}, 1)}
 		setCraftingInput(t, s, input)
-		var craftErr error
-		if err := w.Do(func(tx *world.Tx) {
-			craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1), s, tx, nil)
-		}).Wait(context.Background()); err != nil {
-			t.Fatal(err)
-		}
+		craftErr := handleCraftingRequest(t, w, craftingTestHandler(), s, multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1))
 		requireRejectedCraft(t, s, craftErr, input)
 	})
 
@@ -770,12 +763,7 @@ func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
 		s := craftingTestSession()
 		input := []item.Stack{craftingMapStack(), item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)}
 		setCraftingInput(t, s, input)
-		var craftErr error
-		if err := w.Do(func(tx *world.Tx) {
-			craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, mapLockingMultiRecipe, multiResultItem(input[0]), 0, 1), s, tx, nil)
-		}).Wait(context.Background()); err != nil {
-			t.Fatal(err)
-		}
+		craftErr := handleCraftingRequest(t, w, craftingTestHandler(), s, multiCraftingRequest(s, mapLockingMultiRecipe, multiResultItem(input[0]), 0, 1))
 		requireRejectedCraft(t, s, craftErr, input)
 	})
 
@@ -786,12 +774,7 @@ func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
 		input := []item.Stack{craftingMapStack(), item.NewStack(item.Paper{}, 1)}
 		setCraftingInput(t, s, input)
 		forged := craftingMapStack().WithCustomName("forged")
-		var craftErr error
-		if err := w.Do(func(tx *world.Tx) {
-			craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(forged), 0, 1), s, tx, nil)
-		}).Wait(context.Background()); err != nil {
-			t.Fatal(err)
-		}
+		craftErr := handleCraftingRequest(t, w, craftingTestHandler(), s, multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(forged), 0, 1))
 		requireRejectedCraft(t, s, craftErr, input)
 		if _, err := provider.LoadMap(43); err == nil {
 			t.Fatal("rejected map craft persisted a new map")
@@ -802,7 +785,7 @@ func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
 		s := craftingTestSession()
 		input := []item.Stack{item.NewStack(item.FilledMap{}, 1), item.NewStack(item.Paper{}, 1)}
 		setCraftingInput(t, s, input)
-		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1), s, nil, nil)
+		err := handleCraftingRequest(t, nil, craftingTestHandler(), s, multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1))
 		requireRejectedCraft(t, s, err, input)
 	})
 }
@@ -820,19 +803,14 @@ func mapCraftingWorld(t *testing.T, source world.MapData) (*world.World, *mapCra
 func craftMapValidMulti(t *testing.T, w *world.World, s *Session, id string, expected item.Stack, input []item.Stack) item.Stack {
 	t.Helper()
 	if len(input) == 9 {
-		s.openedContainerID.Store(1)
+		openCraftingTable(t, s)
 	}
 	setCraftingInput(t, s, input)
-	var craftErr error
-	if err := w.Do(func(tx *world.Tx) {
-		craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, id, multiResultItem(expected), nonEmptySlots(input)...), s, tx, nil)
-	}).Wait(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	craftErr := handleCraftingRequest(t, w, craftingTestHandler(), s, multiCraftingRequest(s, id, multiResultItem(expected), nonEmptySlots(input)...))
 	if craftErr != nil {
 		t.Fatal(craftErr)
 	}
-	crafted, _ := s.ui.Item(craftingResult)
+	crafted, _ := s.ui.Item(menu.UIResult)
 	return crafted
 }
 
@@ -892,7 +870,7 @@ func TestRepairMultiRecipeRejectsInvalidCountAndTampering(t *testing.T) {
 		s := craftingTestSession()
 		input := []item.Stack{item.NewStack(craftingStackableDurable{}, 2), item.NewStack(craftingStackableDurable{}, 1)}
 		setCraftingInput(t, s, input)
-		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, repairMultiRecipe, multiResultItem(item.NewStack(craftingStackableDurable{}, 1)), 0, 1), s, nil, nil)
+		err := handleCraftingRequest(t, nil, craftingTestHandler(), s, multiCraftingRequest(s, repairMultiRecipe, multiResultItem(item.NewStack(craftingStackableDurable{}, 1)), 0, 1))
 		requireRejectedCraft(t, s, err, input)
 	})
 
@@ -901,7 +879,7 @@ func TestRepairMultiRecipeRejectsInvalidCountAndTampering(t *testing.T) {
 		input := []item.Stack{item.NewStack(item.Bow{}, 1).WithDurability(10), item.NewStack(item.Bow{}, 1).WithDurability(20)}
 		setCraftingInput(t, s, input)
 		forged := item.NewStack(item.Bow{}, 1).WithDurability(49).WithCustomName("forged")
-		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, repairMultiRecipe, multiResultItem(forged), 0, 1), s, nil, nil)
+		err := handleCraftingRequest(t, nil, craftingTestHandler(), s, multiCraftingRequest(s, repairMultiRecipe, multiResultItem(forged), 0, 1))
 		requireRejectedCraft(t, s, err, input)
 	})
 }
@@ -967,10 +945,10 @@ func craftValidMulti(t *testing.T, s *Session, id string, result v2193.StackRequ
 	t.Helper()
 	setCraftingInput(t, s, input)
 	consumes := nonEmptySlots(input)
-	if err := craftingTestHandler().handleRequest(multiCraftingRequest(s, id, result, consumes...), s, nil, nil); err != nil {
+	if err := handleCraftingRequest(t, nil, craftingTestHandler(), s, multiCraftingRequest(s, id, result, consumes...)); err != nil {
 		t.Fatal(err)
 	}
-	crafted, _ := s.ui.Item(craftingResult)
+	crafted, _ := s.ui.Item(menu.UIResult)
 	return crafted
 }
 
@@ -981,7 +959,7 @@ func multiCraftingRequest(s *Session, id string, result v2193.StackRequestItem, 
 		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{result}},
 	}
 	for _, inputSlot := range consumes {
-		slot := int(s.craftingOffset()) + inputSlot
+		slot := gridOffset(s) + inputSlot
 		stack, _ := s.ui.Item(slot)
 		actions = append(actions, &v2193.ConsumeStackRequestAction{
 			Count:  1,
@@ -997,12 +975,12 @@ func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stac
 		t.Fatal("craft succeeded, want rejection")
 	}
 	for slot, want := range input {
-		got, _ := s.ui.Item(int(s.craftingOffset()) + slot)
+		got, _ := s.ui.Item(gridOffset(s) + slot)
 		if !got.Equal(want) {
 			t.Fatalf("input slot %d = %v, want resynchronised %v", slot, got, want)
 		}
 	}
-	if result, _ := s.ui.Item(craftingResult); !result.Empty() {
+	if result, _ := s.ui.Item(menu.UIResult); !result.Empty() {
 		t.Fatalf("rejected craft produced %v", result)
 	}
 	pk, ok := (s.testPacket()).(*v2193.ItemStackResponsePacket)
@@ -1024,7 +1002,7 @@ func multiResultItem(stack item.Stack) v2193.StackRequestItem {
 func setCraftingInput(t *testing.T, s *Session, input []item.Stack) {
 	t.Helper()
 	for slot, stack := range input {
-		if err := s.ui.SetItem(int(s.craftingOffset())+slot, stack); err != nil {
+		if err := s.ui.SetItem(gridOffset(s)+slot, stack); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1041,18 +1019,29 @@ func nonEmptySlots(input []item.Stack) []int {
 }
 
 // craftingTestSession returns a session of no connection and no player,
-// whose requests run through the handlers the session had before they
-// moved into server/menu.
+// whose requests run as batches over its inventories (batchController).
 func craftingTestSession() *Session {
 	return &Session{
-		br:              world.DefaultBlockRegistry,
-		recipes:         make(map[uint32]recipe.Recipe),
-		ui:              inventory.New(51, nil),
-		inv:             inventory.New(36, nil),
-		offHand:         inventory.New(1, nil),
-		holdPackets:     1,
-		sessionRequests: true,
+		br:          world.DefaultBlockRegistry,
+		recipes:     make(map[uint32]recipe.Recipe),
+		ui:          inventory.New(51, nil),
+		inv:         inventory.New(36, nil),
+		offHand:     inventory.New(1, nil),
+		holdPackets: 1,
 	}
+}
+
+// handleCraftingRequest handles req for s with h as the session handles a
+// request of its client, in a transaction of w, or of a world of its own if
+// w is nil: the batch of the request runs over the inventories of s.
+func handleCraftingRequest(t testing.TB, w *world.World, h *ItemStackRequestHandler, s *Session, req v2193.ItemStackRequest) (err error) {
+	t.Helper()
+	if w == nil {
+		w = world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+		t.Cleanup(func() { _ = w.Close() })
+	}
+	<-w.Exec(func(tx *world.Tx) { err = h.handleRequest(req, s, tx, batchController{tx: tx, s: s}) })
+	return err
 }
 
 // openTestMenu opens the menu of b, placed in a world of its own, as the
@@ -1070,10 +1059,27 @@ func openTestMenu(t testing.TB, s *Session, b world.Block) *menu.Menu {
 	return m
 }
 
-func largeCraftingTestSession() *Session {
+// largeCraftingTestSession returns a session with a crafting table open, of
+// the grid of 3x3.
+func largeCraftingTestSession(t testing.TB) *Session {
 	s := craftingTestSession()
-	s.openedContainerID.Store(1)
+	openCraftingTable(t, s)
 	return s
+}
+
+// openCraftingTable opens a crafting table as the menu the player of s has
+// open, in the window of a crafting table.
+func openCraftingTable(t testing.TB, s *Session) {
+	t.Helper()
+	openTestMenu(t, s, block.CraftingTable{})
+	s.openedContainerID.Store(uint32(v2193.ContainerTypeWorkbench))
+}
+
+// gridOffset returns the UI slot of the first slot of the crafting grid of
+// the menu the player of s has open.
+func gridOffset(s *Session) int {
+	first, _ := s.menu.Load().Grid()
+	return first
 }
 
 func craftingTestHandler() *ItemStackRequestHandler {
@@ -1101,10 +1107,10 @@ func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
 	pos := cube.Pos{0, 64, 0}
 	s.openedContainerID.Store(uint32(v2193.ContainerTypeCartography))
 	glass := item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)
-	if err := s.ui.SetItem(cartographyInputSlot, craftingMapStack()); err != nil {
+	if err := s.ui.SetItem(menu.UICartographyInput, craftingMapStack()); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.ui.SetItem(cartographyInputSlot+1, glass); err != nil {
+	if err := s.ui.SetItem(menu.UICartographyInput+1, glass); err != nil {
 		t.Fatal(err)
 	}
 	s.recipes[1] = recipe.NewMulti(uuid.MustParse(mapLockingMultiRecipe))
@@ -1120,23 +1126,23 @@ func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
 	req := v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 		&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 		&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{multiResultItem(craftingMapStack())}},
-		consume(v2193.ContainerCartographyInput, cartographyInputSlot),
-		consume(v2193.ContainerCartographyAdditional, cartographyInputSlot+1),
+		consume(v2193.ContainerCartographyInput, menu.UICartographyInput),
+		consume(v2193.ContainerCartographyAdditional, menu.UICartographyInput+1),
 	}}
 	var craftErr error
 	if err := w.Do(func(tx *world.Tx) {
 		tx.SetBlock(pos, block.CartographyTable{}, nil)
 		s.menu.Store(menu.OpenBlock(tx, pos, s, nil))
-		craftErr = craftingTestHandler().handleRequest(req, s, tx, nil)
+		craftErr = craftingTestHandler().handleRequest(req, s, tx, batchController{tx: tx, s: s})
 	}).Wait(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if craftErr != nil {
 		t.Fatal(craftErr)
 	}
-	result, _ := s.ui.Item(craftingResult)
+	result, _ := s.ui.Item(menu.UIResult)
 	requireMapTransition(t, result, 43)
-	for slot := cartographyInputSlot; slot <= cartographyInputSlot+1; slot++ {
+	for slot := menu.UICartographyInput; slot <= menu.UICartographyInput+1; slot++ {
 		if left, _ := s.ui.Item(slot); !left.Empty() {
 			t.Fatalf("cartography slot %d kept %v after the craft", slot, left)
 		}
@@ -1152,26 +1158,26 @@ func TestMultiRecipeConsumesInSlotOrder(t *testing.T) {
 		s := craftingTestSession()
 		first := item.NewStack(item.Bow{}, 1).WithDurability(10)
 		second := item.NewStack(item.Bow{}, 1).WithDurability(20)
-		_ = s.ui.SetItem(craftingGridSmallOffset, first)
-		_ = s.ui.SetItem(craftingGridSmallOffset+1, second)
+		_ = s.ui.SetItem(menu.UICraftingSmall, first)
+		_ = s.ui.SetItem(menu.UICraftingSmall+1, second)
 		s.recipes[1] = recipe.NewMulti(uuid.MustParse(repairMultiRecipe))
 		var writes []int
 		s.ui.SlotFunc(func(slot int, _, _ item.Stack) { writes = append(writes, slot) })
 
 		h := craftingTestHandler()
-		err := h.handleRequest(v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
+		err := handleCraftingRequest(t, nil, h, s, v2193.ItemStackRequest{RequestID: -1, Actions: []v2193.StackRequestAction{
 			&v2193.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
 			&v2193.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []v2193.StackRequestItem{multiResultItem(item.NewStack(item.Bow{}, 1).WithDurability(49))}},
 			// The client names the second slot first: the order of the
 			// actions does not choose it either.
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset+1, item_id(second))},
-			&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset, item_id(first))},
-		}}, s, nil, nil)
+			&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(menu.UICraftingSmall+1, item_id(second))},
+			&v2193.ConsumeStackRequestAction{Count: 1, Source: craftingSlot(menu.UICraftingSmall, item_id(first))},
+		}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(writes) < 2 || writes[0] != craftingGridSmallOffset || writes[1] != craftingGridSmallOffset+1 {
-			t.Fatalf("the UI slots were written in the order %v, want %d and %d first", writes, craftingGridSmallOffset, craftingGridSmallOffset+1)
+		if len(writes) < 2 || writes[0] != menu.UICraftingSmall || writes[1] != menu.UICraftingSmall+1 {
+			t.Fatalf("the UI slots were written in the order %v, want %d and %d first", writes, menu.UICraftingSmall, menu.UICraftingSmall+1)
 		}
 	}
 }

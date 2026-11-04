@@ -14,27 +14,7 @@
 #
 # Blank lines and lines starting with # are ignored. Entries are sorted.
 
-protocol/bedrock/session/handler_anvil.go (*world.Tx).PlaySound
-protocol/bedrock/session/handler_anvil.go (*world.Tx).PlaySound
-protocol/bedrock/session/handler_anvil.go (*world.Tx).PlaySound
-protocol/bedrock/session/handler_anvil.go (*world.Tx).SetBlock
-protocol/bedrock/session/handler_beacon.go (*world.Tx).SetBlock
-protocol/bedrock/session/handler_crafting.go (*world.Tx).LockMap
-protocol/bedrock/session/handler_crafting.go (*world.Tx).ScaleMap
 protocol/bedrock/session/handler_emote.go (world.Viewer).ViewEmote
-protocol/bedrock/session/handler_grindstone.go (*world.Tx).AddEntity
-protocol/bedrock/session/handler_item_stack_request.go (*inventory.Inventory).SetItem
-protocol/bedrock/session/handler_item_stack_request.go (*inventory.Inventory).SetItem
-protocol/bedrock/session/handler_item_stack_request.go (*world.Tx).AddEntity
-protocol/bedrock/session/handler_item_stack_request.go (*world.Tx).PlaySound
-protocol/bedrock/session/handler_item_stack_request.go (*world.Tx).PlaySound
-protocol/bedrock/session/handler_item_stack_request.go (*world.Tx).SetBlock
-protocol/bedrock/session/handler_item_stack_request.go (block.Crafter).NotifySlotState
-protocol/bedrock/session/handler_item_stack_request.go (entity.Merchant).CompleteMerchantTrade
-protocol/bedrock/session/handler_item_stack_request.go (session.smelter).ResetExperience
-protocol/bedrock/session/handler_item_stack_request.go block.NotifyComparatorUpdate
-protocol/bedrock/session/handler_item_stack_request.go block.NotifyComparatorUpdate
-protocol/bedrock/session/handler_merchant.go (entity.Merchant).CompleteMerchantTrade
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc
 protocol/bedrock/session/player.go (*inventory.Inventory).SlotFunc

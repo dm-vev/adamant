@@ -17,11 +17,6 @@ func (s *Session) HandlePacket(pk proto.Packet, tx *world.Tx, c Controllable) er
 	return s.handlePacket(pk, tx, c)
 }
 
-// UseSessionRequests has the session handle item stack requests through
-// its own handlers, as before they moved into server/menu, which
-// TestGoldenMenuRequests compares with the batches of the menu.
-func UseSessionRequests(s *Session) { s.sessionRequests = true }
-
 // Inventories returns the inventories of the player of the session, as the
 // session holds them.
 func (s *Session) Inventories() (inv, offHand, enderChest, ui *inventory.Inventory, armour *inventory.Armour) {

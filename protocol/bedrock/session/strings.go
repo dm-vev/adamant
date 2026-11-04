@@ -7,9 +7,6 @@ const (
 	// maxChatLength bounds a chat message: BDS passes on messages of up to
 	// 512 characters and drops longer ones.
 	maxChatLength = 512
-	// maxItemName bounds the name a player gives an item in an anvil, as
-	// Java does.
-	maxItemName = 50
 	// maxNBTString bounds a string the server keeps in NBT, as the game
 	// reads one: 32767 bytes.
 	maxNBTString = 32767

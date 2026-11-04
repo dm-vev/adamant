@@ -2039,19 +2039,6 @@ func (s *Session) sendMerchantOffers(e *world.EntityHandle, merchant entity.Merc
 	})
 }
 
-func merchantOffersFor(merchant entity.Merchant, user world.Entity) ([]entity.MerchantOffer, error) {
-	return merchant.MerchantOffersFor(user)
-}
-
-func (s *Session) notifyMerchantError(user world.Entity, message string, err error) {
-	if s.conf.Log != nil {
-		s.conf.Log.Error(message, "err", err)
-	}
-	if messenger, ok := user.(interface{ Message(...any) }); ok {
-		messenger.Message("Merchant offers are temporarily unavailable.")
-	}
-}
-
 func serializeMerchantOffers(offers []entity.MerchantOffer) ([]byte, error) {
 	recipes := make([]any, len(offers))
 	for i, offer := range offers {

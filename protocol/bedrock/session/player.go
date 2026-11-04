@@ -202,14 +202,6 @@ func (s *Session) sendItem(item item.Stack, slot int, windowID uint32) {
 	})
 }
 
-const (
-	craftingGridSizeSmall   = 4
-	craftingGridSizeLarge   = 9
-	craftingGridSmallOffset = 28
-	craftingGridLargeOffset = 32
-	craftingResult          = 50
-)
-
 // smelter is an interface representing a block used to smelt items.
 type smelter interface {
 	// ResetExperience resets the collected experience of the smelter, and returns the amount of experience that was reset.
