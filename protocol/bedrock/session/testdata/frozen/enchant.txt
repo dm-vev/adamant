@@ -1,6 +1,6 @@
 # The outcomes of the sweep of enchant, as the handlers of item stack requests
 # the session had before they moved into server/menu gave them: the oracle
-# of the sweep, recorded when the handlers went (ec97d344). Each line is
+# of the sweep, recorded from the handlers of E1 (94661a49). Each line is
 # "<case>\t<outcome>", or, for each group of cases that share the first two fields of the
 # case, "<group>\t<n> cases sha256:<digest of their lines>".
 #
