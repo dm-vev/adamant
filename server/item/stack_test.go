@@ -154,6 +154,28 @@ func TestStackMerging(t *testing.T) {
 	}
 }
 
+// Merging into an empty slot moves the stack there, as Slot.safeInsert does
+// for an empty slot: the items keep their type and only the slot's limit
+// applies.
+func TestStackMergingIntoEmpty(t *testing.T) {
+	for name, empty := range map[string]Stack{
+		"zero stack":      {},
+		"empty of a type": NewStack(Sword{Tier: ToolTierIron}, 0),
+		"emptied by grow": NewStack(Diamond{}, 5).Grow(-10),
+	} {
+		t.Run(name, func(t *testing.T) {
+			a, b := empty.AddStack(NewStack(Diamond{}, 70).Grow(-6))
+			if _, ok := a.Item().(Diamond); !ok || a.Count() != 64 || !b.Empty() {
+				t.Fatalf("merged into %v, left %v; want 64 diamonds and nothing", a, b)
+			}
+			a, b = empty.AddStack(NewStack(EnderPearl{}, 16).Grow(4))
+			if _, ok := a.Item().(EnderPearl); !ok || a.Count() != 16 || b.Count() != 4 {
+				t.Fatalf("merged into %v, left %v; want 16 pearls and 4", a, b)
+			}
+		})
+	}
+}
+
 func TestStackCountAndValues(t *testing.T) {
 	s := NewStack(Diamond{}, 5)
 	if s.Grow(-10).Count() != 0 || !s.Grow(-5).Empty() || s.Grow(3).Count() != 8 {

@@ -410,7 +410,17 @@ func (s Stack) WithItem(t world.Item) Stack {
 // returned by Item.MaxCount(). The second stack will have the leftover items: It may be empty if the count of
 // both stacks together don't exceed the max count.
 // If the two stacks are not comparable, AddStack will return both the original stack and the stack passed.
+// If s is empty, the first stack returned holds the items of s2, up to the max count of s2.
 func (s Stack) AddStack(s2 Stack) (a, b Stack) {
+	if s.Empty() {
+		// Nothing of s remains to merge into: s2 moves over, keeping its
+		// item type and limit.
+		n := min(s2.Count(), s2.MaxCount())
+		a, b = s2, s2
+		a.count, b.count = n, s2.count-n
+		a.id, b.id = newID(), newID()
+		return a, b
+	}
 	if s.Count() >= s.MaxCount() {
 		// No more items could be added to the original stack.
 		return s, s2
