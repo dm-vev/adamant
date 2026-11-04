@@ -42,7 +42,7 @@ func (breach) ArmourMultiplier(level int) float64 {
 
 // CompatibleWithEnchantment ...
 func (breach) CompatibleWithEnchantment(t item.EnchantmentType) bool {
-	return t != Density
+	return damageCompatible(Breach, t)
 }
 
 // CompatibleWithItem ...

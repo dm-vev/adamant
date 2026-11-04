@@ -41,7 +41,7 @@ func (density) AdditionalDamage(level int, distance float64) float64 {
 
 // CompatibleWithEnchantment ...
 func (density) CompatibleWithEnchantment(t item.EnchantmentType) bool {
-	return t != Breach
+	return damageCompatible(Density, t)
 }
 
 // CompatibleWithItem ...
