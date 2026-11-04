@@ -3875,6 +3875,7 @@ func (p *Player) BeginMenu(n menu.Namer) *menu.Tx {
 		Name:   n,
 		Log:    p.log,
 		Done:   func() { p.menuTx.Store(false) },
+		Refuse: p.menuRefusal(),
 	})
 }
 
@@ -4040,6 +4041,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	if p.breaking {
 		p.ContinueBreaking(p.breakingFace)
 	}
+	p.checkMenuReach()
 
 	now := time.Now()
 	p.cooldownsMu.Lock()

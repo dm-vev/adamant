@@ -18,6 +18,9 @@ import (
 // limited_crafting is on. The output of a user-data shapeless recipe keeps
 // the data of the input it is made of.
 func (t *Tx) Craft(craft recipe.Recipe, timesCrafted int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	_, shaped := craft.(recipe.Shaped)
 	_, shapeless := craft.(recipe.Shapeless)
 	_, userDataShapeless := craft.(recipe.UserDataShapeless)
@@ -104,6 +107,9 @@ func (t *Tx) Craft(craft recipe.Recipe, timesCrafted int) error {
 // matches the crafting grid of the menu, at most times times: as many as the
 // smallest stack of the grid allows. Every stack of the grid is an input.
 func (t *Tx) CraftDynamic(timesCrafted int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	if timesCrafted < 1 {
 		return fmt.Errorf("times crafted must be at least 1")
 	}

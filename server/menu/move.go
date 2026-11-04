@@ -21,6 +21,9 @@ import (
 // inventory or in its slot out of it. Taking the result of a furnace, blast
 // furnace or smoker drops the experience it collected at the player's feet.
 func (t *Tx) Move(from, to Ref, count int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	if t.sameSlot(from.Slot, to.Slot) {
 		// The items would be taken out of the slot and added to what it
 		// held before.
@@ -141,6 +144,9 @@ func (t *Tx) moveOutOfBundle(from, to Ref, count int, bundleStack, destination i
 // inventories are called for the take and the place of both stacks, and
 // fail it if any cancels.
 func (t *Tx) Swap(a, b Ref) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	if t.sameSlot(a.Slot, b.Slot) {
 		return fmt.Errorf("swap: %w", ErrSameSlot)
 	}

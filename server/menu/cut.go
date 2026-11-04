@@ -12,6 +12,9 @@ import (
 // The stonecutter of the menu takes its input once for each craft, and the
 // input must match the one input of the recipe and not be locked.
 func (t *Tx) Cut(r recipe.Recipe, times int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	if m := t.o.Menu; m == nil {
 		return fmt.Errorf("no stonecutter container opened")
 	} else if _, ok := t.o.Tx.Block(m.Pos()).(block.Stonecutter); !ok {

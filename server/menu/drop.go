@@ -13,6 +13,9 @@ import (
 // refuses a stack cursed with binding in an armour slot and a locked item,
 // as Move does.
 func (t *Tx) Drop(from Ref, count int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	i, _ := t.Item(from.Slot)
 	if err := t.ensureBindingAllowsRemoval(i, from.Slot, Slot{}); err != nil {
 		return err
@@ -38,6 +41,9 @@ func (t *Tx) Drop(from Ref, count int) error {
 // Destroy removes count items of a slot. Only a player in a game mode with
 // the creative inventory may, and not a locked item.
 func (t *Tx) Destroy(from Ref, count int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	if !t.o.Owner.GameMode().CreativeInventory() {
 		return fmt.Errorf("can only destroy items in gamemode creative/spectator")
 	}
@@ -58,6 +64,9 @@ func (t *Tx) Destroy(from Ref, count int) error {
 // Touch sets a slot to what it holds, so that it counts as changed: a tool
 // that wore while mining.
 func (t *Tx) Touch(r Ref) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	i, _ := t.Item(r.Slot)
 	if err := t.set(r, i); err != nil {
 		return err

@@ -15,6 +15,9 @@ import (
 // of all enchantments but curses. The enchantments removed drop experience
 // at the eyes of the player, between half their cost and all of it.
 func (t *Tx) Grind() error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	// First check if there actually is a grindstone opened.
 	m := t.o.Menu
 	if m == nil {

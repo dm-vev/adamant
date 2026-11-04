@@ -97,6 +97,10 @@ type Opts struct {
 	Log    *slog.Logger
 	// Done is called once the batch committed or rolled back.
 	Done func()
+	// Refuse, if not nil, is what every operation of the batch fails with,
+	// before it changes anything: a batch the game refuses whole, such as
+	// one beyond the operations a player may make in a tick.
+	Refuse error
 }
 
 // Tx is a batch of operations on the slots of a player and its menu. It
@@ -121,6 +125,12 @@ func Begin(o Opts) *Tx {
 	return &Tx{o: o}
 }
 
+// refused returns the error every operation of a refused batch fails with,
+// nil for others.
+func (t *Tx) refused() error {
+	return t.o.Refuse
+}
+
 // Item returns the stack in a slot.
 func (t *Tx) Item(s Slot) (item.Stack, error) {
 	return s.Inv.Item(s.Index)
@@ -135,6 +145,9 @@ func (t *Tx) Changes() []Change {
 // TakeResult puts the result of index i of the crafts of the batch in the
 // result slot. A craft of one result does it itself, for index 0.
 func (t *Tx) TakeResult(i int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	if i < 0 || i >= len(t.results) {
 		// The index comes from the client; reject out-of-range values to avoid panics.
 		return fmt.Errorf("invalid pending result slot: %v", i)

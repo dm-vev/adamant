@@ -13,6 +13,9 @@ import (
 // dye, each at least times times, and the pattern item if the pattern needs
 // one; it keeps the pattern item. Neither input may be locked.
 func (t *Tx) Weave(pattern block.BannerPatternType, times int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	// First check if there actually is a loom opened: a menu, and a loom where it was opened.
 	m := t.o.Menu
 	if m == nil {

@@ -54,8 +54,10 @@ type acState struct {
 	breaking breakState
 	places   anticheat.Bucket
 	attack   attackState
-	// uses holds the uses of items without a cooldown FastUse allows.
+	// uses holds the uses of items without a cooldown FastUse allows; menu
+	// is what Menu keeps.
 	uses anticheat.Bucket
+	menu menuState
 
 	// impulses are the velocities the server gave the player that its
 	// client may still apply, each until a tick of the player.

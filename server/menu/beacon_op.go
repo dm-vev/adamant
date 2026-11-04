@@ -17,6 +17,9 @@ import (
 // regeneration from level 4, and a secondary effect only at level 4. The
 // payment is taken.
 func (t *Tx) PayBeacon(primary, secondary effect.LastingType) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	slot := Slot{Inv: t.o.Inv.UI, Index: UIBeaconPayment}
 	// First check if there actually is a beacon opened.
 	m := t.o.Menu

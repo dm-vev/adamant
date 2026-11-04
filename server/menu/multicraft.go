@@ -44,6 +44,9 @@ type MultiCraft struct {
 // recipes of the table are crafted, or the crafting grid of the menu. A
 // batch crafts one special recipe at a time.
 func (t *Tx) BeginMultiCraft(craft recipe.Multi, timesCrafted int) (*MultiCraft, error) {
+	if err := t.refused(); err != nil {
+		return nil, err
+	}
 	if craft.Block() != "crafting_table" {
 		return nil, fmt.Errorf("multi recipe is not a crafting table recipe")
 	}

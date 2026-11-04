@@ -17,6 +17,9 @@ import (
 // 39 for a rename alone and less than 40 outside creative. Outside
 // creative, the anvil may wear down a state (12%), which happens last.
 func (t *Tx) Repair(name *string) (err error) {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	// First check if there actually is an anvil opened.
 	m := t.o.Menu
 	if m == nil {

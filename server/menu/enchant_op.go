@@ -14,6 +14,9 @@ import (
 // the seed of the player and the bookshelves around the table now. The
 // enchanted input is the result of the craft.
 func (t *Tx) Enchant(option int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	m := t.o.Menu
 	if m == nil {
 		return fmt.Errorf("no enchanting table opened")

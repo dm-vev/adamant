@@ -9,6 +9,9 @@ import (
 // CreateCreative crafts a full stack of the creative item of index i of
 // creative.Items(). Only a player with the creative inventory may.
 func (t *Tx) CreateCreative(i int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	if !t.o.Owner.GameMode().CreativeInventory() {
 		return fmt.Errorf("can only craft creative items in gamemode creative/spectator")
 	}

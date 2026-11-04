@@ -50,7 +50,9 @@ func TestAntiCheatTodayFinishBreakingIsInstant(t *testing.T) {
 }
 
 // TestAntiCheatTodayMenuStaysOpenFarAway pins that a chest menu stays open
-// once the player is 20 blocks away. "Close menus out of reach" closes it.
+// once a player the anti-cheat does not check is 20 blocks away. Since
+// "Close menus out of reach", Menu closes it of a checked player, as Java's
+// stillValid does (TestMenuClosesOutOfReach).
 func TestAntiCheatTodayMenuStaysOpenFarAway(t *testing.T) {
 	w, _ := clientTestWorld(t)
 	withClientPlayer(t, w, clienttest.New(), func(tx *world.Tx, p *Player) {

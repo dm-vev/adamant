@@ -27,6 +27,9 @@ type AutoCraft struct {
 // recipe the player has not unlocked is refused while limited_crafting is
 // on. The inputs of the recipe that are the same item are owed together.
 func (t *Tx) BeginAutoCraft(craft recipe.Recipe, timesCrafted int) (*AutoCraft, error) {
+	if err := t.refused(); err != nil {
+		return nil, err
+	}
 	_, shaped := craft.(recipe.Shaped)
 	_, shapeless := craft.(recipe.Shapeless)
 	_, userDataShapeless := craft.(recipe.UserDataShapeless)

@@ -16,6 +16,9 @@ import (
 // first; the results of repeated trades must stack. The first input may not
 // be locked.
 func (t *Tx) Trade(index, times int) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	tx, owner := t.o.Tx, t.o.Owner
 	_, merchant, err := t.o.Menu.Merchant(tx)
 	if err != nil {
@@ -91,6 +94,9 @@ func (t *Tx) Trade(index, times int) error {
 // cancel the trade. A failure to load the offers after the trade closes the
 // menu.
 func (t *Tx) TakeTrade(index, count int, to Ref) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	tx, c := t.o.Tx, t.o.Owner
 	_, merchant, err := t.o.Menu.Merchant(tx)
 	if err != nil {

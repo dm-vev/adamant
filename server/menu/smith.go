@@ -17,6 +17,9 @@ import (
 // material, the first empty, before the template, as BDS 1.26.52.3 tells
 // them.
 func (t *Tx) Smith(craft recipe.Recipe) error {
+	if err := t.refused(); err != nil {
+		return err
+	}
 	m := t.o.Menu
 	if m == nil {
 		return fmt.Errorf("no smithing table opened")
