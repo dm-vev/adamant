@@ -42,10 +42,18 @@ func (c javaNBTConfig) Apply(data *world.EntityData) {
 	decodePersistence(data, c.data)
 }
 
-// NewFromStructureNBT constructs a worldless entity handle from Java entity NBT.
-// opts supplies the absolute, already-transformed position and rotation; all
-// type-specific fields are decoded by the registered entity type.
+// NewFromStructureNBT constructs a worldless entity handle of a type of
+// DefaultRegistry from Java entity NBT, as NewFromStructureNBTOf does. It is
+// for code that has no world, such as the generation of chunks.
 func NewFromStructureNBT(data map[string]any, opts world.EntitySpawnOpts) (*world.EntityHandle, error) {
+	return NewFromStructureNBTOf(DefaultRegistry, data, opts)
+}
+
+// NewFromStructureNBTOf constructs a worldless entity handle of a type of reg,
+// the registry of the world the entity is for, from Java entity NBT. opts
+// supplies the absolute, already-transformed position and rotation; all
+// type-specific fields are decoded by the registered entity type.
+func NewFromStructureNBTOf(reg world.EntityRegistry, data map[string]any, opts world.EntitySpawnOpts) (*world.EntityHandle, error) {
 	id, ok := data["id"].(string)
 	if !ok || id == "" {
 		return nil, fmt.Errorf("Java entity NBT has no string id")
@@ -56,7 +64,7 @@ func NewFromStructureNBT(data map[string]any, opts world.EntitySpawnOpts) (*worl
 	if err := validateJavaEntityEquipment(id, data); err != nil {
 		return nil, err
 	}
-	t, ok := DefaultRegistry.Lookup(id)
+	t, ok := reg.Lookup(id)
 	if id == "minecraft:end_crystal" {
 		t, ok = EndCrystalType, true
 	}
@@ -75,16 +83,17 @@ func NewFromStructureNBT(data map[string]any, opts world.EntitySpawnOpts) (*worl
 	return opts.New(t, javaNBTConfig{typeOf: t, data: data, native: native}), nil
 }
 
-// NewFromBucket constructs a mob from the entity data retained by its bucket.
-// The bucket flag is set before the registered type decodes its NBT.
-func NewFromBucket(opts world.EntitySpawnOpts, entityID string, data map[string]any) *world.EntityHandle {
+// NewFromBucket constructs a mob of a type of reg from the entity data
+// retained by its bucket. The bucket flag is set before the registered type
+// decodes its NBT.
+func NewFromBucket(reg world.EntityRegistry, opts world.EntitySpawnOpts, entityID string, data map[string]any) *world.EntityHandle {
 	nbt := make(map[string]any, len(data)+2)
 	for key, value := range data {
 		nbt[key] = value
 	}
 	nbt["id"] = entityID
 	nbt["FromBucket"] = true
-	handle, err := NewFromStructureNBT(nbt, opts)
+	handle, err := NewFromStructureNBTOf(reg, nbt, opts)
 	if err != nil {
 		return nil
 	}

@@ -546,7 +546,8 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 		hiveBeeClearNectar(data)
 	}
 	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre(), SpawnReason: "bee_hive"}
-	handle := tx.World().EntityRegistry().Config().SpawnMobFromNBT(id, opts, data)
+	reg := tx.World().EntityRegistry()
+	handle := reg.Config().SpawnMobFromNBT(reg, id, opts, data)
 	if handle == nil {
 		return nil
 	}

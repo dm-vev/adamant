@@ -916,9 +916,10 @@ type EntityRegistryConfig struct {
 	// SpawnEggItem.spawnOffspringFromSpawnEgg. spawner may be nil. It returns
 	// nil if the mob has no baby.
 	SpawnEggOffspring func(tx *Tx, parent Entity, spawner Entity) *EntityHandle
-	// SpawnMobFromNBT creates a concrete mob and applies its species codec
-	// before the handle is published in a world.
-	SpawnMobFromNBT func(id string, opts EntitySpawnOpts, data map[string]any) *EntityHandle
+	// SpawnMobFromNBT creates a concrete mob of a type of reg, the registry it
+	// is called through, and applies its species codec before the handle is
+	// published in a world.
+	SpawnMobFromNBT func(reg EntityRegistry, id string, opts EntitySpawnOpts, data map[string]any) *EntityHandle
 	// OminousItemSpawner creates a persistent item-spawner entity for trial spawners.
 	OminousItemSpawner func(opts EntitySpawnOpts, stack any, delay int64) *EntityHandle
 	// NaturalSpawnTick runs source-defined natural ecology once per world tick.
@@ -942,9 +943,11 @@ type EntityRegistryConfig struct {
 	TieLeashedEntities func(pos cube.Pos, tx *Tx, user Entity) bool
 	// ExperienceOrbs creates the source denominations for a block's XP reward.
 	ExperienceOrbs func(pos mgl64.Vec3, amount int) []*EntityHandle
-	NewFromBucket  func(opts EntitySpawnOpts, entityID string, data map[string]any) *EntityHandle
-	EnderDragon    func(opts EntitySpawnOpts) *EntityHandle
-	DragonFight    func(seed int64, data DragonFightData) DragonFightController
+	// NewFromBucket creates the mob a bucket holds, of a type of reg, the
+	// registry it is called through.
+	NewFromBucket func(reg EntityRegistry, opts EntitySpawnOpts, entityID string, data map[string]any) *EntityHandle
+	EnderDragon   func(opts EntitySpawnOpts) *EntityHandle
+	DragonFight   func(seed int64, data DragonFightData) DragonFightController
 	// GolemPattern attempts source-defined constructed-mob patterns after a
 	// carved pumpkin or jack-o'-lantern replaces a different block type.
 	GolemPattern func(tx *Tx, pos cube.Pos) bool

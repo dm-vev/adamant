@@ -600,7 +600,7 @@ func (t *trialSpawnerTick) spawnMob() (int64, bool) {
 		SpawnData:      spawnData,
 		SpawnFinalized: !unconfigured,
 	}
-	handle := conf.SpawnMobFromNBT(id, opts, data)
+	handle := conf.SpawnMobFromNBT(t.tx.World().EntityRegistry(), id, opts, data)
 	if handle == nil {
 		return 0, false
 	}

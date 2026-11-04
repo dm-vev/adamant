@@ -25,7 +25,7 @@ func spawnEggOffspring(tx *world.Tx, parent, spawner world.Entity) *world.Entity
 		if data == nil {
 			return nil
 		}
-		h = spawnMobFromNBT(id, world.EntitySpawnOpts{Position: parent.Position()}, data)
+		h = spawnMobFromNBT(tx.World().EntityRegistry(), id, world.EntitySpawnOpts{Position: parent.Position()}, data)
 		if h == nil {
 			return nil
 		}

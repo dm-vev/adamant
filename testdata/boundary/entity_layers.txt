@@ -35,9 +35,6 @@ fall.go passive speciesState.kind
 fall.go passive speciesState.swell
 freeze.go hostile SulfurCube.b
 freeze.go hostile SulfurCubeBehaviour.bodyItem
-java_nbt.go spawn applyTrialEquipment
-java_nbt.go spawn decodePersistence
-java_nbt.go spawn projectTemplateMobNBT
 java_rest.go nether zombifiedPiglinState
 java_rest.go nether zombifiedPiglinState.ai
 leash.go object leashKnotBehaviour
@@ -49,21 +46,6 @@ mob_loot.go aquatic axolotlSupportKiller
 mob_loot.go passive Chicken.behaviour
 mob_loot.go passive ChickenBehaviour.jockey
 mob_loot.go passive Wolf.behaviour
-register.go dragon endCrystalConf
-register.go dragon newDragonFight
-register.go hostile trySpawnWitherPattern
-register.go passive trySpawnConstructedGolem
-register.go projectile ProjectileBehaviourConfig.powerLevel
-register.go projectile arrowConf
-register.go projectile newFirework
-register.go spawn decodeSharedNBT
-register.go spawn encodeSharedNBT
-register.go spawn spawnEggOffspring
-register.go spawn spawnMobFromNBT
-register.go vehicle chestMinecartConf
-register.go vehicle hopperMinecartConf
-register.go vehicle minecartConf
-register.go vehicle tntMinecartConf
 
 # Distinct unexported identifiers that each group takes from each other, as of the last regeneration.
 # They are recorded here, not checked: only the lines above are.
@@ -83,14 +65,12 @@ register.go vehicle tntMinecartConf
 #	aquatic    from villager      1
 #	core       from ai          168
 #	core       from aquatic       1
-#	core       from dragon        2
-#	core       from hostile       5
+#	core       from hostile       4
 #	core       from nether        2
 #	core       from object        4
-#	core       from passive      14
-#	core       from projectile    5
-#	core       from spawn         8
-#	core       from vehicle       4
+#	core       from passive      13
+#	core       from projectile    2
+#	core       from spawn         1
 #	dragon     from ai            6
 #	dragon     from core         10
 #	dragon     from object        1
@@ -128,6 +108,12 @@ register.go vehicle tntMinecartConf
 #	projectile from core         10
 #	projectile from hostile       2
 #	projectile from object        1
+#	registry   from dragon        2
+#	registry   from hostile       1
+#	registry   from passive       1
+#	registry   from projectile    3
+#	registry   from spawn         4
+#	registry   from vehicle       4
 #	spawn      from ai           14
 #	spawn      from aquatic       2
 #	spawn      from core         19

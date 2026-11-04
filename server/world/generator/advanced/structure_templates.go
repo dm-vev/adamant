@@ -51,7 +51,10 @@ func VanillaStructureTemplate(w *world.World, name string) (*world.StructureTemp
 		liquid, _ := reg.BlockByRuntimeIDOrAir(native.Liquid).(world.Liquid)
 		t.SetBlock(pos, block, liquid, actors[pos])
 	}
-	handles, err := placement.NewEntityHandles(entity.NewFromStructureNBT)
+	entities := w.EntityRegistry()
+	handles, err := placement.NewEntityHandles(func(data map[string]any, opts world.EntitySpawnOpts) (*world.EntityHandle, error) {
+		return entity.NewFromStructureNBTOf(entities, data, opts)
+	})
 	if err != nil {
 		return nil, false, err
 	}

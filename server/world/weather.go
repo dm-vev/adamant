@@ -226,7 +226,7 @@ func (w weather) strikeLightning(tx *Tx, c ChunkPos) {
 	belowName, _ := tx.Block(blockPos.Side(cube.FaceDown)).EncodeBlock()
 	trap := w.w.GameRuleBool("spawn_mobs") && w.w.r.Float64() < float64(tx.LocalDifficulty(blockPos).Effective)*0.01 && !strings.HasSuffix(belowName, "lightning_rod")
 	if trap && conf.SpawnMobFromNBT != nil && conf.VisualLightning != nil {
-		if horse := conf.SpawnMobFromNBT("minecraft:skeleton_horse", EntitySpawnOpts{Position: pos, SpawnReason: "event"}, map[string]any{"SkeletonTrap": true, "Age": int32(0)}); horse != nil {
+		if horse := conf.SpawnMobFromNBT(w.w.conf.Entities, "minecraft:skeleton_horse", EntitySpawnOpts{Position: pos, SpawnReason: "event"}, map[string]any{"SkeletonTrap": true, "Age": int32(0)}); horse != nil {
 			tx.AddEntity(horse)
 		}
 		tx.AddEntity(conf.VisualLightning(EntitySpawnOpts{Position: pos}))

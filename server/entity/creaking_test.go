@@ -28,7 +28,7 @@ func creakingTestWorld(t *testing.T) (*world.World, *world.EntityHandle, *world.
 		for _, face := range []cube.Face{cube.FaceDown, cube.FaceUp} {
 			tx.SetBlock(pos.Side(face), block.Log{Wood: block.PaleOakWood(), Axis: cube.Y}, nil)
 		}
-		mob = entity.DefaultRegistry.Config().SpawnMobFromNBT("minecraft:creaking", world.EntitySpawnOpts{Position: mgl64.Vec3{3.5, 65, .5}}, map[string]any{"home_pos": []int32{0, 65, 0}})
+		mob = entity.DefaultRegistry.Config().SpawnMobFromNBT(entity.DefaultRegistry, "minecraft:creaking", world.EntitySpawnOpts{Position: mgl64.Vec3{3.5, 65, .5}}, map[string]any{"home_pos": []int32{0, 65, 0}})
 		tx.AddEntity(mob)
 		heart := (block.CreakingHeart{State: block.CreakingHeartAwake}).DecodeNBT(map[string]any{"SpawnedCreakingID": mob.UniqueID()}).(block.CreakingHeart)
 		tx.SetBlock(pos, heart, nil)

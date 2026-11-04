@@ -330,7 +330,7 @@ func (h CreakingHeart) spawnProtector(pos cube.Pos, tx *world.Tx) creakingProtec
 				if !heartSpawnSpace(box, tx) {
 					break
 				}
-				handle := registry.Config().SpawnMobFromNBT("minecraft:creaking", world.EntitySpawnOpts{Position: position, SpawnReason: "spawner"}, map[string]any{"id": "minecraft:creaking", "home_pos": []int32{int32(pos.X()), int32(pos.Y()), int32(pos.Z())}})
+				handle := registry.Config().SpawnMobFromNBT(registry, "minecraft:creaking", world.EntitySpawnOpts{Position: position, SpawnReason: "spawner"}, map[string]any{"id": "minecraft:creaking", "home_pos": []int32{int32(pos.X()), int32(pos.Y()), int32(pos.Z())}})
 				if handle == nil {
 					panic("registered creaking factory rejected source spawn data")
 				}

@@ -1,8 +1,10 @@
 # The group of each file of server/entity, by base name, for TestEntityLayers (entity_layers_test.go).
 #
 # Each line is "<file> <group>". core is what every entity builds on: Ent, living, damage, effects, physics,
-# prefetch, line of sight, NBT and registration. ai is the AI engine of mobs: brain, memories, goals, behaviours,
-# navigation and pathfinding. Every other group is a family of entities.
+# prefetch, line of sight and NBT. ai is the AI engine of mobs: brain, memories, goals, behaviours, navigation
+# and pathfinding. registry is the registration of every entity type (DefaultRegistry, its config and the spawn
+# table): it names every family, sits above them, and becomes server/entity/vanilla with spawn. Every other group
+# is a family of entities.
 #
 # A new file of server/entity needs a line here. The groups are the cut of the monster split design; a family is
 # a candidate subpackage.
@@ -127,7 +129,7 @@ item_behaviour.go object
 item_escape.go object
 item_escape_flags_native.go object
 java_attribute.go core
-java_nbt.go core
+java_nbt.go spawn
 java_rest.go core
 leash.go core
 leash_knot.go object
@@ -193,7 +195,7 @@ raider_ai.go villager
 raider_banner.go villager
 raider_mobs_ai.go villager
 random_pos.go ai
-register.go core
+register.go registry
 rider_seat.go core
 shear_equipment.go passive
 sheep.go passive

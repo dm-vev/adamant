@@ -67,7 +67,8 @@ func (b MobBucket) Use(tx *world.Tx, user User, ctx *UseContext) bool {
 // empty empties the bucket at the block looked at or, for a dispenser
 // without a hit, at the block it faces, and spawns its mob.
 func (b MobBucket) empty(tx *world.Tx, user User, ctx *UseContext, pos cube.Pos, face cube.Face, hit bool) bool {
-	factory := tx.World().EntityRegistry().Config().NewFromBucket
+	reg := tx.World().EntityRegistry()
+	factory := reg.Config().NewFromBucket
 	if factory == nil {
 		return false
 	}
@@ -96,7 +97,7 @@ func (b MobBucket) empty(tx *world.Tx, user User, ctx *UseContext, pos cube.Pos,
 	if user != nil {
 		opts = stackSpawnOpts(user, opts)
 	}
-	if handle := factory(opts, b.EntityID(), b.Data); handle != nil {
+	if handle := factory(reg, opts, b.EntityID(), b.Data); handle != nil {
 		tx.AddEntity(handle)
 		tx.EmitGameEvent(world.GameEventEntityPlace, at.Vec3Centre(), world.GameEventContext{Source: user})
 	}

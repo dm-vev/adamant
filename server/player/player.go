@@ -4147,7 +4147,8 @@ func (p *Player) ReleaseShoulderParrots() {
 	if p.tx == nil || p.shoulderLeft == nil && p.shoulderRight == nil || p.shoulderSatTick+20 >= p.tx.CurrentTick() {
 		return
 	}
-	spawn := p.tx.World().EntityRegistry().Config().SpawnMobFromNBT
+	reg := p.tx.World().EntityRegistry()
+	spawn := reg.Config().SpawnMobFromNBT
 	if spawn == nil {
 		return
 	}
@@ -4160,7 +4161,7 @@ func (p *Player) ReleaseShoulderParrots() {
 			return data
 		}
 		opts := world.EntitySpawnOpts{Position: p.Position().Add(mgl64.Vec3{0, .7}), Rotation: p.Rotation()}
-		if h := spawn(id, opts, world.CloneNativeEntityNBT(data)); h != nil {
+		if h := spawn(reg, id, opts, world.CloneNativeEntityNBT(data)); h != nil {
 			p.tx.AddEntity(h)
 			return nil
 		}
