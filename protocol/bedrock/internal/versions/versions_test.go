@@ -25,8 +25,8 @@ func TestParse(t *testing.T) {
 			t.Errorf("Parse(%q) = %v, %v, want 2225", name, p, err)
 		}
 	}
-	if NewestPrimary() != Default() {
-		t.Errorf("the session speaks %v as its primary", NewestPrimary())
+	if NewestPrimary() != Model() || Default().Number != 2193 {
+		t.Errorf("the session speaks up to %v as its primary, %v by default", NewestPrimary(), Default())
 	}
 	for _, name := range []string{"", "1.26.40", "26.4", "1.26", "26.70", "1.26.70", "2250", "2192", "v1.26.50", "1.26.50.5", "0x891"} {
 		p, err := Parse(name)

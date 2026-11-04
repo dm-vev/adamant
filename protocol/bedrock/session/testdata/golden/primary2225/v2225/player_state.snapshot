@@ -1,0 +1,706 @@
+== health: hurt, healed, maximum and absorption
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:20 Value:15 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000a04100007041000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> ActorEvent id=27 len=4
+    {EntityRuntimeID:1 EventType:2 EventData:0 FireAtPosition:none}
+    | 01020000
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:20 Value:17 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000a04100008841000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:30 Value:17 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000f04100008841000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:30 Value:17 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:4 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000f04100008841000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000804000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+== food: set, added, saturated, exhausted
+>> UpdateAttributes id=29 len=158
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (3)
+        [0] {Min:0 Max:20 Value:10 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.hunger" Modifiers:[]}
+        [1] {Min:0 Max:20 Value:5 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.saturation" Modifiers:[]}
+        [2] {Min:0 Max:5 Value:0 DefaultMin:0 DefaultMax:5 Default:0 Name:"minecraft:player.exhaustion" Modifiers:[]}
+      Tick: 0
+    | 0103000000000000a04100002041000000000000a0410000a041176d696e6563
+    | 726166743a706c617965722e68756e67657200000000000000a0410000a04000
+    | 0000000000a0410000a0411b6d696e6563726166743a706c617965722e736174
+    | 75726174696f6e00000000000000a04000000000000000000000a04000000000
+    | 1b6d696e6563726166743a706c617965722e65786861757374696f6e0000
+>> UpdateAttributes id=29 len=158
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (3)
+        [0] {Min:0 Max:20 Value:13 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.hunger" Modifiers:[]}
+        [1] {Min:0 Max:20 Value:5 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.saturation" Modifiers:[]}
+        [2] {Min:0 Max:5 Value:0 DefaultMin:0 DefaultMax:5 Default:0 Name:"minecraft:player.exhaustion" Modifiers:[]}
+      Tick: 0
+    | 0103000000000000a04100005041000000000000a0410000a041176d696e6563
+    | 726166743a706c617965722e68756e67657200000000000000a0410000a04000
+    | 0000000000a0410000a0411b6d696e6563726166743a706c617965722e736174
+    | 75726174696f6e00000000000000a04000000000000000000000a04000000000
+    | 1b6d696e6563726166743a706c617965722e65786861757374696f6e0000
+>> UpdateAttributes id=29 len=158
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (3)
+        [0] {Min:0 Max:20 Value:15 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.hunger" Modifiers:[]}
+        [1] {Min:0 Max:20 Value:9.5 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.saturation" Modifiers:[]}
+        [2] {Min:0 Max:5 Value:0 DefaultMin:0 DefaultMax:5 Default:0 Name:"minecraft:player.exhaustion" Modifiers:[]}
+      Tick: 0
+    | 0103000000000000a04100007041000000000000a0410000a041176d696e6563
+    | 726166743a706c617965722e68756e67657200000000000000a0410000184100
+    | 0000000000a0410000a0411b6d696e6563726166743a706c617965722e736174
+    | 75726174696f6e00000000000000a04000000000000000000000a04000000000
+    | 1b6d696e6563726166743a706c617965722e65786861757374696f6e0000
+== experience: added, level and progress set, removed
+>> LevelEvent id=25 len=15
+    {EventType:1051 Position:[0.5 -58.38 0.5] EventData:0}
+    | b6100000003f1f8569c20000003f00
+>> UpdateAttributes id=29 len=104
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:2.1474836e+09 Value:3 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [1] {Min:0 Max:1 Value:0.244998 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000004f00004040000000000000004f00000000166d696e6563
+    | 726166743a706c617965722e6c6576656c00000000000000803fc1e07a3e0000
+    | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
+    | 7269656e63650000
+>> UpdateAttributes id=29 len=104
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:2.1474836e+09 Value:5 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [1] {Min:0 Max:1 Value:0.24621125 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000004f0000a040000000000000004f00000000166d696e6563
+    | 726166743a706c617965722e6c6576656c00000000000000803fcd1e7c3e0000
+    | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
+    | 7269656e63650000
+>> UpdateAttributes id=29 len=104
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:2.1474836e+09 Value:5 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [1] {Min:0 Max:1 Value:0.5146932 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000004f0000a040000000000000004f00000000166d696e6563
+    | 726166743a706c617965722e6c6576656c00000000000000803fefc2033f0000
+    | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
+    | 7269656e63650000
+>> UpdateAttributes id=29 len=104
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:2.1474836e+09 Value:4 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [1] {Min:0 Max:1 Value:0.9056941 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000004f00008040000000000000004f00000000166d696e6563
+    | 726166743a706c617965722e6c6576656c00000000000000803f92db673f0000
+    | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
+    | 7269656e63650000
+== effects added
+>> UpdateAttributes id=29 len=47
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: [{Min:0 Max:3.4028235e+38 Value:0.12 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0.1 Name:"minecraft:movement" Modifiers:[]}]
+      Tick: 0
+    | 010100000000ffff7f7f8fc2f53d00000000ffff7f7fcdcccc3d126d696e6563
+    | 726166743a6d6f76656d656e740000
+>> MobEffect id=28 len=9
+    {EntityRuntimeID:1 Operation:1 EffectType:1 Amplifier:0 Particles:true Duration:600 Tick:0 Ambient:false}
+    | 0101020001b0090000
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:2 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c0707007803030000000081010000008301070704000000
+>> MobEffect id=28 len=9
+    {EntityRuntimeID:1 Operation:1 EffectType:3 Amplifier:1 Particles:true Duration:200 Tick:0 Ambient:true}
+    | 010106020190030001
+>> SetActorData id=39 len=129 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:263 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c070700780303000000008101000000830107078e040000
+    | 00
+>> MobEffect id=28 len=8
+    {EntityRuntimeID:1 Operation:1 EffectType:16 Amplifier:0 Particles:true Duration:-1 Tick:0 Ambient:false}
+    | 0101200001010000
+>> SetActorData id=39 len=130 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:33696 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c07070078030300000000810100000083010707c08e0400
+    | 0000
+== effect modified
+>> UpdateAttributes id=29 len=47
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: [{Min:0 Max:3.4028235e+38 Value:0.1 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0.1 Name:"minecraft:movement" Modifiers:[]}]
+      Tick: 0
+    | 010100000000ffff7f7fcdcccc3d00000000ffff7f7fcdcccc3d126d696e6563
+    | 726166743a6d6f76656d656e740000
+>> UpdateAttributes id=29 len=47
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: [{Min:0 Max:3.4028235e+38 Value:0.16 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0.1 Name:"minecraft:movement" Modifiers:[]}]
+      Tick: 0
+    | 010100000000ffff7f7f0ad7233e00000000ffff7f7fcdcccc3d126d696e6563
+    | 726166743a6d6f76656d656e740000
+>> MobEffect id=28 len=9
+    {EntityRuntimeID:1 Operation:2 EffectType:1 Amplifier:2 Particles:true Duration:1200 Tick:0 Ambient:false}
+    | 0102020401e0120000
+>> SetActorData id=39 len=130 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:33696 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c07070078030300000000810100000083010707c08e0400
+    | 0000
+== effects tick
+>> UpdateAttributes id=29 len=158
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (3)
+        [0] {Min:0 Max:20 Value:15 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.hunger" Modifiers:[]}
+        [1] {Min:0 Max:20 Value:9.5 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.saturation" Modifiers:[]}
+        [2] {Min:0 Max:5 Value:1.5 DefaultMin:0 DefaultMax:5 Default:0 Name:"minecraft:player.exhaustion" Modifiers:[]}
+      Tick: 0
+    | 0103000000000000a04100007041000000000000a0410000a041176d696e6563
+    | 726166743a706c617965722e68756e67657200000000000000a0410000184100
+    | 0000000000a0410000a0411b6d696e6563726166743a706c617965722e736174
+    | 75726174696f6e00000000000000a0400000c03f000000000000a04000000000
+    | 1b6d696e6563726166743a706c617965722e65786861757374696f6e0000
+== effects removed
+>> UpdateAttributes id=29 len=47
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: [{Min:0 Max:3.4028235e+38 Value:0.1 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0.1 Name:"minecraft:movement" Modifiers:[]}]
+      Tick: 0
+    | 010100000000ffff7f7fcdcccc3d00000000ffff7f7fcdcccc3d126d696e6563
+    | 726166743a6d6f76656d656e740000
+>> MobEffect id=28 len=8
+    {EntityRuntimeID:1 Operation:3 EffectType:1 Amplifier:0 Particles:false Duration:0 Tick:0 Ambient:false}
+    | 0103020000000000
+>> SetActorData id=39 len=129 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:928 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c07070078030300000000810100000083010707c00e0000
+    | 00
+>> MobEffect id=28 len=8
+    {EntityRuntimeID:1 Operation:3 EffectType:16 Amplifier:0 Particles:false Duration:0 Tick:0 Ambient:false}
+    | 0103200000000000
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:7 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c070700780303000000008101000000830107070e000000
+== game mode: creative
+>> SetPlayerGameType id=62 len=1
+    {GameType:1}
+    | 02
+>> UpdatePlayerGameType id=151 len=3
+    {GameType:1 PlayerUniqueID:1 Tick:0}
+    | 020200
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:3391 FlySpeed:0.05 VerticalFlySpeed:1 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f0d0000cdcc4c3d0000803fcdcccc
+    | 3d
+== flight speeds
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:3391 FlySpeed:0.1 VerticalFlySpeed:1 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f0d0000cdcccc3d0000803fcdcccc
+    | 3d
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:3391 FlySpeed:0.1 VerticalFlySpeed:2 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f0d0000cdcccc3d00000040cdcccc
+    | 3d
+== flight started
+>> SetPlayerGameType id=62 len=1
+    {GameType:1}
+    | 02
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:3903 FlySpeed:0.1 VerticalFlySpeed:2 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f0f0000cdcccc3d00000040cdcccc
+    | 3d
+== flight stopped
+>> SetPlayerGameType id=62 len=1
+    {GameType:1}
+    | 02
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:3391 FlySpeed:0.1 VerticalFlySpeed:2 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f0d0000cdcccc3d00000040cdcccc
+    | 3d
+== game mode: adventure
+>> SetPlayerGameType id=62 len=1
+    {GameType:2}
+    | 04
+>> UpdatePlayerGameType id=151 len=3
+    {GameType:2 PlayerUniqueID:1 Tick:0}
+    | 040200
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:30 Value:17 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:4 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000f04100008841000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000804000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:60 FlySpeed:0.1 VerticalFlySpeed:2 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003c000000cdcccc3d00000040cdcccc
+    | 3d
+== game mode: spectator
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:562984313733152 120:0 129:0 131:7 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 0116000707c080c680808280020300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c070700780303000000008101000000830107070e000000
+>> SetPlayerGameType id=62 len=1
+    {GameType:6}
+    | 0c
+>> UpdatePlayerGameType id=151 len=3
+    {GameType:6 PlayerUniqueID:1 Tick:0}
+    | 0c0200
+>> SetActorMotion id=40 len=14
+    {EntityRuntimeID:1 Velocity:[0 0 0] Tick:0}
+    | 0100000000000000000000000000
+>> MovePlayer id=19 len=38
+    MovePlayerPacket
+      EntityRuntimeID: 1
+      Position: [0.5 -58.37999 0.5]
+      Pitch: 0
+      Yaw: 0
+      HeadYaw: 0
+      Mode: 2
+      OnGround: false
+      RiddenEntityRuntimeID: 0
+      TeleportData: {TeleportCause:0 TeleportSourceEntityType:0}
+      Tick: 0
+    | 010000003f1c8569c20000003f00000000000000000000000002000001000000
+    | 000000000000
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:132352 FlySpeed:0.1 VerticalFlySpeed:2 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f0000050200cdcccc3d00000040cdcccc
+    | 3d
+>> SetPlayerGameType id=62 len=1
+    {GameType:6}
+    | 0c
+>> SetActorMotion id=40 len=14
+    {EntityRuntimeID:1 Velocity:[0 0 0] Tick:0}
+    | 0100000000000000000000000000
+>> MovePlayer id=19 len=38
+    MovePlayerPacket
+      EntityRuntimeID: 1
+      Position: [0.5 -58.37999 0.5]
+      Pitch: 0
+      Yaw: 0
+      HeadYaw: 0
+      Mode: 2
+      OnGround: false
+      RiddenEntityRuntimeID: 0
+      TeleportData: {TeleportCause:0 TeleportSourceEntityType:0}
+      Tick: 0
+    | 010000003f1c8569c20000003f00000000000000000000000002000001000000
+    | 000000000000
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:132864 FlySpeed:0.1 VerticalFlySpeed:2 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f0000070200cdcccc3d00000040cdcccc
+    | 3d
+== game mode: survival
+>> SetPlayerGameType id=62 len=1
+    {GameType:0}
+    | 00
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:7 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c070700780303000000008101000000830107070e000000
+>> SetPlayerGameType id=62 len=1
+    {GameType:0}
+    | 00
+>> UpdatePlayerGameType id=151 len=3
+    {GameType:0 PlayerUniqueID:1 Tick:0}
+    | 000200
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:30 Value:17 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:4 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000f04100008841000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000804000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:63 FlySpeed:0.1 VerticalFlySpeed:2 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f000000cdcccc3d00000040cdcccc
+    | 3d
+== permissions refreshed
+>> UpdateAbilities id=187 len=33
+    UpdateAbilitiesPacket
+      AbilityData: {EntityUniqueID:1 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:63 FlySpeed:0.1 VerticalFlySpeed:2 WalkSpeed:0.1}]}
+    | 01000000000000000100010100ffff0f003f000000cdcccc3d00000040cdcccc
+    | 3d
+== speed
+>> UpdateAttributes id=29 len=47
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: [{Min:0 Max:3.4028235e+38 Value:0.2 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0.1 Name:"minecraft:movement" Modifiers:[]}]
+      Tick: 0
+    | 010100000000ffff7f7fcdcc4c3e00000000ffff7f7fcdcccc3d126d696e6563
+    | 726166743a6d6f76656d656e740000
+== input locks
+>> UpdateClientInputLocks id=196 len=1
+    {Locks:4}
+    | 04
+>> UpdateClientInputLocks id=196 len=1
+    {Locks:6}
+    | 06
+>> UpdateClientInputLocks id=196 len=1
+    {Locks:2}
+    | 02
+== input locks cleared
+>> UpdateClientInputLocks id=196 len=1
+    {Locks:0}
+    | 00
+== immobile and mobile
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290509312 120:0 129:0 131:7 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080ce80808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c070700780303000000008101000000830107070e000000
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:7 15:53 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f02026a1a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c070700780303000000008101000000830107070e000000
+== held slot
+>> MobEquipment id=31 len=12
+    MobEquipmentPacket
+      EntityRuntimeID: 1
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      InventorySlot: 3
+      HotBarSlot: 3
+      WindowID: 0
+    | 010000000000000000030300
+== respawn point
+>> SetSpawnPosition id=43 len=8
+    {SpawnType:0 Position:[5 -60 5] Dimension:0 SpawnPosition:[5 -60 5]}
+    | 000a770a000a770a
+== coordinates shown and hidden, instant respawn
+>> GameRulesChanged id=72 len=20
+    {GameRules:[{Name:"showcoordinates" CanBeModifiedByPlayer:false Value:true}]}
+    | 010f73686f77636f6f7264696e61746573000101
+>> GameRulesChanged id=72 len=20
+    {GameRules:[{Name:"showcoordinates" CanBeModifiedByPlayer:false Value:false}]}
+    | 010f73686f77636f6f7264696e61746573000100
+>> GameRulesChanged id=72 len=23
+    {GameRules:[{Name:"doimmediaterespawn" CanBeModifiedByPlayer:false Value:true}]}
+    | 0112646f696d6d6564696174657265737061776e000101
+>> GameRulesChanged id=72 len=23
+    {GameRules:[{Name:"doimmediaterespawn" CanBeModifiedByPlayer:false Value:false}]}
+    | 0112646f696d6d6564696174657265737061776e000100
+== experience cleared
+>> UpdateAttributes id=29 len=104
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:2.1474836e+09 Value:0 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [1] {Min:0 Max:1 Value:0.9370039 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000004f00000000000000000000004f00000000166d696e6563
+    | 726166743a706c617965722e6c6576656c00000000000000803f7ddf6f3f0000
+    | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
+    | 7269656e63650000
+>> UpdateAttributes id=29 len=104
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:2.1474836e+09 Value:0 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [1] {Min:0 Max:1 Value:0 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000004f00000000000000000000004f00000000166d696e6563
+    | 726166743a706c617965722e6c6576656c00000000000000803f000000000000
+    | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
+    | 7269656e63650000
+== death
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:30 Value:17 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000f04100008841000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:30 Value:0 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000f04100000000000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> ActorEvent id=27 len=4
+    {EntityRuntimeID:1 EventType:2 EventData:0 FireAtPosition:none}
+    | 01020000
+>> ActorEvent id=27 len=4
+    {EntityRuntimeID:1 EventType:3 EventData:0 FireAtPosition:none}
+    | 01030000
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:30 Value:0 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000f04100000000000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> Text id=9 len=38
+    {TextType:2 NeedsTranslation:true SourceName:"" Message:"§r%death.attack.freeze" Parameters:["Golden"] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 01020217c2a7722564656174682e61747461636b2e667265657a650106476f6c
+    | 64656e000000
+>> UpdateAttributes id=29 len=104
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:2.1474836e+09 Value:0 DefaultMin:0 DefaultMax:2.1474836e+09 Default:0 Name:"minecraft:player.level" Modifiers:[]}
+        [1] {Min:0 Max:1 Value:0 DefaultMin:0 DefaultMax:1 Default:0 Name:"minecraft:player.experience" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000004f00000000000000000000004f00000000166d696e6563
+    | 726166743a706c617965722e6c6576656c00000000000000803f000000000000
+    | 00000000803f000000001b6d696e6563726166743a706c617965722e65787065
+    | 7269656e63650000
+>> MobEffect id=28 len=8
+    {EntityRuntimeID:1 Operation:3 EffectType:3 Amplifier:0 Particles:false Duration:0 Tick:0 Ambient:false}
+    | 0103060000000000
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:0 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c0707007803030000000081010000008301070700000000
+== after death, tick 1
+== after death, tick 2
+== respawn
+>> UpdateAttributes id=29 len=91
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (2)
+        [0] {Min:0 Max:30 Value:30 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:health" Modifiers:[]}
+        [1] {Min:0 Max:3.4028235e+38 Value:0 DefaultMin:0 DefaultMax:3.4028235e+38 Default:0 Name:"minecraft:absorption" Modifiers:[]}
+      Tick: 0
+    | 0102000000000000f0410000f041000000000000a0410000a041106d696e6563
+    | 726166743a6865616c74680000000000ffff7f7f0000000000000000ffff7f7f
+    | 00000000146d696e6563726166743a6162736f727074696f6e0000
+>> UpdateAttributes id=29 len=158
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2225.Attribute (3)
+        [0] {Min:0 Max:20 Value:20 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.hunger" Modifiers:[]}
+        [1] {Min:0 Max:20 Value:5 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.saturation" Modifiers:[]}
+        [2] {Min:0 Max:5 Value:0 DefaultMin:0 DefaultMax:5 Default:0 Name:"minecraft:player.exhaustion" Modifiers:[]}
+      Tick: 0
+    | 0103000000000000a0410000a041000000000000a0410000a041176d696e6563
+    | 726166743a706c617965722e68756e67657200000000000000a0410000a04000
+    | 0000000000a0410000a0411b6d696e6563726166743a706c617965722e736174
+    | 75726174696f6e00000000000000a04000000000000000000000a04000000000
+    | 1b6d696e6563726166743a706c617965722e65786861757374696f6e0000
+>> SetActorData id=39 len=148
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map (24)
+        0: 844459290443776
+        120: 0
+        127: [0.5 -60 0.5]
+        128: 0
+        129: 1
+        131: 0
+        15: 0
+        26: 0
+        3: 0
+        38: 1
+        4: "Golden"
+        42: 300
+        53: 0.6
+        54: 1.8
+        57: 0
+        58: 0
+        59: 0
+        60: 0
+        7: 300
+        8: 0
+        81: 1
+        84: ""
+        9: 0
+        92: 0
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01180007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c070700780303000000007f08080000003f000070c20000
+    | 003f800102020081010000018301070700000000
+>> SetActorData id=39 len=148
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map (24)
+        0: 844459290443776
+        120: 0
+        127: [0.5 -60 0.5]
+        128: 0
+        129: 1
+        131: 0
+        15: 0
+        26: 0
+        3: 0
+        38: 1
+        4: "Golden"
+        42: 300
+        53: 0.6
+        54: 1.8
+        57: 0
+        58: 0
+        59: 0
+        60: 0
+        7: 300
+        8: 0
+        81: 1
+        84: ""
+        9: 0
+        92: 0
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01180007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c070700780303000000007f08080000003f000070c20000
+    | 003f800102020081010000018301070700000000
+>> SetActorMotion id=40 len=14
+    {EntityRuntimeID:1 Velocity:[0 0 0] Tick:0}
+    | 0100000000000000000000000000
+>> MovePlayer id=19 len=38
+    MovePlayerPacket
+      EntityRuntimeID: 1
+      Position: [0.5 -58.37999 0.5]
+      Pitch: 0
+      Yaw: 0
+      HeadYaw: 0
+      Mode: 2
+      OnGround: false
+      RiddenEntityRuntimeID: 0
+      TeleportData: {TeleportCause:0 TeleportSourceEntityType:0}
+      Tick: 0
+    | 010000003f1c8569c20000003f00000000000000000000000002000001000000
+    | 000000000000
+>> Respawn id=45 len=14
+    {Position:[0.5 -58.37999 0.5] State:1 EntityRuntimeID:1}
+    | 0000003f1c8569c20000003f0101
+== after respawn, tick 1
+== after respawn, tick 2
+== transfer
+>> Transfer id=85 len=14
+    {Address:"127.0.0.1" Port:19133 ReloadWorld:false GatheringJoinInfo:none}
+    | 093132372e302e302e31bd4a0000

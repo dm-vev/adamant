@@ -1,0 +1,1112 @@
+== items given
+>> InventorySlot id=50 len=23 normalised
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 0
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:1 Stack:{NetworkID:882 MetadataValue:0 BlockRuntimeID:0 Count:16 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 0000000072031000000102000a00000000000000000000
+>> InventorySlot id=50 len=27 normalised
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 2
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:2 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:8 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 0002000005000800000104b6b5ac94070a00000000000000000000
+>> InventorySlot id=50 len=41 normalised
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 3
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:3 Stack:{NetworkID:358 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["Damage":0] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 0003000066010100000106001cffff010a000003060044616d61676500000000
+    | 000000000000000000
+>> InventorySlot id=50 len=23 normalised
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 4
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:4 Stack:{NetworkID:578 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 0004000042020100000108000a00000000000000000000
+>> InventorySlot id=50 len=83 normalised
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 5
+      Container: none
+      StorageItem: none
+      NewItem: ItemInstance
+        StackNetworkID: 5
+        Stack: ItemStack
+          NetworkID: 577
+          MetadataValue: 15
+          BlockRuntimeID: -574133702
+          Count: 1
+          NBTData: map["Base":15 "Patterns":[] "Type":0 "id":"Banner"]
+          CanBePlacedOn: []
+          CanBreak: []
+          BlockingTick: 0
+    | 00050000410201000f010abad49dee0d42ffff010a0000030400426173650f00
+    | 00000908005061747465726e7300000000000304005479706500000000080200
+    | 6964060042616e6e6572000000000000000000
+>> InventorySlot id=50 len=23 normalised
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 6
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:6 Stack:{NetworkID:399 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000600008f01010000010c000a00000000000000000000
+== the empty slot held
+>> MobEquipment id=31 len=12
+    MobEquipmentPacket
+      EntityRuntimeID: 1
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      InventorySlot: 8
+      HotBarSlot: 8
+      WindowID: 0
+    | 010000000000000000080800
+== refused: slot 2 changed twice, then a stale stack ID
+<< ItemStackRequest id=147 len=59 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -1
+          Actions: []v2193.StackRequestAction (3)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:2 StackNetworkID:2}
+              Destination: {Container:{ContainerID:12 DynamicContainerID:none} Slot:20 StackNetworkID:0}
+            [1] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:2 StackNetworkID:-1}
+              Destination: {Container:{ContainerID:12 DynamicContainerID:none} Slot:21 StackNetworkID:0}
+            [2] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:7}
+              Destination: {Container:{ContainerID:12 DynamicContainerID:none} Slot:22 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0101030101010c0002020000000c0014000000000101010c0002ffffffff0c00
+    | 15000000000101010c0000070000000c0016000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-1 ContainerInfo:[]}]}
+    | 01010100
+== the eight planks of slot 2 taken to the cursor
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -3
+          Actions: []v2193.StackRequestAction (1)
+            [0] TakeStackRequestAction
+              Count: 8
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:2 StackNetworkID:2}
+              Destination: {Container:{ContainerID:59 DynamicContainerID:none} Slot:0 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0105010000080c0002020000003b0000000000000000000000
+>> InventoryContent id=49 len=459 normalised
+    InventoryContentPacket
+      WindowID: 124
+      Content: []v2193.ItemInstance (54)
+        [0] {StackNetworkID:8 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:8 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [27] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [28] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [36] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [37] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [38] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [39] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [40] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [41] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [42] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [43] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [44] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [45] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [46] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [47] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [48] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [50] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7c3605000800000110b6b5ac94070a0000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000
+>> ItemStackResponse id=148 len=26 normalised
+    ItemStackResponsePacket
+      Responses: []v2193.ItemStackResponse (1)
+        [0] ItemStackResponse
+          Status: 0
+          RequestID: -3
+          ContainerInfo: []v2193.StackResponseContainerInfo (2)
+            [0] StackResponseContainerInfo
+              Container: {ContainerID:12 DynamicContainerID:none}
+              SlotInfo: [{Slot:2 HotbarSlot:2 Count:0 StackNetworkID:0 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+            [1] StackResponseContainerInfo
+              Container: {ContainerID:59 DynamicContainerID:none}
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:8 StackNetworkID:8 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+    | 01000501020c0001020200000000003b00010000080110000000
+== the planks of the cursor put back
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -5
+          Actions: []v2193.StackRequestAction (1)
+            [0] PlaceStackRequestAction
+              Count: 8
+              Source: {Container:{ContainerID:59 DynamicContainerID:none} Slot:0 StackNetworkID:8}
+              Destination: {Container:{ContainerID:12 DynamicContainerID:none} Slot:2 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0109010101083b0000080000000c0002000000000000000000
+>> InventoryContent id=49 len=444
+    InventoryContentPacket
+      WindowID: 124
+      Content: []v2193.ItemInstance (54)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [27] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [28] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [36] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [37] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [38] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [39] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [40] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [41] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [42] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [43] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [44] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [45] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [46] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [47] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [48] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [50] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7c36000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 00000000000000000000000000000000000000000000000000000000
+>> ItemStackResponse id=148 len=26 normalised
+    ItemStackResponsePacket
+      Responses: []v2193.ItemStackResponse (1)
+        [0] ItemStackResponse
+          Status: 0
+          RequestID: -5
+          ContainerInfo: []v2193.StackResponseContainerInfo (2)
+            [0] StackResponseContainerInfo
+              Container: {ContainerID:12 DynamicContainerID:none}
+              SlotInfo: [{Slot:2 HotbarSlot:2 Count:8 StackNetworkID:9 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+            [1] StackResponseContainerInfo
+              Container: {ContainerID:59 DynamicContainerID:none}
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:0 StackNetworkID:0 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+    | 01000901020c000102020801120000003b000100000000000000
+== refused: a shield put in the off hand, then a stale stack ID
+<< ItemStackRequest id=147 len=42 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -7
+          Actions: []v2193.StackRequestAction (2)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:3 StackNetworkID:3}
+              Destination: {Container:{ContainerID:34 DynamicContainerID:none} Slot:1 StackNetworkID:0}
+            [1] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:7}
+              Destination: {Container:{ContainerID:12 DynamicContainerID:none} Slot:22 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 010d020101010c000303000000220001000000000101010c0000070000000c00
+    | 16000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-7 ContainerInfo:[]}]}
+    | 01010d00
+== a totem put in the off hand
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -9
+          Actions: []v2193.StackRequestAction (1)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:4 StackNetworkID:4}
+              Destination: {Container:{ContainerID:34 DynamicContainerID:none} Slot:1 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0111010101010c000404000000220001000000000000000000
+>> ItemStackResponse id=148 len=26 normalised
+    ItemStackResponsePacket
+      Responses: []v2193.ItemStackResponse (1)
+        [0] ItemStackResponse
+          Status: 0
+          RequestID: -9
+          ContainerInfo: []v2193.StackResponseContainerInfo (2)
+            [0] StackResponseContainerInfo
+              Container: {ContainerID:12 DynamicContainerID:none}
+              SlotInfo: [{Slot:4 HotbarSlot:4 Count:0 StackNetworkID:0 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+            [1] StackResponseContainerInfo
+              Container: {ContainerID:34 DynamicContainerID:none}
+              SlotInfo: [{Slot:1 HotbarSlot:1 Count:1 StackNetworkID:10 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+    | 01001101020c0001040400000000002200010101010114000000
+== refused: a loom craft with no menu open
+<< ItemStackRequest id=147 len=51
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -11
+          Actions: []v2193.StackRequestAction (4)
+            [0] &{Pattern:"bo" TimesCrafted:1}
+            [1] &{Count:1 Source:{Container:{ContainerID:41 DynamicContainerID:none} Slot:9 StackNetworkID:0}}
+            [2] &{Count:1 Source:{Container:{ContainerID:42 DynamicContainerID:none} Slot:10 StackNetworkID:0}}
+            [3] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:60 DynamicContainerID:none} Slot:50 StackNetworkID:-11}
+              Destination: {Container:{ContainerID:12 DynamicContainerID:none} Slot:7 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0115040f1102626f01050501290009000000000505012a000a00000000010101
+    | 3c0032f5ffffff0c0007000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-11 ContainerInfo:[]}]}
+    | 01011500
+== an anvil is placed
+>> UpdateBlock id=21 len=10
+    {Position:[-2 -60 0] NewBlockRuntimeID:1509232843 Flags:2 Layer:0}
+    | 037700cba1d4cf050200
+== the client opens an anvil
+<< InventoryTransaction id=30 len=47
+    InventoryTransactionPacket
+      LegacyRequestID: 0
+      LegacySetItemSlots: []
+      Actions: []
+      TransactionData: UseItemTransactionData
+        ActionType: 0
+        TriggerType: 1
+        BlockPosition: [-2 -60 0]
+        BlockFace: 1
+        HotBarSlot: 8
+        Hand: 0
+        HeldItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        Position: [0.5 -58.38 0.5]
+        ClickedPosition: [0.5 1 0.5]
+        BlockRuntimeID: 0
+        ClientPrediction: 1
+        ClientCooldownState: 0
+    | 00000200000103770001100000000000000000000000003f1f8569c20000003f
+    | 0000003f0000803f0000003f000100
+>> ContainerOpen id=46 len=6
+    {WindowID:1 ContainerType:5 ContainerPosition:[-2 -60 0] ContainerEntityUniqueID:-1}
+    | 010503770001
+>> InventorySlot id=50 len=12
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 8
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000800000000000000000000
+>> InventoryContent id=49 len=31 normalised
+    InventoryContentPacket
+      WindowID: 119
+      Content: [{StackNetworkID:10 Stack:{NetworkID:578 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}]
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 770142020100000114000a0000000000000000000000000000000000000000
+>> InventorySlot id=50 len=12
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 8
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000800000000000000000000
+== an apple put in the container of an anvil, slot 0
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -13
+          Actions: []v2193.StackRequestAction (1)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
+              Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:0 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0119010101010c000001000000070000000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-13 ContainerInfo:[]}]}
+    | 01011900
+== an apple put in the container of an anvil, slot 1
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -15
+          Actions: []v2193.StackRequestAction (1)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
+              Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:1 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 011d010101010c000001000000070001000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-15 ContainerInfo:[]}]}
+    | 01011d00
+== the client closes an anvil
+<< ContainerClose id=47 len=3
+    {WindowID:1 ContainerType:5 ServerSide:false}
+    | 010500
+>> ContainerClose id=47 len=3
+    {WindowID:1 ContainerType:5 ServerSide:false}
+    | 010500
+== a crafting table is placed
+>> UpdateBlock id=21 len=10
+    {Position:[-2 -60 2] NewBlockRuntimeID:1752181952 Flags:2 Layer:0}
+    | 037704c0d9c0c3060200
+== the client opens a crafting table
+<< InventoryTransaction id=30 len=47
+    InventoryTransactionPacket
+      LegacyRequestID: 0
+      LegacySetItemSlots: []
+      Actions: []
+      TransactionData: UseItemTransactionData
+        ActionType: 0
+        TriggerType: 1
+        BlockPosition: [-2 -60 2]
+        BlockFace: 1
+        HotBarSlot: 8
+        Hand: 0
+        HeldItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        Position: [0.5 -58.38 0.5]
+        ClickedPosition: [0.5 1 0.5]
+        BlockRuntimeID: 0
+        ClientPrediction: 1
+        ClientCooldownState: 0
+    | 00000200000103770401100000000000000000000000003f1f8569c20000003f
+    | 0000003f0000803f0000003f000100
+>> ContainerOpen id=46 len=6
+    {WindowID:2 ContainerType:1 ContainerPosition:[-2 -60 2] ContainerEntityUniqueID:-1}
+    | 020103770401
+>> InventorySlot id=50 len=12
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 8
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000800000000000000000000
+>> InventoryContent id=49 len=31 normalised
+    InventoryContentPacket
+      WindowID: 119
+      Content: [{StackNetworkID:10 Stack:{NetworkID:578 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}]
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 770142020100000114000a0000000000000000000000000000000000000000
+>> InventorySlot id=50 len=12
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 8
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000800000000000000000000
+== an apple put in the container of a crafting table, slot 0
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -17
+          Actions: []v2193.StackRequestAction (1)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
+              Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:0 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0121010101010c000001000000070000000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-17 ContainerInfo:[]}]}
+    | 01012100
+== an apple put in the container of a crafting table, slot 1
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -19
+          Actions: []v2193.StackRequestAction (1)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
+              Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:1 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0125010101010c000001000000070001000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-19 ContainerInfo:[]}]}
+    | 01012500
+== refused: two planks put in the grid, then a stale stack ID
+<< ItemStackRequest id=147 len=59 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -21
+          Actions: []v2193.StackRequestAction (3)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:2 StackNetworkID:9}
+              Destination: {Container:{ContainerID:13 DynamicContainerID:none} Slot:32 StackNetworkID:0}
+            [1] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:2 StackNetworkID:-21}
+              Destination: {Container:{ContainerID:13 DynamicContainerID:none} Slot:35 StackNetworkID:0}
+            [2] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:7}
+              Destination: {Container:{ContainerID:12 DynamicContainerID:none} Slot:22 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0129030101010c0002090000000d0020000000000101010c0002ebffffff0d00
+    | 23000000000101010c0000070000000c0016000000000000000000
+>> InventoryContent id=49 len=459 normalised
+    InventoryContentPacket
+      WindowID: 124
+      Content: []v2193.ItemInstance (54)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [27] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [28] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:11 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [36] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [37] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [38] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [39] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [40] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [41] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [42] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [43] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [44] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [45] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [46] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [47] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [48] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [50] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7c36000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 000005000100000116b6b5ac94070a0000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000
+>> InventoryContent id=49 len=474 normalised
+    InventoryContentPacket
+      WindowID: 124
+      Content: []v2193.ItemInstance (54)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [27] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [28] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:11 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:12 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [36] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [37] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [38] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [39] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [40] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [41] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [42] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [43] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [44] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [45] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [46] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [47] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [48] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [50] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7c36000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 000005000100000116b6b5ac94070a0000000000000000000000000000000000
+    | 00000000000000000005000100000118b6b5ac94070a00000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000
+>> ItemStackResponse id=148 len=4
+    {Responses:[{Status:1 RequestID:-21 ContainerInfo:[]}]}
+    | 01012900
+>> InventoryContent id=49 len=459 normalised
+    InventoryContentPacket
+      WindowID: 124
+      Content: []v2193.ItemInstance (54)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [27] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [28] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:11 Stack:{NetworkID:5 MetadataValue:0 BlockRuntimeID:1921718966 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [36] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [37] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [38] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [39] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [40] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [41] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [42] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [43] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [44] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [45] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [46] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [47] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [48] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [50] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7c36000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 000005000100000116b6b5ac94070a0000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000
+>> InventoryContent id=49 len=444
+    InventoryContentPacket
+      WindowID: 124
+      Content: []v2193.ItemInstance (54)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [27] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [28] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [29] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [30] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [31] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [32] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [33] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [34] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [35] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [36] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [37] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [38] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [39] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [40] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [41] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [42] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [43] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [44] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [45] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [46] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [47] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [48] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [49] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [50] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [51] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [52] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [53] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 7c36000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 00000000000000000000000000000000000000000000000000000000
+== the client closes a crafting table
+<< ContainerClose id=47 len=3
+    {WindowID:2 ContainerType:1 ServerSide:false}
+    | 020100
+>> ContainerClose id=47 len=3
+    {WindowID:2 ContainerType:1 ServerSide:false}
+    | 020100
+>> LevelEvent id=25 len=15
+    {EventType:3003 Position:[0 0 0] EventData:0}
+    | f62e00000000000000000000000000
+>> LevelEvent id=25 len=15
+    {EventType:3004 Position:[0 0 0] EventData:0}
+    | f82e00000000000000000000000000
+== a dispenser is placed with iron ingots in it
+>> UpdateBlock id=21 len=10
+    {Position:[2 -60 0] NewBlockRuntimeID:1592040637 Flags:2 Layer:0}
+    | 047700bdb992f7050200
+>> BlockActorData id=56 len=115
+    BlockActorDataPacket
+      Position: [2 -60 0]
+      NBTData: map["BlockEntityVersion":0 "Items":[map["Count":3 "Damage":0 "Name":"minecraft:iron_ingot" "Slot":4]] "id":"Dispenser" "x":2 "y":-60 "z":0]
+    | 0477000a000312426c6f636b456e7469747956657273696f6e0009054974656d
+    | 730a020105436f756e7403020644616d616765000008044e616d65146d696e65
+    | 63726166743a69726f6e5f696e676f740104536c6f7404000802696409446973
+    | 70656e736572030178040301797703017a0000
+== the client opens a dispenser
+<< InventoryTransaction id=30 len=47
+    InventoryTransactionPacket
+      LegacyRequestID: 0
+      LegacySetItemSlots: []
+      Actions: []
+      TransactionData: UseItemTransactionData
+        ActionType: 0
+        TriggerType: 1
+        BlockPosition: [2 -60 0]
+        BlockFace: 1
+        HotBarSlot: 8
+        Hand: 0
+        HeldItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        Position: [0.5 -58.38 0.5]
+        ClickedPosition: [0.5 1 0.5]
+        BlockRuntimeID: 0
+        ClientPrediction: 1
+        ClientCooldownState: 0
+    | 00000200000104770001100000000000000000000000003f1f8569c20000003f
+    | 0000003f0000803f0000003f000100
+>> ContainerOpen id=46 len=6
+    {WindowID:3 ContainerType:6 ContainerPosition:[2 -60 0] ContainerEntityUniqueID:-1}
+    | 030604770001
+>> InventoryContent id=49 len=95 normalised
+    InventoryContentPacket
+      WindowID: 3
+      Content: []v2193.ItemInstance (9)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:13 Stack:{NetworkID:307 MetadataValue:0 BlockRuntimeID:0 Count:3 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 0309000000000000000000000000000000000000000000000000000000000000
+    | 00003301030000011a000a000000000000000000000000000000000000000000
+    | 00000000000000000000000000000000000000000000000000000000000000
+>> InventorySlot id=50 len=12
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 8
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000800000000000000000000
+>> InventoryContent id=49 len=31 normalised
+    InventoryContentPacket
+      WindowID: 119
+      Content: [{StackNetworkID:10 Stack:{NetworkID:578 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}]
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 770142020100000114000a0000000000000000000000000000000000000000
+>> InventorySlot id=50 len=12
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 8
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000800000000000000000000
+== an apple put in a dispenser
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -23
+          Actions: []v2193.StackRequestAction (1)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:1}
+              Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:0 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 012d010101010c000001000000070000000000000000000000
+>> ItemStackResponse id=148 len=27 normalised
+    ItemStackResponsePacket
+      Responses: []v2193.ItemStackResponse (1)
+        [0] ItemStackResponse
+          Status: 0
+          RequestID: -23
+          ContainerInfo: []v2193.StackResponseContainerInfo (2)
+            [0] StackResponseContainerInfo
+              Container: {ContainerID:7 DynamicContainerID:none}
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:1 StackNetworkID:14 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+            [1] StackResponseContainerInfo
+              Container: {ContainerID:12 DynamicContainerID:none}
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:15 StackNetworkID:15 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+    | 01002d0102070001000001011c0000000c000100000f011e000000
+== the client closes a dispenser
+<< ContainerClose id=47 len=3
+    {WindowID:3 ContainerType:6 ServerSide:false}
+    | 030600
+>> ContainerClose id=47 len=3
+    {WindowID:3 ContainerType:6 ServerSide:false}
+    | 030600
+== a dropper is placed with iron ingots in it
+>> UpdateBlock id=21 len=10
+    {Position:[2 -60 2] NewBlockRuntimeID:894753366 Flags:2 Layer:0}
+    | 047704d6b4d3aa030200
+>> BlockActorData id=56 len=113
+    BlockActorDataPacket
+      Position: [2 -60 2]
+      NBTData: map["BlockEntityVersion":0 "Items":[map["Count":3 "Damage":0 "Name":"minecraft:iron_ingot" "Slot":4]] "id":"Dropper" "x":2 "y":-60 "z":2]
+    | 0477040a000312426c6f636b456e7469747956657273696f6e0009054974656d
+    | 730a020105436f756e7403020644616d616765000008044e616d65146d696e65
+    | 63726166743a69726f6e5f696e676f740104536c6f740400080269640744726f
+    | 70706572030178040301797703017a0400
+== the client opens a dropper
+<< InventoryTransaction id=30 len=47
+    InventoryTransactionPacket
+      LegacyRequestID: 0
+      LegacySetItemSlots: []
+      Actions: []
+      TransactionData: UseItemTransactionData
+        ActionType: 0
+        TriggerType: 1
+        BlockPosition: [2 -60 2]
+        BlockFace: 1
+        HotBarSlot: 8
+        Hand: 0
+        HeldItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        Position: [0.5 -58.38 0.5]
+        ClickedPosition: [0.5 1 0.5]
+        BlockRuntimeID: 0
+        ClientPrediction: 1
+        ClientCooldownState: 0
+    | 00000200000104770401100000000000000000000000003f1f8569c20000003f
+    | 0000003f0000803f0000003f000100
+>> ContainerOpen id=46 len=6
+    {WindowID:4 ContainerType:7 ContainerPosition:[2 -60 2] ContainerEntityUniqueID:-1}
+    | 040704770401
+>> InventoryContent id=49 len=95 normalised
+    InventoryContentPacket
+      WindowID: 4
+      Content: []v2193.ItemInstance (9)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:16 Stack:{NetworkID:307 MetadataValue:0 BlockRuntimeID:0 Count:3 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 0409000000000000000000000000000000000000000000000000000000000000
+    | 000033010300000120000a000000000000000000000000000000000000000000
+    | 00000000000000000000000000000000000000000000000000000000000000
+>> InventorySlot id=50 len=12
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 8
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000800000000000000000000
+>> InventoryContent id=49 len=31 normalised
+    InventoryContentPacket
+      WindowID: 119
+      Content: [{StackNetworkID:10 Stack:{NetworkID:578 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}]
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 770142020100000114000a0000000000000000000000000000000000000000
+>> InventorySlot id=50 len=12
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 8
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 000800000000000000000000
+== an apple put in a dropper
+<< ItemStackRequest id=147 len=25 normalised
+    ItemStackRequestPacket
+      Requests: []v2193.ItemStackRequest (1)
+        [0] ItemStackRequest
+          RequestID: -25
+          Actions: []v2193.StackRequestAction (1)
+            [0] PlaceStackRequestAction
+              Count: 1
+              Source: {Container:{ContainerID:12 DynamicContainerID:none} Slot:0 StackNetworkID:15}
+              Destination: {Container:{ContainerID:7 DynamicContainerID:none} Slot:0 StackNetworkID:0}
+          FilterStrings: []
+          FilterCause: 0
+    | 0131010101010c00000f000000070000000000000000000000
+>> ItemStackResponse id=148 len=27 normalised
+    ItemStackResponsePacket
+      Responses: []v2193.ItemStackResponse (1)
+        [0] ItemStackResponse
+          Status: 0
+          RequestID: -25
+          ContainerInfo: []v2193.StackResponseContainerInfo (2)
+            [0] StackResponseContainerInfo
+              Container: {ContainerID:7 DynamicContainerID:none}
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:1 StackNetworkID:17 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+            [1] StackResponseContainerInfo
+              Container: {ContainerID:12 DynamicContainerID:none}
+              SlotInfo: [{Slot:0 HotbarSlot:0 Count:14 StackNetworkID:18 CustomName:"" FilteredCustomName:none DurabilityCorrection:0}]
+    | 010031010207000100000101220000000c000100000e0124000000
+== the client closes a dropper
+<< ContainerClose id=47 len=3
+    {WindowID:4 ContainerType:7 ServerSide:false}
+    | 040700
+>> ContainerClose id=47 len=3
+    {WindowID:4 ContainerType:7 ServerSide:false}
+    | 040700

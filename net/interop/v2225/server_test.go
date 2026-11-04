@@ -103,15 +103,15 @@ func freeAddr(t *testing.T) string {
 }
 
 // startServer starts a server of a flat world on addr whose config allows
-// 1.26.50 and 1.26.60, its primary 1.26.50, as config.toml would, and
-// returns the players it accepts.
-func startServer(t *testing.T, addr string) (*server.Server, <-chan *player.Player) {
+// 1.26.50 and 1.26.60, with the primary protocol named, and returns the
+// players it accepts.
+func startServer(t *testing.T, addr, primary string) (*server.Server, <-chan *player.Player) {
 	t.Helper()
 	uc := bedrockadapter.DefaultConfig()
 	uc.Network.Address = addr
 	uc.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
 	uc.Network.Protocols = []string{"1.26.50", "1.26.60"}
-	uc.Network.PrimaryProtocol = "1.26.50"
+	uc.Network.PrimaryProtocol = primary
 	uc.Server.AuthEnabled = false
 	bc, err := uc.Config(slog.New(slog.DiscardHandler))
 	if err != nil {
@@ -146,13 +146,21 @@ func startServer(t *testing.T, addr string) (*server.Server, <-chan *player.Play
 }
 
 // TestClientsOfTwoProtocolsPlayTogether joins one server, which allows 1.26.50
-// and 1.26.60, its primary 1.26.50, with a client of 2193 (the client of the
-// net module) and a client of 2225 (gophertunnel master): each sees the
-// other, hears the other's chat, and the client of 2225 opens a chest and
-// strikes the player of the client of 2193, who is shown it hurt.
+// and 1.26.60, with a client of 2193 (the client of the net module) and a
+// client of 2225 (gophertunnel master): each sees the other, hears the
+// other's chat, and the client of 2225 opens a chest and strikes the player
+// of the client of 2193, who is shown it hurt. They do under either
+// primary: 1.26.50, as config.toml has it, and 1.26.60.
 func TestClientsOfTwoProtocolsPlayTogether(t *testing.T) {
+	for _, primary := range []string{"1.26.50", "1.26.60"} {
+		t.Run("primary "+primary, func(t *testing.T) { playTogether(t, primary) })
+	}
+}
+
+// playTogether is TestClientsOfTwoProtocolsPlayTogether under a primary.
+func playTogether(t *testing.T, primary string) {
 	addr := freeAddr(t)
-	_, players := startServer(t, addr)
+	_, players := startServer(t, addr, primary)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 

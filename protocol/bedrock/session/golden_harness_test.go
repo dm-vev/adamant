@@ -88,7 +88,10 @@ func isolated(t *testing.T) bool {
 // only: read here too, a changed snapshot runs the tests again.
 func readGoldenSnapshots(t *testing.T) {
 	t.Helper()
-	for _, dir := range []string{filepath.Join("testdata", "golden"), filepath.Join("testdata", "golden", "v2225")} {
+	for _, dir := range []string{
+		filepath.Join("testdata", "golden"), filepath.Join("testdata", "golden", "v2225"),
+		filepath.Join("testdata", "golden", "primary2225", "v2193"), filepath.Join("testdata", "golden", "primary2225", "v2225"),
+	} {
 		entries, err := os.ReadDir(dir)
 		if err != nil && !os.IsNotExist(err) {
 			t.Fatal(err)
@@ -428,6 +431,7 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		MaxChunkRadius: goldenRadius,
 		BlockRegistry:  w.BlockRegistry(),
 		Permissions:    func(uuid.UUID) client.Permissions { return client.MemberPermissions() },
+		Primary:        goldenPrimary,
 	}
 	if conf.session != nil {
 		conf.session(&sconf)
@@ -987,8 +991,23 @@ var goldenProtocol = func() *versions.Protocol {
 	return versions.Default()
 }()
 
-// goldenDir returns the directory of the snapshots of goldenProtocol.
+// goldenPrimary is the primary protocol of the sessions of the scenarios:
+// nil, that of the default config, 2193, unless GOLDEN_PRIMARY says 2225,
+// as TestGoldenScenariosOfPrimary2225 has its children.
+var goldenPrimary = func() *versions.Protocol {
+	if os.Getenv("GOLDEN_PRIMARY") == "2225" {
+		return versions.Model()
+	}
+	return nil
+}()
+
+// goldenDir returns the directory of the snapshots of goldenProtocol, and
+// of goldenPrimary if it is set: testdata/golden/primary2225/v2193 and
+// v2225 for primary 2225.
 func goldenDir() string {
+	if goldenPrimary != nil {
+		return filepath.Join("testdata", "golden", fmt.Sprintf("primary%d", goldenPrimary.Number), fmt.Sprintf("v%d", goldenProtocol.Number))
+	}
 	if goldenProtocol != versions.Default() {
 		return filepath.Join("testdata", "golden", fmt.Sprintf("v%d", goldenProtocol.Number))
 	}

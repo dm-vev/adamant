@@ -15,11 +15,10 @@
   QueryPlugins = false
   # Protocols lists the protocols of Bedrock Edition clients may join with, each by one of its versions:
   # "1.26.50" (or "26.50", "26.51", "26.52", "2193") names protocol 2193, of 1.26.50 to 1.26.52, and
-  # "1.26.60" (or "26.60", "26.61", "2225") protocol 2225, of 1.26.60 and 1.26.61. Clients of 1.26.60 see
-  # redstone wire, fire and chorus plants unconnected for now.
+  # "1.26.60" (or "26.60", "26.61", "2225") protocol 2225, of 1.26.60 and 1.26.61.
   Protocols = ["1.26.50"]
   # PrimaryProtocol is the protocol the server speaks, one of Protocols: clients of the others get its packets
-  # converted to theirs. This build speaks 1.26.50 alone as its primary.
+  # converted to theirs. This build speaks 1.26.50 or 1.26.60 as its primary.
   PrimaryProtocol = "1.26.50"
 
 [Server]

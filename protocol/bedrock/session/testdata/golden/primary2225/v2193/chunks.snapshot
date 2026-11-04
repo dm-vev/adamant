@@ -1,0 +1,1428 @@
+== columns, tick 1
+>> AvailableCommands id=76 len=8
+    {EnumValues:[] ChainedSubcommandValues:[] Suffixes:[] Enums:[] ChainedSubcommands:[] Commands:[] DynamicEnums:[] Constraints:[]}
+    | 0000000000000000
+>> LevelChunk id=58 len=550
+    {Position:[-1 -1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 01010000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[-1 0] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 01000000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[-1 1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 01020000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> UpdateAttributes id=29 len=158
+    UpdateAttributesPacket
+      EntityRuntimeID: 1
+      Attributes: []v2193.Attribute (3)
+        [0] {Min:0 Max:20 Value:20 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.hunger" Modifiers:[]}
+        [1] {Min:0 Max:20 Value:5 DefaultMin:0 DefaultMax:20 Default:20 Name:"minecraft:player.saturation" Modifiers:[]}
+        [2] {Min:0 Max:5 Value:0 DefaultMin:0 DefaultMax:5 Default:0 Name:"minecraft:player.exhaustion" Modifiers:[]}
+      Tick: 0
+    | 0103000000000000a0410000a041000000000000a0410000a041176d696e6563
+    | 726166743a706c617965722e68756e67657200000000000000a0410000a04000
+    | 0000000000a0410000a0411b6d696e6563726166743a706c617965722e736174
+    | 75726174696f6e00000000000000a04000000000000000000000a04000000000
+    | 1b6d696e6563726166743a706c617965722e65786861757374696f6e0000
+>> LevelChunk id=58 len=550
+    {Position:[0 0] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 00000000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:0 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c0707007803030000000081010000008301070700000000
+== columns, tick 2
+>> LevelChunk id=58 len=550
+    {Position:[0 -1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 00010000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[0 1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 00020000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[1 -1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 02010000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[1 0] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 02000000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+== columns, tick 3
+>> LevelChunk id=58 len=550
+    {Position:[1 1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 02020000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+== sub-chunks asked for
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[-1 -4 -1]}
+    | 0002000000000100fffffffffcffffffffffffff
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[-1 -4 0]}
+    | 0002000000000100fffffffffcffffff00000000
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[-1 -4 1]}
+    | 0002000000000100fffffffffcffffff01000000
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[0 -4 0]}
+    | 000200000000010000000000fcffffff00000000
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[0 -4 -1]}
+    | 000200000000010000000000fcffffffffffffff
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[0 -4 1]}
+    | 000200000000010000000000fcffffff01000000
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[1 -4 -1]}
+    | 000200000000010001000000fcffffffffffffff
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[1 -4 0]}
+    | 000200000000010001000000fcffffff00000000
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[1 -4 1]}
+    | 000200000000010001000000fcffffff01000000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [-1 -4 -1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 0000fffffffffcffffffffffffff02000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [-1 -4 0]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 0000fffffffffcffffff0000000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [-1 -4 1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 0000fffffffffcffffff0100000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [0 -4 0]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000000000000fcffffff0000000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [0 -4 -1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000000000000fcffffffffffffff02000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [0 -4 1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000000000000fcffffff0100000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [1 -4 -1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000001000000fcffffffffffffff02000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [1 -4 0]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000001000000fcffffff0000000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [1 -4 1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000001000000fcffffff0100000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+== block changed
+>> UpdateBlock id=21 len=10
+    {Position:[1 -61 1] NewBlockRuntimeID:2150698529 Flags:2 Layer:0}
+    | 027902a19cc481080200
+>> UpdateBlock id=21 len=10
+    {Position:[2 -60 1] NewBlockRuntimeID:3162850062 Flags:2 Layer:0}
+    | 0477028e8695e40b0200
+>> BlockActorData id=56 len=69
+    {Position:[2 -60 1] NBTData:map["BlockEntityVersion":0 "Findable":0 "Items":[] "id":"Chest" "x":2 "y":-60 "z":1]}
+    | 0477020a000312426c6f636b456e7469747956657273696f6e00010846696e64
+    | 61626c650009054974656d730a00080269640543686573740301780403017977
+    | 03017a0200
+== block changes in the tick
+== player moved two chunks away
+>> SetActorMotion id=40 len=14
+    {EntityRuntimeID:1 Velocity:[0 0 0] Tick:0}
+    | 0100000000000000000000000000
+>> MovePlayer id=19 len=38
+    MovePlayerPacket
+      EntityRuntimeID: 1
+      Position: [40.5 -58.37999 0.5]
+      Pitch: 0
+      Yaw: 0
+      HeadYaw: 0
+      Mode: 2
+      OnGround: false
+      RiddenEntityRuntimeID: 0
+      TeleportData: {TeleportCause:0 TeleportSourceEntityType:0}
+      Tick: 0
+    | 01000022421c8569c20000003f00000000000000000000000002000001000000
+    | 000000000000
+== columns of the new place, tick 1
+>> NetworkChunkPublisherUpdate id=121 len=8
+    {Position:[40 -60 0] Radius:16 SavedChunks:[]}
+    | 5077001000000000
+>> LevelChunk id=58 len=550
+    {Position:[2 -1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 04010000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[2 1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 04020000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[3 -1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 06010000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[2 0] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 04000000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> SetActorData id=39 len=128
+    SetActorDataPacket
+      EntityRuntimeID: 1
+      EntityMetadata: map[0:844459290443776 120:0 129:0 131:0 15:0 26:0 3:0 38:1 4:"Golden" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | 01160007078080c680808280030300000004040406476f6c64656e0701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f3603036666e63f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c0707007803030000000081010000008301070700000000
+== columns of the new place, tick 2
+>> LevelChunk id=58 len=550
+    {Position:[3 0] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 06000000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+>> LevelChunk id=58 len=550
+    {Position:[3 1] Dimension:0 SubChunkCount:0 SubChunkLimit:1 CacheEnabled:false BlobHashes:[] RawPayload:<540 bytes sha256:fc01b4cf522d3b36>}
+    | 06020000010200009c0403ffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    | ffffffffffffffffffffff040002ffffffffffffffffffffffffffffffffffff
+    | ffffffffff00
+== columns of the new place, tick 3
+== sub-chunks of the new place asked for
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[2 -4 -1]}
+    | 000200000000010002000000fcffffffffffffff
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[2 -4 1]}
+    | 000200000000010002000000fcffffff01000000
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[3 -4 -1]}
+    | 000200000000010003000000fcffffffffffffff
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[2 -4 0]}
+    | 000200000000010002000000fcffffff00000000
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[3 -4 0]}
+    | 000200000000010003000000fcffffff00000000
+<< SubChunkRequest id=175 len=20
+    {Dimension:0 Offsets:[[0 0 0] [0 1 0]] Position:[3 -4 1]}
+    | 000200000000010003000000fcffffff01000000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [2 -4 -1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000002000000fcffffffffffffff02000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [2 -4 1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000002000000fcffffff0100000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [3 -4 -1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000003000000fcffffffffffffff02000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [2 -4 0]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000002000000fcffffff0000000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [3 -4 0]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000003000000fcffffff0000000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000
+>> SubChunk id=174 len=1630
+    SubChunkPacket
+      CacheEnabled: false
+      Dimension: 0
+      Position: [3 -4 1]
+      SubChunkEntries: []v2193.SubChunkEntry (2)
+        [0] SubChunkEntry
+          Offset: [0 0 0]
+          Result: 1
+          RawPayload: <1049 bytes sha256:b5bbc5db5d31c5f7>
+          HeightMapType: 1
+          HeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          RenderHeightMapType: 1
+          RenderHeightMapData: [[4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4] [4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4]]
+          BlobHash: none
+        [1] {Offset:[0 1 0] Result:6 RawPayload:none HeightMapType:3 HeightMapData:none RenderHeightMapType:3 RenderHeightMapData:none BlobHash:none}
+    | 000003000000fcffffff0100000002000000010199080901fc05e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e9000000e9000000e900
+    | 0000e9000000e9000000e9000000e9000000e9000000e900000008bffbddc004
+    | 898c9ca501f3c188db0f97ddf69c040101100404040404040404040404040404
+    | 0404100404040404040404040404040404040410040404040404040404040404
+    | 0404040410040404040404040404040404040404041004040404040404040404
+    | 0404040404041004040404040404040404040404040404100404040404040404
+    | 0404040404040404100404040404040404040404040404040410040404040404
+    | 0404040404040404040410040404040404040404040404040404041004040404
+    | 0404040404040404040404041004040404040404040404040404040404100404
+    | 0404040404040404040404040404100404040404040404040404040404040410
+    | 0404040404040404040404040404040410040404040404040404040404040404
+    | 0401011004040404040404040404040404040404100404040404040404040404
+    | 0404040404100404040404040404040404040404040410040404040404040404
+    | 0404040404040410040404040404040404040404040404041004040404040404
+    | 0404040404040404041004040404040404040404040404040404100404040404
+    | 0404040404040404040404100404040404040404040404040404040410040404
+    | 0404040404040404040404040410040404040404040404040404040404041004
+    | 0404040404040404040404040404041004040404040404040404040404040404
+    | 1004040404040404040404040404040404100404040404040404040404040404
+    | 040410040404040404040404040404040404040000010006000300030000

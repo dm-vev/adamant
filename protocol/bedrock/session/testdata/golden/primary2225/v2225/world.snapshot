@@ -1,0 +1,582 @@
+== another player spawns
+>> PlayerList id=63 len=229 normalised
+    PlayerListPacket
+      Entries: []v2225.PlayerListEntry (1)
+        [0] PlayerListEntry
+          ActionType: 0
+          UUID: 0x000000000000400080000000000007e2
+          EntityUniqueID: 1001
+          Username: "Other"
+          XUID: ""
+          PlayFabID: ""
+          PlatformChatID: ""
+          BuildPlatform: -1
+          Skin: Skin
+            PlayFabID: ""
+            SkinID: "9bed0c2f-0000-0000-0000-000000000003"
+            SkinResourcePatch: json"{\"geometry\":{\"default\":\"\"}}"
+            SkinImageWidth: 0
+            SkinImageHeight: 0
+            SkinData: 0x
+            Animations: []
+            CapeImageWidth: 0
+            CapeImageHeight: 0
+            CapeData: 0x
+            SkinGeometry: json"{}"
+            GeometryDataEngineVersion: 0x312e32362e3630
+            AnimationData: 0x
+            CapeID: "9bed0c2f-0000-0000-0000-000000000004"
+            FullID: "9bed0c2f-0000-0000-0000-000000000005"
+            ArmSize: 0
+            SkinColour: 0x00000000
+            PersonaPieces: []
+            PieceTintColours: []
+            PremiumSkin: false
+            PersonaSkin: false
+            PersonaCapeOnClassicSkin: false
+            PrimaryUser: false
+            OverrideAppearance: true
+            Trusted: true
+            ProfileHash: ""
+          Teacher: false
+          Host: false
+          SubClient: false
+          PlayerColour: 0x00000000
+    | 0101000040000000000000e207000000000080d20f054f74686572000000ffff
+    | ffff2439626564306332662d303030302d303030302d303030302d3030303030
+    | 303030303030331b7b2267656f6d65747279223a7b2264656661756c74223a22
+    | 227d7d00000000000000000000000000000000000000027b7d07312e32362e36
+    | 30002439626564306332662d303030302d303030302d303030302d3030303030
+    | 303030303030342439626564306332662d303030302d303030302d303030302d
+    | 3030303030303030303030350000000000000000000000010474727565000000
+    | 0000000000
+>> AddPlayer id=12 len=230 normalised
+    AddPlayerPacket
+      UUID: 0x000000000000400080000000000007e2
+      Username: "Other"
+      EntityRuntimeID: 1002
+      PlatformChatID: ""
+      Position: [3.5 -58.37999 0.5]
+      Velocity: [0 0 0]
+      Pitch: 0
+      Yaw: 0
+      HeadYaw: 0
+      HeldItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      GameType: 0
+      EntityMetadata: map[0:844459290443776 120:0 131:0 15:0 26:0 3:0 38:1 4:"Other" 42:300 53:0.6 54:1.8 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      AbilityData: {EntityUniqueID:1001 PlayerPermissions:1 CommandPermissions:0 Layers:[{Type:1 Abilities:1048575 Values:63 FlySpeed:0.05 VerticalFlySpeed:1 WalkSpeed:0.1}]}
+      EntityLinks: []
+      PassengerOfBlock: none
+      DeviceID: ""
+      BuildPlatform: -1
+    | 0040000000000000e207000000000080054f74686572ea0700000060401c8569
+    | c20000003f000000000000000000000000000000000000000000000000000000
+    | 000000000000150007078080c6808082800303000000040404054f7468657207
+    | 01012c0108020200090000000f0202001a0000002603030000803f2a01012c01
+    | 3503039a99193f3603036666e63f390000003a0303000000003b0000003c0303
+    | 0000000051000001540404005c0707007803030000000083010707000000e903
+    | 0000000000000100010100ffff0f003f000000cdcc4c3d0000803fcdcccc3d00
+    | 0000ffffffff
+>> PlayerList id=63 len=19
+    PlayerListPacket
+      Entries: []v2225.PlayerListEntry (1)
+        [0] PlayerListEntry
+          ActionType: 1
+          UUID: 0x000000000000400080000000000007e2
+          EntityUniqueID: 0
+          Username: ""
+          XUID: ""
+          PlayFabID: ""
+          PlatformChatID: ""
+          BuildPlatform: 0
+          Skin: Skin
+            PlayFabID: ""
+            SkinID: ""
+            SkinResourcePatch: 0x
+            SkinImageWidth: 0
+            SkinImageHeight: 0
+            SkinData: 0x
+            Animations: []
+            CapeImageWidth: 0
+            CapeImageHeight: 0
+            CapeData: 0x
+            SkinGeometry: 0x
+            GeometryDataEngineVersion: 0x
+            AnimationData: 0x
+            CapeID: ""
+            FullID: ""
+            ArmSize: 0
+            SkinColour: 0x00000000
+            PersonaPieces: []
+            PieceTintColours: []
+            PremiumSkin: false
+            PersonaSkin: false
+            PersonaCapeOnClassicSkin: false
+            PrimaryUser: false
+            OverrideAppearance: false
+            Trusted: false
+            ProfileHash: ""
+          Teacher: false
+          Host: false
+          SubClient: false
+          PlayerColour: 0x00000000
+    | 0100010040000000000000e207000000000080
+== it moves and turns
+== movement in the tick
+>> MoveActorAbsolute id=18 len=18 normalised
+    {EntityRuntimeID:1002 Flags:0 Position:[4 -58.37999 0.75] Rotation:[9.84375 45 45]}
+    | ea0700000080401c8569c20000403f072020
+>> MoveActorAbsolute id=18 len=18 normalised
+    {EntityRuntimeID:1002 Flags:1 Position:[4.49 -58.37999 0.995] Rotation:[9.84375 45 45]}
+    | ea070114ae8f401c8569c252b87e3f072020
+>> SetActorMotion id=40 len=15 normalised
+    {EntityRuntimeID:1002 Velocity:[0.49 0 0.245] Tick:0}
+    | ea0748e1fa3e0000000048e17a3e00
+== it teleports
+>> SetActorMotion id=40 len=15 normalised
+    {EntityRuntimeID:1002 Velocity:[0 0 0] Tick:0}
+    | ea0700000000000000000000000000
+>> MovePlayer id=19 len=39 normalised
+    MovePlayerPacket
+      EntityRuntimeID: 1002
+      Position: [5.49 -58.37999 1.995]
+      Pitch: 10
+      Yaw: 45
+      HeadYaw: 45
+      Mode: 2
+      OnGround: false
+      RiddenEntityRuntimeID: 0
+      TeleportData: {TeleportCause:0 TeleportSourceEntityType:0}
+      Tick: 0
+    | ea0714aeaf401c8569c2295cff3f000020410000344200003442020000010000
+    | 00000000000000
+== teleport in the tick
+>> MoveActorAbsolute id=18 len=18 normalised
+    {EntityRuntimeID:1002 Flags:1 Position:[5.49 -58.37999 1.995] Rotation:[9.84375 45 45]}
+    | ea070114aeaf401c8569c2295cff3f072020
+== its metadata: sneaking, name tag, on fire
+>> SetActorData id=39 len=124 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844459290443778 120:0 131:0 15:0 26:0 3:0 38:1 4:"Other" 42:300 53:0.6 54:1.49 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:256]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea07150007078480c6808082800303000000040404054f746865720701012c01
+    | 08020200090000000f0202001a0000002603030000803f2a01012c013503039a
+    | 99193f36030352b8be3f390000003a0303000000003b0000003c030300000000
+    | 51000001540404005c07078004780303000000008301070700000000
+>> SetActorData id=39 len=127 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844459290443778 120:0 131:0 15:0 26:0 3:0 38:1 4:"§nOther" 42:300 53:0.6 54:1.49 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:256]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea07150007078480c680808280030300000004040408c2a76e4f746865720701
+    | 012c0108020200090000000f0202001a0000002603030000803f2a01012c0135
+    | 03039a99193f36030352b8be3f390000003a0303000000003b0000003c030300
+    | 00000051000001540404005c07078004780303000000008301070700000000
+>> SetActorData id=39 len=127 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844459290443779 120:0 131:0 15:0 26:0 3:0 38:1 4:"§nOther" 42:300 53:0.6 54:1.49 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:256]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea07150007078680c680808280030300000004040408c2a76e4f746865720701
+    | 012c0108020200090000000f0202001a0000002603030000803f2a01012c0135
+    | 03039a99193f36030352b8be3f390000003a0303000000003b0000003c030300
+    | 00000051000001540404005c07078004780303000000008301070700000000
+== its armour
+>> MobArmourEquipment id=32 len=71 normalised
+    MobArmourEquipmentPacket
+      EntityRuntimeID: 1002
+      Helmet: {StackNetworkID:1 Stack:{NetworkID:350 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["Damage":0] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Chestplate: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Leggings: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Boots: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Body: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | ea075e010100000102001cffff010a000003060044616d616765000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 00000000000000
+>> MobArmourEquipment id=32 len=100 normalised
+    MobArmourEquipmentPacket
+      EntityRuntimeID: 1002
+      Helmet: {StackNetworkID:1 Stack:{NetworkID:350 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["Damage":0] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Chestplate: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Leggings: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Boots: {StackNetworkID:2 Stack:{NetworkID:341 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["Damage":0] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Body: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | ea075e010100000102001cffff010a000003060044616d616765000000000000
+    | 000000000000000000000000000000000000000000000055010100000104001c
+    | ffff010a000003060044616d6167650000000000000000000000000000000000
+    | 00000000
+== its held items
+>> MobEquipment id=31 len=42 normalised
+    MobEquipmentPacket
+      EntityRuntimeID: 1002
+      NewItem: {StackNetworkID:3 Stack:{NetworkID:309 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["Damage":0] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      InventorySlot: 0
+      HotBarSlot: 0
+      WindowID: 0
+    | ea0735010100000106001cffff010a000003060044616d616765000000000000
+    | 00000000000000000000
+>> MobEquipment id=31 len=13 normalised
+    MobEquipmentPacket
+      EntityRuntimeID: 1002
+      NewItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      InventorySlot: 0
+      HotBarSlot: 0
+      WindowID: 119
+    | ea070000000000000000000077
+>> MobEquipment id=31 len=42 normalised
+    MobEquipmentPacket
+      EntityRuntimeID: 1002
+      NewItem: {StackNetworkID:3 Stack:{NetworkID:309 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["Damage":0] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      InventorySlot: 0
+      HotBarSlot: 0
+      WindowID: 0
+    | ea0735010100000106001cffff010a000003060044616d616765000000000000
+    | 00000000000000000000
+>> MobEquipment id=31 len=42 normalised
+    MobEquipmentPacket
+      EntityRuntimeID: 1002
+      NewItem: {StackNetworkID:4 Stack:{NetworkID:358 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["Damage":0] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      InventorySlot: 0
+      HotBarSlot: 0
+      WindowID: 119
+    | ea0766010100000108001cffff010a000003060044616d616765000000000000
+    | 00000000000000000077
+== it swings its arm
+>> SetActorData id=39 len=126 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844459290443779 120:0 131:0 15:0 26:0 3:0 38:1 4:"§nOther" 42:300 53:0.6 54:1.49 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea07150007078680c680808280030300000004040408c2a76e4f746865720701
+    | 012c0108020200090000000f0202001a0000002603030000803f2a01012c0135
+    | 03039a99193f36030352b8be3f390000003a0303000000003b0000003c030300
+    | 00000051000001540404005c070700780303000000008301070700000000
+>> Animate id=44 len=9 normalised
+    {ActionType:1 EntityRuntimeID:1002 Data:0 SwingSource:0 Hand:0}
+    | 01ea07000000000000
+== it is hurt
+>> ActorEvent id=27 len=5 normalised
+    {EntityRuntimeID:1002 EventType:2 EventData:0 FireAtPosition:none}
+    | ea07020000
+== hurt in the tick
+== a bed is placed and it sleeps in it
+>> Text id=9 len=38
+    {TextType:2 NeedsTranslation:true SourceName:"" Message:"§r%chat.type.sleeping" Parameters:["Other" "1"] XUID:"" PlatformChatID:"" FilteredMessage:none}
+    | 01020216c2a77225636861742e747970652e736c656570696e6702054f746865
+    | 720131000000
+>> LevelEventGeneric id=124 len=62 normalised
+    {EventID:9801 SerialisedEventData:<59 bytes sha256:f25c2e7f53471f4b>}
+    | 929901030b61626c65546f536c6565700403146f766572776f726c64506c6179
+    | 6572436f756e74040313736c656570696e67506c61796572436f756e7402
+>> SetActorData id=39 len=132 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844459290443779 120:0 131:0 15:0 26:2 28:[3 -60 3] 3:0 38:1 4:"§nOther" 42:300 53:0.2 54:0.2 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea07160007078680c680808280030300000004040408c2a76e4f746865720701
+    | 012c0108020200090000000f0202001a0000021c06060677062603030000803f
+    | 2a01012c01350303cdcc4c3e360303cdcc4c3e390000003a0303000000003b00
+    | 00003c03030000000051000001540404005c0707007803030000000083010707
+    | 00000000
+>> UpdateBlock id=21 len=10
+    {Position:[3 -60 3] NewBlockRuntimeID:3553118248 Flags:2 Layer:0}
+    | 067706a890a19e0d0200
+>> UpdateBlock id=21 len=10
+    {Position:[3 -60 4] NewBlockRuntimeID:2268230312 Flags:2 Layer:0}
+    | 067708a8e5c9b9080200
+>> BlockActorData id=56 len=55
+    {Position:[3 -60 3] NBTData:map["BlockEntityVersion":0 "color":0 "id":"Bed" "x":3 "y":-60 "z":3]}
+    | 0677060a000312426c6f636b456e7469747956657273696f6e000105636f6c6f
+    | 72000802696403426564030178060301797703017a0600
+>> BlockActorData id=56 len=55
+    {Position:[3 -60 4] NBTData:map["BlockEntityVersion":0 "color":0 "id":"Bed" "x":3 "y":-60 "z":4]}
+    | 0677080a000312426c6f636b456e7469747956657273696f6e000105636f6c6f
+    | 72000802696403426564030178060301797703017a0800
+== the sleeping indicator
+>> LevelEventGeneric id=124 len=62 normalised
+    {EventID:9801 SerialisedEventData:<59 bytes sha256:f25c2e7f53471f4b>}
+    | 929901030b61626c65546f536c6565700403146f766572776f726c64506c6179
+    | 6572436f756e74040313736c656570696e67506c61796572436f756e7402
+== it wakes
+>> LevelEventGeneric id=124 len=62 normalised
+    {EventID:9801 SerialisedEventData:<59 bytes sha256:2000c4175bb9e349>}
+    | 929901030b61626c65546f536c6565700403146f766572776f726c64506c6179
+    | 6572436f756e74040313736c656570696e67506c61796572436f756e7400
+>> Animate id=44 len=9 normalised
+    {ActionType:3 EntityRuntimeID:1002 Data:0 SwingSource:0 Hand:0}
+    | 03ea07000000000000
+>> SetActorData id=39 len=126 normalised
+    SetActorDataPacket
+      EntityRuntimeID: 1002
+      EntityMetadata: map[0:844459290443779 120:0 131:0 15:0 26:0 3:0 38:1 4:"§nOther" 42:300 53:0.6 54:1.49 57:0 58:0 59:0 60:0 7:300 8:0 81:1 84:"" 9:0 92:0]
+      EntityProperties: {IntegerProperties:[] FloatProperties:[]}
+      Tick: 0
+    | ea07150007078680c680808280030300000004040408c2a76e4f746865720701
+    | 012c0108020200090000000f0202001a0000002603030000803f2a01012c0135
+    | 03039a99193f36030352b8be3f390000003a0303000000003b0000003c030300
+    | 00000051000001540404005c070700780303000000008301070700000000
+>> UpdateBlock id=21 len=10
+    {Position:[3 -60 3] NewBlockRuntimeID:313457523 Flags:2 Layer:0}
+    | 067706f3f6bb95010200
+>> BlockActorData id=56 len=55
+    {Position:[3 -60 3] NBTData:map["BlockEntityVersion":0 "color":0 "id":"Bed" "x":3 "y":-60 "z":3]}
+    | 0677060a000312426c6f636b456e7469747956657273696f6e000105636f6c6f
+    | 72000802696403426564030178060301797703017a0600
+== it leaves
+>> RemoveActor id=14 len=2 normalised
+    {EntityUniqueID:1001}
+    | d20f
+== the client walks east, input 1
+<< PlayerAuthInput id=144 len=90
+    PlayerAuthInputPacket
+      Pitch: 0
+      Yaw: -90
+      Position: [0.7 -58.38 0.5]
+      MoveVector: [0 1]
+      HeadYaw: -90
+      InputData: []
+      InputMode: 1
+      PlayMode: 0
+      InteractionModel: 0
+      InteractPitch: 0
+      InteractYaw: 0
+      Tick: 1
+      Delta: [0.2 0 0]
+      ItemInteractionData: none
+      ItemStackRequest: none
+      BlockActions: none
+      VehicleRotation: none
+      ClientPredictedVehicle: none
+      AnalogueMoveVector: [0 0]
+      CameraOrientation: [0 0 0]
+      RawMoveVector: [0 0]
+    | 000000000000b4c23333333f1f8569c20000003f000000000000803f0000b4c2
+    | 00010000000000000000000001cdcc4c3e000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000
+== the client walks east, input 2
+<< PlayerAuthInput id=144 len=90
+    PlayerAuthInputPacket
+      Pitch: 0
+      Yaw: -90
+      Position: [0.9 -58.38 0.5]
+      MoveVector: [0 1]
+      HeadYaw: -90
+      InputData: []
+      InputMode: 1
+      PlayMode: 0
+      InteractionModel: 0
+      InteractPitch: 0
+      InteractYaw: 0
+      Tick: 2
+      Delta: [0.2 0 0]
+      ItemInteractionData: none
+      ItemStackRequest: none
+      BlockActions: none
+      VehicleRotation: none
+      ClientPredictedVehicle: none
+      AnalogueMoveVector: [0 0]
+      CameraOrientation: [0 0 0]
+      RawMoveVector: [0 0]
+    | 000000000000b4c26666663f1f8569c20000003f000000000000803f0000b4c2
+    | 00010000000000000000000002cdcc4c3e000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000
+== the client walks east, input 3
+<< PlayerAuthInput id=144 len=90
+    PlayerAuthInputPacket
+      Pitch: 0
+      Yaw: -90
+      Position: [1.1 -58.38 0.5]
+      MoveVector: [0 1]
+      HeadYaw: -90
+      InputData: []
+      InputMode: 1
+      PlayMode: 0
+      InteractionModel: 0
+      InteractPitch: 0
+      InteractYaw: 0
+      Tick: 3
+      Delta: [0.2 0 0]
+      ItemInteractionData: none
+      ItemStackRequest: none
+      BlockActions: none
+      VehicleRotation: none
+      ClientPredictedVehicle: none
+      AnalogueMoveVector: [0 0]
+      CameraOrientation: [0 0 0]
+      RawMoveVector: [0 0]
+    | 000000000000b4c2cdcc8c3f1f8569c20000003f000000000000803f0000b4c2
+    | 00010000000000000000000003cdcc4c3e000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000
+== a chest is placed
+>> UpdateBlock id=21 len=10
+    {Position:[-2 -60 0] NewBlockRuntimeID:3162850062 Flags:2 Layer:0}
+    | 0377008e8695e40b0200
+>> BlockActorData id=56 len=69
+    {Position:[-2 -60 0] NBTData:map["BlockEntityVersion":0 "Findable":0 "Items":[] "id":"Chest" "x":-2 "y":-60 "z":0]}
+    | 0377000a000312426c6f636b456e7469747956657273696f6e00010846696e64
+    | 61626c650009054974656d730a00080269640543686573740301780303017977
+    | 03017a0000
+== the player opens it
+>> BlockEvent id=26 len=5
+    {Position:[-2 -60 0] EventType:1 EventData:1}
+    | 0377000202
+>> LevelSoundEvent id=123 len=37
+    {SoundType:"chest.open" Position:[-1.5 -59.5 0.5] ExtraData:-1 EntityType:":" BabyMob:false DisableRelativeVolume:false EntityUniqueID:-1 FireAtPosition:none}
+    | 0a63686573742e6f70656e0000c0bf00006ec20000003f01013a0000ffffffff
+    | ffffffff00
+>> ContainerOpen id=46 len=6
+    {WindowID:1 ContainerType:0 ContainerPosition:[-2 -60 0] ContainerEntityUniqueID:-1}
+    | 010003770001
+>> InventoryContent id=49 len=228
+    InventoryContentPacket
+      WindowID: 1
+      Content: []v2225.ItemInstance (27)
+        [0] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [1] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [2] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [3] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [4] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [5] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [6] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [7] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [8] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [9] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [10] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [11] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [12] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [13] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [14] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [15] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [16] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [17] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [18] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [19] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [20] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [21] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [22] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [23] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [24] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [25] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+        [26] {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+      Container: {ContainerID:0 DynamicContainerID:none}
+      StorageItem: {StackNetworkID:0 Stack:{NetworkID:0 MetadataValue:0 BlockRuntimeID:0 Count:0 NBTData:map[] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 011b000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 0000000000000000000000000000000000000000000000000000000000000000
+    | 00000000
+== the client closes it
+<< ContainerClose id=47 len=3
+    {WindowID:1 ContainerType:0 ServerSide:false}
+    | 010000
+>> BlockEvent id=26 len=5
+    {Position:[-2 -60 0] EventType:1 EventData:0}
+    | 0377000200
+>> LevelSoundEvent id=123 len=39
+    {SoundType:"chest.closed" Position:[-1.5 -59.5 0.5] ExtraData:-1 EntityType:":" BabyMob:false DisableRelativeVolume:false EntityUniqueID:-1 FireAtPosition:none}
+    | 0c63686573742e636c6f7365640000c0bf00006ec20000003f01013a0000ffff
+    | ffffffffffff00
+>> ContainerClose id=47 len=3
+    {WindowID:1 ContainerType:0 ServerSide:false}
+    | 010000
+== after it closed
+== sounds
+>> LevelEvent id=25 len=15
+    {EventType:1000 Position:[1.5 -60 1.5] EventData:0}
+    | d00f0000c03f000070c20000c03f00
+>> LevelSoundEvent id=123 len=34
+    {SoundType:"explode" Position:[1.5 -60 1.5] ExtraData:-1 EntityType:":" BabyMob:false DisableRelativeVolume:false EntityUniqueID:-1 FireAtPosition:none}
+    | 076578706c6f64650000c03f000070c20000c03f01013a0000ffffffffffffff
+    | ff00
+>> LevelSoundEvent id=123 len=36
+    {SoundType:"place" Position:[1.5 -60 1.5] ExtraData:-2144268767 EntityType:":" BabyMob:false DisableRelativeVolume:false EntityUniqueID:-1 FireAtPosition:none}
+    | 05706c6163650000c03f000070c20000c03fbdc7f7fc0f013a0000ffffffffff
+    | ffffff00
+>> LevelSoundEvent id=123 len=38
+    LevelSoundEventPacket
+      SoundType: "levelup"
+      Position: [1.1 -58.380013 0.5]
+      ExtraData: 268435456
+      EntityType: ":"
+      BabyMob: false
+      DisableRelativeVolume: true
+      EntityUniqueID: -1
+      FireAtPosition: none
+    | 076c6576656c7570cdcc8c3f228569c20000003f8080808002013a0001ffffff
+    | ffffffffff00
+>> LevelSoundEvent id=123 len=30
+    {SoundType:"note" Position:[1.1 -58.380013 0.5] ExtraData:12 EntityType:"" BabyMob:false DisableRelativeVolume:true EntityUniqueID:-1 FireAtPosition:none}
+    | 046e6f7465cdcc8c3f228569c20000003f18000001ffffffffffffffff00
+== particles
+>> LevelEvent id=25 len=15
+    {EventType:2025 Position:[1.5 -59 1.5] EventData:0}
+    | d21f0000c03f00006cc20000c03f00
+>> LevelEvent id=25 len=19
+    {EventType:2001 Position:[1.5 -59 1.5] EventData:-2108756090}
+    | a21f0000c03f00006cc20000c03ff3c188db0f
+>> LevelEvent id=25 len=16
+    {EventType:16392 Position:[1.5 -59 1.5] EventData:0}
+    | 9080020000c03f00006cc20000c03f00
+>> BlockEvent id=26 len=5
+    {Position:[1 -59 1] EventType:0 EventData:3}
+    | 0275020006
+== item cooldown
+>> ClientStartItemCooldown id=176 len=13
+    {Category:"ender_pearl" Duration:20}
+    | 0b656e6465725f706561726c28
+== a map is made and held
+>> InventorySlot id=50 len=47 normalised
+    InventorySlotPacket
+      WindowID: 0
+      Slot: 0
+      Container: none
+      StorageItem: none
+      NewItem: {StackNetworkID:5 Stack:{NetworkID:423 MetadataValue:0 BlockRuntimeID:0 Count:1 NBTData:map["map_uuid":1] CanBePlacedOn:[] CanBreak:[] BlockingTick:0}}
+    | 00000000a701010000010a0022ffff010a00000408006d61705f757569640100
+    | 000000000000000000000000000000
+== the client asks for the map
+<< MapInfoRequest id=68 len=5
+    {MapID:1 ClientPixels:[]}
+    | 0200000000
+>> ClientBoundMapItemData id=67 len=65563
+    ClientBoundMapItemDataPacket
+      MapID: 1
+      Dimension: 0
+      LockedMap: false
+      Origin: [0 0 0]
+      MapsIncludedIn: none
+      Scale: 0
+      TrackedObjects: []
+      Decorations: []
+      Width: 128
+      Height: 128
+      XOffset: 0
+      YOffset: 0
+      Pixels: [0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x6d9930ff 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x000000… <180225 chars sha256:9b5007139722956f>
+    sha256 1112784965b90af33915cfb8746ca100209a2526ad7ea0bbf3e4ee4fb6251161
+>> ClientBoundMapItemData id=67 len=57889
+    ClientBoundMapItemDataPacket
+      MapID: 1
+      Dimension: 0
+      LockedMap: false
+      Origin: [0 0 0]
+      MapsIncludedIn: none
+      Scale: 0
+      TrackedObjects: [{Type:0 EntityUniqueID:1 BlockPosition:none}]
+      Decorations: []
+      Width: 113
+      Height: 128
+      XOffset: 15
+      YOffset: 0
+      Pixels: [0x6d9930ff 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x6d9930ff 0x6d9930ff 0x00000000 0x00000000 0x00000000 0x00000000 0x000000… <159105 chars sha256:653d7528f5aa6760>
+    sha256 04eb132cccb5a55089f8ecf8650a4f6377e7ac5069a1d093e6140bda292f760b

@@ -74,9 +74,9 @@ var all = []*Protocol{p2193, p2225}
 var configurable = []*Protocol{p2193, p2225}
 
 // newestPrimary is the newest protocol a config may name as the primary:
-// the session speaks the features of no newer one yet, though the model
-// is newer.
-var newestPrimary = p2193
+// the model, 2225, whose features the session uses behind its gates once
+// it is the primary.
+var newestPrimary = p2225
 
 // All returns the protocols the adapter was built with, oldest first.
 func All() []*Protocol { return slices.Clone(all) }

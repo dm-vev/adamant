@@ -113,7 +113,7 @@ type NetworkConfig struct {
 	// the packets and fields it uses are those of that protocol, and clients
 	// of the other protocols get them converted. An empty value is the
 	// oldest of Protocols, or the default of the build if Protocols is
-	// empty too. This build speaks 2193 alone as its primary.
+	// empty too. This build speaks 2193 or 2225 as its primary.
 	PrimaryProtocol string
 	// MaxPendingConnections bounds the NetherNet connections that did not
 	// open yet, offers of clients still checking their way to the server:
