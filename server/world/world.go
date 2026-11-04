@@ -2455,7 +2455,7 @@ func (w *World) saveChunks(tx *Tx) {
 			continue
 		}
 		w.finishGeneration(tx, c)
-		if !c.modified && len(c.Entities) == 0 {
+		if !c.modified && len(c.Entities) == 0 || w.failedLoad(pos, c) {
 			continue
 		}
 		columns = append(columns, persisted{pos: pos, c: c})
@@ -2503,7 +2503,7 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	// Mutable entity state is not tracked by the block-column dirty flag.
 	// Loaded inventories and species state must be snapshotted even when no
 	// block or entity position has changed since the column was read.
-	if w.conf.ReadOnly || !c.modified && len(c.Entities) == 0 {
+	if w.conf.ReadOnly || !c.modified && len(c.Entities) == 0 || w.failedLoad(pos, c) {
 		return
 	}
 	c.compact()
@@ -2517,6 +2517,19 @@ func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 		col.PostProcessing = clonePostProcessing(col.PostProcessing)
 	}
 	w.saver.store(pos, col)
+}
+
+// failedLoad reports whether c stands in for a column that failed to load,
+// which is never saved, and logs that it is not saved the first time.
+func (w *World) failedLoad(pos ChunkPos, c *Column) bool {
+	if c.loadErr == nil {
+		return false
+	}
+	if !c.loadErrLogged {
+		c.loadErrLogged = true
+		w.conf.Log.Warn("Not saving chunk: it failed to load, and the empty chunk in its place would overwrite it.", "X", pos[0], "Z", pos[1], "error", c.loadErr.Error())
+	}
+	return true
 }
 
 // writeColumn stores col through the provider.
@@ -3024,7 +3037,11 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 	default:
 		// Case 3: Unexpected error occurred (I/O failure, corruption, etc.)
 		// To avoid deadlocks, return a ready empty column and the error.
+		// The column is never saved, so that it does not overwrite the
+		// column in the provider; loading the position again once it was
+		// unloaded reads it from the provider again.
 		col := newColumn(chunk.New(w.conf.Blocks, w.Range()))
+		col.loadErr = err
 		col.fillLight(pos)
 		col.markReady()
 		// Keep the placeholder column tracked so callers don't mutate an untracked chunk on errors.
@@ -3619,7 +3636,14 @@ type pendingMissingBlockState struct {
 // viewers and loaders.
 
 type Column struct {
-	modified      bool
+	modified bool
+	// loadErr is the error loading the column from the provider failed
+	// with, if the column is the empty one standing in for it. Such a column
+	// is never saved: it would overwrite what the provider holds, which may
+	// still be recovered, with air. loadErrLogged is set once that was
+	// logged.
+	loadErr       error
+	loadErrLogged bool
 	InhabitedTime uint64
 	// Native LevelChunk::mSnowRandomValue is independent of the level RNG
 	// and initialized from a fixed constant by the chunk constructor.
