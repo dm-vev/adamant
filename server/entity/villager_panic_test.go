@@ -33,9 +33,14 @@ func TestVillagersRunFromZombies(t *testing.T) {
 		h = addVillager(t, tx, mgl64.Vec3{.5, 64, .5}).H()
 		addMob(t, tx, "minecraft:zombie", zombieAt)
 	})
-	// VillagerHostilesSensor notices the zombie within a second.
+	// VillagerHostilesSensor notices the zombie within 38 ticks. It reads
+	// the entities NearestLivingEntitySensor saw, which scans before it in
+	// a tick. Both scan every 20 ticks, from a first tick of 1 to 19 picked
+	// at random, as Sensor.timeToTick in Java. If the hostiles sensor first
+	// scans before the living one, at tick 18 against 19 at the latest, it
+	// sees the zombie only on its second scan, at tick 38.
 	panicked := false
-	for range 30 {
+	for range 38 {
 		w.AdvanceTick()
 		<-w.Exec(func(tx *world.Tx) { panicked = panicked || villager(tx, h).Panicking() })
 	}
