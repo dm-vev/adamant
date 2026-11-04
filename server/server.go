@@ -77,6 +77,8 @@ type Server struct {
 	// playerSaves orders the saves of each player.
 	checkpoints checkpointer
 	playerSaves playerSaves
+	// backups makes the backups of the server, one at a time.
+	backups backups
 	// pwg is a sync.WaitGroup used to wait for all players to be disconnected
 	// before server shutdown, so that their data is saved properly.
 	pwg sync.WaitGroup
@@ -126,6 +128,7 @@ func (srv *Server) Listen() {
 	go srv.wait()
 	go srv.idleTimeoutLoop()
 	go srv.checkpoints.run(srv.conf.SaveInterval)
+	go srv.backups.sweepAtStart()
 }
 
 // Accept accepts incoming players into the server, returning an iterator that
@@ -450,6 +453,9 @@ func (srv *Server) Close() error {
 func (srv *Server) close() {
 	srv.closing.Store(true)
 	close(srv.idleStop)
+	// A backup running is cancelled, and deletes what it wrote, before the
+	// players leave and the last checkpoint is saved.
+	srv.backups.close()
 
 	srv.conf.Log.Debug("Disconnecting players...")
 	for p := range srv.Players(nil) {

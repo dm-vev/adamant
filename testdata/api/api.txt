@@ -330,7 +330,15 @@ protocol/java	type	Config	struct{Address string; Message string}
 protocol/java	type	UserConfig	struct{Java struct{Address string; Message string}}
 protocol/java/text	func	AppendJSON	func(dst []byte, t server/text.Text) []byte
 protocol/java/text	func	JSON	func(t server/text.Text) string
+server	const	ActorAPI	server.ActorKind = "api"
+server	const	ActorCommandBlock	server.ActorKind = "command_block"
+server	const	ActorConsole	server.ActorKind = "console"
+server	const	ActorPlayer	server.ActorKind = "player"
+server	const	ActorRemote	server.ActorKind = "remote"
+server	const	ActorServer	server.ActorKind = "server"
+server	const	BackupFolder	server.BackupFormat = 0
 server	const	Banned	server.List = 2
+server	const	DefaultBackupKeep	untyped int = 10
 server	const	DefaultSaveInterval	time.Duration = 300000000000
 server	const	DefaultSpawnTimeout	time.Duration = 60000000000
 server	const	DefaultSpawnTimeoutMessage	untyped string = "Timed out while joining the game."
@@ -349,9 +357,14 @@ server	func	LoadWhitelist	func(path string) (*server.Whitelist, error)
 server	func	New	func() *server.Server
 server	func	ReservedName	func(name string) error
 server	func	ValidateName	func(id server/client.Identity) error
+server	method	Actor.String	func() string
+server	method	BackupFormat.String	func() string
 server	method	Config.New	func() *server.Server
 server	method	HealthReport.String	func(verbose bool) string
 server	method	Server.Accept	func() iter.Seq[*server/player.Player]
+server	method	Server.Backup	func(ctx context.Context, by server.Actor, reason string) (server.BackupInfo, error)
+server	method	Server.BackupStatus	func() server.BackupStatus
+server	method	Server.Backups	func() ([]server.BackupInfo, error)
 server	method	Server.BanEntries	func(ip bool) ([]string, error)
 server	method	Server.BanIP	func(ip string, reason string) (bool, error)
 server	method	Server.BanPlayer	func(name string, reason string) (bool, error)
@@ -391,6 +404,7 @@ server	method	Server.SaveEnabledState	func() bool
 server	method	Server.SetIdleTimeout	func(minutes int)
 server	method	Server.StartTime	func() time.Time
 server	method	Server.Status	func() server.Status
+server	method	Server.VerifyBackup	func(name string, full bool) (server.BackupInfo, error)
 server	method	Server.Version	func() string
 server	method	Server.WhitelistAdd	func(name string) (bool, error)
 server	method	Server.WhitelistEnabled	func() bool
@@ -411,8 +425,14 @@ server	method	Whitelist.Reload	func() error
 server	method	Whitelist.Remove	func(name string) (bool, error)
 server	method	Whitelist.SetEnabled	func(enabled bool)
 server	method	Whitelist.SetKickMessage	func(msg string)
+server	type	Actor	struct{Kind server.ActorKind; Name string}
+server	type	ActorKind	string
 server	type	Allower	interface{Allow(addr net.Addr, id server/client.Identity, p server/client.Profile) (string, bool)}
-server	type	Config	struct{Log *log/slog.Logger; Listeners []func(conf server.Config, host server.Host) (server.Listener, error); Name string; Allower server.Allower; ReconnectPolicy server.ReconnectPolicy; SpawnTimeout time.Duration; SpawnTimeoutMessage string; IdentityKey server/identity.Mode; MaxPlayers int; MaxChunkRadius int; JoinMessage server/player/chat.Translation; QuitMessage server/player/chat.Translation; ShutdownMessage server/player/chat.Translation; StatusProvider server.StatusProvider; PlayerProvider server/player.Provider; WorldProvider server/world.Provider; ReadOnlyWorld bool; SaveChunks server/world.ChunkSaving; Generator func(dim server/world.Dimension, seed int64) server/world.Generator; GeneratorProfile server/world.GeneratorProfile; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; OverworldSeed int64; RandomTickSpeed int; SaveInterval time.Duration; StagingLimit int; ChunkUnloadInterval time.Duration; Entities server/world.EntityRegistry; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension server/world.Dimension; PortalDisabledMessage string; CrashReports string; Blocks server/world.BlockRegistry; AntiCheat *server/player/anticheat.Config; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool}
+server	type	BackupConfig	struct{Folder string; Format server.BackupFormat; Interval time.Duration; Keep int; MaxAge time.Duration; MinFreeSpace int64; SaveFirst bool; Verify server/world/mcdb.Verification}
+server	type	BackupFormat	uint8
+server	type	BackupInfo	struct{Name string; Path string; Created time.Time; Took time.Duration; Reason string; By server.Actor; Format server.BackupFormat; Checkpoint server/world/mcdb.CheckpointRecord; Files int; Bytes int64; Linked int; Verified string; Admin []string}
+server	type	BackupStatus	struct{Running bool; Started time.Time; By server.Actor; Last *server.BackupInfo; LastErr error; LastErrAt time.Time; Next time.Time}
+server	type	Config	struct{Log *log/slog.Logger; Listeners []func(conf server.Config, host server.Host) (server.Listener, error); Name string; Allower server.Allower; ReconnectPolicy server.ReconnectPolicy; SpawnTimeout time.Duration; SpawnTimeoutMessage string; IdentityKey server/identity.Mode; MaxPlayers int; MaxChunkRadius int; JoinMessage server/player/chat.Translation; QuitMessage server/player/chat.Translation; ShutdownMessage server/player/chat.Translation; StatusProvider server.StatusProvider; PlayerProvider server/player.Provider; WorldProvider server/world.Provider; ReadOnlyWorld bool; SaveChunks server/world.ChunkSaving; Generator func(dim server/world.Dimension, seed int64) server/world.Generator; GeneratorProfile server/world.GeneratorProfile; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; OverworldSeed int64; RandomTickSpeed int; SaveInterval time.Duration; StagingLimit int; ChunkUnloadInterval time.Duration; Entities server/world.EntityRegistry; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension server/world.Dimension; PortalDisabledMessage string; CrashReports string; Blocks server/world.BlockRegistry; AntiCheat *server/player/anticheat.Config; Backup server.BackupConfig; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool}
 server	type	Found	uint8
 server	type	HealthCheck	struct{Name string; OK bool; Detail string}
 server	type	HealthOptions	struct{LiveTimeout time.Duration; ReadyTickAge time.Duration}
@@ -422,13 +442,16 @@ server	type	List	uint8
 server	type	Listener	interface{Accept() (server/client.Join, error); io.Closer}
 server	type	OnlinePlayer	struct{Name string; XUID string; UUID github.com/google/uuid.UUID; Handle *server/world.EntityHandle}
 server	type	ReconnectPolicy	uint8
-server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; pwg sync.WaitGroup; wg sync.WaitGroup}
+server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomic.Pointer[time.Time]; closing sync/atomic.Bool; clock func() time.Time; world *server/world.World; dimensions map[server/world.Dimension]*server/world.World; defaultDimension server/world.Dimension; whitelist *server.Whitelist; operators *server.operatorsList; bans *server.banList; known *server.knownPlayers; idleTimeout sync/atomic.Int64; idleStop chan struct{}; listeners []server.Listener; listening []sync/atomic.Bool; incoming chan server.incoming; metrics *github.com/dm-vev/adamant/net/metrics.Registry; stats server.serverStats; players server.players; playersSkipped sync/atomic.Bool; playersInWorld bool; checkpoints server.checkpointer; playerSaves server.playerSaves; backups server.backups; pwg sync.WaitGroup; wg sync.WaitGroup}
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
 server	type	Target	struct{Key server/identity.Key; Name string; Found server.Found; Pending bool}
 server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; AntiCheat server/player/anticheat.UserConfig}
 server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; kickMsg string; format server.whitelistFormat}
 server	var	DefaultHealthOptions	server.HealthOptions
+server	var	ErrBackupNotFound	error
+server	var	ErrBackupRunning	error
+server	var	ErrBackupsOff	error
 server	var	ErrWhitelistInvalidName	error
 server	var	ErrWhitelistUnavailable	error
 server/block	alias	ColoredTorch	= server/block.ColoredTorch
@@ -22389,6 +22412,7 @@ server/world/mcdb	method	Config.Open	func(dir string) (*server/world/mcdb.DB, er
 server/world/mcdb	method	DB.AllocateMapID	func() (int64, error)
 server/world/mcdb	method	DB.BeginCommit	func() server/world.Commit
 server/world/mcdb	method	DB.Close	func() error
+server/world/mcdb	method	DB.Dir	func() string
 server/world/mcdb	method	DB.JavaMapID	func(nativeID int64) (int32, error)
 server/world/mcdb	method	DB.LastCheckpoint	func() (server/world/mcdb.CheckpointRecord, error)
 server/world/mcdb	method	DB.LoadColumn	func(pos server/world.ChunkPos, dim server/world.Dimension) (*server/world/chunk.Column, error)

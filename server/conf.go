@@ -183,6 +183,9 @@ type Config struct {
 	// checks the game runs on what their clients ask. If nil,
 	// anticheat.Default() is used, every check with its defaults.
 	AntiCheat *anticheat.Config
+	// Backup is how the server backs up its world (Server.Backup). With no
+	// Folder, it makes no backups.
+	Backup BackupConfig
 	// AntiCheatExempt, if not nil, is asked whether a player skips a check,
 	// anticheat.All standing for every check. It is where a permission
 	// system plugs in, with nodes such as adamant.anticheat.bypass and
@@ -300,7 +303,7 @@ func (conf Config) New() *Server {
 		dimensions: make(map[world.Dimension]*world.World),
 		idleStop:   make(chan struct{}),
 	}
-	srv.checkpoints.srv, srv.checkpoints.stop, srv.checkpoints.done = srv, make(chan struct{}), make(chan struct{})
+	srv.initSaves()
 	if wp, ok := conf.PlayerProvider.(interface{ Records() playerdb.Records }); ok {
 		srv.playersInWorld = any(wp.Records()) == any(conf.WorldProvider)
 	}

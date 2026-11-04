@@ -51,6 +51,10 @@ func (db *DB) LastCheckpoint() (CheckpointRecord, error) {
 	return recordOf(r), nil
 }
 
+// Dir returns the folder of the world of the DB, which holds its level.dat
+// and its database in db.
+func (db *DB) Dir() string { return db.dir }
+
 // Verification is how much of a copy of a world is read to verify it.
 type Verification uint8
 

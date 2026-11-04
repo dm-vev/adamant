@@ -10,6 +10,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/google/uuid"
 )
 
@@ -36,6 +37,22 @@ type checkpointer struct {
 	// lastSuccess is the Unix time in nanoseconds the last checkpoint that
 	// wrote everything ended, 0 if none did.
 	lastSuccess atomic.Int64
+}
+
+// initSaves readies the checkpoints and the backups of srv. The checkpoints
+// number on from the last the world holds, so that the number a backup
+// records names one checkpoint across restarts.
+func (srv *Server) initSaves() {
+	c := &srv.checkpoints
+	c.srv, c.stop, c.done = srv, make(chan struct{}), make(chan struct{})
+	if lc, ok := srv.conf.WorldProvider.(interface {
+		LastCheckpoint() (mcdb.CheckpointRecord, error)
+	}); ok {
+		if r, err := lc.LastCheckpoint(); err == nil {
+			c.id = r.ID
+		}
+	}
+	srv.backups.init(srv)
 }
 
 // run saves a checkpoint every interval while saving is on, until stop is
@@ -80,6 +97,14 @@ func (c *checkpointer) stagingFull(w *world.World, bytes int) {
 	}
 	c.srv.conf.Log.Warn("Saving a checkpoint early: the chunks unloaded since the last exceed the staging limit.", "dimension", fmt.Sprint(w.Dimension()), "bytes", bytes)
 	_ = c.checkpoint(context.Background(), "staged-cap")
+}
+
+// lastID returns the number of the last checkpoint saved, waiting for one
+// running.
+func (c *checkpointer) lastID() uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.id
 }
 
 // close ends the periodic checkpoints, waiting for one running.

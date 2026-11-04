@@ -18,6 +18,7 @@ require (
 	github.com/segmentio/fasthash v1.0.3
 	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329
 	golang.org/x/mod v0.32.0
+	golang.org/x/sys v0.41.0
 	golang.org/x/term v0.40.0
 	golang.org/x/text v0.34.0
 	golang.org/x/tools v0.41.0
@@ -35,7 +36,6 @@ require (
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
 )
 
 replace github.com/dm-vev/adamant/net => ./net

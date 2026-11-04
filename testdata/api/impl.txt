@@ -10773,6 +10773,7 @@ server/world/mcdb.Commit	server/world.positionTrackingProvider	*
 server/world/mcdb.Commit	server/world.worldDataProvider	*
 server/world/mcdb.Commit	server/world/mcdb.getter	*
 server/world/mcdb.Commit	server/world/mcdb.store	*
+server/world/mcdb.DB	server.worldSnapshotter	*
 server/world/mcdb.DB	server/player/playerdb.Records	*
 server/world/mcdb.DB	server/world.Committer	*
 server/world/mcdb.DB	server/world.DragonFightProvider	*

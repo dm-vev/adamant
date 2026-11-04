@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
@@ -62,6 +63,9 @@ func (conf Config) Open(dir string) (*DB, error) {
 	if found, err = db.reconcile(found); err != nil {
 		_ = ldb.Close()
 		return nil, fmt.Errorf("open db: %w", err)
+	}
+	if r, err := db.LastCheckpoint(); err == nil && r.ID != 0 {
+		conf.Log.Info("Opened the world at its last checkpoint.", "checkpoint", r.ID, "time", r.Time.Format(time.RFC3339))
 	}
 	newWorld := !found
 	if newWorld {
