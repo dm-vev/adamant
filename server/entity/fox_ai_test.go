@@ -69,9 +69,21 @@ func TestFoxesFleeFromPlayers(t *testing.T) {
 // TestFoxesPickSweetBerries checks FoxEatBerriesGoal: a fox walks to a ripe
 // sweet berry bush, takes a berry into its mouth and leaves the bush
 // picked.
+//
+// The test runs at night. A fox finds the bush in its first tick, before
+// it ever stood on the ground, so as in Java its first path fails and
+// FoxEatBerriesGoal waits 100 ticks to find one again. By day
+// SeekShelterGoal, of a higher priority, sends a fox under open sky to a
+// hiding spot up to ten blocks away about then, often out of the twelve
+// blocks FoxEatBerriesGoal searches, and in about one run in five the fox
+// did not get back to the bush in two minutes. At night neither
+// SeekShelterGoal nor SleepGoal may start, and the fox picks the bush in
+// the same tick every run.
 func TestFoxesPickSweetBerries(t *testing.T) {
 	t.Parallel()
 	w := traderTestWorld(t)
+	w.SetTime(18000)
+	w.StopTime()
 	var fox *world.EntityHandle
 	bush := cube.Pos{5, 64, 0}
 	<-w.Exec(func(tx *world.Tx) {
