@@ -210,13 +210,13 @@
   Verify = "record"
 
 [Bans]
-  DefaultReason = ""
+  DefaultReason = "Banned by an operator."
   ExpiresMessage = "\nYour ban will be removed on {expires}"
-  IPMessage = "You are banned from this server."
+  IPMessage = "Your IP address is banned from this server."
   IPv6Prefix = 64
   MaxDuration = "0s"
   Message = "You are banned from this server."
-  ReasonMessage = " Reason: {reason}"
+  ReasonMessage = "\nReason: {reason}"
   TimeFormat = "2006-01-02 at 15:04:05 MST"
 
 [Java]

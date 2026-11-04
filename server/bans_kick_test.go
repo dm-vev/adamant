@@ -23,7 +23,7 @@ func TestBanKickCarriesReason(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		if calls := j.Recorder().CallsTo("Disconnect"); len(calls) > 0 {
-			if got := calls[0].Args[0].(text.Text).Plain(); got != "You are banned from this server. Reason: griefing" {
+			if got := calls[0].Args[0].(text.Text).Plain(); got != "You are banned from this server.\nReason: griefing" {
 				t.Errorf("kicked with %q", got)
 			}
 			return

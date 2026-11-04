@@ -7,25 +7,26 @@
     players online: 0
 == a client on the whitelist banned by name, of another case: Banned from 203.0.113.1:4242
 >> Disconnect id=5 len=53
-    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server. Reason: griefing" FilteredMessage:""}
+    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server.\nReason: griefing" FilteredMessage:""}
     | 6e0031596f75206172652062616e6e65642066726f6d20746869732073657276
-    | 65722e20526561736f6e3a206772696566696e6700
+    | 65722e0a526561736f6e3a206772696566696e6700
 -- the connection closed
 -- server
     players online: 0
 == an operator banned by name: BannedOperator from 203.0.113.1:4242
->> Disconnect id=5 len=36
-    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server." FilteredMessage:""}
-    | 6e0020596f75206172652062616e6e65642066726f6d20746869732073657276
-    | 65722e00
+>> Disconnect id=5 len=67
+    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server.\nReason: Banned by an operator." FilteredMessage:""}
+    | 6e003f596f75206172652062616e6e65642066726f6d20746869732073657276
+    | 65722e0a526561736f6e3a2042616e6e656420627920616e206f70657261746f
+    | 722e00
 -- the connection closed
 -- server
     players online: 0
 == a client on the whitelist from a banned address: Addressed from 203.0.113.9:4242
->> Disconnect id=5 len=49
-    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server. Reason: spam" FilteredMessage:""}
-    | 6e002d596f75206172652062616e6e65642066726f6d20746869732073657276
-    | 65722e20526561736f6e3a207370616d00
+>> Disconnect id=5 len=60
+    {Reason:55 HideDisconnectionScreen:false Message:"Your IP address is banned from this server.\nReason: spam" FilteredMessage:""}
+    | 6e0038596f757220495020616464726573732069732062616e6e65642066726f
+    | 6d2074686973207365727665722e0a526561736f6e3a207370616d00
 -- the connection closed
 -- server
     players online: 0

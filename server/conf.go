@@ -648,8 +648,8 @@ type UserConfig struct {
 	// Bans are the texts a banned player is refused and kicked with. Each
 	// may hold {reason}, {source}, {created} and {expires}.
 	Bans struct {
-		// DefaultReason is the reason shown of a ban that has none; empty
-		// shows no reason.
+		// DefaultReason is the reason shown of a ban that has none, Java's
+		// "Banned by an operator."; empty shows no reason.
 		DefaultReason string
 		// ExpiresMessage follows the text of a ban that expires.
 		ExpiresMessage string

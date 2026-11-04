@@ -165,7 +165,7 @@
    "  ],\n"
    "  \"ips\": []\n"
    "}\n"
-== Griefer joins (xuid:2535412345678904): false "You are banned from this server. Reason: griefing"
+== Griefer joins (xuid:2535412345678904): false "You are banned from this server.\nReason: griefing"
 -- white-list.toml (78 bytes)
    "players = [\"xuid:2535412345678901\", \"alex two\", \"xuid:2535412345678902 ALEX\"]\n"
 -- ops.json (119 bytes)

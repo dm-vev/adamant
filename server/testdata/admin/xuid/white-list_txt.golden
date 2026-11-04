@@ -182,7 +182,7 @@
    "  ],\n"
    "  \"ips\": []\n"
    "}\n"
-== Griefer joins (xuid:2535412345678904): false "You are banned from this server. Reason: griefing"
+== Griefer joins (xuid:2535412345678904): false "You are banned from this server.\nReason: griefing"
 -- white-list.txt (61 bytes)
    "xuid:2535412345678901\r\n"
    "alex two\r\n"

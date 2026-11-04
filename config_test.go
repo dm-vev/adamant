@@ -69,15 +69,18 @@ import (
 // ops.json, which the server did not, and the feedback of console commands
 // is shown to operators online, which it was not; [Bans], whose table a new
 // default file has, and a file that lacks it refuses banned players with
-// the text it always did, and kicks them with it, where the kick had no
-// reason before, sets no cap on bans for a time, and bans the /64 of an
-// IPv6 address /ban-ip names, where it banned the address alone; Enforce of
-// [Whitelist], whose line a new default file has, and a file that lacks it
-// kicks no one online as the whitelist turns on, as before. And a file
-// saving both its world and its players now keeps the players in the world
-// database (playerdb.WorldProvider), reading the
-// players folder only for those not yet moved there, and no longer makes
-// the folder.
+// Java Edition's texts, "You are banned from this server." and "Reason:
+// ..." (or "Banned by an operator.") in two lines, where it wrote one line
+// with no default reason before, and "Your IP address is banned from this
+// server." for a ban of the address, and kicks them with it, where the
+// kick had no reason before, sets no cap on bans for a time, and bans the
+// /64 of an IPv6 address /ban-ip names, where it banned the address alone;
+// Enforce of [Whitelist], whose line a new default file has, and a file
+// that lacks it kicks no one online as the whitelist turns on, as before.
+// And a file saving both its world and its players now keeps the players
+// in the world database (playerdb.WorldProvider), reading the players
+// folder only for those not yet moved there, and no longer makes the
+// folder.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -187,7 +190,8 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Java.Address": "", "Java.Message": "",
 			"Permissions": "default=0 op=4 blocks=2 roles=3 role=member console=true remote=true commands=map[]",
 			"Audit":       "file=audit.log size=67108864 keep=10 min=2 addresses=true",
-			"Bans":        "Banned: You are banned from this server. Reason: griefing\nYour ban will be removed on " + meaningBanEnd + " | You are banned from this server.",
+			"Bans": "Banned: You are banned from this server.\nReason: griefing\nYour ban will be removed on " + meaningBanEnd +
+				" | Your IP address is banned from this server.\nReason: Banned by an operator.",
 		})},
 		{"every key changed", []byte(everyKeyChanged), withMeaning(changedAntiCheat, configMeaning{
 			"Name": "Changed", "AuthDisabled": true, "MuteEmoteChat": true, "NameCheck": "strict", "IdentityKey": "name",

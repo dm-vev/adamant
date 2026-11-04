@@ -182,12 +182,12 @@
 [Bans]
   # The texts a banned player is refused at login and kicked with: Message for a ban of the player, IPMessage for
   # a ban of its address, then ReasonMessage if the ban has a reason (or DefaultReason is set), then ExpiresMessage
-  # if it expires. Each may hold {reason}, {source}, {created} and {expires}; "\n" starts a line. Java Edition's
-  # texts are Message = "You are banned from this server.", ReasonMessage = "\nReason: {reason}" and
-  # DefaultReason = "Banned by an operator.".
-  DefaultReason = ""
+  # if it expires. Each may hold {reason}, {source}, {created} and {expires}; "\n" starts a line. These are Java
+  # Edition's texts; the server's own before were one line, Message = IPMessage = "You are banned from this
+  # server.", ReasonMessage = " Reason: {reason}" and DefaultReason = "".
+  DefaultReason = "Banned by an operator."
   ExpiresMessage = "\nYour ban will be removed on {expires}"
-  IPMessage = "You are banned from this server."
+  IPMessage = "Your IP address is banned from this server."
   # IPv6Prefix is how many leading bits of an IPv6 address a ban of it covers: 64 bans the network of one
   # subscriber, who changes the rest at will; 128 the address alone. /ban-ip also takes a network, such as
   # 203.0.113.0/24, or a player online. A loopback address, as of a proxy on the host, is banned only by a ban
@@ -196,7 +196,7 @@
   # MaxDuration caps how long a ban for a time lasts, such as "30d" or "720h"; "0s" sets no cap.
   MaxDuration = "0s"
   Message = "You are banned from this server."
-  ReasonMessage = " Reason: {reason}"
+  ReasonMessage = "\nReason: {reason}"
   # TimeFormat writes {created} and {expires}, as a layout of Go's package time, in the server's time zone.
   TimeFormat = "2006-01-02 at 15:04:05 MST"
 

@@ -201,14 +201,17 @@ type BanMessages struct {
 	Message, IPMessage, ReasonMessage, ExpiresMessage, DefaultReason, TimeFormat string
 }
 
-// DefaultBanMessages returns the texts the server has always refused
-// banned players with, and the line of the expiry of a temporary ban.
+// DefaultBanMessages returns Java Edition's texts (en_us.json's
+// multiplayer.disconnect.banned.*), in two lines: "You are banned from
+// this server.", then "Reason: griefing", or "Banned by an operator." for
+// a ban with no reason, then the line of the expiry of a ban for a time.
 func DefaultBanMessages() BanMessages {
 	return BanMessages{
 		Message:        "You are banned from this server.",
-		IPMessage:      "You are banned from this server.",
-		ReasonMessage:  " Reason: {reason}",
+		IPMessage:      "Your IP address is banned from this server.",
+		ReasonMessage:  "\nReason: {reason}",
 		ExpiresMessage: "\nYour ban will be removed on {expires}",
+		DefaultReason:  "Banned by an operator.",
 		TimeFormat:     "2006-01-02 at 15:04:05 MST",
 	}
 }

@@ -77,11 +77,11 @@ func TestBanFieldsAndExpiry(t *testing.T) {
 		t.Errorf("banned-players.json:\n%s\nwant\n%s", got, file)
 	}
 	addr := &net.UDPAddr{IP: net.IPv4(198, 51, 100, 1), Port: 4242}
-	want := "You are banned from this server. Reason: griefing\nYour ban will be removed on " + until.Local().Format("2006-01-02 at 15:04:05 MST")
+	want := "You are banned from this server.\nReason: griefing\nYour ban will be removed on " + until.Local().Format("2006-01-02 at 15:04:05 MST")
 	if msg, ok := srv.conf.Allower.Allow(addr, client.Identity{Name: "Griefer", UUID: uuid.New()}, client.Profile{}); ok || msg != want {
 		t.Errorf("Griefer at login: %q, %v, want %q", msg, ok, want)
 	}
-	if msg, _ := srv.conf.Allower.Allow(addr, client.Identity{Name: "Old", UUID: uuid.New()}, client.Profile{}); msg != "You are banned from this server. Reason: spam" {
+	if msg, _ := srv.conf.Allower.Allow(addr, client.Identity{Name: "Old", UUID: uuid.New()}, client.Profile{}); msg != "You are banned from this server.\nReason: spam" {
 		t.Errorf("Old at login: %q", msg)
 	}
 

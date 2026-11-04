@@ -14,9 +14,9 @@ OperatorEntries() = ["pending" "Steve (xuid:2535412345678901)" "xuid:25354123456
 BanEntries(false) = ["Griefer (xuid:2535412345678903)" "pending"]
 Allow("STEVE" xuid "2535412345678901" authenticated true) = true ""; operator true
 Allow("Alex Two" xuid "2535412345678903" authenticated true) = false "§cServer is white-listed"; operator false
-Allow("Griefer" xuid "2535412345678906" authenticated true) = false "You are banned from this server. Reason: griefing"; operator false
+Allow("Griefer" xuid "2535412345678906" authenticated true) = false "You are banned from this server.\nReason: griefing"; operator false
 Allow("Steve" xuid "2535412345678901" authenticated false) = true ""; operator true
-Allow("Pending" xuid "" authenticated false) = false "You are banned from this server."; operator true
+Allow("Pending" xuid "" authenticated false) = false "You are banned from this server.\nReason: Banned by an operator."; operator true
 Allow("alex" xuid "2535412345678907" authenticated true) = true ""; operator false
 WhitelistAdd("New"): <nil>
 Op("New"): <nil>

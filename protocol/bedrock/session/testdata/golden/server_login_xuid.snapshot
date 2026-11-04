@@ -8,9 +8,9 @@
     players online: 0
 == a banned account: Banned, xuid:2535400000000103, Xbox Live true
 >> Disconnect id=5 len=53
-    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server. Reason: griefing" FilteredMessage:""}
+    {Reason:55 HideDisconnectionScreen:false Message:"You are banned from this server.\nReason: griefing" FilteredMessage:""}
     | 6e0031596f75206172652062616e6e65642066726f6d20746869732073657276
-    | 65722e20526561736f6e3a206772696566696e6700
+    | 65722e0a526561736f6e3a206772696566696e6700
 -- the connection closed
 -- server
     players online: 0
