@@ -42,14 +42,6 @@ var menuRequestScenarios = []struct {
 	{"menus", (*scenario).menusScenario},
 	{"refusals", (*scenario).refusalsScenario},
 	{"multicraft", (*scenario).multiCraftScenario},
-
-	// D6–D9: the enchanting table, the anvil, the grindstone and the
-	// smithing table.
-	{"enchanting", (*scenario).enchantingCases},
-	{"enchanting twice", (*scenario).enchantingTwiceCases},
-	{"enchanting in creative", (*scenario).enchantingCreativeCases},
-	{"anvil", (*scenario).anvilCases},
-	{"grindstone", (*scenario).grindstoneCases},
 	// D2: Move, Swap, Drop, Destroy, Touch and CreateCreative.
 	{"moves", (*scenario).movesScenario},
 	// D3: Craft and CraftDynamic.
@@ -58,6 +50,15 @@ var menuRequestScenarios = []struct {
 	{"special", (*scenario).specialScenario},
 	// D5: AutoCraft, the crafts of the recipe book.
 	{"autocraft", (*scenario).autoCraftScenario},
+
+	// D6–D9: the enchanting table, the anvil, the grindstone and the
+	// smithing table.
+	{"enchanting", (*scenario).enchantingCases},
+	{"enchanting twice", (*scenario).enchantingTwiceCases},
+	{"enchanting in creative", (*scenario).enchantingCreativeCases},
+	{"anvil", (*scenario).anvilCases},
+	{"grindstone", (*scenario).grindstoneCases},
+	{"smithing", (*scenario).smithingCases},
 
 	// The stations of D10 to D13: the loom, the stonecutter, the beacon
 	// and merchants.

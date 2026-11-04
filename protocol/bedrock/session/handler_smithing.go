@@ -20,6 +20,13 @@ const (
 
 // handleSmithing handles a CraftRecipe stack request action made using a smithing table.
 func (h *ItemStackRequestHandler) handleSmithing(a *v2193.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
+	if h.batch != nil {
+		craft, ok := s.recipes[a.RecipeNetworkID]
+		if !ok {
+			return fmt.Errorf("recipe with network id %v does not exist", a.RecipeNetworkID)
+		}
+		return h.batchOp(func() error { return h.batch.Smith(craft) })
+	}
 	// First, check the recipe and ensure it is valid for the smithing table.
 	craft, ok := s.recipes[a.RecipeNetworkID]
 	if !ok {
