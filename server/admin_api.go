@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/identity"
@@ -30,40 +29,29 @@ func (srv *Server) Op(name string) (bool, error) {
 	if srv.operators == nil {
 		return false, errAdminUnavailable
 	}
-	key := normalizeName(name)
-	if key == "" {
-		return false, errors.New("player name must not be empty")
+	en, err := nameEntry(name)
+	if err != nil {
+		return false, err
 	}
-	o := srv.operators
-	o.mu.Lock()
-	if _, ok := o.players[key]; ok {
-		o.mu.Unlock()
-		return false, nil
+	added, err := srv.operators.add(en)
+	if added {
+		srv.refreshPlayerPermissions(en.name)
 	}
-	o.players[key] = struct{}{}
-	o.order = append(o.order, key)
-	err := o.writeLocked()
-	o.mu.Unlock()
-	srv.refreshPlayerPermissions(key)
-	return true, err
+	return added, err
 }
 func (srv *Server) Deop(name string) (bool, error) {
 	if srv.operators == nil {
 		return false, errAdminUnavailable
 	}
-	key := normalizeName(name)
-	o := srv.operators
-	o.mu.Lock()
-	if _, ok := o.players[key]; !ok {
-		o.mu.Unlock()
+	en, err := nameEntry(name)
+	if err != nil {
 		return false, nil
 	}
-	delete(o.players, key)
-	o.order = slices.DeleteFunc(o.order, func(v string) bool { return v == key })
-	err := o.writeLocked()
-	o.mu.Unlock()
-	srv.refreshPlayerPermissions(key)
-	return true, err
+	removed, err := srv.operators.remove(en)
+	if removed {
+		srv.refreshPlayerPermissions(en.name)
+	}
+	return removed, err
 }
 
 // refreshPlayerPermissions runs on the player's current owner after releasing
@@ -78,10 +66,7 @@ func (srv *Server) OperatorEntries() ([]string, error) {
 	if srv.operators == nil {
 		return nil, errAdminUnavailable
 	}
-	o := srv.operators
-	o.mu.RLock()
-	defer o.mu.RUnlock()
-	return slices.Clone(o.order), nil
+	return srv.operators.keys(), nil
 }
 func (srv *Server) BanPlayer(name, reason string) (bool, error) {
 	if srv.bans == nil {

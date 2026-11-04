@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -34,8 +33,7 @@ const (
 // Whitelist controls which players are allowed to join the server.
 type Whitelist struct {
 	mu       sync.RWMutex
-	players  map[string]struct{}
-	order    []string
+	players  entries
 	filePath string
 	enabled  bool
 	kickMsg  string
@@ -54,7 +52,6 @@ func LoadWhitelist(path string) (*Whitelist, error) {
 	}
 	format := whitelistFormatFromPath(path)
 	w := &Whitelist{
-		players:  make(map[string]struct{}),
 		filePath: path,
 		format:   format,
 	}
@@ -132,7 +129,8 @@ func (w *Whitelist) Allow(_ net.Addr, id client.Identity, _ client.Profile) (str
 		return kickMsg, false
 	}
 
-	_, ok := w.players[normalizeName(name)]
+	key, _ := identity.OfName(name)
+	ok := w.players.has(key)
 	w.mu.RUnlock()
 	if !ok {
 		return kickMsg, false
@@ -145,23 +143,21 @@ func (w *Whitelist) Add(name string) (bool, error) {
 	if w == nil {
 		return false, ErrWhitelistUnavailable
 	}
-	trimmed := strings.TrimSpace(name)
-	if trimmed == "" {
+	en, err := nameEntry(name)
+	if err != nil {
 		return false, ErrWhitelistInvalidName
 	}
-	key := normalizeName(trimmed)
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if _, exists := w.players[key]; exists {
+	if w.players.has(en.key) {
 		return false, nil
 	}
-	w.players[key] = struct{}{}
-	w.order = append(w.order, key)
+	before := w.players.clone()
+	w.players.add(en)
 	if err := w.writeLocked(); err != nil {
-		delete(w.players, key)
-		w.order = w.order[:len(w.order)-1]
+		w.players = before
 		return false, err
 	}
 	return true, nil
@@ -173,37 +169,24 @@ func (w *Whitelist) Remove(name string) (bool, error) {
 	if w == nil {
 		return false, ErrWhitelistUnavailable
 	}
-	trimmed := strings.TrimSpace(name)
-	if trimmed == "" {
+	en, err := nameEntry(name)
+	if err != nil {
 		return false, ErrWhitelistInvalidName
 	}
-	key := normalizeName(trimmed)
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if _, exists := w.players[key]; !exists {
+	if !w.players.has(en.key) {
 		return false, nil
 	}
-	originalOrder := append([]string(nil), w.order...)
-	delete(w.players, key)
-	w.removeOrderLocked(key)
+	before := w.players.clone()
+	w.players.remove(en.key)
 	if err := w.writeLocked(); err != nil {
-		w.players[key] = struct{}{}
-		w.order = originalOrder
+		w.players = before
 		return false, err
 	}
 	return true, nil
-}
-
-func (w *Whitelist) removeOrderLocked(name string) {
-	for i, entry := range w.order {
-		if entry == name {
-			copy(w.order[i:], w.order[i+1:])
-			w.order = w.order[:len(w.order)-1]
-			return
-		}
-	}
 }
 
 // Players returns the list of players stored in the whitelist in the order they appear on disk.
@@ -213,7 +196,7 @@ func (w *Whitelist) Players() []string {
 	}
 	w.mu.RLock()
 	defer w.mu.RUnlock()
-	return append([]string(nil), w.order...)
+	return w.players.keys()
 }
 
 func (w *Whitelist) reloadFromDisk() error {
@@ -225,86 +208,53 @@ func (w *Whitelist) reloadFromDisk() error {
 func (w *Whitelist) reloadLocked() error {
 	contents, err := os.ReadFile(w.filePath)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			w.players = make(map[string]struct{})
-			w.order = nil
+		if errNotExist(err) {
+			w.players = entries{}
 			return w.writeLocked()
 		}
 		return fmt.Errorf("read whitelist: %w", err)
 	}
 
-	players, order, err := parseWhitelistFile(w.format, contents)
+	players, err := parseWhitelistFile(w.format, contents)
 	if err != nil {
 		return err
 	}
 	w.players = players
-	w.order = order
 	return nil
 }
 
 func (w *Whitelist) writeLocked() error {
-	dir := filepath.Dir(w.filePath)
-	if dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0777); err != nil {
-			return fmt.Errorf("create whitelist directory: %w", err)
-		}
-	}
-	encoded, err := encodeWhitelistFile(w.format, w.order)
+	encoded, err := encodeWhitelistFile(w.format, w.players)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(w.filePath, encoded, 0644); err != nil {
-		return fmt.Errorf("write whitelist: %w", err)
-	}
-	return nil
+	return writeFileAtomic(w.filePath, encoded, "whitelist")
 }
 
-func parseWhitelistFile(format whitelistFormat, contents []byte) (map[string]struct{}, []string, error) {
-	players := make(map[string]struct{})
-	var order []string
-
+func parseWhitelistFile(format whitelistFormat, contents []byte) (entries, error) {
+	var names []string
 	switch format {
 	case whitelistFormatTOML:
 		data := whitelistFile{}
 		if len(contents) != 0 {
 			if err := toml.Unmarshal(contents, &data); err != nil {
-				return nil, nil, fmt.Errorf("decode whitelist: %w", err)
+				return entries{}, fmt.Errorf("decode whitelist: %w", err)
 			}
 		}
-		order = make([]string, 0, len(data.Players))
-		for _, name := range data.Players {
-			trimmed := strings.TrimSpace(name)
-			if trimmed == "" {
-				continue
-			}
-			key := normalizeName(trimmed)
-			if _, exists := players[key]; exists {
-				continue
-			}
-			players[key] = struct{}{}
-			order = append(order, key)
-		}
-		return players, order, nil
+		names = data.Players
 	case whitelistFormatList:
 		content := strings.ReplaceAll(string(contents), "\r\n", "\n")
-		lines := strings.Split(content, "\n")
-		order = make([]string, 0, len(lines))
-		for _, line := range lines {
-			trimmed := strings.TrimSpace(line)
-			if trimmed == "" {
-				continue
-			}
-			key := normalizeName(trimmed)
-			if _, exists := players[key]; exists {
-				continue
-			}
-			players[key] = struct{}{}
-			order = append(order, key)
-		}
-		return players, order, nil
+		names = strings.Split(content, "\n")
 	default:
-		return nil, nil, errors.New("unsupported whitelist file format")
+		return entries{}, errors.New("unsupported whitelist file format")
 	}
+	players := newEntries(len(names))
+	for _, name := range names {
+		if en, err := nameEntry(name); err == nil {
+			players.add(en)
+		}
+	}
+	return players, nil
 }
 
 func whitelistFormatFromPath(path string) whitelistFormat {
@@ -321,7 +271,14 @@ func whitelistFormatFromPath(path string) whitelistFormat {
 	}
 }
 
-func encodeWhitelistFile(format whitelistFormat, names []string) ([]byte, error) {
+func encodeWhitelistFile(format whitelistFormat, players entries) ([]byte, error) {
+	var names []string
+	if players.order != nil {
+		names = make([]string, 0, len(players.order))
+	}
+	for _, en := range players.order {
+		names = append(names, en.key.String())
+	}
 	switch format {
 	case whitelistFormatTOML:
 		encoded, err := toml.Marshal(whitelistFile{Players: names})

@@ -31,7 +31,7 @@ func TestWhitelistOperatorsBypass(t *testing.T) {
 		t.Fatalf("load ops: %v", err)
 	}
 
-	allower := whitelistOperatorsAllower{whitelist: wl, operators: ops}
+	allower := admission{whitelist: wl, operators: ops}
 
 	if msg, ok := allower.Allow(nil, client.Identity{Name: "Alice"}, client.Profile{}); !ok {
 		t.Fatalf("expected operator to bypass whitelist, got reject message %q", msg)
@@ -67,7 +67,7 @@ func TestWhitelistOperatorsEmptyNameRejects(t *testing.T) {
 		t.Fatalf("load ops: %v", err)
 	}
 
-	allower := whitelistOperatorsAllower{whitelist: wl, operators: ops}
+	allower := admission{whitelist: wl, operators: ops}
 	if msg, ok := allower.Allow(nil, client.Identity{Name: ""}, client.Profile{}); ok {
 		t.Fatalf("expected empty name to be rejected, got %q", msg)
 	}

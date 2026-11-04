@@ -2,17 +2,12 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/fs"
 	"net"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
-
-	"github.com/df-mc/dragonfly/server/client"
 )
 
 type banEntry struct {
@@ -27,18 +22,17 @@ type banFile struct {
 }
 
 type banList struct {
-	mu          sync.RWMutex
-	file        string
-	players     map[string]banEntry
-	ips         map[string]banEntry
-	playerOrder []string
-	ipOrder     []string
+	mu      sync.RWMutex
+	file    string
+	players entries
+	ips     map[string]banEntry
+	ipOrder []string
 }
 
 func loadBans(path string) (*banList, error) {
-	b := &banList{file: path, players: map[string]banEntry{}, ips: map[string]banEntry{}}
+	b := &banList{file: path, ips: map[string]banEntry{}}
 	contents, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
+	if errNotExist(err) {
 		if err = b.writeLocked(); err != nil {
 			return nil, err
 		}
@@ -51,16 +45,16 @@ func loadBans(path string) (*banList, error) {
 	if err = json.Unmarshal(contents, &data); err != nil {
 		return nil, fmt.Errorf("decode bans: %w", err)
 	}
+	b.players = newEntries(len(data.Players))
 	for _, e := range data.Players {
-		key := normalizeName(e.Name)
-		if key == "" {
+		en, err := nameEntry(e.Name)
+		if err != nil {
 			continue
 		}
-		e.Name = key
-		if _, ok := b.players[key]; !ok {
-			b.playerOrder = append(b.playerOrder, key)
-		}
-		b.players[key] = e
+		// A ban of a name written twice keeps its place and the fields of
+		// the last.
+		en.reason, en.ip = e.Reason, e.IP
+		b.players.put(en)
 	}
 	for _, e := range data.IPs {
 		key := normalizeIP(e.IP)
@@ -88,17 +82,9 @@ func normalizeIP(value string) string {
 }
 
 func (b *banList) writeLocked() error {
-	dir := filepath.Dir(b.file)
-	if dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0777); err != nil {
-			return fmt.Errorf("create bans directory: %w", err)
-		}
-	}
-	data := banFile{Players: make([]banEntry, 0, len(b.playerOrder)), IPs: make([]banEntry, 0, len(b.ipOrder))}
-	for _, k := range b.playerOrder {
-		if e, ok := b.players[k]; ok {
-			data.Players = append(data.Players, e)
-		}
+	data := banFile{Players: make([]banEntry, 0, len(b.players.order)), IPs: make([]banEntry, 0, len(b.ipOrder))}
+	for _, en := range b.players.order {
+		data.Players = append(data.Players, banEntry{Name: en.key.String(), IP: en.ip, Reason: en.reason})
 	}
 	for _, k := range b.ipOrder {
 		if e, ok := b.ips[k]; ok {
@@ -109,34 +95,31 @@ func (b *banList) writeLocked() error {
 	if err != nil {
 		return err
 	}
-	if err = os.WriteFile(b.file, append(encoded, '\n'), 0644); err != nil {
-		return fmt.Errorf("write bans: %w", err)
-	}
-	return nil
+	return writeFileAtomic(b.file, append(encoded, '\n'), "bans")
 }
 func (b *banList) addPlayer(name, reason string) (bool, error) {
-	key := normalizeName(name)
-	if key == "" {
-		return false, errors.New("player name must not be empty")
+	en, err := nameEntry(name)
+	if err != nil {
+		return false, err
 	}
+	en.reason = reason
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if _, ok := b.players[key]; ok {
+	if !b.players.add(en) {
 		return false, nil
 	}
-	b.players[key] = banEntry{Name: key, Reason: reason}
-	b.playerOrder = append(b.playerOrder, key)
 	return true, b.writeLocked()
 }
 func (b *banList) removePlayer(name string) (bool, error) {
-	key := normalizeName(name)
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if _, ok := b.players[key]; !ok {
+	en, err := nameEntry(name)
+	if err != nil {
 		return false, nil
 	}
-	delete(b.players, key)
-	b.playerOrder = slices.DeleteFunc(b.playerOrder, func(v string) bool { return v == key })
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if !b.players.remove(en.key) {
+		return false, nil
+	}
 	return true, b.writeLocked()
 }
 func (b *banList) addIP(ip, reason string) (bool, error) {
@@ -167,15 +150,12 @@ func (b *banList) removeIP(ip string) (bool, error) {
 func (b *banList) entries(ips bool) []string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	order := b.playerOrder
-	data := b.players
-	if ips {
-		order = b.ipOrder
-		data = b.ips
+	if !ips {
+		return b.players.keys()
 	}
-	out := make([]string, 0, len(data))
-	for _, k := range order {
-		if _, ok := data[k]; ok {
+	out := make([]string, 0, len(b.ips))
+	for _, k := range b.ipOrder {
+		if _, ok := b.ips[k]; ok {
 			out = append(out, k)
 		}
 	}
@@ -184,8 +164,10 @@ func (b *banList) entries(ips bool) []string {
 func (b *banList) banned(addr, name string) (string, bool) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if e, ok := b.players[normalizeName(name)]; ok {
-		return e.Reason, true
+	if en, err := nameEntry(name); err == nil {
+		if e, ok := b.players.get(en.key); ok {
+			return e.reason, true
+		}
 	}
 	if ip := normalizeIP(addr); ip != "" {
 		if e, ok := b.ips[ip]; ok {
@@ -193,35 +175,4 @@ func (b *banList) banned(addr, name string) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-type adminAllower struct {
-	base      Allower
-	bans      *banList
-	operators *operatorsList
-}
-
-func (a adminAllower) Allow(addr net.Addr, id client.Identity, p client.Profile) (string, bool) {
-	addrString := ""
-	if addr != nil {
-		addrString = addr.String()
-	}
-	if reason, ok := a.bans.banned(addrString, id.Name); ok {
-		msg := "You are banned from this server."
-		if reason != "" {
-			msg += " Reason: " + reason
-		}
-		return msg, false
-	}
-	if a.operators != nil && a.operators.isOperator(id.Name) {
-		return "", true
-	}
-	return a.base.Allow(addr, id, p)
-}
-func (a adminAllower) adminAccess() (*operatorsList, *banList) { return a.operators, a.bans }
-func (a adminAllower) underlyingWhitelist() *Whitelist {
-	if holder, ok := a.base.(interface{ underlyingWhitelist() *Whitelist }); ok {
-		return holder.underlyingWhitelist()
-	}
-	return nil
 }

@@ -59,7 +59,7 @@ func TestBansRejectPlayerAndIPAtLogin(t *testing.T) {
 	if _, err := bans.addIP("192.0.2.8", "abuse"); err != nil {
 		t.Fatal(err)
 	}
-	allow := adminAllower{base: allower{}, bans: bans}
+	allow := admission{bans: bans}
 	for _, tc := range []struct {
 		name string
 		addr net.Addr

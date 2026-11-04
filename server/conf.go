@@ -519,7 +519,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return conf, fmt.Errorf("load bans: %w", err)
 	}
-	conf.Allower = adminAllower{base: whitelistOperatorsAllower{whitelist: wl, operators: ops}, operators: ops, bans: bans}
+	conf.Allower = admission{whitelist: wl, operators: ops, bans: bans}
 	if uc.Players.SaveData {
 		conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
 		if err != nil {
