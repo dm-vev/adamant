@@ -1,22 +1,11 @@
 package menu
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 )
-
-// ensureUnlockedForCrafting fails for a stack locked in the inventory or in
-// its slot: a locked item is no ingredient of a craft.
-func ensureUnlockedForCrafting(stack item.Stack) error {
-	if !stack.Locked() {
-		return nil
-	}
-	return fmt.Errorf("item is locked and cannot be used as a crafting ingredient")
-}
 
 // matchingStacks returns true if the two stacks are the same in a crafting scenario.
 func matchingStacks(has, expected recipe.Item) bool {
@@ -70,17 +59,4 @@ func repeatStacks(items []item.Stack, repetitions int) []item.Stack {
 		}
 	}
 	return output
-}
-
-// call uses an event.Context, slot and item.Stack to call the event handler function passed. An error is returned if
-// the event.Context was cancelled either before or after the call.
-func call(ctx *inventory.Context, slot int, it item.Stack, f func(ctx *inventory.Context, slot int, it item.Stack)) error {
-	if ctx.Cancelled() {
-		return fmt.Errorf("action was cancelled")
-	}
-	f(ctx, slot, it)
-	if ctx.Cancelled() {
-		return fmt.Errorf("action was cancelled")
-	}
-	return nil
 }

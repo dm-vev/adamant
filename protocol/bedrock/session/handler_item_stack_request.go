@@ -346,6 +346,13 @@ func (h *ItemStackRequestHandler) handleTransfer(from, to v2193.StackRequestSlot
 	if err := h.verifySlots(s, tx, from, to); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
+	if h.batch != nil {
+		src, dst, err := s.refPair(from, to, tx)
+		if err != nil {
+			return err
+		}
+		return h.batchOp(func() error { return h.batch.Move(src, dst, int(count)) })
+	}
 	i, _ := h.itemInSlot(from, s, tx)
 	if err := ensureBindingAllowsRemoval(i, from, to, c); err != nil {
 		return err
@@ -475,6 +482,13 @@ func (h *ItemStackRequestHandler) handleSwap(a *v2193.SwapStackRequestAction, s 
 	if err := h.verifySlots(s, tx, a.Source, a.Destination); err != nil {
 		return fmt.Errorf("slot out of sync: %w", err)
 	}
+	if h.batch != nil {
+		src, dst, err := s.refPair(a.Source, a.Destination, tx)
+		if err != nil {
+			return err
+		}
+		return h.batchOp(func() error { return h.batch.Swap(src, dst) })
+	}
 	i, _ := h.itemInSlot(a.Source, s, tx)
 	dest, _ := h.itemInSlot(a.Destination, s, tx)
 	if err := ensureBindingAllowsRemoval(i, a.Source, a.Destination, c); err != nil {
@@ -519,6 +533,20 @@ func (h *ItemStackRequestHandler) handleSwap(a *v2193.SwapStackRequestAction, s 
 	return nil
 }
 
+// refPair returns the slots of a source and a destination of an item stack
+// request, as ref returns them.
+func (s *Session) refPair(from, to v2193.StackRequestSlotInfo, tx *world.Tx) (src, dst menu.Ref, err error) {
+	src, ok := s.ref(from, tx)
+	if !ok {
+		return src, dst, fmt.Errorf("unknown source container %v", from.Container.ContainerID)
+	}
+	dst, ok = s.ref(to, tx)
+	if !ok {
+		return src, dst, fmt.Errorf("unknown destination container %v", to.Container.ContainerID)
+	}
+	return src, dst, nil
+}
+
 // collectRewards checks if the source inventory has rewards for the player, for example, experience rewards when
 // smelting. If it does, it will drop the rewards at the player's location.
 func (h *ItemStackRequestHandler) collectRewards(s *Session, inv *inventory.Inventory, slot int, tx *world.Tx, c Controllable) {
@@ -544,6 +572,13 @@ func (h *ItemStackRequestHandler) handleDestroy(a *v2193.DestroyStackRequestActi
 	if err := h.verifySlot(a.Source, s, tx); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
+	if h.batch != nil {
+		from, ok := s.ref(a.Source, tx)
+		if !ok {
+			return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
+		}
+		return h.batchOp(func() error { return h.batch.Destroy(from, int(a.Count)) })
+	}
 	i, _ := h.itemInSlot(a.Source, s, tx)
 	if err := ensureUnlockedForInventoryRemoval(i, a.Source); err != nil {
 		return err
@@ -563,6 +598,13 @@ func (h *ItemStackRequestHandler) handleDestroy(a *v2193.DestroyStackRequestActi
 func (h *ItemStackRequestHandler) handleDrop(a *v2193.DropStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
 	if err := h.verifySlot(a.Source, s, tx); err != nil {
 		return fmt.Errorf("source slot out of sync: %w", err)
+	}
+	if h.batch != nil {
+		from, ok := s.ref(a.Source, tx)
+		if !ok {
+			return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
+		}
+		return h.batchOp(func() error { return h.batch.Drop(from, int(a.Count)) })
 	}
 	i, _ := h.itemInSlot(a.Source, s, tx)
 	if err := ensureBindingAllowsRemoval(i, a.Source, v2193.StackRequestSlotInfo{}, c); err != nil {
@@ -600,6 +642,13 @@ func (h *ItemStackRequestHandler) handleMineBlock(a *v2193.MineBlockStackRequest
 	}
 	if err := h.verifySlot(slot, s, tx); err != nil {
 		return err
+	}
+	if h.batch != nil {
+		r, ok := s.ref(slot, tx)
+		if !ok {
+			return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
+		}
+		return h.batchOp(func() error { return h.batch.Touch(r) })
 	}
 
 	// Update the slots through ItemStackResponses, don't actually do anything special with this action.

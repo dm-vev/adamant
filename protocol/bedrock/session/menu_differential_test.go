@@ -42,6 +42,8 @@ var menuRequestScenarios = []struct {
 	{"menus", (*scenario).menusScenario},
 	{"refusals", (*scenario).refusalsScenario},
 	{"multicraft", (*scenario).multiCraftScenario},
+	// D2: Move, Swap, Drop, Destroy, Touch and CreateCreative.
+	{"moves", (*scenario).movesScenario},
 
 	// The stations of D10 to D13: the loom, the stonecutter, the beacon
 	// and merchants.

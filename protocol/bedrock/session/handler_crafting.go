@@ -847,6 +847,9 @@ func (h *ItemStackRequestHandler) handleCreativeCraft(a *v2193.CraftCreativeStac
 	if a.CreativeItemNetworkID == 0 {
 		return fmt.Errorf("creative item network ID must be at least 1")
 	}
+	if h.batch != nil {
+		return h.batchOp(func() error { return h.batch.CreateCreative(int(a.CreativeItemNetworkID - 1)) })
+	}
 	index := a.CreativeItemNetworkID - 1
 	if index >= uint32(len(items)) {
 		return fmt.Errorf("creative item with network ID %v does not exist", a.CreativeItemNetworkID)

@@ -698,6 +698,9 @@ func (s *scenario) record(pk proto.Packet, keep bool) string {
 	raw := encode(pk)
 	back := decodeAs(s.t, pk.ID(), raw)
 	s.trackStacks(back)
+	if keep && normaliseOrbs && orbMotion(back) {
+		keep = false
+	}
 	if keep {
 		s.out.WriteString(s.describe(back, raw, ">>"))
 	} else {
@@ -979,6 +982,9 @@ var uuidType = reflect.TypeFor[uuid.UUID]()
 // packet normalises the fields of a packet.
 func (n *normaliser) packet(v reflect.Value) {
 	n.kind = strings.TrimSuffix(v.Type().Name(), "Packet")
+	if normaliseOrbs {
+		n.orb(v)
+	}
 	if hud, ok := v.Addr().Interface().(*v2193.SetHudPacket); ok && len(hud.Elements) > 1 {
 		slices.Sort(hud.Elements)
 		n.touched = true
