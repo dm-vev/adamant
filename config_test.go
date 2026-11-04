@@ -70,8 +70,9 @@ import (
 // is shown to operators online, which it was not; [Bans], whose table a new
 // default file has, and a file that lacks it refuses banned players with
 // the text it always did, and kicks them with it, where the kick had no
-// reason before. And a file saving both its world and its players now keeps
-// the players in the world database (playerdb.WorldProvider), reading the
+// reason before, and sets no cap on bans for a time. And a file saving both
+// its world and its players now keeps the players in the world database
+// (playerdb.WorldProvider), reading the
 // players folder only for those not yet moved there, and no longer makes
 // the folder.
 
@@ -594,6 +595,7 @@ const everyKeyChanged = `
   DefaultReason = "Rules."
   ExpiresMessage = "\nBack on {expires}"
   IPMessage = "Address gone."
+  MaxDuration = "30d"
   Message = "Gone."
   ReasonMessage = " Why: {reason}, by {source}"
   TimeFormat = "2006-01-02"
@@ -748,6 +750,7 @@ var meaningBanEnd = time.Date(2026, 11, 11, 14, 20, 31, 0, time.UTC).Local().For
 
 // bansMeaning returns the meaning of [Bans] of a Config: the texts Banned
 // of meaningBans, and a player from its address, are refused with.
+// MaxDuration is held by the list of bans, which TestBanOverBan checks.
 func bansMeaning(conf server.Config) string {
 	banned := client.Identity{Name: "Banned", UUID: uuid.New(), XUID: "2535400000000777", Authenticated: true}
 	other := client.Identity{Name: "Other", UUID: uuid.New(), XUID: "2535400000000778", Authenticated: true}

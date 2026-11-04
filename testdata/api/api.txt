@@ -343,6 +343,10 @@ server	const	ActorRemote	server.ActorKind = "remote"
 server	const	ActorServer	server.ActorKind = "server"
 server	const	BackupFolder	server.BackupFormat = 0
 server	const	BackupZip	server.BackupFormat = 1
+server	const	BanAdded	server.BanChange = 1
+server	const	BanMadePermanent	server.BanChange = 2
+server	const	BanUnchanged	server.BanChange = 0
+server	const	BanUpdated	server.BanChange = 3
 server	const	Banned	server.List = 2
 server	const	DefaultBackupKeep	untyped int = 10
 server	const	DefaultCommandBlockLevel	server/cmd.Level = 2
@@ -367,6 +371,7 @@ server	func	DefaultConfig	func() server.UserConfig
 server	func	DefaultPermissionConfig	func() server.PermissionConfig
 server	func	LoadWhitelist	func(path string) (*server.Whitelist, error)
 server	func	New	func() *server.Server
+server	func	ParseBanDuration	func(s string) (time.Duration, error)
 server	func	ReservedName	func(name string) error
 server	func	ValidateName	func(id server/client.Identity) error
 server	method	Actor.String	func() string
@@ -381,10 +386,11 @@ server	method	Server.AuditDropped	func() uint64
 server	method	Server.Backup	func(ctx context.Context, by server.Actor, reason string) (server.BackupInfo, error)
 server	method	Server.BackupStatus	func() server.BackupStatus
 server	method	Server.Backups	func() ([]server.BackupInfo, error)
-server	method	Server.Ban	func(name string, o server.BanOptions) (bool, error)
-server	method	Server.BanAddress	func(ip string, o server.BanOptions) (bool, error)
+server	method	Server.Ban	func(name string, o server.BanOptions) (server.BanChange, error)
+server	method	Server.BanAddress	func(ip string, o server.BanOptions) (server.BanChange, error)
 server	method	Server.BanEntries	func(ip bool) ([]string, error)
 server	method	Server.BanIP	func(ip string, reason string) (bool, error)
+server	method	Server.BanList	func(ips bool) ([]server.BanInfo, error)
 server	method	Server.BanPlayer	func(name string, reason string) (bool, error)
 server	method	Server.Banned	func(addr string, name string) (string, bool)
 server	method	Server.ClearRole	func(name string) (bool, error)
@@ -463,8 +469,10 @@ server	type	BackupConfig	struct{Folder string; Format server.BackupFormat; Inter
 server	type	BackupFormat	uint8
 server	type	BackupInfo	struct{Name string; Path string; Created time.Time; Took time.Duration; Reason string; By server.Actor; Format server.BackupFormat; Checkpoint server/world/mcdb.CheckpointRecord; Files int; Bytes int64; Linked int; Verified string; Admin []string}
 server	type	BackupStatus	struct{Running bool; Started time.Time; By server.Actor; Last *server.BackupInfo; LastErr error; LastErrAt time.Time; Next time.Time}
+server	type	BanChange	uint8
+server	type	BanInfo	struct{Target string; IP bool; Reason string; Source string; Created time.Time; Expires time.Time; Until string}
 server	type	BanMessages	struct{Message string; IPMessage string; ReasonMessage string; ExpiresMessage string; DefaultReason string; TimeFormat string}
-server	type	BanOptions	struct{Reason string; By server/audit.Actor; Expires time.Time}
+server	type	BanOptions	struct{Reason string; By server/audit.Actor; Expires time.Time; For time.Duration}
 server	type	Config	struct{Log *log/slog.Logger; Listeners []func(conf server.Config, host server.Host) (server.Listener, error); Name string; Allower server.Allower; ReconnectPolicy server.ReconnectPolicy; SpawnTimeout time.Duration; SpawnTimeoutMessage string; IdentityKey server/identity.Mode; MaxPlayers int; MaxChunkRadius int; JoinMessage server/player/chat.Translation; QuitMessage server/player/chat.Translation; ShutdownMessage server/player/chat.Translation; StatusProvider server.StatusProvider; PlayerProvider server/player.Provider; WorldProvider server/world.Provider; ReadOnlyWorld bool; SaveChunks server/world.ChunkSaving; Generator func(dim server/world.Dimension, seed int64) server/world.Generator; GeneratorProfile server/world.GeneratorProfile; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; OverworldSeed int64; RandomTickSpeed int; SaveInterval time.Duration; StagingLimit int; ChunkUnloadInterval time.Duration; Entities server/world.EntityRegistry; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension server/world.Dimension; PortalDisabledMessage string; CrashReports string; Blocks server/world.BlockRegistry; AntiCheat *server/player/anticheat.Config; Backup server.BackupConfig; Permissions *server.PermissionConfig; Audit *server.AuditConfig; StrictConfig bool; AntiCheatExempt func(p *server/player.Player, c server/player/anticheat.Check) bool}
 server	type	Found	uint8
 server	type	HealthCheck	struct{Name string; OK bool; Detail string}
@@ -480,7 +488,7 @@ server	type	Server	struct{conf server.Config; once sync.Once; started sync/atomi
 server	type	Status	struct{Name string; SubName string; PlayerCount int; MaxPlayers int}
 server	type	StatusProvider	interface{ServerStatus(playerCount int, maxPlayers int) server.Status}
 server	type	Target	struct{Key server/identity.Key; Name string; Found server.Found; Pending bool}
-server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}; Bans struct{DefaultReason string; ExpiresMessage string; IPMessage string; Message string; ReasonMessage string; TimeFormat string}; Audit struct{Enabled bool; File string; Keep int; MaxSize string; MinLevel int; RecordAddresses bool}}
+server	type	UserConfig	struct{Server struct{Name string; DisableJoinQuitMessages bool; ReconnectPolicy string; IdentityKey string; SpawnTimeout string; SpawnTimeoutMessage string}; World struct{SaveData bool; Folder string; SaveChunks string; Seed int64; SaveInterval string; GeneratorProfile string; GeneratorWorkers int; GeneratorQueueSize int; Regions bool; DisableOverworld bool; DisableNether bool; DisableEnd bool; DefaultDimension string; PortalDisabledMessage string}; Players struct{MaxCount int; MaximumChunkRadius int; SaveData bool; Folder string}; Whitelist struct{Enabled bool; File string; Reason string}; Backup struct{Enabled bool; Folder string; Format string; Interval string; Keep int; MaxAge string; MinFreeSpace string; SaveFirst bool; Verify string}; AntiCheat server/player/anticheat.UserConfig; Permissions struct{BroadcastConsoleToOps bool; BroadcastRemoteToOps bool; CommandBlockLevel int; DefaultLevel int; OperatorLevel int; RoleLevel int; DefaultRole string; Commands map[string]int}; Bans struct{DefaultReason string; ExpiresMessage string; IPMessage string; MaxDuration string; Message string; ReasonMessage string; TimeFormat string}; Audit struct{Enabled bool; File string; Keep int; MaxSize string; MinLevel int; RecordAddresses bool}}
 server	type	Whitelist	struct{mu sync.RWMutex; players server.entries; filePath string; enabled bool; kickMsg string; format server.whitelistFormat}
 server	var	DefaultHealthOptions	server.HealthOptions
 server	var	ErrBackupNotFound	error

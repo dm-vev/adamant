@@ -207,6 +207,11 @@ func TestConfigBounds(t *testing.T) {
 			{`"Gone. {reason}"`, ""}, {`""`, "Bans.Message is empty: want the text a banned player is refused with"},
 			{`"Gone {why}"`, "Bans.Message holds {why}: want only {reason}, {source}, {created}, {expires}"},
 		}},
+		{table: "Bans", key: "MaxDuration", values: []value{
+			{`"0s"`, ""}, {`"30d"`, ""}, {`"720h"`, ""}, {`""`, ""},
+			{`"-1h"`, `Bans.MaxDuration = "-1h": want a duration such as "30d" or "720h", or "0s" for no cap`},
+			{`"month"`, `Bans.MaxDuration = "month": want a duration such as "30d" or "720h", or "0s" for no cap`},
+		}},
 		{table: "Bans", key: "TimeFormat", values: []value{
 			{`"2006-01-02"`, ""}, {`"yesterday"`, `Bans.TimeFormat = "yesterday": want a layout of Go's package time, such as "2006-01-02 at 15:04:05 MST"`},
 		}},

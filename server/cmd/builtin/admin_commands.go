@@ -176,17 +176,29 @@ func (c banCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 	if !ok {
 		return
 	}
-	added, err := c.srv.Ban(t.Arg(), server.BanOptions{Reason: reasonArg(c.Reason), By: c.srv.ActorOf(src)})
+	reason := reasonArg(c.Reason)
+	change, err := c.srv.Ban(t.Arg(), server.BanOptions{Reason: reason, By: c.srv.ActorOf(src)})
 	switch {
 	case err != nil:
 		o.Error(err)
-	case !added:
-		o.Printf("%s is already banned.", t)
+	case change == server.BanUnchanged:
+		o.Print("Nothing changed. The player is already banned")
+	case change == server.BanMadePermanent:
+		o.Printf("%s is now banned for ever", t)
 	case t.Pending:
 		o.Printf(pendingAdded, t.Name, t.Name, "is banned")
 	default:
-		o.Printf("Banned %s.", t)
+		o.Print(bannedText("Banned "+t.String(), reason))
 	}
+}
+
+// bannedText returns what a ban prints, as Java's commands.ban.success:
+// "Banned Steve: griefing", or "Banned Steve." with no reason.
+func bannedText(what, reason string) string {
+	if reason == "" {
+		return what + "."
+	}
+	return what + ": " + reason
 }
 
 // pendingAdded is what a command that adds a name no account is known by
@@ -216,13 +228,17 @@ func removeTarget(srv serverAdapter, o *cmd.Output, list server.List, name strin
 	return t, true
 }
 func (c banIPCmd) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
-	added, err := c.srv.BanAddress(c.IP, server.BanOptions{Reason: reasonArg(c.Reason), By: c.srv.ActorOf(src)})
-	if err != nil {
+	reason := reasonArg(c.Reason)
+	change, err := c.srv.BanAddress(c.IP, server.BanOptions{Reason: reason, By: c.srv.ActorOf(src)})
+	switch {
+	case err != nil:
 		o.Error(err)
-	} else if added {
-		o.Printf("Banned IP address %s.", c.IP)
-	} else {
-		o.Printf("IP address %s is already banned.", c.IP)
+	case change == server.BanUnchanged:
+		o.Print("Nothing changed. That IP is already banned")
+	case change == server.BanMadePermanent:
+		o.Printf("IP %s is now banned for ever", c.IP)
+	default:
+		o.Print(bannedText("Banned IP "+c.IP, reason))
 	}
 }
 func (c pardonCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
@@ -234,9 +250,9 @@ func (c pardonCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	if err != nil {
 		o.Error(err)
 	} else if removed {
-		o.Printf("Unbanned %s.", t)
+		o.Printf("Unbanned %s", t)
 	} else {
-		o.Printf("%s is not banned.", t)
+		o.Print("Nothing changed. The player isn't banned")
 	}
 }
 func (c pardonIPCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
@@ -244,28 +260,42 @@ func (c pardonIPCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	if err != nil {
 		o.Error(err)
 	} else if ok {
-		o.Printf("Unbanned IP address %s.", c.IP)
+		o.Printf("Unbanned IP %s", c.IP)
 	} else {
-		o.Printf("IP address %s is not banned.", c.IP)
+		o.Print("Nothing changed. That IP isn't banned")
 	}
 }
+// Run lists the bans as Java's /banlist does: of players and addresses, or
+// of those named, one a line, "Griefer was banned by Steve: griefing",
+// with the end of a ban for a time.
 func (c banListCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	ips := false
+	kinds := []bool{false, true}
 	if t, ok := c.Type.Load(); ok {
-		ips = strings.EqualFold(string(t), "ips")
+		kinds = []bool{strings.EqualFold(string(t), "ips")}
 	}
-	entries, err := c.srv.BanEntries(ips)
-	if err != nil {
-		o.Error(err)
+	var bans []server.BanInfo
+	for _, ips := range kinds {
+		list, err := c.srv.BanList(ips)
+		if err != nil {
+			o.Error(err)
+			return
+		}
+		bans = append(bans, list...)
+	}
+	if len(bans) == 0 {
+		o.Print("There are no bans")
 		return
 	}
-	label := "player"
-	if ips {
-		label = "IP"
-	}
-	o.Printf("There are %d banned %s(s).", len(entries), label)
-	if len(entries) > 0 {
-		o.Print(strings.Join(entries, ", "))
+	o.Printf("There are %d ban(s):", len(bans))
+	for _, b := range bans {
+		line := b.Target + " was banned by " + b.Source
+		if b.Reason != "" {
+			line += ": " + b.Reason
+		}
+		if b.Until != "" {
+			line += " (until " + b.Until + ")"
+		}
+		o.Print(line)
 	}
 }
 

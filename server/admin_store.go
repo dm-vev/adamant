@@ -57,6 +57,9 @@ type banList struct {
 	// expired, if not nil, is told of the bans that expired, which were
 	// taken off the list; it must not wait.
 	expired func(players []entry, ips []banEntry)
+	// maxDuration is the longest a ban for a time lasts, zero for no
+	// limit.
+	maxDuration time.Duration
 }
 
 func loadBans(path string) (*banList, error) {
@@ -160,6 +163,89 @@ func (b *banList) removePlayer(name string) (bool, error) {
 		return false, nil
 	}
 	return b.remove(en.key)
+}
+
+// ban bans the player of en for the reason passed, with the fields of en,
+// over any ban of the player as reban says, and writes the file if it
+// changed.
+func (b *banList) ban(en entry, reason string) (BanChange, error) {
+	if err := en.ban.checkExpiry(b.maxDuration); err != nil {
+		return BanUnchanged, err
+	}
+	en.reason = reason
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	old, ok := b.players.get(en.key)
+	if !ok {
+		b.players.add(en)
+		return BanAdded, b.writeLocked()
+	}
+	next, change := reban(old, en.ban, reason)
+	if change == BanUnchanged {
+		return change, nil
+	}
+	b.players.put(next)
+	return change, b.writeLocked()
+}
+
+// banAddress bans the address passed as ban bans a player.
+func (b *banList) banAddress(ip, reason string, f banFields) (BanChange, error) {
+	if err := f.checkExpiry(b.maxDuration); err != nil {
+		return BanUnchanged, err
+	}
+	key := normalizeIP(ip)
+	if key == "" {
+		return BanUnchanged, fmt.Errorf("invalid IP address %q", ip)
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	e, ok := b.ips[key]
+	if !ok {
+		b.ips[key] = banEntry{IP: key, Reason: reason}.withFields(f)
+		b.ipOrder = append(b.ipOrder, key)
+		return BanAdded, b.writeLocked()
+	}
+	next, change := reban(entry{reason: e.Reason, ban: e.fields()}, f, reason)
+	if change == BanUnchanged {
+		return change, nil
+	}
+	b.ips[key] = banEntry{IP: key, Reason: next.reason}.withFields(next.ban)
+	return change, b.writeLocked()
+}
+
+// infos returns the bans of players, or of addresses if ips, as /banlist
+// shows them, the players shown by show.
+func (b *banList) infos(ips bool, show func(entry) string) []BanInfo {
+	when := func(t time.Time) string {
+		if t.IsZero() {
+			return ""
+		}
+		return t.Local().Format(b.messages.TimeFormat)
+	}
+	source := func(s string) string {
+		if s == "" {
+			return "(Unknown)"
+		}
+		return s
+	}
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	var out []BanInfo
+	if !ips {
+		for _, en := range b.players.order {
+			out = append(out, BanInfo{Target: show(en), Reason: en.reason, Source: source(en.ban.source),
+				Created: en.ban.created, Expires: en.ban.expires, Until: when(en.ban.expires)})
+		}
+		return out
+	}
+	for _, k := range b.ipOrder {
+		if e, ok := b.ips[k]; ok {
+			f := e.fields()
+			out = append(out, BanInfo{Target: e.IP, IP: true, Reason: e.Reason, Source: source(f.source),
+				Created: f.created, Expires: f.expires, Until: when(f.expires)})
+		}
+	}
+	return out
 }
 
 // remove pardons the player of the key passed and writes the file.

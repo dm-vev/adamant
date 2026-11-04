@@ -151,12 +151,37 @@ func (srv *Server) BanPlayer(name, reason string) (bool, error) {
 
 // Ban bans the player of the name passed, or "xuid:<XUID>", as
 // ResolvePlayer resolves it, as the options say, recording when the ban
-// was made, by whom (o.By, or "API"), and until when (o.Expires, or for
-// ever). A name no account is known by on a server keyed by XUID is held
-// until an account joins with it, and the ban keeps its expiry. A player
-// online of the ban is kicked with the text of [Bans].
-func (srv *Server) Ban(name string, o BanOptions) (bool, error) {
-	return srv.banPlayer(name, o.Reason, o.fields(srv.bansNow()))
+// was made, by whom (o.By, or "API"), and until when (o.Expires or o.For,
+// or for ever). A ban for a time lasts a minute at least and [Bans]
+// MaxDuration at most. A name no account is known by on a server keyed by
+// XUID is held until an account joins with it, and the ban keeps its
+// expiry. Over a ban of the player, a ban for ever makes a ban for a time
+// for ever, and a ban for a time replaces the expiry; BanChange says what
+// changed. A player online of a new ban is kicked with the text of
+// [Bans].
+func (srv *Server) Ban(name string, o BanOptions) (BanChange, error) {
+	if srv.bans == nil {
+		return BanUnchanged, errAdminUnavailable
+	}
+	en, _, err := srv.addition(name)
+	if err != nil {
+		return BanUnchanged, err
+	}
+	en.ban = o.fields(srv.bansNow())
+	change, err := srv.bans.ban(en, o.Reason)
+	if change == BanAdded {
+		srv.kickBanned(en, o.Reason)
+	}
+	return change, err
+}
+
+// kickBanned kicks the player online of the entry of a new ban, if any,
+// with the text of [Bans].
+func (srv *Server) kickBanned(en entry, reason string) {
+	if h, ok := srv.playerOf(en); ok {
+		msg := srv.bans.message(banHit{reason: reason, fields: en.ban})
+		go player.Do(h, func(_ *world.Tx, p *player.Player) { p.Disconnect(msg) })
+	}
 }
 
 // banPlayer bans the player of the name passed for the reason passed, with
@@ -172,10 +197,7 @@ func (srv *Server) banPlayer(name, reason string, f banFields) (bool, error) {
 	en.ban = f
 	added, err := srv.bans.add(en, reason)
 	if added {
-		if h, ok := srv.playerOf(en); ok {
-			msg := srv.bans.message(banHit{reason: reason, fields: f})
-			go player.Do(h, func(_ *world.Tx, p *player.Player) { p.Disconnect(msg) })
-		}
+		srv.kickBanned(en, reason)
 	}
 	return added, err
 }
@@ -221,10 +243,19 @@ func (srv *Server) BanIP(ip, reason string) (bool, error) {
 }
 
 // BanAddress bans the address passed as the options say, recording when
-// the ban was made, by whom and until when, as Ban does. The players
-// online from the address are kicked with the text of [Bans].
-func (srv *Server) BanAddress(ip string, o BanOptions) (bool, error) {
-	return srv.banAddress(ip, o.Reason, o.fields(srv.bansNow()))
+// the ban was made, by whom and until when, over any ban of it, as Ban
+// does. The players online from the address are kicked with the text of
+// [Bans].
+func (srv *Server) BanAddress(ip string, o BanOptions) (BanChange, error) {
+	if srv.bans == nil {
+		return BanUnchanged, errAdminUnavailable
+	}
+	f := o.fields(srv.bansNow())
+	change, err := srv.bans.banAddress(ip, o.Reason, f)
+	if change == BanAdded {
+		srv.kickAddress(ip, o.Reason, f)
+	}
+	return change, err
 }
 
 // banAddress bans an address for the reason passed, with the fields
@@ -235,17 +266,33 @@ func (srv *Server) banAddress(ip, reason string, f banFields) (bool, error) {
 	}
 	added, err := srv.bans.addAddress(ip, reason, f)
 	if added {
-		target := normalizeIP(ip)
-		msg := srv.bans.message(banHit{reason: reason, fields: f, ip: true})
-		go func() {
-			for p := range srv.Players(nil) {
-				if p.Addr() != nil && normalizeIP(p.Addr().String()) == target {
-					p.Disconnect(msg)
-				}
-			}
-		}()
+		srv.kickAddress(ip, reason, f)
 	}
 	return added, err
+}
+
+// kickAddress kicks the players online from the address of a new ban,
+// from a goroutine of its own, with the text of [Bans].
+func (srv *Server) kickAddress(ip, reason string, f banFields) {
+	target := normalizeIP(ip)
+	msg := srv.bans.message(banHit{reason: reason, fields: f, ip: true})
+	go func() {
+		for p := range srv.Players(nil) {
+			if p.Addr() != nil && normalizeIP(p.Addr().String()) == target {
+				p.Disconnect(msg)
+			}
+		}
+	}()
+}
+
+// BanList returns the bans of players, or of addresses if ips, as /banlist
+// shows them, after taking off those that expired.
+func (srv *Server) BanList(ips bool) ([]BanInfo, error) {
+	if srv.bans == nil {
+		return nil, errAdminUnavailable
+	}
+	srv.bans.prune()
+	return srv.bans.infos(ips, func(en entry) string { return Target{Key: en.key, Name: en.name}.String() }), nil
 }
 func (srv *Server) PardonIP(ip string) (bool, error) {
 	if srv.bans == nil {
@@ -365,8 +412,16 @@ func (srv *Server) kickIdlePlayers() {
 func (srv *Server) idleTimeoutLoop() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
+	// The bans that expired are taken off within the hour, even if no one
+	// banned joins or lists the bans.
+	prune := time.NewTicker(time.Hour)
+	defer prune.Stop()
 	for {
 		select {
+		case <-prune.C:
+			if srv.bans != nil {
+				srv.bans.prune()
+			}
 		case <-ticker.C:
 			srv.kickIdlePlayers()
 		case <-srv.idleStop:

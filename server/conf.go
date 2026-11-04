@@ -651,6 +651,9 @@ type UserConfig struct {
 		ExpiresMessage string
 		// IPMessage is the text of a ban of the address of the player.
 		IPMessage string
+		// MaxDuration caps how long a ban for a time lasts, such as "30d";
+		// "0s" sets no cap.
+		MaxDuration string
 		// Message is the text of a ban of the player.
 		Message string
 		// ReasonMessage follows the text of a ban that has a reason.
@@ -743,6 +746,25 @@ func (uc UserConfig) Check(p *config.Problems) {
 	uc.checkPermissions(p)
 	uc.checkAudit(p)
 	checkBanMessages(p, uc.banMessages())
+	if _, err := parseMaxBanDuration(uc.Bans.MaxDuration); err != nil {
+		p.Errorf("Bans.MaxDuration", `Bans.MaxDuration = %q: want a duration such as "30d" or "720h", or "0s" for no cap`, uc.Bans.MaxDuration)
+	}
+}
+
+// parseMaxBanDuration parses [Bans] MaxDuration: a duration of Go, or one
+// of a ban, such as "30d"; "" and "0s" are no cap.
+func parseMaxBanDuration(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, nil
+	}
+	if d, err := time.ParseDuration(s); err == nil {
+		if d < 0 {
+			return 0, fmt.Errorf("negative duration %q", s)
+		}
+		return d, nil
+	}
+	return ParseBanDuration(s)
 }
 
 // banMessages returns the BanMessages of [Bans].
@@ -1046,6 +1068,7 @@ func (uc UserConfig) admission(whitelistFile string, mode identity.Mode, log *sl
 		return admission{}, fmt.Errorf("load bans: %w", err)
 	}
 	bans.messages = uc.banMessages()
+	bans.maxDuration, _ = parseMaxBanDuration(uc.Bans.MaxDuration)
 	roles, moved, err := loadRoles(filepath.Join(baseDir, "permissions.json"))
 	if err != nil {
 		return admission{}, fmt.Errorf("load permissions: %w", err)
@@ -1165,6 +1188,7 @@ func DefaultConfig() UserConfig {
 	m := DefaultBanMessages()
 	c.Bans.DefaultReason, c.Bans.ExpiresMessage, c.Bans.IPMessage = m.DefaultReason, m.ExpiresMessage, m.IPMessage
 	c.Bans.Message, c.Bans.ReasonMessage, c.Bans.TimeFormat = m.Message, m.ReasonMessage, m.TimeFormat
+	c.Bans.MaxDuration = "0s"
 	c.Permissions.Commands = map[string]int{}
 	return c
 }

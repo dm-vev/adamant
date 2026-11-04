@@ -14,7 +14,7 @@ import (
 func TestBanKickCarriesReason(t *testing.T) {
 	a := newAuditTest(t)
 	_, j := a.join(t, "Griefer")
-	if ok, err := a.srv.Ban("Griefer", server.BanOptions{Reason: "griefing"}); !ok || err != nil {
+	if ok, err := a.srv.Ban("Griefer", server.BanOptions{Reason: "griefing"}); ok != server.BanAdded || err != nil {
 		t.Fatalf("Ban = %v, %v", ok, err)
 	}
 	deadline := time.Now().Add(10 * time.Second)

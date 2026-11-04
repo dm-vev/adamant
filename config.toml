@@ -185,6 +185,8 @@
   DefaultReason = ""
   ExpiresMessage = "\nYour ban will be removed on {expires}"
   IPMessage = "You are banned from this server."
+  # MaxDuration caps how long a ban for a time lasts, such as "30d" or "720h"; "0s" sets no cap.
+  MaxDuration = "0s"
   Message = "You are banned from this server."
   ReasonMessage = " Reason: {reason}"
   # TimeFormat writes {created} and {expires}, as a layout of Go's package time, in the server's time zone.

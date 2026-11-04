@@ -59,13 +59,13 @@ func TestBanFieldsAndExpiry(t *testing.T) {
 	srv, clock, expired := banTestServer(t, false)
 	steve := audit.Actor{Kind: audit.KindPlayer, Name: "Steve", Key: "xuid:2535498765432109"}
 	until := clock.now.Add(7 * 24 * time.Hour)
-	if ok, err := srv.Ban("Griefer", BanOptions{Reason: "griefing", By: steve, Expires: until}); !ok || err != nil {
+	if ok, err := srv.Ban("Griefer", BanOptions{Reason: "griefing", By: steve, Expires: until}); ok != BanAdded || err != nil {
 		t.Fatalf("Ban = %v, %v", ok, err)
 	}
 	if ok, err := srv.BanPlayer("Old", "spam"); !ok || err != nil {
 		t.Fatalf("BanPlayer = %v, %v", ok, err)
 	}
-	if ok, err := srv.BanAddress("203.0.113.7", BanOptions{Reason: "alts"}); !ok || err != nil {
+	if ok, err := srv.BanAddress("203.0.113.7", BanOptions{Reason: "alts"}); ok != BanAdded || err != nil {
 		t.Fatalf("BanAddress = %v, %v", ok, err)
 	}
 	const file = "{\n  \"players\": [\n    {\n      \"name\": \"griefer\",\n      \"reason\": \"griefing\",\n" +
@@ -168,4 +168,64 @@ func mustXUIDKey(t *testing.T, xuid string) identity.Key {
 		t.Fatal(err)
 	}
 	return k
+}
+
+// TestBanDurations checks the durations of bans: Go's units plus d and w,
+// in any combination, a minute at least.
+func TestBanDurations(t *testing.T) {
+	for _, tc := range []struct {
+		s    string
+		want time.Duration
+	}{
+		{"90m", 90 * time.Minute}, {"12h", 12 * time.Hour}, {"7d", 7 * 24 * time.Hour}, {"1w2d", 9 * 24 * time.Hour},
+		{"1d12h30m", 36*time.Hour + 30*time.Minute}, {" 2W ", 14 * 24 * time.Hour}, {"1.5h", 90 * time.Minute}, {"60s", time.Minute},
+	} {
+		if d, err := ParseBanDuration(tc.s); err != nil || d != tc.want {
+			t.Errorf("%q = %v, %v, want %v", tc.s, d, err, tc.want)
+		}
+	}
+	for _, s := range []string{"0", "0m", "-1h", "5s", "59s", "", "7", "week", "1y", "1d-2h"} {
+		if d, err := ParseBanDuration(s); err == nil {
+			t.Errorf("%q = %v, want an error", s, d)
+		}
+	}
+}
+
+// TestBanOverBan checks a ban over a ban: for ever over for a time makes
+// it for ever; for a time replaces the expiry and the reason; for ever
+// over for ever changes nothing; a ban for a time above MaxDuration, or
+// under a minute, is refused.
+func TestBanOverBan(t *testing.T) {
+	srv, clock, _ := banTestServer(t, false)
+	srv.bans.maxDuration = 30 * 24 * time.Hour
+	day := 24 * time.Hour
+	steps := []struct {
+		o    BanOptions
+		want BanChange
+		err  bool
+	}{
+		{BanOptions{Reason: "griefing", For: 7 * day}, BanAdded, false},
+		{BanOptions{Reason: "again", For: 14 * day}, BanUpdated, false},
+		{BanOptions{}, BanMadePermanent, false},
+		{BanOptions{Reason: "still"}, BanUnchanged, false},
+		{BanOptions{For: 3 * day}, BanUpdated, false},
+		{BanOptions{For: 31 * day}, BanUnchanged, true},
+		{BanOptions{For: 30 * time.Second}, BanUnchanged, true},
+	}
+	for i, s := range steps {
+		got, err := srv.Ban("Griefer", s.o)
+		if got != s.want || (err != nil) != s.err {
+			t.Errorf("step %d: %v, %v, want %v, error %v", i, got, err, s.want, s.err)
+		}
+	}
+	bans, _ := srv.BanList(false)
+	if len(bans) != 1 || bans[0].Reason != "again" || !bans[0].Expires.Equal(clock.now.Add(3*day)) || bans[0].Source != "API" {
+		t.Errorf("the ban after its steps: %+v", bans)
+	}
+	if got, _ := srv.BanAddress("203.0.113.7", BanOptions{For: day}); got != BanAdded {
+		t.Errorf("an address banned for a day: %v", got)
+	}
+	if got, _ := srv.BanAddress("203.0.113.7", BanOptions{}); got != BanMadePermanent {
+		t.Errorf("the address banned for ever: %v", got)
+	}
 }

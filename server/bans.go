@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -65,8 +66,11 @@ type BanOptions struct {
 	// By is who bans: the source of the ban as /banlist shows it. A zero
 	// actor is code calling the server, "API".
 	By audit.Actor
-	// Expires is when the ban stops applying; zero bans for ever.
+	// Expires is when the ban stops applying; zero bans for ever, unless
+	// For is set.
 	Expires time.Time
+	// For, if not zero, bans for this long from now, in place of Expires.
+	For time.Duration
 }
 
 // fields returns the fields of a ban of the options, made at now.
@@ -75,7 +79,116 @@ func (o BanOptions) fields(now time.Time) banFields {
 	if by.Kind == "" {
 		by.Kind = audit.KindAPI
 	}
-	return banFields{created: now.UTC().Truncate(time.Second), source: by.String(), expires: o.Expires.UTC()}
+	now = now.UTC().Truncate(time.Second)
+	expires := o.Expires.UTC()
+	if o.For != 0 {
+		expires = now.Add(o.For)
+	}
+	return banFields{created: now, source: by.String(), expires: expires}
+}
+
+// checkExpiry returns an error if the ban of f ends in less than a minute
+// from its making, or after max from it, max zero being no limit.
+func (f banFields) checkExpiry(max time.Duration) error {
+	if f.expires.IsZero() {
+		return nil
+	}
+	d := f.expires.Sub(f.created)
+	if d < time.Minute {
+		return fmt.Errorf("a ban lasts a minute at least, not %v", d)
+	}
+	if max > 0 && d > max {
+		return fmt.Errorf("a ban lasts %v at most ([Bans] MaxDuration), not %v", max, d)
+	}
+	return nil
+}
+
+// BanChange is what Ban and BanAddress changed.
+type BanChange uint8
+
+const (
+	// BanUnchanged is a ban of a player or an address banned for ever.
+	BanUnchanged BanChange = iota
+	// BanAdded is a new ban.
+	BanAdded
+	// BanMadePermanent is a ban for ever of a player or an address banned
+	// for a time.
+	BanMadePermanent
+	// BanUpdated is a ban for a time of a player or an address banned: its
+	// expiry, reason and source are replaced.
+	BanUpdated
+)
+
+// reban returns the ban of the fields and the reason passed made over the
+// ban old, and what it changes: a ban for ever over a ban for a time makes
+// it for ever; a ban for a time replaces the expiry; either takes the new
+// source and time, and the new reason if one is given. A ban for ever over
+// a ban for ever changes nothing.
+func reban(old entry, f banFields, reason string) (entry, BanChange) {
+	if f.expires.IsZero() && old.ban.expires.IsZero() {
+		return old, BanUnchanged
+	}
+	change := BanUpdated
+	if f.expires.IsZero() {
+		change = BanMadePermanent
+	}
+	en := old
+	en.ban = f
+	if reason != "" {
+		en.reason = reason
+	}
+	return en, change
+}
+
+// banDuration matches a duration of a ban: numbers each followed by a
+// unit of Go, or d for days and w for weeks.
+var banDuration = regexp.MustCompile(`^(?:\d+(?:\.\d+)?(?:w|d|h|ms|m|s))+$`)
+
+// banDurationPart matches one number and its unit of a duration of a ban.
+var banDurationPart = regexp.MustCompile(`(\d+(?:\.\d+)?)(w|d|h|ms|m|s)`)
+
+// banUnits are the units of a duration of a ban.
+var banUnits = map[string]time.Duration{
+	"w": 7 * 24 * time.Hour, "d": 24 * time.Hour, "h": time.Hour, "m": time.Minute, "s": time.Second, "ms": time.Millisecond,
+}
+
+// ParseBanDuration parses how long a ban lasts, as /tempban takes it: Go's
+// units plus d (24 hours) and w (7 days), in any combination, such as 90m,
+// 12h, 7d, 1w2d or 1d12h30m. It is a minute at least.
+func ParseBanDuration(s string) (time.Duration, error) {
+	v := strings.ToLower(strings.TrimSpace(s))
+	if !banDuration.MatchString(v) {
+		return 0, fmt.Errorf("duration %q: want such as 90m, 12h, 7d or 1w2d", s)
+	}
+	var d time.Duration
+	for _, m := range banDurationPart.FindAllStringSubmatch(v, -1) {
+		n, err := strconv.ParseFloat(m[1], 64)
+		if err != nil {
+			return 0, fmt.Errorf("duration %q: %w", s, err)
+		}
+		d += time.Duration(n * float64(banUnits[m[2]]))
+	}
+	if d < time.Minute {
+		return 0, fmt.Errorf("duration %q: a ban lasts a minute at least", s)
+	}
+	return d, nil
+}
+
+// BanInfo is a ban, as /banlist shows it.
+type BanInfo struct {
+	// Target is the player, as the commands show it, or the address.
+	Target string
+	// IP reports whether the ban is of an address.
+	IP bool
+	// Reason is why, empty if no reason was given.
+	Reason string
+	// Source is who banned, "(Unknown)" if unknown.
+	Source string
+	// Created and Expires are when the ban was made, zero if unknown, and
+	// when it ends, zero for ever.
+	Created, Expires time.Time
+	// Until is Expires as [Bans] TimeFormat writes it, empty for ever.
+	Until string
 }
 
 // BanMessages are the texts a banned player is refused and kicked with, as
