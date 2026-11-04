@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/recipe"
+	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
 )
@@ -40,6 +41,10 @@ type multiCraft struct {
 	times      int
 	consumed   map[byte]int
 	result     *v2193.StackRequestItem
+	// batch is the craft of the batch of the request if the session uses
+	// menu requests: it keeps the snapshot, and the session the slots the
+	// client consumed and the result it named.
+	batch *menu.MultiCraft
 }
 
 const (
@@ -56,6 +61,14 @@ func (h *ItemStackRequestHandler) handleCraft(a *v2193.CraftRecipeStackRequestAc
 		return h.tryDynamicCraft(s, tx, int(a.NumberOfCrafts))
 	}
 	if multi, ok := craft.(recipe.Multi); ok {
+		if h.batch != nil {
+			mc, err := h.batch.BeginMultiCraft(multi, int(a.NumberOfCrafts))
+			if err != nil {
+				return err
+			}
+			h.multiCraft = &multiCraft{batch: mc, times: int(a.NumberOfCrafts), consumed: make(map[byte]int)}
+			return nil
+		}
 		return h.beginMultiCraft(multi, int(a.NumberOfCrafts), s)
 	}
 	if h.batch != nil {
@@ -188,6 +201,27 @@ func (h *ItemStackRequestHandler) beginMultiCraft(craft recipe.Multi, timesCraft
 }
 
 func (h *ItemStackRequestHandler) handleMultiConsume(a *v2193.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
+	if mc := h.multiCraft.batch; mc != nil {
+		inputs := mc.Inputs()
+		inputSlot := int(a.Source.Slot) - inputs[0].Index
+		if inputSlot < 0 || inputSlot >= len(inputs) {
+			return fmt.Errorf("multi recipe consumed slot outside the crafting grid")
+		}
+		if container, _ := nameParts(inputs[inputSlot].Name); a.Source.Container.ContainerID != container || a.Count == 0 {
+			return fmt.Errorf("multi recipe consumed invalid crafting input")
+		}
+		if _, ok := h.multiCraft.consumed[a.Source.Slot]; ok {
+			return fmt.Errorf("multi recipe consumed crafting slot %v more than once", a.Source.Slot)
+		}
+		if err := h.verifySlot(a.Source, s, tx); err != nil {
+			return err
+		}
+		if err := mc.Consume(inputs[inputSlot], int(a.Count)); err != nil {
+			return err
+		}
+		h.multiCraft.consumed[a.Source.Slot] = int(a.Count)
+		return nil
+	}
 	inputSlot := int(a.Source.Slot) - h.multiCraft.offset
 	if inputSlot < 0 || inputSlot >= len(h.multiCraft.input) {
 		return fmt.Errorf("multi recipe consumed slot outside the crafting grid")
@@ -234,6 +268,15 @@ func (h *ItemStackRequestHandler) handleMultiResult(a *v2193.CraftResultsDepreca
 
 func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) error {
 	craft := h.multiCraft
+	if mc := craft.batch; mc != nil {
+		if craft.result == nil {
+			return fmt.Errorf("multi recipe requires one result and all consumed inputs")
+		}
+		requested := *craft.result
+		return h.batchOp(func() error {
+			return mc.Finish(func(result item.Stack) bool { return requestedMultiResultMatches(result, requested) })
+		})
+	}
 	if craft.result == nil || len(craft.consumed) == 0 {
 		return fmt.Errorf("multi recipe requires one result and all consumed inputs")
 	}

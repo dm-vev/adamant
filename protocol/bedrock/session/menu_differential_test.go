@@ -46,6 +46,8 @@ var menuRequestScenarios = []struct {
 	{"moves", (*scenario).movesScenario},
 	// D3: Craft and CraftDynamic.
 	{"crafts", (*scenario).craftsScenario},
+	// D4: MultiCraft at the crafting and cartography tables.
+	{"special", (*scenario).specialScenario},
 
 	// The stations of D10 to D13: the loom, the stonecutter, the beacon
 	// and merchants.

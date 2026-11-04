@@ -112,6 +112,8 @@ type Tx struct {
 	// the order they were made; a result taken is left empty in its place.
 	results []item.Stack
 	ended   bool
+	// multiCraft is the special recipe the batch crafts, nil if none.
+	multiCraft *MultiCraft
 }
 
 // Begin starts a batch. Player.BeginMenu is how adapters start one.
