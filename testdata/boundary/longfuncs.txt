@@ -29,7 +29,6 @@ cmd/vanilla-snbt-export/main.go export 105 tool
 cmd/vanilla-solid-export/main.go generate 240 tool
 protocol/bedrock/session/actor_appearance.go Session.writeActorAppearance 153
 protocol/bedrock/session/command.go BuildAvailableCommands 137
-protocol/bedrock/session/entity_metadata.go Session.addSpecificMetadata 393
 protocol/bedrock/session/handler_item_stack_request.go ItemStackRequestHandler.handleRequest 106
 protocol/bedrock/session/player.go debugShapeToProtocol 116
 protocol/bedrock/session/static.go newRecipeData 115
