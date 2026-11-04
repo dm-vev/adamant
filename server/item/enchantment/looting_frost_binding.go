@@ -19,8 +19,7 @@ func (looting) Cost(level int) (int, int)                           { n := 15 + 
 func (looting) Rarity() item.EnchantmentRarity                      { return item.EnchantmentRarityRare }
 func (looting) CompatibleWithEnchantment(item.EnchantmentType) bool { return true }
 func (looting) CompatibleWithItem(i world.Item) bool {
-	t, ok := i.(item.Tool)
-	return ok && t.ToolType() == item.TypeSword
+	return meleeWeapon(i)
 }
 
 func (frostWalker) Name() string                   { return "Frost Walker" }

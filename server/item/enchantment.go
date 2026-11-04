@@ -55,6 +55,29 @@ type EnchantmentType interface {
 	CompatibleWithItem(i world.Item) bool
 }
 
+// PrimaryItemEnchantment is implemented by an EnchantmentType that an
+// enchanting table offers for only some of the items CompatibleWithItem
+// takes, as the primary_items of a Java enchantment narrow its
+// supported_items. An anvil and /enchant check CompatibleWithItem alone: they
+// put Smite on an axe or a mace, which a table offers it for only on a sword.
+type PrimaryItemEnchantment interface {
+	EnchantmentType
+	// PrimaryItem reports if an enchanting table offers the enchantment for
+	// i. It is asked only of an item that CompatibleWithItem holds for.
+	PrimaryItem(i world.Item) bool
+}
+
+// IsPrimaryItem reports if an enchanting table offers t for i, as Java's
+// Enchantment.isPrimaryItem: t goes on i, and, if t is a
+// PrimaryItemEnchantment, i is one of its primary items.
+func IsPrimaryItem(t EnchantmentType, i world.Item) bool {
+	if !t.CompatibleWithItem(i) {
+		return false
+	}
+	p, ok := t.(PrimaryItemEnchantment)
+	return !ok || p.PrimaryItem(i)
+}
+
 // Enchantable is an interface that can be implemented by items that can be enchanted through an enchanting table.
 type Enchantable interface {
 	// EnchantmentValue returns the value the item may inhibit on possible enchantments.

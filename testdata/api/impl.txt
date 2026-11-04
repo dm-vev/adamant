@@ -10245,6 +10245,7 @@ server/item/enchantment.aquaAffinity	server/cmd/builtin.namedSource	value
 server/item/enchantment.aquaAffinity	server/item.EnchantmentType	value
 server/item/enchantment.baneOfArthropods	server/cmd/builtin.namedSource	value
 server/item/enchantment.baneOfArthropods	server/item.EnchantmentType	value
+server/item/enchantment.baneOfArthropods	server/item.PrimaryItemEnchantment	value
 server/item/enchantment.blastProtection	server/cmd/builtin.namedSource	value
 server/item/enchantment.blastProtection	server/item.EnchantmentType	value
 server/item/enchantment.blastProtection	server/item/enchantment.DamageModifier	value
@@ -10271,6 +10272,7 @@ server/item/enchantment.featherFalling	server/item.EnchantmentType	value
 server/item/enchantment.featherFalling	server/item/enchantment.DamageModifier	value
 server/item/enchantment.fireAspect	server/cmd/builtin.namedSource	value
 server/item/enchantment.fireAspect	server/item.EnchantmentType	value
+server/item/enchantment.fireAspect	server/item.PrimaryItemEnchantment	value
 server/item/enchantment.fireProtection	server/cmd/builtin.namedSource	value
 server/item/enchantment.fireProtection	server/item.EnchantmentType	value
 server/item/enchantment.fireProtection	server/item/enchantment.DamageModifier	value
@@ -10322,10 +10324,12 @@ server/item/enchantment.riptide	server/cmd/builtin.namedSource	value
 server/item/enchantment.riptide	server/item.EnchantmentType	value
 server/item/enchantment.sharpness	server/cmd/builtin.namedSource	value
 server/item/enchantment.sharpness	server/item.EnchantmentType	value
+server/item/enchantment.sharpness	server/item.PrimaryItemEnchantment	value
 server/item/enchantment.silkTouch	server/cmd/builtin.namedSource	value
 server/item/enchantment.silkTouch	server/item.EnchantmentType	value
 server/item/enchantment.smite	server/cmd/builtin.namedSource	value
 server/item/enchantment.smite	server/item.EnchantmentType	value
+server/item/enchantment.smite	server/item.PrimaryItemEnchantment	value
 server/item/enchantment.soulSpeed	server/cmd/builtin.namedSource	value
 server/item/enchantment.soulSpeed	server/item.EnchantmentType	value
 server/item/enchantment.soulSpeed	server/menu.treasureEnchantment	value
@@ -10334,6 +10338,7 @@ server/item/enchantment.swiftSneak	server/item.EnchantmentType	value
 server/item/enchantment.swiftSneak	server/menu.treasureEnchantment	value
 server/item/enchantment.thorns	server/cmd/builtin.namedSource	value
 server/item/enchantment.thorns	server/item.EnchantmentType	value
+server/item/enchantment.thorns	server/item.PrimaryItemEnchantment	value
 server/item/enchantment.unbreaking	server/cmd/builtin.namedSource	value
 server/item/enchantment.unbreaking	server/item.EnchantmentType	value
 server/item/enchantment.windBurst	server/cmd/builtin.namedSource	value

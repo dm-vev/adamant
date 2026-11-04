@@ -41,8 +41,8 @@ func (knockback) CompatibleWithEnchantment(item.EnchantmentType) bool {
 	return true
 }
 
-// CompatibleWithItem ...
+// CompatibleWithItem reports if i is a melee weapon
+// (data/minecraft/enchantment/knockback.json).
 func (knockback) CompatibleWithItem(i world.Item) bool {
-	t, ok := i.(item.Tool)
-	return ok && t.ToolType() == item.TypeSword
+	return meleeWeapon(i)
 }

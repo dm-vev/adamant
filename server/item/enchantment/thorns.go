@@ -42,6 +42,14 @@ func (thorns) CompatibleWithItem(i world.Item) bool {
 	return ok
 }
 
+// PrimaryItem reports if i is a chestplate: an enchanting table offers
+// Thorns for chest armour only (the primary_items of
+// data/minecraft/enchantment/thorns.json).
+func (thorns) PrimaryItem(i world.Item) bool {
+	_, ok := i.(item.Chestplate)
+	return ok
+}
+
 // ThornsDamageSource is used for damage caused by thorns.
 type ThornsDamageSource struct {
 	// Owner is the owner of the armour with the thorns enchantment.

@@ -57,6 +57,21 @@ type treasureEnchantment interface {
 	Treasure() bool
 }
 
+// offeredByTable reports if an enchanting table may offer e for it, as
+// EnchantmentHelper.getAvailableEnchantmentResults filters the enchantments
+// of #in_enchanting_table: a treasure enchantment never, any other for a
+// book, and otherwise only for its primary items, which may be fewer than
+// the items an anvil puts it on.
+func offeredByTable(e item.EnchantmentType, it world.Item) bool {
+	if t, ok := e.(treasureEnchantment); ok && t.Treasure() {
+		return false
+	}
+	if _, book := it.(item.Book); book {
+		return true
+	}
+	return item.IsPrimaryItem(e, it)
+}
+
 // createEnchantments creates a list of enchantments for the given item stack and returns them.
 func createEnchantments(random *rand.Rand, stack item.Stack, value, level int) []item.Enchantment {
 	if value < 0 {
@@ -71,21 +86,12 @@ func createEnchantments(random *rand.Rand, stack item.Stack, value, level int) [
 	cost := level + 1 + random.IntN(value/4+1) + random.IntN(value/4+1)
 	cost = clamp(int(math.Round(float64(cost)+float64(cost)*randomBonus)), 1, math.MaxInt32)
 
-	// Books are applicable to all enchantments, so make sure we have a flag for them here.
-	it := stack.Item()
-	_, book := it.(item.Book)
-
 	// Now that we have our enchantment cost, we need to select the available enchantments. First, we iterate through
 	// each possible enchantment.
+	it := stack.Item()
 	availableEnchants := make([]item.Enchantment, 0, len(item.Enchantments()))
 	for _, enchant := range item.Enchantments() {
-		if t, ok := enchant.(treasureEnchantment); ok && t.Treasure() {
-			// We then have to ensure that the enchantment is not a treasure enchantment, as those cannot be selected through
-			// the enchanting table.
-			continue
-		}
-		if !book && !enchant.CompatibleWithItem(it) {
-			// The enchantment is not compatible with the item.
+		if !offeredByTable(enchant, it) {
 			continue
 		}
 

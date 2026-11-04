@@ -17586,6 +17586,7 @@ server/item	func	FlowerBannerPattern	func() server/item.BannerPatternType
 server/item	func	GlobeBannerPattern	func() server/item.BannerPatternType
 server/item	func	GoatHornFromJavaInstrument	func(id string) (server/world/sound.Horn, bool)
 server/item	func	GusterBannerPattern	func() server/item.BannerPatternType
+server/item	func	IsPrimaryItem	func(t server/item.EnchantmentType, i server/world.Item) bool
 server/item	func	JavaEnchantmentID	func(e server/item.EnchantmentType) string
 server/item	func	JavaInstrumentID	func(h server/world/sound.Horn) string
 server/item	func	JavaItem	func(id string) (server/world.Item, bool)
@@ -18675,6 +18676,7 @@ server/item	type	PoppedChorusFruit	struct{}
 server/item	type	Porkchop	struct{server/item.defaultFood; Cooked bool}
 server/item	type	Potion	struct{Type server/item/potion.Potion}
 server/item	type	PotterySherd	struct{Type server/item.SherdType}
+server/item	type	PrimaryItemEnchantment	interface{PrimaryItem(i server/world.Item) bool; server/item.EnchantmentType}
 server/item	type	PrismarineCrystals	struct{}
 server/item	type	PrismarineShard	struct{}
 server/item	type	Pufferfish	struct{server/item.defaultFood}

@@ -126,13 +126,22 @@ func TestEnchantmentSupportedItems(t *testing.T) {
 
 // Java's #enchantable/weapon and #enchantable/fire_aspect item tags hold the
 // mace, so a mace takes Smite, Bane of Arthropods and Fire Aspect from books
-// in an anvil and from /enchant (the wiki's Mace page lists them).
+// in an anvil and from /enchant (the wiki's Mace page lists them). Their
+// primary_items, #enchantable/melee_weapon, do not hold it, so an
+// enchanting table does not offer them for a mace.
 func TestMaceTakesWeaponEnchantments(t *testing.T) {
-	t.Skip("bug: Smite, Bane of Arthropods and Fire Aspect do not support the mace; CompatibleWithItem also picks the " +
-		"enchanting table's candidates, which Java takes from primary_items instead, so the fix needs that split")
 	for _, e := range []item.EnchantmentType{enchantment.Smite, enchantment.BaneOfArthropods, enchantment.FireAspect} {
 		if !e.CompatibleWithItem(item.Mace{}) {
 			t.Errorf("%s does not go on a mace", e.Name())
+		}
+		if item.IsPrimaryItem(e, item.Mace{}) || !item.IsPrimaryItem(e, item.Sword{Tier: item.ToolTierIron}) {
+			t.Errorf("%s: a mace is a primary item, or a sword is not", e.Name())
+		}
+	}
+	// Sharpness, Knockback and Looting stay off a mace.
+	for _, e := range []item.EnchantmentType{enchantment.Sharpness, enchantment.Knockback, enchantment.Looting} {
+		if e.CompatibleWithItem(item.Mace{}) {
+			t.Errorf("%s goes on a mace", e.Name())
 		}
 	}
 }

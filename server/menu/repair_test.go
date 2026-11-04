@@ -62,6 +62,19 @@ func TestRepair(t *testing.T) {
 			},
 		},
 		{
+			// AnvilMenu checks Enchantment.canEnchant, the supported_items
+			// of smite.json: #enchantable/weapon holds the mace.
+			name: "a book of smite on a mace", mode: world.GameModeSurvival,
+			input:     item.NewStack(item.Mace{}, 1),
+			material:  item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.Smite, 3)),
+			wantLevel: 27,
+			check: func(t *testing.T, res item.Stack) {
+				if e, ok := res.Enchantment(enchantment.Smite); !ok || e.Level() != 3 {
+					t.Errorf("enchantments %v, want smite III", res.Enchantments())
+				}
+			},
+		},
+		{
 			name: "a rename", mode: world.GameModeSurvival,
 			input: ironSword, rename: name("Blade"),
 			wantLevel: 29,
@@ -148,6 +161,7 @@ func TestRepairRefused(t *testing.T) {
 		{"a whole sword and an ingot", block.Anvil{}, 30, ironSword, item.NewStack(item.IronIngot{}, 1), nil},
 		{"a sword and a stick", block.Anvil{}, 30, ironSword.Damage(10), item.NewStack(item.Stick{}, 1), nil},
 		{"no work", block.Anvil{}, 30, ironSword, item.Stack{}, nil},
+		{"a book of sharpness on a mace", block.Anvil{}, 30, item.NewStack(item.Mace{}, 1), item.NewStack(item.EnchantedBook{}, 1).WithEnchantments(item.NewEnchantment(enchantment.Sharpness, 1)), nil},
 		{"a name of 51 characters", block.Anvil{}, 30, ironSword, item.Stack{}, name(strings.Repeat("a", item.MaxCustomNameLength+1))},
 		{"a name not of UTF-8", block.Anvil{}, 30, ironSword, item.Stack{}, name("a\xffb")},
 		{"levels short", block.Anvil{}, 1, ironSword.Damage(100), item.NewStack(item.IronIngot{}, 3), nil},

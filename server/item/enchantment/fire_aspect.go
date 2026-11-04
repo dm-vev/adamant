@@ -42,8 +42,14 @@ func (fireAspect) CompatibleWithEnchantment(item.EnchantmentType) bool {
 	return true
 }
 
-// CompatibleWithItem ...
+// CompatibleWithItem reports if i is in #enchantable/fire_aspect, a mace
+// among them (data/minecraft/enchantment/fire_aspect.json).
 func (fireAspect) CompatibleWithItem(i world.Item) bool {
-	t, ok := i.(item.Tool)
-	return ok && t.ToolType() == item.TypeSword
+	return fireAspectWeapon(i)
+}
+
+// PrimaryItem reports if i is a melee weapon: an enchanting table does not
+// offer Fire Aspect for a mace.
+func (fireAspect) PrimaryItem(i world.Item) bool {
+	return meleeWeapon(i)
 }

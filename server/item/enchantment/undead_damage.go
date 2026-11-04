@@ -8,6 +8,10 @@ import (
 var Smite smite
 var BaneOfArthropods baneOfArthropods
 
+// Smite and Bane of Arthropods go on the items of #enchantable/weapon, a mace
+// among them, and an enchanting table offers them for melee weapons only
+// (data/minecraft/enchantment/smite.json and bane_of_arthropods.json).
+
 type smite struct{}
 type baneOfArthropods struct{}
 
@@ -18,11 +22,9 @@ func (smite) Rarity() item.EnchantmentRarity { return item.EnchantmentRarityUnco
 func (smite) CompatibleWithEnchantment(t item.EnchantmentType) bool {
 	return damageCompatible(Smite, t)
 }
-func (smite) CompatibleWithItem(i world.Item) bool {
-	t, ok := i.(item.Tool)
-	return ok && (t.ToolType() == item.TypeSword || t.ToolType() == item.TypeAxe)
-}
-func (smite) Addend(level int) float64 { return float64(level) * 2.5 }
+func (smite) CompatibleWithItem(i world.Item) bool { return weapon(i) }
+func (smite) PrimaryItem(i world.Item) bool        { return meleeWeapon(i) }
+func (smite) Addend(level int) float64             { return float64(level) * 2.5 }
 
 func (baneOfArthropods) Name() string                   { return "Bane of Arthropods" }
 func (baneOfArthropods) MaxLevel() int                  { return 5 }
@@ -31,11 +33,9 @@ func (baneOfArthropods) Rarity() item.EnchantmentRarity { return item.Enchantmen
 func (baneOfArthropods) CompatibleWithEnchantment(t item.EnchantmentType) bool {
 	return damageCompatible(BaneOfArthropods, t)
 }
-func (baneOfArthropods) CompatibleWithItem(i world.Item) bool {
-	t, ok := i.(item.Tool)
-	return ok && (t.ToolType() == item.TypeSword || t.ToolType() == item.TypeAxe)
-}
-func (baneOfArthropods) Addend(level int) float64 { return float64(level) * 2.5 }
+func (baneOfArthropods) CompatibleWithItem(i world.Item) bool { return weapon(i) }
+func (baneOfArthropods) PrimaryItem(i world.Item) bool        { return meleeWeapon(i) }
+func (baneOfArthropods) Addend(level int) float64             { return float64(level) * 2.5 }
 
 // damageCompatible reports whether t may join self on an item. The
 // enchantments of Java's #exclusive_set/damage (sharpness, smite, bane of

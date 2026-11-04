@@ -42,8 +42,14 @@ func (sharpness) CompatibleWithEnchantment(t item.EnchantmentType) bool {
 	return damageCompatible(Sharpness, t)
 }
 
-// CompatibleWithItem ...
+// CompatibleWithItem reports if i is a sharp weapon, as the
+// supported_items of data/minecraft/enchantment/sharpness.json.
 func (sharpness) CompatibleWithItem(i world.Item) bool {
-	t, ok := i.(item.Tool)
-	return ok && (t.ToolType() == item.TypeSword || t.ToolType() == item.TypeAxe)
+	return sharpWeapon(i)
+}
+
+// PrimaryItem reports if i is a melee weapon: an enchanting table offers
+// Sharpness for a sword but not for an axe.
+func (sharpness) PrimaryItem(i world.Item) bool {
+	return meleeWeapon(i)
 }
