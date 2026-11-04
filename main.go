@@ -19,7 +19,9 @@ func main() {
 	flag.Parse()
 	chat.Global.Subscribe(chat.StdoutSubscriber{})
 	// readConfig sets up the logs as config.toml says, writing to stderr.
-	conf, _, err := readConfig(logging.Options{})
+	drops := newLogDrops()
+	drops.register(metrics.Default)
+	conf, _, err := readConfig(logging.Options{Dropped: drops.add})
 	if err != nil {
 		panic(err)
 	}

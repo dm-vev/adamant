@@ -152,7 +152,7 @@ func (c logConfig) options() (logging.Options, error) {
 }
 
 // setupLogs makes the Set of loggers that logConfig configures, writing as
-// out says, and makes the default logger of slog log as it: at LogLevel in
+// out says and counting the lines it drops through out.Dropped, and makes the default logger of slog log as it: at LogLevel in
 // text, through the default handler of slog, which the Set writes as; in
 // JSON, through the Set itself, so that log.Print and the code that logs
 // through slog.Default() write JSON too, the lines of log.Print at info.
@@ -161,7 +161,7 @@ func setupLogs(c logConfig, out logging.Options) (*logging.Set, error) {
 	if err != nil {
 		return nil, err
 	}
-	o.Output, o.Logger = out.Output, out.Logger
+	o.Output, o.Logger, o.Dropped = out.Output, out.Logger, out.Dropped
 	set := logging.New(o)
 	if set.Format() == logging.JSON {
 		// A Set of text must never be the default: it writes through the
