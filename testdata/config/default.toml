@@ -41,6 +41,7 @@
   Name = "Dragonfly Server"
   NameCheck = "lenient"
   ReconnectPolicy = "kick-existing"
+  StrictConfig = false
 
 [Whitelist]
   Enabled = false

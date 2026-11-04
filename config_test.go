@@ -29,9 +29,12 @@ import (
 // IdentityKey, whose line a new default file has, and a file that lacks it,
 // with AuthEnabled = true, now keys players by XUID; SaveChunks of [World],
 // whose line a new default file has, and a file that lacks it saves the
-// chunks that changed, as the server did before the key; and Protocols and
+// chunks that changed, as the server did before the key; Protocols and
 // PrimaryProtocol of [Network], whose lines a new default file has, and a
-// file that lacks them allows and speaks protocol 2193, as before.
+// file that lacks them allows and speaks protocol 2193, as before; and
+// StrictConfig of [Server], whose line a new default file has, and a file
+// that lacks it warns of the keys nothing reads, which the server ignored
+// before.
 
 // TestDefaultConfigFile checks that readConfig writes the default file, when
 // there is none, as testdata/config/default.toml holds it.
@@ -186,16 +189,16 @@ func TestConfigFileErrors(t *testing.T) {
 	for file, want := range map[string]string{
 		"[Server]\nName = 5\n":                                    "decode config: (2, 1): Can't convert 5(int64) to string",
 		"[Network]\nLAN = \"yes\"\n":                              "decode config: (2, 1): Can't convert yes(string) to bool",
-		"[Network]\nTransport = \"raknet\"\n":                     `network transport "raknet" is no longer supported: players join over NetherNet`,
-		"[Network]\nTransport = \"tcp\"\n":                        `unknown network transport "tcp"`,
-		"[Network]\nProtocols = [\"1.26.40\"]\n":                  `[Network] Protocols: protocol "1.26.40" is not supported: this build supports 1.26.50 (26.50–26.52)`,
-		"[Network]\nPrimaryProtocol = \"26.70\"\n":                `[Network] PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52)`,
+		"[Network]\nTransport = \"raknet\"\n":                     `line 2: Network.Transport: network transport "raknet" is no longer supported: players join over NetherNet`,
+		"[Network]\nTransport = \"tcp\"\n":                        `line 2: Network.Transport: unknown network transport "tcp"`,
+		"[Server]\nNameCheck = \"xbox\"\n":                        `line 2: Server.NameCheck: unknown name check "xbox": want "lenient", "game" or "strict"`,
+		"[Server]\nIdentityKey = \"uuid\"\n":                      `line 2: Server.IdentityKey: unknown IdentityKey "uuid": use "auto", "xuid" or "name"`,
+		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n": `line 3: IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
+		"[World]\nSaveChunks = \"changed\"\n":                     `line 2: World.SaveChunks: unknown SaveChunks "changed": use "modified" or "all"`,
+		"[World]\nSaveInterval = \"often\"\n":                     `line 2: World.SaveInterval = "often": want a duration such as "90s" or "5m"`,
+		"[Network]\nProtocols = [\"1.26.40\"]\n":                  `line 2: Network.Protocols: protocol "1.26.40" is not supported: this build supports 1.26.50 (26.50–26.52)`,
+		"[Network]\nPrimaryProtocol = \"26.70\"\n":                `line 2: Network.PrimaryProtocol: protocol "26.70" is not supported: this build supports 1.26.50 (26.50–26.52)`,
 		"[Network]\nProtocols = \"1.26.50\"\n":                    "decode config: (2, 1): Can't convert 1.26.50(string) to []string(slice)",
-		"[Server]\nNameCheck = \"xbox\"\n":                        `unknown name check "xbox": want "lenient", "game" or "strict"`,
-		"[Server]\nIdentityKey = \"uuid\"\n":                      `unknown IdentityKey "uuid": use "auto", "xuid" or "name"`,
-		"[Server]\nAuthEnabled = false\nIdentityKey = \"xuid\"\n": `IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`,
-		"[World]\nSaveChunks = \"changed\"\n":                     `unknown SaveChunks "changed": use "modified" or "all"`,
-		"[World]\nSaveInterval = \"often\"\n":                     `World.SaveInterval: time: invalid duration "often"`,
 	} {
 		_, err := loadMeaning(t, []byte(file))
 		if err == nil || err.Error() != want {
@@ -292,6 +295,7 @@ const everyKeyChanged = `
   Name = "Changed"
   NameCheck = "strict"
   ReconnectPolicy = "kick-joining"
+  StrictConfig = true
 
 [Whitelist]
   Enabled = true

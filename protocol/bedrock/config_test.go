@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
+	"github.com/df-mc/dragonfly/server/config"
 )
 
 // TestParseProtocols checks the protocols and the primary the keys of
@@ -50,6 +51,45 @@ func TestParseProtocols(t *testing.T) {
 		}
 		if err != nil || !slices.Equal(got, tc.want) || primary != tc.wantP {
 			t.Errorf("%q, %q: %v, %v, %v; want %v, %v", tc.names, tc.primary, got, primary, err, tc.want, tc.wantP)
+		}
+	}
+}
+
+// TestCheckProtocols checks the problems config.toml is reported for its
+// protocols, each under its key, against the build of TestParseProtocols.
+func TestCheckProtocols(t *testing.T) {
+	a := &versions.Protocol{Number: 10, Names: []string{"a"}, Version: "1.0"}
+	b := &versions.Protocol{Number: 20, Names: []string{"b"}, Version: "2.0"}
+	c := &versions.Protocol{Number: 30, Names: []string{"c"}, Version: "3.0"}
+	parse := func(name string) (*versions.Protocol, error) {
+		for _, p := range []*versions.Protocol{a, b, c} {
+			if slices.Contains(p.Names, strings.TrimSpace(name)) {
+				return p, nil
+			}
+		}
+		return nil, fmt.Errorf("protocol %q is not supported", name)
+	}
+	for _, tc := range []struct {
+		names   []string
+		primary string
+		want    []string
+	}{
+		{nil, "", nil},
+		{[]string{"a", "b"}, "b", nil},
+		{[]string{"a", "x"}, "", []string{`Network.Protocols: protocol "x" is not supported`}},
+		{[]string{"a"}, "x", []string{`Network.PrimaryProtocol: protocol "x" is not supported`}},
+		{[]string{"a", "c"}, "b", []string{`Network.PrimaryProtocol = "b": want one of Network.Protocols (1.0, 3.0)`}},
+		{[]string{"c"}, "c", []string{`Network.PrimaryProtocol = "c": this build's session speaks 2.0`}},
+		{[]string{"c"}, "", []string{"Network.Protocols: the oldest, 3.0, is the primary, and this build's session speaks 2.0"}},
+	} {
+		var p config.Problems
+		checkProtocols(&p, tc.names, tc.primary, parse, b)
+		var got []string
+		for _, pr := range p.List() {
+			got = append(got, pr.String())
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("%q, %q: problems %q, want %q", tc.names, tc.primary, got, tc.want)
 		}
 	}
 }

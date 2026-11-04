@@ -9,6 +9,7 @@ import (
 
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/identity"
 	// The packages of the functions New calls through go:linkname must be
@@ -469,20 +470,91 @@ type UserConfig struct {
 	}
 }
 
+// maxChunkRadius is the largest Players.MaximumChunkRadius a UserConfig
+// may set: the largest render distance of the game's clients. A larger one
+// serves no client of the game, and lets a modified client have the server
+// load and send an area of its choosing.
+const maxChunkRadius = 96
+
+// maxGeneratorWorkers is the largest World.GeneratorWorkers a UserConfig
+// may set. The generators hold caches of a size proportional to the
+// workers, which no host has the cores for beyond it.
+const maxGeneratorWorkers = 1024
+
+// Check adds the problems of the values of uc to p, as package
+// server/config describes: the values Config refuses, those it falls back
+// from, and those out of their bounds. A key of config.toml the server
+// reads has its bounds declared here.
+func (uc UserConfig) Check(p *config.Problems) {
+	if v := strings.TrimSpace(uc.Server.IdentityKey); v != "" {
+		_, err := identity.ParseMode(v)
+		p.Add("Server.IdentityKey", err)
+	}
+	if v := strings.TrimSpace(uc.Server.ReconnectPolicy); v != "" {
+		if _, ok := parseReconnectPolicy(v); !ok {
+			p.Warnf("Server.ReconnectPolicy", `Server.ReconnectPolicy = %q: want "kick-joining" or "kick-existing"; the server kicks the existing player`, uc.Server.ReconnectPolicy)
+		}
+	}
+
+	if uc.World.SaveData {
+		config.Folder(p, "World.Folder", uc.World.Folder)
+	}
+	_, err := world.ParseChunkSaving(uc.World.SaveChunks)
+	p.Add("World.SaveChunks", err)
+	// Every save stops the worlds at one instant: more than one a second
+	// would keep them stopped. Zero or less saves only on /save-all and at
+	// stop.
+	if d, ok := config.Duration(p, "World.SaveInterval", uc.World.SaveInterval); ok && d > 0 && d < time.Second {
+		p.Errorf("World.SaveInterval", `World.SaveInterval = %q: want 1s or more, or "0s" to save only on /save-all and at stop`, uc.World.SaveInterval)
+	}
+	_, err = world.ParseGeneratorProfile(uc.World.GeneratorProfile)
+	p.Add("World.GeneratorProfile", err)
+	// Zero or less picks the workers from the CPUs. GeneratorQueueSize is
+	// the backlog a warning is logged at, so that any value serves.
+	config.AtMost(p, "World.GeneratorWorkers", uc.World.GeneratorWorkers, maxGeneratorWorkers)
+	if name := strings.TrimSpace(uc.World.DefaultDimension); name != "" {
+		if _, ok := parseDimension(name); !ok {
+			p.Warnf("World.DefaultDimension", `World.DefaultDimension = %q: want "overworld", "nether" or "end"; players spawn in the overworld`, uc.World.DefaultDimension)
+		}
+	}
+
+	// Zero has no limit, and a chunk radius of zero is the default, 12.
+	config.AtLeast(p, "Players.MaxCount", uc.Players.MaxCount, 0)
+	config.Range(p, "Players.MaximumChunkRadius", uc.Players.MaximumChunkRadius, 0, maxChunkRadius)
+	if uc.Players.SaveData {
+		config.Folder(p, "Players.Folder", uc.Players.Folder)
+	}
+
+	// The operators and the bans are kept in the folder of the whitelist.
+	config.File(p, "Whitelist.File", whitelistPath(uc.Whitelist.File))
+}
+
+// whitelistPath returns the path of the whitelist of the Whitelist.File
+// of a UserConfig: "white-list.txt" if it is empty.
+func whitelistPath(file string) string {
+	if file = strings.TrimSpace(file); file != "" {
+		return file
+	}
+	return "white-list.txt"
+}
+
 // Config converts a UserConfig to a Config, so that it may be used for creating
-// a Server. An error is returned if creating data providers or loading the
-// whitelist, operators or bans failed. The Config has no listener: the
+// a Server. An error is returned if Check finds problems that keep the
+// server from starting, all of them in one error, or if creating data
+// providers or loading the whitelist, operators or bans failed. The values
+// Check warns of are read as their defaults. The Config has no listener: the
 // listeners of the protocol adapters, such as Config.Listener of package
 // protocol/bedrock, are appended to its Listeners.
 func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
+	var problems config.Problems
+	uc.Check(&problems)
+	if err := problems.Err(false); err != nil {
+		return Config{}, err
+	}
 	var err error
 	defaultDim := world.Dimension(world.Overworld)
-	if name := strings.TrimSpace(uc.World.DefaultDimension); name != "" {
-		if parsed, ok := parseDimension(name); ok {
-			defaultDim = parsed
-		} else if log != nil {
-			log.Warn("Unknown default dimension, using overworld.", "value", name)
-		}
+	if parsed, ok := parseDimension(strings.TrimSpace(uc.World.DefaultDimension)); ok {
+		defaultDim = parsed
 	}
 
 	generatorProfile, err := world.ParseGeneratorProfile(uc.World.GeneratorProfile)
@@ -526,19 +598,12 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		DefaultDimension:      defaultDim,
 		PortalDisabledMessage: uc.World.PortalDisabledMessage,
 	}
-	whitelistFile := strings.TrimSpace(uc.Whitelist.File)
-	if whitelistFile == "" {
-		whitelistFile = "white-list.txt"
-	}
+	whitelistFile := whitelistPath(uc.Whitelist.File)
 	if !uc.Server.DisableJoinQuitMessages {
 		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
 	}
-	if policyValue := strings.TrimSpace(uc.Server.ReconnectPolicy); policyValue != "" {
-		if parsed, ok := parseReconnectPolicy(policyValue); ok {
-			conf.ReconnectPolicy = parsed
-		} else if log != nil {
-			log.Warn("Unknown reconnect policy, using kick-existing.", "value", policyValue)
-		}
+	if parsed, ok := parseReconnectPolicy(uc.Server.ReconnectPolicy); ok {
+		conf.ReconnectPolicy = parsed
 	}
 	if uc.World.SaveData {
 		conf.WorldProvider, err = mcdb.Config{Log: log}.Open(uc.World.Folder)

@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
+	"github.com/df-mc/dragonfly/server/config"
 	"github.com/dm-vev/adamant/net/bedrock"
 	"github.com/dm-vev/adamant/net/bedrock/resource"
 )
@@ -185,20 +188,19 @@ type Config struct {
 	Compression bedrock.Compression
 }
 
-// Config converts a UserConfig to a Config. An error is returned if the
-// transport is not NetherNet, the name check is unknown or loading
-// resources failed. It sets whether
+// Config converts a UserConfig to a Config. An error is returned if Check
+// finds problems, all of them in one error, or if loading resources
+// failed. It sets whether
 // queries are answered, and with plugins, as the [Network] table says.
 func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
-	transport := strings.ToLower(strings.TrimSpace(uc.Network.Transport))
-	if transport == "" {
-		transport = "nethernet"
+	var problems config.Problems
+	uc.Check(&problems)
+	if err := problems.Err(false); err != nil {
+		return Config{}, err
 	}
-	if transport == "raknet" {
-		return Config{}, fmt.Errorf("network transport %q is no longer supported: players join over NetherNet", uc.Network.Transport)
-	}
-	if transport != "nethernet" {
-		return Config{}, fmt.Errorf("unknown network transport %q", uc.Network.Transport)
+	transport, err := parseTransport(uc.Network.Transport)
+	if err != nil {
+		return Config{}, err
 	}
 	uc.Network.Transport = transport
 	nameCheck, err := parseNameCheck(uc.Server.NameCheck)
@@ -271,6 +273,46 @@ func parseProtocols(names []string, primaryName string, parse func(string) (*ver
 	return protocols, primary, nil
 }
 
+// checkProtocols adds the problems of the keys Protocols and PrimaryProtocol
+// to p, each under its key: a protocol the build does not support, a primary
+// that is none of Protocols, and a primary newer than model, the protocol of
+// the codecs the session is compiled against, which is the oldest of
+// Protocols when PrimaryProtocol is empty.
+func checkProtocols(p *config.Problems, names []string, primaryName string, parse func(string) (*versions.Protocol, error), model *versions.Protocol) {
+	var protocols []*versions.Protocol
+	ok := true
+	for _, name := range names {
+		v, err := parse(name)
+		if err != nil {
+			p.Add("Network.Protocols", err)
+			ok = false
+			continue
+		}
+		protocols = append(protocols, v)
+	}
+	if strings.TrimSpace(primaryName) == "" {
+		if !ok || len(protocols) == 0 {
+			return
+		}
+		oldest := slices.MinFunc(protocols, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
+		if oldest.Number > model.Number {
+			p.Errorf("Network.Protocols", "Network.Protocols: the oldest, %s, is the primary, and this build's session speaks %s", oldest, model)
+		}
+		return
+	}
+	primary, err := parse(primaryName)
+	if err != nil {
+		p.Add("Network.PrimaryProtocol", err)
+		return
+	}
+	if ok && len(protocols) > 0 && !slices.Contains(protocols, primary) {
+		p.Errorf("Network.PrimaryProtocol", "Network.PrimaryProtocol = %q: want one of Network.Protocols (%s)", primaryName, protocolList(protocols))
+	}
+	if primary.Number > model.Number {
+		p.Errorf("Network.PrimaryProtocol", "Network.PrimaryProtocol = %q: this build's session speaks %s", primaryName, model)
+	}
+}
+
 // protocolList lists protocols by the version each tells its clients.
 func protocolList(ps []*versions.Protocol) string {
 	s := make([]string, len(ps))
@@ -278,6 +320,58 @@ func protocolList(ps []*versions.Protocol) string {
 		s[i] = p.Version
 	}
 	return strings.Join(s, ", ")
+}
+
+// Check adds the problems of the values of uc to p, as package
+// server/config describes: the values Config refuses and those out of their
+// bounds. A key of config.toml the adapter reads has its bounds declared
+// here.
+func (uc UserConfig) Check(p *config.Problems) {
+	n := uc.Network
+	config.Address(p, "Network.Address", "udp", n.Address)
+	_, err := parseTransport(n.Transport)
+	p.Add("Network.Transport", err)
+	config.File(p, "Network.IdentityFile", cmp.Or(n.IdentityFile, "server-key.pem"))
+	if n.HTTPSDomain != "" {
+		// The certificate is of a name alone: a scheme, a port or a path
+		// is no part of it.
+		if _, _, err := net.SplitHostPort(n.HTTPSDomain); err == nil || strings.ContainsAny(n.HTTPSDomain, "/ ") {
+			p.Errorf("Network.HTTPSDomain", "Network.HTTPSDomain = %q: want a domain alone, such as \"play.example.com\"", n.HTTPSDomain)
+		}
+		config.Folder(p, "Network.ACMECacheDir", cmp.Or(n.ACMECacheDir, "acme"))
+	}
+	if n.ACMEDirectory != "" {
+		if u, err := url.Parse(n.ACMEDirectory); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			p.Errorf("Network.ACMEDirectory", "Network.ACMEDirectory = %q: want the URL of a directory, such as \"https://acme-v02.api.letsencrypt.org/directory\"", n.ACMEDirectory)
+		}
+	}
+	config.Address(p, "Network.ACMEChallengeAddress", "tcp", n.ACMEChallengeAddress)
+
+	if uc.Xbox.Enabled {
+		config.File(p, "Xbox.TokenFile", cmp.Or(uc.Xbox.TokenFile, "xbox-token.json"))
+	}
+	if config.Address(p, "Proxy.Address", "tcp", uc.Proxy.Address) && uc.Proxy.Address != "" && len(uc.Proxy.Secret) < minProxySecret {
+		// The secret is not to be printed.
+		p.Errorf("Proxy.Secret", "Proxy.Secret: want %d characters or more, as proxies are taken at Proxy.Address", minProxySecret)
+	}
+
+	_, err = parseNameCheck(uc.Server.NameCheck)
+	p.Add("Server.NameCheck", err)
+	checkProtocols(p, n.Protocols, n.PrimaryProtocol, versions.Parse, versions.Model())
+	config.ReadFolder(p, "Resources.Folder", uc.Resources.Folder)
+}
+
+// parseTransport parses the Network.Transport of a UserConfig: "nethernet",
+// which an empty value is too.
+func parseTransport(s string) (string, error) {
+	transport := strings.ToLower(strings.TrimSpace(s))
+	switch transport {
+	case "", "nethernet":
+		return "nethernet", nil
+	case "raknet":
+		return "", fmt.Errorf("network transport %q is no longer supported: players join over NetherNet", s)
+	}
+	return "", fmt.Errorf("unknown network transport %q", s)
 }
 
 // loadResources loads all resource packs found in a directory passed.

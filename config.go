@@ -11,17 +11,36 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock"
 	"github.com/df-mc/dragonfly/protocol/java"
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/pelletier/go-toml"
 )
 
 // fileConfig is config.toml: the settings of the server and of each
 // protocol adapter. Each part reads the keys it owns from the same file, and
-// two parts may own keys of the same table.
+// two parts may own keys of the same table. A part with a Check method, as
+// server.UserConfig.Check, has the values of its keys checked by it as the
+// file is read: see package server/config.
 type fileConfig struct {
 	Server  server.UserConfig
 	Bedrock bedrockadapter.UserConfig
 	Java    javaadapter.UserConfig
+	Program programConfig
+
+	// warnings are the problems of the file the server starts with, which
+	// compose logs.
+	warnings []config.Problem
+}
+
+// programConfig is the part of config.toml the program owns: how strictly
+// it reads the file.
+type programConfig struct {
+	Server struct {
+		// StrictConfig refuses a file with a key or a table that no part
+		// reads, or with a value the server falls back from, rather than
+		// warn of it and start.
+		StrictConfig bool
+	}
 }
 
 // defaultFileConfig returns the file of the default settings of every part.
@@ -31,7 +50,7 @@ func defaultFileConfig() fileConfig {
 
 // parts returns pointers to the parts of the file, in the order they are
 // read and composed.
-func (f *fileConfig) parts() []any { return []any{&f.Server, &f.Bedrock, &f.Java} }
+func (f *fileConfig) parts() []any { return []any{&f.Server, &f.Bedrock, &f.Java, &f.Program} }
 
 // readConfig reads config.toml, or writes the default file if there is none,
 // and composes the server's Config with the listeners of the adapters.
@@ -47,6 +66,12 @@ func readConfig(log *slog.Logger) (server.Config, error) {
 // fileConfig, each filled out with its defaults first, so that a key the
 // file lacks keeps its default. If there is no file, it writes the default
 // one.
+//
+// It checks the file before anything is made of it, and returns a
+// *config.Error of all its problems at once: the values a part cannot
+// decode, those its Check refuses, and, with StrictConfig, the warnings.
+// The warnings are of the keys and tables no part reads, and of the values a
+// part falls back from; without StrictConfig, compose logs them.
 func readConfigFile(path string) (fileConfig, error) {
 	f := defaultFileConfig()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -63,12 +88,53 @@ func readConfigFile(path string) (fileConfig, error) {
 	if err != nil {
 		return f, fmt.Errorf("read config: %v", err)
 	}
-	for _, p := range f.parts() {
-		if err := toml.Unmarshal(data, p); err != nil {
-			return f, fmt.Errorf("decode config: %v", err)
+	tree, err := toml.LoadBytes(data)
+	if err != nil {
+		return f, fmt.Errorf("decode config: %v", err)
+	}
+	var problems config.Problems
+	parts := f.parts()
+	decoded := map[any]bool{}
+	for _, p := range parts {
+		if err := tree.Unmarshal(p); err != nil {
+			problems.AddProblem(config.Problem{Message: fmt.Sprintf("decode config: %v", err)})
+			continue
+		}
+		decoded[p] = true
+	}
+	keys := scanKeys(tree, parts)
+	for _, pr := range keys.unknown {
+		problems.AddProblem(pr)
+	}
+	// The values of a part that failed to decode are not of the file: they
+	// are left unchecked.
+	for _, p := range parts {
+		if c, ok := p.(interface{ Check(*config.Problems) }); ok && decoded[p] {
+			c.Check(&problems)
+		}
+	}
+	if decoded[&f.Server] && decoded[&f.Bedrock] {
+		f.check(&problems)
+	}
+	problems.Locate(func(key string) int { return keys.lines[key] })
+	strict := decoded[&f.Program] && f.Program.Server.StrictConfig
+	if err := problems.Err(strict); err != nil {
+		err.(*config.Error).File = path
+		return f, err
+	}
+	for _, pr := range problems.List() {
+		if pr.Warning {
+			f.warnings = append(f.warnings, pr)
 		}
 	}
 	return f, nil
+}
+
+// check adds the problems of keys of the parts that depend on each other.
+func (f fileConfig) check(p *config.Problems) {
+	if mode, err := identity.ParseMode(f.Server.Server.IdentityKey); err == nil && mode == identity.XUID && !f.Bedrock.Server.AuthEnabled {
+		p.Errorf("Server.IdentityKey", "%v", errIdentityXUIDOffline)
+	}
 }
 
 // config composes the server's Config of the parts of the file, with the
@@ -83,6 +149,9 @@ func (f fileConfig) config(log *slog.Logger) (server.Config, error) {
 // listeners of the adapters, and the Configs of the adapters it was
 // composed with.
 func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Config, javaadapter.Config, error) {
+	for _, w := range f.warnings {
+		log.Warn("config.toml: " + w.String())
+	}
 	// The adapters' parts come first: a bad Transport is reported before the
 	// world is opened, as UserConfig.Config reported it before.
 	bc, err := f.Bedrock.Config(log)
@@ -106,6 +175,10 @@ func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Con
 	return conf, bc, jc, nil
 }
 
+// errIdentityXUIDOffline is the error of IdentityKey "xuid" without Xbox
+// Live sign-in.
+var errIdentityXUIDOffline = errors.New(`IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`)
+
 // identityKey resolves the IdentityKey of the [Server] table with the
 // AuthEnabled key the Bedrock adapter owns beside it: "auto" keys players by
 // XUID if Xbox Live vouches for them and by name otherwise, and "xuid" needs
@@ -127,7 +200,7 @@ func identityKey(value string, authEnabled bool, log *slog.Logger) (identity.Mod
 		}
 	case identity.XUID:
 		if !authEnabled {
-			return mode, errors.New(`IdentityKey "xuid" needs AuthEnabled = true: without Xbox Live sign-in, the XUID of a player is what its client claims`)
+			return mode, errIdentityXUIDOffline
 		}
 	}
 	switch {

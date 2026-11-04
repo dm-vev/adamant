@@ -43,6 +43,9 @@
   # ReconnectPolicy controls what happens when the same player joins while already online.
   # Valid values: "kick-joining" (disconnect the new connection) or "kick-existing" (disconnect the existing player).
   ReconnectPolicy = "kick-existing"
+  # StrictConfig refuses to start with a key or a table of this file that nothing reads, such as a misspelt one,
+  # or with a value the server falls back from. If false, the server warns of them at start and starts.
+  StrictConfig = false
 
 [World]
   # The folder that the world files (will) reside in, relative to the working directory. If not currently

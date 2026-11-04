@@ -7,6 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/version"
 	"github.com/dm-vev/adamant/net/java"
 )
@@ -32,6 +33,12 @@ type UserConfig struct {
 // address, so that clients of Java Edition are left out.
 func DefaultConfig() UserConfig {
 	return UserConfig{}
+}
+
+// Check adds the problems of the values of uc to p, as package
+// server/config describes.
+func (uc UserConfig) Check(p *config.Problems) {
+	config.Address(p, "Java.Address", "tcp", uc.Java.Address)
 }
 
 // Config converts the UserConfig to a Config.
