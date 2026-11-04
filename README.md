@@ -75,6 +75,7 @@ These rules follow from that:
 - A persistent P-384 server identity that survives restarts.
 - An admin console and server CLI, a Nukkit-style whitelist and RakNet Query.
 - Concurrency and input hardening throughout sessions, inventories, containers and packet validation.
+- A configurable anti-cheat in the game: speed, flight, noclip, reach, break time, placing, attacks, item use, menus and the timer of clients, each logged, corrected or kicked for as `[AntiCheat]` says ([`docs/anticheat.md`](docs/anticheat.md)).
 
 ### World generation
 
@@ -204,7 +205,7 @@ Settings live in `config.toml`.
 
 **Players.** `IdentityKey` chooses what the whitelist, the operators, the bans and the data of players are keyed by: the Xbox account with sign-in on (`auto` with `AuthEnabled = true`, or `xuid`), or the name (`auto` with sign-in off, or `name`). Without sign-in anyone can join under any name, an operator's included: keep such servers on a network you trust. The first start keyed by account moves the names on the lists to accounts, keeping the old files as `*.before-xuid`. See [`docs/identity.md`](docs/identity.md).
 
-**Anti-cheat.** The game checks what clients ask of their players: moves, breaks, places, attacks, item uses, menus and the rate of their ticks. Every check is switched on by default, and each is configured under `[AntiCheat.<Check>]`: whether it runs, what it does (`log`, `setback`, `cancel`, `throttle` or `kick`), at which violation level, and its thresholds. Operators are not exempt unless `ExemptOperators = true`. A config.toml without `[AntiCheat]` runs every check with its defaults.
+**Anti-cheat.** The game checks what clients ask of their players: moves, breaks, places, attacks, item uses, menus and the rate of their ticks. Every check is switched on by default, and each is configured under `[AntiCheat.<Check>]`: whether it runs, what it does (`log`, `setback`, `cancel`, `throttle` or `kick`), at which violation level, and its thresholds. Operators are not exempt unless `ExemptOperators = true`. A config.toml without `[AntiCheat]` runs every check with its defaults. See [`docs/anticheat.md`](docs/anticheat.md) for the checks, their keys and defaults, and how they map to BDS and Java.
 
 **Query.** Query requires `Network.Transport = "raknet"` and `Network.EnableQuery = true`. It is disabled by default and not served over NetherNet.
 

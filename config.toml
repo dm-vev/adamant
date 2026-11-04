@@ -128,7 +128,7 @@
   # the movement checks, "cancel" for the others, "throttle" for Timer, or "kick"), ActAt and KickAt (the
   # violation levels it acts and kicks at; KickAt 0 never kicks), KickMessage, Decay (the level lost each second)
   # and ExemptGameModes, and settings of its own. A table, or a key, left out keeps its default; the default
-  # config.toml lists them all.
+  # config.toml lists them all, and docs/anticheat.md says what each means.
   Enabled = true
   # ExemptOperators has operators skip every check.
   ExemptOperators = false
