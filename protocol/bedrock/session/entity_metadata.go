@@ -1,6 +1,7 @@
 package session
 
 import (
+	"cmp"
 	"math"
 	"reflect"
 	"slices"
@@ -719,21 +720,7 @@ var metadataWriters = [...]metadataWriter{
 	func(_ *Session, e any, m mc.Metadata) bool {
 		eff, ok := e.(effectBearer)
 		if ok {
-			var packedEffects int64
-
-			for _, ef := range eff.Effects() {
-				if !ef.ParticlesHidden() {
-					id, found := effect.ID(ef.Type())
-					if !found {
-						continue
-					}
-					packedEffects = (packedEffects << 7) | int64(id<<1)
-					if ef.Ambient() {
-						packedEffects |= 1
-					}
-				}
-			}
-			m[mc.EntityDataKeyVisibleMobEffects] = packedEffects
+			m[mc.EntityDataKeyVisibleMobEffects] = packVisibleEffects(eff.Effects())
 		}
 		return ok
 	},
@@ -1104,4 +1091,30 @@ var snifferStateFlags = map[string]uint8{
 	"searching":     mc.EntityDataFlagSearching,
 	"digging":       mc.EntityDataFlagDigging,
 	"rising":        mc.EntityDataFlagRising,
+}
+
+// packVisibleEffects packs the effects with particles shown seven bits each,
+// the ID shifted left once and ambience in the lowest bit, as clients show
+// them over a mob. BDS packs them in order of their ID, the lowest in the
+// highest bits, however they were added.
+func packVisibleEffects(effects []effect.Effect) int64 {
+	type visible struct {
+		id      int
+		ambient bool
+	}
+	shown := make([]visible, 0, len(effects))
+	for _, ef := range effects {
+		if id, found := effect.ID(ef.Type()); found && !ef.ParticlesHidden() {
+			shown = append(shown, visible{id: id, ambient: ef.Ambient()})
+		}
+	}
+	slices.SortFunc(shown, func(a, b visible) int { return cmp.Compare(a.id, b.id) })
+	var packed int64
+	for _, v := range shown {
+		packed = packed<<7 | int64(v.id<<1)
+		if v.ambient {
+			packed |= 1
+		}
+	}
+	return packed
 }
