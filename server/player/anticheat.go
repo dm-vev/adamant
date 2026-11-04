@@ -37,20 +37,27 @@ func (p *Player) ClientMove(m client.Move) client.MoveResult {
 		// The player steers what it rides rather than move itself.
 		delta = mgl64.Vec3{}
 	}
-	if mgl64.FloatEqual(delta.Len(), 0) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0) {
+	unchanged := mgl64.FloatEqual(delta.Len(), 0) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0)
+	if unchanged && ac == nil {
 		return client.MoveIgnored
 	}
-	if p.refuseTooQuick(ac, m, delta) {
+	if !unchanged && p.refuseTooQuick(ac, m, delta) {
 		return client.MoveRefused
 	}
 	if ac == nil {
 		p.Move(delta, deltaYaw, deltaPitch)
 		return client.MoveApplied
 	}
+	// A client sends a move every tick, moved or not: the movement checks
+	// judge each, as hovering in place moves nothing.
 	st := p.moveState(ac, delta)
 	judged := p.speedJudged(ac, m)
 	if p.checkMove(ac, m, delta, st) {
 		return client.MoveRefused
+	}
+	if unchanged {
+		ac.recordMove(delta, st, judged)
+		return client.MoveIgnored
 	}
 	ac.clientMove = true
 	p.Move(delta, deltaYaw, deltaPitch)

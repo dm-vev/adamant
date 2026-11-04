@@ -35,6 +35,13 @@ type acState struct {
 	setbackPending bool
 	// last is what the movement checks keep of the last move of the client.
 	last lastMove
+	// hover counts the moves in a row the player floated; support is where
+	// it last had blocks around it, if supported, and supportResent the tick
+	// the blocks below it were last resent.
+	hover         int
+	support       mgl64.Vec3
+	supported     bool
+	supportResent int64
 
 	// impulses are the velocities the server gave the player that its
 	// client may still apply, each until a tick of the player.

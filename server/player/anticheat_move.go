@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -84,7 +85,7 @@ func (p *Player) checkMove(ac *acState, m client.Move, delta mgl64.Vec3, st anti
 	if !p.movementChecked(ac, m) {
 		return false
 	}
-	return p.checkSpeed(ac, m, delta, st)
+	return p.checkSpeed(ac, m, delta, st) || p.checkFly(ac, m, delta)
 }
 
 // speedJudged reports whether Speed judges a move m of the player: the
@@ -141,4 +142,109 @@ func (ac *acState) recordMove(delta mgl64.Vec3, st anticheat.State, judged bool)
 		liquid:     st.Liquid,
 		friction:   st.Friction,
 	}
+}
+
+// supportResendTicks is how often the blocks below a hovering player are
+// resent at most, as Java's forceSendPlayerSupportBlocks does.
+const supportResendTicks = 200
+
+// checkFly holds a move to Java's floating rule, counted per client move: a
+// move that does not descend by HoverDescent, of a player with nothing but
+// air around and 0.55 below it, floats, and more than HoverTicks such moves
+// in a row (eight times as many under Slow Falling) violate Fly. The
+// setback puts the player where it last had blocks around it, after the
+// blocks below it are resent if ResendSupport, which heals a ghost block.
+// A player that may fly, levitates, glides or flies is not judged.
+func (p *Player) checkFly(ac *acState, m client.Move, delta mgl64.Vec3) (refused bool) {
+	if !p.checks(ac, anticheat.Fly) || p.GameMode().AllowsFlying() || p.Flying() || p.Gliding() ||
+		p.heldEffect(ac, &ac.levitation, effect.Levitation) > 0 {
+		ac.hover = 0
+		return false
+	}
+	if delta[1] < -ac.conf.Fly.HoverDescent || !p.onlyAirAround(m.Position) {
+		ac.hover = 0
+		if !p.onlyAirAround(m.Position) {
+			ac.support, ac.supported = m.Position, true
+		}
+		return false
+	}
+	ac.hover++
+	_, slow := p.Effect(effect.SlowFalling)
+	limit := anticheat.HoverLimit(ac.conf.Fly.HoverTicks, slow)
+	if ac.hover <= limit {
+		return false
+	}
+	act := p.violate(ac, anticheat.Fly, "hover", float64(ac.hover-limit), fmt.Sprintf("%d moves floating > %d", ac.hover, limit))
+	if act == anticheat.Setback {
+		if ac.conf.Fly.ResendSupport && (ac.supportResent == 0 || p.tickCount-ac.supportResent >= supportResendTicks) {
+			ac.supportResent = p.tickCount
+			p.resendBlocksBelow(m.Position)
+		}
+		target := p.Position()
+		if ac.supported {
+			target = ac.support
+		}
+		ac.hover = 0
+		p.setBack(ac, target, m.Tick)
+		return true
+	}
+	return act == anticheat.Kick
+}
+
+// floatBox returns the box Java's noBlocksAround looks in for a player at
+// pos: its box grown by 0.0625 and reaching 0.55 lower.
+func (p *Player) floatBox(pos mgl64.Vec3) cube.BBox {
+	return p.H().Type().BBox(p).Translate(pos).Grow(0.0625).Extend(mgl64.Vec3{0, -0.55, 0})
+}
+
+// onlyAirAround reports whether nothing but air is around a player at pos,
+// as Java's noBlocksAround judges it: no block and no liquid in floatBox.
+// An unloaded block counts as one.
+func (p *Player) onlyAirAround(pos mgl64.Vec3) bool {
+	box := p.floatBox(pos)
+	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	for x := low[0]; x <= high[0]; x++ {
+		for y := low[1]; y <= high[1]; y++ {
+			for z := low[2]; z <= high[2]; z++ {
+				bp := cube.Pos{x, y, z}
+				b, loaded := p.tx.BlockLoaded(bp)
+				if !loaded {
+					return false
+				}
+				if _, air := b.(block.Air); !air {
+					return false
+				}
+				if _, liquid := p.tx.Liquid(bp); liquid {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+// resendBlocksBelow resends the blocks below a player at pos, which its
+// client may hold for others.
+func (p *Player) resendBlocksBelow(pos mgl64.Vec3) {
+	box := p.floatBox(pos)
+	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	for x := low[0]; x <= high[0]; x++ {
+		for z := low[2]; z <= high[2]; z++ {
+			for y := low[1] - 1; y <= low[1]; y++ {
+				p.resendNearbyBlock(cube.Pos{x, y, z})
+			}
+		}
+	}
+}
+
+// refuseFlightToggle counts a flight the client of the player asked for in
+// a game mode without flight as a violation of Fly. The game refuses it
+// whatever the action of the check; a change of game mode the client may
+// not have seen yet is not counted.
+func (p *Player) refuseFlightToggle() {
+	ac := p.anticheat()
+	if !p.checks(ac, anticheat.Fly) || p.inGrace(ac) {
+		return
+	}
+	p.violate(ac, anticheat.Fly, "toggle", 1, "flight asked for in a game mode without it")
 }

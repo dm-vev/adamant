@@ -131,3 +131,6 @@ func TestImpulseHoldsSpeedAndEffects(t *testing.T) {
 		}
 	})
 }
+
+// clientMoveAt returns a client move to pos.
+func clientMoveAt(pos mgl64.Vec3) client.Move { return client.Move{Position: pos} }

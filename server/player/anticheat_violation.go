@@ -179,4 +179,5 @@ func (p *Player) inGrace(ac *acState) bool {
 // player, as after a setback or a teleport: its client starts from rest.
 func (ac *acState) resetMovement() {
 	ac.last = lastMove{}
+	ac.hover = 0
 }

@@ -1575,6 +1575,7 @@ func (p *Player) StartFlying() {
 	if !p.GameMode().AllowsFlying() {
 		if p.clientInput() {
 			p.log.Debug("client asked to fly in a game mode without flight")
+			p.refuseFlightToggle()
 			p.client().SendAbilities(p)
 		}
 		return
