@@ -1780,7 +1780,7 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 	case entity.LoveHeartsAction:
 		s.writePacket(&mc.ActorEventPacket{
 			EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       mc.ActorEventInLoveHearts,
+			EventType:       mc.ActorEventLoveHearts,
 		})
 	case entity.OfferFlowerAction:
 		// Bedrock plays the iron golem's flower as an animation of its
