@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	bedrocktext "github.com/df-mc/dragonfly/protocol/bedrock/text"
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
@@ -72,6 +73,7 @@ func Listen(l ConnListener, conf ListenConfig) *Listener {
 	if conf.Log == nil {
 		conf.Log = slog.Default()
 	}
+	conf.Log = logging.Sub(conf.Log, logging.Session)
 	if conf.Blocks != nil {
 		tablesOf(nil, conf.Blocks).hashes()
 	}
