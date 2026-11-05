@@ -12512,6 +12512,9 @@
 << ContainerClose id=47 len=3
     {WindowID:255 ContainerType:255 ServerSide:false}
     | ffff00
+>> ContainerClose id=47 len=3
+    {WindowID:0 ContainerType:247 ServerSide:false}
+    | 00f700
 == a locked apple, apples and damaged swords given
 >> InventorySlot id=50 len=52 normalised
     InventorySlotPacket

@@ -37,9 +37,6 @@ type bdsWindows struct {
 // BDS did, and why. TestWindowsAgainstBDS fails if one of them no longer
 // diverges, so that it leaves this list with the change that fixed it.
 var windowsKnownDiverging = map[string]string{
-	"inventory: close with window 0xff, nothing open": "the session sends nothing back to the 0xff of the chat, " +
-		"which BDS answers with ContainerClose like any other close",
-	"inventory: close with window 0xff while open": "as above: the inventory is closed, but nothing is sent back",
 	"teleport: open the inventory again": "BDS goes on holding the inventory open through a teleport and ignores a second " +
 		"OpenInventory; the session takes one that comes more than a second after the first for a client that closed it " +
 		"without saying so, and opens it again",
