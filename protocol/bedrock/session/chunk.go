@@ -326,14 +326,18 @@ func (w *wireTables) networkChunkData(col *world.Column) chunk.SerialisedData {
 }
 
 // networkBiomePayload returns the biomes of a column, which every protocol
-// names alike: they are kept in the column's own cache.
+// names alike: they are kept in the column's own cache, with the payload
+// limitedChunkPayload sends, which is the biomes and a byte after them: the
+// two are one array.
 func (w *wireTables) networkBiomePayload(col *world.Column) []byte {
 	if payload, ok := col.CachedNetworkBiomePayload(); ok {
 		return payload
 	}
-	payload := encodeBiomes(col.Chunk)
-	col.CacheNetworkBiomePayload(payload)
-	return payload
+	limited := encodeBiomesTerminated(col.Chunk)
+	biomes := limited[: len(limited)-1 : len(limited)-1]
+	col.CacheNetworkBiomePayload(biomes)
+	col.CacheLimitedChunkPayload(limited)
+	return biomes
 }
 
 func (w *wireTables) networkSubChunkPayload(col *world.Column, ind int16) []byte {
@@ -347,16 +351,15 @@ func (w *wireTables) networkSubChunkPayload(col *world.Column, ind int16) []byte
 }
 
 // limitedChunkPayload returns the payload of a column sent to a client that
-// asks for its sub-chunks: its biomes, which every protocol names alike.
+// asks for its sub-chunks: its biomes, which every protocol names alike, and
+// a byte after them. It shares its array with the biomes of the column.
 func (w *wireTables) limitedChunkPayload(col *world.Column) []byte {
 	if payload, ok := col.CachedLimitedChunkPayload(); ok {
 		return payload
 	}
-	biomes := w.networkBiomePayload(col)
-	raw := make([]byte, len(biomes)+1)
-	copy(raw, biomes)
-	col.CacheLimitedChunkPayload(raw)
-	return raw
+	w.networkBiomePayload(col)
+	payload, _ := col.CachedLimitedChunkPayload()
+	return payload
 }
 
 func (w *wireTables) fullChunkPayload(col *world.Column) []byte {

@@ -49,6 +49,14 @@ func encodeSubChunk(c *chunk.Chunk, ind int, hashes *blockHashes) []byte {
 // positions of the biomes in world.BiomeIDs. A biome that is not registered
 // is written as the first.
 func encodeBiomes(c *chunk.Chunk) []byte {
+	b := encodeBiomesTerminated(c)
+	return b[: len(b)-1 : len(b)-1]
+}
+
+// encodeBiomesTerminated returns the biomes of the chunk as encodeBiomes
+// does, and a zero byte after them: the payload of a column whose sub-chunks
+// the client asks for.
+func encodeBiomesTerminated(c *chunk.Chunk) []byte {
 	buf := chunkWireBufferPool.Get().(*[]byte)
 	b := (*buf)[:0]
 	var previous *chunk.PalettedStorage
@@ -65,7 +73,7 @@ func encodeBiomes(c *chunk.Chunk) []byte {
 			b = appendVarint32(b, int32(index))
 		}
 	}
-	return releaseChunkWireBuffer(buf, b)
+	return releaseChunkWireBuffer(buf, append(b, 0))
 }
 
 // appendStorageIndices appends to b the header and the indices of a paletted
