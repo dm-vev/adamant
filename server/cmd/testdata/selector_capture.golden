@@ -1,0 +1,1992 @@
+=== source | @a
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== cow | @a
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== source | @p
+kind=p origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex
+=== cow | @p
+kind=p origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Steve
+=== source | @r
+kind=r origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 1
+=== cow | @r
+kind=r origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 1
+=== source | @s
+kind=s origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: ?
+=== cow | @s
+kind=s origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow
+=== source | @e
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @n
+kind=n origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex
+=== cow | @n
+kind=n origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow
+=== source | @x
+error: §r§c> '@x' is not a valid parameter§r
+=== cow | @x
+error: §r§c> '@x' is not a valid parameter§r
+=== source | @ee
+error: §r§c> '@ee' is not a valid parameter§r
+=== cow | @ee
+error: §r§c> '@ee' is not a valid parameter§r
+=== source | @e[
+error: §r§c> '@e[' is not a valid parameter§r
+=== cow | @e[
+error: §r§c> '@e[' is not a valid parameter§r
+=== source | @e]
+error: §r§c> '@e]' is not a valid parameter§r
+=== cow | @e]
+error: §r§c> '@e]' is not a valid parameter§r
+=== source | @e[]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[x]
+error: §r§c> 'x' is not a valid parameter§r
+=== cow | @e[x]
+error: §r§c> 'x' is not a valid parameter§r
+=== source | @e[=1]
+error: Unknown option ''
+=== cow | @e[=1]
+error: Unknown option ''
+=== source | @e[unknown=1]
+error: Unknown option 'unknown'
+=== cow | @e[unknown=1]
+error: Unknown option 'unknown'
+=== source | @e[type=cow]junk
+error: §r§c> '@e[type=cow]junk' is not a valid parameter§r
+=== cow | @e[type=cow]junk
+error: §r§c> '@e[type=cow]junk' is not a valid parameter§r
+=== source | @e junk
+error: §r§c> '@e junk' is not a valid parameter§r
+=== cow | @e junk
+error: §r§c> '@e junk' is not a valid parameter§r
+=== source | @e[type=cow,]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow,cow2
+=== cow | @e[type=cow,]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow,cow2
+=== source | @e[,type=cow]
+error: §r§c> '' is not a valid parameter§r
+=== cow | @e[,type=cow]
+error: §r§c> '' is not a valid parameter§r
+=== source | @e[type=cow,,limit=1]
+error: §r§c> '' is not a valid parameter§r
+=== cow | @e[type=cow,,limit=1]
+error: §r§c> '' is not a valid parameter§r
+=== source | @e[ type = cow , limit = 1 ]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== cow | @e[ type = cow , limit = 1 ]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @a[predicate=x]
+error: §r§c> 'predicate' is not a valid parameter§r
+=== cow | @a[predicate=x]
+error: §r§c> 'predicate' is not a valid parameter§r
+=== source | @a[advancements={}]
+error: §r§c> 'advancements' is not a valid parameter§r
+=== cow | @a[advancements={}]
+error: §r§c> 'advancements' is not a valid parameter§r
+=== source | @e[predicate=!x]
+error: §r§c> 'predicate=!x' is not a valid parameter§r
+=== cow | @e[predicate=!x]
+error: §r§c> 'predicate=!x' is not a valid parameter§r
+=== source | @e[x=5.5,y=64,z=5.5,distance=..1]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:-Inf max:1 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== cow | @e[x=5.5,y=64,z=5.5,distance=..1]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:-Inf max:1 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @e[x=-3.5,z=2.5,distance=..1]
+kind=e origin=[-3.5 64 2.5] volume=- distance={min:-Inf max:1 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow2
+=== cow | @e[x=-3.5,z=2.5,distance=..1]
+kind=e origin=[-3.5 64 2.5] volume=- distance={min:-Inf max:1 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow2
+=== source | @e[x=abc]
+error: §r§c> 'abc' is not a valid number§r
+=== cow | @e[x=abc]
+error: §r§c> 'abc' is not a valid number§r
+=== source | @e[x=1,x=2]
+error: Option 'x' isn't applicable here
+=== cow | @e[x=1,x=2]
+error: Option 'x' isn't applicable here
+=== source | @e[y=1,y=2]
+error: Option 'y' isn't applicable here
+=== cow | @e[y=1,y=2]
+error: Option 'y' isn't applicable here
+=== source | @e[z=1,z=2]
+error: Option 'z' isn't applicable here
+=== cow | @e[z=1,z=2]
+error: Option 'z' isn't applicable here
+=== source | @e[x=!1]
+error: §r§c> 'x=!1' is not a valid parameter§r
+=== cow | @e[x=!1]
+error: §r§c> 'x=!1' is not a valid parameter§r
+=== source | @e[x=]
+error: §r§c> '' is not a valid number§r
+=== cow | @e[x=]
+error: §r§c> '' is not a valid number§r
+=== source | @e[x=NaN]
+error: §r§c> 'NaN' is not a valid number§r
+=== cow | @e[x=NaN]
+error: §r§c> 'NaN' is not a valid number§r
+=== source | @e[x=1e2]
+error: §r§c> '1e2' is not a valid number§r
+=== cow | @e[x=1e2]
+error: §r§c> '1e2' is not a valid number§r
+=== source | @e[x=1,y=2,z=3]
+kind=e origin=[1 2 3] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[x=1,y=2,z=3]
+kind=e origin=[1 2 3] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[x=0,y=60,z=0,dx=10,dy=10,dz=10]
+kind=e origin=[0 60 0] volume=[10 10 10] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: cow,Alex,Steve
+=== cow | @e[x=0,y=60,z=0,dx=10,dy=10,dz=10]
+kind=e origin=[0 60 0] volume=[10 10 10] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: cow,Alex,Steve
+=== source | @e[x=0,y=60,z=0,dx=10]
+kind=e origin=[0 60 0] volume=[10 0 0] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[x=0,y=60,z=0,dx=10]
+kind=e origin=[0 60 0] volume=[10 0 0] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[x=0,y=60,z=0,dy=10]
+kind=e origin=[0 60 0] volume=[0 10 0] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[x=0,y=60,z=0,dy=10]
+kind=e origin=[0 60 0] volume=[0 10 0] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @e[x=0,y=60,z=0,dz=10]
+kind=e origin=[0 60 0] volume=[0 0 10] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[x=0,y=60,z=0,dz=10]
+kind=e origin=[0 60 0] volume=[0 0 10] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[x=0,y=60,z=0,dx=-10,dy=-10,dz=-10]
+kind=e origin=[0 60 0] volume=[-10 -10 -10] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[x=0,y=60,z=0,dx=-10,dy=-10,dz=-10]
+kind=e origin=[0 60 0] volume=[-10 -10 -10] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[x=0,y=63,z=0,dx=6,dy=1,dz=6]
+kind=e origin=[0 63 0] volume=[6 1 6] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: cow,Alex,Steve
+=== cow | @e[x=0,y=63,z=0,dx=6,dy=1,dz=6]
+kind=e origin=[0 63 0] volume=[6 1 6] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: cow,Alex,Steve
+=== source | @e[dx=5,dy=5,dz=5]
+kind=e origin=[0 64 0] volume=[5 5 5] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: cow,Alex,Steve
+=== cow | @e[dx=5,dy=5,dz=5]
+kind=e origin=[5.5 64 5.5] volume=[5 5 5] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @e[dx=abc]
+error: §r§c> 'abc' is not a valid number§r
+=== cow | @e[dx=abc]
+error: §r§c> 'abc' is not a valid number§r
+=== source | @e[dx=1,dx=2]
+error: Option 'dx' isn't applicable here
+=== cow | @e[dx=1,dx=2]
+error: Option 'dx' isn't applicable here
+=== source | @e[dy=1,dy=2]
+error: Option 'dy' isn't applicable here
+=== cow | @e[dy=1,dy=2]
+error: Option 'dy' isn't applicable here
+=== source | @e[dz=1,dz=2]
+error: Option 'dz' isn't applicable here
+=== cow | @e[dz=1,dz=2]
+error: Option 'dz' isn't applicable here
+=== source | @e[dx=!1]
+error: §r§c> 'dx=!1' is not a valid parameter§r
+=== cow | @e[dx=!1]
+error: §r§c> 'dx=!1' is not a valid parameter§r
+=== source | @e[dx=1e2]
+error: §r§c> '1e2' is not a valid number§r
+=== cow | @e[dx=1e2]
+error: §r§c> '1e2' is not a valid number§r
+=== source | @e[distance=..10]
+kind=e origin=[0 64 0] volume=- distance={min:-Inf max:10 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=false Alex=true Steve=true Eve=false
+selected: cow,cow2,Alex,Steve
+=== cow | @e[distance=..10]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:-Inf max:10 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=false Alex=true Steve=true Eve=false
+selected: cow,cow2,Alex,Steve
+=== source | @e[distance=3..8]
+kind=e origin=[0 64 0] volume=- distance={min:3 max:8 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow,cow2
+=== cow | @e[distance=3..8]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:3 max:8 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: Alex,Steve
+=== source | @e[distance=5]
+kind=e origin=[0 64 0] volume=- distance={min:5 max:5 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[distance=5]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:5 max:5 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[distance=..]
+error: §r§c> 'distance=..' is not a valid parameter§r
+=== cow | @e[distance=..]
+error: §r§c> 'distance=..' is not a valid parameter§r
+=== source | @e[distance=-1..]
+error: Distance cannot be negative
+=== cow | @e[distance=-1..]
+error: Distance cannot be negative
+=== source | @e[distance=..-1]
+error: Distance cannot be negative
+=== cow | @e[distance=..-1]
+error: Distance cannot be negative
+=== source | @e[distance=3..1]
+error: §r§c> 'distance=3..1' is not a valid parameter§r
+=== cow | @e[distance=3..1]
+error: §r§c> 'distance=3..1' is not a valid parameter§r
+=== source | @e[distance=abc]
+error: §r§c> 'distance=abc' is not a valid parameter§r
+=== cow | @e[distance=abc]
+error: §r§c> 'distance=abc' is not a valid parameter§r
+=== source | @e[distance=!1]
+error: §r§c> 'distance=!1' is not a valid parameter§r
+=== cow | @e[distance=!1]
+error: §r§c> 'distance=!1' is not a valid parameter§r
+=== source | @e[distance=1,distance=2]
+error: Option 'distance' isn't applicable here
+=== cow | @e[distance=1,distance=2]
+error: Option 'distance' isn't applicable here
+=== source | @e[distance=0..]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:+Inf set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[distance=0..]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:+Inf set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[distance=7.8..8]
+kind=e origin=[0 64 0] volume=- distance={min:7.8 max:8 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[distance=7.8..8]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:7.8 max:8 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[distance=]
+error: §r§c> 'distance=' is not a valid parameter§r
+=== cow | @e[distance=]
+error: §r§c> 'distance=' is not a valid parameter§r
+=== source | @a[level=5]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:5 max:5 set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @a[level=5]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:5 max:5 set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @a[level=1..]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:1 max:+Inf set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=true
+selected: Alex,Eve
+=== cow | @a[level=1..]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:1 max:+Inf set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=true
+selected: Alex,Eve
+=== source | @a[level=..4]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:-Inf max:4 set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== cow | @a[level=..4]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:-Inf max:4 set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== source | @a[level=-1..]
+error: Level shouldn't be negative
+=== cow | @a[level=-1..]
+error: Level shouldn't be negative
+=== source | @a[level=1.5]
+error: §r§c> 'level=1.5' is not a valid parameter§r
+=== cow | @a[level=1.5]
+error: §r§c> 'level=1.5' is not a valid parameter§r
+=== source | @a[level=2..1]
+error: §r§c> 'level=2..1' is not a valid parameter§r
+=== cow | @a[level=2..1]
+error: §r§c> 'level=2..1' is not a valid parameter§r
+=== source | @a[level=..-1]
+error: Level shouldn't be negative
+=== cow | @a[level=..-1]
+error: Level shouldn't be negative
+=== source | @e[level=0..]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:+Inf set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== cow | @e[level=0..]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:+Inf set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== source | @a[level=!1]
+error: §r§c> 'level=!1' is not a valid parameter§r
+=== cow | @a[level=!1]
+error: §r§c> 'level=!1' is not a valid parameter§r
+=== source | @a[level=1,level=2]
+error: Option 'level' isn't applicable here
+=== cow | @a[level=1,level=2]
+error: Option 'level' isn't applicable here
+=== source | @a[level=abc]
+error: §r§c> 'level=abc' is not a valid parameter§r
+=== cow | @a[level=abc]
+error: §r§c> 'level=abc' is not a valid parameter§r
+=== source | @a[level=]
+error: §r§c> 'level=' is not a valid parameter§r
+=== cow | @a[level=]
+error: §r§c> 'level=' is not a valid parameter§r
+=== source | @a[level=0..0]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== cow | @a[level=0..0]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:true} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== source | @e[y_rotation=80..100]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow,Alex
+=== cow | @e[y_rotation=80..100]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow,Alex
+=== source | @e[x_rotation=5..15]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow,Alex
+=== cow | @e[x_rotation=5..15]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow,Alex
+=== source | @e[y_rotation=170..-170]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[y_rotation=170..-170]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @e[x_rotation=-90..0]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: cow2,zombie,Steve,Eve
+=== cow | @e[x_rotation=-90..0]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: cow2,zombie,Steve,Eve
+=== source | @e[y_rotation=..90]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=false Alex=true Steve=false Eve=true
+selected: cow,cow2,Alex,Eve
+=== cow | @e[y_rotation=..90]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=false Alex=true Steve=false Eve=true
+selected: cow,cow2,Alex,Eve
+=== source | @e[y_rotation=90..]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=true Alex=false Steve=true Eve=false
+matches: cow=true cow2=false zombie=true Alex=false Steve=true Eve=false
+selected: cow,zombie,Steve
+=== cow | @e[y_rotation=90..]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=true Alex=false Steve=true Eve=false
+matches: cow=true cow2=false zombie=true Alex=false Steve=true Eve=false
+selected: cow,zombie,Steve
+=== source | @e[x_rotation=abc]
+error: §r§c> 'x_rotation=abc' is not a valid parameter§r
+=== cow | @e[x_rotation=abc]
+error: §r§c> 'x_rotation=abc' is not a valid parameter§r
+=== source | @e[y_rotation=1,y_rotation=2]
+error: Option 'y_rotation' isn't applicable here
+=== cow | @e[y_rotation=1,y_rotation=2]
+error: Option 'y_rotation' isn't applicable here
+=== source | @e[x_rotation=1,x_rotation=2]
+error: Option 'x_rotation' isn't applicable here
+=== cow | @e[x_rotation=1,x_rotation=2]
+error: Option 'x_rotation' isn't applicable here
+=== source | @e[y_rotation=!1]
+error: §r§c> 'y_rotation=!1' is not a valid parameter§r
+=== cow | @e[y_rotation=!1]
+error: §r§c> 'y_rotation=!1' is not a valid parameter§r
+=== source | @e[y_rotation=]
+error: §r§c> 'y_rotation=' is not a valid parameter§r
+=== cow | @e[y_rotation=]
+error: §r§c> 'y_rotation=' is not a valid parameter§r
+=== source | @e[y_rotation=-180..-90]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=true Eve=false
+selected: zombie,Steve
+=== cow | @e[y_rotation=-180..-90]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=true Eve=false
+selected: zombie,Steve
+=== source | @e[y_rotation=180]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[y_rotation=180]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @e[x_rotation=10]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow,Alex
+=== cow | @e[x_rotation=10]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow,Alex
+=== source | @e[x_rotation=..]
+error: §r§c> 'x_rotation=..' is not a valid parameter§r
+=== cow | @e[x_rotation=..]
+error: §r§c> 'x_rotation=..' is not a valid parameter§r
+=== source | @e[scores={obj=4}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[scores={obj=4}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @e[scores={obj=1..9}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=true Steve=false Eve=false
+selected: zombie,Alex
+=== cow | @e[scores={obj=1..9}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=true Steve=false Eve=false
+selected: zombie,Alex
+=== source | @e[scores={obj=..3}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[scores={obj=..3}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[scores={obj=4,other=7}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[scores={obj=4,other=7}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[scores={other=7}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== cow | @e[scores={other=7}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @e[scores={}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[scores={}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[scores={obj}]
+error: §r§c> 'scores={obj}' is not a valid parameter§r
+=== cow | @e[scores={obj}]
+error: §r§c> 'scores={obj}' is not a valid parameter§r
+=== source | @e[scores={obj=1.5}]
+error: §r§c> 'scores={obj=1.5}' is not a valid parameter§r
+=== cow | @e[scores={obj=1.5}]
+error: §r§c> 'scores={obj=1.5}' is not a valid parameter§r
+=== source | @e[scores={nothing=0}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[scores={nothing=0}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[scores=obj=1]
+error: §r§c> 'scores=obj=1' is not a valid parameter§r
+=== cow | @e[scores=obj=1]
+error: §r§c> 'scores=obj=1' is not a valid parameter§r
+=== source | @e[scores={obj=4]
+error: §r§c> 'scores={obj=4' is not a valid parameter§r
+=== cow | @e[scores={obj=4]
+error: §r§c> 'scores={obj=4' is not a valid parameter§r
+=== source | @e[scores=obj=4}]
+error: §r§c> 'scores=obj=4}' is not a valid parameter§r
+=== cow | @e[scores=obj=4}]
+error: §r§c> 'scores=obj=4}' is not a valid parameter§r
+=== source | @e[scores={ obj = 4 }]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[scores={ obj = 4 }]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @e[scores={obj=4},scores={obj=4}]
+error: Option 'scores' isn't applicable here
+=== cow | @e[scores={obj=4},scores={obj=4}]
+error: Option 'scores' isn't applicable here
+=== source | @e[scores=!{obj=4}]
+error: §r§c> 'scores=!{obj=4}' is not a valid parameter§r
+=== cow | @e[scores=!{obj=4}]
+error: §r§c> 'scores=!{obj=4}' is not a valid parameter§r
+=== source | @e[scores={obj=2..1}]
+error: §r§c> 'scores={obj=2..1}' is not a valid parameter§r
+=== cow | @e[scores={obj=2..1}]
+error: §r§c> 'scores={obj=2..1}' is not a valid parameter§r
+=== source | @e[scores={obj=abc}]
+error: §r§c> 'scores={obj=abc}' is not a valid parameter§r
+=== cow | @e[scores={obj=abc}]
+error: §r§c> 'scores={obj=abc}' is not a valid parameter§r
+=== source | @e[scores=]
+error: §r§c> 'scores=' is not a valid parameter§r
+=== cow | @e[scores=]
+error: §r§c> 'scores=' is not a valid parameter§r
+=== source | @e[scores={obj=9,}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[scores={obj=9,}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @e[scores={obj=4},tag=red]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[scores={obj=4},tag=red]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @e[team=red]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow,Alex
+=== cow | @e[team=red]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow,Alex
+=== source | @e[team=!red]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: cow2,zombie,Steve,Eve
+=== cow | @e[team=!red]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: cow2,zombie,Steve,Eve
+=== source | @e[team=]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=true zombie=true Alex=false Steve=false Eve=true
+matches: cow=false cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow2,zombie,Eve
+=== cow | @e[team=]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=true zombie=true Alex=false Steve=false Eve=true
+matches: cow=false cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow2,zombie,Eve
+=== source | @e[team=!]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: cow,Alex,Steve
+=== cow | @e[team=!]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: cow,Alex,Steve
+=== source | @e[team=blue]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== cow | @e[team=blue]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== source | @e[team=nothing]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[team=nothing]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[team=red,team=blue]
+error: Option 'team' isn't applicable here
+=== cow | @e[team=red,team=blue]
+error: Option 'team' isn't applicable here
+=== source | @e[team=!red,team=!blue]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=false cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow2,zombie,Eve
+=== cow | @e[team=!red,team=!blue]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=false cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow2,zombie,Eve
+=== source | @e[team=red,team=!blue]
+error: Option 'team' isn't applicable here
+=== cow | @e[team=red,team=!blue]
+error: Option 'team' isn't applicable here
+=== source | @e[team=!red,team=blue]
+error: Option 'team' isn't applicable here
+=== cow | @e[team=!red,team=blue]
+error: Option 'team' isn't applicable here
+=== source | @e[team=!red,team=red]
+error: Option 'team' isn't applicable here
+=== cow | @e[team=!red,team=red]
+error: Option 'team' isn't applicable here
+=== source | @e[team=,team=!red]
+error: Option 'team' isn't applicable here
+=== cow | @e[team=,team=!red]
+error: Option 'team' isn't applicable here
+=== source | @e[team=!red,team=]
+error: Option 'team' isn't applicable here
+=== cow | @e[team=!red,team=]
+error: Option 'team' isn't applicable here
+=== source | @e[nbt={Age:0s}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[nbt={Age:0s}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[nbt={Age:0}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Age:0}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Age:1s}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Age:1s}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt=!{Age:0s}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt=!{Age:0s}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Health:20f}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Health:20f}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Health:20}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Health:20}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Inner:{a:1}}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Inner:{a:1}}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Inner:{a:2}}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Inner:{a:2}}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Pos:[40.5d,64d,0.5d]}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Pos:[40.5d,64d,0.5d]}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Pos:[40.5d]}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Pos:[40.5d]}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[nbt={}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[nbt={a:}]
+error: §r§c> 'nbt={a:}' is not a valid parameter§r
+=== cow | @e[nbt={a:}]
+error: §r§c> 'nbt={a:}' is not a valid parameter§r
+=== source | @e[nbt={Age:0s}b]
+error: §r§c> 'nbt={Age:0s}b' is not a valid parameter§r
+=== cow | @e[nbt={Age:0s}b]
+error: §r§c> 'nbt={Age:0s}b' is not a valid parameter§r
+=== source | @e[nbt=]
+error: §r§c> 'nbt=' is not a valid parameter§r
+=== cow | @e[nbt=]
+error: §r§c> 'nbt=' is not a valid parameter§r
+=== source | @e[nbt=5]
+error: §r§c> 'nbt=5' is not a valid parameter§r
+=== cow | @e[nbt=5]
+error: §r§c> 'nbt=5' is not a valid parameter§r
+=== source | @e[nbt={Age:0s},nbt={Health:20f}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Age:0s},nbt={Health:20f}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Age:0s},nbt=!{Health:20f}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[nbt={Age:0s},nbt=!{Health:20f}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[nbt={Age:0s} ]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[nbt={Age:0s} ]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[nbt={Rotation:[90f,10f]}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== cow | @e[nbt={Rotation:[90f,10f]}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @e[nbt={Rotation:[90f]}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== cow | @e[nbt={Rotation:[90f]}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @e[nbt={Tags:["a"]}]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[nbt={Tags:["a"]}]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[limit=1]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow
+=== cow | @e[limit=1]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow
+=== source | @e[limit=2]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2
+=== cow | @e[limit=2]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2
+=== source | @e[limit=0]
+error: The minimum number allowed is 1
+=== cow | @e[limit=0]
+error: The minimum number allowed is 1
+=== source | @e[limit=-1]
+error: The minimum number allowed is 1
+=== cow | @e[limit=-1]
+error: The minimum number allowed is 1
+=== source | @e[limit=1.5]
+error: §r§c> 'limit=1.5' is not a valid parameter§r
+=== cow | @e[limit=1.5]
+error: §r§c> 'limit=1.5' is not a valid parameter§r
+=== source | @e[limit=abc]
+error: §r§c> 'limit=abc' is not a valid parameter§r
+=== cow | @e[limit=abc]
+error: §r§c> 'limit=abc' is not a valid parameter§r
+=== source | @e[limit=1,limit=2]
+error: Option 'limit' isn't applicable here
+=== cow | @e[limit=1,limit=2]
+error: Option 'limit' isn't applicable here
+=== source | @e[limit=!1]
+error: §r§c> 'limit=!1' is not a valid parameter§r
+=== cow | @e[limit=!1]
+error: §r§c> 'limit=!1' is not a valid parameter§r
+=== source | @e[limit=]
+error: §r§c> 'limit=' is not a valid parameter§r
+=== cow | @e[limit=]
+error: §r§c> 'limit=' is not a valid parameter§r
+=== source | @a[limit=1]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex
+=== cow | @a[limit=1]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex
+=== source | @s[limit=1]
+error: Option 'limit' isn't applicable here
+=== cow | @s[limit=1]
+error: Option 'limit' isn't applicable here
+=== source | @p[limit=2]
+kind=p origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex,Steve
+=== cow | @p[limit=2]
+kind=p origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Steve,Alex
+=== source | @r[limit=2]
+kind=r origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 2
+=== cow | @r[limit=2]
+kind=r origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 2
+=== source | @n[limit=2]
+kind=n origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex,Steve
+=== cow | @n[limit=2]
+kind=n origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,Steve
+=== source | @e[limit=100]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=100 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[limit=100]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=100 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[sort=nearest]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex,Steve,cow2,cow,zombie,Eve
+=== cow | @e[sort=nearest]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,Steve,Alex,cow2,Eve,zombie
+=== source | @e[sort=furthest]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=furthest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Eve,zombie,cow,cow2,Steve,Alex
+=== cow | @e[sort=furthest]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=furthest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: zombie,Eve,cow2,Alex,Steve,cow
+=== source | @e[sort=random]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 6
+=== cow | @e[sort=random]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 6
+=== source | @e[sort=arbitrary]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[sort=arbitrary]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[sort=closest]
+error: Invalid or unknown sort type 'closest'
+=== cow | @e[sort=closest]
+error: Invalid or unknown sort type 'closest'
+=== source | @e[sort=]
+error: Invalid or unknown sort type ''
+=== cow | @e[sort=]
+error: Invalid or unknown sort type ''
+=== source | @e[sort=nearest,sort=furthest]
+error: Option 'sort' isn't applicable here
+=== cow | @e[sort=nearest,sort=furthest]
+error: Option 'sort' isn't applicable here
+=== source | @s[sort=nearest]
+error: Option 'sort' isn't applicable here
+=== cow | @s[sort=nearest]
+error: Option 'sort' isn't applicable here
+=== source | @a[sort=nearest]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== cow | @a[sort=nearest]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Steve,Alex,Eve
+=== source | @p[sort=furthest]
+kind=p origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=furthest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Eve
+=== cow | @p[sort=furthest]
+kind=p origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=furthest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Eve
+=== source | @e[sort=nearest,limit=2]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex,Steve
+=== cow | @e[sort=nearest,limit=2]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,Steve
+=== source | @e[sort=furthest,limit=2]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=furthest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Eve,zombie
+=== cow | @e[sort=furthest,limit=2]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=furthest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: zombie,Eve
+=== source | @e[sort=random,limit=2]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 2
+=== cow | @e[sort=random,limit=2]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 2
+=== source | @e[limit=2,sort=nearest]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: Alex,Steve
+=== cow | @e[limit=2,sort=nearest]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,Steve
+=== source | @e[sort=!nearest]
+error: §r§c> 'sort=!nearest' is not a valid parameter§r
+=== cow | @e[sort=!nearest]
+error: §r§c> 'sort=!nearest' is not a valid parameter§r
+=== source | @a[sort=random]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 3
+=== cow | @a[sort=random]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 3
+=== source | @r
+kind=r origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 1
+=== cow | @r
+kind=r origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=random filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: 1
+=== source | @r[type=cow]
+kind=r origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=random filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: 0
+=== cow | @r[type=cow]
+kind=r origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=random filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: 0
+=== source | @r[type=minecraft:player]
+kind=r origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=random filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: 1
+=== cow | @r[type=minecraft:player]
+kind=r origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=random filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: 1
+=== source | @p[level=1..]
+kind=p origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:1 max:+Inf set:true} limit=1 sort=nearest filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=true
+selected: Alex
+=== cow | @p[level=1..]
+kind=p origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:1 max:+Inf set:true} limit=1 sort=nearest filters=0
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=true
+selected: Alex
+=== source | @e[type=cow]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow,cow2
+=== cow | @e[type=cow]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow,cow2
+=== source | @e[type=minecraft:cow]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow,cow2
+=== cow | @e[type=minecraft:cow]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow,cow2
+=== source | @e[type=!cow]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+selected: zombie,Alex,Steve,Eve
+=== cow | @e[type=!cow]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+selected: zombie,Alex,Steve,Eve
+=== source | @e[type=cow,type=zombie]
+error: Option 'type' isn't applicable here
+=== cow | @e[type=cow,type=zombie]
+error: Option 'type' isn't applicable here
+=== source | @e[type=!cow,type=!zombie]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== cow | @e[type=!cow,type=!zombie]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== source | @e[type=cow,type=!zombie]
+error: Option 'type' isn't applicable here
+=== cow | @e[type=cow,type=!zombie]
+error: Option 'type' isn't applicable here
+=== source | @e[type=!cow,type=zombie]
+error: Option 'type' isn't applicable here
+=== cow | @e[type=!cow,type=zombie]
+error: Option 'type' isn't applicable here
+=== source | @e[type=!cow,type=cow]
+error: Option 'type' isn't applicable here
+=== cow | @e[type=!cow,type=cow]
+error: Option 'type' isn't applicable here
+=== source | @e[type=#minecraft:zombies]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[type=#minecraft:zombies]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @e[type=#minecraft:undead]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[type=#minecraft:undead]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @e[type=!#minecraft:undead]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=false Alex=true Steve=true Eve=true
+selected: cow,cow2,Alex,Steve,Eve
+=== cow | @e[type=!#minecraft:undead]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=false Alex=true Steve=true Eve=true
+selected: cow,cow2,Alex,Steve,Eve
+=== source | @e[type=#bogus]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[type=#bogus]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[type=!#bogus]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== cow | @e[type=!#bogus]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow,cow2,zombie,Alex,Steve,Eve
+=== source | @e[type=#minecraft:undead,type=#minecraft:undead]
+error: Option 'type' isn't applicable here
+=== cow | @e[type=#minecraft:undead,type=#minecraft:undead]
+error: Option 'type' isn't applicable here
+=== source | @e[type=#minecraft:undead,type=#minecraft:zombies]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[type=#minecraft:undead,type=#minecraft:zombies]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @e[type=#minecraft:undead,type=!cow]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[type=#minecraft:undead,type=!cow]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @e[type=!cow,type=#minecraft:undead]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[type=!cow,type=#minecraft:undead]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @e[type=cow,type=#minecraft:undead]
+error: Option 'type' isn't applicable here
+=== cow | @e[type=cow,type=#minecraft:undead]
+error: Option 'type' isn't applicable here
+=== source | @e[type=#minecraft:undead,type=cow]
+error: Option 'type' isn't applicable here
+=== cow | @e[type=#minecraft:undead,type=cow]
+error: Option 'type' isn't applicable here
+=== source | @e[type=nothing]
+error: Invalid or unknown entity type 'minecraft:nothing'
+=== cow | @e[type=nothing]
+error: Invalid or unknown entity type 'minecraft:nothing'
+=== source | @e[type=!nothing]
+error: Invalid or unknown entity type 'minecraft:nothing'
+=== cow | @e[type=!nothing]
+error: Invalid or unknown entity type 'minecraft:nothing'
+=== source | @e[type=player]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== cow | @e[type=player]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== source | @e[type=minecraft:player]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== cow | @e[type=minecraft:player]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== source | @e[type=]
+error: Invalid or unknown entity type 'minecraft:'
+=== cow | @e[type=]
+error: Invalid or unknown entity type 'minecraft:'
+=== source | @e[type=!]
+error: Invalid or unknown entity type 'minecraft:'
+=== cow | @e[type=!]
+error: Invalid or unknown entity type 'minecraft:'
+=== source | @e[type=#]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[type=#]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[type=Cow]
+error: Invalid or unknown entity type 'minecraft:Cow'
+=== cow | @e[type=Cow]
+error: Invalid or unknown entity type 'minecraft:Cow'
+=== source | @e[type=zombie]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== cow | @e[type=zombie]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=false Steve=false Eve=false
+selected: zombie
+=== source | @a[type=player]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== cow | @a[type=player]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== source | @a[type=cow]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @a[type=cow]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[type=minecraft:]
+error: Invalid or unknown entity type 'minecraft:'
+=== cow | @e[type=minecraft:]
+error: Invalid or unknown entity type 'minecraft:'
+=== source | @e[name=Alex]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[name=Alex]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @e[name="Alex"]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[name="Alex"]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @e[name=!Alex]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: cow,cow2,zombie,Steve,Eve
+=== cow | @e[name=!Alex]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: cow,cow2,zombie,Steve,Eve
+=== source | @e[name=Alex,name=Steve]
+error: Option 'name' isn't applicable here
+=== cow | @e[name=Alex,name=Steve]
+error: Option 'name' isn't applicable here
+=== source | @e[name=!Alex,name=!Steve]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow,cow2,zombie,Eve
+=== cow | @e[name=!Alex,name=!Steve]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow,cow2,zombie,Eve
+=== source | @e[name=Alex,name=!Steve]
+error: Option 'name' isn't applicable here
+=== cow | @e[name=Alex,name=!Steve]
+error: Option 'name' isn't applicable here
+=== source | @e[name=!Alex,name=Steve]
+error: Option 'name' isn't applicable here
+=== cow | @e[name=!Alex,name=Steve]
+error: Option 'name' isn't applicable here
+=== source | @e[name=alex]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[name=alex]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[name=]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+selected: cow,cow2,zombie
+=== cow | @e[name=]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+selected: cow,cow2,zombie
+=== source | @e[name=""]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+selected: cow,cow2,zombie
+=== cow | @e[name=""]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+selected: cow,cow2,zombie
+=== source | @e[name="A,B"]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[name="A,B"]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[name=!]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== cow | @e[name=!]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=true
+selected: Alex,Steve,Eve
+=== source | @a[name=Eve]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=true
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=true
+selected: Eve
+=== cow | @a[name=Eve]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=true
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=true
+selected: Eve
+=== source | @a[name=!Eve,name=!Alex]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=false
+filter 1: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=true Eve=false
+selected: Steve
+=== cow | @a[name=!Eve,name=!Alex]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=false
+filter 1: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=true Eve=false
+selected: Steve
+=== source | @e[tag=red]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[tag=red]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @e[tag=!red]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: cow,cow2,zombie,Steve,Eve
+=== cow | @e[tag=!red]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: cow,cow2,zombie,Steve,Eve
+=== source | @e[tag=]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow,cow2,zombie,Eve
+=== cow | @e[tag=]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow,cow2,zombie,Eve
+=== source | @e[tag=!]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: Alex,Steve
+=== cow | @e[tag=!]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=true Eve=false
+selected: Alex,Steve
+=== source | @e[tag=red,tag=blue]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[tag=red,tag=blue]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[tag=red,tag=!blue]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[tag=red,tag=!blue]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @e[tag=!red,tag=!blue]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow,cow2,zombie,Eve
+=== cow | @e[tag=!red,tag=!blue]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: cow,cow2,zombie,Eve
+=== source | @e[tag=nothing]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[tag=nothing]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @a[tag=blue]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== cow | @a[tag=blue]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== source | @a[tag=,tag=!red]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: Eve
+=== cow | @a[tag=,tag=!red]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: Eve
+=== source | @e[tag=red,tag=red]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[tag=red,tag=red]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @a[gamemode=survival]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @a[gamemode=survival]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @a[gamemode=creative]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== cow | @a[gamemode=creative]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== source | @a[gamemode=adventure]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @a[gamemode=adventure]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @a[gamemode=spectator]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=true
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=true
+selected: Eve
+=== cow | @a[gamemode=spectator]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=false Eve=true
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=true
+selected: Eve
+=== source | @a[gamemode=bogus]
+error: Unknown or illegal game mode 'bogus'
+=== cow | @a[gamemode=bogus]
+error: Unknown or illegal game mode 'bogus'
+=== source | @a[gamemode=]
+error: Unknown or illegal game mode ''
+=== cow | @a[gamemode=]
+error: Unknown or illegal game mode ''
+=== source | @a[gamemode=!creative]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+selected: Alex,Eve
+=== cow | @a[gamemode=!creative]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+selected: Alex,Eve
+=== source | @a[gamemode=!survival,gamemode=!creative]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: Eve
+=== cow | @a[gamemode=!survival,gamemode=!creative]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+selected: Eve
+=== source | @a[gamemode=survival,gamemode=creative]
+error: Option 'gamemode' isn't applicable here
+=== cow | @a[gamemode=survival,gamemode=creative]
+error: Option 'gamemode' isn't applicable here
+=== source | @a[gamemode=survival,gamemode=!creative]
+error: Option 'gamemode' isn't applicable here
+=== cow | @a[gamemode=survival,gamemode=!creative]
+error: Option 'gamemode' isn't applicable here
+=== source | @a[gamemode=!survival,gamemode=creative]
+error: Option 'gamemode' isn't applicable here
+=== cow | @a[gamemode=!survival,gamemode=creative]
+error: Option 'gamemode' isn't applicable here
+=== source | @a[gamemode=!bogus]
+error: Unknown or illegal game mode 'bogus'
+=== cow | @a[gamemode=!bogus]
+error: Unknown or illegal game mode 'bogus'
+=== source | @e[gamemode=survival]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @e[gamemode=survival]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @a[gamemode=!survival,gamemode=!survival]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: Steve,Eve
+=== cow | @a[gamemode=!survival,gamemode=!survival]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=2
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+selected: Steve,Eve
+=== source | @a[gamemode=Survival]
+error: Unknown or illegal game mode 'Survival'
+=== cow | @a[gamemode=Survival]
+error: Unknown or illegal game mode 'Survival'
+=== source | @a[gamemode=0]
+error: Unknown or illegal game mode '0'
+=== cow | @a[gamemode=0]
+error: Unknown or illegal game mode '0'
+=== source | @a[gamemode=!survival,gamemode=survival]
+error: Option 'gamemode' isn't applicable here
+=== cow | @a[gamemode=!survival,gamemode=survival]
+error: Option 'gamemode' isn't applicable here
+=== source | @e[type=cow,distance=..10,sort=furthest,limit=1]
+kind=e origin=[0 64 0] volume=- distance={min:-Inf max:10 set:true} level={min:0 max:0 set:false} limit=1 sort=furthest filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== cow | @e[type=cow,distance=..10,sort=furthest,limit=1]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:-Inf max:10 set:true} level={min:0 max:0 set:false} limit=1 sort=furthest filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow2
+=== source | @e[type=!player,sort=nearest,limit=2]
+kind=e origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+selected: cow2,cow
+=== cow | @e[type=!player,sort=nearest,limit=2]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=2 sort=nearest filters=1
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+selected: cow,cow2
+=== source | @a[level=1..,gamemode=survival,tag=red,team=red,scores={obj=4},name=Alex]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:1 max:+Inf set:true} limit=9223372036854775807 sort=arbitrary filters=5
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 2: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 3: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 4: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== cow | @a[level=1..,gamemode=survival,tag=red,team=red,scores={obj=4},name=Alex]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:1 max:+Inf set:true} limit=9223372036854775807 sort=arbitrary filters=5
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 2: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 3: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 4: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: Alex
+=== source | @a[level=1..,gamemode=survival,tag=red,team=red,scores={obj=4},name=!Alex]
+kind=a origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:1 max:+Inf set:true} limit=9223372036854775807 sort=arbitrary filters=5
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 2: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 3: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 4: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @a[level=1..,gamemode=survival,tag=red,team=red,scores={obj=4},name=!Alex]
+kind=a origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:1 max:+Inf set:true} limit=9223372036854775807 sort=arbitrary filters=5
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 1: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 2: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 3: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 4: cow=true cow2=true zombie=true Alex=false Steve=true Eve=true
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[x=0,y=60,z=0,dx=10,dy=10,dz=10,type=!player,team=,tag=]
+kind=e origin=[0 60 0] volume=[10 10 10] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=3
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+filter 1: cow=false cow2=true zombie=true Alex=false Steve=false Eve=true
+filter 2: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @e[x=0,y=60,z=0,dx=10,dy=10,dz=10,type=!player,team=,tag=]
+kind=e origin=[0 60 0] volume=[10 10 10] distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=3
+filter 0: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+filter 1: cow=false cow2=true zombie=true Alex=false Steve=false Eve=true
+filter 2: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== source | @e[nbt={Age:0s},type=cow,name=,tag=,team=red,scores={other=7},x_rotation=0..20,y_rotation=80..100,distance=..10,limit=1,sort=nearest]
+kind=e origin=[0 64 0] volume=- distance={min:-Inf max:10 set:true} level={min:0 max:0 set:false} limit=1 sort=nearest filters=8
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+filter 2: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+filter 3: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+filter 4: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 5: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+filter 6: cow=true cow2=true zombie=false Alex=true Steve=false Eve=true
+filter 7: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== cow | @e[nbt={Age:0s},type=cow,name=,tag=,team=red,scores={other=7},x_rotation=0..20,y_rotation=80..100,distance=..10,limit=1,sort=nearest]
+kind=e origin=[5.5 64 5.5] volume=- distance={min:-Inf max:10 set:true} level={min:0 max:0 set:false} limit=1 sort=nearest filters=8
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+filter 1: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+filter 2: cow=true cow2=true zombie=true Alex=false Steve=false Eve=false
+filter 3: cow=true cow2=true zombie=true Alex=false Steve=false Eve=true
+filter 4: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+filter 5: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+filter 6: cow=true cow2=true zombie=false Alex=true Steve=false Eve=true
+filter 7: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @s
+kind=s origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: ?
+=== cow | @s
+kind=s origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow
+=== source | @s[type=cow]
+kind=s origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: 
+=== cow | @s[type=cow]
+kind=s origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+matches: cow=true cow2=true zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @s[distance=..1]
+kind=s origin=[0 64 0] volume=- distance={min:-Inf max:1 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=false cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: ?
+=== cow | @s[distance=..1]
+kind=s origin=[5.5 64 5.5] volume=- distance={min:-Inf max:1 set:true} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=false zombie=false Alex=false Steve=false Eve=false
+selected: cow
+=== source | @s[name=Alex]
+kind=s origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: 
+=== cow | @s[name=Alex]
+kind=s origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: 
+=== source | @s[tag=red]
+kind=s origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: 
+=== cow | @s[tag=red]
+kind=s origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: 
+=== source | @s[team=red]
+kind=s origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: 
+=== cow | @s[team=red]
+kind=s origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+matches: cow=true cow2=false zombie=false Alex=true Steve=false Eve=false
+selected: cow
+=== source | @s[scores={obj=1..}]
+kind=s origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=true Steve=false Eve=false
+selected: 
+=== cow | @s[scores={obj=1..}]
+kind=s origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=false Eve=false
+matches: cow=false cow2=false zombie=true Alex=true Steve=false Eve=false
+selected: 
+=== source | @s[x=1,y=2,z=3]
+kind=s origin=[1 2 3] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: ?
+=== cow | @s[x=1,y=2,z=3]
+kind=s origin=[1 2 3] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=0
+matches: cow=true cow2=true zombie=true Alex=true Steve=true Eve=true
+selected: cow
+=== source | @s[type=!cow]
+kind=s origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+selected: ?
+=== cow | @s[type=!cow]
+kind=s origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=9223372036854775807 sort=arbitrary filters=1
+filter 0: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+matches: cow=false cow2=false zombie=true Alex=true Steve=true Eve=true
+selected: 
+=== source | @p[gamemode=!creative]
+kind=p origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=nearest filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+selected: Alex
+=== cow | @p[gamemode=!creative]
+kind=p origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=nearest filters=1
+filter 0: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+matches: cow=true cow2=true zombie=true Alex=true Steve=false Eve=true
+selected: Alex
+=== source | @p[tag=blue]
+kind=p origin=[0 64 0] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=nearest filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== cow | @p[tag=blue]
+kind=p origin=[5.5 64 5.5] volume=- distance={min:0 max:0 set:false} level={min:0 max:0 set:false} limit=1 sort=nearest filters=1
+filter 0: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+matches: cow=false cow2=false zombie=false Alex=false Steve=true Eve=false
+selected: Steve
+=== source | @a[sort=furthest]x
+error: §r§c> '@a[sort=furthest]x' is not a valid parameter§r
+=== cow | @a[sort=furthest]x
+error: §r§c> '@a[sort=furthest]x' is not a valid parameter§r
