@@ -372,6 +372,8 @@ const everyKeyChanged = `
     Enabled = false
     Epsilon = 0.1
     ExemptGameModes = ["creative"]
+    GroundDepth = 0.5
+    GroundMargin = 0.1
     KickAt = 9.0
     KickMessage = "Bye."
     StepHeight = 1.0
@@ -856,7 +858,7 @@ var defaultAntiCheat = configMeaning{
 	"AntiCheat.MovedTooQuickly": "on=true setback act>0 kick=0 decay=1 exempt=[] msg=\"Invalid move player packet received\" {Limit:10 LimitGliding:17.32}",
 	"AntiCheat.Speed":           "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Tolerance:0.3 Epsilon:0.05}",
 	"AntiCheat.Fly":             "on=true setback act>0 kick=0 decay=1 exempt=[spectator] msg=\"Flying is not enabled on this server\" {HoverTicks:80 HoverDescent:0.03125 ResendSupport:true}",
-	"AntiCheat.Ascend":          "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Epsilon:0.05 StepHeight:0.6}",
+	"AntiCheat.Ascend":          "on=true log act>0 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {Epsilon:0.05 StepHeight:0.6 GroundMargin:0.02 GroundDepth:0.25}",
 	"AntiCheat.NoClip":          "on=true setback act>1 kick=0 decay=1 exempt=[spectator] msg=\"Invalid move player packet received\" {MinDepth:0.1 ResendFirst:true}",
 	"AntiCheat.Phase":           "on=true log act>0 kick=0 decay=1 exempt=[creative spectator] msg=\"Invalid move player packet received\" {Tolerance:0.25}",
 	"AntiCheat.EntityReach":     "on=true cancel act>0 kick=0 decay=1 exempt=[] msg=\"Attempted to attack an invalid entity\" {Measure:box Survival:3 Creative:5 Buffer:3}",
@@ -876,7 +878,7 @@ var changedAntiCheat = configMeaning{
 	"AntiCheat.MovedTooQuickly": "on=false kick act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Limit:12 LimitGliding:20}",
 	"AntiCheat.Speed":           "on=false setback act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Tolerance:0.5 Epsilon:0.1}",
 	"AntiCheat.Fly":             "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {HoverTicks:100 HoverDescent:0.05 ResendSupport:false}",
-	"AntiCheat.Ascend":          "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Epsilon:0.1 StepHeight:1}",
+	"AntiCheat.Ascend":          "on=false cancel act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Epsilon:0.1 StepHeight:1 GroundMargin:0.1 GroundDepth:0.5}",
 	"AntiCheat.NoClip":          "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {MinDepth:0.2 ResendFirst:false}",
 	"AntiCheat.Phase":           "on=false kick act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Tolerance:0.5}",
 	"AntiCheat.EntityReach":     "on=false log act>2.5 kick=9 decay=0.5 exempt=[creative] msg=\"Bye.\" {Measure:position Survival:4 Creative:6 Buffer:1}",

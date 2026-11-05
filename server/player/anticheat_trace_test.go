@@ -164,6 +164,17 @@ type acTrace struct {
 	positions func(tx *world.Tx) []mgl64.Vec3
 	// conf, if set, edits the anti-cheat of the trace.
 	conf func(c *anticheat.Config)
+	// bedrock sends the positions as a Bedrock client does: the eye as
+	// float32, which the session turns into the feet, and tells the server
+	// its player collided below (the VerticalCollision flag) when the
+	// mover's player is on the ground.
+	bedrock bool
+	// claims, if set, says in place of the mover whether move i of a
+	// bedrock trace claims to stand on the ground.
+	claims func(i int) bool
+	// lift is how much higher than the server's blocks a bedrock client
+	// stands: a shape the client has and the server lacks.
+	lift float64
 }
 
 // traceResult is what the anti-cheat did of a trace.
@@ -210,7 +221,12 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 		j := &javaMover{pos: tr.start, onGround: math.Abs(tr.start[1]-floorY) < 1e-9}
 		// The client stands still through the grace of its join.
 		for range conf.Grace.Join + 1 {
-			p.ClientMove(client.Move{Position: p.Position(), Rotation: p.Rotation(), Arrived: wall})
+			at := p.Position()
+			if tr.bedrock && tr.lift != 0 {
+				// The client stands where its blocks hold it up.
+				at = bedrockWire(tr.start.Add(mgl64.Vec3{0, tr.lift, 0}))
+			}
+			p.ClientMove(client.Move{Position: at, Rotation: p.Rotation(), Arrived: wall, ClaimsGround: tr.bedrock})
 			tick(anticheatTick)
 		}
 		if tr.setup != nil {
@@ -254,8 +270,16 @@ func runTrace(t testing.TB, w *world.World, tr acTrace) traceResult {
 				} else {
 					pos = j.step(tx, p, in)
 				}
+				claim := false
+				if tr.bedrock {
+					claim = positions == nil && j.onGround
+					if tr.claims != nil {
+						claim = tr.claims(i)
+					}
+					pos = bedrockWire(pos.Add(mgl64.Vec3{0, tr.lift, 0}))
+				}
 				m := client.Move{Position: pos, Rotation: cube.Rotation{in.yaw, 0}, Tick: uint64(i + 1), Jumping: in.jump, Sprinting: in.sprint, Sneaking: in.sneak,
-					Crawling: in.crawl, Riding: p.Riding() != nil, Arrived: begin.Add(arrival(i))}
+					Crawling: in.crawl, Riding: p.Riding() != nil, Arrived: begin.Add(arrival(i)), ClaimsGround: claim}
 				if j.acknowledge {
 					m.Acknowledged, j.acknowledge = true, false
 				}

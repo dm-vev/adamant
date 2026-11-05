@@ -13,6 +13,8 @@
     Enabled = true
     Epsilon = 0.05
     ExemptGameModes = ["spectator"]
+    GroundDepth = 0.25
+    GroundMargin = 0.02
     KickAt = 0.0
     KickMessage = ""
     StepHeight = 0.6

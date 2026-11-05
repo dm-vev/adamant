@@ -92,7 +92,7 @@ The settings of each check beyond the seven keys, with their defaults:
 | `MovedTooQuickly` | `Limit = 10.0` blocks a tick beyond the velocity (Java's √100), `LimitGliding = 17.32` (√300) |
 | `Speed` | `Tolerance = 0.3` (the part allowed beyond the envelope), `Epsilon = 0.05` blocks a tick |
 | `Fly` | `HoverTicks = 80`, `HoverDescent = 0.03125`, `ResendSupport = true` (resend the blocks below, once every 200 ticks at most) |
-| `Ascend` | `Epsilon = 0.05`, `StepHeight = 0.6` |
+| `Ascend` | `Epsilon = 0.05`, `StepHeight = 0.6`, `GroundMargin = 0.02`, `GroundDepth = 0.25` |
 | `NoClip` | `MinDepth = 0.1` blocks, `ResendFirst = true` |
 | `Phase` | `Tolerance = 0.25` blocks (Java's √0.0625) |
 | `EntityReach` | `Measure = "box"` (or `"position"`, the reach before the anti-cheat), `Survival = 3.0`, `Creative = 5.0`, `Buffer = 3.0` |
@@ -126,6 +126,13 @@ the server knows of it (`anticheat.HorizontalAllowance`, `anticheat.VerticalAllo
   0.1 a level of Jump Boost), a step of 0.6, a climb of 0.2, a rise of 0.7 in a liquid and 1.8 on an upward bubble
   column, the bounce of slime and beds; the lift of Levitation; and the impulses pending. A move that ends on the
   ground may step up, as Java steps up a falling player that lands.
+- **Standing.** Whether a client could jump is whether it stood on the ground before the move. The game's own
+  `onGround` is the box below the feet, 0.05 deep, and holds for blocks both agree on; a Bedrock client's may not
+  always agree with the server's (it may stand 0.125 above a single layer of snow the server lets it sink through),
+  and its position is a float32 that can lie a hair off the edge of a block. So a client also stands where its box,
+  grown by `GroundMargin` to its sides, touches a block, and where a block is within `GroundDepth` below it if its
+  last move did not rise or it said it collided below in it (the `VerticalCollision` flag of its input). A client
+  that claims the ground in mid-air, farther from the blocks than that, or after a jump, has none.
 - A move carries what physics allowed of the one before at most, its envelope with no tolerance: a move past the
   envelope that was only logged does not lift the next one, and the tolerance does not compound.
 
@@ -158,7 +165,14 @@ sneaking off an edge; crawling through a gap), the falls of the game's own physi
 pushes (knockback, explosions, wind charges, riptide at latencies up to 1 s, pistons), teleports, a change of game
 mode in mid-air, vehicles, a lagging server, jitter and stalls.
 
-What they cannot hold is Bedrock's physics, which is not Java's: auto-jump, its own sprint-jump and swimming. That
+The jumps of Bedrock clients have a suite of their own (`TestBedrockJumpsAreLegitimate`): the positions are
+float32 eyes, as a client sends them, with and without its `VerticalCollision` flag; standing jumps, sprint-jumps
+and repeated sprint-jumps that land and take off at once, on stone, slabs, farmland, dirt paths, soul sand, snow,
+carpets, honey, slime and ice; a staircase; auto-jumps and sprint-jumps up a block; jumps from the edge of a
+block and over a gap; and a client that stands 0.125 above a layer of snow the server sinks through. The cheats
+that jump in mid-air or from 0.3 above the floor are still flagged (`TestJumpCheatsAreStillFlagged`).
+
+What they cannot hold is Bedrock's physics, which is not Java's: its own sprint-jump and swimming. That
 is why `Speed`, `Ascend` and `Phase` only log by default, and why `NoClip` resends before it sets back. Recorded
 traces of real Bedrock clients would calibrate them before any is tightened.
 

@@ -3525,6 +3525,7 @@ server/block.smelter	server/block.HopperExtractable	*
 server/block.smelter	server/block.HopperInsertable	*
 server/block.smelter	server/menu.smelter	*
 server/block.snifferEggModel	server/world.BlockModel	value
+server/block.soulSandModel	server/world.BlockModel	value
 server/block.speleothemModel	server/world.BlockModel	value
 server/block.stoneBricks	server/cmd/builtin.namedSource	value
 server/block.tntCircuit	server/world.RedstoneCircuitInputChange	value

@@ -19938,7 +19938,7 @@ server/player/anticheat	method	Policy.Exempts	func(mode server/world.GameMode) b
 server/player/anticheat	method	State.Supported	func() bool
 server/player/anticheat	method	UserConfig.Config	func(log *log/slog.Logger) (*server/player/anticheat.Config, error)
 server/player/anticheat	type	Action	uint8
-server/player/anticheat	type	AscendSettings	struct{Epsilon float64; StepHeight float64}
+server/player/anticheat	type	AscendSettings	struct{Epsilon float64; StepHeight float64; GroundMargin float64; GroundDepth float64}
 server/player/anticheat	type	AscendTable	struct{server/player/anticheat.Rule; server/player/anticheat.AscendSettings}
 server/player/anticheat	type	AttackAimSettings	struct{MinCos float64; LineOfSight bool}
 server/player/anticheat	type	AttackAimTable	struct{server/player/anticheat.Rule; server/player/anticheat.AttackAimSettings}
@@ -19972,7 +19972,7 @@ server/player/anticheat	type	ReachTable	struct{server/player/anticheat.Rule; ser
 server/player/anticheat	type	Rule	struct{Enabled bool; Action string; ActAt float64; KickAt float64; KickMessage string; Decay float64; ExemptGameModes []string}
 server/player/anticheat	type	SpeedSettings	struct{Tolerance float64; Epsilon float64}
 server/player/anticheat	type	SpeedTable	struct{server/player/anticheat.Rule; server/player/anticheat.SpeedSettings}
-server/player/anticheat	type	State	struct{Speed float64; MaySprint bool; Ground bool; Friction float64; Liquid bool; Rises bool; PrevHorizontal float64; PrevGround bool; PrevFriction float64; PrevLiquid bool; PrevVertical float64; Climbing bool; Bubbles bool; JumpBoost int; Levitation int; JumpFactor float64; SlowFalling bool; Bounce float64; Step float64; Impulse github.com/go-gl/mathgl/mgl64.Vec3}
+server/player/anticheat	type	State	struct{Speed float64; MaySprint bool; Ground bool; Friction float64; Lenient bool; Liquid bool; Rises bool; PrevHorizontal float64; PrevGround bool; PrevFriction float64; PrevLiquid bool; PrevLenient bool; PrevVertical float64; Climbing bool; Bubbles bool; JumpBoost int; Levitation int; JumpFactor float64; SlowFalling bool; Bounce float64; Step float64; Impulse github.com/go-gl/mathgl/mgl64.Vec3}
 server/player/anticheat	type	TimerSettings	struct{Tolerance int; MaxBalance int; MaxQueue int}
 server/player/anticheat	type	TimerTable	struct{server/player/anticheat.Rule; server/player/anticheat.TimerSettings}
 server/player/anticheat	type	UserConfig	struct{Enabled bool; ExemptOperators bool; ExemptPlayers []string; LogInterval int; MaxLatencyTicks int; Grace server/player/anticheat.Grace; MovedTooQuickly server/player/anticheat.MovedTooQuicklyTable; Speed server/player/anticheat.SpeedTable; Fly server/player/anticheat.FlyTable; Ascend server/player/anticheat.AscendTable; NoClip server/player/anticheat.NoClipTable; Phase server/player/anticheat.PhaseTable; EntityReach server/player/anticheat.ReachTable; BlockReach server/player/anticheat.ReachTable; BreakTime server/player/anticheat.BreakTimeTable; Place server/player/anticheat.PlaceTable; Attack server/player/anticheat.AttackTable; AttackAim server/player/anticheat.AttackAimTable; FastUse server/player/anticheat.FastUseTable; Timer server/player/anticheat.TimerTable; Menu server/player/anticheat.MenuTable}

@@ -231,3 +231,21 @@ func TestAllowed(t *testing.T) {
 		t.Errorf("Allowed = %v, want 0.31", got)
 	}
 }
+
+// TestLenientGroundGrantsTheAir checks that where the ground of a player is
+// lenient, the envelope grants what the move is in the air too: on blue ice
+// the ground carries less than the air does.
+func TestLenientGroundGrantsTheAir(t *testing.T) {
+	const blueIce = 0.989
+	moving := State{Speed: 0.1, PrevHorizontal: 0.5, Friction: blueIce, PrevFriction: blueIce}
+	air := HorizontalAllowance(moving)
+	onIce := moving
+	onIce.Ground, onIce.PrevGround = true, true
+	if got := HorizontalAllowance(onIce); got >= air {
+		t.Fatalf("a player on blue ice is allowed %.4f, no less than %.4f in the air", got, air)
+	}
+	onIce.Lenient, onIce.PrevLenient = true, true
+	if got := HorizontalAllowance(onIce); got < air {
+		t.Fatalf("a player on lenient ground is allowed %.4f, less than %.4f in the air", got, air)
+	}
+}

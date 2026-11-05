@@ -75,6 +75,15 @@ type AscendSettings struct {
 	Epsilon float64
 	// StepHeight is the height a player on the ground steps up in a move.
 	StepHeight float64
+	// GroundMargin is how far, in blocks, the box of a player may be from
+	// the edge of a block, to its sides, and the player still stand on it:
+	// a Bedrock client sends its position as a float32.
+	GroundMargin float64
+	// GroundDepth is how far, in blocks, below a player a block may be for
+	// it to stand on it, if its last move did not rise or its client said
+	// it collided below in it: the shapes of blocks may differ between a
+	// client and the server, as a single layer of snow does.
+	GroundDepth float64
 }
 
 // NoClipSettings are the keys of NoClip beyond its Rule.
@@ -354,7 +363,7 @@ func DefaultUserConfig() UserConfig {
 		MovedTooQuickly: MovedTooQuicklyTable{MovedTooQuicklySettings: MovedTooQuicklySettings{Limit: 10, LimitGliding: 17.32}},
 		Speed:           SpeedTable{SpeedSettings: SpeedSettings{Tolerance: 0.3, Epsilon: 0.05}},
 		Fly:             FlyTable{FlySettings: FlySettings{HoverTicks: 80, HoverDescent: 0.03125, ResendSupport: true}},
-		Ascend:          AscendTable{AscendSettings: AscendSettings{Epsilon: 0.05, StepHeight: 0.6}},
+		Ascend:          AscendTable{AscendSettings: AscendSettings{Epsilon: 0.05, StepHeight: 0.6, GroundMargin: 0.02, GroundDepth: 0.25}},
 		NoClip:          NoClipTable{NoClipSettings: NoClipSettings{MinDepth: 0.1, ResendFirst: true}},
 		Phase:           PhaseTable{PhaseSettings: PhaseSettings{Tolerance: 0.25}},
 		EntityReach:     ReachTable{ReachSettings: ReachSettings{Measure: "box", Survival: 3, Creative: 5, Buffer: 3}},
@@ -558,6 +567,8 @@ func (uc UserConfig) Config(log *slog.Logger) (*Config, error) {
 		nonNegative("AntiCheat.Fly.HoverDescent", c.Fly.HoverDescent),
 		nonNegative("AntiCheat.Ascend.Epsilon", c.Ascend.Epsilon),
 		nonNegative("AntiCheat.Ascend.StepHeight", c.Ascend.StepHeight),
+		nonNegative("AntiCheat.Ascend.GroundMargin", c.Ascend.GroundMargin),
+		nonNegative("AntiCheat.Ascend.GroundDepth", c.Ascend.GroundDepth),
 		nonNegative("AntiCheat.NoClip.MinDepth", c.NoClip.MinDepth),
 		nonNegative("AntiCheat.Phase.Tolerance", c.Phase.Tolerance),
 		positive("AntiCheat.EntityReach.Survival", c.EntityReach.Survival),

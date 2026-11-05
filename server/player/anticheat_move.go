@@ -21,6 +21,10 @@ type lastMove struct {
 	prevVertical         float64
 	ground, liquid       bool
 	friction             float64
+	// lenient is State.Lenient before the move, and claim is set if the
+	// client said it collided below in the move, and rose no more than it
+	// steps.
+	lenient, claim bool
 }
 
 // moveState returns the state the envelopes of a move of delta are made of:
@@ -28,10 +32,13 @@ type lastMove struct {
 // before it.
 func (p *Player) moveState(ac *acState, delta mgl64.Vec3) anticheat.State {
 	pos := p.Position()
+	ground := p.clientGround(ac)
 	return anticheat.State{
+		Lenient:        ground && !p.onGround,
+		PrevLenient:    ac.last.lenient,
 		Speed:          p.heldSpeed(ac),
 		MaySprint:      !p.sprinting && !p.crawling && (p.hunger.canSprint() || !p.GameMode().AllowsTakingDamage()),
-		Ground:         p.onGround,
+		Ground:         ground,
 		Friction:       p.frictionBelow(pos),
 		Liquid:         p.inLiquid(),
 		Rises:          delta[1] > 1e-6,
@@ -46,7 +53,7 @@ func (p *Player) moveState(ac *acState, delta mgl64.Vec3) anticheat.State {
 		Levitation:     p.heldEffect(ac, &ac.levitation, effect.Levitation),
 		JumpFactor:     p.jumpFactorAt(pos),
 		SlowFalling:    p.hasEffect(effect.SlowFalling),
-		Bounce:         p.bounce(ac, pos),
+		Bounce:         p.bounce(ac, pos, ground),
 		Step:           ac.conf.Ascend.StepHeight,
 		Impulse:        p.pendingImpulse(ac),
 	}
@@ -110,8 +117,8 @@ func (p *Player) jumpFactorAt(pos mgl64.Vec3) float64 {
 // bounce returns the speed a bouncy block below a player at pos throws it
 // up at, from the speed it fell with in the two moves before: slime gives
 // it back whole to a player that does not sneak, a bed two thirds of it.
-func (p *Player) bounce(ac *acState, pos mgl64.Vec3) float64 {
-	if !p.onGround || p.sneaking {
+func (p *Player) bounce(ac *acState, pos mgl64.Vec3, ground bool) float64 {
+	if !ground || p.sneaking {
 		return 0
 	}
 	b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(pos.Sub(mgl64.Vec3{0, 0.5000001, 0})))
@@ -137,7 +144,14 @@ func (p *Player) bounce(ac *acState, pos mgl64.Vec3) float64 {
 // groundAt reports whether a player at pos stands on a block: the box below
 // its feet, 0.05 deep, holds the box of a block.
 func (p *Player) groundAt(pos mgl64.Vec3) bool {
-	box := p.H().Type().BBox(p).Translate(pos).Extend(mgl64.Vec3{0, -0.05, 0})
+	return p.groundWithin(pos, 0, 0.05)
+}
+
+// groundWithin reports whether the box below a player at pos holds the box
+// of a block, or a block that is not loaded: the box of the player, grown
+// by margin to its sides and reaching depth below its feet.
+func (p *Player) groundWithin(pos mgl64.Vec3, margin, depth float64) bool {
+	box := p.H().Type().BBox(p).Translate(pos).GrowVec3(mgl64.Vec3{margin, 0, margin}).Extend(mgl64.Vec3{0, -depth, 0})
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
 	for x := low[0]; x <= high[0]; x++ {
 		for z := low[2]; z <= high[2]; z++ {
@@ -156,6 +170,33 @@ func (p *Player) groundAt(pos mgl64.Vec3) bool {
 		}
 	}
 	return false
+}
+
+// restEpsilon is the most a move may rise for a player to count as not
+// rising: a client sends its position as a float32.
+const restEpsilon = 5e-4
+
+// clientGround reports whether the client of the player stood on the ground
+// before its move, as the envelopes need it: whether it could jump. The
+// server's own onGround is the box below the feet of the player, 0.05 deep,
+// and holds for a player the blocks of both agree on. The blocks of a
+// Bedrock client do not always: it stands on a layer of snow the server
+// lets it sink through, and its position is a float32 that can lie a hair
+// off the edge of a block. So a client also stands on the ground where its
+// box, grown by Ascend.GroundMargin to its sides, touches a block, and, if
+// its last move did not rise or it said it collided below in it, where a
+// block is within Ascend.GroundDepth below it. A client that claims ground
+// in mid-air, or after a jump, farther from the blocks than that, has none.
+func (p *Player) clientGround(ac *acState) bool {
+	if p.onGround {
+		return true
+	}
+	conf := ac.conf.Ascend
+	pos := p.Position()
+	if p.groundWithin(pos, conf.GroundMargin, 0.05) {
+		return true
+	}
+	return (ac.last.claim || ac.last.vertical <= restEpsilon) && p.groundWithin(pos, conf.GroundMargin, conf.GroundDepth)
 }
 
 // frictionBelow returns the friction of the block below pos that the
@@ -298,14 +339,14 @@ func (p *Player) actOnMove(ac *acState, m client.Move, act anticheat.Action, pos
 	return false
 }
 
-// recordMove keeps what the movement checks need of a move of delta the
-// client made, from the state st before it. If an envelope judged the move
+// recordMove keeps what the movement checks need of the move m, of delta,
+// the client made, from the state st before it. If an envelope judged the move
 // (speed, ascend), the next move carries what physics allowed of it at
 // most, the envelope with no tolerance: a move past it that was only
 // logged does not lift the envelopes after it, so that the tolerance does
 // not compound tick after tick. A move the envelope did not judge, as in
 // flight or in a grace period, is carried as it was.
-func (ac *acState) recordMove(delta mgl64.Vec3, st anticheat.State, speed, ascend bool) {
+func (ac *acState) recordMove(m client.Move, delta mgl64.Vec3, st anticheat.State, speed, ascend bool) {
 	h, v := math.Hypot(delta[0], delta[2]), delta[1]
 	if speed {
 		h = min(h, anticheat.HorizontalAllowance(st))
@@ -320,6 +361,8 @@ func (ac *acState) recordMove(delta mgl64.Vec3, st anticheat.State, speed, ascen
 		ground:       st.Ground,
 		liquid:       st.Liquid,
 		friction:     st.Friction,
+		lenient:      st.Lenient,
+		claim:        m.ClaimsGround && delta[1] <= st.Step,
 	}
 }
 

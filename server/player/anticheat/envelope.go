@@ -57,6 +57,10 @@ type State struct {
 	// Friction is the friction of the block it stood on.
 	Ground   bool
 	Friction float64
+	// Lenient is set if Ground was granted for a client that the server's
+	// blocks do not put on the ground, but that stands close to them: it
+	// may be in the air.
+	Lenient bool
 	// Liquid is set if the player was in a liquid before the move.
 	Liquid bool
 	// Rises is set if the move goes up.
@@ -69,6 +73,8 @@ type State struct {
 	PrevGround     bool
 	PrevFriction   float64
 	PrevLiquid     bool
+	// PrevLenient is Lenient before the move before.
+	PrevLenient bool
 
 	// PrevVertical is the vertical part of the move before.
 	PrevVertical float64
@@ -126,11 +132,34 @@ func GroundAcceleration(speed, f float64) float64 {
 // The friction of a block may differ between a client and the server, as
 // honey's does between Java and Bedrock: the envelope also grants what the
 // move would be on blocks of the default friction, which accelerate
-// quicker and carry less.
+// quicker and carry less. And where the ground of the player is lenient, it
+// grants what the move would be in the air, which carries more on ice.
 func HorizontalAllowance(s State) float64 {
-	ordinary := s
-	ordinary.Friction, ordinary.PrevFriction = DefaultFriction, DefaultFriction
-	return max(horizontalAllowance(s), horizontalAllowance(ordinary))
+	var most float64
+	for _, v := range s.variants() {
+		ordinary := v
+		ordinary.Friction, ordinary.PrevFriction = DefaultFriction, DefaultFriction
+		most = max(most, horizontalAllowance(v), horizontalAllowance(ordinary))
+	}
+	return most
+}
+
+// variants returns s, and, where its ground or the ground before it is
+// lenient, s as it would be if the player were in the air there.
+func (s State) variants() []State {
+	variants := []State{s}
+	if s.Lenient && s.Ground {
+		air := s
+		air.Ground = false
+		variants = append(variants, air)
+	}
+	if s.PrevLenient && s.PrevGround {
+		for _, v := range variants {
+			v.PrevGround = false
+			variants = append(variants, v)
+		}
+	}
+	return variants
 }
 
 func horizontalAllowance(s State) float64 {

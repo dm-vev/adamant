@@ -68,7 +68,7 @@ func (p *Player) ClientMove(m client.Move) client.MoveResult {
 		return client.MoveRefused
 	}
 	if unchanged {
-		ac.recordMove(delta, st, speed, ascend)
+		ac.recordMove(m, delta, st, speed, ascend)
 		return client.MoveIgnored
 	}
 	fall := p.fallDistance
@@ -79,7 +79,7 @@ func (p *Player) ClientMove(m client.Move) client.MoveResult {
 		// Ascend cancels an up-blip: it does not reset the fall distance.
 		p.fallDistance = fall
 	}
-	ac.recordMove(delta, st, speed, ascend)
+	ac.recordMove(m, delta, st, speed, ascend)
 	return client.MoveApplied
 }
 
