@@ -1,6 +1,7 @@
 package session
 
 import (
+	"log/slog"
 	"maps"
 	"slices"
 
@@ -90,6 +91,58 @@ func ParticlePackets(pos mgl64.Vec3, p world.Particle) []proto.Packet {
 	var pks []proto.Packet
 	s.particlePackets(pos, p, func(pk proto.Packet) { pks = append(pks, pk) })
 	return append(pks, s.heldPackets...)
+}
+
+// ActionScene is the session the tests of the mapping of entity actions show
+// an action to: the entity of its own player, and the entities it shows, by
+// the runtime IDs of their handles.
+type ActionScene struct {
+	Self  world.Entity
+	Shown []world.Entity
+	// Congested and SwingingArm set the state of the session the actions
+	// that depend on it are shown in.
+	Congested, SwingingArm bool
+}
+
+// ActionResult is what a session did to show an action: the packets it
+// queued, and the runtime IDs of the dying mobs it remembered.
+type ActionResult struct {
+	Packets         []proto.Packet
+	DeathAnimations []uint64
+}
+
+// show returns what a session of the scene does as view shows an action.
+func (sc ActionScene) show(view func(s *Session)) ActionResult {
+	s := &Session{
+		br:               world.DefaultBlockRegistry,
+		conf:             Config{Log: slog.New(slog.DiscardHandler)},
+		holdPackets:      1,
+		ent:              sc.Self.H(),
+		entityRuntimeIDs: map[*world.EntityHandle]uint64{sc.Self.H(): selfEntityRuntimeID},
+		entities:         map[uint64]*world.EntityHandle{selfEntityRuntimeID: sc.Self.H()},
+	}
+	for _, e := range sc.Shown {
+		s.entityRuntimeIDs[e.H()] = e.H().RuntimeID()
+		s.entities[e.H().RuntimeID()] = e.H()
+	}
+	s.congested.Store(sc.Congested)
+	s.swingingArm.Store(sc.SwingingArm)
+	view(s)
+	return ActionResult{Packets: slices.Clone(s.heldPackets), DeathAnimations: slices.Sorted(maps.Keys(s.deathAnimations))}
+}
+
+// EntityActionPackets returns what a session of the scene does as it views an
+// action performed by an entity, for the tests of the mapping of entity
+// actions.
+func EntityActionPackets(sc ActionScene, e world.Entity, a world.EntityAction) ActionResult {
+	return sc.show(func(s *Session) { s.ViewEntityAction(e, a) })
+}
+
+// TabledEntityActionPackets is EntityActionPackets by the table of the
+// actions (entity_action_table.go) and the cases of the rest, until the
+// switch it replaces is deleted.
+func TabledEntityActionPackets(sc ActionScene, e world.Entity, a world.EntityAction) ActionResult {
+	return sc.show(func(s *Session) { s.tabledEntityAction(e, a) })
 }
 
 // oldProtocol returns protocol 2193, the oldest the adapter speaks and the

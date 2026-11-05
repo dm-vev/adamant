@@ -1,0 +1,665 @@
+entity.ArrowShakeAction{} by self
+  v2225 id=27 01270000
+  v2193 id=27 01270000
+entity.ArrowShakeAction{} by other player
+  v2225 id=27 64270000
+  v2193 id=27 64270000
+entity.ArrowShakeAction{} by cow
+  v2225 id=27 65270000
+  v2193 id=27 65270000
+entity.ArrowShakeAction{} by hidden cow
+  v2225 id=27 66270000
+  v2193 id=27 66270000
+entity.ArrowShakeAction{} by zombie
+  v2225 id=27 67270000
+  v2193 id=27 67270000
+entity.ArrowShakeAction{} by ender dragon
+  v2225 id=27 68270000
+  v2193 id=27 68270000
+entity.CriticalHitAction{} by self
+  v2225 id=44 040100005c420000
+  v2193 id=44 040100005c4200
+entity.CriticalHitAction{} by other player
+  v2225 id=44 046400005c420000
+  v2193 id=44 046400005c4200
+entity.CriticalHitAction{} by cow
+  v2225 id=44 046500005c420000
+  v2193 id=44 046500005c4200
+entity.CriticalHitAction{} by hidden cow
+  v2225 id=44 046600005c420000
+  v2193 id=44 046600005c4200
+entity.CriticalHitAction{} by zombie
+  v2225 id=44 046700005c420000
+  v2193 id=44 046700005c4200
+entity.CriticalHitAction{} by ender dragon
+  v2225 id=44 046800005c420000
+  v2193 id=44 046800005c4200
+entity.DeathAction{} by self
+  v2225 id=27 01030000
+  v2193 id=27 01030000
+entity.DeathAction{} by other player
+  v2225 id=27 64030000
+  v2193 id=27 64030000
+entity.DeathAction{} by cow
+  v2225 id=27 65030000
+  v2193 id=27 65030000
+  remembers dying mobs [101]
+entity.DeathAction{} by hidden cow
+  v2225 none
+  v2193 none
+entity.DeathAction{} by zombie
+  v2225 id=27 67030000
+  v2193 id=27 67030000
+  remembers dying mobs [103]
+entity.DeathAction{} by ender dragon
+  v2225 id=27 68030000
+  v2193 id=27 68030000
+entity.DragonDeathAction{} by self
+  v2225 id=27 01250000
+  v2193 id=27 01250000
+entity.DragonDeathAction{} by other player
+  v2225 id=27 64250000
+  v2193 id=27 64250000
+entity.DragonDeathAction{} by cow
+  v2225 id=27 65250000
+  v2193 id=27 65250000
+entity.DragonDeathAction{} by hidden cow
+  v2225 id=27 66250000
+  v2193 id=27 66250000
+entity.DragonDeathAction{} by zombie
+  v2225 id=27 67250000
+  v2193 id=27 67250000
+entity.DragonDeathAction{} by ender dragon
+  v2225 id=27 68250000
+  v2193 id=27 68250000
+entity.DrinkAction{} by self
+  v2225 id=27 011d0000
+  v2193 id=27 011d0000
+entity.DrinkAction{} by other player
+  v2225 id=27 641d0000
+  v2193 id=27 641d0000
+entity.DrinkAction{} by cow
+  v2225 id=27 651d0000
+  v2193 id=27 651d0000
+entity.DrinkAction{} by hidden cow
+  v2225 id=27 661d0000
+  v2193 id=27 661d0000
+entity.DrinkAction{} by zombie
+  v2225 id=27 671d0000
+  v2193 id=27 671d0000
+entity.DrinkAction{} by ender dragon
+  v2225 id=27 681d0000
+  v2193 id=27 681d0000
+entity.EatAction{} by self
+  v2225 none
+  v2193 none
+entity.EatAction{} by other player
+  v2225 none
+  v2193 none
+entity.EatAction{} by cow
+  v2225 none
+  v2193 none
+entity.EatAction{} by hidden cow
+  v2225 none
+  v2193 none
+entity.EatAction{} by zombie
+  v2225 none
+  v2193 none
+entity.EatAction{} by ender dragon
+  v2225 none
+  v2193 none
+entity.EatGrassAction{} by self
+  v2225 id=27 010a0000
+  v2193 id=27 010a0000
+entity.EatGrassAction{} by other player
+  v2225 id=27 640a0000
+  v2193 id=27 640a0000
+entity.EatGrassAction{} by cow
+  v2225 id=27 650a0000
+  v2193 id=27 650a0000
+entity.EatGrassAction{} by hidden cow
+  v2225 id=27 660a0000
+  v2193 id=27 660a0000
+entity.EatGrassAction{} by zombie
+  v2225 id=27 670a0000
+  v2193 id=27 670a0000
+entity.EatGrassAction{} by ender dragon
+  v2225 id=27 680a0000
+  v2193 id=27 680a0000
+entity.EnchantedHitAction{} by self
+  v2225 id=44 0501000070410000
+  v2193 id=44 05010000704100
+entity.EnchantedHitAction{} by other player
+  v2225 id=44 0564000070410000
+  v2193 id=44 05640000704100
+entity.EnchantedHitAction{} by cow
+  v2225 id=44 0565000070410000
+  v2193 id=44 05650000704100
+entity.EnchantedHitAction{} by hidden cow
+  v2225 id=44 0566000070410000
+  v2193 id=44 05660000704100
+entity.EnchantedHitAction{} by zombie
+  v2225 id=44 0567000070410000
+  v2193 id=44 05670000704100
+entity.EnchantedHitAction{} by ender dragon
+  v2225 id=44 0568000070410000
+  v2193 id=44 05680000704100
+entity.FireworkExplosionAction{} by self
+  v2225 id=27 01190000
+  v2193 id=27 01190000
+entity.FireworkExplosionAction{} by other player
+  v2225 id=27 64190000
+  v2193 id=27 64190000
+entity.FireworkExplosionAction{} by cow
+  v2225 id=27 65190000
+  v2193 id=27 65190000
+entity.FireworkExplosionAction{} by hidden cow
+  v2225 id=27 66190000
+  v2193 id=27 66190000
+entity.FireworkExplosionAction{} by zombie
+  v2225 id=27 67190000
+  v2193 id=27 67190000
+entity.FireworkExplosionAction{} by ender dragon
+  v2225 id=27 68190000
+  v2193 id=27 68190000
+entity.FishHookBiteAction{} by self
+  v2225 id=27 010d0000
+  v2193 id=27 010d0000
+entity.FishHookBiteAction{} by other player
+  v2225 id=27 640d0000
+  v2193 id=27 640d0000
+entity.FishHookBiteAction{} by cow
+  v2225 id=27 650d0000
+  v2193 id=27 650d0000
+entity.FishHookBiteAction{} by hidden cow
+  v2225 id=27 660d0000
+  v2193 id=27 660d0000
+entity.FishHookBiteAction{} by zombie
+  v2225 id=27 670d0000
+  v2193 id=27 670d0000
+entity.FishHookBiteAction{} by ender dragon
+  v2225 id=27 680d0000
+  v2193 id=27 680d0000
+entity.FishHookBubbleAction{} by self
+  v2225 id=27 010b0000
+  v2193 id=27 010b0000
+entity.FishHookBubbleAction{} by other player
+  v2225 id=27 640b0000
+  v2193 id=27 640b0000
+entity.FishHookBubbleAction{} by cow
+  v2225 id=27 650b0000
+  v2193 id=27 650b0000
+entity.FishHookBubbleAction{} by hidden cow
+  v2225 id=27 660b0000
+  v2193 id=27 660b0000
+entity.FishHookBubbleAction{} by zombie
+  v2225 id=27 670b0000
+  v2193 id=27 670b0000
+entity.FishHookBubbleAction{} by ender dragon
+  v2225 id=27 680b0000
+  v2193 id=27 680b0000
+entity.FishHookTeaseAction{} by self
+  v2225 id=27 010e0000
+  v2193 id=27 010e0000
+entity.FishHookTeaseAction{} by other player
+  v2225 id=27 640e0000
+  v2193 id=27 640e0000
+entity.FishHookTeaseAction{} by cow
+  v2225 id=27 650e0000
+  v2193 id=27 650e0000
+entity.FishHookTeaseAction{} by hidden cow
+  v2225 id=27 660e0000
+  v2193 id=27 660e0000
+entity.FishHookTeaseAction{} by zombie
+  v2225 id=27 670e0000
+  v2193 id=27 670e0000
+entity.FishHookTeaseAction{} by ender dragon
+  v2225 id=27 680e0000
+  v2193 id=27 680e0000
+entity.HurtAction{} by self
+  v2225 id=27 01020000
+  v2193 id=27 01020000
+entity.HurtAction{} by other player
+  v2225 id=27 64020000
+  v2193 id=27 64020000
+entity.HurtAction{} by cow
+  v2225 id=27 65020000
+  v2225 id=29 6501000000000000204100002041000000000000204100002041106d696e6563726166743a6865616c74680000
+  v2193 id=27 65020000
+  v2193 id=29 6501000000000000204100002041000000000000204100002041106d696e6563726166743a6865616c74680000
+entity.HurtAction{} by hidden cow
+  v2225 id=27 66020000
+  v2225 id=29 6601000000000000204100002041000000000000204100002041106d696e6563726166743a6865616c74680000
+  v2193 id=27 66020000
+  v2193 id=29 6601000000000000204100002041000000000000204100002041106d696e6563726166743a6865616c74680000
+entity.HurtAction{} by zombie
+  v2225 id=27 67020000
+  v2225 id=29 6701000000000000a0410000a041000000000000a0410000a041106d696e6563726166743a6865616c74680000
+  v2193 id=27 67020000
+  v2193 id=29 6701000000000000a0410000a041000000000000a0410000a041106d696e6563726166743a6865616c74680000
+entity.HurtAction{} by ender dragon
+  v2225 id=27 68020000
+  v2225 id=29 6801000000000000484300004843000000000000484300004843106d696e6563726166743a6865616c74680000
+  v2193 id=27 68020000
+  v2193 id=29 6801000000000000484300004843000000000000484300004843106d696e6563726166743a6865616c74680000
+entity.ItemStackSizeAction{} by self
+  v2225 id=27 01450000
+  v2193 id=27 01450000
+entity.ItemStackSizeAction{} by other player
+  v2225 id=27 64450000
+  v2193 id=27 64450000
+entity.ItemStackSizeAction{} by cow
+  v2225 id=27 65450000
+  v2193 id=27 65450000
+entity.ItemStackSizeAction{} by hidden cow
+  v2225 id=27 66450000
+  v2193 id=27 66450000
+entity.ItemStackSizeAction{} by zombie
+  v2225 id=27 67450000
+  v2193 id=27 67450000
+entity.ItemStackSizeAction{} by ender dragon
+  v2225 id=27 68450000
+  v2193 id=27 68450000
+entity.LoveHeartsAction{} by self
+  v2225 id=27 01150000
+  v2193 id=27 01150000
+entity.LoveHeartsAction{} by other player
+  v2225 id=27 64150000
+  v2193 id=27 64150000
+entity.LoveHeartsAction{} by cow
+  v2225 id=27 65150000
+  v2193 id=27 65150000
+entity.LoveHeartsAction{} by hidden cow
+  v2225 id=27 66150000
+  v2193 id=27 66150000
+entity.LoveHeartsAction{} by zombie
+  v2225 id=27 67150000
+  v2193 id=27 67150000
+entity.LoveHeartsAction{} by ender dragon
+  v2225 id=27 68150000
+  v2193 id=27 68150000
+entity.OfferFlowerAction{} by self
+  v2225 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000101
+  v2193 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000101
+entity.OfferFlowerAction{} by other player
+  v2225 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000164
+  v2193 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000164
+entity.OfferFlowerAction{} by cow
+  v2225 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000165
+  v2193 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000165
+entity.OfferFlowerAction{} by hidden cow
+  v2225 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000166
+  v2193 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000166
+entity.OfferFlowerAction{} by zombie
+  v2225 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000167
+  v2193 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000167
+entity.OfferFlowerAction{} by ender dragon
+  v2225 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000168
+  v2193 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000168
+entity.PickedUpAction{} by self
+  panic: runtime error: invalid memory address or nil pointer dereference
+entity.PickedUpAction{} by other player
+  panic: runtime error: invalid memory address or nil pointer dereference
+entity.PickedUpAction{} by cow
+  panic: runtime error: invalid memory address or nil pointer dereference
+entity.PickedUpAction{} by hidden cow
+  panic: runtime error: invalid memory address or nil pointer dereference
+entity.PickedUpAction{} by zombie
+  panic: runtime error: invalid memory address or nil pointer dereference
+entity.PickedUpAction{} by ender dragon
+  panic: runtime error: invalid memory address or nil pointer dereference
+entity.SilverfishMergeAction{} by self
+  v2225 id=27 011b0000
+  v2193 id=27 011b0000
+entity.SilverfishMergeAction{} by other player
+  v2225 id=27 641b0000
+  v2193 id=27 641b0000
+entity.SilverfishMergeAction{} by cow
+  v2225 id=27 651b0000
+  v2193 id=27 651b0000
+entity.SilverfishMergeAction{} by hidden cow
+  v2225 id=27 661b0000
+  v2193 id=27 661b0000
+entity.SilverfishMergeAction{} by zombie
+  v2225 id=27 671b0000
+  v2193 id=27 671b0000
+entity.SilverfishMergeAction{} by ender dragon
+  v2225 id=27 681b0000
+  v2193 id=27 681b0000
+entity.SquidInkAction{} by self
+  v2225 id=27 010f0000
+  v2193 id=27 010f0000
+entity.SquidInkAction{} by other player
+  v2225 id=27 640f0000
+  v2193 id=27 640f0000
+entity.SquidInkAction{} by cow
+  v2225 id=27 650f0000
+  v2193 id=27 650f0000
+entity.SquidInkAction{} by hidden cow
+  v2225 id=27 660f0000
+  v2193 id=27 660f0000
+entity.SquidInkAction{} by zombie
+  v2225 id=27 670f0000
+  v2193 id=27 670f0000
+entity.SquidInkAction{} by ender dragon
+  v2225 id=27 680f0000
+  v2193 id=27 680f0000
+entity.SwingArmAction{} by self
+  v2225 id=44 0101000000000000
+  v2193 id=44 01010000000000
+entity.SwingArmAction{} by other player
+  v2225 id=44 0164000000000000
+  v2193 id=44 01640000000000
+entity.SwingArmAction{} by cow
+  v2225 id=27 65040000
+  v2193 id=27 65040000
+entity.SwingArmAction{} by hidden cow
+  v2225 id=27 66040000
+  v2193 id=27 66040000
+entity.SwingArmAction{} by zombie
+  v2225 id=27 67040000
+  v2193 id=27 67040000
+entity.SwingArmAction{} by ender dragon
+  v2225 id=27 68040000
+  v2193 id=27 68040000
+entity.TameAction{} by self
+  v2225 id=27 01060000
+  v2193 id=27 01060000
+entity.TameAction{} by other player
+  v2225 id=27 64060000
+  v2193 id=27 64060000
+entity.TameAction{} by cow
+  v2225 id=27 65060000
+  v2193 id=27 65060000
+entity.TameAction{} by hidden cow
+  v2225 id=27 66060000
+  v2193 id=27 66060000
+entity.TameAction{} by zombie
+  v2225 id=27 67060000
+  v2193 id=27 67060000
+entity.TameAction{} by ender dragon
+  v2225 id=27 68060000
+  v2193 id=27 68060000
+entity.TotemUseAction{} by self
+  v2225 id=27 01410000
+  v2193 id=27 01410000
+entity.TotemUseAction{} by other player
+  v2225 id=27 64410000
+  v2193 id=27 64410000
+entity.TotemUseAction{} by cow
+  v2225 id=27 65410000
+  v2193 id=27 65410000
+entity.TotemUseAction{} by hidden cow
+  v2225 id=27 66410000
+  v2193 id=27 66410000
+entity.TotemUseAction{} by zombie
+  v2225 id=27 67410000
+  v2193 id=27 67410000
+entity.TotemUseAction{} by ender dragon
+  v2225 id=27 68410000
+  v2193 id=27 68410000
+entity.VibrationDetectedAction{} by self
+  v2225 id=27 014d0000
+  v2193 id=27 014d0000
+entity.VibrationDetectedAction{} by other player
+  v2225 id=27 644d0000
+  v2193 id=27 644d0000
+entity.VibrationDetectedAction{} by cow
+  v2225 id=27 654d0000
+  v2193 id=27 654d0000
+entity.VibrationDetectedAction{} by hidden cow
+  v2225 id=27 664d0000
+  v2193 id=27 664d0000
+entity.VibrationDetectedAction{} by zombie
+  v2225 id=27 674d0000
+  v2193 id=27 674d0000
+entity.VibrationDetectedAction{} by ender dragon
+  v2225 id=27 684d0000
+  v2193 id=27 684d0000
+entity.WitchMagicAction{} by self
+  v2225 id=27 01180000
+  v2193 id=27 01180000
+entity.WitchMagicAction{} by other player
+  v2225 id=27 64180000
+  v2193 id=27 64180000
+entity.WitchMagicAction{} by cow
+  v2225 id=27 65180000
+  v2193 id=27 65180000
+entity.WitchMagicAction{} by hidden cow
+  v2225 id=27 66180000
+  v2193 id=27 66180000
+entity.WitchMagicAction{} by zombie
+  v2225 id=27 67180000
+  v2193 id=27 67180000
+entity.WitchMagicAction{} by ender dragon
+  v2225 id=27 68180000
+  v2193 id=27 68180000
+entity.WolfShakeAction{} by self
+  v2225 id=27 01080000
+  v2193 id=27 01080000
+entity.WolfShakeAction{} by other player
+  v2225 id=27 64080000
+  v2193 id=27 64080000
+entity.WolfShakeAction{} by cow
+  v2225 id=27 65080000
+  v2193 id=27 65080000
+entity.WolfShakeAction{} by hidden cow
+  v2225 id=27 66080000
+  v2193 id=27 66080000
+entity.WolfShakeAction{} by zombie
+  v2225 id=27 67080000
+  v2193 id=27 67080000
+entity.WolfShakeAction{} by ender dragon
+  v2225 id=27 68080000
+  v2193 id=27 68080000
+entity.CriticalHitAction{count -1} by self
+  v2225 id=44 040100005c420000
+  v2193 id=44 040100005c4200
+entity.EnchantedHitAction{count -1} by self
+  v2225 id=44 0501000070410000
+  v2193 id=44 05010000704100
+entity.CriticalHitAction{count -1} by other player
+  v2225 id=44 046400005c420000
+  v2193 id=44 046400005c4200
+entity.EnchantedHitAction{count -1} by other player
+  v2225 id=44 0564000070410000
+  v2193 id=44 05640000704100
+entity.CriticalHitAction{count -1} by cow
+  v2225 id=44 046500005c420000
+  v2193 id=44 046500005c4200
+entity.EnchantedHitAction{count -1} by cow
+  v2225 id=44 0565000070410000
+  v2193 id=44 05650000704100
+entity.CriticalHitAction{count 0} by self
+  v2225 id=44 040100005c420000
+  v2193 id=44 040100005c4200
+entity.EnchantedHitAction{count 0} by self
+  v2225 id=44 0501000070410000
+  v2193 id=44 05010000704100
+entity.CriticalHitAction{count 0} by other player
+  v2225 id=44 046400005c420000
+  v2193 id=44 046400005c4200
+entity.EnchantedHitAction{count 0} by other player
+  v2225 id=44 0564000070410000
+  v2193 id=44 05640000704100
+entity.CriticalHitAction{count 0} by cow
+  v2225 id=44 046500005c420000
+  v2193 id=44 046500005c4200
+entity.EnchantedHitAction{count 0} by cow
+  v2225 id=44 0565000070410000
+  v2193 id=44 05650000704100
+entity.CriticalHitAction{count 1} by self
+  v2225 id=44 04010000803f0000
+  v2193 id=44 04010000803f00
+entity.EnchantedHitAction{count 1} by self
+  v2225 id=44 05010000803f0000
+  v2193 id=44 05010000803f00
+entity.CriticalHitAction{count 1} by other player
+  v2225 id=44 04640000803f0000
+  v2193 id=44 04640000803f00
+entity.EnchantedHitAction{count 1} by other player
+  v2225 id=44 05640000803f0000
+  v2193 id=44 05640000803f00
+entity.CriticalHitAction{count 1} by cow
+  v2225 id=44 04650000803f0000
+  v2193 id=44 04650000803f00
+entity.EnchantedHitAction{count 1} by cow
+  v2225 id=44 05650000803f0000
+  v2193 id=44 05650000803f00
+entity.CriticalHitAction{count 7} by self
+  v2225 id=44 04010000e0400000
+  v2193 id=44 04010000e04000
+entity.EnchantedHitAction{count 7} by self
+  v2225 id=44 05010000e0400000
+  v2193 id=44 05010000e04000
+entity.CriticalHitAction{count 7} by other player
+  v2225 id=44 04640000e0400000
+  v2193 id=44 04640000e04000
+entity.EnchantedHitAction{count 7} by other player
+  v2225 id=44 05640000e0400000
+  v2193 id=44 05640000e04000
+entity.CriticalHitAction{count 7} by cow
+  v2225 id=44 04650000e0400000
+  v2193 id=44 04650000e04000
+entity.EnchantedHitAction{count 7} by cow
+  v2225 id=44 05650000e0400000
+  v2193 id=44 05650000e04000
+entity.CriticalHitAction{count 100} by self
+  v2225 id=44 04010000c8420000
+  v2193 id=44 04010000c84200
+entity.EnchantedHitAction{count 100} by self
+  v2225 id=44 05010000c8420000
+  v2193 id=44 05010000c84200
+entity.CriticalHitAction{count 100} by other player
+  v2225 id=44 04640000c8420000
+  v2193 id=44 04640000c84200
+entity.EnchantedHitAction{count 100} by other player
+  v2225 id=44 05640000c8420000
+  v2193 id=44 05640000c84200
+entity.CriticalHitAction{count 100} by cow
+  v2225 id=44 04650000c8420000
+  v2193 id=44 04650000c84200
+entity.EnchantedHitAction{count 100} by cow
+  v2225 id=44 05650000c8420000
+  v2193 id=44 05650000c84200
+entity.ItemStackSizeAction{count -1} by cow
+  v2225 id=27 65450100
+  v2193 id=27 65450100
+entity.ItemStackSizeAction{count 0} by cow
+  v2225 id=27 65450000
+  v2193 id=27 65450000
+entity.ItemStackSizeAction{count 1} by cow
+  v2225 id=27 65450200
+  v2193 id=27 65450200
+entity.ItemStackSizeAction{count 64} by cow
+  v2225 id=27 6545800100
+  v2193 id=27 6545800100
+entity.ItemStackSizeAction{count 1048576} by cow
+  v2225 id=27 65458080800100
+  v2193 id=27 65458080800100
+entity.ArrowShakeAction{duration 0s} by cow
+  v2225 id=27 65270000
+  v2193 id=27 65270000
+entity.ArrowShakeAction{duration 1ms} by cow
+  v2225 id=27 65270000
+  v2193 id=27 65270000
+entity.ArrowShakeAction{duration 49ms} by cow
+  v2225 id=27 65270000
+  v2193 id=27 65270000
+entity.ArrowShakeAction{duration 50ms} by cow
+  v2225 id=27 65270200
+  v2193 id=27 65270200
+entity.ArrowShakeAction{duration 125ms} by cow
+  v2225 id=27 65270400
+  v2193 id=27 65270400
+entity.ArrowShakeAction{duration 1s} by cow
+  v2225 id=27 65272800
+  v2193 id=27 65272800
+entity.ArrowShakeAction{duration -1s} by cow
+  v2225 id=27 65272700
+  v2193 id=27 65272700
+entity.ArrowShakeAction{duration 3h0m0s} by cow
+  v2225 id=27 652780af1a00
+  v2193 id=27 652780af1a00
+entity.TameAction{succeeded false} by cow
+  v2225 id=27 65060000
+  v2193 id=27 65060000
+entity.DrinkAction{milk false} by cow
+  v2225 id=27 651d0000
+  v2193 id=27 651d0000
+entity.DrinkAction{milk false} by self
+  v2225 id=27 011d0000
+  v2193 id=27 011d0000
+entity.TameAction{succeeded true} by cow
+  v2225 id=27 65070000
+  v2193 id=27 65070000
+entity.DrinkAction{milk true} by cow
+  v2225 id=27 654e0000
+  v2193 id=27 654e0000
+entity.DrinkAction{milk true} by self
+  v2225 id=27 014e0000
+  v2193 id=27 014e0000
+entity.PickedUpAction{collector self} by cow
+  v2225 id=17 6501
+  v2193 id=17 6501
+entity.PickedUpAction{collector self} by hidden cow
+  v2225 id=17 6601
+  v2193 id=17 6601
+entity.PickedUpAction{collector other player} by cow
+  v2225 id=17 6564
+  v2193 id=17 6564
+entity.PickedUpAction{collector other player} by hidden cow
+  v2225 id=17 6664
+  v2193 id=17 6664
+entity.PickedUpAction{collector cow} by cow
+  v2225 id=17 6565
+  v2193 id=17 6565
+entity.PickedUpAction{collector cow} by hidden cow
+  v2225 id=17 6665
+  v2193 id=17 6665
+entity.PickedUpAction{collector hidden cow} by cow
+  v2225 id=17 6566
+  v2193 id=17 6566
+entity.PickedUpAction{collector hidden cow} by hidden cow
+  v2225 id=17 6666
+  v2193 id=17 6666
+entity.PickedUpAction{collector nil} by cow
+  panic: runtime error: invalid memory address or nil pointer dereference
+entity.PickedUpAction{collector nil} by hidden cow
+  panic: runtime error: invalid memory address or nil pointer dereference
+entity.EatAction{} by player holding empty
+  v2225 none
+  v2193 none
+entity.EatAction{} by player holding bread
+  v2225 id=27 6a398080a81000
+  v2193 id=27 6a398080a81000
+entity.EatAction{} by player holding apple
+  v2225 id=27 6b398080983700
+  v2193 id=27 6b398080983700
+entity.EatAction{} by player holding sword
+  v2225 none
+  v2193 none
+entity.SwingArmAction{} by self while swinging false
+  v2225 id=44 0101000000000000
+  v2193 id=44 01010000000000
+entity.SwingArmAction{} by other player while swinging false
+  v2225 id=44 0164000000000000
+  v2193 id=44 01640000000000
+entity.SwingArmAction{} by cow while swinging false
+  v2225 id=27 65040000
+  v2193 id=27 65040000
+entity.SwingArmAction{} by self while swinging true
+  v2225 none
+  v2193 none
+entity.SwingArmAction{} by other player while swinging true
+  v2225 id=44 0164000000000000
+  v2193 id=44 01640000000000
+entity.SwingArmAction{} by cow while swinging true
+  v2225 id=27 65040000
+  v2193 id=27 65040000
+entity.OfferFlowerAction{} by cow while congested false
+  v2225 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000165
+  v2193 id=158 21616e696d6174696f6e2e69726f6e5f676f6c656d2e6f666665725f666c6f77657200000000000000000000000165
+entity.OfferFlowerAction{} by cow while congested true
+  v2225 none
+  v2193 none
