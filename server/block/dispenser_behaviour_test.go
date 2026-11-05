@@ -27,6 +27,12 @@ import (
 
 var updateDispenseGolden = flag.Bool("update-dispense", false, "rewrite testdata/dispense_behaviours.golden")
 
+// updateDispenseItems, with -update-dispense, limits the rewrite to the items
+// whose description starts with one of its comma-separated prefixes, such as
+// "minecraft:arrow:": the lines of the other items and the default lines are
+// kept, so that the rest of the registered items need not be dispensed.
+var updateDispenseItems = flag.String("update-dispense-items", "", "with -update-dispense, rewrite only the golden lines of the items starting with these comma-separated prefixes")
+
 // dispenseTick runs a scheduled tick of the dispenser at pos.
 type dispenseTick func(d block.Dispenser, pos cube.Pos, tx *world.Tx, r *rand.Rand)
 
@@ -587,7 +593,7 @@ const dispenseFullEnv = "ADAMANT_DISPENSE_FULL"
 // dispenseFull reports whether the dispense tests run every registered item:
 // with ADAMANT_DISPENSE_FULL=1, or to rewrite the golden file.
 func dispenseFull() bool {
-	return os.Getenv(dispenseFullEnv) == "1" || *updateDispenseGolden
+	return os.Getenv(dispenseFullEnv) == "1" || *updateDispenseGolden && *updateDispenseItems == ""
 }
 
 // dispenseDomain returns the items the dispense tests run: every registered
@@ -596,6 +602,18 @@ func dispenseDomain() []world.Item {
 	items := dispenseItems()
 	if dispenseFull() {
 		return items
+	}
+	if prefixes := *updateDispenseItems; prefixes != "" && *updateDispenseGolden {
+		var chosen []world.Item
+		for _, it := range items {
+			for _, p := range strings.Split(prefixes, ",") {
+				if strings.HasPrefix(describeValue(it), p) {
+					chosen = append(chosen, it)
+					break
+				}
+			}
+		}
+		return chosen
 	}
 	seen := map[reflect.Type]bool{}
 	var sample []world.Item
@@ -660,25 +678,53 @@ func dispenseClass(it world.Item) string {
 }
 
 // writeDispenseGolden writes the summaries of the items to the golden file.
+// With -update-dispense-items, it keeps the default lines and the lines of the
+// registered items that were not dispensed, and rewrites the others.
 func writeDispenseGolden(t *testing.T, items []world.Item, summaries [][]string) {
 	defaults := map[string][]string{}
-	for _, class := range []string{"default", "default unstackable"} {
-		defaults[class] = make([]string, dispenseSlotsPerWorld)
-		for slot := range defaults[class] {
-			counts := map[string]int{}
-			for i, it := range items {
-				if dispenseClass(it) == class {
-					counts[summaries[i][slot]]++
+	rows := map[string][]string{}
+	registered := items
+	if *updateDispenseItems == "" {
+		for _, class := range []string{"default", "default unstackable"} {
+			defaults[class] = make([]string, dispenseSlotsPerWorld)
+			for slot := range defaults[class] {
+				counts := map[string]int{}
+				for i, it := range items {
+					if dispenseClass(it) == class {
+						counts[summaries[i][slot]]++
+					}
 				}
-			}
-			best := ""
-			for s, n := range counts {
-				if n > counts[best] || n == counts[best] && s < best {
-					best = s
+				best := ""
+				for s, n := range counts {
+					if n > counts[best] || n == counts[best] && s < best {
+						best = s
+					}
 				}
+				defaults[class][slot] = best
 			}
-			defaults[class][slot] = best
 		}
+	} else {
+		kept, lines := readDispenseGolden(t)
+		for class, outcomes := range kept {
+			defaults[class] = make([]string, dispenseSlotsPerWorld)
+			for slot := range defaults[class] {
+				defaults[class][slot] = outcomes[dispenseSlotName(slot)]
+			}
+		}
+		registered = dispenseItems()
+		for _, it := range registered {
+			desc, row := describeValue(it), make([]string, dispenseSlotsPerWorld)
+			for slot := range row {
+				row[slot] = defaults[dispenseClass(it)][slot]
+				if s, ok := lines[desc][dispenseSlotName(slot)]; ok {
+					row[slot] = s
+				}
+			}
+			rows[desc] = row
+		}
+	}
+	for i, it := range items {
+		rows[describeValue(it)] = summaries[i]
 	}
 	var b strings.Builder
 	b.WriteString("# The outcome of dispensing each registered item, by scenario and stack size, as a hash of what the\n")
@@ -693,9 +739,9 @@ func writeDispenseGolden(t *testing.T, items []world.Item, summaries [][]string)
 		}
 		b.WriteByte('\n')
 	}
-	for i, it := range items {
+	for _, it := range registered {
 		var line []string
-		for slot, s := range summaries[i] {
+		for slot, s := range rows[describeValue(it)] {
 			if s != defaults[dispenseClass(it)][slot] {
 				line = append(line, dispenseSlotName(slot)+"="+s)
 			}
