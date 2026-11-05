@@ -333,8 +333,9 @@ func (f fileConfig) config(log *slog.Logger) (server.Config, error) {
 // listeners of the adapters, and the Configs of the adapters it was
 // composed with.
 func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Config, javaadapter.Config, error) {
+	serverLog := logging.Sub(log, logging.Server)
 	for _, w := range f.warnings {
-		log.Warn("config.toml: " + w.String())
+		serverLog.Warn("config.toml: " + w.String())
 	}
 	if _, err := f.Log.level(); err != nil {
 		return server.Config{}, bedrockadapter.Config{}, javaadapter.Config{}, err
@@ -346,7 +347,7 @@ func (f fileConfig) compose(log *slog.Logger) (server.Config, bedrockadapter.Con
 		return server.Config{}, bc, javaadapter.Config{}, err
 	}
 	jc := f.Java.Config()
-	key, err := identityKey(f.Server.Server.IdentityKey, !bc.AuthDisabled, log)
+	key, err := identityKey(f.Server.Server.IdentityKey, !bc.AuthDisabled, serverLog)
 	if err != nil {
 		return server.Config{}, bc, jc, err
 	}

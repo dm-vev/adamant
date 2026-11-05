@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/google/uuid"
 )
 
@@ -53,7 +54,7 @@ type knownPlayer struct {
 // file holds none; it is written once a player is seen, or at close. It
 // reports whether the file existed.
 func loadKnownPlayers(path string, log *slog.Logger) (*knownPlayers, bool, error) {
-	k := &knownPlayers{path: path, log: log, byXUID: map[string]knownPlayer{}, byName: map[string]string{}, debounce: knownPlayersDebounce, now: time.Now}
+	k := &knownPlayers{path: path, log: logging.Sub(log, logging.Server), byXUID: map[string]knownPlayer{}, byName: map[string]string{}, debounce: knownPlayersDebounce, now: time.Now}
 	if k.log == nil {
 		k.log = slog.Default()
 	}

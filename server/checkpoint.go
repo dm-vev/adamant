@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
@@ -38,6 +40,10 @@ type checkpointer struct {
 	// wrote everything ended, 0 if none did.
 	lastSuccess atomic.Int64
 }
+
+// log returns the logger of the checkpoints: the one of the server, scoped
+// to the saves.
+func (c *checkpointer) log() *slog.Logger { return logging.Sub(c.srv.conf.Log, logging.Save) }
 
 // initSaves readies the checkpoints and the backups of srv. The checkpoints
 // number on from the last the world holds, so that the number a backup
@@ -95,7 +101,7 @@ func (c *checkpointer) stagingFull(w *world.World, bytes int) {
 		return
 	default:
 	}
-	c.srv.conf.Log.Warn("Saving a checkpoint early: the chunks unloaded since the last exceed the staging limit.", "dimension", fmt.Sprint(w.Dimension()), "bytes", bytes)
+	c.log().Warn("Saving a checkpoint early: the chunks unloaded since the last exceed the staging limit.", "dimension", fmt.Sprint(w.Dimension()), "bytes", bytes)
 	_ = c.checkpoint(context.Background(), "staged-cap")
 }
 
@@ -166,7 +172,7 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error
 		if commit != nil {
 			commit.Discard()
 		}
-		srv.conf.Log.Error("Save checkpoint: "+err.Error(), "reason", reason)
+		c.log().Error("Save checkpoint: "+err.Error(), "reason", reason)
 		return err
 	}
 	cps, err := world.CaptureAllInto(ctx, worlds, commit, srv.capturePlayers)
@@ -175,7 +181,7 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error
 		if commit != nil {
 			commit.Discard()
 		}
-		srv.conf.Log.Error("Save checkpoint: "+err.Error(), "reason", reason)
+		c.log().Error("Save checkpoint: "+err.Error(), "reason", reason)
 		return err
 	}
 	c.id++
@@ -195,7 +201,7 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error
 			for _, p := range cp.Extra.([]capturedPlayer) {
 				saved, err := srv.playerSaves.save(srv.conf.PlayerProvider, p, cp.World())
 				if err != nil {
-					srv.conf.Log.Error("Save player data: "+err.Error(), "key", p.key)
+					c.log().Error("Save player data: "+err.Error(), "key", p.key)
 					errs = append(errs, err)
 				} else if saved {
 					players++
@@ -212,7 +218,7 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error
 	var commitErr error
 	if commit != nil {
 		if commitErr = commit.Commit(c.id); commitErr != nil {
-			srv.conf.Log.Error("Save checkpoint: "+commitErr.Error(), "reason", reason)
+			c.log().Error("Save checkpoint: "+commitErr.Error(), "reason", reason)
 			errs = append(errs, commitErr)
 		}
 		for _, cp := range cps {
@@ -224,7 +230,7 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error
 	}
 	if w, ok := srv.conf.WorldProvider.(world.SettingsWriter); ok && settings && commitErr == nil {
 		if err := w.WriteSettings(); err != nil {
-			srv.conf.Log.Error("Save checkpoint: " + err.Error())
+			c.log().Error("Save checkpoint: " + err.Error())
 			errs = append(errs, err)
 		}
 	}
@@ -236,7 +242,7 @@ func (c *checkpointer) checkpoint(ctx context.Context, reason string) (err error
 	stats.write.Observe(time.Since(captured).Seconds())
 	stats.lastChunks.Store(int64(chunks))
 	stats.lastPlayers.Store(int64(players))
-	srv.conf.Log.Debug("Saved checkpoint.", "checkpoint", c.id, "reason", reason, "chunks", chunks, "players", players, "captured", captured.Sub(start), "written", time.Since(captured))
+	c.log().Debug("Saved checkpoint.", "checkpoint", c.id, "reason", reason, "chunks", chunks, "players", players, "captured", captured.Sub(start), "written", time.Since(captured))
 	return errors.Join(errs...)
 }
 

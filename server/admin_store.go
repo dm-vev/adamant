@@ -58,6 +58,8 @@ type banList struct {
 	// maxDuration is the longest a ban for a time lasts, zero for no
 	// limit.
 	maxDuration time.Duration
+	// log is where the list logs; slog.Default() if nil.
+	log *slog.Logger
 	// v6Prefix is how many leading bits of an IPv6 address a new ban of it
 	// covers.
 	v6Prefix int
@@ -110,7 +112,6 @@ func loadBans(path string) (*banList, error) {
 	b.rebuildPrefixesLocked()
 	return b, nil
 }
-
 
 func (b *banList) writeLocked() error {
 	data := banFile{Players: make([]banEntry, 0, len(b.players.order)), IPs: make([]banEntry, 0, len(b.ipOrder))}
@@ -353,7 +354,11 @@ func (b *banList) prune() {
 	}
 	b.mu.Unlock()
 	if err != nil {
-		slog.Default().Error("Write the bans without those that expired: " + err.Error())
+		l := b.log
+		if l == nil {
+			l = slog.Default()
+		}
+		l.Error("Write the bans without those that expired: " + err.Error())
 	}
 	if f := b.expired; f != nil && len(players)+len(ips) > 0 {
 		f(players, ips)

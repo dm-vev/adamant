@@ -19,6 +19,7 @@ import (
 	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/df-mc/dragonfly/server/logging"
 	// The packages of the functions New calls through go:linkname must be
 	// linked in, whether or not a listener imports them.
 	_ "github.com/df-mc/dragonfly/server/item/creative"
@@ -249,13 +250,19 @@ func parseReconnectPolicy(value string) (ReconnectPolicy, bool) {
 	}
 }
 
+// serverLogger returns l scoped to the server, slog.Default() if nil.
+func serverLogger(l *slog.Logger) *slog.Logger {
+	if l == nil {
+		l = slog.Default()
+	}
+	return logging.Sub(l, logging.Server)
+}
+
 // New creates a Server using fields of conf. The Server's worlds are created
 // and connections from the Server's listeners may be accepted by calling
 // Server.Listen() and Server.Accept() afterwards.
 func (conf Config) New() *Server {
-	if conf.Log == nil {
-		conf.Log = slog.Default()
-	}
+	conf.Log = serverLogger(conf.Log)
 	if len(conf.Listeners) == 0 {
 		conf.Log.Warn("config: no listeners set, no connections will be accepted")
 	}
@@ -1035,6 +1042,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 // SaveData, the records of players in the world database if the world is
 // saved too, the players folder otherwise.
 func (uc UserConfig) playerProvider(wp world.Provider, log *slog.Logger) (player.Provider, error) {
+	log = logging.Sub(log, logging.Server)
 	if !uc.Players.SaveData {
 		return nil, nil
 	}
@@ -1055,6 +1063,7 @@ func (uc UserConfig) playerProvider(wp world.Provider, log *slog.Logger) (player
 // the mode passed: the whitelist of the file passed, as [Whitelist] sets
 // it, and the operators and the bans beside it.
 func (uc UserConfig) admission(whitelistFile string, mode identity.Mode, log *slog.Logger) (admission, error) {
+	log = logging.Sub(log, logging.Server)
 	wl, err := LoadWhitelist(whitelistFile)
 	if err != nil {
 		return admission{}, fmt.Errorf("load whitelist: %w", err)
@@ -1073,6 +1082,7 @@ func (uc UserConfig) admission(whitelistFile string, mode identity.Mode, log *sl
 	if err != nil {
 		return admission{}, fmt.Errorf("load bans: %w", err)
 	}
+	bans.log = log
 	bans.messages = uc.banMessages()
 	bans.maxDuration, _ = parseMaxBanDuration(uc.Bans.MaxDuration)
 	bans.v6Prefix = uc.Bans.IPv6Prefix

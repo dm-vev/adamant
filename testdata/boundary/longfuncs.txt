@@ -44,7 +44,7 @@ server/cmd/builtin/data_data.go dataCommand.Run 201
 server/cmd/builtin/data_execute.go executeChain 270
 server/cmd/builtin/data_execute.go executeCondition 142
 server/cmd/selector.go parseSelector 133
-server/conf.go Config.New 127
+server/conf.go Config.New 125
 server/conf.go UserConfig.Config 104
 server/entity/ai_behaviors.go newMoveToTargetSink 112
 server/entity/ai_behaviors_jump.go newLongJumpToPreferredBlock 111
