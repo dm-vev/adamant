@@ -16,6 +16,7 @@ import (
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/audit"
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"golang.org/x/term"
@@ -44,7 +45,7 @@ func New(srv *server.Server, log *slog.Logger) *Console {
 	}
 	return &Console{
 		srv:    srv,
-		log:    log,
+		log:    logging.Sub(log, logging.Commands),
 		reader: os.Stdin,
 	}
 }
