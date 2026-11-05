@@ -26,6 +26,11 @@ type executeCommand struct {
 var errExecuteSyntax = errors.New("invalid execute syntax")
 
 func (c executeCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
+	c.run(src, out, tx, legacyExecuteChain)
+}
+
+// run runs the command with chain as the evaluation of its chain.
+func (c executeCommand) run(src cmd.Source, out *cmd.Output, tx *world.Tx, chain func(cmd.Source, cmd.ExecutionContext, []string, *cmd.Output, *world.Tx, *executeForks)) {
 	if tx == nil {
 		out.Error("execute requires a world")
 		return
@@ -51,7 +56,7 @@ func (c executeCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 		ctx.World = tx.World()
 	}
 	forks := &executeForks{limit: tx.World().GameRuleInt("max_command_forks"), counts: map[int]int{}}
-	executeChain(src, ctx, words, out, tx, forks)
+	chain(src, ctx, words, out, tx, forks)
 }
 
 // executeForks ports ExecutionContext's fork limit: when the contexts created
@@ -77,8 +82,9 @@ func (f *executeForks) admit(out *cmd.Output, remaining, n int) bool {
 	return true
 }
 
-// executeChain evaluates the remaining modifiers for one context branch.
-func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out *cmd.Output, tx *world.Tx, forks *executeForks) {
+// legacyExecuteChain is executeChain as it was before the table of modifiers; it stays until the
+// differential test has shown them equal. It evaluates the remaining modifiers for one context branch.
+func legacyExecuteChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out *cmd.Output, tx *world.Tx, forks *executeForks) {
 	at := func() cmd.Source { return cmd.WithContext(src, ctx) }
 	for len(words) > 0 {
 		switch words[0] {
@@ -106,7 +112,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				} else {
 					next.Position, next.Rotation = e.Position(), e.Rotation()
 				}
-				executeChain(src, next, words[2:], out, tx, forks)
+				legacyExecuteChain(src, next, words[2:], out, tx, forks)
 			}
 			return
 		case "positioned":
@@ -121,7 +127,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				for _, t := range targets {
 					next := ctx
 					next.Position = t.Position()
-					executeChain(src, next, words[3:], out, tx, forks)
+					legacyExecuteChain(src, next, words[3:], out, tx, forks)
 				}
 				return
 			}
@@ -149,7 +155,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 					if e, ok := t.(world.Entity); ok {
 						next := ctx
 						next.Rotation = e.Rotation()
-						executeChain(src, next, words[3:], out, tx, forks)
+						legacyExecuteChain(src, next, words[3:], out, tx, forks)
 					}
 				}
 				return
@@ -183,7 +189,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 					}
 					next := ctx
 					next.Rotation = rotationTowards(anchorPosition(ctx), look)
-					executeChain(src, next, words[4:], out, tx, forks)
+					legacyExecuteChain(src, next, words[4:], out, tx, forks)
 				}
 				return
 			}
@@ -242,7 +248,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 			rest := words[2:]
 			next := ctx
 			// The remaining chain needs the target world's transaction.
-			target.Do(func(other *world.Tx) { executeChain(src, next, rest, out, other, forks) })
+			target.Do(func(other *world.Tx) { legacyExecuteChain(src, next, rest, out, other, forks) })
 			return
 		case "on":
 			if len(words) < 2 {
@@ -256,7 +262,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 			for _, e := range related {
 				next := ctx
 				next.Executor = e
-				executeChain(src, next, words[2:], out, tx, forks)
+				legacyExecuteChain(src, next, words[2:], out, tx, forks)
 			}
 			return
 		case "summon":
@@ -293,7 +299,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				out.Error(errExecuteSyntax)
 				return
 			}
-			count, used, err := executeCondition(words[1:], src, ctx, tx)
+			count, used, err := legacyExecuteCondition(words[1:], src, ctx, tx)
 			if err != nil {
 				out.Error(err)
 				return
@@ -507,9 +513,9 @@ func executeStoreSink(words []string, src cmd.Source, ctx cmd.ExecutionContext, 
 	return nil, 0, fmt.Errorf("unsupported store destination '%s'", words[1])
 }
 
-// executeCondition evaluates an if/unless predicate and returns Java's match
+// legacyExecuteCondition is executeCondition as it was before the table of conditions. It evaluates an if/unless predicate and returns Java's match
 // count (entities matched, blocks matched or 1/0) and the words consumed.
-func executeCondition(words []string, src cmd.Source, ctx cmd.ExecutionContext, tx *world.Tx) (int, int, error) {
+func legacyExecuteCondition(words []string, src cmd.Source, ctx cmd.ExecutionContext, tx *world.Tx) (int, int, error) {
 	if len(words) == 0 {
 		return 0, 0, errExecuteSyntax
 	}

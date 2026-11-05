@@ -178,10 +178,10 @@ func (c *captureWorlds) snapshot(tx *world.Tx) []string {
 	return lines
 }
 
-// runCapture runs every line of lines for every source against worlds built
-// afresh, with run executing the line, and returns the written down output
-// and effects.
-func runCapture(t *testing.T, lines []string, run func(line string, src cmd.Source, tx *world.Tx)) string {
+// runCapture runs every line of lines as the arguments of the command name
+// for every source against worlds built afresh, with runner as the command
+// registered under name, and returns the written down output and effects.
+func runCapture(t *testing.T, lines []string, name string, runner cmd.Runnable) string {
 	t.Helper()
 	previous := map[string]cmd.Command{}
 	for _, name := range []string{"_capture_probe_", "setblock", "time", "data", "execute"} {
@@ -202,6 +202,8 @@ func runCapture(t *testing.T, lines []string, run func(line string, src cmd.Sour
 	cmd.Register(cmd.New("time", "", nil, timeQueryCommand{}))
 	cmd.Register(cmd.New("data", "", nil, dataCommand{}))
 	cmd.Register(cmd.New("execute", "", nil, executeCommand{}))
+	command := cmd.New(name, "", nil, runner)
+	cmd.Register(command)
 
 	var b strings.Builder
 	for _, entry := range lines {
@@ -228,7 +230,7 @@ func runCapture(t *testing.T, lines []string, run func(line string, src cmd.Sour
 				if source == "cow" {
 					src = cmd.WithContext(src, cmd.ExecutionContext{Executor: cow, Position: cow.Position(), Rotation: cow.Rotation(), World: tx.World(), Anchor: cmd.Feet})
 				}
-				run(line, src, tx)
+				command.Execute(line, src, tx)
 				for _, err := range out.Errors() {
 					fmt.Fprintf(&b, "error: %s\n", c.text(err.Error()))
 				}
@@ -272,4 +274,21 @@ func checkGolden(t *testing.T, name, got string) {
 		}
 		t.Fatalf("%s differs in length: got %d lines, want %d", name, len(gotLines), len(wantLines))
 	}
+}
+
+// checkEqualCaptures fails the test at the first line where two captures
+// differ, naming the command line it belongs to.
+func checkEqualCaptures(t *testing.T, want, got string) {
+	t.Helper()
+	wantLines, gotLines := strings.Split(want, "\n"), strings.Split(got, "\n")
+	header := ""
+	for i := 0; i < len(gotLines) && i < len(wantLines); i++ {
+		if strings.HasPrefix(wantLines[i], "=== ") {
+			header = wantLines[i]
+		}
+		if gotLines[i] != wantLines[i] {
+			t.Fatalf("%s\n got: %s\nwant: %s", header, gotLines[i], wantLines[i])
+		}
+	}
+	t.Fatalf("captures differ in length: got %d lines, want %d", len(gotLines), len(wantLines))
 }

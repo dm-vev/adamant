@@ -324,9 +324,27 @@ var executeCaptureLines = []string{
 // TestExecuteCapture writes down what /execute does for every line of
 // executeCaptureLines: the output of the command and its effects.
 func TestExecuteCapture(t *testing.T) {
-	execute := cmd.New("execute", "", nil, executeCommand{})
-	got := runCapture(t, executeCaptureLines, func(line string, src cmd.Source, tx *world.Tx) {
-		execute.Execute(line, src, tx)
-	})
-	checkGolden(t, "execute_capture.golden", got)
+	checkGolden(t, "execute_capture.golden", runCapture(t, executeCaptureLines, "execute", executeCommand{}))
+}
+
+// executeViaTables is /execute with the table of modifiers and conditions
+// evaluating its chain.
+type executeViaTables struct {
+	gameMaster
+	Args cmd.Varargs
+}
+
+func (c executeViaTables) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
+	executeCommand{Args: c.Args}.run(src, out, tx, executeChain)
+}
+
+// TestExecuteTablesMatchLegacy requires the table of modifiers and the table
+// of conditions to do exactly what the chain before them did, on every line
+// of the capture: the same output text and the same effects.
+func TestExecuteTablesMatchLegacy(t *testing.T) {
+	legacy := runCapture(t, executeCaptureLines, "execute", executeCommand{})
+	tables := runCapture(t, executeCaptureLines, "execute", executeViaTables{})
+	if legacy != tables {
+		checkEqualCaptures(t, legacy, tables)
+	}
 }
