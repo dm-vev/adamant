@@ -34,15 +34,15 @@ type dispenseSpawner func(conf *world.EntityRegistryConfig, opts world.EntitySpa
 // (dispenseDefault).
 var dispenseBehaviours = map[reflect.Type]dispenseBehaviour{
 	// ProjectileDispenseBehavior, registered by registerProjectileBehavior.
-	reflect.TypeFor[item.Egg]():                dispenseProjectile(spawnDispensedEgg),
-	reflect.TypeFor[item.Snowball]():           dispenseProjectile(spawnDispensedSnowball),
-	reflect.TypeFor[item.FireCharge]():         dispenseProjectile(spawnDispensedFireCharge),
-	reflect.TypeFor[item.WindCharge]():         dispenseProjectile(spawnDispensedWindCharge),
+	reflect.TypeFor[item.Egg]():                dispenseShot(defaultDispenseConfig, spawnDispensedEgg),
+	reflect.TypeFor[item.Snowball]():           dispenseShot(defaultDispenseConfig, spawnDispensedSnowball),
+	reflect.TypeFor[item.FireCharge]():         dispenseShot(chargeDispenseConfig, spawnDispensedFireCharge),
+	reflect.TypeFor[item.WindCharge]():         dispenseShot(chargeDispenseConfig, spawnDispensedWindCharge),
 	reflect.TypeFor[item.Arrow]():              dispenseShot(defaultDispenseConfig, spawnDispensedArrow),
 	reflect.TypeFor[item.BottleOfEnchanting](): dispenseShot(thrownDispenseConfig, spawnDispensedBottleOfEnchanting),
 	reflect.TypeFor[item.SplashPotion]():       dispenseShot(thrownDispenseConfig, spawnDispensedSplashPotion),
 	reflect.TypeFor[item.LingeringPotion]():    dispenseShot(thrownDispenseConfig, spawnDispensedLingeringPotion),
-	reflect.TypeFor[item.Firework]():           dispenseProjectile(spawnDispensedFirework),
+	reflect.TypeFor[item.Firework]():           dispenseShot(fireworkDispenseConfig, spawnDispensedFirework),
 
 	// BoatDispenseItemBehavior.
 	reflect.TypeFor[item.Boat]():      dispenseBoat(spawnDispensedBoat),
@@ -113,15 +113,6 @@ func dispenseDefault(src dispenseSource) (item.Stack, bool) {
 	return src.consume()
 }
 
-// dispenseProjectile shoots the item as the entity spawn creates, as
-// ProjectileDispenseBehavior.
-func dispenseProjectile(spawn dispenseSpawner) dispenseBehaviour {
-	return func(src dispenseSource) (item.Stack, bool) {
-		src.tx.AddEntity(spawn(src.tx.World().EntityRegistry().Config(), src.launch(), src.stack.Item()))
-		return src.consume()
-	}
-}
-
 // dispenseConfig is ProjectileItem.DispenseConfig: where a projectile leaves
 // the dispenser and how it is shot.
 type dispenseConfig struct {
@@ -140,6 +131,16 @@ var (
 	// ThrowablePotionItem: the default with half its uncertainty and 1.25
 	// times its power.
 	thrownDispenseConfig = dispenseConfig{offset: 0.7, lift: 0.1, uncertainty: 3, power: 1.375}
+	// chargeDispenseConfig is the DispenseConfig of FireChargeItem and
+	// WindChargeItem: 1.0 block out with no lift, uncertainty 6.6666665 and
+	// power 1.0. Their shoot override is not called by
+	// ProjectileDispenseBehavior, which calls Projectile.shoot itself, so
+	// the config is applied to them as to any projectile.
+	chargeDispenseConfig = dispenseConfig{offset: 1, uncertainty: float64(float32(6.6666665)), power: 1}
+	// fireworkDispenseConfig is the DispenseConfig of FireworkRocketItem: just
+	// outside the dispenser (getEntityJustOutsideOfBlockPos, 0.5000099999997474
+	// blocks from its centre), uncertainty 1 and power 0.5.
+	fireworkDispenseConfig = dispenseConfig{offset: 0.5000099999997474, uncertainty: 1, power: 0.5}
 )
 
 // launch returns where a projectile spawns and the velocity Projectile.shoot

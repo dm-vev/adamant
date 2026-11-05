@@ -13,11 +13,13 @@ import (
 )
 
 // TestDispenserShotsFlyAsJavaShoots checks ProjectileDispenseBehavior for the
-// arrow, the bottle o' enchanting and the potions: they spawn 0.7 blocks out
-// of the dispenser and 0.1 above its centre and leave with the direction
-// scaled by the power, moved by at most 0.0172275 times the uncertainty on each
-// axis, the uncertainty and power halved and multiplied by 1.25 for the
-// thrown items.
+// arrow, the egg, the snowball, the bottle o' enchanting, the potions, the
+// charges and the firework: they spawn where their DispenseConfig puts them
+// (0.7 blocks out of the dispenser and 0.1 above its centre by default) and
+// leave with the direction scaled by the power, moved by at most 0.0172275
+// times the uncertainty on each axis. The thrown items have half the default
+// uncertainty and 1.25 times its power; the charges and the firework have
+// configs of their own.
 func TestDispenserShotsFlyAsJavaShoots(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
@@ -25,11 +27,17 @@ func TestDispenserShotsFlyAsJavaShoots(t *testing.T) {
 		item               world.Item
 		typ                world.EntityType
 		uncertainty, power float64
+		pos                mgl64.Vec3
 	}{
-		{"arrow", item.Arrow{}, entity.ArrowType, 6, 1.1},
-		{"bottle o' enchanting", item.BottleOfEnchanting{}, entity.BottleOfEnchantingType, 3, 1.375},
-		{"splash potion", item.SplashPotion{Type: potion.Harming()}, entity.SplashPotionType, 3, 1.375},
-		{"lingering potion", item.LingeringPotion{Type: potion.Poison()}, entity.LingeringPotionType, 3, 1.375},
+		{"arrow", item.Arrow{}, entity.ArrowType, 6, 1.1, mgl64.Vec3{1.2, 64.6, 0.5}},
+		{"egg", item.Egg{}, entity.EggType, 6, 1.1, mgl64.Vec3{1.2, 64.6, 0.5}},
+		{"snowball", item.Snowball{}, entity.SnowballType, 6, 1.1, mgl64.Vec3{1.2, 64.6, 0.5}},
+		{"bottle o' enchanting", item.BottleOfEnchanting{}, entity.BottleOfEnchantingType, 3, 1.375, mgl64.Vec3{1.2, 64.6, 0.5}},
+		{"splash potion", item.SplashPotion{Type: potion.Harming()}, entity.SplashPotionType, 3, 1.375, mgl64.Vec3{1.2, 64.6, 0.5}},
+		{"lingering potion", item.LingeringPotion{Type: potion.Poison()}, entity.LingeringPotionType, 3, 1.375, mgl64.Vec3{1.2, 64.6, 0.5}},
+		{"fire charge", item.FireCharge{}, entity.SmallFireballType, 6.6666665, 1, mgl64.Vec3{1.5, 64.5, 0.5}},
+		{"wind charge", item.WindCharge{}, entity.WindChargeType, 6.6666665, 1, mgl64.Vec3{1.5, 64.5, 0.5}},
+		{"firework", item.Firework{}, entity.FireworkType, 1, 0.5, mgl64.Vec3{1.0000099999997474, 64.5, 0.5}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -46,8 +54,8 @@ func TestDispenserShotsFlyAsJavaShoots(t *testing.T) {
 						t.Fatalf("%d shots spawned, want 1", len(shot))
 					}
 					e := shot[0].(*entity.Ent)
-					if want := (mgl64.Vec3{1.2, 64.6, 0.5}); e.Position().Sub(want).Len() > 1e-9 {
-						t.Fatalf("spawned at %v, want %v", e.Position(), want)
+					if e.Position().Sub(c.pos).Len() > 1e-9 {
+						t.Fatalf("spawned at %v, want %v", e.Position(), c.pos)
 					}
 					v := e.Velocity()
 					if dx := v[0] - c.power; math.Abs(dx) > spread+1e-9 || math.Abs(v[1]) > spread+1e-9 || math.Abs(v[2]) > spread+1e-9 {
