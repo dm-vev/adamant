@@ -17,6 +17,12 @@ type dataCommand struct {
 }
 
 func (c dataCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
+	c.legacyRun(src, out, tx)
+}
+
+// legacyRun is Run as it was before the tables of targets and actions; it
+// stays until the differential test has shown them equal.
+func (c dataCommand) legacyRun(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 	if tx == nil {
 		out.Error("data requires a world")
 		return
