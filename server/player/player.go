@@ -84,7 +84,13 @@ type playerData struct {
 	menu atomic.Pointer[menu.Menu]
 	// menuTx is set while a batch of BeginMenu runs.
 	menuTx atomic.Bool
-	h      Handler
+	// menuIgnoredAt is when a request to open a menu open already was last
+	// logged, and menuIgnoredCount how many were left out since.
+	menuIgnoredAt    time.Time
+	menuIgnoredCount int
+	// menuWorld is the world the menu of the player was opened in.
+	menuWorld *world.World
+	h         Handler
 	// log is the logger of the player, never nil.
 	log *slog.Logger
 
@@ -1182,6 +1188,8 @@ func (p *Player) DeathPosition() (mgl64.Vec3, world.Dimension, bool) {
 
 // kill kills the player, clearing its inventories and resetting it to its base state.
 func (p *Player) kill(src world.DamageSource) {
+	// The container of a player that dies closes, as ServerPlayer.die does.
+	p.closeMenu(p.tx, false)
 	viewers, release := p.viewers()
 	for _, viewer := range viewers {
 		viewer.ViewEntityAction(p, entity.DeathAction{})
@@ -3323,6 +3331,8 @@ func (p *Player) TeleportToWorld(tx *world.Tx, destination *world.World, pos mgl
 		})
 		return
 	}
+	// A menu stays in the world it was opened in.
+	p.closeMenu(tx, false)
 	handle := transfer.Remove(tx, p)
 	task := destination.Do(func(destinationTx *world.Tx) {
 		np := destinationTx.AddEntity(handle).(*Player)
@@ -3804,7 +3814,8 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	if !p.hasClient() {
 		return
 	}
-	if m := p.Menu(); m != nil && m.Pos() == pos {
+	if m := p.Menu(); m != nil && m.Pos() == pos && p.menuWorld == tx.World() {
+		p.logMenuIgnored("block", pos)
 		return
 	}
 	p.closeMenu(tx, false)
@@ -3813,6 +3824,7 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 		// The client sends no close for a lectern: the player keeps no
 		// menu open for it.
 		p.menu.Store(m)
+		p.menuWorld = tx.World()
 	}
 	p.c.OpenMenu(m, tx)
 }
@@ -3829,12 +3841,14 @@ func (p *Player) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, k
 	if !p.hasClient() {
 		return
 	}
-	if m := p.Menu(); m != nil && m.Entity() == e.H() {
+	if m := p.Menu(); m != nil && m.Entity() == e.H() && p.menuWorld == tx.World() {
+		p.logMenuIgnored("entity", e.Position())
 		return
 	}
 	p.closeMenu(tx, false)
 	m := menu.OpenEntity(e, inv, kind, p.c)
 	p.menu.Store(m)
+	p.menuWorld = tx.World()
 	p.c.OpenMenu(m, tx)
 }
 
@@ -3847,7 +3861,8 @@ func (p *Player) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *worl
 	if !p.hasClient() {
 		return
 	}
-	if m := p.Menu(); m != nil && m.Entity() == e.H() {
+	if m := p.Menu(); m != nil && m.Entity() == e.H() && p.menuWorld == tx.World() {
+		p.logMenuIgnored("merchant", e.Position())
 		return
 	}
 	offers, err := merchant.MerchantOffersFor(p)
@@ -3862,6 +3877,7 @@ func (p *Player) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *worl
 		return
 	}
 	p.menu.Store(m)
+	p.menuWorld = tx.World()
 	p.c.OpenMenu(m, tx)
 	p.c.ViewTrades(m, merchant, offers)
 }
