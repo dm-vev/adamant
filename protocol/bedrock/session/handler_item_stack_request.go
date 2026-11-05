@@ -198,6 +198,60 @@ func (h *ItemStackRequestHandler) handleRequest(req mc.ItemStackRequest, s *Sess
 	return
 }
 
+// handleRequestTabled is handleRequest with the actions dispatched by the table
+// of stackRequestActions.
+func (h *ItemStackRequestHandler) handleRequestTabled(req mc.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (err error) {
+	h.currentRequest = req.RequestID
+	h.multiCraft, h.autoCraft = nil, nil
+	h.batch = c.BeginMenu(s.nameSlot)
+	defer func() {
+		h.multiCraft, h.autoCraft = nil, nil
+		if err != nil {
+			h.reject(req.RequestID, s, refusalStatus(err))
+			return
+		}
+		h.batch.Commit()
+		h.batch = nil
+		h.resolve(req.RequestID, s)
+		h.ignoreDestroy = false
+	}()
+
+	rc := &stackRequest{req: req, s: s, tx: tx, c: c}
+	for _, action := range req.Actions {
+		if h.multiCraft != nil {
+			switch action.(type) {
+			case *mc.ConsumeStackRequestAction, *mc.CraftResultsDeprecatedStackRequestAction:
+			default:
+				return fmt.Errorf("multi recipe contains unexpected action %T", action)
+			}
+		}
+		if _, consume := action.(*mc.ConsumeStackRequestAction); h.autoCraft != nil && !consume {
+			// The Consume actions of a recipe-book craft have all come:
+			// what follows takes its results.
+			if err = h.finishAutoCraft(); err != nil {
+				err = fmt.Errorf("%T: %w", action, err)
+				return
+			}
+		}
+		run, ok := stackRequestActions[reflect.TypeOf(action)]
+		if !ok {
+			return fmt.Errorf("unhandled stack request action %#v", action)
+		}
+		err = run(h, action, rc)
+		if err != nil {
+			err = fmt.Errorf("%T: %w", action, err)
+			return
+		}
+	}
+	if h.multiCraft != nil {
+		return h.finishMultiCraft()
+	}
+	if h.autoCraft != nil {
+		return h.finishAutoCraft()
+	}
+	return
+}
+
 // handleTake handles a Take stack request action.
 func (h *ItemStackRequestHandler) handleTake(a *mc.TakeStackRequestAction, s *Session, tx *world.Tx) error {
 	switch a.Source.Container.ContainerID {

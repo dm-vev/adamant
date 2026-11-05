@@ -36,6 +36,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -45,7 +46,7 @@ import (
 type row map[string]string
 
 func main() {
-	kind := flag.String("kind", "", "the kind of table: sound, particle or action")
+	kind := flag.String("kind", "", "the kind of table: sound, particle, action or stack")
 	flag.Parse()
 	var k kindSpec
 	switch *kind {
@@ -55,25 +56,29 @@ func main() {
 		k = particleKind
 	case "action":
 		k = actionKind
+	case "stack":
+		k = stackKind
 	default:
 		log.Fatalf("gentables: unknown kind %q", *kind)
 	}
 	log.SetFlags(0)
 	log.SetPrefix("gentables: ")
 
-	rows, err := readRows(k.table, k.variable)
-	if err != nil {
-		log.Fatal(err)
-	}
 	types, err := gameTypes(k)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := check(k, rows, types); err != nil {
-		log.Fatal(err)
-	}
-	if err := writeFile(k.out, k.generate(rows)); err != nil {
-		log.Fatal(err)
+	if k.generate != nil {
+		rows, err := readRows(k.table, k.variable)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := check(k, rows, types); err != nil {
+			log.Fatal(err)
+		}
+		if err := writeFile(k.out, k.generate(rows)); err != nil {
+			log.Fatal(err)
+		}
 	}
 	if err := writeFile(k.testOut, k.generateTypes(types)); err != nil {
 		log.Fatal(err)
@@ -153,10 +158,10 @@ func gameTypes(k kindSpec) ([]string, error) {
 		if len(p.Errors) > 0 {
 			return nil, p.Errors[0]
 		}
-		switch p.PkgPath {
-		case k.worldPkg:
+		if p.PkgPath == k.worldPkg {
 			world = p
-		case k.pkg:
+		}
+		if p.PkgPath == k.pkg {
 			game = p
 		}
 	}
@@ -174,13 +179,17 @@ func gameTypes(k kindSpec) ([]string, error) {
 	var names []string
 	for _, name := range game.Types.Scope().Names() {
 		tn, ok := game.Types.Scope().Lookup(name).(*types.TypeName)
-		if !ok || !tn.Exported() || tn.IsAlias() {
+		if !ok || !tn.Exported() || tn.IsAlias() || !strings.HasSuffix(name, k.suffix) {
 			continue
 		}
 		if _, isIface := tn.Type().Underlying().(*types.Interface); isIface {
 			continue
 		}
-		if types.Implements(tn.Type(), iface) {
+		t := tn.Type()
+		if k.pointers {
+			t = types.NewPointer(t)
+		}
+		if types.Implements(t, iface) {
 			names = append(names, name)
 		}
 	}
@@ -227,12 +236,18 @@ type kindSpec struct {
 	table, variable, key string
 	fields               []string
 	// pkg is the package of the types, worldPkg the one of the interface they
-	// implement and iface its name.
+	// implement and iface its name. The types implement it by pointers if
+	// pointers is set.
 	pkg, worldPkg, iface string
+	pointers             bool
+	// suffix, if set, is what the name of a type must end with: for an
+	// interface any type with a few methods implements.
+	suffix string
 	// out and testOut are the files written.
 	out, testOut string
-	// generate returns the source of the switch and generateTypes that of the
-	// test file listing the types.
+	// generate returns the source of the switch, or is nil for a kind that
+	// has no switch to write and so no rows to read, and generateTypes that of
+	// the test file listing the types.
 	generate      func(rows []row) []byte
 	generateTypes func(names []string) []byte
 }

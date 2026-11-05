@@ -1,17 +1,21 @@
 package session
 
 import (
+	"fmt"
 	"log/slog"
 	"maps"
 	"slices"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/dm-vev/adamant/net/bedrock/proto"
+	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -136,6 +140,114 @@ func (sc ActionScene) show(view func(s *Session)) ActionResult {
 // actions.
 func EntityActionPackets(sc ActionScene, e world.Entity, a world.EntityAction) ActionResult {
 	return sc.show(func(s *Session) { s.ViewEntityAction(e, a) })
+}
+
+// RepairMultiRecipe is the ID of the special recipe that repairs two tools of
+// the grid in one, which the tests of the item stack requests craft.
+const RepairMultiRecipe = repairMultiRecipe
+
+// StackScene is a session of no connection and no player, whose item stack
+// requests run as batches over its inventories, for the tests of the handling
+// of item stack requests.
+type StackScene struct {
+	s  *Session
+	h  *ItemStackRequestHandler
+	tx *world.Tx
+	c  Controllable
+}
+
+// modeController is a player of a game mode, as far as the requests ask.
+type modeController struct {
+	batchController
+	mode world.GameMode
+}
+
+func (c modeController) GameMode() world.GameMode { return c.mode }
+
+// NewStackScene returns a scene over a transaction, whose player is in the game
+// mode passed.
+func NewStackScene(tx *world.Tx, mode world.GameMode) *StackScene {
+	s := craftingTestSession()
+	return &StackScene{s: s, h: craftingTestHandler(), tx: tx, c: modeController{batchController: batchController{tx: tx, s: s}, mode: mode}}
+}
+
+// Main, OffHand and UI return the inventories of the scene.
+func (sc *StackScene) Main() *inventory.Inventory    { return sc.s.inv }
+func (sc *StackScene) OffHand() *inventory.Inventory { return sc.s.offHand }
+func (sc *StackScene) UI() *inventory.Inventory      { return sc.s.ui }
+
+// AddRecipe makes the recipe passed known to the session by the network ID
+// passed.
+func (sc *StackScene) AddRecipe(id uint32, r recipe.Recipe) { sc.s.recipes[id] = r }
+
+// StackID returns the network ID of the stack passed, which the client names
+// the stack by.
+func (sc *StackScene) StackID(s item.Stack) int32 { return item_id(s) }
+
+// StackResult is what a session did to handle a request: the error it
+// returned, as text, and the packets it queued.
+type StackResult struct {
+	Err     string
+	Packets []proto.Packet
+}
+
+// Request handles the request passed as the session does, by the table of
+// the actions if tabled is set, else by the switch, until the switch is
+// deleted.
+func (sc *StackScene) Request(req mc.ItemStackRequest, tabled bool) (res StackResult) {
+	var err error
+	if tabled {
+		err = sc.h.handleRequestTabled(req, sc.s, sc.tx, sc.c)
+	} else {
+		err = sc.h.handleRequest(req, sc.s, sc.tx, sc.c)
+	}
+	if err != nil {
+		res.Err = err.Error()
+	}
+	res.Packets = slices.Clone(sc.s.heldPackets)
+	sc.s.heldPackets = nil
+	return res
+}
+
+// OpenMenu opens the menu of the block passed, placed in the world of the
+// transaction, as the one the player of the scene has open.
+func (sc *StackScene) OpenMenu(b world.Block) {
+	pos := cube.Pos{0, 64, 0}
+	sc.tx.SetBlock(pos, b, nil)
+	sc.s.menu.Store(menu.OpenBlock(sc.tx, pos, sc.s, sc.s.enderChest))
+}
+
+// OpenInventory makes the inventory screen the one the player of the scene has
+// open, and OpenAs sets the type of the container the player has open.
+func (sc *StackScene) OpenInventory() { sc.s.windows.inventory = true }
+func (sc *StackScene) OpenAs(containerType uint32) {
+	sc.s.openedContainerID.Store(containerType)
+}
+
+// StackSlot is a stack in an inventory of the scene.
+type StackSlot struct {
+	// Where is the inventory and the slot, Stack what the slot holds as
+	// text and ID its network ID.
+	Where, Stack string
+	ID           int32
+}
+
+// State returns the stacks the inventories of the scene hold.
+func (sc *StackScene) State() []StackSlot {
+	var slots []StackSlot
+	for _, inv := range []struct {
+		name string
+		inv  *inventory.Inventory
+	}{{"main", sc.s.inv}, {"off hand", sc.s.offHand}, {"ui", sc.s.ui}} {
+		for slot, st := range inv.inv.Slots() {
+			if st.Empty() {
+				continue
+			}
+			name, meta := st.Item().EncodeItem()
+			slots = append(slots, StackSlot{fmt.Sprintf("%s %d", inv.name, slot), fmt.Sprintf("%d x %s:%d", st.Count(), name, meta), item_id(st)})
+		}
+	}
+	return slots
 }
 
 // oldProtocol returns protocol 2193, the oldest the adapter speaks and the

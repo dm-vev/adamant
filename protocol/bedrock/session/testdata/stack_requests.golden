@@ -1,0 +1,531 @@
+== moves
+-- take 4 of stone to an empty slot
+  error: 
+  v2225 id=148 01000101010c000200000601020000000303040104000000
+  v2193 id=148 01000101010c000200000601020000000303040104000000
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 3
+  main 2: 60 x minecraft:stone:0 id 4
+  main 3: 4 x minecraft:stone:0 id 2
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- place 2 of the stone on the stone, the new stack named by the request
+  error: 
+  v2225 id=148 01000301010c000202023e010c000000030302010e000000
+  v2193 id=148 01000301010c000202023e010c000000030302010e000000
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 3
+  main 2: 62 x minecraft:stone:0 id 6
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- place a stack by an ID the slot does not hold
+  error: *v2225.PlaceStackRequestAction: source slot out of sync: stack ID mismatch: client expected 99999, but server had #1
+  v2225 id=148 01010500
+  v2193 id=148 01010500
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 3
+  main 2: 62 x minecraft:stone:0 id 6
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- place from an unknown container
+  error: *v2225.PlaceStackRequestAction: unknown source container 250
+  v2225 id=148 01010700
+  v2193 id=148 01010700
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 3
+  main 2: 62 x minecraft:stone:0 id 6
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- place a stack on its own slot
+  error: *v2225.PlaceStackRequestAction: slot 0 is both the source and the destination: source and destination are the same slot
+  v2225 id=148 01300900
+  v2193 id=148 01300900
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 3
+  main 2: 62 x minecraft:stone:0 id 6
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- take the result of a trade that is not open
+  error: *v2225.TakeStackRequestAction: no merchant window is open
+  v2225 id=148 01010b00
+  v2193 id=148 01010b00
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 3
+  main 2: 62 x minecraft:stone:0 id 6
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- swap the dirt and the stone
+  error: 
+  v2225 id=148 01000d01010c000201013e010c0000000202030106000000
+  v2193 id=148 01000d01010c000201013e010c0000000202030106000000
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- swap with an empty slot
+  error: *v2225.SwapStackRequestAction: swap with the empty slot 7
+  v2225 id=148 01320f00
+  v2193 id=148 01320f00
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- swap an empty slot
+  error: *v2225.SwapStackRequestAction: swap of the empty slot 7
+  v2225 id=148 01311100
+  v2193 id=148 01311100
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- swap a slot with itself
+  error: *v2225.SwapStackRequestAction: slot 1 is both the source and the destination: source and destination are the same slot
+  v2225 id=148 01301300
+  v2193 id=148 01301300
+  main 0: 6 x minecraft:stone:0 id 1
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- drop 2 of the stone
+  error: 
+  v2225 id=148 01001501010c00010000040110000000
+  v2193 id=148 01001501010c00010000040110000000
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- drop from an empty slot
+  error: *v2225.DropStackRequestAction: client attempted to drop 2 items, but only 0 present
+  v2225 id=148 01011700
+  v2193 id=148 01011700
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- destroy in survival
+  error: *v2225.DestroyStackRequestAction: can only destroy items in gamemode creative/spectator
+  v2225 id=148 01011900
+  v2193 id=148 01011900
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- mine a block with the pickaxe
+  error: 
+  v2225 id=148 01001b01011d0001040401010a0000ac02
+  v2193 id=148 01001b01011d0001040401010a0000ac02
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- mine a block with a stack the slot does not hold
+  error: *v2225.MineBlockStackRequestAction: stack ID mismatch: client expected 99999, but server had #5
+  v2225 id=148 01011d00
+  v2193 id=148 01011d00
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- craft a creative item in survival
+  error: *v2225.CraftCreativeStackRequestAction: can only craft creative items in gamemode creative/spectator
+  v2225 id=148 01011f00
+  v2193 id=148 01011f00
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- take the result of a craft that did not come
+  error: *v2225.CreateStackRequestAction: invalid pending result slot: 0
+  v2225 id=148 01012100
+  v2193 id=148 01012100
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- two actions, the second refused, the first undone
+  error: *v2225.TakeStackRequestAction: source slot out of sync: stack ID mismatch: client expected 99999, but server had #9
+  v2225 id=148 01012300
+  v2193 id=148 01012300
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- an action the session does not handle: not implemented
+  error: unhandled stack request action &v2225.CraftNonImplementedStackRequestAction{}
+  v2225 id=148 01012500
+  v2193 id=148 01012500
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- an action the session does not handle: reserved
+  error: unhandled stack request action &v2225.CraftReservedStackRequestAction{ReservedID:"", NumberOfCrafts:0x0}
+  v2225 id=148 01012700
+  v2193 id=148 01012700
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- an action the session does not handle: lab table
+  error: unhandled stack request action &v2225.LabTableCombineStackRequestAction{}
+  v2225 id=148 01012900
+  v2193 id=148 01012900
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+-- no action at all
+  error: unhandled stack request action <nil>
+  v2225 id=148 01012b00
+  v2193 id=148 01012b00
+  main 0: 4 x minecraft:stone:0 id 8
+  main 1: 62 x minecraft:stone:0 id 6
+  main 2: 3 x minecraft:dirt:0 id 3
+  main 3: 2 x minecraft:stone:0 id 7
+  main 4: 1 x minecraft:iron_pickaxe:0 id 5
+== creative
+-- destroy 5 of the stone
+  error: *v2225.DestroyStackRequestAction: can only destroy items in gamemode creative/spectator
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- destroy a stack the slot does not hold
+  error: *v2225.DestroyStackRequestAction: source slot out of sync: stack ID mismatch: client expected 99999, but server had #1
+  v2225 id=148 01010300
+  v2193 id=148 01010300
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- destroy in an unknown container
+  error: *v2225.DestroyStackRequestAction: source slot out of sync: could not find container with id 250
+  v2225 id=148 01010500
+  v2193 id=148 01010500
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- craft the first creative item and take it
+  error: *v2225.CraftCreativeStackRequestAction: can only craft creative items in gamemode creative/spectator
+  v2225 id=148 01010700
+  v2193 id=148 01010700
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- craft the creative item 0
+  error: *v2225.CraftCreativeStackRequestAction: creative item network ID must be at least 1
+  v2225 id=148 01010900
+  v2193 id=148 01010900
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- craft a creative item beyond the last
+  error: *v2225.CraftCreativeStackRequestAction: can only craft creative items in gamemode creative/spectator
+  v2225 id=148 01010b00
+  v2193 id=148 01010b00
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- drop in creative
+  error: 
+  v2225 id=148 01000d01010c0001010102010a000000
+  v2193 id=148 01000d01010c0001010102010a000000
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 2 x minecraft:dirt:0 id 5
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+== crafts
+-- craft wind charges, pay the rod, take them
+  error: 
+  v2225 id=148 01000101030c000109090401020000000d00011c1c0201040000003c000132320000000000
+  v2193 id=148 01000101030c000109090401020000000d00011c1c0201040000003c000132320000000000
+  main 9: 4 x minecraft:wind_charge:0 id 1
+  ui 28: 2 x minecraft:breeze_rod:0 id 2
+-- craft twice and take the result by its slot
+  error: *v2225.CreateStackRequestAction: tried duplicating created result: 0
+  v2225 id=148 01010300
+  v2193 id=148 01010300
+  main 9: 4 x minecraft:wind_charge:0 id 1
+  ui 28: 2 x minecraft:breeze_rod:0 id 2
+-- craft a recipe the session does not know
+  error: *v2225.CraftRecipeStackRequestAction: no matching recipe found for crafting grid
+  v2225 id=148 01010500
+  v2193 id=148 01010500
+  main 9: 4 x minecraft:wind_charge:0 id 1
+  ui 28: 2 x minecraft:breeze_rod:0 id 2
+-- take the result of a craft that did not come
+  error: *v2225.CreateStackRequestAction: invalid pending result slot: 3
+  v2225 id=148 01010700
+  v2193 id=148 01010700
+  main 9: 4 x minecraft:wind_charge:0 id 1
+  ui 28: 2 x minecraft:breeze_rod:0 id 2
+-- a payment and a result of nothing in progress
+  error: 
+  v2225 id=148 01000900
+  v2193 id=148 01000900
+  main 9: 4 x minecraft:wind_charge:0 id 1
+  ui 28: 2 x minecraft:breeze_rod:0 id 2
+-- a result of nothing in progress
+  error: 
+  v2225 id=148 01000b00
+  v2193 id=148 01000b00
+  main 9: 4 x minecraft:wind_charge:0 id 1
+  ui 28: 2 x minecraft:breeze_rod:0 id 2
+== recipe book in the inventory
+-- sticks of the recipe book: craft, pay, name the result, take it
+  error: 
+  v2225 id=148 01000101020c0002000002010200000009090401040000003c000132320000000000
+  v2193 id=148 01000101020c0002000002010200000009090401040000003c000132320000000000
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+-- sticks again, the payment short
+  error: recipe 1: could not consume expected item: {minecraft:planks 2 [minecraft:acacia_planks minecraft:bamboo_planks minecraft:birch_planks minecraft:cherry_planks minecraft:crimson_planks minecraft:dark_oak_planks minecraft:jungle_planks minecraft:mangrove_planks minecraft:oak_planks minecraft:pale_oak_planks minecraft:poplar_planks minecraft:spruce_planks minecraft:warped_planks]}
+  v2225 id=148 01010300
+  v2193 id=148 01010300
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+-- sticks again, not paid at all
+  error: recipe 1: could not consume expected item: {minecraft:planks 2 [minecraft:acacia_planks minecraft:bamboo_planks minecraft:birch_planks minecraft:cherry_planks minecraft:crimson_planks minecraft:dark_oak_planks minecraft:jungle_planks minecraft:mangrove_planks minecraft:oak_planks minecraft:pale_oak_planks minecraft:poplar_planks minecraft:spruce_planks minecraft:warped_planks]}
+  v2225 id=148 01010500
+  v2193 id=148 01010500
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+-- sticks again, paid from a slot out of sync
+  error: *v2225.ConsumeStackRequestAction: stack ID mismatch: client expected 99999, but server had #1
+  v2225 id=148 01010700
+  v2193 id=148 01010700
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+-- a recipe the session does not know
+  error: *v2225.AutoCraftRecipeStackRequestAction: no matching recipe found for crafting grid
+  v2225 id=148 01010900
+  v2193 id=148 01010900
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+== recipe book at a crafting table
+-- sticks of the recipe book: craft, pay, name the result, take it
+  error: 
+  v2225 id=148 01000101020c0002000002010200000009090401040000003c000132320000000000
+  v2193 id=148 01000101020c0002000002010200000009090401040000003c000132320000000000
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+-- sticks again, the payment short
+  error: recipe 1: could not consume expected item: {minecraft:planks 2 [minecraft:acacia_planks minecraft:bamboo_planks minecraft:birch_planks minecraft:cherry_planks minecraft:crimson_planks minecraft:dark_oak_planks minecraft:jungle_planks minecraft:mangrove_planks minecraft:oak_planks minecraft:pale_oak_planks minecraft:poplar_planks minecraft:spruce_planks minecraft:warped_planks]}
+  v2225 id=148 01010300
+  v2193 id=148 01010300
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+-- sticks again, not paid at all
+  error: recipe 1: could not consume expected item: {minecraft:planks 2 [minecraft:acacia_planks minecraft:bamboo_planks minecraft:birch_planks minecraft:cherry_planks minecraft:crimson_planks minecraft:dark_oak_planks minecraft:jungle_planks minecraft:mangrove_planks minecraft:oak_planks minecraft:pale_oak_planks minecraft:poplar_planks minecraft:spruce_planks minecraft:warped_planks]}
+  v2225 id=148 01010500
+  v2193 id=148 01010500
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+-- sticks again, paid from a slot out of sync
+  error: *v2225.ConsumeStackRequestAction: stack ID mismatch: client expected 99999, but server had #1
+  v2225 id=148 01010700
+  v2193 id=148 01010700
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+-- a recipe the session does not know
+  error: *v2225.AutoCraftRecipeStackRequestAction: no matching recipe found for crafting grid
+  v2225 id=148 01010900
+  v2193 id=148 01010900
+  main 0: 2 x minecraft:oak_planks:0 id 1
+  main 9: 4 x minecraft:stick:0 id 2
+== special recipe
+-- repair the two bows: craft, name the result, pay with both
+  error: 
+  v2225 id=148 01000101020d00021c1c00000000001d1d00000000003c0001323201010200009e05
+  v2193 id=148 01000101020d00021c1c00000000001d1d00000000003c0001323201010200009e05
+  ui 50: 1 x minecraft:bow:0 id 1
+-- repair, and an action the craft does not take
+  error: multi recipe contains unexpected action *v2225.DropStackRequestAction
+  v2225 id=148 01010300
+  v2193 id=148 01010300
+  ui 50: 1 x minecraft:bow:0 id 1
+-- repair, and nothing to say what it makes
+  error: multi recipe requires one result and all consumed inputs
+  v2225 id=148 01010500
+  v2193 id=148 01010500
+  ui 50: 1 x minecraft:bow:0 id 1
+== open beacon
+-- the action of the menu
+  error: *v2225.BeaconPaymentStackRequestAction: item item.Stack{id:0, item:world.Item(nil), count:0, customName:"", lore:[]string(nil), damage:0, unbreakable:false, lockMode:0x0, anvilCost:0, data:map[string]interface {}(nil), enchantments:map[item.EnchantmentType]item.Enchantment(nil)} in beacon slot cannot be used as payment
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- a stone moved while the menu is open
+  error: 
+  v2225 id=148 01000701010c0002000009010a000000030301010c000000
+  v2193 id=148 01000701010c0002000009010a000000030301010c000000
+  main 0: 9 x minecraft:stone:0 id 5
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 3: 1 x minecraft:stone:0 id 6
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+== open loom
+-- the action of the menu
+  error: *v2225.CraftLoomRecipeStackRequestAction: input item count is less than times crafted
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- a stone moved while the menu is open
+  error: 
+  v2225 id=148 01000701010c0002000009010a000000030301010c000000
+  v2193 id=148 01000701010c0002000009010a000000030301010c000000
+  main 0: 9 x minecraft:stone:0 id 5
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 3: 1 x minecraft:stone:0 id 6
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+== open grindstone
+-- the action of the menu
+  error: *v2225.CraftGrindstoneRecipeStackRequestAction: input item(s) are empty
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- a stone moved while the menu is open
+  error: 
+  v2225 id=148 01000701010c0002000009010a000000030301010c000000
+  v2193 id=148 01000701010c0002000009010a000000030301010c000000
+  main 0: 9 x minecraft:stone:0 id 5
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 3: 1 x minecraft:stone:0 id 6
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+== open anvil
+-- the action of the menu
+  error: *v2225.CraftRecipeOptionalStackRequestAction: no item in input input slot
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- the name chosen by a filter string, out of range
+  error: *v2225.CraftRecipeOptionalStackRequestAction: filter string index 3 is out of bounds
+  v2225 id=148 01010300
+  v2193 id=148 01010300
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- the name chosen by a filter string
+  error: *v2225.CraftRecipeOptionalStackRequestAction: no item in input input slot
+  v2225 id=148 01010500
+  v2193 id=148 01010500
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- a stone moved while the menu is open
+  error: 
+  v2225 id=148 01000701010c0002000009010a000000030301010c000000
+  v2193 id=148 01000701010c0002000009010a000000030301010c000000
+  main 0: 9 x minecraft:stone:0 id 5
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 3: 1 x minecraft:stone:0 id 6
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+== open smithing table
+-- the action of the menu
+  error: *v2225.CraftRecipeStackRequestAction: recipe with network id 9 does not exist
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- a stone moved while the menu is open
+  error: 
+  v2225 id=148 01000701010c0002000009010a000000030301010c000000
+  v2193 id=148 01000701010c0002000009010a000000030301010c000000
+  main 0: 9 x minecraft:stone:0 id 5
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 3: 1 x minecraft:stone:0 id 6
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+== open stonecutter
+-- the action of the menu
+  error: *v2225.CraftRecipeStackRequestAction: recipe with network id 9 does not exist
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- a stone moved while the menu is open
+  error: 
+  v2225 id=148 01000701010c0002000009010a000000030301010c000000
+  v2193 id=148 01000701010c0002000009010a000000030301010c000000
+  main 0: 9 x minecraft:stone:0 id 5
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 3: 1 x minecraft:stone:0 id 6
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+== open enchanting table
+-- the action of the menu
+  error: *v2225.CraftRecipeStackRequestAction: invalid recipe network id: 9
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- a stone moved while the menu is open
+  error: 
+  v2225 id=148 01000701010c0002000009010a000000030301010c000000
+  v2193 id=148 01000701010c0002000009010a000000030301010c000000
+  main 0: 9 x minecraft:stone:0 id 5
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 3: 1 x minecraft:stone:0 id 6
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+== open crafting table
+-- the action of the menu
+  error: *v2225.CraftRecipeStackRequestAction: no matching recipe found for crafting grid
+  v2225 id=148 01010100
+  v2193 id=148 01010100
+  main 0: 10 x minecraft:stone:0 id 1
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
+-- a stone moved while the menu is open
+  error: 
+  v2225 id=148 01000701010c0002000009010a000000030301010c000000
+  v2193 id=148 01000701010c0002000009010a000000030301010c000000
+  main 0: 9 x minecraft:stone:0 id 5
+  main 1: 3 x minecraft:dirt:0 id 2
+  main 2: 60 x minecraft:stone:0 id 3
+  main 3: 1 x minecraft:stone:0 id 6
+  main 4: 1 x minecraft:iron_pickaxe:0 id 4
