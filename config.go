@@ -15,6 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/config"
 	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/df-mc/dragonfly/server/monitor"
 	"github.com/df-mc/dragonfly/server/remoteadmin"
 	"github.com/pelletier/go-toml"
 )
@@ -30,7 +31,7 @@ type fileConfig struct {
 	Java    javaadapter.UserConfig
 	Program programConfig
 	Log     logConfig
-	Monitor monitorConfig
+	Monitor monitor.UserConfig
 	// RemoteAdmin is the [RemoteAdmin] table: the remote admin API, which
 	// listens apart from Monitor, of other trust.
 	RemoteAdmin remoteadmin.UserConfig
@@ -185,7 +186,7 @@ func defaultFileConfig() fileConfig {
 	f := fileConfig{Server: server.DefaultConfig(), Bedrock: bedrockadapter.DefaultConfig(), Java: javaadapter.DefaultConfig()}
 	f.Log.Server.LogLevel = "info"
 	f.Log.Log.Format, f.Log.Log.RateLimit = "text", 100
-	f.Monitor = defaultMonitorConfig()
+	f.Monitor = monitor.DefaultConfig()
 	f.RemoteAdmin = remoteadmin.DefaultConfig()
 	return f
 }
@@ -201,7 +202,7 @@ func (f *fileConfig) parts() []any {
 // relative files are in adminDir, beside ops.json.
 type process struct {
 	logs     *logging.Set
-	monitor  monitorConfig
+	monitor  monitor.UserConfig
 	remote   remoteadmin.UserConfig
 	adminDir string
 }

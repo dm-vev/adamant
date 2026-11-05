@@ -942,7 +942,7 @@ func loadMeaning(t *testing.T, data []byte) (configMeaning, error) {
 		levels[c] = l.String()
 	}
 	m["Log.Format"], m["Log.Levels"], m["Log.RateLimit"] = logs.Format.String(), levels, logs.RateLimit
-	mc, health := f.Monitor.Monitoring, f.Monitor.health()
+	mc, health := f.Monitor.Monitoring, f.Monitor.Health()
 	m["Monitoring.Address"], m["Monitoring.Health"], m["Monitoring.Metrics"], m["Monitoring.Pprof"] = mc.Address, mc.Health, mc.Metrics, mc.Pprof
 	m["Monitoring.Token"], m["Monitoring.LiveTimeout"], m["Monitoring.ReadyTickAge"] = mc.Token, health.LiveTimeout.String(), health.ReadyTickAge.String()
 	m["RemoteAdmin"] = remoteMeaning(f)

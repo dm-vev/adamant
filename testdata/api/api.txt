@@ -19353,6 +19353,17 @@ server/menu	type	Tx	struct{o server/menu.Opts; changes []server/menu.Change; res
 server/menu	type	Viewer	interface{ViewCrafterSlotState(slot int, disabled bool); ViewEnchantmentOptions(options [3]server/menu.EnchantmentOption); ViewTrades(m *server/menu.Menu, merchant server/entity.Merchant, offers []server/entity.MerchantOffer); server/block.ContainerViewer}
 server/menu	var	ErrSameSlot	error
 server/menu	var	ErrSlotRefusesItem	error
+server/monitor	func	DefaultConfig	func() server/monitor.UserConfig
+server/monitor	method	Service.Addr	func() net.Addr
+server/monitor	method	Service.Close	func() error
+server/monitor	method	Service.Serve	func() net.Addr
+server/monitor	method	Service.Start	func(srv *server.Server) error
+server/monitor	method	UserConfig.Check	func(p *server/config.Problems)
+server/monitor	method	UserConfig.Health	func() server.HealthOptions
+server/monitor	method	UserConfig.Service	func(o server/monitor.Options) *server/monitor.Service
+server/monitor	type	Options	struct{Log *log/slog.Logger}
+server/monitor	type	Service	struct{conf server/monitor.UserConfig; log *log/slog.Logger; srv sync/atomic.Pointer[server.Server]; mu sync.Mutex; tried bool; hs *net/http.Server; ln net.Listener; done chan struct{}}
+server/monitor	type	UserConfig	struct{Monitoring struct{Address string; Health bool; LiveTimeout string; Metrics bool; Pprof bool; ReadyTickAge string; Token string}}
 server/player	alias	Ref	= server/player.Ref
 server/player	alias	StarvationDamageSource	= server/player.StarvationDamageSource
 server/player	const	MaxSignTextLength	untyped int = 256

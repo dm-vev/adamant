@@ -10423,6 +10423,7 @@ server/item/recipe.SmithingTrim	server/item/recipe.Recipe	value
 server/item/recipe.UserDataShapeless	server/item/recipe.Recipe	value
 server/item/recipe.recipe	server/item/recipe.Recipe	value
 server/item/recipe.wolfArmorDyeRecipe	server/item/recipe.DynamicRecipe	value
+server/monitor.Service	server.Service	*
 server/player.Config	server/world.EntityConfig	value
 server/player.Context	server/entity.blockReader	value
 server/player.Context	server/entity.pathWorld	value

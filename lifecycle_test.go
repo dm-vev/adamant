@@ -16,6 +16,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server"
 	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/df-mc/dragonfly/server/monitor"
 	"github.com/df-mc/dragonfly/server/remoteadmin"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -39,7 +40,7 @@ func TestServerRestartFreesServices(t *testing.T) {
 	base := runtime.NumGoroutine()
 
 	for run := 1; run <= 2; run++ {
-		proc := process{logs: logs, monitor: defaultMonitorConfig(), remote: remoteadmin.DefaultConfig(), adminDir: dir}
+		proc := process{logs: logs, monitor: monitor.DefaultConfig(), remote: remoteadmin.DefaultConfig(), adminDir: dir}
 		proc.monitor.Monitoring.Address = monAddr
 		proc.remote.RemoteAdmin.Enabled, proc.remote.RemoteAdmin.Address = true, remoteAddr
 		srv := start(restartConfig(t, dir), proc)

@@ -1,4 +1,9 @@
-package main
+// Package monitor serves what a program needs to watch a server: its metrics,
+// the probes of its health and the Go profiles of the process, over HTTP. The
+// [Monitoring] table of config.toml is UserConfig, and Service is the monitor
+// as a service of a server (server.Config.Services), which a program that
+// embeds the server adds to its Config, as it does the remote admin API.
+package monitor
 
 import (
 	"crypto/subtle"
@@ -7,6 +12,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,9 +21,9 @@ import (
 	"github.com/dm-vev/adamant/net/metrics"
 )
 
-// monitorConfig is the part of config.toml of what the process serves
-// over HTTP to be watched: the [Monitoring] table.
-type monitorConfig struct {
+// UserConfig is the [Monitoring] table of config.toml: what the process
+// serves over HTTP to be watched.
+type UserConfig struct {
 	Monitoring struct {
 		// Address serves metrics, health and profiles over HTTP, as
 		// host:port; "" serves nothing.
@@ -46,11 +52,11 @@ type monitorConfig struct {
 // log before the process is killed.
 const stuckTickLogged = time.Minute
 
-// defaultMonitorConfig returns the [Monitoring] table of the default file:
+// DefaultConfig returns the [Monitoring] table of the default file:
 // metrics, health and profiles on localhost:6060, as the program served
 // them before it had the table.
-func defaultMonitorConfig() monitorConfig {
-	var c monitorConfig
+func DefaultConfig() UserConfig {
+	var c UserConfig
 	m := &c.Monitoring
 	m.Address, m.Health, m.Metrics, m.Pprof = "localhost:6060", true, true, true
 	m.LiveTimeout, m.ReadyTickAge = "2m", "5s"
@@ -58,7 +64,7 @@ func defaultMonitorConfig() monitorConfig {
 }
 
 // Check adds the problems of the [Monitoring] table to p.
-func (c monitorConfig) Check(p *config.Problems) {
+func (c UserConfig) Check(p *config.Problems) {
 	m := c.Monitoring
 	if config.Address(p, "Monitoring.Address", "tcp", m.Address) && m.Address != "" && m.Pprof && m.Token == "" && !loopback(m.Address) {
 		p.Errorf("Monitoring.Address", "Monitoring.Pprof on %s needs Monitoring.Token: profiles show the memory and the command line of the process", m.Address)
@@ -71,8 +77,10 @@ func (c monitorConfig) Check(p *config.Problems) {
 	}
 }
 
-// health returns the bounds of the probes of the table.
-func (c monitorConfig) health() server.HealthOptions {
+// Health returns the bounds of the probes of the table: its LiveTimeout and
+// ReadyTickAge, 0 where they are empty, which the server takes as its
+// defaults.
+func (c UserConfig) Health() server.HealthOptions {
 	var o server.HealthOptions
 	o.LiveTimeout, _ = time.ParseDuration(strings.TrimSpace(c.Monitoring.LiveTimeout))
 	o.ReadyTickAge, _ = time.ParseDuration(strings.TrimSpace(c.Monitoring.ReadyTickAge))
@@ -94,116 +102,168 @@ func loopback(addr string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// monitor serves what config.toml's [Monitoring] says: the metrics of the
-// process and of the server, the probes of its health and its profiles.
-type monitor struct {
-	conf monitorConfig
+// Options are what the program adds to the table to serve it.
+type Options struct {
+	// Log is where the monitor logs; slog.Default() if nil.
+	Log *slog.Logger
+}
+
+// Service is the monitor as a service of a server (server.Config.Services):
+// the metrics of the process and of the server, the probes of its health and
+// the profiles, as the table says. The server starts it as it starts, and
+// closes it, freeing its port, as it closes.
+type Service struct {
+	conf UserConfig
 	log  *slog.Logger
 	// srv is the server once it was made: until then, /readyz fails as
 	// starting and /livez passes.
 	srv atomic.Pointer[server.Server]
+
+	mu sync.Mutex
+	// tried is whether Serve ran since the last Close, so that Start does
+	// not log a failure to listen twice.
+	tried bool
 	// hs is the HTTP server of the monitor once it serves, and done is
 	// closed once the goroutine that serves it ended.
 	hs   *http.Server
+	ln   net.Listener
 	done chan struct{}
 }
 
-// newMonitor returns the monitor of the table c, logging through log.
-func newMonitor(c monitorConfig, log *slog.Logger) *monitor {
-	return &monitor{conf: c, log: log}
+// Service returns the service that serves the monitor as the table says, to
+// pass in server.Config.Services. Check must have passed: a table it refuses
+// may serve what it would not.
+func (c UserConfig) Service(o Options) *Service {
+	log := o.Log
+	if log == nil {
+		log = slog.Default()
+	}
+	return &Service{conf: c, log: log}
 }
 
 // setServer makes the server the one the monitor serves the metrics and the
 // health of.
-func (m *monitor) setServer(srv *server.Server) { m.srv.Store(srv) }
+func (s *Service) setServer(srv *server.Server) { s.srv.Store(srv) }
 
-// Start makes srv the server the monitor serves, as a service of srv
-// (server.Config.Services): the monitor serves from before srv is made,
-// so that /livez answers while the worlds load.
-func (m *monitor) Start(srv *server.Server) error {
-	m.setServer(srv)
+// Start makes srv the server the monitor serves and, if it does not serve
+// yet, serves. A monitor that cannot listen is logged, and Start returns
+// nil: it does not stop a game.
+//
+// A program that wants /livez to answer while the worlds load calls Serve
+// before it makes the server.
+func (s *Service) Start(srv *server.Server) error {
+	s.setServer(srv)
+	s.mu.Lock()
+	tried := s.tried
+	s.mu.Unlock()
+	if !tried {
+		s.Serve()
+	}
 	return nil
 }
 
-var _ server.Service = (*monitor)(nil)
+var _ server.Service = (*Service)(nil)
 
 // handler returns the handler of the paths the table turns on, and the
 // paths.
-func (m *monitor) handler() (http.Handler, []string) {
-	c := m.conf.Monitoring
+func (s *Service) handler() (http.Handler, []string) {
+	c := s.conf.Monitoring
 	mux := http.NewServeMux()
 	var paths []string
 	if c.Metrics {
-		mux.Handle("GET /metrics", m.auth(http.HandlerFunc(m.metrics)))
+		mux.Handle("GET /metrics", s.auth(http.HandlerFunc(s.metrics)))
 		paths = append(paths, "/metrics")
 	}
 	if c.Health {
-		mux.HandleFunc("GET /livez", m.live)
-		mux.HandleFunc("GET /readyz", m.ready)
-		mux.HandleFunc("GET /healthz", m.live)
+		mux.HandleFunc("GET /livez", s.live)
+		mux.HandleFunc("GET /readyz", s.ready)
+		mux.HandleFunc("GET /healthz", s.live)
 		paths = append(paths, "/livez", "/readyz", "/healthz")
 	}
 	if c.Pprof {
-		mux.Handle("/debug/pprof/", m.auth(http.HandlerFunc(pprof.Index)))
-		mux.Handle("/debug/pprof/cmdline", m.auth(http.HandlerFunc(pprof.Cmdline)))
-		mux.Handle("/debug/pprof/profile", m.auth(http.HandlerFunc(pprof.Profile)))
-		mux.Handle("/debug/pprof/symbol", m.auth(http.HandlerFunc(pprof.Symbol)))
-		mux.Handle("/debug/pprof/trace", m.auth(http.HandlerFunc(pprof.Trace)))
+		mux.Handle("/debug/pprof/", s.auth(http.HandlerFunc(pprof.Index)))
+		mux.Handle("/debug/pprof/cmdline", s.auth(http.HandlerFunc(pprof.Cmdline)))
+		mux.Handle("/debug/pprof/profile", s.auth(http.HandlerFunc(pprof.Profile)))
+		mux.Handle("/debug/pprof/symbol", s.auth(http.HandlerFunc(pprof.Symbol)))
+		mux.Handle("/debug/pprof/trace", s.auth(http.HandlerFunc(pprof.Trace)))
 		paths = append(paths, "/debug/pprof/")
 	}
 	return mux, paths
 }
 
-// serve listens on the address of the table and serves its paths in the
+// Serve listens on the address of the table and serves its paths in the
 // background, and returns the address it listens on, nil if none. A
 // failure to listen is logged, and the server runs without: a monitor that
-// cannot bind does not stop a game.
-func (m *monitor) serve() net.Addr {
-	c := m.conf.Monitoring
-	h, paths := m.handler()
+// cannot bind does not stop a game. It does nothing, and returns the
+// address, if the monitor serves already.
+func (s *Service) Serve() net.Addr {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tried = true
+	if s.hs != nil {
+		return s.ln.Addr()
+	}
+	c := s.conf.Monitoring
+	h, paths := s.handler()
 	if c.Address == "" || len(paths) == 0 {
 		return nil
 	}
 	ln, err := net.Listen("tcp", c.Address)
 	if err != nil {
-		m.log.Error("Monitoring not served: "+err.Error(), "addr", c.Address)
+		s.log.Error("Monitoring not served: "+err.Error(), "addr", c.Address)
 		return nil
 	}
 	if c.Metrics && c.Token == "" && !loopback(c.Address) {
-		m.log.Warn("Metrics are served to the network without a token: set Monitoring.Token.", "addr", c.Address)
+		s.log.Warn("Metrics are served to the network without a token: set Monitoring.Token.", "addr", c.Address)
 	}
-	m.log.Info("Monitoring served.", "addr", ln.Addr().String(), "paths", strings.Join(paths, " "))
+	s.log.Info("Monitoring served.", "addr", ln.Addr().String(), "paths", strings.Join(paths, " "))
 	hs := &http.Server{
 		Handler:           h,
 		ReadHeaderTimeout: 5 * time.Second,
 		// A CPU profile takes 30 seconds by default.
 		WriteTimeout: time.Minute,
-		ErrorLog:     slog.NewLogLogger(m.log.Handler(), slog.LevelDebug),
+		ErrorLog:     slog.NewLogLogger(s.log.Handler(), slog.LevelDebug),
 	}
-	m.hs, m.done = hs, make(chan struct{})
+	done := make(chan struct{})
+	s.hs, s.ln, s.done = hs, ln, done
 	go func() {
-		defer close(m.done)
+		defer close(done)
 		_ = hs.Serve(ln)
 	}()
 	return ln.Addr()
 }
 
-// Close stops serving, as the server it serves closes, and returns once
-// the port is free and the goroutine that served ended.
-func (m *monitor) Close() error {
-	if m.hs == nil {
+// Addr returns the address the monitor listens on, nil while it does not.
+func (s *Service) Addr() net.Addr {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.hs == nil {
 		return nil
 	}
-	err := m.hs.Close()
-	<-m.done
-	m.hs = nil
+	return s.ln.Addr()
+}
+
+// Close stops serving, as the server it serves closes, and returns once
+// the port is free and the goroutine that served ended. The service may be
+// started again, for another server.
+func (s *Service) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tried = false
+	s.srv.Store(nil)
+	if s.hs == nil {
+		return nil
+	}
+	err := s.hs.Close()
+	<-s.done
+	s.hs, s.ln = nil, nil
 	return err
 }
 
 // auth returns h behind the token of the table, if it has one: a request
 // without "Authorization: Bearer <token>" is answered 401.
-func (m *monitor) auth(h http.Handler) http.Handler {
-	token := m.conf.Monitoring.Token
+func (s *Service) auth(h http.Handler) http.Handler {
+	token := s.conf.Monitoring.Token
 	if token == "" {
 		return h
 	}
@@ -219,28 +279,28 @@ func (m *monitor) auth(h http.Handler) http.Handler {
 }
 
 // metrics serves the metrics of the network stack and of the server.
-func (m *monitor) metrics(w http.ResponseWriter, r *http.Request) {
+func (s *Service) metrics(w http.ResponseWriter, r *http.Request) {
 	regs := []*metrics.Registry{metrics.Default}
-	if srv := m.srv.Load(); srv != nil {
+	if srv := s.srv.Load(); srv != nil {
 		regs = append(regs, srv.Metrics())
 	}
 	metrics.Handler(regs...).ServeHTTP(w, r)
 }
 
 // live serves /livez.
-func (m *monitor) live(w http.ResponseWriter, r *http.Request) {
+func (s *Service) live(w http.ResponseWriter, r *http.Request) {
 	report := server.HealthReport{OK: true}
-	if srv := m.srv.Load(); srv != nil {
-		report = srv.Live(m.conf.health())
+	if srv := s.srv.Load(); srv != nil {
+		report = srv.Live(s.conf.Health())
 	}
 	writeReport(w, r, report)
 }
 
 // ready serves /readyz.
-func (m *monitor) ready(w http.ResponseWriter, r *http.Request) {
+func (s *Service) ready(w http.ResponseWriter, r *http.Request) {
 	report := server.HealthReport{Checks: []server.HealthCheck{{Name: "server/listening", Detail: "starting"}}}
-	if srv := m.srv.Load(); srv != nil {
-		report = srv.Ready(m.conf.health())
+	if srv := s.srv.Load(); srv != nil {
+		report = srv.Ready(s.conf.Health())
 	}
 	writeReport(w, r, report)
 }

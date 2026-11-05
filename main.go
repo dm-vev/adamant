@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd/builtin"
 	"github.com/df-mc/dragonfly/server/console"
 	"github.com/df-mc/dragonfly/server/logging"
+	"github.com/df-mc/dragonfly/server/monitor"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/dm-vev/adamant/net/metrics"
 )
@@ -42,8 +43,8 @@ func main() {
 // monitor serves before the worlds are opened, so that /livez answers
 // while they load. Closing the server closes both, freeing their ports.
 func start(conf server.Config, proc process) *server.Server {
-	mon := newMonitor(proc.monitor, proc.logs.Logger(logging.Server))
-	mon.serve()
+	mon := proc.monitor.Service(monitor.Options{Log: proc.logs.Logger(logging.Server)})
+	mon.Serve()
 	conf.Services = append(conf.Services, mon, remoteAdminService(proc))
 
 	srv := conf.New()
