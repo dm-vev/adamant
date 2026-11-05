@@ -7,7 +7,9 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
 // Seed 42 holds a wide ocean around chunk (24, 28), with the kelp forests of
@@ -109,4 +111,46 @@ func TestOceanPlantsSurviveGeneration(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestKelpColumnsStandOnTheirFloor generates chunks where the seagrass of one
+// origin chunk and the kelp of another meet. Java places a kelp column on a
+// sturdy floor or not at all, so the cell under the lowest kelp of a column
+// holds a floor, whichever feature took the cell it would have started in.
+func TestKelpColumnsStandOnTheirFloor(t *testing.T) {
+	world.DefaultBlockRegistry.Finalize()
+	g := NewOverworld(oceanPlantsSeed)
+	registry := world.DefaultBlockRegistry
+	kelp := map[uint32]struct{}{}
+	for age := range 26 {
+		kelp[world.BlockRuntimeID(block.Kelp{Age: age})] = struct{}{}
+	}
+	columns := 0
+	// These hold the columns that stood on seagrass before the fix.
+	for _, pos := range []world.ChunkPos{{20, 26}, {26, 30}} {
+		c := chunk.New(registry, world.Overworld.Range())
+		g.GenerateChunk(pos, c, world.GenerationContext{})
+		for x := range uint8(16) {
+			for z := range uint8(16) {
+				for y := int16(world.Overworld.Range().Min()) + 1; y <= 70; y++ {
+					if _, isKelp := kelp[c.Block(x, y, z, 0)]; !isKelp {
+						continue
+					}
+					below := world.NativeStateAt(c, x, y-1, z)
+					if _, onKelp := kelp[below.Block]; onKelp {
+						continue
+					}
+					columns++
+					shape, err := gamedata.BlockGenerationShapeID(below.CanonicalID(registry))
+					if err != nil || shape.Sturdy&(1<<uint(cube.FaceUp)) == 0 {
+						name, _ := world.CanonicalState(registry, below)
+						t.Errorf("kelp at chunk %v (%d, %d, %d) stands on %s, which is no floor", pos, x, y, z, name.Name)
+					}
+				}
+			}
+		}
+	}
+	if columns < 10 {
+		t.Fatalf("found %d kelp columns, want a forest", columns)
+	}
 }

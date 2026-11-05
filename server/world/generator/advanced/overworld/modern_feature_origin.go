@@ -95,10 +95,11 @@ func (s *originStep) seal() {
 
 // apply writes the step into the target chunk of r. A write applies only
 // where the chunk still holds the state the feature found, so a feature that
-// ran against a different neighbour never replaces the blocks of another.
+// ran against a different neighbour never replaces the blocks of another, and
+// kelp only where its floor holds.
 func (s *originStep) apply(r *featureRegion) {
 	for _, w := range s.writes {
-		if r.inTarget(w.pos) && r.nativeState(w.pos) == w.before {
+		if r.inTarget(w.pos) && r.nativeState(w.pos) == w.before && r.kelpFloorHolds(w.pos, w.after) {
 			r.setWithFlags(w.pos, w.after, 16)
 		}
 	}
@@ -140,12 +141,13 @@ func originPrecedes(a, b world.ChunkPos) bool {
 
 // applyContext writes the context record of origin into a recording region:
 // like apply, a write lands only where the region still holds the state the
-// feature found, and side outputs other than tick reservations are dropped
-// as they are for an origin decorated only for context.
+// feature found, and kelp only where its floor holds. Side outputs other than
+// tick reservations are dropped as they are for an origin decorated only for
+// context.
 func (s *originStep) applyContext(r *featureRegion, origin world.ChunkPos) {
 	r.SetOrigin(origin[0], origin[1])
 	for _, w := range s.writes {
-		if r.nativeState(w.pos) == w.before {
+		if r.nativeState(w.pos) == w.before && r.kelpFloorHolds(w.pos, w.after) {
 			r.setWithFlags(w.pos, w.after, 16)
 		}
 	}
