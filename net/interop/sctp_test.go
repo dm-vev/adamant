@@ -94,19 +94,42 @@ func (o *ourSCTP) loop() {
 	}
 }
 
+// sctpStall is how long the transfers of the tests over a lossy path may make
+// no progress before the test calls them stuck. Each retransmission timeout
+// doubles the next, at 10% loss in both directions a message or its
+// acknowledgement is lost again and again, and a transfer of 1.8 MB runs for
+// 25 to 60 s on a loaded machine, with single waits of 10 s and more for the
+// next piece. The association gives up by itself, with sctp.ErrTimeout, after
+// MaxRetransmissions timeouts in a row.
+const sctpStall = 60 * time.Second
+
+// send queues a message, waiting while the send buffer is full for as long as
+// the peer acknowledges data: it fails once the buffer has not drained for
+// sctpStall or the association failed.
 func (o *ourSCTP) send(t *testing.T, stream uint16, data []byte, unordered bool, maxRetransmits int) {
 	t.Helper()
 	opts := sctp.SendOptions{Unordered: unordered, Partial: maxRetransmits >= 0, MaxRetransmits: maxRetransmits}
-	for end := time.Now().Add(10 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+	last, end := -1, time.Now().Add(sctpStall)
+	for ; ; time.Sleep(5 * time.Millisecond) {
 		o.mu.Lock()
 		err := o.assoc.Send(stream, sctp.PPIDBinary, data, opts, time.Now())
+		buffered, failed := o.assoc.Buffered(), o.assoc.Err()
 		o.mu.Unlock()
 		if err == nil {
 			return
 		}
-		if err != sctp.ErrBufferFull || time.Now().After(end) {
+		if err != sctp.ErrBufferFull {
 			t.Fatalf("send: %v", err)
 		}
+		if failed != nil {
+			t.Fatalf("send: the association failed: %v", failed)
+		}
+		if last < 0 || buffered < last {
+			end = time.Now().Add(sctpStall)
+		} else if time.Now().After(end) {
+			t.Fatalf("send: the buffer of %d bytes did not drain for %v: %v", buffered, sctpStall, err)
+		}
+		last = buffered
 	}
 }
 
@@ -161,7 +184,7 @@ func expectMessages(t *testing.T, o *ourSCTP, count int, stream uint16) {
 			if m.stream != stream || !bytes.Equal(m.data, messageData(i)) {
 				t.Fatalf("message %d: stream %d, %d bytes", i, m.stream, len(m.data))
 			}
-		case <-time.After(20 * time.Second):
+		case <-time.After(sctpStall):
 			t.Fatalf("received %d of %d messages", i, count)
 		}
 	}
@@ -171,7 +194,7 @@ func readPion(t *testing.T, s *pionsctp.Stream, count int) {
 	t.Helper()
 	buf := make([]byte, 1<<17)
 	for i := range count {
-		_ = s.SetReadDeadline(time.Now().Add(20 * time.Second))
+		_ = s.SetReadDeadline(time.Now().Add(sctpStall))
 		n, _, err := s.ReadSCTP(buf)
 		if err != nil {
 			t.Fatalf("pion read %d: %v", i, err)
@@ -211,7 +234,7 @@ func testSCTPWithPion(t *testing.T, ourConnects bool, drop float64) {
 		}
 		buf := make([]byte, 1<<17)
 		for i := 1; i < count; i++ {
-			_ = stream.SetReadDeadline(time.Now().Add(20 * time.Second))
+			_ = stream.SetReadDeadline(time.Now().Add(sctpStall))
 			n, _, err := stream.ReadSCTP(buf)
 			if err != nil || !bytes.Equal(buf[:n], messageData(i)) {
 				t.Fatalf("pion message %d: %d bytes, %v", i, n, err)
