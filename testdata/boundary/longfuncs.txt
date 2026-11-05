@@ -117,4 +117,4 @@ server/world/tick.go ticker.tickEntityHandle 132
 server/world/tick.go ticker.tickWorld 116
 server/world/world.go Tx.buildStructure 113
 server/world/world.go Tx.setBlock 135
-server/world/world.go World.loadChunk 127
+server/world/world.go World.loadChunk 113

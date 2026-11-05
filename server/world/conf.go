@@ -278,7 +278,6 @@ func (conf Config) New() *World {
 		chunks:              make(map[ChunkPos]*Column),
 		chunkRequests:       make(map[ChunkPos][]chunkCallback),
 		unsettled:           make(map[ChunkPos]*Column),
-		lightFills:          make(chan struct{}, schedulerCPUs()),
 		workerLocals:        []map[any]any{make(map[any]any)},
 		queueClosing:        make(chan struct{}),
 		queueWake:           make(chan struct{}, 1),
@@ -299,6 +298,7 @@ func (conf Config) New() *World {
 	}
 	w.scheduledBlockTicks.faults = &w.blockFaults
 	w.scheduledFluidTicks.faults = &w.blockFaults
+	w.initBackground()
 	if err := w.loadBorder(); err != nil {
 		panic(err)
 	}
@@ -356,6 +356,16 @@ func (conf Config) New() *World {
 
 	constructed = true
 	return w
+}
+
+// initBackground makes what the world needs for the work it has done off its
+// owner, bounded by the CPUs the scheduler runs on: the fills of light of the
+// columns it reads, and the reads of columns ahead of their load.
+func (w *World) initBackground() {
+	cpus := schedulerCPUs()
+	w.lightFills = make(chan struct{}, cpus)
+	w.prefetched = make(map[ChunkPos]*columnRead)
+	w.readSlots = make(chan struct{}, max(2, cpus/4))
 }
 
 // schedulerCPUs returns the CPUs the process runs on at once: the logical

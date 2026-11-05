@@ -10864,6 +10864,7 @@ server/world/mcdb.DB	server/world.MapDataProvider	*
 server/world/mcdb.DB	server/world.Provider	*
 server/world/mcdb.DB	server/world.SettingsWriter	*
 server/world/mcdb.DB	server/world.blockRegistrySetter	*
+server/world/mcdb.DB	server/world.concurrentLoader	*
 server/world/mcdb.DB	server/world.positionTrackingProvider	*
 server/world/mcdb.DB	server/world.structureTemplateProvider	*
 server/world/mcdb.DB	server/world.worldDataProvider	*

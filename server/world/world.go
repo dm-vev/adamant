@@ -126,6 +126,11 @@ type World struct {
 	// lightFills bounds how many columns read from the provider have their
 	// light filled at once.
 	lightFills chan struct{}
+	// prefetched holds the columns being read from the provider ahead of
+	// their load, by position, and readSlots bounds how many are read at
+	// once: see prefetchColumn. Only the owner touches the map.
+	prefetched map[ChunkPos]*columnRead
+	readSlots  chan struct{}
 
 	// chunks holds a cache of chunks currently loaded. These chunks are cleared
 	// from this map after some time of not being used.
@@ -3083,21 +3088,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 	// persistent provider (e.g. LevelDB), after a save of it still waiting
 	// for the background saver. A column taken from staging is written by
 	// the next capture as it is then.
-	var (
-		column *chunk.Column
-		staged bool
-		from   Provider
-		err    error
-	)
-	if w.saver != nil {
-		column, staged, from, err = w.saver.takeStaged(pos)
-	}
-	if !staged {
-		if from == nil {
-			from = w.conf.Provider
-		}
-		column, err = from.LoadColumn(pos, w.conf.Dim)
-	}
+	column, staged, err := w.readColumn(pos)
 
 	switch {
 	case err == nil:
@@ -3204,6 +3195,29 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		}
 		return col, err
 	}
+}
+
+// readColumn returns the column at pos for loadChunk: the one staged as it
+// unloaded, whether staged says so, or the one read from the provider, or
+// through the commit still holding its last save, or the one a read ahead
+// brought. An error is that of the provider, which wraps leveldb.ErrNotFound
+// for a column it has none of.
+func (w *World) readColumn(pos ChunkPos) (column *chunk.Column, staged bool, err error) {
+	if w.saver != nil {
+		var from Provider
+		if column, staged, from, err = w.saver.takeStaged(pos); staged {
+			return column, true, err
+		}
+		if from != nil {
+			column, err = from.LoadColumn(pos, w.conf.Dim)
+			return column, false, err
+		}
+	}
+	if column, ahead, err := w.takePrefetched(pos); ahead {
+		return column, false, err
+	}
+	column, err = w.conf.Provider.LoadColumn(pos, w.conf.Dim)
+	return column, false, err
 }
 
 // loadChunkAsync loads or generates the chunk at pos in the background,

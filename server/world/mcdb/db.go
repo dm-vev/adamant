@@ -338,6 +338,12 @@ func (db *DB) LoadColumn(pos world.ChunkPos, dim world.Dimension) (*chunk.Column
 	return col, nil
 }
 
+// LoadsConcurrently reports that LoadColumn may be called from several
+// goroutines at once, and while columns are stored, as LevelDB reads are:
+// the world then reads the columns its loaders are about to ask for ahead of
+// its owner.
+func (db *DB) LoadsConcurrently() bool { return true }
+
 const chunkVersion = 42
 
 func (db *DB) column(g getter, k dbKey) (*chunk.Column, error) {

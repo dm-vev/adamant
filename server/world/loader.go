@@ -133,6 +133,9 @@ func (l *Loader) Load(tx *Tx, n int) {
 	queueLen := len(l.loadQueue)
 	l.mu.RUnlock()
 	ignored := l.ignoredByChunkLoading(tx)
+	if !ignored {
+		l.prefetchAhead(tx.World())
+	}
 	budget, spent := n*generationRequestsPerLoad, 0
 	for processed := 0; spent < budget && processed < queueLen; processed++ {
 		l.mu.Lock()

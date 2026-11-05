@@ -362,6 +362,30 @@ func (s *chunkSaver) writeNow(pos ChunkPos) Commit {
 	return s.inCommit[pos]
 }
 
+// idle reports whether the saver holds nothing of the column at pos that the
+// provider does not: no save of it waiting, being written or failed, no
+// staged column, and no write in a commit not yet committed.
+func (s *chunkSaver) idle(pos ChunkPos) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.waiting[pos]; ok {
+		return false
+	}
+	if _, ok := s.staged[pos]; ok {
+		return false
+	}
+	if _, ok := s.failed[pos]; ok {
+		return false
+	}
+	if _, ok := s.inCommit[pos]; ok {
+		return false
+	}
+	if s.busy && s.writing == pos || s.encoding != nil && s.encoding.pos == pos {
+		return false
+	}
+	return true
+}
+
 // saveAttempts is how many writes of a save in a row may panic before the
 // saver drops it.
 const saveAttempts = 2
