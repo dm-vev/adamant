@@ -106,6 +106,21 @@ func (cfg Config) Apply(data *world.EntityData) {
 	conf := fillDefaults(cfg)
 
 	data.Name, data.Pos, data.Rot = conf.Name, conf.Position, conf.Rotation
+	pdata := newPlayerData(cfg, conf)
+	playerUUID := conf.DataUUID
+	if playerUUID == uuid.Nil {
+		playerUUID = conf.UUID
+	}
+	pdata.dataUUID = playerUUID
+	initPortalTravel(pdata, playerUUID)
+	pdata.hunger.setState(conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation)
+	pdata.experience.Add(conf.Experience)
+	data.Data = pdata
+}
+
+// newPlayerData makes the data of a player of the configuration conf, which
+// fillDefaults made of cfg.
+func newPlayerData(cfg, conf Config) *playerData {
 	slot := new(uint32)
 	atomic.StoreUint32(slot, uint32(conf.HeldSlot))
 	unlockedRecipes := recipeSet(conf.UnlockedRecipes)
@@ -163,16 +178,32 @@ func (cfg Config) Apply(data *world.EntityData) {
 		respawnRotation:     conf.RespawnRotation,
 		hasRespawnPoint:     conf.HasRespawnPoint,
 	}
-	playerUUID := conf.DataUUID
-	if playerUUID == uuid.Nil {
-		playerUUID = conf.UUID
-	}
-	pdata.dataUUID = playerUUID
+	return pdata
+}
+
+// initPortalTravel makes the portal travel of the player data pdata, whose
+// data is saved under playerUUID.
+func initPortalTravel(pdata *playerData, playerUUID uuid.UUID) {
 	pdata.portalTravel = entity.NewPortalTravelComputer()
 	// NetherPortalBlock.getPortalTransitionTime: players wait the
 	// players_nether_portal_(creative|default)_delay ticks; end portals are
 	// immediate.
-	pdata.portalTravel.Delay = func(tx *world.Tx, target world.Dimension) time.Duration {
+	pdata.portalTravel.Delay = portalDelay(pdata)
+	pdata.portalTravel.Teleport = portalTeleport
+	pdata.portalTravel.TeleportAllowed = portalTeleportAllowed
+	pdata.portalTravel.DestinationWorld = portalDestination(pdata)
+	pdata.portalTravel.SpawnPoint = portalSpawnPoint(pdata, playerUUID)
+	pdata.portalTravel.SpawnRotation = portalSpawnRotation(pdata)
+	pdata.portalTravel.Player = true
+	// Only players create a portal at the destination when no linked portal exists.
+	pdata.portalTravel.CreatePortal = true
+}
+
+// portalDelay returns the delay of the portal travel of the player data:
+// players wait the ticks of the game rule of their game mode, and end portals
+// are immediate.
+func portalDelay(pdata *playerData) func(tx *world.Tx, target world.Dimension) time.Duration {
+	return func(tx *world.Tx, target world.Dimension) time.Duration {
 		if target == world.End {
 			return 0
 		}
@@ -182,20 +213,29 @@ func (cfg Config) Apply(data *world.EntityData) {
 		}
 		return time.Duration(max(0, tx.World().GameRuleInt(rule))) * time.Second / 20
 	}
-	pdata.portalTravel.Teleport = func(e entity.Traveller, pos mgl64.Vec3, rotation cube.Rotation, velocity mgl64.Vec3) {
-		p := e.(*Player)
-		p.data.Rot = rotation
-		p.forceTeleport(pos)
-		p.data.Vel = velocity
-		p.SetVelocity(velocity)
-	}
-	pdata.portalTravel.TeleportAllowed = func(e entity.Traveller, pos mgl64.Vec3) bool {
-		p := e.(*Player)
-		ctx := NewEventContext(p.tx, p)
-		p.Handler().HandleTeleport(ctx, pos)
-		return !ctx.Cancelled()
-	}
-	pdata.portalTravel.DestinationWorld = func(tx *world.Tx, target world.Dimension) *world.World {
+}
+
+// portalTeleport teleports a traveller to a point of a portal.
+func portalTeleport(e entity.Traveller, pos mgl64.Vec3, rotation cube.Rotation, velocity mgl64.Vec3) {
+	p := e.(*Player)
+	p.data.Rot = rotation
+	p.forceTeleport(pos)
+	p.data.Vel = velocity
+	p.SetVelocity(velocity)
+}
+
+// portalTeleportAllowed asks the handler of the traveller if it may teleport.
+func portalTeleportAllowed(e entity.Traveller, pos mgl64.Vec3) bool {
+	p := e.(*Player)
+	ctx := NewEventContext(p.tx, p)
+	p.Handler().HandleTeleport(ctx, pos)
+	return !ctx.Cancelled()
+}
+
+// portalDestination returns the function that finds the world a traveller
+// reaches through a portal to the target dimension.
+func portalDestination(pdata *playerData) func(tx *world.Tx, target world.Dimension) *world.World {
+	return func(tx *world.Tx, target world.Dimension) *world.World {
 		source := tx.World()
 		if source.Dimension() != world.End || target != world.End {
 			return source.PortalDestination(target)
@@ -209,7 +249,12 @@ func (cfg Config) Apply(data *world.EntityData) {
 		}
 		return source.DefaultWorld()
 	}
-	pdata.portalTravel.SpawnPoint = func(tx *world.Tx) mgl64.Vec3 {
+}
+
+// portalSpawnPoint returns the function that finds where a player arrives at
+// in the world of the transaction.
+func portalSpawnPoint(pdata *playerData, playerUUID uuid.UUID) func(tx *world.Tx) mgl64.Vec3 {
+	return func(tx *world.Tx) mgl64.Vec3 {
 		pos := pdata.respawnPosition
 		if !pdata.hasRespawnPoint {
 			pos = tx.World().PlayerSpawn(playerUUID)
@@ -230,7 +275,12 @@ func (cfg Config) Apply(data *world.EntityData) {
 		}
 		return tx.PlayerSpawnPosition(tx.World().Spawn())
 	}
-	pdata.portalTravel.SpawnRotation = func(tx *world.Tx) (cube.Rotation, bool) {
+}
+
+// portalSpawnRotation returns the function that finds the rotation of a
+// player who arrives at their respawn point.
+func portalSpawnRotation(pdata *playerData) func(tx *world.Tx) (cube.Rotation, bool) {
+	return func(tx *world.Tx) (cube.Rotation, bool) {
 		if !pdata.hasRespawnPoint || pdata.respawnDimension != tx.World().Dimension() {
 			return cube.Rotation{}, false
 		}
@@ -264,12 +314,6 @@ func (cfg Config) Apply(data *world.EntityData) {
 		}
 		return cube.Rotation{yaw - 180, 0}, true
 	}
-	pdata.portalTravel.Player = true
-	// Only players create a portal at the destination when no linked portal exists.
-	pdata.portalTravel.CreatePortal = true
-	pdata.hunger.setState(conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation)
-	pdata.experience.Add(conf.Experience)
-	data.Data = pdata
 }
 
 // recipeSet returns the set of the recipes of the IDs passed.

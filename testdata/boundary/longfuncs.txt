@@ -38,8 +38,6 @@ server/block/explosion.go ExplosionConfig.Explode 140
 server/block/smelter.go smelter.tickSmelting 117
 server/block/vine.go Vines.RandomTick 116
 server/checkpoint.go checkpointer.checkpoint 105
-server/conf.go Config.New 125
-server/conf.go UserConfig.Config 104
 server/entity/ai_behaviors.go newMoveToTargetSink 112
 server/entity/ai_behaviors_jump.go newLongJumpToPreferredBlock 111
 server/entity/goat.go newPrepareRamNearestTarget 110
@@ -57,7 +55,6 @@ server/loot/tags.go loadTags 105
 server/menu/multicraft_result.go deriveMultiCraftResult 167
 server/menu/repair.go Tx.Repair 147
 server/menu/trade.go Tx.TakeTrade 115
-server/player/conf.go Config.Apply 169
 server/player/player_health.go Player.AttackEntity 199
 server/player/player_health.go Player.Hurt 116
 server/player/player_tick.go Player.Tick 140

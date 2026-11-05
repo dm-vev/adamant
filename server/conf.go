@@ -262,6 +262,28 @@ func serverLogger(l *slog.Logger) *slog.Logger {
 // and connections from the Server's listeners may be accepted by calling
 // Server.Listen() and Server.Accept() afterwards.
 func (conf Config) New() *Server {
+	conf.defaultProviders()
+	conf.defaultLimits()
+	conf.defaultRegistries()
+	conf.defaultSecurity()
+	conf.prepareContent()
+
+	srv := &Server{
+		conf:       conf,
+		incoming:   make(chan incoming),
+		dimensions: make(map[world.Dimension]*world.World),
+		idleStop:   make(chan struct{}),
+	}
+	srv.initStorage()
+	srv.initServices()
+	registerVanillaContent()
+	srv.createWorlds(conf.chooseDefaultDimension())
+	return srv
+}
+
+// defaultProviders fills the log, the name and the providers of the
+// configuration that were left unset, and warns if it has no listeners.
+func (conf *Config) defaultProviders() {
 	conf.Log = serverLogger(conf.Log)
 	if len(conf.Listeners) == 0 {
 		conf.Log.Warn("config: no listeners set, no connections will be accepted")
@@ -284,6 +306,11 @@ func (conf Config) New() *Server {
 	if conf.Generator == nil {
 		conf.Generator = defaultGenerator
 	}
+}
+
+// defaultLimits fills the chunk radius, the intervals, the timeout and the
+// messages of the configuration that were left unset.
+func (conf *Config) defaultLimits() {
 	if conf.MaxChunkRadius == 0 {
 		conf.MaxChunkRadius = 12
 	}
@@ -299,12 +326,23 @@ func (conf Config) New() *Server {
 	if conf.ShutdownMessage.Zero() {
 		conf.ShutdownMessage = chat.MessageServerDisconnect
 	}
+}
+
+// defaultRegistries fills the entity and block registries of the
+// configuration that were left unset.
+func (conf *Config) defaultRegistries() {
 	if len(conf.Entities.Types()) == 0 {
 		conf.Entities = entity.DefaultRegistry
 	}
 	if conf.Blocks == nil {
 		conf.Blocks = world.DefaultBlockRegistry
 	}
+}
+
+// defaultSecurity fills the anti-cheat of the configuration, resolves the
+// identity key Auto to the name, and makes the admission follow the mode of
+// the server.
+func (conf *Config) defaultSecurity() {
 	if conf.AntiCheat == nil {
 		conf.AntiCheat = anticheat.Default()
 	}
@@ -317,7 +355,11 @@ func (conf Config) New() *Server {
 		a.mode = conf.IdentityKey
 		conf.Allower = a
 	}
+}
 
+// prepareContent finalizes the block registries, sets the templates of the
+// structure blocks and resolves the seed of the overworld.
+func (conf *Config) prepareContent() {
 	// Initialize the passed block registry and also initialize the default block registry which
 	// is used in some vanilla paths.
 	conf.Blocks.Finalize()
@@ -326,13 +368,12 @@ func (conf Config) New() *Server {
 	// StructureTemplateManager does.
 	world.SetBuiltinStructureTemplates(advanced.VanillaStructureTemplate)
 	conf.OverworldSeed = conf.WorldProvider.Settings().ResolveSeed(conf.OverworldSeed)
+}
 
-	srv := &Server{
-		conf:       conf,
-		incoming:   make(chan incoming),
-		dimensions: make(map[world.Dimension]*world.World),
-		idleStop:   make(chan struct{}),
-	}
+// initStorage opens the saves of the server and works out where its players
+// are saved.
+func (srv *Server) initStorage() {
+	conf := srv.conf
 	srv.initSaves()
 	if wp, ok := conf.PlayerProvider.(interface{ Records() playerdb.Records }); ok {
 		srv.playersInWorld = any(wp.Records()) == any(conf.WorldProvider)
@@ -342,18 +383,29 @@ func (conf Config) New() *Server {
 			conf.Log.Info("Players are saved apart from the world: each checkpoint commits the worlds at once, then saves the players.")
 		}
 	}
+}
+
+// initServices opens the audit log of the server, adopts the admin lists,
+// creates the listeners and registers the metrics.
+func (srv *Server) initServices() {
 	srv.openAudit()
 	srv.adoptLists()
-	srv.createListeners(conf)
+	srv.createListeners(srv.conf)
 	srv.listening = make([]atomic.Bool, len(srv.listeners))
 	srv.registerMetrics()
+}
 
-	// Both register the vanilla content once per process: a second server
-	// keeps the creative items and recipes, and their network IDs, of the
-	// first.
+// registerVanillaContent registers the vanilla content once per process: a
+// second server keeps the creative items and recipes, and their network IDs,
+// of the first.
+func registerVanillaContent() {
 	creative_registerCreativeItems()
 	recipe_registerVanilla()
+}
 
+// chooseDefaultDimension returns the default dimension of the configuration,
+// or the first enabled one if it is disabled. It panics if none is enabled.
+func (conf Config) chooseDefaultDimension() world.Dimension {
 	defaultDim := conf.DefaultDimension
 	if defaultDim == nil {
 		defaultDim = world.Overworld
@@ -366,7 +418,13 @@ func (conf Config) New() *Server {
 			panic("config: at least one dimension must remain enabled")
 		}
 	}
+	return defaultDim
+}
 
+// createWorlds creates the world of the default dimension and then the worlds
+// of the other dimensions that are enabled.
+func (srv *Server) createWorlds(defaultDim world.Dimension) {
+	conf := srv.conf
 	srv.defaultDimension = defaultDim
 
 	srv.world = srv.createWorld(defaultDim)
@@ -383,8 +441,6 @@ func (conf Config) New() *Server {
 		w := srv.createWorld(dim)
 		srv.registerWorld(dim, w)
 	}
-
-	return srv
 }
 
 // adoptLists takes the admin lists of the Allower of the Config, as
@@ -939,6 +995,37 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err := problems.Err(false); err != nil {
 		return Config{}, err
 	}
+	parsed, err := uc.parseValues(log)
+	if err != nil {
+		return Config{}, err
+	}
+
+	conf := uc.baseConfig(log, parsed)
+	whitelistFile := whitelistPath(uc.Whitelist.File)
+	uc.setMessages(&conf)
+	if err := uc.openWorldProvider(&conf, log); err != nil {
+		return conf, err
+	}
+	if err := uc.attachAdmission(&conf, whitelistFile, log); err != nil {
+		return conf, err
+	}
+	return conf, nil
+}
+
+// parsedValues are the values of a UserConfig that are read from text.
+type parsedValues struct {
+	defaultDim       world.Dimension
+	generatorProfile world.GeneratorProfile
+	saveInterval     time.Duration
+	saveChunks       world.ChunkSaving
+	spawnTimeout     time.Duration
+	antiCheat        *anticheat.Config
+	identityKey      identity.Mode
+}
+
+// parseValues reads the values of the UserConfig that are text, in the order
+// the file lists them, and returns the first error.
+func (uc UserConfig) parseValues(log *slog.Logger) (parsedValues, error) {
 	defaultDim := world.Dimension(world.Overworld)
 	if parsed, ok := parseDimension(strings.TrimSpace(uc.World.DefaultDimension)); ok {
 		defaultDim = parsed
@@ -946,96 +1033,126 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 
 	generatorProfile, err := world.ParseGeneratorProfile(uc.World.GeneratorProfile)
 	if err != nil {
-		return Config{}, err
+		return parsedValues{}, err
 	}
 	saveInterval, err := parseSaveInterval(uc.World.SaveInterval)
 	if err != nil {
-		return Config{}, err
+		return parsedValues{}, err
 	}
 
 	saveChunks, err := world.ParseChunkSaving(uc.World.SaveChunks)
 	if err != nil {
-		return Config{}, err
+		return parsedValues{}, err
 	}
 
 	spawnTimeout, err := parseSpawnTimeout(uc.Server.SpawnTimeout)
 	if err != nil {
-		return Config{}, err
+		return parsedValues{}, err
 	}
 	antiCheat, err := uc.AntiCheat.Config(log)
 	if err != nil {
-		return Config{}, err
+		return parsedValues{}, err
 	}
 
 	identityKey := identity.Auto
 	if value := strings.TrimSpace(uc.Server.IdentityKey); value != "" {
 		if identityKey, err = identity.ParseMode(value); err != nil {
-			return Config{}, err
+			return parsedValues{}, err
 		}
 	}
+	return parsedValues{
+		defaultDim:       defaultDim,
+		generatorProfile: generatorProfile,
+		saveInterval:     saveInterval,
+		saveChunks:       saveChunks,
+		spawnTimeout:     spawnTimeout,
+		antiCheat:        antiCheat,
+		identityKey:      identityKey,
+	}, nil
+}
 
-	conf := Config{
+// baseConfig makes the Config of the fields of the UserConfig and the values
+// read from it, before any provider is opened.
+func (uc UserConfig) baseConfig(log *slog.Logger, p parsedValues) Config {
+	return Config{
 		Log:                   log,
 		Name:                  uc.Server.Name,
-		IdentityKey:           identityKey,
+		IdentityKey:           p.identityKey,
 		ReconnectPolicy:       ReconnectKickExisting,
-		SpawnTimeout:          spawnTimeout,
+		SpawnTimeout:          p.spawnTimeout,
 		SpawnTimeoutMessage:   uc.Server.SpawnTimeoutMessage,
 		MaxPlayers:            uc.Players.MaxCount,
 		MaxChunkRadius:        uc.Players.MaximumChunkRadius,
 		OverworldSeed:         uc.World.Seed,
-		SaveInterval:          saveInterval,
-		GeneratorProfile:      generatorProfile,
-		SaveChunks:            saveChunks,
+		SaveInterval:          p.saveInterval,
+		GeneratorProfile:      p.generatorProfile,
+		SaveChunks:            p.saveChunks,
 		GeneratorWorkers:      uc.World.GeneratorWorkers,
 		GeneratorQueueSize:    uc.World.GeneratorQueueSize,
 		Regions:               uc.World.Regions,
 		DisableOverworld:      uc.World.DisableOverworld,
 		DisableNether:         uc.World.DisableNether,
 		DisableEnd:            uc.World.DisableEnd,
-		DefaultDimension:      defaultDim,
+		DefaultDimension:      p.defaultDim,
 		PortalDisabledMessage: uc.World.PortalDisabledMessage,
-		AntiCheat:             antiCheat,
+		AntiCheat:             p.antiCheat,
 		Backup:                uc.backupConfig(),
 		Permissions:           uc.permissionConfig(),
 		Audit:                 uc.auditConfig(),
 	}
-	whitelistFile := whitelistPath(uc.Whitelist.File)
+}
+
+// setMessages sets the join and quit messages, unless the UserConfig turns
+// them off, and the reconnect policy it names.
+func (uc UserConfig) setMessages(conf *Config) {
 	if !uc.Server.DisableJoinQuitMessages {
 		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
 	}
 	if parsed, ok := parseReconnectPolicy(uc.Server.ReconnectPolicy); ok {
 		conf.ReconnectPolicy = parsed
 	}
+}
+
+// openWorldProvider opens the world provider of the UserConfig if it saves
+// the world data.
+func (uc UserConfig) openWorldProvider(conf *Config, log *slog.Logger) error {
+	var err error
 	if uc.World.SaveData {
 		conf.WorldProvider, err = mcdb.Config{Log: log}.Open(uc.World.Folder)
 		if err != nil {
-			return conf, fmt.Errorf("create world provider: %w", err)
+			return fmt.Errorf("create world provider: %w", err)
 		}
 	}
+	return nil
+}
+
+// attachAdmission loads the admin lists and the player provider of the
+// UserConfig, moves the lists to Xbox accounts when the server is keyed by
+// XUID, and sets the admission as the Allower of the Config.
+func (uc UserConfig) attachAdmission(conf *Config, whitelistFile string, log *slog.Logger) error {
 	a, err := uc.admission(whitelistFile, conf.IdentityKey, log)
 	if err != nil {
-		return conf, err
+		return err
 	}
 	baseDir := filepath.Dir(whitelistFile)
 	if conf.PlayerProvider, err = uc.playerProvider(conf.WorldProvider, log); err != nil {
-		return conf, err
+		return err
 	}
 	if conf.IdentityKey == identity.XUID {
 		var existed bool
 		if a.known, existed, err = loadKnownPlayers(filepath.Join(baseDir, "known-players.json"), log); err != nil {
-			return conf, fmt.Errorf("load known players: %w", err)
+			return fmt.Errorf("load known players: %w", err)
 		}
 		if !existed {
 			lister, _ := conf.PlayerProvider.(player.Lister)
 			if err := moveToAccounts(a, lister); err != nil {
-				return conf, fmt.Errorf("move the lists to Xbox accounts: %w", err)
+				return fmt.Errorf("move the lists to Xbox accounts: %w", err)
 			}
 		}
 	}
 	a.warnHeld()
 	conf.Allower = a
-	return conf, nil
+	return nil
 }
 
 // playerProvider returns the player provider of [Players]: none without
