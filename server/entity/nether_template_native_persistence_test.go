@@ -130,7 +130,17 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	}
 	// Clearing a mutable native item must take precedence over retained Source
 	// gear when the actor is serialized and decoded after restart.
-	piglin.SetHeldItems(item.Stack{}, item.Stack{})
+	// Entities change inside a transaction of their world: SetHeldItems shows
+	// the change to the viewers through it.
+	if err := w.Do(func(tx *world.Tx) {
+		e, ok := piglinHandle.Entity(tx)
+		if !ok {
+			t.Fatal("the piglin left the world")
+		}
+		e.(*Piglin).SetHeldItems(item.Stack{}, item.Stack{})
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 	w.Save()
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
