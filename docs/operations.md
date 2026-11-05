@@ -93,6 +93,45 @@ If the address cannot be listened on, the server logs an error and runs without 
 before the worlds are opened, so that `/livez` answers while they load, and stops when the server closes, freeing its
 port.
 
+### Embedding
+
+The monitor is the package `server/monitor`, so a program that builds `server.Config` itself, instead of running
+`main.go`, adds it, and the remote admin API, as services of the server (`server.Config.Services`). `monitor.UserConfig`
+is the `[Monitoring]` table, with the keys and defaults of the table above (`monitor.DefaultConfig()`), and its
+`Check` is run by `config.toml` reading as for the other tables; a program that sets the fields by hand calls `Check`
+itself. The API is `remoteadmin.UserConfig` (see [admin.md](admin.md#lifecycle-and-embedding)).
+
+```go
+mon := monitor.DefaultConfig()
+mon.Monitoring.Address = "127.0.0.1:6060" // Token, Pprof, ... are fields of the same struct
+admin := remoteadmin.DefaultConfig()
+admin.RemoteAdmin.Enabled, admin.RemoteAdmin.Address = true, "127.0.0.1:19140"
+
+conf.Services = append(conf.Services,
+	mon.Service(monitor.Options{Log: log}),
+	admin.Service(remoteadmin.ListenOptions{Dir: adminDir, Log: log}),
+)
+srv := conf.New()
+srv.Listen() // serves both
+// ...
+_ = srv.Close() // closes both: their ports are free, their goroutines ended
+```
+
+`Server.Listen` starts the services before the network listeners, and `Server.Close` closes them last, so the same
+program may close the server and start another on the same ports, as `TestEmbedderRestartsServices` does. The
+monitor serves as `Listen` starts it, after the worlds loaded. To have `/livez` answer while they load, as `main.go`
+does, call `Serve` on the service before `conf.New()`:
+
+```go
+svc := mon.Service(monitor.Options{Log: log})
+svc.Serve() // /livez passes and /readyz fails as starting, until Listen hands the server over
+conf.Services = append(conf.Services, svc)
+```
+
+An address that cannot be listened on is logged (`Monitoring not served: ...`) and is no error: the game runs without
+the monitor. `Service.Addr` is the address it serves on, nil while it does not. A service may be started again after
+`Close`, for another server.
+
 ## Health
 
 | Path | Passes when | Fails means |
