@@ -751,3 +751,15 @@ func (wtx weakTransaction) Run(w *World) {
 	wtx.c <- valid
 	wtx.cond.Broadcast()
 }
+
+// SaveWorld saves the world of the transaction like World.Save, from within
+// the transaction, where Save would wait for the goroutine running it. As
+// Java's save-all without flush, it does not wait for the chunks to reach
+// the disk.
+func (tx *Tx) SaveWorld() {
+	if tx.region != nil {
+		tx.deferToOwner(func(tx *Tx) { tx.SaveWorld() })
+		return
+	}
+	_ = tx.World().capture(tx, false, nil).write(false)
+}
