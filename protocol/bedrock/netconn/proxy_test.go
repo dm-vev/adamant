@@ -75,7 +75,7 @@ func openProxiedAs(t *testing.T, link *proxy.Link, name string, protocol int32, 
 // which it decodes as a client does.
 func readUntil(t *testing.T, b *bedrock.Conn, id uint32) proto.Packet {
 	t.Helper()
-	return readUntilAs(t, b, versions.Default(), id)
+	return readUntilAs(t, b, oldProtocol(), id)
 }
 
 // readUntilAs is readUntil of a client of a protocol, whose codecs decode
@@ -178,7 +178,7 @@ func TestProxiedPlayersAdmittedAsClients(t *testing.T) {
 // listener allows, refused as outdated otherwise, newer or older, as it
 // was before the listener allowed more than one.
 func TestProxiedProtocols(t *testing.T) {
-	l := listen(t, Config{Protocols: []*versions.Protocol{versions.Default(), fakeProtocol}})
+	l := listen(t, Config{Protocols: []*versions.Protocol{oldProtocol(), fakeProtocol}})
 	link := proxyLink(t, l)
 	for _, n := range []int32{v2193.Protocol - 1, 2250, fakeProtocol.Number + 1} {
 		if st := readUntil(t, openProxied(t, link, "Refused", n), v2193.IDPlayStatus).(*v2193.PlayStatusPacket); st.Status != v2193.PlayStatusLoginFailedClient {
@@ -221,8 +221,14 @@ func TestProxiedProtocols(t *testing.T) {
 	if l.Advertised() != fakeProtocol {
 		t.Errorf("the listener advertises %v, not the newest protocol it allows", l.Advertised())
 	}
-	if p := listen(t, Config{}).Advertised(); p != versions.Default() {
-		t.Errorf("a listener of the model alone advertises %v", p)
+	if p := listen(t, Config{}).Advertised(); p != versions.Model() {
+		t.Errorf("a listener of every protocol advertises %v, not the newest", p)
+	}
+	if p := listen(t, Config{Protocols: versions.Configurable(), Primary: oldProtocol()}).Advertised(); p != oldProtocol() {
+		t.Errorf("a listener whose primary is 2193 advertises %v", p)
+	}
+	if p := listen(t, Config{Protocols: []*versions.Protocol{oldProtocol()}, Primary: versions.Model()}).Advertised(); p != oldProtocol() {
+		t.Errorf("a listener that does not allow its primary advertises %v", p)
 	}
 }
 

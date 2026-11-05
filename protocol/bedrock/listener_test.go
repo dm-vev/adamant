@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/protocol/bedrock/netconn"
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
 	"github.com/df-mc/dragonfly/server"
@@ -34,6 +35,7 @@ import (
 	"github.com/dm-vev/adamant/net/bedrock/client"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	"github.com/dm-vev/adamant/net/bedrock/proto/v2193"
+	"github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 	"github.com/dm-vev/adamant/net/bedrock/wire"
 	"github.com/dm-vev/adamant/net/nethernet"
 	"github.com/dm-vev/adamant/net/nethernet/lan"
@@ -201,9 +203,20 @@ func TestBatchCompression(t *testing.T) {
 }
 
 // TestNetherNetListenerOnLAN shows the server to a client looking for games
-// on the network, which joins it over the signaling of the LAN.
+// on the network, which joins it over the signaling of the LAN. The server
+// shows its primary protocol, whichever protocols it allows.
 func TestNetherNetListenerOnLAN(t *testing.T) {
+	for _, tc := range []struct {
+		primary *versions.Protocol
+		want    int32
+	}{{versions.Model(), v2225.Protocol}, {oldProtocol(), v2193.Protocol}} {
+		t.Run(tc.primary.Version, func(t *testing.T) { testNetherNetOnLAN(t, tc.primary, tc.want) })
+	}
+}
+
+func testNetherNetOnLAN(t *testing.T, primary *versions.Protocol, want int32) {
 	c := testNetherNetConfig()
+	c.Protocols, c.Primary = versions.Configurable(), primary
 	c.Network.Address = "127.0.0.1:0"
 	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
 	conf := server.Config{Log: slog.New(slog.DiscardHandler), StatusProvider: nameStatus{name: "Adamant"}}
@@ -242,7 +255,7 @@ func TestNetherNetListenerOnLAN(t *testing.T) {
 		case <-time.After(20 * time.Millisecond):
 		}
 	}
-	if d := finder.Servers()[srv.NetworkID()]; d.Protocol != v2193.Protocol || !d.AcceptsSelfSignedAuth || d.ConnectionType != lan.ConnectionTypeLAN {
+	if d := finder.Servers()[srv.NetworkID()]; d.Protocol != want || d.Version != primary.Version || !d.AcceptsSelfSignedAuth || d.ConnectionType != lan.ConnectionTypeLAN {
 		t.Fatalf("LAN data %+v", d)
 	}
 	key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)

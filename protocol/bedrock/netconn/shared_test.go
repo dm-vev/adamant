@@ -18,7 +18,7 @@ import (
 func TestSharedIsEncodedOncePerClass(t *testing.T) {
 	text := &Shared{Packet: &mc.TextPacket{TextType: mc.TextTypeRaw, Message: "hi"}}
 	model := text.encoded(versions.Model())
-	if len(model) != 1 || &text.encoded(nil)[0][0] != &model[0][0] || &text.encoded(versions.Default())[0][0] != &model[0][0] || text.wires != nil {
+	if len(model) != 1 || &text.encoded(nil)[0][0] != &model[0][0] || &text.encoded(oldProtocol())[0][0] != &model[0][0] || text.wires != nil {
 		t.Fatal("a Text is not encoded once for every protocol")
 	}
 	var w wire.Writer
@@ -28,8 +28,8 @@ func TestSharedIsEncodedOncePerClass(t *testing.T) {
 	}
 
 	animate := &Shared{Packet: &mc.AnimatePacket{ActionType: mc.AnimateActionSwingArm, EntityRuntimeID: 7, Hand: 1}}
-	old := animate.encoded(versions.Default())
-	if len(old) != 1 || &animate.encoded(versions.Default())[0][0] != &old[0][0] || len(animate.wires) != 1 {
+	old := animate.encoded(oldProtocol())
+	if len(old) != 1 || &animate.encoded(oldProtocol())[0][0] != &old[0][0] || len(animate.wires) != 1 {
 		t.Fatal("an Animate is not encoded once for 2193")
 	}
 	h, fields, err := bedrock.ReadHeader(old[0])
@@ -50,12 +50,12 @@ func TestConnWritesShared(t *testing.T) {
 	c := newConn(l, discard{}, nil)
 	c.comp = bedrock.None{}
 	c.b.EnableCompression(c.comp)
-	c.proto = versions.Default()
+	c.proto = oldProtocol()
 	pk := &Shared{Packet: &mc.AnimatePacket{ActionType: mc.AnimateActionSwingArm, EntityRuntimeID: 7}}
 	if err := c.WritePacket(pk); err != nil {
 		t.Fatal(err)
 	}
-	if pk.wires[versions.Default()] == nil {
+	if pk.wires[oldProtocol()] == nil {
 		t.Fatal("the connection did not write the Animate of 2193")
 	}
 	if n := testing.AllocsPerRun(100, func() { _ = c.WritePacket(pk) }); n != 0 {

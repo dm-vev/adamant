@@ -141,11 +141,14 @@ func (c *Conn) Stats() Stats {
 // Protocol returns the protocol the client speaks.
 func (c *Conn) Protocol() *versions.Protocol { return c.proto }
 
-// protocol returns the protocol the client speaks, the default of the
-// build before the login told it.
+// protocol returns the protocol the client speaks, the one the listener
+// advertises before the login told it.
 func (c *Conn) protocol() *versions.Protocol {
 	if c.proto == nil {
-		return versions.Default()
+		if c.l == nil {
+			return versions.Model()
+		}
+		return c.l.Advertised()
 	}
 	return c.proto
 }
@@ -691,7 +694,7 @@ func (c *Conn) StartGameContext(ctx context.Context, data GameData) error {
 // game the protocol tells its clients.
 func startGame(data GameData, p *versions.Protocol) *mc.StartGamePacket {
 	if p == nil {
-		p = versions.Default()
+		p = versions.Model()
 	}
 	return &mc.StartGamePacket{
 		Difficulty:                   data.Difficulty,

@@ -21,14 +21,14 @@ import (
 // connected to no side; the three blocks 2193 lacks hash as their
 // fallbacks, read back as those; every other state hashes as the game's;
 // the items take 2193's runtime IDs; the entities and biomes are those of
-// 2193. As the default protocol's, their payloads of columns are kept in the
-// column's own cache, and 2225's in the cache of its key.
+// 2193. Their payloads of columns are kept in the cache of the key of 2193,
+// and those of 2225, the model, in the column's own.
 func TestTablesOf2193(t *testing.T) {
 	br := world.DefaultBlockRegistry
-	old, now := tablesOf(versions.Default(), br), tablesOf(versions.Model(), br)
+	old, now := tablesOf(oldProtocol(), br), tablesOf(versions.Model(), br)
 	game, h := now.hashes(), old.hashes()
-	if game != hashesOf(br) || h == game || old.slot.Load() != nil || now.slot.Load() == nil {
-		t.Fatal("the tables of 2193 are the game's, or 2225's keep the column's own cache")
+	if game != hashesOf(br) || h == game || old.slot.Load() == nil || now.slot.Load() != nil {
+		t.Fatal("the tables of 2193 are the game's, or 2193's keep the column's own cache")
 	}
 	changed := map[string]int{}
 	scratch := []byte(nil)
@@ -106,24 +106,24 @@ func TestTablesOf2193(t *testing.T) {
 
 // TestChunksOf2193 encodes a sub-chunk of redstone wire connected to the
 // north for the clients of each protocol: each hashes it as its protocol
-// names it, and keeps the payload in its cache, the default protocol's the
-// column's own.
+// names it, and keeps the payload in its cache, the model's the column's
+// own.
 func TestChunksOf2193(t *testing.T) {
 	br := world.DefaultBlockRegistry
 	wire := br.BlockRuntimeID(block.RedstoneWire{Power: 3, North: block.SideWireConnection()})
 	c := chunk.New(br, cube.Range{0, 255})
 	c.SetBlock(0, 0, 0, 0, wire)
 	col := &world.Column{Chunk: c}
-	old, now := tablesOf(versions.Default(), br), tablesOf(versions.Model(), br)
+	old, now := tablesOf(oldProtocol(), br), tablesOf(versions.Model(), br)
 	a, b := old.networkSubChunkPayload(col, 0), now.networkSubChunkPayload(col, 0)
 	if string(a) == string(b) {
 		t.Fatal("the redstone wire of 2193 and 2225 encode alike")
 	}
-	if cached, _ := col.Cache(nil).CachedNetworkSubChunkPayload(0); string(cached) != string(a) {
-		t.Fatal("the column's own cache does not hold 2193's sub-chunk")
+	if cached, _ := col.Cache(nil).CachedNetworkSubChunkPayload(0); string(cached) != string(b) {
+		t.Fatal("the column's own cache does not hold 2225's sub-chunk")
 	}
-	if cached, _ := col.Cache(now.slot.Load()).CachedNetworkSubChunkPayload(0); string(cached) != string(b) {
-		t.Fatal("the cache of 2225's key does not hold its sub-chunk")
+	if cached, _ := col.Cache(old.slot.Load()).CachedNetworkSubChunkPayload(0); string(cached) != string(a) {
+		t.Fatal("the cache of 2193's key does not hold its sub-chunk")
 	}
 	if again := old.networkSubChunkPayload(col, 0); &again[0] != &a[0] {
 		t.Fatal("2193 encoded its sub-chunk again")
@@ -136,7 +136,7 @@ func TestChunksOf2193(t *testing.T) {
 // own; and the registry enums of commands leave it out for 2193 alone.
 func TestDiscPressOf2193(t *testing.T) {
 	br := world.DefaultBlockRegistry
-	old, now := tablesOf(versions.Default(), br), tablesOf(versions.Model(), br)
+	old, now := tablesOf(oldProtocol(), br), tablesOf(versions.Model(), br)
 	press, cutter := block.DiscPress{Facing: cube.South}, block.Stonecutter{Facing: cube.North}
 	if a, b := old.blockID(press), old.blockID(cutter); a != b {
 		t.Errorf("2193 hashes a disc press as %d, a stonecutter as %d", a, b)

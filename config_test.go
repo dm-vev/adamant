@@ -184,7 +184,7 @@ func TestConfigFileKeepsItsMeaning(t *testing.T) {
 			"Network.Address": ":19132", "Network.IdentityFile": "server-key.pem", "Network.EnableQuery": false,
 			"Network.LAN": false, "Network.HTTPSDomain": "", "Network.ACMEEmail": "", "Network.ACMECacheDir": "",
 			"Network.ACMEDirectory": "", "Network.ACMEChallengeAddress": "",
-			"Network.Protocols": []int32{2193}, "Network.PrimaryProtocol": int32(2193),
+			"Network.Protocols": []int32{2193, 2225}, "Network.PrimaryProtocol": int32(2225),
 			"Network.MaxPendingConnections": 256, "Network.MaxPendingConnectionsPerIP": 4, "Network.MaxPendingConnectionsPerNetwork": 32,
 			"Network.MaxPendingLogins": 64, "Network.MaxConnectionsPerIP": 8,
 			"Xbox.Enabled": false, "Xbox.TokenFile": "xbox-token.json", "Xbox.AcceptFriends": true, "Xbox.LegacySignaling": false,

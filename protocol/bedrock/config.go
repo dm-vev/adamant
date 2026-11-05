@@ -104,16 +104,22 @@ type NetworkConfig struct {
 	// forwarded to it. An empty value uses ":80".
 	ACMEChallengeAddress string
 	// Protocols lists the protocols of Bedrock Edition clients may join
-	// with, by a version of each: "1.26.50" (or "26.50", "26.51", "26.52",
-	// "1.26.52", "2193") names protocol 2193, "1.26.60" (or "26.60",
-	// "26.61", "1.26.61", "2225") protocol 2225. Several names of one
-	// protocol count once. An empty list allows the primary protocol alone.
+	// with. "all" allows every protocol this build supports, the newest it
+	// will support too; it is the default. A list of versions allows those
+	// alone, each by a version of it: "1.26.50" (or "26.50", "26.51",
+	// "26.52", "1.26.52", "2193") names protocol 2193, "1.26.60" (or
+	// "26.60", "26.61", "1.26.61", "2225") protocol 2225. Several names of
+	// one protocol count once. A client of a protocol that is not listed is
+	// refused, so a list leaves out the protocols of builds newer than the
+	// list. An empty list allows "all", or the pinned PrimaryProtocol alone
+	// if there is one.
 	Protocols []string
 	// PrimaryProtocol is the protocol the server speaks, one of Protocols:
 	// the packets and fields it uses are those of that protocol, and clients
-	// of the other protocols get them converted. An empty value is the
-	// oldest of Protocols, or the default of the build if Protocols is
-	// empty too. This build speaks 2193 or 2225 as its primary.
+	// of the other protocols get them converted. It is also the version the
+	// server shows in server lists, on LAN and on Xbox Live. "latest" is
+	// the newest of Protocols that this build's session speaks, and the
+	// default; an empty value means the same. A version pins the primary.
 	PrimaryProtocol string
 	// MaxPendingConnections bounds the NetherNet connections that did not
 	// open yet, offers of clients still checking their way to the server:
@@ -182,7 +188,7 @@ type Config struct {
 	Proxy   ProxyConfig
 	// Protocols are the protocols clients may join with, oldest first, and
 	// Primary is the one of them the server speaks, as Network names them.
-	// No protocols allow the default of the build alone.
+	// No protocols allow every one this build supports.
 	Protocols []*versions.Protocol
 	Primary   *versions.Protocol
 	// Resources are the resource packs offered to clients, and
@@ -227,10 +233,11 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	protocols, primary, err := parseProtocols(uc.Network.Protocols, uc.Network.PrimaryProtocol, versions.Parse, versions.Default(), versions.NewestPrimary())
+	protocols, primary, err := parseProtocols(uc.Network.Protocols, uc.Network.PrimaryProtocol, versions.Parse, versions.Configurable(), versions.NewestPrimary())
 	if err != nil {
 		return Config{}, err
 	}
+	logProtocols(log, protocols, primary, protocolNotes(protocols, primary, uc.Network.PrimaryProtocol, versions.Configurable(), versions.NewestPrimary()))
 	query.SetEnabled(uc.Network.EnableQuery)
 	query.SetPluginListingEnabled(uc.Network.QueryPlugins)
 
@@ -253,33 +260,85 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	return c, nil
 }
 
-// parseProtocols returns the protocols the keys Protocols and
-// PrimaryProtocol name by parse, oldest first and each once, and the
-// primary: with def, the default of the build, for both keys empty, and
-// model, the newest protocol the session speaks as its primary
-// (versions.NewestPrimary), which bounds the primary.
-func parseProtocols(names []string, primaryName string, parse func(string) (*versions.Protocol, error), def, model *versions.Protocol) ([]*versions.Protocol, *versions.Protocol, error) {
+// The keywords of the keys Protocols and PrimaryProtocol.
+const (
+	// allProtocols, in Protocols, allows every protocol a config may name.
+	allProtocols = "all"
+	// latestProtocol, as PrimaryProtocol, is the newest of Protocols the
+	// session speaks as its primary.
+	latestProtocol = "latest"
+)
+
+// isKeyword reports whether a value of a key is a keyword, whatever its case.
+func isKeyword(value, keyword string) bool {
+	return strings.EqualFold(strings.TrimSpace(value), keyword)
+}
+
+// followsLatest reports whether a PrimaryProtocol is the newest protocol
+// the session speaks: "latest", or empty.
+func followsLatest(primaryName string) bool {
+	return strings.TrimSpace(primaryName) == "" || isKeyword(primaryName, latestProtocol)
+}
+
+// listProtocols returns the protocols the key Protocols names by parse,
+// oldest first and each once, or none if it names none; "all" stands for
+// configurable. The errors are those of the names parse refused.
+func listProtocols(names []string, parse func(string) (*versions.Protocol, error), configurable []*versions.Protocol) ([]*versions.Protocol, []error) {
 	var protocols []*versions.Protocol
+	var errs []error
 	for _, name := range names {
+		if isKeyword(name, allProtocols) {
+			protocols = append(protocols, configurable...)
+			continue
+		}
 		p, err := parse(name)
 		if err != nil {
-			return nil, nil, fmt.Errorf("[Network] Protocols: %w", err)
+			errs = append(errs, err)
+			continue
 		}
 		protocols = append(protocols, p)
 	}
 	slices.SortFunc(protocols, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
-	protocols = slices.Compact(protocols)
+	return slices.Compact(protocols), errs
+}
 
-	primary := def
-	if len(protocols) > 0 {
-		primary = protocols[0]
-	}
-	if strings.TrimSpace(primaryName) != "" {
-		p, err := parse(primaryName)
-		if err != nil {
-			return nil, nil, fmt.Errorf("[Network] PrimaryProtocol: %w", err)
+// latestPrimary returns the newest of protocols, oldest first, that is no
+// newer than newest, the newest protocol the session speaks as its primary,
+// or nil if none is.
+func latestPrimary(protocols []*versions.Protocol, newest *versions.Protocol) *versions.Protocol {
+	for _, p := range slices.Backward(protocols) {
+		if p.Number <= newest.Number {
+			return p
 		}
-		primary = p
+	}
+	return nil
+}
+
+// parseProtocols returns the protocols the keys Protocols and
+// PrimaryProtocol name by parse, oldest first and each once, and the
+// primary. configurable holds the protocols "all" allows, and newest is the
+// newest protocol the session speaks as its primary (versions.NewestPrimary),
+// which bounds the primary and which "latest" and an empty value pick the
+// newest protocol up to. With no protocols named, the pinned primary is the
+// only one allowed, or every one of configurable if it is not pinned.
+func parseProtocols(names []string, primaryName string, parse func(string) (*versions.Protocol, error), configurable []*versions.Protocol, newest *versions.Protocol) ([]*versions.Protocol, *versions.Protocol, error) {
+	protocols, errs := listProtocols(names, parse, configurable)
+	if len(errs) > 0 {
+		return nil, nil, fmt.Errorf("[Network] Protocols: %w", errs[0])
+	}
+	if followsLatest(primaryName) {
+		if len(protocols) == 0 {
+			protocols, _ = listProtocols([]string{allProtocols}, parse, configurable)
+		}
+		primary := latestPrimary(protocols, newest)
+		if primary == nil {
+			return nil, nil, fmt.Errorf("[Network] Protocols (%s): none is a protocol this build's session speaks, which is %s at most", protocolList(protocols), newest)
+		}
+		return protocols, primary, nil
+	}
+	primary, err := parse(primaryName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("[Network] PrimaryProtocol: %w", err)
 	}
 	if len(protocols) == 0 {
 		protocols = []*versions.Protocol{primary}
@@ -287,36 +346,54 @@ func parseProtocols(names []string, primaryName string, parse func(string) (*ver
 	if !slices.Contains(protocols, primary) {
 		return nil, nil, fmt.Errorf("[Network] PrimaryProtocol %s must be one of Protocols (%s)", primary, protocolList(protocols))
 	}
-	if primary.Number > model.Number {
-		return nil, nil, fmt.Errorf("[Network] PrimaryProtocol %s needs a build whose session speaks %s: this one speaks %s", primary, primary, model)
+	if primary.Number > newest.Number {
+		return nil, nil, fmt.Errorf("[Network] PrimaryProtocol %s needs a build whose session speaks %s: this one speaks %s", primary, primary, newest)
 	}
 	return protocols, primary, nil
 }
 
-// checkProtocols adds the problems of the keys Protocols and PrimaryProtocol
-// to p, each under its key: a protocol the build does not support, a primary
-// that is none of Protocols, and a primary newer than model, the newest
-// protocol the session speaks as its primary, which is the oldest of
-// Protocols when PrimaryProtocol is empty.
-func checkProtocols(p *config.Problems, names []string, primaryName string, parse func(string) (*versions.Protocol, error), model *versions.Protocol) {
-	var protocols []*versions.Protocol
-	ok := true
-	for _, name := range names {
-		v, err := parse(name)
-		if err != nil {
-			p.Add("Network.Protocols", err)
-			ok = false
-			continue
+// protocolNotes returns what an operator of an old config should know of
+// the protocols parseProtocols found: the protocols of configurable newer
+// than every one allowed, whose clients are refused, and a pinned primary
+// older than the one "latest" would pick. Each names the keyword that fixes
+// it.
+func protocolNotes(protocols []*versions.Protocol, primary *versions.Protocol, primaryName string, configurable []*versions.Protocol, newest *versions.Protocol) []string {
+	var notes []string
+	var left []string
+	for _, p := range configurable {
+		if p.Number > protocols[len(protocols)-1].Number {
+			left = append(left, p.Version)
 		}
-		protocols = append(protocols, v)
 	}
-	if strings.TrimSpace(primaryName) == "" {
-		if !ok || len(protocols) == 0 {
+	if len(left) > 0 {
+		notes = append(notes, fmt.Sprintf("[Network] Protocols leaves out %s, newer than every protocol it lists: their clients are refused. Set Protocols = [%q] to allow every supported protocol.", strings.Join(left, ", "), allProtocols))
+	}
+	if latest := latestPrimary(protocols, newest); !followsLatest(primaryName) && latest != primary {
+		notes = append(notes, fmt.Sprintf("[Network] PrimaryProtocol pins %s, older than %s, the newest allowed that this build speaks: the server shows the older version and converts the packets for newer clients. Set PrimaryProtocol = %q to follow the build.", primary, latest, latestProtocol))
+	}
+	return notes
+}
+
+// checkProtocols adds the problems of the keys Protocols and PrimaryProtocol
+// to p, each under its key, as parseProtocols finds them: a protocol the
+// build does not support, a primary that is none of Protocols, and a
+// primary newer than newest, the newest protocol the session speaks as its
+// primary, or no protocol of Protocols that is not.
+func checkProtocols(p *config.Problems, names []string, primaryName string, parse func(string) (*versions.Protocol, error), configurable []*versions.Protocol, newest *versions.Protocol) {
+	protocols, errs := listProtocols(names, parse, configurable)
+	for _, err := range errs {
+		p.Add("Network.Protocols", err)
+	}
+	ok := len(errs) == 0
+	if followsLatest(primaryName) {
+		if !ok {
 			return
 		}
-		oldest := slices.MinFunc(protocols, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
-		if oldest.Number > model.Number {
-			p.Errorf("Network.Protocols", "Network.Protocols: the oldest, %s, is the primary, and this build's session speaks %s", oldest, model)
+		if len(protocols) == 0 {
+			protocols, _ = listProtocols([]string{allProtocols}, parse, configurable)
+		}
+		if latestPrimary(protocols, newest) == nil {
+			p.Errorf("Network.Protocols", "Network.Protocols: none of %s is a protocol this build's session speaks, which is %s at most", protocolList(protocols), newest)
 		}
 		return
 	}
@@ -328,8 +405,20 @@ func checkProtocols(p *config.Problems, names []string, primaryName string, pars
 	if ok && len(protocols) > 0 && !slices.Contains(protocols, primary) {
 		p.Errorf("Network.PrimaryProtocol", "Network.PrimaryProtocol = %q: want one of Network.Protocols (%s)", primaryName, protocolList(protocols))
 	}
-	if primary.Number > model.Number {
-		p.Errorf("Network.PrimaryProtocol", "Network.PrimaryProtocol = %q: this build's session speaks %s", primaryName, model)
+	if primary.Number > newest.Number {
+		p.Errorf("Network.PrimaryProtocol", "Network.PrimaryProtocol = %q: this build's session speaks %s", primaryName, newest)
+	}
+}
+
+// logProtocols tells once, as the server starts, the protocols clients may
+// join with and the primary, and warns of each of the notes.
+func logProtocols(log *slog.Logger, protocols []*versions.Protocol, primary *versions.Protocol, notes []string) {
+	if log == nil {
+		return
+	}
+	log.Info("Protocols of Bedrock Edition.", "allowed", protocolList(protocols), "primary", primary.Version)
+	for _, note := range notes {
+		log.Warn(note)
 	}
 }
 
@@ -377,7 +466,7 @@ func (uc UserConfig) Check(p *config.Problems) {
 
 	_, err = parseNameCheck(uc.Server.NameCheck)
 	p.Add("Server.NameCheck", err)
-	checkProtocols(p, n.Protocols, n.PrimaryProtocol, versions.Parse, versions.NewestPrimary())
+	checkProtocols(p, n.Protocols, n.PrimaryProtocol, versions.Parse, versions.Configurable(), versions.NewestPrimary())
 	// The caps of connections take 0 for none, and nothing below.
 	config.AtLeast(p, "Network.MaxPendingConnections", n.MaxPendingConnections, 0)
 	config.AtLeast(p, "Network.MaxPendingConnectionsPerIP", n.MaxPendingConnectionsPerIP, 0)
@@ -428,8 +517,8 @@ func DefaultConfig() UserConfig {
 	c.Xbox.AcceptFriends = true
 	c.Network.EnableQuery = false
 	c.Network.QueryPlugins = false
-	c.Network.Protocols = []string{versions.Default().Version}
-	c.Network.PrimaryProtocol = versions.Default().Version
+	c.Network.Protocols = []string{allProtocols}
+	c.Network.PrimaryProtocol = latestProtocol
 	c.Network.MaxPendingConnections = 256
 	c.Network.MaxPendingConnectionsPerIP = 4
 	c.Network.MaxPendingConnectionsPerNetwork = 32

@@ -262,8 +262,8 @@
   MaxPendingConnectionsPerIP = 4
   MaxPendingConnectionsPerNetwork = 32
   MaxPendingLogins = 64
-  PrimaryProtocol = "1.26.50"
-  Protocols = ["1.26.50"]
+  PrimaryProtocol = "latest"
+  Protocols = ["all"]
   QueryPlugins = false
   Transport = "nethernet"
 

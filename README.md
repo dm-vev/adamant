@@ -8,7 +8,7 @@
 
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white)](go.mod)
 [![Bedrock](https://img.shields.io/badge/Bedrock-1.26.52-62B47A)](vanilla-reference.json)
-[![Protocol](https://img.shields.io/badge/protocol-2193-blue)](vanilla-reference.json)
+[![Protocol](https://img.shields.io/badge/protocol-2193%20%7C%202225-blue)](docs/protocols.md)
 [![Java reference](https://img.shields.io/badge/Java%20reference-26.3-E76F00)](vanilla-reference.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -53,7 +53,7 @@ These rules follow from that:
 
 | Area | Status | Notes |
 |---|:---:|---|
-| Protocol and transport | ✅ | Protocol 2193 via gophertunnel v1.62.0; NetherNet by default, RakNet optional |
+| Protocol and transport | ✅ | Protocols 2193 (1.26.50–1.26.52) and 2225 (1.26.60–1.26.61), the newest the primary ([protocols](docs/protocols.md)); NetherNet |
 | Registries | ✅ | All 2,076 items, 22,079 block states (1,477 blocks) and 89 biomes match BDS |
 | Terrain generation | 🟢 | Java 26.3 noise, climate, biomes and aquifers in the Overworld, Nether and End |
 | Features and structures | 🟢 | Configured features and nearly all structures; see [World generation](#world-generation) |
@@ -70,7 +70,7 @@ These rules follow from that:
 
 ### Networking and server
 
-- Bedrock protocol 2193 (client 1.26.52) on gophertunnel v1.62.0.
+- Bedrock protocols 2193 (clients 1.26.50–1.26.52) and 2225 (1.26.60–1.26.61) together: the newest is the primary by default, and older clients get its packets converted ([`docs/protocols.md`](docs/protocols.md)).
 - Native NetherNet transport (HTTP signalling and WebRTC), with RakNet available for older or custom clients.
 - A persistent P-384 server identity that survives restarts.
 - An admin console and server CLI, a Nukkit-style whitelist and RakNet Query.

@@ -96,10 +96,6 @@ func NewestPrimary() *Protocol { return newestPrimary }
 // connection of a protocol encodes and decodes with, as codec.SetShieldID.
 func SetShieldID(p *Protocol, id int32) { codec.SetShieldID(&p.Codec, id) }
 
-// Default returns the protocol a server allows and speaks unless its
-// config names others: the one it allowed before it could allow more.
-func Default() *Protocol { return p2193 }
-
 // ByNumber returns the protocol of a number.
 func ByNumber(n int32) (*Protocol, bool) {
 	for _, p := range all {

@@ -57,11 +57,21 @@ func (c Config) Listener(conf server.Config, host server.Host) (server.Listener,
 	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat, Blocks: conf.Blocks, Primary: c.Primary}), nil
 }
 
+// primaryProtocol returns the protocol the server speaks: Primary, or the
+// newest the session speaks as its primary if the config names none.
+func (c Config) primaryProtocol() *versions.Protocol {
+	if c.Primary == nil {
+		return versions.NewestPrimary()
+	}
+	return c.Primary
+}
+
 // oldestProtocol returns the oldest protocol clients may join with: the
 // built resource pack must not need a newer game, or its clients refuse it.
+// No protocols allow every one a config may name.
 func (c Config) oldestProtocol() *versions.Protocol {
 	if len(c.Protocols) == 0 {
-		return versions.Default()
+		return versions.Configurable()[0]
 	}
 	return slices.MinFunc(c.Protocols, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
 }
@@ -126,7 +136,7 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 			}
 		}
 		query.RegisterProvider(func(addr string, port int) query.Data {
-			return queryData(host, addr, port)
+			return queryData(host, c.primaryProtocol().Version, addr, port)
 		})
 		responder, err := query.NewResponder(local, conf.Log)
 		if err != nil {
@@ -152,6 +162,7 @@ func (c Config) netherNetListener(conf server.Config, host server.Host) (session
 		BypassesPlayerLimit: bypass,
 		Compression:         batchCompression(c.Compression),
 		Protocols:           c.Protocols,
+		Primary:             c.Primary,
 	}.Listen(listen, c.Network.Address)
 	if err != nil {
 		return nil, fmt.Errorf("create NetherNet listener: %w", err)

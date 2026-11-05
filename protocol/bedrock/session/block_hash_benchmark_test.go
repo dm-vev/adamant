@@ -6,7 +6,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -17,7 +16,7 @@ import (
 // hashes, so that the palette of the game does not change which they are.
 func benchmarkStates(n int) []world.Block {
 	br := world.DefaultBlockRegistry
-	known := blockTable(versions.Default(), br).rid
+	known := blockTable(oldProtocol(), br).rid
 	var implemented []world.Block
 	for _, netHash := range slices.Sorted(maps.Keys(known)) {
 		b := br.BlockByRuntimeIDOrAir(known[netHash])

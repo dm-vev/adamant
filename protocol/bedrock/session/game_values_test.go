@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -91,7 +90,7 @@ func TestParamOptionValuesMatchProtocol(t *testing.T) {
 // protocol's number. The model, the codecs the session is compiled against,
 // may be newer.
 func TestVersionsMatchProtocol(t *testing.T) {
-	p := versions.Default()
+	p := oldProtocol()
 	if version.Minecraft != v2193.CurrentVersion || p.Number != v2193.Protocol {
 		t.Errorf("version.Minecraft = %q, protocol %d has %q", version.Minecraft, p.Number, v2193.CurrentVersion)
 	}

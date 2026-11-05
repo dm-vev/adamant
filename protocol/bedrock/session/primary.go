@@ -45,7 +45,7 @@ func (s *Session) primary() *versions.Protocol {
 	if s.conf.Primary != nil {
 		return s.conf.Primary
 	}
-	return versions.Default()
+	return versions.NewestPrimary()
 }
 
 // speaks reports whether the primary protocol of the session is protocol n

@@ -33,8 +33,8 @@ func playServer(t *testing.T) (string, <-chan *player.Player) {
 	c := testNetherNetConfig()
 	c.Network.Address = "127.0.0.1:0"
 	c.Network.IdentityFile = filepath.Join(t.TempDir(), "identity.pem")
-	c.Protocols = []*versions.Protocol{versions.Default(), versions.Model()}
-	c.Primary = versions.Default()
+	c.Protocols = []*versions.Protocol{oldProtocol(), versions.Model()}
+	c.Primary = oldProtocol()
 	addr := make(chan string, 1)
 	srv := server.Config{
 		Log: slog.New(slog.DiscardHandler),

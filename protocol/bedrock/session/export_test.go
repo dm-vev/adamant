@@ -37,7 +37,7 @@ func (s *Session) Window() (m *menu.Menu, id, containerType uint32) {
 // sends them to the clients of the default protocol, for the tests of the
 // encoding.
 func EncodeSubChunk(c *chunk.Chunk, ind int) []byte {
-	return encodeSubChunk(c, ind, blockTable(versions.Default(), c.BlockRegistry()))
+	return encodeSubChunk(c, ind, blockTable(oldProtocol(), c.BlockRegistry()))
 }
 func EncodeBiomes(c *chunk.Chunk) []byte { return encodeBiomes(c) }
 
@@ -47,7 +47,7 @@ func EncodeBiomes(c *chunk.Chunk) []byte { return encodeBiomes(c) }
 // whose blocks the game holds, as the scenes of the tests of the encoding
 // take them.
 func StatesOfDefault(br world.BlockRegistry) []uint32 {
-	h := blockTable(versions.Default(), br)
+	h := blockTable(oldProtocol(), br)
 	hashes := slices.Sorted(maps.Keys(h.rid))
 	rids := make([]uint32, len(hashes))
 	for i, hash := range hashes {
@@ -68,4 +68,11 @@ func SoundPackets(pos mgl64.Vec3, t world.Sound) []proto.Packet {
 	var pks []proto.Packet
 	s.soundPackets(pos, t, false, func(pk proto.Packet) { pks = append(pks, pk) })
 	return pks
+}
+
+// oldProtocol returns protocol 2193, the oldest the adapter speaks and the
+// primary the goldens of testdata/golden were recorded with.
+func oldProtocol() *versions.Protocol {
+	p, _ := versions.ByNumber(2193)
+	return p
 }

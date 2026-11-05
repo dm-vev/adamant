@@ -136,8 +136,10 @@ func offerOf(t *testing.T, d nethernet.Dialer) string {
 // one it does not, which another such displaces.
 func TestVouchedOfferKeepsItsSlot(t *testing.T) {
 	s := newAuthService(t)
-	defer func(keys func() (*bedrocklogin.Keys, error)) { xboxKeys = keys }(xboxKeys)
-	xboxKeys = func() (*bedrocklogin.Keys, error) { return bedrocklogin.NewKeys(context.Background(), nil, s.URL) }
+	defer func(keys func(string) (*bedrocklogin.Keys, error)) { xboxKeys = keys }(xboxKeys)
+	xboxKeys = func(string) (*bedrocklogin.Keys, error) {
+		return bedrocklogin.NewKeys(context.Background(), nil, s.URL)
+	}
 	l, err := Config{}.Listen(nethernet.ListenConfig{AllowAnonymous: true, MaxPending: 1}, "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

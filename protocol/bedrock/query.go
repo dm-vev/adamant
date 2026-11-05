@@ -6,14 +6,13 @@ import (
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/query"
 	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 // queryData assembles the Data structure consumed by the query package from
 // the server host. It collects the dynamic server state while keeping the
 // query implementation agnostic of the Server internals.
-func queryData(h server.Host, host string, port int) query.Data {
+func queryData(h server.Host, version, host string, port int) query.Data {
 	playerNames := h.PlayerNames()
 	sort.Strings(playerNames)
 	status := h.Status()
@@ -41,7 +40,7 @@ func queryData(h server.Host, host string, port int) query.Data {
 		HostPort:         port,
 		Plugins:          pluginString,
 		PlayerNames:      playerNames,
-		Version:          version.Minecraft,
+		Version:          version,
 		GameID:           "MINECRAFTPE",
 		GameType:         defaultGameType(w),
 		WhitelistEnabled: h.WhitelistEnabled(),

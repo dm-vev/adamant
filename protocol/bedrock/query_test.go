@@ -30,7 +30,7 @@ func TestQueryDataFromHost(t *testing.T) {
 			conf := server.Config{Name: "Query Test", MaxPlayers: 10, StatusProvider: provider}
 			srv := newQueryServer(t, conf, "Bob", "Alice")
 
-			got, want := queryData(srv, "127.0.0.1", 19132), oldQueryData(srv, provider, "127.0.0.1", 19132)
+			got, want := queryData(srv, version.Minecraft, "127.0.0.1", 19132), oldQueryData(srv, provider, "127.0.0.1", 19132)
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("query data = %+v, want %+v", got, want)
 			}

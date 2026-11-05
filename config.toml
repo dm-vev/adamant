@@ -13,13 +13,17 @@
   # QueryPlugins controls whether plugin metadata is included in the long query response.
   # When disabled, the query `plugins` field only contains the engine label.
   QueryPlugins = false
-  # Protocols lists the protocols of Bedrock Edition clients may join with, each by one of its versions:
-  # "1.26.50" (or "26.50", "26.51", "26.52", "2193") names protocol 2193, of 1.26.50 to 1.26.52, and
-  # "1.26.60" (or "26.60", "26.61", "2225") protocol 2225, of 1.26.60 and 1.26.61.
-  Protocols = ["1.26.50"]
+  # Protocols lists the protocols of Bedrock Edition clients may join with. "all" allows every protocol this
+  # build supports, and the newest one a later build adds too, with no change to this file. A list of versions
+  # allows those alone, each by one of its versions: "1.26.50" (or "26.50", "26.51", "26.52", "2193") names
+  # protocol 2193, of 1.26.50 to 1.26.52, and "1.26.60" (or "26.60", "26.61", "2225") protocol 2225, of 1.26.60
+  # and 1.26.61. A client of a protocol that is not listed is refused, so a list leaves out the protocols of newer builds.
+  Protocols = ["all"]
   # PrimaryProtocol is the protocol the server speaks, one of Protocols: clients of the others get its packets
-  # converted to theirs. This build speaks 1.26.50 or 1.26.60 as its primary.
-  PrimaryProtocol = "1.26.50"
+  # converted to theirs. It is also the version server lists, LAN and Xbox Live show. "latest" is the newest of
+  # Protocols that this build speaks (1.26.60 today), and stays so when a later build adds a newer one. A version
+  # ("1.26.50") pins the primary.
+  PrimaryProtocol = "latest"
 
 [Server]
   # The name as it shows up in the server list. Minecraft colour codes may be used in this name to format the

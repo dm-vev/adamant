@@ -8,8 +8,8 @@ import (
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
 )
 
-// TestPrimaryGatesFeatures checks the features of 2225 are off with the
-// default primary, 2193, and on with a primary of 2225: the packets of
+// TestPrimaryGatesFeatures checks the features of 2225 are off with a primary
+// of 2193, and on with a primary of 2225, which none is too: the packets of
 // 2225's clients the game has no use for are ignored rather than unknown,
 // and skins tell the version of the primary.
 func TestPrimaryGatesFeatures(t *testing.T) {
@@ -20,8 +20,8 @@ func TestPrimaryGatesFeatures(t *testing.T) {
 		speaks  bool
 		engine  string
 	}{
-		{nil, false, "1.26.50"},
-		{versions.Default(), false, "1.26.50"},
+		{nil, true, "1.26.60"},
+		{oldProtocol(), false, "1.26.50"},
 		{versions.Model(), true, "1.26.60"},
 	} {
 		s := testSession("Primary")

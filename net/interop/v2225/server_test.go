@@ -150,9 +150,10 @@ func startServer(t *testing.T, addr, primary string) (*server.Server, <-chan *pl
 // client of 2225 (gophertunnel master): each sees the other, hears the
 // other's chat, and the client of 2225 opens a chest and strikes the player
 // of the client of 2193, who is shown it hurt. They do under either
-// primary: 1.26.50, as config.toml has it, and 1.26.60.
+// primary: 1.26.50, which a config of before 1.26.60 pins, and "latest", as
+// config.toml has it, which is 1.26.60.
 func TestClientsOfTwoProtocolsPlayTogether(t *testing.T) {
-	for _, primary := range []string{"1.26.50", "1.26.60"} {
+	for _, primary := range []string{"1.26.50", "latest"} {
 		t.Run("primary "+primary, func(t *testing.T) { playTogether(t, primary) })
 	}
 }

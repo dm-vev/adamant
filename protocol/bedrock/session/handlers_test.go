@@ -18,7 +18,7 @@ import (
 // which would drop every client that sends it.
 func TestHandledPacketsDecode(t *testing.T) {
 	t.Parallel()
-	s := &Session{}
+	s := &Session{conf: Config{Primary: oldProtocol()}}
 	s.registerHandlers()
 	// Packets whose zero value has no encoding.
 	samples := map[uint32]proto.Packet{

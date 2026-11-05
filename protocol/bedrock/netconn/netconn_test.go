@@ -169,7 +169,7 @@ func readStatus(t *testing.T, b *bedrock.Conn) int32 {
 }
 
 func TestProtocolMismatch(t *testing.T) {
-	l := listen(t, Config{})
+	l := listen(t, Config{Protocols: []*versions.Protocol{oldProtocol()}})
 	for proto, want := range map[int32]int32{1: v2193.PlayStatusLoginFailedClient, v2193.Protocol + 1: v2193.PlayStatusLoginFailedServer} {
 		b := rawClient(t, l)
 		writeRaw(t, b, &mc.RequestNetworkSettingsPacket{ClientProtocol: proto})
@@ -180,11 +180,11 @@ func TestProtocolMismatch(t *testing.T) {
 }
 
 // TestClientOfANewerProtocolIsRefused joins a listener that allows 2193
-// alone, the default, as a client of 2225: it is told the server is
+// alone, as a config of 1.26.50 does, as a client of 2225: it is told the server is
 // outdated, PlayStatus LoginFailedServer, as BDS 1.26.52 tells it
 // (TestBDSRefusesOtherProtocols of the client).
 func TestClientOfANewerProtocolIsRefused(t *testing.T) {
-	l := listen(t, Config{})
+	l := listen(t, Config{Protocols: []*versions.Protocol{oldProtocol()}})
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	conn, err := ourclient.Dial(ctx, l.Addr().String(), ourclient.Config{Protocol: codec.V2225})
@@ -206,7 +206,7 @@ var fakeProtocol = &versions.Protocol{Codec: codec.Codec{Number: 2300, Version: 
 // is told it is outdated, and a client newer than all is told the server
 // is.
 func TestProtocolNegotiation(t *testing.T) {
-	l := listen(t, Config{Protocols: []*versions.Protocol{fakeProtocol, versions.Default(), fakeProtocol}})
+	l := listen(t, Config{Protocols: []*versions.Protocol{fakeProtocol, oldProtocol(), fakeProtocol}})
 	if got := l.allowed(); got != "2193, 2300" {
 		t.Fatalf("allowed %s", got)
 	}
@@ -222,7 +222,7 @@ func TestProtocolNegotiation(t *testing.T) {
 			t.Errorf("protocol %d: status %d, want %d", proto, got, want)
 		}
 	}
-	for _, p := range []*versions.Protocol{versions.Default(), fakeProtocol} {
+	for _, p := range []*versions.Protocol{oldProtocol(), fakeProtocol} {
 		b := rawClient(t, l)
 		writeRaw(t, b, &mc.RequestNetworkSettingsPacket{ClientProtocol: p.Number})
 		raw, err := b.ReadPacket()
@@ -238,7 +238,7 @@ func TestProtocolNegotiation(t *testing.T) {
 // TestLoginProtocolMismatch refuses a Login that names another protocol
 // than the RequestNetworkSettings before it, allowed or not.
 func TestLoginProtocolMismatch(t *testing.T) {
-	l := listen(t, Config{Protocols: []*versions.Protocol{versions.Default(), fakeProtocol}})
+	l := listen(t, Config{Protocols: []*versions.Protocol{oldProtocol(), fakeProtocol}})
 	for _, n := range []int32{fakeProtocol.Number, v2193.Protocol + 1} {
 		b := rawClient(t, l)
 		writeRaw(t, b, &v2193.RequestNetworkSettingsPacket{ClientProtocol: v2193.Protocol})
@@ -416,7 +416,7 @@ func TestStaticPacketsEncodeOnce(t *testing.T) {
 // two, the second marked, and a Text whose message is "none" does not go
 // at all.
 func converting() *versions.Protocol {
-	base := versions.Default()
+	base := oldProtocol()
 	p := *base
 	p.Same = func(id uint32) bool { return id != mc.IDText && base.Same(id) }
 	p.Keeps = func(pk proto.Packet) bool { return pk.ID() != mc.IDText && base.Keeps(pk) }

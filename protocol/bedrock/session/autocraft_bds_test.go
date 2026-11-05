@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/recipe"
@@ -77,7 +76,7 @@ func decodeCaptured(t *testing.T, s string) any {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return readAs(t, versions.Default(), h.ID, body)
+	return readAs(t, oldProtocol(), h.ID, body)
 }
 
 // stickRecipe returns the crafting-table recipe of four sticks from two

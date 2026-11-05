@@ -301,6 +301,10 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 	uc, bu := server.DefaultConfig(), bedrockadapter.DefaultConfig()
 	uc.Server.Name = serverName
 	bu.Server.AuthEnabled = false
+	// The goldens were recorded when the default config allowed 1.26.50
+	// alone and spoke it: the scenarios pin that setup, and those of
+	// primary 2225 say otherwise through conf.bedrock.
+	bu.Network.Protocols, bu.Network.PrimaryProtocol = []string{"1.26.50"}, "1.26.50"
 	uc.World.SaveData = false
 	uc.World.Seed = goldenSeed
 	uc.World.DisableNether, uc.World.DisableEnd = true, true
@@ -328,7 +332,7 @@ func newServerScenario(t *testing.T, name string, conf serverConfig) *serverScen
 	}
 	c.Log = goldenLog()
 	test := func(c server.Config, _ server.Host) (server.Listener, error) {
-		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: bc.MuteEmoteChat, Blocks: c.Blocks}), nil
+		return session.Listen(s.l, session.ListenConfig{Log: c.Log, EmoteChatMuted: bc.MuteEmoteChat, Blocks: c.Blocks, Primary: bc.Primary}), nil
 	}
 	if conf.network {
 		c.Listeners = append(c.Listeners, bc.Listener, test)

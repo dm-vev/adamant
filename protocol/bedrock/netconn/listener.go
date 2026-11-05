@@ -105,9 +105,13 @@ type Config struct {
 	// 2048 packets and 16 MiB.
 	Batches     bedrock.Config
 	Compression bedrock.Compression
-	// Protocols are the protocols clients may join with. Empty allows the
-	// model alone, the protocol the session is compiled against.
+	// Protocols are the protocols clients may join with. Empty allows every
+	// protocol a config may name (versions.Configurable).
 	Protocols []*versions.Protocol
+	// Primary is the protocol the server speaks, the one of Protocols it
+	// tells clients that look the server up. Nil or a protocol that is none
+	// of Protocols tells the newest of Protocols.
+	Primary *versions.Protocol
 }
 
 // Listener accepts the clients of a nethernet.Listener and logs them in.
@@ -235,7 +239,7 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 	}
 	if !cfg.AuthenticationDisabled {
 		var err error
-		if l.keys, err = xboxKeys(); err != nil {
+		if l.keys, err = xboxKeys(l.Advertised().Version); err != nil {
 			return nil, fmt.Errorf("netconn: keys of Xbox Live logins: %w", err)
 		}
 		if nn.Vouch == nil {
@@ -254,10 +258,10 @@ func (cfg Config) Listen(nn nethernet.ListenConfig, address string) (*Listener, 
 }
 
 // sortProtocols returns the protocols passed oldest first, each once, or
-// the default of the build alone if none is.
+// every protocol a config may name if none is.
 func sortProtocols(ps []*versions.Protocol) []*versions.Protocol {
 	if len(ps) == 0 {
-		return []*versions.Protocol{versions.Default()}
+		return versions.Configurable()
 	}
 	ps = slices.Clone(ps)
 	slices.SortFunc(ps, func(a, b *versions.Protocol) int { return cmp.Compare(a.Number, b.Number) })
@@ -284,11 +288,11 @@ func (l *Listener) protocol(n int32) (*versions.Protocol, int32, bool) {
 
 // xboxKeys returns the keys of the authorization service of the game,
 // which signs the tokens of Xbox Live logins. Tests stand in for the
-// service through it.
-var xboxKeys = func() (*bedrocklogin.Keys, error) {
+// service through it. The version is that of the primary protocol.
+var xboxKeys = func(version string) (*bedrocklogin.Keys, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	return bedrocklogin.Discover(ctx, nil, versions.Default().Version)
+	return bedrocklogin.Discover(ctx, nil, version)
 }
 
 // vouch reports whether the authorization service of the game signed the
@@ -415,9 +419,15 @@ func (l *Listener) updateStatus() {
 }
 
 // Advertised returns the protocol the listener shows clients that look the
-// server up, in its status and on LAN and Xbox Live: the newest it allows,
-// as clients update themselves.
-func (l *Listener) Advertised() *versions.Protocol { return l.protocols[len(l.protocols)-1] }
+// server up, in its status and on LAN and Xbox Live: the primary, the
+// protocol the server speaks, or the newest it allows if the config names
+// none.
+func (l *Listener) Advertised() *versions.Protocol {
+	if p := l.cfg.Primary; p != nil && slices.Contains(l.protocols, p) {
+		return p
+	}
+	return l.protocols[len(l.protocols)-1]
+}
 
 // Protocols returns the protocols clients may join with, oldest first.
 func (l *Listener) Protocols() []*versions.Protocol { return slices.Clone(l.protocols) }

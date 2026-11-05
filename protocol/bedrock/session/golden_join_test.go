@@ -56,7 +56,7 @@ var joinServer = sync.OnceValue(func() goldenServer {
 	srv := server.Config{
 		Log: slog.New(slog.DiscardHandler),
 		Listeners: []func(server.Config, server.Host) (server.Listener, error){func(c server.Config, _ server.Host) (server.Listener, error) {
-			return session.Listen(l, session.ListenConfig{Log: c.Log}), nil
+			return session.Listen(l, session.ListenConfig{Log: c.Log, Primary: oldProtocol()}), nil
 		}},
 		Name:            "Golden Server",
 		DisableNether:   true,

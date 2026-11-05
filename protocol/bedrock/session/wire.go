@@ -38,8 +38,8 @@ type wireTables struct {
 	// blocks are the network hashes of the runtime IDs of br, built by
 	// hashes once br is finalized. slot is set, before blocks, to the key
 	// the caches of columns keep the payloads of the tables under: nil for
-	// the default protocol, whose payloads a column keeps in its own cache,
-	// else that of the protocol.
+	// the model, whose payloads a column keeps in its own cache, else that
+	// of the protocol.
 	blocks atomic.Pointer[blockHashes]
 	slot   atomic.Pointer[world.SlotKey]
 
@@ -58,12 +58,12 @@ type tablesKey struct {
 // allTables holds the wireTables tablesOf built, by tablesKey.
 var allTables sync.Map
 
-// tablesOf returns the tables of the clients of a protocol, the default of
-// the build if p is nil, and the blocks of a finalized registry, built the
+// tablesOf returns the tables of the clients of a protocol, those of the
+// model if p is nil, and the blocks of a finalized registry, built the
 // first time. The registry is a key, as it is of hashesOf.
 func tablesOf(p *versions.Protocol, br world.BlockRegistry) *wireTables {
 	if p == nil {
-		p = versions.Default()
+		p = versions.Model()
 	}
 	key := tablesKey{proto: p, br: br}
 	if t, ok := allTables.Load(key); ok {
@@ -79,7 +79,7 @@ func newTables(p *versions.Protocol, br world.BlockRegistry) *wireTables {
 
 // vanillaOf returns the vanilla content of a protocol. Every protocol the
 // adapter was built with has its own; one it was not, as a test makes,
-// takes that of the default of the build.
+// takes that of the model.
 func vanillaOf(p *versions.Protocol) *bedrockdata.Vanilla {
 	if v, ok := bedrockdata.VanillaOf(p.Number); ok {
 		return v
@@ -87,7 +87,7 @@ func vanillaOf(p *versions.Protocol) *bedrockdata.Vanilla {
 	if _, known := versions.ByNumber(p.Number); known {
 		panic(fmt.Sprintf("session: no vanilla data of protocol %d", p.Number))
 	}
-	v, _ := bedrockdata.VanillaOf(versions.Default().Number)
+	v, _ := bedrockdata.VanillaOf(versions.Model().Number)
 	return v
 }
 
@@ -98,11 +98,11 @@ func (w *wireTables) hashes() *blockHashes {
 		return h
 	}
 	h := blockTable(w.proto, w.br)
-	// The tables of the default protocol keep their payloads in a column's
-	// own cache, those of every other protocol in the cache of its key, so
-	// that a server of the default config keeps one cache a column, as it
-	// did before it served more protocols.
-	if w.proto != versions.Default() {
+	// The tables of the model keep their payloads in a column's own cache,
+	// as they name blocks as the game does, those of every other protocol
+	// in the cache of its key, so that a server that speaks the model keeps
+	// one cache a column.
+	if w.proto != versions.Model() {
 		w.slot.Store(slotOf(w.proto))
 	}
 	w.blocks.CompareAndSwap(nil, h)
@@ -110,11 +110,11 @@ func (w *wireTables) hashes() *blockHashes {
 }
 
 // slots holds the keys of the caches of columns of the protocols other
-// than the default, by protocol.
+// than the model, by protocol.
 var slots sync.Map
 
 // slotOf returns the key of the caches of columns of the tables of a
-// protocol other than the default: one for each protocol, named
+// protocol other than the model: one for each protocol, named
 // "bedrock/blocks/" and its number.
 func slotOf(p *versions.Protocol) *world.SlotKey {
 	if k, ok := slots.Load(p); ok {
@@ -275,13 +275,13 @@ func (s *Session) tables() *wireTables {
 	return tablesOf(s.conf.Protocol, br)
 }
 
-// protocolOf returns the protocol a connection speaks, the default of the
-// build for a connection that does not tell.
+// protocolOf returns the protocol a connection speaks, the model for a
+// connection that does not tell.
 func protocolOf(conn Conn) *versions.Protocol {
 	if c, ok := conn.(interface{ Protocol() *versions.Protocol }); ok {
 		if p := c.Protocol(); p != nil {
 			return p
 		}
 	}
-	return versions.Default()
+	return versions.Model()
 }

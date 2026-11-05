@@ -40,7 +40,7 @@ var updateSnapshots = flag.Bool("update-snapshots", false, "rewrite the snapshot
 func TestReplicationSnapshot(t *testing.T) {
 	t.Parallel()
 	conn := &packetConn{packets: make(chan any, 4096)}
-	viewer := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1}.New(conn)
+	viewer := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1, Protocol: oldProtocol(), Primary: oldProtocol()}.New(conn)
 	t.Cleanup(viewer.CloseConnection)
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
 	t.Cleanup(func() { _ = w.Close() })

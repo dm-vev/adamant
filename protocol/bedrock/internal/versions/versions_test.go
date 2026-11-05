@@ -16,7 +16,7 @@ func TestParse(t *testing.T) {
 			t.Errorf("Parse(%q): %v", name, err)
 			continue
 		}
-		if p != Default() || p.Number != 2193 {
+		if p.Number != 2193 {
 			t.Errorf("Parse(%q) = %d, want 2193", name, p.Number)
 		}
 	}
@@ -25,8 +25,8 @@ func TestParse(t *testing.T) {
 			t.Errorf("Parse(%q) = %v, %v, want 2225", name, p, err)
 		}
 	}
-	if NewestPrimary() != Model() || Default().Number != 2193 {
-		t.Errorf("the session speaks up to %v as its primary, %v by default", NewestPrimary(), Default())
+	if NewestPrimary() != Model() {
+		t.Errorf("the session speaks up to %v as its primary", NewestPrimary())
 	}
 	for _, name := range []string{"", "1.26.40", "26.4", "1.26", "26.70", "1.26.70", "2250", "2192", "v1.26.50", "1.26.50.5", "0x891"} {
 		p, err := Parse(name)
@@ -42,7 +42,7 @@ func TestParse(t *testing.T) {
 
 // TestByNumber finds every protocol the adapter was built with.
 func TestByNumber(t *testing.T) {
-	if p, ok := ByNumber(2193); !ok || p != Default() {
+	if p, ok := ByNumber(2193); !ok || p.Number != 2193 {
 		t.Fatalf("ByNumber(2193) = %v, %v", p, ok)
 	}
 	if p, ok := ByNumber(2225); !ok || p != Model() {
@@ -103,7 +103,7 @@ func TestModelIsV2225(t *testing.T) {
 	if pk := m.New(v2225.IDLogin); pk == nil || pk.ID() != v2225.IDLogin || !m.FromClient(v2225.IDLogin) {
 		t.Fatal("the model does not decode a Login")
 	}
-	d := Default()
+	d, _ := ByNumber(2193)
 	if d.Number != v2193.Protocol || d.Version != v2193.Version || d.Range() != "26.50–26.52" {
 		t.Fatalf("default %d %s %s", d.Number, d.Version, d.Range())
 	}

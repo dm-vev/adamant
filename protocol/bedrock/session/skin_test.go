@@ -6,7 +6,6 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/df-mc/dragonfly/server/player/skin"
 	"github.com/dm-vev/adamant/net/bedrock/login"
 	mc "github.com/dm-vev/adamant/net/bedrock/proto/v2225"
@@ -175,4 +174,4 @@ func TestSkinChangedByHand(t *testing.T) {
 
 // testEngine is the engine version of the skins of the tests: that of the
 // default protocol.
-var testEngine = versions.Default().Version
+var testEngine = oldProtocol().Version

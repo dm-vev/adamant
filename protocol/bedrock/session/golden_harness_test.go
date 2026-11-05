@@ -432,6 +432,9 @@ func newScenario(t *testing.T, name string, conf scenarioConfig) *scenario {
 		BlockRegistry:  w.BlockRegistry(),
 		Permissions:    func(uuid.UUID) client.Permissions { return client.MemberPermissions() },
 		Primary:        goldenPrimary,
+		// The goldens were recorded with the tables of 2193, which a session
+		// with no Protocol had when it was the default of the build.
+		Protocol: oldProtocol(),
 	}
 	if conf.session != nil {
 		conf.session(&sconf)
@@ -977,8 +980,14 @@ func encode(pk proto.Packet) []byte {
 	return w.B
 }
 
-// goldenProtocol is the protocol the clients of the scenarios speak: the
-// default of the build, 2193, whose bytes testdata/golden holds, or 2225,
+// oldProtocol returns protocol 2193, the oldest the adapter speaks.
+func oldProtocol() *versions.Protocol {
+	p, _ := versions.ByNumber(2193)
+	return p
+}
+
+// goldenProtocol is the protocol the clients of the scenarios speak: 2193,
+// whose bytes testdata/golden holds, or 2225,
 // that of testdata/golden/v2225, when GOLDEN_PROTOCOL says so, as
 // TestGoldenScenariosOf2225 has its children. The session writes packets
 // of the model, which go to the clients as netconn writes them for a
@@ -988,27 +997,28 @@ var goldenProtocol = func() *versions.Protocol {
 	if os.Getenv("GOLDEN_PROTOCOL") == "2225" {
 		return versions.Model()
 	}
-	return versions.Default()
+	return oldProtocol()
 }()
 
 // goldenPrimary is the primary protocol of the sessions of the scenarios:
-// nil, that of the default config, 2193, unless GOLDEN_PRIMARY says 2225,
+// 2193, which testdata/golden was recorded with when it was the default of
+// the build and which these scenarios pin, unless GOLDEN_PRIMARY says 2225,
 // as TestGoldenScenariosOfPrimary2225 has its children.
 var goldenPrimary = func() *versions.Protocol {
 	if os.Getenv("GOLDEN_PRIMARY") == "2225" {
 		return versions.Model()
 	}
-	return nil
+	return oldProtocol()
 }()
 
 // goldenDir returns the directory of the snapshots of goldenProtocol, and
 // of goldenPrimary if it is set: testdata/golden/primary2225/v2193 and
 // v2225 for primary 2225.
 func goldenDir() string {
-	if goldenPrimary != nil {
+	if goldenPrimary != oldProtocol() {
 		return filepath.Join("testdata", "golden", fmt.Sprintf("primary%d", goldenPrimary.Number), fmt.Sprintf("v%d", goldenProtocol.Number))
 	}
-	if goldenProtocol != versions.Default() {
+	if goldenProtocol != oldProtocol() {
 		return filepath.Join("testdata", "golden", fmt.Sprintf("v%d", goldenProtocol.Number))
 	}
 	return filepath.Join("testdata", "golden")

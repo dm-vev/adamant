@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/df-mc/dragonfly/protocol/bedrock/internal/versions"
 	"github.com/dm-vev/adamant/net/bedrock"
 	ourclient "github.com/dm-vev/adamant/net/bedrock/client"
 	ourlogin "github.com/dm-vev/adamant/net/bedrock/login"
@@ -107,7 +106,7 @@ func BenchmarkWritePacket(b *testing.B) {
 	c.b.EnableCompression(c.comp)
 	// A client of the default protocol, 2193, which the step from the
 	// model converts: a move has the same layout in both.
-	c.proto = versions.Default()
+	c.proto = oldProtocol()
 	move := &mc.MoveActorDeltaPacket{EntityRuntimeID: 7, PositionX: proto.Some[float32](1), PositionZ: proto.Some[float32](1)}
 	b.ReportAllocs()
 	for b.Loop() {
