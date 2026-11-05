@@ -87,3 +87,73 @@ func (tx *Tx) temperature(pos cube.Pos) float64 {
 	diff := max(pos[1]-seaLevel, 0)
 	return tx.biome(pos).Temperature() - float64(diff)*tempDrop
 }
+
+// RandomUint32 draws from the world's simulation RNG, shared with block-actor
+// scheduling. Use it when a block's native algorithm consumes raw random words.
+func (tx *Tx) RandomUint32() uint32 {
+	return tx.World().randomUint32()
+}
+
+// RandomFloat32 consumes one raw simulation word using Core::Random's
+// binary32 conversion. It may round a word near uint32's maximum to one.
+func (tx *Tx) RandomFloat32() float32 {
+	return nativeRandomFloat32(tx.World().randomUint32())
+}
+
+// RandomGaussianFloat32 draws from the native cached binary32 Gaussian stream.
+// It shares raw simulation words with RandomUint32 and RandomFloat32.
+func (tx *Tx) RandomGaussianFloat32() float32 {
+	w := tx.World()
+	return w.nativeGaussianFloat.next(w.randomUint32)
+}
+
+// HighestLightBlocker gets the Y value of the highest fully light blocking
+// block at the x and z values passed in the World.
+func (tx *Tx) HighestLightBlocker(x, z int) int {
+	return tx.highestLightBlocker(x, z)
+}
+
+// HighestBlock looks up the highest non-air block in the World at a specific x
+// and z. The y value of the highest block is returned, or 0 if no blocks were
+// present in the column.
+func (tx *Tx) HighestBlock(x, z int) int {
+	return tx.highestBlock(x, z)
+}
+
+// Temperature returns the temperature in the World at a specific position.
+// Higher altitudes and different biomes influence the temperature returned.
+func (tx *Tx) Temperature(pos cube.Pos) float64 {
+	return tx.temperature(pos)
+}
+
+// RainingAt checks if it is raining at a specific cube.Pos in the World. True
+// is returned if it is raining, if the temperature is high enough in the biome
+// for it not to be snow and if the block is above the top-most obstructing
+// block.
+func (tx *Tx) RainingAt(pos cube.Pos) bool {
+	return tx.rainingAt(pos)
+}
+
+// SnowingAt checks if it is snowing at a specific cube.Pos in the World. True
+// is returned if the temperature in the Biome at that position is sufficiently
+// low, if it is raining and if it's above the top-most obstructing block.
+func (tx *Tx) SnowingAt(pos cube.Pos) bool {
+	return tx.snowingAt(pos)
+}
+
+// ThunderingAt checks if it is thundering at a specific cube.Pos in the World.
+// True is returned if RainingAt returns true and if it is thundering in the
+// world.
+func (tx *Tx) ThunderingAt(pos cube.Pos) bool {
+	return tx.thunderingAt(pos)
+}
+
+// Raining checks if it is raining anywhere in the World.
+func (tx *Tx) Raining() bool {
+	return tx.World().raining()
+}
+
+// Thundering checks if it is thundering anywhere in the World.
+func (tx *Tx) Thundering() bool {
+	return tx.World().thundering()
+}

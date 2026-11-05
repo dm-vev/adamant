@@ -1,6 +1,8 @@
 package world
 
 import (
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
@@ -653,4 +655,232 @@ func (tx *Tx) LoadArea(min, max cube.Pos) <-chan struct{} {
 		}
 	}
 	return done
+}
+
+// SetBlock writes a block to the position passed. If a chunk is not yet loaded
+// at that position, the chunk is first loaded or generated if it could not be
+// found in the world save. SetBlock panics if the block passed has not yet
+// been registered using RegisterBlock(). Nil may be passed as the block to set
+// the block to air.
+//
+// A SetOpts struct may be passed to additionally modify behaviour of SetBlock,
+// specifically to improve performance under specific circumstances. Nil should
+// be passed where performance is not essential, to make sure the world is
+// updated adequately.
+//
+// SetBlock should be avoided in situations where performance is critical when
+// needing to set a lot of blocks to the world. BuildStructure may be used
+// instead.
+func (tx *Tx) SetBlock(pos cube.Pos, b Block, opts *SetOpts) {
+	tx.setBlock(pos, b, opts)
+}
+
+func (tx *Tx) ChunkLoaded(pos ChunkPos) bool {
+	_, ready := tx.ChunkState(pos)
+	return ready
+}
+
+// ChunkReadySignal returns a channel that is closed once the chunk at the given position finishes generation. The
+// second return value is false if the chunk is not currently tracked by the world.
+func (tx *Tx) ChunkReadySignal(pos ChunkPos) (<-chan struct{}, bool) {
+	c, ok := tx.loadedColumn(pos)
+	if !ok {
+		return nil, false
+	}
+	return (<-chan struct{})(c.readyCh), true
+}
+
+// ChunkState reports whether a chunk at the given position is currently tracked by the world and whether it has
+// finished generation. The second value is only meaningful if the first is true.
+func (tx *Tx) ChunkState(pos ChunkPos) (loaded bool, ready bool) {
+	c, ok := tx.loadedColumn(pos)
+	if !ok {
+		return false, false
+	}
+	if tx.region != nil {
+		// A region reads settled columns only.
+		return true, c.settled
+	}
+	return true, c.Ready()
+}
+
+// ChunkFailed reports whether the chunk at the given position is a stand-in
+// for one that failed to load or whose generation panicked: an empty chunk,
+// never saved, that the world serves so that nothing waits for the real one.
+// It does not load the chunk.
+func (tx *Tx) ChunkFailed(pos ChunkPos) bool {
+	c, ok := tx.loadedColumn(pos)
+	return ok && c.loadErr != nil
+}
+
+// ColumnBlockVersion returns the block version of the loaded column at pos,
+// which changes whenever one of its blocks does, and false if the column is
+// not loaded. It does not load the column.
+func (tx *Tx) ColumnBlockVersion(pos ChunkPos) (uint64, bool) {
+	c, ok := tx.loadedColumn(pos)
+	if !ok {
+		return 0, false
+	}
+	return c.blockVersion, true
+}
+
+// SetBlockEntity updates block entity data without notifying viewers, updating
+// neighbouring blocks or invalidating redstone. The chunk is marked modified.
+// It falls back to SetBlock if b has no block entity data or its state differs.
+func (tx *Tx) SetBlockEntity(pos cube.Pos, b Block) {
+	tx.setBlockEntity(pos, b)
+}
+
+// Block reads a block from the position passed. If a chunk is not yet loaded
+// at that position, the chunk is loaded, or generated if it could not be found
+// in the world save, and the block returned.
+func (tx *Tx) Block(pos cube.Pos) Block {
+	return tx.block(pos)
+}
+
+// BlockLoaded returns the block at the position passed if the chunk containing it is already loaded. It returns false
+// without loading or generating the chunk when the block is unavailable.
+func (tx *Tx) BlockLoaded(pos cube.Pos) (Block, bool) {
+	return tx.blockLoaded(pos)
+}
+
+// Liquid attempts to return a Liquid block at the position passed. This
+// Liquid may be in the foreground or in any other layer. If found, the Liquid
+// is returned. If not, the bool returned is false.
+func (tx *Tx) Liquid(pos cube.Pos) (Liquid, bool) {
+	return tx.liquid(pos)
+}
+
+// MayContainLiquid reports whether any block from lo to hi, inclusive, may
+// hold a liquid. It is false only if none can, so a false result spares
+// asking Liquid of every block. Like Liquid, it loads the chunks.
+func (tx *Tx) MayContainLiquid(lo, hi cube.Pos) bool {
+	return tx.mayContainLiquid(lo, hi)
+}
+
+// SetLiquid sets a Liquid at a specific position in the World. Unlike
+// SetBlock, SetLiquid will not necessarily overwrite any existing blocks. It
+// will instead be in the same position as a block currently there, unless
+// there already is a Liquid at that position, in which case it will be
+// overwritten. If nil is passed for the Liquid, any Liquid currently present
+// will be removed.
+func (tx *Tx) SetLiquid(pos cube.Pos, b Liquid) {
+	tx.setLiquid(pos, b)
+}
+
+// BuildStructure builds a Structure passed at a specific position in the
+// world. Unlike SetBlock, it takes a Structure implementation, which provides
+// blocks to be placed at a specific location. BuildStructure is specifically
+// optimised to be able to process a large batch of chunks simultaneously and
+// will do so within much less time than separate SetBlock calls would. The
+// method operates on a per-chunk basis, setting all blocks within a single
+// chunk part of the Structure before moving on to the next chunk.
+func (tx *Tx) BuildStructure(pos cube.Pos, s Structure) {
+	tx.buildStructure(pos, s)
+}
+
+// ScheduleBlockUpdate schedules a block or fluid update at the position passed
+// after a specific delay. If the type does not handle scheduled ticks, nothing
+// will happen. Liquids are stored in the separate fluid queue.
+// Tick identity is type- and position-specific; the first pending tick is kept.
+func (tx *Tx) ScheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
+	if r := tx.region; r != nil && !r.owns(tx.w, chunkPosFromBlockPos(pos)) {
+		tx.deferToOwner(func(tx *Tx) { tx.ScheduleBlockUpdate(pos, b, delay) })
+		return
+	}
+	tx.lockShared()
+	defer tx.unlockShared()
+	tx.World().scheduleBlockUpdate(pos, b, delay)
+}
+
+// WithBlockInteraction runs a player block activation with the last processed
+// block queue clock. Native player input precedes the chunk's queue pass,
+// whereas contact and lightning callbacks use the current simulation clock.
+// The event clock is unchanged, and the ordinary queue clock is restored even
+// if the activation panics. Nested activations share the same input clock.
+func (tx *Tx) WithBlockInteraction(activate func()) {
+	queue := tx.World().scheduledBlockTicks
+	clock := queue.currentTick
+	queue.currentTick = queue.processedTick
+	defer func() { queue.currentTick = clock }()
+	activate()
+}
+
+// HasScheduledBlockUpdate reports whether an update of the type of b is
+// pending at the position passed.
+func (tx *Tx) HasScheduledBlockUpdate(pos cube.Pos, b Block) bool {
+	w := tx.World()
+	tx.lockShared()
+	defer tx.unlockShared()
+	if _, ok := b.(Liquid); ok {
+		_, pending := w.scheduledFluidTicks.scheduledTicks[scheduledTickIndex{pos: pos, typeName: scheduledFluidTickType(b.(Liquid))}]
+		return pending
+	}
+	_, pending := w.scheduledBlockTicks.scheduledTicks[scheduledTickIndex{pos: pos, typeName: scheduledTickType(w.conf.Blocks, b)}]
+	return pending
+}
+
+// CancelBlockUpdate removes pending updates of b's type at pos, including an
+// update collected for this tick that has not yet run. Native observer removal
+// uses this to keep a replacement observer from inheriting the old pulse.
+func (tx *Tx) CancelBlockUpdate(pos cube.Pos, b Block) {
+	if r := tx.region; r != nil && !r.owns(tx.w, chunkPosFromBlockPos(pos)) {
+		tx.deferToOwner(func(tx *Tx) { tx.CancelBlockUpdate(pos, b) })
+		return
+	}
+	w := tx.World()
+	tx.lockShared()
+	defer tx.unlockShared()
+	queue := w.scheduledBlockTicks
+	typeName := scheduledTickType(w.conf.Blocks, b)
+	if liquid, ok := b.(Liquid); ok {
+		queue = w.scheduledFluidTicks
+		typeName = scheduledFluidTickType(liquid)
+	}
+	if queue.cancel(scheduledTickIndex{pos: pos, typeName: typeName}) {
+		w.markScheduledTickColumnModified(pos)
+	}
+}
+
+// DoBlockUpdatesAround triggers neighbour updates around the position passed.
+func (tx *Tx) DoBlockUpdatesAround(pos cube.Pos) {
+	tx.doBlockUpdatesAround(pos)
+}
+
+// Light returns the light level at the position passed. This is the highest of
+// the sky- and block light. The light value returned is a value in the range
+// 0-15, where 0 means there is no light present, whereas 15 means the block is
+// fully lit. Light does not load chunks: 0 is returned for positions in chunks
+// that are not currently loaded.
+func (tx *Tx) Light(pos cube.Pos) uint8 {
+	return tx.light(pos)
+}
+
+// BlockLight returns the light blocks emit at pos. It does not load chunks:
+// 0 is returned for positions in chunks that are not loaded.
+func (tx *Tx) BlockLight(pos cube.Pos) uint8 {
+	return tx.blockLight(pos)
+}
+
+// SkyLight returns the skylight level at the position passed. This light level
+// is not influenced by blocks that emit light, such as torches. The light
+// value, similarly to Light, is a value in the range 0-15, where 0 means no
+// light is present. Unlike Light, SkyLight loads or generates the chunk at the
+// position if it is not currently loaded.
+func (tx *Tx) SkyLight(pos cube.Pos) uint8 {
+	return tx.skyLight(pos)
+}
+
+// SetBiome sets the Biome at the position passed. If a chunk is not yet loaded
+// at that position, the chunk is first loaded or generated if it could not be
+// found in the world save.
+func (tx *Tx) SetBiome(pos cube.Pos, b Biome) {
+	tx.setBiome(pos, b)
+}
+
+// Biome reads the Biome at the position passed. If a chunk is not yet loaded
+// at that position, the chunk is loaded, or generated if it could not be found
+// in the world save, and the Biome returned.
+func (tx *Tx) Biome(pos cube.Pos) Biome {
+	return tx.biome(pos)
 }
