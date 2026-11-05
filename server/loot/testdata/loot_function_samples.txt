@@ -122,7 +122,7 @@ minecraft:book minecraft:set_count c24568ebcd88 d7d7df1fec7d4a7ae33cdcf3
 minecraft:book minecraft:set_count 276a0ba2d418 bc8c21629267e5becf67be84
 minecraft:book minecraft:set_count 4812545fecf7 8fa481d1fd72be3f73dec74a
 minecraft:book minecraft:set_count 99fba537e4ee 484bcd258890a65c6cf69ade
-minecraft:book minecraft:set_enchantments 27945b284095 e0a858f36c4ccfad8d502de0
+minecraft:book minecraft:set_enchantments 27945b284095 39136a5c5713d4b195350dc2
 minecraft:book minecraft:enchant_with_levels bbb48d9c3719 df3e584113d1d29ae1a78525
 minecraft:book minecraft:enchant_randomly 0cee52ad1393 b43144c48ec9c61fbee417cf
 minecraft:book minecraft:enchant_randomly 5b778f7c4791 6e86aaa0644b31c307ae485b

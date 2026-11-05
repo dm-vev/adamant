@@ -1250,7 +1250,7 @@
 "minecraft:chests/trial_chambers/intersection_barrel" 90 c64b752e79d82b807dce4eea
 "minecraft:chests/trial_chambers/reward" 115 d8a56d7e271d2e5f045be620
 "minecraft:chests/trial_chambers/reward_common" 40 6f1dfca17b2590be10c74ad1
-"minecraft:chests/trial_chambers/reward_ominous" 140 bf9a964de69f523f6d0bdf8a
+"minecraft:chests/trial_chambers/reward_ominous" 140 037dbf59a4f790c8dab07d1d
 "minecraft:chests/trial_chambers/reward_ominous_common" 40 c83366bc3f40c711a45f5ff9
 "minecraft:chests/trial_chambers/reward_ominous_rare" 40 668c615974eb24e94560e5e8
 "minecraft:chests/trial_chambers/reward_ominous_unique" 40 e33c5add74774260cdb53d7d

@@ -55,8 +55,7 @@ server/entity/minecart_movement.go MinecartBehaviour.moveOnRails 108
 server/entity/piglin_ai.go newPiglinBrain 104
 server/entity/register.go init 132
 server/entity/template_spawn_zombie.go prepareZombieVillagerTemplateSpawn 125
-server/item/java_nbt.go StackFromStructureNBT 117
-server/item/java_nbt.go StackToStructureNBT 117
+server/item/java_nbt.go StackFromStructureNBT 113
 server/item/recipe/vanilla.go registerVanillaRecipes 160
 server/loot/entity_predicate.go matchEntityKey 111
 server/loot/loot.go expand 108

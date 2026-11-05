@@ -68,17 +68,11 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 				s = s.WithCustomName(name)
 			}
 		case "minecraft:lore":
-			if lines, ok := value.([]any); ok {
-				lore := make([]string, 0, len(lines))
-				for _, line := range lines {
-					if text, ok := javaText(line); ok {
-						lore = append(lore, text)
-					}
-				}
-				s = s.WithLore(lore...)
-			}
+			s = withJavaLore(s, value)
 		case "minecraft:repair_cost":
-			if cost, ok := javaInt(value); ok { s = s.WithAnvilCost(int(cost)) }
+			if cost, ok := javaInt(value); ok {
+				s = s.WithAnvilCost(int(cost))
+			}
 		case "minecraft:ominous_bottle_amplifier":
 			amplifier, ok := javaInt(value)
 			if !ok || amplifier < 0 || amplifier > 4 {
@@ -112,7 +106,9 @@ func StackFromStructureNBT(data map[string]any) (Stack, error) {
 			book.Recipes = recipes
 			s = s.WithItem(book)
 		case "minecraft:unbreakable":
-			if unbreakable(value) { s = s.AsUnbreakable() }
+			if unbreakable(value) {
+				s = s.AsUnbreakable()
+			}
 		case "minecraft:enchantments", "minecraft:stored_enchantments":
 			applyJavaEnchantments(&s, value)
 		case "minecraft:potion_contents":
@@ -181,7 +177,9 @@ func StackToStructureNBT(stack Stack) (map[string]any, error) {
 	if name := stack.CustomName(); name != "" {
 		components["minecraft:custom_name"] = map[string]any{"text": name}
 	} else {
+		// item_name was read as the name too, so a cleared name clears both.
 		delete(components, "minecraft:custom_name")
+		delete(components, "minecraft:item_name")
 	}
 	if lore := stack.Lore(); len(lore) != 0 {
 		lines := make([]any, len(lore))
@@ -228,37 +226,69 @@ func StackToStructureNBT(stack Stack) (map[string]any, error) {
 			delete(components, "minecraft:map_id")
 		}
 	}
-	if cost := stack.AnvilCost(); cost > 0 {
-		components["minecraft:repair_cost"] = int32(cost)
-	}
-	if stack.Unbreakable() {
-		components["minecraft:unbreakable"] = map[string]any{}
-	}
-	enchantments := stack.Enchantments()
-	if len(enchantments) != 0 {
-		component := "minecraft:enchantments"
-		if _, book := stack.Item().(EnchantedBook); book {
-			component = "minecraft:stored_enchantments"
-		}
-		levels, _ := components[component].(map[string]any)
-		if legacy, ok := levels["levels"].(map[string]any); ok {
-			levels = legacy
-		}
-		if levels == nil {
-			levels = make(map[string]any, len(enchantments))
-		}
-		// Retain source-only enchantments that the native registry cannot expose.
-		for _, enchantment := range enchantments {
-			levels[JavaEnchantmentID(enchantment.Type())] = int32(enchantment.Level())
-		}
-		components[component] = levels
-	}
+	writeJavaStackState(components, stack)
 	data := map[string]any{"id": name, "count": int32(stack.Count())}
 	if len(components) != 0 {
 		data["components"] = components
 	}
 	return data, nil
 }
+
+// writeJavaStackState writes the repair cost, unbreakable and enchantments of
+// a stack into components. The components a stack was imported with are only a
+// base: what the server models is written from the stack as it is now, so
+// that what an anvil or a grindstone took off is not written back.
+func writeJavaStackState(components map[string]any, stack Stack) {
+	if cost := stack.AnvilCost(); cost > 0 {
+		components["minecraft:repair_cost"] = int32(cost)
+	} else {
+		delete(components, "minecraft:repair_cost")
+	}
+	if stack.Unbreakable() {
+		components["minecraft:unbreakable"] = map[string]any{}
+	} else {
+		delete(components, "minecraft:unbreakable")
+	}
+	// Both enchantment components were read as the stack's enchantments, so
+	// only what the stack did not take from them is kept: enchantments the
+	// server has no type of and levels it cannot hold.
+	for _, key := range []string{"minecraft:enchantments", "minecraft:stored_enchantments"} {
+		levels, _ := components[key].(map[string]any)
+		if legacy, ok := levels["levels"].(map[string]any); ok {
+			levels = legacy
+		}
+		for id, raw := range levels {
+			if _, valid := javaEnchantmentLevel(raw); !valid {
+				continue
+			}
+			if _, known := enchantmentByJavaID(id); known {
+				delete(levels, id)
+			}
+		}
+		if len(levels) == 0 {
+			delete(components, key)
+		} else {
+			components[key] = levels
+		}
+	}
+	enchantments := stack.Enchantments()
+	if len(enchantments) == 0 {
+		return
+	}
+	component := "minecraft:enchantments"
+	if _, book := stack.Item().(EnchantedBook); book {
+		component = "minecraft:stored_enchantments"
+	}
+	levels, _ := components[component].(map[string]any)
+	if levels == nil {
+		levels = make(map[string]any, len(enchantments))
+	}
+	for _, enchantment := range enchantments {
+		levels[JavaEnchantmentID(enchantment.Type())] = int32(enchantment.Level())
+	}
+	components[component] = levels
+}
+
 // javaComponentKey returns the ID of a component as Java parses it, an
 // Identifier in the minecraft namespace unless it names another: damage
 // is minecraft:damage. Kept as it came, the short form would be written
@@ -313,6 +343,21 @@ func javaCount(data map[string]any) (int, error) {
 	return int(count), nil
 }
 
+// withJavaLore applies a lore component: a list of lines.
+func withJavaLore(s Stack, value any) Stack {
+	lines, ok := value.([]any)
+	if !ok {
+		return s
+	}
+	lore := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if text, ok := javaText(line); ok {
+			lore = append(lore, text)
+		}
+	}
+	return s.WithLore(lore...)
+}
+
 // withJavaDamage applies a damage component to a durable stack.
 // ItemStack.CODEC reads minecraft:damage as a NON_NEGATIVE_INT
 // (DataComponents.DAMAGE), on any item: it refuses a negative damage or one
@@ -364,12 +409,24 @@ func applyJavaEnchantments(s *Stack, value any) {
 	for name, rawLevel := range levels {
 		name = strings.TrimPrefix(name, "minecraft:")
 		enchantment, ok := byName[name]
-		level, valid := javaInt(rawLevel)
-		if ok && valid && level > 0 {
+		level, valid := javaEnchantmentLevel(rawLevel)
+		if ok && valid {
 			found = append(found, NewEnchantment(enchantment, int(min(level, int64(255)))))
 		}
 	}
 	*s = s.WithForcedEnchantments(found...)
+}
+
+// javaEnchantmentLevel returns the level of an enchantment as a component
+// holds it, if it is one the stack takes: a positive number. Components that
+// went through JSON hold their numbers as floats, which NbtOps reads as numbers
+// all the same (NumericTag.intValue).
+func javaEnchantmentLevel(raw any) (int64, bool) {
+	level, ok := javaInt(raw)
+	if f, isFloat := raw.(float64); isFloat {
+		level, ok = int64(f), true
+	}
+	return level, ok && level > 0
 }
 
 // JavaEnchantmentID returns the Java registry ID of an enchantment: its name
