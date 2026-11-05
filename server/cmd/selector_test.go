@@ -296,6 +296,7 @@ func TestSelectorRefusesWhatJavaRefuses(t *testing.T) {
 		level        = "Level shouldn't be negative"
 	)
 	for _, c := range []struct{ selector, want string }{
+		{"@", "Missing selector type"},
 		{"@s[limit=1]", fmt.Sprintf(inapplicable, "limit")},
 		{"@s[sort=nearest]", fmt.Sprintf(inapplicable, "sort")},
 		{"@a[distance=..-1]", distance},

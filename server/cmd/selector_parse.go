@@ -71,6 +71,10 @@ var selectorOptionParsers = map[string]selectorOptionParser{
 // newEntitySelector returns the selector of the kind that text starts with,
 // with the defaults of that kind.
 func newEntitySelector(text string, src Source) (*entitySelector, error) {
+	if len(text) < 2 {
+		// A bare @: Java's argument.entity.selector.missing.
+		return nil, selectorError("Missing selector type")
+	}
 	s := &entitySelector{kind: text[1], origin: src.Position(), sort: "arbitrary", limit: math.MaxInt}
 	switch s.kind {
 	case 'p', 'n':
