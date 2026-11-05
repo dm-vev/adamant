@@ -223,7 +223,7 @@ func (d *Data) FillDefault() {
 	d.SpawnRadius = 5
 	d.SpawnRadius = 5
 	d.SpawnY = math.MaxInt16
-	d.StorageVersion = 9
+	d.StorageVersion = 10
 	d.TNTExplodes = true
 	d.WorldVersion = 1
 	d.XBLBroadcastIntent = 3

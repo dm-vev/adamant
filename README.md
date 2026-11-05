@@ -172,7 +172,7 @@ go run .
 
 Run from the repository root; `config.toml` is read from the current working directory. Stop the server with `Ctrl+C` or the console command `stop`. Use `go run . -headless` to run without the interactive console; termination signals still shut the server down cleanly.
 
-Connect with Bedrock 1.26.52 to the address in `config.toml` (`:19132` by default).
+Connect with Bedrock 1.26.60 (1.26.50 to 1.26.61 join, see [protocols](docs/protocols.md)) to the address in `config.toml` (`:19132` by default).
 
 ## Configuration
 

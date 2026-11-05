@@ -20391,7 +20391,7 @@ server/text	type	SpanOptions	struct{Decorations server/text.Decoration; Translat
 server/text	type	Style	struct{Colour server/text.Colour; On server/text.Decoration; Off server/text.Decoration; Reset bool}
 server/text	type	Text	struct{n *server/text.node}
 server/version	const	Java	untyped string = "26.3"
-server/version	const	Minecraft	untyped string = "1.26.50"
+server/version	const	Minecraft	untyped string = "1.26.60"
 server/version	func	MinecraftNumbers	func() []int32
 server/world	const	CaptureTimeout	time.Duration = 5000000000
 server/world	const	ChunkSavingAll	server/world.ChunkSaving = 1
@@ -22669,7 +22669,7 @@ server/world/mcdb	type	IteratorRange	struct{Min server/world.ChunkPos; Max serve
 server/world/mcdb	type	SnapshotOptions	struct{Retries int; Verify server/world/mcdb.Verification}
 server/world/mcdb	type	SnapshotResult	struct{Checkpoint server/world/mcdb.CheckpointRecord; Files int; Bytes int64; Linked int; Copied int64; Raced []string; Took time.Duration}
 server/world/mcdb	type	Verification	uint8
-server/world/mcdb/leveldat	const	NetworkVersion	untyped int = 2193
+server/world/mcdb/leveldat	const	NetworkVersion	untyped int = 2225
 server/world/mcdb/leveldat	const	Version	untyped int = 10
 server/world/mcdb/leveldat	func	Read	func(r io.Reader) (*server/world/mcdb/leveldat.LevelDat, error)
 server/world/mcdb/leveldat	func	ReadFile	func(name string) (*server/world/mcdb/leveldat.LevelDat, error)

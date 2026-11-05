@@ -35,8 +35,8 @@ func TestDefaultVersionsRoundTrip(t *testing.T) {
 	if err := read.Unmarshal(&got); err != nil {
 		t.Fatal(err)
 	}
-	numbers := []int32{1, 26, 50, 0, 0}
-	if got.InventoryVersion != "1.26.50" || got.NetworkVersion != 2193 ||
+	numbers := []int32{1, 26, 60, 0, 0}
+	if got.InventoryVersion != "1.26.60" || got.NetworkVersion != 2225 || got.StorageVersion != 10 ||
 		!slices.Equal(got.MinimumCompatibleClientVersion, numbers) || !slices.Equal(got.LastOpenedWithVersion, numbers) {
 		t.Errorf("read back InventoryVersion %q, NetworkVersion %d, MinimumCompatibleClientVersion %v, LastOpenedWithVersion %v",
 			got.InventoryVersion, got.NetworkVersion, got.MinimumCompatibleClientVersion, got.LastOpenedWithVersion)
@@ -45,4 +45,4 @@ func TestDefaultVersionsRoundTrip(t *testing.T) {
 
 // defaultLevelDatSHA256 is the SHA-256 of the level.dat written for the data of
 // FillDefault.
-const defaultLevelDatSHA256 = "e4abbf5b652fc3f4566092aa96f051d3231f1ec39a47adbad3a07054bef112a2"
+const defaultLevelDatSHA256 = "69692d77743909da7cde6fe962bb91f177daba4b5e5cb48eb7dfbb28dce4fbe6"

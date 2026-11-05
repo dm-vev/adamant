@@ -5,8 +5,9 @@
 // blocks and behaviour, the worlds it writes and the version it reports in
 // queries and commands are those of this release, whichever protocol a client
 // connects with. vanilla-reference.json in the repository root records the
-// build of Bedrock Dedicated Server the vanilla data was taken from, a hotfix of
-// this release.
+// build of Bedrock Dedicated Server the vanilla data was captured from, which
+// may be a hotfix of an older release than this one until the data is
+// captured again.
 package version
 
 import (
@@ -15,8 +16,12 @@ import (
 )
 
 // Minecraft is the release of Minecraft: Bedrock Edition the server implements,
-// as major, minor and patch numbers separated by dots.
-const Minecraft = "1.26.50"
+// as major, minor and patch numbers separated by dots: the newest release the
+// build supports, the first of those that speak its newest protocol (hotfixes
+// such as 1.26.61 speak the protocol of the release they fix). It is the
+// version of the primary protocol a config that names none gets, which
+// protocol/bedrock checks.
+const Minecraft = "1.26.60"
 
 // Java is the release of Minecraft: Java Edition whose behaviour the game
 // ports, as major and minor numbers separated by a dot. Where the game ports a
