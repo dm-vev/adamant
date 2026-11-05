@@ -7,8 +7,6 @@ import (
 	"log/slog"
 	"math"
 	"math/rand/v2"
-	"net"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -19,7 +17,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/client"
-	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/event"
@@ -29,19 +26,10 @@ import (
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
-	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/menu"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
-	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/df-mc/dragonfly/server/player/debug"
-	"github.com/df-mc/dragonfly/server/player/dialogue"
-	"github.com/df-mc/dragonfly/server/player/form"
-	"github.com/df-mc/dragonfly/server/player/hud"
-	"github.com/df-mc/dragonfly/server/player/input"
-	"github.com/df-mc/dragonfly/server/player/scoreboard"
 	"github.com/df-mc/dragonfly/server/player/skin"
-	"github.com/df-mc/dragonfly/server/player/title"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
@@ -265,146 +253,6 @@ func (p *Player) BindTransaction(tx *world.Tx) {
 	p.bindTx(tx)
 }
 
-// Name returns the username of the player. If the player is controlled by a client, it is the username of
-// the client. (Typically the XBOX Live name)
-func (p *Player) Name() string {
-	// TODO: This isn't correct, this will change if the nametag changes.
-	return p.data.Name
-}
-
-// UUID returns the UUID of the player, as its client sent it. For a player that signed in with Xbox Live, it
-// follows from the account and will, unlike the name of the player, never change. A client that joined without
-// signing in chose it, and may send another at its next login, or the UUID of another player.
-func (p *Player) UUID() uuid.UUID {
-	return p.handle.UUID()
-}
-
-// XUID returns the Xbox Live user ID the login of the player named, in decimal: a number that fits a uint64. For
-// a player that signed in with Xbox Live, it is the ID of its account, which does not change in the lifetime of
-// the account. A client that joined without signing in, on a server with Xbox Live sign-in off, claimed it: it
-// may be empty, or the XUID of anyone, and must not be trusted as the account of the player. The server keys such
-// players by name (see identity.Mode). The XUID is empty for a player no client plays.
-func (p *Player) XUID() string {
-	return p.xuid
-}
-
-// DeviceID returns the device ID of the player. If the Player is not connected to a network session, an empty string is
-// returned. Otherwise, the device ID its client told when it joined is returned.
-func (p *Player) DeviceID() string {
-	return p.client().Profile().DeviceID
-}
-
-// DeviceModel returns the device model of the player. If the Player is not connected to a network session, an empty
-// string is returned. Otherwise, the device model its client told when it joined is returned.
-func (p *Player) DeviceModel() string {
-	return p.client().Profile().DeviceModel
-}
-
-// SelfSignedID returns the self-signed ID of the player. If the Player is not connected to a network session, an empty
-// string is returned. Otherwise, the self-signed ID its client told when it joined is returned.
-func (p *Player) SelfSignedID() string {
-	return p.client().Profile().SelfSignedID
-}
-
-// Addr returns the net.Addr of the Player. If the Player is not connected to a network session, nil is returned.
-func (p *Player) Addr() net.Addr {
-	return p.client().Addr()
-}
-
-// Skin returns the skin that a player is currently using. This skin will be visible to other players
-// that the player is shown to.
-// If the player was not connected to a network session, a default skin will be set.
-func (p *Player) Skin() skin.Skin {
-	return p.skin
-}
-
-// SetSkin changes the skin of the player. This skin will be visible to other players that the player
-// is shown to.
-func (p *Player) SetSkin(skin skin.Skin) {
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleSkinChange(ctx, &skin); ctx.Cancelled() {
-		p.client().ViewSkin(p)
-		return
-	}
-	p.skin = skin
-	if p.hasClient() {
-		// Every client lists the player, and sees its skin from there.
-		p.c.ShowSkin(skin)
-		return
-	}
-	viewers, release := p.viewers()
-	// viewer() returns a pooled slice sourced from the world; recycling it after the broadcast keeps rapid skin
-	// changes (e.g. via plugins) from allocating new memory every time.
-	for _, v := range viewers {
-		v.ViewSkin(p)
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
-}
-
-// Locale returns the language and locale of the Player, as selected in the Player's settings.
-func (p *Player) Locale() language.Tag {
-	return p.locale
-}
-
-// Handle changes the current Handler of the player. As a result, events called by the player will call
-// handlers of the Handler passed.
-// Handle sets the player's Handler to NopHandler if nil is passed.
-func (p *Player) Handle(h Handler) {
-	if h == nil {
-		h = NopHandler{}
-	}
-	p.h = h
-}
-
-// Message sends a formatted message to the player. The message is formatted following the rules of
-// fmt.Sprintln, however the newline at the end is not written, and read as a legacy string, with § codes.
-// A lone text.Text is sent as it is.
-func (p *Player) Message(a ...any) {
-	p.client().SendMessage(formatText(a))
-}
-
-// Messagef sends a formatted message using a specific format to the player. The message is formatted
-// according to the fmt.Sprintf formatting rules and read as a legacy string, with § codes.
-func (p *Player) Messagef(f string, a ...any) {
-	p.client().SendMessage(text.ParseLegacy(fmt.Sprintf(f, a...)))
-}
-
-// Messaget sends a translatable message to a player and parameterises it using
-// the arguments passed, in the language of the player. Messaget panics if an
-// incorrect amount of arguments is passed.
-func (p *Player) Messaget(t chat.Translation, a ...any) {
-	p.client().SendMessage(t.F(a...).Text(p.locale))
-}
-
-// SendPopup sends a formatted popup to the player. The popup is shown above the hotbar of the player and
-// overwrites/is overwritten by the name of the item equipped.
-// The popup is formatted following the rules of fmt.Sprintln without a newline at the end and read as a
-// legacy string, with § codes; a lone text.Text is sent as it is.
-func (p *Player) SendPopup(a ...any) {
-	p.client().SendPopup(formatText(a))
-}
-
-// SendTip sends a tip to the player. The tip is shown in the middle of the screen of the player.
-// The tip is formatted following the rules of fmt.Sprintln without a newline at the end and read as a legacy
-// string, with § codes; a lone text.Text is sent as it is.
-func (p *Player) SendTip(a ...any) {
-	p.client().SendTip(formatText(a))
-}
-
-// SendJukeboxPopup sends a formatted jukebox popup to the player. This popup is shown above the hotbar of the player.
-// The popup is close to the position of an action bar message and the text has no background. It is formatted
-// as SendPopup formats it.
-func (p *Player) SendJukeboxPopup(a ...any) {
-	p.client().SendJukeboxPopup(formatText(a))
-}
-
-// SendToast sends a toast to the player. This toast is shown at the top of the screen, similar to achievements or pack
-// loading. The title and the message are each a text.Text, taken as it is, or a string or another value, formatted
-// by fmt and read as a legacy string, with § codes.
-func (p *Player) SendToast(title, message any) {
-	p.client().SendToast(textOf(title), textOf(message))
-}
-
 // SetRespawnPosition updates the player's persistent respawn point and the client-visible destination.
 func (p *Player) SetRespawnPosition(pos cube.Pos, dim world.Dimension) {
 	p.respawnDimension, p.respawnPosition = dim, pos
@@ -429,227 +277,6 @@ func (p *Player) FallDistance() float64 {
 // geysers capping it do.
 func (p *Player) SetFallDistance(distance float64) {
 	p.fallDistance = distance
-}
-
-// SendTitle sends a title to the player. The title may be configured to change the duration it is displayed
-// and the text it shows.
-// If non-empty, the subtitle is shown in a smaller font below the title. The same counts for the action text
-// of the title, which is shown in a font similar to that of a tip/popup.
-func (p *Player) SendTitle(t title.Title) {
-	p.client().SetTitleDurations(t.FadeInDuration(), t.Duration(), t.FadeOutDuration())
-	if !t.Text().IsZero() || !t.Subtitle().IsZero() {
-		p.client().SendTitle(t.Text())
-		if !t.Subtitle().IsZero() {
-			p.client().SendSubtitle(t.Subtitle())
-		}
-	}
-	if !t.ActionText().IsZero() {
-		p.client().SendActionBarMessage(t.ActionText())
-	}
-}
-
-// SendScoreboard sends a scoreboard to the player. The scoreboard will be present indefinitely until removed
-// by the caller.
-// SendScoreboard may be called at any time to change the scoreboard of the player.
-func (p *Player) SendScoreboard(scoreboard *scoreboard.Scoreboard) {
-	p.client().SendScoreboard(scoreboard)
-}
-
-// RemoveScoreboard removes any scoreboard currently present on the screen of the player. Nothing happens if
-// the player has no scoreboard currently active.
-func (p *Player) RemoveScoreboard() {
-	p.client().RemoveScoreboard()
-}
-
-// SendBossBar sends a boss bar to the player, so that it will be shown indefinitely at the top of the
-// player's screen.
-// The boss bar may be removed by calling Player.RemoveBossBar().
-func (p *Player) SendBossBar(bar bossbar.BossBar) {
-	p.client().SendBossBarID(bar.ID(), bar.Text(), bar.Colour(), bar.HealthPercentage())
-}
-
-// RemoveBossBar removes any boss bar currently active on the player's screen. If no boss bar is currently
-// present, nothing happens.
-func (p *Player) RemoveBossBar() {
-	p.client().RemoveBossBar()
-}
-
-// RemoveBossBarID removes only the boss bar with the identifier passed.
-func (p *Player) RemoveBossBarID(id string) {
-	p.client().RemoveBossBarID(id)
-}
-
-// Chat writes a message in the global chat (chat.Global). The message is prefixed with the name of the
-// player and is formatted following the rules of fmt.Sprintln.
-func (p *Player) Chat(msg ...any) {
-	message := format(msg)
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleChat(ctx, &message); ctx.Cancelled() {
-		return
-	}
-	_, _ = fmt.Fprintf(chat.Global, "<%v> %v\n", p.Name(), message)
-}
-
-// ExecuteCommand executes a command passed as the player. If the command could not be found, or if the usage
-// was incorrect, an error message is sent to the player. This message should start with a "/" for the command to be
-// recognised.
-func (p *Player) ExecuteCommand(commandLine string) {
-	if p.Dead() {
-		return
-	}
-	cmd.ExecuteLine(p, commandLine, p.tx, func(command cmd.Command, args []string) bool {
-		ctx := NewEventContext(p.tx, p)
-		if p.Handler().HandleCommandExecution(ctx, command, args); ctx.Cancelled() {
-			return false
-		}
-		return true
-	})
-}
-
-// Transfer transfers the player to a server at the address passed. If the address could not be resolved, an
-// error is returned. If it is returned, the player is closed and transferred to the server.
-func (p *Player) Transfer(address string) error {
-	addr, err := net.ResolveUDPAddr("udp", address)
-	if err != nil {
-		return err
-	}
-
-	ctx := NewEventContext(p.tx, p)
-	if p.Handler().HandleTransfer(ctx, addr); ctx.Cancelled() {
-		return nil
-	}
-	p.client().Transfer(addr.IP, addr.Port)
-	return nil
-}
-
-// PermissionLevel returns the level of the player, as the server says: the
-// level of its entry of ops.json for an operator, the level of players who
-// are not operators otherwise. It is the level of the commands the player
-// may run.
-func (p *Player) PermissionLevel() cmd.Level { return cmd.PlayerLevel(p.UUID()) }
-
-// SendCommandOutput sends the output of a command the player ran. It ports
-// CommandSourceStack.sendSuccess: success messages reach the player only
-// with send_command_feedback on, and with log_admin_commands on they are
-// also shown to other operators as "[Player: message]" and logged.
-func (p *Player) SendCommandOutput(output *cmd.Output) {
-	if p.tx == nil {
-		p.client().SendCommandOutput(client.CommandOutputOf(output, p.locale))
-		return
-	}
-	w := p.tx.World()
-	if output.MessageCount() > 0 && w.GameRuleBool("log_admin_commands") {
-		for _, msg := range output.Messages() {
-			logging.Sub(p.log, logging.Commands).Info(fmt.Sprintf("[%s: %s]", p.Name(), msg))
-			if cmd.AdminFeedback(p, p.Name(), msg.String()) {
-				// The server shows it to the operators of every world.
-				continue
-			}
-			for e := range p.tx.Players() {
-				if other, ok := e.(*Player); ok && other != p && cmd.IsOperator(other.UUID()) {
-					other.Messaget(chat.MessageAdminCommand, p.Name(), msg.String())
-				}
-			}
-		}
-	}
-	if !w.GameRuleBool("send_command_feedback") {
-		output = output.WithoutMessages()
-	}
-	p.client().SendCommandOutput(client.CommandOutputOf(output, p.locale))
-}
-
-// SendDialogue sends an NPC dialogue to the player, using the entity passed as the entity that the dialogue
-// is shown for. Dialogues can be sent on top of each other without the other closing, making it possible
-// to have non-flashing transitions between menus compared to forms. The player can either press one of the
-// buttons or close the dialogue. It is impossible for a dialogue to have any more than 6 buttons.
-func (p *Player) SendDialogue(d dialogue.Dialogue, e world.Entity) {
-	p.client().SendDialogue(d, e)
-}
-
-// CloseDialogue closes the player's currently open dialogue, if any. If the dialogue's Submittable implements
-// dialogue.Closer, the Close method of the Submittable is called after the client acknowledges the closing
-// of the dialogue.
-func (p *Player) CloseDialogue() {
-	p.client().CloseDialogue()
-}
-
-// SendForm sends a form to the player for the client to fill out. Once the client fills it out, the Submit
-// method of the form will be called.
-// Note that the client may also close the form instead of filling it out, which will result in the form not
-// having its Submit method called at all. Forms should never depend on the player actually filling out the
-// form.
-func (p *Player) SendForm(f form.Form) {
-	p.client().SendForm(f)
-}
-
-// CloseForm closes any forms that the player currently has open. If the player has no forms open, nothing
-// happens.
-func (p *Player) CloseForm() {
-	p.client().CloseForm()
-}
-
-// ShowCoordinates enables the vanilla coordinates for the player.
-func (p *Player) ShowCoordinates() {
-	p.client().EnableCoordinates(true)
-}
-
-// HideCoordinates disables the vanilla coordinates for the player.
-func (p *Player) HideCoordinates() {
-	p.client().EnableCoordinates(false)
-}
-
-// EnableInstantRespawn enables the vanilla instant respawn for the player.
-func (p *Player) EnableInstantRespawn() {
-	p.client().EnableInstantRespawn(true)
-}
-
-// DisableInstantRespawn disables the vanilla instant respawn for the player.
-func (p *Player) DisableInstantRespawn() {
-	p.client().EnableInstantRespawn(false)
-}
-
-// SetNameTag changes the name tag displayed over the player in-game. Changing the name tag does not change
-// the player's name in, for example, the player list or the chat.
-func (p *Player) SetNameTag(name string) {
-	p.nameTag = name
-	p.updateState()
-}
-
-// NameTag returns the current name tag of the Player as shown in-game. It can be changed using SetNameTag.
-func (p *Player) NameTag() string {
-	return p.nameTag
-}
-
-// SetAlwaysShowNameTag changes whether the name tag of the player is shown at all distances instead of only
-// when the player is looked at from up close. By default, the name tag is always shown.
-func (p *Player) SetAlwaysShowNameTag(alwaysShow bool) {
-	p.alwaysShowNameTag = alwaysShow
-	p.updateState()
-}
-
-// AlwaysShowNameTag returns whether the name tag of the player is shown at all distances. It can be changed
-// using SetAlwaysShowNameTag.
-func (p *Player) AlwaysShowNameTag() bool {
-	return p.alwaysShowNameTag
-}
-
-// SetScoreTag changes the score tag displayed over the player in-game. The score tag is displayed under the player's
-// name tag. It is formatted following the rules of fmt.Sprintln without a newline at the end; a lone text.Text is
-// stored as its legacy string, with § codes, as ScoreTag returns the score tag.
-func (p *Player) SetScoreTag(a ...any) {
-	tag := format(a)
-	if len(a) == 1 {
-		if t, ok := a[0].(text.Text); ok {
-			tag = t.Legacy()
-		}
-	}
-	p.scoreTag = tag
-	p.updateState()
-}
-
-// ScoreTag returns the current score tag of the player. It can be changed using SetScoreTag and by default is empty.
-func (p *Player) ScoreTag() string {
-	return p.scoreTag
 }
 
 // SetSpeed sets the speed of the player. The value passed is the blocks/tick speed that the player will then
@@ -1802,11 +1429,6 @@ func (p *Player) TimeSinceRest() int32 {
 	return p.timeSinceRest
 }
 
-// SendSleepingIndicator displays a notification to the player on the amount of sleeping players in the world.
-func (p *Player) SendSleepingIndicator(sleeping, max int) {
-	p.client().ViewSleepingPlayers(sleeping, max)
-}
-
 // SetInvisible sets the player invisible, so that other players will not be able to see it.
 func (p *Player) SetInvisible() {
 	if p.Invisible() {
@@ -1921,13 +1543,6 @@ func (p *Player) SetFrozenTicks(ticks int) {
 // FreezingStrength returns the freezing overlay strength from 0 to 1.
 func (p *Player) FreezingStrength() float32 { return entity.FreezingStrength(p.data) }
 
-// WearingCreakingDisguise reports whether the player's helmet is a carved pumpkin.
-// ShowElderGuardianCurse shows the player the ghost of an elder guardian,
-// as an elder guardian that gives it mining fatigue does.
-func (p *Player) ShowElderGuardianCurse() {
-	p.client().ViewElderGuardianCurse(p.Position())
-}
-
 func (p *Player) WearingCreakingDisguise() bool {
 	helmet := p.Armour().Helmet()
 	if helmet.Empty() {
@@ -1994,12 +1609,6 @@ func (p *Player) SetHeldSlot(to int) error {
 // ender chests anywhere.
 func (p *Player) EnderChestInventory() *inventory.Inventory {
 	return p.enderChest
-}
-
-// RefreshPermissions updates the client's operator abilities and available
-// commands after the server's permission lookup changes.
-func (p *Player) RefreshPermissions() {
-	p.client().SendPermissions(p)
 }
 
 // SetGameMode sets the game mode of a player. The game mode specifies the way that the player can interact
@@ -3345,10 +2954,6 @@ func (p *Player) TeleportToWorld(tx *world.Tx, destination *world.World, pos mgl
 	}
 }
 
-// transferRetryDelay is how long a respawn or a teleport to another world
-// waits before trying again while a checkpoint holds transfers: a tick.
-const transferRetryDelay = time.Second / 20
-
 // forceTeleport teleports the player without calling the Handler.
 func (p *Player) forceTeleport(pos mgl64.Vec3) {
 	p.Wake()
@@ -3929,37 +3534,6 @@ func (p *Player) closeMenu(tx *world.Tx, clientRequested bool) {
 	m.Close(tx, p.H())
 }
 
-// HideEntity hides a world.Entity from the Player so that it can under no circumstance see it. Hidden entities can be
-// made visible again through a call to ShowEntity.
-func (p *Player) HideEntity(e world.Entity) {
-	if p.H() != e.H() {
-		p.client().StopShowingEntity(e)
-	}
-}
-
-// ShowEntity shows a world.Entity previously hidden from the Player using HideEntity. It does nothing if the entity
-// wasn't currently hidden.
-func (p *Player) ShowEntity(e world.Entity) {
-	p.client().StartShowingEntity(e)
-}
-
-// Latency returns a rolling average of latency between the sending and the receiving end of the connection of
-// the player.
-// The latency returned is updated continuously and is half the round trip time (RTT).
-// If the Player does not have a session associated with it, Latency returns 0.
-func (p *Player) Latency() time.Duration {
-	return p.client().Latency()
-}
-
-// NetStats returns the state of the connection of the player, false for a
-// player without one.
-func (p *Player) NetStats() (client.NetStats, bool) {
-	if !p.hasClient() {
-		return client.NetStats{}, false
-	}
-	return p.c.NetStats(), true
-}
-
 // Tick ticks the entity, performing actions such as checking if the player is still breaking a block.
 func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.bindTx(tx)
@@ -4392,53 +3966,6 @@ func (p *Player) TravelThroughPortal(tx *world.Tx, target world.Dimension) {
 	p.portalTravel.EnterPortal(p, tx, target)
 }
 
-// ViewLayer returns the ViewLayer attached to the player's session.
-func (p *Player) ViewLayer() *world.ViewLayer {
-	return p.client().ViewLayer()
-}
-
-// ViewNameTag overrides the public name tag of the entity for this player. The name tag is a text.Text, taken
-// as it is, or a string or another value, formatted by fmt and read as a legacy string, with § codes.
-func (p *Player) ViewNameTag(entity world.Entity, nameTag any) {
-	p.client().ViewNameTag(entity, textOf(nameTag))
-}
-
-// ViewPublicNameTag removes the name tag override of the entity for this player.
-func (p *Player) ViewPublicNameTag(entity world.Entity) {
-	p.client().ViewPublicNameTag(entity)
-}
-
-// ViewAlwaysShowNameTag overrides whether the entity's name tag is shown at all distances for this player.
-func (p *Player) ViewAlwaysShowNameTag(entity world.Entity, alwaysShow bool) {
-	p.client().ViewAlwaysShowNameTag(entity, alwaysShow)
-}
-
-// ViewPublicAlwaysShowNameTag removes the always-show name tag override of the entity for this player.
-func (p *Player) ViewPublicAlwaysShowNameTag(entity world.Entity) {
-	p.client().ViewPublicAlwaysShowNameTag(entity)
-}
-
-// ViewScoreTag overrides the public score tag of the entity for this player. The score tag is read as
-// ViewNameTag reads a name tag.
-func (p *Player) ViewScoreTag(entity world.Entity, scoreTag any) {
-	p.client().ViewScoreTag(entity, textOf(scoreTag))
-}
-
-// ViewPublicScoreTag removes the score tag override of the entity for this player.
-func (p *Player) ViewPublicScoreTag(entity world.Entity) {
-	p.client().ViewPublicScoreTag(entity)
-}
-
-// ViewVisibility overrides the public visibility of the entity for this player.
-func (p *Player) ViewVisibility(entity world.Entity, level world.VisibilityLevel) {
-	p.client().ViewVisibility(entity, level)
-}
-
-// RemoveViewLayer removes all view-layer overrides of the entity for this player.
-func (p *Player) RemoveViewLayer(entity world.Entity) {
-	p.client().RemoveViewLayer(entity)
-}
-
 // tickAirSupply tick's the player's air supply, consuming it when underwater, and replenishing it when out of water.
 func (p *Player) tickAirSupply() {
 	if !p.canBreathe() {
@@ -4792,33 +4319,6 @@ func (p *Player) TorsoHeight() float64 {
 	return p.EyeHeight() - 0.1
 }
 
-// PlaySound plays a world.Sound that only this Player can hear. Unlike World.PlaySound, it is not broadcast
-// to players around it.
-func (p *Player) PlaySound(sound world.Sound) {
-	p.client().PlaySound(sound, entity.EyePosition(p))
-}
-
-// ShowParticle shows a particle that only this Player can see. Unlike World.AddParticle, it is not broadcast
-// to players around it.
-func (p *Player) ShowParticle(pos mgl64.Vec3, particle world.Particle) {
-	p.client().ViewParticle(pos, particle)
-}
-
-// OpenSign makes the player open the sign at the cube.Pos passed, with the specific side provided. The client will not
-// show the interface if it is not aware of a sign at the position.
-func (p *Player) OpenSign(pos cube.Pos, frontSide bool) {
-	p.client().OpenSign(pos, frontSide)
-}
-
-// updateState updates the state of the player to all viewers of the player.
-func (p *Player) updateState() {
-	viewers, release := p.viewers()
-	for _, v := range viewers {
-		v.ViewEntityState(p)
-	}
-	releaseBorrowedViewers(p.tx, viewers, release)
-}
-
 // Breathing checks if the player is currently able to breathe. If it's underwater and the player does not
 // have the water breathing or conduit power effect, this returns false.
 // If the player is in creative or spectator mode, Breathing always returns true.
@@ -4886,74 +4386,6 @@ func (p *Player) PunchAir() {
 	// ServerGamePacketListenerImpl.handlePunch restarts the attack strength.
 	p.attackStrengthTicks = 0
 	p.tx.PlaySound(p.Position(), sound.Attack{})
-}
-
-// UpdateDiagnostics updates the diagnostics of the player.
-func (p *Player) UpdateDiagnostics(d client.Diagnostics) {
-	p.Handler().HandleDiagnostics(p, d)
-}
-
-// ShowHudElement shows a HUD element to the player if it is not already shown.
-func (p *Player) ShowHudElement(e hud.Element) {
-	p.client().ShowHudElement(e)
-}
-
-// HideHudElement hides a HUD element from the player if it is not already hidden.
-func (p *Player) HideHudElement(e hud.Element) {
-	p.client().HideHudElement(e)
-}
-
-// HudElementHidden checks if a HUD element is currently hidden from the player.
-func (p *Player) HudElementHidden(e hud.Element) bool {
-	return p.client().HudElementHidden(e)
-}
-
-// AddDebugShape adds a debug shape to be rendered to the player. If the shape already exists, it will be
-// updated with the new information.
-func (p *Player) AddDebugShape(shape debug.Shape) {
-	p.client().AddDebugShape(shape)
-}
-
-// RemoveDebugShape removes a debug shape from the player by its unique identifier.
-func (p *Player) RemoveDebugShape(shape debug.Shape) {
-	p.client().RemoveDebugShape(shape)
-}
-
-// VisibleDebugShapes returns a slice of all debug shapes that are currently being shown to the player.
-func (p *Player) VisibleDebugShapes() []debug.Shape {
-	return p.client().VisibleDebugShapes()
-}
-
-// RemoveAllDebugShapes removes all rendered debug shapes from the player, as well as any shapes that have
-// not yet been rendered.
-func (p *Player) RemoveAllDebugShapes() {
-	p.client().RemoveAllDebugShapes()
-}
-
-// LockInput applies an input lock to the player, disabling the specified input and immediately sending the
-// updated lock state to the client.
-func (p *Player) LockInput(l input.Lock) {
-	p.client().LockInput(l)
-	p.client().SendInputLocks()
-}
-
-// UnlockInput removes an input lock from the player, re-enabling the specified input and immediately sending
-// the updated lock state to the client.
-func (p *Player) UnlockInput(l input.Lock) {
-	p.client().UnlockInput(l)
-	p.client().SendInputLocks()
-}
-
-// ClearInputLocks removes all input locks from the player, re-enabling all inputs and immediately sending the
-// updated lock state to the client.
-func (p *Player) ClearInputLocks() {
-	p.client().ClearInputLocks()
-	p.client().SendInputLocks()
-}
-
-// InputLocked checks if a specific input lock is currently applied to the player.
-func (p *Player) InputLocked(l input.Lock) bool {
-	return p.client().InputLocked(l)
 }
 
 // damageItem damages the item stack passed with the damage passed and returns the new stack. If the item
@@ -5054,201 +4486,6 @@ func (p *Player) tryShieldBlock(dmg float64, totalDamage float64, src world.Dama
 // is either survival or creative mode. Blocks are reached by canReachBlock, which the anti-cheat configures.
 func (p *Player) canReach(pos mgl64.Vec3) bool {
 	return p.canReachPoint(pos)
-}
-
-// Disconnect closes the player and removes it from the world.
-// Disconnect, unlike Close, allows a custom message to be passed to show to the player when it is
-// disconnected. The message is formatted following the rules of fmt.Sprintln without a newline at the end and
-// read as a legacy string, with § codes; a lone text.Text is shown as it is.
-// The first call removes the player from its current world before returning.
-// Calls made after teardown starts return without waiting, including calls from
-// quit callbacks. The player must not be used afterwards. If the player is dead,
-// it first respawns: teardown completes on the owner of its respawn world.
-func (p *Player) Disconnect(msg ...any) {
-	if p.closing.CompareAndSwap(false, true) {
-		p.close(formatText(msg))
-	}
-}
-
-// Close closes the player and removes it from the world.
-// Close disconnects the player with a 'Connection closed.' message. Disconnect should be used to disconnect a
-// player with a custom message.
-// The first call removes the player from its current world before returning.
-// Calls made after teardown starts return without waiting, including calls from
-// quit callbacks. The player must not be used afterwards. If the player is dead,
-// it first respawns: teardown completes on the owner of its respawn world.
-func (p *Player) Close() error {
-	if p.closing.CompareAndSwap(false, true) {
-		p.close(text.Literal("Connection closed."))
-	}
-	return nil
-}
-
-// close closes the player without disconnecting it. It executes code shared by both the closing and the
-// disconnecting of players.
-func (p *Player) close(msg text.Text) {
-	// If the player is being disconnected while they are dead, we respawn the player
-	// so that the player logic works correctly the next time they join. This
-	// asks whether a client exists that can respawn the player: respawn does
-	// nothing without a client, so a dead player without one quits directly
-	// instead of staying in the world.
-	if p.Dead() && p.hasClient() {
-		p.respawn(func(np *Player) {
-			np.quit(msg)
-		})
-		return
-	}
-	p.quit(msg)
-}
-
-func (p *Player) quit(msg text.Text) {
-	p.StopFishing(p.tx, false)
-	p.h.HandleQuit(p)
-	p.h = NopHandler{}
-
-	if c := p.c; c != nil {
-		c.Disconnect(msg)
-		c.CloseConnection()
-		// Leave on this owner directly: teardown must not depend on the
-		// goroutine of the client, which cannot schedule work anymore once
-		// the world starts closing.
-		p.leave(p.tx)
-		return
-	}
-	// A player without a client leaves no session: it has no quit message,
-	// no Left hook and keeps its inventories.
-	p.tx.RemoveEntity(p)
-	_ = p.handle.Close()
-}
-
-// Leave ends the session of the player with its client in tx, as quitting
-// does after its handler ran, unless it has ended. tx is the transaction
-// of the world the player is in, nil if it is in none. An adapter calls it
-// when its client went away and the player did not quit at once, such as
-// when the quit handler panicked.
-func (p *Player) Leave(tx *world.Tx) { p.leave(tx) }
-
-// leave ends the session of the player with its client in tx, once: in
-// this order, it moves the items of its crafting grid and cursor into its
-// inventory and closes its menu (if tx is not nil), calls its Left hook,
-// clears its inventories, writes its quit message, unsubscribes it from
-// the chat, removes it from the world of tx (if tx is not nil), closes its
-// client and, last, closes its entity handle. Each step runs if an earlier
-// one panics, after which the first panic propagates.
-func (p *Player) leave(tx *world.Tx) {
-	if !p.left.CompareAndSwap(false, true) {
-		return
-	}
-	var panicValue any
-	run := func(f func()) {
-		defer func() {
-			if r := recover(); r != nil && panicValue == nil {
-				panicValue = r
-			}
-		}()
-		f()
-	}
-	if tx != nil {
-		run(p.MoveItemsToInventory)
-		run(func() { p.closeMenu(tx, false) })
-	}
-	if p.leftHook != nil {
-		run(func() { p.leftHook(tx, p) })
-	}
-	// Clear the inventories so that they no longer hold references to the
-	// client.
-	run(func() { _ = p.inv.Close() })
-	run(func() { _ = p.offHand.Close() })
-	run(func() { _ = p.armour.Close() })
-	if !p.quitMessage.Zero() {
-		run(func() { chat.Global.Writet(p.quitMessage, p.Name()) })
-	}
-	run(func() { chat.Global.Unsubscribe(p) })
-	// Remove the player before its client closes its chunk loader: closing
-	// the last loader may unload the chunk and close its remaining entities.
-	if tx != nil {
-		run(func() { tx.RemoveEntity(p) })
-	}
-	run(func() { p.client().Close(tx) })
-	run(func() { _ = p.handle.Close() })
-	if panicValue != nil {
-		panic(panicValue)
-	}
-}
-
-// Data returns the player data that needs to be saved. This is used when the player
-// gets disconnected and the player provider needs to save the data.
-func (p *Player) Data() Config {
-	hunger := p.hunger.snapshot()
-	raidOmenPos := cube.Pos{}
-	hasRaidOmenPos := p.raidOmenPosition != nil
-	if hasRaidOmenPos {
-		raidOmenPos = *p.raidOmenPosition
-	}
-	return Config{
-		Client:              p.c,
-		Log:                 p.log,
-		Left:                p.leftHook,
-		QuitMessage:         p.quitMessage,
-		AntiCheat:           p.acConf,
-		AntiCheatExempt:     p.acExempt,
-		Permissions:         p.permissions,
-		Skin:                p.skin,
-		XUID:                p.xuid,
-		UUID:                p.UUID(),
-		DataUUID:            p.dataUUID,
-		Name:                p.nameTag,
-		Locale:              p.locale,
-		GameMode:            p.gameMode,
-		Position:            p.Position(),
-		Rotation:            p.Rotation(),
-		Velocity:            p.Velocity(),
-		Health:              p.Health(),
-		MaxHealth:           p.MaxHealth(),
-		FoodTick:            hunger.foodTick,
-		Food:                hunger.foodLevel,
-		Exhaustion:          hunger.exhaustionLevel,
-		Saturation:          hunger.saturationLevel,
-		AirSupply:           p.airSupplyTicks,
-		MaxAirSupply:        p.maxAirSupplyTicks,
-		TimeSinceRest:       p.timeSinceRest,
-		EnchantmentSeed:     p.enchantSeed,
-		Experience:          p.experience.Experience(),
-		HeldSlot:            int(atomic.LoadUint32(p.heldSlot)),
-		Inventory:           p.inv,
-		OffHand:             p.offHand,
-		Armour:              p.armour,
-		EnderChestInventory: p.enderChest,
-		FireTicks:           p.fireTicks,
-		FallDistance:        p.fallDistance,
-		RespawnDimension:    p.respawnDimension,
-		RespawnPosition:     p.respawnPosition,
-		RespawnRotation:     p.respawnRotation,
-		HasRespawnPoint:     p.hasRespawnPoint,
-		Effects:             p.Effects(),
-		UnlockedRecipes:     p.unlockedRecipeIDs(),
-		RaidOmenPosition:    raidOmenPos,
-		ShoulderLeft:        p.shoulderLeft,
-		ShoulderRight:       p.shoulderRight,
-		JavaState:           encodePlayerJavaState(p),
-		HasRaidOmenPosition: hasRaidOmenPos,
-	}
-}
-
-// Snapshot returns the data of p as Data does, detached from p: its
-// inventory, off hand, armour and ender chest are copies, so that p changing
-// after Snapshot returned changes nothing in it, and a provider may encode
-// it on another goroutine after the transaction ended. The rest of what Data
-// returns is copied already or never changed in place: the shoulder entities
-// are replaced, never changed, and the client, logger, Left hook and skin are
-// not saved.
-func (p *Player) Snapshot() Config {
-	conf := p.Data()
-	conf.Inventory = conf.Inventory.Clone(nil)
-	conf.OffHand = conf.OffHand.Clone(nil)
-	conf.Armour = conf.Armour.Clone()
-	conf.EnderChestInventory = conf.EnderChestInventory.Clone(nil)
-	return conf
 }
 
 func (p *Player) unlockedRecipeIDs() []string {
@@ -5428,24 +4665,6 @@ func (p *Player) broadcastArmour(_ int, before, after item.Stack) {
 	releaseBorrowedViewers(p.tx, viewers, release)
 }
 
-// viewers returns a list of all viewers of the Player.
-func (p *Player) viewers() ([]world.Viewer, bool) {
-	viewers, ok := borrowViewers(p.tx, p.Position())
-	// viewers() centralises acquisition of the pooled slice so every broadcast path can share the same reuse logic.
-	// We append the session lazily if needed, but crucially we still return the borrowed slice so callers can hand it
-	// back to the pool once done.
-	if !ok {
-		if p.c != nil {
-			return []world.Viewer{p.c}, false
-		}
-		return nil, false
-	}
-	if p.c != nil && slices.Index(viewers, world.Viewer(p.c)) == -1 {
-		viewers = append(viewers, p.c)
-	}
-	return viewers, true
-}
-
 func borrowViewers(tx *world.Tx, pos mgl64.Vec3) (viewers []world.Viewer, ok bool) {
 	return txguard.Value(tx, func() []world.Viewer {
 		return tx.Viewers(pos)
@@ -5459,21 +4678,6 @@ func releaseBorrowedViewers(tx *world.Tx, viewers []world.Viewer, ok bool) {
 	txguard.Run(tx, func() {
 		tx.ReleaseViewers(viewers)
 	})
-}
-
-// withinChunkRadius checks if the position provided is within the chunk radius of the player.
-func (p *Player) withinChunkRadius(pos mgl64.Vec3) bool {
-	playerChunkX, playerChunkZ := int(p.Position().X())>>4, int(p.Position().Z())>>4
-	posChunkX, posChunkZ := int(pos.X())>>4, int(pos.Z())>>4
-	dx, dz := playerChunkX-posChunkX, playerChunkZ-posChunkZ
-	if dx < 0 {
-		dx = -dx
-	}
-	if dz < 0 {
-		dz = -dz
-	}
-	r := int(p.client().ChunkRadius())
-	return dx <= r && dz <= r
 }
 
 // resendNearbyBlocks resends the block at cube.Pos and its adjacent blocks (if faces provided),
@@ -5505,36 +4709,6 @@ func (p *Player) resendNearbyBlock(pos cube.Pos) {
 		liq, _ := p.tx.Liquid(pos)
 		p.client().ViewBlockUpdate(pos, liq, 1)
 	}
-}
-
-// format is a utility function to format a list of values to have spaces between them, but no newline at the
-// end, which is typically used for sending messages, popups and tips.
-func format(a []any) string {
-	return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintln(a...), "\n"), "\n")
-}
-
-// formatText returns the values a as text: a lone text.Text as it is, any
-// other values formatted by format and read as a legacy string, with § codes.
-func formatText(a []any) text.Text {
-	if len(a) == 1 {
-		if t, ok := a[0].(text.Text); ok {
-			return t
-		}
-	}
-	return text.ParseLegacy(format(a))
-}
-
-// textOf returns the value v as text: a text.Text as it is, a string read as
-// a legacy string, with § codes, and any other value formatted by fmt and
-// read so.
-func textOf(v any) text.Text {
-	switch v := v.(type) {
-	case text.Text:
-		return v
-	case string:
-		return text.ParseLegacy(v)
-	}
-	return text.ParseLegacy(fmt.Sprint(v))
 }
 
 // guardedByPiglins reports if a block is in #guarded_by_piglins.
