@@ -182,6 +182,7 @@ func (srv *Server) registerWorldMetrics(r *metrics.Registry) {
 	worldCounter("adamant_world_chunks_unloaded_total", "Columns unloaded.", func(w *world.World) uint64 { return w.Stats().ChunksUnloaded.Load() })
 	worldCounter("adamant_world_chunks_written_total", "Columns written to the world provider.", func(w *world.World) uint64 { return w.Stats().ChunksWritten.Load() })
 	worldCounter("adamant_world_owner_busy_nanoseconds_total", "Nanoseconds the owner of the world ran transactions: ticks, the work of players and loaders, and the rest.", func(w *world.World) uint64 { return w.Stats().OwnerBusy.Load() })
+	worldCounter("adamant_world_generator_caches_released_total", "Times the generator released its caches once generation idled.", func(w *world.World) uint64 { return w.Stats().CachesReleased.Load() })
 	worldGauge("adamant_world_transactions_queued", "Transactions waiting for the owner of the world.", func(w *world.World) float64 { return float64(w.QueuedTransactions()) })
 	worldGauge("adamant_world_generation_queue", "Columns waiting for a generator worker.", func(w *world.World) float64 { return float64(w.GenerationQueueLength()) })
 	worldGauge("adamant_world_generation_workers_busy", "Generator workers generating a column.", func(w *world.World) float64 { return float64(w.Stats().GenerationBusy.Load()) })

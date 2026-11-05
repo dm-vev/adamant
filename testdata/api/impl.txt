@@ -10801,6 +10801,7 @@ server/world/generator/advanced/end.endShapeAccess	server/world.ChorusGeneration
 server/world/generator/advanced/end.endShapeAccess	server/world.GenerationShapeAccess	value
 server/world/generator/advanced/nether.Nether	server/world.Generator	*
 server/world/generator/advanced/nether.Nether	server/world.PersistentGenerator	*
+server/world/generator/advanced/nether.Nether	server/world.ReleasingGenerator	*
 server/world/generator/advanced/nether.Nether	server/world.SpawnStructureFinder	*
 server/world/generator/advanced/nether.Nether	server/world.StructureAtFinder	*
 server/world/generator/advanced/nether.Nether	server/world.StructureLocator	*
@@ -10824,6 +10825,7 @@ server/world/generator/advanced/nether.netherFeatureSource	server/world/generato
 server/world/generator/advanced/nether.netherFeatureSource	server/world/generator/advanced/overworld.baseTopSource	*
 server/world/generator/advanced/overworld.Overworld	server/world.Generator	*
 server/world/generator/advanced/overworld.Overworld	server/world.PersistentGenerator	*
+server/world/generator/advanced/overworld.Overworld	server/world.ReleasingGenerator	*
 server/world/generator/advanced/overworld.Overworld	server/world.SpawnStructureFinder	*
 server/world/generator/advanced/overworld.Overworld	server/world.StructureAtFinder	*
 server/world/generator/advanced/overworld.Overworld	server/world.StructureLocator	*

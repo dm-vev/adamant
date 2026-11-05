@@ -232,6 +232,7 @@ Labelled `dimension` (`overworld`, `nether`, `end`).
 | `adamant_world_generation_queue`, `_generation_workers_busy` | gauge | columns waiting for a generator worker, workers generating |
 | `adamant_world_generation_seconds` | histogram | time to generate a column; 1 ms to 5 s |
 | `adamant_world_generation_failures_total` | counter | generations that panicked |
+| `adamant_world_generator_caches_released_total` | counter | times the generator released the caches it keeps of the chunks around the ones it generated, after 30 s without generating a chunk: hundreds of megabytes at a view of 32 chunks |
 | `adamant_world_generation_backlog_total` | counter | columns queued past the size of the generation queue |
 | `adamant_world_faults_total` | counter | panics of game code recovered, by `kind` (`entity`, `player`, `block_entity`, `scheduled_tick`, `random_tick`, `neighbour_update`, `subsystem`, `transaction`, `save`, `generation`, `fatal`) |
 | `adamant_world_quarantined` | gauge | offenders quarantined after their faults |

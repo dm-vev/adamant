@@ -36,6 +36,9 @@ type Stats struct {
 	// transactions: ticks, the work of players and loaders, and the rest.
 	// Against the time that passed it tells how much of the owner is left.
 	OwnerBusy metrics.Counter
+	// CachesReleased counts the times the generator released its caches
+	// once generation idled.
+	CachesReleased metrics.Counter
 }
 
 // newStats returns the Stats of a new world.

@@ -360,12 +360,17 @@ func (conf Config) New() *World {
 
 // initBackground makes what the world needs for the work it has done off its
 // owner, bounded by the CPUs the scheduler runs on: the fills of light of the
-// columns it reads, and the reads of columns ahead of their load.
+// columns it reads, the reads of columns ahead of their load, and the release
+// of the caches of its generator once it idles.
 func (w *World) initBackground() {
 	cpus := schedulerCPUs()
 	w.lightFills = make(chan struct{}, cpus)
 	w.prefetched = make(map[ChunkPos]*columnRead)
 	w.readSlots = make(chan struct{}, max(2, cpus/4))
+	w.releaseAfter = generatorIdleRelease
+	if r, ok := w.conf.Generator.(ReleasingGenerator); ok && !w.conf.Synchronous {
+		w.releaser = r
+	}
 }
 
 // schedulerCPUs returns the CPUs the process runs on at once: the logical

@@ -131,6 +131,13 @@ type World struct {
 	// once: see prefetchColumn. Only the owner touches the map.
 	prefetched map[ChunkPos]*columnRead
 	readSlots  chan struct{}
+	// releaser is the generator if it releases its caches when generation
+	// idles: releaseTimer fires releaseAfter after the last chunk was
+	// generated, guarded by releaseMu. See armCacheRelease.
+	releaser     ReleasingGenerator
+	releaseMu    sync.Mutex
+	releaseTimer *time.Timer
+	releaseAfter time.Duration
 
 	// chunks holds a cache of chunks currently loaded. These chunks are cleared
 	// from this map after some time of not being used.
@@ -2826,6 +2833,7 @@ func (w *World) close() {
 	w.scheduleMu.Unlock()
 
 	w.scheduling.Wait()
+	w.stopCacheRelease()
 	w.drainGenerationQueue()
 	w.generatorRunning.Wait()
 	w.scheduleMu.Lock()
@@ -3405,6 +3413,7 @@ func (w *World) generatorWorker() {
 			return
 		}
 		w.runGenerationTask(task)
+		w.armCacheRelease()
 	}
 }
 
