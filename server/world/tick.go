@@ -74,7 +74,7 @@ func (t ticker) tickLoop(w *World) {
 						w.tps.Store(math.Float64bits(tps))
 						if tps < tpsWarningThreshold {
 							if !warned {
-								w.conf.Log.Warn("TPS dropped below threshold.", "tps", tps)
+								w.log.Warn("TPS dropped below threshold.", "tps", tps)
 								warned = true
 							}
 						} else if warned {
@@ -100,7 +100,7 @@ func (t ticker) tickLoop(w *World) {
 				interval = time.Millisecond
 			} else if behind := tickStart.Sub(next); behind > overloadedThreshold+20*interval && next.Sub(lastOverloadWarning) >= overloadWarningInterval+100*interval {
 				ticks := behind / interval
-				w.conf.Log.Warn("Can't keep up! Is the server overloaded?", "behind", behind.Round(time.Millisecond), "ticks", int64(ticks))
+				w.log.Warn("Can't keep up! Is the server overloaded?", "behind", behind.Round(time.Millisecond), "ticks", int64(ticks))
 				w.stats.TicksSkipped.Add(uint64(ticks))
 				next = next.Add(ticks * interval)
 				lastOverloadWarning = next
@@ -1064,7 +1064,7 @@ func (t ticker) prefetchEntities(tx *Tx) {
 			items[i].p.Prefetch(items[i].e, v)
 		})
 		if p := failed.Load(); p != nil {
-			w.conf.Log.Error("prefetch entity: panic", "panic", p.Value, "stack", string(p.Stack))
+			w.log.Error("prefetch entity: panic", "panic", p.Value, "stack", string(p.Stack))
 		}
 		w.scratchViews = views[:0]
 	}
@@ -1377,7 +1377,7 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 	if !ok {
 		var err error
 		if newChunk, err = w.loadChunk(chunkPos); err != nil {
-			w.conf.Log.Error("load chunk: "+err.Error(), "X", chunkPos[0], "Z", chunkPos[1])
+			w.log.Error("load chunk: "+err.Error(), "X", chunkPos[0], "Z", chunkPos[1])
 		}
 	}
 	newChunk.addEntity(handle)

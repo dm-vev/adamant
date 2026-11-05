@@ -15,6 +15,8 @@ import (
 
 // ProcessorEnvironment supplies world queries and placement context used by Java processors.
 type ProcessorEnvironment struct {
+	// Log is where the processors log; slog.Default() if nil.
+	Log        *slog.Logger
 	BaseBlock  func(x, y, z int32) world.Block
 	BiomeAt    func(x, y, z int32) string
 	BaseHeight func(x, z int32, oceanFloor bool) int32
@@ -125,7 +127,7 @@ func compileProcessor(spec ProcessorSpec, env ProcessorEnvironment) (Processor, 
 	case "blackstone_replace":
 		return compileBlackstoneReplace()
 	case "jigsaw_replacement":
-		return compileJigsawReplace()
+		return compileJigsawReplace(env.Log)
 	case "protected_blocks":
 		return compileProtectedBlocks(spec.Config, env)
 	case "block_age":
@@ -480,13 +482,16 @@ func compileBlackstoneReplace() (Processor, error) {
 		return b, true, nil
 	}), nil
 }
-func compileJigsawReplace() (Processor, error) {
+func compileJigsawReplace(log *slog.Logger) (Processor, error) {
+	if log == nil {
+		log = slog.Default()
+	}
 	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		if b.State.Name != "minecraft:jigsaw" {
 			return b, true, nil
 		}
 		if b.NBT == nil {
-			slog.Warn("jigsaw block is missing NBT", "position", ctx.Position)
+			log.Warn("jigsaw block is missing NBT", "position", ctx.Position)
 			return b, true, nil
 		}
 		finalState, ok := b.NBT["final_state"].(string)
@@ -495,7 +500,7 @@ func compileJigsawReplace() (Processor, error) {
 		}
 		state, err := world.ParseBlockState(finalState)
 		if err != nil {
-			slog.Error("Invalid jigsaw final_state", "state", finalState, "position", ctx.Position, "error", err)
+			log.Error("Invalid jigsaw final_state", "state", finalState, "position", ctx.Position, "error", err)
 			return b, false, nil
 		}
 		if state.Name == "minecraft:structure_void" {

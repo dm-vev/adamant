@@ -20,10 +20,10 @@ func (w *World) Scoreboard() *scoreboard.Model {
 		data, err := w.LoadWorldData(scoreboardNamespace)
 		if err == nil {
 			if decodeErr := json.Unmarshal(data, model); decodeErr != nil {
-				w.conf.Log.Error("load scoreboard: " + decodeErr.Error())
+				w.log.Error("load scoreboard: " + decodeErr.Error())
 			}
 		} else if !errors.Is(err, leveldb.ErrNotFound) {
-			w.conf.Log.Error("load scoreboard: " + err.Error())
+			w.log.Error("load scoreboard: " + err.Error())
 		}
 		w.scoreboardModel = model
 	})

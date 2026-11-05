@@ -1,6 +1,7 @@
 package nether
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -125,6 +126,10 @@ func NewNether(seed int64) *Nether {
 	g.features = overworldFeatures.NewModernFeatures(seed, g.featureSource)
 	return g
 }
+
+// SetLog sets where the structures of the generator log. It must be called
+// before the first chunk is generated.
+func (g *Nether) SetLog(log *slog.Logger) { g.features.SetLog(log) }
 
 // TuneGeneration sizes the caches of the generator for the workers of the
 // World and sets whether a chunk computes its neighbourhood in parallel.

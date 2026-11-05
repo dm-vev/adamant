@@ -253,7 +253,7 @@ func (r *region) columnOrVoid(w *World, pos ChunkPos) *Column {
 // reach records that the region read a loaded column it does not own.
 func (r *region) reach(w *World) {
 	if !w.regions.warnedReach.Swap(true) {
-		w.conf.Log.Debug("an entity of a region reached a column the region does not own", "region", r.index, "stack", string(debug.Stack()))
+		w.log.Debug("an entity of a region reached a column the region does not own", "region", r.index, "stack", string(debug.Stack()))
 	}
 }
 

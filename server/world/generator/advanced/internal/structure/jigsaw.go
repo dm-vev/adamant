@@ -156,7 +156,7 @@ func (p JigsawPiece) placeWithEnvironment(palette int, clip Bounds, seed int64, 
 	if err != nil {
 		return Placement{}, err
 	}
-	replacement, err := compileJigsawReplace()
+	replacement, err := compileJigsawReplace(env.Log)
 	if err != nil {
 		return Placement{}, err
 	}

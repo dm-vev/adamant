@@ -44,7 +44,11 @@ type loaderActiveArea struct {
 
 type World struct {
 	conf Config
-	ra   cube.Range
+	// log is the logger of the world; genLog and saveLog are those of its
+	// generation, lighting and saves. Each is the logger of the Config
+	// scoped to a component of package logging.
+	log, genLog, saveLog *slog.Logger
+	ra                   cube.Range
 
 	// pendingLight holds, per chunk, the positions whose blocks changed in
 	// how they affect light since the light was last brought up to date.
@@ -449,10 +453,10 @@ func (w *World) Seed() int64 {
 // Log returns the logger of the world, which game code that runs in it, as
 // the blocks and items of a transaction, logs through.
 func (w *World) Log() *slog.Logger {
-	if w == nil {
+	if w == nil || w.log == nil {
 		return slog.Default()
 	}
-	return w.conf.Log
+	return w.log
 }
 
 // Dimension returns the Dimension assigned to the World in world.New. The sky
@@ -857,7 +861,7 @@ func (tx *Tx) biome(pos cube.Pos) Biome {
 	id := int(tx.chunk(chunkPosFromBlockPos(pos)).Biome(uint8(pos[0]), int16(pos[1]), uint8(pos[2])))
 	b, ok := BiomeByID(id)
 	if !ok {
-		tx.World().conf.Log.Error("biome not found by ID", "ID", id)
+		tx.World().log.Error("biome not found by ID", "ID", id)
 		return unknownBiome{id: id}
 	}
 	return b
@@ -1334,7 +1338,7 @@ func (w *World) liquidInColumn(c *Column, pos cube.Pos) (Liquid, bool) {
 	}
 	b, ok := w.conf.Blocks.BlockByRuntimeID(id)
 	if !ok {
-		w.conf.Log.Error("Liquid: no block with runtime ID", "ID", id)
+		w.log.Error("Liquid: no block with runtime ID", "ID", id)
 		return nil, false
 	}
 	if liq, ok := b.(Liquid); ok {
@@ -1344,7 +1348,7 @@ func (w *World) liquidInColumn(c *Column, pos cube.Pos) (Liquid, bool) {
 
 	b, ok = w.conf.Blocks.BlockByRuntimeID(id)
 	if !ok {
-		w.conf.Log.Error("Liquid: no block with runtime ID", "ID", id)
+		w.log.Error("Liquid: no block with runtime ID", "ID", id)
 		return nil, false
 	}
 	liq, ok := b.(Liquid)
@@ -1474,7 +1478,7 @@ func (w *World) removeLiquidOnLayer(c *Column, x uint8, y int16, z, layer uint8)
 
 	b, ok := w.conf.Blocks.BlockByRuntimeID(id)
 	if !ok {
-		w.conf.Log.Error("removeLiquidOnLayer: no block with runtime ID", "ID", id)
+		w.log.Error("removeLiquidOnLayer: no block with runtime ID", "ID", id)
 		return false, false
 	}
 	if _, ok := b.(Liquid); ok {
@@ -1500,7 +1504,7 @@ func (tx *Tx) additionalLiquid(pos cube.Pos) (Liquid, bool) {
 
 	b, ok := w.conf.Blocks.BlockByRuntimeID(id)
 	if !ok {
-		w.conf.Log.Error("additionalLiquid: no block with runtime ID", "ID", id)
+		w.log.Error("additionalLiquid: no block with runtime ID", "ID", id)
 		return nil, false
 	}
 	liq, ok := b.(Liquid)
@@ -1772,7 +1776,7 @@ func (w *World) placeEntity(tx *Tx, handle *EntityHandle, state *entityState) *C
 	if !loaded {
 		var err error
 		if c, err = w.loadChunk(pos); err != nil {
-			w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+			w.log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 		}
 	}
 	if c.Ready() && tx.region == nil {
@@ -2075,7 +2079,7 @@ func (w *World) PlayerSpawn(id uuid.UUID) cube.Pos {
 	}
 	pos, exist, err := w.conf.Provider.LoadPlayerSpawnPosition(id)
 	if err != nil {
-		w.conf.Log.Error("load player spawn: "+err.Error(), "ID", id)
+		w.log.Error("load player spawn: "+err.Error(), "ID", id)
 		return w.Spawn()
 	}
 	if !exist {
@@ -2093,7 +2097,7 @@ func (w *World) SetPlayerSpawn(id uuid.UUID, pos cube.Pos) {
 		return
 	}
 	if err := w.conf.Provider.SavePlayerSpawnPosition(id, pos); err != nil {
-		w.conf.Log.Error("save player spawn: "+err.Error(), "ID", id)
+		w.log.Error("save player spawn: "+err.Error(), "ID", id)
 	}
 }
 
@@ -2650,7 +2654,7 @@ func (w *World) failedLoad(pos ChunkPos, c *Column) bool {
 		if errors.Is(c.loadErr, errGenerationPanicked) {
 			msg = "Not saving chunk: its generation panicked. It is generated again once it unloaded."
 		}
-		w.conf.Log.Warn(msg, "X", pos[0], "Z", pos[1], "error", c.loadErr.Error())
+		w.saveLog.Warn(msg, "X", pos[0], "Z", pos[1], "error", c.loadErr.Error())
 	}
 	return true
 }
@@ -2666,7 +2670,7 @@ var errGenerationPanicked = errors.New("generation panicked")
 func (w *World) writeColumn(p Provider, pos ChunkPos, col *chunk.Column) error {
 	err := p.StoreColumn(pos, w.conf.Dim, col)
 	if err != nil {
-		w.conf.Log.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+		w.saveLog.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 		return err
 	}
 	w.stats.ChunksWritten.Inc()
@@ -2881,16 +2885,16 @@ func (w *World) close() {
 	// worlds captured themselves as they closed.
 	if !w.conf.ReadOnly {
 		if err := w.providerUse.staging.write(w.conf.Provider, w.providerUse.staging.take()); err != nil {
-			w.conf.Log.Error("save staged world data: " + err.Error())
+			w.saveLog.Error("save staged world data: " + err.Error())
 		}
 	}
-	w.conf.Log.Debug("Closing provider...")
+	w.saveLog.Debug("Closing provider...")
 	saveErr, closeErr := w.providerUse.closeProvider(w.conf.Provider)
 	if saveErr != nil {
-		w.conf.Log.Error("save position tracking data: " + saveErr.Error())
+		w.saveLog.Error("save position tracking data: " + saveErr.Error())
 	}
 	if closeErr != nil {
-		w.conf.Log.Error("close world provider: " + closeErr.Error())
+		w.saveLog.Error("close world provider: " + closeErr.Error())
 	}
 }
 
@@ -3057,7 +3061,7 @@ func (tx *Tx) chunk(pos ChunkPos) *Column {
 	c.ensureLight(w, pos)
 	w.finishChunkRequest(tx, pos, c)
 	if err != nil {
-		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+		w.log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 	}
 	return c
 }
@@ -3246,7 +3250,7 @@ func (w *World) loadChunkAsync(tx *Tx, pos ChunkPos, callback chunkCallback) boo
 	w.chunkRequests[pos] = append(w.chunkRequests[pos], callback)
 	c, err := w.loadChunk(pos)
 	if err != nil {
-		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+		w.log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 	}
 	if c.Ready() {
 		c.ensureLight(w, pos)
@@ -3575,7 +3579,7 @@ func (w *World) handleGeneratorBackpressure(waiting int) {
 		return
 	}
 
-	w.conf.Log.Warn(
+	w.genLog.Warn(
 		"world generator backlog: chunk generation tasks are waiting for workers.",
 		"waiting_tasks", waiting,
 		"backlog_events", count,
@@ -3702,7 +3706,7 @@ func (w *World) flushSpreads() {
 	changed := make(map[ChunkPos]struct{})
 	for round := 0; len(queued) > 0; round++ {
 		if round == maxSpreadRounds {
-			w.conf.Log.Debug("light spreading did not settle", "rounds", round, "areas", len(queued))
+			w.genLog.Debug("light spreading did not settle", "rounds", round, "areas", len(queued))
 			break
 		}
 		var classes [9][]pendingSpread
@@ -4555,7 +4559,7 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos, ready bool) *Column {
 	for _, e := range c.Entities {
 		eid, ok := e.Data["identifier"].(string)
 		if !ok {
-			w.conf.Log.Error("read column: entity without identifier field", "ID", e.ID)
+			w.log.Error("read column: entity without identifier field", "ID", e.ID)
 			continue
 		}
 		if eid == "minecraft:player" {
@@ -4565,12 +4569,12 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos, ready bool) *Column {
 		}
 		t, ok := w.conf.Entities.Lookup(eid)
 		if !ok {
-			w.conf.Log.Error("read column: unknown entity type", "ID", e.ID, "type", eid)
+			w.log.Error("read column: unknown entity type", "ID", e.ID, "type", eid)
 			continue
 		}
 		h := w.entityFromNBT(t, e.ID, e.Data)
 		if h == nil {
-			w.conf.Log.Error("read column: entity has an invalid position or rotation", "ID", e.ID, "type", eid)
+			w.log.Error("read column: entity has an invalid position or rotation", "ID", e.ID, "type", eid)
 			continue
 		}
 		col.addEntity(h)
@@ -4588,7 +4592,7 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos, ready bool) *Column {
 			b, ok = w.resolveScheduledTickBlock(update)
 		}
 		if !ok {
-			w.conf.Log.Error("read column: cannot resolve scheduled tick type", "type", update.Type, "kind", update.Kind, "position", update.Pos)
+			w.log.Error("read column: cannot resolve scheduled tick type", "type", update.Type, "kind", update.Kind, "position", update.Pos)
 			continue
 		}
 		typeName := update.Type
@@ -4613,7 +4617,7 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos, ready bool) *Column {
 		case chunk.FluidTick:
 			fluidTicks = append(fluidTicks, tick)
 		default:
-			w.conf.Log.Error("read column: invalid scheduled tick kind", "kind", update.Kind, "position", update.Pos)
+			w.log.Error("read column: invalid scheduled tick kind", "kind", update.Kind, "position", update.Pos)
 		}
 	}
 	w.scheduledBlockTicks.add(blockTicks)
@@ -4646,7 +4650,7 @@ func (w *World) dropStaleBlockEntities(col *Column, entities []chunk.BlockEntity
 		return entities
 	}
 	col.modified = true
-	w.conf.Log.Debug("read column: dropped block entities of blocks without one", "count", len(entities)-len(kept))
+	w.log.Debug("read column: dropped block entities of blocks without one", "count", len(entities)-len(kept))
 	return kept
 }
 
@@ -4682,12 +4686,12 @@ func (w *World) decodeBlockEntities(c *Column, entities []chunk.BlockEntity) {
 		rid := c.Chunk.Block(uint8(be.Pos[0]), int16(be.Pos[1]), uint8(be.Pos[2]), 0)
 		b, ok := w.conf.Blocks.BlockByRuntimeID(rid)
 		if !ok {
-			w.conf.Log.Error("read column: no block with runtime ID", "ID", rid)
+			w.log.Error("read column: no block with runtime ID", "ID", rid)
 			continue
 		}
 		nb, ok := b.(NBTer)
 		if !ok {
-			w.conf.Log.Error("read column: block with nbt does not implement NBTer", "block", fmt.Sprintf("%#v", b))
+			w.log.Error("read column: block with nbt does not implement NBTer", "block", fmt.Sprintf("%#v", b))
 			continue
 		}
 		decoded := DecodeNBT(nb, be.Data, w.conf.Blocks).(Block)

@@ -620,13 +620,13 @@ func (w *World) loadRaids() {
 	data, err := provider.LoadWorldData(w.raidDataNamespace())
 	if err != nil {
 		if err != leveldb.ErrNotFound {
-			w.conf.Log.Error("load raid data: " + err.Error())
+			w.log.Error("load raid data: " + err.Error())
 		}
 		return
 	}
 	var records []raidSave
 	if err := json.Unmarshal(data, &records); err != nil {
-		w.conf.Log.Error("decode raid data: " + err.Error())
+		w.log.Error("decode raid data: " + err.Error())
 		return
 	}
 	for _, saved := range records {

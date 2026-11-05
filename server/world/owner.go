@@ -121,7 +121,7 @@ func checkOwnerWait(what string) error {
 	}
 	now := time.Now().UnixNano()
 	if last := ownerWaitLogged.Load(); now-last >= int64(ownerWaitLogInterval) && ownerWaitLogged.CompareAndSwap(last, now) {
-		w.conf.Log.Error("Waiting for a world owner from a world owner: failing instead of deadlocking.", "wait", what, "world", w.Name(), "stack", string(stack))
+		w.log.Error("Waiting for a world owner from a world owner: failing instead of deadlocking.", "wait", what, "world", w.Name(), "stack", string(stack))
 	}
 	return ErrOwnerWait
 }

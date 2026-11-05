@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -21,6 +22,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/identity"
 	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
@@ -853,6 +855,15 @@ func addrString(addr net.Addr) string {
 	return addr.String()
 }
 
+// setGeneratorLog gives gen, if it logs, the logger of the dimension scoped
+// to the generator. It is set before the world is made, so that no chunk is
+// generated before it is.
+func setGeneratorLog(gen world.Generator, logger *slog.Logger) {
+	if g, ok := gen.(interface{ SetLog(*slog.Logger) }); ok {
+		g.SetLog(logging.Sub(logger, logging.Generator))
+	}
+}
+
 // createWorld loads a world with a specific dimension using the provider set
 // in the Config. The nether and end dimensions point to the worlds that players
 // are moved to when passing through the respective portals.
@@ -862,6 +873,7 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 	logger.Debug("Loading dimension...")
 
 	gen := srv.conf.Generator(dim, srv.conf.OverworldSeed)
+	setGeneratorLog(gen, logger)
 	sourceDim := dim
 	conf := world.Config{
 		Log:                 logger,

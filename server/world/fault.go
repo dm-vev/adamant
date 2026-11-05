@@ -296,6 +296,15 @@ func (line faultLine) log(log *slog.Logger) {
 	log.Error(line.msg, attrs...)
 }
 
+// faultLog returns the logger of the faults of kind: that of generation for
+// the panics of generator workers and light fills, the world's otherwise.
+func (w *World) faultLog(kind FaultKind) *slog.Logger {
+	if kind == FaultGeneration {
+		return w.genLog
+	}
+	return w.log
+}
+
 // reportFault reports the fault f of the world: it is logged, rate-limited
 // by kind and type, and passed to Config.Fault. A fault with Quarantined
 // set lists its offender, of key, as quarantined.
@@ -312,7 +321,7 @@ func (w *World) reportFault(f Fault, key quarantineKey) {
 	}
 	l.mu.Unlock()
 	for _, line := range lines {
-		line.log(w.conf.Log)
+		line.log(w.faultLog(line.f.Kind))
 	}
 	if hook := w.conf.Fault; hook != nil {
 		hook(f)
@@ -397,11 +406,11 @@ func (w *World) fail(f Fault) {
 		lines := l.record(f, l.clock()())
 		l.mu.Unlock()
 		for _, line := range lines {
-			line.log(w.conf.Log)
+			line.log(w.log)
 		}
 		return
 	}
-	faultLine{msg: "world failed", f: f, stack: true}.log(w.conf.Log)
+	faultLine{msg: "world failed", f: f, stack: true}.log(w.log)
 	if hook := w.conf.Fatal; hook != nil {
 		hook(f)
 	}

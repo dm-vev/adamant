@@ -1,6 +1,7 @@
 package overworld
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -36,6 +37,10 @@ type Overworld struct {
 	previewCache *previewCache
 	chunkBiomes  chunkBiomeCache
 }
+
+// SetLog sets where the structures of the generator log. It must be called
+// before the first chunk is generated.
+func (g *Overworld) SetLog(log *slog.Logger) { g.modernFeatures.SetLog(log) }
 
 // previewCacheSize bounds the surfaced terrain previews kept for decoration,
 // which reads the terrain up to three chunks from the chunk it decorates:

@@ -67,12 +67,22 @@ func (w *World) lootRandomSequenceNamespace() string {
 
 func (w *World) loadLootRandomSequences() {
 	provider, ok := w.conf.Provider.(worldDataProvider)
-	if !ok { return }
+	if !ok {
+		return
+	}
 	data, err := provider.LoadWorldData(w.lootRandomSequenceNamespace())
-	if errors.Is(err, leveldb.ErrNotFound) { return }
-	if err != nil { w.conf.Log.Error("load loot random sequences: " + err.Error()); return }
+	if errors.Is(err, leveldb.ErrNotFound) {
+		return
+	}
+	if err != nil {
+		w.log.Error("load loot random sequences: " + err.Error())
+		return
+	}
 	var saved lootSequenceData
-	if err := json.Unmarshal(data, &saved); err != nil { w.conf.Log.Error("decode loot random sequences: " + err.Error()); return }
+	if err := json.Unmarshal(data, &saved); err != nil {
+		w.log.Error("decode loot random sequences: " + err.Error())
+		return
+	}
 	for id, state := range saved.Sequences {
 		r := vanilla.FromState(state)
 		w.lootSequences[id] = &r

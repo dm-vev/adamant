@@ -56,7 +56,7 @@ func (d *watchdog) check() bool {
 		return false
 	}
 	d.reported = start
-	d.w.conf.Log.Error("A tick has run for a long time: it may never end. The stacks of all goroutines follow.", "running", running.Round(time.Second), "stack", string(goroutineStacks()))
+	d.w.log.Error("A tick has run for a long time: it may never end. The stacks of all goroutines follow.", "running", running.Round(time.Second), "stack", string(goroutineStacks()))
 	return true
 }
 

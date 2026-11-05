@@ -408,7 +408,7 @@ func (s *chunkSaver) write(p pendingColumn) (panicked bool, err error) {
 	if p.enc != nil {
 		var decodeErr error
 		if col, decodeErr = p.enc.decode(s.w.conf.Blocks, s.w.Range()); decodeErr != nil {
-			s.w.conf.Log.Error("save chunk: "+decodeErr.Error(), "X", p.pos[0], "Z", p.pos[1])
+			s.w.saveLog.Error("save chunk: "+decodeErr.Error(), "X", p.pos[0], "Z", p.pos[1])
 			return false, decodeErr
 		}
 	}
@@ -530,7 +530,7 @@ func (s *chunkSaver) run() {
 		s.cond.Broadcast()
 		s.mu.Unlock()
 		if dropped {
-			s.w.conf.Log.Error("save chunk: dropped the save of the chunk, whose writes panicked twice in a row", "X", p.pos[0], "Z", p.pos[1])
+			s.w.saveLog.Error("save chunk: dropped the save of the chunk, whose writes panicked twice in a row", "X", p.pos[0], "Z", p.pos[1])
 		}
 	}
 }
@@ -540,7 +540,7 @@ func (s *chunkSaver) run() {
 func (s *chunkSaver) encodeStaged(sc *stagedColumn) {
 	enc, err := encodeColumn(sc.col)
 	if err != nil {
-		s.w.conf.Log.Error("stage chunk: "+err.Error(), "X", sc.pos[0], "Z", sc.pos[1])
+		s.w.saveLog.Error("stage chunk: "+err.Error(), "X", sc.pos[0], "Z", sc.pos[1])
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -572,6 +572,6 @@ func (w *World) stagingFull(bytes int) {
 	if w.closed.Load() {
 		return
 	}
-	w.conf.Log.Warn("Saving the world early: the chunks unloaded since it was saved exceed the staging limit.", "bytes", bytes, "limit", w.conf.StagingLimit)
+	w.saveLog.Warn("Saving the world early: the chunks unloaded since it was saved exceed the staging limit.", "bytes", bytes, "limit", w.conf.StagingLimit)
 	w.Save()
 }

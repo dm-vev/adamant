@@ -313,13 +313,13 @@ func (w *World) loadGameRules() {
 	data, err := w.LoadWorldData(gameruleNamespace)
 	if err != nil {
 		if !errors.Is(err, leveldb.ErrNotFound) {
-			w.conf.Log.Error("load gamerules: " + err.Error())
+			w.log.Error("load gamerules: " + err.Error())
 		}
 		return
 	}
 	var saved map[string]any
 	if err := json.Unmarshal(data, &saved); err != nil {
-		w.conf.Log.Error("decode gamerules: " + err.Error())
+		w.log.Error("decode gamerules: " + err.Error())
 		return
 	}
 	for name, value := range saved {

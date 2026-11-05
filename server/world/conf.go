@@ -10,6 +10,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/google/uuid"
 )
 
@@ -161,12 +162,24 @@ type Config struct {
 	Fatal func(f Fault)
 }
 
+// rootLogger returns l, slog.Default() if nil.
+func rootLogger(l *slog.Logger) *slog.Logger {
+	if l == nil {
+		return slog.Default()
+	}
+	return l
+}
+
+// componentLoggers returns l scoped to the components of a world: the world
+// itself, its generation and light, and its saves.
+func componentLoggers(l *slog.Logger) (world, generation, save *slog.Logger) {
+	return logging.Sub(l, logging.World), logging.Sub(l, logging.Generator), logging.Sub(l, logging.Save)
+}
+
 // New creates a new World using the Config conf. The World returned will start
 // ticking as soon as a viewer is added to it and is otherwise ready for use.
 func (conf Config) New() *World {
-	if conf.Log == nil {
-		conf.Log = slog.Default()
-	}
+	conf.Log = rootLogger(conf.Log)
 	if conf.Dim == nil {
 		conf.Dim = Overworld
 	}
@@ -243,7 +256,7 @@ func (conf Config) New() *World {
 		provider.SetBlockRegistry(conf.Blocks)
 	}
 	if err := providerUse.loadPositionTracker(conf.Provider); err != nil {
-		conf.Log.Error("load position tracking data: " + err.Error())
+		logging.Sub(conf.Log, logging.World).Error("load position tracking data: " + err.Error())
 	}
 	if err := loadGenerationState(conf.Provider, conf.Generator, conf.Dim); err != nil {
 		panic(fmt.Errorf("load generation state: %w", err))
@@ -296,6 +309,7 @@ func (conf Config) New() *World {
 		activeColumnIndex:   make(map[ChunkPos]int),
 		entityColumnIndex:   make(map[ChunkPos]int),
 	}
+	w.log, w.genLog, w.saveLog = componentLoggers(conf.Log)
 	w.scheduledBlockTicks.faults = &w.blockFaults
 	w.scheduledFluidTicks.faults = &w.blockFaults
 	w.initBackground()

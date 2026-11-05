@@ -408,12 +408,12 @@ func (w *World) loadVillagePOIs() {
 		return
 	}
 	if err != nil {
-		w.conf.Log.Error("load village POI data: " + err.Error())
+		w.log.Error("load village POI data: " + err.Error())
 		return
 	}
 	var records []villagePOI
 	if err := json.Unmarshal(data, &records); err != nil {
-		w.conf.Log.Error("decode village POI data: " + err.Error())
+		w.log.Error("decode village POI data: " + err.Error())
 		return
 	}
 	for _, record := range records {

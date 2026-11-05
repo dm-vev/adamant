@@ -70,7 +70,7 @@ func (w *World) loadForcedChunk(pos ChunkPos) {
 				continue
 			}
 			if _, err := w.loadChunk(neighbour); err != nil {
-				w.conf.Log.Error("load forced chunk: "+err.Error(), "X", neighbour[0], "Z", neighbour[1])
+				w.log.Error("load forced chunk: "+err.Error(), "X", neighbour[0], "Z", neighbour[1])
 			}
 		}
 	}
@@ -134,12 +134,12 @@ func (w *World) loadForcedChunks() {
 		return
 	}
 	if err != nil {
-		w.conf.Log.Error("load forced chunks: " + err.Error())
+		w.log.Error("load forced chunks: " + err.Error())
 		return
 	}
 	var positions []ChunkPos
 	if err = json.Unmarshal(data, &positions); err != nil {
-		w.conf.Log.Error("decode forced chunks: " + err.Error())
+		w.log.Error("decode forced chunks: " + err.Error())
 		return
 	}
 	for _, p := range positions {

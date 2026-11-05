@@ -99,7 +99,7 @@ func (cp *Checkpoint) write(flush bool) error {
 	var errs []error
 	fail := func(err error) {
 		if err != nil {
-			w.conf.Log.Error(err.Error())
+			w.saveLog.Error(err.Error())
 			errs = append(errs, err)
 		}
 	}
@@ -158,7 +158,7 @@ func (w *World) capture(tx *Tx, closing bool, commit Commit) *Checkpoint {
 	}
 	w.captures++
 	cp.seq = w.captures
-	w.conf.Log.Debug("Saving chunks in memory to disk...")
+	w.saveLog.Debug("Saving chunks in memory to disk...")
 	w.restoreFailedSaves()
 	if closing {
 		for pos, c := range w.chunks {
@@ -173,14 +173,14 @@ func (w *World) capture(tx *Tx, closing bool, commit Commit) *Checkpoint {
 	if !closing {
 		cp.columns += w.saveChunks(tx, commit)
 	}
-	w.conf.Log.Debug("Updating level.dat values...")
+	w.saveLog.Debug("Updating level.dat values...")
 	cp.settings = w.set.Snapshot()
 	cp.staged = w.providerUse.staging.take()
 	cp.data = w.captureData()
 	if !closing {
 		tracking, err := w.providerUse.capturePositionTracker(w.conf.Provider)
 		if err != nil {
-			w.conf.Log.Error("save position tracking data: " + err.Error())
+			w.saveLog.Error("save position tracking data: " + err.Error())
 		}
 		cp.tracking = tracking
 	}
@@ -201,7 +201,7 @@ func (w *World) captureData() []worldData {
 		}
 		b, err := encode()
 		if err != nil {
-			w.conf.Log.Error("encode " + what + ": " + err.Error())
+			w.saveLog.Error("encode " + what + ": " + err.Error())
 			return
 		}
 		data = append(data, worldData{write: func(p Provider) error {
@@ -245,7 +245,7 @@ func (w *World) captureData() []worldData {
 	}
 
 	if scoreboard, err := w.encodeScoreboard(); err != nil {
-		w.conf.Log.Error("encode scoreboard: " + err.Error())
+		w.saveLog.Error("encode scoreboard: " + err.Error())
 	} else {
 		data = append(data, worldData{write: func(p Provider) error {
 			if err := saveWorldData(p, scoreboardNamespace, scoreboard); err != nil {

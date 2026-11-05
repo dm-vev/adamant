@@ -2,6 +2,7 @@ package overworld
 
 import (
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"sort"
@@ -82,7 +83,13 @@ type ModernFeatures struct {
 	parallel bool
 	// heightmaps caches the heightmap predicates of each native state.
 	heightmaps sync.Map
+	// log is where the structures log; slog.Default() if nil.
+	log *slog.Logger
 }
+
+// SetLog sets where the structures the features place log. It must be called
+// before the first chunk is generated.
+func (f *ModernFeatures) SetLog(log *slog.Logger) { f.log = log }
 
 // NewModernFeatures loads the actual embedded Java biome, placed-feature, configured-feature and carver data.
 func NewModernFeatures(seed int64, source ModernFeatureSource) *ModernFeatures {
@@ -415,6 +422,7 @@ func (f *ModernFeatures) placeStructures(region *featureRegion, origin world.Chu
 	originX, originZ := origin[0]<<4, origin[1]<<4
 	structureRandom := featureRandom(f.seed, originX, originZ, 0, step)
 	env := structure.ProcessorEnvironment{
+		Log:        f.log,
 		BaseBlock:  func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
 		BiomeAt:    f.source.BiomeAt,
 		BaseHeight: region.Height,
