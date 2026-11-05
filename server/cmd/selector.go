@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand/v2"
@@ -11,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/javanbt"
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
@@ -59,10 +59,10 @@ func (r selectorRange) contains(v float64) bool {
 	return !r.set || v >= r.min && v <= r.max
 }
 
-// negativeMin reports a range with a set, negative minimum, which distance
-// and level reject.
-func (r selectorRange) negativeMin() bool {
-	return !math.IsInf(r.min, -1) && r.min < 0
+// negative reports a range with a set, negative end, which distance and
+// level reject.
+func (r selectorRange) negative() bool {
+	return !math.IsInf(r.min, -1) && r.min < 0 || !math.IsInf(r.max, 1) && r.max < 0
 }
 
 // swapped reports a range whose minimum exceeds its maximum, which Java's
@@ -311,6 +311,7 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 		return nil, MessageParameterInvalid.F(text)
 	}
 	var dx, dy, dz *float64
+	opts := newSelectorOptions()
 	for _, option := range splitSelectorOptions(body[1 : len(body)-1]) {
 		key, value, ok := strings.Cut(option, "=")
 		if !ok {
@@ -321,6 +322,9 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 		value = strings.TrimPrefix(value, "!")
 		if negate && !slices.Contains([]string{"type", "name", "tag", "team", "gamemode", "nbt"}, key) {
 			return nil, MessageParameterInvalid.F(option)
+		}
+		if err := opts.check(s.kind, key); err != nil {
+			return nil, err
 		}
 		var err error
 		switch key {
@@ -345,13 +349,16 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 			}
 		case "distance":
 			s.distance, err = parseSelectorRange(value)
-			if err == nil && (s.distance.swapped() || s.distance.negativeMin()) {
+			if err == nil && s.distance.swapped() {
 				err = fmt.Errorf("invalid distance")
+			}
+			if err == nil && s.distance.negative() {
+				return nil, selectorError("Distance cannot be negative")
 			}
 		case "level":
 			s.level, err = parseIntRange(value)
-			if err == nil && s.level.negativeMin() {
-				err = fmt.Errorf("negative level")
+			if err == nil && s.level.negative() {
+				return nil, selectorError("Level shouldn't be negative")
 			}
 		case "x_rotation", "y_rotation":
 			var r selectorRange
@@ -361,32 +368,11 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 		case "scores":
 			var expected map[string]selectorRange
 			if expected, err = parseSelectorScores(value); err == nil && len(expected) > 0 {
-				board := scoreboardOf(tx)
-				s.filters = append(s.filters, func(t Target) bool {
-					holder := ScoreHolderName(t)
-					for objective, r := range expected {
-						if board == nil {
-							return false
-						}
-						v, ok := board.Score(objective, holder)
-						if !ok || !r.contains(float64(v)) {
-							return false
-						}
-					}
-					return true
-				})
+				s.scoresFilter(expected, tx)
 			}
 		case "team":
-			board := scoreboardOf(tx)
-			s.filter(negate, func(t Target) bool {
-				current := ""
-				if board != nil {
-					if team, ok := board.TeamFor(ScoreHolderName(t)); ok {
-						current = team.Name
-					}
-				}
-				return current == value
-			})
+			err = opts.element(key, negate)
+			s.teamFilter(value, negate, tx)
 		case "nbt":
 			expected, end, perr := javanbt.ParseCompoundArgument(value, 0)
 			if perr != nil || strings.TrimSpace(value[end:]) != "" {
@@ -399,55 +385,28 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 		case "limit":
 			s.limit, err = strconv.Atoi(value)
 			if err == nil && s.limit < 1 {
-				err = fmt.Errorf("limit must be positive")
+				return nil, selectorError("The minimum number allowed is 1")
 			}
 		case "sort":
 			if !slices.Contains([]string{"nearest", "furthest", "random", "arbitrary"}, value) {
-				err = fmt.Errorf("invalid sort")
+				return nil, selectorError(fmt.Sprintf("Invalid or unknown sort type '%s'", value))
 			}
 			s.sort = value
 		case "type":
-			isTag := strings.HasPrefix(value, "#")
-			id := strings.TrimPrefix(value, "#")
-			if !strings.Contains(id, ":") {
-				id = "minecraft:" + id
-			}
-			s.filter(negate, func(t Target) bool {
-				e, ok := t.(world.Entity)
-				if !ok {
-					return false
-				}
-				if isTag {
-					in, err := gamedata.EntityTypeTagContains(id, world.JavaEntityID(e))
-					return err == nil && in
-				}
-				return e.H().Type().EncodeEntity() == id || world.JavaEntityID(e) == id
-			})
+			err = s.typeFilter(opts, value, negate)
 		case "name":
+			err = opts.element(key, negate)
 			s.filter(negate, func(t Target) bool { return selectorName(t) == strings.Trim(value, `"`) })
 		case "tag":
-			s.filter(negate, func(t Target) bool {
-				tagged, ok := t.(interface{ CommandTags() []string })
-				if !ok {
-					return value == ""
-				}
-				if value == "" {
-					return len(tagged.CommandTags()) == 0
-				}
-				return slices.Contains(tagged.CommandTags(), value)
-			})
+			s.tagFilter(value, negate)
 		case "gamemode":
-			s.filter(negate, func(t Target) bool {
-				p, ok := t.(interface{ GameMode() world.GameMode })
-				if !ok {
-					return false
-				}
-				id, _ := world.GameModeID(p.GameMode())
-				names := []string{"survival", "creative", "adventure", "spectator"}
-				return id >= 0 && id < len(names) && names[id] == value
-			})
+			err = s.gameModeFilter(opts, value, negate)
 		default:
+			// A Java option this server has no data for: predicate, advancements.
 			return nil, MessageParameterInvalid.F(key)
+		}
+		if selectorErr := (selectorError("")); errors.As(err, &selectorErr) {
+			return nil, err
 		}
 		if err != nil {
 			return nil, MessageParameterInvalid.F(option)

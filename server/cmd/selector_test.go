@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"testing"
@@ -280,5 +281,60 @@ func TestNBTContains(t *testing.T) {
 	}
 	if nbtContains(map[string]any{}, nil) {
 		t.Error("a compound matched a missing tag")
+	}
+}
+
+// EntitySelectorOptions refuses an option that does not apply: limit and sort
+// for @s, whose isCurrentEntity holds, a second x, distance or sort, a second
+// positive name, gamemode, team or type, a positive one after a negated one,
+// and a negative distance or level on either end. The refusals carry Java's
+// texts: argument.entity.options.inapplicable, .distance.negative and so on.
+func TestSelectorRefusesWhatJavaRefuses(t *testing.T) {
+	const (
+		inapplicable = "Option '%s' isn't applicable here"
+		distance     = "Distance cannot be negative"
+		level        = "Level shouldn't be negative"
+	)
+	for _, c := range []struct{ selector, want string }{
+		{"@s[limit=1]", fmt.Sprintf(inapplicable, "limit")},
+		{"@s[sort=nearest]", fmt.Sprintf(inapplicable, "sort")},
+		{"@a[distance=..-1]", distance},
+		{"@a[distance=-3..-1]", distance},
+		{"@a[distance=-1]", distance},
+		{"@a[level=..-1]", level},
+		{"@a[level=-1..]", level},
+		{"@a[limit=1,limit=2]", fmt.Sprintf(inapplicable, "limit")},
+		{"@a[sort=nearest,sort=random]", fmt.Sprintf(inapplicable, "sort")},
+		{"@a[x=1,x=2]", fmt.Sprintf(inapplicable, "x")},
+		{"@a[dy=1,dy=2]", fmt.Sprintf(inapplicable, "dy")},
+		{"@a[distance=..1,distance=..2]", fmt.Sprintf(inapplicable, "distance")},
+		{"@a[level=1..,level=..2]", fmt.Sprintf(inapplicable, "level")},
+		{"@a[x_rotation=0..1,x_rotation=0..2]", fmt.Sprintf(inapplicable, "x_rotation")},
+		{"@a[scores={a=1},scores={b=1}]", fmt.Sprintf(inapplicable, "scores")},
+		{"@a[name=A,name=B]", fmt.Sprintf(inapplicable, "name")},
+		{"@a[name=!A,name=B]", fmt.Sprintf(inapplicable, "name")},
+		{"@a[gamemode=creative,gamemode=!survival]", fmt.Sprintf(inapplicable, "gamemode")},
+		{"@a[team=a,team=b]", fmt.Sprintf(inapplicable, "team")},
+		{"@e[type=pig,type=cow]", fmt.Sprintf(inapplicable, "type")},
+		{"@e[type=!pig,type=cow]", fmt.Sprintf(inapplicable, "type")},
+		{"@e[type=#boats,type=#boats]", fmt.Sprintf(inapplicable, "type")},
+		{"@a[gamemode=sneaky]", "Unknown or illegal game mode 'sneaky'"},
+		{"@a[sort=closest]", "Invalid or unknown sort type 'closest'"},
+		{"@a[limit=0]", "The minimum number allowed is 1"},
+		{"@a[bogus=1]", "Unknown option 'bogus'"},
+	} {
+		_, err := parseSelector(c.selector, testSource{}, nil)
+		if err == nil || err.Error() != c.want {
+			t.Errorf("%s: error %v, want %q", c.selector, err, c.want)
+		}
+	}
+	for _, accepted := range []string{
+		"@p[limit=2]", "@e[limit=2,sort=random]", "@s[tag=a]", "@a[distance=0..]", "@a[level=0]",
+		"@a[name=!A,name=!B]", "@e[type=!pig,type=!cow]", "@e[type=#boats,type=!pig]", "@e[type=#a,type=#b]",
+		"@a[gamemode=!creative,gamemode=!survival]", "@a[tag=a,tag=b]",
+	} {
+		if _, err := parseSelector(accepted, testSource{}, nil); err != nil {
+			t.Errorf("%s: %v", accepted, err)
+		}
 	}
 }
