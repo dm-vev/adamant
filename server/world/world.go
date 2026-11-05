@@ -7,7 +7,6 @@ import (
 	"iter"
 	"log/slog"
 	"maps"
-	"math"
 	"math/rand/v2"
 	"slices"
 	"sync"
@@ -21,15 +20,9 @@ import (
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
-	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
 
-// World implements a Minecraft world. It manages all aspects of what players
-// can see, such as blocks, entities and particles. World generally provides a
-// synchronised state: All entities, blocks and players usually operate in this
-// world, so World ensures that all its methods will always be safe for
-// simultaneous calls. A nil *World is safe to use but not functional.
 type columnRef struct {
 	pos ChunkPos
 	col *Column
@@ -42,6 +35,11 @@ type loaderActiveArea struct {
 	square   bool
 }
 
+// World implements a Minecraft world. It manages all aspects of what players
+// can see, such as blocks, entities and particles. World generally provides a
+// synchronised state: All entities, blocks and players usually operate in this
+// world, so World ensures that all its methods will always be safe for
+// simultaneous calls. A nil *World is safe to use but not functional.
 type World struct {
 	conf Config
 	// log is the logger of the world; genLog and saveLog are those of its
@@ -309,25 +307,6 @@ type World struct {
 	testClockHook func()
 }
 
-// currentTickLocked returns the tick used to update this world. The caller
-// must hold the shared settings lock.
-func (w *World) currentTickLocked() int64 {
-	if w.advance {
-		return w.set.CurrentTick
-	}
-	return w.tick
-}
-
-const (
-	TimeDay      = 1000
-	TimeNoon     = 6000
-	TimeSunset   = 12000
-	TimeNight    = 13000
-	TimeMidnight = 18000
-	TimeSunrise  = 23000
-	TimeFull     = 24000
-)
-
 type entityState struct {
 	pos               ChunkPos
 	ent               Entity
@@ -414,12 +393,6 @@ type generationTask struct {
 
 type chunkCallback func(tx *Tx, col *Column)
 
-// transaction is a type that may be added to the transaction queue of a World.
-// Its Run method is called when the transaction is taken out of the queue.
-type transaction interface {
-	Run(w *World)
-}
-
 // New creates a new initialised world. The world may be used right away, but
 // it will not be saved or loaded from files until it has been given a
 // different provider than the default. (NopProvider) By default, the name of
@@ -478,26 +451,6 @@ func (w *World) Range() cube.Range {
 	return w.ra
 }
 
-// CurrentTick returns the current tick counter of the world.
-func (w *World) CurrentTick() int64 {
-	if w == nil {
-		return 0
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	return w.currentTickLocked()
-}
-
-// TPS returns the current average ticks per second of the world. The value is
-// averaged over the last tpsSampleSize ticks and may be zero if no samples have
-// been recorded yet.
-func (w *World) TPS() float64 {
-	if w == nil {
-		return 0
-	}
-	return math.Float64frombits(w.tps.Load())
-}
-
 // LoadedChunkCount returns the number of chunks currently kept in memory by the
 // world.
 func (w *World) LoadedChunkCount() int {
@@ -534,162 +487,6 @@ func (w *World) BlockRegistry() BlockRegistry {
 		return DefaultBlockRegistry
 	}
 	return w.conf.Blocks
-}
-
-// execFunc is a function that performs a synchronised transaction on a World.
-type execFunc func(tx *Tx)
-
-// ExecFunc is kept for Adamant callers that still use the legacy blocking API.
-type ExecFunc func(tx *Tx)
-
-// Exec performs a legacy blocking transaction. New off-owner code should use
-// Do or Call so scheduling cannot block the caller when the queue is full.
-//
-// A panic of f is logged as a fault of the transaction, with the caller of
-// Exec, and ends the transaction: the channel still closes.
-func (w *World) Exec(f ExecFunc) <-chan struct{} {
-	return w.execNormal(normalTransaction{f: f, caller: callerPC(0)})
-}
-
-// exec runs f on the World, bypassing the closed check that Do/DoAfter/Call
-// apply — reserved for the World's own machinery (ticking, saving, chunk
-// unload, the close transaction), which must queue work after close begins.
-// The returned channel closes when done; waiting on it from the owner deadlocks.
-func (w *World) exec(f execFunc) <-chan struct{} {
-	return w.execNormal(normalTransaction{f: f, caller: callerPC(0)})
-}
-
-// execTick runs the tick f on the World as exec does. A tick has panic
-// boundaries of its own.
-func (w *World) execTick(f execFunc) <-chan struct{} {
-	return w.execNormal(normalTransaction{f: f, tick: true})
-}
-
-// execNormal queues ntx, giving it a channel that closes once it ran.
-func (w *World) execNormal(ntx normalTransaction) <-chan struct{} {
-	c := make(chan struct{})
-	if w == nil {
-		// Nil worlds are treated as no-ops; return a closed channel so callers don't block.
-		close(c)
-		return c
-	}
-	ntx.c = c
-	if w.conf.Synchronous {
-		ntx.Run(w)
-		return c
-	}
-	select {
-	case w.queue <- ntx:
-	case <-w.queueClosing:
-		close(c)
-	}
-	return c
-}
-
-func (w *World) weakExec(valid func() bool, cond *sync.Cond, f execFunc, allowClosed bool) <-chan bool {
-	c := make(chan bool, 1)
-	if w.conf.Synchronous {
-		run := valid == nil || valid()
-		if run {
-			// As in weakTransaction.Run, f must not run under cond.L: it may
-			// relock it, e.g. through RemoveEntity.
-			cond.L.Unlock()
-			tx := newTx(w)
-			f(tx)
-			tx.close()
-			tx.runDeferred()
-			cond.L.Lock()
-		}
-		c <- run
-		return c
-	}
-	w.scheduleMu.Lock()
-	if w.closed.Load() && !w.closeAcceptingEntityTasks.Load() && !allowClosed {
-		w.scheduleMu.Unlock()
-		c <- false
-		return c
-	}
-	wtx := weakTransaction{c: c, f: f, valid: valid, cond: cond}
-	w.enqueueTransaction(wtx)
-	w.scheduleMu.Unlock()
-	return c
-}
-
-// enqueueTransaction queues tx without blocking the owner. Once the bounded
-// channel fills, the owner drains the overflow itself instead of creating one
-// blocked goroutine per request.
-func (w *World) enqueueTransaction(tx transaction) {
-	w.queueMu.Lock()
-	defer w.queueMu.Unlock()
-
-	if len(w.queueOverflow) == 0 {
-		select {
-		case w.queue <- tx:
-			return
-		default:
-		}
-	}
-	w.scheduling.Add(1)
-	w.queueOverflow = append(w.queueOverflow, tx)
-	select {
-	case w.queueWake <- struct{}{}:
-	default:
-	}
-}
-
-func (w *World) nextOverflowTransaction() (transaction, bool) {
-	w.queueMu.Lock()
-	defer w.queueMu.Unlock()
-	if len(w.queueOverflow) == 0 {
-		return nil, false
-	}
-	tx := w.queueOverflow[0]
-	w.queueOverflow[0] = nil
-	w.queueOverflow = w.queueOverflow[1:]
-	return tx, true
-}
-
-// handleTransactions continuously reads transactions from the queue and runs
-// them.
-func (w *World) handleTransactions() {
-	if id, entered := enterOwner(w); entered {
-		defer leaveOwner(id)
-	}
-	for {
-		select {
-		case tx := <-w.queue:
-			w.runTransaction(tx)
-			continue
-		default:
-		}
-		if tx, ok := w.nextOverflowTransaction(); ok {
-			w.runTransaction(tx)
-			w.scheduling.Done()
-			continue
-		}
-		select {
-		case tx := <-w.queue:
-			w.runTransaction(tx)
-		case <-w.queueWake:
-		case <-w.queueClosing:
-			w.queueing.Done()
-			return
-		}
-	}
-}
-
-// runTransaction runs tx and then spreads the light of the chunks that
-// became complete during it, as chunks finishing generation do. Light
-// readers bring it up to date anyway, but spreading it here, between ticks,
-// keeps a tick from first spreading the light of every chunk generated
-// since the last one, as Java lights chunks off its main thread.
-func (w *World) runTransaction(tx transaction) {
-	start := time.Now()
-	tx.Run(w)
-	if len(w.pendingSpreads) > 0 {
-		w.flushSpreads()
-	}
-	w.stats.OwnerBusy.Add(uint64(time.Since(start)))
 }
 
 // EntityRegistry returns the EntityRegistry that was passed to the World's
@@ -1563,86 +1360,6 @@ func (tx *Tx) skyLight(pos cube.Pos) uint8 {
 	return c.SkyLight(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
 }
 
-// Time returns the current time of the world. The time is incremented every
-// 1/20th of a second, unless World.StopTime() is called.
-func (w *World) Time() int {
-	if w == nil {
-		return 0
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	return int(w.set.Time)
-}
-
-// SetTime sets the new time of the world. SetTime will always work, regardless
-// of whether the time is stopped or not.
-func (w *World) SetTime(new int) {
-	if w == nil {
-		return
-	}
-	w.set.Lock()
-	w.set.Time = int64(new)
-	w.set.Unlock()
-
-	viewers, _ := w.allViewers()
-	for _, viewer := range viewers {
-		w.view(viewer, func(v Viewer) { v.ViewTime(new) })
-	}
-	w.releaseViewers(viewers)
-}
-
-// StopTime stops the time in the world. When called, the time will no longer
-// cycle and the world will remain at the time when StopTime is called. The
-// time may be restarted by calling World.StartTime().
-func (w *World) StopTime() {
-	w.enableTimeCycle(false)
-}
-
-// StartTime restarts the time in the world. When called, the time will start
-// cycling again and the day/night cycle will continue. The time may be stopped
-// again by calling World.StopTime().
-func (w *World) StartTime() {
-	w.enableTimeCycle(true)
-}
-
-// TimeCycle returns whether time cycle is enabled.
-func (w *World) TimeCycle() bool {
-	if w == nil {
-		return false
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	return w.set.TimeCycle
-}
-
-// enableTimeCycle enables or disables the time cycling of the World.
-func (w *World) enableTimeCycle(v bool) {
-	if w == nil {
-		return
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	w.set.TimeCycle = v
-	viewers, _ := w.allViewers()
-	defer w.releaseViewers(viewers)
-	for _, viewer := range viewers {
-		viewer.ViewTimeCycle(v)
-	}
-}
-
-// PlayersSleepingPercentage returns the configured percentage of players required to sleep before the night is skipped.
-func (w *World) PlayersSleepingPercentage() int32 {
-	if w == nil {
-		return 100
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	if w.set.PlayersSleepingPercentage <= 0 {
-		return 100
-	}
-	return w.set.PlayersSleepingPercentage
-}
-
 // temperature returns the temperature in the World at a specific position.
 // Higher altitudes and different biomes influence the temperature returned.
 func (tx *Tx) temperature(pos cube.Pos) float64 {
@@ -1652,42 +1369,6 @@ func (tx *Tx) temperature(pos cube.Pos) float64 {
 	)
 	diff := max(pos[1]-seaLevel, 0)
 	return tx.biome(pos).Temperature() - float64(diff)*tempDrop
-}
-
-// addParticle spawns a Particle at a given position in the World. Viewers that
-// are viewing the chunk will be shown the particle.
-func (w *World) addParticle(tx *Tx, pos mgl64.Vec3, p Particle) {
-	p.Spawn(w, pos)
-	viewers := w.viewersOf(tx, pos)
-	var b Broadcast
-	for _, viewer := range viewers {
-		if sv, ok := viewer.(SharedViewer); ok {
-			sv.ViewParticleShared(pos, p, &b)
-		} else {
-			viewer.ViewParticle(pos, p)
-		}
-	}
-	w.releaseViewers(viewers)
-}
-
-// playSound plays a sound at a specific position in the World. Viewers of that
-// position will be able to hear the sound if they are close enough.
-func (w *World) playSound(tx *Tx, pos mgl64.Vec3, s Sound) {
-	ctx := tx.Event()
-	if w.Handler().HandleSound(ctx, s, pos); ctx.Cancelled() {
-		return
-	}
-	s.Play(w, pos)
-	viewers := w.viewersOf(tx, pos)
-	var b Broadcast
-	for _, viewer := range viewers {
-		if sv, ok := viewer.(SharedViewer); ok {
-			sv.ViewSoundShared(pos, s, &b)
-		} else {
-			viewer.ViewSound(pos, s)
-		}
-	}
-	w.releaseViewers(viewers)
 }
 
 // addEntity adds an EntityHandle to a World. The Entity will be visible to all
@@ -2031,221 +1712,6 @@ func (w *World) untrackPlayer(handle *EntityHandle) {
 	w.playerMoves.Add(1)
 }
 
-// Spawn returns the spawn of the world. Every new player will by default spawn
-// on this position in the world when joining.
-func (w *World) Spawn() cube.Pos {
-	if w == nil {
-		return cube.Pos{}
-	}
-
-	if w.Dimension() == End {
-		return cube.Pos{100, 50}
-	} else if w.Dimension() == Nether {
-		return cube.Pos{}
-	}
-
-	w.set.Lock()
-	defer w.set.Unlock()
-	return w.set.Spawn
-}
-
-// SetSpawn sets the spawn of the world to a different position. The player
-// will be spawned in the centre of this position when newly joining.
-func (w *World) SetSpawn(pos cube.Pos) {
-	if w == nil {
-		return
-	}
-
-	// nether has no spawn point and end spawn point is always 100 50 0.
-	if w.Dimension() == Nether || w.Dimension() == End {
-		return
-	}
-
-	w.set.Lock()
-	w.set.Spawn = pos
-	w.set.Unlock()
-
-	viewers, _ := w.allViewers()
-	for _, viewer := range viewers {
-		viewer.ViewWorldSpawn(pos)
-	}
-	w.releaseViewers(viewers)
-}
-
-// PlayerSpawn returns the spawn position of a player with a UUID in this World.
-func (w *World) PlayerSpawn(id uuid.UUID) cube.Pos {
-	if w == nil {
-		return cube.Pos{}
-	}
-	pos, exist, err := w.conf.Provider.LoadPlayerSpawnPosition(id)
-	if err != nil {
-		w.log.Error("load player spawn: "+err.Error(), "ID", id)
-		return w.Spawn()
-	}
-	if !exist {
-		return w.Spawn()
-	}
-	return pos
-}
-
-// SetPlayerSpawn sets the spawn position of a player with a UUID in this
-// World. If the player has a spawn in the world, the player will be teleported
-// to this location on respawn. Unlike the other data saved beside the
-// columns, it is written to the provider at once (Staging).
-func (w *World) SetPlayerSpawn(id uuid.UUID, pos cube.Pos) {
-	if w == nil {
-		return
-	}
-	if err := w.conf.Provider.SavePlayerSpawnPosition(id, pos); err != nil {
-		w.log.Error("save player spawn: "+err.Error(), "ID", id)
-	}
-}
-
-// SetRequiredSleepDuration sets the duration of time players in the world must sleep for, in order to advance to the
-// next day.
-func (w *World) SetRequiredSleepDuration(duration time.Duration) {
-	if w == nil {
-		return
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	w.set.RequiredSleepTicks = duration.Milliseconds() / 50
-}
-
-// DefaultGameMode returns the default game mode of the world. When players
-// join, they are given this game mode. The default game mode may be changed
-// using SetDefaultGameMode().
-func (w *World) DefaultGameMode() GameMode {
-	if w == nil {
-		return GameModeSurvival
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	return w.set.DefaultGameMode
-}
-
-// SetTickRange sets the range in chunks around each Viewer that will have the
-// chunks (their blocks and entities) ticked when the World is ticked.
-func (w *World) SetTickRange(v int) {
-	if w == nil {
-		return
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	w.set.TickRange = int32(v)
-}
-
-// tickRange returns the tick range around each Viewer.
-func (w *World) tickRange() int {
-	w.set.Lock()
-	defer w.set.Unlock()
-	return int(w.set.TickRange)
-}
-
-// SetDefaultGameMode changes the default game mode of the world. When players
-// join, they are then given that game mode.
-func (w *World) SetDefaultGameMode(mode GameMode) {
-	if w == nil {
-		return
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	w.set.DefaultGameMode = mode
-}
-
-// Difficulty returns the difficulty of the world. Properties of mobs in the
-// world and the player's hunger will depend on this difficulty.
-func (w *World) Difficulty() Difficulty {
-	if w == nil {
-		return DifficultyNormal
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	return w.set.Difficulty
-}
-
-// SetDifficulty changes the difficulty of a world.
-func (w *World) SetDifficulty(d Difficulty) {
-	if w == nil {
-		return
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	w.set.Difficulty = d
-}
-
-// FallDamage reports whether entities in the World take damage from falling.
-func (w *World) FallDamage() bool {
-	if w == nil {
-		return false
-	}
-	w.set.Lock()
-	defer w.set.Unlock()
-	return w.set.FallDamage
-}
-
-// SetFallDamage sets whether entities in the World take damage from falling.
-func (w *World) SetFallDamage(v bool) {
-	if w == nil {
-		return
-	}
-	w.set.Lock()
-	if w.set.FallDamage == v {
-		w.set.Unlock()
-		return
-	}
-	w.set.FallDamage = v
-	w.set.fallDamageVersion++
-	if w.set.fallDamageDispatching {
-		w.set.Unlock()
-		return
-	}
-	w.set.fallDamageDispatching = true
-	w.set.Unlock()
-	w.dispatchFallDamage()
-}
-
-func (w *World) dispatchFallDamage() {
-	for {
-		w.set.Lock()
-		version, value := w.set.fallDamageVersion, w.set.FallDamage
-		worlds := make([]*World, 0, len(w.set.worlds))
-		for shared := range w.set.worlds {
-			worlds = append(worlds, shared)
-		}
-		w.set.Unlock()
-
-		stale := false
-		for _, shared := range worlds {
-			viewers, _ := shared.allViewers()
-			for _, viewer := range viewers {
-				w.set.Lock()
-				current := w.set.fallDamageVersion == version
-				w.set.Unlock()
-				if !current {
-					stale = true
-					break
-				}
-				if viewer, ok := viewer.(interface{ ViewFallDamage(bool) }); ok {
-					viewer.ViewFallDamage(value)
-				}
-			}
-			shared.releaseViewers(viewers)
-			if stale {
-				break
-			}
-		}
-
-		w.set.Lock()
-		if w.set.fallDamageVersion == version {
-			w.set.fallDamageDispatching = false
-			w.set.Unlock()
-			return
-		}
-		w.set.Unlock()
-	}
-}
-
 // scheduleBlockUpdate schedules a live update after a specific delay. Liquids
 // are stored in the distinct fluid queue; other blocks use the block queue.
 func (w *World) scheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
@@ -2398,82 +1864,6 @@ func (w *World) Handle(h Handler) {
 		h = NopHandler{}
 	}
 	w.handler.Store(&h)
-}
-
-// viewersOf returns all viewers viewing the position passed.
-//
-// The method deliberately borrows a slice from viewerSlicePool so the caller can iterate without allocating. The
-// caller must eventually hand the slice back through releaseViewers to maintain the pool's effectiveness. We have to
-// pay special attention to reusing buffers here because these lookups happen every time entities broadcast state or
-// packets are fanned out to observers.
-func (w *World) viewersOf(tx *Tx, pos mgl64.Vec3) []Viewer {
-	c, ok := tx.loadedColumn(chunkPosFromVec3(pos))
-	if !ok || len(c.viewers) == 0 {
-		return nil
-	}
-	viewers := borrowViewers(len(c.viewers) + 1)
-	for v := range c.viewers {
-		viewers = append(viewers, v)
-	}
-	return viewers
-}
-
-// releaseViewers returns pooled viewer slices to viewerSlicePool. Forgetting to release will degrade the pool and
-// reintroduce the very allocations this optimisation was meant to avoid.
-func (w *World) releaseViewers(viewers []Viewer) {
-	if viewers == nil {
-		return
-	}
-	returnViewers(viewers)
-}
-
-// PortalDestination returns the destination World for a portal of a specific
-// Dimension. Calling PortalDestination(Nether) on an Overworld World returns
-// Nether, while calling PortalDestination(Nether) on a Nether World will
-// return the Overworld, for instance. If no destination World is available,
-// nil is returned.
-func (w *World) PortalDestination(dim Dimension) *World {
-	if w == nil {
-		return nil
-	}
-	if w.conf.PortalDestination == nil {
-		return nil
-	}
-	dest := w.conf.PortalDestination(dim)
-	if dest == w {
-		if fallback := w.DefaultWorld(); fallback != w {
-			return fallback
-		}
-		return nil
-	}
-	return dest
-}
-
-// PortalDisabledMessage resolves the message to display when a portal targeting the
-// provided Dimension is disabled. An empty string suppresses any feedback.
-func (w *World) PortalDisabledMessage(dim Dimension) string {
-	if w == nil {
-		return ""
-	}
-	if w.conf.PortalDisabledMessage == nil {
-		return ""
-	}
-	return w.conf.PortalDisabledMessage(dim)
-}
-
-// DefaultWorld returns the primary world configured for this server. If no explicit default
-// callback is provided, the world itself is returned so respawn logic always has a destination.
-func (w *World) DefaultWorld() *World {
-	if w == nil {
-		return nil
-	}
-	if w.conf.DefaultWorld == nil {
-		return w
-	}
-	if def := w.conf.DefaultWorld(); def != nil {
-		return def
-	}
-	return w
 }
 
 // Save saves the World to the provider and waits until it reached the disk:
@@ -2813,192 +2203,6 @@ func (w *World) columnLeft(pos ChunkPos) {
 	}
 }
 
-// Close closes the world and saves all chunks currently loaded. Called from a
-// world owner or a region worker, it returns ErrOwnerWait without closing.
-func (w *World) Close() error {
-	if w == nil {
-		return nil
-	}
-	if !w.conf.Synchronous {
-		if err := checkOwnerWait("World.Close"); err != nil {
-			return err
-		}
-	}
-	w.o.Do(w.close)
-	return nil
-}
-
-// close stops the World from ticking, saves all chunks to the Provider and
-// updates the world's settings.
-func (w *World) close() {
-	w.scheduleMu.Lock()
-	w.closed.Store(true)
-	close(w.closeStarted)
-	w.scheduleMu.Unlock()
-
-	w.scheduling.Wait()
-	w.stopCacheRelease()
-	w.drainGenerationQueue()
-	w.generatorRunning.Wait()
-	w.scheduleMu.Lock()
-	w.closeAcceptingEntityTasks.Store(true)
-	w.scheduleMu.Unlock()
-	<-w.exec(func(tx *Tx) {
-		// Let user code run anything that needs to be finished before closing.
-		w.Handler().HandleClose(tx)
-		tx.runDeferred()
-		w.Handle(NopHandler{})
-		clear(w.chunkRequests)
-		tx.LoadDragonArena(false)
-
-		if w.conf.ReadOnly {
-			for pos, c := range w.chunks {
-				w.closeChunk(tx, pos, c)
-			}
-		} else {
-			// The saver writes the columns closed before it stops below.
-			_ = w.capture(tx, true, nil).write(false)
-		}
-	})
-	if w.saver != nil {
-		w.saver.close()
-	}
-	w.scheduleMu.Lock()
-	w.closeAcceptingEntityTasks.Store(false)
-	w.scheduleMu.Unlock()
-	w.scheduling.Wait()
-
-	close(w.closing)
-	w.running.Wait()
-
-	close(w.queueClosing)
-	w.queueing.Wait()
-
-	w.set.Lock()
-	w.set.unregisterWorldLocked(w)
-	w.set.Unlock()
-	if !releaseProvider(w.providerUse) {
-		return
-	}
-
-	// The last world of the provider writes what was staged after the
-	// worlds captured themselves as they closed.
-	if !w.conf.ReadOnly {
-		if err := w.providerUse.staging.write(w.conf.Provider, w.providerUse.staging.take()); err != nil {
-			w.saveLog.Error("save staged world data: " + err.Error())
-		}
-	}
-	w.saveLog.Debug("Closing provider...")
-	saveErr, closeErr := w.providerUse.closeProvider(w.conf.Provider)
-	if saveErr != nil {
-		w.saveLog.Error("save position tracking data: " + saveErr.Error())
-	}
-	if closeErr != nil {
-		w.saveLog.Error("close world provider: " + closeErr.Error())
-	}
-}
-
-// allViewers returns all viewers and loaders, regardless of where in the world
-// they are viewing.
-func (w *World) allViewers() ([]Viewer, []*Loader) {
-	w.viewerMu.Lock()
-	defer w.viewerMu.Unlock()
-
-	viewers := borrowViewers(len(w.viewers))
-	loaders := make([]*Loader, 0, len(w.viewers))
-	for _, loader := range w.viewerLoaders {
-		viewers = append(viewers, w.viewers[loader])
-		loaders = append(loaders, loader)
-	}
-	return viewers, loaders
-}
-
-// addWorldViewer adds a viewer to the world. Should only be used while the
-// viewer isn't viewing any chunks.
-func (w *World) addWorldViewer(l *Loader) {
-	w.viewerMu.Lock()
-	if _, exists := w.viewers[l]; !exists {
-		w.viewerLoaders = append(w.viewerLoaders, l)
-	}
-	w.viewers[l] = l.viewer
-	w.viewerMu.Unlock()
-}
-
-func (w *World) removeWorldViewer(l *Loader) {
-	w.viewerMu.Lock()
-	delete(w.viewers, l)
-	w.viewerLoaders = slices.DeleteFunc(w.viewerLoaders, func(loader *Loader) bool { return loader == l })
-	w.viewerMu.Unlock()
-}
-
-// initWorldViewer sends initial state without holding loader or viewer locks:
-// viewers may re-enter the loader from any of these callbacks.
-func (w *World) initWorldViewer(viewer Viewer) {
-	viewer.ViewTime(w.Time())
-	viewer.ViewTimeCycle(w.TimeCycle())
-	w.set.Lock()
-	raining, thundering := w.set.Raining, w.set.Raining && w.set.Thundering
-	w.set.Unlock()
-	viewer.ViewWeather(raining, thundering)
-	viewer.ViewWorldSpawn(w.Spawn())
-}
-
-// addViewer adds a viewer to the World at a given position. Any events that
-// happen in the chunk at that position, such as block and entity changes, will
-// be sent to the viewer.
-func (w *World) addViewer(pos ChunkPos, c *Column, loader *Loader, viewer Viewer) {
-	if viewer != nil {
-		c.viewers[viewer] = struct{}{}
-	}
-	c.loaders = append(c.loaders, loader)
-
-	w.addActiveColumn(pos, c)
-}
-
-func (w *World) viewChunkEntities(tx *Tx, c *Column, viewer Viewer) {
-	for _, entity := range c.Entities {
-		if ent, ok := entity.Entity(tx); ok {
-			showEntity(ent, viewer)
-		}
-	}
-}
-
-// rollbackViewer removes a partially published chunk without closing it, so it may be retried.
-func (w *World) rollbackViewer(tx *Tx, pos ChunkPos, c *Column, loader *Loader, viewer Viewer) {
-	w.removeViewerFrom(tx, pos, c, loader, viewer, false)
-}
-
-func (w *World) removeViewerFrom(tx *Tx, pos ChunkPos, expected *Column, loader *Loader, viewer Viewer, closeUnused bool) {
-	if w == nil {
-		return
-	}
-	c, ok := w.chunks[pos]
-	if !ok || expected != nil && c != expected {
-		return
-	}
-	if i := slices.Index(c.loaders, loader); i != -1 {
-		c.loaders = slices.Delete(c.loaders, i, i+1)
-	}
-
-	if len(c.loaders) == 0 {
-		w.removeActiveColumn(pos)
-	}
-
-	// Hide all entities in the chunk from the viewer.
-	delete(c.viewers, viewer)
-	if viewer != nil {
-		for _, entity := range c.Entities {
-			if ent, ok := entity.Entity(tx); ok {
-				viewer.HideEntity(ent)
-			}
-		}
-	}
-
-	if closeUnused && len(c.viewers) == 0 && len(c.loaders) == 0 && !w.retainedByForcedChunk(pos) {
-		w.closeChunk(tx, pos, c)
-	}
-}
-
 // Handler returns the Handler of the world.
 func (w *World) Handler() Handler {
 	if w == nil {
@@ -3011,17 +2215,6 @@ func (w *World) Handler() Handler {
 		}
 	}
 	return h
-}
-
-// showEntity shows an Entity to a viewer of the world. It makes sure
-// everything of the Entity, including the items held, is shown.
-func showEntity(e Entity, viewer Viewer) {
-	// The viewer has the entity where it is now, which the parts the moves
-	// leave out need not match.
-	e.H().data.Moves.showAll()
-	viewer.ViewEntity(e)
-	viewer.ViewEntityItems(e)
-	viewer.ViewEntityArmour(e)
 }
 
 // loadedChunk returns chunk & true only if chunk at position passed is loaded.
@@ -3991,46 +3184,6 @@ func (w *World) removeEntityColumn(pos ChunkPos) {
 	}
 	w.entityColumns = w.entityColumns[:last]
 	delete(w.entityColumnIndex, pos)
-}
-
-// viewerSlicePool recycles temporary []Viewer buffers created while broadcasting world state to reduce GC churn.
-// The default capacity is intentionally small: most columns have just a handful of viewers, yet larger slices are
-// returned to the pool so hot paths can still reuse previously grown allocations instead of re-allocating.
-//
-// The pool holds *[]Viewer: a slice put in a sync.Pool as it is would be boxed, an allocation on every release.
-// viewerHolderPool keeps the emptied holders while their slices are lent out.
-var (
-	viewerSlicePool = sync.Pool{
-		New: func() any {
-			viewers := make([]Viewer, 0, 8)
-			return &viewers
-		},
-	}
-	viewerHolderPool sync.Pool
-)
-
-// borrowViewers lends an empty pooled slice with room for n viewers. It is
-// handed back with returnViewers.
-func borrowViewers(n int) []Viewer {
-	holder := viewerSlicePool.Get().(*[]Viewer)
-	viewers := *holder
-	*holder = nil
-	viewerHolderPool.Put(holder)
-	if cap(viewers) < n {
-		returnViewers(viewers)
-		return make([]Viewer, 0, n)
-	}
-	return viewers[:0]
-}
-
-// returnViewers hands a slice lent by borrowViewers back to viewerSlicePool.
-func returnViewers(viewers []Viewer) {
-	holder, _ := viewerHolderPool.Get().(*[]Viewer)
-	if holder == nil {
-		holder = new([]Viewer)
-	}
-	*holder = viewers[:0]
-	viewerSlicePool.Put(holder)
 }
 
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
