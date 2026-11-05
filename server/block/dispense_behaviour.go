@@ -68,15 +68,16 @@ var dispenseBehaviours = map[reflect.Type]dispenseBehaviour{
 	// for equippable items: here the harness alone.
 	reflect.TypeFor[item.Harness](): dispenseHarness,
 
-	// The bucket behaviours, FlintAndSteelDispenseItemBehavior and the
-	// anonymous behaviours of Items.BONE_MEAL and Items.GLASS_BOTTLE, which
-	// use the item on the block in front.
-	reflect.TypeFor[item.Bucket]():        dispenseUseOnBlock,
-	reflect.TypeFor[item.MobBucket]():     dispenseUseOnBlock,
-	reflect.TypeFor[item.FishBucket]():    dispenseUseOnBlock,
-	reflect.TypeFor[item.BoneMeal]():      dispenseUseOnBlock,
-	reflect.TypeFor[item.FlintAndSteel](): dispenseUseOnBlock,
-	reflect.TypeFor[item.GlassBottle]():   dispenseUseOnBlock,
+	// The bucket behaviours, which use the item on the block in front.
+	reflect.TypeFor[item.Bucket]():     dispenseBucket,
+	reflect.TypeFor[item.MobBucket]():  dispenseBucket,
+	reflect.TypeFor[item.FishBucket](): dispenseBucket,
+
+	// FlintAndSteelDispenseItemBehavior and the anonymous behaviours of
+	// Items.BONE_MEAL and Items.GLASS_BOTTLE, which are Optional ones.
+	reflect.TypeFor[item.FlintAndSteel](): dispenseFlintAndSteel,
+	reflect.TypeFor[item.BoneMeal]():      dispenseBoneMeal,
+	reflect.TypeFor[item.GlassBottle]():   dispenseGlassBottle,
 }
 
 // dispenseBehaviourOf returns the behaviour of the item it, as Java's
@@ -351,10 +352,8 @@ func dispenseSpawnEgg(src dispenseSource) dispensed {
 // dispenseHarness puts the harness on the first mob in front that takes it,
 // as EquipmentDispenseItemBehavior, and drops it if none does.
 func dispenseHarness(src dispenseSource) dispensed {
-	front := src.front()
-	box := cube.Box(float64(front.X()), float64(front.Y()), float64(front.Z()), float64(front.X()+1), float64(front.Y()+1), float64(front.Z()+1))
 	harness := src.stack.Item().(item.Harness)
-	for e := range src.tx.EntitiesWithin(box) {
+	for e := range entitiesInBlock(src.tx, src.front()) {
 		ctx := &item.UseContext{}
 		if harness.UseOnEntity(e, src.tx, nil, ctx) {
 			return src.used(ctx)
@@ -363,10 +362,11 @@ func dispenseHarness(src dispenseSource) dispensed {
 	return dispenseDefault(src)
 }
 
-// dispenseUseOnBlock uses the item on the block in front, as a player using
-// it on the face of that block that the dispenser looks at, and drops it if
-// that does nothing.
-func dispenseUseOnBlock(src dispenseSource) dispensed {
+// dispenseBucket uses the bucket on the block in front, as the bucket
+// behaviours of DispenseItemBehavior.bootStrap do: a filled one empties there,
+// an empty one picks up what is there, and it is dropped if that does
+// nothing.
+func dispenseBucket(src dispenseSource) dispensed {
 	usable := src.stack.Item().(interface {
 		UseOnBlock(cube.Pos, cube.Face, mgl64.Vec3, *world.Tx, item.User, *item.UseContext) bool
 	})
