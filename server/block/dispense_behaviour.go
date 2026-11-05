@@ -38,10 +38,10 @@ var dispenseBehaviours = map[reflect.Type]dispenseBehaviour{
 	reflect.TypeFor[item.Snowball]():           dispenseProjectile(spawnDispensedSnowball),
 	reflect.TypeFor[item.FireCharge]():         dispenseProjectile(spawnDispensedFireCharge),
 	reflect.TypeFor[item.WindCharge]():         dispenseProjectile(spawnDispensedWindCharge),
-	reflect.TypeFor[item.Arrow]():              dispenseProjectile(spawnDispensedArrow),
-	reflect.TypeFor[item.BottleOfEnchanting](): dispenseProjectile(spawnDispensedBottleOfEnchanting),
-	reflect.TypeFor[item.SplashPotion]():       dispenseProjectile(spawnDispensedSplashPotion),
-	reflect.TypeFor[item.LingeringPotion]():    dispenseProjectile(spawnDispensedLingeringPotion),
+	reflect.TypeFor[item.Arrow]():              dispenseShot(defaultDispenseConfig, spawnDispensedArrow),
+	reflect.TypeFor[item.BottleOfEnchanting](): dispenseShot(thrownDispenseConfig, spawnDispensedBottleOfEnchanting),
+	reflect.TypeFor[item.SplashPotion]():       dispenseShot(thrownDispenseConfig, spawnDispensedSplashPotion),
+	reflect.TypeFor[item.LingeringPotion]():    dispenseShot(thrownDispenseConfig, spawnDispensedLingeringPotion),
 	reflect.TypeFor[item.Firework]():           dispenseProjectile(spawnDispensedFirework),
 
 	// BoatDispenseItemBehavior.
@@ -118,6 +118,48 @@ func dispenseDefault(src dispenseSource) (item.Stack, bool) {
 func dispenseProjectile(spawn dispenseSpawner) dispenseBehaviour {
 	return func(src dispenseSource) (item.Stack, bool) {
 		src.tx.AddEntity(spawn(src.tx.World().EntityRegistry().Config(), src.launch(), src.stack.Item()))
+		return src.consume()
+	}
+}
+
+// dispenseConfig is ProjectileItem.DispenseConfig: where a projectile leaves
+// the dispenser and how it is shot.
+type dispenseConfig struct {
+	// offset is how far from the centre of the dispenser, towards its front,
+	// the projectile spawns, and lift how far above that.
+	offset, lift float64
+	// uncertainty and power are the arguments of Projectile.shoot.
+	uncertainty, power float64
+}
+
+var (
+	// defaultDispenseConfig is ProjectileItem.DispenseConfig.DEFAULT: 0.7
+	// blocks out and 0.1 up, uncertainty 6 and power 1.1.
+	defaultDispenseConfig = dispenseConfig{offset: 0.7, lift: 0.1, uncertainty: 6, power: 1.1}
+	// thrownDispenseConfig is the DispenseConfig of ExperienceBottleItem and
+	// ThrowablePotionItem: the default with half its uncertainty and 1.25
+	// times its power.
+	thrownDispenseConfig = dispenseConfig{offset: 0.7, lift: 0.1, uncertainty: 3, power: 1.375}
+)
+
+// launch returns where a projectile spawns and the velocity Projectile.shoot
+// gives it for the dispenser's direction: the direction made a unit vector,
+// moved by a triangular random amount of 0.0172275 times the uncertainty on
+// each axis, drawn from the world's random stream, and scaled by the power.
+func (c dispenseConfig) launch(src dispenseSource) world.EntitySpawnOpts {
+	direction := src.direction()
+	spread := 0.0172275 * c.uncertainty
+	triangle := func() float64 { return spread * float64(src.tx.RandomFloat32()-src.tx.RandomFloat32()) }
+	vel := direction.Add(mgl64.Vec3{triangle(), triangle(), triangle()}).Mul(c.power)
+	pos := src.pos.Vec3Centre().Add(direction.Mul(c.offset)).Add(mgl64.Vec3{0, c.lift})
+	return world.EntitySpawnOpts{Position: pos, Velocity: vel}
+}
+
+// dispenseShot shoots the item as ProjectileDispenseBehavior does with the
+// DispenseConfig given.
+func dispenseShot(conf dispenseConfig, spawn dispenseSpawner) dispenseBehaviour {
+	return func(src dispenseSource) (item.Stack, bool) {
+		src.tx.AddEntity(spawn(src.tx.World().EntityRegistry().Config(), conf.launch(src), src.stack.Item()))
 		return src.consume()
 	}
 }
