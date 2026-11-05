@@ -7832,6 +7832,7 @@ server/entity.Vex	server/world.TickerEntity	value
 server/entity.VibrationDetectedAction	server/world.EntityAction	value
 server/entity.Villager	protocol/bedrock/session.alwaysShowNameTag	value
 server/entity.Villager	protocol/bedrock/session.baby	*
+server/entity.Villager	protocol/bedrock/session.bedSleeper	*
 server/entity.Villager	protocol/bedrock/session.effectBearer	*
 server/entity.Villager	protocol/bedrock/session.leashed	value
 server/entity.Villager	protocol/bedrock/session.mobHealth	*

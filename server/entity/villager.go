@@ -424,6 +424,8 @@ type VillagerBehaviour struct {
 	trading                  tradingPlayer
 	// sleeping is the bed the villager sleeps in.
 	sleeping *cube.Pos
+	// sleepFacing is the direction from the foot of that bed to its head.
+	sleepFacing cube.Direction
 	// held is the item the villager shows in its hand.
 	held item.Stack
 	// lastTick is the tick the villager last ticked at.
@@ -532,6 +534,10 @@ func (v *Villager) Sleeping() (cube.Pos, bool) {
 	}
 	return cube.Pos{}, false
 }
+
+// SleepFacing returns the direction from the foot of the bed the villager
+// sleeps in to its head, which it lies along with its head to the pillow.
+func (v *Villager) SleepFacing() cube.Direction { return v.behaviour().sleepFacing }
 
 // HearBell ports BellBlockEntity.updateEntities: the villager remembers when
 // it heard a bell.

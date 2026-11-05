@@ -103,7 +103,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 	s.justShown[e.H()] = struct{}{}
 	s.entityMutex.Unlock()
 
-	yaw, pitch := e.Rotation().Elem()
+	pitch, yaw, headYaw := entityNetworkRotation(e, e.Rotation())
 	metadata := s.entityMetadata(e)
 	links := s.entityLinks(e)
 
@@ -179,7 +179,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		Velocity:         vec64To32(vel),
 		Pitch:            float32(pitch),
 		Yaw:              float32(yaw),
-		HeadYaw:          float32(entityHeadYaw(e, yaw)),
+		HeadYaw:          float32(headYaw),
 		BodyYaw:          float32(yaw),
 	})
 }
@@ -367,10 +367,11 @@ func absoluteMove(id uint64, e world.Entity, pos mgl64.Vec3, rot cube.Rotation, 
 	if authoritative {
 		flags |= mc.MoveFlagTeleport
 	}
+	pitch, yaw, headYaw := entityNetworkRotation(e, rot)
 	return &mc.MoveActorAbsolutePacket{
 		EntityRuntimeID: id,
 		Position:        vec64To32(entityNetworkPosition(e, pos)),
-		Rotation:        vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), entityHeadYaw(e, rot.Yaw())}),
+		Rotation:        vec64To32(mgl64.Vec3{pitch, yaw, headYaw}),
 		Flags:           flags,
 	}
 }
@@ -395,10 +396,64 @@ func entityOffset(e world.Entity) mgl64.Vec3 {
 			}
 		}
 	}
+	if bs, ok := e.(bedSleeper); ok {
+		if _, sleeping := bs.Sleeping(); sleeping {
+			return bedSleeperOffset(bs.SleepFacing())
+		}
+	}
 	if offset, ok := e.H().Type().(OffsetEntity); ok {
 		return mgl64.Vec3{0, offset.NetworkOffset()}
 	}
 	return mgl64.Vec3{}
+}
+
+// bedSleeperOffset returns the offset from the centre of the head of a bed, a
+// block of the height of the villager, to where BDS puts a mob lying in it:
+// 0.375 blocks towards the foot, and 0.6 blocks over the block (sleep_y_offset)
+// in place of the 0.6875 Java uses.
+func bedSleeperOffset(facing cube.Direction) mgl64.Vec3 {
+	dx, dz := bedFacingVector(facing)
+	return mgl64.Vec3{-dx * 0.375, 0.6 - 0.6875, -dz * 0.375}
+}
+
+// bedFacingVector returns the horizontal step of a direction.
+func bedFacingVector(d cube.Direction) (dx, dz float64) {
+	switch d {
+	case cube.North:
+		return 0, -1
+	case cube.East:
+		return 1, 0
+	case cube.South:
+		return 0, 1
+	}
+	return -1, 0
+}
+
+// bedFacingYaw returns the yaw that turns a mob towards a direction: south is
+// 0, west 90, north 180 and east 270.
+func bedFacingYaw(d cube.Direction) float64 {
+	switch d {
+	case cube.North:
+		return 180
+	case cube.East:
+		return 270
+	case cube.South:
+		return 0
+	}
+	return 90
+}
+
+// entityNetworkRotation returns the pitch, yaw and head yaw clients see an
+// entity turned by. A mob in a bed lies with its head to the pillow, as BDS
+// turns it, whatever way it faced.
+func entityNetworkRotation(e world.Entity, rot cube.Rotation) (pitch, yaw, headYaw float64) {
+	if bs, ok := e.(bedSleeper); ok {
+		if _, sleeping := bs.Sleeping(); sleeping {
+			yaw = bedFacingYaw(bs.SleepFacing())
+			return 0, yaw, yaw
+		}
+	}
+	return rot.Pitch(), rot.Yaw(), entityHeadYaw(e, rot.Yaw())
 }
 
 func entityNetworkPosition(e world.Entity, pos mgl64.Vec3) mgl64.Vec3 {
@@ -450,6 +505,9 @@ func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 			}),
 		})
 		return
+	}
+	if _, ok := e.(bedSleeper); ok {
+		pitch, yaw, _ = entityNetworkRotation(e, e.Rotation())
 	}
 	s.writePacket(&mc.MoveActorAbsolutePacket{
 		EntityRuntimeID: id,

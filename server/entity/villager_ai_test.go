@@ -70,8 +70,14 @@ func TestVillagersSleepAtNight(t *testing.T) {
 				if pos != bed {
 					t.Fatalf("villager sleeps at %v, want the bed at %v", pos, bed)
 				}
-				if b, ok := tx.Block(bed).(block.Bed); !ok || !b.Occupied {
+				b, ok := tx.Block(bed).(block.Bed)
+				if !ok || !b.Occupied {
 					t.Fatal("bed a villager sleeps in is not occupied")
+				}
+				// Viewers lay the villager along the bed, with its head to
+				// the pillow.
+				if got := villager(tx, h).SleepFacing(); got != b.Facing {
+					t.Fatalf("villager sleeps facing %v, want the bed's %v", got, b.Facing)
 				}
 			}
 		})

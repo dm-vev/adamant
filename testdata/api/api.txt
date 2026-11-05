@@ -15830,6 +15830,7 @@ server/entity	method	Villager.SetRiderSeat	func(s server/world.RiderSeat)
 server/entity	method	Villager.SetRiding	func(r *server/world.EntityHandle)
 server/entity	method	Villager.SetSpeed	func(speed float64)
 server/entity	method	Villager.SetVelocity	func(v github.com/go-gl/mathgl/mgl64.Vec3)
+server/entity	method	Villager.SleepFacing	func() server/block/cube.Direction
 server/entity	method	Villager.Sleeping	func() (server/block/cube.Pos, bool)
 server/entity	method	Villager.Speed	func() float64
 server/entity	method	Villager.StartTrading	func(user *server/world.EntityHandle) bool
@@ -17386,7 +17387,7 @@ server/entity	type	VehicleJumpInput	interface{SetVehicleJumping(jumping bool)}
 server/entity	type	Vex	struct{*server/entity.HostileMob}
 server/entity	type	VibrationDetectedAction	struct{server/entity.action}
 server/entity	type	Villager	struct{*server/entity.Ent}
-server/entity	type	VillagerBehaviour	struct{health *server/entity.HealthManager; effects *server/entity.EffectManager; ai server/entity.MobAI; br *server/entity.Brain; pending server/entity.villagerPendingMemories; speed float64; profession string; villagerType string; level int; xp int; offers []server/entity.MerchantOffer; inventory *server/item/inventory.Inventory; gossips map[string]map[string]int; lastGossipDecay int64; lastRestock int64; lastGossip int64; restockCheckDay int64; age int; foodLevel int; restocksToday int; finalized bool; offersGenerated bool; dead bool; trading server/entity.tradingPlayer; sleeping *server/block/cube.Pos; held server/item.Stack; lastTick int64}
+server/entity	type	VillagerBehaviour	struct{health *server/entity.HealthManager; effects *server/entity.EffectManager; ai server/entity.MobAI; br *server/entity.Brain; pending server/entity.villagerPendingMemories; speed float64; profession string; villagerType string; level int; xp int; offers []server/entity.MerchantOffer; inventory *server/item/inventory.Inventory; gossips map[string]map[string]int; lastGossipDecay int64; lastRestock int64; lastGossip int64; restockCheckDay int64; age int; foodLevel int; restocksToday int; finalized bool; offersGenerated bool; dead bool; trading server/entity.tradingPlayer; sleeping *server/block/cube.Pos; sleepFacing server/block/cube.Direction; held server/item.Stack; lastTick int64}
 server/entity	type	VillagerBehaviourConfig	struct{Health float64; XP int; Level int; FoodLevel int; RestocksToday int; Age int; Profession string; Type string; Offers []server/entity.MerchantOffer; Inventory []server/entity.villagerInventorySlot; Gossips []server/entity.villagerGossip; LastGossipDecay int64; LastRestock int64; LastSlept int64; GolemDetectedUntil int64; JobSite server/block/cube.Pos; PotentialJobSite server/block/cube.Pos; Home server/block/cube.Pos; MeetingPoint server/block/cube.Pos; HasJobSite bool; HasPotentialJobSite bool; HasHome bool; HasMeetingPoint bool; HasSlept bool; Finalized bool; OffersGenerated bool; healthSet bool}
 server/entity	type	Vindicator	struct{*server/entity.HostileMob}
 server/entity	type	VoidDamageSource	struct{}

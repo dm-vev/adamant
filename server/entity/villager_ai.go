@@ -2294,7 +2294,7 @@ func (b *VillagerBehaviour) startSleeping(m *Mob, pos cube.Pos) bool {
 	m.data.Pos = mgl64.Vec3{float64(pos[0]) + .5, float64(pos[1]) + .6875, float64(pos[2]) + .5}
 	m.data.Vel = mgl64.Vec3{}
 	m.AI.nav.Stop()
-	b.sleeping = &pos
+	b.sleeping, b.sleepFacing = &pos, bed.Facing
 	m.updateState()
 	return true
 }

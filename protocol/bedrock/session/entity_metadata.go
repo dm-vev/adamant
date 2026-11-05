@@ -346,6 +346,10 @@ var metadataWriters = [...]metadataWriter{
 		return ok
 	},
 	func(_ *Session, e any, m mc.Metadata) bool {
+		if bs, ok := e.(bedSleeper); ok {
+			writeBedSleeperMetadata(bs, m)
+			return true
+		}
 		sl, ok := e.(sleeper)
 		if ok {
 			if pos, ok := sl.Sleeping(); ok {
@@ -658,18 +662,6 @@ var metadataWriters = [...]metadataWriter{
 		return ok
 	},
 	func(_ *Session, e any, m mc.Metadata) bool {
-		sl, ok := e.(sleeper)
-		if ok {
-			if pos, ok := sl.Sleeping(); ok {
-				m[mc.EntityDataKeyBedPosition] = mc.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-
-				// For some reason there is no such flag in gophertunnel.
-				m.SetFlag(mc.EntityDataKeyPlayerFlags, 1)
-			}
-		}
-		return ok
-	},
-	func(_ *Session, e any, m mc.Metadata) bool {
 		c, ok := e.(areaEffectCloud)
 		if ok {
 			m[mc.EntityDataKeyDataRadius] = float32(c.Radius())
@@ -943,6 +935,31 @@ type using interface {
 
 type sleeper interface {
 	Sleeping() (cube.Pos, bool)
+}
+
+// bedSleeper is a mob that lies in a bed, as villagers do. BDS shows such a
+// mob with the SLEEPING flag and the small box of the behaviour.sleep
+// component, in place of the bed position and player flag of players.
+type bedSleeper interface {
+	sleeper
+	// SleepFacing returns the direction from the foot of the bed to its head.
+	SleepFacing() cube.Direction
+}
+
+// Width and height of the box BDS gives a villager lying in a bed
+// (sleep_collider_width and sleep_collider_height).
+const (
+	sleepColliderWidth  = 1
+	sleepColliderHeight = 0.3
+)
+
+// writeBedSleeperMetadata writes the state of a mob in a bed, if it sleeps.
+func writeBedSleeperMetadata(bs bedSleeper, m mc.Metadata) {
+	if _, ok := bs.Sleeping(); !ok {
+		return
+	}
+	setActorFlag(m, mc.EntityDataFlagSleeping)
+	m[mc.EntityDataKeyWidth], m[mc.EntityDataKeyHeight] = float32(sleepColliderWidth), float32(sleepColliderHeight)
 }
 
 type arrow interface {
