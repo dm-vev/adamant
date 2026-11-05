@@ -12,6 +12,11 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
+// lavaTaskLimit bounds the waits for events the test expects to happen. It is
+// only reached when the test fails, so it is far above what a loaded machine
+// needs.
+const lavaTaskLimit = 30 * time.Second
+
 func TestLavaRandomTickDoesNotWaitForGeneratingNeighbour(t *testing.T) {
 	generator := &lavaReadinessGenerator{started: make(chan struct{}), release: make(chan struct{})}
 	w := world.Config{Generator: generator, GeneratorWorkers: 1, RandomTickSpeed: -1}.New()
@@ -26,7 +31,7 @@ func TestLavaRandomTickDoesNotWaitForGeneratingNeighbour(t *testing.T) {
 
 	select {
 	case <-generator.started:
-	case <-time.After(5 * time.Second):
+	case <-time.After(lavaTaskLimit):
 		t.Fatal("neighbor generation did not start")
 	}
 
@@ -39,12 +44,18 @@ func TestLavaRandomTickDoesNotWaitForGeneratingNeighbour(t *testing.T) {
 		}
 		block.Lava{Depth: 8}.RandomTick(origin, tx, rand.New(rand.NewPCG(uint64(seed), 1)))
 	})
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	// The generator stays blocked until the task is done, so a random tick
+	// that waited for the neighbour could only finish after the generation
+	// was released, which happens below. The task is therefore awaited for
+	// as long as a loaded machine may need to run it, not for the time a
+	// healthy tick takes: only a tick that waits for the neighbour runs out
+	// the limit.
+	ctx, cancel := context.WithTimeout(context.Background(), lavaTaskLimit)
 	err := task.Wait(ctx)
 	cancel()
 	if err != nil {
 		generator.releaseGeneration()
-		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel = context.WithTimeout(context.Background(), lavaTaskLimit)
 		_ = task.Wait(ctx)
 		cancel()
 		t.Fatal("lava random tick waited for the generating neighbor column")
@@ -61,7 +72,7 @@ func TestLavaRandomTickDoesNotWaitForGeneratingNeighbour(t *testing.T) {
 	})
 	select {
 	case <-ready:
-	case <-time.After(5 * time.Second):
+	case <-time.After(lavaTaskLimit):
 		t.Fatal("neighbor column did not become ready after generation was released")
 	}
 	var firePlaced bool
@@ -79,7 +90,7 @@ func TestLavaRandomTickDoesNotWaitForGeneratingNeighbour(t *testing.T) {
 
 func runLavaWorldTask(t *testing.T, w *world.World, f func(*world.Tx)) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), lavaTaskLimit)
 	defer cancel()
 	if err := w.Do(f).Wait(ctx); err != nil {
 		t.Fatalf("world task did not complete: %v", err)
