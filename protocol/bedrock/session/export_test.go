@@ -92,16 +92,6 @@ func ParticlePackets(pos mgl64.Vec3, p world.Particle) []proto.Packet {
 	return append(pks, s.heldPackets...)
 }
 
-// TabledParticlePackets is ParticlePackets by the table of the particles
-// (particle_table.go) and the cases of the rest, until the switch it replaces
-// is deleted.
-func TabledParticlePackets(pos mgl64.Vec3, p world.Particle) []proto.Packet {
-	s := &Session{br: world.DefaultBlockRegistry, holdPackets: 1}
-	var pks []proto.Packet
-	s.tabledParticlePackets(pos, p, func(pk proto.Packet) { pks = append(pks, pk) })
-	return append(pks, s.heldPackets...)
-}
-
 // oldProtocol returns protocol 2193, the oldest the adapter speaks and the
 // primary the goldens of testdata/golden were recorded with.
 func oldProtocol() *versions.Protocol {

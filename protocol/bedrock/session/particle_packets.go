@@ -15,11 +15,10 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// tabledParticlePackets hands out the packets that show a particle at a
-// position: those of the particles of particle_table.go by the generated
-// switch, and those of the rest here. It is particlePackets as it will be
-// once the switch of particlePackets is deleted.
-func (s *Session) tabledParticlePackets(pos mgl64.Vec3, p world.Particle, out func(proto.Packet)) {
+// particlePackets hands out the packets that show a particle at a position:
+// those of the particles of particle_table.go by the generated switch, and
+// those of the rest here.
+func (s *Session) particlePackets(pos mgl64.Vec3, p world.Particle, out func(proto.Packet)) {
 	if s.literalParticlePacket(pos, p, out) {
 		return
 	}
@@ -205,4 +204,21 @@ func splashPacket(pos mgl64.Vec3, pa particle.Splash) *mc.LevelEventPacket {
 		EventData: (int32(pa.Colour.A) << 24) | (int32(pa.Colour.R) << 16) | (int32(pa.Colour.G) << 8) | int32(pa.Colour.B),
 		Position:  vec64To32(pos),
 	}
+}
+
+// cauldronLevelEvents maps cauldron effects to their Bedrock level events.
+var cauldronLevelEvents = [...]int32{
+	particle.CauldronExplode:        mc.LevelEventCauldronExplode,
+	particle.CauldronDyeArmour:      mc.LevelEventCauldronDyeArmor,
+	particle.CauldronCleanArmour:    mc.LevelEventCauldronCleanArmor,
+	particle.CauldronFillPotion:     mc.LevelEventCauldronFillPotion,
+	particle.CauldronTakePotion:     mc.LevelEventCauldronTakePotion,
+	particle.CauldronFillWater:      mc.LevelEventCauldronFillWater,
+	particle.CauldronTakeWater:      mc.LevelEventCauldronTakeWater,
+	particle.CauldronAddDye:         mc.LevelEventCauldronAddDye,
+	particle.CauldronCleanBanner:    mc.LevelEventCauldronCleanBanner,
+	particle.CauldronFillLava:       mc.LevelEventCauldronFillLava,
+	particle.CauldronTakeLava:       mc.LevelEventCauldronTakeLava,
+	particle.CauldronFillPowderSnow: mc.LevelEventCauldronFillPowderSnow,
+	particle.CauldronTakePowderSnow: mc.LevelEventCauldronTakePowderSnow,
 }

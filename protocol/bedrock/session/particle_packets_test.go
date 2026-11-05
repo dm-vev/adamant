@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image/color"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/df-mc/dragonfly/protocol/bedrock/session"
@@ -133,11 +132,7 @@ func particleSamples(t testing.TB) []particleSample {
 func TestParticlePacketsMatch(t *testing.T) {
 	var got []string
 	for _, c := range particleSamples(t) {
-		lines := tablePacketLines(c.label, func() []proto.Packet { return session.ParticlePackets(eventSoundPos, c.particle) })
-		if tabled := tablePacketLines(c.label, func() []proto.Packet { return session.TabledParticlePackets(eventSoundPos, c.particle) }); strings.Join(tabled, "\n") != strings.Join(lines, "\n") {
-			t.Errorf("%s: the table gives\n%s\nthe switch gave\n%s", c.label, strings.Join(tabled, "\n"), strings.Join(lines, "\n"))
-		}
-		got = append(got, lines...)
+		got = append(got, tablePacketLines(c.label, func() []proto.Packet { return session.ParticlePackets(eventSoundPos, c.particle) })...)
 	}
 	checkTableGolden(t, filepath.Join("testdata", "particles.golden"), *updateParticles, "particles", got)
 }
