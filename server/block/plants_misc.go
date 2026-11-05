@@ -102,7 +102,22 @@ func (s SeaGrass) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 
 // BreakInfo ...
 func (s SeaGrass) BreakInfo() BreakInfo {
-	return newBreakInfo(0, alwaysHarvestable, nothingEffective, simpleDrops(item.NewStack(SeaGrass{Type: SeaGrassDefault()}, 1)))
+	return newBreakInfo(0, alwaysHarvestable, nothingEffective, s.drops)
+}
+
+// drops ports the loot tables of seagrass and tall seagrass, whose
+// tool/can_shear condition leaves a plant that breaks by hand, by a neighbour
+// update or by an explosion without a drop. Shears take one seagrass from a
+// seagrass and two from either half of a tall seagrass.
+func (s SeaGrass) drops(t item.Tool, _ []item.Enchantment) []item.Stack {
+	if t.ToolType() != item.TypeShears {
+		return nil
+	}
+	count := 1
+	if s.Type != SeaGrassDefault() {
+		count = 2
+	}
+	return []item.Stack{item.NewStack(SeaGrass{Type: SeaGrassDefault()}, count)}
 }
 
 // EncodeItem ...
