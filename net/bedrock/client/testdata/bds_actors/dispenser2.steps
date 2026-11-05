@@ -1,0 +1,69 @@
+gamemode creative
+time set midnight
+gamerule dodaylightcycle false
+gamerule domobspawning false
+gamerule mobgriefing false
+tp @s 0 105 14
+wait 2
+fill -10 99 0 10 99 30 stone
+fill -10 100 0 10 104 30 air
+kill @e[type=!player]
+wait 1
+mark SUMMON arrow
+summon arrow 0 101 15
+wait 1
+mark SUMMON wind_charge_projectile
+summon wind_charge_projectile 0 101 15
+wait 1
+mark SUMMON fireworks_rocket
+summon fireworks_rocket 0 101 15
+wait 1.5
+mark SUMMON boat
+summon boat 4 100 15
+wait 1
+mark SUMMON tnt
+summon tnt 6 100 15
+wait 0.5
+mark setup shulker
+setblock -6 100 10 dispenser ["facing_direction"=3]
+replaceitem block -6 100 10 slot.container 0 minecraft:undyed_shulker_box 1
+mark POWER shulker
+setblock -6 100 9 redstone_block
+wait 1.5
+mark check shulker
+testforblock -6 100 11 undyed_shulker_box
+testforblock -6 100 11 air
+mark setup shulker_blue
+setblock -3 100 10 dispenser ["facing_direction"=3]
+replaceitem block -3 100 10 slot.container 0 minecraft:blue_shulker_box 1
+mark POWER shulker_blue
+setblock -3 100 9 redstone_block
+wait 1.5
+testforblock -3 100 11 blue_shulker_box
+mark setup pumpkin_golem
+setblock 0 100 10 dispenser ["facing_direction"=3]
+replaceitem block 0 100 10 slot.container 0 minecraft:carved_pumpkin 1
+setblock 0 100 11 iron_block
+setblock 0 100 12 iron_block
+setblock -1 100 12 iron_block
+setblock 1 100 12 iron_block
+fill 0 101 11 0 101 11 air
+mark POWER pumpkin (pumpkin above target on iron T shape needs head at 0 101 12?)
+setblock 0 100 9 redstone_block
+wait 2
+testforblock 0 100 11 carved_pumpkin
+mark setup armour_stand
+setblock 3 100 10 dispenser ["facing_direction"=3]
+replaceitem block 3 100 10 slot.container 0 minecraft:armor_stand 1
+mark POWER armour_stand
+setblock 3 100 9 redstone_block
+wait 1.5
+mark setup shears_sheep
+setblock 6 100 10 dispenser ["facing_direction"=3]
+replaceitem block 6 100 10 slot.container 0 minecraft:shears 1
+summon sheep 6.5 100 11.5
+wait 0.5
+mark POWER shears_sheep
+setblock 6 100 9 redstone_block
+wait 1.5
+mark setup tnt_gamerule

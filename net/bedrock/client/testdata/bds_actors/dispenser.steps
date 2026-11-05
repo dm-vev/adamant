@@ -1,0 +1,340 @@
+gamemode creative
+time set midnight
+gamerule dodaylightcycle false
+gamerule domobspawning false
+gamerule mobgriefing false
+tp @s 0 105 14
+wait 2
+fill -45 99 0 45 99 30 stone
+fill -45 100 0 45 104 30 air
+fill -45 105 0 45 105 30 air
+kill @e[type=!player]
+wait 1
+mark setup empty dispenser -30 100 10
+setblock -30 100 10 dispenser ["facing_direction"=3]
+mark setup stone dispenser -27 100 10
+setblock -27 100 10 dispenser ["facing_direction"=3]
+replaceitem block -27 100 10 slot.container 0 minecraft:stone 1
+mark setup arrow dispenser -24 100 10
+setblock -24 100 10 dispenser ["facing_direction"=3]
+replaceitem block -24 100 10 slot.container 0 minecraft:arrow 1
+mark setup egg dispenser -21 100 10
+setblock -21 100 10 dispenser ["facing_direction"=3]
+replaceitem block -21 100 10 slot.container 0 minecraft:egg 1
+mark setup snowball dispenser -18 100 10
+setblock -18 100 10 dispenser ["facing_direction"=3]
+replaceitem block -18 100 10 slot.container 0 minecraft:snowball 1
+mark setup xp_bottle dispenser -15 100 10
+setblock -15 100 10 dispenser ["facing_direction"=3]
+replaceitem block -15 100 10 slot.container 0 minecraft:experience_bottle 1
+mark setup splash dispenser -12 100 10
+setblock -12 100 10 dispenser ["facing_direction"=3]
+replaceitem block -12 100 10 slot.container 0 minecraft:splash_potion 1 6
+mark setup firework dispenser -9 100 10
+setblock -9 100 10 dispenser ["facing_direction"=3]
+replaceitem block -9 100 10 slot.container 0 minecraft:firework_rocket 1
+mark setup fire_charge dispenser -6 100 10
+setblock -6 100 10 dispenser ["facing_direction"=3]
+replaceitem block -6 100 10 slot.container 0 minecraft:fire_charge 1
+mark setup wind_charge dispenser -3 100 10
+setblock -3 100 10 dispenser ["facing_direction"=3]
+replaceitem block -3 100 10 slot.container 0 minecraft:wind_charge 1
+mark setup flint_ok dispenser 0 100 10
+setblock 0 100 10 dispenser ["facing_direction"=3]
+replaceitem block 0 100 10 slot.container 0 minecraft:flint_and_steel 1
+mark setup flint_fail dispenser 3 100 10
+setblock 3 100 10 dispenser ["facing_direction"=3]
+replaceitem block 3 100 10 slot.container 0 minecraft:flint_and_steel 1
+setblock 3 100 11 stone
+mark setup bonemeal_ok dispenser 6 100 10
+setblock 6 100 10 dispenser ["facing_direction"=3]
+replaceitem block 6 100 10 slot.container 0 minecraft:bone_meal 1
+setblock 6 99 11 farmland
+setblock 6 100 11 wheat
+mark setup bonemeal_fail dispenser 9 100 10
+setblock 9 100 10 dispenser ["facing_direction"=3]
+replaceitem block 9 100 10 slot.container 0 minecraft:bone_meal 1
+setblock 9 100 11 stone
+mark setup shears_ok dispenser 12 100 10
+setblock 12 100 10 dispenser ["facing_direction"=3]
+replaceitem block 12 100 10 slot.container 0 minecraft:shears 1
+summon sheep 12 100 11
+mark setup shears_fail dispenser 15 100 10
+setblock 15 100 10 dispenser ["facing_direction"=3]
+replaceitem block 15 100 10 slot.container 0 minecraft:shears 1
+mark setup water_bucket dispenser 18 100 10
+setblock 18 100 10 dispenser ["facing_direction"=3]
+replaceitem block 18 100 10 slot.container 0 minecraft:water_bucket 1
+mark setup water_bucket_blocked dispenser 21 100 10
+setblock 21 100 10 dispenser ["facing_direction"=3]
+replaceitem block 21 100 10 slot.container 0 minecraft:water_bucket 1
+setblock 21 100 11 stone
+mark setup bucket_pickup dispenser 24 100 10
+setblock 24 100 10 dispenser ["facing_direction"=3]
+replaceitem block 24 100 10 slot.container 0 minecraft:bucket 1
+setblock 24 100 11 water
+mark setup bucket_fail dispenser 27 100 10
+setblock 27 100 10 dispenser ["facing_direction"=3]
+replaceitem block 27 100 10 slot.container 0 minecraft:bucket 1
+mark setup lava_bucket dispenser -30 100 18
+setblock -30 100 18 dispenser ["facing_direction"=3]
+replaceitem block -30 100 18 slot.container 0 minecraft:lava_bucket 1
+mark setup boat dispenser -27 100 18
+setblock -27 100 18 dispenser ["facing_direction"=3]
+replaceitem block -27 100 18 slot.container 0 minecraft:oak_boat 1
+setblock -27 100 19 water
+mark setup boat_nowater dispenser -24 100 18
+setblock -24 100 18 dispenser ["facing_direction"=3]
+replaceitem block -24 100 18 slot.container 0 minecraft:oak_boat 1
+mark setup minecart dispenser -21 100 18
+setblock -21 100 18 dispenser ["facing_direction"=3]
+replaceitem block -21 100 18 slot.container 0 minecraft:minecart 1
+setblock -21 100 19 rail
+mark setup armor_stand dispenser -18 100 18
+setblock -18 100 18 dispenser ["facing_direction"=3]
+replaceitem block -18 100 18 slot.container 0 minecraft:armor_stand 1
+mark setup spawn_egg dispenser -15 100 18
+setblock -15 100 18 dispenser ["facing_direction"=3]
+replaceitem block -15 100 18 slot.container 0 minecraft:cow_spawn_egg 1
+mark setup glass_bottle_water dispenser -12 100 18
+setblock -12 100 18 dispenser ["facing_direction"=3]
+replaceitem block -12 100 18 slot.container 0 minecraft:glass_bottle 1
+setblock -12 100 19 water
+mark setup glass_bottle_fail dispenser -9 100 18
+setblock -9 100 18 dispenser ["facing_direction"=3]
+replaceitem block -9 100 18 slot.container 0 minecraft:glass_bottle 1
+mark setup honeycomb_wax dispenser -6 100 18
+setblock -6 100 18 dispenser ["facing_direction"=3]
+replaceitem block -6 100 18 slot.container 0 minecraft:honeycomb 1
+setblock -6 100 19 copper_block
+mark setup honeycomb_drop dispenser -3 100 18
+setblock -3 100 18 dispenser ["facing_direction"=3]
+replaceitem block -3 100 18 slot.container 0 minecraft:honeycomb 1
+mark setup water_potion_mud dispenser 0 100 18
+setblock 0 100 18 dispenser ["facing_direction"=3]
+replaceitem block 0 100 18 slot.container 0 minecraft:potion 1 0
+setblock 0 100 19 dirt
+mark setup carved_pumpkin dispenser 3 100 18
+setblock 3 100 18 dispenser ["facing_direction"=3]
+replaceitem block 3 100 18 slot.container 0 minecraft:carved_pumpkin 1
+mark setup shulker dispenser 6 100 18
+setblock 6 100 18 dispenser ["facing_direction"=3]
+replaceitem block 6 100 18 slot.container 0 minecraft:undyed_shulker_box 1
+mark setup armour_zombie dispenser 9 100 18
+setblock 9 100 18 dispenser ["facing_direction"=3]
+replaceitem block 9 100 18 slot.container 0 minecraft:diamond_chestplate 1
+summon zombie 9 100 19 minecraft:entity_spawned
+mark setup glowstone_anchor dispenser 12 100 18
+setblock 12 100 18 dispenser ["facing_direction"=3]
+replaceitem block 12 100 18 slot.container 0 minecraft:glowstone 1
+setblock 12 100 19 respawn_anchor
+mark setup glowstone_full dispenser 15 100 18
+setblock 15 100 18 dispenser ["facing_direction"=3]
+replaceitem block 15 100 18 slot.container 0 minecraft:glowstone 1
+setblock 15 100 19 respawn_anchor ["respawn_anchor_charge"=4]
+mark setup chest_donkey dispenser 18 100 18
+setblock 18 100 18 dispenser ["facing_direction"=3]
+replaceitem block 18 100 18 slot.container 0 minecraft:chest 1
+summon donkey 18 100 19
+mark setup brush_none dispenser 21 100 18
+setblock 21 100 18 dispenser ["facing_direction"=3]
+replaceitem block 21 100 18 slot.container 0 minecraft:brush 1
+mark setup tnt dispenser 24 100 18
+setblock 24 100 18 dispenser ["facing_direction"=3]
+replaceitem block 24 100 18 slot.container 0 minecraft:tnt 1
+wait 1
+tp @s -30 102 5
+wait 1
+mark POWER empty dispenser -30 100 10
+setblock -30 100 9 redstone_block
+wait 1.5
+tp @s -27 102 5
+wait 1
+mark POWER stone dispenser -27 100 10
+setblock -27 100 9 redstone_block
+wait 1.5
+tp @s -24 102 5
+wait 1
+mark POWER arrow dispenser -24 100 10
+setblock -24 100 9 redstone_block
+wait 1.5
+tp @s -21 102 5
+wait 1
+mark POWER egg dispenser -21 100 10
+setblock -21 100 9 redstone_block
+wait 1.5
+tp @s -18 102 5
+wait 1
+mark POWER snowball dispenser -18 100 10
+setblock -18 100 9 redstone_block
+wait 1.5
+tp @s -15 102 5
+wait 1
+mark POWER xp_bottle dispenser -15 100 10
+setblock -15 100 9 redstone_block
+wait 1.5
+tp @s -12 102 5
+wait 1
+mark POWER splash dispenser -12 100 10
+setblock -12 100 9 redstone_block
+wait 1.5
+tp @s -9 102 5
+wait 1
+mark POWER firework dispenser -9 100 10
+setblock -9 100 9 redstone_block
+wait 1.5
+tp @s -6 102 5
+wait 1
+mark POWER fire_charge dispenser -6 100 10
+setblock -6 100 9 redstone_block
+wait 1.5
+tp @s -3 102 5
+wait 1
+mark POWER wind_charge dispenser -3 100 10
+setblock -3 100 9 redstone_block
+wait 1.5
+tp @s 0 102 5
+wait 1
+mark POWER flint_ok dispenser 0 100 10
+setblock 0 100 9 redstone_block
+wait 1.5
+tp @s 3 102 5
+wait 1
+mark POWER flint_fail dispenser 3 100 10
+setblock 3 100 9 redstone_block
+wait 1.5
+tp @s 6 102 5
+wait 1
+mark POWER bonemeal_ok dispenser 6 100 10
+setblock 6 100 9 redstone_block
+wait 1.5
+tp @s 9 102 5
+wait 1
+mark POWER bonemeal_fail dispenser 9 100 10
+setblock 9 100 9 redstone_block
+wait 1.5
+tp @s 12 102 5
+wait 1
+mark POWER shears_ok dispenser 12 100 10
+setblock 12 100 9 redstone_block
+wait 1.5
+tp @s 15 102 5
+wait 1
+mark POWER shears_fail dispenser 15 100 10
+setblock 15 100 9 redstone_block
+wait 1.5
+tp @s 18 102 5
+wait 1
+mark POWER water_bucket dispenser 18 100 10
+setblock 18 100 9 redstone_block
+wait 1.5
+tp @s 21 102 5
+wait 1
+mark POWER water_bucket_blocked dispenser 21 100 10
+setblock 21 100 9 redstone_block
+wait 1.5
+tp @s 24 102 5
+wait 1
+mark POWER bucket_pickup dispenser 24 100 10
+setblock 24 100 9 redstone_block
+wait 1.5
+tp @s 27 102 5
+wait 1
+mark POWER bucket_fail dispenser 27 100 10
+setblock 27 100 9 redstone_block
+wait 1.5
+tp @s -30 102 13
+wait 1
+mark POWER lava_bucket dispenser -30 100 18
+setblock -30 100 17 redstone_block
+wait 1.5
+tp @s -27 102 13
+wait 1
+mark POWER boat dispenser -27 100 18
+setblock -27 100 17 redstone_block
+wait 1.5
+tp @s -24 102 13
+wait 1
+mark POWER boat_nowater dispenser -24 100 18
+setblock -24 100 17 redstone_block
+wait 1.5
+tp @s -21 102 13
+wait 1
+mark POWER minecart dispenser -21 100 18
+setblock -21 100 17 redstone_block
+wait 1.5
+tp @s -18 102 13
+wait 1
+mark POWER armor_stand dispenser -18 100 18
+setblock -18 100 17 redstone_block
+wait 1.5
+tp @s -15 102 13
+wait 1
+mark POWER spawn_egg dispenser -15 100 18
+setblock -15 100 17 redstone_block
+wait 1.5
+tp @s -12 102 13
+wait 1
+mark POWER glass_bottle_water dispenser -12 100 18
+setblock -12 100 17 redstone_block
+wait 1.5
+tp @s -9 102 13
+wait 1
+mark POWER glass_bottle_fail dispenser -9 100 18
+setblock -9 100 17 redstone_block
+wait 1.5
+tp @s -6 102 13
+wait 1
+mark POWER honeycomb_wax dispenser -6 100 18
+setblock -6 100 17 redstone_block
+wait 1.5
+tp @s -3 102 13
+wait 1
+mark POWER honeycomb_drop dispenser -3 100 18
+setblock -3 100 17 redstone_block
+wait 1.5
+tp @s 0 102 13
+wait 1
+mark POWER water_potion_mud dispenser 0 100 18
+setblock 0 100 17 redstone_block
+wait 1.5
+tp @s 3 102 13
+wait 1
+mark POWER carved_pumpkin dispenser 3 100 18
+setblock 3 100 17 redstone_block
+wait 1.5
+tp @s 6 102 13
+wait 1
+mark POWER shulker dispenser 6 100 18
+setblock 6 100 17 redstone_block
+wait 1.5
+tp @s 9 102 13
+wait 1
+mark POWER armour_zombie dispenser 9 100 18
+setblock 9 100 17 redstone_block
+wait 1.5
+tp @s 12 102 13
+wait 1
+mark POWER glowstone_anchor dispenser 12 100 18
+setblock 12 100 17 redstone_block
+wait 1.5
+tp @s 15 102 13
+wait 1
+mark POWER glowstone_full dispenser 15 100 18
+setblock 15 100 17 redstone_block
+wait 1.5
+tp @s 18 102 13
+wait 1
+mark POWER chest_donkey dispenser 18 100 18
+setblock 18 100 17 redstone_block
+wait 1.5
+tp @s 21 102 13
+wait 1
+mark POWER brush_none dispenser 21 100 18
+setblock 21 100 17 redstone_block
+wait 1.5
+tp @s 24 102 13
+wait 1
+mark POWER tnt dispenser 24 100 18
+setblock 24 100 17 redstone_block
+wait 1.5

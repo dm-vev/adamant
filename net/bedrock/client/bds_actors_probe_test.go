@@ -19,7 +19,8 @@ import (
 // steps of the file BDS_STEPS (see testdata/bds_actors) and logs to the file
 // BDS_OUT the actor packets BDS sends: AddActor, SetActorData, MobEquipment,
 // ActorEvent, Animate and, with BDS_MOVES, the moves of actors; BDS_ALL adds
-// the names of the other packets. Run it with scripts/bds-run.sh, with BDS_RUN
+// the names of the other packets and BDS_LEVEL logs LevelEvent, LevelSoundEvent,
+// SpawnParticleEffect and BlockEvent. Run it with scripts/bds-run.sh, with BDS_RUN
 // set to a folder of your own when other runs share the machine.
 //
 // A line of BDS_STEPS is a command, run as the player; "wait N" waits N
@@ -163,6 +164,22 @@ func TestBDSActorsProbe(t *testing.T) {
 				logf("Animate %s rid=%d %+v", ty, p.EntityRuntimeID, p)
 			case *mc.TextPacket:
 				logf("Text %+v", p)
+			case *mc.LevelEventPacket:
+				if os.Getenv("BDS_LEVEL") != "" {
+					logf("LevelEvent %+v", *p)
+				}
+			case *mc.LevelSoundEventPacket:
+				if os.Getenv("BDS_LEVEL") != "" {
+					logf("LevelSoundEvent %+v", *p)
+				}
+			case *mc.SpawnParticleEffectPacket:
+				if os.Getenv("BDS_LEVEL") != "" {
+					logf("SpawnParticleEffect %+v", *p)
+				}
+			case *mc.BlockEventPacket:
+				if os.Getenv("BDS_LEVEL") != "" {
+					logf("BlockEvent %+v", *p)
+				}
 			}
 		}
 	}()
