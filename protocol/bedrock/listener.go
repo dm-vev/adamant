@@ -54,7 +54,7 @@ func (c Config) Listener(conf server.Config, host server.Host) (server.Listener,
 	if err != nil {
 		return nil, err
 	}
-	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat, Blocks: conf.Blocks, Primary: c.Primary}), nil
+	return session.Listen(l, session.ListenConfig{Log: conf.Log, EmoteChatMuted: c.MuteEmoteChat, Blocks: conf.Blocks, Primary: c.Primary, Allowed: c.Protocols}), nil
 }
 
 // primaryProtocol returns the protocol the server speaks: Primary, or the

@@ -45,6 +45,11 @@ type ListenConfig struct {
 	// Primary is the protocol the sessions speak, [Network]
 	// PrimaryProtocol. Nil is the default of the build.
 	Primary *versions.Protocol
+	// Allowed are the protocols clients may join with, [Network]
+	// Protocols. Empty allows every protocol a config may name. It only
+	// tells the server what GameVersions reports: the clients that join are
+	// admitted by the listener of the connections.
+	Allowed []*versions.Protocol
 }
 
 // Listener is the listener of the Bedrock Edition adapter. It hands the
@@ -71,6 +76,25 @@ func Listen(l ConnListener, conf ListenConfig) *Listener {
 		tablesOf(nil, conf.Blocks).hashes()
 	}
 	return &Listener{l: l, conf: conf}
+}
+
+// GameVersions returns the version of the game the listener speaks to its
+// clients, that of its primary protocol, and the versions of the clients that
+// may join, one range for each protocol allowed, oldest first, as the server
+// shows them. It is the server's gameVersioner.
+func (l *Listener) GameVersions() (primary string, joinable []string) {
+	p := l.conf.Primary
+	if p == nil {
+		p = versions.NewestPrimary()
+	}
+	allowed := l.conf.Allowed
+	if len(allowed) == 0 {
+		allowed = versions.Configurable()
+	}
+	for _, a := range allowed {
+		joinable = append(joinable, a.Range())
+	}
+	return p.Version, joinable
 }
 
 // Accept returns the Join of the next connection that l accepts. A

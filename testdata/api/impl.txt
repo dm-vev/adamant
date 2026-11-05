@@ -38,6 +38,7 @@ protocol/bedrock/session.InventoryTransactionHandler	protocol/bedrock/session.pa
 protocol/bedrock/session.ItemStackRequestHandler	protocol/bedrock/session.packetHandler	*
 protocol/bedrock/session.LecternUpdateHandler	protocol/bedrock/session.packetHandler	value
 protocol/bedrock/session.Listener	server.Listener	*
+protocol/bedrock/session.Listener	server.gameVersioner	*
 protocol/bedrock/session.MapInfoRequestHandler	protocol/bedrock/session.packetHandler	*
 protocol/bedrock/session.MobEquipmentHandler	protocol/bedrock/session.packetHandler	*
 protocol/bedrock/session.ModalFormResponseHandler	protocol/bedrock/session.packetHandler	*
@@ -87,6 +88,7 @@ protocol/bedrock/session.staticPacket	protocol/bedrock/netconn.Static	*
 protocol/bedrock/session.staticPacket	protocol/bedrock/netconn.Wrapper	*
 protocol/java.statusListener	server.Listener	*
 server.Server	server.Host	*
+server.Server	server.gameVersioner	*
 server.Server	server/cmd.Permissions	*
 server.Server	server/cmd/builtin.commandObserver	*
 server.Server	server/cmd/builtin.serverAdapter	*

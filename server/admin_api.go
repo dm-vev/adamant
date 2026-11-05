@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/client"
 	"github.com/df-mc/dragonfly/server/identity"
 	"github.com/df-mc/dragonfly/server/player"
-	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
 )
@@ -416,7 +415,7 @@ func (srv *Server) SetIdleTimeout(minutes int) {
 	srv.idleTimeout.Store(int64(minutes))
 }
 func (srv *Server) IdleTimeout() int { return int(srv.idleTimeout.Load()) }
-func (srv *Server) Version() string  { return fmt.Sprintf("Dragonfly (%s)", version.Minecraft) }
+func (srv *Server) Version() string  { return fmt.Sprintf("Dragonfly (%s)", srv.versionDescription()) }
 func idleTimeoutExpired(lastActivity, now time.Time, timeout time.Duration) bool {
 	return timeout > 0 && !lastActivity.IsZero() && !lastActivity.Add(timeout).After(now)
 }

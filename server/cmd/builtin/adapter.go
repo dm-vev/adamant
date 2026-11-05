@@ -25,6 +25,9 @@ type serverAdapter interface {
 	Nether() *world.World
 	End() *world.World
 	StartTime() time.Time
+	// GameVersions returns the version of the game the server speaks and
+	// the versions of the clients that may join, as Server.GameVersions.
+	GameVersions() (primary string, joinable []string)
 	WhitelistEnabled() bool
 	WhitelistSetEnabled(enabled bool) error
 	WhitelistReload() error

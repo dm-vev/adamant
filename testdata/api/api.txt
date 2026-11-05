@@ -115,6 +115,7 @@ protocol/bedrock/session	method	ItemStackRequestHandler.Handle	func(p github.com
 protocol/bedrock/session	method	LecternUpdateHandler.Handle	func(p github.com/dm-vev/adamant/net/bedrock/proto.Packet, _ *protocol/bedrock/session.Session, _ *server/world.Tx, c protocol/bedrock/session.Controllable) error
 protocol/bedrock/session	method	Listener.Accept	func() (server/client.Join, error)
 protocol/bedrock/session	method	Listener.Close	func() error
+protocol/bedrock/session	method	Listener.GameVersions	func() (primary string, joinable []string)
 protocol/bedrock/session	method	MapInfoRequestHandler.Handle	func(p github.com/dm-vev/adamant/net/bedrock/proto.Packet, s *protocol/bedrock/session.Session, _ *server/world.Tx, c protocol/bedrock/session.Controllable) error
 protocol/bedrock/session	method	MobEquipmentHandler.Handle	func(p github.com/dm-vev/adamant/net/bedrock/proto.Packet, s *protocol/bedrock/session.Session, tx *server/world.Tx, c protocol/bedrock/session.Controllable) error
 protocol/bedrock/session	method	ModalFormResponseHandler.Handle	func(p github.com/dm-vev/adamant/net/bedrock/proto.Packet, _ *protocol/bedrock/session.Session, tx *server/world.Tx, c protocol/bedrock/session.Controllable) error
@@ -300,7 +301,7 @@ protocol/bedrock/session	type	InteractHandler	struct{}
 protocol/bedrock/session	type	InventoryTransactionHandler	struct{}
 protocol/bedrock/session	type	ItemStackRequestHandler	struct{currentRequest int32; changes map[byte]map[byte]protocol/bedrock/session.changeInfo; responseChanges map[int32]map[*server/item/inventory.Inventory]map[byte]protocol/bedrock/session.responseChange; batch *server/menu.Tx; multiCraft *protocol/bedrock/session.multiCraft; autoCraft *protocol/bedrock/session.autoCraft; current time.Time; ignoreDestroy bool}
 protocol/bedrock/session	type	LecternUpdateHandler	struct{}
-protocol/bedrock/session	type	ListenConfig	struct{Log *log/slog.Logger; EmoteChatMuted bool; Blocks server/world.BlockRegistry; Primary *protocol/bedrock/internal/versions.Protocol}
+protocol/bedrock/session	type	ListenConfig	struct{Log *log/slog.Logger; EmoteChatMuted bool; Blocks server/world.BlockRegistry; Primary *protocol/bedrock/internal/versions.Protocol; Allowed []*protocol/bedrock/internal/versions.Protocol}
 protocol/bedrock/session	type	Listener	struct{l protocol/bedrock/session.ConnListener; conf protocol/bedrock/session.ListenConfig; contentMu sync.Mutex; content map[*protocol/bedrock/internal/versions.Protocol]*protocol/bedrock/session.startContent}
 protocol/bedrock/session	type	MapInfoRequestHandler	struct{}
 protocol/bedrock/session	type	MobEquipmentHandler	struct{}
@@ -405,6 +406,7 @@ server	method	Server.CommandBlockLevel	func() server/cmd.Level
 server	method	Server.CommandLevel	func(name string, declared server/cmd.Level) server/cmd.Level
 server	method	Server.Deop	func(name string) (bool, error)
 server	method	Server.End	func() *server/world.World
+server	method	Server.GameVersions	func() (primary string, joinable []string)
 server	method	Server.HoldSave	func(by server.Actor) error
 server	method	Server.IdentityKey	func() server/identity.Mode
 server	method	Server.IdleTimeout	func() int

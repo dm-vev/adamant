@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -23,7 +24,6 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/text"
-	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/dm-vev/adamant/net/metrics"
 	"github.com/go-gl/mathgl/mgl64"
@@ -137,7 +137,8 @@ func (srv *Server) Listen() {
 		}
 	}
 
-	srv.conf.Log.Info("Dragonfly server started.", "mc-version", version.Minecraft, "go-version", info.GoVersion, "commit", revision)
+	primary, joinable := srv.GameVersions()
+	srv.conf.Log.Info("Dragonfly server started.", "mc-version", primary, "clients", strings.Join(joinable, ", "), "go-version", info.GoVersion, "commit", revision)
 	srv.startServices()
 	srv.startListening()
 	go srv.wait()

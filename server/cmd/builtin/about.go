@@ -3,10 +3,10 @@ package builtin
 import (
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/version"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -28,7 +28,11 @@ func (a aboutCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		goVersion = info.GoVersion
 	}
 
-	o.Printf("Minecraft protocol: %s", version.Minecraft)
+	primary, joinable := a.srv.GameVersions()
+	o.Printf("Minecraft protocol: %s", primary)
+	if len(joinable) > 0 {
+		o.Printf("Clients that may join: %s", strings.Join(joinable, ", "))
+	}
 	o.Printf("Go runtime: %s", goVersion)
 
 	if info != nil {
