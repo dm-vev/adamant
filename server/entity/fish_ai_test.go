@@ -1,6 +1,7 @@
 package entity_test
 
 import (
+	"math"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -65,7 +66,13 @@ func TestFishSwimAround(t *testing.T) {
 		w.AdvanceTick()
 		<-w.Exec(func(tx *world.Tx) {
 			pos := entityPos(tx, fish)
-			if pos[1] > 64 || pos[1] < 60 {
+			// Java's fish pokes out of the surface now and then: it swims
+			// up at its target with its eyes in the water, nothing stops
+			// its feet at the surface and it sinks back the next ticks
+			// (AbstractFish.travelInWater and FishMoveControl add 0.005 and
+			// more upwards). A fish that left the pool jumps higher, as a
+			// flopping one does with 0.4 up, or lies beyond its walls.
+			if pos[1] > 64.5 || pos[1] < 60 || math.Abs(pos[0]) > 12 || math.Abs(pos[2]) > 12 {
 				t.Fatalf("fish left the pool to %v", pos)
 			}
 			furthest = max(furthest, pos.Sub(start).Len())
