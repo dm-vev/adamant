@@ -252,7 +252,8 @@ func enchantmentFullName(e item.EnchantmentType, level int) string {
 }
 
 // commandTargetDisplayName is Entity.getDisplayName: the name of a player, the
-// custom name of a mob, or the name of the type of any other entity.
+// custom name of a mob, or the name of the type of any other entity, by its
+// Java identifier.
 func commandTargetDisplayName(target cmd.Target) string {
 	if p, ok := target.(*player.Player); ok {
 		return p.Name()
@@ -260,7 +261,7 @@ func commandTargetDisplayName(target cmd.Target) string {
 	if named, ok := target.(interface{ NameTag() string }); ok && named.NameTag() != "" {
 		return named.NameTag()
 	}
-	return wordsOf(commandTargetName(target))
+	return wordsOf(world.JavaEntityTypeID(commandTargetName(target)))
 }
 
 // stackDisplayName is ItemStack.getHoverName: the custom name of a stack, or

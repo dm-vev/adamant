@@ -1008,7 +1008,10 @@ func (m *oceanMob) Tame(user world.Entity) {
 	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.nautilus.eat", Volume: 1, Pitch: 1})
 }
 func (m *oceanMob) HeldItems() (item.Stack, item.Stack) { return m.b().mainHand, m.b().offHand }
-func (m *oceanMob) SetHeldItems(main, off item.Stack)   { m.b().mainHand, m.b().offHand = main, off }
+func (m *oceanMob) SetHeldItems(main, off item.Stack) {
+	m.b().mainHand, m.b().offHand = main, off
+	viewEquipment(m.tx, m)
+}
 func (m *oceanMob) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
 	b := m.b()
 	return b.head, b.chest, b.legs, b.feet

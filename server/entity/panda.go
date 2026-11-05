@@ -217,6 +217,12 @@ func (p *Panda) Scared() bool      { return p.b().scared(p.tx) }
 // HeldItems returns the food the panda holds.
 func (p *Panda) HeldItems() (item.Stack, item.Stack) { return p.b().held, item.Stack{} }
 
+// SetHeldItems changes the item the panda holds and shows its viewers.
+func (p *Panda) SetHeldItems(main, _ item.Stack) {
+	p.b().held = main
+	viewEquipment(p.tx, p)
+}
+
 // Collect ports Panda.pickUpItem: a panda holding nothing picks up food it
 // eats off the ground.
 func (p *Panda) Collect(stack item.Stack) (int, bool) {

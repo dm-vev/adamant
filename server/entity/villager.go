@@ -526,6 +526,13 @@ func (b *VillagerBehaviour) afterAiStep(m *Mob) { b.pickUpItems(m) }
 // HeldItems returns the item the villager shows in its hand.
 func (v *Villager) HeldItems() (item.Stack, item.Stack) { return v.behaviour().held, item.Stack{} }
 
+// SetHeldItems changes the item the villager holds and shows its viewers. The
+// villager has no off hand to fill.
+func (v *Villager) SetHeldItems(main, _ item.Stack) {
+	b := v.behaviour()
+	b.setHeld(b.ai.Mob(v.Ent, v), main)
+}
+
 // Sleeping returns the bed the villager sleeps in.
 func (v *Villager) Sleeping() (cube.Pos, bool) {
 	if s := v.behaviour().sleeping; s != nil {

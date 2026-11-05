@@ -147,6 +147,13 @@ func (d *Dolphin) Collect(stack item.Stack) (int, bool) {
 // HeldItems returns the item the dolphin plays with.
 func (d *Dolphin) HeldItems() (item.Stack, item.Stack) { return d.b().held, item.Stack{} }
 
+// SetHeldItems changes the item the dolphin holds in its mouth and shows its
+// viewers.
+func (d *Dolphin) SetHeldItems(main, _ item.Stack) {
+	d.b().held = main
+	viewEquipment(d.tx, d)
+}
+
 // viewHeldItem shows viewers the item a dolphin holds.
 func (b *oceanWildlifeBehaviour) viewHeldItem(e *Ent) {
 	viewers := e.tx.Viewers(e.data.Pos)

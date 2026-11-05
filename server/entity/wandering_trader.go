@@ -361,6 +361,13 @@ func (t *WanderingTrader) HeldItems() (mainHand, offHand item.Stack) {
 	return t.b().using, item.Stack{}
 }
 
+// SetHeldItems changes the item in the hand of the trader and shows its
+// viewers. The trader puts its hand away when it next finishes drinking.
+func (t *WanderingTrader) SetHeldItems(main, _ item.Stack) {
+	t.b().using = main
+	viewEquipment(t.tx, t)
+}
+
 // UsingItem reports whether the trader is drinking.
 func (t *WanderingTrader) UsingItem() bool { return t.b().useTicks > 0 }
 

@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -179,4 +180,105 @@ func TestEnchantCommandMessagesForOneTargetAndSeveral(t *testing.T) {
 		}
 		_ = cow
 	})
+}
+
+// enchantViewer records the main-hand item each mob is shown holding.
+type enchantViewer struct {
+	world.NopViewer
+	mu    sync.Mutex
+	shown map[*world.EntityHandle]item.Stack
+}
+
+func (v *enchantViewer) ViewEntityItems(e world.Entity) {
+	holder, ok := e.(interface {
+		HeldItems() (main, off item.Stack)
+	})
+	if !ok {
+		return
+	}
+	main, _ := holder.HeldItems()
+	v.mu.Lock()
+	v.shown[e.H()] = main
+	v.mu.Unlock()
+}
+
+// Mobs that hold an item without a player's hands have a main hand /enchant
+// changes, as Mob.setItemSlot lets it in Java, and show viewers the result.
+func TestEnchantCommandEnchantsTheItemEveryHoldingMobHolds(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: entity.DefaultRegistry}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	viewer := &enchantViewer{shown: map[*world.EntityHandle]item.Stack{}}
+	loader := world.NewLoader(2, w, viewer)
+	t.Cleanup(func() { <-w.Exec(func(tx *world.Tx) { loader.Close(tx) }) })
+
+	type holder interface {
+		HeldItems() (main, off item.Stack)
+		SetHeldItems(main, off item.Stack)
+	}
+	for _, c := range []struct {
+		name, selector, display string
+		spawn                   func(world.EntitySpawnOpts) *world.EntityHandle
+	}{
+		{"villager", "villager", "Villager", entity.NewVillager},
+		{"wandering trader", "wandering_trader", "Wandering Trader", entity.NewWanderingTrader},
+		{"fox", "fox", "Fox", entity.NewFox},
+		{"panda", "panda", "Panda", entity.NewPanda},
+		{"dolphin", "dolphin", "Dolphin", entity.NewDolphin},
+		{"copper golem", "copper_golem", "Copper Golem", entity.NewCopperGolem},
+		{"zombified piglin", "zombified_piglin", "Zombified Piglin", entity.NewZombifiedPiglin},
+		{"piglin", "piglin", "Piglin", entity.NewPiglin},
+		{"nautilus", "nautilus", "Nautilus", entity.NewNautilus},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			<-w.Exec(func(tx *world.Tx) {
+				loader.Move(tx, mgl64.Vec3{0, 64, 0})
+				loader.Load(tx, 9)
+				sword := item.NewStack(item.Sword{Tier: item.ToolTierIron}, 1)
+				first := tx.AddEntity(c.spawn(world.EntitySpawnOpts{Position: mgl64.Vec3{1, 64, 1}}))
+				mob, ok := first.(holder)
+				if !ok {
+					t.Fatalf("%s has no SetHeldItems", c.name)
+				}
+				enchant := cmd.New("enchant", "", nil, enchantCommand{})
+				run := func(want string) {
+					t.Helper()
+					out := runTestCommand(enchant, "@e[type="+c.selector+"] sharpness 3", tx)
+					var got string
+					if out.MessageCount() > 0 {
+						got = out.Messages()[0].String()
+					} else if out.ErrorCount() > 0 {
+						got = out.Errors()[0].Error()
+					}
+					if got != want {
+						t.Fatalf("/enchant printed %q, want %q", got, want)
+					}
+				}
+				check := func(who holder, h *world.EntityHandle) {
+					t.Helper()
+					main, _ := who.HeldItems()
+					if main.Enchantments() == nil || len(main.Enchantments()) != 1 || main.Enchantments()[0].Type() != enchantment.Sharpness || main.Enchantments()[0].Level() != 3 {
+						t.Fatalf("held item has enchantments %v, want Sharpness III", main.Enchantments())
+					}
+					viewer.mu.Lock()
+					shown := viewer.shown[h]
+					viewer.mu.Unlock()
+					if len(shown.Enchantments()) != 1 {
+						t.Fatalf("viewers were shown %v, want the enchanted sword", shown.Enchantments())
+					}
+				}
+
+				mob.SetHeldItems(sword, item.Stack{})
+				run("Applied enchantment Sharpness III to " + c.display + "'s item")
+				check(mob, first.H())
+
+				second := tx.AddEntity(c.spawn(world.EntitySpawnOpts{Position: mgl64.Vec3{2, 64, 1}}))
+				other := second.(holder)
+				mob.SetHeldItems(sword, item.Stack{})
+				other.SetHeldItems(sword, item.Stack{})
+				run("Applied enchantment Sharpness III to 2 entities")
+				check(mob, first.H())
+				check(other, second.H())
+			})
+		})
+	}
 }

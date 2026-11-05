@@ -389,6 +389,7 @@ func (p *Piglin) HeldItems() (item.Stack, item.Stack) { return p.p().main, p.p()
 func (p *Piglin) SetHeldItems(main, off item.Stack) {
 	s := p.p()
 	s.main, s.off = main, off
+	viewEquipment(p.tx, p)
 }
 func (p *Piglin) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
 	a := p.p().armor

@@ -351,6 +351,14 @@ func (f *Fox) Collect(stack item.Stack) (int, bool) {
 // HeldItems returns the item the fox holds in its mouth.
 func (f *Fox) HeldItems() (item.Stack, item.Stack) { return f.b().held, item.Stack{} }
 
+// SetHeldItems changes the item the fox holds in its mouth and shows its
+// viewers. Unlike Collect, it does not spit out the item the fox held, as
+// Mob.setItemSlot does not.
+func (f *Fox) SetHeldItems(main, _ item.Stack) {
+	f.b().held = main
+	viewEquipment(f.tx, f)
+}
+
 // Interested reports if the fox tilts its head at its prey.
 func (f *Fox) Interested() bool { return f.b().interested }
 

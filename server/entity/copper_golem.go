@@ -217,6 +217,12 @@ func (c *CopperGolem) CarriedItem() item.Stack { return c.b().carried }
 // hand as BDS shows it with MobEquipment.
 func (c *CopperGolem) HeldItems() (item.Stack, item.Stack) { return c.b().carried, item.Stack{} }
 
+// SetHeldItems changes the item the golem carries and shows its viewers.
+func (c *CopperGolem) SetHeldItems(main, _ item.Stack) {
+	c.b().carried = main
+	viewEquipment(c.tx, c)
+}
+
 // Antenna returns the flower gifted to the golem by an iron golem, if any.
 func (c *CopperGolem) Antenna() item.Stack { return c.b().antenna }
 

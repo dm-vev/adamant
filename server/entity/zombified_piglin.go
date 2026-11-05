@@ -186,6 +186,13 @@ func (z *ZombifiedPiglin) FinalizeSpawn(reason string, r *vanilla.Random) {
 // HeldItems returns what the zombified piglin holds.
 func (z *ZombifiedPiglin) HeldItems() (item.Stack, item.Stack) { return z.z().heldItems() }
 
+// SetHeldItems changes what the zombified piglin holds and shows its viewers.
+func (z *ZombifiedPiglin) SetHeldItems(main, off item.Stack) {
+	s := z.z()
+	s.items[slotMainhand], s.items[slotOffhand] = main, off
+	viewEquipment(z.tx, z)
+}
+
 // EquipmentArmour returns what the zombified piglin wears, head first.
 func (z *ZombifiedPiglin) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
 	return z.z().armour()
