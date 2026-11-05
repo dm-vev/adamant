@@ -532,6 +532,15 @@ func (m *HostileMob) CloseIn(tx *world.Tx) error {
 func (m *HostileMob) HeldItems() (item.Stack, item.Stack) {
 	return m.state().main, m.state().off
 }
+
+// SetHeldItems changes what the mob holds and shows its viewers.
+func (m *HostileMob) SetHeldItems(main, off item.Stack) {
+	b := m.state()
+	b.main, b.off = main, off
+	if e, ok := m.handle.Entity(m.tx); ok {
+		viewEquipment(m.tx, e)
+	}
+}
 func (m *HostileMob) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
 	b := m.state()
 	return b.head, b.chest, b.legs, b.feet
