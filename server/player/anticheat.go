@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/client"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -113,7 +114,7 @@ func (p *Player) refuseTooQuick(ac *acState, m client.Move, delta mgl64.Vec3) bo
 	pos := p.Position()
 	if ac == nil {
 		// A player that is not checked is held to Java's bound alone.
-		p.log.Debug("client move refused: moved too quickly", "delta", fmt.Sprint(delta))
+		logging.Sub(p.log, logging.AntiCheat).Debug("client move refused: moved too quickly", "delta", fmt.Sprint(delta))
 		p.client().CorrectMove(p, pos, mgl64.Vec3{}, m.Tick)
 		return true
 	}

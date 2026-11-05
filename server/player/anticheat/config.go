@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/text"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -642,7 +643,7 @@ func parseRule(c Check, r Rule, log *slog.Logger) (Policy, error) {
 	}
 	p.KickMessage = text.ParseLegacy(msg)
 	if log != nil && r.Enabled && r.KickAt > 0 && r.KickAt <= r.ActAt && p.Action != Kick {
-		log.Warn("An anti-cheat check kicks before it acts: its KickAt is at most its ActAt.", "check", c.String(), "KickAt", r.KickAt, "ActAt", r.ActAt, "Action", p.Action.String())
+		logging.Sub(log, logging.AntiCheat).Warn("An anti-cheat check kicks before it acts: its KickAt is at most its ActAt.", "check", c.String(), "KickAt", r.KickAt, "ActAt", r.ActAt, "Action", p.Action.String())
 	}
 	return p, nil
 }

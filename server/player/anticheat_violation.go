@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/identity"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 )
 
@@ -99,7 +100,7 @@ func (p *Player) logViolation(ac *acState, v *anticheat.Violation, vl float64, a
 	if l.logged && v.Tick-l.last < int64(ac.conf.LogInterval) && act != anticheat.Kick {
 		return
 	}
-	p.log.Info("anti-cheat", "check", v.Check.String(), "vl", round2(vl), "kind", v.Kind, "detail", v.Detail,
+	logging.Sub(p.log, logging.AntiCheat).Info("anti-cheat", "check", v.Check.String(), "vl", round2(vl), "kind", v.Kind, "detail", v.Detail,
 		"action", act.String(), "violations", l.count, "max-vl", round2(l.maxVL))
 	l.logged, l.last, l.count, l.maxVL = true, v.Tick, 0, 0
 }

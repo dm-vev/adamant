@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/logging"
 	"github.com/df-mc/dragonfly/server/player/anticheat"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/skin"
@@ -132,7 +133,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		skin:                conf.Skin,
 		enchantSeed:         conf.EnchantmentSeed,
 		c:                   conf.Client,
-		log:                 conf.Log,
+		log:                 logging.Sub(conf.Log, logging.Player),
 		leftHook:            conf.Left,
 		quitMessage:         conf.QuitMessage,
 		acConf:              conf.AntiCheat,
