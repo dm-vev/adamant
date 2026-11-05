@@ -26,6 +26,42 @@ type cooldownState struct {
 	cooldownsMu sync.Mutex
 }
 
+// cooldownActive reports if the item of the name passed has a cooldown that
+// has not run out at the time passed. A cooldown that has is deleted.
+func (s *cooldownState) cooldownActive(name string, now time.Time) bool {
+	s.cooldownsMu.Lock()
+	defer s.cooldownsMu.Unlock()
+
+	otherTime, ok := s.cooldowns[name]
+	if !ok {
+		return false
+	}
+	if now.After(otherTime) {
+		delete(s.cooldowns, name)
+		return false
+	}
+	return true
+}
+
+// cooldownSet starts a cooldown of the duration passed for the item of the
+// name passed.
+func (s *cooldownState) cooldownSet(name string, cooldown time.Duration) {
+	s.cooldownsMu.Lock()
+	s.cooldowns[name] = time.Now().Add(cooldown)
+	s.cooldownsMu.Unlock()
+}
+
+// cooldownExpire deletes the cooldowns that have run out at the time passed.
+func (s *cooldownState) cooldownExpire(now time.Time) {
+	s.cooldownsMu.Lock()
+	defer s.cooldownsMu.Unlock()
+	for it, ti := range s.cooldowns {
+		if now.After(ti) {
+			delete(s.cooldowns, it)
+		}
+	}
+}
+
 // inventoryState is the inventories of the player and the menu it has open.
 type inventoryState struct {
 	// menu is the menu the player has open, nil if none. It is atomic as
@@ -136,19 +172,7 @@ func (p *Player) HasCooldown(item world.Item) bool {
 		return false
 	}
 	name, _ := item.EncodeItem()
-	now := time.Now()
-	p.cooldownsMu.Lock()
-	defer p.cooldownsMu.Unlock()
-
-	otherTime, ok := p.cooldowns[name]
-	if !ok {
-		return false
-	}
-	if now.After(otherTime) {
-		delete(p.cooldowns, name)
-		return false
-	}
-	return true
+	return p.cooldownActive(name, time.Now())
 }
 
 // SetCooldown sets a cooldown for an item. If the world.Item passed is nil, nothing happens.
@@ -157,9 +181,7 @@ func (p *Player) SetCooldown(item world.Item, cooldown time.Duration) {
 		return
 	}
 	name, _ := item.EncodeItem()
-	p.cooldownsMu.Lock()
-	p.cooldowns[name] = time.Now().Add(cooldown)
-	p.cooldownsMu.Unlock()
+	p.cooldownSet(name, cooldown)
 	p.client().ViewItemCooldown(item, cooldown)
 }
 
@@ -341,14 +363,7 @@ func (p *Player) closeMenu(tx *world.Tx, clientRequested bool) {
 
 // expireCooldowns removes the cooldowns of items that have run out.
 func (p *Player) expireCooldowns() {
-	now := time.Now()
-	p.cooldownsMu.Lock()
-	defer p.cooldownsMu.Unlock()
-	for it, ti := range p.cooldowns {
-		if now.After(ti) {
-			delete(p.cooldowns, it)
-		}
-	}
+	p.cooldownExpire(time.Now())
 }
 
 // damageItem damages the item stack passed with the damage passed and returns the new stack. If the item
