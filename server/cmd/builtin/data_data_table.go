@@ -28,8 +28,8 @@ var dataTargets = map[string]func(c *dataCall){
 	"block":   dataBlock,
 }
 
-// runTables runs the command through the tables of its targets and actions.
-func (c dataCommand) runTables(src cmd.Source, out *cmd.Output, tx *world.Tx) {
+// Run runs the command through the tables of its targets and actions.
+func (c dataCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 	if tx == nil {
 		out.Error("data requires a world")
 		return

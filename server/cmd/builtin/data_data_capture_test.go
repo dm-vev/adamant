@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -110,27 +109,6 @@ var dataCaptureLines = []string{
 	"remove block 0 64 0",
 	"set block 3 64 3 x",
 	"set block 0 64 0 x",
-}
-
-// dataViaTables is /data run through the tables of its targets and actions.
-type dataViaTables struct {
-	gameMaster
-	Args cmd.Varargs
-}
-
-func (c dataViaTables) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
-	dataCommand{Args: c.Args}.runTables(src, out, tx)
-}
-
-// TestDataTablesMatchLegacy requires the tables of targets and actions to do
-// exactly what /data did before them, on every line of the capture: the same
-// output text and the same effects.
-func TestDataTablesMatchLegacy(t *testing.T) {
-	legacy := runCapture(t, dataCaptureLines, "data", dataCommand{}, dataCaptureEffects)
-	tables := runCapture(t, dataCaptureLines, "data", dataViaTables{}, dataCaptureEffects)
-	if legacy != tables {
-		checkEqualCaptures(t, legacy, tables)
-	}
 }
 
 // dataCaptureEffects writes down what the data of the chest and the entities
