@@ -302,6 +302,13 @@ func TestCreeperSwellsAndExplodesNearPlayers(t *testing.T) {
 
 // TestSpiderClimbsWallsAtNight checks the spider climbs a wall two blocks
 // high to a player on top of it, too high to jump.
+//
+// The spider picks its target with NearestAttackableTargetGoal: a tenth of
+// the ticks it looks for a player within its follow range of 16 blocks that
+// it sees, and until then it strolls up to ten blocks. The wall hides a
+// player on top of it from a spider close to it, so the spider starts well
+// inside the range and the sight, where a stroll or two cannot take it out
+// of them before it has picked the player.
 func TestSpiderClimbsWallsAtNight(t *testing.T) {
 	t.Parallel()
 	w := aiTestWorld(t)
@@ -313,8 +320,8 @@ func TestSpiderClimbsWallsAtNight(t *testing.T) {
 			}
 		}
 	})
-	p := addAITestPlayer(w, mgl64.Vec3{8.5, 67, .5}, world.GameModeSurvival)
-	spider := addSpecies(w, entity.NewSpider(world.EntitySpawnOpts{Position: mgl64.Vec3{-6.5, 65, .5}}))
+	p := addAITestPlayer(w, mgl64.Vec3{4.5, 67, .5}, world.GameModeSurvival)
+	spider := addSpecies(w, entity.NewSpider(world.EntitySpawnOpts{Position: mgl64.Vec3{-4.5, 65, .5}}))
 	highest := 0.0
 	lowest := lowestHealth(t, w, p, 400, func(tx *world.Tx) {
 		if e, ok := spider.Entity(tx); ok {
