@@ -482,3 +482,10 @@ func (l *Loader) activeArea(simRadius int32) loaderActiveArea {
 	l.mu.Unlock()
 	return area
 }
+
+type loaderActiveArea struct {
+	pos      ChunkPos
+	radius   int32
+	radiusSq int64
+	square   bool
+}
